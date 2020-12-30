@@ -436,10 +436,6 @@ class hklview_3d:
     if has_phil_path(diff_phil, "show_tooltips"):
       self.set_show_tooltips()
 
-    #if has_phil_path(diff_phil, "fixorientation"):
-    #  self.fix_orientation()
-    #  #self.orient_vector_parallel_with_screen(self.currentrotvec)
-
     if has_phil_path(diff_phil, "tooltip_alpha"):
       self.set_tooltip_opacity()
 
@@ -448,6 +444,12 @@ class hklview_3d:
 
     if has_phil_path(diff_phil, "show_vector"):
       self.show_vector()
+
+    if has_phil_path(diff_phil, "angle_around_vector"):
+      self.rotate_around_vector()
+
+    if has_phil_path(diff_phil, "animate_rotation_around_vector"):
+      self.animate_rotate_around_vector()
 
     if has_phil_path(diff_phil, "miller_array_operations"):
       self.viewerparams.scene_id = len(self.HKLscenedict)-1
@@ -521,6 +523,7 @@ class hklview_3d:
       self.DrawReciprocalUnitCell(scale )
       self.set_tooltip_opacity()
       self.set_show_tooltips()
+      self.visualise_sym_HKLs()
 
 
   def set_scene(self, scene_id):
@@ -580,14 +583,16 @@ class hklview_3d:
     hkl = self.scene.indices[id]
     hklvec = flex.vec3_double( [(hkl[0], hkl[1], hkl[2])])
     rotmx=None
-    if sym_id >= 0 and sym_id < len(self.symops):
+    if sym_id >= 0 and sym_id < len(self.symops): 
+      # symid tells which symmetry operator was used in HKLJavaScripts.js onMessage() Expand()
       rotmx = self.symops[sym_id].r()
 
     Rhkl = hklvec[0]
-    if rotmx:
+    if rotmx: 
+      # if a symmetry mate was clicked then deduce its hkl coordinate by 
+      # applying the rotation to the original hkl coordinate
       Rhkl = hklvec[0] * rotmx
     rothkl = Rhkl
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if anomalous:
       rothkl =  (-Rhkl[0], -Rhkl[1], -Rhkl[2])
     spbufttip = '\'H,K,L: %d, %d, %d' %(rothkl[0], rothkl[1], rothkl[2])
@@ -595,6 +600,8 @@ class hklview_3d:
     spbufttip += '\\ndres: %s \'+ String.fromCharCode(197) +\'' \
       %str(roundoff(self.miller_array.unit_cell().d(hkl), 2) )
     if self.visual_symmxs:
+      # if a list of symmetry matrices have been deduced from a selected rotation operator
+      # then also compute the other symmetry mates of the current hkl
       self.visual_symHKLs = []
       uc = self.miller_array.unit_cell()
       for symmx in self.visual_symmxs:
@@ -1514,7 +1521,8 @@ class hklview_3d:
             hklid = hklid % len(hkls)
             ttip = self.GetTooltipOnTheFly(hklid, sym_id, anomalous=True)
           self.AddToBrowserMsgQueue("ShowThisTooltip", ttip)
-          self.visualise_sym_HKLs(sym_id)
+          if "click_tooltip_id:" in message:
+            self.visualise_sym_HKLs()
         elif "onClick colour chart" in message:
           self.onClickColourChart()
         elif "SelectedBrowserDataColumnComboBox" in message:
@@ -1715,7 +1723,7 @@ Distance: %s
 
 
   def draw_vector(self, s1, s2, s3, t1, t2, t3, isreciprocal=True, label="",
-                  r=0, g=0, b=0, name="", radius = 0.15):
+                  r=0, g=0, b=0, name="", radius = 0.15, labelpos=0.8):
     """
     Place vector from {s1, s2, s3] to [t1, t2, t3] with colour r,g,b and label
     If name=="" creation is deferred until draw_vector is eventually called with name != ""
@@ -1740,13 +1748,14 @@ Distance: %s
       svec1 = [ vscale*vec1[0], vscale*vec1[1], vscale*vec1[2] ]
       svec2 = [ vscale*vec2[0], vscale*vec2[1], vscale*vec2[2] ]
     self.draw_cartesian_vector(svec1[0], svec1[1], svec1[2], svec2[0], svec2[1], svec2[2], 
-                            label, r, g, b, name, radius )
+                            label, r, g, b, name, radius, labelpos)
 
 
-  def draw_cartesian_vector(self, s1, s2, s3, t1, t2, t3, label="", r=0, g=0, b=0, name="", radius = 0.15):
+  def draw_cartesian_vector(self, s1, s2, s3, t1, t2, t3, label="", r=0, g=0, b=0, name="", radius = 0.15, labelpos=0.8):
     self.mprint("cartesian vector is: %s to %s" %(str(roundoff([s1, s2, s3])), str(roundoff([t1, t2, t3]))), verbose=2)
-    self.AddToBrowserMsgQueue("DrawVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
-         %(s1, s2, s3, t1, t2, t3, r, g, b, label, name, radius) ) 
+    #self.AddToBrowserMsgQueue("DrawVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
+    self.AddToBrowserMsgQueue("DrawVector", "%s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s" \
+         %(s1, s2, s3, t1, t2, t3, r, g, b, label, name, radius, labelpos) ) 
     if name=="":
       self.mprint("deferred rendering vector from (%s, %s, %s) to (%s, %s, %s)" %(s1, s2, s3, t1, t2, t3), verbose=2)
 
@@ -1855,9 +1864,9 @@ Distance: %s
       s = self.reciproc_scale
       for i, (opnr, label, v, xyzop, hklop) in enumerate( self.rotation_operators ): # skip the last op for javascript drawing purposes
         if i < len(self.rotation_operators)-1:
-          self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], label=label, radius=0.2 )
+          self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], label=label, radius=0.2, labelpos=1.0)
         else: # supply name to tell javascript to draw all these vectors 
-          self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], label=label, name="SymRotAxes", radius=0.2 )
+          self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], label=label, name="SymRotAxes", radius=0.2, labelpos=1.0)
     else:
       self.RemoveVectors("SymRotAxes")
 
@@ -1882,10 +1891,11 @@ Distance: %s
       name = label + hklop.replace(",", "_")
       if val:
         self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], r=0.1, g=0.1,b=0.1,
-                                  label=label, name=name, radius=0.2 )
+                                  label=label, name=name, radius=0.2, labelpos=1.0)
         self.currentrotvec = v
 
         if order > 0 and hklop != "":
+# if this is a rotation operator deduce the group of successive rotation matrices it belongs to
           rt = sgtbx.rt_mx(symbol= hklop, r_den=12, t_den=144)
           RotMx = matrix.sqr(rt.r().as_double() )
           self.visual_symmxs.append( RotMx )
@@ -1893,77 +1903,47 @@ Distance: %s
           for ord in range(order -1): # skip identity operator
             nfoldrotmx = RotMx * nfoldrotmx
             self.visual_symmxs.append( nfoldrotmx )
+          self.RemoveVectors("sym_HKLs") # delete other symmetry hkls from a previous rotation operator if any
       else:
         self.RemoveVectors(name)
         self.visual_symmxs = []
 
 
-  def visualise_sym_HKLs(self, sym_id):
+  def visualise_sym_HKLs(self):
     if len(self.visual_symHKLs):
-      self.RemoveVectors("wibble")
+      self.RemoveVectors("sym_HKLs")
       for i,hkl in enumerate(self.visual_symHKLs):
-        hklstr = str(list(hkl)).replace(",","_")
+        thkl = tuple(hkl)
+        hklstr = "hkl: (%d,%d,%d)" %thkl
         if i < len(self.visual_symHKLs)-1:
-          self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label=hklstr, r=0.5, g=0.3, b=0.3, radius=0.3)
+          self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label=hklstr, r=0.5, g=0.3, b=0.3, 
+                           radius=0.1, labelpos=1.0)
         else: # supplying a name for the vector last graphics primitive draws them all
-          self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label=hklstr, name="wibble", r=0.5, g=0.3, b=0.3, radius=0.3)
+          self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label=hklstr, name="sym_HKLs", 
+                           r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
 
 
-  def RotateAroundVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3), 
-                             vectortype="cartesian", quietbrowser=True):
-    if vectortype == "cartesian":
-      cartvec = list( (r1,r2,r3))
-    elif vectortype == "reciprocal":
-    # Assuming vector is in reciprocal space coordinates turn it into cartesian
-      cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().fractionalization_matrix()).transpose() )
-    elif vectortype == "fractional":
-      # Assuming vector is in real space fractional coordinates turn it into cartesian
-      cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().orthogonalization_matrix()) )
-    else:
-      raise Sorry("Set vectortype to either 'cartesian', 'reciprocal' or 'fractional'.")
-    self.currentrotvec = cartvec # assuming angle_around_vector is the trigger
-    #  Rodrigues rotation formula for rotation by phi angle around a vector going through origo
-    #  See http://mathworld.wolfram.com/RodriguesRotationFormula.html
-    # \mathbf I+\left(\sin\,\varphi\right)\mathbf W+\left(2\sin^2\frac{\varphi}{2}\right)\mathbf W^2
-    normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-    ux = cartvec[0]/normR
-    uy = cartvec[1]/normR
-    uz = cartvec[2]/normR
-    W = matrix.sqr([0, -uz, uy, uz, 0, -ux, -uy, ux, 0])
-    I = matrix.identity(3)
-    sin2phi2 = math.sin(phi/2)
-    sin2phi2 *= sin2phi2
-    RotMx = I + math.sin(phi)*W + 2* sin2phi2 * W*W
-    #self.currentRotmx = RotMx * prevrotmx # impose any other rotation already performed
-    #self.RotateMxStage(self.currentRotmx, quietbrowser)
-    #self.RotateMxComponents(RotMx, quietbrowser)
-    self.RotateAxisComponents([ux,uy,uz], phi, quietbrowser)
-    #self.RotateAxisMx([ux,uy,uz], phi, quietbrowser)
-    return self.currentRotmx, [ux, uy, uz]
+  def rotate_around_vector(self):
+    vecnr, dgr = eval(self.params.clip_plane.angle_around_vector)
+    if vecnr < len(self.all_vectors):
+      cartvec = self.all_vectors[vecnr][3]
+      phi = cmath.pi*dgr/180
+      normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+      ux = cartvec[0]/normR
+      uy = cartvec[1]/normR
+      uz = cartvec[2]/normR
+      self.RotateAxisComponents([ux,uy,uz], phi, True)
 
 
-  def AnimateRotateAroundVector(self, speed, r1,r2,r3,
-                             vectortype="cartesian", quietbrowser=True):
-    if vectortype == "cartesian":
-      cartvec = list( (r1,r2,r3))
-      self.currentrotvec = cartvec # assuming angle_around_vector is the trigger
-    elif vectortype == "reciprocal":
-    # Assuming vector is in reciprocal space coordinates turn it into cartesian
-      cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().fractionalization_matrix()).transpose() )
-    elif vectortype == "fractional":
-      # Assuming vector is in real space fractional coordinates turn it into cartesian
-      cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().orthogonalization_matrix()) )
-    else:
-      raise Sorry("Set vectortype to either 'cartesian', 'reciprocal' or 'fractional'.")
-    normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-    ux = cartvec[0]/normR
-    uy = cartvec[1]/normR
-    uz = cartvec[2]/normR
-    self.AnimateRotateAxisComponents([ux,uy,uz], speed, quietbrowser)
-
-
-  def SpinAnimate(self, r1, r2, r3):
-    self.AddToBrowserMsgQueue("SpinAnimate", "%s, %s, %s" %(r1, r2, r3) )
+  def animate_rotate_around_vector(self):
+    vecnr, speed = eval(self.params.clip_plane.animate_rotation_around_vector)
+    if vecnr < len(self.all_vectors):
+      cartvec = self.all_vectors[vecnr][3]
+      normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+      ux = cartvec[0]/normR
+      uy = cartvec[1]/normR
+      uz = cartvec[2]/normR
+      self.AnimateRotateAxisComponents([ux,uy,uz], speed, True)
 
 
   def DrawUnitCell(self, scale=1):
@@ -1986,7 +1966,6 @@ Distance: %s
     self.draw_vector(0,scale,0, 0,scale,scale, False, r=0.8, g=0.8, b=0.5, radius=rad)
     self.draw_vector(scale,scale,0, scale,scale,scale, False, r=0.8, g=0.8, b=0.5, radius=rad, name="unitcell")
     self.mprint( "Adding real space unit cell", verbose=1)
-
 
 
   def DrawReciprocalUnitCell(self, scale=1):

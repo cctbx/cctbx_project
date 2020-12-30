@@ -389,7 +389,8 @@ function onMessage(e)
   {
     var datval = e.data.split(":\n");
     var msgtype = datval[0];
-    var val = datval[1].split(",");
+    var val = datval[1].split(","); // assuming no commas in the received strings
+    var val2 = datval[1].split(";;"); // in case the received strings contain intended commas
 
     if (msgtype === "Reload")
     {
@@ -455,11 +456,8 @@ function onMessage(e)
     {
       displaytooltips = val[0];
       stage.signals.hovered.removeAll();
-      stage.signals.clicked.removeAll();
-      if (displaytooltips == "click")
-        stage.signals.clicked.add( PickingProxyfunc );
       if (displaytooltips == "hover")
-        stage.signals.hovered.add( PickingProxyfunc );
+        stage.signals.hovered.add( HoverPickingProxyfunc );
     }
 
     if (msgtype === "ShowThisTooltip")
@@ -604,7 +602,7 @@ function onMessage(e)
           br_ttips[bin].push( [] );
           Object.assign(br_ttips[bin][rotmxidx], ttips[bin]); // deep copy the ttips[bin] object
           br_ttips[bin][rotmxidx].ids = ttips[bin].ids.slice(0); // deep copy the ttips[bin].ids object
-          br_ttips[bin][rotmxidx].ids[0] = rotmxidx; // id number of rotation used by PickingProxyfunc
+          br_ttips[bin][rotmxidx].ids[0] = rotmxidx; // id number of rotation. Used by PickingProxyfunc
           br_positions[bin][rotmxidx] = new Float32Array( csize );
           nexpandrefls += csize;
 
@@ -837,66 +835,6 @@ function onMessage(e)
       );
     }
 
-    if (msgtype === "SpinAnimate")
-    {
-      WebsockSendMsg( 'SpinAnimating ' + pagename );
-      //strs = datval[1].split("\n");
-      var r = new Float32Array(3);
-      //var elmstrs = strs[0].split(",");
-      for (j=0; j<3; j++)
-        r[j] = parseFloat(val[j]);
-      if (r[0] == 0.0 && r[1] == 0.0 && r[2] == 0.0)
-      {
-        // default bindings as per ngl\src\controls\mouse-actions.ts
-        stage.mouseControls.add("drag-ctrl-left", NGL.MouseActions.panDrag);
-        stage.mouseControls.add("drag-ctrl-right", NGL.MouseActions.focusScroll);
-        stage.mouseControls.add("drag-shift-left", NGL.MouseActions.zoomDrag);
-        stage.mouseControls.add("drag-shift-right", NGL.MouseActions.zoomDrag);
-        stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomDrag);
-        stage.mouseControls.add("drag-right", NGL.MouseActions.panDrag);
-        stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
-        stage.mouseControls.add("scroll-ctrl", NGL.MouseActions.scrollCtrl);
-        stage.mouseControls.add("scroll-shift", NGL.MouseActions.scrollShift);
-        stage.setSpin(false);
-      }
-      else
-      {
-        //stage.spinAnimation.axis.set(r[0], r[1], r[2]);
-        //stage.animationControls.spinComponent(shapeComp, [r[0], r[1], r[2]], 0.005, 10000);
-        var inc = 0.0;
-        //while (r[0] != 0.0 || r[1] != 0.0 || r[2] != 0.0)
-        //{
-          //sleep(100); //then(() => {
-          /*var e = new NGL.Euler(inc, 0, 0);
-          var m = new NGL.Matrix4();
-          m.makeRotationFromEuler(e);
-          shapeComp.setTransform(m);
-          inc = inc + 0.01;
-          RenderRequest();
-          msg = String(shapeComp.matrix.elements);
-          WebsockSendMsg('CurrentComponentRotation:\n' + msg);
-          */
-          RotateComponents(r, inc);
-          //inc = inc + 0.1;
-
-          //}
-          //);
-        //}
-        /*
-        stage.mouseControls.remove("drag-ctrl-left");
-        stage.mouseControls.remove("drag-ctrl-right");
-        stage.mouseControls.remove("drag-shift-left");
-        stage.mouseControls.remove("drag-shift-right");
-        stage.mouseControls.remove("drag-middle");
-        stage.mouseControls.remove("drag-right");
-        stage.mouseControls.remove("drag-left");
-        stage.mouseControls.remove("scroll-ctrl");
-        stage.mouseControls.remove("scroll-shift");
-        stage.setSpin(true);
-        */
-      }
-    }
-
     if (msgtype === "TranslateHKLpoints")
     {
       WebsockSendMsg( 'Translating HKLs ' + pagename );
@@ -906,7 +844,6 @@ function onMessage(e)
       for (j=0; j<3; j++)
         sm[j] = parseFloat(elmstrs[j]);
       shapeComp.setPosition([ sm[0], sm[1], sm[2] ]);
-      //stage.viewer.requestRender();
       RenderRequest();
       sleep(100).then(()=> {
           msg = getOrientMsg();
@@ -937,24 +874,30 @@ function onMessage(e)
       var rgb = new Float32Array(3);
       for (j=0; j<3; j++)
       {
-        r1[j] = parseFloat(val[j]);
-        r2[j] = parseFloat(val[j+3]);
-        rgb[j]= parseFloat(val[j+6]);
+        r1[j] = parseFloat(val2[j]);
+        r2[j] = parseFloat(val2[j+3]);
+        rgb[j]= parseFloat(val2[j+6]);
       }
-      radius = parseFloat(val[11]);
+      radius = parseFloat(val2[11]);
 
       if (vectorshape == null)
         vectorshape = new NGL.Shape('vectorshape');
 
       vectorshape.addArrow( r1, r2 , [rgb[0], rgb[1], rgb[2]], radius);
-      if (val[6] !== "") {
-        var txtR = [(r1[0] + r2[0]) * 0.8, (r1[1] + r2[1]) * 0.8, (r1[2] + r2[2]) * 0.8 ];
-        vectorshape.addText( txtR, [rgb[0], rgb[1], rgb[2]], fontsize, val[9] );
+      if (val2[6] !== "")
+      {
+        labelpos = parseFloat(val2[12]);
+        var txtR = [
+          r1[0] * (1.0 - labelpos) + r2[0] * labelpos,
+          r1[1] * (1.0 - labelpos) + r2[1] * labelpos,
+          r1[2] * (1.0 - labelpos) + r2[2] * labelpos
+        ];
+        vectorshape.addText( txtR, [rgb[0], rgb[1], rgb[2]], fontsize*0.75, val2[9] );
       }
       // if reprname is supplied with a vector then make a representation named reprname
       // of this and all pending vectors stored in vectorshape and render them.
       // Otherwise just accummulate the new vector
-      var reprname = val[10].trim();
+      var reprname = val2[10].trim();
       if (reprname != "")
       {
         DeleteVectors(reprname); // delete any existing vectors with the same name
@@ -964,7 +907,6 @@ function onMessage(e)
                                                                       { name: reprname} )
         );
         vectorshape = null;
-        //stage.viewer.requestRender();
         RenderRequest();
       }
     }
@@ -986,7 +928,6 @@ function onMessage(e)
         reciprocunitcellgone = DeleteVectors("reciprocal_unitcell");
       }
       if (reprnamegone || clipvecgone || unitcellgone || reciprocunitcellgone)
-        //stage.viewer.requestRender();
         RenderRequest();
     }
 
@@ -1338,42 +1279,41 @@ function getOrientMsg()
   return msg;
 }
 
+// Distinguish between click and hover mouse events.
+function HoverPickingProxyfunc(pickingProxy) {  PickingProxyfunc(pickingProxy, 'hover'); }
+function ClickPickingProxyfunc(pickingProxy) { PickingProxyfunc(pickingProxy, 'click'); }
 
 // listen to hover or click signal to move tooltip around and change its text
-function PickingProxyfunc(pickingProxy)
-{
-// adapted from http://nglviewer.org/ngl/api/manual/interaction-controls.html#clicked
+function PickingProxyfunc(pickingProxy, eventstr) {
+  // adapted from http://nglviewer.org/ngl/api/manual/interaction-controls.html#clicked
   if (pickingProxy
-        && (Object.prototype.toString.call(pickingProxy.picker["ids"]) === '[object Array]' )
-        && displaytooltips )
-  {
+    && (Object.prototype.toString.call(pickingProxy.picker["ids"]) === '[object Array]')
+    && displaytooltips) {
     var cp = pickingProxy.canvasPosition;
     var sym_id = -1;
     var hkl_id = -1;
     var ttipid = "";
-    if (pickingProxy.picker["ids"].length > 0)
-    { // get stored id number of rotation applied to this hkl
+    if (pickingProxy.picker["ids"].length > 0) { // get stored id number of rotation applied to this hkl
       sym_id = pickingProxy.picker["ids"][0]; // id of rotation stored when expanding to P1
       var ids = pickingProxy.picker["ids"].slice(1); // ids of reflection
       var is_friedel_mate = 0;
-      hkl_id = ids[ pickingProxy.pid % ids.length ]; // id of reflection if it's not a friedel mate
+      hkl_id = ids[pickingProxy.pid % ids.length]; // id of reflection if it's not a friedel mate
       if (pickingProxy.pid >= ids.length)
         is_friedel_mate = 1;
     }
     // tell python the id of the hkl and id of the rotation operator
     rightnow = timefunc();
-    if (rightnow - timenow > tdelay)
-    { // only post every 50 milli second as not to overwhelm python
+    if (rightnow - timenow > tdelay) { // only post every 50 milli second as not to overwhelm python
       ttipid = String([hkl_id, sym_id, is_friedel_mate]);
       // send this to python which will send back a tooltip text
-      WebsockSendMsg( 'tooltip_id: [' + ttipid + ']' ); 
+      WebsockSendMsg(eventstr + '_tooltip_id: [' + ttipid + ']');
       timenow = timefunc();
     }
 
     if (isdebug)
-      console.log( "current_ttip_ids: " + String(current_ttip_ids) + ", ttipid: " + String(ttipid) );
-    if (current_ttip !== "" && current_ttip_ids == ttipid) // received from python in onMessage() ShowThisTooltip
-    { 
+      console.log("current_ttip_ids: " + String(current_ttip_ids) + ", ttipid: " + String(ttipid));
+    if (current_ttip !== "" && current_ttip_ids == ttipid) // received in onMessage() ShowThisTooltip
+    {
       tooltip.innerText = current_ttip;
       tooltip.style.bottom = cp.y + 7 + "px";
       tooltip.style.left = cp.x + 8 + "px";
@@ -1381,8 +1321,7 @@ function PickingProxyfunc(pickingProxy)
       tooltip.style.display = "block";
     }
   }
-  else
-  {
+  else {
     tooltip.style.display = "none";
     current_ttip = "";
   }
@@ -1521,7 +1460,7 @@ function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids)
   // Tooltip ids is a list of numbers matching the array index of the radiiarray 
   ttiplst = [-1].concat(ttipids); 
   // Prepend this list with -1. This value will be reassigned with an id nummber of 
-  // a rotation operator when expanding to P1. PickingProxyfunc() will send back to python the 
+  // a rotation operator when expanding to P1. PickingProxyfunc() will send back to cctbx.python the 
   // id number of the rotation operator and number in ttiplst matching the reflection that was clicked.
   ttips.push( { ids: ttiplst,
        getPosition: function() { return { x:0, y:0 }; } // dummy function to avoid crash
@@ -1554,7 +1493,8 @@ function HKLscene()
 
 // create tooltip element and add to the viewer canvas
   stage.viewer.container.appendChild(tooltip);
-  stage.signals.clicked.add( PickingProxyfunc );
+  // Always listen to click event as to display any symmetry hkls
+  stage.signals.clicked.add(ClickPickingProxyfunc);
 
 
   stage.mouseObserver.signals.dragged.add(

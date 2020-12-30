@@ -260,12 +260,6 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "miller_array_operations"):
         self.make_new_miller_array()
 
-      if view_3d.has_phil_path(diff_phil, "angle_around_vector"):
-        self.rotate_around_vector2(phl.clip_plane.angle_around_vector)
-
-      if view_3d.has_phil_path(diff_phil, "animate_rotation_around_vector"):
-        self.animate_rotate_around_vector()
-
       if view_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
         self.set_default_spacegroup()
 
@@ -1107,39 +1101,15 @@ class HKLViewFrame() :
              hkldist=0.0, clipwidth=6, fixorientation="vector", is_parallel=True)
     self.viewer.SpinAnimate(0,1,0)
 
-
-  def rotate_around_vector(self, dgr):
-    phi = cmath.pi*dgr/180
-    if self.viewer.vecrotmx is not None:
-      R = flex.vec3_double( [(self.params.NGL_HKLviewer.clip_plane.h, self.params.NGL_HKLviewer.clip_plane.k, self.params.NGL_HKLviewer.clip_plane.l)])
-      self.viewer.RotateAroundVector(phi, R[0][0], R[0][1], R[0][2],
-                  self.viewer.vecrotmx,
-                  self.params.NGL_HKLviewer.clip_plane.fractional_vector == "reciprocal",
-                  self.params.NGL_HKLviewer.clip_plane.bequiet)
-    else:
-      self.mprint("First specify vector around which to rotate")
+  
+  def AnimateRotateAroundVector(self, vecnr, speed):
+    self.params.NGL_HKLviewer.clip_plane.animate_rotation_around_vector = str([vecnr, speed])
+    self.update_settings()
 
 
-  def rotate_around_vector2(self, vecnr_dgr):
-    vecnr, dgr = eval(vecnr_dgr)
-    if vecnr < len(self.viewer.all_vectors):
-      cartvec = self.viewer.all_vectors[vecnr][3]
-      phi = cmath.pi*dgr/180
-      R = flex.vec3_double([cartvec])
-      self.viewer.RotateAroundVector(phi, R[0][0], R[0][1], R[0][2], vectortype="cartesian")
-
-
-  def animate_rotate_around_vector(self):
-    vecnr, speed = eval(self.params.NGL_HKLviewer.clip_plane.animate_rotation_around_vector)
-    if vecnr < len(self.viewer.all_vectors):
-      cartvec = self.viewer.all_vectors[vecnr][3]
-      R = flex.vec3_double([cartvec])
-      self.viewer.AnimateRotateAroundVector(speed, R[0][0], R[0][1], R[0][2], vectortype="cartesian")
-
-
-  def RotateAroundVector(self, dgr, bequiet):
-    self.params.NGL_HKLviewer.clip_plane.angle_around_vector = dgr
-    self.params.NGL_HKLviewer.clip_plane.bequiet = bequiet
+  def RotateAroundVector(self, vecnr, dgr):
+    self.params.NGL_HKLviewer.clip_plane.angle_around_vector = str([vecnr, dgr])
+    self.update_settings()
 
 
   def SetMouseSpeed(self, trackspeed):
