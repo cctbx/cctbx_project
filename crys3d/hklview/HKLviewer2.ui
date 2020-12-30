@@ -826,8 +826,11 @@ p, li { white-space: pre-wrap; }
                      <property name="columnCount">
                       <number>5</number>
                      </property>
+                     <attribute name="horizontalHeaderCascadingSectionResizes">
+                      <bool>true</bool>
+                     </attribute>
                      <attribute name="horizontalHeaderDefaultSectionSize">
-                      <number>60</number>
+                      <number>50</number>
                      </attribute>
                      <attribute name="verticalHeaderVisible">
                       <bool>false</bool>
