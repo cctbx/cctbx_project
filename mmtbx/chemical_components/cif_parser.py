@@ -244,8 +244,8 @@ def run(filename):
   from iotbx import cif
   complete_cif_data = {}
   cm = cif.reader(filename, strict=False, raise_if_errors=False).model()
-  for code, rc in cm.iteritems():
-    for key, item in rc.iteritems():
+  for code, rc in cm.items():
+    for key, item in rc.items():
       cif_key = key.split('.')[0]
       sk = key.split(".")[1].strip()
       complete_cif_data.setdefault(cif_key, [])
@@ -259,7 +259,7 @@ def run(filename):
       break
       print(i, loop)
       if not loop: continue
-      for j, (key, item) in enumerate(loop.iteritems()):
+      for j, (key, item) in enumerate(loop.items()):
         if not j:
           objs=[]
           for k in range(len(item)):
