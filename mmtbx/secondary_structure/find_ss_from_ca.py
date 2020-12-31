@@ -1949,7 +1949,7 @@ class find_segment: # class to look for a type of segment
             segment_start=None
             still_changing=True
       segment_dict=new_segment_dict
-      for i in segment_dict.keys():
+      for i in list(segment_dict.keys()):
         segment_length=segment_dict[i]+1+self.last_residue_offset-i
         if segment_length<minimum_length:
           del segment_dict[i] # not long enough
