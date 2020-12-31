@@ -93,7 +93,7 @@ def update(grm,
       for sf4, aas in sorted(sf4_coordination.items()):
         outl += '%spdb="%s"\n' % (' '*6, sf4)
         outl_debug += '%spdb="%s"\n' % (' '*6, sf4)
-        for aa in sorted(aas):
+        for aa in aas:
           outl += '%s%s - %s\n' % (' '*8, _atom_id(aa[0]), _atom_id(aa[1]))
           outl_debug += '%s%s - %s\n' % (' '*8,
                                          _atom_id(aa[0], True),
