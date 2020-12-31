@@ -11,7 +11,7 @@
 #-------------------------------------------------------------------------------
 from __future__ import absolute_import, division, print_function
 
-from PySide2.QtCore import Qt, QEvent, QSize, QSettings, QTimer
+from PySide2.QtCore import Qt, QEvent, QItemSelectionModel, QSize, QSettings, QTimer
 from PySide2.QtWidgets import (  QAction, QCheckBox,
         QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
@@ -569,8 +569,9 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
             self.millerarraytableform.layout.setRowStretch (0, 0)
             self.millerarraytableform.mainLayout.setRowStretch (0, 0)
             tablewidth = 0
-            for e in range(self.millerarraytablemodel.columnCount()):
-              tablewidth +=  self.millerarraytable.columnWidth(e)
+            #for e in range(self.millerarraytablemodel.columnCount()):
+            #  tablewidth +=  self.millerarraytable.columnWidth(e)
+            self.millerarraytable.resizeColumnsToContents()
 
             self.millerarraytableform.SortComboBox.clear()
             self.millerarraytableform.SortComboBox.addItems(["unsorted"] + labels )
@@ -621,6 +622,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
             item = QTableWidgetItem()
             item.setFlags(item.flags() | Qt.ItemIsEditable)
             self.vectortable2.setItem(rc, 4, item)
+            self.vectortable2.resizeColumnsToContents()
           self.unfeedback = False
           if self.infodict.get("file_name"):
             self.window.setWindowTitle("HKL-viewer: " + self.infodict.get("file_name", "") )
@@ -637,6 +639,20 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
           if self.infodict.get("StatusBar"):
             self.window.statusBar().showMessage( self.infodict.get("StatusBar", "") )
+
+          if self.infodict.get("clicked_HKL"):
+            (h,k,l) = self.infodict.get("clicked_HKL", ( ) )
+            #if self.millerarraytablemodel is not None:
+            #  rows = self.millerarraytablemodel.searchHKL(h,k,l)
+              #self.millerarraytable.selectRow(rows[0])
+          if self.infodict.get("orig_hkl_ids"):
+            if self.millerarraytablemodel is not None:
+              orig_hkl_ids = self.infodict.get("orig_hkl_ids", [])
+              mode = QItemSelectionModel.Select | QItemSelectionModel.Rows
+              for ids in orig_hkl_ids:
+                self.millerarraytable.selectRow(ids)
+                #self.millerarraytable.selectionModel().select(ids, mode)
+
 
           if self.infodict.get("ColourChart") and self.infodict.get("ColourPowerScale"):
             self.ColourMapSelectDlg.selcolmap = self.infodict.get("ColourChart",False)
@@ -775,6 +791,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
         self.millerarraytable.model().clear()
       self.millerarraytablemodel = MillerArrayTableModel(self.datalst, labels, self)
       self.millerarraytable.setModel(self.millerarraytablemodel)
+      self.millerarraytable.resizeColumnsToContents()
       return
     idx = i-1
     if type(self.millerarraytablemodel._data[0][idx]) is str:
@@ -784,7 +801,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       self.millerarraytable.sortByColumn(idx, Qt.SortOrder.DescendingOrder)
     else:
       self.millerarraytable.sortByColumn(idx, Qt.SortOrder.AscendingOrder)
-
+    self.millerarraytable.resizeColumnsToContents()
 
   def onSortChkbox(self):
     self.onSortComboBoxSelchange(self.millerarraytableform.SortComboBox.currentIndex() )
@@ -1638,7 +1655,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.reciprocunitcellslider.sliderReleased.connect(self.onReciprocUnitcellScale)
     #self.ResetViewBtn.clicked.connect(self.onResetViewBtn)
     #self.SaveImageBtn.clicked.connect(self.onSaveImage)
-    labels = ["draw", "name", "rotation operator", "as hkl", "as abc"]
+    labels = ["draw", "name", "rotation", "as hkl", "as abc"]
     self.vectortable2.setHorizontalHeaderLabels(labels)
     self.vectortable2.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.vectortable2.itemChanged.connect(self.onVectorTableItemChanged  )

@@ -9,9 +9,9 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from PySide2.QtCore import Qt, QEvent, QAbstractTableModel, QModelIndex
-from PySide2.QtGui import QCursor, QResizeEvent
-from PySide2.QtWidgets import ( QCheckBox, QTableWidget, QAction, QMenu,
-      QTableView, QDialog,  QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
+from PySide2.QtGui import QCursor, QKeySequence, QResizeEvent
+from PySide2.QtWidgets import (QAbstractItemView, QCheckBox, QTableWidget, QAction, 
+      QMenu, QTableView, QDialog,  QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
       QScrollArea, QVBoxLayout
      )
 import math, csv
@@ -90,6 +90,8 @@ class MillerArrayTableView(QTableView):
     self.tablemenu.triggered.connect(self.onTableMenuAction)
     self.setContextMenuPolicy(Qt.CustomContextMenu)
     self.customContextMenuRequested.connect(self.onRightClick)
+    #self.setSelectionMode(QAbstractItemView.MultiSelection)
+    self.setSelectionBehavior(QAbstractItemView.SelectItems)
   def onRightClick(self, QPos=None):
     parent=self.sender()
     self.tablemenu.move(QCursor.pos())

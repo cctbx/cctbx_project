@@ -159,6 +159,8 @@ class HKLViewFrame() :
     self.viewer.proc_arrays = []
     self.viewer.HKLscenedict = {}
     self.uservectors = []
+    self.viewer.visual_symmxs = []
+    self.visual_symHKLs = []
     self.viewer.sceneisdirty = True
     self.viewer.isnewfile = True
     if self.viewer.miller_array:
@@ -977,7 +979,7 @@ class HKLViewFrame() :
       # TNCS vector is specified in realspace fractional coordinates. Convert it to cartesian
       cartvec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
       ln = len(self.viewer.all_vectors)
-      self.viewer.all_vectors.append( (ln, "TNCS", cartvec, "", "", str(roundoff(self.tncsvec, 5)) ) )
+      self.viewer.all_vectors.append( (ln, "TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)) ) )
     self.viewer.all_vectors = self.viewer.all_vectors + self.uservectors
     for (opnr, label, order, cartvec, hkl_op, hkl, abc) in self.viewer.all_vectors:
       # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
