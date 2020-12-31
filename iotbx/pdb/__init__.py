@@ -43,7 +43,7 @@ def construct_special_position_settings(
     u_star_tolerance=u_star_tolerance)
 
 def is_pdb_file(file_name):
-  for known_binary_extension in ['mtz', 'ccp4', 'mrc']:
+  for known_binary_extension in ['mtz', 'ccp4', 'mrc', 'pickle', 'pkl']:
     if file_name.endswith(known_binary_extension):
       return False
   with smart_open.for_reading(file_name=file_name) as f:
