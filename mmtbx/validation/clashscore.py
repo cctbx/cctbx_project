@@ -50,6 +50,24 @@ class clash(atoms):
   def __cmp__(self, other) : # sort in descending order
     return cmp(self.overlap, other.overlap)
 
+  def __eq__(self, other):
+    return self.overlap == other.overlap
+
+  def __ne__(self, other):
+    return self.overlap != other.overlap
+
+  def __lt__(self, other):
+    return self.overlap < other.overlap
+
+  def __le__(self, other):
+    return self.overlap <= other.overlap
+
+  def __gt__ (self, other):
+    return self.overlap > other.overlap
+
+  def __ge__(self, other):
+    return self.overlap >= other.overlap
+
 class clashscore(validation):
   __slots__ = validation.__slots__ + [
     "clashscore",
