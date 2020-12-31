@@ -1523,6 +1523,10 @@ class hklview_3d:
           self.AddToBrowserMsgQueue("ShowThisTooltip", ttip)
           if "click_tooltip_id:" in message:
             self.visualise_sym_HKLs()
+            hkl = self.scene.indices[hklid]
+            hklmatches = miller.match_indices(self.parent.origarrays["HKLs"], [hkl])
+            orig_hkl_ids = list(hklmatches.pairs().column(0))
+            self.SendInfoToGUI( { "clicked_HKL": hkl, "orig_hkl_ids": orig_hkl_ids })
         elif "onClick colour chart" in message:
           self.onClickColourChart()
         elif "SelectedBrowserDataColumnComboBox" in message:
@@ -1903,10 +1907,11 @@ Distance: %s
           for ord in range(order -1): # skip identity operator
             nfoldrotmx = RotMx * nfoldrotmx
             self.visual_symmxs.append( nfoldrotmx )
-          self.RemoveVectors("sym_HKLs") # delete other symmetry hkls from a previous rotation operator if any
       else:
         self.RemoveVectors(name)
         self.visual_symmxs = []
+        self.visual_symHKLs = []
+      self.RemoveVectors("sym_HKLs") # delete other symmetry hkls from a previous rotation operator if any
 
 
   def visualise_sym_HKLs(self):
