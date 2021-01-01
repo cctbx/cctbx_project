@@ -132,6 +132,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
     self.actiondebug.triggered.connect(self.DebugInteractively)
+    self.actiondebug.setVisible(False)
     self.actionSave_Current_Image.triggered.connect(self.onSaveImage)
     self.actionSettings.triggered.connect(self.SettingsDialog)
     self.actionExit.triggered.connect(self.window.close)
@@ -143,8 +144,11 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     for e in sys.argv:
       if "UseOSBrowser" in e:
         self.UseOSBrowser = True
-      if "devmode" in e or "debug" in e:
+      if "devmode" in e:
         self.devmode = True
+        self.actiondebug.setVisible(True)
+      if  "debug" in e:
+        self.actiondebug.setVisible(True)
 
     self.zmq_context = None
     self.unfeedback = False
@@ -646,9 +650,13 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
             #  rows = self.millerarraytablemodel.searchHKL(h,k,l)
               #self.millerarraytable.selectRow(rows[0])
           if self.infodict.get("orig_hkl_ids"):
-            if self.millerarraytablemodel is not None:
+            if self.millerarraytablemodel is not None \
+             and self.millerarraytableform.SortComboBox.currentIndex() == 0: 
+               # can only match hkls in the unsorted table
               orig_hkl_ids = self.infodict.get("orig_hkl_ids", [])
               mode = QItemSelectionModel.Select | QItemSelectionModel.Rows
+              self.millerarraytableform.setFocus()
+              self.millerarraytable.setFocus()
               for ids in orig_hkl_ids:
                 self.millerarraytable.selectRow(ids)
                 #self.millerarraytable.selectionModel().select(ids, mode)
