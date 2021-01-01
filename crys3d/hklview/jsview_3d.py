@@ -579,14 +579,13 @@ class hklview_3d:
     return ampls, phases
 
 
-  def GetTooltipOnTheFly(self, id, sym_id, anomalous=False):
+  def get_rothkl_from_IDs(self, id, sym_id, anomalous=False):
     hkl = self.scene.indices[id]
     hklvec = flex.vec3_double( [(hkl[0], hkl[1], hkl[2])])
     rotmx=None
     if sym_id >= 0 and sym_id < len(self.symops): 
       # symid tells which symmetry operator was used in HKLJavaScripts.js onMessage() Expand()
       rotmx = self.symops[sym_id].r()
-
     Rhkl = hklvec[0]
     if rotmx: 
       # if a symmetry mate was clicked then deduce its hkl coordinate by 
@@ -595,10 +594,11 @@ class hklview_3d:
     rothkl = Rhkl
     if anomalous:
       rothkl =  (-Rhkl[0], -Rhkl[1], -Rhkl[2])
-    spbufttip = '\'H,K,L: %d, %d, %d' %(rothkl[0], rothkl[1], rothkl[2])
-    # resolution and angstrom character
-    spbufttip += '\\ndres: %s \'+ String.fromCharCode(197) +\'' \
-      %str(roundoff(self.miller_array.unit_cell().d(hkl), 2) )
+    return rothkl, hkl
+
+
+  def make_visual_symHKLs(self, id, sym_id, anomalous=False):
+    rothkl, dummy = self.get_rothkl_from_IDs(id, sym_id, anomalous)
     if self.visual_symmxs:
       # if a list of symmetry matrices have been deduced from a selected rotation operator
       # then also compute the other symmetry mates of the current hkl
@@ -608,6 +608,13 @@ class hklview_3d:
         vissymrothkl = rothkl * symmx.transpose()
         self.visual_symHKLs.append( vissymrothkl )
 
+
+  def GetTooltipOnTheFly(self, id, sym_id, anomalous=False):
+    rothkl, hkl = self.get_rothkl_from_IDs(id, sym_id, anomalous)
+    spbufttip = '\'H,K,L: %d, %d, %d' %(rothkl[0], rothkl[1], rothkl[2])
+    # resolution and angstrom character
+    spbufttip += '\\ndres: %s \'+ String.fromCharCode(197) +\'' \
+      %str(roundoff(self.miller_array.unit_cell().d(hkl), 2) )
     for hklscene in self.HKLscenes:
       if hklscene.isUsingFOMs():
         continue # already have tooltips for the scene without the associated fom
@@ -1521,12 +1528,16 @@ class hklview_3d:
             hklid = hklid % len(hkls)
             ttip = self.GetTooltipOnTheFly(hklid, sym_id, anomalous=True)
           self.AddToBrowserMsgQueue("ShowThisTooltip", ttip)
-          if "click_tooltip_id:" in message:
-            self.visualise_sym_HKLs()
-            hkl = self.scene.indices[hklid]
-            hklmatches = miller.match_indices(self.parent.origarrays["HKLs"], [hkl])
-            orig_hkl_ids = list(hklmatches.pairs().column(0))
-            self.SendInfoToGUI( { "clicked_HKL": hkl, "orig_hkl_ids": orig_hkl_ids })
+        elif "match_hkl_id:" in message:
+          hklid = eval(message.split("match_hkl_id:")[1])[0]
+          sym_id = eval(message.split("match_hkl_id:")[1])[1]
+          is_friedel_mate = eval(message.split("match_hkl_id:")[1])[2]
+          self.make_visual_symHKLs(hklid, sym_id, anomalous=False)
+          self.visualise_sym_HKLs()
+          hkl = self.scene.indices[hklid]
+          hklmatches = miller.match_indices(self.parent.origarrays["HKLs"], [hkl])
+          orig_hkl_ids = list(hklmatches.pairs().column(0))
+          self.SendInfoToGUI( { "clicked_HKL": hkl, "orig_hkl_ids": orig_hkl_ids })
         elif "onClick colour chart" in message:
           self.onClickColourChart()
         elif "SelectedBrowserDataColumnComboBox" in message:

@@ -1303,16 +1303,22 @@ function PickingProxyfunc(pickingProxy, eventstr) {
     }
     // tell python the id of the hkl and id of the rotation operator
     rightnow = timefunc();
-    if (rightnow - timenow > tdelay) { // only post every 50 milli second as not to overwhelm python
+    if (rightnow - timenow > tdelay)
+    { // only post every 50 milli second as not to overwhelm python
       ttipid = String([hkl_id, sym_id, is_friedel_mate]);
       // send this to python which will send back a tooltip text
-      WebsockSendMsg(eventstr + '_tooltip_id: [' + ttipid + ']');
+      if (pickingProxy.mouse.buttons == 1 ) // left click for tooltips
+        WebsockSendMsg(eventstr + '_tooltip_id: [' + ttipid + ']');
+      if (pickingProxy.mouse.buttons == 2) // right click for matching hkls in table
+        WebsockSendMsg('match_hkl_id: [' + ttipid + ']');
       timenow = timefunc();
     }
 
     if (isdebug)
       console.log("current_ttip_ids: " + String(current_ttip_ids) + ", ttipid: " + String(ttipid));
-    if (current_ttip !== "" && current_ttip_ids == ttipid) // received in onMessage() ShowThisTooltip
+    if (pickingProxy.mouse.buttons == 1 // only left click
+      && current_ttip !== ""
+      && current_ttip_ids == ttipid) // received in onMessage() ShowThisTooltip
     {
       tooltip.innerText = current_ttip;
       tooltip.style.bottom = cp.y + 7 + "px";
@@ -1495,7 +1501,7 @@ function HKLscene()
   stage.viewer.container.appendChild(tooltip);
   // Always listen to click event as to display any symmetry hkls
   stage.signals.clicked.add(ClickPickingProxyfunc);
-
+  //stage.mouseControls.add("clickPick-right", ClickPickingProxyfunc);
 
   stage.mouseObserver.signals.dragged.add(
     function ( deltaX, deltaY)

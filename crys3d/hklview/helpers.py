@@ -90,8 +90,9 @@ class MillerArrayTableView(QTableView):
     self.tablemenu.triggered.connect(self.onTableMenuAction)
     self.setContextMenuPolicy(Qt.CustomContextMenu)
     self.customContextMenuRequested.connect(self.onRightClick)
-    #self.setSelectionMode(QAbstractItemView.MultiSelection)
-    self.setSelectionBehavior(QAbstractItemView.SelectItems)
+    self.setSelectionMode(QAbstractItemView.MultiSelection)
+    #self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+    #self.setSelectionBehavior(QAbstractItemView.SelectItems)
   def onRightClick(self, QPos=None):
     parent=self.sender()
     self.tablemenu.move(QCursor.pos())
