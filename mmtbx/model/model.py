@@ -70,6 +70,7 @@ from iotbx_pdb_hierarchy_ext import *
 
 from six.moves import cStringIO as StringIO
 from copy import deepcopy
+import re
 import sys
 import math
 
@@ -2285,7 +2286,7 @@ class manager(object):
     xrs = self.get_xray_structure()
     scatterers = xrs.scatterers()
     for scatterer in scatterers:
-      neutralized_scatterer = filter(lambda x: x.isalpha(), scatterer.scattering_type)
+      neutralized_scatterer = re.sub('[^a-zA-Z]', '', scatterer.scattering_type)
       if (neutralized_scatterer != scatterer.scattering_type):
         neutralized = True
         scatterer.scattering_type = neutralized_scatterer
