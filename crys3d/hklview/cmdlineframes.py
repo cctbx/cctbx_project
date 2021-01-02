@@ -984,7 +984,7 @@ class HKLViewFrame() :
     for (opnr, label, order, cartvec, hkl_op, hkl, abc) in self.viewer.all_vectors:
       # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
       name = label + hkl_op.replace(",", "_")
-      self.viewer.RemoveVectors(name)
+      self.viewer.RemovePrimitives(name)
     self.SendInfoToGUI( { "all_vectors": self.viewer.all_vectors } )
     return self.viewer.all_vectors
 
@@ -1265,6 +1265,8 @@ NGL_HKLviewer {
     add_user_vector_hkl = ""
       .type = str
     user_label = ""
+      .type = str
+    show_hkl = ""
       .type = str
     is_parallel = False
       .type = bool

@@ -90,9 +90,14 @@ class MillerArrayTableView(QTableView):
     self.tablemenu.triggered.connect(self.onTableMenuAction)
     self.setContextMenuPolicy(Qt.CustomContextMenu)
     self.customContextMenuRequested.connect(self.onRightClick)
+    self.doubleClicked.connect(self.onDoubleClick)
     self.setSelectionMode(QAbstractItemView.MultiSelection)
     #self.setSelectionMode(QAbstractItemView.ExtendedSelection)
-    #self.setSelectionBehavior(QAbstractItemView.SelectItems)
+  def onDoubleClick(self, index):
+    hkl = (index.siblingAtColumn(0).data(), 
+           index.siblingAtColumn(1).data(), 
+           index.siblingAtColumn(2).data())
+    self.parent().parent().parent().parent.HighlightReflection(hkl)
   def onRightClick(self, QPos=None):
     parent=self.sender()
     self.tablemenu.move(QCursor.pos())
