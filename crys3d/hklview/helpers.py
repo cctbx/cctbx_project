@@ -94,9 +94,9 @@ class MillerArrayTableView(QTableView):
     self.setSelectionMode(QAbstractItemView.MultiSelection)
     #self.setSelectionMode(QAbstractItemView.ExtendedSelection)
   def onDoubleClick(self, index):
-    hkl = (index.siblingAtColumn(0).data(), 
-           index.siblingAtColumn(1).data(), 
-           index.siblingAtColumn(2).data())
+    hkl = (int(index.siblingAtColumn(0).data()), 
+           int(index.siblingAtColumn(1).data()), 
+           int(index.siblingAtColumn(2).data()))
     self.parent().parent().parent().parent.HighlightReflection(hkl)
   def onRightClick(self, QPos=None):
     parent=self.sender()
@@ -252,8 +252,8 @@ class MPLColourSchemes(QtWidgets.QDialog):
     self.powscale_label = QtWidgets.QLabel()
     self.powscale_label.setText("Power factor for map scaling:")
     self.powscaleslider = QtWidgets.QSlider(Qt.Horizontal)
-    self.powscaleslider.setMinimum(-10)
-    self.powscaleslider.setMaximum(5)
+    self.powscaleslider.setMinimum(-20)
+    self.powscaleslider.setMaximum(10)
     self.powscaleslider.setTickPosition(QtWidgets.QSlider.TicksAbove)
     self.powscaleslider.setTickInterval(1)
     self.powscaleslider.sliderReleased.connect(self.onReleasePowscaleslider)
@@ -333,5 +333,5 @@ class MPLColourSchemes(QtWidgets.QDialog):
     val= self.powscaleslider.value()
     # want to raise the colour scaling to a power bigger than 0
     # so compute powscale from an exponential of the slider value
-    self.powscale = math.pow(1.2, val) # 1.2 varies sufficiently slowly for the slider range [-10,10]
+    self.powscale = math.pow(1.1, val) # 1.2 varies sufficiently slowly for the slider range [-10,10]
     self.powscaletxtbox.setText("%2.2f" %self.powscale )
