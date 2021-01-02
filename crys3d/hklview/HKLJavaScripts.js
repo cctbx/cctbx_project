@@ -888,7 +888,7 @@ function onMessage(e)
             vectorshapeComps[vectorshapeComps.length - 1].addRepresentation('vecbuf',
               { name: reprname })
           )
-        vectorshapeComps[vectorshapeComps.length - 1].autoView(500)
+        vectorshapeComps[vectorshapeComps.length - 1].autoView(500) // half a second animation
         vectorshape = null;
         RenderRequest();
       }
@@ -1113,7 +1113,7 @@ function onMessage(e)
     if (msgtype === "SetAutoView")
     {
       if (shapeComp != null) // workaround for QTWebEngine bug sometimes failing to render scene
-        shapeComp.autoView(500);
+        shapeComp.autoView(500); // half a second animation
       WebsockSendMsg('AutoViewSet ' + pagename);
     }
 

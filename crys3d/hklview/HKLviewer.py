@@ -295,6 +295,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.updatingNbins = False
     self.binstableitemchanges = False
     self.canexit = False
+    self.isfirsttime = False
     self.closing = False
     self.indices = None
     self.datalst = []
@@ -723,7 +724,6 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
           if self.NewHKLscenes:
             self.NewHKLscenes = False
-
       except Exception as e:
         errmsg = str(e)
         if "Resource temporarily unavailable" not in errmsg:
@@ -733,8 +733,9 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
   def UpdateGUI(self):
     self.unfeedback = True
-    self.power_scale_spinBox.setEnabled( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] >= 0.0 )
+    #if not self.isfirsttime:
     self.ManualPowerScalecheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] >= 0.0 )
+    self.power_scale_spinBox.setEnabled( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] >= 0.0 )
     self.radii_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.scale'])
     self.showsliceGroupCheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_mode'])
     #self.hvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.h'])
@@ -1180,28 +1181,21 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
   def onRadiiScaleChanged(self, val):
     if self.unfeedback:
       return
-    self.PhilToJsRender("""
-      NGL_HKLviewer.viewer {
-        nth_power_scale_radii = %f
-        scale = %f
-      }
-      """ %(self.power_scale_spinBox.value(), self.radii_scale_spinBox.value() )
-    )
+    self.PhilToJsRender("NGL_HKLviewer.viewer.scale = %f" %self.radii_scale_spinBox.value() )
 
 
   def onPowerScaleChanged(self, val):
     if self.unfeedback:
       return
-    self.PhilToJsRender("""
-      NGL_HKLviewer.viewer {
-        nth_power_scale_radii = %f
-        scale = %f
-      }
-      """ %(self.power_scale_spinBox.value(), self.radii_scale_spinBox.value() )
-    )
+    self.PhilToJsRender("NGL_HKLviewer.viewer.nth_power_scale_radii = %f" %self.power_scale_spinBox.value() )
 
 
-  def onManualPowerScale(self):
+  def onManualPowerScale(self, val=None):
+    """
+    if val is not None:
+      self.PhilToJsRender('NGL_HKLviewer.viewer.nth_power_scale_radii = %f' %val)
+      return
+    """
     if self.unfeedback:
       return
     if self.ManualPowerScalecheckbox.isChecked():
@@ -1772,7 +1766,8 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
 def run():
-  #time.sleep(10)
+  import time
+  #time.sleep(10) 
   try:
     import PySide2.QtCore
     Qtversion = str(PySide2.QtCore.qVersion())
@@ -1795,6 +1790,8 @@ def run():
     QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
     fontsize = settings.value("FontSize", None)
     browserfontsize = settings.value("BrowserFontSize", None)
+    power_scale_value = settings.value("PowerScaleValue", None)
+    radii_scale_value = settings.value("RadiiScaleValue", None)
     ttip_click_invoke = settings.value("ttip_click_invoke", None)
     windowsize = settings.value("windowsize", None)
     splitter1sizes = settings.value("splitter1Sizes", None)
@@ -1820,7 +1817,6 @@ def run():
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer(app)
-    import time
     time.sleep(1) # make time for zmq_listen loop to start in cctbx subprocess
 
     def MyAppClosing():
@@ -1828,6 +1824,9 @@ def run():
       settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
       settings.setValue("FontSize", guiobj.fontsize )
       settings.setValue("BrowserFontSize", guiobj.browserfontsize )
+      #settings.setValue("PowerScaleValue", guiobj.power_scale_spinBox.value())
+      settings.setValue("PowerScaleValue", guiobj.currentphilstringdict["NGL_HKLviewer.viewer.nth_power_scale_radii"])
+      settings.setValue("RadiiScaleValue", guiobj.radii_scale_spinBox.value())
       settings.setValue("ttip_click_invoke", guiobj.ttip_click_invoke)
       settings.setValue("windowsize", guiobj.window.size())
       settings.setValue("splitter1Sizes", guiobj.splitter.saveState())
@@ -1841,6 +1840,15 @@ def run():
     timer.timeout.connect(guiobj.ProcessMessages)
     timer.start()
 
+    if power_scale_value is not None:
+      psv = eval(power_scale_value)
+      if psv >= 0.0:
+        guiobj.power_scale_spinBox.setValue(psv)
+      guiobj.ManualPowerScalecheckbox.setChecked(psv >= 0.0)
+      guiobj.onManualPowerScale() # disables power_scale_spinBox if psv is less than 0.0
+    if radii_scale_value is not None:
+      guiobj.radii_scale_spinBox.setValue(eval(radii_scale_value))
+      guiobj.onRadiiScaleChanged(None)
     if fontsize is not None:
       guiobj.onFontsizeChanged(int(fontsize))
       guiobj.fontspinBox.setValue(int(fontsize))

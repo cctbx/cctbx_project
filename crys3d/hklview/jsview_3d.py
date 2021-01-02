@@ -1950,7 +1950,7 @@ Distance: %s
 
   def show_hkl(self):
     """
-    Point a vector to a particular reflection selected with a double click in
+    Draw a wireframe sphere around a reflection selected with a double click in
     the millerarraytable in the GUI
     """
     maxrad = self.HKLscene_from_dict(self.radii_scene_id).max_radius
