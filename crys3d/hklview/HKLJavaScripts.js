@@ -852,7 +852,49 @@ function onMessage(e)
       );
     }
 
-    function DeleteVectors(reprname)
+    if (msgtype === "DrawSphere") {
+      var pos = new Float32Array(3);
+      var rgb = new Float32Array(3);
+      for (j = 0; j < 3; j++) {
+        pos[j] = parseFloat(val2[j]);
+        rgb[j] = parseFloat(val2[j + 3]);
+      }
+      radius = parseFloat(val2[6]);
+      iswireframe = parseInt(val2[8]);
+
+      if (vectorshape == null)
+      {
+        if (iswireframe == 1)
+          vectorshape = new NGL.Shape('vectorshape', { disableImpostor: true });
+        else
+          vectorshape = new NGL.Shape('vectorshape');
+      }
+
+      vectorshape.addSphere(pos, rgb, radius);
+      // if reprname is supplied then make a representation named reprname
+      // of this and all pending spheres stored in vectorshape and render them.
+      // Otherwise just accummulate the new sphere
+      var reprname = val2[7].trim();
+      if (reprname != "") {
+        DeletePrimitives(reprname); // delete any existing vectors with the same name
+        vectorshapeComps.push(stage.addComponentFromObject(vectorshape));
+        if (iswireframe == 1)
+          vectorreprs.push(
+            vectorshapeComps[vectorshapeComps.length - 1].addRepresentation('vecbuf',
+              { name: reprname, wireframe: true })
+          )
+        else
+          vectorreprs.push(
+            vectorshapeComps[vectorshapeComps.length - 1].addRepresentation('vecbuf',
+              { name: reprname })
+          )
+        vectorshapeComps[vectorshapeComps.length - 1].autoView(500)
+        vectorshape = null;
+        RenderRequest();
+      }
+    }
+
+    function DeletePrimitives(reprname)
     {
       thisrepr = stage.getRepresentationsByName(reprname);
       var wasremoved = false;
@@ -900,7 +942,7 @@ function onMessage(e)
       var reprname = val2[10].trim();
       if (reprname != "")
       {
-        DeleteVectors(reprname); // delete any existing vectors with the same name
+        DeletePrimitives(reprname); // delete any existing vectors with the same name
         vectorshapeComps.push( stage.addComponentFromObject(vectorshape) );
         vectorreprs.push(
           vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vecbuf',
@@ -911,7 +953,7 @@ function onMessage(e)
       }
     }
 
-    if (msgtype === "RemoveVectors")
+    if (msgtype === "RemovePrimitives")
     {
       var reprname = val[0].trim(); // elmstrs[0].trim();
       // if reprname is supplied only remove vectors with that name
@@ -920,12 +962,12 @@ function onMessage(e)
       var unitcellgone = false;
       var reciprocunitcellgone = false;
       if (reprname != "")
-        reprnamegone = DeleteVectors(reprname);
+        reprnamegone = DeletePrimitives(reprname);
       else // otherwise remove all vectors
       {
-        clipvecgone = DeleteVectors("clip_vector");
-        unitcellgone = DeleteVectors("unitcell");
-        reciprocunitcellgone = DeleteVectors("reciprocal_unitcell");
+        clipvecgone = DeletePrimitives("clip_vector");
+        unitcellgone = DeletePrimitives("unitcell");
+        reciprocunitcellgone = DeletePrimitives("reciprocal_unitcell");
       }
       if (reprnamegone || clipvecgone || unitcellgone || reciprocunitcellgone)
         RenderRequest();
@@ -1071,7 +1113,7 @@ function onMessage(e)
     if (msgtype === "SetAutoView")
     {
       if (shapeComp != null) // workaround for QTWebEngine bug sometimes failing to render scene
-        shapeComp.autoView();
+        shapeComp.autoView(500);
       WebsockSendMsg('AutoViewSet ' + pagename);
     }
 
@@ -1283,7 +1325,8 @@ function getOrientMsg()
 function HoverPickingProxyfunc(pickingProxy) {  PickingProxyfunc(pickingProxy, 'hover'); }
 function ClickPickingProxyfunc(pickingProxy) { PickingProxyfunc(pickingProxy, 'click'); }
 
-// listen to hover or click signal to move tooltip around and change its text
+// listen to hover or click signal to show a tooltip at an hkl or to post hkl id for matching  entry in 
+// millerarraytable in GUI or for visualising symmetry mates of the hkl for a given rotation operator
 function PickingProxyfunc(pickingProxy, eventstr) {
   // adapted from http://nglviewer.org/ngl/api/manual/interaction-controls.html#clicked
   if (pickingProxy
@@ -1586,7 +1629,7 @@ function HKLscene()
 
   shapeComp = stage.addComponentFromObject(shape);
   repr = shapeComp.addRepresentation('buffer');
-  shapeComp.autoView();
+  shapeComp.autoView(500);
   repr.update();
 
   if (isdebug)
@@ -1615,7 +1658,7 @@ function HKLscene()
       axis.z = 0.0;
       m4.makeRotationAxis(axis, 0.0);
       stage.viewerControls.orient(m4);
-      shapeComp.autoView();
+      shapeComp.autoView(500);
       RenderRequest();
       sleep(100).then(() => {
         msg = getOrientMsg();

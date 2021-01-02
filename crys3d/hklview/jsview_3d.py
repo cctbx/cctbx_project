@@ -30,6 +30,9 @@ def has_phil_path(philobj, *paths): # variable number of arguments
 
 
 class ArrayInfo:
+  """
+  Extract information from miller array and format it for humans
+  """
   def __init__(self, millarr, mprint=sys.stdout.write, fomlabel=None):
     from iotbx.gui_tools.reflections import get_array_description
     if (millarr.unit_cell() is None) or (millarr.space_group() is None) :
@@ -100,6 +103,11 @@ class ArrayInfo:
 
 
 def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.stdout.write):
+  """
+  Conpute the hklscene for the miller array, proc_array. If it's a complex array and there is a FOM array 
+  among the list of miller arrays then also compute an hklscene with colours of each hkl attenuated by the 
+  corresponding FOM value.
+  """
   scenemaxdata =[]
   scenemindata =[]
   scenemaxsigmas = []
@@ -107,14 +115,11 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
   scenearrayinfos = []
   hklscenes = []
   fomsarrays_idx = [(None, None)]
-  #mprint("in MakeHKLscene", verbose=True)
-  #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
   if proc_array.is_complex_array():
     fomsarrays_idx.extend( mapcoef_fom_dict.get(proc_array.info().label_string()) )
   settings = setts
   if (settings.expand_anomalous or settings.expand_to_p1) \
       and not proc_array.is_unique_set_under_symmetry() and not merge:
-    #settings = copy.deepcopy(settings)
     settings.expand_anomalous = False
     settings.expand_to_p1 = False
     mprint("Alert! The " + proc_array.info().label_string() + \
@@ -134,11 +139,7 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
     # cast any NAN values to 1 of the colours and radii to 0.2 before writing javascript
     if hklscene.SceneCreated:
       hklscenes.append( hklscene)
-      #b = flex.bool([math.isnan(e[0] + e[1] + e[2]) for e in hklscene.colors])
-      #hklscene.colors = hklscene.colors.set_selected(b, (1.0, 1.0, 1.0))
       hklscene.colors = graphics_utils.NoNansvec3( hklscene.colors, 1.0, 1.0, 1.0)
-      #b = flex.bool([math.isnan(e) for e in hklscene.radii])
-      #hklscene.radii = hklscene.radii.set_selected(b, 0.2)
       hklscene.radii = graphics_utils.NoNansArray( hklscene.radii, 0.2)
       fomslabel = None
       if fomsarray:
@@ -149,48 +150,7 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
       scenemaxsigmas.append(ainf.maxsigmas)
       sceneminsigmas.append(ainf.minsigmas)
       scenearrayinfos.append([ainf.infostr, pidx, fidx, ainf.labels, ainf.datatype])
-      #self.mprint("%d, %s" %(i, infostr) )
-      #i +=1
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
-
-
-def MakeTtips(hklscene, j):
-  tooltipstringsdict = {}
-  colstraliases = ""
-  if hklscene.isUsingFOMs():
-    return tooltipstringsdict, colstraliases # already have tooltips for the scene without the associated fom
-  colstraliases += "\n  var st%d = '\\n%s: '" %(j, hklscene.work_array.info().label_string() )
-  ocolstr = hklscene.work_array.info().label_string()
-  if hklscene.work_array.is_complex_array():
-    ampl = flex.abs(hklscene.data)
-    phases = flex.arg(hklscene.data) * 180.0/math.pi
-    # purge nan values from array to avoid crash in fmod_positive()
-    #b = flex.bool([bool(math.isnan(e)) for e in phases])
-    # replace the nan values with an arbitrary float value
-    #phases = phases.set_selected(b, 42.4242)
-    phases = graphics_utils.NoNansArray( phases, 42.4242)
-    # Cast negative degrees to equivalent positive degrees
-    phases = flex.fmod_positive(phases, 360.0)
-  sigmas = hklscene.sigmas
-  for i,datval in enumerate(hklscene.data):
-    od =""
-    if hklscene.work_array.is_complex_array():
-      od = str(roundoff(ampl[i], 2)) + ", " + str(roundoff(phases[i], 1)) + \
-        "\'+DGR+\'"
-    elif sigmas is not None:
-      od = str(roundoff(datval, 2)) + ", " + str(roundoff(sigmas[i], 2))
-    else:
-      od = str(roundoff(datval, 2))
-    if not (math.isnan( abs(datval) ) or datval == display.inanval):
-      hkl = hklscene.indices[i]
-      if not hkl in tooltipstringsdict:
-        spbufttip = '\'+hk+\'%s, %s, %s' %(hkl[0], hkl[1], hkl[2])
-        spbufttip += '\ndres: %s ' %str(roundoff(hklscene.dres[i], 2) )
-        spbufttip += '\'+AA+\'' # javascript alias for angstrom
-        tooltipstringsdict[hkl] = spbufttip
-      # st1, st2,... are javascript aliases for miller array labelstrings as declared in colstraliases
-      tooltipstringsdict[hkl] += '\'+st%d+\'%s' %(j, od)
-  return tooltipstringsdict, colstraliases
 
 
 class hklview_3d:
@@ -369,6 +329,10 @@ class hklview_3d:
 
 
   def update_settings(self, diff_phil, curphilparam) :
+    """
+    Event handler for zmq messages from the GUI or simply for commandline interaction when 
+    scripting HKLviewer with python
+    """
     self.ngl_settings = curphilparam.NGL
     self.viewerparams = curphilparam.viewer
     self.params = curphilparam
@@ -433,6 +397,9 @@ class hklview_3d:
     if has_phil_path(diff_phil, "camera_type"):
       self.set_camera_type()
 
+    if has_phil_path(diff_phil, "show_hkl"):
+      self.show_hkl()
+
     if has_phil_path(diff_phil, "show_tooltips"):
       self.set_show_tooltips()
 
@@ -453,7 +420,7 @@ class hklview_3d:
 
     if has_phil_path(diff_phil, "miller_array_operations"):
       self.viewerparams.scene_id = len(self.HKLscenedict)-1
-      self.set_scene(self.viewerparams.scene_id)
+      self.set_scene()
       self.params.miller_array_operations = ""
     
     if has_phil_path(diff_phil, "fixorientation", "slice_axis") and \
@@ -488,13 +455,17 @@ class hklview_3d:
 
 
   def set_volatile_params(self):
+    """
+    Change the view of the reflections according to whatever the values are of the volatile parameters.
+    Volatile parameters are those that do not require heavy computing (like position of WebGL primitives)
+    but can change the appearance of primitives instantly like opacity or clipplane position. Expansion
+    in browser of coordinates to P1 are also considered volatile as this operation happens to be fast.
+    """
     if self.viewerparams.scene_id is not None:
       if has_phil_path(self.diff_phil, "angle_around_vector"): # no need to redraw any clip plane
         return
       if self.viewerparams.fixorientation == "vector":
         self.orient_vector_parallel_with_screen(self.currentrotvec)
-      #if self.viewerparams.fixorientation == reflection_slice:
-      #  self.orient_vector_parallel_with_screen(self.currentrotvec)
       self.SetMouseSpeed(self.ngl_settings.mouse_sensitivity)
       R = flex.vec3_double( [(0,0,0)])
       hkldist = -1
@@ -526,13 +497,13 @@ class hklview_3d:
       self.visualise_sym_HKLs()
 
 
-  def set_scene(self, scene_id):
+  def set_scene(self):
     self.binvals = []
     if scene_id is None:
       return False
-    self.colour_scene_id = scene_id
-    self.radii_scene_id = scene_id
-    self.set_miller_array(scene_id)
+    self.colour_scene_id = self.viewerparams.scene_id
+    self.radii_scene_id = self.viewerparams.scene_id
+    self.set_miller_array(self.viewerparams.scene_id)
     if (self.miller_array is None):
       raise Sorry("No data loaded!")
     self.mprint( "Miller array %s runs from hkls: %s to %s" \
@@ -1701,6 +1672,13 @@ Distance: %s
 
 
   def ExpandInBrowser(self):
+    """
+    Expansion of reflections stored in an assymetric unit wedge defined by the spacegroup is
+    done by applying the rotation matrices defined by the spacegroup on the reflections.
+    Applying these matrices on all reflections is done much faster in WebGL in the browser.
+    Before sending the rotation matrices to the browser first convert them into cartesian
+    coordinates.
+    """
     if self.sceneisdirty:
       self.mprint( "Not expanding in browser", verbose=1)
       return
@@ -1737,10 +1715,41 @@ Distance: %s
     self.GetBoundingBox() # bounding box changes when the extent of the displayed lattice changes
 
 
+  def draw_sphere(self, s1, s2, s3, isreciprocal=True,
+                  r=0, g=0, b=0, name="", radius = 1.0, mesh=False):
+    """
+    Place sphere at [s1, s2, s3]  with colour r,g,b. If name=="", the creation 
+    is deferred until draw_sphere is eventually called with name != "". These 
+    spheres are then joined in the same NGL representation.
+    """
+    uc = self.miller_array.unit_cell()
+    vec = (s1*self.scene.renderscale, s2*self.scene.renderscale, s3*self.scene.renderscale)
+    #svec = list(vec)
+    if isreciprocal:
+      # uc.reciprocal_space_vector() only takes integer miller indices so compute the cartesian coordinates
+      # for floating valued miller indices with the transpose of the fractionalization matrix
+      vec = list( vec * matrix.sqr(uc.fractionalization_matrix()).transpose() )
+      svec = [ vec[0], vec[1], vec[2] ]
+    else: # real space fractional values
+      vec = list( vec * matrix.sqr(uc.orthogonalization_matrix()) )
+      vscale =  1.0/self.scene.renderscale
+      # TODO: find suitable scale factor for displaying real space vector together with reciprocal vectors
+      svec = [ vscale*vec[0], vscale*vec[1], vscale*vec[2] ]
+    self.draw_cartesian_sphere(svec[0], svec[1], svec[2], r, g, b, name, radius, mesh)
+
+
+  def draw_cartesian_sphere(self, s1, s2, s3, r=0, g=0, b=0, name="", radius = 1.0, mesh=False):
+    self.mprint("cartesian sphere is at: %s" %(str(roundoff([s1, s2, s3]))), verbose=2)
+    self.AddToBrowserMsgQueue("DrawSphere", "%s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s" \
+         %(s1, s2, s3, r, g, b, radius, name, int(mesh)) ) 
+    if name=="":
+      self.mprint("deferred rendering sphere at (%s, %s, %s)" %(s1, s2, s3), verbose=2)
+
+
   def draw_vector(self, s1, s2, s3, t1, t2, t3, isreciprocal=True, label="",
                   r=0, g=0, b=0, name="", radius = 0.15, labelpos=0.8):
     """
-    Place vector from {s1, s2, s3] to [t1, t2, t3] with colour r,g,b and label
+    Place vector from [s1, s2, s3] to [t1, t2, t3] with colour r,g,b and label
     If name=="" creation is deferred until draw_vector is eventually called with name != ""
     These vectors are then joined in the same NGL representation
     """
@@ -1883,7 +1892,7 @@ Distance: %s
         else: # supply name to tell javascript to draw all these vectors 
           self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], label=label, name="SymRotAxes", radius=0.2, labelpos=1.0)
     else:
-      self.RemoveVectors("SymRotAxes")
+      self.RemovePrimitives("SymRotAxes")
 
 
   def calc_rotation_axes(self):
@@ -1919,15 +1928,15 @@ Distance: %s
             nfoldrotmx = RotMx * nfoldrotmx
             self.visual_symmxs.append( nfoldrotmx )
       else:
-        self.RemoveVectors(name)
+        self.RemovePrimitives(name)
         self.visual_symmxs = []
         self.visual_symHKLs = []
-      self.RemoveVectors("sym_HKLs") # delete other symmetry hkls from a previous rotation operator if any
+      self.RemovePrimitives("sym_HKLs") # delete other symmetry hkls from a previous rotation operator if any
 
 
   def visualise_sym_HKLs(self):
     if len(self.visual_symHKLs):
-      self.RemoveVectors("sym_HKLs")
+      self.RemovePrimitives("sym_HKLs")
       for i,hkl in enumerate(self.visual_symHKLs):
         thkl = tuple(hkl)
         hklstr = "hkl: (%d,%d,%d)" %thkl
@@ -1937,6 +1946,21 @@ Distance: %s
         else: # supplying a name for the vector last graphics primitive draws them all
           self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label=hklstr, name="sym_HKLs", 
                            r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
+
+
+  def show_hkl(self):
+    """
+    Point a vector to a particular reflection selected with a double click in
+    the millerarraytable in the GUI
+    """
+    maxrad = self.HKLscene_from_dict(self.radii_scene_id).max_radius
+    self.RemovePrimitives("highlight_HKL")
+    hkl = eval(self.viewerparams.show_hkl)
+    #self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, name="highlight_HKL", 
+    #                  r=1, g=0.0, b=0.0, radius= maxrad*0.2)
+    self.draw_sphere(hkl[0],hkl[1],hkl[2], isreciprocal=True, name="highlight_HKL", 
+                      r=1, g=0.0, b=0.0, radius= maxrad*1.5, mesh=True)
+    self.viewerparams.show_hkl = "" # to allow clicking on the same entry in the millerarraytable
 
 
   def rotate_around_vector(self):
@@ -1964,7 +1988,7 @@ Distance: %s
 
   def DrawUnitCell(self, scale=1):
     if scale is None:
-      self.RemoveVectors("unitcell")
+      self.RemovePrimitives("unitcell")
       self.mprint( "Removing real space unit cell", verbose=1)
       return
     uc = self.miller_array.unit_cell()
@@ -1986,7 +2010,7 @@ Distance: %s
 
   def DrawReciprocalUnitCell(self, scale=1):
     if scale is None:
-      self.RemoveVectors("reciprocal_unitcell")
+      self.RemovePrimitives("reciprocal_unitcell")
       self.mprint( "Removing reciprocal unit cell", verbose=1)
       return
     rad = 0.2 # 0.05 * scale
@@ -2048,12 +2072,12 @@ Distance: %s
   def make_clip_plane(self, hkldist=0.0, clipwidth=None):
     # create clip plane oriented parallel or perpendicular to abc vector
     if hkldist < 0.0 or clipwidth is None:
-      self.RemoveVectors()
+      self.RemovePrimitives()
       self.SetClipPlaneDistances(0, 0)
       self.TranslateHKLpoints(0, 0, 0, 0.0)
       return
     self.mprint("Applying clip plane to reflections", verbose=1)
-    self.RemoveVectors("clip_vector")
+    self.RemovePrimitives("clip_vector")
     if self.cameraPosZ is None and self.viewmtrx is not None:
       self.cameraPosZ, self.currentRotmx, self.cameratranslation = self.GetCameraPosRotTrans( self.viewmtrx)
     halfdist = self.cameraPosZ  + hkldist # self.viewer.boundingZ*0.5
@@ -2143,8 +2167,8 @@ Distance: %s
     return (self.boundingX, self.boundingY, self.boundingZ)
 
 
-  def RemoveVectors(self, reprname=""):
-    self.AddToBrowserMsgQueue("RemoveVectors", reprname )
+  def RemovePrimitives(self, reprname=""):
+    self.AddToBrowserMsgQueue("RemovePrimitives", reprname )
 
 
   def SetAutoView(self):

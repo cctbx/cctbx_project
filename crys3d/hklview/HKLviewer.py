@@ -1727,6 +1727,10 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.PhilToJsRender("NGL_HKLviewer.reciprocal_unit_cell_scale_fraction = %f" %val)
 
 
+  def HighlightReflection(self, hkl):
+    self.PhilToJsRender("NGL_HKLviewer.viewer.show_hkl = '%s'" %str(hkl))
+
+
   def DebugInteractively(self):
     import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
