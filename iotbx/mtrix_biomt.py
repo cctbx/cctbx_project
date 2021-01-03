@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx import matrix
 import iotbx.pdb
 from libtbx.utils import Sorry
+from six import string_types
 from six.moves import range, zip
 
 class container(object):
@@ -12,16 +13,28 @@ class container(object):
     self.coordinates_present=[]
     self.serial_number=[]
 
+  @classmethod
+  def from_lists(cls, rl, tl, snl, cpl):
+    assert len(rl) == len(tl) == len(snl) == len(cpl)
+    result = cls()
+    for r,t,sn,cp in zip(rl,tl,snl,cpl):
+      ignore_transform = r.is_r3_identity_matrix() and t.is_col_zero()
+      result.add(
+        r=r, t=t,
+        coordinates_present=(cp or ignore_transform),
+        serial_number=sn)
+    return result
+
   def add(self, r, t, serial_number, coordinates_present=False):
     self.r.append(r)
     self.t.append(t)
     self.coordinates_present.append(coordinates_present)
     self.serial_number.append(serial_number)
 
-  def validate(self):
+  def validate(self, eps=1e-4):
     raise_sorry = False
     for i, r in enumerate(self.r):
-      if(not r.is_r3_rotation_matrix(rms_tolerance=1.e-4)):
+      if(not r.is_r3_rotation_matrix(rms_tolerance=eps)):
         raise_sorry = True
         print ('  ERROR: matrix with serial number %s is not proper' % self.serial_number[i])
     if raise_sorry:
@@ -58,8 +71,61 @@ class container(object):
   def is_empty(self):
     return len(self.r) == 0
 
+def parse_MTRIX_BIOMT_records_cif(cif_block, recs='mtrix'):
+  # this is temporarily work-around. Whole thing for matrices need to be
+  # rewritten to be able to carry all the info from mmCIF, see
+  # https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/biological-assemblies#Anchor-Biol
 
-def process_BIOMT_records(lines, eps=1e-4):
+  assert recs in ['mtrix', 'biomt']
+  block_name = '_struct_ncs_oper' if recs=='mtrix' else '_pdbx_struct_oper_list'
+  rots = []
+  trans = []
+  serial_number = []
+  coordinates_present = []
+  ncs_oper = cif_block.get('%s.id' % block_name)
+  if ncs_oper is not None:
+    if recs=='mtrix' or (recs=='biomt' and ncs_oper != "P" and ncs_oper != "X0" and ncs_oper != "H"):
+      # filter everything for X0 and P here:
+      # Why??? Nobody promised that id would be integer, it is a 'single word':
+      # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_pdbx_struct_oper_list.id.html
+      for i,sn in enumerate(ncs_oper):
+        serial_number.append((sn,i))
+        if recs == 'mtrix':
+          coordinates_present.append(cif_block.get('%s.code' % block_name)[i] == 'given')
+        else:
+          coordinates_present.append(False) # no way to figure out
+        r = [(cif_block.get('%s.matrix[%s][%s]' %(block_name,x,y)))
+          for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
+        if not isinstance(r[0], string_types):
+          r = [elem[i] for elem in r]
+        try:
+          rots.append(matrix.sqr([float(r_elem) for r_elem in r]) )
+          t = [(cif_block.get('%s.vector[%s]' %(block_name, x)))
+            for x in '123']
+          if not isinstance(t[0], string_types):
+            t = [elem[i] for elem in t]
+          trans.append(matrix.col([float(t_elem) for t_elem in t]))
+        except ValueError:
+          raise Sorry("Error in %s information. Likely '?' instead of a number." % block_name)
+  if recs=='mtrix':
+    # sort records by serial number
+    serial_number.sort()
+    items_order = [i for (_,i) in serial_number]
+    trans = [trans[i] for i in items_order]
+    rots = [rots[i] for i in items_order]
+    coordinates_present = [coordinates_present[i] for i in items_order]
+    serial_number = [j for (j,_) in serial_number]
+  return rots, trans, serial_number, coordinates_present
+
+def process_BIOMT_records_cif(cif_block):
+  rots, trans, serial_number, coordinates_present = parse_MTRIX_BIOMT_records_cif(cif_block, 'biomt')
+  return container.from_lists(rots, trans, serial_number, coordinates_present)
+
+def process_MTRIX_records_cif(cif_block):
+  rots, trans, serial_number, coordinates_present = parse_MTRIX_BIOMT_records_cif(cif_block, 'mtrix')
+  return container.from_lists(rots, trans, serial_number, coordinates_present)
+
+def process_BIOMT_records_pdb(lines):
   '''(pdb_data,boolean,float) -> group of lists
   extract REMARK 350 BIOMT information, information that provides rotation matrices
   and translation  data, required for generating  a complete multimer from the asymmetric unit.
@@ -89,49 +155,51 @@ def process_BIOMT_records(lines, eps=1e-4):
   @author: Youval Dar (2013)
   '''
   source_info = lines # XXX
-  result = container()
-  if source_info:                     # check if any BIOMT info is available
+  if not source_info:
+    return container()                # check if any BIOMT info is available
     # collecting the data from the remarks. Checking that we are collecting only data
     # and not part of the remarks header by verifying that the 3rd component contains "BIOMT"
     # and that the length of that component is 6
-    biomt_data = [[float(_x_elem) for _x_elem in  x.split()[3:]] for x in source_info if (
-      x.split()[2].find('BIOMT') > -1) and (len(x.split()[2]) == 6)]
-    # test that there is no missing data
-    if len(biomt_data)%3 != 0:
-      raise RuntimeError(
-        "Improper or missing set of PDB BIOMAT records. Data length = %s" % \
-        str(len(biomt_data)))
-    # test that the length of the data match the serial number, that there are no missing records
-    # temporary workaround, could be plain text over there instead of
-    # expected number of records, see 5l93
-    try:
-      temp = int(source_info[-1].split()[3])
-    except ValueError:
-      temp = 0
-    if len(biomt_data)/3.0 != temp:
-      raise RuntimeError(
-        "Missing record sets in PDB BIOMAT records \n" + \
-        "Actual number of BIOMT matrices: {} \n".format(len(biomt_data)/3.0)+\
-        "expected according to serial number: {} \n".format(temp))
-    for i in range(len(biomt_data)//3):
-      # i is the group number in biomt_data
-      # Each group composed from 3 data sets.
-      j = 3*i;
-      rotation_data = \
-        biomt_data[j][1:4] + biomt_data[j+1][1:4] + biomt_data[j+2][1:4]
-      translation_data = \
-        [biomt_data[j][-1], biomt_data[j+1][-1], biomt_data[j+2][-1]]
-      rm = matrix.sqr(rotation_data)
-      tv = matrix.col(translation_data)
-      # For BIOMT the first transform is the identity matrix
-      ignore_transform = rm.is_r3_identity_matrix() and tv.is_col_zero()
-      result.add(
-        r=rm, t=tv,
-        coordinates_present=ignore_transform,
-        serial_number=i+1)
-  return result
+  biomt_data = [[float(_x_elem) for _x_elem in  x.split()[3:]] for x in source_info if (
+    x.split()[2].find('BIOMT') > -1) and (len(x.split()[2]) == 6)]
+  # test that there is no missing data
+  if len(biomt_data)%3 != 0:
+    raise RuntimeError(
+      "Improper or missing set of PDB BIOMAT records. Data length = %s" % \
+      str(len(biomt_data)))
+  # test that the length of the data match the serial number, that there are no missing records
+  # temporary workaround, could be plain text over there instead of
+  # expected number of records, see 5l93
+  try:
+    temp = int(source_info[-1].split()[3])
+  except ValueError:
+    temp = 0
+  if len(biomt_data)/3.0 != temp:
+    raise RuntimeError(
+      "Missing record sets in PDB BIOMAT records \n" + \
+      "Actual number of BIOMT matrices: {} \n".format(len(biomt_data)/3.0)+\
+      "expected according to serial number: {} \n".format(temp))
+  rots = []
+  trans = []
+  serial_number = []
+  coordinates_present = []
+  for i in range(len(biomt_data)//3):
+    # i is the group number in biomt_data
+    # Each group composed from 3 data sets.
+    j = 3*i;
+    rotation_data = \
+      biomt_data[j][1:4] + biomt_data[j+1][1:4] + biomt_data[j+2][1:4]
+    translation_data = \
+      [biomt_data[j][-1], biomt_data[j+1][-1], biomt_data[j+2][-1]]
+    rots.append(matrix.sqr(rotation_data))
+    trans.append(matrix.col(translation_data))
+    # For BIOMT the first transform is the identity matrix
+    ignore_transform = rots[-1].is_r3_identity_matrix() and trans[-1].is_col_zero()
+    coordinates_present.append(ignore_transform)
+    serial_number.append(i+1)
+  return container.from_lists(rots, trans, serial_number, coordinates_present)
 
-def process_MTRIX_records(lines, eps=1e-4):
+def process_MTRIX_records_pdb(lines):
   """
   Read MTRIX records from a pdb file
   """
@@ -153,19 +221,20 @@ def process_MTRIX_records(lines, eps=1e-4):
       values[1][r.n-1] = r.t
       done[r.n-1] = r.n
       present[r.n-1] = r.coordinates_present
-  result = container()
-  for serial_number in sorted(storage.keys()):
-    values, done, present = storage[serial_number]
-    rm = matrix.sqr(values[0])
-    tv = matrix.col(values[1])
+  rots = []
+  trans = []
+  serial_number = []
+  coordinates_present = []
+  for sn in sorted(storage.keys()):
+    values, done, present = storage[sn]
+    serial_number.append(sn)
+    rots.append(matrix.sqr(values[0]))
+    trans.append(matrix.col(values[1]))
     if (sorted(done) != [1,2,3] or len(set(present)) != 1):
       raise RuntimeError("Improper set of PDB MTRIX records")
-    identity_transform = rm.is_r3_identity_matrix() and tv.is_col_zero()
-    result.add(
-      r=rm, t=tv,
-      coordinates_present=(present[0]==1 or identity_transform),
-      serial_number=serial_number)
-  return result
+    ignore_transform = rots[-1].is_r3_identity_matrix() and trans[-1].is_col_zero()
+    coordinates_present.append(present[0]==1 or ignore_transform)
+  return container.from_lists(rots, trans, serial_number, coordinates_present)
 
 def format_MTRIX_pdb_string(rotation_matrices, translation_vectors,
       serial_numbers=None, coordinates_present_flags=None):

@@ -38,6 +38,7 @@ def get_map_model_managers():
 
 def exercise( out = sys.stdout):
 
+
   # test shift_aware_rt
 
   mmm1, mmm2 = get_map_model_managers()
@@ -181,7 +182,43 @@ def exercise( out = sys.stdout):
   dc.expand_mask(buffer_radius = 2)
   count = dc.get_map_manager_by_id('mask').map_data().count(1)
   print(count)
-  assert count == 0
+  assert count == 1
+
+  # Test mask and map info functions
+  mmm1, mmm2 = get_map_model_managers()
+  mmm1.create_mask_around_density(soft_mask=False)
+  mask_info = mmm1.mask_info()
+  map_info = mmm1.map_info()
+  mask_info_by_id = mmm1.mask_info(mask_id = 'mask')
+  map_info_by_id = mmm1.map_info(map_id = 'map_manager')
+  assert mask_info() == mask_info_by_id()
+  assert map_info() == map_info_by_id()
+  assert approx_equal(mask_info.fraction_marked, 0.210091991342)
+  assert approx_equal(map_info.fraction_above_sigma_cutoff, 0.0577876984127)
+
+
+  # create a spherical mask around a point
+  print("Spherical masks", )
+  dc = mmm1.deep_copy()
+  dc.mask_info()
+  assert dc.mask_info().marked_points == 9318
+  dc.create_spherical_mask()
+  dc.mask_info()
+  assert dc.mask_info().marked_points == 1286
+  dc.create_spherical_mask(soft_mask_radius=1)
+  dc.mask_info()
+  assert dc.mask_info().marked_points == 8990
+  dc.create_spherical_mask(soft_mask=False)
+  dc.mask_info()
+  assert dc.mask_info().marked_points == 1458
+  dc.create_spherical_mask(mask_radius = 4)
+  dc.mask_info()
+  assert dc.mask_info().marked_points == 914
+  dc.create_spherical_mask(soft_mask=False, mask_radius = 4)
+  dc.mask_info()
+  assert dc.mask_info().marked_points == 654
+
+
 
 if __name__ == "__main__":
   try:

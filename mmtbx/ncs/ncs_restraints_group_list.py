@@ -579,6 +579,91 @@ class class_ncs_restraints_group_list(list):
       result.append(group)
     return result
 
+  def unique_with_biomt(self, hierarchy):
+    # first we need to check if it is possible.
+    # Criteria:
+    # - all model is covered by NCS
+    # - every chain is fully covered by NCS
+    # self.filter_ncs_restraints_group_list
+    # also limiting to 1 NCS group. Not clear how to describe multiple groups
+    # where operations need to performed on a different chains
+
+    assert len(self) == 1
+
+    cif_block = iotbx.cif.model.block()
+
+
+    resulting_hierarchy = hierarchy.select(self[0].master_iselection)
+    master_label_asym_ids = []
+    for c in resulting_hierarchy.only_model().chains():
+      lai = resulting_hierarchy.get_label_asym_id(c.residue_groups()[0])
+      master_label_asym_ids.append(lai)
+
+    pdbx_struct_assembly_gen_loop = iotbx.cif.model.loop(header=(
+        '_pdbx_struct_assembly_gen.assembly_id',
+        '_pdbx_struct_assembly_gen.oper_expression',
+        '_pdbx_struct_assembly_gen.asym_id_list',))
+
+    pdbx_struct_assembly_loop = iotbx.cif.model.loop(header=(
+        '_pdbx_struct_assembly.id',
+        '_pdbx_struct_assembly.details',
+        '_pdbx_struct_assembly.method_details',
+        '_pdbx_struct_assembly.oligomeric_details',
+        '_pdbx_struct_assembly.oligomeric_count',))
+
+    pdbx_struct_oper_list_loop = iotbx.cif.model.loop(header=(
+       '_pdbx_struct_oper_list.id',
+       '_pdbx_struct_oper_list.type',
+       '_pdbx_struct_oper_list.name',
+       '_pdbx_struct_oper_list.symmetry_operation',
+       '_pdbx_struct_oper_list.matrix[1][1]',
+       '_pdbx_struct_oper_list.matrix[1][2]',
+       '_pdbx_struct_oper_list.matrix[1][3]',
+       '_pdbx_struct_oper_list.matrix[2][1]',
+       '_pdbx_struct_oper_list.matrix[2][2]',
+       '_pdbx_struct_oper_list.matrix[2][3]',
+       '_pdbx_struct_oper_list.matrix[3][1]',
+       '_pdbx_struct_oper_list.matrix[3][2]',
+       '_pdbx_struct_oper_list.matrix[3][3]',
+       '_pdbx_struct_oper_list.vector[1]',
+       '_pdbx_struct_oper_list.vector[2]',
+       '_pdbx_struct_oper_list.vector[3]',))
+
+    master_asym_id = ','.join(master_label_asym_ids)
+    pdbx_struct_assembly_gen_loop.add_row({
+        '_pdbx_struct_assembly_gen.assembly_id':'1',
+        '_pdbx_struct_assembly_gen.oper_expression':'(1-%d)' % (len(self[0].copies)+1),
+        '_pdbx_struct_assembly_gen.asym_id_list': master_asym_id,
+      })
+
+    pdbx_struct_assembly_loop.add_row({
+        '_pdbx_struct_assembly.id': '1',
+        '_pdbx_struct_assembly.details': 'Symmetry assembly',
+        '_pdbx_struct_assembly.method_details': '?',
+        '_pdbx_struct_assembly.oligomeric_details': '?',
+        '_pdbx_struct_assembly.oligomeric_count': '?',
+      })
+
+    # put in identity transform
+    oper_id = 1
+    row = [oper_id, 'point symmetry operation', '?', '?']
+    row.extend([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
+    pdbx_struct_oper_list_loop.add_row(row)
+
+    for i_ncs_copy, ncs_copy in enumerate(self[0].copies):
+      oper_id = i_ncs_copy + 2
+      row = [oper_id, 'point symmetry operation', '?', '?']
+      row.extend(ncs_copy.r)
+      row.extend(ncs_copy.t)
+      pdbx_struct_oper_list_loop.add_row(row)
+
+    cif_block.add_loop(pdbx_struct_assembly_gen_loop)
+    cif_block.add_loop(pdbx_struct_assembly_loop)
+    cif_block.add_loop(pdbx_struct_oper_list_loop)
+
+    return self[0].master_iselection, cif_block
+
+
   def as_cif_block(self, cif_block, hierarchy, scattering_type, ncs_type):
     """
     Let me lay out what I found and please correct me if I am wrong in any detail.

@@ -133,7 +133,7 @@ class LogReader(object):
   def __init__(self, queueing_system):
     self.queueing_system = queueing_system
     if self.queueing_system in ["mpi", "lsf", "pbs", "local"]:
-      self.command = "tail -17 %s | head -1"
+      self.command = "tail -23 %s | head -1"
     elif self.queueing_system in ["slurm", "shifter", "htcondor"]:
       pass # no log reader used
     else:
@@ -176,6 +176,8 @@ class LSFSubmissionTracker(SubmissionTracker):
       log_status = self.reader.read_result(log_path)
       if log_status == "Successfully completed.":
         return "DONE"
+      elif "exit" in log_status.lower():
+        return "EXIT"
       else:
         return "ERR" # error querying the queueing system
     elif status in known_job_statuses:

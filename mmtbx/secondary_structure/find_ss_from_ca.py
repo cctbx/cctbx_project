@@ -518,6 +518,25 @@ def get_average_direction(diffs=None, i=None,j=None):
     average_direction/=nn
     return average_direction.normalize()
 
+def get_first_chain_id_and_resno(hierarchy):
+  text = ""
+  if not hierarchy:
+    return text
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        return "%s%s" %(chain.id,rg.resseq_as_int())
+
+def get_last_chain_id_and_resno(hierarchy):
+  text = ""
+  if not hierarchy:
+    return text
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        text = "%s%s" %(chain.id,rg.resseq_as_int())
+  return text
+
 def get_chain_ids(hierarchy,unique_only=None):
   chain_ids=[]
   if not hierarchy:
@@ -1930,7 +1949,7 @@ class find_segment: # class to look for a type of segment
             segment_start=None
             still_changing=True
       segment_dict=new_segment_dict
-      for i in segment_dict.keys():
+      for i in list(segment_dict.keys()):
         segment_length=segment_dict[i]+1+self.last_residue_offset-i
         if segment_length<minimum_length:
           del segment_dict[i] # not long enough

@@ -1,3 +1,21 @@
+2020.12
+=======
+
+* BIOMT/MTRIX matrices in model reading
+
+  * Added option to loosen handling of improper matrices in DataManager
+  * Make behavior conistent between mmCIF and PDB formats
+
+* Improvements to map_model_manager
+
+  * Better handling of cases when information is missing
+  * Calculate the RMSD of matching residues between models
+
+2020.11
+=======
+
+* Updated API for fetching data from RCSB
+
 2020.10
 =======
 

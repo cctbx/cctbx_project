@@ -135,8 +135,13 @@ def exercise_1(prefix="tst_add_arrows_on_plot_1"):
 
   img = Image.open(plot_file_name)
   hist = img.histogram()
-  assert hist == reference_hist
-
+  # print(hist)
+  hist_ok = True
+  for ref, res in zip(reference_hist, hist):
+    if (ref != res) and not (0.98 < ref/res < 1.02):
+      hist_ok = False
+      # print (ref, res, ref/res)
+  assert hist_ok
 
 if __name__ == '__main__':
   exercise_1()

@@ -823,10 +823,8 @@ class opt_resources_module(SourceModule):
 
 class eigen_module(SourceModule):
   module = 'eigen'
-  anonymous = ['git', '-b 3.3.7',
-               'git@github.com:cctbx/eigen.git',
-               'https://github.com/cctbx/eigen.git',
-               'https://github.com/cctbx/eigen/archive/master.zip']
+  anonymous = ['git', '-b 3.3.9',
+               'https://gitlab.com/libeigen/eigen.git']
 
 # Phenix repositories
 class phenix_module(SourceModule):

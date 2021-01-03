@@ -892,6 +892,24 @@ class residue_multi_criterion(residue):
   def __cmp__(self, other):
     return cmp(self.i_seq, other.i_seq)
 
+  def __eq__(self, other):
+    return self.i_seq == other.i_seq
+
+  def __ne__(self, other):
+    return self.i_seq != other.i_seq
+
+  def __lt__(self, other):
+    return self.i_seq < other.i_seq
+
+  def __le__(self, other):
+    return self.i_seq <= other.i_seq
+
+  def __gt__ (self, other):
+    return self.i_seq > other.i_seq
+
+  def __ge__(self, other):
+    return self.i_seq >= other.i_seq
+
   def get_real_space_plot_values(self, use_numpy_NaN=True):
     for outlier in self.outliers :
       if (type(outlier).__name__ == 'residue_real_space'):

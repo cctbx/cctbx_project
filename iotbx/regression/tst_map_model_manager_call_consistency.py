@@ -181,14 +181,14 @@ def test_02():
 
   init_arg_dict = {
      'around_atoms':['self', 'mask_atoms_atom_radius', 'model',
-          'xray_structure', 'map_manager','n_real', 'wrapping'],
+          'invert_mask','xray_structure', 'map_manager','n_real', 'wrapping'],
      'around_edges':['self', 'boundary_radius', 'map_manager'],
      'around_density':['self', 'map_manager','resolution','molecular_mass',
         'sequence','solvent_content'],
   }
   method_arg_dict = {
      'around_atoms':['self', 'soft_mask_radius', 'mask_atoms_atom_radius',
-          'soft_mask', 'mask_id', 'model'],
+          'invert_mask','soft_mask', 'mask_id', 'model'],
      'around_edges':['self', 'boundary_radius', 'mask_id',],
      'around_density':['self', 'resolution', 'solvent_content', 'soft_mask',
            'soft_mask_radius', 'mask_id','map_id'],

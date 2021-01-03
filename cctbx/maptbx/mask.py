@@ -17,6 +17,7 @@ class create_mask_around_atoms(object):
       model = None,
       xray_structure = None,
       mask_atoms_atom_radius = None,
+      invert_mask = None,
       n_real = None,
       map_manager = None,
       wrapping = None):
@@ -28,6 +29,7 @@ class create_mask_around_atoms(object):
        model:   required source of information about where atoms are
        xray_structure:   alternate source of information about where atoms are
        mask_atoms_atom_radius:  radius around atoms to mask
+       invert_mask:  outside is 1 and inside is 0
        n_real:  dimensions of map to create, e.g., existing map_data.all()
        map_manager: alternate source of information for n_real. origin (0, 0, 0)
          and source of wrapping
@@ -66,12 +68,18 @@ class create_mask_around_atoms(object):
     cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
     radii = flex.double(
       sites_frac.size(), mask_atoms_atom_radius)
+    if invert_mask:
+      mask_value_inside_molecule = 0
+      mask_value_outside_molecule = 1
+    else: # usual
+      mask_value_inside_molecule = 1
+      mask_value_outside_molecule = 0
     self._mask = cctbx_maptbx_ext.mask(
       sites_frac                  = sites_frac,
       unit_cell                   = xray_structure.unit_cell(),
       n_real                      = n_real,
-      mask_value_inside_molecule  = 1,
-      mask_value_outside_molecule = 0,
+      mask_value_inside_molecule  = mask_value_inside_molecule,
+      mask_value_outside_molecule = mask_value_outside_molecule,
       radii                       = radii,
       wrapping                    = wrapping)
     # Set up map_manager with this mask
@@ -114,15 +122,26 @@ class create_mask_around_atoms(object):
     Make the mask a soft mask
     Parameter:
       soft_mask_radius:   defines distance over which mask is smoothed
+    This has to be done in P1 as the mask might not follow map symmetry
+      (for example a mask around edges does not)
     '''
     assert soft_mask_radius is not None
     assert not self.is_soft_mask()  # do not do it twice
 
     from cctbx.maptbx.segment_and_split_map import smooth_mask_data
 
+    if self._crystal_symmetry.space_group_number() != 1:
+      from cctbx import crystal
+      crystal_symmetry = crystal.symmetry(
+          self._crystal_symmetry.unit_cell().parameters(), 1)
+    else:
+      crystal_symmetry = self._crystal_symmetry
+
     self._mask = smooth_mask_data(mask_data = self._mask,
-      crystal_symmetry = self._crystal_symmetry,
+      crystal_symmetry = crystal_symmetry,
        rad_smooth = soft_mask_radius)
+
+    # Note that mask still might not follow map symmetry if it did not before
 
     self._map_manager = self._map_manager.customized_copy(map_data = self._mask)
     self._map_manager.set_is_mask(True)
@@ -295,6 +314,7 @@ class create_mask_around_density(create_mask_around_atoms):
           out = null_out())
 
     if self._solvent_content is None:
+      from libtbx.utils import Sorry
       raise Sorry("Unable to get solvent content in auto-masking")
 
 

@@ -59,6 +59,10 @@ mp_phil_str = '''
       submit_command = "sbatch "
         .type = str
         .help = Command used to run the zero-level script sbatch.sh.
+      shifter_image = None
+        .type = str
+        .help = Name of Shifter image to use for processing, as you would use \
+                in an sbatch script. Example: docker:dwpaley/cctbx-xfel:fix18
       sbatch_script_template = None
         .type = path
         .help = Script template to be run with sbatch. The script will be copied \
@@ -183,13 +187,13 @@ class get_submit_command(object):
   def write_script(self):
     command_str = " ".join([self.command] + self.args)
     with open(self.submit_path, 'w') as f:
-      f.write(b"#! %s\n" % self.shell_path.encode())
+      f.write("#! %s\n" % self.shell_path)
       for line in self.options_inside_submit_script:
-        f.write(b"%s\n" % line.encode())
+        f.write("%s\n" % line)
       for line in self.source_env_scripts:
-        f.write(b"%s\n" % line.encode())
-      f.write(b"\n")
-      f.write(b"%s\n" % command_str.encode())
+        f.write("%s\n" % line)
+      f.write("\n")
+      f.write("%s\n" % command_str)
     self.make_executable(self.submit_path)
 
   def generate_submit_command(self):
@@ -199,9 +203,9 @@ class get_submit_command(object):
     path, ext = os.path.splitext(self.submit_path)
     encapsulate_path = path + "_submit" + ext
     with open(encapsulate_path, 'w') as f:
-      f.write(b"#! /bin/%s\n\n" % ext[1:].encode())
-      f.write(self.generate_submit_command().encode())
-      f.write(b"\n")
+      f.write("#! /bin/%s\n\n" % ext[1:])
+      f.write(self.generate_submit_command())
+      f.write("\n")
 
   def __call__(self):
     self.customize_for_method()
@@ -525,7 +529,7 @@ class get_shifter_submit_command(get_submit_command):
     self.srun_template = self.params.shifter.srun_script_template
     if not self.srun_template:
       from xfel.ui.db.cfgs import shifter_templates
-      self.srun_contents = shifter_templates.sbatch_template
+      self.srun_contents = shifter_templates.srun_template
     else:
       with open(self.srun_template, "r") as sr:
         self.srun_contents = sr.read()
@@ -535,6 +539,17 @@ class get_shifter_submit_command(get_submit_command):
 
 
   def eval_params(self):
+
+    # --image <shifter_image>
+    if self.params.shifter.shifter_image:
+      self.sbatch_contents = self.substitute(
+          self.sbatch_contents,
+          "<shifter_image>",
+          self.params.shifter.shifter_image
+      )
+    else:
+      raise Sorry("Must supply a shifter image")
+
     # -N <nnodes>
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<nnodes>",
       str(self.params.nnodes))

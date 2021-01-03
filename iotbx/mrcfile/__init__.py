@@ -232,12 +232,14 @@ class map_reader:
       self.space_group_number=self.unit_cell_crystal_symmetry(
          ).space_group_number()
 
-  def set_crystal_symmetry_of_partial_map(self):
+  def set_crystal_symmetry_of_partial_map(self,
+     space_group_number  = None):
     '''
       This sets the crystal_symmetry of a partial map based on the
       gridding of the part of the map that is present.
-      If exactly the entire map is present, use space group of
-      current self._crystal_symmetry, otherwise use space group P1
+      If space_group_number is specified, use it. Otherwise,
+        if exactly the entire map is present, use space group of
+        current self._crystal_symmetry, otherwise use space group P1
 
       Note that self._crystal_symmetry space group might not match
       self._unit_cell_crystal_symmetry (space group of entire map) because
@@ -252,8 +254,10 @@ class map_reader:
     c = c * map_all[2]/self.unit_cell_grid[2]
 
     if tuple(map_all) == tuple(self.unit_cell_grid[:3]):
+      if space_group_number:
+        space_group_number_use=space_group_number
       # Take space group we have...
-      if self.crystal_symmetry():  # use sg of existing box crystal symmetry
+      elif self.crystal_symmetry():  # use sg of existing box crystal symmetry
         space_group_number_use=self.crystal_symmetry(
           ).space_group_number()
       else:  # otherwise take the sg of crystal symmetry of full cell
@@ -265,8 +269,6 @@ class map_reader:
     from cctbx import crystal
     self._crystal_symmetry=crystal.symmetry((a,b,c, al,be,ga),
          space_group_number_use)
-
-
 
   # Code to check for specific text in map labels limiting the use of the map
 
@@ -559,9 +561,15 @@ class write_ccp4_map:
       external_origin=None, # Do not use this unless required
       output_axis_order=INTERNAL_STANDARD_ORDER,
       internal_standard_order=INTERNAL_STANDARD_ORDER,
+      replace_backslash = True,
       verbose=None,
       out=sys.stdout,
       ):
+
+    '''
+     Write mrc/ccp4 format file
+     if replace_backslash then replace backslashes in labels with forward slash
+    '''
 
 
     assert map_data  # should never be called without map_data
@@ -672,7 +680,8 @@ class write_ccp4_map:
 
     # Labels
     # Keep all limitations labels and other labels up to total of 10 or fewer
-    output_labels=select_output_labels(labels)
+    output_labels=select_output_labels(labels,
+       replace_backslash = replace_backslash)
 
     mrc.header.nlabl=len(output_labels)
     for i in range(min(10,len(output_labels))):
@@ -782,7 +791,7 @@ def create_output_labels(
   final_labels=select_output_labels(final_labels)
   return final_labels
 
-def select_output_labels(labels,max_labels=10):
+def select_output_labels(labels,max_labels=10, replace_backslash = None):
   n_limitations=0
   used_labels=[]
   for label in labels:
@@ -801,6 +810,12 @@ def select_output_labels(labels,max_labels=10):
     elif n_general < n_available:
       n_general+=1
       output_labels.append(label)
+
+  if replace_backslash:
+    new_labels = []
+    for label in output_labels:
+      new_labels.append(label.replace("\\","/"))
+    output_labels = new_labels
   return output_labels
 
 def get_standard_order(mapc,mapr,maps,internal_standard_order=None,

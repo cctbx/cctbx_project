@@ -189,13 +189,15 @@ def exercise(file_name, out = sys.stdout):
   mam1.mask_all_maps_around_density(solvent_content=0.5,
     soft_mask=True,)
   s = (mam1.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (984,2048))
 
   # Create mask around edges and apply to all maps
   mam1=new_mam.deep_copy()
-  mam1.mask_all_maps_around_edges(soft_mask_radius=12)
+  mam1.write_map('before.ccp4')
+  mam1.mask_all_maps_around_edges(soft_mask_radius=8)
+  mam1.write_map('after.ccp4')
+  mam1.write_map(map_id = 'mask',file_name='mask.ccp4')
   s = (mam1.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (1658,2048))
+  assert approx_equal( (s.count(True),s.size()), (1496, 2048))
 
   # Create a  mask around atoms and apply to all maps
   new_mam.mask_all_maps_around_atoms(mask_atoms_atom_radius=8,
@@ -207,13 +209,13 @@ def exercise(file_name, out = sys.stdout):
   new_mam.mask_all_maps_around_atoms(mask_atoms_atom_radius=8,
       soft_mask=True)
   s = (new_mam.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (1722,2048))
+  assert approx_equal( (s.count(True),s.size()), (1924,2048))
 
   # Create a soft mask around atoms and do not do anything with it
   new_mam.create_mask_around_atoms(mask_atoms_atom_radius=8,
       soft_mask=True)
   s = (new_mam.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (1722,2048))
+  assert approx_equal( (s.count(True),s.size()), (1924,2048))
 
   # Create a soft mask around atoms; do not do anything with it, wrapping =true
   dummy_mam=new_mam.deep_copy()
@@ -221,13 +223,14 @@ def exercise(file_name, out = sys.stdout):
   dummy_mam.create_mask_around_atoms(mask_atoms_atom_radius=8,
       soft_mask=True)
   s = (dummy_mam.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (1722,2048))
+  assert approx_equal( (s.count(True),s.size()), (1924,2048))
 
   # Mask around edges and do not do anything with it
   mam=dc.deep_copy()
   mam.create_mask_around_edges()
   s = (mam.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (1560,2048))
+  mam.write_map(map_id='mask',file_name='edge.ccp4')
+  assert approx_equal( (s.count(True),s.size()), (1792,2048))
 
   # Mask around density and to not do anything with it
   mam=dc.deep_copy()
