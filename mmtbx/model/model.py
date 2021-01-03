@@ -220,7 +220,8 @@ class manager(object):
     self._ncs_groups = None
     self._anomalous_scatterer_groups = []
     self.log = log
-    self._model_id = None
+    self._model_number = None
+    self._info= group_args() # holds any info desired
     self.exchangable_hd_groups = []
     self.original_xh_lengths = None
     self.riding_h_manager = None
@@ -340,8 +341,11 @@ class manager(object):
       scatterer = 'C'
       scatterer_list = None
     elif atom_name:
-      assert scatterer is not None
-      assert scatterer_list is None
+      if scatterer is None and scatterer_list is None:
+        if atom_name.strip().upper()=='CA':
+          scatterer = 'C'
+        else:
+         assert scatterer is not None # need scatterer if atom_name is not CA
     elif atom_name_list:
       assert scatterer_list is not None
 
@@ -504,11 +508,17 @@ class manager(object):
   def set_log(self, log):
     self.log = log
 
-  def set_model_id(self, model_id):
-    self._model_id = model_id
+  def set_model_number(self, model_number):
+    self._model_number = model_number
 
-  def model_id(self):
-    return self._model_id
+  def model_number(self):
+    return self._model_number
+
+  def set_info(self, info):
+    self._info = info
+
+  def info(self):
+    return self._info
 
   def __getstate__(self):
     ''' The _ss_manager is not pickleable. Remove it before pickling
@@ -551,7 +561,7 @@ class manager(object):
       sc = (0, 0, 0)
 
     return "Model manager "+\
-      "%s" %(self.model_id()) if self.model_id() else "" + \
+      "%s" %(self.model_number()) if self.model_number() is not None else "" + \
       "\n%s\nChains: %s Residues %s (%s - %s)\nWorking coordinate shift %s)" %(
       str(self.unit_cell_crystal_symmetry()).replace("\n"," "),
       str(nchains),
@@ -2902,7 +2912,8 @@ class manager(object):
     new.restraints_manager = new_restraints_manager
     new._xray_structure    = xrs_new
     new.tls_groups = sel_tls
-    new._model_id = self._model_id
+    new._model_number = self._model_number
+    new._info = deepcopy(self._info)
 
     if new_riding_h_manager is not None:
       new.riding_h_manager = new_riding_h_manager

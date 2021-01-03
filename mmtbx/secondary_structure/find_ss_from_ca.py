@@ -203,6 +203,16 @@ master_phil = iotbx.phil.parse("""
               Note: None means ignore this test, 0 means allow no poor H-bonds.
       .short_caption = Maximum number of poor H bonds
 
+    tolerant = None
+      .type = bool
+      .help = Set values for tolerant search 
+      .short_caption = Tolerant search
+
+     tolerant_max_h_bond_length = 5
+       .type = float
+       .help = Tolerant maximum H-bond length to include in \
+           secondary structure
+       .short_caption = Tolerant maximum H-bond length
   }
 
   alpha {
@@ -1949,7 +1959,7 @@ class find_segment: # class to look for a type of segment
             segment_start=None
             still_changing=True
       segment_dict=new_segment_dict
-      for i in list(segment_dict.keys()):
+      for i in segment_dict.keys():
         segment_length=segment_dict[i]+1+self.last_residue_offset-i
         if segment_length<minimum_length:
           del segment_dict[i] # not long enough
@@ -3428,6 +3438,40 @@ class find_secondary_structure: # class to look for secondary structure
     if max_representative_chains is not None:
       params.find_ss_structure.max_representative_chains=\
         max_representative_chains
+
+    # Overwrite parameters for tolerant search
+    if params.find_ss_structure.tolerant:
+      print("Setting parameters for tolerant search", file = out)
+      if params.find_ss_structure.ss_by_chain:
+        params.find_ss_structure.ss_by_chain=False
+        print("Set ss_by_chain=%s" %(
+          params.find_ss_structure.ss_by_chain), file = out)
+      if not params.find_ss_structure.include_single_strands:
+        params.find_ss_structure.include_single_strands=True
+        print("Set include_single_strands=%s" %(
+          params.find_ss_structure.include_single_strands), file = out)
+      if params.find_ss_structure.max_h_bond_length < \
+          params.find_ss_structure.tolerant_max_h_bond_length: 
+        params.find_ss_structure.max_h_bond_length = \
+          params.find_ss_structure.tolerant_max_h_bond_length
+        print("Set max_h_bond_length=%s" %(
+          params.find_ss_structure.tolerant_max_h_bond_length),
+          file = out)
+      if params.beta.max_sheet_ca_ca_dist < \
+          params.beta.tolerant_max_sheet_ca_ca_dist: 
+        params.beta.max_sheet_ca_ca_dist = \
+          params.beta.tolerant_max_sheet_ca_ca_dist
+        print("Set max_sheet_ca_ca_dist=%s" %(
+          params.beta.tolerant_max_sheet_ca_ca_dist),
+          file = out)
+      if params.beta.min_sheet_length > \
+          params.beta.tolerant_min_sheet_length: 
+        params.beta.min_sheet_length = \
+          params.beta.tolerant_min_sheet_length
+        print("Set min_sheet_length=%s" %(
+          params.beta.tolerant_min_sheet_length),
+          file = out)
+    
 
     secondary_structure_input=params.input_files.secondary_structure_input
 

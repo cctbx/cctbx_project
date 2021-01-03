@@ -249,6 +249,17 @@ master_phil = iotbx.phil.parse("""
               Note: None means ignore this test, 0 means allow no poor H-bonds.
       .short_caption = Maximum number of poor H bonds
 
+    tolerant = None
+      .type = bool
+      .help = Set values for tolerant search 
+      .short_caption = Tolerant search
+
+     tolerant_max_h_bond_length = 5
+       .type = float
+       .help = Tolerant maximum H-bond length to include in \
+           secondary structure
+       .short_caption = Tolerant maximum H-bond length
+
   }
 
   extract_segments_from_pdb {

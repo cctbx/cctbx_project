@@ -147,6 +147,12 @@ def test_01():
     mmm_sites.unit_cell_crystal_symmetry())
   assert new_model.shift_cart() == mmm_sites.shift_cart()
 
+  # Import hierarchy into a model and set symmetries and shift to match
+  mmm_sites.model_from_hierarchy(
+   hierarchy = mmm_sites.model().get_hierarchy(),
+   model_id='model_from_hierarchy')
+  assert mmm_sites.get_model_by_id('model_from_hierarchy').model_as_pdb() \
+     == mmm_sites.get_model_by_id('model').model_as_pdb()
 
 
   # Check on wrapping

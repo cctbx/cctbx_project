@@ -2555,6 +2555,38 @@ class map_model_manager(object):
     diffs = target_sites - matching_sites
     return diffs
 
+  def get_cb_resseq_to_skip(self,cb_resseq_list,
+         far_away = None,
+         far_away_n = None):
+    '''
+    Identify numbers in resseq_list that are way different than all others by
+    at least max_gap
+    '''
+    if not far_away or not far_away_n:
+      return []
+
+
+    work_list = deepcopy(cb_resseq_list)
+    work_list.sort()
+    groups=[]
+    last_i = None
+    for i in work_list:
+      if last_i is not None and i <= last_i + far_away:
+        group.append(i)
+        last_i = i
+      else:
+         group = [i]
+         groups.append(group)
+         last_i = i
+
+    residues_to_ignore = []
+    for group in groups:
+     if len(group) <= far_away_n and len(cb_resseq_list)>= 2 * far_away_n:
+        residues_to_ignore += group
+    return residues_to_ignore
+
+
+
   def select_matching_segments(self,
       target_model_id = 'model',
       matching_model_id = None,
@@ -2564,8 +2596,11 @@ class map_model_manager(object):
       atom_name = None,
       element = None,
       max_dist = None,
+      max_dist_extra = None,
       minimum_length = None,
       max_gap = 5,
+      far_away = 7,
+      far_away_n = 2,
       one_to_one = False,
       residue_names_must_match = False,
       quiet = True):
@@ -2585,6 +2620,9 @@ class map_model_manager(object):
       well as position
 
      Return a group_args object with a list of paired sements
+
+    If far_away is set, remove any groups of far_away_n or fewer that are
+      far_away residues from all other groups
     '''
 
     from mmtbx.secondary_structure.find_ss_from_ca import \
@@ -2628,6 +2666,11 @@ class map_model_manager(object):
         element = 'P'
       if max_dist is None:
         max_dist = max(self.resolution(), 7.)
+    elif max_dist is None:
+      if atom_name == 'CA':
+        max_dist = max(self.resolution(), 3.)
+      else:
+        max_dist = max(self.resolution(), 7.)
 
     # Select the atoms to try and match
     target_model_ca = target_model.apply_selection_string(
@@ -2658,12 +2701,13 @@ class map_model_manager(object):
       ca_residue_names = None
       cb_residue_names = None
 
-    matching_cb_as_list=self.match_cb_to_ca(
+    matching_cb_as_list_info = self.match_cb_to_ca(
       ca_sites=target_model_ca.get_sites_cart(),
       cb_as_list = list(matching_model_ca.get_sites_cart()),
       ca_residue_names = ca_residue_names,
       cb_residue_names = cb_residue_names,
       max_dist = max_dist,)
+    matching_cb_as_list = matching_cb_as_list_info.cb_as_list
 
     cb_sites_list = list(matching_model_ca.get_sites_cart())
     cb_atoms = list (matching_model_ca.get_hierarchy().atoms())
@@ -2683,13 +2727,13 @@ class map_model_manager(object):
       new_ca_sites_list = []
       new_matching_cb_as_list = []
       for ca_site, cb_site in zip(ca_sites_list,
-          matching_cb_as_list):
+          matching_cb_as_list,
+          ):
         if not cb_site:  continue
         new_ca_sites_list.append(ca_site)
         new_matching_cb_as_list.append(cb_site)
       ca_sites_list = new_ca_sites_list
       matching_cb_as_list = new_matching_cb_as_list
-
       assert len(matching_cb_as_list) == len(ca_sites_list)
 
       # Select all the residues in ca_sites_list and group by segments
@@ -2722,10 +2766,11 @@ class map_model_manager(object):
            local_ca_sites_list):
           index = ca_sites_list.index(ca_site_cart)
           local_matching_cb_as_list.append(matching_cb_as_list[index])
+
         residue_groups.append(group_args(
           starting_ca_resseq = segment_info.first_resseq,
           ca_sites_list = local_ca_sites_list,
-          matching_cb_as_list = local_matching_cb_as_list))
+          matching_cb_as_list = local_matching_cb_as_list,))
 
     else:
       residue_groups = [
@@ -2752,19 +2797,35 @@ class map_model_manager(object):
       matching_cb_as_list = residue_group.matching_cb_as_list
       ca_chain_dict = {}
       cb_chain_dict = {}
+
+      cb_resseq_list = []
       for ca_site, cb_site in zip(ca_sites_list,
-          matching_cb_as_list):
+          matching_cb_as_list, ):
         if not cb_site:  continue
         cb = cb_atoms_dict[cb_site]
         cb_chain_id = cb.parent().parent().parent().id
         cb_resseq = cb.parent().parent().resseq_as_int()
+        cb_resseq_list.append(cb_resseq)
+      # Are any cb_resseq way out of range of all the others?
+      cb_resseq_to_skip = self.get_cb_resseq_to_skip(cb_resseq_list,
+         far_away = far_away,
+         far_away_n = far_away_n,
+        )
+
+      for ca_site, cb_site in zip(ca_sites_list,
+          matching_cb_as_list, ):
+        if not cb_site:  continue
+        cb = cb_atoms_dict[cb_site]
+        cb_chain_id = cb.parent().parent().parent().id
+        cb_resseq = cb.parent().parent().resseq_as_int()
+        if cb_resseq in cb_resseq_to_skip: continue
+
 
         ca = ca_atoms_dict[ca_site]
         ca_chain_id = ca.parent().parent().parent().id
         ca_resseq = ca.parent().parent().resseq_as_int()
         if residue_names_must_match:
           assert ca.parent().resname == cb.parent().resname
-
 
         if not cb_chain_id in cb_chain_dict: cb_chain_dict[cb_chain_id] = []
         if not ca_chain_id in ca_chain_dict: ca_chain_dict[ca_chain_id] = []
@@ -2863,10 +2924,15 @@ class map_model_manager(object):
      return " or ".join(selection_string_list)
 
 
-  def choose_best_set(self,dd, max_dist = None):
+  def choose_best_set(self,dd, max_dist = None,
+      ):
     # dd is a dict
     # values for dd are lists of group args, each has a member value of dist
     #   and a member value of id.  Choose the one that has the smallest dist
+
+    # If there is a close alternative, also within max_dist but with residue
+    #  number much closer to all the others in a group, take that one instead
+    #  This is to try and go along a chain and not jump unless necessary.
 
     #   ca_dict[cb].append(group_args(
     #     dist=dist,
@@ -2903,7 +2969,9 @@ class map_model_manager(object):
         if key != best_key:
           dd[key] = None
       target_id = self.duplicate_id(dd)
-    return dd
+    return group_args(
+      dd = dd,
+      )
 
   def duplicate_id(self,dd):
     id_list = []
@@ -2967,12 +3035,18 @@ class map_model_manager(object):
           other_resname_id = cb_residue_names[index_cb],  # name of cb atom
           other_index_id =  index_cb,  #  index of cb atob
           ))
-    cb_dict=self.choose_best_set(cb_dict, max_dist = max_dist)
-    ca_dict=self.choose_best_set(ca_dict, max_dist = max_dist)
+    cb_dict_info = self.choose_best_set(cb_dict, max_dist = max_dist)
+    ca_dict_info = self.choose_best_set(ca_dict, max_dist = max_dist)
+    cb_dict = cb_dict_info.dd
+    ca_dict = ca_dict_info.dd
     cb_as_list = []
+
+    # Make a list of all the ca_dict positions and the matching (or missing)
+    #  item from cb
     if not ca_residue_names:
       ca_residue_names = [None]*ca_sites.size()
     for ca,ca_resname in zip(ca_sites, ca_residue_names):
+
       group = cb_dict.get(ca)
       if group:
         cb_as_list.append(group.id)
@@ -2981,7 +3055,9 @@ class map_model_manager(object):
       else:
         cb_as_list.append(None)
 
-    return cb_as_list
+    return group_args(
+       cb_as_list = cb_as_list,
+       )
 
 
   def propagate_model_from_other(self, other,
@@ -7113,6 +7189,23 @@ class map_model_manager(object):
 
   # General methods
 
+  def model_from_hierarchy(self,
+    hierarchy,
+    model_id = 'model_from_hierarchy'):
+    '''
+     Convenience method to convert a hierarchy into a model, where the
+     model has symmetry and shift cart matching this manager
+    '''
+
+    from mmtbx.model import manager as model_manager
+    model = model_manager(
+      model_input = hierarchy.as_pdb_input(),
+      crystal_symmetry = self.crystal_symmetry(),
+      log = null_out())
+    self.set_model_symmetries_and_shift_cart_to_match_map(model)
+    self.add_model_by_id(model = model, model_id=model_id)
+
+
   def model_from_sites_cart(self,
     sites_cart,
     model_id = 'model_from_sites',
@@ -7595,6 +7688,7 @@ class map_model_manager(object):
      soft_zero_boundary_mask = True,
      soft_zero_boundary_mask_radius = None,
      model_id = 'model',
+     normalize = True,
      ):
     '''
      Return this object as a local_model_building object
@@ -7618,6 +7712,7 @@ class map_model_manager(object):
      soft_zero_boundary_mask_radius = soft_zero_boundary_mask_radius,
      nproc= nproc,
      model_id = model_id,
+     normalize = normalize,
      log = self.log,
     )
     mb.set_defaults(debug = self.verbose)
@@ -8567,10 +8662,6 @@ def get_split_maps_and_models(
   else:
     lower_bounds_list = box_info.lower_bounds_list
     upper_bounds_list = box_info.upper_bounds_list
-  if not first_to_use:
-    first_to_use = 1
-  if not last_to_use:
-    last_to_use = len(lower_bounds_list)
   for lower_bounds, upper_bounds, selection in zip(
        lower_bounds_list,
        upper_bounds_list,
@@ -8770,16 +8861,13 @@ def get_selections_and_boxes_to_split_model(
     print("Ready with %s ok boxes " %(len(box_info.lower_bounds_list)),
       file = log)
 
-  if select_final_boxes_based_on_model or (
+  if (select_final_boxes_based_on_model and model) or (
      not box_info.lower_bounds_list): # get bounds now:
     from cctbx.maptbx.box import get_bounds_around_model
     box_info.lower_bounds_list = []
     box_info.upper_bounds_list = []
     for selection in box_info.selection_list:
-      if model:
-        model_use=model.select(selection)
-      else:
-        model_use = None
+      model_use=model.select(selection)
       info = get_bounds_around_model(
         map_manager = map_manager,
         model = model_use,
