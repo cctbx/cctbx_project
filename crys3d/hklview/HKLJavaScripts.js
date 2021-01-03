@@ -472,6 +472,7 @@ function onMessage(e)
 
     if (msgtype === "TooltipOpacity")
     {
+      div_annotation_opacity = val[0];
       Object.assign(tooltip.style, {
         backgroundColor: "rgba(255, 255, 255, " + val[0] + " )",
       });
@@ -940,12 +941,14 @@ function onMessage(e)
         pos.y = txtR[1];
         pos.z = txtR[2];
 
-        var elm = document.createElement("div");
-        elm.innerText = val2[9];
-        elm.style.color = "rgba(" + val2[6] + ", " + val2[7] + ", " + val2[8] + ", 1.0)";
-        elm.style.backgroundColor = "rgba(255, 255, 255, 0.75)";
-        elm.style.fontSize = fontsize.toString() + "pt";
-        elm.style.padding = "4px"
+        var elm = createElement("div", { innerText: val2[9] },
+        {
+          color: "rgba(" + val2[6] + ", " + val2[7] + ", " + val2[8] + ", 1.0)",
+          backgroundColor: "rgba(255, 255, 255, " + div_annotation_opacity + ")",
+          padding: "4px"
+        }, fontsize
+        )
+
         annodivs.push([elm, pos]);  // store until we get a representation name
       }
       // if reprname is supplied with a vector then make a representation named reprname
@@ -1225,7 +1228,7 @@ function onMessage(e)
 };
 
 
-var ttipalpha = 0.7;
+var div_annotation_opacity = 0.7;
 var camtype = "orthographic";
 var negativeradiistr
 
@@ -1271,7 +1274,7 @@ Object.assign(tooltip.style, {
   position: "absolute",
   zIndex: 10,
   pointerEvents: "none",
-  backgroundColor: "rgba(255, 255, 255, ttipalpha )",
+  backgroundColor: "rgba(255, 255, 255, " + div_annotation_opacity + ")",
   color: "black",
   padding: "0.1em",
   fontFamily: "sans-serif"
@@ -1314,22 +1317,22 @@ function MakeHKL_Axis()
 
   var Helm = document.createElement("div");
   Helm.innerText = "h";
-  Helm.style.color = "black";
-  Helm.style.backgroundColor = "rgba(0, 0, 255, 0.5)";
+  Helm.style.color = "white";
+  Helm.style.backgroundColor = "rgba(0, 0, 255, " + div_annotation_opacity + ")";
   Helm.style.fontSize = fontsize.toString() + "pt";
   Helm.style.padding = "4px"
 
   var Kelm = document.createElement("div");
   Kelm.innerText = "k";
-  Kelm.style.color = "black";
-  Kelm.style.backgroundColor = "rgba(0, 255, 0, 0.5)";
+  Kelm.style.color = "white";
+  Kelm.style.backgroundColor = "rgba(0, 255, 0, " + div_annotation_opacity + ")";
   Kelm.style.fontSize = fontsize.toString() + "pt";
   Kelm.style.padding = "4px"
 
   var Lelm = document.createElement("div");
   Lelm.innerText = "l";
-  Lelm.style.color = "black";
-  Lelm.style.backgroundColor = "rgba(255, 0, 0, 0.5)";
+  Lelm.style.color = "white";
+  Lelm.style.backgroundColor = "rgba(255, 0, 0, " + div_annotation_opacity + ")";
   Lelm.style.fontSize = fontsize.toString() + "pt";
   Lelm.style.padding = "4px"
 
@@ -1699,6 +1702,7 @@ function HKLscene()
     value: "Reset view",
     type: "button",
     onclick: function () {
+      shapeComp.autoView(500);
       var m4 = new NGL.Matrix4();
       var axis = new NGL.Vector3();
       axis.x = 0.0;
@@ -1706,7 +1710,6 @@ function HKLscene()
       axis.z = 0.0;
       m4.makeRotationAxis(axis, 0.0);
       stage.viewerControls.orient(m4);
-      shapeComp.autoView(500);
       RenderRequest();
       sleep(100).then(() => {
         msg = getOrientMsg();
