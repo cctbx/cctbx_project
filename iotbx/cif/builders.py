@@ -921,6 +921,10 @@ class miller_array_builder(crystal_symmetry_builder):
     return self._arrays
 
   def origarrays(self):
+    """
+    return dictionary of raw data found in cif file cast into flex.double arrays
+    or just string arrays as a fall back.
+    """
     return self._origarrays
 
 

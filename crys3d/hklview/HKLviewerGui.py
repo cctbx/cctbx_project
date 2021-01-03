@@ -16,11 +16,11 @@ try: # if invoked by cctbx.python or some such
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
   from helpers import HeaderDataTableWidge
 
-from PySide2.QtCore import (QCoreApplication, QMetaObject, QObject, QPoint,
-    QRect, QSize, QUrl, Qt)
-from PySide2.QtGui import (QBrush, QColor, QConicalGradient, QCursor, QFont,
+from PySide2.QtCore import ( QCoreApplication, QMetaObject, QObject, QPoint,
+    QRect, QSize, QUrl, Qt )
+from PySide2.QtGui import ( QBrush, QColor, QConicalGradient, QCursor, QFont,
     QFontDatabase, QIcon, QLinearGradient, QPalette, QPainter, QPixmap,
-    QRadialGradient)
+    QRadialGradient )
 from PySide2.QtWidgets import *
 
 

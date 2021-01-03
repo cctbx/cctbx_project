@@ -652,7 +652,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
               #self.millerarraytable.selectRow(rows[0])
           if self.infodict.get("orig_hkl_ids"):
             if self.millerarraytablemodel is not None \
-             and self.millerarraytableform.SortComboBox.currentIndex() == 0: 
+             and self.millerarraytableform.SortComboBox.currentIndex() == 0:
                # can only match hkls in the unsorted table
               orig_hkl_ids = self.infodict.get("orig_hkl_ids", [])
               mode = QItemSelectionModel.Select | QItemSelectionModel.Rows
@@ -1244,7 +1244,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
                 bequiet = False
               }""" %self.rotvec)
               self.rotavecangle_slider.setValue(0)
-        
+
           self.rotvec = None
           sum = 0
           for rvrow in range(self.vectortable2.rowCount()):
@@ -1255,7 +1255,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
           if sum > 1 or sum == 0: # can only use one vector to rotate around. so if more are selected then deselect them altogether
             self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
   animate_rotation_around_vector = '[%d, %f]'
-}""" %(0, -1.0)) # 
+}""" %(0, -1.0)) #
             self.PhilToJsRender('NGL_HKLviewer.viewer.fixorientation = "None"')
             self.AnimaRotCheckBox.setCheckState(Qt.Unchecked)
             self.rotvec = None
@@ -1767,7 +1767,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 def run():
   import time
-  #time.sleep(10) 
+  #time.sleep(10)
   try:
     import PySide2.QtCore
     Qtversion = str(PySide2.QtCore.qVersion())
