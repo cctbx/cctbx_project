@@ -82,6 +82,10 @@ var Lstarend = null;
 var Hlabelpos = null;
 var Klabelpos = null;
 var Llabelpos = null;
+var Hlabelvec = new NGL.Vector3();
+var Klabelvec = new NGL.Vector3();
+var Llabelvec = new NGL.Vector3();
+var annodivs = [];
 
 
 function sleep(ms) {
@@ -648,10 +652,7 @@ function onMessage(e)
         if (nexpandrefls == nsize*6*nrots && nrots > 1)
           expstate = "isP1FriedelExpanded";
       }
-      MakeHKL_Axis(shape);
-
-      shapeComp = stage.addComponentFromObject(shape);
-      repr = shapeComp.addRepresentation('buffer');
+      MakeHKL_Axis();
 
       for (var bin=0; bin<nbins; bin++)
       {
@@ -929,12 +930,23 @@ function onMessage(e)
       if (val2[6] !== "")
       {
         labelpos = parseFloat(val2[12]);
+        var pos = new NGL.Vector3()
         var txtR = [
           r1[0] * (1.0 - labelpos) + r2[0] * labelpos,
           r1[1] * (1.0 - labelpos) + r2[1] * labelpos,
           r1[2] * (1.0 - labelpos) + r2[2] * labelpos
         ];
-        vectorshape.addText( txtR, [rgb[0], rgb[1], rgb[2]], fontsize*0.75, val2[9] );
+        pos.x = txtR[0];
+        pos.y = txtR[1];
+        pos.z = txtR[2];
+
+        var elm = document.createElement("div");
+        elm.innerText = val2[9];
+        elm.style.color = "rgba(" + val2[6] + ", " + val2[7] + ", " + val2[8] + ", 1.0)";
+        elm.style.backgroundColor = "rgba(255, 255, 255, 0.75)";
+        elm.style.fontSize = fontsize.toString() + "pt";
+        elm.style.padding = "4px"
+        annodivs.push([elm, pos]);  // store until we get a representation name
       }
       // if reprname is supplied with a vector then make a representation named reprname
       // of this and all pending vectors stored in vectorshape and render them.
@@ -943,7 +955,15 @@ function onMessage(e)
       if (reprname != "")
       {
         DeletePrimitives(reprname); // delete any existing vectors with the same name
-        vectorshapeComps.push( stage.addComponentFromObject(vectorshape) );
+        cmp = stage.addComponentFromObject(vectorshape);
+        for (i = 0; i < annodivs.length; i++)
+        {
+          elm = annodivs[i][0];
+          pos = annodivs[i][1];
+          cmp.addAnnotation(pos, elm);
+        }
+        vectorshapeComps.push(cmp);
+        annodivs = [];
         vectorreprs.push(
           vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vecbuf',
                                                                       { name: reprname} )
@@ -1103,9 +1123,7 @@ function onMessage(e)
     if (msgtype ==="RenderStageObjects")
     {
       //HKLscene();
-      MakeHKL_Axis(shape);
-      shapeComp = stage.addComponentFromObject(shape);
-      repr = shapeComp.addRepresentation('buffer');
+      MakeHKL_Axis();
       RenderRequest();
       WebsockSendMsg('Drawing new reflections');
     }
@@ -1272,13 +1290,21 @@ function DefineHKL_Axes(hstart, hend, kstart, kend,
   Hlabelpos = hlabelpos;
   Klabelpos = klabelpos;
   Llabelpos = llabelpos;
+
+  Hlabelvec.x = hlabelpos[0];
+  Hlabelvec.y = hlabelpos[1];
+  Hlabelvec.z = hlabelpos[2];
+  Klabelvec.x = klabelpos[0];
+  Klabelvec.y = klabelpos[1];
+  Klabelvec.z = klabelpos[2];
+  Llabelvec.x = llabelpos[0];
+  Llabelvec.y = llabelpos[1];
+  Llabelvec.z = llabelpos[2];
 };
 
 
 function MakeHKL_Axis()
 {
-  // xyz arrows
-  // shape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origin');
   //blue-x
   shape.addArrow( Hstarstart, Hstarend , [ 0, 0, 1 ], 0.1);
   //green-y
@@ -1286,9 +1312,32 @@ function MakeHKL_Axis()
   //red-z
   shape.addArrow( Lstarstart, Lstarend, [ 1, 0, 0 ], 0.1);
 
-  shape.addText( Hlabelpos, [ 0, 0, 1 ], fontsize, 'h');
-  shape.addText( Klabelpos, [ 0, 1, 0 ], fontsize, 'k');
-  shape.addText( Llabelpos, [ 1, 0, 0 ], fontsize, 'l');
+  var Helm = document.createElement("div");
+  Helm.innerText = "h";
+  Helm.style.color = "black";
+  Helm.style.backgroundColor = "rgba(0, 0, 255, 0.5)";
+  Helm.style.fontSize = fontsize.toString() + "pt";
+  Helm.style.padding = "4px"
+
+  var Kelm = document.createElement("div");
+  Kelm.innerText = "k";
+  Kelm.style.color = "black";
+  Kelm.style.backgroundColor = "rgba(0, 255, 0, 0.5)";
+  Kelm.style.fontSize = fontsize.toString() + "pt";
+  Kelm.style.padding = "4px"
+
+  var Lelm = document.createElement("div");
+  Lelm.innerText = "l";
+  Lelm.style.color = "black";
+  Lelm.style.backgroundColor = "rgba(255, 0, 0, 0.5)";
+  Lelm.style.fontSize = fontsize.toString() + "pt";
+  Lelm.style.padding = "4px"
+
+  shapeComp = stage.addComponentFromObject(shape);
+  shapeComp.addAnnotation(Hlabelvec, Helm);
+  shapeComp.addAnnotation(Klabelvec, Kelm);
+  shapeComp.addAnnotation(Llabelvec, Lelm);
+  repr = shapeComp.addRepresentation('buffer');
 };
 
 
@@ -1499,7 +1548,6 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
     if (isHKLviewer == true)
       WebsockSendMsg('onClick colour chart');
   };
-  
 
 }
 
