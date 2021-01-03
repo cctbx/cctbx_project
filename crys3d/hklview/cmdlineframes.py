@@ -268,8 +268,8 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "shape_primitive"):
         self.set_shape_primitive(phl.shape_primitive)
 
-      if view_3d.has_phil_path(diff_phil, "add_user_vector_hkl_op", 
-                                         "add_user_vector_abc", 
+      if view_3d.has_phil_path(diff_phil, "add_user_vector_hkl_op",
+                                         "add_user_vector_abc",
                                          "add_user_vector_hkl"):
         self.add_user_vector()
 
@@ -662,7 +662,9 @@ class HKLViewFrame() :
     if self.loaded_file_name == savefilename:
       self.mprint("Not overwriting currently loaded file. Choose a different name!")
       return
-    if os.path.splitext(savefilename)[1] == ".mtz":
+    self.mprint("Saving file...")
+    fileextension = os.path.splitext(savefilename)[1]
+    if fileextension == ".mtz":
       mtz1 = self.procarrays[0].as_mtz_dataset(column_root_label= self.procarrays[0].info().labels[0])
       for i,arr in enumerate(self.procarrays):
         if i==0:
@@ -673,7 +675,7 @@ class HKLViewFrame() :
       except Exception as e:
         mtz1.mtz_object().write(savefilename.encode("ascii"))
 
-    elif os.path.splitext(savefilename)[1] == ".cif":
+    elif fileextension == ".cif":
       import iotbx.cif
       mycif = None
       fname = savefilename
@@ -706,20 +708,15 @@ class HKLViewFrame() :
       if mycif:
         save2cif(savefilename, mycif)
         fnames.append(savefilename)
-
-    self.mprint("Miller array(s) saved to: " + ",\n".join(fnames))
-    if len(fnames) > 1:
-      self.mprint("Unmerged data put into separate files")
+      self.mprint("Miller array(s) saved to: " + ",\n".join(fnames))
+      if len(fnames) > 1:
+        self.mprint("Unmerged data put into separate files")
+    else:
+      self.mprint("Can only save file in MTZ or CIF format. Sorry!")
 
 
   def has_indices_with_multiple_data(self, arr):
-    for idx in arr.indices():
-      s = 0
-      for e in list(arr.indices() == idx):
-        s += int(e)
-        if s>1:
-          return True
-    return False
+    return len(set(list(arr.indices()))) < arr.size()
 
 
   def tabulate_arrays(self, datalabels):
@@ -1014,11 +1011,11 @@ class HKLViewFrame() :
        and self.params.NGL_HKLviewer.viewer.add_user_vector_abc in [None, "", "()"] \
        and self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op) in [None, ""]:
         self.mprint("No vector was specified")
-      self.uservectors.append( (ln, 
-                                label, 
+      self.uservectors.append( (ln,
+                                label,
                                 order,
                                 cartvec,
-                                self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op, 
+                                self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op,
                                 self.params.NGL_HKLviewer.viewer.add_user_vector_hkl,
                                 self.params.NGL_HKLviewer.viewer.add_user_vector_abc) )
       self.list_vectors()
@@ -1103,7 +1100,7 @@ class HKLViewFrame() :
              hkldist=0.0, clipwidth=6, fixorientation="vector", is_parallel=True)
     self.viewer.SpinAnimate(0,1,0)
 
-  
+
   def AnimateRotateAroundVector(self, vecnr, speed):
     self.params.NGL_HKLviewer.clip_plane.animate_rotation_around_vector = str([vecnr, speed])
     self.update_settings()

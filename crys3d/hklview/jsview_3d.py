@@ -104,8 +104,8 @@ class ArrayInfo:
 
 def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.stdout.write):
   """
-  Conpute the hklscene for the miller array, proc_array. If it's a complex array and there is a FOM array 
-  among the list of miller arrays then also compute an hklscene with colours of each hkl attenuated by the 
+  Conpute the hklscene for the miller array, proc_array. If it's a complex array and there is a FOM array
+  among the list of miller arrays then also compute an hklscene with colours of each hkl attenuated by the
   corresponding FOM value.
   """
   scenemaxdata =[]
@@ -330,7 +330,7 @@ class hklview_3d:
 
   def update_settings(self, diff_phil, curphilparam) :
     """
-    Event handler for zmq messages from the GUI or simply for commandline interaction when 
+    Event handler for zmq messages from the GUI or simply for commandline interaction when
     scripting HKLviewer with python
     """
     self.ngl_settings = curphilparam.NGL
@@ -422,7 +422,7 @@ class hklview_3d:
       self.viewerparams.scene_id = len(self.HKLscenedict)-1
       self.set_scene()
       self.params.miller_array_operations = ""
-    
+
     if has_phil_path(diff_phil, "fixorientation", "slice_axis") and \
      self.viewerparams.slice_mode and self.viewerparams.fixorientation == "reflection_slice":
      # explicit slicing is not volatile
@@ -431,7 +431,7 @@ class hklview_3d:
       if self.viewerparams.slice_axis=="l": hkl = [0,0,1]
       R = hkl[0] * self.normal_kl + hkl[1] * self.normal_lh - hkl[2] * self.normal_hk
       self.orient_vector_parallel_with_screen(R[0])
-    
+
     if has_phil_path(diff_phil,
                       "scene_bin_thresholds", # TODO: group bin phil parameters together in subscope
                       "bin_opacities",
@@ -554,12 +554,12 @@ class hklview_3d:
     hkl = self.scene.indices[id]
     hklvec = flex.vec3_double( [(hkl[0], hkl[1], hkl[2])])
     rotmx=None
-    if sym_id >= 0 and sym_id < len(self.symops): 
+    if sym_id >= 0 and sym_id < len(self.symops):
       # symid tells which symmetry operator was used in HKLJavaScripts.js onMessage() Expand()
       rotmx = self.symops[sym_id].r()
     Rhkl = hklvec[0]
-    if rotmx: 
-      # if a symmetry mate was clicked then deduce its hkl coordinate by 
+    if rotmx:
+      # if a symmetry mate was clicked then deduce its hkl coordinate by
       # applying the rotation to the original hkl coordinate
       Rhkl = hklvec[0] * rotmx
     rothkl = Rhkl
@@ -1356,7 +1356,7 @@ class hklview_3d:
 
     if self.ngl_settings.bin_opacities == "":
       self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
-    
+
     self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
                           "bin_infotpls": self.bin_infotpls,
                           "binner_idx": self.params.binner_idx,
@@ -1718,8 +1718,8 @@ Distance: %s
   def draw_sphere(self, s1, s2, s3, isreciprocal=True,
                   r=0, g=0, b=0, name="", radius = 1.0, mesh=False):
     """
-    Place sphere at [s1, s2, s3]  with colour r,g,b. If name=="", the creation 
-    is deferred until draw_sphere is eventually called with name != "". These 
+    Place sphere at [s1, s2, s3]  with colour r,g,b. If name=="", the creation
+    is deferred until draw_sphere is eventually called with name != "". These
     spheres are then joined in the same NGL representation.
     """
     uc = self.miller_array.unit_cell()
@@ -1741,7 +1741,7 @@ Distance: %s
   def draw_cartesian_sphere(self, s1, s2, s3, r=0, g=0, b=0, name="", radius = 1.0, mesh=False):
     self.mprint("cartesian sphere is at: %s" %(str(roundoff([s1, s2, s3]))), verbose=2)
     self.AddToBrowserMsgQueue("DrawSphere", "%s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s" \
-         %(s1, s2, s3, r, g, b, radius, name, int(mesh)) ) 
+         %(s1, s2, s3, r, g, b, radius, name, int(mesh)) )
     if name=="":
       self.mprint("deferred rendering sphere at (%s, %s, %s)" %(s1, s2, s3), verbose=2)
 
@@ -1771,7 +1771,7 @@ Distance: %s
       # TODO: find suitable scale factor for displaying real space vector together with reciprocal vectors
       svec1 = [ vscale*vec1[0], vscale*vec1[1], vscale*vec1[2] ]
       svec2 = [ vscale*vec2[0], vscale*vec2[1], vscale*vec2[2] ]
-    self.draw_cartesian_vector(svec1[0], svec1[1], svec1[2], svec2[0], svec2[1], svec2[2], 
+    self.draw_cartesian_vector(svec1[0], svec1[1], svec1[2], svec2[0], svec2[1], svec2[2],
                             label, r, g, b, name, radius, labelpos)
 
 
@@ -1779,7 +1779,7 @@ Distance: %s
     self.mprint("cartesian vector is: %s to %s" %(str(roundoff([s1, s2, s3])), str(roundoff([t1, t2, t3]))), verbose=2)
     #self.AddToBrowserMsgQueue("DrawVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
     self.AddToBrowserMsgQueue("DrawVector", "%s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s" \
-         %(s1, s2, s3, t1, t2, t3, r, g, b, label, name, radius, labelpos) ) 
+         %(s1, s2, s3, t1, t2, t3, r, g, b, label, name, radius, labelpos) )
     if name=="":
       self.mprint("deferred rendering vector from (%s, %s, %s) to (%s, %s, %s)" %(s1, s2, s3, t1, t2, t3), verbose=2)
 
@@ -1847,8 +1847,8 @@ Distance: %s
         %(rot.as_hkl(), self.miller_array.space_group().info().symbol_and_number() ))
     ortrot = ortrotmx.as_mat3()
     r11,r12,r13,r21,r22,r23,r31,r32,r33 = ortrot
-    # workaround for occasional machine precision errors yielding argument greater than 1.0 
-    theta =  math.acos(roundoff((r11+r22+r33-1.0)*0.5, 10)) 
+    # workaround for occasional machine precision errors yielding argument greater than 1.0
+    theta =  math.acos(roundoff((r11+r22+r33-1.0)*0.5, 10))
     sint = math.sin(theta)
     e1, e2, e3 = (0,0,0)
     eps = 0.000000001
@@ -1867,7 +1867,7 @@ Distance: %s
       evalues =  list(es.values())
       evectors = list(es.vectors())
       for i,eval in enumerate(evalues):
-        if abs(eval-1.0) <= eps: 
+        if abs(eval-1.0) <= eps:
           # eigenvector with eigenvalue=1 is the rotation axis
           # eigenvetors come as a concatenated list of vector elements so get the i-th vector
           e1,e2,e3 = evectors[(0+3*i):(3+3*i)]
@@ -1889,7 +1889,7 @@ Distance: %s
       for i, (opnr, label, v, xyzop, hklop) in enumerate( self.rotation_operators ): # skip the last op for javascript drawing purposes
         if i < len(self.rotation_operators)-1:
           self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], label=label, radius=0.2, labelpos=1.0)
-        else: # supply name to tell javascript to draw all these vectors 
+        else: # supply name to tell javascript to draw all these vectors
           self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], label=label, name="SymRotAxes", radius=0.2, labelpos=1.0)
     else:
       self.RemovePrimitives("SymRotAxes")
@@ -1941,10 +1941,10 @@ Distance: %s
         thkl = tuple(hkl)
         hklstr = "hkl: (%d,%d,%d)" %thkl
         if i < len(self.visual_symHKLs)-1:
-          self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label=hklstr, r=0.5, g=0.3, b=0.3, 
+          self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label=hklstr, r=0.5, g=0.3, b=0.3,
                            radius=0.1, labelpos=1.0)
         else: # supplying a name for the vector last graphics primitive draws them all
-          self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label=hklstr, name="sym_HKLs", 
+          self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label=hklstr, name="sym_HKLs",
                            r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
 
 
@@ -1956,9 +1956,9 @@ Distance: %s
     maxrad = self.HKLscene_from_dict(self.radii_scene_id).max_radius
     self.RemovePrimitives("highlight_HKL")
     hkl = eval(self.viewerparams.show_hkl)
-    #self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, name="highlight_HKL", 
+    #self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, name="highlight_HKL",
     #                  r=1, g=0.0, b=0.0, radius= maxrad*0.2)
-    self.draw_sphere(hkl[0],hkl[1],hkl[2], isreciprocal=True, name="highlight_HKL", 
+    self.draw_sphere(hkl[0],hkl[1],hkl[2], isreciprocal=True, name="highlight_HKL",
                       r=1, g=0.0, b=0.0, radius= maxrad*1.5, mesh=True)
     self.viewerparams.show_hkl = "" # to allow clicking on the same entry in the millerarraytable
 
@@ -2052,9 +2052,9 @@ Distance: %s
   def orient_vector_parallel_with_screen(self, cartvec):
     if cartvec is None:
       return
-    angle_x_xyvec, angle_z_svec = self.get_cartesian_vector_angles(0, 0, 0, 
-                                                                    cartvec[0], 
-                                                                    cartvec[1], 
+    angle_x_xyvec, angle_z_svec = self.get_cartesian_vector_angles(0, 0, 0,
+                                                                    cartvec[0],
+                                                                    cartvec[1],
                                                                     cartvec[2])
     if self.viewerparams.is_parallel:
       self.PointVectorParallelToScreen(angle_x_xyvec, angle_z_svec)

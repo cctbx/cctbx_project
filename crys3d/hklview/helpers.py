@@ -10,7 +10,7 @@ from matplotlib.figure import Figure
 
 from PySide2.QtCore import Qt, QEvent, QAbstractTableModel, QModelIndex
 from PySide2.QtGui import QCursor, QKeySequence, QResizeEvent
-from PySide2.QtWidgets import (QAbstractItemView, QCheckBox, QTableWidget, QAction, 
+from PySide2.QtWidgets import (QAbstractItemView, QCheckBox, QTableWidget, QAction,
       QMenu, QTableView, QDialog,  QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
       QScrollArea, QVBoxLayout
      )
@@ -94,8 +94,8 @@ class MillerArrayTableView(QTableView):
     self.setSelectionMode(QAbstractItemView.MultiSelection)
     #self.setSelectionMode(QAbstractItemView.ExtendedSelection)
   def onDoubleClick(self, index):
-    hkl = (int(index.siblingAtColumn(0).data()), 
-           int(index.siblingAtColumn(1).data()), 
+    hkl = (int(index.siblingAtColumn(0).data()),
+           int(index.siblingAtColumn(1).data()),
            int(index.siblingAtColumn(2).data()))
     self.parent().parent().parent().parent.HighlightReflection(hkl)
   def onRightClick(self, QPos=None):
@@ -283,12 +283,12 @@ class MPLColourSchemes(QtWidgets.QDialog):
       pos = list(ax.get_position().bounds)
       x_text = pos[0] - 0.21
       y_text = pos[1] + pos[3]/2.
-      self.mycanvas.fig.text(x_text, y_text, name, va='center', ha='left', 
+      self.mycanvas.fig.text(x_text, y_text, name, va='center', ha='left',
                              fontsize= self.parent.app.font().pointSize()*1.5 )
 
 
   def resizeEvent(self, event):
-    # MplCanvas doesn't resize with the rest of QtWidgets whenever 
+    # MplCanvas doesn't resize with the rest of QtWidgets whenever
     # triggered by a font size changes from the main GUI. So resize here instead
     if event.type() == QEvent.Type.Resize:
       ltxt = len(self.mycanvas.fig.texts)
