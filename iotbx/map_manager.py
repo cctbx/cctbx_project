@@ -1017,7 +1017,7 @@ class map_manager(map_reader, write_ccp4_map):
          (y < 0) |
          (z < 0) |
          (x > 1) |
-	 (y > 1) |
+         (y > 1) |
          (z > 1)
          )
       density_values.set_selected(s,0)
@@ -1820,8 +1820,8 @@ class map_manager(map_reader, write_ccp4_map):
        return self._warning_message
 
   def set_mean_zero_sd_one(self):
-    ''' 
-     Function to normalize the map 
+    '''
+     Function to normalize the map
      If the map has a constant value, do nothing
     '''
     map_data = self.map_data()

@@ -205,7 +205,7 @@ master_phil = iotbx.phil.parse("""
 
     tolerant = None
       .type = bool
-      .help = Set values for tolerant search 
+      .help = Set values for tolerant search
       .short_caption = Tolerant search
 
      tolerant_max_h_bond_length = 5
@@ -3451,27 +3451,27 @@ class find_secondary_structure: # class to look for secondary structure
         print("Set include_single_strands=%s" %(
           params.find_ss_structure.include_single_strands), file = out)
       if params.find_ss_structure.max_h_bond_length < \
-          params.find_ss_structure.tolerant_max_h_bond_length: 
+          params.find_ss_structure.tolerant_max_h_bond_length:
         params.find_ss_structure.max_h_bond_length = \
           params.find_ss_structure.tolerant_max_h_bond_length
         print("Set max_h_bond_length=%s" %(
           params.find_ss_structure.tolerant_max_h_bond_length),
           file = out)
       if params.beta.max_sheet_ca_ca_dist < \
-          params.beta.tolerant_max_sheet_ca_ca_dist: 
+          params.beta.tolerant_max_sheet_ca_ca_dist:
         params.beta.max_sheet_ca_ca_dist = \
           params.beta.tolerant_max_sheet_ca_ca_dist
         print("Set max_sheet_ca_ca_dist=%s" %(
           params.beta.tolerant_max_sheet_ca_ca_dist),
           file = out)
       if params.beta.min_sheet_length > \
-          params.beta.tolerant_min_sheet_length: 
+          params.beta.tolerant_min_sheet_length:
         params.beta.min_sheet_length = \
           params.beta.tolerant_min_sheet_length
         print("Set min_sheet_length=%s" %(
           params.beta.tolerant_min_sheet_length),
           file = out)
-    
+
 
     secondary_structure_input=params.input_files.secondary_structure_input
 

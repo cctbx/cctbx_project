@@ -251,7 +251,7 @@ master_phil = iotbx.phil.parse("""
 
     tolerant = None
       .type = bool
-      .help = Set values for tolerant search 
+      .help = Set values for tolerant search
       .short_caption = Tolerant search
 
      tolerant_max_h_bond_length = 5
