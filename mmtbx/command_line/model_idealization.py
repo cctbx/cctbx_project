@@ -1110,6 +1110,8 @@ def run(args):
   mi_object.print_runtime()
   # add hydrogens if needed ?
   print("All done.", file=log)
+  log.flush()
+  sys.stderr = sys.__stderr__
   log.close()
 
 if __name__ == "__main__":
