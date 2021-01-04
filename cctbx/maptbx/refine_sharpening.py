@@ -483,7 +483,7 @@ def calculate_fsc(**kw):
   resolution = kw.get('resolution',None)
   n_bins_use = kw.get('n_bins_use',None)
   fraction_complete = kw.get('fraction_complete',None)
-  min_fraction_complete = kw.get('min_fraction_complete',None)
+  min_fraction_complete = kw.get('min_fraction_complete', 0.05)
   is_model_based = kw.get('is_model_based',None)
   cc_cut = kw.get('cc_cut',None)
   scale_using_last = kw.get('scale_using_last',None)

@@ -1228,6 +1228,7 @@ def get_bounds_around_model(
 
     lower_bounds = [ifloor(f*n) for f, n in zip(frac_min, all_orig)]
     upper_bounds = [ iceil(f*n) for f, n in zip(frac_max, all_orig)]
+    n = all_orig[-1]
     if stay_inside_current_map:
       lower_bounds = [ min(n-1,max (0,lb)) for lb in lower_bounds]
       upper_bounds = [ min (ub, n-1) for ub,n in zip(upper_bounds,all_orig)]
