@@ -8,19 +8,16 @@
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
+
 from __future__ import absolute_import, division, print_function
 
 from PySide2.QtWebEngineWidgets import QWebEngineView
 try: # if invoked by cctbx.python or some such
   from crys3d.hklview.helpers import HeaderDataTableWidget
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
-  from helpers import HeaderDataTableWidge
+  from helpers import HeaderDataTableWidget
 
-from PySide2.QtCore import ( QCoreApplication, QMetaObject, QObject, QPoint,
-    QRect, QSize, QUrl, Qt )
-from PySide2.QtGui import ( QBrush, QColor, QConicalGradient, QCursor, QFont,
-    QFontDatabase, QIcon, QLinearGradient, QPalette, QPainter, QPixmap,
-    QRadialGradient )
+from PySide2.QtCore import QCoreApplication, QMetaObject, QRect, QSize, Qt
 from PySide2.QtWidgets import *
 
 
@@ -48,6 +45,12 @@ class Ui_MainWindow(object):
         self.actionReset_View.setObjectName(u"actionReset_View")
         self.actionSave_Current_Image = QAction(MainWindow)
         self.actionSave_Current_Image.setObjectName(u"actionSave_Current_Image")
+        self.actionOnline_Help = QAction(MainWindow)
+        self.actionOnline_Help.setObjectName(u"actionOnline_Help")
+        self.actionLocal_Help = QAction(MainWindow)
+        self.actionLocal_Help.setObjectName(u"actionLocal_Help")
+        self.actionAbout = QAction(MainWindow)
+        self.actionAbout.setObjectName(u"actionAbout")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.gridLayout_2 = QGridLayout(self.centralwidget)
@@ -744,22 +747,28 @@ class Ui_MainWindow(object):
         self.menubar.setGeometry(QRect(0, 0, 1093, 22))
         self.menuFile = QMenu(self.menubar)
         self.menuFile.setObjectName(u"menuFile")
+        self.menuHelp = QMenu(self.menubar)
+        self.menuHelp.setObjectName(u"menuHelp")
         MainWindow.setMenuBar(self.menubar)
         self.statusBar = QStatusBar(MainWindow)
         self.statusBar.setObjectName(u"statusBar")
         MainWindow.setStatusBar(self.statusBar)
 
         self.menubar.addAction(self.menuFile.menuAction())
+        self.menubar.addAction(self.menuHelp.menuAction())
         self.menuFile.addAction(self.actionOpen_reflection_file)
         self.menuFile.addAction(self.actionSave_reflection_file)
         self.menuFile.addAction(self.actionSettings)
         self.menuFile.addAction(self.actiondebug)
         self.menuFile.addAction(self.actionSave_Current_Image)
         self.menuFile.addAction(self.actionExit)
+        self.menuHelp.addAction(self.actionOnline_Help)
+        self.menuHelp.addAction(self.actionLocal_Help)
+        self.menuHelp.addAction(self.actionAbout)
 
         self.retranslateUi(MainWindow)
 
-        self.functionTabWidget.setCurrentIndex(0)
+        self.functionTabWidget.setCurrentIndex(2)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -774,6 +783,9 @@ class Ui_MainWindow(object):
         self.actionSave_reflection_file.setText(QCoreApplication.translate("MainWindow", u"Save reflection file", None))
         self.actionReset_View.setText(QCoreApplication.translate("MainWindow", u"Reset View", None))
         self.actionSave_Current_Image.setText(QCoreApplication.translate("MainWindow", u"Save Current Image", None))
+        self.actionOnline_Help.setText(QCoreApplication.translate("MainWindow", u"CCTBX Online Help", None))
+        self.actionLocal_Help.setText(QCoreApplication.translate("MainWindow", u"Local Help", None))
+        self.actionAbout.setText(QCoreApplication.translate("MainWindow", u"About HKLviewer", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"Display a data set with a double-click. Right-click table for more options.", None))
         self.SpaceGrpUCellText.setHtml(QCoreApplication.translate("MainWindow", u"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
@@ -848,5 +860,5 @@ class Ui_MainWindow(object):
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"Close to radius of sphere of reflections", None))
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_5), QCoreApplication.translate("MainWindow", u"Vectors", None))
         self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
+        self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", u"Help", None))
     # retranslateUi
-

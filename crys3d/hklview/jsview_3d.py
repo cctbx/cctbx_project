@@ -287,13 +287,19 @@ class hklview_3d:
     """
     NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
     HKLjscriptpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","HKLJavaScripts.js") )
-    self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, NGLlibpath, os.path.abspath( HKLjscriptpath))
+    HKLjscriptpath = os.path.abspath( HKLjscriptpath)
+    NGLliburl = "file:///" + NGLlibpath.replace("\\","/")
+    HKLjscripturl = "file:///" + HKLjscriptpath.replace("\\","/")
+    self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, NGLliburl, HKLjscripturl)
     self.colourgradientvalues = []
     self.UseOSBrowser = ""
-    ldic=locals()
-    if 'UseOSBrowser' in kwds:
-      exec("UseOSBrowser = kwds['UseOSBrowser']", globals(), ldic)
-      self.UseOSBrowser = ldic["UseOSBrowser"]
+    if 'useGuiSocket' not in kwds:
+      self.UseOSBrowser = "default"
+      ldic=locals()
+      if 'UseOSBrowser' in kwds:
+        exec("UseOSBrowser = kwds['UseOSBrowser']", globals(), ldic)
+        self.UseOSBrowser = ldic["UseOSBrowser"]
+        self.UseOSBrowser = self.UseOSBrowser.replace("\\","/")
     self.viewmtrx = None
     self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
@@ -1778,7 +1784,7 @@ Distance: %s
   def draw_cartesian_vector(self, s1, s2, s3, t1, t2, t3, label="", r=0, g=0, b=0, name="", radius = 0.15, labelpos=0.8):
     self.mprint("cartesian vector is: %s to %s" %(str(roundoff([s1, s2, s3])), str(roundoff([t1, t2, t3]))), verbose=2)
     #self.AddToBrowserMsgQueue("DrawVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
-    self.AddToBrowserMsgQueue("DrawVector", "%s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s;; %s" \
+    self.AddToBrowserMsgQueue("DrawVector", "%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s" \
          %(s1, s2, s3, t1, t2, t3, r, g, b, label, name, radius, labelpos) )
     if name=="":
       self.mprint("deferred rendering vector from (%s, %s, %s) to (%s, %s, %s)" %(s1, s2, s3, t1, t2, t3), verbose=2)

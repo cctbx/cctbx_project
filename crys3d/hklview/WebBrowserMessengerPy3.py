@@ -4,6 +4,8 @@ from libtbx.utils import Sorry, to_str
 import threading, sys
 import os.path, time
 
+#import pathlib
+#import ssl
 import asyncio
 import websockets
 from typing import Optional
@@ -78,8 +80,12 @@ class WBmessenger(object):
           self.websockeventloop.set_debug(True)
           import logging
           logging.getLogger("asyncio").setLevel(logging.WARNING)
-      self.server = websockets.serve(self.WebSockHandler, '127.0.0.1',
-                                      self.websockport,
+
+      #ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+      #localhost_pem = pathlib.Path(__file__).with_name("localhost.pem")
+      #ssl_context.load_cert_chain(localhost_pem)
+      self.server = websockets.serve(self.WebSockHandler, 'localhost',
+                                      self.websockport, #ssl=ssl_context,
                                       create_protocol=MyWebSocketServerProtocol,
                                       )
       self.mprint("starting WebSockHandler on port %s" %str(self.websockport), verbose=1)

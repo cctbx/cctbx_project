@@ -181,7 +181,7 @@ p, li { white-space: pre-wrap; }
                </sizepolicy>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>2</number>
               </property>
               <widget class="QWidget" name="tab">
                <attribute name="title">
@@ -1216,7 +1216,16 @@ p, li { white-space: pre-wrap; }
     <addaction name="actionSave_Current_Image"/>
     <addaction name="actionExit"/>
    </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionOnline_Help"/>
+    <addaction name="actionLocal_Help"/>
+    <addaction name="actionAbout"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionOpen_reflection_file">
@@ -1252,6 +1261,21 @@ p, li { white-space: pre-wrap; }
   <action name="actionSave_Current_Image">
    <property name="text">
     <string>Save Current Image</string>
+   </property>
+  </action>
+  <action name="actionOnline_Help">
+   <property name="text">
+    <string>CCTBX Online Help</string>
+   </property>
+  </action>
+  <action name="actionLocal_Help">
+   <property name="text">
+    <string>Local Help</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About HKLviewer</string>
    </property>
   </action>
  </widget>

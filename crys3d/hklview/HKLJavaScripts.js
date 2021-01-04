@@ -172,7 +172,8 @@ function CreateWebSocket()
 {
   try
   {
-    mysocket = new WebSocket('ws://127.0.0.1:' + websocket_portnumber);
+    mysocket = new WebSocket('ws://localhost:' + websocket_portnumber);
+    //mysocket = new WebSocket('wss://localhost:' + websocket_portnumber);
     mysocket.bufferType = "arraybuffer"; // "blob";
     //if (mysocket.readyState !== mysocket.OPEN)
     //  alert('Cannot connect to websocket server! \nAre the firewall permissions or browser security too strict?');
@@ -263,10 +264,7 @@ function WebsockSendMsg(msg, message_is_complete = true)
         sleep(200).then(()=> {
             if (mysocket.readyState !== mysocket.OPEN )
             {
-              //alert('Closing socket');
               mysocket.close(4242, 'Refreshing ' + pagename); // not sure this is ever received by server
-              //window.location.reload(true);
-              //alert('Creating socket');
               CreateWebSocket();
               WebsockSendMsg('Connection lost and reestablished')
               WebsockSendMsg(msg);
@@ -927,8 +925,9 @@ function onMessage(e)
       if (vectorshape == null)
         vectorshape = new NGL.Shape('vectorshape');
 
-      vectorshape.addArrow( r1, r2 , [rgb[0], rgb[1], rgb[2]], radius);
-      if (val2[6] !== "")
+      vectorshape.addArrow(r1, r2, [rgb[0], rgb[1], rgb[2]], radius);
+      var label = val2[9].trim();
+      if (label !== "")
       {
         labelpos = parseFloat(val2[12]);
         var pos = new NGL.Vector3()
@@ -941,9 +940,9 @@ function onMessage(e)
         pos.y = txtR[1];
         pos.z = txtR[2];
 
-        var elm = createElement("div", { innerText: val2[9] },
+        var elm = createElement("div", { innerText: label },
         {
-          color: "rgba(" + val2[6] + ", " + val2[7] + ", " + val2[8] + ", 1.0)",
+          color: "rgba(" + rgb[0] + ", " + rgb[1] + ", " + rgb[2] + ", 1.0)",
           backgroundColor: "rgba(255, 255, 255, " + div_annotation_opacity + ")",
           padding: "4px"
         }, fontsize
@@ -1735,15 +1734,14 @@ function PageLoad()
 {
   try
   {
-    document.addEventListener('DOMContentLoaded', function() { HKLscene() }, false );
-    document.addEventListener('mouseup', function() { OnUpdateOrientation() }, false );
-    document.addEventListener('wheel', function(e) { OnUpdateOrientation() }, false );
-    document.addEventListener('scroll', function(e) { OnUpdateOrientation() }, false );
+    //alert('In PageLoad');
+    document.addEventListener('DOMContentLoaded', function () { HKLscene(); }, false );
+    document.addEventListener('mouseup', function () { OnUpdateOrientation(); }, false );
+    document.addEventListener('wheel', function (e) { OnUpdateOrientation(); }, false );
+    document.addEventListener('scroll', function (e) { OnUpdateOrientation(); }, false );
     // mitigate flickering on some PCs when resizing
-    document.addEventListener('resize', function () { RenderRequest() }, false);
-
-
-  }
+    document.addEventListener('resize', function () { RenderRequest(); }, false);
+ }
   catch(err)
   {
     WebsockSendMsg('JavaScriptError: ' + err.stack );

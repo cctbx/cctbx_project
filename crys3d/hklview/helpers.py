@@ -9,8 +9,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from PySide2.QtCore import Qt, QEvent, QAbstractTableModel, QModelIndex
-from PySide2.QtGui import QCursor, QKeySequence, QResizeEvent
-from PySide2.QtWidgets import (QAbstractItemView, QCheckBox, QTableWidget, QAction,
+from PySide2.QtGui import QCursor, QKeySequence
+from PySide2.QtWidgets import ( QAbstractItemView, QCheckBox, QTableWidget, QAction,
       QMenu, QTableView, QDialog,  QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
       QScrollArea, QVBoxLayout
      )
@@ -189,7 +189,6 @@ class MillerArrayTableModel(QAbstractTableModel):
 # http://matplotlib.org/examples/color/colormaps_reference.html
 
 import numpy as np
-import sys, time
 import matplotlib.pyplot as plt
 from PySide2 import QtWidgets
 from PySide2.QtCore import Qt

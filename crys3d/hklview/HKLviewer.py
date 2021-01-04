@@ -12,8 +12,7 @@
 from __future__ import absolute_import, division, print_function
 
 from PySide2.QtCore import Qt, QEvent, QItemSelectionModel, QSize, QSettings, QTimer
-from PySide2.QtWidgets import (  QAction, QCheckBox,
-        QComboBox, QDialog,
+from PySide2.QtWidgets import (  QAction, QCheckBox, QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
         QMainWindow, QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableView, QTableWidget,
@@ -54,8 +53,34 @@ class MakeNewDataForm(QDialog):
     mainLayout.addWidget(myGroupBox,     0, 0)
     self.setLayout(mainLayout)
     m = self.fontMetrics().width( "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf")
-    #self.setMinimumWidth(m)
-    #self.setFixedSize( self.sizeHint() )
+
+
+class AboutForm(QDialog):
+  def __init__(self, parent=None):
+    super(AboutForm, self).__init__(parent.window)
+    self.setWindowTitle("About HKL-viewer")
+    self.setWindowFlags(Qt.Tool)
+    mainLayout = QGridLayout()
+    self.aboutlabel = QLabel()
+    self.aboutlabel.setText("HKL-viewer, A visualiser for reflection data in crystallography")
+    self.copyrightstxt = QTextEdit()
+    self.copyrightstxt.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+    self.copyrightstxt.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+    self.copyrightstxt.setReadOnly(True)
+    self.copyrightstxt.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+    self.copyrightstxt.setMinimumSize(QSize(400, 150))
+    self.copyrightstxt.setMaximumSize(QSize(16777215, 16777215))
+    self.OKbtn = QPushButton()
+    self.OKbtn.setText("OK")
+    self.OKbtn.clicked.connect(self.onOK)
+    mainLayout.addWidget(self.aboutlabel,  0, 0, 1, 3)
+    mainLayout.addWidget(self.copyrightstxt,  1, 0, 1, 3)
+    mainLayout.addWidget(self.OKbtn,  2, 1, 1, 1)
+    self.setLayout(mainLayout)
+    self.setMinimumSize(QSize(350, 200))
+    self.setFixedSize( self.sizeHint() )
+  def onOK(self):
+    self.hide()
 
 
 class SettingsForm(QDialog):
@@ -129,16 +154,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.window = MyQMainWindow(self)
     self.setupUi(self.window)
     self.app = thisapp
-
-    self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
-    self.actiondebug.triggered.connect(self.DebugInteractively)
     self.actiondebug.setVisible(False)
-    self.actionSave_Current_Image.triggered.connect(self.onSaveImage)
-    self.actionSettings.triggered.connect(self.SettingsDialog)
-    self.actionExit.triggered.connect(self.window.close)
-    self.actionSave_reflection_file.triggered.connect(self.onSaveReflectionFile)
-    self.functionTabWidget.setCurrentIndex(0) # if accidentally set to a different tab in the Qtdesigner
-
     self.UseOSBrowser = False
     self.devmode = False
     for e in sys.argv:
@@ -224,6 +240,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.ColourMapSelectDlg.setWindowTitle("HKL-viewer Colour Gradient Maps")
 
     self.settingsform = SettingsForm(self)
+    self.aboutform = AboutForm(self)
     self.webpagedebugform = None
 
     self.MillerComboBox = QComboBox()
@@ -306,6 +323,14 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     #self.resize(QSize(self.FileInfoBox.size().width()*2, self.size().height() ))
     self.functionTabWidget.setDisabled(True)
     self.window.statusBar().showMessage("")
+    self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
+    self.actiondebug.triggered.connect(self.DebugInteractively)
+    self.actionSave_Current_Image.triggered.connect(self.onSaveImage)
+    self.actionSettings.triggered.connect(self.SettingsDialog)
+    self.actionAbout.triggered.connect(self.aboutform.show)
+    self.actionExit.triggered.connect(self.window.close)
+    self.actionSave_reflection_file.triggered.connect(self.onSaveReflectionFile)
+    self.functionTabWidget.setCurrentIndex(0) # if accidentally set to a different tab in the Qtdesigner
     self.window.show()
 
 
@@ -475,6 +500,17 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
               except Exception as e:
                 self.currentphilstringdict[unlikely_dict_keyname] = val
             self.UpdateGUI()
+
+          if self.infodict.get("copyrights"):
+            self.copyrightpaths = self.infodict["copyrights"]
+            txts = ""
+            for copyrighttitle, fname in self.copyrightpaths:
+              with open(fname,"r") as f:
+                txts = txts + copyrighttitle + ":\n\n"
+                txts = txts + f.read()
+                txts = txts + "\n" + "#" * 80  + "\n"
+            self.aboutform.copyrightstxt.setText(txts)
+            self.aboutform.setFixedSize( self.aboutform.sizeHint() )
 
           if self.infodict.get("scene_array_label_types"):
             self.scenearraylabeltypes = self.infodict.get("scene_array_label_types", [])
@@ -853,7 +889,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.fontsize = val
     self.app.setFont(font);
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
-    #self.ColourMapSelectDlg.setFixedHeight( self.ColourMapSelectDlg.sizeHint().height() )
+    self.aboutform.setFixedSize( self.aboutform.sizeHint() )
     self.ColourMapSelectDlg.setFixedSize( self.ColourMapSelectDlg.sizeHint() )
 
 

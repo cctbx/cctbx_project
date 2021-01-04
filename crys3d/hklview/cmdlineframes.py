@@ -16,7 +16,6 @@ import libtbx
 import traceback
 import sys, zmq, threading,  time, cmath, zlib, os.path, math
 
-from six.moves import input
 
 NOREFLDATA = "No reflection data has been selected"
 
@@ -66,6 +65,8 @@ class HKLViewFrame() :
     self.tncsvec = None
     self.uservectors = []
     self.new_miller_array_operations_lst = []
+    self.copyrightpaths = [("CCTBX copyright", libtbx.env.under_root(os.path.join("modules","cctbx_project","COPYRIGHT.txt"))),
+     ("NGL copyright", libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","License_for_NGL.txt")))]
     self.zmqsleeptime = 0.1
     if 'useGuiSocket' in kwds:
       self.guiSocketPort = eval(kwds['useGuiSocket'])
@@ -81,6 +82,7 @@ class HKLViewFrame() :
       pyversion = "cctbx.python.version: " + str(sys.version_info[0])
       # tell gui what python version we are
       self.SendInfoToGUI(pyversion )
+      self.SendInfoToGUI({"copyrights": self.copyrightpaths } )
     kwds['websockport'] = self.find_free_port()
     kwds['parent'] = self
     self.viewer = view_3d.hklview_3d( **kwds )
