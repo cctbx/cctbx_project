@@ -24,6 +24,9 @@ class rotamer(residue):
   ]
   __slots__ = residue.__slots__ + __rotamer_attr__
 
+  def __hash__(self):
+    return self.as_string().__hash__()
+
   @staticmethod
   def header():
     return "%-20s %8s %6s   %-20s" % ("Residue", "Rotamer", "Score",
