@@ -31,6 +31,7 @@ struct packed_metrology{
   af::shared<double>fdet;
   af::shared<double>odet;
   af::shared<double>pix0;
+  af::shared<double>dists;
   af::shared<double>Xbeam;
   af::shared<double>Ybeam;
 };

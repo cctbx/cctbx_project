@@ -51,6 +51,7 @@ namespace gpu {
         bool verbose = false;
         if(verbose)printf("WARNING: dxtbx model is lefthanded. Inverting odet_vector.\n");
         odet_vector = -1. * odet_vector;
+        close_distance = -1*close_distance;
       }
 
       sdet.push_back(sdet_vector.length());
@@ -65,6 +66,7 @@ namespace gpu {
       }
       /* set beam centre */
       scitbx::vec2<double> dials_bc=arg_detector[panel_id].get_beam_centre(arg_beam.get_s0());
+      dists.push_back(close_distance);
       Xbeam.push_back(dials_bc[0]/1000.0);
       Ybeam.push_back(dials_bc[1]/1000.0);
     }
@@ -77,6 +79,7 @@ namespace gpu {
             odet.push_back(nB.odet_vector[idx_vec]);
             pix0.push_back(nB.pix0_vector[idx_vec]);
       }
+      dists.push_back(nB.close_distance);
       Xbeam.push_back(nB.Xbeam);
       Ybeam.push_back(nB.Ybeam);
   }
@@ -277,6 +280,7 @@ namespace gpu {
 
         cudaSafeCall(cudaMalloc((void ** )&cu_pix0_vector, sizeof(*cu_pix0_vector) * met_length));
         cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_pix0_vector, metrology.pix0.begin(), met_length));
+
   }
 
   void
