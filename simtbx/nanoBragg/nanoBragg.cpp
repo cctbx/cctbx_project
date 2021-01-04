@@ -30,7 +30,7 @@ class encapsulated_twodev
     double em,t,y;
 
   public:
-    encapsulated_twodev() : iset(0), gset(0.), oldm(-1.0) {}
+    encapsulated_twodev() : iset(0), gset(0.), sq(0), alxm(0), g(0), oldm(-1.0) {}
 
     /* return gaussian deviate with rms=1 and FWHM = 2/sqrt(log(2)) */
     double gaussdev(long *idum){
