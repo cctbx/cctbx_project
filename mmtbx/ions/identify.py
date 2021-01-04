@@ -1048,7 +1048,7 @@ class manager(object):
 
       n_elec = sasaki.table(symbol.upper()).atomic_number() - elem.charge
       # lighter elements are not expected to have any anomalous signal
-      if (n_elec <= 12) and (atom_props.fpp > 0.1):
+      if (n_elec <= 12) and (atom_props.fpp is not None and atom_props.fpp > 0.1):
         continue
       mass_ratio = atom_props.estimated_weight / max(n_elec, 1)
       # note that anomalous peaks are more important than the 2mFo-DFc level
@@ -2057,7 +2057,7 @@ class AtomProperties(object):
     if (inaccuracies is None):
       inaccuracies = self.inaccuracies[identity] = set()
     if (ion_params.element.upper() in ["MG", "NA"]):
-      if (self.fpp is not None) or (self.peak_anom > 1):
+      if (self.fpp is not None) or (self.peak_anom is not None and self.peak_anom > 1):
         inaccuracies.add(self.BAD_FPP)
     else :
       # XXX in theory the fpp_ratio should be no more than 1.0 unless we are
@@ -2290,7 +2290,7 @@ class AtomProperties(object):
       return HEAVY_ION
     if (self.fp is not None) and (self.fp > params.fp_max):
       return HEAVY_ION
-    if (self.peak_anom > params.max_anom_level):
+    if self.peak_anom is not None and self.peak_anom > params.max_anom_level:
       inaccuracies.add(self.ANOM_PEAK)
       atom_type = HEAVY_ION
     if self.peak_fofc > params.max_fofc_level:
