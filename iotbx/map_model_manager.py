@@ -2044,6 +2044,14 @@ class map_model_manager(object):
       selection_string = " or ".join(get_selections_for_segments(model,
          skip_n_residues_on_ends = skip_n_residues_on_ends))
       model = model.apply_selection_string(selection_string)
+      if model is None:  # nothing selected...create empty model
+        from mmtbx.model import manager as model_manager
+        model = model_manager.from_sites_cart(
+           sites_cart = flex.vec3_double(), # empty
+           crystal_symmetry = self.crystal_symmetry())
+        self.map_manager(
+            ).set_model_symmetries_and_shift_cart_to_match_map(model)
+
 
     if soft_mask and (not soft_mask_radius):
         soft_mask_radius = self.resolution()
