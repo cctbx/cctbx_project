@@ -835,15 +835,15 @@ class HKLViewFrame() :
     self.viewer.UpdateBinValues(binner_idx, binvals, nuniquevalues)
 
 
-  def SetSceneBinLabel(self, binner_idx = 0 ):
-    self.params.NGL_HKLviewer.binner_idx = binner_idx
-    self.update_settings()
-
-
-  def SetSceneNbins(self, nbins):
+  def SetSceneNbins(self, nbins, binner_idx = 0):
     self.params.NGL_HKLviewer.nbins = nbins
+    self.params.NGL_HKLviewer.binner_idx = binner_idx
     self.params.NGL_HKLviewer.NGL.bin_opacities = str([ (1.0, e) for e in range(nbins) ])
     self.update_settings()
+
+
+  def GetNumberingOfBinners(self):
+    return [ (i,e) for i,e in enumerate(self.viewer.bin_labels_type_idxs) ]
 
 
   def SetSceneBinThresholds(self, binvals=[]):
@@ -903,7 +903,7 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def SetRadiiScale(self, scale, nth_power_scale = -1.0):
+  def SetRadiiScale(self, scale=1.0, nth_power_scale = -1.0):
     """
     Scale radii. Decrease the contrast between large and small radii with nth_root_scale < 1.0
     If nth_power_scale=0.0 then all radii will have the same size regardless of data values.
@@ -1076,31 +1076,30 @@ class HKLViewFrame() :
     self.viewer.TranslateHKLpoints(h, k, l, hkldist)
 
 
-  def ClipPlaneAndVector(self, h, k, l, hkldist=0.0, clipwidth=None,
-   fixorientation="reflection_slice", fractional_vector = "reciprocal", is_parallel=False):
-    # clip planes are removed if h,k,l = 0,0,0
-    self.params.NGL_HKLviewer.clip_plane.h = h
-    self.params.NGL_HKLviewer.clip_plane.k = k
-    self.params.NGL_HKLviewer.clip_plane.l = l
-    self.params.NGL_HKLviewer.clip_plane.hkldist = hkldist
-    self.params.NGL_HKLviewer.clip_plane.clipwidth = clipwidth
-    self.params.NGL_HKLviewer.clip_plane.is_parallel = is_parallel
-    self.params.NGL_HKLviewer.NGL.fixorientation = fixorientation
-    self.params.NGL_HKLviewer.clip_plane.fractional_vector = fractional_vector
+  def SetClipPlane(self, use=True, hkldist=0.0, clipwidth=2.0):
+    if use:
+      self.params.NGL_HKLviewer.clip_plane.hkldist = hkldist
+      self.params.NGL_HKLviewer.clip_plane.clipwidth = clipwidth
+      self.params.NGL_HKLviewer.slice_mode = False
+      self.params.NGL_HKLviewer.inbrowser = True
+    else:
+      self.params.NGL_HKLviewer.clip_plane.clipwidth = None
     self.update_settings()
 
 
-  def ShowTNCSModulation(self, vectorparallel=True, clipwidth=4):
-    if self.tncsvec:
-      self.ClipPlaneAndVector( self.tncsvec[0], self.tncsvec[1], self.tncsvec[2],
-                              hkldist=0.0, clipwidth=clipwidth, fixorientation="vector",
-                              is_parallel=vectorparallel, fractional_vector = "realspace")
-
-
-  def SpinAnimateAroundTNCSVecParallel(self):
-    self.viewer.clip_plane_abc_vector( self.tncsvec[0], self.tncsvec[1], self.tncsvec[2],
-             hkldist=0.0, clipwidth=6, fixorientation="vector", is_parallel=True)
-    self.viewer.SpinAnimate(0,1,0)
+  def SinglePlaneOfReflections(self, use=True, axis="h", slice_index=0 ):
+    if use:
+      NGL_HKLviewer.viewer.slice_axis = axis
+      NGL_HKLviewer.viewer.is_parallel = False
+      NGL_HKLviewer.viewer.slice_mode = True
+      NGL_HKLviewer.viewer.inbrowser = False
+      NGL_HKLviewer.viewer.fixorientation = "reflection_slice"
+      NGL_HKLviewer.viewer.slice_index = slice_index
+    else:
+      NGL_HKLviewer.viewer.slice_mode = False
+      NGL_HKLviewer.viewer.inbrowser = True
+      NGL_HKLviewer.viewer.fixorientation = "None"
+    self.update_settings()
 
 
   def AnimateRotateAroundVector(self, vecnr, speed):

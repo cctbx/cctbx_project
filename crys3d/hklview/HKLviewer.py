@@ -634,7 +634,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
             self.vectortable2.clearContents()
             self.vectortable2.setRowCount(len(self.all_vectors)+1)
             for row, (opnr, label, order, v, hklop, hkls, abcs) in enumerate(self.all_vectors):
-              for col,elm in enumerate((opnr, label, hklop, hkls, abcs)):
+              for col,elm in enumerate((label, hklop, hkls, abcs)):
                 item = QTableWidgetItem(str(elm))
                 if col == 0:
                   item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled ^ Qt.ItemIsEditable)
@@ -643,26 +643,31 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
                 self.vectortable2.setItem(row, col, item)
 
             rc = self.vectortable2.rowCount()-1 # last row is for user defined vector
-            item = QTableWidgetItem(str(rc+1))
+            #item = QTableWidgetItem(str(rc+1))
+            item = QTableWidgetItem("new vector")
             item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled ^ Qt.ItemIsEditable)
             item.setCheckState(Qt.Unchecked)
             self.vectortable2.setItem(rc, 0, item)
 
-            item = QTableWidgetItem("new vector")
+            #item = QTableWidgetItem("new vector")
+            #item.setFlags(item.flags() | Qt.ItemIsEditable)
+            #self.vectortable2.setItem(rc, 1, item)
+
+            item = QTableWidgetItem()
             item.setFlags(item.flags() | Qt.ItemIsEditable)
+            #self.vectortable2.setItem(rc, 2, item)
             self.vectortable2.setItem(rc, 1, item)
 
             item = QTableWidgetItem()
             item.setFlags(item.flags() | Qt.ItemIsEditable)
+            #self.vectortable2.setItem(rc, 3, item)
             self.vectortable2.setItem(rc, 2, item)
 
-            item = QTableWidgetItem()
-            item.setFlags(item.flags() | Qt.ItemIsEditable)
-            self.vectortable2.setItem(rc, 3, item)
 
             item = QTableWidgetItem()
             item.setFlags(item.flags() | Qt.ItemIsEditable)
-            self.vectortable2.setItem(rc, 4, item)
+            #self.vectortable2.setItem(rc, 4, item)
+            self.vectortable2.setItem(rc, 3, item)
             self.vectortable2.resizeColumnsToContents()
           self.unfeedback = False
           if self.infodict.get("file_name"):
@@ -1261,8 +1266,8 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     try:
       rc = self.vectortable2.rowCount()
       label = None
-      if self.vectortable2.item(row, 1) is not None:
-        label = self.vectortable2.item(row, 1).text()
+      if self.vectortable2.item(row, 0) is not None:
+        label = self.vectortable2.item(row, 0).text()
 
       if row < len(self.all_vectors):
         if label is None:
@@ -1311,16 +1316,16 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
               self.ShowAllVectorsBtn.setCheckState(Qt.PartiallyChecked)
 
       if row==(rc-1) and label !="" and label != "new vector": # a user defined vector
-        if col==2:
-          hklop = self.vectortable2.item(row, 2).text()
+        if col==1:
+          hklop = self.vectortable2.item(row, 1).text()
           self.PhilToJsRender("""NGL_HKLviewer.viewer.add_user_vector_hkl_op = '%s'
           NGL_HKLviewer.viewer.user_label = %s """ %(hklop, label))
-        if col==3:
-          hklvec = self.vectortable2.item(row, 3).text()
+        if col==2:
+          hklvec = self.vectortable2.item(row, 2).text()
           self.PhilToJsRender("""NGL_HKLviewer.viewer.add_user_vector_hkl = '(%s)'
           NGL_HKLviewer.viewer.user_label = %s """ %(hklvec, label))
-        if col==4:
-          abcvec = self.vectortable2.item(row, 4).text()
+        if col==3:
+          abcvec = self.vectortable2.item(row, 3).text()
           self.PhilToJsRender("""NGL_HKLviewer.viewer.add_user_vector_abc = '(%s)'
           NGL_HKLviewer.viewer.user_label = %s """ %(abcvec, label))
 
@@ -1417,7 +1422,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
   def onClipPlaneChkBox(self):
     if self.unfeedback:
       return
-    hkldist, clipwidth = -1, None
+    hkldist, clipwidth = 0.0, None
     if self.ClipPlaneChkGroupBox.isChecked():
       if self.showsliceGroupCheckbox.isChecked() == False:
         self.showsliceGroupCheckbox.setChecked(False)
@@ -1427,21 +1432,13 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
                                                       inbrowser = True
                                                   }
                             """)
-      #self.clipwidth_spinBox.setValue(4)
       hkldist, clipwidth = self.hkldistval, self.clipwidth_spinBox.value()
     philstr = """NGL_HKLviewer.clip_plane {
-  hkldist = %s
   clipwidth = %s
 }
-        """ %(hkldist, clipwidth )
+        """ %clipwidth
 
     self.PhilToJsRender(philstr)
-    #else:
-    #  self.showsliceGroupCheckbox.setChecked(True)
-    #  self.PhilToJsRender("""NGL_HKLviewer.viewer.slice_mode = True
-    #                         NGL_HKLviewer.viewer.inbrowser = False
-    #                         NGL_HKLviewer.clip_plane.clipwidth = None
-    #                       """)
 
 
   def onRotaVecAngleChanged(self, val):
@@ -1486,8 +1483,8 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def onHKLdistChanged(self, val):
-    self.hkldistval = val
     if not self.unfeedback:
+      self.hkldistval = val
       self.PhilToJsRender("NGL_HKLviewer.clip_plane.hkldist = %f" %self.hkldistval)
 
 
@@ -1693,7 +1690,8 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.reciprocunitcellslider.sliderReleased.connect(self.onReciprocUnitcellScale)
     #self.ResetViewBtn.clicked.connect(self.onResetViewBtn)
     #self.SaveImageBtn.clicked.connect(self.onSaveImage)
-    labels = ["draw", "name", "rotation", "as hkl", "as abc"]
+    #labels = ["draw", "name", "rotation", "as hkl", "as abc"]
+    labels = ["draw", "rotation", "as hkl", "as abc"]
     self.vectortable2.setHorizontalHeaderLabels(labels)
     self.vectortable2.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.vectortable2.itemChanged.connect(self.onVectorTableItemChanged  )

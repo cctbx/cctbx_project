@@ -8,7 +8,6 @@
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
-
 from __future__ import absolute_import, division, print_function
 
 from PySide2.QtWebEngineWidgets import QWebEngineView
@@ -19,6 +18,7 @@ except Exception as e: # if invoked by a generic python that doesn't know cctbx 
 
 from PySide2.QtCore import QCoreApplication, QMetaObject, QRect, QSize, Qt
 from PySide2.QtWidgets import *
+
 
 
 class Ui_MainWindow(object):
@@ -517,8 +517,8 @@ class Ui_MainWindow(object):
         self.gridLayout_8.setObjectName(u"gridLayout_8")
         self.gridLayout_8.setContentsMargins(3, 3, 3, 3)
         self.vectortable2 = QTableWidget(self.RotationVectorsBox)
-        if (self.vectortable2.columnCount() < 5):
-            self.vectortable2.setColumnCount(5)
+        if (self.vectortable2.columnCount() < 4):
+            self.vectortable2.setColumnCount(4)
         if (self.vectortable2.rowCount() < 4):
             self.vectortable2.setRowCount(4)
         self.vectortable2.setObjectName(u"vectortable2")
@@ -531,7 +531,7 @@ class Ui_MainWindow(object):
         self.vectortable2.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.vectortable2.setWordWrap(False)
         self.vectortable2.setRowCount(4)
-        self.vectortable2.setColumnCount(5)
+        self.vectortable2.setColumnCount(4)
         self.vectortable2.horizontalHeader().setCascadingSectionResizes(True)
         self.vectortable2.horizontalHeader().setDefaultSectionSize(50)
         self.vectortable2.verticalHeader().setVisible(False)
@@ -768,7 +768,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.functionTabWidget.setCurrentIndex(2)
+        self.functionTabWidget.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -800,7 +800,7 @@ class Ui_MainWindow(object):
         self.missingcheckbox.setText(QCoreApplication.translate("MainWindow", u"Show Missing Reflections", None))
         self.onlymissingcheckbox.setText(QCoreApplication.translate("MainWindow", u"Only", None))
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab), QCoreApplication.translate("MainWindow", u"Expansion", None))
-        self.showsliceGroupCheckbox.setTitle(QCoreApplication.translate("MainWindow", u"Explicitly with a plane at", None))
+        self.showsliceGroupCheckbox.setTitle(QCoreApplication.translate("MainWindow", u"Show a single plane of reflections", None))
         self.label_3.setText(QCoreApplication.translate("MainWindow", u"equal to", None))
         self.PlaneParallelCheckbox.setText(QCoreApplication.translate("MainWindow", u"Align Parallel to Screen", None))
         self.ClipPlaneChkGroupBox.setTitle(QCoreApplication.translate("MainWindow", u"Slice with a clip plane defined by:", None))
