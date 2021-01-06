@@ -436,7 +436,7 @@ class hklview_3d:
       if self.viewerparams.slice_axis=="k": hkl = [0,1,0]
       if self.viewerparams.slice_axis=="l": hkl = [0,0,1]
       R = hkl[0] * self.normal_kl + hkl[1] * self.normal_lh - hkl[2] * self.normal_hk
-      self.orient_vector_parallel_with_screen(R[0])
+      self.orient_vector_to_screen(R[0])
 
     if has_phil_path(diff_phil,
                       "scene_bin_thresholds", # TODO: group bin phil parameters together in subscope
@@ -471,19 +471,14 @@ class hklview_3d:
       if has_phil_path(self.diff_phil, "angle_around_vector"): # no need to redraw any clip plane
         return
       if self.viewerparams.fixorientation == "vector":
-        self.orient_vector_parallel_with_screen(self.currentrotvec)
+        self.orient_vector_to_screen(self.currentrotvec)
       self.SetMouseSpeed(self.ngl_settings.mouse_sensitivity)
-      R = flex.vec3_double( [(0,0,0)])
       hkldist = -1
       clipwidth = None
-      isreciprocal = True
       self.fix_orientation()
       if self.params.clip_plane.clipwidth and not self.viewerparams.slice_mode:
         clipwidth = self.params.clip_plane.clipwidth
         hkldist = self.params.clip_plane.hkldist
-        R = flex.vec3_double( [(self.params.clip_plane.h, self.params.clip_plane.k, self.params.clip_plane.l)])
-        if self.params.clip_plane.fractional_vector == "realspace" or self.params.clip_plane.fractional_vector == "tncs":
-          isreciprocal = False
       self.make_clip_plane(hkldist, clipwidth)
       if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
         self.ExpandInBrowser()
@@ -1922,7 +1917,7 @@ Distance: %s
       if val:
         self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], r=0.1, g=0.1,b=0.1,
                                   label=label, name=name, radius=0.2, labelpos=1.0)
-        self.currentrotvec = v
+        self.currentrotvec = v # the vector used for aligning
 
         if order > 0 and hklop != "":
 # if this is a rotation operator deduce the group of successive rotation matrices it belongs to
@@ -1945,7 +1940,7 @@ Distance: %s
       self.RemovePrimitives("sym_HKLs")
       for i,hkl in enumerate(self.visual_symHKLs):
         thkl = tuple(hkl)
-        hklstr = "hkl: (%d,%d,%d)" %thkl
+        hklstr = "H,K,L: %d,%d,%d" %thkl
         if i < len(self.visual_symHKLs)-1:
           self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label=hklstr, r=0.5, g=0.3, b=0.3,
                            radius=0.1, labelpos=1.0)
@@ -2055,7 +2050,7 @@ Distance: %s
     self.realspace_scale = self.scene.renderscale * reciprocspan_length / bodydiagonal_length
 
 
-  def orient_vector_parallel_with_screen(self, cartvec):
+  def orient_vector_to_screen(self, cartvec):
     if cartvec is None:
       return
     angle_x_xyvec, angle_z_svec = self.get_cartesian_vector_angles(0, 0, 0,

@@ -938,7 +938,7 @@ p, li { white-space: pre-wrap; }
                          </sizepolicy>
                         </property>
                         <property name="title">
-                         <string>Align Vector</string>
+                         <string>Orient Vector</string>
                         </property>
                         <property name="checkable">
                          <bool>true</bool>
@@ -970,6 +970,9 @@ p, li { white-space: pre-wrap; }
                           <widget class="QRadioButton" name="AlignNormalBtn">
                            <property name="text">
                             <string>Normal to Screen</string>
+                           </property>
+                           <property name="checked">
+                            <bool>true</bool>
                            </property>
                           </widget>
                          </item>

@@ -925,13 +925,9 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def SetColourScheme(self, val):
-    self.params.NGL_HKLviewer.viewer.color_scheme = val
-    self.update_settings()
-
-
-  def SetSqrtScaleColours(self, val):
-    self.params.NGL_HKLviewer.viewer.sqrt_scale_colors = val
+  def SetColourScheme(self, color_scheme, color_powscale=1.0):
+    self.params.NGL_HKLviewer.viewer.color_scheme = color_scheme
+    self.params.NGL_HKLviewer.viewer.color_powscale = color_powscale
     self.update_settings()
 
 
@@ -1031,6 +1027,11 @@ class HKLViewFrame() :
 
 
   def AddUserVector(self, hkl_op="", abc="", hkl="", label=""):
+    """
+    Vector can be specified as a rotation operator, say "-h-k,k,-l" subject to spacegroup contraints,
+    as a fractional vector in real space or as a fractional vector in reciprocal space. If
+    specified as a rotation operator the derived vector is the implicit rotation axis.
+    """
     self.params.NGL_HKLviewer.viewer.user_label = label
     self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op = str(hkl_op)
     self.params.NGL_HKLviewer.viewer.add_user_vector_abc = str(abc)
@@ -1058,24 +1059,6 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def NormalVectorToClipPlane(self, h, k, l, hkldist=0.0,
-                           clipNear=None, clipFar=None, fixorientation="vector"):
-    self.viewer.RemoveAllReciprocalVectors()
-    self.viewer.AddVector(h, k, l)
-    if fixorientation != "None":
-      self.viewer.DisableMouseRotation()
-    else:
-      self.viewer.EnableMouseRotation()
-    self.viewer.PointVectorOut()
-    if clipNear is None or clipFar is None:
-      halfdist = (self.viewer.OrigClipFar - self.viewer.OrigClipNear) / 2.0
-      self.viewer.GetBoundingBox()
-      clipNear = halfdist - self.viewer.scene.min_dist*50/self.viewer.boundingZ
-      clipFar = halfdist + self.viewer.scene.min_dist*50/self.viewer.boundingZ
-    self.viewer.SetClipPlaneDistances(clipNear, clipFar, self.viewer.cameraPosZ)
-    self.viewer.TranslateHKLpoints(h, k, l, hkldist)
-
-
   def SetClipPlane(self, use=True, hkldist=0.0, clipwidth=2.0):
     if use:
       self.params.NGL_HKLviewer.clip_plane.hkldist = hkldist
@@ -1099,6 +1082,15 @@ class HKLViewFrame() :
       NGL_HKLviewer.viewer.slice_mode = False
       NGL_HKLviewer.viewer.inbrowser = True
       NGL_HKLviewer.viewer.fixorientation = "None"
+    self.update_settings()
+
+
+  def OrientVector(self, vecnr, is_parallel, val=True):
+    NGL_HKLviewer.viewer.fixorientation = "None"
+    if val:
+      NGL_HKLviewer.viewer.is_parallel = is_parallel
+      NGL_HKLviewer.viewer.fixorientation = "vector"
+      NGL_HKLviewer.viewer.show_vector = '[%d, True]' %vecnr
     self.update_settings()
 
 
@@ -1159,7 +1151,7 @@ class HKLViewFrame() :
     """
     return array of tuples with information on each miller array
     """
-    return self.array_infotpls
+    return self.viewer.array_infotpls
 
 
   def GetSceneDataLabels(self):
@@ -1220,12 +1212,6 @@ NGL_HKLviewer {
   reciprocal_unit_cell_scale_fraction = None
     .type = float
   clip_plane {
-    h = 2.0
-      .type = float
-    k = 0
-      .type = float
-    l = 0
-      .type = float
     angle_around_vector = \"[0,0]\"
       .type = str
     animate_rotation_around_vector = \"[0,0]\"
@@ -1234,7 +1220,7 @@ NGL_HKLviewer {
       .type = float
     clipwidth = None
       .type = float
-    fractional_vector = reciprocal *realspace tncs
+    fractional_vector = reciprocal *realspace
       .type = choice
     bequiet = False
       .type = bool

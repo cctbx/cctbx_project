@@ -605,6 +605,7 @@ class Ui_MainWindow(object):
 
         self.AlignNormalBtn = QRadioButton(self.AlignVectorGroupBox)
         self.AlignNormalBtn.setObjectName(u"AlignNormalBtn")
+        self.AlignNormalBtn.setChecked(True)
 
         self.gridLayout_17.addWidget(self.AlignNormalBtn, 1, 0, 1, 1)
 
@@ -841,7 +842,7 @@ class Ui_MainWindow(object):
         self.RotationVectorsBox.setTitle(QCoreApplication.translate("MainWindow", u"Rotation Operators or Vector(s)", None))
         self.ShowAllVectorsBtn.setText(QCoreApplication.translate("MainWindow", u"Show All", None))
         self.rotavecangle_labeltxt.setText(QCoreApplication.translate("MainWindow", u"Rotate Reflections around Vector with Angle", None))
-        self.AlignVectorGroupBox.setTitle(QCoreApplication.translate("MainWindow", u"Align Vector", None))
+        self.AlignVectorGroupBox.setTitle(QCoreApplication.translate("MainWindow", u"Orient Vector", None))
         self.AlignParallelBtn.setText(QCoreApplication.translate("MainWindow", u"Parallel to Screen", None))
         self.AlignNormalBtn.setText(QCoreApplication.translate("MainWindow", u"Normal to Screen", None))
         self.AnimaRotCheckBox.setText(QCoreApplication.translate("MainWindow", u"Rotate continuously", None))

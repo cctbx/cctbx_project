@@ -58,17 +58,25 @@ class MakeNewDataForm(QDialog):
 class AboutForm(QDialog):
   def __init__(self, parent=None):
     super(AboutForm, self).__init__(parent.window)
-    self.setWindowTitle("About HKL-viewer")
+    self.setWindowTitle("About HKLviewer")
     self.setWindowFlags(Qt.Tool)
     mainLayout = QGridLayout()
     self.aboutlabel = QLabel()
-    self.aboutlabel.setText("HKL-viewer, A visualiser for reflection data in crystallography")
+    self.aboutlabel.setWordWrap(True)
+    aboutstr = """<html><head/><body><p><span style=" font-weight:600;">
+    HKLviewer, </span>A visualiser for reflection data in crystallography
+    <span style=" font-weight:600;"><br/>Developers: </span>Dr. Robert D. Oeffner<br/>
+    Cambridge Institute for Medical Research<br/>
+    University of Cambridge<br/>
+    HKLviewer is part of the CCTBX library and any derived software thereof.
+    </p></body></html>"""
+    self.aboutlabel.setText(aboutstr)
     self.copyrightstxt = QTextEdit()
     self.copyrightstxt.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
     self.copyrightstxt.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
     self.copyrightstxt.setReadOnly(True)
     self.copyrightstxt.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
-    self.copyrightstxt.setMinimumSize(QSize(400, 150))
+    self.copyrightstxt.setMinimumSize(QSize(400, 100))
     self.copyrightstxt.setMaximumSize(QSize(16777215, 16777215))
     self.OKbtn = QPushButton()
     self.OKbtn.setText("OK")
@@ -86,7 +94,7 @@ class AboutForm(QDialog):
 class SettingsForm(QDialog):
   def __init__(self, parent=None):
     super(SettingsForm, self).__init__(parent.window)
-    self.setWindowTitle("HKL-viewer Settings")
+    self.setWindowTitle("HKLviewer Settings")
     self.setWindowFlags(Qt.Tool)
     myGroupBox = QGroupBox("Stuff")
     layout = QGridLayout()
@@ -237,7 +245,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.ttip_click_invoke = "hover"
 
     self.ColourMapSelectDlg = MPLColourSchemes(self)
-    self.ColourMapSelectDlg.setWindowTitle("HKL-viewer Colour Gradient Maps")
+    self.ColourMapSelectDlg.setWindowTitle("HKLviewer Colour Gradient Maps")
 
     self.settingsform = SettingsForm(self)
     self.aboutform = AboutForm(self)
@@ -284,7 +292,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     else:
       self.BrowserBox.setMaximumWidth(0)
 
-    self.window.setWindowTitle("HKL-Viewer")
+    self.window.setWindowTitle("HKLviewer")
     self.cctbxproc = None
     self.LaunchCCTBXPython()
     self.out = None
@@ -344,7 +352,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     #self.window.setVisible(False)
     if self.UseOSBrowser == False:
       self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
-    print("HKL-viewer closing down...")
+    print("HKLviewer closing down...")
     nc = 0
     sleeptime = 0.2
     timeout = 10
@@ -408,7 +416,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
             "MTZ Files (*.mtz);;HKL Files (*.hkl);;CIF Files (*.cif);;SCA Files (*.sca);;All Files (*)", "", options)
     if fileName:
       #self.HKLnameedit.setText(fileName)
-      self.window.setWindowTitle("HKL-viewer: " + fileName)
+      self.window.setWindowTitle("HKLviewer: " + fileName)
       #self.infostr = ""
       self.textInfo.setPlainText("")
       self.fileisvalid = False
@@ -671,7 +679,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
             self.vectortable2.resizeColumnsToContents()
           self.unfeedback = False
           if self.infodict.get("file_name"):
-            self.window.setWindowTitle("HKL-viewer: " + self.infodict.get("file_name", "") )
+            self.window.setWindowTitle("HKLviewer: " + self.infodict.get("file_name", "") )
 
           if self.infodict.get("NewFileLoaded"):
             self.NewFileLoaded = self.infodict.get("NewFileLoaded",False)
@@ -779,17 +787,11 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.power_scale_spinBox.setEnabled( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] >= 0.0 )
     self.radii_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.scale'])
     self.showsliceGroupCheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_mode'])
-    #self.hvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.h'])
-    #self.kvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.k'])
-    #self.lvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.l'])
     self.expandP1checkbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.expand_to_p1'])
     self.expandAnomalouscheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.expand_anomalous'])
     self.sysabsentcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_systematic_absences'])
     self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.NGL.tooltip_alpha'])
-    #self.HKLnameedit.setText( self.currentphilstringdict['NGL_HKLviewer.filename'])
-    #self.setWindowTitle("HKL-viewer: " + self.currentphilstringdict['NGL_HKLviewer.filename'])
     self.mousemoveslider.setValue( 2000*self.currentphilstringdict['NGL_HKLviewer.NGL.mouse_sensitivity'])
-    #self.rotavecangle_slider.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
     vecnr, dgr = self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector']
     self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %2.fº" %dgr)
 
@@ -812,9 +814,6 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth']:
       self.clipwidth_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'])
     self.hkldist_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.hkldist'])
-    #self.realspacevecBtn.setChecked( "realspace" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
-    #self.recipvecBtn.setChecked( "reciprocal" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
-    #self.clipTNCSBtn.setChecked( "tncs" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
     self.PlaneParallelCheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.fixorientation']== "reflection_slice")
     self.AlignVectorGroupBox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.fixorientation']== "vector")
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_only_missing'])
@@ -1035,16 +1034,21 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       return
     if self.showsliceGroupCheckbox.isChecked():
       #self.ClipPlaneChkGroupBox.setChecked(False)
-      self.PhilToJsRender("""NGL_HKLviewer.viewer.slice_mode = True
-                             NGL_HKLviewer.viewer.inbrowser = False
-                             NGL_HKLviewer.viewer.fixorientation = "reflection_slice"
-                       """)
+      self.PhilToJsRender("""NGL_HKLviewer.viewer {
+  slice_mode = True
+  inbrowser = False
+  fixorientation = "reflection_slice"
+  is_parallel = False
+}
+    """)
     else:
       #self.ClipPlaneChkGroupBox.setChecked(True)
-      self.PhilToJsRender("""NGL_HKLviewer.viewer.slice_mode = False
-                             NGL_HKLviewer.viewer.inbrowser = True
-                             NGL_HKLviewer.viewer.fixorientation = "None"
-                            """)
+      self.PhilToJsRender("""NGL_HKLviewer.viewer {
+  slice_mode = False
+  inbrowser = True
+  fixorientation = "None"
+}
+       """)
 
 
   def onSliceComboSelchange(self,i):
@@ -1858,7 +1862,6 @@ def run():
       settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
       settings.setValue("FontSize", guiobj.fontsize )
       settings.setValue("BrowserFontSize", guiobj.browserfontsize )
-      #settings.setValue("PowerScaleValue", guiobj.power_scale_spinBox.value())
       settings.setValue("PowerScaleValue", guiobj.currentphilstringdict["NGL_HKLviewer.viewer.nth_power_scale_radii"])
       settings.setValue("RadiiScaleValue", guiobj.radii_scale_spinBox.value())
       settings.setValue("ttip_click_invoke", guiobj.ttip_click_invoke)

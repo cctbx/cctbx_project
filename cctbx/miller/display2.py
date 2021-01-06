@@ -355,8 +355,6 @@ class scene(object):
         (settings.scale_colors_multiplicity)):
       data_for_colors = self.multiplicities.data().as_double()
       assert data_for_colors.size() == data.size()
-    elif (settings.sqrt_scale_colors) and (isinstance(data, flex.double)):
-      data_for_colors = flex.sqrt(flex.abs(data))
     elif isinstance(data, flex.complex_double):
       data_for_colors = self.phases
       foms_for_colours = self.foms
@@ -600,8 +598,6 @@ philstr = """
     .type = float
   scale = 1
     .type = float
-  sqrt_scale_colors = False
-    .type = bool
   phase_color = False
     .type = bool
   sigma_color = False

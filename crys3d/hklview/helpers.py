@@ -271,7 +271,7 @@ class MPLColourSchemes(QtWidgets.QDialog):
     gridlayout.addWidget(self.powscaletxtbox,    2, 2, 1, 1)
     gridlayout.addWidget(scroll,                 3, 0, 1, 3)
     gridlayout.addWidget(self.OKbtn,             4, 0, 1, 1)
-    gridlayout.addWidget(self.Cancelbtn,         4, 2, 1, 1)
+    gridlayout.addWidget(self.Cancelbtn,         4, 2, 1, 2)
     self.setLayout(gridlayout)
     scw = self.parent.app.style().pixelMetric(QtWidgets.QStyle.PM_ScrollBarExtent)
 
