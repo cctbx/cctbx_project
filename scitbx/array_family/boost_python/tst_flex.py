@@ -496,6 +496,10 @@ def exercise_misc():
     a.reshape(flex.grid(2,5))
     b = flex.long([0,1,2,-1,-2,2**30,2**31-1,-2**30,-2**31, 0])
     assert a.all_eq(b)
+  for flex_type in (flex.int, flex.int32, flex.long, flex.int64):
+    a = flex_type([0,1,2,2**30,2**31-1]).as_size_t()
+    b = flex.size_t([0,1,2,2**30,2**31-1])
+    assert a.all_eq(b)
   for flex_type in (flex.int8, flex.int16):
     a = flex_type([0,1,2,-1,-2,2**6,2**7-1,-2**6,-2**7, 0]).as_long()
     a.reshape(flex.grid(2,5))
