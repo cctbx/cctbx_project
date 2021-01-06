@@ -4,6 +4,7 @@
 #include <boost/python/def.hpp>
 #include <boost/python/list.hpp>
 #include <boost/python/dict.hpp>
+#include <boost/python/tuple.hpp>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/versa.h>
@@ -15,6 +16,7 @@
 #include <algorithm>
 #include <tuple>
 #include <string>
+#include <scitbx/math/linear_correlation.h>
 
 typedef cctbx::miller::index<> miller_index_t;
 namespace af = scitbx::af;
@@ -205,9 +207,9 @@ namespace sx_merging {
 
     af::shared<cbop_t> cb_ops;
     af::shared<af::shared<cctbx::miller::index<> > > indices;
-    af::shared<double> data_;
     af::shared<int> lower_i_;
     af::shared<int> upper_i_;
+    af::shared<double> data_;
     int n_sym_ops;
 
     void set_indices(cbop_t cb_op,
@@ -225,21 +227,30 @@ namespace sx_merging {
 
 
 
-    std::tuple<af::shared<int>, af::shared<int>, af::shared<double> >
+    boost::python::tuple
     compute_one_row(
         const int &n_lattices,
-        const int &i_row,
-        const af::shared<int> &lower_indices,
-        const af::shared<int> &upper_indices) const
+        const int &i_row) const
     {
       // WIP port of _compute_rij_matrix_one_row_block from test.py
-      std::map< std::tuple<long, long, std::string>, std::tuple<double, int> > rij_cache;
+      typedef std::tuple<long, long, std::string> cache_key_t;
+      typedef std::map<cache_key_t, std::tuple<double, int> > rij_cache_t;
+
+
+      rij_cache_t rij_cache;
+      cache_key_t cache_key;
+      cctbx::sgtbx::rt_mx k_inv_kk;
 
       af::shared<int> rij_row, rij_col;
       af::shared<double> rij_data;
 
-      int i_lower = lower_indices[i_row];
-      int i_upper = upper_indices[i_row];
+      double corr_coeff;
+      int n_obs;
+
+      int i_lower = lower_i_[i_row];
+      int i_upper = upper_i_[i_row];
+
+      af::shared<double> intensities_i, intensities_j;
 
       af::shared<cctbx::miller::match_indices> matchers;
       for (int i=0; i<n_sym_ops; ++i) {
@@ -251,38 +262,81 @@ namespace sx_merging {
       }
 
       for (int j_col=0; j_col<n_lattices; ++j_col) {
-        int j_lower = lower_indices[j_col], j_upper = upper_indices[j_col];
+        int j_lower = lower_i_[j_col], j_upper = upper_i_[j_col];
+
+        af::shared<cctbx::miller::index<> > indices_j;
 
         for (int k=0; k<n_sym_ops; ++k) {
-          cctbx::miller::match_indices matcher = matchers[k];
+          cctbx::miller::match_indices &matcher = matchers[k];
+          const cbop_t& cb_op_k = cb_ops[k];
+          
 
           for (int kk=0; kk<n_sym_ops; ++kk) {
+            const cbop_t& cb_op_kk = cb_ops[kk];
+            k_inv_kk = cb_op_k.c_inv() * cb_op_kk.c();
+            std::string k_inv_kk_str = k_inv_kk.as_xyz();
+            cache_key = std::make_tuple(i_row, j_col, k_inv_kk_str);
+            rij_cache_t::const_iterator found = rij_cache.find(cache_key);
+            if (found != rij_cache.end()) {
+              std::tuple<double, int> hit = found->second;
+              corr_coeff = std::get<0>(hit);
+              n_obs = std::get<1>(hit);
+            }
+            else {
 
-            if (i_row==j_col && k==kk) continue;
+              indices_j.clear();
+              for (int i=j_lower; i<j_upper; ++i) {
+                indices_j.push_back(indices[kk][i]);
+              }
 
-            int ik = i_row + (n_lattices * k);
-            int jk = j_col + (n_lattices * kk);
+              matcher.match_cached(indices_j);
 
-            //TODO: handle caching as below
-            /*
-            key = (i, j, str(cb_op_k.inverse() * cb_op_kk))
-            if use_cache and key in rij_cache:
-                cc, n = rij_cache[key]
-                */
+              af::shared<af::tiny<std::size_t, 2> > pairs = matcher.pairs();
+
+              intensities_i.clear();
+              intensities_j.clear();
+              for (int i=0; i<pairs.size(); ++i) {
+                intensities_i.push_back(data_[i_lower+pairs[i][0]]);
+                intensities_j.push_back(data_[j_lower+pairs[i][1]]);
+              }
+
+
+              if (i_row==j_col && k==kk) continue;
+
+              scitbx::math::linear_correlation<> corr(
+                  af::make_const_ref(intensities_i),
+                  af::make_const_ref(intensities_j)
+                  );
+
+              if (corr.is_well_defined()) {
+                corr_coeff = corr.coefficient();
+                n_obs = corr.n();
+              }
+              else {
+                corr_coeff = -1.;
+                n_obs = -1;
+              }
+
+              rij_cache[cache_key] = std::make_tuple(corr_coeff, n_obs);
+
+            }
+
+            if (n_obs==-1 || corr_coeff == -1.)
+              continue;
+            else {
+              int ik = i_row + (n_lattices * k);
+              int jk = j_col + (n_lattices * kk);
+              rij_row.push_back(ik);
+              rij_col.push_back(jk);
+              rij_data.push_back(corr_coeff);
+            }
+
 
 
           }
         }
-
-        
-
       }
-
-
-
-
-
-
+      return boost::python::make_tuple(rij_row, rij_col, rij_data);
     }
 
     std::string foo(const int& n_lattices,

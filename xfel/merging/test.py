@@ -4,6 +4,7 @@ from cctbx.array_family import flex
 from libtbx import easy_mp
 from scipy import sparse
 import math
+import time
 
 try:
     from line_profiler import LineProfiler as profile
@@ -40,7 +41,14 @@ class Reproducer:
             miller.map_to_asu(space_group_type, False, indices_reindexed)
             indices[cb_op.as_xyz()] = indices_reindexed
 
+        def _compute_rij_matrix_one_row_block_cpp(
+            i,
+            sym_ops=self.sym_ops):
+            pass
+
         def _compute_rij_matrix_one_row_block(i):
+            import time
+            t0 = time.time()
             rij_cache = {}
 
             n_sym_ops = len(self.sym_ops)
@@ -115,6 +123,7 @@ class Reproducer:
                             else:
                                 cc = None
                                 n = None
+
                             rij_cache[key] = (cc, n)
 
                         if (
@@ -145,6 +154,7 @@ class Reproducer:
             if self._weights is not None:
                 wij = sparse.coo_matrix((wij_data, (wij_row, wij_col)), shape=(NN, NN))
 
+            print(time.time()-t0)
             return rij, wij
 
         args = [(i,) for i in range(n_lattices)]
@@ -154,7 +164,7 @@ class Reproducer:
             pr.enable()
             _compute_rij_matrix_one_row_block(lineprof)
             pr.disable()
-            pr.print_stats()
+            #pr.print_stats()
             quit()
         else:
             results = easy_mp.parallel_map(
@@ -189,11 +199,15 @@ class Reproducer:
 
     def compute_rij_wij_cplusplus(self, use_cache=True):
         print("""Compute the rij_wij matrix in C++""")
+
+        n_lattices = self._lattices.size()
+        n_sym_ops = len(self.sym_ops)
+        NN = n_lattices * n_sym_ops
+
         lower_i = flex.int()
         upper_i = flex.int()
         for lidx in range(self._lattices.size()):
           LL,UU = self._lattice_lower_upper_index(lidx)
-          print(lidx,LL,UU)
           lower_i.append(LL)
           if UU is None:  UU = self._data.data().size()
           upper_i.append(UU)
@@ -201,14 +215,38 @@ class Reproducer:
         space_group_type = self._data.space_group().type()
         print (space_group_type.lookup_symbol(), "weight mode", self._weights)
         from xfel.merging import compute_rij_wij_detail
-        CC = compute_rij_wij_detail()
+        CC = compute_rij_wij_detail(
+            lower_i,
+            upper_i,
+            self._data.data())
         for cb_op in self.sym_ops:
             cb_op = sgtbx.change_of_basis_op(cb_op)
             indices_reindexed = cb_op.apply(self._data.indices())
             miller.map_to_asu(space_group_type, False, indices_reindexed)
             indices[cb_op.as_xyz()] = indices_reindexed
             CC.set_indices(cb_op, indices_reindexed)
-        print(CC.foo(self._lattices.size(), lower_i, upper_i, self._data.data()))
+        def call_cpp(i):
+            t0 = time.time()
+            rij_row, rij_col, rij_data = CC.compute_one_row(
+                self._lattices.size(),
+                i)
+            rij = sparse.coo_matrix((rij_data, (rij_row, rij_col)), shape=(NN, NN))
+            print(time.time()-t0)
+            return rij, None
+
+        results = easy_mp.parallel_map(
+            call_cpp,
+            range(n_lattices),
+            processes=64)
+
+        rij_matrix = None
+        for (rij, _) in results:
+            if rij_matrix is None:
+                rij_matrix = rij
+            else:
+                rij_matrix += rij
+        self.rij_matrix_cpp = flex.double(rij_matrix.todense())
+        return self.rij_matrix_cpp, None
 
 
     def __init__(self):
@@ -223,10 +261,22 @@ class Reproducer:
 
 if __name__=="__main__":
   REP = Reproducer()
-  REP.compute_rij_wij_cplusplus()
+  t0 = time.time()
+  Rij_cpp, _ = REP.compute_rij_wij_cplusplus()
+  print("c++: ", time.time()-t0)
   # set nproc to 64 for Gildea algorithm
   REP._nproc =  64
-  Rij, Wij = REP.compute_rij_wij_Gildea()
+  t0 = time.time()
+  Rij, Wij = REP.compute_rij_wij_Gildea(lineprof=-1)
+  print("py: ", time.time()-t0)
+
+  for _ in range(100):
+      import random
+      i = random.randint(0, Rij.size())
+      ref = Rij[i]
+      cpp = Rij_cpp[i]
+      if abs(ref-cpp)>0.001: print("{}: \t {:.3f} \t {:.3f}".format(i, ref, cpp))
+  import IPython;IPython.embed()
   if True:
         # debugging code useful for understanding the overall matrix structure
         from matplotlib import pyplot as plt
