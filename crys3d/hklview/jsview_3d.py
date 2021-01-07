@@ -376,9 +376,20 @@ class hklview_3d:
                      "show_anomalous_pairs")
        ):
         self.sceneisdirty = True
-        if has_phil_path(diff_phil, "scene_id",
-                         "scale",
-                         "nth_power_scale_radii"
+        if has_phil_path(diff_phil,
+                       "show_missing",
+                       "show_only_missing",
+                       "show_systematic_absences",
+                       "slice_axis",
+                       "slice_mode",
+                       "slice_index",
+                       "sigma_color",
+                       "sigma_radius",
+                       "scene_id",
+                       "color_scheme",
+                       "color_powscale",
+                       "scale",
+                       "nth_power_scale_radii"
             ):
           self.ConstructReciprocalSpace(curphilparam, scene_id=self.viewerparams.scene_id )
         else:
@@ -391,7 +402,6 @@ class hklview_3d:
                       "show_systematic_absences",
                       "binner_idx",
                       "nbins",
-                      "fontsize",
                       )
        ) and not has_phil_path(diff_phil, "scene_bin_thresholds") :
       self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.binner_idx,
@@ -425,7 +435,7 @@ class hklview_3d:
       self.animate_rotate_around_vector()
 
     if has_phil_path(diff_phil, "miller_array_operations"):
-      self.viewerparams.scene_id = len(self.HKLscenedict)-1
+      self.viewerparams.scene_id = len(self.hkl_scenes_infos)-1
       self.set_scene()
       self.params.miller_array_operations = ""
 
@@ -444,6 +454,7 @@ class hklview_3d:
                       "binner_idx",
                       "nbins",
                       "fontsize",
+                      "miller_array_operations",
                       "mouse_sensitivity",
                       "real_space_unit_cell_scale_fraction",
                       "reciprocal_unit_cell_scale_fraction",
@@ -500,7 +511,7 @@ class hklview_3d:
 
   def set_scene(self):
     self.binvals = []
-    if scene_id is None:
+    if self.viewerparams.scene_id is None:
       return False
     self.colour_scene_id = self.viewerparams.scene_id
     self.radii_scene_id = self.viewerparams.scene_id
@@ -634,18 +645,19 @@ class hklview_3d:
     return self.HKLInfo_from_dict(idx)[6], self.HKLInfo_from_dict(idx)[7]
 
 
-  def SupersetMillerArrays(self):
+  def SupersetMillerArrays(self, origindices):
     self.match_valarrays = []
     # First loop over all miller arrays to make a superset of hkls of all
     # miller arrays. Then loop over all miller arrays and extend them with NaNs
     # as to contain the same hkls as the superset
     self.mprint("Gathering superset of miller indices...")
     superset_array = self.proc_arrays[0].deep_copy()
-    set_of_indices = set([])
-    for i,procarray in enumerate(self.proc_arrays):
-      set_of_indices |= set( list(procarray.indices()) )
-    self.mprint("Extending miller arrays to match superset of miller indices...")
-    indiceslst = flex.miller_index( list( set_of_indices ) )
+    #set_of_indices = set([])
+    #for i,procarray in enumerate(self.proc_arrays):
+    #  set_of_indices |= set( list(procarray.indices()) )
+    #self.mprint("Extending miller arrays to match superset of miller indices...")
+    #indiceslst = flex.miller_index( list( set_of_indices ) )
+    indiceslst = origindices
     for i,procarray in enumerate(self.proc_arrays):
       # first match indices in currently selected miller array with indices in the other miller arrays
       matchindices = miller.match_indices(indiceslst, procarray.indices() )
@@ -655,14 +667,15 @@ class hklview_3d:
       #  superset_array._anomalous_flag = valarray._anomalous_flag
       #missing = indiceslst.lone_set( valarray.indices() )
 
-      missing = indiceslst.select( miller.match_indices(valarray.indices(), indiceslst ).singles(1))
+      #missing = indiceslst.select( miller.match_indices(valarray.indices(), indiceslst ).singles(1))
 
       # insert NAN values for reflections in self.miller_array not found in procarray
-      valarray = display.ExtendMillerArray(valarray, missing.size(), missing )
+      #valarray = display.ExtendMillerArray(valarray, missing.size(), missing )
       #match_valarray = valarray
-      match_valindices = miller.match_indices(superset_array.indices(), valarray.indices() )
+      #match_valindices = miller.match_indices(superset_array.indices(), valarray.indices() )
+      match_valindices = miller.match_indices(indiceslst, valarray.indices() )
       match_valarray = valarray.select( match_valindices.pairs().column(1) )
-      match_valarray.sort(by_value="packed_indices")
+      #match_valarray.sort(by_value="packed_indices")
       match_valarray.set_info(procarray.info() )
       self.match_valarrays.append( match_valarray )
     self.mprint("Done making superset")
@@ -724,7 +737,6 @@ class hklview_3d:
                          self.viewerparams.sigma_color,
                          self.viewerparams.color_scheme,
                          self.viewerparams.color_powscale,
-                         self.ngl_settings.fontsize,
                          sceneid,
                          self.viewerparams.scale,
                          self.viewerparams.nth_power_scale_radii
@@ -766,7 +778,6 @@ class hklview_3d:
                                 self.viewerparams.sigma_color,
                                 self.viewerparams.color_scheme,
                                 self.viewerparams.color_powscale,
-                                self.ngl_settings.fontsize,
                                 sceneid,
                                 self.viewerparams.scale,
                                 self.viewerparams.nth_power_scale_radii
@@ -794,7 +805,6 @@ class hklview_3d:
                               self.viewerparams.sigma_color,
                               self.viewerparams.color_scheme,
                               self.viewerparams.color_powscale,
-                              self.ngl_settings.fontsize,
                               self.viewerparams.scene_id,
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
@@ -840,7 +850,6 @@ class hklview_3d:
                               self.viewerparams.sigma_color,
                               self.viewerparams.color_scheme,
                               self.viewerparams.color_powscale,
-                              self.ngl_settings.fontsize,
                               sceneid,
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
@@ -878,7 +887,6 @@ class hklview_3d:
                       self.viewerparams.sigma_color,
                       self.viewerparams.color_scheme,
                       self.viewerparams.color_powscale,
-                      self.ngl_settings.fontsize,
                       sceneid,
                       self.viewerparams.scale,
                       self.viewerparams.nth_power_scale_radii
@@ -955,7 +963,7 @@ class hklview_3d:
     for i,array_scene_id in enumerate(self.sceneid_from_arrayid):
       if scene_id == i:
         return array_scene_id[0]
-    return None
+    raise Sorry("scene_id, %d, is out of range" %scene_id)
 
 
   def calc_bin_thresholds(self, binner_idx, nbins):
@@ -1107,17 +1115,19 @@ class hklview_3d:
       newarray._sigmas = newsigmas
       return newarray
     except Exception as e:
-      self.mprint( str(e), verbose=0)
+      #self.mprint( str(e), verbose=0)
+      raise Sorry(str(e))
       return None
 
 
   def DrawNGLJavaScript(self, blankscene=False):
     if not self.scene or not self.sceneisdirty:
       return
+    if self.scene.points.size() == 0:
+      blankscene = True
     if self.miller_array is None :
       self.mprint( "Select a data set to display reflections" )
       blankscene = True
-      #return
     else:
       self.mprint("Rendering reflections...")
 

@@ -5,6 +5,7 @@ from iotbx.reflection_file_reader import any_reflection_file
 from cctbx.miller import display2 as display
 from crys3d.hklview import jsview_3d as view_3d
 from crys3d.hklview.jsview_3d import ArrayInfo
+from cctbx import miller
 from libtbx.math_utils import roundoff
 from libtbx.str_utils import format_value
 from cctbx.array_family import flex
@@ -466,9 +467,9 @@ class HKLViewFrame() :
   def MakeNewMillerArrayFrom(self, operation, label, arrid1, arrid2=None):
     # get list of existing new miller arrays and operations if present
     miller_array_operations_lst = []
-    if self.params.NGL_HKLviewer.miller_array_operations:
-      miller_array_operations_lst = eval(self.params.NGL_HKLviewer.miller_array_operations)
-    miller_array_operations_lst.append( ( operation, label, arrid1, arrid2 ) )
+    #if self.params.NGL_HKLviewer.miller_array_operations:
+    #  miller_array_operations_lst = eval(self.params.NGL_HKLviewer.miller_array_operations)
+    miller_array_operations_lst = [ ( operation, label, arrid1, arrid2 ) ]
     self.params.NGL_HKLviewer.miller_array_operations = str( miller_array_operations_lst )
     self.update_settings()
 
@@ -477,19 +478,15 @@ class HKLViewFrame() :
     miller_array_operations_lst = eval(self.params.NGL_HKLviewer.miller_array_operations)
     unique_miller_array_operations_lst = []
     for (operation, label, arrid1, arrid2) in miller_array_operations_lst:
-      isunique = True
       for arr in self.procarrays:
-        if label in arr.info().label_string():
-          self.mprint(label + " is already labelling one of the original miller arrays")
-          isunique = False
-          break
-      if isunique:
-        unique_miller_array_operations_lst.append( (operation, label, arrid1, arrid2) )
+        if label in arr.info().label_string() or label in [ "", None]:
+          raise Sorry("Provide an unambiguous label for your new miller array!")
+      unique_miller_array_operations_lst.append( (operation, label, arrid1, arrid2) )
     self.params.NGL_HKLviewer.miller_array_operations = str(unique_miller_array_operations_lst)
     from copy import deepcopy
     millarr1 = deepcopy(self.procarrays[arrid1])
     newarray = None
-    if arrid2 is not None:
+    if arrid2 != "":
       millarr2 = deepcopy(self.procarrays[arrid2])
       newarray = self.viewer.OperateOn2MillerArrays(millarr1, millarr2, operation)
     else:
@@ -503,7 +500,16 @@ class HKLViewFrame() :
       self.viewer.has_new_miller_array = True
       self.viewer.array_infostrs.append( ArrayInfo(procarray, self.mprint).infostr )
       self.viewer.array_infotpls.append( ArrayInfo(procarray, self.mprint).infotpl )
-      self.viewer.SupersetMillerArrays()
+      #self.viewer.SupersetMillerArrays()
+
+      hkls = self.origarrays["HKLs"]
+      nanarr = flex.double(len(hkls), float("nan"))
+      m = miller.match_indices(hkls, procarray.indices() )
+      indices_of_matched_hkls = m.pairs().column(0)
+      for i,e in enumerate(indices_of_matched_hkls):
+        nanarr[e] = procarray.data()[i]
+      self.origarrays[label] = list(nanarr)
+
       mydict = { "array_infotpls": self.viewer.array_infotpls, "NewHKLscenes" : True, "NewMillerArray" : True}
       self.SendInfoToGUI(mydict)
 

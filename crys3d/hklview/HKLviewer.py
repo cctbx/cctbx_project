@@ -303,6 +303,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.millerarraylabels = []
     self.scenearraylabeltypes = []
     self.array_infotpls = []
+    self.currentmillarray_idx = None
     self.matching_arrays = []
     self.bin_infotpls = None
     self.bin_opacities= None
@@ -756,8 +757,12 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
               self.millerarraytablemodel = MillerArrayTableModel([[]], [], self)
 
             self.MillerComboBox.clear()
-            self.MillerComboBox.addItems( self.millerarraylabels )
-            self.MillerComboBox.setCurrentIndex(-1) # unselect the first item in the list
+            #self.MillerComboBox.addItems( [""] + self.millerarraylabels )
+            self.MillerComboBox.addItem("", userData=-1)
+            for k,lbl in enumerate(self.millerarraylabels):
+              self.MillerComboBox.addItem(lbl, userData=k)
+
+            self.MillerComboBox.setCurrentIndex(0) # select the first item which is no miller array
             self.comboviewwidth = 0
             for e in self.millerarraylabels:
               self.comboviewwidth = max(self.comboviewwidth, self.MillerComboBox.fontMetrics().width( e) )
@@ -1041,6 +1046,10 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
   is_parallel = False
 }
     """)
+      i = self.SliceLabelComboBox.currentIndex()
+      rmin = self.array_infotpls[self.currentmillarray_idx][3][0][i]
+      rmax = self.array_infotpls[self.currentmillarray_idx][3][1][i]
+      self.sliceindexspinBox.setRange(rmin, rmax)
     else:
       #self.ClipPlaneChkGroupBox.setChecked(True)
       self.PhilToJsRender("""NGL_HKLviewer.viewer {
@@ -1055,8 +1064,8 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if self.unfeedback:
       return
     # 3th element in each table row is the min-max span of hkls.
-    rmin = self.array_infotpls[self.MillerComboBox.currentIndex()][3][0][i]
-    rmax = self.array_infotpls[self.MillerComboBox.currentIndex()][3][1][i]
+    rmin = self.array_infotpls[self.currentmillarray_idx][3][0][i]
+    rmax = self.array_infotpls[self.currentmillarray_idx][3][1][i]
     self.sliceindexspinBox.setRange(rmin, rmax)
     val = "None"
     if self.PlaneParallelCheckbox.isChecked():
@@ -1537,7 +1546,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     # Tag menu items with data being int or a (string, int) tuple.
     # These are being checked for in onMillerTableMenuAction() and appropriate
     # action taken
-    for i,(scenelabel,labeltype,arrayid,sceneid) in enumerate(self.scenearraylabeltypes):
+    for i,(scenelabel,labeltype,arrayid,sceneid) in enumerate(self.scenearraylabeltypes): # loop over scenes
       scenelabelstr = ",".join(scenelabel)
       if self.millerarraylabels[row] == scenelabelstr or self.millerarraylabels[row] + " + " in scenelabelstr:
         if labeltype == "hassigmas":
@@ -1551,14 +1560,10 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
           myqa = QAction("Display %s" %scenelabelstr, self.window, triggered=self.testaction)
           myqa.setData((i, row))
           self.millertablemenu.addAction(myqa)
-    myqa = QAction("Make new data as a function of this data...", self.window, triggered=self.testaction)
-    myqa.setData( ("newdata_1", row ))
-    self.millertablemenu.addAction(myqa)
     myqa = QAction("Make new data as a function of this data and another data set...", self.window, triggered=self.testaction)
-    myqa.setData( ("newdata_2", row ))
+    myqa.setData( ("newdata", row ))
     self.millertablemenu.addAction(myqa)
-    #myqa = QAction("Show a table of this data set...", self, triggered=self.testaction)
-    #myqa.setData( ("tabulate_data", row ))
+
     if len(self.millertable.selectedrows) > 0:
       arraystr = ""
       labels = []
@@ -1581,15 +1586,8 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       else:
         (strval, idx) = data
         self.operate_arrayidx1 = idx
-        if strval=="newdata_1":
-          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data' and or 'sigmas' variable")
-          self.MillerLabel1.setDisabled(True)
-          self.MillerLabel2.setDisabled(True)
-          self.MillerComboBox.setDisabled(True)
-          self.MillerLabel3.setText("Example: 'newdata = data / flex.sqrt(sigmas); newsigmas= - 42*sigmas' ")
-          self.operate_arrayidx2 = None
-          self.makenewdataform.show()
-        if strval=="newdata_2":
+        self.operate_arrayidx2 = -1 # i.e. no second miller array selected yet
+        if strval=="newdata":
           self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data1' and or 'sigmas1' variable")
           self.MillerLabel1.setEnabled(True)
           self.MillerLabel2.setEnabled(True)
@@ -1622,12 +1620,13 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       }
       """ %idx
     self.PhilToJsRender(philstr)
+    self.currentmillarray_idx = row
     if self.fileisvalid:
       self.functionTabWidget.setEnabled(True)
       self.expandAnomalouscheckbox.setEnabled(True)
       self.expandP1checkbox.setEnabled(True)
-      # don' allow anomalous expansion for data that's already anomalous
-      arrayinfo = self.array_infotpls[row]
+      # don't allow anomalous expansion for data that's already anomalous
+      arrayinfo = self.array_infotpls[self.currentmillarray_idx]
       isanomalous = arrayinfo[-1]
       spacegroup = arrayinfo[2]
       label = arrayinfo[0]
@@ -1649,7 +1648,8 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def onMillerComboSelchange(self, i):
-    self.operate_arrayidx2 = i
+    self.operate_arrayidx2 = self.MillerComboBox.itemData(i)
+    # -1 if first item. Otherwise itemdata is index of the list of miller arrays
 
 
   def testaction(self):
