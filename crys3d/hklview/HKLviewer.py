@@ -16,7 +16,7 @@ from PySide2.QtWidgets import (  QAction, QCheckBox, QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
         QMainWindow, QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableView, QTableWidget,
-        QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
+        QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QPlainTextEdit, QVBoxLayout, QWidget )
 
 from PySide2.QtGui import QColor, QFont, QCursor
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
@@ -38,14 +38,14 @@ class MakeNewDataForm(QDialog):
     myGroupBox = QGroupBox("Python expression for newdata")
     layout = QGridLayout()
     layout.addWidget(parent.operationlabeltxt,     0, 0, 1, 2)
-    layout.addWidget(parent.MillerLabel1,           1, 0, 1, 2)
-    layout.addWidget(parent.MillerComboBox,        2, 0, 1, 1)
-    layout.addWidget(parent.MillerLabel2,          2, 1, 1, 1)
-    layout.addWidget(parent.MillerLabel3,          3, 0, 1, 2)
-    layout.addWidget(parent.operationtxtbox,       4, 0, 1, 2)
-    layout.addWidget(parent.newlabelLabel,          5, 0, 1, 1)
-    layout.addWidget(parent.newlabeltxtbox,         5, 1, 1, 1)
-    layout.addWidget(parent.operationbutton,       6, 0, 1, 2)
+    #layout.addWidget(parent.MillerLabel1,           1, 0, 1, 2)
+    layout.addWidget(parent.MillerComboBox,        1, 0, 1, 1)
+    layout.addWidget(parent.MillerLabel2,          1, 1, 1, 1)
+    layout.addWidget(parent.MillerLabel3,          2, 0, 1, 2)
+    layout.addWidget(parent.operationtxtbox,       3, 0, 1, 2)
+    layout.addWidget(parent.newlabelLabel,         4, 0, 1, 1)
+    layout.addWidget(parent.newlabeltxtbox,        4, 1, 1, 1)
+    layout.addWidget(parent.operationbutton,       5, 0, 1, 2)
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
     myGroupBox.setLayout(layout)
@@ -64,11 +64,13 @@ class AboutForm(QDialog):
     self.aboutlabel = QLabel()
     self.aboutlabel.setWordWrap(True)
     aboutstr = """<html><head/><body><p><span style=" font-weight:600;">
-    HKLviewer, </span>A visualiser for reflection data in crystallography
+    HKLviewer, </span>A reflection data viewer for crystallography
     <span style=" font-weight:600;"><br/>Developers: </span>Dr. Robert D. Oeffner<br/>
-    Cambridge Institute for Medical Research<br/>
-    University of Cambridge<br/>
-    HKLviewer is part of the CCTBX library and any derived software thereof.
+    Cambridge Institute for Medical Research, University of Cambridge.<br/>
+    HKLviewer is part of the <a href="http://cci.lbl.gov/docs/cctbx/"> CCTBX library</a> 
+    as well as derived software thereof.<br/>
+    Please direct any bug reports to cctbx@cci.lbl.gov or rdo20@cam.ac.uk
+
     </p></body></html>"""
     self.aboutlabel.setText(aboutstr)
     self.copyrightstxt = QTextEdit()
@@ -253,10 +255,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     self.MillerComboBox = QComboBox()
     self.MillerComboBox.activated.connect(self.onMillerComboSelchange)
-    #self.MillerComboBox.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-
-    self.MillerLabel1 = QLabel()
-    self.MillerLabel1.setText("and 'data2' and or 'sigmas2' variable from the")
+    self.operationlabeltxt = QLabel()
+    self.operationlabeltxt.setWordWrap(True)
     self.MillerLabel2 = QLabel()
     self.MillerLabel2.setText("column")
     self.MillerLabel3 = QLabel()
@@ -264,7 +264,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.newlabelLabel = QLabel()
     self.newlabelLabel.setText("Column label for new data:")
     self.newlabeltxtbox = QLineEdit('')
-    self.operationlabeltxt = QLabel()
     self.operationtxtbox = QLineEdit('')
     self.operationbutton = QPushButton("OK")
     self.operationbutton.clicked.connect(self.onMakeNewData)
@@ -348,7 +347,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def closeEvent(self, event):
-    self.PhilToJsRender('NGL_HKLviewer.action = is_terminating')
+    self.PhilToJsRender('action = is_terminating')
     self.closing = True
     #self.window.setVisible(False)
     if self.UseOSBrowser == False:
@@ -421,7 +420,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       #self.infostr = ""
       self.textInfo.setPlainText("")
       self.fileisvalid = False
-      self.PhilToJsRender('NGL_HKLviewer.openfilename = "%s"' %fileName )
+      self.PhilToJsRender('openfilename = "%s"' %fileName )
       self.MillerComboBox.clear()
       self.BinDataComboBox.clear()
       self.tncsvec = []
@@ -440,7 +439,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
             "Save to a new reflection file", "",
             "All Files (*);;CIF Files (*.cif);;MTZ Files (*.mtz)", "", options)
     if fileName:
-      self.PhilToJsRender('NGL_HKLviewer.savefilename = "%s"' %fileName )
+      self.PhilToJsRender('savefilename = "%s"' %fileName )
 
 
   def SettingsDialog(self):
@@ -451,8 +450,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
   def onColourChartSelect(self, selcolmap, powscale): # called when user clicks OK in ColourMapSelectDlg
     if selcolmap != "":
-      self.PhilToJsRender("""NGL_HKLviewer.viewer.color_scheme = %s
-NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
+      self.PhilToJsRender("""viewer.color_scheme = %s
+viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def ProcessMessages(self):
@@ -483,7 +482,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
         if "cctbx.python.version:" in msgstr:
           self.cctbxpythonversion = msgstr
-          self.PhilToJsRender("""NGL_HKLviewer.NGL {
+          self.PhilToJsRender("""NGL {
   fontsize = %d
   show_tooltips = %s
 }
@@ -788,48 +787,48 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
   def UpdateGUI(self):
     self.unfeedback = True
     #if not self.isfirsttime:
-    self.ManualPowerScalecheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] >= 0.0 )
-    self.power_scale_spinBox.setEnabled( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] >= 0.0 )
-    self.radii_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.scale'])
-    self.showsliceGroupCheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_mode'])
-    self.expandP1checkbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.expand_to_p1'])
-    self.expandAnomalouscheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.expand_anomalous'])
-    self.sysabsentcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_systematic_absences'])
-    self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.NGL.tooltip_alpha'])
-    self.mousemoveslider.setValue( 2000*self.currentphilstringdict['NGL_HKLviewer.NGL.mouse_sensitivity'])
-    vecnr, dgr = self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector']
+    self.ManualPowerScalecheckbox.setChecked( self.currentphilstringdict['viewer.nth_power_scale_radii'] >= 0.0 )
+    self.power_scale_spinBox.setEnabled( self.currentphilstringdict['viewer.nth_power_scale_radii'] >= 0.0 )
+    self.radii_scale_spinBox.setValue( self.currentphilstringdict['viewer.scale'])
+    self.showsliceGroupCheckbox.setChecked( self.currentphilstringdict['viewer.slice_mode'])
+    self.expandP1checkbox.setChecked( self.currentphilstringdict['viewer.expand_to_p1'])
+    self.expandAnomalouscheckbox.setChecked( self.currentphilstringdict['viewer.expand_anomalous'])
+    self.sysabsentcheckbox.setChecked( self.currentphilstringdict['viewer.show_systematic_absences'])
+    self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL.tooltip_alpha'])
+    self.mousemoveslider.setValue( 2000*self.currentphilstringdict['NGL.mouse_sensitivity'])
+    vecnr, dgr = self.currentphilstringdict['clip_plane.angle_around_vector']
     self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %2.fº" %dgr)
 
 
-    self.sliceindexspinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_index'])
-    self.Nbins_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.nbins'])
-    if self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice'] is not None:
-      self.SpaceGroupComboBox.setCurrentIndex(  self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice'] )
-    #self.clipParallelBtn.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.is_parallel'])
-    self.missingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_missing'])
-    self.onlymissingcheckbox.setEnabled( self.currentphilstringdict['NGL_HKLviewer.viewer.show_missing'] )
+    self.sliceindexspinBox.setValue( self.currentphilstringdict['viewer.slice_index'])
+    self.Nbins_spinBox.setValue( self.currentphilstringdict['nbins'])
+    if self.currentphilstringdict['spacegroup_choice'] is not None:
+      self.SpaceGroupComboBox.setCurrentIndex(  self.currentphilstringdict['spacegroup_choice'] )
+    #self.clipParallelBtn.setChecked( self.currentphilstringdict['clip_plane.is_parallel'])
+    self.missingcheckbox.setChecked( self.currentphilstringdict['viewer.show_missing'])
+    self.onlymissingcheckbox.setEnabled( self.currentphilstringdict['viewer.show_missing'] )
     axidx = -1
     for axidx,c in enumerate(self.sliceaxis.values()):
-      if c in self.currentphilstringdict['NGL_HKLviewer.viewer.slice_axis']:
+      if c in self.currentphilstringdict['viewer.slice_axis']:
         break
 
     self.SliceLabelComboBox.setCurrentIndex( axidx )
-    self.cameraPerspectCheckBox.setChecked( "perspective" in self.currentphilstringdict['NGL_HKLviewer.NGL.camera_type'])
-    #self.ClipPlaneChkGroupBox.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'] != None and not self.showsliceGroupCheckbox.isChecked() )
-    if self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth']:
-      self.clipwidth_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'])
-    self.hkldist_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.hkldist'])
-    self.PlaneParallelCheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.fixorientation']== "reflection_slice")
-    self.AlignVectorGroupBox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.fixorientation']== "vector")
-    self.onlymissingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_only_missing'])
-    if self.currentphilstringdict['NGL_HKLviewer.real_space_unit_cell_scale_fraction'] is not None:
+    self.cameraPerspectCheckBox.setChecked( "perspective" in self.currentphilstringdict['NGL.camera_type'])
+    #self.ClipPlaneChkGroupBox.setChecked( self.currentphilstringdict['clip_plane.clipwidth'] != None and not self.showsliceGroupCheckbox.isChecked() )
+    if self.currentphilstringdict['clip_plane.clipwidth']:
+      self.clipwidth_spinBox.setValue( self.currentphilstringdict['clip_plane.clipwidth'])
+    self.hkldist_spinBox.setValue( self.currentphilstringdict['clip_plane.hkldist'])
+    self.PlaneParallelCheckbox.setChecked( self.currentphilstringdict['viewer.fixorientation']== "reflection_slice")
+    self.AlignVectorGroupBox.setChecked( self.currentphilstringdict['viewer.fixorientation']== "vector")
+    self.onlymissingcheckbox.setChecked( self.currentphilstringdict['viewer.show_only_missing'])
+    if self.currentphilstringdict['real_space_unit_cell_scale_fraction'] is not None:
       self.DrawRealUnitCellBox.setChecked(True)
-      self.unitcellslider.setValue( self.currentphilstringdict['NGL_HKLviewer.real_space_unit_cell_scale_fraction'] * self.unitcellslider.maximum())
+      self.unitcellslider.setValue( self.currentphilstringdict['real_space_unit_cell_scale_fraction'] * self.unitcellslider.maximum())
     else:
       self.DrawRealUnitCellBox.setChecked(False)
-    if self.currentphilstringdict['NGL_HKLviewer.reciprocal_unit_cell_scale_fraction'] is not None:
+    if self.currentphilstringdict['reciprocal_unit_cell_scale_fraction'] is not None:
       self.DrawReciprocUnitCellBox.setChecked(True)
-      self.reciprocunitcellslider.setValue( self.currentphilstringdict['NGL_HKLviewer.reciprocal_unit_cell_scale_fraction'] * self.reciprocunitcellslider.maximum())
+      self.reciprocunitcellslider.setValue( self.currentphilstringdict['reciprocal_unit_cell_scale_fraction'] * self.reciprocunitcellslider.maximum())
     else:
       self.DrawReciprocUnitCellBox.setChecked(False)
 
@@ -868,7 +867,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
   def onFinalMouseSensitivity(self):
     val = self.mousemoveslider.value()/2000.0
-    self.PhilToJsRender('NGL_HKLviewer.NGL.mouse_sensitivity = %f' %val)
+    self.PhilToJsRender('NGL.mouse_sensitivity = %f' %val)
 
 
   def onMouseSensitivity(self):
@@ -880,15 +879,15 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if self.unfeedback:
       return
     self.ttipalpha = val
-    self.PhilToJsRender('NGL_HKLviewer.NGL.tooltip_alpha = %f' %val)
+    self.PhilToJsRender('NGL.tooltip_alpha = %f' %val)
 
 
   def onShowTooltips(self, val):
     if self.ttipClickradio.isChecked() or val=="click":
-      self.PhilToJsRender("NGL_HKLviewer.NGL.show_tooltips = click")
+      self.PhilToJsRender("NGL.show_tooltips = click")
       self.ttip_click_invoke = "click"
     if self.ttipHoverradio.isChecked() or val=="hover":
-      self.PhilToJsRender("NGL_HKLviewer.NGL.show_tooltips = hover")
+      self.PhilToJsRender("NGL.show_tooltips = hover")
       self.ttip_click_invoke = "hover"
 
 
@@ -904,7 +903,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
   def onBrowserFontsizeChanged(self, val):
     self.browserfontsize = val
-    self.PhilToJsRender("NGL_HKLviewer.NGL.fontsize = %d" %val)
+    self.PhilToJsRender("NGL.fontsize = %d" %val)
 
 
   def onClearTextBuffer(self):
@@ -914,9 +913,9 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
   def onCameraPerspect(self,val):
     if self.cameraPerspectCheckBox.isChecked():
-      self.PhilToJsRender("NGL_HKLviewer.NGL.camera_type = perspective")
+      self.PhilToJsRender("NGL.camera_type = perspective")
     else:
-      self.PhilToJsRender("NGL_HKLviewer.NGL.camera_type = orthographic")
+      self.PhilToJsRender("NGL.camera_type = orthographic")
 
 
   def ExpandRefls(self):
@@ -925,28 +924,28 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if self.showsliceGroupCheckbox.isChecked():
       if self.ExpandReflsGroupBox.isChecked():
         self.PhilToJsRender('''
-        NGL_HKLviewer.viewer.expand_to_p1 = True
-        NGL_HKLviewer.viewer.expand_anomalous = True
-        NGL_HKLviewer.viewer.inbrowser = False
+        viewer.expand_to_p1 = True
+        viewer.expand_anomalous = True
+        viewer.inbrowser = False
                         ''' )
       else:
         self.PhilToJsRender('''
-        NGL_HKLviewer.viewer.expand_to_p1 = False
-        NGL_HKLviewer.viewer.expand_anomalous = False
-        NGL_HKLviewer.viewer.inbrowser = False
+        viewer.expand_to_p1 = False
+        viewer.expand_anomalous = False
+        viewer.inbrowser = False
                         ''' )
     else:
       if self.ExpandReflsGroupBox.isChecked():
         self.PhilToJsRender('''
-        NGL_HKLviewer.viewer.expand_to_p1 = True
-        NGL_HKLviewer.viewer.expand_anomalous = True
-        NGL_HKLviewer.viewer.inbrowser = True
+        viewer.expand_to_p1 = True
+        viewer.expand_anomalous = True
+        viewer.inbrowser = True
                         ''' )
       else:
         self.PhilToJsRender('''
-        NGL_HKLviewer.viewer.expand_to_p1 = False
-        NGL_HKLviewer.viewer.expand_anomalous = False
-        NGL_HKLviewer.viewer.inbrowser = True
+        viewer.expand_to_p1 = False
+        viewer.expand_anomalous = False
+        viewer.inbrowser = True
                         ''' )
 
 
@@ -956,24 +955,24 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if self.showsliceGroupCheckbox.isChecked():
       if self.expandP1checkbox.isChecked():
         self.PhilToJsRender('''
-        NGL_HKLviewer.viewer.expand_to_p1 = True
-        NGL_HKLviewer.viewer.inbrowser = False
+        viewer.expand_to_p1 = True
+        viewer.inbrowser = False
                         ''' )
       else:
         self.PhilToJsRender('''
-        NGL_HKLviewer.viewer.expand_to_p1 = False
-        NGL_HKLviewer.viewer.inbrowser = False
+        viewer.expand_to_p1 = False
+        viewer.inbrowser = False
                         ''' )
     else:
       if self.expandP1checkbox.isChecked():
         self.PhilToJsRender('''
-        NGL_HKLviewer.viewer.expand_to_p1 = True
-        NGL_HKLviewer.viewer.inbrowser = True
+        viewer.expand_to_p1 = True
+        viewer.inbrowser = True
                         ''' )
       else:
         self.PhilToJsRender('''
-        NGL_HKLviewer.viewer.expand_to_p1 = False
-        NGL_HKLviewer.viewer.inbrowser = True
+        viewer.expand_to_p1 = False
+        viewer.inbrowser = True
                         ''' )
 
 
@@ -983,44 +982,44 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if self.showsliceGroupCheckbox.isChecked():
       if self.expandAnomalouscheckbox.isChecked():
         self.PhilToJsRender('''
-        NGL_HKLviewer.viewer.expand_anomalous = True
-        NGL_HKLviewer.viewer.inbrowser = False
+        viewer.expand_anomalous = True
+        viewer.inbrowser = False
                         ''' )
       else:
         self.PhilToJsRender('''
-        NGL_HKLviewer.viewer.expand_anomalous = False
-        NGL_HKLviewer.viewer.inbrowser = False
+        viewer.expand_anomalous = False
+        viewer.inbrowser = False
                         ''' )
     else:
       if self.expandAnomalouscheckbox.isChecked():
         self.PhilToJsRender('''
-        NGL_HKLviewer.viewer.expand_anomalous = True
-        NGL_HKLviewer.viewer.inbrowser = True
+        viewer.expand_anomalous = True
+        viewer.inbrowser = True
                         ''' )
       else:
         self.PhilToJsRender('''
-        NGL_HKLviewer.viewer.expand_anomalous = False
-        NGL_HKLviewer.viewer.inbrowser = True
+        viewer.expand_anomalous = False
+        viewer.inbrowser = True
                         ''' )
 
   def showSysAbsent(self):
     if self.unfeedback:
       return
     if self.sysabsentcheckbox.isChecked():
-      self.PhilToJsRender('NGL_HKLviewer.viewer.show_systematic_absences = True')
+      self.PhilToJsRender('viewer.show_systematic_absences = True')
     else:
-      self.PhilToJsRender('NGL_HKLviewer.viewer.show_systematic_absences = False')
+      self.PhilToJsRender('viewer.show_systematic_absences = False')
 
 
   def showMissing(self):
     if self.unfeedback:
       return
     if self.missingcheckbox.isChecked():
-      self.PhilToJsRender('NGL_HKLviewer.viewer.show_missing = True')
+      self.PhilToJsRender('viewer.show_missing = True')
       self.onlymissingcheckbox.setEnabled(True)
     else:
-      self.PhilToJsRender("""NGL_HKLviewer.viewer.show_missing = False
-                             NGL_HKLviewer.viewer.show_only_missing = False
+      self.PhilToJsRender("""viewer.show_missing = False
+                             viewer.show_only_missing = False
                           """)
       self.onlymissingcheckbox.setEnabled(False)
 
@@ -1029,9 +1028,9 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if self.unfeedback:
       return
     if self.onlymissingcheckbox.isChecked():
-      self.PhilToJsRender('NGL_HKLviewer.viewer.show_only_missing = True')
+      self.PhilToJsRender('viewer.show_only_missing = True')
     else:
-      self.PhilToJsRender('NGL_HKLviewer.viewer.show_only_missing = False')
+      self.PhilToJsRender('viewer.show_only_missing = False')
 
 
   def showSlice(self):
@@ -1039,7 +1038,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       return
     if self.showsliceGroupCheckbox.isChecked():
       #self.ClipPlaneChkGroupBox.setChecked(False)
-      self.PhilToJsRender("""NGL_HKLviewer.viewer {
+      self.PhilToJsRender("""viewer {
   slice_mode = True
   inbrowser = False
   fixorientation = "reflection_slice"
@@ -1052,7 +1051,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       self.sliceindexspinBox.setRange(rmin, rmax)
     else:
       #self.ClipPlaneChkGroupBox.setChecked(True)
-      self.PhilToJsRender("""NGL_HKLviewer.viewer {
+      self.PhilToJsRender("""viewer {
   slice_mode = False
   inbrowser = True
   fixorientation = "None"
@@ -1070,7 +1069,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     val = "None"
     if self.PlaneParallelCheckbox.isChecked():
       val = "reflection_slice"
-    self.PhilToJsRender("""NGL_HKLviewer.viewer {
+    self.PhilToJsRender("""viewer {
     slice_axis = %s
     is_parallel = False
     fixorientation = "%s"
@@ -1081,13 +1080,13 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if self.unfeedback:
       return
     self.sliceindex = val
-    self.PhilToJsRender("NGL_HKLviewer.viewer.slice_index = %d" %self.sliceindex)
+    self.PhilToJsRender("viewer.slice_index = %d" %self.sliceindex)
 
 
   def onBindataComboSelchange(self, i):
     if self.BinDataComboBox.currentText():
       binner_idx = self.BinDataComboBox.currentIndex()
-      self.PhilToJsRender('NGL_HKLviewer.binner_idx = %d' % binner_idx )
+      self.PhilToJsRender('binner_idx = %d' % binner_idx )
       bin_opacitieslst = []
       for j in range(self.nbins):
         bin_opacitieslst.append((1.0, j))
@@ -1164,7 +1163,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
         bin_opacitieslst[row] = (alpha, row)
         self.bin_opacities = str(bin_opacitieslst)
         self.SetAllOpaqueCheckboxes()
-        self.PhilToJsRender('NGL_HKLviewer.NGL.bin_opacities = "%s"' %self.bin_opacities )
+        self.PhilToJsRender('NGL.bin_opacities = "%s"' %self.bin_opacities )
 
       if col==1 and self.binstable_isready: # changing scene_bin_thresholds
         aboveitem = self.binstable.item(row-1, 1)
@@ -1188,8 +1187,8 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
         allbinvals = self.lowerbinvals + [ self.upperbinvals[-1] ]
         nbins = len(allbinvals)
         self.PhilToJsRender('''
-        NGL_HKLviewer.scene_bin_thresholds = \"%s\"
-        NGL_HKLviewer.nbins = %d
+        scene_bin_thresholds = \"%s\"
+        nbins = %d
         ''' %(allbinvals, nbins) )
 
     except Exception as e:
@@ -1209,7 +1208,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       for i in range(nbins):
         bin_opacitieslst.append((0.0, i))  #   ("0.0, %d" %i)
     self.bin_opacities = str(bin_opacitieslst)
-    self.PhilToJsRender('NGL_HKLviewer.NGL.bin_opacities = "%s"' %self.bin_opacities)
+    self.PhilToJsRender('NGL.bin_opacities = "%s"' %self.bin_opacities)
     self.binstableitemchanges = False
     self.binstable_isready = True
 
@@ -1229,34 +1228,34 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
   def onNbinsChanged(self, val):
     self.nbins = val
     if not self.updatingNbins: # avoid possible endless loop to cctbx
-      self.PhilToJsRender("NGL_HKLviewer.nbins = %d" %self.nbins)
+      self.PhilToJsRender("nbins = %d" %self.nbins)
 
 
   def onRadiiScaleChanged(self, val):
     if self.unfeedback:
       return
-    self.PhilToJsRender("NGL_HKLviewer.viewer.scale = %f" %self.radii_scale_spinBox.value() )
+    self.PhilToJsRender("viewer.scale = %f" %self.radii_scale_spinBox.value() )
 
 
   def onPowerScaleChanged(self, val):
     if self.unfeedback:
       return
-    self.PhilToJsRender("NGL_HKLviewer.viewer.nth_power_scale_radii = %f" %self.power_scale_spinBox.value() )
+    self.PhilToJsRender("viewer.nth_power_scale_radii = %f" %self.power_scale_spinBox.value() )
 
 
   def onManualPowerScale(self, val=None):
     """
     if val is not None:
-      self.PhilToJsRender('NGL_HKLviewer.viewer.nth_power_scale_radii = %f' %val)
+      self.PhilToJsRender('viewer.nth_power_scale_radii = %f' %val)
       return
     """
     if self.unfeedback:
       return
     if self.ManualPowerScalecheckbox.isChecked():
-      self.PhilToJsRender('NGL_HKLviewer.viewer.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
+      self.PhilToJsRender('viewer.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
       #self.power_scale_spinBox.setEnabled(True)
     else:
-      self.PhilToJsRender('NGL_HKLviewer.viewer.nth_power_scale_radii = -1.0')
+      self.PhilToJsRender('viewer.nth_power_scale_radii = -1.0')
       #self.power_scale_spinBox.setEnabled(False)
 
 
@@ -1288,12 +1287,12 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
         if col==0:
           if item.checkState()==Qt.Checked:
-            self.PhilToJsRender(" NGL_HKLviewer.viewer.show_vector = '[%d, %s]'" %(row, True ))
+            self.PhilToJsRender(" viewer.show_vector = '[%d, %s]'" %(row, True ))
           else:
-            self.PhilToJsRender(" NGL_HKLviewer.viewer.show_vector = '[%d, %s]'" %(row, False ))
+            self.PhilToJsRender(" viewer.show_vector = '[%d, %s]'" %(row, False ))
 
           if self.rotvec is not None: # reset any imposed angle to 0 whenever checking or unchecking a vector
-              self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
+              self.PhilToJsRender("""clip_plane {
                 angle_around_vector = '[%d, 0]'
                 bequiet = False
               }""" %self.rotvec)
@@ -1307,17 +1306,17 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
                 self.rotvec = rvrow
                 sum +=1
           if sum > 1 or sum == 0: # can only use one vector to rotate around. so if more are selected then deselect them altogether
-            self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
+            self.PhilToJsRender("""clip_plane {
   animate_rotation_around_vector = '[%d, %f]'
 }""" %(0, -1.0)) #
-            self.PhilToJsRender('NGL_HKLviewer.viewer.fixorientation = "None"')
+            self.PhilToJsRender('viewer.fixorientation = "None"')
             self.AnimaRotCheckBox.setCheckState(Qt.Unchecked)
             self.rotvec = None
 
           if self.rotvec is not None:
             self.RotateAroundframe.setEnabled(True)
             # notify cctbx which is the curently selected vector
-            self.PhilToJsRender("NGL_HKLviewer.clip_plane.angle_around_vector = '[%d, 0.0]'" %self.rotvec)
+            self.PhilToJsRender("clip_plane.angle_around_vector = '[%d, 0.0]'" %self.rotvec)
           else:
             self.RotateAroundframe.setDisabled(True)
           if not self.unfeedback:
@@ -1331,16 +1330,16 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       if row==(rc-1) and label !="" and label != "new vector": # a user defined vector
         if col==1:
           hklop = self.vectortable2.item(row, 1).text()
-          self.PhilToJsRender("""NGL_HKLviewer.viewer.add_user_vector_hkl_op = '%s'
-          NGL_HKLviewer.viewer.user_label = %s """ %(hklop, label))
+          self.PhilToJsRender("""viewer.add_user_vector_hkl_op = '%s'
+          viewer.user_label = %s """ %(hklop, label))
         if col==2:
           hklvec = self.vectortable2.item(row, 2).text()
-          self.PhilToJsRender("""NGL_HKLviewer.viewer.add_user_vector_hkl = '(%s)'
-          NGL_HKLviewer.viewer.user_label = %s """ %(hklvec, label))
+          self.PhilToJsRender("""viewer.add_user_vector_hkl = '(%s)'
+          viewer.user_label = %s """ %(hklvec, label))
         if col==3:
           abcvec = self.vectortable2.item(row, 3).text()
-          self.PhilToJsRender("""NGL_HKLviewer.viewer.add_user_vector_abc = '(%s)'
-          NGL_HKLviewer.viewer.user_label = %s """ %(abcvec, label))
+          self.PhilToJsRender("""viewer.add_user_vector_abc = '(%s)'
+          viewer.user_label = %s """ %(abcvec, label))
 
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
@@ -1425,7 +1424,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     val = "None"
     if self.AlignVectorGroupBox.isChecked():
       val = "vector"
-    philstr = """NGL_HKLviewer.viewer {
+    philstr = """viewer {
         is_parallel = %s
         fixorientation = "%s"
       } """ %(str(self.AlignParallelBtn.isChecked()), val )
@@ -1440,13 +1439,13 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       if self.showsliceGroupCheckbox.isChecked() == False:
         self.showsliceGroupCheckbox.setChecked(False)
         self.showsliceGroupCheckbox.setChecked(False)
-        self.PhilToJsRender("""NGL_HKLviewer.viewer {
+        self.PhilToJsRender("""viewer {
                                                       slice_mode = False
                                                       inbrowser = True
                                                   }
                             """)
       hkldist, clipwidth = self.hkldistval, self.clipwidth_spinBox.value()
-    philstr = """NGL_HKLviewer.clip_plane {
+    philstr = """clip_plane {
   clipwidth = %s
 }
         """ %clipwidth
@@ -1458,7 +1457,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if self.unfeedback or self.rotvec is None:
       return
     #self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %dº" %val)
-    self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
+    self.PhilToJsRender("""clip_plane {
     angle_around_vector = '[%d, %f]'
     bequiet = False
 }""" %(self.rotvec, val))
@@ -1468,7 +1467,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if self.unfeedback or self.rotvec is None:
       return
     val = self.rotavecangle_slider.value()
-    self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
+    self.PhilToJsRender("""clip_plane {
     angle_around_vector = '[%d, %f]'
     bequiet = False
 }""" %(self.rotvec, val))
@@ -1479,41 +1478,41 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       self.AnimateSpeedSlider.setEnabled(True)
       self.rotavecangle_slider.setDisabled(True)
       speed = self.AnimateSpeedSlider.value()
-      self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
+      self.PhilToJsRender("""clip_plane {
       animate_rotation_around_vector = '[%d, %f]'
 }""" %(self.rotvec, speed))
     else:
       self.rotavecangle_slider.setEnabled(True)
       self.AnimateSpeedSlider.setDisabled(True)
-      self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
+      self.PhilToJsRender("""clip_plane {
       animate_rotation_around_vector = '[%d, %f]'
 }""" %(self.rotvec, -1.0))
 
 
   def onClipwidthChanged(self, val):
     if not self.unfeedback:
-      self.PhilToJsRender("NGL_HKLviewer.clip_plane.clipwidth = %f" %self.clipwidth_spinBox.value())
+      self.PhilToJsRender("clip_plane.clipwidth = %f" %self.clipwidth_spinBox.value())
 
 
   def onHKLdistChanged(self, val):
     if not self.unfeedback:
       self.hkldistval = val
-      self.PhilToJsRender("NGL_HKLviewer.clip_plane.hkldist = %f" %self.hkldistval)
+      self.PhilToJsRender("clip_plane.hkldist = %f" %self.hkldistval)
 
 
   def onHvecChanged(self, val):
     if not self.unfeedback:
-      self.PhilToJsRender("NGL_HKLviewer.clip_plane.h = %f" %self.hvec_spinBox.value())
+      self.PhilToJsRender("clip_plane.h = %f" %self.hvec_spinBox.value())
 
 
   def onKvecChanged(self, val):
     if not self.unfeedback:
-      self.PhilToJsRender("NGL_HKLviewer.clip_plane.k = %f" %self.kvec_spinBox.value())
+      self.PhilToJsRender("clip_plane.k = %f" %self.kvec_spinBox.value())
 
 
   def onLvecChanged(self, val):
     if not self.unfeedback:
-      self.PhilToJsRender("NGL_HKLviewer.clip_plane.l = %f" %self.lvec_spinBox.value())
+      self.PhilToJsRender("clip_plane.l = %f" %self.lvec_spinBox.value())
 
 
   def onPlaneParallelCheckbox(self):
@@ -1521,7 +1520,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       val = "None"
       if self.PlaneParallelCheckbox.isChecked():
         val = "reflection_slice"
-      self.PhilToJsRender('NGL_HKLviewer.viewer.fixorientation = "%s"' %val)
+      self.PhilToJsRender('viewer.fixorientation = "%s"' %val)
 
 
   def onMillerTableCellPressed(self, row, col):
@@ -1588,14 +1587,15 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
         self.operate_arrayidx1 = idx
         self.operate_arrayidx2 = -1 # i.e. no second miller array selected yet
         if strval=="newdata":
-          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data1' and or 'sigmas1' variable")
-          self.MillerLabel1.setEnabled(True)
-          self.MillerLabel2.setEnabled(True)
+          #self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data1' and or 'sigmas1' variable")
+          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] 
+           + " 'data1' and/or 'sigmas1' variable and optionally 'data2' and/or 'sigmas2'"
+           +" variable from the miller array below:")
           self.MillerComboBox.setEnabled(True)
           self.MillerLabel3.setText("Example: 'newdata = data1 - flex.pow(data2); newsigmas= sigmas1 - data2 / sigmas1' ")
           self.makenewdataform.show()
         if strval=="tabulate_data":
-          self.PhilToJsRender('NGL_HKLviewer.tabulate_miller_array_ids = "%s"' %str(idx))
+          self.PhilToJsRender('tabulate_miller_array_ids = "%s"' %str(idx))
 
 
   def DisplayData(self, idx, row):
@@ -1603,7 +1603,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if (idx - 1000) >= 0:
       idx = idx - 1000
       philstr = """
-      NGL_HKLviewer.viewer
+      viewer
       {
         sigma_radius = True
         sigma_color = True
@@ -1612,7 +1612,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       """ %idx
     else:
       philstr = """
-      NGL_HKLviewer.viewer
+      viewer
       {
         sigma_radius = False
         sigma_color = False
@@ -1643,7 +1643,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
   def onMakeNewData(self):
     mtpl = (self.operationtxtbox.text(), self.newlabeltxtbox.text() ,
               self.operate_arrayidx1, self.operate_arrayidx2 )
-    self.PhilToJsRender('NGL_HKLviewer.miller_array_operations = "[ %s ]"' %str(mtpl) )
+    self.PhilToJsRender('miller_array_operations = "[ %s ]"' %str(mtpl) )
     self.makenewdataform.accept()
 
 
@@ -1711,7 +1711,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   #def onResetView(self):
-  #  self.PhilToJsRender('NGL_HKLviewer.action = reset_view')
+  #  self.PhilToJsRender('action = reset_view')
 
 
   def onSaveImage(self):
@@ -1721,9 +1721,9 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
               "Save screenshot to file", "",
               "PNG Files (*.png);;All Files (*)", "", options)
       if fileName:
-        self.PhilToJsRender('NGL_HKLviewer.save_image_name = "%s" '%fileName)
+        self.PhilToJsRender('save_image_name = "%s" '%fileName)
     else:
-      self.PhilToJsRender('NGL_HKLviewer.save_image_name = "dummy.png" ')
+      self.PhilToJsRender('save_image_name = "dummy.png" ')
       # eventual file name prompted to us by Browser_download_requested(
 
 
@@ -1731,36 +1731,36 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if not self.unfeedback:
       if self.DrawReciprocUnitCellBox.isChecked():
         val = self.reciprocunitcellslider.value()/self.reciprocunitcellslider.maximum()
-        self.PhilToJsRender("NGL_HKLviewer.reciprocal_unit_cell_scale_fraction = %f" %val)
+        self.PhilToJsRender("reciprocal_unit_cell_scale_fraction = %f" %val)
       else:
-        self.PhilToJsRender("NGL_HKLviewer.reciprocal_unit_cell_scale_fraction = None")
+        self.PhilToJsRender("reciprocal_unit_cell_scale_fraction = None")
 
 
   def onDrawUnitCellBoxClick(self):
     if not self.unfeedback:
       if self.DrawRealUnitCellBox.isChecked():
         val = self.unitcellslider.value()/self.unitcellslider.maximum()
-        self.PhilToJsRender("NGL_HKLviewer.real_space_unit_cell_scale_fraction = %f" %val)
+        self.PhilToJsRender("real_space_unit_cell_scale_fraction = %f" %val)
       else:
-        self.PhilToJsRender("NGL_HKLviewer.real_space_unit_cell_scale_fraction = None")
+        self.PhilToJsRender("real_space_unit_cell_scale_fraction = None")
 
 
   def onUnitcellScale(self):
     if self.unfeedback:
       return
     val = self.unitcellslider.value()/self.unitcellslider.maximum()
-    self.PhilToJsRender("NGL_HKLviewer.real_space_unit_cell_scale_fraction = %f" %val)
+    self.PhilToJsRender("real_space_unit_cell_scale_fraction = %f" %val)
 
 
   def onReciprocUnitcellScale(self):
     if self.unfeedback:
       return
     val = self.reciprocunitcellslider.value()/self.reciprocunitcellslider.maximum()
-    self.PhilToJsRender("NGL_HKLviewer.reciprocal_unit_cell_scale_fraction = %f" %val)
+    self.PhilToJsRender("reciprocal_unit_cell_scale_fraction = %f" %val)
 
 
   def HighlightReflection(self, hkl):
-    self.PhilToJsRender("NGL_HKLviewer.viewer.show_hkl = '%s'" %str(hkl))
+    self.PhilToJsRender("viewer.show_hkl = '%s'" %str(hkl))
 
 
   def DebugInteractively(self):
@@ -1768,7 +1768,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def SpacegroupSelchange(self,i):
-    self.PhilToJsRender("NGL_HKLviewer.spacegroup_choice = %d" %i)
+    self.PhilToJsRender("spacegroup_choice = %d" %i)
 
 
   def find_free_port(self):
@@ -1862,7 +1862,7 @@ def run():
       settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
       settings.setValue("FontSize", guiobj.fontsize )
       settings.setValue("BrowserFontSize", guiobj.browserfontsize )
-      settings.setValue("PowerScaleValue", guiobj.currentphilstringdict["NGL_HKLviewer.viewer.nth_power_scale_radii"])
+      settings.setValue("PowerScaleValue", guiobj.currentphilstringdict["viewer.nth_power_scale_radii"])
       settings.setValue("RadiiScaleValue", guiobj.radii_scale_spinBox.value())
       settings.setValue("ttip_click_invoke", guiobj.ttip_click_invoke)
       settings.setValue("windowsize", guiobj.window.size())

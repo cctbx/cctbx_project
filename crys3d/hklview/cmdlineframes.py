@@ -148,15 +148,15 @@ class HKLViewFrame() :
       self.currentphil = self.currentphil.fetch(source = extraphil)
       # Don't retain clip plane values as these are specific to each crystal
       # so use clip plane parameters from the master phil
-      default_clipphil = self.master_phil.fetch().extract().NGL_HKLviewer.clip_plane
+      default_clipphil = self.master_phil.fetch().extract().clip_plane
       currentparms = self.currentphil.extract()
-      currentparms.NGL_HKLviewer.clip_plane = default_clipphil
+      currentparms.clip_plane = default_clipphil
       self.currentphil = self.master_phil.format(python_object = currentparms)
     self.params = self.currentphil.fetch().extract()
-    self.viewer.viewerparams = self.params.NGL_HKLviewer.viewer
-    self.viewer.params = self.params.NGL_HKLviewer
-    self.params.NGL_HKLviewer.binner_idx = 0
-    self.params.NGL_HKLviewer.using_space_subgroup = False
+    self.viewer.viewerparams = self.params.viewer
+    self.viewer.params = self.params
+    self.params.binner_idx = 0
+    self.params.using_space_subgroup = False
     self.viewer.symops = []
     self.viewer.sg = None
     self.viewer.proc_arrays = []
@@ -188,16 +188,16 @@ class HKLViewFrame() :
       self.mprint( "Received unrecognised phil parameter: " + parm.path, verbose=1)
     diffphil = oldcurrentphil.fetch_diff(source = pyphilobj)
     """
-    oldcolbintrshld = oldcurrentphil.extract().NGL_HKLviewer.scene_bin_thresholds
+    oldcolbintrshld = oldcurrentphil.extract().scene_bin_thresholds
     newcolbintrshld = oldcolbintrshld
-    if hasattr(pyphilobj.extract().NGL_HKLviewer, "scene_bin_thresholds"):
-      newcolbintrshld = pyphilobj.extract().NGL_HKLviewer.scene_bin_thresholds
+    if hasattr(pyphilobj.extract(), "scene_bin_thresholds"):
+      newcolbintrshld = pyphilobj.extract().scene_bin_thresholds
     # fetch_diff doesn't seem able to correclty spot changes
-    # in the multiple scope phil object "NGL_HKLviewer.scene_bin_thresholds"
+    # in the multiple scope phil object "scene_bin_thresholds"
     # Must do it manually
     params = newcurrentphil.extract()
     if oldcolbintrshld != newcolbintrshld: # or old_binopacities != new_binopacities:
-      params.NGL_HKLviewer.scene_bin_thresholds = newcolbintrshld
+      params.scene_bin_thresholds = newcolbintrshld
       newcurrentphil = self.master_phil.format(python_object = params)
       diffphil = self.master_phil.fetch_diff(source = newcurrentphil)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -213,23 +213,23 @@ class HKLViewFrame() :
   def update_settings(self, new_phil=None):
     try:
       if not new_phil:
-        #self.params.NGL_HKLviewer = self.viewer.params
+        #self.params = self.viewer.params
         new_phil = self.master_phil.format(python_object = self.params)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.currentphil, diff_phil = self.GetNewCurrentPhilFromPython(new_phil, self.currentphil)
       #diff = None
       self.params = self.currentphil.extract()
-      phl = self.params.NGL_HKLviewer
+      phl = self.params
 
       if len(diff_phil.all_definitions()) < 1 and not phl.mouse_moved:
         self.mprint( "Nothing's changed", verbose=1)
         return False
 
-      #diff = diff_phil.extract().NGL_HKLviewer
+      #diff = diff_phil.extract()
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
       #self.params = self.currentphil.extract()
-      #phl = self.params.NGL_HKLviewer
+      #phl = self.params
 
       if view_3d.has_phil_path(diff_phil, "use_provided_miller_arrays"):
         phl = self.ResetPhilandViewer(self.currentphil)
@@ -294,7 +294,7 @@ class HKLViewFrame() :
         self.viewer.settings = phl.viewer
         self.settings = phl.viewer
 
-      self.params.NGL_HKLviewer = self.viewer.update_settings(diff_phil, phl)
+      self.params = self.viewer.update_settings(diff_phil, phl)
       if view_3d.has_phil_path(diff_phil, "scene_id"):
         self.list_vectors()
       # parameters might have been changed. So update self.currentphil accordingly
@@ -354,7 +354,7 @@ class HKLViewFrame() :
     array_info = group_args(
       labels=labels,
       details_str=details_str,
-      merge=self.params.NGL_HKLviewer.merge_data,
+      merge=self.params.merge_data,
       sg=sg,
       uc=uc)
     return array, array_info
@@ -363,7 +363,7 @@ class HKLViewFrame() :
   def process_all_miller_arrays(self, col):
     self.mprint("Processing reflection data...")
     self.procarrays = []
-    if self.params.NGL_HKLviewer.merge_data == False:
+    if self.params.merge_data == False:
       self.settings.expand_to_p1 = False
       self.settings.expand_anomalous = False
     for c,arr in enumerate(self.valid_arrays):
@@ -389,7 +389,7 @@ class HKLViewFrame() :
 
   def update_space_group_choices(self, col=None) :
     if (self.viewer.miller_array is None and col is None) or \
-      self.params.NGL_HKLviewer.using_space_subgroup:
+      self.params.using_space_subgroup:
       return
     if col is None:
       current_miller_array_idx = self.viewer.HKLInfo_from_dict()[1]
@@ -414,7 +414,7 @@ class HKLViewFrame() :
       c = 0
       self.spacegroup_choices.insert(c, sg_info)
       self.current_spacegroup = sg_info
-    self.params.NGL_HKLviewer.spacegroup_choice = c
+    self.params.spacegroup_choice = c
     spglst = [e.symbol_and_number() for e in self.spacegroup_choices] + ["original spacegroup"]
     mydict = { "spacegroups": spglst }
     self.SendInfoToGUI(mydict)
@@ -425,7 +425,7 @@ class HKLViewFrame() :
       raise Sorry("No data loaded!")
     if n == len(self.spacegroup_choices): # selected the unmerged "original spacegroup" in the list
       self.viewer.proc_arrays = self.procarrays
-      self.params.NGL_HKLviewer.using_space_subgroup = False
+      self.params.using_space_subgroup = False
     else:
       self.current_spacegroup = self.spacegroup_choices[n]
       from cctbx import crystal
@@ -442,19 +442,19 @@ class HKLViewFrame() :
 
       self.mprint( "MERGING 2", verbose=2)
       self.viewer.proc_arrays = othervalidarrays
-      self.params.NGL_HKLviewer.using_space_subgroup = True
+      self.params.using_space_subgroup = True
     self.viewer.set_miller_array()
     for i,e in enumerate(self.spacegroup_choices):
       self.mprint("%d, %s" %(i,e.symbol_and_number()) , verbose=0)
 
 
   def SetSpaceGroupChoice(self, n):
-    self.params.NGL_HKLviewer.spacegroup_choice = n
+    self.params.spacegroup_choice = n
     self.update_settings()
 
 
   def SetDefaultSpaceGroup(self):
-    self.params.NGL_HKLviewer.using_space_subgroup = False
+    self.params.using_space_subgroup = False
     self.update_settings()
 
 
@@ -467,22 +467,22 @@ class HKLViewFrame() :
   def MakeNewMillerArrayFrom(self, operation, label, arrid1, arrid2=None):
     # get list of existing new miller arrays and operations if present
     miller_array_operations_lst = []
-    #if self.params.NGL_HKLviewer.miller_array_operations:
-    #  miller_array_operations_lst = eval(self.params.NGL_HKLviewer.miller_array_operations)
+    #if self.params.miller_array_operations:
+    #  miller_array_operations_lst = eval(self.params.miller_array_operations)
     miller_array_operations_lst = [ ( operation, label, arrid1, arrid2 ) ]
-    self.params.NGL_HKLviewer.miller_array_operations = str( miller_array_operations_lst )
+    self.params.miller_array_operations = str( miller_array_operations_lst )
     self.update_settings()
 
 
   def make_new_miller_array(self):
-    miller_array_operations_lst = eval(self.params.NGL_HKLviewer.miller_array_operations)
+    miller_array_operations_lst = eval(self.params.miller_array_operations)
     unique_miller_array_operations_lst = []
     for (operation, label, arrid1, arrid2) in miller_array_operations_lst:
       for arr in self.procarrays:
         if label in arr.info().label_string() or label in [ "", None]:
           raise Sorry("Provide an unambiguous label for your new miller array!")
       unique_miller_array_operations_lst.append( (operation, label, arrid1, arrid2) )
-    self.params.NGL_HKLviewer.miller_array_operations = str(unique_miller_array_operations_lst)
+    self.params.miller_array_operations = str(unique_miller_array_operations_lst)
     from copy import deepcopy
     millarr1 = deepcopy(self.procarrays[arrid1])
     newarray = None
@@ -516,8 +516,8 @@ class HKLViewFrame() :
 
   def prepare_dataloading(self):
     self.viewer.isnewfile = True
-    #self.params.NGL_HKLviewer.mergedata = None
-    self.params.NGL_HKLviewer.viewer.scene_id = None
+    #self.params.mergedata = None
+    self.params.viewer.scene_id = None
     self.viewer.colour_scene_id = None
     self.viewer.radii_scene_id = None
     self.viewer.match_valarrays = []
@@ -526,7 +526,7 @@ class HKLViewFrame() :
     self.origarrays = {}
     display.reset_settings()
     self.settings = display.settings()
-    self.viewer.settings = self.params.NGL_HKLviewer.viewer
+    self.viewer.settings = self.params.viewer
     self.viewer.mapcoef_fom_dict = {}
     self.viewer.sceneid_from_arrayid = []
     self.hklfile_history = []
@@ -564,13 +564,13 @@ class HKLViewFrame() :
                   "bin_infotpls": self.viewer.bin_infotpls,
                   "html_url": self.viewer.url,
                   "tncsvec": self.tncsvec,
-                  "merge_data": self.params.NGL_HKLviewer.merge_data,
+                  "merge_data": self.params.merge_data,
                   "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
                   "NewFileLoaded": self.NewFileLoaded,
-                  "file_name": self.params.NGL_HKLviewer.openfilename
+                  "file_name": self.params.openfilename
                 }
       self.SendInfoToGUI(mydict)
-    self.params.NGL_HKLviewer.openfilename = None
+    self.params.openfilename = None
 
 
   def load_reflections_file(self, file_name):
@@ -642,7 +642,7 @@ class HKLViewFrame() :
 
 
   def LoadReflectionsFile(self, openfilename):
-    self.params.NGL_HKLviewer.openfilename = openfilename
+    self.params.openfilename = openfilename
     self.update_settings()
 
 
@@ -662,7 +662,7 @@ class HKLViewFrame() :
 
   def LoadMillerArrays(self, marrays):
     self.provided_miller_arrays = marrays
-    self.params.NGL_HKLviewer.use_provided_miller_arrays = True
+    self.params.use_provided_miller_arrays = True
     self.update_settings()
 
 
@@ -776,57 +776,57 @@ class HKLViewFrame() :
     self.idx_data = hkllst + dreslst + datalst
     self.mprint("Sending table data...", verbose=0)
     mydict = { "tabulate_miller_array": self.idx_data }
-    self.params.NGL_HKLviewer.tabulate_miller_array_ids = "[]" # to allow reopening a closed window again
+    self.params.tabulate_miller_array_ids = "[]" # to allow reopening a closed window again
     self.SendInfoToGUI(mydict)
 
 
   def TabulateMillerArray(self, ids):
-    self.params.NGL_HKLviewer.tabulate_miller_array_ids = str(ids)
+    self.params.tabulate_miller_array_ids = str(ids)
     self.update_settings()
 
 
   def SetCameraType(self, camtype):
-    self.params.NGL_HKLviewer.NGL.camera_type = camtype
+    self.params.NGL.camera_type = camtype
     self.update_settings()
 
 
   def ExpandToP1(self, val, inbrowser=True):
-    self.params.NGL_HKLviewer.viewer.expand_to_p1 = val
-    self.params.NGL_HKLviewer.viewer.inbrowser = inbrowser
+    self.params.viewer.expand_to_p1 = val
+    self.params.viewer.inbrowser = inbrowser
     self.update_settings()
 
 
   def ExpandAnomalous(self, val, inbrowser=True):
-    self.params.NGL_HKLviewer.viewer.expand_anomalous = val
-    self.params.NGL_HKLviewer.viewer.inbrowser = inbrowser
+    self.params.viewer.expand_anomalous = val
+    self.params.viewer.inbrowser = inbrowser
     self.update_settings()
 
 
   def ShowOnlyMissing(self, val):
-    self.params.NGL_HKLviewer.viewer.show_only_missing = val
+    self.params.viewer.show_only_missing = val
     self.update_settings()
 
 
   def ShowMissing(self, val):
-    self.params.NGL_HKLviewer.viewer.show_missing = val
+    self.params.viewer.show_missing = val
     self.update_settings()
 
 
   def ShowDataOverSigma(self, val):
-    self.params.NGL_HKLviewer.viewer.show_data_over_sigma = val
+    self.params.viewer.show_data_over_sigma = val
     self.update_settings()
 
 
   def ShowSystematicAbsences(self, val):
-    self.params.NGL_HKLviewer.viewer.show_systematic_absences = val
+    self.params.viewer.show_systematic_absences = val
     self.update_settings()
 
 
   def ShowSlice(self, val, axis="h", index=0):
     axisstr = axis.lower()
-    self.params.NGL_HKLviewer.viewer.slice_mode = val
-    self.params.NGL_HKLviewer.viewer.slice_axis = axisstr
-    self.params.NGL_HKLviewer.viewer.slice_index = index
+    self.params.viewer.slice_mode = val
+    self.params.viewer.slice_axis = axisstr
+    self.params.viewer.slice_index = index
     self.update_settings()
 
 
@@ -842,9 +842,9 @@ class HKLViewFrame() :
 
 
   def SetSceneNbins(self, nbins, binner_idx = 0):
-    self.params.NGL_HKLviewer.nbins = nbins
-    self.params.NGL_HKLviewer.binner_idx = binner_idx
-    self.params.NGL_HKLviewer.NGL.bin_opacities = str([ (1.0, e) for e in range(nbins) ])
+    self.params.nbins = nbins
+    self.params.binner_idx = binner_idx
+    self.params.NGL.bin_opacities = str([ (1.0, e) for e in range(nbins) ])
     self.update_settings()
 
 
@@ -853,23 +853,23 @@ class HKLViewFrame() :
 
 
   def SetSceneBinThresholds(self, binvals=[]):
-    self.params.NGL_HKLviewer.scene_bin_thresholds = str(binvals)
-    self.params.NGL_HKLviewer.nbins = len(binvals)
+    self.params.scene_bin_thresholds = str(binvals)
+    self.params.nbins = len(binvals)
     self.update_settings()
 
 
   def SetOpacities(self, bin_opacities):
-    self.params.NGL_HKLviewer.NGL.bin_opacities = str(bin_opacities)
+    self.params.NGL.bin_opacities = str(bin_opacities)
     self.update_settings()
 
 
   def SetToolTipOpacity(self, val):
-    self.params.NGL_HKLviewer.NGL.tooltip_alpha = val
+    self.params.NGL.tooltip_alpha = val
     self.update_settings()
 
 
   def SetShowToolTips(self, val):
-    self.params.NGL_HKLviewer.NGL.show_tooltips = val
+    self.params.NGL.show_tooltips = val
     self.update_settings()
 
 
@@ -891,21 +891,21 @@ class HKLViewFrame() :
 
 
   def SetScene(self, scene_id):
-    self.params.NGL_HKLviewer.viewer.scene_id = scene_id
+    self.params.viewer.scene_id = scene_id
     self.update_settings()
 
 
   def SetMergeData(self, val):
-    self.params.NGL_HKLviewer.merge_data = val
+    self.params.merge_data = val
     self.update_settings()
 
   def SetColourScene(self, colourcol):
-    self.params.NGL_HKLviewer.viewer.colour_scene_id = colourcol
+    self.params.viewer.colour_scene_id = colourcol
     self.update_settings()
 
 
   def SetRadiusScene(self, radiuscol):
-    self.params.NGL_HKLviewer.viewer.radii_scene_id = radiuscol
+    self.params.viewer.radii_scene_id = radiuscol
     self.update_settings()
 
 
@@ -916,34 +916,34 @@ class HKLViewFrame() :
     If nth_power_scale < 0.0 an automatic power will be computed ensuring the smallest radius
     is 0.1 times the maximum radius
     """
-    self.params.NGL_HKLviewer.viewer.scale = scale
-    self.params.NGL_HKLviewer.viewer.nth_power_scale_radii = nth_power_scale
+    self.params.viewer.scale = scale
+    self.params.viewer.nth_power_scale_radii = nth_power_scale
     self.update_settings()
 
 
   def SetRadiiToSigmas(self, val):
-    self.params.NGL_HKLviewer.viewer.sigma_radius = val
+    self.params.viewer.sigma_radius = val
     self.update_settings()
 
 
   def SetColoursToSigmas(self, val):
-    self.params.NGL_HKLviewer.viewer.sigma_color = val
+    self.params.viewer.sigma_color = val
     self.update_settings()
 
 
   def SetColourScheme(self, color_scheme, color_powscale=1.0):
-    self.params.NGL_HKLviewer.viewer.color_scheme = color_scheme
-    self.params.NGL_HKLviewer.viewer.color_powscale = color_powscale
+    self.params.viewer.color_scheme = color_scheme
+    self.params.viewer.color_powscale = color_powscale
     self.update_settings()
 
 
-  def SetColoursToPhases(self, val):
-    self.params.NGL_HKLviewer.viewer.phase_color = val
-    self.update_settings()
+  #def SetColoursToPhases(self, val): # deprecated
+  #  self.params.viewer.phase_color = val
+  #  self.update_settings()
 
 
   def SetShapePrimitive(self, val):
-    self.params.NGL_HKLviewer.shape_primitive = val
+    self.params.shape_primitive = val
     self.update_settings()
 
 
@@ -955,7 +955,7 @@ class HKLViewFrame() :
 
 
   def SetAction(self, val):
-    self.params.NGL_HKLviewer.action = val
+    self.params.action = val
     self.update_settings()
 
 
@@ -969,7 +969,7 @@ class HKLViewFrame() :
 
 
   def SetFontSize(self, val):
-    self.params.NGL_HKLviewer.NGL.fontsize = val
+    self.params.NGL.fontsize = val
     self.viewer.SetFontSize(val)
 
 
@@ -993,43 +993,43 @@ class HKLViewFrame() :
   def add_user_vector(self):
     uc = self.viewer.miller_array.unit_cell()
     ln = len(self.viewer.all_vectors)
-    label = self.params.NGL_HKLviewer.viewer.user_label
+    label = self.params.viewer.user_label
     order = 0
     try:
-      if self.params.NGL_HKLviewer.viewer.add_user_vector_hkl not in [None, "", "()"]:
-        hklvec = eval(self.params.NGL_HKLviewer.viewer.add_user_vector_hkl)
+      if self.params.viewer.add_user_vector_hkl not in [None, "", "()"]:
+        hklvec = eval(self.params.viewer.add_user_vector_hkl)
         # convert into cartesian space
         cartvec = list( self.viewer.scene.renderscale*(hklvec * matrix.sqr(uc.fractionalization_matrix()).transpose()) )
-      elif self.params.NGL_HKLviewer.viewer.add_user_vector_abc not in [None, "", "()"]:
-        abcvec = eval(self.params.NGL_HKLviewer.viewer.add_user_vector_abc)
+      elif self.params.viewer.add_user_vector_abc not in [None, "", "()"]:
+        abcvec = eval(self.params.viewer.add_user_vector_abc)
         # convert into cartesian space
         cartvec = list(abcvec * matrix.sqr(uc.orthogonalization_matrix()))
-      elif self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op not in [None, ""]:
-        rt = sgtbx.rt_mx(symbol=self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op, r_den=12, t_den=144)
+      elif self.params.viewer.add_user_vector_hkl_op not in [None, ""]:
+        rt = sgtbx.rt_mx(symbol=self.params.viewer.add_user_vector_hkl_op, r_den=12, t_den=144)
         rt.r().as_double()
         (cartvec, a, label, order) = self.viewer.GetVectorAndAngleFromRotationMx( rt.r() )
         if label:
-          label = "%s-fold_%s" %(str(int(roundoff(2*math.pi/a, 0))), self.params.NGL_HKLviewer.viewer.user_label)
+          label = "%s-fold_%s" %(str(int(roundoff(2*math.pi/a, 0))), self.params.viewer.user_label)
 
-      if (self.params.NGL_HKLviewer.viewer.add_user_vector_hkl in [None, "", "()"] \
-       and self.params.NGL_HKLviewer.viewer.add_user_vector_abc in [None, "", "()"] \
-       and self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op) in [None, ""]:
+      if (self.params.viewer.add_user_vector_hkl in [None, "", "()"] \
+       and self.params.viewer.add_user_vector_abc in [None, "", "()"] \
+       and self.params.viewer.add_user_vector_hkl_op) in [None, ""]:
         self.mprint("No vector was specified")
       self.uservectors.append( (ln,
                                 label,
                                 order,
                                 cartvec,
-                                self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op,
-                                self.params.NGL_HKLviewer.viewer.add_user_vector_hkl,
-                                self.params.NGL_HKLviewer.viewer.add_user_vector_abc) )
+                                self.params.viewer.add_user_vector_hkl_op,
+                                self.params.viewer.add_user_vector_hkl,
+                                self.params.viewer.add_user_vector_abc) )
       self.list_vectors()
 
     except Exception as e:
       self.mprint( str(e), verbose=0)
 
-    self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op = ""
-    self.params.NGL_HKLviewer.viewer.add_user_vector_hkl = ""
-    self.params.NGL_HKLviewer.viewer.add_user_vector_abc = ""
+    self.params.viewer.add_user_vector_hkl_op = ""
+    self.params.viewer.add_user_vector_hkl = ""
+    self.params.viewer.add_user_vector_abc = ""
 
 
   def AddUserVector(self, hkl_op="", abc="", hkl="", label=""):
@@ -1038,80 +1038,85 @@ class HKLViewFrame() :
     as a fractional vector in real space or as a fractional vector in reciprocal space. If
     specified as a rotation operator the derived vector is the implicit rotation axis.
     """
-    self.params.NGL_HKLviewer.viewer.user_label = label
-    self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op = str(hkl_op)
-    self.params.NGL_HKLviewer.viewer.add_user_vector_abc = str(abc)
-    self.params.NGL_HKLviewer.viewer.add_user_vector_hkl = str(hkl)
+    self.params.viewer.user_label = label
+    self.params.viewer.add_user_vector_hkl_op = str(hkl_op)
+    self.params.viewer.add_user_vector_abc = str(abc)
+    self.params.viewer.add_user_vector_hkl = str(hkl)
     self.update_settings()
 
 
   def ShowRotationAxes(self, val):
-    self.params.NGL_HKLviewer.viewer.show_symmetry_rotation_axes = val
+    self.params.viewer.show_symmetry_rotation_axes = val
     self.update_settings()
 
 
   def ShowVector(self, i, val=True):
-    self.params.NGL_HKLviewer.viewer.show_vector = str([i, val])
+    self.params.viewer.show_vector = str([i, val])
     self.update_settings()
 
 
   def ShowUnitCell(self, val):
-    self.params.NGL_HKLviewer.show_real_space_unit_cell = val
+    self.params.show_real_space_unit_cell = val
     self.update_settings()
 
 
   def ShowReciprocalUnitCell(self, val):
-    self.params.NGL_HKLviewer.show_reciprocal_unit_cell = val
+    self.params.show_reciprocal_unit_cell = val
     self.update_settings()
 
 
   def SetClipPlane(self, use=True, hkldist=0.0, clipwidth=2.0):
     if use:
-      self.params.NGL_HKLviewer.clip_plane.hkldist = hkldist
-      self.params.NGL_HKLviewer.clip_plane.clipwidth = clipwidth
-      self.params.NGL_HKLviewer.slice_mode = False
-      self.params.NGL_HKLviewer.inbrowser = True
+      self.params.clip_plane.hkldist = hkldist
+      self.params.clip_plane.clipwidth = clipwidth
+      self.params.slice_mode = False
+      self.params.inbrowser = True
     else:
-      self.params.NGL_HKLviewer.clip_plane.clipwidth = None
+      self.params.clip_plane.clipwidth = None
     self.update_settings()
 
 
   def SinglePlaneOfReflections(self, use=True, axis="h", slice_index=0 ):
     if use:
-      NGL_HKLviewer.viewer.slice_axis = axis
-      NGL_HKLviewer.viewer.is_parallel = False
-      NGL_HKLviewer.viewer.slice_mode = True
-      NGL_HKLviewer.viewer.inbrowser = False
-      NGL_HKLviewer.viewer.fixorientation = "reflection_slice"
-      NGL_HKLviewer.viewer.slice_index = slice_index
+      viewer.slice_axis = axis
+      viewer.is_parallel = False
+      viewer.slice_mode = True
+      viewer.inbrowser = False
+      viewer.fixorientation = "reflection_slice"
+      viewer.slice_index = slice_index
     else:
-      NGL_HKLviewer.viewer.slice_mode = False
-      NGL_HKLviewer.viewer.inbrowser = True
-      NGL_HKLviewer.viewer.fixorientation = "None"
+      viewer.slice_mode = False
+      viewer.inbrowser = True
+      viewer.fixorientation = "None"
     self.update_settings()
 
 
   def OrientVector(self, vecnr, is_parallel, val=True):
-    NGL_HKLviewer.viewer.fixorientation = "None"
+    viewer.fixorientation = "None"
     if val:
-      NGL_HKLviewer.viewer.is_parallel = is_parallel
-      NGL_HKLviewer.viewer.fixorientation = "vector"
-      NGL_HKLviewer.viewer.show_vector = '[%d, True]' %vecnr
+      viewer.is_parallel = is_parallel
+      viewer.fixorientation = "vector"
+      viewer.show_vector = '[%d, True]' %vecnr
     self.update_settings()
 
 
   def AnimateRotateAroundVector(self, vecnr, speed):
-    self.params.NGL_HKLviewer.clip_plane.animate_rotation_around_vector = str([vecnr, speed])
+    self.params.clip_plane.animate_rotation_around_vector = str([vecnr, speed])
     self.update_settings()
 
 
   def RotateAroundVector(self, vecnr, dgr):
-    self.params.NGL_HKLviewer.clip_plane.angle_around_vector = str([vecnr, dgr])
+    self.params.clip_plane.angle_around_vector = str([vecnr, dgr])
+    self.update_settings()
+
+
+  def ShowHKL(self, hkl):
+    self.params.viewer.show_hkl = str(hkl)
     self.update_settings()
 
 
   def SetMouseSpeed(self, trackspeed):
-    self.params.NGL_HKLviewer.NGL.mouse_sensitivity = trackspeed
+    self.params.NGL.mouse_sensitivity = trackspeed
     self.update_settings()
 
 
@@ -1194,7 +1199,6 @@ class HKLViewFrame() :
 
 
 masterphilstr = """
-NGL_HKLviewer {
   openfilename = None
     .type = path
   use_provided_miller_arrays = False
@@ -1271,7 +1275,6 @@ NGL_HKLviewer {
     .type = choice
   tabulate_miller_array_ids = "[]"
     .type = str
-}
 
 """ %(display.philstr, view_3d.ngl_philstr)
 
