@@ -790,36 +790,49 @@ class dataset_statistics(object):
       cif_block = iotbx.cif.model.block()
 
     from collections import OrderedDict
-    mmcif_to_name = OrderedDict([
-      ('d_res_high', 'd_min'),
-      ('d_res_low', 'd_max'),
+
+    mmcif_to_name_reflns = OrderedDict([
+      ('d_resolution_high', 'd_min'),
+      ('d_resolution_low', 'd_max'),
       ('pdbx_CC_half', 'cc_one_half'),
-      ('number_unique_obs', 'n_uniq'),
-      ('pdbx_Rpim_I_obs', 'r_pim'),
-      ('pdbx_Rrim_I_obs', 'r_meas'),
-      ('Rmerge_I_obs', 'r_merge'),
-      ('meanI_over_sigI_obs', 'i_mean_over_sigi_mean'),
+      ('number_obs', 'n_uniq'),
+      ('pdbx_number_measured_all', 'n_obs'),
+      ('pdbx_Rmerge_I_obs', 'r_merge'),
+      ('pdbx_Rpim_I_all', 'r_pim'),
+      ('pdbx_Rrim_I_all', 'r_meas'),
       ('pdbx_netI_over_sigmaI', 'i_over_sigma_mean'),
-      ('number_measured_obs', 'n_obs'),
       ('pdbx_redundancy', 'mean_redundancy'),
       ('percent_possible_obs', 'completeness'),
     ])
 
-    for k, v in six.iteritems(mmcif_to_name):
+    mmcif_to_name_reflns_shell = OrderedDict([
+      ('d_res_high', 'd_min'),
+      ('d_res_low', 'd_max'),
+      ('pdbx_CC_half', 'cc_one_half'),
+      ('number_unique_obs', 'n_uniq'),
+      ('number_measured_obs', 'n_obs'),
+      ('Rmerge_I_obs', 'r_merge'),
+      ('pdbx_Rpim_I_all', 'r_pim'),
+      ('pdbx_Rrim_I_all', 'r_meas'),
+      ('pdbx_netI_over_sigmaI_obs', 'i_over_sigma_mean'),
+      ('pdbx_redundancy', 'mean_redundancy'),
+      ('percent_possible_obs', 'completeness'),
+    ])
+
+    for k, v in six.iteritems(mmcif_to_name_reflns):
       value = self.overall.__getattribute__(v)
       if 'percent' in v:
         value *= 100
-      k = k.replace('d_res_', 'd_resolution_')
       cif_block['_reflns.' + k] = value
 
     header = ['_reflns_shell.pdbx_ordinal'] + [
-      '_reflns_shell.' + k for k in mmcif_to_name.keys()]
+      '_reflns_shell.' + k for k in mmcif_to_name_reflns_shell.keys()]
     reflns_shell_loop = iotbx.cif.model.loop(header=header)
     for i, bin_stats in enumerate(self.bins):
       stats_d = bin_stats.as_dict()
       values = [bin_stats.__getattribute__(v) * 100
                 if 'percent' in k else bin_stats.__getattribute__(v)
-                for k, v in six.iteritems(mmcif_to_name)]
+                for k, v in six.iteritems(mmcif_to_name_reflns_shell)]
       reflns_shell_loop.add_row([i+1] + values)
     cif_block.add_loop(reflns_shell_loop)
 
