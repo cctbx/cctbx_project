@@ -227,12 +227,14 @@ class Reproducer:
             CC.set_indices(cb_op, indices_reindexed)
         def call_cpp(i):
             t0 = time.time()
-            rij_row, rij_col, rij_data = CC.compute_one_row(
+            rij_row, rij_col, rij_data, wij_row, wij_col, wij_data = CC.compute_one_row(
                 self._lattices.size(),
                 i)
             rij = sparse.coo_matrix((rij_data, (rij_row, rij_col)), shape=(NN, NN))
+            wij = sparse.coo_matrix((wij_data, (wij_row, wij_col)), shape=(NN, NN))
+
             print(time.time()-t0)
-            return rij, None
+            return rij, wij
 
         results = easy_mp.parallel_map(
             call_cpp,
@@ -240,13 +242,17 @@ class Reproducer:
             processes=64)
 
         rij_matrix = None
-        for (rij, _) in results:
+        wij_matrix = None
+        for (rij, wij) in results:
             if rij_matrix is None:
                 rij_matrix = rij
+                wij_matrix = wij
             else:
                 rij_matrix += rij
+                wij_matrix += wij
         self.rij_matrix_cpp = flex.double(rij_matrix.todense())
-        return self.rij_matrix_cpp, None
+        self.wij_matrix_cpp = flex.double(wij_matrix.todense())
+        return self.rij_matrix_cpp, self.wij_matrix_cpp
 
 
     def __init__(self):
@@ -262,7 +268,7 @@ class Reproducer:
 if __name__=="__main__":
   REP = Reproducer()
   t0 = time.time()
-  Rij_cpp, _ = REP.compute_rij_wij_cplusplus()
+  Rij_cpp, Wij_cpp = REP.compute_rij_wij_cplusplus()
   print("c++: ", time.time()-t0)
   # set nproc to 64 for Gildea algorithm
   REP._nproc =  64
@@ -270,14 +276,18 @@ if __name__=="__main__":
   Rij, Wij = REP.compute_rij_wij_Gildea(lineprof=-1)
   print("py: ", time.time()-t0)
 
-  for _ in range(100):
+  for _ in range(1000):
       import random
       i = random.randint(0, Rij.size())
       ref = Rij[i]
       cpp = Rij_cpp[i]
-      if abs(ref-cpp)>0.001: print("{}: \t {:.3f} \t {:.3f}".format(i, ref, cpp))
-  import IPython;IPython.embed()
-  if True:
+      w_ref = Wij[i]
+      w_cpp = Wij_cpp[i]
+      if abs(ref-cpp)>0.001 or abs(w_ref-w_cpp)>0.001:
+        print()
+        print("{}: \t {:.3f} \t {:.3f}".format(i, ref, cpp))
+        print("{}: \t {:.3f} \t {:.3f}".format(i, w_ref, w_cpp))
+  if False:
         # debugging code useful for understanding the overall matrix structure
         from matplotlib import pyplot as plt
         plt.imshow(Rij.as_numpy_array())

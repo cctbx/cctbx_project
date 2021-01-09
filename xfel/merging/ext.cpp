@@ -202,7 +202,8 @@ namespace sx_merging {
         ) :
       lower_i_(lower_i),
       upper_i_(upper_i),
-      data_(data) {
+      data_(data),
+      weights_("count") {
     }
 
     af::shared<cbop_t> cb_ops;
@@ -211,6 +212,7 @@ namespace sx_merging {
     af::shared<int> upper_i_;
     af::shared<double> data_;
     int n_sym_ops;
+    std::string weights_;
 
     void set_indices(cbop_t cb_op,
                      af::shared<cctbx::miller::index<> > index_set){
@@ -232,7 +234,7 @@ namespace sx_merging {
         const int &n_lattices,
         const int &i_row) const
     {
-      // WIP port of _compute_rij_matrix_one_row_block from test.py
+      // port of _compute_rij_matrix_one_row_block from test.py
       typedef std::tuple<long, long, std::string> cache_key_t;
       typedef std::map<cache_key_t, std::tuple<double, int> > rij_cache_t;
 
@@ -243,6 +245,8 @@ namespace sx_merging {
 
       af::shared<int> rij_row, rij_col;
       af::shared<double> rij_data;
+      af::shared<int> wij_row, wij_col;
+      af::shared<double> wij_data;
 
       double corr_coeff;
       int n_obs;
@@ -317,11 +321,12 @@ namespace sx_merging {
                 n_obs = -1;
               }
 
+
               rij_cache[cache_key] = std::make_tuple(corr_coeff, n_obs);
 
             }
 
-            if (n_obs==-1 || corr_coeff == -1.)
+            if (n_obs==-1 || corr_coeff == -1. || n_obs < 3)
               continue;
             else {
               int ik = i_row + (n_lattices * k);
@@ -329,6 +334,14 @@ namespace sx_merging {
               rij_row.push_back(ik);
               rij_col.push_back(jk);
               rij_data.push_back(corr_coeff);
+              if (weights_ == "count") {
+                wij_row.push_back(ik);
+                wij_col.push_back(jk);
+                wij_data.push_back(n_obs);
+                wij_row.push_back(jk);
+                wij_col.push_back(ik);
+                wij_data.push_back(n_obs);
+              }
             }
 
 
@@ -336,7 +349,7 @@ namespace sx_merging {
           }
         }
       }
-      return boost::python::make_tuple(rij_row, rij_col, rij_data);
+      return boost::python::make_tuple(rij_row, rij_col, rij_data, wij_row, wij_col, wij_data);
     }
 
     std::string foo(const int& n_lattices,
