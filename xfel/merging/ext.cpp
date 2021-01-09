@@ -198,12 +198,14 @@ namespace sx_merging {
     compute_rij_wij_detail(
         const af::shared<int> &lower_i,
         const af::shared<int> &upper_i,
-        const af::shared<double> &data
+        const af::shared<double> &data,
+        const int &n_obs_min
         ) :
       lower_i_(lower_i),
       upper_i_(upper_i),
       data_(data),
-      weights_("count") {
+      weights_("count"),
+      n_obs_min_(n_obs_min) {
     }
 
     af::shared<cbop_t> cb_ops;
@@ -212,6 +214,7 @@ namespace sx_merging {
     af::shared<int> upper_i_;
     af::shared<double> data_;
     int n_sym_ops;
+    int n_obs_min_;
     std::string weights_;
 
     void set_indices(cbop_t cb_op,
@@ -326,7 +329,7 @@ namespace sx_merging {
 
             }
 
-            if (n_obs==-1 || corr_coeff == -1. || n_obs < 3)
+            if (n_obs==-1 || corr_coeff == -1. || n_obs < n_obs_min_)
               continue;
             else {
               int ik = i_row + (n_lattices * k);
@@ -498,7 +501,8 @@ namespace boost_python { namespace {
       .def(init<
         const af::shared<int>,
         const af::shared<int>,
-        const af::shared<double> >())
+        const af::shared<double>,
+        const int >())
       .def("set_indices",&sx_merging::compute_rij_wij_detail::set_indices)
       .def("foo",&sx_merging::compute_rij_wij_detail::foo)
       .def("compute_one_row",&sx_merging::compute_rij_wij_detail::compute_one_row)

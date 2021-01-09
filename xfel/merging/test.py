@@ -218,7 +218,8 @@ class Reproducer:
         CC = compute_rij_wij_detail(
             lower_i,
             upper_i,
-            self._data.data())
+            self._data.data(),
+            self._min_pairs)
         for cb_op in self.sym_ops:
             cb_op = sgtbx.change_of_basis_op(cb_op)
             indices_reindexed = cb_op.apply(self._data.indices())
