@@ -268,7 +268,7 @@ namespace sx_merging {
         matchers.push_back(cctbx::miller::match_indices(indices_i));
       }
 
-      for (int j_col=0; j_col<n_lattices; ++j_col) {
+      for (int j_col=i_row; j_col<n_lattices; ++j_col) {
         int j_lower = lower_i_[j_col], j_upper = upper_i_[j_col];
 
         af::shared<cctbx::miller::index<> > indices_j;
@@ -337,13 +337,22 @@ namespace sx_merging {
               rij_row.push_back(ik);
               rij_col.push_back(jk);
               rij_data.push_back(corr_coeff);
+              if (i_row != j_col) {
+                rij_row.push_back(jk);
+                rij_col.push_back(ik);
+                rij_data.push_back(corr_coeff);
+              }
               if (weights_ == "count") {
                 wij_row.push_back(ik);
                 wij_col.push_back(jk);
-                wij_data.push_back(n_obs);
-                wij_row.push_back(jk);
-                wij_col.push_back(ik);
-                wij_data.push_back(n_obs);
+                wij_data.push_back(2*n_obs); //The factor of 2 is to match a bug
+                                             //in the original implementation.
+                if (i_row != j_col) {
+                  wij_row.push_back(jk);
+                  wij_col.push_back(ik);
+                  wij_data.push_back(2*n_obs); //The factor of 2 is to match a bug
+                                               //in the original implementation.
+                }
               }
             }
 
