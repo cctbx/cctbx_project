@@ -377,6 +377,7 @@ class hklview_3d:
        ):
         self.sceneisdirty = True
         if has_phil_path(diff_phil,
+                       "spacegroup_choice",
                        "show_missing",
                        "show_only_missing",
                        "show_systematic_absences",
@@ -449,6 +450,7 @@ class hklview_3d:
       self.orient_vector_to_screen(R[0])
 
     if has_phil_path(diff_phil,
+                      "spacegroup_choice",
                       "scene_bin_thresholds", # TODO: group bin phil parameters together in subscope
                       "bin_opacities",
                       "binner_idx",
@@ -538,7 +540,9 @@ class hklview_3d:
     self.GetUnitcellScales()
     self.d_min = self.miller_array.d_min()
     array_info = self.miller_array.info()
-    self.sg = self.miller_array.space_group()
+    # capture the currently selected spacegroup if not the default
+    self.sg = self.proc_arrays[self.scene_id_to_array_id(self.viewerparams.scene_id)].space_group()
+    #self.sg = self.miller_array.space_group()
     self.symops = self.sg.all_ops()
     if len(self.binvals) == 0:
       self.binvals = [ 1.0/self.miller_array.d_max_min()[0], 1.0/self.miller_array.d_max_min()[1]  ]
@@ -1514,12 +1518,13 @@ class hklview_3d:
           hklid = eval(message.split("match_hkl_id:")[1])[0]
           sym_id = eval(message.split("match_hkl_id:")[1])[1]
           is_friedel_mate = eval(message.split("match_hkl_id:")[1])[2]
-          self.make_visual_symHKLs(hklid, sym_id, anomalous=False)
-          self.visualise_sym_HKLs()
-          hkl = self.scene.indices[hklid]
-          hklmatches = miller.match_indices(self.parent.origarrays["HKLs"], [hkl])
-          orig_hkl_ids = list(hklmatches.pairs().column(0))
-          self.SendInfoToGUI( { "clicked_HKL": hkl, "orig_hkl_ids": orig_hkl_ids })
+          if self.sg.info().symbol_and_number() == self.miller_array.space_group().info().symbol_and_number():
+            self.make_visual_symHKLs(hklid, sym_id, anomalous=False)
+            self.visualise_sym_HKLs()
+            hkl = self.scene.indices[hklid]
+            hklmatches = miller.match_indices(self.parent.origarrays["HKLs"], [hkl])
+            orig_hkl_ids = list(hklmatches.pairs().column(0))
+            self.SendInfoToGUI( { "clicked_HKL": hkl, "orig_hkl_ids": orig_hkl_ids })
         elif "onClick colour chart" in message:
           self.onClickColourChart()
         elif "SelectedBrowserDataColumnComboBox" in message:
@@ -1967,10 +1972,13 @@ Distance: %s
     maxrad = self.HKLscene_from_dict(self.radii_scene_id).max_radius
     self.RemovePrimitives("highlight_HKL")
     hkl = eval(self.viewerparams.show_hkl)
-    #self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, name="highlight_HKL",
-    #                  r=1, g=0.0, b=0.0, radius= maxrad*0.2)
-    self.draw_sphere(hkl[0],hkl[1],hkl[2], isreciprocal=True, name="highlight_HKL",
-                      r=1, g=0.0, b=0.0, radius= maxrad*1.5, mesh=True)
+    if self.sg.info().symbol_and_number() == self.miller_array.space_group().info().symbol_and_number():
+      #self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, name="highlight_HKL",
+      #                  r=1, g=0.0, b=0.0, radius= maxrad*0.2)
+      self.draw_sphere(hkl[0],hkl[1],hkl[2], isreciprocal=True, name="highlight_HKL",
+                        r=1, g=0.0, b=0.0, radius= maxrad*1.5, mesh=True)
+    else:
+      self.mprint("Cannot currently associate reflection in original space group with reflection in different space group.")
     self.viewerparams.show_hkl = "" # to allow clicking on the same entry in the millerarraytable
 
 

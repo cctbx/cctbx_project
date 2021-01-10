@@ -295,7 +295,7 @@ class HKLViewFrame() :
         self.settings = phl.viewer
 
       self.params = self.viewer.update_settings(diff_phil, phl)
-      if view_3d.has_phil_path(diff_phil, "scene_id"):
+      if view_3d.has_phil_path(diff_phil, "scene_id", "spacegroup_choice"):
         self.list_vectors()
       # parameters might have been changed. So update self.currentphil accordingly
       self.currentphil = self.master_phil.format(python_object = self.params)
@@ -673,8 +673,8 @@ class HKLViewFrame() :
     self.mprint("Saving file...")
     fileextension = os.path.splitext(savefilename)[1]
     if fileextension == ".mtz":
-      mtz1 = self.procarrays[0].as_mtz_dataset(column_root_label= self.procarrays[0].info().labels[0])
-      for i,arr in enumerate(self.procarrays):
+      mtz1 = self.viewer.proc_arrays[0].as_mtz_dataset(column_root_label= self.viewer.proc_arrays[0].info().labels[0])
+      for i,arr in enumerate(self.viewer.proc_arrays):
         if i==0:
           continue
         mtz1.add_miller_array(arr, column_root_label=arr.info().labels[0] )
@@ -682,7 +682,7 @@ class HKLViewFrame() :
         mtz1.mtz_object().write(savefilename)
       except Exception as e:
         mtz1.mtz_object().write(savefilename.encode("ascii"))
-
+      self.mprint("Miller array(s) saved to: " + savefilename)
     elif fileextension == ".cif":
       import iotbx.cif
       mycif = None
@@ -694,7 +694,7 @@ class HKLViewFrame() :
           f.write("data_%s\n#\n" %os.path.splitext(os.path.basename(filename))[0])
           print(mycif.cif_block, file= f)
 
-      for i,arr in enumerate(self.procarrays):
+      for i,arr in enumerate(self.viewer.proc_arrays):
         arrtype = None
         colnames = ["_refln.%s" %e for e in arr.info().labels ]
         colname= None
@@ -730,7 +730,7 @@ class HKLViewFrame() :
   def tabulate_arrays(self, datalabels):
     if len(self.origarrays) == 0: # if not an mtz file then split columns
       # SupersetMillerArrays may not be necessary if file formats except for cif and mtz can't store multiple data columns
-      self.viewer.SupersetMillerArrays()
+      #self.viewer.SupersetMillerArrays()
       self.origarrays["HKLs"] = self.viewer.proc_arrays[0].indices()
       for arr in self.viewer.proc_arrays:
         if arr.is_complex_array():
@@ -835,6 +835,7 @@ class HKLViewFrame() :
     if not strbinvals:
       binvals, nuniquevalues = self.viewer.calc_bin_thresholds(binner_idx, nbins)
     else:
+      nan = float("nan")
       binvals = eval(strbinvals)
     if binvals and binner_idx == 0:
       binvals = list( 1.0/flex.double(binvals) )

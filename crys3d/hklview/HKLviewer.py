@@ -67,7 +67,7 @@ class AboutForm(QDialog):
     HKLviewer, </span>A reflection data viewer for crystallography
     <span style=" font-weight:600;"><br/>Developers: </span>Dr. Robert D. Oeffner<br/>
     Cambridge Institute for Medical Research, University of Cambridge.<br/>
-    HKLviewer is part of the <a href="http://cci.lbl.gov/docs/cctbx/"> CCTBX library</a> 
+    HKLviewer is part of the <a href="http://cci.lbl.gov/docs/cctbx/"> CCTBX library</a>
     as well as derived software thereof.<br/>
     Please direct any bug reports to cctbx@cci.lbl.gov or rdo20@cam.ac.uk
 
@@ -1368,36 +1368,8 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.sliceaxis = { 0:"h", 1:"k", 2:"l" }
     self.SliceLabelComboBox.addItems( list( self.sliceaxis.values()) )
 
-    #self.fixedorientcheckbox.clicked.connect(self.onFixedorient)
-    #self.recipvecBtn.setText("as fractional values in reciprocal space")
-    #self.recipvecBtn.setChecked(False)
-    #self.recipvecBtn.clicked.connect(self.onClipPlaneChkBox)
-    #self.realspacevecBtn.setText("as fractional values in real space")
-    #self.realspacevecBtn.setChecked(True)
-    #self.realspacevecBtn.clicked.connect(self.onClipPlaneChkBox)
-    #self.clipTNCSBtn.setText("as tNCS vector")
-    #self.clipTNCSBtn.setChecked(False)
-    #self.clipTNCSBtn.clicked.connect(self.onClipPlaneChkBox)
-
     self.PlaneParallelCheckbox.clicked.connect(self.onPlaneParallelCheckbox)
-
     vprec = 2
-    """
-    self.hvec_spinBox.setValue(2.0)
-    self.hvec_spinBox.setDecimals(vprec)
-    self.hvec_spinBox.setRange(-100.0, 100.0)
-    self.hvec_spinBox.valueChanged.connect(self.onHvecChanged)
-    self.kvec_spinBox.setValue(0.0)
-    self.kvec_spinBox.setDecimals(vprec)
-    self.kvec_spinBox.setSingleStep(0.5)
-    self.kvec_spinBox.setRange(-100.0, 100.0)
-    self.kvec_spinBox.valueChanged.connect(self.onKvecChanged)
-    self.lvec_spinBox.setValue(0.0)
-    self.lvec_spinBox.setDecimals(vprec)
-    self.lvec_spinBox.setSingleStep(0.5)
-    self.lvec_spinBox.setRange(-100.0, 100.0)
-    self.lvec_spinBox.valueChanged.connect(self.onLvecChanged)
-    """
     self.hkldistval = 0.0
     self.hkldist_spinBox.setValue(self.hkldistval)
     self.hkldist_spinBox.setDecimals(vprec)
@@ -1588,7 +1560,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
         self.operate_arrayidx2 = -1 # i.e. no second miller array selected yet
         if strval=="newdata":
           #self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data1' and or 'sigmas1' variable")
-          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] 
+          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx]
            + " 'data1' and/or 'sigmas1' variable and optionally 'data2' and/or 'sigmas2'"
            +" variable from the miller array below:")
           self.MillerComboBox.setEnabled(True)
@@ -1676,12 +1648,11 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
   def createBinsBox(self):
     self.binstable_isready = False
-    labels = ["no. of HKLs", "lower bin value", "upper bin value", "opacity"]
+    labels = ["# HKLs", "lower bin value", "upper bin value", "opacity"]
     self.binstable.setHorizontalHeaderLabels(labels)
     self.binstable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.Nbins_spinBox.valueChanged.connect(self.onNbinsChanged)
     self.OpaqueAllCheckbox.clicked.connect(self.onOpaqueAll)
-
     self.binstable.itemChanged.connect(self.onBinsTableItemChanged  )
     self.binstable.itemPressed.connect(self.onBinsTableitemPressed  )
     self.BinDataComboBox.activated.connect(self.onBindataComboSelchange)
@@ -1692,9 +1663,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.DrawReciprocUnitCellBox.clicked.connect(self.onDrawReciprocUnitCellBoxClick)
     self.unitcellslider.sliderReleased.connect(self.onUnitcellScale)
     self.reciprocunitcellslider.sliderReleased.connect(self.onReciprocUnitcellScale)
-    #self.ResetViewBtn.clicked.connect(self.onResetViewBtn)
-    #self.SaveImageBtn.clicked.connect(self.onSaveImage)
-    #labels = ["draw", "name", "rotation", "as hkl", "as abc"]
     labels = ["draw", "rotation", "as hkl", "as abc"]
     self.vectortable2.setHorizontalHeaderLabels(labels)
     self.vectortable2.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
