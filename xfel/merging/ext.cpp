@@ -276,7 +276,7 @@ namespace sx_merging {
         for (int k=0; k<n_sym_ops; ++k) {
           cctbx::miller::match_indices &matcher = matchers[k];
           const cbop_t& cb_op_k = cb_ops[k];
-          
+
 
           for (int kk=0; kk<n_sym_ops; ++kk) {
             const cbop_t& cb_op_kk = cb_ops[kk];
@@ -365,7 +365,7 @@ namespace sx_merging {
     }
 
     std::string foo(const int& n_lattices,
-                  af::shared<int> lower_i, 
+                  af::shared<int> lower_i,
                   af::shared<int> upper_i,
                   af::shared<double> data)
     {
