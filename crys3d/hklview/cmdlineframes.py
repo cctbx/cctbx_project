@@ -156,6 +156,8 @@ class HKLViewFrame() :
     self.viewer.viewerparams = self.params.viewer
     self.viewer.params = self.params
     self.params.binner_idx = 0
+    self.params.nbins = 1
+    self.params.scene_bin_thresholds = ""
     self.params.using_space_subgroup = False
     self.viewer.symops = []
     self.viewer.sg = None
@@ -486,7 +488,7 @@ class HKLViewFrame() :
     from copy import deepcopy
     millarr1 = deepcopy(self.procarrays[arrid1])
     newarray = None
-    if arrid2 != "":
+    if arrid2 != -1:
       millarr2 = deepcopy(self.procarrays[arrid2])
       newarray = self.viewer.OperateOn2MillerArrays(millarr1, millarr2, operation)
     else:

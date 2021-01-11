@@ -393,7 +393,7 @@ class Ui_MainWindow(object):
         self.power_scale_spinBox.setObjectName(u"power_scale_spinBox")
         sizePolicy13.setHeightForWidth(self.power_scale_spinBox.sizePolicy().hasHeightForWidth())
         self.power_scale_spinBox.setSizePolicy(sizePolicy13)
-        self.power_scale_spinBox.setMaximum(1.000000000000000)
+        self.power_scale_spinBox.setMaximum(10.000000000000000)
         self.power_scale_spinBox.setSingleStep(0.050000000000000)
         self.power_scale_spinBox.setValue(0.350000000000000)
 

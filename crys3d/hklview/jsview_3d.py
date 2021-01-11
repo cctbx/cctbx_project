@@ -437,6 +437,8 @@ class hklview_3d:
 
     if has_phil_path(diff_phil, "miller_array_operations"):
       self.viewerparams.scene_id = len(self.hkl_scenes_infos)-1
+      self.viewerparams.sigma_color = False
+      self.viewerparams.sigma_radius = False
       self.set_scene()
       self.params.miller_array_operations = ""
 
@@ -1076,14 +1078,14 @@ class hklview_3d:
   def OperateOn1MillerArray(self, millarr, operation):
     # lets user specify a one line python expression operating on data, sigmas
     newarray = millarr.deep_copy()
-    data = newarray.data()
-    sigmas = newarray.sigmas()
+    data1 = newarray.data()
+    sigmas1 = newarray.sigmas()
     dres = newarray.unit_cell().d( newarray.indices() )
     self.mprint("Creating new miller array through the operation: %s" %operation)
     try:
       newdata = None
       newsigmas = None
-      ldic= {'data': data, 'sigmas': sigmas, 'dres': dres }
+      ldic= {'data1': data1, 'sigmas1': sigmas1, 'dres': dres }
       exec(operation, globals(), ldic)
       newdata = ldic.get("newdata", None)
       newarray._data = newdata

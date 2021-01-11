@@ -630,10 +630,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
           if self.infodict.get("tncsvec"):
             self.tncsvec = self.infodict.get("tncsvec",[])
-          #if len(self.tncsvec) == 0:
-          #  self.clipTNCSBtn.setDisabled(True)
-          #else:
-          #  self.clipTNCSBtn.setEnabled(True)
           self.unfeedback = True
           if self.infodict.get("all_vectors"):
             self.rotvec = None
@@ -651,30 +647,21 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
                 self.vectortable2.setItem(row, col, item)
 
             rc = self.vectortable2.rowCount()-1 # last row is for user defined vector
-            #item = QTableWidgetItem(str(rc+1))
             item = QTableWidgetItem("new vector")
             item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled ^ Qt.ItemIsEditable)
             item.setCheckState(Qt.Unchecked)
             self.vectortable2.setItem(rc, 0, item)
 
-            #item = QTableWidgetItem("new vector")
-            #item.setFlags(item.flags() | Qt.ItemIsEditable)
-            #self.vectortable2.setItem(rc, 1, item)
-
             item = QTableWidgetItem()
             item.setFlags(item.flags() | Qt.ItemIsEditable)
-            #self.vectortable2.setItem(rc, 2, item)
             self.vectortable2.setItem(rc, 1, item)
 
             item = QTableWidgetItem()
             item.setFlags(item.flags() | Qt.ItemIsEditable)
-            #self.vectortable2.setItem(rc, 3, item)
             self.vectortable2.setItem(rc, 2, item)
-
 
             item = QTableWidgetItem()
             item.setFlags(item.flags() | Qt.ItemIsEditable)
-            #self.vectortable2.setItem(rc, 4, item)
             self.vectortable2.setItem(rc, 3, item)
             self.vectortable2.resizeColumnsToContents()
           self.unfeedback = False
@@ -684,6 +671,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
           if self.infodict.get("NewFileLoaded"):
             self.NewFileLoaded = self.infodict.get("NewFileLoaded",False)
             self.vectortable2.clearContents()
+            self.functionTabWidget.setDisabled(True)
 
           if self.infodict.get("NewHKLscenes"):
             self.NewHKLscenes = self.infodict.get("NewHKLscenes",False)
@@ -696,9 +684,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
           if self.infodict.get("clicked_HKL"):
             (h,k,l) = self.infodict.get("clicked_HKL", ( ) )
-            #if self.millerarraytablemodel is not None:
-            #  rows = self.millerarraytablemodel.searchHKL(h,k,l)
-              #self.millerarraytable.selectRow(rows[0])
           if self.infodict.get("orig_hkl_ids"):
             if self.millerarraytablemodel is not None \
              and self.millerarraytableform.SortComboBox.currentIndex() == 0:
