@@ -119,9 +119,8 @@ class crystal_model(worker):
       unit_cell = xray_structure.crystal_symmetry().unit_cell()
     else:
       xray_structure = space_group = unit_cell = None
-
-    xray_structure, space_group, unit_cell = self.mpi_helper.comm.bcast((xray_structure, space_group, unit_cell), root=0)
-
+    if self.purpose != "cosym":
+      xray_structure, space_group, unit_cell = self.mpi_helper.comm.bcast((xray_structure, space_group, unit_cell), root=0)
     if self.purpose == "scaling":
       # save space group and unit cell as scaling targets
       self.params.scaling.space_group = space_group
