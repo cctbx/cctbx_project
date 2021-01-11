@@ -23,7 +23,7 @@ class Reproducer:
     def compute_rij_wij_Gildea(self, use_cache=True, lineprof=-1):
         """Compute the rij_wij matrix."""
         n_lattices = self._lattices.size()
-        n_sym_ops = len(self.sym_ops)
+        n_sym_ops = len(self._sym_ops)
 
         NN = n_lattices * n_sym_ops
 
@@ -35,23 +35,18 @@ class Reproducer:
 
         indices = {}
         space_group_type = self._data.space_group().type()
-        for cb_op in self.sym_ops:
+        for cb_op in self._sym_ops:
             cb_op = sgtbx.change_of_basis_op(cb_op)
             indices_reindexed = cb_op.apply(self._data.indices())
             miller.map_to_asu(space_group_type, False, indices_reindexed)
             indices[cb_op.as_xyz()] = indices_reindexed
-
-        def _compute_rij_matrix_one_row_block_cpp(
-            i,
-            sym_ops=self.sym_ops):
-            pass
 
         def _compute_rij_matrix_one_row_block(i):
             import time
             t0 = time.time()
             rij_cache = {}
 
-            n_sym_ops = len(self.sym_ops)
+            n_sym_ops = len(self._sym_ops)
             NN = n_lattices * n_sym_ops
 
             rij_row = []
@@ -68,7 +63,7 @@ class Reproducer:
             intensities_i = self._data.data()[i_lower:i_upper]
 
             idx_matchers = []
-            for op in self.sym_ops:
+            for op in self._sym_ops:
                 cb_op = sgtbx.change_of_basis_op(op)
                 indices_i = indices[cb_op.as_xyz()][i_lower:i_upper]
                 idx_matchers.append(miller.match_indices(indices_i))
@@ -79,13 +74,13 @@ class Reproducer:
                 j_lower, j_upper = self._lattice_lower_upper_index(j)
                 intensities_j = self._data.data()[j_lower:j_upper]
 
-                for k, cb_op_k in enumerate(self.sym_ops):
+                for k, cb_op_k in enumerate(self._sym_ops):
                     cb_op_k = sgtbx.change_of_basis_op(cb_op_k)
 
                     indices_i = indices[cb_op_k.as_xyz()][i_lower:i_upper]
                     matcher = idx_matchers[k]
 
-                    for kk, cb_op_kk in enumerate(self.sym_ops):
+                    for kk, cb_op_kk in enumerate(self._sym_ops):
                         if i == j and k == kk:
                             # don't include correlation of dataset with itself
                             continue
@@ -201,7 +196,7 @@ class Reproducer:
         print("""Compute the rij_wij matrix in C++""")
 
         n_lattices = self._lattices.size()
-        n_sym_ops = len(self.sym_ops)
+        n_sym_ops = len(self._sym_ops)
         NN = n_lattices * n_sym_ops
 
         lower_i = flex.int()
@@ -220,7 +215,7 @@ class Reproducer:
             upper_i,
             self._data.data(),
             self._min_pairs)
-        for cb_op in self.sym_ops:
+        for cb_op in self._sym_ops:
             cb_op = sgtbx.change_of_basis_op(cb_op)
             indices_reindexed = cb_op.apply(self._data.indices())
             miller.map_to_asu(space_group_type, False, indices_reindexed)
@@ -240,7 +235,7 @@ class Reproducer:
         results = easy_mp.parallel_map(
             call_cpp,
             range(n_lattices),
-            processes=64)
+            processes=self._nproc)
 
         rij_matrix = None
         wij_matrix = None
@@ -251,31 +246,33 @@ class Reproducer:
             else:
                 rij_matrix += rij
                 wij_matrix += wij
-        self.rij_matrix_cpp = flex.double(rij_matrix.todense())
-        self.wij_matrix_cpp = flex.double(wij_matrix.todense())
-        return self.rij_matrix_cpp, self.wij_matrix_cpp
+        self.rij_matrix = flex.double(rij_matrix.todense())
+        self.wij_matrix = flex.double(wij_matrix.todense())
+        return self.rij_matrix, self.wij_matrix
 
 
     def __init__(self):
       import pickle
       with open("big_data","rb") as F:
         self._lattices = pickle.load(F)
-        self.sym_ops = pickle.load(F)
+        self._sym_ops = pickle.load(F)
         self._weights = pickle.load(F)
         self._data = pickle.load(F)
         self._patterson_group = pickle.load(F)
         self._min_pairs = 3 # minimum number of mutual miller indices for a match
 
 if __name__=="__main__":
+  NPROC = 1
   REP = Reproducer()
+  REP._nproc =  NPROC
   t0 = time.time()
   Rij_cpp, Wij_cpp = REP.compute_rij_wij_cplusplus()
-  print("c++: ", time.time()-t0)
+  print("c++: summary time ", time.time()-t0)
   # set nproc to 64 for Gildea algorithm
-  REP._nproc =  64
+  REP._nproc =  NPROC
   t0 = time.time()
   Rij, Wij = REP.compute_rij_wij_Gildea(lineprof=-1)
-  print("py: ", time.time()-t0)
+  print("py: summary time ", time.time()-t0)
 
   for _ in range(1000):
       import random
