@@ -8,6 +8,7 @@ from libtbx.utils import null_out
 from libtbx import group_args
 from cctbx.array_family import flex
 from collections import OrderedDict
+from mmtbx.ligands.ready_set_utils import add_n_terminal_hydrogens_to_residue_group
 #
 from cctbx.maptbx.box import shift_and_box_model
 
@@ -20,8 +21,6 @@ def mon_lib_query(residue, mon_lib_srv):
       residue_name=residue.resname,
       atom_names=residue.atoms().extract_name())
     return md
-    # print(md)
-    # print(ani)
     # get_func = getattr(mon_lib_srv, "get_comp_comp_id", None)
     # if (get_func is not None): return get_func(comp_id=residue)
     # return mon_lib_srv.get_comp_comp_id_direct(comp_id=residue)
@@ -87,12 +86,28 @@ class place_hydrogens():
     self.n_H_initial = self.model.get_hd_selection().count(True)
     if not self.keep_existing_H:
       self.model = self.model.select(~self.model.get_hd_selection())
+
     # Add H atoms and place them at center of coordinates
     pdb_hierarchy = self.add_missing_H_atoms_at_bogus_position()
 
+#    f = open("intermediate1.pdb","w")
+#    f.write(self.model.model_as_pdb())
+
+    # place N-terminal propeller hydrogens
+    for m in pdb_hierarchy.models():
+      for chain in m.chains():
+        rgs = chain.residue_groups()[0]
+        for ag in rgs.atom_groups():
+          if ag.get_atom("H"):
+            ag.remove_atom(ag.get_atom('H'))
+        rc = add_n_terminal_hydrogens_to_residue_group(rgs)
+        # rc is always empty list?
+
     pdb_hierarchy.sort_atoms_in_place()
     pdb_hierarchy.atoms().reset_serial()
-    #pdb_hierarchy.sort_atoms_in_place()
+#    f = open("intermediate2.pdb","w")
+#    f.write(self.model.model_as_pdb())
+
     p = mmtbx.model.manager.get_default_pdb_interpretation_params()
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     p.pdb_interpretation.use_neutron_distances = self.use_neutron_distances
@@ -111,7 +126,7 @@ class place_hydrogens():
       pdb_interpretation_params = p,
       log                       = null_out())
 
-    #f = open("intermediate1.pdb","w")
+    #f = open("intermediate3.pdb","w")
     #f.write(self.model.model_as_pdb())
 
     # Only keep H that have been parameterized in riding H procedure
@@ -139,7 +154,7 @@ class place_hydrogens():
     self.exclude_H_on_disulfides()
     #self.exclude_h_on_coordinated_S()
 
-  #  f = open("intermediate2.pdb","w")
+  #  f = open("intermediate4.pdb","w")
   #  f.write(model.model_as_pdb())
 
     # Reset occupancies, ADPs and idealize H atom positions
@@ -148,9 +163,8 @@ class place_hydrogens():
     self.model.idealize_h_riding()
 
     self.exclude_h_on_coordinated_S()
-    #
-    self.n_H_final = self.model.get_hd_selection().count(True)
 
+    self.n_H_final = self.model.get_hd_selection().count(True)
 
 # ------------------------------------------------------------------------------
 
