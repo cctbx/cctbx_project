@@ -34,7 +34,7 @@ def construct_xyz(ba, bv,
     rh_list.append(rh)
   return rh_list
 
-def generate_atom_group_atom_names(rg, names, return_Nones=False):
+def generate_atom_group_atom_names(rg, names, return_Nones=False, verbose=True):
   '''
   Generate all alt. loc. groups of names
   '''
@@ -61,7 +61,8 @@ def generate_atom_group_atom_names(rg, names, return_Nones=False):
         if return_Nones:
           atoms.append(None)
         else:
-          print('not all atoms found. missing %s from %s' % (name, names))
+          if verbose:
+            print('not all atoms found. missing %s from %s' % (name, names))
           break
     if len(atoms)!=len(names):
       yield None, None
