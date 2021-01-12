@@ -1008,12 +1008,12 @@ class HKLViewFrame() :
         # convert into cartesian space
         cartvec = list(abcvec * matrix.sqr(uc.orthogonalization_matrix()))
       elif self.params.viewer.add_user_vector_hkl_op not in [None, ""]:
-        rt = sgtbx.rt_mx(symbol=self.params.viewer.add_user_vector_hkl_op, r_den=12, t_den=144)
+        rt = sgtbx.rt_mx(symbol=self.params.viewer.add_user_vector_hkl_op.replace(" ",""), r_den=12, t_den=144)
         rt.r().as_double()
+        self.viewer.symops.append( rt ) #
         (cartvec, a, label, order) = self.viewer.GetVectorAndAngleFromRotationMx( rt.r() )
         if label:
           label = "%s-fold_%s" %(str(int(roundoff(2*math.pi/a, 0))), self.params.viewer.user_label)
-
       if (self.params.viewer.add_user_vector_hkl in [None, "", "()"] \
        and self.params.viewer.add_user_vector_abc in [None, "", "()"] \
        and self.params.viewer.add_user_vector_hkl_op) in [None, ""]:
@@ -1026,10 +1026,8 @@ class HKLViewFrame() :
                                 self.params.viewer.add_user_vector_hkl,
                                 self.params.viewer.add_user_vector_abc) )
       self.list_vectors()
-
     except Exception as e:
-      self.mprint( str(e), verbose=0)
-
+      raise Sorry( str(e))
     self.params.viewer.add_user_vector_hkl_op = ""
     self.params.viewer.add_user_vector_hkl = ""
     self.params.viewer.add_user_vector_abc = ""

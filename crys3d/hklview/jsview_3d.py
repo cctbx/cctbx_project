@@ -545,7 +545,7 @@ class hklview_3d:
     # capture the currently selected spacegroup if not the default
     self.sg = self.proc_arrays[self.scene_id_to_array_id(self.viewerparams.scene_id)].space_group()
     #self.sg = self.miller_array.space_group()
-    self.symops = self.sg.all_ops()
+    self.symops = list(self.sg.all_ops())
     if len(self.binvals) == 0:
       self.binvals = [ 1.0/self.miller_array.d_max_min()[0], 1.0/self.miller_array.d_max_min()[1]  ]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -569,6 +569,8 @@ class hklview_3d:
 
 
   def get_rothkl_from_IDs(self, id, sym_id, anomalous=False):
+    if bool(anomalous):
+      id = id % len(self.scene.indices)
     hkl = self.scene.indices[id]
     hklvec = flex.vec3_double( [(hkl[0], hkl[1], hkl[2])])
     rotmx=None
@@ -581,21 +583,24 @@ class hklview_3d:
       # applying the rotation to the original hkl coordinate
       Rhkl = hklvec[0] * rotmx
     rothkl = Rhkl
-    if anomalous:
-      rothkl =  (-Rhkl[0], -Rhkl[1], -Rhkl[2])
+    if bool(anomalous):
+      rothkl = (-Rhkl[0], -Rhkl[1], -Rhkl[2])
     return rothkl, hkl
 
 
   def make_visual_symHKLs(self, id, sym_id, anomalous=False):
-    rothkl, dummy = self.get_rothkl_from_IDs(id, sym_id, anomalous)
+    symid = sym_id
+    # if a user operator was added then iterate until we find it
+    #while self.currentsymop != self.symops[symid]:
+    #  symid += 1
+    rothkl, dummy = self.get_rothkl_from_IDs(id, symid, anomalous) # and use it
     if self.visual_symmxs:
       # if a list of symmetry matrices have been deduced from a selected rotation operator
       # then also compute the other symmetry mates of the current hkl
       self.visual_symHKLs = []
-      uc = self.miller_array.unit_cell()
-      for symmx in self.visual_symmxs:
+      for symmx,hklstr in self.visual_symmxs:
         vissymrothkl = rothkl * symmx.transpose()
-        self.visual_symHKLs.append( vissymrothkl )
+        self.visual_symHKLs.append( (vissymrothkl, hklstr) )
 
 
   def GetTooltipOnTheFly(self, id, sym_id, anomalous=False):
@@ -1508,20 +1513,14 @@ class hklview_3d:
           hklid = eval(message.split("tooltip_id:")[1])[0]
           sym_id = eval(message.split("tooltip_id:")[1])[1]
           is_friedel_mate = eval(message.split("tooltip_id:")[1])[2]
-          rotmx = None
-          hkls = self.scene.indices
-          if not is_friedel_mate:
-            ttip = self.GetTooltipOnTheFly(hklid, sym_id)
-          else:
-            hklid = hklid % len(hkls)
-            ttip = self.GetTooltipOnTheFly(hklid, sym_id, anomalous=True)
+          ttip = self.GetTooltipOnTheFly(hklid, sym_id, is_friedel_mate)
           self.AddToBrowserMsgQueue("ShowThisTooltip", ttip)
         elif "match_hkl_id:" in message:
           hklid = eval(message.split("match_hkl_id:")[1])[0]
           sym_id = eval(message.split("match_hkl_id:")[1])[1]
           is_friedel_mate = eval(message.split("match_hkl_id:")[1])[2]
           if self.sg.info().symbol_and_number() == self.miller_array.space_group().info().symbol_and_number():
-            self.make_visual_symHKLs(hklid, sym_id, anomalous=False)
+            self.make_visual_symHKLs(hklid, sym_id, is_friedel_mate)
             self.visualise_sym_HKLs()
             hkl = self.scene.indices[hklid]
             hklmatches = miller.match_indices(self.parent.origarrays["HKLs"], [hkl])
@@ -1940,11 +1939,17 @@ Distance: %s
 # if this is a rotation operator deduce the group of successive rotation matrices it belongs to
           rt = sgtbx.rt_mx(symbol= hklop, r_den=12, t_den=144)
           RotMx = matrix.sqr(rt.r().as_double() )
-          self.visual_symmxs.append( RotMx )
+          #self.visual_symmxs.append( RotMx )
+          self.visual_symmxs.append( (RotMx, rt.r().as_hkl()) )
+          #self.currentsymop = rt
           nfoldrotmx = RotMx
+          nfoldrot = rt.r()
           for ord in range(order -1): # skip identity operator
             nfoldrotmx = RotMx * nfoldrotmx
-            self.visual_symmxs.append( nfoldrotmx )
+            nfoldrot = nfoldrot.multiply( rt.r() )
+            self.visual_symmxs.append( (nfoldrotmx, nfoldrot.as_hkl()) )
+            #nfoldrotmx = RotMx * nfoldrotmx
+            #self.visual_symmxs.append( nfoldrotmx )
       else:
         self.RemovePrimitives(name)
         self.visual_symmxs = []
@@ -1955,7 +1960,7 @@ Distance: %s
   def visualise_sym_HKLs(self):
     if len(self.visual_symHKLs):
       self.RemovePrimitives("sym_HKLs")
-      for i,hkl in enumerate(self.visual_symHKLs):
+      for i,(hkl,hklstr) in enumerate(self.visual_symHKLs):
         thkl = tuple(hkl)
         hklstr = "H,K,L: %d,%d,%d" %thkl
         if i < len(self.visual_symHKLs)-1:
