@@ -51,6 +51,10 @@ phil_scope = parse("""
     .type = bool
     .help = Whether the data being analyzed is raw data from the JF16M or has \
             been corrected and padded.
+  unassembled_data_key = None
+    .type = str
+    .expert_level = 2
+    .help = Override hdf5 key name in unassembled file
   nexus_details {
     instrument_name = SwissFEL ARAMIS BEAMLINE ESB
       .type = str
@@ -160,10 +164,14 @@ class jf16m_cxigeom2nexus(object):
     data = entry.create_group('data')
     data.attrs['NX_class'] = 'NXdata'
     data_key = 'data'
-    if self.params.raw:
-      data[data_key] = h5py.ExternalLink(self.params.unassembled_file, "data/JF07T32V01/data")
+    if self.params.unassembled_data_key:
+      unassembled_data_key = self.params.unassembled_data_key
     else:
-      data[data_key] = h5py.ExternalLink(self.params.unassembled_file, "data/data")
+      if self.params.raw:
+        unassembled_data_key = "data/JF07T32V01/data"
+      else:
+        unassembled_data_key = "data/data"
+    data[data_key] = h5py.ExternalLink(self.params.unassembled_file, unassembled_data_key)
     # --> sample
     sample = entry.create_group('sample')
     sample.attrs['NX_class'] = 'NXsample'
