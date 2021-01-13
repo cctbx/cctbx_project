@@ -364,7 +364,7 @@ class disordered_segment(object):
     residues_and_angles = []
     for rg in self.residue_groups :
       peptide_angle = carbonyl_oxygen_angle(rg)
-      if (peptide_angle >= angle_cutoff):
+      if peptide_angle is not None and peptide_angle >= angle_cutoff:
         residues_and_angles.append((rg.id_str(), peptide_angle))
     return residues_and_angles
 

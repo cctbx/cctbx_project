@@ -82,6 +82,21 @@ namespace scitbx { namespace af { namespace boost_python {
     return result;
   }
 
+  template <typename intType>
+  af::versa<size_t, af::flex_grid<> >
+  as_size_t(
+    af::const_ref<intType, af::flex_grid<> > const& O)
+  {
+    af::versa<size_t, af::flex_grid<> > result(
+      O.accessor(), af::init_functor_null<size_t>());
+    std::size_t n = O.accessor().size_1d();
+    size_t* r = result.begin();
+    for(std::size_t i=0; i<n; i++) {
+      r[i] = static_cast<size_t>(O[i]);
+    }
+    return result;
+  }
+
   /* For allowed syntax for the optional format_string argument see:
        http://www.boost.org/libs/format/doc/format.html#syntax
    */
@@ -235,6 +250,7 @@ template <typename intType>
         slice_to_byte_str<versa<intType, flex_grid<> > >) \
       .def("as_bool", as_bool<intType>, (arg("strict")=true)) \
       .def("as_long", as_long<intType>) \
+      .def("as_size_t", as_size_t<intType>) \
       .def("as_string", as_string<intType>, (arg("format_string")="%d")) \
       .def("as_rgb_scale_string", as_rgb_scale_string<intType>, ( \
         arg("rgb_scales_low"), \

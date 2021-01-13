@@ -70,12 +70,16 @@ from iotbx_pdb_hierarchy_ext import *
 
 from six.moves import cStringIO as StringIO
 from copy import deepcopy
+import re
 import sys
 import math
 
 from mmtbx.monomer_library import pdb_interpretation
 
 time_model_show = 0.0
+
+# Utilties for conversion of models to objects that can be pickled
+# Not yet fully functional
 
 def find_common_water_resseq_max(pdb_hierarchy):
   get_class = iotbx.pdb.common_residue_names_get_class
@@ -216,6 +220,8 @@ class manager(object):
     self._ncs_groups = None
     self._anomalous_scatterer_groups = []
     self.log = log
+    self._model_number = None
+    self._info= group_args() # holds any info desired
     self.exchangable_hd_groups = []
     self.original_xh_lengths = None
     self.riding_h_manager = None
@@ -302,20 +308,47 @@ class manager(object):
   @classmethod
   def from_sites_cart(cls,
       sites_cart,
-      atom_name=' CA ',
+      atom_name = None,
       atom_name_list = None,
+      scatterer = None,
+      scatterer_list = None,
       resname='GLY',
+      resname_list = None,
       chain_id='A',
       b_iso=30.,
       b_iso_list=None,
       occ=1.,
       count=0,
       occ_list=None,
-      scatterer='C',
-      scatterer_list = None,
       resseq_list = None,
       crystal_symmetry=None):
+
+    '''
+     Convenience function to create a model from a list of cartesian coordinates
+     Default is to use atom name CA, scatterer C, occ 1, b_iso 30, resname GLY,
+       residue numbers starting with 1
+     Can supply:
+       atom_name and scatterer or atom_name_list and scatterer_list
+       occ or occ_list
+       b_iso or b_iso_list
+       resname or resname_list
+       resseq_list
+    '''
+
     assert sites_cart is not None
+    if atom_name is None and atom_name_list is None:
+      atom_name = ' CA '
+      scatterer = 'C'
+      scatterer_list = None
+    elif atom_name:
+      if scatterer is None and scatterer_list is None:
+        if atom_name.strip().upper()=='CA':
+          scatterer = 'C'
+        else:
+         assert scatterer is not None # need scatterer if atom_name is not CA
+    elif atom_name_list:
+      assert scatterer_list is not None
+
     hierarchy = iotbx.pdb.hierarchy.root()
     m = iotbx.pdb.hierarchy.model()
     c = iotbx.pdb.hierarchy.chain()
@@ -328,6 +361,8 @@ class manager(object):
       occ_list=sites_cart.size()*[occ]
     if not atom_name_list:
       atom_name_list = sites_cart.size()*[atom_name]
+    if not resname_list:
+      resname_list = sites_cart.size()*[resname]
     if not scatterer_list:
       scatterer_list = sites_cart.size()*[scatterer]
 
@@ -338,9 +373,9 @@ class manager(object):
          resseq_list.append(iotbx.pdb.resseq_encode(i))
 
     last_resseq=None
-    for sc, b_iso, occ, name, resseq, scatterer in zip(
+    for sc, b_iso, occ, name, resseq, scatterer, resname in zip(
         sites_cart,b_iso_list,occ_list,atom_name_list, resseq_list,
-        scatterer_list):
+        scatterer_list, resname_list):
       count+=1
       if last_resseq is None or resseq != last_resseq:
         rg=iotbx.pdb.hierarchy.residue_group()
@@ -473,6 +508,35 @@ class manager(object):
   def set_log(self, log):
     self.log = log
 
+  def set_model_number(self, model_number):
+    self._model_number = model_number
+
+  def model_number(self):
+    return self._model_number
+
+  def set_info(self, info):
+    self._info = info
+
+  def info(self):
+    return self._info
+
+  def __getstate__(self):
+    ''' The _ss_manager is not pickleable. Remove it before pickling
+      It may be present by itself or as an attribute of _processed_pdb_file
+      Also restraints_manager is not pickleable
+      This method removes _ss_manager and restraints_manager
+    '''
+
+    self_dc = self.deep_copy() # Avoid changing the model itself
+    self_dc._ss_manager = None
+    self_dc.unset_restraints_manager()
+
+    state = self_dc.__dict__
+    return state
+
+  def __setstate__(self, state):
+    self.__dict__.update(state)
+
   def __repr__(self):
     """
       Summarize the model_manager
@@ -482,18 +546,28 @@ class manager(object):
       counts = h.overall_counts()
       nres = counts.n_residues
       nchains = counts.n_chains
+      from mmtbx.secondary_structure.find_ss_from_ca import \
+          get_first_chain_id_and_resno, get_last_chain_id_and_resno
+      first_residue_text = get_first_chain_id_and_resno(h)
+      last_residue_text = get_last_chain_id_and_resno(h)
     else:
       nres = 0
       nchains = 0
+      first_residue_text = ""
+      last_residue_text = ""
     if self.shift_cart():
       sc = tuple(self.shift_cart())
     else:
       sc = (0, 0, 0)
+
     return "Model manager "+\
-      "\n%s\nChains: %s Residues %s \nWorking coordinate shift %s)" %(
+      "%s" %(self.model_number()) if self.model_number() is not None else "" + \
+      "\n%s\nChains: %s Residues %s (%s - %s)\nWorking coordinate shift %s)" %(
       str(self.unit_cell_crystal_symmetry()).replace("\n"," "),
       str(nchains),
       str(nres),
+      str(first_residue_text),
+      str(last_residue_text),
       str(sc))
 
   def set_stop_for_unknowns(self, value):
@@ -532,6 +606,7 @@ class manager(object):
 
   def set_nonbonded_weight(self, value):
     params = self.get_current_pdb_interpretation_params()
+    if(params.pdb_interpretation.nonbonded_weight == value): return
     params.pdb_interpretation.nonbonded_weight = value
     self.set_pdb_interpretation_params(params = params)
 
@@ -1019,6 +1094,15 @@ class manager(object):
   def sel_sidechain(self):
     return self._get_selection_manager().sel_backbone_or_sidechain(False, True)
 
+  def reset_after_changing_hierarchy(self):
+
+    '''  Regenerate xray_structure after changing hierarchy '''
+    self.update_xrs()
+    self._update_atom_selection_cache()
+    self.get_hierarchy().atoms().reset_serial() # redo the numbering
+    self.get_hierarchy().atoms().reset_i_seq() # redo the numbering
+    self.unset_restraints_manager() # no longer applies
+
   def set_xray_structure(self, xray_structure):
     # XXX Delete as a method or make sure all TLS, NCS, refinement flags etc
     # XXX are still consistent!
@@ -1215,7 +1299,7 @@ class manager(object):
       ss_ann.remove_empty_annotations(self.get_hierarchy())
     return ss_ann
 
-  def can_be_reduced_with_biomt(self):
+  def can_be_unique_with_biomt(self):
     if not self.ncs_constraints_present():
       return False
     original_nrgl = self.get_ncs_groups()
@@ -1235,12 +1319,13 @@ class manager(object):
       additional_blocks = None,
       align_columns = False,
       do_not_shift_back = False,
-      try_reduce_with_biomt = False):
-    if try_reduce_with_biomt:
-      if not self.can_be_reduced_with_biomt():
+      try_unique_with_biomt = False):
+    if try_unique_with_biomt:
+      if not self.can_be_unique_with_biomt():
         return ""
-      sel, cb = self.get_ncs_groups().reduce_with_biomt(self.get_hierarchy())
+      sel, cb = self.get_ncs_groups().unique_with_biomt(self.get_hierarchy())
       cutted_m = self.select(sel)
+      cutted_m.get_hierarchy().atoms_reset_serial()
       ab = additional_blocks
       if additional_blocks is not None:
         ab.append(cb)
@@ -1252,7 +1337,7 @@ class manager(object):
           additional_blocks = ab,
           align_columns = align_columns,
           do_not_shift_back = do_not_shift_back,
-          try_reduce_with_biomt = False)
+          try_unique_with_biomt = False)
     out = StringIO()
     cif = iotbx.cif.model.cif()
     cif_block = None
@@ -2211,7 +2296,7 @@ class manager(object):
     xrs = self.get_xray_structure()
     scatterers = xrs.scatterers()
     for scatterer in scatterers:
-      neutralized_scatterer = filter(lambda x: x.isalpha(), scatterer.scattering_type)
+      neutralized_scatterer = re.sub('[^a-zA-Z]', '', scatterer.scattering_type)
       if (neutralized_scatterer != scatterer.scattering_type):
         neutralized = True
         scatterer.scattering_type = neutralized_scatterer
@@ -2827,6 +2912,8 @@ class manager(object):
     new.restraints_manager = new_restraints_manager
     new._xray_structure    = xrs_new
     new.tls_groups = sel_tls
+    new._model_number = self._model_number
+    new._info = deepcopy(self._info)
 
     if new_riding_h_manager is not None:
       new.riding_h_manager = new_riding_h_manager

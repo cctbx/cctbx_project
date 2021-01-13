@@ -5,6 +5,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, to_str
 from cctbx import miller
+from cctbx import crystal
 from cctbx.array_family import flex
 import libtbx.phil
 from scitbx import graphics_utils
@@ -14,6 +15,19 @@ import math, traceback
 import math
 from six.moves import zip
 
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from matplotlib import cm
+
+class MplColorHelper:
+  def __init__(self, cmap_name, start_val, stop_val):
+    self.cmap_name = cmap_name
+    self.cmap = plt.get_cmap(cmap_name)
+    self.norm = mpl.colors.Normalize(vmin=start_val, vmax=stop_val)
+    self.scalarMap = cm.ScalarMappable(norm=self.norm, cmap=self.cmap)
+  def get_rgb(self, val):
+    rgba = self.scalarMap.to_rgba(val)
+    return rgba[0], rgba[1], rgba[2], rgba[3]
 
 
 nanval = float('nan')
@@ -127,12 +141,12 @@ class scene(object):
     self.renderscale = 100.0
     self.foms_workarray = foms_array
     self.SceneCreated = False
+    if isinstance(miller_array.data(), flex.std_string):
+      return
     self.settings = settings
     self.merge_equivalents = False
     if not self.miller_array.is_unique_set_under_symmetry():
       self.merge_equivalents = merge
-    from cctbx import crystal
-    from cctbx.array_family import flex
     self.multiplicities = None
     self.fomlabel = ""
     self.foms = flex.double(self.miller_array.size(), float('nan'))
@@ -287,6 +301,9 @@ class scene(object):
       else :
         if isinstance(data, flex.double):
           self.data = data #.deep_copy()
+        elif isinstance(data, flex.hendrickson_lattman):
+          # for now display HL coefficients as a simple sum
+          self.data = flex.double( [a+b+c+d for a,b,c,d in data] )
         elif isinstance(data, flex.complex_double):
           self.data = data #.deep_copy()
           self.ampl = flex.abs(data)
@@ -305,16 +322,6 @@ class scene(object):
           self.data = data
         else:
           raise RuntimeError("Unexpected data type: %r" % data)
-        if (settings.show_data_over_sigma):
-          if (array.sigmas() is None):
-            raise Sorry("sigmas not defined.")
-          sigmas = array.sigmas()
-          non_zero_sel = sigmas != 0
-          array = array.select(non_zero_sel)
-          array = array.customized_copy(data=array.data()/array.sigmas())
-          self.data = array.data()
-          if (multiplicities is not None):
-            multiplicities = multiplicities.select(non_zero_sel)
         if array.sigmas() is not None:
           self.sigmas = array.sigmas()
         else:
@@ -348,10 +355,8 @@ class scene(object):
         (settings.scale_colors_multiplicity)):
       data_for_colors = self.multiplicities.data().as_double()
       assert data_for_colors.size() == data.size()
-    elif (settings.sqrt_scale_colors) and (isinstance(data, flex.double)):
-      data_for_colors = flex.sqrt(flex.abs(data))
     elif isinstance(data, flex.complex_double):
-      data_for_colors = self.radians
+      data_for_colors = self.phases
       foms_for_colours = self.foms
        # assuming last part of the labels indicates the phase label as in ["FCALC","PHICALC"]
       self.colourlabel = "Phase of " + self.miller_array.info().label_string()
@@ -382,29 +387,43 @@ class scene(object):
         data_for_radii = data_for_radii.select(self.slice_selection)
         data_for_colors = data_for_colors.select(self.slice_selection)
         foms_for_colours = foms_for_colours.select(self.slice_selection)
+    # Computing rgb colours of each reflection is slow so make a small array
+    # of precomputed colours to use as a lookup table for each reflection
     if isinstance(data, flex.complex_double):
+      COL = MplColorHelper(settings.color_scheme, 0, 360)
+      rgbcolarray = [ COL.get_rgb(d)[0:3] for d in range(360) ]
       if self.isUsingFOMs():
-        colors = graphics_utils.colour_by_phi_FOM(data_for_colors, foms_for_colours)
+        colors = graphics_utils.map_to_rgb_colourmap(
+          data_for_colors=data_for_colors,
+          colormap=rgbcolarray,
+          selection=flex.bool(data_for_colors.size(), True),
+          attenuation = foms_for_colours,
+          map_directly=True,
+          color_all=False
+          )
       else:
-        colors = graphics_utils.colour_by_phi_FOM(data_for_colors, None)
-    elif (settings.color_scheme in ["rainbow", "heatmap", "redblue"]):
-      colors = graphics_utils.color_by_property(
-        properties=data_for_colors,
+        colors = graphics_utils.map_to_rgb_colourmap(
+          data_for_colors=data_for_colors,
+          colormap=rgbcolarray,
+          selection=flex.bool(data_for_colors.size(), True),
+          attenuation = None,
+          map_directly=True,
+          color_all=False
+          )
+    else:
+      # Use a colour gradient from matplotlib
+      COL = MplColorHelper(settings.color_scheme, 0, 199)
+      colorgradientarray = flex.vec3_double([COL.get_rgb(d)[0:3] for d in range(200) ])
+      # Do the table lookup in C++ for speed improvement
+      colors = graphics_utils.map_to_rgb_colourmap(
+        data_for_colors=data_for_colors,
+        colormap=colorgradientarray,
         selection=flex.bool(data_for_colors.size(), True),
-        color_all=False,
-        gradient_type=settings.color_scheme)
-    elif (settings.color_scheme == "grayscale"):
-      colors = graphics_utils.grayscale_by_property(
-        properties=data_for_colors,
-        selection=flex.bool(data_for_colors.size(), True),
-        shade_all=False,
-        invert=settings.black_background)
-    else :
-      if (settings.black_background):
-        base_color = (1.0,1.0,1.0)
-      else :
-        base_color = (0.0,0.0,0.0)
-      colors = flex.vec3_double(data_for_colors.size(), base_color)
+        powscale = settings.color_powscale,
+        attenuation = None,
+        color_all=False
+        )
+
     if (settings.slice_mode) and (settings.keep_constant_scale):
       colors = colors.select(self.slice_selection)
       data_for_radii = data_for_radii.select(self.slice_selection)
@@ -558,122 +577,10 @@ class scene(object):
     return (hkl, d_min, value)
 
 
-class render_2d(object):
-  def __init__(self, scene, settings):
-    self.scene = scene
-    self.settings = settings
-    self.setup_colors()
-
-
-  def GetSize(self):
-    raise NotImplementedError()
-
-
-  def get_center_and_radius(self):
-    w, h = self.GetSize()
-    r = (min(w,h) // 2) - 20
-    center_x = max(w // 2, r + 20)
-    center_y = max(h // 2, r + 20)
-    return center_x, center_y, r
-
-
-  def setup_colors(self):
-    if (self.settings.black_background):
-      self._background = (0.,0.,0.)
-      self._foreground = (1.,1.,1.)
-      if (self.settings.color_scheme == "heatmap"):
-        self._missing = (0.,1.,0.)
-      elif (not self.settings.color_scheme in ["rainbow", "redblue"]):
-        self._missing = (1.,0.,0.)
-      else :
-        self._missing = (1.,1.,1.)
-    else :
-      self._background = (1.,1.,1.)
-      self._foreground = (0.,0.,0.)
-      if (self.settings.color_scheme == "heatmap"):
-        self._missing = (0.,1.,0.)
-      elif (not self.settings.color_scheme in ["rainbow", "redblue"]):
-        self._missing = (1.,0.,0.)
-      else :
-        self._missing = (0.,0.,0.)
-
-
-  def get_scale_factor(self):
-    return 100.
-
-
-  def render(self, canvas):
-    self._points_2d = []
-    self._radii_2d = []
-    assert (self.settings.slice_mode)
-    if (self.settings.slice_axis == "h"):
-      i_x, i_y = 1, 2
-      axes = ("k", "l")
-    elif (self.settings.slice_axis == "k"):
-      i_x, i_y = 0, 2
-      axes = ("h", "l")
-    else :
-      i_x, i_y = 0, 1
-      axes = ("h", "k")
-    center_x, center_y, r = self.get_center_and_radius()
-    x_max = self.scene.axes[i_x][i_x] * 100.
-    y_max = self.scene.axes[i_y][i_y] * 100.
-    if (self.settings.show_axes):
-      # FIXME dimensions not right?
-      x_end = self.scene.axes[i_x][i_x], self.scene.axes[i_x][i_y]
-      y_end = self.scene.axes[i_y][i_x], self.scene.axes[i_y][i_y]
-      x_len = sqrt(x_end[0]**2 + x_end[1]**2)
-      y_len = sqrt(y_end[0]**2 + y_end[1]**2)
-      x_scale = (r+10) / x_len
-      y_scale = (r+10) / y_len
-      x_end = (x_end[0] * x_scale, x_end[1] * x_scale)
-      y_end = (y_end[0] * y_scale, y_end[1] * y_scale)
-      self.draw_line(canvas, center_x, center_y, center_x+x_end[0],
-        center_y-x_end[1])
-      self.draw_line(canvas, center_x, center_y, center_x+y_end[0],
-        center_y-y_end[1])
-      self.draw_text(canvas, axes[0], center_x + x_end[0] - 6,
-        center_y - x_end[1] - 20)
-      self.draw_text(canvas, axes[1], center_x + y_end[0] + 6,
-        center_y - y_end[1])
-    max_radius = self.scene.max_radius * r / max(x_max, y_max)
-    max_radius *= self.settings.scale
-    r_scale = ( 1/ self.scene.d_min) * self.get_scale_factor() # FIXME
-    for k, hkl in enumerate(self.scene.points):
-      x_, y_ = hkl[i_x], hkl[i_y]
-      x = center_x + r * x_ / r_scale
-      y = center_y - r * y_ / r_scale
-      r_point = self.scene.radii[k] * r / max(x_max, y_max)
-      if (self.settings.uniform_size):
-        r_point = max_radius
-      else :
-        r_point = max(0.5, r_point)
-      r_point *= self.settings.scale
-      self._points_2d.append((x,y))
-      self._radii_2d.append(r_point)
-      if (self.scene.missing_flags[k]):
-        self.draw_open_circle(canvas, x, y, r_point)
-      elif (self.scene.sys_absent_flags[k]):
-        self.draw_open_circle(canvas, x, y, r_point, self.scene.colors[k])
-      else :
-        self.draw_filled_circle(canvas, x, y, r_point, self.scene.colors[k])
-
-
-  def draw_line(self, canvas, x1, y1, x2, y2):
-    raise NotImplementedError()
-
-
-  def draw_text(self, canvas, text, x, y):
-    raise NotImplementedError()
-
-
-  def draw_open_circle(self, canvas, x, y, radius, color=None):
-    raise NotImplementedError()
-
-
-  def draw_filled_circle(self, canvas, x, y, radius, color):
-    raise NotImplementedError()
-
+# list of all colour maps from https://matplotlib.org/examples/color/colormaps_reference.html
+colormaps = " ".join(plt.colormaps())
+# set the default selected colour map to "brg" for phil attribute "color_scheme" below
+colormaps = colormaps.replace("brg ", "*brg ")
 
 philstr = """
   data = None
@@ -687,16 +594,12 @@ philstr = """
     .type = bool
   show_axes = True
     .type = bool
-  show_data_over_sigma = False
-    .type = bool
   nth_power_scale_radii = 0.0
     .type = float
   scale = 1
     .type = float
-  sqrt_scale_colors = False
-    .type = bool
-  phase_color = False
-    .type = bool
+  #phase_color = False
+  #  .type = bool
   sigma_color = False
     .type = bool
   sigma_radius = False
@@ -721,8 +624,10 @@ philstr = """
     .type = choice
   slice_index = 0
     .type = int
-  color_scheme = *rainbow heatmap redblue grayscale mono
+  color_scheme = %s
     .type = choice
+  color_powscale = 1.0
+    .type = float
   show_labels = True
     .type = bool
   uniform_size = False
@@ -737,7 +642,7 @@ philstr = """
     .type = bool
   show_anomalous_pairs = False
     .type = bool
-"""
+""" %colormaps
 
 master_phil = libtbx.phil.parse( philstr )
 params = master_phil.fetch().extract()

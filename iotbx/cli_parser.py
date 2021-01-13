@@ -212,8 +212,10 @@ class CCTBXParser(ParserBase):
     self.logger = logger
     if (self.logger is None):
       self.logger = logging.getLogger('main')
-    self.data_manager = DataManager(datatypes=program_class.datatypes,
-                                    logger=self.logger)
+    self.data_manager = DataManager(
+      datatypes=program_class.datatypes,
+      custom_options=program_class.data_manager_options,
+      logger=self.logger)
 
     # add PHIL converters if available
     if (len(program_class.phil_converters) > 0):

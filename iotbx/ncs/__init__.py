@@ -804,6 +804,7 @@ def get_chain_and_ranges(hierarchy):
   c_ids = [c.id for c in hierarchy.only_model().chains()]
   assert len(set(c_ids)) == 1
   c_id = c_ids[0]
+  c = hierarchy.only_model().chains()[0]
   rgs_all = []
   for chain in hierarchy.chains():
     rgs_all +=list(chain.residue_groups())

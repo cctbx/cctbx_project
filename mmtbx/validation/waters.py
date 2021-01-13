@@ -48,7 +48,9 @@ class water(atom):
             or (self.two_fofc < 1.0))
 
   def is_heavy_atom(self):
-    return (self.fofc > 3.0) or (self.anom > 3.0) or (self.b_iso == 0)
+    return ((self.fofc is not None and self.fofc > 3.0)
+            or (self.anom is not None and self.anom > 3.0)
+            or (self.b_iso is not None and self.b_iso == 0))
 
   def as_table_row_phenix(self):
     return [ self.id_str(), self.b_iso, self.occupancy, self.two_fofc,

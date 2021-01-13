@@ -11,7 +11,7 @@ from cctbx import geometry_restraints
 def _get_atom_neutron(ag, name, bondlength=None):
   atom = ag.get_atom(name)
   if atom: return atom, atom.name, False
-  if bondlength<1:
+  if bondlength is not None and bondlength<1:
     atom = ag.get_atom(name.replace('H', 'D'))
     if atom: return atom, name, True
   return atom, None, False

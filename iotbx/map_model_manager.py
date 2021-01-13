@@ -69,7 +69,7 @@ class map_model_manager(object):
         map_manager_mask:  a mask as a map_manager
       All other ids are any strings and are assumed to correspond to other maps
 
-    Note:  It is permissible to call with no map_manger, but supplying
+    Note:  It is permissible to call with no map_manager, but supplying
       both map_manager_1 and map_manager_2.  In this case, the working
       map_manager will be the average of map_manager_1 and map_manager_2. This
       will be created the first time map_manager is referenced.
@@ -89,6 +89,10 @@ class map_model_manager(object):
 
     Note: set wrapping of all maps to match map_manager if they differ. Set
     all to be wrapping if it is set
+
+    If a model has no crystal_symmetry or not unit_cell, it receives the
+     crystal symmetry of the map_manager and the shift_cart of the map_manager
+     The same result is obtained if ignore_symmetry_conflicts is set.
 
   '''
 
@@ -189,27 +193,16 @@ class map_model_manager(object):
     # if the incoming model is simply shifted relative to the maps...make them
     #  match by adjusting the model shift
 
-    if model and map_manager and model.crystal_symmetry() and \
-        model.shift_cart() and model.shift_cart() != map_manager.shift_cart():
-      if extra_model_list:  # make sure extras have same shift as model
-        for m in extra_model_list:
-          assert m.shift_cart() == model.shift_cart() # all models same shift
-      # Shift everything to match map
-      map_manager.shift_model_to_match_map(model)
-      if extra_model_list:
-        for m in extra_model_list:
-          map_manager.shift_model_to_match_map(m)
+    if any_map_manager:
+      for m in [model] + extra_model_list:
+        self.add_crystal_symmetry_if_necessary(m, map_manager = any_map_manager)
 
-    # if ignore_symmetry_conflicts, take all symmetry information from
-    #  any_map_manager and apply it to everything
     if ignore_symmetry_conflicts:
-      if ncs_object:
-        ncs_object.set_shift_cart(any_map_manager.shift_cart())
-      if model:
-        any_map_manager.set_model_symmetries_and_shift_cart_to_match_map(model)
-      if extra_model_list:
-        for m in extra_model_list:
-          any_map_manager.set_model_symmetries_and_shift_cart_to_match_map(m)
+      # Take all symmetry information from
+      #  any_map_manager and apply it to everything
+
+      for m in [model] + extra_model_list:
+        self.shift_any_model_to_match(m, map_manager = any_map_manager)
 
       if map_manager_1 and (map_manager_1 is not any_map_manager):
         map_manager_1 = any_map_manager.customized_copy(
@@ -223,6 +216,9 @@ class map_model_manager(object):
         new_extra_map_manager_list.append(any_map_manager.customized_copy(
           map_data=m.map_data()))
       extra_map_manager_list = new_extra_map_manager_list
+
+      if ncs_object:
+        ncs_object.set_shift_cart(any_map_manager.shift_cart())
 
     # CHECKS
 
@@ -889,9 +885,15 @@ class map_model_manager(object):
      Must be similar to existing map_managers
      Overwrites any existing with the same id unless overwrite = False
     '''
+    if not model:
+      print("No model supplied for '%s' ... skipping addition" %(
+        model_id), file = self.log)
+      return
+
     assert isinstance(model, mmtbx.model.manager)
     if not overwrite:
       assert not model_id in self.model_id_list() # must not duplicate
+
     if self.map_manager() and not self.map_manager().is_compatible_model(model):
       # needs shifting
       self.shift_any_model_to_match(model)
@@ -911,6 +913,11 @@ class map_model_manager(object):
      Overwrites any existing with the same id unless overwrite = False
      Is a mask if is_mask is set
     '''
+    if not map_manager:
+      print("No map_manager supplied for '%s' ... skipping addition" %(
+        map_id), file = self.log)
+      return
+
     assert isinstance(map_manager, MapManager)
     assert isinstance(overwrite, bool)
     if not overwrite:
@@ -954,21 +961,25 @@ class map_model_manager(object):
   def write_model(self,
      file_name,
      model_id = None,
+     model = None,
      ):
-    if not model_id:
-       model_id = 'model'
-    if not self.get_model_by_id(model_id = model_id):
-      self._print ("No model to write out")
+
+    if not model:
+      if not model_id:
+        model_id = 'model'
+      model = self.get_model_by_id(model_id = model_id)
+    if not model:
+        self._print ("No model to write out")
     elif not file_name:
       self._print ("Need file name to write model")
     else:
       # Write out model
 
       f = open(file_name, 'w')
-      print(self.get_model_by_id(model_id = model_id).model_as_pdb(), file = f)
+      print(model.model_as_pdb(), file = f)
       f.close()
       self._print("Wrote model with %s residues to %s" %(
-         self.model().get_hierarchy().overall_counts().n_residues,
+         model.get_hierarchy().overall_counts().n_residues,
          file_name))
 
   # Methods for identifying which map_manager and model to use
@@ -1992,19 +2003,22 @@ class map_model_manager(object):
   #  create a new object)
 
   def mask_all_maps_around_atoms(self,
+      model = None,
       mask_atoms_atom_radius = 3,
       set_outside_to_mean_inside = False,
       soft_mask = False,
       soft_mask_radius = None,
+      skip_n_residues_on_ends = None,
+      invert_mask = None,
       mask_id = 'mask'):
     assert mask_atoms_atom_radius is not None
-    assert self.model() is not None
     '''
       Generate mask around atoms and apply to all maps.
       Overwrites values in these maps
 
       NOTE: Does not change the gridding or shift_cart of the maps and model
 
+      Optional: specify model to use
       Optionally set the value outside the mask equal to the mean inside,
         changing smoothly from actual values inside the mask to the constant
         value outside (otherwise outside everything is set to zero)
@@ -2015,15 +2029,38 @@ class map_model_manager(object):
         (default radius is self.resolution() or resolution calculated
           from gridding)
         If soft mask is set, mask_atoms_atom_radius increased by
-
+      Optional: invert_mask:  keep outside atoms instead of inside
+      Optional: skip_n_residues_on_ends: any residues within
+        skip_n_residues_on_ends of ends of segments
+         (consecutive residue numbers or close N/P atoms) are excluded
 
     '''
+    if not model:
+      model = self.model()
+
+    assert model is not None
+
+    if skip_n_residues_on_ends:
+      selection_string = " or ".join(get_selections_for_segments(model,
+         skip_n_residues_on_ends = skip_n_residues_on_ends))
+      model = model.apply_selection_string(selection_string)
+      if model is None:  # nothing selected...create empty model
+        from mmtbx.model import manager as model_manager
+        model = model_manager.from_sites_cart(
+           sites_cart = flex.vec3_double(), # empty
+           crystal_symmetry = self.crystal_symmetry())
+        self.map_manager(
+            ).set_model_symmetries_and_shift_cart_to_match_map(model)
+
+
     if soft_mask and (not soft_mask_radius):
         soft_mask_radius = self.resolution()
     self.create_mask_around_atoms(
+         model = model,
          soft_mask = soft_mask,
          soft_mask_radius = soft_mask_radius,
          mask_atoms_atom_radius = mask_atoms_atom_radius,
+         invert_mask = invert_mask,
          mask_id = mask_id)
     self.apply_mask_to_maps(mask_id = mask_id,
          set_outside_to_mean_inside = \
@@ -2179,6 +2216,7 @@ class map_model_manager(object):
      mask_atoms_atom_radius = 3,
      soft_mask = False,
      soft_mask_radius = None,
+     invert_mask = None,
      mask_id = 'mask' ):
 
     '''
@@ -2192,6 +2230,7 @@ class map_model_manager(object):
            from gridding)
         If soft mask is set, mask_atoms_atom_radius increased by
           soft_mask_radius
+      Optional: invert_mask:  keep outside atoms instead of inside
 
       Generates new entry in map_manager dictionary with id of
       mask_id (default='mask') replacing any existing entry with that id
@@ -2208,6 +2247,7 @@ class map_model_manager(object):
     from cctbx.maptbx.mask import create_mask_around_atoms
     cm = create_mask_around_atoms(map_manager = self.map_manager(),
       model = model,
+      invert_mask = invert_mask,
       mask_atoms_atom_radius = mask_atoms_atom_radius)
 
     if soft_mask: # Make the create_mask object contain a soft mask
@@ -2409,7 +2449,8 @@ class map_model_manager(object):
     if selection_string:
       model = model.apply_selection_string(selection_string)
 
-    return get_sequence_from_hierarchy(model.get_hierarchy())
+    return get_sequence_from_hierarchy(
+        model.get_hierarchy(), remove_white_space=True)
 
   def rmsd_of_matching_residues(self,
       target_model_id = 'model',
@@ -2423,6 +2464,7 @@ class map_model_manager(object):
       element = None,
       ca_only = True,
       matching_info_list = None,
+      allow_reverse = None,
       quiet = True):
     '''
     Get rmsd of all or ca(P) atoms in matching residues
@@ -2434,6 +2476,7 @@ class map_model_manager(object):
     del all_kw['adopt_init_args'] # REQUIRED
     del all_kw['kw_obj']  # REQUIRED
     del all_kw['ca_only']  # REQUIRED
+    del all_kw['allow_reverse']  # REQUIRED
     del all_kw['matching_info_list']  # REQUIRED
 
     if not matching_info_list:
@@ -2441,13 +2484,21 @@ class map_model_manager(object):
         max_gap = 0,
         one_to_one = True,
         **all_kw)
-
     overall_diffs = flex.vec3_double()
     for matching_info in matching_info_list:
       diffs = self.get_diffs_for_matching_target_and_model(
          matching_info = matching_info,
          ca_only = ca_only,
          max_dist = max_dist)
+      if allow_reverse:
+        reverse_diffs = self.get_diffs_for_matching_target_and_model(
+         matching_info = matching_info,
+         ca_only = ca_only,
+         max_dist = max_dist,
+         reverse = True)
+        if reverse_diffs and reverse_diffs.size()>0 and \
+          reverse_diffs.rms_length() < diffs.rms_length():
+          diffs = reverse_diffs
       if diffs:
          overall_diffs.extend(diffs)
     if overall_diffs.size() > 0:
@@ -2459,7 +2510,11 @@ class map_model_manager(object):
       matching_info = None,
       max_dist = None,
       ca_only = None,
+      reverse = False
        ):
+
+    if reverse and not ca_only:
+      return None # cannot do reverse for full chain
     target_model = matching_info.target_model
     matching_model = matching_info.matching_model
     chain_type = matching_info.chain_type
@@ -2477,9 +2532,11 @@ class map_model_manager(object):
         element = 'P'
     if ca_only:
       target_model = target_model.apply_selection_string(
-        "name %s and element %s" %(atom_name, element))
+        "(not hetero) and  (altloc ' ' or altloc A) and name %s and element %s" %(
+      atom_name, element))
       matching_model = matching_model.apply_selection_string(
-        "name %s and element %s" %(atom_name, element))
+        "(not hetero) and (altloc ' ' or altloc A) and name %s and element %s" %(
+       atom_name, element))
       # use CA
     elif (target_model.get_sites_cart().size() != \
          matching_model.get_sites_cart().size() )  or ( not
@@ -2499,9 +2556,44 @@ class map_model_manager(object):
     matching_sites = matching_model.get_sites_cart()
     if target_sites.size() != matching_sites.size():
       return None
-    else:
-      diffs = target_sites - matching_sites
-      return diffs
+    elif reverse:
+      matching_sites = list(matching_sites)
+      matching_sites.reverse()
+      matching_sites = flex.vec3_double(matching_sites)
+    diffs = target_sites - matching_sites
+    return diffs
+
+  def get_cb_resseq_to_skip(self,cb_resseq_list,
+         far_away = None,
+         far_away_n = None):
+    '''
+    Identify numbers in resseq_list that are way different than all others by
+    at least max_gap
+    '''
+    if not far_away or not far_away_n:
+      return []
+
+
+    work_list = deepcopy(cb_resseq_list)
+    work_list.sort()
+    groups=[]
+    last_i = None
+    for i in work_list:
+      if last_i is not None and i <= last_i + far_away:
+        group.append(i)
+        last_i = i
+      else:
+         group = [i]
+         groups.append(group)
+         last_i = i
+
+    residues_to_ignore = []
+    for group in groups:
+     if len(group) <= far_away_n and len(cb_resseq_list)>= 2 * far_away_n:
+        residues_to_ignore += group
+    return residues_to_ignore
+
+
 
   def select_matching_segments(self,
       target_model_id = 'model',
@@ -2512,14 +2604,21 @@ class map_model_manager(object):
       atom_name = None,
       element = None,
       max_dist = None,
+      max_dist_extra = None,
       minimum_length = None,
       max_gap = 5,
+      far_away = 7,
+      far_away_n = 2,
       one_to_one = False,
       residue_names_must_match = False,
       quiet = True):
     '''
     Select the parts of matching_model that best match target_model
     without using matching model or target model more than once
+
+    Only use contiguous segments of target_model (i.e., a sequence of residues
+     with sequential residue numbers is a contiguous segment).  Does not
+     break based on distances (assumes input numbering reflects chain breaks).
 
     Allow gaps of up to max_gap (and keep residues in the gaps)
 
@@ -2529,6 +2628,9 @@ class map_model_manager(object):
       well as position
 
      Return a group_args object with a list of paired sements
+
+    If far_away is set, remove any groups of far_away_n or fewer that are
+      far_away residues from all other groups
     '''
 
     from mmtbx.secondary_structure.find_ss_from_ca import \
@@ -2572,12 +2674,19 @@ class map_model_manager(object):
         element = 'P'
       if max_dist is None:
         max_dist = max(self.resolution(), 7.)
+    elif max_dist is None:
+      if atom_name == 'CA':
+        max_dist = max(self.resolution(), 3.)
+      else:
+        max_dist = max(self.resolution(), 7.)
 
     # Select the atoms to try and match
     target_model_ca = target_model.apply_selection_string(
-      "name %s and element %s" %(atom_name, element))
+      "(not hetero) and (altloc ' ' or altloc A) and name %s and element %s" %(
+         atom_name, element))
     matching_model_ca = matching_model.apply_selection_string(
-      "name %s and element %s" %(atom_name, element))
+      "(not hetero) and  (altloc ' ' or altloc A) and name %s and element %s" %(
+        atom_name, element))
 
     # Make sure we have something to work with
     if target_model_ca.get_sites_cart() < 1:
@@ -2591,21 +2700,22 @@ class map_model_manager(object):
 
     if residue_names_must_match:
       ca_residue_names = get_sequence_from_hierarchy(
-        target_model_ca.get_hierarchy())
+        target_model_ca.get_hierarchy(), remove_white_space=True)
       cb_residue_names = get_sequence_from_hierarchy(
-        matching_model_ca.get_hierarchy())
+        matching_model_ca.get_hierarchy(), remove_white_space=True)
       assert len(ca_residue_names) == target_model_ca.get_sites_cart().size()
       assert len(cb_residue_names) == matching_model_ca.get_sites_cart().size()
     else:
       ca_residue_names = None
       cb_residue_names = None
 
-    matching_cb_as_list=self.match_cb_to_ca(
+    matching_cb_as_list_info = self.match_cb_to_ca(
       ca_sites=target_model_ca.get_sites_cart(),
       cb_as_list = list(matching_model_ca.get_sites_cart()),
       ca_residue_names = ca_residue_names,
       cb_residue_names = cb_residue_names,
       max_dist = max_dist,)
+    matching_cb_as_list = matching_cb_as_list_info.cb_as_list
 
     cb_sites_list = list(matching_model_ca.get_sites_cart())
     cb_atoms = list (matching_model_ca.get_hierarchy().atoms())
@@ -2625,13 +2735,13 @@ class map_model_manager(object):
       new_ca_sites_list = []
       new_matching_cb_as_list = []
       for ca_site, cb_site in zip(ca_sites_list,
-          matching_cb_as_list):
+          matching_cb_as_list,
+          ):
         if not cb_site:  continue
         new_ca_sites_list.append(ca_site)
         new_matching_cb_as_list.append(cb_site)
       ca_sites_list = new_ca_sites_list
       matching_cb_as_list = new_matching_cb_as_list
-
       assert len(matching_cb_as_list) == len(ca_sites_list)
 
       # Select all the residues in ca_sites_list and group by segments
@@ -2664,10 +2774,11 @@ class map_model_manager(object):
            local_ca_sites_list):
           index = ca_sites_list.index(ca_site_cart)
           local_matching_cb_as_list.append(matching_cb_as_list[index])
+
         residue_groups.append(group_args(
           starting_ca_resseq = segment_info.first_resseq,
           ca_sites_list = local_ca_sites_list,
-          matching_cb_as_list = local_matching_cb_as_list))
+          matching_cb_as_list = local_matching_cb_as_list,))
 
     else:
       residue_groups = [
@@ -2694,19 +2805,35 @@ class map_model_manager(object):
       matching_cb_as_list = residue_group.matching_cb_as_list
       ca_chain_dict = {}
       cb_chain_dict = {}
+
+      cb_resseq_list = []
       for ca_site, cb_site in zip(ca_sites_list,
-          matching_cb_as_list):
+          matching_cb_as_list, ):
         if not cb_site:  continue
         cb = cb_atoms_dict[cb_site]
         cb_chain_id = cb.parent().parent().parent().id
         cb_resseq = cb.parent().parent().resseq_as_int()
+        cb_resseq_list.append(cb_resseq)
+      # Are any cb_resseq way out of range of all the others?
+      cb_resseq_to_skip = self.get_cb_resseq_to_skip(cb_resseq_list,
+         far_away = far_away,
+         far_away_n = far_away_n,
+        )
+
+      for ca_site, cb_site in zip(ca_sites_list,
+          matching_cb_as_list, ):
+        if not cb_site:  continue
+        cb = cb_atoms_dict[cb_site]
+        cb_chain_id = cb.parent().parent().parent().id
+        cb_resseq = cb.parent().parent().resseq_as_int()
+        if cb_resseq in cb_resseq_to_skip: continue
+
 
         ca = ca_atoms_dict[ca_site]
         ca_chain_id = ca.parent().parent().parent().id
         ca_resseq = ca.parent().parent().resseq_as_int()
         if residue_names_must_match:
           assert ca.parent().resname == cb.parent().resname
-
 
         if not cb_chain_id in cb_chain_dict: cb_chain_dict[cb_chain_id] = []
         if not ca_chain_id in ca_chain_dict: ca_chain_dict[ca_chain_id] = []
@@ -2723,8 +2850,10 @@ class map_model_manager(object):
           chain_dict= ca_chain_dict, max_gap = max_gap)
         local_target_model = target_model.apply_selection_string(ca_selection_string)
 
-        target_seq = get_sequence_from_hierarchy(local_target_model.get_hierarchy())
-        matching_seq = get_sequence_from_hierarchy(local_matching_model.get_hierarchy())
+        target_seq = get_sequence_from_hierarchy(
+          local_target_model.get_hierarchy(), remove_white_space=True)
+        matching_seq = get_sequence_from_hierarchy(
+           local_matching_model.get_hierarchy(), remove_white_space=True)
         target_seq=list(target_seq)
         matching_seq=list(matching_seq)
         target_seq.sort()
@@ -2803,10 +2932,15 @@ class map_model_manager(object):
      return " or ".join(selection_string_list)
 
 
-  def choose_best_set(self,dd, max_dist = None):
+  def choose_best_set(self,dd, max_dist = None,
+      ):
     # dd is a dict
     # values for dd are lists of group args, each has a member value of dist
     #   and a member value of id.  Choose the one that has the smallest dist
+
+    # If there is a close alternative, also within max_dist but with residue
+    #  number much closer to all the others in a group, take that one instead
+    #  This is to try and go along a chain and not jump unless necessary.
 
     #   ca_dict[cb].append(group_args(
     #     dist=dist,
@@ -2843,7 +2977,9 @@ class map_model_manager(object):
         if key != best_key:
           dd[key] = None
       target_id = self.duplicate_id(dd)
-    return dd
+    return group_args(
+      dd = dd,
+      )
 
   def duplicate_id(self,dd):
     id_list = []
@@ -2907,12 +3043,18 @@ class map_model_manager(object):
           other_resname_id = cb_residue_names[index_cb],  # name of cb atom
           other_index_id =  index_cb,  #  index of cb atob
           ))
-    cb_dict=self.choose_best_set(cb_dict, max_dist = max_dist)
-    ca_dict=self.choose_best_set(ca_dict, max_dist = max_dist)
+    cb_dict_info = self.choose_best_set(cb_dict, max_dist = max_dist)
+    ca_dict_info = self.choose_best_set(ca_dict, max_dist = max_dist)
+    cb_dict = cb_dict_info.dd
+    ca_dict = ca_dict_info.dd
     cb_as_list = []
+
+    # Make a list of all the ca_dict positions and the matching (or missing)
+    #  item from cb
     if not ca_residue_names:
       ca_residue_names = [None]*ca_sites.size()
     for ca,ca_resname in zip(ca_sites, ca_residue_names):
+
       group = cb_dict.get(ca)
       if group:
         cb_as_list.append(group.id)
@@ -2921,7 +3063,9 @@ class map_model_manager(object):
       else:
         cb_as_list.append(None)
 
-    return cb_as_list
+    return group_args(
+       cb_as_list = cb_as_list,
+       )
 
 
   def propagate_model_from_other(self, other,
@@ -2961,7 +3105,25 @@ class map_model_manager(object):
     # And propagate these sites to rest of molecule with internal ncs
     model.set_sites_cart_from_hierarchy(multiply_ncs=True)
 
-  def shift_any_model_to_match(self, model):
+  def add_crystal_symmetry_if_necessary(self, model, map_manager = None):
+    '''
+    Take any model and add crystal symmetry if it is missing
+    Changes model in place
+     Parameters:  model
+    '''
+    if not model:
+      return
+    if not map_manager:
+      map_manager = self.any_map_manager()
+    assert map_manager is not None
+
+    assert isinstance(model, mmtbx.model.manager)
+    if (not model.crystal_symmetry()) or (
+        not model.crystal_symmetry().unit_cell()):
+      map_manager.set_model_symmetries_and_shift_cart_to_match_map(model)
+      model.set_shift_cart((0, 0, 0))
+
+  def shift_any_model_to_match(self, model, map_manager = None):
     '''
     Take any model and shift it to match the working shift_cart
     Also sets crystal_symmetry.
@@ -2969,14 +3131,28 @@ class map_model_manager(object):
 
      Parameters:  model
     '''
+    if not model:
+      return
     assert isinstance(model, mmtbx.model.manager)
+
+    if not map_manager:
+      map_manager = self.get_any_map_manager()
+
+    assert map_manager is not None
+
+    self.add_crystal_symmetry_if_necessary(model, map_manager = map_manager)
+
     if not model.shift_cart():
       model.set_shift_cart((0, 0, 0))
+
     coordinate_shift = tuple(
-      [s - o for s,o in zip(self.shift_cart(),model.shift_cart())])
-    model.shift_model_and_set_crystal_symmetry(
+      [s - o for s,o in zip(map_manager.shift_cart(),model.shift_cart())])
+
+    if coordinate_shift != (0,0,0):
+      model.shift_model_and_set_crystal_symmetry(
         shift_cart = coordinate_shift,
         crystal_symmetry=self.crystal_symmetry())
+
 
   def get_model_from_other(self, other,
      other_model_id = 'model'):
@@ -3565,7 +3741,7 @@ class map_model_manager(object):
     kw['is_external_based'] = True
     kw['remove_overall_anisotropy'] = False # REQUIRED
     del kw['map_id_external_map']
-
+    kw['model_map_ids_to_leave_as_is'] = [map_id_external_map] # do not remove aniso
     self._sharpen_map(**kw)
 
   def half_map_sharpen(self,
@@ -3686,7 +3862,7 @@ class map_model_manager(object):
       rmsd = None,
       local_sharpen = None,
       anisotropic_sharpen = None,
-      minimum_low_res_cc = None,
+      minimum_low_res_cc = 0.20,
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
       n_direction_vectors = None,
@@ -3854,7 +4030,6 @@ class map_model_manager(object):
        k_sol = k_sol,
        b_sol = b_sol)
 
-
     # Save unmodified copy of map to be scaled
     mm_dc_list = []
     unmasked_map_id_list = []
@@ -3878,6 +4053,7 @@ class map_model_manager(object):
     kw['map_id_2'] = map_id_model_map
     kw['is_model_based'] = True
     kw['map_id_to_be_scaled_list'] = unmasked_map_id_list
+    kw['model_map_ids_to_leave_as_is'] = [map_id_model_map] # do not remove aniso
 
     # Now get scaling from comparison of working_map_id_to_be_scaled and
     #   map_id_model_map, and
@@ -3931,7 +4107,7 @@ class map_model_manager(object):
       n_bins_default = 200,
       n_bins_default_local = 20,
       anisotropic_sharpen = None,
-      minimum_low_res_cc = None,
+      minimum_low_res_cc = 0.20,
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
       n_direction_vectors = None,
@@ -3949,6 +4125,7 @@ class map_model_manager(object):
       coordinate_shift_to_apply_before_tlso = None,
       overall_sharpen_before_and_after_local = None, # ignored
       sharpen_all_maps = False,
+      model_map_ids_to_leave_as_is = None,
       remove_overall_anisotropy = None,
     ):
     '''
@@ -3991,6 +4168,7 @@ class map_model_manager(object):
     del kw['n_bins_default']  # REQUIRED
     del kw['n_bins_default_local']  # REQUIRED
     del kw['remove_overall_anisotropy']  # REQUIRED
+    del kw['model_map_ids_to_leave_as_is']  # REQUIRED
 
 
     # Checks
@@ -4092,7 +4270,8 @@ class map_model_manager(object):
       aniso_b_cart = working_mmm.remove_anisotropy(map_id = map_id,
         d_min = d_min,
         b_iso = b_iso,
-        remove_from_all_maps = True)
+        remove_from_all_maps = True,
+        model_map_ids_to_leave_as_is = model_map_ids_to_leave_as_is)
     else:
       aniso_b_cart = None
       b_iso = None
@@ -4157,7 +4336,6 @@ class map_model_manager(object):
       print("Estimating scale factors ", file = self.log)
 
     # Analyze spectrum in map_id (will apply it to map_id_to_be_scaled)
-
     scaling_group_info = working_mmm._get_weights_in_shells(n_bins,
         d_min,
         map_id = map_id,
@@ -4255,12 +4433,16 @@ class map_model_manager(object):
         map_id = 'map_manager',
         map_ids = None,
         remove_from_all_maps = False,
+        model_map_ids_to_leave_as_is  = None,
         b_iso = None):
    '''
    Remove anisotropy from map, optionally remove anisotropy specified by
     aniso_b_cart and b_iso
    '''
    assert map_coeffs or d_min or map_id
+
+   if not model_map_ids_to_leave_as_is:
+     model_map_ids_to_leave_as_is = []
 
    if not map_coeffs:
       assert self.get_map_manager_by_id(map_id)
@@ -4277,6 +4459,7 @@ class map_model_manager(object):
 
    if remove_from_all_maps:  # remove in place from all maps
      print("Removing anisotropy from all maps", file = self.log)
+     # Note: do not remove anisotropy from model-based maps..
      self._print_overall_u(aniso_b_cart,b_iso)
 
      if map_ids is None:
@@ -4285,6 +4468,8 @@ class map_model_manager(object):
        mm=self.get_map_manager_by_id(map_id)
        if mm.is_mask():
          continue # do not apply to masks
+       elif map_id in model_map_ids_to_leave_as_is:
+         continue # skip model maps
        map_coeffs = mm.map_as_fourier_coefficients(d_min = d_min)
        from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
        f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
@@ -6084,6 +6269,7 @@ class map_model_manager(object):
     del kw['aniso_b_cart']  # REQUIRED
     del kw['b_iso']  # REQUIRED
 
+
     # Get scale factors vs resolution and location
     scale_factor_info = self.local_fsc(
       direction_vectors = [None],
@@ -6803,7 +6989,8 @@ class map_model_manager(object):
          map_id))
 
 
-    assert model and map_manager
+    assert self.map_manager().is_compatible_model(model) # model must match
+
     if not resolution:
       resolution = self.resolution()
     assert resolution is not None
@@ -7009,6 +7196,86 @@ class map_model_manager(object):
 
 
   # General methods
+
+  def model_from_hierarchy(self,
+    hierarchy,
+    model_id = 'model_from_hierarchy'):
+    '''
+     Convenience method to convert a hierarchy into a model, where the
+     model has symmetry and shift cart matching this manager
+    '''
+
+    from mmtbx.model import manager as model_manager
+    model = model_manager(
+      model_input = hierarchy.as_pdb_input(),
+      crystal_symmetry = self.crystal_symmetry(),
+      log = null_out())
+    self.set_model_symmetries_and_shift_cart_to_match_map(model)
+    self.add_model_by_id(model = model, model_id=model_id)
+
+
+  def model_from_sites_cart(self,
+    sites_cart,
+    model_id = 'model_from_sites',
+    **kw):
+    '''
+      Convenience method to use the from_sites_cart method of model manager to
+      create a model.
+
+      Model is saved with the id of model_id (default 'model_from_sites')
+
+      Unique feature of this method is that it sets up the crystal_symmetry,
+        unit_cell_crystal_symmetry, and shift_cart in the model to match
+        this map_model_manager.
+
+      Note:  sites_cart are assumed to be in the same coordinate frame as this
+        map_model_manager.
+
+      Any keywords used in from_sites_cart are allowed (i.e.,
+        atom_name and scatterer or atom_name_list and scatterer_list
+        occ or occ_list
+        b_iso or b_iso_list
+        resname or resname_list
+        resseq_list
+    '''
+
+
+    from mmtbx.model import manager as model_manager
+    model = model_manager.from_sites_cart(
+       sites_cart = sites_cart,
+       crystal_symmetry = self.crystal_symmetry(),
+       **kw)
+
+    self.set_model_symmetries_and_shift_cart_to_match_map(model)
+    self.add_model_by_id(model = model, model_id=model_id)
+
+  def set_model_symmetries_and_shift_cart_to_match_map(self,
+     model):
+    '''
+      Method to set the crystal_symmetry, unit_cell_crystal_symmetry and
+      shift_cart of any model to match those of this map_model_manager
+
+      This method changes the model in place.
+
+      Assumes that the sites in this model are already in the same coordinate
+      system as this map_model_manager
+
+      This is the preferred method of making sure that a model has the
+      same symmetry and shifts as a map_model_manager if the model coordinates
+      already match the map_model_manager.
+
+      If you have a model that is relative to some other coordinate system,
+      first make sure that model has a complete set of symmetry and shifts
+      for that coordinate system (any model coming from a map_model_manager
+      will have these).  Then use either self.shift_any_model_to_match(model) to
+      shift that model directly to match this map_model_manager, or use
+      self.add_model_by_id(model_id=model_id, model=model) which will import
+      that model into this manager and shift it to match in the process.
+
+    '''
+
+    self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(model)
+
 
   def set_original_origin_grid_units(self, original_origin_grid_units = None):
     '''
@@ -7329,6 +7596,10 @@ class map_model_manager(object):
         space_group_number = 1,
         log = null_out())
 
+    if self.map_manager():  #  make sure model matches
+      if not self.map_manager().is_compatible_model(model):
+         self.shift_any_model_to_match(model)
+
     map_coeffs = generate_map_coefficients(model = model,
         d_min = d_min,
         k_sol = k_sol,
@@ -7425,6 +7696,7 @@ class map_model_manager(object):
      soft_zero_boundary_mask = True,
      soft_zero_boundary_mask_radius = None,
      model_id = 'model',
+     normalize = True,
      ):
     '''
      Return this object as a local_model_building object
@@ -7448,6 +7720,7 @@ class map_model_manager(object):
      soft_zero_boundary_mask_radius = soft_zero_boundary_mask_radius,
      nproc= nproc,
      model_id = model_id,
+     normalize = normalize,
      log = self.log,
     )
     mb.set_defaults(debug = self.verbose)
@@ -7790,7 +8063,8 @@ class match_map_model_ncs(object):
            self._map_manager.unit_cell_crystal_symmetry(),
         model = self._model)
 
-  def shift_ncs_to_match_working_map(self, ncs_object = None, reverse = False,
+  def shift_ncs_to_match_working_map(self, ncs_object = None,
+    reverse = False,
     coordinate_shift = None,
     new_shift_cart = None):
 
@@ -8396,10 +8670,6 @@ def get_split_maps_and_models(
   else:
     lower_bounds_list = box_info.lower_bounds_list
     upper_bounds_list = box_info.upper_bounds_list
-  if not first_to_use:
-    first_to_use = 1
-  if not last_to_use:
-    last_to_use = len(lower_bounds_list)
   for lower_bounds, upper_bounds, selection in zip(
        lower_bounds_list,
        upper_bounds_list,
@@ -8599,16 +8869,13 @@ def get_selections_and_boxes_to_split_model(
     print("Ready with %s ok boxes " %(len(box_info.lower_bounds_list)),
       file = log)
 
-  if select_final_boxes_based_on_model or (
+  if (select_final_boxes_based_on_model and model) or (
      not box_info.lower_bounds_list): # get bounds now:
     from cctbx.maptbx.box import get_bounds_around_model
     box_info.lower_bounds_list = []
     box_info.upper_bounds_list = []
     for selection in box_info.selection_list:
-      if model:
-        model_use=model.select(selection)
-      else:
-        model_use = None
+      model_use=model.select(selection)
       info = get_bounds_around_model(
         map_manager = map_manager,
         model = model_use,
@@ -8733,7 +9000,7 @@ def get_selection_inside_box(
          )
   return ~s
 
-def get_skip_waters_and_hetero_lines(skip_waters, skip_hetero):
+def get_skip_waters_and_hetero_lines(skip_waters = True, skip_hetero = True):
   if skip_waters and skip_hetero:
     no_water_or_het = "( (not hetero ) and (not water)) "
   elif skip_waters:
@@ -8752,15 +9019,29 @@ def get_skip_waters_and_hetero_lines(skip_waters, skip_hetero):
      no_water_or_het_with_and = no_water_or_het_with_and,
      )
 
-def get_selections_for_segments(model, no_water_or_het_with_and = ''):
-  '''
+def get_selections_for_segments(model,
+     skip_waters = True,
+     skip_hetero = True,
+     no_water_or_het_with_and = None,
+     skip_n_residues_on_ends = None,
+     minimum_length = 1):
+  ''''
     Generate selections corresponding to each segment (chain or part of a chain
     that is separate from remainder of chain)
+
+    Use skip_waters and skip_hetero to specify whether to include them
+    If skip_n_residues_on_ends is set, skip residues within
+      skip_n_residues_on_ends of an end
   '''
   assert isinstance(model, mmtbx.model.manager)
 
+  if no_water_or_het_with_and is None:
+    water_het_info = get_skip_waters_and_hetero_lines(
+        skip_waters = skip_waters, skip_hetero = skip_hetero)
+    no_water_or_het_with_and = water_het_info.no_water_or_het_with_and
+
   from iotbx.pdb import resseq_encode
-  selection_list = []
+  selection_info_list = []
   ph = model.get_hierarchy()
   for m in ph.models()[:1]:
     for chain in m.chains():
@@ -8770,11 +9051,13 @@ def get_selections_for_segments(model, no_water_or_het_with_and = ''):
       previous_rg = None
       for rg in chain.residue_groups():
         if previous_rg and ( (not rg.link_to_previous) or (not
-           residue_group_is_linked_to_previous(rg, previous_rg))):
+           residue_group_is_linked_to_previous(rg, previous_rg)) or
+         (previous_rg.resseq_as_int() + 1 != rg.resseq_as_int())):
           # break here
-          selection_list.append("%s ( chain %s and resseq %s:%s ) " %(
-           no_water_or_het_with_and,
-            chain_id, resseq_encode(first_resno), resseq_encode(last_resno)))
+          selection_info_list.append( group_args(
+            chain_id = chain_id,
+            first_resno = first_resno,
+            last_resno = last_resno))
           first_resno = None
           last_resno = None
         if not first_resno:
@@ -8782,9 +9065,24 @@ def get_selections_for_segments(model, no_water_or_het_with_and = ''):
         last_resno = rg.resseq_as_int()
         previous_rg = rg
       if first_resno is not None and last_resno is not None:
-        selection_list.append(" %s ( chain %s and resseq %s:%s ) " %(
-            no_water_or_het_with_and, chain_id,
-           resseq_encode(first_resno), resseq_encode(last_resno)))
+        selection_info_list.append( group_args(
+            chain_id = chain_id,
+            first_resno = first_resno,
+            last_resno = last_resno))
+
+  selection_list = []
+  for si in selection_info_list:
+    if skip_n_residues_on_ends:
+      first_resno = si.first_resno + skip_n_residues_on_ends
+      last_resno = si.last_resno - skip_n_residues_on_ends
+    else:
+      first_resno = si.first_resno
+      last_resno = si.last_resno
+    if (last_resno - first_resno) + 1 < max(1,minimum_length):
+      continue
+    selection_list.append(" %s ( chain %s and resseq %s:%s ) " %(
+        no_water_or_het_with_and, si.chain_id,
+        resseq_encode(first_resno).strip(), resseq_encode(last_resno).strip()))
   return selection_list
 
 def residue_group_is_linked_to_previous(rg, previous_rg):

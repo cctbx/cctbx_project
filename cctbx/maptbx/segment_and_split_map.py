@@ -8632,7 +8632,8 @@ def get_overall_mask(
 
   # This routine cannot use mask_data with origin != (0,0,0)
   if map_data.origin() != (0,0,0):
-    return None, None, None
+    print("Map origin must be at (0,0,0) for get_overall_mask")
+    assert map_data.origin() == (0,0,0)  # Map origin must be at (0,0,0)
 
   # Make a local SD map from our map-data
   from cctbx.maptbx import crystal_gridding
@@ -9086,7 +9087,10 @@ def get_solvent_fraction_from_low_res_mask(
     resolution = mask_resolution,
     out = out)
   if overall_mask is None:
-    return None
+    if return_mask_and_solvent_fraction:
+      return None, None
+    else:
+      return None
 
   solvent_fraction = overall_mask.count(False)/overall_mask.size()
   print("Solvent fraction from overall mask: %.3f " %(solvent_fraction), file = out)

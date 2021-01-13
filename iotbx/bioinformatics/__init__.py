@@ -1899,11 +1899,13 @@ def get_chain_type(model=None, hierarchy=None):
     else:
       raise Sorry("Model does not appear to contain protein or RNA or DNA")
 
-def get_sequence_from_hierarchy(hierarchy, chain_type=None):
-  return get_sequence_from_pdb(hierarchy=hierarchy,chain_type=chain_type)
+def get_sequence_from_hierarchy(hierarchy, chain_type=None,
+     remove_white_space=False):
+  return get_sequence_from_pdb(hierarchy=hierarchy,chain_type=chain_type,
+     remove_white_space=remove_white_space)
 
 def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None,
-    chain_type=None):
+    chain_type=None, remove_white_space=False):
 
   if not hierarchy:
     # read from PDB
@@ -1947,6 +1949,8 @@ def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None,
           break
       chain_sequences.append(chain_sequence)
   sequence_as_string="\n".join(chain_sequences)
+  if remove_white_space:
+    sequence_as_string = sequence_as_string.replace("\n","").replace(" ","")
   return sequence_as_string
 
 def guess_chain_types_from_sequences(file_name=None,text=None,

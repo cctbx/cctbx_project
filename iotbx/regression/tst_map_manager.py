@@ -147,6 +147,15 @@ def test_01():
   assert new_mm.is_in_limitations('map_is_sharpened')
   assert new_mm.labels[0].find('test program')>-1
 
+  # Remove backslashes
+  mm_read.add_label('TEST \\LABEL')
+  assert mm_read.labels[0] == 'TEST \\LABEL'
+  mm_read.write_map('map_with_labels.mrc')
+  new_mm = map_manager('map_with_labels.mrc')
+  assert 'TEST /LABEL' in new_mm.labels
+  assert new_mm.is_in_limitations('map_is_sharpened')
+  assert new_mm.labels[0].find('test program')>-1
+
   # change the cell dimensions
   mm_read = map_manager(data_ccp4)
   mm_read.shift_origin()

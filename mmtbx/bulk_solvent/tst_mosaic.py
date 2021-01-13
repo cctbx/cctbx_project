@@ -1068,12 +1068,12 @@ def run2():
     x.extend(flex.random_double(6))
     result1 = mosaic.algorithm_2(
       i_obs          = inp.i_obs,
-      F              = [inp.fc]+inp.mm.FV.keys(),
+      F              = [inp.fc]+list(inp.mm.FV.keys()),
       x              = x.deep_copy(),
       use_curvatures = True)
     result2 = mosaic.algorithm_2(
       i_obs          = inp.i_obs,
-      F              = [inp.fc]+inp.mm.FV.keys(),
+      F              = [inp.fc]+list(inp.mm.FV.keys()),
       x              = x.deep_copy(),
       use_curvatures = False)
     print (rfactor(answer, result1), rfactor(answer, result2))
@@ -1085,16 +1085,16 @@ def run():
   # Initial k_sols for finite differences test and minimization (algorithm_2)
   x = flex.double([1,  .01,.01,.01, .01,.01,.01])
   # Finite differences test
-  g_anal = mosaic.tg(i_obs = i_obs, F=[fc]+mm.FV.keys(), x=x, use_curvatures=False).gradients()
+  g_anal = mosaic.tg(i_obs = i_obs, F=[fc]+list(mm.FV.keys()), x=x, use_curvatures=False).gradients()
   e=1.e-6
   g_fd = flex.double()
   for i in [0,1,2,3,4,5,6]:
     x_ = x[:]
     x_[i] = x_[i]+e
-    t1 = mosaic.tg(i_obs = i_obs, F=[fc]+mm.FV.keys(), x=x_, use_curvatures=False).target()
+    t1 = mosaic.tg(i_obs = i_obs, F=[fc]+list(mm.FV.keys()), x=x_, use_curvatures=False).target()
     x_ = x[:]
     x_[i] = x_[i]-e
-    t2 = mosaic.tg(i_obs = i_obs, F=[fc]+mm.FV.keys(), x=x_, use_curvatures=False).target()
+    t2 = mosaic.tg(i_obs = i_obs, F=[fc]+list(mm.FV.keys()), x=x_, use_curvatures=False).target()
     g_fd.append( (t1-t2)/(2*e) )
   assert flex.sum(flex.abs(g_anal-g_fd))*2/flex.sum(flex.abs(g_anal+g_fd))<1.e-9
   #
@@ -1102,7 +1102,7 @@ def run():
     r = mosaic.algorithm_4(
       f_obs             = f_obs,
       phase_source      = fc,
-      F                 = [fc]+inp.mm.FV.keys(),
+      F                 = [fc]+list(inp.mm.FV.keys()),
       auto_converge_eps = 1.e-9,
       use_cpp           = use_cpp)
     assert approx_equal(r, [1,]+k_sols)
@@ -1110,19 +1110,19 @@ def run():
   r = mosaic.algorithm_3(
     i_obs = i_obs,
     fc = fc,
-    f_masks = mm.FV.keys()
+    f_masks = list(mm.FV.keys())
     )
   assert approx_equal(r, [1,]+k_sols)
   #
   r = mosaic.algorithm_2(
     i_obs = i_obs,
-    F = [fc]+inp.mm.FV.keys(),
+    F = [fc]+list(inp.mm.FV.keys()),
     x = flex.double(x))
   assert approx_equal(r, [1,]+k_sols)
   #
   r = mosaic.algorithm_2(
     i_obs = i_obs,
-    F = [fc]+inp.mm.FV.keys(),
+    F = [fc]+list(inp.mm.FV.keys()),
     x = flex.double(x),
     use_curvatures = False,
     macro_cycles=100)

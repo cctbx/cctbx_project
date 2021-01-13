@@ -8,6 +8,7 @@ from libtbx.utils import null_out
 from libtbx import group_args
 from cctbx.array_family import flex
 from collections import OrderedDict
+from mmtbx.ligands.ready_set_utils import add_n_terminal_hydrogens_to_residue_group
 #
 from cctbx.maptbx.box import shift_and_box_model
 
@@ -20,8 +21,6 @@ def mon_lib_query(residue, mon_lib_srv):
       residue_name=residue.resname,
       atom_names=residue.atoms().extract_name())
     return md
-    # print(md)
-    # print(ani)
     # get_func = getattr(mon_lib_srv, "get_comp_comp_id", None)
     # if (get_func is not None): return get_func(comp_id=residue)
     # return mon_lib_srv.get_comp_comp_id_direct(comp_id=residue)
@@ -87,15 +86,34 @@ class place_hydrogens():
     self.n_H_initial = self.model.get_hd_selection().count(True)
     if not self.keep_existing_H:
       self.model = self.model.select(~self.model.get_hd_selection())
+
     # Add H atoms and place them at center of coordinates
     pdb_hierarchy = self.add_missing_H_atoms_at_bogus_position()
 
+#    f = open("intermediate1.pdb","w")
+#    f.write(self.model.model_as_pdb())
+
+    # place N-terminal propeller hydrogens
+    for m in pdb_hierarchy.models():
+      for chain in m.chains():
+        rgs = chain.residue_groups()[0]
+        for ag in rgs.atom_groups():
+          if ag.get_atom("H"):
+            ag.remove_atom(ag.get_atom('H'))
+        rc = add_n_terminal_hydrogens_to_residue_group(rgs)
+        # rc is always empty list?
+
+    pdb_hierarchy.sort_atoms_in_place()
     pdb_hierarchy.atoms().reset_serial()
-    #pdb_hierarchy.sort_atoms_in_place()
+#    f = open("intermediate2.pdb","w")
+#    f.write(self.model.model_as_pdb())
+
     p = mmtbx.model.manager.get_default_pdb_interpretation_params()
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     p.pdb_interpretation.use_neutron_distances = self.use_neutron_distances
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+    #p.pdb_interpretation.automatic_linking.link_metals = True
+
     #p.pdb_interpretation.restraints_library.cdl=False # XXX this triggers a bug !=360
     ro = self.model.get_restraint_objects()
     self.model = mmtbx.model.manager(
@@ -108,7 +126,7 @@ class place_hydrogens():
       pdb_interpretation_params = p,
       log                       = null_out())
 
-    #f = open("intermediate1.pdb","w")
+    #f = open("intermediate3.pdb","w")
     #f.write(self.model.model_as_pdb())
 
     # Only keep H that have been parameterized in riding H procedure
@@ -136,7 +154,7 @@ class place_hydrogens():
     self.exclude_H_on_disulfides()
     #self.exclude_h_on_coordinated_S()
 
-  #  f = open("intermediate2.pdb","w")
+  #  f = open("intermediate4.pdb","w")
   #  f.write(model.model_as_pdb())
 
     # Reset occupancies, ADPs and idealize H atom positions
@@ -145,9 +163,8 @@ class place_hydrogens():
     self.model.idealize_h_riding()
 
     self.exclude_h_on_coordinated_S()
-    #
-    self.n_H_final = self.model.get_hd_selection().count(True)
 
+    self.n_H_final = self.model.get_hd_selection().count(True)
 
 # ------------------------------------------------------------------------------
 
@@ -163,11 +180,20 @@ class place_hydrogens():
       pdb_hierarchy to which missing H atoms will be added
 
     '''
+    # TODO temporary fix until v3 names are in mon lib
+    alternative_names = [
+      ('HA1', 'HA2', 'HA3'),
+      ('HB1', 'HB2', 'HB3'),
+      ('HG1', 'HG2', 'HG3'),
+      ('HD1', 'HD2', 'HD3'),
+      ('HE1', 'HE2', 'HE3'),
+      ('HG11', 'HG12', 'HG13')
+      ]
     pdb_hierarchy = self.model.get_hierarchy()
     mon_lib_srv = self.model.get_mon_lib_srv()
     #XXX This breaks for 1jxt, residue 2, TYR
     get_class = iotbx.pdb.common_residue_names_get_class
-    no_H_placed_resnames = list()
+    #no_H_placed_resnames = list()
     for m in pdb_hierarchy.models():
       for chain in m.chains():
         for rg in chain.residue_groups():
@@ -186,8 +212,18 @@ class place_hydrogens():
               continue
 
             expected_h = list()
-            for k, v in six.iteritems(mlq.atom_dict()):
-              if(v.type_symbol=="H"): expected_h.append(k)
+            atom_dict = mlq.atom_dict()
+            for k, v in six.iteritems(atom_dict):
+              if(v.type_symbol=="H"):
+                expected_h.append(k)
+            # TODO start: temporary fix until v3 names are in mon lib
+            for altname in alternative_names:
+              if (altname[0] in expected_h and altname[1] in expected_h):
+                if (atom_dict[altname[0]].type_energy == 'HCH2' and
+                    atom_dict[altname[1]].type_energy == 'HCH2'):
+                  expected_h.append(altname[2])
+                  expected_h.remove(altname[0])
+            # TODO end
             missing_h = list(set(expected_h).difference(set(actual)))
             if 0: print(ag.resname, missing_h)
             new_xyz = ag.atoms().extract_xyz().mean()
@@ -247,18 +283,27 @@ class place_hydrogens():
     # Find possibly coordinated S
     exclusion_list = ["H","D","T","S","O","P","N","C","SE"]
     sel_s = []
-    for proxy in rm.pair_proxies().nonbonded_proxies.simple:
-      i,j = proxy.i_seqs
-      if(elements[i] == "S" and not elements[j] in exclusion_list): sel_s.append(i)
-      if(elements[j] == "S" and not elements[i] in exclusion_list): sel_s.append(j)
+    sl = [atom.id_str().replace('pdb=','').replace('"','')
+        for atom in self.model.get_hierarchy().atoms()]
+#    for proxy in rm.pair_proxies().nonbonded_proxies.simple:
+#      i,j = proxy.i_seqs
+#      if(elements[i] == "S" and not elements[j] in exclusion_list): sel_s.append(i)
+#      if(elements[j] == "S" and not elements[i] in exclusion_list): sel_s.append(j)
+#      if(elements[i] == "S" or elements[j]=='S'): print(sl[i], sl[j])
+
     # Find H attached to possibly coordinated S
     bond_proxies_simple, asu = rm.get_all_bond_proxies(
       sites_cart = self.model.get_sites_cart())
+    for proxy in bond_proxies_simple:
+      i,j = proxy.i_seqs
+      if(elements[i] == "S" and not elements[j] in exclusion_list): sel_s.append(i)
+      if(elements[j] == "S" and not elements[i] in exclusion_list): sel_s.append(j)
     sel_remove = flex.size_t()
     for proxy in bond_proxies_simple:
       i,j = proxy.i_seqs
       if(elements[i] in ["H","D"] and j in sel_s): sel_remove.append(i)
       if(elements[j] in ["H","D"] and i in sel_s): sel_remove.append(j)
+      #if(elements[i] == "S" or elements[j]=='S'): print(sl[i], sl[j])
     self.model = self.model.select(~flex.bool(self.model.size(), sel_remove))
 
 # ------------------------------------------------------------------------------

@@ -723,7 +723,7 @@ def algorithm_3(i_obs, fc, f_masks):
       cntr+=1
       nm.append((n,m))
   # Keep track of indices for "upper triangular matrix vs full"
-  for k,v in zip(cs.keys(), cs.values()):
+  for k,v in zip(list(cs.keys()), list(cs.values())):
     i,j=k
     if i==j: continue
     else: cs[(j,i)]=v

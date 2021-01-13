@@ -243,12 +243,15 @@ def generate_map_coefficients(
     Parameters:
     -----------
 
-      model (model.manager object, None):    model to use
+      model (model.manager object, None):    model to use.
+         contains crystal_symmetry
       output_map_coeffs_file_name (string, None): output model file name
       d_min (float, 3):   High-resolution limit for map coeffs (A)
       scattering_table (choice, 'electron'): choice of scattering table
            All choices: wk1995 it1992 n_gaussian neutron electron
       f_obs_array:  array used to match indices of fcalc
+      crystal_symmetry:  used for crystal symmetry (overrides model value but
+        not f_obs)
 
   '''
 
@@ -259,6 +262,10 @@ def generate_map_coefficients(
   import iotbx.phil
   from mmtbx.command_line.fmodel import master_phil
   fmodel_params=master_phil.extract()
+
+  if f_obs_array:
+    assert f_obs_array.crystal_symmetry().is_similar_symmetry(
+      model.crystal_symmetry())
 
   assert model.crystal_symmetry() is not None # Need crystal_symmetry in model
 

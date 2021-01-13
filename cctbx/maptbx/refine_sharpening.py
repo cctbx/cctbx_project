@@ -483,7 +483,7 @@ def calculate_fsc(**kw):
   resolution = kw.get('resolution',None)
   n_bins_use = kw.get('n_bins_use',None)
   fraction_complete = kw.get('fraction_complete',None)
-  min_fraction_complete = kw.get('min_fraction_complete',None)
+  min_fraction_complete = kw.get('min_fraction_complete', 0.05)
   is_model_based = kw.get('is_model_based',None)
   cc_cut = kw.get('cc_cut',None)
   scale_using_last = kw.get('scale_using_last',None)
@@ -802,16 +802,12 @@ def calculate_fsc(**kw):
   # Now apply analyses on each cc_list (if more than one)
   si_list = []
   for i in range(len(direction_vectors)):
-    if smooth_fsc:
-      ratio_list = remove_values_if_necessary(ratio_dict_by_dv[i])
-      rms_fo_list = remove_values_if_necessary(rms_fo_dict_by_dv[i])
-      rms_fc_list = remove_values_if_necessary(rms_fc_dict_by_dv[i])
-      cc_list = smooth_values(cc_dict_by_dv[i])
-    else:
-      ratio_list = remove_values_if_necessary(ratio_dict_by_dv[i])
-      rms_fo_list = remove_values_if_necessary(rms_fo_dict_by_dv[i])
-      rms_fc_list = remove_values_if_necessary(rms_fc_dict_by_dv[i])
-      cc_list = cc_dict_by_dv[i]
+    ratio_list = remove_values_if_necessary(ratio_dict_by_dv[i])
+    rms_fo_list = remove_values_if_necessary(rms_fo_dict_by_dv[i])
+    rms_fc_list = remove_values_if_necessary(rms_fc_dict_by_dv[i])
+    cc_list = smooth_values(cc_dict_by_dv[i],
+         overall_values=getattr(overall_si,'cc_list',None),
+         smooth=smooth_fsc)
     if len(direction_vectors) > 1:
       working_si = deepcopy(si)
       dv = direction_vectors[i]
@@ -2061,7 +2057,26 @@ def remove_values_if_necessary(f_values,max_ratio=100, min_ratio=0.01):
   return new_values
 
 def smooth_values(cc_values, max_relative_rms=10, n_smooth = None,
-    skip_first_frac = 0.1): # normally do not smooth the very first ones
+    skip_first_frac = 0.1,
+    overall_values = None,
+    smooth = True,
+    max_ratio = 2.,
+    min_ratio = 0.,
+      ): # normally do not smooth the very first ones
+  '''  If overall_values are supplied, make sure all values are within
+      min_ratio to max_ratio of those values'''
+
+
+  if overall_values and (max_ratio is not None or min_ratio is not None):
+    new_cc_values = flex.double()
+    for cc,cc_overall in zip(cc_values,overall_values):
+      new_cc_values.append(max(
+        min_ratio*cc_overall, min(max_ratio*cc_overall, cc)))
+    cc_values = new_cc_values
+
+  if not smooth:
+    return cc_values
+
   skip_first = max (1, int(0.5+skip_first_frac*cc_values.size()))
 
   if n_smooth:

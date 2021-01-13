@@ -30,7 +30,7 @@ class encapsulated_twodev
     double em,t,y;
 
   public:
-    encapsulated_twodev() : iset(0), gset(0.), oldm(-1.0) {}
+    encapsulated_twodev() : iset(0), gset(0.), sq(0), alxm(0), g(0), oldm(-1.0) {}
 
     /* return gaussian deviate with rms=1 and FWHM = 2/sqrt(log(2)) */
     double gaussdev(long *idum){
@@ -176,49 +176,8 @@ nanoBragg::nanoBragg(
 
     /* direction in 3-space of detector axes */
     beam_convention = CUSTOM;
-    /* typically: 1 0 0 */
-    fdet_vector[1] = detector[panel_id].get_fast_axis()[0];
-    fdet_vector[2] = detector[panel_id].get_fast_axis()[1];
-    fdet_vector[3] = detector[panel_id].get_fast_axis()[2];
-    unitize(fdet_vector,fdet_vector);
-    /* typically: 0 -1 0 */
-    sdet_vector[1] = detector[panel_id].get_slow_axis()[0];
-    sdet_vector[2] = detector[panel_id].get_slow_axis()[1];
-    sdet_vector[3] = detector[panel_id].get_slow_axis()[2];
-    unitize(sdet_vector,sdet_vector);
-    /* set orthogonal vector to the detector pixel array */
-    cross_product(fdet_vector,sdet_vector,odet_vector);
-    unitize(odet_vector,odet_vector);
 
-    /* dxtbx origin is location of outer corner of the first pixel */
-    pix0_vector[1] = detector[panel_id].get_origin()[0]/1000.0;
-    pix0_vector[2] = detector[panel_id].get_origin()[1]/1000.0;
-    pix0_vector[3] = detector[panel_id].get_origin()[2]/1000.0;
-    /* what is the point of closest approach between sample and detector? */
-    Fclose = Xclose = -dot_product(pix0_vector,fdet_vector);
-    Sclose = Yclose = -dot_product(pix0_vector,sdet_vector);
-    close_distance = distance =  dot_product(pix0_vector,odet_vector);
-    if (close_distance < 0){
-        if(verbose)printf("WARNING: dxtbx model seems to be lefthanded. Inverting odet_vector.\n");
-        vector_rescale(odet_vector, odet_vector, -1);
-        close_distance = distance =  dot_product(pix0_vector,odet_vector);
-        detector_is_righthanded = false;
-    }
-
-    /* set beam centre */
-    scitbx::vec2<double> dials_bc = detector[panel_id].get_beam_centre(beam.get_s0());
-    Xbeam = dials_bc[0]/1000.0;
-    Ybeam = dials_bc[1]/1000.0;
-
-    /* detector sensor layer properties */
-    detector_thick   = detector[panel_id].get_thickness();
-    temp = detector[panel_id].get_mu();        // is this really a mu? or mu/rho ?
-    if(temp>0.0) detector_attnlen = 1.0/temp;
-
-    /* quantum_gain = amp_gain * electrooptical_gain, does not include capture_fraction */
-    quantum_gain = detector[panel_id].get_gain();
-
-    //adc_offset = detector[panel_id].ADC_OFFSET;
+    set_dxtbx_detector_panel(detector[panel_id], beam.get_s0());
 
     /* SPINDLE properties */
 
@@ -1355,6 +1314,63 @@ nanoBragg::update_beamcenter()
 // end of update_beamcenter()
 
 
+void nanoBragg::set_dxtbx_detector_panel(const dxtbx::model::Panel& panel, const vec3& s0_vector){
+
+    int spixels_new = panel.get_image_size()[1];
+    int fpixels_new = panel.get_image_size()[0];
+    if (spixels_new != spixels || fpixels_new != fpixels){
+        printf("New panel has different dimension than allocated panel!\n");
+        pixel_size = panel.get_pixel_size()[0]/1000.;
+        spixels = panel.get_image_size()[1];
+        fpixels = panel.get_image_size()[0];
+        init_detector();
+    }
+
+    /* typically: 1 0 0 */
+    fdet_vector[1] = panel.get_fast_axis()[0];
+    fdet_vector[2] = panel.get_fast_axis()[1];
+    fdet_vector[3] = panel.get_fast_axis()[2];
+    unitize(fdet_vector,fdet_vector);
+    /* typically: 0 -1 0 */
+    sdet_vector[1] = panel.get_slow_axis()[0];
+    sdet_vector[2] = panel.get_slow_axis()[1];
+    sdet_vector[3] = panel.get_slow_axis()[2];
+    unitize(sdet_vector,sdet_vector);
+    /* set orthogonal vector to the detector pixel array */
+    cross_product(fdet_vector,sdet_vector,odet_vector);
+    unitize(odet_vector,odet_vector);
+
+    /* dxtbx origin is location of outer corner of the first pixel */
+    pix0_vector[1] = panel.get_origin()[0]/1000.0;
+    pix0_vector[2] = panel.get_origin()[1]/1000.0;
+    pix0_vector[3] = panel.get_origin()[2]/1000.0;
+    /* what is the point of closest approach between sample and detector? */
+    Fclose = Xclose = -dot_product(pix0_vector,fdet_vector);
+    Sclose = Yclose = -dot_product(pix0_vector,sdet_vector);
+    close_distance = distance =  dot_product(pix0_vector,odet_vector);
+    if (close_distance < 0){
+        if(verbose)printf("WARNING: dxtbx model seems to be lefthanded. Inverting odet_vector.\n");
+        vector_rescale(odet_vector, odet_vector, -1);
+        close_distance = distance =  dot_product(pix0_vector,odet_vector);
+        detector_is_righthanded = false;
+    }
+
+    /* set beam centre */
+    scitbx::vec2<double> dials_bc = panel.get_beam_centre(s0_vector);
+    Xbeam = dials_bc[0]/1000.0;
+    Ybeam = dials_bc[1]/1000.0;
+
+    user_beam = true; // necessary for tilted dxtbx geometries
+
+    /* detector sensor layer properties */
+    detector_thick   = panel.get_thickness();
+    double temp = panel.get_mu();        // is this really a mu? or mu/rho ?
+    if(temp>0.0) detector_attnlen = 1.0/temp;
+
+    /* quantum_gain = amp_gain * electrooptical_gain, does not include capture_fraction */
+    quantum_gain = panel.get_gain();
+    //adc_offset = detector[panel_id].ADC_OFFSET;
+    }
 
 
 /* automatically decide if we are interpolating, allocate memory if yes */
@@ -1373,6 +1389,7 @@ nanoBragg::init_interpolator()
         }
         if(verbose>6) printf("freeing %d %ld-byte double** Fhkl at %p\n",5,sizeof(double**),sub_Fhkl);
         free(sub_Fhkl);
+        sub_Fhkl = NULL;
     }
 
     if(interpolate > 1){

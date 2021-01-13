@@ -12,6 +12,11 @@ jobs:
       vmImage: vs2017-win2016
       vs: vs2017
       modules: ${{ parameters.modules }}
+  - template: ./conda-win.yml
+    parameters:
+      vmImage: windows-2019
+      vs: vs2019
+      modules: ${{ parameters.modules }}
   - template: ./conda-linux.yml
     parameters:
       distribution: centos

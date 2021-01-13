@@ -128,6 +128,7 @@ class with_bounds(object):
     full_cs = self._map_manager.unit_cell_crystal_symmetry()
     full_uc = full_cs.unit_cell()
     self.box_all = [j-i+1 for i, j in zip(self.gridding_first, self.gridding_last)]
+    assert min(self.box_all) >= 1 # box size must be greater than zero. Check stay_inside_current_map and bounds
     # get shift vector as result of boxing
     full_all_orig = self._map_manager.unit_cell_grid
     self.shift_frac = \
@@ -371,7 +372,6 @@ class around_model(with_bounds):
       stay_inside_current_map = stay_inside_current_map)
     self.gridding_first = info.lower_bounds
     self.gridding_last = info.upper_bounds
-
 
     # Ready with gridding...set up shifts and box crystal_symmetry
     self.set_shifts_and_crystal_symmetry()
@@ -1207,7 +1207,7 @@ def get_bounds_around_model(
     '''
       Calculate the lower and upper bounds to box around a model
       Allow bounds to go outside the available box unless
-      stay_inside_current_map (this has to be dealt with at the boxing stage)
+        stay_inside_current_map (this has to be dealt with at the boxing stage)
     '''
 
     # get items needed to do the shift
@@ -1228,8 +1228,9 @@ def get_bounds_around_model(
 
     lower_bounds = [ifloor(f*n) for f, n in zip(frac_min, all_orig)]
     upper_bounds = [ iceil(f*n) for f, n in zip(frac_max, all_orig)]
+    n = all_orig[-1]
     if stay_inside_current_map:
-      lower_bounds = [ max (0,lb) for lb in lower_bounds]
+      lower_bounds = [ min(n-1,max (0,lb)) for lb in lower_bounds]
       upper_bounds = [ min (ub, n-1) for ub,n in zip(upper_bounds,all_orig)]
     return group_args(
       lower_bounds = lower_bounds,
