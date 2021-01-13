@@ -1459,7 +1459,7 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
   }
   wp = maxnumberwidth + 5,
   lp2 = lp + wp,
-  gl = 3,
+  gl = 2,
   wp2 = gl,
   fomlabelheight = 25;
 

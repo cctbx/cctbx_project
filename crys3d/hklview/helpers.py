@@ -196,7 +196,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 # list all colour maps except their reverse which end with "_r"
-cmaps = [ c for c in plt.colormaps() if "_r" not in c]
+cmaps = [ c for c in plt.colormaps() if not c.endswith("_r")]
 gradient = np.linspace(0, 1, 256)
 gradient = np.vstack((gradient, gradient))
 

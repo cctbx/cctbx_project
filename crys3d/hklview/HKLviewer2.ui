@@ -534,11 +534,14 @@ p, li { white-space: pre-wrap; }
                      <property name="toolTip">
                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A linear scale factor of 1 means that if two reflectiions with the largest data values happen to be next to each other their spheres will touch but not overlap.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
+                     <property name="decimals">
+                      <number>2</number>
+                     </property>
                      <property name="maximum">
-                      <double>5.000000000000000</double>
+                      <double>50.000000000000000</double>
                      </property>
                      <property name="singleStep">
-                      <double>0.100000000000000</double>
+                      <double>0.200000000000000</double>
                      </property>
                     </widget>
                    </item>

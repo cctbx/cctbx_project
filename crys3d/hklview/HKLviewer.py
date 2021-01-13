@@ -1516,7 +1516,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
           myqa = QAction("Display %s" %scenelabelstr, self.window, triggered=self.testaction)
           myqa.setData((i, row))
           self.millertablemenu.addAction(myqa)
-    myqa = QAction("Make new data as a function of this data and another data set...", self.window, triggered=self.testaction)
+    myqa = QAction("Make new data from this data and other data...", self.window, triggered=self.testaction)
     myqa.setData( ("newdata", row ))
     self.millertablemenu.addAction(myqa)
 

@@ -769,7 +769,7 @@ class HKLViewFrame() :
     labels = eval(datalabels)
     indices = self.origarrays["HKLs"]
     dres = self.procarrays[0].unit_cell().d( indices)
-    dreslst = [("d_res", list(dres))]
+    dreslst = [("d_res", roundoff(list(dres)),3)]
     hkls = list(indices)
     hkllst = [ ("H", [e[0] for e in hkls] ), ("K", [e[1] for e in hkls] ), ("L", [e[2] for e in hkls] )]
     datalst = []
@@ -999,16 +999,20 @@ class HKLViewFrame() :
     label = self.params.viewer.user_label
     order = 0
     try:
+      hklvec = ""
+      abcvec = ""
+      hklop = ""
       if self.params.viewer.add_user_vector_hkl not in [None, "", "()"]:
-        hklvec = eval(self.params.viewer.add_user_vector_hkl)
+        hklvec = eval(self.params.viewer.add_user_vector_hkl.replace(" ",""))
         # convert into cartesian space
         cartvec = list( self.viewer.scene.renderscale*(hklvec * matrix.sqr(uc.fractionalization_matrix()).transpose()) )
       elif self.params.viewer.add_user_vector_abc not in [None, "", "()"]:
-        abcvec = eval(self.params.viewer.add_user_vector_abc)
+        abcvec = eval(self.params.viewer.add_user_vector_abc.replace(" ",""))
         # convert into cartesian space
         cartvec = list(abcvec * matrix.sqr(uc.orthogonalization_matrix()))
       elif self.params.viewer.add_user_vector_hkl_op not in [None, ""]:
-        rt = sgtbx.rt_mx(symbol=self.params.viewer.add_user_vector_hkl_op.replace(" ",""), r_den=12, t_den=144)
+        hklop = self.params.viewer.add_user_vector_hkl_op.replace(" ","")
+        rt = sgtbx.rt_mx(symbol=hklop, r_den=12, t_den=144)
         rt.r().as_double()
         self.viewer.symops.append( rt ) #
         (cartvec, a, label, order) = self.viewer.GetVectorAndAngleFromRotationMx( rt.r() )
@@ -1018,13 +1022,7 @@ class HKLViewFrame() :
        and self.params.viewer.add_user_vector_abc in [None, "", "()"] \
        and self.params.viewer.add_user_vector_hkl_op) in [None, ""]:
         self.mprint("No vector was specified")
-      self.uservectors.append( (ln,
-                                label,
-                                order,
-                                cartvec,
-                                self.params.viewer.add_user_vector_hkl_op,
-                                self.params.viewer.add_user_vector_hkl,
-                                self.params.viewer.add_user_vector_abc) )
+      self.uservectors.append( (ln, label, order, cartvec, hklop, str(hklvec), str(abcvec) ))
       self.list_vectors()
     except Exception as e:
       raise Sorry( str(e))

@@ -20,7 +20,6 @@ from PySide2.QtCore import QCoreApplication, QMetaObject, QRect, QSize, Qt
 from PySide2.QtWidgets import *
 
 
-
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if MainWindow.objectName():
@@ -365,8 +364,9 @@ class Ui_MainWindow(object):
         sizePolicy13.setVerticalStretch(1)
         sizePolicy13.setHeightForWidth(self.radii_scale_spinBox.sizePolicy().hasHeightForWidth())
         self.radii_scale_spinBox.setSizePolicy(sizePolicy13)
-        self.radii_scale_spinBox.setMaximum(5.000000000000000)
-        self.radii_scale_spinBox.setSingleStep(0.100000000000000)
+        self.radii_scale_spinBox.setDecimals(2)
+        self.radii_scale_spinBox.setMaximum(50.000000000000000)
+        self.radii_scale_spinBox.setSingleStep(0.200000000000000)
 
         self.gridLayout_10.addWidget(self.radii_scale_spinBox, 2, 1, 1, 1)
 

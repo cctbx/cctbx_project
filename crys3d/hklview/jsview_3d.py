@@ -638,7 +638,7 @@ class hklview_3d:
           phase = phase % 360.0
         spbufttip +="\\n" + hklscene.work_array.info().label_string() + ': '
         if hklscene.work_array.is_complex_array():
-          spbufttip += str(roundoff(ampl, 2)) + ", " + str(roundoff(phase, 1)) + \
+          spbufttip += str(roundoff(ampl, 2)) + ", " + str(roundoff(phase, 2)) + \
             "\'+ String.fromCharCode(176) +\'" # degree character
         elif sigvals:
           sigma = sigvals[i]
