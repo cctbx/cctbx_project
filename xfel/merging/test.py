@@ -223,9 +223,9 @@ class Reproducer:
             CC.set_indices(cb_op, indices_reindexed)
         def call_cpp(i):
             t0 = time.time()
-            rij_row, rij_col, rij_data, wij_row, wij_col, wij_data = CC.compute_one_row(
-                self._lattices.size(),
-                i)
+            rij_row, rij_col, rij_data, wij_row, wij_col, wij_data = [
+                list(x) for x in CC.compute_one_row(self._lattices.size(), i)
+            ]
             rij = sparse.coo_matrix((rij_data, (rij_row, rij_col)), shape=(NN, NN))
             wij = sparse.coo_matrix((wij_data, (wij_row, wij_col)), shape=(NN, NN))
 
