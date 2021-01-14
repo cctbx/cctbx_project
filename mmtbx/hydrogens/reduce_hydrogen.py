@@ -290,6 +290,7 @@ class place_hydrogens():
   def validate_electrons(self):
 
     atom_valences = electrons.electron_distribution(
+      # XXX How do we get this working on models with alternate locations?
       self.model.get_hierarchy(), # needs to be altloc free
       self.model.get_restraints_manager().geometry,
       verbose=False,
