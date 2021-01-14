@@ -29,7 +29,6 @@ class reconcile_cosym_reports:
       item_df = item[0]
       del(item_df["reindex_op"]) # do not need this column, coset is enough
       one_report = [[] for x in range(self.n_cosets)] # one sublist for every coset
-      print("one report")
       for lidx in range(len(item_df["experiment"])):
         one_report[item_df["coset"][lidx]].append(item_df["experiment"][lidx])
       reports_as_lists.append(one_report)
@@ -44,8 +43,8 @@ class reconcile_cosym_reports:
         for icoset in range(len(perm)):
           imatches = len(set(base_report[icoset]).intersection(set(perm[icoset])))
           matches_vs_perm[-1] += imatches
-          print("Rank %d perm %d coset %d matches %d"%(idx,iperm,icoset,imatches))
-      print("matches for all permutations",matches_vs_perm, "choose", matches_vs_perm.index(max(matches_vs_perm)))
+          #print("Rank %d perm %d coset %d matches %d"%(idx,iperm,icoset,imatches))
+      #print("matches for all permutations",matches_vs_perm, "choose", matches_vs_perm.index(max(matches_vs_perm)))
       # now choose the correct permutation and put it into reports-as-list
       correct_iperm = matches_vs_perm.index(max(matches_vs_perm))
       correct_perm = cache_permutations[correct_iperm]
@@ -70,21 +69,21 @@ class reconcile_cosym_reports:
           vote_population[ekey]+=1
 
     #print out the matrices:
-    for item in experiment_lookup:
-      ekey = experiment_lookup[item]
-      print ("%4d"%ekey, item, " ", coset_assign[ekey,0], coset_assign[ekey,1], coset_assign[ekey,2],
-                               " ", vote_matrix[ekey,0], vote_matrix[ekey,1], vote_matrix[ekey,2])
+    if False:
+      for item in experiment_lookup:
+        ekey = experiment_lookup[item]
+        print ("%4d"%ekey, item, " ", coset_assign[ekey,0], coset_assign[ekey,1], coset_assign[ekey,2],
+                                 " ", vote_matrix[ekey,0], vote_matrix[ekey,1], vote_matrix[ekey,2])
 
-    #now take a vote, either by consensus or majority
     # tally the votes first.
     vote_tallies = flex.size_t(flex.grid((len(experiment_lookup),self.n_cosets)))
     for item in experiment_lookup:
       ekey = experiment_lookup[item]
       for ivote in range(3):
         vote_tallies[ ekey, coset_assign[ekey,ivote] ] += 1
-      print ("tallies %4d"%ekey, item, vote_tallies[ekey,0], vote_tallies[ekey,1]) #printout for two-coset case
+      #print ("tallies %4d"%ekey, item, vote_tallies[ekey,0], vote_tallies[ekey,1]) #printout for two-coset case
 
-    # choose winners
+    # choose winners, either by consensus or majority
     uuid_consensus = []
     uuid_majority = []
     coset_consensus = []
