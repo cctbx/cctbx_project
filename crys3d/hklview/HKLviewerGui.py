@@ -44,8 +44,8 @@ class Ui_MainWindow(object):
         self.actionReset_View.setObjectName(u"actionReset_View")
         self.actionSave_Current_Image = QAction(MainWindow)
         self.actionSave_Current_Image.setObjectName(u"actionSave_Current_Image")
-        self.actionOnline_Help = QAction(MainWindow)
-        self.actionOnline_Help.setObjectName(u"actionOnline_Help")
+        self.actionCCTBXwebsite = QAction(MainWindow)
+        self.actionCCTBXwebsite.setObjectName(u"actionCCTBXwebsite")
         self.actionLocal_Help = QAction(MainWindow)
         self.actionLocal_Help.setObjectName(u"actionLocal_Help")
         self.actionAbout = QAction(MainWindow)
@@ -763,8 +763,8 @@ class Ui_MainWindow(object):
         self.menuFile.addAction(self.actiondebug)
         self.menuFile.addAction(self.actionSave_Current_Image)
         self.menuFile.addAction(self.actionExit)
-        self.menuHelp.addAction(self.actionOnline_Help)
         self.menuHelp.addAction(self.actionLocal_Help)
+        self.menuHelp.addAction(self.actionCCTBXwebsite)
         self.menuHelp.addAction(self.actionAbout)
 
         self.retranslateUi(MainWindow)
@@ -784,8 +784,8 @@ class Ui_MainWindow(object):
         self.actionSave_reflection_file.setText(QCoreApplication.translate("MainWindow", u"Save reflection file", None))
         self.actionReset_View.setText(QCoreApplication.translate("MainWindow", u"Reset View", None))
         self.actionSave_Current_Image.setText(QCoreApplication.translate("MainWindow", u"Save Current Image", None))
-        self.actionOnline_Help.setText(QCoreApplication.translate("MainWindow", u"CCTBX Online Help", None))
-        self.actionLocal_Help.setText(QCoreApplication.translate("MainWindow", u"Local Help", None))
+        self.actionCCTBXwebsite.setText(QCoreApplication.translate("MainWindow", u"CCTBX website", None))
+        self.actionLocal_Help.setText(QCoreApplication.translate("MainWindow", u"HKLviewer Help", None))
         self.actionAbout.setText(QCoreApplication.translate("MainWindow", u"About HKLviewer", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"Display a data set with a double-click. Right-click table for more options.", None))
         self.SpaceGrpUCellText.setHtml(QCoreApplication.translate("MainWindow", u"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
@@ -863,3 +863,4 @@ class Ui_MainWindow(object):
         self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
         self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", u"Help", None))
     # retranslateUi
+

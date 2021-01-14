@@ -493,7 +493,7 @@ class HKLViewFrame() :
       newarray = self.viewer.OperateOn2MillerArrays(millarr1, millarr2, operation)
     else:
       newarray = self.viewer.OperateOn1MillerArray(millarr1, operation)
-    if newarray:
+    if newarray is not None:
       newarray.set_info(millarr1._info )
       newarray._info.labels = [ label ]
       procarray, procarray_info = self.process_miller_array(newarray)
@@ -511,7 +511,6 @@ class HKLViewFrame() :
       for i,e in enumerate(indices_of_matched_hkls):
         nanarr[e] = procarray.data()[i]
       self.origarrays[label] = list(nanarr)
-
       mydict = { "array_infotpls": self.viewer.array_infotpls, "NewHKLscenes" : True, "NewMillerArray" : True}
       self.SendInfoToGUI(mydict)
 

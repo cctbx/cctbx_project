@@ -18,7 +18,7 @@ from PySide2.QtWidgets import (  QAction, QCheckBox, QComboBox, QDialog,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableView, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QPlainTextEdit, QVBoxLayout, QWidget )
 
-from PySide2.QtGui import QColor, QFont, QCursor
+from PySide2.QtGui import QColor, QFont, QCursor, QDesktopServices
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
 import sys, zmq, subprocess, time, traceback, zlib, io, os
 
@@ -332,6 +332,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.functionTabWidget.setDisabled(True)
     self.window.statusBar().showMessage("")
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
+    self.actionLocal_Help.triggered.connect(self.onOpenHelpFile)
+    self.actionCCTBXwebsite.triggered.connect(self.onOpenCCTBXwebsite)
     self.actiondebug.triggered.connect(self.DebugInteractively)
     self.actionSave_Current_Image.triggered.connect(self.onSaveImage)
     self.actionSettings.triggered.connect(self.SettingsDialog)
@@ -342,9 +344,17 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.window.show()
 
 
+  def onOpenHelpFile(self):
+    pass
+    #QDesktopServices.openUrl("www.oeffner.net")
+
+
+  def onOpenCCTBXwebsite(self):
+    QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/")
+
+
   def AppAboutToQuit(self):
     print("in AppAboutToQuit")
-
 
   def closeEvent(self, event):
     self.PhilToJsRender('action = is_terminating')
@@ -436,8 +446,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
   def onSaveReflectionFile(self):
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getSaveFileName(self.window,
-            "Save to a new reflection file", "",
-            "All Files (*);;CIF Files (*.cif);;MTZ Files (*.mtz)", "", options)
+            "Save data sets to a new reflection file", "",
+            "MTZ Files (*.mtz);;CIF Files (*.cif);;All Files (*)", "", options)
     if fileName:
       self.PhilToJsRender('savefilename = "%s"' %fileName )
 
@@ -1546,8 +1556,8 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
         if strval=="newdata":
           #self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data1' and or 'sigmas1' variable")
           self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx]
-           + " 'data1' and/or 'sigmas1' variable and optionally 'data2' and/or 'sigmas2'"
-           +" variable from the miller array below:")
+           + " 'data1' and/or 'sigmas1' variable and, optionally, dres and 'data2, 'sigmas2'"
+           +" variables from the miller array below:")
           self.MillerComboBox.setEnabled(True)
           self.MillerLabel3.setText("Example: 'newdata = data1 - flex.pow(data2); newsigmas= sigmas1 - data2 / sigmas1' ")
           self.makenewdataform.show()

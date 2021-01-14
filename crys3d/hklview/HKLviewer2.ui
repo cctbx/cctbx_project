@@ -1225,8 +1225,8 @@ p, li { white-space: pre-wrap; }
     <property name="title">
      <string>Help</string>
     </property>
-    <addaction name="actionOnline_Help"/>
     <addaction name="actionLocal_Help"/>
+    <addaction name="actionCCTBXwebsite"/>
     <addaction name="actionAbout"/>
    </widget>
    <addaction name="menuFile"/>
@@ -1268,14 +1268,14 @@ p, li { white-space: pre-wrap; }
     <string>Save Current Image</string>
    </property>
   </action>
-  <action name="actionOnline_Help">
+  <action name="actionCCTBXwebsite">
    <property name="text">
-    <string>CCTBX Online Help</string>
+    <string>CCTBX website</string>
    </property>
   </action>
   <action name="actionLocal_Help">
    <property name="text">
-    <string>Local Help</string>
+    <string>HKLviewer Help</string>
    </property>
   </action>
   <action name="actionAbout">
