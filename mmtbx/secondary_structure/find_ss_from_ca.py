@@ -557,6 +557,16 @@ def get_chain_ids(hierarchy,unique_only=None):
         chain_ids.append(chain.id)
   return chain_ids
 
+def set_chain_id(hierarchy, chain_id = None):
+  assert chain_id
+  for model in hierarchy.models():
+    n_chains = 0
+    for chain in model.chains():
+      n_chains+=1
+      assert n_chains <=1
+      chain.id = chain_id
+
+
 def get_chain_id(hierarchy):
   if not hierarchy:
     return None
@@ -1959,7 +1969,7 @@ class find_segment: # class to look for a type of segment
             segment_start=None
             still_changing=True
       segment_dict=new_segment_dict
-      for i in list(segment_dict.keys()):
+      for i in segment_dict.keys():
         segment_length=segment_dict[i]+1+self.last_residue_offset-i
         if segment_length<minimum_length:
           del segment_dict[i] # not long enough
