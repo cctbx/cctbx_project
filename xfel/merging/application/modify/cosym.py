@@ -204,26 +204,73 @@ class cosym(worker):
       keys = list(raw.keys())
       from pandas import DataFrame as df
       data = df(raw)
+      # major assumption is that all the coset decompositions "CO" are the same.  NOT sure if a test is needed.
 
       # report back to rank==0 and reconcile all coset assignments
-      reports = self.mpi_helper.MPI.COMM_WORLD.gather((data, CO),root=0)
+      reports = self.mpi_helper.comm.gather((data, CO),root=0)
       if self.mpi_helper.rank == 0:
         from xfel.merging.application.modify.df_cosym import reconcile_cosym_reports
         REC = reconcile_cosym_reports(reports)
         results = REC.simple_merge(voting_method="consensus")
         results.to_pickle(path = "cosym_myfile")
+        transmitted = results
+      else:
+        transmitted = None
+      transmitted = self.mpi_helper.comm.bcast(transmitted, root = 0)
+      # "transmitted" holds the global coset assignments
 
+      # subselect expt and refl on the successful coset assignments
+      # output:  experiments-->result_experiments_for_cosym; reflections-->reflections (modified in place)
+      result_experiments_for_cosym = ExperimentList()
+      good_refls = flex.bool(len(reflections), False)
+      good_expt_id = list(transmitted["experiment"])
+      good_coset = list(transmitted["coset"]) # would like to understand how to use pandas rather than Python list
+      for iexpt in range(len(experiments)):
+        iexpt_id = experiments[iexpt].identifier
+        keepit = iexpt_id in good_expt_id
+        if keepit:
+          this_coset = good_coset[ good_expt_id.index(iexpt_id) ]
+          this_cb_op = change_of_basis_op(CO.partitions[this_coset][0])
+          accepted_expt = experiments[iexpt]
+          if this_coset > 0:
+            accepted_expt.crystal.change_basis(this_cb_op)
+          result_experiments_for_cosym.append(accepted_expt)
+          good_refls |= reflections["exp_id"] == iexpt_id
+      reflections = reflections.select(good_refls)
+      self.mpi_helper.comm.barrier()
+      #if self.mpi_helper.rank == 0:
+      #  import pickle
+      #  with open("refl.pickle","wb") as F:
+      #    pickle.dump(reflections, F)
+      #    pickle.dump(transmitted, F)
+      #    pickle.dump([E.crystal.get_crystal_symmetry() for E in result_experiments_for_cosym],F)
+      #    pickle.dump([E.identifier for E in result_experiments_for_cosym],F)
+      #    pickle.dump(CO, F)
+
+
+      # still have to reindex the reflection table, but try to do it efficiently
+      from xfel.merging.application.modify.reindex_cosym import reindex_refl_by_coset
+      reindex_refl_by_coset(refl = reflections,
+                          data = transmitted,
+                          symms=[E.crystal.get_crystal_symmetry() for E in result_experiments_for_cosym],
+                          uuids=[E.identifier for E in result_experiments_for_cosym],
+                          co=CO)
+      # this should have re-indexed the refls in place, no need for return value
+
+      self.mpi_helper.comm.barrier()
+      # Note:  this handles the simple case of lattice ambiguity (P63 in P/mmm lattice group)
+      # in this use case we assume all inputs and outputs are in P63.
+      # more complex use cases would have to reset the space group in the crystal, and recalculate
+      # the ASU "miller_indicies" in the reflections table.
 
 
     if self.mpi_helper.rank == 0:
       self.logger.main_log("Task 2. Analyze the correlation coefficient matrix")
 
-
-
     self.logger.log_step_time("COSYM", True)
     self.logger.log("Memory usage: %d MB"%get_memory_usage())
 
-    return experiments, reflections
+    return result_experiments_for_cosym, reflections
 
 if __name__ == '__main__':
   from xfel.merging.application.worker import exercise_worker
