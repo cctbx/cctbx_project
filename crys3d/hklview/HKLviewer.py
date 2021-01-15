@@ -345,8 +345,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def onOpenHelpFile(self):
-    pass
-    #QDesktopServices.openUrl("www.oeffner.net")
+    QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/doc_hklviewer/")
 
 
   def onOpenCCTBXwebsite(self):

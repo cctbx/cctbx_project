@@ -8,6 +8,7 @@
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
+
 from __future__ import absolute_import, division, print_function
 
 from PySide2.QtWebEngineWidgets import QWebEngineView
@@ -365,7 +366,7 @@ class Ui_MainWindow(object):
         sizePolicy13.setHeightForWidth(self.radii_scale_spinBox.sizePolicy().hasHeightForWidth())
         self.radii_scale_spinBox.setSizePolicy(sizePolicy13)
         self.radii_scale_spinBox.setDecimals(2)
-        self.radii_scale_spinBox.setMaximum(50.000000000000000)
+        self.radii_scale_spinBox.setMaximum(1000.000000000000000)
         self.radii_scale_spinBox.setSingleStep(0.200000000000000)
 
         self.gridLayout_10.addWidget(self.radii_scale_spinBox, 2, 1, 1, 1)
@@ -863,4 +864,3 @@ class Ui_MainWindow(object):
         self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
         self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", u"Help", None))
     # retranslateUi
-

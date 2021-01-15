@@ -273,7 +273,8 @@ class MPLColourSchemes(QtWidgets.QDialog):
     gridlayout.addWidget(self.OKbtn,             4, 0, 1, 1)
     gridlayout.addWidget(self.Cancelbtn,         4, 2, 1, 2)
     self.setLayout(gridlayout)
-    scw = self.parent.app.style().pixelMetric(QtWidgets.QStyle.PM_ScrollBarExtent)
+    #scw = self.parent.app.style().pixelMetric(QtWidgets.QStyle.PM_ScrollBarExtent)
+
 
   def draw_axes_and_text(self):
     for ax, name in zip(self.mycanvas.axes, cmaps):
