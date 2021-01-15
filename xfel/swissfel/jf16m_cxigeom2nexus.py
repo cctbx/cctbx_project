@@ -55,6 +55,12 @@ phil_scope = parse("""
     .type = str
     .expert_level = 2
     .help = Override hdf5 key name in unassembled file
+  pedestal_file = None
+    .type = str
+    .help = path to Jungfrau pedestal file. Used only if raw=True
+  gain_file = None
+    .type = str
+    .help = path to Jungfrau gain file. Used only if raw=True
   nexus_details {
     instrument_name = SwissFEL ARAMIS BEAMLINE ESB
       .type = str
@@ -172,6 +178,17 @@ class jf16m_cxigeom2nexus(object):
       else:
         unassembled_data_key = "data/data"
     data[data_key] = h5py.ExternalLink(self.params.unassembled_file, unassembled_data_key)
+
+    if self.params.raw:
+      if self.params.pedestal_file:
+        # named gains instead of pedestal in JF data files
+        data['pedestal'] = h5py.ExternalLink(self.params.pedestal_file, 'gains')
+        data['pedestalRMS'] = h5py.ExternalLink(self.params.pedestal_file, 'gainsRMS')
+      if self.params.gain_file:
+        data['gains'] = h5py.ExternalLink(self.params.gain_file, 'gains')
+      if self.params.pedestal_file or self.params.gain_file:
+        data.attrs['signal'] = 'data'
+
     # --> sample
     sample = entry.create_group('sample')
     sample.attrs['NX_class'] = 'NXsample'
