@@ -153,63 +153,50 @@ class cosym(worker):
     There are %d experiments with %d reflections, averaging %.1f reflections/experiment"""%(
       len(COSYM.experiments), flex.sum(rank_N_refl), flex.mean(rank_N_refl))
     self.logger.log(message)
-    if self.mpi_helper.rank == 0:
-      self.logger.main_log(message)
 
     COSYM.run()
 
-    if self.params.modify.cosym.dataframe:
-      from collections import OrderedDict
-      #assert len(sampling_experiments_for_cosym) + 1 anchor if present == len(COSYM._experiments)
-      keyval = [("experiment", []), ("reindex_op", []), ("coset", [])]
-      raw = OrderedDict(keyval)
-      print("Rank",self.mpi_helper.rank,"experiments:",len(sampling_experiments_for_cosym))
+    from collections import OrderedDict
+    #assert len(sampling_experiments_for_cosym) + 1 anchor if present == len(COSYM._experiments)
+    keyval = [("experiment", []), ("reindex_op", []), ("coset", [])]
+    raw = OrderedDict(keyval)
+    print("Rank",self.mpi_helper.rank,"experiments:",len(sampling_experiments_for_cosym))
 
-      for sidx in range(len(self.uuid_cache)):
-        raw["experiment"].append(self.uuid_cache[sidx])
-      #for sidx in range(len(experiments)):
-      #  raw["experiment"].append(experiments[sidx].identifier)
+    for sidx in range(len(self.uuid_cache)):
+      raw["experiment"].append(self.uuid_cache[sidx])
 
-        sidx_plus = sidx
-        if False: # no anchor for first pass #self.mpi_helper.rank == 0 and self.params.modify.cosym.anchor:# add 1 if COSYM had an anchor
-          sidx_plus += 1
-          if sidx == 0:
-            reindex_op = COSYM.cb_op_to_minimum[0].inverse() * \
-                     sgtbx.change_of_basis_op(COSYM.cosym_analysis.reindexing_ops[0][0]) * \
-                     COSYM.cb_op_to_minimum[0]
-            print("The consensus for the anchor is",reindex_op.as_hkl())
+      sidx_plus = sidx
 
-        minimum_to_input = COSYM.cb_op_to_minimum[sidx_plus].inverse()
-        reindex_op = minimum_to_input * \
+      minimum_to_input = COSYM.cb_op_to_minimum[sidx_plus].inverse()
+      reindex_op = minimum_to_input * \
                      sgtbx.change_of_basis_op(COSYM.cosym_analysis.reindexing_ops[sidx_plus][0]) * \
                      COSYM.cb_op_to_minimum[sidx_plus]
 
-        # Keep this block even though not currently used; need for future assertions:
-        LG = COSYM.cosym_analysis.target._lattice_group
-        LGINP = LG.change_basis(COSYM.cosym_analysis.cb_op_inp_min.inverse()).change_basis(minimum_to_input)
-        SG = COSYM.cosym_analysis.space_groups[sidx_plus]
-        SGINP = SG.change_basis(COSYM.cosym_analysis.cb_op_inp_min.inverse()).change_basis(minimum_to_input)
-        CO = sgtbx.cosets.left_decomposition(LGINP, SGINP)
-        # if sidx_plus==10: CO.show() # for debugging
-        partitions = CO.partitions
-        this_reindex_op = reindex_op.as_hkl()
-        this_coset = None
-        for p_no, partition in enumerate(partitions):
+      # Keep this block even though not currently used; need for future assertions:
+      LG = COSYM.cosym_analysis.target._lattice_group
+      LGINP = LG.change_basis(COSYM.cosym_analysis.cb_op_inp_min.inverse()).change_basis(minimum_to_input)
+      SG = COSYM.cosym_analysis.space_groups[sidx_plus]
+      SGINP = SG.change_basis(COSYM.cosym_analysis.cb_op_inp_min.inverse()).change_basis(minimum_to_input)
+      CO = sgtbx.cosets.left_decomposition(LGINP, SGINP)
+      partitions = CO.partitions
+      this_reindex_op = reindex_op.as_hkl()
+      this_coset = None
+      for p_no, partition in enumerate(partitions):
           partition_ops = [change_of_basis_op(ip).as_hkl() for ip in partition]
           if this_reindex_op in partition_ops:
             this_coset = p_no; break
-        assert this_coset is not None
-        raw["coset"].append(this_coset)
-        raw["reindex_op"].append(this_reindex_op)
+      assert this_coset is not None
+      raw["coset"].append(this_coset)
+      raw["reindex_op"].append(this_reindex_op)
 
-      keys = list(raw.keys())
-      from pandas import DataFrame as df
-      data = df(raw)
-      # major assumption is that all the coset decompositions "CO" are the same.  NOT sure if a test is needed.
+    keys = list(raw.keys())
+    from pandas import DataFrame as df
+    data = df(raw)
+    # major assumption is that all the coset decompositions "CO" are the same.  NOT sure if a test is needed.
 
-      # report back to rank==0 and reconcile all coset assignments
-      reports = self.mpi_helper.comm.gather((data, CO),root=0)
-      if self.mpi_helper.rank == 0:
+    # report back to rank==0 and reconcile all coset assignments
+    reports = self.mpi_helper.comm.gather((data, CO),root=0)
+    if self.mpi_helper.rank == 0:
         from xfel.merging.application.modify.df_cosym import reconcile_cosym_reports
         REC = reconcile_cosym_reports(reports)
         results = REC.simple_merge(voting_method="consensus")
@@ -264,21 +251,23 @@ class cosym(worker):
           REC.reconcile_with_anchor(results, anchor_data, anchor_op)
           # no need for return value; results dataframe is modified in place
 
-        results.to_pickle(path = "cosym_myfile")
+        if self.params.modify.cosym.dataframe:
+          import os
+          results.to_pickle(path = os.path.join(self.params.output.output_dir,self.params.modify.cosym.dataframe))
         transmitted = results
-      else:
+    else:
         transmitted = None
-      self.mpi_helper.comm.barrier()
-      transmitted = self.mpi_helper.comm.bcast(transmitted, root = 0)
-      # "transmitted" holds the global coset assignments
+    self.mpi_helper.comm.barrier()
+    transmitted = self.mpi_helper.comm.bcast(transmitted, root = 0)
+    # "transmitted" holds the global coset assignments
 
-      # subselect expt and refl on the successful coset assignments
-      # output:  experiments-->result_experiments_for_cosym; reflections-->reflections (modified in place)
-      result_experiments_for_cosym = ExperimentList()
-      good_refls = flex.bool(len(reflections), False)
-      good_expt_id = list(transmitted["experiment"])
-      good_coset = list(transmitted["coset"]) # would like to understand how to use pandas rather than Python list
-      for iexpt in range(len(experiments)):
+    # subselect expt and refl on the successful coset assignments
+    # output:  experiments-->result_experiments_for_cosym; reflections-->reflections (modified in place)
+    result_experiments_for_cosym = ExperimentList()
+    good_refls = flex.bool(len(reflections), False)
+    good_expt_id = list(transmitted["experiment"])
+    good_coset = list(transmitted["coset"]) # would like to understand how to use pandas rather than Python list
+    for iexpt in range(len(experiments)):
         iexpt_id = experiments[iexpt].identifier
         keepit = iexpt_id in good_expt_id
         if keepit:
@@ -290,40 +279,39 @@ class cosym(worker):
                                     # need to use wrapper because of cctbx/dxtbx#5
           result_experiments_for_cosym.append(accepted_expt)
           good_refls |= reflections["exp_id"] == iexpt_id
-      reflections = reflections.select(good_refls)
-      self.mpi_helper.comm.barrier()
-      #if self.mpi_helper.rank == 0:
-      #  import pickle
-      #  with open("refl.pickle","wb") as F:
-      #    pickle.dump(reflections, F)
-      #    pickle.dump(transmitted, F)
-      #    pickle.dump([E.crystal.get_crystal_symmetry() for E in result_experiments_for_cosym],F)
-      #    pickle.dump([E.identifier for E in result_experiments_for_cosym],F)
-      #    pickle.dump(CO, F)
+    reflections = reflections.select(good_refls)
+    self.mpi_helper.comm.barrier()
+    #if self.mpi_helper.rank == 0:
+    #  import pickle
+    #  with open("refl.pickle","wb") as F:
+    #    pickle.dump(reflections, F)
+    #    pickle.dump(transmitted, F)
+    #    pickle.dump([E.crystal.get_crystal_symmetry() for E in result_experiments_for_cosym],F)
+    #    pickle.dump([E.identifier for E in result_experiments_for_cosym],F)
+    #    pickle.dump(CO, F)
 
-
-      # still have to reindex the reflection table, but try to do it efficiently
-      from xfel.merging.application.modify.reindex_cosym import reindex_refl_by_coset
-      reindex_refl_by_coset(refl = reflections,
+    # still have to reindex the reflection table, but try to do it efficiently
+    from xfel.merging.application.modify.reindex_cosym import reindex_refl_by_coset
+    reindex_refl_by_coset(refl = reflections,
                           data = transmitted,
                           symms=[E.crystal.get_crystal_symmetry() for E in result_experiments_for_cosym],
                           uuids=[E.identifier for E in result_experiments_for_cosym],
-                          co=CO, verbose=False)
-      # this should have re-indexed the refls in place, no need for return value
+                          co=CO,
+                          anomalous_flag = self.params.merging.merge_anomalous==False,
+                          verbose=False)
+    # this should have re-indexed the refls in place, no need for return value
 
-      self.mpi_helper.comm.barrier()
-      # Note:  this handles the simple case of lattice ambiguity (P63 in P/mmm lattice group)
-      # in this use case we assume all inputs and outputs are in P63.
-      # more complex use cases would have to reset the space group in the crystal, and recalculate
-      # the ASU "miller_indicies" in the reflections table.
-
-
-    if self.mpi_helper.rank == 0:
-      self.logger.main_log("Task 2. Analyze the correlation coefficient matrix")
+    self.mpi_helper.comm.barrier()
+    # Note:  this handles the simple case of lattice ambiguity (P63 in P/mmm lattice group)
+    # in this use case we assume all inputs and outputs are in P63.
+    # more complex use cases would have to reset the space group in the crystal, and recalculate
+    # the ASU "miller_indicies" in the reflections table.
 
     self.logger.log_step_time("COSYM", True)
     self.logger.log("Memory usage: %d MB"%get_memory_usage())
 
+    from xfel.merging.application.utils.data_counter import data_counter
+    data_counter(self.params).count(result_experiments_for_cosym, reflections)
     return result_experiments_for_cosym, reflections
 
 if __name__ == '__main__':

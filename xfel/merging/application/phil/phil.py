@@ -212,9 +212,9 @@ modify
     .help = An algorithm to match input experiments against a reference model to
     .help = break an indexing ambiguity
     {
-    dataframe = False
-      .type = bool
-      .help = save a list of which experiments were reindexed (requires pandas)
+    dataframe = None
+      .type = path
+      .help = if not None, save a list of which experiments were reindexed (requires pandas)
       .help = and plot a histogram of correlation coefficients (matplotlib)
     }
   cosym
@@ -222,16 +222,16 @@ modify
     .help = to determine Laue symmetry from individual symops
     {
     include scope dials.command_line.cosym.phil_scope
-    dataframe = False
-      .type = bool
-      .help = save a list of which experiments were reindexed (requires pandas)
+    dataframe = None
+      .type = path
+      .help = if not None, save a list of which experiments were reindexed (requires pandas)
       .help = and plot a histogram of correlation coefficients (matplotlib)
     anchor = False
       .type = bool
       .help = Once the patterns are mutually aligned with the Gildea/Winter/Brehm/Diederichs methodology
       .help = flip the whole set so that it is aligned with a reference model.  For simplicity, the
       .help = reference model from scaling.model is used.  It should be emphasized that the scaling.model
-      .help = is only used to choose the twinning operator, which may be chosen arbitrarily, it does not
+      .help = is only used to choose the overall alignment, which may be chosen arbitrarily, it does not
       .help = bias the mutual alignment of the experimental diffraction patterns.
     }
 }

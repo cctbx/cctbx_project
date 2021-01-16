@@ -16,24 +16,63 @@ class reindex_to_reference(worker):
     super(reindex_to_reference, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
 
   def __repr__(self):
-    return 'Resolve indexing ambiguity'
+    return 'Resolve indexing ambiguity by comparison to a reference'
 
-  def process_dataframe(self, raw):
+  def process_dataframe(self, raw, params):
     #two purposes: 1) write table to disk, 2) make plot
+    import pandas as pd
+    pd.set_option('display.max_rows', 300)
+    pd.set_option('display.max_columns', 8)
+    pd.set_option("display.width", None)
     from pandas import DataFrame as df
     data = df(raw)
-    from matplotlib import pyplot as plt
+    print (data)
     symops = list(data.keys())[1:]
     data["max"] = data[symops].max(axis=1)
     data["min"] = data[symops].min(axis=1)
     data['diff'] = data["max"] - data["min"]
     data["reindex_op"] = data[symops].idxmax(axis=1)
-    data.to_pickle(path = "myfile") # XXX
-    # XXX rank 0 should write one unified file to params.output.prefix + _reindex_op.pandas
-    plt.hist(data["min"], bins=24, range=[-0.5,1], )
-    plt.hist(data["max"], bins=24, range=[-0.5,1], alpha=0.75)
-    plt.show()
-    # later change this plot to produce PDF file
+
+    # Now collect dataframes from all ranks and merge
+    reports = self.mpi_helper.comm.gather(data,root=0)
+    if self.mpi_helper.rank == 0:
+
+      result = pd.concat(reports)
+
+      # Best guess coset decomposition.  Works fine for P6 use case.
+      change_of_basis_op_to_niggli_cell = \
+      self.params.scaling.i_model.change_of_basis_op_to_niggli_cell()
+      minimum_cell_symmetry = self.params.scaling.i_model.crystal_symmetry().change_basis(
+      cb_op=change_of_basis_op_to_niggli_cell)
+      lattice_group = sgtbx.lattice_symmetry.group(
+      reduced_cell=minimum_cell_symmetry.unit_cell())
+      Laue_group = self.params.scaling.i_model.space_group().build_derived_laue_group()
+      LATG = lattice_group.change_basis(change_of_basis_op_to_niggli_cell.inverse())
+      LAUG = Laue_group.build_derived_acentric_group()
+      CO = sgtbx.cosets.left_decomposition(LATG,LAUG)
+      partitions = CO.partitions
+
+      # Initialize a coset column using best estimate
+      working_coset = []
+      working_reindex_op = list(result["reindex_op"])
+      for iexpt in range(len(working_reindex_op)):
+            this_coset = None
+            for p_no, partition in enumerate(partitions):
+              partition_ops = [sgtbx.change_of_basis_op(ip).as_hkl() for ip in partition]
+              if working_reindex_op[iexpt] in partition_ops:
+                this_coset = p_no; break
+            assert this_coset is not None
+            working_coset.append(this_coset)
+      result["coset"]=working_coset
+      print (result)
+
+      import os
+      result.to_pickle(path = os.path.join(params.output.output_dir, params.modify.reindex_to_reference.dataframe))
+      #from matplotlib import pyplot as plt
+      #plt.hist(data["min"], bins=24, range=[-0.5,1], )
+      #plt.hist(data["max"], bins=24, range=[-0.5,1], alpha=0.75)
+      #plt.show()
+      # later change this plot to produce PDF file
 
   def run(self, experiments, reflections):
 
@@ -104,11 +143,13 @@ class reindex_to_reference(worker):
           raw[keys[ix+1]].append(all_correlations[ix])
 
     if self.params.modify.reindex_to_reference.dataframe:
-      self.process_dataframe(raw)
+      self.process_dataframe(raw, self.params)
 
     self.logger.log_step_time("REINDEX", True)
     self.logger.log("Memory usage: %d MB"%get_memory_usage())
 
+    from xfel.merging.application.utils.data_counter import data_counter
+    data_counter(self.params).count(experiments, reflections)
     return experiments, result
 
 if __name__ == '__main__':

@@ -16,7 +16,8 @@ class CosymAnalysis(BaseClass):
             yy.append(self.coords[(item,1)])
           from matplotlib import pyplot as plt
           plt.plot(xx,yy,"r.")
-          plt.plot(xx[:12],yy[:12],"b.")
+          # denminator of 12 is specific to the use case of P6 (# symops in the metric superlattice)
+          plt.plot(xx[::len(xx)//12],yy[::len(yy)//12],"b.")
           plt.plot(xx[:1],yy[:1],"g.")
           plt.axes().set_aspect("equal")
           circle = plt.Circle((0,0),1,fill=False,edgecolor="b")
@@ -220,11 +221,6 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
                 space_groups[self.cosym_analysis.space_groups[dataset_id]].append(
                     dataset_id
                 )
-        # NEXT, in the subclass, correctly apply symop multiplication here
-#XXX start here.  now that we have gone round trip with the cosets, let us try
-#to condense this to get each rank, and each lattice classified correctly.
-#Can we offload code in my cosym worker down to specialized behavior here???
-
 
         logger.info("Space groups:")
         for sg, datasets in space_groups.items():
@@ -238,6 +234,6 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
 
         self._apply_reindexing_operators(
             reindexing_ops, subgroup=None
-        # changed in subclass:  set subgroup=None.
-        # in parent class:  subgroup=self.cosym_analysis.best_subgroup
+        # changed in xfel subclass:  set subgroup=None.
+        # in dials parent class:  subgroup=self.cosym_analysis.best_subgroup
         )
