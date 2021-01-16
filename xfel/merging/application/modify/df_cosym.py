@@ -107,3 +107,39 @@ class reconcile_cosym_reports:
       keyval = [("experiment", uuid_consensus), ("coset", coset_consensus)]
     raw = OrderedDict(keyval)
     return df(raw)
+
+  def reconcile_with_anchor(self, global_dataframe, anchor_dataframe, anchor_operator):
+    print (anchor_dataframe)
+    merged_inner = pd.merge(left=global_dataframe, right=anchor_dataframe, left_on='experiment', right_on='experiment')
+    print (merged_inner)
+
+    #1) cyclic icoset permutation of the anchor till the key==0 icoset is 0
+    # XXX fix me.  Actually not sure if cyclic permutation works for more than 2 cosets.  Good guess, but need to test
+    working_uuid = list(anchor_dataframe["experiment"]); assert working_uuid[0]=="anchor structure"
+    working_cyclic = list(anchor_dataframe["coset"])
+    while working_cyclic[0] != 0:
+      working_cyclic = [(icoset+1)%self.n_cosets for icoset in working_cyclic]
+    anchor_dataframe["coset"] = working_cyclic
+
+    merged_inner = pd.merge(left=global_dataframe, right=anchor_dataframe, left_on='experiment', right_on='experiment')
+    print (merged_inner)
+
+
+    #2) all permutations of the global till the global matches the anchor, then return this
+    reference_coset = list(merged_inner["coset_y"])
+    coset_permutations = list(permutations(list(range(self.n_cosets))))
+    for trial_permutation in coset_permutations:
+      working_coset = list(merged_inner["coset_x"])
+      working_coset = [trial_permutation[i] for i in working_coset]
+      n_matches = 0
+      for iexpt in range(len(reference_coset)):
+        if working_coset[iexpt] == reference_coset[iexpt]:
+          n_matches += 1
+      # be somewhat clever about success level
+      if (n_matches / len(reference_coset)) > (self.n_cosets-0.5)/self.n_cosets: break
+
+    #3) apply the successful permutation to the global dataframe
+    merged_inner["coset_x"] = working_coset
+    print (merged_inner)
+    global_dataframe["coset"] = [trial_permutation[x] for x in list(global_dataframe["coset"])]
+    return global_dataframe

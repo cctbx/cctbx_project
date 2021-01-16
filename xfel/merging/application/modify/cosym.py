@@ -4,6 +4,7 @@ from xfel.merging.application.utils.memory_usage import get_memory_usage
 from cctbx.array_family import flex
 from cctbx import sgtbx
 from cctbx.sgtbx import change_of_basis_op
+from dxtbx.model.crystal import MosaicCrystalSauter2014
 
 class cosym(worker):
   """
@@ -76,12 +77,12 @@ class cosym(worker):
         sampling_reflections_for_cosym.append(exp_reflections)
 
 
-    if self.mpi_helper.rank == 0:
-      task_a()
+    #if self.mpi_helper.rank == 0:
+      # task_a() # no anchor for initial pass
 
-    def task_1():
+    def task_1(mpi_helper_size=1):
       self.uuid_cache = []
-      if self.mpi_helper.size == 1: # simple case, one rank
+      if mpi_helper_size == 1: # simple case, one rank
        for experiment in all_sampling_experiments:
         sampling_experiments_for_cosym.append(experiment)
         self.uuid_cache.append(experiment.identifier)
@@ -136,7 +137,7 @@ class cosym(worker):
                 sampling_experiments_for_cosym, sampling_reflections_for_cosym,
                 params=self.params.modify.cosym)
       return COSYM
-    COSYM = task_1()
+    COSYM = task_1(mpi_helper_size=self.mpi_helper.size)
 
     # runtime code specialization, replace Gildea algorithm with Paley
     from dials.algorithms.symmetry.cosym.target import Target
@@ -170,7 +171,7 @@ class cosym(worker):
       #  raw["experiment"].append(experiments[sidx].identifier)
 
         sidx_plus = sidx
-        if self.mpi_helper.rank == 0 and self.params.modify.cosym.anchor:# add 1 if COSYM had an anchor
+        if False: # no anchor for first pass #self.mpi_helper.rank == 0 and self.params.modify.cosym.anchor:# add 1 if COSYM had an anchor
           sidx_plus += 1
           if sidx == 0:
             reindex_op = COSYM.cb_op_to_minimum[0].inverse() * \
@@ -212,10 +213,62 @@ class cosym(worker):
         from xfel.merging.application.modify.df_cosym import reconcile_cosym_reports
         REC = reconcile_cosym_reports(reports)
         results = REC.simple_merge(voting_method="consensus")
+
+        # at this point we have the opportunity to reconcile the results with an anchor
+        # recycle the data structures for anchor determination
+        if self.params.modify.cosym.anchor:
+          sampling_experiments_for_cosym = ExperimentList()
+          sampling_reflections_for_cosym = []
+          print("ANCHOR determination")
+          task_a()
+          ANCHOR = task_1(mpi_helper_size=1) # only run on the rank==0 tranch.
+          ANCHOR.run()
+
+
+          keyval = [("experiment", []), ("coset", [])]
+          raw = OrderedDict(keyval)
+          print("Anchor","experiments:",len(sampling_experiments_for_cosym))
+
+          anchor_op = ANCHOR.cb_op_to_minimum[0].inverse() * \
+                     sgtbx.change_of_basis_op(ANCHOR.cosym_analysis.reindexing_ops[0][0]) * \
+                     ANCHOR.cb_op_to_minimum[0]
+          anchor_coset = None
+          for p_no, partition in enumerate(partitions):
+              partition_ops = [change_of_basis_op(ip).as_hkl() for ip in partition]
+              if anchor_op.as_hkl() in partition_ops:
+                anchor_coset = p_no; break
+          assert anchor_coset is not None
+          print("The consensus for the anchor is",anchor_op.as_hkl()," anchor coset", anchor_coset)
+          raw["experiment"].append("anchor structure"); raw["coset"].append(anchor_coset)
+
+          for sidx in range(len(self.uuid_cache)):
+            raw["experiment"].append(self.uuid_cache[sidx])
+
+            sidx_plus = sidx + 1 # because of the anchor
+
+            minimum_to_input = ANCHOR.cb_op_to_minimum[sidx_plus].inverse()
+            reindex_op = minimum_to_input * \
+                     sgtbx.change_of_basis_op(ANCHOR.cosym_analysis.reindexing_ops[sidx_plus][0]) * \
+                     ANCHOR.cb_op_to_minimum[sidx_plus]
+            this_reindex_op = reindex_op.as_hkl()
+            this_coset = None
+            for p_no, partition in enumerate(partitions):
+              partition_ops = [change_of_basis_op(ip).as_hkl() for ip in partition]
+              if this_reindex_op in partition_ops:
+                this_coset = p_no; break
+            assert this_coset is not None
+            raw["coset"].append(this_coset)
+
+          from pandas import DataFrame as df
+          anchor_data = df(raw)
+          REC.reconcile_with_anchor(results, anchor_data, anchor_op)
+          # no need for return value; results dataframe is modified in place
+
         results.to_pickle(path = "cosym_myfile")
         transmitted = results
       else:
         transmitted = None
+      self.mpi_helper.comm.barrier()
       transmitted = self.mpi_helper.comm.bcast(transmitted, root = 0)
       # "transmitted" holds the global coset assignments
 
@@ -233,7 +286,8 @@ class cosym(worker):
           this_cb_op = change_of_basis_op(CO.partitions[this_coset][0])
           accepted_expt = experiments[iexpt]
           if this_coset > 0:
-            accepted_expt.crystal.change_basis(this_cb_op)
+            accepted_expt.crystal = MosaicCrystalSauter2014( accepted_expt.crystal.change_basis(this_cb_op) )
+                                    # need to use wrapper because of cctbx/dxtbx#5
           result_experiments_for_cosym.append(accepted_expt)
           good_refls |= reflections["exp_id"] == iexpt_id
       reflections = reflections.select(good_refls)
@@ -254,7 +308,7 @@ class cosym(worker):
                           data = transmitted,
                           symms=[E.crystal.get_crystal_symmetry() for E in result_experiments_for_cosym],
                           uuids=[E.identifier for E in result_experiments_for_cosym],
-                          co=CO)
+                          co=CO, verbose=False)
       # this should have re-indexed the refls in place, no need for return value
 
       self.mpi_helper.comm.barrier()
