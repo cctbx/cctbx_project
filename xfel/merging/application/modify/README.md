@@ -1,4 +1,4 @@
-# Resolving an Indexing Ambiguity or Laue Group Assignment
+# Resolving an Indexing Ambiguity and Laue Group Assignment
 Current status 1/16/2021: `dials.cosym` functions have been incorporated into `cctbx.xfel.merge` and are ready for alpha testing.
 
 ## Problem statement
@@ -143,7 +143,7 @@ advisable to change the `output.prefix` or the `output.output_dir` so the differ
 other.  Then, compare the index assignments with the program:
 ```
 libtbx.python \
-  ../modules/cctbx_project/xfel/merging/application/modify/compare_results \
+  ../modules/cctbx_project/xfel/merging/application/modify/compare_results.py \
   test_reference/test_reindex_dataframe.pickle \
   test_reference/test_cosym_dataframe.pickle
 ```
