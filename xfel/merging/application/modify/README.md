@@ -20,7 +20,7 @@ use case:  the alignment of crystals with P63 symmetry.
 ## Installation notes
 
 User, please treat this as an alpha testing situation with bugs and additional use cases reported to @nksauter.  The 
-following are keys points for getting things to run:
+following are key points for getting things to run:
 
 1.  Please use a conda build using the xfel code target.
 2.  This code is only available on the [merge_polar](https://github.com/cctbx/cctbx_project/tree/merge_polar) branch of cctbx_project.
