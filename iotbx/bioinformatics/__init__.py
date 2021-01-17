@@ -118,6 +118,9 @@ class sequence(object):
 
     return self.format( 70 )
 
+  def __hash__(self):
+
+    return hash(self.sequence)
 
   def __eq__(self, other):
 
