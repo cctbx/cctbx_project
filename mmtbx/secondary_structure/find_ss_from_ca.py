@@ -1520,6 +1520,8 @@ class strand(segment):
       sites_offset_2=self.sites[2:]
       self.diffs=sites_offset_2-self.sites[:-2]
       self.norms=self.diffs.norms()
+      if self.norms.count(0) > 0:
+        self.norms.set_selected(self.norms==0,1.e-10)
       self.diffs=self.diffs/self.norms
 
     return self.diffs,self.norms

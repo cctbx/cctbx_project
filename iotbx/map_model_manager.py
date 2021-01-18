@@ -7217,6 +7217,7 @@ class map_model_manager(object):
   def model_from_sites_cart(self,
     sites_cart,
     model_id = 'model_from_sites',
+    return_model = None,
     **kw):
     '''
       Convenience method to use the from_sites_cart method of model manager to
@@ -7247,7 +7248,11 @@ class map_model_manager(object):
        **kw)
 
     self.set_model_symmetries_and_shift_cart_to_match_map(model)
-    self.add_model_by_id(model = model, model_id=model_id)
+
+    if return_model:
+      return model
+    else:
+      self.add_model_by_id(model = model, model_id=model_id)
 
   def set_model_symmetries_and_shift_cart_to_match_map(self,
      model):
