@@ -801,6 +801,7 @@ class dataset_statistics(object):
       ('pdbx_Rpim_I_all', 'r_pim'),
       ('pdbx_Rrim_I_all', 'r_meas'),
       ('pdbx_netI_over_sigmaI', 'i_over_sigma_mean'),
+      ('pdbx_netI_over_av_sigmaI', 'i_mean_over_sigi_mean'),
       ('pdbx_redundancy', 'mean_redundancy'),
       ('percent_possible_obs', 'completeness'),
     ])
@@ -815,6 +816,7 @@ class dataset_statistics(object):
       ('pdbx_Rpim_I_all', 'r_pim'),
       ('pdbx_Rrim_I_all', 'r_meas'),
       ('pdbx_netI_over_sigmaI_obs', 'i_over_sigma_mean'),
+      ('meanI_over_sigI_obs', 'i_mean_over_sigi_mean'),
       ('pdbx_redundancy', 'mean_redundancy'),
       ('percent_possible_obs', 'completeness'),
     ])
