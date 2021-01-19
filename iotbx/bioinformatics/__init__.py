@@ -120,7 +120,7 @@ class sequence(object):
 
   def __hash__(self):
 
-    return hash((self.name, self.sequence))
+    return hash(id(self))
 
   def __eq__(self, other):
 
