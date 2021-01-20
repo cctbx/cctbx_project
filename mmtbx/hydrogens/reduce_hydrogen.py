@@ -9,7 +9,7 @@ from libtbx import group_args
 from cctbx.array_family import flex
 from collections import OrderedDict
 from mmtbx.ligands.ready_set_utils import add_n_terminal_hydrogens_to_residue_group
-from elbow.quantum import electrons
+
 #
 from cctbx.maptbx.box import shift_and_box_model
 
@@ -288,7 +288,7 @@ class place_hydrogens():
 # ------------------------------------------------------------------------------
 
   def validate_electrons(self):
-
+    from elbow.quantum import electrons
     atom_valences = electrons.electron_distribution(
       # XXX How do we get this working on models with alternate locations?
       self.model.get_hierarchy(), # needs to be altloc free
