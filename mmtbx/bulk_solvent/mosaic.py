@@ -394,6 +394,9 @@ def get_f_mask(xrs, ma, step, option = 2, r_shrink = None, r_sol = None):
   atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
   mask_params = masks.mask_master_params.extract()
   grid_step_factor = ma.d_min()/step
+  if(r_shrink is not None): mask_params.shrink_truncation_radius = r_shrink
+  if(r_sol is not None):    mask_params.solvent_radius           = r_sol
+  mask_params.grid_step_factor = grid_step_factor
   # 1
   if(option==1):
     asu_mask = ext.atom_mask(
@@ -419,25 +422,30 @@ def get_f_mask(xrs, ma, step, option = 2, r_shrink = None, r_sol = None):
     f_mask = ma.set().array(data = fm_asu)
   # 3
   elif(option==3):
-    mask_params.grid_step_factor = grid_step_factor
-    mask_manager = masks.manager(
-      miller_array      = ma,
-      miller_array_twin = None,
-      mask_params       = mask_params)
-    f_mask = mask_manager.shell_f_masks(xray_structure=xrs, force_update=True)[0]
-  # 4
-  elif(option==4):
     mask_p1 = mmtbx.masks.mask_from_xray_structure(
-      xray_structure        = xrs,
-      p1                    = True,
-      for_structure_factors = True,
-      n_real                = n_real,
-      in_asu                = False).mask_data
+      xray_structure           = xrs,
+      p1                       = True,
+      for_structure_factors    = True,
+      solvent_radius           = mask_params.solvent_radius,
+      shrink_truncation_radius = mask_params.shrink_truncation_radius,
+      n_real                   = n_real,
+      in_asu                   = False).mask_data
     maptbx.unpad_in_place(map=mask_p1)
     mask = asu_map_ext.asymmetric_map(
       xrs.crystal_symmetry().space_group().type(), mask_p1).data()
     f_mask = ma.structure_factors_from_asu_map(
       asu_map_data = mask, n_real = n_real)
+  # 4
+  elif(option==4):
+    f_mask = masks.bulk_solvent(
+      xray_structure              = xrs,
+      ignore_zero_occupancy_atoms = False,
+      solvent_radius              = mask_params.solvent_radius,
+      shrink_truncation_radius    = mask_params.shrink_truncation_radius,
+      ignore_hydrogen_atoms       = False,
+      grid_step                   = step,
+      atom_radii                  = atom_radii).structure_factors(
+        miller_set = ma)
   elif(option==5):
     o = mmtbx.masks.bulk_solvent(
       xray_structure              = xrs,
@@ -447,7 +455,15 @@ def get_f_mask(xrs, ma, step, option = 2, r_shrink = None, r_sol = None):
       ignore_hydrogen_atoms       = False,
       gridding_n_real             = n_real,
       atom_radii                  = atom_radii)
+    assert approx_equal(n_real, o.data.accessor().all())
     f_mask = o.structure_factors(ma)
+  elif(option==6):
+    # XXX No control over n_real, so results with others don't match
+    mask_manager = masks.manager(
+      miller_array      = ma,
+      miller_array_twin = None,
+      mask_params       = mask_params)
+    f_mask = mask_manager.shell_f_masks(xray_structure=xrs, force_update=True)[0]
   else: assert 0
   #
   return f_mask
