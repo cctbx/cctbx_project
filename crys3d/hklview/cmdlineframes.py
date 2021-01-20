@@ -170,7 +170,6 @@ class HKLViewFrame() :
     self.viewer.isnewfile = True
     if self.viewer.miller_array:
       self.viewer.params.viewer.scene_id = None
-      #self.viewer.JavaScriptCleanUp()
       self.viewer.RemoveStageObjects()
     self.viewer.miller_array = None
     self.viewer.lastviewmtrx = None

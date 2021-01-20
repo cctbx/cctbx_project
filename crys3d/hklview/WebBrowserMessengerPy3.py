@@ -88,7 +88,7 @@ class WBmessenger(object):
                                       self.websockport, #ssl=ssl_context,
                                       create_protocol=MyWebSocketServerProtocol,
                                       )
-      self.mprint("starting WebSockHandler on port %s" %str(self.websockport), verbose=1)
+      self.mprint("Starting websocket server on port %s" %str(self.websockport))
       #time.sleep(20)
       time.sleep(0.2)
       # run_forever() blocks execution so put in a separate thread

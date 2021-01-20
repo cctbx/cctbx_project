@@ -272,7 +272,7 @@ class hklview_3d:
     if 'send_info_to_gui' in kwds:
       self.send_info_to_gui = kwds['send_info_to_gui']
       self.isHKLviewer= "true"
-    self.mprint('Output will be written to \"%s\"'  %self.hklfname)
+    self.mprint('Rendering done via websocket in \"%s\"'  %self.hklfname)
     self.hklhtml = r"""
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html><head><meta charset="utf-8" /></head>
@@ -321,6 +321,8 @@ class hklview_3d:
     # not called unless instantiated with a "with hklview_3d ... " statement
     self.JavaScriptCleanUp()
     nwait = 0
+    if self.viewerparams.scene_id is None:
+      self.WBmessenger.StopWebsocket()
     while not self.WBmessenger.isterminating and nwait < 5:
       time.sleep(self.sleeptime)
       nwait += self.sleeptime
@@ -731,6 +733,8 @@ class hklview_3d:
     sceneid = scene_id
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
+    if len(self.proc_arrays) == 0:
+      return False
 
     self.HKLsceneKey = (curphilparam.spacegroup_choice,
                          curphilparam.using_space_subgroup,
@@ -760,7 +764,6 @@ class hklview_3d:
     if self.has_new_miller_array:
       self.identify_suitable_fomsarrays()
     self.mprint("Constructing HKL scenes", verbose=0)
-    assert(self.proc_arrays)
     if scene_id is None:
       hkl_scenes_infos = []
       self.HKLscenes = []
@@ -1860,15 +1863,16 @@ Distance: %s
     InvMx = OrtMx.inverse()
     ortrotmx = (OrtMx * RotMx * InvMx)
     if not ortrotmx.is_r3_rotation_matrix():
-      raise Sorry("The operation '%s' is not a rotation in the space group %s" \
-        %(rot.as_hkl(), self.miller_array.space_group().info().symbol_and_number() ))
+      self.mprint("""Warning! The operation '%s' is not a proper rotation
+in the space group %s\nwith unit cell %s\n""" \
+        %(rot.as_hkl(), self.miller_array.space_group().info().symbol_and_number(), str(uc) ))
     ortrot = ortrotmx.as_mat3()
     r11,r12,r13,r21,r22,r23,r31,r32,r33 = ortrot
     # workaround for occasional machine precision errors yielding argument greater than 1.0
     theta =  math.acos(roundoff((r11+r22+r33-1.0)*0.5, 10))
     sint = math.sin(theta)
     e1, e2, e3 = (0,0,0)
-    eps = 0.000000001
+    eps = 1e-3
     # see https://en.wikipedia.org/wiki/Rotation_matrix for details
     if abs(sint) > eps: # doesn't work if matrix is symmetric
       s = 0.5/sint

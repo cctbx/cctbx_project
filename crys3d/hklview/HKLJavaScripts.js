@@ -86,6 +86,9 @@ var Hlabelvec = new NGL.Vector3();
 var Klabelvec = new NGL.Vector3();
 var Llabelvec = new NGL.Vector3();
 var annodivs = [];
+var div_annotation_opacity = 0.7;
+var camtype = "orthographic";
+//var negativeradiistr;
 
 
 function sleep(ms) {
@@ -166,6 +169,21 @@ function addDiv2Container(container, name, t, l, w, h, bgcolour="rgba(255, 255, 
   divbox = addDivBox(name, t, l, w, h, bgcolour, fsize)
   container.append( divbox );
 }
+
+
+function createDivElement(label, rgb, cornerposition)
+{
+  var elm = createElement("div", { innerText: label },
+    {
+      color: "rgba(" + rgb[0] + ", " + rgb[1] + ", " + rgb[2] + ", 1.0)",
+      backgroundColor: "rgba(255, 255, 255, " + div_annotation_opacity + ")",
+      padding: "4px"
+    }, fontsize
+  );
+  return elm;
+}
+
+
 
 
 function CreateWebSocket()
@@ -940,14 +958,7 @@ function onMessage(e)
         pos.y = txtR[1];
         pos.z = txtR[2];
 
-        var elm = createElement("div", { innerText: label },
-        {
-          color: "rgba(" + rgb[0] + ", " + rgb[1] + ", " + rgb[2] + ", 1.0)",
-          backgroundColor: "rgba(255, 255, 255, " + div_annotation_opacity + ")",
-          padding: "4px"
-        }, fontsize
-        )
-
+        var elm = createDivElement(label, rgb, "upperright")
         annodivs.push([elm, pos]);  // store until we get a representation name
       }
       // if reprname is supplied with a vector then make a representation named reprname
@@ -1227,9 +1238,6 @@ function onMessage(e)
 };
 
 
-var div_annotation_opacity = 0.7;
-var camtype = "orthographic";
-var negativeradiistr
 
 function timefunc() {
   var d = new Date();

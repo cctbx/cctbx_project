@@ -20,7 +20,7 @@ from PySide2.QtWidgets import (  QAction, QCheckBox, QComboBox, QDialog,
 
 from PySide2.QtGui import QColor, QFont, QCursor, QDesktopServices
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
-import sys, zmq, subprocess, time, traceback, zlib, io, os
+import sys, zmq, subprocess, time, traceback, zlib, io, os, math
 
 
 try: # if invoked by cctbx.python or some such
@@ -317,7 +317,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.NewFileLoaded = False
     self.NewMillerArray = False
     self.NewHKLscenes = False
-    self.updatingNbins = False
     self.binstableitemchanges = False
     self.canexit = False
     self.isfirsttime = False
@@ -544,9 +543,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
             self.bin_infotpls = self.infodict["bin_infotpls"]
 
             self.nbins = len(self.bin_infotpls)
-            self.updatingNbins = True
-            self.Nbins_spinBox.setValue(self.nbins)
-            self.updatingNbins = False
             self.binstable.clearContents()
             self.binstable.setRowCount(self.nbins)
             self.lowerbinvals = []
@@ -1162,6 +1158,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       if col==1 and self.binstable_isready: # changing scene_bin_thresholds
         aboveitem = self.binstable.item(row-1, 1)
         belowitem = self.binstable.item(row+1, 1)
+        rightitem = self.binstable.item(row, 2)
         if aboveitem is None:
           aboveval = -9e99
         else:
@@ -1170,6 +1167,8 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
           belowval = 9e99
         else:
           belowval = float(belowitem.text())
+          if math.isnan(belowval):
+            belowval = float(rightitem.text())
         # the new value must be between above and below values only
         newval = min(belowval, max(aboveval, float(item.text()) ) )
         # but the other way round if binning against resolution
@@ -1207,22 +1206,11 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.binstable_isready = True
 
 
-  """
-  def onLoadFinished(self, val):
-    pass
-    #print("web page finished loading now")
-
-
-  def onBinsTableCellentered(self, row, col):
-    pass
-    #print( "in Cellentered " + self.binstable.currentItem().text() )
-
-  """
-
   def onNbinsChanged(self, val):
+    if self.unfeedback:
+      return
     self.nbins = val
-    if not self.updatingNbins: # avoid possible endless loop to cctbx
-      self.PhilToJsRender("nbins = %d" %self.nbins)
+    self.PhilToJsRender("nbins = %d" %self.nbins)
 
 
   def onRadiiScaleChanged(self, val):
@@ -1238,19 +1226,12 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def onManualPowerScale(self, val=None):
-    """
-    if val is not None:
-      self.PhilToJsRender('viewer.nth_power_scale_radii = %f' %val)
-      return
-    """
     if self.unfeedback:
       return
     if self.ManualPowerScalecheckbox.isChecked():
       self.PhilToJsRender('viewer.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
-      #self.power_scale_spinBox.setEnabled(True)
     else:
       self.PhilToJsRender('viewer.nth_power_scale_radii = -1.0')
-      #self.power_scale_spinBox.setEnabled(False)
 
 
   def onShowAllVectors(self):
@@ -1824,7 +1805,8 @@ def run():
       settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
       settings.setValue("FontSize", guiobj.fontsize )
       settings.setValue("BrowserFontSize", guiobj.browserfontsize )
-      settings.setValue("PowerScaleValue", guiobj.currentphilstringdict["viewer.nth_power_scale_radii"])
+      if guiobj.currentphilstringdict.get("viewer.nth_power_scale_radii"):
+        settings.setValue("PowerScaleValue", guiobj.currentphilstringdict["viewer.nth_power_scale_radii"])
       settings.setValue("RadiiScaleValue", guiobj.radii_scale_spinBox.value())
       settings.setValue("ttip_click_invoke", guiobj.ttip_click_invoke)
       settings.setValue("windowsize", guiobj.window.size())
