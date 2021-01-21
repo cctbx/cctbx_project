@@ -5,6 +5,7 @@ from cctbx import sgtbx
 
 # Specialization, run only a subset of cosym steps and include plot
 from dials.algorithms.symmetry.cosym import CosymAnalysis as BaseClass
+from dials.util.multi_dataset_handling import select_datasets_on_identifiers
 class CosymAnalysis(BaseClass):
 
   def plot_after_optimize(self):
@@ -140,9 +141,8 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
             identifiers = self._unit_cell_clustering(self._experiments)
             if len(identifiers) < len(self._experiments):
                 logger.info(
-                    "Selecting subset of %i datasets for cosym analysis: %s",
-                    len(identifiers),
-                    str(identifiers),
+                    "Selecting subset of %i datasets for cosym analysis: %s"
+                    % (len(identifiers), str(identifiers))
                 )
                 self._experiments, self._reflections = select_datasets_on_identifiers(
                     self._experiments, self._reflections, use_datasets=identifiers
