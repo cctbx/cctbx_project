@@ -771,7 +771,7 @@ class manager(object):
     if self._shift_cart is None:
       self._shift_cart = (0, 0, 0)
     else:
-      assert tuple(self._shift_cart) == (0 ,0 ,0)
+      assert tuple(self._shift_cart) == (0 ,0 ,0) # consider map_model_manager.shift_any_model_to_match
 
     self._unit_cell_crystal_symmetry = crystal_symmetry
 

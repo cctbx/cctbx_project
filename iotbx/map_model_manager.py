@@ -7199,6 +7199,7 @@ class map_model_manager(object):
 
   def model_from_hierarchy(self,
     hierarchy,
+    return_as_model = False,
     model_id = 'model_from_hierarchy'):
     '''
      Convenience method to convert a hierarchy into a model, where the
@@ -7211,7 +7212,10 @@ class map_model_manager(object):
       crystal_symmetry = self.crystal_symmetry(),
       log = null_out())
     self.set_model_symmetries_and_shift_cart_to_match_map(model)
-    self.add_model_by_id(model = model, model_id=model_id)
+    if return_as_model:
+      return model
+    else:
+      self.add_model_by_id(model = model, model_id=model_id)
 
 
   def model_from_sites_cart(self,

@@ -1248,6 +1248,7 @@ class segment:  # object for holding a helix or a strand or other
       sites_offset_1=self.sites[1:]
       self.diffs_single=sites_offset_1-self.sites[:-1]
       norms=self.diffs_single.norms()
+      norms.set_selected(norms==0,1.e-10)
       self.diffs_single=self.diffs_single/norms
     return self.diffs_single
 
