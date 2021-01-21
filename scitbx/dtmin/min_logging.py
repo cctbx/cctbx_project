@@ -17,7 +17,7 @@ class Logging:
   def final_statistics(self): pass
 
   def __init__(self):
-    self.output_level = 0 #default all output 
+    self.output_level = 0 #default all output
 
   ### printing methods
 
@@ -104,4 +104,3 @@ class Logging:
           (i+1,vec[i],
           macrocycle_parameter_names[i] if (i < len(macrocycle_parameter_names)) else ""))
     self.log_blank(output_level)
-
