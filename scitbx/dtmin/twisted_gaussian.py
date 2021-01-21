@@ -1,6 +1,6 @@
 #This file is broadly comparable to scitbx/lbfgs/dev/twisted_gaussian.py
 #so may be a useful as a way for someone familiar with scitbx.lbfgs to
-#so how to do things in dtmin.
+#see how to do things in dtmin.
 
 from __future__ import print_function
 from __future__ import division

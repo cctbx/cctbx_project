@@ -61,6 +61,11 @@ class RefineTG(RefineBase):
 #    bnd_y.on(-5,5)
 #    return [bnd_x, bnd_y]
 
+  def initial_statistics(self):
+    #see min_logging.py for logging functions that roughly mirror those in
+    #phasertng's minimiser.
+    self.log_tab(1,0,"Demonstrate dtmin logging call")
+
   def current_statistics(self):
     print("x,f: " + str(tuple(self.get_macrocycle_parameters())) + " " + str(self.target()))
 
