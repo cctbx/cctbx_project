@@ -820,7 +820,7 @@ class manager(object):
       self._crystal_symmetry = crystal_symmetry
 
     # Useable crystal symmetry and same as input
-    if self.crystal_symmetry() and self.crystal_symmetry().is_similar_symmetry( 
+    if self.crystal_symmetry() and self.crystal_symmetry().is_similar_symmetry(
       crystal_symmetry) and (self.crystal_symmetry().unit_cell().parameters() ==
          crystal_symmetry.unit_cell().parameters()):
       # Keep the xray_structure but change sites_cart if present and update
