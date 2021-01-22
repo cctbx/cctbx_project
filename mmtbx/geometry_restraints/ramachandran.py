@@ -440,7 +440,7 @@ class ramachandran_manager(object):
     if outl:
       print('    Rama restraints by Phi/Psi/2')
       for pp2, three in outl:
-        print('      %s' % (three[1].id_str()), file=self.log)
+        print('      %s : %s' % (three[1].id_str(), pp2.split('|')[0]), file=self.log)
 
   @staticmethod
   def _append_proxies(proxies, proxy, n_seq):
