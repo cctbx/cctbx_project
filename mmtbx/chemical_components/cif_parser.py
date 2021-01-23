@@ -105,7 +105,7 @@ def smart_split_cif_line(line):
       line = line[len(item)+3:].strip()
   return tmp
 
-def run2(filename):
+def run(filename):
   if not os.path.exists(filename): return None
   lines = []
   with open(filename) as f:
@@ -240,7 +240,7 @@ def run2(filename):
 
   return complete_cif_data
 
-def run(filename):
+def run2(filename):
   from iotbx import cif
   complete_cif_data = {}
   cm = cif.reader(filename, strict=False, raise_if_errors=False).model()
