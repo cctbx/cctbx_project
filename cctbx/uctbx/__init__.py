@@ -125,7 +125,9 @@ class _():
   def __repr__(self):
     return format(self, "uctbx.unit_cell(({}, {}, {}, {}, {}, {}))")
 
-  def __format__(self, format_spec="({:.6g}, {:.6g}, {:.6g}, {:.6g}, {:.6g}, {:.6g})"):
+  def __format__(self, format_spec=""):
+    if not format_spec:
+        format_spec = "({:.6g}, {:.6g}, {:.6g}, {:.6g}, {:.6g}, {:.6g})"
     return format_spec.format(*self.parameters())
 
   def show_parameters(self, f=None, prefix="Unit cell: "):
