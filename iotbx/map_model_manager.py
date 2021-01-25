@@ -2772,8 +2772,11 @@ class map_model_manager(object):
         local_matching_cb_as_list = [] # list of cb coordinates
         for ca, ca_site_cart in zip(segment_model_ca.get_hierarchy().atoms(),
            local_ca_sites_list):
-          index = ca_sites_list.index(ca_site_cart)
-          local_matching_cb_as_list.append(matching_cb_as_list[index])
+          if ca_site_cart in ca_sites_list:
+            index = ca_sites_list.index(ca_site_cart)
+            local_matching_cb_as_list.append(matching_cb_as_list[index])
+          else:
+            local_matching_cb_as_list.append(None)
 
         residue_groups.append(group_args(
           starting_ca_resseq = segment_info.first_resseq,

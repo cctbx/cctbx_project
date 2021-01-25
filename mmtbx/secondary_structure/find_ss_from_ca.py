@@ -547,6 +547,16 @@ def get_last_chain_id_and_resno(hierarchy):
         text = "%s%s" %(chain.id,rg.resseq_as_int())
   return text
 
+def remove_all_models_except_first(hierarchy):
+  ''' removes all models except the first in this hierarchy'''
+  model = hierarchy.models()[0]
+  new_hierarchy=iotbx.pdb.input(
+         source_info="Model",
+             lines=flex.split_lines("")).construct_hierarchy()
+  new_hierarchy.append_model(model.detached_copy())
+  return new_hierarchy
+   
+
 def get_chain_ids(hierarchy,unique_only=None):
   chain_ids=[]
   if not hierarchy:
