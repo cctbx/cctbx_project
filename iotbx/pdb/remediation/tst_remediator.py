@@ -47,7 +47,8 @@ def run_tests():
   test_pdb_remediate_cycle("tst/1ubqFHv23.pdb")
   test_pdb_remediate_cycle("tst/404dH.pdb")
   test_pdb_remediate_cycle("tst/mg_tst.pdb")
-  test_pdb_remediate_cycle("tst/4v9dFH.pdb")
+  test_pdb_remediate_cycle("tst/2f55FH.pdb")
+  #test_pdb_remediate_cycle("tst/4v9dFH.pdb")
 
 if __name__=="__main__":
   run_tests()
