@@ -181,7 +181,7 @@ p, li { white-space: pre-wrap; }
                </sizepolicy>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>4</number>
               </property>
               <widget class="QWidget" name="tab">
                <attribute name="title">
@@ -916,7 +916,10 @@ p, li { white-space: pre-wrap; }
                          </size>
                         </property>
                         <property name="maximum">
-                         <number>359</number>
+                         <number>720</number>
+                        </property>
+                        <property name="pageStep">
+                         <number>20</number>
                         </property>
                         <property name="orientation">
                          <enum>Qt::Horizontal</enum>
@@ -925,7 +928,7 @@ p, li { white-space: pre-wrap; }
                          <enum>QSlider::TicksAbove</enum>
                         </property>
                         <property name="tickInterval">
-                         <number>20</number>
+                         <number>30</number>
                         </property>
                        </widget>
                       </item>

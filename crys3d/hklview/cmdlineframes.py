@@ -1016,6 +1016,7 @@ class HKLViewFrame() :
         (cartvec, a, label, order) = self.viewer.GetVectorAndAngleFromRotationMx( rt.r() )
         if label:
           label = "%s-fold_%s" %(str(int(roundoff(2*math.pi/a, 0))), self.params.viewer.user_label)
+          self.mprint("Rotation axis, %s, added" %label)
       if (self.params.viewer.add_user_vector_hkl in [None, "", "()"] \
        and self.params.viewer.add_user_vector_abc in [None, "", "()"] \
        and self.params.viewer.add_user_vector_hkl_op) in [None, ""]:

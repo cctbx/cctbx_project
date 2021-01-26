@@ -8,7 +8,6 @@
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
-
 from __future__ import absolute_import, division, print_function
 
 from PySide2.QtWebEngineWidgets import QWebEngineView
@@ -19,6 +18,7 @@ except Exception as e: # if invoked by a generic python that doesn't know cctbx 
 
 from PySide2.QtCore import QCoreApplication, QMetaObject, QRect, QSize, Qt
 from PySide2.QtWidgets import *
+
 
 
 class Ui_MainWindow(object):
@@ -580,10 +580,11 @@ class Ui_MainWindow(object):
         sizePolicy21.setHeightForWidth(self.rotavecangle_slider.sizePolicy().hasHeightForWidth())
         self.rotavecangle_slider.setSizePolicy(sizePolicy21)
         self.rotavecangle_slider.setMinimumSize(QSize(120, 0))
-        self.rotavecangle_slider.setMaximum(359)
+        self.rotavecangle_slider.setMaximum(720)
+        self.rotavecangle_slider.setPageStep(20)
         self.rotavecangle_slider.setOrientation(Qt.Horizontal)
         self.rotavecangle_slider.setTickPosition(QSlider.TicksAbove)
-        self.rotavecangle_slider.setTickInterval(20)
+        self.rotavecangle_slider.setTickInterval(30)
 
         self.gridLayout_18.addWidget(self.rotavecangle_slider, 1, 0, 1, 2)
 
@@ -770,7 +771,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.functionTabWidget.setCurrentIndex(0)
+        self.functionTabWidget.setCurrentIndex(4)
 
 
         QMetaObject.connectSlotsByName(MainWindow)

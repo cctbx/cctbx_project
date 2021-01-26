@@ -1856,51 +1856,81 @@ Distance: %s
     return rotmx
 
 
+  def FindNearestOrthoNormalMatrix(self, Mmx):
+    """ determine nearest orthonormal matrix, R, of M from
+    R := M*(M^t * M)^{-1/2}  where ^t means transpose of matrix or vector
+    e1, e2, e3, λ1, λ2, λ3  are the eigenvectors and respective eigenvalues of (M^t * M )
+    (M^t * M )^{−1/2} = 1/√λ1 * e1*e1^t + 1/√λ2 * e2*e2^t + 1/√λ3 * e3*e3^t
+    http://people.csail.mit.edu/bkph/articles/Nearest_Orthonormal_Matrix.pdf
+    """
+    # compute (M^t * M ) below
+    MtMmx = Mmx.transpose()*Mmx
+    # its eigenvalues and vectors
+    es = eigensystem.real_symmetric(MtMmx.as_flex_double_matrix())
+    evalues =  list(es.values())
+    evectors = list(es.vectors())
+    # eigenvectors as row vectors
+    evec1 = matrix.rec(([evectors[0],evectors[1], evectors[2] ]),n=(1,3))
+    evec2 = matrix.rec(([evectors[3],evectors[4], evectors[5] ]),n=(1,3))
+    evec3 = matrix.rec(([evectors[6],evectors[7], evectors[8] ]),n=(1,3))
+    # compute (M^t * M )^{−1/2} as 1/√λ1 * e1*e1^t + 1/√λ2 * e2*e2^t + 1/√λ3 * e3*e3^t
+    MtMinvsqrtmx = \
+      (1.0/math.sqrt(evalues[0]))*evec1.transpose() * evec1 + \
+      (1.0/math.sqrt(evalues[1]))*evec2.transpose() * evec2 + \
+      (1.0/math.sqrt(evalues[2]))*evec3.transpose() * evec3
+    #compute R as M*(M^t * M)^{-1/2}
+    Rmx = Mmx * MtMinvsqrtmx
+    return Rmx
+
+
   def GetVectorAndAngleFromRotationMx(self, rot):
     RotMx = matrix.sqr(rot.as_double())
     uc = self.miller_array.unit_cell()
     OrtMx = matrix.sqr( uc.orthogonalization_matrix())
     InvMx = OrtMx.inverse()
     ortrotmx = (OrtMx * RotMx * InvMx)
-    if not ortrotmx.is_r3_rotation_matrix():
-      self.mprint("""Warning! The operation '%s' is not a proper rotation
-in the space group %s\nwith unit cell %s\n""" \
-        %(rot.as_hkl(), self.miller_array.space_group().info().symbol_and_number(), str(uc) ))
+    isProperRotation = True
     ortrot = ortrotmx.as_mat3()
     r11,r12,r13,r21,r22,r23,r31,r32,r33 = ortrot
     # workaround for occasional machine precision errors yielding argument greater than 1.0
     theta =  math.acos(roundoff((r11+r22+r33-1.0)*0.5, 10))
     sint = math.sin(theta)
-    e1, e2, e3 = (0,0,0)
-    eps = 1e-3
-    # see https://en.wikipedia.org/wiki/Rotation_matrix for details
-    if abs(sint) > eps: # doesn't work if matrix is symmetric
-      s = 0.5/sint
-      e1 = (r32-r23)*s
-      e2 = (r13-r31)*s
-      e3 = (r21-r12)*s
-    else:
-      # diagonalise if matrix is symmetric to find eigenvectors
-      assert ( abs(r32- r23)<eps and abs(r13- r31)<eps and abs(r21- r12)<eps )
-      oRtmx = flex.double(ortrot)
-      oRtmx.reshape(flex.grid(3,3))
-      es = eigensystem.real_symmetric(oRtmx)
-      evalues =  list(es.values())
-      evectors = list(es.vectors())
-      for i,eval in enumerate(evalues):
-        if abs(eval-1.0) <= eps:
-          # eigenvector with eigenvalue=1 is the rotation axis
-          # eigenvetors come as a concatenated list of vector elements so get the i-th vector
-          e1,e2,e3 = evectors[(0+3*i):(3+3*i)]
-          break
+    if not ortrotmx.is_r3_rotation_matrix():
+      isProperRotation = False
+      self.mprint("""Warning! The operation '%s' is not a proper rotation
+in the space group %s\nwith unit cell %s\n""" \
+        %(rot.as_hkl(), self.miller_array.space_group().info().symbol_and_number(), str(uc) ))
+      self.mprint("Inverse of implied rotation matrix,\n%s\nis not equal to its transpose,\n%s" \
+        %(str(roundoff(ortrotmx.inverse(),4)), str(roundoff(ortrotmx.transpose(),4))), verbose=1)
+      improper_vec_angle = scitbx.math.r3_rotation_axis_and_angle_from_matrix(ortrot)
+      self.mprint("\nAttempting to find nearest orthonormal matrix approximtion")
+      Rmx = self.FindNearestOrthoNormalMatrix(ortrotmx)
+      self.mprint("New proper rotation matrix is\n%s" %str(roundoff(Rmx,4)), verbose=1)
+      if not Rmx.is_r3_rotation_matrix():
+        self.mprint("Failed approximation attempt!")
+      ortrotmx = Rmx
+    ortrot = ortrotmx.as_mat3()
+    rotaxis = flex.vec3_double([(0,0,0)])
+    self.mprint(str(ortrot), verbose=2)
+    vec_angle = scitbx.math.r3_rotation_axis_and_angle_from_matrix(ortrot)
+    rotaxis = flex.vec3_double([ vec_angle.axis ])
+    if not isProperRotation:
+      # Divine revelation: The new proper rotation from above axis is halfway
+      # of being correctly aligned so subtract it from twice the improper axis
+      # to get the desired rotation axis vector
+      improp_rotaxis = flex.vec3_double([ improper_vec_angle.axis ])
+      rotaxis = 2*rotaxis - improp_rotaxis
+      # for debugging deduce the corresponding rotation matrix from this new axis
+      usedrotmx = scitbx.math.r3_rotation_axis_and_angle_as_matrix( rotaxis[0], theta )
+      self.mprint("Final proper rotation matrix:\n%s" %str(roundoff(matrix.sqr(usedrotmx),4)), verbose=1)
     # adjust the scale of the rotation vectors to be compatible with the sphere of reflections
     s = math.sqrt(OrtMx.transpose().norm_sq())*self.realspace_scale
     label=""
     order = 0
-    if abs(theta) > 0.0001 and (abs(e1)+abs(e2)+abs(e3)) > 0.0001: # avoid nullvector
+    if abs(theta) > 0.0001 and rotaxis.norm() > 0.01: # avoid nullvector
       order = int(roundoff(2*math.pi/theta, 0)) # how many times to rotate before its the identity operator
       label = "%s-fold" %str(order)
-    return (s*e1,s*e2,s*e3), theta, label, order
+    return tuple((s*rotaxis)[0]), theta, label, order
 
 
   def show_rotation_axes(self):
@@ -2019,7 +2049,7 @@ in the space group %s\nwith unit cell %s\n""" \
   def DrawUnitCell(self, scale=1):
     if scale is None:
       self.RemovePrimitives("unitcell")
-      self.mprint( "Removing real space unit cell", verbose=1)
+      self.mprint( "Removing real space unit cell", verbose=2)
       return
     uc = self.miller_array.unit_cell()
     rad = 0.2 # scale # * 0.05 #  1000/ uc.volume()
@@ -2041,7 +2071,7 @@ in the space group %s\nwith unit cell %s\n""" \
   def DrawReciprocalUnitCell(self, scale=1):
     if scale is None:
       self.RemovePrimitives("reciprocal_unitcell")
-      self.mprint( "Removing reciprocal unit cell", verbose=1)
+      self.mprint( "Removing reciprocal unit cell", verbose=2)
       return
     rad = 0.2 # 0.05 * scale
     self.draw_vector(0,0,0, scale,0,0, label="a*", r=0.5, g=0.3, b=0.3, radius=rad)

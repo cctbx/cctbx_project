@@ -636,7 +636,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
           if self.infodict.get("tncsvec"):
             self.tncsvec = self.infodict.get("tncsvec",[])
           self.unfeedback = True
-          if self.infodict.get("all_vectors"):
+          if self.infodict.get("all_vectors") is not None:
             self.rotvec = None
             self.all_vectors = self.infodict.get("all_vectors",[])
 
@@ -787,7 +787,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL.tooltip_alpha'])
     self.mousemoveslider.setValue( 2000*self.currentphilstringdict['NGL.mouse_sensitivity'])
     vecnr, dgr = self.currentphilstringdict['clip_plane.angle_around_vector']
-    self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %2.fº" %dgr)
+    self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %3.1fº" %dgr)
 
 
     self.sliceindexspinBox.setValue( self.currentphilstringdict['viewer.slice_index'])
@@ -1407,13 +1407,13 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.PhilToJsRender("""clip_plane {
     angle_around_vector = '[%d, %f]'
     bequiet = False
-}""" %(self.rotvec, val))
+}""" %(self.rotvec, val*0.5))
 
 
   def onFinalRotaVecAngle(self):
     if self.unfeedback or self.rotvec is None:
       return
-    val = self.rotavecangle_slider.value()
+    val = self.rotavecangle_slider.value()*0.5
     self.PhilToJsRender("""clip_plane {
     angle_around_vector = '[%d, %f]'
     bequiet = False
@@ -1639,6 +1639,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.unitcellslider.sliderReleased.connect(self.onUnitcellScale)
     self.reciprocunitcellslider.sliderReleased.connect(self.onReciprocUnitcellScale)
     labels = ["draw", "rotation", "as hkl", "as abc"]
+    self.all_vectors = []
     self.vectortable2.setHorizontalHeaderLabels(labels)
     self.vectortable2.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.vectortable2.itemChanged.connect(self.onVectorTableItemChanged  )
