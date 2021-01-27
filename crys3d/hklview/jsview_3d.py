@@ -7,7 +7,6 @@ from cctbx.array_family import flex
 from cctbx import miller, sgtbx
 from scitbx import graphics_utils
 from scitbx import matrix
-from scitbx.linalg import eigensystem
 import scitbx.math
 from libtbx.utils import Sorry, to_str
 import threading, math, sys, cmath
