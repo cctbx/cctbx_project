@@ -17,10 +17,9 @@ except Exception as e: # if invoked by a generic python that doesn't know cctbx 
   from helpers import HeaderDataTableWidget
 
 from PySide2.QtCore import QMetaObject, QRect, QSize, Qt
-# so retranslateUi() should use QtWidgets.QApplication instead of QCoreApplication
+# retranslateUi() should use QtWidgets.QApplication instead of QCoreApplication
 # which mustn't be invoked before calling
 # QApplication.setAttribute(Qt.AA_EnableHighDpiScaling) in HKLviewer.py
-from PySide2 import QtWidgets
 from PySide2.QtWidgets import *
 
 
@@ -782,6 +781,7 @@ class Ui_MainWindow(object):
     # setupUi
 
     def retranslateUi(self, MainWindow):
+        from PySide2 import QtWidgets
         MainWindow.setWindowTitle(QtWidgets.QApplication.translate("MainWindow", u"MainWindow", None))
         self.actionOpen_reflection_file.setText(QtWidgets.QApplication.translate("MainWindow", u"Open reflection file...", None))
         self.actionSettings.setText(QtWidgets.QApplication.translate("MainWindow", u"Settings", None))

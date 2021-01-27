@@ -1823,13 +1823,13 @@ def run():
     timer.start()
 
     if power_scale_value is not None:
-      psv = eval(power_scale_value)
+      psv = float(power_scale_value)
       if psv >= 0.0:
         guiobj.power_scale_spinBox.setValue(psv)
       guiobj.ManualPowerScalecheckbox.setChecked(psv >= 0.0)
       guiobj.onManualPowerScale() # disables power_scale_spinBox if psv is less than 0.0
     if radii_scale_value is not None:
-      guiobj.radii_scale_spinBox.setValue(eval(radii_scale_value))
+      guiobj.radii_scale_spinBox.setValue(float(radii_scale_value))
       guiobj.onRadiiScaleChanged(None)
     if fontsize is not None:
       guiobj.onFontsizeChanged(int(fontsize))
