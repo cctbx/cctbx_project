@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 from libtbx.math_utils import roundoff
 import traceback
@@ -1856,33 +1856,6 @@ Distance: %s
     return rotmx
 
 
-  def FindNearestOrthoNormalMatrix(self, Mmx):
-    """ determine nearest orthonormal matrix, R, of M from
-    R := M*(M^t * M)^{-1/2}  where ^t means transpose of matrix or vector
-    e1, e2, e3, λ1, λ2, λ3  are the eigenvectors and respective eigenvalues of (M^t * M )
-    (M^t * M )^{−1/2} = 1/√λ1 * e1*e1^t + 1/√λ2 * e2*e2^t + 1/√λ3 * e3*e3^t
-    http://people.csail.mit.edu/bkph/articles/Nearest_Orthonormal_Matrix.pdf
-    """
-    # compute (M^t * M ) below
-    MtMmx = Mmx.transpose()*Mmx
-    # its eigenvalues and vectors
-    es = eigensystem.real_symmetric(MtMmx.as_flex_double_matrix())
-    evalues =  list(es.values())
-    evectors = list(es.vectors())
-    # eigenvectors as row vectors
-    evec1 = matrix.rec(([evectors[0],evectors[1], evectors[2] ]),n=(1,3))
-    evec2 = matrix.rec(([evectors[3],evectors[4], evectors[5] ]),n=(1,3))
-    evec3 = matrix.rec(([evectors[6],evectors[7], evectors[8] ]),n=(1,3))
-    # compute (M^t * M )^{−1/2} as 1/√λ1 * e1*e1^t + 1/√λ2 * e2*e2^t + 1/√λ3 * e3*e3^t
-    MtMinvsqrtmx = \
-      (1.0/math.sqrt(evalues[0]))*evec1.transpose() * evec1 + \
-      (1.0/math.sqrt(evalues[1]))*evec2.transpose() * evec2 + \
-      (1.0/math.sqrt(evalues[2]))*evec3.transpose() * evec3
-    #compute R as M*(M^t * M)^{-1/2}
-    Rmx = Mmx * MtMinvsqrtmx
-    return Rmx
-
-
   def GetVectorAndAngleFromRotationMx(self, rot):
     RotMx = matrix.sqr(rot.as_double())
     uc = self.miller_array.unit_cell()
@@ -1904,7 +1877,7 @@ in the space group %s\nwith unit cell %s\n""" \
         %(str(roundoff(ortrotmx.inverse(),4)), str(roundoff(ortrotmx.transpose(),4))), verbose=1)
       improper_vec_angle = scitbx.math.r3_rotation_axis_and_angle_from_matrix(ortrot)
       self.mprint("\nAttempting to find nearest orthonormal matrix approximtion")
-      Rmx = self.FindNearestOrthoNormalMatrix(ortrotmx)
+      Rmx = matrix.find_nearest_orthonormal_matrix(ortrotmx)
       self.mprint("New proper rotation matrix is\n%s" %str(roundoff(Rmx,4)), verbose=1)
       if not Rmx.is_r3_rotation_matrix():
         self.mprint("Failed approximation attempt!")

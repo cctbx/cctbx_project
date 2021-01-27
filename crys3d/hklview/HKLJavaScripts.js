@@ -180,6 +180,21 @@ function createDivElement(label, rgb, cornerposition)
       padding: "4px"
     }, fontsize
   );
+  
+  pointelm = createElement("pointdiv", // make a small white square to indicate where this elm is pointing
+    {  innerText: ""  },
+    {
+      backgroundColor: bgcolour,
+      color: "rgba(255, 255, 255, 1.0)",
+      top: "0px",
+      left: "0px",
+      width: "2px",
+      height: "2px",
+    },
+    fontsize
+  );
+  
+  elm.append(pointelm);
   return elm;
 }
 
