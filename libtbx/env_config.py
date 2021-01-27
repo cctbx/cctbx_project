@@ -3265,7 +3265,7 @@ if (__name__ == "__main__"):
       return (x.strip().lower() in yes)
 
     if is_true(os.environ.get("CCTBX_CHECK_LDD", "True")):
-      print("Checking that extension of python libstdc++ mathc")
+      print("Checking that extension modules and python executabel link to same version of libstdc++")
       print("Set CCTBX_CHECK_LDD=false to disable this step")
       check_libcpp()
 
