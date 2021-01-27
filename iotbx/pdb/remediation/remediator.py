@@ -102,7 +102,7 @@ def build_hash(remediated_out, custom_dict, user_dict):
   atom_exch = {}
   file_name = os.path.join(libtbx.env.dist_path("iotbx"), "pdb",
     "remediation", "remediation.dict")
-  f = open(file_name, "rb")
+  f = open(file_name, "r")
   if remediated_out == True: #converting to remediated
     for line in f:
       line=line.rstrip()

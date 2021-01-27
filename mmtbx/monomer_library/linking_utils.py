@@ -188,7 +188,7 @@ def get_chiral_volume(c_atom, o_atom, angles, verbose=False):
 
 def get_hand(c_atom, o_atom, angles, verbose=False):
   v = get_chiral_volume(c_atom, o_atom, angles, verbose=verbose)
-  if v<0:
+  if v is not None and v < 0:
     return "BETA"
   else:
     return "ALPHA"

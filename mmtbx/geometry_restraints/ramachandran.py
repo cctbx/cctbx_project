@@ -668,9 +668,10 @@ def load_tables():
       relative_path="chem_data/rotarama_data/%s.rama.combined.data" %
         residue_type,
       test=os.path.isfile)
-    f = open(file_name, "r")
     data = flex.double()
-    for line in f.readlines():
+    with open(file_name, "r") as f:
+      lines = f.readlines()
+    for line in lines:
       val, phi, psi = line.split()
       assert ((int(phi) % 2 == 1) and (int(psi) % 2 == 1))
       data.append(float(val))
@@ -706,25 +707,26 @@ def load_emsley8k_tables():
     allowed_vals = flex.double()
     status       = {}
     with open(file_name, "r") as f:
-      for line in f.readlines():
-        if line[0]=="#": continue
-        phi, psi, val = line.split()
-        phi=int(float(phi))
-        psi=int(float(psi))
-        val=float(val)
-        di[(phi,psi)]=val
-        rama_score = R.rama_eval.get_score(selfstore, phi, psi)
-        evaluation = R.rama_eval.evaluate_score(selfstore, rama_score)
-        if  (evaluation==outlier):
-          outlier_vals.append(val)
-          status[(phi,psi)]=outlier
-        elif(evaluation==favored):
-          favored_vals.append(val)
-          status[(phi,psi)]=favored
-        elif(evaluation==allowed):
-          allowed_vals.append(val)
-          status[(phi,psi)]=allowed
-        else: raise RuntimeError("Not supposed to be here.")
+      lines = f.readlines()
+    for line in lines:
+      if line[0]=="#": continue
+      phi, psi, val = line.split()
+      phi=int(float(phi))
+      psi=int(float(psi))
+      val=float(val)
+      di[(phi,psi)]=val
+      rama_score = R.rama_eval.get_score(selfstore, phi, psi)
+      evaluation = R.rama_eval.evaluate_score(selfstore, rama_score)
+      if  (evaluation==outlier):
+        outlier_vals.append(val)
+        status[(phi,psi)]=outlier
+      elif(evaluation==favored):
+        favored_vals.append(val)
+        status[(phi,psi)]=favored
+      elif(evaluation==allowed):
+        allowed_vals.append(val)
+        status[(phi,psi)]=allowed
+      else: raise RuntimeError("Not supposed to be here.")
     data = flex.double()
     max_outlier = flex.max(outlier_vals)
     max_favored = flex.max(favored_vals)
@@ -769,8 +771,9 @@ class ramachandran_plot_data(object):
         relative_path="chem_data/rotarama_data/%s" % file_name,
         test = os.path.isfile)
       stuff[selfstore] = flex.vec3_double()
-      fo = open(file_name, "r")
-      for line in fo.readlines():
+      with open(file_name, "r") as f:
+        lines = f.readlines()
+      for line in lines:
         line = line.split()
         if(len(line)==3):
           phi_, psi_, val = float(line[0]),float(line[1]),float(line[2])
