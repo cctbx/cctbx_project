@@ -3206,7 +3206,7 @@ def check_libcpp():
   # Skip if not Linux
   # TODO: this might also work on macOS
   #
-  if sys.platform.startswith("linux"):
+  if not sys.platform.startswith("linux"):
     return True
   #
   #------------------------------------------------------------------------------
