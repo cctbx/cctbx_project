@@ -62,6 +62,7 @@ def get_data(pdbf, mtzf):
   pdb_inp = iotbx.pdb.input(file_name=pdbf)
   xrs = pdb_inp.xray_structure_simple()
   #
+  assert 0
   selection = xrs.scatterers().extract_occupancies() > 0
   selection = selection | xrs.hd_selection()
   xrs = xrs.select(selection)
