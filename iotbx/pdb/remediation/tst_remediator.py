@@ -1,8 +1,10 @@
 from __future__ import division
 import time
+import os
 
 import remediator
 import iotbx.pdb
+import libtbx
 
 def test_pdb_to_v3(old_pdb_file, v3_pdb_file):
   print("............checking conversion of "+old_pdb_file+" to new PDB format")
@@ -43,13 +45,19 @@ def write_model_to_file(model, file_name):
   with open("tst/"+file_name, 'w+') as fh:
     fh.write(model)
 
+def get_regression_folder_file_path(file_name):
+  regression_folder = os.path.join(libtbx.env.dist_path("iotbx"), 'pdb', 'remediation', 'tst')
+  file_path = os.path.join(regression_folder, file_name)
+  assert os.path.isfile(file_path), file_name + " test file is missing from " + regression_folder
+  return file_path
+
 def run_tests():
-  test_pdb_to_v3("tst/1ubqFHv23.pdb", "tst/1ubqFH.pdb")
-  test_pdb_remediate_cycle("tst/1ubqFH.pdb")
-  test_pdb_remediate_cycle("tst/1ubqFHv23.pdb")
-  test_pdb_remediate_cycle("tst/404dH.pdb")
-  test_pdb_remediate_cycle("tst/mg_tst.pdb")
-  test_pdb_remediate_cycle("tst/2f55FH.pdb")
+  test_pdb_to_v3(get_regression_folder_file_path("1ubqFHv23.pdb"), get_regression_folder_file_path("1ubqFH.pdb"))
+  test_pdb_remediate_cycle(get_regression_folder_file_path("1ubqFH.pdb"))
+  test_pdb_remediate_cycle(get_regression_folder_file_path("1ubqFHv23.pdb"))
+  test_pdb_remediate_cycle(get_regression_folder_file_path("404dH.pdb"))
+  test_pdb_remediate_cycle(get_regression_folder_file_path("mg_tst.pdb"))
+  test_pdb_remediate_cycle(get_regression_folder_file_path("2f55FH.pdb"))
   #test_pdb_remediate_cycle("tst/4v9dFH.pdb")
 
 if __name__=="__main__":
