@@ -1309,7 +1309,7 @@ def find_nearest_orthonormal_matrix(Mmx):
   Return nearest orthonormal matrix, R, of M from
   R := M*(M^t * M)^{-1/2}  where ^t means transpose of matrix or vector
   e1, e2, e3, lambda1, lambda2, lambda3  are eigenvectors and respective eigenvalues of (M^t * M )
-  (M^t * M )^{−1/2} = 1/sqrt(lambda1) * e1*e1^t + 1/sqrt(lambda2) * e2*e2^t + 1/sqrt(lambda3) * e3*e3^t
+  (M^t * M )^{-1/2} = 1/sqrt(lambda1) * e1*e1^t + 1/sqrt(lambda2) * e2*e2^t + 1/sqrt(lambda3) * e3*e3^t
   http://people.csail.mit.edu/bkph/articles/Nearest_Orthonormal_Matrix.pdf
   """
   assert Mmx.n == (3,3)
@@ -1325,7 +1325,7 @@ def find_nearest_orthonormal_matrix(Mmx):
   evec1 = rec(([evectors[0],evectors[1], evectors[2] ]),n=(1,3))
   evec2 = rec(([evectors[3],evectors[4], evectors[5] ]),n=(1,3))
   evec3 = rec(([evectors[6],evectors[7], evectors[8] ]),n=(1,3))
-  # compute (M^t * M )^{−1/2} as 1/sqrt(lambda1) * e1*e1^t + 1/sqrt(lambda2) * e2*e2^t + 1/sqrt(lambda3) * e3*e3^t
+  # compute (M^t * M )^{-1/2} as 1/sqrt(lambda1) * e1*e1^t + 1/sqrt(lambda2) * e2*e2^t + 1/sqrt(lambda3) * e3*e3^t
   MtMinvsqrtmx = \
     (1.0/math.sqrt(evalues[0]))*evec1.transpose() * evec1 + \
     (1.0/math.sqrt(evalues[1]))*evec2.transpose() * evec2 + \
