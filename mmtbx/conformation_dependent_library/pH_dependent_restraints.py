@@ -94,6 +94,7 @@ def adjust_geometry_proxies_registeries(hierarchy,
     for angle in monomer_restraints.angle_list:
       atom1, name1, neutron1 = _get_atom_neutron(ag,
                                                  angle.atom_id_1,
+                                                 bondlength=0.5, # hack for py3
       )
       if atom1 is None: continue
       atom2, name2, neutron2 = _get_atom_neutron(ag,
@@ -102,6 +103,7 @@ def adjust_geometry_proxies_registeries(hierarchy,
       if atom2 is None: continue
       atom3, name3, neutron3 = _get_atom_neutron(ag,
                                                  angle.atom_id_3,
+                                                 bondlength=0.5, # hack
       )
       if atom3 is None: continue
       i_seqs = (atom1.i_seq, atom2.i_seq, atom3.i_seq)
