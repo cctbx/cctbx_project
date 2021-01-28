@@ -69,8 +69,10 @@ class AboutForm(QDialog):
     Cambridge Institute for Medical Research, University of Cambridge.<br/>
     HKLviewer is part of the <a href="http://cci.lbl.gov/docs/cctbx/"> CCTBX library</a>
     as well as derived software thereof.<br/>
-    Please direct any bug reports to cctbx@cci.lbl.gov or rdo20@cam.ac.uk
-
+    HKLviewer uses functionality provided by the JavaScript library of the
+    <a href="https://github.com/nglviewer/ngl">NGL Viewer</a> project, the JavaScript Library
+    of the <a href="https://github.com/niklasvh/html2canvas">html2canvas</a> project.<br/>
+    Queries or bug reports should be sent to cctbx@cci.lbl.gov or rdo20@cam.ac.uk.
     </p></body></html>"""
     self.aboutlabel.setText(aboutstr)
     self.copyrightstxt = QTextEdit()
@@ -276,6 +278,9 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.millerarraytableform = MillerArrayTableForm(self)
     self.millerarraytablemodel = None
     self.millerarraytable.installEventFilter(self.millerarraytableform) # for keyboard copying to clipboard
+    self.millerarraytable.setToolTip("Double-click the column and row of a reflection for the "+
+                                     "viewer to zoom in on that.\nRight-click a reflection in " +
+                                     "the viewer to locate its entry in this table.")
 
     self.createExpansionBox()
     self.createFileInfoBox()
@@ -339,6 +344,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.actionAbout.triggered.connect(self.aboutform.show)
     self.actionExit.triggered.connect(self.window.close)
     self.actionSave_reflection_file.triggered.connect(self.onSaveReflectionFile)
+    self.actionColour_Gradient.triggered.connect(self.ColourMapSelectDlg.show)
     self.functionTabWidget.setCurrentIndex(0) # if accidentally set to a different tab in the Qtdesigner
     self.window.show()
 
@@ -522,7 +528,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
             txts = ""
             for copyrighttitle, fname in self.copyrightpaths:
               with open(fname,"r") as f:
-                txts = txts + copyrighttitle + ":\n\n"
+                txts = txts + " "*20 + copyrighttitle + ":\n\n"
                 txts = txts + f.read()
                 txts = txts + "\n" + "#" * 80  + "\n"
             self.aboutform.copyrightstxt.setText(txts)
@@ -563,13 +569,15 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
                 if col == 1: # allow changing bin thresholds
                   item = QTableWidgetItem(str(elm))
                   item.setFlags(item.flags() | Qt.ItemIsEditable)
-                  item.setToolTip("Change value for adjusting the number of reflections in this bin")
+                  item.setToolTip("Change a bin threshold by entering a preferred value in the " +
+                                  "\"lower bin value\" column for a particular bin.")
                 if col == 3:
                   item = QTableWidgetItem()
                   item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
                   item.setCheckState(Qt.Checked)
-                  item.setToolTip("Change visibility of this bin either by ticking or unticking the " +
-                                   "check box or by entering an opacity value between 0 and 1")
+                  item.setToolTip("Change visibility of bins either by ticking or unticking the check " +
+                                  "boxes or by entering opacity values between 0 and 1. Reflections with "+
+                                  "values less than 0.3 will not respond to mouse clicks.")
                 self.binstable.setItem(row, col, item)
             self.binstable_isready = True
             if self.bin_opacities:
@@ -705,7 +713,8 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
           if self.infodict.get("ColourChart") and self.infodict.get("ColourPowerScale"):
             self.ColourMapSelectDlg.selcolmap = self.infodict.get("ColourChart",False)
             self.ColourMapSelectDlg.powscale = self.infodict.get("ColourPowerScale",False)
-            self.ColourMapSelectDlg.show()
+            if self.infodict.get("ShowColourMapDialog"):
+              self.ColourMapSelectDlg.show()
 
           if self.infodict.get("bin_labels_type_idxs"):
             bin_labels_type_idxs = self.infodict.get("bin_labels_type_idxs",False)
@@ -789,6 +798,8 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     vecnr, dgr = self.currentphilstringdict['clip_plane.angle_around_vector']
     self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %3.1fº" %dgr)
 
+    self.ColourMapSelectDlg.selcolmap = self.currentphilstringdict["viewer.color_scheme"]
+    self.ColourMapSelectDlg.powscale = self.currentphilstringdict["viewer.color_powscale"]
 
     self.sliceindexspinBox.setValue( self.currentphilstringdict['viewer.slice_index'])
     self.Nbins_spinBox.setValue( self.currentphilstringdict['nbins'])

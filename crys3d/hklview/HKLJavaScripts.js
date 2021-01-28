@@ -1163,29 +1163,51 @@ function onMessage(e)
       WebsockSendMsg('AutoViewSet ' + pagename);
     }
 
-    if (msgtype === "MakeImage")
-    {
+    if (msgtype === "MakeImage") {
       filename = val[0];
-      stage.viewer.makeImage( {
-                factor: 1,
-                antialias: true,
-                trim: false,
-                transparent: false
-            } ).then( function( blob ){
-              if (parseInt(val[1]) < 3)
-              {
-// Using websocket_server in python2 which doesn't allow streaming large compressed data
-// So use NGL's download image function
-                NGL.download( blob, filename );
-              }
-              else
-              { // websockets in python3 which supports streaming large blobs
-                WebsockSendMsg('Imageblob', false);
-                WebsockSendMsg( blob );
-              }
+      stage.viewer.makeImage({ // using NGL's builtin function for making an image blob. html div legends are stripped
+        factor: 1,
+        antialias: true,
+        trim: false,
+        transparent: false
+      }).then(function (blob) {
+        if (parseInt(val[1]) < 3) {
+          // Using websocket_server in python2 which doesn't allow streaming large compressed data
+          // So use NGL's download image function
+          NGL.download(blob, filename);
+        }
+        else { // websockets in python3 which supports streaming large blobs
+          WebsockSendMsg('Imageblob', false);
+          WebsockSendMsg(blob);
+        }
 
-              WebsockSendMsg('ImageWritten ' + pagename);
-        } );
+        WebsockSendMsg('ImageWritten ' + pagename);
+      });
+    }
+
+    if (msgtype === "MakeImage2") {
+      filename = val[0];
+      //CHROME ONLY
+      // html2canvas retains div legends when creaing an image blob
+      ResetViewBtn.style.display = "None"; // hide buttons and other GUL controls on this webpage
+      html2canvas(document.getElementById("viewport")).then(function (canvas) {
+        //blob = canvas.toDataURL("image/jpeg", 0.9);
+        if (canvas.toBlob) {
+          canvas.toBlob(function (blob) {
+            if (parseInt(val[1]) < 3) {
+              // Using websocket_server in python2 which doesn't allow streaming large compressed data
+              // So use NGL's download image function
+              NGL.download(blob, filename);
+            }
+            else { // websockets in python3 which supports streaming large blobs
+              WebsockSendMsg('Imageblob', false);
+              WebsockSendMsg(blob);
+            }
+          }, 'image/png')
+        }
+      });
+      ResetViewBtn.style.display = "Block";
+      WebsockSendMsg('ImageWritten ' + pagename);
     }
 
     if (msgtype === "MakeBrowserDataColumnComboBox")

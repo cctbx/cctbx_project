@@ -67,7 +67,9 @@ class HKLViewFrame() :
     self.uservectors = []
     self.new_miller_array_operations_lst = []
     self.copyrightpaths = [("CCTBX copyright", libtbx.env.under_root(os.path.join("modules","cctbx_project","COPYRIGHT.txt"))),
-     ("NGL copyright", libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","License_for_NGL.txt")))]
+     ("NGL copyright", libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","License_for_NGL.txt"))),
+     ("html2canvas copyright", libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","LICENSE_for_html2canvas.txt")))
+    ]
     self.zmqsleeptime = 0.1
     if 'useGuiSocket' in kwds:
       self.guiSocketPort = eval(kwds['useGuiSocket'])

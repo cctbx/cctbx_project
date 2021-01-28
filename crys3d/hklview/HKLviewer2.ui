@@ -181,7 +181,7 @@ p, li { white-space: pre-wrap; }
                </sizepolicy>
               </property>
               <property name="currentIndex">
-               <number>4</number>
+               <number>0</number>
               </property>
               <widget class="QWidget" name="tab">
                <attribute name="title">
@@ -220,6 +220,9 @@ p, li { white-space: pre-wrap; }
                    </property>
                    <item row="0" column="0">
                     <widget class="QCheckBox" name="expandP1checkbox">
+                     <property name="toolTip">
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Expand reflections from their asymmetric wedge by replicating reflections from succesive rotations operations defined by the spacegroup. If the set of reflections is not symmetry unique some (h,k,l) indices may display more than one reflection.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                     </property>
                      <property name="text">
                       <string>Expand to P1</string>
                      </property>
@@ -227,6 +230,9 @@ p, li { white-space: pre-wrap; }
                    </item>
                    <item row="0" column="1">
                     <widget class="QCheckBox" name="expandAnomalouscheckbox">
+                     <property name="toolTip">
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Expand reflections to include -h,-k,-l&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                     </property>
                      <property name="text">
                       <string>Show Friedel pairs</string>
                      </property>
@@ -272,6 +278,9 @@ p, li { white-space: pre-wrap; }
                    </property>
                    <item row="0" column="0" rowspan="2" colspan="2">
                     <widget class="QCheckBox" name="missingcheckbox">
+                     <property name="toolTip">
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show those reflections not recorded, assuming the set of reflections forms a sphere.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                     </property>
                      <property name="text">
                       <string>Show Missing Reflections</string>
                      </property>
@@ -295,6 +304,9 @@ p, li { white-space: pre-wrap; }
                     <verstretch>2</verstretch>
                    </sizepolicy>
                   </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Expand the original dataset to a lower symmetry. This dataset can be saved from the menu to a new file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
                  </widget>
                 </item>
                </layout>
@@ -311,6 +323,9 @@ p, li { white-space: pre-wrap; }
                     <horstretch>0</horstretch>
                     <verstretch>0</verstretch>
                    </sizepolicy>
+                  </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show a single plane of reflections for a constant value of either h,k or l&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                   </property>
                   <property name="title">
                    <string>Show a single plane of reflections</string>
@@ -396,6 +411,9 @@ p, li { white-space: pre-wrap; }
                     <horstretch>0</horstretch>
                     <verstretch>0</verstretch>
                    </sizepolicy>
+                  </property>
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Limit the view of reflections with a clip plane parallel to the screen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                   </property>
                   <property name="title">
                    <string>Slice with a clip plane defined by:</string>
@@ -611,7 +629,7 @@ p, li { white-space: pre-wrap; }
                       </sizepolicy>
                      </property>
                      <property name="text">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick the &amp;quot;User defined power scaling&amp;quot; box for chosing a power factor. Untick this box for an automatically computed power factor. Automatic power factor will render reflections so that the reflection with the smallest data value is rendered about 10 times smaller than the reflection with the largest data value. &lt;br/&gt;Entering a power factor of 1 means the size of a sphere for each reflection is proportional to its data value. For a typical data set of intensities with values differing by some orders of magnitude only the strongest reflections would then be visible. Entering a power factor of 0 means all spheres of reflections will have the same size irrespective of their data values. This means even very weak reflections would then be visible. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick the &amp;quot;User defined power scaling&amp;quot; box for chosing a power scale factor. Untick this box to get an &lt;span style=&quot; font-weight:600;&quot;&gt;automatic power scale factor.&lt;/span&gt;&lt;br/&gt;An &lt;span style=&quot; font-weight:600;&quot;&gt;automatic power scale&lt;/span&gt; factor will size the reflections so that the reflection with the smallest data value is rendered about 10 times smaller than the reflection with the largest data value. &lt;br/&gt;A &lt;span style=&quot; font-weight:600;&quot;&gt;power scale factor of 1&lt;/span&gt; will size the reflections proportional to their data value. &lt;br/&gt;A &lt;span style=&quot; font-weight:600;&quot;&gt;power scale factor of 0&lt;/span&gt; causes all reflections to have the same size regardless of their data values. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <property name="textFormat">
                       <enum>Qt::RichText</enum>
@@ -674,7 +692,7 @@ p, li { white-space: pre-wrap; }
                       </sizepolicy>
                      </property>
                      <property name="toolTip">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Order the curently displayed data set in bins according to the values of the selected data set. Reflections in the currently displayed data set not matching any reflections in the selected data set will be put in a bin labelled with &amp;quot;NaN&amp;quot;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Rank the currently displayed data set in bins according resolution or the values of a selected data set or singletons. Reflections in the currently displayed data set not matching any reflections in the selected data set will be put in a bin labelled with &amp;quot;nan&amp;quot;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                     </widget>
                    </item>
@@ -694,7 +712,7 @@ p, li { white-space: pre-wrap; }
                       </sizepolicy>
                      </property>
                      <property name="toolTip">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the number of bins for ordering the currently displayed data set. More than about 10-15 bins will slow down the HKLviewer when working with large data sets.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the number of bins for ordering the currently displayed data set. More than about 10-15 bins will slow down the HKLviewer when working with large data sets.&lt;br/&gt;The requested number of bins may not be created if there are zero reflections in some bins.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <property name="minimum">
                       <number>1</number>
@@ -744,7 +762,7 @@ p, li { white-space: pre-wrap; }
                       </sizepolicy>
                      </property>
                      <property name="toolTip">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Change the visibility of selected bins either by ticking or unticking the check boxes or by entering an opacity value between 0 and 1&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Change a bin threshold by entering a preferred value in the in the &amp;quot;lower bin value&amp;quot; column for a particular bin.&lt;br/&gt;Change visibility of bins either by ticking or unticking the check boxes or by entering opacity values between 0 and 1. Reflections with values less than 0.3 will not respond to mouse clicks.&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <property name="rowCount">
                       <number>5</number>
@@ -813,6 +831,9 @@ p, li { white-space: pre-wrap; }
                        <horstretch>3</horstretch>
                        <verstretch>3</verstretch>
                       </sizepolicy>
+                     </property>
+                     <property name="toolTip">
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick checkboxes to draw the rotation axes defined by the space group.&lt;br/&gt;Enter additional vectors from origin defined either as axes of rotation operators, plain reciprocal coordinates (as hkl) or plain real space fractional coordinates (as abc).&lt;br/&gt;To enter a new vector, first override the &amp;quot;new vector&amp;quot; name with a preferred name. Then enter the definition of the vector in either the &amp;quot;rotation&amp;quot;, the &amp;quot;as hkl&amp;quot; or the &amp;quot;as abc&amp;quot; column.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <property name="verticalScrollMode">
                       <enum>QAbstractItemView::ScrollPerPixel</enum>
@@ -915,6 +936,9 @@ p, li { white-space: pre-wrap; }
                           <height>0</height>
                          </size>
                         </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If just one vector is drawn the reflections can be rotated to a particular angle around that vector.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
                         <property name="maximum">
                          <number>720</number>
                         </property>
@@ -942,6 +966,9 @@ p, li { white-space: pre-wrap; }
                           <horstretch>0</horstretch>
                           <verstretch>0</verstretch>
                          </sizepolicy>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If just one vector is drawn it can be oriented together with the reflections by ticking this checkbox.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                         </property>
                         <property name="title">
                          <string>Orient Vector</string>
@@ -992,6 +1019,9 @@ p, li { white-space: pre-wrap; }
                           <horstretch>0</horstretch>
                           <verstretch>0</verstretch>
                          </sizepolicy>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If just one vector is drawn the reflections can be rotated continuously around that vector.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                         </property>
                         <property name="text">
                          <string>Rotate continuously</string>
@@ -1111,7 +1141,7 @@ p, li { white-space: pre-wrap; }
                 <item row="2" column="0">
                  <widget class="QGroupBox" name="DrawRealUnitCellBox">
                   <property name="toolTip">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The real space unit cell is often much larger than the sphere of displayed reflections because the reciprocal unit cell size is inversely proportional to the size of the real space unit cell. Adjust the slider to scale its outline to become compatible with the sphere of displayed reflections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The real space unit cell is often much larger than the sphere of displayed reflections. Adjust the slider to scale its outline to become compatible with the sphere of displayed reflections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                   </property>
                   <property name="title">
                    <string>Show Real Space Unit Cell</string>
@@ -1221,6 +1251,7 @@ p, li { white-space: pre-wrap; }
     <addaction name="actionSave_reflection_file"/>
     <addaction name="actionSettings"/>
     <addaction name="actiondebug"/>
+    <addaction name="actionColour_Gradient"/>
     <addaction name="actionSave_Current_Image"/>
     <addaction name="actionExit"/>
    </widget>
@@ -1258,7 +1289,7 @@ p, li { white-space: pre-wrap; }
   </action>
   <action name="actionSave_reflection_file">
    <property name="text">
-    <string>Save reflection file</string>
+    <string>Save reflection file...</string>
    </property>
   </action>
   <action name="actionReset_View">
@@ -1268,7 +1299,7 @@ p, li { white-space: pre-wrap; }
   </action>
   <action name="actionSave_Current_Image">
    <property name="text">
-    <string>Save Current Image</string>
+    <string>Save Current Image...</string>
    </property>
   </action>
   <action name="actionCCTBXwebsite">
@@ -1284,6 +1315,11 @@ p, li { white-space: pre-wrap; }
   <action name="actionAbout">
    <property name="text">
     <string>About HKLviewer</string>
+   </property>
+  </action>
+  <action name="actionColour_Gradient">
+   <property name="text">
+    <string>Colour Gradient...</string>
    </property>
   </action>
  </widget>

@@ -280,16 +280,19 @@ class hklview_3d:
 <script>var websocket_portnumber = %s; </script>
 <script src="%s" type="text/javascript"></script>
 <script src="%s" type="text/javascript"></script>
+<script src="%s" type="text/javascript"></script>
 <div id="viewport" style="width:100%%; height:100%%;"></div>
 </body></html>
 
     """
+    Html2Canvaslibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","html2canvas.min.js") )
     NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
     HKLjscriptpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","HKLJavaScripts.js") )
     HKLjscriptpath = os.path.abspath( HKLjscriptpath)
+    Html2Canvasliburl = "file:///" + Html2Canvaslibpath.replace("\\","/")
     NGLliburl = "file:///" + NGLlibpath.replace("\\","/")
     HKLjscripturl = "file:///" + HKLjscriptpath.replace("\\","/")
-    self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, NGLliburl, HKLjscripturl)
+    self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, Html2Canvasliburl, NGLliburl, HKLjscripturl)
     self.colourgradientvalues = []
     self.UseOSBrowser = ""
     if 'useGuiSocket' not in kwds:
@@ -2216,7 +2219,7 @@ in the space group %s\nwith unit cell %s\n""" \
 
   def MakeImage(self, filename):
     self.imagename = filename
-    self.AddToBrowserMsgQueue("MakeImage", "HKLviewer.png,"+ str(sys.version_info[0]) )
+    self.AddToBrowserMsgQueue("MakeImage2", "HKLviewer.png,"+ str(sys.version_info[0]) )
 
 
   def DisableMouseRotation(self): # disable rotating with the mouse
@@ -2366,7 +2369,9 @@ in the space group %s\nwith unit cell %s\n""" \
   def onClickColourChart(self):
     # if running the GUI show the colour chart selection dialog
     self.SendInfoToGUI( { "ColourChart": self.viewerparams.color_scheme,
-                          "ColourPowerScale": self.viewerparams.color_powscale } )
+                          "ColourPowerScale": self.viewerparams.color_powscale,
+                          "ShowColourMapDialog": 1
+                         } )
 
 
   def MakeBrowserDataColumnComboBox(self):
