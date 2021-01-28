@@ -771,15 +771,19 @@ class run_ensemble_refinement(object):
     cif_out = prefix + ".cif"
     if (self.params.gzip_final_model):
       pdb_out += ".gz"
-      self.write_ensemble_pdb(out = gzip.open(pdb_out, 'wb'))
+      with gzip.open(pdb_out, 'wb') as out:
+        self.write_ensemble_pdb(out=out, binary=True)
       # TODO
       if False :#(self.params.write_cif_file):
-        self.write_ensemble_mmcif(out=gzip.open(cif_out, 'wb'))
+        with gzip.open(cif_out, 'wb') as out:
+          self.write_ensemble_mmcif(out=out, binary=True)
     else :
-      self.write_ensemble_pdb(out = open(pdb_out, 'wb'))
+      with open(pdb_out, 'w') as out:
+        self.write_ensemble_pdb(out = out)
       # TODO
       if False :#(self.params.write_cif_file):
-        self.write_ensemble_mmcif(out=open(cif_out, 'wb'))
+        with open(cif_out, 'w') as out:
+          self.write_ensemble_mmcif(out=out)
     self.pdb_file = pdb_out
     # Map output
     assert (self.fmodel_total is not None)
@@ -915,7 +919,7 @@ class run_ensemble_refinement(object):
         else:
           chains_info.append(chain_id_non_h)
       # Check all chains > 63 heavy atoms for TLS fitting
-      chains_size = flex.int(zip(*chains_info)[1])
+      chains_size = flex.int(list(zip(*chains_info))[1])
       chains_size_ok = flex.bool(chains_size > 63)
       if sum(chains_size) < 63:
         print('\nStructure contains less than 63 atoms (non H/D, non solvent)', file=self.log)
@@ -1433,20 +1437,21 @@ class run_ensemble_refinement(object):
           atom.uij = (-1,-1,-1,-1,-1,-1)
     return i_model_pdb_hierarchy
 
-  def write_ensemble_pdb(self, out):
+  def write_ensemble_pdb(self, out, binary=False):
+    tmp_out = StringIO()
     crystal_symmetry = self.er_data.xray_structures[0].crystal_symmetry()
     pr = "REMARK   3"
-    print(pr, file=out)
-    print("REMARK   3 TIME-AVERAGED ENSEMBLE REFINEMENT.", file=out)
+    print(pr, file=tmp_out)
+    print("REMARK   3 TIME-AVERAGED ENSEMBLE REFINEMENT.", file=tmp_out)
     from phenix import phenix_info # FIXME ???
-    ver, tag = phenix_info.version_and_release_tag(f = out)
+    ver, tag = phenix_info.version_and_release_tag(f = tmp_out)
     if(ver is None):
       prog = "   PROGRAM     : PHENIX (phenix.ensemble_refinement)"
     else:
       if(tag is not None):
         ver = ver+"_"+tag
       prog = "   PROGRAM     : PHENIX (phenix.ensemble_refinement: %s)"%ver
-    print(pr+prog, file=out)
+    print(pr+prog, file=tmp_out)
     authors = phenix_info.phenix_developers_last
     l = pr+"   AUTHORS     :"
     j = 0
@@ -1455,16 +1460,16 @@ class run_ensemble_refinement(object):
     while (j != len(authors)):
       a = len(authors[j]) + 1
       if (n+a > 79):
-        print(l, ",".join(authors[i:j]) + ",", file=out)
+        print(l, ",".join(authors[i:j]) + ",", file=tmp_out)
         l = pr+"               :"
         i = j
         n = len(l) + 1
       n += a
       j += 1
     if (i != j):
-      print(l, ",".join(authors[i:j]), file=out)
+      print(l, ",".join(authors[i:j]), file=tmp_out)
     fmodel_info = self.fmodel_total.info()
-    fmodel_info.show_remark_3(out = out)
+    fmodel_info.show_remark_3(out = tmp_out)
 #    model_stats = mmtbx.model_statistics.model(model     = self.model,
 #                                               ignore_hd = False)
 #    # set mode_stats.geometry to None as refers to final structure NOT ensemble
@@ -1479,9 +1484,9 @@ class run_ensemble_refinement(object):
         verbose                  = False,
         out                      = self.log,
         return_pdb_string        = True)
-    print(self.final_geometry_pdb_string, file=out)
-    print(pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry), file=out)
-    print(pdb.format_scale_records(unit_cell = crystal_symmetry.unit_cell()), file=out)
+    print(self.final_geometry_pdb_string, file=tmp_out)
+    print(pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry), file=tmp_out)
+    print(pdb.format_scale_records(unit_cell = crystal_symmetry.unit_cell()), file=tmp_out)
     atoms_reset_serial = True
     #
     cntr = 0
@@ -1489,18 +1494,22 @@ class run_ensemble_refinement(object):
     assert len(self.er_data.pdb_hierarchys) == len(self.er_data.xray_structures)
     for i_model, xrs in enumerate(self.er_data.xray_structures):
       cntr += 1
-      print("MODEL %8d"%cntr, file=out)
+      print("MODEL %8d"%cntr, file=tmp_out)
       i_model_pdb_hierarchy = self.update_single_hierarchy(i_model)
       if (atoms_reset_serial):
         atoms_reset_serial_first_value = 1
       else:
         atoms_reset_serial_first_value = None
-      out.write(i_model_pdb_hierarchy.as_pdb_string(
+      tmp_out.write(i_model_pdb_hierarchy.as_pdb_string(
         append_end=False,
         atoms_reset_serial_first_value=atoms_reset_serial_first_value))
       #
-      print("ENDMDL", file=out)
-    print("END", file=out)
+      print("ENDMDL", file=tmp_out)
+    print("END", file=tmp_out)
+    text = tmp_out.getvalue()
+    if binary:
+      text = text.encode('utf8')
+    out.write(text)
 
   def print_ml_stats(self):
     if self.fmodel_running.set_sigmaa is not None:
