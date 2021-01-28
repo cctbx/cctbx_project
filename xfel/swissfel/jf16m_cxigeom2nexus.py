@@ -57,10 +57,13 @@ phil_scope = parse("""
     .help = Override hdf5 key name in unassembled file
   pedestal_file = None
     .type = str
-    .help = path to Jungfrau pedestal file. Used only if raw=True
+    .help = path to Jungfrau pedestal file
   gain_file = None
     .type = str
-    .help = path to Jungfrau gain file. Used only if raw=True
+    .help = path to Jungfrau gain file
+  raw_file = None
+    .type = str
+    .help = path to Jungfrau raw file
   nexus_details {
     instrument_name = SwissFEL ARAMIS BEAMLINE ESB
       .type = str
@@ -179,7 +182,7 @@ class jf16m_cxigeom2nexus(object):
         unassembled_data_key = "data/data"
     data[data_key] = h5py.ExternalLink(self.params.unassembled_file, unassembled_data_key)
 
-    if self.params.raw:
+    if self.params.raw or self.params.raw_file is not None:
       if self.params.pedestal_file:
         # named gains instead of pedestal in JF data files
         data['pedestal'] = h5py.ExternalLink(self.params.pedestal_file, 'gains')
@@ -188,8 +191,25 @@ class jf16m_cxigeom2nexus(object):
         data['gains'] = h5py.ExternalLink(self.params.gain_file, 'gains')
       if self.params.pedestal_file or self.params.gain_file:
         data.attrs['signal'] = 'data'
+      if self.params.raw_file is not None:
+        assert not self.params.raw
+        raw_file_handle = h5py.File(self.params.raw_file, "r")
+        res_file_handle = h5py.File(self.params.unassembled_file, "r")
+        raw_dset = raw_file_handle["data/JF07T32V01/data"]
+        raw_shape = raw_dset.shape
+        _, raw_slowDim, raw_fastDim = raw_shape
+        raw_type = raw_dset.dtype
+        num_imgs = res_file_handle['data/data'].shape[0]
+        raw_layout = h5py.VirtualLayout(shape=(num_imgs, raw_slowDim, raw_fastDim), dtype=raw_type)
+        raw_pulses = raw_file_handle['data/JF07T32V01/pulse_id'][()][:, 0]
+        assert np.all(raw_pulses == np.sort(raw_pulses))  # NOTE; this is quick, however I think this is always the case
+        res_pulses = h5py.File(self.params.unassembled_file, 'r')['data/pulse_id'][()]
+        raw_source = h5py.VirtualSource(self.params.raw_file, 'data/JF07T32V01/data', shape=raw_shape)
+        for res_imgnum, raw_imgnum in enumerate(np.searchsorted(raw_pulses, res_pulses)):
+          raw_layout[res_imgnum] = raw_source[raw_imgnum]
+        data.create_virtual_dataset('raw', raw_layout)
 
-    # --> sample
+    #--> sample
     sample = entry.create_group('sample')
     sample.attrs['NX_class'] = 'NXsample'
     if self.params.nexus_details.sample_name: sample['name'] = self.params.nexus_details.sample_name
