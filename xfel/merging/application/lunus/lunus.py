@@ -6,11 +6,14 @@ from dials.array_family import flex
 from lunus.command_line.process import get_experiment_params, get_experiment_xvectors
 import lunus as lunus_processor
 from scitbx import matrix
+import os
+import numpy as np
 
 def mpi_enabled():
   return ('MPI_LOCALRANKID' in os.environ.keys() or 'OMPI_COMM_WORLD_RANK' in os.environ.keys())
 #  return False
 
+mpi_comm = None
 def mpi_init():
   global mpi_comm
   global MPI
@@ -90,6 +93,7 @@ class lunus(worker):
 
     self.current_path = None
     self.current_imageset = None
+    mpi_init()
 
   def __repr__(self):
     return 'Compute diffuse scatter using Lunus'
