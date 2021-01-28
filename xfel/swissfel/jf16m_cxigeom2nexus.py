@@ -8,6 +8,7 @@ from libtbx.phil import parse
 import six
 from libtbx.utils import Sorry
 import datetime
+from xfel.util.jungfrau import correct_panel
 
 phil_scope = parse("""
   unassembled_file = None
@@ -114,6 +115,12 @@ if they are modified at in the future
 '''
 
 
+def pad_raw_data(raw):
+  padded = np.vstack([correct_panel(raw[i * 512: (i + 1) * 512], divide=False)
+      for i in range(32)])
+  return padded
+
+
 class jf16m_cxigeom2nexus(object):
   def __init__(self, args):
     self.params_from_phil(args)
@@ -182,7 +189,40 @@ class jf16m_cxigeom2nexus(object):
         unassembled_data_key = "data/data"
     data[data_key] = h5py.ExternalLink(self.params.unassembled_file, unassembled_data_key)
 
-    if self.params.raw or self.params.raw_file is not None:
+    if self.params.raw_file is not None:
+      assert not self.params.raw
+      with h5py.File(self.params.pedestal_file, "r") as pedh5:
+        print("Padding raw pedestal data")
+        mean_pedestal = [pad_raw_data(raw) for raw in pedh5["gains"]]
+        print("Padding  data")
+        sigma_pedestal = [pad_raw_data(raw) for raw in pedh5["gainsRMS"]]
+        data.create_dataset("pedestal", data=mean_pedestal, dtype=np.float32)
+        data.create_dataset('pedestalRMS', data=sigma_pedestal, dtype=np.float32)
+
+      with h5py.File(self.params.gain_file, "r") as gainh5:
+        print("Padding  gains")
+        gains = [pad_raw_data(raw) for raw in gainh5["gains"]]
+        data.create_dataset("gains", data=gains, dtype=np.float32)
+
+      data.attrs['signal'] = 'data'
+
+      raw_file_handle = h5py.File(self.params.raw_file, "r")
+      res_file_handle = h5py.File(self.params.unassembled_file, "r")
+      raw_dset = raw_file_handle["data/JF07T32V01/data"]
+      raw_shape = raw_dset.shape
+      _, raw_slowDim, raw_fastDim = raw_shape
+      raw_type = raw_dset.dtype
+      num_imgs = res_file_handle['data/data'].shape[0]
+      raw_layout = h5py.VirtualLayout(shape=(num_imgs, raw_slowDim, raw_fastDim), dtype=raw_type)
+      raw_pulses = raw_file_handle['data/JF07T32V01/pulse_id'][()][:, 0]
+      assert np.all(raw_pulses == np.sort(raw_pulses))  # NOTE; this is quick, however I think this is always the case
+      res_pulses = h5py.File(self.params.unassembled_file, 'r')['data/pulse_id'][()]
+      raw_source = h5py.VirtualSource(self.params.raw_file, 'data/JF07T32V01/data', shape=raw_shape)
+      for res_imgnum, raw_imgnum in enumerate(np.searchsorted(raw_pulses, res_pulses)):
+        raw_layout[res_imgnum] = raw_source[raw_imgnum]
+      data.create_virtual_dataset('raw', raw_layout)
+
+    if self.params.raw:
       if self.params.pedestal_file:
         # named gains instead of pedestal in JF data files
         data['pedestal'] = h5py.ExternalLink(self.params.pedestal_file, 'gains')
@@ -191,23 +231,6 @@ class jf16m_cxigeom2nexus(object):
         data['gains'] = h5py.ExternalLink(self.params.gain_file, 'gains')
       if self.params.pedestal_file or self.params.gain_file:
         data.attrs['signal'] = 'data'
-      if self.params.raw_file is not None:
-        assert not self.params.raw
-        raw_file_handle = h5py.File(self.params.raw_file, "r")
-        res_file_handle = h5py.File(self.params.unassembled_file, "r")
-        raw_dset = raw_file_handle["data/JF07T32V01/data"]
-        raw_shape = raw_dset.shape
-        _, raw_slowDim, raw_fastDim = raw_shape
-        raw_type = raw_dset.dtype
-        num_imgs = res_file_handle['data/data'].shape[0]
-        raw_layout = h5py.VirtualLayout(shape=(num_imgs, raw_slowDim, raw_fastDim), dtype=raw_type)
-        raw_pulses = raw_file_handle['data/JF07T32V01/pulse_id'][()][:, 0]
-        assert np.all(raw_pulses == np.sort(raw_pulses))  # NOTE; this is quick, however I think this is always the case
-        res_pulses = h5py.File(self.params.unassembled_file, 'r')['data/pulse_id'][()]
-        raw_source = h5py.VirtualSource(self.params.raw_file, 'data/JF07T32V01/data', shape=raw_shape)
-        for res_imgnum, raw_imgnum in enumerate(np.searchsorted(raw_pulses, res_pulses)):
-          raw_layout[res_imgnum] = raw_source[raw_imgnum]
-        data.create_virtual_dataset('raw', raw_layout)
 
     #--> sample
     sample = entry.create_group('sample')
