@@ -8,7 +8,7 @@ from libtbx.phil import parse
 import six
 from libtbx.utils import Sorry
 import datetime
-from xfel.util.jungfrau import correct_panel
+from xfel.util.jungfrau import pad_stacked_format
 
 phil_scope = parse("""
   unassembled_file = None
@@ -115,10 +115,6 @@ if they are modified at in the future
 '''
 
 
-def pad_raw_data(raw):
-  padded = np.vstack([correct_panel(raw[i * 512: (i + 1) * 512], divide=False)
-      for i in range(32)])
-  return padded
 
 
 class jf16m_cxigeom2nexus(object):
@@ -193,15 +189,15 @@ class jf16m_cxigeom2nexus(object):
       assert not self.params.raw
       with h5py.File(self.params.pedestal_file, "r") as pedh5:
         print("Padding raw pedestal data")
-        mean_pedestal = [pad_raw_data(raw) for raw in pedh5["gains"]]
-        print("Padding  data")
-        sigma_pedestal = [pad_raw_data(raw) for raw in pedh5["gainsRMS"]]
+        mean_pedestal = [pad_stacked_format(raw) for raw in pedh5["gains"]]
+        print("Padding raw pedestal RMS  data")
+        sigma_pedestal = [pad_stacked_format(raw) for raw in pedh5["gainsRMS"]]
         data.create_dataset("pedestal", data=mean_pedestal, dtype=np.float32)
         data.create_dataset('pedestalRMS', data=sigma_pedestal, dtype=np.float32)
 
       with h5py.File(self.params.gain_file, "r") as gainh5:
-        print("Padding  gains")
-        gains = [pad_raw_data(raw) for raw in gainh5["gains"]]
+        print("Padding gains")
+        gains = [pad_stacked_format(raw) for raw in gainh5["gains"]]
         data.create_dataset("gains", data=gains, dtype=np.float32)
 
       data.attrs['signal'] = 'data'

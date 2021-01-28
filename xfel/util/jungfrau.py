@@ -54,3 +54,12 @@ def correct_panel(img, copy=True, divide=True):
             img2[767], img2[768]),
     axis=0).T
   return img3
+
+
+def pad_stacked_format(raw, num_panels=32):
+  """
+  pad a raw data array that represents stacks of 512x1024 blocks
+  """
+  padded = np.vstack([correct_panel(raw[i * 512: (i + 1) * 512], divide=False)
+                      for i in range(num_panels)])
+  return padded
