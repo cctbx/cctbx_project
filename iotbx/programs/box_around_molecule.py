@@ -53,8 +53,17 @@ Usage examples:
 
   def run(self):
     #
-
     self.model = self.data_manager.get_model()
+
+    # shift_and_box_model creates a new model object, so the format needs to
+    # be obtained here
+    if self.params.output.format == 'Auto':
+      if self.model.input_model_format_pdb():
+        self.params.output.format = 'pdb'
+      elif self.model.input_model_format_cif():
+        self.params.output.format = 'cif'
+    extension = '.' + self.params.output.format
+
     self.model = shift_and_box_model(model = self.model,
                                      box_cushion = self.params.buffer_layer)
 #    # PDB format
@@ -73,19 +82,9 @@ Usage examples:
       self.params.output.prefix = basename
       self.data_manager.set_default_output_filename(self.get_default_output_filename())
 
-    # data manager has some hickups with formatting, so get it here
-    # (culprit is function in model, see below)
-    if self.params.output.format == 'Auto':
-      if (fn.endswith('.pdb')):
-      #if self.model.input_model_format_pdb(): #broken
-        self.params.output.format = 'pdb'
-      elif (fn.endswith('.cif')):
-      #elif self.model.input_model_format_cif(): #broken
-        self.params.output.format = 'cif'
-    extension = '.' + self.params.output.format
-
     # save output
     self.data_manager.write_model_file(self.model,
                                        format = self.params.output.format)
-    output_fn = self.data_manager.get_default_output_model_filename(extension=extension)
+    output_fn = self.data_manager.get_default_output_model_filename(
+      extension=extension)
     print('Created file', output_fn, file=self.logger)
