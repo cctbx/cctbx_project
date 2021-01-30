@@ -715,11 +715,12 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
                 self.millerarraytable.selectRow(ids)
                 #self.millerarraytable.selectionModel().select(ids, mode)
 
-
           if self.infodict.get("ColourChart") and self.infodict.get("ColourPowerScale"):
             self.ColourMapSelectDlg.selcolmap = self.infodict.get("ColourChart", "brg")
             self.ColourMapSelectDlg.setPowerScaleSliderVal( self.infodict.get("ColourPowerScale", 1.0))
             if self.infodict.get("ShowColourMapDialog"):
+              arrayinfo = self.array_infotpls[self.currentmillarray_idx]
+              self.ColourMapSelectDlg.setDataType(arrayinfo[1])
               self.ColourMapSelectDlg.show()
 
           if self.infodict.get("bin_labels_type_idxs"):
@@ -805,6 +806,9 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %3.1fº" %dgr)
 
     self.ColourMapSelectDlg.selcolmap = self.currentphilstringdict["viewer.color_scheme"]
+    if self.currentmillarray_idx is not None:
+      arrayinfo = self.array_infotpls[self.currentmillarray_idx]
+      self.ColourMapSelectDlg.setDataType(arrayinfo[1])
     self.ColourMapSelectDlg.setPowerScaleSliderVal( self.currentphilstringdict["viewer.color_powscale"] )
 
     self.sliceindexspinBox.setValue( self.currentphilstringdict['viewer.slice_index'])
