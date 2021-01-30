@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+import libtbx.load_env
 from libtbx import easy_run
 from libtbx.test_utils import assert_lines_in_file
 
@@ -58,12 +59,13 @@ ATOM      3  C   SER 1  71       5.847   7.316   5.915  1.00300.00           C
 ATOM      4  O   SER 1  71       5.736   7.242   7.145  1.00300.00           O
 TER""")
   # test mmcif format
-  with open("%s.cif" % prefix, 'w') as f:
-    f.write(cif_str)
-  assert not easy_run.call("iotbx.pdb.box_around_molecule %s.cif" % (
-      prefix))
-  assert_lines_in_file(file_name="%s_box_000.cif" % prefix,
-    lines="""\
+  if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
+    with open("%s.cif" % prefix, 'w') as f:
+      f.write(cif_str)
+    assert not easy_run.call("iotbx.pdb.box_around_molecule %s.cif" % (
+        prefix))
+    assert_lines_in_file(file_name="%s_box_000.cif" % prefix,
+      lines="""\
 data_default
 _cell.angle_beta                  90.000
 _cell.angle_gamma                 90.000
@@ -83,6 +85,8 @@ loop_
   _space_group_symop.id
   _space_group_symop.operation_xyz
    1 x,y,z""")
+  else:
+    print('chem_data is not available, skipping')
 
   print("OK")
 
