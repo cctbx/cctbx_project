@@ -145,7 +145,7 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
 
   def write_map_coefficients_file(
       self, mtz_object, filename=Auto, overwrite=Auto):
-    self.write_miller_array_file(
+    return self.write_miller_array_file(
       mtz_object, filename=filename, overwrite=overwrite)
 
 # =============================================================================

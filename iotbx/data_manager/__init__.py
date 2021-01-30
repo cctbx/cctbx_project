@@ -535,5 +535,7 @@ options are {options}.\
     self._output_files.append(filename)
     self._output_types.append(datatype)
 
+    return filename
+
 # =============================================================================
 # end
