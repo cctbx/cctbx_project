@@ -924,13 +924,8 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def SetRadiiToSigmas(self, val):
-    self.params.viewer.sigma_radius = val
-    self.update_settings()
-
-
-  def SetColoursToSigmas(self, val):
-    self.params.viewer.sigma_color = val
+  def SetColourRadiusToSigmas(self, val):
+    self.params.viewer.sigma_color_radius = val
     self.update_settings()
 
 

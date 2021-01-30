@@ -365,8 +365,7 @@ class hklview_3d:
                        "slice_axis",
                        "slice_mode",
                        "slice_index",
-                       "sigma_color",
-                       "sigma_radius",
+                       "sigma_color_radius",
                        "scene_id",
                        "color_scheme",
                        "color_powscale",
@@ -388,8 +387,7 @@ class hklview_3d:
                        "slice_axis",
                        "slice_mode",
                        "slice_index",
-                       "sigma_color",
-                       "sigma_radius",
+                       "sigma_color_radius",
                        "scene_id",
                        "color_scheme",
                        "color_powscale",
@@ -441,8 +439,7 @@ class hklview_3d:
 
     if has_phil_path(diff_phil, "miller_array_operations"):
       self.viewerparams.scene_id = len(self.hkl_scenes_infos)-1
-      self.viewerparams.sigma_color = False
-      self.viewerparams.sigma_radius = False
+      self.viewerparams.sigma_color_radius = False
       self.set_scene()
       self.params.miller_array_operations = ""
 
@@ -750,8 +747,7 @@ class hklview_3d:
                          self.viewerparams.show_missing,
                          self.viewerparams.show_only_missing,
                          self.viewerparams.show_systematic_absences,
-                         self.viewerparams.sigma_radius,
-                         self.viewerparams.sigma_color,
+                         self.viewerparams.sigma_color_radius,
                          self.viewerparams.color_scheme,
                          self.viewerparams.color_powscale,
                          sceneid,
@@ -790,8 +786,7 @@ class hklview_3d:
                                 self.viewerparams.show_missing,
                                 self.viewerparams.show_only_missing,
                                 self.viewerparams.show_systematic_absences,
-                                self.viewerparams.sigma_radius,
-                                self.viewerparams.sigma_color,
+                                self.viewerparams.sigma_color_radius,
                                 self.viewerparams.color_scheme,
                                 self.viewerparams.color_powscale,
                                 sceneid,
@@ -817,8 +812,7 @@ class hklview_3d:
                               self.viewerparams.show_missing,
                               self.viewerparams.show_only_missing,
                               self.viewerparams.show_systematic_absences,
-                              self.viewerparams.sigma_radius,
-                              self.viewerparams.sigma_color,
+                              self.viewerparams.sigma_color_radius,
                               self.viewerparams.color_scheme,
                               self.viewerparams.color_powscale,
                               self.viewerparams.scene_id,
@@ -862,8 +856,7 @@ class hklview_3d:
                               self.viewerparams.show_missing,
                               self.viewerparams.show_only_missing,
                               self.viewerparams.show_systematic_absences,
-                              self.viewerparams.sigma_radius,
-                              self.viewerparams.sigma_color,
+                              self.viewerparams.sigma_color_radius,
                               self.viewerparams.color_scheme,
                               self.viewerparams.color_powscale,
                               sceneid,
@@ -899,8 +892,7 @@ class hklview_3d:
                       self.viewerparams.show_missing,
                       self.viewerparams.show_only_missing,
                       self.viewerparams.show_systematic_absences,
-                      self.viewerparams.sigma_radius,
-                      self.viewerparams.sigma_color,
+                      self.viewerparams.sigma_color_radius,
                       self.viewerparams.color_scheme,
                       self.viewerparams.color_powscale,
                       sceneid,
@@ -1177,7 +1169,7 @@ class hklview_3d:
       # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
       mincolourscalar = self.HKLMinData_from_dict(self.colour_scene_id)
       maxcolourscalar = self.HKLMaxData_from_dict(self.colour_scene_id)
-      if self.viewerparams.sigma_color:
+      if self.viewerparams.sigma_color_radius:
         mincolourscalar = self.HKLMinSigmas_from_dict(self.colour_scene_id)
         maxcolourscalar = self.HKLMaxSigmas_from_dict(self.colour_scene_id)
       span = maxcolourscalar - mincolourscalar
@@ -2367,9 +2359,11 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def onClickColourChart(self):
+    arrayinfotpl = self.array_infotpls[ self.scene_id_to_array_id(self.viewerparams.scene_id )]
     # if running the GUI show the colour chart selection dialog
     self.SendInfoToGUI( { "ColourChart": self.viewerparams.color_scheme,
                           "ColourPowerScale": self.viewerparams.color_powscale,
+                          "Datatype": arrayinfotpl[ 1 ], # Amplitudes, Map coeffs, etc
                           "ShowColourMapDialog": 1
                          } )
 

@@ -20,15 +20,15 @@ from PySide2.QtWidgets import (  QAction, QCheckBox, QComboBox, QDialog,
 
 from PySide2.QtGui import QColor, QFont, QCursor, QDesktopServices
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
-import sys, zmq, subprocess, time, traceback, zlib, io, os, math
+import sys, zmq, subprocess, time, traceback, zlib, io, os, math, os.path
 
 
 try: # if invoked by cctbx.python or some such
-  from crys3d.hklview import HKLviewerGui, QtChromiumCheck
+  from crys3d.hklview import HKLviewerGui
   from crys3d.hklview.helpers import ( MillerArrayTableView, MillerArrayTableForm,
                                      MillerArrayTableModel, MPLColourSchemes )
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
-  import HKLviewerGui, QtChromiumCheck
+  import HKLviewerGui
   from helpers import MillerArrayTableView, MillerArrayTableForm, MillerArrayTableModel
 
 class MakeNewDataForm(QDialog):
@@ -38,7 +38,6 @@ class MakeNewDataForm(QDialog):
     myGroupBox = QGroupBox("Python expression for newdata")
     layout = QGridLayout()
     layout.addWidget(parent.operationlabeltxt,     0, 0, 1, 2)
-    #layout.addWidget(parent.MillerLabel1,           1, 0, 1, 2)
     layout.addWidget(parent.MillerComboBox,        1, 0, 1, 1)
     layout.addWidget(parent.MillerLabel2,          1, 1, 1, 1)
     layout.addWidget(parent.MillerLabel3,          2, 0, 1, 2)
@@ -250,6 +249,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     self.ColourMapSelectDlg = MPLColourSchemes(self)
     self.ColourMapSelectDlg.setWindowTitle("HKLviewer Colour Gradient Maps")
+    self.datatypedict = { }
 
     self.settingsform = SettingsForm(self)
     self.aboutform = AboutForm(self)
@@ -466,6 +466,12 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     if selcolmap != "":
       self.PhilToJsRender("""viewer.color_scheme = %s
 viewer.color_powscale = %s""" %(selcolmap, powscale) )
+      arrayinfo = self.array_infotpls[self.currentmillarray_idx]
+      datatype = arrayinfo[1]
+      if self.currentphilstringdict.get('viewer.sigma_color_radius', False):
+        self.datatypedict[datatype + "_sigmas"] = [selcolmap, powscale]
+      else:
+        self.datatypedict[datatype ] = [selcolmap, powscale]
 
 
   def ProcessMessages(self):
@@ -711,8 +717,8 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
           if self.infodict.get("ColourChart") and self.infodict.get("ColourPowerScale"):
-            self.ColourMapSelectDlg.selcolmap = self.infodict.get("ColourChart",False)
-            self.ColourMapSelectDlg.powscale = self.infodict.get("ColourPowerScale",False)
+            self.ColourMapSelectDlg.selcolmap = self.infodict.get("ColourChart", "brg")
+            self.ColourMapSelectDlg.setPowerScaleSliderVal( self.infodict.get("ColourPowerScale", 1.0))
             if self.infodict.get("ShowColourMapDialog"):
               self.ColourMapSelectDlg.show()
 
@@ -799,7 +805,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %3.1fº" %dgr)
 
     self.ColourMapSelectDlg.selcolmap = self.currentphilstringdict["viewer.color_scheme"]
-    self.ColourMapSelectDlg.powscale = self.currentphilstringdict["viewer.color_powscale"]
+    self.ColourMapSelectDlg.setPowerScaleSliderVal( self.currentphilstringdict["viewer.color_powscale"] )
 
     self.sliceindexspinBox.setValue( self.currentphilstringdict['viewer.slice_index'])
     self.Nbins_spinBox.setValue( self.currentphilstringdict['nbins'])
@@ -1545,7 +1551,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
         self.operate_arrayidx1 = idx
         self.operate_arrayidx2 = -1 # i.e. no second miller array selected yet
         if strval=="newdata":
-          #self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data1' and or 'sigmas1' variable")
           self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx]
            + " 'data1' and/or 'sigmas1' variable and, optionally, dres and 'data2, 'sigmas2'"
            +" variables from the miller array below:")
@@ -1558,33 +1563,38 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
   def DisplayData(self, idx, row):
     # want to show the sigmas rather than the data if idx we add 1000
+    self.currentmillarray_idx = row
+    arrayinfo = self.array_infotpls[self.currentmillarray_idx]
+    datatype = arrayinfo[1]
     if (idx - 1000) >= 0:
       idx = idx - 1000
+      datatypespecifics = self.datatypedict.get( datatype + "_sigmas", ["brg", 1.0] )
       philstr = """
       viewer
       {
-        sigma_radius = True
-        sigma_color = True
+        sigma_color_radius = True
         scene_id = %d
+        color_scheme = %s
+        color_powscale = %s
       }
-      """ %idx
+      """ %(idx, datatypespecifics[0], datatypespecifics[1])
     else:
+      datatypespecifics = self.datatypedict.get( datatype, ["brg", 1.0] )
       philstr = """
       viewer
       {
-        sigma_radius = False
-        sigma_color = False
+        sigma_color_radius = False
         scene_id = %d
+        color_scheme = %s
+        color_powscale = %s
       }
-      """ %idx
+      """ %(idx, datatypespecifics[0], datatypespecifics[1])
     self.PhilToJsRender(philstr)
-    self.currentmillarray_idx = row
     if self.fileisvalid:
       self.functionTabWidget.setEnabled(True)
       self.expandAnomalouscheckbox.setEnabled(True)
       self.expandP1checkbox.setEnabled(True)
       # don't allow anomalous expansion for data that's already anomalous
-      arrayinfo = self.array_infotpls[self.currentmillarray_idx]
       isanomalous = arrayinfo[-1]
       spacegroup = arrayinfo[2]
       label = arrayinfo[0]
@@ -1780,6 +1790,15 @@ def run():
     # In case of more than one PySide2 installation tag the settings by version number of PySide2
     # as different versions occasionally use slightly different metrics for font and window sizes
     settings.beginGroup("PySide2_" + Qtversion)
+    settings.beginGroup("DataTypesGroups")
+    datatypes = settings.childGroups()
+    datatypedict = { }
+    if datatypes:
+      for datatype in datatypes:
+        datatypedict[ datatype ] = [ settings.value(datatype + "/ColourChart", "brg"),
+                                    settings.value(datatype + "/ColourPowerScale", 1.0),
+                                    ]
+    settings.endGroup()
     QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
     fontsize = settings.value("FontSize", None)
     browserfontsize = settings.value("BrowserFontSize", None)
@@ -1795,7 +1814,8 @@ def run():
     if QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       QWebEngineViewFlags = " --disable-web-security" # for chromium
       print("testing if WebGL works in QWebEngineView....")
-      cmdargs = [ sys.executable, QtChromiumCheck.__file__ ]
+      QtChromiumCheck_fpath = os.path.join(os.path.split(HKLviewerGui.__file__)[0], "QtChromiumCheck.py")
+      cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
       webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       procout, procerr = webglproc.communicate()
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -1824,6 +1844,13 @@ def run():
       settings.setValue("windowsize", guiobj.window.size())
       settings.setValue("splitter1Sizes", guiobj.splitter.saveState())
       settings.setValue("splitter2Sizes", guiobj.splitter_2.saveState())
+      settings.beginGroup("DataTypesGroups")
+      datatypesgroups = settings.childGroups()
+      for datatype in list(guiobj.datatypedict.keys()):
+        settings.setValue(datatype + "/ColourChart", guiobj.datatypedict[ datatype ][0] )
+        settings.setValue(datatype + "/ColourPowerScale", guiobj.datatypedict[ datatype ][1] )
+      settings.endGroup()
+
       settings.endGroup()
 
     app.lastWindowClosed.connect(MyAppClosing)
@@ -1858,6 +1885,7 @@ def run():
         guiobj.webpagedebugform.resize( guiobj.window.size())
       guiobj.splitter.restoreState(splitter1sizes)
       guiobj.splitter_2.restoreState(splitter2sizes)
+    guiobj.datatypedict = datatypedict
 
     ret = app.exec_()
 

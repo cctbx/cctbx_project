@@ -333,5 +333,11 @@ class MPLColourSchemes(QtWidgets.QDialog):
     val= self.powscaleslider.value()
     # want to raise the colour scaling to a power bigger than 0
     # so compute powscale from an exponential of the slider value
-    self.powscale = math.pow(1.1, val) # 1.2 varies sufficiently slowly for the slider range [-10,10]
+    self.powscale = math.pow(1.1, val) # 1.1 varies sufficiently slowly for the slider range [-10,10]
     self.powscaletxtbox.setText("%2.2f" %self.powscale )
+
+  def setPowerScaleSliderVal(self, power):
+    self.powscale = power
+    val = math.log(power)/math.log(1.1)
+    self.powscaleslider.setValue(int(val))
+    self.labeltxt.setText('Selected colour gradient map: %s' %self.selcolmap )
