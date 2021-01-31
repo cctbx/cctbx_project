@@ -3219,7 +3219,7 @@ def check_libcpp():
   # get the libstd version that the python executable links against
   #
   python_libstdcxx_so = None
-  ldd_exec = easy_run.fully_buffered(command=f"ldd {sys.executable}")
+  ldd_exec = easy_run.fully_buffered(command="ldd " + str(sys.executable))
   for line in ldd_exec.stdout_lines:
     if line.strip().startswith("libstdc++.so"):
       python_libstdcxx_so = line.split()[0]
@@ -3239,15 +3239,15 @@ def check_libcpp():
   )
   libs = [join(lib_dir, name) for name in listdir(lib_dir) if name.endswith(".so")]
   for lib in libs:
-    ldd_lib = easy_run.fully_buffered(command=f"ldd {lib}")
+    ldd_lib = easy_run.fully_buffered(command="ldd " + str(lib))
     for line in ldd_lib.stdout_lines:
       if line.strip().startswith("libstdc++.so"):
         lib_libstdcxx_so = line.split()[0]
         if lib_libstdcxx_so != python_libstdcxx_so:
           raise SystemError(
-            f"FATAL: libstdc++.so mismatch\n"
-            f"sys.executable: {sys.executable}\n"
-            f"lib_file: {lib}"
+            "FATAL: libstdc++.so mismatch\n"
+            "sys.executable: " + str(sys.executable) + "\n"
+            "lib_file:" + str(lib)
           )
         break
   #
@@ -3265,7 +3265,10 @@ if (__name__ == "__main__"):
       return (x.strip().lower() in yes)
 
     if is_true(os.environ.get("CCTBX_CHECK_LDD", "True")):
-      print("Checking that extension modules and python executabel link to same version of libstdc++")
+      print(
+          "Checking that extension modules and python executable link to same "
+          "version of libstdc++"
+      )
       print("Set CCTBX_CHECK_LDD=false to disable this step")
       check_libcpp()
 
