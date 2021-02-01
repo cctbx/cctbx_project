@@ -74,6 +74,8 @@ class AboutForm(QDialog):
     Queries or bug reports should be sent to cctbx@cci.lbl.gov or rdo20@cam.ac.uk.
     </p></body></html>"""
     self.aboutlabel.setText(aboutstr)
+    self.aboutlabel.setTextInteractionFlags(Qt.TextBrowserInteraction);
+    self.aboutlabel.setOpenExternalLinks(True);
     self.copyrightstxt = QTextEdit()
     self.copyrightstxt.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
     self.copyrightstxt.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
@@ -400,7 +402,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       else:
         self.webpage.setUrl("https://webglreport.com/")
     else:
-      self.webpage.setUrl("https://cctbx.github.io/")
+      #self.webpage.setUrl("https://cctbx.github.io/")
+      self.webpage.setUrl("http://cci.lbl.gov/docs/cctbx/")
     self.cpath = self.webprofile.cachePath()
     self.BrowserBox.setPage(self.webpage)
     self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
