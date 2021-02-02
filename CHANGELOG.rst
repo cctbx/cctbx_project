@@ -1,3 +1,8 @@
+2021.1
+======
+
+* Improvements to cctbx.HKLviewer for displaying reciprocal space data
+
 2020.12
 =======
 
