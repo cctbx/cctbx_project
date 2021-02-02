@@ -846,9 +846,13 @@ def evaluate_sheet_topology(annotation, hierarchy = None,
   ca_ph=apply_atom_selection("name ca", hierarchy = hierarchy)
   if chain_id:
     ca_ph=apply_atom_selection("chain %s" %(chain_id), hierarchy = ca_ph)
-  chain_ids = get_chain_ids(ca_ph)
-  if len(chain_ids) != 1:
-    raise Sorry("Need just 1 chain for evaluate_sheet_topology")
+  unique_chain_ids = []
+  for x in get_chain_ids(ca_ph):
+    if not x in unique_chain_ids:
+      unique_chain_ids.append(x)
+  if len(unique_chain_ids) != 1:
+    raise Sorry("Need just 1 chain for evaluate_sheet_topology (found %s)" %(
+      " ".join(unique_chain_ids)))
 
   rh_connections = 0
   lh_connections = 0
@@ -3637,6 +3641,7 @@ class find_secondary_structure: # class to look for secondary structure
       maximum_poor_h_bonds=None,
       helices_are_alpha=False,
       ss_by_chain=None,
+      evaluate_sheet_topology=None,
       use_representative_chains=None,
       max_representative_chains=None,
       max_rmsd=None,
@@ -3673,6 +3678,8 @@ class find_secondary_structure: # class to look for secondary structure
       params.input_files.force_secondary_structure_input
     if ss_by_chain is not None:
       params.find_ss_structure.ss_by_chain=ss_by_chain
+    if evaluate_sheet_topology is not None:
+      params.find_ss_structure.evaluate_sheet_topology=evaluate_sheet_topology
     if max_rmsd is not None:
       params.find_ss_structure.max_rmsd=max_rmsd
     if use_representative_chains is not None:
