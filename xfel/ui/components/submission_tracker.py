@@ -13,7 +13,7 @@ class JobStopper(object):
       pass
     elif self.queueing_system == 'slurm':
       self.command = "scancel %s"
-    elif self.queueing_system == 'htcondor': #SubmissionTracke
+    elif self.queueing_system == 'htcondor':
       self.command = "condor_rm %s"
     else:
       raise NotImplementedError("job stopper not implemented for %s queueing system" \
