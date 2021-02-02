@@ -422,7 +422,9 @@ class aa_residue_axes_and_clusters(object):
   def __init__(self,
                residue,
                mon_lib_srv,
-               backbone_sample):
+               backbone_sample,
+               log=None):
+    if log is None: log = sys.stdout
     self.clusters               = []
     atoms                       = residue.atoms()
     atoms_as_list               = list(atoms)
@@ -466,7 +468,7 @@ class aa_residue_axes_and_clusters(object):
           selection       = flex.size_t(backrub_atoms_to_evaluate)))
     self.axes_and_atoms_aa_specific = \
       rotatable_bonds.axes_and_atoms_aa_specific(
-        residue = residue, mon_lib_srv = mon_lib_srv)
+        residue = residue, mon_lib_srv = mon_lib_srv, log = log)
     if(self.axes_and_atoms_aa_specific is not None):
       for i_aa, aa in enumerate(self.axes_and_atoms_aa_specific):
         if(i_aa == len(self.axes_and_atoms_aa_specific)-1):

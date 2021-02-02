@@ -17,6 +17,7 @@ Subpackages
 -----------
 
 .. toctree::
+    iotbx.managers
     iotbx.file_reader
     iotbx.cif
     iotbx.pdb

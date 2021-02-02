@@ -68,6 +68,24 @@ class restraint(atoms):
   def __cmp__(self, other):
     return cmp(other.score, self.score)
 
+  def __eq__(self, other):
+    return self.score == other.score
+
+  def __ne__(self, other):
+    return self.score != other.score
+
+  def __lt__(self, other):
+    return self.score < other.score
+
+  def __le__(self, other):
+    return self.score <= other.score
+
+  def __gt__ (self, other):
+    return self.score > other.score
+
+  def __ge__(self, other):
+    return self.score >= other.score
+
   def kinemage_key(self):
     atom0 = self.atoms_info[0]
     # bonds are assigned to the following residue

@@ -15,7 +15,9 @@ import sys
 from six.moves import range
 import mmtbx.model
 
-def summary(pdb_file=None, pdb_hierarchy=None, crystal_symmetry=None):
+def summary(pdb_file=None,
+            pdb_hierarchy=None,
+            crystal_symmetry=None):
   header_info = None
   if (pdb_hierarchy is None):
     assert (pdb_file is not None)
@@ -28,6 +30,11 @@ def summary(pdb_file=None, pdb_hierarchy=None, crystal_symmetry=None):
     crystal_symmetry=pdb_in.file_object.crystal_symmetry()
   else :
     assert (pdb_file is None)
+  #
+  cache = pdb_hierarchy.atom_selection_cache()
+  sel = cache.selection('protein')
+  pdb_hierarchy = pdb_hierarchy.select(sel)
+  #
   model = mmtbx.model.manager(model_input = pdb_hierarchy.as_pdb_input())
   if crystal_symmetry and model.crystal_symmetry() is None:
     model.set_crystal_symmetry(crystal_symmetry) # Somehow pdb_hiearchy lacks cs

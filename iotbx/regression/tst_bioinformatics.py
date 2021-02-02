@@ -1978,7 +1978,8 @@ def exercise_random_sequences():
 
 def exercise_merge_sequences():
   print("Testing merge_sequences ...", end=' ')
-  open("tmp_iotbx_bioinfo.fa", "w").write("""\
+  with open("tmp_iotbx_bioinfo.fa", "w") as f:
+    f.write("""\
 > 9zzz
 ARGLYS
 > 8xxx

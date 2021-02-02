@@ -44,14 +44,15 @@ TER
     photon=1.54,
     table="sasaki")
   file_base = "tmp_mmtbx_cmdline"
-  open(file_base+".pdb", "w").write(
-    hierarchy.as_pdb_string(crystal_symmetry=xrs))
+  with open(file_base+".pdb", "w") as f:
+    f.write(hierarchy.as_pdb_string(crystal_symmetry=xrs))
   fc = abs(xrs.structure_factors(d_min=1.5).f_calc())
   flags = fc.generate_r_free_flags()
   mtz = fc.as_mtz_dataset(column_root_label="F")
   mtz.add_miller_array(flags, column_root_label="FreeR_flag")
   mtz.mtz_object().write(file_base+".mtz")
-  open(file_base+".fa", "w").write(">Tyr\nY\n")
+  with open(file_base+".fa", "w") as f:
+    f.write(">Tyr\nY\n")
   base_args = [ file_base + ext for ext in [".pdb",".mtz",".fa"] ]
   cmdline = mmtbx.command_line.load_model_and_data(
     args=base_args+["wavelength=1.54"],
@@ -81,9 +82,8 @@ TER
   i_obs = abs(fc2).f_as_f_sq()
   i_obs = i_obs.expand_to_p1().customized_copy(
     crystal_symmetry=fc2).set_observation_type_xray_intensity()
-  f = open(file_base + ".sca", "w")
-  no_merge_original_index.writer(i_obs,
-    file_object=f)
+  with open(file_base + ".sca", "w") as f:
+    no_merge_original_index.writer(i_obs, file_object=f)
   master_phil = mmtbx.command_line.generate_master_phil_with_inputs(
     phil_string="",
     enable_unmerged_data=True)
@@ -100,8 +100,8 @@ ATOM     59  UNK UNL A   7       0.000   0.000   0.000  1.00 20.00           X
 """)
   hierarchy = pdb_in.construct_hierarchy()
   file_base = "tmp_mmtbx_cmdline"
-  open(file_base+".pdb", "w").write(
-    hierarchy.as_pdb_string(crystal_symmetry=xrs))
+  with open(file_base+".pdb", "w") as f:
+    f.write(hierarchy.as_pdb_string(crystal_symmetry=xrs))
   try :
     cmdline = mmtbx.command_line.load_model_and_data(
       args=[ file_base + ext for ext in [".pdb",".mtz",".fa",] ],

@@ -3053,7 +3053,7 @@ class MergeTab(BaseTab):
                              defaultDir=os.curdir,
                              defaultFile="*.phil",
                              wildcard="*.phil",
-                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
                              )
     if load_dlg.ShowModal() == wx.ID_OK:
       script = load_dlg.GetPaths()[0]

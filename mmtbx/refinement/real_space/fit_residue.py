@@ -112,7 +112,8 @@ class run(object):
     self.co = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
       residue         = self.residue,
       mon_lib_srv     = self.mon_lib_srv,
-      backbone_sample = True)
+      backbone_sample = True,
+      log             = self.log)
     self.m = None
     if(self.target_map is not None and len(self.co.clusters)>0):
       # Set weights

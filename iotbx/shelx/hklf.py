@@ -96,9 +96,13 @@ class reader(iotbx_shelx_ext.hklf_reader):
     assert [file_object, file_name].count(None) == 1
     if (file_object is None):
       from libtbx import smart_open
-      file_object = smart_open.for_reading(file_name=file_name)
+      with smart_open.for_reading(file_name=file_name) as f:
+        lines = f.read()
+    else:
+      lines = file_object.read()
+      file_object.close()
     from cctbx.array_family import flex
-    super(reader, self).__init__(lines=flex.split_lines(file_object.read()))
+    super(reader, self).__init__(lines=flex.split_lines(lines))
 
   def as_miller_arrays(self,
         crystal_symmetry=None,

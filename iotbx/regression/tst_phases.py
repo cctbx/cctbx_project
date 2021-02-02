@@ -76,7 +76,8 @@ def generate_random_f_calc(
   s = structure.as_pdb_file(
     remark="random structure",
     resname="RND")
-  open("tmp.pdb", "w").write(s)
+  with open("tmp.pdb", "w") as f:
+    f.write(s)
   if (0 or verbose):
     print()
   f_calc = structure.structure_factors(
@@ -85,7 +86,8 @@ def generate_random_f_calc(
     f_calc.show_summary()
     print()
   print("Writing: tmp.phs")
-  f_calc.as_phases_phs(out=open("tmp.phs", "w"))
+  with open("tmp.phs", "w") as f:
+    f_calc.as_phases_phs(out=f)
   if (0 or verbose):
     print()
 

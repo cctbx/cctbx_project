@@ -24,9 +24,10 @@ namespace {
     return new flex<std::size_t>::type(result, result.size());
   }
 
+  template<typename uIntType>
   shared<int>
   as_int(
-    const_ref<std::size_t> const& O)
+    const_ref<uIntType> const& O)
   {
     shared<int> result(O.size(), init_functor_null<int>());
     for(std::size_t i=0;i<O.size();i++) {
@@ -35,17 +36,19 @@ namespace {
     return result;
   }
 
+  template<typename uIntType>
   bool
-  next_permutation(ref<std::size_t> const& a)
+  next_permutation(ref<uIntType> const& a)
   {
     return std::next_permutation(a.begin(), a.end());
   }
 
-  shared<std::size_t>
-  inverse_permutation(const_ref<std::size_t> const& self)
+  template<typename uIntType>
+  shared<uIntType>
+  inverse_permutation(const_ref<uIntType> const& self)
   {
-    shared<std::size_t> result(self.size());
-    ref<std::size_t> r = result.ref();
+    shared<uIntType> result(self.size());
+    ref<uIntType> r = result.ref();
     for(std::size_t i=0;i<self.size();i++) {
       SCITBX_ASSERT(self[i] < self.size());
       r[self[i]] = i;
@@ -53,68 +56,90 @@ namespace {
     return result;
   }
 
-  std::size_t
+  template<typename uIntType>
+  uIntType
   increment_and_track_up_from_zero(
-    ref<std::size_t> const& O,
-    const_ref<std::size_t> const& iselection)
+    ref<uIntType> const& O,
+    const_ref<uIntType> const& iselection)
   {
-    std::size_t result = 0;
+    uIntType result = 0;
     for(std::size_t i=0;i<iselection.size();i++) {
-      std::size_t ii = iselection[i];
+      uIntType ii = iselection[i];
       SCITBX_ASSERT(ii < O.size());
       if (O[ii]++ == 0) result++;
     }
     return result;
   }
 
+  template<typename uIntType>
   boost::python::tuple
   intersection_i_seqs(
-    const_ref<std::size_t> const& self,
-    const_ref<std::size_t> const& other)
+    const_ref<uIntType> const& self,
+    const_ref<uIntType> const& other)
   {
-    intersection_with_tracking<std::size_t, std::size_t> proxy(
+    intersection_with_tracking<uIntType, uIntType> proxy(
       self, other, /*track_matching_elements*/ false, /*track_i_seqs*/ true);
     return boost::python::make_tuple(proxy.self_i_seqs, proxy.other_i_seqs);
   }
 
 } // namespace <anonymous>
 
-  void wrap_flex_size_t()
-  {
-    using namespace boost::python;
-    using boost::python::arg;
-    flex_wrapper<std::size_t>::integer("size_t", scope())
-      .def_pickle(flex_pickle_single_buffered<std::size_t>())
-      .def("__init__", make_constructor(
-        from_stl_vector_unsigned, default_call_policies()))
-      .def("__init__", make_constructor(
-        flex_size_t_from_numpy_array, default_call_policies()))
-      .def("copy_to_byte_str",
-        copy_to_byte_str<versa<std::size_t, flex_grid<> > >)
-      .def("as_int", as_int)
-      .def("intersection",
-        (shared<std::size_t>(*)(
-          const_ref<std::size_t> const&,
-          const_ref<std::size_t> const&))
-        intersection, (arg("self"), arg("other")))
-      .def("intersection_i_seqs", intersection_i_seqs, (
-        arg("self"), arg("other")))
-      .def("counts", counts<std::size_t, std::map<long, long> >::unlimited)
-      .def("counts", counts<std::size_t, std::map<long, long> >::limited, (
-        arg("max_keys")))
-      .def("next_permutation", next_permutation)
-      .def("inverse_permutation", inverse_permutation)
-      .def("increment_and_track_up_from_zero",
-        increment_and_track_up_from_zero, (arg("iselection")))
-      .def("as_numpy_array", flex_size_t_as_numpy_array, (
-        arg("optional")=false))
-    ;
-    def(
-      "size_t_from_byte_str",
-      shared_from_byte_str<std::size_t>,
-      (arg("byte_str")));
-    range_wrappers<std::size_t, long, range_args::unsigned_check>::wrap(
-      "size_t_range");
+  // wrap signed integer types
+  // ==========================================================================
+  #define WRAP_FLEX(pyname, uIntType) \
+  namespace {\
+  flex<uIntType>::type* \
+  from_stl_vector_unsigned_to_##uIntType(std::vector<unsigned> const& v) \
+  { \
+    shared<uIntType> result(reserve(v.size())); \
+    for(std::size_t i=0;i<v.size();i++) { \
+      result.push_back(v[i]); \
+    } \
+    return new flex<uIntType>::type(result, result.size()); \
+  }} \
+  void wrap_flex_##uIntType() \
+  { \
+    using namespace boost::python; \
+    using boost::python::arg; \
+    flex_wrapper<uIntType>::integer(#pyname, scope()) \
+      .def_pickle(flex_pickle_single_buffered<uIntType>()) \
+      .def("__init__", make_constructor( \
+        from_stl_vector_unsigned_to_##uIntType, default_call_policies())) \
+      .def("__init__", make_constructor( \
+        flex_##pyname##_from_numpy_array, default_call_policies())) \
+      .def("copy_to_byte_str", \
+        copy_to_byte_str<versa<uIntType, flex_grid<> > >) \
+      .def("as_int", as_int<uIntType>) \
+      .def("intersection", \
+        (shared<uIntType>(*)(  \
+          const_ref<uIntType> const&, \
+          const_ref<uIntType> const&)) \
+        intersection<uIntType>, (arg("self"), arg("other"))) \
+      .def("intersection_i_seqs", intersection_i_seqs<uIntType>, ( \
+        arg("self"), arg("other"))) \
+      .def("counts", counts<uIntType, std::map<long, long> >::unlimited) \
+      .def("counts", counts<uIntType, std::map<long, long> >::limited, ( \
+        arg("max_keys"))) \
+      .def("next_permutation", next_permutation<uIntType>) \
+      .def("inverse_permutation", inverse_permutation<uIntType>) \
+      .def("increment_and_track_up_from_zero", \
+        increment_and_track_up_from_zero<uIntType>, (arg("iselection"))) \
+      .def("as_numpy_array", flex_##pyname##_as_numpy_array, ( \
+        arg("optional")=false)) \
+    ; \
+    def( \
+      #pyname"_from_byte_str", \
+      shared_from_byte_str<uIntType>, \
+      (arg("byte_str"))); \
+    range_wrappers<uIntType, long, range_args::unsigned_check>::wrap( \
+      #pyname"_range"); \
   }
+
+  // --------------------------------------------------------------------------
+  WRAP_FLEX(size_t, size_t);
+  WRAP_FLEX(uint8, uint8_t);
+  WRAP_FLEX(uint16, uint16_t);
+  WRAP_FLEX(uint32, uint32_t);
+  // WRAP_FLEX(uint64, uint64_t);  // wrapped as size_t
 
 }}} // namespace scitbx::af::boost_python

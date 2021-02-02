@@ -1,6 +1,7 @@
 #ifndef SCITBX_SERIALIZATION_SINGLE_BUFFERED_H
 #define SCITBX_SERIALIZATION_SINGLE_BUFFERED_H
 
+#include <stdint.h>
 #include <scitbx/serialization/base_256.h>
 #include <complex>
 
@@ -43,6 +44,36 @@ namespace scitbx { namespace serialization { namespace single_buffered {
   {
     from_string(const char* start)
     : base_256::from_string<short>(start)
+    {}
+  };
+
+  inline
+  char*
+  to_string(char* start, int8_t const& value)
+  {
+    return base_256::to_string(start, value);
+  }
+
+  template <>
+  struct from_string<int8_t> : base_256::from_string<int8_t>
+  {
+    from_string(const char* start)
+    : base_256::from_string<int8_t>(start)
+    {}
+  };
+
+  inline
+  char*
+  to_string(char* start, uint8_t const& value)
+  {
+    return base_256::to_string(start, value);
+  }
+
+  template <>
+  struct from_string<uint8_t> : base_256::from_string<uint8_t>
+  {
+    from_string(const char* start)
+    : base_256::from_string<uint8_t>(start)
     {}
   };
 

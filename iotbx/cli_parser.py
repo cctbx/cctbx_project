@@ -190,6 +190,7 @@ class CCTBXParser(ParserBase):
 
     # PHIL filenames
     self.data_filename = self.prefix + '_data.eff'
+    self.defaults_filename = self.prefix + '_defaults.eff'
     self.modified_filename = self.prefix + '_modified.eff'
     self.all_filename = self.prefix + '_all.eff'
 
@@ -211,8 +212,10 @@ class CCTBXParser(ParserBase):
     self.logger = logger
     if (self.logger is None):
       self.logger = logging.getLogger('main')
-    self.data_manager = DataManager(datatypes=program_class.datatypes,
-                                    logger=self.logger)
+    self.data_manager = DataManager(
+      datatypes=program_class.datatypes,
+      custom_options=program_class.data_manager_options,
+      logger=self.logger)
 
     # add PHIL converters if available
     if (len(program_class.phil_converters) > 0):
@@ -241,12 +244,12 @@ class CCTBXParser(ParserBase):
       nargs='?', const=0, type=int, choices=list(range(0,4)),
       help='show default parameters with expert level (default=0)')
 
-    # --attributes-level by itself is set to 1
-    # --attributes-level=n sets it to n and it can only be {1, 2, 3}
+    # --attributes-level by itself is set to 0
+    # --attributes-level=n sets it to n and it can only be {0, 1, 2, 3}
     self.add_argument(
       '--attributes-level', '--attributes_level',
-      nargs='?', const=1, type=int, choices=list(range(0,4)),
-      help='show parameters with attributes (default=1)'
+      nargs='?', const=0, type=int, choices=list(range(0,4)),
+      help='show parameters with extra attributes (default=0)'
     )
 
     # --write-data
@@ -255,6 +258,14 @@ class CCTBXParser(ParserBase):
       '--write-data', '--write_data', action='store_true',
       help='write DataManager PHIL parameters to file (%s)' % \
       self.data_filename
+    )
+
+    # --write-defaults
+    # switch for writing all the default PHIL parameters
+    self.add_argument(
+      '--write-defaults', '--write_defaults', action='store_true',
+      help='write default PHIL parameters to file (%s)' % \
+      self.defaults_filename
     )
 
     # --write-modified
@@ -271,6 +282,14 @@ class CCTBXParser(ParserBase):
       '--write-all', '--write_all', action='store_true',
       help='write all (modified + default + data) PHIL parameters to file (%s)' %
       self.all_filename
+    )
+
+    # --diff-params
+    # switch for writing the differences between the input PHIL files and
+    # the current defaults
+    self.add_argument(
+      '--diff-params', '--diff_params', action='store_true',
+      help='similar to --write-modified, but stops program execution after writing and always overwrites'
     )
 
     # --overwrite
@@ -305,7 +324,7 @@ class CCTBXParser(ParserBase):
         self.error('--attributes-level requires --show-defaults to be set')
     if (self.namespace.show_defaults is not None):
       if (self.namespace.attributes_level is None):
-        self.namespace.attributes_level = 1
+        self.namespace.attributes_level = 0
       self.master_phil.show(expert_level=self.namespace.show_defaults,
                             attributes_level=self.namespace.attributes_level,
                             out=self.logger)
@@ -589,8 +608,8 @@ class CCTBXParser(ParserBase):
     print('', file=self.logger)
 
     # write scopes if requested
-    if (self.namespace.write_data or self.namespace.write_modified or
-        self.namespace.write_all):
+    if (self.namespace.write_data or self.namespace.write_defaults or
+        self.namespace.write_modified or self.namespace.write_all):
       print('Writing program PHIL file(s):', file=self.logger)
 
     # write DataManager scope
@@ -605,16 +624,26 @@ class CCTBXParser(ParserBase):
       else:
         print('  No input file PHIL to write', file=self.logger)
 
+    # write all default parameters
+    if self.namespace.write_defaults:
+      self.data_manager.write_phil_file(self.master_phil.as_str(expert_level=3),
+        filename=self.defaults_filename, overwrite=overwrite)
+      print('  Default PHIL parameters written to %s.' % self.defaults_filename,
+        file=self.logger)
+
     # write differences
-    if (self.namespace.write_modified):
+    if self.namespace.write_modified or self.namespace.diff_params:
       if (phil_is_different):
+        ow = overwrite or self.namespace.diff_params
         self.data_manager.write_phil_file(
           phil_diff.as_str(), filename=self.modified_filename,
-          overwrite=overwrite)
+          overwrite=ow)
         print('  Modified PHIL parameters written to %s.' %
               self.modified_filename, file=self.logger)
       else:
         print('  No PHIL modifications to write', file=self.logger)
+      if self.namespace.diff_params:
+        sys.exit(0)
 
     # write all parameters (DataManager + Program)
     if (self.namespace.write_all):

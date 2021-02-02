@@ -1,7 +1,5 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
-
 #include <scitbx/array_family/selections.h>
-
 #include <scitbx/math/linear_regression.h>
 #include <scitbx/math/linear_correlation.h>
 #include <scitbx/sym_mat3.h>
@@ -43,8 +41,18 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_grid();
   void wrap_flex_bool();
   void wrap_flex_size_t();
+  void wrap_flex_uint8_t();
+  void wrap_flex_uint16_t();
+  void wrap_flex_uint32_t();
+  // void wrap_flex_uint64_t();
   void wrap_flex_int();
   void wrap_flex_long();
+  void wrap_flex_int8_t();
+  void wrap_flex_int16_t();
+  // void wrap_flex_int32_t();
+  #if defined(_MSC_VER)
+  void wrap_flex_int64_t();
+  #endif
   void wrap_flex_float();
   void wrap_flex_double();
   void wrap_flex_complex_double();
@@ -463,8 +471,18 @@ namespace {
 
     wrap_flex_bool();
     wrap_flex_size_t();
+    wrap_flex_uint8_t();
+    wrap_flex_uint16_t();
+    wrap_flex_uint32_t();
+    // wrap_flex_uint64_t();
     wrap_flex_int();
     wrap_flex_long();
+    wrap_flex_int8_t();
+    wrap_flex_int16_t();
+    // wrap_flex_int32_t();
+    #if defined(_MSC_VER)
+    wrap_flex_int64_t();
+    #endif
     wrap_flex_float();
     wrap_flex_double();
     wrap_flex_complex_double();

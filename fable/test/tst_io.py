@@ -39,11 +39,12 @@ build_cmds = build_cmds_class()
 def exercise_open(opts):
   for status in ["old", "new", "unknown", "scratch"]:
     tst_f = "exercise_open_%s.f" % status
-    open(tst_f, "w").write("""\
-      program prog
-      open(1, file='exercise_open.tmp', status='%s', iostat=ios)
-      write(6, '(l1)') (ios .eq. 0)
-      end
+    with open(tst_f, "w") as f:
+      f.write("""\
+        program prog
+        open(1, file='exercise_open.tmp', status='%s', iostat=ios)
+        write(6, '(l1)') (ios .eq. 0)
+        end
 """ % status)
     #
     for cmd in build_cmds(tst_f=tst_f, opts=opts):
@@ -52,13 +53,15 @@ def exercise_open(opts):
         command=cmd).raise_if_errors().stdout_lines
       exists_1 = op.exists("exercise_open.tmp")
       #
-      open("exercise_open.tmp", "w")
+      f = open("exercise_open.tmp", "w")
+      f.close()
       assert op.exists("exercise_open.tmp")
       stdout_2 = easy_run.fully_buffered(
         command=cmd).raise_if_errors().stdout_lines
       exists_2 = op.exists("exercise_open.tmp")
       #
-      open("exercise_open.tmp", "w").write("X")
+      with open("exercise_open.tmp", "w") as f:
+        f.write("X")
       stdout_3 = easy_run.fully_buffered(
         command=cmd).raise_if_errors().stdout_lines
       exists_3 = op.exists("exercise_open.tmp")
@@ -80,7 +83,8 @@ def exercise_open(opts):
 def exercise_mixed_read_write(opts):
   tmp = "exercise_mixed_read_write.tmp"
   tst_f = "exercise_mixed_read_write.f"
-  open(tst_f, "w").write("""\
+  with open(tst_f, "w") as f:
+    f.write("""\
       program prog
       open(
      &  unit=1,
@@ -93,7 +97,8 @@ def exercise_mixed_read_write(opts):
 """ % tmp)
   for cmd in build_cmds(tst_f=tst_f, opts=opts):
     if (opts.verbose): print(cmd)
-    open(tmp, "w").write("""\
+    with open(tmp, "w") as f:
+      f.write("""\
 12
 34
 56
@@ -101,7 +106,8 @@ def exercise_mixed_read_write(opts):
     stdout = easy_run.fully_buffered(
       command=cmd).raise_if_errors().stdout_lines
     assert stdout == ["24"]
-    tmp_text = open(tmp, "rb").read()
+    with open(tmp, "rb") as f:
+      tmp_text = f.read()
     assert not show_diff(tmp_text, b"""\
 12
 78
@@ -110,7 +116,8 @@ def exercise_mixed_read_write(opts):
 def exercise_read_from_non_existing_file(opts):
   tst_f = "exercise_read_from_non_existing_file.f"
   remove_file("fem_io_unit_001")
-  open(tst_f, "w").write("""\
+  with open(tst_f, "w") as f:
+    f.write("""\
       program prog
       read(1, *) num
       end

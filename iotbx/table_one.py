@@ -128,7 +128,7 @@ class column(slots_getstate_setstate):
 
   def __repr__(self):
     lines = []
-    for (stat_name, label, format_string) in keywords :
+    for (stat_name, label, format_string, cif_tag) in keywords :
       value = getattr(self, stat_name, None)
       if (value is not None):
         lines.append("%s %s" % (stat_name, value))

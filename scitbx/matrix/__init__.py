@@ -1304,6 +1304,36 @@ def determinant_via_lu(m):
     result = -result
   return result
 
+def find_nearest_orthonormal_matrix(Mmx):
+  """
+  Return nearest orthonormal matrix, R, of M from
+  R := M*(M^t * M)^{-1/2}  where ^t means transpose of matrix or vector
+  e1, e2, e3, lambda1, lambda2, lambda3  are eigenvectors and respective eigenvalues of (M^t * M )
+  (M^t * M )^{-1/2} = 1/sqrt(lambda1) * e1*e1^t + 1/sqrt(lambda2) * e2*e2^t + 1/sqrt(lambda3) * e3*e3^t
+  http://people.csail.mit.edu/bkph/articles/Nearest_Orthonormal_Matrix.pdf
+  """
+  assert Mmx.n == (3,3)
+  assert abs(Mmx.determinant()) > 1e-8
+  # compute (M^t * M ) below
+  MtMmx = Mmx.transpose()*Mmx
+  # its eigenvalues and vectors
+  from scitbx.linalg import eigensystem
+  es = eigensystem.real_symmetric(MtMmx.as_flex_double_matrix())
+  evalues =  list(es.values())
+  evectors = list(es.vectors())
+  # eigenvectors as row vectors
+  evec1 = rec(([evectors[0],evectors[1], evectors[2] ]),n=(1,3))
+  evec2 = rec(([evectors[3],evectors[4], evectors[5] ]),n=(1,3))
+  evec3 = rec(([evectors[6],evectors[7], evectors[8] ]),n=(1,3))
+  # compute (M^t * M )^{-1/2} as 1/sqrt(lambda1) * e1*e1^t + 1/sqrt(lambda2) * e2*e2^t + 1/sqrt(lambda3) * e3*e3^t
+  MtMinvsqrtmx = \
+    (1.0/math.sqrt(evalues[0]))*evec1.transpose() * evec1 + \
+    (1.0/math.sqrt(evalues[1]))*evec2.transpose() * evec2 + \
+    (1.0/math.sqrt(evalues[2]))*evec3.transpose() * evec3
+  #compute R as M*(M^t * M)^{-1/2}
+  Rmx = Mmx * MtMinvsqrtmx
+  return Rmx
+
 def exercise_1():
   try:
     from libtbx import test_utils
@@ -1889,6 +1919,22 @@ def exercise_1():
     m = rec(elems=list(range(6)), n=(2,3))
     n = m.as_numpy_array()
     assert n.tolist() == [[0, 1, 2], [3, 4, 5]]
+  # Test finding nearest orthonormal 3x3 matrix
+  m = sqr([1, 0.5, 0, -0.5, -1, 0,  0, 0.333, 0.8 ])
+  R = find_nearest_orthonormal_matrix(m)
+  assert approx_equal(R.elems, (0.9984906928673, 0.000907775788, 0.054913679537,
+                               -0.0099022914593, -0.980501661525, 0.196261143308,
+                               -0.0540211151411, 0.196508696217, 0.979012794313) )
+  assert approx_equal(R.determinant(), -1.0)
+  assert R.is_r3_rotation_matrix() == False
+
+  m = sqr([1, 0.5, 0, -0.5, 1, 0,  0, 0.333, 1.8 ])
+  R = find_nearest_orthonormal_matrix(m)
+  assert approx_equal(R.elems, (0.894427190999, 0.44432972299, -0.0507059884,
+                                -0.447213595499, 0.88865944596, -0.1014119769,
+                                0.0,            0.11338203706, 0.9935514650) )
+  assert approx_equal(R.determinant(), 1.0)
+  assert R.is_r3_rotation_matrix()
   #
   print("OK")
 

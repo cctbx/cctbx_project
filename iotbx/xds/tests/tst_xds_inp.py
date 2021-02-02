@@ -55,8 +55,8 @@ class Test(object):
     filename_1 = os.path.join(iotbx_dir, 'xds', 'tests', 'XDS_2.INP')
     tmp_dir = open_tmp_directory()
     filename_2 = os.path.join(tmp_dir, 'XDS.INP')
-    with open(filename_2, 'w') as f:
-      print(open(filename_1, 'r').read(), file=f)
+    with open(filename_2, 'w') as f2, open(filename_1, 'r') as f1:
+      print(f1.read(), file=f2)
     handle = xds_inp.reader()
     handle.read_file(filename_2)
     assert handle.corrections is None

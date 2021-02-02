@@ -2894,10 +2894,16 @@ def find_symmetry_center(map_data, crystal_symmetry = None, out = sys.stdout):
     tuple(xyz_cart)), file = out)
   return xyz_cart
 
-def get_center_of_map(map_data, crystal_symmetry):
+def get_center_of_map(map_data, crystal_symmetry,
+    place_on_grid_point = True):
   all = list(map_data.all())
   origin = list(map_data.origin())
-  sx, sy, sz = [all[0]/2+origin[0], all[1]/2+origin[1], all[2]/2+origin[2]]
+  if place_on_grid_point:
+    sx, sy, sz = [int(all[0]/2)+origin[0], int(all[1]/2)+origin[1],
+       int(all[2]/2)+origin[2]]
+  else:
+    sx, sy, sz = [all[0]/2+origin[0], all[1]/2+origin[1],
+  all[2]/2+origin[2]]
   site_fract = matrix.col((sx/all[0], sy/all[1], sz/all[2], ))
   return crystal_symmetry.unit_cell().orthogonalize(site_fract)
 
@@ -2956,10 +2962,24 @@ def run_get_ncs_from_map(params = None,
       crystal_symmetry = None,
       map_symmetry_center = None,
       ncs_obj = None,
+      fourier_filter = False,
       out = sys.stdout,
       ):
 
   # Get or check NCS operators. Try various possibilities for center of NCS
+
+  # First Fourier filter map if resolution is set
+  if fourier_filter and params.crystal_info.resolution:
+    print("Fourier filtering at resolution of %.2f A" %(
+      params.crystal_info.resolution), file = out)
+    from iotbx.map_manager import map_manager
+    mm = map_manager(map_data= map_data,
+      unit_cell_crystal_symmetry = crystal_symmetry,
+      unit_cell_grid = map_data.all(),
+      wrapping=False)
+    mm.resolution_filter(d_min=params.crystal_info.resolution)
+    map_data = mm.map_data()
+
   ncs_obj_to_check = None
   if params.reconstruction_symmetry.symmetry and (
      not ncs_obj or ncs_obj.max_operators()<2):
@@ -4286,8 +4306,11 @@ def apply_soft_mask(map_data = None,
 
 def smooth_mask_data(mask_data = None,
     crystal_symmetry = None,
-    threshold = 0.5,
+    threshold = None,
     rad_smooth = None):
+
+  if threshold is None:
+    threshold = mask_data.as_1d().min_max_mean().max * 0.5
 
   # Smooth a mask in place. First make it a binary mask
   s = mask_data > threshold  # s marks inside mask
@@ -4302,7 +4325,7 @@ def smooth_mask_data(mask_data = None,
 
     # Make sure that mask_data max value is now 1, scale if not
     max_mask_data_value = mask_data.as_1d().min_max_mean().max
-    if max_mask_data_value < 1.e-30 and max_mask_data_value!= 1.0: # XXX
+    if max_mask_data_value > 1.e-30 and max_mask_data_value!= 1.0:
       mask_data = mask_data*(1./max_mask_data_value)
   else:
     pass
@@ -8607,6 +8630,11 @@ def get_overall_mask(
     out = sys.stdout):
 
 
+  # This routine cannot use mask_data with origin != (0,0,0)
+  if map_data.origin() != (0,0,0):
+    print("Map origin must be at (0,0,0) for get_overall_mask")
+    assert map_data.origin() == (0,0,0)  # Map origin must be at (0,0,0)
+
   # Make a local SD map from our map-data
   from cctbx.maptbx import crystal_gridding
   from cctbx import sgtbx
@@ -8643,7 +8671,6 @@ def get_overall_mask(
   import math
   w = 4 * stol * math.pi * smoothing_radius
   sphere_reciprocal = 3 * (flex.sin(w) - w * flex.cos(w))/flex.pow(w, 3)
-
   try:
     temp = complete_set.structure_factors_from_map(
       flex.pow2(map_data-map_data.as_1d().min_max_mean().mean))
@@ -9059,6 +9086,11 @@ def get_solvent_fraction_from_low_res_mask(
     crystal_symmetry = crystal_symmetry,
     resolution = mask_resolution,
     out = out)
+  if overall_mask is None:
+    if return_mask_and_solvent_fraction:
+      return None, None
+    else:
+      return None
 
   solvent_fraction = overall_mask.count(False)/overall_mask.size()
   print("Solvent fraction from overall mask: %.3f " %(solvent_fraction), file = out)

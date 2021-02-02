@@ -182,6 +182,11 @@ xtc_phil_str = '''
       .help = Folder with previous processing results including crystal orientations. \
               If specified, images will not be re-indexed, but instead the known \
               orientations will be used.
+    ignore_gain_mismatch = False
+      .type = bool
+      .expert_level = 3
+      .help = Detector gain should be set on the detector models loaded from the images or in the \
+              processing parameters, not both. Override the check that this is true with this flag. \
  }
   format {
     file_format = *cbf pickle

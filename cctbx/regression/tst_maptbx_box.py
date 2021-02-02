@@ -260,7 +260,7 @@ def exercise_around_model():
   assert approx_equal(
      (mask_mm.map_data().count(0), mask_mm.map_data().count(1),
       mask_mm.map_data().size()),
-     (19214, 19186, 38400))
+     (19184, 19216, 38400))
 
   # Box around the mask
   box = cctbx.maptbx.box.around_mask(
@@ -279,7 +279,7 @@ def exercise_around_model():
   import inspect
   r = inspect.getargspec(cctbx.maptbx.box.around_model.__init__)
   assert r.args  ==  ['self', 'map_manager', 'model', 'box_cushion', 'wrapping',
-      'model_can_be_outside_bounds', 'log'], r.args
+      'model_can_be_outside_bounds','stay_inside_current_map', 'log'], r.args
   r = inspect.getargspec(cctbx.maptbx.box.with_bounds.__init__)
   assert r.args  ==  ['self', 'map_manager', 'lower_bounds', 'upper_bounds', 'model',
     'wrapping', 'model_can_be_outside_bounds', 'log'], r.args

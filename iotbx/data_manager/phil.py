@@ -47,8 +47,8 @@ class PhilDataManager(DataManagerBase):
     # use this instead of libtbx.phil.scope.show for consistent error messages
     if filename is Auto:
       filename = self.get_default_output_phil_filename()
-    self._write_text(PhilDataManager.datatype, phil_str,
-                     filename=filename, overwrite=overwrite)
+    return self._write_text(PhilDataManager.datatype, phil_str,
+                            filename=filename, overwrite=overwrite)
 
 # =============================================================================
 # end

@@ -193,7 +193,7 @@ class PolygonFrame(wx.Frame):
     save_icon = wxtbx.bitmaps.fetch_icon_bitmap("actions", "save_all")
     plot_icon = wxtbx.bitmaps.fetch_icon_bitmap("mimetypes", "spreadsheet")
     if (save_icon is not None) and (plot_icon is not None):
-      self.toolbar = wx.ToolBar(self, style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+      self.toolbar = wx.ToolBar(self, style=wx.TB_TEXT)
       if sys.platform == "darwin" :
         save_btn = self.toolbar.AddLabelTool(-1, "Save", save_icon,
           kind=wx.ITEM_NORMAL)

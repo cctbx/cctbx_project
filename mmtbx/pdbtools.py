@@ -33,7 +33,7 @@ keep = None
   .style = bold noauto
 put_into_box_with_buffer = None
   .type = float
-  .help = Move molecule into center of box.
+  .help = Move molecule into center of box
 selection = None
   .type = atom_selection
   .help = Selection for atoms to be modified
@@ -251,6 +251,11 @@ class modify(object):
     self.params = params
     self.model = model
     self._neutralize_scatterers()
+    if not model.crystal_symmetry() or not model.crystal_symmetry().unit_cell():
+      # Make it up
+      from cctbx.maptbx.box import shift_and_box_model
+      model = shift_and_box_model(model, shift_model=False)
+
     self.pdb_hierarchy = model.get_hierarchy()
     self.crystal_symmetry = model.crystal_symmetry()
     if(self.log is None): self.log = sys.stdout

@@ -1902,7 +1902,7 @@ class PDBTreeFrame(wx.Frame):
     self._tree.SetMinSize((640,400))
     pszr.Add(self._tree, 1, wx.EXPAND, 2)
     # toolbar setup
-    self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+    self.toolbar = self.CreateToolBar(style=wx.TB_TEXT)
     bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("phenix.pdbtools")
     btn = self.toolbar.AddLabelTool(-1, "Load file", bmp,
       shortHelp="Load file", kind=wx.ITEM_NORMAL)

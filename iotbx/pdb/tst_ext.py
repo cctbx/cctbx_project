@@ -110,7 +110,9 @@ pdb1gky.ent
 """.splitlines()
   n_known = [0, 0]
   for file_name in pdb_file_names:
-    lines = flex.split_lines(open(file_name).read())
+    with open(file_name) as f:
+      raw_lines = f.read()
+    lines = flex.split_lines(raw_lines)
     e = pdb.columns_73_76_evaluator(lines=lines)
     bn = os.path.basename(file_name)
     if (bn in known_blank):
@@ -668,10 +670,12 @@ ENDMDL
   assert [list(v) for v in pdb_inp.chain_indices()] \
       == [[2,3,5],[7,9,10],[11,13,15], [18,20]]
   #
-  open("tmp.pdb", "w")
+  f = open("tmp.pdb", "w")
+  f.close()
   pdb_inp = pdb.pdb_input(file_name="tmp.pdb")
   assert pdb_inp.source_info() == "file tmp.pdb"
-  open("tmp.pdb", "w").write("""\
+  with open("tmp.pdb", "w") as f:
+    f.write("""\
 ATOM      1  CA  SER     1       1.212 -12.134   3.757  1.00  0.00
 ATOM      2  CA  LEU     2       1.118  -9.777   0.735  1.00  0.00
 """)

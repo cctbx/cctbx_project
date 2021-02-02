@@ -49,7 +49,7 @@ def step_1(file_name, crystal_symmetry, write_name):
   xrs_asu = ph.extract_xray_structure(crystal_symmetry=crystal_symmetry)
   ph.write_pdb_file(file_name=write_name, crystal_symmetry=crystal_symmetry)
   pdb_str = ph.as_pdb_string(crystal_symmetry=crystal_symmetry)
-  transform_info = pdb_inp.process_MTRIX_records(eps=1.e-2)
+  transform_info = pdb_inp.process_MTRIX_records()
   return xrs_asu, pdb_str, transform_info, ph2, ph
 
 class ncs_minimization_test(object):

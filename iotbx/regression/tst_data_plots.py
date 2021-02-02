@@ -137,6 +137,32 @@ Resolution shell statistics
   assert ('"data": [[0.02, 0.04, 0.06, 0.08, 0.1], [2004, 2084, null, 1949, 1783], [0.25, 0.23, 0.27, 0.28, 0.38], [0.89, 0.88, NaN, 0.75, null]]' in
           json_str), json_str
 
+
+def exercise_column_formats():
+  t = data_plots.table_data(
+    title = "Resolution shell statistics",
+    column_labels = ["1/resol^2", "Nrefl", "R-free", "FOM"],
+    column_formats = ["%.2g", "%i", "%.2f", "%.2f"],
+    data = [[0.02, 0.04, 0.06, 0.08, 0.10],
+            [2004, 2084, None, 1949, 1783],
+            [0.25, 0.23, 0.27, 0.28, 0.38],
+            [0.89, 0.88, float('NaN'), 0.75, None]]
+  )
+  assert t.format() == """\
+-------------------------------------------------
+| Resolution shell statistics                   |
+|-----------------------------------------------|
+| 1/resol^2 | Nrefl     | R-free    | FOM       |
+|-----------------------------------------------|
+| 0.02      | 2004      | 0.25      | 0.89      |
+| 0.04      | 2084      | 0.23      | 0.88      |
+| 0.06      | *         | 0.27      | nan       |
+| 0.08      | 1949      | 0.28      | 0.75      |
+| 0.1       | 1783      | 0.38      | *         |
+-------------------------------------------------
+"""
+
+
 def exercise_logfile():
   log_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/tracking/scala.log",
@@ -169,6 +195,7 @@ $$
   p3 = g3.get_plots()
 
 if __name__ == "__main__" :
+  exercise_column_formats()
   exercise_inline()
   exercise_logfile()
   print("OK")

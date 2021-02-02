@@ -12,7 +12,7 @@ def fix(module_path, imports=None):
   if os.path.getsize(module_path) == 0: # Do not add __future__ imports to empty files
     return
 
-  with file(module_path) as fh:
+  with open(module_path) as fh:
     module_lines = fh.readlines()
   syntax_tree = ast.parse(''.join(module_lines), filename=module_path)
   # the attribute lineno is the index of the line *following* that node
@@ -50,7 +50,7 @@ def fix(module_path, imports=None):
     return
 
   print("Adding {stmt} to {file}".format(stmt=missing_future, file=module_path))
-  with file(module_path, mode='w') as fh:
+  with open(module_path, mode='w') as fh:
     fh.writelines(module_lines)
 
 def run(locations):

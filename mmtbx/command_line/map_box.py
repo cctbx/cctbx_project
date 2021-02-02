@@ -214,6 +214,11 @@ master_phil = libtbx.phil.parse("""
     .help = Use Gaussian mask in mask_atoms and on outside surface of box
     .short_caption = Soft mask
 
+  invert_mask = False
+    .type = bool
+    .help = Make mask with 1 outside model (only applies to mask_around_atoms)
+    .short_caption = Invert mask to outside atoms
+
   soft_mask_radius = 3
     .type = float
     .help = Gaussian mask smoothing radius
@@ -349,11 +354,16 @@ master_phil = libtbx.phil.parse("""
     .help = Choose mean and SD of output CCP4 map
     .short_caption = SD of output CCP4 map
 
-  output_map_labels = None
+  output_map_label = None
     .type = str
     .multiple = True
     .help = Add this label to output map
     .short_caption = Add label
+
+  remove_output_map_labels = None
+    .type = bool
+    .help = Remove all output map labels
+    .short_caption = Remove labels
 
   gui
     .help = "GUI-specific parameter required for output directory"
@@ -1082,6 +1092,11 @@ def run(args,
     mam.map_manager().set_original_origin_and_gridding(
        original_origin = params.output_origin_grid_units,
        gridding = params.output_unit_cell_grid)
+    if mam.map_manager().ncs_object():
+      mam.map_manager().ncs_object().display_all()
+      from scitbx.array_family import flex
+      mam.map_manager().ncs_object().set_shift_cart(
+        mam.map_manager().shift_cart())
 
     if mam.model():
       mam.model().shift_model_and_set_crystal_symmetry(
@@ -1098,6 +1113,14 @@ def run(args,
        not mam.map_manager().is_consistent_with_wrapping()):
       print("\nWARNING: This map is not consistent with wrapping but wrapping"+
         " is set to True",file = log)
+
+  # Adjust labels
+  if params.output_map_label:  # add it
+    for label in params.output_map_label:
+      mam.map_manager().add_label(label)
+
+  if params.remove_output_map_labels:
+    mam.map_manager().remove_labels()
 
   # Print out any notes about the output files
   print_notes(params = params, mam = mam,
@@ -1172,6 +1195,7 @@ def run(args,
         filename =  "%s.ncs_spec"%params.output_file_name_prefix
       dm.write_ncs_spec_file(ncs_object, filename = filename)
       print("\nWriting symmetry to %s" %( filename), file = log)
+      # we are writing out new location
 
     # Write ccp4 map.
     if("ccp4" in params.output_format):
@@ -1393,8 +1417,12 @@ def apply_mask_around_atoms(mam, params = None, log = None):
        mask_atoms_atom_radius), file = log)
     if params.set_outside_to_mean_inside:
       print("Value outside mask will be set to mean inside", file = log)
+    if params.invert_mask:
+      print("Mask will be inverted (zero inside region of atoms, one outside)",
+        file=log)
     mam.map_manager().create_mask_around_atoms(model = mam.model(),
-        mask_atoms_atom_radius = mask_atoms_atom_radius)
+        mask_atoms_atom_radius = mask_atoms_atom_radius,
+        invert_mask = params.invert_mask)
     if (params.soft_mask): # make it a soft mask
       mam.map_manager().soft_mask(soft_mask_radius = params.soft_mask_radius)
       print ("Mask will be soft with radius of %.1f A" %(

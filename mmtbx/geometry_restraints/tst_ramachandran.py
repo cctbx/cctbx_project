@@ -157,7 +157,7 @@ def exercise_lbfgs_simple(mon_lib_srv, ener_lib, verbose=False):
   # Note that the ramalyze score for the first actually gets slightly worse,
   # but it's still good and we're starting from an excellent score anyway.
   #
-  residuals = [0.00168766995882, 170.84797160, 161.5214609]
+  residuals = [0.00168766995882, 170.847971607, 161.521460906]
   for i, peptide in enumerate([pdb1, pdb2, pdb3]):
     pdb_in = iotbx.pdb.input(source_info="peptide",
       lines=flex.split_lines(peptide))
@@ -420,6 +420,9 @@ phi-psi angles formed by             residual
 Ramachandran plot restraints (emsley8k): 0
 Sorted by residual:
 
+Ramachandran plot restraints (phi/psi/2): 0
+Sorted by residual:
+
 """)
 
   params.favored = 'oldfield'
@@ -493,6 +496,9 @@ Ramachandran plot restraints (Emsley): 0
 Sorted by residual:
 
 Ramachandran plot restraints (emsley8k): 0
+Sorted by residual:
+
+Ramachandran plot restraints (phi/psi/2): 0
 Sorted by residual:
 
 """)
@@ -569,6 +575,9 @@ phi-psi angles formed by             residual
     pdb=" N   ALA     7 "
 
 Ramachandran plot restraints (emsley8k): 0
+Sorted by residual:
+
+Ramachandran plot restraints (phi/psi/2): 0
 Sorted by residual:
 
 """)

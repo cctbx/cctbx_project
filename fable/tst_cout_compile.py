@@ -80,7 +80,8 @@ class file_name_and_expected_cout_info(object):
 def read_file_names_and_expected_cout(test_valid):
   from fable.utils import keyed_lists
   import os.path as op
-  text = open(op.join(test_valid, "file_names_and_expected_cout")).read()
+  with open(op.join(test_valid, "file_names_and_expected_cout")) as f:
+    text = f.read()
   result = keyed_lists()
   file_name, info = None, None
   for line in text.splitlines():
@@ -178,7 +179,8 @@ class process_file_info(object):
         base_name += "_alt%d" % i_ces
       fem_cpp = base_name + "_fem.cpp"
       fem_exe_name = fem_cpp[:-4] + O.comp_env.exe_suffix
-      print("\n".join(lines), file=open(fem_cpp, "w"))
+      with open(fem_cpp, "w") as f:
+        print("\n".join(lines), file=f)
       if (opts.ifort):
         ifort_exe_name = base_name + "_ifort"
         ifort_cmd = "ifort -diag-disable 7000 -o %s %s" % (
@@ -335,10 +337,14 @@ def
 ghij
 klmno
 """.splitlines()
-  open("unix.txt", "wb").write("\n".join(lines)+"\n")
-  open("dos.txt", "wb").write("\r\n".join(lines)+"\r\n")
-  open("dos2.txt", "wb").write("\r\r\n".join(lines)+"\r\n")
-  open("mac.txt", "wb").write("\r".join(lines)+"\r")
+  with open("unix.txt", "wb") as f:
+    f.write("\n".join(lines)+"\n")
+  with open("dos.txt", "wb") as f:
+    f.write("\r\n".join(lines)+"\r\n")
+  with open("dos2.txt", "wb") as f:
+    f.write("\r\r\n".join(lines)+"\r\n")
+  with open("mac.txt", "wb") as f:
+    f.write("\r".join(lines)+"\r")
   from libtbx import easy_run
   from libtbx.utils import remove_files
   import os
@@ -354,7 +360,8 @@ klmno
     if (verbose): print(cmd)
     easy_run.fully_buffered(command=cmd).raise_if_errors_or_output()
     assert op.isfile("read_lines_out")
-    result = open("read_lines_out", "rb").read()
+    with open("read_lines_out", "rb") as f:
+      result = f.read()
     assert result == expected.replace("\n", os.linesep)
 
 def exercise_compile_valid(regex_patterns, opts):

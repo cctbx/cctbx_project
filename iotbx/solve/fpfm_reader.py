@@ -10,19 +10,20 @@ class reader(object):
     assert [file_name, file_object].count(None) == 1
     if (file_object is None):
       file_object = open(file_name)
-    line = file_object.readline()
+    self.file_object = file_object
+    line = self.file_object.readline()
     n_data_columns = int(line)
     assert n_data_columns == 4, "Exactly 4 data columns expected."
-    file_object.readline() # ignore the FORTRAN format line
+    self.file_object.readline() # ignore the FORTRAN format line
     label = None
     for sign in ("+", "-"):
-      flds = file_object.readline().split()
+      flds = self.file_object.readline().split()
       assert flds[0] == "F"+sign, "F"+sign+" header line expected."
       if (label is None):
         label = flds[-1]
       else:
         assert flds[-1] == label, "Inconsistent wavelength label."
-      flds = file_object.readline().split()
+      flds = self.file_object.readline().split()
       assert flds[:3] == ("sig of F"+sign).split(), \
         "sig of F"+sign+" header line expected."
       assert flds[-1] == label, "Inconsistent wavelength label."
@@ -30,7 +31,7 @@ class reader(object):
     self._data = flex.double()
     self._sigmas = flex.double()
     self.n_lines = 6
-    for raw_line in file_object:
+    for raw_line in self.file_object:
       self.n_lines += 1
       try:
         h = [int(raw_line[1+i*4:1+i*4+4]) for i in range(3)]
@@ -48,6 +49,9 @@ class reader(object):
         self._indices.append([-e for e in h])
         self._data.append(d[2])
         self._sigmas.append(d[3])
+
+  def __del__(self):
+    self.file_object.close()
 
   def indices(self):
     return self._indices

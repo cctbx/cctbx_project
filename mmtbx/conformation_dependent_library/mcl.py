@@ -46,12 +46,17 @@ def get_pdb_hierarchy_from_restraints(code):
 
 def update(grm,
            pdb_hierarchy,
-           # link_records=None,
+           link_records=None,
            log=sys.stdout,
            verbose=False,
            ):
-  # if link_records is None: link_records={}
-  # link_records.setdefault('LINK', [])
+  def _atom_id(a, show_i_seq=False):
+    if show_i_seq:
+      return '%s (%5d)' % (a.id_str(), a.i_seq)
+    else:
+      return '%s' % (a.id_str())
+  if link_records is None: link_records={}
+  link_records.setdefault('LINK', [])
   hooks = [
     ["Iron sulfur cluster coordination",
      mcl_sf4_coordination.get_sulfur_iron_cluster_coordination,
@@ -63,6 +68,7 @@ def update(grm,
       ],
     ]
   outl = ''
+  outl_debug = ''
   for label, get_coordination, get_all_proxies in hooks:
     rc = get_coordination(
       pdb_hierarchy=pdb_hierarchy,
@@ -74,6 +80,7 @@ def update(grm,
     if bproxies is None: continue
     if len(bproxies):
       outl += '    %s\n' % label
+      outl += '    %s\n' % label
       atoms = pdb_hierarchy.atoms()
       sf4_coordination = {}
       for bp in bproxies:
@@ -81,17 +88,25 @@ def update(grm,
         sf4_coordination.setdefault(sf4_ag.id_str(), [])
         sf4_coordination[sf4_ag.id_str()].append((atoms[bp.i_seqs[0]],
                                                   atoms[bp.i_seqs[1]]))
-        # link = (atoms[bp.i_seqs[0]], atoms[bp.i_seqs[1]], 'x,y,z')
-        # if link not in link_records: link_records['LINK'].append(link)
+        link = (atoms[bp.i_seqs[0]], atoms[bp.i_seqs[1]], 'x,y,z')
+        if link not in link_records: link_records['LINK'].append(link)
       for sf4, aas in sorted(sf4_coordination.items()):
         outl += '%spdb="%s"\n' % (' '*6, sf4)
-        for aa in sorted(aas):
-          outl += '%s%s - %s\n' % (' '*8, aa[0].id_str(), aa[1].id_str())
+        outl_debug += '%spdb="%s"\n' % (' '*6, sf4)
+        for aa in aas:
+          outl += '%s%s - %s\n' % (' '*8, _atom_id(aa[0]), _atom_id(aa[1]))
+          outl_debug += '%s%s - %s\n' % (' '*8,
+                                         _atom_id(aa[0], True),
+                                         _atom_id(aa[1], True))
     if bproxies:
-      grm.add_new_bond_restraints_in_place(
-        proxies=bproxies,
-        sites_cart=pdb_hierarchy.atoms().extract_xyz(),
-      )
+      try:
+        grm.add_new_bond_restraints_in_place(
+          proxies=bproxies,
+          sites_cart=pdb_hierarchy.atoms().extract_xyz(),
+        )
+      except RuntimeError as e:
+        print('\n\n%s' % outl_debug)
+        raise e
     #
     done = []
     remove = []

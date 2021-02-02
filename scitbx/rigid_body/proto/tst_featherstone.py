@@ -35,7 +35,8 @@ def exercise_basic():
     I=matrix.sym(sym_mat3=(2,3,4,0.1,0.2,0.3)))), 21.306)
 
 def write_matlab_script(label, precision, code):
-  open("tst_featherstone_exercise_%s.m" % label, "w").write("""\
+  with open("tst_featherstone_exercise_%s.m" % label, "w") as f:
+    f.write("""\
 split_long_rows(0);
 output_precision(%d);
 

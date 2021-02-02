@@ -1,14 +1,10 @@
-{% extends "cctbx/header_new.html" %}
+{% extends "cctbx/header.html" %}
 
 {% load static %}
 
 {% block content %}
 
-<div class="container">
-
-<div class="row">
-
-<div class="col-sm-9">
+<div class="col-sm-9 main">
 <!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
 <!-- EDIT START -->
 <!-- Do not indent code! Otherwise, it will have indentation, and break.-->
@@ -68,7 +64,7 @@ ATOM      8  CD2 LEU B 219      10.092   8.808   8.540  1.00 30.00           C
 
 <h3 class="mt-3">Setting up an example model</h3>
 
-<p>The cctbx model manager lets you view and change many attributes of a model. Let’s work with a library model that we can obtain with the map_model_manager (revisit <a href="{% url 'doc_high_level_objects' %}">this page</a> if you need a refresher on high level objects):</p>
+<p>The cctbx model manager lets you view and change many attributes of a model. Let’s work with a library model that we can obtain with the map_model_manager (revisit <a href="{% url 'doc_hlo_intro' %}">this page</a> if you need a refresher on high level objects):</p>
 
 <pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager      #   load in the map_model_manager
 mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
@@ -77,7 +73,7 @@ mmm.write_map("map.mrc")        #   write out a map in ccp4/mrc format
 mmm.write_model("model.pdb")    #   write out a model in PDB format
 </code></pre>
 
-<p>Then we will set up the DataManager and read the example model (described <a href="{% url 'doc_data_manager' %}">here</a>):</p>
+<p>Then we will set up the DataManager and read the example model (described <a href="{% url 'doc_hlo_data_manager' %}">here</a>):</p>
 
 <pre class="codeDL"><code>from iotbx.data_manager import DataManager    #   Load in the DataManager
 dm = DataManager()                            #   Initialize the DataManager and call it dm
@@ -222,12 +218,9 @@ map_data = get_map_from_map_coeffs(map_coeffs = map_coeffs)   #  create map from
 
 <!-- automatic table of contents
      located in the sidebar; will move to the top on a small screen -->
-<div class="col-sm-3">
+<div class="col-sm-3 mt-5">
   <nav id="toc" data-toggle="toc"></nav>
 </div> <!-- end col-sm-3 -->
 
-</div> <!-- end row -->
-
-</div> <!-- end container -->
 
 {% endblock %}

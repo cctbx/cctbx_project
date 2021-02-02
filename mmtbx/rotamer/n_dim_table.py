@@ -21,7 +21,7 @@ class NDimTable:
     #wBin    = [] # nDim doubles, width of each bin per dimension (nice to precalculate)
     #lookupTable = None # an array of floating point numbers; the actual data
 
-
+    @staticmethod
     def createFromText(infile):
         '''Loads rotamer or Ramachandran data from a text file, returning a new object.
 
@@ -66,7 +66,6 @@ class NDimTable:
             ndt.setValueAt( ndt.whereIs(coords), val )
             s = infile.readline()
         return ndt
-    createFromText = staticmethod(createFromText)
 
 
     def whereIs(self, coords):

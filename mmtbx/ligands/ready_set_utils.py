@@ -141,18 +141,23 @@ def add_n_terminal_hydrogens_to_residue_group(residue_group,
                                               append_to_end_of_model=False,
                                              ):
   rc=[]
-  for ag, (n, ca, c) in generate_atom_group_atom_names(residue_group,
+  for atom_group, atoms in generate_atom_group_atom_names(residue_group,
                                                        ['N', 'CA', 'C'],
+                                                       verbose=False
                                                        ):
-    tmp = add_n_terminal_hydrogens_to_atom_group(
-      ag,
-      bonds=bonds,
-      use_capping_hydrogens=use_capping_hydrogens,
-      append_to_end_of_model=append_to_end_of_model,
-      n_ca_c=[n,ca,c],
-    )
-    assert type(tmp)!=type(''), 'not string "%s" %s' % (tmp, type(tmp))
-    rc += tmp
+    if None not in [atom_group, atoms]:
+#  for ag, (n, ca, c) in generate_atom_group_atom_names(residue_group,
+#                                                       ['N', 'CA', 'C'],
+#                                                       ):
+      tmp = add_n_terminal_hydrogens_to_atom_group(
+        atom_group,
+        bonds=bonds,
+        use_capping_hydrogens=use_capping_hydrogens,
+        append_to_end_of_model=append_to_end_of_model,
+        n_ca_c=atoms,
+      )
+      assert type(tmp)!=type(''), 'not string "%s" %s' % (tmp, type(tmp))
+      rc += tmp
   return rc
 
 def add_c_terminal_oxygens_to_atom_group(ag,

@@ -10,7 +10,7 @@ except ImportError:
 
 """
 Test that the spacegroup class retains order of symmetry operations when restored
-from pickling. This is done in cctbx_project\cctbx\sgtbx\boost_python\space_group.cpp
+from pickling. This is done in cctbx_project/cctbx/sgtbx/boost_python/space_group.cpp
 by calling make_tidy() in the space_group_wrappers::setstate() function.
 """
 

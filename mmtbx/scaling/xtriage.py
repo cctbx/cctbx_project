@@ -792,7 +792,8 @@ class xtriage_analyses(mmtbx.scaling.xtriage_analysis):
     print("", file=text_out)
     #Do the twinning analyses
     ## resolution check
-    if (flex.min(miller_obs.d_spacings().data())
+    if (twin_params.twin_test_cuts.high_resolution is not None
+        and flex.min(miller_obs.d_spacings().data())
         > twin_params.twin_test_cuts.high_resolution):
       params.scaling.input.xray_data.high_resolution = flex.min(
         miller_obs.d_spacings().data())

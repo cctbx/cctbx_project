@@ -180,7 +180,8 @@ END
   pdb_data_symm = """\
 CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
 """ + pdb_data
-  open("tmp_file_reader2.pdb", "w").write(pdb_data_symm)
+  with open("tmp_file_reader2.pdb", "w") as f:
+    f.write(pdb_data_symm)
   pdb = any_file("tmp_file_reader2.pdb").assert_file_type("pdb")
   symm = pdb.crystal_symmetry()
   assert (str(symm.space_group_info()) == "P 1 21 1")
@@ -331,7 +332,8 @@ NGVDLAAMLRRQGPLAPPRAVAIVRQIGSALDAAHAAGATHRDVKPENILVSADDFAYLV
 DFGIASATTD--EKLTQLGNTVGTLYYMAPERFSESHATYRADIYALTCVLYECLTGSPP
 YQGDQ-LSVMGAHINQAIPRPSTVRPGIPVAFDAVIARGMAKNPEDRYVTCGDLSA----
 -----AAHAALATADQDRATDILR--------R"""
-  open("seqs.aln", "w").write(aln1)
+  with open("seqs.aln", "w") as f:
+    f.write(aln1)
   f = any_file("seqs.aln")
   f.assert_file_type("aln")
   assert (f.file_object.names == ["1mru_A", "2h34_A"])
@@ -346,7 +348,8 @@ MUSCLE (3.8) multiple sequence alignment
 1mru_A          DVAVKVLRADLARDPSFYLRFRREAQNAAALNHPAIVAVYDTGEAETPAGPLPYIVMEYV
 2h34_A          IVALKLMSETLSSDPVFRTRMQREARTAGRLQEPHVVPIHDFGEID---GQL-YVDMRLI
                  **:*::   *: ** *  *:.***..*. *: * :*.::* ** :   * * *: *  :"""
-  open("seqs.aln", "w").write(aln2)
+  with open("seqs.aln", "w") as f:
+    f.write(aln2)
   f = any_file("seqs.aln")
   f.assert_file_type("aln")
   assert (f.file_object.names == ["1mru_A", "2h34_A"])

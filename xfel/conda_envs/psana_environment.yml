@@ -13,6 +13,7 @@ dependencies:
  - psana-conda  >= 2.0.9
 
  # python
+ - python=3.7
  - biopython
  - ipython
 
@@ -28,7 +29,7 @@ dependencies:
  # graphics
  - pillow
  - reportlab
- - wxpython
+ - wxpython=4.0.*
  - pyopengl
 
  # HDF5 (main libraries come with psana)

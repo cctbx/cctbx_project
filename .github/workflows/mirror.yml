@@ -25,7 +25,7 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         checkName: Checks
-        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        ref: ${{ github.event.check_suite.head_sha }}
         intervalSeconds: 30
         timeoutSeconds: 120
 
@@ -39,7 +39,7 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         checkName: XFEL CI
-        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        ref: ${{ github.event.check_suite.head_sha }}
         intervalSeconds: 30
         timeoutSeconds: 120
 
@@ -53,7 +53,7 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         checkName: CI
-        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        ref: ${{ github.event.check_suite.head_sha }}
         intervalSeconds: 30
         timeoutSeconds: 120
 
@@ -63,8 +63,21 @@ jobs:
       with:
         fetch-depth: '0'
 
-    - name: Install SSH key
+    - name: Check if commit is on master
       if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-xfel-build.outputs.conclusion == 'success' && steps.wait-for-build.outputs.conclusion == 'success'
+      id: is-on-master
+      run: |
+        git status
+        git merge-base --is-ancestor ${{ github.event.check_suite.head_sha }} HEAD && {
+          echo Commit is on master
+          echo "::set-output name=conclusion::proceed"
+        } || {
+          echo Commit is not on master
+          echo "::set-output name=conclusion::skip"
+        }
+
+    - name: Install SSH key
+      if: steps.is-on-master.outputs.conclusion == 'proceed'
       uses: Anthchirp/action-ssh-key@b4a94d05b860c19f609854947327a4882269b7c1
             # Original repository: https://github.com/shimataro/ssh-key-action
             # This is PR https://github.com/shimataro/ssh-key-action/pull/122
@@ -75,9 +88,10 @@ jobs:
          name: id_rsa # optional
 
     - name: Mirror stable branch
-      if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-xfel-build.outputs.conclusion == 'success' && steps.wait-for-build.outputs.conclusion == 'success'
+      if: steps.is-on-master.outputs.conclusion == 'proceed'
       run: |
         git remote add mirror git@github.com:dials/cctbx.git
+        git reset --hard ${{ github.event.check_suite.head_sha }}
         git rev-parse HEAD
         git status
-        git push -f mirror HEAD:master
+        git push mirror HEAD:master

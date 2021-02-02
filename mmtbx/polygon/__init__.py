@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 import iotbx.phil
 import mmtbx.polygon
-import libtbx, os, re
+import libtbx, os, re, sys
 from libtbx.utils import Sorry
 from libtbx import easy_pickle
 from six.moves import range
@@ -160,6 +160,16 @@ def load_db(file_name=None):
       test = os.path.isfile)
   assert os.path.isfile(file_name)
   database_dict = easy_pickle.load(file_name)
+
+  # =========================================================================
+  # change keys in pickle to Python 3 string
+  # very temporary fix until pickle is updated
+  if sys.version_info.major == 3:
+    from libtbx.utils import to_str
+    for key in list(database_dict.keys()):
+      database_dict[to_str(key)] = database_dict[key]
+  # =========================================================================
+
   return database_dict
 
 def polygon(params = master_params.extract(), d_min = None,

@@ -438,7 +438,7 @@ class plot_frame(wx.Frame):
       # bitmaps.fetch_icon_bitmap("devices", "printer1"),
       # self.OnPrint),
     ]
-    tb = wx.ToolBar(self, style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+    tb = wx.ToolBar(self, style=wx.TB_TEXT)
     tb.SetToolBitmapSize((32,32))
     self.SetToolBar(tb)
     for (name, bitmap, function) in tb_buttons :

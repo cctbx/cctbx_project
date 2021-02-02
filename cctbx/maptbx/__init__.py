@@ -1399,8 +1399,10 @@ Class-toolkit to compute various 1-atom 1D curves: exact electron density,
 Fourier image of specified resolution, etc.
   """
 
-  def __init__(self, scattering_type, scattering_table = "wk1995"):
+  def __init__(self, scattering_type, scattering_table = "wk1995",
+               scattering_dictionary=None):
     adopt_init_args(self, locals())
+    assert [self.scattering_table, self.scattering_dictionary].count(None)==1
     self.scr = self.get_xray_structure(box = 1, b = 0).scattering_type_registry()
     self.uff = self.scr.unique_form_factors_at_d_star_sq
 
@@ -1414,7 +1416,10 @@ Fourier image of specified resolution, etc.
       u               = adptbx.b_as_u(b))
     scatterers = flex.xray_scatterer([sc])
     xrs = xray.structure(sp, scatterers)
-    xrs.scattering_type_registry(table = self.scattering_table)
+    if(self.scattering_table is not None):
+      xrs.scattering_type_registry(table = self.scattering_table)
+    else:
+      xrs.scattering_type_registry(custom_dict = self.scattering_dictionary)
     return xrs
 
   def exact_density_at_r(self, r, b_iso):

@@ -9,7 +9,8 @@ def show_observations(obs,out=None, n_bins=12):
     out = sys.stdout
   from libtbx.str_utils import format_value
 
-  obs.setup_binner(n_bins = n_bins)
+  if n_bins is not None: # if None, assume binner already set up
+    obs.setup_binner(n_bins = n_bins)
   result = []
   counts_given = obs.binner().counts_given()
   counts_complete = obs.binner().counts_complete()

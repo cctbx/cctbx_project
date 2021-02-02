@@ -1,15 +1,10 @@
-{% extends "cctbx/header_new.html" %}
+{% extends "cctbx/header.html" %}
 
 {% load static %}
 
 {% block content %}
 
-<div class="container">
-
-<div class="row">
-
-
-<div class="col-sm-9">
+<div class="col-sm-9 main">
 <!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
 <!----------------------- EDIT START ---------------------------->
 
@@ -47,7 +42,7 @@ dm = DataManager()                             # Get an initialized version as d
 
 <h3 class="mt-3">Setting up the example files</h3>
 
-<p>Let’s work with a library model and calculate a map for it. We can obtain the example model with the map_model_manager (revisit <a href="{% url 'doc_high_level_objects' %}">this page</a> if you need a refresher on high level objects):</p>
+<p>Let’s work with a library model and calculate a map for it. We can obtain the example model with the map_model_manager (revisit <a href="{% url 'doc_hlo_intro' %}">this page</a> if you need a refresher on high level objects):</p>
 
 <pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager      #   load in the map_model_manager
 mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
@@ -64,7 +59,10 @@ mmm.write_model("model.pdb")    #   write out a model in PDB format
 
 <pre class="codeDL"><code>map_filename="map.mrc"                       #   Name of map file
 mm = dm.get_real_map(map_filename)           #   Deliver map_manager object with map info
+mm.shift_origin()     #  Make sure that the origin is shifted to (0,0,0)
 </code></pre>
+
+<p>Notice that we have made sure that the origin is at (0,0,0) after reading in the map.  We will see why this is important later. For now, keep in mind that if you read in a map directly, you nearly always will want to shift the origin to (0,0,0) with the <code>shift_origin()</code> command before using the map. </p>
 
 <p>The <code>show_summary()</code> method allows you to see a summary of the map that we have just read in:</p>
 
@@ -330,7 +328,7 @@ indices[1], data[1]                # indices and data for first term
 <pre class="codeDL"><code>map_coeffs_low_res.size()   # number of data in the low_res Fourier representation
 </code></pre>
 
-<p>We can save these map coefficients as an MTZ file just as we did in the <a href="{% url 'doc_data_manager' %}">tutorial on reading and writing files</a>:</p>
+<p>We can save these map coefficients as an MTZ file just as we did in the <a href="{% url 'doc_hlo_data_manager' %}">tutorial on reading and writing files</a>:</p>
 
 <pre class="codeDL"><code>mtz_dataset = map_coeffs_low_res.as_mtz_dataset(column_root_label='F')    # mtz dataset
 mtz_object=mtz_dataset.mtz_object()            #  extract an object that knows mtz format
@@ -356,7 +354,7 @@ dm.write_miller_array_file(mtz_object, filename="map_coeffs_low_res.mtz") #write
 
 <!-- ----------------------------------------------------------------------- -->
 
-<h3 class="mt-3">Shifting the origin of a map</h3>
+<h3 class="mt-3">Shifting the origin of a map: Be sure to use shift_origin() before using a map_manager for anything except as input to the map_model_manager</h3>
 
 <p>MRC maps often are supplied as just a portion of the full map. Instead of the supplied map starting at (0,0,0) and going to (511,511,511) as in the full map, perhaps the supplied map goes only from (100,100,100) to (400,400,400). This is referred to as having an origin of (0,0,0) in the full map and (100,100,100) in the supplied map.</p>
 
@@ -504,12 +502,9 @@ print ( ncs_map_manager.ncs_object())
 
 <!-- automatic table of contents
      located in the sidebar; will move to the top on a small screen -->
-<div class="col-sm-3">
+<div class="col-sm-3 mt-5">
   <nav id="toc" data-toggle="toc"></nav>
 </div> <!-- end col-sm-3 -->
 
-</div> <!-- end row -->
-
-</div> <!-- end container -->
 
 {% endblock %}

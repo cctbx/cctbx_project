@@ -173,7 +173,7 @@ class queue_list_frame(wx.Frame):
   def SetupToolbar(self):
     if wxtbx.bitmaps.icon_lib is None :
       return
-    self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+    self.toolbar = self.CreateToolBar(style=wx.TB_TEXT)
     commands = [
       ("actions","reload", "OnUpdate", "Refresh list"),
       ("actions","editdelete", "OnDelete", "Delete selected"),

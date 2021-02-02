@@ -46,6 +46,11 @@ def run(args):
     for rg in trial.rungroups:
       for run in rg.runs:
         if run.id in run_ids: continue
+        if params.run_tags:
+          s1 = set(params.run_tags)
+          s2 = set(tag.name for tag in run.tags)
+          if not s1.intersection(s2): continue
+
         runs.append(run.run)
         run_ids.append(run.id)
         rungroups.append(rg.id)
@@ -54,7 +59,8 @@ def run(args):
     assert params.rungroup is not None
     rungroups = [params.rungroup] * len(runs)
 
-  for run_no, rungroup_id in zip(runs, rungroups):
+  for run_no, rungroup_id in sorted(zip(runs, rungroups), key=lambda x: int(x[0])):
+    if params.rungroup and params.rungroup != rungroup_id: continue
     try:
       timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi, n_lattices = HitrateStats(app, run_no, params.trial, rungroup_id, params.d_min)()
     except Exception as e:

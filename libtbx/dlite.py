@@ -26,7 +26,8 @@ class node_info(object):
     full_path = self.full_path(path_prefix=path_prefix)
     if (not os.path.exists(full_path)): return None
     m = hashlib.md5()
-    m.update(open(full_path, "rb").read())
+    with open(full_path, "rb") as f:
+      m.update(f.read())
     return m.hexdigest()
 
   def has_changed(self, path_prefix=None, mtime_resolution=2):

@@ -655,7 +655,7 @@ def test_map_mixins():
 # -----------------------------------------------------------------------------
 def test_default_filenames():
   datatypes = ['model', 'ncs_spec', 'phil', 'real_map', 'restraint', 'sequence']
-  extensions = ['cif', 'ncs_spec', 'eff', 'mrc', 'cif', 'seq']
+  extensions = ['cif', 'ncs_spec', 'eff', 'ccp4', 'cif', 'seq']
   dm = DataManager(datatypes)
   for datatype, extension in zip(datatypes, extensions):
     filename = getattr(dm, 'get_default_output_{datatype}_filename'.
@@ -680,13 +680,19 @@ output {
   p = ProgramTemplate(dm, params, master_phil)
   assert dm.get_default_output_filename() == 'cctbx_program_000'
   dm.set_overwrite(False)
-  dm.write_model_file('abc')    # cctbx_program_000.cif
-  dm.write_phil_file('123')     # cctbx_program_000.eff
-  dm.write_phil_file('456')     # cctbx_program_001.eff
-  dm.write_model_file('def')    # cctbx_program_001.cif
+  name = dm.write_model_file('abc')    # cctbx_program_000.cif
+  assert name == 'cctbx_program_000.cif'
+  name = dm.write_phil_file('123')     # cctbx_program_000.eff
+  assert name == 'cctbx_program_000.eff'
+  name = dm.write_phil_file('456')     # cctbx_program_001.eff
+  assert name == 'cctbx_program_001.eff'
+  name = dm.write_model_file('def')    # cctbx_program_001.cif
+  assert name == 'cctbx_program_001.cif'
   assert dm.get_default_output_filename() == 'cctbx_program_001'
-  dm.write_sequence_file('ghi') # cctbx_program_001.seq
-  dm.write_sequence_file('hkl') # cctbx_program_002.seq
+  name = dm.write_sequence_file('ghi') # cctbx_program_001.seq
+  assert name == 'cctbx_program_001.seq'
+  name = dm.write_sequence_file('hkl') # cctbx_program_002.seq
+  assert name == 'cctbx_program_002.seq'
   assert dm.get_default_output_filename() == 'cctbx_program_002'
   assert os.path.isfile('cctbx_program_000.cif')
   assert os.path.isfile('cctbx_program_001.cif')

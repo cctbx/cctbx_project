@@ -173,6 +173,11 @@ def generate_model(
   dm.process_model_file(file_name)
   model = dm.get_model(file_name)
 
+  if not model.crystal_symmetry() or not model.crystal_symmetry().unit_cell():
+    from cctbx.maptbx.box import shift_and_box_model
+    model = shift_and_box_model(model = model,
+      box_cushion = box_cushion)
+
   selection=model.selection('resseq %s:%s' %(start_res,start_res+n_residues-1))
   model=model.select(selection)
 
@@ -217,7 +222,10 @@ def generate_map_coefficients(
       model=None,  # Required model
       output_map_coeffs_file_name=None,
       d_min=3,
+      k_sol = None,
+      b_sol = None,
       scattering_table='electron',
+      f_obs_array = None,
       log=sys.stdout):
   '''
     Convenience function to create map coefficients from a model.
@@ -235,11 +243,15 @@ def generate_map_coefficients(
     Parameters:
     -----------
 
-      model (model.manager object, None):    model to use
+      model (model.manager object, None):    model to use.
+         contains crystal_symmetry
       output_map_coeffs_file_name (string, None): output model file name
       d_min (float, 3):   High-resolution limit for map coeffs (A)
       scattering_table (choice, 'electron'): choice of scattering table
            All choices: wk1995 it1992 n_gaussian neutron electron
+      f_obs_array:  array used to match indices of fcalc
+      crystal_symmetry:  used for crystal symmetry (overrides model value but
+        not f_obs)
 
   '''
 
@@ -251,16 +263,25 @@ def generate_map_coefficients(
   from mmtbx.command_line.fmodel import master_phil
   fmodel_params=master_phil.extract()
 
+  if f_obs_array:
+    assert f_obs_array.crystal_symmetry().is_similar_symmetry(
+      model.crystal_symmetry())
+
   assert model.crystal_symmetry() is not None # Need crystal_symmetry in model
 
   xrs=model.get_xray_structure()
 
   fmodel_params.high_resolution=float(d_min)
   fmodel_params.scattering_table=scattering_table
-
+  if k_sol is not None and b_sol is not None:
+    fmodel_params.fmodel.k_sol = k_sol
+    fmodel_params.fmodel.b_sol = b_sol
+  if f_obs_array:
+     fmodel_params.high_resolution=f_obs_array.d_min()-0.0001 # different cut
   fmodel=fmodel_from_xray_structure(
     xray_structure = xrs,
     params         = fmodel_params,
+    f_obs          = f_obs_array,
     out            = log)
   f_model=fmodel.f_model
   if output_map_coeffs_file_name:

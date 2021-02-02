@@ -176,8 +176,8 @@ def exercise_levenberg_marquardt(non_linear_ls, plot=False):
   if plot:
     f = open('plot.nb', 'w')
     print("g=%s;" % iterations.gradient_norm_history.mathematica_form(), file=f)
-    print("\[Mu]=%s;" % iterations.mu_history.mathematica_form(), file=f)
-    print("ListLogPlot[{g,\[Mu]},Joined->True]", file=f)
+    print("\\[Mu]=%s;" % iterations.mu_history.mathematica_form(), file=f)
+    print("ListLogPlot[{g,\\[Mu]},Joined->True]", file=f)
     f.close()
 
 def run():

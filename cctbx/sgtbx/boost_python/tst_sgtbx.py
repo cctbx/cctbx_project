@@ -135,7 +135,7 @@ def exercise_symbols():
   if (not os.path.isfile(symbols_cpp)):
     print("Skipping checks based on %s: file not available" % symbols_cpp)
   else:
-    f = iter(open(symbols_cpp))
+    f = open(symbols_cpp)
     for volume,table_name,short_symbols in [
           ("I", "vol_i_short_mono_hm_dict", short_symbols_i),
           ("A", "vol_a_short_mono_hm_dict", short_symbols_a)]:
@@ -153,6 +153,7 @@ def exercise_symbols():
         assert expected_short == short
         assert sgtbx.space_group_symbols(short, volume).hall() \
             == sgtbx.space_group_symbols(long, volume).hall()
+    f.close()
   #
   s = sgtbx.space_group_symbols
   try: s("(x,y,z)")

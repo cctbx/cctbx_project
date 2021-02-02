@@ -54,7 +54,6 @@ def writer(
   assert ([file_object, file_name].count(None) == 1)
   if (file_object is None):
     file_object = open(file_name, "w")
-  f = file_object
   space_group = i_obs.space_group()
   # generate array for the centric/I+/I- flag
   centric_flags = i_obs.centric_flags().data()
@@ -73,18 +72,17 @@ def writer(
   #  isym)
   # write out symmetry operators
   n_smx = space_group.n_smx()
-  f.write("%5d %s\n" % (n_smx, i_obs.space_group_info()))
+  file_object.write("%5d %s\n" % (n_smx, i_obs.space_group_info()))
   for smx in space_group.smx():
     smx_rot = smx.as_int_array()[0:9]
     smx_tra = smx.as_int_array()[9:]
     for r in smx_rot :
-      f.write("%3d" % r)
-    f.write("\n")
+      file_object.write("%3d" % r)
+    file_object.write("\n")
     for t in smx_tra :
-      f.write("%3d" % t)
-    f.write("\n")
+      file_object.write("%3d" % t)
+    file_object.write("\n")
   # write out reflections
-
   if scale_intensities_for_scalepack_merge: # 2014-01-07 TT
     from iotbx.scalepack.merge import scale_intensities_if_necessary
     i_obs=scale_intensities_if_necessary(i_obs,out=out)
@@ -99,7 +97,7 @@ def writer(
     i_formatted=format_f8_1_or_i8((h,k,l),"intensity",i_obs.data()[i_refl])
     s_formatted=format_f8_1_or_i8((h,k,l),"sigma",i_obs.sigmas()[i_refl])
 
-    f.write("%4d%4d%4d%4d%4d%4d%6d%2d%2d%3d%s%s\n" %
+    file_object.write("%4d%4d%4d%4d%4d%4d%6d%2d%2d%3d%s%s\n" %
       (h, k, l, h_asu, k_asu, l_asu, batch, c_flag, spindle_flag,
       asu_number, i_formatted,s_formatted,))
   file_object.close()
@@ -107,22 +105,21 @@ def writer(
 class reader(object):
   def __init__(self, file_name, header_only=False):
     self.file_name = os.path.normpath(file_name)
-    f = open(file_name)
-    line = f.readline()
-    assert line[5] == " "
-    n_sym_ops_from_file = int(line[:5].strip())
-    assert n_sym_ops_from_file > 0
-    self.space_group_symbol = line[6:].strip()
-    self.space_group_from_ops = sgtbx.space_group()
-    for i in range(n_sym_ops_from_file):
-      line = f.readline().rstrip()
-      assert len(line) == 27
-      r = sgtbx.rot_mx([int(line[j*3:(j+1)*3]) for j in range(9)], 1)
-      line = f.readline().rstrip()
-      assert len(line) == 9
-      t = sgtbx.tr_vec([int(line[j*3:(j+1)*3]) for j in range(3)], 12)
-      self.space_group_from_ops.expand_smx(sgtbx.rt_mx(r, t))
-    f.close()
+    with open(file_name) as f:
+      line = f.readline()
+      assert line[5] == " "
+      n_sym_ops_from_file = int(line[:5].strip())
+      assert n_sym_ops_from_file > 0
+      self.space_group_symbol = line[6:].strip()
+      self.space_group_from_ops = sgtbx.space_group()
+      for i in range(n_sym_ops_from_file):
+        line = f.readline().rstrip()
+        assert len(line) == 27
+        r = sgtbx.rot_mx([int(line[j*3:(j+1)*3]) for j in range(9)], 1)
+        line = f.readline().rstrip()
+        assert len(line) == 9
+        t = sgtbx.tr_vec([int(line[j*3:(j+1)*3]) for j in range(3)], 12)
+        self.space_group_from_ops.expand_smx(sgtbx.rt_mx(r, t))
     if (header_only):
       self.original_indices = None
       return

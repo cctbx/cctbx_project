@@ -127,7 +127,8 @@ def exercise(args, distance_cutoff=3.5, max_shell=5):
   if (atlas_file is None):
     print("Skipping exercise(): input file not available")
     return
-  all_entries = strudat.read_all_entries(open(atlas_file))
+  with open(atlas_file) as f:
+    all_entries = strudat.read_all_entries(f)
   for i,entry in enumerate(all_entries.entries):
     structure = entry.as_xray_structure()
     if (co.tag is not None):

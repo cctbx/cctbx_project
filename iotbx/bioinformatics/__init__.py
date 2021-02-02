@@ -893,7 +893,8 @@ def any_sequence_format(file_name, assign_name_if_not_defined=False,
     data=None):
   format_parser = sequence_parser_for(file_name)
   if data is None:
-    data = open(file_name, "r").read()
+    with open(file_name, "r") as f:
+      data = f.read()
   seq_object = None
   if (format_parser is not None):
     try :
@@ -1242,7 +1243,8 @@ def known_alignment_formats():
 
 def any_alignment_file(file_name):
   base, ext = os.path.splitext(file_name)
-  data = open(file_name).read()
+  with open(file_name) as f:
+    data = f.read()
   parser1 = None
   if (ext != ".hhr") and (ext in _implemented_alignment_parsers):
     parser1 = _implemented_alignment_parsers.get(ext)
@@ -1766,7 +1768,8 @@ class hhalign_parser(hhpred_parser):
       )
 
 def any_hh_file(file_name):
-  data = open(file_name).read()
+  with open(file_name) as f:
+    data = f.read()
   for parser in [hhalign_parser, hhsearch_parser] :
     try :
       p = parser(data)
@@ -1831,7 +1834,8 @@ def get_sequences(file_name=None,text=None,remove_duplicates=None):
     if not file_name:
       raise Sorry("Missing file for get_sequences: %s" %(
         file_name))
-    text=open(file_name).read()
+    with open(file_name) as f:
+      text = f.read()
   # clear any lines that have only > and nothing else
   text=clear_empty_lines(text)
 
@@ -1895,11 +1899,13 @@ def get_chain_type(model=None, hierarchy=None):
     else:
       raise Sorry("Model does not appear to contain protein or RNA or DNA")
 
-def get_sequence_from_hierarchy(hierarchy, chain_type=None):
-  return get_sequence_from_pdb(hierarchy=hierarchy,chain_type=chain_type)
+def get_sequence_from_hierarchy(hierarchy, chain_type=None,
+     remove_white_space=False):
+  return get_sequence_from_pdb(hierarchy=hierarchy,chain_type=chain_type,
+     remove_white_space=remove_white_space)
 
 def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None,
-    chain_type=None):
+    chain_type=None, remove_white_space=False):
 
   if not hierarchy:
     # read from PDB
@@ -1908,7 +1914,8 @@ def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None,
         from libtbx.utils import Sorry
         raise Sorry("Missing file for get_sequence_from_pdb: %s" %(
           file_name))
-      text=open(file_name).read()
+      with open(file_name) as f:
+        text = f.read()
     import iotbx.pdb
     pdb_inp = iotbx.pdb.input(lines=text.splitlines(),source_info="None")
     import mmtbx.model
@@ -1916,6 +1923,9 @@ def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None,
           model_input = pdb_inp,
           stop_for_unknowns = False)
     hierarchy=mm.get_hierarchy()
+
+  if hierarchy.overall_counts().n_residues == 0:
+    return ""  # nothing there
 
   if not chain_type:
     chain_type = get_chain_type(hierarchy = hierarchy)
@@ -1939,6 +1949,8 @@ def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None,
           break
       chain_sequences.append(chain_sequence)
   sequence_as_string="\n".join(chain_sequences)
+  if remove_white_space:
+    sequence_as_string = sequence_as_string.replace("\n","").replace(" ","")
   return sequence_as_string
 
 def guess_chain_types_from_sequences(file_name=None,text=None,
@@ -1950,7 +1962,8 @@ def guess_chain_types_from_sequences(file_name=None,text=None,
       from libtbx.utils import Sorry
       raise Sorry("Missing file for guess_chain_types_from_sequences: %s" %(
         file_name))
-    text=open(file_name).read()
+    with open(file_name) as f:
+      text = f.read()
   # clear any lines that have only > and nothing else
   text=clear_empty_lines(text)
 

@@ -12,8 +12,8 @@ def update_target(out):
   update_done = False
   if (pair_info.needs_update):
     pair_info.start_building_target()
-    open(pair_info.target.path, "w").write(
-      open(pair_info.source.path).read().upper())
+    with open(pair_info.target.path, "w") as fw, open(pair_info.source.path) as fr:
+      fw.write(fr.read().upper())
     pair_info.done_building_target()
     update_done = True
   target_db.write()
@@ -27,19 +27,24 @@ def exercise(args, mtime_resolution=2):
     out = null_out()
   if (os.path.exists("tmp_dlite")):
     os.remove("tmp_dlite")
-  print("a", file=open("tmp_source", "w"))
+  with open("tmp_source", "w") as f:
+    print("a", file=f)
   assert update_target(out=out)
   assert not update_target(out=out)
-  print("b", file=open("tmp_source", "w"))
+  with open("tmp_source", "w") as f:
+    print("b", file=f)
   assert update_target(out=out)
   assert not update_target(out=out)
   time.sleep(mtime_resolution)
   assert not update_target(out=out)
-  print("b", file=open("tmp_source", "w"))
+  with open("tmp_source", "w") as f:
+    print("b", file=f)
   assert not update_target(out=out)
-  print("B", file=open("tmp_target", "w"))
+  with open("tmp_target", "w") as f:
+    print("B", file=f)
   assert not update_target(out=out)
-  print("C", file=open("tmp_target", "w"))
+  with open("tmp_target", "w") as f:
+    print("C", file=f)
   assert update_target(out=out)
   assert not update_target(out=out)
   os.remove("tmp_target")

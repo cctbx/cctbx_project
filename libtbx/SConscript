@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -767,19 +768,25 @@ int main() {
       static_exe = None
   elif (env_etc.compiler == 'unix_conda' or env_etc.compiler == 'darwin_conda'):
     # get conda compilers from environment
-    cc = os.environ.get('CC', '')
-    cxx = os.environ.get('CXX', '')
-    if sys.platform.startswith("darwin"):
-      cc = os.environ.get('CLANG', '')
-      cxx = os.environ.get('CLANGXX', '')
-    if not os.path.isfile(cc) or not os.path.isfile(cxx):
-      raise RuntimeError('conda compilers are not installed.')
+    # based on recommendation from conda-forge admins, just use CC and
+    # CXX from environment for linux and macOS. No checks are done since
+    # it is currently a full path on linux, but just a name on macOS
+    cc = os.environ.get('CC', None)
+    cxx = os.environ.get('CXX', None)
 
-    # use environment flags
+    if cc is not None or cxx is not None:
+      print("Compiler settings:")
+      if cc is not None:
+        print("  CC: ", cc)
+      if cxx is not None:
+        print("  CXX:", cxx)
+    if cc is None or cxx is None:
+      print("Warning: CC and/or CXX has not been set in the environment.")
+
+    # use environment flags if available
     if libtbx.env.build_options.use_environment_flags:
       env_etc.ccflags_base = []
       env_etc.cxxflags_base = []
-      libtbx.env.build_options.use_environment_flags = True
       env_etc.shlinkflags = ['-shared']
       env_etc.shlinkflags_bpl = env_etc.shlinkflags
       if sys.platform.startswith('darwin'):
@@ -817,15 +824,20 @@ int main() {
     env_etc.gcc_version = libtbx.env_config.get_gcc_version(command_name=cc)
     env_etc.cxx11_is_available = True
 
-    env_base.Replace(
-      CC=cc,
-      SHCC=cc,
-      CXX=cxx,
-      LINK=cxx,
-      SHCXX=cxx,
-      SHLINK=cxx,
-      SHLIBSUFFIX=env_etc.shlibsuffix,
-    )
+    if cc is not None:
+      env_base.Replace(
+        CC=cc,
+        SHCC=cc,
+      )
+    if cxx is not None:
+      env_base.Replace(
+        CXX=cxx,
+        LINK=cxx,
+        SHCXX=cxx,
+        SHLINK=cxx,
+      )
+    env_base.Replace(SHLIBSUFFIX=env_etc.shlibsuffix)
+
   elif env_etc.compiler.startswith("darwin"):
     cc  = env_etc.compiler.replace('darwin_','')
     if cc == "c++": cc = "cc"
@@ -1378,8 +1390,17 @@ def enable_cuda_if_possible():
                         '--generate-code=arch=compute_72,code=sm_72',
                         '--generate-code=arch=compute_75,code=sm_75']
 
+    elif cuda_version >= 11:  # NOTE: lower compute compat. are being phased out
+        arch_flags = ['--generate-code=arch=compute_60,code=sm_60',
+                      '--generate-code=arch=compute_61,code=sm_61',
+                      '--generate-code=arch=compute_62,code=sm_62',
+                      '--generate-code=arch=compute_70,code=sm_70',
+                      '--generate-code=arch=compute_72,code=sm_72',
+                      '--generate-code=arch=compute_75,code=sm_75',
+                      '--generate-code=arch=compute_80,code=sm_80',
+                      '--generate-code=arch=compute_80,code=sm_86']
     else:
-        raise Sorry("cctbx only supports cuda versions 6-10.2")
+        raise Sorry("cctbx only supports cuda versions 6-11")
 
     env_base['NVCC'] = 'nvcc'
     linker_flags = env_base['SHLINKFLAGS']

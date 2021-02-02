@@ -1,0 +1,290 @@
+{% extends "cctbx/header.html" %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="col-sm-9 main">
+<!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
+<!----------------------- EDIT START ---------------------------->
+
+<h2><center>Boxing maps and models</center></h2>
+
+<p class="lead mt-4">Learn how to work with a part of a map. In particular, this involves keeping track of coordinate shifts and symmetry.</p>
+
+
+<h3 class="mt-4">Cut out a box from a map</h3>
+
+<p>It is often convenient to work with just a part of a map. For example, if your structure contains identical 24 copies of a molecule, you might want to work with just one copy and then duplicate it to create the other 23 later. In this section we are going to create a new map that represents part of  the map_data map we have been working with. For this example, we are going to just look at the raw boxed map that results so that we can see how it works. In a real situation you would not only cut out the box but shift its origin using the <code>map_model_manager</code> (see further below).</p>
+
+<p>Cutting out part of a map is referred to here as <code>boxing</code>. The key step in cutting out a part of a map is specifying the part of the map to cut out. The grid point with the smallest indices in each direction in the cut-out map is called the “lower bounds” and the grid point with the highest indices is the “upper bounds”. If the lower_bounds is (la,lb,lc) and the upper_bounds is (ua,ub,uc) then the resulting box will have (1+ua-la, 1+ub-lb, 1+uc-lc) grid points along a, b and c. This is the value of <code>all</code> for the boxed map. The box will start at lower_bounds, which will be the value of <code>origin</code> for the boxed map.</p>
+
+<p>First, lets set up a map:</p>
+
+<pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager # load map_model_manager
+mmm=map_model_manager()  # get initialized instance of the map_model_manager
+mmm.generate_map() # get a model and calculate a map for it
+map_data = mmm.map_data()  #  our 3D map object
+</code></pre>
+
+<p>Let’s set some lower and upper bounds:</p>
+
+<pre class="codeDL"><code>lower_bounds = (10,10,10)  # lower bounds for boxed map
+upper_bounds = (21,31,21)  # upper bounds for boxed map
+</code></pre>
+
+<p>Now let’s cut out a part of our map.  In this example we are going to use maptbx.copy() to do this. Normally you will instead use the map_model_manager but using maptbx.copy() shows exactly what is happening:</p>
+
+<pre class="codeDL"><code>from cctbx import maptbx            # import maptbx
+box_map_data = maptbx.copy(map_data, lower_bounds, upper_bounds) # box the map
+</code></pre>
+
+<p>Let’s look at the origin and dimensions of this boxed map. We expect the origin to be at our lower_bounds (10,10,10) and the dimensions to be  (12, 22, 12), and the last available point is (21,31,21):</p>
+
+<pre class="codeDL"><code>print( box_map_data.origin())  # prints (10, 10, 10)
+print( box_map_data.all())     # prints (12, 22, 12)
+print( box_map_data.last(False)) # prints (21, 31, 21)
+</code></pre>
+
+<p>This boxed map is defined for any grid points from lower_bounds to upper_bounds, inclusive.  We can get the value at grid point (11,12,13) just like we did before and we will get the same answer:</p>
+
+<pre class="codeDL"><code>print( box_map_data[11,12,13])  # prints 0.0416163499881
+</code></pre>
+
+<p>The boxed map is not defined at grid point (0,0,0) or any other points outside of the bounds.  The boxed map is also a different size than the original (which had a size of 38400):</p>
+
+<pre class="codeDL"><code>print( box_map_data.size() )  # prints 3168
+</code></pre>
+
+<p>One final point:  the boxed map is a copy, not a pointer to part of the original map. So if you change a value in your boxed map, the original map is unchanged.</p>
+
+<!-------------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Shifting the origin of a boxed map</h3>
+
+<p>Notice that indices of grid points in the boxed map we just created are still in the same reference frame as our original map (i.e., the grid point (11, 12, 13) has the same value in the original map as it has in the boxed map.  However the origin of the boxed map (10,10,10) is different from the original origin (0,0,0).</p>
+
+<p>In cctbx, almost all work with maps is carried out after shifting the origin of the map to (0,0,0). If there is a model associated with a map, the coordinates of atoms in the model are also shifted. Normally this is done for you with the <code>map_model_manager</code>. In this section we are going to do an origin shift directly so that we can see how it works.</p>
+
+<p>Let’s shift the origin of our boxed map (box_map_data) to (0,0,0) with the shift_origin() function to see what happens:</p>
+
+<pre class="codeDL"><code>shifted_box_map_data = box_map_data.shift_origin()   # shift origin to (0,0,0)
+</code></pre>
+
+<p>Note that the <code>shift_origin()</code> function does not change the original object but rather returns a new object with shifted origin but the same data. Note also that if you change data in the shifted map you are changing the data in the unshifted map as well.</p>
+
+<p>Let’s look at the origin and dimensions of our boxed map after shifting the origin. The size should not change but the origin should  be at (0,0,0) and the last available point should be (11,21,11) instead of (21,31,21):</p>
+
+<pre class="codeDL"><code>print(shifted_box_map_data.origin())  # prints (0, 0, 0)
+print(shifted_box_map_data.all())     # prints (12, 22, 12)
+print(shifted_box_map_data.last(False)) # prints (11, 21, 11)
+</code></pre>
+
+<p>This shifted version of our boxed map data is defined from (0,0,0) to (11,21,11).  There has been an origin shift of (10,10,10). If we want to see the value at the grid point that used to be called (11,12,13), we now have to look at the grid point (1,2,3):</p>
+
+<pre class="codeDL"><code>print(shifted_box_map_data[1,2,3])  # prints 0.0416163499881
+</code></pre>
+
+<!-------------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Keeping track of shifts and crystal_symmetry</h3>
+
+<p>The dimensions of our boxed map (12,22,12) in grid units and in Angstrom units are different from our original map. That means that the crystal_symmetry of our boxed map has changed. We need a way to keep track of several things: </p>
+<ol>
+  <li>any change in origins between original and boxed maps</li>
+  <li>the gridding of the original and boxed maps</li>
+  <li>crystal_symmetry of the original and boxed maps</li>
+</ol>
+
+<p>Here is the convention for keeping track of origins, gridding and dimensions:</p>
+
+<p>The number of grid points and crystal_symmetry corresponding to the full original map (the full map from cryo-EM or the crystallographic unit cell map for crystallography) are referred to as the unit_cell_grid and unit_cell_crystal_symmetry. Here <code>unit_cell</code> is intended to mean the full unit cell of the map.</p>
+
+<p>The origin shift between original and boxed maps is recorded in grid units as <code>origin_shift_grid_units</code>, where the origin shift is the shift needed to move the origin back to its original position. That means that if the origin of the boxed map was at (10,10,10) and it was moved to (0,0,0), the origin shift was (10,10,10).</p>
+
+<p>At the same time the origin shift is recorded as a shift in Cartesian coordinates called <code>shift_cart</code>. The value of shift_cart is the shift that has been applied to any coordinates. It has the opposite sign of origin_shift_grid_units.</p>
+
+<p>The crystal_symmetry of the boxed map is referred to as <code>crystal_symmetry</code>. This is the crystal_symmetry that is used for any calculations that are done with a boxed map and model.</p>
+
+<!-------------------------------------------------------------------------- -->
+
+<h3 class="mt-3">The map_model_manager keeps track of crystal_symmetry and origin shifts</h3>
+
+<p>Now that we have seen how boxing and shifting origins works, we can appreciate how the <code>map_model_manager</code> (<code>mmm</code>) has methods to take care of everything for us. Let’s start from the beginning and box our original map and the model that goes with it using the <code>map_model_manager</code>. Let’s use the same lower and upper bounds we did before and create a new <code>map_model_manager</code> that is boxed and origin-shifted, but that knows all about how to put everything back where it was:</p>
+
+<pre class="codeDL"><code>boxed_mmm = mmm.extract_all_maps_with_bounds( # create box
+   lower_bounds = lower_bounds,  # lower bounds
+   upper_bounds = upper_bounds)  # upper bounds
+</code></pre>
+
+<p>If we look at the map_data object from this boxed map_model_manager  we will find that it looks just like the boxed, origin-shifted one we created a moment ago:</p>
+
+<pre class="codeDL"><code>new_shifted_box_map_data = boxed_mmm.map_manager().map_data() #
+print(new_shifted_box_map_data.origin())  # prints (0, 0, 0)
+print(new_shifted_box_map_data.all())     # prints (12, 22, 12)
+print(new_shifted_box_map_data.last(False)) # prints (11, 21, 11)
+print(new_shifted_box_map_data[1,2,3])  # prints 0.0416163499881
+</code></pre>
+
+<p>However the <code>map_model_manager</code> knows how to write out this boxed map so that it superimposes on the original:</p>
+
+<pre class="codeDL"><code>boxed_mmm.write_map('boxed_map.ccp4')  # superimposes on orig
+</code></pre>
+
+<p>Similarly, if you write out your map with the <code>DataManager</code> it will superimpose on the original.</p>
+
+<p>The <code>map_model_manager</code> shifts the origin of your map and it also shifts the origin of any model that is part of the map_model_manager. That means that the model in our new <code>map_model_manager</code> (boxed_mmm) matches the map in that map_model_manager.  The way this happens is that the coordinates of atoms in the model were all shifted by the value of <code>shift_cart()</code> (calculated from the <code>origin_shift_grid_units</code>) that was set when the origin of the map was shifted. When you write out your model, the reverse shift is automatically applied by the <code>DataManager</code>.</p>
+
+<!-------------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Working with maps and models extracted from a bigger map and model</h3>
+
+<p>When your working map has been extracted from a larger map with a map_model_manager, the manager will shift the origin of all maps,  models, and associated reconstruction symmetry (<code>ncs_spec</code>) objects to  (0,0,0) before working with them.</p>
+
+<p>Then you do work with the origin at (0,0,0). You automatically get coordinates from your models that are relative to this origin if the model came from the <code>map_model_manager</code> where the origin was automatically shifted. For example you might say:</p>
+
+<pre class="codeDL"><code>working_sites_cart = boxed_mmm.model().get_sites_cart() # sites
+</code></pre>
+
+<p>Note that when you are working with your boxed model, the values of coordinates that you get from your model with the function <code>get_sites_cart()</code> will not be the coordinates in the original reference frame of your model. They were  shifted to match your boxed, shifted map.</p>
+
+<p>Finally  when writing out maps, models, or ncs objects, the shift origin is shifted back. This shift back is automatic so you do not need to do anything.</p>
+
+If you have created a <code>map_model_manager</code> with one map and model, and you have a new map that you want to match, just shift the origin of the new map with <code>shift_origin()</code>. If the maps are compatible, they will now match.  You can check that with the <code>is_similar()</code> function.
+
+If for some reason you just create a <code>map_manager</code> and want to work with it and do not want to combine it with a model, you should shift the origin of your map_manager to (0,0,0) using the <code>shift_origin()</code> method before working with it.
+
+<!-------------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Extracting a box vs boxing in place</h3>
+
+<p>The <code>map_model_manager</code> has two sets of methods for creating boxed versions of itself. One set extracts a new copy that is boxed, and the other changes itself by boxing. These two methods have different properties. The extracted version is a completely new object. In contrast, boxing a <code>map_model_manager</code> in place changes the <code>map_model_manager</code> itself. Its map is boxed,creating a new (differently-sized) map, but its model is changed in place, with new, shifted coordinates but keeping the same model object.</p>
+
+<p>To extract a boxed version of a <code>map_model_manager</code>, you use a method such as the <code>extract_all_maps_with_bounds()</code> method that we used above.</p>
+
+<pre class="codeDL"><code>boxed_mmm = mmm.extract_all_maps_with_bounds( # create box
+   lower_bounds = lower_bounds,  # lower bounds
+   upper_bounds = upper_bounds)  # upper bounds
+</code></pre>
+
+<p>The extracted map and model are deep copies, not pointers to the originals. This means that if you change the extracted map or model, you do not change the original. Let’s do this just to see. Here are the current coordinates of a site in the model and a position in the map in the map_model_manager:</p>
+
+<pre class="codeDL"><code>print (mmm.model().get_sites_cart()[0])  # 14.476000000000003, 10.57, 8.342)
+print (mmm.map_manager().map_data()[11,12,13]) # prints 0.0416163499881
+</code></pre>
+
+<p>The coordinates for the extracted map_model_manager are shifted:</p>
+
+<pre class="codeDL"><code>print(boxed_mmm.model().get_sites_cart()[0])# (7.005666666666668, 3.339250000000002, 0.967625000000001)
+</code></pre>
+
+<p>The indices of the map in the extracted  <code>map_model_manager</code> are offset by (10,10,10) so now the index (1,2,3) corresponds to the index (11,12,13) in the original map:</p>
+
+<pre class="codeDL"><code>print (boxed_mmm.map_manager().map_data()[1,2,3]) # prints 0.0416163499881
+</code></pre>
+
+<p>Now we change the value of a coordinate or a value in the map for our extracted <code>map_model_manager</code>. (Note that the procedure for changing coordinates in a model has three steps: get the sites_cart, change something in sites_cart, set the sites cart in the model with the changed sites_cart):</p>
+
+<pre class="codeDL"><code>boxed_sites_cart = boxed_mmm.model().get_sites_cart() # get boxed sites
+boxed_sites_cart[0] = (10,10,10) # set value of one coordinate in boxed sites
+boxed_mmm.model().set_sites_cart(boxed_sites_cart) # set coordinates in model
+</code></pre>
+
+<pre class="codeDL"><code>boxed_mmm.map_manager().map_data()[1,2,3] = 77.  # change map value
+</code></pre>
+
+<p>Nothing happens to the original because the extracted map_model_manager was a deep copy:</p>
+
+<pre class="codeDL"><code>print (mmm.model().get_sites_cart()[0])  # 14.476000000000003, 10.57, 8.342)
+print (mmm.map_manager().map_data()[11,12,13]) # prints 0.0416163499881
+</code></pre>
+
+<p>On the other hand, to box a <code>map_model_manager</code> in place, you use a method such as the <code>box_all_maps_with_bounds_and_shift_origin</code> method. Let’s make references to the model and map in our <code>map_model_manager</code> so that we can track what happens to them when we box the map_model_manager in place:</p>
+
+<pre class="codeDL"><code>mmm_model_ref = mmm.model()  # reference to model in mmm
+mmm_map_manager_ref = mmm.map_manager()  # reference to model in mmm
+</code></pre>
+
+<p>Now let’s instead box the map_model_manager in place. This is going to produce a new map but will alter the model and it will not create a new model:</p>
+
+<pre class="codeDL"><code>mmm.box_all_maps_with_bounds_and_shift_origin( # change mmm in place
+   lower_bounds = lower_bounds,  # lower bounds
+   upper_bounds = upper_bounds)  # upper bounds
+</code></pre>
+
+<p>The <code>map_model_manager</code> is changed in place( nothing is returned). The new map will be a new copy (its size has changed and changing it does not change the original), but the new model is the same model as the original, with shifted coordinates. If you change the model in this <code>map_model_manager</code>, any references to the original model also change.</p>
+
+<p>Let’s do this just to see. The current coordinates of the first site in the model are now shifted:</p>
+
+<pre class="codeDL"><code>print (mmm.model().get_sites_cart()[0]) # (7.005666666666668, 3.339250000000002, 0.967625000000001)
+</code></pre>
+
+<p>and the indices of the map in the  <code>map_model_manager</code> are offset by (10,10,10) so now the index (1,2,3) corresponds to the index (11,12,13) in the original map:</p>
+
+<pre class="codeDL"><code>print (mmm.map_manager().map_data()[1,2,3]) # prints 0.0416163499881
+</code></pre>
+
+<p>Now we change the value of a coordinate or a value in the map for our (now-shifted) map_model_manager:</p>
+
+<pre class="codeDL"><code>sites_cart = mmm.model().get_sites_cart() # get boxed sites
+sites_cart[0] = (20,20,20) # set value of one coordinate  in sites_cart
+mmm.model().set_sites_cart(sites_cart) # set coordinates in model
+</code></pre>
+
+<pre class="codeDL"><code>mmm.map_manager().map_data()[1,2,3] = 222.  # change map value
+</code></pre>
+
+<p>The value in our original model now changes because the model in our map_model_manager was shifted in place:</p>
+
+<pre class="codeDL"><code>print (mmm_model_ref.get_sites_cart()[0])  # (20.0, 20.000000000000004, 20.0)
+</code></pre>
+
+However nothing happens to the original map because the <code>map_model_manager</code> made a fresh copy of the map:
+
+<pre class="codeDL"><code>print (mmm_map_manager_ref.map_data()[11,12,13]) # prints 0.0416163499881
+</code></pre>
+
+<!-------------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Shifting a new model to match an existing map_manager with shift_model_to_match_map()</h3>
+
+<p>If you have a <code>map_manager</code> and you have a new model that you want to match, use the function <code>shift_model_to_match_map(new_model)</code> which will shift the new model (in place, changing new_model) to match this map.</p>
+
+<!-------------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Wrapping</h3>
+
+Crystallographic maps repeat indefinitely with a repeat unit of the <code>unit cell</code>.  On the other hand, cryo-EM maps are only defined inside the region occupied by the original map.  The parameter called <code>wrapping</code> is used to specify whether values at a grid point outside the boundaries of a map are to be calculated by <code>wrapping</code> the grid point back into the original map using unit cell translations. In general, crystallographic maps that are full size can be wrapped in this way, but cryo-EM maps and any parts of crystallographic maps cannot.  Wrapping is normally guessed from the way a map is created, but it can be specified as part of the initialization of map_manager objects and map_model_manager objects.
+
+<!-------------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Ignoring symmetry conflicts</h3>
+
+<p>The <code>map_model_manager</code> and tools that check to see whether the map and model are compatible by comparing their <code>crystal_symmetry</code> values, and if present, <code>unit_cell_crystal_symmetry</code> values. The <code>crystal_symmetry</code> values reflect the dimensions of the boxed map or model, and the <code>unit_cell_crystal_symmetry</code> values (if present) reflect the dimensions of the original map and model unit cells.</p>
+
+<p>In most cases, as long as the <code>map_model_manager</code> has been used to keep track of origin shifts and <code>unit_cell_crystal_symmetry</code>, a map and model that have gone through the same boxing steps will be compatible and nothing further needs to be done.</p>
+
+<p>However in some cases the crystal_symmetry of a model (for example) might be changed outside the <code>map_model_manager</code>, in which case an attempt to combine that model with a map that is otherwise compatible would fail with an error message that says that the symmetry of a map does not match that of a model and that they therefore cannot be combined successfully.</p>
+
+<p>If the model coordinates really are compatible with the map and the crystal symmetry of the model is incorrect, the <code>map_model_manager</code> can be instructed to ignore the symmetry of the model with the <code>ignore_symmetry_conflicts=True</code> keyword.</p>
+
+
+<!-------------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Setting crystal_symmetry and unit_cell_crystal_symmetry for a model</h3>
+
+<p>If you have a <code>map_manager</code> and a model that is in the same frame of reference as the <code>map_manager</code> but for some reason has a different <code>crystal_symmetry</code> or <code>unit_cell_crystal_symmetry</code>, you can match the symmetry of the <code>map_manager</code> (without changing any coordinates in the model) with the <code>map_manager</code> member function <code>set_model_symmetries_and_shift_cart_to_match_map()</code>.</p>
+
+
+<!----------------------- EDIT END ---------------------------->
+<!-- DO NOT EDIT ANYTHING BELOW!!!! -->
+</div> <!-- end col-sm-9 -->
+
+<!-- automatic table of contents
+     located in the sidebar; will move to the top on a small screen -->
+<div class="col-sm-3 mt-5">
+  <nav id="toc" data-toggle="toc"></nav>
+</div> <!-- end col-sm-3 -->
+
+
+{% endblock %}

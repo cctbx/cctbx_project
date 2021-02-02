@@ -284,7 +284,8 @@ namespace mmtbx { namespace geometry_restraints {
     for(int i=0; i<rama_table.size(); i++) {
       scitbx::vec3<double> point = rama_table[i];
       double d = distances[i];
-      if(point[2] >= score_current && d<dist_to_allowed) {
+      bool cond = point[2] >= score_current && d<dist_to_allowed && d<=60;
+      if(cond) {
         dist_to_allowed = d;
         phi_t = point[0];
         psi_t = point[1];

@@ -142,8 +142,8 @@ def exercise(exercise_fail):
     ('CAUGHT EXCEPTION: "bf000/log"', None),
     ('CAUGHT EXCEPTION: "bf001/log"', None)]
   for i in [1,2]:
-    assert open("bf%03d/log" % (i-1)).read().splitlines()[-1] \
-      == "RuntimeError: %d" % i
+    with open("bf%03d/log" % (i-1)) as f:
+      assert f.read().splitlines()[-1] == "RuntimeError: %d" % i
   out = StringIO()
   def simple_func(arg):
     from math import log

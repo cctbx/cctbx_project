@@ -1,15 +1,10 @@
-{% extends "cctbx/header_new.html" %}
+{% extends "cctbx/header.html" %}
 
 {% load static %}
 
 {% block content %}
 
-<div class="container">
-
-<div class="row">
-
-
-<div class="col-sm-9">
+<div class="col-sm-9 main">
 <!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
 <!----------------------- EDIT START ---------------------------->
 
@@ -17,7 +12,7 @@
 
 <p class="lead mt-4">This is a lead paragraph. Give a short summary of what is explained in the page here.</p>
 
-<h3 class="mt-5">Subtitle_1</h3>
+<h3 class="mt-4">Subtitle_1</h3>
 <p>Some text</p>
 <p>Some text with <code>code</code> quoted within text.</p>
 
@@ -34,18 +29,18 @@ Otherwise, the code will have indentation, and breaks.
 mmm=map_model_manager()     # get an initialized instance of the map_model_manager
 </code></pre>
 
+<div class="codeGreen">
+</div>
+
 <!----------------------- EDIT END ---------------------------->
 <!-- DO NOT EDIT ANYTHING BELOW!!!! -->
 </div> <!-- end col-sm-9 -->
 
 <!-- automatic table of contents
      located in the sidebar; will move to the top on a small screen -->
-<div class="col-sm-3">
+<div class="col-sm-3 mt-5">
   <nav id="toc" data-toggle="toc"></nav>
 </div> <!-- end col-sm-3 -->
 
-</div> <!-- end row -->
-
-</div> <!-- end container -->
 
 {% endblock %}

@@ -62,13 +62,13 @@ jobs:
       sudo xcode-select --switch /Applications/Xcode_${{ join('.', parameters.xcode_version) }}.app/Contents/Developer
     displayName: Select Xcode version
 
-  - script: |
-      echo "Removing homebrew from Azure to avoid conflicts."
-      curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall.sh > ~/uninstall_homebrew
-      chmod +x ~/uninstall_homebrew
-      ~/uninstall_homebrew -f -q
-      rm ~/uninstall_homebrew
-    displayName: Remove homebrew
+  # - script: |
+  #     echo "Removing homebrew from Azure to avoid conflicts."
+  #     curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall.sh > ~/uninstall_homebrew
+  #     chmod +x ~/uninstall_homebrew
+  #     ~/uninstall_homebrew -f -q
+  #     rm ~/uninstall_homebrew
+  #   displayName: Remove homebrew
 
   # download daily cached build directory for builds
   # always do builds from scratch for "Update build cache" on Saturday night (Pacific)
@@ -103,6 +103,13 @@ jobs:
          eq(variables['Build.DefinitionName'], 'CI branch'),
          eq(variables['Build.DefinitionName'], 'XFEL CI'),
          eq(variables['Build.DefinitionName'], 'Full'))
+    continueOnError: true
+    failOnStderr: false
+
+  - script: |
+      rm -f $(Pipeline.Workspace)/build/lib/scitbx_array_family_flex_ext.so
+    displayName: Fix broken cache on macOS 10.15
+    condition: and(eq('${{ parameters.vmImage[0] }}', 10), eq('${{ parameters.vmImage[1] }}', 15))
     continueOnError: true
     failOnStderr: false
 

@@ -21,13 +21,11 @@ def exercise_1():
     print("Skipping exercise: input pdb (pdb2goz_refmac_tls.ent) not available")
     return
   rv = rna_validate.run(args=[regression_pdb], out=null_out())
-  # chages in linking_mixins.py lead to some more bonds that happened to be
-  # outliers, thus bond.results changed from 2 to 5.
   assert len(rv.puckers.results) == 2, len(rv.puckers.results)
-  assert len(rv.bonds.results) == 5, len(rv.bonds.results)
+  assert len(rv.bonds.results) == 4, len(rv.bonds.results)
   assert len(rv.angles.results) == 14, len(rv.angles.results)
   assert len(rv.suites.results) == 4, len(rv.suites.results)
-  assert approx_equal(rv.suites.average_suiteness, 0.56, eps=0.01)
+  assert approx_equal(rv.suites.average_suiteness, 0.55, eps=0.01)
   pickle_unpickle(rv)
   pdb_in = file_reader.any_file(regression_pdb)
   result = mmtbx.validation.rna_validate.rna_validation(

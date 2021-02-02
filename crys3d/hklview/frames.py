@@ -417,7 +417,7 @@ class HKLViewFrame (wx.Frame) :
     self.viewer.SetFocus()
 
   def SetupToolbar (self) :
-    self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+    self.toolbar = self.CreateToolBar(style=wx.TB_TEXT)
     if wx.VERSION < (4,0):
       self.toolbar.AddTool = self.toolbar.AddLabelTool
     self.toolbar.SetToolBitmapSize((32,32))

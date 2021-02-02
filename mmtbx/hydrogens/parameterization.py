@@ -43,19 +43,32 @@ class manager(object):
         self.process_3_neighbors(neighbors = neighbors)
       # Free rotation and propeller groups
       elif(number_non_h_neighbors == 1 and
-        (number_h_neighbors == 0 or number_h_neighbors ==2)):
+        (number_h_neighbors == 0 or number_h_neighbors == 2)):
         self.process_1_neighbor(neighbors = neighbors)
       # planar Y-X-H2 groups such as in ARG head
       elif(number_non_h_neighbors == 1 and number_h_neighbors == 1):
         self.process_1_neighbor_type_arg(neighbors = neighbors)
       else:
         self.unk_list.append(ih)
-    #return self.h_parameterization
 
 #-------------------------------------------------------------------------------
 
   def process_1_neighbor(self, neighbors):
     ih = neighbors.ih
+    # if used for hydrogenate, make sure that first we use the H with dihedral angle
+    # However, this needs some tweaking for neutron H/D situations
+    if (neighbors.number_h_neighbors == 2):
+      i_h1, i_h2 = neighbors.h1['iseq'], neighbors.h2['iseq']
+      if ('dihedral_ideal' in neighbors.b1):
+        neighbors = self.h_connectivity[ih]
+      elif ('dihedral_ideal' in self.h_connectivity[i_h1].b1):
+        if self.h_parameterization[i_h1] is None:
+          neighbors = self.h_connectivity[i_h1]
+      elif ('dihedral_ideal' in self.h_connectivity[i_h2].b1):
+        if self.h_parameterization[i_h2] is None:
+          neighbors = self.h_connectivity[i_h2]
+    ih = neighbors.ih
+    #print(self.site_labels[ih])
     i_a0 = neighbors.a0['iseq']
     rh = matrix.col(self.sites_cart[ih])
     r0 = matrix.col(self.sites_cart[i_a0])
@@ -88,6 +101,7 @@ class manager(object):
     else:
       alpha = (u10).angle(uh0)
       phi = dihedral
+    #print(math.degrees(phi))
     u1 = (r0 - r1).normalize()
     rb10 = rb1 - r1
     # TODO check needed?

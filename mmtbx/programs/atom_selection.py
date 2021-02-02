@@ -8,6 +8,7 @@ from cctbx import crystal, uctbx, xray
 import mmtbx.model
 import iotbx.pdb
 from libtbx.utils import Sorry
+from cctbx.maptbx.box import shift_and_box_model
 
 class Program(ProgramTemplate):
 
@@ -65,8 +66,11 @@ Usage examples:
     print("", file=self.logger)
     if self.params.atom_selection_program.write_pdb_file is not None:
       print ("Writing file:", show_string(self.params.atom_selection_program.write_pdb_file),file=self.logger)
+      ss_ann = model.get_ss_annotation()
+      if not model.crystal_symmetry() or \
+        (not model.crystal_symmetry().unit_cell()):
+        model = shift_and_box_model(model, shift_model=False)
       selected_model = model.select(all_bsel)
-      ss_ann = selected_model.get_ss_annotation()
       if(ss_ann is not None):
         selected_model.set_ss_annotation(ss_ann.\
             filter_annotation(

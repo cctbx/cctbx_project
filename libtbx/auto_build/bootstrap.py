@@ -475,7 +475,7 @@ class Toolbox(object):
     destpath, destdir = os.path.split(destination)
 
     # default to using ssh for private phenix repositories
-    if module in ['phenix', 'solve_resolve']:
+    if module in ['phenix', 'solve_resolve', 'phaser_voyager', 'phasertng']:
       use_ssh = True
 
     if os.path.exists(destination):
@@ -823,10 +823,8 @@ class opt_resources_module(SourceModule):
 
 class eigen_module(SourceModule):
   module = 'eigen'
-  anonymous = ['git', '-b 3.3.7',
-               'git@github.com:cctbx/eigen.git',
-               'https://github.com/cctbx/eigen.git',
-               'https://github.com/cctbx/eigen/archive/master.zip']
+  anonymous = ['git', '-b 3.3.9',
+               'https://gitlab.com/libeigen/eigen.git']
 
 # Phenix repositories
 class phenix_module(SourceModule):
@@ -914,7 +912,7 @@ class phasertng_module(SourceModule):
 
 class phaser_voyager_module(SourceModule):
   module = 'phaser_voyager'
-  anonymous = ['git',
+  anonymous = ['git', '-b distribution',
                'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/phaser_voyager.git',
                'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/phaser_voyager.git']
 
@@ -990,7 +988,8 @@ class suitename_module(SourceModule):
 
 class reduce_module(SourceModule):
   module = 'reduce'
-  anonymous = ['svn', 'https://github.com/rlabduke/reduce.git/trunk']
+  anonymous = ['git', '-b v3.7.2',
+               'https://github.com/rlabduke/reduce.git']
 
 class king_module(SourceModule):
   module = 'king'
@@ -1902,6 +1901,7 @@ class CCIBuilder(Builder):
     'tntbx',
     'clipper',
     'eigen',
+    'reduce',
   ]
   CODEBASES_EXTRA = []
   # Copy these sources from cci.lbl.gov
@@ -1989,6 +1989,7 @@ class PhaserBuilder(CCIBuilder):
     'tntbx',
     'phaser_regression',
     'phaser',
+    'reduce',
   ]
   # Configure for these cctbx packages
   LIBTBX = [

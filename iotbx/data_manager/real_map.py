@@ -41,8 +41,8 @@ class RealMapDataManager(DataManagerBase):
 
   def get_default_output_real_map_filename(self):
     filename = self.get_default_output_filename()
-    if not filename.endswith('.mrc'):
-      filename += '.mrc'
+    if not filename.endswith('.mrc') and not filename.endswith('.ccp4'):
+      filename += '.ccp4'
     return filename
 
   def write_real_map_file(self, map_manager, filename=Auto, overwrite=Auto):
@@ -68,6 +68,8 @@ class RealMapDataManager(DataManagerBase):
 
     self._output_files.append(filename)
     self._output_types.append(RealMapDataManager.datatype)
+
+    return filename
 
 # =============================================================================
 # end

@@ -727,10 +727,10 @@ HETATM 3892  C4  A3P A 301     -30.631  -5.420  -0.849  1.00 56.63           C
 """
 
   for pdb_str, seq_str in [(pdb_str1, seq_str1), (pdb_str2, seq_str2)]:
-    seq_file = tempfile.NamedTemporaryFile(suffix='.fasta')
+    seq_file = tempfile.NamedTemporaryFile(suffix='.fasta', mode='w')
     seq_file.write(seq_str)
     seq_file.flush()
-    model_file = tempfile.NamedTemporaryFile(suffix='.pdb')
+    model_file = tempfile.NamedTemporaryFile(suffix='.pdb', mode='w')
     model_file.write(pdb_str)
     model_file.flush()
     dm = DataManager()
