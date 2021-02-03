@@ -1,8 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import os
 from libtbx.program_template import ProgramTemplate
-#from libtbx.utils import date_and_time
-import libtbx.load_env
 from cctbx.maptbx.box import shift_and_box_model
 
 master_phil_str = '''
@@ -33,7 +31,10 @@ Usage examples:
      iotbx.pdb.box_around_molecule.py test.cif format=pdb
 
   2) Save model as mmCIF (input is PDB)
-  pdb.box_around_molecule.py test.pdb format=cif
+    pdb.box_around_molecule.py test.pdb format=cif
+
+  3) Default: input and output format are the same
+     pdb.box_around_molecule.py test.pdb
 
   The program template accepts PDB and mmCIF input formats.
   The paramter output.format allows choosing the output format.
@@ -62,18 +63,9 @@ Usage examples:
         self.params.output.format = 'pdb'
       elif self.model.input_model_format_cif():
         self.params.output.format = 'cif'
-    extension = '.' + self.params.output.format
 
     self.model = shift_and_box_model(model = self.model,
                                      box_cushion = self.params.buffer_layer)
-#    # PDB format
-#    if (self.params.output.format == 'pdb'):
-#      # If output file should contain REMARK with buffer_layer
-#      #model_str = 'REMARK %s --buffer-layer=%.6g %s\n' % (
-#      #            libtbx.env.dispatcher_name, self.params.buffer_layer, fn) + \
-#      #       'REMARK %s\n' % date_and_time() + \
-#      #       self.model.model_as_pdb()
-#      print(self.model.model_as_pdb(), file=self.logger)
 
     # Get output filename if not provided
     fn = self.data_manager.get_default_model_name()
@@ -83,8 +75,6 @@ Usage examples:
       self.data_manager.set_default_output_filename(self.get_default_output_filename())
 
     # save output
-    self.data_manager.write_model_file(self.model,
+    output_fn = self.data_manager.write_model_file(self.model,
                                        format = self.params.output.format)
-    output_fn = self.data_manager.get_default_output_model_filename(
-      extension=extension)
     print('Created file', output_fn, file=self.logger)
