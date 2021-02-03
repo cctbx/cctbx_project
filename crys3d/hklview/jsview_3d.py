@@ -285,9 +285,9 @@ class hklview_3d:
 </body></html>
 
     """
-    Html2Canvaslibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","html2canvas.min.js") )
-    NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
-    HKLjscriptpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","HKLJavaScripts.js") )
+    Html2Canvaslibpath = libtbx.env.under_dist("crys3d","hklview/html2canvas.min.js")
+    NGLlibpath = libtbx.env.under_dist("crys3d","hklview/ngl.js")
+    HKLjscriptpath = libtbx.env.under_dist("crys3d","hklview/HKLJavaScripts.js")
     HKLjscriptpath = os.path.abspath( HKLjscriptpath)
     Html2Canvasliburl = "file:///" + Html2Canvaslibpath.replace("\\","/")
     NGLliburl = "file:///" + NGLlibpath.replace("\\","/")
