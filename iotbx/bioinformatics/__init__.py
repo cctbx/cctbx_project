@@ -124,7 +124,7 @@ class sequence(object):
     to be implemented if __eq__ is implemented and if the object is immutable.
     Immutable objects can be then used as keys for dictionaries.
     """
-
+    
     #NOTE: To my knowledge objects of this class are used as keyword in a dictionary only
     #by Sculptor.
     
