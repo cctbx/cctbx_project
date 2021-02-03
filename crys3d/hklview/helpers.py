@@ -9,10 +9,10 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from PySide2.QtCore import Qt, QEvent, QAbstractTableModel, QModelIndex
-from PySide2.QtGui import QCursor, QKeySequence
+from PySide2.QtGui import QCursor, QDesktopServices, QKeySequence
 from PySide2.QtWidgets import ( QAbstractItemView, QCheckBox, QTableWidget, QAction,
-      QMenu, QTableView, QDialog,  QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
-      QScrollArea, QVBoxLayout
+      QMenu, QTableView, QDialog, QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
+      QScrollArea, QVBoxLayout, QWhatsThis
      )
 import math, csv
 from io import StringIO
@@ -188,12 +188,6 @@ class MillerArrayTableModel(QAbstractTableModel):
 # Dialog box with MatPlotLib colour gradient charts from
 # http://matplotlib.org/examples/color/colormaps_reference.html
 
-import numpy as np
-import matplotlib.pyplot as plt
-from PySide2 import QtWidgets
-from PySide2.QtCore import Qt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
 
 # list all colour maps except their reverse which end with "_r"
 cmaps = [ c for c in plt.colormaps() if not c.endswith("_r")]
@@ -253,7 +247,7 @@ class MPLColourSchemes(QtWidgets.QDialog):
     self.powscale_label.setText("Power factor for map scaling:")
     self.powscaleslider = QtWidgets.QSlider(Qt.Horizontal)
     self.powscaleslider.setMinimum(-20)
-    self.powscaleslider.setMaximum(10)
+    self.powscaleslider.setMaximum(20)
     self.powscaleslider.setTickPosition(QtWidgets.QSlider.TicksAbove)
     self.powscaleslider.setTickInterval(1)
     self.powscaleslider.sliderReleased.connect(self.onReleasePowscaleslider)
@@ -275,7 +269,14 @@ class MPLColourSchemes(QtWidgets.QDialog):
     gridlayout.addWidget(self.Cancelbtn,         4, 2, 1, 2)
     self.setLayout(gridlayout)
     #scw = self.parent.app.style().pixelMetric(QtWidgets.QStyle.PM_ScrollBarExtent)
-
+  """
+  def event(self, event):
+    if event.type() == QEvent.EnterWhatsThisMode:
+      QWhatsThis.leaveWhatsThisMode()
+      QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/doc_hklviewer/")
+      return True
+    return QDialog.event(self, event)
+  """
 
   def draw_axes_and_text(self):
     for ax, name in zip(self.mycanvas.axes, cmaps):

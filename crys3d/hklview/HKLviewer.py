@@ -16,7 +16,8 @@ from PySide2.QtWidgets import (  QAction, QCheckBox, QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
         QMainWindow, QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableView, QTableWidget,
-        QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QPlainTextEdit, QVBoxLayout, QWidget )
+        QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QPlainTextEdit, QVBoxLayout,
+        QWhatsThis, QWidget )
 
 from PySide2.QtGui import QColor, QFont, QCursor, QDesktopServices
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
@@ -68,9 +69,9 @@ class AboutForm(QDialog):
     Cambridge Institute for Medical Research, University of Cambridge.<br/>
     HKLviewer is part of the <a href="http://cci.lbl.gov/docs/cctbx/"> CCTBX library</a>
     as well as derived software thereof.<br/>
-    HKLviewer uses functionality provided by the JavaScript library of the
-    <a href="https://github.com/nglviewer/ngl">NGL Viewer</a> project, the JavaScript Library
-    of the <a href="https://github.com/niklasvh/html2canvas">html2canvas</a> project.<br/>
+    HKLviewer uses functionality provided by the
+    <a href="https://github.com/nglviewer/ngl">NGL Viewer</a> project and
+    the <a href="https://github.com/niklasvh/html2canvas">html2canvas</a> project.<br/>
     Queries or bug reports should be sent to cctbx@cci.lbl.gov or rdo20@cam.ac.uk.
     </p></body></html>"""
     self.aboutlabel.setText(aboutstr)
@@ -403,7 +404,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         self.webpage.setUrl("https://webglreport.com/")
     else:
       #self.webpage.setUrl("https://cctbx.github.io/")
-      self.webpage.setUrl("http://cci.lbl.gov/docs/cctbx/")
+      self.webpage.setUrl("http://cci.lbl.gov/docs/cctbx/doc_hklviewer/")
     self.cpath = self.webprofile.cachePath()
     self.BrowserBox.setPage(self.webpage)
     self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
@@ -1856,11 +1857,10 @@ def run():
       for datatype in list(guiobj.datatypedict.keys()):
         settings.setValue(datatype + "/ColourChart", guiobj.datatypedict[ datatype ][0] )
         settings.setValue(datatype + "/ColourPowerScale", guiobj.datatypedict[ datatype ][1] )
-      settings.endGroup()
+      settings.endGroup() # DataTypesGroups
+      settings.endGroup() # PySide2_ + Qtversion
 
-      settings.endGroup()
-
-    app.lastWindowClosed.connect(MyAppClosing)
+    app.lastWindowClosed.connect(MyAppClosing) # persist settings on disk
 
     timer = QTimer()
     timer.setInterval(20)
