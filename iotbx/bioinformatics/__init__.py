@@ -124,15 +124,15 @@ class sequence(object):
     to be implemented if __eq__ is implemented and if the object is immutable.
     Immutable objects can be then used as keys for dictionaries.
     '''
-    
+
     #NOTE: To my knowledge objects of this class are used as keyword in a dictionary only
     #by Sculptor.
-    
+
     #NOTE: id(self) is already unique but hash(id(self)) distributes better the hashed values
     #this means that two consecutive id will have very different hash(id(self)) making
-    #hashtable searches more robust when using them as keys of dictionaries. Difference in 
+    #hashtable searches more robust when using them as keys of dictionaries. Difference in
     #performance are irrelevant.
-    
+
     return hash(id(self))
 
   def __eq__(self, other):
@@ -142,7 +142,7 @@ class sequence(object):
     two different objects. In particular two sequences might have a different name but they are equal
     if they have the same sequence.
     '''
-    
+
     return isinstance( other, sequence ) and self.sequence == other.sequence
 
 
