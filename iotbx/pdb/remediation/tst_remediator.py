@@ -1,6 +1,7 @@
 from __future__ import division
 import time
 import os
+import difflib
 
 import remediator
 import iotbx.pdb
@@ -15,8 +16,15 @@ def test_pdb_to_v3(old_pdb_file, v3_pdb_file):
   v3_pdb_model = remediator.get_model_from_file(v3_pdb_file)
   #write_model_to_file(old_pdb_model_v3.model_as_pdb(), "old_file_remed.pdb")
   #write_model_to_file(v3_pdb_model.model_as_pdb(), "v3_file.pdb")
-  assert old_pdb_model_v3.get_hierarchy().as_pdb_string() == v3_pdb_model.get_hierarchy().as_pdb_string(), \
-    "remediation test of "+old_pdb_file+" to v3 failed"
+  old_pdb_model_v3_string = old_pdb_model_v3.get_hierarchy().as_pdb_string()
+  v3_pdb_model_string = v3_pdb_model.get_hierarchy().as_pdb_string()
+  #print(old_pdb_model_v3_string.splitlines(1))
+  #print(v3_pdb_model_string.splitlines(1))
+  if old_pdb_model_v3_string != v3_pdb_model_string:
+
+    diff = list(difflib.unified_diff(old_pdb_model_v3_string.splitlines(), v3_pdb_model_string.splitlines()))
+    assert False, "remediation test of "+old_pdb_file+" to v3 failed with these differences:\n" + '\n'.join(diff)
+
   print("OK")
   #print(old_pdb_model_v3.get_hierarchy().is_similar_hierarchy(v3_pdb_model.get_hierarchy()))
   #print(old_pdb_model.get_hierarchy().is_similar_hierarchy(v3_pdb_model.get_hierarchy()))
