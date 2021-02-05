@@ -9,10 +9,10 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from PySide2.QtCore import Qt, QEvent, QAbstractTableModel, QModelIndex
-from PySide2.QtGui import QCursor, QDesktopServices, QKeySequence
+from PySide2.QtGui import QCursor, QKeySequence
 from PySide2.QtWidgets import ( QAbstractItemView, QCheckBox, QTableWidget, QAction,
       QMenu, QTableView, QDialog, QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
-      QScrollArea, QVBoxLayout, QWhatsThis
+      QScrollArea, QVBoxLayout
      )
 import math, csv
 from io import StringIO
@@ -224,6 +224,7 @@ class MplCanvas(FigureCanvas):
 class MPLColourSchemes(QtWidgets.QDialog):
   def __init__(self, parent=None):
     super(MPLColourSchemes, self).__init__(parent.window)
+    self.setWindowFlags(Qt.Tool)
     self.parent = parent
     self.isOK = False
     self.selcolmap = ""
@@ -269,14 +270,6 @@ class MPLColourSchemes(QtWidgets.QDialog):
     gridlayout.addWidget(self.Cancelbtn,         4, 2, 1, 2)
     self.setLayout(gridlayout)
     #scw = self.parent.app.style().pixelMetric(QtWidgets.QStyle.PM_ScrollBarExtent)
-  """
-  def event(self, event):
-    if event.type() == QEvent.EnterWhatsThisMode:
-      QWhatsThis.leaveWhatsThisMode()
-      QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/doc_hklviewer/")
-      return True
-    return QDialog.event(self, event)
-  """
 
   def draw_axes_and_text(self):
     for ax, name in zip(self.mycanvas.axes, cmaps):
@@ -287,7 +280,6 @@ class MPLColourSchemes(QtWidgets.QDialog):
       y_text = pos[1] + pos[3]/2.
       self.mycanvas.fig.text(x_text, y_text, name, va='center', ha='left',
                              fontsize= self.parent.app.font().pointSize()*1.5 )
-
 
   def resizeEvent(self, event):
     # MplCanvas doesn't resize with the rest of QtWidgets whenever

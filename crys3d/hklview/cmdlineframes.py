@@ -14,6 +14,7 @@ from scitbx import matrix
 from cctbx import sgtbx
 from libtbx import group_args
 import libtbx
+import libtbx.load_env
 import traceback
 import sys, zmq, threading,  time, cmath, zlib, os.path, math
 

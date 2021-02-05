@@ -71,8 +71,8 @@ class AboutForm(QDialog):
     as well as derived software thereof.<br/>
     HKLviewer uses functionality provided by the
     <a href="https://github.com/nglviewer/ngl">NGL Viewer</a> project and
-    the <a href="https://github.com/niklasvh/html2canvas">html2canvas</a> project.<br/>
-    Queries or bug reports should be sent to cctbx@cci.lbl.gov or rdo20@cam.ac.uk.
+    the <a href="https://github.com/niklasvh/html2canvas">html2canvas</a> project.
+    Refer to rdo20@cam.ac.uk or cctbx@cci.lbl.gov for queries or bug reports.
     </p></body></html>"""
     self.aboutlabel.setText(aboutstr)
     self.aboutlabel.setTextInteractionFlags(Qt.TextBrowserInteraction);
@@ -1501,7 +1501,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       self.MillerTableContextMenuHandler(QCursor.pos(), row)
     if self.millertable.mousebutton == QEvent.MouseButtonDblClick:
       # quickly display data with a double click
-      #for sceneid,(scenelabel,labeltype,arrayid,sceneid) in enumerate(self.scenearraylabeltypes):
       for scenelabel,labeltype,arrayid,sceneid in self.scenearraylabeltypes:
         if row == arrayid:
           self.DisplayData(sceneid, row)
@@ -1522,14 +1521,14 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       if self.millerarraylabels[row] == scenelabelstr or self.millerarraylabels[row] + " + " in scenelabelstr:
         if labeltype == "hassigmas":
           myqa = QAction("Display data of %s" %scenelabelstr, self.window, triggered=self.testaction)
-          myqa.setData((i, row))
+          myqa.setData((sceneid, row))
           self.millertablemenu.addAction(myqa)
           myqa = QAction("Display sigmas of %s" %scenelabelstr, self.window, triggered=self.testaction)
-          myqa.setData((i + 1000, row)) # want to show the sigmas rather than the data if we add 1000
+          myqa.setData((sceneid + 1000, row)) # want to show the sigmas rather than the data if we add 1000
           self.millertablemenu.addAction(myqa)
         else:
           myqa = QAction("Display %s" %scenelabelstr, self.window, triggered=self.testaction)
-          myqa.setData((i, row))
+          myqa.setData((sceneid, row))
           self.millertablemenu.addAction(myqa)
     myqa = QAction("Make new data from this data and other data...", self.window, triggered=self.testaction)
     myqa.setData( ("newdata", row ))
