@@ -198,6 +198,7 @@ class map_model_manager(object):
         self.add_crystal_symmetry_if_necessary(m, map_manager = any_map_manager)
         self.shift_any_model_to_match(m, map_manager = any_map_manager)
 
+
     if any_map_manager and ignore_symmetry_conflicts:
       # Take all symmetry information from
       #  any_map_manager and apply it to everything
@@ -7961,9 +7962,7 @@ class match_map_model_ncs(object):
     # Must already have a map_manager. Ncs object must match shift_cart already
 
     assert self.map_manager() is not None
-    self.map_manager().set_ncs_object(ncs_object)
-    # Check to make sure its shift_cart matches
-    self.check_model_and_set_to_match_map_if_necessary()
+    self.map_manager().set_ncs_object(ncs_object) # checks for shift_cart
 
   def read_map(self, file_name):
     # Read in a map and make sure its symmetry is similar to others
