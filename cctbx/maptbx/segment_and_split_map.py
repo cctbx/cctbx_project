@@ -2718,7 +2718,8 @@ def get_f_phases_from_map(
         d_min_use = d_min*d_min_ratio
     else:
       d_min_use = None
-    assert map_data.origin() == (0,0,0)
+    if map_data.origin() != (0,0,0):
+      map_data = map_data.shift_origin()
     from iotbx.map_manager import map_manager
     mm = map_manager(map_data = map_data,
        unit_cell_grid = map_data.all(),

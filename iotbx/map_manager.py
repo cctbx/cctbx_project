@@ -2195,6 +2195,8 @@ class map_manager(map_reader, write_ccp4_map):
        map_data and
        map_coefficients without changing origin.  Both are intended for use
        with map_data that has an origin at (0, 0, 0).
+
+       The map coefficients are always in space group P1.
     '''
     assert self.map_data()
     assert self.map_data().origin() == (0, 0, 0)
@@ -2216,8 +2218,11 @@ class map_manager(map_reader, write_ccp4_map):
         print("\nResolution of map coefficients allowed by gridding is %.3f " %(
           d_min_allowed),file=self.log)
         d_min=d_min_allowed
+    from cctbx import crystal
+    crystal_symmetry = crystal.symmetry(
+      self.crystal_symmetry().unit_cell().parameters(), 1)
     ma = miller.structure_factor_box_from_map(
-      crystal_symmetry = self.crystal_symmetry(),
+      crystal_symmetry = crystal_symmetry,
       include_000      = True,
       map              = self.map_data(),
       d_min            = d_min)
@@ -2245,7 +2250,7 @@ class map_manager(map_reader, write_ccp4_map):
     return self.customized_copy(
       map_data=maptbx.map_coefficients_to_map(
         map_coeffs       = map_coeffs,
-        crystal_symmetry = self.crystal_symmetry(),
+        crystal_symmetry = map_coeffs.crystal_symmetry(),
         n_real           = self.map_data().all())
       )
 
