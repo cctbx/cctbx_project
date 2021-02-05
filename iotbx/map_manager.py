@@ -2159,7 +2159,6 @@ class map_manager(map_reader, write_ccp4_map):
 
     return sample_regs_obj.get_array(1)
 
-
   def trace_atoms_in_map(self,
        dist_min,
        n_atoms):
@@ -2179,8 +2178,8 @@ class map_manager(map_reader, write_ccp4_map):
      return working_map_manager.find_n_highest_grid_points_as_sites_cart(
           n = n_atoms)
 
-  def map_as_fourier_coefficients(self, d_min = None,
-     d_max = None):
+  def map_as_fourier_coefficients(self, d_min = None, d_max = None, box=True,
+     resolution_factor=1./3):
     '''
        Convert a map to Fourier coefficients to a resolution of d_min,
        if d_min is provided, otherwise box full of map coefficients
@@ -2199,15 +2198,31 @@ class map_manager(map_reader, write_ccp4_map):
     '''
     assert self.map_data()
     assert self.map_data().origin() == (0, 0, 0)
+    # Choose d_min and make sure it is bigger than smallest allowed
+    if(d_min is None and not box):
+      d_min = maptbx.d_min_from_map(
+        map_data  = self.map_data(),
+        unit_cell = self.crystal_symmetry().unit_cell(),
+        resolution_factor = resolution_factor)
+      print("\nResolution of map coefficients using "+\
+        "resolution_factor of %.2f: %.1f A\n" %(resolution_factor, d_min),
+        file=self.log)
+    elif (not box):  # make sure d_min is big enough
+      d_min_allowed = maptbx.d_min_from_map(
+        map_data  = self.map_data(),
+        unit_cell = self.crystal_symmetry().unit_cell(),
+        resolution_factor = 0.5)
+      if d_min < d_min_allowed:
+        print("\nResolution of map coefficients allowed by gridding is %.3f " %(
+          d_min_allowed),file=self.log)
+        d_min=d_min_allowed
     ma = miller.structure_factor_box_from_map(
       crystal_symmetry = self.crystal_symmetry(),
       include_000      = True,
       map              = self.map_data(),
-      d_min            = d_min )
-    if d_max is not None:
-      ma=ma.resolution_filter(d_min = d_min, d_max = d_max)
-      # NOTE: miller array resolution_filter produces a new array.
-      # Methods in map_manager that are _filter() change the existing array.
+      d_min            = d_min)
+    if(d_max is not None):
+      ma = ma.resolution_filter(d_max = d_max)
     return ma
 
   def fourier_coefficients_as_map_manager(self, map_coeffs):
