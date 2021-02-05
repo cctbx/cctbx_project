@@ -196,13 +196,11 @@ class map_model_manager(object):
     if any_map_manager:
       for m in [model] + extra_model_list:
         self.add_crystal_symmetry_if_necessary(m, map_manager = any_map_manager)
+        self.shift_any_model_to_match(m, map_manager = any_map_manager)
 
-    if ignore_symmetry_conflicts:
+    if any_map_manager and ignore_symmetry_conflicts:
       # Take all symmetry information from
       #  any_map_manager and apply it to everything
-
-      for m in [model] + extra_model_list:
-        self.shift_any_model_to_match(m, map_manager = any_map_manager)
 
       if map_manager_1 and (map_manager_1 is not any_map_manager):
         map_manager_1 = any_map_manager.customized_copy(
@@ -3140,7 +3138,6 @@ class map_model_manager(object):
 
     if not map_manager:
       map_manager = self.get_any_map_manager()
-
     assert map_manager is not None
 
     self.add_crystal_symmetry_if_necessary(model, map_manager = map_manager)
@@ -3154,7 +3151,7 @@ class map_model_manager(object):
     if coordinate_shift != (0,0,0):
       model.shift_model_and_set_crystal_symmetry(
         shift_cart = coordinate_shift,
-        crystal_symmetry=self.crystal_symmetry())
+        crystal_symmetry=map_manager.crystal_symmetry())
 
 
   def get_model_from_other(self, other,
