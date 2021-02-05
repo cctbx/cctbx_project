@@ -69,5 +69,8 @@ def run_tests():
   #test_pdb_remediate_cycle("tst/4v9dFH.pdb")
 
 if __name__=="__main__":
-  run_tests()
-  print("OK")
+  if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
+    run_tests()
+    print("OK")
+  else:
+    print('chem_data is not available for remediator tests, skipping')
