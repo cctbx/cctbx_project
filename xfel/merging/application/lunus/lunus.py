@@ -152,10 +152,18 @@ class lunus(worker):
 
     self.reference_experiments = self.mpi_helper.comm.bcast(self.reference_experiments, root=0)
 
-    reference_experiment_params = get_experiment_params(experiments[0:1])
+    self.logger.log("Received reference %s %s %d" % (self.reference_experiments[0].identifier,self.reference_experiments[0].imageset.paths()[0],self.reference_experiments[0].imageset.indices()[0]))
+
+    reference_experiment_params = get_experiment_params(self.reference_experiments[0:1])
     self.processor = lunus_processor.Process(len(reference_experiment_params))
-    with open(self.params.lunus.deck_file) as f:
-      self.deck = f.read()
+
+    if self.mpi_helper.rank == 0:
+      with open(self.params.lunus.deck_file) as f:
+        self.deck = f.read()
+    else:
+      self.deck = None
+
+    self.deck = self.mpi_helper.comm.bcast(self.deck, root=0)
 
     deck_and_extras = self.deck+reference_experiment_params[0]
     self.processor.LunusSetparamslt(deck_and_extras)
@@ -177,16 +185,21 @@ class lunus(worker):
     experiment_params = get_experiment_params(experiments)
     p = self.processor
 
+    self.logger.log("LUNUS_INTEGRATE: Passed %s %d" % (experiments[0].imageset.paths()[0],experiments[0].imageset.indices()[0]))
+
     if self.current_path != experiments[0].imageset.paths()[0]:
       self.current_imageset = ImageSetFactory.make_imageset(experiments[0].imageset.paths())
     idx = experiments[0].imageset.indices()[0]
     experiments[0].imageset = self.current_imageset[idx:idx+1]
 
-    data = self.reference_experiments[0].imageset[0]
+    self.logger.log("LUNUS_INTEGRATE: Ready with %s %d" % (experiments[0].imageset.paths()[0],experiments[0].imageset.indices()[0]))
+
+    data = experiments[0].imageset[0]
     if not isinstance(data, tuple):
       data = data,
     for panel_idx, panel in enumerate(data):
       self.processor.set_image(panel_idx, panel)
+      self.logger.log("LUNUS_INTEGRATE: panel_idx %d panel[0:10] = " % (panel_idx),panel[0:10])
 
     for pidx in range(len(experiment_params)):
       deck_and_extras = self.deck+experiment_params[pidx]
