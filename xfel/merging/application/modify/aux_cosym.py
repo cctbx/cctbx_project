@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+import copy
 from scitbx.array_family import flex
 from dials.util.observer import Subject
 from cctbx import sgtbx
@@ -48,6 +49,29 @@ class CosymAnalysis(BaseClass):
           ax = plt.gca()
           ax.add_artist(circle)
           plt.show()
+
+  def _space_group_for_dataset(self, dataset_id, sym_ops):
+      if self.input_space_group is not None:
+          sg = copy.deepcopy(self.input_space_group)
+      else:
+          sg = sgtbx.space_group()
+      ref_sym_op_id = None
+      ref_cluster_id = None
+      for sym_op_id in range(len(sym_ops)):
+          i_cluster = self.cluster_labels[
+              len(self.input_intensities) * sym_op_id + dataset_id
+          ]
+          if i_cluster < 0:
+              continue
+          if ref_sym_op_id is None:
+              ref_sym_op_id = sym_op_id
+              ref_cluster_id = i_cluster
+              continue
+          op = sym_ops[ref_sym_op_id].inverse().multiply(sym_ops[sym_op_id])
+          if i_cluster == ref_cluster_id:
+              sg.expand_smx(op.new_denominators(1, 12))
+      return sg.make_tidy()
+
 
   def run(self): # specializes dials.algorithms.symmetry.cosym.CosymAnalysis
         #from libtbx.development.timers import Profiler

@@ -92,6 +92,7 @@ modify.cosym.min_reflections=15
 modify.cosym.normalisation=None
 modify.cosym.d_min=2.5
 modify.cosym.dimensions=2
+modify.cosym.cluster.n_clusters=2
 modify.cosym.min_pairs=3
 modify.cosym.nproc=1
 modify.cosym.weights=count
@@ -174,6 +175,10 @@ modify.cosym.dimensions=2
 This is absolutely critical.  We set this to 2 dimensions for space group P63, as there are exactly two groups (cosets) expected 
 in the final sort.  Setting this to the default (auto determine) has the unfortunate consequence of performing the embedding
 analysis in a higher dimensional space (6) where the clusters cannot be found!  So for the present use case, keep this at 2.
+```
+modify.cosym.cluster.n_clusters=2
+```
+The number of clusters should match the number of dimensions.
 ```
 modify.cosym.min_pairs=3
 ```
