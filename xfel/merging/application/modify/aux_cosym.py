@@ -51,6 +51,10 @@ class CosymAnalysis(BaseClass):
           plt.show()
 
   def _space_group_for_dataset(self, dataset_id, sym_ops):
+  """
+  Code from @rjgildea originally in DIALS commit 60986de. This was refactored
+  out of DIALS so for now we are reproducing it here.
+  """
       if self.input_space_group is not None:
           sg = copy.deepcopy(self.input_space_group)
       else:
