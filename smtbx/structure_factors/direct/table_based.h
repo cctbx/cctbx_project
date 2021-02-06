@@ -352,6 +352,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     lookup_t mi_lookup;
     sgtbx::space_group const &space_group;
     af::shared<std::vector<complex_type> > data;
+    bool anomalous_flag;
     mutable std::vector<complex_type> tmp;
   public:
     // Copy constructor
@@ -360,16 +361,19 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       mi_lookup(lbsc.mi_lookup),
       space_group(lbsc.space_group),
       data(lbsc.data),
+      anomalous_flag(lbsc.anomalous_flag),
       tmp(lbsc.tmp.size())
     {}
 
     lookup_based_anisotropic(
       af::shared< xray::scatterer<float_type> > const &scatterers,
       table_reader<FloatType> const &data_,
-      sgtbx::space_group const &space_group)
+      sgtbx::space_group const &space_group,
+      bool anomalous_flag)
       :
       space_group(space_group),
       data(data_.miller_indices().size()),
+      anomalous_flag(anomalous_flag),
       tmp(space_group.n_smx())
     {
       SMTBX_ASSERT(data_.rot_mxs().size() <= 1);
@@ -427,7 +431,10 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       for (std::size_t i = 0; i < space_group.n_smx(); i++) {
         miller::index<> h = h_ * space_group.smx(i).r();
         lookup_t::const_iterator l = mi_lookup.find(h);
-        SMTBX_ASSERT(l != mi_lookup.end());
+        if (l == mi_lookup.end() && !anomalous_flag) {
+          l = mi_lookup.find(-h);
+        }
+        SMTBX_ASSERT(l != mi_lookup.end())(h.as_string());
         tmp[i] = data[l->second][scatterer_idx];
       }
       return tmp;
@@ -463,7 +470,8 @@ namespace smtbx { namespace structure_factors { namespace table_based {
           return new lookup_based_anisotropic<FloatType>(
             scatterers,
             data,
-            space_group);
+            space_group,
+            anomalous_flag);
         }
         else {
           return new table_based_isotropic<FloatType>(
