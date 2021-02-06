@@ -254,6 +254,7 @@ def get_typed_field(cif_key, sk, field, func=None):
 
 def run(filename):
   from iotbx import cif
+  if not os.path.exists(filename): return None
   complete_cif_data = {}
   cm = cif.reader(filename, strict=False, raise_if_errors=False).model()
   for code, rc in cm.items():
