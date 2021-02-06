@@ -255,7 +255,7 @@ class Reproducer:
       import pickle
       with open("big_data","rb") as F:
         self._lattices = pickle.load(F)
-        self._sym_ops = pickle.load(F)
+        self.sym_ops = pickle.load(F)
         self._weights = pickle.load(F)
         self._data = pickle.load(F)
         self._patterson_group = pickle.load(F)
