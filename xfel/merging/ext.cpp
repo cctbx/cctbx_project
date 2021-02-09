@@ -296,7 +296,7 @@ namespace sx_merging {
                 indices_j.push_back(indices[kk][i]);
               }
 
-              matcher.match_cached(indices_j);
+              matcher.match_cached_fast(indices_j);
 
               af::shared<af::tiny<std::size_t, 2> > pairs = matcher.pairs();
 
