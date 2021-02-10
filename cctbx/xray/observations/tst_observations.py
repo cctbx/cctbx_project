@@ -48,7 +48,7 @@ def excersise():
   # this is supposed to fail for now until somebody re-implements
   # mixed HKLF 5 + merohedral twinning in a meaningful way...
   try:
-    obs = observations.customized_copy(obs,
+    obs = observations.customized_copy(obs, sg,
             twin_fractions=(xray.twin_fraction(0.7,True),),
             twin_components=(xray.twin_component(
                 sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)), 0.25, True),))

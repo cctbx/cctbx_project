@@ -5131,7 +5131,7 @@ class array(set):
         data=result.data,
         sigmas=result.sigmas).set_observation_type(self)
     else: #HKLF 4
-      result = observations.observations(
+      result = observations.observations(self.space_group(),
         self.indices(), self.data(), self.sigmas(), tw_cmps)
       result.fo_sq = self
     # synchronise the life-time of the reference objects
