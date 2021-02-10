@@ -1729,16 +1729,17 @@ class set(crystal.symmetry):
       assert d_star_sq_step > 0 or (d_star_sq_step is None)
     if auto_binning:
       d_spacings = self.d_spacings().data()
-      d_max=flex.min(d_spacings)
-      d_min=flex.max(d_spacings)
+      d_max=flex.max(d_spacings)
+      d_min=flex.min(d_spacings)
       del d_spacings
       if d_star_sq_step is None:
         d_star_sq_step = 0.004
     assert (d_star_sq_step>0.0)
+    d_min, d_max = sorted((d_min, d_max))
     return self.use_binning(binning=binning(self.unit_cell(),
       self.indices(),
-      d_min,
       d_max,
+      d_min,
       d_star_sq_step))
 
   def setup_binner_counting_sorted(self,
