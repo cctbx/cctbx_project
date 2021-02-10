@@ -86,77 +86,21 @@ namespace cctbx { namespace xray {
       scitbx::af::shared<bool> selection;
       int omitted_count, sys_abs_count;
       filter_result(int sz)
-        : selection(sz), omitted_count(0), sys_abs_count(0) {}
+        : selection(sz), omitted_count(0), sys_abs_count(0)
+      {}
     };
 
-    // twin component abstract iterator
-    struct iterator_ {
-      virtual ~iterator_() {}
-      virtual bool has_next() const = 0;
-      virtual index_twin_component next() = 0;
-      virtual void reset() = 0;
-    };
-    // simple iterator pointer management
-    class iterator_holder {
-      mutable iterator_ *itr;
-    public:
-      iterator_holder(iterator_ *itr_)
-        : itr(itr_)
-      {}
-      iterator_holder(const iterator_holder &ih)
-        : itr(ih.itr)
-      {
-        ih.itr = 0;
-      }
-      ~iterator_holder() {
-        if (itr != 0) {
-          delete itr;
-        }
-      }
-      bool has_next() const {
-        CCTBX_ASSERT(itr);
-        return itr->has_next();
-      }
-      index_twin_component next() {
-        CCTBX_ASSERT(itr);
-        return itr->next();
-      }
-      void reset() {
-        CCTBX_ASSERT(itr);
-        itr->reset();
-      }
-    };
-
-    // iterator for components with a twin law
-    struct m_iterator_ : public iterator_ {
-      const int h_index;
-      int current_merohedral;
-      observations const& parent;
-      m_iterator_(observations const &parent_, int h_index_)
-        : parent(parent_), h_index(h_index_), current_merohedral(0)
-      {}
-      bool has_next() const {
-        return current_merohedral < parent.merohedral_components_.size();
-      }
-      index_twin_component next() {
-        CCTBX_ASSERT(has_next());
-        int idx = current_merohedral++;
-        return index_twin_component(
-            parent.generate(parent.indices_[h_index], idx),
-            parent.merohedral_components_[idx],
-            1
-          );
-      }
-      void reset() {
-        current_merohedral = 0;
-      }
-    };
-    // iterator for generic twin components
-    struct t_iterator_ : public iterator_ {
+    // iterator for twin components
+    struct iterator {
       const int h_index;
       int current;
       observations const& parent;
-      t_iterator_(observations const &parent_, int h_index_)
+      // copy constructor
+//      iterator(iterator& i)
+//        : h_index(i.h_index), current(i.current), parent(i.parent)
+//      {}
+
+      iterator(observations const &parent_, int h_index_)
         : parent(parent_), h_index(h_index_), current(-1)
       {}
 
@@ -168,7 +112,7 @@ namespace cctbx { namespace xray {
         CCTBX_ASSERT(has_next());
         local_twin_component const& ltw =
           parent.index_components_[h_index][++current];
-        if (ltw.fraction_index < 0) {
+        if (ltw.fraction == 0) {
           return index_twin_component(
             ltw.h,
             0, // refers to the prime scale
@@ -177,7 +121,7 @@ namespace cctbx { namespace xray {
         }
         return index_twin_component(
           ltw.h,
-          parent.twin_fractions_[ltw.fraction_index],
+          ltw.fraction,
           1
         );
       }
@@ -186,14 +130,12 @@ namespace cctbx { namespace xray {
       }
     };
   protected:
-
-    // need to keep indices if the custom constructor is used
     struct local_twin_component {
       miller::index<> h;
-      int fraction_index;
-      local_twin_component(miller::index<> const& h_, int fraction_index_)
-        : h(h_),
-        fraction_index(fraction_index_)
+      twin_fraction<FloatType> *fraction;
+      local_twin_component(miller::index<> const& h,
+        twin_fraction<FloatType>* fraction)
+        : h(h), fraction(fraction)
       {}
     };
 
@@ -202,21 +144,13 @@ namespace cctbx { namespace xray {
     scitbx::af::shared<scitbx::af::shared<local_twin_component> >
       index_components_;
     scitbx::af::shared<twin_component<FloatType>*> merohedral_components_;
-    scitbx::af::shared<scitbx::mat3<FloatType> > merohedral_laws_;
     scitbx::af::shared<twin_fraction<FloatType>*> twin_fractions_;
     scitbx::af::shared<int> measured_scale_indices_;
     mutable FloatType prime_fraction_;
 
-    void validate_data() {
-      CCTBX_ASSERT(indices_.size()==data_.size());
-      CCTBX_ASSERT(indices_.size()==sigmas_.size());
-      if (index_components_.size() != 0) {
-        CCTBX_ASSERT(measured_scale_indices_.size() == indices_.size());
-      }
-    }
-
-    miller::index<> generate(miller::index<> const& h, int c_i) const {
-      scitbx::mat3<FloatType> const& tl = merohedral_laws_[c_i];
+    miller::index<> generate(scitbx::mat3<FloatType> const& tl,
+      miller::index<> const& h) const
+    {
       return miller::index<>(
         scitbx::math::iround(tl[0]*h[0]+tl[3]*h[1]+tl[6]*h[2]),
         scitbx::math::iround(tl[1]*h[0]+tl[4]*h[1]+tl[7]*h[2]),
@@ -233,10 +167,10 @@ namespace cctbx { namespace xray {
       CCTBX_ASSERT(indices.size()==sigmas.size());
       CCTBX_ASSERT(indices.size()==scale_indices.size());
       index_components_.reserve(indices.size()); //better more than less
+      measured_scale_indices_.reserve(indices.size());
       indices_.reserve(index_components_.size());
       data_.reserve(index_components_.size());
       sigmas_.reserve(index_components_.size());
-      measured_scale_indices_.reserve(index_components_.size());
       if (indices.size() != 0) {
         index_components_.push_back(scitbx::af::shared<local_twin_component>());
       }
@@ -246,7 +180,7 @@ namespace cctbx { namespace xray {
           int s_ind = -scale_indices[i]-1;
           CCTBX_ASSERT(s_ind <= twin_fractions_.size());
           index_components_[index].push_back(
-            local_twin_component(indices[i], s_ind-1));
+            local_twin_component(indices[i], twin_fractions_[s_ind-1]));
         }
         else {
           int s_ind = scale_indices[i];
@@ -261,20 +195,45 @@ namespace cctbx { namespace xray {
         }
       }
     }
-    void process_merohedral_components(scitbx::af::shared<
-      twin_component<FloatType>*> const& cmps)
+    void process_merohedral_components(sgtbx::space_group const& space_group,
+      scitbx::af::shared<twin_component<FloatType>*> const& cmps)
     {
-      for (int i=0; i<cmps.size(); i++) {
+      CCTBX_ASSERT(indices_.size() == data_.size());
+      CCTBX_ASSERT(indices_.size() == sigmas_.size());
+      if (index_components_.size() != 0) {
+        CCTBX_ASSERT(measured_scale_indices_.size() == indices_.size());
+      }
+      if (cmps.size() == 0) {
+        return;
+      }
+      scitbx::af::shared<scitbx::mat3<FloatType> > merohedral_laws_;
+      for (int i = 0; i < cmps.size(); i++) {
         merohedral_components_.push_back(cmps[i]);
         merohedral_laws_.push_back(cmps[i]->twin_law
           .as_floating_point(scitbx::type_holder<FloatType>()));
+      }
+      index_components_.reserve(indices_.size());
+      measured_scale_indices_.reserve(indices_.size());
+      for (int i = 0; i < indices_.size(); i++) {
+        measured_scale_indices_.push_back(0);
+        index_components_.push_back(
+          scitbx::af::shared<local_twin_component>());
+
+        for (int mci = 0; mci < merohedral_laws_.size(); mci++) {
+          miller::index<> mi = generate(merohedral_laws_[mci], indices_[i]);
+          if (!space_group.is_sys_absent(mi)) {
+            index_components_[i].push_back(
+              local_twin_component(mi, cmps[mci]));
+          }
+        }
       }
     }
 
   public:
 
     // hklf 4 + optional merohedral twinning
-    observations(scitbx::af::shared<miller::index<> > const& indices,
+    observations(sgtbx::space_group const& space_group,
+      scitbx::af::shared<miller::index<> > const& indices,
       scitbx::af::shared<FloatType> const& data,
       scitbx::af::shared<FloatType> const& sigmas,
       scitbx::af::shared<twin_component<FloatType>*> const&
@@ -284,8 +243,7 @@ namespace cctbx { namespace xray {
         sigmas_(sigmas),
         prime_fraction_(1)
     {
-      validate_data();
-      process_merohedral_components(merohedral_components);
+      process_merohedral_components(space_group, merohedral_components);
     }
 
     // hklf 5
@@ -306,6 +264,7 @@ namespace cctbx { namespace xray {
     inversion twin law needs to be added
     */
     observations(const observations& obs,
+      sgtbx::space_group const& space_group,
       scitbx::af::shared<twin_fraction<FloatType>*> const&
         twin_fractions,
       scitbx::af::shared<twin_component<FloatType>*> const&
@@ -319,20 +278,15 @@ namespace cctbx { namespace xray {
     {
       CCTBX_ASSERT(twin_fractions.size()==obs.twin_fractions_.size());
       CCTBX_ASSERT(!(twin_fractions.size() != 0 && merohedral_components.size() != 0));
-      process_merohedral_components(merohedral_components);
+      process_merohedral_components(space_group, merohedral_components);
       update_prime_fraction();
     }
 
     bool has_twin_components() const {
-      return twin_fractions_.size() != 0 || merohedral_components_.size() != 0;
+      return index_components_.size() != 0;
     }
 
-    iterator_holder iterator(int i) const {
-      if (twin_fractions_.size() > 0) {
-        return iterator_holder(new t_iterator_(*this, i));
-      }
-      return iterator_holder(new m_iterator_(*this, i));
-    }
+    iterator iterate(int i) const { return iterator(*this, i); }
 
     /* must be called before using scale(index) or iterator */
     void update_prime_fraction() const {
@@ -375,7 +329,7 @@ namespace cctbx { namespace xray {
         merohedral_components) const
     {
       observations res = detwin(space_group, anomalous_flag, fo_sq_indices, fc_sqs);
-      res.process_merohedral_components(merohedral_components);
+      res.process_merohedral_components(space_group, merohedral_components);
       return res;
     }
 
@@ -400,7 +354,7 @@ namespace cctbx { namespace xray {
         FloatType fo_sq_prime = fc_sqs[hi];
         FloatType fo_sq_prime_scaled = fo_sq_prime * scale(i);
         FloatType twin_contrib = 0;
-        iterator_holder itr = iterator(i);
+        iterator itr = iterate(i);
         while (itr.has_next()) {
           index_twin_component tw = itr.next();
           long ti = twin_map.find_hkl(tw.h);
@@ -411,7 +365,7 @@ namespace cctbx { namespace xray {
         i_dtw[i] = data_[i] * scale;
         s_dtw[i] = sigmas_[i] * scale;
       }
-      return observations(indices_, i_dtw, s_dtw,
+      return observations(space_group, indices_, i_dtw, s_dtw,
           scitbx::af::shared<twin_component<FloatType>*>());
     }
 

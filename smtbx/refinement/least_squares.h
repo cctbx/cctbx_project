@@ -267,10 +267,10 @@ namespace smtbx { namespace refinement { namespace least_squares {
       }
 
       FloatType process_twinning(int i_h, af::shared<FloatType> &gradients) {
-        typedef typename cctbx::xray::observations<FloatType>::iterator_holder itr_t;
+        typedef typename cctbx::xray::observations<FloatType>::iterator itr_t;
         FloatType obs = f_calc_function.observable;
         if (reflections.has_twin_components()) {
-          itr_t itr = reflections.iterator(i_h);
+          itr_t itr = reflections.iterate(i_h);
           FloatType identity_part = obs,
             obs_scale = reflections.scale(i_h);
           obs *= obs_scale;

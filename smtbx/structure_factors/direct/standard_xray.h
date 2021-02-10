@@ -896,11 +896,11 @@ namespace smtbx { namespace structure_factors { namespace direct {
           scattering_type_registry.unique_indices(scatterers.const_ref())),
         cache(new cache_t)
       {
-        typedef typename cctbx::xray::observations<FloatType>::iterator_holder itr_t;
+        typedef typename cctbx::xray::observations<FloatType>::iterator itr_t;
         for (std::size_t i = 0; i < reflections.size(); i++) {
           cache_index(reflections.index(i), unit_cell);
           if (reflections.has_twin_components()) {
-            itr_t itr = reflections.iterator(i);
+            itr_t itr = reflections.iterate(i);
             while (itr.has_next()) {
               typename cctbx::xray::observations<float_type>::index_twin_component
                 twc = itr.next();
