@@ -1600,13 +1600,12 @@ Distance: %s
     hklvec = InvMx.transpose()* self.currentRotmx.inverse()* Zvec.transpose()
     hkl = list(hklvec)
     if self.debug:
-      self.SendInfoToGUI( { "StatusBar": "rotation matrix: %s, HKL vector perpendicular to screen: %s" \
+      self.SendInfoToGUI( { "StatusBar": "RotMx: %s, HKL: %s" \
         %(str(roundoff(self.currentRotmx,4)), str(roundoff(hklvec, 4))) } )
       self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label="foo", name="wibbletest",
                              r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
     else:
-      self.SendInfoToGUI( { "StatusBar": "HKL vector perpendicular to screen: %s" \
-        % str(roundoff(hklvec, 4)) } )
+      self.SendInfoToGUI( { "StatusBar": "%s" % str(roundoff(hkl, 4)) } )
     if "MouseMovedOrientation:" in message:
       self.params.mouse_moved = True
     if self.currentRotmx.is_r3_rotation_matrix():

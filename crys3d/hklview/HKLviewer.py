@@ -335,9 +335,14 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.binTableCheckState = None
     self.millertablemenu = QMenu(self.window)
     self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
-    #self.resize(QSize(self.FileInfoBox.size().width()*2, self.size().height() ))
     self.functionTabWidget.setDisabled(True)
     self.window.statusBar().showMessage("")
+    self.hklLabel = QLabel()
+    self.hklLabel.setText("HKL vector normal to screen:")
+    self.HKLnormaltxtbox = QLineEdit('')
+    self.HKLnormaltxtbox.setReadOnly(True)
+    self.window.statusBar().addPermanentWidget(self.hklLabel)
+    self.window.statusBar().addPermanentWidget(self.HKLnormaltxtbox)
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
     self.actionLocal_Help.triggered.connect(self.onOpenHelpFile)
     self.actionCCTBXwebsite.triggered.connect(self.onOpenCCTBXwebsite)
@@ -706,7 +711,8 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
             self.NewMillerArray = self.infodict.get("NewMillerArray",False)
 
           if self.infodict.get("StatusBar"):
-            self.window.statusBar().showMessage( self.infodict.get("StatusBar", "") )
+            #self.window.statusBar().showMessage( self.infodict.get("StatusBar", "") )
+            self.HKLnormaltxtbox.setText(self.infodict.get("StatusBar", "") )
 
           if self.infodict.get("clicked_HKL"):
             (h,k,l) = self.infodict.get("clicked_HKL", ( ) )
