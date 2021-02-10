@@ -16,8 +16,7 @@ class adp_similarity_restraints(object):
       asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
       pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
       scattering_types = xray_structure.scatterers().extract_scattering_types()
-      pair_asu_table.add_covalent_pairs(
-        scattering_types, exclude_scattering_types=flex.std_string(("H","D")))
+      pair_asu_table.add_covalent_pairs(scattering_types)
       pair_sym_table = pair_asu_table.extract_pair_sym_table()
     connectivity = pair_sym_table.full_simple_connectivity()
 

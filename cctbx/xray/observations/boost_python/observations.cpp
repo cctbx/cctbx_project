@@ -46,12 +46,14 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
 
       class_<obst>("observations", no_init)
-        .def(init<scitbx::af::shared<cctbx::miller::index<> > const&,
+        .def(init<sgtbx::space_group const&,
+                 scitbx::af::shared<cctbx::miller::index<> > const&,
                   scitbx::af::shared<FloatType> const&,
                   scitbx::af::shared<FloatType> const&,
                   scitbx::af::shared<
                     cctbx::xray::twin_component<FloatType>*> const& >
-             ((arg("indices"),
+             ((arg("space_group"), 
+               arg("indices"),
                arg("data"),
                arg("sigmas"),
                arg("merohedral_components"))))
@@ -67,11 +69,13 @@ namespace {
                arg("twin_fractions"),
                arg("merohedral_components"))))
         .def(init<observations<FloatType> const&,
+                  sgtbx::space_group const&,
                   scitbx::af::shared<
                     cctbx::xray::twin_fraction<FloatType>*> const&,
                   scitbx::af::shared<
                     cctbx::xray::twin_component<FloatType>*> const& >
              ((arg("observations"),
+               arg("space_group"),
                arg("twin_fractions"),
                arg("merohedral_components"))))
         .def("scale", &obst::scale)
@@ -81,12 +85,12 @@ namespace {
         .add_property("twin_fractions", &obst::twin_fractions)
         .add_property("merohedral_components", &obst::merohedral_components)
         .add_property("measured_scale_indices", &obst::measured_scale_indices)
-        .def("iterator", &obst::iterator, rbv())
+        .def("iterator", &obst::iterate, rbv())
         .def("detwin", detwin)
         .def("customized_detwin", customized_detwin)
         ;
 
-      typedef typename obst::iterator_holder itrt;
+      typedef typename obst::iterator itrt;
       class_<itrt>("iterator", no_init)
         .def("has_next", &itrt::has_next)
         .def("next", &itrt::next)

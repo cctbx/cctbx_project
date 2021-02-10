@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from cctbx_xray_observations_ext import *
 
-def customized_copy(obs, twin_fractions=None, twin_components=None):
+def customized_copy(obs, space_group, twin_fractions=None, twin_components=None):
   """ Creates a copy of the observation object and with new twin fractions
   and twin components
   """
@@ -11,7 +11,7 @@ def customized_copy(obs, twin_fractions=None, twin_components=None):
   twc = ()
   if twin_components is not None:
     twc = twin_components
-  result = observations(obs, twf, twc)
+  result = observations(obs, space_group, twf, twc)
   result.fo_sq = obs.fo_sq
   result.ref_twin_fractions = twin_fractions
   result.ref_twin_components = twin_components
