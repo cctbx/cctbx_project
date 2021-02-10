@@ -10,7 +10,7 @@
 #   prefix: <build artifact prefix>
 
 jobs:
-- job: ${{ format('{0}_{1}', parameters.distribution, join('_', parameters.version) ) }}
+- job: ${{ format('{0}{1}_{2}', parameters.prefix, parameters.distribution, join('_', parameters.version) ) }}
   pool:
     vmImage: ubuntu-latest
   timeoutInMinutes: 120
