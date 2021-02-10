@@ -7,7 +7,6 @@
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
-
 from __future__ import absolute_import, division, print_function
 
 from PySide2.QtWebEngineWidgets import QWebEngineView
@@ -16,11 +15,12 @@ try: # if invoked by cctbx.python or some such
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
   from helpers import HeaderDataTableWidget
 
-from PySide2.QtCore import QMetaObject, QRect, QSize, Qt
+from PySide2.QtCore import QCoreApplication, QMetaObject, QRect, QSize, Qt
 from PySide2.QtWidgets import QAbstractItemView, QAction, QCheckBox, QComboBox, \
  QDoubleSpinBox, QFrame, QGridLayout, QGroupBox, QLabel, QMenu, QMenuBar, QPlainTextEdit, \
  QRadioButton, QSlider, QSplitter, QSizePolicy, QSpinBox, QStatusBar, QTableWidget, \
  QTabWidget, QTextEdit, QWidget
+
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -731,6 +731,7 @@ class Ui_MainWindow(object):
         self.textInfo.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.textInfo.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.textInfo.setLineWrapMode(QPlainTextEdit.NoWrap)
+        self.textInfo.setReadOnly(True)
         self.splitter_2.addWidget(self.textInfo)
 
         self.gridLayout_4.addWidget(self.splitter_2, 0, 0, 1, 1)
@@ -782,7 +783,6 @@ class Ui_MainWindow(object):
     # setupUi
 
     def retranslateUi(self, MainWindow):
-        from PySide2.QtCore import QCoreApplication
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
         self.actionOpen_reflection_file.setText(QCoreApplication.translate("MainWindow", u"Open reflection file...", None))
         self.actionSettings.setText(QCoreApplication.translate("MainWindow", u"Settings", None))

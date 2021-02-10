@@ -65,7 +65,7 @@ class AboutForm(QDialog):
     self.aboutlabel.setWordWrap(True)
     aboutstr = """<html><head/><body><p><span style=" font-weight:600;">
     HKLviewer, </span>A reflection data viewer for crystallography
-    <span style=" font-weight:600;"><br/>Developers: </span>Dr. Robert D. Oeffner<br/>
+    <br/>Developers: Dr. Robert D. Oeffner<br/>
     Cambridge Institute for Medical Research, University of Cambridge.<br/>
     HKLviewer is part of the <a href="http://cci.lbl.gov/docs/cctbx/"> CCTBX library</a>
     as well as derived software thereof.<br/>
@@ -540,7 +540,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
               with open(fname,"r") as f:
                 txts = txts + " "*20 + copyrighttitle + ":\n\n"
                 txts = txts + f.read()
-                txts = txts + "\n" + "#" * 80  + "\n"
+                txts = txts + "\n" + "#" * 50  + "\n"
             self.aboutform.copyrightstxt.setText(txts)
             self.aboutform.setFixedSize( self.aboutform.sizeHint() )
 
@@ -693,8 +693,11 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
           if self.infodict.get("NewFileLoaded"):
             self.NewFileLoaded = self.infodict.get("NewFileLoaded",False)
+            self.currentmillarray_idx = None
             self.vectortable2.clearContents()
+            self.ShowAllVectorsBtn.setCheckState(Qt.Unchecked)
             self.functionTabWidget.setDisabled(True)
+            self.AlignVectorGroupBox.setChecked( False)
 
           if self.infodict.get("NewHKLscenes"):
             self.NewHKLscenes = self.infodict.get("NewHKLscenes",False)
@@ -1156,7 +1159,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def onBinsTableItemChanged(self, item):
-    #print( "in itemChanged %s,  %s" %(item.text(), str( item.checkState())) )
     row = item.row()
     col = item.column()
     try:
@@ -1173,13 +1175,11 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
             alpha = 1.0
       except Exception as e:
         pass
-
       if col==3 and self.binstable_isready: # changing opacity
         bin_opacitieslst[row] = (alpha, row)
         self.bin_opacities = str(bin_opacitieslst)
         self.SetAllOpaqueCheckboxes()
         self.PhilToJsRender('NGL.bin_opacities = "%s"' %self.bin_opacities )
-
       if col==1 and self.binstable_isready: # changing scene_bin_thresholds
         aboveitem = self.binstable.item(row-1, 1)
         belowitem = self.binstable.item(row+1, 1)
@@ -1200,7 +1200,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
         if self.BinDataComboBox.currentIndex() == 0:
           newval = min(aboveval, max(belowval, float(item.text()) ) )
         self.binstable.item(row,col).setText(str(newval))
-        #nbins = len(self.bin_infotpls)
         self.lowerbinvals[row] = newval
         allbinvals = self.lowerbinvals + [ self.upperbinvals[-1] ]
         nbins = len(allbinvals)
@@ -1208,7 +1207,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
         scene_bin_thresholds = \"%s\"
         nbins = %d
         ''' %(allbinvals, nbins) )
-
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
 
@@ -1260,14 +1258,13 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def onShowAllVectors(self):
-    #self.unfeedback = True
     if self.ShowAllVectorsBtn.checkState()==Qt.Checked:
       for rvrow in range(self.vectortable2.rowCount()):
-        self.vectortable2.item(rvrow, 0).setCheckState(Qt.Checked)
+        if self.vectortable2.item(rvrow, 0).text() !=  "new vector":
+          self.vectortable2.item(rvrow, 0).setCheckState(Qt.Checked)
     if self.ShowAllVectorsBtn.checkState()==Qt.Unchecked:
       for rvrow in range(self.vectortable2.rowCount()):
         self.vectortable2.item(rvrow, 0).setCheckState(Qt.Unchecked)
-    #self.unfeedback = False
 
 
   def onVectorTableItemChanged(self, item):
@@ -1276,28 +1273,24 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     row = item.row()
     col = item.column()
     try:
-      rc = self.vectortable2.rowCount()
+      rc = len(self.all_vectors)
       label = None
       if self.vectortable2.item(row, 0) is not None:
         label = self.vectortable2.item(row, 0).text()
-
-      if row < len(self.all_vectors):
+      if row < rc:
         if label is None:
           return
-
         if col==0:
           if item.checkState()==Qt.Checked:
             self.PhilToJsRender(" viewer.show_vector = '[%d, %s]'" %(row, True ))
           else:
             self.PhilToJsRender(" viewer.show_vector = '[%d, %s]'" %(row, False ))
-
           if self.rotvec is not None: # reset any imposed angle to 0 whenever checking or unchecking a vector
               self.PhilToJsRender("""clip_plane {
                 angle_around_vector = '[%d, 0]'
                 bequiet = False
               }""" %self.rotvec)
               self.rotavecangle_slider.setValue(0)
-
           self.rotvec = None
           sum = 0
           for rvrow in range(self.vectortable2.rowCount()):
@@ -1326,8 +1319,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
               self.ShowAllVectorsBtn.setCheckState(Qt.Unchecked)
             if sum >0.0 and sum < rc:
               self.ShowAllVectorsBtn.setCheckState(Qt.PartiallyChecked)
-
-      if row==(rc-1) and label !="" and label != "new vector": # a user defined vector
+      if row==rc and label !="" and label != "new vector": # a user defined vector
         if col==1:
           hklop = self.vectortable2.item(row, 1).text()
           self.PhilToJsRender("""viewer.add_user_vector_hkl_op = '%s'
@@ -1340,7 +1332,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
           abcvec = self.vectortable2.item(row, 3).text()
           self.PhilToJsRender("""viewer.add_user_vector_abc = '(%s)'
           viewer.user_label = %s """ %(abcvec, label))
-
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
 

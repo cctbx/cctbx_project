@@ -1214,6 +1214,9 @@ p, li { white-space: pre-wrap; }
               <property name="lineWrapMode">
                <enum>QPlainTextEdit::NoWrap</enum>
               </property>
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
              </widget>
             </widget>
            </item>
