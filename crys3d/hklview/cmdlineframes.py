@@ -998,7 +998,7 @@ class HKLViewFrame() :
       hklvec = ""
       abcvec = ""
       hklop = ""
-      unwantedchars = " |(|)|[|]|{|}" 
+      unwantedchars = " |(|)|[|]|{|}"
       # individual characters separated by | substituted with a "" using re.sub()
       if self.params.viewer.add_user_vector_hkl not in [None, "", "()"]:
         hklvec = eval(re.sub(unwantedchars, "", self.params.viewer.add_user_vector_hkl))
