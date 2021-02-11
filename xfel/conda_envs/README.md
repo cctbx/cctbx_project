@@ -21,7 +21,11 @@ bootstrap.py step you should adjust nproc to suit your environment.
 $ mkdir cctbx; cd cctbx
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_environment.yml
-$ python bootstrap.py --builder=dials --use-conda=psana_environment.yml --nproc=64 --python=36
+$ python bootstrap.py --builder=xfel --use-conda=psana_environment.yml --nproc=64 --python=37 --no-boost-src hot update base
+$ conda activate `pwd`/conda_base # if no conda is availble, first source mc3/etc/profile.d/conda.sh
+$ python bootstrap.py --builder=xfel --use-conda=psana_environment.yml --nproc=64 --python=37 build
+$ mkdir `pwd`/conda_base/lib/hdf5
+$ ln -s `pwd`/conda_base/lib/plugins `pwd`/conda_base/lib/hdf5/plugin # needed until dials 3.4 is released
 $ source build/conda_setpaths.sh
 $ libtbx.python -c "import psana" # Should exit with no output
 ```
@@ -55,9 +59,28 @@ $ source build/conda_setpaths.sh
 $ source modules/cctbx_project/xfel/conda_envs/test_psana_lcls.sh
 ```
 
+# cctbx.xfel tests
 
+The cctbx.xfel regression tests include tests from several repositories.  The below instructions reproduce what we do nightly. If psana is configured, it will be tested as well.
 
+Note you will need an account on cci.lbl.gov to check out `xfel_regression`. This repository is being moved to a public location and will be available there soon. In the meantime, replace `<cciusername>` with your user name.
 
-
-
+```
+$ cd modules
+$ conda install -c conda-forge git-lfscd modules
+$ svn co svn+ssh://<cciusername>@cci.lbl.gov/xfel_regression/trunk xfel_regression
+$ git clone https://github.com/nksauter/LS49.git
+$ git clone https://gitlab.com/cctbx/ls49_big_data.git
+$ cd uc_metrics
+$ git lfs install --local
+$ git lfs pull
+$ cd ../ls49_big_data
+$ git lfs install --local
+$ git lfs pull
+$ cd ../../
+$ mkdir test; cd test
+$ libtbx.configure xfel_regression LS49 ls49_big_data
+$ export OMP_NUM_THREADS=4
+$ libtbx.run_tests_parallel module=uc_metrics module=simtbx module=xfel_regression module=LS49 nproc=64
+```
 
