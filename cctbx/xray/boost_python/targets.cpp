@@ -3,6 +3,7 @@
 #include <cctbx/xray/targets.h>
 #include <cctbx/xray/targets/least_squares.h>
 #include <cctbx/xray/targets/correlation.h>
+#include <cctbx/xray/targets/llgi.h>
 #include <cctbx/xray/targets/mlf.h>
 #include <cctbx/xray/targets/mli.h>
 #include <cctbx/xray/targets/mlhl.h>
@@ -53,6 +54,37 @@ namespace {
         .def("gradients_work", &w_t::gradients_work, ccr())
         .def("derivatives", &w_t::gradients_work, ccr())//backward compatibility
         .def("hessians_work", &w_t::hessians_work, ccr())
+      ;
+    }
+  };
+
+  struct llgi_wrappers
+  {
+    typedef llgi::target_and_gradients w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t, bases<common_results> >(
+          "llgi_target_and_gradients", no_init)
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref<std::complex<double> > const&,
+          af::const_ref<double> const&,
+          double,
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          bool>((
+            arg("f_obs"),
+            arg("r_free_flags"),
+            arg("f_calc"),
+            arg("llgi_sigmaa"),
+            arg("scale_factor"),
+            arg("epsilons"),
+            arg("centric_flags"),
+            arg("compute_gradients"))))
       ;
     }
   };
@@ -281,6 +313,7 @@ namespace boost_python {
     targets::boost_python::common_results_wrappers::wrap();
     targets::boost_python::least_squares_wrappers::wrap();
     targets::boost_python::correlation_wrappers::wrap();
+    targets::boost_python::llgi_wrappers::wrap();
     targets::boost_python::least_squares_residual_wrappers<
       cctbx::xray::targets::f_calc_modulus>::wrap(
       "targets_least_squares_residual");
