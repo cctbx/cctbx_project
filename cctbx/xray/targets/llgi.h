@@ -32,12 +32,12 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
       //          * I_0( 2*(Fe)*(Do*siga*RSNoSP*Fc) / V )
       //
       //           = 2*Fe/V * exp(-Fe^2 /V) * exp(-A^2 / V) * I_0(2*A / V)
-      // where 
+      // where
       // V = ESN * ( 1 - (Do * siga)^2 ) "variance"
       // A = (Do*siga*RSNoSP*Fc)^2
       //
       // -log(p(Fe|Fc)) = -log(2*Fe/V) + Fe^2/V + A^2/V - log(I_0(2*A / V))
-  
+
       double A = Do * siga * RSNoSP * Fc;
       double V = ESN * ( 1 - (Do*Do * siga*siga) );
       CCTBX_ASSERT(V > 0);
@@ -54,7 +54,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
       //          * I_0( 2*(Fe)*(Do*siga*RSNoSP*Fc) / V )
       //
       //           = 2*Fe/V * exp(-Fe^2 /V) * exp(-A^2 / V) * I_0(2*A / V)
-      // where 
+      // where
       // V = ESN * ( 1 - (Do * siga)^2 ) "variance"
       // A = (Do*siga*RSNoSP*Fc)^2
       //
