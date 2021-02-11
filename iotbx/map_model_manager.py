@@ -8666,8 +8666,9 @@ def get_split_maps_and_models(
     box_info.tlso_group_info.tlso_list = None
   box_info = deepcopy(box_info)
   if first_to_use is not None and last_to_use is not None:
-    for x in ['lower_bounds_with_cushion_list','upper_bounds_with_cushion_list',
-     'selection_list']:
+    for x in ['lower_bounds_list', 'upper_bounds_list',
+       'lower_bounds_with_cushion_list','upper_bounds_with_cushion_list',
+       'selection_list']:
       if getattr(box_info,x):  # select those in range
         setattr(box_info,x,getattr(box_info,x)[first_to_use-1:last_to_use])
 
@@ -8888,6 +8889,7 @@ def get_selections_and_boxes_to_split_model(
         map_manager = map_manager,
         model = model_use,
         box_cushion = box_cushion)
+
       box_info.lower_bounds_list.append(info.lower_bounds)
       box_info.upper_bounds_list.append(info.upper_bounds)
     box_info.lower_bounds_with_cushion_list = [] # not using these
