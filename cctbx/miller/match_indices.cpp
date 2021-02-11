@@ -69,6 +69,8 @@ namespace cctbx { namespace miller {
 
     miller_indices_[1] = miller_indices_1;
     pairs_.clear();
+    singles_[0].clear();
+    singles_[1].clear();
     af::shared<long> temp_pairs(lookup_map_.size(), -1);
 
     if (miller_indices_[0].id() == miller_indices_[1].id()) {
@@ -79,6 +81,13 @@ namespace cctbx { namespace miller {
       }
       return;
     }
+
+    singles_[0].reserve(miller_indices_[0].size());
+    singles_[1].reserve(miller_indices_[1].size());
+    if (miller_indices_[0].size() < miller_indices_[1].size())
+      pairs_.reserve(miller_indices_[0].size());
+    else
+      pairs_.reserve(miller_indices_[1].size());
 
     for(std::size_t i=0; i<miller_indices_[1].size(); i++) {
       lookup_map_type::const_iterator
@@ -111,6 +120,10 @@ namespace cctbx { namespace miller {
     pairs_are_valid_ = true;
 
     pairs_.clear();
+    if (miller_indices_[0].size() < miller_indices_[1].size())
+      pairs_.reserve(miller_indices_[0].size());
+    else
+      pairs_.reserve(miller_indices_[1].size());
 
     if (miller_indices_[0].id() == miller_indices_1.id()) {
       // short-cut if same array

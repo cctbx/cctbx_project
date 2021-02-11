@@ -493,6 +493,7 @@ def exercise_match_cached():
   assert mi.have_singles() == 0
   assert list(mi.pairs()) == list(zip(range(5), range(5)))
   mi.match_cached(h1)
+  mi.match_cached(h1) # yes we meant to call it twice
   assert tuple(mi.singles(0)) == (4,)
   assert tuple(mi.singles(1)) == ()
   assert tuple(mi.pairs()) == ((0,2), (1,0), (2,3), (3,1))
