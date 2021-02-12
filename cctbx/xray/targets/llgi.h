@@ -74,8 +74,11 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
   std::complex<double>
   d_target_one_h_over_fc(
     double fo,
-    std::complex<double> Fc_complex,
-
+    std::complex<double> fc_complex,
+    double a,
+    double b,
+    double k,
+    double e,
     bool centric)
   {
     CCTBX_ASSERT(e > 0);
