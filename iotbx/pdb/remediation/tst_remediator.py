@@ -60,13 +60,14 @@ def get_regression_folder_file_path(file_name):
   return file_path
 
 def run_tests():
-  test_pdb_to_v3(get_regression_folder_file_path("1ubqFHv23.pdb"), get_regression_folder_file_path("1ubqFH.pdb"))
-  test_pdb_remediate_cycle(get_regression_folder_file_path("1ubqFH.pdb"))
-  test_pdb_remediate_cycle(get_regression_folder_file_path("1ubqFHv23.pdb"))
-  test_pdb_remediate_cycle(get_regression_folder_file_path("404dH.pdb"))
+  test_pdb_to_v3(get_regression_folder_file_path("protein-dna-testv23.pdb"), get_regression_folder_file_path("protein-dna-test.pdb"))
+  test_pdb_to_v3(get_regression_folder_file_path("dna-rna-testv23.pdb"), get_regression_folder_file_path("dna-rna-test.pdb"))
+
+  test_pdb_remediate_cycle(get_regression_folder_file_path("protein-dna-test.pdb"))
+  test_pdb_remediate_cycle(get_regression_folder_file_path("protein-dna-testv23.pdb"))
+  test_pdb_remediate_cycle(get_regression_folder_file_path("dna-rna-test.pdb"))
+  test_pdb_remediate_cycle(get_regression_folder_file_path("dna-rna-testv23.pdb"))
   test_pdb_remediate_cycle(get_regression_folder_file_path("mg_tst.pdb"))
-  test_pdb_remediate_cycle(get_regression_folder_file_path("2f55FH.pdb"))
-  #test_pdb_remediate_cycle("tst/4v9dFH.pdb")
 
 if __name__=="__main__":
   if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
