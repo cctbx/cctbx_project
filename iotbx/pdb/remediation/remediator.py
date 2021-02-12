@@ -195,8 +195,8 @@ class Remediator():
           atom_exch[old_atom+" "+residue_name] = new_atom+" "+residue_name
         else:
           atom_exch[new_atom+" "+residue_name] = old_atom+" "+residue_name
-    na_old_atom_name_exceptions = ["H5T "] # it's difficult in 2020 to figure out the proper spacing for this old style atom name
-    na_new_atom_name_exceptions = ["HO5'"]
+    na_old_atom_name_exceptions = ["H5T ","5HO*", "H3T "] # it's difficult in 2020 to figure out the proper spacing for this old style atom name
+    na_new_atom_name_exceptions = ["HO5'","HO5'", "HO3'"] # old remediator uses 5HO* but other examples on the web use H5T for HO5'
     residues_to_test = [ residue_name ]
     if (residue_name in self.na_bases) or (residue_name in self.dna_bases):
       if (residue_name in self.na_bases):
@@ -223,8 +223,7 @@ class Remediator():
                 justified_new_atom = iotbx.pdb.mmcif.format_pdb_atom_name(new_atom, atom_type)
                 new_entry = justified_new_atom+" "+res_name
                 old_entry = justified_old_atom+" "+res_name
-                #new_entry = new_atom+" "+res_name
-                #old_entry = old_atom+" "+res_name
+                #print(old_entry + "->" + new_entry)
                 if convert_to_new:
                   atom_exch[old_entry] = new_entry
                   #check for 1HA, 2HA, etc, which don't seem to always be in chem components as possible old names
@@ -259,7 +258,7 @@ class Remediator():
     self.residues_dict = {}
     non_v3_atoms_count = 0
     pdb_hierarchy = model.get_hierarchy()
-    pdb_hierarchy.atoms().reset_i_seq()
+    #pdb_hierarchy.atoms().reset_i_seq()
     residue_groups = pdb_hierarchy.residue_groups()
     for residue_group in residue_groups:
       atom_groups = residue_group.atom_groups()
@@ -272,6 +271,7 @@ class Remediator():
           if not res_name in self.residues_dict:
             self.residues_dict[res_name] = self.build_hash_from_chem_components(res_name, convert_to_new=convert_to_new, build_all_atoms=False)
           atom_exch_dict = self.residues_dict[res_name]
+          #print(atom.name + str(atom.name+" "+res_name in atom_exch_dict))
           if atom.name+" "+res_name in atom_exch_dict:
             new_entry = atom_exch_dict.get(atom.name+" "+res_name)
             atom.set_name(new_entry[0:4])
