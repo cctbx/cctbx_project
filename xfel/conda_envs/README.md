@@ -63,15 +63,16 @@ $ source modules/cctbx_project/xfel/conda_envs/test_psana_lcls.sh
 
 The cctbx.xfel regression tests include tests from several repositories.  The below instructions reproduce what we do nightly. If psana is configured, it will be tested as well.
 
-Note you will need an account on cci.lbl.gov to check out `xfel_regression`. This repository is being moved to a public location and will be available there soon. In the meantime, replace `<cciusername>` with your user name.
-
 ```
 $ cd modules
-$ conda install -c conda-forge git-lfscd modules
-$ svn co svn+ssh://<cciusername>@cci.lbl.gov/xfel_regression/trunk xfel_regression
+$ conda install -c conda-forge git-lfs
+$ git clone https://gitlab.com/cctbx/xfel_regression.git
 $ git clone https://github.com/nksauter/LS49.git
 $ git clone https://gitlab.com/cctbx/ls49_big_data.git
-$ cd uc_metrics
+$ cd xfel_regression
+$ git lfs install --local
+$ git lfs pull
+$ cd ../uc_metrics
 $ git lfs install --local
 $ git lfs pull
 $ cd ../ls49_big_data
