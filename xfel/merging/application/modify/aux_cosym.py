@@ -141,7 +141,7 @@ from dials.command_line.symmetry import (
 from dials.util.filter_reflections import filtered_arrays_from_experiments_reflections
 
 class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
-    def __init__(self, experiments, reflections, params=None):
+    def __init__(self, experiments, reflections, uuid_cache_in, params=None):
         super(dials_cl_cosym_wrapper, self).__init__(
             events=["run_cosym", "performed_unit_cell_clustering"]
         )
@@ -155,7 +155,7 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
             self._reflections.append(refl.select(sel))
 
         self._experiments, self._reflections = self._filter_min_reflections(
-            experiments, self._reflections
+            experiments, self._reflections, uuid_cache_in
         )
         self.ids_to_identifiers_map = {}
         for table in self._reflections:
@@ -230,6 +230,17 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
         assertion_set = set(cb_ops)
         assert len(assertion_set)==1 # guarantees all are the same; revisit with different use cases later
 
+    def _filter_min_reflections(self, experiments, reflections, uuid_cache_in):
+        identifiers = []
+        self.uuid_cache = []
+        for expt, refl, uuid in zip(experiments, reflections, uuid_cache_in):
+            if len(refl) >= self.params.min_reflections:
+                identifiers.append(expt.identifier)
+                self.uuid_cache.append(uuid)
+
+        return select_datasets_on_identifiers(
+            experiments, reflections, use_datasets=identifiers
+        )
 
     @Subject.notify_event(event="run_cosym")
     def run(self):

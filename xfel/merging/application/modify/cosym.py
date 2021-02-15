@@ -134,10 +134,11 @@ class cosym(worker):
 
       from xfel.merging.application.modify.aux_cosym import dials_cl_cosym_subclass as dials_cl_cosym_wrapper
       COSYM = dials_cl_cosym_wrapper(
-                sampling_experiments_for_cosym, sampling_reflections_for_cosym,
+                sampling_experiments_for_cosym, sampling_reflections_for_cosym, self.uuid_cache,
                 params=self.params.modify.cosym)
       return COSYM
     COSYM = task_1(mpi_helper_size=self.mpi_helper.size)
+    self.uuid_cache = COSYM.uuid_cache # reformed uuid list after n_refls filter
 
     # runtime code specialization, replace Gildea algorithm with Paley
     from dials.algorithms.symmetry.cosym.target import Target
@@ -209,6 +210,7 @@ class cosym(worker):
           print("ANCHOR determination")
           task_a()
           ANCHOR = task_1(mpi_helper_size=1) # only run on the rank==0 tranch.
+          self.uuid_cache = ANCHOR.uuid_cache # reformed uuid list after n_refls filter
           ANCHOR.run()
 
 
@@ -231,7 +233,7 @@ class cosym(worker):
           for sidx in range(len(self.uuid_cache)):
             raw["experiment"].append(self.uuid_cache[sidx])
 
-            sidx_plus = sidx + 1 # because of the anchor
+            sidx_plus = sidx
 
             minimum_to_input = ANCHOR.cb_op_to_minimum[sidx_plus].inverse()
             reindex_op = minimum_to_input * \
