@@ -2869,7 +2869,7 @@ class map_model_manager(object):
         ca_selection_string = self.get_selection_string_from_chain_dict(
           chain_dict= ca_chain_dict, max_gap = max_gap)
         local_target_model = target_model.apply_selection_string(ca_selection_string)
-        if not local_target_model: 
+        if not local_target_model:
           continue # skip it
         target_seq = get_sequence_from_hierarchy(
           local_target_model.get_hierarchy(), remove_white_space=True)
