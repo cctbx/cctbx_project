@@ -86,6 +86,7 @@ select.significance_filter.sigma=0.1
 select.significance_filter.max_ct=300
 select.significance_filter.min_ct=200
 modify.reindex_to_reference.dataframe=test_reindex_dataframe.pickle
+modify.cosym.space_group=P6
 modify.cosym.dataframe=test_cosym_dataframe.pickle
 modify.cosym.anchor=True
 modify.cosym.min_reflections=15
@@ -149,6 +150,14 @@ libtbx.python \
   test_reference/test_cosym_dataframe.pickle
 ```
 Other parameters of critical interest are:
+```
+modify.cosym.space_group=P6
+```
+If the correct space group of the crystal is known, we supply a symmorphic space group
+in the same point group, e.g. P6(3) -> P6 for hexagonal photosystem I. This applies
+algorithm 2 in Ref. 1. If no space group is supplied, then the clustering analysis is
+as described in Ref. 2 with the goal of assigning the Laue group.
+
 ```
 modify.cosym.anchor=True
 scaling.model=<path to pdb file containing the reference structure.pdb>
