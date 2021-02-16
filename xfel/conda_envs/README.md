@@ -95,4 +95,8 @@ $ libtbx.configure uc_metrics
 $ cd `libtbx.show_build_path`; make
 ```
 
+Note, when running these tests at LCLS itself on its psana computing cluster, the following environment variable needs to be exported to suppress a warning:
 
+```
+export OMPI_MCA_mca_base_component_show_load_errors=0
+```
