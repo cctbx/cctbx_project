@@ -44,6 +44,8 @@ $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_lcls_environment.yml
 $ python bootstrap.py --builder=xfel --use-conda=psana_lcls_environment.yml \
   --no-boost-src --python=37 hot update base
+$ mkdir `pwd`/conda_base/lib/hdf5
+$ ln -s `pwd`/conda_base/lib/plugins `pwd`/conda_base/lib/hdf5/plugin # needed until dials 3.4 is released
 $ exit  # logout of psexport
 $ ssh psana
 $ cd $INSTALL/cctbx

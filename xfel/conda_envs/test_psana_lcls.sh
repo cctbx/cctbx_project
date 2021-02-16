@@ -30,8 +30,8 @@ do
 done
 
 echo
-echo "Test running. Waiting 10 seconds to finish."
-sleep 10
+echo "Test running. Waiting 60 seconds to finish."
+sleep 60
 
 if [[ $(grep "^psana" $TEST_OUT | wc -l) -eq 24 ]]
 then
