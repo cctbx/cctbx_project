@@ -69,7 +69,6 @@ $ conda install -c conda-forge git-lfs
 $ git clone https://gitlab.com/cctbx/xfel_regression.git
 $ git clone https://github.com/nksauter/LS49.git
 $ git clone https://gitlab.com/cctbx/ls49_big_data.git
-$ git clone https://gitlab.com/cctbx/uc_metrics.git
 $ cd xfel_regression
 $ git lfs install --local
 $ git lfs pull
@@ -81,8 +80,17 @@ $ git lfs install --local
 $ git lfs pull
 $ cd ../../
 $ mkdir test; cd test
-$ libtbx.configure xfel_regression LS49 ls49_big_data uc_metrics
+$ libtbx.configure xfel_regression LS49 ls49_big_data
 $ export OMP_NUM_THREADS=4
 $ libtbx.run_tests_parallel module=uc_metrics module=simtbx module=xfel_regression module=LS49 nproc=64
 ```
+
+Note, bootstrap.py has several 'builders' available that set up which packages are cloned and configured.  The xfel builder will clone uc_metrics for you, but for reference, here's how to get it standalone if needed:
+
+```
+$ git clone https://gitlab.com/cctbx/uc_metrics.git
+$ libtbx.configure uc_metrics
+$ cd `libtbx.show_build_path`; make
+```
+
 
