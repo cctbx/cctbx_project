@@ -42,7 +42,7 @@ $ ssh psexport
 $ cd $INSTALL; mkdir cctbx; cd cctbx
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_lcls_environment.yml
-$ python bootstrap.py --builder=dials --use-conda=psana_lcls_environment.yml \
+$ python bootstrap.py --builder=xfel --use-conda=psana_lcls_environment.yml \
   --no-boost-src --python=37 hot update base
 $ exit  # logout of psexport
 $ ssh psana
@@ -50,8 +50,8 @@ $ cd $INSTALL/cctbx
 $ conda  # If you get a usage message, skip the next step.
 $ source mc3/etc/profile.d/conda.sh # Activate conda. It could also be found at
                                     # ~/miniconda3/etc/profile.d/conda.sh
-$ conda activate `pwd`/base
-$ python bootstrap.py --builder=dials --use-conda=psana_lcls_environment.yml \
+$ conda activate `pwd`/conda_base
+$ python bootstrap.py --builder=xfel --use-conda=psana_lcls_environment.yml \
   --config-flags="--compiler=conda" --config-flags="--use_environment_flags" \
   --config-flags="enable_cxx11" --config-flags="--no_bin_python"             \
   --no-boost-src --python=37 --nproc=10 build
