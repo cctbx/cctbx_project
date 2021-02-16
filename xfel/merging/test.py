@@ -27,7 +27,7 @@ class Reproducer:
         This is an implementation from commit b5065f39e2 on branch merge_polar,
         before we started optimizing the Miller index matching. We want these
         results available temporarily for validation.
-        
+
         """
         n_lattices = self._lattices.size()
         n_sym_ops = len(self.sym_ops)
@@ -181,7 +181,7 @@ class Reproducer:
         return self.rij_matrix, self.wij_matrix
 
     def compute_rij_wij_Gildea(self,
-            use_cache=True, 
+            use_cache=True,
             lineprof=-1,
             do_one_row_i=None):
         """Compute the rij_wij matrix."""
