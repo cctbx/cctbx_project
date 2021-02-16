@@ -28,7 +28,7 @@ resources:
 jobs:
 - job: artifacts
   pool:
-    vmImage: ubuntu-latest
+    vmImage: ubuntu-18.04
   timeoutInMinutes: 120
 
   steps:
