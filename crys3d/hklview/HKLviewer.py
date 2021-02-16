@@ -338,11 +338,11 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.functionTabWidget.setDisabled(True)
     self.window.statusBar().showMessage("")
     self.hklLabel = QLabel()
-    self.hklLabel.setText("HKL vector normal to screen:")
-    self.HKLnormaltxtbox = QLineEdit('')
-    self.HKLnormaltxtbox.setReadOnly(True)
+    self.hklLabel.setText("HKL vectors along X-axis, Y-axis, Z-axis:")
+    self.Statusbartxtbox = QLineEdit('')
+    self.Statusbartxtbox.setReadOnly(True)
     self.window.statusBar().addPermanentWidget(self.hklLabel)
-    self.window.statusBar().addPermanentWidget(self.HKLnormaltxtbox)
+    self.window.statusBar().addPermanentWidget(self.Statusbartxtbox)
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
     self.actionLocal_Help.triggered.connect(self.onOpenHelpFile)
     self.actionCCTBXwebsite.triggered.connect(self.onOpenCCTBXwebsite)
@@ -711,8 +711,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
             self.NewMillerArray = self.infodict.get("NewMillerArray",False)
 
           if self.infodict.get("StatusBar"):
-            #self.window.statusBar().showMessage( self.infodict.get("StatusBar", "") )
-            self.HKLnormaltxtbox.setText(self.infodict.get("StatusBar", "") )
+            self.Statusbartxtbox.setText(self.infodict.get("StatusBar", "") )
 
           if self.infodict.get("clicked_HKL"):
             (h,k,l) = self.infodict.get("clicked_HKL", ( ) )
@@ -1378,13 +1377,36 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.clipwidth_spinBox.setSingleStep(0.1)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
     self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
-    self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: 0º")
-    #self.rotavecangle_slider.setValue(0)
-    #self.rotavecangle_slider.setSingleStep(1)
-    self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
-    self.rotavecangle_slider.valueChanged.connect(self.onRotaVecAngleChanged)
-    self.rotavecangle_slider.setTracking(False)
-    self.ClipPlaneChkGroupBox.clicked.connect(self.onClipPlaneChkBox)
+    self.yHKLrotBtn.clicked.connect(self.onYangleHKLrotate)
+    self.xHKLrotBtn.clicked.connect(self.onXangleHKLrotate)
+    self.zHKLrotBtn.clicked.connect(self.onZangleHKLrotate)
+    self.yHKLbackrotBtn.clicked.connect(self.onYangleHKLrotateback)
+    self.xHKLbackrotBtn.clicked.connect(self.onXangleHKLrotateback)
+    self.zHKLbackrotBtn.clicked.connect(self.onZangleHKLrotateback)
+
+
+  def onXangleHKLrotate(self):
+    self.PhilToJsRender("viewer.angle_around_XHKL_vector = %f" %self.angleStepHKLrotSpinBox.value() )
+
+
+  def onYangleHKLrotate(self):
+    self.PhilToJsRender("viewer.angle_around_YHKL_vector = %f" %self.angleStepHKLrotSpinBox.value() )
+
+
+  def onZangleHKLrotate(self):
+    self.PhilToJsRender("viewer.angle_around_ZHKL_vector = %f" %self.angleStepHKLrotSpinBox.value() )
+
+
+  def onXangleHKLrotateback(self):
+    self.PhilToJsRender("viewer.angle_around_XHKL_vector = %f" %(-1*self.angleStepHKLrotSpinBox.value()) )
+
+
+  def onYangleHKLrotateback(self):
+    self.PhilToJsRender("viewer.angle_around_YHKL_vector = %f" %(-1*self.angleStepHKLrotSpinBox.value()) )
+
+
+  def onZangleHKLrotateback(self):
+    self.PhilToJsRender("viewer.angle_around_ZHKL_vector = %f" %(-1*self.angleStepHKLrotSpinBox.value()) )
 
 
   def onAlignedVector(self):
@@ -1425,10 +1447,8 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
   def onRotaVecAngleChanged(self, val):
     if self.unfeedback or self.rotvec is None:
       return
-    #self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %dº" %val)
     self.PhilToJsRender("""clip_plane {
     angle_around_vector = '[%d, %f]'
-    bequiet = False
 }""" %(self.rotvec, val*0.5))
 
 
@@ -1438,7 +1458,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     val = self.rotavecangle_slider.value()*0.5
     self.PhilToJsRender("""clip_plane {
     angle_around_vector = '[%d, %f]'
-    bequiet = False
 }""" %(self.rotvec, val))
 
 
@@ -1677,10 +1696,11 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.AnimaRotCheckBox.clicked.connect(self.onAnimateRotation)
     self.AnimateSpeedSlider.sliderReleased.connect(self.onAnimateRotation)
     self.AnimateSpeedSlider.setDisabled(True)
-
-
-  #def onResetView(self):
-  #  self.PhilToJsRender('action = reset_view')
+    self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: 0º")
+    self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
+    self.rotavecangle_slider.valueChanged.connect(self.onRotaVecAngleChanged)
+    self.rotavecangle_slider.setTracking(False)
+    self.ClipPlaneChkGroupBox.clicked.connect(self.onClipPlaneChkBox)
 
 
   def onSaveImage(self):

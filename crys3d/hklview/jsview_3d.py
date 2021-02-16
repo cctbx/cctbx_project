@@ -437,7 +437,19 @@ class hklview_3d:
       self.show_vector()
 
     if has_phil_path(diff_phil, "angle_around_vector"):
-      self.rotate_around_vector()
+      self.rotate_around_numbered_vector()
+
+    if has_phil_path(diff_phil, "angle_around_XHKL_vector"):
+      self.rotate_stage_around_cartesian_vector([1,0,0], self.viewerparams.angle_around_XHKL_vector)
+      self.viewerparams.angle_around_XHKL_vector = None
+
+    if has_phil_path(diff_phil, "angle_around_YHKL_vector"):
+      self.rotate_stage_around_cartesian_vector([0,1,0], self.viewerparams.angle_around_YHKL_vector)
+      self.viewerparams.angle_around_YHKL_vector = None
+
+    if has_phil_path(diff_phil, "angle_around_ZHKL_vector"):
+      self.rotate_stage_around_cartesian_vector([0,0,1], self.viewerparams.angle_around_ZHKL_vector)
+      self.viewerparams.angle_around_ZHKL_vector = None
 
     if has_phil_path(diff_phil, "animate_rotation_around_vector"):
       self.animate_rotate_around_vector()
@@ -1596,16 +1608,30 @@ Distance: %s
     uc = self.miller_array.unit_cell()
     OrtMx = matrix.sqr( uc.fractionalization_matrix() )
     InvMx = OrtMx.inverse()
+    Xvec =  matrix.rec([1,0,0] ,n=(1,3))
+    Xhkl = list(InvMx.transpose()* self.currentRotmx.inverse()* Xvec.transpose())
+    Yvec =  matrix.rec([0,1,0] ,n=(1,3))
+    Yhkl = list(InvMx.transpose()* self.currentRotmx.inverse()* Yvec.transpose())
     Zvec =  matrix.rec([0,0,1] ,n=(1,3))
-    hklvec = InvMx.transpose()* self.currentRotmx.inverse()* Zvec.transpose()
-    hkl = list(hklvec)
+    Zhkl = list(InvMx.transpose()* self.currentRotmx.inverse()* Zvec.transpose())
     if self.debug:
-      self.SendInfoToGUI( { "StatusBar": "RotMx: %s, HKL: %s" \
-        %(str(roundoff(self.currentRotmx,4)), str(roundoff(hklvec, 4))) } )
-      self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label="foo", name="wibbletest",
-                             r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
+      self.SendInfoToGUI( { "StatusBar": "RotMx: %s, ZHKL: %s, YHKL: %s" \
+        %(str(roundoff(self.currentRotmx,4)), str(roundoff(Xhkl, 3)),
+                                              str(roundoff(Yhkl, 3)),
+                                              str(roundoff(Zhkl, 3))),
+                           }
+                         )
+      self.draw_vector(0,0,0, Zhkl[0],Zhkl[1],Zhkl[2], isreciprocal=True, label="Zhkl",
+                      r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
+      self.draw_vector(0,0,0, Yhkl[0],Yhkl[1],Yhkl[2], isreciprocal=True, label="Yhkl",
+                      r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
+      self.draw_vector(0,0,0, Xhkl[0],Xhkl[1],Xhkl[2], isreciprocal=True, label="Xhkl",
+                      name="XYZhkl", r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
     else:
-      self.SendInfoToGUI( { "StatusBar": "%s" % str(roundoff(hkl, 4)) } )
+      self.SendInfoToGUI( { "StatusBar": "%s , %s , %s" %(str(roundoff(Xhkl, 3)),
+                                                     str(roundoff(Yhkl, 3)),
+                                                     str(roundoff(Zhkl, 3))),
+                           } )
     if "MouseMovedOrientation:" in message:
       self.params.mouse_moved = True
     if self.currentRotmx.is_r3_rotation_matrix():
@@ -2008,16 +2034,28 @@ in the space group %s\nwith unit cell %s\n""" \
     self.viewerparams.show_hkl = "" # to allow clicking on the same entry in the millerarraytable
 
 
-  def rotate_around_vector(self):
-    vecnr, dgr = eval(self.params.clip_plane.angle_around_vector)
+  def rotate_around_numbered_vector(self):
+    vecnr, deg = eval(self.params.clip_plane.angle_around_vector)
     if vecnr < len(self.all_vectors):
-      cartvec = self.all_vectors[vecnr][3]
-      phi = cmath.pi*dgr/180
-      normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      ux = cartvec[0]/normR
-      uy = cartvec[1]/normR
-      uz = cartvec[2]/normR
-      self.RotateAxisComponents([ux,uy,uz], phi, True)
+      self.rotate_components_around_cartesian_vector(self.all_vectors[vecnr][3], deg)
+
+
+  def rotate_components_around_cartesian_vector(self, cartvec, deg):
+    phi = cmath.pi*deg/180
+    normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+    ux = cartvec[0]/normR
+    uy = cartvec[1]/normR
+    uz = cartvec[2]/normR
+    self.RotateAxisComponents([ux,uy,uz], phi, True)
+
+
+  def rotate_stage_around_cartesian_vector(self, cartvec, deg):
+    phi = cmath.pi*deg/180
+    normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+    ux = cartvec[0]/normR
+    uy = cartvec[1]/normR
+    uz = cartvec[2]/normR
+    self.RotateAxisMx([ux,uy,uz], phi, True)
 
 
   def animate_rotate_around_vector(self):

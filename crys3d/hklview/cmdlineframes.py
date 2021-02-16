@@ -1264,6 +1264,12 @@ masterphilstr = """
       .type = bool
     fixorientation = vector reflection_slice *None
       .type = choice
+    angle_around_XHKL_vector = 0.0
+      .type = float
+    angle_around_YHKL_vector = 0.0
+      .type = float
+    angle_around_ZHKL_vector = 0.0
+      .type = float
     %s
   }
   NGL {
