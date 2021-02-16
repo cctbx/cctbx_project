@@ -2,7 +2,7 @@ jobs:
   - template: ./conda-linux.yml
     parameters:
       distribution: centos
-      version: [6]
+      version: [7]
       modules: xfel_modules
       template: ./unix-conda-build.yml
       prefix: xfel_

@@ -17,6 +17,7 @@ else: # using websocket_server
 
 import os.path, time, copy
 import libtbx
+import libtbx.load_env
 import webbrowser, tempfile
 from six.moves import range
 
@@ -58,16 +59,20 @@ class ArrayInfo:
         if millarr.is_complex_array():
           data = flex.abs(millarr.data())
           self.datatype = "iscomplex"
-        #data = [e for e in data if not math.isnan(e)]
-        data = graphics_utils.NoNansArray( data, data[0] ) # assuming data[0] isn't NaN
+        i=0
+        while math.isnan(data[i]):
+          i += 1 # go on until we find a data[i] that isn't NaN
+        data = graphics_utils.NoNansArray( data, data[i] ) # assuming data[0] isn't NaN
         self.maxdata = flex.max( data )
         self.mindata = flex.min( data )
 
       if millarr.sigmas() is not None:
         data = millarr.sigmas()
         self.datatype = "hassigmas"
-        #data = [e for e in data if not math.isnan(e)]
-        data = graphics_utils.NoNansArray( data, data[0] ) # assuming data[0] isn't NaN
+        i=0
+        while math.isnan(data[i]):
+          i += 1 # go on until we find a data[i] that isn't NaN
+        data = graphics_utils.NoNansArray( data, data[i] )
         self.maxsigmas = flex.max( data )
         self.minsigmas = flex.min( data )
       self.minmaxdata = (roundoff(self.mindata), roundoff(self.maxdata))
@@ -133,7 +138,7 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
     if not hklscene.SceneCreated:
       mprint("The " + proc_array.info().label_string() + " array was not processed")
       #return False
-      continue
+      break
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     # cast any NAN values to 1 of the colours and radii to 0.2 before writing javascript
     if hklscene.SceneCreated:
@@ -285,9 +290,9 @@ class hklview_3d:
 </body></html>
 
     """
-    Html2Canvaslibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","html2canvas.min.js") )
-    NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
-    HKLjscriptpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","HKLJavaScripts.js") )
+    Html2Canvaslibpath = libtbx.env.under_dist("crys3d","hklview/html2canvas.min.js")
+    NGLlibpath = libtbx.env.under_dist("crys3d","hklview/ngl.js")
+    HKLjscriptpath = libtbx.env.under_dist("crys3d","hklview/HKLJavaScripts.js")
     HKLjscriptpath = os.path.abspath( HKLjscriptpath)
     Html2Canvasliburl = "file:///" + Html2Canvaslibpath.replace("\\","/")
     NGLliburl = "file:///" + NGLlibpath.replace("\\","/")
@@ -771,7 +776,8 @@ class hklview_3d:
           scenemindata, scenemaxsigmas,
             sceneminsigmas, scenearrayinfos
          ) = MakeHKLscene( arr.deep_copy(), idx, copy.deepcopy(self.viewerparams), self.mapcoef_fom_dict, None, self.mprint )
-
+        if len(scenearrayinfos) == 0: # arr does not have valid data
+          sceneid += 1  # arr does not have valid data still raise the count
         for i,inf in enumerate(scenearrayinfos):
           self.mprint("%d, %s" %(idx+i+1, inf[0]), verbose=0)
           self.HKLsceneKey = (curphilparam.spacegroup_choice,
@@ -795,7 +801,7 @@ class hklview_3d:
                                 )
           self.HKLscenedict[self.HKLsceneKey] = ( hklscenes[i], scenemaxdata[i],
           scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
-          hkl_scenes_infos.append(inf)
+          hkl_scenes_infos.append(inf + [sceneid])
           self.HKLscenes.append(hklscenes[i])
           sceneid += 1
       self.hkl_scenes_infos = hkl_scenes_infos
@@ -819,7 +825,7 @@ class hklview_3d:
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
                               )
-      scenearraylabeltypes = [ (e[3], e[4], e[1], sceneid) for sceneid,e in enumerate(hkl_scenes_infos) ]
+      scenearraylabeltypes = [ (e[3], e[4], e[1], e[5]) for sceneid,e in enumerate(hkl_scenes_infos) ]
       self.SendInfoToGUI({ "scene_array_label_types": scenearraylabeltypes, "NewHKLscenes" : True })
 
       self.bin_labels_type_idxs = []
@@ -1587,7 +1593,19 @@ Distance: %s
   %s,  %s,  %s
   %s,  %s,  %s
     """ %rotlst, verbose=3)
-    self.SendInfoToGUI( { "StatusBar": "rotation matrix: " + str(rotlst) } )
+    uc = self.miller_array.unit_cell()
+    OrtMx = matrix.sqr( uc.fractionalization_matrix() )
+    InvMx = OrtMx.inverse()
+    Zvec =  matrix.rec([0,0,1] ,n=(1,3))
+    hklvec = InvMx.transpose()* self.currentRotmx.inverse()* Zvec.transpose()
+    hkl = list(hklvec)
+    if self.debug:
+      self.SendInfoToGUI( { "StatusBar": "RotMx: %s, HKL: %s" \
+        %(str(roundoff(self.currentRotmx,4)), str(roundoff(hklvec, 4))) } )
+      self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label="foo", name="wibbletest",
+                             r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
+    else:
+      self.SendInfoToGUI( { "StatusBar": "%s" % str(roundoff(hkl, 4)) } )
     if "MouseMovedOrientation:" in message:
       self.params.mouse_moved = True
     if self.currentRotmx.is_r3_rotation_matrix():

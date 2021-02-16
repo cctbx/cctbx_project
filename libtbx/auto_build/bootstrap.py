@@ -975,7 +975,7 @@ class xia2_module(SourceModule):
   anonymous = ['git',
                'git@github.com:xia2/xia2.git',
                'https://github.com/xia2/xia2.git',
-               'https://github.com/xia2/xia2/archive/master.zip']
+               'https://github.com/xia2/xia2/archive/main.zip']
 
 # Duke repositories
 class probe_module(SourceModule):

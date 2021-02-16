@@ -2585,7 +2585,18 @@ def exercise_as_map_manager():
   mm = fc.as_map_manager(d_min=1, d_max=3)
   mm = fc.as_map_manager(wrapping=False, apply_volume_scaling=False)
 
+def exercise_make_up_hl_coeffs():
+  xrs = random_structure.xray_structure(
+    space_group_info = sgtbx.space_group_info(number=19),
+    elements=["C"]*50,
+    volume_per_atom=50,
+    min_distance=1.0,
+    general_positions_only=False)
+  fc = xrs.structure_factors(d_min=2.0).f_calc()
+  hl = fc.make_up_hl_coeffs(k_blur=1, b_blur=20)
+
 def run(args):
+  exercise_make_up_hl_coeffs()
   exercise_as_map_manager()
   exercise_generate_bijvoet_mates_set()
   exercise_counting_sorted_n_bins_reflections_per_bin()

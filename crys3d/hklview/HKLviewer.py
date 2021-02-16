@@ -16,7 +16,8 @@ from PySide2.QtWidgets import (  QAction, QCheckBox, QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
         QMainWindow, QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableView, QTableWidget,
-        QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QPlainTextEdit, QVBoxLayout, QWidget )
+        QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QPlainTextEdit, QVBoxLayout,
+        QWhatsThis, QWidget )
 
 from PySide2.QtGui import QColor, QFont, QCursor, QDesktopServices
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
@@ -64,16 +65,18 @@ class AboutForm(QDialog):
     self.aboutlabel.setWordWrap(True)
     aboutstr = """<html><head/><body><p><span style=" font-weight:600;">
     HKLviewer, </span>A reflection data viewer for crystallography
-    <span style=" font-weight:600;"><br/>Developers: </span>Dr. Robert D. Oeffner<br/>
+    <br/>Developers: Dr. Robert D. Oeffner<br/>
     Cambridge Institute for Medical Research, University of Cambridge.<br/>
     HKLviewer is part of the <a href="http://cci.lbl.gov/docs/cctbx/"> CCTBX library</a>
     as well as derived software thereof.<br/>
-    HKLviewer uses functionality provided by the JavaScript library of the
-    <a href="https://github.com/nglviewer/ngl">NGL Viewer</a> project, the JavaScript Library
-    of the <a href="https://github.com/niklasvh/html2canvas">html2canvas</a> project.<br/>
-    Queries or bug reports should be sent to cctbx@cci.lbl.gov or rdo20@cam.ac.uk.
+    HKLviewer uses functionality provided by the
+    <a href="https://github.com/nglviewer/ngl">NGL Viewer</a> project and
+    the <a href="https://github.com/niklasvh/html2canvas">html2canvas</a> project.
+    Refer to rdo20@cam.ac.uk or cctbx@cci.lbl.gov for queries or bug reports.
     </p></body></html>"""
     self.aboutlabel.setText(aboutstr)
+    self.aboutlabel.setTextInteractionFlags(Qt.TextBrowserInteraction);
+    self.aboutlabel.setOpenExternalLinks(True);
     self.copyrightstxt = QTextEdit()
     self.copyrightstxt.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
     self.copyrightstxt.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
@@ -332,9 +335,14 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.binTableCheckState = None
     self.millertablemenu = QMenu(self.window)
     self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
-    #self.resize(QSize(self.FileInfoBox.size().width()*2, self.size().height() ))
     self.functionTabWidget.setDisabled(True)
     self.window.statusBar().showMessage("")
+    self.hklLabel = QLabel()
+    self.hklLabel.setText("HKL vector normal to screen:")
+    self.HKLnormaltxtbox = QLineEdit('')
+    self.HKLnormaltxtbox.setReadOnly(True)
+    self.window.statusBar().addPermanentWidget(self.hklLabel)
+    self.window.statusBar().addPermanentWidget(self.HKLnormaltxtbox)
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
     self.actionLocal_Help.triggered.connect(self.onOpenHelpFile)
     self.actionCCTBXwebsite.triggered.connect(self.onOpenCCTBXwebsite)
@@ -400,7 +408,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       else:
         self.webpage.setUrl("https://webglreport.com/")
     else:
-      self.webpage.setUrl("https://cctbx.github.io/")
+      #self.webpage.setUrl("https://cctbx.github.io/")
+      self.webpage.setUrl("http://cci.lbl.gov/docs/cctbx/doc_hklviewer/")
     self.cpath = self.webprofile.cachePath()
     self.BrowserBox.setPage(self.webpage)
     self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
@@ -536,7 +545,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
               with open(fname,"r") as f:
                 txts = txts + " "*20 + copyrighttitle + ":\n\n"
                 txts = txts + f.read()
-                txts = txts + "\n" + "#" * 80  + "\n"
+                txts = txts + "\n" + "#" * 50  + "\n"
             self.aboutform.copyrightstxt.setText(txts)
             self.aboutform.setFixedSize( self.aboutform.sizeHint() )
 
@@ -689,8 +698,11 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
           if self.infodict.get("NewFileLoaded"):
             self.NewFileLoaded = self.infodict.get("NewFileLoaded",False)
+            self.currentmillarray_idx = None
             self.vectortable2.clearContents()
+            self.ShowAllVectorsBtn.setCheckState(Qt.Unchecked)
             self.functionTabWidget.setDisabled(True)
+            self.AlignVectorGroupBox.setChecked( False)
 
           if self.infodict.get("NewHKLscenes"):
             self.NewHKLscenes = self.infodict.get("NewHKLscenes",False)
@@ -699,7 +711,8 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
             self.NewMillerArray = self.infodict.get("NewMillerArray",False)
 
           if self.infodict.get("StatusBar"):
-            self.window.statusBar().showMessage( self.infodict.get("StatusBar", "") )
+            #self.window.statusBar().showMessage( self.infodict.get("StatusBar", "") )
+            self.HKLnormaltxtbox.setText(self.infodict.get("StatusBar", "") )
 
           if self.infodict.get("clicked_HKL"):
             (h,k,l) = self.infodict.get("clicked_HKL", ( ) )
@@ -1152,7 +1165,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def onBinsTableItemChanged(self, item):
-    #print( "in itemChanged %s,  %s" %(item.text(), str( item.checkState())) )
     row = item.row()
     col = item.column()
     try:
@@ -1169,13 +1181,11 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
             alpha = 1.0
       except Exception as e:
         pass
-
       if col==3 and self.binstable_isready: # changing opacity
         bin_opacitieslst[row] = (alpha, row)
         self.bin_opacities = str(bin_opacitieslst)
         self.SetAllOpaqueCheckboxes()
         self.PhilToJsRender('NGL.bin_opacities = "%s"' %self.bin_opacities )
-
       if col==1 and self.binstable_isready: # changing scene_bin_thresholds
         aboveitem = self.binstable.item(row-1, 1)
         belowitem = self.binstable.item(row+1, 1)
@@ -1196,7 +1206,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
         if self.BinDataComboBox.currentIndex() == 0:
           newval = min(aboveval, max(belowval, float(item.text()) ) )
         self.binstable.item(row,col).setText(str(newval))
-        #nbins = len(self.bin_infotpls)
         self.lowerbinvals[row] = newval
         allbinvals = self.lowerbinvals + [ self.upperbinvals[-1] ]
         nbins = len(allbinvals)
@@ -1204,7 +1213,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
         scene_bin_thresholds = \"%s\"
         nbins = %d
         ''' %(allbinvals, nbins) )
-
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
 
@@ -1256,14 +1264,13 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def onShowAllVectors(self):
-    #self.unfeedback = True
     if self.ShowAllVectorsBtn.checkState()==Qt.Checked:
       for rvrow in range(self.vectortable2.rowCount()):
-        self.vectortable2.item(rvrow, 0).setCheckState(Qt.Checked)
+        if self.vectortable2.item(rvrow, 0).text() !=  "new vector":
+          self.vectortable2.item(rvrow, 0).setCheckState(Qt.Checked)
     if self.ShowAllVectorsBtn.checkState()==Qt.Unchecked:
       for rvrow in range(self.vectortable2.rowCount()):
         self.vectortable2.item(rvrow, 0).setCheckState(Qt.Unchecked)
-    #self.unfeedback = False
 
 
   def onVectorTableItemChanged(self, item):
@@ -1272,28 +1279,24 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     row = item.row()
     col = item.column()
     try:
-      rc = self.vectortable2.rowCount()
+      rc = len(self.all_vectors)
       label = None
       if self.vectortable2.item(row, 0) is not None:
         label = self.vectortable2.item(row, 0).text()
-
-      if row < len(self.all_vectors):
+      if row < rc:
         if label is None:
           return
-
         if col==0:
           if item.checkState()==Qt.Checked:
             self.PhilToJsRender(" viewer.show_vector = '[%d, %s]'" %(row, True ))
           else:
             self.PhilToJsRender(" viewer.show_vector = '[%d, %s]'" %(row, False ))
-
           if self.rotvec is not None: # reset any imposed angle to 0 whenever checking or unchecking a vector
               self.PhilToJsRender("""clip_plane {
                 angle_around_vector = '[%d, 0]'
                 bequiet = False
               }""" %self.rotvec)
               self.rotavecangle_slider.setValue(0)
-
           self.rotvec = None
           sum = 0
           for rvrow in range(self.vectortable2.rowCount()):
@@ -1322,8 +1325,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
               self.ShowAllVectorsBtn.setCheckState(Qt.Unchecked)
             if sum >0.0 and sum < rc:
               self.ShowAllVectorsBtn.setCheckState(Qt.PartiallyChecked)
-
-      if row==(rc-1) and label !="" and label != "new vector": # a user defined vector
+      if row==rc and label !="" and label != "new vector": # a user defined vector
         if col==1:
           hklop = self.vectortable2.item(row, 1).text()
           self.PhilToJsRender("""viewer.add_user_vector_hkl_op = '%s'
@@ -1336,7 +1338,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
           abcvec = self.vectortable2.item(row, 3).text()
           self.PhilToJsRender("""viewer.add_user_vector_abc = '(%s)'
           viewer.user_label = %s """ %(abcvec, label))
-
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
 
@@ -1497,7 +1498,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       self.MillerTableContextMenuHandler(QCursor.pos(), row)
     if self.millertable.mousebutton == QEvent.MouseButtonDblClick:
       # quickly display data with a double click
-      #for sceneid,(scenelabel,labeltype,arrayid,sceneid) in enumerate(self.scenearraylabeltypes):
       for scenelabel,labeltype,arrayid,sceneid in self.scenearraylabeltypes:
         if row == arrayid:
           self.DisplayData(sceneid, row)
@@ -1518,14 +1518,14 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       if self.millerarraylabels[row] == scenelabelstr or self.millerarraylabels[row] + " + " in scenelabelstr:
         if labeltype == "hassigmas":
           myqa = QAction("Display data of %s" %scenelabelstr, self.window, triggered=self.testaction)
-          myqa.setData((i, row))
+          myqa.setData((sceneid, row))
           self.millertablemenu.addAction(myqa)
           myqa = QAction("Display sigmas of %s" %scenelabelstr, self.window, triggered=self.testaction)
-          myqa.setData((i + 1000, row)) # want to show the sigmas rather than the data if we add 1000
+          myqa.setData((sceneid + 1000, row)) # want to show the sigmas rather than the data if we add 1000
           self.millertablemenu.addAction(myqa)
         else:
           myqa = QAction("Display %s" %scenelabelstr, self.window, triggered=self.testaction)
-          myqa.setData((i, row))
+          myqa.setData((sceneid, row))
           self.millertablemenu.addAction(myqa)
     myqa = QAction("Make new data from this data and other data...", self.window, triggered=self.testaction)
     myqa.setData( ("newdata", row ))
@@ -1853,11 +1853,10 @@ def run():
       for datatype in list(guiobj.datatypedict.keys()):
         settings.setValue(datatype + "/ColourChart", guiobj.datatypedict[ datatype ][0] )
         settings.setValue(datatype + "/ColourPowerScale", guiobj.datatypedict[ datatype ][1] )
-      settings.endGroup()
+      settings.endGroup() # DataTypesGroups
+      settings.endGroup() # PySide2_ + Qtversion
 
-      settings.endGroup()
-
-    app.lastWindowClosed.connect(MyAppClosing)
+    app.lastWindowClosed.connect(MyAppClosing) # persist settings on disk
 
     timer = QTimer()
     timer.setInterval(20)

@@ -69,11 +69,19 @@ def update(grm,
     ]
   outl = ''
   outl_debug = ''
+
+  sites_c = pdb_hierarchy.atoms().extract_xyz()
+  nb_proxies = grm.pair_proxies(
+        sites_cart=sites_c).nonbonded_proxies
+  sorted_nb_pr_result = nb_proxies.get_sorted(
+      by_value="delta",
+      sites_cart=sites_c)
+
   for label, get_coordination, get_all_proxies in hooks:
     rc = get_coordination(
       pdb_hierarchy=pdb_hierarchy,
-      nonbonded_proxies=grm.pair_proxies(
-        sites_cart=pdb_hierarchy.atoms().extract_xyz()).nonbonded_proxies,
+      nonbonded_proxies=nb_proxies,
+      sorted_nb_proxies_res=sorted_nb_pr_result,
       verbose=verbose,
     )
     bproxies, aproxies = get_all_proxies(rc)

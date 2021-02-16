@@ -11,7 +11,7 @@ from matplotlib.figure import Figure
 from PySide2.QtCore import Qt, QEvent, QAbstractTableModel, QModelIndex
 from PySide2.QtGui import QCursor, QKeySequence
 from PySide2.QtWidgets import ( QAbstractItemView, QCheckBox, QTableWidget, QAction,
-      QMenu, QTableView, QDialog,  QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
+      QMenu, QTableView, QDialog, QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
       QScrollArea, QVBoxLayout
      )
 import math, csv
@@ -188,12 +188,6 @@ class MillerArrayTableModel(QAbstractTableModel):
 # Dialog box with MatPlotLib colour gradient charts from
 # http://matplotlib.org/examples/color/colormaps_reference.html
 
-import numpy as np
-import matplotlib.pyplot as plt
-from PySide2 import QtWidgets
-from PySide2.QtCore import Qt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
 
 # list all colour maps except their reverse which end with "_r"
 cmaps = [ c for c in plt.colormaps() if not c.endswith("_r")]
@@ -230,6 +224,7 @@ class MplCanvas(FigureCanvas):
 class MPLColourSchemes(QtWidgets.QDialog):
   def __init__(self, parent=None):
     super(MPLColourSchemes, self).__init__(parent.window)
+    self.setWindowFlags(Qt.Tool)
     self.parent = parent
     self.isOK = False
     self.selcolmap = ""
@@ -253,7 +248,7 @@ class MPLColourSchemes(QtWidgets.QDialog):
     self.powscale_label.setText("Power factor for map scaling:")
     self.powscaleslider = QtWidgets.QSlider(Qt.Horizontal)
     self.powscaleslider.setMinimum(-20)
-    self.powscaleslider.setMaximum(10)
+    self.powscaleslider.setMaximum(20)
     self.powscaleslider.setTickPosition(QtWidgets.QSlider.TicksAbove)
     self.powscaleslider.setTickInterval(1)
     self.powscaleslider.sliderReleased.connect(self.onReleasePowscaleslider)
@@ -276,7 +271,6 @@ class MPLColourSchemes(QtWidgets.QDialog):
     self.setLayout(gridlayout)
     #scw = self.parent.app.style().pixelMetric(QtWidgets.QStyle.PM_ScrollBarExtent)
 
-
   def draw_axes_and_text(self):
     for ax, name in zip(self.mycanvas.axes, cmaps):
       ax.imshow(gradient, aspect='auto', cmap=plt.get_cmap(name))
@@ -286,7 +280,6 @@ class MPLColourSchemes(QtWidgets.QDialog):
       y_text = pos[1] + pos[3]/2.
       self.mycanvas.fig.text(x_text, y_text, name, va='center', ha='left',
                              fontsize= self.parent.app.font().pointSize()*1.5 )
-
 
   def resizeEvent(self, event):
     # MplCanvas doesn't resize with the rest of QtWidgets whenever

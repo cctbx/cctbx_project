@@ -14,8 +14,9 @@ from scitbx import matrix
 from cctbx import sgtbx
 from libtbx import group_args
 import libtbx
+import libtbx.load_env
 import traceback
-import sys, zmq, threading,  time, cmath, zlib, os.path, math
+import sys, zmq, threading,  time, cmath, zlib, os.path, math, re
 
 
 NOREFLDATA = "No reflection data has been selected"
@@ -997,16 +998,18 @@ class HKLViewFrame() :
       hklvec = ""
       abcvec = ""
       hklop = ""
+      unwantedchars = " |(|)|[|]|{|}"
+      # individual characters separated by | substituted with a "" using re.sub()
       if self.params.viewer.add_user_vector_hkl not in [None, "", "()"]:
-        hklvec = eval(self.params.viewer.add_user_vector_hkl.replace(" ",""))
+        hklvec = eval(re.sub(unwantedchars, "", self.params.viewer.add_user_vector_hkl))
         # convert into cartesian space
         cartvec = list( self.viewer.scene.renderscale*(hklvec * matrix.sqr(uc.fractionalization_matrix()).transpose()) )
       elif self.params.viewer.add_user_vector_abc not in [None, "", "()"]:
-        abcvec = eval(self.params.viewer.add_user_vector_abc.replace(" ",""))
+        abcvec = eval(re.sub(unwantedchars, "", self.params.viewer.add_user_vector_abc))
         # convert into cartesian space
         cartvec = list(abcvec * matrix.sqr(uc.orthogonalization_matrix()))
       elif self.params.viewer.add_user_vector_hkl_op not in [None, ""]:
-        hklop = self.params.viewer.add_user_vector_hkl_op.replace(" ","")
+        hklop = re.sub(unwantedchars, "", self.params.viewer.add_user_vector_hkl_op)
         rt = sgtbx.rt_mx(symbol=hklop, r_den=12, t_den=144)
         rt.r().as_double()
         self.viewer.symops.append( rt ) #

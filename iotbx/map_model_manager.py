@@ -196,13 +196,12 @@ class map_model_manager(object):
     if any_map_manager:
       for m in [model] + extra_model_list:
         self.add_crystal_symmetry_if_necessary(m, map_manager = any_map_manager)
+        self.shift_any_model_to_match(m, map_manager = any_map_manager)
 
-    if ignore_symmetry_conflicts:
+
+    if any_map_manager and ignore_symmetry_conflicts:
       # Take all symmetry information from
       #  any_map_manager and apply it to everything
-
-      for m in [model] + extra_model_list:
-        self.shift_any_model_to_match(m, map_manager = any_map_manager)
 
       if map_manager_1 and (map_manager_1 is not any_map_manager):
         map_manager_1 = any_map_manager.customized_copy(
@@ -3140,7 +3139,6 @@ class map_model_manager(object):
 
     if not map_manager:
       map_manager = self.get_any_map_manager()
-
     assert map_manager is not None
 
     self.add_crystal_symmetry_if_necessary(model, map_manager = map_manager)
@@ -3154,7 +3152,7 @@ class map_model_manager(object):
     if coordinate_shift != (0,0,0):
       model.shift_model_and_set_crystal_symmetry(
         shift_cart = coordinate_shift,
-        crystal_symmetry=self.crystal_symmetry())
+        crystal_symmetry=map_manager.crystal_symmetry())
 
 
   def get_model_from_other(self, other,
@@ -7964,9 +7962,7 @@ class match_map_model_ncs(object):
     # Must already have a map_manager. Ncs object must match shift_cart already
 
     assert self.map_manager() is not None
-    self.map_manager().set_ncs_object(ncs_object)
-    # Check to make sure its shift_cart matches
-    self.check_model_and_set_to_match_map_if_necessary()
+    self.map_manager().set_ncs_object(ncs_object) # checks for shift_cart
 
   def read_map(self, file_name):
     # Read in a map and make sure its symmetry is similar to others
@@ -8670,8 +8666,9 @@ def get_split_maps_and_models(
     box_info.tlso_group_info.tlso_list = None
   box_info = deepcopy(box_info)
   if first_to_use is not None and last_to_use is not None:
-    for x in ['lower_bounds_with_cushion_list','upper_bounds_with_cushion_list',
-     'selection_list']:
+    for x in ['lower_bounds_list', 'upper_bounds_list',
+       'lower_bounds_with_cushion_list','upper_bounds_with_cushion_list',
+       'selection_list']:
       if getattr(box_info,x):  # select those in range
         setattr(box_info,x,getattr(box_info,x)[first_to_use-1:last_to_use])
 
@@ -8892,6 +8889,7 @@ def get_selections_and_boxes_to_split_model(
         map_manager = map_manager,
         model = model_use,
         box_cushion = box_cushion)
+
       box_info.lower_bounds_list.append(info.lower_bounds)
       box_info.upper_bounds_list.append(info.upper_bounds)
     box_info.lower_bounds_with_cushion_list = [] # not using these

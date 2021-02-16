@@ -106,6 +106,7 @@ def get_angle_ideal_and_weight(a1,a2,a3):
 
 def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
                                          nonbonded_proxies,
+                                         sorted_nb_proxies_res=None,
                                          coordination_distance_cutoff=3.5,
                                          #params=None,
                                          log=sys.stdout,
@@ -115,11 +116,13 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
   done_aa = []
   atoms = pdb_hierarchy.atoms()
   sites_cart = atoms.extract_xyz()
-  get_sorted_result = nonbonded_proxies.get_sorted(
-      by_value="delta",
-      sites_cart=sites_cart)
-  if get_sorted_result is None:
-    return None
+  get_sorted_result = sorted_nb_proxies_res
+  if sorted_nb_proxies_res is None:
+    get_sorted_result = nonbonded_proxies.get_sorted(
+        by_value="delta",
+        sites_cart=sites_cart)
+    if get_sorted_result is None:
+      return None
   sorted_nonb, n_not_shown = get_sorted_result
 
   # Get potential hbonds
