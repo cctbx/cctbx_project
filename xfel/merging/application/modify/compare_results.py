@@ -34,6 +34,7 @@ def run(reference_file, test_file):
 
   all_expt = len(set(list(refdata["experiment"])).union(set(list(cosdata["experiment"]))))
   print("%d matches out of a total of %d experiments, or %.2f%%"%(B, all_expt, 100.*B/all_expt))
+  return A, B/A
 
 if __name__=="__main__":
   import sys
