@@ -1011,12 +1011,14 @@ class HKLViewFrame() :
       elif self.params.viewer.add_user_vector_hkl_op not in [None, ""]:
         hklop = re.sub(unwantedchars, "", self.params.viewer.add_user_vector_hkl_op)
         rt = sgtbx.rt_mx(symbol=hklop, r_den=12, t_den=144)
-        rt.r().as_double()
         self.viewer.symops.append( rt ) #
         (cartvec, a, label, order) = self.viewer.GetVectorAndAngleFromRotationMx( rt.r() )
         if label:
           label = "%s-fold_%s" %(str(int(roundoff(2*math.pi/a, 0))), self.params.viewer.user_label)
           self.mprint("Rotation axis, %s, added" %label)
+        if label =="" or order==0:
+          self.mprint("Cannot compute a rotation axis from %s" %self.params.viewer.add_user_vector_hkl_op)
+          return
       if (self.params.viewer.add_user_vector_hkl in [None, "", "()"] \
        and self.params.viewer.add_user_vector_abc in [None, "", "()"] \
        and self.params.viewer.add_user_vector_hkl_op) in [None, ""]:

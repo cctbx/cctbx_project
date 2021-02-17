@@ -1615,10 +1615,10 @@ Distance: %s
     Zvec =  matrix.rec([0,0,1] ,n=(1,3))
     Zhkl = list(InvMx.transpose()* self.currentRotmx.inverse()* Zvec.transpose())
     if self.debug:
-      self.SendInfoToGUI( { "StatusBar": "RotMx: %s, ZHKL: %s, YHKL: %s" \
-        %(str(roundoff(self.currentRotmx,4)), str(roundoff(Xhkl, 3)),
-                                              str(roundoff(Yhkl, 3)),
-                                              str(roundoff(Zhkl, 3))),
+      self.SendInfoToGUI( { "StatusBar": "RotMx: %s, XHKL: %s, YHKL: %s, ZHKL: %s" \
+        %(str(roundoff(self.currentRotmx,4)), str(roundoff(Xhkl, 2)),
+                                              str(roundoff(Yhkl, 2)),
+                                              str(roundoff(Zhkl, 2))),
                            }
                          )
       self.draw_vector(0,0,0, Zhkl[0],Zhkl[1],Zhkl[2], isreciprocal=True, label="Zhkl",
@@ -1628,9 +1628,9 @@ Distance: %s
       self.draw_vector(0,0,0, Xhkl[0],Xhkl[1],Xhkl[2], isreciprocal=True, label="Xhkl",
                       name="XYZhkl", r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
     else:
-      self.SendInfoToGUI( { "StatusBar": "%s , %s , %s" %(str(roundoff(Xhkl, 3)),
-                                                     str(roundoff(Yhkl, 3)),
-                                                     str(roundoff(Zhkl, 3))),
+      self.SendInfoToGUI( { "StatusBar": "%s , %s , %s" %(str(roundoff(Xhkl, 2)),
+                                                     str(roundoff(Yhkl, 2)),
+                                                     str(roundoff(Zhkl, 2))),
                            } )
     if "MouseMovedOrientation:" in message:
       self.params.mouse_moved = True
@@ -1902,10 +1902,8 @@ Distance: %s
     ortrotmx = (OrtMx * RotMx * InvMx)
     isProperRotation = True
     ortrot = ortrotmx.as_mat3()
-    r11,r12,r13,r21,r22,r23,r31,r32,r33 = ortrot
-    # workaround for occasional machine precision errors yielding argument greater than 1.0
-    theta =  math.acos(roundoff((r11+r22+r33-1.0)*0.5, 10))
-    sint = math.sin(theta)
+    label=""
+    order = 0
     if not ortrotmx.is_r3_rotation_matrix():
       isProperRotation = False
       self.mprint("""Warning! The operation '%s' is not a proper rotation
@@ -1914,13 +1912,16 @@ in the space group %s\nwith unit cell %s\n""" \
       self.mprint("Inverse of implied rotation matrix,\n%s\nis not equal to its transpose,\n%s" \
         %(str(roundoff(ortrotmx.inverse(),4)), str(roundoff(ortrotmx.transpose(),4))), verbose=1)
       improper_vec_angle = scitbx.math.r3_rotation_axis_and_angle_from_matrix(ortrot)
-      self.mprint("\nAttempting to find nearest orthonormal matrix approximtion")
+      self.mprint("\nTrying to find nearest orthonormal matrix approximtion")
       Rmx = matrix.find_nearest_orthonormal_matrix(ortrotmx)
-      self.mprint("New proper rotation matrix is\n%s" %str(roundoff(Rmx,4)), verbose=1)
+      self.mprint("New suggested rotation matrix is\n%s" %str(roundoff(Rmx,4)), verbose=1)
       if not Rmx.is_r3_rotation_matrix():
-        self.mprint("Failed approximation attempt!")
+        self.mprint("Failed finding an approximate rotation matrix!")
+        return (0,0,0), 0.0, label, order
       ortrotmx = Rmx
     ortrot = ortrotmx.as_mat3()
+    r11,r12,r13,r21,r22,r23,r31,r32,r33 = ortrot
+    theta =  math.acos(roundoff((r11+r22+r33-1.0)*0.5, 10))
     rotaxis = flex.vec3_double([(0,0,0)])
     self.mprint(str(ortrot), verbose=2)
     vec_angle = scitbx.math.r3_rotation_axis_and_angle_from_matrix(ortrot)
@@ -1934,10 +1935,8 @@ in the space group %s\nwith unit cell %s\n""" \
       # for debugging deduce the corresponding rotation matrix from this new axis
       usedrotmx = scitbx.math.r3_rotation_axis_and_angle_as_matrix( rotaxis[0], theta )
       self.mprint("Final proper rotation matrix:\n%s" %str(roundoff(matrix.sqr(usedrotmx),4)), verbose=1)
-    # adjust the scale of the rotation vectors to be compatible with the sphere of reflections
+    # adjust the length of the rotation axes to be compatible with the sphere of reflections
     s = math.sqrt(OrtMx.transpose().norm_sq())*self.realspace_scale
-    label=""
-    order = 0
     if abs(theta) > 0.0001 and rotaxis.norm() > 0.01: # avoid nullvector
       order = int(roundoff(2*math.pi/theta, 0)) # how many times to rotate before its the identity operator
       label = "%s-fold" %str(order)
