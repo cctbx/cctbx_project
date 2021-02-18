@@ -83,7 +83,12 @@ class CosymAnalysis(BaseClass):
         self._intialise_target()
 
         #P = Profiler("optimize W")
-        self._optimise(self.params.termination_params)
+        max_calls = self.params.minimization.max_calls
+        self._optimise(
+            self.params.minimization.engine,
+            max_iterations=self.params.minimization.max_iterations,
+            max_calls=min(20, max_calls) if max_calls else max_calls,
+        )
         #self.plot_after_optimize()
 
         #P = Profiler("analyze symmetry W")

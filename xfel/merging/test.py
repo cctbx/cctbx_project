@@ -6,6 +6,7 @@ from scipy import sparse
 import math
 import time
 import sys
+import numpy as np
 
 try:
     from line_profiler import LineProfiler as profile
@@ -29,7 +30,7 @@ class Reproducer:
         results available temporarily for validation.
 
         """
-        n_lattices = self._lattices.size()
+        n_lattices = self._lattices.size
         n_sym_ops = len(self.sym_ops)
 
         NN = n_lattices * n_sym_ops
@@ -185,7 +186,7 @@ class Reproducer:
             lineprof=-1,
             do_one_row_i=None):
         """Compute the rij_wij matrix."""
-        n_lattices = self._lattices.size()
+        n_lattices = self._lattices.size
         n_sym_ops = len(self.sym_ops)
 
         NN = n_lattices * n_sym_ops
@@ -360,17 +361,17 @@ class Reproducer:
     def compute_rij_wij_cplusplus(self, use_cache=True, do_one_row_i=None):
         print("""Compute the rij_wij matrix in C++""")
 
-        n_lattices = self._lattices.size()
+        n_lattices = self._lattices.size
         n_sym_ops = len(self.sym_ops)
         NN = n_lattices * n_sym_ops
 
         lower_i = flex.int()
         upper_i = flex.int()
-        for lidx in range(self._lattices.size()):
+        for lidx in range(self._lattices.size):
           LL,UU = self._lattice_lower_upper_index(lidx)
-          lower_i.append(LL)
+          lower_i.append(int(LL))
           if UU is None:  UU = self._data.data().size()
-          upper_i.append(UU)
+          upper_i.append(int(UU))
         indices = {}
         space_group_type = self._data.space_group().type()
         print (space_group_type.lookup_symbol(), "weight mode", self._weights)
@@ -389,7 +390,7 @@ class Reproducer:
         def call_cpp(i):
             t0 = time.time()
             rij_row, rij_col, rij_data, wij_row, wij_col, wij_data = [
-                list(x) for x in CC.compute_one_row(self._lattices.size(), i)
+                list(x) for x in CC.compute_one_row(self._lattices.size, i)
             ]
             rij = sparse.coo_matrix((rij_data, (rij_row, rij_col)), shape=(NN, NN))
             wij = sparse.coo_matrix((wij_data, (wij_row, wij_col)), shape=(NN, NN))
@@ -414,8 +415,8 @@ class Reproducer:
             else:
                 rij_matrix += rij
                 wij_matrix += wij
-        self.rij_matrix = flex.double(rij_matrix.todense())
-        self.wij_matrix = flex.double(wij_matrix.todense())
+        self.rij_matrix = rij_matrix.todense().astype(np.float64)
+        self.wij_matrix = wij_matrix.todense().astype(np.float64)
         return self.rij_matrix, self.wij_matrix
 
 
