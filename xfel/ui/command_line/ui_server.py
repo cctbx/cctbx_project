@@ -91,6 +91,11 @@ def run(args):
 
     assert easy_run.call("mysqld --defaults-file=%s --initialize-insecure"%(cnf_path)) == 0
 
+  else: 
+    import getpass
+    print ("please enter root password to raise the connection")
+    rootpw3 = getpass.getpass()
+
   print ("Starting server")
   assert os.path.exists(cnf_path)
   server_process = easy_run.subprocess.Popen(["mysqld", "--defaults-file=%s"%(cnf_path)])
@@ -122,6 +127,8 @@ def run(args):
     print ("Initialized")
   else:
     app = db_application(params)
+    params.db.user = 'root'
+    params.db.password = rootpw3
 
   print ("Raising max connections")
   app.execute_query("SET GLOBAL max_connections=50000")
