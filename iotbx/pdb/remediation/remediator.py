@@ -366,7 +366,8 @@ def remediate(filename, remediated_out, f=None):
       previous = current
       current = line[18:26]
       residue_name = line[17:20]
-      chem_comp_atom_exch = build_hash_from_chem_components(residue_name, remediated_out)
+      remed = Remediator()
+      chem_comp_atom_exch = remed.build_hash_from_chem_components(residue_name, remediated_out)
       #sys.stderr.write(str(chem_comp_atom_exch)+"\n")
       line = remediate_atomic_line(line, chem_comp_atom_exch)
     elif (remark_flag == False) and (remark_block == True): #deal with non-remark lines stuck in the top before main record types
