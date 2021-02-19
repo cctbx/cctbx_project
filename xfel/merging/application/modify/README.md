@@ -27,28 +27,7 @@ following are key points for getting things to run:
 3.  A compiler supporting the `C++11` standard is required.  To propagate this flag to the compiler, issue a `libtbx.refresh` command after the merge_polar
 branch has been checked out.  This runs a code hack to set the c++11 flag within the build process, and only needs to be done once.
 4.  The conda environment must provide `scikit-learn` for unit cell covariance analysis, and `pandas` for analysis of data tables.
-5.  Unfortunately the dials code requires a two line hack.  Please apply this patch to `dials/util/filter_reflections.py`:
-```
-@@ -463,7 +463,7 @@ def filter_for_export(
-             reflection_table.size() > 0
-         ), """Empty reflection table given to reduce_data_for_export function"""
-         reflection_table = cls.filter_unassigned_reflections(reflection_table)
--        reflection_table = cls.reduce_on_intensities(reflection_table)
-+        #reflection_table = cls.reduce_on_intensities(reflection_table)
- 
-         for intensity in cls.allowed_intensities:
-             if intensity not in cls.intensities:
-@@ -475,7 +475,7 @@ def filter_for_export(
-                 assert "intensity." + intensity + ".value" in reflection_table, msg
-                 assert "intensity." + intensity + ".variance" in reflection_table, msg
- 
--        reflection_table = cls.filter_bad_variances(reflection_table)
-+        #reflection_table = cls.filter_bad_variances(reflection_table)
-         if filter_ice_rings:
-             reflection_table = cls.filter_ice_rings(reflection_table)
-         if d_min:
-```
-6.  The Brehm-Diederichs embedded plot should be enabled by applying a patch.  This is a critical control to confirm that the correlation 
+5.  The Brehm-Diederichs embedded plot should be enabled by applying a patch.  This is a critical control to confirm that the correlation 
 approach is working:
 ```
 --- a/xfel/merging/application/modify/aux_cosym.py

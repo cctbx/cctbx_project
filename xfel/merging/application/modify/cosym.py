@@ -59,6 +59,7 @@ class cosym(worker):
         exp_reflections['intensity.sum.variance'] = flex.pow(model_intensities.sigmas(),2)
         exp_reflections['miller_index'] = model_intensities.indices()
         exp_reflections['miller_index_asymmetric'] = model_intensities.indices()
+        exp_reflections['flags'] = flex.size_t(model_intensities.size(), flex.reflection_table.flags.integrated_sum)
 
         # prepare individual reflection tables for each experiment
 
