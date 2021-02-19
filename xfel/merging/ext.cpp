@@ -5,6 +5,8 @@
 #include <boost/python/list.hpp>
 #include <boost/python/dict.hpp>
 #include <boost/python/tuple.hpp>
+#include <boost/tuple/tuple.hpp>
+#include <boost/tuple/tuple_comparison.hpp>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/versa.h>
@@ -14,7 +16,6 @@
 #include <cctbx/sgtbx/change_of_basis_op.h>
 #include <dials/array_family/reflection_table.h>
 #include <algorithm>
-#include <tuple>
 #include <string>
 #include <scitbx/math/linear_correlation.h>
 
@@ -238,8 +239,8 @@ namespace sx_merging {
         const int &i_row) const
     {
       // port of _compute_rij_matrix_one_row_block from test.py
-      typedef std::tuple<long, long, std::string> cache_key_t;
-      typedef std::map<cache_key_t, std::tuple<double, int> > rij_cache_t;
+      typedef boost::tuple<long, long, std::string> cache_key_t;
+      typedef std::map<cache_key_t, boost::tuple<double, int> > rij_cache_t;
 
 
       rij_cache_t rij_cache;
@@ -282,12 +283,12 @@ namespace sx_merging {
             const cbop_t& cb_op_kk = cb_ops[kk];
             k_inv_kk = cb_op_k.c_inv() * cb_op_kk.c();
             std::string k_inv_kk_str = k_inv_kk.as_xyz();
-            cache_key = std::make_tuple(i_row, j_col, k_inv_kk_str);
+            cache_key = boost::make_tuple(i_row, j_col, k_inv_kk_str);
             rij_cache_t::const_iterator found = rij_cache.find(cache_key);
             if (found != rij_cache.end()) {
-              std::tuple<double, int> hit = found->second;
-              corr_coeff = std::get<0>(hit);
-              n_obs = std::get<1>(hit);
+              boost::tuple<double, int> hit = found->second;
+              corr_coeff = boost::get<0>(hit);
+              n_obs = boost::get<1>(hit);
             }
             else {
 
@@ -325,7 +326,7 @@ namespace sx_merging {
               }
 
 
-              rij_cache[cache_key] = std::make_tuple(corr_coeff, n_obs);
+              rij_cache[cache_key] = boost::make_tuple(corr_coeff, n_obs);
 
             }
 
