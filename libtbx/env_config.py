@@ -36,7 +36,7 @@ default_enable_openmp_if_possible = False
 default_enable_boost_threads = True
 default_enable_cuda = False
 default_opt_resources = False
-default_enable_cxx11 = True
+default_enable_cxx11 = False
 default_use_conda = False
 
 def is_64bit_architecture():
@@ -932,7 +932,6 @@ Wait for the command to finish, then try again.""" % vars())
       module_name = module_name.rstrip("/\\")
       module_names.append(module_name)
     if (pre_processed_args.warm_start):
-      print("doing a warm start")
       self.explicitly_requested_modules |= set(module_names)
       if (not command_line.options.only):
         excludes = []
@@ -969,7 +968,7 @@ Wait for the command to finish, then try again.""" % vars())
         use_environment_flags=command_line.options.use_environment_flags,
         force_32bit=command_line.options.force_32bit,
         msvc_arch_flag=command_line.options.msvc_arch_flag,
-        enable_cxx11=True,
+        enable_cxx11=command_line.options.enable_cxx11,
         skip_phenix_dispatchers=command_line.options.skip_phenix_dispatchers)
       self.build_options.get_flags_from_environment()
       # if an installed environment exists, override with build_options
@@ -2596,7 +2595,7 @@ class build_options:
         use_environment_flags=False,
         force_32bit=False,
         msvc_arch_flag=default_msvc_arch_flag,
-        enable_cxx11=True,
+        enable_cxx11=default_enable_cxx11,
         skip_phenix_dispatchers=False):
 
     adopt_init_args(self, locals())
@@ -2635,7 +2634,6 @@ class build_options:
         self.env_ldflags = flg
 
   def report(self, f=None):
-    self.enable_cxx11 = True
     if (f is None): f = sys.stdout
     print("Compiler:", self.compiler, file=f)
     print("Build mode:", self.mode, file=f)
@@ -2874,7 +2872,7 @@ class pre_process_args:
                        "environment")
     parser.option(None, "--enable_cxx11",
       action="store_true",
-      default=True,
+      default=default_enable_cxx11,
       help="use C++11 standard")
     parser.option("--skip_phenix_dispatchers",
       action="store_true",
