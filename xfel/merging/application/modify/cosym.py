@@ -80,8 +80,8 @@ class cosym(worker):
     #if self.mpi_helper.rank == 0:
       # task_a() # no anchor for initial pass
 
-    def task_1(mpi_helper_size=1):
-      self.uuid_cache = []
+    def task_1(uuid_starting=[], mpi_helper_size=1):
+      self.uuid_cache = uuid_starting
       if mpi_helper_size == 1: # simple case, one rank
        for experiment in all_sampling_experiments:
         sampling_experiments_for_cosym.append(experiment)
@@ -209,7 +209,7 @@ class cosym(worker):
           sampling_reflections_for_cosym = []
           print("ANCHOR determination")
           task_a()
-          ANCHOR = task_1(mpi_helper_size=1) # only run on the rank==0 tranch.
+          ANCHOR = task_1(uuid_starting=["anchor structure"], mpi_helper_size=1) # only run on the rank==0 tranch.
           self.uuid_cache = ANCHOR.uuid_cache # reformed uuid list after n_refls filter
           ANCHOR.run()
 
@@ -230,7 +230,7 @@ class cosym(worker):
           print("The consensus for the anchor is",anchor_op.as_hkl()," anchor coset", anchor_coset)
           raw["experiment"].append("anchor structure"); raw["coset"].append(anchor_coset)
 
-          for sidx in range(len(self.uuid_cache)):
+          for sidx in range(1,len(self.uuid_cache)):
             raw["experiment"].append(self.uuid_cache[sidx])
 
             sidx_plus = sidx
