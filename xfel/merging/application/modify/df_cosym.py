@@ -108,10 +108,10 @@ class reconcile_cosym_reports:
     raw = OrderedDict(keyval)
     return df(raw)
 
-  def reconcile_with_anchor(self, global_dataframe, anchor_dataframe, anchor_operator):
-    print (anchor_dataframe)
+  def reconcile_with_anchor(self, global_dataframe, anchor_dataframe, anchor_operator, verbose=False):
+    if verbose: print (anchor_dataframe)
     merged_inner = pd.merge(left=global_dataframe, right=anchor_dataframe, left_on='experiment', right_on='experiment')
-    print (merged_inner)
+    if verbose: print (merged_inner)
 
     #1) cyclic icoset permutation of the anchor till the key==0 icoset is 0
     # XXX fix me.  Actually not sure if cyclic permutation works for more than 2 cosets.  Good guess, but need to test
@@ -122,7 +122,7 @@ class reconcile_cosym_reports:
     anchor_dataframe["coset"] = working_cyclic
 
     merged_inner = pd.merge(left=global_dataframe, right=anchor_dataframe, left_on='experiment', right_on='experiment')
-    print (merged_inner)
+    if verbose: print (merged_inner)
 
 
     #2) all permutations of the global till the global matches the anchor, then return this
@@ -140,6 +140,6 @@ class reconcile_cosym_reports:
 
     #3) apply the successful permutation to the global dataframe
     merged_inner["coset_x"] = working_coset
-    print (merged_inner)
+    if verbose: print (merged_inner)
     global_dataframe["coset"] = [trial_permutation[x] for x in list(global_dataframe["coset"])]
     return global_dataframe

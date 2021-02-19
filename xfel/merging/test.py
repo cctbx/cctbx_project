@@ -313,7 +313,7 @@ class Reproducer:
             if self._weights is not None:
                 wij = sparse.coo_matrix((wij_data, (wij_row, wij_col)), shape=(NN, NN))
 
-            print(time.time()-t0)
+            #print(time.time()-t0)
             return rij, wij
 
         args = [(i,) for i in range(n_lattices)]
@@ -359,7 +359,7 @@ class Reproducer:
         return self.rij_matrix, self.wij_matrix
 
     def compute_rij_wij_cplusplus(self, use_cache=True, do_one_row_i=None):
-        print("""Compute the rij_wij matrix in C++""")
+        #print("""Compute the rij_wij matrix in C++""")
 
         n_lattices = self._lattices.size
         n_sym_ops = len(self.sym_ops)
@@ -395,7 +395,7 @@ class Reproducer:
             rij = sparse.coo_matrix((rij_data, (rij_row, rij_col)), shape=(NN, NN))
             wij = sparse.coo_matrix((wij_data, (wij_row, wij_col)), shape=(NN, NN))
 
-            print(time.time()-t0)
+            #print(time.time()-t0)
             return rij, wij
 
         if do_one_row_i is not None:
