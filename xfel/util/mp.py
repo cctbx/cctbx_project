@@ -290,7 +290,7 @@ class get_sge_submit_command(get_submit_command):
   def eval_params(self):
     # -t 1-<nproc>
     if self.params.nproc > 1:
-      nproc_str = "-pe openmpi %d" % self.params.nproc
+      nproc_str = "-pe smp %d" % self.params.nproc #Change the submission command to smp, as the openmpi currently confilicts with mpi of Dials and cctbx.xfel.merge
       self.options.append(nproc_str)
 
     # -o <outfile>
