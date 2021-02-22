@@ -1065,7 +1065,9 @@ void diffBragg::add_diffBragg_spots()
                                     if ( (h0<=h_max) && (h0>=h_min) && (k0<=k_max) && (k0>=k_min) && (l0<=l_max) && (l0>=l_min)  ) {
                                         /* just take nearest-neighbor */
                                         F_cell = Fhkl[h0-h_min][k0-k_min][l0-l_min];
+                                        //F_cell = Fhkl[h0-h_min][k0-k_min][l0-l_min+1];
                                         if (complex_miller) F_cell2 = Fhkl2[h0-h_min][k0-k_min][l0-l_min];
+                                        //if (complex_miller) F_cell2 = Fhkl2[h0-h_min][k0-k_min][l0-l_min+1];
                                     }
                                     else
                                     {
@@ -1077,20 +1079,33 @@ void diffBragg::add_diffBragg_spots()
                                 //F_cell = Fhkl[h0-h_min][k0-k_min][l0-l_min];
                                 if (complex_miller) {
                                   double qm = 1.0; // Occupancy of Fe in LS49 is 1.0
-                                  double Bm = 26.58; // B-factor from refinement 
+                                  double Bm = 28.14; // B-factor from refinement 
                                   double S_2 = 1.e-20*(scattering[0]*scattering[0]+scattering[1]*scattering[1]+scattering[2]*scattering[2]);
 
                                   // FIXME Stuff that needs to be fixed
                                   double val_fp = fp[source];
                                   double val_fdp = fdp[source];
                                   double pre_factor_1 = exp(-Bm*S_2/4.0); // put back occupancy
-                                  double r_dot_h = h0*0.247105-k0*0.003748 + l0*0.142614;
+                                  // Ref 17
+                                  //double r_dot_h = h0*0.250046-k0*1.008710 + l0*0.394391;
+                                  // Ref 41
+                                  double r_dot_h = h0*0.249375-k0*1.007946 + l0*0.394129;
+                                  // 2nd term is for the 2nd Fe site in the P1 myoglobin
+                                  // Ref 17
+                                  //double r_dot_h_2 = -h0*0.250046-k0*0.508710 - l0*0.394391;
+                                  // Ref 41
+                                  double r_dot_h_2 = -h0*0.249375-k0*0.507946 - l0*0.394129;
                                   //
 
                                   double real_part = val_fp*cos(2*M_PI*r_dot_h) - val_fdp*sin(2*M_PI*r_dot_h);
                                   double imag_part = val_fp*sin(2*M_PI*r_dot_h) + val_fdp*cos(2*M_PI*r_dot_h);
-                                  double F_Fe_real = pre_factor_1*real_part;
-                                  double F_Fe_imag = pre_factor_1*imag_part;
+                                  //
+                                  double real_part_2 = val_fp*cos(2*M_PI*r_dot_h_2) - val_fdp*sin(2*M_PI*r_dot_h_2);
+                                  double imag_part_2 = val_fp*sin(2*M_PI*r_dot_h_2) + val_fdp*cos(2*M_PI*r_dot_h_2);
+
+
+                                  double F_Fe_real = pre_factor_1*(real_part+real_part_2);
+                                  double F_Fe_imag = pre_factor_1*(imag_part+imag_part_2);
           			  //std::cout <<  val_fp << " "<< val_fdp<<" "<< S_2 << " "<< r_dot_h  << " "<< h0 <<" "<< k0 << " "<< l0 <<std::endl;
 
                                   F_cell = F_cell + F_Fe_real;

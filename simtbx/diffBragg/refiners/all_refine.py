@@ -314,7 +314,7 @@ class RefineAll(RefineRot):
                           self.store_init_Imeas.append(Imeas)
                           self.store_init_vmax.append(vmax)
                           self.store_init_vmin.append(vmin)
-                    if False:
+                    if self.show_plotted_images:
                         plt.suptitle("Iterations = %d, image %d / %d, res=%.2f"
                                      % (self.iterations, i_spot+1, self.n_spots, self.spot_resolution[i_spot]))
                         self.fig.canvas.draw()
