@@ -2509,11 +2509,29 @@ class map_model_manager(object):
       matching_info = None,
       max_dist = None,
       ca_only = None,
-      reverse = False
+      reverse = False,
+      allow_reverse = False,
        ):
 
     if reverse and not ca_only:
       return None # cannot do reverse for full chain
+
+    if allow_reverse:
+      diffs = self.get_diffs_for_matching_target_and_model(
+         matching_info = matching_info,
+         ca_only = ca_only,
+         max_dist = max_dist)
+      reverse_diffs = self.get_diffs_for_matching_target_and_model(
+         matching_info = matching_info,
+         ca_only = ca_only,
+         max_dist = max_dist,
+         reverse = True)
+      if reverse_diffs and reverse_diffs.size()>0 and \
+          reverse_diffs.rms_length() < diffs.rms_length():
+          diffs = reverse_diffs
+      return diffs
+
+
     target_model = matching_info.target_model
     matching_model = matching_info.matching_model
     chain_type = matching_info.chain_type
@@ -2851,7 +2869,8 @@ class map_model_manager(object):
         ca_selection_string = self.get_selection_string_from_chain_dict(
           chain_dict= ca_chain_dict, max_gap = max_gap)
         local_target_model = target_model.apply_selection_string(ca_selection_string)
-
+        if not local_target_model:
+          continue # skip it
         target_seq = get_sequence_from_hierarchy(
           local_target_model.get_hierarchy(), remove_white_space=True)
         matching_seq = get_sequence_from_hierarchy(
@@ -8889,7 +8908,6 @@ def get_selections_and_boxes_to_split_model(
         map_manager = map_manager,
         model = model_use,
         box_cushion = box_cushion)
-
       box_info.lower_bounds_list.append(info.lower_bounds)
       box_info.upper_bounds_list.append(info.upper_bounds)
     box_info.lower_bounds_with_cushion_list = [] # not using these

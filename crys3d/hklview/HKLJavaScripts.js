@@ -240,12 +240,6 @@ function RemoveStageObjects()
     colourchart.remove(); // delete previous colour chart if any
     colourchart = null;
   }
-  /*
-  if (ResetViewBtn != null) {
-    ResetViewBtn.remove();
-    ResetViewBtn = null;
-  }
-  */
   ttips = [];
   vectorreprs = [];
   vectorshapeComps = [];
@@ -334,7 +328,6 @@ Object.assign(debugmessage.style, {
 });
 
 
-
 function ReturnClipPlaneDistances()
 {
   if (stage.viewer.parameters.clipScale == 'relative')
@@ -359,30 +352,13 @@ function ReturnClipPlaneDistances()
   WebsockSendMsg('ReturnClipPlaneDistances:\n' + msg );
 }
 
-async function RotateComponents(r, inc) {
-  while (inc < 10)
-  {
-    //sleep(100); //then(() => {
-    //await sleep(100);
-    var e = new NGL.Euler(inc, 0, 0);
-    var m = new NGL.Matrix4();
-    m.makeRotationFromEuler(e);
-    shapeComp.setTransform(m);
-    //RenderRequest();
-    stage.viewer.requestRender();
-    msg = String(shapeComp.matrix.elements);
-    WebsockSendMsg('CurrentComponentRotation:\n' + msg);
-    await sleep(100);
-    inc = inc + 0.02;
-  }
-}
-
 
 async function RenderRequest()
 {
   await sleep(100);
   stage.viewer.requestRender();
-  WebsockSendMsg( 'RenderRequest ' + pagename );
+  if (isdebug)
+    WebsockSendMsg( 'RenderRequest ' + pagename );
 }
 
 // Log errors to debugger of your browser
@@ -418,8 +394,8 @@ function onMessage(e)
   var showdata = e.data;
   if (showdata.length > 400)
     showdata = e.data.slice(0, 200) + '\n...\n' + e.data.slice(e.data.length - 200, -1);
-
-  WebsockSendMsg('Browser: Got ' + showdata ); // tell server what it sent us
+  if (isdebug)
+    WebsockSendMsg('Browser: Got ' + showdata ); // tell server what it sent us
   try
   {
     var datval = e.data.split(":\n");
@@ -564,7 +540,7 @@ function onMessage(e)
       var nexpandrefls = 0;
 
       //alert('rotations:\n' + val);
-      // Rotation matrices are concatenated to a string of floats
+      // Rotation matrices for the spacegroup come as a string of floats
       // separated by line breaks between each roation matrix
       rotationstrs = datval[1].split("\n");
       var Rotmats = [];
@@ -694,7 +670,6 @@ function onMessage(e)
         }
       }
 
-      //stage.viewer.requestRender();
       RenderRequest();
       WebsockSendMsg( 'Done ' + msgtype );
     }
@@ -755,8 +730,7 @@ function onMessage(e)
       axis.y = parseFloat(val[1]);
       axis.z = parseFloat(val[2]);
       m4.makeRotationAxis(axis, theta);
-
-      stage.viewerControls.orient(m4);
+      stage.viewerControls.applyMatrix(m4);
       if (val[4] == "verbose")
         postrotmxflag = true;
       ReturnClipPlaneDistances();
@@ -1262,9 +1236,11 @@ function onMessage(e)
       RenderRequest();
       */
     }
-    WebsockSendMsg('Received message: ' + msgtype );
     if (isdebug)
+    {
+      WebsockSendMsg('Received message: ' + msgtype);
       debugmessage.innerText = dbgmsg;
+    }
   }
 
   catch(err)

@@ -104,6 +104,14 @@ def get_atom_names(code, alternate=False):
       tmp.append(item.atom_id)
   return tmp
 
+def get_atom_type_symbol(code):
+  cif = get_cif_dictionary(code)
+  if not cif: return cif
+  tmp = []
+  for item in cif.get("_chem_comp_atom", []):
+    tmp.append(item.type_symbol)
+  return tmp
+
 def get_hydrogen_names(code,
                        wrap=False,
                        alternate=False

@@ -550,7 +550,7 @@ class HKLViewFrame() :
         self.SendInfoToGUI(mydict)
       valid_arrays.append(array)
     self.valid_arrays = valid_arrays
-    self.mprint("%d Miller arrays in this data set:" %len(arrays))
+    self.mprint("%d Miller arrays in this dataset:" %len(arrays))
     for e in self.viewer.array_infostrs:
       self.mprint("%s" %e)
     self.mprint("\n")
@@ -1011,12 +1011,14 @@ class HKLViewFrame() :
       elif self.params.viewer.add_user_vector_hkl_op not in [None, ""]:
         hklop = re.sub(unwantedchars, "", self.params.viewer.add_user_vector_hkl_op)
         rt = sgtbx.rt_mx(symbol=hklop, r_den=12, t_den=144)
-        rt.r().as_double()
         self.viewer.symops.append( rt ) #
         (cartvec, a, label, order) = self.viewer.GetVectorAndAngleFromRotationMx( rt.r() )
         if label:
           label = "%s-fold_%s" %(str(int(roundoff(2*math.pi/a, 0))), self.params.viewer.user_label)
           self.mprint("Rotation axis, %s, added" %label)
+        if label =="" or order==0:
+          self.mprint("Cannot compute a rotation axis from %s" %self.params.viewer.add_user_vector_hkl_op)
+          return
       if (self.params.viewer.add_user_vector_hkl in [None, "", "()"] \
        and self.params.viewer.add_user_vector_abc in [None, "", "()"] \
        and self.params.viewer.add_user_vector_hkl_op) in [None, ""]:
@@ -1264,6 +1266,12 @@ masterphilstr = """
       .type = bool
     fixorientation = vector reflection_slice *None
       .type = choice
+    angle_around_XHKL_vector = 0.0
+      .type = float
+    angle_around_YHKL_vector = 0.0
+      .type = float
+    angle_around_ZHKL_vector = 0.0
+      .type = float
     %s
   }
   NGL {

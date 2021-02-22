@@ -2107,7 +2107,7 @@ class map_manager(map_reader, write_ccp4_map):
       n_real.append(int(target_n + 0.999))
     return n_real
 
-  def find_n_highest_grid_points_as_sites_cart(self, n = None,
+  def find_n_highest_grid_points_as_sites_cart(self, n = 0,
     n_tolerance = 0, max_tries = 100):
     '''
       Return the n highest grid points in the map as sites_cart

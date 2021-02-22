@@ -16,8 +16,7 @@ from PySide2.QtWidgets import (  QAction, QCheckBox, QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
         QMainWindow, QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableView, QTableWidget,
-        QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QPlainTextEdit, QVBoxLayout,
-        QWhatsThis, QWidget )
+        QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget )
 
 from PySide2.QtGui import QColor, QFont, QCursor, QDesktopServices
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
@@ -35,9 +34,13 @@ except Exception as e: # if invoked by a generic python that doesn't know cctbx 
 class MakeNewDataForm(QDialog):
   def __init__(self, parent=None):
     super(MakeNewDataForm, self).__init__(parent.window)
-    self.setWindowTitle("Create New Reflection Data")
-    myGroupBox = QGroupBox("Python expression for newdata")
+    self.setWindowFlag(Qt.WindowContextHelpButtonHint,False);
+    self.setWindowTitle("Create a new reflection dataset")
     layout = QGridLayout()
+    sp = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+    sp.setVerticalStretch(3)
+    parent.operationtxtbox.setSizePolicy(sp)
+    parent.operationtxtbox.setMinimumSize(QSize(0, 30))
     layout.addWidget(parent.operationlabeltxt,     0, 0, 1, 2)
     layout.addWidget(parent.MillerComboBox,        1, 0, 1, 1)
     layout.addWidget(parent.MillerLabel2,          1, 1, 1, 1)
@@ -48,10 +51,7 @@ class MakeNewDataForm(QDialog):
     layout.addWidget(parent.operationbutton,       5, 0, 1, 2)
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
-    myGroupBox.setLayout(layout)
-    mainLayout = QGridLayout()
-    mainLayout.addWidget(myGroupBox,     0, 0)
-    self.setLayout(mainLayout)
+    self.setLayout(layout)
     m = self.fontMetrics().width( "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf")
 
 
@@ -263,14 +263,31 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.operationlabeltxt = QLabel()
     self.operationlabeltxt.setWordWrap(True)
     self.MillerLabel2 = QLabel()
-    self.MillerLabel2.setText("column")
+    self.MillerLabel2.setText("is represented by array2")
     self.MillerLabel3 = QLabel()
-    self.MillerLabel3.setText("Example: 'newdata=data/sigmas; newsigmas= -42*sigmas' ")
+    self.MillerLabel3.setText("""<html><head/><body><p>
+    For examples on creating a dataset from existing ones see
+    <a href="http://cci.lbl.gov/docs/cctbx/doc_hklviewer/#make_new_dataset">Making new dataset</a>.
+    <br>
+    For details on python scripting cctbx.miller.array see
+    <a href="https://cctbx.github.io/cctbx/cctbx.miller.html#the-miller-array">cctbx.miller arrays</a>.
+    """)
+    self.MillerLabel3.setTextInteractionFlags(Qt.TextBrowserInteraction);
+    self.MillerLabel3.setOpenExternalLinks(True);
+
     self.newlabelLabel = QLabel()
-    self.newlabelLabel.setText("Column label for new data:")
+    self.newlabelLabel.setText("Column label for new reflection dataset:")
     self.newlabeltxtbox = QLineEdit('')
-    self.operationtxtbox = QLineEdit('')
-    self.operationbutton = QPushButton("OK")
+    self.operationtxtbox = QTextEdit('')
+    self.operationtxtbox.setPlaceholderText("""Example:
+dat = array1.data()/array1.sigmas() * array2.normalize().data()
+sigs = 2*flex.exp(1/array2.sigmas())
+newarray._data = dat
+newarray._sigmas = sigs
+    """)
+    self.operationtxtbox.setToolTip(u"<html><head/><body><p>Rather than using math.exp(), math.pow(), etc. " +
+                                  "use flex.exp(), flex.pow() etc when operating on flex.array variables.</p></body></html>")
+    self.operationbutton = QPushButton("Compute new reflection dataset")
     self.operationbutton.clicked.connect(self.onMakeNewData)
     self.makenewdataform = MakeNewDataForm(self)
     self.makenewdataform.setModal(True)
@@ -338,11 +355,12 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.functionTabWidget.setDisabled(True)
     self.window.statusBar().showMessage("")
     self.hklLabel = QLabel()
-    self.hklLabel.setText("HKL vector normal to screen:")
-    self.HKLnormaltxtbox = QLineEdit('')
-    self.HKLnormaltxtbox.setReadOnly(True)
+    self.hklLabel.setText("HKL vectors along X-axis, Y-axis, Z-axis:")
+    self.Statusbartxtbox = QLineEdit('')
+    self.Statusbartxtbox.setReadOnly(True)
+    self.Statusbartxtbox.setAlignment(Qt.AlignRight)
     self.window.statusBar().addPermanentWidget(self.hklLabel)
-    self.window.statusBar().addPermanentWidget(self.HKLnormaltxtbox)
+    self.window.statusBar().addPermanentWidget(self.Statusbartxtbox, 1)
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
     self.actionLocal_Help.triggered.connect(self.onOpenHelpFile)
     self.actionCCTBXwebsite.triggered.connect(self.onOpenCCTBXwebsite)
@@ -459,7 +477,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
   def onSaveReflectionFile(self):
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getSaveFileName(self.window,
-            "Save data sets to a new reflection file", "",
+            "Save datasets to a new reflection file", "",
             "MTZ Files (*.mtz);;CIF Files (*.cif);;All Files (*)", "", options)
     if fileName:
       self.PhilToJsRender('savefilename = "%s"' %fileName )
@@ -711,8 +729,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
             self.NewMillerArray = self.infodict.get("NewMillerArray",False)
 
           if self.infodict.get("StatusBar"):
-            #self.window.statusBar().showMessage( self.infodict.get("StatusBar", "") )
-            self.HKLnormaltxtbox.setText(self.infodict.get("StatusBar", "") )
+            self.Statusbartxtbox.setText(self.infodict.get("StatusBar", "") )
 
           if self.infodict.get("clicked_HKL"):
             (h,k,l) = self.infodict.get("clicked_HKL", ( ) )
@@ -1378,13 +1395,36 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.clipwidth_spinBox.setSingleStep(0.1)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
     self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
-    self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: 0º")
-    #self.rotavecangle_slider.setValue(0)
-    #self.rotavecangle_slider.setSingleStep(1)
-    self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
-    self.rotavecangle_slider.valueChanged.connect(self.onRotaVecAngleChanged)
-    self.rotavecangle_slider.setTracking(False)
-    self.ClipPlaneChkGroupBox.clicked.connect(self.onClipPlaneChkBox)
+    self.yHKLrotBtn.clicked.connect(self.onYangleHKLrotate)
+    self.xHKLrotBtn.clicked.connect(self.onXangleHKLrotate)
+    self.zHKLrotBtn.clicked.connect(self.onZangleHKLrotate)
+    self.yHKLbackrotBtn.clicked.connect(self.onYangleHKLrotateback)
+    self.xHKLbackrotBtn.clicked.connect(self.onXangleHKLrotateback)
+    self.zHKLbackrotBtn.clicked.connect(self.onZangleHKLrotateback)
+
+
+  def onXangleHKLrotate(self):
+    self.PhilToJsRender("viewer.angle_around_XHKL_vector = %f" %self.angleStepHKLrotSpinBox.value() )
+
+
+  def onYangleHKLrotate(self):
+    self.PhilToJsRender("viewer.angle_around_YHKL_vector = %f" %self.angleStepHKLrotSpinBox.value() )
+
+
+  def onZangleHKLrotate(self):
+    self.PhilToJsRender("viewer.angle_around_ZHKL_vector = %f" %self.angleStepHKLrotSpinBox.value() )
+
+
+  def onXangleHKLrotateback(self):
+    self.PhilToJsRender("viewer.angle_around_XHKL_vector = %f" %(-1*self.angleStepHKLrotSpinBox.value()) )
+
+
+  def onYangleHKLrotateback(self):
+    self.PhilToJsRender("viewer.angle_around_YHKL_vector = %f" %(-1*self.angleStepHKLrotSpinBox.value()) )
+
+
+  def onZangleHKLrotateback(self):
+    self.PhilToJsRender("viewer.angle_around_ZHKL_vector = %f" %(-1*self.angleStepHKLrotSpinBox.value()) )
 
 
   def onAlignedVector(self):
@@ -1425,10 +1465,8 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
   def onRotaVecAngleChanged(self, val):
     if self.unfeedback or self.rotvec is None:
       return
-    #self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %dº" %val)
     self.PhilToJsRender("""clip_plane {
     angle_around_vector = '[%d, %f]'
-    bequiet = False
 }""" %(self.rotvec, val*0.5))
 
 
@@ -1438,7 +1476,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     val = self.rotavecangle_slider.value()*0.5
     self.PhilToJsRender("""clip_plane {
     angle_around_vector = '[%d, %f]'
-    bequiet = False
 }""" %(self.rotvec, val))
 
 
@@ -1527,7 +1564,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
           myqa = QAction("Display %s" %scenelabelstr, self.window, triggered=self.testaction)
           myqa.setData((sceneid, row))
           self.millertablemenu.addAction(myqa)
-    myqa = QAction("Make new data from this data and other data...", self.window, triggered=self.testaction)
+    myqa = QAction("Make a new dataset from this dataset and another dataset...", self.window, triggered=self.testaction)
     myqa.setData( ("newdata", row ))
     self.millertablemenu.addAction(myqa)
 
@@ -1536,7 +1573,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       labels = []
       for i,r in enumerate(self.millertable.selectedrows):
         labels.extend( self.millerarraylabels[r].split(",") ) # to cope with I,SigI or other multiple labels
-      myqa = QAction("Show a table of %s data ..." %  " and ".join(labels), self.window, triggered=self.testaction)
+      myqa = QAction("Show a table of the %s dataset ..." %  " and ".join(labels), self.window, triggered=self.testaction)
       myqa.setData( ("tabulate_data", labels ))
       self.millertablemenu.addAction(myqa)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -1555,11 +1592,13 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
         self.operate_arrayidx1 = idx
         self.operate_arrayidx2 = -1 # i.e. no second miller array selected yet
         if strval=="newdata":
-          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx]
-           + " 'data1' and/or 'sigmas1' variable and, optionally, dres and 'data2, 'sigmas2'"
-           +" variables from the miller array below:")
-          self.MillerComboBox.setEnabled(True)
-          self.MillerLabel3.setText("Example: 'newdata = data1 - flex.pow(data2); newsigmas= sigmas1 - data2 / sigmas1' ")
+          self.operationlabeltxt.setText("Define a new cctbx.miller.array object, \"newarray\", "
+           + "by entering a python expression for \"newarray\" or by assigning \"newarray._data\" "
+           + "(and optionally \"newarray._sigmas\") to a function of the cctbx.miller.array object, "
+           + "\"array1\", representing the " + self.millerarraylabels[idx] + " dataset. Optionally "
+           + "also include the cctbx.miller.array object, \"array2\" representing a dataset "
+           + "selected from the dropdown list below."
+           )
           self.makenewdataform.show()
         if strval=="tabulate_data":
           self.PhilToJsRender('tabulate_miller_array_ids = "%s"' %str(idx))
@@ -1613,7 +1652,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def onMakeNewData(self):
-    mtpl = (self.operationtxtbox.text(), self.newlabeltxtbox.text() ,
+    mtpl = (self.operationtxtbox.toPlainText(), self.newlabeltxtbox.text() ,
               self.operate_arrayidx1, self.operate_arrayidx2 )
     self.PhilToJsRender('miller_array_operations = "[ %s ]"' %str(mtpl) )
     self.makenewdataform.accept()
@@ -1677,10 +1716,11 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.AnimaRotCheckBox.clicked.connect(self.onAnimateRotation)
     self.AnimateSpeedSlider.sliderReleased.connect(self.onAnimateRotation)
     self.AnimateSpeedSlider.setDisabled(True)
-
-
-  #def onResetView(self):
-  #  self.PhilToJsRender('action = reset_view')
+    self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: 0º")
+    self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
+    self.rotavecangle_slider.valueChanged.connect(self.onRotaVecAngleChanged)
+    self.rotavecangle_slider.setTracking(False)
+    self.ClipPlaneChkGroupBox.clicked.connect(self.onClipPlaneChkBox)
 
 
   def onSaveImage(self):

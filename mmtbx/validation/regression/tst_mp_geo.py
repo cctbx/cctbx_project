@@ -149,7 +149,7 @@ def exercise_mp_geo():
           'outliers_only=False',
           'bonds_and_angles=True']
   mp_geo.run(args)
-  f = file('mp_geo.out', 'rb')
+  f = open('mp_geo.out', 'r')
   # Strip out newline and carriage return chars to
   # prevent platform-specific errors.
   lines = [i.rstrip('\n\r') for i in f.readlines()]

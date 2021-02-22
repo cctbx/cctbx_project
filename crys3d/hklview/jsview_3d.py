@@ -437,7 +437,19 @@ class hklview_3d:
       self.show_vector()
 
     if has_phil_path(diff_phil, "angle_around_vector"):
-      self.rotate_around_vector()
+      self.rotate_around_numbered_vector()
+
+    if has_phil_path(diff_phil, "angle_around_XHKL_vector"):
+      self.rotate_stage_around_cartesian_vector([1,0,0], self.viewerparams.angle_around_XHKL_vector)
+      self.viewerparams.angle_around_XHKL_vector = None
+
+    if has_phil_path(diff_phil, "angle_around_YHKL_vector"):
+      self.rotate_stage_around_cartesian_vector([0,1,0], self.viewerparams.angle_around_YHKL_vector)
+      self.viewerparams.angle_around_YHKL_vector = None
+
+    if has_phil_path(diff_phil, "angle_around_ZHKL_vector"):
+      self.rotate_stage_around_cartesian_vector([0,0,1], self.viewerparams.angle_around_ZHKL_vector)
+      self.viewerparams.angle_around_ZHKL_vector = None
 
     if has_phil_path(diff_phil, "animate_rotation_around_vector"):
       self.animate_rotate_around_vector()
@@ -1084,54 +1096,34 @@ class hklview_3d:
 
 
   def OperateOn1MillerArray(self, millarr, operation):
-    # lets user specify a one line python expression operating on data, sigmas
+    # lets user specify a python expression operating on millarr
     newarray = millarr.deep_copy()
-    data1 = newarray.data()
-    sigmas1 = newarray.sigmas()
     dres = newarray.unit_cell().d( newarray.indices() )
     self.mprint("Creating new miller array through the operation: %s" %operation)
     try:
-      newdata = None
-      newsigmas = None
-      ldic= {'data1': data1, 'sigmas1': sigmas1, 'dres': dres }
+      ldic= {'dres': dres, 'array1': newarray, 'newarray': newarray }
       exec(operation, globals(), ldic)
-      newdata = ldic.get("newdata", None)
-      newarray._data = newdata
-      newsigmas = ldic.get("newsigmas", None)
-      newarray._sigmas = newsigmas
+      newarray = ldic.get("newarray", None)
       return newarray
     except Exception as e:
-      self.mprint( str(e), verbose=0)
-      return None
+      raise Sorry(str(e))
 
 
   def OperateOn2MillerArrays(self, millarr1, millarr2, operation):
-    # lets user specify a one line python expression operating on data1 and data2
+    # lets user specify a python expression operating on millarr1 and millarr2
     matchindices = miller.match_indices(millarr1.indices(), millarr2.indices() )
     matcharr1 = millarr1.select( matchindices.pairs().column(0) ).deep_copy()
     matcharr2 = millarr2.select( matchindices.pairs().column(1) ).deep_copy()
-    data1 = matcharr1.data()
-    data2 = matcharr2.data()
-    sigmas1 = matcharr1.sigmas()
-    sigmas2 = matcharr2.sigmas()
     dres = matcharr1.unit_cell().d( matcharr1.indices() )
     newarray = matcharr2.deep_copy()
-    newarray._sigmas = None
     self.mprint("Creating new miller array through the operation: %s" %operation)
     try:
-      newdata = None
-      newsigmas = None
-      ldic= {'data1': data1, 'sigmas1': sigmas1, 'data2': data2, 'sigmas2': sigmas2, 'dres': dres }
+      ldic= { 'dres': dres, 'array1': matcharr1, 'array2': matcharr2, 'newarray': newarray }
       exec(operation, globals(), ldic)
-      newdata = ldic.get("newdata", None)
-      newarray._data = newdata
-      newsigmas = ldic.get("newsigmas", None)
-      newarray._sigmas = newsigmas
+      newarray = ldic.get("newarray", None)
       return newarray
     except Exception as e:
-      #self.mprint( str(e), verbose=0)
       raise Sorry(str(e))
-      return None
 
 
   def DrawNGLJavaScript(self, blankscene=False):
@@ -1140,7 +1132,7 @@ class hklview_3d:
     if self.scene.points.size() == 0:
       blankscene = True
     if self.miller_array is None :
-      self.mprint( "Select a data set to display reflections" )
+      self.mprint( "Select a dataset to display reflections" )
       blankscene = True
     else:
       self.mprint("Rendering reflections...")
@@ -1596,16 +1588,30 @@ Distance: %s
     uc = self.miller_array.unit_cell()
     OrtMx = matrix.sqr( uc.fractionalization_matrix() )
     InvMx = OrtMx.inverse()
+    Xvec =  matrix.rec([1,0,0] ,n=(1,3))
+    Xhkl = list(InvMx.transpose()* self.currentRotmx.inverse()* Xvec.transpose())
+    Yvec =  matrix.rec([0,1,0] ,n=(1,3))
+    Yhkl = list(InvMx.transpose()* self.currentRotmx.inverse()* Yvec.transpose())
     Zvec =  matrix.rec([0,0,1] ,n=(1,3))
-    hklvec = InvMx.transpose()* self.currentRotmx.inverse()* Zvec.transpose()
-    hkl = list(hklvec)
+    Zhkl = list(InvMx.transpose()* self.currentRotmx.inverse()* Zvec.transpose())
     if self.debug:
-      self.SendInfoToGUI( { "StatusBar": "RotMx: %s, HKL: %s" \
-        %(str(roundoff(self.currentRotmx,4)), str(roundoff(hklvec, 4))) } )
-      self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label="foo", name="wibbletest",
-                             r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
+      self.SendInfoToGUI( { "StatusBar": "RotMx: %s, XHKL: %s, YHKL: %s, ZHKL: %s" \
+        %(str(roundoff(self.currentRotmx,4)), str(roundoff(Xhkl, 2)),
+                                              str(roundoff(Yhkl, 2)),
+                                              str(roundoff(Zhkl, 2))),
+                           }
+                         )
+      self.draw_vector(0,0,0, Zhkl[0],Zhkl[1],Zhkl[2], isreciprocal=True, label="Zhkl",
+                      r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
+      self.draw_vector(0,0,0, Yhkl[0],Yhkl[1],Yhkl[2], isreciprocal=True, label="Yhkl",
+                      r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
+      self.draw_vector(0,0,0, Xhkl[0],Xhkl[1],Xhkl[2], isreciprocal=True, label="Xhkl",
+                      name="XYZhkl", r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
     else:
-      self.SendInfoToGUI( { "StatusBar": "%s" % str(roundoff(hkl, 4)) } )
+      self.SendInfoToGUI( { "StatusBar": "%s , %s , %s" %(str(roundoff(Xhkl, 2)),
+                                                     str(roundoff(Yhkl, 2)),
+                                                     str(roundoff(Zhkl, 2))),
+                           } )
     if "MouseMovedOrientation:" in message:
       self.params.mouse_moved = True
     if self.currentRotmx.is_r3_rotation_matrix():
@@ -1876,10 +1882,8 @@ Distance: %s
     ortrotmx = (OrtMx * RotMx * InvMx)
     isProperRotation = True
     ortrot = ortrotmx.as_mat3()
-    r11,r12,r13,r21,r22,r23,r31,r32,r33 = ortrot
-    # workaround for occasional machine precision errors yielding argument greater than 1.0
-    theta =  math.acos(roundoff((r11+r22+r33-1.0)*0.5, 10))
-    sint = math.sin(theta)
+    label=""
+    order = 0
     if not ortrotmx.is_r3_rotation_matrix():
       isProperRotation = False
       self.mprint("""Warning! The operation '%s' is not a proper rotation
@@ -1888,13 +1892,16 @@ in the space group %s\nwith unit cell %s\n""" \
       self.mprint("Inverse of implied rotation matrix,\n%s\nis not equal to its transpose,\n%s" \
         %(str(roundoff(ortrotmx.inverse(),4)), str(roundoff(ortrotmx.transpose(),4))), verbose=1)
       improper_vec_angle = scitbx.math.r3_rotation_axis_and_angle_from_matrix(ortrot)
-      self.mprint("\nAttempting to find nearest orthonormal matrix approximtion")
+      self.mprint("\nTrying to find nearest orthonormal matrix approximtion")
       Rmx = matrix.find_nearest_orthonormal_matrix(ortrotmx)
-      self.mprint("New proper rotation matrix is\n%s" %str(roundoff(Rmx,4)), verbose=1)
+      self.mprint("New suggested rotation matrix is\n%s" %str(roundoff(Rmx,4)), verbose=1)
       if not Rmx.is_r3_rotation_matrix():
-        self.mprint("Failed approximation attempt!")
+        self.mprint("Failed finding an approximate rotation matrix!")
+        return (0,0,0), 0.0, label, order
       ortrotmx = Rmx
     ortrot = ortrotmx.as_mat3()
+    r11,r12,r13,r21,r22,r23,r31,r32,r33 = ortrot
+    theta =  math.acos(roundoff((r11+r22+r33-1.0)*0.5, 10))
     rotaxis = flex.vec3_double([(0,0,0)])
     self.mprint(str(ortrot), verbose=2)
     vec_angle = scitbx.math.r3_rotation_axis_and_angle_from_matrix(ortrot)
@@ -1908,10 +1915,8 @@ in the space group %s\nwith unit cell %s\n""" \
       # for debugging deduce the corresponding rotation matrix from this new axis
       usedrotmx = scitbx.math.r3_rotation_axis_and_angle_as_matrix( rotaxis[0], theta )
       self.mprint("Final proper rotation matrix:\n%s" %str(roundoff(matrix.sqr(usedrotmx),4)), verbose=1)
-    # adjust the scale of the rotation vectors to be compatible with the sphere of reflections
+    # adjust the length of the rotation axes to be compatible with the sphere of reflections
     s = math.sqrt(OrtMx.transpose().norm_sq())*self.realspace_scale
-    label=""
-    order = 0
     if abs(theta) > 0.0001 and rotaxis.norm() > 0.01: # avoid nullvector
       order = int(roundoff(2*math.pi/theta, 0)) # how many times to rotate before its the identity operator
       label = "%s-fold" %str(order)
@@ -2008,16 +2013,28 @@ in the space group %s\nwith unit cell %s\n""" \
     self.viewerparams.show_hkl = "" # to allow clicking on the same entry in the millerarraytable
 
 
-  def rotate_around_vector(self):
-    vecnr, dgr = eval(self.params.clip_plane.angle_around_vector)
+  def rotate_around_numbered_vector(self):
+    vecnr, deg = eval(self.params.clip_plane.angle_around_vector)
     if vecnr < len(self.all_vectors):
-      cartvec = self.all_vectors[vecnr][3]
-      phi = cmath.pi*dgr/180
-      normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      ux = cartvec[0]/normR
-      uy = cartvec[1]/normR
-      uz = cartvec[2]/normR
-      self.RotateAxisComponents([ux,uy,uz], phi, True)
+      self.rotate_components_around_cartesian_vector(self.all_vectors[vecnr][3], deg)
+
+
+  def rotate_components_around_cartesian_vector(self, cartvec, deg):
+    phi = cmath.pi*deg/180
+    normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+    ux = cartvec[0]/normR
+    uy = cartvec[1]/normR
+    uz = cartvec[2]/normR
+    self.RotateAxisComponents([ux,uy,uz], phi, True)
+
+
+  def rotate_stage_around_cartesian_vector(self, cartvec, deg):
+    phi = cmath.pi*deg/180
+    normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+    ux = cartvec[0]/normR
+    uy = cartvec[1]/normR
+    uz = cartvec[2]/normR
+    self.RotateAxisMx([ux,uy,uz], phi, True)
 
 
   def animate_rotate_around_vector(self):

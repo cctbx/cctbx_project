@@ -39,6 +39,7 @@ class HeaderDataTableWidget(QTableWidget):
 class MillerArrayTableForm(QDialog):
   def __init__(self, parent=None):
     super(MillerArrayTableForm, self).__init__(parent.window)
+    self.setWindowFlag(Qt.WindowContextHelpButtonHint,False);
     self.setWindowTitle("Tabulated Reflection Data")
     self.precision_spinBox = QSpinBox()
     self.precision_spinBox.setSingleStep(1)

@@ -900,7 +900,7 @@ def evaluate_sheet_topology(annotation, hierarchy = None,
       if sites_1.size() < 2 or sites_2.size()< 2 or sites_between.size()<2:
         continue  # nothing to do
 
-      if s1.direction is 0 or s2.direction is 0 or s1.direction != s2.direction:
+      if s1.direction == 0 or s2.direction == 0 or s1.direction != s2.direction:
         continue # not parallel
 
 

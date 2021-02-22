@@ -1871,6 +1871,21 @@ def get_sequences(file_name=None,text=None,remove_duplicates=None):
       simple_sequence_list.append(sequence.sequence)
   return simple_sequence_list
 
+def get_chain_type_of_chain(chain):
+  ''' Get chain type of a single chain in a hierarchy'''
+
+  from iotbx.pdb import pdb_input, hierarchy
+  from scitbx.array_family import flex
+
+  cc = chain.detached_copy()
+  new_hierarchy = pdb_input(
+     source_info = "Model",
+     lines = flex.split_lines("")).construct_hierarchy()
+  mm = hierarchy.model()
+  new_hierarchy.append_model(mm)
+  mm.append_chain(cc)
+  return get_chain_type(hierarchy = new_hierarchy)
+
 def get_chain_type(model=None, hierarchy=None):
   '''
    Identify chain type in a hierarchy or model and require only one chain type
@@ -1949,9 +1964,6 @@ def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None,
   if hierarchy.overall_counts().n_residues == 0:
     return ""  # nothing there
 
-  if not chain_type:
-    chain_type = get_chain_type(hierarchy = hierarchy)
-
   chain_sequences=[]
   from iotbx.pdb import amino_acid_codes as aac
   protein_one_letter_code_dict = aac.one_letter_given_three_letter
@@ -1962,7 +1974,11 @@ def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None,
 
   for model in hierarchy.models():
     for chain in model.chains():
-      one_letter_code = one_letter_code_dicts[chain_type]
+      # Get chain-type of this chain if not specified
+      chain_type_use = chain_type
+      if not chain_type_use:
+        chain_type_use = get_chain_type_of_chain(chain)
+      one_letter_code = one_letter_code_dicts[chain_type_use]
       chain_sequence=""
       for rg in chain.residue_groups():
         for atom_group in rg.atom_groups():

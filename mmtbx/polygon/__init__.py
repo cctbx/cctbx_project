@@ -223,7 +223,7 @@ def get_statistics_percentiles(d_min, stats):
     j = len(values) - 1
     while (i != j):
       k = i + (j - i) // 2
-      if (value <= values[k]):
+      if (value and value <= values[k]):
         j = k
       else :
         i = k + 1
