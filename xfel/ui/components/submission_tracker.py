@@ -49,7 +49,7 @@ class QueueInterrogator(object):
     elif self.queueing_system == 'pbs':
       self.command = "qstat -H %s | tail -n 1 | awk '{ print $10 }'"
     elif self.queueing_system == 'sge':
-      self.command = "qstat -j %s | awk '/job_state/ {print $3}'"
+      self.command = "qstat |grep %s | awk '{print $5}'" # previous one "qstat -j %s | awk '/job_state/ {print $3}'"
     elif self.queueing_system == 'local':
       pass
     elif self.queueing_system == 'slurm' or  self.queueing_system == 'shifter':
@@ -204,12 +204,14 @@ class PBSSubmissionTracker(SubmissionTracker):
 class SGESubmissionTracker(SubmissionTracker):
   def _track(self, submission_id, log_path):
     status = self.interrogator.query(submission_id)
-    if status == None:
-      return "FINISHED"
-    elif status in ["s", "t"]:
+    if status == "":
+      return "DONE"
+    elif status in ["s", "t", "S"]:
       return "PEND"
-    elif status in ["r", "qw"]:
+    elif status == "r":
       return "RUN"
+    elif status == "qw":
+      return "WAITING"
     else:
       print("Found an unknown status", status)
 
