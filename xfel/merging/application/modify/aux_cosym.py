@@ -2,7 +2,10 @@ from __future__ import absolute_import, division, print_function
 import copy
 from scitbx.array_family import flex
 from dials.util.observer import Subject
-from cctbx import sgtbx
+from cctbx import sgtbx, miller
+from libtbx import easy_mp
+from scipy import sparse
+import numpy as np
 
 # Specialization, run only a subset of cosym steps and include plot
 from dials.algorithms.symmetry.cosym import CosymAnalysis as BaseClass
@@ -281,3 +284,95 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
         # changed in xfel subclass:  set subgroup=None.
         # in dials parent class:  subgroup=self.cosym_analysis.best_subgroup
         )
+
+class Rij_wij_computer:
+  """
+  This class exists to permit monkeypatching the _compute_rij_wij method of
+  dials.algorithms.symmetry.cosym.target.Target. It won't be instantiated
+  except for unit testing. 'self' will refer to a Target instance or a dummy
+  object with data members _lattices, _data, etc.
+  """
+
+  def __init__(self, test_data_path):
+    import pickle
+    import numpy as np
+    from dials.algorithms.symmetry.cosym.target import Target
+    self._nproc = 1
+    #self._lattice_lower_upper_index = Target._lattice_lower_upper_index
+    with open(test_data_path, 'rb') as f:
+      self._lattices = np.array(pickle.load(f))
+      self.sym_ops = pickle.load(f)[:2] # we only calculate Rij for a single
+                                        # symop to limit the size of the output
+      self._weights = pickle.load(f)
+      self._data = pickle.load(f)
+      self._patterson_group = pickle.load(f)
+      self._min_pairs = 3 # minimum number of mutual miller indices for a match
+
+  def _lattice_lower_upper_index(self, lattice_id):
+      lower_index = self._lattices[lattice_id]
+      upper_index = None
+      if lattice_id < len(self._lattices) - 1:
+          upper_index = self._lattices[lattice_id + 1]
+      else:
+          assert lattice_id == len(self._lattices) - 1
+      return lower_index, upper_index
+
+  def _compute_rij_wij(self, use_cache=True):
+
+    def _compute_one_row(args):
+      """
+      Call the compute_one_row method of CC, which is a compute_rij_wij_detail
+      instance. Args is a tuple that we unpack because easy_mp.parallel_map
+      can only pass a single argument.
+      """
+      CC, i, NN = args
+      rij_row, rij_col, rij_data, wij_row, wij_col, wij_data = [
+          list(x) for x in CC.compute_one_row(self._lattices.size, i)
+      ]
+      rij = sparse.coo_matrix((rij_data, (rij_row, rij_col)), shape=(NN, NN))
+      wij = sparse.coo_matrix((wij_data, (wij_row, wij_col)), shape=(NN, NN))
+      return rij, wij
+
+    n_lattices = self._lattices.size
+    n_sym_ops = len(self.sym_ops)
+    NN = n_lattices * n_sym_ops
+    lower_i = flex.int()
+    upper_i = flex.int()
+    for lidx in range(self._lattices.size):
+      LL,UU = self._lattice_lower_upper_index(lidx)
+      lower_i.append(int(LL))
+      if UU is None:  UU = self._data.data().size()
+      upper_i.append(int(UU))
+    indices = {}
+    space_group_type = self._data.space_group().type()
+    from xfel.merging import compute_rij_wij_detail
+    CC = compute_rij_wij_detail(
+        lower_i,
+        upper_i,
+        self._data.data(),
+        self._min_pairs)
+    for sym_op in self.sym_ops:
+        cb_op = sgtbx.change_of_basis_op(sym_op)
+        indices_reindexed = cb_op.apply(self._data.indices())
+        miller.map_to_asu(space_group_type, False, indices_reindexed)
+        indices[cb_op.as_xyz()] = indices_reindexed
+        CC.set_indices(cb_op, indices_reindexed)
+
+    results = easy_mp.parallel_map(
+        _compute_one_row,
+        [(CC, i, NN) for i in range(n_lattices)],
+        processes=self._nproc
+    )
+
+    rij_matrix = None
+    wij_matrix = None
+    for (rij, wij) in results:
+        if rij_matrix is None:
+            rij_matrix = rij
+            wij_matrix = wij
+        else:
+            rij_matrix += rij
+            wij_matrix += wij
+    self.rij_matrix = rij_matrix.todense().astype(np.float64)
+    self.wij_matrix = wij_matrix.todense().astype(np.float64)
+    return self.rij_matrix, self.wij_matrix

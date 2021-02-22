@@ -143,9 +143,8 @@ class cosym(worker):
 
     # runtime code specialization, replace Gildea algorithm with Paley
     from dials.algorithms.symmetry.cosym.target import Target
-    from xfel.merging.test import Reproducer
-    Target._compute_rij_wij = Reproducer.compute_rij_wij_cplusplus # fastest implementation so far
-    #Target._compute_rij_wij = Reproducer.compute_rij_wij_Gildea # not so fast
+    from xfel.merging.application.modify.aux_cosym import Rij_wij_computer
+    Target._compute_rij_wij = Rij_wij_computer._compute_rij_wij # fastest implementation so far
 
     rank_N_refl=flex.double([r.size() for r in COSYM.reflections])
     message = """Task 1. Prepare the data for cosym
