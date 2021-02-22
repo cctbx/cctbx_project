@@ -1096,54 +1096,34 @@ class hklview_3d:
 
 
   def OperateOn1MillerArray(self, millarr, operation):
-    # lets user specify a one line python expression operating on data, sigmas
+    # lets user specify a python expression operating on millarr
     newarray = millarr.deep_copy()
-    data1 = newarray.data()
-    sigmas1 = newarray.sigmas()
     dres = newarray.unit_cell().d( newarray.indices() )
     self.mprint("Creating new miller array through the operation: %s" %operation)
     try:
-      newdata = None
-      newsigmas = None
-      ldic= {'data1': data1, 'sigmas1': sigmas1, 'dres': dres }
+      ldic= {'dres': dres, 'array1': newarray, 'newarray': newarray }
       exec(operation, globals(), ldic)
-      newdata = ldic.get("newdata", None)
-      newarray._data = newdata
-      newsigmas = ldic.get("newsigmas", None)
-      newarray._sigmas = newsigmas
+      newarray = ldic.get("newarray", None)
       return newarray
     except Exception as e:
-      self.mprint( str(e), verbose=0)
-      return None
+      raise Sorry(str(e))
 
 
   def OperateOn2MillerArrays(self, millarr1, millarr2, operation):
-    # lets user specify a one line python expression operating on data1 and data2
+    # lets user specify a python expression operating on millarr1 and millarr2
     matchindices = miller.match_indices(millarr1.indices(), millarr2.indices() )
     matcharr1 = millarr1.select( matchindices.pairs().column(0) ).deep_copy()
     matcharr2 = millarr2.select( matchindices.pairs().column(1) ).deep_copy()
-    data1 = matcharr1.data()
-    data2 = matcharr2.data()
-    sigmas1 = matcharr1.sigmas()
-    sigmas2 = matcharr2.sigmas()
     dres = matcharr1.unit_cell().d( matcharr1.indices() )
     newarray = matcharr2.deep_copy()
-    newarray._sigmas = None
     self.mprint("Creating new miller array through the operation: %s" %operation)
     try:
-      newdata = None
-      newsigmas = None
-      ldic= {'data1': data1, 'sigmas1': sigmas1, 'data2': data2, 'sigmas2': sigmas2, 'dres': dres }
+      ldic= { 'dres': dres, 'array1': matcharr1, 'array2': matcharr2, 'newarray': newarray }
       exec(operation, globals(), ldic)
-      newdata = ldic.get("newdata", None)
-      newarray._data = newdata
-      newsigmas = ldic.get("newsigmas", None)
-      newarray._sigmas = newsigmas
+      newarray = ldic.get("newarray", None)
       return newarray
     except Exception as e:
-      #self.mprint( str(e), verbose=0)
       raise Sorry(str(e))
-      return None
 
 
   def DrawNGLJavaScript(self, blankscene=False):
@@ -1152,7 +1132,7 @@ class hklview_3d:
     if self.scene.points.size() == 0:
       blankscene = True
     if self.miller_array is None :
-      self.mprint( "Select a data set to display reflections" )
+      self.mprint( "Select a dataset to display reflections" )
       blankscene = True
     else:
       self.mprint("Rendering reflections...")

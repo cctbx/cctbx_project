@@ -131,7 +131,7 @@
                   </sizepolicy>
                  </property>
                  <property name="text">
-                  <string>Display a data set with a double-click. Right-click table for more options.</string>
+                  <string>Display a dataset with a double-click. Right-click table for more options.</string>
                  </property>
                 </widget>
                </item>
@@ -139,7 +139,7 @@
              </widget>
              <widget class="QTextEdit" name="SpaceGrpUCellText">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
+               <sizepolicy hsizetype="Expanding" vsizetype="Ignored">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -946,7 +946,7 @@ p, li { white-space: pre-wrap; }
                       </sizepolicy>
                      </property>
                      <property name="toolTip">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Rank the currently displayed data set in bins according resolution or the values of a selected data set or singletons. Reflections in the currently displayed data set not matching any reflections in the selected data set will be put in a bin labelled with &amp;quot;nan&amp;quot;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Rank the currently displayed dataset in bins according resolution or the values of a selected dataset or singletons. Reflections in the currently displayed dataset not matching any reflections in the selected dataset will be put in a bin labelled with &amp;quot;nan&amp;quot;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                     </widget>
                    </item>
@@ -966,7 +966,7 @@ p, li { white-space: pre-wrap; }
                       </sizepolicy>
                      </property>
                      <property name="toolTip">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the number of bins for ordering the currently displayed data set. More than about 10-15 bins will slow down the HKLviewer when working with large data sets.&lt;br/&gt;The requested number of bins may not be created if there are zero reflections in some bins.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the number of bins for ordering the currently displayed data set. More than about 10-15 bins will slow down the HKLviewer when working with large datasets.&lt;br/&gt;The requested number of bins may not be created if there are zero reflections in some bins.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <property name="minimum">
                       <number>1</number>

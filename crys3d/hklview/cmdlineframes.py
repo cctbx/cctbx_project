@@ -550,7 +550,7 @@ class HKLViewFrame() :
         self.SendInfoToGUI(mydict)
       valid_arrays.append(array)
     self.valid_arrays = valid_arrays
-    self.mprint("%d Miller arrays in this data set:" %len(arrays))
+    self.mprint("%d Miller arrays in this dataset:" %len(arrays))
     for e in self.viewer.array_infostrs:
       self.mprint("%s" %e)
     self.mprint("\n")

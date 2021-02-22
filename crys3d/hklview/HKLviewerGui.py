@@ -926,7 +926,7 @@ class Ui_MainWindow(object):
         self.actionLocal_Help.setText(QCoreApplication.translate("MainWindow", u"HKLviewer Help", None))
         self.actionAbout.setText(QCoreApplication.translate("MainWindow", u"About HKLviewer", None))
         self.actionColour_Gradient.setText(QCoreApplication.translate("MainWindow", u"Colour Gradient...", None))
-        self.label.setText(QCoreApplication.translate("MainWindow", u"Display a data set with a double-click. Right-click table for more options.", None))
+        self.label.setText(QCoreApplication.translate("MainWindow", u"Display a dataset with a double-click. Right-click table for more options.", None))
         self.SpaceGrpUCellText.setHtml(QCoreApplication.translate("MainWindow", u"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
@@ -997,11 +997,11 @@ class Ui_MainWindow(object):
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_3), QCoreApplication.translate("MainWindow", u"Sizing", None))
         self.groupBox_5.setTitle(QCoreApplication.translate("MainWindow", u"Bin according to", None))
 #if QT_CONFIG(tooltip)
-        self.BinDataComboBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Rank the currently displayed data set in bins according resolution or the values of a selected data set or singletons. Reflections in the currently displayed data set not matching any reflections in the selected data set will be put in a bin labelled with &quot;nan&quot;.</p></body></html>", None))
+        self.BinDataComboBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Rank the currently displayed dataset in bins according resolution or the values of a selected dataset or singletons. Reflections in the currently displayed dataset not matching any reflections in the selected dataset will be put in a bin labelled with &quot;nan&quot;.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.label_12.setText(QCoreApplication.translate("MainWindow", u"Number of bins:", None))
 #if QT_CONFIG(tooltip)
-        self.Nbins_spinBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Select the number of bins for ordering the currently displayed data set. More than about 10-15 bins will slow down the HKLviewer when working with large data sets.<br/>The requested number of bins may not be created if there are zero reflections in some bins.</p></body></html>", None))
+        self.Nbins_spinBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Select the number of bins for ordering the currently displayed dataset. More than about 10-15 bins will slow down the HKLviewer when working with large datasets.<br/>The requested number of bins may not be created if there are zero reflections in some bins.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.OpaqueAllCheckbox.setText(QCoreApplication.translate("MainWindow", u"Show/hide all data", None))
 #if QT_CONFIG(tooltip)
