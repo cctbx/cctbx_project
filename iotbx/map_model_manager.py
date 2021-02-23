@@ -7021,7 +7021,7 @@ class map_model_manager(object):
       model = model.select(sel)
 
     return map_manager.density_at_sites_cart(model.get_sites_cart())
- 
+
   def map_model_cc(self,
       resolution = None,
       map_id = 'map_manager',

@@ -109,7 +109,7 @@ class with_bounds(object):
     return self._info
 
   def set_info(self, info):
-    ''' Holder for anything you want. 
+    ''' Holder for anything you want.
       Usually set it to a group_args object:
          self.set_info(group_args(group_args_type='my_group_args', value = value))
     '''
@@ -509,7 +509,7 @@ class around_unique(with_bounds):
 
     if keep_this_region_only is not None:
       regions_to_keep = -1 * keep_this_region_only
- 
+
     ncs_group_obj, remainder_ncs_group_obj, tracking_data  = \
       segment_and_split_map(args,
         map_data = self._map_manager.map_data(),
