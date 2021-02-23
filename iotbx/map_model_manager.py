@@ -470,6 +470,9 @@ class map_model_manager(object):
   def set_info(self, info):
     self._info = info
 
+  def info(self):
+    return self.get_info()
+
   def get_info(self, item_name = None):
     if not item_name:
       return self._info
@@ -1454,6 +1457,8 @@ class map_model_manager(object):
      symmetry = None,
      boundary_to_smoothing_ratio = 2.,
      soft_mask_around_edges = None,
+     keep_this_region_only = None,
+     residues_per_region = None,
      soft_mask_radius = None,
      mask_expand_ratio = 1):
 
@@ -1471,6 +1476,8 @@ class map_model_manager(object):
       target_ncs_au_model = target_ncs_au_model,
       regions_to_keep = regions_to_keep,
       keep_low_density = keep_low_density,
+      keep_this_region_only = keep_this_region_only,
+      residues_per_region = residues_per_region,
       symmetry = symmetry,
       mask_expand_ratio = mask_expand_ratio,
       soft_mask_radius = soft_mask_radius,
@@ -1494,6 +1501,8 @@ class map_model_manager(object):
      soft_mask_radius = None,
      soft_mask_around_edges = None,
      boundary_to_smoothing_ratio = 2.,
+     keep_this_region_only = None,
+     residues_per_region = None,
      extract_box = False):
     '''
        Box all maps using bounds obtained with around_unique,
@@ -1536,6 +1545,9 @@ class map_model_manager(object):
          keep_low_density:  keep low density regions
          regions_to_keep:   Allows choosing just highest-density contiguous
                             region (regions_to_keep=1) or a few
+         residues_per_region:  Try to segment with this many residues per region
+         keep_this_region_only:  Keep just this region (first one is 0 not 1)
+
     '''
     from cctbx.maptbx.box import around_unique
 
@@ -1562,6 +1574,8 @@ class map_model_manager(object):
       wrapping = self._force_wrapping,
       target_ncs_au_model = target_ncs_au_model,
       regions_to_keep = regions_to_keep,
+      residues_per_region = residues_per_region,
+      keep_this_region_only = keep_this_region_only,
       solvent_content = solvent_content,
       resolution = resolution,
       sequence = sequence,
@@ -1572,6 +1586,10 @@ class map_model_manager(object):
       soft_mask = soft_mask,
       mask_expand_ratio = mask_expand_ratio,
       log = self.log)
+
+    info = box.info()
+    if info and hasattr(info, 'available_selected_regions'):
+      self.set_info(info)  # save this information
 
     # Now box is a copy of map_manager and model that is boxed
 
@@ -6973,6 +6991,37 @@ class map_model_manager(object):
     map_data_1d_2 = map_data_1d_2)
 
 
+  def density_at_model_sites(self,
+      map_id = 'map_manager',
+      model_id = 'model',
+      selection_string = None,
+      model = None,
+      ):
+    '''
+      Return density at sites in model
+    '''
+
+    if not model:
+      model = self.get_model_by_id(model_id)
+    else:
+      model_id = '(supplied)'
+    if not model:
+      return None
+
+    map_manager= self.get_map_manager_by_id(map_id)
+    if not map_manager:
+      raise Sorry(
+     "There is no map with id='%s' available for density_at_model_sites" %(
+         map_id))
+
+    assert self.map_manager().is_compatible_model(model) # model must match
+
+    if selection_string:
+      sel = model.selection(selection_string)
+      model = model.select(sel)
+
+    return map_manager.density_at_sites_cart(model.get_sites_cart())
+ 
   def map_model_cc(self,
       resolution = None,
       map_id = 'map_manager',

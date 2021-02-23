@@ -482,6 +482,14 @@ def exercise(file_name, out = sys.stdout):
   cc=dc.map_model_cc(resolution=3)
   assert approx_equal (cc, 0.817089390421)
 
+  # Get map-model density
+  dc=mam_dc.extract_all_maps_around_model(
+      selection_string="(name ca or name cb or name c or name o) "+
+        "and resseq 221:221", box_cushion=0)
+  density=dc.density_at_model_sites(selection_string = 'name ca')
+  assert approx_equal (density.min_max_mean().mean, 0.841152333991)
+
+
   # Remove model outside map
   dc.remove_model_outside_map(boundary=0)
   assert (mam_dc.model().get_sites_cart().size(),
