@@ -49,6 +49,7 @@ steps:
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda env create -f $(Pipeline.Workspace)/modules/cctbx_project/xfel/conda_envs/psana_environment.yml
     conda install -y -c conda-forge --no-deps -n psana_env junit-xml
+    conda install -y pandas
   displayName: Create conda environment
 
 # build
