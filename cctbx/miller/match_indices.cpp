@@ -44,7 +44,6 @@ namespace cctbx { namespace miller {
         l = lookup_map_.find(miller_indices_[0][i]);
       if (l == lookup_map_.end()) {
         singles_[0].push_back(i);
-        ;
       }
       else {
         pairs_.push_back(af::tiny<std::size_t, 2>(i, l->second));
