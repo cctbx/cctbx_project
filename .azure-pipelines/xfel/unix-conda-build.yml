@@ -69,7 +69,7 @@ steps:
     #conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
     conda create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/modules/dials/.conda-envs/dials_$(PYTHON_VERSION)_$(OS).txt
     conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
-    conda install -y pandas
+    conda install -y pandas -n $(PYTHON_VERSION)
   displayName: Create conda environment
 
 # build
