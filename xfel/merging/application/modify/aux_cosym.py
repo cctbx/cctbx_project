@@ -198,9 +198,9 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
         ]
         if len(exclude):
             logger.info(
-                f"Rejecting {len(exclude)} datasets from cosym analysis "
-                f"(couldn't determine consistent cb_op to minimum cell):\n"
-                f"{exclude}",
+                "Rejecting {} datasets from cosym analysis "\
+                "(couldn't determine consistent cb_op to minimum cell):\n"\
+                "{}".format(len(exclude), exclude)
             )
             self._experiments, self._reflections = select_datasets_on_identifiers(
                 self._experiments, self._reflections, exclude_datasets=exclude
