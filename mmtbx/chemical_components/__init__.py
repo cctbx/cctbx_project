@@ -48,8 +48,10 @@ def get_cif_dictionary(code,
     cif = loaded_cifs[code]
   else:
     filename = get_cif_filename(code)
-    cif = cif_parser.run(filename)
-    loaded_cifs[code] = cif
+    cif=None
+    if os.path.exists(filename):
+      cif = cif_parser.run(filename)
+      loaded_cifs[code] = cif
   return cif
 
 def get_alternative_name(code, name):
