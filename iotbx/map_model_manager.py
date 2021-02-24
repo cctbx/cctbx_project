@@ -1666,54 +1666,105 @@ class map_model_manager(object):
       model_id = None,
       box_info = None,
       replace_coordinates = True,
-      replace_u_aniso = False):
+      replace_u_aniso = False,
+      allow_changes_in_hierarchy = False,
+      output_model_id = None):
     '''
       Replaces coordinates in working model with those from the
         map_model_managers in box_info.  The box_info object should
         come from running split_up_map_and_model in this instance
         of the map_model_manager.
-    '''
 
+      If allow_changes_in_hierarchy is set, create a new working model where
+      the hierarchy has N "models", one from each box. This allows changing
+      the hierarchy structure. This will create one model in a new hierarchy
+      for each box, numbered by box number.  The new hierarchy will
+      be placed in a model with id  output_model_id (default is
+      model_id, replacing existing model specified by model_id; usually
+      this is just 'model', the default model.)
+    '''
     if model_id is None:
       model_id = 'model'
+    if allow_changes_in_hierarchy and output_model_id is None:
+      output_model_id = 'model'
 
-    print("\nMerging coordinates from %s boxed models into working model" %(
-      len(box_info.selection_list)), file = self.log)
+    if allow_changes_in_hierarchy:
+      print(
+        "\nModels from %s boxed models will be 'models' in new hierarchy" %(
+        len(box_info.selection_list)), file = self.log)
+      print("New model id will be: %s" %(output_model_id),
+          file = self.log)
+      if output_model_id in self.model_id_list():
+        print("NOTE: Replacing model %s with new composite model" %(
+         output_model_id), file = self.log)
+     
+      # Set up a new empty model and hierarchy
+      import iotbx.pdb
+      pdb_inp = iotbx.pdb.input(source_info='text', lines=[""])
+      ph = pdb_inp.construct_hierarchy()
+      # Make a new model and save it as output_model_id
+      self.model_from_hierarchy(ph,
+        model_id = output_model_id)
+      # Get this hierarchy so we can add models to it:
+      working_model = self.get_model_by_id(
+        model_id = output_model_id)
+
+    else:
+      print(
+        "\nMerging coordinates from %s boxed models into working model" %(
+        len(box_info.selection_list)), file = self.log)
+      print("Working model id is : %s" %(model_id),
+          file = self.log)
 
     i = 0
     if not hasattr(box_info,'tlso_list'):
        box_info.tlso_list = len(box_info.mmm_list) * [None]
+
     for selection, mmm, tlso_value in zip (
       box_info.selection_list, box_info.mmm_list, box_info.tlso_list):
       i += 1
-      model_to_merge = self.get_model_from_other(mmm, other_model_id=model_id)
+      model_to_merge = self.get_model_from_other(mmm, 
+        other_model_id=model_id)
 
-      if replace_coordinates:
-        sites_cart = self.get_model_by_id(model_id).get_sites_cart() # all sites
-        #  Sites to merge from this model
-        new_coords=model_to_merge.get_sites_cart()
-        original_coords=sites_cart.select(selection)
-        rmsd=new_coords.rms_difference(original_coords)
-        print("RMSD for %s coordinates in model %s: %.3f A" %(
-           original_coords.size(), i, rmsd), file = self.log)
-        sites_cart.set_selected(selection, new_coords)
-        self.get_model_by_id(model_id).set_crystal_symmetry_and_sites_cart(
-          sites_cart = sites_cart,
-          crystal_symmetry = self.get_model_by_id(model_id).crystal_symmetry())
+      if allow_changes_in_hierarchy:  # Add a model to the hierarchy
+        ph_models_in_box = 0
+        for m in model_to_merge.get_hierarchy().models():
+          ph_models_in_box += 1
+          assert ph_models_in_box <= 1  # cannot have multiple models in box
+          mm = m.detached_copy()
+          mm.id = "%s" %(i) # model number is box number as string
+          working_model.get_hierarchy().append_model(mm)
+      else:  # replace sites and/or u_aniso values in existing model
+        if replace_coordinates: # all sites
+          sites_cart = self.get_model_by_id(model_id).get_sites_cart() 
+          #  Sites to merge from this model
+          new_coords=model_to_merge.get_sites_cart()
+          original_coords=sites_cart.select(selection)
+          rmsd=new_coords.rms_difference(original_coords)
+          print("RMSD for %s coordinates in model %s: %.3f A" %(
+             original_coords.size(), i, rmsd), file = self.log)
+          sites_cart.set_selected(selection, new_coords)
+          self.get_model_by_id(model_id).set_crystal_symmetry_and_sites_cart(
+            sites_cart = sites_cart,
+            crystal_symmetry = self.get_model_by_id(
+              model_id).crystal_symmetry())
 
-      if replace_u_aniso and tlso_value: # calculate aniso U from
-        print("Replacing u_cart values based on TLS info",file = self.log)
-        xrs=self.get_model_by_id(model_id).get_xray_structure()
-        xrs.convert_to_anisotropic()
-        uc = xrs.unit_cell()
-        sites_cart = xrs.sites_cart()
-        u_cart=xrs.scatterers().extract_u_cart(uc)
-        new_anisos= uaniso_from_tls_one_group(tlso = tlso_value,
-         sites_cart = sites_cart.select(selection),
-         zeroize_trace=False)
-        u_cart.set_selected(selection, new_anisos)
-        xrs.set_u_cart(u_cart)
-        self.get_model_by_id(model_id).set_xray_structure(xrs)
+        if replace_u_aniso and tlso_value: # calculate aniso U from
+          print("Replacing u_cart values based on TLS info",file = self.log)
+          xrs=self.get_model_by_id(model_id).get_xray_structure()
+          xrs.convert_to_anisotropic()
+          uc = xrs.unit_cell()
+          sites_cart = xrs.sites_cart()
+          u_cart=xrs.scatterers().extract_u_cart(uc)
+          new_anisos= uaniso_from_tls_one_group(tlso = tlso_value,
+           sites_cart = sites_cart.select(selection),
+           zeroize_trace=False)
+          u_cart.set_selected(selection, new_anisos)
+          xrs.set_u_cart(u_cart)
+          self.get_model_by_id(model_id).set_xray_structure(xrs)
+
+    if allow_changes_in_hierarchy:
+      working_model.reset_after_changing_hierarchy() # REQUIRED
 
   def split_up_map_and_model_by_chain(self,
     model_id = 'model',
@@ -1941,7 +1992,15 @@ class map_model_manager(object):
          the same atoms, then use merge_split_maps_and_models() to replace
          coordinates in the original model with those from all the component
          models.
-       Optionally carry out the step box_info = get_split_maps_and_models(...)
+
+       NOTE: normally you can only change the coordinates and B values in
+        each overlapping box if you want to use merge_split_maps_and_models.
+        If you want to change the hierarchy of the models, then when you
+        split and when you merge, use the keyword: 
+        allow_changes_in_hierarchy=True. This will create
+        one model in the hierarachy for each box, numbered by box number.
+
+      Optionally carry out the step box_info = get_split_maps_and_models(...)
          separately with the keyword apply_box_info=False
 
        If selection_list (a list of selection objects matching the atoms in
@@ -3195,7 +3254,7 @@ class map_model_manager(object):
   def get_model_from_other(self, other,
      other_model_id = 'model'):
     '''
-     Take a model with id other_model_id from other_map_model_manager with any
+    Take a model with id other_model_id from other_map_model_manager with any
      boxing and origin shifts allowed, and put it in the same reference
      frame as the current model.  Used to build up a model from pieces
      that were worked on in separate boxes.
