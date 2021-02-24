@@ -1697,7 +1697,7 @@ class map_model_manager(object):
       if output_model_id in self.model_id_list():
         print("NOTE: Replacing model %s with new composite model" %(
          output_model_id), file = self.log)
-     
+
       # Set up a new empty model and hierarchy
       import iotbx.pdb
       pdb_inp = iotbx.pdb.input(source_info='text', lines=[""])
@@ -1723,7 +1723,7 @@ class map_model_manager(object):
     for selection, mmm, tlso_value in zip (
       box_info.selection_list, box_info.mmm_list, box_info.tlso_list):
       i += 1
-      model_to_merge = self.get_model_from_other(mmm, 
+      model_to_merge = self.get_model_from_other(mmm,
         other_model_id=model_id)
 
       if allow_changes_in_hierarchy:  # Add a model to the hierarchy
@@ -1736,7 +1736,7 @@ class map_model_manager(object):
           working_model.get_hierarchy().append_model(mm)
       else:  # replace sites and/or u_aniso values in existing model
         if replace_coordinates: # all sites
-          sites_cart = self.get_model_by_id(model_id).get_sites_cart() 
+          sites_cart = self.get_model_by_id(model_id).get_sites_cart()
           #  Sites to merge from this model
           new_coords=model_to_merge.get_sites_cart()
           original_coords=sites_cart.select(selection)
@@ -1996,7 +1996,7 @@ class map_model_manager(object):
        NOTE: normally you can only change the coordinates and B values in
         each overlapping box if you want to use merge_split_maps_and_models.
         If you want to change the hierarchy of the models, then when you
-        split and when you merge, use the keyword: 
+        split and when you merge, use the keyword:
         allow_changes_in_hierarchy=True. This will create
         one model in the hierarachy for each box, numbered by box number.
 
