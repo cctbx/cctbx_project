@@ -83,10 +83,42 @@ class msg_accumulator(object):
     for msg in self.messages:
       print(msg, file=log)
 
+
+def run_split(map_model_manager, params, log):
+  #
+  mmm = map_model_manager
+#  box_info = mmm.split_up_map_and_model_by_chain(
+#    mask_around_unselected_atoms=False)
+#  for box_mmm in box_info.mmm_list:
+#    box_mmm = run(
+#      map_model_manager = box_mmm,
+#      dist_min          = params.dist_min,
+#      dist_max          = params.dist_max,
+#      step              = params.step,
+#      mean_scale        = params.mean_scale,
+#      debug             = params.debug,
+#      log               = log)
+#  mmm.merge_split_maps_and_models(
+#    box_info = box_info,
+#    replace_coordinates = True,
+#    replace_u_aniso = False)
+#  return mmm
+  #
+  o = run(
+    map_model_manager = mmm,
+    dist_min          = params.dist_min,
+    dist_max          = params.dist_max,
+    step              = params.step,
+    mean_scale        = params.mean_scale,
+    debug             = params.debug,
+    log               = log)
+  return o.map_model_manager
+
 class run(object):
   def __init__(self,
-               model,
-               map_data,
+               #model,
+               #map_data,
+               map_model_manager,
                dist_min=2.0,
                dist_max=3.2,
                step=0.3,
@@ -94,6 +126,8 @@ class run(object):
                debug=False,
                log=None):
     # Common parameters / variables
+    self.model = map_model_manager.model()
+    map_data = map_model_manager.map_manager().map_data()
     adopt_init_args(self, locals())
     self.total_time = 0
     if(map_data.accessor().origin()!=(0,0,0)):
