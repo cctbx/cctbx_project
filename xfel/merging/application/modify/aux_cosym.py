@@ -289,7 +289,8 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
         )
 
 class TargetWithFastRij(Target):
-  def __init__(self, *args, test_data_path=None, **kwargs):
+  def __init__(self, *args, **kwargs):
+    test_data_path = kwargs.pop('test_data_path', None)
     if test_data_path is None:
       super().__init__(*args, **kwargs)
       return
