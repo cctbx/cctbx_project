@@ -233,6 +233,24 @@ modify
       .help = reference model from scaling.model is used.  It should be emphasized that the scaling.model
       .help = is only used to choose the overall alignment, which may be chosen arbitrarily, it does not
       .help = bias the mutual alignment of the experimental diffraction patterns.
+    plot
+      {
+      do_plot = False
+        .type = bool
+        .help = Generate embedding plots to assess quality of modify_cosym reindexing.
+      n_max = 1
+        .type = int
+        .help = If shots were divided into tranches for alignment, generate embedding plots for
+        .help = the first n_max tranches.
+      interactive = False
+        .type = bool
+        .help = Open embedding plot in Matplotlib window instead of writing a file.
+      format = *png pdf
+        .type = choice
+        .multiple = False
+      filename = cosym_embedding
+        .type = str
+      }
     }
 }
 """

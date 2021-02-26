@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import copy
+import os
 from scitbx.array_family import flex
 from dials.util.observer import Subject
 from cctbx import sgtbx, miller
@@ -15,11 +16,19 @@ from dials.algorithms.symmetry.cosym.target import Target
 
 class CosymAnalysis(BaseClass):
 
+  def __init__(self, *args, **kwargs):
+    self.do_plot = kwargs.pop('do_plot', False)
+    self.i_plot = kwargs.pop('i_plot', None)
+    self.plot_fname = kwargs.pop('plot_fname', None)
+    self.plot_format = kwargs.pop('plot_format', None)
+    self.output_dir = kwargs.pop('output_dir', None)
+    super(CosymAnalysis, self).__init__(*args, **kwargs)
+
   def plot_after_optimize(self):
-          print ("optimized coordinates", self.coords.focus())
+          print ("optimized coordinates", self.coords.shape)
           xx = []
           yy = []
-          for item in range(self.coords.focus()[0]):
+          for item in range(self.coords.shape[0]):
             xx.append(self.coords[(item,0)])
             yy.append(self.coords[(item,1)])
           from matplotlib import pyplot as plt
@@ -38,7 +47,7 @@ class CosymAnalysis(BaseClass):
           # but the problem with this is I don't know to which cluster id==0['h,k,l'] belongs
           xx = flex.double()
           yy = flex.double()
-          for item in range(self.coords.focus()[0]):
+          for item in range(self.coords.shape[0]):
             xx.append(self.coords[(item,0)])
             yy.append(self.coords[(item,1)])
           from matplotlib import pyplot as plt
@@ -54,7 +63,13 @@ class CosymAnalysis(BaseClass):
           circle = plt.Circle((0,0),1,fill=False,edgecolor="b")
           ax = plt.gca()
           ax.add_artist(circle)
-          plt.show()
+          if self.plot_fname is None:
+            plt.show()
+          else:
+            plot_path = os.path.join(self.output_dir, self.plot_fname)
+            plot_fname = "{}_{}.{}".format(
+                plot_path, self.i_plot, self.plot_format)
+            plt.savefig(plot_fname)
 
   def _space_group_for_dataset(self, dataset_id, sym_ops):
       """
@@ -103,7 +118,7 @@ class CosymAnalysis(BaseClass):
 
         #P = Profiler("cluster analysis W")
         self._cluster_analysis()
-        #self.plot_after_cluster_analysis()
+        if self.do_plot: self.plot_after_cluster_analysis()
 
   @Subject.notify_event(event="analysed_clusters")
   def _cluster_analysis(self):
@@ -152,7 +167,8 @@ from dials.command_line.symmetry import (
 from dials.util.filter_reflections import filtered_arrays_from_experiments_reflections
 
 class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
-    def __init__(self, experiments, reflections, uuid_cache_in, params=None):
+    def __init__(self, experiments, reflections, uuid_cache_in, params=None,
+            do_plot=False, i_plot=None, output_dir=None):
         super(dials_cl_cosym_wrapper, self).__init__(
             events=["run_cosym", "performed_unit_cell_clustering"]
         )
@@ -232,7 +248,15 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
         ]
 
         # opportunity here to subclass as defined above, instead of the dials-implemented version
-        self.cosym_analysis = CosymAnalysis(datasets, self.params)
+        self.cosym_analysis = CosymAnalysis(
+            datasets,
+            self.params,
+            do_plot=do_plot,
+            i_plot=i_plot,
+            plot_fname=self.params.plot.filename,
+            plot_format=self.params.plot.format,
+            output_dir=output_dir
+            )
         #Fixed in subclass: parent class apparently erases the knowledge of input-to-minimum cb_ops.
         # without storing the op in self, we can never trace back to input setting.
         self.cb_op_to_minimum = cb_ops

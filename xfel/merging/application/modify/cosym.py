@@ -84,7 +84,7 @@ class cosym(worker):
     #if self.mpi_helper.rank == 0:
       # task_a() # no anchor for initial pass
 
-    def task_1(uuid_starting=[], mpi_helper_size=1):
+    def task_1(uuid_starting=[], mpi_helper_size=1, do_plot=False):
       self.uuid_cache = uuid_starting
       if mpi_helper_size == 1: # simple case, one rank
        for experiment in all_sampling_experiments:
@@ -136,12 +136,18 @@ class cosym(worker):
       from dials.command_line import cosym as cosym_module
       cosym_module.logger = self.logger
 
+      i_plot = self.mpi_helper.rank
       from xfel.merging.application.modify.aux_cosym import dials_cl_cosym_subclass as dials_cl_cosym_wrapper
       COSYM = dials_cl_cosym_wrapper(
-                sampling_experiments_for_cosym, sampling_reflections_for_cosym, self.uuid_cache,
-                params=self.params.modify.cosym)
+                sampling_experiments_for_cosym, sampling_reflections_for_cosym,
+                self.uuid_cache, params=self.params.modify.cosym,
+                output_dir=self.params.output.output_dir, do_plot=do_plot,
+                i_plot=i_plot)
       return COSYM
-    COSYM = task_1(mpi_helper_size=self.mpi_helper.size)
+
+    do_plot = (self.params.modify.cosym.plot.do_plot
+        and self.mpi_helper.rank < self.params.modify.cosym.plot.n_max)
+    COSYM = task_1(mpi_helper_size=self.mpi_helper.size, do_plot=do_plot)
     self.uuid_cache = COSYM.uuid_cache # reformed uuid list after n_refls filter
 
     import dials.algorithms.symmetry.cosym.target
