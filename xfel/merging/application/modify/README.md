@@ -23,11 +23,8 @@ User, please treat this as an alpha testing situation with bugs and additional u
 following are key points for getting things to run:
 
 1.  Please use a conda build using the xfel code target.
-2.  This code is only available on the [merge_polar](https://github.com/cctbx/cctbx_project/tree/merge_polar) branch of cctbx_project.
-3.  A compiler supporting the `C++11` standard is required.  To propagate this flag to the compiler, issue a `libtbx.refresh` command after the merge_polar
-branch has been checked out.  This runs a code hack to set the c++11 flag within the build process, and only needs to be done once.
-4.  The conda environment must provide `scikit-learn` for unit cell covariance analysis, and `pandas` for analysis of data tables.
-5.  The Brehm-Diederichs embedded plot should be enabled by applying a patch.  This is a critical control to confirm that the correlation 
+2.  The conda environment must provide `scikit-learn` for unit cell covariance analysis, and `pandas` for analysis of data tables.
+3.  The Brehm-Diederichs embedded plot should be enabled by applying a patch.  This is a critical control to confirm that the correlation 
 approach is working:
 ```
 --- a/xfel/merging/application/modify/aux_cosym.py
