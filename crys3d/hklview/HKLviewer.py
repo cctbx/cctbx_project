@@ -36,11 +36,17 @@ class MakeNewDataForm(QDialog):
     super(MakeNewDataForm, self).__init__(parent.window)
     self.setWindowFlag(Qt.WindowContextHelpButtonHint,False);
     self.setWindowTitle("Create a new reflection dataset")
+    self.setSizeGripEnabled(True)
     layout = QGridLayout()
-    sp = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-    sp.setVerticalStretch(3)
+    sp = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    sp.setVerticalStretch(10)
     parent.operationtxtbox.setSizePolicy(sp)
     parent.operationtxtbox.setMinimumSize(QSize(0, 30))
+
+    sp2 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    sp2.setVerticalStretch(0)
+    parent.operationlabeltxt.setSizePolicy(sp2)
+
     layout.addWidget(parent.operationlabeltxt,     0, 0, 1, 2)
     layout.addWidget(parent.MillerComboBox,        1, 0, 1, 1)
     layout.addWidget(parent.MillerLabel2,          1, 1, 1, 1)
@@ -253,6 +259,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.ColourMapSelectDlg = MPLColourSchemes(self)
     self.ColourMapSelectDlg.setWindowTitle("HKLviewer Colour Gradient Maps")
     self.datatypedict = { }
+    self.datatypedefault = ["brg", 1.0, 1.0, 1.0] # colourscheme=1, colourpower=1, powerscale=1, radiiscale=1
 
     self.settingsform = SettingsForm(self)
     self.aboutform = AboutForm(self)
@@ -489,16 +496,19 @@ newarray._sigmas = sigs
     self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
 
 
-  def onColourChartSelect(self, selcolmap, powscale): # called when user clicks OK in ColourMapSelectDlg
+  def onColourChartSelect(self, selcolmap, colourpowscale):
+    # called when user clicks OK in helpers.MPLColourSchemes.EnactColourMapSelection()
     if selcolmap != "":
       self.PhilToJsRender("""viewer.color_scheme = %s
-viewer.color_powscale = %s""" %(selcolmap, powscale) )
+viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       arrayinfo = self.array_infotpls[self.currentmillarray_idx]
       datatype = arrayinfo[1]
       if self.currentphilstringdict.get('viewer.sigma_color_radius', False):
-        self.datatypedict[datatype + "_sigmas"] = [selcolmap, powscale]
+        self.datatypedict[datatype + "_sigmas"][0] = selcolmap
+        self.datatypedict[datatype + "_sigmas"][1] = colourpowscale
       else:
-        self.datatypedict[datatype ] = [selcolmap, powscale]
+        self.datatypedict[datatype ][0] = selcolmap
+        self.datatypedict[datatype ][1] = colourpowscale
 
 
   def ProcessMessages(self):
@@ -1259,16 +1269,35 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.PhilToJsRender("nbins = %d" %self.nbins)
 
 
+  def persistRadiiScalePower(self):
+    arrayinfo = self.array_infotpls[self.currentmillarray_idx]
+    datatype = arrayinfo[1]
+    if self.currentphilstringdict.get('viewer.sigma_color_radius', False):
+      if self.ManualPowerScalecheckbox.isChecked():
+        self.datatypedict[datatype + "_sigmas"][2] = self.power_scale_spinBox.value()
+      else:
+        self.datatypedict[datatype + "_sigmas"][2] = -1.0
+      self.datatypedict[datatype + "_sigmas"][3] = self.radii_scale_spinBox.value()
+    else:
+      if self.ManualPowerScalecheckbox.isChecked():
+        self.datatypedict[datatype ][2] = self.power_scale_spinBox.value()
+      else:
+        self.datatypedict[datatype ][2] = -1.0
+      self.datatypedict[datatype ][3] = self.radii_scale_spinBox.value()
+
+
   def onRadiiScaleChanged(self, val):
     if self.unfeedback:
       return
     self.PhilToJsRender("viewer.scale = %f" %self.radii_scale_spinBox.value() )
+    self.persistRadiiScalePower()
 
 
   def onPowerScaleChanged(self, val):
     if self.unfeedback:
       return
     self.PhilToJsRender("viewer.nth_power_scale_radii = %f" %self.power_scale_spinBox.value() )
+    self.persistRadiiScalePower()
 
 
   def onManualPowerScale(self, val=None):
@@ -1278,6 +1307,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       self.PhilToJsRender('viewer.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
     else:
       self.PhilToJsRender('viewer.nth_power_scale_radii = -1.0')
+    self.persistRadiiScalePower()
 
 
   def onShowAllVectors(self):
@@ -1611,7 +1641,11 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     datatype = arrayinfo[1]
     if (idx - 1000) >= 0:
       idx = idx - 1000
-      datatypespecifics = self.datatypedict.get( datatype + "_sigmas", ["brg", 1.0] )
+      if datatype + "_sigmas" not in self.datatypedict.keys():
+         # ensure individual copies of datatypedefault and not references to the same
+        self.datatypedict[ datatype + "_sigmas"] = self.datatypedefault[:]
+      colourscheme, colourpower, powerscale, radiiscale = \
+          self.datatypedict.get( datatype + "_sigmas", self.datatypedefault[:] )
       philstr = """
       viewer
       {
@@ -1619,10 +1653,16 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
         scene_id = %d
         color_scheme = %s
         color_powscale = %s
+        nth_power_scale_radii = %s
+        scale = %s
       }
-      """ %(idx, datatypespecifics[0], datatypespecifics[1])
+      """ %(idx, colourscheme, colourpower, powerscale, radiiscale)
     else:
-      datatypespecifics = self.datatypedict.get( datatype, ["brg", 1.0] )
+      if datatype not in self.datatypedict.keys():
+         # ensure individual copies of datatypedefault and not references to the same
+        self.datatypedict[ datatype ] = self.datatypedefault[:]
+      colourscheme, colourpower, powerscale, radiiscale = \
+        self.datatypedict.get( datatype, self.datatypedefault[:] )
       philstr = """
       viewer
       {
@@ -1630,9 +1670,18 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
         scene_id = %d
         color_scheme = %s
         color_powscale = %s
+        nth_power_scale_radii = %s
+        scale = %s
       }
-      """ %(idx, datatypespecifics[0], datatypespecifics[1])
+      """ %(idx, colourscheme, colourpower, powerscale, radiiscale)
     self.PhilToJsRender(philstr)
+    if powerscale is not None:
+      psv = float(powerscale)
+      if psv >= 0.0:
+        self.power_scale_spinBox.setValue(psv)
+      self.ManualPowerScalecheckbox.setChecked(psv >= 0.0)
+    if radiiscale is not None:
+      self.radii_scale_spinBox.setValue(float(radiiscale))
     if self.fileisvalid:
       self.functionTabWidget.setEnabled(True)
       self.expandAnomalouscheckbox.setEnabled(True)
@@ -1812,6 +1861,11 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       self.socket.send(bytes(cmdstr))
 
 
+  def setDatatypedict(self, datatypedict):
+    self.datatypedict = datatypedict
+
+
+
 def run():
   import time
   #time.sleep(10)
@@ -1832,7 +1886,7 @@ def run():
 
     settings = QSettings("CCTBX", "HKLviewer" )
     # In case of more than one PySide2 installation tag the settings by version number of PySide2
-    # as different versions occasionally use slightly different metrics for font and window sizes
+    # as different versions may use different metrics for font and window sizes
     settings.beginGroup("PySide2_" + Qtversion)
     settings.beginGroup("DataTypesGroups")
     datatypes = settings.childGroups()
@@ -1840,14 +1894,16 @@ def run():
     if datatypes:
       for datatype in datatypes:
         datatypedict[ datatype ] = [ settings.value(datatype + "/ColourChart", "brg"),
-                                    settings.value(datatype + "/ColourPowerScale", 1.0),
-                                    ]
+                                     settings.value(datatype + "/ColourPowerScale", 1.0),
+                                     settings.value(datatype + "/PowerScale", 1.0),
+                                     settings.value(datatype + "/RadiiScale", 1.0),
+                                   ]
     settings.endGroup()
     QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
     fontsize = settings.value("FontSize", None)
-    browserfontsize = settings.value("BrowserFontSize", None)
-    power_scale_value = settings.value("PowerScaleValue", None)
-    radii_scale_value = settings.value("RadiiScaleValue", None)
+    browserfontsize = settings.value("BrowserFontSize", 9)
+    #power_scale_value = settings.value("PowerScale", None)
+    #radii_scale_value = settings.value("RadiiScale", None)
     ttip_click_invoke = settings.value("ttip_click_invoke", None)
     windowsize = settings.value("windowsize", None)
     splitter1sizes = settings.value("splitter1Sizes", None)
@@ -1881,19 +1937,20 @@ def run():
       settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
       settings.setValue("FontSize", guiobj.fontsize )
       settings.setValue("BrowserFontSize", guiobj.browserfontsize )
-      if guiobj.currentphilstringdict.get("viewer.nth_power_scale_radii"):
-        settings.setValue("PowerScaleValue", guiobj.currentphilstringdict["viewer.nth_power_scale_radii"])
-      settings.setValue("RadiiScaleValue", guiobj.radii_scale_spinBox.value())
       settings.setValue("ttip_click_invoke", guiobj.ttip_click_invoke)
       settings.setValue("windowsize", guiobj.window.size())
       settings.setValue("splitter1Sizes", guiobj.splitter.saveState())
       settings.setValue("splitter2Sizes", guiobj.splitter_2.saveState())
+
       settings.beginGroup("DataTypesGroups")
       datatypesgroups = settings.childGroups()
       for datatype in list(guiobj.datatypedict.keys()):
         settings.setValue(datatype + "/ColourChart", guiobj.datatypedict[ datatype ][0] )
         settings.setValue(datatype + "/ColourPowerScale", guiobj.datatypedict[ datatype ][1] )
+        settings.setValue(datatype + "/PowerScale", guiobj.datatypedict[ datatype ][2])
+        settings.setValue(datatype + "/RadiiScale", guiobj.datatypedict[ datatype ][3])
       settings.endGroup() # DataTypesGroups
+
       settings.endGroup() # PySide2_ + Qtversion
 
     app.lastWindowClosed.connect(MyAppClosing) # persist settings on disk
@@ -1903,15 +1960,6 @@ def run():
     timer.timeout.connect(guiobj.ProcessMessages)
     timer.start()
 
-    if power_scale_value is not None:
-      psv = float(power_scale_value)
-      if psv >= 0.0:
-        guiobj.power_scale_spinBox.setValue(psv)
-      guiobj.ManualPowerScalecheckbox.setChecked(psv >= 0.0)
-      guiobj.onManualPowerScale() # disables power_scale_spinBox if psv is less than 0.0
-    if radii_scale_value is not None:
-      guiobj.radii_scale_spinBox.setValue(float(radii_scale_value))
-      guiobj.onRadiiScaleChanged(None)
     if fontsize is not None:
       guiobj.onFontsizeChanged(int(fontsize))
       guiobj.fontspinBox.setValue(int(fontsize))
@@ -1928,7 +1976,7 @@ def run():
         guiobj.webpagedebugform.resize( guiobj.window.size())
       guiobj.splitter.restoreState(splitter1sizes)
       guiobj.splitter_2.restoreState(splitter2sizes)
-    guiobj.datatypedict = datatypedict
+    guiobj.setDatatypedict( datatypedict)
 
     ret = app.exec_()
 

@@ -624,13 +624,14 @@ class hklview_3d:
   def GetTooltipOnTheFly(self, id, sym_id, anomalous=False):
     rothkl, hkl = self.get_rothkl_from_IDs(id, sym_id, anomalous)
     spbufttip = '\'H,K,L: %d, %d, %d' %(rothkl[0], rothkl[1], rothkl[2])
-    # resolution and angstrom character
+    # resolution and Angstrom character for javascript
     spbufttip += '\\ndres: %s \'+ String.fromCharCode(197) +\'' \
       %str(roundoff(self.miller_array.unit_cell().d(hkl), 2) )
     for hklscene in self.HKLscenes:
+      sigvals = []
+      datvals = []
       if hklscene.isUsingFOMs():
         continue # already have tooltips for the scene without the associated fom
-      sigvals = None
       if hklscene.work_array.sigmas() is not None:
         sigvals = list( hklscene.work_array.select(hklscene.work_array.indices() == hkl).sigmas() )
       datval = None
@@ -639,9 +640,8 @@ class hklview_3d:
       else:
         if id >= hklscene.data.size():
           continue
-        datvals = [ hklscene.data[id] ]
       for i,datval in enumerate(datvals):
-        if isinstance(datval, tuple) and math.isnan(datval[0] + datval[1] + datval[2] + datval[3]):
+        if hklscene.work_array.is_hendrickson_lattman_array() and math.isnan(datval[0] + datval[1] + datval[2] + datval[3]):
           continue
         if not isinstance(datval, tuple) and (math.isnan( abs(datval) ) or datval == display.inanval):
           continue
@@ -657,7 +657,7 @@ class hklview_3d:
         spbufttip +="\\n" + hklscene.work_array.info().label_string() + ': '
         if hklscene.work_array.is_complex_array():
           spbufttip += str(roundoff(ampl, 2)) + ", " + str(roundoff(phase, 2)) + \
-            "\'+ String.fromCharCode(176) +\'" # degree character
+            "\'+ String.fromCharCode(176) +\'" # degree character for javascript
         elif sigvals:
           sigma = sigvals[i]
           spbufttip += str(roundoff(datval, 2)) + ", " + str(roundoff(sigma, 2))
@@ -1099,7 +1099,7 @@ class hklview_3d:
     # lets user specify a python expression operating on millarr
     newarray = millarr.deep_copy()
     dres = newarray.unit_cell().d( newarray.indices() )
-    self.mprint("Creating new miller array through the operation: %s" %operation)
+    self.mprint("Creating new miller array through the operation:\n%s" %operation)
     try:
       ldic= {'dres': dres, 'array1': newarray, 'newarray': newarray }
       exec(operation, globals(), ldic)
@@ -1116,7 +1116,7 @@ class hklview_3d:
     matcharr2 = millarr2.select( matchindices.pairs().column(1) ).deep_copy()
     dres = matcharr1.unit_cell().d( matcharr1.indices() )
     newarray = matcharr2.deep_copy()
-    self.mprint("Creating new miller array through the operation: %s" %operation)
+    self.mprint("Creating new miller array through the operation:\n%s" %operation)
     try:
       ldic= { 'dres': dres, 'array1': matcharr1, 'array2': matcharr2, 'newarray': newarray }
       exec(operation, globals(), ldic)
@@ -1341,6 +1341,7 @@ class hklview_3d:
       if nreflsinbin == 0:
         continue
       bin2 = float("nan"); bin1= float("nan") # indicates un-binned data
+      #bin2 = self.binvalsboundaries[0]; bin1= self.binvalsboundaries[-1] # indicates un-binned data
       if ibin == self.nbinvalsboundaries:
         mstr= "bin[%d] has %d reflections with no %s values (assigned to %2.3f)" %(cntbin, nreflsinbin, \
                 colstr, bin1)

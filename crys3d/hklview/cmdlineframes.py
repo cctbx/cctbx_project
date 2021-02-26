@@ -483,7 +483,7 @@ class HKLViewFrame() :
     unique_miller_array_operations_lst = []
     for (operation, label, arrid1, arrid2) in miller_array_operations_lst:
       for arr in self.procarrays:
-        if label in arr.info().label_string() or label in [ "", None]:
+        if label in arr.info().labels + [ "", None]:
           raise Sorry("Provide an unambiguous label for your new miller array!")
       unique_miller_array_operations_lst.append( (operation, label, arrid1, arrid2) )
     self.params.miller_array_operations = str(unique_miller_array_operations_lst)
@@ -496,6 +496,7 @@ class HKLViewFrame() :
     else:
       newarray = self.viewer.OperateOn1MillerArray(millarr1, operation)
     if newarray is not None:
+      self.mprint("New dataset has %d reflections." %newarray.size())
       newarray.set_info(millarr1._info )
       newarray._info.labels = [ label ]
       procarray, procarray_info = self.process_miller_array(newarray)
