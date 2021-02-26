@@ -2,10 +2,16 @@ from __future__ import absolute_import, division, print_function
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("gltbx_fonts_ext")
 from gltbx_fonts_ext import *
+import six
 
 ucs_bitmap_8x13 = ucs_bitmap(short_name="8x13")
 ucs_bitmap_9x15 = ucs_bitmap(short_name="9x15")
 ucs_bitmap_10x20 = ucs_bitmap(short_name="10x20")
+
+if six.PY3:
+  empty = b""
+else:
+  empty = ""
 
 @bp.inject_into(ucs_bitmap)
 class _():
@@ -18,5 +24,5 @@ class _():
     line_spacing = round(self.height() * relative_line_spacing)
     for i,string in enumerate(text.splitlines()):
       glRasterPos(*position)
-      glBitmap(0, 0, 0.0, 0.0, 0.0, -i*line_spacing, "")
+      glBitmap(0, 0, 0.0, 0.0, 0.0, -i*line_spacing, empty)
       self.render_string(string=string.expandtabs())
