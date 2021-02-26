@@ -292,7 +292,7 @@ class TargetWithFastRij(Target):
   def __init__(self, *args, **kwargs):
     test_data_path = kwargs.pop('test_data_path', None)
     if test_data_path is None:
-      super().__init__(*args, **kwargs)
+      super(TargetWithFastRij, self).__init__(*args, **kwargs)
       return
     else:
       # This is only for unit testing
