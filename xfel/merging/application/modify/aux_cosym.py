@@ -10,6 +10,9 @@ import numpy as np
 # Specialization, run only a subset of cosym steps and include plot
 from dials.algorithms.symmetry.cosym import CosymAnalysis as BaseClass
 from dials.util.multi_dataset_handling import select_datasets_on_identifiers
+
+from dials.algorithms.symmetry.cosym.target import Target
+
 class CosymAnalysis(BaseClass):
 
   def plot_after_optimize(self):
@@ -285,39 +288,34 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
         # in dials parent class:  subgroup=self.cosym_analysis.best_subgroup
         )
 
-class Rij_wij_computer:
-  """
-  This class exists to permit monkeypatching the _compute_rij_wij method of
-  dials.algorithms.symmetry.cosym.target.Target. It won't be instantiated
-  except for unit testing. 'self' will refer to a Target instance or a dummy
-  object with data members _lattices, _data, etc.
-  """
+class TargetWithFastRij(Target):
+  def __init__(self, *args, test_data_path=None, **kwargs):
+    if test_data_path is None:
+      super().__init__(*args, **kwargs)
+      return
+    else:
+      # This is only for unit testing
+      import pickle
+      import numpy as np
+      self._nproc = 1
+      with open(test_data_path, 'rb') as f:
+        self._lattices = np.array(pickle.load(f))
+        self.sym_ops = pickle.load(f)
+        self._weights = pickle.load(f)
+        self._data = pickle.load(f)
+        self._patterson_group = pickle.load(f)
+        self._min_pairs = 3 # minimum number of mutual miller indices for a match
 
-  def __init__(self, test_data_path):
-    import pickle
-    import numpy as np
-    from dials.algorithms.symmetry.cosym.target import Target
-    self._nproc = 1
-    #self._lattice_lower_upper_index = Target._lattice_lower_upper_index
-    with open(test_data_path, 'rb') as f:
-      self._lattices = np.array(pickle.load(f))
-      self.sym_ops = pickle.load(f)[:2] # we only calculate Rij for a single
-                                        # symop to limit the size of the output
-      self._weights = pickle.load(f)
-      self._data = pickle.load(f)
-      self._patterson_group = pickle.load(f)
-      self._min_pairs = 3 # minimum number of mutual miller indices for a match
+        # truncate the input data to save time
+        self._lattices = self._lattices[:10]
+        i_last = self._lattices[-1]
+        self._data = self._data[:i_last]
 
-  def _lattice_lower_upper_index(self, lattice_id):
-      lower_index = self._lattices[lattice_id]
-      upper_index = None
-      if lattice_id < len(self._lattices) - 1:
-          upper_index = self._lattices[lattice_id + 1]
-      else:
-          assert lattice_id == len(self._lattices) - 1
-      return lower_index, upper_index
+  def _compute_rij_wij(self, use_cache=True, use_super=False):
 
-  def _compute_rij_wij(self, use_cache=True):
+    if use_super:
+      # for testing
+      return super()._compute_rij_wij(use_cache=use_cache)
 
     def _compute_one_row(args):
       """

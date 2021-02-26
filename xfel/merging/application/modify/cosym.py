@@ -142,9 +142,9 @@ class cosym(worker):
     self.uuid_cache = COSYM.uuid_cache # reformed uuid list after n_refls filter
 
     # runtime code specialization, replace Gildea algorithm with Paley
-    from dials.algorithms.symmetry.cosym.target import Target
-    from xfel.merging.application.modify.aux_cosym import Rij_wij_computer
-    Target._compute_rij_wij = Rij_wij_computer._compute_rij_wij # fastest implementation so far
+    import dials.algorithms.symmetry.cosym.target
+    from xfel.merging.application.modify.aux_cosym import TargetWithFastRij
+    dials.algorithms.symmetry.cosym.target.Target = TargetWithFastRij
 
     rank_N_refl=flex.double([r.size() for r in COSYM.reflections])
     message = """Task 1. Prepare the data for cosym
