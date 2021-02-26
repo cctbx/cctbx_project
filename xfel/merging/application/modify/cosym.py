@@ -18,6 +18,9 @@ class cosym(worker):
 
   def run(self, experiments, reflections):
 
+    assert self.mpi_helper.size not in [2,3,4], "Please run modify_cosym on " \
+        "1 or >= 5 MPI ranks."
+
     self.logger.log_step_time("COSYM")
     if False:
       import pickle
