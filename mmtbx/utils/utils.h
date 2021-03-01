@@ -141,20 +141,22 @@ class density_distribution_per_atom
 template <typename FloatType>
 af::shared<std::size_t>
   filter_water(
-    af::shared<vec3<FloatType> > const& sites_frac,
+    af::shared<vec3<FloatType> > const& sites_frac_interaction,
+    af::shared<vec3<FloatType> > const& sites_frac_other,
     af::shared<vec3<FloatType> > const& sites_frac_water,
     FloatType const& dist_max,
     FloatType const& dist_min,
     cctbx::uctbx::unit_cell const& unit_cell)
 {
   af::shared<std::size_t> result;
+  af::shared<std::size_t> result_;
   af::shared<std::size_t> first_shell;
   af::shared<std::size_t> second_shell;
   for(std::size_t i=0; i<sites_frac_water.size(); i+=1) {
     FloatType dist_closest = 1.e+9;
     cctbx::fractional<> sfw = sites_frac_water[i];
-    for(std::size_t j=0; j<sites_frac.size(); j+=1) {
-      cctbx::fractional<> sf = sites_frac[j];
+    for(std::size_t j=0; j<sites_frac_interaction.size(); j+=1) {
+      cctbx::fractional<> sf = sites_frac_interaction[j];
       FloatType dist = unit_cell.distance(sf, sfw);
       if(dist < dist_closest) {
         dist_closest = dist;
@@ -178,12 +180,31 @@ af::shared<std::size_t>
       }
     }
     if(dist_closest<=dist_max && dist_closest>=dist_min) {
-      result.push_back(second_shell[i]);
+      result_.push_back(second_shell[i]);
     }
   }
   for(std::size_t i=0; i<first_shell.size(); i+=1) {
-    result.push_back(first_shell[i]);
+    result_.push_back(first_shell[i]);
   }
+
+
+  for(std::size_t i=0; i<result_.size(); i+=1) {
+    FloatType dist_closest = 1.e+9;
+    cctbx::fractional<> sfi = sites_frac_water[result_[i]];
+
+    for(std::size_t j=0; j<sites_frac_other.size(); j+=1) {
+      cctbx::fractional<> sfj = sites_frac_other[j];
+      FloatType dist = unit_cell.distance(sfi, sfj);
+      if(dist < dist_closest) {
+        dist_closest = dist;
+      }
+    }
+    if(dist_closest>=dist_min) {
+      result.push_back(result_[i]);
+    }
+  }
+
+
   return result;
 }
 
