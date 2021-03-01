@@ -29,6 +29,11 @@ db {
     basedir = None
       .type = path
       .help = Root folder for mysql database
+
+    prompt_for_root_password = False
+      .type = bool
+      .help = Whether to always ask for the root password. Note, root password is always \
+              needed when the database is initialized.
   }
 }
 """
@@ -91,7 +96,7 @@ def run(args):
 
     assert easy_run.call("mysqld --defaults-file=%s --initialize-insecure"%(cnf_path)) == 0
 
-  else: 
+  elif params.db.server.prompt_for_root_password: 
     import getpass
     print ("please enter root password to raise the connection")
     rootpw3 = getpass.getpass()
@@ -125,7 +130,7 @@ def run(args):
     app.execute_query("UPDATE mysql.user SET Super_Priv='Y' WHERE user='%s' AND host='%%'"%new_user)
     app.execute_query("FLUSH PRIVILEGES")
     print ("Initialized")
-  else:
+  elif params.db.server.prompt_for_root_password:
     app = db_application(params)
     params.db.user = 'root'
     params.db.password = rootpw3
