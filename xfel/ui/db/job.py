@@ -140,14 +140,15 @@ class IndexingJob(Job):
       trial_params = phil_scope.fetch(parse(phil_str)).extract()
 
       image_format = self.rungroup.format
-      if "rayonix" in self.rungroup.detector_address.lower():
-        mode = "rayonix"
-      elif "cspad" in self.rungroup.detector_address.lower():
-        mode = "cspad"
-      elif "jungfrau" in self.rungroup.detector_address.lower():
-        mode = "jungfrau"
-      else:
-        mode = "other"
+      mode = "other"
+      if self.app.params.facility.name == 'lcls':
+        if "rayonix" in self.rungroup.detector_address.lower():
+          mode = "rayonix"
+        elif "cspad" in self.rungroup.detector_address.lower():
+          mode = "cspad"
+        elif "jungfrau" in self.rungroup.detector_address.lower():
+          mode = "jungfrau"
+
       if hasattr(trial_params, 'format'):
         trial_params.format.file_format = image_format
         trial_params.format.cbf.mode = mode

@@ -283,12 +283,14 @@ class get_sge_submit_command(get_submit_command):
   def customize_for_method(self):
     self.shell_path += " -q"
     self.options.append("-cwd")
-    self.options.append("mp.method=sge")
+#    self.options.append("mp.method=sge")
+    self.command = "%s mp.nproc=${NSLOTS}"%(self.command)
+#    self.command = "mpirun %s mp.method=mpi"%(self.command) #This command currently (14/10/2020) has problems at Diamond as it will randomly use incorrect number of cores
 
   def eval_params(self):
     # -t 1-<nproc>
     if self.params.nproc > 1:
-      nproc_str = "-t 1-%d" % self.params.nproc
+      nproc_str = "-pe smp %d" % self.params.nproc #Change the submission command to smp, as the openmpi currently confilicts with mpi of Dials and cctbx.xfel.merge
       self.options.append(nproc_str)
 
     # -o <outfile>
