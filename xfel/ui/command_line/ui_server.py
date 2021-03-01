@@ -130,8 +130,10 @@ def run(args):
     app.execute_query("UPDATE mysql.user SET Super_Priv='Y' WHERE user='%s' AND host='%%'"%new_user)
     app.execute_query("FLUSH PRIVILEGES")
     print ("Initialized")
-  elif params.db.server.prompt_for_root_password:
+  else:
     app = db_application(params)
+
+  if params.db.server.prompt_for_root_password:
     params.db.user = 'root'
     params.db.password = rootpw3
 
