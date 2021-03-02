@@ -59,9 +59,9 @@ class CosymAnalysis(BaseClass):
                 xs.append(xx[k])
                 ys.append(yy[k])
             plt.plot(xs,ys,{0.0:"b.",1.0:"r."}[cl_id])
-          plt.axes().set_aspect("equal")
-          circle = plt.Circle((0,0),1,fill=False,edgecolor="b")
           ax = plt.gca()
+          ax.set_aspect("equal")
+          circle = plt.Circle((0,0),1,fill=False,edgecolor="b")
           ax.add_artist(circle)
           if self.plot_fname is None:
             plt.show()
