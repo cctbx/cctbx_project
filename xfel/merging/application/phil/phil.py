@@ -235,7 +235,7 @@ modify
       .help = bias the mutual alignment of the experimental diffraction patterns.
     plot
       {
-      do_plot = False
+      do_plot = True
         .type = bool
         .help = Generate embedding plots to assess quality of modify_cosym reindexing.
       n_max = 1
