@@ -2,7 +2,7 @@
 ======
 
 * Improved remediator code for converting PDB version 2 format to version 3
-# Add compilation support for Boost 1.72 and 1.74
+* Add compilation support for Boost 1.72 and 1.74
 
 2021.1
 ======
