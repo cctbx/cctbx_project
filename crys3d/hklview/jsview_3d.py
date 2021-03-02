@@ -246,6 +246,9 @@ class hklview_3d:
     self.nuniqueval = 0
     self.bin_infotpls = []
     self.mapcoef_fom_dict = {}
+    # colourmap=brg, colourpower=1, powerscale=1, radiiscale=1
+    self.datatypedefault = ["brg", 1.0, 1.0, 1.0]
+    self.datatypedict = { }
     self.sceneid_from_arrayid = []
     self.parent = None
     if 'parent' in kwds:
@@ -327,6 +330,7 @@ class hklview_3d:
   def __exit__(self, exc_type, exc_value, traceback):
     # not called unless instantiated with a "with hklview_3d ... " statement
     self.JavaScriptCleanUp()
+    self.SendInfoToGUI( { "datatype_dict": self.datatypedict } ) # so the GUI can persist these across sessions
     nwait = 0
     if self.viewerparams.scene_id is None:
       self.WBmessenger.StopWebsocket()
@@ -417,6 +421,14 @@ class hklview_3d:
       self.sceneisdirty = True
     if has_phil_path(diff_phil, "scene_bin_thresholds"):
       self.sceneisdirty = True
+
+    if has_phil_path(diff_phil,
+                       "color_scheme",
+                       "color_powscale",
+                       "scale",
+                       "nth_power_scale_radii"
+                       ):
+      self.add_colour_map_radii_power_to_dict()
 
     if has_phil_path(diff_phil, "camera_type"):
       self.set_camera_type()
@@ -932,6 +944,8 @@ class hklview_3d:
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    if not self.HKLscenedict.get(HKLsceneKey, False):
+      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
     return self.HKLscenedict[HKLsceneKey][1]
 
 
@@ -939,6 +953,8 @@ class hklview_3d:
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    if not self.HKLscenedict.get(HKLsceneKey, False):
+      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
     return self.HKLscenedict[HKLsceneKey][2]
 
 
@@ -946,6 +962,8 @@ class hklview_3d:
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    if not self.HKLscenedict.get(HKLsceneKey, False):
+      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
     return self.HKLscenedict[HKLsceneKey][3]
 
 
@@ -953,6 +971,8 @@ class hklview_3d:
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    if not self.HKLscenedict.get(HKLsceneKey, False):
+      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
     return self.HKLscenedict[HKLsceneKey][4]
 
 
@@ -960,6 +980,8 @@ class hklview_3d:
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    if not self.HKLscenedict.get(HKLsceneKey, False):
+      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
     return self.HKLscenedict[HKLsceneKey][5]
 
 
@@ -1126,6 +1148,33 @@ class hklview_3d:
       raise Sorry(str(e))
 
 
+  def get_colour_map_radii_power(self):
+    datatype = self.get_current_datatype()
+    if self.viewerparams.sigma_color_radius:
+      datatype = datatype + "_sigmas"
+    if datatype not in self.datatypedict.keys():
+        # ensure individual copies of datatypedefault and not references to the same
+      self.datatypedict[ datatype ] = self.datatypedefault[:]
+    colourscheme, colourpower, powerscale, radiiscale = \
+        self.datatypedict.get( datatype, self.datatypedefault[:] )
+    return colourscheme, colourpower, powerscale, radiiscale
+
+
+  def add_colour_map_radii_power_to_dict(self):
+    datatype = self.get_current_datatype()
+    if datatype is None:
+      return
+    if self.viewerparams.sigma_color_radius:
+      datatype = datatype + "_sigmas"
+    if datatype not in self.datatypedict.keys():
+        # ensure individual copies of datatypedefault and not references to the same
+      self.datatypedict[ datatype ] = self.datatypedefault[:]
+    self.datatypedict[datatype][0] = self.viewerparams.color_scheme
+    self.datatypedict[datatype][1] = self.viewerparams.color_powscale
+    self.datatypedict[datatype][2] = self.viewerparams.nth_power_scale_radii
+    self.datatypedict[datatype][3] = self.viewerparams.scale
+
+
   def DrawNGLJavaScript(self, blankscene=False):
     if not self.scene or not self.sceneisdirty:
       return
@@ -1164,6 +1213,9 @@ class hklview_3d:
     Lstararrowtxt  = roundoff( [self.unit_l_axis[0][0]*l2, self.unit_l_axis[0][1]*l2, self.unit_l_axis[0][2]*l2] )
 
     if not blankscene:
+      self.viewerparams.color_scheme, self.viewerparams.color_powscale, self.viewerparams.nth_power_scale_radii, \
+        self.viewerparams.scale = self.get_colour_map_radii_power()
+
       # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
       mincolourscalar = self.HKLMinData_from_dict(self.colour_scene_id)
       maxcolourscalar = self.HKLMaxData_from_dict(self.colour_scene_id)
@@ -1439,7 +1491,7 @@ class hklview_3d:
     self.lastscene_id = self.viewerparams.scene_id
 
 
-  def ProcessMessage(self, message):
+  def ProcessBrowserMessage(self, message):
     try:
       if sys.version_info[0] > 2:
         ustr = str
@@ -2393,13 +2445,18 @@ in the space group %s\nwith unit cell %s\n""" \
     msg = "%s\n\n%s\n\n%s\n\n%s\n\n%s" %(ctop, cleft, label, fomlabel, str(colourgradarray) )
     self.AddToBrowserMsgQueue("MakeColourChart", msg )
 
+  def get_current_datatype(self):
+    # Amplitudes, Map coeffs, weights, floating points, etc
+    if self.viewerparams.scene_id is None:
+      return None
+    return self.array_infotpls[ self.scene_id_to_array_id(self.viewerparams.scene_id )][1]
+
 
   def onClickColourChart(self):
-    arrayinfotpl = self.array_infotpls[ self.scene_id_to_array_id(self.viewerparams.scene_id )]
     # if running the GUI show the colour chart selection dialog
     self.SendInfoToGUI( { "ColourChart": self.viewerparams.color_scheme,
                           "ColourPowerScale": self.viewerparams.color_powscale,
-                          "Datatype": arrayinfotpl[ 1 ], # Amplitudes, Map coeffs, etc
+                          "Datatype": self.get_current_datatype(),
                           "ShowColourMapDialog": 1
                          } )
 

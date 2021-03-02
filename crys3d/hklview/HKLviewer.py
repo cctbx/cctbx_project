@@ -258,8 +258,9 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     self.ColourMapSelectDlg = MPLColourSchemes(self)
     self.ColourMapSelectDlg.setWindowTitle("HKLviewer Colour Gradient Maps")
+    # colour schemes and radii mapping for types of datasets stored in jsview_3d.py but persisted here:
+    # colourmap=brg, colourpower=1, powerscale=1, radiiscale=1
     self.datatypedict = { }
-    self.datatypedefault = ["brg", 1.0, 1.0, 1.0] # colourscheme=1, colourpower=1, powerscale=1, radiiscale=1
 
     self.settingsform = SettingsForm(self)
     self.aboutform = AboutForm(self)
@@ -394,7 +395,7 @@ newarray._sigmas = sigs
     print("in AppAboutToQuit")
 
   def closeEvent(self, event):
-    self.PhilToJsRender('action = is_terminating')
+    self.send_message('action = is_terminating')
     self.closing = True
     #self.window.setVisible(False)
     if self.UseOSBrowser == False:
@@ -468,7 +469,7 @@ newarray._sigmas = sigs
       #self.infostr = ""
       self.textInfo.setPlainText("")
       self.fileisvalid = False
-      self.PhilToJsRender('openfilename = "%s"' %fileName )
+      self.send_message('openfilename = "%s"' %fileName )
       self.MillerComboBox.clear()
       self.BinDataComboBox.clear()
       self.tncsvec = []
@@ -487,7 +488,7 @@ newarray._sigmas = sigs
             "Save datasets to a new reflection file", "",
             "MTZ Files (*.mtz);;CIF Files (*.cif);;All Files (*)", "", options)
     if fileName:
-      self.PhilToJsRender('savefilename = "%s"' %fileName )
+      self.send_message('savefilename = "%s"' %fileName )
 
 
   def SettingsDialog(self):
@@ -499,16 +500,8 @@ newarray._sigmas = sigs
   def onColourChartSelect(self, selcolmap, colourpowscale):
     # called when user clicks OK in helpers.MPLColourSchemes.EnactColourMapSelection()
     if selcolmap != "":
-      self.PhilToJsRender("""viewer.color_scheme = %s
+      self.send_message("""viewer.color_scheme = %s
 viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
-      arrayinfo = self.array_infotpls[self.currentmillarray_idx]
-      datatype = arrayinfo[1]
-      if self.currentphilstringdict.get('viewer.sigma_color_radius', False):
-        self.datatypedict[datatype + "_sigmas"][0] = selcolmap
-        self.datatypedict[datatype + "_sigmas"][1] = colourpowscale
-      else:
-        self.datatypedict[datatype ][0] = selcolmap
-        self.datatypedict[datatype ][1] = colourpowscale
 
 
   def ProcessMessages(self):
@@ -539,7 +532,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
         if "cctbx.python.version:" in msgstr:
           self.cctbxpythonversion = msgstr
-          self.PhilToJsRender("""NGL {
+          self.send_message("""NGL {
   fontsize = %d
   show_tooltips = %s
 }
@@ -776,6 +769,10 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.power_scale_spinBox.setValue( self.infodict.get("used_nth_power_scale_radii", 0.0))
             self.unfeedback = False
 
+
+          if self.infodict.get("datatype_dict"):
+            self.datatypedict = self.infodict.get("datatype_dict", {} )
+
           if self.infodict.get("spacegroup_info"):
             spacegroup_info = self.infodict.get("spacegroup_info",False)
             unitcell_info = self.infodict.get("unitcell_info",False)
@@ -823,6 +820,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
           if self.NewHKLscenes:
             self.NewHKLscenes = False
+
       except Exception as e:
         errmsg = str(e)
         if "Resource temporarily unavailable" not in errmsg:
@@ -918,7 +916,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
   def onFinalMouseSensitivity(self):
     val = self.mousemoveslider.value()/2000.0
-    self.PhilToJsRender('NGL.mouse_sensitivity = %f' %val)
+    self.send_message('NGL.mouse_sensitivity = %f' %val)
 
 
   def onMouseSensitivity(self):
@@ -930,15 +928,15 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.unfeedback:
       return
     self.ttipalpha = val
-    self.PhilToJsRender('NGL.tooltip_alpha = %f' %val)
+    self.send_message('NGL.tooltip_alpha = %f' %val)
 
 
   def onShowTooltips(self, val):
     if self.ttipClickradio.isChecked() or val=="click":
-      self.PhilToJsRender("NGL.show_tooltips = click")
+      self.send_message("NGL.show_tooltips = click")
       self.ttip_click_invoke = "click"
     if self.ttipHoverradio.isChecked() or val=="hover":
-      self.PhilToJsRender("NGL.show_tooltips = hover")
+      self.send_message("NGL.show_tooltips = hover")
       self.ttip_click_invoke = "hover"
 
 
@@ -954,7 +952,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
   def onBrowserFontsizeChanged(self, val):
     self.browserfontsize = val
-    self.PhilToJsRender("NGL.fontsize = %d" %val)
+    self.send_message("NGL.fontsize = %d" %val)
 
 
   def onClearTextBuffer(self):
@@ -964,9 +962,9 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
   def onCameraPerspect(self,val):
     if self.cameraPerspectCheckBox.isChecked():
-      self.PhilToJsRender("NGL.camera_type = perspective")
+      self.send_message("NGL.camera_type = perspective")
     else:
-      self.PhilToJsRender("NGL.camera_type = orthographic")
+      self.send_message("NGL.camera_type = orthographic")
 
 
   def ExpandRefls(self):
@@ -974,26 +972,26 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       return
     if self.showsliceGroupCheckbox.isChecked():
       if self.ExpandReflsGroupBox.isChecked():
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_to_p1 = True
         viewer.expand_anomalous = True
         viewer.inbrowser = False
                         ''' )
       else:
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_to_p1 = False
         viewer.expand_anomalous = False
         viewer.inbrowser = False
                         ''' )
     else:
       if self.ExpandReflsGroupBox.isChecked():
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_to_p1 = True
         viewer.expand_anomalous = True
         viewer.inbrowser = True
                         ''' )
       else:
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_to_p1 = False
         viewer.expand_anomalous = False
         viewer.inbrowser = True
@@ -1005,23 +1003,23 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       return
     if self.showsliceGroupCheckbox.isChecked():
       if self.expandP1checkbox.isChecked():
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_to_p1 = True
         viewer.inbrowser = False
                         ''' )
       else:
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_to_p1 = False
         viewer.inbrowser = False
                         ''' )
     else:
       if self.expandP1checkbox.isChecked():
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_to_p1 = True
         viewer.inbrowser = True
                         ''' )
       else:
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_to_p1 = False
         viewer.inbrowser = True
                         ''' )
@@ -1032,23 +1030,23 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       return
     if self.showsliceGroupCheckbox.isChecked():
       if self.expandAnomalouscheckbox.isChecked():
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_anomalous = True
         viewer.inbrowser = False
                         ''' )
       else:
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_anomalous = False
         viewer.inbrowser = False
                         ''' )
     else:
       if self.expandAnomalouscheckbox.isChecked():
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_anomalous = True
         viewer.inbrowser = True
                         ''' )
       else:
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_anomalous = False
         viewer.inbrowser = True
                         ''' )
@@ -1057,19 +1055,19 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.unfeedback:
       return
     if self.sysabsentcheckbox.isChecked():
-      self.PhilToJsRender('viewer.show_systematic_absences = True')
+      self.send_message('viewer.show_systematic_absences = True')
     else:
-      self.PhilToJsRender('viewer.show_systematic_absences = False')
+      self.send_message('viewer.show_systematic_absences = False')
 
 
   def showMissing(self):
     if self.unfeedback:
       return
     if self.missingcheckbox.isChecked():
-      self.PhilToJsRender('viewer.show_missing = True')
+      self.send_message('viewer.show_missing = True')
       self.onlymissingcheckbox.setEnabled(True)
     else:
-      self.PhilToJsRender("""viewer.show_missing = False
+      self.send_message("""viewer.show_missing = False
                              viewer.show_only_missing = False
                           """)
       self.onlymissingcheckbox.setEnabled(False)
@@ -1079,9 +1077,9 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.unfeedback:
       return
     if self.onlymissingcheckbox.isChecked():
-      self.PhilToJsRender('viewer.show_only_missing = True')
+      self.send_message('viewer.show_only_missing = True')
     else:
-      self.PhilToJsRender('viewer.show_only_missing = False')
+      self.send_message('viewer.show_only_missing = False')
 
 
   def showSlice(self):
@@ -1089,7 +1087,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       return
     if self.showsliceGroupCheckbox.isChecked():
       #self.ClipPlaneChkGroupBox.setChecked(False)
-      self.PhilToJsRender("""viewer {
+      self.send_message("""viewer {
   slice_mode = True
   inbrowser = False
   fixorientation = "reflection_slice"
@@ -1102,7 +1100,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.sliceindexspinBox.setRange(rmin, rmax)
     else:
       #self.ClipPlaneChkGroupBox.setChecked(True)
-      self.PhilToJsRender("""viewer {
+      self.send_message("""viewer {
   slice_mode = False
   inbrowser = True
   fixorientation = "None"
@@ -1120,7 +1118,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     val = "None"
     if self.PlaneParallelCheckbox.isChecked():
       val = "reflection_slice"
-    self.PhilToJsRender("""viewer {
+    self.send_message("""viewer {
     slice_axis = %s
     is_parallel = False
     fixorientation = "%s"
@@ -1131,13 +1129,13 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.unfeedback:
       return
     self.sliceindex = val
-    self.PhilToJsRender("viewer.slice_index = %d" %self.sliceindex)
+    self.send_message("viewer.slice_index = %d" %self.sliceindex)
 
 
   def onBindataComboSelchange(self, i):
     if self.BinDataComboBox.currentText():
       binner_idx = self.BinDataComboBox.currentIndex()
-      self.PhilToJsRender('binner_idx = %d' % binner_idx )
+      self.send_message('binner_idx = %d' % binner_idx )
       bin_opacitieslst = []
       for j in range(self.nbins):
         bin_opacitieslst.append((1.0, j))
@@ -1212,7 +1210,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
         bin_opacitieslst[row] = (alpha, row)
         self.bin_opacities = str(bin_opacitieslst)
         self.SetAllOpaqueCheckboxes()
-        self.PhilToJsRender('NGL.bin_opacities = "%s"' %self.bin_opacities )
+        self.send_message('NGL.bin_opacities = "%s"' %self.bin_opacities )
       if col==1 and self.binstable_isready: # changing scene_bin_thresholds
         aboveitem = self.binstable.item(row-1, 1)
         belowitem = self.binstable.item(row+1, 1)
@@ -1236,7 +1234,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
         self.lowerbinvals[row] = newval
         allbinvals = self.lowerbinvals + [ self.upperbinvals[-1] ]
         nbins = len(allbinvals)
-        self.PhilToJsRender('''
+        self.send_message('''
         scene_bin_thresholds = \"%s\"
         nbins = %d
         ''' %(allbinvals, nbins) )
@@ -1257,7 +1255,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       for i in range(nbins):
         bin_opacitieslst.append((0.0, i))  #   ("0.0, %d" %i)
     self.bin_opacities = str(bin_opacitieslst)
-    self.PhilToJsRender('NGL.bin_opacities = "%s"' %self.bin_opacities)
+    self.send_message('NGL.bin_opacities = "%s"' %self.bin_opacities)
     self.binstableitemchanges = False
     self.binstable_isready = True
 
@@ -1266,48 +1264,28 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.unfeedback:
       return
     self.nbins = val
-    self.PhilToJsRender("nbins = %d" %self.nbins)
-
-
-  def persistRadiiScalePower(self):
-    arrayinfo = self.array_infotpls[self.currentmillarray_idx]
-    datatype = arrayinfo[1]
-    if self.currentphilstringdict.get('viewer.sigma_color_radius', False):
-      if self.ManualPowerScalecheckbox.isChecked():
-        self.datatypedict[datatype + "_sigmas"][2] = self.power_scale_spinBox.value()
-      else:
-        self.datatypedict[datatype + "_sigmas"][2] = -1.0
-      self.datatypedict[datatype + "_sigmas"][3] = self.radii_scale_spinBox.value()
-    else:
-      if self.ManualPowerScalecheckbox.isChecked():
-        self.datatypedict[datatype ][2] = self.power_scale_spinBox.value()
-      else:
-        self.datatypedict[datatype ][2] = -1.0
-      self.datatypedict[datatype ][3] = self.radii_scale_spinBox.value()
+    self.send_message("nbins = %d" %self.nbins)
 
 
   def onRadiiScaleChanged(self, val):
     if self.unfeedback:
       return
-    self.PhilToJsRender("viewer.scale = %f" %self.radii_scale_spinBox.value() )
-    self.persistRadiiScalePower()
+    self.send_message("viewer.scale = %f" %self.radii_scale_spinBox.value() )
 
 
   def onPowerScaleChanged(self, val):
     if self.unfeedback:
       return
-    self.PhilToJsRender("viewer.nth_power_scale_radii = %f" %self.power_scale_spinBox.value() )
-    self.persistRadiiScalePower()
+    self.send_message("viewer.nth_power_scale_radii = %f" %self.power_scale_spinBox.value() )
 
 
   def onManualPowerScale(self, val=None):
     if self.unfeedback:
       return
     if self.ManualPowerScalecheckbox.isChecked():
-      self.PhilToJsRender('viewer.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
+      self.send_message('viewer.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
     else:
-      self.PhilToJsRender('viewer.nth_power_scale_radii = -1.0')
-    self.persistRadiiScalePower()
+      self.send_message('viewer.nth_power_scale_radii = -1.0')
 
 
   def onShowAllVectors(self):
@@ -1335,11 +1313,11 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
           return
         if col==0:
           if item.checkState()==Qt.Checked:
-            self.PhilToJsRender(" viewer.show_vector = '[%d, %s]'" %(row, True ))
+            self.send_message(" viewer.show_vector = '[%d, %s]'" %(row, True ))
           else:
-            self.PhilToJsRender(" viewer.show_vector = '[%d, %s]'" %(row, False ))
+            self.send_message(" viewer.show_vector = '[%d, %s]'" %(row, False ))
           if self.rotvec is not None: # reset any imposed angle to 0 whenever checking or unchecking a vector
-              self.PhilToJsRender("""clip_plane {
+              self.send_message("""clip_plane {
                 angle_around_vector = '[%d, 0]'
                 bequiet = False
               }""" %self.rotvec)
@@ -1352,17 +1330,17 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
                 self.rotvec = rvrow
                 sum +=1
           if sum > 1 or sum == 0: # can only use one vector to rotate around. so if more are selected then deselect them altogether
-            self.PhilToJsRender("""clip_plane {
+            self.send_message("""clip_plane {
   animate_rotation_around_vector = '[%d, %f]'
 }""" %(0, -1.0)) #
-            self.PhilToJsRender('viewer.fixorientation = "None"')
+            self.send_message('viewer.fixorientation = "None"')
             self.AnimaRotCheckBox.setCheckState(Qt.Unchecked)
             self.rotvec = None
 
           if self.rotvec is not None:
             self.RotateAroundframe.setEnabled(True)
             # notify cctbx which is the curently selected vector
-            self.PhilToJsRender("clip_plane.angle_around_vector = '[%d, 0.0]'" %self.rotvec)
+            self.send_message("clip_plane.angle_around_vector = '[%d, 0.0]'" %self.rotvec)
           else:
             self.RotateAroundframe.setDisabled(True)
           if not self.unfeedback:
@@ -1375,15 +1353,15 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       if row==rc and label !="" and label != "new vector": # a user defined vector
         if col==1:
           hklop = self.vectortable2.item(row, 1).text()
-          self.PhilToJsRender("""viewer.add_user_vector_hkl_op = '%s'
+          self.send_message("""viewer.add_user_vector_hkl_op = '%s'
           viewer.user_label = %s """ %(hklop, label))
         if col==2:
           hklvec = self.vectortable2.item(row, 2).text()
-          self.PhilToJsRender("""viewer.add_user_vector_hkl = '(%s)'
+          self.send_message("""viewer.add_user_vector_hkl = '(%s)'
           viewer.user_label = %s """ %(hklvec, label))
         if col==3:
           abcvec = self.vectortable2.item(row, 3).text()
-          self.PhilToJsRender("""viewer.add_user_vector_abc = '(%s)'
+          self.send_message("""viewer.add_user_vector_abc = '(%s)'
           viewer.user_label = %s """ %(abcvec, label))
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
@@ -1434,27 +1412,27 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def onXangleHKLrotate(self):
-    self.PhilToJsRender("viewer.angle_around_XHKL_vector = %f" %self.angleStepHKLrotSpinBox.value() )
+    self.send_message("viewer.angle_around_XHKL_vector = %f" %self.angleStepHKLrotSpinBox.value() )
 
 
   def onYangleHKLrotate(self):
-    self.PhilToJsRender("viewer.angle_around_YHKL_vector = %f" %self.angleStepHKLrotSpinBox.value() )
+    self.send_message("viewer.angle_around_YHKL_vector = %f" %self.angleStepHKLrotSpinBox.value() )
 
 
   def onZangleHKLrotate(self):
-    self.PhilToJsRender("viewer.angle_around_ZHKL_vector = %f" %self.angleStepHKLrotSpinBox.value() )
+    self.send_message("viewer.angle_around_ZHKL_vector = %f" %self.angleStepHKLrotSpinBox.value() )
 
 
   def onXangleHKLrotateback(self):
-    self.PhilToJsRender("viewer.angle_around_XHKL_vector = %f" %(-1*self.angleStepHKLrotSpinBox.value()) )
+    self.send_message("viewer.angle_around_XHKL_vector = %f" %(-1*self.angleStepHKLrotSpinBox.value()) )
 
 
   def onYangleHKLrotateback(self):
-    self.PhilToJsRender("viewer.angle_around_YHKL_vector = %f" %(-1*self.angleStepHKLrotSpinBox.value()) )
+    self.send_message("viewer.angle_around_YHKL_vector = %f" %(-1*self.angleStepHKLrotSpinBox.value()) )
 
 
   def onZangleHKLrotateback(self):
-    self.PhilToJsRender("viewer.angle_around_ZHKL_vector = %f" %(-1*self.angleStepHKLrotSpinBox.value()) )
+    self.send_message("viewer.angle_around_ZHKL_vector = %f" %(-1*self.angleStepHKLrotSpinBox.value()) )
 
 
   def onAlignedVector(self):
@@ -1467,7 +1445,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
         is_parallel = %s
         fixorientation = "%s"
       } """ %(str(self.AlignParallelBtn.isChecked()), val )
-    self.PhilToJsRender(philstr)
+    self.send_message(philstr)
 
 
   def onClipPlaneChkBox(self):
@@ -1478,7 +1456,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       if self.showsliceGroupCheckbox.isChecked() == False:
         self.showsliceGroupCheckbox.setChecked(False)
         self.showsliceGroupCheckbox.setChecked(False)
-        self.PhilToJsRender("""viewer {
+        self.send_message("""viewer {
                                                       slice_mode = False
                                                       inbrowser = True
                                                   }
@@ -1489,13 +1467,13 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 }
         """ %clipwidth
 
-    self.PhilToJsRender(philstr)
+    self.send_message(philstr)
 
 
   def onRotaVecAngleChanged(self, val):
     if self.unfeedback or self.rotvec is None:
       return
-    self.PhilToJsRender("""clip_plane {
+    self.send_message("""clip_plane {
     angle_around_vector = '[%d, %f]'
 }""" %(self.rotvec, val*0.5))
 
@@ -1504,7 +1482,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.unfeedback or self.rotvec is None:
       return
     val = self.rotavecangle_slider.value()*0.5
-    self.PhilToJsRender("""clip_plane {
+    self.send_message("""clip_plane {
     angle_around_vector = '[%d, %f]'
 }""" %(self.rotvec, val))
 
@@ -1514,41 +1492,41 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.AnimateSpeedSlider.setEnabled(True)
       self.rotavecangle_slider.setDisabled(True)
       speed = self.AnimateSpeedSlider.value()
-      self.PhilToJsRender("""clip_plane {
+      self.send_message("""clip_plane {
       animate_rotation_around_vector = '[%d, %f]'
 }""" %(self.rotvec, speed))
     else:
       self.rotavecangle_slider.setEnabled(True)
       self.AnimateSpeedSlider.setDisabled(True)
-      self.PhilToJsRender("""clip_plane {
+      self.send_message("""clip_plane {
       animate_rotation_around_vector = '[%d, %f]'
 }""" %(self.rotvec, -1.0))
 
 
   def onClipwidthChanged(self, val):
     if not self.unfeedback:
-      self.PhilToJsRender("clip_plane.clipwidth = %f" %self.clipwidth_spinBox.value())
+      self.send_message("clip_plane.clipwidth = %f" %self.clipwidth_spinBox.value())
 
 
   def onHKLdistChanged(self, val):
     if not self.unfeedback:
       self.hkldistval = val
-      self.PhilToJsRender("clip_plane.hkldist = %f" %self.hkldistval)
+      self.send_message("clip_plane.hkldist = %f" %self.hkldistval)
 
 
   def onHvecChanged(self, val):
     if not self.unfeedback:
-      self.PhilToJsRender("clip_plane.h = %f" %self.hvec_spinBox.value())
+      self.send_message("clip_plane.h = %f" %self.hvec_spinBox.value())
 
 
   def onKvecChanged(self, val):
     if not self.unfeedback:
-      self.PhilToJsRender("clip_plane.k = %f" %self.kvec_spinBox.value())
+      self.send_message("clip_plane.k = %f" %self.kvec_spinBox.value())
 
 
   def onLvecChanged(self, val):
     if not self.unfeedback:
-      self.PhilToJsRender("clip_plane.l = %f" %self.lvec_spinBox.value())
+      self.send_message("clip_plane.l = %f" %self.lvec_spinBox.value())
 
 
   def onPlaneParallelCheckbox(self):
@@ -1556,7 +1534,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       val = "None"
       if self.PlaneParallelCheckbox.isChecked():
         val = "reflection_slice"
-      self.PhilToJsRender('viewer.fixorientation = "%s"' %val)
+      self.send_message('viewer.fixorientation = "%s"' %val)
 
 
   def onMillerTableCellPressed(self, row, col):
@@ -1631,7 +1609,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
            )
           self.makenewdataform.show()
         if strval=="tabulate_data":
-          self.PhilToJsRender('tabulate_miller_array_ids = "%s"' %str(idx))
+          self.send_message('tabulate_miller_array_ids = "%s"' %str(idx))
 
 
   def DisplayData(self, idx, row):
@@ -1641,47 +1619,16 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     datatype = arrayinfo[1]
     if (idx - 1000) >= 0:
       idx = idx - 1000
-      if datatype + "_sigmas" not in self.datatypedict.keys():
-         # ensure individual copies of datatypedefault and not references to the same
-        self.datatypedict[ datatype + "_sigmas"] = self.datatypedefault[:]
-      colourscheme, colourpower, powerscale, radiiscale = \
-          self.datatypedict.get( datatype + "_sigmas", self.datatypedefault[:] )
       philstr = """
-      viewer
-      {
-        sigma_color_radius = True
-        scene_id = %d
-        color_scheme = %s
-        color_powscale = %s
-        nth_power_scale_radii = %s
-        scale = %s
-      }
-      """ %(idx, colourscheme, colourpower, powerscale, radiiscale)
+      viewer.sigma_color_radius = True
+      viewer.scene_id = %d
+      """ %idx
     else:
-      if datatype not in self.datatypedict.keys():
-         # ensure individual copies of datatypedefault and not references to the same
-        self.datatypedict[ datatype ] = self.datatypedefault[:]
-      colourscheme, colourpower, powerscale, radiiscale = \
-        self.datatypedict.get( datatype, self.datatypedefault[:] )
       philstr = """
-      viewer
-      {
-        sigma_color_radius = False
-        scene_id = %d
-        color_scheme = %s
-        color_powscale = %s
-        nth_power_scale_radii = %s
-        scale = %s
-      }
-      """ %(idx, colourscheme, colourpower, powerscale, radiiscale)
-    self.PhilToJsRender(philstr)
-    if powerscale is not None:
-      psv = float(powerscale)
-      if psv >= 0.0:
-        self.power_scale_spinBox.setValue(psv)
-      self.ManualPowerScalecheckbox.setChecked(psv >= 0.0)
-    if radiiscale is not None:
-      self.radii_scale_spinBox.setValue(float(radiiscale))
+      viewer.sigma_color_radius = False
+      viewer.scene_id = %d
+      """ %idx
+    self.send_message(philstr)
     if self.fileisvalid:
       self.functionTabWidget.setEnabled(True)
       self.expandAnomalouscheckbox.setEnabled(True)
@@ -1703,7 +1650,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
   def onMakeNewData(self):
     mtpl = (self.operationtxtbox.toPlainText(), self.newlabeltxtbox.text() ,
               self.operate_arrayidx1, self.operate_arrayidx2 )
-    self.PhilToJsRender('miller_array_operations = "[ %s ]"' %str(mtpl) )
+    self.send_message('miller_array_operations = "[ %s ]"' %str(mtpl) )
     self.makenewdataform.accept()
 
 
@@ -1779,9 +1726,9 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
               "Save screenshot to file", "",
               "PNG Files (*.png);;All Files (*)", "", options)
       if fileName:
-        self.PhilToJsRender('save_image_name = "%s" '%fileName)
+        self.send_message('save_image_name = "%s" '%fileName)
     else:
-      self.PhilToJsRender('save_image_name = "dummy.png" ')
+      self.send_message('save_image_name = "dummy.png" ')
       # eventual file name prompted to us by Browser_download_requested(
 
 
@@ -1789,36 +1736,36 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if not self.unfeedback:
       if self.DrawReciprocUnitCellBox.isChecked():
         val = self.reciprocunitcellslider.value()/self.reciprocunitcellslider.maximum()
-        self.PhilToJsRender("reciprocal_unit_cell_scale_fraction = %f" %val)
+        self.send_message("reciprocal_unit_cell_scale_fraction = %f" %val)
       else:
-        self.PhilToJsRender("reciprocal_unit_cell_scale_fraction = None")
+        self.send_message("reciprocal_unit_cell_scale_fraction = None")
 
 
   def onDrawUnitCellBoxClick(self):
     if not self.unfeedback:
       if self.DrawRealUnitCellBox.isChecked():
         val = self.unitcellslider.value()/self.unitcellslider.maximum()
-        self.PhilToJsRender("real_space_unit_cell_scale_fraction = %f" %val)
+        self.send_message("real_space_unit_cell_scale_fraction = %f" %val)
       else:
-        self.PhilToJsRender("real_space_unit_cell_scale_fraction = None")
+        self.send_message("real_space_unit_cell_scale_fraction = None")
 
 
   def onUnitcellScale(self):
     if self.unfeedback:
       return
     val = self.unitcellslider.value()/self.unitcellslider.maximum()
-    self.PhilToJsRender("real_space_unit_cell_scale_fraction = %f" %val)
+    self.send_message("real_space_unit_cell_scale_fraction = %f" %val)
 
 
   def onReciprocUnitcellScale(self):
     if self.unfeedback:
       return
     val = self.reciprocunitcellslider.value()/self.reciprocunitcellslider.maximum()
-    self.PhilToJsRender("reciprocal_unit_cell_scale_fraction = %f" %val)
+    self.send_message("reciprocal_unit_cell_scale_fraction = %f" %val)
 
 
   def HighlightReflection(self, hkl):
-    self.PhilToJsRender("viewer.show_hkl = '%s'" %str(hkl))
+    self.send_message("viewer.show_hkl = '%s'" %str(hkl))
 
 
   def DebugInteractively(self):
@@ -1826,7 +1773,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def SpacegroupSelchange(self,i):
-    self.PhilToJsRender("spacegroup_choice = %d" %i)
+    self.send_message("spacegroup_choice = %d" %i)
 
 
   def find_free_port(self):
@@ -1854,21 +1801,23 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
 
 
-  def PhilToJsRender(self, cmdstr):
+  def send_message(self, cmdstr, msgtype="philstr"):
+    msg = str([msgtype, cmdstr])
     if sys.version_info.major==3:
-      self.socket.send(bytes(cmdstr,"utf-8"))
+      self.socket.send(bytes(msg,"utf-8"))
     else:
-      self.socket.send(bytes(cmdstr))
+      self.socket.send(bytes(msg))
 
 
   def setDatatypedict(self, datatypedict):
     self.datatypedict = datatypedict
-
+    # send persisted colour schemes and raddi mappings to jsview_3d.py
+    self.send_message(str(self.datatypedict), msgtype="dict")
 
 
 def run():
   import time
-  #time.sleep(10)
+  #time.sleep(10) # enough time for attaching debugger
   try:
     import PySide2.QtCore
     Qtversion = str(PySide2.QtCore.qVersion())
@@ -1894,22 +1843,19 @@ def run():
     if datatypes:
       for datatype in datatypes:
         datatypedict[ datatype ] = [ settings.value(datatype + "/ColourChart", "brg"),
-                                     settings.value(datatype + "/ColourPowerScale", 1.0),
-                                     settings.value(datatype + "/PowerScale", 1.0),
-                                     settings.value(datatype + "/RadiiScale", 1.0),
+                                     float(settings.value(datatype + "/ColourPowerScale", 1.0)),
+                                     float(settings.value(datatype + "/PowerScale", 1.0)),
+                                     float(settings.value(datatype + "/RadiiScale", 1.0)),
                                    ]
     settings.endGroup()
     QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
     fontsize = settings.value("FontSize", None)
     browserfontsize = settings.value("BrowserFontSize", 9)
-    #power_scale_value = settings.value("PowerScale", None)
-    #radii_scale_value = settings.value("RadiiScale", None)
     ttip_click_invoke = settings.value("ttip_click_invoke", None)
     windowsize = settings.value("windowsize", None)
     splitter1sizes = settings.value("splitter1Sizes", None)
     splitter2sizes = settings.value("splitter2Sizes", None)
     settings.endGroup()
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
     if QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       QWebEngineViewFlags = " --disable-web-security" # for chromium
@@ -1918,7 +1864,6 @@ def run():
       cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
       webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       procout, procerr = webglproc.communicate()
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       if not "WebGL works" in procout.decode():
         QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist "
     if "verbose" in sys.argv[1:]:
@@ -1950,7 +1895,6 @@ def run():
         settings.setValue(datatype + "/PowerScale", guiobj.datatypedict[ datatype ][2])
         settings.setValue(datatype + "/RadiiScale", guiobj.datatypedict[ datatype ][3])
       settings.endGroup() # DataTypesGroups
-
       settings.endGroup() # PySide2_ + Qtversion
 
     app.lastWindowClosed.connect(MyAppClosing) # persist settings on disk
