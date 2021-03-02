@@ -24,22 +24,7 @@ following are key points for getting things to run:
 
 1.  Please use a conda build using the xfel code target.
 2.  The conda environment must provide `scikit-learn` for unit cell covariance analysis, and `pandas` for analysis of data tables.
-3.  The Brehm-Diederichs embedded plot should be enabled by applying a patch.  This is a critical control to confirm that the correlation
-approach is working:
-```
---- a/xfel/merging/application/modify/aux_cosym.py
-+++ b/xfel/merging/application/modify/aux_cosym.py
-@@ -63,7 +63,7 @@ class CosymAnalysis(BaseClass):
 
-         #P = Profiler("cluster analysis W")
-         self._cluster_analysis()
--        #self.plot_after_cluster_analysis()
-+        self.plot_after_cluster_analysis()
-
-   @Subject.notify_event(event="analysed_clusters")
-   def _cluster_analysis(self):
-
-```
 ## Use case
 Here we describe the mutual alignment of an 8000-image dataset with space group P63, merged in about 30 minutes on a 60-core AMD server. Data files
 were previously indexed and integrated with `dials.stills_process` in space group P63.  The merging command line
@@ -73,6 +58,7 @@ modify.cosym.cluster.n_clusters=2
 modify.cosym.min_pairs=3
 modify.cosym.nproc=1
 modify.cosym.weights=count
+modify.cosym.plot.interactive=True
 scaling.model=<path to pdb file containing the reference structure.pdb>
 scaling.resolution_scalar=0.95
 scaling.mtz.mtz_column_F=I-obs
@@ -93,9 +79,9 @@ mpirun -n 60 cctbx.xfel.merge
 There is a critical tradeoff involving the number of MPI ranks (-n).  Analysis of a large dataset (N=8000) would be prohibitive if the full NxN matrix
 were to be analyzed.  Instead, we break the data into tranches of T = N//n shots, so in this case we analyze matrices of approximately 133 x 133
 experiments within each MPI rank.  Useful tranch sizes T range from about 100 to 200.  Smaller T produces drastically shorter wall clock time, while larger T
-produces dramatically superior Brehm-Diederichs embedding plots, as in Figure 4 of their paper.  The `matplotlib` plot must be commented in to verify that
-blue/red clusters are well separated from the 45-degree diagonal, and that the cluster centers are at a good distance from the origin (0.4-0.8 is
-good).  If the clusters look bad, the tranch size should be increased.  Note, the algorithm will not work unless n>=5, although there is presently no validation.
+produces dramatically superior Brehm-Diederichs embedding plots, as in Figure 4 of their paper.  The embedding plot (see `modify.cosym.plot.interactive`) must
+be checked to ensure blue/red clusters are well separated from the 45-degree diagonal, and that the cluster centers are at a good distance from the origin
+(0.4-0.8 is good).  If the clusters look bad, the tranch size should be increased.  Note, the algorithm will not work unless n>=5.
 ```
 dispatch.step_list=input balance model_scaling modify filter modify_cosym errors_premerge scale postrefine statistics_unitcell statistics_beam model_statistics statistics_resolution group errors_merge statistics_intensity merge statistics_intensity_cxi
 ```
@@ -182,6 +168,12 @@ node, and 4 nproc hyperthreads per core. Knowledge of the specific machine archi
 modify.cosym.weights=count
 ```
 This is critical.  Setting `weights=None` makes the cosym algorithm fail, while the other options have not been sucessfully tested in xfel.
+```
+modify.cosym.plot.interactive=True
+```
+This displays an embedding plot as in Ref. 1 to assess whether the multiple indexing solutions are sufficiently resolved from each other. The embedding
+plot is a useful tool for setting the number of MPI ranks (and thus the tranch size for analysis). For routine work, this may be omitted, and a plot
+will be saved in the output directory.
 ```
 merging.merge_anomalous=False
 ```
