@@ -145,6 +145,8 @@ class cosym(worker):
                 i_plot=i_plot)
       return COSYM
 
+    if self.params.modify.cosym.plot.interactive:
+      self.params.modify.cosym.plot.filename = None
     do_plot = (self.params.modify.cosym.plot.do_plot
         and self.mpi_helper.rank < self.params.modify.cosym.plot.n_max)
     COSYM = task_1(mpi_helper_size=self.mpi_helper.size, do_plot=do_plot)
