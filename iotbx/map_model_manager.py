@@ -1608,8 +1608,8 @@ class map_model_manager(object):
 
     # Now apply masking to all other maps (not done in _finish_boxing)
     for id in map_info.other_map_id_list:
-      other._map_dict[id] = box.apply_extract_unique_mask(
-        self._map_dict[id],
+      box.apply_around_unique_mask(
+        other._map_dict[id],
         resolution = resolution,
         soft_mask = soft_mask)
 
@@ -2738,8 +2738,11 @@ class map_model_manager(object):
     if not matching_model:
       matching_model = self.get_model_by_id(matching_model_id)
     if not target_model or not matching_model:
-      print("No models to match", file = self.log)
-      assert target_model and matching_model # target_model and matching_model
+      if not matching_model:
+        print("No matching model...skipping comparison", file = self.log)
+      if not target_model:
+        print("No target model...skipping comparison", file = self.log)
+      return []
 
     if not quiet:
       print("\nFinding parts of %s that match %s " %(
@@ -2786,11 +2789,11 @@ class map_model_manager(object):
     if target_model_ca.get_sites_cart() < 1:
       print("Target model has no sites...skipping select_matching_segments",
          file = self.log)
-      return None
+      return []
     if matching_model_ca.get_sites_cart() < 1:
       print("Matching model has no sites...skipping select_matching_segments",
          file = self.log)
-      return None
+      return []
 
     if residue_names_must_match:
       ca_residue_names = get_sequence_from_hierarchy(
@@ -3245,8 +3248,7 @@ class map_model_manager(object):
     coordinate_shift = tuple(
       [s - o for s,o in zip(map_manager.shift_cart(),model.shift_cart())])
 
-    if coordinate_shift != (0,0,0):
-      model.shift_model_and_set_crystal_symmetry(
+    model.shift_model_and_set_crystal_symmetry(
         shift_cart = coordinate_shift,
         crystal_symmetry=map_manager.crystal_symmetry())
 
@@ -3272,6 +3274,38 @@ class map_model_manager(object):
         shift_cart = coordinate_shift)
     matched_other_model = other_model
     return matched_other_model
+
+  # Methods to create a new map_model_manager with different sampling
+
+  def as_map_model_manager_with_resampled_maps(self,
+     sampling_ratio = 2):
+    ''' Return a new map_model_manager with maps sampled more finely
+        Parameter:  sampling_ratio  must be an integer
+        Creates new maps, keeps same models
+    '''
+
+    n_real = tuple([
+       int(sampling_ratio *n) for n in self.map_manager().map_data().all()])
+
+    map_id = 'map_manager'
+    used_map_id_list = [map_id]
+    fine_mm = self.get_map_manager_by_id(map_id
+         ).resample_on_different_grid(n_real)
+    new_mmm = map_model_manager(map_manager = fine_mm,)
+
+    for model_id in self.model_id_list():
+      new_mmm.add_model_by_id(model = self.get_model_by_id(model_id),
+        model_id = model_id)
+
+    for map_id in self.map_id_list():
+      if not map_id in used_map_id_list:
+         used_map_id_list.append(map_id)
+      fine_mm = self.get_map_manager_by_id(map_id
+         ).resample_on_different_grid(n_real)
+      new_mmm.add_map_manager_by_id(map_manager = fine_mm,
+        map_id = map_id)
+
+    return new_mmm
 
   # Methods for producing Fourier coefficients and calculating maps
 
