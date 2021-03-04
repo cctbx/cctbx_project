@@ -96,7 +96,7 @@ def run(args):
 
     assert easy_run.call("mysqld --defaults-file=%s --initialize-insecure"%(cnf_path)) == 0
 
-  elif params.db.server.prompt_for_root_password: 
+  elif params.db.server.prompt_for_root_password:
     import getpass
     print ("please enter root password to raise the connection")
     rootpw3 = getpass.getpass()
