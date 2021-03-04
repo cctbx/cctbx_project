@@ -216,6 +216,8 @@ class IndexingJob(Job):
       # always use mpi for 'lcls'
       use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls')
     )
+    if self.app.params.mp.method == 'sge':
+      d['use_mpi'] = False
     if self.app.params.db.password is not None and len(self.app.params.db.password) == 0:
       d['password'] = None
     else:
@@ -674,8 +676,6 @@ class ScalingJob(Job):
     self.write_submit_phil(submit_phil_path, target_phil_path)
 
     args = [submit_phil_path]
-    if self.app.params.facility.name not in ['lcls']:
-      args.append(self.run.path)
     return submit_script().run(args)
 
 class MergingJob(Job):

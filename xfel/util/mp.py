@@ -284,8 +284,10 @@ class get_sge_submit_command(get_submit_command):
     self.shell_path += " -q"
     self.options.append("-cwd")
 #    self.options.append("mp.method=sge")
-    self.command = "%s mp.nproc=${NSLOTS}"%(self.command)
-#    self.command = "mpirun %s mp.method=mpi"%(self.command) #This command currently (14/10/2020) has problems at Diamond as it will randomly use incorrect number of cores
+    if self.params.use_mpi:
+      self.command = "mpirun -n ${NSLOTS} %s mp.method=mpi"%(self.command) #This command currently (14/10/2020) has problems at Diamond as it will randomly use incorrect number of cores
+    else:
+      self.command = "%s mp.nproc=${NSLOTS}"%(self.command)
 
   def eval_params(self):
     # -t 1-<nproc>
