@@ -936,14 +936,14 @@ class dials_module(SourceModule):
   anonymous = ['git',
                'git@github.com:dials/dials.git',
                'https://github.com/dials/dials.git',
-               'https://github.com/dials/dials/archive/master.zip']
+               'https://github.com/dials/dials/archive/main.zip']
 
 class dxtbx_module(SourceModule):
   module = 'dxtbx'
   anonymous = ['git',
                'git@github.com:cctbx/dxtbx.git',
                'https://github.com/cctbx/dxtbx.git',
-               'https://github.com/cctbx/dxtbx/archive/master.zip']
+               'https://github.com/cctbx/dxtbx/archive/main.zip']
 
 class dials_regression_module(SourceModule):
   module = 'dials_regression'

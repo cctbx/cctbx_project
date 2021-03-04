@@ -131,16 +131,18 @@ class HKLViewFrame() :
     #time.sleep(5)
     while not self.STOP:
       try:
-        philstr = self.guisocket.recv()
-        philstr = philstr.decode("utf-8")
-        self.mprint("Received phil string:\n" + philstr, verbose=1)
-        new_phil = libtbx.phil.parse(philstr)
-        self.update_settings(new_phil)
+        msgstr = self.guisocket.recv().decode("utf-8")
+        self.mprint("Received string:\n" + msgstr, verbose=1)
+        msgtype, mstr = eval(msgstr)
+        if msgtype=="dict":
+          self.viewer.datatypedict = eval(mstr)
+        if msgtype=="philstr":
+          new_phil = libtbx.phil.parse(mstr)
+          self.update_settings(new_phil)
         time.sleep(self.zmqsleeptime)
       except Exception as e:
         self.mprint( str(e) + traceback.format_exc(limit=10), verbose=1)
     self.mprint( "Shutting down zmq_listen() thread", 1)
-    #del self.guisocket
     self.guiSocketPort=None
 
 
@@ -483,7 +485,7 @@ class HKLViewFrame() :
     unique_miller_array_operations_lst = []
     for (operation, label, arrid1, arrid2) in miller_array_operations_lst:
       for arr in self.procarrays:
-        if label in arr.info().label_string() or label in [ "", None]:
+        if label in arr.info().labels + [ "", None]:
           raise Sorry("Provide an unambiguous label for your new miller array!")
       unique_miller_array_operations_lst.append( (operation, label, arrid1, arrid2) )
     self.params.miller_array_operations = str(unique_miller_array_operations_lst)
@@ -496,6 +498,7 @@ class HKLViewFrame() :
     else:
       newarray = self.viewer.OperateOn1MillerArray(millarr1, operation)
     if newarray is not None:
+      self.mprint("New dataset has %d reflections." %newarray.size())
       newarray.set_info(millarr1._info )
       newarray._info.labels = [ label ]
       procarray, procarray_info = self.process_miller_array(newarray)
@@ -903,6 +906,7 @@ class HKLViewFrame() :
     self.params.merge_data = val
     self.update_settings()
 
+
   def SetColourScene(self, colourcol):
     self.params.viewer.colour_scene_id = colourcol
     self.update_settings()
@@ -934,11 +938,6 @@ class HKLViewFrame() :
     self.params.viewer.color_scheme = color_scheme
     self.params.viewer.color_powscale = color_powscale
     self.update_settings()
-
-
-  #def SetColoursToPhases(self, val): # deprecated
-  #  self.params.viewer.phase_color = val
-  #  self.update_settings()
 
 
   def SetShapePrimitive(self, val):

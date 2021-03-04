@@ -48,6 +48,7 @@ class with_bounds(object):
     self._map_manager = map_manager
     self._model = model
     self.model_can_be_outside_bounds = model_can_be_outside_bounds
+    self._info = None
 
 
     # safeguards
@@ -103,6 +104,17 @@ class with_bounds(object):
 
   def map_manager(self):
     return self._map_manager
+
+  def info(self):
+    return self._info
+
+  def set_info(self, info):
+    ''' Holder for anything you want.
+      Usually set it to a group_args object:
+         self.set_info(group_args(group_args_type='my_group_args', value = value))
+    '''
+
+    self._info = info
 
   def ncs_object(self):
     if self.map_manager():
@@ -434,6 +446,9 @@ class around_unique(with_bounds):
          keep_low_density:  keep low density regions
          regions_to_keep:   Allows choosing just highest-density contiguous
                             region (regions_to_keep=1) or a few
+         keep_this_region_only: Allows choosing any specific region (first region is 0 not 1)
+         residues_per_region: Allows setting threshold to try and get about this many
+                              residues in each region. Default is 50.
 
   '''
 
@@ -441,6 +456,8 @@ class around_unique(with_bounds):
     model = None,
     target_ncs_au_model = None,
     regions_to_keep = None,
+    residues_per_region = None,
+    keep_this_region_only = None,
     solvent_content = None,
     resolution = None,
     sequence = None,
@@ -487,6 +504,11 @@ class around_unique(with_bounds):
     assert self._map_manager.map_data().origin() == (0, 0, 0)
 
     args = []
+    if residues_per_region:
+      args.append("residues_per_region=%s" %(residues_per_region))
+
+    if keep_this_region_only is not None:
+      regions_to_keep = -1 * keep_this_region_only
 
     ncs_group_obj, remainder_ncs_group_obj, tracking_data  = \
       segment_and_split_map(args,
@@ -513,6 +535,13 @@ class around_unique(with_bounds):
         out = log)
 
     from scitbx.matrix import col
+
+    # Note number of selected regions used.
+    if hasattr(tracking_data, 'available_selected_regions'):
+      self.set_info(group_args(
+        group_args_type = 'available selected regions from around_unique',
+        available_selected_regions = tracking_data.available_selected_regions,
+        ))
 
     if not hasattr(tracking_data, 'box_mask_ncs_au_map_data'):
       raise Sorry(" Extraction of unique part of map failed...")

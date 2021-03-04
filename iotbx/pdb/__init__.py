@@ -709,6 +709,16 @@ class pdb_input_from_any(object):
                   and n_unknown_records > 0))
             and n_records>0):
           continue
+        # Additional check that solves 2of6:
+        # if the first non-comment non-empty line contains data_ this is mmCIF
+        if lines is not None and len(lines)>0:
+          len_lines = len(lines)
+          i = 0
+          while i < len_lines and (
+            lines[i].strip().startswith('#') or len(lines[i].strip()) == 0):
+            i += 1
+          if i < len_lines and lines[i][:5].strip() == 'data_':
+            continue
         self.file_format = "pdb"
       else :
         self.file_format = "cif"

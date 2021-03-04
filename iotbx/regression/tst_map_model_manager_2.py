@@ -79,6 +79,26 @@ def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
   bb = dm.get_map_model_manager(model_file=split_pdb_file_name,
     map_files=map_file_name)
 
+  # Merge by models
+  a = aa.deep_copy()
+  n_starting_models = len(list(a.model().get_hierarchy().models()))
+  box_info = a.split_up_map_and_model_by_boxes()
+  # Change the hierarchy in a box
+  small_hierarchy = box_info.mmm_list[0].model().get_hierarchy()
+  # delete an atom
+  for m in small_hierarchy.models():
+    for chain in m.chains()[:1]:
+       chain.remove_residue_group(i = 0)
+  box_info.mmm_list[0].model().reset_after_changing_hierarchy()  # REQUIRED
+  # Put everything back together
+  a.merge_split_maps_and_models(box_info = box_info,
+      allow_changes_in_hierarchy = True)
+  n_merged_models = len(list(a.model().get_hierarchy().models()))
+  assert n_starting_models == 1
+  assert n_merged_models == 7
+
+
+  # Merge in various ways
   for selection_method in ['by_chain', 'by_segment','supplied_selections',
       'boxes']:
     if selection_method == 'boxes':

@@ -7361,8 +7361,18 @@ def select_regions_in_au(params,
 
   selected_regions = best_selected_regions
   selected_regions.sort()
-  if params.map_modification.regions_to_keep:
-    selected_regions = selected_regions[:params.map_modification.regions_to_keep]
+  available_selected_regions = len(selected_regions)
+  print("\nAvailable selected regions: %s ..." %(available_selected_regions), file = out)
+  if tracking_data:
+    tracking_data.available_selected_regions = available_selected_regions
+
+  if params.map_modification.regions_to_keep is not None:
+    if params.map_modification.regions_to_keep <= 0:
+       # keep just region abs(regions_to_keep)
+       ii = min(len(selected_regions)-1, abs(params.map_modification.regions_to_keep))
+       selected_regions = selected_regions[ii:ii+1]
+    else: # usual
+      selected_regions = selected_regions[:params.map_modification.regions_to_keep]
 
   rms = get_closest_neighbor_rms(ncs_group_obj = ncs_group_obj,
     selected_regions = selected_regions, verbose = False, out = out)

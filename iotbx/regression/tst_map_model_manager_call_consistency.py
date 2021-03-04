@@ -95,6 +95,7 @@ def test_01():
        'model_can_be_outside_bounds'],
     'around_mask':[ 'box_cushion','model_can_be_outside_bounds'],
     'around_unique':['box_cushion', 'target_ncs_au_model', 'regions_to_keep',
+    'residues_per_region','keep_this_region_only',
         'solvent_content', 'resolution', 'sequence', 'molecular_mass',
          'symmetry', 'chain_type', 'keep_low_density', 'soft_mask',
          'mask_expand_ratio'],
