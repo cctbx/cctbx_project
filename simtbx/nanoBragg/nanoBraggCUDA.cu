@@ -14,6 +14,13 @@
 #include <stdio.h>
 #include "nanotypes.h"
 #include "cuda_compatibility.h"
+using simtbx::nanoBragg::shapetype;
+using simtbx::nanoBragg::hklParams;
+using simtbx::nanoBragg::SQUARE;
+using simtbx::nanoBragg::ROUND;
+using simtbx::nanoBragg::GAUSS;
+using simtbx::nanoBragg::GAUSS_ARGCHK;
+using simtbx::nanoBragg::TOPHAT;
 
 static void CheckCudaErrorAux(const char *, unsigned, const char *, cudaError_t);
 #define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
@@ -26,19 +33,6 @@ static void CheckCudaErrorAux(const char *, unsigned, const char *, cudaError_t)
 #define THREADS_PER_BLOCK_Y 1
 #define THREADS_PER_BLOCK_TOTAL (THREADS_PER_BLOCK_X * THREADS_PER_BLOCK_Y)
 #define VECTOR_SIZE 4
-
-struct hklParams {
-	int hkls;
-	int h_min;
-	int h_max;
-	int h_range;
-	int k_min;
-	int k_max;
-	int k_range;
-	int l_min;
-	int l_max;
-	int l_range;
-};
 
 /**
  * Check the return value of the CUDA runtime API call and exit
@@ -380,7 +374,7 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
 }
 
 /* cubic spline interpolation functions */
-__device__ static void polint(CUDAREAL *xa, CUDAREAL *ya, CUDAREAL x, CUDAREAL *y);
+__device__ static void polint(const CUDAREAL *xa, const CUDAREAL *ya, CUDAREAL x, CUDAREAL *y);
 __device__ static void polin2(CUDAREAL *x1a, CUDAREAL *x2a, CUDAREAL ya[4][4], CUDAREAL x1, CUDAREAL x2, CUDAREAL *y);
 __device__ static void polin3(CUDAREAL *x1a, CUDAREAL *x2a, CUDAREAL *x3a, CUDAREAL ya[4][4][4], CUDAREAL x1, CUDAREAL x2, CUDAREAL x3, CUDAREAL *y);
 /* rotate a 3-vector about a unit vector axis */
@@ -1118,7 +1112,7 @@ __device__ CUDAREAL sinc3(CUDAREAL x) {
 
 }
 
-__device__ void polint(CUDAREAL *xa, CUDAREAL *ya, CUDAREAL x, CUDAREAL *y) {
+__device__ void polint(const CUDAREAL *xa, const CUDAREAL *ya, CUDAREAL x, CUDAREAL *y) {
 	CUDAREAL x0, x1, x2, x3;
 	x0 = (x - xa[1]) * (x - xa[2]) * (x - xa[3]) * ya[0] / ((xa[0] - xa[1]) * (xa[0] - xa[2]) * (xa[0] - xa[3]));
 	x1 = (x - xa[0]) * (x - xa[2]) * (x - xa[3]) * ya[1] / ((xa[1] - xa[0]) * (xa[1] - xa[2]) * (xa[1] - xa[3]));
@@ -1189,5 +1183,136 @@ __device__ CUDAREAL polarization_factor(CUDAREAL kahn_factor, CUDAREAL *incident
 
 	/* correction for polarized incident beam */
 	return 0.5 * (1.0 + cos2theta_sqr - kahn_factor * cos(2 * psi) * sin2theta_sqr);
+}
+
+__global__ void add_background_CUDAKernel(int sources, int nanoBragg_oversample,
+    CUDAREAL pixel_size, int spixels, int fpixels, int detector_thicksteps,
+    CUDAREAL detector_thickstep, CUDAREAL detector_attnlen,
+    const CUDAREAL * __restrict__ sdet_vector, const CUDAREAL * __restrict__ fdet_vector,
+    const CUDAREAL * __restrict__ odet_vector, const CUDAREAL * __restrict__ pix0_vector,
+    CUDAREAL close_distance, int point_pixel, CUDAREAL detector_thick,
+    const CUDAREAL * __restrict__ source_X, const CUDAREAL * __restrict__ source_Y,
+    const CUDAREAL * __restrict__ source_Z,
+    const CUDAREAL * __restrict__ source_lambda, const CUDAREAL * __restrict__ source_I,
+    int stols, const CUDAREAL * stol_of, const CUDAREAL * Fbg_of,
+    int nopolar, CUDAREAL polarization, const CUDAREAL * __restrict__ polar_vector,
+    CUDAREAL r_e_sqr, CUDAREAL fluence, CUDAREAL amorphous_molecules,
+    float * floatimage)
+{
+    int oversample=-1, override_source=-1; //override features that usually slow things down,
+                                           //like oversampling pixels & multiple sources
+    int source_start = 0;
+    /* allow user to override automated oversampling decision at call time with arguments */
+    if(oversample<=0) oversample = nanoBragg_oversample;
+    if(oversample<=0) oversample = 1;
+    if(override_source>=0) {
+        /* user-specified source in the argument */
+        source_start = override_source;
+        sources = source_start +1;
+    }
+    /* make sure we are normalizing with the right number of sub-steps */
+    int steps = oversample*oversample;
+    CUDAREAL subpixel_size = pixel_size/oversample;
+
+    /* sweep over detector */
+    const int total_pixels = spixels * fpixels;
+    const int fstride = gridDim.x * blockDim.x;
+    const int sstride = gridDim.y * blockDim.y;
+    const int stride = fstride * sstride;
+    for (int pixIdx = (blockDim.y * blockIdx.y + threadIdx.y) * fstride + blockDim.x * blockIdx.x + threadIdx.x;
+         pixIdx < total_pixels; pixIdx += stride) {
+      const int fpixel = pixIdx % fpixels;
+      const int spixel = pixIdx / fpixels;
+      /* position in pixel array */
+      const int j = pixIdx;
+      /* reset background photon count for this pixel */
+      CUDAREAL Ibg = 0;
+      int nearest = 0; // sort-stable alogorithm, instead of holding value over from previous pixel
+            /* loop over sub-pixels */
+            for(int subS=0;subS<oversample;++subS){
+                for(int subF=0;subF<oversample;++subF){
+                    /* absolute mm position on detector (relative to its origin) */
+                    CUDAREAL Fdet = subpixel_size*(fpixel*oversample + subF ) + subpixel_size/2.0;
+                    CUDAREAL Sdet = subpixel_size*(spixel*oversample + subS ) + subpixel_size/2.0;
+
+                    for(int thick_tic=0;thick_tic<detector_thicksteps;++thick_tic){
+                        /* assume "distance" is to the front of the detector sensor layer */
+                        CUDAREAL Odet = thick_tic*detector_thickstep;
+                        CUDAREAL pixel_pos[4];
+
+                        pixel_pos[1] = Fdet * __ldg(&fdet_vector[1]) + Sdet * __ldg(&sdet_vector[1]) + Odet * __ldg(&odet_vector[1]) + __ldg(&pix0_vector[1]); // X
+                        pixel_pos[2] = Fdet * __ldg(&fdet_vector[2]) + Sdet * __ldg(&sdet_vector[2]) + Odet * __ldg(&odet_vector[2]) + __ldg(&pix0_vector[2]); // X
+                        pixel_pos[3] = Fdet * __ldg(&fdet_vector[3]) + Sdet * __ldg(&sdet_vector[3]) + Odet * __ldg(&odet_vector[3]) + __ldg(&pix0_vector[3]); // X
+                        pixel_pos[0] = 0.0;
+                        /* no curved detector option (future implementation) */
+                        /* construct the diffracted-beam unit vector to this pixel */
+                        CUDAREAL diffracted[4];
+                        CUDAREAL airpath = unitize(pixel_pos,diffracted);
+
+                        /* solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta) */
+                        CUDAREAL omega_pixel = pixel_size*pixel_size/airpath/airpath*close_distance/airpath;
+                        /* option to turn off obliquity effect, inverse-square-law only */
+                        if(point_pixel) omega_pixel = 1.0/airpath/airpath;
+
+                        /* now calculate detector thickness effects */
+                        CUDAREAL capture_fraction = 1.0;
+                        if(detector_thick > 0.0){
+                            /* inverse of effective thickness increase */
+                            CUDAREAL parallax = dot_product(diffracted,odet_vector);
+                            capture_fraction = exp(-thick_tic*detector_thickstep/detector_attnlen/parallax)
+                                              -exp(-(thick_tic+1)*detector_thickstep/detector_attnlen/parallax);
+                        }
+
+                        /* loop over sources now */
+                        for(int source=source_start;source<sources;++source){
+
+                            /* retrieve stuff from cache */
+                            CUDAREAL incident[4];
+                            incident[1] = -__ldg(&source_X[source]);
+                            incident[2] = -__ldg(&source_Y[source]);
+                            incident[3] = -__ldg(&source_Z[source]);
+                            CUDAREAL lambda = __ldg(&source_lambda[source]);
+                            CUDAREAL source_fraction = __ldg(&source_I[source]);
+                            /* construct the incident beam unit vector while recovering source distance */
+                            unitize(incident,incident);
+
+                            /* construct the scattering vector for this pixel */
+                            CUDAREAL scattering[4];
+                            scattering[1] = (diffracted[1]-incident[1])/lambda;
+                            scattering[2] = (diffracted[2]-incident[2])/lambda;
+                            scattering[3] = (diffracted[3]-incident[3])/lambda;
+                            magnitude(scattering);
+                            /* sin(theta)/lambda is half the scattering vector length */
+                            CUDAREAL stol = 0.5*scattering[0];
+
+                            /* now we need to find the nearest four "stol file" points */
+                            while(stol > stol_of[nearest] && nearest <= stols){++nearest; };
+                            while(stol < stol_of[nearest] && nearest >= 2){--nearest; };
+
+                            /* cubic spline interpolation */
+                            CUDAREAL Fbg;
+                            polint(stol_of+nearest-1, Fbg_of+nearest-1, stol, &Fbg);
+
+                            /* allow negative F values to yield negative intensities */
+                            CUDAREAL sign=1.0;
+                            if(Fbg<0.0) sign=-1.0;
+
+                            /* now we have the structure factor for this pixel */
+
+                            /* polarization factor */
+                            CUDAREAL polar = 1.0;
+                            if(! nopolar){
+                                /* need to compute polarization factor */
+                                polar = polarization_factor(polarization,incident,diffracted,polar_vector);
+                            }
+
+                            /* accumulate unscaled pixel intensity from this */
+                            Ibg += sign*Fbg*Fbg*polar*omega_pixel*source_fraction*capture_fraction;
+                        } /* end of source loop */
+                    } /* end of detector thickness loop */
+                } /* end of sub-pixel y loop */
+            } /* end of sub-pixel x loop */
+            /* save photons/pixel (if fluence specified), or F^2/omega if no fluence given */
+            floatimage[j] += Ibg*r_e_sqr*fluence*amorphous_molecules/steps;    } // end of pixIdx loop
 }
 
