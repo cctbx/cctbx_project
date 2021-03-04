@@ -474,7 +474,6 @@ class h_bond(object):
     self.a_YAH_cutoff = [90, 180]
 
 class manager():
-  __slots__ = ["h_bond_params"]
 
   def __init__(self, model, h_bond_params=None):
     if(h_bond_params is None): h_bond_params = h_bond()
