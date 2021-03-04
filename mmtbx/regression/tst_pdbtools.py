@@ -859,10 +859,10 @@ loop_
 def exercise_mmcif_support_2(prefix="tst_pdbtools_mmcif2"):
   f = open("%s.pdb" % prefix, 'w')
   f.write("""\
-HELIX    1   1 TRP A   10  VAL A   14  5                                   5
+HELIX    1   1 GLN A   10  GLN A   14  5                                   5
 HELIX    2   2 ARG A   17  ASN A   29  1                                  13
-SHEET    1   A 2 ARG A  33  PRO A  38  0
-SHEET    2   A 2 ARG A  51  VAL A  56  1  O  VAL A  54   N  ILE A  35
+SHEET    1   A 2 GLN A  33  GLN A  38  0
+SHEET    2   A 2 GLN A  51  GLN A  56  1  O  VAL A  54   N  ILE A  35
 SSBOND   1 CYS A    4    CYS A   49
 CRYST1   62.654   62.654   45.906  90.00  90.00  90.00 P 43 21 2
 SCALE1      0.015961  0.000000  0.000000        0.00000
