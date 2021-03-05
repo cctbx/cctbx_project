@@ -315,7 +315,7 @@ class flack_analysis(object):
     twin_fractions = ()
     it = xray.twin_component(sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)), 0.2, True)
     twin_components = (it,)
-    obs = observations.customized_copy(obs_, twin_fractions, twin_components)
+    obs = observations.customized_copy(obs_, xray_structure.space_group(), twin_fractions, twin_components)
     # reparameterisation needs all fractions
     twin_fractions += twin_components
     if connectivity_table is None:

@@ -272,7 +272,6 @@ namespace cctbx { namespace xray {
       : indices_(obs.indices_),
         data_(obs.data_),
         sigmas_(obs.sigmas_),
-        index_components_(obs.index_components_),
         measured_scale_indices_(obs.measured_scale_indices_),
         twin_fractions_(twin_fractions)
     {
