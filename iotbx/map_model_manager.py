@@ -2659,14 +2659,16 @@ class map_model_manager(object):
 
   def get_cb_resseq_to_skip(self,cb_resseq_list,
          far_away = None,
-         far_away_n = None):
+         far_away_n = None,
+         very_far_away = None,
+         very_far_away_n = None,
+         ):
     '''
     Identify numbers in resseq_list that are way different than all others by
     at least max_gap
     '''
     if not far_away or not far_away_n:
       return []
-
 
     work_list = deepcopy(cb_resseq_list)
     work_list.sort()
@@ -2678,13 +2680,21 @@ class map_model_manager(object):
         last_i = i
       else:
          group = [i]
-         groups.append(group)
+         groups.append(group_args(
+           group= group,
+           dist_from_last = i-last_i if last_i is not None else 0)
+          )
          last_i = i
 
     residues_to_ignore = []
-    for group in groups:
-     if len(group) <= far_away_n and len(cb_resseq_list)>= 2 * far_away_n:
-        residues_to_ignore += group
+    for group_info in groups:
+     if len(group_info.group) <= far_away_n and \
+          len(cb_resseq_list)>= 2 * len(group_info.group):
+        residues_to_ignore += group_info.group
+     elif group_info.dist_from_last >= very_far_away and \
+          len(group_info.group) <= very_far_away_n and \
+          len(cb_resseq_list)>= 2 * len(group_info.group):
+        residues_to_ignore += group_info.group
     return residues_to_ignore
 
 
@@ -2703,6 +2713,8 @@ class map_model_manager(object):
       max_gap = 5,
       far_away = 7,
       far_away_n = 2,
+      very_far_away = 20,
+      very_far_away_n = 1000,
       one_to_one = False,
       residue_names_must_match = False,
       quiet = True):
@@ -2725,6 +2737,8 @@ class map_model_manager(object):
 
     If far_away is set, remove any groups of far_away_n or fewer that are
       far_away residues from all other groups
+
+    If very_far_away and very_far_away_n are set, also remove those
     '''
 
     from mmtbx.secondary_structure.find_ss_from_ca import \
@@ -2854,6 +2868,7 @@ class map_model_manager(object):
         max_gap = max_gap,
         minimum_length = minimum_length,
         return_as_group_args_list = True)
+      print(ca_selection_list)
 
       ca_sites_groups = []
       matching_cb_as_list_groups = []
@@ -2918,6 +2933,8 @@ class map_model_manager(object):
       cb_resseq_to_skip = self.get_cb_resseq_to_skip(cb_resseq_list,
          far_away = far_away,
          far_away_n = far_away_n,
+         very_far_away = very_far_away,
+         very_far_away_n = very_far_away_n,
         )
 
       for ca_site, cb_site in zip(ca_sites_list,
@@ -2945,10 +2962,12 @@ class map_model_manager(object):
       local_matching_model = matching_model.apply_selection_string(
          cb_selection_string)
 
-      if one_to_one:   # take only matching parts Note they may be in different orders
+      if one_to_one:   # take only matching parts
+        # Note they may be in different orders
         ca_selection_string = self.get_selection_string_from_chain_dict(
           chain_dict= ca_chain_dict, max_gap = max_gap)
-        local_target_model = target_model.apply_selection_string(ca_selection_string)
+        local_target_model = \
+         target_model.apply_selection_string(ca_selection_string)
         if not local_target_model:
           continue # skip it
         target_seq = get_sequence_from_hierarchy(
