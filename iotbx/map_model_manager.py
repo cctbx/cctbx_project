@@ -2868,7 +2868,6 @@ class map_model_manager(object):
         max_gap = max_gap,
         minimum_length = minimum_length,
         return_as_group_args_list = True)
-      print(ca_selection_list)
 
       ca_sites_groups = []
       matching_cb_as_list_groups = []
