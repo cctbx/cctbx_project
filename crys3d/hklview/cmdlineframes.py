@@ -593,10 +593,11 @@ class HKLViewFrame() :
           arrays = cifreader.as_miller_arrays(merge_equivalents=False, style="new")
           # sanitise labels by removing redundant strings.
           # remove the data name of this cif file from all labels
-          dataname = list(hkl_file._file_content.builder._model.keys_lower.keys())
+          dataname = list(hkl_file._file_content.builder._model.keys())
           unwantedstrings = dataname[:]
           # remove "_refln." from all labels
           unwantedstrings.append("_refln.")
+          unwantedstrings.append("_refln_")
           for arr in arrays:
             if len(arr.info().labels):
               newlabels = []

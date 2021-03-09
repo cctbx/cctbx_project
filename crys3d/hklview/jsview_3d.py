@@ -1016,7 +1016,6 @@ class hklview_3d:
 
   def calc_bin_thresholds(self, binner_idx, nbins):
     # make default bin thresholds if scene_bin_thresholds is not set
-    #self.bin_labels_type_idx = self.bin_labels_type_idxs[binner_idx]
     binscenelabel = self.bin_labels_type_idxs[binner_idx][0]
     self.mprint("Using %s for binning" %binscenelabel)
     if binscenelabel=="Resolution":
@@ -1024,11 +1023,12 @@ class hklview_3d:
       dres = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).dres
       uc = warray.unit_cell()
       indices = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).indices
-      if flex.max(dres) == flex.min(dres): # say if only one reflection
-        binvals = [dres[0]-0.1, flex.min(dres)+0.1]
+      dmax,dmin = warray.d_max_min(d_max_is_highest_defined_if_infinite=True) # to avoid any F000 reflection
+      if dmax == dmin: # say if only one reflection
+        binvals = [dres[0]-0.1, dmin +0.1]
         nuniquevalues = 2
       else: # use generic binning function from cctbx
-        binning = miller.binning( uc, nbins, indices, flex.max(dres), flex.min(dres) )
+        binning = miller.binning( uc, nbins, indices, dmax, dmin )
         binvals = [ binning.bin_d_range(n)[0] for n in binning.range_all() ]
         binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
         binvals = list( 1.0/flex.double(binvals) )
