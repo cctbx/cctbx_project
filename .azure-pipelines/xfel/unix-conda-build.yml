@@ -20,6 +20,7 @@ steps:
 - script: |
     cd $(Pipeline.Workspace)
     tar -xf modules.tar
+    rm modules/ls49_big_data/adse13_228/exap_0.hdf5
   displayName: Extract modules tarball
 
 - script: |
