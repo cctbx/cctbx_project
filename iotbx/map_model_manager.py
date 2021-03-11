@@ -2717,6 +2717,7 @@ class map_model_manager(object):
       very_far_away_n = 1000,
       one_to_one = False,
       residue_names_must_match = False,
+      minimum_match_length = 2,
       quiet = True):
     '''
     Select the parts of matching_model that best match target_model
@@ -2970,15 +2971,22 @@ class map_model_manager(object):
         if not local_target_model:
           continue # skip it
         target_seq = get_sequence_from_hierarchy(
-          local_target_model.get_hierarchy(), remove_white_space=True)
+          local_target_model.get_hierarchy(), remove_white_space=True,
+            require_chain_type = False)
         matching_seq = get_sequence_from_hierarchy(
-           local_matching_model.get_hierarchy(), remove_white_space=True)
+           local_matching_model.get_hierarchy(), remove_white_space=True,
+            require_chain_type = False)
+        if not target_seq or not matching_seq:
+          continue # skip it
         target_seq=list(target_seq)
         matching_seq=list(matching_seq)
         target_seq.sort()
         matching_seq.sort()
         if residue_names_must_match:
           assert target_seq == matching_seq  # same but could be different order
+        if minimum_match_length and len(target_seq) < minimum_match_length:
+          continue # skip it
+ 
       else:
         local_target_model = target_model
         local_matching_model = matching_model
@@ -9212,7 +9220,8 @@ def get_selections_for_segments(model,
      skip_hetero = True,
      no_water_or_het_with_and = None,
      skip_n_residues_on_ends = None,
-     minimum_length = 1):
+     minimum_length = 1,
+     return_as_group_args = False):
   ''''
     Generate selections corresponding to each segment (chain or part of a chain
     that is separate from remainder of chain)
@@ -9268,7 +9277,10 @@ def get_selections_for_segments(model,
       last_resno = si.last_resno
     if (last_resno - first_resno) + 1 < max(1,minimum_length):
       continue
-    selection_list.append(" %s ( chain %s and resseq %s:%s ) " %(
+    if return_as_group_args:
+      selection_list.append(si)
+    else: # usual
+      selection_list.append(" %s ( chain %s and resseq %s:%s ) " %(
         no_water_or_het_with_and, si.chain_id,
         resseq_encode(first_resno).strip(), resseq_encode(last_resno).strip()))
   return selection_list
