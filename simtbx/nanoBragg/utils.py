@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import json, h5py, numpy as np
+from scipy.stats import binned_statistic
+from scipy import signal
 from scipy import constants
 from scipy.signal import argrelmax, argrelmin, savgol_filter
 import time
@@ -285,7 +287,8 @@ def fcalc_from_pdb(resolution, algorithm=None, wavelength=0.9, anom=True, ucell=
   return fcalc
 
 
-def downsample_spectrum(energies, fluences, total_flux=1e12, nbins=100, method=0, ev_width=1.5, baseline_sigma=3.5):
+def downsample_spectrum(energies, fluences, total_flux=1e12, nbins=100, method=0, ev_width=1.5, baseline_sigma=3.5,
+                        method2_param=None):
   """
   :param energies:
   :param fluences:
@@ -296,6 +299,8 @@ def downsample_spectrum(energies, fluences, total_flux=1e12, nbins=100, method=0
   :param baseline_sigma:
   :return:
   """
+  if method2_param is None:
+    method2_param = {"filt_freq": 0.07, "filt_order": 3, "tail": 50, "delta_en": 1}
   if method == 0:
     energy_bins = np.linspace(energies.min() - 1e-6, energies.max() + 1e-6, nbins + 1)
     fluences = np.histogram(energies, bins=energy_bins, weights=fluences)[0]
@@ -306,7 +311,7 @@ def downsample_spectrum(energies, fluences, total_flux=1e12, nbins=100, method=0
     is_finite = fluences > cutoff
     fluences = fluences[is_finite]
     energies = energies[is_finite]
-  else:  # method==1:
+  elif method==1:
     w = fluences
     med = np.median(np.hstack((w[:100] ,w[-100:])))
     sigma = np.std(np.hstack((w[:100] ,w[-100:])))
@@ -318,6 +323,22 @@ def downsample_spectrum(energies, fluences, total_flux=1e12, nbins=100, method=0
     kept_idx = [i for i in idx if w[i] > baseline]
     energies = energies[kept_idx]
     fluences = fluences[kept_idx]
+
+  elif method==2:
+    delta_en = method2_param["delta_en"]
+    tail = method2_param["tail"]
+    filt_order = method2_param["filt_order"]
+    filt_freq = method2_param["filt_freq"]
+    xdata = np.hstack((energies[:tail], energies[-tail:]))
+    ydata = np.hstack((fluences[:tail], fluences[-tail:]))
+    pfit = np.polyfit(xdata, ydata, deg=1)
+    baseline = np.polyval(pfit, energies)
+    denz = signal.filtfilt(*signal.butter(filt_order, filt_freq,'low'), fluences-baseline)
+    enbin = np.arange(energies.min(), energies.max(), delta_en)
+    fluences, _, _ = binned_statistic(energies, denz, bins=enbin)
+    energies = (enbin[1:] + enbin[:-1])*0.5
+    fluences[fluences < 0] = 0  # probably ok
+
   fluences /= fluences.sum()
   fluences *= total_flux
   return energies, fluences
