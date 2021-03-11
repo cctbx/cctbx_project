@@ -7,7 +7,10 @@ that best fits from a set of built in shapes.
 from __future__ import absolute_import, division, print_function
 from scitbx.matrix import col
 from collections import OrderedDict
-from collections.abc import Iterable
+try:
+  from collections.abc import Iterable
+except ImportError:
+  from collections import Iterable
 from math import sqrt
 from six.moves import zip
 
