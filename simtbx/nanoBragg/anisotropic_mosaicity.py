@@ -102,7 +102,7 @@ def generate_Umats(eta_tensor, crystal=None, plot=None,
     :return:
     """
     if plot is not None:
-        from mpl_toolkits.mplot3d import Axes3D
+        from mpl_toolkits.mplot3d import Axes3D # noqa
     if how == 1:
         for i in [1, 2, 3, 5, 6, 7]:
             assert eta_tensor[i] == 0

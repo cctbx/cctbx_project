@@ -2986,7 +2986,7 @@ class map_model_manager(object):
           assert target_seq == matching_seq  # same but could be different order
         if minimum_match_length and len(target_seq) < minimum_match_length:
           continue # skip it
- 
+
       else:
         local_target_model = target_model
         local_matching_model = matching_model
