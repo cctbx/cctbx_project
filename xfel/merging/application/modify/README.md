@@ -1,5 +1,4 @@
 # Resolving an Indexing Ambiguity and Laue Group Assignment
-Current status 1/16/2021: `dials.cosym` functions have been incorporated into `cctbx.xfel.merge` and are ready for alpha testing.
 
 ## Problem statement
 

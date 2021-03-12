@@ -22,17 +22,6 @@ class cosym(worker):
         "1 or >= 5 MPI ranks."
 
     self.logger.log_step_time("COSYM")
-    if False:
-      import pickle
-      with open("special.pickle","wb") as F:
-        pickle.dump((experiments,reflections), F)
-
-      return experiments,reflections
-    if False:
-      import pickle
-      with open("special.pickle","rb") as F:
-        experiments,reflections = pickle.load(F)
-
 
     all_sampling_experiments = experiments
     all_sampling_reflections = reflections
