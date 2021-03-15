@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include "nanotypes.h"
 #include "cuda_compatibility.h"
+#include <simtbx/nanoBragg/nanoBraggCUDA.cuh>
 using simtbx::nanoBragg::shapetype;
 using simtbx::nanoBragg::hklParams;
 using simtbx::nanoBragg::SQUARE;
@@ -24,10 +25,6 @@ using simtbx::nanoBragg::TOPHAT;
 
 static void CheckCudaErrorAux(const char *, unsigned, const char *, cudaError_t);
 #define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
-
-#ifndef CUDAREAL
-#define CUDAREAL float
-#endif
 
 #define THREADS_PER_BLOCK_X 128
 #define THREADS_PER_BLOCK_Y 1
@@ -374,32 +371,17 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
 }
 
 /* cubic spline interpolation functions */
-__device__ static void polint(const CUDAREAL *xa, const CUDAREAL *ya, CUDAREAL x, CUDAREAL *y);
 __device__ static void polin2(CUDAREAL *x1a, CUDAREAL *x2a, CUDAREAL ya[4][4], CUDAREAL x1, CUDAREAL x2, CUDAREAL *y);
 __device__ static void polin3(CUDAREAL *x1a, CUDAREAL *x2a, CUDAREAL *x3a, CUDAREAL ya[4][4][4], CUDAREAL x1, CUDAREAL x2, CUDAREAL x3, CUDAREAL *y);
 /* rotate a 3-vector about a unit vector axis */
 __device__ static CUDAREAL *rotate_axis(const CUDAREAL * __restrict__ v, CUDAREAL *newv, const CUDAREAL * __restrict__ axis, const CUDAREAL phi);
-__device__ static CUDAREAL *rotate_axis_ldg(const CUDAREAL * __restrict__ v, CUDAREAL * newv, const CUDAREAL * __restrict__ axis, const CUDAREAL phi);
-/* make a unit vector pointing in same direction and report magnitude (both args can be same vector) */
-__device__ static CUDAREAL unitize(CUDAREAL * vector, CUDAREAL *new_unit_vector);
-/* vector cross product where vector magnitude is 0th element */
-__device__ static CUDAREAL *cross_product(CUDAREAL * x, CUDAREAL * y, CUDAREAL * z);
-/* vector inner product where vector magnitude is 0th element */
-__device__ static CUDAREAL dot_product(const CUDAREAL * x, const CUDAREAL * y);
-__device__ static CUDAREAL dot_product_ldg(const CUDAREAL * __restrict__ x, CUDAREAL * y);
-/* measure magnitude of vector and put it in 0th element */
-__device__ static void magnitude(CUDAREAL *vector);
 /* scale the magnitude of a vector */
 __device__ static CUDAREAL vector_scale(CUDAREAL *vector, CUDAREAL *new_vector, CUDAREAL scale);
-/* rotate a 3-vector using a 9-element unitary matrix */
-__device__ void rotate_umat_ldg(CUDAREAL * v, CUDAREAL *newv, const CUDAREAL * __restrict__ umat);
 /* Fourier transform of a truncated lattice */
 __device__ static CUDAREAL sincg(CUDAREAL x, CUDAREAL N);
 //__device__ static CUDAREAL sincgrad(CUDAREAL x, CUDAREAL N);
 /* Fourier transform of a sphere */
 __device__ static CUDAREAL sinc3(CUDAREAL x);
-/* polarization factor from vectors */
-__device__ static CUDAREAL polarization_factor(CUDAREAL kahn_factor, CUDAREAL *incident, CUDAREAL *diffracted, const CUDAREAL * __restrict__ axis);
 
 __device__ __inline__ static int flatten3dindex(int x, int y, int z, int x_range, int y_range, int z_range);
 
@@ -981,78 +963,6 @@ __device__ CUDAREAL *rotate_axis(const CUDAREAL * __restrict__ v, CUDAREAL * new
 	return newv;
 }
 
-/* rotate a point about a unit vector axis */
-__device__ CUDAREAL *rotate_axis_ldg(const CUDAREAL * __restrict__ v, CUDAREAL * newv, const CUDAREAL * __restrict__ axis, const CUDAREAL phi) {
-
-	const CUDAREAL sinphi = sin(phi);
-	const CUDAREAL cosphi = cos(phi);
-	const CUDAREAL a1 = __ldg(&axis[1]);
-	const CUDAREAL a2 = __ldg(&axis[2]);
-	const CUDAREAL a3 = __ldg(&axis[3]);
-	const CUDAREAL v1 = __ldg(&v[1]);
-	const CUDAREAL v2 = __ldg(&v[2]);
-	const CUDAREAL v3 = __ldg(&v[3]);
-	const CUDAREAL dot = (a1 * v1 + a2 * v2 + a3 * v3) * (1.0 - cosphi);
-
-	newv[1] = a1 * dot + v1 * cosphi + (-a3 * v2 + a2 * v3) * sinphi;
-	newv[2] = a2 * dot + v2 * cosphi + (+a3 * v1 - a1 * v3) * sinphi;
-	newv[3] = a3 * dot + v3 * cosphi + (-a2 * v1 + a1 * v2) * sinphi;
-
-	return newv;
-}
-
-/* make provided vector a unit vector */
-__device__ CUDAREAL unitize(CUDAREAL * vector, CUDAREAL * new_unit_vector) {
-
-	CUDAREAL v1 = vector[1];
-	CUDAREAL v2 = vector[2];
-	CUDAREAL v3 = vector[3];
-	//	CUDAREAL mag = sqrt(v1 * v1 + v2 * v2 + v3 * v3);
-
-	CUDAREAL mag = norm3d(v1, v2, v3);
-
-	if (mag != 0.0) {
-		/* normalize it */
-		new_unit_vector[0] = mag;
-		new_unit_vector[1] = v1 / mag;
-		new_unit_vector[2] = v2 / mag;
-		new_unit_vector[3] = v3 / mag;
-	} else {
-		/* can't normalize, report zero vector */
-		new_unit_vector[0] = 0.0;
-		new_unit_vector[1] = 0.0;
-		new_unit_vector[2] = 0.0;
-		new_unit_vector[3] = 0.0;
-	}
-	return mag;
-}
-
-/* vector cross product where vector magnitude is 0th element */
-__device__ CUDAREAL *cross_product(CUDAREAL * x, CUDAREAL * y, CUDAREAL * z) {
-	z[1] = x[2] * y[3] - x[3] * y[2];
-	z[2] = x[3] * y[1] - x[1] * y[3];
-	z[3] = x[1] * y[2] - x[2] * y[1];
-	z[0] = 0.0;
-
-	return z;
-}
-
-/* vector inner product where vector magnitude is 0th element */
-__device__ CUDAREAL dot_product(const CUDAREAL * x, const CUDAREAL * y) {
-	return x[1] * y[1] + x[2] * y[2] + x[3] * y[3];
-}
-
-__device__ CUDAREAL dot_product_ldg(const CUDAREAL * __restrict__ x, CUDAREAL * y) {
-	return __ldg(&x[1]) * y[1] + __ldg(&x[2]) * y[2] + __ldg(&x[3]) * y[3];
-}
-
-/* measure magnitude of provided vector */
-__device__ void magnitude(CUDAREAL *vector) {
-
-	/* measure the magnitude */
-	vector[0] = sqrt(vector[1] * vector[1] + vector[2] * vector[2] + vector[3] * vector[3]);
-}
-
 /* scale magnitude of provided vector */
 __device__ CUDAREAL vector_scale(CUDAREAL *vector, CUDAREAL *new_vector, CUDAREAL scale) {
 
@@ -1062,29 +972,6 @@ __device__ CUDAREAL vector_scale(CUDAREAL *vector, CUDAREAL *new_vector, CUDAREA
 	magnitude(new_vector);
 
 	return new_vector[0];
-}
-
-/* rotate a vector using a 9-element unitary matrix */
-__device__ void rotate_umat_ldg(CUDAREAL * v, CUDAREAL *newv, const CUDAREAL * __restrict__ umat) {
-
-	/* for convenience, assign matrix x-y coordinate */
-	CUDAREAL uxx = __ldg(&umat[0]);
-	CUDAREAL uxy = __ldg(&umat[1]);
-	CUDAREAL uxz = __ldg(&umat[2]);
-	CUDAREAL uyx = __ldg(&umat[3]);
-	CUDAREAL uyy = __ldg(&umat[4]);
-	CUDAREAL uyz = __ldg(&umat[5]);
-	CUDAREAL uzx = __ldg(&umat[6]);
-	CUDAREAL uzy = __ldg(&umat[7]);
-	CUDAREAL uzz = __ldg(&umat[8]);
-	CUDAREAL v1 = v[1];
-	CUDAREAL v2 = v[2];
-	CUDAREAL v3 = v[3];
-
-	/* rotate the vector (x=1,y=2,z=3) */
-	newv[1] = uxx * v1 + uxy * v2 + uxz * v3;
-	newv[2] = uyx * v1 + uyy * v2 + uyz * v3;
-	newv[3] = uzx * v1 + uzy * v2 + uzz * v3;
 }
 
 /* Fourier transform of a grating */
@@ -1112,15 +999,6 @@ __device__ CUDAREAL sinc3(CUDAREAL x) {
 
 }
 
-__device__ void polint(const CUDAREAL *xa, const CUDAREAL *ya, CUDAREAL x, CUDAREAL *y) {
-	CUDAREAL x0, x1, x2, x3;
-	x0 = (x - xa[1]) * (x - xa[2]) * (x - xa[3]) * ya[0] / ((xa[0] - xa[1]) * (xa[0] - xa[2]) * (xa[0] - xa[3]));
-	x1 = (x - xa[0]) * (x - xa[2]) * (x - xa[3]) * ya[1] / ((xa[1] - xa[0]) * (xa[1] - xa[2]) * (xa[1] - xa[3]));
-	x2 = (x - xa[0]) * (x - xa[1]) * (x - xa[3]) * ya[2] / ((xa[2] - xa[0]) * (xa[2] - xa[1]) * (xa[2] - xa[3]));
-	x3 = (x - xa[0]) * (x - xa[1]) * (x - xa[2]) * ya[3] / ((xa[3] - xa[0]) * (xa[3] - xa[1]) * (xa[3] - xa[2]));
-	*y = x0 + x1 + x2 + x3;
-}
-
 __device__ void polin2(CUDAREAL *x1a, CUDAREAL *x2a, CUDAREAL ya[4][4], CUDAREAL x1, CUDAREAL x2, CUDAREAL *y) {
 	int j;
 	CUDAREAL ymtmp[4];
@@ -1140,179 +1018,4 @@ __device__ void polin3(CUDAREAL *x1a, CUDAREAL *x2a, CUDAREAL *x3a, CUDAREAL ya[
 	polint(x1a, ymtmp, x1, y);
 }
 
-/* polarization factor */
-__device__ CUDAREAL polarization_factor(CUDAREAL kahn_factor, CUDAREAL *incident, CUDAREAL *diffracted, const CUDAREAL * __restrict__ axis) {
-	CUDAREAL cos2theta, cos2theta_sqr, sin2theta_sqr;
-	CUDAREAL psi = 0.0;
-	CUDAREAL E_in[4], B_in[4], E_out[4], B_out[4];
-
-	//  these are already unitized before entering this loop. Optimize this out.
-	//	unitize(incident, incident);
-	//	unitize(diffracted, diffracted);
-
-	/* component of diffracted unit vector along incident beam unit vector */
-	cos2theta = dot_product(incident, diffracted);
-	cos2theta_sqr = cos2theta * cos2theta;
-	sin2theta_sqr = 1 - cos2theta_sqr;
-
-	if (kahn_factor != 0.0) {
-		/* tricky bit here is deciding which direciton the E-vector lies in for each source
-		 here we assume it is closest to the "axis" defined above */
-
-		CUDAREAL unitAxis[] = { axis[0], axis[1], axis[2], axis[3] };
-		// this is already unitized. Optimize this out.
-		unitize(unitAxis, unitAxis);
-
-		/* cross product to get "vertical" axis that is orthogonal to the cannonical "polarization" */
-		cross_product(unitAxis, incident, B_in);
-		/* make it a unit vector */
-		unitize(B_in, B_in);
-
-		/* cross product with incident beam to get E-vector direction */
-		cross_product(incident, B_in, E_in);
-		/* make it a unit vector */
-		unitize(E_in, E_in);
-
-		/* get components of diffracted ray projected onto the E-B plane */
-		E_out[0] = dot_product(diffracted, E_in);
-		B_out[0] = dot_product(diffracted, B_in);
-
-		/* compute the angle of the diffracted ray projected onto the incident E-B plane */
-		psi = -atan2(B_out[0], E_out[0]);
-	}
-
-	/* correction for polarized incident beam */
-	return 0.5 * (1.0 + cos2theta_sqr - kahn_factor * cos(2 * psi) * sin2theta_sqr);
-}
-
-__global__ void add_background_CUDAKernel(int sources, int nanoBragg_oversample,
-    CUDAREAL pixel_size, int spixels, int fpixels, int detector_thicksteps,
-    CUDAREAL detector_thickstep, CUDAREAL detector_attnlen,
-    const CUDAREAL * __restrict__ sdet_vector, const CUDAREAL * __restrict__ fdet_vector,
-    const CUDAREAL * __restrict__ odet_vector, const CUDAREAL * __restrict__ pix0_vector,
-    CUDAREAL close_distance, int point_pixel, CUDAREAL detector_thick,
-    const CUDAREAL * __restrict__ source_X, const CUDAREAL * __restrict__ source_Y,
-    const CUDAREAL * __restrict__ source_Z,
-    const CUDAREAL * __restrict__ source_lambda, const CUDAREAL * __restrict__ source_I,
-    int stols, const CUDAREAL * stol_of, const CUDAREAL * Fbg_of,
-    int nopolar, CUDAREAL polarization, const CUDAREAL * __restrict__ polar_vector,
-    CUDAREAL r_e_sqr, CUDAREAL fluence, CUDAREAL amorphous_molecules,
-    float * floatimage)
-{
-    int oversample=-1, override_source=-1; //override features that usually slow things down,
-                                           //like oversampling pixels & multiple sources
-    int source_start = 0;
-    /* allow user to override automated oversampling decision at call time with arguments */
-    if(oversample<=0) oversample = nanoBragg_oversample;
-    if(oversample<=0) oversample = 1;
-    if(override_source>=0) {
-        /* user-specified source in the argument */
-        source_start = override_source;
-        sources = source_start +1;
-    }
-    /* make sure we are normalizing with the right number of sub-steps */
-    int steps = oversample*oversample;
-    CUDAREAL subpixel_size = pixel_size/oversample;
-
-    /* sweep over detector */
-    const int total_pixels = spixels * fpixels;
-    const int fstride = gridDim.x * blockDim.x;
-    const int sstride = gridDim.y * blockDim.y;
-    const int stride = fstride * sstride;
-    for (int pixIdx = (blockDim.y * blockIdx.y + threadIdx.y) * fstride + blockDim.x * blockIdx.x + threadIdx.x;
-         pixIdx < total_pixels; pixIdx += stride) {
-      const int fpixel = pixIdx % fpixels;
-      const int spixel = pixIdx / fpixels;
-      /* position in pixel array */
-      const int j = pixIdx;
-      /* reset background photon count for this pixel */
-      CUDAREAL Ibg = 0;
-      int nearest = 0; // sort-stable alogorithm, instead of holding value over from previous pixel
-            /* loop over sub-pixels */
-            for(int subS=0;subS<oversample;++subS){
-                for(int subF=0;subF<oversample;++subF){
-                    /* absolute mm position on detector (relative to its origin) */
-                    CUDAREAL Fdet = subpixel_size*(fpixel*oversample + subF ) + subpixel_size/2.0;
-                    CUDAREAL Sdet = subpixel_size*(spixel*oversample + subS ) + subpixel_size/2.0;
-
-                    for(int thick_tic=0;thick_tic<detector_thicksteps;++thick_tic){
-                        /* assume "distance" is to the front of the detector sensor layer */
-                        CUDAREAL Odet = thick_tic*detector_thickstep;
-                        CUDAREAL pixel_pos[4];
-
-                        pixel_pos[1] = Fdet * __ldg(&fdet_vector[1]) + Sdet * __ldg(&sdet_vector[1]) + Odet * __ldg(&odet_vector[1]) + __ldg(&pix0_vector[1]); // X
-                        pixel_pos[2] = Fdet * __ldg(&fdet_vector[2]) + Sdet * __ldg(&sdet_vector[2]) + Odet * __ldg(&odet_vector[2]) + __ldg(&pix0_vector[2]); // X
-                        pixel_pos[3] = Fdet * __ldg(&fdet_vector[3]) + Sdet * __ldg(&sdet_vector[3]) + Odet * __ldg(&odet_vector[3]) + __ldg(&pix0_vector[3]); // X
-                        pixel_pos[0] = 0.0;
-                        /* no curved detector option (future implementation) */
-                        /* construct the diffracted-beam unit vector to this pixel */
-                        CUDAREAL diffracted[4];
-                        CUDAREAL airpath = unitize(pixel_pos,diffracted);
-
-                        /* solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta) */
-                        CUDAREAL omega_pixel = pixel_size*pixel_size/airpath/airpath*close_distance/airpath;
-                        /* option to turn off obliquity effect, inverse-square-law only */
-                        if(point_pixel) omega_pixel = 1.0/airpath/airpath;
-
-                        /* now calculate detector thickness effects */
-                        CUDAREAL capture_fraction = 1.0;
-                        if(detector_thick > 0.0){
-                            /* inverse of effective thickness increase */
-                            CUDAREAL parallax = dot_product(diffracted,odet_vector);
-                            capture_fraction = exp(-thick_tic*detector_thickstep/detector_attnlen/parallax)
-                                              -exp(-(thick_tic+1)*detector_thickstep/detector_attnlen/parallax);
-                        }
-
-                        /* loop over sources now */
-                        for(int source=source_start;source<sources;++source){
-
-                            /* retrieve stuff from cache */
-                            CUDAREAL incident[4];
-                            incident[1] = -__ldg(&source_X[source]);
-                            incident[2] = -__ldg(&source_Y[source]);
-                            incident[3] = -__ldg(&source_Z[source]);
-                            CUDAREAL lambda = __ldg(&source_lambda[source]);
-                            CUDAREAL source_fraction = __ldg(&source_I[source]);
-                            /* construct the incident beam unit vector while recovering source distance */
-                            unitize(incident,incident);
-
-                            /* construct the scattering vector for this pixel */
-                            CUDAREAL scattering[4];
-                            scattering[1] = (diffracted[1]-incident[1])/lambda;
-                            scattering[2] = (diffracted[2]-incident[2])/lambda;
-                            scattering[3] = (diffracted[3]-incident[3])/lambda;
-                            magnitude(scattering);
-                            /* sin(theta)/lambda is half the scattering vector length */
-                            CUDAREAL stol = 0.5*scattering[0];
-
-                            /* now we need to find the nearest four "stol file" points */
-                            while(stol > stol_of[nearest] && nearest <= stols){++nearest; };
-                            while(stol < stol_of[nearest] && nearest >= 2){--nearest; };
-
-                            /* cubic spline interpolation */
-                            CUDAREAL Fbg;
-                            polint(stol_of+nearest-1, Fbg_of+nearest-1, stol, &Fbg);
-
-                            /* allow negative F values to yield negative intensities */
-                            CUDAREAL sign=1.0;
-                            if(Fbg<0.0) sign=-1.0;
-
-                            /* now we have the structure factor for this pixel */
-
-                            /* polarization factor */
-                            CUDAREAL polar = 1.0;
-                            if(! nopolar){
-                                /* need to compute polarization factor */
-                                polar = polarization_factor(polarization,incident,diffracted,polar_vector);
-                            }
-
-                            /* accumulate unscaled pixel intensity from this */
-                            Ibg += sign*Fbg*Fbg*polar*omega_pixel*source_fraction*capture_fraction;
-                        } /* end of source loop */
-                    } /* end of detector thickness loop */
-                } /* end of sub-pixel y loop */
-            } /* end of sub-pixel x loop */
-            /* save photons/pixel (if fluence specified), or F^2/omega if no fluence given */
-            floatimage[j] += Ibg*r_e_sqr*fluence*amorphous_molecules/steps;    } // end of pixIdx loop
-}
 
