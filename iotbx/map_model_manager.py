@@ -2718,6 +2718,7 @@ class map_model_manager(object):
       one_to_one = False,
       residue_names_must_match = False,
       minimum_match_length = 2,
+      shift_without_deep_copy = False,
       quiet = True):
     '''
     Select the parts of matching_model that best match target_model
@@ -2740,6 +2741,10 @@ class map_model_manager(object):
       far_away residues from all other groups
 
     If very_far_away and very_far_away_n are set, also remove those
+
+    If target model or matching model have different origins from self, they
+      deep-copied and shifted in place to match. The deep copy can be
+      skipped if shift_without_deep_copy is set.
     '''
 
     from mmtbx.secondary_structure.find_ss_from_ca import \
@@ -2748,9 +2753,23 @@ class map_model_manager(object):
     if one_to_one:
        max_gap = 0
 
-    if not target_model:
+    if target_model:
+      if target_model.shift_cart() != self.shift_cart():
+        if not shift_without_deep_copy:
+          self.add_crystal_symmetry_if_necessary(target_model, 
+            map_manager = self.map_manager())
+          target_model = target_model.deep_copy()
+        self.shift_any_model_to_match(target_model)
+    else:
       target_model = self.get_model_by_id(target_model_id)
-    if not matching_model:
+    if matching_model:
+      if matching_model.shift_cart() != self.shift_cart():
+        if not shift_without_deep_copy:
+          self.add_crystal_symmetry_if_necessary(matching_model, 
+            map_manager = self.map_manager())
+          matching_model = matching_model.deep_copy()
+        self.shift_any_model_to_match(matching_model)
+    else:
       matching_model = self.get_model_by_id(matching_model_id)
     if not target_model or not matching_model:
       if not matching_model:
@@ -3011,6 +3030,31 @@ class map_model_manager(object):
           chain_type = chain_type,
           atom_name = atom_name,
           element = element)
+
+      diffs = self.get_diffs_for_matching_target_and_model(
+         matching_info = target_and_matching,
+         ca_only = True,
+         max_dist = max_dist)
+      rms_diffs = diffs.rms_length() if diffs.size()>0 else None
+      reverse_diffs = self.get_diffs_for_matching_target_and_model(
+         matching_info = target_and_matching,
+         ca_only = True,
+         max_dist = max_dist,
+         reverse = True)
+      rms_reverse_diffs = \
+         reverse_diffs.rms_length() if reverse_diffs.size()>0 else None
+      if rms_diffs is not None and (rms_reverse_diffs is None or 
+          rms_diffs <= rms_reverse_diffs):
+        target_and_matching.match_direction = True
+        target_and_matching.rms_diffs = rms_diffs
+      elif rms_diffs is not None and (rms_reverse_diffs is not None
+          and rms_diffs > rms_reverse_diffs):
+        target_and_matching.match_direction = False
+        target_and_matching.rms_diffs = rms_reverse_diffs
+      else:
+        target_and_matching.match_direction = None
+        target_and_matching.rms_diffs = None
+    
       target_and_matching_list.append(target_and_matching)
     return target_and_matching_list
 
