@@ -1681,8 +1681,8 @@ class helix(segment): # Methods specific to helices
         average_offset=0.5*(sites_offset_3+sites_offset_4)
       self.diffs=average_offset-self.sites[:-4]
       self.norms=self.diffs.norms()
-      if self.diffs.size() > 0:
-        self.diffs=self.diffs/self.diffs.norms()
+      self.norms.set_selected(self.norms<1.e-10,1.e-10)
+      self.diffs=self.diffs/self.diffs.norms()
         
     return self.diffs,self.norms
 
