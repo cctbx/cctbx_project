@@ -154,6 +154,93 @@ namespace af = scitbx::af;
   }
 
   void
+  exascale_api::add_energy_channel_mask_allpanel_cuda(
+    int const& ichannel,
+    simtbx::gpu::gpu_energy_channels & gec,
+    simtbx::gpu::gpu_detector & gdt,
+    af::shared<bool> all_panel_mask
+  ){
+        cudaSafeCall(cudaSetDevice(SIM.device_Id));
+
+        // here or there, need to convert the all_panel_mask (3D map) into a 1D list of accepted pixels
+        // coordinates for the active pixel list are absolute offsets into the detector array
+        af::shared<int> active_pixel_list;
+        const bool* jptr = all_panel_mask.begin();
+        for (int j=0; j < all_panel_mask.size(); ++j){
+          if (jptr[j]) {
+            active_pixel_list.push_back(j);
+          }
+        }
+        int * ptr_active_pixel_list = active_pixel_list.begin();
+        int * cu_active_pixel_list;
+        cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_list, sizeof(*cu_active_pixel_list) * active_pixel_list.size() ));
+        cudaSafeCall(cudaMemcpy(cu_active_pixel_list,
+                                ptr_active_pixel_list,
+                                sizeof(*cu_active_pixel_list) * active_pixel_list.size(),
+                                cudaMemcpyHostToDevice));
+        // transfer source_I, source_lambda
+        // the int arguments are for sizes of the arrays
+        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_I, SIM.source_I, SIM.sources));
+        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_lambda, SIM.source_lambda, SIM.sources));
+
+        // magic happens here: take pointer from singleton, temporarily use it for add Bragg iteration:
+        cu_current_channel_Fhkl = gec.d_channel_Fhkl[ichannel];
+
+        cudaDeviceProp deviceProps = { 0 };
+        cudaSafeCall(cudaGetDeviceProperties(&deviceProps, SIM.device_Id));
+        int smCount = deviceProps.multiProcessorCount;
+        dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+        dim3 numBlocks(smCount * 8, 1);
+
+        const int vec_len = 4;
+        int visited_so_far = 0;
+        // for call for all panels at the same time
+
+          debranch_maskall_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
+          gdt.cu_n_panels, gdt.cu_slow_pixels, gdt.cu_fast_pixels, active_pixel_list.size(),
+          SIM.oversample, SIM.point_pixel,
+          SIM.pixel_size, cu_subpixel_size, cu_steps,
+          SIM.detector_thickstep, SIM.detector_thicksteps,
+          SIM.detector_thick, SIM.detector_attnlen,
+          vec_len,
+          gdt.cu_sdet_vector,
+          gdt.cu_fdet_vector,
+          gdt.cu_odet_vector,
+          gdt.cu_pix0_vector,
+          gdt.cu_distance, gdt.cu_distance, cu_beam_vector,
+          gdt.cu_Xbeam, gdt.cu_Ybeam,
+          SIM.dmin, SIM.phi0, SIM.phistep, SIM.phisteps, cu_spindle_vector,
+          SIM.sources, cu_source_X, cu_source_Y, cu_source_Z,
+          cu_source_I, cu_source_lambda, cu_a0, cu_b0,
+          cu_c0, SIM.xtal_shape, SIM.mosaic_domains, cu_mosaic_umats,
+          SIM.Na, SIM.Nb, SIM.Nc, SIM.V_cell,
+          cu_water_size, cu_water_F, cu_water_MW, simtbx::nanoBragg::r_e_sqr, SIM.fluence,
+          simtbx::nanoBragg::Avogadro, SIM.spot_scale, SIM.integral_form, SIM.default_F,
+          cu_current_channel_Fhkl, gec.cu_FhklParams, SIM.nopolar,
+          cu_polar_vector, SIM.polarization, SIM.fudge,
+          &(cu_active_pixel_list[visited_so_far]),
+          gdt.cu_floatimage /*out*/,
+          gdt.cu_omega_reduction /*out*/,
+          gdt.cu_max_I_x_reduction /*out*/,
+          gdt.cu_max_I_y_reduction /*out*/,
+          gdt.cu_rangemap /*out*/);
+
+          cudaSafeCall(cudaPeekAtLastError());
+        cudaSafeCall(cudaDeviceSynchronize());
+
+        //don't want to free the gec data when the nanoBragg goes out of scope, so switch the pointer
+        cu_current_channel_Fhkl = NULL;
+
+        add_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(gdt.cu_accumulate_floatimage,
+          gdt.cu_floatimage,
+          gdt.cu_n_panels * gdt.cu_slow_pixels * gdt.cu_fast_pixels);
+
+        cudaSafeCall(cudaFree(cu_active_pixel_list)); //refactor XXX so the host-to-device data is persistent
+                                                      // also afford automatic switching between mask and all
+  }
+
+
+  void
   exascale_api::add_background_cuda(simtbx::gpu::gpu_detector & gdt){
         cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
