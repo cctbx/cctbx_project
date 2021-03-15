@@ -462,7 +462,7 @@ newarray._sigmas = sigs
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getOpenFileName(self.window,
             "Open a reflection file", "",
-            "MTZ Files (*.mtz);;HKL Files (*.hkl);;CIF Files (*.cif);;SCA Files (*.sca);;All Files (*)", "", options)
+            "MTZ Files (*.mtz);;CIF Files (*.cif);;HKL Files (*.hkl);;SCA Files (*.sca);;All Files (*)", "", options)
     if fileName:
       #self.HKLnameedit.setText(fileName)
       self.window.setWindowTitle("HKLviewer: " + fileName)
@@ -472,6 +472,7 @@ newarray._sigmas = sigs
       self.send_message('openfilename = "%s"' %fileName )
       self.MillerComboBox.clear()
       self.BinDataComboBox.clear()
+      self.millertable.clearContents()
       self.tncsvec = []
       #self.ClipPlaneChkGroupBox.setChecked(False)
       self.expandP1checkbox.setChecked(False)

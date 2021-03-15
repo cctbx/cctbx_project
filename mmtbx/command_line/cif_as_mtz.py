@@ -249,7 +249,7 @@ def extract(file_name,
     base_array_info = miller.array_info(
       crystal_symmetry_from_file=crystal_symmetry)
     all_miller_arrays = iotbx.cif.reader(file_path=file_name).build_miller_arrays(
-      base_array_info=base_array_info)
+      base_array_info=base_array_info) #, style="new")
   if (len(all_miller_arrays) == 0):
     raise Sorry("No data arrays were found in this CIF file.  Please make "+
       "sure that the file contains reflection data, rather than the refined "+
@@ -302,6 +302,7 @@ def extract(file_name,
         crystal_symmetry=crystal_symmetry).set_info(ma.info())
       labels = ma.info().labels
       label = get_label(miller_array=ma, output_r_free_label=output_r_free_label)
+      #label = ma.info().label_string()
       if label is None:
         print("Can't determine output label for %s - skipping." % \
           ma.info().label_string(), file=log)
