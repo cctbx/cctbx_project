@@ -1683,7 +1683,7 @@ class helix(segment): # Methods specific to helices
       self.norms=self.diffs.norms()
       self.norms.set_selected(self.norms<1.e-10,1.e-10)
       self.diffs=self.diffs/self.norms
-        
+
     return self.diffs,self.norms
 
 
@@ -2208,7 +2208,7 @@ class find_segment: # class to look for a type of segment
             segment_start=None
             still_changing=True
       segment_dict=new_segment_dict
-      for i in segment_dict.keys():
+      for i in list(segment_dict.keys()):
         segment_length=segment_dict[i]+1+self.last_residue_offset-i
         if segment_length<minimum_length:
           del segment_dict[i] # not long enough

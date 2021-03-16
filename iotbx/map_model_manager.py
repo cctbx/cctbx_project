@@ -2756,7 +2756,7 @@ class map_model_manager(object):
     if target_model:
       if target_model.shift_cart() != self.shift_cart():
         if not shift_without_deep_copy:
-          self.add_crystal_symmetry_if_necessary(target_model, 
+          self.add_crystal_symmetry_if_necessary(target_model,
             map_manager = self.map_manager())
           target_model = target_model.deep_copy()
         self.shift_any_model_to_match(target_model)
@@ -2765,7 +2765,7 @@ class map_model_manager(object):
     if matching_model:
       if matching_model.shift_cart() != self.shift_cart():
         if not shift_without_deep_copy:
-          self.add_crystal_symmetry_if_necessary(matching_model, 
+          self.add_crystal_symmetry_if_necessary(matching_model,
             map_manager = self.map_manager())
           matching_model = matching_model.deep_copy()
         self.shift_any_model_to_match(matching_model)
@@ -3043,7 +3043,7 @@ class map_model_manager(object):
          reverse = True)
       rms_reverse_diffs = \
          reverse_diffs.rms_length() if reverse_diffs.size()>0 else None
-      if rms_diffs is not None and (rms_reverse_diffs is None or 
+      if rms_diffs is not None and (rms_reverse_diffs is None or
           rms_diffs <= rms_reverse_diffs):
         target_and_matching.match_direction = True
         target_and_matching.rms_diffs = rms_diffs
@@ -3054,7 +3054,7 @@ class map_model_manager(object):
       else:
         target_and_matching.match_direction = None
         target_and_matching.rms_diffs = None
-    
+
       target_and_matching_list.append(target_and_matching)
     return target_and_matching_list
 
