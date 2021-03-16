@@ -41,16 +41,23 @@ def is_residue_specified(code, alternate=False):
 
 def get_cif_dictionary(code,
                        filename=None,
+                       old_reader=False,
                        ):
   if filename is not None:
-    cif = cif_parser.run(filename)
+    if old_reader:
+      cif = cif_parser.run2(filename)
+    else:
+      cif = cif_parser.run(filename)
   elif code in loaded_cifs:
     cif = loaded_cifs[code]
   else:
     filename = get_cif_filename(code)
     cif=None
     if os.path.exists(filename):
-      cif = cif_parser.run(filename)
+      if old_reader:
+        cif = cif_parser.run2(filename)
+      else:
+        cif = cif_parser.run(filename)
       loaded_cifs[code] = cif
   return cif
 
