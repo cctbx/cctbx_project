@@ -20,6 +20,7 @@ steps:
 - script: |
     cd $(Pipeline.Workspace)
     tar -xf modules.tar
+    rm modules.tar
     rm modules/ls49_big_data/adse13_228/exap_0.hdf5
     rm modules/ls49_big_data/adse13_196/reference/step5_MPIbatch_000*.img.gz
   displayName: Extract modules tarball
