@@ -475,7 +475,7 @@ class Toolbox(object):
     destpath, destdir = os.path.split(destination)
 
     # default to using ssh for private phenix repositories
-    if module in ['phenix', 'solve_resolve', 'pathwalker', 'phaser_voyager', 'phasertng']:
+    if module in ['phenix', 'solve_resolve', 'phenix_pathwalker', 'phaser_voyager', 'phasertng']:
       use_ssh = True
 
     if os.path.exists(destination):
@@ -897,9 +897,9 @@ class buildbot_module(SourceModule):
   module = 'buildbot'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/buildbot/trunk']
 
-class pathwalker_module(SourceModule):
-  module = 'pathwalker'
-  anonymous = ['git', 'git@github.com:phenix-project/pathwalker.git']
+class phenix_pathwalker_module(SourceModule):
+  module = 'phenix_pathwalker'
+  anonymous = ['git', 'git@github.com:phenix-project/phenix_pathwalker.git']
 
 # Phaser repositories
 class phaser_module(SourceModule):
@@ -2246,7 +2246,7 @@ class PhenixBuilder(CCIBuilder):
     'phenix_regression',
     'phenix_html',
     'phenix_examples',
-    'pathwalker',
+    'phenix_pathwalker',
     'labelit',
     'Plex',
     'PyQuante',
@@ -2277,7 +2277,7 @@ class PhenixBuilder(CCIBuilder):
     'phenix_dev_doc',
     'phenix_regression',
     'phenix_examples',
-    'pathwalker',
+    'phenix_pathwalker',
     'solve_resolve',
     'reel',
     'phaser',
