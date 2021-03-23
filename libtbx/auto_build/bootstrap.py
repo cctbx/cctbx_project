@@ -897,6 +897,10 @@ class buildbot_module(SourceModule):
   module = 'buildbot'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/buildbot/trunk']
 
+class pathwalker_module(SourceModule):
+  module = 'pathwalker'
+  anonymous = ['git', 'git@github.com:phenix-project/pathwalker.git']
+
 # Phaser repositories
 class phaser_module(SourceModule):
   module = 'phaser'
@@ -2242,6 +2246,7 @@ class PhenixBuilder(CCIBuilder):
     'phenix_regression',
     'phenix_html',
     'phenix_examples',
+    'pathwalker',
     'labelit',
     'Plex',
     'PyQuante',
@@ -2272,6 +2277,7 @@ class PhenixBuilder(CCIBuilder):
     'phenix_dev_doc',
     'phenix_regression',
     'phenix_examples',
+    'pathwalker',
     'solve_resolve',
     'reel',
     'phaser',
