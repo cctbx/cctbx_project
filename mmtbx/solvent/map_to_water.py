@@ -470,15 +470,15 @@ class run_one(object):
         unit_cell   = self.unit_cell,
         center_cart = site_cart,
         radius      = 1.0)
-      mi,ma,me = o.rho
-      if(self.debug):
-        _debug_show_all_plots(
-          map_data    = self.map_data,
-          unit_cell   = self.unit_cell,
-          center_cart = site_cart,
-          radius      = 1.0,
-          plot_number = str("%d_%4.2f_%4.2f"%(i, o.ccs[0],o2.ccs[0])))
-      fl = (mi>0 and ma>0 and me>0 and o.ccs[0]>0.95 and o2.ccs[0]>0.90)
+      mi,ma,me = o2.rho
+      #if(self.debug):
+      #  _debug_show_all_plots(
+      #    map_data    = self.map_data,
+      #    unit_cell   = self.unit_cell,
+      #    center_cart = site_cart,
+      #    radius      = 1.0,
+      #    plot_number = str("%d_%4.2f_%4.2f"%(i, o.ccs[0],o2.ccs[0])))
+      fl = (mi>0 and ma>0 and me>0 and o.ccs[0]>0.97 and o2.ccs[0]>0.90)
       if(fl):
         tmp.append(site_frac)
         #print i, "%6.3f %6.3f %6.3f"%mv.min_max_mean().as_tuple(),\
@@ -510,7 +510,7 @@ class run_one(object):
         map_data    = self.map_data,
         unit_cell   = self.unit_cell,
         center_cart = site_cart,
-        radius      = 0.5,
+        radius      = 1.0,
         plot_number = str("%d_%4.2f_%4.2f"%(i+1, o.ccs[0],o2.ccs[0])))
 
   def _append_to_model(self):
