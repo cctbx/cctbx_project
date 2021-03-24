@@ -57,6 +57,9 @@ class mpi_logger(object):
     self.log_buffer = ''
     log_file_handle.close()
 
+  def info(self, message):
+    self.log("INFO: "+str(message))
+
   def main_log(self, message):
     '''Log a message to the main log file'''
 
