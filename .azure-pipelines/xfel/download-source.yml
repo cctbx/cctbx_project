@@ -51,7 +51,7 @@ jobs:
         git co https://gitlab.com/cctbx/xfel_regression.git $(Pipeline.Workspace)/modules/xfel_regression
       fi
       cd $(Pipeline.Workspace)/modules/xfel_regression
-      git reset --hard origin/test_modify_cosym
+      git reset --hard origin/main
       git lfs install --local
       git pull --rebase
       git lfs pull
