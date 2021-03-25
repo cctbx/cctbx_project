@@ -56,8 +56,14 @@ from __future__ import absolute_import, division, print_function
 
 from libtbx import adopt_init_args
 from libtbx.utils import to_str
-import xmlrpclib
-import httplib
+try:
+  import xmlrpclib
+except ImportError:
+  import xmlrpc.client as xmlrpclib
+try:
+  import httplib
+except ImportError:
+  import http.client as httplib
 import socket
 import subprocess
 import threading

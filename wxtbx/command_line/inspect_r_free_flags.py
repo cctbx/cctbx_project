@@ -25,7 +25,7 @@ def ask_for_file_name(parent=None):
   import iotbx.file_reader
   file_name = wx.FileSelector(
     message="Select a reflections file",
-    flags=wx.OPEN,
+    flags=wx.FD_OPEN,
     wildcard=iotbx.file_reader.get_wildcard_strings(["hkl"]))
   if (file_name == "") or (file_name is None):
     raise Abort()

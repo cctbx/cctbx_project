@@ -145,7 +145,7 @@ class plot_container(wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin):
       default_filename=default_filename,
       wildcard="Adobe PDF figure (*.pdf)|*.pdf|" + \
                "PNG image (*.png)|*.png|" + \
-               "Postscript figure (*.ps)|*.ps", flags=wx.SAVE)
+               "Postscript figure (*.ps)|*.ps", flags=wx.FD_SAVE)
     if output_file != "" :
       if output_file[-3:] == "pdf" :
         self.figure.savefig(output_file, orientation="landscape", format="pdf")

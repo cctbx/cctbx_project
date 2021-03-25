@@ -34,13 +34,13 @@ class manager(object):
   def select_file(self,
                    parent,
                    message,
-                   style=wx.OPEN,
+                   style=wx.FD_OPEN,
                    wildcard="All files (*.*)|*.*",
                    current_file=None,
                    multiple=False,
                    save=None):
     if (save):
-      style = wx.SAVE
+      style = wx.FD_SAVE
     default_dir = self.last_dir
     default_file = ""
     if (current_file is not None) and (current_file != ""):
