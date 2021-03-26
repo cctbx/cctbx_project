@@ -534,9 +534,15 @@ parallel {
 }
 """
 
+publish_phil = """
+publish {
+  include scope xfel.command_line.upload_mtz.phil_scope
+}
+"""
+
 master_phil = dispatch_phil + input_phil + tdata_phil + filter_phil + modify_phil + \
               select_phil + scaling_phil + postrefinement_phil + merging_phil + \
-              output_phil + statistics_phil + group_phil
+              output_phil + statistics_phil + group_phil + publish_phil
 phil_scope = parse(master_phil, process_includes = True)
 
 class Script(object):
