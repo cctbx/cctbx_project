@@ -678,7 +678,7 @@ class manager(object):
   def shift_model_and_set_crystal_symmetry(self,
        shift_cart,     # shift to apply
        crystal_symmetry = None, # optional new crystal symmetry
-       unit_cell_crystal_symmetry = None, # optional new 
+       unit_cell_crystal_symmetry = None, # optional new
              #unit_cell_crystal_symmetry
        ):
 

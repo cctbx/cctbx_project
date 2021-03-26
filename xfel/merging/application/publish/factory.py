@@ -1,4 +1,4 @@
-from xfel.command_line import upload_mtz
+from __future__ import division
 from xfel.merging.application.publish.publisher import publisher
 from xfel.merging.application.worker import factory as factory_base
 

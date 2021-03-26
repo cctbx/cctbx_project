@@ -1,3 +1,4 @@
+from __future__ import division
 from xfel.merging.application.worker import worker
 from xfel.command_line.upload_mtz import run_with_preparsed as run_publish
 import os
