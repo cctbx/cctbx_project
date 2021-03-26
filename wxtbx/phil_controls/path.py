@@ -19,7 +19,7 @@ class PathCtrl(wx.PyPanel, phil_controls.PhilCtrl):
   def __init__(self, *args, **kwds):
     phil_controls.PhilCtrl.__init__(self)
     self.SetOptional(True) # this will be overridden elsewhere if necessary
-    wx.SystemOptions.SetOption("osx.openfiledialog.always-show-types", 1)
+    wx.SystemOptions.SetOption("osx.openfiledialog.always-show-types", "1")
     kwds = dict(kwds)
     self._path_style = kwds.get("style", WXTBX_PHIL_PATH_VIEW_BUTTON)
     assert ((self._path_style & WXTBX_PHIL_PATH_DIRECTORY) or
