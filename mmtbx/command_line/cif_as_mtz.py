@@ -183,7 +183,13 @@ def process_files(file_name,
 def get_label(miller_array, output_r_free_label):
   label = None
   for l in miller_array.info().labels:
-    if ('_meas' in l):
+    if miller_array.anomalous_flag():
+      if miller_array.is_xray_amplitude_array():
+        label = "F"
+      elif miller_array.is_xray_intensity_array():
+        label = "I"
+      break
+    elif ('_meas' in l):
       if miller_array.is_xray_amplitude_array():
         label = "FOBS"
       elif miller_array.is_xray_intensity_array():
@@ -196,16 +202,10 @@ def get_label(miller_array, output_r_free_label):
         label = "FC"
       elif miller_array.is_xray_intensity_array():
         label = "ICALC"
-      elif l.endswith(".F_calc"):
+      elif ".F_calc" in l: # cope with _refln.F_calc_au  and _refln.F_calc labels
         label = "FC"
       elif l.endswith(".phase_calc"):
         label = "PHIC"
-      break
-    elif miller_array.anomalous_flag():
-      if miller_array.is_xray_amplitude_array():
-        label = "F"
-      elif miller_array.is_xray_intensity_array():
-        label = "I"
       break
     elif 'status' in l or '_free' in l:
       label = output_r_free_label
@@ -249,7 +249,7 @@ def extract(file_name,
     base_array_info = miller.array_info(
       crystal_symmetry_from_file=crystal_symmetry)
     all_miller_arrays = iotbx.cif.reader(file_path=file_name).build_miller_arrays(
-      base_array_info=base_array_info) #, style="new")
+      base_array_info=base_array_info, style="new")
   if (len(all_miller_arrays) == 0):
     raise Sorry("No data arrays were found in this CIF file.  Please make "+
       "sure that the file contains reflection data, rather than the refined "+
@@ -674,4 +674,4 @@ def finish_job(results):
   return ([], [])
 
 if(__name__ == "__main__"):
-   run(sys.argv[1:])
+  run(sys.argv[1:])
