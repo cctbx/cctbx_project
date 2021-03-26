@@ -116,7 +116,6 @@ class map_model_manager(object):
                verbose = False):
 
     # Checks
-
     if extra_model_list is None: extra_model_list = []
     if extra_map_manager_list is None: extra_map_manager_list = []
     for m in [model] + extra_model_list:
@@ -312,7 +311,6 @@ class map_model_manager(object):
     if model:
        assert mmmn.model() is not None # make sure we got it
     model = mmmn.model()  # this model knows about shift
-
     if model:
       # Make sure model shift manager agrees with any_map_manager shift
       assert approx_equal(model.shift_cart(), any_map_manager.shift_cart())

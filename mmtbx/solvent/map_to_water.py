@@ -178,6 +178,7 @@ def attribute_water_to_chains(model):
     model_input = None,
     pdb_hierarchy = nonw,
     crystal_symmetry = model.crystal_symmetry())
+  new_model.set_shift_cart(model.shift_cart())
   new_model.get_hierarchy().atoms().reset_i_seq()
   return new_model
 

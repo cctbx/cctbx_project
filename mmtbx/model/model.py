@@ -678,7 +678,8 @@ class manager(object):
   def shift_model_and_set_crystal_symmetry(self,
        shift_cart,     # shift to apply
        crystal_symmetry = None, # optional new crystal symmetry
-       unit_cell_crystal_symmetry = None, # optional new unit_cell_crystal_symmetry
+       unit_cell_crystal_symmetry = None, # optional new 
+             #unit_cell_crystal_symmetry
        ):
 
     '''
@@ -702,7 +703,6 @@ class manager(object):
 
     assert unit_cell_crystal_symmetry is None or isinstance(
       unit_cell_crystal_symmetry,  crystal.symmetry)
-
 
     # Get shift info  that knows about unit_cell_crystal_symmetry
     #   and any prevous shift_cart
@@ -738,7 +738,7 @@ class manager(object):
     #   model, it is not the shift in this step alone. It is the shift which
     #   reversed will put the model back where it belongs
 
-    self._shift_cart = total_shift
+    self._shift_cart = tuple(total_shift)
     self._unit_cell_crystal_symmetry =  unit_cell_crystal_symmetry
 
   def shift_model_back(self):
