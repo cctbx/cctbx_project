@@ -591,7 +591,7 @@ class miller_array_builder(crystal_symmetry_builder):
 
   def init_new(self, cif_block, base_array_info=None, wavelengths=None):
     """
-    Using regular expression for parsing data labels adn associating data columns
+    Using regular expression for parsing data labels and associating data columns
     appropriately
     """
     crystal_symmetry_builder.__init__(self, cif_block)
@@ -668,6 +668,7 @@ class miller_array_builder(crystal_symmetry_builder):
               sigmas = self.flex_std_string_as_miller_array(
                 sigmasstrarray, wavelength_id=w_id, crystal_id=crys_id,
                 scale_group_code=scale_group)
+              if millarr is None or sigmas is None: continue
               millarr.set_sigmas(sigmas.data())
               datsiglabl = [datlabl, siglabl]
               if labelsuffix:
@@ -686,6 +687,7 @@ class miller_array_builder(crystal_symmetry_builder):
               phasesmillarr = self.flex_std_string_as_miller_array(
                 phasestrarray, wavelength_id=w_id, crystal_id=crys_id,
                 scale_group_code=scale_group)
+              if millarr is None or phasesmillarr is None: continue
               phases = as_flex_double(phasesmillarr, mapcoefflabl[1])
               millarr = millarr.phase_transfer(phases, deg=True)
               if labelsuffix:
@@ -702,7 +704,7 @@ class miller_array_builder(crystal_symmetry_builder):
                 hl_values = [as_double_or_none_if_all_question_marks(
                   hl.select(selection), column_name=lab)
                               for hl, lab in zip(hl_values, hl_labels)]
-
+                if hl_values is None: continue
                 millarr = miller.array(miller.set(
                   self.crystal_symmetry, self.indices.select(selection)
                   ).auto_anomalous(), flex.hendrickson_lattman(*hl_values))
@@ -723,6 +725,7 @@ class miller_array_builder(crystal_symmetry_builder):
                 millarr = self.flex_std_string_as_miller_array(
                   datastrarray, wavelength_id=w_id, crystal_id=crys_id,
                   scale_group_code=scale_group)
+                if millarr is None: continue
                 otype = self.guess_observationtype(label)
                 if otype is not None:
                   millarr.set_observation_type(otype)
