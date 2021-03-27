@@ -6,11 +6,6 @@ from dials.util import Sorry
 import os, sys
 import re
 
-try:
-  from pydrive2.auth import ServiceAccountCredentials, GoogleAuth
-  from pydrive2.drive import GoogleDrive
-except ImportError:
-  raise Sorry("Pydrive2 not found. Try:\n$ conda install pydrive2 -c conda-forge")
 
 help_message = """
 
@@ -71,6 +66,11 @@ class pydrive2_interface:
   """
 
   def __init__(self, cred_file, folder_id):
+    try:
+      from pydrive2.auth import ServiceAccountCredentials, GoogleAuth
+      from pydrive2.drive import GoogleDrive
+    except ImportError:
+      raise Sorry("Pydrive2 not found. Try:\n$ conda install pydrive2 -c conda-forge")
     gauth = GoogleAuth()
     scope = ['https://www.googleapis.com/auth/drive']
     gauth.credentials = ServiceAccountCredentials.from_json_keyfile_name(
