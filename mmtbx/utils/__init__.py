@@ -2464,6 +2464,20 @@ class extract_box_around_model_and_map(object):
     fft_map.apply_sigma_scaling()
     return fft_map
 
+  def apply_mask_inplace(self, atom_radius):
+    assert self.map_box.origin() == (0,0,0)
+    import boost_adaptbx.boost.python as bp
+    cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
+    radii = flex.double(self.xray_structure_box.scatterers().size(),atom_radius)
+    mask = cctbx_maptbx_ext.mask(
+      sites_frac                  = self.xray_structure_box.sites_frac(),
+      unit_cell                   = self.crystal_symmetry.unit_cell(),
+      n_real                      = self.map_box.all(),
+      mask_value_inside_molecule  = 1,
+      mask_value_outside_molecule = 0,
+      radii                       = radii)
+    self.map_box = self.map_box * mask
+
   def map_coefficients(self, d_min, resolution_factor, file_name="box.mtz",
      scale_max=None,
      shift_back=None):
