@@ -95,14 +95,14 @@ class ncs_aware_refinement(object):
       atom_radius    = self.atom_radius,
       d_min          = self.d_min)
     #
-    from mmtbx.refinement import adp_refinement
-    adp_iso_params = adp_refinement.adp_restraints_master_params.extract().iso
-    energies_adp_iso = self.restraints_manager.energies_adp_iso(
-        xray_structure    = fmodel.xray_structure,
-        parameters        = adp_iso_params,
-        use_u_local_only  = adp_iso_params.use_u_local_only,
-        use_hd            = False,
-        compute_gradients = True)
+    #from mmtbx.refinement import adp_refinement
+    #adp_iso_params = adp_refinement.adp_restraints_master_params.extract().iso
+    #energies_adp_iso = self.restraints_manager.energies_adp_iso(
+    #    xray_structure    = fmodel.xray_structure,
+    #    parameters        = adp_iso_params,
+    #    use_u_local_only  = adp_iso_params.use_u_local_only,
+    #    use_hd            = False,
+    #    compute_gradients = True)
     #
     # selections for group ADP
     ph_box = model.get_hierarchy()
