@@ -1888,7 +1888,7 @@ class map_model_manager(object):
 
     ncs_groups = model.get_ncs_groups()
     selection_list = []
-    if ncs_groups is None or len(ncs_groups) < 2:
+    if ncs_groups is None or len(ncs_groups) < 1:
       selection_list =  [model.selection("all")]
     else:
       for g in ncs_groups:
