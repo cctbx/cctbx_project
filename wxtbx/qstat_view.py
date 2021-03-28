@@ -9,7 +9,7 @@ try :
 except ImportError :
   GenericMessageDialog = wx.MessageBox
 
-import sys, os, time
+import sys, time
 
 import getpass
 user = getpass.getuser()
