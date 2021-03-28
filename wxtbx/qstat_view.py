@@ -11,10 +11,8 @@ except ImportError :
 
 import sys, os, time
 
-if sys.platform in ["linux", "linux2", "linux3", "darwin"] :
-  user = os.environ['USER']
-else :
-  user = None # is it even worth bothering with Windows here?
+import getpass
+user = getpass.getuser()
 
 job_attrs = ["job_id", "state", "name", "user", "submit", "queue"]
 job_labels = ["Job ID", "Status", "Name", "User", "Start time", "Queue"]
