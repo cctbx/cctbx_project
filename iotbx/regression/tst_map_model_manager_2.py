@@ -99,8 +99,8 @@ def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
 
 
   # Merge in various ways
-  for selection_method in ['by_chain', 'by_segment','supplied_selections',
-      'boxes']:
+  for selection_method in ['by_ncs_groups', 'by_chain', 'by_segment',
+       'supplied_selections', 'boxes']:
     if selection_method == 'boxes':
       choices = [True, False]
     else:
@@ -131,11 +131,14 @@ def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
             selection = a.model().selection('all')
             box_info = a.split_up_map_and_model_by_supplied_selections(
               selection_list = [selection])
+          elif selection_method == 'by_ncs_groups':
+            box_info = a.split_up_map_and_model_by_ncs_groups()
           elif selection_method == 'boxes':
             box_info = a.split_up_map_and_model_by_boxes(
               skip_empty_boxes = skip_empty_boxes,
               select_final_boxes_based_on_model =
                 select_final_boxes_based_on_model)
+          assert box_info is not None
           print (selection_method,skip_empty_boxes,
               len(box_info.selection_list),
               box_info.selection_list[0].count(True))
@@ -146,6 +149,7 @@ def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
                 ("by_chain",True,1,86,),
                 ("by_segment",True,1,86,),
                 ("supplied_selections",True,1,86,),
+                ("by_ncs_groups",True,1,86),
                 ("boxes",True,7,9),
                 ("boxes",False,12,0,),
                 ("boxes",True,13,1,),

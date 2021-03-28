@@ -1851,6 +1851,59 @@ class map_model_manager(object):
       apply_box_info = apply_box_info,
       write_files = write_files)
 
+  def split_up_map_and_model_by_ncs_groups(self,
+    model_id = 'model',
+    box_cushion = 3,
+    mask_around_unselected_atoms = None,
+    mask_radius = 3,
+    masked_value = -10,
+    write_files = False,
+    apply_box_info = True,
+     ):
+    '''
+     Split up the map, boxing around atoms selected with each ncs group in
+     ncs_groups obtained from supplied model
+
+
+       Returns a group_args object containing list of the map_model_manager
+         objects and a list of the selection objects that define which atoms
+         from the working model are in each object.
+
+       Normally do work on each map_model_manager to create a new model with
+         the same atoms, then use merge_split_maps_and_models() to replace
+         coordinates in the original model with those from all the component
+         models.
+       Optionally carry out the step box_info = get_split_maps_and_models(...)
+         separately with the keyword apply_box_info=False
+
+       box_cushion is the padding around the model atoms when creating boxes
+    '''
+
+    if model_id is None:
+      model_id = 'model'
+    model = self.get_model_by_id(model_id = model_id)
+    if model is None:
+      print("No model to work with", file = self.log)
+      return None # no model to work with
+
+    ncs_groups = model.get_ncs_groups()
+    selection_list = []
+    if ncs_groups is None or len(ncs_groups) < 2:
+      selection_list =  [model.selection("all")]
+    else:
+      for g in ncs_groups:
+        selection_list.append(g.master_iselection)
+
+    return self._split_up_map_and_model(
+      selection_method = 'supplied_selections',
+      model_id = model_id,
+      selection_list = selection_list,
+      box_cushion = box_cushion,
+      mask_around_unselected_atoms = mask_around_unselected_atoms,
+      mask_radius = mask_radius,
+      masked_value = masked_value,
+      apply_box_info = apply_box_info,
+      write_files = write_files)
   def split_up_map_and_model_by_supplied_selections(self,
     selection_list,
     model_id = 'model',
