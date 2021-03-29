@@ -346,13 +346,11 @@ namespace sx_merging {
               if (weights_ == "count") {
                 wij_row.push_back(ik);
                 wij_col.push_back(jk);
-                wij_data.push_back(2*n_obs); //The factor of 2 is to match a bug
-                                             //in the original implementation.
+                wij_data.push_back(n_obs);
                 if (i_row != j_col) {
                   wij_row.push_back(jk);
                   wij_col.push_back(ik);
-                  wij_data.push_back(2*n_obs); //The factor of 2 is to match a bug
-                                               //in the original implementation.
+                  wij_data.push_back(n_obs);
                 }
               }
             }
