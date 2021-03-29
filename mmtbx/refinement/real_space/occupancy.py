@@ -55,12 +55,6 @@ class ncs_aware_refinement(object):
 
   def run_one_one(self, args):
     model = args[0].deep_copy()
-    fmodel = dependency.map_and_model_to_fmodel(
-      map_data       = self.mmm.map_data().deep_copy(),
-      xray_structure = model.get_xray_structure(),
-      atom_radius    = self.atom_radius,
-      d_min          = self.d_min)
-    model.set_xray_structure(xray_structure = fmodel.xray_structure)
     # selections for refinable occupancies
     selections = mmtbx.refinement.occupancies.occupancy_selections(
       model                              = model,
@@ -71,6 +65,15 @@ class ncs_aware_refinement(object):
       as_flex_arrays                     = True,
       constrain_correlated_3d_groups     = False,
       log                                = self.log)
+    if(selections is None or len(selections)==0):
+      return model.get_occ()
+    #
+    fmodel = dependency.map_and_model_to_fmodel(
+      map_data       = self.mmm.map_data().deep_copy(),
+      xray_structure = model.get_xray_structure(),
+      atom_radius    = self.atom_radius,
+      d_min          = self.d_min)
+    model.set_xray_structure(xray_structure = fmodel.xray_structure)
     #
     refla = mmtbx.refinement.refinement_flags.manager(
       occupancies=True, s_occupancies = selections)
