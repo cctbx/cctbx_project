@@ -1726,6 +1726,12 @@ class map_manager(map_reader, write_ccp4_map):
     map_uc=self.unit_cell_crystal_symmetry()
     map_sym=self.crystal_symmetry()
 
+    model_uc = model_uc if model_uc and model_uc.unit_cell() is not None else None
+    model_sym = model_sym if model_sym and model_sym.unit_cell() is not None else None
+    map_uc = map_uc if map_uc and map_uc.unit_cell() is not None else None
+    map_sym = map_sym if map_sym and map_sym.unit_cell() is not None else None
+    
+
     if not require_match_unit_cell_crystal_symmetry and \
         model_uc and model_sym and model_uc.is_similar_symmetry(model_sym):
       # Ignore the model_uc because it may or may not have come from

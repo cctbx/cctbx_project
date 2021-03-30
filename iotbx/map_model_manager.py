@@ -194,8 +194,11 @@ class map_model_manager(object):
 
     if any_map_manager:
       for m in [model] + extra_model_list:
+        print("ZZA",m.crystal_symmetry(),m.unit_cell_crystal_symmetry())
         self.add_crystal_symmetry_if_necessary(m, map_manager = any_map_manager)
+        print("ZZB",m.crystal_symmetry(),m.unit_cell_crystal_symmetry())
         self.shift_any_model_to_match(m, map_manager = any_map_manager)
+        print("ZZC",m.crystal_symmetry(),m.unit_cell_crystal_symmetry())
 
 
     if any_map_manager and ignore_symmetry_conflicts:
@@ -3332,6 +3335,8 @@ class map_model_manager(object):
     Take any model and add crystal symmetry if it is missing
     Changes model in place
      Parameters:  model
+
+    Also add unit_cell_crystal_symmetry if missing
     '''
     if not model:
       return
