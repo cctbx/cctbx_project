@@ -779,16 +779,20 @@ class miller_array_builder(crystal_symmetry_builder):
 
     if len(self._arrays) == 0:
       raise CifBuilderError("No reflection data present in cif block")
+
     # Sort the ordered dictionary to resemble the order of columns in the cif file
-    # This is to avoid any F_meas accidentally being adjacent to pdbx_anom_difference
-    # which may unintentionally be converted into a combined anomalous array when saving as mtz
-    # See http://phenix-online.org/pipermail/cctbxbb/2021-March/002289.html
+    # This is to avoid any F_meas arrays accidentally being put adjacent to 
+    # pdbx_anom_difference arrays in the self._arrays OrderedDict.Otherwise these 
+    # arrays may unintentionally be combined into an anomalous array when saving 
+    # as an mtz file, http://phenix-online.org/pipermail/cctbxbb/2021-March/002289.html
     arrlstord = []
     arrlst = list(self._arrays)
     for arr in arrlst:
       for i,k in enumerate(refln_loop.keys()):
         if arr.split(",")[0] == k:
           arrlstord.append((arr, i))
+    # arrlstord must have the same keys as in self._arrays
+    assert sorted(arrlst) == sorted([ e[0] for e in arrlstord] )
     sortarrlst = sorted(arrlstord, key=lambda arrord: arrord[1])
     self._ordarrays = OrderedDict()
     for sortkey,i in sortarrlst:
