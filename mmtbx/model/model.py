@@ -1780,6 +1780,7 @@ class manager(object):
     self._update_master_sel()
 
   def _update_master_sel(self):
+    # Rewrite using master iselection and move to ncs_restraint_group_list.py
     if self._ncs_groups is not None and len(self._ncs_groups) > 0:
       # determine master selections
       self._master_sel = flex.bool(self.get_number_of_atoms(), True)
