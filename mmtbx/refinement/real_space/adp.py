@@ -62,7 +62,8 @@ def get_plain_pair_sym_table(crystal_symmetry, sites_frac, plain_pairs_radius=5)
   return pair_asu_table.extract_pair_sym_table()
 
 class tg(object):
-  def __init__(self, fmodel, x):
+  def __init__(self, fmodel, x, restraints_weight):
+    self.restraints_weight = restraints_weight
     self.fmodel = fmodel
     self.plain_pair_sym_table = get_plain_pair_sym_table(
       crystal_symmetry = self.fmodel.xray_structure.crystal_symmetry(),
@@ -108,8 +109,8 @@ class tg(object):
     R = self._restraints()
     D = self._data()
     self.tgo = group_args(
-      target   = D.target()*self.weight + R.target,
-      gradient = D.gradient_xray*self.weight + R.gradients)
+      target   = D.target()*self.weight + R.target*self.restraints_weight,
+      gradient = D.gradient_xray*self.weight + R.gradients*self.restraints_weight)
     return self.tgo
 
   def update(self, x):
@@ -129,13 +130,14 @@ class tg(object):
 
 class ncs_aware_refinement(object):
   def __init__(self, map_model_manager, d_min, atom_radius, nproc=1,
-               log = None, individual = True):
+               log = None, individual = True, restraints_weight = 1):
     self.mmm         = map_model_manager
     self.nproc       = nproc
     self.d_min       = d_min
     self.atom_radius = atom_radius
     self.log         = log
     self.individual  = individual
+    self.restraints_weight = restraints_weight
     #
     if(self.nproc>1): self.log = None
     #
@@ -209,7 +211,8 @@ class ncs_aware_refinement(object):
         x = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
         lower = flex.double(x.size(), 0)
         upper = flex.double(x.size(), flex.max(x)*2)
-        calculator = tg(fmodel = fmodel, x = x)
+        calculator = tg(
+          fmodel = fmodel, x = x, restraints_weight = self.restraints_weight)
         m = tncs.minimizer(
           potential      = calculator,
           use_bounds     = 2,
