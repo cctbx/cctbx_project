@@ -335,7 +335,7 @@ class miller_array_builder(crystal_symmetry_builder):
     '_refln.Fcalc': xray.amplitude(),
     '_refln.pdbx_F_': xray.amplitude(),
     '_refln.pdbx_I_': xray.intensity(),
-    '_refln.pdbx_anom_difference': xray.amplitude(),
+    #'_refln.pdbx_anom_difference': xray.amplitude(),
   }
 
   def guess_observationtype(self, labl):
@@ -652,11 +652,11 @@ class miller_array_builder(crystal_symmetry_builder):
             # If reflection data files contain more than one crystal, wavelength or scalegroup
             # then add the value(s) as a suffix to data labels computed below.
             # Needed for avoiding ambuguity in cif_as_mtz()
-            if len(wavelength_ids) > 0 and len(wavelengths) > 1:
+            if (len(wavelength_ids) > 0 or len(wavelengths) > 1) and w_id is not None:
               wavelbl = ["wavelength_id=%i" %w_id]
-            if len(crystal_ids) > 1:
+            if len(crystal_ids) > 1 and crys_id is not None:
               cryslbl = ["crys_id=%i" %crys_id]
-            if len(scale_groups) > 1:
+            if len(scale_groups) > 1 and scale_group is not None:
               scalegrplbl = ["scale_group=%i" %scale_group]
             labelsuffix = wavelbl + cryslbl + scalegrplbl
             for datlabl,siglabl,otype in data_sig_obstype_labls:
@@ -669,6 +669,7 @@ class miller_array_builder(crystal_symmetry_builder):
                 sigmasstrarray, wavelength_id=w_id, crystal_id=crys_id,
                 scale_group_code=scale_group)
               if millarr is None or sigmas is None: continue
+              sigmas = as_flex_double(sigmas, siglabl)
               millarr.set_sigmas(sigmas.data())
               datsiglabl = [datlabl, siglabl]
               if labelsuffix:
@@ -691,8 +692,8 @@ class miller_array_builder(crystal_symmetry_builder):
               phases = as_flex_double(phasesmillarr, mapcoefflabl[1])
               millarr = millarr.phase_transfer(phases, deg=True)
               if labelsuffix:
-                mapcoefflabl = mapcoefflabl  + labelsuffix
-              millarr.set_info(base_array_info.customized_copy(labels= mapcoefflabl ,
+                labl = mapcoefflabl  + labelsuffix
+              millarr.set_info(base_array_info.customized_copy(labels= labl ,
                                                         wavelength=wavelengths.get(w_id, None)))
               self._arrays[millarr.info().label_string() ] = millarr
             for hl_labels in HLcoefflabls:
@@ -709,8 +710,8 @@ class miller_array_builder(crystal_symmetry_builder):
                   self.crystal_symmetry, self.indices.select(selection)
                   ).auto_anomalous(), flex.hendrickson_lattman(*hl_values))
                 if labelsuffix:
-                  hl_labels = hl_labels  + labelsuffix
-                millarr.set_info(base_array_info.customized_copy(labels= hl_labels,
+                  hlabels = hl_labels  + labelsuffix
+                millarr.set_info(base_array_info.customized_copy(labels= hlabels,
                                                          wavelength=wavelengths.get(w_id, None)))
                 self._arrays[millarr.info().label_string() ] = millarr
             # pick up remaining columns if any that weren't identified above
@@ -778,7 +779,21 @@ class miller_array_builder(crystal_symmetry_builder):
 
     if len(self._arrays) == 0:
       raise CifBuilderError("No reflection data present in cif block")
-
+    # Sort the ordered dictionary to resemble the order of columns in the cif file
+    # This is to avoid any F_meas accidentally being adjacent to pdbx_anom_difference
+    # which may unintentionally be converted into a combined anomalous array when saving as mtz
+    # See http://phenix-online.org/pipermail/cctbxbb/2021-March/002289.html
+    arrlstord = []
+    arrlst = list(self._arrays)
+    for arr in arrlst:
+      for i,k in enumerate(refln_loop.keys()):
+        if arr.split(",")[0] == k:
+          arrlstord.append((arr, i))
+    sortarrlst = sorted(arrlstord, key=lambda arrord: arrord[1])
+    self._ordarrays = OrderedDict()
+    for sortkey,i in sortarrlst:
+      self._ordarrays.setdefault(sortkey, self._arrays[sortkey])
+    self._arrays = self._ordarrays
 
   def get_HL_labels(self, keys):
     lstkeys = list(keys) # cast into list if not a list
