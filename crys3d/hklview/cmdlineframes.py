@@ -544,7 +544,12 @@ class HKLViewFrame() :
     valid_arrays = []
     self.viewer.array_infostrs = []
     self.viewer.array_infotpls = []
-    for i,array in enumerate(arrays) :
+    spg = arrays[0].space_group()
+    for i,array in enumerate(arrays):
+      if array.space_group() is None:
+        array._space_group_info = spg.info()
+        self.mprint("""No space group info present in the %d. miller array.
+\nBorrowing space group info from the first miller array""" %i)
       arrayinfo = ArrayInfo(array, self.mprint)
       self.viewer.array_infostrs.append( arrayinfo.infostr )
       self.viewer.array_infotpls.append( arrayinfo.infotpl )
