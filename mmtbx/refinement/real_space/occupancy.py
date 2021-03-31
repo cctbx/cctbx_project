@@ -78,6 +78,8 @@ class ncs_aware_refinement(object):
     refla = mmtbx.refinement.refinement_flags.manager(
       occupancies=True, s_occupancies = selections)
     model.set_refinement_flags(flags = refla)
+    if(self.log is not None):
+      print("r_start: %6.4f"%fmodel.r_work(), file=self.log)
     o = mmtbx.refinement.occupancies.manager(
       fmodels                  = mmtbx.fmodels(fmodel_xray = fmodel),
       model                    = model,
@@ -87,5 +89,7 @@ class ncs_aware_refinement(object):
       occupancy_min            = 0,
       exclude_hd               = False,
       log                      = self.log)
+    if(self.log is not None):
+      print("r_final: %6.4f"%fmodel.r_work(), file=self.log)
     #
     return fmodel.xray_structure.scatterers().extract_occupancies()

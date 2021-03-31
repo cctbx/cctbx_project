@@ -176,6 +176,7 @@ class ncs_aware_refinement(object):
       for i, result in enumerate(stdout_and_results):
         values = values.set_selected(selections[i], result[1])
       model.set_b_iso(values = values)
+      return values
 
   def run_one_one(self, args):
     model = args[0]
@@ -206,7 +207,8 @@ class ncs_aware_refinement(object):
     #
     if(self.individual):
       from mmtbx.ncs import tncs
-      print("r_work (start): %6.4f"%fmodel.r_work(), file=self.log)
+      if(self.log is not None):
+        print("r_work (start): %6.4f"%fmodel.r_work(), file=self.log)
       for it in [1,2]:
         x = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
         lower = flex.double(x.size(), 0)
@@ -219,6 +221,7 @@ class ncs_aware_refinement(object):
           lower_bound    = lower,
           upper_bound    = upper,
           initial_values = x).run()
-        print("r_work: %6.4f"%fmodel.r_work(), file=self.log)
+        if(self.log is not None):
+          print("r_work: %6.4f"%fmodel.r_work(), file=self.log)
     #
     return fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)

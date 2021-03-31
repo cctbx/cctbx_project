@@ -1176,7 +1176,9 @@ def assert_xray_structures_equal(
       occupancies = True,
       elements = True,
       scattering_types = True,
-      eps = 1.e-6):
+      eps = 1.e-6,
+      eps_occ = None):
+  if(eps_occ is None): eps_occ = eps
   assert x1.scatterers().size() == x2.scatterers().size()
   cs1 = x1.crystal_symmetry()
   cs2 = x2.crystal_symmetry()
@@ -1192,7 +1194,7 @@ def assert_xray_structures_equal(
                         x2.extract_u_iso_or_u_equiv(), eps)
   if(occupancies):
     assert approx_equal(x1.scatterers().extract_occupancies(),
-                        x2.scatterers().extract_occupancies(), eps)
+                        x2.scatterers().extract_occupancies(), eps_occ)
   if(elements):
     sct1 = x1.scatterers().extract_scattering_types()
     sct2 = x2.scatterers().extract_scattering_types()
