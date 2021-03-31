@@ -301,7 +301,7 @@ class input(object):
     msg="Empty selection in NCS group definition: %s"
     if not validate_user_supplied_groups:
       for ncs_group in ncs_phil_groups:
-        print("  Copying user-supplied groups without validation:")
+        print("  Copying user-supplied groups without validation:", file=self.log)
         show_particular_ncs_group(ncs_group)
         m_isel = asc.iselection(ncs_group.reference)
         ng = NCS_restraint_group(
