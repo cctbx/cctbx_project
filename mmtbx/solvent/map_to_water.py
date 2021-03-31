@@ -178,6 +178,7 @@ def attribute_water_to_chains(model):
     model_input = None,
     pdb_hierarchy = nonw,
     crystal_symmetry = model.crystal_symmetry())
+  new_model.set_shift_cart(model.shift_cart())
   new_model.get_hierarchy().atoms().reset_i_seq()
   return new_model
 
@@ -240,6 +241,8 @@ class run(object):
       dist_max          = self.params.dist_max,
       step              = self.params.step,
       map_threshold     = self.params.map_threshold,
+      scc05             = self.params.scc05,
+      scc1              = self.params.scc1,
       sphericity_filter = self.params.sphericity_filter,
       debug             = self.params.debug,
       total_time        = self.total_time,
@@ -266,6 +269,8 @@ class run(object):
         step              = self.params.step,
         map_threshold     = self.params.map_threshold,
         sphericity_filter = self.params.sphericity_filter,
+        scc05             = self.params.scc05,
+        scc1              = self.params.scc1,
         debug             = self.params.debug,
         total_time        = self.total_time,
         log               = self.log).map_model_manager
@@ -288,6 +293,8 @@ class run_one(object):
                step=0.3,
                map_threshold=1.5,
                sphericity_filter=True,
+               scc05=0.97,
+               scc1=0.9,
                debug=False,
                log=None,
                total_time=0,
@@ -470,15 +477,15 @@ class run_one(object):
         unit_cell   = self.unit_cell,
         center_cart = site_cart,
         radius      = 1.0)
-      mi,ma,me = o.rho
-      if(self.debug):
-        _debug_show_all_plots(
-          map_data    = self.map_data,
-          unit_cell   = self.unit_cell,
-          center_cart = site_cart,
-          radius      = 1.0,
-          plot_number = str("%d_%4.2f_%4.2f"%(i, o.ccs[0],o2.ccs[0])))
-      fl = (mi>0 and ma>0 and me>0 and o.ccs[0]>0.95 and o2.ccs[0]>0.90)
+      mi,ma,me = o2.rho
+      #if(self.debug):
+      #  _debug_show_all_plots(
+      #    map_data    = self.map_data,
+      #    unit_cell   = self.unit_cell,
+      #    center_cart = site_cart,
+      #    radius      = 1.0,
+      #    plot_number = str("%d_%4.2f_%4.2f"%(i, o.ccs[0],o2.ccs[0])))
+      fl = (mi>0 and ma>0 and me>0 and o.ccs[0]>self.scc05 and o2.ccs[0]>self.scc1)
       if(fl):
         tmp.append(site_frac)
         #print i, "%6.3f %6.3f %6.3f"%mv.min_max_mean().as_tuple(),\
@@ -510,7 +517,7 @@ class run_one(object):
         map_data    = self.map_data,
         unit_cell   = self.unit_cell,
         center_cart = site_cart,
-        radius      = 0.5,
+        radius      = 1.0,
         plot_number = str("%d_%4.2f_%4.2f"%(i+1, o.ccs[0],o2.ccs[0])))
 
   def _append_to_model(self):

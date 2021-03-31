@@ -475,7 +475,7 @@ class Toolbox(object):
     destpath, destdir = os.path.split(destination)
 
     # default to using ssh for private phenix repositories
-    if module in ['phenix', 'solve_resolve', 'phaser_voyager', 'phasertng']:
+    if module in ['phenix', 'solve_resolve', 'phenix_pathwalker', 'phaser_voyager', 'phasertng']:
       use_ssh = True
 
     if os.path.exists(destination):
@@ -780,7 +780,7 @@ class cbflib_module(SourceModule):
   anonymous = ['git',
                'git@github.com:yayahjb/cbflib.git',
                'https://github.com/yayahjb/cbflib.git',
-               'https://github.com/yayahjb/cbflib/archive/master.zip']
+               'https://github.com/yayahjb/cbflib/archive/main.zip']
 
 class ccp4io_adaptbx(SourceModule):
   module = 'ccp4io_adaptbx'
@@ -896,6 +896,10 @@ class cxi_xdr_xes_module(SourceModule):
 class buildbot_module(SourceModule):
   module = 'buildbot'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/buildbot/trunk']
+
+class phenix_pathwalker_module(SourceModule):
+  module = 'phenix_pathwalker'
+  anonymous = ['git', 'git@github.com:phenix-project/phenix_pathwalker.git']
 
 # Phaser repositories
 class phaser_module(SourceModule):
@@ -2242,6 +2246,7 @@ class PhenixBuilder(CCIBuilder):
     'phenix_regression',
     'phenix_html',
     'phenix_examples',
+    'phenix_pathwalker',
     'labelit',
     'Plex',
     'PyQuante',
@@ -2272,6 +2277,7 @@ class PhenixBuilder(CCIBuilder):
     'phenix_dev_doc',
     'phenix_regression',
     'phenix_examples',
+    'phenix_pathwalker',
     'solve_resolve',
     'reel',
     'phaser',

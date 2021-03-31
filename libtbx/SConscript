@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -938,6 +939,9 @@ int main() {
     env_etc.static_bpl = 0
 
     min_macos = 10.9
+    # check for Apple Silicon (only works for natively compiled Python)
+    if platform.mac_ver()[-1] == 'arm64':
+      min_macos = 11.0
     base_macos_flags = ['-stdlib=libc++', '-mmacosx-version-min=%s' % min_macos]
 
     link_flags = ["-w"] # suppress "source/lib does not exist" warning

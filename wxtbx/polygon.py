@@ -158,7 +158,7 @@ class PolygonPanel(wx.Panel):
     self.renderer.draw(gc)
     output_file = wx.FileSelector("Save image as:",
       default_filename="polygon.png",
-      wildcard="PNG image (*.png)|*.png", flags=wx.SAVE)
+      wildcard="PNG image (*.png)|*.png", flags=wx.FD_SAVE)
     if output_file != "" :
       bitmap.SaveFile(output_file, wx.BITMAP_TYPE_PNG)
     if event is not None :

@@ -83,7 +83,7 @@ class SymmetryDialog(wx.Dialog):
   def OnLoadSymmetry(self, event):
     file_name = wx.FileSelector(
       message="Select a reflection or PDB file containing symmetry",
-      flags=wx.OPEN)
+      flags=wx.FD_OPEN)
     if (file_name != ""):
       from iotbx import crystal_symmetry_from_any
       symm = crystal_symmetry_from_any.extract_from(file_name)

@@ -461,7 +461,7 @@ class rec(object):
     uq = self.axis_and_angle_as_unit_quaternion(angle=angle, deg=deg)
     return uq.unit_quaternion_as_r3_rotation_matrix()
 
-  def axis_and_angle_as_r3_derivative_wrt_angle(self, angle, deg=False):
+  def axis_and_angle_as_r3_derivative_wrt_angle(self, angle, deg=False, second_order=False):
     assert self.n in ((3,1), (1,3))
     prefactor = 1.
     if (deg): angle *= math.pi/180; prefactor = 180./math.pi
@@ -471,7 +471,10 @@ class rec(object):
     OP = unit_axis.outer_product(unit_axis)
     CP = cross_product_matrix(unit_axis.elems)
     c, s = math.cos(angle), math.sin(angle)
-    return prefactor * ( -I3*s + OP*s + CP*c ) # bug fix 8/27/13 NKS
+    if second_order:
+      return prefactor * (-I3*c + OP*c - CP*s)
+    else:
+      return prefactor * ( -I3*s + OP*s + CP*c ) # bug fix 8/27/13 NKS
     # note: the rotation operator itself is prefactor * (I3*c + OP*(1-c) + CP*s)
 
   def rt_for_rotation_around_axis_through(self, point, angle, deg=False):

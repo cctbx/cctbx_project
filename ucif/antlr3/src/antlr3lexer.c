@@ -148,18 +148,26 @@ antlr3LexerNew(ANTLR3_UINT32 sizeHint, pANTLR3_RECOGNIZER_SHARED_STATE state)
      */
     specialT                                    = &(lexer->rec->state->tokSource->eofToken);
     antlr3SetTokenAPI     (specialT);
-    specialT->type              = ANTLR3_TOKEN_EOF;
+    specialT->setType     (specialT, ANTLR3_TOKEN_EOF);
     specialT->factoryMade               = ANTLR3_TRUE;                                  // Prevent things trying to free() it
     specialT->strFactory        = NULL;
         specialT->textState                     = ANTLR3_TEXT_NONE;
+        specialT->custom                        = NULL;
+        specialT->user1                         = 0;
+        specialT->user2                         = 0;
+        specialT->user3                         = 0;
 
         // Initialize the skip token.
         //
     specialT                                    = &(lexer->rec->state->tokSource->skipToken);
     antlr3SetTokenAPI     (specialT);
-    specialT->type              = ANTLR3_TOKEN_INVALID;
+    specialT->setType     (specialT, ANTLR3_TOKEN_INVALID);
     specialT->factoryMade               = ANTLR3_TRUE;                                  // Prevent things trying to free() it
     specialT->strFactory        = NULL;
+        specialT->custom                        = NULL;
+        specialT->user1                         = 0;
+        specialT->user2                         = 0;
+        specialT->user3                         = 0;
     return  lexer;
 }
 
@@ -168,7 +176,7 @@ reset   (pANTLR3_BASE_RECOGNIZER rec)
 {
     pANTLR3_LEXER   lexer;
 
-    lexer   = rec->super;
+    lexer   = (pANTLR3_LEXER)rec->super;
 
     lexer->rec->state->token                        = NULL;
     lexer->rec->state->type                         = ANTLR3_TOKEN_INVALID;
@@ -240,6 +248,11 @@ nextTokenStr        (pANTLR3_TOKEN_SOURCE toksource)
             state->tokenStartCharPositionInLine     = input->charPositionInLine;
             state->tokenStartLine                   = input->line;
             state->text                             = NULL;
+            state->custom                           = NULL;
+            state->user1                            = 0;
+            state->user2                            = 0;
+            state->user3                            = 0;
+
             if  (istream->_LA(istream, 1) == ANTLR3_CHARSTREAM_EOF)
             {
                 // Reached the end of the current stream, nothing more to do if this is
@@ -249,7 +262,7 @@ nextTokenStr        (pANTLR3_TOKEN_SOURCE toksource)
 
                 teof->setStartIndex (teof, lexer->getCharIndex(lexer));
                 teof->setStopIndex  (teof, lexer->getCharIndex(lexer));
-                teof->line = lexer->getLine(lexer);
+                teof->setLine       (teof, lexer->getLine(lexer));
                 teof->factoryMade = ANTLR3_TRUE;        // This isn't really manufactured but it stops things from trying to free it
                 return  teof;
             }
@@ -330,12 +343,12 @@ nextToken           (pANTLR3_TOKEN_SOURCE toksource)
         // stream we just consumed, otherwise we will return EOF
         // on the reinstalled input stream, when in actual fact
         // there might be more input streams to POP before the
-        // real EOF of the whole logical inptu stream. Hence we
-        // use a while loop here until we find somethign in the stream
+        // real EOF of the whole logical input stream. Hence we
+        // use a while loop here until we find something in the stream
         // that isn't EOF or we reach the actual end of the last input
         // stream on the stack.
         //
-        while   (tok->type == ANTLR3_TOKEN_EOF)
+        while   ((tok != NULL) && (tok->type == ANTLR3_TOKEN_EOF))
         {
                 pANTLR3_LEXER   lexer;
 
@@ -636,6 +649,7 @@ emit        (pANTLR3_LEXER lexer)
     * trying to emit a new token.
     */
     token   = lexer->rec->state->tokFactory->newToken(lexer->rec->state->tokFactory);
+        if (token == NULL) { return NULL; }
 
     /* Install the supplied information, and some other bits we already know
     * get added automatically, such as the input stream it is associated with
@@ -657,6 +671,11 @@ emit        (pANTLR3_LEXER lexer)
     {
         token->textState        = ANTLR3_TEXT_NONE;
     }
+    token->lineStart    = lexer->input->currentLine;
+    token->user1        = lexer->rec->state->user1;
+    token->user2        = lexer->rec->state->user2;
+    token->user3        = lexer->rec->state->user3;
+    token->custom       = lexer->rec->state->custom;
 
     lexer->rec->state->token        = token;
 

@@ -73,6 +73,7 @@ struct gpu_detector{
   /* all-panel packed GPU representation of the multi-panel metrology */
   CUDAREAL * cu_sdet_vector, * cu_fdet_vector;
   CUDAREAL * cu_odet_vector, * cu_pix0_vector;
+  CUDAREAL * cu_distance, * cu_Xbeam, * cu_Ybeam;
 
   packed_metrology const metrology;
   private:

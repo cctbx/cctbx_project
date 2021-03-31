@@ -345,8 +345,8 @@ antlr3RecognitionExceptionNew(pANTLR3_BASE_RECOGNIZER recognizer)
         case    ANTLR3_TOKENSTREAM:
 
                 ex->token               = cts->tstream->_LT                                             (cts->tstream, 1);          /* Current input token                          */
-                ex->line                = ((pANTLR3_COMMON_TOKEN)(ex->token))->line;
-                ex->charPositionInLine  = ((pANTLR3_COMMON_TOKEN)(ex->token))->charPosition;
+                ex->line                = ((pANTLR3_COMMON_TOKEN)(ex->token))->getLine                  ((pANTLR3_COMMON_TOKEN)(ex->token));
+                ex->charPositionInLine  = ((pANTLR3_COMMON_TOKEN)(ex->token))->getCharPositionInLine    ((pANTLR3_COMMON_TOKEN)(ex->token));
                 ex->index               = cts->tstream->istream->index                                  (cts->tstream->istream);
                 if      (((pANTLR3_COMMON_TOKEN)(ex->token))->type == ANTLR3_TOKEN_EOF)
                 {
@@ -362,8 +362,8 @@ antlr3RecognitionExceptionNew(pANTLR3_BASE_RECOGNIZER recognizer)
         case    ANTLR3_COMMONTREENODE:
 
                 ex->token               = tns->_LT                                                  (tns, 1);       /* Current input tree node                      */
-                ex->line                = ((pANTLR3_BASE_TREE)(ex->token))->getLine                 (ex->token);
-                ex->charPositionInLine  = ((pANTLR3_BASE_TREE)(ex->token))->getCharPositionInLine   (ex->token);
+                ex->line                = ((pANTLR3_BASE_TREE)(ex->token))->getLine                 ((pANTLR3_BASE_TREE)(ex->token));
+                ex->charPositionInLine  = ((pANTLR3_BASE_TREE)(ex->token))->getCharPositionInLine   ((pANTLR3_BASE_TREE)(ex->token));
                 ex->index               = tns->istream->index                                       (tns->istream);
 
                 // Are you ready for this? Deep breath now...
@@ -586,7 +586,7 @@ mismatchIsMissingToken(pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_INT_STREAM is
                 // EOR can follow, but if we are not the start symbol, we
                 // need to remove it.
                 //
-                if      (recognizer->state->following->vector->count >= 0)
+                //if    (recognizer->state->following->vector->count >= 0) ml: always true
                 {
                         followClone->remove(followClone, ANTLR3_EOR_TOKEN_TYPE);
                 }
@@ -1063,7 +1063,7 @@ displayRecognitionError     (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8 *
                 tparser     = NULL;
                 is                      = parser->tstream->istream;
                 theToken    = (pANTLR3_COMMON_TOKEN)(recognizer->state->exception->token);
-                ttext       = theToken->getText(theToken);
+                ttext       = theToken->toString(theToken);
 
                 ANTLR3_FPRINTF(stderr, ", at offset %d", recognizer->state->exception->charPositionInLine);
                 if  (theToken != NULL)
@@ -1266,7 +1266,7 @@ displayRecognitionError     (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8 *
                         }
                         else
                         {
-                                ANTLR3_FPRINTF(stderr, "Actually we didn't seem to be expecting anything here, or at least\n");
+                                ANTLR3_FPRINTF(stderr, "Actually dude, we didn't seem to be expecting anything here, or at least\n");
                                 ANTLR3_FPRINTF(stderr, "I could not work out what I was expecting, like so many of us these days!\n");
                         }
                 }
@@ -1589,7 +1589,7 @@ recoverFromMismatchedSet            (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3
         {
                 // We can fake the missing token and proceed
                 //
-                matchedSymbol = recognizer->getMissingSymbol(recognizer, is, recognizer->state->exception, ANTLR3_TOKEN_INVALID, follow);
+                matchedSymbol = (pANTLR3_COMMON_TOKEN)recognizer->getMissingSymbol(recognizer, is, recognizer->state->exception, ANTLR3_TOKEN_INVALID, follow);
                 recognizer->state->exception->type      = ANTLR3_MISSING_TOKEN_EXCEPTION;
                 recognizer->state->exception->token     = matchedSymbol;
 
@@ -2119,6 +2119,8 @@ synpred (pANTLR3_BASE_RECOGNIZER recognizer, void * ctx, void (*predicate)(void 
 static void
 reset(pANTLR3_BASE_RECOGNIZER recognizer)
 {
+  pANTLR3_EXCEPTION thisE;
+
     if  (recognizer->state->following != NULL)
     {
                 recognizer->state->following->free(recognizer->state->following);
@@ -2142,6 +2144,13 @@ reset(pANTLR3_BASE_RECOGNIZER recognizer)
                 }
         }
 
+  // ml: 2013-11-05, added reset of old exceptions.
+  thisE = recognizer->state->exception;
+  if    (thisE != NULL)
+  {
+    thisE->freeEx(thisE);
+    recognizer->state->exception = NULL;
+  }
 
     // Install a new following set
     //
@@ -2180,7 +2189,7 @@ getMissingSymbol                        (pANTLR3_BASE_RECOGNIZER recognizer, pAN
         // If we are at EOF, we use the token before EOF
         //
         current = ts->_LT(ts, 1);
-        if      (current->type == ANTLR3_TOKEN_EOF)
+        if      (current->getType(current) == ANTLR3_TOKEN_EOF)
         {
                 current = ts->_LT(ts, -1);
         }
@@ -2196,13 +2205,19 @@ getMissingSymbol                        (pANTLR3_BASE_RECOGNIZER recognizer, pAN
                 recognizer->state->tokFactory = antlr3TokenFactoryNew(current->input);
         }
         token   = recognizer->state->tokFactory->newToken(recognizer->state->tokFactory);
+        if (token == NULL) { return NULL; }
 
         // Set some of the token properties based on the current token
         //
-        token->line                                           = current->line;
-        token->charPosition                   = current->charPosition;
-        token->channel                                = ANTLR3_TOKEN_DEFAULT_CHANNEL;
-        token->type                       = expectedTokenType;
+        token->setLine                                  (token, current->getLine(current));
+        token->setCharPositionInLine    (token, current->getCharPositionInLine(current));
+        token->setChannel                               (token, ANTLR3_TOKEN_DEFAULT_CHANNEL);
+        token->setType                                  (token, expectedTokenType);
+    token->user1                    = current->user1;
+    token->user2                    = current->user2;
+    token->user3                    = current->user3;
+    token->custom                   = current->custom;
+    token->lineStart                = current->lineStart;
 
         // Create the token text that shows it has been inserted
         //

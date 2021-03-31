@@ -503,7 +503,7 @@ fillBuffer(pANTLR3_COMMON_TREE_NODE_STREAM ctns, pANTLR3_BASE_TREE t)
         //
         for     (c = 0; c < nCount; c++)
         {
-                fillBuffer(ctns, ctns->adaptor->getChild(ctns->adaptor, t, c));
+                fillBuffer(ctns, (pANTLR3_BASE_TREE)ctns->adaptor->getChild(ctns->adaptor, t, c));
         }
 
         // If the tree had children and was not a nil (list) node, then we
@@ -560,7 +560,7 @@ LB(pANTLR3_TREE_NODE_STREAM tns, ANTLR3_INT32 k)
                 return  &(tns->ctns->INVALID_NODE.baseTree);
         }
 
-        return tns->ctns->nodes->get(tns->ctns->nodes, tns->ctns->p - k);
+        return (pANTLR3_BASE_TREE)tns->ctns->nodes->get(tns->ctns->nodes, tns->ctns->p - k);
 }
 
 /// Get tree node at current input pointer + i ahead where i=1 is next node.
@@ -597,7 +597,7 @@ _LT         (pANTLR3_TREE_NODE_STREAM tns, ANTLR3_INT32 k)
                 return &(tns->ctns->EOF_NODE.baseTree);
         }
 
-        return  tns->ctns->nodes->get(tns->ctns->nodes, tns->ctns->p + k - 1);
+        return  (pANTLR3_BASE_TREE)tns->ctns->nodes->get(tns->ctns->nodes, tns->ctns->p + k - 1);
 }
 
 /// Where is this stream pulling nodes from?  This is not the name, but
@@ -867,7 +867,7 @@ toStringWork    (pANTLR3_TREE_NODE_STREAM tns, pANTLR3_BASE_TREE p, pANTLR3_BASE
         {
                 pANTLR3_BASE_TREE   child;
 
-                child = p->getChild(p, c);
+                child = (pANTLR3_BASE_TREE)p->getChild(p, c);
                 tns->toStringWork(tns, child, stop, buf);
         }
 
@@ -947,7 +947,7 @@ get                                                     (pANTLR3_TREE_NODE_STREA
                 fillBufferRoot(tns->ctns);
         }
 
-        return tns->ctns->nodes->get(tns->ctns->nodes, k);
+        return (pANTLR3_BASE_TREE)tns->ctns->nodes->get(tns->ctns->nodes, k);
 }
 
 static  void

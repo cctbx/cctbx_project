@@ -403,7 +403,7 @@ def OnChangeSymmetry(event):
   file_name = wxtbx.path_dialogs.manager().select_file(
     parent=button,
     message="Output data file in new symmetry",
-    style=wx.SAVE,
+    style=wx.FD_SAVE,
     wildcard="MTZ files (*.mtz)|*.mtz",
     current_file=default_file)
   data = easy_pickle.load(data_file)

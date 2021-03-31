@@ -288,25 +288,25 @@ isLegalUTF8(const UTF8 *source, int length) {
     UTF8 a;
     const UTF8 *srcptr = source+length;
     switch (length) {
-    default: return false;
+    default: return ANTLR3_FALSE;
         /* Everything else falls through when "true"... */
-    case 4: if ((a = (*--srcptr)) < 0x80 || a > 0xBF) return false;
-    case 3: if ((a = (*--srcptr)) < 0x80 || a > 0xBF) return false;
-    case 2: if ((a = (*--srcptr)) > 0xBF) return false;
+    case 4: if ((a = (*--srcptr)) < 0x80 || a > 0xBF) return ANTLR3_FALSE;
+    case 3: if ((a = (*--srcptr)) < 0x80 || a > 0xBF) return ANTLR3_FALSE;
+    case 2: if ((a = (*--srcptr)) > 0xBF) return ANTLR3_FALSE;
 
         switch (*source) {
             /* no fall-through in this inner switch */
-            case 0xE0: if (a < 0xA0) return false; break;
-            case 0xED: if (a > 0x9F) return false; break;
-            case 0xF0: if (a < 0x90) return false; break;
-            case 0xF4: if (a > 0x8F) return false; break;
-            default:   if (a < 0x80) return false;
+            case 0xE0: if (a < 0xA0) return ANTLR3_FALSE; break;
+            case 0xED: if (a > 0x9F) return ANTLR3_FALSE; break;
+            case 0xF0: if (a < 0x90) return ANTLR3_FALSE; break;
+            case 0xF4: if (a > 0x8F) return ANTLR3_FALSE; break;
+            default:   if (a < 0x80) return ANTLR3_FALSE;
         }
 
-    case 1: if (*source >= 0x80 && *source < 0xC2) return false;
+    case 1: if (*source >= 0x80 && *source < 0xC2) return ANTLR3_FALSE;
     }
-    if (*source > 0xF4) return false;
-    return true;
+    if (*source > 0xF4) return ANTLR3_FALSE;
+    return ANTLR3_TRUE;
 }
 
 /* --------------------------------------------------------------------- */
@@ -319,7 +319,7 @@ ANTLR3_BOOLEAN
 isLegalUTF8Sequence(const UTF8 *source, const UTF8 *sourceEnd) {
     int length = trailingBytesForUTF8[*source]+1;
     if (source+length > sourceEnd) {
-        return false;
+        return ANTLR3_FALSE;
     }
     return isLegalUTF8(source, length);
 }

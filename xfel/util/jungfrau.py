@@ -63,3 +63,21 @@ def pad_stacked_format(raw, num_panels=32):
   padded = np.vstack([correct_panel(raw[i * 512: (i + 1) * 512], divide=False)
                       for i in range(num_panels)])
   return padded
+
+
+def get_14bit_from_jungfrau(expt):
+  iset = expt.imageset
+  F = iset.get_format_class()
+  if len(iset.paths()) != 1:
+    raise ValueError("imageset should have exactly 1 path")
+  fclass = F.get_instance(iset.paths()[0])
+  return fclass.get_14bit_component(iset.indices()[0])
+
+
+def get_pedestalRMS_from_jungfrau(expt, gain_modes_too=False):
+  iset = expt.imageset
+  F = iset.get_format_class()
+  if len(iset.paths()) != 1:
+    raise ValueError("imageset should have exactly 1 path")
+  fclass = F.get_instance(iset.paths()[0])
+  return fclass.get_pedestal_rms(iset.indices()[0], return_gain_modes=gain_modes_too)

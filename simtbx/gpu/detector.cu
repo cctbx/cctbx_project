@@ -281,6 +281,14 @@ namespace gpu {
         cudaSafeCall(cudaMalloc((void ** )&cu_pix0_vector, sizeof(*cu_pix0_vector) * met_length));
         cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_pix0_vector, metrology.pix0.begin(), met_length));
 
+        cudaSafeCall(cudaMalloc((void ** )&cu_distance, sizeof(*cu_distance) * metrology.dists.size()));
+        cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_distance, metrology.dists.begin(), metrology.dists.size()));
+
+        cudaSafeCall(cudaMalloc((void ** )&cu_Xbeam,    sizeof(*cu_Xbeam) * metrology.Xbeam.size()));
+        cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_Xbeam,    metrology.Xbeam.begin(), metrology.Xbeam.size()));
+
+        cudaSafeCall(cudaMalloc((void ** )&cu_Ybeam,    sizeof(*cu_Ybeam) * metrology.Ybeam.size()));
+        cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_Ybeam,    metrology.Ybeam.begin(), metrology.Ybeam.size()));
   }
 
   void
@@ -297,6 +305,9 @@ namespace gpu {
     cudaSafeCall(cudaFree(cu_fdet_vector));
     cudaSafeCall(cudaFree(cu_odet_vector));
     cudaSafeCall(cudaFree(cu_pix0_vector));
+    cudaSafeCall(cudaFree(cu_distance));
+    cudaSafeCall(cudaFree(cu_Xbeam));
+    cudaSafeCall(cudaFree(cu_Ybeam));
   }
 
 } // gpu

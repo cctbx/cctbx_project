@@ -116,7 +116,6 @@ class map_model_manager(object):
                verbose = False):
 
     # Checks
-
     if extra_model_list is None: extra_model_list = []
     if extra_map_manager_list is None: extra_map_manager_list = []
     for m in [model] + extra_model_list:
@@ -195,6 +194,7 @@ class map_model_manager(object):
 
     if any_map_manager:
       for m in [model] + extra_model_list:
+        if not m: continue
         self.add_crystal_symmetry_if_necessary(m, map_manager = any_map_manager)
         self.shift_any_model_to_match(m, map_manager = any_map_manager)
 
@@ -312,7 +312,6 @@ class map_model_manager(object):
     if model:
        assert mmmn.model() is not None # make sure we got it
     model = mmmn.model()  # this model knows about shift
-
     if model:
       # Make sure model shift manager agrees with any_map_manager shift
       assert approx_equal(model.shift_cart(), any_map_manager.shift_cart())
@@ -1853,6 +1852,59 @@ class map_model_manager(object):
       apply_box_info = apply_box_info,
       write_files = write_files)
 
+  def split_up_map_and_model_by_ncs_groups(self,
+    model_id = 'model',
+    box_cushion = 3,
+    mask_around_unselected_atoms = None,
+    mask_radius = 3,
+    masked_value = -10,
+    write_files = False,
+    apply_box_info = True,
+     ):
+    '''
+     Split up the map, boxing around atoms selected with each ncs group in
+     ncs_groups obtained from supplied model
+
+
+       Returns a group_args object containing list of the map_model_manager
+         objects and a list of the selection objects that define which atoms
+         from the working model are in each object.
+
+       Normally do work on each map_model_manager to create a new model with
+         the same atoms, then use merge_split_maps_and_models() to replace
+         coordinates in the original model with those from all the component
+         models.
+       Optionally carry out the step box_info = get_split_maps_and_models(...)
+         separately with the keyword apply_box_info=False
+
+       box_cushion is the padding around the model atoms when creating boxes
+    '''
+
+    if model_id is None:
+      model_id = 'model'
+    model = self.get_model_by_id(model_id = model_id)
+    if model is None:
+      print("No model to work with", file = self.log)
+      return None # no model to work with
+
+    ncs_groups = model.get_ncs_groups()
+    selection_list = []
+    if ncs_groups is None or len(ncs_groups) < 1:
+      selection_list =  [model.selection("all")]
+    else:
+      for g in ncs_groups:
+        selection_list.append(g.master_iselection)
+
+    return self._split_up_map_and_model(
+      selection_method = 'supplied_selections',
+      model_id = model_id,
+      selection_list = selection_list,
+      box_cushion = box_cushion,
+      mask_around_unselected_atoms = mask_around_unselected_atoms,
+      mask_radius = mask_radius,
+      masked_value = masked_value,
+      apply_box_info = apply_box_info,
+      write_files = write_files)
   def split_up_map_and_model_by_supplied_selections(self,
     selection_list,
     model_id = 'model',
@@ -2718,6 +2770,7 @@ class map_model_manager(object):
       one_to_one = False,
       residue_names_must_match = False,
       minimum_match_length = 2,
+      shift_without_deep_copy = False,
       quiet = True):
     '''
     Select the parts of matching_model that best match target_model
@@ -2740,6 +2793,10 @@ class map_model_manager(object):
       far_away residues from all other groups
 
     If very_far_away and very_far_away_n are set, also remove those
+
+    If target model or matching model have different origins from self, they
+      deep-copied and shifted in place to match. The deep copy can be
+      skipped if shift_without_deep_copy is set.
     '''
 
     from mmtbx.secondary_structure.find_ss_from_ca import \
@@ -2748,9 +2805,23 @@ class map_model_manager(object):
     if one_to_one:
        max_gap = 0
 
-    if not target_model:
+    if target_model:
+      if target_model.shift_cart() != self.shift_cart():
+        if not shift_without_deep_copy:
+          self.add_crystal_symmetry_if_necessary(target_model,
+            map_manager = self.map_manager())
+          target_model = target_model.deep_copy()
+        self.shift_any_model_to_match(target_model)
+    else:
       target_model = self.get_model_by_id(target_model_id)
-    if not matching_model:
+    if matching_model:
+      if matching_model.shift_cart() != self.shift_cart():
+        if not shift_without_deep_copy:
+          self.add_crystal_symmetry_if_necessary(matching_model,
+            map_manager = self.map_manager())
+          matching_model = matching_model.deep_copy()
+        self.shift_any_model_to_match(matching_model)
+    else:
       matching_model = self.get_model_by_id(matching_model_id)
     if not target_model or not matching_model:
       if not matching_model:
@@ -2986,7 +3057,7 @@ class map_model_manager(object):
           assert target_seq == matching_seq  # same but could be different order
         if minimum_match_length and len(target_seq) < minimum_match_length:
           continue # skip it
- 
+
       else:
         local_target_model = target_model
         local_matching_model = matching_model
@@ -3011,6 +3082,31 @@ class map_model_manager(object):
           chain_type = chain_type,
           atom_name = atom_name,
           element = element)
+
+      diffs = self.get_diffs_for_matching_target_and_model(
+         matching_info = target_and_matching,
+         ca_only = True,
+         max_dist = max_dist)
+      rms_diffs = diffs.rms_length() if diffs.size()>0 else None
+      reverse_diffs = self.get_diffs_for_matching_target_and_model(
+         matching_info = target_and_matching,
+         ca_only = True,
+         max_dist = max_dist,
+         reverse = True)
+      rms_reverse_diffs = \
+         reverse_diffs.rms_length() if reverse_diffs.size()>0 else None
+      if rms_diffs is not None and (rms_reverse_diffs is None or
+          rms_diffs <= rms_reverse_diffs):
+        target_and_matching.match_direction = True
+        target_and_matching.rms_diffs = rms_diffs
+      elif rms_diffs is not None and (rms_reverse_diffs is not None
+          and rms_diffs > rms_reverse_diffs):
+        target_and_matching.match_direction = False
+        target_and_matching.rms_diffs = rms_reverse_diffs
+      else:
+        target_and_matching.match_direction = None
+        target_and_matching.rms_diffs = None
+
       target_and_matching_list.append(target_and_matching)
     return target_and_matching_list
 
@@ -3237,6 +3333,8 @@ class map_model_manager(object):
     Take any model and add crystal symmetry if it is missing
     Changes model in place
      Parameters:  model
+
+    Also add unit_cell_crystal_symmetry if missing
     '''
     if not model:
       return

@@ -2182,8 +2182,22 @@ def chain_type_and_residues(text=None,chain_type=None,likely_chain_types=None):
   else:
     return ok_list[0],residues
 
-def random_sequence(n_residues=None,residue_basket=None):
-  assert n_residues and residue_basket
+def random_sequence(n_residues=None,residue_basket=None,
+   chain_type = 'PROTEIN'):
+  assert n_residues and (residue_basket or chain_type)
+  if not residue_basket:
+    chain_type = chain_type.upper()
+    if chain_type == "PROTEIN":
+        # Approximate eukaryotic frequencies using W as basic unit
+        residue_basket = "AAAAAACCCEEEEDDDDDGGGGGG"+\
+          "FFFIIIHHKKKKKKMLLLLLLNNNQQQPPPPSSSSSSRRRTTTTTWVVVVVYYY"
+    elif chain_type == "DNA":
+        residue_basket = "GATC"
+    elif chain_type == "RNA":
+        residue_basket = "GAUC"
+    else:
+        raise Sorry("Chain type needs to be RNA/DNA/PROTEIN")
+
   import random
   s=""
   nn=len(residue_basket)-1

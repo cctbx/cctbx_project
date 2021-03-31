@@ -1,2 +1,6 @@
-tar zxvf antlr_python_runtime-3.1.2.tar.gz antlr_python_runtime-3.1.2/antlr3 --strip-components 2
-tar zxvf libantlr3c-3.2.tar.gz libantlr3c-3.2 --strip-components 1
+This is v3.5.2 of antlr3 from https://github.com/antlr/antlr3
+
+The include and src directories are copies of runtime/C/include and
+runtime/C/src, respectively.
+
+The antlr3.patch was applied to improve compatibility.

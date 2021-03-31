@@ -73,7 +73,7 @@ typedef struct ANTLR3_DEBUG_EVENT_LISTENER_struct
         /** The version of the debugging protocol supported by the providing
          *  instance of the debug event listener.
          */
-        int                                     PROTOCOL_VERSION;
+        int                                     protocol_version;
 
         /// The name of the grammar file that we are debugging
         ///
