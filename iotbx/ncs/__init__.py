@@ -65,7 +65,7 @@ ncs_search
   validate_user_supplied_groups = True
     .type = bool
     .help = Enable validation of user-supplied ncs_group. Need to exercise \
-        a lot of caution turning when this off. This option is for \
+        a lot of caution turning this off. This option is for \
         developers only.
     .expert_level = 3
 }
@@ -183,6 +183,10 @@ class input(object):
 
     #
     # print "ncs_groups before validation", ncs_phil_groups
+    # validated_ncs_phil_groups is for correct handling of validation results:
+    # it ends up as None in many corner cases where we actually want to do
+    # automatic search. Return value is never None once the actual validation
+    # takes place.
     validated_ncs_phil_groups = None
     validated_ncs_phil_groups = self.validate_ncs_phil_groups(
       pdb_h = self.truncated_hierarchy,

@@ -112,6 +112,7 @@ tst_list_base = [
   "$D/regression/ncs/tst_ncs_input.py",
   "$D/regression/ncs/tst_ncs_user_selections.py",
   "$D/regression/ncs/tst_ncs.py",
+  "$D/regression/ncs/tst_ncs_without_validation.py",
   "$D/pdb/tst_read_mtrix_records_from_cif.py",
   "$D/regression/tst_show_systematic_absences.py",
   "$D/regression/tst_miller_sort_asu.py",

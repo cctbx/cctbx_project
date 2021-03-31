@@ -1780,7 +1780,9 @@ class manager(object):
     self._update_master_sel()
 
   def _update_master_sel(self):
-    # Rewrite using master iselection and move to ncs_restraint_group_list.py
+    # self._master_sel here is really unique part of the model,
+    # i.e. all masters + part of model not covered by NCS,
+    # therefore excluding copies instead of using master selections.
     if self._ncs_groups is not None and len(self._ncs_groups) > 0:
       # determine master selections
       self._master_sel = flex.bool(self.get_number_of_atoms(), True)
