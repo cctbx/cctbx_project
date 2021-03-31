@@ -93,6 +93,7 @@ tst_list_base = [
   "$D/regression/tst_reflection_file_editor.py",
   "$D/regression/tst_split_models.py",
   "$D/regression/tst_pdb_as_fasta.py",
+  "$D/regression/tst_pdb_link_records.py",
   "$D/regression/tst_merging_statistics.py",
   "$D/regression/tst_simple_map_coefficients.py",
   "$D/regression/tst_sort_atoms.py",
