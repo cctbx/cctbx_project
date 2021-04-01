@@ -876,9 +876,12 @@ class manager(object):
       #
       if(self.get_restraints_manager() is not None):
         self.get_restraints_manager().geometry.replace_site_symmetry(
-          new_site_symmetry_table = self._xray_structure.site_symmetry_table())
+          new_site_symmetry_table   = self._xray_structure.site_symmetry_table(),
+          special_position_settings = self._xray_structure.special_position_settings(),
+          sites_cart                = self._xray_structure.sites_cart())
         # Not sure if this is needed.
         self.get_restraints_manager().geometry.crystal_symmetry=crystal_symmetry
+        self.restraints_manager.crystal_symmetry=crystal_symmetry
         # This updates some of internals
         self.get_restraints_manager().geometry.pair_proxies(
           sites_cart = self.get_sites_cart())
