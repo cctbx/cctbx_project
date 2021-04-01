@@ -549,7 +549,7 @@ class HKLViewFrame() :
       if array.space_group() is None:
         array._space_group_info = spg.info()
         self.mprint("""No space group info present in the %d. miller array.
-\nBorrowing space group info from the first miller array""" %i)
+Borrowing space group info from first miller array.""" %i)
       arrayinfo = ArrayInfo(array, self.mprint)
       self.viewer.array_infostrs.append( arrayinfo.infostr )
       self.viewer.array_infotpls.append( arrayinfo.infotpl )
