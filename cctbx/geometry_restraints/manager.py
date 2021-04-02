@@ -464,7 +464,8 @@ class manager(Base_geometry):
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
       parallelity_proxies=self.parallelity_proxies,
-      plain_pairs_radius=self.plain_pairs_radius)
+      plain_pairs_radius=self.plain_pairs_radius,
+      max_reasonable_bond_distance=self.max_reasonable_bond_distance)
     result.set_source(source = self.get_source())
     return result
 
