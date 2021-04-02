@@ -7,38 +7,65 @@ from collections import OrderedDict
 from scitbx.array_family import flex
 from mmtbx.conformation_dependent_library import generate_protein_fragments
 from mmtbx.secondary_structure.build import ss_idealization as ssb
-from cctbx import uctbx
 
-def format_HELIX_records_from_AEV(aev_values_dict, cc_cutoff):
-  """
-  Geting HELIX records for target model using AEV values and specified cutoff.
-  """
-  cc_cutoff = float(cc_cutoff)
-  start = []
-  end = []
-  M = 0
-  i = 0
+def format_HELIX_records_from_AEV(aev_values_dict):
+  threshold1 = [2.48, 0.9, 4]
+  threshold2 = [2.38, 0.9, 4]
+  threshold3 = [2.28, 0.85, 2]
+  helix_num = 0
+  helix_list = [[], [], [], []]
   result = []
-  length = 0
-  for key,value in aev_values_dict.items():
-    if start==[] and value['B'] > cc_cutoff and value['M'] > cc_cutoff - 0.1:
-      start = key
-    elif start and value['M'] > cc_cutoff:
-      M = 1
-      if value['E'] > cc_cutoff:
-        end = key
-    elif start and M == 1 and value['E'] > cc_cutoff:
-      end = key
-      length = int(end.split()[-1]) - int(start.split()[-1]) + 1
-    if value['B'] < 0.6 and end and M == 1 and length > 3:
-      i += 1
-      fmt = "HELIX   {0:>2}  {0:>2} {1:>}  {2:>}   {3:>36}"
-      length = int(end.split()[-1]) - int(start.split()[-1]) + 1
-      result.append(fmt.format(i, start, end, length))
-      start = []
-      end = []
-      M = 0
-      length = 0
+  cut_num = threshold1
+  #This is select rules.This function judges if this atom is a B,M or E?
+  def select(value, cut_num, residue, judge_list):
+    #Is this atom a B?
+    if value['B']>=value['M'] and value['B']>=value['E'] and value['B']>=cut_num:
+      if judge_list[0]==[]:
+        judge_list[0] = residue
+      elif judge_list[1]!=[] and judge_list[2]!=[] and judge_list[3]==[]:
+        judge_list[3] = residue
+        judge_list[1] = residue
+    # Is this atom a M
+    elif value['M']>=value['E'] and value['M']>=cut_num:
+      if judge_list[0]!=[]:
+        judge_list[1] = residue
+      elif judge_list[1]!=[] and judge_list[2]!=[] and judge_list[3]==[]:
+        judge_list[3] = residue
+    # Is this atom a E?
+    elif value['E']>=value['B'] and value['E']>=value['M'] and value['E']>=cut_num:
+      if judge_list[0]!=[] and judge_list[1]!=[] :
+        judge_list[2] = residue
+    else:
+      if judge_list[0]!=[] and judge_list[1]!=[] and judge_list[2]!=[]:
+        judge_list[3] = residue
+      else:
+        #reset
+        judge_list = [[], [], [], []]
+    return judge_list
+  #Judge all atoms
+  for key, value in aev_values_dict.items():
+    if value['all'] >= cut_num[0]:
+      helix_list = select(value, cut_num[1], key, helix_list)
+    elif value['all'] < cut_num[0]:
+      if None in value:
+        helix_list = select(value, cut_num[1], key, helix_list)
+      else:
+        helix_list = select(value, cut_num[1], key, helix_list)
+    # helices records input
+    if not [] in helix_list:
+      print(helix_list)
+      length = int(helix_list[2].split()[-1]) - int(helix_list[0].split()[-1]) + 1
+      if length > cut_num[2]:
+        if helix_list[1]==helix_list[3]:
+          fmt = "HELIX   {0:>2}  {0:>2} {1:>}  {2:>}   {3:>36}"
+          result.append(fmt.format(helix_num, helix_list[0], helix_list[2], length))
+          start = copy.copy(helix_list[3])
+          helix_list = [start, [], [], []]
+        else:
+          fmt = "HELIX   {0:>2}  {0:>2} {1:>}  {2:>}   {3:>36}"
+          result.append(fmt.format(helix_num, helix_list[0], helix_list[2], length))
+          helix_list = [[], [], [], []]
+        helix_num += 1
   return result
 
 def generate_perfect_helix(rs_values,
@@ -55,15 +82,11 @@ def generate_perfect_helix(rs_values,
   """
   perfect_helix_ph = ssb.secondary_structure_from_sequence(ssb.alpha_helix_str,
     residue_code*n_residues)
-  box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
-    sites_cart   = perfect_helix_ph.atoms().extract_xyz(),
-    buffer_layer = 5)
   model = mmtbx.model.manager(
-    model_input      = None,
-    crystal_symmetry = box.crystal_symmetry(),
-    pdb_hierarchy    = perfect_helix_ph,
-    build_grm        = True,
-    log              = null_out())
+    model_input   = None,
+    pdb_hierarchy = perfect_helix_ph,
+    build_grm     = True,
+    log           = null_out())
   return AEV(model = model,
              rs_values=rs_values,
              ts_values=ts_values,
@@ -95,6 +118,18 @@ def compare(aev_values_dict):
       outl += ' %0.3f' % i
     return outl
 
+  def cosin(value1, value2):
+    assert len(value1) == len(value2)
+    sum1 = 0
+    sum2 = 0
+    sum3 = 0
+    for num in range(len(value1)):
+      sum1 += value1[num] * value2[num]
+      sum2 += value1[num] ** 2
+      sum3 += value2[num] ** 2
+    result = sum1 / ((sum2 ** 0.5) * (sum3 ** 0.5))
+    return result
+
   def set_vals(result, d, verbose=False):
     for key1, value1 in d.items():
       result.setdefault(key1, OrderedDict())
@@ -102,6 +137,7 @@ def compare(aev_values_dict):
       if value1 != [] and value != []:
         cc = flex.linear_correlation(
         x=flex.double(value), y=flex.double(value1)).coefficient()
+        # cc = cosin(value, value1)
         result[key1][key] = cc
       if verbose:
         print('comparing\n%s\n%s' % (pretty_aev(value), pretty_aev(value1)))
@@ -110,6 +146,12 @@ def compare(aev_values_dict):
     if   key == 'B': set_vals(result=result, d=aev_values_dict.BAEVs)
     elif key == 'M': set_vals(result=result, d=aev_values_dict.MAEVs)
     elif key == 'E': set_vals(result=result, d=aev_values_dict.EAEVs)
+  for key1, value1 in result.items():
+    sum = 0
+    for num in value1.values():
+      if num != None:
+        sum += num
+    result[key1]['all'] = sum
   return result
 
 # It is format calss of corelation coefficient values.
@@ -183,9 +225,9 @@ class AEV(object):
 
   def get_values(self):
     result = OrderedDict()
-    result['B'] = list(self.BAEVs.values())[0]
-    result['M'] = list(self.MAEVs.values())[5]
-    result['E'] = list(self.EAEVs.values())[-1]
+    result['B'] = self.BAEVs.values()[0]
+    result['M'] = self.MAEVs.values()[5]
+    result['E'] = self.EAEVs.values()[-1]
     return result
 
   def empty_dict(self):
@@ -199,25 +241,39 @@ class AEV(object):
       self.EAEVs.update(results)
     return 0
 
-  def generate_ca(self, length=5):
-    """
-    Geting all C-alpha atoms from an whole pdb file.
-    """
-    # faster with atom selection to CA re CJW update
-    protain_fragments = generate_protein_fragments(
-      hierarchy = self.chain_hierarchy,
-      geometry = self.geometry_restraints_manager,
-      include_non_linked=True,
-      include_non_standard_peptides=True,
-      length=length)
-    for five in protain_fragments:
-      rc = []
-      for residue in five:
-        for atom in residue.atoms():
-          if atom.name == ' CA ':
-            rc.append(atom)
-      if len(rc) == length:
-        yield rc
+  # def generate_ca(self, length=5):
+  #   """
+  #   Geting all C-alpha atoms from an whole pdb file.
+  #   """
+  #   # faster with atom selection to CA re CJW update
+  #   protain_fragments = generate_protein_fragments(
+  #     hierarchy = self.chain_hierarchy,
+  #     geometry = self.geometry_restraints_manager,
+  #     include_non_linked=True,
+  #     include_non_standard_peptides=True,
+  #     length=length)
+  #   for five in protain_fragments:
+  #     rc = []
+  #     for residue in five:
+  #       for atom in residue.atoms():
+  #         if atom.name == ' CA ':
+  #           rc.append(atom)
+  #     if len(rc) == length:
+  #       yield rc
+  def generate_ca(self, length = 5):
+    hierarchy = self.chain_hierarchy
+    for chain in hierarchy.chains():
+      con = chain.conformers()[0]
+      b = int(length)
+      for a in range(len(con.atoms())):
+        rc = []
+        if b<=len(con.atoms()):
+          b = a + int(length)
+          for atom in con.atoms()[a:b]:
+            if atom.name == ' CA ':
+              rc.append(atom)
+        if len(rc) == int(b-a):
+          yield  rc
 
   def generate_AEV(self):
     """
@@ -233,7 +289,7 @@ class AEV(object):
     for chain in chain_list:
       chain_hierarchy = self.hierarchy.deep_copy()
       asc = chain_hierarchy.atom_selection_cache()
-      sel = asc.selection("chain " + chain)
+      sel = asc.selection("protein and name CA and chain " + chain )
       self.chain_hierarchy = chain_hierarchy.select(sel)
       for atomlist in self.generate_ca():
         self.center_atom = atomlist[0]
@@ -302,6 +358,6 @@ class AEV(object):
                   mA = (((1 + math.cos(ZETAijk - zetas))) ** l) * \
                        math.exp(- n * ((((Rij + Rik) / 2) - Rs) ** 2)) * fj * fk
                   GmA += mA
-          GmA = 10 * GmA * (2**(1-l))
+          GmA = GmA * (2**(1-l))
           AEVs[res_name].append(GmA)
     return AEVs
