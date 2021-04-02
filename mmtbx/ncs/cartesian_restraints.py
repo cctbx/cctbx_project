@@ -32,6 +32,8 @@ class cartesian_ncs_manager(object):
     else:
       self.groups_list = []
       ncs_obj = model.get_ncs_obj()
+      if ncs_obj is None:
+        return
       self.ncs_restraints_group_list = ncs_obj.get_ncs_restraints_group_list()
       ncs_groups_selection_string_list = self.ncs_restraints_group_list.get_array_of_str_selections()
       for i_gr, gr in enumerate(self.ncs_restraints_group_list):

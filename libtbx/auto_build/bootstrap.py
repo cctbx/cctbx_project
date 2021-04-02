@@ -475,7 +475,7 @@ class Toolbox(object):
     destpath, destdir = os.path.split(destination)
 
     # default to using ssh for private phenix repositories
-    if module in ['phenix', 'solve_resolve', 'phaser_voyager', 'phasertng']:
+    if module in ['phenix', 'solve_resolve', 'phenix_pathwalker', 'phaser_voyager', 'phasertng']:
       use_ssh = True
 
     if os.path.exists(destination):
@@ -780,7 +780,7 @@ class cbflib_module(SourceModule):
   anonymous = ['git',
                'git@github.com:yayahjb/cbflib.git',
                'https://github.com/yayahjb/cbflib.git',
-               'https://github.com/yayahjb/cbflib/archive/master.zip']
+               'https://github.com/yayahjb/cbflib/archive/main.zip']
 
 class ccp4io_adaptbx(SourceModule):
   module = 'ccp4io_adaptbx'
@@ -823,10 +823,8 @@ class opt_resources_module(SourceModule):
 
 class eigen_module(SourceModule):
   module = 'eigen'
-  anonymous = ['git', '-b 3.3.7',
-               'git@github.com:cctbx/eigen.git',
-               'https://github.com/cctbx/eigen.git',
-               'https://github.com/cctbx/eigen/archive/master.zip']
+  anonymous = ['git', '-b 3.3.9',
+               'https://gitlab.com/libeigen/eigen.git']
 
 # Phenix repositories
 class phenix_module(SourceModule):
@@ -899,6 +897,10 @@ class buildbot_module(SourceModule):
   module = 'buildbot'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/buildbot/trunk']
 
+class phenix_pathwalker_module(SourceModule):
+  module = 'phenix_pathwalker'
+  anonymous = ['git', 'git@github.com:phenix-project/phenix_pathwalker.git']
+
 # Phaser repositories
 class phaser_module(SourceModule):
   module = 'phaser'
@@ -938,14 +940,14 @@ class dials_module(SourceModule):
   anonymous = ['git',
                'git@github.com:dials/dials.git',
                'https://github.com/dials/dials.git',
-               'https://github.com/dials/dials/archive/master.zip']
+               'https://github.com/dials/dials/archive/main.zip']
 
 class dxtbx_module(SourceModule):
   module = 'dxtbx'
   anonymous = ['git',
                'git@github.com:cctbx/dxtbx.git',
                'https://github.com/cctbx/dxtbx.git',
-               'https://github.com/cctbx/dxtbx/archive/master.zip']
+               'https://github.com/cctbx/dxtbx/archive/main.zip']
 
 class dials_regression_module(SourceModule):
   module = 'dials_regression'
@@ -977,7 +979,7 @@ class xia2_module(SourceModule):
   anonymous = ['git',
                'git@github.com:xia2/xia2.git',
                'https://github.com/xia2/xia2.git',
-               'https://github.com/xia2/xia2/archive/master.zip']
+               'https://github.com/xia2/xia2/archive/main.zip']
 
 # Duke repositories
 class probe_module(SourceModule):
@@ -990,7 +992,8 @@ class suitename_module(SourceModule):
 
 class reduce_module(SourceModule):
   module = 'reduce'
-  anonymous = ['svn', 'https://github.com/rlabduke/reduce.git/trunk']
+  anonymous = ['git', '-b v3.7.2',
+               'https://github.com/rlabduke/reduce.git']
 
 class king_module(SourceModule):
   module = 'king'
@@ -1902,6 +1905,7 @@ class CCIBuilder(Builder):
     'tntbx',
     'clipper',
     'eigen',
+    'reduce',
   ]
   CODEBASES_EXTRA = []
   # Copy these sources from cci.lbl.gov
@@ -1989,6 +1993,7 @@ class PhaserBuilder(CCIBuilder):
     'tntbx',
     'phaser_regression',
     'phaser',
+    'reduce',
   ]
   # Configure for these cctbx packages
   LIBTBX = [
@@ -2241,6 +2246,7 @@ class PhenixBuilder(CCIBuilder):
     'phenix_regression',
     'phenix_html',
     'phenix_examples',
+    'phenix_pathwalker',
     'labelit',
     'Plex',
     'PyQuante',
@@ -2271,6 +2277,7 @@ class PhenixBuilder(CCIBuilder):
     'phenix_dev_doc',
     'phenix_regression',
     'phenix_examples',
+    'phenix_pathwalker',
     'solve_resolve',
     'reel',
     'phaser',

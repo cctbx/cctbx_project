@@ -29,6 +29,11 @@ db {
     basedir = None
       .type = path
       .help = Root folder for mysql database
+
+    prompt_for_root_password = False
+      .type = bool
+      .help = Whether to always ask for the root password. Note, root password is always \
+              needed when the database is initialized.
   }
 }
 """
@@ -44,6 +49,7 @@ port={port}
 # Disabling symbolic-links is recommended to prevent assorted security risks
 symbolic-links=0
 max_connections=10000
+default_authentication_plugin=mysql_native_password
 
 [mysqld_safe]
 log-error={basedir}{sep}mysqld.log
@@ -90,6 +96,11 @@ def run(args):
 
     assert easy_run.call("mysqld --defaults-file=%s --initialize-insecure"%(cnf_path)) == 0
 
+  elif params.db.server.prompt_for_root_password:
+    import getpass
+    print ("please enter root password to raise the connection")
+    rootpw3 = getpass.getpass()
+
   print ("Starting server")
   assert os.path.exists(cnf_path)
   server_process = easy_run.subprocess.Popen(["mysqld", "--defaults-file=%s"%(cnf_path)])
@@ -121,6 +132,10 @@ def run(args):
     print ("Initialized")
   else:
     app = db_application(params)
+
+  if params.db.server.prompt_for_root_password:
+    params.db.user = 'root'
+    params.db.password = rootpw3
 
   print ("Raising max connections")
   app.execute_query("SET GLOBAL max_connections=50000")

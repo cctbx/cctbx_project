@@ -1176,7 +1176,9 @@ def assert_xray_structures_equal(
       occupancies = True,
       elements = True,
       scattering_types = True,
-      eps = 1.e-6):
+      eps = 1.e-6,
+      eps_occ = None):
+  if(eps_occ is None): eps_occ = eps
   assert x1.scatterers().size() == x2.scatterers().size()
   cs1 = x1.crystal_symmetry()
   cs2 = x2.crystal_symmetry()
@@ -1192,7 +1194,7 @@ def assert_xray_structures_equal(
                         x2.extract_u_iso_or_u_equiv(), eps)
   if(occupancies):
     assert approx_equal(x1.scatterers().extract_occupancies(),
-                        x2.scatterers().extract_occupancies(), eps)
+                        x2.scatterers().extract_occupancies(), eps_occ)
   if(elements):
     sct1 = x1.scatterers().extract_scattering_types()
     sct2 = x2.scatterers().extract_scattering_types()
@@ -2463,6 +2465,20 @@ class extract_box_around_model_and_map(object):
     fft_map = box_map_coeffs.fft_map(resolution_factor=resolution_factor)
     fft_map.apply_sigma_scaling()
     return fft_map
+
+  def apply_mask_inplace(self, atom_radius):
+    assert self.map_box.origin() == (0,0,0)
+    import boost_adaptbx.boost.python as bp
+    cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
+    radii = flex.double(self.xray_structure_box.scatterers().size(),atom_radius)
+    mask = cctbx_maptbx_ext.mask(
+      sites_frac                  = self.xray_structure_box.sites_frac(),
+      unit_cell                   = self.crystal_symmetry.unit_cell(),
+      n_real                      = self.map_box.all(),
+      mask_value_inside_molecule  = 1,
+      mask_value_outside_molecule = 0,
+      radii                       = radii)
+    self.map_box = self.map_box * mask
 
   def map_coefficients(self, d_min, resolution_factor, file_name="box.mtz",
      scale_max=None,

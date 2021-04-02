@@ -189,19 +189,19 @@ def run():
       break
     s = []
     for i in range(3):
-      s.extend([float(v) for v in lines.next().split()])
+      s.extend([float(v) for v in next(lines).split()])
     for line in lines:
       if (line.rstrip() == "M:"): break
     else:
       raise RuntimeError("S: found but not M:")
     m = []
     for i in range(3):
-      m.extend([int(v) for v in lines.next().split()])
+      m.extend([int(v) for v in next(lines).split()])
     for line in lines:
       if (line.rstrip() == "Score:"): break
     else:
       raise RuntimeError("S: and M: found but not Score:")
-    score = float(lines.next().strip())
+    score = float(next(lines).strip())
     s = matrix.sqr(s)
     m = matrix.sqr(m)
     print(s.mathematica_form(label="s", one_row_per_line=True))

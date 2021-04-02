@@ -50,6 +50,11 @@ def update(grm,
            log=sys.stdout,
            verbose=False,
            ):
+  def _atom_id(a, show_i_seq=False):
+    if show_i_seq:
+      return '%s (%5d)' % (a.id_str(), a.i_seq)
+    else:
+      return '%s' % (a.id_str())
   if link_records is None: link_records={}
   link_records.setdefault('LINK', [])
   hooks = [
@@ -63,16 +68,26 @@ def update(grm,
       ],
     ]
   outl = ''
+  outl_debug = ''
+
+  sites_c = pdb_hierarchy.atoms().extract_xyz()
+  nb_proxies = grm.pair_proxies(
+        sites_cart=sites_c).nonbonded_proxies
+  sorted_nb_pr_result = nb_proxies.get_sorted(
+      by_value="delta",
+      sites_cart=sites_c)
+
   for label, get_coordination, get_all_proxies in hooks:
     rc = get_coordination(
       pdb_hierarchy=pdb_hierarchy,
-      nonbonded_proxies=grm.pair_proxies(
-        sites_cart=pdb_hierarchy.atoms().extract_xyz()).nonbonded_proxies,
+      nonbonded_proxies=nb_proxies,
+      sorted_nb_proxies_res=sorted_nb_pr_result,
       verbose=verbose,
     )
     bproxies, aproxies = get_all_proxies(rc)
     if bproxies is None: continue
     if len(bproxies):
+      outl += '    %s\n' % label
       outl += '    %s\n' % label
       atoms = pdb_hierarchy.atoms()
       sf4_coordination = {}
@@ -85,13 +100,21 @@ def update(grm,
         if link not in link_records: link_records['LINK'].append(link)
       for sf4, aas in sorted(sf4_coordination.items()):
         outl += '%spdb="%s"\n' % (' '*6, sf4)
-        for aa in sorted(aas):
-          outl += '%s%s - %s\n' % (' '*8, aa[0].id_str(), aa[1].id_str())
+        outl_debug += '%spdb="%s"\n' % (' '*6, sf4)
+        for aa in aas:
+          outl += '%s%s - %s\n' % (' '*8, _atom_id(aa[0]), _atom_id(aa[1]))
+          outl_debug += '%s%s - %s\n' % (' '*8,
+                                         _atom_id(aa[0], True),
+                                         _atom_id(aa[1], True))
     if bproxies:
-      grm.add_new_bond_restraints_in_place(
-        proxies=bproxies,
-        sites_cart=pdb_hierarchy.atoms().extract_xyz(),
-      )
+      try:
+        grm.add_new_bond_restraints_in_place(
+          proxies=bproxies,
+          sites_cart=pdb_hierarchy.atoms().extract_xyz(),
+        )
+      except RuntimeError as e:
+        print('\n\n%s' % outl_debug)
+        raise e
     #
     done = []
     remove = []

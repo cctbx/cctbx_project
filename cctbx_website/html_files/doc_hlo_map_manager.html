@@ -59,7 +59,10 @@ mmm.write_model("model.pdb")    #   write out a model in PDB format
 
 <pre class="codeDL"><code>map_filename="map.mrc"                       #   Name of map file
 mm = dm.get_real_map(map_filename)           #   Deliver map_manager object with map info
+mm.shift_origin()     #  Make sure that the origin is shifted to (0,0,0)
 </code></pre>
+
+<p>Notice that we have made sure that the origin is at (0,0,0) after reading in the map.  We will see why this is important later. For now, keep in mind that if you read in a map directly, you nearly always will want to shift the origin to (0,0,0) with the <code>shift_origin()</code> command before using the map. </p>
 
 <p>The <code>show_summary()</code> method allows you to see a summary of the map that we have just read in:</p>
 

@@ -130,8 +130,9 @@ class IndexingJob(Job):
           show_plots = False
           verbose = False
           output_bins = False
+          mask = %s
         }
-        """
+        """%(self.rungroup.untrusted_pixel_mask_path)
         phil_scope = orig_phil_scope.fetch(parse(override_str))
       else:
         phil_scope = orig_phil_scope
@@ -139,15 +140,15 @@ class IndexingJob(Job):
       trial_params = phil_scope.fetch(parse(phil_str)).extract()
 
       image_format = self.rungroup.format
-      if image_format == 'cbf':
+      mode = "other"
+      if self.app.params.facility.name == 'lcls':
         if "rayonix" in self.rungroup.detector_address.lower():
           mode = "rayonix"
         elif "cspad" in self.rungroup.detector_address.lower():
           mode = "cspad"
         elif "jungfrau" in self.rungroup.detector_address.lower():
           mode = "jungfrau"
-        else:
-          mode = "other"
+
       if hasattr(trial_params, 'format'):
         trial_params.format.file_format = image_format
         trial_params.format.cbf.mode = mode
@@ -191,11 +192,22 @@ class IndexingJob(Job):
       experiment_tag            = self.app.params.experiment_tag,
       calib_dir                 = self.rungroup.calib_dir,
       nproc                     = self.app.params.mp.nproc,
+      nnodes                    = self.app.params.mp.nnodes,
       nproc_per_node            = self.app.params.mp.nproc_per_node,
       queue                     = self.app.params.mp.queue or None,
       env_script                = self.app.params.mp.env_script[0] if self.app.params.mp.env_script is not None and len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
       method                    = self.app.params.mp.method,
+      wall_time                 = self.app.params.mp.wall_time,
       htcondor_executable_path  = self.app.params.mp.htcondor.executable_path,
+      nersc_shifter_image       = self.app.params.mp.shifter.shifter_image,
+      sbatch_script_template    = self.app.params.mp.shifter.sbatch_script_template,
+      srun_script_template      = self.app.params.mp.shifter.srun_script_template,
+      nersc_partition           = self.app.params.mp.shifter.partition,
+      nersc_jobname             = self.app.params.mp.shifter.jobname,
+      nersc_project             = self.app.params.mp.shifter.project,
+      nersc_constraint          = self.app.params.mp.shifter.constraint,
+      nersc_reservation         = self.app.params.mp.shifter.reservation,
+      nersc_staging             = self.app.params.mp.shifter.staging,
       target                    = target_phil_path,
       host                      = self.app.params.db.host,
       dbname                    = self.app.params.db.name,
@@ -204,6 +216,8 @@ class IndexingJob(Job):
       # always use mpi for 'lcls'
       use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls')
     )
+    if self.app.params.mp.method == 'sge':
+      d['use_mpi'] = False
     if self.app.params.db.password is not None and len(self.app.params.db.password) == 0:
       d['password'] = None
     else:
@@ -244,19 +258,22 @@ class IndexingJob(Job):
           locator.write("detector_address=%s\n"%self.rungroup.detector_address)
           if self.rungroup.wavelength_offset:
             locator.write("wavelength_offset=%s\n"%self.rungroup.wavelength_offset)
+          if self.rungroup.spectrum_eV_per_pixel:
+            locator.write("spectrum_eV_per_pixel=%s\n"%self.rungroup.spectrum_eV_per_pixel)
+          if self.rungroup.spectrum_eV_offset:
+            locator.write("spectrum_eV_offset=%s\n"%self.rungroup.spectrum_eV_offset)
           if self.app.params.facility.lcls.use_ffb:
             locator.write("use_ffb=True\n")
 
-          if image_format == "cbf":
-            if mode == 'rayonix':
-              from xfel.cxi.cspad_ana import rayonix_tbx
-              pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.rungroup.binning)
-              extra_scope = parse("geometry { detector { panel { origin = (%f, %f, %f) } } }"%(-self.rungroup.beamx * pixel_size,
-                                                                                                self.rungroup.beamy * pixel_size,
-                                                                                               -self.rungroup.detz_parameter))
-              locator.write("rayonix.bin_size=%s\n"%self.rungroup.binning)
-            elif mode == 'cspad':
-              locator.write("cspad.detz_offset=%s\n"%self.rungroup.detz_parameter)
+          if mode == 'rayonix':
+            from xfel.cxi.cspad_ana import rayonix_tbx
+            pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.rungroup.binning)
+            extra_scope = parse("geometry { detector { panel { origin = (%f, %f, %f) } } }"%(-self.rungroup.beamx * pixel_size,
+                                                                                              self.rungroup.beamy * pixel_size,
+                                                                                             -self.rungroup.detz_parameter))
+            locator.write("rayonix.bin_size=%s\n"%self.rungroup.binning)
+          elif mode == 'cspad':
+            locator.write("cspad.detz_offset=%s\n"%self.rungroup.detz_parameter)
           locator.close()
           d['locator'] = locator_path
         else:
@@ -511,7 +528,12 @@ class EnsembleRefinementJob(Job):
 
   def get_output_files(self):
     run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
-    return os.path.join(run_path, 'combine_experiments_t%03d'%self.trial.trial, 'intermediates'), '_reintegrated.expt', '_reintegrated.refl'
+    return os.path.join(run_path, 'combine_experiments_t%03d'%self.trial.trial, 'intermediates', "*reintegrated*"), '.expt', '.refl'
+
+  def get_log_path(self):
+    run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
+    return os.path.join(run_path, 'combine_experiments_t%03d'%self.trial.trial, 'intermediates',
+      "combine_t%03d_rg%03d_chunk000.out"%(self.trial.trial, self.rungroup.id)) # XXX there can be multiple chunks or multiple clusters
 
   def submit(self, previous_job = None):
     from xfel.command_line.striping import Script
@@ -609,9 +631,20 @@ class ScalingJob(Job):
       env_script                = self.app.params.mp.env_script[0] if len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
       method                    = self.app.params.mp.method,
       htcondor_executable_path  = self.app.params.mp.htcondor.executable_path,
+      nersc_shifter_image       = self.app.params.mp.shifter.shifter_image,
+      sbatch_script_template    = self.app.params.mp.shifter.sbatch_script_template,
+      srun_script_template      = self.app.params.mp.shifter.srun_script_template,
+      nersc_partition           = self.app.params.mp.shifter.partition,
+      nersc_jobname             = self.app.params.mp.shifter.jobname,
+      nersc_project             = self.app.params.mp.shifter.project,
+      nersc_constraint          = self.app.params.mp.shifter.constraint,
+      nersc_reservation         = self.app.params.mp.shifter.reservation,
+      nersc_staging             = self.app.params.mp.shifter.staging,
       target                    = target_phil_path,
       # always use mpi for 'lcls'
-      use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls')
+      use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls'),
+      nnodes                    = self.app.params.mp.nnodes,
+      wall_time                 = self.app.params.mp.wall_time,
     )
 
     with open(submit_phil_path, "w") as phil:
@@ -643,8 +676,6 @@ class ScalingJob(Job):
     self.write_submit_phil(submit_phil_path, target_phil_path)
 
     args = [submit_phil_path]
-    if self.app.params.facility.name not in ['lcls']:
-      args.append(self.run.path)
     return submit_script().run(args)
 
 class MergingJob(Job):
@@ -777,10 +808,12 @@ def submit_all_jobs(app):
     assert trial, "No trial found in task list, don't know where to save the results"
     trial_tags_ids = [t.id for t in trial.tags]
     dataset_tags = [t for t in dataset.tags if t.id in trial_tags_ids]
+    if not dataset_tags: continue
     runs_rungroups = []
     for rungroup in trial.rungroups:
       for run in rungroup.runs:
         run_tags_ids = [t.id for t in run.tags]
+        if not run_tags_ids: continue
         if dataset.tag_operator == "union":
           if any([t.id in run_tags_ids for t in dataset_tags]):
             runs_rungroups.append((run, rungroup))

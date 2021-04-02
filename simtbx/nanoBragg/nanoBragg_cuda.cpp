@@ -3,6 +3,7 @@
 //Contributed by Billy Poon, LBNL.
 
 // function declaration from nanoBraggCUDA.cu
+using simtbx::nanoBragg::shapetype;
 extern "C"
 void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int roi_xmin, int roi_xmax,
                         int roi_ymin, int roi_ymax, int oversample,
@@ -18,7 +19,7 @@ void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int roi_xmin, in
                         double spindle_vector[4], int sources, double *source_X,
                         double *source_Y, double * source_Z, double * source_I,
                         double * source_lambda, double a0[4], double b0[4],
-                        double c0[4], simtbx::nanoBragg::shapetype xtal_shape, double mosaic_spread,
+                        double c0[4], shapetype xtal_shape, double mosaic_spread,
                         int mosaic_domains, double * mosaic_umats, double Na,
                         double Nb, double Nc, double V_cell, double water_size,
                         double water_F, double water_MW, double r_e_sqr,

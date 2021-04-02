@@ -99,6 +99,8 @@ class NBcrystal(object):
   def xtal_shape(self):
     if self._xtal_shape == "gauss":
       return shapetype.Gauss
+    elif self._xtal_shape == "gauss_argchk":
+      return shapetype.Gauss_argchk
     elif self._xtal_shape == "round":
       return shapetype.Round
     elif self._xtal_shape == "square":

@@ -585,7 +585,8 @@ class map_manager(map_reader, write_ccp4_map):
 
     # If there is an associated ncs_object, shift it too
     if self._ncs_object:
-      self._ncs_object=self._ncs_object.coordinate_offset(shift_info.shift_to_apply_cart)
+      self._ncs_object=self._ncs_object.coordinate_offset(
+        shift_info.shift_to_apply_cart)
 
   def _get_shift_info(self, desired_origin = None):
     '''
@@ -676,6 +677,12 @@ class map_manager(map_reader, write_ccp4_map):
     self.limitations.append(limitation)
     self._print("Limitation of %s ('%s') added to map_manager" %(
       limitation, STANDARD_LIMITATIONS_DICT[limitation]))
+
+  def remove_labels(self):
+    '''
+     Remove all labels
+    '''
+    self.labels = []
 
   def add_label(self, label = None, verbose = False):
     '''
@@ -817,24 +824,25 @@ class map_manager(map_reader, write_ccp4_map):
         sequence = sequence,
         solvent_content = solvent_content, )
 
-  def create_mask_around_edges(self, soft_mask_radius = None):
+  def create_mask_around_edges(self, boundary_radius = None):
     '''
       Use cctbx.maptbx.mask.create_mask_around_edges to create a mask around
       edges of map.  Does not make a soft mask.  For a soft mask,
-      follow with soft_mask(soft_mask_radius =soft_mask_radius)
+      follow with soft_mask(boundary_radius =boundary_radius)
       The radius is to define the boundary around the map.
 
       Does not apply the mask (use apply_mask_to_map etc for that)
     '''
 
-    if soft_mask_radius is None:
-      soft_mask_radius = self.resolution()
+    if boundary_radius is None:
+      boundary_radius = self.resolution()
 
     from cctbx.maptbx.mask import create_mask_around_edges as cm
     self._created_mask = cm(map_manager = self,
-      soft_mask_radius = soft_mask_radius)
+      boundary_radius = boundary_radius)
 
-  def create_mask_around_atoms(self, model, mask_atoms_atom_radius = None):
+  def create_mask_around_atoms(self, model, mask_atoms_atom_radius = None,
+      invert_mask = None):
     '''
       Use cctbx.maptbx.mask.create_mask_around_atoms to create a mask around
       atoms in model
@@ -842,6 +850,8 @@ class map_manager(map_reader, write_ccp4_map):
       Does not apply the mask (use apply_mask_to_map etc for that)
 
       mask_atoms_atom_radius default is max(3, resolution)
+
+      invert_mask makes outside 1 and inside 0
     '''
 
     assert model is not None
@@ -851,7 +861,8 @@ class map_manager(map_reader, write_ccp4_map):
     from cctbx.maptbx.mask import create_mask_around_atoms as cm
     self._created_mask = cm(map_manager = self,
       model = model,
-      mask_atoms_atom_radius = mask_atoms_atom_radius)
+      mask_atoms_atom_radius = mask_atoms_atom_radius,
+      invert_mask = invert_mask)
 
   def soft_mask(self, soft_mask_radius = None):
     '''
@@ -992,10 +1003,27 @@ class map_manager(map_reader, write_ccp4_map):
     assert isinstance(sites_cart, flex.vec3_double)
 
     from cctbx.maptbx import real_space_target_simple_per_site
-    return real_space_target_simple_per_site(
+    density_values = real_space_target_simple_per_site(
       unit_cell = self.crystal_symmetry().unit_cell(),
       density_map = self.map_data(),
       sites_cart = sites_cart)
+
+    # Cross off anything outside the box if wrapping is false
+    if not self.wrapping():
+      sites_frac = self.crystal_symmetry().unit_cell().fractionalize(sites_cart)
+      x,y,z = sites_frac.parts()
+      s = (
+         (x < 0) |
+         (y < 0) |
+         (z < 0) |
+         (x > 1) |
+         (y > 1) |
+         (z > 1)
+         )
+      density_values.set_selected(s,0)
+    return density_values
+
+
 
   def get_density_along_line(self,
       start_site = None,
@@ -1174,7 +1202,9 @@ class map_manager(map_reader, write_ccp4_map):
     return self.customized_copy(map_data = self.map_data())
 
   def customized_copy(self, map_data = None, origin_shift_grid_units = None,
-      use_deep_copy_for_map_data = True):
+      use_deep_copy_for_map_data = True,
+      crystal_symmetry_space_group_number = None,
+      wrapping = None,):
     '''
       Return a customized deep_copy of this map_manager, replacing map_data with
       supplied map_data.
@@ -1207,6 +1237,7 @@ class map_manager(map_reader, write_ccp4_map):
        NOTE: wrapping is normally copied from original map, but if new map is
        not full size then wrapping is always set to False.
 
+      If crystal_symmetry_space_group_number is specified, use it
     '''
 
     # Make a deep_copy of map_data and _created_mask unless
@@ -1248,11 +1279,17 @@ class map_manager(map_reader, write_ccp4_map):
     mm.data = map_data  # using self.data or a deepcopy (specified above)
     mm._created_mask = created_mask  # using self._created_mask or a
                                      #deepcopy (specified above)
+    if wrapping is not None:
+      mm.set_wrapping(wrapping)
+
     if not mm.is_full_size():
       mm.set_wrapping(False)
 
     # Set up _crystal_symmetry for the new object
-    mm.set_crystal_symmetry_of_partial_map() # Required and must be last
+    mm.set_crystal_symmetry_of_partial_map(
+      space_group_number = crystal_symmetry_space_group_number)
+      # Required and must be last
+
 
     # Keep track of change in shift_cart
     delta_origin_shift_grid_units = tuple([new - orig for new, orig in zip (
@@ -1268,7 +1305,6 @@ class map_manager(map_reader, write_ccp4_map):
       assert approx_equal(mm.shift_cart(),mm._ncs_object.shift_cart())
     else:
       mm._ncs_object = None
-
 
     return mm
 
@@ -1553,9 +1589,9 @@ class map_manager(map_reader, write_ccp4_map):
     if ncs_object.shift_cart():
       offset = tuple(
         [s - n for s, n in zip(self.shift_cart(), ncs_object.shift_cart())])
-      ncs_object.coordinate_shift(offset)
+      ncs_object = ncs_object.coordinate_offset(offset)
     else:
-      ncs_object.coordinate_shift(self.shift_cart())
+      ncs_object = ncs_object.coordinate_offset(self.shift_cart())
 
   def shift_model_to_match_map(self, model):
     '''
@@ -1578,12 +1614,27 @@ class map_manager(map_reader, write_ccp4_map):
       Modifies ncs_object in place
 
       Do not use this to try to shift the ncs object. That is done in
-      the ncs object itself with ncs_object.coordinate_shift(shift_cart)
+      the ncs object itself with ncs_object.coordinate_offset(shift_cart)
     '''
 
     # Set shift_cart (shift since readin) to match shift_cart for
     #   map (shift of origin is opposite of shift applied)
     ncs_object.set_shift_cart(self.shift_cart())
+
+  def set_crystal_symmetry_to_p1(self,
+     space_group_number = 1):
+    '''
+      Change the working crystal symmetry to P1
+      This changes map in place
+      Do a deep_copy first if you do not want it changed
+      (Actually can set space group number to anything so you can set it back)
+    '''
+    print("\nSetting working crystal symmetry to P1 so "+
+       "that edges can be masked", file = self.log)
+
+    self.set_crystal_symmetry_of_partial_map(
+      space_group_number = space_group_number)
+
 
   def set_model_symmetries_and_shift_cart_to_match_map(self,model):
     '''
@@ -1599,8 +1650,15 @@ class map_manager(map_reader, write_ccp4_map):
          model.shift_model_and_set_crystal_symmetry(shift_cart=shift_cart)
     '''
     # Check if we really need to do anything
-    if self.is_compatible_model(model):
+    if self.is_compatible_model(model,
+       require_match_unit_cell_crystal_symmetry = True):
       return # already fine
+
+    if model.shift_cart() is not None and tuple(model.shift_cart()) != (0,0,0)\
+      and tuple(model.shift_cart()) == tuple(self.shift_cart()):
+      # Model already has same shift cart as map_manager...remove it so that
+      # set_crystal_symmetry below will run. It will be reset below
+      model.set_shift_cart((0,0,0))
 
     # Set crystal_symmetry to match map. This changes the xray_structure.
     model.set_crystal_symmetry(self.crystal_symmetry())
@@ -1660,10 +1718,19 @@ class map_manager(map_reader, write_ccp4_map):
     ok=None
     text=""
 
+    if not model:
+      return None
+
     model_uc=model.unit_cell_crystal_symmetry()
     model_sym=model.crystal_symmetry()
     map_uc=self.unit_cell_crystal_symmetry()
     map_sym=self.crystal_symmetry()
+
+    model_uc = model_uc if model_uc and model_uc.unit_cell() is not None else None
+    model_sym = model_sym if model_sym and model_sym.unit_cell() is not None else None
+    map_uc = map_uc if map_uc and map_uc.unit_cell() is not None else None
+    map_sym = map_sym if map_sym and map_sym.unit_cell() is not None else None
+
 
     if not require_match_unit_cell_crystal_symmetry and \
         model_uc and model_sym and model_uc.is_similar_symmetry(model_sym):
@@ -1690,9 +1757,13 @@ class map_manager(map_reader, write_ccp4_map):
         "\n%s\n. Current map symmetry is: \n%s\n " %(
          text_map_uc,text_map)
 
-    elif  model_uc and (not map_uc.is_similar_symmetry(map_sym,
+    elif  model_uc and (
+        (not map_uc.is_similar_symmetry(map_sym,
         absolute_angle_tolerance = absolute_angle_tolerance,
-        absolute_length_tolerance = absolute_length_tolerance,
+        absolute_length_tolerance = absolute_length_tolerance,))
+         or (not model_uc.is_similar_symmetry(model_sym,
+        absolute_angle_tolerance = absolute_angle_tolerance,
+        absolute_length_tolerance = absolute_length_tolerance,))
          ) and (
          (not model_uc.is_similar_symmetry(map_uc,
         absolute_angle_tolerance = absolute_angle_tolerance,
@@ -1701,7 +1772,7 @@ class map_manager(map_reader, write_ccp4_map):
          (not model_sym.is_similar_symmetry(map_sym,
         absolute_angle_tolerance = absolute_angle_tolerance,
         absolute_length_tolerance = absolute_length_tolerance,
-         ) ) )):
+         ) ) ):
        ok=False# model and map_manager symmetries present and do not match
        text="Model original symmetry: \n%s\n and current symmetry :\n%s\n" %(
           text_model_uc,text_model)+\
@@ -1766,34 +1837,55 @@ class map_manager(map_reader, write_ccp4_map):
        return self._warning_message
 
   def set_mean_zero_sd_one(self):
-    ''' Function to normalize the map '''
+    '''
+     Function to normalize the map
+     If the map has a constant value, do nothing
+    '''
     map_data = self.map_data()
     map_data = map_data - flex.mean(map_data)
     sd = map_data.sample_standard_deviation()
-    assert sd != 0
-    map_data = map_data/sd
-    self.set_map_data(map_data)
+    if sd != 0:
+      map_data = map_data/sd
+      self.set_map_data(map_data)
 
   def ncs_cc(self):
     if hasattr(self,'_ncs_cc'):
        return self._ncs_cc
 
-  def absolute_center_cart(self, use_assumed_end = False):
+  def absolute_center_cart(self,
+       use_assumed_end = False,
+       place_on_grid_point = False,
+       use_unit_cell_grid = False):
     '''
      Return center of map (absolute position) in Cartesian coordinates
      A little tricky because for example the map goes from 0 to nx-1, not nx
        If use_assumed_end, go to nx
      Also map could start at non-zero origin
+     If place_on_grid_point then guess the end by whether the center ends
+       on a grid point
+     If use_unit_cell_grid just find center of full unit cell
     '''
-    if use_assumed_end:
-      n_end = 0
+    if use_unit_cell_grid:  # Find center of unit cell
+      return tuple([a*0.5 for a in
+        self.unit_cell_crystal_symmetry().unit_cell().parameters()[:3] ])
+
+    elif place_on_grid_point:
+      return tuple([a*(int (0.5*n)/n + o/n)  - sc for a,n,o,sc in zip(
+        self.crystal_symmetry().unit_cell().parameters()[:3],
+        self.map_data().all(),
+        self.map_data().origin(),
+        self.shift_cart())])
+
     else:
-      n_end = 1
-    return tuple([a*(0.5*(n-n_end)/n + o/n)  - sc for a,n,o,sc in zip(
-      self.crystal_symmetry().unit_cell().parameters()[:3],
-      self.map_data().all(),
-      self.map_data().origin(),
-      self.shift_cart())])
+      if use_assumed_end:
+        n_end = 0
+      else:
+        n_end = 1
+      return tuple([a*(0.5*(n-n_end)/n + o/n)  - sc for a,n,o,sc in zip(
+        self.crystal_symmetry().unit_cell().parameters()[:3],
+        self.map_data().all(),
+        self.map_data().origin(),
+        self.shift_cart())])
 
   def map_map_cc(self, other_map_manager):
    ''' Return simple map correlation to other map_manager'''
@@ -2032,7 +2124,7 @@ class map_manager(map_reader, write_ccp4_map):
       n_real.append(int(target_n + 0.999))
     return n_real
 
-  def find_n_highest_grid_points_as_sites_cart(self, n = None,
+  def find_n_highest_grid_points_as_sites_cart(self, n = 0,
     n_tolerance = 0, max_tries = 100):
     '''
       Return the n highest grid points in the map as sites_cart
@@ -2084,7 +2176,6 @@ class map_manager(map_reader, write_ccp4_map):
 
     return sample_regs_obj.get_array(1)
 
-
   def trace_atoms_in_map(self,
        dist_min,
        n_atoms):
@@ -2104,8 +2195,8 @@ class map_manager(map_reader, write_ccp4_map):
      return working_map_manager.find_n_highest_grid_points_as_sites_cart(
           n = n_atoms)
 
-  def map_as_fourier_coefficients(self, d_min = None,
-     d_max = None):
+  def map_as_fourier_coefficients(self, d_min = None, d_max = None, box=True,
+     resolution_factor=1./3):
     '''
        Convert a map to Fourier coefficients to a resolution of d_min,
        if d_min is provided, otherwise box full of map coefficients
@@ -2121,18 +2212,39 @@ class map_manager(map_reader, write_ccp4_map):
        map_data and
        map_coefficients without changing origin.  Both are intended for use
        with map_data that has an origin at (0, 0, 0).
+
+       The map coefficients are always in space group P1.
     '''
     assert self.map_data()
     assert self.map_data().origin() == (0, 0, 0)
+    # Choose d_min and make sure it is bigger than smallest allowed
+    if(d_min is None and not box):
+      d_min = maptbx.d_min_from_map(
+        map_data  = self.map_data(),
+        unit_cell = self.crystal_symmetry().unit_cell(),
+        resolution_factor = resolution_factor)
+      print("\nResolution of map coefficients using "+\
+        "resolution_factor of %.2f: %.1f A\n" %(resolution_factor, d_min),
+        file=self.log)
+    elif (not box):  # make sure d_min is big enough
+      d_min_allowed = maptbx.d_min_from_map(
+        map_data  = self.map_data(),
+        unit_cell = self.crystal_symmetry().unit_cell(),
+        resolution_factor = 0.5)
+      if d_min < d_min_allowed:
+        print("\nResolution of map coefficients allowed by gridding is %.3f " %(
+          d_min_allowed),file=self.log)
+        d_min=d_min_allowed
+    from cctbx import crystal
+    crystal_symmetry = crystal.symmetry(
+      self.crystal_symmetry().unit_cell().parameters(), 1)
     ma = miller.structure_factor_box_from_map(
-      crystal_symmetry = self.crystal_symmetry(),
+      crystal_symmetry = crystal_symmetry,
       include_000      = True,
       map              = self.map_data(),
-      d_min            = d_min )
-    if d_max is not None:
-      ma=ma.resolution_filter(d_min = d_min, d_max = d_max)
-      # NOTE: miller array resolution_filter produces a new array.
-      # Methods in map_manager that are _filter() change the existing array.
+      d_min            = d_min)
+    if(d_max is not None):
+      ma = ma.resolution_filter(d_max = d_max)
     return ma
 
   def fourier_coefficients_as_map_manager(self, map_coeffs):
@@ -2155,7 +2267,7 @@ class map_manager(map_reader, write_ccp4_map):
     return self.customized_copy(
       map_data=maptbx.map_coefficients_to_map(
         map_coeffs       = map_coeffs,
-        crystal_symmetry = self.crystal_symmetry(),
+        crystal_symmetry = map_coeffs.crystal_symmetry(),
         n_real           = self.map_data().all())
       )
 

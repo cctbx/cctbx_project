@@ -409,7 +409,7 @@ def get_se(coords, uc):
 def get_fragments(model):
   rm = model.get_restraints_manager()
   atoms = model.get_hierarchy().atoms()
-  all_selection = list(xrange(atoms.size()))
+  all_selection = list(range(atoms.size()))
   # Planes
   planes = []
   planes_all = []

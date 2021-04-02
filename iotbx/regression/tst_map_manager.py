@@ -147,6 +147,15 @@ def test_01():
   assert new_mm.is_in_limitations('map_is_sharpened')
   assert new_mm.labels[0].find('test program')>-1
 
+  # Remove backslashes
+  mm_read.add_label('TEST \\LABEL')
+  assert mm_read.labels[0] == 'TEST \\LABEL'
+  mm_read.write_map('map_with_labels.mrc')
+  new_mm = map_manager('map_with_labels.mrc')
+  assert 'TEST /LABEL' in new_mm.labels
+  assert new_mm.is_in_limitations('map_is_sharpened')
+  assert new_mm.labels[0].find('test program')>-1
+
   # change the cell dimensions
   mm_read = map_manager(data_ccp4)
   mm_read.shift_origin()
@@ -194,13 +203,13 @@ def test_01():
                           mm.map_data().as_1d().min_max_mean().max)
   assert approx_equal( (new_mm.map_data()[0], mm.map_data()[0]),
          (0.0, 0.0))
-  new_mm.create_mask_around_edges(soft_mask_radius = 3)
+  new_mm.create_mask_around_edges(boundary_radius = 3)
   new_mm.soft_mask(soft_mask_radius = 3)
-  assert approx_equal(new_mm.map_data().as_1d().min_max_mean().max,
-                          mm.map_data().as_1d().min_max_mean().max)
+  assert approx_equal(new_mm.map_data().as_1d().as_1d().min_max_mean().max,
+                          mm.map_data().as_1d().as_1d().min_max_mean().max)
   new_mm.apply_mask(set_outside_to_mean_inside = True)
   assert approx_equal( (new_mm.map_data()[0], mm.map_data()[0]),
-         (0.0116267086024, 0.0))
+         (0.0116108613152, 0.0))
 
 
   dm.process_real_map_file('test_map_manager.ccp4')

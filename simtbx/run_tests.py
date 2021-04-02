@@ -2,13 +2,25 @@ from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
 import libtbx.load_env
 
-tst_list = (
+tst_list = [
     "$D/nanoBragg/tst_nanoBragg_minimal.py",
     "$D/nanoBragg/tst_nanoBragg_mosaic.py",
     "$D/nanoBragg/tst_gaussian_mosaicity.py",
     "$D/nanoBragg/tst_gaussian_mosaicity2.py",
     "$D/nanoBragg/tst_nanoBragg_cbf_write.py",
-    )
+    ]
+
+OPT = libtbx.env.build_options
+if OPT.enable_cuda:
+
+  tst_list_parallel = [
+    ["$D/nanoBragg/tst_gauss_argchk.py","GPU"], # tests CPU+GPU, argchk optimization
+    "$D/gpu/tst_exafel_api.py",                 # CPU / GPU, polychromatic beam, monolithic detector
+  ]
+else:
+  tst_list.append(
+    ["$D/nanoBragg/tst_gauss_argchk.py","CPU"]
+  )
 
 def run():
   build_dir = libtbx.env.under_build("simtbx")

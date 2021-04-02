@@ -7,7 +7,7 @@ import wxtbx.icons
 import wx
 import wx.lib
 import re
-import cStringIO
+from six.moves import cStringIO as StringIO
 import os
 import sys
 
@@ -104,7 +104,7 @@ class ReflectionFileInfo(InfoPanelBase):
         array = array_
     assert (array is not None)
     self._current_array = array
-    info_out = cStringIO.StringIO()
+    info_out = StringIO()
     array.show_comprehensive_summary(f=info_out)
     array.show_comprehensive_summary()
     info_list = info_out.getvalue().splitlines()
@@ -328,7 +328,7 @@ class ImageFileInfo(InfoPanelBase):
       raise_sorry_if_not_expected_format=True)
     img_in.assert_file_type("img")
     self._img_in = img_in
-    out = cStringIO.StringIO()
+    out = StringIO()
     img_in.file_object.show_header()
     img_in.file_object.show_header(out=out)
     self.SetTitle("Info for %s" % to_unicode(self.file_name))

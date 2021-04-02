@@ -97,10 +97,10 @@ def test_manager_and_clashes_functions():
   clashes = pnps.get_clashes()
   # sorted by overlap (default)
   clashes.sort_clashes(by_value='overlap')
-  assert(clashes._clashes_dict.items()[11][0] == ((38, 39)))
+  assert(list(clashes._clashes_dict.items())[11][0] == ((38, 39)))
   # sorted by symmetry
   clashes.sort_clashes(by_value='symmetry')
-  assert(clashes._clashes_dict.items()[11][0] == (27, 27))
+  assert(list(clashes._clashes_dict.items())[11][0] == (27, 27))
 
   assert(clashes.iseq_is_clashing(iseq=27))
   assert(clashes.iseq_is_clashing(iseq=44))

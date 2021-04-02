@@ -250,7 +250,7 @@ def gzip_open(file_name, mode):
   RuntimeError
       If gzip is not available.
   """
-  assert mode in ["r", "rb", "w", "wb", "a", "ab"]
+  assert mode in ["r", "rb", "rt", "w", "wb", "wt", "a", "ab"]
   if (gzip is None):
     un = ""
     if (mode[0] == "r"): un = "un"

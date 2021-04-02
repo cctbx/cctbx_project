@@ -72,7 +72,8 @@ class SpaceGroupCtrl(wx.ComboBox, phil_controls.PhilCtrl):
     else :
       raise Abort()
 
-  if (wx.Platform == "__WXMAC__") and (wx.PlatformInfo[4] != 'wxOSX-cocoa'):
+  if (wx.Platform == "__WXMAC__") and (wx.PlatformInfo[4] != 'wxOSX-cocoa') \
+    and wx.version().startswith('3'):
     def SetBackgroundColour(self, color):
       self.GetChildren()[0].SetBackgroundColour(color)
 

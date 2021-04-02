@@ -552,7 +552,13 @@ namespace boost_python { namespace {
       /* need to update everything? */
       nanoBragg.init_detector();
   }
-
+  static vec3 get_pix0_vector(nanoBragg const& nanoBragg) {
+      vec3 value;
+      value[0]=1000*nanoBragg.pix0_vector[1];
+      value[1]=1000*nanoBragg.pix0_vector[2];
+      value[2]=1000*nanoBragg.pix0_vector[3];
+      return value;
+  }
   /* the direction vector of detector_twotheta rotation axis (about the sample), default is (0,1,0) */
   static vec3 get_twotheta_axis(nanoBragg const& nanoBragg) {
       vec3 value;
@@ -1330,6 +1336,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       .value("Square",SQUARE)
       .value("Round",ROUND)
       .value("Gauss",GAUSS)
+      .value("Gauss_argchk",GAUSS_ARGCHK)
       .value("Tophat",TOPHAT)
       .value("Fiber",FIBER)
       .value("Unknown",UNKNOWN)
@@ -1520,6 +1527,10 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
 
       /* specify convention? Custom, MOSFLM, XDS, DENZO, ADXV, DIALS */
 
+      /* dxtbx origin vector getter */
+      .add_property("pix0_vector_mm", /* No setter allowed for pix0 */
+                     make_function(&get_pix0_vector,rbv()),
+                     "Current state of the internal origin vector (in mm) pointing to the first pixel in memory")
       /* unit vectors specifying coordinate system */
       .add_property("fdet_vector",
                      make_function(&get_fdet_vector,rbv()),
@@ -1898,7 +1909,6 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
                      make_setter(&nanoBragg::psf_radius,dcp()),
                      "override size of kernel used to compute PSF.  Set to zero for automatic (the default).")
 
-
       /* 2D flex array representing pixel values in expected photons, not neccesarily integers */
       .add_property("raw_pixels",
                      make_getter(&nanoBragg::raw_pixels,rbv()),
@@ -1935,6 +1945,10 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       .def("add_nanoBragg_spots_cuda",&nanoBragg::add_nanoBragg_spots_cuda,
        "actually run the spot simulation, going pixel-by-pixel over the region-of-interest, CUDA version")
 #endif
+
+    .def("set_dxtbx_detector_panel", &nanoBragg::set_dxtbx_detector_panel,
+        (arg_("panel"), arg_("s0_vector")),
+        "Updates the pixel array geometry using a dxtbx panel model (panel dimension should be conserved)")
 
       /* actual run of the background simulation */
       .def("add_background",&nanoBragg::add_background,

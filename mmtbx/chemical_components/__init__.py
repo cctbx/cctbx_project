@@ -41,15 +41,24 @@ def is_residue_specified(code, alternate=False):
 
 def get_cif_dictionary(code,
                        filename=None,
+                       old_reader=False,
                        ):
   if filename is not None:
-    cif = cif_parser.run(filename)
+    if old_reader:
+      cif = cif_parser.run2(filename)
+    else:
+      cif = cif_parser.run(filename)
   elif code in loaded_cifs:
     cif = loaded_cifs[code]
   else:
     filename = get_cif_filename(code)
-    cif = cif_parser.run(filename)
-    loaded_cifs[code] = cif
+    cif=None
+    if os.path.exists(filename):
+      if old_reader:
+        cif = cif_parser.run2(filename)
+      else:
+        cif = cif_parser.run(filename)
+      loaded_cifs[code] = cif
   return cif
 
 def get_alternative_name(code, name):
@@ -104,6 +113,14 @@ def get_atom_names(code, alternate=False):
       tmp.append(item.atom_id)
   return tmp
 
+def get_atom_type_symbol(code):
+  cif = get_cif_dictionary(code)
+  if not cif: return cif
+  tmp = []
+  for item in cif.get("_chem_comp_atom", []):
+    tmp.append(item.type_symbol)
+  return tmp
+
 def get_hydrogen_names(code,
                        wrap=False,
                        alternate=False
@@ -123,6 +140,17 @@ def get_hydrogen_names(code,
         tmp.append(item.alt_atom_id)
       else:
         tmp.append(item.atom_id)
+  return tmp
+
+def get_atom_names(code, alternate=False):
+  cif = get_cif_dictionary(code)
+  if not cif: return cif
+  tmp = []
+  for item in cif["_chem_comp_atom"]:
+    if alternate:
+      tmp.append(item.alt_atom_id)
+    else:
+      tmp.append(item.atom_id)
   return tmp
 
 def get_bond_pairs(code, alternate=False):

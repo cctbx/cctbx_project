@@ -16,6 +16,7 @@ from libtbx.test_utils import approx_equal
 from copy import deepcopy
 from cctbx import adptbx
 from mmtbx_tls_ext import tlso, uaniso_from_tls_one_group
+from iotbx.bioinformatics import get_sequence_from_hierarchy
 
 # Reserved phil scope for MapModelManager
 map_model_phil_str = '''
@@ -68,7 +69,7 @@ class map_model_manager(object):
         map_manager_mask:  a mask as a map_manager
       All other ids are any strings and are assumed to correspond to other maps
 
-    Note:  It is permissible to call with no map_manger, but supplying
+    Note:  It is permissible to call with no map_manager, but supplying
       both map_manager_1 and map_manager_2.  In this case, the working
       map_manager will be the average of map_manager_1 and map_manager_2. This
       will be created the first time map_manager is referenced.
@@ -88,6 +89,10 @@ class map_model_manager(object):
 
     Note: set wrapping of all maps to match map_manager if they differ. Set
     all to be wrapping if it is set
+
+    If a model has no crystal_symmetry or not unit_cell, it receives the
+     crystal symmetry of the map_manager and the shift_cart of the map_manager
+     The same result is obtained if ignore_symmetry_conflicts is set.
 
   '''
 
@@ -111,7 +116,6 @@ class map_model_manager(object):
                verbose = False):
 
     # Checks
-
     if extra_model_list is None: extra_model_list = []
     if extra_map_manager_list is None: extra_map_manager_list = []
     for m in [model] + extra_model_list:
@@ -137,6 +141,9 @@ class map_model_manager(object):
     self._force_wrapping = wrapping
     self._warning_message = None
     self._scattering_table = None
+    self._info = group_args(
+      group_args_type = 'Information about this map_model_manager',
+      )
 
     # If no map_manager now, do not do anything and make sure there
     #    was nothing else supplied except possibly a model
@@ -185,27 +192,16 @@ class map_model_manager(object):
     # if the incoming model is simply shifted relative to the maps...make them
     #  match by adjusting the model shift
 
-    if model and map_manager and model.crystal_symmetry() and \
-        model.shift_cart() and model.shift_cart() != map_manager.shift_cart():
-      if extra_model_list:  # make sure extras have same shift as model
-        for m in extra_model_list:
-          assert m.shift_cart() == model.shift_cart() # all models same shift
-      # Shift everything to match map
-      map_manager.shift_model_to_match_map(model)
-      if extra_model_list:
-        for m in extra_model_list:
-          map_manager.shift_model_to_match_map(m)
+    if any_map_manager:
+      for m in [model] + extra_model_list:
+        if not m: continue
+        self.add_crystal_symmetry_if_necessary(m, map_manager = any_map_manager)
+        self.shift_any_model_to_match(m, map_manager = any_map_manager)
 
-    # if ignore_symmetry_conflicts, take all symmetry information from
-    #  any_map_manager and apply it to everything
-    if ignore_symmetry_conflicts:
-      if ncs_object:
-        ncs_object.set_shift_cart(any_map_manager.shift_cart())
-      if model:
-        any_map_manager.set_model_symmetries_and_shift_cart_to_match_map(model)
-      if extra_model_list:
-        for m in extra_model_list:
-          any_map_manager.set_model_symmetries_and_shift_cart_to_match_map(m)
+
+    if any_map_manager and ignore_symmetry_conflicts:
+      # Take all symmetry information from
+      #  any_map_manager and apply it to everything
 
       if map_manager_1 and (map_manager_1 is not any_map_manager):
         map_manager_1 = any_map_manager.customized_copy(
@@ -219,6 +215,9 @@ class map_model_manager(object):
         new_extra_map_manager_list.append(any_map_manager.customized_copy(
           map_data=m.map_data()))
       extra_map_manager_list = new_extra_map_manager_list
+
+      if ncs_object:
+        ncs_object.set_shift_cart(any_map_manager.shift_cart())
 
     # CHECKS
 
@@ -313,7 +312,6 @@ class map_model_manager(object):
     if model:
        assert mmmn.model() is not None # make sure we got it
     model = mmmn.model()  # this model knows about shift
-
     if model:
       # Make sure model shift manager agrees with any_map_manager shift
       assert approx_equal(model.shift_cart(), any_map_manager.shift_cart())
@@ -466,6 +464,22 @@ class map_model_manager(object):
     '''
     self.verbose = verbose
 
+  # Methods to get and set info object (any information about this object)
+
+  def set_info(self, info):
+    self._info = info
+
+  def info(self):
+    return self.get_info()
+
+  def get_info(self, item_name = None):
+    if not item_name:
+      return self._info
+    else:
+      return self._info.get(item_name)
+
+  def add_to_info(self, item_name = None, item = None):
+    setattr(self._info,item_name, item)
 
   # Methods for printing
 
@@ -691,10 +705,14 @@ class map_model_manager(object):
 
     return self._minimum_resolution
 
+  def nproc(self):
+    return self._nproc
+
   def resolution(self,
     use_fsc_if_no_resolution_available_and_maps_available = True,
     map_id_1 = 'map_manager_1',
     map_id_2 = 'map_manager_2',
+    fsc_cutoff = 0.143,
      ):
     if self._resolution: # have it already
       return self._resolution
@@ -704,12 +722,21 @@ class map_model_manager(object):
       if use_fsc_if_no_resolution_available_and_maps_available and \
           self.get_map_manager_by_id(map_id_1) and \
           self.get_map_manager_by_id(map_id_2):
-        resolution = self.map_map_fsc(  # get resolution from FSC
+        fsc_info = self.map_map_fsc(  # get resolution from FSC
           map_id_1 = map_id_1,
-          map_id_2 = map_id_2).d_min
-        if resolution:
+          map_id_2 = map_id_2)
+        resolution = fsc_info.d_min
+        if resolution is not None:
           print("\nResolution estimated from FSC of '%s' and '%s: %.3f A " %(
            map_id_1, map_id_2, resolution), file = self.log)
+        elif fsc_info.fsc.fsc.min_max_mean().min > fsc_cutoff:
+          print("\nResolution estimated from minimum_resolution ",
+            "\nbecause FSC of '%s' and '%s is undefined" %(
+           map_id_1, map_id_2), file = self.log)
+          resolution = self.minimum_resolution()
+        else:
+          print("\nCould not obtain resolution from FSC", file = self.log)
+
 
       if (not resolution) and self.map_manager():
         # get resolution from map_manager
@@ -859,10 +886,17 @@ class map_model_manager(object):
      Must be similar to existing map_managers
      Overwrites any existing with the same id unless overwrite = False
     '''
+    if not model:
+      print("No model supplied for '%s' ... skipping addition" %(
+        model_id), file = self.log)
+      return
+
     assert isinstance(model, mmtbx.model.manager)
     if not overwrite:
       assert not model_id in self.model_id_list() # must not duplicate
-    if not self.map_manager().is_compatible_model(model): # needs shifting
+
+    if self.map_manager() and not self.map_manager().is_compatible_model(model):
+      # needs shifting
       self.shift_any_model_to_match(model)
     self._model_dict[model_id] = model
 
@@ -880,6 +914,11 @@ class map_model_manager(object):
      Overwrites any existing with the same id unless overwrite = False
      Is a mask if is_mask is set
     '''
+    if not map_manager:
+      print("No map_manager supplied for '%s' ... skipping addition" %(
+        map_id), file = self.log)
+      return
+
     assert isinstance(map_manager, MapManager)
     assert isinstance(overwrite, bool)
     if not overwrite:
@@ -923,21 +962,25 @@ class map_model_manager(object):
   def write_model(self,
      file_name,
      model_id = None,
+     model = None,
      ):
-    if not model_id:
-       model_id = 'model'
-    if not self.get_model_by_id(model_id = model_id):
-      self._print ("No model to write out")
+
+    if not model:
+      if not model_id:
+        model_id = 'model'
+      model = self.get_model_by_id(model_id = model_id)
+    if not model:
+        self._print ("No model to write out")
     elif not file_name:
       self._print ("Need file name to write model")
     else:
       # Write out model
 
       f = open(file_name, 'w')
-      print(self.get_model_by_id(model_id = model_id).model_as_pdb(), file = f)
+      print(model.model_as_pdb(), file = f)
       f.close()
       self._print("Wrote model with %s residues to %s" %(
-         self.model().get_hierarchy().overall_counts().n_residues,
+         model.get_hierarchy().overall_counts().n_residues,
          file_name))
 
   # Methods for identifying which map_manager and model to use
@@ -1001,6 +1044,9 @@ class map_model_manager(object):
   def extract_all_maps_with_bounds(self,
      lower_bounds,
      upper_bounds,
+     boundary_to_smoothing_ratio = 2.,
+     soft_mask_around_edges = None,
+     soft_mask_radius = None,
      model_can_be_outside_bounds = None):
     '''
       Runs box_all_maps_with_bounds_and_shift_origin with extract_box=True
@@ -1009,12 +1055,18 @@ class map_model_manager(object):
       lower_bounds = lower_bounds,
       upper_bounds = upper_bounds,
       model_can_be_outside_bounds = model_can_be_outside_bounds,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       extract_box = True)
 
   def box_all_maps_with_bounds_and_shift_origin(self,
      lower_bounds,
      upper_bounds,
      model_can_be_outside_bounds = None,
+     soft_mask_radius = None,
+     soft_mask_around_edges = None,
+     boundary_to_smoothing_ratio = 2.,
      extract_box = False):
     '''
        Box all maps using specified bounds, shift origin of maps, model
@@ -1024,12 +1076,22 @@ class map_model_manager(object):
        Otherwise: replaces existing map_managers and shifts model in place
 
        NOTE: This changes the gridding and shift_cart of the maps and model
+       Also changes space group to p1
 
        Can be used in map_model_manager to work with boxed maps
        and model or in map_model_manager to re-box all maps and model
 
        The lower_bounds and upper_bounds define the region to be boxed. These
        bounds are relative to the current map with origin at (0, 0, 0).
+
+       if soft_mask_around_edges, still uses the same bounds, but makes
+         a soft mask around the edges.  Use this option if you are going
+         to calculate a FT of the map or otherwise manipulate it in
+         reciprocal space. Do not use this option if you are going to
+         mask around atoms, density, mask or anything
+         else afterwards as you should apply a mask only once.
+
+
 
     '''
     assert lower_bounds is not None and upper_bounds is not None
@@ -1048,6 +1110,10 @@ class map_model_manager(object):
     if extract_box and model: # make sure everything is deep_copy
       model = model.deep_copy()
 
+
+    if soft_mask_around_edges: # make the cushion bigger
+      pass # Here we fix the bounds based on what is requested
+
     # Make box with bounds and apply it to model, first map
     box = with_bounds(
       map_manager = self._map_dict[map_info.map_id],
@@ -1064,6 +1130,9 @@ class map_model_manager(object):
     #  or create and return a new map_model_manager object (extract_box=True)
     return self._finish_boxing(box = box, model_info = model_info,
       map_info = map_info,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       extract_box = extract_box)
 
   def extract_all_maps_around_model(self,
@@ -1071,10 +1140,14 @@ class map_model_manager(object):
      selection = None,
      select_unique_by_ncs = False,
      model_can_be_outside_bounds = None,
-     box_cushion = 5.):
+     stay_inside_current_map = None,
+     box_cushion = 5.,
+     boundary_to_smoothing_ratio = 2.,
+     soft_mask_around_edges = None,
+     soft_mask_radius = None,
+     ):
     '''
       Runs box_all_maps_around_model_and_shift_origin with extract_box=True
-      Use either selection_string or selection if present
     '''
     return self.box_all_maps_around_model_and_shift_origin(
       selection_string = selection_string,
@@ -1082,6 +1155,10 @@ class map_model_manager(object):
       box_cushion = box_cushion,
       select_unique_by_ncs = select_unique_by_ncs,
       model_can_be_outside_bounds = model_can_be_outside_bounds,
+      stay_inside_current_map = stay_inside_current_map,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       extract_box = True)
 
   def box_all_maps_around_model_and_shift_origin(self,
@@ -1090,6 +1167,10 @@ class map_model_manager(object):
      box_cushion = 5.,
      select_unique_by_ncs = False,
      model_can_be_outside_bounds = None,
+     stay_inside_current_map = None,
+     soft_mask_radius = None,
+     soft_mask_around_edges = None,
+     boundary_to_smoothing_ratio = 2.,
      extract_box = False):
     '''
        Box all maps around the model, shift origin of maps, model
@@ -1113,6 +1194,13 @@ class map_model_manager(object):
        If select_unique_by_ncs is set, select the unique part of the model
        automatically.  Any selection in selection_string or selection
         will not be applied.
+
+      if soft_mask_around_edges, makes a bigger box and makes a soft mask around
+       the edges.  Use this option if you are going to calculate a FT of
+       the map or otherwise manipulate it in reciprocal space. Do not use this
+       option if you are going to mask around atoms, density, mask or anything
+       else afterwards as you should apply a mask only once.
+
     '''
     assert isinstance(self.model(), model_manager)
     assert box_cushion is not None
@@ -1137,6 +1225,10 @@ class map_model_manager(object):
     elif extract_box: # make sure everything is deep_copy
       model = model.deep_copy()
 
+
+    if soft_mask_around_edges: # make the cushion bigger
+      box_cushion += boundary_to_smoothing_ratio * self.resolution()
+
     # Make box around model and apply it to model, first map
     # This step modifies model in place and creates a new map_manager
     box = around_model(
@@ -1145,14 +1237,20 @@ class map_model_manager(object):
       box_cushion = box_cushion,
       wrapping = self._force_wrapping,
       model_can_be_outside_bounds = model_can_be_outside_bounds,
+      stay_inside_current_map = stay_inside_current_map,
       log = self.log)
     # Now box is a copy of map_manager and model that is boxed
 
+
     # Now apply boxing to other maps and models and then insert them into
-    #  either this map_model_manager object, replacing what is there (extract_box=False)
+    #  either this map_model_manager object, replacing what
+    #  is there (extract_box=False)
     #  or create and return a new map_model_manager object (extract_box=True)
     return self._finish_boxing(box = box, model_info = model_info,
       map_info = map_info,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       extract_box = extract_box)
 
   def extract_all_maps_around_density(self,
@@ -1160,17 +1258,23 @@ class map_model_manager(object):
      threshold = 0.05,
      get_half_height_width = True,
      model_can_be_outside_bounds = None,
+     boundary_to_smoothing_ratio = 2.,
+     soft_mask_around_edges = None,
+     soft_mask_radius = None,
      map_id = 'map_manager'):
     '''
       Runs box_all_maps_around_density_and_shift_origin with extract_box=True
     '''
     return self.box_all_maps_around_density_and_shift_origin(
-     box_cushion = box_cushion,
-     threshold = threshold,
-     get_half_height_width = get_half_height_width,
+      box_cushion = box_cushion,
+      threshold = threshold,
+      get_half_height_width = get_half_height_width,
       model_can_be_outside_bounds = model_can_be_outside_bounds,
-     map_id = map_id,
-     extract_box = True)
+      map_id = map_id,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
+      extract_box = True)
 
   def box_all_maps_around_density_and_shift_origin(self,
      box_cushion = 5.,
@@ -1178,6 +1282,9 @@ class map_model_manager(object):
      map_id = 'map_manager',
      get_half_height_width = True,
      model_can_be_outside_bounds = None,
+     soft_mask_radius = None,
+     soft_mask_around_edges = None,
+     boundary_to_smoothing_ratio = 2.,
      extract_box = False):
     '''
        Box all maps around the density in map_id map (default is map_manager)
@@ -1204,6 +1311,10 @@ class map_model_manager(object):
        The threshold defines how much (relative to maximum in map)  above
        mean value of map near edges is significant and should count as density.
 
+      if soft_mask_around_edges, makes a bigger box and makes a soft mask around
+       the edges.  Use this option if you are going to calculate a FT of
+       the map or otherwise manipulate it in reciprocal space.
+
     '''
     assert box_cushion is not None
 
@@ -1215,6 +1326,9 @@ class map_model_manager(object):
     model = self._model_dict[model_info.model_id]
     if extract_box: # make sure everything is deep_copy
       model = model.deep_copy()
+
+    if soft_mask_around_edges: # make the cushion bigger
+      box_cushion += boundary_to_smoothing_ratio * self.resolution()
 
     # Make box around model and apply it to model, first map
     box = around_density(
@@ -1233,25 +1347,37 @@ class map_model_manager(object):
     #  or create and return a new map_model_manager object (extract_box=True)
     return self._finish_boxing(box = box, model_info = model_info,
       map_info = map_info,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       extract_box = extract_box)
 
   def extract_all_maps_around_mask(self,
      box_cushion = 5.,
      model_can_be_outside_bounds = None,
+     boundary_to_smoothing_ratio = 2.,
+     soft_mask_around_edges = None,
+     soft_mask_radius = None,
      mask_id = 'mask'):
     '''
       Runs box_all_maps_around_mask_and_shift_origin with extract_box=True
     '''
     return self.box_all_maps_around_mask_and_shift_origin(
-     box_cushion = 5.,
-     mask_id = mask_id,
+      box_cushion = 5.,
+      mask_id = mask_id,
       model_can_be_outside_bounds = model_can_be_outside_bounds,
-     extract_box = True)
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
+      extract_box = True)
 
   def box_all_maps_around_mask_and_shift_origin(self,
      box_cushion = 5.,
      mask_id = 'mask',
      model_can_be_outside_bounds = None,
+     soft_mask_radius = None,
+     soft_mask_around_edges = None,
+     boundary_to_smoothing_ratio = 2.,
      extract_box = False):
     '''
        Box all maps around specified mask, shift origin of maps, model
@@ -1266,6 +1392,10 @@ class map_model_manager(object):
 
        The box_cushion defines how far away from the edge of the mask the new
        box boundaries will be placed
+
+      if soft_mask_around_edges, makes a bigger box and makes a soft mask around
+       the edges.  Use this option if you are going to calculate a FT of
+       the map or otherwise manipulate it in reciprocal space.
 
     '''
     assert isinstance(self.model(), model_manager)
@@ -1288,6 +1418,9 @@ class map_model_manager(object):
     if extract_box: # make sure everything is deep_copy
       model = model.deep_copy()
 
+    if soft_mask_around_edges: # make the cushion bigger
+      box_cushion += boundary_to_smoothing_ratio * self.resolution()
+
     # Make box around mask and apply it to model, first map
     box = around_mask(
       map_manager = map_manager,
@@ -1304,6 +1437,9 @@ class map_model_manager(object):
     #  or create and return a new map_model_manager object (extract_box=True)
     return self._finish_boxing(box = box, model_info = model_info,
       map_info = map_info,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       extract_box = extract_box)
 
   def extract_all_maps_around_unique(self,
@@ -1318,25 +1454,35 @@ class map_model_manager(object):
      regions_to_keep = None,
      keep_low_density = True,
      symmetry = None,
+     boundary_to_smoothing_ratio = 2.,
+     soft_mask_around_edges = None,
+     keep_this_region_only = None,
+     residues_per_region = None,
+     soft_mask_radius = None,
      mask_expand_ratio = 1):
 
     '''
       Runs box_all_maps_around_mask_and_shift_origin with extract_box=True
     '''
     return self.box_all_maps_around_unique_and_shift_origin(
-     resolution = resolution,
-     solvent_content = solvent_content,
-     sequence = sequence,
-     molecular_mass = molecular_mass,
-     soft_mask = soft_mask,
-     chain_type = chain_type,
-     box_cushion = box_cushion,
-     target_ncs_au_model = target_ncs_au_model,
-     regions_to_keep = regions_to_keep,
-     keep_low_density = keep_low_density,
-     symmetry = symmetry,
-     mask_expand_ratio = mask_expand_ratio,
-     extract_box = True)
+      resolution = resolution,
+      solvent_content = solvent_content,
+      sequence = sequence,
+      molecular_mass = molecular_mass,
+      soft_mask = soft_mask,
+      chain_type = chain_type,
+      box_cushion = box_cushion,
+      target_ncs_au_model = target_ncs_au_model,
+      regions_to_keep = regions_to_keep,
+      keep_low_density = keep_low_density,
+      keep_this_region_only = keep_this_region_only,
+      residues_per_region = residues_per_region,
+      symmetry = symmetry,
+      mask_expand_ratio = mask_expand_ratio,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
+      extract_box = True)
 
   def box_all_maps_around_unique_and_shift_origin(self,
      resolution = None,
@@ -1351,6 +1497,11 @@ class map_model_manager(object):
      keep_low_density = True,
      symmetry = None,
      mask_expand_ratio = 1,
+     soft_mask_radius = None,
+     soft_mask_around_edges = None,
+     boundary_to_smoothing_ratio = 2.,
+     keep_this_region_only = None,
+     residues_per_region = None,
      extract_box = False):
     '''
        Box all maps using bounds obtained with around_unique,
@@ -1373,6 +1524,9 @@ class map_model_manager(object):
        Symmetry is optional symmetry (i.e., D7 or C1). Used as alternative to
        ncs_object supplied in map_manager
 
+      if soft_mask_around_edges, makes a bigger box and makes a soft mask around
+       the edges.  Use this option if you are going to calculate a FT of
+       the map or otherwise manipulate it in reciprocal space.
 
        Additional parameters:
          mask_expand_ratio:   allows increasing masking radius beyond default at
@@ -1390,6 +1544,9 @@ class map_model_manager(object):
          keep_low_density:  keep low density regions
          regions_to_keep:   Allows choosing just highest-density contiguous
                             region (regions_to_keep=1) or a few
+         residues_per_region:  Try to segment with this many residues per region
+         keep_this_region_only:  Keep just this region (first one is 0 not 1)
+
     '''
     from cctbx.maptbx.box import around_unique
 
@@ -1406,6 +1563,9 @@ class map_model_manager(object):
     if extract_box: # make sure everything is deep_copy
       model = model.deep_copy()
 
+    if soft_mask_around_edges: # make the cushion bigger
+      box_cushion += boundary_to_smoothing_ratio * self.resolution()
+
     # Make box with around_unique and apply it to model, first map
     box = around_unique(
       map_manager = map_manager,
@@ -1413,6 +1573,8 @@ class map_model_manager(object):
       wrapping = self._force_wrapping,
       target_ncs_au_model = target_ncs_au_model,
       regions_to_keep = regions_to_keep,
+      residues_per_region = residues_per_region,
+      keep_this_region_only = keep_this_region_only,
       solvent_content = solvent_content,
       resolution = resolution,
       sequence = sequence,
@@ -1424,6 +1586,10 @@ class map_model_manager(object):
       mask_expand_ratio = mask_expand_ratio,
       log = self.log)
 
+    info = box.info()
+    if info and hasattr(info, 'available_selected_regions'):
+      self.set_info(info)  # save this information
+
     # Now box is a copy of map_manager and model that is boxed
 
     # Now apply boxing to other maps and models and then insert them into
@@ -1431,6 +1597,9 @@ class map_model_manager(object):
     #  or create and return a new map_model_manager object (extract_box=True)
     other = self._finish_boxing(box = box, model_info = model_info,
       map_info = map_info,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       extract_box = extract_box)
 
     if not extract_box:
@@ -1438,8 +1607,8 @@ class map_model_manager(object):
 
     # Now apply masking to all other maps (not done in _finish_boxing)
     for id in map_info.other_map_id_list:
-      other._map_dict[id] = box.apply_extract_unique_mask(
-        self._map_dict[id],
+      box.apply_around_unique_mask(
+        other._map_dict[id],
         resolution = resolution,
         soft_mask = soft_mask)
 
@@ -1447,6 +1616,9 @@ class map_model_manager(object):
       return other
 
   def _finish_boxing(self, box, model_info, map_info,
+    soft_mask_radius = None,
+    soft_mask_around_edges = None,
+    boundary_to_smoothing_ratio = None,
     extract_box = False):
 
     '''
@@ -1465,7 +1637,6 @@ class map_model_manager(object):
     else:
       other = self #  modifying this object
 
-
     other._map_dict[map_info.map_id] = box.map_manager()
     other._model_dict[model_info.model_id] = box.model()
 
@@ -1482,6 +1653,11 @@ class map_model_manager(object):
     name = '%s_boxed' %(self.name)
     self._set_default_parameters(other, name = name)
 
+    if soft_mask_around_edges:
+      other.mask_all_maps_around_edges(
+        soft_mask_radius = soft_mask_radius,
+        boundary_to_smoothing_ratio = boundary_to_smoothing_ratio)
+
     if extract_box:
       return other
 
@@ -1489,54 +1665,105 @@ class map_model_manager(object):
       model_id = None,
       box_info = None,
       replace_coordinates = True,
-      replace_u_aniso = False):
+      replace_u_aniso = False,
+      allow_changes_in_hierarchy = False,
+      output_model_id = None):
     '''
       Replaces coordinates in working model with those from the
         map_model_managers in box_info.  The box_info object should
         come from running split_up_map_and_model in this instance
         of the map_model_manager.
-    '''
 
+      If allow_changes_in_hierarchy is set, create a new working model where
+      the hierarchy has N "models", one from each box. This allows changing
+      the hierarchy structure. This will create one model in a new hierarchy
+      for each box, numbered by box number.  The new hierarchy will
+      be placed in a model with id  output_model_id (default is
+      model_id, replacing existing model specified by model_id; usually
+      this is just 'model', the default model.)
+    '''
     if model_id is None:
       model_id = 'model'
+    if allow_changes_in_hierarchy and output_model_id is None:
+      output_model_id = 'model'
 
-    print("\nMerging coordinates from %s boxed models into working model" %(
-      len(box_info.selection_list)), file = self.log)
+    if allow_changes_in_hierarchy:
+      print(
+        "\nModels from %s boxed models will be 'models' in new hierarchy" %(
+        len(box_info.selection_list)), file = self.log)
+      print("New model id will be: %s" %(output_model_id),
+          file = self.log)
+      if output_model_id in self.model_id_list():
+        print("NOTE: Replacing model %s with new composite model" %(
+         output_model_id), file = self.log)
+
+      # Set up a new empty model and hierarchy
+      import iotbx.pdb
+      pdb_inp = iotbx.pdb.input(source_info='text', lines=[""])
+      ph = pdb_inp.construct_hierarchy()
+      # Make a new model and save it as output_model_id
+      self.model_from_hierarchy(ph,
+        model_id = output_model_id)
+      # Get this hierarchy so we can add models to it:
+      working_model = self.get_model_by_id(
+        model_id = output_model_id)
+
+    else:
+      print(
+        "\nMerging coordinates from %s boxed models into working model" %(
+        len(box_info.selection_list)), file = self.log)
+      print("Working model id is : %s" %(model_id),
+          file = self.log)
 
     i = 0
     if not hasattr(box_info,'tlso_list'):
        box_info.tlso_list = len(box_info.mmm_list) * [None]
+
     for selection, mmm, tlso_value in zip (
       box_info.selection_list, box_info.mmm_list, box_info.tlso_list):
       i += 1
-      model_to_merge = self.get_model_from_other(mmm, other_model_id=model_id)
+      model_to_merge = self.get_model_from_other(mmm,
+        other_model_id=model_id)
 
-      if replace_coordinates:
-        sites_cart = self.get_model_by_id(model_id).get_sites_cart() # all sites
-        #  Sites to merge from this model
-        new_coords=model_to_merge.get_sites_cart()
-        original_coords=sites_cart.select(selection)
-        rmsd=new_coords.rms_difference(original_coords)
-        print("RMSD for %s coordinates in model %s: %.3f A" %(
-           original_coords.size(), i, rmsd), file = self.log)
-        sites_cart.set_selected(selection, new_coords)
-        self.get_model_by_id(model_id).set_crystal_symmetry_and_sites_cart(
-          sites_cart = sites_cart,
-          crystal_symmetry = self.get_model_by_id(model_id).crystal_symmetry())
+      if allow_changes_in_hierarchy:  # Add a model to the hierarchy
+        ph_models_in_box = 0
+        for m in model_to_merge.get_hierarchy().models():
+          ph_models_in_box += 1
+          assert ph_models_in_box <= 1  # cannot have multiple models in box
+          mm = m.detached_copy()
+          mm.id = "%s" %(i) # model number is box number as string
+          working_model.get_hierarchy().append_model(mm)
+      else:  # replace sites and/or u_aniso values in existing model
+        if replace_coordinates: # all sites
+          sites_cart = self.get_model_by_id(model_id).get_sites_cart()
+          #  Sites to merge from this model
+          new_coords=model_to_merge.get_sites_cart()
+          original_coords=sites_cart.select(selection)
+          rmsd=new_coords.rms_difference(original_coords)
+          print("RMSD for %s coordinates in model %s: %.3f A" %(
+             original_coords.size(), i, rmsd), file = self.log)
+          sites_cart.set_selected(selection, new_coords)
+          self.get_model_by_id(model_id).set_crystal_symmetry_and_sites_cart(
+            sites_cart = sites_cart,
+            crystal_symmetry = self.get_model_by_id(
+              model_id).crystal_symmetry())
 
-      if replace_u_aniso and tlso_value: # calculate aniso U from
-        print("Replacing u_cart values based on TLS info",file = self.log)
-        xrs=self.get_model_by_id(model_id).get_xray_structure()
-        xrs.convert_to_anisotropic()
-        uc = xrs.unit_cell()
-        sites_cart = xrs.sites_cart()
-        u_cart=xrs.scatterers().extract_u_cart(uc)
-        new_anisos= uaniso_from_tls_one_group(tlso = tlso_value,
-         sites_cart = sites_cart.select(selection),
-         zeroize_trace=False)
-        u_cart.set_selected(selection, new_anisos)
-        xrs.set_u_cart(u_cart)
-        self.get_model_by_id(model_id).set_xray_structure(xrs)
+        if replace_u_aniso and tlso_value: # calculate aniso U from
+          print("Replacing u_cart values based on TLS info",file = self.log)
+          xrs=self.get_model_by_id(model_id).get_xray_structure()
+          xrs.convert_to_anisotropic()
+          uc = xrs.unit_cell()
+          sites_cart = xrs.sites_cart()
+          u_cart=xrs.scatterers().extract_u_cart(uc)
+          new_anisos= uaniso_from_tls_one_group(tlso = tlso_value,
+           sites_cart = sites_cart.select(selection),
+           zeroize_trace=False)
+          u_cart.set_selected(selection, new_anisos)
+          xrs.set_u_cart(u_cart)
+          self.get_model_by_id(model_id).set_xray_structure(xrs)
+
+    if allow_changes_in_hierarchy:
+      working_model.reset_after_changing_hierarchy() # REQUIRED
 
   def split_up_map_and_model_by_chain(self,
     model_id = 'model',
@@ -1625,6 +1852,59 @@ class map_model_manager(object):
       apply_box_info = apply_box_info,
       write_files = write_files)
 
+  def split_up_map_and_model_by_ncs_groups(self,
+    model_id = 'model',
+    box_cushion = 3,
+    mask_around_unselected_atoms = None,
+    mask_radius = 3,
+    masked_value = -10,
+    write_files = False,
+    apply_box_info = True,
+     ):
+    '''
+     Split up the map, boxing around atoms selected with each ncs group in
+     ncs_groups obtained from supplied model
+
+
+       Returns a group_args object containing list of the map_model_manager
+         objects and a list of the selection objects that define which atoms
+         from the working model are in each object.
+
+       Normally do work on each map_model_manager to create a new model with
+         the same atoms, then use merge_split_maps_and_models() to replace
+         coordinates in the original model with those from all the component
+         models.
+       Optionally carry out the step box_info = get_split_maps_and_models(...)
+         separately with the keyword apply_box_info=False
+
+       box_cushion is the padding around the model atoms when creating boxes
+    '''
+
+    if model_id is None:
+      model_id = 'model'
+    model = self.get_model_by_id(model_id = model_id)
+    if model is None:
+      print("No model to work with", file = self.log)
+      return None # no model to work with
+
+    ncs_groups = model.get_ncs_groups()
+    selection_list = []
+    if ncs_groups is None or len(ncs_groups) < 1:
+      selection_list =  [model.selection("all")]
+    else:
+      for g in ncs_groups:
+        selection_list.append(g.master_iselection)
+
+    return self._split_up_map_and_model(
+      selection_method = 'supplied_selections',
+      model_id = model_id,
+      selection_list = selection_list,
+      box_cushion = box_cushion,
+      mask_around_unselected_atoms = mask_around_unselected_atoms,
+      mask_radius = mask_radius,
+      masked_value = masked_value,
+      apply_box_info = apply_box_info,
+      write_files = write_files)
   def split_up_map_and_model_by_supplied_selections(self,
     selection_list,
     model_id = 'model',
@@ -1681,6 +1961,7 @@ class map_model_manager(object):
     apply_box_info = True,
     mask_id = None,
     exclude_points_outside_density = None,
+    minimum_boxes_inside_density = None,
      ):
     '''
      Split up the map, creating boxes that time the entire map.
@@ -1728,6 +2009,7 @@ class map_model_manager(object):
       apply_box_info = apply_box_info,
       mask_id = mask_id,
       exclude_points_outside_density = exclude_points_outside_density,
+      minimum_boxes_inside_density = minimum_boxes_inside_density,
       write_files = write_files)
 
   def _split_up_map_and_model(self,
@@ -1748,6 +2030,7 @@ class map_model_manager(object):
     apply_box_info = True,
     mask_id = None,
     exclude_points_outside_density = None,
+    minimum_boxes_inside_density = None,
      ):
     '''
        Create a set of overlapping boxes and non-overlapping parts of
@@ -1761,7 +2044,15 @@ class map_model_manager(object):
          the same atoms, then use merge_split_maps_and_models() to replace
          coordinates in the original model with those from all the component
          models.
-       Optionally carry out the step box_info = get_split_maps_and_models(...)
+
+       NOTE: normally you can only change the coordinates and B values in
+        each overlapping box if you want to use merge_split_maps_and_models.
+        If you want to change the hierarchy of the models, then when you
+        split and when you merge, use the keyword:
+        allow_changes_in_hierarchy=True. This will create
+        one model in the hierarachy for each box, numbered by box number.
+
+      Optionally carry out the step box_info = get_split_maps_and_models(...)
          separately with the keyword apply_box_info=False
 
        If selection_list (a list of selection objects matching the atoms in
@@ -1805,6 +2096,7 @@ class map_model_manager(object):
         masked_value = masked_value,
         mask_id = mask_id,
         exclude_points_outside_density = exclude_points_outside_density,
+        minimum_boxes_inside_density = minimum_boxes_inside_density,
         log = self.log,
       )
     if mask_id and exclude_points_outside_density:
@@ -1839,19 +2131,22 @@ class map_model_manager(object):
   #  create a new object)
 
   def mask_all_maps_around_atoms(self,
+      model = None,
       mask_atoms_atom_radius = 3,
       set_outside_to_mean_inside = False,
       soft_mask = False,
       soft_mask_radius = None,
+      skip_n_residues_on_ends = None,
+      invert_mask = None,
       mask_id = 'mask'):
     assert mask_atoms_atom_radius is not None
-    assert self.model() is not None
     '''
       Generate mask around atoms and apply to all maps.
       Overwrites values in these maps
 
       NOTE: Does not change the gridding or shift_cart of the maps and model
 
+      Optional: specify model to use
       Optionally set the value outside the mask equal to the mean inside,
         changing smoothly from actual values inside the mask to the constant
         value outside (otherwise outside everything is set to zero)
@@ -1862,15 +2157,38 @@ class map_model_manager(object):
         (default radius is self.resolution() or resolution calculated
           from gridding)
         If soft mask is set, mask_atoms_atom_radius increased by
+      Optional: invert_mask:  keep outside atoms instead of inside
+      Optional: skip_n_residues_on_ends: any residues within
+        skip_n_residues_on_ends of ends of segments
+         (consecutive residue numbers or close N/P atoms) are excluded
 
     '''
-    if soft_mask:
-      if not soft_mask_radius:
+    if not model:
+      model = self.model()
+
+    assert model is not None
+
+    if skip_n_residues_on_ends:
+      selection_string = " or ".join(get_selections_for_segments(model,
+         skip_n_residues_on_ends = skip_n_residues_on_ends))
+      model = model.apply_selection_string(selection_string)
+      if model is None:  # nothing selected...create empty model
+        from mmtbx.model import manager as model_manager
+        model = model_manager.from_sites_cart(
+           sites_cart = flex.vec3_double(), # empty
+           crystal_symmetry = self.crystal_symmetry())
+        self.map_manager(
+            ).set_model_symmetries_and_shift_cart_to_match_map(model)
+
+
+    if soft_mask and (not soft_mask_radius):
         soft_mask_radius = self.resolution()
     self.create_mask_around_atoms(
+         model = model,
          soft_mask = soft_mask,
          soft_mask_radius = soft_mask_radius,
          mask_atoms_atom_radius = mask_atoms_atom_radius,
+         invert_mask = invert_mask,
          mask_id = mask_id)
     self.apply_mask_to_maps(mask_id = mask_id,
          set_outside_to_mean_inside = \
@@ -1878,6 +2196,7 @@ class map_model_manager(object):
 
   def mask_all_maps_around_edges(self,
       soft_mask_radius = None,
+      boundary_to_smoothing_ratio = 2.,
       mask_id = 'mask'):
     '''
       Apply a soft mask around edges of all maps. Overwrites values in maps
@@ -1886,6 +2205,7 @@ class map_model_manager(object):
       NOTE: Does not change the gridding or shift_cart of the maps and model
     '''
     self.create_mask_around_edges(soft_mask_radius = soft_mask_radius,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       mask_id = mask_id)
     self.apply_mask_to_maps(mask_id = mask_id)
 
@@ -1990,6 +2310,8 @@ class map_model_manager(object):
 
   def create_mask_around_edges(self,
      soft_mask_radius = None,
+     boundary_to_smoothing_ratio = 2.,
+     boundary_radius = None,
      mask_id = 'mask' ):
     '''
       Generate new mask map_manager with soft mask around edges of mask
@@ -2006,10 +2328,11 @@ class map_model_manager(object):
 
     if not soft_mask_radius:
       soft_mask_radius = self.resolution()
-
+    if not boundary_radius:
+      boundary_radius = boundary_to_smoothing_ratio * soft_mask_radius
     from cctbx.maptbx.mask import create_mask_around_edges
     cm = create_mask_around_edges(map_manager = self.map_manager(),
-      soft_mask_radius = soft_mask_radius)
+      boundary_radius = boundary_radius)
     cm.soft_mask(soft_mask_radius = soft_mask_radius)
 
     # Put the mask in map_dict ided with mask_id
@@ -2021,6 +2344,7 @@ class map_model_manager(object):
      mask_atoms_atom_radius = 3,
      soft_mask = False,
      soft_mask_radius = None,
+     invert_mask = None,
      mask_id = 'mask' ):
 
     '''
@@ -2034,6 +2358,7 @@ class map_model_manager(object):
            from gridding)
         If soft mask is set, mask_atoms_atom_radius increased by
           soft_mask_radius
+      Optional: invert_mask:  keep outside atoms instead of inside
 
       Generates new entry in map_manager dictionary with id of
       mask_id (default='mask') replacing any existing entry with that id
@@ -2050,6 +2375,7 @@ class map_model_manager(object):
     from cctbx.maptbx.mask import create_mask_around_atoms
     cm = create_mask_around_atoms(map_manager = self.map_manager(),
       model = model,
+      invert_mask = invert_mask,
       mask_atoms_atom_radius = mask_atoms_atom_radius)
 
     if soft_mask: # Make the create_mask object contain a soft mask
@@ -2058,6 +2384,7 @@ class map_model_manager(object):
     # Put the mask in map_dict ided with mask_id
     self.add_map_manager_by_id(map_manager = cm.map_manager(),
       map_id = mask_id)
+
 
   def create_mask_around_density(self,
      resolution = None,
@@ -2110,6 +2437,93 @@ class map_model_manager(object):
     self.add_map_manager_by_id(map_manager = cm.map_manager(),
       map_id = mask_id)
 
+  def create_spherical_mask(self,
+     soft_mask = True,
+     mask_center_cart = None,
+     mask_radius = None,
+     soft_mask_radius = None,
+     boundary_radius = None,
+     boundary_to_smoothing_ratio = 2.,
+     mask_id = 'mask' ):
+
+    '''
+      Generate spherical mask with radius mask_radius around the
+      cartesian point mask_center_cart.  The value of
+        mask_center_cart is relative to the
+      shifted (origin at (0,0,0) ) position of the map.
+      Does not apply the mask to anything.
+      Normally follow with apply_mask_to_map or apply_mask_to_maps
+      Default: calculate spherical soft mask centered at center of map
+        soft_mask radius default is resolution()
+        boundary between mask and closest edge is
+            soft_mask_radius * boundary_to_smoothing_ratio
+
+      Optional:  not soft mask.  Same as soft mask in dimensions but the
+       soft_mask will not be applied
+
+      Optional: mask_center_cart  (default is center of map)
+
+
+      Generates new entry in map_manager dictionary with id of
+      mask_id (default='mask') replacing any existing entry with that id
+    '''
+
+    if not soft_mask_radius:
+      soft_mask_radius = self.resolution()
+
+    if not boundary_radius:
+      boundary_radius = boundary_to_smoothing_ratio * soft_mask_radius
+
+    inner_boundary_radius = soft_mask_radius
+
+    if not mask_center_cart:
+      mask_center_cart = self.map_info(quiet=True).working_center_cart
+
+    if not mask_radius:
+      # Radius to edge of map:
+      mask_radius = flex.double(mask_center_cart).min_max_mean().min
+
+      # Back off by boundary_radius
+      mask_radius -= boundary_radius
+
+    if mask_radius <= 0:
+      print("\nUnable to auto-generate a mask radius for spherical mask",
+        "\nwith center at (%.3f, %.3f, %.3f) A " %(tuple(mask_center_cart)),
+        "\nand boundary radius of %.3f A " %( boundary_radius, ),
+         file = self.log)
+      return
+
+    print("\nGenerating spherical mask ",
+        "with center at (%.3f, %.3f, %.3f) A " %(tuple(mask_center_cart)),
+        "\n and radius of %.1f A" %(mask_radius), file = self.log)
+    if soft_mask:
+      print("Mask will be a soft mask", file = self.log)
+      print("Boundary radius around "+
+        "mask for smoothing: %.1f A  Smoothing radius: %.1f A" %(
+          boundary_radius, soft_mask_radius), file = self.log)
+
+
+    sites_cart = flex.vec3_double()
+    sites_cart.append(mask_center_cart)
+
+    model = mmtbx.model.manager.from_sites_cart(
+         sites_cart = sites_cart,
+         crystal_symmetry = self.crystal_symmetry())
+
+    # Get the same origin shift in model as in our maps
+    self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(model)
+    from cctbx.maptbx.mask import create_mask_around_atoms
+    cm = create_mask_around_atoms(map_manager = self.map_manager(),
+      model = model,
+      mask_atoms_atom_radius = mask_radius)
+
+    if soft_mask: # Make the create_mask object contain a soft mask
+      cm.soft_mask(soft_mask_radius = soft_mask_radius)
+
+    # Put the mask in map_dict ided with mask_id
+    self.add_map_manager_by_id(map_manager = cm.map_manager(),
+      map_id = mask_id)
+
   def expand_mask(self,
      buffer_radius = 5,
      resolution = None,
@@ -2147,7 +2561,735 @@ class map_model_manager(object):
       "%.1f A ... fraction inside changed from %.4f to %.4f" %(
      buffer_radius, fraction_old,fraction_new), file = self.log)
 
-  # Methods for recombining models
+  # Methods for recombining and manipulating models
+
+  def sequence(self,
+    model = None,
+    model_id = 'model',
+    selection_string = None,
+      ):
+    '''
+      Return sequence of model
+    '''
+    if not model:
+      model = self.get_model_by_id(model_id = model_id)
+
+    if selection_string:
+      model = model.apply_selection_string(selection_string)
+
+    return get_sequence_from_hierarchy(
+        model.get_hierarchy(), remove_white_space=True)
+
+  def rmsd_of_matching_residues(self,
+      target_model_id = 'model',
+      matching_model_id = None,
+      target_model = None,
+      matching_model = None,
+      max_dist = None,
+      minimum_length = None,
+      chain_type = None,
+      atom_name = None,
+      element = None,
+      ca_only = True,
+      matching_info_list = None,
+      allow_reverse = None,
+      quiet = True):
+    '''
+    Get rmsd of all or ca(P) atoms in matching residues
+    '''
+    from libtbx import adopt_init_args
+    kw_obj = group_args()
+    adopt_init_args(kw_obj, locals())
+    all_kw = kw_obj() # save calling parameters in kw as dict
+    del all_kw['adopt_init_args'] # REQUIRED
+    del all_kw['kw_obj']  # REQUIRED
+    del all_kw['ca_only']  # REQUIRED
+    del all_kw['allow_reverse']  # REQUIRED
+    del all_kw['matching_info_list']  # REQUIRED
+
+    if not matching_info_list:
+      matching_info_list = self.select_matching_segments(
+        max_gap = 0,
+        one_to_one = True,
+        **all_kw)
+    overall_diffs = flex.vec3_double()
+    for matching_info in matching_info_list:
+      diffs = self.get_diffs_for_matching_target_and_model(
+         matching_info = matching_info,
+         ca_only = ca_only,
+         max_dist = max_dist)
+      if allow_reverse:
+        reverse_diffs = self.get_diffs_for_matching_target_and_model(
+         matching_info = matching_info,
+         ca_only = ca_only,
+         max_dist = max_dist,
+         reverse = True)
+        if reverse_diffs and reverse_diffs.size()>0 and \
+          reverse_diffs.rms_length() < diffs.rms_length():
+          diffs = reverse_diffs
+      if diffs:
+         overall_diffs.extend(diffs)
+    if overall_diffs.size() > 0:
+      return overall_diffs.rms_length()
+    else:
+      return None
+
+  def get_diffs_for_matching_target_and_model(self,
+      matching_info = None,
+      max_dist = None,
+      ca_only = None,
+      reverse = False,
+      allow_reverse = False,
+       ):
+
+    if reverse and not ca_only:
+      return None # cannot do reverse for full chain
+
+    if allow_reverse:
+      diffs = self.get_diffs_for_matching_target_and_model(
+         matching_info = matching_info,
+         ca_only = ca_only,
+         max_dist = max_dist)
+      reverse_diffs = self.get_diffs_for_matching_target_and_model(
+         matching_info = matching_info,
+         ca_only = ca_only,
+         max_dist = max_dist,
+         reverse = True)
+      if reverse_diffs and reverse_diffs.size()>0 and \
+          reverse_diffs.rms_length() < diffs.rms_length():
+          diffs = reverse_diffs
+      return diffs
+
+
+    target_model = matching_info.target_model
+    matching_model = matching_info.matching_model
+    chain_type = matching_info.chain_type
+    atom_name = matching_info.atom_name
+    element = matching_info.element
+
+    if (not atom_name) or (not element):
+      if chain_type.upper() == "PROTEIN":
+        atom_name = 'CA'
+        element = 'C'
+        if max_dist is None:
+          max_dist = max(self.resolution(), 3.)
+      else:
+        atom_name = 'P'
+        element = 'P'
+    if ca_only:
+      target_model = target_model.apply_selection_string(
+        "(not hetero) and  (altloc ' ' or altloc A) and name %s and element %s" %(
+      atom_name, element))
+      matching_model = matching_model.apply_selection_string(
+        "(not hetero) and (altloc ' ' or altloc A) and name %s and element %s" %(
+       atom_name, element))
+      # use CA
+    elif (target_model.get_sites_cart().size() != \
+         matching_model.get_sites_cart().size() )  or ( not
+       target_model.get_hierarchy().atoms().extract_name().all_eq(
+       matching_model.get_hierarchy().atoms().extract_name())):
+      if self.verbose:
+        for x,y in zip(
+          target_model.get_hierarchy().atoms().extract_name(),
+          matching_model.get_hierarchy().atoms().extract_name()):
+          print(x,y, file = self.log)
+
+      print("Target and matching model do not have the same atoms...cannot",
+        "use ca_only=False in rmsd_of_matching_residues", file = self.log)
+      return None
+
+    target_sites = target_model.get_sites_cart()
+    matching_sites = matching_model.get_sites_cart()
+    if target_sites.size() != matching_sites.size():
+      return None
+    elif reverse:
+      matching_sites = list(matching_sites)
+      matching_sites.reverse()
+      matching_sites = flex.vec3_double(matching_sites)
+    diffs = target_sites - matching_sites
+    return diffs
+
+  def get_cb_resseq_to_skip(self,cb_resseq_list,
+         far_away = None,
+         far_away_n = None,
+         very_far_away = None,
+         very_far_away_n = None,
+         ):
+    '''
+    Identify numbers in resseq_list that are way different than all others by
+    at least max_gap
+    '''
+    if not far_away or not far_away_n:
+      return []
+
+    work_list = deepcopy(cb_resseq_list)
+    work_list.sort()
+    groups=[]
+    last_i = None
+    for i in work_list:
+      if last_i is not None and i <= last_i + far_away:
+        group.append(i)
+        last_i = i
+      else:
+         group = [i]
+         groups.append(group_args(
+           group= group,
+           dist_from_last = i-last_i if last_i is not None else 0)
+          )
+         last_i = i
+
+    residues_to_ignore = []
+    for group_info in groups:
+     if len(group_info.group) <= far_away_n and \
+          len(cb_resseq_list)>= 2 * len(group_info.group):
+        residues_to_ignore += group_info.group
+     elif group_info.dist_from_last >= very_far_away and \
+          len(group_info.group) <= very_far_away_n and \
+          len(cb_resseq_list)>= 2 * len(group_info.group):
+        residues_to_ignore += group_info.group
+    return residues_to_ignore
+
+
+
+  def select_matching_segments(self,
+      target_model_id = 'model',
+      matching_model_id = None,
+      target_model = None,
+      matching_model = None,
+      chain_type = None,
+      atom_name = None,
+      element = None,
+      max_dist = None,
+      max_dist_extra = None,
+      minimum_length = None,
+      max_gap = 5,
+      far_away = 7,
+      far_away_n = 2,
+      very_far_away = 20,
+      very_far_away_n = 1000,
+      one_to_one = False,
+      residue_names_must_match = False,
+      minimum_match_length = 2,
+      shift_without_deep_copy = False,
+      quiet = True):
+    '''
+    Select the parts of matching_model that best match target_model
+    without using matching model or target model more than once
+
+    Only use contiguous segments of target_model (i.e., a sequence of residues
+     with sequential residue numbers is a contiguous segment).  Does not
+     break based on distances (assumes input numbering reflects chain breaks).
+
+    Allow gaps of up to max_gap (and keep residues in the gaps)
+
+    If one-to-one, then select only residues in each that match the other
+
+    If residue_names_must_match, select only residues that match by name as
+      well as position
+
+     Return a group_args object with a list of paired sements
+
+    If far_away is set, remove any groups of far_away_n or fewer that are
+      far_away residues from all other groups
+
+    If very_far_away and very_far_away_n are set, also remove those
+
+    If target model or matching model have different origins from self, they
+      deep-copied and shifted in place to match. The deep copy can be
+      skipped if shift_without_deep_copy is set.
+    '''
+
+    from mmtbx.secondary_structure.find_ss_from_ca import \
+       get_first_resno,get_last_resno, get_chain_id
+
+    if one_to_one:
+       max_gap = 0
+
+    if target_model:
+      if target_model.shift_cart() != self.shift_cart():
+        if not shift_without_deep_copy:
+          self.add_crystal_symmetry_if_necessary(target_model,
+            map_manager = self.map_manager())
+          target_model = target_model.deep_copy()
+        self.shift_any_model_to_match(target_model)
+    else:
+      target_model = self.get_model_by_id(target_model_id)
+    if matching_model:
+      if matching_model.shift_cart() != self.shift_cart():
+        if not shift_without_deep_copy:
+          self.add_crystal_symmetry_if_necessary(matching_model,
+            map_manager = self.map_manager())
+          matching_model = matching_model.deep_copy()
+        self.shift_any_model_to_match(matching_model)
+    else:
+      matching_model = self.get_model_by_id(matching_model_id)
+    if not target_model or not matching_model:
+      if not matching_model:
+        print("No matching model...skipping comparison", file = self.log)
+      if not target_model:
+        print("No target model...skipping comparison", file = self.log)
+      return []
+
+    if not quiet:
+      print("\nFinding parts of %s that match %s " %(
+       matching_model_id, target_model_id), file = self.log)
+
+    # Get the chain type
+    if chain_type is None:
+      from iotbx.bioinformatics import get_chain_type
+      try:
+        chain_type = get_chain_type(model = target_model)
+      except Exception as e:
+       chain_type = None
+    if not chain_type:
+      print("Unable to identify chain_type of '%s' ... please set chain_type" %(
+        target_model_id), file = self.log)
+      assert chain_type # need to set chain type
+
+    if not atom_name or not element:
+      if chain_type.upper() == "PROTEIN":
+        atom_name = 'CA'
+        element = 'C'
+        if max_dist is None:
+          max_dist = max(self.resolution(), 3.)
+      else:
+        atom_name = 'P'
+        element = 'P'
+      if max_dist is None:
+        max_dist = max(self.resolution(), 7.)
+    elif max_dist is None:
+      if atom_name == 'CA':
+        max_dist = max(self.resolution(), 3.)
+      else:
+        max_dist = max(self.resolution(), 7.)
+
+    # Select the atoms to try and match
+    target_model_ca = target_model.apply_selection_string(
+      "(not hetero) and (altloc ' ' or altloc A) and name %s and element %s" %(
+         atom_name, element))
+    matching_model_ca = matching_model.apply_selection_string(
+      "(not hetero) and  (altloc ' ' or altloc A) and name %s and element %s" %(
+        atom_name, element))
+
+    # Make sure we have something to work with
+    if target_model_ca.get_sites_cart() < 1:
+      print("Target model has no sites...skipping select_matching_segments",
+         file = self.log)
+      return []
+    if matching_model_ca.get_sites_cart() < 1:
+      print("Matching model has no sites...skipping select_matching_segments",
+         file = self.log)
+      return []
+
+    if residue_names_must_match:
+      ca_residue_names = get_sequence_from_hierarchy(
+        target_model_ca.get_hierarchy(), remove_white_space=True)
+      cb_residue_names = get_sequence_from_hierarchy(
+        matching_model_ca.get_hierarchy(), remove_white_space=True)
+      assert len(ca_residue_names) == target_model_ca.get_sites_cart().size()
+      assert len(cb_residue_names) == matching_model_ca.get_sites_cart().size()
+    else:
+      ca_residue_names = None
+      cb_residue_names = None
+
+    matching_cb_as_list_info = self.match_cb_to_ca(
+      ca_sites=target_model_ca.get_sites_cart(),
+      cb_as_list = list(matching_model_ca.get_sites_cart()),
+      ca_residue_names = ca_residue_names,
+      cb_residue_names = cb_residue_names,
+      max_dist = max_dist,)
+    matching_cb_as_list = matching_cb_as_list_info.cb_as_list
+
+    cb_sites_list = list(matching_model_ca.get_sites_cart())
+    cb_atoms = list (matching_model_ca.get_hierarchy().atoms())
+
+    cb_atoms_dict = {}
+    for cb_site, cb_atom in zip(cb_sites_list,cb_atoms):
+     cb_atoms_dict[cb_site] = cb_atom
+
+    ca_sites_list = list(target_model_ca.get_sites_cart())
+    ca_atoms = list (target_model_ca.get_hierarchy().atoms())
+
+    ca_atoms_dict = {}
+    for ca_site, ca_atom in zip(ca_sites_list,ca_atoms):
+     ca_atoms_dict[ca_site] = ca_atom
+
+    if one_to_one:   # take only matching parts and group
+      new_ca_sites_list = []
+      new_matching_cb_as_list = []
+      for ca_site, cb_site in zip(ca_sites_list,
+          matching_cb_as_list,
+          ):
+        if not cb_site:  continue
+        new_ca_sites_list.append(ca_site)
+        new_matching_cb_as_list.append(cb_site)
+      ca_sites_list = new_ca_sites_list
+      matching_cb_as_list = new_matching_cb_as_list
+      assert len(matching_cb_as_list) == len(ca_sites_list)
+
+      # Select all the residues in ca_sites_list and group by segments
+      ca_chain_dict = {}
+      for ca_site in ca_sites_list:
+        ca = ca_atoms_dict[ca_site]
+        ca_chain_id = ca.parent().parent().parent().id
+        ca_resseq = ca.parent().parent().resseq_as_int()
+        if not ca_chain_id in ca_chain_dict: ca_chain_dict[ca_chain_id] = []
+        ca_chain_dict[ca_chain_id].append(ca_resseq)
+      ca_selection_list = self.get_selection_string_from_chain_dict(
+        chain_dict= ca_chain_dict,
+        max_gap = max_gap,
+        minimum_length = minimum_length,
+        return_as_group_args_list = True)
+
+      ca_sites_groups = []
+      matching_cb_as_list_groups = []
+
+      residue_groups = []
+
+      for segment_info in ca_selection_list:
+        selection_string ="(chain %s and resseq %s:%s)" %(segment_info.chain_id,
+           segment_info.first_resseq, segment_info.last_resseq)
+        segment_model_ca = target_model_ca.apply_selection_string(
+          selection_string)
+        local_ca_sites_list = segment_model_ca.get_sites_cart()
+        local_matching_cb_as_list = [] # list of cb coordinates
+        for ca, ca_site_cart in zip(segment_model_ca.get_hierarchy().atoms(),
+           local_ca_sites_list):
+          if ca_site_cart in ca_sites_list:
+            index = ca_sites_list.index(ca_site_cart)
+            local_matching_cb_as_list.append(matching_cb_as_list[index])
+          else:
+            local_matching_cb_as_list.append(None)
+
+        residue_groups.append(group_args(
+          starting_ca_resseq = segment_info.first_resseq,
+          ca_sites_list = local_ca_sites_list,
+          matching_cb_as_list = local_matching_cb_as_list,))
+
+    else:
+      residue_groups = [
+        group_args(
+         starting_ca_resseq = None,
+         ca_sites_list = ca_sites_list,
+         matching_cb_as_list = matching_cb_as_list)
+       ]
+    sort_list = []
+    for rg in residue_groups:
+      sort_list.append([rg.starting_ca_resseq,rg])
+    sort_list.sort()
+    residue_groups = []
+    for resseq,rg in sort_list:
+      residue_groups.append(rg)
+
+    # Sort the groups by starting numbers
+
+    # Now run through matching as groups
+
+    target_and_matching_list = []
+    for residue_group in residue_groups:
+      ca_sites_list = residue_group.ca_sites_list
+      matching_cb_as_list = residue_group.matching_cb_as_list
+      ca_chain_dict = {}
+      cb_chain_dict = {}
+
+      cb_resseq_list = []
+      for ca_site, cb_site in zip(ca_sites_list,
+          matching_cb_as_list, ):
+        if not cb_site:  continue
+        cb = cb_atoms_dict[cb_site]
+        cb_chain_id = cb.parent().parent().parent().id
+        cb_resseq = cb.parent().parent().resseq_as_int()
+        cb_resseq_list.append(cb_resseq)
+      # Are any cb_resseq way out of range of all the others?
+      cb_resseq_to_skip = self.get_cb_resseq_to_skip(cb_resseq_list,
+         far_away = far_away,
+         far_away_n = far_away_n,
+         very_far_away = very_far_away,
+         very_far_away_n = very_far_away_n,
+        )
+
+      for ca_site, cb_site in zip(ca_sites_list,
+          matching_cb_as_list, ):
+        if not cb_site:  continue
+        cb = cb_atoms_dict[cb_site]
+        cb_chain_id = cb.parent().parent().parent().id
+        cb_resseq = cb.parent().parent().resseq_as_int()
+        if cb_resseq in cb_resseq_to_skip: continue
+
+
+        ca = ca_atoms_dict[ca_site]
+        ca_chain_id = ca.parent().parent().parent().id
+        ca_resseq = ca.parent().parent().resseq_as_int()
+        if residue_names_must_match:
+          assert ca.parent().resname == cb.parent().resname
+
+        if not cb_chain_id in cb_chain_dict: cb_chain_dict[cb_chain_id] = []
+        if not ca_chain_id in ca_chain_dict: ca_chain_dict[ca_chain_id] = []
+        cb_chain_dict[cb_chain_id].append(cb_resseq)
+        ca_chain_dict[ca_chain_id].append(ca_resseq)
+
+      cb_selection_string = self.get_selection_string_from_chain_dict(
+       chain_dict= cb_chain_dict, max_gap = max_gap)
+      local_matching_model = matching_model.apply_selection_string(
+         cb_selection_string)
+
+      if one_to_one:   # take only matching parts
+        # Note they may be in different orders
+        ca_selection_string = self.get_selection_string_from_chain_dict(
+          chain_dict= ca_chain_dict, max_gap = max_gap)
+        local_target_model = \
+         target_model.apply_selection_string(ca_selection_string)
+        if not local_target_model:
+          continue # skip it
+        target_seq = get_sequence_from_hierarchy(
+          local_target_model.get_hierarchy(), remove_white_space=True,
+            require_chain_type = False)
+        matching_seq = get_sequence_from_hierarchy(
+           local_matching_model.get_hierarchy(), remove_white_space=True,
+            require_chain_type = False)
+        if not target_seq or not matching_seq:
+          continue # skip it
+        target_seq=list(target_seq)
+        matching_seq=list(matching_seq)
+        target_seq.sort()
+        matching_seq.sort()
+        if residue_names_must_match:
+          assert target_seq == matching_seq  # same but could be different order
+        if minimum_match_length and len(target_seq) < minimum_match_length:
+          continue # skip it
+
+      else:
+        local_target_model = target_model
+        local_matching_model = matching_model
+
+      target_and_matching = group_args(
+        group_args_type = 'target and matching residues from other',
+          id = len(target_and_matching_list),
+          target_model = local_target_model,
+          target_model_chain_id = get_chain_id(
+            local_target_model.get_hierarchy()),
+          target_model_start_resseq = get_first_resno(
+            local_target_model.get_hierarchy()),
+          target_model_end_resseq = get_last_resno(
+            local_target_model.get_hierarchy()),
+          matching_model = local_matching_model,
+          matching_model_chain_id = get_chain_id(
+            local_matching_model.get_hierarchy()),
+          matching_model_start_resseq = get_first_resno(
+            local_matching_model.get_hierarchy()),
+          matching_model_end_resseq = get_last_resno(
+            local_matching_model.get_hierarchy()),
+          chain_type = chain_type,
+          atom_name = atom_name,
+          element = element)
+
+      diffs = self.get_diffs_for_matching_target_and_model(
+         matching_info = target_and_matching,
+         ca_only = True,
+         max_dist = max_dist)
+      rms_diffs = diffs.rms_length() if diffs.size()>0 else None
+      reverse_diffs = self.get_diffs_for_matching_target_and_model(
+         matching_info = target_and_matching,
+         ca_only = True,
+         max_dist = max_dist,
+         reverse = True)
+      rms_reverse_diffs = \
+         reverse_diffs.rms_length() if reverse_diffs.size()>0 else None
+      if rms_diffs is not None and (rms_reverse_diffs is None or
+          rms_diffs <= rms_reverse_diffs):
+        target_and_matching.match_direction = True
+        target_and_matching.rms_diffs = rms_diffs
+      elif rms_diffs is not None and (rms_reverse_diffs is not None
+          and rms_diffs > rms_reverse_diffs):
+        target_and_matching.match_direction = False
+        target_and_matching.rms_diffs = rms_reverse_diffs
+      else:
+        target_and_matching.match_direction = None
+        target_and_matching.rms_diffs = None
+
+      target_and_matching_list.append(target_and_matching)
+    return target_and_matching_list
+
+  def get_selection_string_from_chain_dict(self,
+     chain_dict = None,
+     max_gap = None,
+     minimum_length = None,
+     return_as_group_args_list = False):
+   '''
+     Return a selection string for the segments represented in chain_dict,
+     allowing gaps of up to max-gap (fill them in)
+     Require minimum_length if set
+   '''
+   selection_string_list = []
+   selection_group_args_list = []
+   for chain_id in chain_dict.keys():
+     resseq_list = chain_dict[chain_id]
+     resseq_list.sort()
+     groups = []
+     previous_resseq = None
+     first_resseq = None
+     for resseq,next_resseq in zip(resseq_list,resseq_list[1:]+[None]):
+       if previous_resseq is None:
+         first_resseq = resseq
+
+       if next_resseq is None or next_resseq > resseq + max_gap+1: # break
+         groups.append(
+           group_args(first_resseq = first_resseq, last_resseq= resseq))
+         previous_resseq = None
+       else:
+         previous_resseq = resseq
+     for group in groups:
+       if minimum_length is not None and (
+          group.last_resseq-group.first_resseq+1) < minimum_length:
+         continue
+       selection_string_list.append("(chain %s and resseq %s:%s)" %(
+          chain_id, group.first_resseq, group.last_resseq))
+       selection_group_args_list.append(
+         group_args( chain_id = chain_id,
+             first_resseq = group.first_resseq,
+             last_resseq = group.last_resseq,) )
+
+   if return_as_group_args_list:
+     return selection_group_args_list
+   else:
+     return " or ".join(selection_string_list)
+
+
+  def choose_best_set(self,dd, max_dist = None,
+      ):
+    # dd is a dict
+    # values for dd are lists of group args, each has a member value of dist
+    #   and a member value of id.  Choose the one that has the smallest dist
+
+    # If there is a close alternative, also within max_dist but with residue
+    #  number much closer to all the others in a group, take that one instead
+    #  This is to try and go along a chain and not jump unless necessary.
+
+    #   ca_dict[cb].append(group_args(
+    #     dist=dist,
+    #     id = ca,
+    #     resname_id = ca_residue_names[id2], # resname of ca atom
+    #     index_id = id2,  #index of ca atom
+    #     other_resname_id = cb_residue_names[index_cb],  # name of cb atom
+    #     other_index_id =  index_cb,  #  index of cb atob
+
+
+    for key in dd.keys():
+      groups = dd[key]
+      best_group = None
+      for group in groups:
+        if (max_dist is not None) and (group.dist > max_dist):
+          continue
+        if best_group is None or group.dist < best_group.dist:
+          best_group = group
+      dd[key] = best_group
+
+    # Now remove any duplicate id's
+    target_id = self.duplicate_id(dd)
+    while target_id:
+      duplicate_list = []
+      for key in dd.keys():
+        if dd[key] and dd[key].id == target_id:
+          duplicate_list.append(key)
+      assert duplicate_list
+      best_key = None
+      for key in duplicate_list:
+        if not best_key or dd[key].dist < dd[best_key].dist:
+          best_key = key
+      for key in duplicate_list:
+        if key != best_key:
+          dd[key] = None
+      target_id = self.duplicate_id(dd)
+    return group_args(
+      dd = dd,
+      )
+
+  def duplicate_id(self,dd):
+    id_list = []
+    for key in dd.keys():
+      if dd[key]:
+        id = dd[key].id
+        if not id in id_list:
+          id_list.append(id)
+        else:
+          return id
+    return None
+
+  def match_cb_to_ca(self,
+     ca_sites=None,
+     cb_as_list = None,
+     ca_residue_names = None,
+     cb_residue_names = None,
+     max_dist = 2.,):
+
+    '''
+     Identify cb sites that match ca sites
+     If ca_residue_names and cb_residue names, require that residue names match
+    '''
+
+    cb_dict = {}
+    ca_dict = {}
+
+    if not ca_residue_names:
+      ca_residue_names = ca_sites.size() * ['CA']
+    if not cb_residue_names:
+      cb_residue_names = len(cb_as_list) * ['CA']
+    for index_cb in range(len(cb_as_list)):
+      cb = cb_as_list[index_cb]
+      if cb is not None and cb != (-9999, -9999, -9999):
+        cb_sites = flex.vec3_double()
+        cb_sites.append(cb)
+        dist, id1, id2 = cb_sites.min_distance_between_any_pair_with_id(
+          ca_sites)
+        ca = ca_sites[id2]
+        if not (ca in cb_dict.keys()):
+          cb_dict[ca] = []
+
+        if ca_residue_names[id2] != cb_residue_names[index_cb]:
+          dist = 1.e+30 # do not match them
+        cb_dict[ca].append(
+          group_args(
+            dist=dist,
+            id=cb,
+            resname_id = cb_residue_names[index_cb],  # name of cb atom
+            index_id =  index_cb,  #  index of cb atob
+            other_resname_id = ca_residue_names[id2], # resname of ca atom
+            other_index_id = id2,  #index of ca atom
+           ))
+        if not cb in ca_dict.keys():
+          ca_dict[cb] = []
+        ca_dict[cb].append(group_args(
+          dist=dist,
+          id = ca,
+          resname_id = ca_residue_names[id2], # resname of ca atom
+          index_id = id2,  #index of ca atom
+          other_resname_id = cb_residue_names[index_cb],  # name of cb atom
+          other_index_id =  index_cb,  #  index of cb atob
+          ))
+    cb_dict_info = self.choose_best_set(cb_dict, max_dist = max_dist)
+    ca_dict_info = self.choose_best_set(ca_dict, max_dist = max_dist)
+    cb_dict = cb_dict_info.dd
+    ca_dict = ca_dict_info.dd
+    cb_as_list = []
+
+    # Make a list of all the ca_dict positions and the matching (or missing)
+    #  item from cb
+    if not ca_residue_names:
+      ca_residue_names = [None]*ca_sites.size()
+    for ca,ca_resname in zip(ca_sites, ca_residue_names):
+
+      group = cb_dict.get(ca)
+      if group:
+        cb_as_list.append(group.id)
+        assert (not ca_resname) or (ca_resname == group.resname_id and
+           ca_resname == group.other_resname_id)
+      else:
+        cb_as_list.append(None)
+
+    return group_args(
+       cb_as_list = cb_as_list,
+       )
+
 
   def propagate_model_from_other(self, other,
      model_id = 'model',
@@ -2186,7 +3328,27 @@ class map_model_manager(object):
     # And propagate these sites to rest of molecule with internal ncs
     model.set_sites_cart_from_hierarchy(multiply_ncs=True)
 
-  def shift_any_model_to_match(self, model):
+  def add_crystal_symmetry_if_necessary(self, model, map_manager = None):
+    '''
+    Take any model and add crystal symmetry if it is missing
+    Changes model in place
+     Parameters:  model
+
+    Also add unit_cell_crystal_symmetry if missing
+    '''
+    if not model:
+      return
+    if not map_manager:
+      map_manager = self.any_map_manager()
+    assert map_manager is not None
+
+    assert isinstance(model, mmtbx.model.manager)
+    if (not model.crystal_symmetry()) or (
+        not model.crystal_symmetry().unit_cell()):
+      map_manager.set_model_symmetries_and_shift_cart_to_match_map(model)
+      model.set_shift_cart((0, 0, 0))
+
+  def shift_any_model_to_match(self, model, map_manager = None):
     '''
     Take any model and shift it to match the working shift_cart
     Also sets crystal_symmetry.
@@ -2194,19 +3356,31 @@ class map_model_manager(object):
 
      Parameters:  model
     '''
+    if not model:
+      return
     assert isinstance(model, mmtbx.model.manager)
+
+    if not map_manager:
+      map_manager = self.get_any_map_manager()
+    assert map_manager is not None
+
+    self.add_crystal_symmetry_if_necessary(model, map_manager = map_manager)
+
     if not model.shift_cart():
       model.set_shift_cart((0, 0, 0))
+
     coordinate_shift = tuple(
-      [s - o for s,o in zip(self.shift_cart(),model.shift_cart())])
+      [s - o for s,o in zip(map_manager.shift_cart(),model.shift_cart())])
+
     model.shift_model_and_set_crystal_symmetry(
         shift_cart = coordinate_shift,
-        crystal_symmetry=self.crystal_symmetry())
+        crystal_symmetry=map_manager.crystal_symmetry())
+
 
   def get_model_from_other(self, other,
      other_model_id = 'model'):
     '''
-     Take a model with id other_model_id from other_map_model_manager with any
+    Take a model with id other_model_id from other_map_model_manager with any
      boxing and origin shifts allowed, and put it in the same reference
      frame as the current model.  Used to build up a model from pieces
      that were worked on in separate boxes.
@@ -2224,6 +3398,38 @@ class map_model_manager(object):
         shift_cart = coordinate_shift)
     matched_other_model = other_model
     return matched_other_model
+
+  # Methods to create a new map_model_manager with different sampling
+
+  def as_map_model_manager_with_resampled_maps(self,
+     sampling_ratio = 2):
+    ''' Return a new map_model_manager with maps sampled more finely
+        Parameter:  sampling_ratio  must be an integer
+        Creates new maps, keeps same models
+    '''
+
+    n_real = tuple([
+       int(sampling_ratio *n) for n in self.map_manager().map_data().all()])
+
+    map_id = 'map_manager'
+    used_map_id_list = [map_id]
+    fine_mm = self.get_map_manager_by_id(map_id
+         ).resample_on_different_grid(n_real)
+    new_mmm = map_model_manager(map_manager = fine_mm,)
+
+    for model_id in self.model_id_list():
+      new_mmm.add_model_by_id(model = self.get_model_by_id(model_id),
+        model_id = model_id)
+
+    for map_id in self.map_id_list():
+      if not map_id in used_map_id_list:
+         used_map_id_list.append(map_id)
+      fine_mm = self.get_map_manager_by_id(map_id
+         ).resample_on_different_grid(n_real)
+      new_mmm.add_map_manager_by_id(map_manager = fine_mm,
+        map_id = map_id)
+
+    return new_mmm
 
   # Methods for producing Fourier coefficients and calculating maps
 
@@ -2379,12 +3585,12 @@ class map_model_manager(object):
 
 
     if have_previous_scaled_data:
-      if previous_kw.get('map_id_1'):
+      # Expect map_id_1 to be in previous_kw['map_id_to_be_scaled_list']...
+      if previous_kw.get('map_id_1') and previous_kw.get('map_id_2'):
         local_kw['map_id_1'] = previous_kw['map_id_scaled_list'][
          previous_kw['map_id_to_be_scaled_list'].index(previous_kw['map_id_1'])]
         print("Map 1 to use in determining scaling: '%s' " %(
           local_kw['map_id_1']), file = self.log)
-      if previous_kw.get('map_id_2'):
         local_kw['map_id_2'] = previous_kw['map_id_scaled_list'][
          previous_kw['map_id_to_be_scaled_list'].index(previous_kw['map_id_2'])]
         print("Map 2 to use in determining scaling: '%s' " %(
@@ -2412,7 +3618,7 @@ class map_model_manager(object):
     print("Sharpened maps will be in: %s " %(
        local_kw['map_id_scaled_list']), file = self.log)
 
-    if self.model():
+    if local_kw.get('model_id') and self.get_model_by_id(local_kw['model_id']):
       cc = self.map_model_cc(map_id=local_kw['map_id'])
       print ("Current map-model CC for '%s': %.3f " %(local_kw['map_id'],cc),
          file = self.log)
@@ -2468,6 +3674,7 @@ class map_model_manager(object):
         sel       = target_map_coeffs.binner().selection(i_bin)
         cc1 = map_coeffs.select(sel).map_correlation(
            target_map_coeffs.select(sel))
+        cc1 = (0 if cc1 is None else cc1)
         sum_cc.append(cc1)
       cc = sum_cc.min_max_mean().mean
       if best_cc is None or cc > best_cc:
@@ -2487,13 +3694,14 @@ class map_model_manager(object):
     mask_id = None,
     tls_by_chain = True,
     apply_tls_to_model = True,
-    iterations = 2,
+    iterations = 1,
     skip_waters = True,
     skip_hetero = True,
     coordinate_shift_to_apply_before_tlso = None,
     core_box_size_ratio = None,
     box_cushion_ratio = None,
     exclude_points_outside_density = True,
+    minimum_boxes_inside_density = True,
     d_min = None,
       **kw):
     if iterations:
@@ -2629,7 +3837,8 @@ class map_model_manager(object):
         kw['map_id']  in kw['map_id_to_be_scaled_list']) # map_id_to_be_scaled not ok
 
       # Set up list of maps to be scaled
-      kw = self.set_map_id_lists(kw)
+      kw['sharpen_all_maps'] = True # REQUIRED
+      kw = self.set_map_id_lists(kw) # MUST COME AFTER sharpen_all_maps
       kw['overall_sharpen_before_and_after_local'] = False
 
       # run sharpening without local sharpening first
@@ -2696,8 +3905,9 @@ class map_model_manager(object):
       print("\nFinal sharpened map is in '%s' in '%s' " %(
          scaled_map_id, self.name), file = self.log)
 
-      if self.model():
-        cc = self.map_model_cc(map_id = scaled_map_id)
+      if local_kw.get('model_id') and self.get_model_by_id(local_kw['model_id']):
+        cc = self.map_model_cc(model_id = local_kw['model_id'],
+           map_id = scaled_map_id)
         print ("Current map-model CC for '%s': %.3f " %(scaled_map_id,cc),
            file = self.log)
 
@@ -2705,12 +3915,14 @@ class map_model_manager(object):
            file = self.log)
 
   def set_map_id_lists(self,kw):
-
+    if kw.get('overall_sharpen_before_and_after_local'):
+      kw['sharpen_all_maps'] = True
     if kw.get('map_id') is None:
       kw['map_id'] = 'map_manager'
     if kw.get('map_id_to_be_scaled_list') is None:
       kw['map_id_to_be_scaled_list'] = [kw['map_id']]
-      if kw.get('map_id_1') and kw.get('map_id_2'): # half-map sharpening
+      if kw.get('sharpen_all_maps') and \
+            kw.get('map_id_1') and kw.get('map_id_2'): # half-map sharpening
          kw['map_id_to_be_scaled_list'].append(kw['map_id_1'])
          kw['map_id_to_be_scaled_list'].append(kw['map_id_2'])
     if kw.get('map_id_scaled_list') is None:
@@ -2725,6 +3937,7 @@ class map_model_manager(object):
       map_id_to_be_scaled_list = None,
       map_id_scaled_list = None,
       exclude_points_outside_density = None,
+      minimum_boxes_inside_density = None,
       resolution = None,
       d_min = None,
       k_sol = None,
@@ -2745,6 +3958,7 @@ class map_model_manager(object):
       use_dv_weighting = None,
       n_direction_vectors = None,
       run_analyze_anisotropy = True,
+      sharpen_all_maps = False,
       nproc = None,
     ):
     '''
@@ -2752,6 +3966,8 @@ class map_model_manager(object):
       map_id_external_map
      Changes the working map_manager
 
+     resolution is nominal resolution of map
+     d_min is minimum resolution to use in calculation of Fourier coefficients
     '''
 
     from libtbx import adopt_init_args
@@ -2778,8 +3994,9 @@ class map_model_manager(object):
 
     kw['map_id_2'] = map_id_external_map
     kw['is_external_based'] = True
+    kw['remove_overall_anisotropy'] = False # REQUIRED
     del kw['map_id_external_map']
-
+    kw['model_map_ids_to_leave_as_is'] = [map_id_external_map] # do not remove aniso
     self._sharpen_map(**kw)
 
   def half_map_sharpen(self,
@@ -2789,6 +4006,7 @@ class map_model_manager(object):
       map_id_scaled_list = None,
       map_id_to_be_scaled_list = None,
       exclude_points_outside_density = None,
+      minimum_boxes_inside_density = None,
       resolution = None,
       d_min = None,
       k_sol = None,
@@ -2821,6 +4039,8 @@ class map_model_manager(object):
       overall_sharpen_before_and_after_local = False,
       get_tls_info_only = None,
       coordinate_shift_to_apply_before_tlso = None,
+      sharpen_all_maps = False,
+      remove_overall_anisotropy = True,
     ):
     '''
      Scale map_id with scale factors identified from map_id_1 vs map_id_2
@@ -2830,6 +4050,8 @@ class map_model_manager(object):
         local_sharpen are set. It limits range of anisotropic B.  Default is
         100 at 4 A, proportional to resolution squared
 
+     resolution is nominal resolution of map
+     d_min is minimum resolution to use in calculation of Fourier coefficients
     '''
 
     from libtbx import adopt_init_args
@@ -2861,6 +4083,11 @@ class map_model_manager(object):
        "'%s' in map_model_manager '%s'" %(
       str(kw['map_id_scaled_list']),self.name),file = self.log)
 
+    if tlso_group_info:  # convert to lists
+      convert_tlso_group_info_to_lists(tlso_group_info)
+      if kw['get_tls_from_u'] is None:
+        kw['get_tls_from_u'] = True
+
     # Now get scaling from comparison of the two half-maps
     #  apply the scaling to map_id_to_be_scaled
 
@@ -2875,6 +4102,7 @@ class map_model_manager(object):
       map_id_scaled_list = None,
       map_id_to_be_scaled_list = None,
       exclude_points_outside_density = True,
+      minimum_boxes_inside_density = True,
       resolution = None,
       d_min = None,
       k_sol = None,
@@ -2889,7 +4117,7 @@ class map_model_manager(object):
       rmsd = None,
       local_sharpen = None,
       anisotropic_sharpen = None,
-      minimum_low_res_cc = None,
+      minimum_low_res_cc = 0.20,
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
       n_direction_vectors = None,
@@ -2913,6 +4141,8 @@ class map_model_manager(object):
       mask_around_model = True,
       get_tls_info_only = None,
       coordinate_shift_to_apply_before_tlso = None,
+      sharpen_all_maps = False,
+      remove_overall_anisotropy = True,
     ):
     '''
      Scale map_id with scale factors identified from map_id vs model
@@ -2921,6 +4151,9 @@ class map_model_manager(object):
      max_abs_b applies if get_scale_as_aniso_u and anisotropic_sharpen and
         local_sharpen are set. It limits range of anisotropic B.  Default is
         100 at 4 A, proportional to resolution squared
+
+     resolution is nominal resolution of map
+     d_min is minimum resolution to use in calculation of Fourier coefficients
 
     '''
 
@@ -2937,6 +4170,7 @@ class map_model_manager(object):
 
     # Set what maps are going to be sharpened and new names
     kw = self.set_map_id_lists(kw)
+
 
     print ("\nRunning model-based sharpening ", file = self.log)
     if local_sharpen:
@@ -2963,30 +4197,18 @@ class map_model_manager(object):
     if model_id_for_rms_fc is None:
       kw['model_id_for_rms_fc'] = kw['model_id']
 
-
     if tlso_group_info:  # convert to lists
-      #tlso_group_info.tlso_selection_list,
-      # tlso_group_info.tlso_shift_cart_list,):
-      tlso_group_info.T_list = []
-      tlso_group_info.L_list = []
-      tlso_group_info.S_list = []
-      tlso_group_info.O_list = []
-      for tlso in tlso_group_info.tlso_list:
-        tlso_group_info.T_list.append(tlso.t)
-        tlso_group_info.L_list.append(tlso.l)
-        tlso_group_info.S_list.append(tlso.s)
-        tlso_group_info.O_list.append(tlso.origin)
-      tlso_group_info.tlso_list = None
-      tlso_group_info.tlso_selection_list = \
-         tlso_group_info.selection_as_text_list
-      tlso_group_info.tlso_shift_cart_list = len(
-         tlso_group_info.tlso_selection_list) *[None]
+      convert_tlso_group_info_to_lists(tlso_group_info)
+      if get_tls_from_u is None:
+        get_tls_from_u = True
     elif find_tls_from_model:
       # If we are going to use TLS groups from the model, check them here
-      if not self.model():
+      if not self.get_model_by_id(model_id):
         raise Sorry("Need model for find_tls_from_model")
+      if get_tls_from_u is None:
+        get_tls_from_u = True
       tlso_group_info = get_tlso_group_info_from_model(
-         self.model(),
+         self.get_model_by_id(model_id),
          nproc = nproc,
          log = self.log)
       kw['tlso_group_info'] = tlso_group_info
@@ -3037,12 +4259,13 @@ class map_model_manager(object):
 
     if find_k_sol_b_sol and (k_sol is None) and (b_sol is None):
       # Find k_sol and b_sol
-      local_mmm = working_mmm.extract_all_maps_around_model()
+      local_mmm = working_mmm.extract_all_maps_around_model(
+        stay_inside_current_map = True)
       local_mmm.mask_all_maps_around_atoms(
          mask_atoms_atom_radius = 2.* d_min,
          soft_mask =True)
       d_min_for_k_sol_b_sol = max(d_min, d_min_for_k_sol_b_sol)
-      kb_info = local_mmm.find_k_sol_b_sol(local_mmm.model(),
+      kb_info = local_mmm.find_k_sol_b_sol(local_mmm.get_model_by_id(model_id),
         d_min = d_min_for_k_sol_b_sol,
         model_map_id = map_id_model_map,
         comparison_map_id = map_id)
@@ -3061,7 +4284,6 @@ class map_model_manager(object):
        map_id = map_id_model_map,
        k_sol = k_sol,
        b_sol = b_sol)
-
 
     # Save unmodified copy of map to be scaled
     mm_dc_list = []
@@ -3086,6 +4308,7 @@ class map_model_manager(object):
     kw['map_id_2'] = map_id_model_map
     kw['is_model_based'] = True
     kw['map_id_to_be_scaled_list'] = unmasked_map_id_list
+    kw['model_map_ids_to_leave_as_is'] = [map_id_model_map] # do not remove aniso
 
     # Now get scaling from comparison of working_map_id_to_be_scaled and
     #   map_id_model_map, and
@@ -3119,6 +4342,7 @@ class map_model_manager(object):
       map_id_to_be_scaled_list = None,
       map_id_scaled_list = None,
       exclude_points_outside_density = None,
+      minimum_boxes_inside_density = None,
       equalize_power = None,
       resolution = None,
       d_min = None,
@@ -3138,7 +4362,7 @@ class map_model_manager(object):
       n_bins_default = 200,
       n_bins_default_local = 20,
       anisotropic_sharpen = None,
-      minimum_low_res_cc = None,
+      minimum_low_res_cc = 0.20,
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
       n_direction_vectors = None,
@@ -3155,6 +4379,9 @@ class map_model_manager(object):
       get_tls_info_only = None,
       coordinate_shift_to_apply_before_tlso = None,
       overall_sharpen_before_and_after_local = None, # ignored
+      sharpen_all_maps = False,
+      model_map_ids_to_leave_as_is = None,
+      remove_overall_anisotropy = None,
     ):
     '''
      Scale map_id with scale factors identified from map_id_1 and map_id_2
@@ -3176,6 +4403,9 @@ class map_model_manager(object):
      max_abs_b applies if get_scale_as_aniso_u and anisotropic_sharpen and
         local_sharpen are set. It limits range of anisotropic B.  Default is
         100 at 4 A, proportional to resolution squared
+
+     resolution is nominal resolution of map
+     d_min is minimum resolution to use in calculation of Fourier coefficients
     '''
 
     from libtbx import adopt_init_args
@@ -3192,6 +4422,8 @@ class map_model_manager(object):
     del kw['overall_sharpen_before_and_after_local']  # REQUIRED
     del kw['n_bins_default']  # REQUIRED
     del kw['n_bins_default_local']  # REQUIRED
+    del kw['remove_overall_anisotropy']  # REQUIRED
+    del kw['model_map_ids_to_leave_as_is']  # REQUIRED
 
 
     # Checks
@@ -3200,14 +4432,24 @@ class map_model_manager(object):
     self.get_map_manager_by_id(map_id_1) or
         is_model_based or (
         is_external_based) and self.get_map_manager_by_id(map_id_2))
+    if get_tls_from_u and n_boxes == 1:
+      raise Sorry("Cannot get TLS with n_boxes==1")
+
+    # Set get_scale_as_aniso_u if not set already
+    if get_scale_as_aniso_u is None:
+      if replace_aniso_with_tls_equiv or tlso_group_info:
+        get_scale_as_aniso_u = True
+        print("Getting scale factors as aniso U values", file = self.log)
 
     # remove any extra models and maps to speed up boxing and not modify orig
-    map_id_list = [map_id,map_id_1,map_id_2]
-    working_mmm = self._get_map_model_manager_with_selected(
-      map_id_list = map_id_list, deep_copy=True)
+    map_id_list = [map_id,map_id_1,map_id_2]+kw['map_id_to_be_scaled_list']
+    working_mmm = self.get_map_model_manager_with_selected(
+      map_id_list = map_id_list,
+      model_id_list =
+          [model_id_for_rms_fc] if is_model_based and self.get_model_by_id(
+            model_id_for_rms_fc) else None,
+      deep_copy=True)
     working_mmm.set_log(self.log)
-    if is_model_based and self.model():
-      working_mmm.add_model_by_id(model_id = 'model', model = self.model()) # maybe use model_id
 
     # Note the map that is going to be scaled
     assert kw['map_id_to_be_scaled_list']
@@ -3231,47 +4473,6 @@ class map_model_manager(object):
     print("Scaled maps in '%s' will go in '%s'" %(
        self.name,str(kw['map_id_scaled_list'])), file = self.log)
 
-    if local_sharpen:
-      # Now local sharpening
-      print("\nSetting up local sharpening ...\n",file = self.log)
-      # We need the map to be scaled here too. Deep copy it so original is not
-      #  modified
-      for id in kw['map_id_to_be_scaled_list']:
-        working_mmm.add_map_manager_by_id(map_id=id,
-          map_manager=self.get_map_manager_by_id(
-            map_id=id).deep_copy())
-
-      if n_bins is None: # set it here
-        kw['n_bins'] = n_bins_default_local
-
-      if get_tls_info_only:
-        return working_mmm._local_sharpen(**kw)
-      else:
-        working_mmm._local_sharpen(**kw)
-
-      for id, previous_id in zip(
-          kw['map_id_scaled_list'],
-          kw['map_id_to_be_scaled_list']):
-        sharpened_local_mm = working_mmm.get_map_manager_by_id(id)
-        if sharpened_local_mm:
-          # We're done. put map in map manager and return
-          print("Saving local-sharpened map '%s' from map_model_manager '%s'" %(
-           id,working_mmm.name) + " as '%s' in '%s' " %(
-           id,self.name), file = self.log)
-          sharpened_local_mm.name = working_mmm.get_map_manager_by_id(
-             previous_id).file_name
-
-          self.add_map_manager_by_id(map_manager = sharpened_local_mm,
-            map_id = id)
-        else:
-          print("No local-sharpened map obtained "+
-            "in '%s' from map_model_manager '%s'" %(
-            id,working_mmm.name), file = self.log)
-
-      return
-
-    # Here to run overall
-    print ("\nRunning overall sharpening ", file = self.log)
     if n_bins is None:
       n_bins = n_bins_default
 
@@ -3280,7 +4481,7 @@ class map_model_manager(object):
       resolution,
       d_min,
       smoothing_radius = smoothing_radius,
-      skip_boxes = True)
+      )
     if spectral_scaling and (not expected_rms_fc_list):
         from cctbx.development.approx_amplitude_vs_resolution import \
           approx_amplitude_vs_resolution
@@ -3319,9 +4520,58 @@ class map_model_manager(object):
     map_coeffs = working_mmm.get_map_manager_by_id(
        map_id).map_as_fourier_coefficients( d_min = d_min)
 
+    if remove_overall_anisotropy:
+      b_iso = 10 * d_min  # works best if some overall B remains
+      aniso_b_cart = working_mmm.remove_anisotropy(map_id = map_id,
+        d_min = d_min,
+        b_iso = b_iso,
+        remove_from_all_maps = True,
+        model_map_ids_to_leave_as_is = model_map_ids_to_leave_as_is)
+    else:
+      aniso_b_cart = None
+      b_iso = None
+    kw['b_iso'] = b_iso
+    kw['aniso_b_cart'] = aniso_b_cart
+
     n_bins =working_mmm._set_n_bins(n_bins = n_bins,
       d_min = d_min, map_coeffs = map_coeffs,
       local_sharpen = False)
+
+    if local_sharpen:
+      # Now local sharpening
+      print("\nSetting up local sharpening ...\n",file = self.log)
+
+      if kw['n_bins'] is None: # set it here for local
+        kw['n_bins'] = n_bins_default_local
+
+      if get_tls_info_only:
+        return working_mmm._local_sharpen(**kw)
+      else:
+        working_mmm._local_sharpen(**kw)
+
+      for id, previous_id in zip(
+          kw['map_id_scaled_list'],
+          kw['map_id_to_be_scaled_list']):
+        sharpened_local_mm = working_mmm.get_map_manager_by_id(id)
+        if sharpened_local_mm:
+          # We're done. put map in map manager and return
+          print("Saving local-sharpened map '%s' from map_model_manager '%s'" %(
+           id,working_mmm.name) + " as '%s' in '%s' " %(
+           id,self.name), file = self.log)
+          sharpened_local_mm.name = working_mmm.get_map_manager_by_id(
+             previous_id).file_name
+
+          self.add_map_manager_by_id(map_manager = sharpened_local_mm,
+            map_id = id)
+        else:
+          print("No local-sharpened map obtained "+
+            "in '%s' from map_model_manager '%s'" %(
+            id,working_mmm.name), file = self.log)
+
+      return
+
+    # Here to run overall
+    print ("\nRunning overall sharpening ", file = self.log)
 
     if anisotropic_sharpen:
        print ("Using anisotropic sharpening ",file = self.log)
@@ -3341,7 +4591,6 @@ class map_model_manager(object):
       print("Estimating scale factors ", file = self.log)
 
     # Analyze spectrum in map_id (will apply it to map_id_to_be_scaled)
-
     scaling_group_info = working_mmm._get_weights_in_shells(n_bins,
         d_min,
         map_id = map_id,
@@ -3404,7 +4653,11 @@ class map_model_manager(object):
           n_bins,
           d_min,
           scaling_group_info = scaling_group_info,
-          direction_vectors = direction_vectors)
+          direction_vectors = direction_vectors,
+          aniso_b_cart = aniso_b_cart,
+          b_iso = b_iso,
+          )
+
       if not new_map_manager:
         print("Not applying scaling to '%s'" %(id) ,file = self.log)
       else: # usual
@@ -3423,23 +4676,28 @@ class map_model_manager(object):
 
     tls_info = self._analyze_aniso(scale_factor_info,
       everything_is_inside = True,
+      aniso_b_cart = aniso_b_cart,
+      b_iso = b_iso,
      )
     return tls_info
 
   def remove_anisotropy(self,
         d_min = None,
         map_coeffs = None,
-        u_cart_to_remove = None,
-        u_cart_to_add = None,
-        overall_u_cart_to_apply = None,
-        overall_u_cart_to_remove = None,
-        overall_scale= None,
-        map_id = 'map_manager'):
+        aniso_b_cart = None,
+        map_id = 'map_manager',
+        map_ids = None,
+        remove_from_all_maps = False,
+        model_map_ids_to_leave_as_is  = None,
+        b_iso = None):
    '''
    Remove anisotropy from map, optionally remove anisotropy specified by
-    overall_u_cart_to_remove
+    aniso_b_cart and b_iso
    '''
-   assert map_coeffs or d_min
+   assert map_coeffs or d_min or map_id
+
+   if not model_map_ids_to_leave_as_is:
+     model_map_ids_to_leave_as_is = []
 
    if not map_coeffs:
       assert self.get_map_manager_by_id(map_id)
@@ -3448,61 +4706,70 @@ class map_model_manager(object):
    if not d_min:
      d_min = map_coeffs.d_min()
 
-   if (overall_u_cart_to_apply is not None):
-     overall_u_cart_to_remove = tuple(-1*flex.double(
-        overall_u_cart_to_apply))
 
-   if (overall_u_cart_to_apply is not None) and overall_scale:
-     n_bin = overall_scale.size()
-   else:
-     n_bin = 1 # don't need it
    from cctbx.maptbx.refine_sharpening import analyze_aniso_object
-   f_array_info = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bin,
-          d_min = d_min)
-   f_array = f_array_info.f_array
-   if (not overall_u_cart_to_apply) and (not u_cart_to_remove):
-     # Get anisotropy if not supplied and apply it
+   if (not aniso_b_cart):
+     aniso_b_cart = self._get_aniso_of_map(d_min = d_min, map_id = map_id)
+
+
+   if remove_from_all_maps:  # remove in place from all maps
+     print("Removing anisotropy from all maps", file = self.log)
+     # Note: do not remove anisotropy from model-based maps..
+     self._print_overall_u(aniso_b_cart,b_iso)
+
+     if map_ids is None:
+       map_ids = list(self._map_dict.keys())
+     for map_id in map_ids:
+       mm=self.get_map_manager_by_id(map_id)
+       if mm.is_mask():
+         continue # do not apply to masks
+       elif map_id in model_map_ids_to_leave_as_is:
+         continue # skip model maps
+       map_coeffs = mm.map_as_fourier_coefficients(d_min = d_min)
+       from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
+       f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
+       analyze_aniso = analyze_aniso_object()
+       analyze_aniso.set_up_aniso_correction(f_array=f_array,
+         b_iso = b_iso,
+         d_min = d_min,
+         b_cart_to_remove = aniso_b_cart)
+       scaled_f_array = analyze_aniso.apply_aniso_correction(f_array=f_array)
+       new_mm = self.map_manager(
+          ).fourier_coefficients_as_map_manager(
+           scaled_f_array.phase_transfer(phase_source=phases,
+           deg=True))
+       mm.set_map_data(map_data = new_mm.map_data())
+       print("Removed anisotropy from map '%s' " %(map_id), file = self.log)
+     return aniso_b_cart
+
+   else:  # apply to f_array and return
+     print("Removing anisotropy and returning as map",
+          "   %6.1f %6.1f %6.1f %6.1f %6.1f %6.1f  " %(
+      tuple(aniso_b_cart)),file = self.log)
+
      analyze_aniso = analyze_aniso_object()
-     analyze_aniso.set_up_aniso_correction(f_array=f_array)
-     print(" Finding and removing anisotropy (positive is sharpening) "+
-        "b_cart = %s " %( str(analyze_aniso.b_cart)), file = self.log)
+     analyze_aniso.set_up_aniso_correction(f_array=f_array,
+         b_iso = b_iso,
+          b_cart_to_remove=aniso_b_cart)
      scaled_f_array = analyze_aniso.apply_aniso_correction(f_array=f_array)
-   else:  # remove overall_u_cart_to_remove
-     from mmtbx.scaling import absolute_scaling
-     if overall_u_cart_to_remove:
-       print(" Removing anisotropy (positive is sharpening).b_cart = %s " %(
-         str(adptbx.u_as_b(tuple(col(overall_u_cart_to_apply))))),
-         file = self.log)
-       u_star= adptbx.u_cart_as_u_star(
-         f_array.unit_cell(), overall_u_cart_to_remove)
-       scaled_f_array = absolute_scaling.anisotropic_correction(
-        f_array,0.0, u_star ,must_be_greater_than=-0.0001)
-       if overall_scale:  # Apply overall resolution-dependent scale factors
-         print("Applying resolution-dependent scale factor overall_scale",
-             file = self.log)
-         scale_array=f_array.binner().interpolate(
-            overall_scale, 1) # d_star_power=1
-         scaled_f_array=scaled_f_array.customized_copy(
-            data=scaled_f_array.data()*scale_array)
-
-     else: # remove and add
-       u_star= adptbx.u_cart_as_u_star(
-         f_array.unit_cell(), u_cart_to_remove)
-       u_star_aniso_removed = adptbx.u_cart_as_u_star(
-         f_array.unit_cell(), tuple(-col(u_cart_to_add)))
-
-       scaled_f_array = absolute_scaling.anisotropic_correction(
-         f_array,0.0, u_star ,must_be_greater_than=-0.0001)
-
-       scaled_f_array = absolute_scaling.anisotropic_correction(
-         scaled_f_array,0.0,u_star_aniso_removed,must_be_greater_than=-0.0001)
-
      scaled_f_array.set_observation_type( f_array)
 
-   return self.map_manager(
-       ).fourier_coefficients_as_map_manager(
+     return self.map_manager(
+        ).fourier_coefficients_as_map_manager(
          scaled_f_array.phase_transfer(phase_source=f_array_info.phases,
          deg=True))
+
+  def _get_aniso_of_map(self, d_min = None, map_id = 'map_manager'):
+    if not d_min:
+      d_min = self.resolution()
+    mm=self.get_map_manager_by_id(map_id)
+    map_coeffs = mm.map_as_fourier_coefficients(d_min = d_min)
+    from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
+    f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
+    from cctbx.maptbx.refine_sharpening import analyze_aniso_object
+    analyze_aniso = analyze_aniso_object()
+    analyze_aniso.set_up_aniso_correction(f_array=f_array, d_min = d_min)
+    return analyze_aniso.b_cart
 
   def _get_aniso_direction_vectors(self, map_id, n_direction_vectors = None,
      orient_to_axes = True):
@@ -3589,7 +4856,7 @@ class map_model_manager(object):
 
 
 
-  def _get_map_model_manager_with_selected(self,
+  def get_map_model_manager_with_selected(self,
       map_id_list=None, model_id_list = None,
       deep_copy = False):
     # Create a new map_model_manager with just what we need
@@ -3601,11 +4868,17 @@ class map_model_manager(object):
 
 
     if map_id_list:
+      already_copied = []
       for id in map_id_list:
+        if id in already_copied: continue
+        already_copied.append(id)
         if self.get_map_manager_by_id(id):
           working_mmm.add_map_manager_by_id(self.get_map_manager_by_id(id),id)
     if model_id_list:
+      already_copied = []
       for id in model_id_list:
+        if id in already_copied: continue
+        already_copied.append(id)
         if self.get_model_by_id(id):
           working_mmm.add_model_by_id(self.get_model_by_id(id),id)
     if deep_copy:
@@ -3649,6 +4922,8 @@ class map_model_manager(object):
       target_scale_factors = None,
       scaling_group_info = None,
       direction_vectors= None,
+      aniso_b_cart = None,
+      b_iso = None,
       ):
 
     f_array_info = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
@@ -3662,6 +4937,11 @@ class map_model_manager(object):
          or len(scaling_group_info.scaling_info_list)==1):
       print("Unable to scale dataset",file = self.log)
       return None
+
+    if aniso_b_cart: # first apply aniso_b_cart to the whole array
+       apply_aniso_b_cart_to_f_array_info(f_array_info,
+         b_iso, d_min, aniso_b_cart)
+
 
     if target_scale_factors: # usual
       assert target_scale_factors.size() == n_bins
@@ -3832,6 +5112,7 @@ class map_model_manager(object):
       expected_ssqr_list_rms = expected_ssqr_list_rms,
       tlso_group_info = tlso_group_info,
       resolution = resolution, # nominal resolution
+      remove_anisotropy_before_analysis = True, # work with aniso-removed
       out = self.log)
     if not hasattr(result,'scaling_info_list'):  # result is one si
       result = group_args(
@@ -3882,13 +5163,21 @@ class map_model_manager(object):
     raise Sorry("Unable to create temporary directory", file = self.log)
 
   def _update_scale_factor_info_from_aniso(self, scale_factor_info,
-      max_abs_b = None):
+      max_abs_b = None, get_tls_from_u = None):
 
     if max_abs_b is None:  # set default
-      max_abs_b = 100 * (self.resolution()/4)**2  # about 100 at 4 A
+      max_abs_b = 100 * (self.resolution()/2.5)**2  # about 100 at 2.5 A
     print("\nUpdating scale factor info from aniso U values.  \n"+
       "Maximum B correction allowed: %.2f" %(
      max_abs_b),file = self.log)
+    if get_tls_from_u:
+      print("\nSupplied TLS assumed to be overall fall-off with resolution",
+        "\nScale factor will be reduced by 1/(1+E**2)",
+           file = self.log)
+    else:
+      print("\nSupplied TLS assumed to be desired anisotropy of scale factors",
+           file = self.log)
+
     map_coeffs = self.get_any_map_manager(
          ).map_as_fourier_coefficients(d_min = self.resolution())
     from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
@@ -3905,18 +5194,28 @@ class map_model_manager(object):
     for xyz, scaling_group_info in zip(xyz_list,value_list):
       direction_vectors = scaling_group_info.direction_vectors
       scaling_info_list = scaling_group_info.scaling_info_list
-      if scaling_group_info.overall_scale:
-        # if overall_scale are supplied, multiply by interpolated scale factor
+      if not scaling_group_info.overall_scale:
+        continue # missing data
+      elif get_tls_from_u:
+        u_cart_to_apply = tuple(-flex.double(
+          scaling_group_info.uu_b_cart_as_u_cart))
+        overall_scale = None
+        scale_by_ssqr_plus_one = True
+      else: # usual
+        # if multiply overall by interpolated scale factor
         u_cart_to_apply = tuple(flex.double(
           scaling_group_info.ss_b_cart_as_u_cart))
         overall_scale = scaling_group_info.overall_scale
-      else: # nothing to do
-        continue
+        scale_by_ssqr_plus_one = False
+
       for si,dv in zip(scaling_info_list,direction_vectors):
-        if not si.target_scale_factors:
-          continue
+        tsf = si.target_scale_factors
         target_sthol2 = si.target_sthol2
-        # Now recalculate target_scale_factors from ss_b_cart_as_u_cart and dv
+        # Recalculate target_scale_factors from ss_b_cart_as_u_cart and dv
+
+        # NOTE: the "reflections" here are just values along a line in
+        #  reciprocal space
+
         recip_space_vectors = flex.vec3_double()
         scale_values = flex.double()
         for sthol2 in target_sthol2:
@@ -3948,27 +5247,47 @@ class map_model_manager(object):
         scaled_f_array = absolute_scaling.anisotropic_correction(
           scale_values_array,0.0, u_star ,must_be_greater_than=-0.0001)
 
-        if overall_scale:  # Apply overall
-            #resolution-dependent scale factors
-          scaled_f_array=scaled_f_array.customized_copy(
-            data=scaled_f_array.data()*scaling_group_info.overall_scale)
         # Now extract our values as target_scale_factors
         si.target_scale_factors = scaled_f_array.data()
 
-    print("Done updating scale factors from aniso u values\n", file = self.log)
+        if overall_scale:  # Apply overall
+          #resolution-dependent scale factors
+          si.target_scale_factors *= scaling_group_info.overall_scale
 
+        if scale_by_ssqr_plus_one:
+          # Estimate best scale factor given errors
+          si.target_scale_factors *= 1./(1.+si.ssqr_values)
+
+    print("Done updating scale factors from aniso u values\n", file = self.log)
 
   def _analyze_aniso_replace_with_supplied(self,
      scale_factor_info,
      tlso_group_info = None,
      map_id = None,
      model_id = None,
+     get_tls_from_u = None,
+     aniso_b_cart = None,
+     b_iso = None,
     ):
 
     if model_id is None:
       model_id = 'model'
 
+    if get_tls_from_u is None:
+      get_tls_from_u = True
+
     # Replace aniso information with values from tlso_group_info
+    #  Assume TLS is overall fall-off of data if get_tls_from_u is True
+    #    set uu_b_cart_as_u_cart and ss_b_cart_as_u_cart
+
+    #  Otherwise assume TLS is anisotropy of data
+    #    set ss_b_cart_as_u_cart only
+
+    print("Updating scale factor info from supplied aniso U values.",
+      file = self.log)
+    self._print_overall_u(aniso_b_cart,b_iso)
+
+
     # Get uaniso in middle of molecule
     tlso_value = tlso(
            t = tlso_group_info.T_list[0],
@@ -3984,37 +5303,27 @@ class map_model_manager(object):
          sites_cart = sites_cart,
          zeroize_trace=False)
 
-    average_overall_scale = None
-    value_list = scale_factor_info.value_list
-    for values in value_list:  # find a std value to us
-      if not average_overall_scale:
-        average_overall_scale = flex.double(values.overall_scale.size(),0)
-      average_overall_scale += values.overall_scale
-    average_overall_scale = average_overall_scale/len(value_list)
     center_overall_u_cart = tuple(-flex.double(center_uanisos[0]) )
 
 
     # Get a standard values so we can edit it later
     # Could be better to use closest value
-    std_values = group_args(
-      ss_b_cart_as_u_cart = (0,0,0,0,0,0),
-      overall_scale = None,
-           )
-    for values in value_list:  # find a std value to us
-      if values.scaling_info_list and values.scaling_info_list[0].target_sthol2:
-        std_si_list = []
-        for si in values.scaling_info_list:
-          target_sthol2 = si.target_sthol2
-          std_si_list.append (
-            group_args(
-              target_sthol2 = target_sthol2,
-              target_scale_factors = flex.double(target_sthol2.size(),1.),
-           ) )
-        std_values.scaling_info_list = std_si_list
-        std_values.direction_vectors = values.direction_vectors
+    average_scale_factor_info = self._average_scale_factor_info_over_xyz(
+          scale_factor_info)
+
+    std_values = average_scale_factor_info.value_list[0]
+    assert std_values.scaling_info_list
+    assert std_values.scaling_info_list[0].target_scale_factors
 
     print("\nUsing values from supplied TLS to set target scale factors",
         file = self.log)
+    if get_tls_from_u:
+      print ("\nSupplied TLS assumed to be overall fall-off with resolution"+
+       "\nCorrection for errors C = 1/(1+E**2) will be applied",
+         file = self.log)
+    else:
+      print("\nSupplied TLS assumed to be desired anisotropy of scale factors",
+         file = self.log)
     for T,L,S,origin,selection,other_shift_cart in zip(
        tlso_group_info.T_list,
        tlso_group_info.L_list,
@@ -4061,15 +5370,30 @@ class map_model_manager(object):
            zeroize_trace=False)
 
         for i in range(xyz_list.size()):
+
           u_cart_from_tls = tuple(flex.double(anisos_from_tls[i]))
-          values = working_scale_factor_info.value_list[i]
-          values.ss_b_cart_as_u_cart = tuple(-flex.double(u_cart_from_tls)) # MINUS
+          scaling_group_info = working_scale_factor_info.value_list[i]
+          u_cart_from_tls = self._remove_overall_from_u_cart(u_cart_from_tls,
+             aniso_b_cart,b_iso)
+
+          if get_tls_from_u:
+            scaling_group_info.uu_b_cart_as_u_cart = tuple(
+              flex.double(u_cart_from_tls))
+            tr = flex.double(u_cart_from_tls)[:3].min_max_mean().mean
+            scaling_group_info.ss_b_cart_as_u_cart = tuple(
+              [- (u - tr)  for u in u_cart_from_tls]) # MINUS
+
+          else:  # usual
+            scaling_group_info.ss_b_cart_as_u_cart = tuple(
+              -flex.double(u_cart_from_tls)) # MINUS
+
           if self.verbose:
             print("\n   XYZ",xyz_list[i],
               file = self.log)
             print("   U from TLS:%s"  %str(u_cart_from_tls),
               file = self.log)
-            print("   S aniso :  %s" %str(values.ss_b_cart_as_u_cart),
+            print("   S aniso :  %s" %str(
+              scaling_group_info.ss_b_cart_as_u_cart),
               file = self.log)
 
         if self.verbose:
@@ -4083,9 +5407,19 @@ class map_model_manager(object):
           xyz_list.size()), file = self.log)
 
       # Tack on values from points near model
+      #  Make sure there are a number about equiv to the number of boxes
+      #  that would be inside the model
       if self.get_model_by_id(model_id):
-        new_xyz_list = self.self.get_model_by_id(
+        new_xyz_list = self.get_model_by_id(
            model_id).apply_selection_string(selection).get_sites_cart()
+        number_to_add = max(25,len(scale_factor_info.xyz_list))
+        number_available = new_xyz_list.size()
+        i_ratio = max(1,int((1+new_xyz_list.size())/number_to_add))
+        if i_ratio > 1:
+          short_xyz_list=flex.vec3_double()
+          for i in range(0,number_available,i_ratio):
+            short_xyz_list.append(new_xyz_list[i])
+          new_xyz_list = short_xyz_list
         print("\nAdding %s u_cart values from TLS and model directly" %(
            new_xyz_list.size()), file = self.log)
         new_anisos_from_tls = uaniso_from_tls_one_group(
@@ -4093,19 +5427,36 @@ class map_model_manager(object):
            sites_cart = new_xyz_list,
            zeroize_trace=False)
         for xyz,aniso in zip(new_xyz_list,new_anisos_from_tls):
-          u_cart_from_tls = tuple(-flex.double(aniso))
-          values = deepcopy(std_values)
-          values.ss_b_cart_as_u_cart = u_cart_from_tls
 
-          scale_factor_info.value_list.append(values)
+          u_cart_from_tls = tuple(flex.double(aniso))
+          u_cart_from_tls = self._remove_overall_from_u_cart(u_cart_from_tls,
+              aniso_b_cart,b_iso)
+
+          scaling_group_info = deepcopy(std_values)
+
+          if get_tls_from_u:
+            scaling_group_info.uu_b_cart_as_u_cart = tuple(
+              flex.double(u_cart_from_tls))
+            tr = flex.double(u_cart_from_tls)[:3].min_max_mean().mean
+            scaling_group_info.ss_b_cart_as_u_cart = tuple(
+              [- (u - tr)  for u in u_cart_from_tls]) # MINUS
+
+          else:  # usual
+            scaling_group_info.ss_b_cart_as_u_cart = tuple(
+              -flex.double(u_cart_from_tls)) # MINUS
+
+          scale_factor_info.value_list.append(scaling_group_info)
           scale_factor_info.xyz_list.append(xyz)
           if self.verbose:
             print("\n   XYZ from sites ",xyz,
               file = self.log)
             print("   U from TLS:%s"  %str(u_cart_from_tls),
               file = self.log)
-            print("   S aniso :  %s" %str(values.ss_b_cart_as_u_cart),
+            print("   S aniso :  %s" %str(
+             scaling_group_info.ss_b_cart_as_u_cart),
               file = self.log)
+        print("\nDone adding %s u_cart values from TLS and model directly" %(
+           new_xyz_list.size()), file = self.log)
 
     tls_info = group_args(
          tlso = None,
@@ -4172,6 +5523,9 @@ class map_model_manager(object):
      coordinate_shift_to_apply_before_tlso = None,
      require_positive_definite = False,
      everything_is_inside = False,
+     aniso_b_cart = None,
+     b_iso = None,
+
     ):
 
     '''
@@ -4188,10 +5542,19 @@ class map_model_manager(object):
 
     # Apply external values if supplied
     if tlso_group_info:
-       return self._analyze_aniso_replace_with_supplied(
+       result = self._analyze_aniso_replace_with_supplied(
          scale_factor_info,
          map_id = map_id,
-         tlso_group_info = tlso_group_info)
+         tlso_group_info = tlso_group_info,
+         get_tls_from_u = get_tls_from_u,
+         aniso_b_cart = aniso_b_cart,
+         b_iso = b_iso,
+         )
+       self._summarize_scale_factor_info(scale_factor_info,
+         aniso_b_cart = aniso_b_cart,
+         b_iso = b_iso,)
+       return result
+
     # Get a mask around the map if not already supplied as mask_id
     if (not everything_is_inside):
       if (not mask_id) or (not self.get_map_manager_by_id(mask_id)):
@@ -4245,9 +5608,11 @@ class map_model_manager(object):
 
       print("\nLocal anisotropy and errors by XYZ with inside_mask = %s:" %(
           inside), file = self.log)
-      if inside and replace_inside and \
-             direction_vectors and direction_vectors != [None] and (
-          not get_tls_from_u):
+      self._print_overall_u(aniso_b_cart,b_iso)
+
+      if (inside or len(working_scale_factor_info.value_list)==1) and \
+         replace_inside and \
+             direction_vectors and direction_vectors != [None]:
         replace_u_cart_to_remove = True
         print("\nReplacing values inside mask with TLS-derived scale factors",
             file = self.log)
@@ -4261,6 +5626,8 @@ class map_model_manager(object):
         require_positive_definite = require_positive_definite,
         replace_u_cart_to_remove = replace_u_cart_to_remove,
         get_tls_from_u = get_tls_from_u,
+        aniso_b_cart = aniso_b_cart,
+        b_iso = b_iso,
         log = self.log)
 
 
@@ -4352,6 +5719,7 @@ class map_model_manager(object):
       direction_vectors = None,
       scaling_info_list = None,
       overall_si = None,
+      overall_scale = None,
       aa_b_cart_as_u_cart = None,
       bb_b_cart_as_u_cart = None,
       ss_b_cart_as_u_cart = None,
@@ -4364,7 +5732,15 @@ class map_model_manager(object):
        xyz_list = [None],
      )
 
+
+    average_overall_scale = None
+
     for scaling_group_info in scaling_group_info_list:
+      if scaling_group_info.get('overall_scale'):
+        if not average_overall_scale:
+          average_overall_scale = flex.double(
+            scaling_group_info.overall_scale.size(),0)
+        average_overall_scale += scaling_group_info.overall_scale
 
       if not average_scaling_group_info.direction_vectors:
         average_scaling_group_info.direction_vectors = \
@@ -4404,6 +5780,7 @@ class map_model_manager(object):
             getattr(average_scaling_group_info.overall_si,key) +
              getattr(scaling_group_info.overall_si,key))
 
+
     if scaling_group_info_list:
       for key in ('target_scale_factors','cc_list','rms_fo_list'):
         for si in average_scaling_group_info.scaling_info_list:
@@ -4411,6 +5788,9 @@ class map_model_manager(object):
         setattr(average_scaling_group_info.overall_si,key,
            getattr(average_scaling_group_info.overall_si,key)/
            len(scaling_group_info_list))
+      if average_scaling_group_info.overall_scale:
+        average_scaling_group_info.overall_scale = \
+          average_overall_scale/len(scaling_group_info_list)
 
 
       for key in ('aa_b_cart_as_u_cart','fo_b_cart_as_u_cart',
@@ -4477,18 +5857,13 @@ class map_model_manager(object):
 
 
   def _summarize_scale_factor_info(self, scale_factor_info,
+     aniso_b_cart = None,
+     b_iso = None,
      entry_number = 0):
     '''  Summarize scaling information'''
 
 
     if len(scale_factor_info.value_list) > 1:
-      #  Overall
-      print("\nSummary of overall average scaling information ",
-          file = self.log)
-      average_scale_factor_info = self._average_scale_factor_info_over_xyz(
-          scale_factor_info)
-      self._summarize_scale_factor_info(average_scale_factor_info)
-
       # Highest resolution
       average_scale_factor_info = self._get_scale_factor_info_best_resolution(
           scale_factor_info)
@@ -4497,7 +5872,10 @@ class map_model_manager(object):
            self._get_average_cc_star_list(
              average_scale_factor_info.value_list[0]).min_max_mean().mean),
           file = self.log)
-      self._summarize_scale_factor_info(average_scale_factor_info)
+      self._summarize_scale_factor_info(average_scale_factor_info,
+        aniso_b_cart = aniso_b_cart,
+        b_iso = b_iso
+       )
 
       # Lowest resolution
       average_scale_factor_info = self._get_scale_factor_info_best_resolution(
@@ -4507,7 +5885,10 @@ class map_model_manager(object):
            self._get_average_cc_star_list(
              average_scale_factor_info.value_list[0]).min_max_mean().mean),
           file = self.log)
-      self._summarize_scale_factor_info(average_scale_factor_info)
+      self._summarize_scale_factor_info(average_scale_factor_info,
+        aniso_b_cart = aniso_b_cart,
+        b_iso = b_iso
+       )
 
       # Worst anisotropy
       average_scale_factor_info = self._get_scale_factor_info_most_anisotropy(
@@ -4521,7 +5902,39 @@ class map_model_manager(object):
         print("\nScaling information for location with most anisotropy" +
          " (Mean abs(anisotropy)): %.2f )" %(cc_abs),
            file = self.log)
-        self._summarize_scale_factor_info(average_scale_factor_info)
+        self._summarize_scale_factor_info(average_scale_factor_info,
+          aniso_b_cart = aniso_b_cart,
+          b_iso = b_iso
+         )
+
+      # Anisotropy values vs position
+      print("\nAnisotropy vs position", file = self.log)
+      n_use = len(scale_factor_info.value_list)
+      if n_use > 50 and not self.verbose:
+        n_use = 50
+        print ("First 50 listed...use verbose=True for remainder",
+            file = self.log)
+
+      for text, kw in (
+          ['Estimated anisotropic fall-off of the data relative to ideal',
+             'uu_b_cart_as_u_cart'],
+          ['Anisotropy of the data', 'aa_b_cart_as_u_cart'],
+          ['Anisotropy of the errors', 'bb_b_cart_as_u_cart'],
+          ['Anisotropy of the scale_factors', 'ss_b_cart_as_u_cart'],
+           ):
+
+        self._print_overall_u(aniso_b_cart,b_iso)
+        self._print_aniso_by_xyz(text, kw, scale_factor_info, n_use = n_use)
+
+      #  Overall
+      print("\nSummary of overall average scaling information ",
+          file = self.log)
+      average_scale_factor_info = self._average_scale_factor_info_over_xyz(
+          scale_factor_info)
+      self._summarize_scale_factor_info(average_scale_factor_info,
+          aniso_b_cart = aniso_b_cart,
+          b_iso = b_iso
+         )
 
       return
 
@@ -4534,6 +5947,7 @@ class map_model_manager(object):
     if xyz:
       print("\nXYZ: (%.3f, %.3f, %.3f)" %(tuple(xyz)), file = self.log)
 
+    self._print_overall_u(aniso_b_cart,b_iso)
 
     self._display_scale_values(
       si_list = scaling_group_info.scaling_info_list,
@@ -4573,6 +5987,7 @@ class map_model_manager(object):
     fo_b_cart_as_u_cart = scaling_group_info.get('fo_b_cart_as_u_cart')
 
     if uu_b_cart_as_u_cart:
+      self._print_overall_u(aniso_b_cart,b_iso)
       print("\n Estimated anisotropic fall-off of the data relative to ideal\n"+
         "(Positive means amplitudes fall off more in this direction)\n " +
        "(  X,      Y,      Z,    XY,    XZ,    YZ)\n"+
@@ -4595,10 +6010,26 @@ class map_model_manager(object):
 
     if ss_b_cart_as_u_cart:
       print("\n Anisotropy of the scale factors\n"+
-       "(Positive means scale factors decrease more in this direction)\n " +
+       "(Positive means scale factors increase more in this direction)\n " +
        "(  X,      Y,      Z,    XY,    XZ,    YZ)\n"+
        "(%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(
        tuple(ss_b_cart_as_u_cart)), file = self.log)
+
+  def _print_aniso_by_xyz(self, text, kw, scale_factor_info, n_use):
+
+      print("\n    %s by position" %(text), file = self.log)
+      print("\n      Box center                       U values","\n",
+           "   X      Y      Z          ",
+           "  X      Y      Z     XY     XZ     YZ\n", file = self.log)
+
+      for xyz, scaling_group_info in zip(
+          scale_factor_info.xyz_list,
+          scale_factor_info.value_list[:n_use]):
+        u_cart = scaling_group_info.get(kw)
+        if not u_cart: continue
+        print( "%7.1f %7.1f %7.1f " %(xyz),
+          "   %6.1f %6.1f %6.1f %6.1f %6.1f %6.1f  " %(
+            tuple(u_cart)), file = self.log)
 
   def _analyze_scale_factor_info(self,
         scale_factor_info,
@@ -4607,11 +6038,16 @@ class map_model_manager(object):
         require_positive_definite = None,
         replace_u_cart_to_remove= None,
         get_tls_from_u = None,
+        aniso_b_cart = None,
+        b_iso = None,
         log = sys.stdout):
 
       #  Summarize anisotropy
 
-      self._summarize_scale_factor_info(scale_factor_info)
+      self._summarize_scale_factor_info(scale_factor_info,
+       aniso_b_cart = aniso_b_cart,
+       b_iso = b_iso,
+       )
 
       # Interpret as TLS  and optionally replace values
 
@@ -4623,6 +6059,8 @@ class map_model_manager(object):
         require_positive_definite = require_positive_definite,
         replace_u_cart_to_remove = replace_u_cart_to_remove,
         get_tls_from_u = get_tls_from_u,
+        aniso_b_cart = aniso_b_cart,
+        b_iso = b_iso,
         log = self.log)
 
 
@@ -4633,6 +6071,8 @@ class map_model_manager(object):
         require_positive_definite = None,
         replace_u_cart_to_remove = None,
         get_tls_from_u = None,
+        aniso_b_cart = None,
+        b_iso = None,
         log = sys.stdout):
 
       xyz_list = scale_factor_info.xyz_list
@@ -4640,6 +6080,17 @@ class map_model_manager(object):
 
       uanisos = flex.sym_mat3_double()
       xyz_list_use = flex.vec3_double()
+
+      print("\nSummary of scaling as TLS",file = self.log)
+      self._print_overall_u(aniso_b_cart,b_iso)
+
+      if get_tls_from_u:
+        print("\nTLS is overall fall-off with resolution",
+           file = self.log)
+      else:
+       print("\nTLS is desired anisotropy of scale factors",
+           file = self.log)
+
       for xyz,scaling_group_info in zip(xyz_list,scaling_group_info_list):
         if get_tls_from_u:
           u_cart = scaling_group_info.get('uu_b_cart_as_u_cart')
@@ -4650,6 +6101,7 @@ class map_model_manager(object):
         if not u_cart:  # missing
           continue
         # we want anisotropy, not the correction
+        u_cart = self._add_overall_to_u_cart(u_cart,aniso_b_cart,b_iso)
         uanisos.append(u_cart)
         xyz_list_use.append(xyz)
         tlso_info_in_region.mean_u_cart+=flex.double(u_cart)
@@ -4710,17 +6162,57 @@ class map_model_manager(object):
           new_anisos,
           xyz_list,
           scaling_group_info_list):
-        if replace_u_cart_to_remove:
+
+        if replace_u_cart_to_remove and (not get_tls_from_u):
           scaling_group_info.ss_b_cart_as_u_cart = tuple(
              -flex.double(new_u_cart)) # MINUS
+        elif replace_u_cart_to_remove and get_tls_from_u:
+          scaling_group_info.uu_b_cart_as_u_cart = tuple(
+             flex.double(new_u_cart))
+          # ss_b_cart_as_u_cart has trace removed:
+          tr = flex.double(new_u_cart[:3]).min_max_mean().mean
+          tr_as_u_cart = (tr,tr,tr,0,0,0)
+          scaling_group_info.ss_b_cart_as_u_cart = tuple(
+            [- (u - t)  for u,t in zip(new_u_cart,tr_as_u_cart)]) # MINUS
 
-      print("\nMean anisotropy as TLS:",file = self.log)
+      if get_tls_from_u:
+        print("\nMean overall fall-off with resolution as TLS:",file = self.log)
+      else:
+        print("\nMean anisotropy as TLS:",file = self.log)
+      self._print_overall_u(aniso_b_cart,b_iso)
+
       print("T: (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
         tuple(T)),file = self.log)
       print("L: (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
          tuple(L)), file = self.log)
       print("S: (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
          tuple(S)), file = self.log)
+
+  def _remove_overall_from_u_cart(self,u_cart,aniso_b_cart,b_iso):
+    if not aniso_b_cart:
+      return u_cart
+    else:
+      overall_u_value = adptbx.b_as_u(tuple(
+       flex.double(aniso_b_cart)-flex.double((
+          b_iso,b_iso,b_iso,0,0,0))))
+      return tuple(flex.double(u_cart) - flex.double(overall_u_value))
+
+  def _add_overall_to_u_cart(self,u_cart,aniso_b_cart,b_iso):
+    if not aniso_b_cart:
+      return u_cart
+    else:
+      overall_u_value = adptbx.b_as_u(tuple(
+        flex.double(aniso_b_cart)-flex.double((
+          b_iso,b_iso,b_iso,0,0,0))))
+      return tuple(flex.double(u_cart) + flex.double(overall_u_value))
+
+  def _print_overall_u(self,aniso_b_cart,b_iso):
+    if aniso_b_cart:
+      u_value = adptbx.b_as_u(tuple(flex.double(aniso_b_cart)-flex.double((
+          b_iso,b_iso,b_iso,0,0,0))))
+      print("\nNOTE: All values apply after removal of overall U of:\n ",
+          " (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)\n" %(tuple(u_value)),
+          file = self.log)
 
 
   def _run_group_of_anisotropic_sharpen(self,
@@ -4731,6 +6223,7 @@ class map_model_manager(object):
       map_id_scaled_list = None,
       mask_id = None,
       exclude_points_outside_density = None,
+      minimum_boxes_inside_density = None,
       resolution = None,
       d_min = None,
       k_sol = None,
@@ -4762,7 +6255,10 @@ class map_model_manager(object):
       max_abs_b = None,
       get_tls_info_only = None,
       coordinate_shift_to_apply_before_tlso = None,
+      sharpen_all_maps = None,
       temp_dir = 'TEMP_ANISO_LOCAL',
+      aniso_b_cart = None,
+      b_iso = None,
      ):
     '''
     Run local sharpening in groups with focus on reflections along
@@ -4807,7 +6303,8 @@ class map_model_manager(object):
       resolution,
       d_min,
       smoothing_radius = smoothing_radius,
-      skip_boxes = True)
+      n_boxes = n_boxes,
+       )
 
     resolution = setup_info.resolution
     self.set_resolution(resolution)
@@ -4858,23 +6355,27 @@ class map_model_manager(object):
       everything_is_inside = True
     else:
       everything_is_inside = None
+    replace_inside = (replace_aniso_with_tls_equiv and get_scale_as_aniso_u)
     # Summarize U vs xyz and vs inside/outside
     tls_info = self._analyze_aniso(scale_factor_info,
       tlso_group_info = tlso_group_info,
       get_tls_from_u = get_tls_from_u,
       map_id=map_id,
       mask_id=mask_id,  # can supply mask_id
-      replace_inside = (replace_aniso_with_tls_equiv and get_scale_as_aniso_u),
+      replace_inside = replace_inside,
       coordinate_shift_to_apply_before_tlso =
            coordinate_shift_to_apply_before_tlso,
       everything_is_inside = (everything_is_inside or len(xyz_list) ==1),
+      aniso_b_cart = aniso_b_cart,
+      b_iso = b_iso,
      )
     if get_tls_info_only:
       return tls_info
 
-    if get_scale_as_aniso_u:
+    if replace_inside:
       self._update_scale_factor_info_from_aniso(scale_factor_info,
-        max_abs_b = max_abs_b)
+        max_abs_b = max_abs_b,
+        get_tls_from_u = get_tls_from_u)
 
     setup_info.kw = kw
 
@@ -4888,7 +6389,6 @@ class map_model_manager(object):
     for id,new_id in zip(
          kw['map_id_to_be_scaled_list'],kw['map_id_scaled_list']):
       setup_info.kw['map_id_to_be_scaled'] = id
-
 
       temp_dir = self._create_temp_dir(temp_dir)  # for returning big files
       setup_info.temp_dir = temp_dir
@@ -4947,6 +6447,7 @@ class map_model_manager(object):
       map_id_scaled_list = None,
       mask_id = None,
       exclude_points_outside_density = None,
+      minimum_boxes_inside_density = None,
       resolution = None,
       d_min = None,
       k_sol = None,
@@ -4979,6 +6480,9 @@ class map_model_manager(object):
       max_abs_b = None,
       get_tls_info_only = None,
       coordinate_shift_to_apply_before_tlso = None,
+      sharpen_all_maps = None,
+      aniso_b_cart = None,
+      b_iso = None,
      ):
 
     '''
@@ -5013,11 +6517,13 @@ class map_model_manager(object):
       nproc = 1
     kw['nproc'] = nproc
 
-    # NOTE: map starts out overall-sharpened.  Therefore approximate scale
-    # factors in all resolution ranges are about 1.  use that as default
     if anisotropic_sharpen:  # run N times with different direction vectors
       tls_info = self._run_group_of_anisotropic_sharpen(**kw)
       return tls_info  # tlso for region inside mask
+
+    del kw['aniso_b_cart']  # REQUIRED
+    del kw['b_iso']  # REQUIRED
+
 
     # Get scale factors vs resolution and location
     scale_factor_info = self.local_fsc(
@@ -5046,7 +6552,10 @@ class map_model_manager(object):
     smoothing_radius = scale_factor_info.setup_info.smoothing_radius
     assert n_bins == scale_factor_info.n_bins # must match
 
-    self._summarize_scale_factor_info(scale_factor_info)
+    self._summarize_scale_factor_info(scale_factor_info,
+      aniso_b_cart = aniso_b_cart,
+      b_iso = b_iso,
+     )
     average_scale_factors = get_average_scale_factors(scale_factor_info)
 
     # Get Fourier coefficients for maps based on map_id_to_be_scaled
@@ -5056,6 +6565,12 @@ class map_model_manager(object):
            ).map_as_fourier_coefficients(d_min = d_min)
       f_array_info = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
          d_min = d_min)
+
+      if aniso_b_cart: # first apply aniso_b_cart to the whole array
+        apply_aniso_b_cart_to_f_array_info(f_array_info,
+         b_iso, d_min, aniso_b_cart)
+
+
       new_map_data = flex.double(flex.grid(
           self.get_map_manager_by_id(id).map_data().all()), 0.)
       # Get map for each shell of resolution
@@ -5081,7 +6596,8 @@ class map_model_manager(object):
           xyz_list = xyz_used_list,
           value_list = scale_value_list,
           smoothing_radius = smoothing_radius,
-          default_value = default_value)
+          default_value = default_value,
+          n_boxes = n_boxes)
 
         # Multiply shell map data by weights
         weights_top_hat_shell = get_weights_for_unit_binning(
@@ -5185,6 +6701,7 @@ class map_model_manager(object):
       map_id_scaled_list = None, # NOTE: not used, just allows it in call
       mask_id = None,
       exclude_points_outside_density = None,
+      minimum_boxes_inside_density = None,
       resolution = None,
       d_min = None,
       k_sol = None,
@@ -5221,7 +6738,11 @@ class map_model_manager(object):
       max_abs_b = None,
       get_tls_info_only = None,
       coordinate_shift_to_apply_before_tlso = None,
-      n_bins_default = 2000):
+      sharpen_all_maps = None,
+      n_bins_default = 2000,
+      b_iso = None, # not used
+      aniso_b_cart = None, # not used
+      ):
 
     '''
       Calculates local Fourier Shell Correlations to estimate local resolution
@@ -5285,6 +6806,7 @@ class map_model_manager(object):
       apply_box_info = False,
       mask_id = mask_id,
       exclude_points_outside_density = exclude_points_outside_density,
+      minimum_boxes_inside_density = minimum_boxes_inside_density,
       )
 
     # Hold some things in box_info
@@ -5368,18 +6890,36 @@ class map_model_manager(object):
     return self._create_full_size_map_manager_with_value_list(
       xyz_list = xyz_list,
       value_list = d_min_list,
-      smoothing_radius = setup_info.smoothing_radius)
+      smoothing_radius = setup_info.smoothing_radius,
+      n_boxes = setup_info.n_boxes,
+      small_n_real = setup_info.small_n_real,
+     )
 
   def _create_full_size_map_manager_with_value_list(self,
       xyz_list, value_list, smoothing_radius,
-      default_value = None):
+      default_value = None, n_boxes = None,
+      min_grid_ratio = 4,  # never bigger than 1/min_grid_ratio of full size
+      small_n_real = None,
+       ):
+    if small_n_real:
+      local_n_real = small_n_real
+      n_boxes = local_n_real[0]*local_n_real[1]*local_n_real[2]
+    else:
+      if not n_boxes:
+        n_boxes = xyz_list.size()
+    n_boxes = max(1,min(n_boxes,xyz_list.size()))
 
     # Now create a small map and fill in values
     volume_per_grid_point=self.crystal_symmetry().unit_cell(
-        ).volume()/max(1,xyz_list.size())
+          ).volume()/max(1,n_boxes)
     target_spacing = (volume_per_grid_point**0.33) * 0.5
-    local_n_real=tuple([ max(1,int(0.5+1.5*a/target_spacing)) for
-        a in self.crystal_symmetry().unit_cell().parameters()[:3]])
+    if not small_n_real:
+      full_n_real = self.map_manager().map_data().all()
+      local_n_real=tuple([ max(1, min(
+          int((0.5+nr)/min_grid_ratio),
+          int(0.5+1.5*a/target_spacing))) for
+          a,nr in zip(self.crystal_symmetry().unit_cell().parameters()[:3],
+           full_n_real)])
     assert value_list.size() == xyz_list.size()
     fsc_map_manager = create_map_manager_with_value_list(
        n_real = local_n_real,
@@ -5415,7 +6955,6 @@ class map_model_manager(object):
       n_boxes=None,
       core_box_size=None,
       smoothing_radius=None,
-      skip_boxes = None,
       box_size_ratio = 6, # full box never smaller than this ratio to resolution
       ):
     volume = self.crystal_symmetry().unit_cell().volume()
@@ -5437,26 +6976,28 @@ class map_model_manager(object):
        box_size_ratio * resolution - 2 * box_cushion,
        core_box_size)
 
-    if (not skip_boxes): # changed 2020-11-06 to recalculate n_boxes
-      n_boxes = max(1,int(0.5+volume/(core_box_size)**3))
-      print ("Target core_box_size: %.2s A  Target boxes: %s Box cushion: %s" %(
+    n_boxes = max(1,int(0.5+volume/(core_box_size)**3))
+    print ("Target core_box_size: %.2s A  Target boxes: %s Box cushion: %s" %(
         core_box_size, n_boxes, box_cushion),file = self.log)
 
-    if (not smoothing_radius) and (not skip_boxes):
+    n_real = self.get_any_map_manager().map_data().all()
+    if (not smoothing_radius):
       smoothing_radius = 0.5 * \
         self.crystal_symmetry().unit_cell().parameters()[0] * \
-        min(1,core_box_size/self.get_any_map_manager().map_data().all()[0])
+        min(1,core_box_size/n_real[0])
       smoothing_radius = max(2*resolution, smoothing_radius)
 
+    small_n_real = tuple([
+       max(1,min(n, int( (0.5+n)/core_box_size))) for n in n_real])
     # Working resolution is resolution * d_min_ratio
     minimum_resolution = self._get_d_min_from_resolution(resolution)
     if d_min and (minimum_resolution < d_min):
       minimum_resolution = d_min
-
     return group_args(
      resolution = resolution,
      box_cushion = box_cushion,
      n_boxes = n_boxes,
+     small_n_real = small_n_real,
      core_box_size = core_box_size,
      smoothing_radius = smoothing_radius,
      minimum_resolution = minimum_resolution,
@@ -5667,6 +7208,37 @@ class map_model_manager(object):
     map_data_1d_2 = map_data_1d_2)
 
 
+  def density_at_model_sites(self,
+      map_id = 'map_manager',
+      model_id = 'model',
+      selection_string = None,
+      model = None,
+      ):
+    '''
+      Return density at sites in model
+    '''
+
+    if not model:
+      model = self.get_model_by_id(model_id)
+    else:
+      model_id = '(supplied)'
+    if not model:
+      return None
+
+    map_manager= self.get_map_manager_by_id(map_id)
+    if not map_manager:
+      raise Sorry(
+     "There is no map with id='%s' available for density_at_model_sites" %(
+         map_id))
+
+    assert self.map_manager().is_compatible_model(model) # model must match
+
+    if selection_string:
+      sel = model.selection(selection_string)
+      model = model.select(sel)
+
+    return map_manager.density_at_sites_cart(model.get_sites_cart())
+
   def map_model_cc(self,
       resolution = None,
       map_id = 'map_manager',
@@ -5698,18 +7270,23 @@ class map_model_manager(object):
          file = self.log)
 
     map_manager= self.get_map_manager_by_id(map_id)
+    if not map_manager:
+      raise Sorry("There is no map with id='%s' available for map_model_cc" %(
+         map_id))
+
+
+    assert self.map_manager().is_compatible_model(model) # model must match
+
+    if not resolution:
+      resolution = self.resolution()
+    assert resolution is not None
+    print("Resolution for map-model CC: %.3f A" %(resolution), file = self.log)
 
     # As five_cc is going to get the map cc without resolution cutoff on the
     #  map, do it here
 
     map_manager = map_manager.deep_copy()
     map_manager.resolution_filter(d_min=resolution)
-
-    assert model and map_manager
-    if not resolution:
-      resolution = self.resolution()
-    assert resolution is not None
-    print("Resolution for map-model CC: %.3f A" %(resolution), file = self.log)
 
     if selection_string:
       sel = model.selection(selection_string)
@@ -5906,6 +7483,95 @@ class map_model_manager(object):
 
   # General methods
 
+  def model_from_hierarchy(self,
+    hierarchy,
+    return_as_model = False,
+    model_id = 'model_from_hierarchy'):
+    '''
+     Convenience method to convert a hierarchy into a model, where the
+     model has symmetry and shift cart matching this manager
+    '''
+
+    from mmtbx.model import manager as model_manager
+    model = model_manager(
+      model_input = hierarchy.as_pdb_input(),
+      crystal_symmetry = self.crystal_symmetry(),
+      log = null_out())
+    self.set_model_symmetries_and_shift_cart_to_match_map(model)
+    if return_as_model:
+      return model
+    else:
+      self.add_model_by_id(model = model, model_id=model_id)
+
+
+  def model_from_sites_cart(self,
+    sites_cart,
+    model_id = 'model_from_sites',
+    return_model = None,
+    **kw):
+    '''
+      Convenience method to use the from_sites_cart method of model manager to
+      create a model.
+
+      Model is saved with the id of model_id (default 'model_from_sites')
+
+      Unique feature of this method is that it sets up the crystal_symmetry,
+        unit_cell_crystal_symmetry, and shift_cart in the model to match
+        this map_model_manager.
+
+      Note:  sites_cart are assumed to be in the same coordinate frame as this
+        map_model_manager.
+
+      Any keywords used in from_sites_cart are allowed (i.e.,
+        atom_name and scatterer or atom_name_list and scatterer_list
+        occ or occ_list
+        b_iso or b_iso_list
+        resname or resname_list
+        resseq_list
+    '''
+
+
+    from mmtbx.model import manager as model_manager
+    model = model_manager.from_sites_cart(
+       sites_cart = sites_cart,
+       crystal_symmetry = self.crystal_symmetry(),
+       **kw)
+
+    self.set_model_symmetries_and_shift_cart_to_match_map(model)
+
+    if return_model:
+      return model
+    else:
+      self.add_model_by_id(model = model, model_id=model_id)
+
+  def set_model_symmetries_and_shift_cart_to_match_map(self,
+     model):
+    '''
+      Method to set the crystal_symmetry, unit_cell_crystal_symmetry and
+      shift_cart of any model to match those of this map_model_manager
+
+      This method changes the model in place.
+
+      Assumes that the sites in this model are already in the same coordinate
+      system as this map_model_manager
+
+      This is the preferred method of making sure that a model has the
+      same symmetry and shifts as a map_model_manager if the model coordinates
+      already match the map_model_manager.
+
+      If you have a model that is relative to some other coordinate system,
+      first make sure that model has a complete set of symmetry and shifts
+      for that coordinate system (any model coming from a map_model_manager
+      will have these).  Then use either self.shift_any_model_to_match(model) to
+      shift that model directly to match this map_model_manager, or use
+      self.add_model_by_id(model_id=model_id, model=model) which will import
+      that model into this manager and shift it to match in the process.
+
+    '''
+
+    self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(model)
+
+
   def set_original_origin_grid_units(self, original_origin_grid_units = None):
     '''
      Reset (redefine) the original origin of the maps and models (apply an
@@ -6008,6 +7674,71 @@ class map_model_manager(object):
     return self._map_histograms
 
   #  Convenience methods
+
+  def mask_info(self,
+    mask_id = 'mask',
+    cutoff = 0.5,
+    quiet = False,
+    ):
+    '''  Summarizes info about mask and returns group_args'''
+
+    mask_mm = self.get_map_manager_by_id(map_id = mask_id)
+    if not mask_mm:
+      return None
+    mask_info = self.map_info(quiet=True, map_id = mask_id) # basic map info
+
+    # Change title
+    mask_info.group_args_type = "Summary of mask info about mask '%s' " %(
+      mask_id)
+
+    # Add mask-specific information
+    mask_info.cutoff = cutoff
+    mask_info.is_mask = mask_mm.is_mask()
+    mask_info.marked_points = (mask_mm.map_data() >= cutoff ).count(True)
+    mask_info.fraction_marked = mask_info.marked_points/max(1.,
+        mask_mm.map_data().size())
+
+    if not quiet:
+      print (mask_info, file = self.log)
+    return mask_info
+
+  def map_info(self,
+    map_id = 'map_manager',
+    sigma_cutoff = 1,
+    quiet = False,
+    ):
+    '''  Summarizes info about map and returns group_args'''
+
+    map_mm = self.get_map_manager_by_id(map_id = map_id)
+    if not map_mm:
+      return None
+
+    mmm = map_mm.map_data().as_1d().min_max_mean()
+    standard_deviation = map_mm.map_data(
+       ).as_1d().sample_standard_deviation()
+    cutoff = mmm.mean + sigma_cutoff * standard_deviation
+
+    points_above_sigma_cutoff = (map_mm.map_data() >= cutoff ).count(True)
+
+    map_info = group_args(
+      group_args_type = "Summary of map info about map '%s' " %(map_id),
+      cutoff = cutoff,
+      mean = mmm.mean,
+      min = mmm.min,
+      max = mmm.max,
+      standard_deviation = standard_deviation,
+      size = map_mm.map_data().size(),
+      points_above_sigma_cutoff = points_above_sigma_cutoff,
+      fraction_above_sigma_cutoff= points_above_sigma_cutoff/max(
+         1., map_mm.map_data().size()),
+      absolute_center_cart = map_mm.absolute_center_cart(),
+      working_center_cart = tuple(flex.double(map_mm.absolute_center_cart()) +
+          flex.double(map_mm.shift_cart())),
+      )
+    if not quiet:
+      print (map_info, file = self.log)
+    return map_info
+
 
   def shift_aware_rt(self,
      from_obj = None,
@@ -6160,6 +7891,10 @@ class map_model_manager(object):
         space_group_number = 1,
         log = null_out())
 
+    if self.map_manager():  #  make sure model matches
+      if not self.map_manager().is_compatible_model(model):
+         self.shift_any_model_to_match(model)
+
     map_coeffs = generate_map_coefficients(model = model,
         d_min = d_min,
         k_sol = k_sol,
@@ -6233,6 +7968,7 @@ class map_model_manager(object):
 
     new_mmm._model_dict = new_model_dict
     new_mmm._map_dict = new_map_dict
+    new_mmm._info = deepcopy(self._info)
 
     self._set_default_parameters(new_mmm, name = name)
 
@@ -6251,9 +7987,11 @@ class map_model_manager(object):
       self.get_any_map_manager().shift_model_to_match_map(model)
 
   def model_building(self,
-     nproc = 1,
+     nproc = None,
      soft_zero_boundary_mask = True,
      soft_zero_boundary_mask_radius = None,
+     model_id = 'model',
+     normalize = True,
      ):
     '''
      Return this object as a local_model_building object
@@ -6267,14 +8005,21 @@ class map_model_manager(object):
     resolution = self.resolution()
     assert resolution is not None
 
+    if not nproc:
+      nproc = self.nproc()
+
     from phenix.model_building import local_model_building
-    return local_model_building(
+    mb = local_model_building(
      map_model_manager = self, # map_model manager
      soft_zero_boundary_mask = soft_zero_boundary_mask,
      soft_zero_boundary_mask_radius = soft_zero_boundary_mask_radius,
      nproc= nproc,
+     model_id = model_id,
+     normalize = normalize,
      log = self.log,
     )
+    mb.set_defaults(debug = self.verbose)
+    return mb
 
   def as_map_model_manager(self):
     '''
@@ -6502,9 +8247,7 @@ class match_map_model_ncs(object):
     # Must already have a map_manager. Ncs object must match shift_cart already
 
     assert self.map_manager() is not None
-    self.map_manager().set_ncs_object(ncs_object)
-    # Check to make sure its shift_cart matches
-    self.check_model_and_set_to_match_map_if_necessary()
+    self.map_manager().set_ncs_object(ncs_object) # checks for shift_cart
 
   def read_map(self, file_name):
     # Read in a map and make sure its symmetry is similar to others
@@ -6613,7 +8356,8 @@ class match_map_model_ncs(object):
            self._map_manager.unit_cell_crystal_symmetry(),
         model = self._model)
 
-  def shift_ncs_to_match_working_map(self, ncs_object = None, reverse = False,
+  def shift_ncs_to_match_working_map(self, ncs_object = None,
+    reverse = False,
     coordinate_shift = None,
     new_shift_cart = None):
 
@@ -6717,6 +8461,38 @@ class match_map_model_ncs(object):
 
 #   Misc methods
 
+def convert_tlso_group_info_to_lists(tlso_group_info):
+      #tlso_group_info.tlso_selection_list,
+      # tlso_group_info.tlso_shift_cart_list,):
+      tlso_group_info.T_list = []
+      tlso_group_info.L_list = []
+      tlso_group_info.S_list = []
+      tlso_group_info.O_list = []
+      for tlso in tlso_group_info.tlso_list:
+        tlso_group_info.T_list.append(tlso.t)
+        tlso_group_info.L_list.append(tlso.l)
+        tlso_group_info.S_list.append(tlso.s)
+        tlso_group_info.O_list.append(tlso.origin)
+      tlso_group_info.tlso_list = None
+      tlso_group_info.tlso_selection_list = \
+         tlso_group_info.selection_as_text_list
+      tlso_group_info.tlso_shift_cart_list = len(
+         tlso_group_info.tlso_selection_list) *[None]
+
+def apply_aniso_b_cart_to_f_array_info(f_array_info,
+         b_iso, d_min, aniso_b_cart):
+
+       from cctbx.maptbx.refine_sharpening import analyze_aniso_object
+       analyze_aniso = analyze_aniso_object()
+       analyze_aniso.set_up_aniso_correction(f_array=f_array_info.f_array,
+         b_iso = b_iso,
+         d_min = d_min,
+         b_cart_to_remove=aniso_b_cart)
+       new_array  = analyze_aniso.apply_aniso_correction(
+         f_array=f_array_info.f_array)
+       sel = flex.bool(new_array.data().size(),True)
+       f_array_info.f_array.data().set_selected(sel,new_array.data())
+
 def get_average_scale_factors(scale_factor_info):
   average_scale_factors = None
   n = 0
@@ -6760,11 +8536,12 @@ def get_tlso_group_info_from_model(model, nproc = 1, log = sys.stdout):
 
   ok = False
   for u in u_cart:
-    if tuple(u_cart) != (0,0,0,0,0,0) and tuple(u_cart) != (-1,-1,-1,-1,-1,-1):
+    if tuple(u) != (0,0,0,0,0,0) and tuple(u) != (-1,-1,-1,-1,-1,-1):
       ok = True
+      break
   if not ok:
-    raise Sorry("Aniso U values from model are all zero or missing...cannot get TLS")
-
+    raise Sorry(
+      "Aniso U values from model are all zero or missing...cannot get TLS")
 
   # Get the groups in this file
   from mmtbx.command_line.find_tls_groups import find_tls, master_phil
@@ -7174,8 +8951,9 @@ def get_split_maps_and_models(
     box_info.tlso_group_info.tlso_list = None
   box_info = deepcopy(box_info)
   if first_to_use is not None and last_to_use is not None:
-    for x in ['lower_bounds_with_cushion_list','upper_bounds_with_cushion_list',
-     'selection_list']:
+    for x in ['lower_bounds_list', 'upper_bounds_list',
+       'lower_bounds_with_cushion_list','upper_bounds_with_cushion_list',
+       'selection_list']:
       if getattr(box_info,x):  # select those in range
         setattr(box_info,x,getattr(box_info,x)[first_to_use-1:last_to_use])
 
@@ -7186,10 +8964,6 @@ def get_split_maps_and_models(
   else:
     lower_bounds_list = box_info.lower_bounds_list
     upper_bounds_list = box_info.upper_bounds_list
-  if not first_to_use:
-    first_to_use = 1
-  if not last_to_use:
-    last_to_use = len(lower_bounds_list)
   for lower_bounds, upper_bounds, selection in zip(
        lower_bounds_list,
        upper_bounds_list,
@@ -7344,6 +9118,7 @@ def get_selections_and_boxes_to_split_model(
       mask_map_manager = None
 
     if exclude_points_outside_density and mask_map_manager:
+      # Make sure we have some points inside the density
       inside = (mask_map_manager.map_data() > 0.5)
       fraction_inside = inside.count(True)/inside.size()
       target_n = max(minimum_boxes_inside_density,
@@ -7376,7 +9151,8 @@ def get_selections_and_boxes_to_split_model(
       dist_min = dist_min,
       target_xyz_center_list = target_xyz_center_list,
       )
-
+    print("Ready with %s boxes to check" %(len(box_info.lower_bounds_list)),
+      file = log)
     box_info = get_selections_from_boxes(
        box_info = box_info,
        model = model,
@@ -7384,17 +9160,16 @@ def get_selections_and_boxes_to_split_model(
        skip_empty_boxes = skip_empty_boxes,
        exclude_points_outside_density = exclude_points_outside_density,
        mask_map_manager = mask_map_manager)
+    print("Ready with %s ok boxes " %(len(box_info.lower_bounds_list)),
+      file = log)
 
-  if select_final_boxes_based_on_model or (
+  if (select_final_boxes_based_on_model and model) or (
      not box_info.lower_bounds_list): # get bounds now:
     from cctbx.maptbx.box import get_bounds_around_model
     box_info.lower_bounds_list = []
     box_info.upper_bounds_list = []
     for selection in box_info.selection_list:
-      if model:
-        model_use=model.select(selection)
-      else:
-        model_use = None
+      model_use=model.select(selection)
       info = get_bounds_around_model(
         map_manager = map_manager,
         model = model_use,
@@ -7519,7 +9294,7 @@ def get_selection_inside_box(
          )
   return ~s
 
-def get_skip_waters_and_hetero_lines(skip_waters, skip_hetero):
+def get_skip_waters_and_hetero_lines(skip_waters = True, skip_hetero = True):
   if skip_waters and skip_hetero:
     no_water_or_het = "( (not hetero ) and (not water)) "
   elif skip_waters:
@@ -7538,15 +9313,30 @@ def get_skip_waters_and_hetero_lines(skip_waters, skip_hetero):
      no_water_or_het_with_and = no_water_or_het_with_and,
      )
 
-def get_selections_for_segments(model, no_water_or_het_with_and = ''):
-  '''
+def get_selections_for_segments(model,
+     skip_waters = True,
+     skip_hetero = True,
+     no_water_or_het_with_and = None,
+     skip_n_residues_on_ends = None,
+     minimum_length = 1,
+     return_as_group_args = False):
+  ''''
     Generate selections corresponding to each segment (chain or part of a chain
     that is separate from remainder of chain)
+
+    Use skip_waters and skip_hetero to specify whether to include them
+    If skip_n_residues_on_ends is set, skip residues within
+      skip_n_residues_on_ends of an end
   '''
   assert isinstance(model, mmtbx.model.manager)
 
+  if no_water_or_het_with_and is None:
+    water_het_info = get_skip_waters_and_hetero_lines(
+        skip_waters = skip_waters, skip_hetero = skip_hetero)
+    no_water_or_het_with_and = water_het_info.no_water_or_het_with_and
+
   from iotbx.pdb import resseq_encode
-  selection_list = []
+  selection_info_list = []
   ph = model.get_hierarchy()
   for m in ph.models()[:1]:
     for chain in m.chains():
@@ -7556,11 +9346,13 @@ def get_selections_for_segments(model, no_water_or_het_with_and = ''):
       previous_rg = None
       for rg in chain.residue_groups():
         if previous_rg and ( (not rg.link_to_previous) or (not
-           residue_group_is_linked_to_previous(rg, previous_rg))):
+           residue_group_is_linked_to_previous(rg, previous_rg)) or
+         (previous_rg.resseq_as_int() + 1 != rg.resseq_as_int())):
           # break here
-          selection_list.append("%s ( chain %s and resseq %s:%s ) " %(
-           no_water_or_het_with_and,
-            chain_id, resseq_encode(first_resno), resseq_encode(last_resno)))
+          selection_info_list.append( group_args(
+            chain_id = chain_id,
+            first_resno = first_resno,
+            last_resno = last_resno))
           first_resno = None
           last_resno = None
         if not first_resno:
@@ -7568,9 +9360,27 @@ def get_selections_for_segments(model, no_water_or_het_with_and = ''):
         last_resno = rg.resseq_as_int()
         previous_rg = rg
       if first_resno is not None and last_resno is not None:
-        selection_list.append(" %s ( chain %s and resseq %s:%s ) " %(
-            no_water_or_het_with_and, chain_id,
-           resseq_encode(first_resno), resseq_encode(last_resno)))
+        selection_info_list.append( group_args(
+            chain_id = chain_id,
+            first_resno = first_resno,
+            last_resno = last_resno))
+
+  selection_list = []
+  for si in selection_info_list:
+    if skip_n_residues_on_ends:
+      first_resno = si.first_resno + skip_n_residues_on_ends
+      last_resno = si.last_resno - skip_n_residues_on_ends
+    else:
+      first_resno = si.first_resno
+      last_resno = si.last_resno
+    if (last_resno - first_resno) + 1 < max(1,minimum_length):
+      continue
+    if return_as_group_args:
+      selection_list.append(si)
+    else: # usual
+      selection_list.append(" %s ( chain %s and resseq %s:%s ) " %(
+        no_water_or_het_with_and, si.chain_id,
+        resseq_encode(first_resno).strip(), resseq_encode(last_resno).strip()))
   return selection_list
 
 def residue_group_is_linked_to_previous(rg, previous_rg):
@@ -7678,6 +9488,12 @@ class run_anisotropic_scaling_as_class:
     # direction_vector weights:
     f_array_info = get_map_coeffs_as_fp_phi(map_coeffs,
        n_bins = n_bins, d_min = d_min)
+
+    if self.setup_info.kw['aniso_b_cart']:
+      # first apply aniso_b_cart to the whole array
+      apply_aniso_b_cart_to_f_array_info(f_array_info,
+        self.setup_info.kw['b_iso'], d_min, self.setup_info.kw['aniso_b_cart'])
+
     from cctbx.maptbx.refine_sharpening import get_normalized_weights_para
 
     # Get weight for each reflection for this direction vector.  Normalize
@@ -7698,6 +9514,8 @@ class run_anisotropic_scaling_as_class:
       f_array_info.f_array)
 
     average_scale_factors = get_average_scale_factors(scale_factor_info)
+    if not average_scale_factors:
+       raise Sorry("No scale factors obtained ... try fewer bins")
 
     for i_bin in f_array_info.f_array.binner().range_used():
       # Get scale values for i_bin at all points xyz for dv i
@@ -7717,6 +9535,8 @@ class run_anisotropic_scaling_as_class:
         value_list = scale_value_list,
         smoothing_radius = smoothing_radius,
         default_value = default_value,
+        n_boxes = self.setup_info.n_boxes,
+        small_n_real = self.setup_info.small_n_real,
       )
 
       # Get weights on each Fourier coeff, emphasizing this bin

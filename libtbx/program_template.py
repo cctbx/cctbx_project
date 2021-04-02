@@ -45,10 +45,21 @@ class ProgramTemplate(object):
 Program Description
 '''
 
+  # list of keywords for categorizing the program (optional)
+  keywords = None
+
+  # list of maintainer(s) (GitHub names) for the program (optional)
+  maintainers = None
+
   # datatypes for program
   # see iotbx/data_manager/<datatype>.py for list of supported datatypes
-  # default datatypes are set in iotbx/data_manager/__init__.py
+  # default datatypes are set in iotbx/data_manager/__init__.py (default_datatypes)
   datatypes = None
+
+  # DataManager options
+  # customization for how the DataManager processes files
+  # available options are set in iotbx/data_manager/__init__.py (data_manager_options)
+  data_manager_options = None
 
   # master PHIL string for the program (required)
   master_phil_str = '''
@@ -65,7 +76,7 @@ program {
 
   # common citations used by the program that exist in libtbx/citations.params
   # list of article_id strings, e.g. ["polder", "elbow"]).
-  known_article_ids = list()
+  known_article_ids = []
 
   # text shown at the end of the command-line program
   epilog = '''
@@ -115,11 +126,24 @@ output {
   phil_converters = list()
 
   # ---------------------------------------------------------------------------
+  # Convenience features
+  def _print(self, text):
+    '''
+    Print function that just replaces print(text, file=self.logger)
+    '''
+    print(text, file=self.logger)
+
+  def header(self, text):
+    self._print("-"*79)
+    self._print(text)
+    self._print("*"*len(text))
+
+  # ---------------------------------------------------------------------------
   # Function for showing default citation for template
   @staticmethod
   def show_template_citation(text_width=80, logger=None,
                              citation_format='default'):
-    assert(logger is not None)
+    assert logger is not None
 
     print('\nGeneral citation for CCTBX:', file=logger)
     print('-'*text_width, file=logger)
@@ -154,12 +178,12 @@ output {
     self.params = params
     self.logger = logger
 
-    if (self.logger is None):
+    if self.logger is None:
       self.logger = multi_out()
 
     # master_phil should be provided by CCTBXParser or GUI because of
     # potential PHIL extensions
-    if (self.master_phil is None):
+    if self.master_phil is None:
       self.master_phil = libtbx.phil.parse(
         self.master_phil_str, process_includes=True)
 
@@ -175,11 +199,6 @@ output {
 
     # optional initialization
     self.custom_init()
-
-  def header(self, text):
-    print("-"*79, file=self.logger)
-    print(text, file=self.logger)
-    print("*"*len(text), file=self.logger)
 
   # ---------------------------------------------------------------------------
   def custom_init(self):

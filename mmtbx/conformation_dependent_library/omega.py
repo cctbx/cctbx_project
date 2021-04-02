@@ -19,17 +19,19 @@ columns = [
   "sACNA",
   ]
 
-def get_restraint_values(threes):
+def get_restraint_values(threes, verbose=False):
 
   res_type_group = get_res_type_group(
     threes[-2].resname,
     threes[-1].resname,
   )
+  if verbose: print(threes[-2].resname,threes[-1].resname,res_type_group)
   if res_type_group is None: return None
   restraint_values = []
   key = threes.get_cdl_key(force_plus_one=True,
                            omega_cdl=True,
                           )
+  if verbose: print('key',key)
   if key is None: return None
   previous_key = None
   if len(key)==4:
@@ -40,7 +42,7 @@ def get_restraint_values(threes):
     restraint_values.append(rv)
   else:
     restraint_values.append(None)
-  rv= omega_database[res_type_group][key]
+  rv = omega_database[res_type_group][key]
   restraint_values.append(rv)
   return restraint_values
 
@@ -70,6 +72,8 @@ def apply_updates(self,
     for j, restraint_values in enumerate(restraint_value_pairs):
       if restraint_values is None: continue
       for i, value in enumerate(restraint_values):
+        if verbose:
+          print('i,value',i,value)
         if i<2: continue
         if columns[i][0]=="s": continue
         code = columns[i][1:]
@@ -149,7 +153,7 @@ def update_restraints(hierarchy,
         print(threes)
       continue
 
-    restraint_values = get_restraint_values(threes)
+    restraint_values = get_restraint_values(threes, verbose=verbose)
     if restraint_values is None: continue
     if restraint_values[0]=="I":
       average_updates += 1
@@ -161,6 +165,7 @@ def update_restraints(hierarchy,
                          ideal=ideal,
                          esd=esd,
                          esd_factor=esd_factor,
+                         verbose=verbose,
                          )
   if registry.n:
     threes.apply_average_updates(registry)

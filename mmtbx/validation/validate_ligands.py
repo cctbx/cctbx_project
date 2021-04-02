@@ -501,7 +501,7 @@ class ligand_result(object):
       clashes_dict   = clashes._clashes_dict
 
       ligand_clashes_dict = dict()
-      for iseq_tuple, record in clashes_dict.iteritems():
+      for iseq_tuple, record in clashes_dict.items():
         if (iseq_tuple[0] in isel_ligand_within or
             iseq_tuple[1] in isel_ligand_within):
           ligand_clashes_dict[iseq_tuple] = record

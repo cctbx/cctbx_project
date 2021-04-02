@@ -183,9 +183,9 @@ class AEV(object):
 
   def get_values(self):
     result = OrderedDict()
-    result['B'] = self.BAEVs.values()[0]
-    result['M'] = self.MAEVs.values()[5]
-    result['E'] = self.EAEVs.values()[-1]
+    result['B'] = list(self.BAEVs.values())[0]
+    result['M'] = list(self.MAEVs.values())[5]
+    result['E'] = list(self.EAEVs.values())[-1]
     return result
 
   def empty_dict(self):

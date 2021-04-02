@@ -7,4 +7,4 @@ from scitbx.dtmin.auxiliary import Auxiliary
 class RefineBase(Compulsory, Optional, Logging, Auxiliary):
 
   def __init__(self):
-    self.nmp = 0
+    self.nmp = 0 # number of macrocycle parameters

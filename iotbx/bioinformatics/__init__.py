@@ -118,8 +118,30 @@ class sequence(object):
 
     return self.format( 70 )
 
+  def __hash__(self):
+    '''
+    Return a UID (hash) for the instanciated object. This method is required
+    to be implemented if __eq__ is implemented and if the object is immutable.
+    Immutable objects can be then used as keys for dictionaries.
+    '''
+
+    #NOTE: To my knowledge objects of this class are used as keyword in a dictionary only
+    #by Sculptor.
+
+    #NOTE: id(self) is already unique but hash(id(self)) distributes better the hashed values
+    #this means that two consecutive id will have very different hash(id(self)) making
+    #hashtable searches more robust when using them as keys of dictionaries. Difference in
+    #performance are irrelevant.
+
+    return hash(id(self))
 
   def __eq__(self, other):
+    '''
+    This method is used any time the equality among two instances of this class must be tested.
+    Two sequences are equal if their sequence attribute is equal. Although self and other are
+    two different objects. In particular two sequences might have a different name but they are equal
+    if they have the same sequence.
+    '''
 
     return isinstance( other, sequence ) and self.sequence == other.sequence
 
@@ -1849,6 +1871,21 @@ def get_sequences(file_name=None,text=None,remove_duplicates=None):
       simple_sequence_list.append(sequence.sequence)
   return simple_sequence_list
 
+def get_chain_type_of_chain(chain):
+  ''' Get chain type of a single chain in a hierarchy'''
+
+  from iotbx.pdb import pdb_input, hierarchy
+  from scitbx.array_family import flex
+
+  cc = chain.detached_copy()
+  new_hierarchy = pdb_input(
+     source_info = "Model",
+     lines = flex.split_lines("")).construct_hierarchy()
+  mm = hierarchy.model()
+  new_hierarchy.append_model(mm)
+  mm.append_chain(cc)
+  return get_chain_type(hierarchy = new_hierarchy)
+
 def get_chain_type(model=None, hierarchy=None):
   '''
    Identify chain type in a hierarchy or model and require only one chain type
@@ -1897,13 +1934,16 @@ def get_chain_type(model=None, hierarchy=None):
     elif count_rna_dna_p and count_rna:
       return "RNA"
     else:
-      raise Sorry("Model does not appear to contain protein or RNA or DNA")
+      return None  # cannot tell (may be UNK residue)
 
-def get_sequence_from_hierarchy(hierarchy, chain_type=None):
-  return get_sequence_from_pdb(hierarchy=hierarchy,chain_type=chain_type)
+def get_sequence_from_hierarchy(hierarchy, chain_type=None,
+     remove_white_space=False, require_chain_type=True):
+  return get_sequence_from_pdb(hierarchy=hierarchy,chain_type=chain_type,
+     remove_white_space=remove_white_space,
+      require_chain_type=require_chain_type)
 
 def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None,
-    chain_type=None):
+    chain_type=None, remove_white_space=False, require_chain_type=True):
 
   if not hierarchy:
     # read from PDB
@@ -1922,8 +1962,8 @@ def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None,
           stop_for_unknowns = False)
     hierarchy=mm.get_hierarchy()
 
-  if not chain_type:
-    chain_type = get_chain_type(hierarchy = hierarchy)
+  if hierarchy.overall_counts().n_residues == 0:
+    return ""  # nothing there
 
   chain_sequences=[]
   from iotbx.pdb import amino_acid_codes as aac
@@ -1935,7 +1975,17 @@ def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None,
 
   for model in hierarchy.models():
     for chain in model.chains():
-      one_letter_code = one_letter_code_dicts[chain_type]
+      # Get chain-type of this chain if not specified
+      chain_type_use = chain_type
+      if not chain_type_use:
+        chain_type_use = get_chain_type_of_chain(chain)
+        if not chain_type_use:
+          if require_chain_type:
+            from libtbx.utils import Sorry
+            raise Sorry("Chain type could not be identified for chain %s" %(chain.id))
+          else:
+            continue
+      one_letter_code = one_letter_code_dicts[chain_type_use]
       chain_sequence=""
       for rg in chain.residue_groups():
         for atom_group in rg.atom_groups():
@@ -1944,6 +1994,8 @@ def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None,
           break
       chain_sequences.append(chain_sequence)
   sequence_as_string="\n".join(chain_sequences)
+  if remove_white_space:
+    sequence_as_string = sequence_as_string.replace("\n","").replace(" ","")
   return sequence_as_string
 
 def guess_chain_types_from_sequences(file_name=None,text=None,
@@ -2130,8 +2182,22 @@ def chain_type_and_residues(text=None,chain_type=None,likely_chain_types=None):
   else:
     return ok_list[0],residues
 
-def random_sequence(n_residues=None,residue_basket=None):
-  assert n_residues and residue_basket
+def random_sequence(n_residues=None,residue_basket=None,
+   chain_type = 'PROTEIN'):
+  assert n_residues and (residue_basket or chain_type)
+  if not residue_basket:
+    chain_type = chain_type.upper()
+    if chain_type == "PROTEIN":
+        # Approximate eukaryotic frequencies using W as basic unit
+        residue_basket = "AAAAAACCCEEEEDDDDDGGGGGG"+\
+          "FFFIIIHHKKKKKKMLLLLLLNNNQQQPPPPSSSSSSRRRTTTTTWVVVVVYYY"
+    elif chain_type == "DNA":
+        residue_basket = "GATC"
+    elif chain_type == "RNA":
+        residue_basket = "GAUC"
+    else:
+        raise Sorry("Chain type needs to be RNA/DNA/PROTEIN")
+
   import random
   s=""
   nn=len(residue_basket)-1

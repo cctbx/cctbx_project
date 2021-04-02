@@ -51,7 +51,6 @@ class SimData:
     self.using_cuda = False
     self.using_omp = False
     self.rois = None
-    self.panel_id = 0
     self.readout_noise = 3
     self.gain = 1
     self.psf_fwhm = 0
@@ -60,6 +59,7 @@ class SimData:
     self.backrground_scale = 1  # scale factor to apply to background raw pixels
     self.functionals = []
     self.mosaic_seeds = 777, 777
+    self.D = None # nanoBragg instance
 
   @property
   def background_raw_pixels(self):
@@ -172,14 +172,6 @@ class SimData:
     self._add_water = val
 
   @property
-  def panel_id(self):
-    return self._panel_id
-
-  @panel_id.setter
-  def panel_id(self, val):
-    self._panel_id = val
-
-  @property
   def detector(self):
     return self._detector
 
@@ -227,14 +219,15 @@ class SimData:
         self.crystal.miller_array.indices(), self.crystal.miller_array.data())
 
   def _crystal_properties(self):
-    self.D.xtal_shape = self.crystal.xtal_shape
-    self.update_Fhkl_tuple()
-    self.D.Amatrix = Amatrix_dials2nanoBragg(self.crystal.dxtbx_crystal)
-    self.D.Ncells_abc = self.crystal.Ncells_abc
-    self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
-    self.D.mosaic_domains = self.crystal.n_mos_domains
-    self.D.set_mosaic_blocks(SimData.Umats(self.crystal.mos_spread_deg, self.crystal.n_mos_domains,
-                                           seed=self.mosaic_seeds[0], norm_dist_seed=self.mosaic_seeds[1]) )
+    if self.crystal is not None:
+      self.D.xtal_shape = self.crystal.xtal_shape
+      self.update_Fhkl_tuple()
+      self.D.Amatrix = Amatrix_dials2nanoBragg(self.crystal.dxtbx_crystal)
+      self.D.Ncells_abc = self.crystal.Ncells_abc
+      self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
+      self.D.mosaic_domains = self.crystal.n_mos_domains
+      self.D.set_mosaic_blocks(SimData.Umats(self.crystal.mos_spread_deg, self.crystal.n_mos_domains,
+                                             seed=self.mosaic_seeds[0], norm_dist_seed=self.mosaic_seeds[1]) )
 
   def _beam_properties(self):
     self.D.xray_beams = self.beam.xray_beams
@@ -246,6 +239,8 @@ class SimData:
     self.D.mosaic_seed = self.seed
 
   def determine_spot_scale(self):
+    if self.crystal is None:
+      return 1
     if self.beam.size_mm <= self.crystal.thick_mm:
       illum_xtal_vol = self.crystal.thick_mm * self.beam.size_mm ** 2
     else:
@@ -256,9 +251,26 @@ class SimData:
   def update_nanoBragg_instance(self, parameter, value):
     setattr(self.D, parameter, value)
 
-  def instantiate_nanoBragg(self, verbose=0, oversample=0, device_Id=0, adc_offset=0, default_F=1000.0, interpolate=0):
+  @property
+  def panel_id(self):
+    return self._panel_id
+
+  @panel_id.setter
+  def panel_id(self, val):
+    if val >= len(self.detector):
+      raise ValueError("panel id cannot be larger than the number of panels in detector (%d)" % len(self.detector))
+    if val <0:
+      raise ValueError("panel id cannot be negative!")
+    if self.D is None:
+      self._panel_id = 0
+    else:
+      self.D.set_dxtbx_detector_panel(self.detector[int(val)], self.beam.nanoBragg_constructor_beam.get_s0())
+      self._panel_id = int(val)
+
+  def instantiate_nanoBragg(self, verbose=0, oversample=0, device_Id=0, adc_offset=0, default_F=1000.0, interpolate=0,
+                            pid=0):
     self.D = nanoBragg(self.detector, self.beam.nanoBragg_constructor_beam, verbose=verbose,
-                       panel_id=int(self.panel_id))
+                       panel_id=int(pid))
     self._seedlings()
     self.D.interpolate = interpolate
     self._crystal_properties()
@@ -313,7 +325,7 @@ class SimData:
       if self.add_water:
         print('add water %f mm' % self.water_path_mm)
         water_scatter = flex.vec2_double([
-          (0, 2.57), (0.0365, 2.58), (0.07, 2.8), (0.12, 5), (0.162, 8), (0.2, 6.75), (0.18, 7.32),
+          (0, 2.57), (0.0365, 2.58), (0.07, 2.8), (0.12, 5), (0.162, 8), (0.18, 7.32), (0.2, 6.75),
           (0.216, 6.75), (0.236, 6.5), (0.28, 4.5), (0.3, 4.3), (0.345, 4.36), (0.436, 3.77), (0.5, 3.17)])
         self.D.Fbg_vs_stol = water_scatter
         self.D.amorphous_sample_thick_mm = self.water_path_mm

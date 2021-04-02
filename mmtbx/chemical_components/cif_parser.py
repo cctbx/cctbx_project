@@ -74,7 +74,7 @@ class empty(object):
   def __repr__(self):
     outl = "\nObject"
     for attr in self.__dict__:
-      outl += "\n  %s : %s" % (attr, getattr(self, attr))
+      outl += "\n  %s : %s %s" % (attr, getattr(self, attr), type(getattr(self, attr)))
     return outl
 
   def __len__(self):
@@ -105,7 +105,7 @@ def smart_split_cif_line(line):
       line = line[len(item)+3:].strip()
   return tmp
 
-def run(filename):
+def run2(filename):
   if not os.path.exists(filename): return None
   lines = []
   with open(filename) as f:
@@ -237,14 +237,65 @@ def run(filename):
         setattr(obj, sk, item)
     if len(obj):
       complete_cif_data[cif_key] = [obj]
+  return complete_cif_data
 
+def get_func(cif_key, sk):
+  func = None
+  if cif_key in cif_keyword_dictionary:
+    func = cif_keyword_dictionary[cif_key].get(sk, None)
+  return func
+
+def get_typed_field(cif_key, sk, field, func=None):
+  if func is None:
+    func = get_func(cif_key, sk)
+  if field not in ["?", "."] and func not in [None, str]:
+    field = func(field)
+  return field
+
+def run(filename):
+  from iotbx import cif
+  if not os.path.exists(filename): return None
+  complete_cif_data = {}
+  cm = cif.reader(filename, strict=False, raise_if_errors=False).model()
+  for code, rc in cm.items():
+    for key, item in rc.items():
+      cif_key = key.split('.')[0]
+      sk = key.split(".")[1].strip()
+      complete_cif_data.setdefault(cif_key, [])
+      if type(item)==type(''):
+        item=[item]
+      else:
+        continue
+      for i, row in enumerate(item):
+        if len(complete_cif_data[cif_key])<i+1:
+          complete_cif_data[cif_key].append(empty())
+        func = get_func(cif_key, sk)
+        row = get_typed_field(cif_key, sk, row, func=func)
+        setattr(complete_cif_data[cif_key][i], sk, row)
+    for i, loop in enumerate(rc.iterloops()):
+      if not loop: continue
+      for j, (key, item) in enumerate(loop.items()):
+        if not j:
+          objs=[]
+          for k in range(len(item)):
+            objs.append(empty())
+          cif_key = key.split('.')[0]
+        sk = key.split(".")[1].strip()
+        func = get_func(cif_key, sk)
+        for k in range(len(item)):
+          setattr(objs[k], sk, get_typed_field(cif_key, sk, item[k], func))
+        complete_cif_data[cif_key] = objs
   return complete_cif_data
 
 if __name__=="__main__":
   import os, sys
   cif = run(sys.argv[1])
+  cif2 = run2(sys.argv[1])
   for key in cif:
     print('_'*80)
     print(key)
     for item in cif[key]:
       print(item)
+
+  print(cif)
+  assert cif.keys()==cif2.keys(), '%s!=%s' % (cif.keys(), cif2.keys())

@@ -243,13 +243,18 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
     env_etc.include_registry.prepend(env=env_fs, paths=[env_etc.boost_include])
     fs_root = '#' + os.path.join(
       os.path.basename(env_etc.boost_dist), 'libs', 'filesystem', 'src')
-    fs_src = [os.path.join(fs_root, path) for path in
-              ['operations.cpp', 'path.cpp', 'path_traits.cpp', 'portability.cpp',
-              'unique_path.cpp', 'utf8_codecvt_facet.cpp',
-              'codecvt_error_category.cpp']]
+    fs_src_base = ['operations.cpp', 'path.cpp', 'path_traits.cpp', 'portability.cpp',
+                   'unique_path.cpp', 'utf8_codecvt_facet.cpp',
+                   'codecvt_error_category.cpp',
+                  ]
+    if env_etc.boost_version >= 107200:
+      fs_src_base.extend(['directory.cpp', 'exception.cpp'])
+      env_fs.Append(LIBS=['boost_system'])
+    fs_src = [os.path.join(fs_root, path) for path in fs_src_base]
     if (sys.platform == 'win32'):     # Windows
       fs_src.append(os.path.join(fs_root, 'windows_file_codecvt.cpp'))
-      env_fs.Append(CPPDEFINES={'BOOST_FILESYSTEM_DYN_LINK':1})
+      #env_fs.Append(CPPDEFINES={'BOOST_FILESYSTEM_DYN_LINK':1})
+      env_fs.Append(CPPDEFINES={'BOOST_FILESYSTEM_STATIC_LINK':1})
       env_fs.StaticLibrary(
         target='#lib/boost_filesystem',
         source=fs_src)

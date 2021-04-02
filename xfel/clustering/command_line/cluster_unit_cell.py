@@ -9,8 +9,6 @@ FORMAT = '%(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 
 def run(_args):
-  if _args < 2:
-    raise IOError("Must provide location(s) of pickles")
   if _args.paths:
     ucs = Cluster.from_files(raw_input=_args.dirs, n_images=_args.n, dials=_args.dials, json=_args.json)
   elif _args.text:

@@ -8,11 +8,13 @@ dependencies:
  # conda compilers
  - c-compiler
  - cxx-compiler
+ - scons
 
  # psana
- - psana-conda  >= 2.0.9
+ - psana
 
  # python
+ - python=3.7
  - biopython
  - ipython
 
@@ -28,16 +30,17 @@ dependencies:
  # graphics
  - pillow
  - reportlab
- - wxpython
+ - wxpython=4.0.*
  - pyopengl
 
  # HDF5 (main libraries come with psana)
- - hdf5_plugins                      # [unix]
+ - hdf5-external-filter-plugins  # [unix]
 
  # other
  - libsvm
  - mrcfile
  - psutil
+ - mpi4py
 
  # cctbx channel
  - libsvm_py

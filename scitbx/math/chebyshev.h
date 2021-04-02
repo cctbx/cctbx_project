@@ -179,10 +179,10 @@ namespace chebyshev{
   }
 
   //-----------------------------------------------------------------
-  //! Chebyshev polynome, witrh derivative with respect to x
+  //! Chebyshev polynome, with derivative with respect to x
 
   /*! For this class, it only makes sense to
-   *  have a constructor where coeffeicnts are loaded.
+   *  have a constructor where coefficients are loaded.
    *  The prime use of this class is to have an approximation
    *  to a function and its derivative
    *
@@ -272,7 +272,7 @@ namespace chebyshev{
 
   };
 
-  //! Computes the coeficients for the derivative of a chebyshev polynome
+  //! Computes the coefficients for the derivative of a chebyshev polynome
   template <typename FloatType>
   void
   chebyshev_polynome<FloatType>
@@ -299,7 +299,7 @@ namespace chebyshev{
 
   //------------------------------------------------------------
   //! A chebyshev polynome for coefficient fitting purposes
-  /*! Same funnctionanlitry as the base class
+  /*! Same functionality as the base class
    *  but also returns derivatives of the function with respect to
    *  the coefficients
    */
@@ -440,7 +440,7 @@ namespace chebyshev{
 
     }
 
-    //! In python this accesible as smooth_coefs
+    //! In python this is accesible as smooth_coefs
     scitbx::af::shared<FloatType>
     smooth_coefs()
     {
@@ -461,7 +461,7 @@ namespace chebyshev{
 
 
   //! The derivative of the chebyshev polynomial wrt to the coeficients.
-  /*! Chebyshev polynome with gibbs damping*/
+  /*! Chebyshev polynome with Gibbs damping*/
   template <typename FloatType = double>
   class chebyshev_smooth_fitter: public chebyshev_base<FloatType>
   {
@@ -729,9 +729,9 @@ namespace chebyshev{
 
   //! Some functionality for least squares fitting
   /*! This is to fit a chebyshev polynome with gibbs damping.
-   *  Although elegant, it does not really seems to make
-   *  a hughe difference over the normal chebyshev polynome
-   *  in the cases I have tested. There is !no! pythonm interface
+   *  Although elegant, it does not really seem to make
+   *  a huge difference over the normal chebyshev polynome
+   *  in the cases I have tested. There is !no! python interface
    *  for this, and this function might be removed at one stage or another
    */
   template <typename FloatType = double>
@@ -790,9 +790,6 @@ namespace chebyshev{
     scitbx::af::shared<bool> free_flags_;
     unsigned n_terms_;
     chebyshev_smooth_fitter<FloatType> cheby_;
-
-
-
   };
 
   template <typename FloatType>

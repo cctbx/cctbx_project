@@ -43,6 +43,9 @@ def construct_special_position_settings(
     u_star_tolerance=u_star_tolerance)
 
 def is_pdb_file(file_name):
+  for known_binary_extension in ['mtz', 'ccp4', 'mrc', 'pickle', 'pkl']:
+    if file_name.endswith(known_binary_extension):
+      return False
   with smart_open.for_reading(file_name=file_name) as f:
     pdb_raw_records = f.read().splitlines()
   for pdb_str in pdb_raw_records:
@@ -706,6 +709,16 @@ class pdb_input_from_any(object):
                   and n_unknown_records > 0))
             and n_records>0):
           continue
+        # Additional check that solves 2of6:
+        # if the first non-comment non-empty line contains data_ this is mmCIF
+        if lines is not None and len(lines)>0:
+          len_lines = len(lines)
+          i = 0
+          while i < len_lines and (
+            lines[i].strip().startswith('#') or len(lines[i].strip()) == 0):
+            i += 1
+          if i < len_lines and lines[i][:5].strip() == 'data_':
+            continue
         self.file_format = "pdb"
       else :
         self.file_format = "cif"
@@ -1253,17 +1266,15 @@ class _():
           "Improper set of PDB SCALE records%s" % source_info)
     return self._scale_matrix
 
-  def process_BIOMT_records(self,error_handle=True,eps=1e-4):
+  def process_BIOMT_records(self):
     import iotbx.mtrix_biomt
-    return iotbx.mtrix_biomt.process_BIOMT_records(
-      lines = self.extract_remark_iii_records(350),
-      eps=eps)
+    return iotbx.mtrix_biomt.process_BIOMT_records_pdb(
+      lines = self.extract_remark_iii_records(350))
 
-  def process_MTRIX_records(self, eps=1e-4):
+  def process_MTRIX_records(self):
     import iotbx.mtrix_biomt
-    return iotbx.mtrix_biomt.process_MTRIX_records(
-      lines=self.crystallographic_section(),
-      eps=eps)
+    return iotbx.mtrix_biomt.process_MTRIX_records_pdb(
+      lines=self.crystallographic_section())
 
   def get_r_rfree_sigma(self, file_name=None):
     from iotbx.pdb import extract_rfactors_resolutions_sigma

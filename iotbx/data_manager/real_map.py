@@ -69,5 +69,7 @@ class RealMapDataManager(DataManagerBase):
     self._output_files.append(filename)
     self._output_types.append(RealMapDataManager.datatype)
 
+    return filename
+
 # =============================================================================
 # end

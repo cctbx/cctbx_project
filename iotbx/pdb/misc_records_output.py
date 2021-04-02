@@ -32,7 +32,7 @@ def link_record_output(all_chain_proxies):
         def _format_link_atom(atom):
           altloc = atom.parent().altloc
           if not altloc: altloc=" "
-          return "%4s%s%3s %s%4s%s" % (
+          return "%4s%s%3s%2s%4s%s" % (
             atom.name,
             altloc,
             atom.parent().resname,

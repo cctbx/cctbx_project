@@ -33,6 +33,8 @@ class Minimizer(object):
                     calculated by finite differences
     """
 
+    refine_object.output_level = self.output_level
+
     self.check_input(protocol, ncyc, minimizer_type)
 
     refine_object.initial_statistics()
@@ -133,7 +135,7 @@ class Minimizer(object):
 
         #string is empty for continuation
         if len(termination_reason) != 0:
-          print ("termination reason: " + str(termination_reason))
+          self.log_tab(2,FURTHER, "termination reason: " + str(termination_reason))
           break
 
         cycle += 1
@@ -336,7 +338,7 @@ class Minimizer(object):
     # point in the code may not be immediately obvious.
     # The naming only really makes snse when we are minimising a log likelihood function
     # If the likelihood can locally be approxmated by a
-    # multivatriate normal distribution, then the log likelihood may be approximated by a multidimensional
+    # multivariate normal distribution, then the log likelihood may be approximated by a multidimensional
     # quadratic with its matrix being the inverse of the covariance matrix of the distribution.
 
     self.log_tab(1,TESTING,"==NEWTON==")
@@ -789,8 +791,7 @@ class Minimizer(object):
       x = refine_object.get_reparameterized_parameters()
       macrocycle_large_shifts = refine_object.reparameterized_large_shifts()
       TOL = 1.e-03 # Tolerance for deviation in bound as fraction of LargeShift
-      assert(len(x) == len(macrocycle_large_shifts))
-      assert(len(x) == len(bounds))
+      assert(len(bounds) == len(macrocycle_large_shifts))
       for i in range(len(x)):
         thistol = macrocycle_large_shifts[i]*TOL
         if    (bounds[i].lower_bounded() and (x[i] < (bounds[i].lower_limit() - thistol) ) ) \

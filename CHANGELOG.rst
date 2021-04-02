@@ -1,3 +1,32 @@
+2021.2
+======
+
+* Improved remediator code for converting PDB version 2 format to version 3
+* Add compilation support for Boost 1.72 and 1.74
+
+2021.1
+======
+
+* Improvements to cctbx.HKLviewer for displaying reciprocal space data
+
+2020.12
+=======
+
+* BIOMT/MTRIX matrices in model reading
+
+  * Added option to loosen handling of improper matrices in DataManager
+  * Make behavior conistent between mmCIF and PDB formats
+
+* Improvements to map_model_manager
+
+  * Better handling of cases when information is missing
+  * Calculate the RMSD of matching residues between models
+
+2020.11
+=======
+
+* Updated API for fetching data from RCSB
+
 2020.10
 =======
 
