@@ -18,7 +18,7 @@ except Exception:
 # copy version file and header to build directory
 try:
   shutil.copy(filenames[0], abs(libtbx.env.build_path))
-  cctbx_include = os.path.join(abs(libtbx.env.build_path), 'include', 'cctbx')
+  cctbx_include = libtbx.env.under_build('include/cctbx')
   if not os.path.exists(cctbx_include):
     os.mkdir(cctbx_include)
   shutil.copy(filenames[1], cctbx_include)
