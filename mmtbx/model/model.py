@@ -896,6 +896,12 @@ class manager(object):
     else:
       return None
 
+  def shifted(self, eps=1.e-3):
+    r = self.shift_cart()
+    if(r is None): return False
+    if(flex.max(flex.abs(flex.double(r)))<=eps): return False
+    return True
+
   def shift_cart(self):
     '''
       Return the value of the shift_cart, if available.
