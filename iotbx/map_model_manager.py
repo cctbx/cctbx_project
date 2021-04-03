@@ -195,7 +195,6 @@ class map_model_manager(object):
     if any_map_manager:
       for m in [model] + extra_model_list:
         if not m: continue
-        if not m.shifted(): continue
         self.add_crystal_symmetry_if_necessary(m, map_manager = any_map_manager)
         self.shift_any_model_to_match(m, map_manager = any_map_manager)
 
