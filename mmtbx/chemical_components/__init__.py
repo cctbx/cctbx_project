@@ -59,14 +59,15 @@ def get_cif_dictionary(code,
       else:
         cif = cif_parser.run(filename)
       loaded_cifs[code] = cif
-  for loop_id in ['_pdbx_chem_comp_descriptor', '_chem_comp']:
-    for loop in cif.get(loop_id,[]):
-      for attr in loop.__dict__:
-        item = getattr(loop, attr)
-        if type(item)==type(''):
-          item = item.replace('\n', '')
-          assert item.find('\n')==-1, '%s : %s' % (attr, item)
-          setattr(loop, attr, str(item).strip())
+    if cif:
+      for loop_id in ['_pdbx_chem_comp_descriptor', '_chem_comp']:
+        for loop in cif.get(loop_id,[]):
+          for attr in loop.__dict__:
+            item = getattr(loop, attr)
+            if type(item)==type(''):
+              item = item.replace('\n', '')
+              assert item.find('\n')==-1, '%s : %s' % (attr, item)
+              setattr(loop, attr, str(item).strip())
   return cif
 
 def get_alternative_name(code, name):
