@@ -347,7 +347,7 @@ class miller_array_builder(crystal_symmetry_builder):
         return self.observation_types[okey]
     return None
 
-  def __init__(self, cif_block, base_array_info=None, wavelengths=None, style="classic"):
+  def __init__(self, cif_block, base_array_info=None, wavelengths=None, style="new"):
     self._arrays = OrderedDict()
     self._origarrays = OrderedDict()
     if style == "classic": # parsing of data labels using original constructor
