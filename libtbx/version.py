@@ -40,6 +40,8 @@ def create_version_files(git_repo='cctbx_project', basename='cctbx_version',
   '''
 
   if version is None:
+    tagged = False  # True for tagged release
+
     # create {y}.{m}.dev{d}+{n}.{h} formatted version
     y = None  # year
     m = None  # month
@@ -65,18 +67,23 @@ def create_version_files(git_repo='cctbx_project', basename='cctbx_version',
     try:
       output = subprocess.check_output(['git', 'describe'], cwd=path).decode('utf8')
       output = output.split('-')
-      n = int(output[-2])
-      h = output[-1].strip()
+      if len(output) == 1:  # tagged release does not have -
+        tagged = True
+        version = output[0][1:]  # remove first v
+      else:
+        n = int(output[-2])
+        h = output[-1].strip()
     except subprocess.CalledProcessError:
       pass
 
-    version = '{y}.{m}.dev{d}'.format(y=y, m=m, d=d)
+    if not tagged:
+      version = '{y}.{m}.dev{d}'.format(y=y, m=m, d=d)
 
-    # add latest commit information as local version
-    if n is not None and h is not None:
-      version += '+{n}.{h}'.format(n=n, h=h)
-    else:
-      version += '+unknown'
+      # add latest commit information as local version
+      if n is not None and h is not None:
+        version += '+{n}.{h}'.format(n=n, h=h)
+      else:
+        version += '+unknown'
 
   # write plain text
   txt_filename = os.path.join(path, basename + '.txt')
