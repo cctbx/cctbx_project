@@ -39,6 +39,10 @@ def create_version_files(git_repo='cctbx_project', basename='cctbx_version',
     and header cab be copied to the build directory in libtbx_refresh.py.
   '''
 
+  path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', git_repo)
+  if not os.path.isdir(path):
+    raise RuntimeError('The {path} directory does not exist.'.format(path=path))
+
   if version is None:
     tagged = False  # True for tagged release
 
@@ -49,21 +53,7 @@ def create_version_files(git_repo='cctbx_project', basename='cctbx_version',
     n = None  # number of commits since last tag
     h = None  # g + hash of commit
 
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', git_repo)
-    if not os.path.isdir(path):
-      raise RuntimeError('The {path} directory does not exist.'.format(path=path))
-
-    try:
-      t = subprocess.check_output(['git', 'log', '-1', '--pretty=%ci'], cwd=path).decode('utf8')
-      t = t.split()[0].split('-')
-      y = int(t[0])
-      m = int(t[1])
-      d = int(t[2])
-    except subprocess.CalledProcessError:
-      t = time.localtime()
-      y = t.tm_year
-      m = t.tm_mon
-      d = t.tm_mday
+    # check for release tag
     try:
       output = subprocess.check_output(['git', 'describe'], cwd=path).decode('utf8')
       output = output.split('-')
@@ -76,7 +66,20 @@ def create_version_files(git_repo='cctbx_project', basename='cctbx_version',
     except subprocess.CalledProcessError:
       pass
 
+    # create local version
     if not tagged:
+      try:
+        t = subprocess.check_output(['git', 'log', '-1', '--pretty=%ci'], cwd=path).decode('utf8')
+        t = t.split()[0].split('-')
+        y = int(t[0])
+        m = int(t[1])
+        d = int(t[2])
+      except subprocess.CalledProcessError:
+        t = time.localtime()
+        y = t.tm_year
+        m = t.tm_mon
+        d = t.tm_mday
+
       version = '{y}.{m}.dev{d}'.format(y=y, m=m, d=d)
 
       # add latest commit information as local version
