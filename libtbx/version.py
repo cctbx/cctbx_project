@@ -69,7 +69,7 @@ def create_version_files(git_repo='cctbx_project', basename='cctbx_version',
       output = output.split('-')
       if len(output) == 1:  # tagged release does not have -
         tagged = True
-        version = output[0][1:]  # remove first v
+        version = output[0][1:].strip()  # remove first v
       else:
         n = int(output[-2])
         h = output[-1].strip()
