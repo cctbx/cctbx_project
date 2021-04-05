@@ -338,7 +338,7 @@ class DBCredentialsDialog(BaseDialog):
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        flag=wx.EXPAND | wx.ALL,
                         border=10)
 
     self.Bind(wx.EVT_CHECKBOX, self.onDropTables, self.chk_drop_tables)
@@ -396,7 +396,7 @@ class LCLSFacilityOptions(BaseDialog):
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        flag=wx.EXPAND | wx.ALL,
                         border=10)
 
     self.SetTitle('LCLS Settings')
@@ -511,7 +511,7 @@ class StandaloneOptions(BaseDialog):
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        flag=wx.EXPAND | wx.ALL,
                         border=10)
 
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
@@ -810,7 +810,7 @@ class AdvancedSettingsDialog(BaseDialog):
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        flag=wx.EXPAND | wx.ALL,
                         border=10)
 
     self.SetTitle('Advanced Settings')
@@ -1061,7 +1061,7 @@ class CalibrationDialog(BaseDialog):
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        flag=wx.EXPAND | wx.ALL,
                         border=10)
     # Bindings
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice,
@@ -1216,7 +1216,7 @@ class AveragingDialog(BaseDialog):
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        flag=wx.EXPAND | wx.ALL,
                         border=10)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
@@ -1265,7 +1265,7 @@ class TrialTagSelectionDialog(BaseDialog):
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        flag=wx.EXPAND | wx.ALL,
                         border=10)
 
     self.SetTitle('Pick a trial and optionally some tags from that trial')
@@ -1395,7 +1395,7 @@ class MultiRunTagDialog(BaseDialog):
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        flag=wx.EXPAND | wx.ALL,
                         border=10)
 
     self.Layout()
@@ -1533,7 +1533,7 @@ class TagDialog(BaseDialog):
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
-                   flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                   flag=wx.EXPAND | wx.ALL,
                    border=10)
 
     self.Layout()
@@ -1914,7 +1914,7 @@ class RunBlockDialog(BaseDialog):
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        flag=wx.EXPAND | wx.ALL,
                         border=10)
 
     self.Bind(wx.EVT_RADIOBUTTON, self.onAutoEnd, self.end_type.auto)
@@ -2241,7 +2241,7 @@ class SelectRunBlocksDialog(BaseDialog):
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
-                   flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                   flag=wx.EXPAND | wx.ALL,
                    border=10)
 
     self.Layout()
@@ -2380,7 +2380,7 @@ class TrialDialog(BaseDialog):
     else:
       dialog_box = self.CreateSeparatedButtonSizer(wx.OK)
     self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        flag=wx.EXPAND | wx.ALL,
                         border=10)
 
     self.Layout()
@@ -2584,7 +2584,7 @@ class DatasetDialog(BaseDialog):
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        flag=wx.EXPAND | wx.ALL,
                         border=10)
 
     self.Layout()
@@ -2690,7 +2690,7 @@ class TaskDialog(BaseDialog):
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        flag=wx.EXPAND | wx.ALL,
                         border=10)
 
     self.Layout()
@@ -2820,7 +2820,7 @@ class SelectTasksDialog(BaseDialog):
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
-                   flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                   flag=wx.EXPAND | wx.ALL,
                    border=10)
 
     self.Layout()
