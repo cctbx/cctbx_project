@@ -2443,6 +2443,9 @@ class replace_with_segments_from_pdb:
           completeness_of_all_replacement_models.append(None)
           insertions_deletions_of_all_replacement_models.append(None)
 
+    self.is_complete = (completeness_of_all_replacement_models.count(True) ==
+       len(completeness_of_all_replacement_models))
+
     return all_replacement_models
 
   def get_replacement_segments(self,params,model=None,
