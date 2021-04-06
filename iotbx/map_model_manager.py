@@ -7483,6 +7483,28 @@ class map_model_manager(object):
 
   # General methods
 
+  def model_from_text(self,
+    text,
+    return_as_model = False,
+    model_id = 'model_from_text'):
+    '''
+     Convenience method to convert txt into a model, where the
+     model has symmetry and shift cart matching this manager
+    '''
+
+    from mmtbx.model import manager as model_manager
+    from iotbx.pdb import input
+    inp = input(source_info = 'text', lines=flex.split_lines(text))
+    model = model_manager(
+      model_input = inp,
+      crystal_symmetry = self.crystal_symmetry(),
+      log = null_out())
+    self.set_model_symmetries_and_shift_cart_to_match_map(model)
+    if return_as_model:
+      return model
+    else:
+      self.add_model_by_id(model = model, model_id=model_id)
+
   def model_from_hierarchy(self,
     hierarchy,
     return_as_model = False,
