@@ -14,6 +14,7 @@ class DialsProcessorWithLogging(Processor):
       self.queries = []
     else:
       self.db_app = dxtbx_xfel_db_application(params, cache_connection=True)
+    self.n_strong = None
 
   def finalize(self):
     super(DialsProcessorWithLogging, self).finalize()
@@ -89,13 +90,15 @@ class DialsProcessorWithLogging(Processor):
 
   def find_spots(self, experiments):
     observed = super(DialsProcessorWithLogging, self).find_spots(experiments)
+    self.n_strong = len(observed)
     if (
         not self.params.dispatch.index or
         len(observed) < self.params.dispatch.hit_finder.minimum_number_of_reflections
     ):
       run, timestamp = self.get_run_and_timestamp(experiments)
-      self.log_frame(None, None, run, len(observed), timestamp = timestamp,
+      self.log_frame(None, None, run, self.n_strong, timestamp = timestamp,
                      two_theta_low = self.tt_low, two_theta_high = self.tt_high)
+    
     return observed
 
   def index(self, experiments, reflections):
@@ -103,13 +106,13 @@ class DialsProcessorWithLogging(Processor):
       experiments, indexed = super(DialsProcessorWithLogging, self).index(experiments, reflections)
     except Exception as e:
       run, timestamp = self.get_run_and_timestamp(experiments)
-      self.log_frame(None, None, run, len(reflections), timestamp = timestamp,
+      self.log_frame(None, None, run, self.n_strong, timestamp = timestamp,
                      two_theta_low = self.tt_low, two_theta_high = self.tt_high)
       raise e
     else:
       if not self.params.dispatch.integrate:
         run, timestamp = self.get_run_and_timestamp(experiments)
-        self.log_frame(experiments, indexed, run, len(indexed), timestamp = timestamp,
+        self.log_frame(experiments, indexed, run, self.n_strong, timestamp = timestamp,
                        two_theta_low = self.tt_low, two_theta_high = self.tt_high)
     return experiments, indexed
 
@@ -118,11 +121,11 @@ class DialsProcessorWithLogging(Processor):
     run, timestamp = self.get_run_and_timestamp(experiments)
     try:
       integrated = super(DialsProcessorWithLogging, self).integrate(experiments, indexed)
-      self.log_frame(experiments, integrated, run, len(integrated), timestamp = timestamp,
+      self.log_frame(experiments, integrated, run, self.n_strong, timestamp = timestamp,
                      two_theta_low = self.tt_low, two_theta_high = self.tt_high)
       return integrated
     except Exception as e:
-      self.log_frame(experiments, indexed, run, len(indexed), timestamp = timestamp,
+      self.log_frame(experiments, indexed, run, self.n_strong, timestamp = timestamp,
                      two_theta_low = self.tt_low, two_theta_high = self.tt_high)
       raise e
     else:
