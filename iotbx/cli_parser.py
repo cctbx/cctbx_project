@@ -183,6 +183,8 @@ class CCTBXParser(ParserBase):
       self.prog = 'unknown.unknown'
     if program_class.program_name is not None:
       self.prog = program_class.program_name
+    if program_class.program_name is None:
+      program_class.program_name = self.prog
     self.prefix = self.prog.split('.')[-1]
 
     # PHIL filenames
