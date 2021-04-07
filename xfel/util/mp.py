@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function
 #
 from libtbx.utils import Sorry
 import os
+import math
 
 mp_phil_str = '''
   mp {
@@ -437,7 +438,10 @@ class get_slurm_submit_command(get_submit_command):
 
   def customize_for_method(self):
     self.submit_head = "sbatch"
-    if (self.params.nnodes > 1) or (self.params.nproc_per_node > 1):
+    if self.params.nproc > 1:
+      nnodes = math.ceil(self.params.nproc/self.params.nproc_per_node)
+      self.params.nnodes = nnodes
+    elif (self.params.nnodes > 1) or (self.params.nproc_per_node > 1):
       self.params.nproc = self.params.nnodes * self.params.nproc_per_node
     if self.params.use_mpi:
       self.command = "mpirun %s mp.method=mpi" % (self.command)
@@ -447,7 +451,6 @@ class get_slurm_submit_command(get_submit_command):
       # If specified, nproc overrides procs_per_node and procs_per_node overrides
       # nnodes. One process per node is requested if only nproc is specified.
       if self.params.nproc > 1:
-        import math
         if self.params.nproc <= self.params.nproc_per_node:
           procs_per_node = self.params.nproc
           nnodes = 1
