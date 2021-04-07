@@ -99,7 +99,6 @@ class manager(Base_geometry):
                                   sites_cart):
     assert self.site_symmetry_table is not None
     self.site_symmetry_table = new_site_symmetry_table
-    self.reset_internals()
     # Recompute shell_sym_tables
     asu_mappings = special_position_settings.asu_mappings(
       buffer_thickness = self.max_reasonable_bond_distance*3)
@@ -107,11 +106,14 @@ class manager(Base_geometry):
       original_sites      = sites_cart,
       site_symmetry_table = self.site_symmetry_table)
     bond_asu_table = crystal.pair_asu_table(asu_mappings = asu_mappings)
+    # Add all previously defined bonds
+    bond_asu_table.add_pair_sym_table(self.shell_sym_tables[0])
     shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
       pair_asu_table = bond_asu_table,
       max_shell      = 3)
     self.shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
       for shell_asu_table in shell_asu_tables]
+    self.reset_internals()
 
   def simple_edge_list(self, omit_slack_greater_than=0):
     assert self.bond_params_table is not None

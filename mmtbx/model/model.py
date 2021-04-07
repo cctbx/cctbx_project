@@ -885,10 +885,6 @@ class manager(object):
         # This updates some of internals
         self.get_restraints_manager().geometry.pair_proxies(
           sites_cart = self.get_sites_cart())
-        if(self._ss_manager is not None):
-          self.get_restraints_manager().geometry.\
-            set_secondary_structure_restraints(ss_manager=self._ss_manager,
-              hierarchy=self.get_hierarchy(), log=self.log)
 
   def unit_cell_crystal_symmetry(self):
     if self._unit_cell_crystal_symmetry is not None:
