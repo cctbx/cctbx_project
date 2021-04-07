@@ -19,7 +19,7 @@ class DialsProcessorWithLogging(Processor):
   def finalize(self):
     super(DialsProcessorWithLogging, self).finalize()
     if self.params.db.logging_batch_size: self.log_batched_frames()
-    
+
   def log_batched_frames(self):
     db_app = dxtbx_xfel_db_application(self.params, cache_connection=True)
     for q in self.queries:
@@ -98,7 +98,6 @@ class DialsProcessorWithLogging(Processor):
       run, timestamp = self.get_run_and_timestamp(experiments)
       self.log_frame(None, None, run, self.n_strong, timestamp = timestamp,
                      two_theta_low = self.tt_low, two_theta_high = self.tt_high)
-    
     return observed
 
   def index(self, experiments, reflections):
