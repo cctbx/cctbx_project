@@ -263,15 +263,21 @@ Crystal 2:
     Name: dataset
     Id: 1
     Wavelength: 0.9126
-    Number of columns: 7
-    label        #valid  %valid    min    max type
-    H                33 100.00% -86.00 -84.00 H: index h,k,l
-    K                33 100.00%   0.00   5.00 H: index h,k,l
-    L                33 100.00%   1.00  12.00 H: index h,k,l
-    FOBS              9  27.27%  44.64  73.12 F: amplitude
-    SIGFOBS           9  27.27%  22.72  45.70 Q: standard deviation
-    FOM              33 100.00%   0.00   0.74 F: amplitude
-    R-free-flags     33 100.00%   1.00   1.00 I: integer
+    Number of columns: 13
+    label        #valid  %valid     min    max type
+    H                33 100.00%  -86.00 -84.00 H: index h,k,l
+    K                33 100.00%    0.00   5.00 H: index h,k,l
+    L                33 100.00%    1.00  12.00 H: index h,k,l
+    R-free-flags     33 100.00%    1.00   1.00 I: integer
+    FOBS              9  27.27%   44.64  73.12 F: amplitude
+    SIGFOBS           9  27.27%   22.72  45.70 Q: standard deviation
+    FC               33 100.00%    3.86  74.69 F: amplitude
+    PHIFC            33 100.00% -178.71 180.00 P: phase angle in degrees
+    FWT              33 100.00%    2.34  57.84 F: amplitude
+    PHWT             33 100.00% -178.81 180.00 P: phase angle in degrees
+    DELFWT           33 100.00%    0.00  19.20 F: amplitude
+    PHDELWT          33 100.00% -157.88 158.29 P: phase angle in degrees
+    FOM              33 100.00%    0.00   0.74 F: amplitude
 """,
 'r5r82Asf':
 """Title: phenix.cif_as_mtz
@@ -309,9 +315,9 @@ Crystal 2:
     H                35 100.00% -86.00 -84.00 H: index h,k,l
     K                35 100.00%   0.00   5.00 H: index h,k,l
     L                35 100.00%   1.00  12.00 H: index h,k,l
+    R-free-flags     35 100.00%   1.00   1.00 I: integer
     FOBS              9  25.71%   1.02   1.71 F: amplitude
     SIGFOBS           9  25.71%   0.52   1.07 Q: standard deviation
-    R-free-flags     35 100.00%   1.00   1.00 I: integer
 """, 'r5r82Bsf': """\
 Title: phenix.cif_as_mtz
 Space group symbol from file: P1
@@ -343,14 +349,15 @@ Crystal 2:
     Name: dataset
     Id: 1
     Wavelength: 0.9126
-    Number of columns: 6
-    label        #valid  %valid    min    max type
-    H                26 100.00% -85.00 -85.00 H: index h,k,l
-    K                26 100.00%  -6.00  -2.00 H: index h,k,l
-    L                26 100.00%   3.00  11.00 H: index h,k,l
-    FOBS             26 100.00%  85.03 928.82 F: amplitude
-    SIGFOBS          26 100.00%   1.00   1.00 Q: standard deviation
-    R-free-flags     26 100.00%   1.00   1.00 I: integer
+    Number of columns: 7
+    label        #valid  %valid     min    max type
+    H                26 100.00%  -85.00 -85.00 H: index h,k,l
+    K                26 100.00%   -6.00  -2.00 H: index h,k,l
+    L                26 100.00%    3.00  11.00 H: index h,k,l
+    R-free-flags     26 100.00%    1.00   1.00 I: integer
+    FOBS             26 100.00%   85.03 928.82 F: amplitude
+    SIGFOBS          26 100.00%    1.00   1.00 Q: standard deviation
+    PHWT             26 100.00% -158.44 152.35 P: phase angle in degrees
 """}
 
 def tst_1(prefix="tst_split_data_cif_1"):
