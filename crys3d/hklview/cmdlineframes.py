@@ -545,11 +545,13 @@ class HKLViewFrame() :
     self.viewer.array_infostrs = []
     self.viewer.array_infotpls = []
     spg = arrays[0].space_group()
+    uc = arrays[0].unit_cell()
     for i,array in enumerate(arrays):
       if array.space_group() is None:
+        array._unit_cell = uc
         array._space_group_info = spg.info()
-        self.mprint("""No space group info present in the %d. miller array.
-Borrowing space group info from first miller array.""" %i)
+        self.mprint("""No unit cell or space group info present in the %d. miller array.
+Borrowing them from the first miller array""" %i)
       arrayinfo = ArrayInfo(array, self.mprint)
       self.viewer.array_infostrs.append( arrayinfo.infostr )
       self.viewer.array_infotpls.append( arrayinfo.infotpl )
@@ -619,6 +621,16 @@ Borrowing space group info from first miller array.""" %i)
                   newlabels.append(label)
                 arr.info().labels = newlabels
           self.origarrays = cifreader.as_original_arrays()[dataname[0]]
+          # replace ? with nan in self.origarrays to allow sorting tables of data in HKLviewer 
+          for labl in self.origarrays.keys():
+            origarray = self.origarrays[labl]
+            for i,e in enumerate(self.origarrays[labl]):
+              if e=="?":
+                origarray[i] = "nan"
+            try:
+              self.origarrays[labl] = flex.double(origarray)
+            except Exception as e:
+              self.origarrays[labl] = origarray
         else: # some other type of reflection file than cif
           arrays = hkl_file.as_miller_arrays(merge_equivalents=False)
         if hkl_file._file_type == 'ccp4_mtz':
