@@ -70,9 +70,9 @@ with open("model.pdb","w") as fo:
 
 <p>Create a model object from a file.</p>
 <pre class="codeDL"><code>  # Read the model file
-  pdb_inp = iotbx.pdb.input(file_name = "model.pdb")
-  model = mmtbx.model.manager(model_input = pdb_inp)
-  xrs = model.get_xray_structure()
+pdb_inp = iotbx.pdb.input(file_name = "model.pdb")
+model = mmtbx.model.manager(model_input = pdb_inp)
+xrs = model.get_xray_structure()
 </code></pre>
 
 <p>Calculate structure factors from the model using a high resolution limit of 2 Angstrom. This will give a Fourier map:</p>
