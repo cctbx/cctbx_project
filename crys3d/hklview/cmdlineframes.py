@@ -621,7 +621,7 @@ Borrowing them from the first miller array""" %i)
                   newlabels.append(label)
                 arr.info().labels = newlabels
           self.origarrays = cifreader.as_original_arrays()[dataname[0]]
-          # replace ? with nan in self.origarrays to allow sorting tables of data in HKLviewer 
+          # replace ? with nan in self.origarrays to allow sorting tables of data in HKLviewer
           for labl in self.origarrays.keys():
             origarray = self.origarrays[labl]
             for i,e in enumerate(self.origarrays[labl]):
