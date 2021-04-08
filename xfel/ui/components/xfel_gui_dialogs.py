@@ -630,7 +630,6 @@ class AdvancedSettingsDialog(BaseDialog):
                                ctrl_max=1000)
     self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
 
-    
     self.nnodes = gctr.SpinCtrl(self,
                                 label='Total number of nodes:',
                                 label_size=(240, -1),
@@ -688,10 +687,10 @@ class AdvancedSettingsDialog(BaseDialog):
 
     self.main_sizer.Add(self.mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
-    # Shifter-specific settings
+    # Different nnodes per job type. Implemented for shifter and slurm
 
-    self.shifter_nnodes_box = wx.StaticBox(self, label='Nodes per job')
-    self.shifter_nnodes_sizer = wx.StaticBoxSizer(self.shifter_nnodes_box, wx.HORIZONTAL)
+    self.jobtype_nnodes_box = wx.StaticBox(self, label='Nodes per job')
+    self.jobtype_nnodes_sizer = wx.StaticBoxSizer(self.jobtype_nnodes_box, wx.HORIZONTAL)
 
     self.nnodes_index = gctr.SpinCtrl(self,
                                       label='Indexing:',
@@ -701,7 +700,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                       ctrl_value='%d'%(params.mp.nnodes_index or 1),
                                       ctrl_min=1,
                                       ctrl_max=1000)
-    self.shifter_nnodes_sizer.Add(self.nnodes_index, flag=wx.EXPAND | wx.ALL, border=10)
+    self.jobtype_nnodes_sizer.Add(self.nnodes_index, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.nnodes_scale = gctr.SpinCtrl(self,
                                       label='Scaling:',
@@ -711,7 +710,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                       ctrl_value='%d'%(params.mp.nnodes_scale or 1),
                                       ctrl_min=1,
                                       ctrl_max=1000)
-    self.shifter_nnodes_sizer.Add(self.nnodes_scale, flag=wx.EXPAND | wx.ALL, border=10)
+    self.jobtype_nnodes_sizer.Add(self.nnodes_scale, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.nnodes_merge = gctr.SpinCtrl(self,
                                       label='Merging:',
@@ -721,11 +720,11 @@ class AdvancedSettingsDialog(BaseDialog):
                                       ctrl_value='%d'%(params.mp.nnodes_merge or 1),
                                       ctrl_min=1,
                                       ctrl_max=1000)
-    self.shifter_nnodes_sizer.Add(self.nnodes_merge, flag=wx.EXPAND | wx.ALL, border=10)
+    self.jobtype_nnodes_sizer.Add(self.nnodes_merge, flag=wx.EXPAND | wx.ALL, border=10)
 
-    self.mp_sizer.Add(self.shifter_nnodes_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+    self.mp_sizer.Add(self.jobtype_nnodes_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
-
+    # Shifter-specific settings
 
     self.shifter_image = gctr.TextButtonCtrl(self,
                                              label='Shifter image:',
@@ -871,7 +870,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.env_script.Hide()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
-      self.shifter_nnodes_box.Hide()
+      self.jobtype_nnodes_box.Hide()
       self.nnodes_index.Hide()
       self.nnodes_scale.Hide()
       self.nnodes_merge.Hide()
@@ -896,7 +895,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes_index.Show()
       self.nnodes_scale.Show()
       self.nnodes_merge.Show()
-      self.shifter_nnodes_box.Show()
+      self.jobtype_nnodes_box.Show()
       self.shifter_image.Show()
       self.shifter_srun_template.Show()
       self.shifter_sbatch_template.Show()
@@ -918,7 +917,29 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes_index.Hide()
       self.nnodes_scale.Hide()
       self.nnodes_merge.Hide()
-      self.shifter_nnodes_box.Hide()
+      self.jobtype_nnodes_box.Hide()
+      self.shifter_image.Hide()
+      self.shifter_srun_template.Hide()
+      self.shifter_sbatch_template.Hide()
+      self.shifter_jobname.Hide()
+      self.shifter_project.Hide()
+      self.shifter_reservation.Hide()
+      self.shifter_constraint.Hide()
+      self.log_staging.Hide()
+      self.staging_help.Hide()
+    elif self.mp_option.ctr.GetStringSelection() == 'slurm':
+      self.queue.Show()
+      self.nproc.Show()
+      self.nnodes.Hide()
+      self.nproc_per_node.Hide()
+      self.wall_time.Hide()
+      self.env_script.Show()
+      self.htcondor_executable_path.Hide()
+      self.htcondor_filesystemdomain.Hide()
+      self.nnodes_index.Show()
+      self.nnodes_scale.Show()
+      self.nnodes_merge.Show()
+      self.jobtype_nnodes_box.Show()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
       self.shifter_sbatch_template.Hide()
@@ -940,7 +961,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes_index.Hide()
       self.nnodes_scale.Hide()
       self.nnodes_merge.Hide()
-      self.shifter_nnodes_box.Hide()
+      self.jobtype_nnodes_box.Hide()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
       self.shifter_sbatch_template.Hide()
@@ -996,17 +1017,16 @@ class AdvancedSettingsDialog(BaseDialog):
     if self.params.facility.name == 'lcls' and self.params.mp.method == "lsf":
       self.params.mp.queue = self.queue.ctr.GetStringSelection()
     else:
-      if self.mp_option.ctr.GetStringSelection() == 'shifter':
-        self.params.mp.queue = self.queue.ctr.GetValue()
-        self.params.mp.nnodes = int(self.nnodes.ctr.GetValue())
+      self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
+      self.params.mp.queue = self.queue.ctr.GetValue()
+      if self.mp_option.ctr.GetStringSelection() in ['shifter', 'slurm']:
         self.params.mp.nnodes_index = int(self.nnodes_index.ctr.GetValue())
         self.params.mp.nnodes_scale = int(self.nnodes_scale.ctr.GetValue())
         self.params.mp.nnodes_merge = int(self.nnodes_merge.ctr.GetValue())
-        self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
+      if self.mp_option.ctr.GetStringSelection() == 'shifter':
+        self.params.mp.nnodes = int(self.nnodes.ctr.GetValue())
         self.params.mp.wall_time = int(self.wall_time.ctr.GetValue())
       else:
-        self.params.mp.queue = self.queue.ctr.GetValue()
-        self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
         self.params.mp.env_script = [self.env_script.ctr.GetValue()]
         self.params.mp.nproc = int(self.nproc.ctr.GetValue())
 
