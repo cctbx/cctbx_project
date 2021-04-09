@@ -687,7 +687,45 @@ class AdvancedSettingsDialog(BaseDialog):
 
     self.main_sizer.Add(self.mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
+    # Different nnodes per job type. Implemented for shifter and slurm
+
+    self.jobtype_nnodes_box = wx.StaticBox(self, label='Nodes per job')
+    self.jobtype_nnodes_sizer = wx.StaticBoxSizer(self.jobtype_nnodes_box, wx.HORIZONTAL)
+
+    self.nnodes_index = gctr.SpinCtrl(self,
+                                      label='Indexing:',
+                                      label_size=(80, -1),
+                                      label_style='normal',
+                                      ctrl_size=(100, -1),
+                                      ctrl_value='%d'%(params.mp.nnodes_index or 1),
+                                      ctrl_min=1,
+                                      ctrl_max=1000)
+    self.jobtype_nnodes_sizer.Add(self.nnodes_index, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.nnodes_scale = gctr.SpinCtrl(self,
+                                      label='Scaling:',
+                                      label_size=(80, -1),
+                                      label_style='normal',
+                                      ctrl_size=(100, -1),
+                                      ctrl_value='%d'%(params.mp.nnodes_scale or 1),
+                                      ctrl_min=1,
+                                      ctrl_max=1000)
+    self.jobtype_nnodes_sizer.Add(self.nnodes_scale, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.nnodes_merge = gctr.SpinCtrl(self,
+                                      label='Merging:',
+                                      label_size=(80, -1),
+                                      label_style='normal',
+                                      ctrl_size=(100, -1),
+                                      ctrl_value='%d'%(params.mp.nnodes_merge or 1),
+                                      ctrl_min=1,
+                                      ctrl_max=1000)
+    self.jobtype_nnodes_sizer.Add(self.nnodes_merge, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.mp_sizer.Add(self.jobtype_nnodes_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
     # Shifter-specific settings
+
     self.shifter_image = gctr.TextButtonCtrl(self,
                                              label='Shifter image:',
                                              label_style='bold',
@@ -832,6 +870,10 @@ class AdvancedSettingsDialog(BaseDialog):
       self.env_script.Hide()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
+      self.jobtype_nnodes_box.Hide()
+      self.nnodes_index.Hide()
+      self.nnodes_scale.Hide()
+      self.nnodes_merge.Hide()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
       self.shifter_sbatch_template.Hide()
@@ -850,6 +892,10 @@ class AdvancedSettingsDialog(BaseDialog):
       self.env_script.Hide()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
+      self.nnodes_index.Show()
+      self.nnodes_scale.Show()
+      self.nnodes_merge.Show()
+      self.jobtype_nnodes_box.Show()
       self.shifter_image.Show()
       self.shifter_srun_template.Show()
       self.shifter_sbatch_template.Show()
@@ -868,6 +914,32 @@ class AdvancedSettingsDialog(BaseDialog):
       self.env_script.Show()
       self.htcondor_executable_path.Show()
       self.htcondor_filesystemdomain.Show()
+      self.nnodes_index.Hide()
+      self.nnodes_scale.Hide()
+      self.nnodes_merge.Hide()
+      self.jobtype_nnodes_box.Hide()
+      self.shifter_image.Hide()
+      self.shifter_srun_template.Hide()
+      self.shifter_sbatch_template.Hide()
+      self.shifter_jobname.Hide()
+      self.shifter_project.Hide()
+      self.shifter_reservation.Hide()
+      self.shifter_constraint.Hide()
+      self.log_staging.Hide()
+      self.staging_help.Hide()
+    elif self.mp_option.ctr.GetStringSelection() == 'slurm':
+      self.queue.Show()
+      self.nproc.Show()
+      self.nnodes.Hide()
+      self.nproc_per_node.Hide()
+      self.wall_time.Hide()
+      self.env_script.Show()
+      self.htcondor_executable_path.Hide()
+      self.htcondor_filesystemdomain.Hide()
+      self.nnodes_index.Show()
+      self.nnodes_scale.Show()
+      self.nnodes_merge.Show()
+      self.jobtype_nnodes_box.Show()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
       self.shifter_sbatch_template.Hide()
@@ -886,6 +958,10 @@ class AdvancedSettingsDialog(BaseDialog):
       self.env_script.Show()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
+      self.nnodes_index.Hide()
+      self.nnodes_scale.Hide()
+      self.nnodes_merge.Hide()
+      self.jobtype_nnodes_box.Hide()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
       self.shifter_sbatch_template.Hide()
@@ -941,14 +1017,16 @@ class AdvancedSettingsDialog(BaseDialog):
     if self.params.facility.name == 'lcls' and self.params.mp.method == "lsf":
       self.params.mp.queue = self.queue.ctr.GetStringSelection()
     else:
+      self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
+      self.params.mp.queue = self.queue.ctr.GetValue()
+      if self.mp_option.ctr.GetStringSelection() in ['shifter', 'slurm']:
+        self.params.mp.nnodes_index = int(self.nnodes_index.ctr.GetValue())
+        self.params.mp.nnodes_scale = int(self.nnodes_scale.ctr.GetValue())
+        self.params.mp.nnodes_merge = int(self.nnodes_merge.ctr.GetValue())
       if self.mp_option.ctr.GetStringSelection() == 'shifter':
-        self.params.mp.queue = self.queue.ctr.GetValue()
         self.params.mp.nnodes = int(self.nnodes.ctr.GetValue())
-        self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
         self.params.mp.wall_time = int(self.wall_time.ctr.GetValue())
       else:
-        self.params.mp.queue = self.queue.ctr.GetValue()
-        self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
         self.params.mp.env_script = [self.env_script.ctr.GetValue()]
         self.params.mp.nproc = int(self.nproc.ctr.GetValue())
 
@@ -961,7 +1039,6 @@ class AdvancedSettingsDialog(BaseDialog):
     # Copy shfiter settings into the shifter phil
     self.params.mp.shifter.sbatch_script_template = self.shifter_sbatch_template.ctr.GetValue() \
       if len(self.shifter_sbatch_template.ctr.GetValue()) > 0 else None
-
     self.params.mp.shifter.shifter_image = self.shifter_image.ctr.GetValue() \
       if len(self.shifter_image.ctr.GetValue()) > 0 else None
     self.params.mp.shifter.srun_script_template = self.shifter_srun_template.ctr.GetValue() \
