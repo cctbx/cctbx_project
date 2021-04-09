@@ -450,36 +450,15 @@ class get_slurm_submit_command(get_submit_command):
 
   def customize_for_method(self):
     self.submit_head = "sbatch"
-    if self.params.nproc > 1:
-      nnodes = math.ceil(self.params.nproc/self.params.nproc_per_node)
-      self.params.nnodes = nnodes
-    elif (self.params.nnodes > 1) or (self.params.nproc_per_node > 1):
-      self.params.nproc = self.params.nnodes * self.params.nproc_per_node
     if self.params.use_mpi:
       self.command = "mpirun %s mp.method=mpi" % (self.command)
 
   def eval_params(self):
-    if max(self.params.nproc, self.params.nproc_per_node, self.params.nnodes) > 1:
-      # If specified, nproc overrides procs_per_node and procs_per_node overrides
-      # nnodes. One process per node is requested if only nproc is specified.
-      if self.params.nproc > 1:
-        if self.params.nproc <= self.params.nproc_per_node:
-          procs_per_node = self.params.nproc
-          nnodes = 1
-        elif self.params.nproc_per_node > 1:
-          procs_per_node = self.params.nproc_per_node
-          nnodes = int(math.ceil(self.params.nproc/procs_per_node))
-        elif self.params.nnodes > 1:
-          procs_per_node = int(math.ceil(self.params.nproc/self.params.nnodes))
-          nnodes = self.params.nnodes
-        else: # insufficient information; allocate 1 proc per node
-          procs_per_node = 1
-          nnodes = self.params.nproc
-      else:
-        procs_per_node = self.params.nproc_per_node
-        nnodes = self.params.nnodes
-      nproc_str = "#SBATCH --nodes %d\n#SBATCH --ntasks-per-node=%d" % (nnodes, procs_per_node)
-      self.options_inside_submit_script.append(nproc_str)
+    nproc = self.params.nnodes * self.params.nproc_per_node
+    nproc_str = "#SBATCH --nodes %d\n#SBATCH --ntasks-per-node=%d" % (
+        self.params.nnodes, self.params.nproc_per_node
+    )
+    self.options_inside_submit_script.append(nproc_str)
 
     # -o <outfile>
     out_str = "#SBATCH --output=%s" % os.path.join(self.stdoutdir, self.log_name)

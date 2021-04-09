@@ -929,9 +929,9 @@ class AdvancedSettingsDialog(BaseDialog):
       self.staging_help.Hide()
     elif self.mp_option.ctr.GetStringSelection() == 'slurm':
       self.queue.Show()
-      self.nproc.Show()
+      self.nproc.Hide()
       self.nnodes.Hide()
-      self.nproc_per_node.Hide()
+      self.nproc_per_node.Show()
       self.wall_time.Hide()
       self.env_script.Show()
       self.htcondor_executable_path.Hide()
