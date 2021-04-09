@@ -597,7 +597,12 @@ Borrowing them from the first miller array""" %i)
         if hkl_file._file_type == 'cif':
           # use new cif label parser for reflections
           cifreader = hkl_file.file_content()
-          arrays = cifreader.as_miller_arrays(merge_equivalents=False, style="new")
+          cifarrays = cifreader.as_miller_arrays(merge_equivalents=False)
+          arrays = []
+          for arr in cifarrays:
+            if arr.info().labels[0] not in ['_refln.crystal_id', # avoid these un-displayable arrays
+                      'HKLs','_refln.wavelength_id', '_refln.scale_group_code']:
+              arrays.append(arr)
           # sanitise labels by removing redundant strings.
           # remove the data name of this cif file from all labels
           dataname = list(hkl_file._file_content.builder._model.keys())
@@ -620,7 +625,12 @@ Borrowing them from the first miller array""" %i)
                 if not found:
                   newlabels.append(label)
                 arr.info().labels = newlabels
-          self.origarrays = cifreader.as_original_arrays()[dataname[0]]
+          ciforigarrays = cifreader.as_original_arrays()[dataname[0]]
+          self.origarrays = {}
+          for key in ciforigarrays:
+            if key not in ['_refln.crystal_id', # avoid these un-displayable arrays
+                      '_refln.wavelength_id', '_refln.scale_group_code']:
+              self.origarrays[key] = ciforigarrays[key]
           # replace ? with nan in self.origarrays to allow sorting tables of data in HKLviewer
           for labl in self.origarrays.keys():
             origarray = self.origarrays[labl]
@@ -788,15 +798,27 @@ Borrowing them from the first miller array""" %i)
         else:
           self.origarrays[arr.info().label_string()] = list(arr.data())
 
-    labels = eval(datalabels)
     indices = self.origarrays["HKLs"]
     dres = self.procarrays[0].unit_cell().d( indices)
     dreslst = [("d_res", roundoff(list(dres)),3)]
     hkls = list(indices)
     hkllst = [ ("H", [e[0] for e in hkls] ), ("K", [e[1] for e in hkls] ), ("L", [e[2] for e in hkls] )]
     datalst = []
-    for label in labels:
-      datalst.append( (label, list(self.origarrays[label])))
+    labellists = eval(datalabels)
+    for labels in labellists:
+      crystlbl = ""; wavelbl = ""; scalelbl =""
+      for i,label in enumerate(labels):
+        if "crystal_id" in label:
+          crystlbl = "," + label
+        if "wavelength_id" in label:
+          wavelbl = "," + label
+        if "scale_group_code" in label:
+          scalelbl = "," + label
+      for label in labels:
+        if "crystal_id" in label or "wavelength_id" in label or "scale_group_code" in label:
+          continue
+        fulllabel = label + crystlbl + wavelbl + scalelbl
+        datalst.append( (label, list(self.origarrays[fulllabel])))
     self.idx_data = hkllst + dreslst + datalst
     self.mprint("Sending table data...", verbose=0)
     mydict = { "tabulate_miller_array": self.idx_data }
