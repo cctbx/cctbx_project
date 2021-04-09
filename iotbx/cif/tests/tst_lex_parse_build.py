@@ -121,24 +121,24 @@ loop_
   _refln_index_k
   _refln_index_l
   _refln.crystal_id
-  _refln.scale_group_code
   _refln.wavelength_id
+  _refln.scale_group_code
   _refln.pdbx_I_plus
   _refln.pdbx_I_plus_sigma
   _refln.pdbx_I_minus
   _refln.pdbx_I_minus_sigma
-  -87  5  46  1  1  3   40.2  40.4    6.7  63.9
-  -87  5  45  1  1  3   47.8  29.7   35.1  30.5
-  -87  5  44  1  1  3   18.1  33.2    0.5  34.6
-  -87  5  43  1  1  3    6.1  45.4   12.9  51.6
-  -87  5  42  1  1  3   -6.6  45.6  -15.5  55.8
-  -87  7  37  1  1  3    6.3  43.4      ?     ?
-  -87  7  36  1  1  3  -67.2  55.4      ?     ?
-  -88  2  44  1  1  3      0    -1     35  38.5
-  -88  2  43  1  1  3      0    -1   57.4  41.5
-  -88  4  45  1  1  3     -1  46.1   -9.1  45.6
-  -88  4  44  1  1  3  -19.8  49.2    0.3  34.7
-  -88  6  44  1  1  3   -1.8  34.8      ?     ?
+  -87  5  46  1  3  1   40.2  40.4    6.7  63.9
+  -87  5  45  1  3  1   47.8  29.7   35.1  30.5
+  -87  5  44  1  3  1   18.1  33.2    0.5  34.6
+  -87  5  43  1  3  1    6.1  45.4   12.9  51.6
+  -87  5  42  1  3  1   -6.6  45.6  -15.5  55.8
+  -87  7  37  1  3  1    6.3  43.4      ?     ?
+  -87  7  36  1  3  1  -67.2  55.4      ?     ?
+  -88  2  44  1  3  1      0    -1     35  38.5
+  -88  2  43  1  3  1      0    -1   57.4  41.5
+  -88  4  45  1  3  1     -1  46.1   -9.1  45.6
+  -88  4  44  1  3  1  -19.8  49.2    0.3  34.7
+  -88  6  44  1  3  1   -1.8  34.8      ?     ?
 
 """)
 
@@ -228,7 +228,7 @@ _b 2
     cif_miller_array_template %(
       '_refln_F_calc', '_refln_phase_calc', '_refln_F_sigma')),
                                  data_block_name='global')
-  assert sorted(arrays.keys()) == ['_refln_F_calc']
+  assert sorted(arrays.keys()) == ['_refln_F_calc', '_refln_F_sigma']
   assert arrays['_refln_F_calc'].is_complex_array()
 
   for data_block_name in (None, "global"):
@@ -602,12 +602,13 @@ def exercise_crystal_symmetry():
 
 def exercise_mmcif_structure_factors():
   miller_arrays = cif.reader(input_string=r3adrsf).as_miller_arrays()
-  assert len(miller_arrays) == 16
+  assert len(miller_arrays) == 27 #16
   hl_coeffs = find_miller_array_from_labels(
     miller_arrays, ','.join([
-      'scale_group_code=1', 'crystal_id=2', 'wavelength_id=3',
       '_refln.pdbx_HL_A_iso', '_refln.pdbx_HL_B_iso',
-      '_refln.pdbx_HL_C_iso', '_refln.pdbx_HL_D_iso']))
+      '_refln.pdbx_HL_C_iso', '_refln.pdbx_HL_D_iso',
+      'scale_group_code=1', 'crystal_id=2', 'wavelength_id=3'
+      ]))
   assert hl_coeffs.is_hendrickson_lattman_array()
   assert hl_coeffs.size() == 2
   mas_as_cif_block = cif.miller_arrays_as_cif_block(
@@ -622,8 +623,8 @@ def exercise_mmcif_structure_factors():
   assert approx_equal(hl_coeffs.data(), hl_coeffs_from_cif_block)
   f_meas_au = find_miller_array_from_labels(
     miller_arrays, ','.join([
-      'scale_group_code=1', 'crystal_id=1', 'wavelength_id=1',
-      '_refln.F_meas_au', '_refln.F_meas_sigma_au']))
+      '_refln.F_meas_au', '_refln.F_meas_sigma_au', 
+      'scale_group_code=1', 'crystal_id=1', 'wavelength_id=1']))
   assert f_meas_au.is_xray_amplitude_array()
   assert f_meas_au.size() == 5
   assert f_meas_au.sigmas() is not None
@@ -641,25 +642,25 @@ def exercise_mmcif_structure_factors():
   assert pdbx_I_plus_minus.space_group() is None   # this CIF block
   #
   miller_arrays = cif.reader(input_string=r3ad7sf).as_miller_arrays()
-  assert len(miller_arrays) == 11
+  assert len(miller_arrays) == 14 #11
   f_calc = find_miller_array_from_labels(
     miller_arrays, ','.join([
-      'crystal_id=2', 'wavelength_id=1', '_refln.F_calc', '_refln.phase_calc']))
+      '_refln.F_calc', '_refln.phase_calc', 'crystal_id=2'])) #, 'wavelength_id=1']))
   assert f_calc.is_complex_array()
   assert f_calc.size() == 4
   #
   miller_arrays = cif.reader(input_string=integer_observations).as_miller_arrays()
   assert len(miller_arrays) == 2
-  assert isinstance(miller_arrays[0].data(), flex.double)
-  assert isinstance(miller_arrays[0].sigmas(), flex.double)
+  assert isinstance(miller_arrays[1].data(), flex.double)
+  assert isinstance(miller_arrays[1].sigmas(), flex.double)
   #
   miller_arrays = cif.reader(input_string=r3v56sf).as_miller_arrays()
   assert len(miller_arrays) == 2
   for ma in miller_arrays: assert ma.is_complex_array()
-  assert miller_arrays[0].info().labels == [
-    'r3v56sf', '_refln.pdbx_DELFWT', '_refln.pdbx_DELPHWT']
   assert miller_arrays[1].info().labels == [
-    'r3v56sf', '_refln.pdbx_FWT', '_refln.pdbx_PHWT']
+    '_refln.pdbx_DELFWT', '_refln.pdbx_DELPHWT']
+  assert miller_arrays[0].info().labels == [
+    '_refln.pdbx_FWT', '_refln.pdbx_PHWT']
 
 
 def find_miller_array_from_labels(miller_arrays, labels):
