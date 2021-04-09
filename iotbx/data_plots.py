@@ -188,11 +188,11 @@ class table_data(object):
     assert remainder == '', 'loggraph table has %d bytes following the table end' % len(remainder)
 
     if '$TABLE' in header:
-      title = re.search(r'\\$TABLE\\s*:(.*?)(:|\n|$)', header, re.MULTILINE)
+      title = re.search(r'\$TABLE\s*:(.*?)(:|\n|$)', header, re.MULTILINE)
       if title:
         self.title = title.group(1).strip()
 
-    graphs = re.search(r'\\$(GRAPHS|SCATTER)[\\s\n]*((:[^:\n]*:[^:\n]*:[^:\n]*(:|$)[\\s\n]*)*)($|\\$)', header, re.MULTILINE)
+    graphs = re.search(r'\$(GRAPHS|SCATTER)[\s\n]*((:[^:\n]*:[^:\n]*:[^:\n]*(:|$)[\s\n]*)*)($|\$)', header, re.MULTILINE)
     if graphs:
       if graphs.group(1) == 'GRAPHS':
         self.plot_type = "GRAPH"

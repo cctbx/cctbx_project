@@ -301,7 +301,7 @@ class any_reflection_file(object):
         shelx_file.close()
         m = re.search(r"^HKLF\s*(\d)", remaining, re.X|re.M|re.S)
         if m is None:
-          raise Sorry(r"%s does not contain the mandatory HKLF instruction"
+          raise Sorry("%s does not contain the mandatory HKLF instruction"
                       % shelx_file.name)
         if m.group(1) == "4":
           self._observation_type = "intensities"
