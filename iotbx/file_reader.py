@@ -416,7 +416,7 @@ class any_file_input(object):
 #    assert len(self._file_object) != 0
 #    for _line in self._file_object.splitlines():
 #      assert not _line.startswith(" ")
-#      line = re.sub(" ", "", _line)
+#      line = re.sub(r" ", "", _line)
 #      assert ((len(line) == 0) or
 #              (line[0] == ">") or
 #              (line == "*") or

@@ -54,7 +54,7 @@ for key_name in keys_to_show :
   else :
     _selected.append(key_name)
 key_params_str = " ".join(_selected)
-captions_str = " ".join([ re.sub(" ", "_", txt) for txt in key_captions ])
+captions_str = " ".join([ re.sub(r" ", "_", txt) for txt in key_captions ])
 
 polygon_params_str = """\
   database_file_name = None

@@ -39,7 +39,7 @@ data_manager_type['hkl'] = 'miller_array'   # map hkl to parent, miller_array
 # datatypes have corresponding modules in iotbx/data_manager
 # e.g. iotbx/data_manager/model.py
 supported_datatypes = os.listdir(os.path.dirname(__file__))
-re_search = re.compile('.py$')
+re_search = re.compile(r'\.py$')
 supported_datatypes = list(filter(re_search.search, supported_datatypes))
 supported_datatypes.remove('__init__.py')
 supported_datatypes.sort()

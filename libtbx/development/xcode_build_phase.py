@@ -11,7 +11,7 @@ def run_scons():
   m = re.search(r"^(\d+ \. \d+ \. \d+) .*? \[\s*GCC\s* (\d+ \. \d+ \. \d+)",
                 sys.version,
                 re.X|re.M|re.S)
-  print('Python %s (compiled with gcc %s)' % m.groups())
+  print(r'Python %s (compiled with gcc %s)' % m.groups())
   print()
 
   print("** %s **" % libtbx.env.build_path.basename())

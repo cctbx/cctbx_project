@@ -16,7 +16,7 @@ def float_or_none(n):
 
 def percent_to_float(value):
   assert value.endswith("%")
-  return float(re.sub("\%$", "", value))
+  return float(re.sub(r"\%$", "", value))
 
 class experiment_info(object):
   def extract_all_stats(self):
@@ -471,7 +471,7 @@ def parse_xscale(lines):
         elif (fields[0] == "total"):
           overall = fields
           break
-        elif re.match("^\d", line):
+        elif re.match(r"^\d", line):
           bins.append(fields)
         j += 1
       assert (len(bins) > 0) and (len(overall) == len(bins[0]))

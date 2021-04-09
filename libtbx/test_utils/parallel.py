@@ -131,7 +131,7 @@ def reconstruct_test_name(command):
     return command.test_class, command.test_name
 
   if "-m pytest" in command:
-    m = re.search('-m pytest ([^:]*)::(.*)$', command)
+    m = re.search(r'-m pytest ([^:]*)::(.*)$', command)
     command = 'libtbx.python "%s" %s' % (m.group(1), m.group(2))
   pattern = '^[^"]*"([^"]*)"([^"]*)$'
   m = re.search(pattern, command)
@@ -183,9 +183,9 @@ def write_JUnit_XML(results, output_filename="output.xml"):
     if result.return_code == 0:
       # Identify skipped tests
       output = '\n'.join(result.stdout_lines + result.stderr_lines)
-      if re.search('skip', output, re.IGNORECASE):
+      if re.search(r'skip', output, re.IGNORECASE):
         # find first line including word 'skip' and use it as message
-        skipline = re.search('^((.*)skip(.*))$', output, re.IGNORECASE | re.MULTILINE).group(1)
+        skipline = re.search(r'^((.*)skip(.*))$', output, re.IGNORECASE | re.MULTILINE).group(1)
         tc.add_skipped_info(skipline)
     elif result.alert_status == Status.EXPECTED_FAIL:
       tc.add_skipped_info("Expected test failure")

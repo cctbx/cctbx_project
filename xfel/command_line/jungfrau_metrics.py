@@ -93,8 +93,8 @@ include scope xfel.command_line.cspad_detector_congruence.phil_scope
 ''', process_includes=True)
 
 import re
-RUN = re.compile(".*run_000([0-9][0-9][0-9])")
-EVENT = re.compile(".*master_([0-9][0-9][0-9][0-9][0-9])")
+RUN = re.compile(r".*run_000([0-9][0-9][0-9])")
+EVENT = re.compile(r".*master_([0-9][0-9][0-9][0-9][0-9])")
 
 # Next steps
 

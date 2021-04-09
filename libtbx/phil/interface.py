@@ -825,7 +825,7 @@ def reindex_phil_objects(phil_object, path_index, only_scope=None):
     for object in phil_object.objects :
       reindex_phil_objects(object, path_index)
 
-non_alnum = re.compile("[^A-Za-z0-9_]")
+non_alnum = re.compile(r"[^A-Za-z0-9_]")
 def substitute_directory_name(phil_object, path_name, sub_name,
     treat_name_as_var_name=True):
   assert (not non_alnum.search(sub_name))

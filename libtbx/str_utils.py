@@ -532,7 +532,7 @@ class find_matching_closing_symbol(object):
     """
     import re
     self.opening, self.closing = opening, closing
-    self._regex = re.compile("(%s)|(%s)" % (re.escape(opening), re.escape(closing)))
+    self._regex = re.compile(r"(%s)|(%s)" % (re.escape(opening), re.escape(closing)))
 
   def __call__(self, string, pos):
     """ An opening symbol shall start at position `pos` of the given `string`.

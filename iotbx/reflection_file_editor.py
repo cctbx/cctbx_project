@@ -552,9 +552,9 @@ class process_arrays(object):
       default_types = iotbx.mtz.default_column_types(output_array)
       if (array_types[i] is not None):
         if output_array.is_xray_amplitude_array():
-          array_types[i] = re.sub("J", "F", array_types[i])
+          array_types[i] = re.sub(r"J", "F", array_types[i])
         elif output_array.is_xray_intensity_array():
-          array_types[i] = re.sub("F", "J", array_types[i])
+          array_types[i] = re.sub(r"F", "J", array_types[i])
         if len(default_types) == len(array_types[i]):
           print("Recovering original column types %s" % array_types[i], file=log)
           column_types = array_types[i]
@@ -956,7 +956,7 @@ def modify_array(
     raise Sorry("Missing output labels for %s!" % array_name)
   if (array_params.column_root_label is not None):
     output_labels = None
-  labels_base = re.sub(",merged$", "", array_params.labels)
+  labels_base = re.sub(r",merged$", "", array_params.labels)
   input_labels = labels_base.split(",")
   if not None in [array_params.scale_factor, array_params.scale_max] :
     raise Sorry("The parameters scale_factor and scale_max are " +

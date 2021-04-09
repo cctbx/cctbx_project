@@ -165,7 +165,7 @@ class gcc_version(object):
 
   def __init__(self):
     pat = r" \s* = \s* (\d+) \s+"
-    m = re.search("__GNUC__ %s __GNUC_MINOR__ %s __GNUC_PATCHLEVEL__ %s"
+    m = re.search(r"__GNUC__ %s __GNUC_MINOR__ %s __GNUC_PATCHLEVEL__ %s"
                   % ((pat,)*3),
                   platform_info, re.X|re.M|re.S)
     if not m:

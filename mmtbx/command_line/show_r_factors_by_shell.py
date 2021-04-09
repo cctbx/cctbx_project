@@ -103,7 +103,7 @@ Full parameters:
   f_calc = f_obs = r_free_flags = None
   for array in mtz_in.file_server.miller_arrays :
     labels = array.info().labels
-    first_label_non_anom = re.sub("\(.*", "", labels[0])
+    first_label_non_anom = re.sub(r"\(.*", "", labels[0])
     if ((labels[0] == params.f_obs_label) or
         (first_label_non_anom == params.f_obs_label)):
       f_obs = array

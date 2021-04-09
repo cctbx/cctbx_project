@@ -271,7 +271,7 @@ def format_d_max_min(d_max_min):
   else :
     (d_max, d_min) = d_max_min
     d_max_str = "%.4g " % d_max
-    d_min_str = re.sub("\.$", ".0", re.sub("0*$", "", "%.3f" % d_min))
+    d_min_str = re.sub(r"\.$", ".0", re.sub(r"0*$", "", "%.3f" % d_min))
     return "%s - %s" % (d_max_str, d_min_str)
 
 def resize_column(cell_values, alignment="right"):

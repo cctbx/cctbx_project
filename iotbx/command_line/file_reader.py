@@ -24,7 +24,7 @@ file_reader
     .caption = Any_format %s
 }
 """ % (" ".join(file_reader.standard_file_types),
-       " ".join([ re.sub(" ", "_", file_reader.standard_file_descriptions[ft])
+       " ".join([ re.sub(r" ", "_", file_reader.standard_file_descriptions[ft])
                   for ft in file_reader.standard_file_types ])))
 
 def run(args=(), params=None, out=sys.stdout):

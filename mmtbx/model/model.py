@@ -2319,7 +2319,7 @@ class manager(object):
     xrs = self.get_xray_structure()
     scatterers = xrs.scatterers()
     for scatterer in scatterers:
-      neutralized_scatterer = re.sub('[^a-zA-Z]', '', scatterer.scattering_type)
+      neutralized_scatterer = re.sub(r'[^a-zA-Z]', '', scatterer.scattering_type)
       if (neutralized_scatterer != scatterer.scattering_type):
         neutralized = True
         scatterer.scattering_type = neutralized_scatterer
