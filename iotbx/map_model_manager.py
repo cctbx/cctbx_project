@@ -2872,11 +2872,11 @@ class map_model_manager(object):
         atom_name, element))
 
     # Make sure we have something to work with
-    if target_model_ca.get_sites_cart() < 1:
+    if len(target_model_ca.get_sites_cart()) < 1:
       print("Target model has no sites...skipping select_matching_segments",
          file = self.log)
       return []
-    if matching_model_ca.get_sites_cart() < 1:
+    if len(matching_model_ca.get_sites_cart()) < 1:
       print("Matching model has no sites...skipping select_matching_segments",
          file = self.log)
       return []
