@@ -34,28 +34,32 @@ struct pixel_stats {
     SCITBX_ASSERT(shoebox_offset.size()==shoebox_size.size());
   }
 
-  void analyze(
-    af::flex_double kernel_model,af::shared<double> reference_shoebox_sums,
+  void analyze3(
+    af::shared<double> whitelist_kernel_model, af::shared<double> reference_shoebox_sums,
     const int& slow_size, const int& panel_size, const double& keV_per_photon){
-    double* kptr = kernel_model.begin();
+
+    //whitelist_kernel_model is the 1d list of pixel value of interest, in the order of interest
     std::size_t* spptr = spots_pixels.begin();
+
     af::shared<double> proposal_shoebox_mean_Z;
     af::shared<double> proposal_shoebox_sigma_Z;
     proposal_ctr_of_mass = af::shared<scitbx::vec3<double> >();
 
-    af::shared<double> whitelist_kernel_model;
     af::shared<double> all_Z_values;
     af::shared<double> sauter_eq_15_likelihood;
     LLG = 0;
+    int firstpass_idx = -1;
     int whiteidx = -1;
+    double* white_ptr = whitelist_kernel_model.begin();
+
     for (int sidx=0; sidx<shoebox_offset.size(); ++sidx){ //loop through the shoeboxes
 
       //first pass through shoebox, add all shoebox pixels to get proposal sum
       double proposal_shoebox_sum = 0.;
       for (int pidx=shoebox_offset[sidx]; pidx<shoebox_offset[sidx]+shoebox_size[sidx]; ++pidx){
-        int idxpx = spptr[pidx];
-        double proposal_value = std::max(0.1,kptr[idxpx]);
-        whitelist_kernel_model.push_back(proposal_value);
+        firstpass_idx += 1;
+        double proposal_value = std::max(0.1,white_ptr[firstpass_idx]);
+        white_ptr[firstpass_idx] = proposal_value;
         proposal_shoebox_sum += proposal_value;
       }
       double refrence_shoebox_sum = reference_shoebox_sums[sidx];
@@ -73,7 +77,7 @@ struct pixel_stats {
         int ifast = panelpx%slow_size;
 
         whiteidx += 1;
-        double renormalized_proposal = whitelist_kernel_model[whiteidx] * scale_factor;
+        double renormalized_proposal = white_ptr[whiteidx] * scale_factor;
         SUM_VEC = SUM_VEC + (renormalized_proposal * scitbx::vec2<double>(islow,ifast));
         SUM_wt += renormalized_proposal;
         double renormalize_bragg_plus_background =
@@ -112,6 +116,8 @@ struct pixel_stats {
     mnz = stats.mean();
     sgz = stats.unweighted_sample_standard_deviation();
   }
+
+
   double get_LLG(){return LLG;}
   double get_mnz(){return mnz;}
   double get_sgz(){return sgz;}

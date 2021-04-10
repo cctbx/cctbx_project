@@ -24,9 +24,9 @@ namespace simtbx { namespace pixel {
              &simtbx::pixel::pixel_stats::set_shoebox_iterator,
              (arg_("shoebox_offset"), arg_("shoebox_size"), arg_("spots_pixels"))
             )
-        .def("analyze",
-             &simtbx::pixel::pixel_stats::analyze,
-             (arg_("kernel_model"), arg_("reference_shoebox_sums"),
+        .def("analyze3",
+             &simtbx::pixel::pixel_stats::analyze3,
+             (arg_("whitelist_pixels"), arg_("reference_shoebox_sums"),
               arg_("slow_size"), arg_("panel_size"), arg_("keV_per_photon"))
             )
         .def("get_LLG",&simtbx::pixel::pixel_stats::get_LLG)
