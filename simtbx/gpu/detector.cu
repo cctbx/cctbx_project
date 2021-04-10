@@ -133,6 +133,7 @@ namespace gpu {
                              dxtbx::model::Beam const& arg_beam):
     h_deviceID(arg_device_id),
     detector(arg_detector),
+    cu_active_pixel_list(NULL),
     cu_accumulate_floatimage(NULL),
     metrology(arg_detector, arg_beam){
     construct_detail(arg_device_id, arg_detector);
@@ -142,6 +143,7 @@ namespace gpu {
                              const simtbx::nanoBragg::nanoBragg& nB):
     h_deviceID(arg_device_id),
     metrology(nB),
+    cu_active_pixel_list(NULL),
     cu_accumulate_floatimage(NULL){
     cudaSetDevice(arg_device_id);
 
@@ -205,7 +207,7 @@ namespace gpu {
   af::flex_double
   gpu_detector::get_raw_pixels_cuda(){
     //return the data array for the multipanel detector case
-    af::flex_double z(af::flex_grid<>(cu_n_panels,cu_slow_pixels,cu_fast_pixels));
+    af::flex_double z(af::flex_grid<>(cu_n_panels,cu_slow_pixels,cu_fast_pixels), af::init_functor_null<double>());
     double* begin = z.begin();
     cudaSafeCall(cudaSetDevice(h_deviceID));
     cudaSafeCall(cudaMemcpy(
@@ -214,6 +216,18 @@ namespace gpu {
      sizeof(*cu_accumulate_floatimage) * _image_size,
      cudaMemcpyDeviceToHost));
     return z;
+  }
+
+  void
+  gpu_detector::set_active_pixels_on_GPU(af::shared<int> active_pixel_list_value){
+    active_pixel_list = active_pixel_list_value;
+    cudaSafeCall(cudaSetDevice(h_deviceID));
+    int * ptr_active_pixel_list = active_pixel_list.begin();
+    cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_list, sizeof(*cu_active_pixel_list) * active_pixel_list.size() ));
+    cudaSafeCall(cudaMemcpy(cu_active_pixel_list,
+                            ptr_active_pixel_list,
+                            sizeof(*cu_active_pixel_list) * active_pixel_list.size(),
+                            cudaMemcpyHostToDevice));
   }
 
   void
@@ -308,6 +322,7 @@ namespace gpu {
     cudaSafeCall(cudaFree(cu_distance));
     cudaSafeCall(cudaFree(cu_Xbeam));
     cudaSafeCall(cudaFree(cu_Ybeam));
+    cudaSafeCall(cudaFree(cu_active_pixel_list));
   }
 
 } // gpu

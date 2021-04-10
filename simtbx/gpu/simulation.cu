@@ -171,13 +171,8 @@ namespace af = scitbx::af;
             active_pixel_list.push_back(j);
           }
         }
-        int * ptr_active_pixel_list = active_pixel_list.begin();
-        int * cu_active_pixel_list;
-        cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_list, sizeof(*cu_active_pixel_list) * active_pixel_list.size() ));
-        cudaSafeCall(cudaMemcpy(cu_active_pixel_list,
-                                ptr_active_pixel_list,
-                                sizeof(*cu_active_pixel_list) * active_pixel_list.size(),
-                                cudaMemcpyHostToDevice));
+        gdt.set_active_pixels_on_GPU(active_pixel_list);
+
         // transfer source_I, source_lambda
         // the int arguments are for sizes of the arrays
         cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_I, SIM.source_I, SIM.sources));
@@ -193,7 +188,6 @@ namespace af = scitbx::af;
         dim3 numBlocks(smCount * 8, 1);
 
         const int vec_len = 4;
-        int visited_so_far = 0;
         // for call for all panels at the same time
 
           debranch_maskall_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
@@ -218,7 +212,7 @@ namespace af = scitbx::af;
           simtbx::nanoBragg::Avogadro, SIM.spot_scale, SIM.integral_form, SIM.default_F,
           cu_current_channel_Fhkl, gec.cu_FhklParams, SIM.nopolar,
           cu_polar_vector, SIM.polarization, SIM.fudge,
-          &(cu_active_pixel_list[visited_so_far]),
+          gdt.cu_active_pixel_list,
           gdt.cu_floatimage /*out*/,
           gdt.cu_omega_reduction /*out*/,
           gdt.cu_max_I_x_reduction /*out*/,
@@ -234,9 +228,6 @@ namespace af = scitbx::af;
         add_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(gdt.cu_accumulate_floatimage,
           gdt.cu_floatimage,
           gdt.cu_n_panels * gdt.cu_slow_pixels * gdt.cu_fast_pixels);
-
-        cudaSafeCall(cudaFree(cu_active_pixel_list)); //refactor XXX so the host-to-device data is persistent
-                                                      // also afford automatic switching between mask and all
   }
 
 
