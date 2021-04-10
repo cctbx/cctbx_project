@@ -161,13 +161,10 @@ def load_db(file_name=None):
   assert os.path.isfile(file_name)
   database_dict = easy_pickle.load(file_name)
 
+  # Python 3 pickle fix
   # =========================================================================
-  # change keys in pickle to Python 3 string
-  # very temporary fix until pickle is updated
   if sys.version_info.major == 3:
-    from libtbx.utils import to_str
-    for key in list(database_dict.keys()):
-      database_dict[to_str(key)] = database_dict[key]
+    database_dict = easy_pickle.fix_py2_pickle(database_dict)
   # =========================================================================
 
   return database_dict
