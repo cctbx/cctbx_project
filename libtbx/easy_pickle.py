@@ -131,7 +131,7 @@ def fix_py2_pickle(p):
   -------
   p: the fixed pickle
   '''
-  from collections.abc import MutableSequence
+  from collections.abc import Mapping, MutableSequence
   if hasattr(p, '__dict__'):
     for key in list(p.__dict__.keys()):
       if isinstance(key, bytes):
@@ -139,17 +139,26 @@ def fix_py2_pickle(p):
         p.__dict__[str_key] = p.__dict__[key]
         del p.__dict__[key]
         key = str_key
-      if isinstance(p.__dict__[key], bytes):
-        p.__dict__[key] = p.__dict__[key].decode('utf8')
-      # miller array object
-      if hasattr(p, '_info') and hasattr(p._info, 'labels'):
-        for i in range(len(p._info.labels)):
-          label = p._info.labels[i]
-          if isinstance(label, bytes):
-            p._info.labels[i] = label.decode('utf8')
-      if hasattr(p.__dict__[key], '__dict__'):
-        p.__dict__[key] = fix_py2_pickle(p.__dict__[key])
+      p.__dict__[key] = fix_py2_pickle(p.__dict__[key])
+  if isinstance(p, Mapping):
+    for key in list(p.keys()):
+      if isinstance(key, bytes):
+        str_key = key.decode('utf8')
+        p[str_key] = p[key]
+        del p[key]
+        key = str_key
+      p[key] = fix_py2_pickle(p[key])
   if isinstance(p, MutableSequence):
     for i in range(len(p)):
       p[i] = fix_py2_pickle(p[i])
+
+  if isinstance(p, bytes):
+    p = p.decode('utf8')
+  # miller array object
+  if hasattr(p, '_info') and hasattr(p._info, 'labels'):
+    for i in range(len(p._info.labels)):
+      label = p._info.labels[i]
+      if isinstance(label, bytes):
+        p._info.labels[i] = label.decode('utf8')
+
   return p
