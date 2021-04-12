@@ -598,10 +598,13 @@ class miller_array_builder(crystal_symmetry_builder):
     appropriately
     """
     crystal_symmetry_builder.__init__(self, cif_block)
+    basearraylabels = []
     if base_array_info is not None:
       self.crystal_symmetry = self.crystal_symmetry.join_symmetry(
         other_symmetry=base_array_info.crystal_symmetry_from_file,
       force=True)
+      if base_array_info.labels:
+        basearraylabels = base_array_info.labels
     if (wavelengths is None):
       wavelengths = {}
     if base_array_info is None:
@@ -615,7 +618,7 @@ class miller_array_builder(crystal_symmetry_builder):
       crystal_ids = [None]
       scale_groups = [None]
       for key, value in six.iteritems(refln_loop):
-        # need to get these arrays first
+        # need to get these columns here for selection of subsets of other columns
         if (key.endswith('wavelength_id') or
             key.endswith('crystal_id') or
             key.endswith('scale_group_code')):
@@ -655,7 +658,7 @@ class miller_array_builder(crystal_symmetry_builder):
           for scale_group in scale_groups:
             # If reflection data files contain more than one crystal, wavelength or scalegroup
             # then add their id(s) as a suffix to data labels computed below. Needed for avoiding 
-            # ambuguity in cif_as_mtz() but avoid when not needed to make labels human readable!
+            # ambuguity but avoid when not needed to make labels more human readable!
             if (len(wavelength_ids) > 1 or len(wavelengths) > 1) and w_id is not None:
               wavelbl = ["wavelength_id=%i" %w_id]
             if len(crystal_ids) > 1 and crys_id is not None:
@@ -679,14 +682,12 @@ class miller_array_builder(crystal_symmetry_builder):
               millarr = miller.array( miller.set(self.crystal_symmetry, 
                                              self.indices.select(selection)
                                             ).auto_anomalous(), data)
+              # millarr will be None for column data not matching w_id,crys_id,scale_group values
               if millarr is None: continue
-              labl = mapcoefflabl
-              if labelsuffix:
-                labl = mapcoefflabl + labelsuffix
+              labl = basearraylabels + mapcoefflabl + labelsuffix
               millarr.set_info(base_array_info.customized_copy(labels= labl ,
                                                 wavelength=wavelengths.get(w_id, None)))
-              #self._arrays[millarr.info().label_string() ] = millarr
-              self._arrays[millarr.info().labels[0] + jlablsufx ] = millarr
+              self._arrays[mapcoefflabl[0] + jlablsufx ] = millarr
             for phaseamplabl in phaseamplabls:
               amplitudestrarray = refln_loop[ phaseamplabl[0] ]
               phasestrarray = refln_loop[ phaseamplabl[1] ]
@@ -696,21 +697,20 @@ class miller_array_builder(crystal_symmetry_builder):
               phasesmillarr = self.flex_std_string_as_miller_array(
                 phasestrarray, wavelength_id=w_id, crystal_id=crys_id,
                 scale_group_code=scale_group)
+              # millarr will be None for column data not matching w_id,crys_id,scale_group values
               if millarr is None or phasesmillarr is None: continue
               phases = as_flex_double(phasesmillarr, phaseamplabl[1])
               millarr = millarr.phase_transfer(phases, deg=True)
-              labl = phaseamplabl
-              if labelsuffix:
-                labl = phaseamplabl + labelsuffix
+              labl = basearraylabels + phaseamplabl + labelsuffix
               millarr.set_info(base_array_info.customized_copy(labels= labl ,
                                                 wavelength=wavelengths.get(w_id, None)))
-              #self._arrays[millarr.info().label_string() ] = millarr
-              self._arrays[millarr.info().labels[0] +jlablsufx ] = millarr
+              self._arrays[phaseamplabl[0] +jlablsufx ] = millarr
             for datlabl,siglabl,otype in data_sig_obstype_labls:
               datastrarray = refln_loop[datlabl]
               millarr = self.flex_std_string_as_miller_array(
                 datastrarray, wavelength_id=w_id, crystal_id=crys_id,
                 scale_group_code=scale_group)
+              # millarr will be None for column data not matching w_id,crys_id,scale_group values
               if millarr is None: continue
               millarr = as_flex_double(millarr, datlabl)
               datsiglabl = [datlabl]
@@ -722,17 +722,11 @@ class miller_array_builder(crystal_symmetry_builder):
                 sigmas = as_flex_double(sigmas, siglabl)
                 millarr.set_sigmas(sigmas.data())
                 datsiglabl = [datlabl, siglabl]
-              if labelsuffix:
-                datsiglabl = [datlabl, siglabl] + labelsuffix
-
-              if base_array_info.labels is not None:
-                datsiglabl = base_array_info.labels + datsiglabl
-
+              datsiglabl = basearraylabels + datsiglabl + labelsuffix
               millarr.set_info(base_array_info.customized_copy(labels= datsiglabl,
                                                 wavelength=wavelengths.get(w_id, None)))
               if otype is not None:
                 millarr.set_observation_type(otype)
-              #self._arrays[millarr.info().label_string() ] = millarr
               self._arrays[ datlabl +jlablsufx ] = millarr
             for hl_labels in HLcoefflabls:
               hl_values = [ cif_block.get(hl_key) for hl_key in hl_labels ]
@@ -743,46 +737,42 @@ class miller_array_builder(crystal_symmetry_builder):
                 hl_values = [as_double_or_none_if_all_question_marks(
                   hl.select(selection), column_name=lab)
                               for hl, lab in zip(hl_values, hl_labels)]
-                if hl_values is None: continue
+                # hl_values will be None for column data not matching w_id,crys_id,scale_group values
+                if hl_values == [None,None,None,None]: continue
                 millarr = miller.array(miller.set(
                   self.crystal_symmetry, self.indices.select(selection)
                   ).auto_anomalous(), flex.hendrickson_lattman(*hl_values))
-                hlabels = hl_labels
-                if labelsuffix:
-                  hlabels = hl_labels + labelsuffix
+                hlabels = basearraylabels + hl_labels + labelsuffix
                 millarr.set_info(base_array_info.customized_copy(labels= hlabels,
                                                   wavelength=wavelengths.get(w_id, None)))
-                #self._arrays[millarr.info().label_string() ] = millarr
-                self._arrays[millarr.info().labels[0] +jlablsufx ] = millarr
+                self._arrays[ hl_labels[0]  +jlablsufx ] = millarr
             # pick up remaining columns if any that weren't identified above
             for label in alllabels:
-              #if (label.endswith('wavelength_id') or
-              #    label.endswith('crystal_id') or
-              #    label.endswith('scale_group_code') or
-              #    'index_' in label):
-              #  continue
               if "index_" in label:
                 continue
               datastrarray = refln_loop[label]
               if label in remaininglabls:
+                labels = basearraylabels + [label]  + labelsuffix
+                lablsufx = jlablsufx
                 millarr = self.flex_std_string_as_miller_array(
                   datastrarray, wavelength_id=w_id, crystal_id=crys_id,
                   scale_group_code=scale_group)
+                # millarr will be None for column data not matching w_id,crys_id,scale_group values
+                if (label.endswith('wavelength_id') or
+                 label.endswith('crystal_id') or # get full array if any of these labels, not just subsets
+                 label.endswith('scale_group_code')):
+                  millarr = self.flex_std_string_as_miller_array(
+                    datastrarray, wavelength_id=None, crystal_id=None,
+                    scale_group_code=None)
+                  lablsufx = ""
+                  labels = basearraylabels + [label]
                 if millarr is None: continue
                 otype = self.guess_observationtype(label)
                 if otype is not None:
                   millarr.set_observation_type(otype)
-                labels = [label]
-                if labelsuffix:
-                  labels = [label]  + labelsuffix
                 millarr.set_info(base_array_info.customized_copy(labels= labels,
                                                   wavelength=wavelengths.get(w_id, None)))
-                #self._arrays[millarr.info().label_string() ] = millarr
-                self._arrays[millarr.info().labels[0] +jlablsufx ] = millarr
-              #try:
-              #  origarr = flex.double(datastrarray)
-              #except ValueError as e:
-              #  origarr = datastrarray
+                self._arrays[ label + lablsufx ] = millarr
               origarr = self.flex_std_string_as_miller_array(
                   datastrarray, wavelength_id=w_id, crystal_id=crys_id,
                   scale_group_code=scale_group)
@@ -792,34 +782,32 @@ class miller_array_builder(crystal_symmetry_builder):
                 self._origarrays[newlabel2 + jlablsufx ] = origarr.data()
 
     for key, array in six.iteritems(self._arrays.copy()):
-      #if ( key.endswith('_minus') or '_minus_' in key or '-' in key
-      #    or key.endswith('_plus') or '_plus_' in key or '+' in key):
-        plus_key = ""
-        if '_minus' in key:
-          minus_key = key
-          plus_key = key.replace('_minus', '_plus')
-        elif '-' in key:
-          minus_key = key
-          plus_key = key.replace('-', '+')
-        elif '_plus' in key:
-          plus_key = key
-          minus_key = key.replace('_plus', '_minus')
-        elif '+' in key:
-          plus_key = key
-          minus_key = key.replace('+', '-')
-        if plus_key in self._arrays and minus_key in self._arrays:
-          plus_array = self._arrays.pop(plus_key)
-          minus_array = self._arrays.pop(minus_key)
-          minus_array = minus_array.customized_copy(
-            indices=-minus_array.indices()).set_info(minus_array.info())
-          array = plus_array.concatenate(
-            minus_array, assert_is_similar_symmetry=False)
-          array = array.customized_copy(anomalous_flag=True)
-          array.set_info(minus_array.info().customized_copy(
-            labels=list(
-              OrderedSet(plus_array.info().labels+minus_array.info().labels))))
-          array.set_observation_type(plus_array.observation_type())
-          self._arrays.setdefault(key, array)
+      plus_key = ""
+      if '_minus' in key:
+        minus_key = key
+        plus_key = key.replace('_minus', '_plus')
+      elif '-' in key:
+        minus_key = key
+        plus_key = key.replace('-', '+')
+      elif '_plus' in key:
+        plus_key = key
+        minus_key = key.replace('_plus', '_minus')
+      elif '+' in key:
+        plus_key = key
+        minus_key = key.replace('+', '-')
+      if plus_key in self._arrays and minus_key in self._arrays:
+        plus_array = self._arrays.pop(plus_key)
+        minus_array = self._arrays.pop(minus_key)
+        minus_array = minus_array.customized_copy(
+          indices=-minus_array.indices()).set_info(minus_array.info())
+        array = plus_array.concatenate(
+          minus_array, assert_is_similar_symmetry=False)
+        array = array.customized_copy(anomalous_flag=True)
+        array.set_info(minus_array.info().customized_copy(
+          labels=list(
+            OrderedSet(plus_array.info().labels+minus_array.info().labels))))
+        array.set_observation_type(plus_array.observation_type())
+        self._arrays.setdefault(key, array)
     if len(self._arrays) == 0:
       raise CifBuilderError("No reflection data present in cif block")
 
@@ -929,9 +917,12 @@ class miller_array_builder(crystal_symmetry_builder):
         Flabel = m[1] + "F" + m[2]
         Faulabel = m[1] + "F" + m[2] + "_au"
         if Flabl in label or Flabel in label or Faulabel in label: # in case of _refln.F_calc_au and _refln.phase_calc
-          phase_amplitudelabels.append([ label, m[0]])
-          remainingkeys.remove(label)
-          remainingkeys.remove(m[0])
+          if label in remainingkeys and m[0] in remainingkeys: # in case 
+            if (Flabel + "_sigma_au") in remainingkeys or (Flabel + "_sigma") in remainingkeys:
+              continue # give priority to F_meas, F_meas_sigma or  F_meas_au, F_meas_sigma_au
+            phase_amplitudelabels.append([ label, m[0]])
+            remainingkeys.remove(label)
+            remainingkeys.remove(m[0])
     return phase_amplitudelabels, remainingkeys
 
 
