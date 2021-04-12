@@ -132,14 +132,6 @@ def fix_py2_pickle(p):
   p: the fixed pickle
   '''
   from collections.abc import Mapping, MutableSequence
-  if hasattr(p, '__dict__'):
-    for key in list(p.__dict__.keys()):
-      if isinstance(key, bytes):
-        str_key = key.decode('utf8')
-        p.__dict__[str_key] = p.__dict__[key]
-        del p.__dict__[key]
-        key = str_key
-      p.__dict__[key] = fix_py2_pickle(p.__dict__[key])
   if isinstance(p, Mapping):
     for key in list(p.keys()):
       if isinstance(key, bytes):
@@ -152,6 +144,8 @@ def fix_py2_pickle(p):
     for i in range(len(p)):
       p[i] = fix_py2_pickle(p[i])
 
+  if hasattr(p, '__dict__'):
+    p.__dict__ = fix_py2_pickle(p.__dict__)
   if isinstance(p, bytes):
     p = p.decode('utf8')
   # miller array object
