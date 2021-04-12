@@ -228,7 +228,6 @@ _b 2
     cif_miller_array_template %(
       '_refln_F_calc', '_refln_phase_calc', '_refln_F_sigma')),
                                  data_block_name='global')
-  assert sorted(arrays.keys()) == ['_refln_F_calc', '_refln_F_sigma']
   assert arrays['_refln_F_calc'].is_complex_array()
 
   for data_block_name in (None, "global"):
@@ -602,13 +601,13 @@ def exercise_crystal_symmetry():
 
 def exercise_mmcif_structure_factors():
   miller_arrays = cif.reader(input_string=r3adrsf).as_miller_arrays()
-  assert len(miller_arrays) == 27 #16
+  assert len(miller_arrays) == 16
   hl_coeffs = find_miller_array_from_labels(
-    miller_arrays, ','.join([
+    miller_arrays, [
       '_refln.pdbx_HL_A_iso', '_refln.pdbx_HL_B_iso',
       '_refln.pdbx_HL_C_iso', '_refln.pdbx_HL_D_iso',
       'scale_group_code=1', 'crystal_id=2', 'wavelength_id=3'
-      ]))
+      ])
   assert hl_coeffs.is_hendrickson_lattman_array()
   assert hl_coeffs.size() == 2
   mas_as_cif_block = cif.miller_arrays_as_cif_block(
@@ -622,9 +621,9 @@ def exercise_mmcif_structure_factors():
   hl_coeffs_from_cif_block = flex.hendrickson_lattman(*abcd)
   assert approx_equal(hl_coeffs.data(), hl_coeffs_from_cif_block)
   f_meas_au = find_miller_array_from_labels(
-    miller_arrays, ','.join([
+    miller_arrays, [
       '_refln.F_meas_au', '_refln.F_meas_sigma_au', 
-      'scale_group_code=1', 'crystal_id=1', 'wavelength_id=1']))
+      'scale_group_code=1', 'crystal_id=1', 'wavelength_id=1'])
   assert f_meas_au.is_xray_amplitude_array()
   assert f_meas_au.size() == 5
   assert f_meas_au.sigmas() is not None
@@ -632,9 +631,8 @@ def exercise_mmcif_structure_factors():
   assert approx_equal(f_meas_au.unit_cell().parameters(),
                       (163.97, 45.23, 110.89, 90.0, 131.64, 90.0))
   pdbx_I_plus_minus = find_miller_array_from_labels(
-    miller_arrays, ','.join(
-      ['_refln.pdbx_I_plus', '_refln.pdbx_I_plus_sigma',
-       '_refln.pdbx_I_minus', '_refln.pdbx_I_minus_sigma']))
+    miller_arrays, ['_refln.pdbx_I_plus', '_refln.pdbx_I_plus_sigma',
+       '_refln.pdbx_I_minus', '_refln.pdbx_I_minus_sigma'])
   assert pdbx_I_plus_minus.is_xray_intensity_array()
   assert pdbx_I_plus_minus.anomalous_flag()
   assert pdbx_I_plus_minus.size() == 21
@@ -642,30 +640,33 @@ def exercise_mmcif_structure_factors():
   assert pdbx_I_plus_minus.space_group() is None   # this CIF block
   #
   miller_arrays = cif.reader(input_string=r3ad7sf).as_miller_arrays()
-  assert len(miller_arrays) == 14 #11
+  assert len(miller_arrays) == 11
   f_calc = find_miller_array_from_labels(
-    miller_arrays, ','.join([
-      '_refln.F_calc', '_refln.phase_calc', 'crystal_id=2'])) #, 'wavelength_id=1']))
+    miller_arrays, ['r3ad7sf', '_refln.F_calc', '_refln.phase_calc', 'crystal_id=2']) #, 'wavelength_id=1']))
   assert f_calc.is_complex_array()
   assert f_calc.size() == 4
   #
   miller_arrays = cif.reader(input_string=integer_observations).as_miller_arrays()
   assert len(miller_arrays) == 2
-  assert isinstance(miller_arrays[1].data(), flex.double)
-  assert isinstance(miller_arrays[1].sigmas(), flex.double)
+  fmeas_sigmeas = find_miller_array_from_labels( miller_arrays, [ '_refln.F_meas_au'])
+  assert isinstance(fmeas_sigmeas.data(), flex.double)
+  assert isinstance(fmeas_sigmeas.sigmas(), flex.double)
   #
   miller_arrays = cif.reader(input_string=r3v56sf).as_miller_arrays()
   assert len(miller_arrays) == 2
   for ma in miller_arrays: assert ma.is_complex_array()
-  assert miller_arrays[1].info().labels == [
-    '_refln.pdbx_DELFWT', '_refln.pdbx_DELPHWT']
-  assert miller_arrays[0].info().labels == [
-    '_refln.pdbx_FWT', '_refln.pdbx_PHWT']
+  find_miller_array_from_labels(miller_arrays, ['r3v56sf', '_refln.pdbx_DELFWT', '_refln.pdbx_DELPHWT'])
+  find_miller_array_from_labels(miller_arrays, ['r3v56sf', '_refln.pdbx_FWT', '_refln.pdbx_PHWT'])
 
 
 def find_miller_array_from_labels(miller_arrays, labels):
   for ma in miller_arrays:
-    if labels in str(ma.info()):
+    found = True
+    for label in labels:
+      if label not in ma.info().labels:
+        found = False
+        break
+    if found:
       return ma
   raise RuntimeError("Could not find miller array with labels %s" %labels)
 
@@ -1098,5 +1099,7 @@ def exercise():
   exercise_build_with_wavelength()
 
 if __name__ == '__main__':
+  import time
+  time.sleep(10)
   exercise()
   print("OK")

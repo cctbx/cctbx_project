@@ -255,7 +255,7 @@ def extract(file_name,
     base_array_info = miller.array_info(
       crystal_symmetry_from_file=crystal_symmetry)
     all_miller_arrays = iotbx.cif.reader(file_path=file_name).build_miller_arrays(
-      base_array_info=base_array_info, style="new")
+      base_array_info=base_array_info)
   if (len(all_miller_arrays) == 0):
     raise Sorry("No data arrays were found in this CIF file.  Please make "+
       "sure that the file contains reflection data, rather than the refined "+
@@ -678,4 +678,6 @@ def finish_job(results):
   return ([], [])
 
 if(__name__ == "__main__"):
+  import time
+  #time.sleep(10)
   run(sys.argv[1:])
