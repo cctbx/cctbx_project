@@ -146,13 +146,11 @@ def fix_py2_pickle(p):
 
   if hasattr(p, '__dict__'):
     p.__dict__ = fix_py2_pickle(p.__dict__)
-  if isinstance(p, bytes):
-    p = p.decode('utf8')
   # miller array object
   if hasattr(p, '_info') and hasattr(p._info, 'labels'):
-    for i in range(len(p._info.labels)):
-      label = p._info.labels[i]
-      if isinstance(label, bytes):
-        p._info.labels[i] = label.decode('utf8')
+    p._info.labels = fix_py2_pickle(p._info.labels)
+
+  if isinstance(p, bytes):
+    p = p.decode('utf8')
 
   return p
