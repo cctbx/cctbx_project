@@ -840,7 +840,7 @@ class miller_array_builder(crystal_symmetry_builder):
     or like 'HLanomA', 'HLanomB', 'HLanomC', 'HLanomD'
     Use a regular expression to group them accordingly
     """
-    allmatches = re.findall("(\S*(HL(\S*)[abcdABCD](\S*)))", alllabels )
+    allmatches = re.findall(r"(\S*(HL(\S*)[abcdABCD](\S*)))", alllabels )
     HLtagslst = list(set([ (e[2], e[3]) for e in allmatches ]))
     usedkeys = []
     for m in HLtagslst:
@@ -864,7 +864,7 @@ class miller_array_builder(crystal_symmetry_builder):
     remainingkeys = lstkeys[:] # deep copy the list
     alllabels = " ".join(lstkeys) #  _refln.FC _refln.PHIC _refln.FC_ALL _refln.PHIC_ALL _refln.FWT _refln.PHWT _refln.DELFWT _refln.PHDELWT
     mapcoefflabels = []
-    A_matches = re.findall("( (\s*_refln[\._]A_)(\S*) )", alllabels, re.VERBOSE ) # [('_refln.PHWT', '_refln.PH', 'WT'), ('_refln.PHDELWT', '_refln.PH', 'DELWT')]
+    A_matches = re.findall(r"( (\s*_refln[\._]A_)(\S*) )", alllabels, re.VERBOSE ) # [('_refln.PHWT', '_refln.PH', 'WT'), ('_refln.PHDELWT', '_refln.PH', 'DELWT')]
     for label in lstkeys:
       for m in A_matches:
         Blabel = m[1].replace("A_","B_") + m[2]
@@ -880,7 +880,7 @@ class miller_array_builder(crystal_symmetry_builder):
     remainingkeys = lstkeys[:] # deep copy the list
     alllabels = " ".join(lstkeys) #  _refln.FC _refln.PHIC _refln.FC_ALL _refln.PHIC_ALL _refln.FWT _refln.PHWT _refln.DELFWT _refln.PHDELWT
     phase_amplitudelabels = []
-    PHmatches = re.findall("((\S*PH)([^I]\S*))", alllabels ) # [('_refln.PHWT', '_refln.PH', 'WT'), ('_refln.PHDELWT', '_refln.PH', 'DELWT')]
+    PHmatches = re.findall(r"((\S*PH)([^I]\S*))", alllabels ) # [('_refln.PHWT', '_refln.PH', 'WT'), ('_refln.PHDELWT', '_refln.PH', 'DELWT')]
     for label in lstkeys:
       for m in PHmatches:
         PFlabel = m[1].replace("PH","F") + m[2]
@@ -890,7 +890,7 @@ class miller_array_builder(crystal_symmetry_builder):
           remainingkeys.remove(label)
           remainingkeys.remove(m[0])
     alllabels = " ".join(remainingkeys)
-    PHImatches = re.findall("((\S*PHI)(\S*))", alllabels ) # [('_refln.PHIC', '_refln.PHI', 'C'), ('_refln.PHIC_ALL', '_refln.PHI', 'C_ALL')]
+    PHImatches = re.findall(r"((\S*PHI)(\S*))", alllabels ) # [('_refln.PHIC', '_refln.PHI', 'C'), ('_refln.PHIC_ALL', '_refln.PHI', 'C_ALL')]
     for label in lstkeys:
       for m in PHImatches:
         PFlabel = m[1].replace("PHI","F") + m[2]
@@ -900,7 +900,7 @@ class miller_array_builder(crystal_symmetry_builder):
           remainingkeys.remove(label)
           remainingkeys.remove(m[0])
     alllabels = " ".join(remainingkeys)
-    PHDELmatches = re.findall("(((\S*)PH)([^I]\S*(WT)))", alllabels ) # [('_refln.PHDELWT', '_refln.PH', '_refln.', 'DELWT', 'WT')]
+    PHDELmatches = re.findall(r"(((\S*)PH)([^I]\S*(WT)))", alllabels ) # [('_refln.PHDELWT', '_refln.PH', '_refln.', 'DELWT', 'WT')]
     for label in lstkeys:
       for m in PHDELmatches:
         Flabel = m[2] + m[3].replace("WT","FWT")
@@ -909,7 +909,7 @@ class miller_array_builder(crystal_symmetry_builder):
           remainingkeys.remove(label)
           remainingkeys.remove(m[0])
     alllabels = " ".join(remainingkeys)
-    phase_matches = re.findall("((\S*[\._])phase(\S*))", alllabels ) # [('_refln.phase_calc', '_refln.', '')]
+    phase_matches = re.findall(r"((\S*[\._])phase(\S*))", alllabels ) # [('_refln.phase_calc', '_refln.', '')]
     for label in lstkeys:
       for m in phase_matches:
         phaselabel = m[0]
@@ -931,7 +931,7 @@ class miller_array_builder(crystal_symmetry_builder):
     remainingkeys = lstkeys[:] # deep copy the list
     alllabels = " ".join(lstkeys) #  _refln.FC _refln.PHIC _refln.FC_ALL _refln.PHIC_ALL _refln.FWT _refln.PHWT _refln.DELFWT _refln.PHDELWT
     labelpairs = []
-    sigma_matches = re.findall("((\S*[\._])SIG(\S*))", alllabels ) # catch label pairs like F(+),SIGF(+)
+    sigma_matches = re.findall(r"((\S*[\._])SIG(\S*))", alllabels ) # catch label pairs like F(+),SIGF(+)
     for label in lstkeys:
       for m in sigma_matches:
         FIlabel = m[1] + m[2]
@@ -940,7 +940,7 @@ class miller_array_builder(crystal_symmetry_builder):
           remainingkeys.remove(label)
           remainingkeys.remove(m[0])
     alllabels = " ".join(remainingkeys)
-    sigma_matches = re.findall("((\S*)_sigma(_*\S*))", alllabels ) # [('_refln.F_meas_sigma_au', '_refln.F_meas', '_au'), ('_refln.intensity_sigma', '_refln.intensity', ''), ('_refln.pdbx_I_plus_sigma', '_refln.pdbx_I_plus', '')]
+    sigma_matches = re.findall(r"((\S*)_sigma(_*\S*))", alllabels ) # [('_refln.F_meas_sigma_au', '_refln.F_meas', '_au'), ('_refln.intensity_sigma', '_refln.intensity', ''), ('_refln.pdbx_I_plus_sigma', '_refln.pdbx_I_plus', '')]
     for label in lstkeys:
       for m in sigma_matches:
         FIlabel = m[1] + m[2]
@@ -950,8 +950,8 @@ class miller_array_builder(crystal_symmetry_builder):
           remainingkeys.remove(m[0])
     alllabels = " ".join(remainingkeys)
     # catch generic meas and sigma labels
-    anymeas_matches = re.findall("((\S*)_meas(\S*))", alllabels ) + re.findall("((\S*)_calc(\S*))", alllabels )
-    anysigma_matches = re.findall("((\S*)_sigma(\S*))", alllabels )
+    anymeas_matches = re.findall(r"((\S*)_meas(\S*))", alllabels ) + re.findall(r"((\S*)_calc(\S*))", alllabels )
+    anysigma_matches = re.findall(r"((\S*)_sigma(\S*))", alllabels )
     for mmatch in anymeas_matches:
       for smatch in anysigma_matches:
         if mmatch[1]==smatch[1] and mmatch[2]==smatch[2]:
