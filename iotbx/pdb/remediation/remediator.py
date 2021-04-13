@@ -334,8 +334,8 @@ def remediate(filename, remediated_out, f=None):
   pdb_file = open(filename)
 
   aa_re = re.compile(
-    ' HN2 (ALA|ARG|ASN|ASP|ASX|CSE|CYS|GLN|GLU|GLX|GLY|HIS|ILE|'+
-    'LEU|LYS|MET|MSE|PHE|PRO|SER|THR|TRP|UNK|TYR|VAL)')
+    r' HN2 (ALA|ARG|ASN|ASP|ASX|CSE|CYS|GLN|GLU|GLX|GLY|HIS|ILE|'+
+    r'LEU|LYS|MET|MSE|PHE|PRO|SER|THR|TRP|UNK|TYR|VAL)')
 
   for line in pdb_file:
     line=line.rstrip()
