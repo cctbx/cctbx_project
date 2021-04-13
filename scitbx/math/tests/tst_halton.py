@@ -5,7 +5,7 @@ from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 from six.moves import range
 
-"""
+r"""
 This routine tests the halton sequence that can be used for
 numerical integration (or uniformish samping of a hypercube for that manner).
 Specifically:
