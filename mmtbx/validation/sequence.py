@@ -280,6 +280,18 @@ class validation(object):
       nproc=Auto, include_secondary_structure=False,
       extract_coordinates=False, extract_residue_groups=False,
       minimum_identity=0, custom_residues=[]):
+    #
+    # XXX This is to stop assertion crash that checks lengths of provided
+    # XXX sequence with the length of sequence from model (which can happen to
+    # XXX be different due to presence of altlocs!
+    # XXX Also this assumes altlocs within residue groups are the same resname's
+    # XXX And of course making a copy is a bad idea, obviously!
+    # XXX No test.
+    #
+    pdb_hierarchy = pdb_hierarchy.deep_copy()
+    pdb_hierarchy.atoms().reset_i_seq()
+    pdb_hierarchy.remove_alt_confs(always_keep_one_conformer=True)
+    #
     assert (len(sequences) > 0)
     for seq_object in sequences :
       assert (seq_object.sequence != "")
