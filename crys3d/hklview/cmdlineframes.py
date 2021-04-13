@@ -600,7 +600,7 @@ Borrowing them from the first miller array""" %i)
           cifarrays = cifreader.as_miller_arrays(merge_equivalents=False)
           arrays = []
           for arr in cifarrays:
-            if arr.info().labels[0] not in ['_refln.crystal_id', # avoid these un-displayable arrays
+            if arr.info().labels[-1] not in ['_refln.crystal_id', # avoid these un-displayable arrays
                       'HKLs','_refln.wavelength_id', '_refln.scale_group_code']:
               arrays.append(arr)
           # sanitise labels by removing redundant strings.
