@@ -74,8 +74,9 @@ import sys
 from six.moves import range
 
 # use unicode check to avoid bytes in Python 3
-if sys.version_info.major == 3:
-  unicode = bytes
+check_type = bytes
+if sys.version_info.major == 2:
+  check_type = unicode
 
 # http://stackoverflow.com/questions/372365/set-timeout-for-xmlrpclib-serverproxy
 class TimeoutTransport(xmlrpclib.Transport):
@@ -140,12 +141,12 @@ class ServerProxy(object):
       (methodname, params) = self._pending.pop(0)
 
       # remove any unicode types in params
-      if (isinstance(params, unicode)):
+      if (isinstance(params, check_type)):
         params = to_str(params)
       elif (isinstance(params, list) or isinstance(params, tuple)):
         new_params = list(params)
         for i in range(len(params)):
-          if (isinstance(params[i], unicode)):
+          if (isinstance(params[i], check_type)):
             new_params[i] = to_str(params[i])
           else:
             new_params[i] = params[i]

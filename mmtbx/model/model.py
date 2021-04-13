@@ -876,9 +876,12 @@ class manager(object):
       #
       if(self.get_restraints_manager() is not None):
         self.get_restraints_manager().geometry.replace_site_symmetry(
-          new_site_symmetry_table = self._xray_structure.site_symmetry_table())
+          new_site_symmetry_table   = self._xray_structure.site_symmetry_table(),
+          special_position_settings = self._xray_structure.special_position_settings(),
+          sites_cart                = self._xray_structure.sites_cart())
         # Not sure if this is needed.
         self.get_restraints_manager().geometry.crystal_symmetry=crystal_symmetry
+        self.restraints_manager.crystal_symmetry=crystal_symmetry
         # This updates some of internals
         self.get_restraints_manager().geometry.pair_proxies(
           sites_cart = self.get_sites_cart())
@@ -888,6 +891,12 @@ class manager(object):
       return self._unit_cell_crystal_symmetry
     else:
       return None
+
+  def shifted(self, eps=1.e-3):
+    r = self.shift_cart()
+    if(r is None): return False
+    if(flex.max(flex.abs(flex.double(r)))<=eps): return False
+    return True
 
   def shift_cart(self):
     '''
@@ -1094,6 +1103,16 @@ class manager(object):
 
   def sel_sidechain(self):
     return self._get_selection_manager().sel_backbone_or_sidechain(False, True)
+
+  def replace_model_hierarchy_with_other(self, other_model):
+    ''' Replace hierarchy with one from another model '''
+    model_ph = self.get_hierarchy() # working hierarchy
+    other_model_ph = other_model.get_hierarchy()
+    for m in model_ph.models():
+      model_ph.remove_model(m)
+    for m in other_model_ph.models():
+      model_ph.append_model(m.detached_copy())
+    self.reset_after_changing_hierarchy()
 
   def reset_after_changing_hierarchy(self):
 

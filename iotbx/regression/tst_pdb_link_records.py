@@ -1,6 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 from libtbx.test_utils import assert_lines_in_file
+import mmtbx.monomer_library.server
+from mmtbx import monomer_library
+
 
 # from here: https://www.wwpdb.org/documentation/file-format-content/format33/sect6.html
 # LINK
@@ -188,6 +191,14 @@ def exercise_2(prefix="tst_pdb_link_records_2"):
       remove_white_spaces=False)
 
 if __name__ == '__main__':
-  exercise_1()
-  exercise_2()
-  print("OK")
+  mon_lib_srv = None
+  ener_lib = None
+  try:
+    mon_lib_srv = monomer_library.server.server()
+    ener_lib = monomer_library.server.ener_lib()
+  except: # intentional
+    print("Can not initialize monomer_library, skipping test.")
+  if mon_lib_srv is not None and ener_lib is not None:
+    exercise_1()
+    exercise_2()
+    print("OK")

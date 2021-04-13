@@ -1,6 +1,3 @@
-from __future__ import absolute_import, division, print_function
-from six.moves import range
-
 '''
 Standard command-line parser for CCTBX programs
 
@@ -9,6 +6,7 @@ command-line as well as have standard command-line flags for showing the
 PHIL scope and citations for a program.
 
 '''
+from __future__ import absolute_import, division, print_function
 
 import argparse, getpass, logging, os, sys, time
 
@@ -38,13 +36,13 @@ def run_program(program_class=None, custom_process_arguments=None,
   :rtype:                whatever is returned from program_class.get_results()
   '''
 
-  assert (program_class is not None)
+  assert program_class is not None
 
-  if (args is None):
+  if args is None:
     args = sys.argv[1:]
 
   # create logger
-  if (logger is None):
+  if logger is None:
     logger = multi_out()
     logger.register('stdout', sys.stdout)
     logger.register('parser_log', StringIO())
@@ -95,13 +93,13 @@ class ParserBase(argparse.ArgumentParser):
     self.parse_dir = parse_dir
 
     # add default behavior for positional arguments
-    if (self.parse_files):
+    if self.parse_files:
       self.add_argument('files', nargs='*', help='Input file(s) (e.g. model.cif)',
                         action=ParsePositionalArgumentsAction)
-    if (self.parse_phil):
+    if self.parse_phil:
       self.add_argument('phil', nargs='*', help='Parameter(s) (e.g. d_min=2.0)',
                         action=ParsePositionalArgumentsAction)
-    if (self.parse_dir):
+    if self.parse_dir:
       self.add_argument('dir', nargs='*', help='Input directory',
                         action=ParsePositionalArgumentsAction)
 
@@ -121,46 +119,45 @@ class ParsePositionalArgumentsAction(argparse.Action):
     parse_dir = hasattr(namespace, 'dir')
 
     # get previous values or define default
-    if ( parse_files and (getattr(namespace, 'files') is not None) ):
+    if parse_files and getattr(namespace, 'files') is not None:
       files = namespace.files
     else:
       files = list()
-    if ( parse_phil and (getattr(namespace, 'phil') is not None) ):
+    if parse_phil and getattr(namespace, 'phil') is not None:
       phil = namespace.phil
     else:
       phil = list()
-    if ( parse_dir and (getattr(namespace, 'dir') is not None) ):
+    if parse_dir and getattr(namespace, 'dir') is not None:
       directory = namespace.dir
     else:
       directory = list()
-    if ( hasattr(namespace, 'unknown') and
-         (getattr(namespace, 'unknown') is not None) ):
+    if hasattr(namespace, 'unknown') \
+      and getattr(namespace, 'unknown') is not None:
       unknown = namespace.unknown
     else:
       unknown = list()
 
     # separate values
     for value in values:
-      if (os.path.isfile(value)):
+      if os.path.isfile(value):
         files.append(value)
-      elif ( (isinstance(value, str)) and
-             ('=' in value) ):
+      elif isinstance(value, str) and '=' in value:
         phil.append(value)
-      elif (os.path.isdir(value)):
+      elif os.path.isdir(value):
         directory.append(value)
       else:
         unknown.append(value)
 
     # update options
-    if (parse_files):
+    if parse_files:
       setattr(namespace, 'files', files)
     else:
       unknown.extend(files)
-    if (parse_phil):
+    if parse_phil:
       setattr(namespace, 'phil', phil)
     else:
       unknown.extend(phil)
-    if (parse_dir):
+    if parse_dir:
       setattr(namespace, 'dir', directory)
     else:
       unknown.extend(directory)
@@ -186,6 +183,8 @@ class CCTBXParser(ParserBase):
       self.prog = 'unknown.unknown'
     if program_class.program_name is not None:
       self.prog = program_class.program_name
+    if program_class.program_name is None:
+      program_class.program_name = self.prog
     self.prefix = self.prog.split('.')[-1]
 
     # PHIL filenames
@@ -210,7 +209,7 @@ class CCTBXParser(ParserBase):
     self.program_class = program_class
     self.custom_process_arguments = custom_process_arguments
     self.logger = logger
-    if (self.logger is None):
+    if self.logger is None:
       self.logger = logging.getLogger('main')
     self.data_manager = DataManager(
       datatypes=program_class.datatypes,
@@ -218,7 +217,7 @@ class CCTBXParser(ParserBase):
       logger=self.logger)
 
     # add PHIL converters if available
-    if (len(program_class.phil_converters) > 0):
+    if len(program_class.phil_converters) > 0:
       iotbx.phil.default_converter_registry = \
         libtbx.phil.extended_converter_registry(
           additional_converters=program_class.phil_converters,
@@ -241,7 +240,7 @@ class CCTBXParser(ParserBase):
     # --show-defaults=n sets it to n and it can only be {0, 1, 2, 3}
     self.add_argument(
       '--show-defaults', '--show_defaults',
-      nargs='?', const=0, type=int, choices=list(range(0,4)),
+      nargs='?', const=0, type=int, choices=range(0,4),
       help='show default parameters with expert level (default=0)')
 
     # --attributes-level by itself is set to 0
@@ -306,12 +305,18 @@ class CCTBXParser(ParserBase):
       nargs='?', const='default', type=str, choices=['default', 'cell', 'iucr'],
       help='show citation(s) for program in different formats')
 
+    # --version
+    # returns the program version
+    self.add_argument(
+      '--version', '-v', action='store_true',
+      help='show version information')
+
   # ---------------------------------------------------------------------------
   def parse_args(self, args):
     '''
     '''
     # default behavior with no arguments
-    if (len(args) == 0):
+    if len(args) == 0:
       self.print_help()
       self.exit()
 
@@ -319,18 +324,21 @@ class CCTBXParser(ParserBase):
     self.namespace = super(CCTBXParser, self).parse_args(args)
 
     # process command-line options
-    if (self.namespace.attributes_level is not None):
-      if (self.namespace.show_defaults is None):
+    if self.namespace.attributes_level is not None:
+      if self.namespace.show_defaults is None:
         self.error('--attributes-level requires --show-defaults to be set')
-    if (self.namespace.show_defaults is not None):
-      if (self.namespace.attributes_level is None):
+    if self.namespace.show_defaults is not None:
+      if self.namespace.attributes_level is None:
         self.namespace.attributes_level = 0
       self.master_phil.show(expert_level=self.namespace.show_defaults,
                             attributes_level=self.namespace.attributes_level,
                             out=self.logger)
       self.exit()
-    if (self.namespace.citations is not None):
+    if self.namespace.citations is not None:
       self.show_citations()
+      self.exit()
+    if self.namespace.version:
+      print(self.program_class.get_version(), file=self.logger)
       self.exit()
 
     # start program header
@@ -340,15 +348,15 @@ class CCTBXParser(ParserBase):
     print('', file=self.logger)
 
     # process files
-    if (self.parse_files):
+    if self.parse_files:
       self.process_files(self.namespace.files)
 
     # process phil and phil files
-    if (self.parse_phil):
+    if self.parse_phil:
       self.process_phil(self.namespace.phil)
 
     # process directories
-    if (self.parse_dir):
+    if self.parse_dir:
       self.process_dir(self.namespace.dir)
 
     # custom processing of arguments (if available)
@@ -361,7 +369,7 @@ class CCTBXParser(ParserBase):
     # A libtbx.phil.scope_extract object can be converted into a
     # libtbx.phil.scope object by
     #    CCTBXParser.master_phil.format(python_object=<scope_extract>)
-    if (self.custom_process_arguments is not None):
+    if self.custom_process_arguments is not None:
       self.custom_process_arguments(self)
       assert(isinstance(self.working_phil, libtbx.phil.scope))
 
@@ -393,7 +401,7 @@ class CCTBXParser(ParserBase):
     for filename in file_list:
       a = any_file(filename)
       process_function = 'process_%s_file' % data_manager_type.get(a.file_type)
-      if (hasattr(self.data_manager, process_function)):
+      if hasattr(self.data_manager, process_function):
         getattr(self.data_manager, process_function)(filename)
         print('  Found %s, %s' % (data_manager_type[a.file_type], filename),
               file=self.logger)
@@ -402,8 +410,8 @@ class CCTBXParser(ParserBase):
         unused_files.append(filename)
 
     # show unrecognized files
-    if (len(unused_files) > 0):
-      if (printed_something):
+    if len(unused_files) > 0:
+      if printed_something:
         print('', file=self.logger)
       print('  Files not used by program:', file=self.logger)
       print('  --------------------------', file=self.logger)
@@ -417,10 +425,10 @@ class CCTBXParser(ParserBase):
     phil_names = self.data_manager.get_phil_names()
     for name in phil_names:
       phil = self.data_manager.get_phil(name)
-      if (hasattr(phil.extract(), 'data_manager')):
+      if hasattr(phil.extract(), 'data_manager'):
         self.data_manager.load_phil_scope(phil)
 
-    if (not printed_something):
+    if not printed_something:
       print('  No files found', file=self.logger)
 
     print('', file=self.logger)
@@ -443,7 +451,7 @@ class CCTBXParser(ParserBase):
     unused_phil = list()
 
     # PHIL files are processed in order from command-line
-    if (self.data_manager.has_phils()):
+    if self.data_manager.has_phils():
       phil_names = self.data_manager.get_phil_names()
       phil = list()
       print('  Adding PHIL files:', file=self.logger)
@@ -452,7 +460,7 @@ class CCTBXParser(ParserBase):
         # remove DataManager scope since input files are already loaded
         phil_scope = self.data_manager.get_phil(name)
         for phil_object in phil_scope.objects:
-          if (phil_object.name == 'data_manager'):
+          if phil_object.name == 'data_manager':
             phil_scope.objects.remove(phil_object)
         phil.append(phil_scope)
         print('    %s' % name, file=self.logger)
@@ -466,7 +474,7 @@ class CCTBXParser(ParserBase):
       unused_phil.append(arg)
       return True
 
-    if (len(phil_list) > 0):
+    if len(phil_list) > 0:
       interpreter = self.master_phil.command_line_argument_interpreter(
         home_scope='')
       print('  Adding command-line PHIL:', file=self.logger)
@@ -477,11 +485,11 @@ class CCTBXParser(ParserBase):
       printed_something = True
       working = interpreter.process_args(
         phil_list, custom_processor=custom_processor)
-      if (len(working) > 0):
+      if len(working) > 0:
         sources.extend(working)
-    if (self.namespace.overwrite):  # override overwrite if True
+    if self.namespace.overwrite:  # override overwrite if True
       sources.append(iotbx.phil.parse('output.overwrite=True'))
-    if ( (len(data_sources) + len(sources)) > 0):
+    if len(data_sources) + len(sources) > 0:
       self.working_phil, more_unused_phil = self.master_phil.fetch(
         sources=data_sources + sources, track_unused_definitions=True)
       unused_phil.extend(more_unused_phil)
@@ -489,7 +497,7 @@ class CCTBXParser(ParserBase):
       self.working_phil = self.master_phil.fetch()
 
     # show unrecognized parameters and abort
-    if (len(unused_phil) > 0):
+    if len(unused_phil) > 0:
       print('  Unrecognized PHIL parameters:', file=self.logger)
       print('  -----------------------------', file=self.logger)
       for phil in unused_phil:
@@ -508,21 +516,21 @@ class CCTBXParser(ParserBase):
     # defined by PHIL parameters that should be added to the DataManager
     diff_phil = self.master_phil.fetch_diff(self.working_phil)
     paths = self.check_phil_for_paths(diff_phil)
-    if (len(paths) > 0):
+    if len(paths) > 0:
       files = list()
       dirs = list()
       for path in paths:
-        if (path is not None):
-          if (os.path.isfile(path)):
+        if path is not None:
+          if os.path.isfile(path):
             files.append(path)
-          elif (os.path.isdir(path)):
+          elif os.path.isdir(path):
             dirs.append(path)
-      if (self.parse_files):
+      if self.parse_files:
         self.process_files(files, message='Processing files from PHIL:')
-      if (self.parse_dir):
+      if self.parse_dir:
         self.process_dir(dirs, message='Processing directories from PHIL:')
 
-    if (not printed_something):
+    if not printed_something:
       print('  No PHIL parameters found', file=self.logger)
       print('', file=self.logger)
 
@@ -541,13 +549,13 @@ class CCTBXParser(ParserBase):
     Returns the paths (empty list means no paths were found)
     '''
     paths = list()
-    if (phil_scope.is_definition):
-      if (phil_scope.type.phil_type == 'path'):
+    if phil_scope.is_definition:
+      if phil_scope.type.phil_type == 'path':
         if phil_scope.style is not None and 'new_file' in phil_scope.style:
           pass
         else:
           paths.append(phil_scope.extract())
-    elif (phil_scope.is_scope):
+    elif phil_scope.is_scope:
       for phil_object in phil_scope.objects:
         paths.extend(self.check_phil_for_paths(phil_object))
     return paths
@@ -561,8 +569,8 @@ class CCTBXParser(ParserBase):
     working_phil_extract = self.working_phil.extract()
 
     # update default model with program pdb interpretation scope
-    if (self.data_manager.supports('model') and
-        (self.data_manager.get_default_model_name() is not None)):
+    if self.data_manager.supports('model') \
+      and self.data_manager.get_default_model_name() is not None:
       self.data_manager.update_pdb_interpretation_for_model(
         self.data_manager.get_default_model_name(), working_phil_extract)
 
@@ -577,7 +585,7 @@ class CCTBXParser(ParserBase):
                  self.working_phil.extract().output.overwrite)
 
     # check for any remaining unknown arguments
-    if (len(self.namespace.unknown) > 0):
+    if len(self.namespace.unknown) > 0:
       error_message = 'The following arguments are not recognized:\n'
       for value in self.namespace.unknown:
         error_message += '  %s\n' % value
@@ -600,7 +608,7 @@ class CCTBXParser(ParserBase):
     # show final processed phil scope
     print('Final processed PHIL parameters:', file=self.logger)
     print('-'*self.text_width, file=self.logger)
-    if (is_different):
+    if is_different:
       data_diff.show(prefix='  ', out=self.logger)
       phil_diff.show(prefix='  ', out=self.logger)
     else:
@@ -608,13 +616,13 @@ class CCTBXParser(ParserBase):
     print('', file=self.logger)
 
     # write scopes if requested
-    if (self.namespace.write_data or self.namespace.write_defaults or
-        self.namespace.write_modified or self.namespace.write_all):
+    if self.namespace.write_data or self.namespace.write_defaults \
+      or self.namespace.write_modified or self.namespace.write_all:
       print('Writing program PHIL file(s):', file=self.logger)
 
     # write DataManager scope
-    if (self.namespace.write_data):
-      if (data_is_different):
+    if self.namespace.write_data:
+      if data_is_different:
         self.data_manager.write_phil_file(
           self.data_manager.export_phil_scope().as_str(),
           filename=self.data_filename,
@@ -633,7 +641,7 @@ class CCTBXParser(ParserBase):
 
     # write differences
     if self.namespace.write_modified or self.namespace.diff_params:
-      if (phil_is_different):
+      if phil_is_different:
         ow = overwrite or self.namespace.diff_params
         self.data_manager.write_phil_file(
           phil_diff.as_str(), filename=self.modified_filename,
@@ -646,7 +654,7 @@ class CCTBXParser(ParserBase):
         sys.exit(0)
 
     # write all parameters (DataManager + Program)
-    if (self.namespace.write_all):
+    if self.namespace.write_all:
       all_phil = self.data_manager.export_phil_scope().as_str()
       all_phil += self.working_phil.as_str(expert_level=3)
       self.data_manager.write_phil_file(
@@ -660,20 +668,20 @@ class CCTBXParser(ParserBase):
   def show_citations(self):
     # build list of program-specific citations
     program_citations = list()
-    if (self.program_class.citations is not None):
+    if self.program_class.citations is not None:
       class_citations = citations.master_citation_phil.fetch(
         source=self.program_class.citations).extract()
       for citation in class_citations.citation:
         program_citations.append(citation)
     for article_id in self.program_class.known_article_ids:
       citation = citations.citations_db.get(article_id)
-      if (citation is not None):
+      if citation is not None:
         program_citations.append(citation)
       else:
         raise Sorry('"%s" not found citations database' % article_id)
 
     # show program-specific citations and general citation for CCTBX
-    if (len(program_citations) > 0):
+    if len(program_citations) > 0:
       print('Citation(s) for %s:' % self.prog, file=self.logger)
       print('-'*self.text_width, file=self.logger)
       print('', file=self.logger)

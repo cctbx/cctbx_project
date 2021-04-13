@@ -52,6 +52,7 @@ class ncs_aware_refinement(object):
       for i, result in enumerate(stdout_and_results):
         values = values.set_selected(selections[i], result[1])
       model.set_b_iso(values = values)
+      return values
 
   def run_one_one(self, args):
     model = args[0].deep_copy()

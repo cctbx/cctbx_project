@@ -116,6 +116,9 @@ db {
   port = 3306
     .type = int
     .help = Port number to be used for connection
+  logging_batch_size = 3
+    .type = int
+    .help = Number of images to log at once. Increase if using many (thousands) of processors.
 }
 """
 master_phil_scope = parse(master_phil_str + db_phil_str, process_includes=True)

@@ -47,9 +47,10 @@ class ArrayInfo:
       if (isinstance(data, flex.hendrickson_lattman)):
         data = graphics_utils.NoNansHL( data )
         # for now display HL coefficients as a simple sum
-        self.maxdata = max([e[0]+e[1]+e[2]+e[3] for e in data ])
-        self.mindata = min([e[0]+e[1]+e[2]+e[3] for e in data ])
-        arrsize = len([42 for e in millarr.data() if not math.isnan(e[0]+e[1]+e[2]+e[3])])
+        if arrsize:
+          self.maxdata = max([e[0]+e[1]+e[2]+e[3] for e in data ])
+          self.mindata = min([e[0]+e[1]+e[2]+e[3] for e in data ])
+          arrsize = len([42 for e in millarr.data() if not math.isnan(e[0]+e[1]+e[2]+e[3])])
         self.datatype = "ishendricksonlattman"
       else:
         arrsize = len([42 for e in millarr.data() if not math.isnan(abs(e))])

@@ -1,3 +1,13 @@
+2021.3
+======
+
+* Initial support for native compilation on Apple Silicon
+* Real-space refinement of occupancies and isotropic ADP
+* Improvements in map_model_manager
+
+  * Split up map and model by NCS groups
+  * Create new map_model_manager with resampled maps
+
 2021.2
 ======
 

@@ -192,7 +192,7 @@ class IndexingJob(Job):
       experiment_tag            = self.app.params.experiment_tag,
       calib_dir                 = self.rungroup.calib_dir,
       nproc                     = self.app.params.mp.nproc,
-      nnodes                    = self.app.params.mp.nnodes,
+      nnodes                    = self.app.params.mp.nnodes_index or self.app.params.mp.nnodes,
       nproc_per_node            = self.app.params.mp.nproc_per_node,
       queue                     = self.app.params.mp.queue or None,
       env_script                = self.app.params.mp.env_script[0] if self.app.params.mp.env_script is not None and len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
@@ -643,7 +643,7 @@ class ScalingJob(Job):
       target                    = target_phil_path,
       # always use mpi for 'lcls'
       use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls'),
-      nnodes                    = self.app.params.mp.nnodes,
+      nnodes                    = self.app.params.mp.nnodes_scale or self.app.params.mp.nnodes,
       wall_time                 = self.app.params.mp.wall_time,
     )
 
@@ -728,7 +728,14 @@ class MergingJob(Job):
 
     command = "cctbx.xfel.merge %s"%target_phil_path
     submit_path = os.path.join(output_path, "submit.sh")
-    return do_submit(command, submit_path, output_path, self.app.params.mp, identifier_string)
+
+    params = self.app.params.mp
+    if params.nnodes_merge:
+      import copy
+      params = copy.deepcopy(params)
+      params.nnodes = params.nnodes_merge
+
+    return do_submit(command, submit_path, output_path, params, identifier_string)
 
 # Support classes and functions for job submission
 

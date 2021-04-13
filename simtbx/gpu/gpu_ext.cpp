@@ -56,6 +56,10 @@ namespace simtbx { namespace gpu {
              "Update raw_pixels on host with array from GPU")
         .def("get_raw_pixels_cuda",&simtbx::gpu::gpu_detector::get_raw_pixels_cuda,
              "return multipanel detector raw pixels as a flex array")
+        .def("get_whitelist_raw_pixels_cuda",
+              (af::shared<double> (simtbx::gpu::gpu_detector::*)(af::shared<std::size_t>))
+              &simtbx::gpu::gpu_detector::get_whitelist_raw_pixels_cuda,
+             "return only those raw pixels requested by the whitelist selection, as a 1D flex array")
         .def("each_image_free_cuda", &simtbx::gpu::gpu_detector::each_image_free_cuda)
         ;
     }

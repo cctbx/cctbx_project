@@ -1437,13 +1437,13 @@ class RunTab(BaseTab):
 
     self.button_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.button_sizer.Add(self.btn_multirun_tags,
-                          flag=wx.RIGHT | wx.LEFT | wx.BOTTOM | wx.ALIGN_RIGHT,
+                          flag=wx.RIGHT | wx.LEFT | wx.BOTTOM,
                           border=10)
     self.button_sizer.Add(self.btn_persistent_tags,
-                          flag=wx.RIGHT | wx.LEFT | wx.BOTTOM | wx.ALIGN_RIGHT,
+                          flag=wx.RIGHT | wx.LEFT | wx.BOTTOM,
                           border=10)
     self.button_sizer.Add(self.btn_manage_tags,
-                          flag=wx.RIGHT | wx.LEFT | wx.BOTTOM | wx.ALIGN_RIGHT,
+                          flag=wx.RIGHT | wx.LEFT | wx.BOTTOM,
                           border=10)
     self.main_sizer.Add(self.button_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
@@ -3258,7 +3258,7 @@ class TrialPanel(wx.Panel):
                        border=10)
 
     self.main_sizer.Add(self.block_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.add_panel, flag=wx.ALL | wx.ALIGN_BOTTOM, border=5)
+    self.main_sizer.Add(self.add_panel, flag=wx.ALL, border=5)
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onAddBlock, self.btn_add_block)
@@ -3371,7 +3371,7 @@ class DatasetPanel(wx.Panel):
 
     self.main_sizer.Add(self.dataset_comment, 0, flag=wx.ALL, border=10)
     self.main_sizer.Add(self.task_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.add_panel, flag=wx.ALL | wx.ALIGN_BOTTOM, border=5)
+    self.main_sizer.Add(self.add_panel, flag=wx.ALL, border=5)
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onAddTask, self.btn_add_task)

@@ -336,6 +336,10 @@ class TargetWithFastRij(Target):
         i_last = self._lattices[-1]
         self._data = self._data[:i_last]
 
+  def compute_gradients(self, x):
+    grad = super(TargetWithFastRij, self).compute_gradients(x)
+    return grad.A1
+
   def _compute_rij_wij(self, use_cache=True, use_super=False):
 
     if use_super:
