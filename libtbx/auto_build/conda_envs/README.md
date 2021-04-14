@@ -13,3 +13,6 @@ Assuming you have already downloaded the relevant source files with ```python bo
 
 ## Using the build
 Activating the ```conda``` environment is not necessary once everything is built. You can use the installation normally by setting up your paths with ```build/setpaths.sh``` (or the ```csh``` equivalent).
+
+## Updating environments
+The general environment specification, `cctbx.devenv.yml`, is consolidated across platforms by using the [`conda-devenv` package](https://conda-devenv.readthedocs.io). Using Jinja2 syntax, platform specific dependencies can be added similar to how `conda-build` specifies dependencies. This consolidated environment file can be used to update the versioned environment files.

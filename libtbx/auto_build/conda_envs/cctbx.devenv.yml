@@ -11,7 +11,8 @@ dependencies:
   # host
   - future
   - numpy
-  - python =3.9
+  - python ={{ get_env("PY_VER", default="3.8") }}
+  - python.app  # [osx]
   - scons
   - setuptools
   - six
@@ -25,10 +26,24 @@ dependencies:
   - requests
   - six
 
+  # cctbx
+  - ipython
+  - pyside2  # [x86_64]
+  - pyzmq
+  - websockets
+  - wxpython  # [x86_64]
+
   # extra
   - libsvm_py
   - pytest
 
+  # docs
+  - docutils
+  - numpydoc
+  - sphinx
+
   # dxtbx
+  - h5py
   - hdf5
+  - hdf5-external-filter-plugins
   - libtiff
