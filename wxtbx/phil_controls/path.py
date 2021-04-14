@@ -275,6 +275,7 @@ class PathDropTarget(wx.FileDropTarget):
     self.window.SetValue(filenames[-1])
     self.window.Validate()
     self.window.DoSendEvent()
+    return True
 
 if (__name__ == "__main__"):
   app = wx.App(0)
