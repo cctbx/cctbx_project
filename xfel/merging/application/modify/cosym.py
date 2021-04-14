@@ -169,7 +169,7 @@ class cosym(worker):
 
       minimum_to_input = COSYM.cb_op_to_minimum[sidx_plus].inverse()
       reindex_op = minimum_to_input * \
-                     sgtbx.change_of_basis_op(COSYM.cosym_analysis.reindexing_ops[sidx_plus][0]) * \
+                     sgtbx.change_of_basis_op(COSYM.cosym_analysis.reindexing_ops[sidx_plus]) * \
                      COSYM.cb_op_to_minimum[sidx_plus]
 
       # Keep this block even though not currently used; need for future assertions:
@@ -218,7 +218,7 @@ class cosym(worker):
           print("Anchor","experiments:",len(sampling_experiments_for_cosym))
 
           anchor_op = ANCHOR.cb_op_to_minimum[0].inverse() * \
-                     sgtbx.change_of_basis_op(ANCHOR.cosym_analysis.reindexing_ops[0][0]) * \
+                     sgtbx.change_of_basis_op(ANCHOR.cosym_analysis.reindexing_ops[0]) * \
                      ANCHOR.cb_op_to_minimum[0]
           anchor_coset = None
           for p_no, partition in enumerate(partitions):
@@ -236,7 +236,7 @@ class cosym(worker):
 
             minimum_to_input = ANCHOR.cb_op_to_minimum[sidx_plus].inverse()
             reindex_op = minimum_to_input * \
-                     sgtbx.change_of_basis_op(ANCHOR.cosym_analysis.reindexing_ops[sidx_plus][0]) * \
+                     sgtbx.change_of_basis_op(ANCHOR.cosym_analysis.reindexing_ops[sidx_plus]) * \
                      ANCHOR.cb_op_to_minimum[sidx_plus]
             this_reindex_op = reindex_op.as_hkl()
             this_coset = None
