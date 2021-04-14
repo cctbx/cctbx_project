@@ -112,9 +112,6 @@ class reader(object):
     else:
       return cctbxdat.miller_arrays
 
-# style classic uses original parsing labels of reflection data
-# style new uses regular expressions for parsing and associating reflection data columns appropriately
-
   def as_miller_arrays(self, data_block_name=None,
                        crystal_symmetry=None,
                        force_symmetry=False,
