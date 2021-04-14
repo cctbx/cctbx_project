@@ -128,7 +128,7 @@ class PathCtrl(wx.PyPanel, phil_controls.PhilCtrl):
     return value
 
   def Validate(self):
-    self._path_text.GetValidator().Validate(self)
+    return self._path_text.GetValidator().Validate(self)
 
   def OnBrowse(self, event):
     flags = 0
