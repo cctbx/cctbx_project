@@ -175,7 +175,7 @@ class cosym(worker):
       # Keep this block even though not currently used; need for future assertions:
       LG = COSYM.cosym_analysis.target._lattice_group
       LGINP = LG.change_basis(COSYM.cosym_analysis.cb_op_inp_min.inverse()).change_basis(minimum_to_input)
-      SG = COSYM.cosym_analysis.space_groups[sidx_plus]
+      SG = COSYM.cosym_analysis.input_space_group
       SGINP = SG.change_basis(COSYM.cosym_analysis.cb_op_inp_min.inverse()).change_basis(minimum_to_input)
       CO = sgtbx.cosets.left_decomposition(LGINP, SGINP)
       partitions = CO.partitions
