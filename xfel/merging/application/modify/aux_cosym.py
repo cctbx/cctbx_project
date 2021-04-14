@@ -24,6 +24,10 @@ class CosymAnalysis(BaseClass):
     self.output_dir = kwargs.pop('output_dir', None)
     super(CosymAnalysis, self).__init__(*args, **kwargs)
 
+  def run(self):
+    super(CosymAnalysis, self).run()
+    if self.do_plot: self.plot_after_cluster_analysis()
+
   def plot_after_optimize(self):
           print ("optimized coordinates", self.coords.shape)
           xx = []
@@ -43,22 +47,13 @@ class CosymAnalysis(BaseClass):
           plt.show()
 
   def plot_after_cluster_analysis(self):
-          # do another coords plot, but color by cluster
-          # but the problem with this is I don't know to which cluster id==0['h,k,l'] belongs
           xx = flex.double()
           yy = flex.double()
           for item in range(self.coords.shape[0]):
             xx.append(self.coords[(item,0)])
             yy.append(self.coords[(item,1)])
           from matplotlib import pyplot as plt
-          for cl_id in [0.0,1.0]:
-            xs = []
-            ys = []
-            for k in range(len(xx)):
-              if self.cluster_labels[k]==cl_id:
-                xs.append(xx[k])
-                ys.append(yy[k])
-            plt.plot(xs,ys,{0.0:"b.",1.0:"r."}[cl_id])
+          plt.plot(xx, yy, 'r.')
           ax = plt.gca()
           ax.set_aspect("equal")
           circle = plt.Circle((0,0),1,fill=False,edgecolor="b")
