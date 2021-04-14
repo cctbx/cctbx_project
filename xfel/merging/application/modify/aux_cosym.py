@@ -1,8 +1,6 @@
 from __future__ import absolute_import, division, print_function
-import copy
 import os
 from scitbx.array_family import flex
-from dials.util.observer import Subject
 from cctbx import sgtbx, miller
 from libtbx import easy_mp
 from scipy import sparse
