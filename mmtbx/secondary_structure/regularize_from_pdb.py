@@ -425,7 +425,6 @@ def get_and_split_model(pdb_hierarchy=None,
       hierarchy=pdb_hierarchy,
       info={})
     models=split_model(model=model,verbose=False)
-    print("Split model into %d chains" %(len(models)), file=out)
 
     for model in models:
       model.hierarchy.remove_alt_confs(always_keep_one_conformer=False)

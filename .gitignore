@@ -28,6 +28,9 @@ cctbx_website/examples
 cctbx_version*
 setup.py
 
+# Ignore .yml files created by conda-devenv
+cctbx.yml
+
 # Ignores copied over from subversion:
 cctbx/dev
 cctbx/doc

@@ -128,7 +128,7 @@ class PathCtrl(wx.PyPanel, phil_controls.PhilCtrl):
     return value
 
   def Validate(self):
-    self._path_text.GetValidator().Validate(self)
+    return self._path_text.GetValidator().Validate(self)
 
   def OnBrowse(self, event):
     flags = 0
@@ -275,6 +275,7 @@ class PathDropTarget(wx.FileDropTarget):
     self.window.SetValue(filenames[-1])
     self.window.Validate()
     self.window.DoSendEvent()
+    return True
 
 if (__name__ == "__main__"):
   app = wx.App(0)

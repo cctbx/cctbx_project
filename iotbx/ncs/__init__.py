@@ -142,6 +142,7 @@ class input(object):
     self.truncated_hierarchy = None
     self.truncated_h_asc = None
     self.chains_info = None
+    self.phil_groups_modified = False # Switched if modifying input phil groups
 
     extension = ''
     # set search parameters
@@ -463,6 +464,7 @@ class input(object):
         "  Please check the validated selection further down.\n"
         if selections_were_modified:
           print(modified_msg, file=self.log)
+          self.phil_groups_modified = True
         else:
           print(ok_msg, file=self.log)
     # print "len(validated_ncs_groups)", len(validated_ncs_groups)

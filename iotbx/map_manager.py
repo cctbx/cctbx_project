@@ -1364,12 +1364,14 @@ class map_manager(map_reader, write_ccp4_map):
     if self._resolution is not None and (not force):
       return self._resolution
 
+
     assert method in ['d99','d9','d999','d_min']
 
 
     working_resolution = -1 # now get it
 
-    if method in ['d99','d9','d999']:
+    if method in ['d99','d9','d999'] and \
+        self.map_data().count(0) != self.map_data().size():
       from cctbx.maptbx import d99
       if self.origin_is_zero():
         map_data = self.map_data()
