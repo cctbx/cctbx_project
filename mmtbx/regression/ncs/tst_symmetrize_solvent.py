@@ -1,11 +1,10 @@
+from __future__ import absolute_import, division, print_function
 from iotbx.data_manager import DataManager
 from mmtbx.ncs.symmetrize_solvent import SymmetrizeSolvent
 from libtbx.test_utils import approx_equal
 from cctbx.array_family import flex
 
 import time
-
-
 
 
 data_7kjr_frag_asym = """
@@ -16854,46 +16853,48 @@ HETATM 7596  O   HOH D3154     107.584 162.676 107.713  1.00 72.58           O
 """
 
 
+def same_sites(model1, model2, eps=1e-3):
+    # test whether two models have similar cartesian sites
+    sites1 = model1.get_sites_cart()
+    sites2 = model2.get_sites_cart()
+    if len(sites1) == len(sites2):
+        d = flex.sqrt((sites1 - sites2).dot())
+        return approx_equal(d.min_max_mean().as_tuple(), [0, 0, 0], eps=eps)
+    else:
+        return False
 
-def same_sites(model1,model2,eps=1e-3):
-  # test whether two models have similar cartesian sites
-  sites1 = model1.get_sites_cart()
-  sites2 = model2.get_sites_cart()
-  if len(sites1) == len(sites2):
-    d = flex.sqrt((sites1- sites2).dot())
-    return approx_equal(d.min_max_mean().as_tuple(), [0,0,0],eps=eps)
-  else:
-    return False
 
 def tst_01():
-  # test a simple example, should only add 1 water
-  dm = DataManager()
-  dm.process_model_str("7kjr_frag_asym", data_7kjr_frag_asym)
-  model = dm.get_model()
-  symmetrizer = SymmetrizeSolvent(model)
-  symmetrized_model = symmetrizer.run()
+    # test a simple example, should only add 1 water
+    dm = DataManager()
+    dm.process_model_str("7kjr_frag_asym", data_7kjr_frag_asym)
+    model = dm.get_model()
+    symmetrizer = SymmetrizeSolvent(model)
+    symmetrized_model = symmetrizer.run()
 
-  dm2 = DataManager()
-  dm2.process_model_str("7kjr_frag_sym", data_7kjr_frag_sym)
-  model2 = dm2.get_model()
-  assert(same_sites(model2, symmetrized_model, eps=1e-3))
+    dm2 = DataManager()
+    dm2.process_model_str("7kjr_frag_sym", data_7kjr_frag_sym)
+    model2 = dm2.get_model()
+    assert same_sites(model2, symmetrized_model, eps=1e-3)
+
 
 def tst_02():
-  # test a more complex example, 4-fold symmetry, includes non-water solvent
-  dm = DataManager()
-  dm.process_model_str("6cvm_frag_asym", data_6cvm_frag_asym)
-  model = dm.get_model()
-  symmetrizer = SymmetrizeSolvent(model)
-  symmetrized_model = symmetrizer.run()
+    # test a more complex example, 4-fold symmetry, includes non-water solvent
+    dm = DataManager()
+    dm.process_model_str("6cvm_frag_asym", data_6cvm_frag_asym)
+    model = dm.get_model()
+    symmetrizer = SymmetrizeSolvent(model)
+    symmetrized_model = symmetrizer.run()
 
-  dm2 = DataManager()
-  dm2.process_model_str("6cvm_frag_sym", data_6cvm_frag_sym)
-  model2 = dm2.get_model()
-  assert(same_sites(model2, symmetrized_model, eps=1e-3))
+    dm2 = DataManager()
+    dm2.process_model_str("6cvm_frag_sym", data_6cvm_frag_sym)
+    model2 = dm2.get_model()
+    assert same_sites(model2, symmetrized_model, eps=1e-3)
 
-if __name__=="__main__":
-  t0 = time.time()
-  tst_01()
-  tst_02()
-  print("Time: %6.4f"%(time.time()-t0))
-  print("OK")
+
+if __name__ == "__main__":
+    t0 = time.time()
+    tst_01()
+    tst_02()
+    print("Time: %6.4f" % (time.time() - t0))
+    print("OK")
