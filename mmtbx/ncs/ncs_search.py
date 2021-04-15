@@ -23,19 +23,12 @@ class Chains_info(object):
   def __init__(self):
     self.res_names = []
     self.resid = []
-    self.resid_int = []
     self.atom_names = []
     self.atom_selection = []
     self.chains_atom_number = 0
     self.no_altloc = []
     self.gap_residue = []
     self.center_of_coordinates = None
-
-  @property
-  def resid_max(self):
-    if not hasattr(self,"_resid_max"):
-      self._resid_max = max(self.resid_int)
-    return self._resid_max
 
   def __str__(self):
     assert 0
@@ -945,7 +938,6 @@ def get_chains_info(ph, selection_list=None):
     # assert len(ch.residue_groups()) == len(conf.residues())
     for rg, res in zip(ch.residue_groups(), conf.residues()):
       chains_info[ch.id].resid.append(rg.resid())
-      chains_info[ch.id].resid_int.append(int(rg.resid()))
       chains_info[ch.id].res_names.append(rg.atom_groups()[0].resname)
       # atoms = res.atoms()
       ag0 = rg.atom_groups()[0]
