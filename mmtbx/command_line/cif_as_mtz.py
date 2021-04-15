@@ -213,6 +213,7 @@ def get_label(miller_array, output_r_free_label):
       break
     elif miller_array.is_hendrickson_lattman_array():
       label = "HL"
+      break
     elif (miller_array.is_complex_array()):
       if "DELFWT" in l:
         label = "DELFWT"
@@ -678,4 +679,6 @@ def finish_job(results):
   return ([], [])
 
 if(__name__ == "__main__"):
+  import time
+  #time.sleep(10)
   run(sys.argv[1:])

@@ -503,7 +503,7 @@ class miller_array_builder(crystal_symmetry_builder):
                 hlabels = basearraylabels + hl_labels + labelsuffix
                 millarr.set_info(base_array_info.customized_copy(labels= hlabels,
                                                   wavelength=wavelengths.get(w_id, None)))
-                self._arrays[ hl_labels[0]  +jlablsufx ] = millarr
+                self._arrays[ hl_labels[0] + jlablsufx ] = millarr
             # pick up remaining columns if any that weren't identified above
             for label in alllabels:
               if "index_" in label:
