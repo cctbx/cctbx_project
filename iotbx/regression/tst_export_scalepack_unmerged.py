@@ -117,8 +117,6 @@ _refln.intensity_sigma
   assert i_obs_new.indices().all_eq(i_obs_orig.indices())
 
 if (__name__ == "__main__"):
-  import time 
-  #time.sleep(10)
   exercise_scalepack()
   exercise_cif()
   print("OK")
