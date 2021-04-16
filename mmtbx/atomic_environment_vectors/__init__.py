@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import math
 import copy
 import mmtbx.model
+from numpy import NaN
 from libtbx.utils import null_out
 from collections import OrderedDict
 from scitbx.array_family import flex
@@ -47,13 +48,12 @@ def format_HELIX_records_from_AEV(aev_values_dict):
     if value['all'] >= cut_num[0]:
       helix_list = select(value, cut_num[1], key, helix_list)
     elif value['all'] < cut_num[0]:
-      if None in value:
+      if NaN in value:
         helix_list = select(value, cut_num[1], key, helix_list)
       else:
         helix_list = select(value, cut_num[1], key, helix_list)
     # helices records input
     if not [] in helix_list:
-      print(helix_list)
       length = int(helix_list[2].split()[-1]) - int(helix_list[0].split()[-1]) + 1
       if length > cut_num[2]:
         if helix_list[1]==helix_list[3]:
@@ -74,6 +74,7 @@ def generate_perfect_helix(rs_values,
                            radial_eta,
                            angular_eta,
                            angular_zeta,
+                           crystal_symmetry,
                            n_residues=10,
                            residue_code="G",
                            ):
@@ -84,9 +85,10 @@ def generate_perfect_helix(rs_values,
     residue_code*n_residues)
   model = mmtbx.model.manager(
     model_input   = None,
+    crystal_symmetry = crystal_symmetry,
     pdb_hierarchy = perfect_helix_ph,
-    build_grm     = True,
     log           = null_out())
+  model.crystal_symmetry()
   return AEV(model = model,
              rs_values=rs_values,
              ts_values=ts_values,
@@ -104,6 +106,7 @@ def compare(aev_values_dict):
   """
   result = diff_class()
   perfect_helix = generate_perfect_helix(
+                    crystal_symmetry=aev_values_dict.crystal_symmetry,
                     rs_values=aev_values_dict.rs_values,
                     ts_values=aev_values_dict.ts_values,
                     angular_rs_values=aev_values_dict.angular_rs_values,
@@ -118,26 +121,14 @@ def compare(aev_values_dict):
       outl += ' %0.3f' % i
     return outl
 
-  def cosin(value1, value2):
-    assert len(value1) == len(value2)
-    sum1 = 0
-    sum2 = 0
-    sum3 = 0
-    for num in range(len(value1)):
-      sum1 += value1[num] * value2[num]
-      sum2 += value1[num] ** 2
-      sum3 += value2[num] ** 2
-    result = sum1 / ((sum2 ** 0.5) * (sum3 ** 0.5))
-    return result
 
   def set_vals(result, d, verbose=False):
     for key1, value1 in d.items():
       result.setdefault(key1, OrderedDict())
-      result[key1].setdefault(key, None)
+      result[key1].setdefault(key, NaN)
       if value1 != [] and value != []:
         cc = flex.linear_correlation(
         x=flex.double(value), y=flex.double(value1)).coefficient()
-        # cc = cosin(value, value1)
         result[key1][key] = cc
       if verbose:
         print('comparing\n%s\n%s' % (pretty_aev(value), pretty_aev(value1)))
@@ -149,7 +140,7 @@ def compare(aev_values_dict):
   for key1, value1 in result.items():
     sum = 0
     for num in value1.values():
-      if num != None:
+      if num != NaN:
         sum += num
     result[key1]['all'] = sum
   return result
@@ -162,8 +153,8 @@ class diff_class(OrderedDict):
       outl += '  %s :' % (key)
       for key1,value in item.items():
         outl += ' %s: '%key1
-        if value is None:
-          outl += 'None, '
+        if value is NaN:
+          outl += 'NaN, '
         else:
           outl += '%0.2f, ' % value
       outl += '\n'
@@ -181,7 +172,6 @@ class format_class(OrderedDict):
     for key, item in sorted(self.items()):
       outl += '  %s :' % (key)
       for i, v in enumerate(item):
-        # print (v)
         if i==self.length_of_radial: outl+='|'
         outl += '%0.4f, ' % v
       outl += '\n'
@@ -208,8 +198,8 @@ class AEV(object):
                 # parameters for probe angles
                 ):
     self.hierarchy = model.get_hierarchy()
-    self.geometry_restraints_manager = model.get_restraints_manager().geometry
     self.rs_values = rs_values
+    self.crystal_symmetry = model.crystal_symmetry()
     self.radial_eta = radial_eta
     self.cutoff = cutoff
     self.ts_values = ts_values
@@ -225,9 +215,9 @@ class AEV(object):
 
   def get_values(self):
     result = OrderedDict()
-    result['B'] = self.BAEVs.values()[0]
-    result['M'] = self.MAEVs.values()[5]
-    result['E'] = self.EAEVs.values()[-1]
+    result['B'] = list(self.BAEVs.values())[0]
+    result['M'] = list(self.MAEVs.values())[5]
+    result['E'] = list(self.EAEVs.values())[-1]
     return result
 
   def empty_dict(self):
@@ -241,25 +231,6 @@ class AEV(object):
       self.EAEVs.update(results)
     return 0
 
-  # def generate_ca(self, length=5):
-  #   """
-  #   Geting all C-alpha atoms from an whole pdb file.
-  #   """
-  #   # faster with atom selection to CA re CJW update
-  #   protain_fragments = generate_protein_fragments(
-  #     hierarchy = self.chain_hierarchy,
-  #     geometry = self.geometry_restraints_manager,
-  #     include_non_linked=True,
-  #     include_non_standard_peptides=True,
-  #     length=length)
-  #   for five in protain_fragments:
-  #     rc = []
-  #     for residue in five:
-  #       for atom in residue.atoms():
-  #         if atom.name == ' CA ':
-  #           rc.append(atom)
-  #     if len(rc) == length:
-  #       yield rc
   def generate_ca(self, length = 5):
     hierarchy = self.chain_hierarchy
     for chain in hierarchy.chains():
