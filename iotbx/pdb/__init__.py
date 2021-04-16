@@ -743,7 +743,7 @@ def pdb_input(
     file_name = ent_path_local_mirror(pdb_id=pdb_id)
   if (file_name is not None):
     try :
-      with smart_open.for_reading(file_name) as f:
+      with smart_open.for_reading(file_name, gzip_mode='rt') as f:
         lines = f.read()
       return ext.input(
         source_info="file " + str(file_name), # XXX unicode hack - dangerous
