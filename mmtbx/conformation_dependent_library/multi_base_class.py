@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.conformation_dependent_library.LinkedResidues import LinkedResidues
 from mmtbx.conformation_dependent_library.cdl_utils import \
-  get_c_ca_n
+  get_c_ca_n, distance2
 from six.moves import range
 
 def calc_pseudorotation(t0,t1,t2,t3,t4):
@@ -65,9 +65,9 @@ class TwoNucleicResidues(LinkedResidues):
 
   @staticmethod
   def get_o3prime_p(residue, return_subset=False):
-    rc = get_c_ca_n(residue, atom_name_list=[' O3', ' P  '], return_subset=return_subset)
+    rc = get_c_ca_n(residue, atom_name_list=[" O3'", ' P  '], return_subset=return_subset)
     if rc[0] is None:
-      rc = get_c_ca_n(residue, atom_name_list=[' O3*', ' P  '], return_subset=return_subset)
+      rc = get_c_ca_n(residue, atom_name_list=[" O3'", ' P  '], return_subset=return_subset)
     return rc
 
   def are_linked(self,
@@ -79,10 +79,10 @@ class TwoNucleicResidues(LinkedResidues):
     bond_cut_off *= bond_cut_off
     for i, residue in enumerate(self):
       if i==0: continue
-      op1, outl1 = self.get_o3prime_p(residue, return_subset=False)
+      op1, outl1 = self.get_o3prime_p(residue, return_subset=True)
       # if self[i-1] is None: # place holder for omega CDL
       #   return False
-      op2, outl2 = self.get_o3prime_p(self[i-1], return_subset=False)
+      op2, outl2 = self.get_o3prime_p(self[i-1], return_subset=True)
       # if ccn1 is None:
       #   for line in outl1:
       #     if line not in self.errors:

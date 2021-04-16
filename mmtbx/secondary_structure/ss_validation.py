@@ -55,7 +55,7 @@ class gather_ss_stats(object):
         sheets = hsh_tuple[1])
     helix = len(hsh_tuple[0]) > 0
     # print temp_annot.as_pdb_str().replace('\n',' '),
-    ss_params = mmtbx.secondary_structure.default_params
+    ss_params = mmtbx.secondary_structure.manager.get_default_ss_params()
     ss_params.secondary_structure.enabled=True
     ss_params.secondary_structure.protein.remove_outliers=False
     ss_params.secondary_structure.protein.helix=[]

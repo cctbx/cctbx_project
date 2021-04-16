@@ -133,6 +133,7 @@ namespace gpu {
                              dxtbx::model::Beam const& arg_beam):
     h_deviceID(arg_device_id),
     detector(arg_detector),
+    cu_active_pixel_list(NULL),
     cu_accumulate_floatimage(NULL),
     metrology(arg_detector, arg_beam){
     construct_detail(arg_device_id, arg_detector);
@@ -142,6 +143,7 @@ namespace gpu {
                              const simtbx::nanoBragg::nanoBragg& nB):
     h_deviceID(arg_device_id),
     metrology(nB),
+    cu_active_pixel_list(NULL),
     cu_accumulate_floatimage(NULL){
     cudaSetDevice(arg_device_id);
 
@@ -205,7 +207,7 @@ namespace gpu {
   af::flex_double
   gpu_detector::get_raw_pixels_cuda(){
     //return the data array for the multipanel detector case
-    af::flex_double z(af::flex_grid<>(cu_n_panels,cu_slow_pixels,cu_fast_pixels));
+    af::flex_double z(af::flex_grid<>(cu_n_panels,cu_slow_pixels,cu_fast_pixels), af::init_functor_null<double>());
     double* begin = z.begin();
     cudaSafeCall(cudaSetDevice(h_deviceID));
     cudaSafeCall(cudaMemcpy(
@@ -213,6 +215,53 @@ namespace gpu {
      cu_accumulate_floatimage,
      sizeof(*cu_accumulate_floatimage) * _image_size,
      cudaMemcpyDeviceToHost));
+    return z;
+  }
+
+  void
+  gpu_detector::set_active_pixels_on_GPU(af::shared<int> active_pixel_list_value){
+    active_pixel_list = active_pixel_list_value;
+    cudaSafeCall(cudaSetDevice(h_deviceID));
+    int * ptr_active_pixel_list = active_pixel_list.begin();
+    cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_list, sizeof(*cu_active_pixel_list) * active_pixel_list.size() ));
+    cudaSafeCall(cudaMemcpy(cu_active_pixel_list,
+                            ptr_active_pixel_list,
+                            sizeof(*cu_active_pixel_list) * active_pixel_list.size(),
+                            cudaMemcpyHostToDevice));
+  }
+
+  af::shared<double>
+  gpu_detector::get_whitelist_raw_pixels_cuda(af::shared<std::size_t> selection
+  ){
+    //return the data array for the multipanel detector case, but only for whitelist pixels
+    af::shared<double> z(active_pixel_list.size(), af::init_functor_null<double>());
+    double* begin = z.begin();
+    cudaSafeCall(cudaSetDevice(h_deviceID));
+    CUDAREAL * cu_active_pixel_results;
+    std::size_t * cu_active_pixel_selection;
+
+    cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_results, sizeof(*cu_active_pixel_results) * active_pixel_list.size() ));
+    cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_selection, sizeof(*cu_active_pixel_selection) * selection.size() ));
+    cudaSafeCall(cudaMemcpy(cu_active_pixel_selection,
+                 selection.begin(), sizeof(*cu_active_pixel_selection) * selection.size(),
+                 cudaMemcpyHostToDevice));
+
+    cudaDeviceProp deviceProps = { 0 };
+    cudaSafeCall(cudaGetDeviceProperties(&deviceProps, h_deviceID));
+    int smCount = deviceProps.multiProcessorCount;
+    dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+    dim3 numBlocks(smCount * 8, 1);
+    int total_pixels = active_pixel_list.size();
+    get_active_pixel_selection_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
+      cu_active_pixel_results, cu_active_pixel_selection, cu_accumulate_floatimage, total_pixels);
+
+    cudaSafeCall(cudaMemcpy(
+      begin,
+      cu_active_pixel_results,
+      sizeof(*cu_active_pixel_results) * active_pixel_list.size(),
+      cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaFree(cu_active_pixel_selection));
+    cudaSafeCall(cudaFree(cu_active_pixel_results));
     return z;
   }
 
@@ -308,6 +357,7 @@ namespace gpu {
     cudaSafeCall(cudaFree(cu_distance));
     cudaSafeCall(cudaFree(cu_Xbeam));
     cudaSafeCall(cudaFree(cu_Ybeam));
+    cudaSafeCall(cudaFree(cu_active_pixel_list));
   }
 
 } // gpu

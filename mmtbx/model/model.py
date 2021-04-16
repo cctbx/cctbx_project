@@ -885,16 +885,18 @@ class manager(object):
         # This updates some of internals
         self.get_restraints_manager().geometry.pair_proxies(
           sites_cart = self.get_sites_cart())
-        if(self._ss_manager is not None):
-          self.get_restraints_manager().geometry.\
-            set_secondary_structure_restraints(ss_manager=self._ss_manager,
-              hierarchy=self.get_hierarchy(), log=self.log)
 
   def unit_cell_crystal_symmetry(self):
     if self._unit_cell_crystal_symmetry is not None:
       return self._unit_cell_crystal_symmetry
     else:
       return None
+
+  def shifted(self, eps=1.e-3):
+    r = self.shift_cart()
+    if(r is None): return False
+    if(flex.max(flex.abs(flex.double(r)))<=eps): return False
+    return True
 
   def shift_cart(self):
     '''
@@ -1054,6 +1056,31 @@ class manager(object):
       self._xray_structure.set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(value)
       self.set_xray_structure(self._xray_structure.customized_copy(
           non_unit_occupancy_implies_min_distance_sym_equiv_zero=value))
+
+  def ncs_is_strict(self, eps_occ=1.e-2, eps_adp=1.e-2, eps_xyz=1.e-3):
+    """
+    Check sites, ADP and occupancy to obey NCS symmetry
+    """
+    result = group_args(occ = True, adp = True, xyz = True, size = True)
+    result.stop_dynamic_attributes()
+    ncs_groups = self.get_ncs_groups()
+    if(ncs_groups is None or len(ncs_groups)==0): return None
+    for i, g in enumerate(ncs_groups):
+      m_master          = self.select(g.master_iselection)
+      occ_master        = m_master.get_occ()
+      b_master          = m_master.get_b_iso()
+      master_sites_cart = m_master.get_sites_cart()
+      for j, c in enumerate(g.copies):
+        m_copy   = self.select(c.iselection)
+        occ_copy = m_copy.get_occ()
+        b_copy   = m_copy.get_b_iso()
+        if(b_copy.size() != b_master.size()): result.size = False
+        if(flex.max(flex.abs(occ_master-occ_copy))>eps_occ): result.occ = False
+        if(flex.max(flex.abs(b_master-b_copy))>eps_adp): result.adp = False
+        master_on_copy_sites_cart = c.r.elems * master_sites_cart + c.t
+        d = flex.sqrt((master_on_copy_sites_cart-m_copy.get_sites_cart()).dot())
+        if(flex.max(d)>eps_xyz): result.xyz = False
+    return result
 
   def get_hd_selection(self):
     xrs = self.get_xray_structure()

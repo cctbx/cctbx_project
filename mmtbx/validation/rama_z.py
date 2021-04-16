@@ -55,15 +55,10 @@ class rama_z(object):
     # this takes ~0.15 seconds, so I don't see a need to cache it somehow.
     self.db = easy_pickle.load(db_path)
 
+    # Python 3 pickle fix
     # =========================================================================
-    # change keys in pickle to Python 3 string
-    # very temporary fix until pickle is updated
     if sys.version_info.major == 3:
-      from libtbx.utils import to_str
-      for key in list(self.db.keys()):
-        self.db[to_str(key)] = self.db[key]
-        for subkey in list(self.db[key].keys()):
-          self.db[to_str(key)][to_str(subkey)] = self.db[key][subkey]
+      self.db = easy_pickle.fix_py2_pickle(self.db)
     # =========================================================================
 
     self.calibration_values = {

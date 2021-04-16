@@ -1,0 +1,144 @@
+{% extends "cctbx/header.html" %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="col-sm-9 main">
+
+<h2><center>Create a random model and calculate its density</center></h2>
+
+<p class="lead mt-4">This example script shows how to generate a small centrosymmetric unit cell in P-1 with 15 atoms, and how to calculate phases and amplitudes to reconstruct the electron density.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">Required imports</h3>
+
+<p>This script requires the following imports:</p>
+
+<pre class="codeDL"><code>from __future__ import absolute_import, division, print_function
+import iotbx.pdb
+import iotbx.mrcfile
+import mmtbx.model
+import mmtbx.real_space
+from scitbx.array_family import flex
+from cctbx.development import random_structure
+from cctbx import sgtbx
+from cctbx import maptbx
+</code></pre>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">Create a random structure and save as PDB</h3>
+
+<p>Use the <code>random_structure()</code> method from <code>cctbx.development</code> to generate a random structure that has:</p>
+<ul>
+  <li>spcae group P-1</li>
+  <li>unit cell dimensions a=10, b=20, c=30, alpha=70, beta=80, gamma=120</li>
+  <li>15 carbon atoms</li>
+</ul>
+<pre class="codeDL"><code># Create random structure
+xrs = random_structure.xray_structure(
+  space_group_info = sgtbx.space_group_info("P-1"),
+  elements         = ["C"]*15,
+  unit_cell        = (10, 20, 30, 50, 60, 80))
+</code></pre>
+
+<p>Create a <code>model</code> object from this structure:</p>
+<pre class="codeDL"><code># Create model object
+model = mmtbx.model.manager.from_sites_cart(
+  sites_cart       = xrs.sites_cart(),
+  crystal_symmetry = xrs.crystal_symmetry(),
+  resname          = 'DUM')
+</code></pre>
+
+<p><code>from_sites_cart()</code> is a convenience function to create a model object from a list of cartesian coordinates. The default is to use atom name CA, scatterer C, occ 1, b_iso 30, resname GLY, residue numbers starting with 1. Here, the residue name is set to 'DUM', which stands for dummy residue. Note that even if we specify different elements in <code>random_structure()</code>, we will get CA atoms, unless the <code>from_sites_cart()</code> method is supplied with a list of atom names and scatterer names.</p>
+
+<p>Save the model as PDB file:</p>
+<pre class="codeDL"><code># Write it into PDB file
+with open("model.pdb","w") as fo:
+  fo.write(model.model_as_pdb())
+</code></pre>
+
+<p>Here is an example for a model that was created using this procedure (your model will look different, as the procedue will place the atoms at random places):</p>
+
+<img src="{% static 'cctbx/img/script_1_fig1.png' %}" alt="fig1" >
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">Create a map from a PDB file</h3>
+
+<p>Create a model object from a file.</p>
+<pre class="codeDL"><code>  # Read the model file
+pdb_inp = iotbx.pdb.input(file_name = "model.pdb")
+model = mmtbx.model.manager(model_input = pdb_inp)
+xrs = model.get_xray_structure()
+</code></pre>
+
+<p>Calculate structure factors from the model using a high resolution limit of 2 Angstrom. This will give a Fourier map:</p>
+<pre class="codeDL"><code># Calculate structure factors at given resolution.
+f_calc = xrs.structure_factors(d_min = 2.0).f_calc()
+</code></pre>
+
+<p>For book-keeping: save the Fourier map as MTZ file:</p>
+<pre class="codeDL"><code># Write them down as MTZ file
+mtz_dataset = f_calc.as_mtz_dataset(column_root_label="F-calc")
+mtz_object = mtz_dataset.mtz_object()
+mtz_object.write(file_name = "f_calc.mtz")
+</code></pre>
+
+<p>Perform a fast-Fourier-transform (FFT) to convert the structure factors into a real map:</p>
+<pre class="codeDL"><code># Convert Fcalc into real map (just do FFT)
+fft_map = f_calc.fft_map(resolution_factor=1./4)
+fft_map.apply_sigma_scaling()
+map_data = fft_map.real_map_unpadded()
+</code></pre>
+
+<p>Write the map data into an MRC file:</p>
+<pre class="codeDL"><code># Write real Fourier map into MRC file
+iotbx.mrcfile.write_ccp4_map(
+  file_name   = "fourier_map.mrc",
+  unit_cell   = f_calc.unit_cell(),
+  space_group = f_calc.crystal_symmetry().space_group(),
+  map_data    = map_data.as_double(),
+  labels      = flex.std_string(["Some text"]))
+</code></pre>
+
+<p>The figure below shows the density overlayed to the model. Note that there are density peaks that are (seemingly) without model. This is because the density was calculated for the unit cell, which is P-1 (centrosymmetric). The spheres only represent the atoms in the asymmetric unit.</p>
+
+<img src="{% static 'cctbx/img/script_1_fig2.png' %}" alt="fig2" >
+
+<p>Another option is to calculate the exact map. This requires first the computation of the grid (crystal_gridding).</p>
+<pre class="codeDL"><code># Calculate exact map and write it down
+crystal_gridding = maptbx.crystal_gridding(
+  unit_cell        = xrs.unit_cell(),
+  space_group_info = xrs.space_group_info(),
+  symmetry_flags   = maptbx.use_space_group_symmetry,
+  step             = 0.3)
+m = mmtbx.real_space.sampled_model_density(
+  xray_structure = xrs,
+  n_real         = crystal_gridding.n_real())
+map_data = m.data()
+</code></pre>
+
+<p>Save the exact map in the file exact_map.mrc</p>
+<pre class="codeDL"><code>iotbx.mrcfile.write_ccp4_map(
+  file_name   = "exact_map.mrc",
+  unit_cell   = f_calc.unit_cell(),
+  space_group = f_calc.crystal_symmetry().space_group(),
+  map_data    = map_data.as_double(),
+  labels      = flex.std_string(["Some text"]))
+</code></pre>
+
+<!----------------------------------------------------------------------------->
+
+
+</div>
+
+<!-- sidebar, which will move to the top on a small screen -->
+<div class="col-sm-3 mt-5">
+  <nav id="toc" data-toggle="toc"></nav>
+</div>
+
+
+{% endblock %}

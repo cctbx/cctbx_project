@@ -18,6 +18,10 @@ get_class = iotbx.pdb.common_residue_names_get_class
 sugar_types = ["SACCHARIDE",
                "D-SACCHARIDE",
                "L-SACCHARIDE",
+               'D-SACCHARIDE, ALPHA LINKING',
+               'D-SACCHARIDE, BETA LINKING',
+               'L-SACCHARIDE, ALPHA LINKING',
+               'L-SACCHARIDE, BETA LINKING',
                ]
 amino_types = ['"L-PEPTIDE LINKING"',
                '"D-PEPTIDE LINKING"',

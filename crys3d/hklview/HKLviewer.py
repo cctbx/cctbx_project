@@ -1582,7 +1582,10 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       for i,r in enumerate(self.millertable.selectedrows):
         labels.extend( self.millerarraylabels[r].split(",") ) # to cope with I,SigI or other multiple labels
       myqa = QAction("Show a table of the %s dataset ..." %  " and ".join(labels), self.window, triggered=self.testaction)
-      myqa.setData( ("tabulate_data", labels ))
+      lbls =[] # group any crystal_id=1, wavelength_id, scale_group_code with labels in lists
+      for i,r in enumerate(self.millertable.selectedrows):
+        lbls.extend( [ self.millerarraylabels[r].split(",") ] ) # to cope with I,SigI or other multiple labels
+      myqa.setData( ("tabulate_data", lbls ))
       self.millertablemenu.addAction(myqa)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.millertablemenu.exec_(QCursor.pos())

@@ -1510,6 +1510,11 @@ class Builder(object):
             use_ssh=use_git_ssh, verbose=True, reference=reference_repository_path)
     self.add_step(_indirection())
 
+    # Update version information
+    if module == 'cctbx_project':
+      workdir = ['modules', module]
+      self.add_step(self.shell(command=['python', os.path.join('libtbx', 'version.py')], workdir=workdir))
+
     # Use dials-2.2 branches for Python 2
     if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and not self.python3:
       workdir = ['modules', module]
