@@ -679,6 +679,4 @@ def finish_job(results):
   return ([], [])
 
 if(__name__ == "__main__"):
-  import time
-  #time.sleep(10)
   run(sys.argv[1:])
