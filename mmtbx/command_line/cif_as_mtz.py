@@ -229,7 +229,7 @@ def get_label(miller_array, output_r_free_label):
         label = "FOM"
         break
     # as a last resort try find a match in cif_mtz_data_labels dictionary
-    for mtzlabl,ciflabl in cif_mtz_data_labels.ccp4_to_cif_labels_dict.iteritems():
+    for mtzlabl,ciflabl in cif_mtz_data_labels.ccp4_to_cif_labels_dict.items():
       if l==ciflabl:
         label = mtzlabl
         break
