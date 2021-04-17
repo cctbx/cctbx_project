@@ -5,10 +5,8 @@ import wxtbx.bitmaps
 import wx.lib.colourselect
 import wx
 import mmtbx.polygon.output
-from mmtbx import polygon
 from libtbx import adopt_init_args
 from math import radians
-import sys
 
 class wx_renderer(mmtbx.polygon.output.renderer):
   def draw_bin(self, out, start, end, angle, color):
