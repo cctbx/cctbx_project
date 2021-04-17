@@ -257,7 +257,7 @@ in each bin to the average number per bin:""")
     caption.Wrap(320)
     lower_sizer.Add(caption, 0, wx.ALL, 5)
     key_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    key_sizer = wx.FlexGridSizer(rows=0, cols=6, gap=wx.Size())
+    key_sizer = wx.FlexGridSizer(rows=0, cols=6, vgap=0, hgap=0)
     lower_sizer.Add(key_sizer)
     colors, cutoffs = self.renderer.get_color_key()
     for i, color in enumerate(colors):
