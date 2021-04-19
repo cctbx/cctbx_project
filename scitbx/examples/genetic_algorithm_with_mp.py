@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import division, print_function
-from libtbx import adopt_init_args
 from libtbx import group_args
-import sys
-from numpy.random import poisson, uniform, random_integers
-from libtbx.easy_mp import run_jobs_with_large_fixed_objects
 
 ##############################################################################
 #############  INSTRUCTIONS FOR GENETIC ALGORITHM WITH MULTIPROCESSING #######
@@ -143,4 +139,3 @@ def example():
 
 if __name__ == "__main__":
   example()
-

@@ -295,7 +295,7 @@ def group_of_mutate_or_recombine_one_gene(
         run_info,
         params,
         genes = None,
-	recombine = None,
+        recombine = None,
         mutate = None,
         mutation_method = None,
         recombination_method = None,
@@ -325,7 +325,7 @@ def mutate_or_recombine_one_gene(
         params,
         genes = None,
         index = None,
-	recombine = None,
+        recombine = None,
         mutate = None,
         mutation_method = None,
         recombination_method = None,
@@ -425,4 +425,3 @@ def tst_01():
 
 if __name__ == "__main__":
   tst_01()
-
