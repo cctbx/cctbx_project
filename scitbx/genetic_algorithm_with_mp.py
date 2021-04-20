@@ -240,9 +240,15 @@ class genetic_algorithm:
     self.sort_genes()
     return self.genes[0]
 
+  def _sort_genes_key(self, gene):
+    if not gene.score:
+      return -sys.maxsize
+    else:
+      return gene.score
+
   def sort_genes(self):
     self.genes = sorted(self.genes,
-      key = lambda gene: gene.score, reverse = True)
+      key = self._sort_genes_key, reverse = True)
 
   def select_top_variants(self):
     if not self.genes: return
