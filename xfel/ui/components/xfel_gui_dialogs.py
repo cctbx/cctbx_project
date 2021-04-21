@@ -594,31 +594,29 @@ class AdvancedSettingsDialog(BaseDialog):
       pass
     self.Bind(wx.EVT_CHOICE, self.onMultiprocessingChoice, self.mp_option.ctr)
 
-    if params.facility.name == 'lcls' and params.mp.method == 'lsf':
-      # Queue
-      queues = ['psanaq', 'psanaq', 'psdebugq','psanaidleq', 'psnehhiprioq',
-                'psnehprioq', 'psnehq', 'psfehhiprioq', 'psfehprioq', 'psfehq']
-      self.queue = gctr.ChoiceCtrl(self,
-                                   label='Queue:',
-                                   label_size=(200, -1),
-                                   label_style='bold',
-                                   choices=queues)
-      self.Bind(wx.EVT_CHOICE, self.onQueueChoice, self.queue.ctr)
-      self.mp_sizer.Add(self.queue, flag=wx.EXPAND | wx.ALL, border=10)
-      try:
-        self.queue.ctr.SetSelection(queues.index(params.mp.queue))
-      except ValueError:
-        pass
+    # Queue
+    queues = ['psanaq', 'psanaq', 'psdebugq','psanaidleq', 'psnehhiprioq',
+              'psnehprioq', 'psnehq', 'psfehhiprioq', 'psfehprioq', 'psfehq']
+    self.queue_choice = gctr.ChoiceCtrl(self,
+                                        label='Queue:',
+                                        label_size=(200, -1),
+                                        label_style='bold',
+                                        choices=queues)
+    self.Bind(wx.EVT_CHOICE, self.onQueueChoice, self.queue_choice.ctr)
+    self.mp_sizer.Add(self.queue_choice, flag=wx.EXPAND | wx.ALL, border=10)
+    try:
+      self.queue_choice.ctr.SetSelection(queues.index(params.mp.queue))
+    except ValueError:
+      pass
 
-    else:
-      # Queue
-      self.queue = gctr.TextButtonCtrl(self,
-                                       label='Queue:',
-                                       label_style='bold',
-                                       label_size=(200, -1),
-                                       value=self.params.mp.queue \
-                                             if params.mp.queue is not None else '')
-      self.mp_sizer.Add(self.queue, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.queue_text = gctr.TextButtonCtrl(self,
+                                          label='Queue:',
+                                          label_style='bold',
+                                          label_size=(200, -1),
+                                          value=self.params.mp.queue \
+                                                if params.mp.queue is not None else '')
+    self.mp_sizer.Add(self.queue_text, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.nproc = gctr.SpinCtrl(self,
                                label='Total number of processors:',
@@ -862,7 +860,8 @@ class AdvancedSettingsDialog(BaseDialog):
 
   def updateMultiprocessing(self):
     if self.mp_option.ctr.GetStringSelection() == 'local':
-      self.queue.Hide()
+      self.queue_choice.Hide()
+      self.queue_text.Show()
       self.nnodes.Hide()
       self.nproc.Show()
       self.nproc_per_node.Hide()
@@ -884,7 +883,8 @@ class AdvancedSettingsDialog(BaseDialog):
       self.log_staging.Hide()
       self.staging_help.Hide()
     elif self.mp_option.ctr.GetStringSelection() == 'shifter':
-      self.queue.Show()
+      self.queue_choice.Hide()
+      self.queue_text.Show()
       self.nproc.Hide()
       self.nnodes.Show()
       self.nproc_per_node.Show()
@@ -906,7 +906,8 @@ class AdvancedSettingsDialog(BaseDialog):
       self.log_staging.Show()
       self.staging_help.Show()
     elif self.mp_option.ctr.GetStringSelection() == 'htcondor':
-      self.queue.Hide()
+      self.queue_choice.Hide()
+      self.queue_text.Show()
       self.nproc.Show()
       self.nnodes.Hide()
       self.nproc_per_node.Hide()
@@ -928,7 +929,8 @@ class AdvancedSettingsDialog(BaseDialog):
       self.log_staging.Hide()
       self.staging_help.Hide()
     elif self.mp_option.ctr.GetStringSelection() == 'slurm':
-      self.queue.Show()
+      self.queue_choice.Hide()
+      self.queue_text.Show()
       self.nproc.Hide()
       self.nnodes.Hide()
       self.nproc_per_node.Show()
@@ -949,8 +951,13 @@ class AdvancedSettingsDialog(BaseDialog):
       self.shifter_constraint.Hide()
       self.log_staging.Hide()
       self.staging_help.Hide()
-    else:
-      self.queue.Show()
+    else :
+      if self.params.facility.name == 'lcls' and self.mp_option.ctr.GetStringSelection() == 'lsf':
+        self.queue_choice.Show()
+        self.queue_text.Hide()
+      else:
+        self.queue_choice.Hide()
+        self.queue_text.Show()
       self.nproc.Show()
       self.nnodes.Hide()
       self.nproc_per_node.Hide()
@@ -976,7 +983,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.Fit()
 
   def onQueueChoice(self, e):
-    queue = self.queue.ctr.GetString(self.queue.ctr.GetSelection())
+    queue = self.queue_choice.ctr.GetString(self.queue_choice.ctr.GetSelection())
     if 'neh' in queue or 'feh' in queue:
       self.nproc.ctr.SetValue(16)
       self.nproc.ctr.SetIncrement(16)
@@ -1015,10 +1022,10 @@ class AdvancedSettingsDialog(BaseDialog):
     self.params.mp.nproc = int(self.nproc.ctr.GetValue())
 
     if self.params.facility.name == 'lcls' and self.params.mp.method == "lsf":
-      self.params.mp.queue = self.queue.ctr.GetStringSelection()
+      self.params.mp.queue = self.queue_choice.ctr.GetStringSelection()
     else:
       self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
-      self.params.mp.queue = self.queue.ctr.GetValue()
+      self.params.mp.queue = self.queue_text.ctr.GetValue()
       if self.mp_option.ctr.GetStringSelection() in ['shifter', 'slurm']:
         self.params.mp.nnodes_index = int(self.nnodes_index.ctr.GetValue())
         self.params.mp.nnodes_scale = int(self.nnodes_scale.ctr.GetValue())
