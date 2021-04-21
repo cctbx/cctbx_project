@@ -1,0 +1,43 @@
+# cctbxlite environment for basic building and testing
+name: cctbxlite
+
+channels:
+  - conda-forge
+  - defaults
+  - cctbx
+
+dependencies:
+  # cctbx-base
+  # host
+  - future
+  - numpy
+  - python ={{ get_env("PY_VER", default="3.8") }}
+  - python.app  # [osx]
+  - scons
+  - setuptools
+  - six
+  # run
+  - libsvm
+  - matplotlib-base
+  - mrcfile
+  - pillow
+  - psutil
+  - reportlab
+  - requests
+  - six
+
+  # cctbx
+  - ipython
+  - pyside2  # [x86_64]
+  - pyzmq
+  - websockets
+  - wxpython  # [x86_64]
+
+  # extra
+  - libsvm_py
+  - pytest
+
+  # docs
+  - docutils
+  - numpydoc
+  - sphinx
