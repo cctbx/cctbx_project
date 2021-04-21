@@ -260,7 +260,7 @@ class refine_mz(object):
     done = False
     cntr = 0
     while not done:
-      if(cntr>5):
+      if(cntr>50):
         raise RuntimeError("Number of trial resolution increments exceeded.")
       try:
         f_obs_cmpl = self.complete_set.resolution_filter(
@@ -273,7 +273,7 @@ class refine_mz(object):
       except KeyboardInterrupt: raise
       except Exception as e:
         if(str(e)=="cctbx Error: Miller index not in structure factor map."):
-          d_min += 0.1
+          d_min += 0.25
       cntr+=1
     fft_map = miller.fft_map(
       crystal_gridding     = self.crystal_gridding,
