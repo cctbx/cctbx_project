@@ -3,6 +3,7 @@
 from __future__ import division, print_function
 from libtbx import adopt_init_args
 from libtbx import group_args
+from libtbx.utils import null_out
 import sys
 import numpy.random as np_random
 from libtbx.easy_mp import run_jobs_with_large_fixed_objects
@@ -16,11 +17,12 @@ from libtbx.easy_mp import run_jobs_with_large_fixed_objects
   To use, you need to create the following methods (You can copy examples
     from below to get started):
 
-    new_gene_method(params)  #  returns a gene
+    new_gene_method(params, n)  #  returns n new genes
     mutation_method(params, gene) # returns a mutated gene
     recombination_method(params, gene, other_gene)  # returns recombined gene
     scoring_method(params, gene)  # returns a score
     genes_are_identical_method(gene, other_gene)  # returns True if same
+
   Here a gene looks like (see example methods below):
 
   gene = group_args(
@@ -43,7 +45,7 @@ from libtbx.easy_mp import run_jobs_with_large_fixed_objects
 
   and your result will be available with:
 
-  ga.get_best_result()
+  ga.get_best_gene()
 '''
 ##############################################################################
 ##########  EXAMPLE PARAMS FOR GENETIC ALGORITHM WITH MULTIPROCESSING #######
@@ -54,23 +56,26 @@ from libtbx.easy_mp import run_jobs_with_large_fixed_objects
 example_params = group_args(
     group_args_type = 'parameters for genetic algorithm',
     nproc = 1,
+    random_seed = 784321,
     mutation_rate = 0.5,
     recombination_rate = 0.5,
     number_of_variants = None,
-    number_of_cycles  = None,
+    total_number_of_cycles = 1000,
+    number_of_cycles = None,
+    number_of_macro_cycles  = None,
     top_fraction_of_variants_to_keep = 0.2,
     number_of_variants_per_gene_unit = 10,
-    number_of_cycles_per_gene_unit = 100,
-    number_of_tries_for_mutations_and_crossovers = 100,
+    total_number_of_cycles_per_gene_unit = 10,
+    number_of_tries_for_mutations_and_crossovers = 2,
     typical_gene_length = 10,
   )
 ##############################################################################
 ##########  EXAMPLE METHODS FOR GENETIC ALGORITHM WITH MULTIPROCESSING #######
 ##############################################################################
 
-def example_new_gene_method(params):
+def example_new_gene_method(params, n):
   '''
-  Default gene for genetic algorithm. Create one new gene
+  Default gene for genetic algorithm. Create n new genes
   You can use anything but it needs to have values for:
     length
     values
@@ -78,17 +83,20 @@ def example_new_gene_method(params):
     gene_id
    '''
   from scitbx.array_family import flex
-  gene_id = 0
-  length = params.typical_gene_length
-  values = flex.random_double(length)
-  score = None
-
-  return group_args(
+  genes = []
+  for i in range(n):
+    gene_id = i
+    length = params.typical_gene_length
+    values = flex.random_double(length)
+    score = None
+    gene = group_args(
         group_args_type = 'default gene class as group_args',
         gene_id = gene_id,
         length = length,
         values = values,
         score = score)
+    genes.append(gene)
+  return genes
 
 def example_mutation_method(params, gene):
   ''' Must take params and a gene and return a new gene '''
@@ -147,20 +155,58 @@ class genetic_algorithm:
     if not genes:
       self.genes = []
     self.run()
+    np_random.seed(params.random_seed)
 
   def run(self):
 
-    # Create genes using supplied new_gene_method
-    self.create_change_or_score(create = True)
+    if not self.genes:
+      # Create genes using supplied new_gene_method
+      # Run enough times to get the number we need
+      n = self.get_number_of_variants_to_make()
+      for i in range(self.params.number_of_tries_for_mutations_and_crossovers):
+        self.working_genes = self.genes
+        self.genes = []
+        new_genes = self.new_gene_method(self.params, n)
+        if not new_genes: continue
+        self.set_gene_id_values(new_genes)
+        self.genes += new_genes
+        self.genes = make_unique(self.genes, self.genes_are_identical_method)
+        if len(self.genes) >= n:
+          break
+      self.score_genes()
+    if len(self.genes)< 1:
+      print("No genes available...quitting", file = self.log)
+      return
 
+    print("\nTotal working genes: %s" %(len(self.genes)), file = self.log)
+
+    total_number_of_cycles = self.get_total_number_of_cycles()
+    n_macro_cycles = self.get_number_of_macro_cycles()
     n_cycles = self.get_number_of_cycles()
-    print("\nRunning total of %s cycles" %(n_cycles), file = self.log)
-    for cycle in range(n_cycles):
-      print("Cycle %s (current top score: %s length: %s)" %(
-        cycle, self.get_best_score_as_text(),
-        self.get_best_gene().length if self.get_best_gene() else None),
-      file = self.log)
-      self.one_cycle()
+    if n_macro_cycles:
+      print("\nRunning %s macro_cycles of %s cycles each on %s processors" %(
+        n_macro_cycles,n_cycles, self.params.nproc), file = self.log)
+      print("Approximate total of %s cycles" %(
+       total_number_of_cycles), file = self.log)
+      for macro_cycle in range(n_macro_cycles):
+        print( "\nMacro-cycle ",
+         "%s (Genes: %s current top score: %s length: %s nproc: %s)" %(
+          macro_cycle, len(self.genes), self.get_best_score_as_text(),
+          self.get_best_gene().length if self.get_best_gene() else None,
+           self.params.nproc),
+          file = self.log)
+        local_params = group_args(**self.params().copy())
+        local_params.number_of_macro_cycles = 0
+        local_params.total_number_of_cycles = n_cycles
+        self.run_something(params = local_params,
+           macro_cycle = True)
+        self.score_genes()
+        # Select the best genes
+        self.select_top_variants()
+    else:
+      n_cycles = self.get_number_of_cycles()
+      for cycle in range(n_cycles):
+        self.one_cycle()
 
     # All done, get best result
     best_gene = self.get_best_gene()
@@ -168,27 +214,39 @@ class genetic_algorithm:
       self.get_best_score_as_text(),self.get_best_gene()), file = self.log)
 
   def one_cycle(self):
-    '''  Run one cycle of optimization '''
-
+    '''
+     Run one cycle of optimization
+     '''
     # Mutate genes to create new genes
-    self.create_change_or_score(mutate = True)
+    self.run_something(mutate = True)
+    self.genes = make_unique(self.genes, self.genes_are_identical_method)
 
-    # Recombine genes to create new genes
-    self.create_change_or_score(recombine = True)
+    if len(self.genes) > 1:
+      # Recombine genes to create new genes
+      self.run_something(recombine = True)
+      self.genes = make_unique(self.genes, self.genes_are_identical_method)
 
     # Select the best genes
     self.select_top_variants()
 
-  def create_change_or_score(self,
+  def run_something(self,
+     params = None,
+     genes = None,
+     macro_cycle = None,
      create = None,
      mutate = None,
      recombine = None,
      score_only = None,
       ):
 
+    if not params:
+      params = self.params
+    if not genes:
+      genes = self.genes
+
     all_new_genes = []
 
-    nproc = self.params.nproc
+    nproc = params.nproc
     end_number = -1
     if create:
       n_tot = self.get_number_of_variants_to_make()
@@ -206,15 +264,20 @@ class genetic_algorithm:
       if end_number < start_number: continue
       runs_to_carry_out.append(group_args(
         run_id = run_id,
+        random_seed = np_random.randint(0,100000),
         start_number = start_number,
         end_number = end_number,
         ))
 
+    local_params = group_args(**params().copy())
+    local_params.nproc = 1 # Required
+
     kw_dict = {
-      'params':self.params,
-      'genes':self.genes,
+      'params':local_params,
+      'genes':genes,
       'create':create,
       'mutate':mutate,
+      'macro_cycle':macro_cycle,
       'recombine':recombine,
       'score_only':score_only,
       'new_gene_method':self.new_gene_method,
@@ -229,25 +292,22 @@ class genetic_algorithm:
       verbose = False,
       kw_dict = kw_dict,
       run_info_list = runs_to_carry_out,
-      job_to_run = group_of_create_change_or_score,
+      job_to_run = group_of_run_something,
       log = self.log)
 
     for run_info in runs_carried_out:
       new_genes = run_info.result.new_genes
       if new_genes:
         all_new_genes += new_genes
+    all_new_genes = make_unique(all_new_genes, self.genes_are_identical_method)
 
-    if score_only or create:  # keep id and replace genes
+    if score_only or create or macro_cycle:  # keep id and replace genes
       self.genes = all_new_genes
 
     else:  # usual
-      next_gene_id = len(self.genes)
-      for gene in all_new_genes:
-        gene.gene_id = next_gene_id
-        next_gene_id += 1
+      self.set_gene_id_values(all_new_genes)
 
       self.genes += all_new_genes
-
 
   def get_best_score_as_text(self):
     score = self.get_best_score()
@@ -263,6 +323,23 @@ class genetic_algorithm:
     else:
       return best_gene.score
 
+
+  def set_gene_id_values(self, new_genes):
+    if not new_genes:
+      return # nothing to do
+    gene_id = self.get_highest_gene_id() + 1
+    for gene in new_genes:
+      gene.gene_id = gene_id
+      gene_id += 1
+
+  def get_highest_gene_id(self):
+    highest = None
+    for gene in self.genes:
+      if highest is None or gene.gene_id > highest:
+        highest = gene.gene_id
+    if highest is None:
+      highest = 0
+    return highest
   def get_best_gene(self):
     if not self.genes:
       return None
@@ -284,8 +361,6 @@ class genetic_algorithm:
     self.sort_genes()
 
     n = self.get_number_of_variants_to_keep()
-    print("Selecting top %s of %s genes (top score = %s )" %(
-      n, len(self.genes), self.get_best_score_as_text()), file = self.log)
     self.genes = self.genes[:n]
 
   def score_genes(self):
@@ -311,17 +386,46 @@ class genetic_algorithm:
       return max(1,int(0.5+self.params.typical_gene_length * \
          self.params.number_of_variants_per_gene_unit))
 
+  def get_total_number_of_cycles(self):
+    #  Run a total of self.params.total_number_of_cycles, but if we have nproc>1
+    #    run them in nproc groups of total_number_of_cycles/nproc
+    #  total cycles = nproc * n_macro_cycles * n_cycles
+
+    if self.params.total_number_of_cycles is not None:
+      return self.params.total_number_of_cycles
+    else:
+      return max(1,int(0.5+self.params.typical_gene_length * \
+         self.params.total_number_of_cycles_per_gene_unit))
+
   def get_number_of_cycles(self):
     if self.params.number_of_cycles is not None:
       return self.params.number_of_cycles
     else:
-      return max(1,int(0.5+self.params.typical_gene_length * \
-         self.params.number_of_cycles_per_gene_unit))
+      #  Run a total of self.params.total_number_of_cycles,
+      #    in nproc groups of ncycles
+      nproc = self.params.nproc if self.params.nproc is not None else 1
+      n_total_cycles = self.get_total_number_of_cycles()
+      n_macro_cycles = self.get_number_of_macro_cycles()
+      n_cycles = int(0.999 + n_total_cycles//max(1,n_macro_cycles*nproc))
+      return n_cycles
 
-def group_of_create_change_or_score(
+  def get_number_of_macro_cycles(self):
+    if self.params.number_of_macro_cycles is not None:
+      return self.params.number_of_macro_cycles
+    else:
+      nproc = self.params.nproc if self.params.nproc is not None else 1
+      if nproc == 1:
+         return 1
+      else:
+        n_total = self.get_total_number_of_cycles()
+        n_macro_cycles = int(0.9999+(n_total/nproc)**0.5)
+        return n_macro_cycles
+
+def group_of_run_something(
         run_info,
         params,
         genes = None,
+        macro_cycle= None,
         recombine = None,
         create = None,
         mutate = None,
@@ -332,9 +436,32 @@ def group_of_create_change_or_score(
         scoring_method = None,
         genes_are_identical_method = None,
         log = sys.stdout):
+
+  np_random.seed(run_info.random_seed)  # different for each run
+  params = group_args(**params().copy())
+  params.random_seed = np_random.randint(0,100000)
+
+  if macro_cycle:  # Run a macro-cycle
+    ga = genetic_algorithm(
+      genes = genes,
+      params = params,
+      new_gene_method = new_gene_method,
+      mutation_method = mutation_method,
+      recombination_method = recombination_method,
+      scoring_method = scoring_method,
+      genes_are_identical_method = genes_are_identical_method,
+      log = null_out(),
+     )
+    return group_args(
+      group_args_type = 'set of genes after running one macro_cycle',
+      new_genes = ga.genes,
+     )
+
+  # Usual
   new_genes = []
   for index in range(run_info.start_number, run_info.end_number + 1):
-    info = create_change_or_score_one_gene(
+    params.random_seed = np_random.randint(0,100000)
+    info = run_one_something(
       params,
       genes,
       index,
@@ -354,9 +481,6 @@ def group_of_create_change_or_score(
   # Make sure all new ones are unique
   if (not score_only) and genes:  # we have existing ones and not just scoring
     new_genes = make_unique(new_genes, genes_are_identical_method)
-    new_genes = remove_duplicates_of_existing(existing_genes = genes,
-        new_genes=new_genes,
-        genes_are_identical_method = genes_are_identical_method)
 
   return group_args(
       group_args_type = ' one set of recombined/mutated genes',
@@ -389,7 +513,7 @@ def remove_duplicates_of_existing(existing_genes = None,
       unique_new_genes.append(new_gene)
   return unique_new_genes
 
-def create_change_or_score_one_gene(
+def run_one_something(
         params,
         genes = None,
         index = None,
@@ -404,7 +528,7 @@ def create_change_or_score_one_gene(
         genes_are_identical_method = None,
         log = sys.stdout):
 
-    assert (create, mutate, recombine, score_only).count(True) == 1
+    assert (create, mutate,  recombine, score_only).count(True) == 1
     new_genes = []
     if not genes and not create:
       return new_genes
@@ -446,7 +570,6 @@ def create_change_or_score_one_gene(
 
     for gene in new_genes:
       gene.score = scoring_method(params, gene)
-
     return group_args(
       group_args_type = ' one set of recombined/mutated/scored genes',
       new_genes = new_genes,
@@ -461,6 +584,7 @@ def create_new_gene_by_mutation(params,
   if n == 0:
     return # nothing to do
   n_mutations_made = 0
+  original_gene = gene
   for i in range(params.number_of_tries_for_mutations_and_crossovers * n):
     new_gene = mutation_method(params, gene)
     if new_gene:
