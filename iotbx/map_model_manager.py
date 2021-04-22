@@ -2159,7 +2159,7 @@ class map_model_manager(object):
         If soft mask is set, mask_atoms_atom_radius increased by
       Optional: invert_mask:  keep outside atoms instead of inside
       NOTE: if space group is not p1 and wrapping is True then
-        atoms are expanded to P1 before calculating mask 
+        atoms are expanded to P1 before calculating mask
       Optional: skip_n_residues_on_ends: any residues within
         skip_n_residues_on_ends of ends of segments
          (consecutive residue numbers or close N/P atoms) are excluded
@@ -2362,7 +2362,7 @@ class map_model_manager(object):
           soft_mask_radius
       Optional: invert_mask:  keep outside atoms instead of inside
       NOTE: if space group is not p1 and wrapping is True then
-        atoms are expanded to P1 before calculating mask 
+        atoms are expanded to P1 before calculating mask
 
       Generates new entry in map_manager dictionary with id of
       mask_id (default='mask') replacing any existing entry with that id

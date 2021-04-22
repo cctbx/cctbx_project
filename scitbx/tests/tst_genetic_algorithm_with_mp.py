@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import division, print_function
-import sys
+
 def tst_01():
   '''  Exercise genetic algorithm '''
 
