@@ -2905,3 +2905,7 @@ class run_reduce_with_timeout(easy_run.fully_buffered):
         join_stdout_stderr=join_stdout_stderr,
         stdout_splitlines=stdout_splitlines,
         bufsize=bufsize)
+
+  def as_pdb_hierarchy(self):
+    return pdb.input(
+      source_info="from_reduce", lines = '\n'.join(self.stdout_lines))
