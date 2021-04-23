@@ -381,6 +381,7 @@ TER
 
 pdb_str_008 = """
 REMARK disulfide bridge between neighboring residues --> don't place HG atoms
+REMARK from PDB 3cu9
 CRYST1   86.141   89.579   76.041  90.00  90.00  90.00 C 2 2 21
 ATOM      1  N   CYS A 221     -25.409   6.530   5.604  1.00  8.50           N
 ATOM      2  CA  CYS A 221     -25.611   7.909   5.995  1.00  8.62           C
