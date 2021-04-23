@@ -194,7 +194,7 @@ class refine_mz(object):
       d = flex.sqrt((s1-s2).dot()).min_max_mean().as_tuple()[1:]
       d_str = "%6.3f %6.3f"%d
       print(fmt%(self.prefix, d_min, cc, self.cc_best, d_str), file=self.log)
-      revert = cc<self.cc_start or \
+      revert = (cc<self.cc_start and abs(cc-self.cc_start)>0.1) or \
                d[0] > 10 and (cc<self.cc_start or abs(cc-self.cc_start)<0.1) or \
                cc < 0.1
       if(revert):
