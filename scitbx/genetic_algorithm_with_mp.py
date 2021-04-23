@@ -155,7 +155,11 @@ class genetic_algorithm:
     if not genes:
       self.genes = []
     self.run()
-    np_random.seed(params.random_seed)
+    self.update_random_seed()
+
+  def update_random_seed(self):
+    np_random.seed(self.params.random_seed)
+    self.params.random_seed = np_random.randint(0,100000)
 
   def run(self):
 
@@ -163,16 +167,10 @@ class genetic_algorithm:
       # Create genes using supplied new_gene_method
       # Run enough times to get the number we need
       n = self.get_number_of_variants_to_make()
-      for i in range(self.params.number_of_tries_for_mutations_and_crossovers):
-        self.working_genes = self.genes
-        self.genes = []
-        new_genes = self.new_gene_method(self.params, n)
-        if not new_genes: continue
-        self.set_gene_id_values(new_genes)
-        self.genes += new_genes
-        self.genes = make_unique(self.genes, self.genes_are_identical_method)
-        if len(self.genes) >= n:
-          break
+      self.update_random_seed()
+      new_genes = self.new_gene_method(self.params, n)
+      if new_genes:
+        self.genes = new_genes
       self.score_genes()
     if len(self.genes)< 1:
       print("No genes available...quitting", file = self.log)
