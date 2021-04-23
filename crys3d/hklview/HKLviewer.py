@@ -275,7 +275,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.MillerLabel3 = QLabel()
     self.MillerLabel3.setText("""<html><head/><body><p>
     For examples on creating a dataset from existing ones see
-    <a href="http://cci.lbl.gov/docs/cctbx/doc_hklviewer/#make_new_dataset">Making new dataset</a>.
+    <a href="http://cci.lbl.gov/docs/cctbx/doc_hklviewer/#making-a-new-dataset">Making a new dataset</a>.
     <br>
     For details on python scripting cctbx.miller.array see
     <a href="https://cctbx.github.io/cctbx/cctbx.miller.html#the-miller-array">cctbx.miller arrays</a>.
