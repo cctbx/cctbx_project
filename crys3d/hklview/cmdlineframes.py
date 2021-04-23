@@ -12,7 +12,7 @@ from cctbx.array_family import flex
 from libtbx.utils import Sorry, to_str
 from scitbx import matrix
 from cctbx import sgtbx
-from libtbx import group_args
+from libtbx import group_args, version
 import libtbx
 import libtbx.load_env
 import traceback
@@ -86,7 +86,8 @@ class HKLViewFrame() :
       pyversion = "cctbx.python.version: " + str(sys.version_info[0])
       # tell gui what python version we are
       self.SendInfoToGUI(pyversion )
-      self.SendInfoToGUI({"copyrights": self.copyrightpaths } )
+      self.SendInfoToGUI({"copyrights": self.copyrightpaths,
+                          "cctbxversion": version.get_version()} )
     kwds['websockport'] = self.find_free_port()
     kwds['parent'] = self
     self.viewer = view_3d.hklview_3d( **kwds )
