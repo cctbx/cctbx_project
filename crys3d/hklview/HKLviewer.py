@@ -152,7 +152,7 @@ class WebEngineDebugForm(QDialog):
                         Qt.WindowTitleHint |
                         Qt.WindowSystemMenuHint
                         )
-    self.setWindowTitle("Chrome QWebEngineDebug")
+    self.setWindowTitle("Chromium QWebEngineDebug")
     browser = QWebEngineView()
     mainLayout = QGridLayout()
     mainLayout.addWidget(browser, 0, 0)

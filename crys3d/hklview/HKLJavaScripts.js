@@ -1126,6 +1126,7 @@ function onMessage(e)
     {
       //HKLscene();
       MakeHKL_Axis();
+      MakeXYZ_Axis();
       RenderRequest();
       WebsockSendMsg('Drawing new reflections');
     }
@@ -1490,9 +1491,7 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
     fomlabelheight = 0;
   }
   var wp3 = wp + colourgradvalarrays.length * wp2 + 2;
-
   totalheight = ih * colourgradvalarrays[0].length + 35 + fomlabelheight;
-  //totalheight = ih * 60 + 35 + fomlabelheight;
 
   if (colourchart != null)
     colourchart.remove(); // delete previous colour chart if any
@@ -1600,6 +1599,116 @@ function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids)
   alphas.push(1.0);
   nbins = nbins + 1;
 }
+
+
+
+function MakeXYZ_Axis() {
+  // draw x and y arrows
+  var linelength = 20;
+  var linestart = 5;
+  var vleft = 2;
+  var hbottom = 2;
+  var arrowhalfwidth = 3;
+  var linewidth = 2;
+  var arrowlength = 10;
+  var labelfromarrow = linelength + linestart + arrowlength + 1;
+  var labelwidth = getTextWidth("x", fontsize)
+
+  velm = createElement("div", { innerText: "" },
+    {
+      backgroundColor: "rgba(0, 255, 0, 1.0)", color: "rgba(0, 0, 0, 0.0)",
+      bottom: linestart.toString() + "px",
+      height: linelength.toString() + "px",
+      left: (vleft + arrowhalfwidth - linewidth / 2.0).toString() + "px",
+      width: linewidth.toString() + "px",
+      position: "absolute"
+    }, 10);
+  addElement(velm);
+
+  uparrow = createElement("div", { innerText: "" }, {
+    backgroundColor: "rgba(0, 0, 255, 0.0)", color: "rgba(0, 0, 0, 0.0)",
+    bottom: (linelength + linestart).toString() + "px",
+    left: vleft.toString() + "px",
+    borderLeft: arrowhalfwidth.toString() + "px solid transparent",
+    borderRight: arrowhalfwidth.toString() + "px solid transparent",
+    borderBottom: arrowlength.toString() + "px solid rgba(0, 255, 0)",
+    position: "absolute"
+  }, 10);
+  addElement(uparrow);
+
+  yelm = createElement("div", { innerText: "y" }, {
+    backgroundColor: "rgba(0, 255, 0, 1.0)", color: "rgba(255, 255, 255, 1.0)",
+    left: (vleft - linewidth / 2.0).toString() + "px",
+    bottom: labelfromarrow.toString() + "px",
+    padding: "1px",
+    position: "absolute"
+  }, fontsize);
+  addElement(yelm);
+
+  helm = createElement("div", { innerText: "" }, {
+    backgroundColor: "rgba(0, 0, 255, 1.0)", color: "rgba(0, 0, 0, 0.0)",
+    left: linestart.toString() + "px",
+    width: linelength.toString() + "px",
+    bottom: (hbottom + arrowhalfwidth - linewidth / 2.0).toString() + "px",
+    height: linewidth.toString() + "px",
+    position: "absolute"
+  }, 10);
+  addElement(helm);
+
+  rightarrow = createElement("div", { innerText: "" }, {
+    backgroundColor: "rgba(0, 0, 255, 0.0)", color: "rgba(0, 0, 0, 0.0)",
+    left: (linelength + linestart).toString() + "px",
+    bottom: hbottom.toString() + "px",
+    borderTop: arrowhalfwidth.toString() + "px solid transparent",
+    borderBottom: arrowhalfwidth.toString() + "px solid transparent",
+    borderLeft: arrowlength.toString() + "px solid rgba(0, 0, 255)",
+    position: "absolute"
+  }, 10);
+  addElement(rightarrow);
+
+  xelm = createElement("div", { innerText: "x" }, {
+    backgroundColor: "rgba(0, 0, 255, 1.0)", color: "rgba(255, 255, 255, 1.0)",
+    left: labelfromarrow.toString() + "px",
+    bottom: (hbottom + arrowhalfwidth - linewidth / 2.0).toString() + "px",
+    padding: "1px",
+    position: "absolute"
+  }, fontsize);
+  addElement(xelm);
+
+  var arrowradius = 15;
+  zarrow = createElement("div", { innerText: "" }, {
+    backgroundColor: "rgba(255,0 ,0, 1.0)", color: "rgba(0, 0, 0, 1.0)",
+    left: (linelength / 2 + linestart).toString() + "px",
+    bottom: (linelength / 2 + linestart).toString() + "px",
+    height: arrowradius.toString() + "px",
+    width: arrowradius.toString() + "px",
+    borderRadius: "50%",
+    position: "absolute"
+  }, 10);
+  addElement(zarrow);
+
+  zarrowtip = createElement("div", { innerText: "" }, {
+    backgroundColor: "rgba(0,0,0, 1.0)", color: "rgba(0, 0, 0, 1.0)",
+    left: (arrowradius / 2 + linelength / 2 + linestart - 1).toString() + "px",
+    bottom: (arrowradius / 2 + linelength / 2 + linestart - 1).toString() + "px",
+    height: "2px",
+    width: "2px",
+    borderRadius: "50%",
+    position: "absolute"
+  }, 10);
+  addElement(zarrowtip);
+
+  zelm = createElement("div", { innerText: "z" }, {
+    backgroundColor: "rgba(255, 0, 0, 1.0)", color: "rgba(255, 255, 255, 1.0)",
+    left: (arrowradius + linelength / 2 + linestart).toString() + "px",
+    bottom: (arrowradius + linelength / 2 + linestart).toString() + "px",
+    padding: "1px",
+    position: "absolute"
+  }, fontsize);
+  addElement(zelm);
+
+}
+
 
 
 function HKLscene()
@@ -1739,9 +1848,8 @@ function HKLscene()
       }
       );
     },
-  }, { bottom: "10px", left: "10px", width: "90px", position: "absolute" }, fsize = fontsize);
+  }, { bottom: "5px", right: "5px", width: "90px", position: "absolute" }, fsize = fontsize);
   addElement(ResetViewBtn);
-
 
 }
 
