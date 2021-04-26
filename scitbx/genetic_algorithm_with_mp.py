@@ -68,6 +68,8 @@ example_params = group_args(
     total_number_of_cycles_per_gene_unit = 10,
     number_of_tries_for_mutations_and_crossovers = 2,
     typical_gene_length = 10,
+    end_cycles_if_no_improvement_for_n_cycles = 2,
+    min_fraction_of_cycles_to_run = 0.1,
   )
 ##############################################################################
 ##########  EXAMPLE METHODS FOR GENETIC ALGORITHM WITH MULTIPROCESSING #######
@@ -151,41 +153,108 @@ class genetic_algorithm:
     # Save inputs
     adopt_init_args(self,locals())
 
+    self.check_params()
+
     self.cycle = 0
     if not genes:
       self.genes = []
     self.run()
     self.update_random_seed()
 
+  def check_params(self):
+    '''  Make sure all expected values are there '''
+    expected_keys = example_params().keys()
+    found_keys = self.params().keys()
+    for key in expected_keys:
+      if not key in found_keys:
+        print("Missing parameter: %s" %(key), file = self.log)
+        assert key in found_keys # Missing parameter
+      
   def update_random_seed(self):
     np_random.seed(self.params.random_seed)
     self.params.random_seed = np_random.randint(0,100000)
 
   def run(self):
-
     if not self.genes:
-      # Create genes using supplied new_gene_method
-      # Run enough times to get the number we need
-      n = self.get_number_of_variants_to_make()
-      self.update_random_seed()
-      new_genes = self.new_gene_method(self.params, n)
-      if new_genes:
-        self.genes = new_genes
-      self.score_genes()
+      self.get_genes()
     if len(self.genes)< 1:
       print("No genes available...quitting", file = self.log)
       return
+    else:
+      print("\nTotal working genes: %s" %(len(self.genes)), file = self.log)
 
-    print("\nTotal working genes: %s" %(len(self.genes)), file = self.log)
-
-    total_number_of_cycles = self.get_total_number_of_cycles()
+    # How many cycles to try
     n_macro_cycles = self.get_number_of_macro_cycles()
     n_cycles = self.get_number_of_cycles()
+
     if n_macro_cycles:
+      self.run_macro_cycles(n_macro_cycles, n_cycles)
+    else:
+      self.run_cycles(n_cycles)
+
+    # Done, get best result
+    best_gene = self.get_best_gene()
+    print("Best gene with score of %s: \n%s" %(
+      self.get_best_score_as_text(),self.get_best_gene()), file = self.log)
+
+
+  def run_cycles(self, n_cycles):
+      # Run n_cycles, but if number of genes is smaller than target
+      #   then run more to generate more genes, up to 3x
+      n_extra_requested = 0
+      n_genes_target = self.get_number_of_variants_to_keep()
+      last_improvement_info = group_args(
+        group_args_type = 'last improvement info',
+        last_improvement_cycle = None,
+        last_improvement_score = None,
+       )
+      total_cycles_to_carry_out = n_cycles
+      max_cycles = n_cycles * 3
+      if self.params.min_fraction_of_cycles_to_run is None or \
+          self.params.end_cycles_if_no_improvement_for_n_cycles is None:
+        max_cycles_without_improvement = None
+      else:
+        max_cycles_without_improvement = max(
+          n_cycles * self.params.min_fraction_of_cycles_to_run,
+          2 *self.params.end_cycles_if_no_improvement_for_n_cycles)  # more here
+      for cycle in range(max_cycles): # maximum
+        self.one_cycle()
+        if len(self.genes) < n_genes_target:
+          total_cycles_to_carry_out += 1
+        if cycle > min(max_cycles, total_cycles_to_carry_out): break
+
+        new_best_score = self.get_best_score()
+        if last_improvement_info.last_improvement_score is None or \
+            new_best_score > last_improvement_info.last_improvement_score or \
+            len(self.genes) < n_genes_target:  # doesn't count yet
+          last_improvement_info.last_improvement_score = new_best_score
+          last_improvement_info.last_improvement_cycle = cycle
+        elif max_cycles_without_improvement is not None \
+          and cycle - last_improvement_info.last_improvement_cycle > \
+           max_cycles_without_improvement:
+          print("\nEnding cycles as no improvement in past %s cycles " %(
+          cycle - last_improvement_info.last_improvement_cycle),
+              file = self.log)
+          break
+
+  def run_macro_cycles(self, n_macro_cycles, n_cycles):
+      total_number_of_cycles = self.get_total_number_of_cycles()
       print("\nRunning %s macro_cycles of %s cycles each on %s processors" %(
         n_macro_cycles,n_cycles, self.params.nproc), file = self.log)
       print("Approximate total of %s cycles" %(
        total_number_of_cycles), file = self.log)
+      last_improvement_info = group_args(
+        group_args_type = 'last improvement info',
+        last_improvement_cycle = None,
+        last_improvement_score = None,
+       )
+      if self.params.min_fraction_of_cycles_to_run is None or \
+          self.params.end_cycles_if_no_improvement_for_n_cycles is None:
+        max_cycles_without_improvement = None
+      else:
+        max_cycles_without_improvement = max(
+          n_macro_cycles * self.params.min_fraction_of_cycles_to_run,
+          self.params.end_cycles_if_no_improvement_for_n_cycles) 
       for macro_cycle in range(n_macro_cycles):
         print( "\nMacro-cycle ",
          "%s (Genes: %s current top score: %s length: %s nproc: %s)" %(
@@ -201,15 +270,32 @@ class genetic_algorithm:
         self.score_genes()
         # Select the best genes
         self.select_top_variants()
-    else:
-      n_cycles = self.get_number_of_cycles()
-      for cycle in range(n_cycles):
-        self.one_cycle()
 
-    # All done, get best result
-    best_gene = self.get_best_gene()
-    print("Best gene with score of %s: \n%s" %(
-      self.get_best_score_as_text(),self.get_best_gene()), file = self.log)
+        new_best_score = self.get_best_score()
+        if last_improvement_info.last_improvement_score is None or \
+            new_best_score > last_improvement_info.last_improvement_score:
+          last_improvement_info.last_improvement_score = new_best_score
+          last_improvement_info.last_improvement_cycle = macro_cycle
+        elif max_cycles_without_improvement is not None \
+           and macro_cycle - last_improvement_info.last_improvement_cycle > \
+           max_cycles_without_improvement:
+          print("\nEnding macro-cycles as no improvement in past %s cycles " %(
+          macro_cycle - last_improvement_info.last_improvement_cycle),
+              file = self.log)
+          break # done with cycles
+          
+
+  def get_genes(self):
+      # Create genes using supplied new_gene_method
+      # Run enough times to get the number we need
+      n = self.get_number_of_variants_to_make()
+      self.update_random_seed()
+      new_genes = self.new_gene_method(self.params, n)
+      if new_genes:
+        self.genes = new_genes
+      self.score_genes()
+      self.select_top_variants()
+
 
   def one_cycle(self):
     '''
@@ -292,7 +378,6 @@ class genetic_algorithm:
       run_info_list = runs_to_carry_out,
       job_to_run = group_of_run_something,
       log = self.log)
-
     for run_info in runs_carried_out:
       new_genes = run_info.result.new_genes
       if new_genes:
@@ -368,12 +453,12 @@ class genetic_algorithm:
          gene.score = self.scoring_method(self.params, gene)
     self.sort_genes()
 
-  def get_number_of_variants_to_keep(self):
+  def get_number_of_variants_to_keep(self, minimum_variants = 2):
     if self.params.number_of_variants is not None:
-      return max(1,int(0.5+self.params.number_of_variants * \
+      return max(minimum_variants,int(0.5+self.params.number_of_variants * \
        self.params.top_fraction_of_variants_to_keep))
     else:
-      return max(1,int(0.5+self.params.typical_gene_length * \
+      return max(minimum_variants,int(0.5+self.params.typical_gene_length * \
          self.params.number_of_variants_per_gene_unit *\
        self.params.top_fraction_of_variants_to_keep))
 
