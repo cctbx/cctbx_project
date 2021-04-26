@@ -169,7 +169,7 @@ class genetic_algorithm:
       if not key in found_keys:
         print("Missing parameter: %s" %(key), file = self.log)
         assert key in found_keys # Missing parameter
-      
+
   def update_random_seed(self):
     np_random.seed(self.params.random_seed)
     self.params.random_seed = np_random.randint(0,100000)
@@ -254,7 +254,7 @@ class genetic_algorithm:
       else:
         max_cycles_without_improvement = max(
           n_macro_cycles * self.params.min_fraction_of_cycles_to_run,
-          self.params.end_cycles_if_no_improvement_for_n_cycles) 
+          self.params.end_cycles_if_no_improvement_for_n_cycles)
       for macro_cycle in range(n_macro_cycles):
         print( "\nMacro-cycle ",
          "%s (Genes: %s current top score: %s length: %s nproc: %s)" %(
@@ -283,7 +283,7 @@ class genetic_algorithm:
           macro_cycle - last_improvement_info.last_improvement_cycle),
               file = self.log)
           break # done with cycles
-          
+
 
   def get_genes(self):
       # Create genes using supplied new_gene_method
@@ -694,4 +694,3 @@ def create_new_gene_by_recombination(params,
 ##############################################################################
 ##################  END GENETIC ALGORITHM WITH MULTIPROCESSING ###############
 ##############################################################################
-
