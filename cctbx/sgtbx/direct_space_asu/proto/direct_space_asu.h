@@ -180,7 +180,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
     direct_space_asu(const direct_space_asu &a) : hall_symbol(a.hall_symbol),
       faces(a.faces->new_copy()) {}
-    direct_space_asu() : hall_symbol(), faces(NULL) {}
+    direct_space_asu() : hall_symbol(), faces(nullptr) {}
 
     //! Creates asymmetric unit from space group type
     explicit direct_space_asu(const space_group_type &group_type)
@@ -188,22 +188,22 @@ namespace cctbx { namespace sgtbx { namespace asu {
         faces(asu_table[group_type.number()-1]()) // build reference spacegroup asu
     {
       change_of_basis_op  op(  group_type.cb_op().inverse() );
-      CCTBX_ASSERT( faces.get() != NULL );
+      CCTBX_ASSERT( faces.get() != nullptr );
       if( !op.is_identity_op() )
         faces->change_basis(op); // change to the real space group
     }
 
     // DO NOT USE!!!  For debugging purposes only!
-    explicit direct_space_asu(const space_group_type &group_type,
-      facet_collection::pointer &faces_)
-      : hall_symbol(group_type.hall_symbol()),
-        faces(faces_) // build custom asu
-    {
-      change_of_basis_op  op(  group_type.cb_op().inverse() );
-      CCTBX_ASSERT( faces.get() != NULL );
-      if( !op.is_identity_op() )
-        faces->change_basis(op); // change to the real space group
-    }
+    // explicit direct_space_asu(const space_group_type &group_type,
+    //   facet_collection::pointer &faces_)
+    //   : hall_symbol(group_type.hall_symbol()),
+    //     faces(faces_) // build custom asu
+    // {
+    //   change_of_basis_op  op(  group_type.cb_op().inverse() );
+    //   CCTBX_ASSERT( faces.get() != nullptr );
+    //   if( !op.is_identity_op() )
+    //     faces->change_basis(op); // change to the real space group
+    // }
 
     // DO NOT USE!!!
     void add_face(const cut &face)
@@ -213,7 +213,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
     //! Creates asymmetric unit from space group symbol
     explicit direct_space_asu(const std::string &group_symbol) :  hall_symbol(),
-      faces(NULL)
+      faces(nullptr)
     {
       // new(this) direct_space_asu( space_group_type(spgr) );  this fails
       *this =  direct_space_asu( space_group_type(group_symbol) );

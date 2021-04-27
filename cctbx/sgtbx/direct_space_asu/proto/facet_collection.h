@@ -15,7 +15,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
   class facet_collection
   {
   public:
-    typedef std::auto_ptr<facet_collection> pointer;
+    typedef std::unique_ptr<facet_collection> pointer;
 
     virtual bool is_inside(const rvector3_t &p) const = 0;
     virtual bool is_inside(const scitbx::af::int3 &num,
