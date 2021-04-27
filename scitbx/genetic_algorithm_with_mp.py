@@ -181,7 +181,8 @@ class genetic_algorithm:
       print("No genes available...quitting", file = self.log)
       return
     else:
-      print("\nTotal working genes: %s" %(len(self.genes)), file = self.log)
+      print("\nTotal working genes: %s" %(len(self.genes)),
+         file = self.log)
 
     # How many cycles to try
     n_macro_cycles = self.get_number_of_macro_cycles()
@@ -239,8 +240,13 @@ class genetic_algorithm:
 
   def run_macro_cycles(self, n_macro_cycles, n_cycles):
       total_number_of_cycles = self.get_total_number_of_cycles()
-      print("\nRunning %s macro_cycles of %s cycles each on %s processors" %(
+      print("\nRunning about ",
+       "%s macro_cycles of %s cycles each on %s processors" %(
         n_macro_cycles,n_cycles, self.params.nproc), file = self.log)
+      max_macro_cycles = n_macro_cycles * 2
+      working_macro_cycles = n_macro_cycles
+      n_genes_target = self.get_number_of_variants_to_keep()
+
       print("Approximate total of %s cycles" %(
        total_number_of_cycles), file = self.log)
       last_improvement_info = group_args(
@@ -254,8 +260,13 @@ class genetic_algorithm:
       else:
         max_cycles_without_improvement = max(
           n_macro_cycles * self.params.min_fraction_of_cycles_to_run,
-          self.params.end_cycles_if_no_improvement_for_n_cycles)
-      for macro_cycle in range(n_macro_cycles):
+          self.params.end_cycles_if_no_improvement_for_n_cycles) 
+      for macro_cycle in range(max_macro_cycles):
+        if len(self.genes) < n_genes_target:
+          working_macro_cycles += 1 # need another cycle
+
+        if macro_cycle > min(working_macro_cycles, max_macro_cycles):
+          break # done
         print( "\nMacro-cycle ",
          "%s (Genes: %s current top score: %s length: %s nproc: %s)" %(
           macro_cycle, len(self.genes), self.get_best_score_as_text(),
