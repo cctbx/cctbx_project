@@ -30,6 +30,7 @@ setup.py
 
 # Ignore .yml files created by conda-devenv
 cctbx.yml
+cctbxlite.yml
 
 # Ignores copied over from subversion:
 cctbx/dev

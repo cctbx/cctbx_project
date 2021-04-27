@@ -14,8 +14,10 @@ def run():
   test_002()
   test_003()
   test_004()
-  test_006()
   test_005()
+  test_006()
+  test_007()
+  test_008()
 
 # ------------------------------------------------------------------------------
 
@@ -29,26 +31,27 @@ def compare_models(pdb_str,
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model_initial = mmtbx.model.manager(model_input = pdb_inp,
                                       log         = null_out())
+  ph_initial = model_initial.get_hierarchy()
   hd_sel_initial = model_initial.get_hd_selection()
+  h_atoms_initial = ph_initial.select(hd_sel_initial).atoms()
+  h_names_initial = list(h_atoms_initial.extract_name())
+  # number of H in pdb string (right answer)
   number_h_expected = hd_sel_initial.count(True)
 
-
+  # get model obj without H atoms
   model_without_h = model_initial.select(~hd_sel_initial)
+  # make sure model without H indeed has no H atoms
   hd_sel_without_h = model_without_h.get_hd_selection()
   assert (hd_sel_without_h is not None)
   assert (hd_sel_without_h.count(True) == 0)
 
   #model_h_added = reduce.add(model = model_without_h)
+  # place H atoms
   reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model_without_h)
   reduce_add_h_obj.run()
   model_h_added = reduce_add_h_obj.get_model()
-
   hd_sel_h_added = model_h_added.get_hd_selection()
 
-  ph_initial = model_initial.get_hierarchy()
-
-  h_atoms_initial = ph_initial.select(hd_sel_initial).atoms()
-  h_names_initial = list(h_atoms_initial.extract_name())
   ph_h_added = model_h_added.get_hierarchy()
   assert ph_initial.is_similar_hierarchy(other=ph_h_added)
 
@@ -70,6 +73,7 @@ def compare_models(pdb_str,
   d1 = {h_names_initial[i]: sc_h_initial[i] for i in range(len(h_names_initial))}
   d2 = {h_names_added[i]: sc_h_added[i] for i in range(len(h_names_added))}
 
+  # check that coordinates are correct
   for name, sc in d2.items():
     assert(name in d1)
     assert approx_equal(sc, d1[name], 0.01)
@@ -138,6 +142,23 @@ def test_006():
 
 # ------------------------------------------------------------------------------
 
+def test_007():
+  '''
+    CYS forms a disulfid with symmetry mate --> don't place HG
+  '''
+  compare_models(pdb_str      = pdb_str_007,
+                 not_contains = ' HG ')
+
+# ------------------------------------------------------------------------------
+
+def test_008():
+  '''
+    disulfide bridge between neighboring residues --> don't place HG atoms
+  '''
+  compare_models(pdb_str      = pdb_str_008,
+                 not_contains = ' HG ')
+
+# ------------------------------------------------------------------------------
 
 pdb_str_000 = """
 REMARK two AA fragments, GLY peptide H atom is not expected to be placed
@@ -286,7 +307,7 @@ END
 """
 
 pdb_str_006 = """
-REMARK CYS forms a disulfid with symmetry mate --> don't place HG
+REMARK CYS forms a disulfide bridge with symmetry mate --> don't place HG
 CRYST1  108.910  108.910  108.910  90.00  90.00  90.00 I 4 3 2
 ATOM      1  N   CYS A  12     -50.777 -13.205 -12.246  1.00 95.50           N
 ATOM      2  CA  CYS A  12     -51.774 -13.797 -13.124  1.00103.68           C
@@ -300,6 +321,90 @@ ATOM      9  H3  CYS A  12     -49.974 -13.266 -12.625  1.00 95.50           H
 ATOM     10  HA  CYS A  12     -52.194 -14.542 -12.667  1.00103.68           H
 ATOM     11  HB2 CYS A  12     -52.438 -11.981 -13.828  1.00103.91           H
 ATOM     12  HB3 CYS A  12     -53.344 -12.553 -12.655  1.00103.91           H
+TER
+"""
+
+pdb_str_007 = """
+REMARK CYS forms a disulfide with symmetry mate --> don't place HG
+REMARK from PDB 5c11
+CRYST1  108.910  108.910  108.910  90.00  90.00  90.00 I 4 3 2
+ATOM      1  N   PRO A  11     -50.110 -12.340  -8.990  1.00 87.52           N
+ATOM      2  CA  PRO A  11     -49.518 -12.918 -10.200  1.00 88.41           C
+ATOM      3  C   PRO A  11     -50.549 -13.676 -11.025  1.00 97.43           C
+ATOM      4  O   PRO A  11     -51.129 -14.656 -10.556  1.00 93.89           O
+ATOM      5  CB  PRO A  11     -48.446 -13.865  -9.649  1.00 78.46           C
+ATOM      6  CG  PRO A  11     -48.110 -13.314  -8.317  1.00 80.77           C
+ATOM      7  CD  PRO A  11     -49.402 -12.783  -7.777  1.00 92.02           C
+ATOM      8  H2  PRO A  11     -50.063 -11.383  -9.046  1.00 87.52           H
+ATOM      9  H3  PRO A  11     -51.029 -12.612  -8.932  1.00 87.52           H
+ATOM     10  HA  PRO A  11     -49.092 -12.241 -10.748  1.00 88.41           H
+ATOM     11  HB2 PRO A  11     -48.804 -14.764  -9.574  1.00 78.46           H
+ATOM     12  HB3 PRO A  11     -47.671 -13.864 -10.232  1.00 78.46           H
+ATOM     13  HG2 PRO A  11     -47.455 -12.604  -8.409  1.00 80.77           H
+ATOM     14  HG3 PRO A  11     -47.760 -14.017  -7.748  1.00 80.77           H
+ATOM     15  HD2 PRO A  11     -49.899 -13.480  -7.321  1.00 92.02           H
+ATOM     16  HD3 PRO A  11     -49.246 -12.038  -7.175  1.00 92.02           H
+ATOM     17  N   CYS A  12     -50.777 -13.205 -12.246  1.00 95.50           N
+ATOM     18  CA  CYS A  12     -51.774 -13.797 -13.124  1.00103.68           C
+ATOM     19  C   CYS A  12     -51.135 -14.327 -14.399  1.00101.77           C
+ATOM     20  O   CYS A  12     -50.987 -13.597 -15.382  1.00106.09           O
+ATOM     21  CB  CYS A  12     -52.861 -12.775 -13.466  1.00103.91           C
+ATOM     22  SG  CYS A  12     -54.064 -13.357 -14.680  1.00106.39           S
+ATOM     23  H   CYS A  12     -50.361 -12.536 -12.590  1.00 95.50           H
+ATOM     24  HA  CYS A  12     -52.147 -14.558 -12.653  1.00103.68           H
+ATOM     25  HB2 CYS A  12     -52.438 -11.981 -13.828  1.00103.91           H
+ATOM     26  HB3 CYS A  12     -53.344 -12.553 -12.655  1.00103.91           H
+ATOM     28  N   LYS A  13     -50.756 -15.600 -14.375  1.00105.98           N
+ATOM     29  CA  LYS A  13     -50.135 -16.230 -15.528  1.00115.21           C
+ATOM     30  C   LYS A  13     -50.110 -17.740 -15.357  1.00105.26           C
+ATOM     31  O   LYS A  13     -50.331 -18.255 -14.264  1.00118.65           O
+ATOM     32  CB  LYS A  13     -48.714 -15.704 -15.737  1.00110.03           C
+ATOM     33  CG  LYS A  13     -47.784 -15.954 -14.563  1.00100.14           C
+ATOM     34  CD  LYS A  13     -46.379 -15.452 -14.853  1.00101.77           C
+ATOM     35  CE  LYS A  13     -45.456 -15.678 -13.663  1.00112.21           C
+ATOM     36  NZ  LYS A  13     -44.063 -15.229 -13.941  1.00110.68           N
+ATOM     37  H   LYS A  13     -50.849 -16.122 -13.698  1.00105.98           H
+ATOM     38  HA  LYS A  13     -50.648 -16.015 -16.323  1.00115.21           H
+ATOM     39  HB2 LYS A  13     -48.755 -14.746 -15.882  1.00110.03           H
+ATOM     40  HB3 LYS A  13     -48.332 -16.141 -16.514  1.00110.03           H
+ATOM     41  HG2 LYS A  13     -48.120 -15.488 -13.782  1.00100.14           H
+ATOM     42  HG3 LYS A  13     -47.738 -16.907 -14.386  1.00100.14           H
+ATOM     43  HD2 LYS A  13     -46.409 -14.501 -15.041  1.00101.77           H
+ATOM     44  HD3 LYS A  13     -46.017 -15.929 -15.616  1.00101.77           H
+ATOM     45  HE2 LYS A  13     -45.789 -15.178 -12.902  1.00112.21           H
+ATOM     46  HE3 LYS A  13     -45.432 -16.625 -13.453  1.00112.21           H
+ATOM     47  HZ1 LYS A  13     -43.731 -15.679 -14.633  1.00110.68           H
+ATOM     48  HZ2 LYS A  13     -43.549 -15.374 -13.229  1.00110.68           H
+ATOM     49  HZ3 LYS A  13     -44.056 -14.360 -14.131  1.00110.68           H
+TER
+"""
+
+pdb_str_008 = """
+REMARK disulfide bridge between neighboring residues --> don't place HG atoms
+REMARK from PDB 3cu9
+CRYST1   86.141   89.579   76.041  90.00  90.00  90.00 C 2 2 21
+ATOM      1  N   CYS A 221     -25.409   6.530   5.604  1.00  8.50           N
+ATOM      2  CA  CYS A 221     -25.611   7.909   5.995  1.00  8.62           C
+ATOM      3  C   CYS A 221     -25.469   8.835   4.795  1.00  8.84           C
+ATOM      4  O   CYS A 221     -25.131   8.426   3.672  1.00  9.51           O
+ATOM      5  CB  CYS A 221     -24.546   8.272   7.047  1.00  9.34           C
+ATOM      6  SG  CYS A 221     -22.908   8.520   6.302  1.00 10.59           S
+ATOM      7  H1  CYS A 221     -24.721   6.192   6.055  1.00  8.50           H
+ATOM      8  H2  CYS A 221     -26.143   6.060   5.785  1.00  8.50           H
+ATOM      9  H3  CYS A 221     -25.240   6.491   4.731  1.00  8.50           H
+ATOM     10  HA  CYS A 221     -26.500   8.030   6.365  1.00  8.62           H
+ATOM     11  HB2 CYS A 221     -24.805   9.094   7.491  1.00  9.34           H
+ATOM     12  HB3 CYS A 221     -24.479   7.552   7.694  1.00  9.34           H
+ATOM     14  N   CYS A 222     -25.649  10.119   5.071  1.00  8.82           N
+ATOM     15  CA  CYS A 222     -25.005  11.177   4.321  1.00  8.99           C
+ATOM     16  C   CYS A 222     -25.532  11.323   2.911  1.00  9.12           C
+ATOM     17  O   CYS A 222     -24.803  11.847   2.036  1.00 11.09           O
+ATOM     18  CB  CYS A 222     -23.463  10.894   4.313  1.00 11.23           C
+ATOM     19  SG  CYS A 222     -22.792  10.598   5.958  1.00 11.91           S
+ATOM     20  H   CYS A 222     -26.153  10.408   5.705  1.00  8.82           H
+ATOM     21  HA  CYS A 222     -25.188  12.029   4.746  1.00  8.99           H
+ATOM     22  HB2 CYS A 222     -23.004  11.661   3.936  1.00 11.23           H
+ATOM     23  HB3 CYS A 222     -23.291  10.107   3.773  1.00 11.23           H
 TER
 """
 

@@ -4,10 +4,9 @@ from iotbx.phil import parse
 from libtbx.utils import Sorry
 
 master_phil_str = """
-dispatcher = cctbx.xfel.xtc_process
+dispatcher = cctbx.xfel.process
   .type = str
-  .help = Which program to run. cxi.xtc_process is for module only based processing, \
-          such as mod_hitfind. cctbx.xfel.xtc_process uses the DIALS back end.
+  .help = Which program to run. cctbx.xfel.process should be used in most cases.
 dry_run = False
   .type = bool
   .help = If True, the program will create the trial directory but not submit the job, \

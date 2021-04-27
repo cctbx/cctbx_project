@@ -65,6 +65,11 @@ phil_scope = parse("""
   raw_file = None
     .type = str
     .help = path to Jungfrau raw file
+  recalculate_wavelength = False
+    .type = bool
+    .help = If True, the incident_wavelength is recalculated from the \
+            spectrum. The original wavelength is saved as \
+            incident_wavelength_fitted_spectrum_average.
   nexus_details {
     instrument_name = SwissFEL ARAMIS BEAMLINE ESB
       .type = str
@@ -261,6 +266,8 @@ class jf16m_cxigeom2nexus(object):
       beam_pulse_ids = beam_h5['data/SARFE10-PSSS059:SPECTRUM_CENTER/pulse_id'][()]
       beam_energies = beam_h5['data/SARFE10-PSSS059:SPECTRUM_CENTER/data'][()]
       energies = np.ndarray((len(data_pulse_ids),), dtype='f8')
+      if self.params.recalculate_wavelength:
+        orig_energies = np.ndarray((len(data_pulse_ids),), dtype='f8')
       if self.params.include_spectra:
         beam_spectra_x = beam_h5['data/SARFE10-PSSS059:SPECTRUM_X/data'][()]
         beam_spectra_y = beam_h5['data/SARFE10-PSSS059:SPECTRUM_Y/data'][()]
@@ -269,7 +276,16 @@ class jf16m_cxigeom2nexus(object):
 
       for i, pulse_id in enumerate(data_pulse_ids):
         where = np.where(beam_pulse_ids==pulse_id)[0][0]
-        energies[i] = beam_energies[where]
+        if self.params.recalculate_wavelength:
+          assert self.params.beam_file is not None, "Must provide beam file to recalculate wavelength"
+          x = beam_spectra_x[where]
+          y = beam_spectra_y[where].astype(float)
+          ycorr = y - np.percentile(y, 10)
+          e = sum(x*ycorr) / sum(ycorr)
+          energies[i] = e
+          orig_energies[i] = beam_energies[where]
+        else:
+          energies[i] = beam_energies[where]
         if self.params.include_spectra:
           spectra_x[i] = beam_spectra_x[where]
           spectra_y[i] = beam_spectra_y[where]
@@ -277,19 +293,27 @@ class jf16m_cxigeom2nexus(object):
       if self.params.energy_offset:
         energies += self.params.energy_offset
       wavelengths = 12398.4187/energies
+      if self.params.recalculate_wavelength:
+        orig_wavelengths = 12398.4187/orig_energies
 
+      beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
+      if self.params.recalculate_wavelength:
+        beam.create_dataset(
+            'incident_wavelength_fitted_spectrum_average',
+            orig_wavelengths.shape,
+            data=orig_wavelengths,
+            dtype=orig_wavelengths.dtype
+        )
+        beam['incident_wavelength_fitted_spectrum_average'].attrs['variant'] = 'incident_wavelength'
       if self.params.include_spectra:
         if self.params.energy_offset:
           spectra_x += self.params.energy_offset
-        beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
         if (spectra_x == spectra_x[0]).all(): # check if all rows are the same
           spectra_x = spectra_x[0]
         beam.create_dataset('incident_wavelength_1Dspectrum', spectra_x.shape, data=12398.4187/spectra_x, dtype=spectra_x.dtype)
         beam.create_dataset('incident_wavelength_1Dspectrum_weight', spectra_y.shape, data=spectra_y, dtype=spectra_y.dtype)
         beam['incident_wavelength_1Dspectrum'].attrs['units'] = 'angstrom'
         beam['incident_wavelength'].attrs['variant'] = 'incident_wavelength_1Dspectrum'
-      else:
-        beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
     else:
       assert self.params.wavelength is not None, "Provide a wavelength"
       beam.create_dataset('incident_wavelength', (1,), data=self.params.wavelength, dtype='f8')

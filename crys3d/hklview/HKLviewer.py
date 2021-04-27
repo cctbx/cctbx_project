@@ -69,20 +69,9 @@ class AboutForm(QDialog):
     mainLayout = QGridLayout()
     self.aboutlabel = QLabel()
     self.aboutlabel.setWordWrap(True)
-    aboutstr = """<html><head/><body><p><span style=" font-weight:600;">
-    HKLviewer, </span>A reflection data viewer for crystallography
-    <br/>Developers: Dr. Robert D. Oeffner<br/>
-    Cambridge Institute for Medical Research, University of Cambridge.<br/>
-    HKLviewer is part of the <a href="http://cci.lbl.gov/docs/cctbx/"> CCTBX library</a>
-    as well as derived software thereof.<br/>
-    HKLviewer uses functionality provided by the
-    <a href="https://github.com/nglviewer/ngl">NGL Viewer</a> project and
-    the <a href="https://github.com/niklasvh/html2canvas">html2canvas</a> project.
-    Refer to rdo20@cam.ac.uk or cctbx@cci.lbl.gov for queries or bug reports.
-    </p></body></html>"""
-    self.aboutlabel.setText(aboutstr)
     self.aboutlabel.setTextInteractionFlags(Qt.TextBrowserInteraction);
     self.aboutlabel.setOpenExternalLinks(True);
+    self.writeAboutstr("")
     self.copyrightstxt = QTextEdit()
     self.copyrightstxt.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
     self.copyrightstxt.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
@@ -99,6 +88,22 @@ class AboutForm(QDialog):
     self.setLayout(mainLayout)
     self.setMinimumSize(QSize(350, 200))
     self.setFixedSize( self.sizeHint() )
+  def writeAboutstr(self, versionstr):
+    aboutstr = """<html><head/><body><p>
+    <span style=" font-weight:600;">HKLviewer, </span>
+    CCTBX version: """ + versionstr + \
+    """
+    <br/>A reflection data viewer for crystallography
+    <br/>Developers: Dr. Robert D. Oeffner<br/>
+    Cambridge Institute for Medical Research, University of Cambridge.<br/>
+    HKLviewer is part of the <a href="http://cci.lbl.gov/docs/cctbx/"> CCTBX library</a>
+    as well as derived software thereof.<br/>
+    HKLviewer uses functionality provided by the
+    <a href="https://github.com/nglviewer/ngl">NGL Viewer</a> project and
+    the <a href="https://github.com/niklasvh/html2canvas">html2canvas</a> project.
+    Refer to rdo20@cam.ac.uk or cctbx@cci.lbl.gov for queries or bug reports.
+    </p></body></html>"""
+    self.aboutlabel.setText(aboutstr)
   def onOK(self):
     self.hide()
 
@@ -147,7 +152,7 @@ class WebEngineDebugForm(QDialog):
                         Qt.WindowTitleHint |
                         Qt.WindowSystemMenuHint
                         )
-    self.setWindowTitle("Chrome QWebEngineDebug")
+    self.setWindowTitle("Chromium QWebEngineDebug")
     browser = QWebEngineView()
     mainLayout = QGridLayout()
     mainLayout.addWidget(browser, 0, 0)
@@ -275,7 +280,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.MillerLabel3 = QLabel()
     self.MillerLabel3.setText("""<html><head/><body><p>
     For examples on creating a dataset from existing ones see
-    <a href="http://cci.lbl.gov/docs/cctbx/doc_hklviewer/#make_new_dataset">Making new dataset</a>.
+    <a href="http://cci.lbl.gov/docs/cctbx/doc_hklviewer/#making-a-new-dataset">Making a new dataset</a>.
     <br>
     For details on python scripting cctbx.miller.array see
     <a href="https://cctbx.github.io/cctbx/cctbx.miller.html#the-miller-array">cctbx.miller arrays</a>.
@@ -570,6 +575,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
                 txts = txts + "\n" + "#" * 50  + "\n"
             self.aboutform.copyrightstxt.setText(txts)
             self.aboutform.setFixedSize( self.aboutform.sizeHint() )
+          if self.infodict.get("cctbxversion"):
+            self.aboutform.writeAboutstr( self.infodict["cctbxversion"])
 
           if self.infodict.get("scene_array_label_types"):
             self.scenearraylabeltypes = self.infodict.get("scene_array_label_types", [])

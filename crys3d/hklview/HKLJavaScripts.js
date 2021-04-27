@@ -73,6 +73,7 @@ var sockwaitcount = 0;
 var ready_for_closing = false;
 var columnSelect = null;
 var animationspeed = -1.0;
+var XYZaxes = null;
 var Hstarstart = null;
 var Hstarend = null;
 var Kstarstart = null;
@@ -1126,6 +1127,7 @@ function onMessage(e)
     {
       //HKLscene();
       MakeHKL_Axis();
+      MakeXYZ_Axis();
       RenderRequest();
       WebsockSendMsg('Drawing new reflections');
     }
@@ -1470,7 +1472,7 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
   var ih = 3.0*hfac,
   topr = 25.0,
   topr2 = 0.0,
-  lp = 10.0;
+  lp = 2.0; // vertical margin between edge of white container and labels
 
   var maxnumberwidth = 0;
   for (j = 0; j < colourgradvalarrays[0].length; j++)
@@ -1490,9 +1492,7 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
     fomlabelheight = 0;
   }
   var wp3 = wp + colourgradvalarrays.length * wp2 + 2;
-
   totalheight = ih * colourgradvalarrays[0].length + 35 + fomlabelheight;
-  //totalheight = ih * 60 + 35 + fomlabelheight;
 
   if (colourchart != null)
     colourchart.remove(); // delete previous colour chart if any
@@ -1602,6 +1602,130 @@ function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids)
 }
 
 
+
+function MakeXYZ_Axis() {
+  // draw x and y arrows
+  var linelength = 20;
+  var linestart = 5;
+  var vleft = 2;
+  var hbottom = 2;
+  var arrowhalfwidth = 2;
+  var linewidth = 1;
+  var arrowlength = 7;
+  var labelfromarrow = linelength + linestart + arrowlength + 1;
+  var labelwidth = getTextWidth("x", fontsize)
+
+  if (XYZaxes != null)
+    XYZaxes.remove(); // delete previous colour chart if any
+  XYZaxes = addDivBox(null, 0, 10, 60, 60, bgcolour = "rgba(255, 255, 255, 0.0)");
+  XYZaxes.style.top = ""; // offset from the bottom so leave top distance void
+  XYZaxes.style.bottom = "30px";
+
+  velm = createElement("div", { innerText: "" },
+    {
+      backgroundColor: "rgba(0, 255, 0, 1.0)", color: "rgba(0, 0, 0, 0.0)",
+      bottom: linestart.toString() + "px",
+      height: linelength.toString() + "px",
+      left: (vleft + arrowhalfwidth - linewidth / 2.0).toString() + "px",
+      width: linewidth.toString() + "px",
+      position: "absolute"
+    }, 10);
+  addElement(velm);
+  XYZaxes.append(velm);
+
+  uparrow = createElement("div", { innerText: "" }, {
+    backgroundColor: "rgba(0, 0, 255, 0.0)", color: "rgba(0, 0, 0, 0.0)",
+    bottom: (linelength + linestart).toString() + "px",
+    left: vleft.toString() + "px",
+    borderLeft: arrowhalfwidth.toString() + "px solid transparent",
+    borderRight: arrowhalfwidth.toString() + "px solid transparent",
+    borderBottom: arrowlength.toString() + "px solid rgba(0, 255, 0)",
+    position: "absolute"
+  }, 10);
+  addElement(uparrow);
+  XYZaxes.append(uparrow);
+
+  yelm = createElement("div", { innerText: "y" }, {
+    backgroundColor: "rgba(0, 255, 0, " + div_annotation_opacity + ")", color: "rgba(255, 255, 255, 1.0)",
+    left: (vleft - linewidth / 2.0).toString() + "px",
+    bottom: labelfromarrow.toString() + "px",
+    padding: "1px",
+    position: "absolute"
+  }, fontsize);
+  addElement(yelm);
+  XYZaxes.append(yelm);
+
+  helm = createElement("div", { innerText: "" }, {
+    backgroundColor: "rgba(0, 0, 255, 1.0)", color: "rgba(0, 0, 0, 0.0)",
+    left: linestart.toString() + "px",
+    width: linelength.toString() + "px",
+    bottom: (hbottom + arrowhalfwidth - linewidth / 2.0).toString() + "px",
+    height: linewidth.toString() + "px",
+    position: "absolute"
+  }, 10);
+  addElement(helm);
+  XYZaxes.append(helm);
+
+  rightarrow = createElement("div", { innerText: "" }, {
+    backgroundColor: "rgba(0, 0, 255, 0.0)", color: "rgba(0, 0, 0, 0.0)",
+    left: (linelength + linestart).toString() + "px",
+    bottom: hbottom.toString() + "px",
+    borderTop: arrowhalfwidth.toString() + "px solid transparent",
+    borderBottom: arrowhalfwidth.toString() + "px solid transparent",
+    borderLeft: arrowlength.toString() + "px solid rgba(0, 0, 255)",
+    position: "absolute"
+  }, 10);
+  addElement(rightarrow);
+  XYZaxes.append(rightarrow);
+
+  xelm = createElement("div", { innerText: "x" }, {
+    backgroundColor: "rgba(0, 0, 255, " + div_annotation_opacity + ")", color: "rgba(255, 255, 255, 1.0)",
+    left: labelfromarrow.toString() + "px",
+    bottom: (hbottom + arrowhalfwidth - linewidth / 2.0).toString() + "px",
+    padding: "1px",
+    position: "absolute"
+  }, fontsize);
+  addElement(xelm);
+  XYZaxes.append(xelm);
+
+  var arrowradius = 10;
+  zarrow = createElement("div", { innerText: "" }, {
+    backgroundColor: "rgba(255,0 ,0, 1.0)", color: "rgba(0, 0, 0, 1.0)",
+    left: (linelength / 2 + linestart).toString() + "px",
+    bottom: (linelength / 2 + linestart).toString() + "px",
+    height: arrowradius.toString() + "px",
+    width: arrowradius.toString() + "px",
+    borderRadius: "50%",
+    position: "absolute"
+  }, 10);
+  addElement(zarrow);
+  XYZaxes.append(zarrow);
+
+  zarrowtip = createElement("div", { innerText: "" }, {
+    backgroundColor: "rgba(255,255,255, 1.0)", color: "rgba(0, 0, 0, 1.0)",
+    left: (arrowradius / 2 + linelength / 2 + linestart - 1).toString() + "px",
+    bottom: (arrowradius / 2 + linelength / 2 + linestart - 1).toString() + "px",
+    height: "2px",
+    width: "2px",
+    borderRadius: "50%",
+    position: "absolute"
+  }, 10);
+  addElement(zarrowtip);
+  XYZaxes.append(zarrowtip);
+
+  zelm = createElement("div", { innerText: "z" }, {
+    backgroundColor: "rgba(255, 0, 0, " + div_annotation_opacity + ")", color: "rgba(255, 255, 255, 1.0)",
+    left: (arrowradius + linelength / 2 + linestart).toString() + "px",
+    bottom: (arrowradius + linelength / 2 + linestart).toString() + "px",
+    padding: "1px",
+    position: "absolute"
+  }, fontsize);
+  addElement(zelm);
+  XYZaxes.append(zelm);
+}
+
+
+
 function HKLscene()
 {
   shape = new NGL.Shape('shape');
@@ -1700,9 +1824,24 @@ function HKLscene()
     }
   );
 
+  function SetDefaultOrientation()
+  {
+    var m4 = new NGL.Matrix4();
+    var axis = new NGL.Vector3();
+    axis.x = 0.0;
+    axis.y = 1.0;
+    axis.z = 0.0;
+    // Default in WebGL is for x-axis to point left and z-axis to point into the screen.
+    // But we want x-axis pointing right and z-axis pointing out of the screen. 
+    // Rotate coordinate system to that effect
+    m4.makeRotationAxis(axis, Math.PI);
+    shapeComp.autoView(500);
+    stage.viewerControls.orient(m4);
+  }
+
   shapeComp = stage.addComponentFromObject(shape);
   repr = shapeComp.addRepresentation('buffer');
-  shapeComp.autoView(500);
+  SetDefaultOrientation();
   repr.update();
 
   if (isdebug)
@@ -1719,19 +1858,11 @@ function HKLscene()
   if (isdebug)
     debugmessage.innerText = dbgmsg;
 
-
   ResetViewBtn = createElement("input", {
     value: "Reset view",
     type: "button",
     onclick: function () {
-      shapeComp.autoView(500);
-      var m4 = new NGL.Matrix4();
-      var axis = new NGL.Vector3();
-      axis.x = 0.0;
-      axis.y = 1.0;
-      axis.z = 0.0;
-      m4.makeRotationAxis(axis, 0.0);
-      stage.viewerControls.orient(m4);
+      SetDefaultOrientation();
       RenderRequest();
       sleep(100).then(() => {
         msg = getOrientMsg();
@@ -1741,7 +1872,6 @@ function HKLscene()
     },
   }, { bottom: "10px", left: "10px", width: "90px", position: "absolute" }, fsize = fontsize);
   addElement(ResetViewBtn);
-
 
 }
 

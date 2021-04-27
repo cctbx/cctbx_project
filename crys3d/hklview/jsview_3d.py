@@ -1642,12 +1642,15 @@ Distance: %s
     uc = self.miller_array.unit_cell()
     OrtMx = matrix.sqr( uc.fractionalization_matrix() )
     InvMx = OrtMx.inverse()
+    # Our local coordinate system has x-axis pointing right and z axis pointing out of the screen
+    # unlike threeJS so rotate the coordinates emitted from there before presenting them
+    RotAroundYMx = matrix.sqr([-1.0,0.0,0.0, 0.0,1.0,0.0, 0.0,0.0,-1.0])
     Xvec =  matrix.rec([1,0,0] ,n=(1,3))
-    Xhkl = list(InvMx.transpose()* self.currentRotmx.inverse()* Xvec.transpose())
+    Xhkl = list(RotAroundYMx.transpose()* InvMx.transpose()* self.currentRotmx.inverse()* Xvec.transpose())
     Yvec =  matrix.rec([0,1,0] ,n=(1,3))
-    Yhkl = list(InvMx.transpose()* self.currentRotmx.inverse()* Yvec.transpose())
+    Yhkl = list(RotAroundYMx.transpose()*InvMx.transpose()* self.currentRotmx.inverse()* Yvec.transpose())
     Zvec =  matrix.rec([0,0,1] ,n=(1,3))
-    Zhkl = list(InvMx.transpose()* self.currentRotmx.inverse()* Zvec.transpose())
+    Zhkl = list(RotAroundYMx.transpose()*InvMx.transpose()* self.currentRotmx.inverse()* Zvec.transpose())
     if self.debug:
       self.SendInfoToGUI( { "StatusBar": "RotMx: %s, XHKL: %s, YHKL: %s, ZHKL: %s" \
         %(str(roundoff(self.currentRotmx,4)), str(roundoff(Xhkl, 2)),

@@ -479,7 +479,7 @@ class get_slurm_submit_command(get_submit_command):
     if self.params.wall_time is not None:
       hours = self.params.wall_time // 60
       minutes = self.params.wall_time % 60
-      wt_str = "#SBATCH --time=%2d:%02d:00" % (hours, minutes)
+      wt_str = "#SBATCH --time=%02d:%02d:00" % (hours, minutes)
       self.options_inside_submit_script.append(wt_str)
 
     # -l mem_free=<memory_requested> (optional)
