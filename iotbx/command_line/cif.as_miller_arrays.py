@@ -9,7 +9,7 @@ def run(args):
   for f in args:
     try:
       file_object = smart_open.for_reading(file_name=f)
-      miller_arrays = iotbx.cif.reader(file_object=file_object).as_miller_arrays(style="new")
+      miller_arrays = iotbx.cif.reader(file_object=file_object).as_miller_arrays()
     except KeyboardInterrupt:
       raise
     except Exception as e:
