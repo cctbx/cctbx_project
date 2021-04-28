@@ -260,7 +260,7 @@ class genetic_algorithm:
       else:
         max_cycles_without_improvement = max(
           n_macro_cycles * self.params.min_fraction_of_cycles_to_run,
-          self.params.end_cycles_if_no_improvement_for_n_cycles) 
+          self.params.end_cycles_if_no_improvement_for_n_cycles)
       for macro_cycle in range(max_macro_cycles):
         if len(self.genes) < n_genes_target:
           working_macro_cycles += 1 # need another cycle
