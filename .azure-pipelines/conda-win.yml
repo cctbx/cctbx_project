@@ -16,10 +16,10 @@ jobs:
   strategy:
     maxParallel: 2
     matrix:
-      python2.7:
-        OS: win-64
-        PYTHON_VERSION: py27
-        MODULES: ${{ parameters.modules }}
+      # python2.7:
+      #   OS: win-64
+      #   PYTHON_VERSION: py27
+      #   MODULES: ${{ parameters.modules }}
       python3.6:
         OS: win-64
         PYTHON_VERSION: py36
