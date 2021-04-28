@@ -89,6 +89,13 @@ residuals {
       .help = this should be obvious.  Either keep the good ones or the bad ones.
   }
 }
+output {
+  observations_filtered_replaces = None
+    .type = str
+    .help = After MCD, write out the filtered observations, to a filename patterned \
+            on the observations file, but replacing this string with 'filtered'.
+
+}
 include scope xfel.command_line.cspad_detector_congruence.phil_scope
 ''', process_includes=True)
 
@@ -139,6 +146,7 @@ class Script(object):
     delRoverR = {}
     panel_deltax = {}
     panel_deltay = {}
+    panel_deltapsi = {}
     cumPANNO = {}
     cumOBS = {}
     cumCALC = {}
@@ -162,11 +170,13 @@ class Script(object):
       n_file += 1
       fcalc = strong_refls["xyzcal.mm"]
       fobs = strong_refls["xyzobs.mm.value"]
+      delpsi = strong_refls["delpsical.rad"]
       panno = strong_refls["panel"]
       if n_file==1:
         for ipanel in range(256):
           panel_deltax[ipanel] = panel_deltax.get(ipanel, flex.double())
           panel_deltay[ipanel] = panel_deltay.get(ipanel, flex.double())
+          panel_deltapsi[ipanel] = panel_deltapsi.get(ipanel, flex.double())
         for isensor in range(32):
           cumOBS[isensor] = cumOBS.get(isensor, flex.vec3_double())
           cumCALC[isensor] = cumCALC.get(isensor, flex.vec3_double())
@@ -185,6 +195,7 @@ class Script(object):
         panel = D[panno[irefl]]
         panel_deltax[panno[irefl]].append( (fcalc[irefl][0] - fobs[irefl][0]) )
         panel_deltay[panno[irefl]].append( (fcalc[irefl][1] - fobs[irefl][1]) )
+        panel_deltapsi[panno[irefl]].append( delpsi[irefl] )
         CALC.append(panel.get_lab_coord(fcalc[irefl][0:2])[0:2])  # take only the xy coords; assume z along beam
         OBS.append(panel.get_lab_coord(fobs[irefl][0:2])[0:2])
         cumCALC[panno[irefl]//8].append(panel.get_lab_coord(fcalc[irefl][0:2]))
@@ -202,14 +213,121 @@ class Script(object):
         for irefl in range(len(strong_refls)):
           delRoverR[run_token].append( Dr_over_r[irefl] )
 
-      from libtbx import adopt_init_args
-      obj = dict(n_total=n_total, n_file=n_file, sum_delta_x=sum_delta_x,
+    from libtbx import adopt_init_args
+    obj = dict(n_total=n_total, n_file=n_file, sum_delta_x=sum_delta_x,
             sum_delta_y=sum_delta_y, deltax=deltax, deltay=deltay, distance=distance,
-            delRoverR=delRoverR, panel_deltax=panel_deltax, panel_deltay=panel_deltay,
+            delRoverR=delRoverR, panel_deltax=panel_deltax, panel_deltay=panel_deltay, panel_deltapsi=panel_deltapsi,
             cumOBS=cumOBS, cumCALC=cumCALC, cumPANNO=cumPANNO, O="ok")
-      adopt_init_args(self, obj)
-      self.ordered_run_nos = sorted(list(run_nos.keys()))
-      self.run_nos = run_nos
+    adopt_init_args(self, obj)
+    self.ordered_run_nos = sorted(list(run_nos.keys()))
+    self.run_nos = run_nos
+
+  def build_statistics_rejecting_outliers(self,refl_gen):
+    # XXX duplicates behavior of above function; should refactor to cover both cases with same code.
+    n_total = 0
+    n_file = 0
+    sum_delta_x = 0
+    sum_delta_y = 0
+    deltax = {}
+    deltay = {}
+    delRoverR = {}
+    panel_deltax = {}
+    panel_deltay = {}
+    panel_deltapsi = {}
+    cumPANNO = {}
+    cumOBS = {}
+    cumCALC = {}
+    run_nos = {}
+
+    print ("Reading %d refl files, WITH REJECTION printing the first 10"%(len(refl_gen)))
+    from ipdb import launch_ipdb_on_exception
+    with launch_ipdb_on_exception():
+      for item in refl_gen:
+        strong_refls = item["strong_refls"]
+        nrefls = len(strong_refls)
+        keep_refls = flex.bool(nrefls, True)
+        if self.params.dispatch.by_run==True:
+          run_match = RUN.match(item["strfile"])
+          run_token = int(run_match.group(1)); run_nos[run_token]=run_nos.get(run_token,0); run_nos[run_token]+=1
+          deltax[run_token] = deltax.get(run_token, flex.double())
+          deltay[run_token] = deltay.get(run_token, flex.double())
+          delRoverR[run_token] = delRoverR.get(run_token, flex.double())
+        OBS = flex.vec2_double()
+        CALC = flex.vec2_double()
+
+        if n_file < 1000: print (item["strfile"], nrefls)
+        n_total += nrefls
+        n_file += 1
+        fcalc = strong_refls["xyzcal.mm"]
+        fobs = strong_refls["xyzobs.mm.value"]
+        delpsi = strong_refls["delpsical.rad"]
+        panno = strong_refls["panel"]
+        if n_file==1:
+          for ipanel in range(256):
+            panel_deltax[ipanel] = panel_deltax.get(ipanel, flex.double())
+            panel_deltay[ipanel] = panel_deltay.get(ipanel, flex.double())
+            panel_deltapsi[ipanel] = panel_deltapsi.get(ipanel, flex.double())
+          for isensor in range(32):
+            cumOBS[isensor] = cumOBS.get(isensor, flex.vec3_double())
+            cumCALC[isensor] = cumCALC.get(isensor, flex.vec3_double())
+            cumPANNO[isensor] = cumPANNO.get(isensor, flex.int())
+          expt_files = glob.glob(self.params.input.expt_glob)
+          expt_file = expt_files[0]
+          from dxtbx.model.experiment_list import ExperimentList
+          int_expt = ExperimentList.from_file(expt_file, check_format=False)[0]
+          D = int_expt.detector
+          B = int_expt.beam
+          Beam = D.hierarchy().get_beam_centre_lab((0,0,-1)) # hard code the sample to source vector for now
+          distance = D.hierarchy().get_distance()
+        for irefl in range(len(strong_refls)):
+          trial_delta_x = (fcalc[irefl][0] - fobs[irefl][0])
+          trial_delta_y = (fcalc[irefl][1] - fobs[irefl][1])
+          #if irefl==26 and nrefls==400: import ipdb;ipdb.set_trace()
+          try:
+            maha_distance = self.record_MCD_models[panno[irefl]].rob_cov.mahalanobis(X=[ (trial_delta_x,trial_delta_y,delpsi[irefl]) ])[0]
+          except KeyError:
+            maha_distance = None
+          if (
+              maha_distance is None or
+              maha_distance >= (self.params.residuals.mcd_filter.mahalanobis_distance)**2
+          ):
+            keep_refls[irefl]=False
+            continue
+          sum_delta_x += trial_delta_x
+          sum_delta_y += trial_delta_y
+          panel = D[panno[irefl]]
+          panel_deltax[panno[irefl]].append( trial_delta_x )
+          panel_deltay[panno[irefl]].append( trial_delta_y )
+          panel_deltapsi[panno[irefl]].append( delpsi[irefl] )
+          CALC.append(panel.get_lab_coord(fcalc[irefl][0:2])[0:2])  # take only the xy coords; assume z along beam
+          OBS.append(panel.get_lab_coord(fobs[irefl][0:2])[0:2])
+          cumCALC[panno[irefl]//8].append(panel.get_lab_coord(fcalc[irefl][0:2]))
+          cumOBS[panno[irefl]//8].append(panel.get_lab_coord(fobs[irefl][0:2]))
+          cumPANNO[panno[irefl]//8].append(panno[irefl])
+        if self.params.dispatch.by_run==True:
+          for irefl in range(len(strong_refls)):
+            deltax[run_token].append( (fcalc[irefl][0] - fobs[irefl][0]) )
+            deltay[run_token].append( (fcalc[irefl][1] - fobs[irefl][1]) )
+
+        R_sq = CALC.dot(CALC)
+        DIFF = CALC-OBS
+        Dr_over_r = (DIFF.dot(CALC))/R_sq
+        if self.params.dispatch.by_run==True:
+          for irefl in range(len(Dr_over_r)):
+            delRoverR[run_token].append( Dr_over_r[irefl] )
+
+        if self.params.output.observations_filtered_replaces is not None:
+          filtered_file = item["obsfile"].replace(self.params.output.observations_filtered_replaces,"filtered")
+          item["strong_refls"].select(keep_refls).as_file(filtered_file)
+
+    from libtbx import adopt_init_args
+    obj = dict(n_total=n_total, n_file=n_file, sum_delta_x=sum_delta_x,
+            sum_delta_y=sum_delta_y, deltax=deltax, deltay=deltay, distance=distance,
+            delRoverR=delRoverR, panel_deltax=panel_deltax, panel_deltay=panel_deltay, panel_deltapsi=panel_deltapsi,
+            cumOBS=cumOBS, cumCALC=cumCALC, cumPANNO=cumPANNO, O="ok")
+    adopt_init_args(self, obj)
+    self.ordered_run_nos = sorted(list(run_nos.keys()))
+    self.run_nos = run_nos
 
   def per_run_analysis(self):
     print ()
@@ -239,7 +357,7 @@ class Script(object):
     for isensor in range(32):
       print ("Panel Sensor  <Δx>(μm)     <Δy>(μm)      Nrefl  RMS Δx(μm)  RMS Δy(μm) ")
 
-      if len(self.cumCALC[isensor]) < 2: continue
+      if len(self.cumCALC[isensor]) <= 3: continue
 
       for ipanel in range(8*isensor, 8*(1+isensor)):
         if len(self.panel_deltax[ipanel])<2: continue
@@ -346,6 +464,20 @@ class Script(object):
         print ( "     %3d %7.2f        %7.2f        %6d\n"%(isensor,1000.*flex.mean(cumD[0]), 1000.*flex.mean(cumD[1]), len(cumD[0])))
       print("----\n")
 
+  def per_panel_mcd_filter(self):
+    from xfel.metrology.panel_fitting import Panel_MCD_Filter
+    self.record_MCD_models = {}
+    for isensor in range(32):
+      if len(self.cumCALC[isensor]) <= 3: continue
+      for ipanel in range(8*isensor, 8*(1+isensor)):
+        if len(self.panel_deltax[ipanel])<2: continue
+        MCD = Panel_MCD_Filter(lab_coords_x = self.panel_deltax[ipanel],
+                               lab_coords_y = self.panel_deltay[ipanel],
+                               data = self.panel_deltapsi[ipanel],
+                               i_panel=ipanel, delta_scalar=1., params=self.params, verbose=True)
+        sX,sY,sPsi = MCD.scatter_coords()
+        self.record_MCD_models[ipanel] = MCD
+
   def build_reflections_generator(self):
     help = """the application accepts two mutually exclusive input formats
     1) indexed strong spots and corresponding predictions from input.refl_glob
@@ -360,7 +492,7 @@ class Script(object):
         def __len__(O): return len(O._all_file_list)
         def __iter__(O):
           for item in O._all_file_list:
-            yield dict(strfile = item, strong_refls=flex.reflection_table.from_file(item))
+            yield dict(strfile = item, obsfile = item, strong_refls=flex.reflection_table.from_file(item))
       return all_refl_list()
 
     else:
@@ -399,8 +531,7 @@ class Script(object):
             select_indexed = reindex_miller != (0,0,0)
             reindex = (select_indexed).count(True)
             strong_and_indexed = strong_refls.select(select_indexed)
-
-            print (obs, nrefls, reindex)
+            #print (obs, nrefls, reindex)
             n_total += nrefls
             n_file += 1
             n_reindex += reindex
@@ -421,11 +552,11 @@ class Script(object):
             strong_and_indexed = strong_and_indexed.select(A)
             int_refls = int_refls.select(B)
             # transfer over the calculated positions from integrate2 to strong refls
-
             strong_and_indexed["xyzcal.mm"] = int_refls["xyzcal.mm"]
             strong_and_indexed["xyzcal.px"] = int_refls["xyzcal.px"]
             strong_and_indexed["delpsical.rad"] = int_refls["delpsical.rad"]
-            yield dict(strfile = item, strong_refls=strong_and_indexed)
+
+            yield dict(strfile = item, obsfile=obs, strong_refls=strong_and_indexed)
           print ("Grand total is %d from %d files of which %d reindexed"%(n_total,n_file, n_reindex))
           print ("TOT Strong+indexed",n_reindex, "integrated",n_integrated, "in common",
           n_common, "indexed but no integration", n_strong_no_integration, "integrated weak", n_weak)
@@ -447,6 +578,13 @@ class Script(object):
     if self.params.dispatch.by_run==True:
       self.per_run_analysis()
     self.per_sensor_analysis()
+
+    if self.params.dispatch.by_panel_mcd_filter:
+      self.per_panel_mcd_filter()
+      self.build_statistics_rejecting_outliers(refl_gen = self.build_reflections_generator())
+      if self.params.dispatch.by_run==True:
+        self.per_run_analysis()
+      self.per_sensor_analysis()
 
 if __name__ == '__main__':
   script = Script()
