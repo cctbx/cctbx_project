@@ -25,8 +25,10 @@ def map_and_model_to_fmodel(map_data, xray_structure, atom_radius, d_min,
   box.apply_mask_inplace(atom_radius = atom_radius)
   f_obs_complex = box.box_map_coefficients(d_min = d_min)
   f_obs = abs(f_obs_complex)
+  if(flex.mean(f_obs.data())<1.e-6): return None
   xrs = box.xray_structure_box.deep_copy_scatterers()
   if(reset_adp):
+    vals_init = xrs.extract_u_iso_or_u_equiv()
     xrs = xrs.set_b_iso(value=0)
     assert approx_equal(flex.mean(xrs.extract_u_iso_or_u_equiv()),0.)
     f_calc = f_obs.structure_factors_from_scatterers(
@@ -38,6 +40,9 @@ def map_and_model_to_fmodel(map_data, xray_structure, atom_radius, d_min,
       ss      = 1./flex.pow2(f_calc.d_spacings().data()) / 4.)
     xrs = xrs.set_b_iso(value=o.b())
     k_isotropic = flex.double(f_calc.data().size(), o.k())
+    if(o.k()<1.e-3):
+      k_isotropic = flex.double(f_calc.data().size(), 1)
+      xrs.set_u_iso(values = vals_init)
   fmodel = mmtbx.f_model.manager(f_obs = f_obs, xray_structure = xrs)
   if(reset_adp):
     fmodel.update_core(k_isotropic = k_isotropic)
@@ -157,6 +162,8 @@ class ncs_aware_refinement(object):
   def run_one(self, selection=None):
     model = self.mmm.model()
     if(selection is not None): model = model.select(selection)
+    values = model.get_b_iso()
+    model.get_hierarchy().atoms().reset_i_seq()
     if(self.nproc==1):
       args = [model,]
       return self.run_one_one(args = args)
@@ -172,7 +179,7 @@ class ncs_aware_refinement(object):
         fixed_func   = self.run_one_one,
         args         = argss,
         func_wrapper = "buffer_stdout_stderr")
-      values = model.get_b_iso()
+      #values = model.get_b_iso()
       for i, result in enumerate(stdout_and_results):
         values = values.set_selected(selections[i], result[1])
       model.set_b_iso(values = values)
@@ -185,6 +192,8 @@ class ncs_aware_refinement(object):
       xray_structure = model.get_xray_structure(),
       atom_radius    = self.atom_radius,
       d_min          = self.d_min)
+    if(fmodel is None):
+      return model.get_xray_structure().extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
     # selections for group ADP
     ph_box = model.get_hierarchy()
     ph_box.atoms().reset_i_seq()
