@@ -19,12 +19,13 @@ def exercise(script, tmp_path, use_pdb_file=False):
   results = list()
   skipped = False
 
-  if script in [] and not libtbx.env.has_module('phenix'):
+  if script in ["script_ideal_ss.py"] and not libtbx.env.has_module('phenix'):
+    print("phenix not available, skipping test")
     skipped = True
-  if script == "script_compare_ss.py":
+  if script in ["script_compare_ss.py"] and not libtbx.env.has_module('ksdssp'):
     if (not libtbx.env.has_module("ksdssp")):
       print("ksdssp not available, skipping test)")
-      return
+      skipped = True
   if not skipped:
     # Some scripts use a PDB file, use one from phenix_regression if available
     if use_pdb_file:
