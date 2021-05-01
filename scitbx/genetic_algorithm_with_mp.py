@@ -298,7 +298,6 @@ class genetic_algorithm:
 
   def get_genes(self):
       # Create genes using supplied new_gene_method
-      # Run enough times to get the number we need
       n = self.get_number_of_variants_to_make()
       self.update_random_seed()
       new_genes = self.new_gene_method(self.params, n)
