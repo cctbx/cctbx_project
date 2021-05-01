@@ -21,7 +21,7 @@ def exercise(script, tmp_path, use_pdb_file=False):
 
   if script in [] and not libtbx.env.has_module('phenix'):
     skipped = True
-  if script == "script_ideal_ss.py":
+  if script == "script_compare_ss.py":
     if (not libtbx.env.has_module("ksdssp")):
       print("ksdssp not available, skipping test)")
       return
