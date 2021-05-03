@@ -50,13 +50,14 @@ def exercise(script, tmp_path, use_pdb_file=False):
 
   # parse results to see if it failed
   return_code = 0
-  if (results[1] == 0): re = 'ran successfully'
-  else: re = 'failed'
-  print('%s %s  ' % (results[0], re))
-  if results[1] != 0:
-    return_code = 1
-    for line in results[3]:
-      print('\t', line, file=sys.stderr)
+  if results:
+    if (results[1] == 0): re = 'ran successfully'
+    else: re = 'failed'
+    print('%s %s  ' % (results[0], re))
+    if results[1] != 0:
+      return_code = 1
+      for line in results[3]:
+        print('\t', line, file=sys.stderr)
   if skipped:
     print('%s skipped' % script)
 
