@@ -560,7 +560,7 @@ class mosaic_f_mask(object):
     self.f_mask_0 = None
     self.f_mask = None
     #
-    print("   volume_p1    uc(%)   volume_asu  id   mFo-DFc: min,max,mean,sd",
+    print("#   volume_p1    uc(%)   volume_asu  id   mFo-DFc: min,max,mean,sd",
       file=log)
     #
     for i_seq, p in enumerate(sorted_by_volume):
@@ -591,8 +591,7 @@ class mosaic_f_mask(object):
         mi,ma,me = flex.min(blob), flex.max(blob), flex.mean(blob)
         sd = blob.sample_standard_deviation()
 
-      print("%12.3f"%volume, "%8.4f"%round(uc_fraction,4),
-            "%12.3f"%volume_asu, "%3d"%i,
+      print("%3d"%i_seq,"%12.3f"%volume, "%8.4f"%round(uc_fraction,4),
             "%7s"%str(None) if diff_map is None else "%7.3f %7.3f %7.3f %7.3f"%(
               mi,ma,me,sd), file=log)
 
