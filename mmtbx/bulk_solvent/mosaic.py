@@ -573,8 +573,8 @@ class mosaic_f_mask(object):
       if(volume_cutoff is not None):
         if volume < volume_cutoff: continue
 
-      mask_i_asu = self.compute_i_mask_asu(
-        selection = self.conn==i, volume = volume)
+      selection = self.conn==i
+      mask_i_asu = self.compute_i_mask_asu(selection = selection, volume = volume)
       volume_asu = (mask_i_asu>0).count(True)*step**3
 
       if(uc_fraction >= 1):
