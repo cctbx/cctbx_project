@@ -560,7 +560,7 @@ class mosaic_f_mask(object):
     self.f_mask_0 = None
     self.f_mask = None
     #
-    print("  #    volume_p1    uc(%)   volume_asu  id   mFo-DFc: min,max,mean,sd",
+    print("  #    volume_p1    uc(%) mFo-DFc: min,max,mean,sd",
       file=log)
     #
     for i_seq, p in enumerate(sorted_by_volume):
