@@ -360,7 +360,7 @@ class scene(object):
       foms_for_colours = self.foms
        # assuming last part of the labels indicates the phase label as in ["FCALC","PHICALC"]
       self.colourlabel = "Phase of " + self.miller_array.info().label_string()
-    elif (settings.sigma_color) and sigmas is not None:
+    elif (settings.sigma_color_radius) and sigmas is not None:
       data_for_colors = sigmas.as_double()
       self.colourlabel = "Sigma of " + self.miller_array.info().label_string()
     else :
@@ -372,10 +372,10 @@ class scene(object):
     if ((self.multiplicities is not None) and
         (settings.scale_radii_multiplicity)):
       data_for_radii = self.multiplicities.data().as_double()
-      if (settings.sigma_radius) and sigmas is not None:
+      if (settings.sigma_color_radius) and sigmas is not None:
         data_for_radii = sigmas * self.multiplicities.as_double()
       assert data_for_radii.size() == data.size()
-    elif (settings.sigma_radius) and sigmas is not None:
+    elif (settings.sigma_color_radius) and sigmas is not None:
       data_for_radii, self.nth_power_scale_radii = nth_power_scale(flex.abs(sigmas.as_double().deep_copy()),
                                        settings.nth_power_scale_radii)
     else :
@@ -600,9 +600,7 @@ philstr = """
     .type = float
   #phase_color = False
   #  .type = bool
-  sigma_color = False
-    .type = bool
-  sigma_radius = False
+  sigma_color_radius = False
     .type = bool
   expand_to_p1 = False
     .type = bool

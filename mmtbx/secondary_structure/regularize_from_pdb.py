@@ -425,7 +425,6 @@ def get_and_split_model(pdb_hierarchy=None,
       hierarchy=pdb_hierarchy,
       info={})
     models=split_model(model=model,verbose=False)
-    print("Split model into %d chains" %(len(models)), file=out)
 
     for model in models:
       model.hierarchy.remove_alt_confs(always_keep_one_conformer=False)
@@ -2442,6 +2441,9 @@ class replace_with_segments_from_pdb:
           all_replacement_models.append(None)
           completeness_of_all_replacement_models.append(None)
           insertions_deletions_of_all_replacement_models.append(None)
+
+    self.is_complete = (completeness_of_all_replacement_models.count(True) ==
+       len(completeness_of_all_replacement_models))
 
     return all_replacement_models
 

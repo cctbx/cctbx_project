@@ -678,7 +678,8 @@ class manager(object):
   def shift_model_and_set_crystal_symmetry(self,
        shift_cart,     # shift to apply
        crystal_symmetry = None, # optional new crystal symmetry
-       unit_cell_crystal_symmetry = None, # optional new unit_cell_crystal_symmetry
+       unit_cell_crystal_symmetry = None, # optional new
+             #unit_cell_crystal_symmetry
        ):
 
     '''
@@ -702,7 +703,6 @@ class manager(object):
 
     assert unit_cell_crystal_symmetry is None or isinstance(
       unit_cell_crystal_symmetry,  crystal.symmetry)
-
 
     # Get shift info  that knows about unit_cell_crystal_symmetry
     #   and any prevous shift_cart
@@ -738,7 +738,7 @@ class manager(object):
     #   model, it is not the shift in this step alone. It is the shift which
     #   reversed will put the model back where it belongs
 
-    self._shift_cart = total_shift
+    self._shift_cart = tuple(total_shift)
     self._unit_cell_crystal_symmetry =  unit_cell_crystal_symmetry
 
   def shift_model_back(self):
@@ -771,7 +771,7 @@ class manager(object):
     if self._shift_cart is None:
       self._shift_cart = (0, 0, 0)
     else:
-      assert tuple(self._shift_cart) == (0 ,0 ,0)
+      assert tuple(self._shift_cart) == (0 ,0 ,0) # consider map_model_manager.shift_any_model_to_match
 
     self._unit_cell_crystal_symmetry = crystal_symmetry
 
@@ -821,7 +821,8 @@ class manager(object):
 
     # Useable crystal symmetry and same as input
     if self.crystal_symmetry() and self.crystal_symmetry().is_similar_symmetry(
-        crystal_symmetry):
+      crystal_symmetry) and (self.crystal_symmetry().unit_cell().parameters() ==
+         crystal_symmetry.unit_cell().parameters()):
       # Keep the xray_structure but change sites_cart if present and update
       xrs=self.get_xray_structure() # Make sure xrs is set up
       # Make sure xrs has same symmetry as self
@@ -875,9 +876,12 @@ class manager(object):
       #
       if(self.get_restraints_manager() is not None):
         self.get_restraints_manager().geometry.replace_site_symmetry(
-          new_site_symmetry_table = self._xray_structure.site_symmetry_table())
+          new_site_symmetry_table   = self._xray_structure.site_symmetry_table(),
+          special_position_settings = self._xray_structure.special_position_settings(),
+          sites_cart                = self._xray_structure.sites_cart())
         # Not sure if this is needed.
         self.get_restraints_manager().geometry.crystal_symmetry=crystal_symmetry
+        self.restraints_manager.crystal_symmetry=crystal_symmetry
         # This updates some of internals
         self.get_restraints_manager().geometry.pair_proxies(
           sites_cart = self.get_sites_cart())
@@ -887,6 +891,12 @@ class manager(object):
       return self._unit_cell_crystal_symmetry
     else:
       return None
+
+  def shifted(self, eps=1.e-3):
+    r = self.shift_cart()
+    if(r is None): return False
+    if(flex.max(flex.abs(flex.double(r)))<=eps): return False
+    return True
 
   def shift_cart(self):
     '''
@@ -1047,6 +1057,31 @@ class manager(object):
       self.set_xray_structure(self._xray_structure.customized_copy(
           non_unit_occupancy_implies_min_distance_sym_equiv_zero=value))
 
+  def ncs_is_strict(self, eps_occ=1.e-2, eps_adp=1.e-2, eps_xyz=1.e-3):
+    """
+    Check sites, ADP and occupancy to obey NCS symmetry
+    """
+    result = group_args(occ = True, adp = True, xyz = True, size = True)
+    result.stop_dynamic_attributes()
+    ncs_groups = self.get_ncs_groups()
+    if(ncs_groups is None or len(ncs_groups)==0): return None
+    for i, g in enumerate(ncs_groups):
+      m_master          = self.select(g.master_iselection)
+      occ_master        = m_master.get_occ()
+      b_master          = m_master.get_b_iso()
+      master_sites_cart = m_master.get_sites_cart()
+      for j, c in enumerate(g.copies):
+        m_copy   = self.select(c.iselection)
+        occ_copy = m_copy.get_occ()
+        b_copy   = m_copy.get_b_iso()
+        if(b_copy.size() != b_master.size()): result.size = False
+        if(flex.max(flex.abs(occ_master-occ_copy))>eps_occ): result.occ = False
+        if(flex.max(flex.abs(b_master-b_copy))>eps_adp): result.adp = False
+        master_on_copy_sites_cart = c.r.elems * master_sites_cart + c.t
+        d = flex.sqrt((master_on_copy_sites_cart-m_copy.get_sites_cart()).dot())
+        if(flex.max(d)>eps_xyz): result.xyz = False
+    return result
+
   def get_hd_selection(self):
     xrs = self.get_xray_structure()
     return xrs.hd_selection()
@@ -1093,6 +1128,16 @@ class manager(object):
 
   def sel_sidechain(self):
     return self._get_selection_manager().sel_backbone_or_sidechain(False, True)
+
+  def replace_model_hierarchy_with_other(self, other_model):
+    ''' Replace hierarchy with one from another model '''
+    model_ph = self.get_hierarchy() # working hierarchy
+    other_model_ph = other_model.get_hierarchy()
+    for m in model_ph.models():
+      model_ph.remove_model(m)
+    for m in other_model_ph.models():
+      model_ph.append_model(m.detached_copy())
+    self.reset_after_changing_hierarchy()
 
   def reset_after_changing_hierarchy(self):
 
@@ -1779,6 +1824,9 @@ class manager(object):
     self._update_master_sel()
 
   def _update_master_sel(self):
+    # self._master_sel here is really unique part of the model,
+    # i.e. all masters + part of model not covered by NCS,
+    # therefore excluding copies instead of using master selections.
     if self._ncs_groups is not None and len(self._ncs_groups) > 0:
       # determine master selections
       self._master_sel = flex.bool(self.get_number_of_atoms(), True)

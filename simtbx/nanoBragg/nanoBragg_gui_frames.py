@@ -325,7 +325,7 @@ class FileListCtrl(ct.CustomListCtrl):
                              defaultDir=os.curdir,
                              defaultFile="*",
                              wildcard="*",
-                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST |
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST |
                                    wx.FD_MULTIPLE)
     if file_dlg.ShowModal() == wx.ID_OK:
       files = file_dlg.GetPaths()

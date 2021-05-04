@@ -814,7 +814,10 @@ def select_output_labels(labels,max_labels=10, replace_backslash = None):
   if replace_backslash:
     new_labels = []
     for label in output_labels:
-      new_labels.append(label.replace("\\","/"))
+      new_label = label
+      if isinstance(label, str):
+        new_label = label.replace("\\","/")
+      new_labels.append(new_label)
     output_labels = new_labels
   return output_labels
 

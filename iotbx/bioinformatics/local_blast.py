@@ -37,10 +37,14 @@ def checkblast(binary="blastp"):
   elif systype=='darwin':
     phenix_blast_exe='%s_%s'%(binary,systype)
     sysname='OSX'
+  elif systype.startswith('linux') and sys.version_info.major == 3:
+    systype = 'linux2'
+    phenix_blast_exe='%s_%s'%(binary,systype)
   else:
     pass
   phenix_blast=os.path.join(ligand_lib_dir, phenix_blast_exe)
   blastexe=None
+  blastpath=None
   if os.path.exists(phenix_blast):
     blastpath=phenix_blast
     blastexe=phenix_blast_exe

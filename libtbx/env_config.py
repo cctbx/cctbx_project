@@ -659,6 +659,19 @@ class environment:
     return result
 
   def has_module(self, name):
+    # check installed environment first
+    result = self.check_installed_env('_has_module', name)
+    if result:
+      return result
+    # check current environment
+    result = self._has_module(name)
+    if result:
+      return result
+    # then check local environment
+    result = self.check_local_env('_has_module', name)
+    return result
+
+  def _has_module(self, name):
     return name in self.module_dist_paths
 
   def require_module(self, name, error=RuntimeError):
@@ -3019,7 +3032,7 @@ def unpickle(build_path=None, env_name="libtbx_env"):
   if build_path is None:
     build_path = os.getenv("LIBTBX_BUILD")
   # try default installed location
-  if build_path is None:
+  if not build_path:
     build_path = get_installed_path()
   set_preferred_sys_prefix_and_sys_executable(build_path=build_path)
   with open(op.join(build_path, env_name), "rb") as libtbx_env:

@@ -125,6 +125,22 @@ def test_01():
   mmm_sites.model_from_sites_cart(sites_cart = sites_cart,
     model_id = 'new_model')
   assert mmm_sites.get_model_by_id('new_model').get_sites_cart()[0] == (3,4,5)
+  ph_sites = mmm_sites.get_model_by_id('new_model').get_hierarchy()
+  text_sites = mmm_sites.get_model_by_id('new_model').model_as_pdb()
+
+  # Create model from hierarchy
+  mmm_sites = mmm_dc.deep_copy()
+  mmm_sites.model_from_hierarchy(hierarchy = ph_sites,
+    model_id = 'new_model')
+  assert mmm_sites.get_model_by_id('new_model').get_sites_cart()[0] == (3,4,5)
+
+  # Create model from text
+  mmm_sites = mmm_dc.deep_copy()
+  mmm_sites.model_from_text(text = text_sites,
+    model_id = 'new_model')
+  assert mmm_sites.get_model_by_id('new_model').get_sites_cart()[0] == (3,4,5)
+
+
 
   # Set crystal_symmetry and unit_cell_crystal_symmetry and shift_cart
   # Box and shift the map_model_manager so we have new coordinate system

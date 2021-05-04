@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 from libtbx.math_utils import roundoff
 import traceback
@@ -7,7 +7,6 @@ from cctbx.array_family import flex
 from cctbx import miller, sgtbx
 from scitbx import graphics_utils
 from scitbx import matrix
-from scitbx.linalg import eigensystem
 import scitbx.math
 from libtbx.utils import Sorry, to_str
 import threading, math, sys, cmath
@@ -18,6 +17,7 @@ else: # using websocket_server
 
 import os.path, time, copy
 import libtbx
+import libtbx.load_env
 import webbrowser, tempfile
 from six.moves import range
 
@@ -47,9 +47,10 @@ class ArrayInfo:
       if (isinstance(data, flex.hendrickson_lattman)):
         data = graphics_utils.NoNansHL( data )
         # for now display HL coefficients as a simple sum
-        self.maxdata = max([e[0]+e[1]+e[2]+e[3] for e in data ])
-        self.mindata = min([e[0]+e[1]+e[2]+e[3] for e in data ])
-        arrsize = len([42 for e in millarr.data() if not math.isnan(e[0]+e[1]+e[2]+e[3])])
+        if arrsize:
+          self.maxdata = max([e[0]+e[1]+e[2]+e[3] for e in data ])
+          self.mindata = min([e[0]+e[1]+e[2]+e[3] for e in data ])
+          arrsize = len([42 for e in millarr.data() if not math.isnan(e[0]+e[1]+e[2]+e[3])])
         self.datatype = "ishendricksonlattman"
       else:
         arrsize = len([42 for e in millarr.data() if not math.isnan(abs(e))])
@@ -59,16 +60,20 @@ class ArrayInfo:
         if millarr.is_complex_array():
           data = flex.abs(millarr.data())
           self.datatype = "iscomplex"
-        #data = [e for e in data if not math.isnan(e)]
-        data = graphics_utils.NoNansArray( data, data[0] ) # assuming data[0] isn't NaN
+        i=0
+        while math.isnan(data[i]):
+          i += 1 # go on until we find a data[i] that isn't NaN
+        data = graphics_utils.NoNansArray( data, data[i] ) # assuming data[0] isn't NaN
         self.maxdata = flex.max( data )
         self.mindata = flex.min( data )
 
       if millarr.sigmas() is not None:
         data = millarr.sigmas()
         self.datatype = "hassigmas"
-        #data = [e for e in data if not math.isnan(e)]
-        data = graphics_utils.NoNansArray( data, data[0] ) # assuming data[0] isn't NaN
+        i=0
+        while math.isnan(data[i]):
+          i += 1 # go on until we find a data[i] that isn't NaN
+        data = graphics_utils.NoNansArray( data, data[i] )
         self.maxsigmas = flex.max( data )
         self.minsigmas = flex.min( data )
       self.minmaxdata = (roundoff(self.mindata), roundoff(self.maxdata))
@@ -134,7 +139,7 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
     if not hklscene.SceneCreated:
       mprint("The " + proc_array.info().label_string() + " array was not processed")
       #return False
-      continue
+      break
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     # cast any NAN values to 1 of the colours and radii to 0.2 before writing javascript
     if hklscene.SceneCreated:
@@ -242,6 +247,9 @@ class hklview_3d:
     self.nuniqueval = 0
     self.bin_infotpls = []
     self.mapcoef_fom_dict = {}
+    # colourmap=brg, colourpower=1, powerscale=1, radiiscale=1
+    self.datatypedefault = ["brg", 1.0, 1.0, 1.0]
+    self.datatypedict = { }
     self.sceneid_from_arrayid = []
     self.parent = None
     if 'parent' in kwds:
@@ -272,7 +280,7 @@ class hklview_3d:
     if 'send_info_to_gui' in kwds:
       self.send_info_to_gui = kwds['send_info_to_gui']
       self.isHKLviewer= "true"
-    self.mprint('Output will be written to \"%s\"'  %self.hklfname)
+    self.mprint('Rendering done via websocket in \"%s\"'  %self.hklfname)
     self.hklhtml = r"""
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html><head><meta charset="utf-8" /></head>
@@ -281,16 +289,19 @@ class hklview_3d:
 <script>var websocket_portnumber = %s; </script>
 <script src="%s" type="text/javascript"></script>
 <script src="%s" type="text/javascript"></script>
+<script src="%s" type="text/javascript"></script>
 <div id="viewport" style="width:100%%; height:100%%;"></div>
 </body></html>
 
     """
-    NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
-    HKLjscriptpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","HKLJavaScripts.js") )
+    Html2Canvaslibpath = libtbx.env.under_dist("crys3d","hklview/html2canvas.min.js")
+    NGLlibpath = libtbx.env.under_dist("crys3d","hklview/ngl.js")
+    HKLjscriptpath = libtbx.env.under_dist("crys3d","hklview/HKLJavaScripts.js")
     HKLjscriptpath = os.path.abspath( HKLjscriptpath)
+    Html2Canvasliburl = "file:///" + Html2Canvaslibpath.replace("\\","/")
     NGLliburl = "file:///" + NGLlibpath.replace("\\","/")
     HKLjscripturl = "file:///" + HKLjscriptpath.replace("\\","/")
-    self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, NGLliburl, HKLjscripturl)
+    self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, Html2Canvasliburl, NGLliburl, HKLjscripturl)
     self.colourgradientvalues = []
     self.UseOSBrowser = ""
     if 'useGuiSocket' not in kwds:
@@ -320,7 +331,10 @@ class hklview_3d:
   def __exit__(self, exc_type, exc_value, traceback):
     # not called unless instantiated with a "with hklview_3d ... " statement
     self.JavaScriptCleanUp()
+    self.SendInfoToGUI( { "datatype_dict": self.datatypedict } ) # so the GUI can persist these across sessions
     nwait = 0
+    if self.viewerparams.scene_id is None:
+      self.WBmessenger.StopWebsocket()
     while not self.WBmessenger.isterminating and nwait < 5:
       time.sleep(self.sleeptime)
       nwait += self.sleeptime
@@ -361,8 +375,7 @@ class hklview_3d:
                        "slice_axis",
                        "slice_mode",
                        "slice_index",
-                       "sigma_color",
-                       "sigma_radius",
+                       "sigma_color_radius",
                        "scene_id",
                        "color_scheme",
                        "color_powscale",
@@ -384,8 +397,7 @@ class hklview_3d:
                        "slice_axis",
                        "slice_mode",
                        "slice_index",
-                       "sigma_color",
-                       "sigma_radius",
+                       "sigma_color_radius",
                        "scene_id",
                        "color_scheme",
                        "color_powscale",
@@ -411,6 +423,14 @@ class hklview_3d:
     if has_phil_path(diff_phil, "scene_bin_thresholds"):
       self.sceneisdirty = True
 
+    if has_phil_path(diff_phil,
+                       "color_scheme",
+                       "color_powscale",
+                       "scale",
+                       "nth_power_scale_radii"
+                       ):
+      self.add_colour_map_radii_power_to_dict()
+
     if has_phil_path(diff_phil, "camera_type"):
       self.set_camera_type()
 
@@ -430,15 +450,26 @@ class hklview_3d:
       self.show_vector()
 
     if has_phil_path(diff_phil, "angle_around_vector"):
-      self.rotate_around_vector()
+      self.rotate_around_numbered_vector()
+
+    if has_phil_path(diff_phil, "angle_around_XHKL_vector"):
+      self.rotate_stage_around_cartesian_vector([1,0,0], self.viewerparams.angle_around_XHKL_vector)
+      self.viewerparams.angle_around_XHKL_vector = None
+
+    if has_phil_path(diff_phil, "angle_around_YHKL_vector"):
+      self.rotate_stage_around_cartesian_vector([0,1,0], self.viewerparams.angle_around_YHKL_vector)
+      self.viewerparams.angle_around_YHKL_vector = None
+
+    if has_phil_path(diff_phil, "angle_around_ZHKL_vector"):
+      self.rotate_stage_around_cartesian_vector([0,0,1], self.viewerparams.angle_around_ZHKL_vector)
+      self.viewerparams.angle_around_ZHKL_vector = None
 
     if has_phil_path(diff_phil, "animate_rotation_around_vector"):
       self.animate_rotate_around_vector()
 
     if has_phil_path(diff_phil, "miller_array_operations"):
       self.viewerparams.scene_id = len(self.hkl_scenes_infos)-1
-      self.viewerparams.sigma_color = False
-      self.viewerparams.sigma_radius = False
+      self.viewerparams.sigma_color_radius = False
       self.set_scene()
       self.params.miller_array_operations = ""
 
@@ -606,13 +637,14 @@ class hklview_3d:
   def GetTooltipOnTheFly(self, id, sym_id, anomalous=False):
     rothkl, hkl = self.get_rothkl_from_IDs(id, sym_id, anomalous)
     spbufttip = '\'H,K,L: %d, %d, %d' %(rothkl[0], rothkl[1], rothkl[2])
-    # resolution and angstrom character
+    # resolution and Angstrom character for javascript
     spbufttip += '\\ndres: %s \'+ String.fromCharCode(197) +\'' \
       %str(roundoff(self.miller_array.unit_cell().d(hkl), 2) )
     for hklscene in self.HKLscenes:
+      sigvals = []
+      datvals = []
       if hklscene.isUsingFOMs():
         continue # already have tooltips for the scene without the associated fom
-      sigvals = None
       if hklscene.work_array.sigmas() is not None:
         sigvals = list( hklscene.work_array.select(hklscene.work_array.indices() == hkl).sigmas() )
       datval = None
@@ -621,9 +653,8 @@ class hklview_3d:
       else:
         if id >= hklscene.data.size():
           continue
-        datvals = [ hklscene.data[id] ]
       for i,datval in enumerate(datvals):
-        if isinstance(datval, tuple) and math.isnan(datval[0] + datval[1] + datval[2] + datval[3]):
+        if hklscene.work_array.is_hendrickson_lattman_array() and math.isnan(datval[0] + datval[1] + datval[2] + datval[3]):
           continue
         if not isinstance(datval, tuple) and (math.isnan( abs(datval) ) or datval == display.inanval):
           continue
@@ -639,7 +670,7 @@ class hklview_3d:
         spbufttip +="\\n" + hklscene.work_array.info().label_string() + ': '
         if hklscene.work_array.is_complex_array():
           spbufttip += str(roundoff(ampl, 2)) + ", " + str(roundoff(phase, 2)) + \
-            "\'+ String.fromCharCode(176) +\'" # degree character
+            "\'+ String.fromCharCode(176) +\'" # degree character for javascript
         elif sigvals:
           sigma = sigvals[i]
           spbufttip += str(roundoff(datval, 2)) + ", " + str(roundoff(sigma, 2))
@@ -731,6 +762,8 @@ class hklview_3d:
     sceneid = scene_id
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
+    if len(self.proc_arrays) == 0:
+      return False
 
     self.HKLsceneKey = (curphilparam.spacegroup_choice,
                          curphilparam.using_space_subgroup,
@@ -744,8 +777,7 @@ class hklview_3d:
                          self.viewerparams.show_missing,
                          self.viewerparams.show_only_missing,
                          self.viewerparams.show_systematic_absences,
-                         self.viewerparams.sigma_radius,
-                         self.viewerparams.sigma_color,
+                         self.viewerparams.sigma_color_radius,
                          self.viewerparams.color_scheme,
                          self.viewerparams.color_powscale,
                          sceneid,
@@ -760,7 +792,6 @@ class hklview_3d:
     if self.has_new_miller_array:
       self.identify_suitable_fomsarrays()
     self.mprint("Constructing HKL scenes", verbose=0)
-    assert(self.proc_arrays)
     if scene_id is None:
       hkl_scenes_infos = []
       self.HKLscenes = []
@@ -770,7 +801,8 @@ class hklview_3d:
           scenemindata, scenemaxsigmas,
             sceneminsigmas, scenearrayinfos
          ) = MakeHKLscene( arr.deep_copy(), idx, copy.deepcopy(self.viewerparams), self.mapcoef_fom_dict, None, self.mprint )
-
+        if len(scenearrayinfos) == 0: # arr does not have valid data
+          sceneid += 1  # arr does not have valid data still raise the count
         for i,inf in enumerate(scenearrayinfos):
           self.mprint("%d, %s" %(idx+i+1, inf[0]), verbose=0)
           self.HKLsceneKey = (curphilparam.spacegroup_choice,
@@ -785,8 +817,7 @@ class hklview_3d:
                                 self.viewerparams.show_missing,
                                 self.viewerparams.show_only_missing,
                                 self.viewerparams.show_systematic_absences,
-                                self.viewerparams.sigma_radius,
-                                self.viewerparams.sigma_color,
+                                self.viewerparams.sigma_color_radius,
                                 self.viewerparams.color_scheme,
                                 self.viewerparams.color_powscale,
                                 sceneid,
@@ -795,7 +826,7 @@ class hklview_3d:
                                 )
           self.HKLscenedict[self.HKLsceneKey] = ( hklscenes[i], scenemaxdata[i],
           scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
-          hkl_scenes_infos.append(inf)
+          hkl_scenes_infos.append(inf + [sceneid])
           self.HKLscenes.append(hklscenes[i])
           sceneid += 1
       self.hkl_scenes_infos = hkl_scenes_infos
@@ -812,15 +843,14 @@ class hklview_3d:
                               self.viewerparams.show_missing,
                               self.viewerparams.show_only_missing,
                               self.viewerparams.show_systematic_absences,
-                              self.viewerparams.sigma_radius,
-                              self.viewerparams.sigma_color,
+                              self.viewerparams.sigma_color_radius,
                               self.viewerparams.color_scheme,
                               self.viewerparams.color_powscale,
                               self.viewerparams.scene_id,
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
                               )
-      scenearraylabeltypes = [ (e[3], e[4], e[1], sceneid) for sceneid,e in enumerate(hkl_scenes_infos) ]
+      scenearraylabeltypes = [ (e[3], e[4], e[1], e[5]) for sceneid,e in enumerate(hkl_scenes_infos) ]
       self.SendInfoToGUI({ "scene_array_label_types": scenearraylabeltypes, "NewHKLscenes" : True })
 
       self.bin_labels_type_idxs = []
@@ -857,8 +887,7 @@ class hklview_3d:
                               self.viewerparams.show_missing,
                               self.viewerparams.show_only_missing,
                               self.viewerparams.show_systematic_absences,
-                              self.viewerparams.sigma_radius,
-                              self.viewerparams.sigma_color,
+                              self.viewerparams.sigma_color_radius,
                               self.viewerparams.color_scheme,
                               self.viewerparams.color_powscale,
                               sceneid,
@@ -894,8 +923,7 @@ class hklview_3d:
                       self.viewerparams.show_missing,
                       self.viewerparams.show_only_missing,
                       self.viewerparams.show_systematic_absences,
-                      self.viewerparams.sigma_radius,
-                      self.viewerparams.sigma_color,
+                      self.viewerparams.sigma_color_radius,
                       self.viewerparams.color_scheme,
                       self.viewerparams.color_powscale,
                       sceneid,
@@ -917,6 +945,8 @@ class hklview_3d:
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    if not self.HKLscenedict.get(HKLsceneKey, False):
+      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
     return self.HKLscenedict[HKLsceneKey][1]
 
 
@@ -924,6 +954,8 @@ class hklview_3d:
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    if not self.HKLscenedict.get(HKLsceneKey, False):
+      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
     return self.HKLscenedict[HKLsceneKey][2]
 
 
@@ -931,6 +963,8 @@ class hklview_3d:
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    if not self.HKLscenedict.get(HKLsceneKey, False):
+      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
     return self.HKLscenedict[HKLsceneKey][3]
 
 
@@ -938,6 +972,8 @@ class hklview_3d:
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    if not self.HKLscenedict.get(HKLsceneKey, False):
+      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
     return self.HKLscenedict[HKLsceneKey][4]
 
 
@@ -945,6 +981,8 @@ class hklview_3d:
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    if not self.HKLscenedict.get(HKLsceneKey, False):
+      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
     return self.HKLscenedict[HKLsceneKey][5]
 
 
@@ -979,7 +1017,6 @@ class hklview_3d:
 
   def calc_bin_thresholds(self, binner_idx, nbins):
     # make default bin thresholds if scene_bin_thresholds is not set
-    #self.bin_labels_type_idx = self.bin_labels_type_idxs[binner_idx]
     binscenelabel = self.bin_labels_type_idxs[binner_idx][0]
     self.mprint("Using %s for binning" %binscenelabel)
     if binscenelabel=="Resolution":
@@ -987,11 +1024,12 @@ class hklview_3d:
       dres = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).dres
       uc = warray.unit_cell()
       indices = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).indices
-      if flex.max(dres) == flex.min(dres): # say if only one reflection
-        binvals = [dres[0]-0.1, flex.min(dres)+0.1]
+      dmax,dmin = warray.d_max_min(d_max_is_highest_defined_if_infinite=True) # to avoid any F000 reflection
+      if dmax == dmin: # say if only one reflection
+        binvals = [dres[0]-0.1, dmin +0.1]
         nuniquevalues = 2
       else: # use generic binning function from cctbx
-        binning = miller.binning( uc, nbins, indices, flex.max(dres), flex.min(dres) )
+        binning = miller.binning( uc, nbins, indices, dmax, dmin )
         binvals = [ binning.bin_d_range(n)[0] for n in binning.range_all() ]
         binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
         binvals = list( 1.0/flex.double(binvals) )
@@ -1081,54 +1119,61 @@ class hklview_3d:
 
 
   def OperateOn1MillerArray(self, millarr, operation):
-    # lets user specify a one line python expression operating on data, sigmas
+    # lets user specify a python expression operating on millarr
     newarray = millarr.deep_copy()
-    data1 = newarray.data()
-    sigmas1 = newarray.sigmas()
     dres = newarray.unit_cell().d( newarray.indices() )
-    self.mprint("Creating new miller array through the operation: %s" %operation)
+    self.mprint("Creating new miller array through the operation:\n%s" %operation)
     try:
-      newdata = None
-      newsigmas = None
-      ldic= {'data1': data1, 'sigmas1': sigmas1, 'dres': dres }
+      ldic= {'dres': dres, 'array1': newarray, 'newarray': newarray }
       exec(operation, globals(), ldic)
-      newdata = ldic.get("newdata", None)
-      newarray._data = newdata
-      newsigmas = ldic.get("newsigmas", None)
-      newarray._sigmas = newsigmas
+      newarray = ldic.get("newarray", None)
       return newarray
     except Exception as e:
-      self.mprint( str(e), verbose=0)
-      return None
+      raise Sorry(str(e))
 
 
   def OperateOn2MillerArrays(self, millarr1, millarr2, operation):
-    # lets user specify a one line python expression operating on data1 and data2
+    # lets user specify a python expression operating on millarr1 and millarr2
     matchindices = miller.match_indices(millarr1.indices(), millarr2.indices() )
     matcharr1 = millarr1.select( matchindices.pairs().column(0) ).deep_copy()
     matcharr2 = millarr2.select( matchindices.pairs().column(1) ).deep_copy()
-    data1 = matcharr1.data()
-    data2 = matcharr2.data()
-    sigmas1 = matcharr1.sigmas()
-    sigmas2 = matcharr2.sigmas()
     dres = matcharr1.unit_cell().d( matcharr1.indices() )
     newarray = matcharr2.deep_copy()
-    newarray._sigmas = None
-    self.mprint("Creating new miller array through the operation: %s" %operation)
+    self.mprint("Creating new miller array through the operation:\n%s" %operation)
     try:
-      newdata = None
-      newsigmas = None
-      ldic= {'data1': data1, 'sigmas1': sigmas1, 'data2': data2, 'sigmas2': sigmas2, 'dres': dres }
+      ldic= { 'dres': dres, 'array1': matcharr1, 'array2': matcharr2, 'newarray': newarray }
       exec(operation, globals(), ldic)
-      newdata = ldic.get("newdata", None)
-      newarray._data = newdata
-      newsigmas = ldic.get("newsigmas", None)
-      newarray._sigmas = newsigmas
+      newarray = ldic.get("newarray", None)
       return newarray
     except Exception as e:
-      #self.mprint( str(e), verbose=0)
       raise Sorry(str(e))
-      return None
+
+
+  def get_colour_map_radii_power(self):
+    datatype = self.get_current_datatype()
+    if self.viewerparams.sigma_color_radius:
+      datatype = datatype + "_sigmas"
+    if datatype not in self.datatypedict.keys():
+        # ensure individual copies of datatypedefault and not references to the same
+      self.datatypedict[ datatype ] = self.datatypedefault[:]
+    colourscheme, colourpower, powerscale, radiiscale = \
+        self.datatypedict.get( datatype, self.datatypedefault[:] )
+    return colourscheme, colourpower, powerscale, radiiscale
+
+
+  def add_colour_map_radii_power_to_dict(self):
+    datatype = self.get_current_datatype()
+    if datatype is None:
+      return
+    if self.viewerparams.sigma_color_radius:
+      datatype = datatype + "_sigmas"
+    if datatype not in self.datatypedict.keys():
+        # ensure individual copies of datatypedefault and not references to the same
+      self.datatypedict[ datatype ] = self.datatypedefault[:]
+    self.datatypedict[datatype][0] = self.viewerparams.color_scheme
+    self.datatypedict[datatype][1] = self.viewerparams.color_powscale
+    self.datatypedict[datatype][2] = self.viewerparams.nth_power_scale_radii
+    self.datatypedict[datatype][3] = self.viewerparams.scale
 
 
   def DrawNGLJavaScript(self, blankscene=False):
@@ -1137,7 +1182,7 @@ class hklview_3d:
     if self.scene.points.size() == 0:
       blankscene = True
     if self.miller_array is None :
-      self.mprint( "Select a data set to display reflections" )
+      self.mprint( "Select a dataset to display reflections" )
       blankscene = True
     else:
       self.mprint("Rendering reflections...")
@@ -1169,10 +1214,13 @@ class hklview_3d:
     Lstararrowtxt  = roundoff( [self.unit_l_axis[0][0]*l2, self.unit_l_axis[0][1]*l2, self.unit_l_axis[0][2]*l2] )
 
     if not blankscene:
+      self.viewerparams.color_scheme, self.viewerparams.color_powscale, self.viewerparams.nth_power_scale_radii, \
+        self.viewerparams.scale = self.get_colour_map_radii_power()
+
       # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
       mincolourscalar = self.HKLMinData_from_dict(self.colour_scene_id)
       maxcolourscalar = self.HKLMaxData_from_dict(self.colour_scene_id)
-      if self.viewerparams.sigma_color:
+      if self.viewerparams.sigma_color_radius:
         mincolourscalar = self.HKLMinSigmas_from_dict(self.colour_scene_id)
         maxcolourscalar = self.HKLMaxSigmas_from_dict(self.colour_scene_id)
       span = maxcolourscalar - mincolourscalar
@@ -1346,6 +1394,7 @@ class hklview_3d:
       if nreflsinbin == 0:
         continue
       bin2 = float("nan"); bin1= float("nan") # indicates un-binned data
+      #bin2 = self.binvalsboundaries[0]; bin1= self.binvalsboundaries[-1] # indicates un-binned data
       if ibin == self.nbinvalsboundaries:
         mstr= "bin[%d] has %d reflections with no %s values (assigned to %2.3f)" %(cntbin, nreflsinbin, \
                 colstr, bin1)
@@ -1443,7 +1492,7 @@ class hklview_3d:
     self.lastscene_id = self.viewerparams.scene_id
 
 
-  def ProcessMessage(self, message):
+  def ProcessBrowserMessage(self, message):
     try:
       if sys.version_info[0] > 2:
         ustr = str
@@ -1590,7 +1639,36 @@ Distance: %s
   %s,  %s,  %s
   %s,  %s,  %s
     """ %rotlst, verbose=3)
-    self.SendInfoToGUI( { "StatusBar": "rotation matrix: " + str(rotlst) } )
+    uc = self.miller_array.unit_cell()
+    OrtMx = matrix.sqr( uc.fractionalization_matrix() )
+    InvMx = OrtMx.inverse()
+    # Our local coordinate system has x-axis pointing right and z axis pointing out of the screen
+    # unlike threeJS so rotate the coordinates emitted from there before presenting them
+    RotAroundYMx = matrix.sqr([-1.0,0.0,0.0, 0.0,1.0,0.0, 0.0,0.0,-1.0])
+    Xvec =  matrix.rec([1,0,0] ,n=(1,3))
+    Xhkl = list(RotAroundYMx.transpose()* InvMx.transpose()* self.currentRotmx.inverse()* Xvec.transpose())
+    Yvec =  matrix.rec([0,1,0] ,n=(1,3))
+    Yhkl = list(RotAroundYMx.transpose()*InvMx.transpose()* self.currentRotmx.inverse()* Yvec.transpose())
+    Zvec =  matrix.rec([0,0,1] ,n=(1,3))
+    Zhkl = list(RotAroundYMx.transpose()*InvMx.transpose()* self.currentRotmx.inverse()* Zvec.transpose())
+    if self.debug:
+      self.SendInfoToGUI( { "StatusBar": "RotMx: %s, XHKL: %s, YHKL: %s, ZHKL: %s" \
+        %(str(roundoff(self.currentRotmx,4)), str(roundoff(Xhkl, 2)),
+                                              str(roundoff(Yhkl, 2)),
+                                              str(roundoff(Zhkl, 2))),
+                           }
+                         )
+      self.draw_vector(0,0,0, Zhkl[0],Zhkl[1],Zhkl[2], isreciprocal=True, label="Zhkl",
+                      r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
+      self.draw_vector(0,0,0, Yhkl[0],Yhkl[1],Yhkl[2], isreciprocal=True, label="Yhkl",
+                      r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
+      self.draw_vector(0,0,0, Xhkl[0],Xhkl[1],Xhkl[2], isreciprocal=True, label="Xhkl",
+                      name="XYZhkl", r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
+    else:
+      self.SendInfoToGUI( { "StatusBar": "%s , %s , %s" %(str(roundoff(Xhkl, 2)),
+                                                     str(roundoff(Yhkl, 2)),
+                                                     str(roundoff(Zhkl, 2))),
+                           } )
     if "MouseMovedOrientation:" in message:
       self.params.mouse_moved = True
     if self.currentRotmx.is_r3_rotation_matrix():
@@ -1859,44 +1937,47 @@ Distance: %s
     OrtMx = matrix.sqr( uc.orthogonalization_matrix())
     InvMx = OrtMx.inverse()
     ortrotmx = (OrtMx * RotMx * InvMx)
-    if not ortrotmx.is_r3_rotation_matrix():
-      raise Sorry("The operation '%s' is not a rotation in the space group %s" \
-        %(rot.as_hkl(), self.miller_array.space_group().info().symbol_and_number() ))
+    isProperRotation = True
     ortrot = ortrotmx.as_mat3()
-    r11,r12,r13,r21,r22,r23,r31,r32,r33 = ortrot
-    # workaround for occasional machine precision errors yielding argument greater than 1.0
-    theta =  math.acos(roundoff((r11+r22+r33-1.0)*0.5, 10))
-    sint = math.sin(theta)
-    e1, e2, e3 = (0,0,0)
-    eps = 0.000000001
-    # see https://en.wikipedia.org/wiki/Rotation_matrix for details
-    if abs(sint) > eps: # doesn't work if matrix is symmetric
-      s = 0.5/sint
-      e1 = (r32-r23)*s
-      e2 = (r13-r31)*s
-      e3 = (r21-r12)*s
-    else:
-      # diagonalise if matrix is symmetric to find eigenvectors
-      assert ( abs(r32- r23)<eps and abs(r13- r31)<eps and abs(r21- r12)<eps )
-      oRtmx = flex.double(ortrot)
-      oRtmx.reshape(flex.grid(3,3))
-      es = eigensystem.real_symmetric(oRtmx)
-      evalues =  list(es.values())
-      evectors = list(es.vectors())
-      for i,eval in enumerate(evalues):
-        if abs(eval-1.0) <= eps:
-          # eigenvector with eigenvalue=1 is the rotation axis
-          # eigenvetors come as a concatenated list of vector elements so get the i-th vector
-          e1,e2,e3 = evectors[(0+3*i):(3+3*i)]
-          break
-    # adjust the scale of the rotation vectors to be compatible with the sphere of reflections
-    s = math.sqrt(OrtMx.transpose().norm_sq())*self.realspace_scale
     label=""
     order = 0
-    if abs(theta) > 0.0001 and (abs(e1)+abs(e2)+abs(e3)) > 0.0001: # avoid nullvector
+    if not ortrotmx.is_r3_rotation_matrix():
+      isProperRotation = False
+      self.mprint("""Warning! The operation '%s' is not a proper rotation
+in the space group %s\nwith unit cell %s\n""" \
+        %(rot.as_hkl(), self.miller_array.space_group().info().symbol_and_number(), str(uc) ))
+      self.mprint("Inverse of implied rotation matrix,\n%s\nis not equal to its transpose,\n%s" \
+        %(str(roundoff(ortrotmx.inverse(),4)), str(roundoff(ortrotmx.transpose(),4))), verbose=1)
+      improper_vec_angle = scitbx.math.r3_rotation_axis_and_angle_from_matrix(ortrot)
+      self.mprint("\nTrying to find nearest orthonormal matrix approximtion")
+      Rmx = matrix.find_nearest_orthonormal_matrix(ortrotmx)
+      self.mprint("New suggested rotation matrix is\n%s" %str(roundoff(Rmx,4)), verbose=1)
+      if not Rmx.is_r3_rotation_matrix():
+        self.mprint("Failed finding an approximate rotation matrix!")
+        return (0,0,0), 0.0, label, order
+      ortrotmx = Rmx
+    ortrot = ortrotmx.as_mat3()
+    r11,r12,r13,r21,r22,r23,r31,r32,r33 = ortrot
+    theta =  math.acos(roundoff((r11+r22+r33-1.0)*0.5, 10))
+    rotaxis = flex.vec3_double([(0,0,0)])
+    self.mprint(str(ortrot), verbose=2)
+    vec_angle = scitbx.math.r3_rotation_axis_and_angle_from_matrix(ortrot)
+    rotaxis = flex.vec3_double([ vec_angle.axis ])
+    if not isProperRotation:
+      # Divine revelation: The new proper rotation from above axis is halfway
+      # of being correctly aligned so subtract it from twice the improper axis
+      # to get the desired rotation axis vector
+      improp_rotaxis = flex.vec3_double([ improper_vec_angle.axis ])
+      rotaxis = 2*rotaxis - improp_rotaxis
+      # for debugging deduce the corresponding rotation matrix from this new axis
+      usedrotmx = scitbx.math.r3_rotation_axis_and_angle_as_matrix( rotaxis[0], theta )
+      self.mprint("Final proper rotation matrix:\n%s" %str(roundoff(matrix.sqr(usedrotmx),4)), verbose=1)
+    # adjust the length of the rotation axes to be compatible with the sphere of reflections
+    s = math.sqrt(OrtMx.transpose().norm_sq())*self.realspace_scale
+    if abs(theta) > 0.0001 and rotaxis.norm() > 0.01: # avoid nullvector
       order = int(roundoff(2*math.pi/theta, 0)) # how many times to rotate before its the identity operator
       label = "%s-fold" %str(order)
-    return (s*e1,s*e2,s*e3), theta, label, order
+    return tuple((s*rotaxis)[0]), theta, label, order
 
 
   def show_rotation_axes(self):
@@ -1989,16 +2070,28 @@ Distance: %s
     self.viewerparams.show_hkl = "" # to allow clicking on the same entry in the millerarraytable
 
 
-  def rotate_around_vector(self):
-    vecnr, dgr = eval(self.params.clip_plane.angle_around_vector)
+  def rotate_around_numbered_vector(self):
+    vecnr, deg = eval(self.params.clip_plane.angle_around_vector)
     if vecnr < len(self.all_vectors):
-      cartvec = self.all_vectors[vecnr][3]
-      phi = cmath.pi*dgr/180
-      normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      ux = cartvec[0]/normR
-      uy = cartvec[1]/normR
-      uz = cartvec[2]/normR
-      self.RotateAxisComponents([ux,uy,uz], phi, True)
+      self.rotate_components_around_cartesian_vector(self.all_vectors[vecnr][3], deg)
+
+
+  def rotate_components_around_cartesian_vector(self, cartvec, deg):
+    phi = cmath.pi*deg/180
+    normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+    ux = cartvec[0]/normR
+    uy = cartvec[1]/normR
+    uz = cartvec[2]/normR
+    self.RotateAxisComponents([ux,uy,uz], phi, True)
+
+
+  def rotate_stage_around_cartesian_vector(self, cartvec, deg):
+    phi = cmath.pi*deg/180
+    normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+    ux = cartvec[0]/normR
+    uy = cartvec[1]/normR
+    uz = cartvec[2]/normR
+    self.RotateAxisMx([ux,uy,uz], phi, True)
 
 
   def animate_rotate_around_vector(self):
@@ -2015,7 +2108,7 @@ Distance: %s
   def DrawUnitCell(self, scale=1):
     if scale is None:
       self.RemovePrimitives("unitcell")
-      self.mprint( "Removing real space unit cell", verbose=1)
+      self.mprint( "Removing real space unit cell", verbose=2)
       return
     uc = self.miller_array.unit_cell()
     rad = 0.2 # scale # * 0.05 #  1000/ uc.volume()
@@ -2037,7 +2130,7 @@ Distance: %s
   def DrawReciprocalUnitCell(self, scale=1):
     if scale is None:
       self.RemovePrimitives("reciprocal_unitcell")
-      self.mprint( "Removing reciprocal unit cell", verbose=1)
+      self.mprint( "Removing reciprocal unit cell", verbose=2)
       return
     rad = 0.2 # 0.05 * scale
     self.draw_vector(0,0,0, scale,0,0, label="a*", r=0.5, g=0.3, b=0.3, radius=rad)
@@ -2210,7 +2303,7 @@ Distance: %s
 
   def MakeImage(self, filename):
     self.imagename = filename
-    self.AddToBrowserMsgQueue("MakeImage", "HKLviewer.png,"+ str(sys.version_info[0]) )
+    self.AddToBrowserMsgQueue("MakeImage2", "HKLviewer.png,"+ str(sys.version_info[0]) )
 
 
   def DisableMouseRotation(self): # disable rotating with the mouse
@@ -2356,11 +2449,20 @@ Distance: %s
     msg = "%s\n\n%s\n\n%s\n\n%s\n\n%s" %(ctop, cleft, label, fomlabel, str(colourgradarray) )
     self.AddToBrowserMsgQueue("MakeColourChart", msg )
 
+  def get_current_datatype(self):
+    # Amplitudes, Map coeffs, weights, floating points, etc
+    if self.viewerparams.scene_id is None:
+      return None
+    return self.array_infotpls[ self.scene_id_to_array_id(self.viewerparams.scene_id )][1]
+
 
   def onClickColourChart(self):
     # if running the GUI show the colour chart selection dialog
     self.SendInfoToGUI( { "ColourChart": self.viewerparams.color_scheme,
-                          "ColourPowerScale": self.viewerparams.color_powscale } )
+                          "ColourPowerScale": self.viewerparams.color_powscale,
+                          "Datatype": self.get_current_datatype(),
+                          "ShowColourMapDialog": 1
+                         } )
 
 
   def MakeBrowserDataColumnComboBox(self):

@@ -2701,9 +2701,12 @@ def get_f_phases_from_model(f_array = None, pdb_inp = None, overall_b = None,
 
   return model_f_array
 
-def get_f_phases_from_map(map_data = None, crystal_symmetry = None, d_min = None,
+def get_f_phases_from_map(
+      map_data = None, crystal_symmetry = None, d_min = None,
       d_max = 100000.,
-      d_min_ratio = None, return_as_map_coeffs = False, remove_aniso = None,
+      d_min_ratio = None,
+      return_as_map_coeffs = False,
+      remove_aniso = None,
       get_remove_aniso_object = True,
       scale_max = None,
       origin_frac = None,
@@ -2715,19 +2718,15 @@ def get_f_phases_from_map(map_data = None, crystal_symmetry = None, d_min = None
         d_min_use = d_min*d_min_ratio
     else:
       d_min_use = None
-    from mmtbx.command_line.map_to_structure_factors import run as map_to_sf
-    if crystal_symmetry.space_group().type().number() in [0, 1]:
-      args = ['d_min = None', 'box = True', 'keep_origin = False',
-         'scale_max = %s' %scale_max]
-    else: # cannot use box for other space groups
-      args = ['d_min = %s'%(d_min_use), 'box = False', 'keep_origin = False',
-         'scale_max = %s' %scale_max]
-    map_coeffs = map_to_sf(args = args,
-         space_group_number = crystal_symmetry.space_group().type().number(),
-         ccp4_map = make_ccp4_map(map_data, crystal_symmetry.unit_cell()),
-         return_as_miller_arrays = True, nohl = True, out = null_out())
-    if d_min_use:
-      map_coeffs = map_coeffs.resolution_filter(d_min = d_min_use, d_max = d_max)
+    if map_data.origin() != (0,0,0):
+      map_data = map_data.shift_origin()
+    from iotbx.map_manager import map_manager
+    mm = map_manager(map_data = map_data,
+       unit_cell_grid = map_data.all(),
+       unit_cell_crystal_symmetry = crystal_symmetry,
+       wrapping = False)
+    map_coeffs = mm.map_as_fourier_coefficients(d_min = d_min_use,
+       d_max = d_max if d_min_use is not None else None)
 
     if origin_frac and tuple(origin_frac) !=  (0., 0., 0.):  # shift origin
       map_coeffs = map_coeffs.translational_shift(origin_frac, deg = False)
@@ -2748,7 +2747,6 @@ def get_f_phases_from_map(map_data = None, crystal_symmetry = None, d_min = None
       return map_coeffs, map_coeffs_ra
     else:
       return map_coeffs_as_fp_phi(map_coeffs)
-
 
 def apply_sharpening(map_coeffs = None,
     sharpening_info_obj = None,
@@ -7363,8 +7361,18 @@ def select_regions_in_au(params,
 
   selected_regions = best_selected_regions
   selected_regions.sort()
-  if params.map_modification.regions_to_keep:
-    selected_regions = selected_regions[:params.map_modification.regions_to_keep]
+  available_selected_regions = len(selected_regions)
+  print("\nAvailable selected regions: %s ..." %(available_selected_regions), file = out)
+  if tracking_data:
+    tracking_data.available_selected_regions = available_selected_regions
+
+  if params.map_modification.regions_to_keep is not None:
+    if params.map_modification.regions_to_keep <= 0:
+       # keep just region abs(regions_to_keep)
+       ii = min(len(selected_regions)-1, abs(params.map_modification.regions_to_keep))
+       selected_regions = selected_regions[ii:ii+1]
+    else: # usual
+      selected_regions = selected_regions[:params.map_modification.regions_to_keep]
 
   rms = get_closest_neighbor_rms(ncs_group_obj = ncs_group_obj,
     selected_regions = selected_regions, verbose = False, out = out)
@@ -8655,17 +8663,17 @@ def get_overall_mask(
   else:
     smoothing_radius = 2.*resolution
 
-  from mmtbx.command_line.map_to_structure_factors import run as map_to_sf
-  args = ['d_min = None', 'box = True']
-  from libtbx.utils import null_out
-  map_coeffs = map_to_sf(args = args,
-         space_group_number = 1, # always p1 cell for this
-         ccp4_map = make_ccp4_map(map_data, crystal_symmetry.unit_cell()),
-         return_as_miller_arrays = True, nohl = True, out = null_out())
+  from iotbx.map_manager import map_manager
+  mm = map_manager(map_data = map_data,
+       unit_cell_grid = map_data.all(),
+       unit_cell_crystal_symmetry = crystal_symmetry,
+       wrapping = False)
+  map_coeffs = mm.map_as_fourier_coefficients(
+       d_min = resolution, d_max = d_max)
+
   if not map_coeffs:
     raise Sorry("No map coeffs obtained")
 
-  map_coeffs = map_coeffs.resolution_filter(d_min = resolution, d_max = d_max)
   complete_set = map_coeffs.complete_set()
   stol = flex.sqrt(complete_set.sin_theta_over_lambda_sq().data())
   import math

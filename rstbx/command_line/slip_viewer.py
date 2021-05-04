@@ -53,7 +53,7 @@ def run(argv=None):
   work_params = work_phil.work.extract()
 
   app = wx.App(0)
-  wx.SystemOptions.SetOptionInt("osx.openfiledialog.always-show-types", 1)
+  wx.SystemOptions.SetOption("osx.openfiledialog.always-show-types", "1")
   frame = XrayFrame(None, -1, "X-ray image display", size=(800,720))
   frame.Show()
 

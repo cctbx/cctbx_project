@@ -11,7 +11,7 @@ from matplotlib.figure import Figure
 from PySide2.QtCore import Qt, QEvent, QAbstractTableModel, QModelIndex
 from PySide2.QtGui import QCursor, QKeySequence
 from PySide2.QtWidgets import ( QAbstractItemView, QCheckBox, QTableWidget, QAction,
-      QMenu, QTableView, QDialog,  QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
+      QMenu, QTableView, QDialog, QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
       QScrollArea, QVBoxLayout
      )
 import math, csv
@@ -39,6 +39,7 @@ class HeaderDataTableWidget(QTableWidget):
 class MillerArrayTableForm(QDialog):
   def __init__(self, parent=None):
     super(MillerArrayTableForm, self).__init__(parent.window)
+    self.setWindowFlag(Qt.WindowContextHelpButtonHint,False);
     self.setWindowTitle("Tabulated Reflection Data")
     self.precision_spinBox = QSpinBox()
     self.precision_spinBox.setSingleStep(1)
@@ -188,12 +189,6 @@ class MillerArrayTableModel(QAbstractTableModel):
 # Dialog box with MatPlotLib colour gradient charts from
 # http://matplotlib.org/examples/color/colormaps_reference.html
 
-import numpy as np
-import matplotlib.pyplot as plt
-from PySide2 import QtWidgets
-from PySide2.QtCore import Qt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
 
 # list all colour maps except their reverse which end with "_r"
 cmaps = [ c for c in plt.colormaps() if not c.endswith("_r")]
@@ -222,7 +217,7 @@ class MplCanvas(FigureCanvas):
   def on_press(self, event):
     if event.inaxes is not None:
       self.parent.selcolmap = cmaps[event.inaxes.get_subplotspec().rowspan.start]
-      self.parent.labeltxt.setText('Colour gradient map is: %s. Click a map to select a different one' %self.parent.selcolmap )
+      self.parent.updatelabel()
       self.parent.EnactColourMapSelection()
 
 # TODO work out scaling of canvas to match QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
@@ -230,9 +225,11 @@ class MplCanvas(FigureCanvas):
 class MPLColourSchemes(QtWidgets.QDialog):
   def __init__(self, parent=None):
     super(MPLColourSchemes, self).__init__(parent.window)
+    self.setWindowFlags(Qt.Tool)
     self.parent = parent
     self.isOK = False
     self.selcolmap = ""
+    self.datatype = ""
     self.powscale = 1
     #self.setWindowFlags(Qt.Tool)
     # Create the maptlotlib FigureCanvas object,
@@ -252,7 +249,7 @@ class MPLColourSchemes(QtWidgets.QDialog):
     self.powscale_label.setText("Power factor for map scaling:")
     self.powscaleslider = QtWidgets.QSlider(Qt.Horizontal)
     self.powscaleslider.setMinimum(-20)
-    self.powscaleslider.setMaximum(10)
+    self.powscaleslider.setMaximum(20)
     self.powscaleslider.setTickPosition(QtWidgets.QSlider.TicksAbove)
     self.powscaleslider.setTickInterval(1)
     self.powscaleslider.sliderReleased.connect(self.onReleasePowscaleslider)
@@ -273,7 +270,7 @@ class MPLColourSchemes(QtWidgets.QDialog):
     gridlayout.addWidget(self.OKbtn,             4, 0, 1, 1)
     gridlayout.addWidget(self.Cancelbtn,         4, 2, 1, 2)
     self.setLayout(gridlayout)
-    scw = self.parent.app.style().pixelMetric(QtWidgets.QStyle.PM_ScrollBarExtent)
+    #scw = self.parent.app.style().pixelMetric(QtWidgets.QStyle.PM_ScrollBarExtent)
 
   def draw_axes_and_text(self):
     for ax, name in zip(self.mycanvas.axes, cmaps):
@@ -284,7 +281,6 @@ class MPLColourSchemes(QtWidgets.QDialog):
       y_text = pos[1] + pos[3]/2.
       self.mycanvas.fig.text(x_text, y_text, name, va='center', ha='left',
                              fontsize= self.parent.app.font().pointSize()*1.5 )
-
 
   def resizeEvent(self, event):
     # MplCanvas doesn't resize with the rest of QtWidgets whenever
@@ -303,7 +299,7 @@ class MPLColourSchemes(QtWidgets.QDialog):
       self.parent.onColourChartSelect(self.selcolmap, self.powscale)
 
   def showEvent(self, event):
-    self.labeltxt.setText('Selected colour gradient map: %s' %self.selcolmap )
+    self.updatelabel()
     self.powscaletxtbox.setText("%2.2f" %self.powscale )
 
   def onOK(self):
@@ -315,6 +311,9 @@ class MPLColourSchemes(QtWidgets.QDialog):
     self.isOK = False
     self.hide()
 
+  def updatelabel(self):
+    self.labeltxt.setText('Selected colour gradient map: %s for %s data' %(self.selcolmap, self.datatype) )
+
   def onReverseMap(self):
     if self.reversecheckbox.isChecked():
       if not self.selcolmap.endswith( "_r"):
@@ -322,7 +321,7 @@ class MPLColourSchemes(QtWidgets.QDialog):
     else:
       if self.selcolmap.endswith( "_r"):
         self.selcolmap = self.selcolmap[:-2]
-    self.labeltxt.setText('Selected colour gradient map: %s' %self.selcolmap )
+    self.updatelabel()
     self.EnactColourMapSelection()
 
   def onReleasePowscaleslider(self):
@@ -332,5 +331,20 @@ class MPLColourSchemes(QtWidgets.QDialog):
     val= self.powscaleslider.value()
     # want to raise the colour scaling to a power bigger than 0
     # so compute powscale from an exponential of the slider value
-    self.powscale = math.pow(1.1, val) # 1.2 varies sufficiently slowly for the slider range [-10,10]
+    self.powscale = math.pow(1.1, val) # 1.1 varies sufficiently slowly for the slider range [-10,10]
     self.powscaletxtbox.setText("%2.2f" %self.powscale )
+
+  def setPowerScaleSliderVal(self, power):
+    self.powscale = power
+    val = math.log(power)/math.log(1.1)
+    self.powscaleslider.setValue(int(val))
+    self.updatelabel()
+
+  def setDataType(self, datatype):
+    self.datatype = datatype
+    self.updatelabel()
+    if datatype == "Map coeffs" or datatype == "Phases":
+      self.powscaleslider.setDisabled(True)
+      self.setPowerScaleSliderVal(1.0)
+    else:
+      self.powscaleslider.setEnabled(True)

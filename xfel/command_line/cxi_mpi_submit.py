@@ -271,6 +271,14 @@ def get_submission_id(result, method):
     return result.stdout_lines[0].split()[-1].strip()
   elif method == 'htcondor':
     return result.stdout_lines[-1].split()[-1].rstrip('.')
+  elif method == 'sge':
+    #  example for sge at Diamond: 'Your job JOB_ID ("JOB_NAME") has been submitted'
+    line = "".join(result.stdout_lines).strip()
+    s = line.split()
+    submission_id = ''.join(i for i in s if i.isdigit())   # or just simply use s[2], the command used will extract the number from the "line"
+    print (line)
+    print('Submission', 'ID', 'is', submission_id)
+    return submission_id
 
 def do_submit(command, submit_path, stdoutdir, mp_params, job_name, dry_run=False):
   submit_command = get_submit_command_chooser(command, submit_path, stdoutdir, mp_params, job_name=job_name)

@@ -74,6 +74,11 @@ import re
 
 def unpickle_miller_arrays(file_name):
   result = easy_pickle.load(file_name)
+  # Python 3 pickle fix
+  # =========================================================================
+  if sys.version_info.major == 3:
+    result = easy_pickle.fix_py2_pickle(result)
+  # =========================================================================
   if (isinstance(result, miller.array)):
     return [result]
   result = list(result)

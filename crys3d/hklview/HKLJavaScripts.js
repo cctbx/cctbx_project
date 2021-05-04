@@ -73,6 +73,7 @@ var sockwaitcount = 0;
 var ready_for_closing = false;
 var columnSelect = null;
 var animationspeed = -1.0;
+var XYZaxes = null;
 var Hstarstart = null;
 var Hstarend = null;
 var Kstarstart = null;
@@ -86,6 +87,9 @@ var Hlabelvec = new NGL.Vector3();
 var Klabelvec = new NGL.Vector3();
 var Llabelvec = new NGL.Vector3();
 var annodivs = [];
+var div_annotation_opacity = 0.7;
+var camtype = "orthographic";
+//var negativeradiistr;
 
 
 function sleep(ms) {
@@ -168,6 +172,36 @@ function addDiv2Container(container, name, t, l, w, h, bgcolour="rgba(255, 255, 
 }
 
 
+function createDivElement(label, rgb, cornerposition)
+{
+  var elm = createElement("div", { innerText: label },
+    {
+      color: "rgba(" + rgb[0] + ", " + rgb[1] + ", " + rgb[2] + ", 1.0)",
+      backgroundColor: "rgba(255, 255, 255, " + div_annotation_opacity + ")",
+      padding: "4px"
+    }, fontsize
+  );
+  
+  pointelm = createElement("pointdiv", // make a small white square to indicate where this elm is pointing
+    {  innerText: ""  },
+    {
+      backgroundColor: bgcolour,
+      color: "rgba(255, 255, 255, 1.0)",
+      top: "0px",
+      left: "0px",
+      width: "2px",
+      height: "2px",
+    },
+    fontsize
+  );
+  
+  elm.append(pointelm);
+  return elm;
+}
+
+
+
+
 function CreateWebSocket()
 {
   try
@@ -207,12 +241,6 @@ function RemoveStageObjects()
     colourchart.remove(); // delete previous colour chart if any
     colourchart = null;
   }
-  /*
-  if (ResetViewBtn != null) {
-    ResetViewBtn.remove();
-    ResetViewBtn = null;
-  }
-  */
   ttips = [];
   vectorreprs = [];
   vectorshapeComps = [];
@@ -301,7 +329,6 @@ Object.assign(debugmessage.style, {
 });
 
 
-
 function ReturnClipPlaneDistances()
 {
   if (stage.viewer.parameters.clipScale == 'relative')
@@ -326,30 +353,13 @@ function ReturnClipPlaneDistances()
   WebsockSendMsg('ReturnClipPlaneDistances:\n' + msg );
 }
 
-async function RotateComponents(r, inc) {
-  while (inc < 10)
-  {
-    //sleep(100); //then(() => {
-    //await sleep(100);
-    var e = new NGL.Euler(inc, 0, 0);
-    var m = new NGL.Matrix4();
-    m.makeRotationFromEuler(e);
-    shapeComp.setTransform(m);
-    //RenderRequest();
-    stage.viewer.requestRender();
-    msg = String(shapeComp.matrix.elements);
-    WebsockSendMsg('CurrentComponentRotation:\n' + msg);
-    await sleep(100);
-    inc = inc + 0.02;
-  }
-}
-
 
 async function RenderRequest()
 {
   await sleep(100);
   stage.viewer.requestRender();
-  WebsockSendMsg( 'RenderRequest ' + pagename );
+  if (isdebug)
+    WebsockSendMsg( 'RenderRequest ' + pagename );
 }
 
 // Log errors to debugger of your browser
@@ -385,8 +395,8 @@ function onMessage(e)
   var showdata = e.data;
   if (showdata.length > 400)
     showdata = e.data.slice(0, 200) + '\n...\n' + e.data.slice(e.data.length - 200, -1);
-
-  WebsockSendMsg('Browser: Got ' + showdata ); // tell server what it sent us
+  if (isdebug)
+    WebsockSendMsg('Browser: Got ' + showdata ); // tell server what it sent us
   try
   {
     var datval = e.data.split(":\n");
@@ -531,7 +541,7 @@ function onMessage(e)
       var nexpandrefls = 0;
 
       //alert('rotations:\n' + val);
-      // Rotation matrices are concatenated to a string of floats
+      // Rotation matrices for the spacegroup come as a string of floats
       // separated by line breaks between each roation matrix
       rotationstrs = datval[1].split("\n");
       var Rotmats = [];
@@ -661,7 +671,6 @@ function onMessage(e)
         }
       }
 
-      //stage.viewer.requestRender();
       RenderRequest();
       WebsockSendMsg( 'Done ' + msgtype );
     }
@@ -722,8 +731,7 @@ function onMessage(e)
       axis.y = parseFloat(val[1]);
       axis.z = parseFloat(val[2]);
       m4.makeRotationAxis(axis, theta);
-
-      stage.viewerControls.orient(m4);
+      stage.viewerControls.applyMatrix(m4);
       if (val[4] == "verbose")
         postrotmxflag = true;
       ReturnClipPlaneDistances();
@@ -940,14 +948,7 @@ function onMessage(e)
         pos.y = txtR[1];
         pos.z = txtR[2];
 
-        var elm = createElement("div", { innerText: label },
-        {
-          color: "rgba(" + rgb[0] + ", " + rgb[1] + ", " + rgb[2] + ", 1.0)",
-          backgroundColor: "rgba(255, 255, 255, " + div_annotation_opacity + ")",
-          padding: "4px"
-        }, fontsize
-        )
-
+        var elm = createDivElement(label, rgb, "upperright")
         annodivs.push([elm, pos]);  // store until we get a representation name
       }
       // if reprname is supplied with a vector then make a representation named reprname
@@ -1126,6 +1127,7 @@ function onMessage(e)
     {
       //HKLscene();
       MakeHKL_Axis();
+      MakeXYZ_Axis();
       RenderRequest();
       WebsockSendMsg('Drawing new reflections');
     }
@@ -1137,29 +1139,51 @@ function onMessage(e)
       WebsockSendMsg('AutoViewSet ' + pagename);
     }
 
-    if (msgtype === "MakeImage")
-    {
+    if (msgtype === "MakeImage") {
       filename = val[0];
-      stage.viewer.makeImage( {
-                factor: 1,
-                antialias: true,
-                trim: false,
-                transparent: false
-            } ).then( function( blob ){
-              if (parseInt(val[1]) < 3)
-              {
-// Using websocket_server in python2 which doesn't allow streaming large compressed data
-// So use NGL's download image function
-                NGL.download( blob, filename );
-              }
-              else
-              { // websockets in python3 which supports streaming large blobs
-                WebsockSendMsg('Imageblob', false);
-                WebsockSendMsg( blob );
-              }
+      stage.viewer.makeImage({ // using NGL's builtin function for making an image blob. html div legends are stripped
+        factor: 1,
+        antialias: true,
+        trim: false,
+        transparent: false
+      }).then(function (blob) {
+        if (parseInt(val[1]) < 3) {
+          // Using websocket_server in python2 which doesn't allow streaming large compressed data
+          // So use NGL's download image function
+          NGL.download(blob, filename);
+        }
+        else { // websockets in python3 which supports streaming large blobs
+          WebsockSendMsg('Imageblob', false);
+          WebsockSendMsg(blob);
+        }
 
-              WebsockSendMsg('ImageWritten ' + pagename);
-        } );
+        WebsockSendMsg('ImageWritten ' + pagename);
+      });
+    }
+
+    if (msgtype === "MakeImage2") {
+      filename = val[0];
+      //CHROME ONLY
+      // html2canvas retains div legends when creaing an image blob
+      ResetViewBtn.style.display = "None"; // hide buttons and other GUL controls on this webpage
+      html2canvas(document.getElementById("viewport")).then(function (canvas) {
+        //blob = canvas.toDataURL("image/jpeg", 0.9);
+        if (canvas.toBlob) {
+          canvas.toBlob(function (blob) {
+            if (parseInt(val[1]) < 3) {
+              // Using websocket_server in python2 which doesn't allow streaming large compressed data
+              // So use NGL's download image function
+              NGL.download(blob, filename);
+            }
+            else { // websockets in python3 which supports streaming large blobs
+              WebsockSendMsg('Imageblob', false);
+              WebsockSendMsg(blob);
+            }
+          }, 'image/png')
+        }
+      });
+      ResetViewBtn.style.display = "Block";
+      WebsockSendMsg('ImageWritten ' + pagename);
     }
 
     if (msgtype === "MakeBrowserDataColumnComboBox")
@@ -1214,9 +1238,11 @@ function onMessage(e)
       RenderRequest();
       */
     }
-    WebsockSendMsg('Received message: ' + msgtype );
     if (isdebug)
+    {
+      WebsockSendMsg('Received message: ' + msgtype);
       debugmessage.innerText = dbgmsg;
+    }
   }
 
   catch(err)
@@ -1227,9 +1253,6 @@ function onMessage(e)
 };
 
 
-var div_annotation_opacity = 0.7;
-var camtype = "orthographic";
-var negativeradiistr
 
 function timefunc() {
   var d = new Date();
@@ -1449,7 +1472,7 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
   var ih = 3.0*hfac,
   topr = 25.0,
   topr2 = 0.0,
-  lp = 10.0;
+  lp = 2.0; // vertical margin between edge of white container and labels
 
   var maxnumberwidth = 0;
   for (j = 0; j < colourgradvalarrays[0].length; j++)
@@ -1469,9 +1492,7 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
     fomlabelheight = 0;
   }
   var wp3 = wp + colourgradvalarrays.length * wp2 + 2;
-
   totalheight = ih * colourgradvalarrays[0].length + 35 + fomlabelheight;
-  //totalheight = ih * 60 + 35 + fomlabelheight;
 
   if (colourchart != null)
     colourchart.remove(); // delete previous colour chart if any
@@ -1581,6 +1602,130 @@ function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids)
 }
 
 
+
+function MakeXYZ_Axis() {
+  // draw x and y arrows
+  var linelength = 20;
+  var linestart = 5;
+  var vleft = 2;
+  var hbottom = 2;
+  var arrowhalfwidth = 2;
+  var linewidth = 1;
+  var arrowlength = 7;
+  var labelfromarrow = linelength + linestart + arrowlength + 1;
+  var labelwidth = getTextWidth("x", fontsize)
+
+  if (XYZaxes != null)
+    XYZaxes.remove(); // delete previous colour chart if any
+  XYZaxes = addDivBox(null, 0, 10, 60, 60, bgcolour = "rgba(255, 255, 255, 0.0)");
+  XYZaxes.style.top = ""; // offset from the bottom so leave top distance void
+  XYZaxes.style.bottom = "30px";
+
+  velm = createElement("div", { innerText: "" },
+    {
+      backgroundColor: "rgba(0, 255, 0, 1.0)", color: "rgba(0, 0, 0, 0.0)",
+      bottom: linestart.toString() + "px",
+      height: linelength.toString() + "px",
+      left: (vleft + arrowhalfwidth - linewidth / 2.0).toString() + "px",
+      width: linewidth.toString() + "px",
+      position: "absolute"
+    }, 10);
+  addElement(velm);
+  XYZaxes.append(velm);
+
+  uparrow = createElement("div", { innerText: "" }, {
+    backgroundColor: "rgba(0, 0, 255, 0.0)", color: "rgba(0, 0, 0, 0.0)",
+    bottom: (linelength + linestart).toString() + "px",
+    left: vleft.toString() + "px",
+    borderLeft: arrowhalfwidth.toString() + "px solid transparent",
+    borderRight: arrowhalfwidth.toString() + "px solid transparent",
+    borderBottom: arrowlength.toString() + "px solid rgba(0, 255, 0)",
+    position: "absolute"
+  }, 10);
+  addElement(uparrow);
+  XYZaxes.append(uparrow);
+
+  yelm = createElement("div", { innerText: "y" }, {
+    backgroundColor: "rgba(0, 255, 0, " + div_annotation_opacity + ")", color: "rgba(255, 255, 255, 1.0)",
+    left: (vleft - linewidth / 2.0).toString() + "px",
+    bottom: labelfromarrow.toString() + "px",
+    padding: "1px",
+    position: "absolute"
+  }, fontsize);
+  addElement(yelm);
+  XYZaxes.append(yelm);
+
+  helm = createElement("div", { innerText: "" }, {
+    backgroundColor: "rgba(0, 0, 255, 1.0)", color: "rgba(0, 0, 0, 0.0)",
+    left: linestart.toString() + "px",
+    width: linelength.toString() + "px",
+    bottom: (hbottom + arrowhalfwidth - linewidth / 2.0).toString() + "px",
+    height: linewidth.toString() + "px",
+    position: "absolute"
+  }, 10);
+  addElement(helm);
+  XYZaxes.append(helm);
+
+  rightarrow = createElement("div", { innerText: "" }, {
+    backgroundColor: "rgba(0, 0, 255, 0.0)", color: "rgba(0, 0, 0, 0.0)",
+    left: (linelength + linestart).toString() + "px",
+    bottom: hbottom.toString() + "px",
+    borderTop: arrowhalfwidth.toString() + "px solid transparent",
+    borderBottom: arrowhalfwidth.toString() + "px solid transparent",
+    borderLeft: arrowlength.toString() + "px solid rgba(0, 0, 255)",
+    position: "absolute"
+  }, 10);
+  addElement(rightarrow);
+  XYZaxes.append(rightarrow);
+
+  xelm = createElement("div", { innerText: "x" }, {
+    backgroundColor: "rgba(0, 0, 255, " + div_annotation_opacity + ")", color: "rgba(255, 255, 255, 1.0)",
+    left: labelfromarrow.toString() + "px",
+    bottom: (hbottom + arrowhalfwidth - linewidth / 2.0).toString() + "px",
+    padding: "1px",
+    position: "absolute"
+  }, fontsize);
+  addElement(xelm);
+  XYZaxes.append(xelm);
+
+  var arrowradius = 10;
+  zarrow = createElement("div", { innerText: "" }, {
+    backgroundColor: "rgba(255,0 ,0, 1.0)", color: "rgba(0, 0, 0, 1.0)",
+    left: (linelength / 2 + linestart).toString() + "px",
+    bottom: (linelength / 2 + linestart).toString() + "px",
+    height: arrowradius.toString() + "px",
+    width: arrowradius.toString() + "px",
+    borderRadius: "50%",
+    position: "absolute"
+  }, 10);
+  addElement(zarrow);
+  XYZaxes.append(zarrow);
+
+  zarrowtip = createElement("div", { innerText: "" }, {
+    backgroundColor: "rgba(255,255,255, 1.0)", color: "rgba(0, 0, 0, 1.0)",
+    left: (arrowradius / 2 + linelength / 2 + linestart - 1).toString() + "px",
+    bottom: (arrowradius / 2 + linelength / 2 + linestart - 1).toString() + "px",
+    height: "2px",
+    width: "2px",
+    borderRadius: "50%",
+    position: "absolute"
+  }, 10);
+  addElement(zarrowtip);
+  XYZaxes.append(zarrowtip);
+
+  zelm = createElement("div", { innerText: "z" }, {
+    backgroundColor: "rgba(255, 0, 0, " + div_annotation_opacity + ")", color: "rgba(255, 255, 255, 1.0)",
+    left: (arrowradius + linelength / 2 + linestart).toString() + "px",
+    bottom: (arrowradius + linelength / 2 + linestart).toString() + "px",
+    padding: "1px",
+    position: "absolute"
+  }, fontsize);
+  addElement(zelm);
+  XYZaxes.append(zelm);
+}
+
+
+
 function HKLscene()
 {
   shape = new NGL.Shape('shape');
@@ -1679,9 +1824,24 @@ function HKLscene()
     }
   );
 
+  function SetDefaultOrientation()
+  {
+    var m4 = new NGL.Matrix4();
+    var axis = new NGL.Vector3();
+    axis.x = 0.0;
+    axis.y = 1.0;
+    axis.z = 0.0;
+    // Default in WebGL is for x-axis to point left and z-axis to point into the screen.
+    // But we want x-axis pointing right and z-axis pointing out of the screen. 
+    // Rotate coordinate system to that effect
+    m4.makeRotationAxis(axis, Math.PI);
+    shapeComp.autoView(500);
+    stage.viewerControls.orient(m4);
+  }
+
   shapeComp = stage.addComponentFromObject(shape);
   repr = shapeComp.addRepresentation('buffer');
-  shapeComp.autoView(500);
+  SetDefaultOrientation();
   repr.update();
 
   if (isdebug)
@@ -1698,19 +1858,11 @@ function HKLscene()
   if (isdebug)
     debugmessage.innerText = dbgmsg;
 
-
   ResetViewBtn = createElement("input", {
     value: "Reset view",
     type: "button",
     onclick: function () {
-      shapeComp.autoView(500);
-      var m4 = new NGL.Matrix4();
-      var axis = new NGL.Vector3();
-      axis.x = 0.0;
-      axis.y = 1.0;
-      axis.z = 0.0;
-      m4.makeRotationAxis(axis, 0.0);
-      stage.viewerControls.orient(m4);
+      SetDefaultOrientation();
       RenderRequest();
       sleep(100).then(() => {
         msg = getOrientMsg();
@@ -1720,7 +1872,6 @@ function HKLscene()
     },
   }, { bottom: "10px", left: "10px", width: "90px", position: "absolute" }, fsize = fontsize);
   addElement(ResetViewBtn);
-
 
 }
 

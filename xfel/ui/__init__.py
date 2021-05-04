@@ -4,10 +4,9 @@ from iotbx.phil import parse
 from libtbx.utils import Sorry
 
 master_phil_str = """
-dispatcher = cctbx.xfel.xtc_process
+dispatcher = cctbx.xfel.process
   .type = str
-  .help = Which program to run. cxi.xtc_process is for module only based processing, \
-          such as mod_hitfind. cctbx.xfel.xtc_process uses the DIALS back end.
+  .help = Which program to run. cctbx.xfel.process should be used in most cases.
 dry_run = False
   .type = bool
   .help = If True, the program will create the trial directory but not submit the job, \
@@ -116,6 +115,9 @@ db {
   port = 3306
     .type = int
     .help = Port number to be used for connection
+  logging_batch_size = 3
+    .type = int
+    .help = Number of images to log at once. Increase if using many (thousands) of processors.
 }
 """
 master_phil_scope = parse(master_phil_str + db_phil_str, process_includes=True)

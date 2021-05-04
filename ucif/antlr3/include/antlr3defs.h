@@ -111,6 +111,10 @@
 # define        ANTLR3_WIN64
 # define        ANTLR3_USE_64BIT
 
+#elif __LP64__
+
+# define ANTLR3_USE_64BIT
+
 #else
 
 #ifdef  _WIN32

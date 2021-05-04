@@ -232,7 +232,7 @@ def exercise_00(prefix="tst_polder"):
   print("Biased map : %7.3f %7.3f %7.3f"%mlo.min_max_mean().as_tuple())
   print("Omit       : %7.3f %7.3f %7.3f"%mmm_o)
   #
-  assert approx_equal(mmm_mp, [1.208, 6.166, 4.023], eps=0.1)
+  assert approx_equal(mmm_mp, [1.455, 6.852, 4.382], eps=0.1)
   assert approx_equal(mmm_o, [-1.764, 1.935, -0.262], eps=0.1)
 
 

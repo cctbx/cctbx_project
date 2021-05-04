@@ -10,7 +10,7 @@ import sys
 
 def run(args):
   app = wx.App(0)
-  wx.SystemOptions.SetOptionInt("osx.openfiledialog.always-show-types", 1)
+  wx.SystemOptions.SetOption("osx.openfiledialog.always-show-types", "1")
   frame = XrayFrame(None, -1, "X-ray image display", size=(800,720))
   if (len(args) == 1 and os.path.basename(args[0]) == "DISTL_pickle"):
     assert os.path.isfile(args[0])

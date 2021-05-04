@@ -977,14 +977,15 @@ def exercise7():
   outliers_bonds = results.outliers_bonds
 
   outliers_bond_answer = [
-    [' A 139 ATYR  HH ', 0.769, 0.98 ],
-    [' A 139 ATYR  HB3', 0.930, 1.09 ],
+    [' A 139 ATYR  HD2', 1.209, 1.08 ],
     [' A 139 ATYR  HB2', 0.936, 1.09 ],
-    [' A 139 ATYR  HD2', 1.209, 1.08 ] ]
+    [' A 139 ATYR  HB3', 0.930, 1.09 ],
+    [' A 139 ATYR  HH ', 0.769, 0.98 ]
+     ]
 
   for item, answer in zip(outliers_bonds, outliers_bond_answer):
-    print(item)
-    print(answer)
+    #print(item)
+    #print(answer)
     assert (item[0].strip() == answer[0].strip()) # pdb_str
     assert (item[5] is not None)                  # make sure xyz exist
     assert approx_equal(item[2],answer[1], 1.e-2) # bond length model
@@ -1007,10 +1008,11 @@ def exercise8():
   outliers_bonds = results.outliers_bonds
 
   outliers_bond_answer = [
-    [' A 139  TYR  DE2', 0.876, 1.08],
-    [' A 139  TYR  DB3', 1.264, 1.09],
+    [' A 139  TYR  DB2', 1.002, 1.09],
     [' A 139  TYR  DD1', 1.236, 1.08],
-    [' A 139  TYR  DB2', 1.002, 1.09] ]
+    [' A 139  TYR  DB3', 1.264, 1.09],
+    [' A 139  TYR  DE2', 0.876, 1.08]
+     ]
 
   for item, answer in zip(outliers_bonds, outliers_bond_answer):
     assert (item[0].strip() == answer[0].strip()) # pdb_str
@@ -1035,10 +1037,11 @@ def exercise9():
   outliers_bonds = results.outliers_bonds
 
   outliers_bond_answer = [
-    [' A 139 ATYR  HB2',  0.893, 1.09],
-    [' A 139 BTYR  DD1',  1.243, 1.08],
+    [' A 139 ATYR  HE2',  0.986, 1.08],
     [' A 139 BTYR  DH ',  1.123, 0.98],
-    [' A 139 ATYR  HE2',  0.986, 1.08] ]
+    [' A 139 BTYR  DD1',  1.243, 1.08],
+    [' A 139 ATYR  HB2',  0.893, 1.09],
+     ]
 
   for item, answer in zip(outliers_bonds, outliers_bond_answer):
     assert (item[0].strip() == answer[0].strip()) # pdb_str
@@ -1061,8 +1064,9 @@ def exercise10():
   outliers_angles = results.outliers_angles
 
   outliers_angles_answer = [
-    [' A 139 ATYR  HA ',  123.01, 110.0, (10.583, 7.992, 7.177)],
-    [' A 139 BTYR  DA ',  121.11, 109.0, (10.557, 8.334, 6.899)]  ]
+    [' A 139 BTYR  DA ',  121.11, 109.0, (10.557, 8.334, 6.899)],
+    [' A 139 ATYR  HA ',  123.01, 110.0, (10.583, 7.992, 7.177)]
+      ]
 
   for item, answer in zip(outliers_angles, outliers_angles_answer):
     assert (item[0].strip() == answer[0].strip()) # pdb_str

@@ -18,5 +18,5 @@ class _():
     line_spacing = round(self.height() * relative_line_spacing)
     for i,string in enumerate(text.splitlines()):
       glRasterPos(*position)
-      glBitmap(0, 0, 0.0, 0.0, 0.0, -i*line_spacing, "")
+      glBitmap(0, 0, 0.0, 0.0, 0.0, -i*line_spacing, b"")
       self.render_string(string=string.expandtabs())

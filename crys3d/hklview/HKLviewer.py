@@ -16,29 +16,38 @@ from PySide2.QtWidgets import (  QAction, QCheckBox, QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
         QMainWindow, QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableView, QTableWidget,
-        QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QPlainTextEdit, QVBoxLayout, QWidget )
+        QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget )
 
-from PySide2.QtGui import QColor, QFont, QCursor
+from PySide2.QtGui import QColor, QFont, QCursor, QDesktopServices
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
-import sys, zmq, subprocess, time, traceback, zlib, io, os
+import sys, zmq, subprocess, time, traceback, zlib, io, os, math, os.path
 
 
 try: # if invoked by cctbx.python or some such
-  from crys3d.hklview import HKLviewerGui, QtChromiumCheck
+  from crys3d.hklview import HKLviewerGui
   from crys3d.hklview.helpers import ( MillerArrayTableView, MillerArrayTableForm,
                                      MillerArrayTableModel, MPLColourSchemes )
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
-  import HKLviewerGui, QtChromiumCheck
+  import HKLviewerGui
   from helpers import MillerArrayTableView, MillerArrayTableForm, MillerArrayTableModel
 
 class MakeNewDataForm(QDialog):
   def __init__(self, parent=None):
     super(MakeNewDataForm, self).__init__(parent.window)
-    self.setWindowTitle("Create New Reflection Data")
-    myGroupBox = QGroupBox("Python expression for newdata")
+    self.setWindowFlag(Qt.WindowContextHelpButtonHint,False);
+    self.setWindowTitle("Create a new reflection dataset")
+    self.setSizeGripEnabled(True)
     layout = QGridLayout()
+    sp = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    sp.setVerticalStretch(10)
+    parent.operationtxtbox.setSizePolicy(sp)
+    parent.operationtxtbox.setMinimumSize(QSize(0, 30))
+
+    sp2 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    sp2.setVerticalStretch(0)
+    parent.operationlabeltxt.setSizePolicy(sp2)
+
     layout.addWidget(parent.operationlabeltxt,     0, 0, 1, 2)
-    #layout.addWidget(parent.MillerLabel1,           1, 0, 1, 2)
     layout.addWidget(parent.MillerComboBox,        1, 0, 1, 1)
     layout.addWidget(parent.MillerLabel2,          1, 1, 1, 1)
     layout.addWidget(parent.MillerLabel3,          2, 0, 1, 2)
@@ -48,10 +57,7 @@ class MakeNewDataForm(QDialog):
     layout.addWidget(parent.operationbutton,       5, 0, 1, 2)
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
-    myGroupBox.setLayout(layout)
-    mainLayout = QGridLayout()
-    mainLayout.addWidget(myGroupBox,     0, 0)
-    self.setLayout(mainLayout)
+    self.setLayout(layout)
     m = self.fontMetrics().width( "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf")
 
 
@@ -63,16 +69,9 @@ class AboutForm(QDialog):
     mainLayout = QGridLayout()
     self.aboutlabel = QLabel()
     self.aboutlabel.setWordWrap(True)
-    aboutstr = """<html><head/><body><p><span style=" font-weight:600;">
-    HKLviewer, </span>A reflection data viewer for crystallography
-    <span style=" font-weight:600;"><br/>Developers: </span>Dr. Robert D. Oeffner<br/>
-    Cambridge Institute for Medical Research, University of Cambridge.<br/>
-    HKLviewer is part of the <a href="http://cci.lbl.gov/docs/cctbx/"> CCTBX library</a>
-    as well as derived software thereof.<br/>
-    Please direct any bug reports to cctbx@cci.lbl.gov or rdo20@cam.ac.uk
-
-    </p></body></html>"""
-    self.aboutlabel.setText(aboutstr)
+    self.aboutlabel.setTextInteractionFlags(Qt.TextBrowserInteraction);
+    self.aboutlabel.setOpenExternalLinks(True);
+    self.writeAboutstr("")
     self.copyrightstxt = QTextEdit()
     self.copyrightstxt.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
     self.copyrightstxt.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
@@ -89,6 +88,22 @@ class AboutForm(QDialog):
     self.setLayout(mainLayout)
     self.setMinimumSize(QSize(350, 200))
     self.setFixedSize( self.sizeHint() )
+  def writeAboutstr(self, versionstr):
+    aboutstr = """<html><head/><body><p>
+    <span style=" font-weight:600;">HKLviewer, </span>
+    CCTBX version: """ + versionstr + \
+    """
+    <br/>A reflection data viewer for crystallography
+    <br/>Developers: Dr. Robert D. Oeffner<br/>
+    Cambridge Institute for Medical Research, University of Cambridge.<br/>
+    HKLviewer is part of the <a href="http://cci.lbl.gov/docs/cctbx/"> CCTBX library</a>
+    as well as derived software thereof.<br/>
+    HKLviewer uses functionality provided by the
+    <a href="https://github.com/nglviewer/ngl">NGL Viewer</a> project and
+    the <a href="https://github.com/niklasvh/html2canvas">html2canvas</a> project.
+    Refer to rdo20@cam.ac.uk or cctbx@cci.lbl.gov for queries or bug reports.
+    </p></body></html>"""
+    self.aboutlabel.setText(aboutstr)
   def onOK(self):
     self.hide()
 
@@ -137,7 +152,7 @@ class WebEngineDebugForm(QDialog):
                         Qt.WindowTitleHint |
                         Qt.WindowSystemMenuHint
                         )
-    self.setWindowTitle("Chrome QWebEngineDebug")
+    self.setWindowTitle("Chromium QWebEngineDebug")
     browser = QWebEngineView()
     mainLayout = QGridLayout()
     mainLayout.addWidget(browser, 0, 0)
@@ -248,6 +263,9 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     self.ColourMapSelectDlg = MPLColourSchemes(self)
     self.ColourMapSelectDlg.setWindowTitle("HKLviewer Colour Gradient Maps")
+    # colour schemes and radii mapping for types of datasets stored in jsview_3d.py but persisted here:
+    # colourmap=brg, colourpower=1, powerscale=1, radiiscale=1
+    self.datatypedict = { }
 
     self.settingsform = SettingsForm(self)
     self.aboutform = AboutForm(self)
@@ -258,14 +276,31 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.operationlabeltxt = QLabel()
     self.operationlabeltxt.setWordWrap(True)
     self.MillerLabel2 = QLabel()
-    self.MillerLabel2.setText("column")
+    self.MillerLabel2.setText("is represented by array2")
     self.MillerLabel3 = QLabel()
-    self.MillerLabel3.setText("Example: 'newdata=data/sigmas; newsigmas= -42*sigmas' ")
+    self.MillerLabel3.setText("""<html><head/><body><p>
+    For examples on creating a dataset from existing ones see
+    <a href="http://cci.lbl.gov/docs/cctbx/doc_hklviewer/#making-a-new-dataset">Making a new dataset</a>.
+    <br>
+    For details on python scripting cctbx.miller.array see
+    <a href="https://cctbx.github.io/cctbx/cctbx.miller.html#the-miller-array">cctbx.miller arrays</a>.
+    """)
+    self.MillerLabel3.setTextInteractionFlags(Qt.TextBrowserInteraction);
+    self.MillerLabel3.setOpenExternalLinks(True);
+
     self.newlabelLabel = QLabel()
-    self.newlabelLabel.setText("Column label for new data:")
+    self.newlabelLabel.setText("Column label for new reflection dataset:")
     self.newlabeltxtbox = QLineEdit('')
-    self.operationtxtbox = QLineEdit('')
-    self.operationbutton = QPushButton("OK")
+    self.operationtxtbox = QTextEdit('')
+    self.operationtxtbox.setPlaceholderText("""Example:
+dat = array1.data()/array1.sigmas() * array2.normalize().data()
+sigs = 2*flex.exp(1/array2.sigmas())
+newarray._data = dat
+newarray._sigmas = sigs
+    """)
+    self.operationtxtbox.setToolTip(u"<html><head/><body><p>Rather than using math.exp(), math.pow(), etc. " +
+                                  "use flex.exp(), flex.pow() etc when operating on flex.array variables.</p></body></html>")
+    self.operationbutton = QPushButton("Compute new reflection dataset")
     self.operationbutton.clicked.connect(self.onMakeNewData)
     self.makenewdataform = MakeNewDataForm(self)
     self.makenewdataform.setModal(True)
@@ -276,6 +311,9 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.millerarraytableform = MillerArrayTableForm(self)
     self.millerarraytablemodel = None
     self.millerarraytable.installEventFilter(self.millerarraytableform) # for keyboard copying to clipboard
+    self.millerarraytable.setToolTip("Double-click the column and row of a reflection for the "+
+                                     "viewer to zoom in on that.\nRight-click a reflection in " +
+                                     "the viewer to locate its entry in this table.")
 
     self.createExpansionBox()
     self.createFileInfoBox()
@@ -317,7 +355,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.NewFileLoaded = False
     self.NewMillerArray = False
     self.NewHKLscenes = False
-    self.updatingNbins = False
     self.binstableitemchanges = False
     self.canexit = False
     self.isfirsttime = False
@@ -328,26 +365,42 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.binTableCheckState = None
     self.millertablemenu = QMenu(self.window)
     self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
-    #self.resize(QSize(self.FileInfoBox.size().width()*2, self.size().height() ))
     self.functionTabWidget.setDisabled(True)
     self.window.statusBar().showMessage("")
+    self.hklLabel = QLabel()
+    self.hklLabel.setText("HKL vectors along X-axis, Y-axis, Z-axis:")
+    self.Statusbartxtbox = QLineEdit('')
+    self.Statusbartxtbox.setReadOnly(True)
+    self.Statusbartxtbox.setAlignment(Qt.AlignRight)
+    self.window.statusBar().addPermanentWidget(self.hklLabel)
+    self.window.statusBar().addPermanentWidget(self.Statusbartxtbox, 1)
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
+    self.actionLocal_Help.triggered.connect(self.onOpenHelpFile)
+    self.actionCCTBXwebsite.triggered.connect(self.onOpenCCTBXwebsite)
     self.actiondebug.triggered.connect(self.DebugInteractively)
     self.actionSave_Current_Image.triggered.connect(self.onSaveImage)
     self.actionSettings.triggered.connect(self.SettingsDialog)
     self.actionAbout.triggered.connect(self.aboutform.show)
     self.actionExit.triggered.connect(self.window.close)
     self.actionSave_reflection_file.triggered.connect(self.onSaveReflectionFile)
+    self.actionColour_Gradient.triggered.connect(self.ColourMapSelectDlg.show)
     self.functionTabWidget.setCurrentIndex(0) # if accidentally set to a different tab in the Qtdesigner
     self.window.show()
+
+
+  def onOpenHelpFile(self):
+    QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/doc_hklviewer/")
+
+
+  def onOpenCCTBXwebsite(self):
+    QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/")
 
 
   def AppAboutToQuit(self):
     print("in AppAboutToQuit")
 
-
   def closeEvent(self, event):
-    self.PhilToJsRender('action = is_terminating')
+    self.send_message('action = is_terminating')
     self.closing = True
     #self.window.setVisible(False)
     if self.UseOSBrowser == False:
@@ -386,7 +439,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       else:
         self.webpage.setUrl("https://webglreport.com/")
     else:
-      self.webpage.setUrl("https://cctbx.github.io/")
+      #self.webpage.setUrl("https://cctbx.github.io/")
+      self.webpage.setUrl("http://cci.lbl.gov/docs/cctbx/doc_hklviewer/")
     self.cpath = self.webprofile.cachePath()
     self.BrowserBox.setPage(self.webpage)
     self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
@@ -420,7 +474,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       #self.infostr = ""
       self.textInfo.setPlainText("")
       self.fileisvalid = False
-      self.PhilToJsRender('openfilename = "%s"' %fileName )
+      self.send_message('openfilename = "%s"' %fileName )
       self.MillerComboBox.clear()
       self.BinDataComboBox.clear()
       self.tncsvec = []
@@ -436,10 +490,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
   def onSaveReflectionFile(self):
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getSaveFileName(self.window,
-            "Save to a new reflection file", "",
-            "All Files (*);;CIF Files (*.cif);;MTZ Files (*.mtz)", "", options)
+            "Save datasets to a new reflection file", "",
+            "MTZ Files (*.mtz);;CIF Files (*.cif);;All Files (*)", "", options)
     if fileName:
-      self.PhilToJsRender('savefilename = "%s"' %fileName )
+      self.send_message('savefilename = "%s"' %fileName )
 
 
   def SettingsDialog(self):
@@ -448,10 +502,11 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
 
 
-  def onColourChartSelect(self, selcolmap, powscale): # called when user clicks OK in ColourMapSelectDlg
+  def onColourChartSelect(self, selcolmap, colourpowscale):
+    # called when user clicks OK in helpers.MPLColourSchemes.EnactColourMapSelection()
     if selcolmap != "":
-      self.PhilToJsRender("""viewer.color_scheme = %s
-viewer.color_powscale = %s""" %(selcolmap, powscale) )
+      self.send_message("""viewer.color_scheme = %s
+viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def ProcessMessages(self):
@@ -482,7 +537,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
         if "cctbx.python.version:" in msgstr:
           self.cctbxpythonversion = msgstr
-          self.PhilToJsRender("""NGL {
+          self.send_message("""NGL {
   fontsize = %d
   show_tooltips = %s
 }
@@ -514,11 +569,13 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
             txts = ""
             for copyrighttitle, fname in self.copyrightpaths:
               with open(fname,"r") as f:
-                txts = txts + copyrighttitle + ":\n\n"
+                txts = txts + " "*20 + copyrighttitle + ":\n\n"
                 txts = txts + f.read()
-                txts = txts + "\n" + "#" * 80  + "\n"
+                txts = txts + "\n" + "#" * 50  + "\n"
             self.aboutform.copyrightstxt.setText(txts)
             self.aboutform.setFixedSize( self.aboutform.sizeHint() )
+          if self.infodict.get("cctbxversion"):
+            self.aboutform.writeAboutstr( self.infodict["cctbxversion"])
 
           if self.infodict.get("scene_array_label_types"):
             self.scenearraylabeltypes = self.infodict.get("scene_array_label_types", [])
@@ -535,9 +592,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
             self.bin_infotpls = self.infodict["bin_infotpls"]
 
             self.nbins = len(self.bin_infotpls)
-            self.updatingNbins = True
-            self.Nbins_spinBox.setValue(self.nbins)
-            self.updatingNbins = False
             self.binstable.clearContents()
             self.binstable.setRowCount(self.nbins)
             self.lowerbinvals = []
@@ -558,13 +612,15 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
                 if col == 1: # allow changing bin thresholds
                   item = QTableWidgetItem(str(elm))
                   item.setFlags(item.flags() | Qt.ItemIsEditable)
-                  item.setToolTip("Change value for adjusting the number of reflections in this bin")
+                  item.setToolTip("Change a bin threshold by entering a preferred value in the " +
+                                  "\"lower bin value\" column for a particular bin.")
                 if col == 3:
                   item = QTableWidgetItem()
                   item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
                   item.setCheckState(Qt.Checked)
-                  item.setToolTip("Change visibility of this bin either by ticking or unticking the " +
-                                   "check box or by entering an opacity value between 0 and 1")
+                  item.setToolTip("Change visibility of bins either by ticking or unticking the check " +
+                                  "boxes or by entering opacity values between 0 and 1. Reflections with "+
+                                  "values less than 0.3 will not respond to mouse clicks.")
                 self.binstable.setItem(row, col, item)
             self.binstable_isready = True
             if self.bin_opacities:
@@ -631,7 +687,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
           if self.infodict.get("tncsvec"):
             self.tncsvec = self.infodict.get("tncsvec",[])
           self.unfeedback = True
-          if self.infodict.get("all_vectors"):
+          if self.infodict.get("all_vectors") is not None:
             self.rotvec = None
             self.all_vectors = self.infodict.get("all_vectors",[])
 
@@ -670,8 +726,11 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
           if self.infodict.get("NewFileLoaded"):
             self.NewFileLoaded = self.infodict.get("NewFileLoaded",False)
+            self.currentmillarray_idx = None
             self.vectortable2.clearContents()
+            self.ShowAllVectorsBtn.setCheckState(Qt.Unchecked)
             self.functionTabWidget.setDisabled(True)
+            self.AlignVectorGroupBox.setChecked( False)
 
           if self.infodict.get("NewHKLscenes"):
             self.NewHKLscenes = self.infodict.get("NewHKLscenes",False)
@@ -680,7 +739,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
             self.NewMillerArray = self.infodict.get("NewMillerArray",False)
 
           if self.infodict.get("StatusBar"):
-            self.window.statusBar().showMessage( self.infodict.get("StatusBar", "") )
+            self.Statusbartxtbox.setText(self.infodict.get("StatusBar", "") )
 
           if self.infodict.get("clicked_HKL"):
             (h,k,l) = self.infodict.get("clicked_HKL", ( ) )
@@ -696,11 +755,13 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
                 self.millerarraytable.selectRow(ids)
                 #self.millerarraytable.selectionModel().select(ids, mode)
 
-
           if self.infodict.get("ColourChart") and self.infodict.get("ColourPowerScale"):
-            self.ColourMapSelectDlg.selcolmap = self.infodict.get("ColourChart",False)
-            self.ColourMapSelectDlg.powscale = self.infodict.get("ColourPowerScale",False)
-            self.ColourMapSelectDlg.show()
+            self.ColourMapSelectDlg.selcolmap = self.infodict.get("ColourChart", "brg")
+            self.ColourMapSelectDlg.setPowerScaleSliderVal( self.infodict.get("ColourPowerScale", 1.0))
+            if self.infodict.get("ShowColourMapDialog"):
+              arrayinfo = self.array_infotpls[self.currentmillarray_idx]
+              self.ColourMapSelectDlg.setDataType(arrayinfo[1])
+              self.ColourMapSelectDlg.show()
 
           if self.infodict.get("bin_labels_type_idxs"):
             bin_labels_type_idxs = self.infodict.get("bin_labels_type_idxs",False)
@@ -714,6 +775,10 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
             self.unfeedback = True
             self.power_scale_spinBox.setValue( self.infodict.get("used_nth_power_scale_radii", 0.0))
             self.unfeedback = False
+
+
+          if self.infodict.get("datatype_dict"):
+            self.datatypedict = self.infodict.get("datatype_dict", {} )
 
           if self.infodict.get("spacegroup_info"):
             spacegroup_info = self.infodict.get("spacegroup_info",False)
@@ -762,6 +827,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
           if self.NewHKLscenes:
             self.NewHKLscenes = False
+
       except Exception as e:
         errmsg = str(e)
         if "Resource temporarily unavailable" not in errmsg:
@@ -782,8 +848,13 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL.tooltip_alpha'])
     self.mousemoveslider.setValue( 2000*self.currentphilstringdict['NGL.mouse_sensitivity'])
     vecnr, dgr = self.currentphilstringdict['clip_plane.angle_around_vector']
-    self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %2.fº" %dgr)
+    self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %3.1fº" %dgr)
 
+    self.ColourMapSelectDlg.selcolmap = self.currentphilstringdict["viewer.color_scheme"]
+    if self.currentmillarray_idx is not None:
+      arrayinfo = self.array_infotpls[self.currentmillarray_idx]
+      self.ColourMapSelectDlg.setDataType(arrayinfo[1])
+    self.ColourMapSelectDlg.setPowerScaleSliderVal( self.currentphilstringdict["viewer.color_powscale"] )
 
     self.sliceindexspinBox.setValue( self.currentphilstringdict['viewer.slice_index'])
     self.Nbins_spinBox.setValue( self.currentphilstringdict['nbins'])
@@ -852,7 +923,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
   def onFinalMouseSensitivity(self):
     val = self.mousemoveslider.value()/2000.0
-    self.PhilToJsRender('NGL.mouse_sensitivity = %f' %val)
+    self.send_message('NGL.mouse_sensitivity = %f' %val)
 
 
   def onMouseSensitivity(self):
@@ -864,15 +935,15 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if self.unfeedback:
       return
     self.ttipalpha = val
-    self.PhilToJsRender('NGL.tooltip_alpha = %f' %val)
+    self.send_message('NGL.tooltip_alpha = %f' %val)
 
 
   def onShowTooltips(self, val):
     if self.ttipClickradio.isChecked() or val=="click":
-      self.PhilToJsRender("NGL.show_tooltips = click")
+      self.send_message("NGL.show_tooltips = click")
       self.ttip_click_invoke = "click"
     if self.ttipHoverradio.isChecked() or val=="hover":
-      self.PhilToJsRender("NGL.show_tooltips = hover")
+      self.send_message("NGL.show_tooltips = hover")
       self.ttip_click_invoke = "hover"
 
 
@@ -888,7 +959,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
   def onBrowserFontsizeChanged(self, val):
     self.browserfontsize = val
-    self.PhilToJsRender("NGL.fontsize = %d" %val)
+    self.send_message("NGL.fontsize = %d" %val)
 
 
   def onClearTextBuffer(self):
@@ -898,9 +969,9 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
   def onCameraPerspect(self,val):
     if self.cameraPerspectCheckBox.isChecked():
-      self.PhilToJsRender("NGL.camera_type = perspective")
+      self.send_message("NGL.camera_type = perspective")
     else:
-      self.PhilToJsRender("NGL.camera_type = orthographic")
+      self.send_message("NGL.camera_type = orthographic")
 
 
   def ExpandRefls(self):
@@ -908,26 +979,26 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       return
     if self.showsliceGroupCheckbox.isChecked():
       if self.ExpandReflsGroupBox.isChecked():
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_to_p1 = True
         viewer.expand_anomalous = True
         viewer.inbrowser = False
                         ''' )
       else:
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_to_p1 = False
         viewer.expand_anomalous = False
         viewer.inbrowser = False
                         ''' )
     else:
       if self.ExpandReflsGroupBox.isChecked():
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_to_p1 = True
         viewer.expand_anomalous = True
         viewer.inbrowser = True
                         ''' )
       else:
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_to_p1 = False
         viewer.expand_anomalous = False
         viewer.inbrowser = True
@@ -939,23 +1010,23 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       return
     if self.showsliceGroupCheckbox.isChecked():
       if self.expandP1checkbox.isChecked():
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_to_p1 = True
         viewer.inbrowser = False
                         ''' )
       else:
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_to_p1 = False
         viewer.inbrowser = False
                         ''' )
     else:
       if self.expandP1checkbox.isChecked():
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_to_p1 = True
         viewer.inbrowser = True
                         ''' )
       else:
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_to_p1 = False
         viewer.inbrowser = True
                         ''' )
@@ -966,23 +1037,23 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       return
     if self.showsliceGroupCheckbox.isChecked():
       if self.expandAnomalouscheckbox.isChecked():
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_anomalous = True
         viewer.inbrowser = False
                         ''' )
       else:
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_anomalous = False
         viewer.inbrowser = False
                         ''' )
     else:
       if self.expandAnomalouscheckbox.isChecked():
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_anomalous = True
         viewer.inbrowser = True
                         ''' )
       else:
-        self.PhilToJsRender('''
+        self.send_message('''
         viewer.expand_anomalous = False
         viewer.inbrowser = True
                         ''' )
@@ -991,19 +1062,19 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if self.unfeedback:
       return
     if self.sysabsentcheckbox.isChecked():
-      self.PhilToJsRender('viewer.show_systematic_absences = True')
+      self.send_message('viewer.show_systematic_absences = True')
     else:
-      self.PhilToJsRender('viewer.show_systematic_absences = False')
+      self.send_message('viewer.show_systematic_absences = False')
 
 
   def showMissing(self):
     if self.unfeedback:
       return
     if self.missingcheckbox.isChecked():
-      self.PhilToJsRender('viewer.show_missing = True')
+      self.send_message('viewer.show_missing = True')
       self.onlymissingcheckbox.setEnabled(True)
     else:
-      self.PhilToJsRender("""viewer.show_missing = False
+      self.send_message("""viewer.show_missing = False
                              viewer.show_only_missing = False
                           """)
       self.onlymissingcheckbox.setEnabled(False)
@@ -1013,9 +1084,9 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if self.unfeedback:
       return
     if self.onlymissingcheckbox.isChecked():
-      self.PhilToJsRender('viewer.show_only_missing = True')
+      self.send_message('viewer.show_only_missing = True')
     else:
-      self.PhilToJsRender('viewer.show_only_missing = False')
+      self.send_message('viewer.show_only_missing = False')
 
 
   def showSlice(self):
@@ -1023,7 +1094,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       return
     if self.showsliceGroupCheckbox.isChecked():
       #self.ClipPlaneChkGroupBox.setChecked(False)
-      self.PhilToJsRender("""viewer {
+      self.send_message("""viewer {
   slice_mode = True
   inbrowser = False
   fixorientation = "reflection_slice"
@@ -1036,7 +1107,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       self.sliceindexspinBox.setRange(rmin, rmax)
     else:
       #self.ClipPlaneChkGroupBox.setChecked(True)
-      self.PhilToJsRender("""viewer {
+      self.send_message("""viewer {
   slice_mode = False
   inbrowser = True
   fixorientation = "None"
@@ -1054,7 +1125,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     val = "None"
     if self.PlaneParallelCheckbox.isChecked():
       val = "reflection_slice"
-    self.PhilToJsRender("""viewer {
+    self.send_message("""viewer {
     slice_axis = %s
     is_parallel = False
     fixorientation = "%s"
@@ -1065,13 +1136,13 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if self.unfeedback:
       return
     self.sliceindex = val
-    self.PhilToJsRender("viewer.slice_index = %d" %self.sliceindex)
+    self.send_message("viewer.slice_index = %d" %self.sliceindex)
 
 
   def onBindataComboSelchange(self, i):
     if self.BinDataComboBox.currentText():
       binner_idx = self.BinDataComboBox.currentIndex()
-      self.PhilToJsRender('binner_idx = %d' % binner_idx )
+      self.send_message('binner_idx = %d' % binner_idx )
       bin_opacitieslst = []
       for j in range(self.nbins):
         bin_opacitieslst.append((1.0, j))
@@ -1126,7 +1197,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def onBinsTableItemChanged(self, item):
-    #print( "in itemChanged %s,  %s" %(item.text(), str( item.checkState())) )
     row = item.row()
     col = item.column()
     try:
@@ -1143,16 +1213,15 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
             alpha = 1.0
       except Exception as e:
         pass
-
       if col==3 and self.binstable_isready: # changing opacity
         bin_opacitieslst[row] = (alpha, row)
         self.bin_opacities = str(bin_opacitieslst)
         self.SetAllOpaqueCheckboxes()
-        self.PhilToJsRender('NGL.bin_opacities = "%s"' %self.bin_opacities )
-
+        self.send_message('NGL.bin_opacities = "%s"' %self.bin_opacities )
       if col==1 and self.binstable_isready: # changing scene_bin_thresholds
         aboveitem = self.binstable.item(row-1, 1)
         belowitem = self.binstable.item(row+1, 1)
+        rightitem = self.binstable.item(row, 2)
         if aboveitem is None:
           aboveval = -9e99
         else:
@@ -1161,21 +1230,21 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
           belowval = 9e99
         else:
           belowval = float(belowitem.text())
+          if math.isnan(belowval):
+            belowval = float(rightitem.text())
         # the new value must be between above and below values only
         newval = min(belowval, max(aboveval, float(item.text()) ) )
         # but the other way round if binning against resolution
         if self.BinDataComboBox.currentIndex() == 0:
           newval = min(aboveval, max(belowval, float(item.text()) ) )
         self.binstable.item(row,col).setText(str(newval))
-        #nbins = len(self.bin_infotpls)
         self.lowerbinvals[row] = newval
         allbinvals = self.lowerbinvals + [ self.upperbinvals[-1] ]
         nbins = len(allbinvals)
-        self.PhilToJsRender('''
+        self.send_message('''
         scene_bin_thresholds = \"%s\"
         nbins = %d
         ''' %(allbinvals, nbins) )
-
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
 
@@ -1193,66 +1262,47 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       for i in range(nbins):
         bin_opacitieslst.append((0.0, i))  #   ("0.0, %d" %i)
     self.bin_opacities = str(bin_opacitieslst)
-    self.PhilToJsRender('NGL.bin_opacities = "%s"' %self.bin_opacities)
+    self.send_message('NGL.bin_opacities = "%s"' %self.bin_opacities)
     self.binstableitemchanges = False
     self.binstable_isready = True
 
 
-  """
-  def onLoadFinished(self, val):
-    pass
-    #print("web page finished loading now")
-
-
-  def onBinsTableCellentered(self, row, col):
-    pass
-    #print( "in Cellentered " + self.binstable.currentItem().text() )
-
-  """
-
   def onNbinsChanged(self, val):
+    if self.unfeedback:
+      return
     self.nbins = val
-    if not self.updatingNbins: # avoid possible endless loop to cctbx
-      self.PhilToJsRender("nbins = %d" %self.nbins)
+    self.send_message("nbins = %d" %self.nbins)
 
 
   def onRadiiScaleChanged(self, val):
     if self.unfeedback:
       return
-    self.PhilToJsRender("viewer.scale = %f" %self.radii_scale_spinBox.value() )
+    self.send_message("viewer.scale = %f" %self.radii_scale_spinBox.value() )
 
 
   def onPowerScaleChanged(self, val):
     if self.unfeedback:
       return
-    self.PhilToJsRender("viewer.nth_power_scale_radii = %f" %self.power_scale_spinBox.value() )
+    self.send_message("viewer.nth_power_scale_radii = %f" %self.power_scale_spinBox.value() )
 
 
   def onManualPowerScale(self, val=None):
-    """
-    if val is not None:
-      self.PhilToJsRender('viewer.nth_power_scale_radii = %f' %val)
-      return
-    """
     if self.unfeedback:
       return
     if self.ManualPowerScalecheckbox.isChecked():
-      self.PhilToJsRender('viewer.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
-      #self.power_scale_spinBox.setEnabled(True)
+      self.send_message('viewer.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
     else:
-      self.PhilToJsRender('viewer.nth_power_scale_radii = -1.0')
-      #self.power_scale_spinBox.setEnabled(False)
+      self.send_message('viewer.nth_power_scale_radii = -1.0')
 
 
   def onShowAllVectors(self):
-    #self.unfeedback = True
     if self.ShowAllVectorsBtn.checkState()==Qt.Checked:
       for rvrow in range(self.vectortable2.rowCount()):
-        self.vectortable2.item(rvrow, 0).setCheckState(Qt.Checked)
+        if self.vectortable2.item(rvrow, 0).text() !=  "new vector":
+          self.vectortable2.item(rvrow, 0).setCheckState(Qt.Checked)
     if self.ShowAllVectorsBtn.checkState()==Qt.Unchecked:
       for rvrow in range(self.vectortable2.rowCount()):
         self.vectortable2.item(rvrow, 0).setCheckState(Qt.Unchecked)
-    #self.unfeedback = False
 
 
   def onVectorTableItemChanged(self, item):
@@ -1261,28 +1311,24 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     row = item.row()
     col = item.column()
     try:
-      rc = self.vectortable2.rowCount()
+      rc = len(self.all_vectors)
       label = None
       if self.vectortable2.item(row, 0) is not None:
         label = self.vectortable2.item(row, 0).text()
-
-      if row < len(self.all_vectors):
+      if row < rc:
         if label is None:
           return
-
         if col==0:
           if item.checkState()==Qt.Checked:
-            self.PhilToJsRender(" viewer.show_vector = '[%d, %s]'" %(row, True ))
+            self.send_message(" viewer.show_vector = '[%d, %s]'" %(row, True ))
           else:
-            self.PhilToJsRender(" viewer.show_vector = '[%d, %s]'" %(row, False ))
-
+            self.send_message(" viewer.show_vector = '[%d, %s]'" %(row, False ))
           if self.rotvec is not None: # reset any imposed angle to 0 whenever checking or unchecking a vector
-              self.PhilToJsRender("""clip_plane {
+              self.send_message("""clip_plane {
                 angle_around_vector = '[%d, 0]'
                 bequiet = False
               }""" %self.rotvec)
               self.rotavecangle_slider.setValue(0)
-
           self.rotvec = None
           sum = 0
           for rvrow in range(self.vectortable2.rowCount()):
@@ -1291,17 +1337,17 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
                 self.rotvec = rvrow
                 sum +=1
           if sum > 1 or sum == 0: # can only use one vector to rotate around. so if more are selected then deselect them altogether
-            self.PhilToJsRender("""clip_plane {
+            self.send_message("""clip_plane {
   animate_rotation_around_vector = '[%d, %f]'
 }""" %(0, -1.0)) #
-            self.PhilToJsRender('viewer.fixorientation = "None"')
+            self.send_message('viewer.fixorientation = "None"')
             self.AnimaRotCheckBox.setCheckState(Qt.Unchecked)
             self.rotvec = None
 
           if self.rotvec is not None:
             self.RotateAroundframe.setEnabled(True)
             # notify cctbx which is the curently selected vector
-            self.PhilToJsRender("clip_plane.angle_around_vector = '[%d, 0.0]'" %self.rotvec)
+            self.send_message("clip_plane.angle_around_vector = '[%d, 0.0]'" %self.rotvec)
           else:
             self.RotateAroundframe.setDisabled(True)
           if not self.unfeedback:
@@ -1311,21 +1357,19 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
               self.ShowAllVectorsBtn.setCheckState(Qt.Unchecked)
             if sum >0.0 and sum < rc:
               self.ShowAllVectorsBtn.setCheckState(Qt.PartiallyChecked)
-
-      if row==(rc-1) and label !="" and label != "new vector": # a user defined vector
+      if row==rc and label !="" and label != "new vector": # a user defined vector
         if col==1:
           hklop = self.vectortable2.item(row, 1).text()
-          self.PhilToJsRender("""viewer.add_user_vector_hkl_op = '%s'
+          self.send_message("""viewer.add_user_vector_hkl_op = '%s'
           viewer.user_label = %s """ %(hklop, label))
         if col==2:
           hklvec = self.vectortable2.item(row, 2).text()
-          self.PhilToJsRender("""viewer.add_user_vector_hkl = '(%s)'
+          self.send_message("""viewer.add_user_vector_hkl = '(%s)'
           viewer.user_label = %s """ %(hklvec, label))
         if col==3:
           abcvec = self.vectortable2.item(row, 3).text()
-          self.PhilToJsRender("""viewer.add_user_vector_abc = '(%s)'
+          self.send_message("""viewer.add_user_vector_abc = '(%s)'
           viewer.user_label = %s """ %(abcvec, label))
-
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
 
@@ -1366,13 +1410,36 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.clipwidth_spinBox.setSingleStep(0.1)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
     self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
-    self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: 0º")
-    #self.rotavecangle_slider.setValue(0)
-    #self.rotavecangle_slider.setSingleStep(1)
-    self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
-    self.rotavecangle_slider.valueChanged.connect(self.onRotaVecAngleChanged)
-    self.rotavecangle_slider.setTracking(False)
-    self.ClipPlaneChkGroupBox.clicked.connect(self.onClipPlaneChkBox)
+    self.yHKLrotBtn.clicked.connect(self.onYangleHKLrotate)
+    self.xHKLrotBtn.clicked.connect(self.onXangleHKLrotate)
+    self.zHKLrotBtn.clicked.connect(self.onZangleHKLrotate)
+    self.yHKLbackrotBtn.clicked.connect(self.onYangleHKLrotateback)
+    self.xHKLbackrotBtn.clicked.connect(self.onXangleHKLrotateback)
+    self.zHKLbackrotBtn.clicked.connect(self.onZangleHKLrotateback)
+
+
+  def onXangleHKLrotate(self):
+    self.send_message("viewer.angle_around_XHKL_vector = %f" %self.angleStepHKLrotSpinBox.value() )
+
+
+  def onYangleHKLrotate(self):
+    self.send_message("viewer.angle_around_YHKL_vector = %f" %self.angleStepHKLrotSpinBox.value() )
+
+
+  def onZangleHKLrotate(self):
+    self.send_message("viewer.angle_around_ZHKL_vector = %f" %self.angleStepHKLrotSpinBox.value() )
+
+
+  def onXangleHKLrotateback(self):
+    self.send_message("viewer.angle_around_XHKL_vector = %f" %(-1*self.angleStepHKLrotSpinBox.value()) )
+
+
+  def onYangleHKLrotateback(self):
+    self.send_message("viewer.angle_around_YHKL_vector = %f" %(-1*self.angleStepHKLrotSpinBox.value()) )
+
+
+  def onZangleHKLrotateback(self):
+    self.send_message("viewer.angle_around_ZHKL_vector = %f" %(-1*self.angleStepHKLrotSpinBox.value()) )
 
 
   def onAlignedVector(self):
@@ -1385,7 +1452,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
         is_parallel = %s
         fixorientation = "%s"
       } """ %(str(self.AlignParallelBtn.isChecked()), val )
-    self.PhilToJsRender(philstr)
+    self.send_message(philstr)
 
 
   def onClipPlaneChkBox(self):
@@ -1396,7 +1463,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       if self.showsliceGroupCheckbox.isChecked() == False:
         self.showsliceGroupCheckbox.setChecked(False)
         self.showsliceGroupCheckbox.setChecked(False)
-        self.PhilToJsRender("""viewer {
+        self.send_message("""viewer {
                                                       slice_mode = False
                                                       inbrowser = True
                                                   }
@@ -1407,26 +1474,23 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 }
         """ %clipwidth
 
-    self.PhilToJsRender(philstr)
+    self.send_message(philstr)
 
 
   def onRotaVecAngleChanged(self, val):
     if self.unfeedback or self.rotvec is None:
       return
-    #self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %dº" %val)
-    self.PhilToJsRender("""clip_plane {
+    self.send_message("""clip_plane {
     angle_around_vector = '[%d, %f]'
-    bequiet = False
-}""" %(self.rotvec, val))
+}""" %(self.rotvec, val*0.5))
 
 
   def onFinalRotaVecAngle(self):
     if self.unfeedback or self.rotvec is None:
       return
-    val = self.rotavecangle_slider.value()
-    self.PhilToJsRender("""clip_plane {
+    val = self.rotavecangle_slider.value()*0.5
+    self.send_message("""clip_plane {
     angle_around_vector = '[%d, %f]'
-    bequiet = False
 }""" %(self.rotvec, val))
 
 
@@ -1435,41 +1499,41 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       self.AnimateSpeedSlider.setEnabled(True)
       self.rotavecangle_slider.setDisabled(True)
       speed = self.AnimateSpeedSlider.value()
-      self.PhilToJsRender("""clip_plane {
+      self.send_message("""clip_plane {
       animate_rotation_around_vector = '[%d, %f]'
 }""" %(self.rotvec, speed))
     else:
       self.rotavecangle_slider.setEnabled(True)
       self.AnimateSpeedSlider.setDisabled(True)
-      self.PhilToJsRender("""clip_plane {
+      self.send_message("""clip_plane {
       animate_rotation_around_vector = '[%d, %f]'
 }""" %(self.rotvec, -1.0))
 
 
   def onClipwidthChanged(self, val):
     if not self.unfeedback:
-      self.PhilToJsRender("clip_plane.clipwidth = %f" %self.clipwidth_spinBox.value())
+      self.send_message("clip_plane.clipwidth = %f" %self.clipwidth_spinBox.value())
 
 
   def onHKLdistChanged(self, val):
     if not self.unfeedback:
       self.hkldistval = val
-      self.PhilToJsRender("clip_plane.hkldist = %f" %self.hkldistval)
+      self.send_message("clip_plane.hkldist = %f" %self.hkldistval)
 
 
   def onHvecChanged(self, val):
     if not self.unfeedback:
-      self.PhilToJsRender("clip_plane.h = %f" %self.hvec_spinBox.value())
+      self.send_message("clip_plane.h = %f" %self.hvec_spinBox.value())
 
 
   def onKvecChanged(self, val):
     if not self.unfeedback:
-      self.PhilToJsRender("clip_plane.k = %f" %self.kvec_spinBox.value())
+      self.send_message("clip_plane.k = %f" %self.kvec_spinBox.value())
 
 
   def onLvecChanged(self, val):
     if not self.unfeedback:
-      self.PhilToJsRender("clip_plane.l = %f" %self.lvec_spinBox.value())
+      self.send_message("clip_plane.l = %f" %self.lvec_spinBox.value())
 
 
   def onPlaneParallelCheckbox(self):
@@ -1477,7 +1541,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       val = "None"
       if self.PlaneParallelCheckbox.isChecked():
         val = "reflection_slice"
-      self.PhilToJsRender('viewer.fixorientation = "%s"' %val)
+      self.send_message('viewer.fixorientation = "%s"' %val)
 
 
   def onMillerTableCellPressed(self, row, col):
@@ -1486,7 +1550,6 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       self.MillerTableContextMenuHandler(QCursor.pos(), row)
     if self.millertable.mousebutton == QEvent.MouseButtonDblClick:
       # quickly display data with a double click
-      #for sceneid,(scenelabel,labeltype,arrayid,sceneid) in enumerate(self.scenearraylabeltypes):
       for scenelabel,labeltype,arrayid,sceneid in self.scenearraylabeltypes:
         if row == arrayid:
           self.DisplayData(sceneid, row)
@@ -1507,16 +1570,16 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       if self.millerarraylabels[row] == scenelabelstr or self.millerarraylabels[row] + " + " in scenelabelstr:
         if labeltype == "hassigmas":
           myqa = QAction("Display data of %s" %scenelabelstr, self.window, triggered=self.testaction)
-          myqa.setData((i, row))
+          myqa.setData((sceneid, row))
           self.millertablemenu.addAction(myqa)
           myqa = QAction("Display sigmas of %s" %scenelabelstr, self.window, triggered=self.testaction)
-          myqa.setData((i + 1000, row)) # want to show the sigmas rather than the data if we add 1000
+          myqa.setData((sceneid + 1000, row)) # want to show the sigmas rather than the data if we add 1000
           self.millertablemenu.addAction(myqa)
         else:
           myqa = QAction("Display %s" %scenelabelstr, self.window, triggered=self.testaction)
-          myqa.setData((i, row))
+          myqa.setData((sceneid, row))
           self.millertablemenu.addAction(myqa)
-    myqa = QAction("Make new data from this data and other data...", self.window, triggered=self.testaction)
+    myqa = QAction("Make a new dataset from this dataset and another dataset...", self.window, triggered=self.testaction)
     myqa.setData( ("newdata", row ))
     self.millertablemenu.addAction(myqa)
 
@@ -1525,8 +1588,11 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
       labels = []
       for i,r in enumerate(self.millertable.selectedrows):
         labels.extend( self.millerarraylabels[r].split(",") ) # to cope with I,SigI or other multiple labels
-      myqa = QAction("Show a table of %s data ..." %  " and ".join(labels), self.window, triggered=self.testaction)
-      myqa.setData( ("tabulate_data", labels ))
+      myqa = QAction("Show a table of the %s dataset ..." %  " and ".join(labels), self.window, triggered=self.testaction)
+      lbls =[] # group any crystal_id=1, wavelength_id, scale_group_code with labels in lists
+      for i,r in enumerate(self.millertable.selectedrows):
+        lbls.extend( [ self.millerarraylabels[r].split(",") ] ) # to cope with I,SigI or other multiple labels
+      myqa.setData( ("tabulate_data", lbls ))
       self.millertablemenu.addAction(myqa)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.millertablemenu.exec_(QCursor.pos())
@@ -1544,46 +1610,40 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
         self.operate_arrayidx1 = idx
         self.operate_arrayidx2 = -1 # i.e. no second miller array selected yet
         if strval=="newdata":
-          #self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data1' and or 'sigmas1' variable")
-          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx]
-           + " 'data1' and/or 'sigmas1' variable and optionally 'data2' and/or 'sigmas2'"
-           +" variable from the miller array below:")
-          self.MillerComboBox.setEnabled(True)
-          self.MillerLabel3.setText("Example: 'newdata = data1 - flex.pow(data2); newsigmas= sigmas1 - data2 / sigmas1' ")
+          self.operationlabeltxt.setText("Define a new cctbx.miller.array object, \"newarray\", "
+           + "by entering a python expression for \"newarray\" or by assigning \"newarray._data\" "
+           + "(and optionally \"newarray._sigmas\") to a function of the cctbx.miller.array object, "
+           + "\"array1\", representing the " + self.millerarraylabels[idx] + " dataset. Optionally "
+           + "also include the cctbx.miller.array object, \"array2\" representing a dataset "
+           + "selected from the dropdown list below."
+           )
           self.makenewdataform.show()
         if strval=="tabulate_data":
-          self.PhilToJsRender('tabulate_miller_array_ids = "%s"' %str(idx))
+          self.send_message('tabulate_miller_array_ids = "%s"' %str(idx))
 
 
   def DisplayData(self, idx, row):
     # want to show the sigmas rather than the data if idx we add 1000
+    self.currentmillarray_idx = row
+    arrayinfo = self.array_infotpls[self.currentmillarray_idx]
+    datatype = arrayinfo[1]
     if (idx - 1000) >= 0:
       idx = idx - 1000
       philstr = """
-      viewer
-      {
-        sigma_radius = True
-        sigma_color = True
-        scene_id = %d
-      }
+      viewer.sigma_color_radius = True
+      viewer.scene_id = %d
       """ %idx
     else:
       philstr = """
-      viewer
-      {
-        sigma_radius = False
-        sigma_color = False
-        scene_id = %d
-      }
+      viewer.sigma_color_radius = False
+      viewer.scene_id = %d
       """ %idx
-    self.PhilToJsRender(philstr)
-    self.currentmillarray_idx = row
+    self.send_message(philstr)
     if self.fileisvalid:
       self.functionTabWidget.setEnabled(True)
       self.expandAnomalouscheckbox.setEnabled(True)
       self.expandP1checkbox.setEnabled(True)
       # don't allow anomalous expansion for data that's already anomalous
-      arrayinfo = self.array_infotpls[self.currentmillarray_idx]
       isanomalous = arrayinfo[-1]
       spacegroup = arrayinfo[2]
       label = arrayinfo[0]
@@ -1598,9 +1658,9 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def onMakeNewData(self):
-    mtpl = (self.operationtxtbox.text(), self.newlabeltxtbox.text() ,
+    mtpl = (self.operationtxtbox.toPlainText(), self.newlabeltxtbox.text() ,
               self.operate_arrayidx1, self.operate_arrayidx2 )
-    self.PhilToJsRender('miller_array_operations = "[ %s ]"' %str(mtpl) )
+    self.send_message('miller_array_operations = "[ %s ]"' %str(mtpl) )
     self.makenewdataform.accept()
 
 
@@ -1649,6 +1709,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.unitcellslider.sliderReleased.connect(self.onUnitcellScale)
     self.reciprocunitcellslider.sliderReleased.connect(self.onReciprocUnitcellScale)
     labels = ["draw", "rotation", "as hkl", "as abc"]
+    self.all_vectors = []
     self.vectortable2.setHorizontalHeaderLabels(labels)
     self.vectortable2.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.vectortable2.itemChanged.connect(self.onVectorTableItemChanged  )
@@ -1661,10 +1722,11 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.AnimaRotCheckBox.clicked.connect(self.onAnimateRotation)
     self.AnimateSpeedSlider.sliderReleased.connect(self.onAnimateRotation)
     self.AnimateSpeedSlider.setDisabled(True)
-
-
-  #def onResetView(self):
-  #  self.PhilToJsRender('action = reset_view')
+    self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: 0º")
+    self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
+    self.rotavecangle_slider.valueChanged.connect(self.onRotaVecAngleChanged)
+    self.rotavecangle_slider.setTracking(False)
+    self.ClipPlaneChkGroupBox.clicked.connect(self.onClipPlaneChkBox)
 
 
   def onSaveImage(self):
@@ -1674,9 +1736,9 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
               "Save screenshot to file", "",
               "PNG Files (*.png);;All Files (*)", "", options)
       if fileName:
-        self.PhilToJsRender('save_image_name = "%s" '%fileName)
+        self.send_message('save_image_name = "%s" '%fileName)
     else:
-      self.PhilToJsRender('save_image_name = "dummy.png" ')
+      self.send_message('save_image_name = "dummy.png" ')
       # eventual file name prompted to us by Browser_download_requested(
 
 
@@ -1684,36 +1746,36 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if not self.unfeedback:
       if self.DrawReciprocUnitCellBox.isChecked():
         val = self.reciprocunitcellslider.value()/self.reciprocunitcellslider.maximum()
-        self.PhilToJsRender("reciprocal_unit_cell_scale_fraction = %f" %val)
+        self.send_message("reciprocal_unit_cell_scale_fraction = %f" %val)
       else:
-        self.PhilToJsRender("reciprocal_unit_cell_scale_fraction = None")
+        self.send_message("reciprocal_unit_cell_scale_fraction = None")
 
 
   def onDrawUnitCellBoxClick(self):
     if not self.unfeedback:
       if self.DrawRealUnitCellBox.isChecked():
         val = self.unitcellslider.value()/self.unitcellslider.maximum()
-        self.PhilToJsRender("real_space_unit_cell_scale_fraction = %f" %val)
+        self.send_message("real_space_unit_cell_scale_fraction = %f" %val)
       else:
-        self.PhilToJsRender("real_space_unit_cell_scale_fraction = None")
+        self.send_message("real_space_unit_cell_scale_fraction = None")
 
 
   def onUnitcellScale(self):
     if self.unfeedback:
       return
     val = self.unitcellslider.value()/self.unitcellslider.maximum()
-    self.PhilToJsRender("real_space_unit_cell_scale_fraction = %f" %val)
+    self.send_message("real_space_unit_cell_scale_fraction = %f" %val)
 
 
   def onReciprocUnitcellScale(self):
     if self.unfeedback:
       return
     val = self.reciprocunitcellslider.value()/self.reciprocunitcellslider.maximum()
-    self.PhilToJsRender("reciprocal_unit_cell_scale_fraction = %f" %val)
+    self.send_message("reciprocal_unit_cell_scale_fraction = %f" %val)
 
 
   def HighlightReflection(self, hkl):
-    self.PhilToJsRender("viewer.show_hkl = '%s'" %str(hkl))
+    self.send_message("viewer.show_hkl = '%s'" %str(hkl))
 
 
   def DebugInteractively(self):
@@ -1721,7 +1783,7 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def SpacegroupSelchange(self,i):
-    self.PhilToJsRender("spacegroup_choice = %d" %i)
+    self.send_message("spacegroup_choice = %d" %i)
 
 
   def find_free_port(self):
@@ -1749,16 +1811,23 @@ viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
 
 
-  def PhilToJsRender(self, cmdstr):
+  def send_message(self, cmdstr, msgtype="philstr"):
+    msg = str([msgtype, cmdstr])
     if sys.version_info.major==3:
-      self.socket.send(bytes(cmdstr,"utf-8"))
+      self.socket.send(bytes(msg,"utf-8"))
     else:
-      self.socket.send(bytes(cmdstr))
+      self.socket.send(bytes(msg))
+
+
+  def setDatatypedict(self, datatypedict):
+    self.datatypedict = datatypedict
+    # send persisted colour schemes and raddi mappings to jsview_3d.py
+    self.send_message(str(self.datatypedict), msgtype="dict")
 
 
 def run():
   import time
-  #time.sleep(10)
+  #time.sleep(10) # enough time for attaching debugger
   try:
     import PySide2.QtCore
     Qtversion = str(PySide2.QtCore.qVersion())
@@ -1776,27 +1845,35 @@ def run():
 
     settings = QSettings("CCTBX", "HKLviewer" )
     # In case of more than one PySide2 installation tag the settings by version number of PySide2
-    # as different versions occasionally use slightly different metrics for font and window sizes
+    # as different versions may use different metrics for font and window sizes
     settings.beginGroup("PySide2_" + Qtversion)
+    settings.beginGroup("DataTypesGroups")
+    datatypes = settings.childGroups()
+    datatypedict = { }
+    if datatypes:
+      for datatype in datatypes:
+        datatypedict[ datatype ] = [ settings.value(datatype + "/ColourChart", "brg"),
+                                     float(settings.value(datatype + "/ColourPowerScale", 1.0)),
+                                     float(settings.value(datatype + "/PowerScale", 1.0)),
+                                     float(settings.value(datatype + "/RadiiScale", 1.0)),
+                                   ]
+    settings.endGroup()
     QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
     fontsize = settings.value("FontSize", None)
-    browserfontsize = settings.value("BrowserFontSize", None)
-    power_scale_value = settings.value("PowerScaleValue", None)
-    radii_scale_value = settings.value("RadiiScaleValue", None)
+    browserfontsize = settings.value("BrowserFontSize", 9)
     ttip_click_invoke = settings.value("ttip_click_invoke", None)
     windowsize = settings.value("windowsize", None)
     splitter1sizes = settings.value("splitter1Sizes", None)
     splitter2sizes = settings.value("splitter2Sizes", None)
     settings.endGroup()
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
     if QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       QWebEngineViewFlags = " --disable-web-security" # for chromium
       print("testing if WebGL works in QWebEngineView....")
-      cmdargs = [ sys.executable, QtChromiumCheck.__file__ ]
+      QtChromiumCheck_fpath = os.path.join(os.path.split(HKLviewerGui.__file__)[0], "QtChromiumCheck.py")
+      cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
       webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       procout, procerr = webglproc.communicate()
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       if not "WebGL works" in procout.decode():
         QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist "
     if "verbose" in sys.argv[1:]:
@@ -1815,30 +1892,28 @@ def run():
       settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
       settings.setValue("FontSize", guiobj.fontsize )
       settings.setValue("BrowserFontSize", guiobj.browserfontsize )
-      settings.setValue("PowerScaleValue", guiobj.currentphilstringdict["viewer.nth_power_scale_radii"])
-      settings.setValue("RadiiScaleValue", guiobj.radii_scale_spinBox.value())
       settings.setValue("ttip_click_invoke", guiobj.ttip_click_invoke)
       settings.setValue("windowsize", guiobj.window.size())
       settings.setValue("splitter1Sizes", guiobj.splitter.saveState())
       settings.setValue("splitter2Sizes", guiobj.splitter_2.saveState())
-      settings.endGroup()
 
-    app.lastWindowClosed.connect(MyAppClosing)
+      settings.beginGroup("DataTypesGroups")
+      datatypesgroups = settings.childGroups()
+      for datatype in list(guiobj.datatypedict.keys()):
+        settings.setValue(datatype + "/ColourChart", guiobj.datatypedict[ datatype ][0] )
+        settings.setValue(datatype + "/ColourPowerScale", guiobj.datatypedict[ datatype ][1] )
+        settings.setValue(datatype + "/PowerScale", guiobj.datatypedict[ datatype ][2])
+        settings.setValue(datatype + "/RadiiScale", guiobj.datatypedict[ datatype ][3])
+      settings.endGroup() # DataTypesGroups
+      settings.endGroup() # PySide2_ + Qtversion
+
+    app.lastWindowClosed.connect(MyAppClosing) # persist settings on disk
 
     timer = QTimer()
     timer.setInterval(20)
     timer.timeout.connect(guiobj.ProcessMessages)
     timer.start()
 
-    if power_scale_value is not None:
-      psv = eval(power_scale_value)
-      if psv >= 0.0:
-        guiobj.power_scale_spinBox.setValue(psv)
-      guiobj.ManualPowerScalecheckbox.setChecked(psv >= 0.0)
-      guiobj.onManualPowerScale() # disables power_scale_spinBox if psv is less than 0.0
-    if radii_scale_value is not None:
-      guiobj.radii_scale_spinBox.setValue(eval(radii_scale_value))
-      guiobj.onRadiiScaleChanged(None)
     if fontsize is not None:
       guiobj.onFontsizeChanged(int(fontsize))
       guiobj.fontspinBox.setValue(int(fontsize))
@@ -1855,6 +1930,7 @@ def run():
         guiobj.webpagedebugform.resize( guiobj.window.size())
       guiobj.splitter.restoreState(splitter1sizes)
       guiobj.splitter_2.restoreState(splitter2sizes)
+    guiobj.setDatatypedict( datatypedict)
 
     ret = app.exec_()
 

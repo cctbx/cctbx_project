@@ -319,10 +319,20 @@ class crystal_structure_builder(crystal_symmetry_builder):
 class miller_array_builder(crystal_symmetry_builder):
 
   observation_types = {
+    # known types of column data to be tagged as either amplitudes or intensities as per
+    # https://www.iucr.org/__data/iucr/cifdic_html/2/cif_mm.dic/index.html
+    '_refln.F_squared': xray.intensity(),
     '_refln_F_squared': xray.intensity(),
-    '_refln_intensity': xray.intensity(),
-    '_refln_F': xray.amplitude(),
-    '_refln_A': None,
+    '_refln.intensity': xray.intensity(),
+    '_refln.I(+)': xray.intensity(),
+    '_refln.I(-)': xray.intensity(),
+    '_refln.F_calc': xray.amplitude(),
+    '_refln.F_meas': xray.amplitude(),
+    '_refln.FP': xray.amplitude(),
+    '_refln.F-obs': xray.amplitude(),
+    '_refln.Fobs': xray.amplitude(),
+    '_refln.F-calc': xray.amplitude(),
+    '_refln.Fcalc': xray.amplitude(),
   }
 
   def __init__(self, cif_block, base_array_info=None, wavelengths=None, style="classic"):
@@ -639,10 +649,10 @@ class miller_array_builder(crystal_symmetry_builder):
             if len(scale_groups) > 1:
               scalegrpstr += ",scale_group=%i" %scale_group
             labelsuffix = wavestr + crysstr + scalegrpstr
-            datsiglabls, remaininglabls = self.get_FSigF_ISigI_labels(remaininglabls)
-            for datsiglabl in datsiglabls:
-              datastrarray = refln_loop[datsiglabl[0]]
-              sigmasstrarray = refln_loop[datsiglabl[1]]
+            data_sig_obstype_labls, remaininglabls = self.get_FSigF_ISigI_labels(remaininglabls)
+            for datlabl,siglabl,otype in data_sig_obstype_labls:
+              datastrarray = refln_loop[datlabl]
+              sigmasstrarray = refln_loop[siglabl]
               millarr = self.flex_std_string_as_miller_array(
                 datastrarray, wavelength_id=w_id, crystal_id=crys_id,
                 scale_group_code=scale_group)
@@ -650,10 +660,13 @@ class miller_array_builder(crystal_symmetry_builder):
                 sigmasstrarray, wavelength_id=w_id, crystal_id=crys_id,
                 scale_group_code=scale_group)
               millarr.set_sigmas(sigmas.data())
+              datsiglabl = [datlabl, siglabl]
               if labelsuffix:
-                datsiglabl = datsiglabl + [labelsuffix]
+                datsiglabl = [datlabl, siglabl, labelsuffix]
               millarr.set_info(base_array_info.customized_copy(labels= datsiglabl,
                                                               wavelength=wavelengths.get(w_id, None)))
+              if otype is not None:
+                millarr.set_observation_type(otype)
               self._arrays[millarr.info().label_string() ] = millarr
             mapcoefflabls, remaininglabls = self.get_mapcoefficient_labels(remaininglabls)
             for mapcoefflabl in mapcoefflabls:
@@ -713,6 +726,7 @@ class miller_array_builder(crystal_symmetry_builder):
               except ValueError as  e:
                 origarr = datastrarray
               newlabel = label.replace("_refln.", "")
+              newlabel = label.replace("_refln_", "")
               self._origarrays[newlabel + labelsuffix] = origarr
 
     for key, array in six.iteritems(self._arrays.copy()):
@@ -824,12 +838,17 @@ class miller_array_builder(crystal_symmetry_builder):
     remainingkeys = lstkeys[:] # deep copy the list
     alllabels = " ".join(lstkeys) #  _refln.FC _refln.PHIC _refln.FC_ALL _refln.PHIC_ALL _refln.FWT _refln.PHWT _refln.DELFWT _refln.PHDELWT
     labelpairs = []
+    def guess_observationtype(labl):
+      for okey in list(self.observation_types.keys()):
+        if labl.startswith(okey):
+          return self.observation_types[okey]
+      return None
     sigma_matches = re.findall("((\S*\.)SIG(\S*))", alllabels ) # catch label pairs like F(+),SIGF(+)
     for label in lstkeys:
       for m in sigma_matches:
         FIlabel = m[1] + m[2]
         if FIlabel == label:
-          labelpairs.append([ label, m[0]])
+          labelpairs.append([ label, m[0], guess_observationtype(label)])
           remainingkeys.remove(label)
           remainingkeys.remove(m[0])
     alllabels = " ".join(remainingkeys)
@@ -838,23 +857,20 @@ class miller_array_builder(crystal_symmetry_builder):
       for m in sigma_matches:
         FIlabel = m[1] + m[2]
         if FIlabel == label:
-          labelpairs.append([ label, m[0]])
+          labelpairs.append([ label, m[0], guess_observationtype(label)])
           remainingkeys.remove(label)
           remainingkeys.remove(m[0])
     alllabels = " ".join(remainingkeys)
     # catch generic meas and sigma labels, https://www.iucr.org/__data/iucr/cifdic_html/2/cif_mm.dic/index.html
-    sigma_matches = []
-    meas_matches = []
-    anymeas_matches = re.findall("((\S*)_meas(\S*))", alllabels )
+    anymeas_matches = re.findall("((\S*)_meas(\S*))", alllabels ) + re.findall("((\S*)_calc(\S*))", alllabels )
     anysigma_matches = re.findall("((\S*)_sigma(\S*))", alllabels )
     for mmatch in anymeas_matches:
       for smatch in anysigma_matches:
         if mmatch[1]==smatch[1] and mmatch[2]==smatch[2]:
-          meas_matches.append(mmatch[0])
-          sigma_matches.append(smatch[0])
-          labelpairs.append([ mmatch[0], smatch[0]])
+          labelpairs.append([ mmatch[0], smatch[0], guess_observationtype(mmatch[0])])
           remainingkeys.remove(mmatch[0])
-          remainingkeys.remove(smatch[0])
+          if smatch[0] in remainingkeys: # in case of say F_squared_calc, F_squared_meas, F_squared_sigma all being present
+            remainingkeys.remove(smatch[0])
     return labelpairs, remainingkeys
 
 

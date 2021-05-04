@@ -17,6 +17,9 @@ tst_list = [
   "$D/regression/tst_8_doc_maps_intro.py",
   "$D/regression/tst_9_doc_maps_boxing.py",
   "$D/regression/tst_10_doc_programming_tips.py",
+  "$D/regression/tst_11_script_1.py",
+  "$D/regression/tst_12_script_compare_ss.py",
+  "$D/regression/tst_13_script_ideal_ss.py",
   ]
 
 def run():

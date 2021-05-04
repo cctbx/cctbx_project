@@ -31,6 +31,7 @@ import libtbx.phil
 
 from libtbx import Auto, citations
 from libtbx.utils import multi_out
+from libtbx.version import get_version
 
 # =============================================================================
 class ProgramTemplate(object):
@@ -40,10 +41,20 @@ class ProgramTemplate(object):
   # environment variable
   program_name = None
 
+  # custom version, this overrides the default version from
+  # libtbx.version.get_version
+  version = None
+
   # description of the program
   description = '''
 Program Description
 '''
+
+  # list of keywords for categorizing the program (optional)
+  keywords = None
+
+  # list of maintainer(s) (GitHub names) for the program (optional)
+  maintainers = None
 
   # datatypes for program
   # see iotbx/data_manager/<datatype>.py for list of supported datatypes
@@ -120,11 +131,24 @@ output {
   phil_converters = list()
 
   # ---------------------------------------------------------------------------
+  # Convenience features
+  def _print(self, text):
+    '''
+    Print function that just replaces print(text, file=self.logger)
+    '''
+    print(text, file=self.logger)
+
+  def header(self, text):
+    self._print("-"*79)
+    self._print(text)
+    self._print("*"*len(text))
+
+  # ---------------------------------------------------------------------------
   # Function for showing default citation for template
   @staticmethod
   def show_template_citation(text_width=80, logger=None,
                              citation_format='default'):
-    assert(logger is not None)
+    assert logger is not None
 
     print('\nGeneral citation for CCTBX:', file=logger)
     print('-'*text_width, file=logger)
@@ -159,12 +183,12 @@ output {
     self.params = params
     self.logger = logger
 
-    if (self.logger is None):
+    if self.logger is None:
       self.logger = multi_out()
 
     # master_phil should be provided by CCTBXParser or GUI because of
     # potential PHIL extensions
-    if (self.master_phil is None):
+    if self.master_phil is None:
       self.master_phil = libtbx.phil.parse(
         self.master_phil_str, process_includes=True)
 
@@ -180,11 +204,6 @@ output {
 
     # optional initialization
     self.custom_init()
-
-  def header(self, text):
-    print("-"*79, file=self.logger)
-    print(text, file=self.logger)
-    print("*"*len(text), file=self.logger)
 
   # ---------------------------------------------------------------------------
   def custom_init(self):
@@ -424,5 +443,26 @@ output {
           filename += '_{serial:03d}'.format(serial=serial)
 
     return filename
+
+  # ---------------------------------------------------------------------------
+  @classmethod
+  def get_version(cls):
+    '''
+    Function for returning the version
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    version: str
+    '''
+    # try the class first
+    if cls.version is not None:
+      return cls.version
+
+    # the default version
+    return get_version()
 
 # =============================================================================

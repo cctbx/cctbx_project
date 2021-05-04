@@ -369,7 +369,10 @@ class dictionary(model.cif):
         if isinstance(references, string_types):
           references = [references]
         for reference in references:
-          ref_data = self.get_definition(reference)
+          try:
+            ref_data = self.get_definition(reference)
+          except KeyError:
+            ref_data = self.get_definition(key)
           ref_names = ref_data['_name']
           if isinstance(ref_names, string_types):
             ref_names = [ref_names]

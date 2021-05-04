@@ -35,6 +35,9 @@ class create_mask_around_atoms(object):
          and source of wrapping
        wrapping:  Whether map wraps around unit cell boundaries, where unit
          cell is that defined by xray_structure or model
+         Wrapping also defines whether sites are expanded to space group P1
+         before creating the mask.  If wrapping is true and space group is not
+         p1 then sites are expanded.
     '''
 
     assert (model is not None) or (xray_structure is not None)

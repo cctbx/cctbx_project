@@ -107,7 +107,7 @@ def exercise(pdb_poor_str, i_pdb = 0, d_min = 1.0, resolution_factor = 0.25):
     ph_answer          = t.ph_answer,
     ph_refined         = t.ph_poor,
     exclude_atom_names = ["CD1","CD2","CE1","CE2"],
-    tol                = 0.36)
+    tol                = 0.4)
 
 if(__name__ == "__main__"):
   exercise(pdb_poor_str = pdb_poor, resolution_factor=0.2)

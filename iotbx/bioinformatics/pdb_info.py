@@ -65,7 +65,7 @@ class pdb_info_local(object):
     pdb_info_file = libtbx.env.find_in_repositories(
       relative_path="cctbx_project/iotbx/bioinformatics/pdb_info.csv.gz",
       test=os.path.isfile)
-    csv_file = smart_open.for_reading(file_name=pdb_info_file)
+    csv_file = smart_open.for_reading(file_name=pdb_info_file, gzip_mode="rt")
     csv_reader = csv.reader(csv_file,delimiter=";")
     for row in csv_reader:
       db_dict[row[0]] = (row[1],row[2],row[3],row[4],row[5])
