@@ -503,13 +503,17 @@ class mosaic_f_mask(object):
   def __init__(self,
                xray_structure,
                step,
-               volume_cutoff,
-               filter_by_diffmap=False,
+               volume_cutoff=None,
+               mean_diff_map_threshold=None,
+               compute_whole=False,
+               preprocess_against_shallow=True,
+               largest_only=False,
+               wrapping=True,
                f_obs=None,
                r_sol=1.1,
                r_shrink=0.9,
                f_calc=None,
-               log = sys.stdout,
+               log = None,
                write_masks=False):
     adopt_init_args(self, locals())
     #
@@ -534,6 +538,12 @@ class mosaic_f_mask(object):
       n_real                   = self.n_real,
       in_asu                   = False).mask_data
     maptbx.unpad_in_place(map=mask_p1)
+    self.f_mask_whole = None
+    if(compute_whole):
+      mask = asu_map_ext.asymmetric_map(
+        xray_structure.crystal_symmetry().space_group().type(), mask_p1).data()
+      self.f_mask_whole = self.miller_array.structure_factors_from_asu_map(
+        asu_map_data = mask, n_real = self.n_real)
     self.solvent_content = 100.*mask_p1.count(1)/mask_p1.size()
     if(write_masks):
       write_map_file(crystal_symmetry=xray_structure.crystal_symmetry(),
@@ -542,8 +552,8 @@ class mosaic_f_mask(object):
     co = maptbx.connectivity(
       map_data                   = mask_p1,
       threshold                  = 0.01,
-      preprocess_against_shallow = True,
-      wrapping                   = True)
+      preprocess_against_shallow = preprocess_against_shallow,
+      wrapping                   = wrapping)
     co.merge_symmetry_related_regions(space_group=xray_structure.space_group())
     del mask_p1
     self.conn = co.result().as_double()
@@ -560,8 +570,8 @@ class mosaic_f_mask(object):
     self.f_mask_0 = None
     self.f_mask = None
     #
-    print("  #    volume_p1    uc(%) mFo-DFc: min,max,mean,sd",
-      file=log)
+    if(log is not None):
+      print("  #    volume_p1    uc(%) mFo-DFc: min,max,mean,sd", file=log)
     #
     for i_seq, p in enumerate(sorted_by_volume):
       v, i = p
@@ -580,6 +590,7 @@ class mosaic_f_mask(object):
       if(uc_fraction >= 1):
         f_mask_i = self.compute_f_mask_i(mask_i_asu)
         f_mask_data_0 += f_mask_i.data()
+      elif(largest_only): break
 
       if(uc_fraction < 1 and diff_map is None):
         diff_map = self.compute_diff_map(f_mask_data = f_mask_data_0)
@@ -595,8 +606,9 @@ class mosaic_f_mask(object):
             "%7s"%str(None) if diff_map is None else "%7.3f %7.3f %7.3f %7.3f"%(
               mi,ma,me,sd), file=log)
 
-      if(filter_by_diffmap and mean_diff_map is not None and mean_diff_map<=0):
-        continue # XXX Needs to be a parameter!
+      if(mean_diff_map_threshold is not None and
+         mean_diff_map is not None and mean_diff_map<=mean_diff_map_threshold):
+        continue
 
       self.regions[i_seq] = group_args(
         id          = i,
@@ -613,7 +625,8 @@ class mosaic_f_mask(object):
     self.f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
     self.f_mask   = f_obs.customized_copy(data = f_mask_data)
     self.do_mosaic = False
-    if(len(self.FV.keys())>1):
+    self.n_regions = len(self.FV.keys())
+    if(self.n_regions>1):
       self.do_mosaic = True
 
   def compute_f_mask_i(self, mask_i_asu):

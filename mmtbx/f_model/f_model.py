@@ -1547,6 +1547,9 @@ class manager(manager_mixin):
     r_final = self.r_work()
     assert approx_equal(r_start, r_final), [r_start, r_final]
 
+  def r_work4(self):
+    return self.resolution_filter(d_min=4).r_work()
+
   def _get_target_name(self): return self._target_name
   target_name = property(_get_target_name)
 
