@@ -602,7 +602,8 @@ class mosaic_f_mask(object):
         mi,ma,me = flex.min(blob), flex.max(blob), flex.mean(blob)
         sd = blob.sample_standard_deviation()
 
-      print("%3d"%i_seq,"%12.3f"%volume, "%8.4f"%round(uc_fraction,4),
+      if(log is not None):
+        print("%3d"%i_seq,"%12.3f"%volume, "%8.4f"%round(uc_fraction,4),
             "%7s"%str(None) if diff_map is None else "%7.3f %7.3f %7.3f %7.3f"%(
               mi,ma,me,sd), file=log)
 
