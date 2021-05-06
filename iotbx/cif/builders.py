@@ -343,7 +343,7 @@ class miller_array_builder(crystal_symmetry_builder):
   }
 
   def guess_observationtype(self, labl):
-    for okey in list(self.observation_types.keys()):
+    for okey in self.observation_types.keys():
       if labl.startswith(okey):
         return self.observation_types[okey]
     return None
