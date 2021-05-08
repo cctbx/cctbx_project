@@ -44,9 +44,6 @@ jobs:
       macos_py39:
         OS: osx-64
         PYTHON_VERSION: py39
-      win_py27:
-        OS: win-64
-        PYTHON_VERSION: py27
       win_py36:
         OS: win-64
         PYTHON_VERSION: py36
