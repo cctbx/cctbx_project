@@ -61,7 +61,7 @@ def run_and_compare_sdrive_fem(this_script):
 
 def truncate_floats(out):
   match_objects = re.finditer(
-    "[ -][0-9]\\.[0-9][0-9][0-9]E[-+][0-9][0-9]", out)
+    r"[ -][0-9]\.[0-9][0-9][0-9]E[-+][0-9][0-9]", out)
   fragments = []
   k = 0
   for match_obj in match_objects:
@@ -79,7 +79,7 @@ def truncate_floats(out):
   return "".join(fragments)
 
 def replace_e0dd_with_edd(out):
-  match_objects = re.finditer("E[-+]0[0-9][0-9]", out)
+  match_objects = re.finditer(r"E[-+]0[0-9][0-9]", out)
   fragments = []
   k = 0
   for match_obj in match_objects:

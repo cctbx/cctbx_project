@@ -190,19 +190,19 @@ def _set_ref_flags(inputstring, freeparams=[]):
     for param in freeparams:
       if param == "scale":
         # free all scale factors
-        for m in re.finditer('##_scf_##', ret):
+        for m in re.finditer(r'##_scf_##', ret):
           ret = __replace_match(ret, m , varcount)
           varcount += 1
       elif param == "lattice":
         # free all lattice parameters
-        for m in re.finditer('##_lp.*?_##', ret):
+        for m in re.finditer(r'##_lp.*?_##', ret):
           if m.group(0) not in param_to_var:
             param_to_var[m.group(0)] = varcount
             varcount += 1
           ret = __replace_match(ret, m , param_to_var[m.group(0)])
       elif param == "profile":
         # free all profile parameters
-        for m in re.finditer('##_prf*?_##', ret):
+        for m in re.finditer(r'##_prf*?_##', ret):
           if m.group(0) not in param_to_var:
             param_to_var[m.group(0)] = varcount
             varcount += 1
@@ -210,7 +210,7 @@ def _set_ref_flags(inputstring, freeparams=[]):
       else:
         raise ValueError("unknown parameter type: '{0}'".format(param))
   # fix all still unhandled flags
-  for m in re.finditer('##_.*?_##', ret):
+  for m in re.finditer(r'##_.*?_##', ret):
     ret = ret[:m.start()] + "0.00".rjust(len(m.group(0))) + ret[m.end():]
   ret = ret.replace('#__npar__#', str(varcount-1))
   return ret

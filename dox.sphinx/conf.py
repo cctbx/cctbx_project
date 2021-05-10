@@ -81,7 +81,7 @@ def boostFuncSignature(name,obj,removeSelf=False):
         if len(docc)<2: return None,docc
         doc1=docc[1]
         # functions with weird docstring, likely not documented by boost
-        if not re.match('^'+nname+r'(.*)->.*$',doc1):
+        if not re.match(r'^'+nname+r'(.*)->.*$',doc1):
                 return None,docc
         if doc1.endswith(':'): doc1=doc1[:-1]
         strippedDoc=doc.split('\n')[2:]

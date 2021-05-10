@@ -34,7 +34,7 @@ def run(args=(), params=None, out=sys.stdout):
           else :
             seq = "".join(chain.as_sequence())
           if (params.ignore_missing_residues_at_start):
-            seq = re.sub("^X*", "", seq)
+            seq = re.sub(r"^X*", "", seq)
           seq_lines = []
           k = 0
           while (k < len(seq)):

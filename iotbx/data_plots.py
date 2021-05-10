@@ -188,11 +188,11 @@ class table_data(object):
     assert remainder == '', 'loggraph table has %d bytes following the table end' % len(remainder)
 
     if '$TABLE' in header:
-      title = re.search('\\$TABLE\\s*:(.*?)(:|\n|$)', header, re.MULTILINE)
+      title = re.search(r'\$TABLE\s*:(.*?)(:|\n|$)', header, re.MULTILINE)
       if title:
         self.title = title.group(1).strip()
 
-    graphs = re.search('\\$(GRAPHS|SCATTER)[\\s\n]*((:[^:\n]*:[^:\n]*:[^:\n]*(:|$)[\\s\n]*)*)($|\\$)', header, re.MULTILINE)
+    graphs = re.search(r'\$(GRAPHS|SCATTER)[\s\n]*((:[^:\n]*:[^:\n]*:[^:\n]*(:|$)[\s\n]*)*)($|\$)', header, re.MULTILINE)
     if graphs:
       if graphs.group(1) == 'GRAPHS':
         self.plot_type = "GRAPH"
@@ -201,7 +201,7 @@ class table_data(object):
       else:
         raise TypeError('Unknown graph type %s' % graphs.group(1))
       graphs = graphs.group(2)
-      for graph in re.finditer(':([^:\n]*):([^:\n]*):([^:\n]*)(:|$)', graphs, re.MULTILINE):
+      for graph in re.finditer(r':([^:\n]*):([^:\n]*):([^:\n]*)(:|$)', graphs, re.MULTILINE):
         self.add_graph(name=graph.group(1),
                        type=graph.group(2),
                        columns=[ int(col)-1 for col in graph.group(3).split(',') ])

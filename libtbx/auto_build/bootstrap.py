@@ -448,9 +448,9 @@ class Toolbox(object):
         else:
           branch = False
         remote, rebase = False, False
-      if re.match('remote\s*=', line.strip()):
+      if re.match(r'remote\s*=', line.strip()):
         remote = True
-      if re.match('rebase\s*=', line.strip()):
+      if re.match(r'rebase\s*=', line.strip()):
         rebase = True
     if branch and remote and not rebase:
       insertions.insert(0, (n + 1, branch))

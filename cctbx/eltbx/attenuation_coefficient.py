@@ -80,16 +80,16 @@ def chemlex(formula):
   import re
 
   # Check that the formula is valid
-  if re.match('^([A-Z][a-z]{0,2}[1-9]?)*$', formula):
+  if re.match(r'^([A-Z][a-z]{0,2}[1-9]?)*$', formula):
 
     # Split the components by capital letter
-    comp = re.findall('[A-Z][^A-Z]*', formula)
+    comp = re.findall(r'[A-Z][^A-Z]*', formula)
 
     # For each component split into element and number
     el_num = []
     for c in comp:
 
-      r = re.compile('([A-Z][a-z]{0,2})([1-9]+)')
+      r = re.compile(r'([A-Z][a-z]{0,2})([1-9]+)')
       m = r.match(c)
       if m:
         el = m.group(1)

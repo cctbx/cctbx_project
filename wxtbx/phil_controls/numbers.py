@@ -63,7 +63,7 @@ class NumbersValidator(TextCtrlValidator):
     elif (value in ["Auto", "auto"]):
       return Auto
     if ("," in value) or (";" in value):
-      value = re.sub(",", " ", re.sub(";", " ", value))
+      value = re.sub(r",", " ", re.sub(r";", " ", value))
     numbers_list = []
     for field in value.split():
       if (field == "None"):

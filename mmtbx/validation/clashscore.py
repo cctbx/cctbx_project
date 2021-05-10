@@ -748,7 +748,7 @@ class nqh_flips(validation):
   gui_formats = ["%s", "%s"]
   wx_column_widths = [75,220]
   def __init__(self, pdb_hierarchy):
-    re_flip = re.compile(":FLIP")
+    re_flip = re.compile(r":FLIP")
     validation.__init__(self)
     in_lines = pdb_hierarchy.as_pdb_string()
     reduce_out = run_reduce_with_timeout(

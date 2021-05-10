@@ -11,14 +11,14 @@ def remove_HOH(start_pdb, noHOH_pdb):
 
   openpdb = open(start_pdb,"r")
   noHOHpdb = open(noHOH_pdb, 'w')
-  find_HOH = re.compile('HOH')
+  find_HOH = re.compile(r'HOH')
 
   for line in openpdb:
     if not find_HOH.search(line):
       noHOHpdb.write(line)
 
 def find_number_model(open_pdb):
-  find_MODEL = re.compile('MODEL')
+  find_MODEL = re.compile(r'MODEL')
   max_model_number = 0
   for line in open_pdb:
     if find_MODEL.match(line):
@@ -31,8 +31,8 @@ def find_number_model(open_pdb):
 
 def find_header(open_pdb, num_pdb):
   print("Getting header info...................")
-  find_CRYST1 = re.compile('CRYST')
-  find_SCALE = re.compile('SCALE')
+  find_CRYST1 = re.compile(r'CRYST')
+  find_SCALE = re.compile(r'SCALE')
   for line in open_pdb:
     if find_CRYST1.search(line):
       num_pdb.write(line)
@@ -41,8 +41,8 @@ def find_header(open_pdb, num_pdb):
 
 def model_parse(open_pdb, num_pdb, model_num, new_model_num, start_pdb):
   model_num = str(model_num)
-  find_MODEL = re.compile('MODEL')
-  find_ENDMDL = re.compile('ENDMDL')
+  find_MODEL = re.compile(r'MODEL')
+  find_ENDMDL = re.compile(r'ENDMDL')
   open_pdb = open(start_pdb,"r")
   for line in open_pdb:
     if find_MODEL.search(line):
@@ -69,7 +69,7 @@ def remove_specific_HOH(open_pdb,open_water_list,wat_pdb):
     x = wat_num.split()
     water_list.append(x[0])
 
-  find_HOH = re.compile('HOH')
+  find_HOH = re.compile(r'HOH')
 
   for line in open_pdb:
     if not find_HOH.search(line):
@@ -83,8 +83,8 @@ def remove_specific_HOH(open_pdb,open_water_list,wat_pdb):
 
 def parse_bfactor_occ_infomation(open_pdb, start_pdb):
   print("Parsing B and Occ information")
-  find_MODEL = re.compile('MODEL')
-  find_ENDMDL = re.compile('ENDMDL')
+  find_MODEL = re.compile(r'MODEL')
+  find_ENDMDL = re.compile(r'ENDMDL')
   #
   b_total_array = []
   b_model_array = []
@@ -114,8 +114,8 @@ def parse_bfactor_occ_infomation(open_pdb, start_pdb):
 
 def parse_specific_pdb(open_pdb, start_pdb, num_pdb, last_model, new_model_num=1):
   model_num = str(last_model)
-  find_MODEL = re.compile('MODEL')
-  find_ENDMDL = re.compile('ENDMDL')
+  find_MODEL = re.compile(r'MODEL')
+  find_ENDMDL = re.compile(r'ENDMDL')
   open_pdb = open(start_pdb,"r")
   for line in open_pdb:
     if find_MODEL.search(line):
@@ -167,7 +167,7 @@ def remove_anisou(start_pdb, fin_pdb):
   print("Removing ANISOU...")
   openpdb = open(start_pdb,"r")
   finpdb = open(fin_pdb, 'w')
-  find_ANISOU = re.compile('ANISOU')
+  find_ANISOU = re.compile(r'ANISOU')
 
   for line in openpdb:
     if not find_ANISOU.search(line):
@@ -221,7 +221,7 @@ def extra_conformation(start_pdb, fin_pdb):
   open_pdb = open(start_pdb,"r")
   fin_pdb = open(fin_pdb, 'w')
 
-  find_ATOM = re.compile('ATOM')
+  find_ATOM = re.compile(r'ATOM')
 
   for line in open_pdb:
     if len(line) > 66 and find_ATOM.search(line):

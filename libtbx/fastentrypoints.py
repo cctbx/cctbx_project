@@ -89,7 +89,7 @@ def main():
     import shutil
     import sys
     dests = sys.argv[1:] or ['.']
-    filename = re.sub('\.pyc$', '.py', __file__)
+    filename = re.sub(r'\.pyc$', '.py', __file__)
 
     for dst in dests:
         shutil.copy(filename, dst)

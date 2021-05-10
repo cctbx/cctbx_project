@@ -34,7 +34,7 @@ import re
 import os
 
 def looks_like_pdb_id(id):
-  return (len(id) == 4) and (re.match("[1-9]{1}[a-zA-Z0-9]{3}", id))
+  return (len(id) == 4) and (re.match(r"[1-9]{1}[a-zA-Z0-9]{3}", id))
 
 def validate_pdb_id(id):
   if (not looks_like_pdb_id(id)):
@@ -77,7 +77,7 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       cache_files = os.listdir(local_cache)
       for file_name in cache_files :
         if (len(file_name) > 4):
-          file_id = re.sub("^pdb", "", file_name)[0:4]
+          file_id = re.sub(r"^pdb", "", file_name)[0:4]
           if (file_id.lower() == id):
             if (guess_file_type(file_name) == "pdb"):
               file_name = os.path.join(local_cache, file_name)

@@ -1019,13 +1019,13 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
   # Continuation lines (i.e. backslash preceding a newline) are not
   # permitted.
   pattern_blank = \
-      re.compile('^\s*(#.*)?$')
+      re.compile(r'^\s*(#.*)?$')
   pattern_quadrant = \
-      re.compile('^\s*[Qq][Uu][Aa][Dd]\s+\d+\s*(#.*)?$')
+      re.compile(r'^\s*[Qq][Uu][Aa][Dd]\s+\d+\s*(#.*)?$')
   pattern_sensor = \
-      re.compile('^\s*[Ss][Ee][Nn][Ss][Oo][Rr]\s+[Xx]\s+[Yy]\s+[Zz]\s*(#.*)?$')
+      re.compile(r'^\s*[Ss][Ee][Nn][Ss][Oo][Rr]\s+[Xx]\s+[Yy]\s+[Zz]\s*(#.*)?$')
   pattern_sxyz = \
-      re.compile('^\s*\d+\s+[+-]?\d+\s+[+-]?\d+\s+[+-]?\d+\s*(#.*)?$')
+      re.compile(r'^\s*\d+\s+[+-]?\d+\s+[+-]?\d+\s+[+-]?\d+\s*(#.*)?$')
 
   # Parse the file into dict of dict of four-tuples, indexed by
   # quadrant indices and sensor indices, respectively.

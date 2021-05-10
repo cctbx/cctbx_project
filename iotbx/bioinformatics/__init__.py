@@ -15,7 +15,7 @@ from libtbx.utils import Sorry
 # Wrap lines that are longer than 'width'
 def wrap(text, width):
 
-  return re.findall( "[^\n]{1,%d}" % width, text )
+  return re.findall( r"[^\n]{1,%d}" % width, text )
 
 
 # Sequence headers

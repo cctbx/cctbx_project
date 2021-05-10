@@ -84,7 +84,7 @@ os.spawnv(os.P_NOWAIT, "%s", ["%s"])
 [py2app]
 argv-emulation=0""")
   f.close()
-  script_name = re.sub(".pyc$", ".py", py2app.script_py2applet.__file__)
+  script_name = re.sub(r"\.pyc$", ".py", py2app.script_py2applet.__file__)
   import subprocess
   executable = sys.executable
   if (options.python_interpreter is not None):

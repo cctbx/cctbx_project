@@ -334,8 +334,8 @@ def remediate(filename, remediated_out, f=None):
   pdb_file = open(filename)
 
   aa_re = re.compile(
-    ' HN2 (ALA|ARG|ASN|ASP|ASX|CSE|CYS|GLN|GLU|GLX|GLY|HIS|ILE|'+
-    'LEU|LYS|MET|MSE|PHE|PRO|SER|THR|TRP|UNK|TYR|VAL)')
+    r' HN2 (ALA|ARG|ASN|ASP|ASX|CSE|CYS|GLN|GLU|GLX|GLY|HIS|ILE|'+
+    r'LEU|LYS|MET|MSE|PHE|PRO|SER|THR|TRP|UNK|TYR|VAL)')
 
   for line in pdb_file:
     line=line.rstrip()
@@ -350,7 +350,7 @@ def remediate(filename, remediated_out, f=None):
         elif re.match(r'REMARK...\D',line):
           print_line += line + "\n"
           continue
-        elif re.match('REMARK   4 REMEDIATOR',line):
+        elif re.match(r'REMARK   4 REMEDIATOR',line):
           continue
         elif int(line[6:10]) > 4:
           print_line += remark4 + "\n"
@@ -390,8 +390,8 @@ def remediate(filename, remediated_out, f=None):
         m = aa_re.search(print_line)
         if m:
           res = m.group(1)
-          if re.search('1H   '+res,print_line) or re.search('2H   '+res,print_line):
-            print_line = re.sub(' HN2 '+res,'2H   '+res,print_line)
+          if re.search(r'1H   '+res,print_line) or re.search(r'2H   '+res,print_line):
+            print_line = re.sub(r' HN2 '+res,'2H   '+res,print_line)
       print_line=print_line.rstrip("\n")
 
       if not (print_line == ""):

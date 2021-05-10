@@ -20,8 +20,8 @@ logging.basicConfig(level=logging.DEBUG, format=FORMAT)
 
 EV_PER_A = 12398.4187
 # Regular expressions, set up so one can use groups to extract the data
-re_energy = re.compile("photon_energy_eV\s=\s([0-9]+\.[0-9]+)")
-re_uc = re.compile("""Cell\sparameters\s
+re_energy = re.compile(r"photon_energy_eV\s=\s([0-9]+\.[0-9]+)")
+re_uc = re.compile(r"""Cell\sparameters\s
                    ([0-9]+\.[0-9]+)\s # a
                    ([0-9]+\.[0-9]+)\s # b
                    ([0-9]+\.[0-9]+)\snm,\s # c
@@ -30,7 +30,7 @@ re_uc = re.compile("""Cell\sparameters\s
                    ([0-9]+\.[0-9]+) # gamma""", re.X)
 
 # groups 1-7: h,k,l,I,sig(i),peak, background,fs,ss
-re_miller = re.compile("""\s*(-?[0-9]{1,3})
+re_miller = re.compile(r"""\s*(-?[0-9]{1,3})
                           \s*(-?[0-9]{1,3})
                           \s*(-?[0-9]{1,3}) #h,k,l
                           \s*(-?[0-9]+\.[0-9]+)
@@ -38,17 +38,17 @@ re_miller = re.compile("""\s*(-?[0-9]{1,3})
                           ([\s*-?[0-9]+\.[0-9]+){2}  #Peak, background
                           \s*([0-9]+\.[0-9]+)
                           \s*([0-9]+\.[0-9]+) #fs, ssi""", re.X)
-re_lattice_type = re.compile("lattice_type\s=\s([a-zA-Z]+)")
-re_centering = re.compile("centering\s=\s([A-Z])")
+re_lattice_type = re.compile(r"lattice_type\s=\s([a-zA-Z]+)")
+re_centering = re.compile(r"centering\s=\s([A-Z])")
 
 # note the setting lattice is in nm^-1
-re_Astar = re.compile("""astar\s=\s*(-?\+?[0-9]+\.[0-9]+)
+re_Astar = re.compile(r"""astar\s=\s*(-?\+?[0-9]+\.[0-9]+)
                          \s*(-?\+?[0-9]+\.[0-9]+)
                          \s*(-?\+?[0-9]+\.[0-9]+)""", re.X)
-re_Bstar = re.compile("""bstar\s=\s*(-?\+?[0-9]+\.[0-9]+)
+re_Bstar = re.compile(r"""bstar\s=\s*(-?\+?[0-9]+\.[0-9]+)
                          \s*(-?\+?[0-9]+\.[0-9]+)
                          \s*(-?\+?[0-9]+\.[0-9]+)""", re.X)
-re_Cstar = re.compile("""cstar\s=\s*(-?\+?[0-9]+\.[0-9]+)
+re_Cstar = re.compile(r"""cstar\s=\s*(-?\+?[0-9]+\.[0-9]+)
                          \s*(-?\+?[0-9]+\.[0-9]+)
                          \s*(-?\+?[0-9]+\.[0-9]+)""", re.X)
 

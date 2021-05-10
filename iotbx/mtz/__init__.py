@@ -231,7 +231,7 @@ class label_decorator(__builtins__["object"]):
 class ccp4_label_decorator(label_decorator):
   def phases(self, root_label, anomalous_sign=None):
     assert (root_label in ["FWT", "DELFWT"])
-    root_label = re.sub("F", "", root_label)
+    root_label = re.sub(r"F", "", root_label)
     return self.anomalous(
       "PH" + root_label + self.phases_suffix,
       anomalous_sign)

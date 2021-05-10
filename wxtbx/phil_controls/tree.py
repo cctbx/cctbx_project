@@ -139,8 +139,8 @@ class PhilTreeCtrl(customtreectrl.CustomTreeCtrl):
       phil_object = item.GetData()
       phil_object.show()
 
-valid_text = re.compile("^[a-zA-Z]{1,}[a-zA-z0-9_]*$")
-valid_text_partial = re.compile("^[a-zA-Z0-9_]*$")
+valid_text = re.compile(r"^[a-zA-Z]{1,}[a-zA-z0-9_]*$")
+valid_text_partial = re.compile(r"^[a-zA-Z0-9_]*$")
 
 class PhilTreeFrame(wx.Frame):
   def __init__(self, *args, **kwds):

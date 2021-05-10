@@ -230,7 +230,7 @@ $PYTHON_EXE ./bin/install.py $@
       print("")
       print("********** FETCHING MODULES **********")
       print("")
-      module_list = re.sub(",", " ", module_list)
+      module_list = re.sub(r",", " ", module_list)
       for module_name in module_list.split():
         get_module(module_name)
 
@@ -241,7 +241,7 @@ $PYTHON_EXE ./bin/install.py $@
     base_module_dir = op.join(options.dest, installer_dir, "base")
     os.makedirs(base_module_dir)
     os.chdir(base_module_dir)
-    base_module_list = re.sub(",", " ", base_module_list)
+    base_module_list = re.sub(r",", " ", base_module_list)
     for module_name in base_module_list.split():
       get_module(module_name)
 
