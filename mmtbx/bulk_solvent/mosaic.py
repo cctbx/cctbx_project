@@ -503,14 +503,21 @@ class mosaic_f_mask(object):
   def __init__(self,
                xray_structure,
                step,
-               volume_cutoff,
-               f_obs,
+               volume_cutoff=None,
+               mean_diff_map_threshold=None,
+               compute_whole=False,
+               preprocess_against_shallow=True,
+               largest_only=False,
+               wrapping=True,
+               f_obs=None,
+               r_sol=1.1,
+               r_shrink=0.9,
                f_calc=None,
-               log = sys.stdout,
+               log = None,
                write_masks=False):
     adopt_init_args(self, locals())
     #
-    self.dsel = f_obs.d_spacings().data()>=0
+    self.dsel = f_obs.d_spacings().data()>=0 # XXX WHY????????????
     self.miller_array = f_obs.select(self.dsel)
     #
     self.crystal_symmetry = self.xray_structure.crystal_symmetry()
@@ -523,12 +530,20 @@ class mosaic_f_mask(object):
     self.n_real = self.crystal_gridding.n_real()
     # XXX Where do we want to deal with H and occ==0?
     mask_p1 = mmtbx.masks.mask_from_xray_structure(
-      xray_structure        = xray_structure,
-      p1                    = True,
-      for_structure_factors = True,
-      n_real                = self.n_real,
-      in_asu                = False).mask_data
+      xray_structure           = xray_structure,
+      p1                       = True,
+      for_structure_factors    = True,
+      solvent_radius           = r_sol,
+      shrink_truncation_radius = r_shrink,
+      n_real                   = self.n_real,
+      in_asu                   = False).mask_data
     maptbx.unpad_in_place(map=mask_p1)
+    self.f_mask_whole = None
+    if(compute_whole):
+      mask = asu_map_ext.asymmetric_map(
+        xray_structure.crystal_symmetry().space_group().type(), mask_p1).data()
+      self.f_mask_whole = self.miller_array.structure_factors_from_asu_map(
+        asu_map_data = mask, n_real = self.n_real)
     self.solvent_content = 100.*mask_p1.count(1)/mask_p1.size()
     if(write_masks):
       write_map_file(crystal_symmetry=xray_structure.crystal_symmetry(),
@@ -537,28 +552,26 @@ class mosaic_f_mask(object):
     co = maptbx.connectivity(
       map_data                   = mask_p1,
       threshold                  = 0.01,
-      preprocess_against_shallow = True,
-      wrapping                   = True)
+      preprocess_against_shallow = preprocess_against_shallow,
+      wrapping                   = wrapping)
     co.merge_symmetry_related_regions(space_group=xray_structure.space_group())
     del mask_p1
     self.conn = co.result().as_double()
     z = zip(co.regions(),range(0,co.regions().size()))
     sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+    #
     f_mask_data_0 = flex.complex_double(f_obs.data().size(), 0)
-    FM = OrderedDict()
+    f_mask_data   = flex.complex_double(f_obs.data().size(), 0)
     self.FV = OrderedDict()
     self.mc = None
     diff_map = None
     mean_diff_map = None
     self.regions = OrderedDict()
-    print("   volume_p1    uc(%)   volume_asu  id   mFo-DFc: min,max,mean,sd",
-      file=log)
-    # Check if self.anomaly
-    self.anomaly = False
-    if(len(sorted_by_volume) > 2):
-      uc_fractions = [
-        round(p[0]*100./self.conn.size(), 0) for p in sorted_by_volume[1:]]
-      if(uc_fractions[0]/4 < uc_fractions[1]): self.anomaly = True
+    self.f_mask_0 = None
+    self.f_mask = None
+    #
+    if(log is not None):
+      print("  #    volume_p1    uc(%) mFo-DFc: min,max,mean,sd", file=log)
     #
     for i_seq, p in enumerate(sorted_by_volume):
       v, i = p
@@ -571,15 +584,15 @@ class mosaic_f_mask(object):
         if volume < volume_cutoff: continue
 
       selection = self.conn==i
-      mask_i_asu = self.compute_i_mask_asu(selection=selection, volume=volume)
+      mask_i_asu = self.compute_i_mask_asu(selection = selection, volume = volume)
       volume_asu = (mask_i_asu>0).count(True)*step**3
 
-      if(i_seq==1 or uc_fraction>5):
+      if(uc_fraction >= 1):
         f_mask_i = self.compute_f_mask_i(mask_i_asu)
-        if(not self.anomaly):
-          f_mask_data_0 += f_mask_i.data()
+        f_mask_data_0 += f_mask_i.data()
+      elif(largest_only): break
 
-      if(uc_fraction < 5 and diff_map is None and not self.anomaly):
+      if(uc_fraction < 1 and diff_map is None):
         diff_map = self.compute_diff_map(f_mask_data = f_mask_data_0)
 
       mi,ma,me,sd = None,None,None,None
@@ -589,12 +602,14 @@ class mosaic_f_mask(object):
         mi,ma,me = flex.min(blob), flex.max(blob), flex.mean(blob)
         sd = blob.sample_standard_deviation()
 
-      print("%12.3f"%volume, "%8.4f"%round(uc_fraction,4),
-            "%12.3f"%volume_asu, "%3d"%i,
+      if(log is not None):
+        print("%3d"%i_seq,"%12.3f"%volume, "%8.4f"%round(uc_fraction,4),
             "%7s"%str(None) if diff_map is None else "%7.3f %7.3f %7.3f %7.3f"%(
               mi,ma,me,sd), file=log)
 
-      if(uc_fraction<1 and mean_diff_map is not None and mean_diff_map<=0): continue
+      if(mean_diff_map_threshold is not None and
+         mean_diff_map is not None and mean_diff_map<=mean_diff_map_threshold):
+        continue
 
       self.regions[i_seq] = group_args(
         id          = i,
@@ -603,19 +618,16 @@ class mosaic_f_mask(object):
         uc_fraction = uc_fraction,
         diff_map    = group_args(mi=mi, ma=ma, me=me, sd=sd))
 
-      if(not(i_seq==1 or uc_fraction>5)):
-        f_mask_i = self.compute_f_mask_i(mask_i_asu)
+      f_mask_i = self.compute_f_mask_i(mask_i_asu)
+      f_mask_data += f_mask_i.data()
 
-      FM.setdefault(round(volume, 3), []).append(f_mask_i.data())
       self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
     #
-    f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
-    #
-    self.f_mask_0 = None
-    if(not self.anomaly):
-      self.f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
+    self.f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
+    self.f_mask   = f_obs.customized_copy(data = f_mask_data)
     self.do_mosaic = False
-    if(len(self.FV.keys())>1):
+    self.n_regions = len(self.FV.keys())
+    if(self.n_regions>1):
       self.do_mosaic = True
 
   def compute_f_mask_i(self, mask_i_asu):

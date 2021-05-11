@@ -72,7 +72,8 @@ __global__ void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixel
 	__shared__ int s_mosaic_domains;
 
 	__shared__ CUDAREAL s_Na, s_Nb, s_Nc;
-	__shared__ int s_h_min, s_k_min, s_l_min, s_k_range, s_l_range;
+	__shared__ int s_h_min, s_k_min, s_l_min, s_h_range, s_k_range, s_l_range,
+                       s_h_max, s_k_max, s_l_max;
 
 	if (threadIdx.x == 0 && threadIdx.y == 0) {
                 s_vec_len = vec_len;
@@ -93,8 +94,12 @@ __global__ void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixel
 		s_h_min = FhklParams->h_min;
 		s_k_min = FhklParams->k_min;
 		s_l_min = FhklParams->l_min;
+		s_h_range = FhklParams->h_range;
 		s_k_range = FhklParams->k_range;
 		s_l_range = FhklParams->l_range;
+                s_h_max = s_h_min + s_h_range - 1;
+                s_k_max = s_k_min + s_k_range - 1;
+                s_l_max = s_l_min + s_l_range - 1;
 
 	}
 	__syncthreads();
@@ -282,8 +287,17 @@ __global__ void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixel
 								/* structure factor of the unit cell */
 								CUDAREAL F_cell = default_F;
 								//F_cell = quickFcell_ldg(s_hkls, s_h_max, s_h_min, s_k_max, s_k_min, s_l_max, s_l_min, h0, k0, l0, s_h_range, s_k_range, s_l_range, default_F, Fhkl);
-
-                                                                F_cell = __ldg(&Fhkl[(h0-s_h_min)*s_k_range*s_l_range + (k0-s_k_min)*s_l_range + (l0-s_l_min)]);
+                                                                if (
+                                                                    h0 < s_h_min ||
+                                                                    k0 < s_k_min ||
+                                                                    l0 < s_l_min ||
+                                                                    h0 > s_h_max ||
+                                                                    k0 > s_k_max ||
+                                                                    l0 > s_l_max
+                                                                   )
+                                                                  F_cell = 0.;
+                                                                else
+                                                                  F_cell = __ldg(&Fhkl[(h0-s_h_min)*s_k_range*s_l_range + (k0-s_k_min)*s_l_range + (l0-s_l_min)]);
 
 								/* now we have the structure factor for this pixel */
 

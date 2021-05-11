@@ -16,3 +16,5 @@ Activating the ```conda``` environment is not necessary once everything is built
 
 ## Updating environments
 The general environment specification, `cctbx.devenv.yml`, is consolidated across platforms by using the [`conda-devenv` package](https://conda-devenv.readthedocs.io). Using Jinja2 syntax, platform specific dependencies can be added similar to how `conda-build` specifies dependencies. This consolidated environment file can be used to update the versioned environment files.
+
+A standard conda environment yml file for a platform can be created by using the `--print` flag. This standard environment file can be modified to change the versions of specific dependencies. Additionally, because the channel order will be sorted alphabetically, the channel order should be modified to the desired order.

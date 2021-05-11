@@ -1,49 +1,22 @@
-# environment for basic building and testing
-name: conda_base
+# cctbx environment for basic building and testing
+name: cctbx
 
 channels:
   - conda-forge
   - defaults
-  - cctbx
+
+includes:
+  - {{ root }}/cctbxlite.devenv.yml
 
 dependencies:
-  # cctbx-base
-  # host
-  - future
-  - numpy
-  - python ={{ get_env("PY_VER", default="3.8") }}
-  - python.app  # [osx]
-  - scons
-  - setuptools
-  - six
-  # run
-  - libsvm
-  - matplotlib-base
-  - mrcfile
-  - pillow
-  - psutil
-  - reportlab
-  - requests
-  - six
-
-  # cctbx
-  - ipython
-  - pyside2  # [x86_64]
-  - pyzmq
-  - websockets
-  - wxpython  # [x86_64]
-
-  # extra
-  - libsvm_py
-  - pytest
-
-  # docs
-  - docutils
-  - numpydoc
-  - sphinx
-
   # dxtbx
   - h5py
   - hdf5
   - hdf5-external-filter-plugins
   - libtiff
+  - procrunner
+
+  # dxtbx testing
+  - dials-data
+  - pytest-mock
+  - pytest-xdist

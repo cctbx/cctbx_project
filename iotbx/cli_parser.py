@@ -215,6 +215,7 @@ class CCTBXParser(ParserBase):
       datatypes=program_class.datatypes,
       custom_options=program_class.data_manager_options,
       logger=self.logger)
+    self.namespace = None
 
     # add PHIL converters if available
     if len(program_class.phil_converters) > 0:
@@ -321,7 +322,13 @@ class CCTBXParser(ParserBase):
       self.exit()
 
     # parse arguments
-    self.namespace = super(CCTBXParser, self).parse_args(args)
+    if sys.version_info >= (3, 7):
+      # https://docs.python.org/3/library/argparse.html#argparse.ArgumentParser.parse_intermixed_args
+      # https://bugs.python.org/issue9338
+      # https://bugs.python.org/issue15112
+      self.namespace = super(CCTBXParser, self).parse_intermixed_args(args)
+    else:
+      self.namespace = super(CCTBXParser, self).parse_args(args)
 
     # process command-line options
     if self.namespace.attributes_level is not None:
