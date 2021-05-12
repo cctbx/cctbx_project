@@ -214,7 +214,8 @@ class IndexingJob(Job):
       user                      = self.app.params.db.user,
       port                      = self.app.params.db.port,
       # always use mpi for 'lcls'
-      use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls')
+      use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls'),
+      mpi_command               = self.app.params.mp.mpi_command,
     )
     if self.app.params.mp.method == 'sge':
       d['use_mpi'] = False
@@ -643,6 +644,7 @@ class ScalingJob(Job):
       target                    = target_phil_path,
       # always use mpi for 'lcls'
       use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls'),
+      mpi_command               = self.app.params.mp.mpi_command,
       nnodes                    = self.app.params.mp.nnodes_scale or self.app.params.mp.nnodes,
       wall_time                 = self.app.params.mp.wall_time,
     )
