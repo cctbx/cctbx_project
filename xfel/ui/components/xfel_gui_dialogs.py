@@ -638,15 +638,19 @@ class AdvancedSettingsDialog(BaseDialog):
                                 ctrl_max=1000)
     self.mp_sizer.Add(self.nnodes, flag=wx.EXPAND | wx.ALL, border=10)
 
-    self.nproc_per_node = gctr.SpinCtrl(self,
-                                        label='Number of processors per node:',
-                                        label_size=(240, -1),
-                                        label_style='normal',
-                                        ctrl_size=(100, -1),
-                                        ctrl_value='%d'%params.mp.nproc_per_node,
-                                        ctrl_min=1,
-                                        ctrl_max=1000)
-    self.mp_sizer.Add(self.nproc_per_node, flag=wx.EXPAND | wx.ALL, border=10)
+    self.nppn_box = gctr.CtrlBase(self)
+    nppn_txt = wx.StaticText(self.nppn_box, label="Number of processors per node")
+    self.chk_auto_nproc_per_node = wx.CheckBox(self.nppn_box, label='Auto')
+    self.chk_auto_nproc_per_node.SetValue(params.mp.nproc_per_node is None)
+    self.nproc_per_node = gctr.IntFloatSpin(self.nppn_box, value='%d'%params.mp.nproc_per_node if params.mp.nproc_per_node else 1, min_val = 1, max_val = 1000)
+    if not params.mp.nproc_per_node: self.nproc_per_node.Disable()
+
+    ctr_box = wx.FlexGridSizer(1, 3, 0, 10)
+    ctr_box.Add(nppn_txt, flag=wx.ALL, border=10)
+    ctr_box.Add(self.chk_auto_nproc_per_node, flag=wx.ALL, border=10)
+    ctr_box.Add(self.nproc_per_node, flag=wx.EXPAND | wx.ALL, border=10)
+    self.nppn_box.SetSizer(ctr_box)
+    self.mp_sizer.Add(self.nppn_box, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.wall_time = gctr.SpinCtrl(self,
                                    label='Max Walltime (mins):',
@@ -851,9 +855,16 @@ class AdvancedSettingsDialog(BaseDialog):
 
     self.SetTitle('Advanced Settings')
 
+    self.Bind(wx.EVT_CHECKBOX, self.onChkNppnAuto, self.chk_auto_nproc_per_node)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
     self.updateMultiprocessing()
+
+  def onChkNppnAuto(self, e):
+    if self.chk_auto_nproc_per_node.GetValue():
+      self.nproc_per_node.Disable()
+    else:
+      self.nproc_per_node.Enable()
 
   def onMultiprocessingChoice(self, e):
     self.updateMultiprocessing()
@@ -864,7 +875,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.queue_text.Show()
       self.nnodes.Hide()
       self.nproc.Show()
-      self.nproc_per_node.Hide()
+      self.nppn_box.Hide()
       self.wall_time.Hide()
       self.env_script.Hide()
       self.htcondor_executable_path.Hide()
@@ -887,7 +898,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.queue_text.Show()
       self.nproc.Hide()
       self.nnodes.Show()
-      self.nproc_per_node.Show()
+      self.nppn_box.Show()
       self.wall_time.Show()
       self.env_script.Hide()
       self.htcondor_executable_path.Hide()
@@ -910,7 +921,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.queue_text.Show()
       self.nproc.Show()
       self.nnodes.Hide()
-      self.nproc_per_node.Hide()
+      self.nppn_box.Hide()
       self.wall_time.Hide()
       self.env_script.Show()
       self.htcondor_executable_path.Show()
@@ -933,7 +944,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.queue_text.Show()
       self.nproc.Hide()
       self.nnodes.Hide()
-      self.nproc_per_node.Show()
+      self.nppn_box.Show()
       self.wall_time.Hide()
       self.env_script.Show()
       self.htcondor_executable_path.Hide()
@@ -960,7 +971,7 @@ class AdvancedSettingsDialog(BaseDialog):
         self.queue_text.Show()
       self.nproc.Show()
       self.nnodes.Hide()
-      self.nproc_per_node.Hide()
+      self.nppn_box.Hide()
       self.wall_time.Hide()
       self.env_script.Show()
       self.htcondor_executable_path.Hide()
@@ -1024,7 +1035,10 @@ class AdvancedSettingsDialog(BaseDialog):
     if self.params.facility.name == 'lcls' and self.params.mp.method == "lsf":
       self.params.mp.queue = self.queue_choice.ctr.GetStringSelection()
     else:
-      self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
+      if self.chk_auto_nproc_per_node.GetValue():
+        self.params.mp.nproc_per_node = None
+      else:
+        self.params.mp.nproc_per_node = int(self.nproc_per_node.GetValue())
       self.params.mp.queue = self.queue_text.ctr.GetValue()
       if self.mp_option.ctr.GetStringSelection() in ['shifter', 'slurm']:
         self.params.mp.nnodes_index = int(self.nnodes_index.ctr.GetValue())

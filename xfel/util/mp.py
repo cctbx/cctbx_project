@@ -454,10 +454,9 @@ class get_slurm_submit_command(get_submit_command):
       self.command = "mpirun %s mp.method=mpi" % (self.command)
 
   def eval_params(self):
-    nproc = self.params.nnodes * self.params.nproc_per_node
-    nproc_str = "#SBATCH --nodes %d\n#SBATCH --ntasks-per-node=%d" % (
-        self.params.nnodes, self.params.nproc_per_node
-    )
+    nproc_str = "#SBATCH --nodes %d" % self.params.nnodes
+    if self.params.nproc_per_node:
+      nproc_str += "\n#SBATCH --ntasks-per-node=%d" % self.params.nproc_per_node
     self.options_inside_submit_script.append(nproc_str)
 
     # -o <outfile>
