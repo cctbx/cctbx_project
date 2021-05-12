@@ -1,3 +1,10 @@
+2021.4
+======
+
+* Improved parsing of reciprocal space data in CIF
+* CCTBXParser can handle intermixed arguments for Python >= 3.7
+* Consolidate management of conda depenencies with conda-devenv
+
 2021.3
 ======
 
