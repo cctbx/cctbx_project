@@ -662,6 +662,13 @@ class AdvancedSettingsDialog(BaseDialog):
                                    ctrl_max=2880)
     self.mp_sizer.Add(self.wall_time, flag=wx.EXPAND | wx.ALL, border=10)
 
+    self.mpi_command = gctr.TextButtonCtrl(self,
+                                           label='MPI command:',
+                                           label_style='bold',
+                                           label_size=(200, -1),
+                                           value=self.params.mp.mpi_command)
+    self.mp_sizer.Add(self.mpi_command, flag=wx.EXPAND | wx.ALL, border=10)
+
     self.env_script = gctr.TextButtonCtrl(self,
                                      label='Environment setup script:',
                                      label_style='bold',
@@ -877,6 +884,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nproc.Show()
       self.nppn_box.Hide()
       self.wall_time.Hide()
+      self.mpi_command.Hide()
       self.env_script.Hide()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
@@ -900,6 +908,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes.Show()
       self.nppn_box.Show()
       self.wall_time.Show()
+      self.mpi_command.Hide()
       self.env_script.Hide()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
@@ -923,6 +932,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes.Hide()
       self.nppn_box.Hide()
       self.wall_time.Hide()
+      self.mpi_command.Hide()
       self.env_script.Show()
       self.htcondor_executable_path.Show()
       self.htcondor_filesystemdomain.Show()
@@ -946,6 +956,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes.Hide()
       self.nppn_box.Show()
       self.wall_time.Hide()
+      self.mpi_command.Show()
       self.env_script.Show()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
@@ -973,6 +984,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes.Hide()
       self.nppn_box.Hide()
       self.wall_time.Hide()
+      self.mpi_command.Show()
       self.env_script.Show()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
@@ -1050,6 +1062,9 @@ class AdvancedSettingsDialog(BaseDialog):
       else:
         self.params.mp.env_script = [self.env_script.ctr.GetValue()]
         self.params.mp.nproc = int(self.nproc.ctr.GetValue())
+
+    self.params.mp.mpi_command = self.mpi_command.ctr.GetValue() \
+      if len(self.mpi_command.ctr.GetValue()) > 0 else None
 
     # Copy htcondor settings into the htcondor phil
     self.params.mp.htcondor.executable_path = self.htcondor_executable_path.ctr.GetValue() \
