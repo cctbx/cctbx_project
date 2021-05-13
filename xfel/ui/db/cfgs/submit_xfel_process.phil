@@ -22,6 +22,7 @@ mp {{
   queue = {queue}
   env_script = {env_script}
   wall_time = {wall_time}
+  {extra_options}
   htcondor {{
     executable_path = {htcondor_executable_path}
   }}

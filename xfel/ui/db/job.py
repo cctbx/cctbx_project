@@ -216,6 +216,7 @@ class IndexingJob(Job):
       # always use mpi for 'lcls'
       use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls'),
       mpi_command               = self.app.params.mp.mpi_command,
+      extra_options             = "\n".join(["extra_options = %s"%opt for opt in self.app.params.mp.extra_options]),
     )
     if self.app.params.mp.method == 'sge':
       d['use_mpi'] = False
@@ -557,6 +558,8 @@ class EnsembleRefinementJob(Job):
     mp.method={}
     {}
     mp.use_mpi=False
+    mp.mpi_command={}
+    {}
     striping.results_dir={}
     striping.trial={}
     striping.rungroup={}
@@ -573,6 +576,8 @@ class EnsembleRefinementJob(Job):
                self.app.params.mp.nproc_per_node,
                self.app.params.mp.method,
                '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script if p]),
+               self.app.params.mpi_command,
+               "\n".join(["extra_options={}".format(opt) for opt in self.app.params.mp.extra_options]),
                self.app.params.output_folder,
                self.trial.trial,
                self.rungroup.id,
@@ -647,6 +652,7 @@ class ScalingJob(Job):
       mpi_command               = self.app.params.mp.mpi_command,
       nnodes                    = self.app.params.mp.nnodes_scale or self.app.params.mp.nnodes,
       wall_time                 = self.app.params.mp.wall_time,
+      extra_options             = "\n".join(["extra_options = %s"%opt for opt in self.app.params.mp.extra_options]),
     )
 
     with open(submit_phil_path, "w") as phil:

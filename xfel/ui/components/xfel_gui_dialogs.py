@@ -645,11 +645,11 @@ class AdvancedSettingsDialog(BaseDialog):
     self.nproc_per_node = gctr.IntFloatSpin(self.nppn_box, value='%d'%params.mp.nproc_per_node if params.mp.nproc_per_node else 1, min_val = 1, max_val = 1000)
     if not params.mp.nproc_per_node: self.nproc_per_node.Disable()
 
-    ctr_box = wx.FlexGridSizer(1, 3, 0, 10)
-    ctr_box.Add(nppn_txt, flag=wx.ALL, border=10)
-    ctr_box.Add(self.chk_auto_nproc_per_node, flag=wx.ALL, border=10)
-    ctr_box.Add(self.nproc_per_node, flag=wx.EXPAND | wx.ALL, border=10)
-    self.nppn_box.SetSizer(ctr_box)
+    nppn_sizer = wx.FlexGridSizer(1, 3, 0, 10)
+    nppn_sizer.Add(nppn_txt, flag=wx.ALL, border=10)
+    nppn_sizer.Add(self.chk_auto_nproc_per_node, flag=wx.ALL, border=10)
+    nppn_sizer.Add(self.nproc_per_node, flag=wx.EXPAND | wx.ALL, border=10)
+    self.nppn_box.SetSizer(nppn_sizer)
     self.mp_sizer.Add(self.nppn_box, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.wall_time = gctr.SpinCtrl(self,
@@ -732,6 +732,19 @@ class AdvancedSettingsDialog(BaseDialog):
     self.jobtype_nnodes_sizer.Add(self.nnodes_merge, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.mp_sizer.Add(self.jobtype_nnodes_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.extra_box = gctr.CtrlBase(self)
+    extra_txt = wx.StaticText(self.extra_box, label="Extra submission arguments")
+    self.extra_options = wx.richtext.RichTextCtrl(self.extra_box,
+                                                  size=(-1, 60),
+                                                  style=wx.VSCROLL,
+                                                  value="\n".join(self.params.mp.extra_options))
+    extra_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    extra_sizer.Add(extra_txt, flag=wx.ALL, border=10)
+    extra_sizer.Add(self.extra_options, flag=wx.EXPAND | wx.ALL, border=10)
+    extra_sizer.AddGrowableCol(1)
+    self.extra_box.SetSizer(extra_sizer)
+    self.mp_sizer.Add(self.extra_box, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Shifter-specific settings
 
@@ -892,6 +905,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes_index.Hide()
       self.nnodes_scale.Hide()
       self.nnodes_merge.Hide()
+      self.extra_options.Hide()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
       self.shifter_sbatch_template.Hide()
@@ -915,6 +929,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes_index.Show()
       self.nnodes_scale.Show()
       self.nnodes_merge.Show()
+      self.extra_options.Show()
       self.jobtype_nnodes_box.Show()
       self.shifter_image.Show()
       self.shifter_srun_template.Show()
@@ -939,6 +954,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes_index.Hide()
       self.nnodes_scale.Hide()
       self.nnodes_merge.Hide()
+      self.extra_options.Hide()
       self.jobtype_nnodes_box.Hide()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
@@ -963,6 +979,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes_index.Show()
       self.nnodes_scale.Show()
       self.nnodes_merge.Show()
+      self.extra_options.Show()
       self.jobtype_nnodes_box.Show()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
@@ -991,6 +1008,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes_index.Hide()
       self.nnodes_scale.Hide()
       self.nnodes_merge.Hide()
+      self.extra_options.Show()
       self.jobtype_nnodes_box.Hide()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
@@ -1065,6 +1083,10 @@ class AdvancedSettingsDialog(BaseDialog):
 
     self.params.mp.mpi_command = self.mpi_command.ctr.GetValue() \
       if len(self.mpi_command.ctr.GetValue()) > 0 else None
+    if len(self.extra_options.GetValue()) > 0:
+      self.params.mp.extra_options = self.extra_options.GetValue().split('\n')
+    else:
+      self.params.mp.extra_options = []
 
     # Copy htcondor settings into the htcondor phil
     self.params.mp.htcondor.executable_path = self.htcondor_executable_path.ctr.GetValue() \
