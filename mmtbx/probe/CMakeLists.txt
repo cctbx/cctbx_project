@@ -81,7 +81,7 @@ if (USE_PYTHON)
   message(STATUS "PYTHON_EXECUTABLE = ${PYTHON_EXECUTABLE}")
   message(STATUS "PYTHON_INCLUDE_DIRS = ${PYTHON_INCLUDE_DIRS}")
   message(STATUS "Boost_LIBRARIES = ${Boost_LIBRARIES}")
-  include_directories(../libpdb ../toolclasses ${CMAKE_CURRENT_SOURCE_DIR} ${Boost_INCLUDE_DIRS} ${PYTHON_INCLUDE_DIRS})
+  include_directories(../libpdb ../toolclasses ${Boost_INCLUDE_DIRS} ${PYTHON_INCLUDE_DIRS})
   # Note: To make this work on Windows, you need to copy the boost_python*.dll file into the
   # executable directory to avoid an error about "DLL load failed: The specified module could not be found"
   PYTHON_ADD_MODULE(mmtbx_probe_ext boost_python/probe_bpl.cpp)

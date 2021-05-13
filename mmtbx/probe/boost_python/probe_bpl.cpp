@@ -3,9 +3,9 @@
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <scitbx/boost_python/container_conversions.h>
-#include "DotSpheres.h"
-#include "SpatialQuery.h"
-#include "Scoring.h"
+#include <mmtbx/probe/DotSpheres.h>
+#include <mmtbx/probe/SpatialQuery.h>
+#include <mmtbx/probe/Scoring.h>
 
 using namespace boost::python;
 using namespace molprobity::probe;
