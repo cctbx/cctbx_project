@@ -62,6 +62,7 @@ struct pixel_stats {
         white_ptr[firstpass_idx] = proposal_value;
         proposal_shoebox_sum += proposal_value;
       }
+      SCITBX_ASSERT(firstpass_idx <= whitelist_kernel_model.size());
       double refrence_shoebox_sum = reference_shoebox_sums[sidx];
       double scale_factor = refrence_shoebox_sum / proposal_shoebox_sum;
       //result verified up to here
@@ -101,6 +102,7 @@ struct pixel_stats {
         sauter_eq_15_likelihood.push_back( pixel_ll );
         LLG+=pixel_ll;
       }
+      SCITBX_ASSERT(whiteidx <= whitelist_kernel_model.size());
       // properties calculated per shoebox
       scitbx::math::mean_and_variance<double> stats(shoebox_Z_values.const_ref());
       proposal_shoebox_mean_Z.push_back( stats.mean() );

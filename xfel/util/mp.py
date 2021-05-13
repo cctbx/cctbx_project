@@ -15,6 +15,10 @@ mp_phil_str = '''
     use_mpi = True
       .type = bool
       .help = Use mpi multiprocessing
+    mpi_command = mpirun
+      .type = str
+      .help = Command to invoke MPI processing. Include extra arguments to \
+              this command here.
     nproc = 1
       .type = int
       .help = Number of processes total (== nnodes x nproc_per_node). \
@@ -233,7 +237,7 @@ class get_local_submit_command(get_submit_command):
   def customize_for_method(self):
     if self.params.local.include_mp_in_command:
       if self.params.use_mpi:
-        self.command = "mpirun -n %d %s mp.method=mpi" % (self.params.nproc, self.command)
+        self.command = "%s -n %d %s mp.method=mpi" % (self.params.mpi_command, self.params.nproc, self.command)
       elif self.params.nproc > 1:
         self.command += " mp.nproc=%d" % self.params.nproc
 
@@ -245,7 +249,7 @@ class get_lsf_submit_command(get_submit_command):
   def customize_for_method(self):
     self.submit_head = "bsub"
     if self.params.use_mpi:
-      self.command = "mpirun %s mp.method=mpi" % self.command
+      self.command = "%s %s mp.method=mpi" % (self.params.mpi_command, self.command)
 
   def eval_params(self):
     # -n <nproc>
@@ -298,7 +302,7 @@ class get_sge_submit_command(get_submit_command):
     self.options.append("-cwd")
 #    self.options.append("mp.method=sge")
     if self.params.use_mpi:
-      self.command = "mpirun -n ${NSLOTS} %s mp.method=mpi"%(self.command) #This command currently (14/10/2020) has problems at Diamond as it will randomly use incorrect number of cores
+      self.command = "%s -n ${NSLOTS} %s mp.method=mpi"%(self.params.mpi_command, self.command) #This command currently (14/10/2020) has problems at Diamond as it will randomly use incorrect number of cores
     else:
       self.command = "%s mp.nproc=${NSLOTS}"%(self.command)
 
@@ -451,13 +455,12 @@ class get_slurm_submit_command(get_submit_command):
   def customize_for_method(self):
     self.submit_head = "sbatch"
     if self.params.use_mpi:
-      self.command = "mpirun %s mp.method=mpi" % (self.command)
+      self.command = "%s %s mp.method=mpi" % (self.params.mpi_command, self.command)
 
   def eval_params(self):
-    nproc = self.params.nnodes * self.params.nproc_per_node
-    nproc_str = "#SBATCH --nodes %d\n#SBATCH --ntasks-per-node=%d" % (
-        self.params.nnodes, self.params.nproc_per_node
-    )
+    nproc_str = "#SBATCH --nodes %d" % self.params.nnodes
+    if self.params.nproc_per_node:
+      nproc_str += "\n#SBATCH --ntasks-per-node=%d" % self.params.nproc_per_node
     self.options_inside_submit_script.append(nproc_str)
 
     # -o <outfile>

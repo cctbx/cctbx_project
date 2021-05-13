@@ -40,7 +40,7 @@ def map_and_model_to_fmodel(map_data, xray_structure, atom_radius, d_min,
       ss      = 1./flex.pow2(f_calc.d_spacings().data()) / 4.)
     xrs = xrs.set_b_iso(value=o.b())
     k_isotropic = flex.double(f_calc.data().size(), o.k())
-    if(o.k()<1.e-3):
+    if(o.k()<1.e-6):
       k_isotropic = flex.double(f_calc.data().size(), 1)
       xrs.set_u_iso(values = vals_init)
   fmodel = mmtbx.f_model.manager(f_obs = f_obs, xray_structure = xrs)
