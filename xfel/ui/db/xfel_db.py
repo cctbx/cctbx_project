@@ -279,6 +279,7 @@ class db_application(object):
     self.params = params
     self.dbobj = None
     self.cache_connection = cache_connection
+    self.query_count = 0
 
   def execute_query(self, query, commit = False):
     from MySQLdb import OperationalError
@@ -326,20 +327,19 @@ class db_application(object):
 class xfel_db_application(db_application):
   def __init__(self, params, drop_tables = False, verify_tables = False, cache_connection = False):
     super(xfel_db_application, self).__init__(params, cache_connection)
-    self.query_count = 0
     dbobj = get_db_connection(params)
-    self.init_tables = initialize(params, dbobj) # only place where a connection is held
+    init_tables = initialize(params, dbobj)
 
     if drop_tables:
-      self.drop_tables()
+      init_tables.drop_tables()
 
-    if verify_tables and not self.verify_tables():
-      self.create_tables()
+    if verify_tables and not init_tables.verify_tables():
+      init_tables.create_tables()
       print('Creating experiment tables...')
-      if not self.verify_tables():
+      if not init_tables.verify_tables():
         raise Sorry("Couldn't create experiment tables")
 
-    self.columns_dict = self.init_tables.set_up_columns_dict(self)
+    self.columns_dict = init_tables.set_up_columns_dict(self)
 
   def list_lcls_runs(self):
     if self.params.facility.lcls.web.location is None or len(self.params.facility.lcls.web.location) == 0:
@@ -364,15 +364,6 @@ class xfel_db_application(db_application):
         return []
 
       return [{'run':str(int(r['run_num']))} for r in sorted(j['value'], key=lambda x:x['run_num']) if r['all_present']]
-
-  def verify_tables(self):
-    return self.init_tables.verify_tables()
-
-  def create_tables(self):
-    return self.init_tables.create_tables()
-
-  def drop_tables(self):
-    return self.init_tables.drop_tables()
 
   def create_trial(self, d_min = 1.5, n_bins = 10, **kwargs):
     # d_min and n_bins only used if isoforms are in this trial

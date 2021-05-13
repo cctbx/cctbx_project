@@ -15,6 +15,7 @@ output {{
 mp {{
   method = {method}
   use_mpi = {use_mpi}
+  mpi_command = {mpi_command}
   nproc = {nproc}
   nproc_per_node = {nproc_per_node}
   queue = {queue}

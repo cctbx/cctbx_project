@@ -3468,7 +3468,7 @@ class RunEntry(wx.Panel):
     self.view_button = wx.Button(self, label='View')
     self.view_button.Hide()
 
-    self.sizer.Add(run_no, flag=wx.EXPAND | wx.ALIGN_CENTRE)
+    self.sizer.Add(run_no, flag=wx.EXPAND)
     self.sizer.Add(self.tag_button, flag=wx.EXPAND)
     self.sizer.AddGrowableCol(1)
     self.sizer.Add(self.avg_button)
