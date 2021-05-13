@@ -35,3 +35,4 @@ if not libtbx.env.module_is_installed("mmtbx"):
   SConscript("building/SConscript")
   SConscript("hydrogens/SConscript")
   SConscript("pair_interaction/SConscript")
+  SConscript("probe/SConscript")
