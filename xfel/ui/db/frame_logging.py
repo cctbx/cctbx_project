@@ -12,6 +12,8 @@ class DialsProcessorWithLogging(Processor):
     super(DialsProcessorWithLogging, self).__init__(params, composite_tag, rank)
     self.tt_low = None
     self.tt_high = None
+    if self.params.experiment_tag is None:
+      return
     if params.db.logging_batch_size:
       from mpi4py import MPI
       comm = MPI.COMM_WORLD
@@ -43,6 +45,8 @@ class DialsProcessorWithLogging(Processor):
 
   def finalize(self):
     super(DialsProcessorWithLogging, self).finalize()
+    if self.params.experiment_tag is None:
+      return
     if self.params.db.logging_batch_size:
       self.log_batched_frames()
 
