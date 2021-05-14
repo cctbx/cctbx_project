@@ -44,10 +44,12 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
   inserts = ""
 
   def save_last_id(name):
-    return app.last_query + ";\nSELECT LAST_INSERT_ID() INTO @%s_id;\n"%name
+    nonlocal inserts
+    inserts += app.last_query + ";\n"
+    inserts += "SELECT LAST_INSERT_ID() INTO @%s_id;\n"%name
 
   if experiments:
-    inserts += save_last_id('event')
+    save_last_id('event')
   else:
     inserts += app.last_query + ";\n"
 
@@ -55,19 +57,19 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
     reflections_i = reflections.select(reflections['id']==i)
 
     imageset = Imageset(app)
-    inserts += save_last_id('imageset')
+    save_last_id('imageset')
 
     beam = Beam(app, beam = experiment.beam)
-    inserts += save_last_id('beam')
+    save_last_id('beam')
 
     detector = Detector(app, detector = experiment.detector)
-    inserts += save_last_id('detector')
+    save_last_id('detector')
 
     cell = Cell(app, crystal=experiment.crystal, isoform_id = None)
-    inserts += save_last_id('cell')
+    save_last_id('cell')
 
     crystal = Crystal(app, crystal = experiment.crystal, make_cell = False, cell_id = "@cell_id")
-    inserts += save_last_id('crystal')
+    save_last_id('crystal')
 
     inserts += ("INSERT INTO `%s_experiment` (imageset_id, beam_id, detector_id, crystal_id, crystal_cell_id) " + \
                 "VALUES (@imageset_id, @beam_id, @detector_id, @crystal_id, @cell_id);\n") % (
@@ -86,7 +88,7 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
       d_max, d_min = binner.bin_d_range(i)
       Bin(app, number = i, d_min = d_min, d_max = d_max,
           total_hkl = binner.counts_complete()[i], cell_id = '@cell_id')
-      inserts += save_last_id('bin')
+      save_last_id('bin')
 
       sel = (d <= float(d_max)) & (d > float(d_min))
       sel &= reflections_i['intensity.sum.value'] > 0
