@@ -72,13 +72,12 @@ def RunProbeTests(inFileName):
 
   # Make a mapping from sequence number to atom so that we can quickly look this
   # up when finding bonded neighbors
+  # Make a dictionary for each atom listing all of its bonded neighbors
   # @todo There may be a faster way to find bonded neighbors that does not require
   # this.
   atomDict = {}
   for a in atoms:
     atomDict[a.i_seq] = a
-
-  # Make a dictionary for each atom listing all of its bonded neighbors
   bondedNeighbors = {}
   for a in atoms:
     bondedNeighbors[a] = []
@@ -145,7 +144,11 @@ def RunProbeTests(inFileName):
       badBumpTotal += 1
   print('Summed probe score for molecule =',total,'with',badBumpTotal,'bad bumps')
 
-  # @todo
+  # Test calling the single-dot checking code as will be used by Probe to make sure
+  # all of the Python linkage is working
+  dotOffset = [1, 0, 0]
+  check = ds.check_dot(atoms[0], dotOffset, 1, atoms, [atoms[0]])
+  print ('Check dot overlap type:',check.overlapType)
 
   #========================================================================
   # Call the test functions for all of our files.
