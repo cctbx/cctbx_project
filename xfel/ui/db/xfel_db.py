@@ -275,14 +275,25 @@ class initialize(initialize_base):
     return columns_dict
 
 class db_application(object):
-  def __init__(self, params, cache_connection = False):
+  def __init__(self, params, cache_connection = False, mode = 'execute'):
     self.params = params
     self.dbobj = None
     self.cache_connection = cache_connection
     self.query_count = 0
+    self.mode = mode
+    self.last_query = None
+
+  def __setattr__(self, prop, val):
+    if prop == "mode":
+      assert val in ['execute', 'cache_commits']
+    return super(db_application, self).__setattr__(prop, val)
 
   def execute_query(self, query, commit = False):
     from MySQLdb import OperationalError
+
+    if self.mode == 'cache_commits' and commit:
+      self.last_query = query
+      return
 
     if self.params.db.verbose:
       from time import time
@@ -294,8 +305,10 @@ class db_application(object):
     sleep_time = 0.1
     while retry_count < retry_max:
       try:
-        if self.dbobj is None or (not commit and not self.cache_connection):
-          self.dbobj = dbobj = get_db_connection(self.params)
+        if self.dbobj is None:
+          dbobj = get_db_connection(self.params)
+          if self.cache_connection:
+            self.dbobj = dbobj
         else:
           dbobj = self.dbobj
         cursor = dbobj.cursor()
@@ -325,8 +338,8 @@ class db_application(object):
     raise Sorry("Couldn't execute MYSQL query. Too many reconnects. Query: %s"%query)
 
 class xfel_db_application(db_application):
-  def __init__(self, params, drop_tables = False, verify_tables = False, cache_connection = False):
-    super(xfel_db_application, self).__init__(params, cache_connection)
+  def __init__(self, params, drop_tables = False, verify_tables = False, **kwargs):
+    super(xfel_db_application, self).__init__(params, **kwargs)
     dbobj = get_db_connection(params)
     init_tables = initialize(params, dbobj)
 
