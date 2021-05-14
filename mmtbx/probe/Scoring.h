@@ -177,7 +177,7 @@ namespace molprobity {
       /// @param [in] excluded Atoms that are to be excluded from contact, for example this could be a list
       ///             of atoms bonded to sourceAtom.  If the dot is inside an excluded atom, it will not be
       ///             considered even if it is overlapping with an interacting atom.
-      CheckDotResult check_dot(iotbx::pdb::hierarchy::atom sourceAtom, ExtraAtomInfo const& sourceExtra,
+      CheckDotResult check_dot(iotbx::pdb::hierarchy::atom sourceAtom,
         Point const& dotOffset, double probeRadius,
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& interacting,
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude);

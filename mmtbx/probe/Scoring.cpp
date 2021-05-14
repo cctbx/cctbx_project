@@ -80,13 +80,15 @@ int atom_charge(iotbx::pdb::hierarchy::atom const& atom)
 }
 
 DotScorer::CheckDotResult DotScorer::check_dot(
-  iotbx::pdb::hierarchy::atom sourceAtom, ExtraAtomInfo const& sourceExtra,
+  iotbx::pdb::hierarchy::atom sourceAtom,
   Point const& dotOffset, double probeRadius,
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &interacting,
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude)
 {
   // Defaults to "no overlap" type
   CheckDotResult ret;
+
+  ExtraAtomInfo const& sourceExtra = m_extraInfo[sourceAtom.data->i_seq];
 
   // Find the world-space location of the dot by adding it to the location of the source atom.
   // The probe location is in the same direction as d from the source but is further away by the
@@ -263,7 +265,7 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   for (Point const& d : dots) {
 
     // Find out which atom (if any) had the closest interaction, and the type of interaction.
-    CheckDotResult score = check_dot(sourceAtom, sourceExtra, d, probeRadius, interacting, exclude);
+    CheckDotResult score = check_dot(sourceAtom, d, probeRadius, interacting, exclude);
 
     // Compute the score for the dot based on the overlap type and amount of overlap.
     // Assign it to the appropriate subscore.
