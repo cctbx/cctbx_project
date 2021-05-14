@@ -249,6 +249,7 @@ general_tests = [
   "$D/ringer/tst_emringer.py",
   "$D/ringer/tst_em_rscc.py",
   # validation/molprobity
+  "$D/probe/tst_probe.py",
   "$D/validation/regression/tst_molprobity_arguments.py",
   "$D/validation/regression/tst_waters.py",
   "$D/validation/regression/tst_keep_hydrogens.py",
