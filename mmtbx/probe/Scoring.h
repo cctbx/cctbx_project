@@ -14,7 +14,6 @@
 #pragma once
 
 #include "SpatialQuery.h"
-#include <cctbx/geometry_restraints/nonbonded.h>
 #include <iotbx/pdb/hierarchy.h>
 
 namespace molprobity {
