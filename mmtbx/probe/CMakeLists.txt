@@ -1,3 +1,8 @@
+# SCons is the build system that is used to build CCTBX projects.
+# This CMakeLists.txt and the associated files in cmake/ were used before CCTBX native
+# integration and during development to enable running the C++ code within the
+# Visual Studio IDE for rapid debugging.
+
 cmake_minimum_required(VERSION 3.10.0)
 project(probe)
 
