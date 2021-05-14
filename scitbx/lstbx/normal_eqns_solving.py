@@ -134,7 +134,7 @@ class iterations(object):
 
   def do_damping(self, value):
     a = self.non_linear_ls.normal_matrix_packed_u()
-    a.matrix_packed_u_diagonal_add_in_place(value*a.matrix_packed_u_diagonal())
+    a.matrix_packed_u_diagonal_add_in_place(value)
 
   def do_scale_shifts(self, limit_shift_over_su):
     x = self.non_linear_ls.step()
