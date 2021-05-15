@@ -208,8 +208,8 @@ def run_one(args):
   if(not pdb_inp.get_experiment_type() in
      ["X-RAY DIFFRACTION", "NEUTRON DIFFRACTION"]): return
   #
-  log = sys.stdout
-  #log = open("%s.log"%code,"w")
+  #log = sys.stdout
+  log = open("%s.log"%code,"w")
   try:
     # main
     o = compute(pdbf=pdbf, mtzf=mtzf, log=log)
