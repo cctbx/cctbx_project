@@ -4,7 +4,7 @@ from enum import Enum
 
 "Class definitions used throughout suitename"
 
-# Copyright 2021  David C. Richardson
+# Copyright 2021  Richardson Lab
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,12 @@ from enum import Enum
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+class Holder:
+    pass
+
+globalOptions = Holder()
+
 
 # reasons why a suite may fail to be classified:
 Issue = Enum('Issue', 'DELTA_M EPSILON_M ZETA_M ALPHA BETA GAMMA DELTA')

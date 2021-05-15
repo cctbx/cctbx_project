@@ -1,5 +1,6 @@
-import suiteninit, suitenout
-from suitenamedefs import Suite, Residue, Bin, Cluster, Issue, failMessages
+from . import suiteninit, suitenout, suiteninput
+from . import Suite, Residue, Bin, Cluster, Issue, failMessages
+from . import Holder, globals
 from suiteninit import args, bins, MAX_CLUSTERS
 from suiteninit import normalWidths, satelliteWidths
 from suiteninput import readResidues, readKinemageFile, buildSuites
@@ -40,29 +41,32 @@ dbCounter = 0
 dbTarget = 10000  # triggers extra output on this suite
 
 # A collection of variables used for output
-class OutNote:
-    pass
-
-outNote = OutNote()
+outNote = Holder()
 outNote.version = version
 outNote.comment = ""
 outNote.wannabes = 0
 outNote.outliers = 0
 
+
+
 # ***main()******************************************************************
-def main(inStream=None, outFile=None, options=None):
+def main(inStream=None, outFile=None, optionsIn=None):
+    global options
+    options = optionsIn
+    globals.options = optionsIn  # makes them available to other files
+
     print(">>>>>>>>>>>>>>>>>>>>>>suitename/main reporting<<<<<<<<<<<<<<<<<<<<<<<<<<")
     # inStream is used in internal testing
     global dbCounter  # for debugging KPB 210222
-    if args.version:
+    if options.version:
         print(version)
         return
 
     # 1. read the input
     if inStream:
         inFile = inStream
-    elif args.infile != "":
-        inFile = open(args.infile)
+    elif options.infile != "":
+        inFile = open(options.infile)
     else:
         inFile = sys.stdin
     if not outFile:
@@ -75,7 +79,7 @@ def main(inStream=None, outFile=None, options=None):
 
 
 def read(inFile):
-    if args.suitein or args.suitesin:
+    if options.suitein:
         suites = readKinemageFile(inFile)
         if len(suites) == 0:
             sys.stderr.write("read no suites: perhaps wrong type of kinemage file\n")
@@ -130,7 +134,7 @@ def annotate(suite, bin, cluster, distance, suiteness, situation,
     suite.issue = issue
     suite.comment = comment
     suite.pointMaster = pointMaster
-#    suite.pointColor = pointColor
+    suite.pointColor = pointColor
 
 
 def write(outFile, suites):
@@ -288,7 +292,7 @@ def membership(bin, suite):
     closestD = 999
     closestCluster = bin.cluster[0]  # default, representing an outlier
     for j, c in enumerate(bin.cluster[1:], 1):
-        if c.status == "wannabe" and args.nowannabe:
+        if c.status == "wannabe" and options.nowannabe:
             continue
         distance = hyperEllipsoidDistance(
             suite.angle, bin.cluster[j].angle, 4, normalWidths
@@ -315,7 +319,7 @@ def membership(bin, suite):
         # find the closest cluster that is not the dominant cluster
         closestNonD = 999
         for j, c in enumerate(bin.cluster[1:], 1):
-            if c.status == "wannabe" and args.nowannabe:
+            if c.status == "wannabe" and options.nowannabe:
                 continue
             if matches[j] < closestNonD and c.dominance != "dom":
                 closestNonD = matches[j]
@@ -371,10 +375,10 @@ def membership(bin, suite):
 
     theCluster.count += 1
     suite.cluster = theCluster
-    if theCluster.status == "wannabe" and not args.nowannabe:
+    if theCluster.status == "wannabe" and not options.nowannabe:
         outNote.wannabes = 1  # once set, stays set
     pointColor = 0  # will be handled later!!
-    if args.test:
+    if options.test:
         print(" [suite: %s %s 4Ddist== %f, 7Ddist== %f, suiteness==%f] \n" % \
                 (theCluster.name, suite.pointID[:11], closestD, distance, suiteness))
     return theCluster, distance, suiteness, situation, comment, pointMaster, pointColor
@@ -400,7 +404,7 @@ def domSatDistinction(suite, domCluster, satCluster, matches, matchCount):
     if dps > 0 and spd > 0:
         # the trickiest case: point is between dom and sat
         domWidths = normalWidths.copy()
-        if args.satellites:
+        if options.satellites:
             satWidths = satelliteWidths.copy()
         else:
             satWidths = normalWidths.copy()
@@ -498,10 +502,10 @@ output flags: [ -report || -string || -kinemage ]
 default:  -report
 
 input flags: [ -residuein || -suitein  ]
-flags: [ -residuein [ -pointIDfields # ] ] default#=={args.pointidfields}
+flags: [ -residuein [ -pointIDfields # ] ] default#=={options.pointidfields}
  OR 
-flags: [ -suitein [ -anglefields # ] ]   default#=={args.anglefields}
-defaults: -residuein  -pointIDfields {args.pointidfields}
+flags: [ -suitein [ -anglefields # ] ]   default#=={options.anglefields}
+defaults: -residuein  -pointIDfields {options.pointidfields}
 
 The -residuein format:
 label:model:chain:number:ins:type:alpha:beta:gamma:delta:epsilon:zeta

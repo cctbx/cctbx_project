@@ -1,10 +1,11 @@
-from suitenamedefs import Suite, Residue
+from . import Suite, Residue, globals
 
 """
 This module handles reading suites from "dangle" format files
 reading residues from kinemage format files and regrouping them into suites.
 Extraction of suites from loaded cctbx models is handled elsewhere.
 """
+
 
 # Copyright 2021  David C. Richardson
 #
@@ -65,7 +66,7 @@ def stringToFloat(string):
 
 
 def readResidues(inFile):
-    from suiteninit import args
+    options = globals.options
 
     lines = inFile.readlines()
     residues = []
@@ -73,13 +74,16 @@ def readResidues(inFile):
         if len(line.strip()) == 0 or line[0] == "#":  # blank or comment line
             continue
         fields = line.split(":")
-        ids = fields[: args.pointidfields]
+        ids = fields[: options.pointidfields]
         # if ids[3].strip() != "":
         #   print('yes')
 
-        baseCode = fields[args.pointidfields - 1]
-        angleStrings = fields[args.pointidfields :]
-        if ids[args.altidfield].strip() != "" and ids[args.altidfield] != args.altidval:
+        baseCode = fields[options.pointidfields - 1]
+        angleStrings = fields[options.pointidfields :]
+        if (
+            ids[options.altidfield].strip() != ""
+            and ids[options.altidfield] != options.altidval
+        ):
             continue  # lines for the wrong alternative conformation are ignored
 
         base = findBase(baseCode)
@@ -102,6 +106,8 @@ def readKinemageFile(inFile):
     Anything between a @balllist command and a subsequent @ command
     is a data line.
     """
+    options = globals.options
+
     lines = inFile.readlines()
     goodLines = []
     place, line = findPrefixInList(lines, "@dimension")
@@ -109,7 +115,7 @@ def readKinemageFile(inFile):
         items = line.split()
         dimension = len(items) - 1
     else:
-        dimension = args.anglefields
+        dimension = options.anglefields
         place = 0
     while place >= 0:
         begin, line = findPrefixesInList(lines, "@balllist", "@dotlist", place)

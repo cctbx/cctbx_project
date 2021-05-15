@@ -14,8 +14,7 @@
 # limitations under the License.
 
 # dualparse is scaffolding, will go away
-from mmtbx.suitename.dualparse import parseArgs, parseArgs1   # must come before suitename
-
+from mmtbx.suitename import dualparse
 from mmtbx.suitename.suitename import main
 
 from iotbx.cli_parser import CCTBXParser
@@ -26,12 +25,6 @@ from libtbx.utils import multi_out, show_total_time
 #from libtbx.utils import Usage
 
 import os,sys,inspect
-# currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-# parentdir = os.path.dirname(currentdir)
-# sys.path.insert(0, parentdir) 
-
-# from suitename import main
-
 
 def run(args):
   print("-------------------programs/run reporting---------------------")
@@ -41,8 +34,15 @@ def run(args):
   logger2 = multi_out()
   logger2.register('stdout', sys.stdout)
 
-  working_phil = parseArgs(Program, logger)
+  parser = dualparse.parseArgs(Program, logger)
+  working_phil = parser.working_phil
+  print("\n \n")
   working_phil.show()
+  options = working_phil.extract().suitename
+  print(options.anglefields)
+  
+  # now we call into the core suitename itself
+  main(optionsIn=options)
 
 
 class Program(ProgramTemplate):
@@ -57,13 +57,35 @@ class Program(ProgramTemplate):
   # of CCTBX
   master_phil_str = """
     suitename {
-      # output {
+      # input 
+        infile=""
+          .type=str
+          .help="the file to process"
+        anglefields = 9
+          .type=int
+          .help="number of angle fields provided, for textual input only"
+        pointidfields = 7
+          .type=int
+          .help="number of point id fields before the angle fields"
+        ptid=0
+          .type=int
+          .help="number of point id fields before the angle fields"
+        residuein=false
+          .type=bool
+          .help="expect dangle format giving residues"
+        suitein=false
+          .type=bool
+          .help="expect kinemage format giving suites directly"
+      # output 
         string=False  
           .type=bool
           .help="output in string format, 3 characters per suite"
         kinemage=False
           .type=bool
           .help="output in kinemage format, useful for visualization"
+        report=true
+          .type=bool
+          .help="output as a report, giving statistical details"
         chart=False
           .type=bool
           .help="modifier to standard report, output without statistical summary"
@@ -76,8 +98,7 @@ class Program(ProgramTemplate):
         test=False
           .type=bool
           .help="display a lat of additional information about program internals"
-        # }
-      # compute {
+      # compute 
         satellites=False
           .type=bool
           .help="use the special satelliteWidths values for satellites" 
@@ -92,18 +113,15 @@ class Program(ProgramTemplate):
         altid="A"
           .type=str
           .help="which alternate conformer to use (A, B, etc)"
+        altidval="A"
+          .type=str
+          .help="which alternate conformer to use (A, B, etc)"
         altidfield = 3
           .type=int
-          .help="which field gives the alternate conformer code"        
-        # }
-      # input {
-        anglefields = 9
-          .type=int
-          .help="number of angle fields provided, for textual input only"
-        pointidfields = 7
-          .type=int
-          .help="number of point id fields before the angle fields"
-        # }
+          .help="which field gives the alternate conformer code"
+        version=false
+          .type=bool
+          .help="give the version number of suite name"   
       }
 """
   datatypes = ['model', 'phil']  # also 
@@ -113,8 +131,9 @@ class Program(ProgramTemplate):
   def validate(self):
     pass
 
-  def run(self):
-      pass
+  def run(self, args):
+    pass
+
 
   # end of class Program
 
