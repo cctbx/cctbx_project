@@ -706,8 +706,12 @@ def algorithm_2(i_obs, F, x, use_curvatures=True, macro_cycles=10):
     if(use_curvatures):
       m = minimizer(max_iterations=100, calculator=calculator)
     else:
-      upper = flex.double([1.1] + [1]*(x.size()-1))
-      lower = flex.double([0.9] + [-1]*(x.size()-1))
+      #upper = flex.double([1.1] + [1]*(x.size()-1))
+      #lower = flex.double([0.9] + [-1]*(x.size()-1))
+
+      upper = flex.double([1.1] + [5]*(x.size()-1))
+      lower = flex.double([0.9] + [-5]*(x.size()-1))
+
       #upper = flex.double([10] + [5]*(x.size()-1))
       #lower = flex.double([0.1] + [-5]*(x.size()-1))
       #upper = flex.double([10] + [0.65]*(x.size()-1))
