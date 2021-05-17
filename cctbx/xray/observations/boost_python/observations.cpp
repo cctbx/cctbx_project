@@ -36,6 +36,15 @@ namespace {
         merohedral_components);
     }
 
+    static obst twin(obst const& self,
+      cctbx::sgtbx::space_group const& space_group,
+      bool anomalous_flag,
+      scitbx::af::const_ref<cctbx::miller::index<> > const& fo_sq_indices,
+      scitbx::af::const_ref<FloatType> const& fc_sqs)
+    {
+      return self.twin(space_group, anomalous_flag, fo_sq_indices, fc_sqs);
+    }
+
     typedef typename obst::index_twin_component itct;
     static twin_fraction<FloatType> get_twin_fractions(itct const& self) {
       return *self.fraction;
@@ -88,6 +97,7 @@ namespace {
         .def("iterator", &obst::iterate, rbv())
         .def("detwin", detwin)
         .def("customized_detwin", customized_detwin)
+        .def("twin", twin)
         ;
 
       typedef typename obst::iterator itrt;

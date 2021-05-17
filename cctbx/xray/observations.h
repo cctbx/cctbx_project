@@ -368,6 +368,43 @@ namespace cctbx { namespace xray {
           scitbx::af::shared<twin_component<FloatType>*>());
     }
 
+    /* Instead of de-twinning that create a Fo_sq matching Fc_sq, this procedure
+    twins the Fc_sq set to match the Fo_sq set
+    (similar to how this happens in the refinement)
+    */
+    observations twin(
+      sgtbx::space_group const& space_group,
+      bool anomalous_flag,
+      scitbx::af::const_ref<miller::index<> > const& fo_sq_indices,
+      scitbx::af::const_ref<FloatType> const& fc_sqs) const
+    {
+      if (!has_twin_components()) {
+        return *this;
+      }
+      CCTBX_ASSERT(fo_sq_indices.size() == fc_sqs.size());
+      miller::lookup_utils::lookup_tensor<FloatType>
+        twin_map(fo_sq_indices, space_group, anomalous_flag);
+      update_prime_fraction();
+      scitbx::af::shared<FloatType> i_tw(data_.size());
+      scitbx::af::shared<FloatType> s_tw(data_.size());
+      for (int i = 0; i < data_.size(); i++) {
+        long hi = twin_map.find_hkl(indices_[i]);
+        CCTBX_ASSERT(hi >= 0);
+        iterator itr = iterate(i);
+        FloatType fc_sq = fc_sqs[hi] * scale(i);
+        while (itr.has_next()) {
+          index_twin_component twc = itr.next();
+          hi = twin_map.find_hkl(twc.h);
+          CCTBX_ASSERT(hi >= 0);
+          fc_sq += twc.scale() * fc_sqs[hi];
+        }
+        i_tw[i] = fc_sq;
+        s_tw[i] = sigmas_[i];
+      }
+      return observations(space_group, indices_, i_tw, s_tw,
+        scitbx::af::shared<twin_component<FloatType>*>());
+    }
+
     scitbx::af::shared<FloatType> data() const { return data_; }
 
     scitbx::af::shared<FloatType> sigmas() const { return sigmas_; }
