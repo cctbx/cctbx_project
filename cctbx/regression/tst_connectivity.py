@@ -746,7 +746,7 @@ END
   print (sg.all_ops())
   print (sg.info())
   print ("amap0 size:", amap0.data().accessor().focus())
-  STOP()
+  # STOP()
   print (type(amap0.data()))
   threshold = 0.
   preprocess_against_shallow = True
@@ -755,10 +755,10 @@ END
   t0 = time()
   co_amap = maptbx.connectivity(
       map_data=amap0.data(),
-      threshold=threshold,
-      space_group=xrs.space_group(),
-      uc_dimensions=exp_map.accessor().focus(),
-      wrapping=False,
+      # threshold=threshold,
+      # space_group=xrs.space_group(),
+      # uc_dimensions=exp_map.accessor().focus(),
+      # wrapping=False,
       preprocess_against_shallow=preprocess_against_shallow)
   t1 = time()
   print ('amap time:', t1-t0)
@@ -802,19 +802,19 @@ END
 
 if __name__ == "__main__":
   t0 = time.time()
-  # exercise1()  # examples of usage are here!
-  # exercise3()
-  # exercise4()
-  # exercise41()
-  # exercise5()
-  # exercise6()
-  # exercise_volume_cutoff()
-  # exercise_max_values()
-  # exercise_noise_elimination_two_cutoffs() # example and comment
-  # exercise_get_blobs_boundaries()
-  # exercise_expand_mask()
-  # exercise_wrapping()
-  # exercise_preprocess_against_shallow()
-  # exercise_symmetry_related_regions()
-  exercise_work_in_asu()
+  exercise1()  # examples of usage are here!
+  exercise3()
+  exercise4()
+  exercise41()
+  exercise5()
+  exercise6()
+  exercise_volume_cutoff()
+  exercise_max_values()
+  exercise_noise_elimination_two_cutoffs() # example and comment
+  exercise_get_blobs_boundaries()
+  exercise_expand_mask()
+  exercise_wrapping()
+  exercise_preprocess_against_shallow()
+  exercise_symmetry_related_regions()
+  # exercise_work_in_asu()
   print("OK time =%8.3f"%(time.time() - t0))

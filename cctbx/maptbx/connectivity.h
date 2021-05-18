@@ -108,7 +108,7 @@ private:
       af::shared<int3> neighbours,
       const asymmetric_map &amap)
   {
-    std::cout << "  pos " << pos << " -> ";
+    // std::cout << "  pos " << pos << " -> ";
     // border_wrapping is not used here, because we have a sg defined and
     // always 'wrap' using sg.
 
@@ -154,11 +154,11 @@ private:
           // std::cout << "!!! " << asu_pos << "("<< pos_in_cell << ")"<< "!!! ";
         }
         neighbours[i] = asu_pos;
-        std::cout << "\nn_res " << n_res << "\n";
+        // std::cout << "\nn_res " << n_res << "\n";
       }
-      std::cout << "    " << neighbours[i] << " " << in_asu << " ";
+      // std::cout << "    " << neighbours[i] << " " << in_asu << " ";
     }
-    std::cout << "\n";
+    // std::cout << "\n";
 
     // // now checking/moving them to an appropriate place
     // for (int i=0; i<n; i++)
@@ -298,7 +298,7 @@ public:
     bool preprocess_against_shallow=false) //: sg(cctbx::sgtbx::space_group("P 1"))
   {
     //new code
-    std::cout << "Old constructor.\n";
+    // std::cout << "Old constructor.\n";
     // cctbx::sgtbx::space_group dummy_sg = cctbx::sgtbx::space_group("P 1");
     // sg = dummy_sg;
     // old code
@@ -720,7 +720,7 @@ public:
     int cur_region_to_fill = 0;
     for (int i = 1; i < n_regions; i++)
     {
-      std::cout << "loop # " << i <<"\n";
+      // std::cout << "loop # " << i <<"\n";
       // for (int j = 0; j < n_regions; j++) std::cout << remap_list[j] <<", ";
       // std::cout << "\n";
       if (remap_list[i]<0) // not assigned yet
@@ -730,7 +730,7 @@ public:
         // now remap all symmetry-related regions
         int3 cur_coords = region_maximum_coors[i];
         // cur_coords[2] = 17;
-        std::cout << "  cur_coords " << cur_coords << "\n";
+        // std::cout << "  cur_coords " << cur_coords << "\n";
         // If 0th symop is always self, we can start from 1...
         for(size_t symop=0; symop<symops.size(); symop++)
         {
@@ -739,8 +739,8 @@ public:
           scitbx::int3 pos_in_cell(sym_pos);
           translate_into_cell(pos_in_cell, n);
           int reg_on_map = map_new(pos_in_cell);
-          std::cout << "    sym: " << sym_pos << " -> " << pos_in_cell
-                    << " region " << reg_on_map << "\n";
+          // std::cout << "    sym: " << sym_pos << " -> " << pos_in_cell
+          //           << " region " << reg_on_map << "\n";
           // safeguarding a little
           if (remap_list[reg_on_map] < 0 ) {
             mapped_with_self = true;
