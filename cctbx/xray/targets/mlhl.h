@@ -88,7 +88,7 @@ namespace cctbx { namespace xray { namespace targets { namespace mlhl {
           if(std::abs(hl_a) < small && std::abs(hl_b) < small) {
             val = arg;
           }
-          target = scitbx::math::bessel::ln_of_i0(val);
+          target = -scitbx::math::bessel::ln_of_i0(val);
         }
         // calculate target numerically
         else {
