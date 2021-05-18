@@ -55,18 +55,28 @@ from __future__ import absolute_import, division, print_function
 # --------------------------------------------------------------------
 
 from libtbx import adopt_init_args
-from libtbx.utils import to_str
-import xmlrpclib
-import httplib
+from libtbx.utils import to_bytes, to_str
+try:
+  import xmlrpclib
+except ImportError:
+  import xmlrpc.client as xmlrpclib
+try:
+  import httplib
+except ImportError:
+  import http.client as httplib
 import socket
 import subprocess
 import threading
 import time
-import string
 import random
 import os
 import sys
 from six.moves import range
+
+# use unicode check to avoid bytes in Python 3
+check_type = bytes
+if sys.version_info.major == 2:
+  check_type = unicode
 
 # http://stackoverflow.com/questions/372365/set-timeout-for-xmlrpclib-serverproxy
 class TimeoutTransport(xmlrpclib.Transport):
@@ -131,12 +141,12 @@ class ServerProxy(object):
       (methodname, params) = self._pending.pop(0)
 
       # remove any unicode types in params
-      if (isinstance(params, unicode)):
+      if (isinstance(params, check_type)):
         params = to_str(params)
       elif (isinstance(params, list) or isinstance(params, tuple)):
         new_params = list(params)
         for i in range(len(params)):
-          if (isinstance(params[i], unicode)):
+          if (isinstance(params[i], check_type)):
             new_params[i] = to_str(params[i])
           else:
             new_params[i] = params[i]
@@ -153,7 +163,7 @@ class ServerProxy(object):
         response = self.__transport.request(
             self.__host,
             self.__handler,
-            request,
+            to_bytes(request),
             verbose=self.__verbose
         )
 
@@ -262,7 +272,7 @@ class external_program_server(object):
         valid_ports.extend([ n for n in range(start, end) ])
       i = int(random.random() * (len(valid_ports) - 1))
       self._port = valid_ports[i]
-      prog_port_env = "CCTBX_%s_PORT" % string.upper(self.program_id)
+      prog_port_env = "CCTBX_%s_PORT" % self.program_id.upper()
       os.environ[prog_port_env] = str(self._port)
       if self.timeout is not None :
         os.environ["CCTBX_XMLRPC_TIMEOUT"] = str(self.timeout)

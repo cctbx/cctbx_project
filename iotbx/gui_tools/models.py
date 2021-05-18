@@ -5,7 +5,7 @@ from __future__ import absolute_import, division, print_function
 import iotbx.gui_tools
 from iotbx import file_reader
 from libtbx.utils import Sorry
-import cStringIO
+from six.moves import cStringIO as StringIO
 import os, tempfile
 
 model_file_types = {"pdb" : "PDB", "mmcif" : "mmCIF", }
@@ -108,7 +108,7 @@ class model_handler(iotbx.gui_tools.manager):
 
   def combine_pdb_files(self, file_names):
     symm = None
-    pdb_str = cStringIO.StringIO()
+    pdb_str = StringIO()
     hierarchies = []
     for file_name in file_names :
       pdb_file = self._cached_input_files[file_name]

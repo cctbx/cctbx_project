@@ -63,7 +63,8 @@ def get_data(pdbf, mtzf):
   xrs = pdb_inp.xray_structure_simple()
   #
   selection = xrs.scatterers().extract_occupancies() > 0
-  selection = selection | xrs.hd_selection()
+  xrs = xrs.select(selection)
+  selection = ~xrs.hd_selection()
   xrs = xrs.select(selection)
   #
   #xrs.switch_to_neutron_scattering_dictionary()
@@ -87,6 +88,10 @@ def get_data(pdbf, mtzf):
     f_obs          = f_obs,
     r_free_flags   = r_free_flags,
     xray_structure = xrs)
+  fmodel.update_all_scales(
+    remove_outliers         = True,
+    apply_scale_k1_to_f_obs = True
+    )
   def f_obs():        return fmodel.f_obs()
   def r_free_flags(): return fmodel.r_free_flags()
   def f_calc():       return fmodel.f_calc()
@@ -120,16 +125,26 @@ class compute(object):
     self.log = log
     # Get objects out of files, and set grid step
     D = get_data(pdbf, mtzf)
-    step = min(0.4, D.f_obs().d_min()/4)
     #
     print("-"*79, file=log)
     print("A-2013, all defaults (except set binning)", file=log)
     f_mask = mosaic.get_f_mask(
       xrs  = D.xray_structure,
       ma   = D.f_obs(),
-      step = D.f_obs().d_min()/4)
+      step = min(0.4, D.f_obs().d_min()/4))
     self.fmodel_2013 = get_fmodel(
-      o = D, f_mask = f_mask, remove_outliers = True, log = self.log).fmodel
+      o = D, f_mask = f_mask, remove_outliers = False, log = self.log).fmodel
+    #
+    #print("-"*79, file=log)
+    #print("A-2013, step=0.6 rsolv=1.1 rshrink=0.9", file=log)
+    #f_mask = mosaic.get_f_mask(
+    #  xrs      = D.xray_structure,
+    #  ma       = D.f_obs(),
+    #  step     = 0.6,
+    #  r_sol    = 1.1,
+    #  r_shrink = 0.9)
+    #self.fmodel_2013_opt = get_fmodel(
+    #  o = D, f_mask = f_mask, remove_outliers = False, log = self.log).fmodel
     #
     # Compute masks and F_masks (Mosaic)
     print("-"*79, file=log)

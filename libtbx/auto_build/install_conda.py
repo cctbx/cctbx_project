@@ -353,7 +353,10 @@ an error is encountered, please check that your conda installation and
 environments exist and are working.
 """
         warnings.warn(message, RuntimeWarning)
-      if conda_info['conda_version'] < '4.4':
+      split_version = conda_info['conda_version'].split('.')
+      major_version = int(split_version[0])
+      minor_version = int(split_version[1])
+      if major_version < 4 or (major_version == 4 and minor_version < 4):
         raise RuntimeError("""
 CCTBX programs require conda version 4.4 and greater to make use of the
 common compilers provided by conda. Please update your version with

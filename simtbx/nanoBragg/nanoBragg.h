@@ -21,6 +21,7 @@
 #include <boost/math/special_functions/fpclassify.hpp>
 #include <boost_adaptbx/python_streambuf.h>
 #include <omptbx/omp_or_stubs.h>
+#include <simtbx/nanoBragg/nanotypes.h>
 
 using boost::math::erf;
 using boost::math::isnan;
@@ -126,11 +127,6 @@ double sincg(double x, double N);
 double sinc3(double x);
 /* Fourier transform of a spherically-truncated lattice */
 double sinc_conv_sinc3(double x);
-
-/* typedefs to help remember options */
-typedef enum { SAMPLE, BEAM } pivot;
-typedef enum { UNKNOWN, SQUARE, ROUND, GAUSS, GAUSS_ARGCHK, TOPHAT, FIBER } shapetype;
-typedef enum { CUSTOM, ADXV, MOSFLM, XDS, DIALS, DENZO } convention;
 
 /* math functions for point spread */
 /* 2D Gaussian integral=1 */

@@ -581,7 +581,7 @@ toStringTT  (pANTLR3_TOKEN_STREAM ts, pANTLR3_COMMON_TOKEN start, pANTLR3_COMMON
 {
         if      (start != NULL && stop != NULL)
         {
-                return  ts->toStringSS(ts, (ANTLR3_UINT32)start->index, (ANTLR3_UINT32)stop->index);
+                return  ts->toStringSS(ts, (ANTLR3_UINT32)start->getTokenIndex(start), (ANTLR3_UINT32)stop->getTokenIndex(stop));
         }
         else
         {
@@ -748,7 +748,7 @@ getTokensSet    (pANTLR3_COMMON_TOKEN_STREAM tokenStream, ANTLR3_UINT32 start, A
         tok = tokenStream->tstream->get(tokenStream->tstream, i);
 
         if  (      types == NULL
-                || types->isMember(types, tok->type == ANTLR3_TRUE)
+                || types->isMember(types, tok->getType(tok) == ANTLR3_TRUE)
             )
         {
             filteredList->put(filteredList, n++, (void *)tok, NULL);
@@ -808,7 +808,7 @@ _LA  (pANTLR3_INT_STREAM is, ANTLR3_INT32 i)
 
         if      (tok != NULL)
         {
-                return  tok->type;
+                return  tok->getType(tok);
         }
         else
         {
@@ -974,12 +974,12 @@ fillBuffer(pANTLR3_COMMON_TOKEN_STREAM tokenStream) {
          */
 
         if (tokenStream->discardSet != NULL
-            && tokenStream->discardSet->get(tokenStream->discardSet, tok->type) != NULL)
+            && tokenStream->discardSet->get(tokenStream->discardSet, tok->getType(tok)) != NULL)
         {
             discard = ANTLR3_TRUE;
         }
         else if (   tokenStream->discardOffChannel == ANTLR3_TRUE
-                 && tok->channel != tokenStream->channel
+                 && tok->getChannel(tok) != tokenStream->channel
                  )
         {
             discard = ANTLR3_TRUE;
@@ -988,13 +988,13 @@ fillBuffer(pANTLR3_COMMON_TOKEN_STREAM tokenStream) {
         {
             /* See if this type is in the override map
              */
-            channelI = tokenStream->channelOverrides->get(tokenStream->channelOverrides, tok->type + 1);
+            channelI = tokenStream->channelOverrides->get(tokenStream->channelOverrides, tok->getType(tok) + 1);
 
             if (channelI != NULL)
             {
                 /* Override found
                  */
-                tok->channel = ANTLR3_UINT32_CAST(channelI) - 1;
+                tok->setChannel(tok, ANTLR3_UINT32_CAST(channelI) - 1);
             }
         }
 
@@ -1004,7 +1004,7 @@ fillBuffer(pANTLR3_COMMON_TOKEN_STREAM tokenStream) {
         {
             /* Add it, indicating that we will delete it and the table should not
              */
-            tok->index = index;
+            tok->setTokenIndex(tok, index);
             tokenStream->p++;
             tokenStream->tokens->add(tokenStream->tokens, (void *) tok, NULL);
             index++;

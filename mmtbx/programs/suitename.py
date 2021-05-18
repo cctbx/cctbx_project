@@ -1,30 +1,76 @@
-# LIBTBX_SET_DISPATCHER_NAME phenix.suitename
-# LIBTBX_SET_DISPATCHER_NAME molprobity.suitename
 
-#import libtbx.load_env
-#from libtbx.utils import Usage
+#                Copyright 2021  Richardson Lab
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# dualparse is scaffolding, will go away
+from mmtbx.suitename import dualparse, suites
+from mmtbx.suitename.suitename import main
+
 from iotbx.cli_parser import CCTBXParser
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import multi_out, show_total_time
 
-import os,sys,inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0, parentdir) 
+#import libtbx.load_env
+#from libtbx.utils import Usage
 
-from dualparse import parseArgs, parseArgs1   # must come before suitename
-from suitename import main  # from suitename.py in PARENT directory
-
+import os, sys
 
 def run(args):
+  print("-------------------programs/run reporting---------------------")
   # create parser
   logger = multi_out()
   logger.register('stderr', sys.stderr)
   logger2 = multi_out()
   logger2.register('stdout', sys.stdout)
 
-  working_phil = parseArgs(Program, logger)
-  working_phil.show()
+  parser = dualparse.parseArgs(Program, logger)
+  working_phil = parser.working_phil
+  # print("\n \n")
+  # working_phil.show()
+  options = working_phil.extract().suitename
+  
+  # now we call into the core of suitename itself
+  if options.infile == "" or options.residuein or options.suitein:
+      # let the core figure out the input
+      main(optionsIn=options)
+  else:
+      type = analyzeFileType(options.infile)
+      assert type != "", "file extension not recognized"
+      if type == "pdb":
+          # use cctbx to load the pdb file
+          # then operate on the model loaded
+          suites.main(options=options)
+      else:
+        # help the core figure out the input file type
+        if type == "kinemage":
+          options.suitein = True
+        elif type == "dangle":
+          options.residuein = True
+        main(optionsIn=options)
+  
+extensionList={
+    "pdb": "pdb",
+    "kin": "kinemage",
+    "dangle": "dangle",
+    "suitegeom": "dangle",
+}
+
+def analyzeFileType(filename):
+    base, extension = os.path.splitext(filename)
+    extension = extension[1:]
+    type = extensionList.get(extension, "")
+    return type
 
 
 class Program(ProgramTemplate):
@@ -39,13 +85,35 @@ class Program(ProgramTemplate):
   # of CCTBX
   master_phil_str = """
     suitename {
-      # output {
+      # input 
+        infile=""
+          .type=str
+          .help="the file to process"
+        anglefields = 9
+          .type=int
+          .help="number of angle fields provided, for textual input only"
+        pointidfields = 7
+          .type=int
+          .help="number of point id fields before the angle fields"
+        ptid=0
+          .type=int
+          .help="number of point id fields before the angle fields"
+        residuein=false
+          .type=bool
+          .help="expect dangle format giving residues"
+        suitein=false
+          .type=bool
+          .help="expect kinemage format giving suites directly"
+      # output 
         string=False  
           .type=bool
           .help="output in string format, 3 characters per suite"
         kinemage=False
           .type=bool
           .help="output in kinemage format, useful for visualization"
+        report=true
+          .type=bool
+          .help="output as a report, giving statistical details"
         chart=False
           .type=bool
           .help="modifier to standard report, output without statistical summary"
@@ -58,8 +126,7 @@ class Program(ProgramTemplate):
         test=False
           .type=bool
           .help="display a lat of additional information about program internals"
-        # }
-      # compute {
+      # compute 
         satellites=False
           .type=bool
           .help="use the special satelliteWidths values for satellites" 
@@ -74,18 +141,15 @@ class Program(ProgramTemplate):
         altid="A"
           .type=str
           .help="which alternate conformer to use (A, B, etc)"
+        altidval="A"
+          .type=str
+          .help="which alternate conformer to use (A, B, etc)"
         altidfield = 3
           .type=int
-          .help="which field gives the alternate conformer code"        
-        # }
-      # input {
-        anglefields = 9
-          .type=int
-          .help="number of angle fields provided, for textual input only"
-        pointidfields = 7
-          .type=int
-          .help="number of point id fields before the angle fields"
-        # }
+          .help="which field gives the alternate conformer code"
+        version=false
+          .type=bool
+          .help="give the version number of suite name"   
       }
 """
   datatypes = ['model', 'phil']  # also 
@@ -95,8 +159,9 @@ class Program(ProgramTemplate):
   def validate(self):
     pass
 
-  def run(self):
-      pass
+  def run(self, args):
+    pass
+
 
   # end of class Program
 

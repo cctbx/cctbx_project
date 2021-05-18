@@ -2154,6 +2154,13 @@ class manager(manager_mixin):
     assert approx_equal(flex.min(k_mask_l), flex.max(k_mask_l), 1.e-3)
     return k_mask_l[0]
 
+  def r_n_lowest(self, n=500):
+    ds = self.f_obs().d_spacings().data()
+    sel = flex.sort_permutation(ds,reverse=True)
+    ds = ds.select(sel)
+    d_min = ds[n]
+    return self.resolution_filter(d_min=d_min).r_work()
+
   def r_work_low(self):
     f = self.select(self.bin_selections[0])
 

@@ -140,14 +140,15 @@ class IndexingJob(Job):
       trial_params = phil_scope.fetch(parse(phil_str)).extract()
 
       image_format = self.rungroup.format
-      if "rayonix" in self.rungroup.detector_address.lower():
-        mode = "rayonix"
-      elif "cspad" in self.rungroup.detector_address.lower():
-        mode = "cspad"
-      elif "jungfrau" in self.rungroup.detector_address.lower():
-        mode = "jungfrau"
-      else:
-        mode = "other"
+      mode = "other"
+      if self.app.params.facility.name == 'lcls':
+        if "rayonix" in self.rungroup.detector_address.lower():
+          mode = "rayonix"
+        elif "cspad" in self.rungroup.detector_address.lower():
+          mode = "cspad"
+        elif "jungfrau" in self.rungroup.detector_address.lower():
+          mode = "jungfrau"
+
       if hasattr(trial_params, 'format'):
         trial_params.format.file_format = image_format
         trial_params.format.cbf.mode = mode
@@ -191,7 +192,7 @@ class IndexingJob(Job):
       experiment_tag            = self.app.params.experiment_tag,
       calib_dir                 = self.rungroup.calib_dir,
       nproc                     = self.app.params.mp.nproc,
-      nnodes                    = self.app.params.mp.nnodes,
+      nnodes                    = self.app.params.mp.nnodes_index or self.app.params.mp.nnodes,
       nproc_per_node            = self.app.params.mp.nproc_per_node,
       queue                     = self.app.params.mp.queue or None,
       env_script                = self.app.params.mp.env_script[0] if self.app.params.mp.env_script is not None and len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
@@ -215,6 +216,8 @@ class IndexingJob(Job):
       # always use mpi for 'lcls'
       use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls')
     )
+    if self.app.params.mp.method == 'sge':
+      d['use_mpi'] = False
     if self.app.params.db.password is not None and len(self.app.params.db.password) == 0:
       d['password'] = None
     else:
@@ -640,7 +643,7 @@ class ScalingJob(Job):
       target                    = target_phil_path,
       # always use mpi for 'lcls'
       use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls'),
-      nnodes                    = self.app.params.mp.nnodes,
+      nnodes                    = self.app.params.mp.nnodes_scale or self.app.params.mp.nnodes,
       wall_time                 = self.app.params.mp.wall_time,
     )
 
@@ -673,8 +676,6 @@ class ScalingJob(Job):
     self.write_submit_phil(submit_phil_path, target_phil_path)
 
     args = [submit_phil_path]
-    if self.app.params.facility.name not in ['lcls']:
-      args.append(self.run.path)
     return submit_script().run(args)
 
 class MergingJob(Job):
@@ -727,7 +728,14 @@ class MergingJob(Job):
 
     command = "cctbx.xfel.merge %s"%target_phil_path
     submit_path = os.path.join(output_path, "submit.sh")
-    return do_submit(command, submit_path, output_path, self.app.params.mp, identifier_string)
+
+    params = self.app.params.mp
+    if params.nnodes_merge:
+      import copy
+      params = copy.deepcopy(params)
+      params.nnodes = params.nnodes_merge
+
+    return do_submit(command, submit_path, output_path, params, identifier_string)
 
 # Support classes and functions for job submission
 

@@ -16,7 +16,7 @@ import sys
 class energies_iso(scitbx.restraints.energies):
 
   def __init__(self,
-        geometry_restraints_manager,
+        plain_pair_sym_table,
         xray_structure,
         parameters,
         use_u_local_only,
@@ -26,10 +26,6 @@ class energies_iso(scitbx.restraints.energies):
         gradients=None,
         normalization=False,
         collect=False):
-    assert geometry_restraints_manager.plain_pair_sym_table is not None
-    assert geometry_restraints_manager.plain_pairs_radius is not None
-    assert parameters.sphere_radius \
-        <= geometry_restraints_manager.plain_pairs_radius
     scitbx.restraints.energies.__init__(self,
       compute_gradients=compute_gradients,
       gradients=gradients,
@@ -47,7 +43,7 @@ class energies_iso(scitbx.restraints.energies):
     else:
       selection = ~xray_structure.hd_selection()
     energies = crystal.adp_iso_local_sphere_restraints_energies(
-      pair_sym_table=geometry_restraints_manager.plain_pair_sym_table,
+      pair_sym_table=plain_pair_sym_table,
       orthogonalization_matrix=unit_cell.orthogonalization_matrix(),
       sites_frac=xray_structure.sites_frac(),
       u_isos=u_isos,

@@ -1991,7 +1991,7 @@ class PDBTreeFrame(wx.Frame):
     file_name = self.path_mgr.select_file(
       parent=self,
       message="Save PDB file",
-      style=wx.SAVE,
+      style=wx.FD_SAVE,
       wildcard=file_reader.get_wildcard_strings(["pdb"]),
       current_file=output_file)
     save_header = self._header_box.GetValue()

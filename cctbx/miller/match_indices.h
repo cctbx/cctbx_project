@@ -3,26 +3,40 @@
 
 #include <cctbx/miller/match.h>
 #include <cctbx/miller.h>
+#include <map>
 
 namespace cctbx { namespace miller {
+
+  typedef std::map<index<>, std::size_t, fast_less_than<> > lookup_map_type;
 
   class match_indices
   {
     public:
+
       match_indices() {}
+
+      match_indices(af::shared<index<> > const& indices_0);
 
       match_indices(af::shared<index<> > const& indices_0,
                     af::shared<index<> > const& indices_1);
 
+      void
+      match_cached(af::shared<index<> > const& indices_1);
+
+      void
+      match_cached_fast(af::shared<index<> > const& indices_1);
+
       af::shared<pair_type>
       pairs() const
       {
+        CCTBX_ASSERT(pairs_are_valid_);
         return pairs_;
       }
 
       af::shared<std::size_t>
       singles(std::size_t i) const
       {
+        CCTBX_ASSERT(singles_are_valid_);
         if (i) return singles_[1];
         return singles_[0];
       }
@@ -30,6 +44,7 @@ namespace cctbx { namespace miller {
       bool
       have_singles() const
       {
+        CCTBX_ASSERT(singles_are_valid_);
         return singles_[0].size() || singles_[1].size();
       }
 
@@ -38,6 +53,8 @@ namespace cctbx { namespace miller {
       std::size_t
       size_processed(std::size_t i) const
       {
+        CCTBX_ASSERT(singles_are_valid_);
+        CCTBX_ASSERT(pairs_are_valid_);
         return pairs_.size() + singles_[i].size();
       }
 
@@ -127,6 +144,9 @@ namespace cctbx { namespace miller {
       af::tiny<af::shared<index<> >, 2> miller_indices_;
       af::shared<pair_type> pairs_;
       af::tiny<af::shared<std::size_t>, 2> singles_;
+      lookup_map_type lookup_map_;
+      bool singles_are_valid_;
+      bool pairs_are_valid_;
   };
 
 }} // namespace cctbx::miller

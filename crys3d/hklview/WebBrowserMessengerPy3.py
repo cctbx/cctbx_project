@@ -45,7 +45,7 @@ class MyWebSocketServerProtocol(websockets.server.WebSocketServerProtocol):
 class WBmessenger(object):
   def __init__(self, viewerparent ):
     self.parent = viewerparent
-    self.ProcessMessage = self.parent.ProcessMessage
+    self.ProcessBrowserMessage = self.parent.ProcessBrowserMessage
     self.websockport = self.parent.websockport
     self.sleeptime = self.parent.sleeptime
     self.mprint = self.parent.mprint
@@ -88,7 +88,7 @@ class WBmessenger(object):
                                       self.websockport, #ssl=ssl_context,
                                       create_protocol=MyWebSocketServerProtocol,
                                       )
-      self.mprint("starting WebSockHandler on port %s" %str(self.websockport), verbose=1)
+      self.mprint("Starting websocket server on port %s" %str(self.websockport))
       #time.sleep(20)
       time.sleep(0.2)
       # run_forever() blocks execution so put in a separate thread
@@ -197,7 +197,7 @@ class WBmessenger(object):
     while self.isterminating == False:
       if len(self.clientmsgqueue):
         pendingmessage = self.clientmsgqueue[0]
-        self.ProcessMessage(pendingmessage)
+        self.ProcessBrowserMessage(pendingmessage)
         self.clientmsgqueue.remove( self.clientmsgqueue[0] )
       time.sleep(self.sleeptime)
     self.mprint("Shutting down WebsocketClientMessageThread", verbose=1)

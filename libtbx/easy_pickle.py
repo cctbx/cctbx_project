@@ -118,3 +118,39 @@ def dump_args(*args, **keyword_args):
   Dumps args and keyword_args to args.pickle.
   """
   dump("args.pickle", (args, keyword_args))
+
+def fix_py2_pickle(p):
+  '''
+  Fix pickles from Python 2
+
+  Parameters
+  ----------
+  p: pickle
+
+  Returns
+  -------
+  p: the fixed pickle
+  '''
+  from collections.abc import Mapping, MutableSequence
+  if isinstance(p, Mapping):
+    for key in list(p.keys()):
+      if isinstance(key, bytes):
+        str_key = key.decode('utf8')
+        p[str_key] = p[key]
+        del p[key]
+        key = str_key
+      p[key] = fix_py2_pickle(p[key])
+  if isinstance(p, MutableSequence):
+    for i in range(len(p)):
+      p[i] = fix_py2_pickle(p[i])
+
+  if hasattr(p, '__dict__'):
+    p.__dict__ = fix_py2_pickle(p.__dict__)
+  # miller array object
+  if hasattr(p, '_info') and hasattr(p._info, 'labels'):
+    p._info.labels = fix_py2_pickle(p._info.labels)
+
+  if isinstance(p, bytes):
+    p = p.decode('utf8')
+
+  return p

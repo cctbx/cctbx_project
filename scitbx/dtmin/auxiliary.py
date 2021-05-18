@@ -83,7 +83,7 @@ class Auxiliary:
       return reparameterized_bounds
 
   def reparameterized_target_gradient(self):
-    """
+    r"""
     Returns the function and the reparameterized gradient
 
     When we are finding the gradient of f with respect to the reparameterized

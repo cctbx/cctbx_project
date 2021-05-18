@@ -197,7 +197,11 @@ model
 
     Returns
     -------
-      Nothing
+      filename: str
+        The actual output filename. This may differ from the
+        get_default_output_model_filename function since that sets the
+        extension to cif by default. This function may alter the extension
+        based on the desired format.
     '''
     if isinstance(model_str, mmtbx.model.manager):
       if format == 'cif' or (
@@ -211,8 +215,8 @@ model
       filename = self.get_default_output_model_filename(extension=extension)
     elif extension is not Auto and (not filename.endswith(extension)):
       filename += extension
-    self._write_text(ModelDataManager.datatype, model_str,
-                     filename=filename, overwrite=overwrite)
+    return self._write_text(ModelDataManager.datatype, model_str,
+                            filename=filename, overwrite=overwrite)
 
   def update_pdb_interpretation_for_model(
     self, filename, pdb_interpretation_extract):

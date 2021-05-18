@@ -7,7 +7,7 @@ class JobStopper(object):
     self.queueing_system = queueing_system
     if self.queueing_system in ["mpi", "lsf"]:
       self.command = "bkill %s"
-    elif self.queueing_system == 'pbs':
+    elif self.queueing_system in ["pbs", "sge"]:
       self.command = "qdel %s"
     elif self.queueing_system == 'local':
       pass
@@ -48,6 +48,8 @@ class QueueInterrogator(object):
       self.command = "bjobs %s | grep %s | awk '{ print $3 }'"
     elif self.queueing_system == 'pbs':
       self.command = "qstat -H %s | tail -n 1 | awk '{ print $10 }'"
+    elif self.queueing_system == 'sge':
+      self.command = "qstat |grep %s | awk '{print $5}'" # previous one "qstat -j %s | awk '/job_state/ {print $3}'"
     elif self.queueing_system == 'local':
       pass
     elif self.queueing_system == 'slurm' or  self.queueing_system == 'shifter':
@@ -67,6 +69,8 @@ class QueueInterrogator(object):
       result = easy_run.fully_buffered(command=self.command % \
         (submission_id, submission_id))
     elif self.queueing_system == 'pbs':
+      result = easy_run.fully_buffered(command=self.command%submission_id)
+    elif self.queueing_system == 'sge':
       result = easy_run.fully_buffered(command=self.command%submission_id)
     elif self.queueing_system == 'local':
       import psutil
@@ -132,7 +136,7 @@ class LogReader(object):
   log file termination, and returns an error message if the log file cannot be found or read."""
   def __init__(self, queueing_system):
     self.queueing_system = queueing_system
-    if self.queueing_system in ["mpi", "lsf", "pbs", "local"]:
+    if self.queueing_system in ["mpi", "lsf", "pbs", "local", "sge"]:
       self.command = "tail -23 %s | head -1"
     elif self.queueing_system in ["slurm", "shifter", "htcondor"]:
       pass # no log reader used
@@ -197,6 +201,20 @@ class PBSSubmissionTracker(SubmissionTracker):
     else:
       print("Found an unknown status", status)
 
+class SGESubmissionTracker(SubmissionTracker):
+  def _track(self, submission_id, log_path):
+    status = self.interrogator.query(submission_id)
+    if status == "":
+      return "DONE"
+    elif status in ["s", "t", "S"]:
+      return "PEND"
+    elif status == "r":
+      return "RUN"
+    elif status == "qw":
+      return "WAITING"
+    else:
+      print("Found an unknown status", status)
+
 class SlurmSubmissionTracker(SubmissionTracker):
   def _track(self, submission_id, log_path):
     return self.interrogator.query(submission_id)
@@ -216,6 +234,8 @@ class TrackerFactory(object):
       return LSFSubmissionTracker(params)
     elif params.mp.method == 'pbs':
       return PBSSubmissionTracker(params)
+    elif params.mp.method == 'sge' :
+      return SGESubmissionTracker(params)
     elif params.mp.method == 'local':
       return LocalSubmissionTracker(params)
     elif params.mp.method == 'slurm':

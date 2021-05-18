@@ -222,7 +222,7 @@ warehouse = {
   'dxtbx': {
     'git-auth': 'git@github.com:cctbx/dxtbx',
     'git-anon': 'https://github.com/cctbx/dxtbx.git',
-    'http-zip': { 'url': 'https://github.com/cctbx/dxtbx/archive/master.zip', 'trim': 1 },
+    'http-zip': { 'url': 'https://github.com/cctbx/dxtbx/archive/main.zip', 'trim': 1 },
   },
   'fast_dp': {
     'pip-auth': 'git@github.com:/DiamondLightSource/fast_dp',

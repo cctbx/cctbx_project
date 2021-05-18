@@ -484,9 +484,10 @@ class structure_base(object):
     for chain in hierarchy.models()[0].chains():
       if chain.id == self.start_chain_id:
         for rg in chain.residue_groups():
-          if rg.resseq == start_resseq:
+          resname = rg.atom_groups()[0].resname
+          if rg.resseq == start_resseq and self.start_resname == resname:
             start_present = True
-          if rg.resseq == end_resseq:
+          if rg.resseq == end_resseq and self.end_resname == resname:
             end_present = True
           if start_present and end_present:
             return True

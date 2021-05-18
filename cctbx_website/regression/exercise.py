@@ -5,7 +5,7 @@ import shutil
 import libtbx.load_env
 from libtbx import easy_run
 
-def exercise(script, tmp_path):
+def exercise(script, tmp_path, use_pdb_file=False):
   regression_dir = os.path.dirname(os.path.abspath(__file__))
   root_dir = os.path.dirname(regression_dir)
   examples_dir = os.path.join(root_dir, 'examples')
@@ -19,11 +19,26 @@ def exercise(script, tmp_path):
   results = list()
   skipped = False
 
-  if script in [] and not libtbx.env.has_module('phenix'):
+  if script in ["script_ideal_ss.py"] and not libtbx.env.has_module('phenix'):
+    print("phenix not available, skipping test")
     skipped = True
+  if script in ["script_compare_ss.py"] and not libtbx.env.has_module('ksdssp'):
+    if (not libtbx.env.has_module("ksdssp")):
+      print("ksdssp not available, skipping test)")
+      skipped = True
   if not skipped:
-  # run script from html file
-    cmd = 'libtbx.python ' + os.path.join(examples_dir, script)
+    # Some scripts use a PDB file, use one from phenix_regression if available
+    if use_pdb_file:
+      pdb_file = libtbx.env.find_in_repositories(
+        relative_path="phenix_regression/pdb/1ywf.pdb",
+        test=os.path.isfile)
+      if (pdb_file is None):
+        print("phenix_regression not available, skipping test")
+        return
+      cmd = 'libtbx.python ' + os.path.join(examples_dir, script) + ' ' + pdb_file
+    else:
+      cmd = 'libtbx.python ' + os.path.join(examples_dir, script)
+    # run script from html file
     r = easy_run.fully_buffered(cmd)
     results = [script, r.return_code, r.stdout_lines, r.stderr_lines]
 
@@ -35,14 +50,16 @@ def exercise(script, tmp_path):
 
   # parse results to see if it failed
   return_code = 0
-  if (results[1] == 0): re = 'ran successfully'
-  else: re = 'failed'
-  print('%s %s  ' % (results[0], re))
-  if results[1] != 0:
-    return_code = 1
-    for line in results[3]:
-      print('\t', line, file=sys.stderr)
+  if results:
+    if (results[1] == 0): re = 'ran successfully'
+    else: re = 'failed'
+    print('%s %s  ' % (results[0], re))
+    if results[1] != 0:
+      return_code = 1
+      for line in results[3]:
+        print('\t', line, file=sys.stderr)
   if skipped:
     print('%s skipped' % script)
 
   return return_code
+

@@ -66,6 +66,7 @@ def check_other_in_database(metal, other):
 
 def get_metal_coordination_proxies(pdb_hierarchy,
                                    nonbonded_proxies,
+                                   sorted_nb_proxies_res=None,
                                    prefix=None,
                                    params=None,
                                    log=sys.stdout,
@@ -84,10 +85,13 @@ def get_metal_coordination_proxies(pdb_hierarchy,
   mbonds = {}
   atoms = pdb_hierarchy.atoms()
   sites_cart = atoms.extract_xyz()
-  get_sorted_result = nonbonded_proxies.get_sorted(
-      by_value="delta",
-      sites_cart=sites_cart)
-  if get_sorted_result is None: return mbonds
+  get_sorted_result = sorted_nb_proxies_res
+  if get_sorted_result is None:
+    get_sorted_result = nonbonded_proxies.get_sorted(
+        by_value="delta",
+        sites_cart=sites_cart)
+    # its never None, it is always a tuple ([], int)
+    if get_sorted_result is None: return mbonds
   sorted_nonb, n_not_shown = get_sorted_result
   n_nonb = len(sorted_nonb)
   i = 0

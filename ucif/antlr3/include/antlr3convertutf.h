@@ -137,9 +137,6 @@ typedef enum {
 /* This is for C++ and does no harm in C */
 #ifdef __cplusplus
 extern "C" {
-#else
-#  define false               ANTLR3_FALSE
-#  define true                ANTLR3_TRUE
 #endif
 
 ConversionResult ConvertUTF8toUTF16 (

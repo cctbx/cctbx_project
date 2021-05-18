@@ -166,7 +166,6 @@ secondary_structure
 master_phil_str = sec_str_master_phil_str # for docs
 
 sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
-default_params = sec_str_master_phil.fetch().extract()
 
 class manager(object):
   def __init__(self,
@@ -209,6 +208,10 @@ class manager(object):
       self.selection_cache = pdb_hierarchy.atom_selection_cache()
     self.pdb_atoms = atoms
     self.initialize()
+
+  @staticmethod
+  def get_default_ss_params():
+    return sec_str_master_phil.fetch().extract()
 
   def as_phil_str(self, master_phil=sec_str_master_phil):
     # used in secondary_structure_restraints...

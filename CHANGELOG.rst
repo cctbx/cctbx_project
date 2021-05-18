@@ -1,3 +1,24 @@
+2021.3
+======
+
+* Initial support for native compilation on Apple Silicon
+* Real-space refinement of occupancies and isotropic ADP
+* Improvements in map_model_manager
+
+  * Split up map and model by NCS groups
+  * Create new map_model_manager with resampled maps
+
+2021.2
+======
+
+* Improved remediator code for converting PDB version 2 format to version 3
+* Add compilation support for Boost 1.72 and 1.74
+
+2021.1
+======
+
+* Improvements to cctbx.HKLviewer for displaying reciprocal space data
+
 2020.12
 =======
 

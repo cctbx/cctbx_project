@@ -33,6 +33,8 @@ class Minimizer(object):
                     calculated by finite differences
     """
 
+    refine_object.output_level = self.output_level
+
     self.check_input(protocol, ncyc, minimizer_type)
 
     refine_object.initial_statistics()
