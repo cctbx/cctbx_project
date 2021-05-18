@@ -2,6 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 from dials.command_line.stills_process import Processor
 from xfel.ui.db.dxtbx_db import log_frame, dxtbx_xfel_db_application
+from xfel.ui.db.run import Run
+from xfel.ui.db.trial import Trial
 
 class DialsProcessorWithLogging(Processor):
   '''Overrides for steps of dials processing of stills with XFEL GUI database logging.'''
@@ -10,23 +12,73 @@ class DialsProcessorWithLogging(Processor):
     super(DialsProcessorWithLogging, self).__init__(params, composite_tag, rank)
     self.tt_low = None
     self.tt_high = None
+    if self.params.experiment_tag is None:
+      return
     if params.db.logging_batch_size:
+      from mpi4py import MPI
+      comm = MPI.COMM_WORLD
+
       self.queries = []
+      self.rank = rank
+
+      if self.rank == 0:
+        db_app = dxtbx_xfel_db_application(params, cache_connection=False)
+        run = db_app.get_run(run_number=self.params.input.run_num)
+        run_id = run.id
+        rund = run._db_dict
+        trial = db_app.get_trial(trial_number = params.input.trial)
+        trial_id = trial.id
+        triald = trial._db_dict
+      else:
+        db_app = None
+        run_id = None
+        rund = None
+        trial_id = None
+        triald = None
+      self.db_app, run_id, rund, trial_id, triald = comm.bcast((db_app, run_id, rund, trial_id, triald), root=0)
+      self.run = Run(self.db_app, run_id = run_id, **rund)
+      self.trial = Trial(self.db_app, trial_id = trial_id, **triald)
+
     else:
       self.db_app = dxtbx_xfel_db_application(params, cache_connection=True)
     self.n_strong = None
 
   def finalize(self):
     super(DialsProcessorWithLogging, self).finalize()
-    if self.params.db.logging_batch_size: self.log_batched_frames()
+    if self.params.experiment_tag is None:
+      return
+    if self.params.db.logging_batch_size:
+      self.log_batched_frames()
 
   def log_batched_frames(self):
-    db_app = dxtbx_xfel_db_application(self.params, cache_connection=True)
+    current_run = self.params.input.run_num
+    current_dbrun = self.run
+    inserts = "BEGIN;\n" # start a transaction
     for q in self.queries:
       experiments, reflections, run, n_strong, timestamp, two_theta_low, two_theta_high, db_event = q
-      log_frame(experiments, reflections, self.params, run, n_strong, timestamp = timestamp,
+      if run != current_run:
+        current_run = run
+        current_dbrun = self.db_app.get_run(run_number=run)
+
+      inserts += log_frame(experiments, reflections, self.params, current_dbrun, n_strong, timestamp = timestamp,
                            two_theta_low = two_theta_low, two_theta_high = two_theta_high,
-                           db_event = db_event, app = db_app)
+                           db_event = db_event, app = self.db_app, trial = self.trial)
+    inserts += "COMMIT;\n"
+
+    # patch up query so for example '@row_id' becomes @row_id
+    newinserts = []
+    for line in inserts.split('\n'):
+      if '@' in line:
+        newline = []
+        for word in line.split(' '):
+          if '@' in word:
+            word = word.replace("'", "")
+          newline.append(word)
+        line = ' '.join(newline)
+      newinserts.append(line)
+    inserts = '\n'.join(newinserts)
+
+    self.db_app.execute_query(inserts, commit=False) # transaction, so don't commit twice
     self.queries = []
 
   def log_frame(self, experiments, reflections, run, n_strong, timestamp = None,
@@ -43,7 +95,7 @@ class DialsProcessorWithLogging(Processor):
     else:
       db_event = log_frame(experiments, reflections, self.params, run, n_strong, timestamp = timestamp,
                            two_theta_low = two_theta_low, two_theta_high = two_theta_high,
-                           db_event = db_event, app = self.db_app)
+                           db_event = db_event, app = self.db_app, trial = self.trial)
     return db_event
 
   def get_run_and_timestamp(self, obj):

@@ -174,24 +174,34 @@ class refine_mz(object):
       crystal_symmetry = self.xray_structure.crystal_symmetry(),
       anomalous_flag   = False,
       d_min            = self.d_min)
-    self._show_and_track()
+    self.cc_start = self._get_cc()
+    self._show_and_track(d_min = self.d_min)
     self.d_mins = self._get_mz_resolution_limits()
     for macro_cycle in range(self.macro_cycles):
       self._refine()
     self.xray_structure.set_sites_cart(self.sites_cart_best)
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
 
-  def _show_and_track(self):
+  def _show_and_track(self, d_min):
     cc = self._get_cc()
     s2 = self.xray_structure.sites_cart()
     if(self.cc_best is None or cc>self.cc_best):
       self.cc_best = cc
       self.sites_cart_best = s2.deep_copy()
     if(self.log):
-      fmt="%sCC=%6.4f (best to keep CC=%6.4f), moved from start (max/mean)=%s"
+      fmt="%sd_min=%6.2f CC=%6.4f (best to keep CC=%6.4f), moved from start (max/mean)=%s"
       s1 = self.sites_cart_start
-      d = "%6.3f %6.3f"%flex.sqrt((s1-s2).dot()).min_max_mean().as_tuple()[1:]
-      print(fmt%(self.prefix, cc, self.cc_best, d), file=self.log)
+      d = flex.sqrt((s1-s2).dot()).min_max_mean().as_tuple()[1:]
+      d_str = "%6.3f %6.3f"%d
+      print(fmt%(self.prefix, d_min, cc, self.cc_best, d_str), file=self.log)
+      revert = (cc<self.cc_start and abs(cc-self.cc_start)>0.1) or \
+               d[0] > 10 and (cc<self.cc_start or abs(cc-self.cc_start)<0.1) or \
+               cc < 0.1
+      if(revert):
+        self.sites_cart_best = self.sites_cart_start
+        self.xray_structure.set_sites_cart(self.sites_cart_start)
+        self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+        print("   >>> reversed", d[0], cc, self.cc_start, file=self.log)
 
   def _refine(self):
     self.lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
@@ -211,7 +221,7 @@ class refine_mz(object):
         unit_cell                   = self.xray_structure.unit_cell())
       self.xray_structure.set_sites_cart(minimized.sites_cart_residue)
       self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
-      self._show_and_track()
+      self._show_and_track(d_min = d_min)
 
   def _get_mz_resolution_limits(self):
     # lowest resolution: first zone
@@ -260,7 +270,7 @@ class refine_mz(object):
     done = False
     cntr = 0
     while not done:
-      if(cntr>5):
+      if(cntr>50):
         raise RuntimeError("Number of trial resolution increments exceeded.")
       try:
         f_obs_cmpl = self.complete_set.resolution_filter(
@@ -273,7 +283,7 @@ class refine_mz(object):
       except KeyboardInterrupt: raise
       except Exception as e:
         if(str(e)=="cctbx Error: Miller index not in structure factor map."):
-          d_min += 0.1
+          d_min += 0.25
       cntr+=1
     fft_map = miller.fft_map(
       crystal_gridding     = self.crystal_gridding,

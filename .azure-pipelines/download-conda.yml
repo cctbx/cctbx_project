@@ -44,9 +44,6 @@ jobs:
       macos_py39:
         OS: osx-64
         PYTHON_VERSION: py39
-      win_py27:
-        OS: win-64
-        PYTHON_VERSION: py27
       win_py36:
         OS: win-64
         PYTHON_VERSION: py36
@@ -79,7 +76,7 @@ jobs:
         mkdir -p ${directory}
         cd ${directory}
         echo Downloading ${filename} to ${directory}
-        wget --retry-connrefused --retry-on-http-error=520 ${url}
+        wget --retry-connrefused --retry-on-http-error=520,525 ${url}
         cd ..
         if [ "$(OS)" = "win-64" ]; then
           echo ${directory}\\${filename} >> filenames.txt

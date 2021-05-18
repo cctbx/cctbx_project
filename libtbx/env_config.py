@@ -659,6 +659,19 @@ class environment:
     return result
 
   def has_module(self, name):
+    # check installed environment first
+    result = self.check_installed_env('_has_module', name)
+    if result:
+      return result
+    # check current environment
+    result = self._has_module(name)
+    if result:
+      return result
+    # then check local environment
+    result = self.check_local_env('_has_module', name)
+    return result
+
+  def _has_module(self, name):
     return name in self.module_dist_paths
 
   def require_module(self, name, error=RuntimeError):

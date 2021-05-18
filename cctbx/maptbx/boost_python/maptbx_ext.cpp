@@ -481,8 +481,56 @@ namespace {
                      arg("threshold"),
                      arg("wrapping")=true,
                      arg("preprocess_against_shallow")=false)))
+
+        // Symmetry-aware constructors
+        // .def(init< //af::ref<float, af::c_grid<3> >
+        //           float const&
+        //           // const cctbx::sgtbx::space_group &,
+        //           // const cctbx::sgtbx::space_group_type &,
+        //           // int3,
+        //           // bool,
+        //           // bool
+        //           >(
+        //             // (arg("map_data")
+        //              arg("threshold")
+        //              // arg("space_group"),
+        //              // arg("uc_dimensions"),
+        //              // arg("wrapping")=true,
+        //              // arg("preprocess_against_shallow")=false
+        //             )))
+
+        .def(init< af::ref<double, af::c_grid<3> >
+                  // double const&
+                  // const cctbx::sgtbx::space_group &,
+                  // const cctbx::sgtbx::space_group_type &,
+                  // int3,
+                  // bool,
+                  // bool
+                  >(
+                    (arg("map_data")
+                      // arg("threshold")
+                     // arg("space_group"),
+                     // arg("uc_dimensions"),
+                     // arg("wrapping")=true,
+                     // arg("preprocess_against_shallow")=false
+                    )))
+
+        // amap constructor
+        .def(init< asymmetric_map &,
+                  double const&,
+                  bool
+                  >(
+                    (arg("amap"),
+                     arg("threshold"),
+                     arg("preprocess_against_shallow")=false
+                    )))
+
+
+
         .def("result",    &w_t::result)
         .def("regions",   &w_t::regions)
+        .def("experiment_with_symmetry", &w_t::experiment_with_symmetry,
+            (arg("space_group")))
         .def("merge_symmetry_related_regions", &w_t::merge_symmetry_related_regions,
             (arg("space_group")))
         .def("volume_cutoff_mask", &w_t::volume_cutoff_mask,

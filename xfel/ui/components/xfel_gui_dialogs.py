@@ -594,31 +594,29 @@ class AdvancedSettingsDialog(BaseDialog):
       pass
     self.Bind(wx.EVT_CHOICE, self.onMultiprocessingChoice, self.mp_option.ctr)
 
-    if params.facility.name == 'lcls' and params.mp.method == 'lsf':
-      # Queue
-      queues = ['psanaq', 'psanaq', 'psdebugq','psanaidleq', 'psnehhiprioq',
-                'psnehprioq', 'psnehq', 'psfehhiprioq', 'psfehprioq', 'psfehq']
-      self.queue = gctr.ChoiceCtrl(self,
-                                   label='Queue:',
-                                   label_size=(200, -1),
-                                   label_style='bold',
-                                   choices=queues)
-      self.Bind(wx.EVT_CHOICE, self.onQueueChoice, self.queue.ctr)
-      self.mp_sizer.Add(self.queue, flag=wx.EXPAND | wx.ALL, border=10)
-      try:
-        self.queue.ctr.SetSelection(queues.index(params.mp.queue))
-      except ValueError:
-        pass
+    # Queue
+    queues = ['psanaq', 'psanaq', 'psdebugq','psanaidleq', 'psnehhiprioq',
+              'psnehprioq', 'psnehq', 'psfehhiprioq', 'psfehprioq', 'psfehq']
+    self.queue_choice = gctr.ChoiceCtrl(self,
+                                        label='Queue:',
+                                        label_size=(200, -1),
+                                        label_style='bold',
+                                        choices=queues)
+    self.Bind(wx.EVT_CHOICE, self.onQueueChoice, self.queue_choice.ctr)
+    self.mp_sizer.Add(self.queue_choice, flag=wx.EXPAND | wx.ALL, border=10)
+    try:
+      self.queue_choice.ctr.SetSelection(queues.index(params.mp.queue))
+    except ValueError:
+      pass
 
-    else:
-      # Queue
-      self.queue = gctr.TextButtonCtrl(self,
-                                       label='Queue:',
-                                       label_style='bold',
-                                       label_size=(200, -1),
-                                       value=self.params.mp.queue \
-                                             if params.mp.queue is not None else '')
-      self.mp_sizer.Add(self.queue, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.queue_text = gctr.TextButtonCtrl(self,
+                                          label='Queue:',
+                                          label_style='bold',
+                                          label_size=(200, -1),
+                                          value=self.params.mp.queue \
+                                                if params.mp.queue is not None else '')
+    self.mp_sizer.Add(self.queue_text, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.nproc = gctr.SpinCtrl(self,
                                label='Total number of processors:',
@@ -640,15 +638,19 @@ class AdvancedSettingsDialog(BaseDialog):
                                 ctrl_max=1000)
     self.mp_sizer.Add(self.nnodes, flag=wx.EXPAND | wx.ALL, border=10)
 
-    self.nproc_per_node = gctr.SpinCtrl(self,
-                                        label='Number of processors per node:',
-                                        label_size=(240, -1),
-                                        label_style='normal',
-                                        ctrl_size=(100, -1),
-                                        ctrl_value='%d'%params.mp.nproc_per_node,
-                                        ctrl_min=1,
-                                        ctrl_max=1000)
-    self.mp_sizer.Add(self.nproc_per_node, flag=wx.EXPAND | wx.ALL, border=10)
+    self.nppn_box = gctr.CtrlBase(self)
+    nppn_txt = wx.StaticText(self.nppn_box, label="Number of processors per node")
+    self.chk_auto_nproc_per_node = wx.CheckBox(self.nppn_box, label='Auto')
+    self.chk_auto_nproc_per_node.SetValue(params.mp.nproc_per_node is None)
+    self.nproc_per_node = gctr.IntFloatSpin(self.nppn_box, value='%d'%params.mp.nproc_per_node if params.mp.nproc_per_node else 1, min_val = 1, max_val = 1000)
+    if not params.mp.nproc_per_node: self.nproc_per_node.Disable()
+
+    nppn_sizer = wx.FlexGridSizer(1, 3, 0, 10)
+    nppn_sizer.Add(nppn_txt, flag=wx.ALL, border=10)
+    nppn_sizer.Add(self.chk_auto_nproc_per_node, flag=wx.ALL, border=10)
+    nppn_sizer.Add(self.nproc_per_node, flag=wx.EXPAND | wx.ALL, border=10)
+    self.nppn_box.SetSizer(nppn_sizer)
+    self.mp_sizer.Add(self.nppn_box, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.wall_time = gctr.SpinCtrl(self,
                                    label='Max Walltime (mins):',
@@ -659,6 +661,13 @@ class AdvancedSettingsDialog(BaseDialog):
                                    ctrl_min=1,
                                    ctrl_max=2880)
     self.mp_sizer.Add(self.wall_time, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.mpi_command = gctr.TextButtonCtrl(self,
+                                           label='MPI command:',
+                                           label_style='bold',
+                                           label_size=(200, -1),
+                                           value=self.params.mp.mpi_command)
+    self.mp_sizer.Add(self.mpi_command, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.env_script = gctr.TextButtonCtrl(self,
                                      label='Environment setup script:',
@@ -723,6 +732,19 @@ class AdvancedSettingsDialog(BaseDialog):
     self.jobtype_nnodes_sizer.Add(self.nnodes_merge, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.mp_sizer.Add(self.jobtype_nnodes_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.extra_box = gctr.CtrlBase(self)
+    extra_txt = wx.StaticText(self.extra_box, label="Extra submission arguments")
+    self.extra_options = wx.richtext.RichTextCtrl(self.extra_box,
+                                                  size=(-1, 60),
+                                                  style=wx.VSCROLL,
+                                                  value="\n".join(self.params.mp.extra_options))
+    extra_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    extra_sizer.Add(extra_txt, flag=wx.ALL, border=10)
+    extra_sizer.Add(self.extra_options, flag=wx.EXPAND | wx.ALL, border=10)
+    extra_sizer.AddGrowableCol(1)
+    self.extra_box.SetSizer(extra_sizer)
+    self.mp_sizer.Add(self.extra_box, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Shifter-specific settings
 
@@ -853,20 +875,29 @@ class AdvancedSettingsDialog(BaseDialog):
 
     self.SetTitle('Advanced Settings')
 
+    self.Bind(wx.EVT_CHECKBOX, self.onChkNppnAuto, self.chk_auto_nproc_per_node)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
     self.updateMultiprocessing()
+
+  def onChkNppnAuto(self, e):
+    if self.chk_auto_nproc_per_node.GetValue():
+      self.nproc_per_node.Disable()
+    else:
+      self.nproc_per_node.Enable()
 
   def onMultiprocessingChoice(self, e):
     self.updateMultiprocessing()
 
   def updateMultiprocessing(self):
     if self.mp_option.ctr.GetStringSelection() == 'local':
-      self.queue.Hide()
+      self.queue_choice.Hide()
+      self.queue_text.Show()
       self.nnodes.Hide()
       self.nproc.Show()
-      self.nproc_per_node.Hide()
+      self.nppn_box.Hide()
       self.wall_time.Hide()
+      self.mpi_command.Hide()
       self.env_script.Hide()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
@@ -874,6 +905,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes_index.Hide()
       self.nnodes_scale.Hide()
       self.nnodes_merge.Hide()
+      self.extra_options.Hide()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
       self.shifter_sbatch_template.Hide()
@@ -884,17 +916,20 @@ class AdvancedSettingsDialog(BaseDialog):
       self.log_staging.Hide()
       self.staging_help.Hide()
     elif self.mp_option.ctr.GetStringSelection() == 'shifter':
-      self.queue.Show()
+      self.queue_choice.Hide()
+      self.queue_text.Show()
       self.nproc.Hide()
       self.nnodes.Show()
-      self.nproc_per_node.Show()
+      self.nppn_box.Show()
       self.wall_time.Show()
+      self.mpi_command.Hide()
       self.env_script.Hide()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
       self.nnodes_index.Show()
       self.nnodes_scale.Show()
       self.nnodes_merge.Show()
+      self.extra_options.Show()
       self.jobtype_nnodes_box.Show()
       self.shifter_image.Show()
       self.shifter_srun_template.Show()
@@ -906,17 +941,20 @@ class AdvancedSettingsDialog(BaseDialog):
       self.log_staging.Show()
       self.staging_help.Show()
     elif self.mp_option.ctr.GetStringSelection() == 'htcondor':
-      self.queue.Hide()
+      self.queue_choice.Hide()
+      self.queue_text.Show()
       self.nproc.Show()
       self.nnodes.Hide()
-      self.nproc_per_node.Hide()
+      self.nppn_box.Hide()
       self.wall_time.Hide()
+      self.mpi_command.Hide()
       self.env_script.Show()
       self.htcondor_executable_path.Show()
       self.htcondor_filesystemdomain.Show()
       self.nnodes_index.Hide()
       self.nnodes_scale.Hide()
       self.nnodes_merge.Hide()
+      self.extra_options.Hide()
       self.jobtype_nnodes_box.Hide()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
@@ -928,17 +966,20 @@ class AdvancedSettingsDialog(BaseDialog):
       self.log_staging.Hide()
       self.staging_help.Hide()
     elif self.mp_option.ctr.GetStringSelection() == 'slurm':
-      self.queue.Show()
+      self.queue_choice.Hide()
+      self.queue_text.Show()
       self.nproc.Hide()
       self.nnodes.Hide()
-      self.nproc_per_node.Show()
+      self.nppn_box.Show()
       self.wall_time.Hide()
+      self.mpi_command.Show()
       self.env_script.Show()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
       self.nnodes_index.Show()
       self.nnodes_scale.Show()
       self.nnodes_merge.Show()
+      self.extra_options.Show()
       self.jobtype_nnodes_box.Show()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
@@ -949,18 +990,25 @@ class AdvancedSettingsDialog(BaseDialog):
       self.shifter_constraint.Hide()
       self.log_staging.Hide()
       self.staging_help.Hide()
-    else:
-      self.queue.Show()
+    else :
+      if self.params.facility.name == 'lcls' and self.mp_option.ctr.GetStringSelection() == 'lsf':
+        self.queue_choice.Show()
+        self.queue_text.Hide()
+      else:
+        self.queue_choice.Hide()
+        self.queue_text.Show()
       self.nproc.Show()
       self.nnodes.Hide()
-      self.nproc_per_node.Hide()
+      self.nppn_box.Hide()
       self.wall_time.Hide()
+      self.mpi_command.Show()
       self.env_script.Show()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
       self.nnodes_index.Hide()
       self.nnodes_scale.Hide()
       self.nnodes_merge.Hide()
+      self.extra_options.Show()
       self.jobtype_nnodes_box.Hide()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
@@ -976,7 +1024,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.Fit()
 
   def onQueueChoice(self, e):
-    queue = self.queue.ctr.GetString(self.queue.ctr.GetSelection())
+    queue = self.queue_choice.ctr.GetString(self.queue_choice.ctr.GetSelection())
     if 'neh' in queue or 'feh' in queue:
       self.nproc.ctr.SetValue(16)
       self.nproc.ctr.SetIncrement(16)
@@ -1015,10 +1063,13 @@ class AdvancedSettingsDialog(BaseDialog):
     self.params.mp.nproc = int(self.nproc.ctr.GetValue())
 
     if self.params.facility.name == 'lcls' and self.params.mp.method == "lsf":
-      self.params.mp.queue = self.queue.ctr.GetStringSelection()
+      self.params.mp.queue = self.queue_choice.ctr.GetStringSelection()
     else:
-      self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
-      self.params.mp.queue = self.queue.ctr.GetValue()
+      if self.chk_auto_nproc_per_node.GetValue():
+        self.params.mp.nproc_per_node = None
+      else:
+        self.params.mp.nproc_per_node = int(self.nproc_per_node.GetValue())
+      self.params.mp.queue = self.queue_text.ctr.GetValue()
       if self.mp_option.ctr.GetStringSelection() in ['shifter', 'slurm']:
         self.params.mp.nnodes_index = int(self.nnodes_index.ctr.GetValue())
         self.params.mp.nnodes_scale = int(self.nnodes_scale.ctr.GetValue())
@@ -1029,6 +1080,13 @@ class AdvancedSettingsDialog(BaseDialog):
       else:
         self.params.mp.env_script = [self.env_script.ctr.GetValue()]
         self.params.mp.nproc = int(self.nproc.ctr.GetValue())
+
+    self.params.mp.mpi_command = self.mpi_command.ctr.GetValue() \
+      if len(self.mpi_command.ctr.GetValue()) > 0 else None
+    if len(self.extra_options.GetValue()) > 0:
+      self.params.mp.extra_options = self.extra_options.GetValue().split('\n')
+    else:
+      self.params.mp.extra_options = []
 
     # Copy htcondor settings into the htcondor phil
     self.params.mp.htcondor.executable_path = self.htcondor_executable_path.ctr.GetValue() \

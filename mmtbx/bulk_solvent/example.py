@@ -62,9 +62,9 @@ def get_data(pdbf, mtzf):
   pdb_inp = iotbx.pdb.input(file_name=pdbf)
   xrs = pdb_inp.xray_structure_simple()
   #
-  assert 0
   selection = xrs.scatterers().extract_occupancies() > 0
-  selection = selection | xrs.hd_selection()
+  xrs = xrs.select(selection)
+  selection = ~xrs.hd_selection()
   xrs = xrs.select(selection)
   #
   #xrs.switch_to_neutron_scattering_dictionary()
@@ -88,6 +88,10 @@ def get_data(pdbf, mtzf):
     f_obs          = f_obs,
     r_free_flags   = r_free_flags,
     xray_structure = xrs)
+  fmodel.update_all_scales(
+    remove_outliers         = True,
+    apply_scale_k1_to_f_obs = True
+    )
   def f_obs():        return fmodel.f_obs()
   def r_free_flags(): return fmodel.r_free_flags()
   def f_calc():       return fmodel.f_calc()
@@ -117,79 +121,68 @@ def get_fmodel(o, f_mask, remove_outliers, log):
   return group_args(fmodel = fmodel, mc = mc)
 
 class compute(object):
-  def __init__(self, pdbf, mtzf, log, volume_cutoff=30):
+  def __init__(self, pdbf, mtzf, log):
     self.log = log
     # Get objects out of files, and set grid step
     D = get_data(pdbf, mtzf)
-    step = min(0.4, D.f_obs().d_min()/4)
     #
     print("-"*79, file=log)
-    print("A-2013, all defaults (except set binning)", file=log)
+    print("A-2013, all defaults", file=log)
     f_mask = mosaic.get_f_mask(
       xrs  = D.xray_structure,
       ma   = D.f_obs(),
-      step = D.f_obs().d_min()/4)
+      step = min(0.4, D.f_obs().d_min()/4))
     self.fmodel_2013 = get_fmodel(
-      o = D, f_mask = f_mask, remove_outliers = True, log = self.log).fmodel
+      o = D, f_mask = f_mask, remove_outliers = False, log = self.log).fmodel
     #
     # Compute masks and F_masks (Mosaic)
     print("-"*79, file=log)
     print("Mosaic", file=log)
     self.mm = mosaic.mosaic_f_mask(
-      xray_structure = D.xray_structure,
-      step           = step,
-      volume_cutoff  = volume_cutoff,
-      f_obs          = self.fmodel_2013.f_obs(),
-      f_calc         = self.fmodel_2013.f_calc(),
-      log            = log)
+      xray_structure          = D.xray_structure,
+      step                    = 0.6,
+      volume_cutoff           = 50,
+      mean_diff_map_threshold = 0.5,
+      r_sol                   = 1.1, # whole
+      r_shrink                = 0.9, # whole
+      f_obs                   = self.fmodel_2013.f_obs(),
+      f_calc                  = self.fmodel_2013.f_calc(),
+      log                     = log)
     #
     if(self.mm.do_mosaic):
-      #
+      ######
       print("-"*79, file=log)
-      print("A-2013, step=0.4A", file=log)
-      f_mask_04 = mosaic.get_f_mask(
-        xrs  = D.xray_structure,
-        ma   = self.fmodel_2013.f_obs(),
-        step = step)
-      o = get_fmodel(o = self.fmodel_2013, f_mask = f_mask_04,
+      print("A-2013, opt step/radii", file=log)
+      f_mask_opt = mosaic.get_f_mask(
+        xrs      = D.xray_structure,
+        ma       = self.fmodel_2013.f_obs(),
+        step     = 0.6,
+        r_shrink = 0.9,
+        r_sol    = 1.1)
+      o = get_fmodel(o = self.fmodel_2013, f_mask = f_mask_opt,
         remove_outliers = False, log = self.log)
-      self.fmodel_2013_04 = o.fmodel
-      self.mc_whole_mask  = o.mc
-      #
-      self.fmodel_largest_mask = None
-      self.mc_largest_mask     = None
-      if(self.mm.f_mask_0 is not None):
-        print("-"*79, file=log)
-        print("A-2013, step=0.4A, using largest mask only", file=log)
-        o = get_fmodel(o = self.fmodel_2013, f_mask = self.mm.f_mask_0,
-          remove_outliers = False, log = self.log)
-        self.fmodel_largest_mask = o.fmodel
-        self.mc_largest_mask     = o.mc
-      #
+      self.fmodel_2013_opt = o.fmodel
+      self.mc_whole_mask   = o.mc
+      ######
       print("-"*79, file=log)
-      print("A-2013, step=0.4A, filtered mask (no small/negative volumes)", file=log)
-      f_mask_fil = self.mm.FV.keys()[0].data()
-      for fm in self.mm.FV.keys()[1:]:
-        f_mask_fil = f_mask_fil + fm.data()
-      f_mask_fil = self.mm.FV.keys()[0].set().array(data = f_mask_fil)
-      o = get_fmodel(o = self.fmodel_2013, f_mask = f_mask_fil,
+      print("A-2013, opt step/radii, using largest mask only", file=log)
+      o = get_fmodel(o = self.fmodel_2013, f_mask = self.mm.f_mask_0,
         remove_outliers = False, log = self.log)
-      self.fmodel_filtered = o.fmodel
-      self.mc_filtered     = o.mc
+      self.fmodel_0 = o.fmodel
+      self.mc_0     = o.mc
+      ######
 
   def do_mosaic(self, alg):
     print("-"*79, file=self.log)
     print("Refine k_masks", file=self.log)
     result = mosaic.refinery(
-      fmodel  = self.fmodel_filtered, #self.fmodel_2013_04,
+      fmodel  = self.fmodel_0,
       fv      = self.mm.FV,
-      #anomaly = self.mm.anomaly,
       anomaly = True, # Refine all contributions at once!
       alg     = alg,
       log     = self.log)
     print("", file=self.log)
     result.fmodel.show(show_header=False, show_approx=False, log = self.log)
-    #result.fmodel.show_short(show_k_mask=False, prefix="  ", log = self.log)
     print(result.fmodel.r_factors(prefix="  "), file=self.log)
     return result
 
@@ -231,7 +224,7 @@ def run_one(args):
     mbs = o.do_mosaic(alg=alg)
     # write maps
     if(o.mm.mc is not None):
-      mtz_dataset = o.mc_largest_mask.as_mtz_dataset(column_root_label='FistMask')
+      mtz_dataset = o.mc_0.as_mtz_dataset(column_root_label='FistMask')
       mtz_dataset.add_miller_array(
         miller_array=o.mc_whole_mask, column_root_label="WholeMask")
       mtz_dataset.add_miller_array(
@@ -239,9 +232,8 @@ def run_one(args):
       mtz_object = mtz_dataset.mtz_object()
       mtz_object.write(file_name = "%s_mc.mtz"%code)
       # map stats
-      map_FirstMask = get_map(mc=o.mm.mc,         cg=o.mm.crystal_gridding)
+      map_0         = get_map(mc=o.mm.mc,         cg=o.mm.crystal_gridding)
       map_WholeMask = get_map(mc=o.mc_whole_mask, cg=o.mm.crystal_gridding)
-      map_Filtered  = get_map(mc=o.mc_filtered,   cg=o.mm.crystal_gridding)
       map_Mosaic    = get_map(mc=mbs.mc,          cg=o.mm.crystal_gridding)
       ###
       #write_map_file(cg=o.mm.crystal_gridding, mc=o.mm.mc,         file_name="first.ccp4")
@@ -250,28 +242,23 @@ def run_one(args):
       ###
       cntr = 0
       for region in o.mm.regions.values():
-        region.m_FistMask  = map_stat(m=map_FirstMask, conn = o.mm.conn, i=region.id)
+        region.m_0         = map_stat(m=map_0, conn = o.mm.conn, i=region.id)
         region.m_WholeMask = map_stat(m=map_WholeMask, conn = o.mm.conn, i=region.id)
-        region.m_Filtered  = map_stat(m=map_Filtered,  conn = o.mm.conn, i=region.id)
         region.m_Mosaic    = map_stat(m=map_Mosaic,    conn = o.mm.conn, i=region.id)
         if(region.diff_map.me is not None):
           cntr += 1
-          assert approx_equal(region.diff_map.me, region.m_FistMask.me)
-          assert approx_equal(region.diff_map.sd, region.m_FistMask.sd)
-          assert approx_equal(region.diff_map.ma, region.m_FistMask.ma)
+          assert approx_equal(region.diff_map.me, region.m_0.me)
+          assert approx_equal(region.diff_map.sd, region.m_0.sd)
+          assert approx_equal(region.diff_map.ma, region.m_0.ma)
       assert cntr>0
     #
-    r_largest_mask = None
-    if(o.fmodel_largest_mask is not None):
-      r_largest_mask = o.fmodel_largest_mask.r_factors(as_string=False)
     result = group_args(
       code            = code,
       d_min           = o.fmodel_2013.f_obs().d_min(),
       r_2013          = o.fmodel_2013.r_factors(as_string=False),
-      r_2013_04       = o.fmodel_2013_04.r_factors(as_string=False),
-      r_filtered      = o.fmodel_filtered.r_factors(as_string=False),
+      r_2013_opt      = o.fmodel_2013_opt.r_factors(as_string=False),
       r_mosaic        = mbs.fmodel.r_factors(as_string=False),
-      r_largest_mask  = r_largest_mask,
+      r_largest_mask  = o.fmodel_0.r_factors(as_string=False),
       solvent_content = o.mm.solvent_content,
       regions         = o.mm.regions)
     easy_pickle.dump("%s.pkl"%code, result)
@@ -293,7 +280,6 @@ def write_map_file(cg, mc, file_name):
     space_group = cg.space_group(),
     map_data    = map_data,
     labels      = flex.std_string([""]))
-
 
 def run(cmdargs):
   if(len(cmdargs)==1):

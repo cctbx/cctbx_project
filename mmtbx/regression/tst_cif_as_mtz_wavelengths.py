@@ -192,13 +192,13 @@ _refln.intensity_sigma
   l_w = []
   for array in hkl_in.file_server.miller_arrays :
     l_w.append((array.info().label_string(), "%.4f" % array.info().wavelength))
-  assert (l_w == [
-    ('FC,PHIFC', '1.0163'),
+  assert (sorted(l_w) == sorted([
     ('FOBS,SIGFOBS', '1.0163'),
+    ('FC,PHIFC', '1.0163'),
     ('R-free-flags', '1.0163'),
     ('I(+),SIGI(+),I(-),SIGI(-)', '1.0163'),
     ('I2(+),SIGI2(+),I2(-),SIGI2(-)', '0.9797')
-  ])
+  ]) )
 
 if (__name__ == "__main__"):
   exercise()

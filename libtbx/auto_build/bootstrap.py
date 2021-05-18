@@ -2819,10 +2819,10 @@ def run(root=None):
   python_args = parser.add_mutually_exclusive_group(required=False)
   python_args.add_argument('--python',
                     default='27', type=str, nargs='?', const='27',
-                    choices=['27', '36', '37', '38'],
+                    choices=['27', '36', '37', '38', '39'],
                     help="""When set, a specific Python version of the
 conda environment will be used. This only affects environments selected with
-the --builder flag. For non-conda dependencies, "36", "37", and "38" implies
+the --builder flag. For non-conda dependencies, any Python 3 implies
 Python 3.7.""")
   parser.add_argument("--config-flags", "--config_flags",
                     dest="config_flags",
