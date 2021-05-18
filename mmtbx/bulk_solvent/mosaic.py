@@ -527,6 +527,9 @@ class mosaic_f_mask(object):
     self.dsel = f_obs.d_spacings().data()>=0 # XXX WHY????????????
     self.miller_array = f_obs.select(self.dsel)
     #
+    # To avoid "Miller index not in structure factor map" crash
+    step = min(step, self.miller_array.d_min()/3)
+    #
     self.crystal_symmetry = self.xray_structure.crystal_symmetry()
     # compute mask in p1 (via ASU)
     self.crystal_gridding = maptbx.crystal_gridding(

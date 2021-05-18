@@ -268,7 +268,6 @@ def run_one(args):
     traceback.print_exc(file=log)
     log.close()
 
-
 def write_map_file(cg, mc, file_name):
   from iotbx import mrcfile
   fft_map = mc.fft_map(crystal_gridding=cg)
