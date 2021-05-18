@@ -33,7 +33,7 @@ def AABBOverlap(box1, box2):
            (box1[1][0] <= box2[1][1] and box1[1][1] >= box2[1][0]) and
            (box1[2][0] <= box2[2][1] and box1[2][1] >= box2[2][0]) )
 
-def InteractionGraphAABB(movers, reduceOptions):
+def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
   """Uses the overlap of the axis-aligned bounding boxes (AABBs) of all possible
   positions of all movable atoms in the set of movers passed in to construct the
   graph of which might overlap across all possible orientations of each.  The use
@@ -42,6 +42,12 @@ def InteractionGraphAABB(movers, reduceOptions):
   of possible positions for each and quadratic in the number of Movers.
 
   :param movers: flex array of movers to add to the graph.
+  :param extaAtomInfo: flex array of Probe.ExtraAtomInfo classes that have a vdwRadius
+  property.  Warning: The i_sel values from the atoms in the Movers are used to look
+  up directly in this vector so they must not have changed (due to structure modification)
+  since the extaInfo vector or the atom structure used by the Movers were generated.
+  The positions of individual atoms can have been moved but atoms cannot have been
+  removed and re-added to the structure.
   :param reduceOptions: a Phil option subset.  The relevant option is probeRadius.
   :returns An undirected NetworkX graph whose nodes are Movers and whose edges
   indicate which Movers might overlap in any of their states.
@@ -55,37 +61,42 @@ def InteractionGraphAABB(movers, reduceOptions):
     ret.add_node(m)
 
     # Find all possible positions, coarse and fine.
-    atoms, coarse, favorable = m.CoarsePositions(reduceOptions)
-    total = coarse.copy()
-    for c in len(coarse):
-      total.extend(m.FinePositions(c, reduceOptions)[1])
+    coarses = m.CoarsePositions(reduceOptions)
+    atoms coarses.atoms
+    coarsePositions = coarses.positions
+    total = coarsePositions.copy()
+    for c in len(coarsePositions):
+      total.extend(m.FinePositions(c, reduceOptions).positions)
 
     # Find the range of positions of all atoms in X, Y, and Z
     xRange = [ 1e10, -1e10 ]
     yrange = [ 1e10, -1e10 ]
     zRange = [ 1e10, -1e10 ]
     for pos in total:
-      for atomLoc in pos:
-         x = atomLoc[0]
-         xRange[0] = min(xRange[0], x)
-         xRange[1] = max(xRange[1], x)
-            
-         y = atomLoc[1]
-         yRange[0] = min(yRange[0], y)
-         yRange[1] = max(yRange[1], y)
+      for i, atomLoc in enumerate(pos):
+        @todo We need to compute the radius, which will require extra atom info...
+        r = atoms[i].
 
-         z = atomLoc[2]
-         zRange[0] = min(zRange[0], z)
-         zRange[1] = max(zRange[1], z)
+        x = atomLoc[0]
+        xRange[0] = min(xRange[0], x - r)
+        xRange[1] = max(xRange[1], x + r)
+            
+        y = atomLoc[1]
+        yRange[0] = min(yRange[0], y - r)
+        yRange[1] = max(yRange[1], y + r)
+
+        z = atomLoc[2]
+        zRange[0] = min(zRange[0], z - r)
+        zRange[1] = max(zRange[1], z + r)
 
     # Dilate the bounding box by the radius of the probe if it is
     # specified in the parameter set.
     try:
-      r = reduceOptions.probeRadius
+      pr = reduceOptions.probeRadius
       if r is not None:
-        xRange = [ xRange[0] - r, xRange[1] + r ]
-        yRange = [ yRange[0] - r, yRange[1] + r ]
-        zRange = [ zRange[0] - r, zRange[1] + r ]
+        xRange = [ xRange[0] - pr, xRange[1] + pr ]
+        yRange = [ yRange[0] - pr, yRange[1] + pr ]
+        zRange = [ zRange[0] - pr, zRange[1] + pr ]
 
     # Store the bounding boxes for this Mover
     AABBs.append( [xRange, yRange, zRange] )
