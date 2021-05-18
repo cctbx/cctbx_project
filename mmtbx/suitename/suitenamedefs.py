@@ -1,7 +1,3 @@
-import numpy as np
-from numpy import array
-from enum import Enum
-
 "Class definitions used throughout suitename"
 
 # Copyright 2021  Richardson Lab
@@ -18,10 +14,17 @@ from enum import Enum
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-class Holder:
-    pass
+import numpy as np
+from numpy import array
+from enum import Enum
 
-globalOptions = Holder()
+
+class Holder:
+  "these objects exist only to have case specific attributes added to them"
+  pass
+
+globals = Holder()
+# globals.options will be created in the main program
 
 
 # reasons why a suite may fail to be classified:

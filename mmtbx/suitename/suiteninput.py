@@ -1,4 +1,4 @@
-from . import Suite, Residue, globals
+from suitenamedefs import Suite, Residue, globals
 
 """
 This module handles reading suites from "dangle" format files

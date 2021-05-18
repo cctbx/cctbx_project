@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # dualparse is scaffolding, will go away
-from mmtbx.suitename import dualparse
+from mmtbx.suitename import dualparse, suites
 from mmtbx.suitename.suitename import main
 
 from iotbx.cli_parser import CCTBXParser
@@ -24,7 +24,7 @@ from libtbx.utils import multi_out, show_total_time
 #import libtbx.load_env
 #from libtbx.utils import Usage
 
-import os,sys,inspect
+import os, sys
 
 def run(args):
   print("-------------------programs/run reporting---------------------")
@@ -36,13 +36,41 @@ def run(args):
 
   parser = dualparse.parseArgs(Program, logger)
   working_phil = parser.working_phil
-  print("\n \n")
-  working_phil.show()
+  # print("\n \n")
+  # working_phil.show()
   options = working_phil.extract().suitename
-  print(options.anglefields)
   
-  # now we call into the core suitename itself
-  main(optionsIn=options)
+  # now we call into the core of suitename itself
+  if options.infile == "" or options.residuein or options.suitein:
+      # let the core figure out the input
+      main(optionsIn=options)
+  else:
+      type = analyzeFileType(options.infile)
+      assert type != "", "file extension not recognized"
+      if type == "pdb":
+          # use cctbx to load the pdb file
+          # then operate on the model loaded
+          suites.main(options=options)
+      else:
+        # help the core figure out the input file type
+        if type == "kinemage":
+          options.suitein = True
+        elif type == "dangle":
+          options.residuein = True
+        main(optionsIn=options)
+  
+extensionList={
+    "pdb": "pdb",
+    "kin": "kinemage",
+    "dangle": "dangle",
+    "suitegeom": "dangle",
+}
+
+def analyzeFileType(filename):
+    base, extension = os.path.splitext(filename)
+    extension = extension[1:]
+    type = extensionList.get(extension, "")
+    return type
 
 
 class Program(ProgramTemplate):

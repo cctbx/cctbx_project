@@ -1,7 +1,8 @@
-from . import suiteninit, suitenout, suiteninput
-from . import Suite, Residue, Bin, Cluster, Issue, failMessages
-from . import Holder, globals
-from suiteninit import args, bins, MAX_CLUSTERS
+from suitenamedefs import Suite, Residue, Bin, Cluster, Issue, failMessages
+from suitenamedefs import Holder, globals
+# suitenamedefs must come first!
+import suiteninit, suiteninput
+from suiteninit import bins, MAX_CLUSTERS
 from suiteninit import normalWidths, satelliteWidths
 from suiteninput import readResidues, readKinemageFile, buildSuites
 
@@ -48,15 +49,18 @@ outNote.wannabes = 0
 outNote.outliers = 0
 
 
-
 # ***main()******************************************************************
 def main(inStream=None, outFile=None, optionsIn=None):
-    global options
-    options = optionsIn
-    globals.options = optionsIn  # makes them available to other files
-
-    print(">>>>>>>>>>>>>>>>>>>>>>suitename/main reporting<<<<<<<<<<<<<<<<<<<<<<<<<<")
     # inStream is used in internal testing
+    global options
+    if optionsIn is None:
+        # suitename is being run in standalone mode
+        options = suiteninit.parseCommandLine()
+    else:
+        options = optionsIn
+    globals.options = options  
+    # makes them available to other parts of this program
+
     global dbCounter  # for debugging KPB 210222
     if options.version:
         print(version)
@@ -98,9 +102,9 @@ def compute(suites):
     # 2. process the suites
     for s in suites:
         if not s.validate():
-            if args.test:
+            if options.test:
                 sys.stderr.write(f"! failed validation: {s.pointID}\n")
-            if not args.noinc:
+            if not options.noinc:
               annotate(s, bins[13], bins[13].cluster[0], 0, 0, " tangled ",
                   "", "", "", ""
             )
@@ -138,7 +142,9 @@ def annotate(suite, bin, cluster, distance, suiteness, situation,
 
 
 def write(outFile, suites):
-    suitenout.output(outFile, suites, outNote)
+    # late import is required to ensure that globals.options is in place.
+    from suitenout import output
+    output(outFile, suites, outNote)
 
 
 # *** evaluateSuite and its tools ***************************************

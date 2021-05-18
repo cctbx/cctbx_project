@@ -11,26 +11,18 @@ import sys, os, inspect
 import suitename, suiteninput
 from suitenamedefs import Residue, Suite
 from iotbx.data_manager import DataManager    #   Load in the DataManager
-
-dm = DataManager()                            #   Initialize the DataManager and call it dm
-dm.set_overwrite(True)         #   tell the DataManager to overwrite files with the same name
-#model_filename="model.pdb"                         #   Name of model file
-model_filename="test/2xLk.pdb"                         #   Name of model file
-print("Reading file")
-model = dm.get_model(model_filename)
-print("Processing model")
-model.process_input_model(make_restraints=True)
-
-
 from mmtbx.validation import utils
 from cctbx import geometry_restraints
 from _collections import defaultdict
 
-def main(outFile=None):
+
+def main(options, outFile=None):
   if not outFile:
     outFile = sys.stdout
+  inFile = options.infile
+  model = loadModel(inFile)
 
-  residues = get_residue_dihedrals(model)
+  residues = getResidueDihedrals(model)
   if len(residues) == 0:
       sys.stderr.write("read no residues: perhaps wrong alternate code\n")
       sys.exit(1)
@@ -43,14 +35,24 @@ def main(outFile=None):
   suitename.clearStats()
 
 
-def testResidues():
+def loadModel(filename):
+  dm = DataManager()             #   Initialize the DataManager and call it dm
+  dm.set_overwrite(True)         #   tell the DataManager to overwrite files with the same name
+  print("Reading file")
+  model = dm.get_model(filename)
+  print("Processing model")
+  model.process_input_model(make_restraints=True)
+  return model
+
+
+def testResidues(model):
   print("computing dihedrals")
-  residues = get_residue_dihedrals(model)
+  residues = getResidueDihedrals(model)
   for r in residues:
     print(r.pointIDs, " : ", r.angle)
 
 
-def get_residue_dihedrals(model):
+def getResidueDihedrals(model):
   bb_dihedrals = defaultdict(dict)
   residues = []
   alt_tracker = {}
@@ -318,6 +320,3 @@ def get_rna_backbone_dihedrals(model):
   for line in formatted_out:
     backbone_dihedrals += line+'\n'
   return backbone_dihedrals
-
-
-main()

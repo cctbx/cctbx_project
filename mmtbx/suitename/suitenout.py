@@ -1,5 +1,5 @@
-from suitenamedefs import Bin, Cluster, Issue, reasons
-from suiteninit import args, bins
+from suitenamedefs import globals, reasons
+from suiteninit import bins
 
 "Writing of suitename results into any of several textual file formats"
 
@@ -22,6 +22,8 @@ from enum import Enum
 import numpy as np
 from numpy import array
 
+options = globals.options
+
 reportCountAll = 0
 trigCountAll = 0
 suitenessSumAll = 0
@@ -35,9 +37,9 @@ def output(outFile, suites, outNote):
 
 
 def outSuite(outFile, s):
-    if args.string:
+    if options.string:
         string1Suite(outFile, s, s.cluster)
-    elif args.kinemage:
+    elif options.kinemage:
         pass
     else:
         reportSuite(outFile, s)
@@ -46,9 +48,9 @@ def outSuite(outFile, s):
 # deprecated, superseded by annotation:
 def write1Suite(suite, bin, cluster, distance, suiteness, notes, 
                 issue, comment, pointMaster, pointColor):
-    if args.string:
+    if options.string:
         string1Suite(sys.stdout, suite, cluster)
-    elif args.kinemage:
+    elif options.kinemage:
         # this can probably vanish entirely:
         kinemage1Suite(suite, bin, cluster, notes, distance, suiteness, 
                        issue, comment, pointMaster, pointColor,
@@ -58,18 +60,18 @@ def write1Suite(suite, bin, cluster, distance, suiteness, notes,
 
 
 def writeFinalOutput(outFile, suites, outNote):
-    if args.satellites:
+    if options.satellites:
         outNote.comment = " using special general case satellite widths"
-    if args.string:
+    if options.string:
         pass
-    elif args.kinemage:
+    elif options.kinemage:
         kinemageFinal(outFile, suites, outNote)
     else:
         reportFinal(outFile, outNote)
 
 
 def string1Suite(outFile, suite, cluster):
-    if args.nosequence:
+    if options.nosequence:
         basestring = ":"
     else:
         basestring = suite.base
@@ -136,7 +138,7 @@ def report1Suite(
     elif comment:
         reason = " " + comment
         comment = ""
-    elif notes and args.causes:
+    elif notes and options.causes:
         reason += " " + notes
     if cluster.status == "wannabe":
         comment = " wannabe"
@@ -170,7 +172,7 @@ def report1Suite(
 
 
 def reportFinal(outFile, outNote):
-    if not args.chart:
+    if not options.chart:
         outFile.write(outNote.comment + "\n")
         suitenessAverage(outFile, 0)
         if bins[1].cluster[1].count > 0:  # Aform 1a    070325
@@ -369,7 +371,7 @@ def kinemageHeader(outFile, outNote):
     outFile.write(f"@text\n {outNote.version}\n {outNote.comment}\n")
     outFile.write("@kinemage 1\n")
     outFile.write("@onewidth\n")
-    if args.etatheta or args.thetaeta:  # 070524
+    if options.etatheta or options.thetaeta:  # 070524
         outFile.write(
             "@dimension {theta} {delta-1} {epsilon-1} {zeta-1} {alpha} "
             "{beta} {gamma} {delta} {eta}\n"

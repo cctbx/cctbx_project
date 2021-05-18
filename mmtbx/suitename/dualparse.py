@@ -52,11 +52,11 @@ class TableItem:
 
 
 aliasList=(
-('residuein', 'residuesin', 'false', 'false') ,
-('suitein', 'suitesin', 'false', 'false') ,
+('residuein', 'residuesin', False, False) ,
+('suitein', 'suitesin', False, False) ,
 ('altid', 'altidval', 'A', 'A') ,
-('pointidfields', 'ptid', '7', '0') ,
-('etatheta', 'thetaeta', 'false', 'false'),
+('pointidfields', 'ptid', 7, 0) ,
+('etatheta', 'thetaeta', False, False),
 (None, 'angles', None, 9),  # deprecated items
 (None, 'resAngles', None, 6)
 )

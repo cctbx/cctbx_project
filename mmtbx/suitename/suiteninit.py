@@ -6,8 +6,7 @@ import argparse, sys
 
 """
 This is a self initializing module that embodies the data around which
-this program is built. It exports to primary data structures:
-  args    the command line arguments, stored in a Namespace
+this program is built. It exports its primary data structure:
   bins    the bin and cluster definitions
 """
 
@@ -27,13 +26,11 @@ this program is built. It exports to primary data structures:
 
 
 MAX_CLUSTERS = 16  # practical, observed limit of clusters in a bin
-args = {}
 
 
 # ***parseCommandLine()*******************************************************
 def parseCommandLine():
     "Parse a command line, returning a parseargs.Namespace"
-    global args
     for i, arg in enumerate(sys.argv):
         sys.argv[i] = arg.lower()
 
