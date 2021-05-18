@@ -22,6 +22,38 @@ from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
 import mmtbx
 
+def BestMatch(name, d):
+  '''Find the best match for the name in the dictionary keys.  It must match the
+  first character of the name and then pick the one with the maximum number of
+  matched characters.
+  :param name: Name of the atom to match.
+  :param d: atom_dict dictionary mapping atom names to type and energy.
+  :returns Best match on success, raises KeyError on no match.
+  '''
+
+  # Get a list of names from the dictionary that match the first character.
+  keys = d.keys()
+  matches = []
+  for k in keys:
+    if k[0] == name[0]:
+      matches.append(k)
+  if len(matches) == 0:
+    raise KeyError('Could not find atom name with matching first character from '+name)
+
+  # Keep track of the match that has a maximum number of matching characters.
+  maxCount = 0
+  bestMatch = ""
+  for m in matches:
+    count = 0
+    for c in name:
+      if c in m:
+        count += 1
+    if count > maxCount:
+      maxCount = count
+      bestMatch = m
+
+  return bestMatch
+
 def RunProbeTests(inFileName):
 
   #========================================================================
@@ -101,7 +133,13 @@ def RunProbeTests(inFileName):
 
           for a in ag.atoms():
             atoms.append(a)
-            te = atom_dict[a.name.strip()].type_energy
+            name = a.name.strip()
+            try:
+              te = atom_dict[name].type_energy
+            except KeyError:
+              match = BestMatch(name, atom_dict)
+              print('Warning: Could not find entry in atom dictionary for',name,'replacing with',match, flush=True)
+              te = atom_dict[match].type_energy
             extra[a.i_seq].vdwRadius = ener_lib.lib_atom[te].vdw_radius
             hb_type = ener_lib.lib_atom[te].hb_type
             if hb_type == "A":
