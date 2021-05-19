@@ -238,6 +238,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             FloatType weight = weighting_scheme(reflections.fo_sq(i_h),
               reflections.sig(i_h), observable, scale_factor);
             weights[i_h] = weight;
+            FloatType exti_der = (exti_k[0]+pow(exti_k[0],3))/2;
             if (objective_only) {
               normal_equations.add_residual(observable,
                 reflections.fo_sq(i_h), weight);
@@ -254,6 +255,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
             if (build_design_matrix) {
               for (int i_g = 0; i_g < gradients.size(); i_g++) {
                 design_matrix(i_h, i_g) = gradients[i_g];
+                if(exti.grad_value()) {
+                  if(exti.get_grad_index() == i_g) {
+                    design_matrix(i_h, i_g) *= exti_der;
+                  }
+                }
               }
             }
           }
