@@ -362,6 +362,8 @@ class AtomTypes:
     # instances of the previous character, so '.*' at the end matches an arbitrary ending.
     # The expressions should be upper-case.  The resulting names should match the case of
     # the _Index dictionary.
+    # Earlier entries are checked before later entries, so for example the C.* at the end of the
+    # C's will match all atoms that don't match other than the C entries before it.
     self._nameTable = [
       [ r'AC.*',    'C',  True ],
       [ r'AG.*',    'Ag', False ],
@@ -375,6 +377,175 @@ class AtomTypes:
       [ r'AS.*',    'As', False ],
       [ r'AT.*',    'At', False ],
       [ r'AU.*',    'Au', False ],
+
+      [ r'BA.*',    'Ba', False ],
+      [ r'BE.*',    'Be', False ],
+      [ r'BI.*',    'Bi', False ],
+      [ r'BK.*',    'Bk', False ],
+      [ r'BR.*',    'Br', False ],
+
+      [ r'CA.*',    'Ca', False ],
+      [ r'CC.*',    'C',  True ],
+      [ r'CD.*',    'Cd', False ],
+      [ r'CE.*',    'Ce', False ],
+      [ r'CF.*',    'Cf', False ],
+      [ r'CH.*',    'H',  True ],
+      [ r'CL.*',    'Cl', False ],
+      [ r'CM.*',    'Cm', False ],
+      [ r'CN.*',    'N',  False ],
+      [ r'CO.*',    'Co', True ],   # @todo Is this a false warning?
+      [ r'CP.*',    'C',  True ],
+      [ r'CR.*',    'Cr', False ],
+      [ r'CS.*',    'Cs', False ],
+      [ r'CU.*',    'Cu', False ],
+      [ r'C.*',     'C',  False ],  # All other atoms starting with C are called Carbon
+
+      [ r'DY.*',    'Dy', False ],
+      [ r'DC.*',    'C',  True ],
+      [ r'DH.*',    'H',  True ],
+      [ r'DN.*',    'N',  True ],
+      [ r'DO.*',    'O',  True ],
+      [ r'DP.*',    'P',  True ],
+      [ r'D.*',     'H',  True ],   # All other atoms starting with D are called Hydrogen
+
+      [ r'ER.*',    'Er', False ],
+      [ r'ES.*',    'Es', False ],
+      [ r'EU.*',    'Eu', False ],
+      [ r'EC.*',    'C',  True ],
+      [ r'EH.*',    'H',  True ],
+      [ r'EN.*',    'N',  True ],
+      [ r'EO.*',    'O',  True ],
+      [ r'EP.*',    'P',  True ],
+
+      [ r'FE.*',    'Fe', False ],
+      [ r'FM.*',    'Fm', False ],
+      [ r'FR.*',    'Fr', False ],
+      [ r'FC.*',    'C',  True ],
+      [ r'FH.*',    'H',  True ],
+      [ r'FN.*',    'N',  True ],
+      [ r'FO.*',    'O',  True ],
+      [ r'FP.*',    'P',  True ],
+
+      # Hydrogen is treated as a special case.
+
+      [ r'GA.*',    'Ga', False ],
+      [ r'GD.*',    'Gd', False ],
+      [ r'GE.*',    'Ge', False ],
+      [ r'GC.*',    'C',  True ],
+      [ r'GH.*',    'H',  True ],
+      [ r'GN.*',    'N',  True ],
+      [ r'GO.*',    'O',  True ],
+      [ r'GP.*',    'P',  True ],
+
+      [ r'IN.*',    'In', False ],
+      [ r'IR.*',    'Ir', False ],
+
+      [ r'KR.*',    'Kr', False ],
+
+      [ r'LA.*',    'La', False ],
+      [ r'LI.*',    'Li', False ],
+      [ r'LU.*',    'Lu', False ],
+
+      [ r'MD.*',    'MD', False ],
+      [ r'MG.*',    'Mg', False ],
+      [ r'MN.*',    'Mn', False ],
+      [ r'MO.*',    'Mo', False ],
+
+      [ r'NA.*',    'Na', False ],
+      [ r'NB.*',    'Nb', False ],
+      [ r'NC.*',    'C',  True ],
+      [ r'ND.*',    'Nd', False ],
+      [ r'NE.*',    'Ne', False ],
+      [ r'NH.*',    'H',  True ],
+      [ r'NI.*',    'Ni', False ],
+      [ r'NN.*',    'N',  True ],
+      [ r'NO.*',    'O',  True ],
+      [ r'NP.*',    'P',  True ],
+      [ r'NS.*',    'S',  True ],
+      [ r'N.*',     'N',  True ],   # All other atoms starting with N are called Nitrogen
+
+      [ r'OS.*',    'Os', False ],
+      [ r'O.*',     'O',  True ],   # All other atoms starting with O are called Oxygen
+
+      [ r'PA.*',    'Pa', False ],
+      [ r'PB.*',    'Pb', False ],
+      [ r'PD.*',    'Pd', False ],
+      [ r'PM.*',    'Pm', False ],
+      [ r'PO.*',    'Po', False ],
+      [ r'PR.*',    'Pr', False ],
+      [ r'PT.*',    'Pt', False ],
+      [ r'PU.*',    'Pu', False ],
+      [ r'P.*',     'P',  True ],   # All other atoms starting with P
+
+      [ r'RA.*',    'Ra', False ],
+      [ r'RB.*',    'Rb', False ],
+      [ r'RE.*',    'Re', False ],
+      [ r'RH.*',    'Rh', False ],
+      [ r'RN.*',    'Rn', False ],
+      [ r'RU.*',    'Ru', False ],
+
+      [ r'SB.*',    'Sb', False ],
+      [ r'SC.*',    'Sc', False ],
+      [ r'SE.*',    'Se', False ],
+      [ r'SI.*',    'Si', False ],
+      [ r'SM.*',    'Sm', False ],
+      [ r'SN.*',    'Sn', False ],
+      [ r'SR.*',    'Sr', False ],
+      [ r'S.*',     'S',  True ],   # All other atoms starting with S
+
+      [ r'TA.*',    'Ta', False ],
+      [ r'TB.*',    'Tb', False ],
+      [ r'TC.*',    'Tc', False ],
+      [ r'TE.*',    'Te', False ],
+      [ r'TH.*',    'Th', False ],
+      [ r'TI.*',    'Ti', False ],
+      [ r'TL.*',    'Tl', False ],
+      [ r'TM.*',    'Tm', False ],
+
+      [ r'XE.*',    'Xe', False ],
+
+      [ r'YB.*',    'Yb', False ],
+
+      [ r'ZN.*',    'Zn', False ],
+      [ r'ZR.*',    'Zr', False ]
+    ]
+
+    ##################################################################################
+    # Table of last-chance names for atoms that were not found in one of the above
+    # tables.
+    # This table operates on the name after the first character has been removed.
+    # Each entry has a regular expression to match, the resulting name, and a Boolean
+    # telling whether to warn about this translation -- these always warn.
+    self._lastChanceNameTable = [
+      [ r'H.*',    'H',  True ],
+      [ r'C.*',    'C',  True ],
+      [ r'N.*',    'N',  True ],
+      [ r'O.*',    'O',  True ],
+      [ r'P.*',    'P',  True ],
+      [ r'S.*',    'S',  True ],
+
+      [ r'I.*',    'I',  True ],
+      [ r'K.*',    'K',  True ],
+      [ r'V.*',    'V',  True ],
+      [ r'W.*',    'W',  True ],
+      [ r'U.*',    'U',  True ],
+
+      [ r'AG.*',   'Ag', True ],
+      [ r'AL.*',   'Al', True ],
+      [ r'AS.*',   'As', True ],
+      [ r'AU.*',   'Au', True ],
+
+      [ r'FE.*',   'Fe', True ],
+
+      [ r'GD.*',   'Gd', True ],
+
+      [ r'LI.*',   'Li', True ],
+
+      [ r'MG.*',   'Mg', True ],
+      [ r'MN.*',   'Mn', True ],
+      [ r'MO.*',   'Mo', True ],
+
+      [ r'ZN.*',   'Zn', True ]
     ]
 
   ##################################################################################
@@ -441,10 +612,23 @@ class AtomTypes:
         elementName = n[1]
         emitWarning = n[2]
         break;
-    #@todo Fill in based on identifyAtom()
 
-    # Look up the element name, which fill fail if it is still None or if
-    # it is not in the table.
+    # If we did not find an elementName yet, we always emit a warning,
+    # then default to Carbon, and then try another pass on names
+    # always skipping the first character of the name.
+    if elementName is None:
+      elementName = 'C'
+      emitWarning = True
+
+      atomName = atom.name.upper().ljust(4)[1:]
+      for n in self._lastChanceNameTable:
+        e = re.compile(n[0])
+        if e.match(atomName) is not None:
+          elementName = n[1]
+          emitWarning = n[2]
+          break;
+
+    # Look up the element name, which fail if it is not in the table.
     try:
       ai = AtomInfo(self._Index[elementName])
     except:
@@ -463,8 +647,9 @@ class AtomTypes:
     Note: Makes use of the mmtbx.probe.useNuclearDistances option to determine whether to
     return electron-cloud distance (default, when False) or nuclear distances (when True).
     :param atom: iotbx.pdb.atom entry to look up.
-    :returns an mmtbx_probe_ext.ExtraAtomInfo structure filled with the info from the table
-    on success, raises ValueError on failure.
+    :returns a pair (mmtbx_probe_ext.ExtraAtomInfo structure filled with the info from the table,
+    warning string) on success, raises ValueError on failure.  The warning string is empty
+    if there is no warning, contains a printable warning if there was.
     """
 
     ai, warn = self.FindAtomInfo(atom)
@@ -479,7 +664,7 @@ class AtomTypes:
     else:
       ret.vdwRadius = ai.vdwElectronCloudExplicit
 
-    return ret
+    return ( ret, warn )
 
 def RunAtomTypeTests(inFileName):
 
@@ -521,7 +706,10 @@ def RunAtomTypeTests(inFileName):
       for rg in chain.residue_groups():
         for ag in rg.atom_groups():
           for a in ag.atoms():
-            extra[a.i_seq] = at.FindProbeExtraAtomInfo(a)
+            ei, warn = at.FindProbeExtraAtomInfo(a)
+            extra[a.i_seq] = ei
+            if len(warn) > 0:
+              print(warn)
 
   print('Found info for', len(extra), 'atoms, the last with radius',extra[-1].vdwRadius)
 
