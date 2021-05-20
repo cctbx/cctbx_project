@@ -25,6 +25,7 @@
 # information in the table for that atom.
 
 import sys
+import re
 from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
 import mmtbx
@@ -294,10 +295,87 @@ class AtomTypes:
     # Construct a dictionary that maps from the name of the type in the _AtomTable
     # to its full entry in the table to make it fast to look up an atom by its type
     # name.
-
     self._Index = {}
     for e in self._AtomTable:
       self._Index[e[1]] = e
+
+    ##################################################################################
+    # Make a string that has all of the special first characters from an atom name that
+    # would cause it to parse the remainder of the name as if it were a full name (this
+    # uses a table that is a subset of the full name-parsing table).
+    self._specialAtomFirstChars = '*"\'`_+- 0123456789'
+
+    ##################################################################################
+    # Make a dictionary for upper-case second letters in Hydrogen names that stores the
+    # list of residues for which this name is valid.  For example, "Hg" would have an
+    # entry named 'G' which lists the residues that can have an atom named "Hg" in it.
+    # Making an empty list here will have the same effect as not having an entry for
+    # a given letter.  All names in the list must be fully upper case.  Spaces are
+    # significant in the residue names.
+    self._legalResiduesForSpecialHydrogen = {
+      'E' : [],
+      'F' : ['PHF', 'HF3', 'HF5'],
+      'G' : [' HG', 'HG2', 'HGB', 'HGC', 'HGI', 'MAC', 'MBO', 'MMC',
+             'PHG', 'PMB', 'AAS', 'AMS', 'BE7', 'CMH', 'EMC', 'EMT'],
+      'O' : [' HO', 'HO3'],
+      'S' : []
+    }
+
+    ##################################################################################
+    # Upper-cased legal names for hydrogen atoms.  Used to generate a warning if we
+    # have a different name than these and it is not a special atom name.
+    # HH and HD are there to get rid of warnings for PBD v3 names and H5'' is
+    # to handle RNA/DNA backbone atoms.
+    self._legalStandardHydrogenNames = ['H', 'HE', 'HF', 'HG', 'HO', 'HS',
+      "H5''", 'HH', 'HD']
+
+    ##################################################################################
+    # Table of allowed names for atoms that begin with one of the special characters.
+    # This table operates on the name after the special character has been removed.
+    # Each entry has a regular expression to match, the resulting name, and a Boolean
+    # telling whether to warn about this translation.
+    self._specialNameTable = [
+      [ r'A.1',    'O',  True ],
+      [ r'A.2',    'N',  True ],
+      [ r'B.*',    'B',  False ],
+      [ r'C.*',    'C',  False ],
+      [ r'D.*',    'H',  False ],
+      [ r'F.*',    'F',  False ],
+      # Hydrogen is handled separately
+      [ r'I.*',    'I',  False ],
+      [ r'K.*',    'K',  False ],
+      [ r'N.*',    'N',  False ],
+      [ r'O.*',    'O',  False ],
+      [ r'P.*',    'P',  False ],
+      [ r'S.*',    'S',  False ],
+      [ r'U.*',    'U',  False ],
+      [ r'V.*',    'V',  False ],
+      [ r'W.*',    'W',  False ],
+      [ r'Y.*',    'Y',  False ]
+    ]
+
+    ##################################################################################
+    # Table of allowed names for atoms that do not begin with one of the special characters.
+    # Each entry has a regular expression to match, the resulting name, and a Boolean
+    # telling whether to warn about this translation.
+    # The dot character '.' matches any single character and the * character means 0 or more
+    # instances of the previous character, so '.*' at the end matches an arbitrary ending.
+    # The expressions should be upper-case.  The resulting names should match the case of
+    # the _Index dictionary.
+    self._nameTable = [
+      [ r'AC.*',    'C',  True ],
+      [ r'AG.*',    'Ag', False ],
+      [ r'AH.*',    'H',  True ],
+      [ r'AL.*',    'Al', False ],
+      [ r'AM.*',    'Am', False ],
+      [ r'AN.*',    'N',  True ],
+      [ r'AO.*',    'O',  True ],
+      [ r'AP.*',    'P',  True ],
+      [ r'AR.*',    'Ar', False ],
+      [ r'AS.*',    'As', False ],
+      [ r'AT.*',    'At', False ],
+      [ r'AU.*',    'Au', False ],
+    ]
 
   ##################################################################################
   # Given an iotbx.pdb.atom, look up its mmtbx_probe_ext.ExtraAtomInfo in the atom table.
@@ -305,17 +383,80 @@ class AtomTypes:
   def FindAtomInfo(self, atom):
     """Given an iotbx.pdb.atom, look up its information in the atom table.
     :param atom: iotbx.pdb.atom entry to look up.
-    :returns filled in AtomInfo on success, raises ValueError on failure.
+    :returns a pair (filled in AtomInfo, string warning) on success, raises ValueError on failure.
+    The warning will be empty if there was no problem with the lookup and will be a
+    printable string explaining the problem if there was one.
     """
 
-    # Find the name of the atom and the residue it is in.  The atom's parent is an
-    # atom group, which holds its residue name
-    atomName = atom.name.strip().upper()
-    resName = atom.parent().resname
+    # The element name we're going to use to look up in the table.
+    elementName = None
 
+    # Should we emit a warning about this name translation?
+    emitWarning = False
+
+    # Find the name of the atom and the residue it is in.  The atom's parent is an
+    # atom group, which holds its residue name.  The atom name is padded on the right
+    # with spaces so that it is at least four characters long.
+    atomName = atom.name.upper().ljust(4)
+    resName = atom.parent().resname.upper()
+    #print('XXX Finding info for', resName,atomName)
+
+    # See if the first character of the atom name is special.  If so, shift it off
+    # the name and replace the standard parsing table with the subset table for special
+    # atom names.
+    nameTable = self._nameTable
+    specialName = False
+    if atomName[0] in self._specialAtomFirstChars:
+      atomName = atomName[1:]
+      nameTable = self._specialNameTable
+      specialName = True
+
+    # For Hydrogens, see if we need to truncate the name by removing its second character
+    # because it is an He, Hf, Hg, Ho, or Hs in a residue that does not allow such names.
+    # If it is disallowed, replace it with a simple 'H'.
+    if atomName[0] == 'H':
+      # If we are not a truncated special name, then we do more scrutiny on the name and
+      # emit a warning if it is not any of the recognized names.
+      if (not specialName) and (not atomName in self._legalStandardHydrogenNames):
+        emitWarning = True
+
+      # Use the default value of 'H' unless the second letter is in a list of residues
+      # that allow that second letter.
+      elementName = 'H'
+      try:
+        if resName in self._legalResiduesForSpecialHydrogen[atomName[1]]:
+          # This residue is in the list of those that are valid for this name,
+          # so we make the element name H followed by the same lower-case letter.
+          elementName = 'H' + atomName[1].lower()
+      except KeyError:
+        # We did not find an entry for this character, so we leave things alone
+        pass
+
+    # Look up the atom in all entries of the table to see if any of their regular
+    # expressions match.  If so, set the elementName and warning emission based on
+    # the table entry.
+    for n in nameTable:
+      e = re.compile(n[0])
+      if e.match(atomName) is not None:
+        elementName = n[1]
+        emitWarning = n[2]
+        break;
     #@todo Fill in based on identifyAtom()
-    i = 0
-    return AtomInfo(self._AtomTable[i])
+
+    # Look up the element name, which fill fail if it is still None or if
+    # it is not in the table.
+    try:
+      ai = AtomInfo(self._Index[elementName])
+    except:
+      return (None, "WARNING: atom "+atom.name+" from "+atom.parent().resname+
+                 ' not recognized or unknown')
+
+    # Return the value, warning if we've been asked to.
+    warning = ""
+    if emitWarning:
+      warning = ("WARNING: atom "+atom.name+" from "+atom.parent().resname+
+                 ' will be treated as '+elementName)
+    return ( ai, warning )
 
   def FindProbeExtraAtomInfo(self, atom):
     """Given an iotbx.pdb.atom, look up its mmtbx_probe_ext.ExtraAtomInfo in the atom table.
@@ -326,7 +467,9 @@ class AtomTypes:
     on success, raises ValueError on failure.
     """
 
-    ai = self.FindAtomInfo(atom)
+    ai, warn = self.FindAtomInfo(atom)
+    if ai is None:
+      raise ValueError("FindProbeExtraAtomInfo(): Could not look up atom",atom.name)
     ret = probe.ExtraAtomInfo()
     ret.isAcceptor = ai.flags & AtomFlags.ACCEPTOR_ATOM
     ret.isDonor = ai.flags & AtomFlags.DONOR_ATOM
@@ -334,7 +477,7 @@ class AtomTypes:
     if self._useNuclearDistances:
       ret.vdwRadius = ai.vdwNuclearExplicit
     else:
-      ret.vswRadius = ai.vdwElectronCloudExplicit
+      ret.vdwRadius = ai.vdwElectronCloudExplicit
 
     return ret
 
@@ -380,7 +523,7 @@ def RunAtomTypeTests(inFileName):
           for a in ag.atoms():
             extra[a.i_seq] = at.FindProbeExtraAtomInfo(a)
 
-  print('Found info for', len(extra), 'atoms, the first with radius',extra[0].vdwRadius)
+  print('Found info for', len(extra), 'atoms, the last with radius',extra[-1].vdwRadius)
 
   return ""
 
