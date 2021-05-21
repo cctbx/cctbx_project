@@ -1578,6 +1578,9 @@ class run_ensemble_refinement(object):
 #    # set mode_stats.geometry to None as refers to final structure NOT ensemble
 #    model_stats.geometry = None
 #    model_stats.show(out = out, pdb_deposition =True)
+    self.ensemble_utils.ensemble_rmsf_stats(
+        ensemble_xray_structures = self.er_data.xray_structures,
+        )
     # get mean geometry stats for ensemble
     self.final_geometry_pdb_string = self.ensemble_utils.ensemble_mean_geometry_stats(
         restraints_manager       = self.model.restraints_manager,
@@ -1742,6 +1745,8 @@ def write_mtz_file(fmodel_total, raw_data, raw_flags, prefix, params):
 
 def is_amber_refinement(params):
   if getattr(params, 'amber', False): return params.amber.use_amber
+  print(dir(params))
+  assert 0
   return params.ensemble_refinement.amber.use_amber
 
 #-----------------------------------------------------------------------
