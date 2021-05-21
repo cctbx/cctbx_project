@@ -70,9 +70,9 @@ class AtomInfo:
     except:
       self._vdwElectronCloudImplicit = 0
     try:
-      self._vdwNuclearExplicit = myValList[5]
+      self._vdwNeutronExplicit = myValList[5]
     except:
-      self._vdwNuclearExplicit = 0
+      self._vdwNeutronExplicit = 0
     try:
       self._covalent = myValList[6]
     except:
@@ -97,8 +97,8 @@ class AtomInfo:
   def set_vdwElectronCloudExplicit(self, val): self._vdwElectronCloudExplicit = val
   def get_vdwElectronCloudImplicit(self): return self._vdwElectronCloudImplicit
   def set_vdwElectronCloudImplicit(self, val): self._vdwElectronCloudImplicit = val
-  def get_vdwNuclearExplicit(self): return self._vdwNuclearExplicit
-  def set_vdwNuclearExplicit(self, val): self._vdwNuclearExplicit = val
+  def get_vdwNeutronExplicit(self): return self._vdwNeutronExplicit
+  def set_vdwNeutronExplicit(self, val): self._vdwNeutronExplicit = val
   def get_covalent(self): return self._covalent
   def set_covalent(self, val): self._covalent = val
   def get_kinemageColor(self): return self._kinemageColor
@@ -112,7 +112,7 @@ class AtomInfo:
   fullName = property(get_fullName, set_fullName)
   vdwElectronCloudExplicit = property(get_vdwElectronCloudExplicit, set_vdwElectronCloudExplicit)
   vdwElectronCloudImplicit = property(get_vdwElectronCloudImplicit, set_vdwElectronCloudImplicit)
-  vdwNuclearExplicit = property(get_vdwNuclearExplicit, set_vdwNuclearExplicit)
+  vdwNeutronExplicit = property(get_vdwNeutronExplicit, set_vdwNeutronExplicit)
   covalent = property(get_covalent, set_covalent)
   kinemageColor = property(get_kinemageColor, set_kinemageColor)
   flags = property(get_flags, set_flags)
@@ -125,15 +125,15 @@ class AtomTypes:
   def __init__(self, probePhilOptions = None):
     """Constructor.
     :param probePhilOption: An optional set of Phil options for mmtbx.probe.  The
-    relevant ones are: useNuclearDistances (Boolean: default False).
+    relevant ones are: useNeutronDistances (Boolean: default False).
     """
 
     ##################################################################################
     # Store state based on options.
     try:
-      self._useNuclearDistances = self._probePhilOptions.useNuclearDistances
+      self._useNeutronDistances = self._probePhilOptions.useNeutronDistances
     except:
-      self._useNuclearDistances = False
+      self._useNeutronDistances = False
 
     ##################################################################################
     # Table of information about each type of atom.  The elements in each list are as
@@ -142,7 +142,7 @@ class AtomTypes:
     #   Name of the type, used to look up the atom type
     #   Full name of the type, useful when printing
     #   VDW radius for explicit hydrogen bonds at the electron cloud distance
-    #   VDW radius for explicit hydrogen bonds at the nuclear distance
+    #   VDW radius for explicit hydrogen bonds at the neutron distance
     #   VDW radius for implicit hydrogen bonds at the electron cloud distance
     #   Covalent bond radius
     #   Name of the color to use in Mage/Kinemage to display the atom
@@ -653,8 +653,8 @@ class AtomTypes:
 
   def FindProbeExtraAtomInfo(self, atom):
     """Given an iotbx.pdb.atom, look up its mmtbx_probe_ext.ExtraAtomInfo in the atom table.
-    Note: Makes use of the mmtbx.probe.useNuclearDistances option to determine whether to
-    return electron-cloud distance (default, when False) or nuclear distances (when True).
+    Note: Makes use of the mmtbx.probe.useNeutronDistances option to determine whether to
+    return electron-cloud distance (default, when False) or neutron distances (when True).
     :param atom: iotbx.pdb.atom entry to look up.
     :returns a pair (mmtbx_probe_ext.ExtraAtomInfo structure filled with the info from the table,
     warning string) on success, raises ValueError on failure.  The warning string is empty
@@ -668,8 +668,8 @@ class AtomTypes:
     ret.isAcceptor = ai.flags & AtomFlags.ACCEPTOR_ATOM
     ret.isDonor = ai.flags & AtomFlags.DONOR_ATOM
     ret.isDummyHydrogen = ai.flags & AtomFlags.HB_ONLY_DUMMY_ATOM
-    if self._useNuclearDistances:
-      ret.vdwRadius = ai.vdwNuclearExplicit
+    if self._useNeutronDistances:
+      ret.vdwRadius = ai.vdwNeutronExplicit
     else:
       ret.vdwRadius = ai.vdwElectronCloudExplicit
 
