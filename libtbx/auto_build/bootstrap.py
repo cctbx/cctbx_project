@@ -2297,6 +2297,18 @@ class PhenixBuilder(CCIBuilder):
     'prime',
   ]
 
+  def get_codebases(self):
+    """
+    Phenix uses Boost in the conda environment for Python 3
+    """
+    codebases = super(PhenixBuilder, self).get_codebases()
+    if self.python3 and self.use_conda is not None:
+      try:
+        codebases.remove('boost')
+      except ValueError:
+        pass
+    return codebases
+
   def add_module(self, module, workdir=None, module_directory=None):
     """
     Add git-lfs command for phenix_examples and phenix_regression
