@@ -38,8 +38,8 @@ class AtomFlags(IntFlag):
   """
   EMPTY_FLAGS = 0               # No flags set
   IGNORE_ATOM = auto()          # This atom should be ignored during processing, as if it did not exist
-  DONOR_ATOM = auto()           # Can be a proton donor
-  ACCEPTOR_ATOM = auto()        # Can be a proton acceptor
+  DONOR_ATOM = auto()           # Can be an electron donor
+  ACCEPTOR_ATOM = auto()        # Can be an electron acceptor
   HB_ONLY_DUMMY_ATOM = auto()   # This is a dummy hydrogen added to a water, it can hydrogen bond by not clash
   METALLIC_ATOM = auto()        # The atom is metallic
 
@@ -306,13 +306,14 @@ class AtomTypes:
     self._specialAtomFirstChars = '*"\'`_+- 0123456789'
 
     ##################################################################################
-    # Make a dictionary for upper-case second letters in Hydrogen names that stores the
-    # list of residues for which this name is valid.  For example, "Hg" would have an
-    # entry named 'G' which lists the residues that can have an atom named "Hg" in it.
+    # Make a dictionary for upper-case second letters in multi-letter atom names where
+    # the first letter is H.  It stores the list of residues for which this name is valid.
+    # For example, "Hg" would have an entry named 'G' which lists the residues that can
+    # have an atom named "Hg" in it.
     # Making an empty list here will have the same effect as not having an entry for
     # a given letter.  All names in the list must be fully upper case.  Spaces are
     # significant in the residue names.
-    self._legalResiduesForSpecialHydrogen = {
+    self._legalResiduesForHElements = {
       'E' : [],
       'F' : ['PHF', 'HF3', 'HF5'],
       'G' : [' HG', 'HG2', 'HGB', 'HGC', 'HGI', 'MAC', 'MBO', 'MMC',
@@ -322,11 +323,11 @@ class AtomTypes:
     }
 
     ##################################################################################
-    # Upper-cased legal names for hydrogen atoms.  Used to generate a warning if we
-    # have a different name than these and it is not a special atom name.
+    # Upper-cased legal names for atoms whose name begins with H.  Used to generate a
+    # warning if we have a different name than these and it is not a special atom name.
     # HH and HD are there to get rid of warnings for PBD v3 names and H5'' is
     # to handle RNA/DNA backbone atoms.
-    self._legalStandardHydrogenNames = ['H', 'HE', 'HF', 'HG', 'HO', 'HS',
+    self._legalStandardHAtomNames = ['H', 'HE', 'HF', 'HG', 'HO', 'HS',
       "H5''", 'HH', 'HD']
 
     ##################################################################################
@@ -341,7 +342,7 @@ class AtomTypes:
       [ r'C.*',    'C',  False ],
       [ r'D.*',    'H',  False ],
       [ r'F.*',    'F',  False ],
-      # Hydrogen is handled separately
+      # H atoms are handled separately
       [ r'I.*',    'I',  False ],
       [ r'K.*',    'K',  False ],
       [ r'N.*',    'N',  False ],
@@ -392,7 +393,7 @@ class AtomTypes:
       [ r'CH.*',    'H',  True ],
       [ r'CL.*',    'Cl', False ],
       [ r'CM.*',    'Cm', False ],
-      [ r'CN.*',    'N',  False ],
+      [ r'CN.*',    'N',  True ],
       [ r'CO.*',    'Co', True ],   # @todo Is this a false warning?
       [ r'CP.*',    'C',  True ],
       [ r'CR.*',    'Cr', False ],
@@ -426,7 +427,7 @@ class AtomTypes:
       [ r'FO.*',    'O',  True ],
       [ r'FP.*',    'P',  True ],
 
-      # Hydrogen is treated as a special case.
+      # H atoms are handled separately
 
       [ r'GA.*',    'Ga', False ],
       [ r'GD.*',    'Gd', False ],
@@ -451,16 +452,16 @@ class AtomTypes:
       [ r'MN.*',    'Mn', False ],
       [ r'MO.*',    'Mo', False ],
 
-      [ r'NA.*',    'Na', False ],
-      [ r'NB.*',    'Nb', False ],
+      [ r'NA.*',    'Na', True ],
+      [ r'NB.*',    'Nb', True ],
       [ r'NC.*',    'C',  True ],
-      [ r'ND.*',    'Nd', False ],
-      [ r'NE.*',    'Ne', False ],
+      [ r'ND.*',    'Nd', True ],
+      [ r'NE.*',    'Ne', True ],
       [ r'NH.*',    'H',  True ],
       [ r'NI.*',    'Ni', False ],
       [ r'NN.*',    'N',  True ],
-      [ r'NO.*',    'O',  True ],
-      [ r'NP.*',    'P',  True ],
+      [ r'NO.*',    'O',  True ],   # Non standard
+      [ r'NP.*',    'P',  True ],   # Non standard
       [ r'NS.*',    'S',  True ],
       [ r'N.*',     'N',  True ],   # All other atoms starting with N are called Nitrogen
 
@@ -484,9 +485,9 @@ class AtomTypes:
       [ r'RN.*',    'Rn', False ],
       [ r'RU.*',    'Ru', False ],
 
-      [ r'SB.*',    'Sb', False ],
+      [ r'SB.*',    'Sb', True ],
       [ r'SC.*',    'Sc', False ],
-      [ r'SE.*',    'Se', False ],
+      [ r'SE.*',    'Se', True ],
       [ r'SI.*',    'Si', False ],
       [ r'SM.*',    'Sm', False ],
       [ r'SN.*',    'Sn', False ],
@@ -572,46 +573,54 @@ class AtomTypes:
     resName = atom.parent().resname.upper()
     #print('XXX Finding info for', resName,atomName)
 
-    # See if the first character of the atom name is special.  If so, shift it off
-    # the name and replace the standard parsing table with the subset table for special
-    # atom names.
-    nameTable = self._nameTable
-    specialName = False
-    if atomName[0] in self._specialAtomFirstChars:
-      atomName = atomName[1:]
-      nameTable = self._specialNameTable
-      specialName = True
+    # Special-case check for a mis-placed Selenium atom
+    if atomName[0:2] == ' SE':
+      elementName = 'Se'
+      emitWarning = True
 
-    # For Hydrogens, see if we need to truncate the name by removing its second character
-    # because it is an He, Hf, Hg, Ho, or Hs in a residue that does not allow such names.
-    # If it is disallowed, replace it with a simple 'H'.
-    if atomName[0] == 'H':
-      # If we are not a truncated special name, then we do more scrutiny on the name and
-      # emit a warning if it is not any of the recognized names.
-      if (not specialName) and (not atomName in self._legalStandardHydrogenNames):
-        emitWarning = True
+    # If we didn't hit a special case above, check using the appropriate table
+    # based on the first character of the element name.
+    if elementName is None:
+      # See if the first character of the atom name is special.  If so, shift it off
+      # the name and replace the standard parsing table with the subset table for special
+      # atom names.
+      nameTable = self._nameTable
+      specialName = False
+      if atomName[0] in self._specialAtomFirstChars:
+        atomName = atomName[1:]
+        nameTable = self._specialNameTable
+        specialName = True
 
-      # Use the default value of 'H' unless the second letter is in a list of residues
-      # that allow that second letter.
-      elementName = 'H'
-      try:
-        if resName in self._legalResiduesForSpecialHydrogen[atomName[1]]:
-          # This residue is in the list of those that are valid for this name,
-          # so we make the element name H followed by the same lower-case letter.
-          elementName = 'H' + atomName[1].lower()
-      except KeyError:
-        # We did not find an entry for this character, so we leave things alone
-        pass
+      # For Hydrogens, see if we need to truncate the name by removing its second character
+      # because it is an He, Hf, Hg, Ho, or Hs in a residue that does not allow such names.
+      # If it is disallowed, replace it with a simple 'H'.
+      if atomName[0] == 'H':
+        # If we are not a truncated special name, then we do more scrutiny on the name and
+        # emit a warning if it is not any of the recognized names.
+        if (not specialName) and (not atomName in self._legalStandardHAtomNames):
+          emitWarning = True
 
-    # Look up the atom in all entries of the table to see if any of their regular
-    # expressions match.  If so, set the elementName and warning emission based on
-    # the table entry.
-    for n in nameTable:
-      e = re.compile(n[0])
-      if e.match(atomName) is not None:
-        elementName = n[1]
-        emitWarning = n[2]
-        break;
+        # Use the default value of 'H' unless the second letter is in a list of residues
+        # that allow that second letter.
+        elementName = 'H'
+        try:
+          if resName in self._legalResiduesForHElements[atomName[1]]:
+            # This residue is in the list of those that are valid for this name,
+            # so we make the element name H followed by the same lower-case letter.
+            elementName = 'H' + atomName[1].lower()
+        except KeyError:
+          # We did not find an entry for this character, so we leave things alone
+          pass
+
+      # Look up the atom in all entries of the table to see if any of their regular
+      # expressions match.  If so, set the elementName and warning emission based on
+      # the table entry.
+      for n in nameTable:
+        e = re.compile(n[0])
+        if e.match(atomName) is not None:
+          elementName = n[1]
+          emitWarning = n[2]
+          break;
 
     # If we did not find an elementName yet, we always emit a warning,
     # then default to Carbon, and then try another pass on names
@@ -628,7 +637,7 @@ class AtomTypes:
           emitWarning = n[2]
           break;
 
-    # Look up the element name, which fail if it is not in the table.
+    # Look up the element name, which fails if it is not in the table.
     try:
       ai = AtomInfo(self._Index[elementName])
     except:
