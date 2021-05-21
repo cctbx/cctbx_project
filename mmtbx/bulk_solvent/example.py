@@ -105,9 +105,10 @@ def get_fmodel(o, f_mask, remove_outliers, log):
   fo, fm = o.f_obs().common_sets(f_mask)
   fc, fm = o.f_calc().common_sets(f_mask)
   fmodel = mmtbx.f_model.manager(
-    f_obs  = fo,
-    f_calc = fc,
-    f_mask = fm)
+    f_obs        = fo,
+    r_free_flags = o.r_free_flags(),
+    f_calc       = fc,
+    f_mask       = fm)
   fmodel.update_all_scales(
     remove_outliers         = remove_outliers,
     apply_scale_k1_to_f_obs = False
@@ -170,7 +171,6 @@ class compute(object):
         remove_outliers = False, log = self.log)
       self.fmodel_0 = o.fmodel
       self.mc_0     = o.mc
-      ######
 
   def do_mosaic(self, alg):
     print("-"*79, file=self.log)

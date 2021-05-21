@@ -217,7 +217,6 @@ class refinery(object):
       #
       if(it>0):
         r4 = self.fmodel.r_work4()
-        print(r4_start, r4, abs(round(r4-r4_start,4)))
         if(abs(round(r4-r4_start,4))<1.e-4):
           break
         r4_start = r4
@@ -392,6 +391,11 @@ class refinery(object):
     #return x
 
 def get_f_mask(xrs, ma, step, option = 2, r_shrink = None, r_sol = None):
+  #
+  result = ma.deep_copy()
+  sel = ma.d_spacings().data()>=3
+  ma = ma.select(sel)
+  #
   crystal_gridding = maptbx.crystal_gridding(
     unit_cell        = xrs.unit_cell(),
     space_group_info = xrs.space_group_info(),
@@ -473,7 +477,10 @@ def get_f_mask(xrs, ma, step, option = 2, r_shrink = None, r_sol = None):
     f_mask = mask_manager.shell_f_masks(xray_structure=xrs, force_update=True)[0]
   else: assert 0
   #
-  return f_mask
+  data = flex.complex_double(result.indices().size(), 0)
+  data = data.set_selected(sel, f_mask.data())
+  result = result.array(data = data)
+  return result
 
 def filter_mask(mask_p1, volume_cutoff, crystal_symmetry,
                 for_structure_factors = False):
@@ -513,7 +520,6 @@ class mosaic_f_mask(object):
                volume_cutoff=None,
                mean_diff_map_threshold=None,
                compute_whole=False,
-               preprocess_against_shallow=True,
                largest_only=False,
                wrapping=True,
                f_obs=None,
@@ -524,11 +530,9 @@ class mosaic_f_mask(object):
                write_masks=False):
     adopt_init_args(self, locals())
     #
-    self.dsel = f_obs.d_spacings().data()>=0 # XXX WHY????????????
-    self.miller_array = f_obs.select(self.dsel)
-    #
-    # To avoid "Miller index not in structure factor map" crash
-    step = min(step, self.miller_array.d_min()/3)
+    self.d_spacings   = f_obs.d_spacings().data()
+    self.sel_3inf     = self.d_spacings >= 3
+    self.miller_array = f_obs.select(self.sel_3inf)
     #
     self.crystal_symmetry = self.xray_structure.crystal_symmetry()
     # compute mask in p1 (via ASU)
@@ -552,8 +556,9 @@ class mosaic_f_mask(object):
     if(compute_whole):
       mask = asu_map_ext.asymmetric_map(
         xray_structure.crystal_symmetry().space_group().type(), mask_p1).data()
-      self.f_mask_whole = self.miller_array.structure_factors_from_asu_map(
-        asu_map_data = mask, n_real = self.n_real)
+      self.f_mask_whole = self._inflate(
+        self.miller_array.structure_factors_from_asu_map(
+          asu_map_data = mask, n_real = self.n_real))
     self.solvent_content = 100.*mask_p1.count(1)/mask_p1.size()
     if(write_masks):
       write_map_file(crystal_symmetry=xray_structure.crystal_symmetry(),
@@ -562,7 +567,7 @@ class mosaic_f_mask(object):
     co = maptbx.connectivity(
       map_data                   = mask_p1,
       threshold                  = 0.01,
-      preprocess_against_shallow = preprocess_against_shallow,
+      preprocess_against_shallow = False,
       wrapping                   = wrapping)
     co.merge_symmetry_related_regions(space_group=xray_structure.space_group())
     del mask_p1
@@ -636,16 +641,19 @@ class mosaic_f_mask(object):
     self.f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
     self.f_mask   = f_obs.customized_copy(data = f_mask_data)
     self.do_mosaic = False
-    self.n_regions = len(self.FV.keys())
+    # Determine number of secondary regions
+    self.n_regions = len(self.FV.values())
     if(self.n_regions>1):
       self.do_mosaic = True
 
-  def compute_f_mask_i(self, mask_i_asu):
-    f_mask_i = self.miller_array.structure_factors_from_asu_map(
-      asu_map_data = mask_i_asu, n_real = self.n_real)
-    data = flex.complex_double(self.dsel.size(), 0)
-    data = data.set_selected(self.dsel, f_mask_i.data())
+  def _inflate(self, f):
+    data = flex.complex_double(self.d_spacings.size(), 0)
+    data = data.set_selected(self.sel_3inf, f.data())
     return self.f_obs.set().array(data = data)
+
+  def compute_f_mask_i(self, mask_i_asu):
+    return self._inflate(self.miller_array.structure_factors_from_asu_map(
+      asu_map_data = mask_i_asu, n_real = self.n_real))
 
   def compute_diff_map(self, f_mask_data):
     if(self.f_calc is None): return None
@@ -654,7 +662,6 @@ class mosaic_f_mask(object):
       f_obs  = self.f_obs,
       f_calc = self.f_calc,
       f_mask = f_mask)
-    fmodel = fmodel.select(self.dsel)
     fmodel.update_all_scales(remove_outliers=True,
       apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
     self.mc = fmodel.electron_density_map().map_coefficients(
