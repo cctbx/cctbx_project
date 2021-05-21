@@ -2227,7 +2227,7 @@ class structure(crystal.special_position_settings):
           D_loop.add_row(D_row)
         cs_cif_block.add_loop(C_loop)
         cs_cif_block.add_loop(D_loop)
-      cs_cif_block.add_loop(atom_type_cif_loop(self, format=format))
+      cs_cif_block.add_loop(atom_type_cif_loop(self, format=format, covariance_matrix=covariance_matrix))
     return cs_cif_block
 
   def as_pdb_file(self,

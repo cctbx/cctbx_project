@@ -24,7 +24,11 @@ from libtbx.containers import OrderedDict
 from libtbx.utils import Sorry
 from libtbx.utils import flat_list
 from libtbx.utils import detect_binary_file
+from libtbx.utils import format_float_with_standard_uncertainty \
+     as format_float_with_su
 from libtbx import smart_open
+import iotbx
+import math
 
 import os
 import sys
@@ -388,7 +392,7 @@ class reader(object):
 
 fast_reader = reader # XXX backward compatibility 2010-08-25
 
-def atom_type_cif_loop(xray_structure, format="mmcif"):
+def atom_type_cif_loop(xray_structure, format="mmcif", covariance_matrix=None):
   format = format.lower()
   assert format in ("corecif", "mmcif")
   if format == "mmcif": separator = '.'
@@ -422,9 +426,23 @@ def atom_type_cif_loop(xray_structure, format="mmcif"):
   gaussian_dict = scattering_type_registry.as_type_gaussian_dict()
   scattering_type_registry = xray_structure.scattering_type_registry()
   params = xray_structure.scattering_type_registry_params
+  if covariance_matrix:
+    param_map = xray_structure.parameter_map()
+    covariance_diagonal = covariance_matrix.matrix_packed_u_diagonal()
   fp_fdp_table = {}
-  for sc in xray_structure.scatterers():
-    fp_fdp_table.setdefault(sc.scattering_type, (sc.fp, sc.fdp))
+  for i_seq, sc in enumerate(xray_structure.scatterers()):
+    covariance_diagonal
+    sc_params = param_map[i_seq]
+    fp, fdp = sc.fp, sc.fdp
+    if covariance_matrix:
+      if sc.flags.grad_fp():
+        fp = format_float_with_su(sc.fp,
+                math.sqrt(covariance_diagonal[sc_params.fp]))
+      if sc.flags.grad_fdp():
+        fdp = format_float_with_su(sc.fdp,
+                math.sqrt(covariance_diagonal[sc_params.fdp]))
+    fp_fdp_table.setdefault(sc.scattering_type, (fp, fdp))
+
   disp_source = inelastic_references.get(
     xray_structure.inelastic_form_factors_source)
   # custom?
@@ -445,8 +463,10 @@ Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31."
       fp, fdp = ".", "."
     else:
       fp, fdp = fp_fdp_table[atom_type]
-      fp = "%.5f" %fp
-      fdp = "%.5f" %fdp
+      if not isinstance(fp, str):
+        fp = "%.5f" %fp
+      if not isinstance(fdp, str):
+        fdp = "%.5f" %fdp
     row = [atom_type, fp, fdp]
     #gaussian = gaussian_dict[sc.scattering_type]
     gaussian_a = ["%.5f" %a for a in gaussian.array_of_a()]
