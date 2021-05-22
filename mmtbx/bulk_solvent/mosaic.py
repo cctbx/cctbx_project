@@ -211,8 +211,10 @@ class refinery(object):
     self.f_calc = fmodel.f_model()
     self.F      = [self.f_calc.deep_copy()] + fv.keys()
     #
-    n_zones_start = len(self.F)
-    r4_start      = fmodel.r_work4()
+    n_zones_start    = len(self.F)
+    r4_start         = fmodel.r_work4()
+    r4_best          = r4_start
+    self.fmodel_best = fmodel.deep_copy()
     for it in range(5):
       #
       if(it>0):
@@ -328,6 +330,7 @@ class refinery(object):
           )
         self.fmodel.update_all_scales(remove_outliers=False,
           apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
+        self._print(self.fmodel.r_factors(prefix="  "))
       else:
         self.fmodel = mmtbx.f_model.manager(
           f_obs          = self.f_obs,
@@ -358,6 +361,13 @@ class refinery(object):
         map_type   = "mFobs-DFmodel",
         isotropize = True,
         exclude_free_r_reflections = False)
+      #
+      r4 = self.fmodel.r_work4()
+      if(r4<=r4_best):
+        r4_best = r4
+        self.fmodel_best = self.fmodel.deep_copy()
+    self.fmodel = self.fmodel_best
+
 
   #def update_k_masks(self, K_MASKS):
   #  tmp = []

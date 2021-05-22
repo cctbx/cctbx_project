@@ -250,7 +250,6 @@ def run_one(args):
           assert approx_equal(region.diff_map.me, region.m_0.me)
           assert approx_equal(region.diff_map.sd, region.m_0.sd)
           assert approx_equal(region.diff_map.ma, region.m_0.ma)
-      assert cntr>0
     #
     result = group_args(
       code            = code,
