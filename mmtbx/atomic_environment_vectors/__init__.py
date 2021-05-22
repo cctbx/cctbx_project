@@ -6,7 +6,6 @@ from numpy import NaN
 from libtbx.utils import null_out
 from collections import OrderedDict
 from scitbx.array_family import flex
-from mmtbx.conformation_dependent_library import generate_protein_fragments
 from mmtbx.secondary_structure.build import ss_idealization as ssb
 
 def format_HELIX_records_from_AEV(aev_values_dict):

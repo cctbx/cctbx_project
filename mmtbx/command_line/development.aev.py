@@ -6,7 +6,6 @@ import mmtbx
 import iotbx.pdb
 import mmtbx.model
 from libtbx.utils import null_out
-from scitbx.array_family import flex
 import __init__ as aev
 
 def main(filename):
