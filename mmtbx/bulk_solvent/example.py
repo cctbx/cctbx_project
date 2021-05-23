@@ -129,10 +129,12 @@ class compute(object):
     #
     print("-"*79, file=log)
     print("A-2013, all defaults", file=log)
+    step_default = min(0.8, D.f_obs().d_min()/4)
+    if(step_default < 0.15): step_default = 0.15
     f_mask = mosaic.get_f_mask(
       xrs  = D.xray_structure,
       ma   = D.f_obs(),
-      step = min(0.4, D.f_obs().d_min()/4))
+      step = step_default)
     self.fmodel_2013 = get_fmodel(
       o = D, f_mask = f_mask, remove_outliers = False, log = self.log).fmodel
     #
