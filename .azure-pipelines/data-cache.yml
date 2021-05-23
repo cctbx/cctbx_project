@@ -4,11 +4,6 @@
 #   - phenix_regression
 #   - phenix_examples
 
-resources:
-  pipelines:
-  - pipeline: data_cache
-    source: 'Update data cache'
-
 jobs:
 - job: artifacts
   pool:

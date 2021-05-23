@@ -20,5 +20,10 @@ schedules:
     - main
   always: true
 
+resources:
+  pipelines:
+  - pipeline: data_cache
+    source: 'Update data cache'
+
 extends:
   template: ./data-cache.yml
