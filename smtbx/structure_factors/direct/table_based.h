@@ -432,10 +432,15 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         miller::index<> h = h_ * space_group.smx(i).r();
         lookup_t::const_iterator l = mi_lookup.find(h);
         if (l == mi_lookup.end() && !anomalous_flag) {
-          l = mi_lookup.find(-h);
+          miller::index<> h_bar = -h;
+          l = mi_lookup.find(h_bar);
+          SMTBX_ASSERT(l != mi_lookup.end())(h_bar.as_string());
+          tmp[i] = complex_type(real(data[l->second][scatterer_idx]),-imag(data[l->second][scatterer_idx]));
         }
-        SMTBX_ASSERT(l != mi_lookup.end())(h.as_string());
-        tmp[i] = data[l->second][scatterer_idx];
+        else{
+          SMTBX_ASSERT(l != mi_lookup.end())(h.as_string());
+          tmp[i] = data[l->second][scatterer_idx];
+        }
       }
       return tmp;
     }
@@ -465,6 +470,9 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         bool anomalous_flag)
     {
       table_reader<FloatType> data(scatterers, file_name);
+      if(!data.use_AD()){
+        anomalous_flag = false;
+      }
       if (data.rot_mxs().size() <= 1) {
         if (data.is_expanded()) {
           return new lookup_based_anisotropic<FloatType>(
