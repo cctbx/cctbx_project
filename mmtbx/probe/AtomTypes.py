@@ -131,8 +131,8 @@ class AtomTypes:
     ##################################################################################
     # Store state based on options.
     try:
-      self._useNeutronDistances = self._probePhilOptions.useNeutronDistances
-    except:
+      self._useNeutronDistances = probePhilOptions.useNeutronDistances
+    except Exception as e:
       self._useNeutronDistances = False
 
     ##################################################################################
