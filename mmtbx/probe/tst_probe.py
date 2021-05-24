@@ -20,6 +20,7 @@ import sys
 import mmtbx_probe_ext as probe
 from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
+from cctbx.maptbx.box import shift_and_box_model
 import mmtbx
 
 def BestMatch(name, d):
@@ -93,7 +94,12 @@ def RunProbeTests(inFileName):
   for i in range(maxI+1):
     extra.append(probe.ExtraAtomInfo())
 
-  # Get the bonding information we'll need to exclude our bonded neighbors
+  # Fix up bogus unit cell when it occurs by checking crystal symmetry.
+  cs =model.crystal_symmetry()
+  if (cs is None) or (cs.unit_cell() is None):
+    model = shift_and_box_model(model = model)
+
+  # Get the bonding information we'll need to exclude our bonded neighbors.
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
   model.set_pdb_interpretation_params(params = p)
   model.process_input_model(make_restraints=True) # make restraints
