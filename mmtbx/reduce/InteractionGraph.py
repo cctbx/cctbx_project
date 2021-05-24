@@ -74,8 +74,9 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
     zRange = [ 1e10, -1e10 ]
     for pos in total:
       for i, atomLoc in enumerate(pos):
-        @todo We need to compute the radius, which will require extra atom info...
-        r = atoms[i].
+        # Find the radius of the atom, which is used to extend it in all directions
+        # so that we catch all potential overlaps.
+        r = ExtraAtomInfo[atoms[i].data.i_sel].vdwRadius
 
         x = atomLoc[0]
         xRange[0] = min(xRange[0], x - r)
@@ -100,7 +101,6 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
 
     # Store the bounding boxes for this Mover
     AABBs.append( [xRange, yRange, zRange] )
-
 
   # For each pair of Movers whose bounding boxes overlap, add an
   # edge to the graph
