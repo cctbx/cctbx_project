@@ -18,7 +18,6 @@
 # functions that produce Boost graphs of Movers, enabling easy determination
 # of Cliques (connected components of this graph).
 from boost_adaptbx import graph
-from boost_adaptbx.graph import connected_component_algorithm as cca
 import Movers
 
 def AABBOverlap(box1, box2):
@@ -67,11 +66,12 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
   ret = graph.adjacency_list(
         graph_type = "undirected",
         # vertex_type = "Mover",
-        edge_type = "set",
+        # edge_type = "set",
         )
   AABBs = []
+  verts = []
   for m in movers:
-    ret.add_vertex(m)
+    verts.append(ret.add_vertex(m))
 
     # Find all possible positions, coarse and fine.
     coarses = m.CoarsePositions(reduceOptions)
@@ -116,7 +116,7 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
   for i in range(len(movers)-1):
     for j in range(i+1, len(movers)):
       if AABBOverlap(AABBs[i], AABBs[j]):
-        ret.add_edge( vertex1 = movers[i], vertex2 = movers[j])
+        ret.add_edge( vertex1 = verts[i], vertex2 = verts[j])
 
   return ret
 
@@ -126,6 +126,7 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
 from iotbx import pdb
 import math
 import mmtbx_probe_ext as probe
+from boost_adaptbx.graph import connected_component_algorithm as cca
 
 def Test():
   """Test function for all functions provided above.
@@ -208,7 +209,7 @@ def Test():
   # is the expected number of connected components.  The fourth is the size of the largest connected
   # component.
   _expectedCases = [
-    [ InteractionGraphAABB, 0.0, 5, 2 ],
+    [ InteractionGraphAABB, 0.0, 5, 3 ],
     [ InteractionGraphAABB, probeRad, 2, 6 ],
     [ InteractionGraphAABB, 100, 1, 7 ]
   ]
@@ -216,15 +217,23 @@ def Test():
   # Specify the probe radius and run the test.  Compare the results to what we expect.
   for e in _expectedCases:
     fakePhil.probeRadius = e[1]
-    graph = e[0](movers, extras, fakePhil)
+    g = e[0](movers, extras, fakePhil)
 
     # Find the connected components of the graph and compare their counts and maximum size to
     # what is expected.
+    components = cca.connected_components( graph = g )
+    if len(components) != e[2]:
+      return "Expected "+str(e[2])+" components, found "+str(len(components))
+    maxLen = -1
+    for c in components:
+      if len(c) > maxLen:
+        maxLen = len(c)
+    if maxLen != e[3]:
+      return "Expected max sized component of "+str(e[3])+", found "+str(maxLen)
+
     # @todo
 
-
-  # Specify a probe radius that is so large it will make all of the Movers overlap.
-  fakePhil.probeRadius = 10000
+  return ""
 
 # If we're run on the command line, test our classes and functions.
 if __name__ == '__main__':
@@ -232,5 +241,7 @@ if __name__ == '__main__':
   ret = Test()
   if len(ret) == 0:
     print('Success!')
+  else:
+    print(ret)
 
   assert (len(ret) == 0)
