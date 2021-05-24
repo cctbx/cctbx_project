@@ -17,6 +17,7 @@
 # limitations under the License.
 
 import sys
+import argparse
 
 import mmtbx_probe_ext as probe
 import AtomTypes
@@ -57,7 +58,7 @@ def BestMatch(name, d):
 
   return bestMatch
 
-def RunProbeVsCCTBXTest(inFileName):
+def RunProbeVsCCTBXTest(inFileName, useNeutronDistances = False):
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
@@ -75,9 +76,25 @@ def RunProbeVsCCTBXTest(inFileName):
     mmm.generate_map()              #   get a model from a generated small library model and calculate a map for it
     model = mmm.model()             #   get the model
 
+
+  # Run PDB interpretation on the model
+  # @todo Not sure this does anything... setting Neutron distances does not change radii?
+  print('Interpreting model')
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.use_neutron_distances = useNeutronDistances
+  model.set_pdb_interpretation_params(params = p)
+  model.process_input_model(make_restraints=True) # make restraints
+
+  # Construct the AtomTypes object we're going to use, telling it whether to use neutron distances
+  # or not.
+  class FakePhil:
+    pass
+  fakePhil = FakePhil()
+  fakePhil.useNeutronDistances = useNeutronDistances
+  at = AtomTypes.AtomTypes(fakePhil)
+
   # Traverse the hierarchy and look up the extra data from Probe and CCTBX.
   # print information on differences, keeping track of how many atoms differed.
-  at = AtomTypes.AtomTypes()
   mon_lib_srv = model.get_mon_lib_srv()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
   ph = model.get_hierarchy()
@@ -138,12 +155,12 @@ if __name__ == '__main__':
   #==============================================================
   # Parse command-line arguments.  The 0th argument is the name
   # of the script. There can be the name of a PDB file to read.
-  realParams = 0
-  fileName = ""
-  for i in range(1,len(sys.argv)):
-    fileName = sys.argv[i]
+  parser = argparse.ArgumentParser(description='Compare Probe vs. CCTBX atom information')
+  parser.add_argument('--neutronDistances', default=False, action='store_true')
+  parser.add_argument('inputFile', nargs='?', default="")
+  args = parser.parse_args()
 
-  ret = RunProbeVsCCTBXTest(fileName)
+  ret = RunProbeVsCCTBXTest(args.inputFile, args.neutronDistances)
   if len(ret) == 0:
     print('Success!')
 
