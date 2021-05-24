@@ -20,7 +20,7 @@
 from boost_adaptbx import graph
 import Movers
 
-def AABBOverlap(box1, box2):
+def _AABBOverlap(box1, box2):
   """Helper function that tells whether two axis-aligned bounding boxes overlap.
   :param box1: list of three ranges, for X, Y, and Z, that indicate one axis-aligned
   bounding box.
@@ -115,7 +115,7 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
   # edge to the graph
   for i in range(len(movers)-1):
     for j in range(i+1, len(movers)):
-      if AABBOverlap(AABBs[i], AABBs[j]):
+      if _AABBOverlap(AABBs[i], AABBs[j]):
         ret.add_edge( vertex1 = verts[i], vertex2 = verts[j])
 
   return ret
@@ -139,33 +139,6 @@ def Test():
   class FakePhil:
     pass
   fakePhil = FakePhil()
-
-  # Construct a class that will behave like a Mover but which returns a single result
-  # atom at a single location.  We'll use this rather than actual Movers as a simple and
-  # fast test case.
-  class FakeMover():
-    def __init__(self, atom):
-      self._atom = atom
-    def CoarsePositions(self, reduceOptions):
-      class MyReturn: pass
-      ret = MyReturn
-      ret.atoms = [ self._atom ]
-      ret.positions = [ [ [ self._atom.xyz[0], self._atom.xyz[1], self._atom.xyz[2] ] ] ]
-      ret.preferenceEnergies = [ 0.0 ]
-      return ret
-    def FinePositions(self, coarseIndex, reduceOptions):
-      class MyReturn: pass
-      ret = MyReturn
-      ret.atoms = []
-      ret.positions = []
-      preferenceEnergies = []
-      return ret
-    def FixUp(self, coarseIndex, reduceOptions):
-      class MyReturn: pass
-      ret = MyReturn
-      ret.atoms = []
-      ret.newPositions = []
-      return ret
 
   # Construct a set of Mover/atoms that will be used to test the routines.  They will all be part of the
   # same residue and they will all have the same unit radius in the extraAtomInfo associated with them.
@@ -200,7 +173,7 @@ def Test():
     atoms.append(a)
     e = probe.ExtraAtomInfo(rad)
     extras.append(e)
-    movers.append(FakeMover(a))
+    movers.append(Movers.NullMover(a))
   # Fix the sequence numbers, which are otherwise all 0
   atoms.reset_i_seq()
 
