@@ -15,9 +15,10 @@
 
 ##################################################################################
 # This is a set of functions that implement Reduce's Interaction Graphs.  These are
-# functions that produce NetworkX graphs sets of Movers, enabling easy determination
+# functions that produce Boost graphs of Movers, enabling easy determination
 # of Cliques (connected components of this graph).
-import networkx as nx
+from boost_adaptbx import graph
+from boost_adaptbx.graph import connected_component_algorithm as cca
 import Movers
 
 def AABBOverlap(box1, box2):
@@ -50,7 +51,7 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
   removed and re-added to the structure.
   :param reduceOptions: a Phil option subset.  The relevant option is probeRadius.
   If it is not set, the default value of 0.25 will be used.
-  :returns An undirected NetworkX graph whose nodes are Movers and whose edges
+  :returns An undirected Boost graph whose nodes are Movers and whose edges
   indicate which Movers might overlap in any of their states.
   """
 
@@ -63,10 +64,14 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
 
   # Add all of the Movers as nodes in the graph
   # Compute the axis-aligned bounding box for each Mover
-  ret = nx.Graph()
+  ret = graph.adjacency_list(
+        graph_type = "undirected",
+        vertex_type = "Mover",
+        edge_type = "set",
+        )
   AABBs = []
   for m in movers:
-    ret.add_node(m)
+    ret.add_vertex(m)
 
     # Find all possible positions, coarse and fine.
     coarses = m.CoarsePositions(reduceOptions)
@@ -111,7 +116,7 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
   for i in range(len(movers)-1):
     for j in range(i+1, len(movers)):
       if AABBOverlap(AABBs[i], AABBs[j]):
-        ret.add_edge(movers[i], movers[j])
+        ret.add_edge( vertex1 = movers[i], vertex2 = movers[j])
 
   return ret
 
@@ -120,6 +125,7 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
 
 from iotbx import pdb
 import math
+import mmtbx_probe_ext as probe
 
 def Test():
   """Test function for all functions provided above.
@@ -159,7 +165,7 @@ def Test():
   for i in range(1,4):
     loc = [1.9 + 2.1*i, 0.0, 0.0]
     locs.append(loc)
-  delta = 2*rad + 2*probe + 0.1
+  delta = 2*rad + 2*probeRad + 0.1
   dist = - delta * math.cos(math.pi/4)
   dist = - delta * math.sin(math.pi/4)
   locs.append([dist, dist, 0.0])
@@ -168,20 +174,20 @@ def Test():
   name = " H  ";
   ag = pdb.hierarchy.atom_group()
   ag.resname = "LYS"
-  atoms = []
+  atoms = pdb.hierarchy.af_shared_atom()
   extras = []
   movers = []
-  seq = 0
+  baseAtom = pdb.hierarchy.atom()
   for i in range(len(locs)):
-    a = pdb.hierarchy.atom(parent = ag)
+    a = pdb.hierarchy.atom(parent = ag, other=baseAtom)
     a.name = name
     a.xyz = locs[i]
-    a.i_seq = seq
     atoms.append(a)
-    e = probe.ExtraAtomInfo(vdwRadius = rad)
+    e = probe.ExtraAtomInfo(rad)
     extras.append(e)
     movers.append(FakeMover(a))
-    seq += 1
+  # Fix the sequence numbers, which are otherwise all 0
+  atoms.reset_i_seq()
 
   # Generate a table of parameters and expected results.  The first entry in each row is the
   # function to call (the type of interactiong graph).  The second is the probe radius.  The third
@@ -195,8 +201,8 @@ def Test():
 
   # Specify the probe radius and run the test.  Compare the results to what we expect.
   for e in _expectedCases:
-    fakePhil.probeRadius = i[1]
-    graph = i[0](movers, extraAtomInfo, fakePhil)
+    fakePhil.probeRadius = e[1]
+    graph = e[0](movers, extras, fakePhil)
 
     # Find the connected components of the graph and compare their counts and maximum size to
     # what is expected.
