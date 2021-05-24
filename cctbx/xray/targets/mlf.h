@@ -171,6 +171,7 @@ namespace cctbx { namespace xray { namespace targets { namespace mlf {
         if (rffs.n_test != 0) {
           target_test_ = boost::optional<double>(target_test / rffs.n_test);
         }
+        printf( "ml target_work: %15.2f\n", target_work );
       }
   };
 
