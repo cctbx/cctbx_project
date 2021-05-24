@@ -69,6 +69,38 @@
 # Movers have overlaps between movable atoms in both of them.
 #
 
+##################################################################################
+# Return type from CoarsePosition() and FinePosition() calls.
+class PositionReturn:
+  def __init__(self, atoms, positions, preferenceEnergies):
+    self.atoms = atoms
+    self.positions = positions
+    self.preferenceEnergies = preferenceEnergies
+
+##################################################################################
+# Return type from FixUp() calls.
+class FixUpReturn:
+  def __init__(self, atoms, newPositions):
+    self.atoms = atoms
+    self.newPositions = newPositions
+
+##################################################################################
+# A trivial Mover that returns a single result atom at a single location.
+# Useful as a simple and fast test case for programs that use Movers.
+# It also serves as a basic example of how to develop a new Mover.
+class NullMover:
+  def __init__(self, atom):
+    self._atom = atom
+  def CoarsePositions(self, reduceOptions):
+    return PositionReturn([ self._atom ],
+        [ [ [ self._atom.xyz[0], self._atom.xyz[1], self._atom.xyz[2] ] ] ],
+        [ 0.0 ])
+  def FinePositions(self, coarseIndex, reduceOptions):
+    return PositionReturn([], [], [])
+  def FixUp(self, coarseIndex, reduceOptions):
+    return FixUpReturn([], [])
+
+
 # @todo Define each type of Mover
 
 def Test():
