@@ -399,7 +399,7 @@ class AtomTypes:
       [ r'CR.*',    'Cr', False ],
       [ r'CS.*',    'Cs', False ],
       [ r'CU.*',    'Cu', False ],
-      [ r'C.*',     'C',  False ],  # All other atoms starting with C are called Carbon
+      [ r'C.*',     'C',  True ],  # All other atoms starting with C are called Carbon with a warning
 
       [ r'DY.*',    'Dy', False ],
       [ r'DC.*',    'C',  True ],
@@ -427,8 +427,6 @@ class AtomTypes:
       [ r'FO.*',    'O',  True ],
       [ r'FP.*',    'P',  True ],
 
-      # H atoms are handled separately
-
       [ r'GA.*',    'Ga', False ],
       [ r'GD.*',    'Gd', False ],
       [ r'GE.*',    'Ge', False ],
@@ -437,6 +435,8 @@ class AtomTypes:
       [ r'GN.*',    'N',  True ],
       [ r'GO.*',    'O',  True ],
       [ r'GP.*',    'P',  True ],
+
+      # H atoms are handled separately
 
       [ r'IN.*',    'In', False ],
       [ r'IR.*',    'Ir', False ],
@@ -447,7 +447,7 @@ class AtomTypes:
       [ r'LI.*',    'Li', False ],
       [ r'LU.*',    'Lu', False ],
 
-      [ r'MD.*',    'MD', False ],
+      [ r'MD.*',    'Md', False ],
       [ r'MG.*',    'Mg', False ],
       [ r'MN.*',    'Mn', False ],
       [ r'MO.*',    'Mo', False ],
@@ -468,9 +468,9 @@ class AtomTypes:
       [ r'OS.*',    'Os', False ],
       [ r'O.*',     'O',  True ],   # All other atoms starting with O are called Oxygen
 
-      [ r'PA.*',    'Pa', False ],
-      [ r'PB.*',    'Pb', False ],
-      [ r'PD.*',    'Pd', False ],
+      [ r'PA.*',    'Pa', True ],
+      [ r'PB.*',    'Pb', True ],
+      [ r'PD.*',    'Pd', True ],
       [ r'PM.*',    'Pm', False ],
       [ r'PO.*',    'Po', False ],
       [ r'PR.*',    'Pr', False ],
@@ -519,6 +519,7 @@ class AtomTypes:
     # telling whether to warn about this translation -- these always warn.
     self._lastChanceNameTable = [
       [ r'H.*',    'H',  True ],
+      [ r'D.*',    'H',  True ],
       [ r'C.*',    'C',  True ],
       [ r'N.*',    'N',  True ],
       [ r'O.*',    'O',  True ],
