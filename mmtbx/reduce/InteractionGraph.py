@@ -43,15 +43,23 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
 
   :param movers: flex array of movers to add to the graph.
   :param extaAtomInfo: flex array of Probe.ExtraAtomInfo classes that have a vdwRadius
-  property.  Warning: The i_sel values from the atoms in the Movers are used to look
+  property.  Warning: The i_seq values from the atoms in the Movers are used to look
   up directly in this vector so they must not have changed (due to structure modification)
   since the extaInfo vector or the atom structure used by the Movers were generated.
   The positions of individual atoms can have been moved but atoms cannot have been
   removed and re-added to the structure.
   :param reduceOptions: a Phil option subset.  The relevant option is probeRadius.
+  If it is not set, the default value of 0.25 will be used.
   :returns An undirected NetworkX graph whose nodes are Movers and whose edges
   indicate which Movers might overlap in any of their states.
   """
+
+  # Determine the probe radius to use.  If it is specified in the reduceOptions,
+  # then use its value.  Otherwise, use the default value of 0.25
+  try:
+    pr = reduceOptions.probeRadius
+  except:
+    pr = 0.25
 
   # Add all of the Movers as nodes in the graph
   # Compute the axis-aligned bounding box for each Mover
@@ -62,7 +70,7 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
 
     # Find all possible positions, coarse and fine.
     coarses = m.CoarsePositions(reduceOptions)
-    atoms coarses.atoms
+    atoms = coarses.atoms
     coarsePositions = coarses.positions
     total = coarsePositions.copy()
     for c in len(coarsePositions):
@@ -76,7 +84,7 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
       for i, atomLoc in enumerate(pos):
         # Find the radius of the atom, which is used to extend it in all directions
         # so that we catch all potential overlaps.
-        r = ExtraAtomInfo[atoms[i].data.i_sel].vdwRadius
+        r = ExtraAtomInfo[atoms[i].i_seq].vdwRadius
 
         x = atomLoc[0]
         xRange[0] = min(xRange[0], x - r)
@@ -90,14 +98,10 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
         zRange[0] = min(zRange[0], z - r)
         zRange[1] = max(zRange[1], z + r)
 
-    # Dilate the bounding box by the radius of the probe if it is
-    # specified in the parameter set.
-    try:
-      pr = reduceOptions.probeRadius
-      if r is not None:
-        xRange = [ xRange[0] - pr, xRange[1] + pr ]
-        yRange = [ yRange[0] - pr, yRange[1] + pr ]
-        zRange = [ zRange[0] - pr, zRange[1] + pr ]
+    # Dilate the bounding box by the radius of the probe.
+    xRange = [ xRange[0] - pr, xRange[1] + pr ]
+    yRange = [ yRange[0] - pr, yRange[1] + pr ]
+    zRange = [ zRange[0] - pr, zRange[1] + pr ]
 
     # Store the bounding boxes for this Mover
     AABBs.append( [xRange, yRange, zRange] )
@@ -111,8 +115,102 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
 
   return ret
 
+#######################################################################################################
+# Test code and objects below here
+
+from iotbx import pdb
+import math
+
 def Test():
   """Test function for all functions provided above.
   returns: Empty string on success, string describing the problem on failure.
   """
   # @todo
+
+  # Construct a Class that will behave like the Reduce Phil data structure so that
+  # we can specify the probe radius.
+  class FakePhil:
+    pass
+  fakePhil = FakePhil()
+
+  # Construct a class that will behave like a Mover but which returns a single result
+  # atom at a single location.  We'll use this rather than actual Movers as a simple and
+  # fast test case.
+  class FakeMover():
+    def __init__(self, atom):
+      self._atom = atom
+    def CoarsePositions(reduceOptions):
+      return ( [ self._atom ], [ [ self.atom.data.xyz[0], self.atom.data.xyz[1], self.atom.data.xyz[2] ] ], [ 0.0 ] )
+    def FinePositions(coarseIndex, reduceOptions):
+      return ( [], [], [] )
+    def FixUp(coarseIndex, reduceOptions):
+      return ( [], [] )
+
+  # Construct a set of Mover/atoms that will be used to test the routines.  They will all be part of the
+  # same residue and they will all have the same unit radius in the extraAtomInfo associated with them.
+  # There will be a set of five along the X axis, with one pair overlapping slightly and the others
+  # spaced 0.45 units apart so that they will overlap when using a probe radius of 0.25 (diameter 0.5).
+  # There will be another one that is obliquely located away from the first such that it will overlap
+  # in a bounding-box test but not in a true atom-comparison test for a probe with radius 0.25.  There
+  # will be a final one 10 units above the origin.
+  rad = 1.0
+  probeRad = 0.25
+  locs = [ [0.0, 0.0, 0.0], [1.9, 0.0, 0.0] ]
+  for i in range(1,4):
+    loc = [1.9 + 2.1*i, 0.0, 0.0]
+    locs.append(loc)
+  delta = 2*rad + 2*probe + 0.1
+  dist = - delta * math.cos(math.pi/4)
+  dist = - delta * math.sin(math.pi/4)
+  locs.append([dist, dist, 0.0])
+  locs.append([0.0, 0.0, 10.0])
+
+  name = " H  ";
+  ag = pdb.hierarchy.atom_group()
+  ag.resname = "LYS"
+  atoms = []
+  extras = []
+  movers = []
+  seq = 0
+  for i in range(len(locs)):
+    a = pdb.hierarchy.atom(parent = ag)
+    a.name = name
+    a.xyz = locs[i]
+    a.i_seq = seq
+    atoms.append(a)
+    e = probe.ExtraAtomInfo(vdwRadius = rad)
+    extras.append(e)
+    movers.append(FakeMover(a))
+    seq += 1
+
+  # Generate a table of parameters and expected results.  The first entry in each row is the
+  # function to call (the type of interactiong graph).  The second is the probe radius.  The third
+  # is the expected number of connected components.  The fourth is the size of the largest connected
+  # component.
+  _expectedCases = [
+    [ InteractionGraphAABB, 0.0, 5, 2 ],
+    [ InteractionGraphAABB, probeRad, 2, 6 ],
+    [ InteractionGraphAABB, 100, 1, 7 ]
+  ]
+
+  # Specify the probe radius and run the test.  Compare the results to what we expect.
+  for e in _expectedCases:
+    fakePhil.probeRadius = i[1]
+    graph = i[0](movers, extraAtomInfo, fakePhil)
+
+    # Find the connected components of the graph and compare their counts and maximum size to
+    # what is expected.
+    # @todo
+
+
+  # Specify a probe radius that is so large it will make all of the Movers overlap.
+  fakePhil.probeRadius = 10000
+
+# If we're run on the command line, test our classes and functions.
+if __name__ == '__main__':
+
+  ret = Test()
+  if len(ret) == 0:
+    print('Success!')
+
+  assert (len(ret) == 0)
