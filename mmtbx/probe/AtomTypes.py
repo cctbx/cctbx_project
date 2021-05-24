@@ -66,13 +66,13 @@ class AtomInfo:
     except:
       self._vdwElectronCloudExplicit = 0
     try:
-      self._vdwElectronCloudImplicit = myValList[4]
-    except:
-      self._vdwElectronCloudImplicit = 0
-    try:
-      self._vdwNeutronExplicit = myValList[5]
+      self._vdwNeutronExplicit = myValList[4]
     except:
       self._vdwNeutronExplicit = 0
+    try:
+      self._vdwElectronCloudImplicit = myValList[5]
+    except:
+      self._vdwElectronCloudImplicit = 0
     try:
       self._covalent = myValList[6]
     except:
