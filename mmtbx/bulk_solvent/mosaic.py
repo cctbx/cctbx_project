@@ -204,24 +204,28 @@ class refinery(object):
     self.log            = log
     self.f_obs          = fmodel.f_obs()
     self.r_free_flags   = fmodel.r_free_flags()
-    d_spacings          = self.f_obs.d_spacings().data()
-    dsel                = d_spacings > 3
     k_mask_overall      = fmodel.k_masks()[0]
     self.bin_selections = fmodel.bin_selections
     #
-    k_total = fmodel.k_total()
-    self.f_calc         = fmodel.f_model()
-    self.F              = [self.f_calc.deep_copy()] + fv.keys()
+    k_total     = fmodel.k_total()
+    self.f_calc = fmodel.f_model()
+    self.F      = [self.f_calc.deep_copy()] + fv.keys()
     #
-    for it in range(3):
+    n_zones_start    = len(self.F)
+    r4_start         = fmodel.r_work4()
+    r4_best          = r4_start
+    self.fmodel_best = fmodel.deep_copy()
+    for it in range(5):
       #
-      if alg is not None: ALG = alg
-      else:
-        if it ==0: ALG = "alg4"
-        else:      ALG = "alg2"
+      if(it>0):
+        r4 = self.fmodel.r_work4()
+        if(abs(round(r4-r4_start,4))<1.e-4):
+          break
+        r4_start = r4
+      #if(it>0 and n_zones_start == len(self.F)): break
       #
-      if it>0:
-        self.F = [self.fmodel.f_model().deep_copy()] + self.F[1:]
+      #if it>0:
+      #  self.F = [self.fmodel.f_model().deep_copy()] + self.F[1:]
       self._print("cycle: %2d"%it)
       self._print("  volumes: "+" ".join([str(fv[f]) for f in self.F[1:]]))
       f_obs   = self.f_obs.deep_copy()
@@ -240,11 +244,14 @@ class refinery(object):
         F = [f.select(sel) for f in self.F]
         k_total_sel = k_total.select(sel)
         F_scaled = [F[0].deep_copy()]+[f.customized_copy(data=f.data()*k_total_sel) for f in F[1:]]
+        #
+        # XXX WHY NOT THIS INSTEAD (INVESTIGATE LATER)?
+        #F_scaled = [f.customized_copy(data=f.data()*k_total_sel) for f in F]
 
         #r00=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, F[0].data()*k_total_sel)
 
         # algorithm_0
-        if(ALG=="alg0"):
+        if(alg=="alg0"):
           k_masks = algorithm_0(
             f_obs = f_obs.select(sel),
             F     = F_scaled,
@@ -256,7 +263,7 @@ class refinery(object):
         #r0=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, fd*k_total_sel)
 
         # algorithm_4
-        if(ALG=="alg4"):
+        if(alg=="alg4"):
           if it==0: phase_source = fmodel.f_model().select(sel)
           else:     phase_source = self.fmodel.f_model().select(sel)
           k_masks = algorithm_4(
@@ -271,7 +278,7 @@ class refinery(object):
         #r4=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, fd*k_total_sel)
 
         # algorithm_2
-        if(ALG=="alg2"):
+        if(alg=="alg2"):
           k_masks = algorithm_2(
             i_obs          = i_obs.select(sel),
             F              = F_scaled,
@@ -323,11 +330,13 @@ class refinery(object):
           )
         self.fmodel.update_all_scales(remove_outliers=False,
           apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
+        self._print(self.fmodel.r_factors(prefix="  "))
       else:
         self.fmodel = mmtbx.f_model.manager(
           f_obs          = self.f_obs,
           r_free_flags   = self.r_free_flags,
-          f_calc         = self.f_obs.customized_copy(data = f_calc_data),
+          #f_calc         = self.f_obs.customized_copy(data = f_calc_data),
+          f_calc         = self.f_calc,
           bin_selections = self.bin_selections,
           f_mask         = f_bulk,
           k_mask         = flex.double(f_obs.data().size(),1)
@@ -352,6 +361,13 @@ class refinery(object):
         map_type   = "mFobs-DFmodel",
         isotropize = True,
         exclude_free_r_reflections = False)
+      #
+      r4 = self.fmodel.r_work4()
+      if(r4<=r4_best):
+        r4_best = r4
+        self.fmodel_best = self.fmodel.deep_copy()
+    self.fmodel = self.fmodel_best
+
 
   #def update_k_masks(self, K_MASKS):
   #  tmp = []
@@ -385,6 +401,11 @@ class refinery(object):
     #return x
 
 def get_f_mask(xrs, ma, step, option = 2, r_shrink = None, r_sol = None):
+  #
+  result = ma.deep_copy()
+  sel = ma.d_spacings().data()>=3
+  ma = ma.select(sel)
+  #
   crystal_gridding = maptbx.crystal_gridding(
     unit_cell        = xrs.unit_cell(),
     space_group_info = xrs.space_group_info(),
@@ -466,7 +487,10 @@ def get_f_mask(xrs, ma, step, option = 2, r_shrink = None, r_sol = None):
     f_mask = mask_manager.shell_f_masks(xray_structure=xrs, force_update=True)[0]
   else: assert 0
   #
-  return f_mask
+  data = flex.complex_double(result.indices().size(), 0)
+  data = data.set_selected(sel, f_mask.data())
+  result = result.array(data = data)
+  return result
 
 def filter_mask(mask_p1, volume_cutoff, crystal_symmetry,
                 for_structure_factors = False):
@@ -506,7 +530,6 @@ class mosaic_f_mask(object):
                volume_cutoff=None,
                mean_diff_map_threshold=None,
                compute_whole=False,
-               preprocess_against_shallow=True,
                largest_only=False,
                wrapping=True,
                f_obs=None,
@@ -517,8 +540,9 @@ class mosaic_f_mask(object):
                write_masks=False):
     adopt_init_args(self, locals())
     #
-    self.dsel = f_obs.d_spacings().data()>=0 # XXX WHY????????????
-    self.miller_array = f_obs.select(self.dsel)
+    self.d_spacings   = f_obs.d_spacings().data()
+    self.sel_3inf     = self.d_spacings >= 3
+    self.miller_array = f_obs.select(self.sel_3inf)
     #
     self.crystal_symmetry = self.xray_structure.crystal_symmetry()
     # compute mask in p1 (via ASU)
@@ -542,8 +566,9 @@ class mosaic_f_mask(object):
     if(compute_whole):
       mask = asu_map_ext.asymmetric_map(
         xray_structure.crystal_symmetry().space_group().type(), mask_p1).data()
-      self.f_mask_whole = self.miller_array.structure_factors_from_asu_map(
-        asu_map_data = mask, n_real = self.n_real)
+      self.f_mask_whole = self._inflate(
+        self.miller_array.structure_factors_from_asu_map(
+          asu_map_data = mask, n_real = self.n_real))
     self.solvent_content = 100.*mask_p1.count(1)/mask_p1.size()
     if(write_masks):
       write_map_file(crystal_symmetry=xray_structure.crystal_symmetry(),
@@ -552,7 +577,7 @@ class mosaic_f_mask(object):
     co = maptbx.connectivity(
       map_data                   = mask_p1,
       threshold                  = 0.01,
-      preprocess_against_shallow = preprocess_against_shallow,
+      preprocess_against_shallow = False,
       wrapping                   = wrapping)
     co.merge_symmetry_related_regions(space_group=xray_structure.space_group())
     del mask_p1
@@ -626,16 +651,19 @@ class mosaic_f_mask(object):
     self.f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
     self.f_mask   = f_obs.customized_copy(data = f_mask_data)
     self.do_mosaic = False
-    self.n_regions = len(self.FV.keys())
+    # Determine number of secondary regions
+    self.n_regions = len(self.FV.values())
     if(self.n_regions>1):
       self.do_mosaic = True
 
-  def compute_f_mask_i(self, mask_i_asu):
-    f_mask_i = self.miller_array.structure_factors_from_asu_map(
-      asu_map_data = mask_i_asu, n_real = self.n_real)
-    data = flex.complex_double(self.dsel.size(), 0)
-    data = data.set_selected(self.dsel, f_mask_i.data())
+  def _inflate(self, f):
+    data = flex.complex_double(self.d_spacings.size(), 0)
+    data = data.set_selected(self.sel_3inf, f.data())
     return self.f_obs.set().array(data = data)
+
+  def compute_f_mask_i(self, mask_i_asu):
+    return self._inflate(self.miller_array.structure_factors_from_asu_map(
+      asu_map_data = mask_i_asu, n_real = self.n_real))
 
   def compute_diff_map(self, f_mask_data):
     if(self.f_calc is None): return None
@@ -644,7 +672,6 @@ class mosaic_f_mask(object):
       f_obs  = self.f_obs,
       f_calc = self.f_calc,
       f_mask = f_mask)
-    fmodel = fmodel.select(self.dsel)
     fmodel.update_all_scales(remove_outliers=True,
       apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
     self.mc = fmodel.electron_density_map().map_coefficients(

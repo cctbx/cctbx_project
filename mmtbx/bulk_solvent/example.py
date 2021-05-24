@@ -105,9 +105,10 @@ def get_fmodel(o, f_mask, remove_outliers, log):
   fo, fm = o.f_obs().common_sets(f_mask)
   fc, fm = o.f_calc().common_sets(f_mask)
   fmodel = mmtbx.f_model.manager(
-    f_obs  = fo,
-    f_calc = fc,
-    f_mask = fm)
+    f_obs        = fo,
+    r_free_flags = o.r_free_flags(),
+    f_calc       = fc,
+    f_mask       = fm)
   fmodel.update_all_scales(
     remove_outliers         = remove_outliers,
     apply_scale_k1_to_f_obs = False
@@ -128,10 +129,12 @@ class compute(object):
     #
     print("-"*79, file=log)
     print("A-2013, all defaults", file=log)
+    step_default = min(0.8, D.f_obs().d_min()/4)
+    if(step_default < 0.15): step_default = 0.15
     f_mask = mosaic.get_f_mask(
       xrs  = D.xray_structure,
       ma   = D.f_obs(),
-      step = min(0.4, D.f_obs().d_min()/4))
+      step = step_default)
     self.fmodel_2013 = get_fmodel(
       o = D, f_mask = f_mask, remove_outliers = False, log = self.log).fmodel
     #
@@ -170,7 +173,6 @@ class compute(object):
         remove_outliers = False, log = self.log)
       self.fmodel_0 = o.fmodel
       self.mc_0     = o.mc
-      ######
 
   def do_mosaic(self, alg):
     print("-"*79, file=self.log)
@@ -250,7 +252,6 @@ def run_one(args):
           assert approx_equal(region.diff_map.me, region.m_0.me)
           assert approx_equal(region.diff_map.sd, region.m_0.sd)
           assert approx_equal(region.diff_map.ma, region.m_0.ma)
-      assert cntr>0
     #
     result = group_args(
       code            = code,
@@ -267,7 +268,6 @@ def run_one(args):
     print("FAILED:", file=log)
     traceback.print_exc(file=log)
     log.close()
-
 
 def write_map_file(cg, mc, file_name):
   from iotbx import mrcfile
