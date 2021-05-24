@@ -66,7 +66,7 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
   # Compute the axis-aligned bounding box for each Mover
   ret = graph.adjacency_list(
         graph_type = "undirected",
-        vertex_type = "Mover",
+        # vertex_type = "Mover",
         edge_type = "set",
         )
   AABBs = []
@@ -78,18 +78,18 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
     atoms = coarses.atoms
     coarsePositions = coarses.positions
     total = coarsePositions.copy()
-    for c in len(coarsePositions):
+    for c in range(len(coarsePositions)):
       total.extend(m.FinePositions(c, reduceOptions).positions)
 
     # Find the range of positions of all atoms in X, Y, and Z
     xRange = [ 1e10, -1e10 ]
-    yrange = [ 1e10, -1e10 ]
+    yRange = [ 1e10, -1e10 ]
     zRange = [ 1e10, -1e10 ]
     for pos in total:
       for i, atomLoc in enumerate(pos):
         # Find the radius of the atom, which is used to extend it in all directions
         # so that we catch all potential overlaps.
-        r = ExtraAtomInfo[atoms[i].i_seq].vdwRadius
+        r = extraAtomInfo[atoms[i].i_seq].vdwRadius
 
         x = atomLoc[0]
         xRange[0] = min(xRange[0], x - r)
@@ -145,12 +145,26 @@ def Test():
   class FakeMover():
     def __init__(self, atom):
       self._atom = atom
-    def CoarsePositions(reduceOptions):
-      return ( [ self._atom ], [ [ self.atom.data.xyz[0], self.atom.data.xyz[1], self.atom.data.xyz[2] ] ], [ 0.0 ] )
-    def FinePositions(coarseIndex, reduceOptions):
-      return ( [], [], [] )
-    def FixUp(coarseIndex, reduceOptions):
-      return ( [], [] )
+    def CoarsePositions(self, reduceOptions):
+      class MyReturn: pass
+      ret = MyReturn
+      ret.atoms = [ self._atom ]
+      ret.positions = [ [ [ self._atom.xyz[0], self._atom.xyz[1], self._atom.xyz[2] ] ] ]
+      ret.preferenceEnergies = [ 0.0 ]
+      return ret
+    def FinePositions(self, coarseIndex, reduceOptions):
+      class MyReturn: pass
+      ret = MyReturn
+      ret.atoms = []
+      ret.positions = []
+      preferenceEnergies = []
+      return ret
+    def FixUp(self, coarseIndex, reduceOptions):
+      class MyReturn: pass
+      ret = MyReturn
+      ret.atoms = []
+      ret.newPositions = []
+      return ret
 
   # Construct a set of Mover/atoms that will be used to test the routines.  They will all be part of the
   # same residue and they will all have the same unit radius in the extraAtomInfo associated with them.
