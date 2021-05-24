@@ -26,4 +26,4 @@ resources:
     source: 'Update data cache'
 
 extends:
-  template: ./data-cache.yml
+  template: ./templates/update-data-cache.yml
