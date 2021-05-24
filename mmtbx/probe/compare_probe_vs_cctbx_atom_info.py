@@ -134,12 +134,14 @@ def RunProbeVsCCTBXTest(inFileName, useNeutronDistances = False):
               print(warn)
 
             # Compare the results.
+            ''' @todo Donor and Acceptor info relies on information other than the tables.
             if ei.isDonor != ccei.isDonor:
               print(ag.resname,a.name,'Mismatched Donor status: Probe thinks',ei.isDonor)
               diffs += 1
             if ei.isAcceptor != ccei.isAcceptor:
               print(ag.resname,a.name,'Mismatched Acceptor status: Probe thinks',ei.isAcceptor)
               diffs += 1
+            '''
             if abs(ei.vdwRadius - ccei.vdwRadius) > 1.0E-4:
               print(ag.resname,a.name,'Mismatched radii: Probe thinks',ei.vdwRadius,'CCTBX thinks',ccei.vdwRadius)
               diffs += 1
@@ -156,7 +158,8 @@ if __name__ == '__main__':
   # Parse command-line arguments.  The 0th argument is the name
   # of the script. There can be the name of a PDB file to read.
   parser = argparse.ArgumentParser(description='Compare Probe vs. CCTBX atom information')
-  parser.add_argument('--neutronDistances', default=False, action='store_true')
+  parser.add_argument('-n','--neutronDistances', default=False, action='store_true',
+                      help='Use neutron distances (default X-ray electron cloud distances)')
   parser.add_argument('inputFile', nargs='?', default="")
   args = parser.parse_args()
 
