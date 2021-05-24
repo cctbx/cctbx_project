@@ -1,8 +1,9 @@
-# Template for downloading data cache artifacts
+# Template for updating data cache artifacts
 #   - miniconda
 #   - chem_data
 #   - phenix_regression
 #   - phenix_examples
+#   - xfel_regression
 
 jobs:
 - job: artifacts
