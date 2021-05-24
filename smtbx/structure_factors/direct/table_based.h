@@ -435,7 +435,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
           miller::index<> h_bar = -h;
           l = mi_lookup.find(h_bar);
           SMTBX_ASSERT(l != mi_lookup.end())(h_bar.as_string());
-          tmp[i] = complex_type(real(data[l->second][scatterer_idx]),-imag(data[l->second][scatterer_idx]));
+          tmp[i] = std::conj(data[l->second][scatterer_idx]);
         }
         else{
           SMTBX_ASSERT(l != mi_lookup.end())(h.as_string());
