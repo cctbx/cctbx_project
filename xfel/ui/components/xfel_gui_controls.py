@@ -47,6 +47,11 @@ class Button(wx.Button):
     super(Button, self).__init__(*args, **kwargs)
     setup_tooltip(self)
 
+class BitmapButton(wx.BitmapButton):
+  def __init__(self, *args, **kwargs):
+    super(BitmapButton, self).__init__(*args, **kwargs)
+    setup_tooltip(self)
+
 class Choice(wx.Choice):
   def __init__(self, *args, **kwargs):
     super(Choice, self).__init__(*args, **kwargs)
@@ -366,9 +371,10 @@ class OptionCtrl(CtrlBase):
                label_size=(100, -1),
                label_style='normal',
                sub_labels=[],
-               ctrl_size=(300, -1)):
+               ctrl_size=(300, -1),
+               **kwargs):
 
-    CtrlBase.__init__(self, parent=parent, label_style=label_style)
+    CtrlBase.__init__(self, parent=parent, label_style=label_style, **kwargs)
 
     if label != '':
       opt_box = wx.FlexGridSizer(1, len(items) * 2 + 1, 0, 10)
@@ -387,13 +393,14 @@ class OptionCtrl(CtrlBase):
       opt_label = wx.StaticText(self, id=wx.ID_ANY, label=sub_label)
       opt_box.Add(opt_label, flag=wx.ALIGN_CENTER_VERTICAL)
 
-      item = TextCtrl(self, id=wx.ID_ANY, size=ctrl_size,
+      item = TextCtrl(self, name = self.Name+"_"+key, id=wx.ID_ANY, size=ctrl_size,
                       style=wx.TE_PROCESS_ENTER)
       item.SetValue(str(value))
       opt_box.Add(item, flag=wx.ALIGN_CENTER_VERTICAL)
       self.__setattr__(key, item)
 
     self.SetSizer(opt_box)
+    setup_tooltip(self)
 
 class VerticalOptionCtrl(CtrlBase):
   ''' Generic panel will place a text control w/ label in column'''

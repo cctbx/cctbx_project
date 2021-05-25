@@ -1430,8 +1430,8 @@ class RunTab(BaseTab):
     self.main_sizer.Add(self.colname_sizer, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.btn_multirun_tags = wx.Button(self, label='Change Tags on Multiple Runs', size=(240, -1))
-    self.btn_persistent_tags = wx.Button(self, label='Manage Persistent Tags', size=(240, -1))
-    self.btn_manage_tags = wx.Button(self, label='Manage Tags', size=(120, -1))
+    self.btn_persistent_tags = gctr.Button(self, name='btn_persistent_tags', label='Manage Persistent Tags', size=(240, -1))
+    self.btn_manage_tags = gctr.Button(self, name='btn_manage_tags', label='Manage Tags', size=(120, -1))
     self.main_sizer.Add(self.run_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
 
@@ -3240,8 +3240,8 @@ class TrialPanel(wx.Panel):
                                    size=(200, -1))
     self.btn_select_blocks = wx.Button(self.add_panel, label='Select Blocks',
                                        size=(200, -1))
-    self.btn_view_phil = wx.BitmapButton(self.add_panel,
-                        bitmap=wx.Bitmap('{}/16x16/viewmag.png'.format(icons)))
+    self.btn_view_phil = gctr.BitmapButton(self.add_panel, name='btn_view_phil',
+                                           bitmap=wx.Bitmap('{}/16x16/viewmag.png'.format(icons)))
     self.chk_active = wx.CheckBox(self.add_panel, label='Active Trial')
     self.view_sizer = wx.FlexGridSizer(1, 2, 0, 10)
     self.view_sizer.Add(self.btn_view_phil)

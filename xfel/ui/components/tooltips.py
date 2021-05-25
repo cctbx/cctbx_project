@@ -1,9 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
 from xfel.ui import master_phil_scope
+from dxtbx.format.FormatXTC import locator_scope
 
-def get_help(path):
-  return master_phil_scope.get(path).objects[0].help
+def get_help(path, scope = master_phil_scope):
+  return scope.get(path).objects[0].help
 
 tooltips = {
   # Settings dialog
@@ -53,6 +54,25 @@ tooltips = {
   'last_modified_ctr': get_help('facility.standalone.files.last_modified'),
   'minimum_file_size_ctr': get_help('facility.standalone.files.minimum_file_size'),
   'template_ctr': get_help('facility.standalone.template'),
+  # Main GUI
+  'btn_persistent_tags': 'Auto-tag new runs as they arrive',
+  'btn_manage_tags': 'Add/rename/delete tags',
+  'btn_view_phil': 'View trial parameters',
+  # Trial dialog
+  'trial_throttle_ctr': 'Percent of images (events) to process',
+  'trial_num_bins_ctr': 'Used for logging only',
+  'trial_d_min_ctr': 'Used for logging only', # XXX doesn't appear
+  # Run group dialog
+  'rg_end_type': 'Auto add runs: new data will be added to this block as it arrives\nSpecify end run: set the last run for this block explicitly.',
+  'rg_address_ctr': 'Detector address in XTC stream (use detnames to list available detectors)',
+  'rg_beam_xyz': 'Beam center in pixels, and detector distance in mm (overridden by the phil parameter input.reference_geometry)',
+  'rg_bin_nrg_gain_binning': 'Rayonix binning (2, 3, 4, etc.)',
+  'rg_bin_nrg_gain_energy': 'Energy override for all images (eV)',
+  'rg_wavelength_offset': 'Offset applied to wavelength of each image (Å)',
+  'rg_spectrum_calibration': get_help('spectrum_eV_per_pixel', locator_scope),
+  'rg_energy_ctr': 'Energy override for all images (eV)',
+  'rg_two_thetas': 'Two 2θ values (deg). The ratio of high/low is used to check for presence of solvent on each image. ' + \
+                   'Defaults are the water ring and a low resolution ring',
 }
 
 def setup_tooltip(obj):

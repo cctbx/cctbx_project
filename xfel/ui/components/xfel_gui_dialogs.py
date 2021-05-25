@@ -1956,6 +1956,7 @@ class RunBlockDialog(BaseDialog):
                                    ctrl_min=self.first_avail,
                                    ctrl_max=self.last_avail)
     self.end_type = gctr.RadioCtrl(self.runblock_panel,
+                                   name='rg_end_type',
                                    label='',
                                    label_style='normal',
                                    label_size=(100, -1),
@@ -1970,6 +1971,7 @@ class RunBlockDialog(BaseDialog):
     if self.is_lcls:
       # Detector address
       self.address = gctr.TextButtonCtrl(self.runblock_panel,
+                                         name='rg_address',
                                          label='Detector Address:',
                                          label_style='bold',
                                          label_size=(100, -1),
@@ -1979,6 +1981,7 @@ class RunBlockDialog(BaseDialog):
 
       # Beam XYZ (X, Y - pickle only)
       self.beam_xyz = gctr.OptionCtrl(self.runblock_panel,
+                                      name='rg_beam_xyz',
                                       label='Beam:',
                                       label_style='bold',
                                       label_size=(100, -1),
@@ -1990,23 +1993,30 @@ class RunBlockDialog(BaseDialog):
 
     # Binning, energy, gain mask level
     if self.is_lcls:
+      items = [('binning', block.binning),
+               ('energy', block.energy)]
+      if self.parent.trial.app.params.dispatcher == "cctbx.xfel.xtc_process":
+        items.append(('gain_mask_level', block.gain_mask_level))
+
       self.bin_nrg_gain = gctr.OptionCtrl(self.runblock_panel,
+                                          name='rg_bin_nrg_gain',
                                           ctrl_size=(80, -1),
-                                          items=[('binning', block.binning),
-                                                 ('energy', block.energy),
-                                                 ('gain_mask_level', block.gain_mask_level)])
+                                          items=items)
       self.runblock_sizer.Add(self.bin_nrg_gain, flag=wx.EXPAND | wx.ALL, border=10)
       self.wavelength_offset = gctr.OptionCtrl(self.runblock_panel,
+                                               name='rg_wavelength_offset',
                                                ctrl_size=(80, -1),
                                                items=[('wavelength_offset', block.wavelength_offset)])
       self.runblock_sizer.Add(self.wavelength_offset, flag=wx.EXPAND | wx.ALL, border=10)
       self.spectrum_calibration = gctr.OptionCtrl(self.runblock_panel,
-                                          ctrl_size=(80, -1),
-                                          items=[('spectrum_eV_per_pixel', block.spectrum_eV_per_pixel),
-                                                 ('spectrum_eV_offset', block.spectrum_eV_offset)])
+                                                  name='rg_spectrum_calibration',
+                                                  ctrl_size=(80, -1),
+                                                  items=[('spectrum_eV_per_pixel', block.spectrum_eV_per_pixel),
+                                                         ('spectrum_eV_offset', block.spectrum_eV_offset)])
       self.runblock_sizer.Add(self.spectrum_calibration, flag=wx.EXPAND | wx.ALL, border=10)
     else:
       self.energy = gctr.TextButtonCtrl(self.runblock_panel,
+                                        name='rg_energy',
                                         label='Energy override',
                                         label_size=(150, -1))
       self.energy.ctr.SetValue(str(block.energy))
@@ -2014,6 +2024,7 @@ class RunBlockDialog(BaseDialog):
 
     # Two theta values for droplet hit finding
     self.two_thetas = gctr.OptionCtrl(self.runblock_panel,
+                                      name='rg_two_thetas',
                                       ctrl_size=(80, -1),
                                       items=[('two_theta_low', block.two_theta_low),
                                              ('two_theta_high', block.two_theta_high)])
@@ -2503,6 +2514,7 @@ class TrialDialog(BaseDialog):
                                           choices=choices)
     self.copy_runblocks.ctr.SetSelection(0)
     self.throttle = gctr.SpinCtrl(self,
+                                  name='trial_throttle',
                                   label='Percent events processed:',
                                   label_size=(180, -1),
                                   label_style='bold',
@@ -2511,6 +2523,7 @@ class TrialDialog(BaseDialog):
                                   ctrl_min=1,
                                   ctrl_max=100)
     self.num_bins = gctr.SpinCtrl(self,
+                                  name='trial_num_bins',
                                   label='Number of bins:',
                                   label_size=(180, -1),
                                   label_style='bold',
@@ -2520,6 +2533,7 @@ class TrialDialog(BaseDialog):
                                   ctrl_max=100,
                                   ctrl_step=1)
     self.d_min = gctr.SpinCtrl(self,
+                               name='trial_d_min',
                                label='High res. limit ({}):'
                                ''.format(u'\N{ANGSTROM SIGN}'.encode('utf-8')),
                                label_size=(180, -1),
