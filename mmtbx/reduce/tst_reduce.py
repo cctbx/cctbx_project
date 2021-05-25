@@ -1,0 +1,41 @@
+##################################################################################
+# This is a test program to validate that the Python wrapping of Reduce worked.
+#
+
+#                Copyright 2021  Richardson Lab at Duke University
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import sys
+import InteractionGraph
+
+def RunReduceTests():
+
+  #========================================================================
+  # Call the test functions for all of our files.
+
+  print('Testing InteractionGraph objects')
+  ret = InteractionGraph.Test()
+  assert (len(ret) == 0)
+
+  return ret
+
+if __name__ == '__main__':
+
+  ret = RunReduceTests()
+  if len(ret) == 0:
+    print('Success!')
+  else:
+    print(ret)
+
+  assert (len(ret) == 0)
