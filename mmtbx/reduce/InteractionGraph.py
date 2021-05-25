@@ -33,6 +33,37 @@ def _AABBOverlap(box1, box2):
            (box1[1][0] <= box2[1][1] and box1[1][1] >= box2[1][0]) and
            (box1[2][0] <= box2[2][1] and box1[2][1] >= box2[2][0]) )
 
+def _PairsOverlap(atoms1, positions1, atoms2, positions2, extraAtomInfo, probeRad):
+  """Helper function that tells whether any pair of atoms from two Movers overlap.
+  :param atoms1: Atom list for the first Mover
+  :param positions1: probe.PositionReturn.positions holding possible positions for each.
+  :param atoms2: Atom list for the second Mover
+  :param positions2: probe.PositionReturn.positions holding possible positions for each.
+  :param extraAtomInfo: List of information on atom radii by i_seq
+  :param ProbeRad: Probe radius
+  :returns True if a pair of atoms with one from each overlap, False if not.
+  """
+
+  for i1, p1 in enumerate(positions1):
+    for ai1 in range(len(p1)):
+      r1 = extraAtomInfo[atoms1[ai1].i_seq].vdwRadius
+      for i2, p2 in enumerate(positions2):
+        for ai2 in range(len(p2)):
+          r2 = extraAtomInfo[atoms2[ai2].i_seq].vdwRadius
+          dx = p1[ai1][0] - p2[ai2][0]
+          dy = p1[ai1][1] - p2[ai2][1]
+          dz = p1[ai1][2] - p2[ai2][2]
+          dSquared = dx*dx + dy*dy + dz*dz
+          limit = r1 + r2 + 2*probeRad
+          limitSquared = limit*limit
+          if dSquared <= limitSquared:
+            return True
+  return False
+
+  return ( (box1[0][0] <= box2[0][1] and box1[0][1] >= box2[0][0]) and
+           (box1[1][0] <= box2[1][1] and box1[1][1] >= box2[1][0]) and
+           (box1[2][0] <= box2[2][1] and box1[2][1] >= box2[2][0]) )
+
 def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
   """Uses the overlap of the axis-aligned bounding boxes (AABBs) of all possible
   positions of all movable atoms in the set of movers passed in to construct the
@@ -120,6 +151,64 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
 
   return ret
 
+def InteractionGraphAllPairs(movers, extraAtomInfo, reduceOptions):
+  """Tests for overlap of all possible positions of all movable atoms between each
+  pair of Movers in the set of Movers passed in to construct the
+  graph of which overlap across all possible orientations of each.
+
+  :param movers: flex array of movers to add to the graph.
+  :param extaAtomInfo: flex array of Probe.ExtraAtomInfo classes that have a vdwRadius
+  property.  Warning: The i_seq values from the atoms in the Movers are used to look
+  up directly in this vector so they must not have changed (due to structure modification)
+  since the extaInfo vector or the atom structure used by the Movers were generated.
+  The positions of individual atoms can have been moved but atoms cannot have been
+  removed and re-added to the structure.
+  :param reduceOptions: a Phil option subset.  The relevant option is probeRadius.
+  If it is not set, the default value of 0.25 will be used.
+  :returns An undirected Boost graph whose nodes are Movers and whose edges
+  indicate which Movers overlap in any of their states.
+  """
+
+  # Determine the probe radius to use.  If it is specified in the reduceOptions,
+  # then use its value.  Otherwise, use the default value of 0.25
+  try:
+    pr = reduceOptions.probeRadius
+  except:
+    pr = 0.25
+
+  # Add all of the Movers as nodes in the graph
+  # Find all possible atom positions for each.
+  ret = graph.adjacency_list(
+        graph_type = "undirected",
+        # vertex_type = "Mover",
+        # edge_type = "set",
+        )
+  verts = []
+  positions = []
+  atoms = []
+  for m in movers:
+    verts.append(ret.add_vertex(m))
+
+    # Find all possible positions, coarse and fine.
+    coarses = m.CoarsePositions(reduceOptions)
+    coarsePositions = coarses.positions
+    total = coarsePositions.copy()
+    for c in range(len(coarsePositions)):
+      total.extend(m.FinePositions(c, reduceOptions).positions)
+
+    # Add the atoms and positions into our lists
+    atoms.append(coarses.atoms)
+    positions.append(total)
+
+  # For each pair of Movers, see if they have any overlapping atoms.
+  # If so, add an edge to the graph for the pair.
+  for i in range(len(movers)-1):
+    for j in range(i+1, len(movers)):
+      if _PairsOverlap(atoms[i], positions[i], atoms[j], positions[j], extraAtomInfo, pr):
+        ret.add_edge( vertex1 = verts[i], vertex2 = verts[j])
+
+  return ret
+
 #######################################################################################################
 # Test code and objects below here
 
@@ -153,7 +242,7 @@ def Test():
   for i in range(1,4):
     loc = [1.9 + 2.1*i, 0.0, 0.0]
     locs.append(loc)
-  delta = 2*rad + 2*probeRad + 0.1
+  delta = 2*rad + 2*probeRad - 0.1
   dist = - delta * math.cos(math.pi/4)
   dist = - delta * math.sin(math.pi/4)
   locs.append([dist, dist, 0.0])
@@ -173,7 +262,7 @@ def Test():
     atoms.append(a)
     e = probe.ExtraAtomInfo(rad)
     extras.append(e)
-    movers.append(Movers.NullMover(a))
+    movers.append(Movers.MoverNull(a))
   # Fix the sequence numbers, which are otherwise all 0
   atoms.reset_i_seq()
 
@@ -184,11 +273,15 @@ def Test():
   _expectedCases = [
     [ InteractionGraphAABB, 0.0, 5, 3 ],
     [ InteractionGraphAABB, probeRad, 2, 6 ],
-    [ InteractionGraphAABB, 100, 1, 7 ]
+    [ InteractionGraphAABB, 100, 1, 7 ],
+    # One of the pairs actually does not overlap for the all-pairs test.  Other conditions are the same
+    [ InteractionGraphAllPairs, 0.0, 6, 2 ],
+    [ InteractionGraphAllPairs, probeRad, 2, 6 ],
+    [ InteractionGraphAllPairs, 100, 1, 7 ]
   ]
 
   # Specify the probe radius and run the test.  Compare the results to what we expect.
-  for e in _expectedCases:
+  for i, e in enumerate(_expectedCases):
     fakePhil.probeRadius = e[1]
     g = e[0](movers, extras, fakePhil)
 
@@ -196,15 +289,13 @@ def Test():
     # what is expected.
     components = cca.connected_components( graph = g )
     if len(components) != e[2]:
-      return "Expected "+str(e[2])+" components, found "+str(len(components))
+      return "Expected "+str(e[2])+" components, found "+str(len(components))+" for case "+str(i)
     maxLen = -1
     for c in components:
       if len(c) > maxLen:
         maxLen = len(c)
     if maxLen != e[3]:
-      return "Expected max sized component of "+str(e[3])+", found "+str(maxLen)
-
-    # @todo
+      return "Expected max sized component of "+str(e[3])+", found "+str(maxLen)+" for case "+str(i)
 
   return ""
 

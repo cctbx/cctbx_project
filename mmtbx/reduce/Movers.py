@@ -88,7 +88,7 @@ class FixUpReturn:
 # A trivial Mover that returns a single result atom at a single location.
 # Useful as a simple and fast test case for programs that use Movers.
 # It also serves as a basic example of how to develop a new Mover.
-class NullMover:
+class MoverNull:
   def __init__(self, atom):
     self._atom = atom
   def CoarsePositions(self, reduceOptions):
