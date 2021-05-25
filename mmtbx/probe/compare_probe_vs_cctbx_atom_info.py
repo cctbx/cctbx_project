@@ -24,6 +24,7 @@ import AtomTypes
 
 from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
+from cctbx.maptbx.box import shift_and_box_model
 import mmtbx
 
 def BestMatch(name, d):
@@ -76,6 +77,10 @@ def RunProbeVsCCTBXTest(inFileName, useNeutronDistances = False):
     mmm.generate_map()              #   get a model from a generated small library model and calculate a map for it
     model = mmm.model()             #   get the model
 
+  # Fix up bogus unit cell when it occurs by checking crystal symmetry.
+  cs =model.crystal_symmetry()
+  if (cs is None) or (cs.unit_cell() is None):
+    model = shift_and_box_model(model = model)
 
   # Run PDB interpretation on the model
   # @todo Not sure this does anything... setting Neutron distances does not change radii?
