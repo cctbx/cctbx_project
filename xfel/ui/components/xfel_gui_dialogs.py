@@ -11,7 +11,6 @@ Description : XFEL UI Custom Dialogs
 
 import os
 import wx
-import wx.richtext as rt
 from wx.lib.mixins.listctrl import TextEditMixin, getListCtrlSelection
 from wx.lib.scrolledpanel import ScrolledPanel
 from xfel.ui.db.task import task_types
@@ -587,6 +586,7 @@ class AdvancedSettingsDialog(BaseDialog):
 
     choices = ['local', 'lsf', 'slurm', 'shifter', 'sge', 'pbs', 'htcondor', 'custom']
     self.mp_option = gctr.ChoiceCtrl(self,
+                                     name='mp_option',
                                      label='Multiprocessing:',
                                      label_size=(200, -1),
                                      label_style='bold',
@@ -602,6 +602,7 @@ class AdvancedSettingsDialog(BaseDialog):
     queues = ['psanaq', 'psanaq', 'psdebugq','psanaidleq', 'psnehhiprioq',
               'psnehprioq', 'psnehq', 'psfehhiprioq', 'psfehprioq', 'psfehq']
     self.queue_choice = gctr.ChoiceCtrl(self,
+                                        name='queue',
                                         label='Queue:',
                                         label_size=(200, -1),
                                         label_style='bold',
@@ -615,6 +616,7 @@ class AdvancedSettingsDialog(BaseDialog):
 
 
     self.queue_text = gctr.TextButtonCtrl(self,
+                                          name='queue',
                                           label='Queue:',
                                           label_style='bold',
                                           label_size=(200, -1),
@@ -623,6 +625,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.queue_text, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.nproc = gctr.SpinCtrl(self,
+                               name='nproc',
                                label='Total number of processors:',
                                label_size=(240, -1),
                                label_style='normal',
@@ -633,6 +636,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.nnodes = gctr.SpinCtrl(self,
+                                name='nnodes',
                                 label='Total number of nodes:',
                                 label_size=(240, -1),
                                 label_style='normal',
@@ -646,7 +650,10 @@ class AdvancedSettingsDialog(BaseDialog):
     nppn_txt = wx.StaticText(self.nppn_box, label="Number of processors per node")
     self.chk_auto_nproc_per_node = wx.CheckBox(self.nppn_box, label='Auto')
     self.chk_auto_nproc_per_node.SetValue(params.mp.nproc_per_node is None)
-    self.nproc_per_node = gctr.IntFloatSpin(self.nppn_box, value='%d'%params.mp.nproc_per_node if params.mp.nproc_per_node else 1, min_val = 1, max_val = 1000)
+    self.nproc_per_node = gctr.IntFloatSpin(self.nppn_box,
+                                            name='nproc_per_node',
+                                            value='%d'%params.mp.nproc_per_node if params.mp.nproc_per_node else 1,
+                                            min_val = 1, max_val = 1000)
     if not params.mp.nproc_per_node: self.nproc_per_node.Disable()
 
     nppn_sizer = wx.FlexGridSizer(1, 3, 0, 10)
@@ -657,6 +664,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.nppn_box, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.wall_time = gctr.SpinCtrl(self,
+                                   name='wall_time',
                                    label='Max Walltime (mins):',
                                    label_size=(240, -1),
                                    label_style='normal',
@@ -667,6 +675,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.wall_time, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.mpi_command = gctr.TextButtonCtrl(self,
+                                           name='mpi_command',
                                            label='MPI command:',
                                            label_style='bold',
                                            label_size=(200, -1),
@@ -674,15 +683,17 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.mpi_command, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.env_script = gctr.TextButtonCtrl(self,
-                                     label='Environment setup script:',
-                                     label_style='bold',
-                                     label_size=(200, -1),
-                                     value=params.mp.env_script[0] \
-                                           if len(params.mp.env_script) > 0 and \
-                                           params.mp.env_script[0] is not None else '')
+                                          name='env_script',
+                                          label='Environment setup script:',
+                                          label_style='bold',
+                                          label_size=(200, -1),
+                                          value=params.mp.env_script[0] \
+                                                if len(params.mp.env_script) > 0 and \
+                                                params.mp.env_script[0] is not None else '')
     self.mp_sizer.Add(self.env_script, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.htcondor_executable_path = gctr.TextButtonCtrl(self,
+                                                        name='htcondor_executable_path',
                                                         label='MPI executable path (mp2script or openmpiscript):',
                                                         label_style='bold',
                                                         label_size=(200, -1),
@@ -691,6 +702,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.htcondor_executable_path, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.htcondor_filesystemdomain = gctr.TextButtonCtrl(self,
+                                                        name='htcondor_filesystemdomain',
                                                         label='Shared filesystem domain:',
                                                         label_style='bold',
                                                         label_size=(200, -1),
@@ -706,6 +718,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.jobtype_nnodes_sizer = wx.StaticBoxSizer(self.jobtype_nnodes_box, wx.HORIZONTAL)
 
     self.nnodes_index = gctr.SpinCtrl(self,
+                                      name='nnodes_index',
                                       label='Indexing:',
                                       label_size=(80, -1),
                                       label_style='normal',
@@ -716,6 +729,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.jobtype_nnodes_sizer.Add(self.nnodes_index, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.nnodes_scale = gctr.SpinCtrl(self,
+                                      name='nnodes_scale',
                                       label='Scaling:',
                                       label_size=(80, -1),
                                       label_style='normal',
@@ -726,6 +740,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.jobtype_nnodes_sizer.Add(self.nnodes_scale, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.nnodes_merge = gctr.SpinCtrl(self,
+                                      name='nnodes_merge',
                                       label='Merging:',
                                       label_size=(80, -1),
                                       label_style='normal',
@@ -739,10 +754,11 @@ class AdvancedSettingsDialog(BaseDialog):
 
     self.extra_box = gctr.CtrlBase(self)
     extra_txt = wx.StaticText(self.extra_box, label="Extra submission arguments")
-    self.extra_options = wx.richtext.RichTextCtrl(self.extra_box,
-                                                  size=(-1, 60),
-                                                  style=wx.VSCROLL,
-                                                  value="\n".join(self.params.mp.extra_options))
+    self.extra_options = gctr.RichTextCtrl(self.extra_box,
+                                           name='extra_options',
+                                           size=(-1, 60),
+                                           style=wx.VSCROLL,
+                                           value="\n".join(self.params.mp.extra_options))
     extra_sizer = wx.FlexGridSizer(1, 2, 0, 10)
     extra_sizer.Add(extra_txt, flag=wx.ALL, border=10)
     extra_sizer.Add(self.extra_options, flag=wx.EXPAND | wx.ALL, border=10)
@@ -753,6 +769,7 @@ class AdvancedSettingsDialog(BaseDialog):
     # Shifter-specific settings
 
     self.shifter_image = gctr.TextButtonCtrl(self,
+                                             name='shifter_image',
                                              label='Shifter image:',
                                              label_style='bold',
                                              label_size=(200, -1),
@@ -761,6 +778,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.shifter_image, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.shifter_srun_template = gctr.TextButtonCtrl(self,
+                                                     name='shifter_srun_template',
                                                      label='Srun Script Template Path:',
                                                      label_style='bold',
                                                      label_size=(200, -1),
@@ -769,6 +787,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.shifter_srun_template, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.shifter_sbatch_template = gctr.TextButtonCtrl(self,
+                                                       name='shifter_sbatch_template',
                                                        label='Sbatch Script Template Path:',
                                                        label_style='bold',
                                                        label_size=(200, -1),
@@ -777,6 +796,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.shifter_sbatch_template, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.shifter_jobname = gctr.TextButtonCtrl(self,
+                                               name='shifter_jobname',
                                                label='Job Name:',
                                                label_style='bold',
                                                label_size=(200, -1),
@@ -785,6 +805,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.shifter_jobname, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.shifter_project = gctr.TextButtonCtrl(self,
+                                               name='shifter_project',
                                                label='NERSC Project (-A):',
                                                label_style='bold',
                                                label_size=(200, -1),
@@ -793,6 +814,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.shifter_project, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.shifter_reservation = gctr.TextButtonCtrl(self,
+                                                   name='shifter_reservation',
                                                    label='NERSC Reservation:',
                                                    label_style='bold',
                                                    label_size=(200, -1),
@@ -801,6 +823,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.shifter_reservation, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.shifter_constraint = gctr.TextButtonCtrl(self,
+                                                  name='shifter_constraint',
                                                   label='Job Constraint:',
                                                   label_style='bold',
                                                   label_size=(200, -1),
@@ -813,6 +836,7 @@ class AdvancedSettingsDialog(BaseDialog):
         'Stage logs to the DataWarp burst buffer. WARNING: Only when writing to Cori cscratch. Otherwise logs will be lost.',
         'Write logs directly to disk.']
     self.log_staging = gctr.ChoiceCtrl(self,
+                                       name='staging',
                                        label="Log staging",
                                        label_size=(240, -1),
                                        label_style='bold',
@@ -843,6 +867,7 @@ class AdvancedSettingsDialog(BaseDialog):
       'Provide a custom program. See authors for details.']
 
     self.back_end = gctr.ChoiceCtrl(self,
+                                    name='back_end',
                                     label='Processing back end:',
                                     label_size=(240, -1),
                                     label_style='bold',
@@ -909,7 +934,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes_index.Hide()
       self.nnodes_scale.Hide()
       self.nnodes_merge.Hide()
-      self.extra_options.Hide()
+      self.extra_box.Hide()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
       self.shifter_sbatch_template.Hide()
@@ -933,7 +958,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes_index.Show()
       self.nnodes_scale.Show()
       self.nnodes_merge.Show()
-      self.extra_options.Show()
+      self.extra_box.Show()
       self.jobtype_nnodes_box.Show()
       self.shifter_image.Show()
       self.shifter_srun_template.Show()
@@ -958,7 +983,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes_index.Hide()
       self.nnodes_scale.Hide()
       self.nnodes_merge.Hide()
-      self.extra_options.Hide()
+      self.extra_box.Hide()
       self.jobtype_nnodes_box.Hide()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
@@ -983,7 +1008,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes_index.Show()
       self.nnodes_scale.Show()
       self.nnodes_merge.Show()
-      self.extra_options.Show()
+      self.extra_box.Show()
       self.jobtype_nnodes_box.Show()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
@@ -1012,7 +1037,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nnodes_index.Hide()
       self.nnodes_scale.Hide()
       self.nnodes_merge.Hide()
-      self.extra_options.Show()
+      self.extra_box.Show()
       self.jobtype_nnodes_box.Hide()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
@@ -1177,7 +1202,7 @@ class CalibrationDialog(BaseDialog):
     self.trial_sizer.Add(self.trial_runs, wx.ALIGN_RIGHT)
 
     #Phil blob
-    self.phil_text = rt.RichTextCtrl(self, size=(550, 300), style=wx.VSCROLL)
+    self.phil_text = gctr.RichTextCtrl(self, size=(550, 300), style=wx.VSCROLL)
     self.phil_path = gctr.TwoButtonCtrl(self,
                                         label='PHIL path:',
                                         label_size=(80, -1),
@@ -2453,7 +2478,7 @@ class TrialDialog(BaseDialog):
                                              label_style='bold',
                                              ghost_button=False)
 
-    self.phil_box = rt.RichTextCtrl(self, style=wx.VSCROLL, size=(-1, 400))
+    self.phil_box = gctr.RichTextCtrl(self, style=wx.VSCROLL, size=(-1, 400))
 
     choices = [('None', None)] + \
               [('Trial {}'.format(t.trial), t.trial) for t in self.all_trials]
@@ -2814,7 +2839,7 @@ class TaskDialog(BaseDialog):
                                  ctrl_size=(150, -1),
                                  choices=self.all_trial_numbers)
 
-    self.phil_box = rt.RichTextCtrl(self, style=wx.VSCROLL, size=(-1, 400))
+    self.phil_box = gctr.RichTextCtrl(self, style=wx.VSCROLL, size=(-1, 400))
 
     self.main_sizer.Add(self.type,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,

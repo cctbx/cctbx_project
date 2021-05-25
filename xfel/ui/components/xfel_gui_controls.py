@@ -11,6 +11,7 @@ Description : XFEL UI Custom Widgets and Controls
 import os
 import wx
 import wx.lib.agw.floatspin as fs
+import wx.richtext as rt
 from wxtbx import metallicbutton as mb
 from xfel.ui.components.tooltips import setup_tooltip
 
@@ -49,6 +50,11 @@ class Button(wx.Button):
 class Choice(wx.Choice):
   def __init__(self, *args, **kwargs):
     super(Choice, self).__init__(*args, **kwargs)
+    setup_tooltip(self)
+
+class RichTextCtrl(rt.RichTextCtrl):
+  def __init__(self, *args, **kwargs):
+    super(RichTextCtrl, self).__init__(*args, **kwargs)
     setup_tooltip(self)
 
 # --------------------------------- Buttons ---------------------------------- #
@@ -428,6 +434,10 @@ class VerticalOptionCtrl(CtrlBase):
     self.SetSizer(opt_box)
 
 class IntFloatSpin(fs.FloatSpin):
+  def __init__(self, *args, **kwargs):
+    super(IntFloatSpin, self).__init__(*args, **kwargs)
+    setup_tooltip(self)
+
   def GetValue(self):
     float_value = super(IntFloatSpin, self).GetValue()
     int_value = int(round(float_value))
@@ -444,9 +454,10 @@ class SpinCtrl(CtrlBase):
                ctrl_max=10,
                ctrl_min=0,
                ctrl_step=1,
-               ctrl_digits=0):
+               ctrl_digits=0,
+               **kwargs):
 
-    CtrlBase.__init__(self, parent=parent, label_style=label_style)
+    CtrlBase.__init__(self, parent=parent, label_style=label_style, **kwargs)
 
     ctr_box = wx.FlexGridSizer(1, 3, 0, 10)
     self.txt = wx.StaticText(self, label=label,
@@ -454,9 +465,10 @@ class SpinCtrl(CtrlBase):
     self.txt.SetFont(self.font)
 
     floatspin_class = IntFloatSpin if ctrl_digits == 0 else fs.FloatSpin
-    self.ctr = floatspin_class(self, value=ctrl_value, max_val=(ctrl_max),
-                              min_val=(ctrl_min), increment=ctrl_step,
-                              digits=ctrl_digits, size=ctrl_size)
+    self.ctr = floatspin_class(self, name=self.Name + "_ctr",
+                               value=ctrl_value, max_val=(ctrl_max),
+                               min_val=(ctrl_min), increment=ctrl_step,
+                               digits=ctrl_digits, size=ctrl_size)
     ctr_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
     ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL)
 
@@ -714,10 +726,10 @@ class PHILBox(CtrlBase):
     self.sizer = wx.GridBagSizer(5, 5)
     self.SetSizer(self.sizer)
 
-    self.ctr = wx.richtext.RichTextCtrl(self,
-                                        size=ctr_size,
-                                        style=wx.VSCROLL,
-                                        value=ctr_value)
+    self.ctr = RichTextCtrl(self,
+                            size=ctr_size,
+                            style=wx.VSCROLL,
+                            value=ctr_value)
     span_counter = 0
     if btn_import:
       self.btn_import = Button(self,
