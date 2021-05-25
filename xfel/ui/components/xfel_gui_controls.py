@@ -616,8 +616,8 @@ class RadioCtrl(CtrlBase):
                label_style='normal',
                ctrl_size=(100, -1),
                direction='horizontal',
-               items={}):
-    CtrlBase.__init__(self, parent=parent, label_style=label_style)
+               items={}, **kwargs):
+    CtrlBase.__init__(self, parent=parent, label_style=label_style, **kwargs)
 
     if direction == 'horizontal':
       radio_group = wx.FlexGridSizer(1, len(items) + 1, 0, 10)
@@ -634,6 +634,7 @@ class RadioCtrl(CtrlBase):
       self.__setattr__(key, button)
 
     self.SetSizer(radio_group)
+    setup_tooltip(self)
 
 # Use a mixin to support sorting by columns
 import wx.lib.mixins.listctrl as listmix

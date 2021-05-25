@@ -278,6 +278,7 @@ class DBCredentialsDialog(BaseDialog):
 
     # Host name
     self.db_host = gctr.TextButtonCtrl(self,
+                                       name='db_host',
                                        label='DB Host name',
                                        label_style='bold',
                                        label_size=(150, -1),
@@ -287,6 +288,7 @@ class DBCredentialsDialog(BaseDialog):
 
     # Host name
     self.db_port = gctr.TextButtonCtrl(self,
+                                       name='db_port',
                                        label='DB Port number',
                                        label_style='bold',
                                        label_size=(150, -1),
@@ -296,6 +298,7 @@ class DBCredentialsDialog(BaseDialog):
 
     # Database name
     self.db_name = gctr.TextButtonCtrl(self,
+                                       name='db_name',
                                        label='DB name',
                                        label_style='bold',
                                        label_size=(150, -1),
@@ -305,6 +308,7 @@ class DBCredentialsDialog(BaseDialog):
 
     # User name
     self.db_user = gctr.TextButtonCtrl(self,
+                                       name='db_user',
                                        label='DB user name',
                                        label_style='bold',
                                        label_size=(150, -1),
@@ -314,6 +318,7 @@ class DBCredentialsDialog(BaseDialog):
 
     # Password
     self.db_password = gctr.TextButtonCtrl(self,
+                                           name='db_password',
                                            label='DB Password',
                                            label_style='bold',
                                            label_size=(150, -1),
@@ -331,6 +336,7 @@ class DBCredentialsDialog(BaseDialog):
       self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
       # LCLS user name
       self.web_location = gctr.TextButtonCtrl(self,
+                                              name='web_location',
                                               label='XTC stream location\n(SLAC or NERSC)',
                                               label_style='bold',
                                               label_size=(150, -1),
@@ -432,6 +438,7 @@ class StandaloneOptions(BaseDialog):
     else:
       current_folder = self.params.facility.standalone.data_dir
     self.data_dir = gctr.TextButtonCtrl(self,
+                                        name='data_dir',
                                         label='Folder to monitor',
                                         label_style='bold',
                                         label_size=(300, -1),
@@ -447,6 +454,7 @@ class StandaloneOptions(BaseDialog):
 
     # Raw image options
     self.monitor_for = gctr.RadioCtrl(self,
+                                      name='monitor_for',
                                       label='Monitor for',
                                       label_style='bold',
                                       label_size=(-1, -1),
@@ -458,6 +466,7 @@ class StandaloneOptions(BaseDialog):
     self.main_sizer.Add(self.monitor_for, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.folders_options = gctr.RadioCtrl(self,
+                                          name='folders_options',
                                           label='Run complete criteria',
                                           label_style='bold',
                                           label_size=(-1, -1),
@@ -469,6 +478,7 @@ class StandaloneOptions(BaseDialog):
     self.main_sizer.Add(self.folders_options, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.n_files_needed = gctr.TextButtonCtrl(self,
+                                              name='n_files_needed',
                                               label='Number of files per run',
                                               label_style='normal',
                                               label_size=(-1, -1),
@@ -476,6 +486,7 @@ class StandaloneOptions(BaseDialog):
     self.main_sizer.Add(self.n_files_needed, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.last_modified = gctr.TextButtonCtrl(self,
+                                             name='last_modified',
                                              label='Minimum time since last modified\n(in seconds)',
                                              label_style='normal',
                                              label_size=(-1, -1),
@@ -483,20 +494,22 @@ class StandaloneOptions(BaseDialog):
     self.main_sizer.Add(self.last_modified, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.minimum_file_size = gctr.TextButtonCtrl(self,
-                                             label='Minimum file size\n(in bytes)',
-                                             label_style='normal',
-                                             label_size=(-1, -1),
-                                             value=str(self.params.facility.standalone.files.minimum_file_size))
+                                                 name='minimum_file_size',
+                                                 label='Minimum file size\n(in bytes)',
+                                                 label_style='normal',
+                                                 label_size=(-1, -1),
+                                                 value=str(self.params.facility.standalone.files.minimum_file_size))
     self.main_sizer.Add(self.minimum_file_size, flag=wx.EXPAND | wx.ALL, border=10)
 
     # File matching template control
     if self.params.facility.standalone.template is None:
       self.params.facility.standalone.template = ''
     self.template = gctr.TextButtonCtrl(self,
-                                          label='File matching template\n(example *.h5)',
-                                          label_style='bold',
-                                          label_size=(300, -1),
-                                          value=self.params.facility.standalone.template)
+                                        name='template',
+                                        label='File matching template\n(example *.h5)',
+                                        label_style='bold',
+                                        label_size=(300, -1),
+                                        value=self.params.facility.standalone.template)
     self.main_sizer.Add(self.template,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)

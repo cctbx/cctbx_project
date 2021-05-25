@@ -38,6 +38,21 @@ tooltips = {
   'shifter_constraint_ctr': get_help('mp.shifter.constraint'),
   'staging_ctr': get_help('mp.shifter.staging'),
   'back_end_ctr': get_help('dispatcher'),
+  # DBCredentialsDialog
+  'db_host_ctr': get_help('db.host'),
+  'db_port_ctr': get_help('db.port'),
+  'db_name_ctr': get_help('db.name'),
+  'db_user_ctr': get_help('db.user'),
+  'db_password_ctr': get_help('db.password'),
+  'web_location_ctr': get_help('facility.lcls.web.location'),
+  # StandaloneOptions
+  'data_dir_ctr': get_help('facility.standalone.data_dir'),
+  'monitor_for': get_help('facility.standalone.monitor_for'),
+  'folders_options': get_help('facility.standalone.folders.method'),
+  'n_files_needed_ctr': get_help('facility.standalone.folders.n_files_needed'),
+  'last_modified_ctr': get_help('facility.standalone.files.last_modified'),
+  'minimum_file_size_ctr': get_help('facility.standalone.files.minimum_file_size'),
+  'template_ctr': get_help('facility.standalone.template'),
 }
 
 def setup_tooltip(obj):
