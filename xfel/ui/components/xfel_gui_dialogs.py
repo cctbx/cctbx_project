@@ -125,6 +125,7 @@ class SettingsDialog(BaseDialog):
     choices = ['LCLS', 'Standalone']
     lower_choices = [f.lower() for f in choices]
     self.facility = gctr.ChoiceCtrl(self,
+                                    name = 'facility',
                                     label='Facility',
                                     label_size=(150, -1),
                                     ctrl_size=(180, -1),
@@ -136,7 +137,7 @@ class SettingsDialog(BaseDialog):
     except ValueError:
       pass
 
-    self.btn_facility_options = wx.Button(self, label='Options...')
+    self.btn_facility_options = gctr.Button(self, name = 'btn_facility_options', label='Options...')
     self.facility_sizer.Add(self.btn_facility_options, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.main_sizer.Add(self.facility_sizer, flag=wx.EXPAND | wx.ALL)
@@ -146,6 +147,7 @@ class SettingsDialog(BaseDialog):
     if self.params.facility.name == 'lcls': experiment = self.params.facility.lcls.experiment
     if experiment is None: experiment = ''
     self.experiment = gctr.TextButtonCtrl(self,
+                                          name='experiment',
                                           label='Experiment',
                                           label_style='bold',
                                           label_size=(150, -1),
@@ -161,6 +163,7 @@ class SettingsDialog(BaseDialog):
     else:
       current_folder = self.params.output_folder
     self.output = gctr.TextButtonCtrl(self,
+                                      name='output',
                                       label='Output',
                                       label_style='bold',
                                       label_size=(150, -1),
@@ -173,7 +176,7 @@ class SettingsDialog(BaseDialog):
                         border=10)
 
     #self.btn_mp = wx.Button(self, label='Multiprocessing...')
-    self.btn_op = wx.Button(self, label='Advanced Settings...')
+    self.btn_op = gctr.Button(self, name='advanced', label='Advanced Settings...')
     self.btn_OK = wx.Button(self, label="OK", id=wx.ID_OK)
     self.btn_cancel = wx.Button(self, label="Cancel", id=wx.ID_CANCEL)
 

@@ -46,6 +46,11 @@ class Button(wx.Button):
     super(Button, self).__init__(*args, **kwargs)
     setup_tooltip(self)
 
+class Choice(wx.Choice):
+  def __init__(self, *args, **kwargs):
+    super(Choice, self).__init__(*args, **kwargs)
+    setup_tooltip(self)
+
 # --------------------------------- Buttons ---------------------------------- #
 
 class GradButton(mb.MetallicButton):
@@ -465,9 +470,9 @@ class ChoiceCtrl(CtrlBase):
                label='',
                label_size=(200, -1),
                label_style='normal',
-               ctrl_size=(100, -1)):
+               ctrl_size=(100, -1), **kwargs):
 
-    CtrlBase.__init__(self, parent=parent, label_style=label_style)
+    CtrlBase.__init__(self, parent=parent, label_style=label_style, **kwargs)
     ctr_box = wx.FlexGridSizer(1, 3, 0, 10)
     self.txt = wx.StaticText(self, label=label, size=label_size)
     self.txt.SetFont(self.font)
@@ -475,12 +480,13 @@ class ChoiceCtrl(CtrlBase):
     # Check if choices are tuples, extract data and assign to items if so
     if all(isinstance(i, tuple) for i in choices):
       items = [i[0] for i in choices]
-      self.ctr = wx.Choice(self, size=ctrl_size, choices=items)
+      self.ctr = Choice(self, name=self.Name + "_ctr", size=ctrl_size, choices=items)
       for choice in choices:
         item_idx = self.ctr.FindString(choice[0])
         self.ctr.SetClientData(item_idx, choice[1])
     else:
-      self.ctr = wx.Choice(self, size=ctrl_size, choices=choices)
+      self.ctr = Choice(self, name=self.Name + "_ctr", size=ctrl_size, choices=choices)
+    print(self.ctr.Name)
 
     ctr_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
     ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL)
@@ -537,7 +543,7 @@ class MultiChoiceCtrl(CtrlBase):
         ch_label =wx.StaticText(self, id=wx.ID_ANY, label=key)
         choice_box.Add(ch_label, flag=wx.ALIGN_CENTER_VERTICAL)
 
-      item = wx.Choice(self, id=wx.ID_ANY, size=ctrl_size, choices=choices)
+      item = Choice(self, id=wx.ID_ANY, size=ctrl_size, choices=choices)
       choice_box.Add(item, flag=wx.ALIGN_CENTER_VERTICAL)
       self.__setattr__(key, item)
 
