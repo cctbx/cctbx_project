@@ -274,7 +274,7 @@ def Test():
     [ InteractionGraphAABB, 0.0, 5, 3 ],
     [ InteractionGraphAABB, probeRad, 2, 6 ],
     [ InteractionGraphAABB, 100, 1, 7 ],
-    # One of the pairs actually does not overlap for the all-pairs test.  Other conditions are the same
+    # One of the pairs actually does not overlap for the all-pairs test.  Other conditions are the same.
     [ InteractionGraphAllPairs, 0.0, 6, 2 ],
     [ InteractionGraphAllPairs, probeRad, 2, 6 ],
     [ InteractionGraphAllPairs, 100, 1, 7 ]
