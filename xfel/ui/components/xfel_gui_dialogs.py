@@ -107,6 +107,7 @@ class SettingsDialog(BaseDialog):
 
     # Experiment tag and DB Credentials button
     self.db_cred = gctr.TextButtonCtrl(self,
+                                       name='db_cred',
                                        label='Experiment Tag',
                                        label_style='bold',
                                        label_size=(150, -1),
@@ -847,9 +848,9 @@ class AdvancedSettingsDialog(BaseDialog):
     self.Bind(wx.EVT_CHOICE, self.onBackendChoice, self.back_end.ctr)
     self.dispatchers_sizer.Add(self.back_end, flag=wx.ALIGN_LEFT)
 
-    self.custom_dispatcher = gctr.TextCtrl(self,
-                                           ctrl_size=(300, -1),
-                                           value="")
+    self.custom_dispatcher = gctr.PanelTextCtrl(self,
+                                                ctrl_size=(300, -1),
+                                                value="")
     self.dispatchers_sizer.Add(self.custom_dispatcher, flag=wx.EXPAND | wx.ALL)
 
     try:

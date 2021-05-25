@@ -12,6 +12,7 @@ import os
 import wx
 import wx.lib.agw.floatspin as fs
 from wxtbx import metallicbutton as mb
+from xfel.ui.components.tooltips import setup_tooltip
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -32,6 +33,18 @@ elif (wx.Platform == '__WXMSW__'):
   CAPTION_SIZE = 9
 
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
+
+# --------------------------------- Tool tip overrides ----------------------- #
+
+class TextCtrl(wx.TextCtrl):
+  def __init__(self, *args, **kwargs):
+    super(TextCtrl, self).__init__(*args, **kwargs)
+    setup_tooltip(self)
+
+class Button(wx.Button):
+  def __init__(self, *args, **kwargs):
+    super(Button, self).__init__(*args, **kwargs)
+    setup_tooltip(self)
 
 # --------------------------------- Buttons ---------------------------------- #
 
@@ -185,9 +198,9 @@ class CtrlBase(wx.Panel):
                parent,
                label_style='normal',
                content_style='normal',
-               size=wx.DefaultSize):
+               size=wx.DefaultSize, **kwargs):
 
-    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, size=size)
+    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, size=size, **kwargs)
     if label_style == 'normal':
       self.font = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
     elif label_style == 'bold':
@@ -222,11 +235,11 @@ class InputCtrl(CtrlBase):
     self.txt.SetFont(self.font)
     output_box.Add(self.txt)
 
-    self.ctr = wx.TextCtrl(self) #, size=ctr_size)
+    self.ctr = TextCtrl(self) #, size=ctr_size)
     self.ctr.SetValue(value)
     output_box.Add(self.ctr, flag=wx.EXPAND)
 
-    self.btn_browse = wx.Button(self, label='Browse...')
+    self.btn_browse = Button(self, label='Browse...')
     self.btn_mag = wx.BitmapButton(self,
                                    bitmap=wx.Bitmap('{}/16x16/viewmag.png'
                                                     ''.format(icons)))
@@ -240,7 +253,7 @@ class InputCtrl(CtrlBase):
     output_box.AddGrowableCol(1, 1)
     self.SetSizer(output_box)
 
-class TextCtrl(CtrlBase):
+class PanelTextCtrl(CtrlBase):
   ''' Generic panel placing only a text box'''
 
   def __init__(self, parent,
@@ -253,7 +266,7 @@ class TextCtrl(CtrlBase):
     self.txt.SetFont(self.font)
     output_box.Add(self.txt)
 
-    self.ctr = wx.TextCtrl(self, size=ctrl_size)
+    self.ctr = TextCtrl(self, size=ctrl_size)
     self.ctr.SetValue(value)
     output_box.Add(self.ctr, flag=wx.EXPAND)
 
@@ -272,20 +285,20 @@ class TextButtonCtrl(CtrlBase):
                big_button_label='Browse...',
                big_button_size=wx.DefaultSize,
                ghost_button=True,
-               value=''):
+               value='', **kwargs):
 
-    CtrlBase.__init__(self, parent=parent, label_style=label_style)
+    CtrlBase.__init__(self, parent=parent, label_style=label_style, **kwargs)
 
     output_box = wx.FlexGridSizer(1, 4, 0, 10)
     self.txt = wx.StaticText(self, label=label, size=label_size)
     self.txt.SetFont(self.font)
     output_box.Add(self.txt)
 
-    self.ctr = wx.TextCtrl(self, style=text_style, size=ctrl_size)
+    self.ctr = TextCtrl(self, name=self.Name + "_ctr", style=text_style, size=ctrl_size)
     self.ctr.SetValue(value)
     output_box.Add(self.ctr, flag=wx.EXPAND)
 
-    self.btn_big = wx.Button(self, label=big_button_label, size=big_button_size)
+    self.btn_big = Button(self, name=self.Name + "_btn_big", label=big_button_label, size=big_button_size)
     if ghost_button:
       output_box.Add(self.btn_big, flag=wx.RESERVE_SPACE_EVEN_IF_HIDDEN)
     else:
@@ -311,25 +324,25 @@ class TwoButtonCtrl(CtrlBase):
                button2=False,
                button2_label='Default',
                button2_size=wx.DefaultSize,
-               value=''):
+               value='', **kwargs):
 
-    CtrlBase.__init__(self, parent=parent, label_style=label_style)
+    CtrlBase.__init__(self, parent=parent, label_style=label_style, **kwargs)
 
     output_box = wx.FlexGridSizer(1, 5, 0, 10)
     self.txt = wx.StaticText(self, label=label, size=label_size)
     self.txt.SetFont(self.font)
     output_box.Add(self.txt)
 
-    self.ctr = wx.TextCtrl(self, style=text_style)
+    self.ctr = TextCtrl(self, style=text_style)
     self.ctr.SetValue(value)
     output_box.Add(self.ctr, flag=wx.EXPAND)
 
     if button1:
-      self.button1 = wx.Button(self, label=button1_label, size=button1_size)
+      self.button1 = Button(self, label=button1_label, size=button1_size)
       output_box.Add(self.button1)
 
     if button2:
-      self.button2 = wx.Button(self, label=button2_label, size=button2_size)
+      self.button2 = Button(self, label=button2_label, size=button2_size)
       output_box.Add(self.button2)
 
     output_box.AddGrowableCol(1, 1)
@@ -363,8 +376,8 @@ class OptionCtrl(CtrlBase):
       opt_label = wx.StaticText(self, id=wx.ID_ANY, label=sub_label)
       opt_box.Add(opt_label, flag=wx.ALIGN_CENTER_VERTICAL)
 
-      item = wx.TextCtrl(self, id=wx.ID_ANY, size=ctrl_size,
-                         style=wx.TE_PROCESS_ENTER)
+      item = TextCtrl(self, id=wx.ID_ANY, size=ctrl_size,
+                      style=wx.TE_PROCESS_ENTER)
       item.SetValue(str(value))
       opt_box.Add(item, flag=wx.ALIGN_CENTER_VERTICAL)
       self.__setattr__(key, item)
@@ -401,8 +414,8 @@ class VerticalOptionCtrl(CtrlBase):
         opt_label = wx.StaticText(self, id=wx.ID_ANY, label=sub_label)
         opt_box.Add(opt_label, flag=wx.ALIGN_CENTER_VERTICAL)
 
-      item = wx.TextCtrl(self, id=wx.ID_ANY, size=ctrl_size,
-                         style=wx.TE_PROCESS_ENTER)
+      item = TextCtrl(self, id=wx.ID_ANY, size=ctrl_size,
+                      style=wx.TE_PROCESS_ENTER)
       item.SetValue(str(value))
       opt_box.Add(item, flag=wx.ALIGN_CENTER_VERTICAL)
       self.__setattr__(key, item)
@@ -701,19 +714,19 @@ class PHILBox(CtrlBase):
                                         value=ctr_value)
     span_counter = 0
     if btn_import:
-      self.btn_import = wx.Button(self,
+      self.btn_import = Button(self,
                                   label=btn_import_label,
                                   size=btn_import_size)
       self.sizer.Add(self.btn_import, pos=(span_counter, 0))
       span_counter += 1
     if btn_export:
-      self.btn_export = wx.Button(self,
+      self.btn_export = Button(self,
                                   label=btn_export_label,
                                   size=btn_export_size)
       self.sizer.Add(self.btn_export, pos=(span_counter, 0))
       span_counter += 1
     if btn_default:
-      self.btn_default = wx.Button(self,
+      self.btn_default = Button(self,
                                    label=btn_default_label,
                                    size=btn_default_size)
       self.sizer.Add(self.btn_default, pos=(span_counter, 0))
@@ -771,7 +784,7 @@ class GaugeBar(CtrlBase):
     self.sizer.Add(self.bins)
 
     if button:
-      self.btn = wx.Button(self, label=button_label, size=button_size)
+      self.btn = Button(self, label=button_label, size=button_size)
       self.sizer.Add(self.btn, 1, wx.ALIGN_RIGHT | wx.ALIGN_CENTER)
 
     self.SetSizer(self.sizer)
@@ -847,12 +860,12 @@ class IsoformInfoCtrl(CtrlBase):
     self.txt_num = wx.StaticText(self, label='No. Images')
     self.txt_uc = wx.StaticText(self, label='Unit Cell')
 
-    self.ctr_iso = wx.TextCtrl(self, size=(30, -1), style=wx.TE_READONLY)
-    self.ctr_pg = wx.TextCtrl(self, size=(50, -1), style=wx.TE_READONLY)
-    self.ctr_num = wx.TextCtrl(self, size=(50, -1), style=wx.TE_READONLY)
-    self.ctr_uc = wx.TextCtrl(self, size=(200, -1), style=wx.TE_READONLY)
+    self.ctr_iso = TextCtrl(self, size=(30, -1), style=wx.TE_READONLY)
+    self.ctr_pg = TextCtrl(self, size=(50, -1), style=wx.TE_READONLY)
+    self.ctr_num = TextCtrl(self, size=(50, -1), style=wx.TE_READONLY)
+    self.ctr_uc = TextCtrl(self, size=(200, -1), style=wx.TE_READONLY)
 
-    self.btn_hist = wx.Button(self, label='Histogram')
+    self.btn_hist = Button(self, label='Histogram')
 
     self.sizer.Add(self.txt_iso, flag=wx.ALIGN_CENTER_VERTICAL)
     self.sizer.Add(self.ctr_iso, flag=wx.ALIGN_CENTER_VERTICAL)
