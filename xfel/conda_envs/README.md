@@ -61,6 +61,35 @@ $ source build/conda_setpaths.sh
 $ source modules/cctbx_project/xfel/conda_envs/test_psana_lcls.sh
 ```
 
+## Alternative LCLS build
+
+The `bootstrap.py base` step above takes >1 hr, mainly to create the conda environment. This can be improved to ~15 min using
+Mamba, a C++ implementation of Conda. You need a base Conda environment with Mamba installed (`conda install mamba -c conda-forge`).
+```
+$ ssh psexport
+$ cd $INSTALL; mkdir cctbx; cd cctbx
+$ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
+$ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_lcls_environment.yml
+$ python bootstrap.py --builder=xfel --use-conda=psana_lcls_environment.yml \
+  --no-boost-src --python=37 hot update
+$ source ~/miniconda3/etc/profile.d/conda.sh # modify as needed
+$ conda activate base
+$ mamba env create -f psana_lcls_environment.yml -p `pwd`/conda_base
+$ exit  # logout of psexport
+$ ssh psana
+$ cd $INSTALL/cctbx
+$ conda  # If you get a usage message, skip the next step.
+$ source mc3/etc/profile.d/conda.sh # Activate conda. It could also be found at
+                                    # ~/miniconda3/etc/profile.d/conda.sh
+$ conda activate `pwd`/conda_base
+$ python bootstrap.py --builder=xfel --use-conda=psana_lcls_environment.yml \
+  --config-flags="--compiler=conda" --config-flags="--use_environment_flags" \
+  --config-flags="enable_cxx11" --config-flags="--no_bin_python"             \
+  --no-boost-src --python=37 --nproc=10 build
+$ source build/conda_setpaths.sh
+$ source modules/cctbx_project/xfel/conda_envs/test_psana_lcls.sh
+```
+
 # cctbx.xfel tests
 
 The cctbx.xfel regression tests include tests from several repositories.  The below instructions reproduce what we do nightly. If psana is configured, it will be tested as well.
