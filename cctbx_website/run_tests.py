@@ -20,6 +20,7 @@ tst_list = [
   "$D/regression/tst_11_script_1.py",
   "$D/regression/tst_12_script_compare_ss.py",
   "$D/regression/tst_13_script_ideal_ss.py",
+  "$D/regression/tst_14_script_lbfgs_no_curvature.py",
   ]
 
 def run():
