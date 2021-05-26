@@ -100,13 +100,16 @@ def RunProbeTests(inFileName):
     model = shift_and_box_model(model = model)
 
   # Get the bonding information we'll need to exclude our bonded neighbors.
-  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-  model.set_pdb_interpretation_params(params = p)
-  model.process_input_model(make_restraints=True) # make restraints
-  geometry = model.get_restraints_manager().geometry
-  sites_cart = model.get_sites_cart() # cartesian coordinates
-  bond_proxies_simple, asu = \
-      geometry.get_all_bond_proxies(sites_cart = sites_cart)
+  try:
+    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    model.set_pdb_interpretation_params(params = p)
+    model.process_input_model(make_restraints=True) # make restraints
+    geometry = model.get_restraints_manager().geometry
+    sites_cart = model.get_sites_cart() # cartesian coordinates
+    bond_proxies_simple, asu = \
+        geometry.get_all_bond_proxies(sites_cart = sites_cart)
+  except Exception as e:
+    return "Could not get bonding information for input file: " + str(e)
 
   # Make a mapping from sequence number to atom so that we can quickly look this
   # up when finding bonded neighbors
@@ -199,15 +202,18 @@ def RunProbeTests(inFileName):
 
   print('Testing DotSphere objects')
   ret = probe.DotSpheres_test()
-  assert (len(ret) == 0)
+  if len(ret) > 0:
+    return "DotSpheres_test() failed: " + ret
 
   print('Testing SpatialQuery objects')
   ret = probe.SpatialQuery_test()
-  assert (len(ret) == 0)
+  if len(ret) > 0:
+    return "SpatialQuery_test() failed: " + ret
 
   print('Testing Scoring objects')
   ret = probe.Scoring_test()
-  assert (len(ret) == 0)
+  if len(ret) > 0:
+    return "Scoring_test() failed: " + ret
 
   return ret
 
@@ -221,8 +227,9 @@ if __name__ == '__main__':
   for i in range(1,len(sys.argv)):
     fileName = sys.argv[i]
 
+  # Do not print anything on success because it may be counted as a warning.
   ret = RunProbeTests(fileName)
   if len(ret) == 0:
-    print('Success!')
+    print('OK')
 
-  assert (len(ret) == 0)
+  assert (len(ret) == 0), "Failure: " + ret
