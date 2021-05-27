@@ -101,7 +101,7 @@ def RunProbeVsCCTBXTest(inFileName, useNeutronDistances = False):
   # Traverse the hierarchy and look up the extra data from Probe and CCTBX.
   # print information on differences, keeping track of how many atoms differed.
   mon_lib_srv = model.get_mon_lib_srv()
-  ener_lib = mmtbx.monomer_library.server.ener_lib()
+  ener_lib = mmtbx.monomer_library.server.ener_lib(use_neutron_distances = useNeutronDistances)
   ph = model.get_hierarchy()
   diffs = 0
   count = 0
