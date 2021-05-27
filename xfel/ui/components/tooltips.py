@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from xfel.ui import master_phil_scope
 from dxtbx.format.FormatXTC import locator_scope
+from xfel.ui.command_line.plot_run_stats import phil_scope as rs_scope
 
 def get_help(path, scope = master_phil_scope):
   return scope.get(path).objects[0].help
@@ -58,6 +59,14 @@ tooltips = {
   'btn_persistent_tags': 'Auto-tag new runs as they arrive',
   'btn_manage_tags': 'Add/rename/delete tags',
   'btn_view_phil': 'View trial parameters',
+  'rs_d_min': get_help('d_min', rs_scope),
+  'rs_multiples': 'Number of multiple lattices before a hit is counted as a multiple hit',
+  'rs_ratio': 'Ratio of 2θ high to 2θ low needed for an image to be a solvent hit',
+  'rs_n_strong': get_help('n_strong_cutoff', rs_scope),
+  'rs_isigi': get_help('i_sigi_cutoff', rs_scope),
+  'rs_n_dump': 'Number of images to convert to cbf and then display',
+  'uc_selection_type': 'Union: include runs matching any of these tags\n' + \
+                       'Intersection: include runs matching all of these tags',
   # Trial dialog
   'trial_throttle_ctr': 'Percent of images (events) to process',
   'trial_num_bins_ctr': 'Used for logging only',

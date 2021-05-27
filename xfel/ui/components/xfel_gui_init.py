@@ -2111,32 +2111,44 @@ class RunStatsTab(SpotfinderTab):
                                      label='Auto plot entire experiment',
                                      size=(200,-1))
     self.d_min_select = gctr.OptionCtrl(self,
-                                        label='high resolution limit:',
+                                        name='rs_d_min',
+                                        label='High resolution limit:',
+                                        sub_labels=[''],
                                         label_size=(160, -1),
                                         ctrl_size=(30, -1),
                                         items=[('d_min', 2.5)])
     self.n_multiples_selector = gctr.OptionCtrl(self,
+                                               name='rs_multiples',
                                                label='# multiples threshold:',
+                                               sub_labels=[''],
                                                label_size=(160, -1),
                                                ctrl_size=(30, -1),
                                                items=[('multiples', 2)])
     self.ratio_cutoff = gctr.OptionCtrl(self,
+                                        name='rs_ratio',
                                         label='two theta ratio cutoff:',
+                                        sub_labels=[''],
                                         label_size=(160, -1),
                                         ctrl_size=(30, -1),
                                         items=[('ratio', 1)])
     self.n_strong_cutoff = gctr.OptionCtrl(self,
+                                           name='rs_n_strong',
                                            label='# strong spots cutoff:',
+                                           sub_labels=[''],
                                            label_size=(160, -1),
                                            ctrl_size=(30, -1),
                                            items=[('n_strong', 40)])
     self.i_sigi_cutoff = gctr.OptionCtrl(self,
+                                         name='rs_isigi',
                                          label='I/sig(I) cutoff:',
+                                         sub_labels=[''],
                                          label_size=(160, -1),
                                          ctrl_size=(30, -1),
                                          items=[('isigi', 1)])
     self.n_dump_cutoff = gctr.OptionCtrl(self,
+                                         name='rs_n_dump',
                                          label='# images to dump:',
+                                         sub_labels=[''],
                                          label_size=(160, -1),
                                          ctrl_size=(30, -1),
                                          items=[('n_dump', 10)])
@@ -2220,6 +2232,15 @@ class RunStatsTab(SpotfinderTab):
 
     self.dump_images_sizer.Add(self.strong_indexed_box_sizer, pos=(0, 0))
     self.dump_images_sizer.Add(self.should_have_indexed_box_sizer, pos=(1, 0))
+
+    if self.main.params.dispatcher != "cctbx.xfel.xtc_process":
+      self.n_dump_cutoff.Hide()
+      strong_indexed_box.Hide()
+      self.strong_indexed_list.Hide()
+      self.idx_show_images_button.Hide()
+      should_have_indexed_box.Hide()
+      self.should_have_indexed_list.Hide()
+      self.shi_dump_images_button.Hide()
 
     # self.bottom_sizer.Add(self.should_have_indexed_box_sizer, flag=wx.EXPAND | wx.ALL)
     # self.bottom_sizer.Add(self.strong_indexed_box_sizer, flag=wx.EXPAND | wx.ALL)
@@ -2475,7 +2496,7 @@ class UnitCellTab(BaseTab):
                                         choices=[])
 
     self.tag_checklist = gctr.CheckListCtrl(self,
-                                            label='Tags:',
+                                            label='Available tags:',
                                             label_size=(200, -1),
                                             label_style='normal',
                                             ctrl_size=(150, 100),
@@ -2483,6 +2504,7 @@ class UnitCellTab(BaseTab):
                                             choices=[])
 
     self.selection_type_radio = gctr.RadioCtrl(self,
+                                               name='uc_selection_type',
                                                label='',
                                                label_style='normal',
                                                label_size=(-1, -1),
@@ -2495,7 +2517,7 @@ class UnitCellTab(BaseTab):
                                      size=(200, -1))
 
     self.tag_set_checklist = gctr.CheckListCtrl(self,
-                                                label='Tag sets:',
+                                                label='Tag sets to display:',
                                                 label_size=(200, -1),
                                                 label_style='normal',
                                                 ctrl_size=(150, 100),

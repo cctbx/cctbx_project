@@ -386,7 +386,7 @@ class OptionCtrl(CtrlBase):
 
     for key, value in items:
       if sub_labels != []:
-        sub_label = sub_labels[items.index((key, value))].decode('utf-8')
+        sub_label = sub_labels[items.index((key, value))]
       else:
         sub_label = key
 
@@ -424,7 +424,7 @@ class VerticalOptionCtrl(CtrlBase):
 
     for key, value in items:
       if sub_labels != []:
-        sub_label = sub_labels[items.index((key, value))].decode('utf-8')
+        sub_label = sub_labels[items.index((key, value))]
       else:
         sub_label = key
 
