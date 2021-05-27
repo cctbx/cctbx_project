@@ -1498,6 +1498,12 @@ mean:   2.00
   assert approx_equal(flex.double([3,7]).sample_standard_deviation(), 8**0.5)
 
 def exercise_complex_functions():
+  assert (flex.complex_double() == None) is False
+  try:
+    cd_none = flex.complex_double([None])
+  except TypeError as e:
+    assert "converter" in str(e)
+  else: raise Exception_expected
   c = 1+2j
   x = flex.complex_double((c,))
   y = flex.real(x)
