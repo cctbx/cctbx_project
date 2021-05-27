@@ -376,6 +376,7 @@ newarray._sigmas = sigs
     self.window.statusBar().addPermanentWidget(self.Statusbartxtbox, 1)
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
     self.actionLocal_Help.triggered.connect(self.onOpenHelpFile)
+    self.actionHKLviewer_Tutorial.triggered.connect(self.onOpenTutorialHelpFile)
     self.actionCCTBXwebsite.triggered.connect(self.onOpenCCTBXwebsite)
     self.actiondebug.triggered.connect(self.DebugInteractively)
     self.actionSave_Current_Image.triggered.connect(self.onSaveImage)
@@ -390,6 +391,10 @@ newarray._sigmas = sigs
 
   def onOpenHelpFile(self):
     QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/doc_hklviewer/")
+
+
+  def onOpenTutorialHelpFile(self):
+    QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/tuto_hklviewer/")
 
 
   def onOpenCCTBXwebsite(self):

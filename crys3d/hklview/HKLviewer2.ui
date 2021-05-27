@@ -1517,6 +1517,7 @@ p, li { white-space: pre-wrap; }
      <string>Help</string>
     </property>
     <addaction name="actionLocal_Help"/>
+    <addaction name="actionHKLviewer_Tutorial"/>
     <addaction name="actionCCTBXwebsite"/>
     <addaction name="actionAbout"/>
    </widget>
@@ -1561,22 +1562,27 @@ p, li { white-space: pre-wrap; }
   </action>
   <action name="actionCCTBXwebsite">
    <property name="text">
-    <string>CCTBX website</string>
+    <string>CCTBX Documentation</string>
    </property>
   </action>
   <action name="actionLocal_Help">
    <property name="text">
-    <string>HKLviewer Help</string>
+    <string>Documentation</string>
    </property>
   </action>
   <action name="actionAbout">
    <property name="text">
-    <string>About HKLviewer</string>
+    <string>About</string>
    </property>
   </action>
   <action name="actionColour_Gradient">
    <property name="text">
     <string>Colour Gradient...</string>
+   </property>
+  </action>
+  <action name="actionHKLviewer_Tutorial">
+   <property name="text">
+    <string>Tutorial</string>
    </property>
   </action>
  </widget>

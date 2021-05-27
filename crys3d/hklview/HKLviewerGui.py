@@ -7,6 +7,7 @@
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
+
 from __future__ import absolute_import, division, print_function
 
 from PySide2.QtWebEngineWidgets import QWebEngineView
@@ -21,7 +22,6 @@ from PySide2.QtWidgets import QAbstractItemView, QAction, QCheckBox, QComboBox, 
  QPlainTextEdit, QPushButton, QRadioButton, QSlider, QSplitter, QSizePolicy, QSpinBox, \
  QStatusBar, QTableWidget, QTabWidget, QTextEdit, QWidget
 from PySide2.QtGui import QIcon
-
 
 
 class Ui_MainWindow(object):
@@ -56,6 +56,8 @@ class Ui_MainWindow(object):
         self.actionAbout.setObjectName(u"actionAbout")
         self.actionColour_Gradient = QAction(MainWindow)
         self.actionColour_Gradient.setObjectName(u"actionColour_Gradient")
+        self.actionHKLviewer_Tutorial = QAction(MainWindow)
+        self.actionHKLviewer_Tutorial.setObjectName(u"actionHKLviewer_Tutorial")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.gridLayout_2 = QGridLayout(self.centralwidget)
@@ -134,7 +136,7 @@ class Ui_MainWindow(object):
         self.splitter_2.addWidget(self.widget_4)
         self.SpaceGrpUCellText = QTextEdit(self.splitter_2)
         self.SpaceGrpUCellText.setObjectName(u"SpaceGrpUCellText")
-        sizePolicy5 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
+        sizePolicy5 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Ignored)
         sizePolicy5.setHorizontalStretch(0)
         sizePolicy5.setVerticalStretch(0)
         sizePolicy5.setHeightForWidth(self.SpaceGrpUCellText.sizePolicy().hasHeightForWidth())
@@ -900,6 +902,7 @@ class Ui_MainWindow(object):
         self.menuFile.addAction(self.actionSave_Current_Image)
         self.menuFile.addAction(self.actionExit)
         self.menuHelp.addAction(self.actionLocal_Help)
+        self.menuHelp.addAction(self.actionHKLviewer_Tutorial)
         self.menuHelp.addAction(self.actionCCTBXwebsite)
         self.menuHelp.addAction(self.actionAbout)
 
@@ -922,10 +925,11 @@ class Ui_MainWindow(object):
         self.actionSave_reflection_file.setText(QCoreApplication.translate("MainWindow", u"Save reflection file...", None))
         self.actionReset_View.setText(QCoreApplication.translate("MainWindow", u"Reset View", None))
         self.actionSave_Current_Image.setText(QCoreApplication.translate("MainWindow", u"Save Current Image...", None))
-        self.actionCCTBXwebsite.setText(QCoreApplication.translate("MainWindow", u"CCTBX website", None))
-        self.actionLocal_Help.setText(QCoreApplication.translate("MainWindow", u"HKLviewer Help", None))
-        self.actionAbout.setText(QCoreApplication.translate("MainWindow", u"About HKLviewer", None))
+        self.actionCCTBXwebsite.setText(QCoreApplication.translate("MainWindow", u"CCTBX Documentation", None))
+        self.actionLocal_Help.setText(QCoreApplication.translate("MainWindow", u"Documentation", None))
+        self.actionAbout.setText(QCoreApplication.translate("MainWindow", u"About", None))
         self.actionColour_Gradient.setText(QCoreApplication.translate("MainWindow", u"Colour Gradient...", None))
+        self.actionHKLviewer_Tutorial.setText(QCoreApplication.translate("MainWindow", u"Tutorial", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"Display a dataset with a double-click. Right-click table for more options.", None))
         self.SpaceGrpUCellText.setHtml(QCoreApplication.translate("MainWindow", u"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
@@ -1001,7 +1005,7 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.label_12.setText(QCoreApplication.translate("MainWindow", u"Number of bins:", None))
 #if QT_CONFIG(tooltip)
-        self.Nbins_spinBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Select the number of bins for ordering the currently displayed dataset. More than about 10-15 bins will slow down the HKLviewer when working with large datasets.<br/>The requested number of bins may not be created if there are zero reflections in some bins.</p></body></html>", None))
+        self.Nbins_spinBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Select the number of bins for ordering the currently displayed data set. More than about 10-15 bins will slow down the HKLviewer when working with large datasets.<br/>The requested number of bins may not be created if there are zero reflections in some bins.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.OpaqueAllCheckbox.setText(QCoreApplication.translate("MainWindow", u"Show/hide all data", None))
 #if QT_CONFIG(tooltip)
