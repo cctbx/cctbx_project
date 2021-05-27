@@ -38,8 +38,8 @@ from iota.components import iota_utils as util
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
 user = os.getlogin()
 
-license = 'cctbx.xfel and cctbx.xfel UI are developed under the open source ' \
-          'license'
+import libtbx.load_env
+license = os.path.join(libtbx.env.find_in_repositories('cctbx_project'), 'LICENSE.txt')
 
 description = 'The cctbx.xfel UI is developed for use during data collection ' \
               'and initial processing of serial crystallographic data from' \
@@ -1067,6 +1067,7 @@ class MainWindow(wx.Frame):
     menubar = wx.MenuBar()
     m_help = wx.Menu()
     self.mb_about = m_help.Append(wx.ID_ANY, '&About')
+    self.mb_docs = m_help.Append(wx.ID_ANY, '&Online help')
     menubar.Append(m_help, '&Help')
     self.SetMenuBar(menubar)
 
@@ -1083,6 +1084,7 @@ class MainWindow(wx.Frame):
 
     # Menubar button bindings
     self.Bind(wx.EVT_MENU, self.OnAboutBox, self.mb_about)
+    self.Bind(wx.EVT_MENU, self.OnDocs, self.mb_docs)
 
     # Bindings
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
@@ -1215,17 +1217,28 @@ class MainWindow(wx.Frame):
 
   def OnAboutBox(self, e):
     ''' About dialog '''
-    info = wx.AboutDialogInfo()
+    import wx.adv
+    info = wx.adv.AboutDialogInfo()
     info.SetName('cctbx.xfel')
-    info.SetLicense(license)
+    info.SetLicense(open(license).read())
     info.SetDescription(description)
     info.AddDeveloper('Artem Lyubimov')
     info.AddDeveloper('Aaron Brewster')
     info.AddDeveloper('Iris Young')
     info.AddDeveloper('Asmit Bhowmick')
+    info.AddDeveloper('Daniel Paley')
+    info.AddDeveloper('Derek A. Mendez')
+    info.AddDeveloper('Johannes Blaschke')
+    info.AddDeveloper('Robert Bolotovsky')
     info.AddDeveloper('Axel Brunger')
     info.AddDeveloper('Nicholas Sauter')
-    wx.AboutBox(info)
+    wx.adv.AboutBox(info)
+
+  def OnDocs(self, e):
+    import webbrowser
+    url = 'http://cci.lbl.gov/publications/download/CCN_2019_p22_Brewster.pdf'
+    print('Opening', url)
+    webbrowser.open(url)
 
   def onSettings(self, e):
     settings_dlg = dlg.SettingsDialog(self,
