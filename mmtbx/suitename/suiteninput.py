@@ -7,14 +7,14 @@ Extraction of suites from loaded cctbx models is handled elsewhere.
 """
 
 
-# Copyright 2021  David C. Richardson
-#
+#                Copyright 2021  Richardson Lab
+# 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#
+# 
 #     http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -168,7 +168,7 @@ def readKinemageSuites(lines, dimension):
                     if angles[i] < 0:
                         angles[i] += 360.0
 
-                suite = Suite(ids, "X", angles)
+                suite = Suite(ids, ids[9][2], angles)
                 suites.append(suite)
     return suites
 

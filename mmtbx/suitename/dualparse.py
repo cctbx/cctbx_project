@@ -1,3 +1,17 @@
+#                Copyright 2021  Richardson Lab
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import suiteninit, argparse
 from suiteninit import buildParser
 
@@ -12,11 +26,7 @@ def parseArgs(programClass, logger):
   parser = argparse.ArgumentParser()
   buildParser(parser)  # set up the arguments for suite name
   args, others = parser.parse_known_args()
-  print(args, file=logger)
   args2 = argsToPhilForm(args, others)
-  
-  print(args2)
-  print(others)
   args2.extend(others)
 
   # create the cctbx aspect of the parser
@@ -28,13 +38,8 @@ def parseArgs(programClass, logger):
   # do it
   namespace = parser2.parse_args(args2)
   extracted = parser2.working_phil.extract()
-  for name, value in extracted.suitename.__dict__.items():
-    print(name, ":", value)
-  # for x in parser2.working_phil:
-  #   print(x)
-  print("kinemage=",extracted.suitename.kinemage)
-  print("noinc=", extracted.suitename.noinc)
-  
+  # for name, value in extracted.suitename.__dict__.items():
+    # print(name, ":", value)
   return parser2
 
 
@@ -78,7 +83,6 @@ def argsToPhilForm(namespace, others):
   aliasDict = {aliases[i]: aliasTable[i] for i in range(len(aliasTable))}
   ###### res = {test_keys[i]: test_values[i] for i in range(len(test_keys))}
   dictionary = vars(namespace)
-  print(dictionary)
   for  key,value in dictionary.items(): # vars turns namespace to dict
     if key in aliasDict:  # if key is an alias or deprecated
       item = aliasDict[key]

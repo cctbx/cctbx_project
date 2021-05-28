@@ -1,4 +1,3 @@
-
 #                Copyright 2021  Richardson Lab
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# dualparse is scaffolding, will go away
 from mmtbx.suitename import dualparse, suites
-from mmtbx.suitename.suitename import main
+from mmtbx.suitename.suitename import main, version
 
 from iotbx.cli_parser import CCTBXParser
 from libtbx.program_template import ProgramTemplate
@@ -27,10 +25,10 @@ from libtbx.utils import multi_out, show_total_time
 import os, sys
 
 def run(args):
-  print("-------------------programs/run reporting---------------------")
   # create parser
   logger = multi_out()
-  logger.register('stderr', sys.stderr)
+  # logger.register('stderr', sys.stderr)
+  logger.register('stderr', open("suitename.stderr.log", "w"))
   logger2 = multi_out()
   logger2.register('stdout', sys.stdout)
 
@@ -41,6 +39,9 @@ def run(args):
   options = working_phil.extract().suitename
   
   # now we call into the core of suitename itself
+  if options.version:
+      print(version)
+      return
   if options.infile == "" or options.residuein or options.suitein:
       # let the core figure out the input
       main(optionsIn=options)
@@ -50,6 +51,7 @@ def run(args):
       if type == "pdb":
           # use cctbx to load the pdb file
           # then operate on the model loaded
+
           suites.main(options=options)
       else:
         # help the core figure out the input file type

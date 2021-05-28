@@ -1,22 +1,31 @@
 import sys, os, inspect
 
-# currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-# sys.path.insert(0, "C:\\Users\\Ken\\Desktop\\Richardson\\cctbx_project") 
-# sys.path.insert(0, "C:\\Users\\Ken\\Desktop\\Richardson\\cctbx-build\\build\\lib") 
+#                Copyright 2021  Richardson Lab
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# import pprint
-# pp = pprint.PrettyPrinter()
-#pp.pprint(sys.path)
-
-import suitename, suiteninput
-from suitenamedefs import Residue, Suite
+from suitenamedefs import Residue, Suite, globals
 from iotbx.data_manager import DataManager    #   Load in the DataManager
 from mmtbx.validation import utils
 from cctbx import geometry_restraints
-from _collections import defaultdict
+from collections import defaultdict
 
 
 def main(options, outFile=None):
+  from mmtbx.suitename.suitename import compute, write, finalStats, clearStats
+  setOptions(options)
+  import suiteninput  # AFTER setOptions
+
   if not outFile:
     outFile = sys.stdout
   inFile = options.infile
@@ -26,13 +35,21 @@ def main(options, outFile=None):
   if len(residues) == 0:
       sys.stderr.write("read no residues: perhaps wrong alternate code\n")
       sys.exit(1)
-  suites = suitename.buildSuites(residues)
-  suites = suites[:-1]
+  suiteList = suiteninput.buildSuites(residues)
+  suiteList = suiteList[:-1]
   
-  suites = suitename.compute(suites)
-  suitename.finalStats()
-  suitename.write(outFile, suites)
-  suitename.clearStats()
+  suiteList = compute(suiteList)
+  finalStats()
+  write(outFile, suiteList)
+  clearStats()
+
+
+def setOptions(optionsIn):
+  from mmtbx.suitename.suitename import loadOptions
+  global options
+  options = optionsIn
+  globals.options = options
+  loadOptions(optionsIn)
 
 
 def loadModel(filename):

@@ -1,17 +1,4 @@
-from suitenamedefs import Suite, Residue, Bin, Cluster, Issue, failMessages
-from suitenamedefs import Holder, globals
-# suitenamedefs must come first!
-import suiteninit, suiteninput
-from suiteninit import bins, MAX_CLUSTERS
-from suiteninit import normalWidths, satelliteWidths
-from suiteninput import readResidues, readKinemageFile, buildSuites
-
-import sys, os
-import numpy as np
-from math import cos, pi
-
-#                           suitename.py
-#                Copyright 2021  David C. Richardson
+#                Copyright 2021  Richardson Lab
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,6 +23,18 @@ from math import cos, pi
 # 01/07/2014 S.J. updated so that it can take input with alternate conformations, *nd by default will calculate the suite for altA
 # 09/18/2014 S.J. updated so that suitename will ignore DNA residues
 # 03/01/2021 Ken Brooks converted to Python
+
+from suitenamedefs import Suite, Residue, Bin, Cluster, Issue, failMessages
+from suitenamedefs import Holder, globals
+# suitenamedefs must come first!
+import suiteninit, suiteninput
+from suiteninit import bins, MAX_CLUSTERS, normalWidths, satelliteWidths
+from suiteninput import readResidues, readKinemageFile, buildSuites
+
+import sys, os
+import numpy as np
+from math import cos, pi
+
 
 version = "suitename.1.0.030821"
 dbCounter = 0
@@ -80,6 +79,12 @@ def main(inStream=None, outFile=None, optionsIn=None):
     suites = compute(suites)
     finalStats()
     write(outFile, suites)
+
+
+def loadOptions(optionsIn):
+    # A service routine, just to be called by suites.py
+    global options
+    options = optionsIn
 
 
 def read(inFile):

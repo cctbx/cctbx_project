@@ -1,9 +1,4 @@
-from suitenamedefs import globals, reasons
-from suiteninit import bins
-
-"Writing of suitename results into any of several textual file formats"
-
-# Copyright 2021  David C. Richardson
+#                Copyright 2021  Richardson Lab
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +11,9 @@ from suiteninit import bins
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from suitenamedefs import globals, reasons
+from suiteninit import bins
 
 import sys
 from enum import Enum
@@ -38,25 +36,12 @@ def output(outFile, suites, outNote):
 
 def outSuite(outFile, s):
     if options.string:
-        string1Suite(outFile, s, s.cluster)
+        string1Suite(outFile, s)
     elif options.kinemage:
         pass
     else:
         reportSuite(outFile, s)
 
-
-# deprecated, superseded by annotation:
-def write1Suite(suite, bin, cluster, distance, suiteness, notes, 
-                issue, comment, pointMaster, pointColor):
-    if options.string:
-        string1Suite(sys.stdout, suite, cluster)
-    elif options.kinemage:
-        # this can probably vanish entirely:
-        kinemage1Suite(suite, bin, cluster, notes, distance, suiteness, 
-                       issue, comment, pointMaster, pointColor,
-        )
-    else:
-        report1Suite(suite, bin, cluster, notes, distance, suiteness, issue, comment)
 
 
 def writeFinalOutput(outFile, suites, outNote):
@@ -70,12 +55,16 @@ def writeFinalOutput(outFile, suites, outNote):
         reportFinal(outFile, outNote)
 
 
-def string1Suite(outFile, suite, cluster):
+def string1Suite(outFile, suite):
     if options.nosequence:
         basestring = ":"
     else:
         basestring = suite.base
-    outFile.write(f"{cluster.name}{basestring}")
+    if suite.cluster:
+      name = suite.cluster.name
+    else:
+      name = "!!"
+    outFile.write(f"{name}{basestring}")
 
 
 def reportSuite(outFile, suite):
@@ -89,7 +78,7 @@ def reportSuite(outFile, suite):
         reason = " " + reasons[suite.issue]
     elif suite.comment:
         reason = " " + suite.comment
-    elif suite.situation:
+    elif suite.situation and options.causes:
         reason += " " + suite.situation
     if suite.cluster.status == "wannabe":
         note = " wannabe"
@@ -371,7 +360,7 @@ def kinemageHeader(outFile, outNote):
     outFile.write(f"@text\n {outNote.version}\n {outNote.comment}\n")
     outFile.write("@kinemage 1\n")
     outFile.write("@onewidth\n")
-    if options.etatheta or options.thetaeta:  # 070524
+    if options.etatheta: # 070524
         outFile.write(
             "@dimension {theta} {delta-1} {epsilon-1} {zeta-1} {alpha} "
             "{beta} {gamma} {delta} {eta}\n"
@@ -387,7 +376,6 @@ def kinemageHeader(outFile, outNote):
         "0.000 360.000\n"
         )
     if outNote.outliers:
-      caddy
       outFile.write("@pointmaster 'O' {outliers}\n")
     if outNote.wannabes:
       outFile.write("@master {wannabees}\n")
@@ -448,7 +436,7 @@ def binOut(outFile, bin, suites):
             ).format(bin.name, cluster.name, cluster.clusterColor, extras)
 
             outFile.write(ballList)
-            outPoints(bin, cluster, suites, "")
+            outPoints(outFile, bin, cluster, suites, "")
             outFile.write(ringList)
             outFile.write(ringList2)
             outFile.write(labelList)

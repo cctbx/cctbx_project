@@ -284,7 +284,7 @@ canonicalOutput='''
 3pdr:1: X: 133: : :  U 33 m !! 0.000 vacant bin
 '''
  
- # here before importing suitename, is an opportunity to set command line 
+ # here, before importing suitename, is an opportunity to set command line
  # options and to redirect output.
 sys.argv.extend(["--noinc", "--chart"])
 sys.stdout = StringIO("")

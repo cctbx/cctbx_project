@@ -1,9 +1,3 @@
-import suitenamedefs
-from suitenamedefs import Bin, Cluster, SatelliteInfo
-
-from numpy import array
-import argparse, sys
-
 """
 This is a self initializing module that embodies the data around which
 this program is built. It exports its primary data structure:
@@ -23,6 +17,12 @@ this program is built. It exports its primary data structure:
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import suitenamedefs
+from suitenamedefs import Bin, Cluster, SatelliteInfo
+
+from numpy import array
+import argparse, sys
 
 
 MAX_CLUSTERS = 16  # practical, observed limit of clusters in a bin
@@ -62,17 +62,17 @@ def buildParser(parser):
     outputStyle.add_argument("--report", "-report", action="store_true")
     outputStyle.add_argument("--string", "-string", action="store_true")
     outputStyle.add_argument("--kinemage", "-kinemage", action="store_true")
-    parser.add_argument(
-        "--chart", "-chart", action="store_true"
-    )  # a modifier to --report    
-    parser.add_argument(
-        "--causes", "-causes", action="store_true"
-    )  # a modifier to --report, reveals algorithm details
+    # output modifiers
+    parser.add_argument("--chart", "-chart", action="store_true")  
+      # a modifier to --report, suppress as the statistical summary
+    parser.add_argument("--causes", "-causes", action="store_true")
+      # a modifier to --report, reveals algorithm details
+    parser.add_argument("--nosequence", "-nosequence", action="store_true")
+      # a modifier to --string, places ':' instead of residue code
 
     # additional options
-    # parser.add_argument("--satellites", "-satellites", action="store_true")
-    # parser.add_argument("--nowannabe", "-nowannabe", action="store_true")
-    # parser.add_argument("--nosequence", "-nosequence", action="store_true")
+    parser.add_argument("--satellites", "-satellites", action="store_true")
+    parser.add_argument("--nowannabe", "-nowannabe", action="store_true")
     parser.add_argument("--noinc", "-noinc", action="store_true")
     parser.add_argument("--thetaeta", "-thetaeta", action="store_true")
     parser.add_argument("--etatheta", "-etatheta", action="store_true")
