@@ -104,7 +104,12 @@ def get_data(pdbf, mtzf):
 def get_fmodel(o, f_mask, remove_outliers, log):
   fo, fm = o.f_obs().common_sets(f_mask)
   fc, fm = o.f_calc().common_sets(f_mask)
+
+  bin_selections = fo.log_binning(
+        n_reflections_in_lowest_resolution_bin = 100)
+
   fmodel = mmtbx.f_model.manager(
+    bin_selections = bin_selections,
     f_obs        = fo,
     r_free_flags = o.r_free_flags(),
     f_calc       = fc,
