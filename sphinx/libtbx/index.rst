@@ -14,7 +14,6 @@ Submodules
 .. toctree::
     :maxdepth: 1
 
-    libtbx.phil
     libtbx.easy_mp
     libtbx.program_template
 
