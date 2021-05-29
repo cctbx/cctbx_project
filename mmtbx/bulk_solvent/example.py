@@ -182,10 +182,23 @@ class compute(object):
   def do_mosaic(self, alg):
     print("-"*79, file=self.log)
     print("Refine k_masks", file=self.log)
+    assert approx_equal(self.fmodel_2013_opt.f_obs().data(),
+      self.fmodel_0.f_obs().data())
+    assert approx_equal(self.fmodel_2013_opt.f_calc().data(),
+      self.fmodel_0.f_calc().data())
+
+    if(self.fmodel_0.r_work4()<self.fmodel_2013_opt.r_work4()):
+      fmodel = self.fmodel_0
+    else:
+      fmodel = self.fmodel_2013_opt
+
+    #if(self.fmodel_0.r_work_low()<self.fmodel_2013_opt.r_work_low()):
+    #  fmodel = self.fmodel_0
+    #else:
+    #  fmodel = self.fmodel_2013_opt
+
     result = mosaic.refinery(
-      # XXXXXXXXXXXXXXXXXXXXXXXXXX !!!!!!!!!!!!!!!!!!!!!!!!!!!!++++++++++++++++
-      fmodel  = self.fmodel_2013_opt,#self.fmodel_0,
-      # XXXXXXXXXXXXXXXXXXXXXXXXXX !!!!!!!!!!!!!!!!!!!!!!!!!!!!++++++++++++++++
+      fmodel  = fmodel,
       fv      = self.mm.FV,
       alg     = alg,
       log     = self.log)

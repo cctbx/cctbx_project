@@ -209,30 +209,28 @@ class refinery_(object):
   """
   def __init__(self, fmodel, fv, alg, anomaly=True, log = sys.stdout):
     assert alg in ["alg0", "alg2", "alg4", None]
-    self.log            = log
-    self.f_obs          = fmodel.f_obs()
-    self.r_free_flags   = fmodel.r_free_flags()
-    k_mask_overall      = fmodel.k_masks()[0]
+    self.log             = log
+    self.f_obs           = fmodel.f_obs()
+    self.r_free_flags    = fmodel.r_free_flags()
+    k_mask_overall       = fmodel.k_masks()[0]
     bin_selections_input = fmodel.bin_selections
+    self.f_calc          = fmodel.f_calc()
+    phase_source_init    = fmodel.f_model()
+    k_total              = fmodel.k_total()
+    self.F               = [self.f_calc.deep_copy()] + fv.keys()
+    self.F_JUNK          = [self.f_calc.deep_copy()] + fv.keys()
+    n_zones_start        = len(self.F)
+    r4_start             = fmodel.r_work4()
+    r4_best              = r4_start
+    self.fmodel_best     = fmodel.deep_copy()
+    del fmodel
     #
-    k_total     = fmodel.k_total()
-    self.f_calc = fmodel.f_model()
-
-
     tmp = []
     for mi in fv.keys():
       mi_ = mi.deep_copy()
       mi_ = mi_.customized_copy(data = mi_.data()*k_mask_overall)
       tmp.append(mi_)
-
-    self.F      = [self.f_calc.deep_copy()] + tmp
-    self.F_JUNK = [self.f_calc.deep_copy()] + fv.keys()
-
     #
-    n_zones_start    = len(self.F)
-    r4_start         = fmodel.r_work4()
-    r4_best          = r4_start
-    self.fmodel_best = fmodel.deep_copy()
     for it in range(5):
       #
       if(it>0):
@@ -247,28 +245,18 @@ class refinery_(object):
       self._print("cycle: %2d"%it)
       self._print("  volumes: "+" ".join([str(fv[f]) for f in self.F_JUNK[1:]]))
       f_obs   = self.f_obs.deep_copy()
-      if it==0: k_total = fmodel.k_total()
-      else:     k_total = self.fmodel.k_total()
+      if it>0: k_total = self.fmodel.k_total()
       i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
       K_MASKS = OrderedDict()
 
-      #self.bin_selections = self.f_obs.log_binning(
-      #  n_reflections_in_lowest_resolution_bin = 100*len(self.F))
       self.bin_selections = [self.f_calc.d_spacings().data()>3]
-
 
       for i_bin, sel in enumerate(self.bin_selections):
         d_max, d_min = f_obs.select(sel).d_max_min()
-        if d_max<3: continue
         bin = "  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min)
         F = [f.select(sel) for f in self.F]
         k_total_sel = k_total.select(sel)
-        #F_scaled = [F[0].deep_copy()]+[f.customized_copy(data=f.data()*k_total_sel) for f in F[1:]]
-        #
-        # XXX WHY NOT THIS INSTEAD (INVESTIGATE LATER)?
         F_scaled = [f.customized_copy(data=f.data()*k_total_sel) for f in F]
-
-        #r00=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, F[0].data()*k_total_sel)
 
         # algorithm_0
         if(alg=="alg0"):
@@ -279,7 +267,7 @@ class refinery_(object):
 
         # algorithm_4
         if(alg=="alg4"):
-          if it==0: phase_source = fmodel.f_model().select(sel)
+          if it==0: phase_source = phase_source_init.select(sel)
           else:     phase_source = self.fmodel.f_model().select(sel)
           k_masks = algorithm_4(
             f_obs             = self.f_obs.select(sel),
@@ -295,16 +283,13 @@ class refinery_(object):
             x              = self._get_x_init(i_bin),
             use_curvatures = False)
 
-        #self._print(bin+" ".join(["%6.2f"%k for k in k_masks])+" %6.4f %6.4f %6.4f %6.4f"%(r00,r0,r4, r2))
-        k_mean = flex.mean(k_mask_overall.select(sel))
-        k_masks_plus = [k_masks[0]]+[k_mean + k for k in k_masks[1:]]
-        self._print(bin+" ".join(["%6.2f"%k for k in k_masks_plus]) )
-        K_MASKS[sel] = [k_masks, k_masks_plus]
+        self._print(bin+" ".join(["%6.2f"%k for k in k_masks]) )
+        K_MASKS[sel] = [k_masks, k_masks]
       #
       if(len(self.F)==2): break # stop and fall back onto using largest mask
       #
       f_calc_data = self.f_calc.data().deep_copy()
-      f_bulk_data = flex.complex_double(fmodel.f_calc().data().size(), 0)
+      f_bulk_data = flex.complex_double(self.f_calc.data().size(), 0)
       k_mask_0 = None
       for sel, k_masks in zip(K_MASKS.keys(), K_MASKS.values()):
         k_masks = k_masks[0] # 1 is shifted!
@@ -317,16 +302,16 @@ class refinery_(object):
             continue
           if k_mask_0 is not None: k_mask = k_mask/k_mask_0
           f_bulk_data_ += self.F[i_mask].data().select(sel)*k_mask
-        f_bulk_data = f_bulk_data.set_selected(sel,f_bulk_data_)
+        f_bulk_data = f_bulk_data.set_selected(sel,f_bulk_data_ )
       #
       self.update_F(K_MASKS)
-      f_bulk = fmodel.f_calc().customized_copy(data = f_bulk_data)
+      f_bulk = self.f_calc.customized_copy(data = f_bulk_data)
 
       if(len(self.F)==2):
         self.fmodel = mmtbx.f_model.manager(
           f_obs          = self.f_obs,
           r_free_flags   = self.r_free_flags,
-          f_calc         = fmodel.f_calc(),
+          f_calc         = self.f_calc,
           f_mask         = self.F[1],
           k_mask         = flex.double(f_obs.data().size(),1)
           )
@@ -337,30 +322,24 @@ class refinery_(object):
         self.fmodel = mmtbx.f_model.manager(
           f_obs          = self.f_obs,
           r_free_flags   = self.r_free_flags,
-          #f_calc         = self.f_obs.customized_copy(data = f_calc_data),
           f_calc         = self.f_calc,
-          bin_selections = bin_selections_input,#self.bin_selections,
+          bin_selections = bin_selections_input,
           f_mask         = f_bulk,
           k_mask         = flex.double(f_obs.data().size(),1)
           )
         self.fmodel.update_all_scales(remove_outliers=False,
           apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
         #
-
         k_mask_overall      = self.fmodel.k_masks()[0]
         tmp = []
         for mi in fv.keys():
           mi_ = mi.deep_copy()
           mi_ = mi_.customized_copy(data = mi_.data()*k_mask_overall)
           tmp.append(mi_)
-
         self.F      = [self.f_calc.deep_copy()] + tmp
-
-
         #
         self._print(self.fmodel.r_factors(prefix="  "))
 
-      #self._print(self.fmodel.r_factors(prefix="  "))
       self.mc = self.fmodel.electron_density_map().map_coefficients(
         map_type   = "mFobs-DFmodel",
         isotropize = True,
@@ -371,19 +350,6 @@ class refinery_(object):
         r4_best = r4
         self.fmodel_best = self.fmodel.deep_copy()
     self.fmodel = self.fmodel_best
-
-
-  #def update_k_masks(self, K_MASKS):
-  #  tmp = []
-  #  for i_mask, F in enumerate(self.F):
-  #    k_masks = [k_masks_bin[i_mask] for k_masks_bin in K_MASKS.values()]
-  #    found = False
-  #    for i_bin, k_masks_bin in enumerate(K_MASKS.values()):
-  #      if(not found and k_masks_bin[i_mask]<=0.009):
-  #        found = True
-  #        K_MASKS.values()[i_bin][i_mask]=0
-  #      elif found:
-  #        K_MASKS.values()[i_bin][i_mask]=0
 
   def _print(self, m):
     if(self.log is not None):
@@ -424,21 +390,21 @@ def chunker(l,n):
 class refinery(object):
   def __init__(self, fmodel, fv, alg, log = sys.stdout):
     assert alg in ["alg0", "alg2", "alg4", None]
-    self.log            = log
-    self.f_obs          = fmodel.f_obs()
-    self.r_free_flags   = fmodel.r_free_flags()
-    k_mask_overall      = fmodel.k_masks()[0]
+    self.log             = log
+    self.f_obs           = fmodel.f_obs()
+    self.r_free_flags    = fmodel.r_free_flags()
+    k_mask_overall       = fmodel.k_masks()[0]
     bin_selections_input = fmodel.bin_selections
+    self.f_calc          = fmodel.f_calc()
+    phase_source_init    = fmodel.f_model()
+    k_total              = fmodel.k_total()
+    self.F               = [self.f_calc.deep_copy()] + fv.keys()
+    n_zones_start        = len(self.F)
+    r4_start             = fmodel.r_work4()
+    r4_best              = r4_start
+    self.fmodel_best     = fmodel.deep_copy()
+    del fmodel
     #
-    k_total     = fmodel.k_total()
-    self.f_calc = fmodel.f_model()
-    self.F      = [self.f_calc.deep_copy()] + fv.keys()
-    #
-    n_zones_start    = len(self.F)
-    r4_start         = fmodel.r_work4()
-    r4_best          = r4_start
-    self.fmodel_best = fmodel.deep_copy()
-
     for it in range(5):
       #
       if(it>0):
@@ -453,8 +419,7 @@ class refinery(object):
       self._print("cycle: %2d"%it)
       self._print("  volumes: "+" ".join([str(fv[f]) for f in self.F[1:]]))
       f_obs   = self.f_obs.deep_copy()
-      if it==0: k_total = fmodel.k_total()
-      else:     k_total = self.fmodel.k_total()
+      if it>0: k_total = self.fmodel.k_total()
       i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
       K_MASKS = OrderedDict()
 
@@ -463,20 +428,12 @@ class refinery(object):
 
       for i_bin, sel in enumerate(self.bin_selections):
         d_max, d_min = f_obs.select(sel).d_max_min()
-        if d_max<3: continue
+        if d_max<3 or d_min<3: continue
         bin = "  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min)
         F = [f.select(sel) for f in self.F]
         k_total_sel = k_total.select(sel)
-        #F_scaled = [F[0].deep_copy()]+[f.customized_copy(data=f.data()*k_total_sel) for f in F[1:]]
         #
-        # XXX WHY NOT THIS INSTEAD (INVESTIGATE LATER)?
-        #F_scaled = [f.customized_copy(data=f.data()*k_total_sel) for f in F]
-        F_scaled = []
-        for i,f in enumerate(F):
-          if  (i==0): F_scaled.append( f.customized_copy(data=f.data()*k_total_sel) )
-          elif(i==1): F_scaled.append( f.customized_copy(data=f.data()*k_total_sel*k_mask_overall.select(sel)) )
-          else      : F_scaled.append( f.customized_copy(data=f.data()*k_total_sel) )
-
+        F_scaled = [f.customized_copy(data=f.data()*k_total_sel) for f in F]
         # algorithm_0
         if(alg=="alg0"):
           k_masks = algorithm_0(
@@ -485,7 +442,7 @@ class refinery(object):
             kt=k_total_sel)
         # algorithm_4
         if(alg=="alg4"):
-          if it==0: phase_source = fmodel.f_model().select(sel)
+          if it==0: phase_source = phase_source_init.select(sel)
           else:     phase_source = self.fmodel.f_model().select(sel)
           k_masks = algorithm_4(
             f_obs             = self.f_obs.select(sel),
@@ -500,16 +457,13 @@ class refinery(object):
             x              = self._get_x_init(i_bin),
             use_curvatures = False)
 
-        #self._print(bin+" ".join(["%6.2f"%k for k in k_masks])+" %6.4f %6.4f %6.4f %6.4f"%(r00,r0,r4, r2))
-        k_mean = flex.mean(k_mask_overall.select(sel))
-        k_masks_plus = [k_masks[0]]+[k_mean + k for k in k_masks[1:]]
-        self._print(bin+" ".join(["%6.2f"%k for k in k_masks_plus]) )
-        K_MASKS[sel] = [k_masks, k_masks_plus]
+        self._print(bin+" ".join(["%6.2f"%k for k in k_masks]) )
+        K_MASKS[sel] = [k_masks, k_masks]
       #
       if(len(self.F)==2): break # stop and fall back onto using largest mask
       #
       f_calc_data = self.f_calc.data().deep_copy()
-      f_bulk_data = flex.complex_double(fmodel.f_calc().data().size(), 0)
+      f_bulk_data = flex.complex_double(self.f_calc.data().size(), 0)
       k_mask_0 = None
       for sel, k_masks in zip(K_MASKS.keys(), K_MASKS.values()):
         k_masks = k_masks[0] # 1 is shifted!
@@ -522,16 +476,16 @@ class refinery(object):
             continue
           if k_mask_0 is not None: k_mask = k_mask/k_mask_0
           f_bulk_data_ += self.F[i_mask].data().select(sel)*k_mask
-        f_bulk_data = f_bulk_data.set_selected(sel,f_bulk_data_)
+        f_bulk_data = f_bulk_data.set_selected(sel,f_bulk_data_ )
       #
       self.update_F(K_MASKS)
-      f_bulk = fmodel.f_calc().customized_copy(data = f_bulk_data)
+      f_bulk = self.f_calc.customized_copy(data = f_bulk_data)
 
       if(len(self.F)==2):
         self.fmodel = mmtbx.f_model.manager(
           f_obs          = self.f_obs,
           r_free_flags   = self.r_free_flags,
-          f_calc         = fmodel.f_calc(),
+          f_calc         = self.f_calc,
           f_mask         = self.F[1],
           k_mask         = flex.double(f_obs.data().size(),1)
           )
@@ -564,7 +518,6 @@ class refinery(object):
           apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
         self._print(self.fmodel.r_factors(prefix="  "))
 
-      #self._print(self.fmodel.r_factors(prefix="  "))
       self.mc = self.fmodel.electron_density_map().map_coefficients(
         map_type   = "mFobs-DFmodel",
         isotropize = True,
