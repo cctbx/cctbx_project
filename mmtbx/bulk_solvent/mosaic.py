@@ -402,12 +402,19 @@ class refinery(object):
     n_zones_start        = len(self.F)
     r4_start             = fmodel.r_work4()
     r4_best              = r4_start
-    self.fmodel_best     = fmodel.deep_copy()
     del fmodel
+    self.fmodel          = None
+    r4_start             = None
+    r4_best              = None
+    self.fmodel_best     = None
     #
     for it in range(5):
       #
-      if(it>0):
+      if(it==1):
+        r4_start         = self.fmodel.r_work4()
+        r4_best          = r4_start
+        self.fmodel_best = self.fmodel.deep_copy()
+      if(it>1):
         r4 = self.fmodel.r_work4()
         if(abs(round(r4-r4_start,4))<1.e-4):
           break
@@ -524,7 +531,7 @@ class refinery(object):
         exclude_free_r_reflections = False)
       #
       r4 = self.fmodel.r_work4()
-      if(r4<=r4_best):
+      if(r4_best is not None and r4<=r4_best):
         r4_best = r4
         self.fmodel_best = self.fmodel.deep_copy()
     self.fmodel = self.fmodel_best

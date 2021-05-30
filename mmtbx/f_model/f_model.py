@@ -2164,8 +2164,14 @@ class manager(manager_mixin):
     d_min = ds[n]
     return self.resolution_filter(d_min=d_min).r_work()
 
+  def r_two_bins_lowest(self):
+    f = self.select(self.bin_selections[0] | self.bin_selections[1])
+    return mmtbx.bulk_solvent.r_factor(
+      f.f_obs_work().data(), f.f_model_work().data())
+
   def r_work_low(self):
     f = self.select(self.bin_selections[0])
+
 
     # Scan for best k
     #fo, fc = f.f_obs_work().data(), f.f_model_work().data()

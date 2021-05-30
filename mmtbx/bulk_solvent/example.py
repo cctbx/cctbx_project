@@ -187,15 +187,10 @@ class compute(object):
     assert approx_equal(self.fmodel_2013_opt.f_calc().data(),
       self.fmodel_0.f_calc().data())
 
-    if(self.fmodel_0.r_work4()<self.fmodel_2013_opt.r_work4()):
+    if(self.fmodel_0.r_two_bins_lowest() < self.fmodel_2013_opt.r_two_bins_lowest()):
       fmodel = self.fmodel_0
     else:
       fmodel = self.fmodel_2013_opt
-
-    #if(self.fmodel_0.r_work_low()<self.fmodel_2013_opt.r_work_low()):
-    #  fmodel = self.fmodel_0
-    #else:
-    #  fmodel = self.fmodel_2013_opt
 
     result = mosaic.refinery(
       fmodel  = fmodel,
