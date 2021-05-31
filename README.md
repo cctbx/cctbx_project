@@ -48,3 +48,104 @@ The `python` package with a specific version can be added to change the version 
   - For better compatibility with newer operating systems, `conda` packages can be used for dependencies. Add the `--use-conda` flag and the command becomes `python bootstrap.py --use-conda`. This will run the `miniconda` installer if `conda` cannot be found. The environment with the dependencies will be located in the `conda_base` directory. See the description of the `--use-conda` flag from the `--help` output for more details.
 
 The installation will take a long while but the script will verbosely describe what it does.
+
+## Nightly check of current release (except for Apple Silicon)
+
+A subset of tests is run on the current `cctbx-base` package every night (6 pm Pacific) to test compatibility with the latest packages from `conda-forge`.
+
+<table>
+  <thead><tr><th>Variant</th><th>Status</th></tr></thead>
+  <tbody><tr>
+      <td>linux_64_numpy1.17python3.6.____cpython</td>
+      <td>
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.6" alt="variant">
+        </a>
+      </td>
+    </tr><tr>
+      <td>linux_64_numpy1.17python3.7.____cpython</td>
+      <td>
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.7" alt="variant">
+        </a>
+      </td>
+    </tr><tr>
+      <td>linux_64_numpy1.17python3.8.____cpython</td>
+      <td>
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.8" alt="variant">
+        </a>
+      </td>
+    </tr><tr>
+      <td>linux_64_numpy1.19python3.9.____cpython</td>
+      <td>
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.9" alt="variant">
+        </a>
+      </td>
+    </tr><tr>
+      <td>osx_64_numpy1.17python3.6.____cpython</td>
+      <td>
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.6" alt="variant">
+        </a>
+      </td>
+    </tr><tr>
+      <td>osx_64_numpy1.17python3.7.____cpython</td>
+      <td>
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.7" alt="variant">
+        </a>
+      </td>
+    </tr><tr>
+      <td>osx_64_numpy1.17python3.8.____cpython</td>
+      <td>
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.8" alt="variant">
+        </a>
+      </td>
+    </tr><tr>
+      <td>osx_64_numpy1.19python3.9.____cpython</td>
+      <td>
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.9" alt="variant">
+        </a>
+      </td>
+    </tr><tr>
+      <td>osx_arm64_python3.8.____cpython</td>
+      <td>
+        <a href="https://dev.azure.com/conda-forge/feedstock-builds/_build/latest?definitionId=10784&branchName=master">
+          <img src="https://dev.azure.com/conda-forge/feedstock-builds/_apis/build/status/cctbx-base-feedstock?branchName=master&jobName=osx&configuration=osx_arm64_python3.8.____cpython" alt="variant">
+        </a>
+      </td>
+    </tr><tr>
+      <td>osx_arm64_python3.9.____cpython</td>
+      <td>
+        <a href="https://dev.azure.com/conda-forge/feedstock-builds/_build/latest?definitionId=10784&branchName=master">
+          <img src="https://dev.azure.com/conda-forge/feedstock-builds/_apis/build/status/cctbx-base-feedstock?branchName=master&jobName=osx&configuration=osx_arm64_python3.9.____cpython" alt="variant">
+        </a>
+      </td>
+    </tr><tr>
+      <td>win_64_numpy1.17python3.6.____cpython</td>
+      <td>
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.6" alt="variant">
+        </a>
+      </td>
+    </tr><tr>
+      <td>win_64_numpy1.17python3.7.____cpython</td>
+      <td>
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.7" alt="variant">
+        </a>
+      </td>
+    </tr><tr>
+      <td>win_64_numpy1.17python3.8.____cpython</td>
+      <td>
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.8" alt="variant">
+        </a>
+      </td>
+    </tr>
+  </tbody>
+</table>
