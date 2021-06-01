@@ -11,6 +11,11 @@
 #-------------------------------------------------------------------------------
 from __future__ import absolute_import, division, print_function
 
+import sys, zmq, subprocess, time, traceback, zlib, io, os, math, os.path
+if sys.version_info[0] < 3:
+  print("HKLviewer GUI must be run from Python 3")
+  sys.exit(-42)
+
 from PySide2.QtCore import Qt, QEvent, QItemSelectionModel, QSize, QSettings, QTimer
 from PySide2.QtWidgets import (  QAction, QCheckBox, QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
@@ -20,8 +25,6 @@ from PySide2.QtWidgets import (  QAction, QCheckBox, QComboBox, QDialog,
 
 from PySide2.QtGui import QColor, QFont, QCursor, QDesktopServices
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
-import sys, zmq, subprocess, time, traceback, zlib, io, os, math, os.path
-
 
 try: # if invoked by cctbx.python or some such
   from crys3d.hklview import HKLviewerGui
