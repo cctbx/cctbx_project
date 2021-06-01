@@ -256,16 +256,10 @@ def run_one(args):
       #write_map_file(cg=o.mm.crystal_gridding, mc=o.mc_whole_mask, file_name="whole.ccp4")
       #write_map_file(cg=o.mm.crystal_gridding, mc=mbs.mc,          file_name="mosaic.ccp4")
       ###
-      cntr = 0
       for region in o.mm.regions.values():
-        region.m_0         = map_stat(m=map_0, conn = o.mm.conn, i=region.id)
+        region.m_0         = map_stat(m=map_0,         conn = o.mm.conn, i=region.id)
         region.m_WholeMask = map_stat(m=map_WholeMask, conn = o.mm.conn, i=region.id)
         region.m_Mosaic    = map_stat(m=map_Mosaic,    conn = o.mm.conn, i=region.id)
-        if(region.diff_map.me is not None):
-          cntr += 1
-          assert approx_equal(region.diff_map.me, region.m_0.me)
-          assert approx_equal(region.diff_map.sd, region.m_0.sd)
-          assert approx_equal(region.diff_map.ma, region.m_0.ma)
     #
     result = group_args(
       code            = code,

@@ -776,6 +776,12 @@ class mosaic_f_mask(object):
       if(volume_cutoff is not None):
         if volume < volume_cutoff: continue
 
+      self.regions[i_seq] = group_args(
+        id          = i,
+        i_seq       = i_seq,
+        volume      = volume,
+        uc_fraction = uc_fraction)
+
       selection = self.conn==i
       mask_i_asu = self.compute_i_mask_asu(selection = selection, volume = volume)
       volume_asu = (mask_i_asu>0).count(True)*step**3
@@ -803,13 +809,6 @@ class mosaic_f_mask(object):
       if(mean_diff_map_threshold is not None and
          mean_diff_map is not None and mean_diff_map<=mean_diff_map_threshold):
         continue
-
-      self.regions[i_seq] = group_args(
-        id          = i,
-        i_seq       = i_seq,
-        volume      = volume,
-        uc_fraction = uc_fraction,
-        diff_map    = group_args(mi=mi, ma=ma, me=me, sd=sd))
 
       f_mask_i = self.compute_f_mask_i(mask_i_asu)
       f_mask_data += f_mask_i.data()
