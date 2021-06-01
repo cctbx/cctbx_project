@@ -1,3 +1,8 @@
+2021.5
+======
+
+* Improved bulk solvent masking with support for multiple regions
+
 2021.4
 ======
 
