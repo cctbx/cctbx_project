@@ -8032,7 +8032,7 @@ class map_model_manager(object):
       is_xray_map is True for x-ray map
       nproc is number of processors to use
 
-      If no map_manager is present, resolution, experiment type are not 
+      If no map_manager is present, resolution, experiment type are not
       required
     '''
 
