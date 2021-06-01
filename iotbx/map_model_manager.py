@@ -3396,12 +3396,17 @@ class map_model_manager(object):
     assert isinstance(other, map_model_manager)
     other_model = other.get_model_by_id(other_model_id)
     assert other_model is not None # Need model for get_model_from_other
-    coordinate_shift = tuple(
-      [s - o for s,o in zip(self.shift_cart(),other.shift_cart())])
+
+    other_shift_cart = other_model.shift_cart()
+    other_model.shift_model_back()  # removes shift cart (adds -other_shift_cart)
+
+    other_model.set_crystal_symmetry(self.crystal_symmetry())
+    other_model.set_unit_cell_crystal_symmetry(self.unit_cell_crystal_symmetry())
+
     other_model.shift_model_and_set_crystal_symmetry(
-        shift_cart = coordinate_shift)
-    matched_other_model = other_model
-    return matched_other_model
+        shift_cart = self.shift_cart())
+
+    return other_model
 
   # Methods to create a new map_model_manager with different sampling
 
@@ -8026,10 +8031,14 @@ class map_model_manager(object):
       resolution is resolution for Fourier coefficients
       is_xray_map is True for x-ray map
       nproc is number of processors to use
+
+      If no map_manager is present, resolution, experiment type are not 
+      required
     '''
 
-    resolution = self.resolution()
-    assert resolution is not None
+    if self.map_manager():
+      resolution = self.resolution()
+      assert resolution is not None
 
     if not nproc:
       nproc = self.nproc()

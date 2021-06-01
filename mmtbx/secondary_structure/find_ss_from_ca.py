@@ -574,7 +574,6 @@ def set_chain_id(hierarchy, chain_id = None):
     n_chains = 0
     for chain in model.chains():
       n_chains+=1
-      assert n_chains <=1
       chain.id = chain_id
 
 
