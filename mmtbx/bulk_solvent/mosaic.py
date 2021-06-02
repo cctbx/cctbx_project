@@ -386,6 +386,33 @@ def chunker(l,n):
  f = lambda l, n: [l[i:i+n] for i in range(0, len(l), n)]
  return f(l,n)
 
+def thiken_bins(bins, n):
+  result = []
+  group = []
+  cntr = 0
+  for bin in bins:
+    bs = bin.count(True)
+    if bs>=n and len(group)==0:
+      result.append(bin)
+      cntr=0
+    else:
+      group.append(bin)
+      cntr += bs
+    if cntr>=n:
+      result.append(group)
+      group = []
+      cntr = 0
+  #
+  for i, r in enumerate(result):
+    if(not isinstance(r, flex.bool)):
+      r0 = r[0]
+      for r_ in r:
+        r0 = r0 | r_
+      result[i] = r0
+  #
+  if(len(result)==0):
+    result = [flex.bool(bins[0].size(), True)]
+  return result
 
 class refinery(object):
   def __init__(self, fmodel, fv, alg, log = sys.stdout):
@@ -430,12 +457,15 @@ class refinery(object):
       i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
       K_MASKS = OrderedDict()
 
-      self.bin_selections = self.f_obs.log_binning(
-        n_reflections_in_lowest_resolution_bin = 100*len(self.F))
+      self.bin_selections = thiken_bins(bins=bin_selections_input, n=100*len(self.F))
+
+      #self.bin_selections = self.f_obs.log_binning(
+      #  n_reflections_in_lowest_resolution_bin = 100*len(self.F))
 
       for i_bin, sel in enumerate(self.bin_selections):
         d_max, d_min = f_obs.select(sel).d_max_min()
-        if d_max<3 or d_min<3: continue
+        #if d_max<3 or d_min<3: continue
+        if d_max<3: continue
         bin = "  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min)
         F = [f.select(sel) for f in self.F]
         k_total_sel = k_total.select(sel)
