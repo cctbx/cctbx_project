@@ -7,8 +7,8 @@ from cctbx import miller
 from six.moves import range
 from six.moves import zip
 from libtbx.test_utils import approx_equal
-import boost.python
-ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_asymmetric_map_ext import *
 
 
