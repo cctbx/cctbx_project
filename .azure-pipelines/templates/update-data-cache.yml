@@ -52,6 +52,7 @@ jobs:
       cd $(System.DefaultWorkingDirectory)/chem_data
       svn update
     displayName: Update chem_data
+    continueOnError: true
 
   - publish: $(System.DefaultWorkingDirectory)/chem_data
     artifact: chem_data
@@ -78,6 +79,7 @@ jobs:
       git pull --rebase
       git lfs pull
     displayName: Update phenix_regression
+    continueOnError: true
 
   - publish: $(System.DefaultWorkingDirectory)/phenix_regression
     artifact: phenix_regression
@@ -104,6 +106,7 @@ jobs:
       git pull --rebase
       git lfs pull
     displayName: Update phenix_examples
+    continueOnError: true
 
   - publish: $(System.DefaultWorkingDirectory)/phenix_examples
     artifact: phenix_examples
@@ -130,6 +133,7 @@ jobs:
       git pull --rebase
       git lfs pull
     displayName: Update xfel_regression
+    continueOnError: true
 
   - publish: $(System.DefaultWorkingDirectory)/xfel_regression
     artifact: xfel_regression
