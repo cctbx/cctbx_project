@@ -29,8 +29,12 @@ def exercise(script, tmp_path, use_pdb_file=False):
   if not skipped:
     # Some scripts use a PDB file, use one from phenix_regression if available
     if use_pdb_file:
+      if script in ['doc_models_hierarchy.py']: #
+        path = "phenix_regression/mmtbx/ions/3e0f.pdb"
+      else:
+        path = "phenix_regression/pdb/1ywf.pdb"
       pdb_file = libtbx.env.find_in_repositories(
-        relative_path="phenix_regression/pdb/1ywf.pdb",
+        relative_path=path,
         test=os.path.isfile)
       if (pdb_file is None):
         print("phenix_regression not available, skipping test")

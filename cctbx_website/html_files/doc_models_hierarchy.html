@@ -1,0 +1,781 @@
+{% extends "cctbx/header.html" %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="col-sm-9 main">
+<!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
+<!----------------------- EDIT START ---------------------------->
+
+<h2><center>The PDB hierarchy</center></h2>
+
+<p class="lead mt-4">Learn about the PDB hierarchy, the cctbx object that represents the information stored in a model file. In particular, this object maintains the hierarchical view of the model.<br>
+Author: Ralf Grosse-Kunstleve</p>
+
+<p>(This text is adapted from an article by Ralf Grosse-Kunstleve; the original
+can be found <a href="http://phenix-online.org/newsletter/CCN_2010_07.pdf">here</a>.)</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">Introduction</h3>
+
+<p>In macromolecular crystallography, the PDB format was the predominant working format for atomic parameters (coordinates, occupancies, displacement parameters, etc.). Many small-molecule programs also support this format. The PDB format specifications are available at <a href="http://www.wwpdb.org/">http://www.wwpdb.org/</a>. Technically, the format is very simple, therefore a vast number of parsers exist in scientific packages. The tools in <code>iotbx.pdb</code> are more complex than many, but have been designed to accommodate all valid scenarios found in real-world situations.  Many interaction with models is done through an object called the "PDB hierarchy" (<code>pdb_hierarchy</code>).
+</p>
+
+<p>Because of certain limitations of the PDB format (which was designed in the
+1970s), the MX community moved towards greater use of the mmCIF format for storing models.
+<code>iotbx.pdb</code> supports reading and writing mmCIF through the
+<code>iotbx.cif</code> parser, and the internal representation of the PDB
+hierarchy is identical for both formats.  Throughout the documentation we
+refer to models as "PDB files", but in most cases an mmCIF will work equally
+well.</p>
+
+<p>See <a href="http://cci.lbl.gov/docs/cctbx/tuto_melk_2019/">here</a> for a tutorial illustrating the use of the pdb_hierarchy.</p>
+
+<div class="card">
+  <div class="card-body p-2">
+    Note: The object that contains all information needed to calculate structure factors is the <code>xray_structure</code> (not explained on this page). For this object, all that is not necessary to calculate SFs is dropped for performance reasons.<br>
+    Depending on the application, work either with the <code>pdb_hierarchy</code> or the <code>xray_structure</code>.
+  </div>
+</div>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Background</h3>
+
+<p>The evolution of the cctbx PDB handling tools has gone through several stages. A simple PDB parser implemented in Python was used in the beginning. Python's runtime performance is usually sufficient for interactive processing of PDB files, but can be limiting for
+large files, or for repeatedly traversing the entire PDB database. This has
+prompted us to implement a fast C++ parser that is described in
+Grosse-Kunstleve et al. (2006). The current cctbx version provides comprehensive tools for reading, manipulating, and writing PDB files. These tools are available from both Python and C++, under the <code>iotbx.pdb</code> module.See also <a href="http://cci.lbl.gov/hybrid_36/">http://cci.lbl.gov/hybrid_36/</a> which describes iotbx.pdb facilities for handling very large models.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Quick overview</h3>
+
+<p>Here is a simple example of reading in a single-model PDB (or mmCIF) model and
+traversing the hierarchy, deleting any zinc atoms:</p>
+
+<pre class="codeDL"><code>from __future__ import absolute_import, division, print_function
+from iotbx.data_manager import DataManager
+import sys
+dm = DataManager()                    #   Initialize the DataManager and call it dm
+dm.set_overwrite(True)                #   tell the DataManager to overwrite files with the same name
+model_filename = sys.argv[1:][0]      #   Name of model file
+model = dm.get_model(model_filename)  #   Deliver model object with model info
+
+m = model.deep_copy()                 # work on a copy of model object
+
+pdb_hierarchy = m.get_hierarchy()     #   Get hierarchy object
+for chain in pdb_hierarchy.only_model().chains():
+  for residue_group in chain.residue_groups():
+    for atom_group in residue_group.atom_groups():
+      for atom in atom_group.atoms():
+        if (atom.element.strip().upper() == "ZN"):
+          atom_group.remove_atom(atom)
+      if (atom_group.atoms_size() == 0):
+        residue_group.remove_atom_group(atom_group)
+    if (residue_group.atom_groups_size() == 0):
+      chain.remove_residue_group(residue_group)
+with open("model_Zn_free.pdb", "w") as f:
+  f.write(m.model_as_pdb())
+</code></pre>
+
+<p>This will change the hierarchy in place, i.e. we removed the ZN atoms from the hierarchy and cannot recover it.<br>
+  Note that we obtained the <code>pdb_hierarchy()</code> object via the <code>model()</code> object and the DataManager:</p>
+
+<pre class="codeDL"><code>pdb_hierarchy = model.get_hierarchy() #   Get hierarchy object
+</code></pre>
+
+<p>It is possible to get a <code>pdb_hierarchy()</code> object directly:</p>
+
+
+<pre class="codeDL"><code>import iotbx.pdb
+pdb_hierarchy = iotbx.pdb.input(file_name=model_filename).construct_hierarchy()
+</code></pre>
+
+<p>However, it is recommended to proceed via the <code>model</code> object. The lower-level approach may be nevertheless useful for quick scripts and for regression tests.</p>
+
+<p>The hierarchy provides an atom selection syntax that allows us to perform
+the same operation with much less code than the nested loop above:</p>
+
+<pre class="codeDL"><code>sel_cache = pdb_hierarchy.atom_selection_cache()
+non_zn_sel = sel_cache.selection("not (resname ZN)")
+hierarchy_new = pdb_hierarchy.select(non_zn_sel)
+# etc
+</code></pre>
+
+<p>This however creates a new <code>hierarchy</code> object, rather than modifying the existing
+structure in place. We can avoid using the <code>atom_selection_cache</code> by doing the selection via the <code>model</code> object:</p>
+
+<pre class="codeDL"><code>non_zn_sel= model.selection("not (resname ZN)")
+hierarchy_new = model.select(non_zn_sel).get_hierarchy()
+</code></pre>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Real-world PDB files</h3>
+
+
+<p>The simplicity of the PDB format is only superficial and, in the general case, stops after the initial parsing level. The structure of the PDB file implies a hierarchy of objects. A first approximation of this hierarchical view is:</p>
+
+
+<p><div style="background-color: #ecf9ec;">
+  model
+  <div style="padding-left: 20px;">chain</div>
+  <div style="padding-left: 40px;">residue</div>
+  <div style="padding-left: 60px;">atom</div>
+</div></p>
+
+<p>This is only an approximation because of a feature that is easily overlooked: the "altloc", column 17 of PDB ATOM records, which specifies "alternative location" identifiers for atoms in alternative conformations.<br>
+About 90% of the development time invested into <code>iotbx.pdb</code> was in some form related to alternative conformations. Our goal was to provide robust tools that work even for the most unusual (but valid) cases, since this is a vital characteristic of any automated system. The main difficulties encountered while pursuing this goal were:</p>
+
+<ul>
+  <li>
+    Chains with conformers that have different sequences
+  </li>
+  <li>
+    Chains with duplicate resseq+icode (residue sequence number + insertion code)
+  </li>
+  <li>
+    Conformers interleaved or separated
+  </li>
+</ul>
+
+<p>These difficulties are best illustrated with examples. An old version of PDB
+entry 2IZQ (from Aug 2008) includes a chain with conformers that have different
+sequences, the residue with resseq 11 in chain A, atoms 220 through 283:</p>
+
+<pre class="CodeGreen"><code>  HEADER    ANTIBIOTIC                              26-JUL-06   2IZQ
+  ATOM    220  N  ATRP A  11      20.498  12.832  34.558  0.50  6.03           N
+  ................ATRP A  11 ...................................................
+  ATOM    243  HH2ATRP A  11      15.522   9.077  38.323  0.50 10.40           H
+  ATOM    244  N  CPHE A  11      20.226  13.044  34.556  0.15  6.35           N
+  ................CPHE A  11 ...................................................
+  ATOM    254  CZ CPHE A  11      16.789   9.396  34.594  0.15 10.98           C
+  ATOM    255  N  BTYR A  11      20.553  12.751  34.549  0.35  5.21           N
+  ................BTYR A  11 ...................................................
+  ATOM    261  CD1BTYR A  11      18.548  10.134  34.268  0.35  9.45           C
+  ATOM    262  HB2CPHE A  11      21.221  10.536  34.146  0.15  7.21           H
+  ATOM    263  CD2BTYR A  11      18.463  10.012  36.681  0.35  9.08           C
+  ATOM    264  HB3CPHE A  11      21.198  10.093  35.647  0.15  7.21           H
+  ATOM    265  CE1BTYR A  11      17.195   9.960  34.223  0.35 10.76           C
+  ATOM    266  HD1CPHE A  11      19.394   9.937  32.837  0.15 10.53           H
+  ATOM    267  CE2BTYR A  11      17.100   9.826  36.693  0.35 11.29           C
+  ATOM    268  HD2CPHE A  11      18.873  10.410  36.828  0.15  9.24           H
+  ATOM    269  CZ BTYR A  11      16.546   9.812  35.432  0.35 11.90           C
+  ATOM    270  HE1CPHE A  11      17.206   9.172  32.650  0.15 12.52           H
+  ATOM    271  OH BTYR A  11      15.178   9.650  35.313  0.35 19.29           O
+  ATOM    272  HE2CPHE A  11      16.661   9.708  36.588  0.15 11.13           H
+  ATOM    273  HZ CPHE A  11      15.908   9.110  34.509  0.15 13.18           H
+  ATOM    274  H  BTYR A  11      20.634  12.539  33.720  0.35  6.25           H
+  ................BTYR A  11 ...................................................
+  ATOM    282  HH BTYR A  11      14.978   9.587  34.520  0.35 28.94           H
+</code></pre>
+
+<p>Residue 11 has a Trp in conformation A, a Tyr in conformation B and a Phe in conformation C. The original atom numbering does not have gaps. To save space, we omitted blocks of
+atoms with constant resname and resseq+icode.</p>
+
+<p>As of Jun 8 2010, there are 74 files with mixed residue names in the PDB, i.e.
+only about 0.1% of the files. However, these files are perfectly valid and a
+PDB processing library is suitable as a component of an automated system only
+if it handles them sensibly.</p>
+
+<p>An old version of PDB entry 1ZEH (Aug 2008) includes a chain with consecutive
+duplicate resseq+icode, atoms 878 through 894:</p>
+
+<pre class="CodeGreen"><code>  HEADER    HORMONE                                 01-MAY-98   1ZEH
+  HETATM  878  C1 ACRS     5      12.880  14.021   1.197  0.50 33.23           C
+  HETATM  879  C1 BCRS     5      12.880  14.007   1.210  0.50 34.27           C
+  ................ACRS     5 ...................................................
+  HETATM  892  O1 ACRS     5      11.973  14.116   2.233  0.50 34.24           O
+  HETATM  893  O1 BCRS     5      11.973  14.107   2.248  0.50 35.28           O
+  HETATM  894  O   HOH     5      -0.924  19.122  -8.629  1.00 11.73           O
+  HETATM  895  O   HOH     6     -19.752  11.918   3.524  1.00 13.44           O
+  HETATM  896  O   HOH     7      -1.169  17.936  -6.103  1.00 12.89           O
+</code></pre>
+
+<p>To a human inspecting the old 1ZEH entry, it is of course immediately obvious
+that the water with resseq 5 is not related to the previous residue with resseq
+5. However, arriving at this conclusion with an automatic procedure is not
+entirely straightforward. The human brings in the knowledge that water atoms
+without hydrogen are not covalently connected to other atoms. This is very
+detailed, specialized knowledge. Introducing such heuristics into an automatic
+procedure is likely to lead to surprises in some situations and is best
+avoided, if possible.</p>
+
+<p>In the PDB archive, alternative conformers of a residue always appear
+consecutively. However, some programs produce files with
+conformers separated in this way (this file was provided to us by a user):</p>
+
+<pre class="CodeGreen"><code>  ATOM   1716  N  ALEU   190      28.628   4.549  20.230  0.70  3.78           N
+  ATOM   1717  CA ALEU   190      27.606   5.007  19.274  0.70  3.71           C
+  ATOM   1718  CB ALEU   190      26.715   3.852  18.800  0.70  4.15           C
+  ATOM   1719  CG ALEU   190      25.758   4.277  17.672  0.70  4.34           C
+  ATOM   1829  N  BLEU   190      28.428   4.746  20.343  0.30  5.13           N
+  ATOM   1830  CA BLEU   190      27.378   5.229  19.418  0.30  4.89           C
+  ATOM   1831  CB BLEU   190      26.539   4.062  18.892  0.30  4.88           C
+  ATOM   1832  CG BLEU   190      25.427   4.359  17.878  0.30  5.95           C
+  ATOM   1724  N  ATHR   191      27.350   7.274  20.124  0.70  3.35           N
+  ATOM   1725  CA ATHR   191      26.814   8.243  21.048  0.70  3.27           C
+  ATOM   1726  CB ATHR   191      27.925   9.229  21.468  0.70  3.73           C
+  ATOM   1727  OG1ATHR   191      28.519   9.718  20.259  0.70  5.22           O
+  ATOM   1728  CG2ATHR   191      28.924   8.567  22.345  0.70  4.21           C
+  ATOM   1729  C  ATHR   191      25.587   8.983  20.559  0.70  3.53           C
+  ATOM   1730  O  ATHR   191      24.872   9.566  21.383  0.70  3.93           O
+                         ... residues 191 through 203 not shown
+  ATOM   1828  O  AGLY   203       8.948  14.861  23.401  0.70  5.84           O
+  ATOM   1833  CD1BLEU   190      26.014   4.711  16.521  0.30  6.21           C
+  ATOM   1835  C  BLEU   190      26.506   6.219  20.135  0.30  4.99           C
+  ATOM   1836  O  BLEU   190      25.418   5.939  20.669  0.30  5.91           O
+  ATOM   1721  CD2ALEU   190      24.674   3.225  17.536  0.70  5.31           C
+  ATOM   1722  C  ALEU   190      26.781   6.055  20.023  0.70  3.36           C
+  ATOM   1723  O  ALEU   190      25.693   5.796  20.563  0.70  3.68           O
+  ATOM   8722  C  DLEU   190      26.781   6.055  20.023  0.70  3.36           C
+  ATOM   8723  O  DLEU   190      25.693   5.796  20.563  0.70  3.68           O
+  ATOM   9722  C  CLEU   190      26.781   6.055  20.023  0.70  3.36           C
+  ATOM   9723  O  CLEU   190      25.693   5.796  20.563  0.70  3.68
+</code></pre>
+
+<p>In this file, conformers A and B of residue 190 appear consecutively, but
+conformers C and D appear only after conformers A and B of all residues 191
+through 203. While this is not the most intuitive way of ordering the residues
+in a file, it is still considered valid because the original intention is
+clear. Since it was our goal to develop a comprehensive library suitable for
+automatically processing files produced by any popular program, we found it
+important to correctly handle non-consecutive conformers.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">iotbx.pdb.hierarchy</h3>
+
+<p>When developing the procedure capable of handling the variety of real-world
+situations shown above, we strived to keep the underlying rule-set as simple as
+possible and to avoid highly specific heuristics (e.g. "water is never
+covalently bound"). Complex rules imply complex implementations, are difficult
+to explain and understand, tend to lead to surprises, and are therefore likely
+to be rejected by the community. With this and the real-world situations in
+mind, we arrived at the following primary organization of the PDB hierarchy:</p>
+
+<h4>Primary PDB hierarchy</h4>
+
+<p><div style="background-color: #ecf9ec;">
+  model(s)
+  <div style="padding-left: 20px;">id</div>
+  <div style="padding-left: 20px;">chain(s)</div>
+  <div style="padding-left: 40px;">id</div>
+  <div style="padding-left: 40px;">residue_group(s)</div>
+  <div style="padding-left: 60px;">resseq</div>
+  <div style="padding-left: 60px;">icode</div>
+  <div style="padding-left: 60px;">atom_group(s)</div>
+  <div style="padding-left: 80px;">resname</div>
+  <div style="padding-left: 80px;">altloc</div>
+  <div style="padding-left: 80px;">atom(s)</div>
+</div></p>
+
+<p>In this presentation the "(s)" indicates a list of objects of the given type.
+i.e. a hierarchy contains a list of models, each model has an "id" (a simple
+string) and holds a list of chains, etc.</p>
+
+<p>Comparing with the "first approximation hierarchy" above, the residue type is
+replaced with two new types: residue_group and atom_group. These types had to
+be introduced to cover all the real-world cases shown in the previous section. The residue_group and atom_group types are new and unusual. Before we go into the details of
+these types, it will be helpful to consider the bigger picture by introducing
+the alternative secondary view of the PDB hierarchy:</p>
+
+<h4>Secondary view of PDB hierarchy</h4>
+
+<p><div style="background-color: #ecf9ec;">
+  model(s)
+  <div style="padding-left: 20px;">id</div>
+  <div style="padding-left: 20px;">chain(s)</div>
+  <div style="padding-left: 40px;">id</div>
+  <div style="padding-left: 40px;">conformer(s)</div>
+  <div style="padding-left: 60px;">altloc</div>
+  <div style="padding-left: 60px;">residue(s)</div>
+  <div style="padding-left: 80px;">resname</div>
+  <div style="padding-left: 80px;">resseq</div>
+  <div style="padding-left: 80px;">altloc</div>
+  <div style="padding-left: 80px;">atom(s)</div>
+</div></p>
+
+<p>This organization is probably more intuitive at first. The first two levels (model, chain) are exactly the same as in the primary hierarchy. Each chain holds a list of conformer objects, which are characterized by the altloc character from column 17 in the PDB ATOM records. A conformer is understood to be a  complete copy  of a chain, but usually two conformers share some or even most atoms.  A residue is characterized by a unique resname and the resseq+icode.</p>
+
+<p>The secondary view of the hierarchy evolved in the context of generating geometry restraints for refinement (e.g. bond, angle, and dihedral restraints), where this organization is most useful. It is also the organization introduced in Grosse-Kunstleve et al. (2006), where it was actually the primary organization. While working with the conformer-residue organization, we found that it is difficult to manipulate a hierarchy (e.g. add or delete atoms) in obvious ways. Finally, while developing the automatic generation of constrained occupancy groups for alternative conformations, the conformer-residue organization proved to be unworkable. The main difficulty is that the relative order of residues with alternative conformations is lost in the conformer-residue organization; it is only given indirectly by interleaved residues with shared atoms -- if they exist. As convenient as the conformer-residue organization is for the generation of restraints, it is a hindrance for other purposes.</p>
+
+<p>The names for the new types in the primary hierarchy were chosen not to collide with the secondary view. We could have used "conformer" and "residue" again, just reversed, but there would be the big surprise that one residue has different resnames. To send the signal "this is not what you usually think of as a residue", we decided to use residue_group as the type name. A residue group holds a list of atom_group objects. All atoms in an atom group have the same resname and altloc. Therefore "resname_altloc_group" would have been another plausible name, but we favored atom_group since it is more concise and better conveys what is the main content.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Detection of residue groups and atom groups</h3>
+
+<p>When constructing the primary hierarchy given a PDB file, the processing algorithm has to detect models, chains, residue groups, atom groups and atoms. Most steps are fairly straightforward, but none of the steps is actually completely trivial. For example, what to do if TER or ENDMDL cards are missing? What if residue sequence numbers are not consecutive? The ribosome community widely uses segid instead of chain id (even though the segid column is officially deprecated by the PDB). What if a file contains both chain id and segid? Documenting all our answers in full detail is beyond the scope of this article (and would be more distracting than helpful anyway because the source code is openly available). Therefore we concentrate on the most important rules for the detection of residue groups and atom groups.</p>
+
+<p>Then central conflict we had to resolve was:</p>
+<ul>
+  <li>
+    In order to handle non-consecutive conformers, we have to use the resseq+icode to find and group related residues.
+  </li>
+  <li>
+    However, we cannot use the resseq+icode alone as a guide, because we also want to handle chains with duplicate resseq+icode (consecutive or non-consecutive).
+  </li>
+</ul>
+
+<p>This lead to a two stage procedure. In the first stage, a residue group is
+given by a block of consecutive ATOM or HETATM records with identical
+resseq+icode columns (SIGATM, ANISOU, and SIGUIJ records may be interleaved),
+e.g.:</p>
+
+<pre class="CodeGreen"><code>  ATOM    234  H  ATRP A  11      20.540  12.567  33.741  0.50  7.24           H
+  ATOM    235  HA ATRP A  11      20.771  12.306  36.485  0.50  6.28           H
+  ATOM    244  N  CPHE A  11      20.226  13.044  34.556  0.15  6.35           N
+  ATOM    245  CA CPHE A  11      20.950  12.135  35.430  0.15  5.92
+</code></pre>
+
+<p>However, there is an important pre-condition: unless a sub-block of ATOM
+records with identical resname+resseq+icode columns contains a main-conformer
+atom (almost "blank altloc"), e.g.:</p>
+
+<pre class="CodeGreen"><code>  HEADER    ANTIBIOTIC RESISTANCE                   07-MAY-97   1AJQ
+  CRYST1   52.120   65.080   76.300 100.20 111.44 105.81 P 1           1
+  HETATM 6097 CA    CA     1       5.676  34.115  52.446  1.00 18.50          CA
+  HETATM 6100  C2  SPA     1      11.860  36.159  33.853  1.00 14.30           C
+  HETATM 6107  C6  SPA     1      13.085  36.522  34.644  1.00 17.34           C
+</code></pre>
+
+<p>In this case the sub-block is assigned to a separate residue group.</p>
+
+<p>Within each residue group, all atoms are grouped by altloc+resname and assigned to atom groups. The order of the atoms in a residue group does not affect the assignment to atom groups.</p>
+
+
+<p>After all atom records are assigned to residue groups and atom groups,</p>
+
+<ul>
+  <li>residue groups with identical resseq+icode</li>
+  <li>that do not contain main-conformer atoms</li>
+</ul>
+
+<p>are merged in the second processing stage. While two residue groups are merged, atom groups with identical altloc+resname from the two sources are also merged.<br>
+Note that the grouping steps in this process may change the order of the atoms. However, our implementation preserves the relative order of the atoms as much as possible. I.e. in the hierarchy, resseq+icode appear in the original "first seen" order, and similarly for altloc+resname within a residue group.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Construction of secondary view of hierarchy</h3>
+
+<p>The secondary view of the hierarchy is constructed trivially from the primary
+hierarchy objects. For each chain, the complete list of altloc characters is
+determined in a first pass. In a second pass, a conformer object is created for
+each altloc, and a second loop over the chain assigns the atoms to each
+conformer. Main-conformer atoms are assigned to all conformers, atoms in
+alternative conformations only to the corresponding conformer. Because of the
+difficulties alluded to earlier, the conformer and residue objects in the
+secondary view are "read-only". I.e. all manipulations such as addition or
+removal of residues, have to be performed on the primary hierarchy.
+Re-constructing the secondary view after the primary hierarchy has been
+changed is very fast (fractions of seconds even for the largest files, e.g.
+0.22 s for PDB entry 1HTQ with almost one million atoms).</p>
+
+<p>The <code>iotbx/examples/pdb_hierarchy.py</code> script shows how to construct the primary
+hierarchy from a PDB file, and how to obtain the secondary view.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Nomenclature related to alternative conformations</h3>
+
+<p>The <code>iotbx.pdb</code> module uses the following nomenclature to describe various
+aspects of alternative conformations:</p>
+
+<ul>
+  <li>
+    <b>Main conf. atom:</b> an atom with 1) a blank altloc character, and 2) no other
+atom with the same name+resname (but different altloc) in the residue group.
+This second condition is needed for cases like this:
+<br>
+<pre class="CodeGreen"><code>  HEADER    HYDROLASE                               12-MAR-04   1SO7
+  ATOM   2460  CG1 VAL A 325     -23.284  97.713  15.815  0.66 21.74           C
+  ATOM   2461  CG1AVAL A 325     -23.010  97.616  18.295  0.66 22.88           C
+  ATOM   2462  CG2BVAL A 325     -24.819  96.373  17.146  0.66 22.57           C
+</code></pre>
+  </li>
+  <li>
+    <b>Alt. conf. atom:</b> not main conf.
+  </li>
+  <li>
+    <b>Conformer:</b> a complete chain with main conf. atoms and alt. conf. atoms
+with a specific altloc.
+  </li>
+  <li>
+    <b>Residue:</b> complete residue in a conformer with main conf. atoms and alt. conf. atoms.
+  </li>
+</ul>
+
+<div class="card">
+  <div class="card-body p-2">
+    Note: it is also possible to obtain conformers of an individual residue group. However, conceptually this is best viewed as a shortcut for first obtaining the conformers of a chain, and then finding the residue of interest in each conformer, ignoring all other residues.
+  </div>
+</div>
+<br>
+<p>Residues are classified as follows:</p>
+
+<ul>
+  <li>
+    pure main conf.: all main conf. atoms
+  </li>
+  <li>
+    pure alt. conf.: all alt. conf. atoms
+  </li>
+  <li>
+    proper alt. conf.: both main conf. atoms and alt. conf atoms, all alt conf.
+atoms have a non-blank altloc column
+  </li>
+  <li>
+    improper alt. conf.: both main conf. atoms and alt. conf atoms, one or more
+alt conf. atoms have a blank altloc column (as shown in the 1SO7 fragment
+above).
+  </li>
+</ul>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Errors and warnings</h3>
+
+<p>The tools in iotbx.pdb are designed to be as tolerant as reasonably possible
+when processing input PDB files. E.g., as of Jun 8 2010, all 65802 files in the
+PDB archive can be processed without generating exceptions. However, to assist
+users and developers in creating PDB files without ambiguities, the hierarchy
+object provides methods for flagging likely problems as errors and warnings. It
+is up to the application how to react to the diagnostics.</p>
+
+<p>The phenix.pdb.hierarchy command can be used to quickly obtain a summary of the
+hierarchy in a PDB file and some diagnostics. This example command highlights
+all main features:</p>
+
+<pre class="bg-code-DL"><code>phenix.pdb.hierarchy pdb1jxw.ent.gz
+</code></pre>
+
+<pre class="CodeGreen"><code>  Output:
+    file pdb1jxw.ent.gz
+      total number of:
+        models:       1
+        chains:       2
+        alt. conf.:   5
+        residues:    49
+        atoms:      786
+        anisou:       0
+      number of atom element+charge types: 5
+      histogram of atom element+charge frequency:
+        " H  " 383
+        " C  " 261
+        " O  "  77
+        " N  "  59
+        " S  "   6
+      residue name classes:
+        "common_amino_acid" 48
+        "other"              1
+      number of chain ids: 2
+      histogram of chain id frequency:
+        " " 1
+        "A" 1
+      number of alt. conf. ids: 3
+      histogram of alt. conf. id frequency:
+        "A" 2
+        "B" 2
+        "C" 1
+      residue alt. conf. situations:
+        pure main conf.:     32
+        pure alt. conf.:      3
+        proper alt. conf.:   14
+        improper alt. conf.:  0
+      chains with mix of proper and improper alt. conf.: 0
+      number of residue names: 16
+      histogram of residue name frequency:
+        "CYS" 6
+        "THR" 6
+        "ALA" 5
+        "ILE" 5
+        "PRO" 5
+        "GLY" 4
+        "ASN" 3
+        "SER" 3
+        "ARG" 2
+        "LEU" 2
+        "TYR" 2
+        "VAL" 2
+        "ASP" 1
+        "EOH" 1    other
+        "GLU" 1
+        "PHE" 1
+      ### WARNING: consecutive residue_groups with same resid ###
+      number of consecutive residue groups with same resid: 2
+        residue group:
+          "ATOM    378  N   PRO A  22 .*.     N  "
+          ... 12 atoms not shown
+          "ATOM    391  HD3APRO A  22 .*.     H  "
+        next residue group:
+          "ATOM    392  CB BSER A  22 .*.     C  "
+          ... 6 atoms not shown
+          "ATOM    399  HB3CSER A  22 .*.     H  "
+        ------------------------------------------
+        residue group:
+          "ATOM    432  N   LEU A  25 .*.     N  "
+          ... 18 atoms not shown
+          "ATOM    439  CD1CLEU A  25 .*.     C  "
+        next residue group:
+          "ATOM    452  CG1BILE A  25 .*.     C  "
+          ... 13 atoms not shown
+          "ATOM    466 HD13CILE A  25 .*.     H  "
+</code></pre>
+
+<p>The diagnostics are mainly intended for PDB working files, but we have tested
+the iotbx.pdb  module by processing the entire PDB archive. (This took about
+3700 CPU seconds, but using 40 CPUs the last job finished after only 277
+seconds. Disk and network I/O is rate-limiting in this case, not the
+performance of the PDB handling library.) The results are summarized in the
+following table:</p>
+
+<pre class="CodeGreen"><code>  Total number of .ent files: 65802 (2010 Jun 8)
+
+  56873   WARNING: duplicate chain id
+      3   WARNING: consecutive residue_groups with same resid
+      2   ERROR:   duplicate atom labels
+      1   ERROR:   improper alt. conf.
+      0   ERROR:   duplicate model id
+      0   ERROR:   residue group with multiple resnames using same altloc
+</code></pre>
+
+<p>About 86% of the PDB entries re-use the same chain id for multiple chains
+(which are either separated by other chains or TER cards). In many cases, the
+re-used chain id is the blank character, which is clearly a minor issue.
+However, we flag this situation to assist people in producing new PDB files
+with unambiguous chain ids.</p>
+
+<p>The next item in the list, "consecutive residue_groups with same resid" (where
+resid=resseq+icode), was mentioned before. This situation is best avoided to
+minimize the chances of mis-interpreting the PDB files. "duplicate atom labels"
+pose a serious practical problem (therefore flagged as "ERROR") since it is
+impossible to uniquely select atoms with duplicate labels, for example via an
+atom selection syntax as used in many programs (CNS, PyMOL, PHENIX, VMD, etc.)
+or via PDB records in the connectivity annotation section (LINK, SSBOND,
+CISPEP). Atom serial numbers are not suitable for this purpose since many
+programs do not preserve them.</p>
+
+<p>Only one PDB entry (1JRT) includes "improper alt. conf." as introduced in the
+previous section.</p>
+
+<p>There are no PDB entries with two other potential problems diagnosed by the
+iotbx.pdb module. MODEL ids are unique throughout the PDB archive (as an aside:
+and all MODEL records have a matching ENDMDL record). Finally, in all 74 files
+with mixed residue names (i.e. conformers with different sequences), there is
+exactly one residue name for a given altloc.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Atom selections</h3>
+
+<p>The PDB hierarchy enables fast selection lookup based on a simple syntax
+similar to the one used in <a href="http://cns-online.org">CNS</a> or <a href="http://pymol.org">PyMOL</a>.  Many programs in Phenix make heavy use of these selections to handle user input, but they are equally important internally, where they simplify the task of pulling
+specific atoms out of the hierarchy.</p>
+
+<p>The syntax allows for selection of atomic properties such as atom name,
+residue number, chain ID, or B-factor, which can be combined by the use of
+simple boolean statements (<code>and</code>, <code>or</code>, or <code>not</code>).  The class
+<code>iotbx.pdb.atom_selection.cache</code> implements these selections, and
+is created directly by the hierarchy object:</p>
+
+<pre class="codeDL"><code>m = model.deep_copy()
+pdb_hierarchy = m.get_hierarchy()
+pdb_atoms = pdb_hierarchy.atoms()
+xray_structure = m.get_xray_structure()
+sel_cache = pdb_hierarchy.atom_selection_cache()
+c_alpha_sel = sel_cache.selection("name ca") # XXX not case sensitive!
+c_alpha_atoms = pdb_atoms.select(c_alpha_sel)
+c_alpha_xray_structure = xray_structure.select(c_alpha_sel)
+c_alpha_hierarchy = pdb_hierarchy.select(c_alpha_sel)
+</code></pre>
+
+<p>These selection operations work equivalently to the
+<code>scitbx.array_family</code> selections described elsewhere, and the
+<code>iotbx.pdb.atom_selection.cache</code> object also provides an analogous
+function <code>iselection</code> that returns the corresponding <code>size_t</code> array of
+indices (equivalent to calling <code>c_alpha_sel.iselection()</code> in the example
+above).  The <code>iotbx.pdb.hierarchy.root</code> and
+<code>cctbx.xray.structure</code> classes are not themselves arrays, but since
+they store comparable data (and in the latter case, an actual array internally)
+they are also implemented with the <code>select()</code> method.
+</p>
+
+<p>Other practical examples of the syntax:</p>
+
+<b>All atoms</b>
+<pre class="CodeGreen"><code>all
+</code></pre>
+
+<b>All atoms with H in the name (* is a wildcard character)</b>
+<pre class="CodeGreen"><code>name *H*
+</code></pre>
+
+
+<b>Atoms names with * (backslash disables wildcard function)</b>
+<pre class="CodeGreen"><code>name o2\*
+</code></pre>
+
+
+<b>Atom names with spaces</b>
+<pre class="CodeGreen"><code>name 'O 1'
+</code></pre>
+
+
+<b>Atom names with primes don't necessarily have to be quoted</b>
+<pre class="CodeGreen"><code>name o2'
+</code></pre>
+
+
+<b>Boolean "and", "or", and "not"</b>
+<pre class="CodeGreen"><code>resname ALA and (name ca or name c or name n or name o)
+chain a and not altid b
+resid 120 and icode c and model 2
+segid a and element c and charge 2+ and anisou
+</code></pre>
+
+
+<p>Note that the <code>and</code>, <code>or</code>, and <code>not</code> operators have equal priority, so parentheses may be required to indicate which clauses go together.<br>
+The first example above selects for all atoms with the specified names in
+alanine residues, but if the parentheses are omitted:
+
+<pre class="CodeGreen"><code>resname ALA and name ca or name c or name n or name o
+</code></pre>
+
+it will instead select C-alpha atoms in ALA, plus all atoms named C, N, or O
+regardless of residue name.</p>
+
+<b>A single residue by number</b>
+<pre class="CodeGreen"><code>resseq 188
+</code></pre>
+
+<p>Note that if there are several chains containing residue number 188, all of
+them will be selected. To be more specific and select residue 188 in particular
+chain:</p>
+<pre class="CodeGreen"><code>chain A and resid 188
+</code></pre>
+
+<p>this will select residue 188 only in chain A.</p>
+
+<b>A range of residues</b>
+<pre class="CodeGreen"><code>resseq 2:10
+</code></pre>
+
+<p>This selects all residue numbers falling within this range, independent of
+their order in the PDB file.  The numbering must be ascending; ``resseq 10:2``
+will not work.</p>
+
+<p><b>Insertion codes</b><br>
+<code>resid</code> combines the residue number (<code>resseq</code>) with the insertion code (<code>icode</code>); thus the following selections are identical</p>
+
+<pre class="CodeGreen"><code>resid 188
+resseq 188 and icode ' '
+</code></pre>
+
+<p>as are these:<p>
+
+<pre class="CodeGreen"><code>resid 27C
+resseq 27 and icode 'C'
+</code></pre>
+
+<p><b>Specifying ordered ranges of residues</b><br>
+For some purposes, such as specifying TLS groups, it may be impractical to
+specify a numerical range of <code>resseq</code> attributes.  This is especially the
+case when the residue numbering is not continuous and ascending, which is
+found in some PDB entries, or when the insertion code is non-blank.  An
+alternative is to define a series of residues by their combined number and
+insertion code, using the <code>through</code> keyword:</p>
+
+<pre class="CodeGreen"><code>chain A and resid 1000 through 17J
+</code></pre>
+
+<p>In this case, the residues will be examined in the order that they appear in
+the PDB file, and every atom falling between 1000 and 17J in chain A will
+be included.  This is the only situation where the ordering of atoms is
+important in atom selections.</p>
+
+<p><b>B-factors and occupancies</b><br>
+You may also select atoms based on their numerical properties:</p>
+
+<pre class="CodeGreen"><code>bfactor > 80
+bfactor = 0
+occupancy < 1
+occupancy = 0
+</code></pre>
+
+<p><b>Other</b><br>
+
+A few additional keywords are supported:</p>
+
+<pre class="CodeGreen"><code>element H
+water
+pepnames
+hetero
+</code></pre>
+
+<p>These examples specify hydrogen atoms, water molecules (detected by residue
+name), common amino acid residues, and atoms labeled as HETATM, respectively.</p>
+
+<b>Selecting no atoms</b>
+<pre class="CodeGreen"><code>(not all)
+</code></pre>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Extracting selections from atom arrays</h3>
+
+<p>In addition to the string-based selection mechanism, it is also possible to
+derive selections from any object in the PDB hierarchy:</p>
+
+<pre class="codeDL"><code>m = model.deep_copy()
+pdb_hierarchy = m.get_hierarchy()
+for chain in pdb_hierarchy.only_model().chains():
+  chain_atoms = chain.atoms()
+  chain_selection = chain_atoms.extract_i_seq()
+</code></pre>
+
+<p>This is especially useful when referencing a string-based selection, as it
+allows us to compare any hierarchy object to the selection:</p>
+
+<pre class="codeDL"><code>selection = pdb_hierarchy.atom_selection_cache().selection("hetatm")
+for chain in pdb_hierarchy.only_model().chains():
+  for residue_group in chain.residue_groups():
+    residue_isel = residue_group.atoms().extract_i_seq()
+    if (selection.select(residue_isel).all_eq(True)):
+      #do_something_with_heteroatom_residue(residue_group)
+      pass
+</code></pre>
+
+<p>One word of caution: this assumes that the <code>i_seq</code> attribute of each atom
+represents its position in the hierarchy (and corresponding array returned by
+<code>hierarchy.atoms()</code>).  The <code>i_seq</code> will be initialized by default when
+constructing the hierarchy, but modifications to the hierarchy will not be
+propagated to the individual atoms.  You can reset the <code>i_seq</code>  at any time:</p>
+
+<pre class="codeDL"><code>pdb_hierarchy.reset_atom_i_seqs()
+</code></pre>
+
+<p>or:</p>
+
+<pre class="codeDL"><code>pdb_atoms = pdb_hierarchy.atoms()
+pdb_atoms.reset_i_seq()
+</code></pre>
+
+<!----------------------------------------------------------------------------->
+
+
+<!----------------------- EDIT END ---------------------------->
+<!-- DO NOT EDIT ANYTHING BELOW!!!! -->
+</div> <!-- end col-sm-9 -->
+
+<!-- automatic table of contents
+     located in the sidebar; will move to the top on a small screen -->
+<div class="col-sm-3 mt-5">
+  <nav id="toc" data-toggle="toc"></nav>
+</div> <!-- end col-sm-3 -->
+
+
+{% endblock %}
