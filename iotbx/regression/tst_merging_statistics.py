@@ -38,6 +38,7 @@ def exercise(debug=False):
   assert "_reflns_shell" in cif_block
   assert approx_equal(float(cif_block["_reflns.pdbx_Rpim_I_all"]), result.overall.r_pim)
   assert approx_equal(float(cif_block["_reflns.pdbx_CC_half"]), result.overall.cc_one_half)
+  assert approx_equal(float(cif_block["_reflns.percent_possible_obs"]), result.overall.completeness * 100.0)
   assert approx_equal(
     flex.int(cif_block["_reflns_shell.number_measured_obs"]),
     [15737, 15728, 15668, 15371, 14996, 14771, 13899, 13549, 13206, 12528])

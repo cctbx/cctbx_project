@@ -823,7 +823,7 @@ class dataset_statistics(object):
 
     for k, v in six.iteritems(mmcif_to_name_reflns):
       value = self.overall.__getattribute__(v)
-      if 'percent' in v:
+      if 'percent' in k:
         value *= 100
       cif_block['_reflns.' + k] = value
 
