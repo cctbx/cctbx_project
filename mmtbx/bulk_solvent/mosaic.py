@@ -535,7 +535,8 @@ class refinery(object):
           r_free_flags   = self.r_free_flags,
           #f_calc         = self.f_obs.customized_copy(data = f_calc_data),
           f_calc         = self.f_calc,
-          bin_selections = self.bin_selections,
+          bin_selections = bin_selections_input,
+          #bin_selections = self.bin_selections,
           f_mask         = f_bulk,
           k_mask         = flex.double(f_obs.data().size(),1)
           )

@@ -204,15 +204,18 @@ class compute(object):
 
 def get_map(mc, cg):
   fft_map = mc.fft_map(crystal_gridding = cg)
-  fft_map.apply_sigma_scaling()
-  return fft_map.real_map_unpadded()
+  #fft_map.apply_sigma_scaling()
+  md = fft_map.real_map_unpadded()
+  sd = md.sample_standard_deviation()
+  #return fft_map.real_map_unpadded()
+  return md/sd, sd
 
-def map_stat(m, conn, i):
+def map_stat(m, conn, i, map_sd):
   selection = conn==i
   blob = m.select(selection.iselection())
   mi,ma,me = flex.min(blob), flex.max(blob), flex.mean(blob)
   sd = blob.sample_standard_deviation()
-  return group_args(mi=mi, ma=ma, me=me, sd=sd)
+  return group_args(mi=mi, ma=ma, me=me, sd=sd, map_sd=map_sd)
 
 def run_one(args):
   pdbf, mtzf, code, alg = args
@@ -248,18 +251,18 @@ def run_one(args):
       mtz_object = mtz_dataset.mtz_object()
       mtz_object.write(file_name = "%s_mc.mtz"%code)
       # map stats
-      map_0         = get_map(mc=o.mm.mc,         cg=o.mm.crystal_gridding)
-      map_WholeMask = get_map(mc=o.mc_whole_mask, cg=o.mm.crystal_gridding)
-      map_Mosaic    = get_map(mc=mbs.mc,          cg=o.mm.crystal_gridding)
+      map_0        , sd_map_0         = get_map(mc=o.mm.mc,         cg=o.mm.crystal_gridding)
+      map_WholeMask, sd_map_WholeMask = get_map(mc=o.mc_whole_mask, cg=o.mm.crystal_gridding)
+      map_Mosaic   , sd_map_Mosaic    = get_map(mc=mbs.mc,          cg=o.mm.crystal_gridding)
       ###
       #write_map_file(cg=o.mm.crystal_gridding, mc=o.mm.mc,         file_name="first.ccp4")
       #write_map_file(cg=o.mm.crystal_gridding, mc=o.mc_whole_mask, file_name="whole.ccp4")
       #write_map_file(cg=o.mm.crystal_gridding, mc=mbs.mc,          file_name="mosaic.ccp4")
       ###
       for region in o.mm.regions.values():
-        region.m_0         = map_stat(m=map_0,         conn = o.mm.conn, i=region.id)
-        region.m_WholeMask = map_stat(m=map_WholeMask, conn = o.mm.conn, i=region.id)
-        region.m_Mosaic    = map_stat(m=map_Mosaic,    conn = o.mm.conn, i=region.id)
+        region.m_0         = map_stat(m=map_0,         conn = o.mm.conn, i=region.id, map_sd=sd_map_0        )
+        region.m_WholeMask = map_stat(m=map_WholeMask, conn = o.mm.conn, i=region.id, map_sd=sd_map_WholeMask)
+        region.m_Mosaic    = map_stat(m=map_Mosaic,    conn = o.mm.conn, i=region.id, map_sd=sd_map_Mosaic   )
     #
     result = group_args(
       code            = code,
