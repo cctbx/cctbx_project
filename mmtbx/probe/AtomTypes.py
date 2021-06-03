@@ -394,7 +394,7 @@ class AtomTypes:
       [ r'CL.*',    'Cl', False ],
       [ r'CM.*',    'Cm', False ],
       [ r'CN.*',    'N',  True ],
-      [ r'CO.*',    'Co', True ],   # @todo Is this a false warning?
+      [ r'CO.*',    'Co', False ],
       [ r'CP.*',    'C',  True ],
       [ r'CR.*',    'Cr', False ],
       [ r'CS.*',    'Cs', False ],
