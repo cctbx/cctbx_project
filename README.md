@@ -51,7 +51,7 @@ The installation will take a long while but the script will verbosely describe w
 
 ## Nightly check of current release (except for Apple Silicon)
 
-A subset of tests is run on the current `cctbx-base` package every night (6 pm Pacific) to test compatibility with the latest packages from `conda-forge`.
+A subset of tests is run on the current `cctbx-base` package every night (6 pm Pacific) to test compatibility with the latest packages from `conda-forge`. Additional source files for `fable` and `antlr3` are needed for the tests.
 
 <table>
   <thead><tr><th>Variant</th><th>Status</th></tr></thead>
@@ -87,28 +87,28 @@ A subset of tests is run on the current `cctbx-base` package every night (6 pm P
       <td>osx_64_numpy1.17python3.6.____cpython</td>
       <td>
         <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
-          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.6" alt="variant">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=osx_64&configuration=osx_64%20python3.6" alt="variant">
         </a>
       </td>
     </tr><tr>
       <td>osx_64_numpy1.17python3.7.____cpython</td>
       <td>
         <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
-          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.7" alt="variant">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=osx_64&configuration=osx_64%20python3.7" alt="variant">
         </a>
       </td>
     </tr><tr>
       <td>osx_64_numpy1.17python3.8.____cpython</td>
       <td>
         <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
-          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.8" alt="variant">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=osx_64&configuration=osx_64%20python3.8" alt="variant">
         </a>
       </td>
     </tr><tr>
       <td>osx_64_numpy1.19python3.9.____cpython</td>
       <td>
         <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
-          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.9" alt="variant">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=osx_64&configuration=osx_64%20python3.9" alt="variant">
         </a>
       </td>
     </tr><tr>
@@ -129,21 +129,28 @@ A subset of tests is run on the current `cctbx-base` package every night (6 pm P
       <td>win_64_numpy1.17python3.6.____cpython</td>
       <td>
         <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
-          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.6" alt="variant">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=win_64&configuration=win_64%20python3.6" alt="variant">
         </a>
       </td>
     </tr><tr>
       <td>win_64_numpy1.17python3.7.____cpython</td>
       <td>
         <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
-          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.7" alt="variant">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=win_64&configuration=win_64%20python3.7" alt="variant">
         </a>
       </td>
     </tr><tr>
       <td>win_64_numpy1.17python3.8.____cpython</td>
       <td>
         <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
-          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=linux_64&configuration=linux_64%20python3.8" alt="variant">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=win_64&configuration=win_64%20python3.8" alt="variant">
+        </a>
+      </td>
+    </tr><tr>
+      <td>win_64_numpy1.19python3.9.____cpython</td>
+      <td>
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/conda-forge%20test?branchName=master&jobName=win_64&configuration=win_64%20python3.9" alt="variant">
         </a>
       </td>
     </tr>
