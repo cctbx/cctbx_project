@@ -579,6 +579,16 @@ class AtomTypes:
       elementName = 'Se'
       emitWarning = True
 
+    # Fix up ambiguous atom names before trying to figure out what they are.  Emit a
+    # warning for each of them if we do rename them.
+    if resName in ['ASN','GLN'] and atomName in [' AD1',' AD2',' AE1',' AE2']:
+      emitWarning = True
+      if atomName[3] == '1':
+        atomName[1] = 'O'
+      else:
+        # All of the other entries in the list have '2', so we don't need a separate check
+        atomName[1] = 'N'
+
     # If we didn't hit a special case above, check using the appropriate table
     # based on the first character of the element name.
     if elementName is None:
