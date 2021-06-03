@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
-import math,os
-from libtbx.path import norm_join
+import math
+import libtbx.load_env
 from libtbx.test_utils import approx_equal
 from scitbx import matrix
 from rstbx.array_family import flex
@@ -53,13 +53,11 @@ def parse_synthetic(filename):
   return reciprocal_vectors
 
 def test_case_obs_data(verbose=True):
-  datadir = norm_join(os.environ['RSTBX_DIST'],"indexing")
-  R = parse_input(norm_join(datadir,"si_brief.dat"))
+  R = parse_input(libtbx.env.under_dist("rstbx", "indexing/si_brief.dat"))
   return do_index(R,verbose)
 
 def test_case_synthetic_data(verbose=True):
-  datadir = norm_join(os.environ['RSTBX_DIST'],"indexing")
-  R = parse_synthetic(norm_join(datadir,"si_synthetic.dat"))
+  R = parse_synthetic(libtbx.env.under_dist("rstbx", "indexing/si_synthetic.dat"))
   return do_index(R,verbose)
 
 if __name__=='__main__':
