@@ -735,14 +735,13 @@ class UnitCellSentinel(Thread):
     self.parent = parent
     self.active = active
 
-    # on initialization (and restart), make sure tab drawn from scratch
-    self.parent.run_window.unitcell_tab.redraw_windows = True
-
   def post_refresh(self):
     evt = RefreshUnitCell(tp_EVT_UNITCELL_REFRESH, -1)
     wx.PostEvent(self.parent.run_window.unitcell_tab, evt)
 
   def run(self):
+    import xfel.ui.components.xfel_gui_plotter as pltr
+
     # one time post for an initial update
     self.post_refresh()
     self.db = xfel_db_application(self.parent.params)
@@ -771,15 +770,21 @@ class UnitCellSentinel(Thread):
                        'gamma':cell.cell_gamma,
                        'n_img':0})
         info_list.append(info)
-      import xfel.ui.components.xfel_gui_plotter as pltr
-      plotter = pltr.PopUpCharts(interactive=False)
+
       iqr_ratio = 1.5 if self.parent.run_window.unitcell_tab.reject_outliers else None
-      self.parent.run_window.unitcell_tab.png = plotter.plot_uc_histogram(
+
+      figure = self.parent.run_window.unitcell_tab.figure
+      plotter = pltr.PopUpCharts(interactive=True, figure=figure)
+
+      figure.clear()
+      plotter.plot_uc_histogram(
         info_list=info_list,
         legend_list=legend_list,
         xsize=(sizex-115)/82, ysize=(sizey-115)/82,
         high_vis=self.parent.high_vis,
         iqr_ratio=iqr_ratio)
+      figure.canvas.draw_idle()
+
       self.post_refresh()
       self.parent.run_window.unitcell_light.change_status('on')
       time.sleep(5)
@@ -2470,9 +2475,6 @@ class UnitCellTab(BaseTab):
     self.trial = None
     self.tags = []
     self.tag_sets = []
-    self.png = None
-    self.static_bitmap = None
-    self.redraw_windows = True
     self.reject_outliers = True
 
     # self.tab_panel = wx.Panel(self, size=(300, 300))
@@ -2558,10 +2560,23 @@ class UnitCellTab(BaseTab):
     self.selection_columns_sizer.Add(self.chk_reject_outliers, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.unit_cell_panel = wx.Panel(self, size=(200, 120))
-    self.unit_cell_panelsize = self.unit_cell_panel.GetSize()
     self.unit_cell_box = wx.StaticBox(self.unit_cell_panel, label='Unit cell analysis')
+    self.unit_cell_panelsize = self.unit_cell_box.GetSize()
     self.unit_cell_sizer = wx.StaticBoxSizer(self.unit_cell_box, wx.VERTICAL)
     self.unit_cell_panel.SetSizer(self.unit_cell_sizer)
+
+    import matplotlib as mpl
+    from matplotlib.backends.backend_wxagg import (
+      FigureCanvasWxAgg as FigureCanvas,
+      NavigationToolbar2WxAgg as NavigationToolbar)
+
+    self.figure = mpl.figure.Figure()
+    self.canvas = FigureCanvas(self.unit_cell_box, -1, self.figure)
+    self.toolbar = NavigationToolbar(self.canvas)
+    self.toolbar.Realize()
+
+    self.unit_cell_sizer.Add(self.canvas, 1, wx.EXPAND)
+    self.unit_cell_sizer.Add(self.toolbar, 0, wx.LEFT | wx.EXPAND)
 
     # self.main_sizer.Add(self.selection_columns_panel, 1,
     #                     flag=wx.EXPAND | wx.ALL, border=10)
@@ -2584,7 +2599,7 @@ class UnitCellTab(BaseTab):
     self.Bind(wx.EVT_SIZE, self.OnSize)
 
   def OnSize(self, e):
-    self.unit_cell_panelsize = self.unit_cell_panel.GetSize()
+    self.unit_cell_panelsize = self.unit_cell_box.GetSize()
     e.Skip()
 
   def find_trials(self):
@@ -2665,18 +2680,6 @@ class UnitCellTab(BaseTab):
 
   def onRefresh(self, e):
     self.find_trials()
-    self.plot_unit_cell_analysis()
-
-  def plot_unit_cell_analysis(self):
-    if self.png is not None:
-      if self.static_bitmap is not None:
-        self.static_bitmap.Destroy()
-      img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
-      self.static_bitmap = wx.StaticBitmap(
-        self.unit_cell_panel, wx.ID_ANY, wx.Bitmap(img))
-      self.unit_cell_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
-      self.unit_cell_panel.SetSizer(self.unit_cell_sizer)
-      self.unit_cell_panel.Layout()
 
 class DatasetTab(BaseTab):
   def __init__(self, parent, main):
