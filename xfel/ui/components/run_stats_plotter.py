@@ -183,8 +183,13 @@ def plot_run_stats(stats,
                    high_vis=False,
                    title=None,
                    ext='cbf',
+                   figure=None,
                    ):
   t1 = time.time()
+  if figure:
+    f = figure
+  else:
+    f = plt.figure()
   plot_ratio = max(min(xsize, ysize)/2.5, 3)
   if high_vis:
     spot_ratio = plot_ratio*4
@@ -204,10 +209,10 @@ def plot_run_stats(stats,
     run_statuses = [None for i in range(n_runs)]
   if minimalist:
     print("Minimalist mode activated.")
-    f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=False)
+    ax1, ax2, ax3 = f.subplots(3, sharex=True, sharey=False)
     axset = (ax1, ax2, ax3)
   else:
-    f, (ax1, ax2, ax3, ax4) = plt.subplots(4, sharex=True, sharey=False)
+    ax1, ax2, ax3, ax4 = f.subplots(4, sharex=True, sharey=False)
     axset = (ax1, ax2, ax3, ax4)
   for a in axset:
     a.tick_params(axis='x', which='both', bottom='off', top='off')
@@ -302,7 +307,9 @@ def plot_run_stats(stats,
       print(get_paths_from_timestamps([ts], tag="shot", ext=ext)[0])
 
     f.canvas.mpl_connect('button_press_event', onclick)
-    plt.show()
+
+    if not figure:
+      plt.show()
   else:
     f.set_size_inches(xsize, ysize)
     f.savefig("runstats_tmp.png", bbox_inches='tight', dpi=100)
@@ -327,7 +334,8 @@ def plot_multirun_stats(runs,
                         xsize=30,
                         ysize=10,
                         high_vis=False,
-                        title=None):
+                        title=None,
+                        figure=None):
   tset = flex.double()
   two_theta_low_set = flex.double()
   two_theta_high_set = flex.double()
@@ -389,5 +397,5 @@ def plot_multirun_stats(runs,
       return None
   else:
     png = plot_run_stats(stats_tuple, d_min, n_multiples=n_multiples, run_tags=run_tags, run_statuses=run_statuses, minimalist=minimalist,
-      interactive=interactive, xsize=xsize, ysize=ysize, high_vis=high_vis, title=title)
+      interactive=interactive, xsize=xsize, ysize=ysize, high_vis=high_vis, title=title, figure=figure)
   return png

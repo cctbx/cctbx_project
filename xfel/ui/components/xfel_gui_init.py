@@ -417,9 +417,6 @@ class RunStatsSentinel(Thread):
     self.run_tags = []
     self.run_statuses = []
 
-    # on initialization (and restart), make sure run stats drawn from scratch
-    self.parent.run_window.runstats_tab.redraw_windows = True
-
   def post_refresh(self):
     evt = RefreshRunStats(tp_EVT_RUNSTATS_REFRESH, -1, self.info)
     wx.PostEvent(self.parent.run_window.runstats_tab, evt)
@@ -431,7 +428,7 @@ class RunStatsSentinel(Thread):
 
     while self.active:
       self.parent.run_window.runstats_light.change_status('idle')
-      self.plot_stats_static()
+      self.plot_stats()
       self.fetch_timestamps(indexed=True)
       self.fetch_timestamps(indexed=False)
       self.post_refresh()
@@ -538,34 +535,15 @@ class RunStatsSentinel(Thread):
         timestamps_and_params_by_run
       self.parent.run_window.runstats_tab.should_have_indexed_image_paths = \
         image_paths_by_run
-      self.parent.run_window.runstats_tab.redraw_windows = True
 
-  def plot_stats_static(self):
+  def plot_stats(self):
     from xfel.ui.components.run_stats_plotter import plot_multirun_stats
     self.refresh_stats()
     sizex, sizey = self.parent.run_window.runstats_tab.runstats_panelsize
-    self.parent.run_window.runstats_tab.png = plot_multirun_stats(
+    figure = self.parent.run_window.runstats_tab.figure
+    figure.clear()
+    plot_multirun_stats(
       self.stats, self.run_numbers,
-      d_min=self.parent.run_window.runstats_tab.d_min,
-      n_multiples=self.parent.run_window.runstats_tab.n_multiples,
-      interactive=False,
-      ratio_cutoff=self.parent.run_window.runstats_tab.ratio,
-      n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
-      i_sigi_cutoff=self.parent.run_window.runstats_tab.i_sigi,
-      run_tags=self.run_tags,
-      run_statuses=self.run_statuses,
-      minimalist=self.parent.run_window.runstats_tab.entire_expt,
-      easy_run=True,
-      xsize=(sizex-25)/85, ysize=(sizey-25)/95,
-      high_vis=self.parent.high_vis)
-      # convert px to inches with fudge factor for scaling inside borders
-    self.parent.run_window.runstats_tab.redraw_windows = True
-
-  def plot_stats_interactive(self):
-    from xfel.ui.components.run_stats_plotter import plot_multirun_stats
-    self.refresh_stats()
-    self.parent.run_window.runstats_tab.png = plot_multirun_stats(
-      stats, run_numbers,
       d_min=self.parent.run_window.runstats_tab.d_min,
       n_multiples=self.parent.run_window.runstats_tab.n_multiples,
       interactive=True,
@@ -575,7 +553,11 @@ class RunStatsSentinel(Thread):
       run_tags=self.run_tags,
       run_statuses=self.run_statuses,
       minimalist=self.parent.run_window.runstats_tab.entire_expt,
-      high_vis=self.parent.high_vis)
+      xsize=(sizex-25)/85, ysize=(sizey-25)/95,
+      high_vis=self.parent.high_vis,
+      figure=figure)
+      # convert px to inches with fudge factor for scaling inside borders
+    figure.canvas.draw_idle()
 
 # ----------------------------- Spotfinder Sentinel ---------------------------- #
 
@@ -2084,9 +2066,6 @@ class RunStatsTab(SpotfinderTab):
     self.tag_runs_changed = True
     self.tag_last_five = False
     self.entire_expt = False
-    self.png = None
-    self.static_bitmap = None
-    self.redraw_windows = True
     self.d_min = 2.5
     self.n_multiples = 2
     self.ratio = 1
@@ -2102,6 +2081,20 @@ class RunStatsTab(SpotfinderTab):
     self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
     self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.HORIZONTAL)
     self.runstats_panel.SetSizer(self.runstats_sizer)
+
+    import matplotlib as mpl
+    from matplotlib.backends.backend_wxagg import (
+      FigureCanvasWxAgg as FigureCanvas,
+      NavigationToolbar2WxAgg as NavigationToolbar)
+
+    self.figure = mpl.figure.Figure()
+    self.canvas = FigureCanvas(self.runstats_box, -1, self.figure)
+    self.toolbar = NavigationToolbar(self.canvas)
+    self.toolbar.SetWindowStyle(wx.TB_VERTICAL)
+    self.toolbar.Realize()
+
+    self.runstats_sizer.Add(self.canvas, 1, wx.EXPAND)
+    self.runstats_sizer.Add(self.toolbar, 0, wx.LEFT | wx.EXPAND)
 
     self.trial_number = gctr.ChoiceCtrl(self,
                                         label='Trial:',
@@ -2279,10 +2272,10 @@ class RunStatsTab(SpotfinderTab):
 
     self.Layout()
     self.Fit()
-    self.runstats_panelsize = self.runstats_panel.GetSize()
+    self.runstats_panelsize = self.runstats_box.GetSize()
 
   def OnSize(self, e):
-    self.runstats_panelsize = self.runstats_panel.GetSize()
+    self.runstats_panelsize = self.runstats_box.GetSize()
     e.Skip()
 
   def onTrialChoice(self, e):
@@ -2315,26 +2308,12 @@ class RunStatsTab(SpotfinderTab):
       self.select_last_n_runs(5)
     elif self.entire_expt:
       self.select_all()
-    if self.redraw_windows:
-      self.plot_static_runstats()
-      self.print_strong_indexed_paths()
-      self.print_should_have_indexed_paths()
-      self.redraw_windows = False
+    self.print_strong_indexed_paths()
+    self.print_should_have_indexed_paths()
     if self.trial is not None:
       self.runstats_box.SetLabel('Run Statistics - Trial {}'.format(self.trial_no))
     else:
       self.runstats_box.SetLabel('Run Statistics - No trial selected')
-
-  def plot_static_runstats(self):
-    #import time
-    #from xfel.ui.components.timeit import duration
-    #t1 = time.time()
-    if self.png is not None:
-      img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
-      self.static_bitmap.SetBitmap(wx.Bitmap(img))
-      self.runstats_panel.Layout()
-      self.Layout()
-    #t2 = time.time()
 
   def print_strong_indexed_paths(self):
     try:
