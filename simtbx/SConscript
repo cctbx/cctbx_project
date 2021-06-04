@@ -34,3 +34,4 @@ if not env_etc.no_boost_python:
   env_simtbx.SConscript("nanoBragg/SConscript",exports={ 'env' : env_simtbx })
   env_simtbx.SConscript("gpu/SConscript",exports={ 'env' : env_simtbx })
   env_simtbx.SConscript("pixel/SConscript",exports={ 'env' : env_simtbx })
+  env_simtbx.SConscript("kokkos/SConscript",exports={ 'env' : env_simtbx })
