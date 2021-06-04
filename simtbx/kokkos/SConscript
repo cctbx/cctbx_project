@@ -1,0 +1,28 @@
+import os
+
+cmd = "make"
+cmd += " KOKKOS_PATH=../../../kokkos/"
+cmd += " KOKKOS_DEVICES=Cuda"
+
+retval = os.system(cmd)
+print("********** ALL HIER ************")
+print(retval)
+print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+os.system("cd ../../../build; ../modules/kokkos//bin/nvcc_wrapper -o lib/libsimtbx_kokkos.so -shared simtbx/kokkos/kokkos_instance.o -Llib -L/usr/common/software/sles15_cgpu/cuda/11.1.1/lib64 -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/lib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/cctbx_project/lib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/cctbx_project/simtbx/kokkos/ -lkokkos -ldl -lcudart -lcuda -lboost_thread -lboost_system -lboost_python -lm; g++ -o lib/simtbx_kokkos_ext.so -shared -s -std=c++11 -fopenmp simtbx/kokkos/kokkos_ext.o -Llib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/lib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/cctbx_project/lib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/cctbx_project/simtbx/kokkos/ -L/usr/common/software/sles15_cgpu/cuda/11.1.1/lib64 -lsimtbx_kokkos -lomptbx -lboost_thread -lboost_system -lboost_python -lm -lm -lscitbx_boost_python -lboost_python -lcctbx -lkokkos -ldl -lcudart -lcuda")
+
+
+#Import("env", "env_etc")
+
+#simtbx_kokkos_env = env.Clone()
+#simtbx_kokkos_obj = simtbx_kokkos_env.SharedObject(
+#  target="#simtbx/kokkos/kokkos_ext.o",
+#  source=["kokkos_ext.cpp",]
+#)
+
+#import libtbx.load_env
+
+#Import("env_boost_python_ext")
+#env_bpl = env_boost_python_ext.Clone()
+
+#env_bpl.Prepend()
+
