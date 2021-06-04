@@ -18,6 +18,7 @@ if OPT.enable_cuda:
     ["$D/nanoBragg/tst_gauss_argchk.py","GPU"], # tests CPU+GPU, argchk optimization
     "$D/gpu/tst_exafel_api.py",                 # CPU / GPU, polychromatic beam, monolithic detector
     "$D/gpu/tst_gpu_multisource_background.py", # CPU / GPU background comparison
+    "$D/kokkos/tst_kokkos_lib.py",                  # GPU in kokkos
   ]
 else:
   tst_list.append(
