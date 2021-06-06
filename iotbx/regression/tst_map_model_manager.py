@@ -49,6 +49,13 @@ def test_01():
   # Save it
   mmmn_dc=mmmn.deep_copy()
 
+  # Test creating mmm from model:
+  mmm_from_model = model.as_map_model_manager(create_model_map = False)
+  assert mmm_from_model.map_manager() is None
+  mmm_from_model = model.as_map_model_manager(create_model_map = True,
+    resolution = 5)
+  assert mmm_from_model.map_manager() is not None
+
   # Make sure we can add an ncs object that is either shifted or not
   mmmn_dcdc=mmmn.deep_copy()
   new_mmmn = match_map_model_ncs()

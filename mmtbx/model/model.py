@@ -3580,6 +3580,23 @@ class manager(object):
       self._xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection = selection_aniso.iselection())
 
+  def as_map_model_manager(self, map_manager = None,
+    create_model_map = False, resolution = None):
+   """ Return a map_model_manager containing this model 
+     (and optional map_manager)
+    Note that a map_manager is required for most functions of the
+    map_model_manager.  You can generate a map_manager with
+    create_model_map = True and setting resolution
+   """
+
+   from iotbx.map_model_manager import map_model_manager
+   mmm = map_model_manager(model = self, map_manager = map_manager)
+   if create_model_map:
+     assert resolution is not None
+     mmm.set_resolution(resolution)
+     mmm.generate_map()
+   return mmm
+  
   def _expand_symm_helper(self, records_container):
     """
     This will expand hierarchy and ss annotations. In future anything else that
