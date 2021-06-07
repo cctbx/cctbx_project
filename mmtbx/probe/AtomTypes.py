@@ -171,7 +171,7 @@ class AtomTypes:
       [ 1, "HOd","hydrogen(omnidirectional)", 1.05, 1.00, 0.00, 0.30, "grey",   AtomFlags.DONOR_ATOM|AtomFlags.HB_ONLY_DUMMY_ATOM],
       [ 6, "C",  "carbon",             1.70, 1.70, 1.90, 0.77, "white",  AtomFlags.EMPTY_FLAGS],
       [ 6, "Car","carbon(aromatic)",   1.75, 1.75, 1.90, 0.77, "white",  AtomFlags.ACCEPTOR_ATOM],
-      [ 6, "C=O","carbon(carbonyl)",   1.70, 1.70, 1.80, 0.77, "white",  AtomFlags.EMPTY_FLAGS],
+      [ 6, "C=O","carbon(carbonyl)",   1.65, 1.65, 1.80, 0.77, "white",  AtomFlags.EMPTY_FLAGS],
       [ 7, "N",  "nitrogen",           1.55, 1.55, 1.70, 0.70, "sky",    AtomFlags.EMPTY_FLAGS],
       [ 7, "Nacc","nitrogen(acceptor)",1.55, 1.55, 1.70, 0.70, "sky",    AtomFlags.ACCEPTOR_ATOM],
       [ 8, "O",  "oxygen",             1.40, 1.40, 1.50, 0.66, "red",    AtomFlags.ACCEPTOR_ATOM],
