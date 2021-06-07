@@ -26,12 +26,107 @@
 
 import sys
 import re
+import iotbx
 from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
 import mmtbx
 
 import mmtbx_probe_ext as probe
 from enum import IntFlag, auto
+
+##################################################################################
+# Helper functions.
+
+# Pad the name with spaces on the right to ensure that it is at least as long as
+# requested.
+def Pad(s, n=4):
+  ret = s
+  while len(s) < n:
+    s += ' '
+  return ret
+
+# Gobble up all spaces from the end of the name after non-space characters
+def Unpad(n):
+  # Gobble up all spaces from the end of the name.
+  while n[-1] == ' ':
+    n = n[:-1]
+  return n
+
+# Is a carbon atom a Carbonyl from a standard amino acid?
+def IsAminoAcidCarbonyl(resName, atomName):
+  """Given a residue and atom name, determine whether that atom is a C=O.
+  :param resName: String containing the 1-3-character residue name in all caps, including leading space.
+  :param atomName: String containing the 1-4-character atom name in all caps, including leading space.
+  :returns True if the atom is a C=O in a standard resize, False if not.  Does not handle HET atoms.
+  """
+  if Unpad(atomName) == ' CG':
+    return resName in ['ASP','ASN','ASX']
+  if Unpad(atomName) == ' CD':
+    return resName in ['GLU','GLN','GLX']
+  return False
+
+# Is a carbon or nitrogen atom an acceptor and part of an aromatic ring?
+def IsAromaticAcceptor(resName, atomName):
+  """Given a residue and atom name, determine whether that atom is an acceptor as part of an aromatic ring.
+  :param resName: String containing the 1-3-character residue name in all caps, including leading space.
+  :param atomName: String containing the 1-4-character atom name in all caps, including leading space.
+  :returns True if the atom is a C=O in a standard resize, False if not.  Does not handle HET atoms.
+  """
+
+  # Table of aromatic-acceptor atoms by residue and atom name.  The first entry in each list element is
+  # the residue name.  The second is a list of atoms that qualify.
+  AromaticTable = [
+    # Note: Some atoms from these residues are listed in other sections.  The combination of
+    # reside and atom name is not duplicated, but there are multiple entries for some residues --
+    # this is not a set.
+
+    ['HIS', [' ND1',' NE2'] ],
+
+    ['ADE', [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+    ['  A', [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+    ['A',   [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+    ['CYT', [' N3',' N1',' C2',' C4',' C5',' C6'] ],
+    ['  C', [' N3',' N1',' C2',' C4',' C5',' C6'] ],
+    ['C',   [' N3',' N1',' C2',' C4',' C5',' C6'] ],
+    ['GUA', [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+    ['  G', [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+    ['G',   [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+    ['THY', [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+    ['  T', [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+    ['T',   [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+    ['URA', [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+    ['  U', [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+    ['U',   [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+
+    ['DA',  [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+    ['DC',  [' N3',' N1',' C2',' C4',' C5',' C6'] ],
+    ['DG',  [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+    ['DT',  [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+
+    ['HEM', [' N A',' N B',' N C',' N D'] ],
+
+    # Here we treat the aromatic Pi-bonds as hydrogen bond acceptors.
+    # Note: Some atoms from these residues are listed in other sections.  The combination of
+    # reside and atom name is not duplicated, but there are multiple entries for some residues --
+    # this is not a set.
+
+    ['HEM', [' C1A',' C2A',' C3A',' C4A',
+             ' C1B',' C2B',' C3B',' C4B',
+             ' C1C',' C2C',' C3C',' C4C',
+             ' C1D',' C2D',' C3D',' C4D'] ],
+    ['PHE', [' CZ',' CE2',' CE1',' CD2',' CD1',' CG'] ],
+    ['TYR', [' CZ',' CE2',' CE1',' CD2',' CD1',' CG'] ],
+    ['HIS', [' CD2',' CE1',' CG'] ],
+    ['TRP', [' CH2',' CZ3',' CZ2',' CE3',' CE2',' NE1',' CD2',' CD1',' CG'] ]
+  ]
+
+  for e in AromaticTable:
+    if Unpad(resName) == e[0] and Unpad(atomName) in e[1]:
+      return True
+  return False
+  
+
+##################################################################################
 
 class AtomFlags(IntFlag):
   """Flags describing attributes that atoms can have.
@@ -42,6 +137,8 @@ class AtomFlags(IntFlag):
   ACCEPTOR_ATOM = auto()        # Can be an electron acceptor
   HB_ONLY_DUMMY_ATOM = auto()   # This is a dummy hydrogen added to a water, it can hydrogen bond by not clash
   METALLIC_ATOM = auto()        # The atom is metallic
+
+##################################################################################
 
 class AtomInfo:
   """Class that stores extra information about an atom that is looked up by the AtomTypes
@@ -552,6 +649,7 @@ class AtomTypes:
 
   ##################################################################################
   # Given an iotbx.pdb.atom, look up its mmtbx_probe_ext.ExtraAtomInfo in the atom table.
+  # This includes checking for special cases using the helper functions above.
 
   def FindAtomInfo(self, atom):
     """Given an iotbx.pdb.atom, look up its information in the atom table.
@@ -569,8 +667,9 @@ class AtomTypes:
 
     # Find the name of the atom and the residue it is in.  The atom's parent is an
     # atom group, which holds its residue name.  The atom name is padded on the right
-    # with spaces so that it is at least four characters long.
-    atomName = atom.name.upper().ljust(4)
+    # with spaces so that it is at least four characters long and made upper-case.
+    atomPadded = Pad(atom.name.upper())
+    atomName = atomPadded # name that will be adjusted as we go
     resName = atom.parent().resname.upper()
     #print('XXX Finding info for', resName,atomName)
 
@@ -579,6 +678,7 @@ class AtomTypes:
       elementName = 'Se'
       emitWarning = True
 
+    # Based on fixupAmbigAtomName() from Reduce ElementInfo.cpp
     # Fix up ambiguous atom names before trying to figure out what they are.  Emit a
     # warning for each of them if we do rename them.
     if resName in ['ASN','GLN'] and atomName in [' AD1',' AD2',' AE1',' AE2']:
@@ -589,6 +689,7 @@ class AtomTypes:
         # All of the other entries in the list have '2', so we don't need a separate check
         atomName[1] = 'N'
 
+    ###
     # If we didn't hit a special case above, check using the appropriate table
     # based on the first character of the element name.
     if elementName is None:
@@ -633,6 +734,7 @@ class AtomTypes:
           emitWarning |= n[2]
           break;
 
+    ###
     # If we did not find an elementName yet, we always emit a warning,
     # then default to Carbon, and then try another pass on names
     # always skipping the first character of the name.
@@ -640,7 +742,7 @@ class AtomTypes:
       elementName = 'C'
       emitWarning = True
 
-      atomName = atom.name.upper().ljust(4)[1:]
+      atomName = atomPadded[1:]
       for n in self._lastChanceNameTable:
         e = re.compile(n[0])
         if e.match(atomName) is not None:
@@ -648,6 +750,35 @@ class AtomTypes:
           emitWarning |= n[2]
           break;
 
+    ###
+    # Some Carbon atoms are too general when coming from the tables, so we need to adjust
+    # them to match the correct types.
+    # Based on reduce.cpp fixupHeavyAtomElementType().
+
+    # This maps from amino acid names to single letter codes, but we just care if it is in the list.
+    aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
+    if elementName == 'C':
+      if IsAromaticAcceptor(resName, atomPadded):
+        elementName = 'Car'
+      elif atomPadded == ' C  ' and atom.parent().resname in aa_resnames:
+        elementName = 'C=O'
+      elif IsAminoAcidCarbonyl(resName, atomPadded):
+        elementName = 'C=O'
+      # @todo Aromatic and carbonyl carbons in non-standard HET residues need to be identified somehow
+
+    ###
+    # The Acceptor flag for some Nitrogen atoms @todo
+    # Based on reduce.cpp fixupHeavyAtomElementType().
+    if elementName == 'N':
+      if IsAromaticAcceptor(resName, atomPadded):
+        elementName = 'Nacc'
+      #elif @todo Het N atoms with 1 or 2 bonded neighbors:
+      #  elementName = 'Nacc'
+
+    ###
+    # Some Hydrogens are not @todo
+
+    ###
     # Look up the element name, which fails if it is not in the table.
     try:
       ai = AtomInfo(self._Index[elementName])
