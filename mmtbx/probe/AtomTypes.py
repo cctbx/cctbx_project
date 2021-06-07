@@ -630,7 +630,7 @@ class AtomTypes:
         e = re.compile(n[0])
         if e.match(atomName) is not None:
           elementName = n[1]
-          emitWarning = n[2]
+          emitWarning |= n[2]
           break;
 
     # If we did not find an elementName yet, we always emit a warning,
@@ -645,7 +645,7 @@ class AtomTypes:
         e = re.compile(n[0])
         if e.match(atomName) is not None:
           elementName = n[1]
-          emitWarning = n[2]
+          emitWarning |= n[2]
           break;
 
     # Look up the element name, which fails if it is not in the table.
