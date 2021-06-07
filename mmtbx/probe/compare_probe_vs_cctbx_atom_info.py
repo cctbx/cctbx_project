@@ -46,6 +46,8 @@ def BestMatch(name, d):
     raise KeyError('Could not find atom name with matching first character from '+name)
 
   # Keep track of the match that has a maximum number of matching characters.
+  # Prefer strings of the same length to break ties when there are the same number
+  # of character matches.
   maxCount = 0
   bestMatch = ""
   for m in matches:
@@ -53,6 +55,8 @@ def BestMatch(name, d):
     for c in name:
       if c in m:
         count += 1
+    if len(name) == len(m):
+      count += 0.1
     if count > maxCount:
       maxCount = count
       bestMatch = m
