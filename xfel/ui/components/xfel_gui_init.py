@@ -1327,11 +1327,11 @@ class MainWindow(wx.Frame):
       if self.job_monitor is None or not self.job_monitor.active:
         self.start_job_monitor()
         self.run_window.jmn_light.change_status('on')
-      if self.runstats_sentinel is None or not self.runstats_sentinel.active:
+      if self.run_window.runstats_tab.auto_update and (self.runstats_sentinel is None or not self.runstats_sentinel.active):
         self.start_runstats_sentinel()
         self.run_window.runstats_light.change_status('on')
     elif name == self.run_window.unitcell_tab.name:
-      if self.unitcell_sentinel is None or not self.unitcell_sentinel.active:
+      if self.run_window.unitcell_tab.auto_update and (self.unitcell_sentinel is None or not self.unitcell_sentinel.active):
         self.start_unitcell_sentinel()
         self.run_window.unitcell_light.change_status('on')
     elif name == self.run_window.datasets_tab.name:
@@ -2118,6 +2118,7 @@ class RunStatsTab(SpotfinderTab):
     self.should_have_indexed_timestamps = None
     self.strong_indexed_image_paths = None
     self.strong_indexed_image_timestamps = None
+    self.auto_update = True
 
     self.runstats_panel = wx.Panel(self, size=(100, 100))
     self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
@@ -2138,82 +2139,86 @@ class RunStatsTab(SpotfinderTab):
     self.runstats_sizer.Add(self.canvas, 1, wx.EXPAND)
     self.runstats_sizer.Add(self.toolbar, 0, wx.LEFT | wx.EXPAND)
 
-    self.trial_number = gctr.ChoiceCtrl(self,
+    self.options_box = wx.StaticBox(self, label='Statistics Options')
+
+    self.trial_number = gctr.ChoiceCtrl(self.options_box,
                                         label='Trial:',
                                         label_size=(90, -1),
                                         label_style='normal',
                                         ctrl_size=(100, -1),
                                         choices=[])
-    self.last_five_runs =  wx.Button(self,
+    self.last_five_runs =  wx.Button(self.options_box,
                                      label='Auto plot last five runs',
                                      size=(200, -1))
-    self.plot_entire_expt = wx.Button(self,
+    self.plot_entire_expt = wx.Button(self.options_box,
                                      label='Auto plot entire experiment',
                                      size=(200,-1))
-    self.d_min_select = gctr.OptionCtrl(self,
+    self.d_min_select = gctr.OptionCtrl(self.options_box,
                                         name='rs_d_min',
                                         label='High resolution limit:',
                                         sub_labels=[''],
                                         label_size=(160, -1),
                                         ctrl_size=(30, -1),
                                         items=[('d_min', 2.5)])
-    self.n_multiples_selector = gctr.OptionCtrl(self,
+    self.n_multiples_selector = gctr.OptionCtrl(self.options_box,
                                                name='rs_multiples',
                                                label='# multiples threshold:',
                                                sub_labels=[''],
                                                label_size=(160, -1),
                                                ctrl_size=(30, -1),
                                                items=[('multiples', 2)])
-    self.ratio_cutoff = gctr.OptionCtrl(self,
+    self.ratio_cutoff = gctr.OptionCtrl(self.options_box,
                                         name='rs_ratio',
                                         label='two theta ratio cutoff:',
                                         sub_labels=[''],
                                         label_size=(160, -1),
                                         ctrl_size=(30, -1),
                                         items=[('ratio', 1)])
-    self.n_strong_cutoff = gctr.OptionCtrl(self,
+    self.n_strong_cutoff = gctr.OptionCtrl(self.options_box,
                                            name='rs_n_strong',
                                            label='# strong spots cutoff:',
                                            sub_labels=[''],
                                            label_size=(160, -1),
                                            ctrl_size=(30, -1),
                                            items=[('n_strong', 40)])
-    self.i_sigi_cutoff = gctr.OptionCtrl(self,
+    self.i_sigi_cutoff = gctr.OptionCtrl(self.options_box,
                                          name='rs_isigi',
                                          label='I/sig(I) cutoff:',
                                          sub_labels=[''],
                                          label_size=(160, -1),
                                          ctrl_size=(30, -1),
                                          items=[('isigi', 1)])
-    self.n_dump_cutoff = gctr.OptionCtrl(self,
+    self.n_dump_cutoff = gctr.OptionCtrl(self.options_box,
                                          name='rs_n_dump',
                                          label='# images to dump:',
                                          sub_labels=[''],
                                          label_size=(160, -1),
                                          ctrl_size=(30, -1),
                                          items=[('n_dump', 10)])
-    self.run_numbers =  gctr.CheckListCtrl(self,
+    self.run_numbers =  gctr.CheckListCtrl(self.options_box,
                                            label='Selected runs:',
                                            label_size=(200, -1),
                                            label_style='normal',
                                            ctrl_size=(150, 224),
                                            direction='vertical',
                                            choices=[])
-    self.strong_indexed_list = wx.TextCtrl(self,
+
+    self.strong_indexed_box = wx.StaticBox(self, label='Strongest Indexed Images')
+    self.strong_indexed_list = wx.TextCtrl(self.strong_indexed_box,
                                            style=wx.TE_MULTILINE | wx.TE_READONLY)
-    self.idx_show_images_button = wx.Button(self,
+    self.idx_show_images_button = wx.Button(self.strong_indexed_box,
                                             label='Open images',
                                             size=(200, -1))
-    self.should_have_indexed_list = wx.TextCtrl(self,
+    self.should_have_indexed_box = wx.StaticBox(self, label='Strong Images that Didn\'t Index')
+    self.should_have_indexed_list = wx.TextCtrl(self.should_have_indexed_box,
                                                 style=wx.TE_MULTILINE | wx.TE_READONLY)
-    self.shi_dump_images_button = wx.Button(self,
+    self.shi_dump_images_button = wx.Button(self.should_have_indexed_box,
                                             label='Dump images',
                                             size=(200, -1))
 
     self.bottom_sizer = wx.FlexGridSizer(1, 2, 0, 10)
 
-    options_box = wx.StaticBox(self, label='Statistics Options')
-    self.options_box_sizer = wx.StaticBoxSizer(options_box, wx.VERTICAL)
+    self.options_box_sizer = wx.StaticBoxSizer(self.options_box, wx.VERTICAL)
     self.options_opt_sizer = wx.GridBagSizer(1, 1)
 
     self.options_opt_sizer.Add(self.trial_number, pos=(0, 0),
@@ -2240,10 +2245,9 @@ class RunStatsTab(SpotfinderTab):
     self.options_box_sizer.Add(self.options_opt_sizer)
     self.bottom_sizer.Add(self.options_box_sizer)
 
-    self.dump_images_sizer = wx.GridBagSizer(2, 1)
+    self.dump_images_sizer = wx.GridBagSizer(3, 1)
 
-    strong_indexed_box = wx.StaticBox(self, label='Strongest Indexed Images')
-    self.strong_indexed_box_sizer = wx.StaticBoxSizer(strong_indexed_box, wx.VERTICAL)
+    self.strong_indexed_box_sizer = wx.StaticBoxSizer(self.strong_indexed_box, wx.VERTICAL)
 
     self.strong_indexed_results_sizer = wx.GridBagSizer(1, 1)
     self.strong_indexed_results_sizer.Add(self.strong_indexed_list, pos=(0, 0),
@@ -2256,8 +2260,7 @@ class RunStatsTab(SpotfinderTab):
                                       flag=wx.LEFT | wx.RIGHT | wx.ALL | wx.EXPAND,
                                       border=5)
 
-    should_have_indexed_box = wx.StaticBox(self, label='Strong Images that Didn\'t Index')
-    self.should_have_indexed_box_sizer = wx.StaticBoxSizer(should_have_indexed_box, wx.VERTICAL)
+    self.should_have_indexed_box_sizer = wx.StaticBoxSizer(self.should_have_indexed_box, wx.VERTICAL)
 
     self.should_have_indexed_results_sizer = wx.GridBagSizer(1, 1)
     self.should_have_indexed_results_sizer.Add(self.should_have_indexed_list, pos=(0, 0),
@@ -2270,15 +2273,26 @@ class RunStatsTab(SpotfinderTab):
                                            flag=wx.LEFT | wx.RIGHT | wx.ALL | wx.EXPAND,
                                            border=5)
 
-    self.dump_images_sizer.Add(self.strong_indexed_box_sizer, pos=(0, 0))
-    self.dump_images_sizer.Add(self.should_have_indexed_box_sizer, pos=(1, 0))
+    self.manage_panel = wx.Panel(self)
+    self.manage_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.btn_toggle_options = wx.ToggleButton(self.manage_panel,
+                                              label='Hide options')
+    self.chk_auto_update = wx.CheckBox(self.manage_panel, label='Auto update')
+    self.chk_auto_update.SetValue(True)
+    self.manage_sizer.Add(self.btn_toggle_options)
+    self.manage_sizer.Add(self.chk_auto_update)
+    self.manage_panel.SetSizer(self.manage_sizer)
+
+    self.dump_images_sizer.Add(self.manage_panel, pos=(0, 0))
+    self.dump_images_sizer.Add(self.strong_indexed_box_sizer, pos=(1, 0))
+    self.dump_images_sizer.Add(self.should_have_indexed_box_sizer, pos=(2, 0))
 
     if self.main.params.dispatcher != "cctbx.xfel.xtc_process":
       self.n_dump_cutoff.Hide()
-      strong_indexed_box.Hide()
+      self.strong_indexed_box.Hide()
       self.strong_indexed_list.Hide()
       self.idx_show_images_button.Hide()
-      should_have_indexed_box.Hide()
+      self.should_have_indexed_box.Hide()
       self.should_have_indexed_list.Hide()
       self.shi_dump_images_button.Hide()
 
@@ -2309,6 +2323,8 @@ class RunStatsTab(SpotfinderTab):
     self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.run_numbers.ctr)
     self.Bind(wx.EVT_BUTTON, self.onOpenImages, self.idx_show_images_button)
     self.Bind(wx.EVT_BUTTON, self.onDumpImages, self.shi_dump_images_button)
+    self.Bind(wx.EVT_TOGGLEBUTTON, self.onToggleOptions, self.btn_toggle_options)
+    self.Bind(wx.EVT_CHECKBOX, self.onChkAutoUpdate, self.chk_auto_update)
     self.Bind(EVT_RUNSTATS_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_SIZE, self.OnSize)
 
@@ -2356,6 +2372,27 @@ class RunStatsTab(SpotfinderTab):
       self.runstats_box.SetLabel('Run Statistics - Trial {}'.format(self.trial_no))
     else:
       self.runstats_box.SetLabel('Run Statistics - No trial selected')
+
+  def onToggleOptions(self, e):
+    if self.btn_toggle_options.GetValue():
+      self.options_box.Hide()
+      self.strong_indexed_box.Hide()
+      self.should_have_indexed_box.Hide()
+    else:
+      self.options_box.Show()
+      if self.main.params.dispatcher == "cctbx.xfel.xtc_process":
+        self.strong_indexed_box.Show()
+        self.should_have_indexed_box.Show()
+    self.Layout()
+    self.Fit()
+
+  def onChkAutoUpdate(self, e):
+    self.auto_update = self.chk_auto_update.GetValue()
+
+    if self.auto_update and (self.main.runstats_sentinel is None or not self.main.runstats_sentinel.active):
+      self.main.start_runstats_sentinel()
+    else:
+      self.main.stop_runstats_sentinel()
 
   def print_strong_indexed_paths(self):
     try:
@@ -2498,6 +2535,7 @@ class UnitCellTab(BaseTab):
     self.tag_sets = []
     self.reject_outliers = True
     self.plot_clusters = False
+    self.auto_update = True
 
     # self.tab_panel = wx.Panel(self, size=(300, 300))
     self.tab_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -2561,6 +2599,9 @@ class UnitCellTab(BaseTab):
 
     self.chk_plot_clusters = wx.CheckBox(self.selection_columns_panel, label='Plot clusters')
 
+    self.chk_auto_update = wx.CheckBox(self.selection_columns_panel, label='Auto update')
+    self.chk_auto_update.SetValue(True)
+
     self.plot_eps = gctr.OptionCtrl(self.selection_columns_panel,
                                     name='uc_plot_eps',
                                     label='Cluster epsilon',
@@ -2598,6 +2639,7 @@ class UnitCellTab(BaseTab):
     self.selection_columns_sizer.Add(self.chk_reject_outliers, flag=wx.ALL | wx.EXPAND, border=10)
     self.selection_columns_sizer.Add(self.chk_plot_clusters, flag=wx.ALL | wx.EXPAND, border=10)
     self.selection_columns_sizer.Add(self.plot_eps, flag=wx.ALL | wx.EXPAND, border=10)
+    self.selection_columns_sizer.Add(self.chk_auto_update, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.unit_cell_panel = wx.Panel(self, size=(200, 120))
     self.unit_cell_box = wx.StaticBox(self.unit_cell_panel, label='Unit cell analysis')
@@ -2638,6 +2680,7 @@ class UnitCellTab(BaseTab):
     self.Bind(wx.EVT_BUTTON, self.onResetTagSets, self.reset_sele_button)
     self.Bind(wx.EVT_CHECKBOX, self.onChkRejectOutliers, self.chk_reject_outliers)
     self.Bind(wx.EVT_CHECKBOX, self.onChkPlotClusters, self.chk_plot_clusters)
+    self.Bind(wx.EVT_CHECKBOX, self.onChkAutoUpdate, self.chk_auto_update)
     self.Bind(EVT_UNITCELL_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_SIZE, self.OnSize)
 
@@ -2727,6 +2770,14 @@ class UnitCellTab(BaseTab):
       self.plot_eps.eps.Enable()
     else:
       self.plot_eps.eps.Disable()
+
+  def onChkAutoUpdate(self, e):
+    self.auto_update = self.chk_auto_update.GetValue()
+
+    if self.auto_update and (self.main.unitcell_sentinel is None or not self.main.unitcell_sentinel.active):
+      self.main.start_unitcell_sentinel()
+    else:
+      self.main.stop_unitcell_sentinel()
 
   def onRefresh(self, e):
     self.find_trials()
