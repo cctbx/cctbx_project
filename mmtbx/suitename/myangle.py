@@ -1,4 +1,5 @@
 import sys, os, inspect
+import mainchain
 
 #                Copyright 2021  Richardson Lab
 # 
@@ -14,63 +15,75 @@ import sys, os, inspect
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from suitenamedefs import Residue, Suite, globals
 from iotbx.data_manager import DataManager    #   Load in the DataManager
-from mmtbx.validation import utils
-from cctbx import geometry_restraints
-from collections import defaultdict
 
 
-def main(options, outFile=None):
-  from mmtbx.suitename.suitename import compute, write, finalStats, clearStats
-  setOptions(options)
-  import suiteninput  # AFTER setOptions
+afile = r"C:\Users\Ken\Desktop\Richardson\molprobity\modules\cctbx_project\mmtbx\suitename\test\2v7r.pdb"
+# 1q9a for hard alt test
 
-  if not outFile:
-    outFile = sys.stdout
-  inFile = options.infile
-  model = loadModel(inFile)
-
-  residues = getResidueDihedrals(model)
-  if len(residues) == 0:
-      sys.stderr.write("read no residues: perhaps wrong alternate code\n")
-      sys.exit(1)
-  suiteList = suiteninput.buildSuites(residues)
-  suiteList = suiteList[:-1]
-  
-  suiteList = compute(suiteList)
-  finalStats()
-  write(outFile, suiteList)
-  clearStats()
-
-
-def setOptions(optionsIn):
-  from mmtbx.suitename.suitename import loadOptions
-  global options
-  options = optionsIn
-  globals.options = options
-  loadOptions(optionsIn)
+def main(inFile):
+  manager = loadModel(afile)
+  explore(manager)
 
 
 def loadModel(filename):
   dm = DataManager()             #   Initialize the DataManager and call it dm
   dm.set_overwrite(True)         #   tell the DataManager to overwrite files with the same name
   print("Reading file")
-  model = dm.get_model(filename)
-  print("Processing model")
-  model.process_input_model(make_restraints=True)
-  return model
+  manager = dm.get_model(filename)
+  return manager
 
 
-def testResidues(model):
-  print("computing dihedrals")
-  residues = getResidueDihedrals(model)
-  for r in residues:
-    print(r.pointIDs, " : ", r.angle)
+def explore(manager, altcode=''): # use A or B for real alt work
+  hierarchy = manager.get_hierarchy()
+  # models = hierarchy.models()
+  chains = hierarchy.chains()
+  for chain in chains:
+    print("chain ", chain.id)
+    conformers = list(chain.conformers())
+    confo = [c for c in chain.conformers() if c.altloc==altcode]
+    if len(confo)>0: 
+      conf = confo[0]
+    else:
+      print("*****no match for ", altcode)
+      continue
+    conformers = chain.conformers()
+    # only = chain.only_conformer() # assertion failure if it isn't the only
+    for conform in conformers:
+      print("conformer ", conform.altloc)
+      names = conform.get_residue_names_padded(pad=False)
+      if all((n == "HOH" for n in names)):
+        print("ignoring water chain")
+      else:
+        print(names)
+        ids = conform.get_residue_ids(pad=False)
+        print(ids)
+
+  # selection method
+  output = open("hierarchy.show.txt", "w")
+  out2 = open("atoms.show.txt", "w")
+  model = hierarchy.models()[0]
+#  selection = manager.selection("(name *' or name P) and altloc B")  # was "rna backbone"
+  selection = manager.selection("name *' or name P") 
+  print (len(selection))
+  # print (selection)
+  # print (list(selection.as_1d()))  # flex of bool;
+  all_atoms = hierarchy.atoms()
+  my_atoms = conf.atoms()
+  backbone_atoms = all_atoms.select(selection)
+  print(len(backbone_atoms))
+  backbone_hierarchy = hierarchy.select(selection)
+  backbone_hierarchy.show(output)
+  # for atom in backbone_atoms:
+  #   #print(atom.pdb_label_columns(), file=out2)  
+  #   print(atom.i_seq, atom.name, atom.serial)  
+  out2.close()
+  mainchain.build_dihedrals(backbone_atoms)
+  print("-- finished --")
 
 
 def getResidueDihedrals(model):
-  bb_dihedrals = defaultdict(dict)
+  # bb_dihedrals = defaultdict(dict)
   residues = []
   alt_tracker = {}
 
@@ -78,24 +91,35 @@ def getResidueDihedrals(model):
   #print(help(pdb_hierarchy))
   grm = model.get_restraints_manager() 
   # print(help(grm))
-  file = open(r"C:\Users\Ken\Desktop\Richardson\temp\model.pdb.geo", "w")
-  header = "# Geometry restraints\n",
-  grm.write_geo_file(
-        hierarchy = model.get_hierarchy(),
-        sites_cart=model.get_sites_cart(),
-        site_labels=model.get_site_labels(),
-        header=header,
-        # Stuff for outputting ncs_groups
-        # excessive_distance_limit = excessive_distance_limit,
-        # xray_structure=model.get_xray_structure(),
-        file_descriptor=file)
-  sites_cart = model.get_sites_cart() 
-  #sites_cart = pdb_hierarchy.atoms().extract_xyz()
+  # file = open(r"C:\Users\Ken\Desktop\Richardson\temp\model.pdb.geo", "w")
+  # header = "# Geometry restraints\n",
+  # grm.write_geo_file(
+  #       hierarchy = model.get_hierarchy(),
+  #       sites_cart=model.get_sites_cart(),
+  #       site_labels=model.get_site_labels(),
+  #       header=header,
+  #       # Stuff for outputting ncs_groups
+  #       # excessive_distance_limit = excessive_distance_limit,
+  #       # xray_structure=model.get_xray_structure(),
+  #       file_descriptor=file)
+  # sites_cart = model.get_sites_cart() 
+  # #sites_cart = pdb_hierarchy.atoms().extract_xyz()
 
   # 4/6/2021 office hours ideas:
-  selection = model.selection("rna backbone")
+  selection = model.selection("name *'")  # was "rna backbone"
   print (len(selection))
-  print (selection)
+  # print (selection)
+  print (list(selection.as_1d()))  # flex of bool;
+  all_atoms = pdb_hierarchy.atoms()
+  backbone_atoms = all_atoms.select(selection)
+  print(len(backbone_atoms))
+  backbone_hierarchy = pdb_hierarchy.select(selection)
+  backbone_hierarchy.show()
+  for atom in backbone_atoms:
+    print(atom.pdb_label_columns)
+  
+  return
+
   grm2 = grm.select(selection)
   file2 = open(r"C:\Users\Ken\Desktop\Richardson\temp\model2.pdb.geo", "w")
   grm2.write_geo_file(
@@ -359,3 +383,7 @@ def get_rna_backbone_dihedrals(model):
   for line in formatted_out:
     backbone_dihedrals += line+'\n'
   return backbone_dihedrals
+
+
+if __name__ == '__main__':
+  main(sys.argv[1:])

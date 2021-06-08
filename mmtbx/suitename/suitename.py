@@ -24,6 +24,9 @@
 # 09/18/2014 S.J. updated so that suitename will ignore DNA residues
 # 03/01/2021 Ken Brooks converted to Python
 
+import sys, os
+# print ("suitename: ", sys.path)
+
 from suitenamedefs import Suite, Residue, Bin, Cluster, Issue, failMessages
 from suitenamedefs import Holder, globals
 # suitenamedefs must come first!
@@ -31,7 +34,6 @@ import suiteninit, suiteninput
 from suiteninit import bins, MAX_CLUSTERS, normalWidths, satelliteWidths
 from suiteninput import readResidues, readKinemageFile, buildSuites
 
-import sys, os
 import numpy as np
 from math import cos, pi
 

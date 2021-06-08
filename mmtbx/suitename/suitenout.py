@@ -70,7 +70,7 @@ def string1Suite(outFile, suite):
 def reportSuite(outFile, suite):
     global reportCountAll, trigCountAll, suitenessSumAll, binSuiteCountAll
 
-    if not suite.valid: return
+#    if not suite.valid: return
 
     # 1. write one line of output for this suite
     reason = ""; note=""

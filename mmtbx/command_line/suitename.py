@@ -4,9 +4,8 @@
 
 from __future__ import absolute_import, division, print_function
 import sys
-from  suitename
-mmtbx.programs import
+from  mmtbx.programs import suitename
+
 if __name__ == '__main__':
-  print("-----------------command line reporting-----------------\n")
   suitename.run(args=sys.argv[1:])
   

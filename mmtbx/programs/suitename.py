@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys, os, pprint
+# pp = pprint.PrettyPrinter(indent=4)
+# pp.pprint (sys.path)
+
 from mmtbx.suitename import dualparse, suites
 from mmtbx.suitename.suitename import main, version
 
