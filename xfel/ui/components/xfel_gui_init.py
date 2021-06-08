@@ -724,6 +724,15 @@ class UnitCellSentinel(Thread):
   def run(self):
     import xfel.ui.components.xfel_gui_plotter as pltr
 
+    feature_vectors = {
+      "Triclinic": None,
+      "Monoclinic": "a,b,c",
+      "Orthorhombic": "a,b,c",
+      "Tetragonal": "a,c",
+      "Hexagonal": "a,c",
+      "Cubic": None,
+    }
+
     # one time post for an initial update
     self.post_refresh()
     self.db = xfel_db_application(self.parent.params)
@@ -758,14 +767,47 @@ class UnitCellSentinel(Thread):
       figure = self.parent.run_window.unitcell_tab.figure
       plotter = pltr.PopUpCharts(interactive=True, figure=figure)
 
-      figure.clear()
-      plotter.plot_uc_histogram(
-        info_list=info_list,
-        legend_list=legend_list,
-        xsize=(sizex-115)/82, ysize=(sizey-115)/82,
-        high_vis=self.parent.high_vis,
-        iqr_ratio=iqr_ratio)
-      figure.canvas.draw_idle()
+      if not self.parent.run_window.unitcell_tab.plot_clusters:
+        figure.clear()
+        plotter.plot_uc_histogram(
+          info_list=info_list,
+          legend_list=legend_list,
+          xsize=(sizex-115)/82, ysize=(sizey-115)/82,
+          high_vis=self.parent.high_vis,
+          iqr_ratio=iqr_ratio)
+        figure.canvas.draw_idle()
+      elif len(info_list) > 0:
+        from uc_metrics.clustering.step1 import phil_scope
+        from uc_metrics.clustering.step_dbscan3d import dbscan_plot_manager
+        from cctbx.sgtbx import space_group_info
+
+        if len(info_list) > 1:
+          print("Warning, only first tag set will be plotted")
+
+        params = phil_scope.extract()
+        sg = self.parent.run_window.unitcell_tab.trial.cell.lookup_symbol
+        sg = "".join(sg.split()) # remove spaces
+        params.input.space_group = sg
+
+        iterable = ["{a} {b} {c} {alpha} {beta} {gamma} ".format(**c) + sg for c in info_list[0]]
+        params.input.__inject__('iterable', iterable)
+        params.file_name = None
+        params.eps = float(self.parent.run_window.unitcell_tab.plot_eps.eps.GetValue())
+        params.show_plot = True
+        params.plot.legend = legend_list[0]
+
+        sginfo = space_group_info(params.input.space_group)
+        cs = sginfo.group().crystal_system()
+        params.input.feature_vector = feature_vectors.get(cs)
+
+        if params.input.feature_vector:
+          figure = self.parent.run_window.unitcell_tab.figure
+          figure.clear()
+          plots = dbscan_plot_manager(params)
+          plots.wrap_3D_features(fig = figure, embedded = True)
+          figure.canvas.draw_idle()
+        else:
+          print("Unsupported crystal system", cs)
 
       self.post_refresh()
       self.parent.run_window.unitcell_light.change_status('on')
@@ -2455,6 +2497,7 @@ class UnitCellTab(BaseTab):
     self.tags = []
     self.tag_sets = []
     self.reject_outliers = True
+    self.plot_clusters = False
 
     # self.tab_panel = wx.Panel(self, size=(300, 300))
     self.tab_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -2516,6 +2559,23 @@ class UnitCellTab(BaseTab):
     self.chk_reject_outliers = wx.CheckBox(self.selection_columns_panel, label='Reject outliers')
     self.chk_reject_outliers.SetValue(True)
 
+    self.chk_plot_clusters = wx.CheckBox(self.selection_columns_panel, label='Plot clusters')
+
+    self.plot_eps = gctr.OptionCtrl(self.selection_columns_panel,
+                                    name='uc_plot_eps',
+                                    label='Cluster epsilon',
+                                    sub_labels=[''],
+                                    label_size=(160, -1),
+                                    ctrl_size=(50, -1),
+                                    items=[('eps', 0.8)])
+    self.plot_eps.eps.Disable()
+
+    try:
+      import uc_metrics # import dependency
+    except ImportError:
+      self.chk_plot_clusters.Hide()
+      self.plot_eps.Hide()
+
     self.add_sele_sizer = wx.GridBagSizer(4, 1)
     self.add_sele_sizer.Add(self.trial_number, pos=(0, 0),
                             flag=wx.ALL, border=0)
@@ -2535,8 +2595,9 @@ class UnitCellTab(BaseTab):
     self.remove_sele_sizer.Add(self.reset_sele_button, pos=(2, 0),
                                flag=wx.ALL)
     self.selection_columns_sizer.Add(self.remove_sele_sizer, flag=wx.ALL | wx.EXPAND, border=10)
-
     self.selection_columns_sizer.Add(self.chk_reject_outliers, flag=wx.ALL | wx.EXPAND, border=10)
+    self.selection_columns_sizer.Add(self.chk_plot_clusters, flag=wx.ALL | wx.EXPAND, border=10)
+    self.selection_columns_sizer.Add(self.plot_eps, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.unit_cell_panel = wx.Panel(self, size=(200, 120))
     self.unit_cell_box = wx.StaticBox(self.unit_cell_panel, label='Unit cell analysis')
@@ -2569,11 +2630,14 @@ class UnitCellTab(BaseTab):
     self.main_sizer.Add(self.tab_sizer, 1,
                         flag=wx.EXPAND | wx.ALL, border=10)
 
+    self.selection_columns_sizer.Layout()
+
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
     self.Bind(wx.EVT_BUTTON, self.onAddTagSet, self.add_sele_button)
     self.Bind(wx.EVT_BUTTON, self.onRemoveTagSet, self.remove_sele_button)
     self.Bind(wx.EVT_BUTTON, self.onResetTagSets, self.reset_sele_button)
     self.Bind(wx.EVT_CHECKBOX, self.onChkRejectOutliers, self.chk_reject_outliers)
+    self.Bind(wx.EVT_CHECKBOX, self.onChkPlotClusters, self.chk_plot_clusters)
     self.Bind(EVT_UNITCELL_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_SIZE, self.OnSize)
 
@@ -2656,6 +2720,13 @@ class UnitCellTab(BaseTab):
 
   def onChkRejectOutliers(self, e):
     self.reject_outliers = self.chk_reject_outliers.GetValue()
+
+  def onChkPlotClusters(self, e):
+    self.plot_clusters = self.chk_plot_clusters.GetValue()
+    if self.plot_clusters:
+      self.plot_eps.eps.Enable()
+    else:
+      self.plot_eps.eps.Disable()
 
   def onRefresh(self, e):
     self.find_trials()
