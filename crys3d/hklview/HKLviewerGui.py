@@ -10,18 +10,18 @@
 
 from __future__ import absolute_import, division, print_function
 
-from PySide2.QtWebEngineWidgets import QWebEngineView
+from .qt import QWebEngineView
 try: # if invoked by cctbx.python or some such
   from crys3d.hklview.helpers import HeaderDataTableWidget
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
   from helpers import HeaderDataTableWidget
 
-from PySide2.QtCore import QCoreApplication, QMetaObject, QRect, QSize, Qt
-from PySide2.QtWidgets import QAbstractItemView, QAction, QCheckBox, QComboBox, \
+from .qt import QCoreApplication, QMetaObject, QRect, QSize, Qt
+from .qt import QAbstractItemView, QAction, QCheckBox, QComboBox, \
  QDoubleSpinBox, QFrame, QGridLayout, QGroupBox, QLabel, QMenu, QMenuBar, \
  QPlainTextEdit, QPushButton, QRadioButton, QSlider, QSplitter, QSizePolicy, QSpinBox, \
  QStatusBar, QTableWidget, QTabWidget, QTextEdit, QWidget
-from PySide2.QtGui import QIcon
+from .qt import QIcon
 
 
 class Ui_MainWindow(object):
@@ -875,10 +875,9 @@ class Ui_MainWindow(object):
         self.splitter.addWidget(self.BrowserBox)
 
         self.gridLayout.addWidget(self.splitter, 0, 0, 1, 1)
-
-
         self.gridLayout_2.addWidget(self.widget, 0, 0, 1, 1)
 
+        """
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
@@ -905,6 +904,7 @@ class Ui_MainWindow(object):
         self.menuHelp.addAction(self.actionHKLviewer_Tutorial)
         self.menuHelp.addAction(self.actionCCTBXwebsite)
         self.menuHelp.addAction(self.actionAbout)
+        """
 
         self.retranslateUi(MainWindow)
 
@@ -1045,6 +1045,6 @@ class Ui_MainWindow(object):
         self.label_6.setText(QCoreApplication.translate("MainWindow", u"True to Scale", None))
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"Close to radius of sphere of reflections", None))
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_5), QCoreApplication.translate("MainWindow", u"Vectors", None))
-        self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
-        self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", u"Help", None))
+        #self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
+        #self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", u"Help", None))
     # retranslateUi
