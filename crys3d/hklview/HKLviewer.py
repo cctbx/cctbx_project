@@ -16,15 +16,15 @@ if sys.version_info[0] < 3:
   print("HKLviewer GUI must be run from Python 3")
   sys.exit(-42)
 
-from PySide2.QtCore import Qt, QEvent, QItemSelectionModel, QSize, QSettings, QTimer
-from PySide2.QtWidgets import (  QAction, QCheckBox, QComboBox, QDialog,
-        QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
-        QMainWindow, QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
-        QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableView, QTableWidget,
-        QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget )
+from .qt import Qt, QCoreApplication, QEvent, QItemSelectionModel, QSize, QSettings, QTimer
+from .qt import (  QAction, QCheckBox, QComboBox, QDialog, QDoubleSpinBox, 
+    QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
+    QMainWindow, QMenu, QMenuBar, QProgressBar, QPushButton, QRadioButton, QRect, 
+    QScrollBar, QSizePolicy, QSlider, QSpinBox, QStyleFactory, QStatusBar, QTableView, QTableWidget,
+    QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget )
 
-from PySide2.QtGui import QColor, QFont, QCursor, QDesktopServices
-from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
+from .qt import QColor, QFont, QCursor, QDesktopServices
+from .qt import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
 
 try: # if invoked by cctbx.python or some such
   from crys3d.hklview import HKLviewerGui
@@ -176,11 +176,62 @@ class MyQMainWindow(QMainWindow):
     event.accept()
 
 
+class MyQMainDialog(QDialog):
+  def __init__(self, parent):
+    super(MyQMainDialog, self).__init__()
+    self.parent = parent
+
+  def closeEvent(self, event):
+    self.parent.closeEvent(event)
+    event.accept()
+
 
 class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
-  def __init__(self, thisapp):
-    self.window = MyQMainWindow(self)
+  def __init__(self, thisapp, isembedded=False):
+    if isembedded:
+      self.window = MyQMainDialog(self)
+      self.setupUi(self.window)
+      #mainLayout = QGridLayout()
+      #mainLayout.addWidget(self.widget, 0, 0)
+      self.window.setLayout(self.gridLayout_2)
+    else:
+      self.window = MyQMainWindow(self)
+
     self.setupUi(self.window)
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    if isembedded:
+      mainLayout = QGridLayout()
+      mainLayout.addWidget(self.widget, 0, 0)
+      self.window.setLayout(mainLayout)
+    else:
+      self.window.setCentralWidget(self.centralwidget)
+      self.menubar = QMenuBar(self.window)
+      self.menubar.setObjectName(u"menubar")
+      self.menubar.setGeometry(QRect(0, 0, 1093, 22))
+      self.menuFile = QMenu(self.menubar)
+      self.menuFile.setObjectName(u"menuFile")
+      self.menuHelp = QMenu(self.menubar)
+      self.menuHelp.setObjectName(u"menuHelp")
+      self.window.setMenuBar(self.menubar)
+      self.statusBar = QStatusBar(self.window)
+      self.statusBar.setObjectName(u"statusBar")
+      self.window.setStatusBar(self.statusBar)
+      self.menubar.addAction(self.menuFile.menuAction())
+      self.menubar.addAction(self.menuHelp.menuAction())
+      self.menuFile.addAction(self.actionOpen_reflection_file)
+      self.menuFile.addAction(self.actionSave_reflection_file)
+      self.menuFile.addAction(self.actionSettings)
+      self.menuFile.addAction(self.actiondebug)
+      self.menuFile.addAction(self.actionColour_Gradient)
+      self.menuFile.addAction(self.actionSave_Current_Image)
+      self.menuFile.addAction(self.actionExit)
+      self.menuHelp.addAction(self.actionLocal_Help)
+      self.menuHelp.addAction(self.actionHKLviewer_Tutorial)
+      self.menuHelp.addAction(self.actionCCTBXwebsite)
+      self.menuHelp.addAction(self.actionAbout)
+      self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
+      self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", u"Help", None))
+
     self.app = thisapp
     self.actiondebug.setVisible(False)
     self.UseOSBrowser = False
@@ -369,25 +420,27 @@ newarray._sigmas = sigs
     self.millertablemenu = QMenu(self.window)
     self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
     self.functionTabWidget.setDisabled(True)
-    self.window.statusBar().showMessage("")
-    self.hklLabel = QLabel()
-    self.hklLabel.setText("HKL vectors along X-axis, Y-axis, Z-axis:")
-    self.Statusbartxtbox = QLineEdit('')
-    self.Statusbartxtbox.setReadOnly(True)
-    self.Statusbartxtbox.setAlignment(Qt.AlignRight)
-    self.window.statusBar().addPermanentWidget(self.hklLabel)
-    self.window.statusBar().addPermanentWidget(self.Statusbartxtbox, 1)
-    self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
-    self.actionLocal_Help.triggered.connect(self.onOpenHelpFile)
-    self.actionHKLviewer_Tutorial.triggered.connect(self.onOpenTutorialHelpFile)
-    self.actionCCTBXwebsite.triggered.connect(self.onOpenCCTBXwebsite)
-    self.actiondebug.triggered.connect(self.DebugInteractively)
-    self.actionSave_Current_Image.triggered.connect(self.onSaveImage)
-    self.actionSettings.triggered.connect(self.SettingsDialog)
-    self.actionAbout.triggered.connect(self.aboutform.show)
-    self.actionExit.triggered.connect(self.window.close)
-    self.actionSave_reflection_file.triggered.connect(self.onSaveReflectionFile)
-    self.actionColour_Gradient.triggered.connect(self.ColourMapSelectDlg.show)
+    if not isembedded:
+      self.window.statusBar().showMessage("")
+      self.hklLabel = QLabel()
+      self.hklLabel.setText("HKL vectors along X-axis, Y-axis, Z-axis:")
+      self.Statusbartxtbox = QLineEdit('')
+      self.Statusbartxtbox.setReadOnly(True)
+      self.Statusbartxtbox.setAlignment(Qt.AlignRight)
+      self.window.statusBar().addPermanentWidget(self.hklLabel)
+      self.window.statusBar().addPermanentWidget(self.Statusbartxtbox, 1)
+      self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
+      self.actionLocal_Help.triggered.connect(self.onOpenHelpFile)
+      self.actionHKLviewer_Tutorial.triggered.connect(self.onOpenTutorialHelpFile)
+      self.actionCCTBXwebsite.triggered.connect(self.onOpenCCTBXwebsite)
+      self.actiondebug.triggered.connect(self.DebugInteractively)
+      self.actionSave_Current_Image.triggered.connect(self.onSaveImage)
+      self.actionSettings.triggered.connect(self.SettingsDialog)
+      self.actionAbout.triggered.connect(self.aboutform.show)
+      self.actionExit.triggered.connect(self.window.close)
+      self.actionSave_reflection_file.triggered.connect(self.onSaveReflectionFile)
+      self.actionColour_Gradient.triggered.connect(self.ColourMapSelectDlg.show)
+
     self.functionTabWidget.setCurrentIndex(0) # if accidentally set to a different tab in the Qtdesigner
     self.window.show()
 
@@ -1834,7 +1887,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.send_message(str(self.datatypedict), msgtype="dict")
 
 
-def run():
+def run(isembedded=False):
   import time
   #time.sleep(10) # enough time for attaching debugger
   try:
@@ -1893,7 +1946,7 @@ def run():
     # ensure QWebEngineView scales correctly on a screen with high DPI
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     app = QApplication(sys.argv)
-    guiobj = NGL_HKLViewer(app)
+    guiobj = NGL_HKLViewer(app, isembedded)
     time.sleep(1) # make time for zmq_listen loop to start in cctbx subprocess
 
     def MyAppClosing():
@@ -1947,5 +2000,5 @@ def run():
     print( str(e)  +  traceback.format_exc(limit=10) )
 
 
-if (__name__ == "__main__") :
-  run()
+#if (__name__ == "__main__") :
+#  run()
