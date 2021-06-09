@@ -14,8 +14,11 @@ class kokkos_instance {
 
     void finalize_kokkos();
 
+    int get_deviceID() const;
+
   private:
-    bool bFinalized;
+    bool bFinalized = false;
+    int deviceID = -1;
    
 };
 } // Kokkos

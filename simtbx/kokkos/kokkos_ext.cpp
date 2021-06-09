@@ -16,6 +16,7 @@ namespace simtbx { namespace Kokkos {
       using namespace boost::python;
       class_<simtbx::Kokkos::kokkos_instance>("kokkos_instance",init<>() )
         .def(init< const int& >(( arg("deviceId"))))
+        .def("get_deviceID", &simtbx::Kokkos::kokkos_instance::get_deviceID)
         .def("finalize_kokkos", &simtbx::Kokkos::kokkos_instance::finalize_kokkos)
         ;
     }
