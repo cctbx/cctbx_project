@@ -278,7 +278,7 @@ class AtomTypes:
       [ 8, "O",  "oxygen",             1.40, 1.40, 1.50, 0.66, "red",    AtomFlags.ACCEPTOR_ATOM],
       [15, "P",  "phosphorus",         1.80, 1.80, 1.80, 1.10, "pink",   AtomFlags.EMPTY_FLAGS],
       [16, "S",  "sulfur",             1.80, 1.80, 1.90, 1.04, "yellow", AtomFlags.ACCEPTOR_ATOM],
-      [33, "As", "arsnic",             2.00, 2.00, 2.10, 1.21, "grey",   AtomFlags.EMPTY_FLAGS],
+      [33, "As", "arsenic",            2.00, 2.00, 2.10, 1.21, "grey",   AtomFlags.EMPTY_FLAGS],
       [34, "Se", "selenium",           1.90, 1.90, 2.00, 1.17, "green",  AtomFlags.EMPTY_FLAGS],
       [ 9, "F",  "fluorine",           1.30, 1.30, 1.30, 0.58, "green",  AtomFlags.ACCEPTOR_ATOM],
       [17, "Cl", "chlorine",           1.77, 1.77, 1.77, 0.99, "green",  AtomFlags.ACCEPTOR_ATOM],
