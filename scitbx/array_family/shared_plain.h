@@ -82,7 +82,7 @@ namespace scitbx { namespace af {
       }
 
       virtual void deallocate() {
-        if (data != nullptr) {
+        if (data != NULL) {
 #ifdef SCITBX_AF_HAS_ALIGNED_MALLOC
             aligned_free(data);
 #else
