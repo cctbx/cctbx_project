@@ -9,16 +9,17 @@
 #include <Kokkos_Core.hpp>
 
 using simtbx::nanoBragg::hklParams;
+typedef Kokkos::View<CUDAREAL*> view_vector_type;
 namespace simtbx {
-namespace kokkos {
+namespace Kokkos {
 
 namespace af = scitbx::af;
 typedef cctbx::miller::index<int> miller_t;
 typedef af::shared<miller_t > indices;
 
 struct kokkos_energy_channels {
-  kokkos_energy_channels(){printf("NO OPERATION, NO DEVICE NUMBER");};
-  kokkos_energy_channels(int const&);
+  kokkos_energy_channels(){};
+  //kokkos_energy_channels(int const&);
 
   inline
   void structure_factors_to_KOKKOS_direct_cuda(
@@ -51,6 +52,11 @@ struct kokkos_energy_channels {
         if(verbose) printf("l: %d - %d\n",l_min,l_max);
         SCITBX_ASSERT (!(h_range < 0 || k_range < 0 || l_range < 0));
     }
+    host_FhklParams = { h_range * k_range * l_range,
+                        h_min, h_max, h_range, 
+                        k_min, k_max, k_range,
+                        l_min, l_max, l_range };
+
     af::shared<double> linear_amplitudes;
     if(pythony_indices.size() && pythony_amplitudes.size()) {
       linear_amplitudes = af::shared<double>( h_range * k_range * l_range, default_F);
@@ -68,21 +74,21 @@ struct kokkos_energy_channels {
   }
   void structure_factors_to_KOKKOS_detail(af::shared<double>);
 
-  inline int get_deviceID(){return h_deviceID;}
+  //inline int get_deviceID(){return h_deviceID;}
   inline int get_nchannels(){return d_channel_Fhkl.size();}
   void free_detail();
-  inline ~kokkos_energy_channels(){ if (d_channel_Fhkl.size() > 0) {free_detail();} }
+  //inline ~kokkos_energy_channels(){ if (d_channel_Fhkl.size() > 0) {free_detail();} }
 
     double F000 = 0.0;        // to mark beam center
     double default_F = 0.0;
     int verbose = 0;
     int h_range,k_range,l_range,h_min,h_max,k_min,k_max,l_min,l_max;
-    int h_deviceID;
+    //int h_deviceID;
 
   /* pointers to data on device */
-  af::shared<double *> d_channel_Fhkl;
-  hklParams * cu_FhklParams;
+  af::shared<view_vector_type> d_channel_Fhkl;
+  hklParams host_FhklParams;
 };
-} // kokkos
+} // Kokkos
 } // simtbx
 #endif // SIMTBX_KOKKOS_STRUCTURE_FACTORS_H
