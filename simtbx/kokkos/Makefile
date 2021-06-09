@@ -19,7 +19,7 @@ EXE = ${EXE_NAME}.host
 KOKKOS_ARCH = "BDW"
 endif
 
-CXXFLAGS = -O3 -fPIC
+CXXFLAGS = -O3 -fPIC -DCUDAREAL=double
 LINK = ${CXX}
 LINKFLAGS =
 
