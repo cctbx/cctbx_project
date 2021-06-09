@@ -11,12 +11,18 @@ namespace Kokkos {
     printf("NO OPERATION, NO DEVICE NUMBER");
   }
 
-  kokkos_instance::kokkos_instance(int const& deviceId) {
+  kokkos_instance::kokkos_instance(int const& t_deviceID) {
     InitArguments kokkos_init;
-    kokkos_init.device_id = deviceId;
+    kokkos_init.device_id = t_deviceID;
 
     initialize(kokkos_init);
     bFinalized = false;
+    deviceID = t_deviceID;
+  }
+
+  int
+  kokkos_instance::get_deviceID() const {
+    return deviceID;
   }
 
   void
