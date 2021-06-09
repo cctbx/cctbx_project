@@ -88,7 +88,7 @@ steps:
     source ./build/setpaths.sh
     mkdir tests
     cd tests
-    libtbx.configure xfel_regression LS49 ls49_big_data
+    libtbx.configure xfel_regression LS49 ls49_big_data lunus
     chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/xfel_merge.sh
     chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/merge_thermo.csh
     export OMP_NUM_THREADS=4
