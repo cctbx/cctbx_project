@@ -16,14 +16,17 @@ import mainchain
 # limitations under the License.
 
 from iotbx.data_manager import DataManager    #   Load in the DataManager
+from mmtbx.validation import utils
 
 
-afile = r"C:\Users\Ken\Desktop\Richardson\molprobity\modules\cctbx_project\mmtbx\suitename\test\2v7r.pdb"
+afile = r"C:\Users\Ken\Desktop\Richardson\molprobity\modules\cctbx_project\mmtbx\suitename\test\4fen.pdb"
 # 1q9a for hard alt test
 
 def main(inFile):
   manager = loadModel(afile)
-  explore(manager)
+  residues = get_dihedrals(manager)
+  for r in residues:
+    print(residueString(r))
 
 
 def loadModel(filename):
@@ -34,10 +37,21 @@ def loadModel(filename):
   return manager
 
 
-def explore(manager, altcode=''): # use A or B for real alt work
+def get_dihedrals(manager, altcode=''): # use A or B for real alt work
   hierarchy = manager.get_hierarchy()
-  # models = hierarchy.models()
-  chains = hierarchy.chains()
+  i_seq_name_hash = utils.build_name_hash(pdb_hierarchy=hierarchy)
+
+  output = open("hierarchy.show.txt", "w")
+  out2 = open("atoms.show.txt", "w")
+  model = hierarchy.models()[0]  #!!!
+  selector = "name P or name O5' or name C5' or name C4' or name C3' or name O3'"
+  selection = manager.selection(selector) 
+  print (len(selection))
+  backbone_hierarchy = hierarchy.select(selection)
+  backbone_hierarchy.show(output)
+  chains = backbone_hierarchy.chains()
+  all_residues = []
+  
   for chain in chains:
     print("chain ", chain.id)
     conformers = list(chain.conformers())
@@ -46,40 +60,33 @@ def explore(manager, altcode=''): # use A or B for real alt work
       conf = confo[0]
     else:
       print("*****no match for ", altcode)
+      conf = conformers[0]
+      
+    names = conf.get_residue_names_padded(pad=False)
+    if all((n == "HOH" for n in names)):
+      print("ignoring water chain")
       continue
-    conformers = chain.conformers()
-    # only = chain.only_conformer() # assertion failure if it isn't the only
-    for conform in conformers:
-      print("conformer ", conform.altloc)
-      names = conform.get_residue_names_padded(pad=False)
-      if all((n == "HOH" for n in names)):
-        print("ignoring water chain")
-      else:
-        print(names)
-        ids = conform.get_residue_ids(pad=False)
-        print(ids)
+    print(list(names))
+    ids = conf.get_residue_ids(pad=False)
+    print(list(ids))
+    backbone_atoms = conf.atoms()
 
-  # selection method
-  output = open("hierarchy.show.txt", "w")
-  out2 = open("atoms.show.txt", "w")
-  model = hierarchy.models()[0]
-#  selection = manager.selection("(name *' or name P) and altloc B")  # was "rna backbone"
-  selection = manager.selection("name *' or name P") 
-  print (len(selection))
-  # print (selection)
-  # print (list(selection.as_1d()))  # flex of bool;
-  all_atoms = hierarchy.atoms()
-  my_atoms = conf.atoms()
-  backbone_atoms = all_atoms.select(selection)
-  print(len(backbone_atoms))
-  backbone_hierarchy = hierarchy.select(selection)
-  backbone_hierarchy.show(output)
-  # for atom in backbone_atoms:
-  #   #print(atom.pdb_label_columns(), file=out2)  
-  #   print(atom.i_seq, atom.name, atom.serial)  
+    print(len(backbone_atoms))
+    for atom in backbone_atoms:
+      print(atom.pdb_label_columns(), file=out2)  
+    residues = mainchain.build_dihedrals(backbone_atoms, chain.id, altcode)
+    all_residues.extend(residues)
+    print("chain ", chain.id, " complete")
   out2.close()
-  mainchain.build_dihedrals(backbone_atoms)
   print("-- finished --")
+  return all_residues
+
+# for debug printouts
+def residueString(r):
+    sizes=[1, 1, 3, 1, 1, 3]
+    id = "".join([f"{x:{y}}:" for x, y in zip(r.pointIDs, sizes)])
+    angles = "".join([f"{a:8.3f}:" for a in r.angle])
+    return id + angles[:-1]
 
 
 def getResidueDihedrals(model):

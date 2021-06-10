@@ -1,6 +1,8 @@
 import sys
 output = sys.stdout
 from scitbx.matrix import dihedral_angle
+from mmtbx.validation import utils
+from suitenamedefs import Residue, findBase
 
 
 n = "alpha beta gamma delta epsilon zeta"
@@ -20,24 +22,40 @@ dihedrals = (
 )
 
 
-def build_dihedrals(mainchain): 
-    print (mainchain.extract_name())
-    backbone = []
-    for atom in mainchain:
-        if atom.name.strip() in bones:
-            backbone.append(atom)
-    #help(mainchain)
-    backbone2 = [atom for atom in mainchain if atom.name.strip() in bones]
-    sanity = (backbone == backbone2)
-    for atom in backbone2:
-      print(atom.i_seq, atom.name)  
+def build_dihedrals(mainchain, chainID, alt): 
+    residues = []
+    # print (list(mainchain.extract_name()))
+    # gives a list of atom names
+
+    backbone = [atom for atom in mainchain if atom.name.strip() in bones]
+    # sanity = (backbone == backbone2)
+    for atom in backbone:
+      print(atom.serial, atom.name)  
     i = find_start(backbone)
+    residue = None
     for k in range(len(backbone) - 3):
         name, angle = easy_make_dihedral(backbone, i, k)
-        labels = backbone[k + 1].fetch_labels()
-        residue = int(labels.resseq)
-        print(residue, name, angle,)
+        pivot = backbone[k + 1]
+        labels = pivot.fetch_labels()
+        res_number = int(labels.resseq)
+        print(res_number, name, angle,)
+        if residue is None or res_number != residue.sequence:
+            # we are seeing our first of a new residue
+            residue = Residue("", "", [9999, 9999, 9999, 9999, 9999, 9999])
+            residue.sequence = res_number
+            grandpa = pivot.parent().parent()
+            # print(grandpa.id_str(),grandpa.resid())
+            residue_name = grandpa.unique_resnames()[0]
+            print(residue_name)
+            id = ("1", chainID, res_number, "", alt, residue_name)
+            residue.pointIDs = id
+            base = findBase(residue_name)
+            residue.base = base
+            if base is not None:
+                residues.append(residue)
+        residue.angle[i] = angle
         i = (i + 1) % 6
+    return residues
 
 
 def find_start(backbone):
@@ -82,4 +100,23 @@ def make_groups():
         output.write("))\n")
         i = i+1
 
+
+def build_dihedrals1(mainchain): 
+    print (mainchain.extract_name())
+    backbone = []
+    for atom in mainchain:
+        if atom.name.strip() in bones:
+            backbone.append(atom)
+    #help(mainchain)
+    backbone2 = [atom for atom in mainchain if atom.name.strip() in bones]
+    sanity = (backbone == backbone2)
+    for atom in backbone2:
+      print(atom.i_seq, atom.name)  
+    i = find_start(backbone)
+    for k in range(len(backbone) - 3):
+        name, angle = easy_make_dihedral(backbone, i, k)
+        labels = backbone[k + 1].fetch_labels()
+        residue = int(labels.resseq)
+        print(residue, name, angle,)
+        i = (i + 1) % 6
 
