@@ -280,7 +280,7 @@ master_params_str = """\
   include_in_automatic_linking
     .optional = True
     .multiple = True
-    .short_caption = exclude
+    .short_caption = Include the two atoms in the linking list
     .style = noauto auto_align
   {
     selection_1 = None
@@ -293,7 +293,7 @@ master_params_str = """\
   exclude_from_automatic_linking
     .optional = True
     .multiple = True
-    .short_caption = exclude
+    .short_caption = Exclude the two atoms from any linking
     .style = noauto auto_align
   {
     selection_1 = None
