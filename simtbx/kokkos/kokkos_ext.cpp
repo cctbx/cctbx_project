@@ -32,6 +32,9 @@ namespace simtbx { namespace Kokkos {
              &simtbx::Kokkos::kokkos_energy_channels::structure_factors_to_KOKKOS_direct_cuda,
              (arg_("dummy_int"), arg_("indices"), arg_("amplitudes"))
             )
+        .def("print_Fhkl", &simtbx::Kokkos::kokkos_energy_channels::print_Fhkl,
+             (arg_("channel"), arg_("elements"))
+            )
         ;
     }
   };
