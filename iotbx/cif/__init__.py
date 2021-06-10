@@ -471,10 +471,11 @@ Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31."
     #gaussian = gaussian_dict[sc.scattering_type]
     gaussian_a = ["%.5f" %a for a in gaussian.array_of_a()]
     gaussian_b = ["%.5f" %a for a in gaussian.array_of_b()]
+    gaussian_c = "%.5f" %gaussian.c()
     gaussian_a.extend(["."]*(max_n_gaussians-gaussian.n_terms()))
     gaussian_b.extend(["."]*(max_n_gaussians-gaussian.n_terms()))
     row.extend(gaussian_a + gaussian_b)
-    row.extend([gaussian.c(), scat_source, disp_source])
+    row.extend([gaussian_c, scat_source, disp_source])
     atom_type_loop.add_row(row)
 
   return atom_type_loop
