@@ -73,7 +73,7 @@ struct kokkos_energy_channels {
     structure_factors_to_KOKKOS_detail(linear_amplitudes);
   }
   void structure_factors_to_KOKKOS_detail(af::shared<double>);
-  void print_Fhkl(int channel, int elements);
+  void print_Fhkl(int channel, int first_element, int last_element);
 
 
   //inline int get_deviceID(){return h_deviceID;}

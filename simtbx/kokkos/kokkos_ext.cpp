@@ -33,7 +33,7 @@ namespace simtbx { namespace Kokkos {
              (arg_("dummy_int"), arg_("indices"), arg_("amplitudes"))
             )
         .def("print_Fhkl", &simtbx::Kokkos::kokkos_energy_channels::print_Fhkl,
-             (arg_("channel"), arg_("elements"))
+             (arg_("channel"), arg_("first_element"), arg_("last_element"))
             )
         ;
     }
