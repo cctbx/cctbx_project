@@ -322,7 +322,7 @@ namespace sx_merging {
               }
               else {
                 corr_coeff = -1.;
-                n_obs = -1;
+                n_obs = corr.n();
               }
 
 
@@ -330,11 +330,28 @@ namespace sx_merging {
 
             }
 
+            int ik = i_row + (n_lattices * k);
+            int jk = j_col + (n_lattices * kk);
+
+            /*
+             * Note: As of dials commit 1cd5afe42, the wij matrix is still
+             * populated even if n_obs < n_obs_min. We will match that behavior
+             * here.
+             * */
+            if (weights_ == "count") {
+              wij_row.push_back(ik);
+              wij_col.push_back(jk);
+              wij_data.push_back(n_obs);
+              if (i_row != j_col) {
+                wij_row.push_back(jk);
+                wij_col.push_back(ik);
+                wij_data.push_back(n_obs);
+              }
+            }
+
             if (n_obs==-1 || corr_coeff == -1. || n_obs < n_obs_min_)
               continue;
             else {
-              int ik = i_row + (n_lattices * k);
-              int jk = j_col + (n_lattices * kk);
               rij_row.push_back(ik);
               rij_col.push_back(jk);
               rij_data.push_back(corr_coeff);
@@ -342,16 +359,6 @@ namespace sx_merging {
                 rij_row.push_back(jk);
                 rij_col.push_back(ik);
                 rij_data.push_back(corr_coeff);
-              }
-              if (weights_ == "count") {
-                wij_row.push_back(ik);
-                wij_col.push_back(jk);
-                wij_data.push_back(n_obs);
-                if (i_row != j_col) {
-                  wij_row.push_back(jk);
-                  wij_col.push_back(ik);
-                  wij_data.push_back(n_obs);
-                }
               }
             }
 
