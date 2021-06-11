@@ -45,6 +45,7 @@ dependencies:
  - mrcfile
  - psutil
  - distro
+ - pandas
 
  # cctbx channel
  - libsvm_py

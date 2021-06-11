@@ -41,6 +41,7 @@ dependencies:
  - mrcfile
  - psutil
  - mpi4py
+ - pandas
 
  # cctbx channel
  - libsvm_py
