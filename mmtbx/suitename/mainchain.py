@@ -47,7 +47,7 @@ def build_dihedrals(mainchain, chainID, alt):
             # print(grandpa.id_str(),grandpa.resid())
             residue_name = grandpa.unique_resnames()[0]
             print(residue_name)
-            id = ("1", chainID, res_number, "", alt, residue_name)
+            id = ("1", chainID, labels.resseq, "", alt, residue_name)
             residue.pointIDs = id
             base = findBase(residue_name)
             residue.base = base
@@ -75,6 +75,8 @@ def easy_make_dihedral(backbone, i, k):
             points = [atom.xyz for atom in clump]
             name = dh[0]
             angle = dihedral_angle(sites=points, deg=True) 
+            if angle < 0:  # suitename standard: all angles are positive
+                angle += 360.0            
             return name, angle
     return "failure: " + str(group_names), 9999
                 

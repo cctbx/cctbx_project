@@ -24,7 +24,7 @@ afile = r"C:\Users\Ken\Desktop\Richardson\molprobity\modules\cctbx_project\mmtbx
 
 def main(inFile):
   manager = loadModel(afile)
-  residues = get_dihedrals(manager)
+  residues = getResidueDihedrals(manager)
   for r in residues:
     print(residueString(r))
 
@@ -37,7 +37,7 @@ def loadModel(filename):
   return manager
 
 
-def get_dihedrals(manager, altcode=''): # use A or B for real alt work
+def getResidueDihedrals(manager, altcode=''): # use A or B for real alt work
   hierarchy = manager.get_hierarchy()
   i_seq_name_hash = utils.build_name_hash(pdb_hierarchy=hierarchy)
 
@@ -89,7 +89,7 @@ def residueString(r):
     return id + angles[:-1]
 
 
-def getResidueDihedrals(model):
+def oldgetResidueDihedrals(model):
   # bb_dihedrals = defaultdict(dict)
   residues = []
   alt_tracker = {}

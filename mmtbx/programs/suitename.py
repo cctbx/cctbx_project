@@ -53,9 +53,6 @@ def run(args):
       type = analyzeFileType(options.infile)
       assert type != "", "file extension not recognized"
       if type == "pdb":
-          # use cctbx to load the pdb file
-          # then operate on the model loaded
-
           suites.main(options=options)
       else:
         # help the core figure out the input file type
