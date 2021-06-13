@@ -3,14 +3,13 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import matplotlib.pyplot as plt
-from PySide2 import QtWidgets
-from PySide2.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-from PySide2.QtCore import Qt, QEvent, QAbstractTableModel, QModelIndex
-from PySide2.QtGui import QCursor, QKeySequence
-from PySide2.QtWidgets import ( QAbstractItemView, QCheckBox, QTableWidget, QAction,
+from .qt import QtWidgets
+from .qt import Qt, QEvent, QAbstractTableModel, QModelIndex
+from .qt import QCursor, QKeySequence
+from .qt import ( QAbstractItemView, QCheckBox, QTableWidget, QAction,
       QMenu, QTableView, QDialog, QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
       QScrollArea, QVBoxLayout
      )

@@ -7,12 +7,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1093</width>
+    <width>844</width>
     <height>862</height>
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+   <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
@@ -21,9 +21,21 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
    <layout class="QGridLayout" name="gridLayout_2">
     <item row="0" column="0">
      <widget class="QWidget" name="widget" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <layout class="QGridLayout" name="gridLayout">
        <property name="leftMargin">
         <number>0</number>
@@ -39,6 +51,12 @@
        </property>
        <item row="0" column="0">
         <widget class="QSplitter" name="splitter">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="midLineWidth">
           <number>0</number>
          </property>
@@ -50,7 +68,7 @@
          </property>
          <widget class="QWidget" name="widget_2" native="true">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -58,6 +76,12 @@
           <layout class="QGridLayout" name="gridLayout_23">
            <item row="0" column="0">
             <widget class="QSplitter" name="splitter_2">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="orientation">
               <enum>Qt::Vertical</enum>
              </property>
@@ -185,7 +209,7 @@ p, li { white-space: pre-wrap; }
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>419</width>
+                 <width>421</width>
                  <height>364</height>
                 </rect>
                </property>
@@ -1525,40 +1549,6 @@ p, li { white-space: pre-wrap; }
     </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>1093</width>
-     <height>22</height>
-    </rect>
-   </property>
-   <widget class="QMenu" name="menuFile">
-    <property name="title">
-     <string>File</string>
-    </property>
-    <addaction name="actionOpen_reflection_file"/>
-    <addaction name="actionSave_reflection_file"/>
-    <addaction name="actionSettings"/>
-    <addaction name="actiondebug"/>
-    <addaction name="actionColour_Gradient"/>
-    <addaction name="actionSave_Current_Image"/>
-    <addaction name="actionExit"/>
-   </widget>
-   <widget class="QMenu" name="menuHelp">
-    <property name="title">
-     <string>Help</string>
-    </property>
-    <addaction name="actionLocal_Help"/>
-    <addaction name="actionHKLviewer_Tutorial"/>
-    <addaction name="actionCCTBXwebsite"/>
-    <addaction name="actionAbout"/>
-   </widget>
-   <addaction name="menuFile"/>
-   <addaction name="menuHelp"/>
-  </widget>
-  <widget class="QStatusBar" name="statusBar"/>
   <action name="actionOpen_reflection_file">
    <property name="text">
     <string>Open reflection file...</string>
