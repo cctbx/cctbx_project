@@ -16,23 +16,23 @@ if sys.version_info[0] < 3:
   print("HKLviewer GUI must be run from Python 3")
   sys.exit(-42)
 
-from .qt import Qt, QCoreApplication, QEvent, QItemSelectionModel, QSize, QSettings, QTimer
+from .qt import Qt, QCoreApplication, QEvent, QItemSelectionModel, QSize, QSettings, QTimer, QUrl
 from .qt import (  QAction, QCheckBox, QComboBox, QDialog, QDoubleSpinBox, 
-    QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
+    QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
     QMainWindow, QMenu, QMenuBar, QProgressBar, QPushButton, QRadioButton, QRect, 
     QScrollBar, QSizePolicy, QSlider, QSpinBox, QStyleFactory, QStatusBar, QTableView, QTableWidget,
     QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget )
 
 from .qt import QColor, QFont, QCursor, QDesktopServices
 from .qt import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
-
+from . import HKLviewerGui
 try: # if invoked by cctbx.python or some such
   from crys3d.hklview import HKLviewerGui
   from crys3d.hklview.helpers import ( MillerArrayTableView, MillerArrayTableForm,
                                      MillerArrayTableModel, MPLColourSchemes )
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
-  import HKLviewerGui
-  from helpers import MillerArrayTableView, MillerArrayTableForm, MillerArrayTableModel
+  from . import HKLviewerGui
+  from .helpers import MillerArrayTableView, MillerArrayTableForm, MillerArrayTableModel, MPLColourSchemes
 
 class MakeNewDataForm(QDialog):
   def __init__(self, parent=None):
@@ -187,18 +187,13 @@ class MyQMainDialog(QDialog):
 
 
 class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
-  def __init__(self, thisapp, isembedded=False):
+  def __init__(self, thisapp, isembedded=False, cctbxpython=None):
+    self.isembedded = isembedded
     if isembedded:
       self.window = MyQMainDialog(self)
-      self.setupUi(self.window)
-      #mainLayout = QGridLayout()
-      #mainLayout.addWidget(self.widget, 0, 0)
-      self.window.setLayout(self.gridLayout_2)
     else:
       self.window = MyQMainWindow(self)
-
     self.setupUi(self.window)
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if isembedded:
       mainLayout = QGridLayout()
       mainLayout.addWidget(self.widget, 0, 0)
@@ -248,7 +243,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.zmq_context = None
     self.unfeedback = False
     self.cctbxpythonversion = None
-
+    self.cctbxpython = cctbxpython
     self.mousespeed_labeltxt = QLabel()
     self.mousespeed_labeltxt.setText("Mouse speed:")
     self.mousemoveslider = QSlider(Qt.Horizontal)
@@ -420,6 +415,7 @@ newarray._sigmas = sigs
     self.millertablemenu = QMenu(self.window)
     self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
     self.functionTabWidget.setDisabled(True)
+    self.Statusbartxtbox = None
     if not isembedded:
       self.window.statusBar().showMessage("")
       self.hklLabel = QLabel()
@@ -501,7 +497,7 @@ newarray._sigmas = sigs
         self.webpage.setUrl("https://webglreport.com/")
     else:
       #self.webpage.setUrl("https://cctbx.github.io/")
-      self.webpage.setUrl("http://cci.lbl.gov/docs/cctbx/doc_hklviewer/")
+      self.webpage.setUrl(QUrl("http://cci.lbl.gov/docs/cctbx/doc_hklviewer/"))
     self.cpath = self.webprofile.cachePath()
     self.BrowserBox.setPage(self.webpage)
     self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
@@ -696,7 +692,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
           if self.infodict.get("html_url") and self.html_url is None:
             self.html_url = self.infodict["html_url"]
             if self.UseOSBrowser==False:
-              self.BrowserBox.setUrl(self.html_url)
+              self.BrowserBox.setUrl(QUrl(self.html_url))
               # workaround for background colour bug in chromium
               # https://bugreports.qt.io/browse/QTBUG-41960
               self.BrowserBox.page().setBackgroundColor(QColor(127, 127, 127, 0.0) )
@@ -800,7 +796,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
           if self.infodict.get("NewMillerArray"):
             self.NewMillerArray = self.infodict.get("NewMillerArray",False)
 
-          if self.infodict.get("StatusBar"):
+          if self.infodict.get("StatusBar") and self.Statusbartxtbox is not None:
             self.Statusbartxtbox.setText(self.infodict.get("StatusBar", "") )
 
           if self.infodict.get("clicked_HKL"):
@@ -1868,12 +1864,19 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     guiargs = [ 'useGuiSocket=' + str(self.sockport),
                'high_quality=True',
               ]
-    cmdargs =  'cctbx.python -i -c "from crys3d.hklview import cmdlineframes;' \
+    if self.cctbxpython is None:
+      self.cctbxpython = "cctbx.python"
+    cmdargs =  self.cctbxpython + ' -i -c "from crys3d.hklview import cmdlineframes;' \
      + ' cmdlineframes.run()" ' + ' '.join( guiargs + sys.argv[1:])
-    self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
+    if self.isembedded:
+      self.cctbxproc = subprocess.Popen( cmdargs, shell=True)
+    else:
+      self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
 
 
   def send_message(self, cmdstr, msgtype="philstr"):
+    if self.cctbxpythonversion is None: # not connected to CCTBX
+      return
     msg = str([msgtype, cmdstr])
     if sys.version_info.major==3:
       self.socket.send(bytes(msg,"utf-8"))
@@ -1887,12 +1890,12 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.send_message(str(self.datatypedict), msgtype="dict")
 
 
-def run(isembedded=False):
+def run(isembedded=False, cctbxpython=None, chimeraxsession=None):
   import time
   #time.sleep(10) # enough time for attaching debugger
   try:
-    import PySide2.QtCore
-    Qtversion = str(PySide2.QtCore.qVersion())
+    from .qt import QtCore
+    Qtversion = str(QtCore.qVersion())
     debugtrue = False
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
     for e in sys.argv:
@@ -1931,74 +1934,88 @@ def run(isembedded=False):
 
     if QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       QWebEngineViewFlags = " --disable-web-security" # for chromium
-      print("testing if WebGL works in QWebEngineView....")
-      QtChromiumCheck_fpath = os.path.join(os.path.split(HKLviewerGui.__file__)[0], "QtChromiumCheck.py")
-      cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
-      webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-      procout, procerr = webglproc.communicate()
-      if not "WebGL works" in procout.decode():
-        QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist "
+      if not isembedded:
+        print("testing if WebGL works in QWebEngineView....")
+        QtChromiumCheck_fpath = os.path.join(os.path.split(HKLviewerGui.__file__)[0], "QtChromiumCheck.py")
+        cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
+        webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        procout, procerr = webglproc.communicate()
+        if not "WebGL works" in procout.decode():
+          QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist "
     if "verbose" in sys.argv[1:]:
       print("using flags for QWebEngineView: " + QWebEngineViewFlags)
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += QWebEngineViewFlags
 
-    from PySide2.QtWidgets import QApplication
+    from .qt import QApplication
     # ensure QWebEngineView scales correctly on a screen with high DPI
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+    if not isembedded:
+      QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     app = QApplication(sys.argv)
-    guiobj = NGL_HKLViewer(app, isembedded)
+    HKLguiobj = NGL_HKLViewer(app, isembedded, cctbxpython)
     time.sleep(1) # make time for zmq_listen loop to start in cctbx subprocess
 
     def MyAppClosing():
       settings.beginGroup("PySide2_" + Qtversion )
       settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
-      settings.setValue("FontSize", guiobj.fontsize )
-      settings.setValue("BrowserFontSize", guiobj.browserfontsize )
-      settings.setValue("ttip_click_invoke", guiobj.ttip_click_invoke)
-      settings.setValue("windowsize", guiobj.window.size())
-      settings.setValue("splitter1Sizes", guiobj.splitter.saveState())
-      settings.setValue("splitter2Sizes", guiobj.splitter_2.saveState())
+      settings.setValue("FontSize", HKLguiobj.fontsize )
+      settings.setValue("BrowserFontSize", HKLguiobj.browserfontsize )
+      settings.setValue("ttip_click_invoke", HKLguiobj.ttip_click_invoke)
+      settings.setValue("windowsize", HKLguiobj.window.size())
+      settings.setValue("splitter1Sizes", HKLguiobj.splitter.saveState())
+      settings.setValue("splitter2Sizes", HKLguiobj.splitter_2.saveState())
 
       settings.beginGroup("DataTypesGroups")
       datatypesgroups = settings.childGroups()
-      for datatype in list(guiobj.datatypedict.keys()):
-        settings.setValue(datatype + "/ColourChart", guiobj.datatypedict[ datatype ][0] )
-        settings.setValue(datatype + "/ColourPowerScale", guiobj.datatypedict[ datatype ][1] )
-        settings.setValue(datatype + "/PowerScale", guiobj.datatypedict[ datatype ][2])
-        settings.setValue(datatype + "/RadiiScale", guiobj.datatypedict[ datatype ][3])
+      for datatype in list(HKLguiobj.datatypedict.keys()):
+        settings.setValue(datatype + "/ColourChart", HKLguiobj.datatypedict[ datatype ][0] )
+        settings.setValue(datatype + "/ColourPowerScale", HKLguiobj.datatypedict[ datatype ][1] )
+        settings.setValue(datatype + "/PowerScale", HKLguiobj.datatypedict[ datatype ][2])
+        settings.setValue(datatype + "/RadiiScale", HKLguiobj.datatypedict[ datatype ][3])
       settings.endGroup() # DataTypesGroups
       settings.endGroup() # PySide2_ + Qtversion
 
     app.lastWindowClosed.connect(MyAppClosing) # persist settings on disk
 
-    timer = QTimer()
-    timer.setInterval(20)
-    timer.timeout.connect(guiobj.ProcessMessages)
-    timer.start()
+    if not isembedded:
+      timer = QTimer()
+      timer.setInterval(20)
+      timer.timeout.connect(HKLguiobj.ProcessMessages)
+      timer.start()
+    else:
+      from time import time
+      start_time = [time()]
+
+      def ChXTimer(trigger, trigger_data):
+        elapsed_time = time()-start_time[0]
+        if elapsed_time > 0.02:
+          start_time[0] = time()
+          HKLguiobj.ProcessMessages()
+
+      h1 = chimeraxsession.triggers.add_handler('new frame', ChXTimer)
 
     if fontsize is not None:
-      guiobj.onFontsizeChanged(int(fontsize))
-      guiobj.fontspinBox.setValue(int(fontsize))
+      HKLguiobj.onFontsizeChanged(int(fontsize))
+      HKLguiobj.fontspinBox.setValue(int(fontsize))
     if browserfontsize is not None:
-      guiobj.onBrowserFontsizeChanged(int(browserfontsize))
-      guiobj.browserfontspinBox.setValue(int(browserfontsize))
+      HKLguiobj.onBrowserFontsizeChanged(int(browserfontsize))
+      HKLguiobj.browserfontspinBox.setValue(int(browserfontsize))
     if ttip_click_invoke is not None:
-      guiobj.onShowTooltips(ttip_click_invoke)
-      guiobj.ttipClickradio.setChecked(ttip_click_invoke == "click")
-      guiobj.ttipHoverradio.setChecked(ttip_click_invoke == "hover")
+      HKLguiobj.onShowTooltips(ttip_click_invoke)
+      HKLguiobj.ttipClickradio.setChecked(ttip_click_invoke == "click")
+      HKLguiobj.ttipHoverradio.setChecked(ttip_click_invoke == "hover")
     if splitter1sizes is not None and splitter2sizes is not None and windowsize is not None:
-      guiobj.window.resize(windowsize)
-      if guiobj.webpagedebugform and guiobj.devmode:
-        guiobj.webpagedebugform.resize( guiobj.window.size())
-      guiobj.splitter.restoreState(splitter1sizes)
-      guiobj.splitter_2.restoreState(splitter2sizes)
-    guiobj.setDatatypedict( datatypedict)
+      HKLguiobj.window.resize(windowsize)
+      if HKLguiobj.webpagedebugform and HKLguiobj.devmode:
+        HKLguiobj.webpagedebugform.resize( HKLguiobj.window.size())
+      HKLguiobj.splitter.restoreState(splitter1sizes)
+      HKLguiobj.splitter_2.restoreState(splitter2sizes)
+    HKLguiobj.setDatatypedict( datatypedict)
+
+    if isembedded:
+      return HKLguiobj
 
     ret = app.exec_()
 
   except Exception as e:
     print( str(e)  +  traceback.format_exc(limit=10) )
 
-
-#if (__name__ == "__main__") :
-#  run()
