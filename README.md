@@ -58,9 +58,11 @@ conda create -n my_env <b>-c cctbx-nightly</b> -c conda-forge cctbx-base
 </code></pre>
 This will use the `cctbx-base` package from the `cctbx-nightly` channel, but pull the remaining dependencies from `conda-forge`.
 
+Nightly builds are only updated if there are additional commits from the previous build.
+
 ## Nightly checks of current release and nightly builds (except for Apple Silicon)
 
-A subset of tests is run on the current `cctbx-base` packages every night (6 pm Pacific) to test compatibility with the latest packages from `conda-forge`. Additional source files for `fable` and `antlr3` are needed for the tests.
+A subset of tests is run on the current `cctbx-base` packages every night (6 pm Pacific for curent release and 10 pm Pacific for nightly builds) to test compatibility with the latest packages from `conda-forge`. Additional source files for `fable` and `antlr3` are needed for the tests.
 
 <table>
   <thead><tr><th>Variant</th><th>conda-forge</th><th>cctbx-nightly</th></tr></thead>
