@@ -7,4 +7,4 @@ from crys3d.hklview import HKLviewer
 
 
 if (__name__ == "__main__") :
-  HKLviewer.run(isembedded=True)
+  HKLviewer.run()

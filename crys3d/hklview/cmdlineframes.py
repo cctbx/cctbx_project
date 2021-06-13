@@ -78,7 +78,7 @@ class HKLViewFrame() :
       self.guisocket = self.context.socket(zmq.PAIR)
       self.guisocket.connect("tcp://127.0.0.1:%s" %self.guiSocketPort )
       self.STOP = False
-      self.mprint("starting socketthread", 1)
+      self.mprint("CCTBX starting socket thread", 1)
       # name this thread to ensure any asyncio functions are called only from main thread
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen, name="HKLviewerZmqThread" )
       self.msgqueuethrd.daemon = True
