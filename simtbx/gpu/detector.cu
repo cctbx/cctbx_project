@@ -246,9 +246,8 @@ namespace gpu {
                  selection.begin(), sizeof(*cu_active_pixel_selection) * selection.size(),
                  cudaMemcpyHostToDevice));
 
-    cudaDeviceProp deviceProps = { 0 };
-    cudaSafeCall(cudaGetDeviceProperties(&deviceProps, h_deviceID));
-    int smCount = deviceProps.multiProcessorCount;
+    int smCount;
+    cudaDeviceGetAttribute(&smCount, cudaDevAttrMultiProcessorCount, h_deviceID);
     dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
     dim3 numBlocks(smCount * 8, 1);
     int total_pixels = active_pixel_list.size();
@@ -269,7 +268,7 @@ namespace gpu {
   gpu_detector::each_image_allocate_cuda(){
     cudaSetDevice(h_deviceID);
     /*allocate and zero reductions */
-    bool * rangemap = (bool*) calloc(_image_size, sizeof(bool));
+
     float * omega_reduction = (float*) calloc(_image_size, sizeof(float));
     float * max_I_x_reduction = (float*) calloc(_image_size, sizeof(float));
     float * max_I_y_reduction = (float*) calloc(_image_size, sizeof(float));
@@ -277,30 +276,18 @@ namespace gpu {
 
     cu_omega_reduction = NULL;
     cudaSafeCall(cudaMalloc((void ** )&cu_omega_reduction, sizeof(*cu_omega_reduction) * _image_size));
-    cudaSafeCall(cudaMemcpy(cu_omega_reduction,
-                 omega_reduction, sizeof(*cu_omega_reduction) * _image_size,
-                 cudaMemcpyHostToDevice));
 
     cu_max_I_x_reduction = NULL;
     cudaSafeCall(cudaMalloc((void ** )&cu_max_I_x_reduction, sizeof(*cu_max_I_x_reduction) * _image_size));
-    cudaSafeCall(cudaMemcpy(cu_max_I_x_reduction,
-                 max_I_x_reduction, sizeof(*cu_max_I_x_reduction) * _image_size,
-                 cudaMemcpyHostToDevice));
 
     cu_max_I_y_reduction = NULL;
     cudaSafeCall(cudaMalloc((void ** )&cu_max_I_y_reduction, sizeof(*cu_max_I_y_reduction) * _image_size));
-    cudaSafeCall(cudaMemcpy(cu_max_I_y_reduction, max_I_y_reduction, sizeof(*cu_max_I_y_reduction) * _image_size,
-                 cudaMemcpyHostToDevice));
 
     cu_rangemap = NULL;
     cudaSafeCall(cudaMalloc((void ** )&cu_rangemap, sizeof(*cu_rangemap) * _image_size));
-    cudaSafeCall(cudaMemcpy(cu_rangemap,
-                 rangemap, sizeof(*cu_rangemap) * _image_size,
-                 cudaMemcpyHostToDevice));
 
     // deallocate host arrays
     // potential memory leaks
-    free(rangemap);
     free(omega_reduction);
     free(max_I_x_reduction);
     free(max_I_y_reduction);

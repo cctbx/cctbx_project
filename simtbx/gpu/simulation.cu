@@ -101,9 +101,8 @@ namespace af = scitbx::af;
         // magic happens here: take pointer from singleton, temporarily use it for add Bragg iteration:
         cu_current_channel_Fhkl = gec.d_channel_Fhkl[ichannel];
 
-        cudaDeviceProp deviceProps = { 0 };
-        cudaSafeCall(cudaGetDeviceProperties(&deviceProps, SIM.device_Id));
-        int smCount = deviceProps.multiProcessorCount;
+        int smCount;
+        cudaDeviceGetAttribute(&smCount, cudaDevAttrMultiProcessorCount, SIM.device_Id);
         dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
         dim3 numBlocks(smCount * 8, 1);
 
@@ -160,17 +159,27 @@ namespace af = scitbx::af;
     simtbx::gpu::gpu_detector & gdt,
     af::shared<bool> all_panel_mask
   ){
+    af::shared<int> active_pixel_list;
+    const bool* jptr = all_panel_mask.begin();
+    for (int j=0; j < all_panel_mask.size(); ++j){
+      if (jptr[j]) {
+        active_pixel_list.push_back(j);
+      }
+    }
+    add_energy_channel_mask_allpanel_cuda(
+      ichannel, gec, gdt, active_pixel_list);
+  }
+
+  void
+  exascale_api::add_energy_channel_mask_allpanel_cuda(
+    int const& ichannel,
+    simtbx::gpu::gpu_energy_channels & gec,
+    simtbx::gpu::gpu_detector & gdt,
+    //af::shared<bool> all_panel_mask
+    af::shared<int> const active_pixel_list
+  ){
         cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
-        // here or there, need to convert the all_panel_mask (3D map) into a 1D list of accepted pixels
-        // coordinates for the active pixel list are absolute offsets into the detector array
-        af::shared<int> active_pixel_list;
-        const bool* jptr = all_panel_mask.begin();
-        for (int j=0; j < all_panel_mask.size(); ++j){
-          if (jptr[j]) {
-            active_pixel_list.push_back(j);
-          }
-        }
         gdt.set_active_pixels_on_GPU(active_pixel_list);
 
         // transfer source_I, source_lambda
@@ -181,9 +190,8 @@ namespace af = scitbx::af;
         // magic happens here: take pointer from singleton, temporarily use it for add Bragg iteration:
         cu_current_channel_Fhkl = gec.d_channel_Fhkl[ichannel];
 
-        cudaDeviceProp deviceProps = { 0 };
-        cudaSafeCall(cudaGetDeviceProperties(&deviceProps, SIM.device_Id));
-        int smCount = deviceProps.multiProcessorCount;
+        int smCount;
+        cudaDeviceGetAttribute(&smCount, cudaDevAttrMultiProcessorCount, SIM.device_Id);
         dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
         dim3 numBlocks(smCount * 8, 1);
 
