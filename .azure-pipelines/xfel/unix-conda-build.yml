@@ -78,10 +78,12 @@ steps:
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
     python bootstrap.py build --builder=xfel --use-conda=${CONDA_PREFIX} --nproc=4 --config-flags="--enable_openmp_if_possible=True"
-    cd build
-    source setpaths.sh
-    libtbx.configure lunus
-    make
+    if [ "$(OS)" = "linux-64" ]; then
+      cd build
+      source setpaths.sh
+      libtbx.configure lunus
+      make
+    fi
   displayName: Configure and Build
 
 # test
