@@ -79,7 +79,7 @@ steps:
     cd $(Pipeline.Workspace)
     python bootstrap.py build --builder=xfel --use-conda=${CONDA_PREFIX} --nproc=4 --config-flags="--enable_openmp_if_possible=True"
     cd build
-    source setpatshs.sh
+    source setpaths.sh
     libtbx.configure lunus
     make
   displayName: Configure and Build
