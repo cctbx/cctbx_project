@@ -4,6 +4,7 @@
 #include <boost/python/args.hpp>
 
 #include "simtbx/kokkos/kokkos_instance.h"
+#include "simtbx/kokkos/detector.h"
 #include "simtbx/kokkos/structure_factors.h"
 
 namespace simtbx { namespace Kokkos {
@@ -18,6 +19,40 @@ namespace simtbx { namespace Kokkos {
         .def(init< const int& >(( arg("deviceId"))))
         .def("get_deviceID", &simtbx::Kokkos::kokkos_instance::get_deviceID)
         .def("finalize_kokkos", &simtbx::Kokkos::kokkos_instance::finalize_kokkos)
+        ;
+    }
+  };
+
+  struct detector_wrapper
+  {
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<simtbx::Kokkos::kokkos_detector>("kokkos_detector",init<>() )
+   //     .def(init<int const&, const simtbx::nanoBragg::nanoBragg&>(
+   //         ( arg("deviceId"),arg("nanoBragg"))))
+//             "Single panel constructor with data taken from nanoBragg instance")
+        .def(init<int const&, dxtbx::model::Detector const &, dxtbx::model::Beam const &>(
+            ( arg("deviceId"),arg("detector"),arg("beam"))))
+//             "Multipanel constructor with data taken from dxtbx objects")
+   //     .def("get_deviceID", &simtbx::Kokkos::kokkos_detector::get_deviceID
+   //         )
+   //     .def("show_summary",&simtbx::Kokkos::kokkos_detector::show_summary)
+   //     .def("each_image_allocate_cuda",
+   //           &simtbx::Kokkos::kokkos_detector::each_image_allocate_cuda,
+   //          "Allocate large pixel arrays")
+   //     .def("scale_in_place_cuda", &simtbx::Kokkos::kokkos_detector::scale_in_place_cuda,
+   //          "Apply a scale factor directly on the GPU")
+   //     .def("write_raw_pixels_cuda",&simtbx::Kokkos::kokkos_detector::write_raw_pixels_cuda,
+   //          "Update raw_pixels on host with array from GPU")
+   //     .def("get_raw_pixels_cuda",&simtbx::Kokkos::kokkos_detector::get_raw_pixels_cuda,
+   //          "return multipanel detector raw pixels as a flex array")
+   //     .def("get_whitelist_raw_pixels_cuda",
+   //           (af::shared<double> (simtbx::Kokkos::kokkos_detector::*)(af::shared<std::size_t>))
+   //           &simtbx::Kokkos::kokkos_detector::get_whitelist_raw_pixels_cuda,
+   //          "return only those raw pixels requested by the whitelist selection, as a 1D flex array")
+   //     .def("each_image_free_cuda", &simtbx::Kokkos::kokkos_detector::each_image_free_cuda)
         ;
     }
   };
@@ -43,6 +78,7 @@ namespace simtbx { namespace Kokkos {
 
   BOOST_PYTHON_MODULE(simtbx_kokkos_ext) {
     simtbx::Kokkos::kokkos_instance_wrapper::wrap();
+    simtbx::Kokkos::detector_wrapper::wrap();
     simtbx::Kokkos::structure_factor_wrapper::wrap();
   }
 } // namespace simtbx

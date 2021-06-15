@@ -10,12 +10,15 @@
 //   5) possibly other metadata
 
 
-#include <scitbx/array_family/shared.h>
-#include <scitbx/array_family/flex_types.h>
-#include <dxtbx/model/detector.h>
-#include <dxtbx/model/beam.h>
-#include <simtbx/nanoBragg/nanoBragg.h>
+#include "scitbx/array_family/shared.h"
+#include "scitbx/array_family/flex_types.h"
+#include "dxtbx/model/detector.h"
+#include "dxtbx/model/beam.h"
+#include "simtbx/nanoBragg/nanoBragg.h"
+
+#include <Kokkos_Core.hpp>
 #include <iostream>
+
 
 namespace simtbx {
 namespace Kokkos {
@@ -38,25 +41,25 @@ struct packed_metrology{
 
 struct kokkos_detector{
   inline kokkos_detector(){printf("NO OPERATION, DEVICE NUMBER IS NEEDED");};
-  kokkos_detector(int const&, const simtbx::nanoBragg::nanoBragg& nB);
+  //kokkos_detector(int const&, const simtbx::nanoBragg::nanoBragg& nB);
   kokkos_detector(int const&, dxtbx::model::Detector const &, dxtbx::model::Beam const &);
   void construct_detail(int const&, dxtbx::model::Detector const &);
 
-  inline int get_deviceID(){return h_deviceID;}
-  inline void show_summary(){
-    std::cout << "Detector size" << cu_n_panels <<std::endl;
-    metrology.show();
-  }
-  void each_image_allocate_cuda();
-  void scale_in_place_cuda(const double&);
-  void write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg&);
-  af::flex_double get_raw_pixels_cuda();
-  void set_active_pixels_on_KOKKOS(af::shared<int>);
-  af::shared<double> get_whitelist_raw_pixels_cuda(af::shared<std::size_t>);
-  void each_image_free_cuda();
+  //inline int get_deviceID(){return h_deviceID;}
+  //inline void show_summary(){
+  //  std::cout << "Detector size" << cu_n_panels <<std::endl;
+  //  metrology.show();
+  //}
+  //void each_image_allocate_cuda();
+  //void scale_in_place_cuda(const double&);
+  //void write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg&);
+  //af::flex_double get_raw_pixels_cuda();
+  //void set_active_pixels_on_KOKKOS(af::shared<int>);
+  //af::shared<double> get_whitelist_raw_pixels_cuda(af::shared<std::size_t>);
+  //void each_image_free_cuda();
 
-  void free_detail();
-  inline ~kokkos_detector(){ {free_detail();} }
+  //void free_detail();
+  //inline ~kokkos_detector(){ {free_detail();} }
 
   int h_deviceID;
   const dxtbx::model::Detector detector;
