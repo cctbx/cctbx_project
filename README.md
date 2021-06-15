@@ -62,7 +62,7 @@ Nightly builds are only updated if there are additional commits from the previou
 
 ## Nightly checks of current release and nightly builds (except for Apple Silicon)
 
-A subset of tests is run on the current `cctbx-base` packages every night (6 pm Pacific for curent release and 10 pm Pacific for nightly builds) to test compatibility with the latest packages from `conda-forge`. Additional source files for `fable` and `antlr3` are needed for the tests.
+A subset of tests is run on the current `cctbx-base` packages every night (10 pm Pacific) to test compatibility with the latest packages from `conda-forge`. Additional source files for `fable` and `antlr3` are needed for the tests.
 
 <table>
   <thead><tr><th>Variant</th><th>conda-forge</th><th>cctbx-nightly</th></tr></thead>
