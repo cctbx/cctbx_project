@@ -1355,8 +1355,8 @@ def run():
     if os.path.isfile(arg) and '=' not in arg:
       kwargs['hklin'] = arg
 
-
   myHKLview = HKLViewFrame(**kwargs)
+  return myHKLview
 
 
 if __name__ == '__main__':
