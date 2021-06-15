@@ -1,9 +1,8 @@
-#include <scitbx/array_family/boost_python/flex_fwd.h>
-#include <cudatbx/cuda_base.cuh>
-#include <simtbx/kokkos/detector.h>
-#include <simtbx/kokkos/detector.cuh>
-#include <scitbx/vec3.h>
-#include <scitbx/vec2.h>
+#include "scitbx/array_family/boost_python/flex_fwd.h"
+//#include "cudatbx/cuda_base.cuh"
+#include "simtbx/kokkos/detector.h"
+#include "scitbx/vec3.h"
+#include "scitbx/vec2.h"
 #define THREADS_PER_BLOCK_X 128
 #define THREADS_PER_BLOCK_Y 1
 #define THREADS_PER_BLOCK_TOTAL (THREADS_PER_BLOCK_X * THREADS_PER_BLOCK_Y)
@@ -12,7 +11,7 @@ namespace simtbx {
 namespace Kokkos {
 
 //refactor later into helper file
-  static cudaError_t detMemcpyVectorDoubleToDevice(CUDAREAL *dst, const double *src, size_t vector_items) {
+/*  static cudaError_t detMemcpyVectorDoubleToDevice(CUDAREAL *dst, const double *src, size_t vector_items) {
         CUDAREAL * temp = new CUDAREAL[vector_items];
         for (size_t i = 0; i < vector_items; i++) {
                 temp[i] = src[i];
@@ -20,7 +19,7 @@ namespace Kokkos {
         cudaError_t ret = cudaMemcpy(dst, temp, sizeof(*dst) * vector_items, cudaMemcpyHostToDevice);
         delete temp;
         return ret;
-  }
+  }*/
 
   packed_metrology::packed_metrology(dxtbx::model::Detector const & arg_detector,
                                    dxtbx::model::Beam const & arg_beam) {
@@ -122,10 +121,10 @@ namespace Kokkos {
     // separate accumulator image outside the usual nanoBragg data structure.
     //       1. accumulate contributions from a sequence of source energy channels computed separately
     //       2. represent multiple panels, all same rectangular shape; slowest dimension = n_panels 
-    cudaSafeCall(cudaMalloc((void ** )&cu_accumulate_floatimage,
-                            sizeof(*cu_accumulate_floatimage) * _image_size));
-    cudaSafeCall(cudaMemset((void *)cu_accumulate_floatimage, 0,
-                            sizeof(*cu_accumulate_floatimage) * _image_size));
+//    cudaSafeCall(cudaMalloc((void ** )&cu_accumulate_floatimage,
+//                            sizeof(*cu_accumulate_floatimage) * _image_size));
+//    cudaSafeCall(cudaMemset((void *)cu_accumulate_floatimage, 0,
+//                            sizeof(*cu_accumulate_floatimage) * _image_size));
   };
 
   kokkos_detector::kokkos_detector(int const& arg_device_id,
@@ -139,7 +138,7 @@ namespace Kokkos {
     construct_detail(arg_device_id, arg_detector);
   }
 
-  kokkos_detector::kokkos_detector(int const& arg_device_id,
+/*  kokkos_detector::kokkos_detector(int const& arg_device_id,
                              const simtbx::nanoBragg::nanoBragg& nB):
     h_deviceID(arg_device_id),
     metrology(nB),
@@ -359,7 +358,7 @@ namespace Kokkos {
     cudaSafeCall(cudaFree(cu_Ybeam));
     cudaSafeCall(cudaFree(cu_active_pixel_list));
   }
-
+*/
 } // Kokkos
 } // simtbx
 
