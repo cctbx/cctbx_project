@@ -9,8 +9,19 @@ print("********** ALL HIER ************")
 retval = os.system(cmd)
 print(retval)
 print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-os.system("cd ../../../build; ../modules/kokkos//bin/nvcc_wrapper -o lib/libsimtbx_kokkos.so -shared simtbx/kokkos/kokkos_instance.o simtbx/kokkos/structure_factors.o -Llib -L/usr/common/software/sles15_cgpu/cuda/11.1.1/lib64 -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/lib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/cctbx_project/lib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/cctbx_project/simtbx/kokkos/ -lkokkos -ldl -lcudart -lcuda -lboost_thread -lboost_system -lboost_python -lm; g++ -o lib/simtbx_kokkos_ext.so -shared -s -std=c++11 -fopenmp simtbx/kokkos/kokkos_ext.o -Llib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/lib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/cctbx_project/lib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/cctbx_project/simtbx/kokkos/ -L/usr/common/software/sles15_cgpu/cuda/11.1.1/lib64 -lsimtbx_kokkos -lomptbx -lboost_thread -lboost_system -lboost_python -lm -lm -lscitbx_boost_python -lboost_python -lcctbx -lkokkos -ldl -lcudart -lcuda")
 
+link_cmd = "cd ../../../build;"
+
+link_cmd += " ../modules/kokkos//bin/nvcc_wrapper -o lib/libsimtbx_kokkos.so -shared"
+link_cmd += " simtbx/kokkos/kokkos_instance.o simtbx/kokkos/detector.o simtbx/kokkos/structure_factors.o"
+link_cmd += " -Llib -L/usr/common/software/sles15_cgpu/cuda/11.1.1/lib64 -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/lib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/cctbx_project/lib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/cctbx_project/simtbx/kokkos/"
+link_cmd += " -lkokkos -ldl -lcudart -lcuda -lboost_thread -lboost_system -lboost_python -lm;"
+
+link_cmd += "g++ -o lib/simtbx_kokkos_ext.so -shared -s -std=c++11 -fopenmp simtbx/kokkos/kokkos_ext.o"
+link_cmd += " -Llib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/lib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/cctbx_project/lib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/cctbx_project/simtbx/kokkos/ -L/usr/common/software/sles15_cgpu/cuda/11.1.1/lib64"
+link_cmd += " -lsimtbx_kokkos -lomptbx -lboost_thread -lboost_system -lboost_python -lm -lm -lscitbx_boost_python -lboost_python -lcctbx -lkokkos -ldl -lcudart -lcuda"
+
+os.system(link_cmd)
 
 #Import("env", "env_etc")
 
