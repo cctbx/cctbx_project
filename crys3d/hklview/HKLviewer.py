@@ -416,6 +416,7 @@ newarray._sigmas = sigs
     self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
     self.functionTabWidget.setDisabled(True)
     self.Statusbartxtbox = None
+    self.chimeraxprocmsghandler = None
     if not isembedded:
       self.window.statusBar().showMessage("")
       self.hklLabel = QLabel()
@@ -465,23 +466,35 @@ newarray._sigmas = sigs
     print("HKLviewer closing down...")
     nc = 0
     sleeptime = 0.2
-    timeout = 10
+    timeout = 1
     while not self.canexit and nc < timeout: # until cctbx.python has finished or after 5 sec
       time.sleep(sleeptime)
       self.ProcessMessages()
       nc += sleeptime
     if nc>= timeout:
       print("Terminating hanging cctbx.python process...")
-    self.cctbxproc.terminate()
-    self.out, self.err = self.cctbxproc.communicate()
-    self.cctbxproc.wait()
+    try:
+      self.out, self.err = self.cctbxproc.communicate(timeout=0.5)
+    except Exception as e:
+      print(str(self.out) + ", " + str(self.err))
+      #self.cctbxproc.terminate()
+      import psutil
+      parent_pid = self.cctbxproc.pid   # my example
+      parent = psutil.Process(parent_pid)
+      for child in parent.children(recursive=True):  # or parent.children() for recursive=False
+        child.kill()
+      parent.kill()
+
+      #self.cctbxproc.wait()
+    time.sleep(1)
     if self.UseOSBrowser == False:
       if self.webpagedebugform and self.devmode:
         self.webpagedebugform.close()
         self.webpagedebugform.deleteLater()
       self.BrowserBox.close()
       self.BrowserBox.deleteLater()
-    event.accept()
+    if not self.isembedded:
+      event.accept()
 
 
   def InitBrowser(self):
@@ -1991,8 +2004,8 @@ def run(isembedded=False, cctbxpython=None, chimeraxsession=None):
           start_time[0] = time()
           HKLguiobj.ProcessMessages()
 
-      h1 = chimeraxsession.triggers.add_handler('new frame', ChXTimer)
-
+      HKLguiobj.chimeraxprocmsghandler = chimeraxsession.triggers.add_handler('new frame', ChXTimer)
+      
     if fontsize is not None:
       HKLguiobj.onFontsizeChanged(int(fontsize))
       HKLguiobj.fontspinBox.setValue(int(fontsize))
