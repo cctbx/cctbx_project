@@ -50,7 +50,7 @@ The `python` package with a specific version can be added to change the version 
 The installation will take a long while but the script will verbosely describe what it does.
 
 ## Nightly builds
- [![Build Status](https://dev.azure.com/cctbx-release/feedstock-builds/_apis/build/status/cctbx.nightly-feedstock?branchName=main)](https://dev.azure.com/cctbx-release/feedstock-builds/_build/latest?definitionId=5&branchName=main) [![Conda Version](https://img.shields.io/conda/vn/cctbx-nightly/cctbx-base.svg)](https://anaconda.org/cctbx-nightly/cctbx-base) [![Conda Platforms](https://anaconda.org/cctbx-nightly/cctbx-base/badges/platforms.svg)](https://anaconda.org/cctbx-nightly/cctbx-base)
+ [![Build Status](https://dev.azure.com/cctbx-release/feedstock-builds/_apis/build/status/nightly-feedstock?branchName=master)](https://dev.azure.com/cctbx-release/feedstock-builds/_build/latest?definitionId=5&branchName=master) [![Conda Version](https://img.shields.io/conda/vn/cctbx-nightly/cctbx-base.svg)](https://anaconda.org/cctbx-nightly/cctbx-base) [![Conda Platforms](https://anaconda.org/cctbx-nightly/cctbx-base/badges/platforms.svg)](https://anaconda.org/cctbx-nightly/cctbx-base)
 
 A nightly build of the `conda` packages are available on the [`cctbx-nightly` channel](https://anaconda.org/cctbx-nightly/repo). To use these packages, prepend `-c cctbx-nightly` as a channel to the commands above. For example, the command to create a new `my_env` environment would become
 <pre><code>
