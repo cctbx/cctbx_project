@@ -191,6 +191,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.isembedded = isembedded
     if isembedded:
       self.window = MyQMainDialog(self)
+      self.window.hide()
     else:
       self.window = MyQMainWindow(self)
     self.setupUi(self.window)
@@ -466,27 +467,23 @@ newarray._sigmas = sigs
     print("HKLviewer closing down...")
     nc = 0
     sleeptime = 0.2
-    timeout = 1
-    while not self.canexit and nc < timeout: # until cctbx.python has finished or after 5 sec
+    maxtime = 3
+    while not self.canexit and nc < maxtime: # until cctbx.python has finished or after maxtime sec
       time.sleep(sleeptime)
       self.ProcessMessages()
       nc += sleeptime
-    if nc>= timeout:
-      print("Terminating hanging cctbx.python process...")
     try:
-      self.out, self.err = self.cctbxproc.communicate(timeout=0.5)
-    except Exception as e:
-      print(str(self.out) + ", " + str(self.err))
       #self.cctbxproc.terminate()
+      self.out, self.err = self.cctbxproc.communicate(input="exit()", timeout=maxtime)
+      print(str(self.out) + "\n" + str(self.err))
+    except Exception as e: 
+      print("Terminating hanging cctbx.python process...")
       import psutil
       parent_pid = self.cctbxproc.pid   # my example
       parent = psutil.Process(parent_pid)
       for child in parent.children(recursive=True):  # or parent.children() for recursive=False
         child.kill()
       parent.kill()
-
-      #self.cctbxproc.wait()
-    time.sleep(1)
     if self.UseOSBrowser == False:
       if self.webpagedebugform and self.devmode:
         self.webpagedebugform.close()
@@ -586,6 +583,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     """
     if self.webpagedebugform is not None:
       self.webpagedebugform.update()
+    """
     if self.cctbxproc:
       if self.cctbxproc.stdout:
         self.out = self.cctbxproc.stdout.read().decode("utf-8")
@@ -598,7 +596,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.err:
       currentinfostr += self.err.decode("utf-8")
       print(self.err.decode("utf-8"))
-
+    """
     if self.zmq_context:
       try:
         binmsg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
@@ -1879,12 +1877,17 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
               ]
     if self.cctbxpython is None:
       self.cctbxpython = "cctbx.python"
+    # subprocess will not create interactive programs ( using popen.communicate() will simply terminate
+    # the subprocess after execution). Since we need cmdlineframes.run() to be interactive 
+    # we start it with shell=True and flags -i -c for cmdlineframes.run() to remain running.
+    # Care must be taken when closing HKLviewer to ensure the shell and its child process are both closed.
     cmdargs =  self.cctbxpython + ' -i -c "from crys3d.hklview import cmdlineframes;' \
      + ' cmdlineframes.run()" ' + ' '.join( guiargs + sys.argv[1:])
-    if self.isembedded:
-      self.cctbxproc = subprocess.Popen( cmdargs, shell=True)
-    else:
-      self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
+    self.cctbxproc = subprocess.Popen( cmdargs, shell=True, 
+                                      universal_newlines=True,
+                                      stdin=subprocess.PIPE, 
+                                      stdout=subprocess.PIPE, 
+                                      stderr=subprocess.PIPE)
 
 
   def send_message(self, cmdstr, msgtype="philstr"):
