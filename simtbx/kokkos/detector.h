@@ -19,6 +19,8 @@
 #include <Kokkos_Core.hpp>
 #include <iostream>
 
+using vector_view_t = Kokkos::View<double*>;
+using host_view_t = vector_view_t::HostMirror;
 
 namespace simtbx {
 namespace Kokkos {
@@ -43,10 +45,10 @@ struct kokkos_detector{
   inline kokkos_detector(){printf("NO OPERATION, DEVICE NUMBER IS NEEDED");};
   //kokkos_detector(const simtbx::nanoBragg::nanoBragg& nB);
   kokkos_detector(dxtbx::model::Detector const &, dxtbx::model::Beam const &);
-  void construct_detail(dxtbx::model::Detector const &);
+  vector_view_t construct_detail(dxtbx::model::Detector const &);
 
   //inline void show_summary(){
-  //  std::cout << "Detector size" << cu_n_panels <<std::endl;
+  //  std::cout << "Detector size" << m_panel_count <<std::endl;
   //  metrology.show();
   //}
   //void each_image_allocate_cuda();
@@ -62,7 +64,10 @@ struct kokkos_detector{
 
   const dxtbx::model::Detector detector;
 
-  int  cu_n_panels, cu_slow_pixels, cu_fast_pixels; // variables on host only
+  int m_panel_count = -1;
+  int m_slow_dim_size = -1;
+  int m_fast_dim_size = -1; // variables on host only
+  vector_view_t m_accumulate_floatimage;
   double * cu_accumulate_floatimage; // pointer to GPU memory
 
   // per image input variables, pointers to GPU memory
@@ -84,7 +89,7 @@ struct kokkos_detector{
 
   packed_metrology const metrology;
   private:
-  int _image_size;
+  int m_total_pixel_count = -1;
 };
 } // Kokkos
 } // simtbx

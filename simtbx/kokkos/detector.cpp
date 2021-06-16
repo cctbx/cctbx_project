@@ -99,29 +99,32 @@ namespace Kokkos {
     }
   }
 
-  void
+  vector_view_t
   kokkos_detector::construct_detail(dxtbx::model::Detector const & arg_detector) {
     //1) determine the size
-    cu_n_panels = detector.size();
-    SCITBX_ASSERT( cu_n_panels >= 1);
+    m_panel_count = arg_detector.size();
+    SCITBX_ASSERT( m_panel_count >= 1);
 
     //2) confirm that array dimensions are similar for each size
-    cu_slow_pixels = detector[0].get_image_size()[0];
-    cu_fast_pixels = detector[0].get_image_size()[1];
-    for (int ipanel=1; ipanel < detector.size(); ++ipanel){
-      SCITBX_ASSERT(detector[ipanel].get_image_size()[0] == cu_slow_pixels);
-      SCITBX_ASSERT(detector[ipanel].get_image_size()[1] == cu_fast_pixels);
+    m_slow_dim_size = arg_detector[0].get_image_size()[0];
+    m_fast_dim_size = arg_detector[0].get_image_size()[1];
+    for (int ipanel=1; ipanel < arg_detector.size(); ++ipanel){
+      SCITBX_ASSERT(arg_detector[ipanel].get_image_size()[0] == m_slow_dim_size);
+      SCITBX_ASSERT(arg_detector[ipanel].get_image_size()[1] == m_fast_dim_size);
     }
-    _image_size = cu_n_panels * cu_slow_pixels * cu_fast_pixels;
+    m_total_pixel_count = m_panel_count * m_slow_dim_size * m_fast_dim_size;
 
     //3) allocate a cuda array with these dimensions
     // separate accumulator image outside the usual nanoBragg data structure.
     //       1. accumulate contributions from a sequence of source energy channels computed separately
-    //       2. represent multiple panels, all same rectangular shape; slowest dimension = n_panels 
+    //       2. represent multiple panels, all same rectangular shape; slowest dimension = n_panels
+    vector_view_t view_floatimage( "m_accumulate_floatimage", m_total_pixel_count );
+    return view_floatimage;
+
 //    cudaSafeCall(cudaMalloc((void ** )&cu_accumulate_floatimage,
-//                            sizeof(*cu_accumulate_floatimage) * _image_size));
+//                            sizeof(*cu_accumulate_floatimage) * m_total_pixel_count));
 //    cudaSafeCall(cudaMemset((void *)cu_accumulate_floatimage, 0,
-//                            sizeof(*cu_accumulate_floatimage) * _image_size));
+//                            sizeof(*cu_accumulate_floatimage) * m_total_pixel_count));
   };
 
   kokkos_detector::kokkos_detector(dxtbx::model::Detector const & arg_detector,
@@ -129,9 +132,8 @@ namespace Kokkos {
     detector(arg_detector),
     cu_active_pixel_list(NULL),
     cu_accumulate_floatimage(NULL),
-    metrology(arg_detector, arg_beam){
-    construct_detail(arg_detector);
-  }
+    metrology(arg_detector, arg_beam),
+    m_accumulate_floatimage( construct_detail(arg_detector) ) {}
 
 /*  kokkos_detector::kokkos_detector(const simtbx::nanoBragg::nanoBragg& nB):
     metrology(nB),
@@ -139,21 +141,21 @@ namespace Kokkos {
     cu_accumulate_floatimage(NULL){
 
     //1) determine the size
-    cu_n_panels = 1;
+    m_panel_count = 1;
 
     //2) confirm that array dimensions are similar for each size
-    cu_slow_pixels = nB.spixels;
-    cu_fast_pixels = nB.fpixels;
-    _image_size = cu_n_panels * cu_slow_pixels * cu_fast_pixels;
+    m_slow_dim_size = nB.spixels;
+    m_fast_dim_size = nB.fpixels;
+    m_total_pixel_count = m_panel_count * m_slow_dim_size * m_fast_dim_size;
 
     //3) allocate a cuda array with these dimensions
     // separate accumulator image outside the usual nanoBragg data structure.
     //     1. accumulate contributions from a sequence of source energy channels computed separately
     //     2. represent multiple panels, all same rectangular shape; slowest dimension = n_panels
     cudaSafeCall(cudaMalloc((void ** )&cu_accumulate_floatimage,
-                            sizeof(*cu_accumulate_floatimage) * _image_size));
+                            sizeof(*cu_accumulate_floatimage) * m_total_pixel_count));
     cudaSafeCall(cudaMemset((void *)cu_accumulate_floatimage, 0,
-                            sizeof(*cu_accumulate_floatimage) * _image_size));
+                            sizeof(*cu_accumulate_floatimage) * m_total_pixel_count));
   }
 
   void kokkos_detector::free_detail(){
@@ -168,7 +170,7 @@ namespace Kokkos {
   int smCount = 84; //deviceProps.multiProcessorCount;
   dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
   dim3 numBlocks(smCount * 8, 1);
-  int total_pixels = _image_size;
+  int total_pixels = m_total_pixel_count;
   scale_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
     factor, cu_accumulate_floatimage, total_pixels);
   }
@@ -176,9 +178,9 @@ namespace Kokkos {
   void
   kokkos_detector::write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg& nB){
     //only implement the monolithic detector case, one panel
-    SCITBX_ASSERT(nB.spixels == cu_slow_pixels);
-    SCITBX_ASSERT(nB.fpixels == cu_fast_pixels);
-    SCITBX_ASSERT(cu_n_panels == 1);
+    SCITBX_ASSERT(nB.spixels == m_slow_dim_size);
+    SCITBX_ASSERT(nB.fpixels == m_fast_dim_size);
+    SCITBX_ASSERT(m_panel_count == 1);
     // nB.raw_pixels = af::flex_double(af::flex_grid<>(nB.spixels,nB.fpixels));
     // do not reallocate CPU memory for the data write, as it is not needed
     
@@ -186,19 +188,19 @@ namespace Kokkos {
     cudaSafeCall(cudaMemcpy(
      double_floatimage,
      cu_accumulate_floatimage,
-     sizeof(*cu_accumulate_floatimage) * _image_size,
+     sizeof(*cu_accumulate_floatimage) * m_total_pixel_count,
      cudaMemcpyDeviceToHost));
   }
 
   af::flex_double
   kokkos_detector::get_raw_pixels_cuda(){
     //return the data array for the multipanel detector case
-    af::flex_double z(af::flex_grid<>(cu_n_panels,cu_slow_pixels,cu_fast_pixels), af::init_functor_null<double>());
+    af::flex_double z(af::flex_grid<>(m_panel_count,m_slow_dim_size,m_fast_dim_size), af::init_functor_null<double>());
     double* begin = z.begin();
     cudaSafeCall(cudaMemcpy(
      begin,
      cu_accumulate_floatimage,
-     sizeof(*cu_accumulate_floatimage) * _image_size,
+     sizeof(*cu_accumulate_floatimage) * m_total_pixel_count,
      cudaMemcpyDeviceToHost));
     return z;
   }
@@ -249,33 +251,33 @@ namespace Kokkos {
   void
   kokkos_detector::each_image_allocate_cuda(){
     //allocate and zero reductions
-    bool * rangemap = (bool*) calloc(_image_size, sizeof(bool));
-    float * omega_reduction = (float*) calloc(_image_size, sizeof(float));
-    float * max_I_x_reduction = (float*) calloc(_image_size, sizeof(float));
-    float * max_I_y_reduction = (float*) calloc(_image_size, sizeof(float));
+    bool * rangemap = (bool*) calloc(m_total_pixel_count, sizeof(bool));
+    float * omega_reduction = (float*) calloc(m_total_pixel_count, sizeof(float));
+    float * max_I_x_reduction = (float*) calloc(m_total_pixel_count, sizeof(float));
+    float * max_I_y_reduction = (float*) calloc(m_total_pixel_count, sizeof(float));
     //It is not quite clear why we must zero them on CPU, why not just on GPU?
 
     cu_omega_reduction = NULL;
-    cudaSafeCall(cudaMalloc((void ** )&cu_omega_reduction, sizeof(*cu_omega_reduction) * _image_size));
+    cudaSafeCall(cudaMalloc((void ** )&cu_omega_reduction, sizeof(*cu_omega_reduction) * m_total_pixel_count));
     cudaSafeCall(cudaMemcpy(cu_omega_reduction,
-                 omega_reduction, sizeof(*cu_omega_reduction) * _image_size,
+                 omega_reduction, sizeof(*cu_omega_reduction) * m_total_pixel_count,
                  cudaMemcpyHostToDevice));
 
     cu_max_I_x_reduction = NULL;
-    cudaSafeCall(cudaMalloc((void ** )&cu_max_I_x_reduction, sizeof(*cu_max_I_x_reduction) * _image_size));
+    cudaSafeCall(cudaMalloc((void ** )&cu_max_I_x_reduction, sizeof(*cu_max_I_x_reduction) * m_total_pixel_count));
     cudaSafeCall(cudaMemcpy(cu_max_I_x_reduction,
-                 max_I_x_reduction, sizeof(*cu_max_I_x_reduction) * _image_size,
+                 max_I_x_reduction, sizeof(*cu_max_I_x_reduction) * m_total_pixel_count,
                  cudaMemcpyHostToDevice));
 
     cu_max_I_y_reduction = NULL;
-    cudaSafeCall(cudaMalloc((void ** )&cu_max_I_y_reduction, sizeof(*cu_max_I_y_reduction) * _image_size));
-    cudaSafeCall(cudaMemcpy(cu_max_I_y_reduction, max_I_y_reduction, sizeof(*cu_max_I_y_reduction) * _image_size,
+    cudaSafeCall(cudaMalloc((void ** )&cu_max_I_y_reduction, sizeof(*cu_max_I_y_reduction) * m_total_pixel_count));
+    cudaSafeCall(cudaMemcpy(cu_max_I_y_reduction, max_I_y_reduction, sizeof(*cu_max_I_y_reduction) * m_total_pixel_count,
                  cudaMemcpyHostToDevice));
 
     cu_rangemap = NULL;
-    cudaSafeCall(cudaMalloc((void ** )&cu_rangemap, sizeof(*cu_rangemap) * _image_size));
+    cudaSafeCall(cudaMalloc((void ** )&cu_rangemap, sizeof(*cu_rangemap) * m_total_pixel_count));
     cudaSafeCall(cudaMemcpy(cu_rangemap,
-                 rangemap, sizeof(*cu_rangemap) * _image_size,
+                 rangemap, sizeof(*cu_rangemap) * m_total_pixel_count,
                  cudaMemcpyHostToDevice));
 
     // deallocate host arrays
@@ -288,14 +290,14 @@ namespace Kokkos {
     cu_maskimage = NULL;
     int unsigned short * maskimage = NULL; //default case, must implement non-trivial initializer elsewhere
     if (maskimage != NULL) {
-      cudaSafeCall(cudaMalloc((void ** )&cu_maskimage, sizeof(*cu_maskimage) * _image_size));
-      cudaSafeCall(cudaMemcpy(cu_maskimage, maskimage, sizeof(*cu_maskimage) * _image_size,
+      cudaSafeCall(cudaMalloc((void ** )&cu_maskimage, sizeof(*cu_maskimage) * m_total_pixel_count));
+      cudaSafeCall(cudaMemcpy(cu_maskimage, maskimage, sizeof(*cu_maskimage) * m_total_pixel_count,
                    cudaMemcpyHostToDevice));
     }
 
     // In contrast to old API, new API initializes its own accumulator, does not take values from CPU
     cu_floatimage = NULL;
-    cudaSafeCall(cudaMalloc((void ** )&cu_floatimage, sizeof(*cu_floatimage) * _image_size));
+    cudaSafeCall(cudaMalloc((void ** )&cu_floatimage, sizeof(*cu_floatimage) * m_total_pixel_count));
 
         const int met_length = metrology.sdet.size();
         cudaSafeCall(cudaMalloc((void ** )&cu_sdet_vector, sizeof(*cu_sdet_vector) * met_length));
