@@ -606,6 +606,7 @@ class mosaic_f_mask(object):
     self.regions = OrderedDict()
     self.f_mask_0 = None
     self.f_mask = None
+    small_selection = None
     #
     if(log is not None):
       print("  #    volume_p1    uc(%) mFo-DFc: min,max,mean,sd", file=log)
@@ -618,6 +619,11 @@ class mosaic_f_mask(object):
       volume = v*step**3
       uc_fraction = v*100./self.conn.size()
       if(volume_cutoff is not None):
+        if(volume < volume_cutoff and volume >= 10):
+          if(small_selection is None): small_selection = self.conn==i
+          else:
+            small_selection = small_selection | (self.conn==i)
+          continue
         if volume < volume_cutoff: continue
 
       self.regions[i_seq] = group_args(
@@ -628,7 +634,6 @@ class mosaic_f_mask(object):
 
       selection = self.conn==i
       mask_i_asu = self.compute_i_mask_asu(selection = selection, volume = volume)
-      volume_asu = (mask_i_asu>0).count(True)*step**3
 
       if(uc_fraction >= 1):
         f_mask_i = self.compute_f_mask_i(mask_i_asu)
@@ -658,7 +663,24 @@ class mosaic_f_mask(object):
       f_mask_data += f_mask_i.data()
 
       self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
-    #
+    #####
+    # Handle accumulation of small
+    v = small_selection.count(True)
+    volume = v*step**3
+    uc_fraction = v*100./self.conn.size()
+    mask_i = flex.double(flex.grid(self.n_real), 0)
+    mask_i = mask_i.set_selected(small_selection, 1)
+    diff_map = diff_map.set_selected(diff_map<0,0)
+    #diff_map = diff_map.set_selected(diff_map>0,1)
+    mx = flex.mean(diff_map.select((diff_map>0).iselection()))
+    diff_map = diff_map/mx
+
+    mask_i = mask_i * diff_map
+    mask_i_asu = asu_map_ext.asymmetric_map(
+      self.crystal_symmetry.space_group().type(), mask_i).data()
+    f_mask_i = self.compute_f_mask_i(mask_i_asu)
+    self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
+    #####
     self.f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
     self.f_mask   = f_obs.customized_copy(data = f_mask_data)
     self.do_mosaic = False
