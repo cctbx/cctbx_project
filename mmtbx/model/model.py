@@ -3808,5 +3808,6 @@ class manager(object):
       custom_residues=custom_residues,
       params=params,
       log=self.log,
-      minimum_identity=minimum_identity
+      minimum_identity=minimum_identity,
+      ignore_hetatm=True
     )
