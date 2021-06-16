@@ -41,11 +41,10 @@ struct packed_metrology{
 
 struct kokkos_detector{
   inline kokkos_detector(){printf("NO OPERATION, DEVICE NUMBER IS NEEDED");};
-  //kokkos_detector(int const&, const simtbx::nanoBragg::nanoBragg& nB);
-  kokkos_detector(int const&, dxtbx::model::Detector const &, dxtbx::model::Beam const &);
-  void construct_detail(int const&, dxtbx::model::Detector const &);
+  //kokkos_detector(const simtbx::nanoBragg::nanoBragg& nB);
+  kokkos_detector(dxtbx::model::Detector const &, dxtbx::model::Beam const &);
+  void construct_detail(dxtbx::model::Detector const &);
 
-  //inline int get_deviceID(){return h_deviceID;}
   //inline void show_summary(){
   //  std::cout << "Detector size" << cu_n_panels <<std::endl;
   //  metrology.show();
@@ -61,7 +60,6 @@ struct kokkos_detector{
   //void free_detail();
   //inline ~kokkos_detector(){ {free_detail();} }
 
-  int h_deviceID;
   const dxtbx::model::Detector detector;
 
   int  cu_n_panels, cu_slow_pixels, cu_fast_pixels; // variables on host only
