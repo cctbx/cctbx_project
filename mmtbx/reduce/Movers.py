@@ -29,7 +29,8 @@
 #    They sometimes have optional hydrogen placements on some of the atoms.
 #
 # All Movers have the following methods, parameters, and return types:
-#  - { flex<atom> atoms, flex<flex<vec3>> positions, flex<float> preferenceEnergies } CoarsePositions(reduceOptions)
+#  - PositionReturn: ( flex<atom> atoms, flex<flex<vec3>> positions, flex<float> preferenceEnergies )
+#  - PositionReturn CoarsePositions(reduceOptions)
 #     The reduceOptions is a Phil option subset.  The relevant options for Movers
 #       are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale
 #     The first return lists all of the hierarchy atoms that move.
@@ -40,7 +41,7 @@
 #       each element of the third return; it indicates the relative favorability of
 #       each possible location and should be added to the total energy by an
 #       optimizer to break ties in otherwise-equivalent orientations.
-#  - { flex<atom> atoms, flex<flex<vec3>> positions, flex<float> preferenceEnergies } FinePositions(coarseIndex, reduceOptions)
+#  - PositionReturn FinePositions(coarseIndex, reduceOptions)
 #     The coarseIndex indicates the index (0 for the first) of the relevant coarse
 #       orientation.
 #     The return values are the same as for CoarsePositions and they list potential
@@ -50,7 +51,8 @@
 #       scale; other optimizers may choose to ask for all of the fine positions and
 #       append them to the coarse positions and globally optimize.
 #     Note: Some Movers will return empty arrays.
-#  - { flex<atom> atoms, flex<vec3> newPositions } FixUp(coarseIndex, reduceOptions)
+#  - FixUpReturn: ( flex<atom> atoms, flex<vec3> newPositions )
+#  - FixUpReturn FixUp(coarseIndex, reduceOptions)
 #     The coarseIndex indicates the index (0 for the first) of the relevant coarse
 #       orientation that was finally chosen.
 #     The first return lists the atoms that should be repositioned.
