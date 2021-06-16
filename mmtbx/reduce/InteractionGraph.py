@@ -200,6 +200,10 @@ def InteractionGraphAllPairs(movers, extraAtomInfo, reduceOptions):
     atoms.append(coarses.atoms)
     positions.append(total)
 
+  # @todo Do the AABB overlap test before doing the pairwise comparisons to reduce
+  # the number of comparisons that are required.  Only test the ones that overlap
+  # in AABB test.
+
   # For each pair of Movers, see if they have any overlapping atoms.
   # If so, add an edge to the graph for the pair.
   for i in range(len(movers)-1):
