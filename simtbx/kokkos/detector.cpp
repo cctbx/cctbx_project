@@ -89,21 +89,18 @@ namespace Kokkos {
       printf(" Panel %3d\n",idx_p);
       printf(" Panel %3d sdet %9.6f %9.6f %9.6f %9.6f fdet %9.6f %9.6f %9.6f %9.6f\n",
              idx_p,sdet[4*idx_p+0],sdet[4*idx_p+1],sdet[4*idx_p+2],sdet[4*idx_p+3],
-                          fdet[4*idx_p+0],fdet[4*idx_p+1],fdet[4*idx_p+2],fdet[4*idx_p+3]
+                   fdet[4*idx_p+0],fdet[4*idx_p+1],fdet[4*idx_p+2],fdet[4*idx_p+3]
       );
       printf(" Panel %3d odet %9.6f %9.6f %9.6f %9.6f pix0 %9.6f %9.6f %9.6f %9.6f\n",
              idx_p,odet[4*idx_p+0],odet[4*idx_p+1],odet[4*idx_p+2],odet[4*idx_p+3],
-                          pix0[4*idx_p+0],pix0[4*idx_p+1],pix0[4*idx_p+2],pix0[4*idx_p+3]
+                   pix0[4*idx_p+0],pix0[4*idx_p+1],pix0[4*idx_p+2],pix0[4*idx_p+3]
       );
       printf(" Panel %3d beam %11.8f %11.8f\n",idx_p,Xbeam[idx_p],Ybeam[idx_p]);
     }
   }
 
   void
-  kokkos_detector::construct_detail(int const& arg_device_id,
-                                 dxtbx::model::Detector const & arg_detector){
-    cudaSetDevice(arg_device_id);
-
+  kokkos_detector::construct_detail(dxtbx::model::Detector const & arg_detector) {
     //1) determine the size
     cu_n_panels = detector.size();
     SCITBX_ASSERT( cu_n_panels >= 1);
@@ -127,24 +124,19 @@ namespace Kokkos {
 //                            sizeof(*cu_accumulate_floatimage) * _image_size));
   };
 
-  kokkos_detector::kokkos_detector(int const& arg_device_id,
-                             dxtbx::model::Detector const & arg_detector,
+  kokkos_detector::kokkos_detector(dxtbx::model::Detector const & arg_detector,
                              dxtbx::model::Beam const& arg_beam):
-    h_deviceID(arg_device_id),
     detector(arg_detector),
     cu_active_pixel_list(NULL),
     cu_accumulate_floatimage(NULL),
     metrology(arg_detector, arg_beam){
-    construct_detail(arg_device_id, arg_detector);
+    construct_detail(arg_detector);
   }
 
-/*  kokkos_detector::kokkos_detector(int const& arg_device_id,
-                             const simtbx::nanoBragg::nanoBragg& nB):
-    h_deviceID(arg_device_id),
+/*  kokkos_detector::kokkos_detector(const simtbx::nanoBragg::nanoBragg& nB):
     metrology(nB),
     cu_active_pixel_list(NULL),
     cu_accumulate_floatimage(NULL){
-    cudaSetDevice(arg_device_id);
 
     //1) determine the size
     cu_n_panels = 1;
@@ -165,7 +157,6 @@ namespace Kokkos {
   }
 
   void kokkos_detector::free_detail(){
-    cudaSetDevice(h_deviceID);
     //4) make sure we can deallocate cuda array later on
     if (cu_accumulate_floatimage != NULL) {
       cudaSafeCall(cudaFree(cu_accumulate_floatimage));
@@ -174,10 +165,7 @@ namespace Kokkos {
 
   void
   kokkos_detector::scale_in_place_cuda(const double& factor){
-    cudaSafeCall(cudaSetDevice(h_deviceID));
-    cudaDeviceProp deviceProps = { 0 };
-    cudaSafeCall(cudaGetDeviceProperties(&deviceProps, h_deviceID));
-  int smCount = deviceProps.multiProcessorCount;
+  int smCount = 84; //deviceProps.multiProcessorCount;
   dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
   dim3 numBlocks(smCount * 8, 1);
   int total_pixels = _image_size;
@@ -195,7 +183,6 @@ namespace Kokkos {
     // do not reallocate CPU memory for the data write, as it is not needed
     
     double * double_floatimage = nB.raw_pixels.begin();
-    cudaSafeCall(cudaSetDevice(nB.device_Id));
     cudaSafeCall(cudaMemcpy(
      double_floatimage,
      cu_accumulate_floatimage,
@@ -208,7 +195,6 @@ namespace Kokkos {
     //return the data array for the multipanel detector case
     af::flex_double z(af::flex_grid<>(cu_n_panels,cu_slow_pixels,cu_fast_pixels), af::init_functor_null<double>());
     double* begin = z.begin();
-    cudaSafeCall(cudaSetDevice(h_deviceID));
     cudaSafeCall(cudaMemcpy(
      begin,
      cu_accumulate_floatimage,
@@ -220,7 +206,6 @@ namespace Kokkos {
   void
   kokkos_detector::set_active_pixels_on_KOKKOS(af::shared<int> active_pixel_list_value){
     active_pixel_list = active_pixel_list_value;
-    cudaSafeCall(cudaSetDevice(h_deviceID));
     int * ptr_active_pixel_list = active_pixel_list.begin();
     cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_list, sizeof(*cu_active_pixel_list) * active_pixel_list.size() ));
     cudaSafeCall(cudaMemcpy(cu_active_pixel_list,
@@ -235,7 +220,6 @@ namespace Kokkos {
     //return the data array for the multipanel detector case, but only for whitelist pixels
     af::shared<double> z(active_pixel_list.size(), af::init_functor_null<double>());
     double* begin = z.begin();
-    cudaSafeCall(cudaSetDevice(h_deviceID));
     CUDAREAL * cu_active_pixel_results;
     std::size_t * cu_active_pixel_selection;
 
@@ -245,9 +229,7 @@ namespace Kokkos {
                  selection.begin(), sizeof(*cu_active_pixel_selection) * selection.size(),
                  cudaMemcpyHostToDevice));
 
-    cudaDeviceProp deviceProps = { 0 };
-    cudaSafeCall(cudaGetDeviceProperties(&deviceProps, h_deviceID));
-    int smCount = deviceProps.multiProcessorCount;
+    int smCount = 84; //deviceProps.multiProcessorCount;
     dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
     dim3 numBlocks(smCount * 8, 1);
     int total_pixels = active_pixel_list.size();
@@ -266,7 +248,6 @@ namespace Kokkos {
 
   void
   kokkos_detector::each_image_allocate_cuda(){
-    cudaSetDevice(h_deviceID);
     //allocate and zero reductions
     bool * rangemap = (bool*) calloc(_image_size, sizeof(bool));
     float * omega_reduction = (float*) calloc(_image_size, sizeof(float));
@@ -341,7 +322,6 @@ namespace Kokkos {
 
   void
   kokkos_detector::each_image_free_cuda(){
-    cudaSetDevice(h_deviceID);
     cudaSafeCall(cudaDeviceSynchronize());
     cudaSafeCall(cudaFree(cu_omega_reduction));
     cudaSafeCall(cudaFree(cu_max_I_x_reduction));
