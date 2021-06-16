@@ -25,10 +25,14 @@ logger = logging.getLogger()
 
 p = Path(__file__)
 path_to_defs = p.parent / 'definitions/applications/NXmx.nxdl.xml'
-path_to_cnxvalidate = "~/github/cnxvalidate/build/nxvalidate"
 path_to_phil = p.parent / "AGIPD.phil"
 
-root = objectify.parse(str(path_to_defs))
+try:
+    root = objectify.parse(str(path_to_defs))
+except OSError:
+    # clone the submodule with definitions:
+    os.system(f'cd {p.parent.parent.parent} && git submodule update --init --remote && cd -')
+    root = objectify.parse(str(path_to_defs))
 
 for elem in root.getiterator():
     try:
@@ -504,7 +508,3 @@ if __name__ == '__main__':
   nexus_helper = Ruleset(sys.argv[1:])
   nexus_helper.create_nexus_master_file()
   logger.info("Stats:\n\t" + "\n\t".join(f"{k}: {v}" for k, v in nexus_helper.stat.items()))
-  # os.system(f'h5glance {nexus_helper.output_file_name} --attrs')
-  # os.system(f"{path_to_cnxvalidate} -l definitions ~/xfel/examples/swissFEL_example/spb/{nexus_helper.output_file_name}"
-  #           f" | grep name")
-  # os.system(f"{path_to_cnxvalidate} -l definitions ~/xfel/examples/swissFEL_example/spb/{nexus_helper.output_file_name}")
