@@ -664,6 +664,12 @@ class mosaic_f_mask(object):
 
       self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
     #####
+    # Determine number of secondary regions. Must happen here!
+    self.n_regions = len(self.FV.values())
+    self.do_mosaic = False
+    if(self.n_regions>1):
+      self.do_mosaic = True
+
     # Handle accumulation of small
     v = small_selection.count(True)
     volume = v*step**3
@@ -683,11 +689,6 @@ class mosaic_f_mask(object):
     #####
     self.f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
     self.f_mask   = f_obs.customized_copy(data = f_mask_data)
-    self.do_mosaic = False
-    # Determine number of secondary regions
-    self.n_regions = len(self.FV.values())
-    if(self.n_regions>1):
-      self.do_mosaic = True
 
   def _inflate(self, f):
     data = flex.complex_double(self.d_spacings.size(), 0)
