@@ -108,7 +108,7 @@ class HKLViewFrame() :
     self.mprint("Destroying HKLViewFrame", verbose=0) # this string is expected by HKLviewer.py so don't change
     self.STOP = True
     del self
-    sys.exit()
+    #sys.exit()
 
 
   def mprint(self, msg, verbose=0):

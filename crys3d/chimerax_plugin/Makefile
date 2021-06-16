@@ -71,7 +71,7 @@ endif
 
 BUNDLE_BASE_NAME = $(subst ChimeraX-,,$(BUNDLE_NAME))
 SOURCE = ../hklview
-SRCS = $(SOURCE)/HKLviewer.py $(SOURCE)/HKLviewerGui.py $(SOURCE)/qt.py $(SOURCE)/QtChromiumCheck.py \
+SRCS = $(SOURCE)/HKLviewer.py $(SOURCE)/HKLviewerGui.py $(SOURCE)/qt.py $(SOURCE)/helpers.py $(SOURCE)/QtChromiumCheck.py \
        src/tool.py src/__init__.py 
 
 
@@ -81,7 +81,7 @@ SRCS = $(SOURCE)/HKLviewer.py $(SOURCE)/HKLviewerGui.py $(SOURCE)/qt.py $(SOURCE
 # Actual make dependencies!
 #
 
-wheel $(WHEEL): bundle_info.xml $(SRCS)
+wheel $(WHEEL): bundle_info.xml $(SRCS) $(SOURCE)
 	$(CHIMERAX_EXE) --nogui --cmd "devel build . ; exit"
 
 install app-install:	$(WHEEL)
