@@ -121,6 +121,7 @@ class SimData:
   def Umats(mos_spread_deg, n_mos_doms, isotropic=True, seed=777, norm_dist_seed=777):
     import scitbx
     from scitbx.matrix import col
+    import scitbx.math
     import math
     UMAT_nm = flex.mat3_double()
     mersenne_twister = flex.mersenne_twister(seed=seed)
@@ -131,11 +132,11 @@ class SimData:
     for m in mosaic_rotation:
       site = col(mersenne_twister.random_double_point_on_sphere())
       if mos_spread_deg > 0:
-        UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(m, deg=False))
+        UMAT_nm.append(col(scitbx.math.r3_rotation_axis_and_angle_as_matrix(site, m)))
       else:
-        UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(0, deg=False))
+        UMAT_nm.append(col(scitbx.math.r3_rotation_axis_and_angle_as_matrix(site, 0)))
       if isotropic and mos_spread_deg > 0:
-        UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix((-m), deg=False))
+        UMAT_nm.append(col(scitbx.math.r3_rotation_axis_and_angle_as_matrix(site, -m)))
 
     return UMAT_nm
 
