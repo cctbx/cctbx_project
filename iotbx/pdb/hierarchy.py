@@ -1932,8 +1932,32 @@ class _():
           "DT": "T"}.get(rn, "N"))
     return seq
 
+  def _residue_is_aa_or_na(self, residue_name, include_modified=True):
+    """
+    Helper function for checking if a residue is an amino acid or
+    nucleic acid
+
+    Parameters
+    ----------
+      residue_name: str
+        The residue name
+      include_modified: bool
+        If set, include modified amino and nucleic acids
+
+    Returns
+    -------
+      bool
+        True if the residue is an amino or nucleic acid, false otherwise
+    """
+    residue_class = common_residue_names_get_class(residue_name)
+    acceptable_classes = ['common_amino_acid', 'common_rna_dna']
+    if include_modified:
+      acceptable_classes += ['d_amino_acid', 'modified_amino_acid', 'modified_rna_dna']
+    return residue_class in acceptable_classes
+
   def as_padded_sequence(self, missing_char='X', skip_insertions=False,
-                         pad=True, substitute_unknown='X', pad_at_start=True):
+                         pad=True, substitute_unknown='X', pad_at_start=True,
+                         ignore_hetatm=False):
     """
     Extract protein or nucleic acid sequence, taking residue numbering into
     account so that apparent gaps will be filled with substitute characters.
@@ -1946,6 +1970,8 @@ class _():
     for i, residue_group in enumerate(self.residue_groups()):
       if (skip_insertions) and (residue_group.icode != " "):
         continue
+      if ignore_hetatm and not self._residue_is_aa_or_na(residue_group.unique_resnames()[0]):
+        continue
       resseq = residue_group.resseq_as_int()
       if (pad) and (resseq > (last_resseq + 1)):
         for x in range(resseq - last_resseq - 1):
@@ -1955,12 +1981,15 @@ class _():
       padded_seq.append(seq[i])
     return "".join(padded_seq)
 
-  def get_residue_ids(self, skip_insertions=False, pad=True, pad_at_start=True):
+  def get_residue_ids(self, skip_insertions=False, pad=True, pad_at_start=True,
+                      ignore_hetatm=False):
     resids = []
     last_resseq = 0
     last_icode = " "
     for i, residue_group in enumerate(self.residue_groups()):
-      if (skip_insertions) and (residue.icode != " "):
+      if (skip_insertions) and (residue_group.icode != " "):
+        continue
+      if ignore_hetatm and not self._residue_is_aa_or_na(residue_group.unique_resnames()[0]):
         continue
       resseq = residue_group.resseq_as_int()
       if (pad) and (resseq > (last_resseq + 1)):
@@ -1972,12 +2001,15 @@ class _():
     return resids
 
   def get_residue_names_padded(
-      self, skip_insertions=False, pad=True, pad_at_start=True):
+      self, skip_insertions=False, pad=True, pad_at_start=True,
+      ignore_hetatm=False):
     resnames = []
     last_resseq = 0
     last_icode = " "
     for i, residue_group in enumerate(self.residue_groups()):
-      if (skip_insertions) and (residue.icode != " "):
+      if (skip_insertions) and (residue_group.icode != " "):
+        continue
+      if ignore_hetatm and not self._residue_is_aa_or_na(residue_group.unique_resnames()[0]):
         continue
       resseq = residue_group.resseq_as_int()
       if (pad) and (resseq > (last_resseq + 1)):
