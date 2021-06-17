@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
+import boost_adaptbx.boost.python as bp
 from functools import reduce
 from six.moves import range
-ext = boost.python.import_ext("cctbx_masks_ext")
+ext = bp.import_ext("cctbx_masks_ext")
 from cctbx_masks_ext import *
 
 import sys
@@ -47,7 +47,7 @@ class vdw_radii:
     print(" ".join("%5.2f" %self.table[symbol] for symbol in symbols), file=log)
 
 
-@boost.python.inject_into(flood_fill)
+@bp.inject_into(flood_fill)
 class _():
 
   def eigensystems_frac(self):

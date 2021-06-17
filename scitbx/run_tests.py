@@ -1,12 +1,10 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
-import sys
 import libtbx.load_env
 
-from libtbx.env_config import get_gcc_version
-
-tst_list_base = [
+tst_list = [
   "$D/tests/tst_smoothing.py",
+  "$D/tests/tst_genetic_algorithm_with_mp.py",
   "$D/tests/tst_basic.py",
   "$B/array_family/tst_af_1",
   "$B/array_family/tst_af_2",
@@ -143,24 +141,8 @@ tst_list_base = [
   "$D/dtmin/regression/tst_dtmin_basic.py",
   "$D/dtmin/regression/tst_dtmin_booth.py",
   "$D/dtmin/regression/tst_dtmin_twisted.py",
+  "$D/suffixtree/test/tst_single.py",
   ]
-
-# failing tests
-tst_list_fail_gcc = [
-    "$D/suffixtree/test/tst_single.py",  # test seg faults with newer versions of GCC
-  ]
-tst_list_fail = list()
-gcc_version = get_gcc_version()
-if gcc_version is None:
-  gcc_version = 0
-if sys.platform.startswith('linux') and gcc_version > 50000:
-  tst_list_fail += tst_list_fail_gcc
-else:
-  tst_list_base += tst_list_fail_gcc
-
-# final lists
-tst_list = tst_list_base
-tst_list_expected_failures = tst_list_fail
 
 def run():
   build_dir = libtbx.env.under_build("scitbx")

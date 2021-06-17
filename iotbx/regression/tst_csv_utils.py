@@ -33,6 +33,7 @@ def exercise_writer():
   content = [l.strip() for l in f.readlines()]
   text = ['%s;%s' %(row[0],row[1]) for row in zip(x,y)]
   assert content == text
+  f.close()
 
   x = flex.int(x)
   y = flex.int(y)

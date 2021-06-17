@@ -76,10 +76,44 @@ namespace cctbx { namespace geometry { namespace boost_python {
     ;
   }
 
+  static void wrap_dihedral() {
+    using namespace boost::python;
+    typedef dihedral<double> wt;
+
+    class_<wt>("dihedral", no_init)
+      .def(init<af::tiny<scitbx::vec3<double>, 4> const &>())
+      .def("d_angle_d_sites", &wt::d_angle_d_sites)
+      .def("d_angle_d_cell_params", &wt::d_angle_d_cell_params,
+      (arg("unit_cell")))
+      .def("variance",
+      (double(wt::*)(
+        af::const_ref<double, af::packed_u_accessor> const &,
+        cctbx::uctbx::unit_cell const &,
+        optional_container<af::shared<sgtbx::rt_mx> > const &) const)
+        &wt::variance,
+        (arg("covariance_matrix"),
+          arg("unit_cell"),
+          arg("sym_ops")))
+      .def("variance",
+      (double(wt::*)(
+        af::const_ref<double, af::packed_u_accessor> const &,
+        af::const_ref<double, af::packed_u_accessor> const &,
+        cctbx::uctbx::unit_cell const &,
+        optional_container<af::shared<sgtbx::rt_mx> > const &) const)
+        &wt::variance,
+        (arg("covariance_matrix"),
+          arg("cell_covariance_matrix"),
+          arg("unit_cell"),
+          arg("sym_ops")))
+      .def_readonly("dihedral_model", &wt::dihedral_model)
+      ;
+  }
+
   void init_module()
   {
     wrap_distance();
     wrap_angle();
+    wrap_dihedral();
   }
 
 }}} // namespace cctbx::geometry::boost_python

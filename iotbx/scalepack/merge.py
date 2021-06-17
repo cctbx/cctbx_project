@@ -238,6 +238,7 @@ def write(file_name=None, file_object=None, miller_array=None,
       print(((("%4d"*3) % h) + (" "*16)
         + format_f8_1_or_i8(h, "intensity", f)
         + format_f8_1_or_i8(h, "sigma", s)), file=file_object)
+  file_object.close()
 
 def run(args):
   to_pickle = "--pickle" in args

@@ -481,9 +481,9 @@ class clean_out_directory(object):
     locale.setlocale(locale.LC_ALL, 'C')
     n_kb = self.n_bytes / 1000
     if (n_kb > 10000):
-      return locale.format("%.1f", n_kb / 1000, grouping=True) + " MB"
+      return locale.format_string("%.1f", n_kb / 1000, grouping=True) + " MB"
     else :
-      return locale.format("%.1f", n_kb, grouping=True) + " KB"
+      return locale.format_string("%.1f", n_kb, grouping=True) + " KB"
 
   def show(self, out=sys.stdout):
     if (self.n_dirs > 0):

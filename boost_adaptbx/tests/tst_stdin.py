@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-import boost.python
-from boost.python import streambuf
-ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
+import boost_adaptbx.boost.python as bp
+from boost_adaptbx.boost.python import streambuf
+ext = bp.import_ext("boost_adaptbx_python_streambuf_test_ext")
 import subprocess
 import sys
 

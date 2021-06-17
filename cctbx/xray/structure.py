@@ -1693,6 +1693,27 @@ class structure(crystal.special_position_settings):
       out=out,
       prefix=prefix)
 
+  def is_similar(self, other, eps = 1.e-6):
+    """
+    Check if similar. Can be endlessly fortified as needed.
+    """
+    if(self.scatterers().size() != other.scatterers().size()): return False
+    f1 = self.crystal_symmetry().is_similar_symmetry(other.crystal_symmetry())
+    f2 = approx_equal(self.sites_frac(), other.sites_frac(), eps)
+    f3 = approx_equal(self.extract_u_iso_or_u_equiv(),
+                      other.extract_u_iso_or_u_equiv(), eps)
+    f4 = approx_equal(self.scatterers().extract_occupancies(),
+                      other.scatterers().extract_occupancies(), eps)
+    f5 = approx_equal(self.scatterers().extract_scattering_types(),
+                      other.scatterers().extract_scattering_types())
+    sr1 = self.scattering_type_registry().unique_gaussians_as_list()
+    sr2 = other.scattering_type_registry().unique_gaussians_as_list()
+    f6 = True
+    for s1, s2 in zip(sr1, sr2):
+      f6 &= approx_equal(s1.parameters(), s2.parameters(), eps)
+    f = list(set([f1,f2,f3,f4,f5,f6]))
+    return len(f)==1 and f[0]
+
   def is_positive_definite_u(self, u_cart_tolerance=None):
     if (u_cart_tolerance is None):
       return ext.is_positive_definite_u(
@@ -2144,6 +2165,27 @@ class structure(crystal.special_position_settings):
       keep_pair_asu_table=keep_pair_asu_table,
       out=out)
 
+  def show_dihedral_angles(self,
+        distance_cutoff=None,
+        max_d=1.7,
+        max_angle=170,
+        asu_mappings_buffer_thickness=None,
+        asu_is_inside_epsilon=None,
+        pair_asu_table=None,
+        keep_pair_asu_table=False,
+        out=None):
+    if (pair_asu_table is None):
+      pair_asu_table = self.pair_asu_table(
+        distance_cutoff=distance_cutoff,
+        asu_mappings_buffer_thickness=asu_mappings_buffer_thickness,
+        asu_is_inside_epsilon=asu_is_inside_epsilon)
+    return pair_asu_table.show_dihedral_angles(
+      site_labels=self.scatterers().extract_labels(),
+      sites_frac=self.sites_frac(),
+      max_d=max_d,
+      max_angle=max_angle,
+      out=out)
+
   def conservative_pair_proxies(self, bond_sym_table, conserve_angles):
     return conservative_pair_proxies(
       structure=self,
@@ -2330,7 +2372,10 @@ class structure(crystal.special_position_settings):
                                       '_atom_site_aniso_U_12',
                                       '_atom_site_aniso_U_13',
                                       '_atom_site_aniso_U_23'))
+      anharmonic_scatterers = []
       for sc in aniso_scatterers:
+        if sc.anharmonic_adp:
+          anharmonic_scatterers.append(sc)
         u_cif = adptbx.u_star_as_u_cif(uc, sc.u_star)
         if covariance_matrix is not None:
           row = [sc.label]
@@ -2349,6 +2394,34 @@ class structure(crystal.special_position_settings):
           row = [sc.label] + [fmt%u_cif[i] for i in range(6)]
         aniso_loop.add_row(row)
       cs_cif_block.add_loop(aniso_loop)
+      if anharmonic_scatterers:
+        from cctbx.sgtbx import rank_3_tensor_constraints as t3c
+        from cctbx.sgtbx import rank_4_tensor_constraints as t4c
+        C_header= ['_atom_site_anharm_GC_C_label']
+        D_header= ['_atom_site_anharm_GC_D_label']
+        for idx in flex.rows(t3c.indices()):
+          C_header.append("_atom_site_anharm_GC_C_%s%s%s" %(idx[0]+1,idx[1]+1,idx[2]+1))
+        for idx in flex.rows(t4c.indices()):
+          D_header.append("_atom_site_anharm_GC_D_%s%s%s%s" %(idx[0]+1,idx[1]+1,idx[2]+1,idx[3]+1))
+        C_loop = model.loop(header=(C_header))
+        D_loop = model.loop(header=(D_header))
+        for sc in anharmonic_scatterers:
+          C_row = [sc.label]
+          D_row = [sc.label]
+          for i, d in enumerate(sc.anharmonic_adp.data()):
+            if covariance_matrix is not None:
+              idx = param_map[labels.index(sc.label)].u_aniso
+              if idx > -1:
+                var = covariance_diagonal[idx+6:idx+6+25]
+                d = format_float_with_su(d, math.sqrt(var[i]))
+            if i < 10:
+              C_row.append(d)
+            else:
+              D_row.append(d)
+          C_loop.add_row(C_row)
+          D_loop.add_row(D_row)
+        cs_cif_block.add_loop(C_loop)
+        cs_cif_block.add_loop(D_loop)
       cs_cif_block.add_loop(atom_type_cif_loop(self, format=format))
     return cs_cif_block
 

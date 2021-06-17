@@ -97,10 +97,10 @@ def test_manager_and_clashes_functions():
   clashes = pnps.get_clashes()
   # sorted by overlap (default)
   clashes.sort_clashes(by_value='overlap')
-  assert(clashes._clashes_dict.items()[11][0] == ((38, 39)))
+  assert(list(clashes._clashes_dict.items())[11][0] == ((38, 39)))
   # sorted by symmetry
   clashes.sort_clashes(by_value='symmetry')
-  assert(clashes._clashes_dict.items()[11][0] == (27, 27))
+  assert(list(clashes._clashes_dict.items())[11][0] == (27, 27))
 
   assert(clashes.iseq_is_clashing(iseq=27))
   assert(clashes.iseq_is_clashing(iseq=44))
@@ -325,6 +325,16 @@ def test_1_5_overlaps():
   tst = pnp.check_if_1_5_interaction(33, 31,hd_sel,full_connectivity_table)
   msg = 'Test fails on 1-5 two hydrogen interaction'
   assert(not tst), msg
+
+
+def test_no_unit_cell():
+  '''
+  Make sure NBO code does not crash if no unit cell provided
+  '''
+  clashes = get_clashes_result(raw_records=raw_records_9)
+  results = clashes.get_results()
+  assert(results.n_clashes == 15)
+  assert approx_equal(results.clashscore, 468, eps=2.0)
 
 
 raw_records_0 = """
@@ -682,6 +692,41 @@ ATOM      8  HA2 GLY A   1      -8.104   3.833   8.772  1.00 16.57           H
 ATOM      9  HA3 GLY A   1      -7.198   4.954   8.180  1.00 16.57           H
 """
 
+raw_records_9 = """
+HETATM    7  O   HOH S  14     -18.253  -4.465 -12.178  1.00 27.19           O
+HETATM   13  O   HOH S  25     -19.834  -4.638 -10.686  1.00 27.54           O
+HETATM   14  O   HOH S  27     -15.855  -5.767 -12.479  1.00 27.85           O
+HETATM   22  O   HOH S  63     -18.424  -6.217 -12.820  1.00 34.44           O
+HETATM   23  O   HOH S  70     -20.622  -6.101 -13.748  1.00 36.15           O
+HETATM   27  O   HOH S  85     -18.252  -5.783 -14.957  1.00 35.55           O
+ATOM    124  N   ALA U1093     -20.236  -1.950 -10.882  1.00 40.90           N
+ATOM    125  CA  ALA U1093     -18.894  -2.526 -11.105  1.00 40.85           C
+ATOM    126  C   ALA U1093     -18.981  -4.042 -11.306  1.00 42.09           C
+ATOM    127  O   ALA U1093     -19.762  -4.688 -10.593  1.00 44.16           O
+ATOM    128  CB  ALA U1093     -18.001  -2.171  -9.946  1.00 41.35           C
+ATOM    129  H   ALA U1093     -20.351  -1.498 -10.080  1.00 40.90           H
+ATOM    130  HA  ALA U1093     -18.495  -2.165 -11.940  1.00 40.85           H
+ATOM    131  HB1 ALA U1093     -16.981  -2.694 -10.196  1.00 41.35           H
+ATOM    132  HB2 ALA U1093     -17.763  -0.991  -9.899  1.00 41.35           H
+ATOM    133  HB3 ALA U1093     -18.382  -2.648  -8.901  1.00 41.35           H
+ATOM    134  N   VAL U1094     -18.217  -4.564 -12.261  1.00 42.56           N
+ATOM    135  CA  VAL U1094     -18.145  -6.038 -12.472  1.00 49.14           C
+ATOM    136  C   VAL U1094     -16.659  -6.420 -12.427  1.00 61.05           C
+ATOM    137  O   VAL U1094     -16.393  -7.631 -12.342  1.00 68.50           O
+ATOM    138  CB  VAL U1094     -18.803  -6.451 -13.798  1.00 53.70           C
+ATOM    139  CG1 VAL U1094     -20.319  -6.313 -13.759  1.00 52.46           C
+ATOM    140  CG2 VAL U1094     -18.227  -5.687 -14.979  1.00 42.89           C
+ATOM    141  H   VAL U1094     -17.692  -4.093 -12.848  1.00 42.56           H
+ATOM    142  HA  VAL U1094     -18.467  -6.478 -11.486  1.00 49.14           H
+ATOM    143  HB  VAL U1094     -18.688  -7.451 -14.019  1.00 53.70           H
+ATOM    144 HG11 VAL U1094     -20.335  -6.928 -14.723  1.00 52.46           H
+ATOM    145 HG12 VAL U1094     -20.360  -6.983 -12.826  1.00 52.46           H
+ATOM    146 HG13 VAL U1094     -19.966  -5.155 -13.742  1.00 52.46           H
+ATOM    147 HG21 VAL U1094     -18.868  -5.778 -15.987  1.00 42.89           H
+ATOM    148 HG22 VAL U1094     -18.229  -4.543 -14.732  1.00 42.89           H
+ATOM    149 HG23 VAL U1094     -17.077  -5.935 -15.188  1.00 42.89           H
+"""
+
 unknown_pairs_pdb_str = """
 CRYST1  117.569   80.626   62.614  90.00 121.09  90.00 C 1 2 1       4
 SCALE1      0.008506  0.000000  0.005128        0.00000
@@ -750,4 +795,5 @@ if (__name__ == "__main__"):
   test_file_with_unknown_pair_type()
   test_small_cell()
   test_manager_and_clashes_functions()
+  test_no_unit_cell()
   print("OK. Time: %8.3f"%(time.time()-t0))

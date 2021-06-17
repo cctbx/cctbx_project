@@ -70,7 +70,8 @@ class db_proxy(object):
         vals.append(value)
       query += "(%s) VALUES (%s)"%(", ".join(keys), ", ".join(vals))
       cursor = app.execute_query(query, commit=True)
-      self.id = cursor.lastrowid
+      if cursor:
+        self.id = cursor.lastrowid
 
       for key in app.columns_dict[table_name]:
         if key not in self._db_dict:
@@ -91,7 +92,7 @@ class db_proxy(object):
 
   def __getattr__(self, key):
     # Called if the property is not found
-    assert hasattr(self, '_db_dict')
+    assert '_db_dict' in self.__dict__
     if key not in self._db_dict:
       print(self.table_name, key, 'error!', self._db_dict)
       raise AttributeError(key)
@@ -103,7 +104,7 @@ class db_proxy(object):
     #  Test key == "_db_dict" to allow creating _db_dict
     #  Test hasattr(self, "_db_dict") in case dbproxy.__init__ hasn't been called
     #  Test key not in self._db_dict to allow setting member variables not in database dictionary
-    if key == "_db_dict" or not hasattr(self, "_db_dict") or key not in self._db_dict:
+    if key == "_db_dict" or "_db_dict" not in self.__dict__ or key not in self._db_dict:
       super(db_proxy, self).__setattr__(key, value)
       return
 

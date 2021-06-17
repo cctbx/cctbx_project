@@ -64,6 +64,9 @@ namespace {
                   )))
      .def("add", &density_props<>::add, arg("density_props"))
      .def("has_silva_interaction", &density_props<>::has_silva_interaction)
+     .def("get_dori_value", &density_props<>::get_dori_value)
+     .def("get_sedd_value", &density_props<>::get_sedd_value)
+     .def("cal_silva", &density_props<>::cal_silva)
      .add_property("density", make_getter(&density_props<>::density, rbv()), make_setter(&density_props<>::density, dcp()))
      .add_property("gradient_vector", make_getter(&density_props<>::gradient_vector, rbv()), make_setter(&density_props<>::gradient_vector, dcp()))
      .add_property("hessian", make_getter(&density_props<>::hessian, rbv()), make_setter(&density_props<>::hessian, dcp()))
@@ -88,21 +91,6 @@ namespace {
        arg("p"),
        arg("a_xyz"),
        arg("wfc_obj")
-       ))
-   ;
-   // add argument for choosing dori or sedd
-   def("has_interaction_at_point", (bool(*)(
-                     vec3<double> const&,
-                     af::shared<vec3<double> > const&,
-                     af::shared<int> const&,
-                     boost::python::list const&,
-                     std::string const & silva_type
-                     )) has_interaction_at_point, (
-       arg("p"),
-       arg("a_xyz"),
-       arg("element_flags"),
-       arg("wfc_obj"),
-       arg("silva_type")
        ))
    ;
 

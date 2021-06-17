@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
+import boost_adaptbx.boost.python as bp
 import cctbx.uctbx # possibly implicit
-ext = boost.python.import_ext("simtbx_nanoBragg_ext")
+ext = bp.import_ext("simtbx_nanoBragg_ext")
 from scitbx.array_family import flex
 from simtbx_nanoBragg_ext import *
 from scitbx.matrix import col, sqr
@@ -15,7 +15,7 @@ from dxtbx.model import DetectorFactory
 from dxtbx.format import cbf_writer
 
 
-@boost.python.inject_into(ext.nanoBragg)
+@bp.inject_into(ext.nanoBragg)
 class _():
 
   def __getattr__(self,name):
@@ -94,10 +94,13 @@ class _():
       # The Py3 method brings the full data in one chunk into PyBytes and then populates
       #   the output buffer in Python rather than C++.
       image_bytes = self.raw_pixels_unsigned_short_as_python_bytes(intfile_scale,debug_x,debug_y)
-      outfile.write(image_bytes)
+      ptr = 0; nbytes = len(image_bytes)
+      while (ptr < nbytes): # chunked output necessary to prevent intermittent MemoryError
+        outfile.write(image_bytes[ptr : min(ptr + 65536, nbytes)])
+        ptr += 65536
       outfile.close();
       return
-    from boost.python import streambuf
+    from boost_adaptbx.boost.python import streambuf
     self.to_smv_format_streambuf(streambuf(outfile),intfile_scale,debug_x,debug_y)
 
     outfile.close();

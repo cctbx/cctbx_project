@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.xray import ext
-import boost.python
+import boost_adaptbx.boost.python as bp
 import sys
 
 class gradient_flags(ext.gradient_flags):
@@ -26,7 +26,7 @@ class gradient_flags(ext.gradient_flags):
     ext.gradient_flags.__init__(self,
       site, u_iso, u_aniso, occupancy, fp, fdp, sqrt_u_iso, tan_b_iso_max)
 
-@boost.python.inject_into(ext.gradient_flags)
+@bp.inject_into(ext.gradient_flags)
 class _():
 
   def copy(self):

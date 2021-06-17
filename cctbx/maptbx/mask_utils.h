@@ -67,6 +67,61 @@ public:
 
 }; // class sample_all_mask_regions
 
+class binary_filter {
+
+private:
+  af::versa<double, af::c_grid<3> > map_new;
+  af::tiny<int, 3> map_dimensions;
+
+public:
+  binary_filter (
+    af::const_ref<double, af::flex_grid<> > const& map,
+    float const& threshold)
+  {
+    CCTBX_ASSERT(map.accessor().nd() == 3);
+    CCTBX_ASSERT(map.accessor().all().all_gt(0));
+
+    af::c_grid<3> a = map.accessor();
+
+    map_dimensions = af::adapt(map.accessor().all());
+    map_new.resize(af::c_grid<3>(map_dimensions), 0);
+
+    int boundary = 1;
+    float value = 0;
+    float cutoff = 27. * threshold;  // sum of 27 values must be > cutoff
+    // Create new map where value at each point is 1 if
+    // average of all 27 points next to this point plus this point > threshold
+    int i_min=(boundary);
+    int i_max=a[0]-boundary;
+    int j_min=(boundary);
+    int j_max=a[1]-boundary;
+    int k_min=(boundary);
+    int k_max=a[2]-boundary;
+
+    for(int i = i_min ; i < i_max; i++) {
+      for(int j = j_min ; j < j_max; j++) {
+        for(int k = k_min ; k < k_max; k++) {
+              value = 0.;
+              for ( int ii = -1; ii < 2; ii++) {
+                for ( int jj = -1; jj < 2; jj++) {
+                  for ( int kk = -1; kk < 2; kk++) {
+                    value += map(i+ii,j+jj,k+kk);
+                  }
+                }
+              }
+              if (value >= cutoff) {
+                map_new(i,j,k) = 1.;
+              } else {
+                map_new(i,j,k) = 0.;
+              }
+        } //for k
+      } // for j
+    } // for i
+  } // constructor
+  af::versa<double, af::c_grid<3> > result() {return map_new;}
+
+}; // class binary_filter
+
 class zero_boundary_box_map {
 
 private:

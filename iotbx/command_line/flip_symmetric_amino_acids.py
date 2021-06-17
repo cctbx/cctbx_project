@@ -44,13 +44,12 @@ def run(args):
   out_fn_prefix = inp_fn
   if inp_fn.endswith(".pdb") or inp_fn.endswith(".cif"):
     out_fn_prefix = inp_fn[:-4]
-  out_fn = out_fn_prefix + "_iupac.pdb"
 
   if model.input_model_format_cif():
     out_fn = out_fn_prefix + "_iupac.cif"
     txt = model.model_as_mmcif()
   else:
-    out_fn = out_fn_prefix + "_iupac.cif"
+    out_fn = out_fn_prefix + "_iupac.pdb"
     txt = model.model_as_pdb()
   with open(out_fn, 'w') as f:
     f.write(txt)

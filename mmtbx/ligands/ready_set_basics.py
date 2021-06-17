@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import math
 
 from scitbx import matrix
+import six
 from six.moves import range
 
 def construct_xyz(ba, bv,
@@ -32,3 +33,38 @@ def construct_xyz(ba, bv,
                     math.cos(alpha)*e0)
     rh_list.append(rh)
   return rh_list
+
+def generate_atom_group_atom_names(rg, names, return_Nones=False, verbose=True):
+  '''
+  Generate all alt. loc. groups of names
+  '''
+  atom_groups = rg.atom_groups()
+  atom_altlocs = {}
+  for ag in atom_groups:
+    for atom in ag.atoms():
+      atom_altlocs.setdefault(atom.parent().altloc, [])
+      atom_altlocs[atom.parent().altloc].append(atom)
+  if len(atom_altlocs)>1 and '' in atom_altlocs:
+    for key in atom_altlocs:
+      if key=='': continue
+      for atom in atom_altlocs['']:
+        atom_altlocs[key].append(atom)
+    del atom_altlocs['']
+  for key, value in six.iteritems(atom_altlocs):
+    atoms=[]
+    for name in names:
+      for atom in value:
+        if atom.name.strip()==name.strip():
+          atoms.append(atom)
+          break
+      else:
+        if return_Nones:
+          atoms.append(None)
+        else:
+          if verbose:
+            print('not all atoms found. missing %s from %s' % (name, names))
+          break
+    if len(atoms)!=len(names):
+      yield None, None
+    else:
+      yield atoms[0].parent(), atoms

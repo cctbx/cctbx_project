@@ -15,6 +15,13 @@ from libtbx.utils import format_cpu_times
 import mmtbx.f_model
 from six.moves import zip
 from six.moves import range
+import iotbx.pdb
+
+pdb_str_tidy_us = """
+CRYST1   30.529   40.187   81.200  90.00  90.00  90.00 P 21 21 21    4
+HETATM 1130  O   HOH A2176       9.408  30.701   8.284  1.00 22.57           O
+ANISOU 1130  O   HOH A2176      286   4281   4008    515   -916   -999       O
+"""
 
 def xray_structure_of_one_atom(site_cart,
                                buffer_layer,
@@ -326,12 +333,13 @@ END
     print()
     pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
     xrs = pdb_inp.xray_structure_simple()
+    xrs.tidy_us()
     #
     crystal_gridding = maptbx.crystal_gridding(
       unit_cell        = xrs.unit_cell(),
       space_group_info = xrs.space_group_info(),
       symmetry_flags   = maptbx.use_space_group_symmetry,
-      step             = 0.1)
+      step             = 0.2)
     m = mmtbx.real_space.sampled_model_density(
       xray_structure = xrs,
       n_real         = crystal_gridding.n_real()).data()
@@ -342,7 +350,7 @@ END
       include_000      = True)
     #
     fc = f_obs_cmpl.structure_factors_from_scatterers(
-      xray_structure=xrs,
+      xray_structure               = xrs,
       algorithm                    = p.algorithm,
       cos_sin_table                = p.cos_sin_table,
       grid_resolution_factor       = p.grid_resolution_factor,
@@ -367,10 +375,21 @@ END
     print(m_.as_1d().min_max_mean().as_tuple())
     assert approx_equal(
       m .as_1d().min_max_mean().as_tuple(),
-      m_.as_1d().min_max_mean().as_tuple(), 1.e-3) # Must be smaller!?
+      m_.as_1d().min_max_mean().as_tuple(), 1.e-2)
     #
+def exercise_need_for_tidy_us():
+  """
+  Exercise the need to do .tidy_us(), otherwise crashes with
+  cctbx_project/cctbx/xray/sampling_base.h: exponent_table: excessive range.
+  """
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_tidy_us)
+  xrs = pdb_inp.xray_structure_simple()
+  sampled_density = mmtbx.real_space.sampled_model_density(
+    xray_structure = xrs,
+    grid_step      = 0.5)
 
 if (__name__ == "__main__"):
-    run()
-    exercise_sampled_model_density_1()
-    print("OK: real_space: ",format_cpu_times())
+  exercise_need_for_tidy_us()
+  run()
+  exercise_sampled_model_density_1()
+  print("OK: real_space: ",format_cpu_times())

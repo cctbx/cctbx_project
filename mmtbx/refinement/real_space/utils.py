@@ -8,9 +8,11 @@ class target_map(object):
   Data structure for real-space refinement. Holds map and its reciprocal-space
   equivalent, and its masked version that can be updated as model changes.
   """
-  def __init__(self, map_data, xray_structure, d_min, atom_radius):
+  def __init__(self, map_data, xray_structure, d_min, atom_radius,
+         map_manager=None):
     self.d_min = d_min
     self.map_data = map_data
+    self.map_manager = map_manager  # XXX switching to map_manager from map_data
     self.atom_radius = atom_radius
     self.f_map_diff = None # XXX rudimentary left-over, remove later
     self.crystal_gridding = maptbx.crystal_gridding( #XXX Likewise, remove later

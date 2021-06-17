@@ -227,7 +227,17 @@ def adopt_optional_init_args(obj, kwds):
                          % (k, obj.__class__))
     setattr(obj, k, v)
 
-class group_args(object):
+class dda(object):
+  dynamic_attributes_disabled = False
+  def __setattr__(self, k, v):
+    if(self.dynamic_attributes_disabled and not hasattr(self, k)):
+      raise TypeError("Dynamic attributes disabled.")
+    object.__setattr__(self, k, v)
+
+  def stop_dynamic_attributes(self):
+      self.dynamic_attributes_disabled = True
+
+class group_args(dda):
   """
   Class to build an arbitrary object from a list of keyword arguments.
 
@@ -237,6 +247,13 @@ class group_args(object):
   >>> obj = group_args(a=1, b=2, c=3)
   >>> print(obj.a, obj.b, obj.c)
   1 2 3
+
+  Once stop_dynamic_attributes is called, adding new attributes won't be
+  possible, that is this:
+
+  obj.tmp=10
+
+  will fail.
   """
 
   def __init__(self, **keyword_arguments):

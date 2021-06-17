@@ -197,7 +197,7 @@ antlr3RewriteRuleElementStreamNewAE(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_B
                 // Remove the entry from the vector. We do not
                 // cause it to be freed by using remove.
                 //
-                stream = rec->state->rStreams->remove(rec->state->rStreams, rec->state->rStreams->count - 1);
+                stream = (pANTLR3_REWRITE_RULE_ELEMENT_STREAM)rec->state->rStreams->remove(rec->state->rStreams, rec->state->rStreams->count - 1);
 
                 // We found a stream we can reuse.
                 // If the stream had a vector, then it will have been cleared
@@ -577,13 +577,13 @@ nextTree(pANTLR3_REWRITE_RULE_ELEMENT_STREAM stream)
                 // if out of elements and size is 1, dup
                 //
                 el = stream->_next(stream);
-                return stream->dup(stream, el);
+                return (pANTLR3_BASE_TREE)stream->dup(stream, el);
         }
 
         // test size above then fetch
         //
         el = stream->_next(stream);
-        return el;
+        return (pANTLR3_BASE_TREE)el;
 }
 
 /// Return the next element for a caller that wants just the token
@@ -607,7 +607,7 @@ next        (pANTLR3_REWRITE_RULE_ELEMENT_STREAM stream)
         {
                 pANTLR3_BASE_TREE el;
 
-                el = stream->_next(stream);
+                el = (pANTLR3_BASE_TREE)stream->_next(stream);
 
                 return  stream->dup(stream, el);
         }
@@ -737,7 +737,7 @@ toTree   (pANTLR3_REWRITE_RULE_ELEMENT_STREAM stream, void * element)
 static pANTLR3_BASE_TREE
 toTreeNode   (pANTLR3_REWRITE_RULE_ELEMENT_STREAM stream, void * element)
 {
-        return stream->adaptor->dupNode(stream->adaptor, (pANTLR3_BASE_TREE)element);
+        return (pANTLR3_BASE_TREE)stream->adaptor->dupNode(stream->adaptor, (pANTLR3_BASE_TREE)element);
 }
 
 #ifdef ANTLR3_WINDOWS
@@ -766,13 +766,13 @@ hasNext  (pANTLR3_REWRITE_RULE_ELEMENT_STREAM stream)
 static pANTLR3_BASE_TREE
 nextNodeToken(pANTLR3_REWRITE_RULE_ELEMENT_STREAM stream)
 {
-        return stream->adaptor->create(stream->adaptor, stream->_next(stream));
+        return (pANTLR3_BASE_TREE)stream->adaptor->create(stream->adaptor, (pANTLR3_COMMON_TOKEN)stream->_next(stream));
 }
 
 static pANTLR3_BASE_TREE
 nextNodeNode(pANTLR3_REWRITE_RULE_ELEMENT_STREAM stream)
 {
-        return stream->_next(stream);
+        return (pANTLR3_BASE_TREE)stream->_next(stream);
 }
 
 /// Treat next element as a single node even if it's a subtree.
@@ -789,7 +789,7 @@ nextNode (pANTLR3_REWRITE_RULE_ELEMENT_STREAM stream)
 {
 
         ANTLR3_UINT32   n;
-        pANTLR3_BASE_TREE       el = stream->_next(stream);
+        pANTLR3_BASE_TREE       el = (pANTLR3_BASE_TREE)stream->_next(stream);
 
         n = stream->size(stream);
         if (stream->dirty == ANTLR3_TRUE || (stream->cursor > n && n == 1))
@@ -797,7 +797,7 @@ nextNode (pANTLR3_REWRITE_RULE_ELEMENT_STREAM stream)
                 // We are out of elements and the size is 1, which means we just
                 // dup the node that we have
                 //
-                return  stream->adaptor->dupNode(stream->adaptor, el);
+                return  (pANTLR3_BASE_TREE)stream->adaptor->dupNode(stream->adaptor, el);
         }
 
         // We were not out of nodes, so the one we received is the one to return
@@ -837,7 +837,7 @@ getDescription  (pANTLR3_REWRITE_RULE_ELEMENT_STREAM stream)
 {
         if (stream->elementDescription == NULL)
         {
-                stream->elementDescription = "<unknown source>";
+                stream->elementDescription = (void*)"<unknown source>";
         }
 
         return  stream->elementDescription;

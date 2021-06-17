@@ -2,8 +2,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import approx_equal, show_diff
 import iotbx.ncs as ncs
 import iotbx.pdb
-import sys
-import os
+import sys, os
 from iotbx.ncs import ncs_group_master_phil
 import iotbx.phil
 

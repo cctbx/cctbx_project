@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
-import boost.python
-from boost.python import ostream
+import boost_adaptbx.boost.python as bp
+from boost_adaptbx.boost.python import ostream
 import libtbx.object_oriented_patterns as oop
 import sys
 import gc
@@ -14,7 +14,7 @@ class without_tell(oop.proxy):
     raise NotImplementedError("Test of stdout/stderr / C++ stream bridge")
 
 def run():
-  ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
+  ext = bp.import_ext("boost_adaptbx_python_streambuf_test_ext")
   ext.call_with_stderr_stdout_do_nothing(
     ostream(sys.stderr),
     ostream(sys.stdout))

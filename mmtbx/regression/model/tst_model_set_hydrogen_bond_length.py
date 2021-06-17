@@ -34,13 +34,22 @@ def tst_1():
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     pdb_interpretation_params = params,
-    log         = null_out())
+    log         = null_out(),
+    build_grm=True)
   # request neutron bond lengths
   model.set_hydrogen_bond_length(use_neutron_distances=True,
                                  show=False,
                                  log=sys.stdout)
+  model.process_input_model(make_restraints=True)
   compare_XH_bond_length_to_ideal(model = model)
+  #STOP()
   # request X-ray bond lengths
+  pdb_inp = iotbx.pdb.input(lines=pdb_str1.split("\n"), source_info=None)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    pdb_interpretation_params = params,
+    log         = null_out(),
+    build_grm=False)
   model.set_hydrogen_bond_length(use_neutron_distances=False,
                                  show=False,
                                  log=sys.stdout)

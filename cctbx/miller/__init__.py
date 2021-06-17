@@ -2,11 +2,11 @@
 from __future__ import absolute_import, division, print_function
 import cctbx.sgtbx
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
 from six.moves import zip
-ext = boost.python.import_ext("cctbx_miller_ext")
-asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+ext = bp.import_ext("cctbx_miller_ext")
+asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_miller_ext import *
 
 from cctbx import crystal
@@ -517,10 +517,10 @@ class set(crystal.symmetry):
     rp = self.unit_cell().reciprocal_parameters()
     c1fmt = "CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f P1        "
     fmt = "HETATM%5d  O   HOH %5d    %8.3f%8.3f%8.3f  1.00  1.00           O  "
-    of = open(file_name, "w")
-    for i_mi, mi in enumerate(indices):
-      rsv = uc.reciprocal_space_vector(mi)
-      print(fmt%(i_mi, i_mi, rsv[0]*scale, rsv[1]*scale, rsv[2]*scale), file=of)
+    with open(file_name, "w") as of:
+      for i_mi, mi in enumerate(indices):
+        rsv = uc.reciprocal_space_vector(mi)
+        print(fmt%(i_mi, i_mi, rsv[0]*scale, rsv[1]*scale, rsv[2]*scale), file=of)
 
   def show_comprehensive_summary(self, f=None, prefix=""):
     """Display comprehensive Miller set or array summary"""
@@ -673,13 +673,30 @@ class set(crystal.symmetry):
   def min_max_d_star_sq(self):
     return self.unit_cell().min_max_d_star_sq(self.indices())
 
-  def d_max_min(self):
+  def d_max_min(self, d_max_is_highest_defined_if_infinite = False):
     """
     Low- and high-resolution limits.
     :returns: Python tuple of floats
+    Modified 2020-10-02 to allow return of maximum defined instead of -1
+        if F000 present
     """
-    return tuple([uctbx.d_star_sq_as_d(d_star_sq)
-      for d_star_sq in self.min_max_d_star_sq()])
+    if d_max_is_highest_defined_if_infinite:
+      (d_max,d_min) = tuple([uctbx.d_star_sq_as_d(d_star_sq)
+        for d_star_sq in self.min_max_d_star_sq()])
+      if d_max < 0:  # (0,0,0) is present
+        indices_copy = list(self.indices())
+        index = indices_copy.index((0,0,0))
+        new_indices = flex.miller_index(
+          indices_copy[:index] + indices_copy[index+1:])
+        d_max_d_star_sq,d_min_d_star_sq= self.unit_cell(
+             ).min_max_d_star_sq(new_indices)
+        (d_max, d_min )= (
+          uctbx.d_star_sq_as_d(d_max_d_star_sq),
+          uctbx.d_star_sq_as_d(d_min_d_star_sq))
+      return (d_max, d_min)
+    else: # usual
+      return tuple([uctbx.d_star_sq_as_d(d_star_sq)
+        for d_star_sq in self.min_max_d_star_sq()])
 
   def index_span(self):
     return index_span(self.indices())
@@ -996,6 +1013,7 @@ class set(crystal.symmetry):
   def resolution_filter(self, d_max=0, d_min=0, negate=0):
     """
     Select a subset within the indicated resolution range.
+    Returns a new miller array (does not change existing array)
 
     :param d_max: Low-resolution cutoff
     :param d_min: High-resolution cutoff
@@ -1711,16 +1729,17 @@ class set(crystal.symmetry):
       assert d_star_sq_step > 0 or (d_star_sq_step is None)
     if auto_binning:
       d_spacings = self.d_spacings().data()
-      d_max=flex.min(d_spacings)
-      d_min=flex.max(d_spacings)
+      d_max=flex.max(d_spacings)
+      d_min=flex.min(d_spacings)
       del d_spacings
       if d_star_sq_step is None:
         d_star_sq_step = 0.004
     assert (d_star_sq_step>0.0)
+    d_min, d_max = sorted((d_min, d_max))
     return self.use_binning(binning=binning(self.unit_cell(),
       self.indices(),
-      d_min,
       d_max,
+      d_min,
       d_star_sq_step))
 
   def setup_binner_counting_sorted(self,
@@ -2272,6 +2291,16 @@ class array(set):
     print(prefix + "Type of sigmas:", raw_array_summary(self.sigmas()), file=f)
     set.show_summary(self, f=f, prefix=prefix)
     return self
+
+  def make_up_hl_coeffs(self, k_blur, b_blur):
+    assert isinstance(self.data(), flex.complex_double)
+    phases = self.phases().data()
+    sin_phases = flex.sin(phases)
+    cos_phases = flex.cos(phases)
+    ss = 1./flex.pow2(self.d_spacings().data()) / 4.
+    t = 2*k_blur * flex.exp(-b_blur*ss)
+    return self.customized_copy(
+      data = flex.hendrickson_lattman(a = t * cos_phases, b = t * sin_phases))
 
   def disagreeable_reflections(self, f_calc_sq, n_reflections=20):
     assert f_calc_sq.is_xray_intensity_array()
@@ -3853,6 +3882,20 @@ class array(set):
     assert den != 0
     return self.array(data = coeff/den)
 
+  def __repr__(self):
+    """
+    Emit a string for debugging of the labels, type of data
+    and sigmas array present within this miller_array.
+    """
+    mstr = self.crystal_symmetry().__repr__()
+    if self._info:
+      mstr = mstr + "\n" + self._info.label_string()
+    mstr = mstr + "\n" + self._data.__repr__()
+    if self._sigmas:
+      mstr = mstr + "\n" + self._sigmas.__repr__()
+    mstr = mstr + "\nsize: %d"  %self._data.size()
+    return mstr + "\n"
+
   def __abs__(self):
     """
     Return a copy of the array with data replaced by absolute values, i.e.
@@ -4246,6 +4289,28 @@ class array(set):
     if (factor > 0):
       return flex.sum( d1 * d2 * flex.cos(p2 - p1) ) / factor
     return None
+
+  def as_map_manager(self,
+                     resolution_factor=1/4.,
+                     crystal_gridding=None,
+                     grid_step=None,
+                     d_min=None,
+                     d_max=None,
+                     apply_sigma_scaling=True,
+                     apply_volume_scaling=False,
+                     wrapping=True):
+    assert isinstance(self.data(), flex.complex_double)
+    assert [apply_sigma_scaling, apply_volume_scaling].count(True) in [0,1]
+    mc = self
+    if([d_max, d_min].count(None)>0):
+      mc = self.resolution_filter(d_min=d_min, d_max=d_max)
+    fft_map_ = mc.fft_map(
+      resolution_factor = resolution_factor,
+      crystal_gridding  = crystal_gridding,
+      grid_step         = grid_step)
+    if(apply_sigma_scaling):  fft_map_.apply_sigma_scaling()
+    if(apply_volume_scaling): fft_map_.apply_volume_scaling()
+    return fft_map_.as_map_manager(wrapping=wrapping)
 
   def fft_map(self, resolution_factor=1/3,
                     d_min=None,
@@ -5088,12 +5153,13 @@ class array(set):
         sigmas=flex.double(self.size(), 1))
       merging_internal = intensities_copy.merge_equivalents(
         use_internal_variance=True)
-      merged = merging_internal.array()
-      if merged.size() == 1:
+      merged = merging_internal.array().select(
+        merging_internal.redundancies().data() > 1
+      )
+      if merged.size() <= 1:
         cc_one_half = 0
       else:
-        internal_sigmas = merging_internal.array().sigmas()
-        internal_variances = flex.pow2(internal_sigmas)
+        internal_variances = flex.pow2(merged.sigmas())
         mav = flex.mean_and_variance(merged.data())
         var_y = mav.unweighted_sample_variance()
         var_e = 2 * flex.mean(internal_variances)
@@ -5875,6 +5941,17 @@ class fft_map(maptbx.crystal_gridding):
     else:
       return flex.real(self._complex_map)
 
+  def as_map_manager(self, in_place=True, wrapping=True):
+    '''
+     Create a map_manager object from real_map_unpadded version of this map
+    '''
+    map_data=self.real_map_unpadded(in_place=in_place)
+    from iotbx.map_manager import map_manager
+    return map_manager(map_data=map_data,
+      unit_cell_crystal_symmetry=self.crystal_symmetry(),
+      unit_cell_grid=map_data.all(),
+      wrapping=wrapping)
+
   def real_map_unpadded(self, in_place=True):
     """
     Extract the real component of the FFT'd map, removing any padding required
@@ -5937,7 +6014,8 @@ class fft_map(maptbx.crystal_gridding):
                    file_name,
                    gridding_first=None,
                    gridding_last=None,
-                   labels=["cctbx.miller.fft_map"]):
+                   labels=["Values outside boundaries are wrapped inside",
+                           "fft_map from Phenix"]):
     """
     Write the real component of the map to a CCP4-format file.
     """

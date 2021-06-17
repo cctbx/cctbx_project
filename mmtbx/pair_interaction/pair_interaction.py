@@ -2,21 +2,21 @@ from __future__ import division
 import os
 import time
 import math
-import iotbx
-import iotbx.pdb
 import libtbx.load_env
 from scitbx.array_family import flex
 import numpy as np
-from qrefine.super_cell import expand
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
 
-import boost.python
-ext = boost.python.import_ext("mmtbx_pair_interaction_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("mmtbx_pair_interaction_ext")
 
 dat_path = libtbx.env.find_in_repositories("qrefine")
-qr_unit_tests_data = os.path.join(dat_path,"tests","unit","data_files")
-A2B=1.8897161646320724
+qr_unit_tests_data = None
+if(dat_path is not None):
+  qr_unit_tests_data = os.path.join(dat_path,"tests","unit","data_files")
+
+A2B=1.8897259885789
 global results
 results=[]
 global mol_pair_has_interaction
@@ -26,6 +26,7 @@ global wave_functions
 wave_functions = []
 
 def load_wfc(element):
+  element = element.lower()
   folder = libtbx.env.find_in_repositories("mmtbx/pair_interaction")
   for fn in os.listdir(folder):
     if(fn.startswith(element) and fn.endswith(".pkl")):
@@ -97,11 +98,6 @@ def run(ph, core=None):
   for element in element_types:
     wfc_obj=load_wfc(element)
     element_wfc_dict[element]=wfc_obj
-    #print element
-    #print dir(wfc_obj)
-    #STOP()
-
-
   # End of stage 1
   if(core is not None):
     core_atoms=[]
@@ -119,9 +115,11 @@ def run(ph, core=None):
     for atom in set(core_atoms+non_core_atoms_filtered):
       selection[atom_list.index(atom)-1]=True
     sub_ph=ph.select(selection)
+    atom_in_residue_selected = list(flex.int(atom_in_residue).select(selection))
     del atom_list
     #
-    interactions=get_interactions(sub_ph,atom_in_residue,silva_type='sedd',core=core)
+    interactions=get_interactions(sub_ph,atom_in_residue_selected,silva_type='sedd',core=core)
+    #print("interactions(sedd)(cpp)", interactions)
     new_core=[]
     #print("1. interactions got: ",len(interactions))
     for pair in interactions:
@@ -129,22 +127,23 @@ def run(ph, core=None):
         new_core+=pair
     new_core=list(set(new_core)|set(core))
     #print("new core:",new_core)
-    #
-    interactions=get_interactions(sub_ph, atom_in_residue, silva_type='dori', core=new_core)
+    interactions=get_interactions(sub_ph, atom_in_residue_selected, silva_type='dori', core=new_core)
+    #print("interactions(dori) (cpp):", interactions)
     #print("2. interactions got: ",len(interactions))
     interaction_mols=new_core
+    ###
     for item in interactions:
-      if(len(set(item).intersection(set(new_core)))>0):
+      if(len(set(item).intersection(set(core)))>0):
         interaction_mols=interaction_mols+list(item)
     interaction_atoms=[]
     for i in range(len(core_atoms)):
-      core_atoms[i]=core_atoms[i].serial_as_int()
+      core_atoms[i]=core_atoms[i].i_seq+1
     #print("3. interaction mols:",set(interaction_mols))
     for mol_id in interaction_mols:
-      ams=[a.serial_as_int() for a in atoms_group_dict[mol_id]]
+      ams=[a.i_seq+1 for a in atoms_group_dict[mol_id]]
       interaction_atoms+=ams
-
     return(list(set(core_atoms)), list(set(interaction_atoms)), list(set(interaction_mols)))
+    ###
   else:
     return get_interactions(ph, atom_in_residue)
 
@@ -170,9 +169,11 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
   xyz = ph.atoms().extract_xyz()
   xyz_min=xyz.min()
   xyz_max=xyz.max()
-  #print(xyz_min,xyz_max)
   xyz_step = [
     int(math.floor((xyz_max[i]-xyz_min[i])/step_size)+1) for i in range(3)]
+  #print("xyz_min,xyz_max",xyz_min,xyz_max)
+  #print("step_size", step_size)
+  #print("xyz_step", xyz_step)
   #print("points to process:",xyz_step[0]*xyz_step[1]*xyz_step[2])
   interacting_pairs = ext.points_and_pairs(
     ngrid           = xyz_step,
@@ -183,6 +184,7 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
     element_flags   = element_flags,
     wfc_obj         = wave_functions,
     silva_type      = silva_type)
+  #print("interacting_pairs", list(set(list((interacting_pairs)))) )
   tmp = []
   for it in interacting_pairs:
     pair = [int(it[0]),int(it[1])]
@@ -191,34 +193,3 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
   #print(interacting_pairs)
   #print("Time ",(time.time()-t0))
   return interacting_pairs
-
-if __name__=="__main__":
-  f=qr_unit_tests_data+"/1yjp.pdb"
-  #print("1. clustering")
-  pdb_inp = iotbx.pdb.input(f)
-  ph = pdb_inp.construct_hierarchy()
-  #print(dir(ph))
-  #print(len(list(ph.residue_groups())))
-  run(ph)
-  #print("2. fragment for residues 1 and 2")
-  pdb_inp = iotbx.pdb.input(f)
-  ph = pdb_inp.construct_hierarchy()
-  #print(run(ph,core=[1,2]))
-  #print("3. clustering within expanded ph")
-  pdb_inp = iotbx.pdb.input(f)
-  cs=pdb_inp.crystal_symmetry()
-  ph = pdb_inp.construct_hierarchy()
-  expansion = expand(
-      pdb_hierarchy        = ph,
-      crystal_symmetry     = cs,
-      select_within_radius = 10.0).ph_super_sphere
-  run(expansion)
-  #print("4. fragment for residues 1 and 2 within expanded ph")
-  pdb_inp = iotbx.pdb.input(f)
-  ph = pdb_inp.construct_hierarchy()
-  cs=pdb_inp.crystal_symmetry()
-  expansion = expand(
-      pdb_hierarchy        = ph,
-      crystal_symmetry     = cs,
-      select_within_radius = 10.0).ph_super_sphere
-  run(expansion,core=[1,2])

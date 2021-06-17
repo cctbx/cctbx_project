@@ -58,10 +58,10 @@ namespace mmtbx { namespace masks {
 
   inline void translate_into_cell(scitbx::int3 &num, const scitbx::int3 &den)
   {
-    for(register unsigned char i=0; i<3; ++i)
+    for(unsigned char i=0; i<3; ++i)
     {
-      register int tn = num[i];
-      register const int td = den[i];
+      int tn = num[i];
+      const int td = den[i];
       tn %= td;
       if( tn < 0 )
         tn += td;
@@ -74,8 +74,8 @@ namespace mmtbx { namespace masks {
   {
     for(unsigned char i=0; i<3; ++i)
     {
-      register int tn = num[i];
-      register const int td = den[i];
+      int tn = num[i];
+      const int td = den[i];
       while( tn<0 )
         tn += td;
       while( tn >= td )
@@ -155,12 +155,12 @@ namespace mmtbx { namespace masks {
     }
     const af::ref<data_type, grid_t > data_ref = data.ref();
     data_type *d_ptr = data_ref.begin();
-    register size_t cell_volume = 0;
-    for(register long i=smn[0]; i<smx[0]; ++i)
+    size_t cell_volume = 0;
+    for(long i=smn[0]; i<smx[0]; ++i)
     {
-      for(register long j=smn[1]; j<smx[1]; ++j)
+      for(long j=smn[1]; j<smx[1]; ++j)
       {
-        for(register long k=smn[2]; k<smx[2]; ++k, ++d_ptr)
+        for(long k=smn[2]; k<smx[2]; ++k, ++d_ptr)
         {
           // set points wthin shrink_truncation_radius around asu to
           // an arbitrary unique positive value
@@ -169,7 +169,7 @@ namespace mmtbx { namespace masks {
           const scitbx::int3 pos(i,j,k);
           if( !(scitbx::ge_all(pos, imn) && scitbx::lt_all(pos, imx)) )
             continue;
-          register unsigned short nops = 0;
+          unsigned short nops = 0;
           if( has_enclosed_box )
           {
             if( scitbx::ge_all(pos, emn) && scitbx::le_all(pos, emx) )
@@ -388,7 +388,7 @@ namespace mmtbx { namespace masks {
       const scitbx::vec3<int> cmin = cell_min - ibox,
         cmax = cell_max + ibox;
 
-      for(register size_t isym=0; isym<order; ++isym)
+      for(size_t isym=0; isym<order; ++isym)
       {
         scitbx::double3 sym_at = symops[isym]*at;
         sym_at -= scitbx::floor(sym_at);
@@ -514,7 +514,7 @@ namespace mmtbx { namespace masks {
     const data_type *p_asu_x = &mskref(imn);
     for(long i=imn[0]; i<imx[0]; ++i, p_asu_x += nynz )
     {
-      register long i_c = i % ndim[0];
+      long i_c = i % ndim[0];
       if( i_c<0 )
         i_c += ndim[0];
       const long ind_c_x = i_c*cnynz;
@@ -709,25 +709,25 @@ namespace mmtbx { namespace masks {
       const f_t w7=tsxg1*sxbcen+tsxg4*sybcen+tsxg7*szbcen;
       const f_t w8=tsyg4*sxbcen+tsyg5*sybcen+tsyg8*szbcen;
       const f_t w9=tszg3*sxbcen+tszg8*sybcen+tszg9*szbcen;
-      register f_t distsx = distsm;
-      register f_t s1xx = sxsq - w7;
-      register f_t s1xy = sysq - w8;
-      register f_t s1xz = szsq - w9;
+      f_t distsx = distsm;
+      f_t s1xx = sxsq - w7;
+      f_t s1xy = sysq - w8;
+      f_t s1xz = szsq - w9;
       const long ind_x_max = sz_yz*x2box - asu_off;
       const long yba1 = y1box*sz_asu[2], yba2 = y2box*sz_asu[2];
-      for(register long ind_x = x1box*sz_yz - asu_off ; ind_x<ind_x_max;
+      for(long ind_x = x1box*sz_yz - asu_off ; ind_x<ind_x_max;
         ind_x+=sz_yz)
       {
-        register f_t s2yz = s1xz;
-        register f_t s2_incr = s1xy;
-        register f_t s2 = distsx;
+        f_t s2yz = s1xz;
+        f_t s2_incr = s1xy;
+        f_t s2 = distsx;
         const long ind_y_max = ind_x + yba2;
-        for(register long ind_y=ind_x+yba1; ind_y<ind_y_max; ind_y+=sz_asu[2])
+        for(long ind_y=ind_x+yba1; ind_y<ind_y_max; ind_y+=sz_asu[2])
         {
-          register f_t s3_incr = s2yz;
-          register f_t dist = s2;
+          f_t s3_incr = s2yz;
+          f_t dist = s2;
           const long ind_z_max = ind_y+z2box;
-          for(register long ind_z=ind_y+z1box; ind_z<ind_z_max; ++ind_z)
+          for(long ind_z=ind_y+z1box; ind_z<ind_z_max; ++ind_z)
           {
             const f_t dist_c  = dist;
             for(unsigned ii=0; ii<layers_sq.size(); ++ii)
@@ -804,7 +804,7 @@ namespace mmtbx { namespace masks {
     typedef double f_t;
     cctbx::uctbx::unit_cell const& unit_cell = this->cell;
 
-    register size_t nsolv = 0;
+    size_t nsolv = 0;
     af::ref<data_type, asu_grid_t > data_ref = data.ref();
     std::size_t data_size = data_ref.size();
     af::small<std::size_t,max_n_layers+2U> nsolvs;
@@ -984,8 +984,8 @@ namespace mmtbx { namespace masks {
     this->get_asu_boundaries(imn, imx); // [imn, imx)
     FILE* fh = write_head(file_name, this->cell, this->grid_size(), imn,
         imx-scitbx::int3(1,1,1));
-    register double mean = 0.0, esd = 0.0;
-    register std::size_t n=0;
+    double mean = 0.0, esd = 0.0;
+    std::size_t n=0;
     for(long iz=imn[2]; iz<imx[2]; ++iz)
     {
       fprintf(fh, "%8lu\n", static_cast<unsigned long>(iz));

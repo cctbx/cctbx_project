@@ -7,8 +7,8 @@ from mmtbx import bulk_solvent
 from cctbx import adptbx
 from cctbx import sgtbx
 from cctbx.development import random_structure
-import boost.python
-ext = boost.python.import_ext("mmtbx_f_model_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("mmtbx_f_model_ext")
 from mmtbx.bulk_solvent import scaler
 
 if(1):

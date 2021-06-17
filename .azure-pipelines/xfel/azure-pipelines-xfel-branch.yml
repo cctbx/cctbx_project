@@ -1,0 +1,32 @@
+# Templates for linux, macOS, and Windows
+# Based on approach from conda-forge
+
+# skip pull requests
+pr: none
+
+# batch builds for branches
+trigger:
+  batch: true
+  branches:
+    exclude:
+      - master
+      - main
+
+resources:
+  pipelines:
+  - pipeline: data_cache
+    source: 'Update data cache'
+  - pipeline: build_cache
+    source: 'Update build cache'
+
+stages:
+- stage: Preparation
+  displayName: Download
+  jobs:
+    - template: ./download-source.yml
+
+- stage: Build
+  displayName: Build and test
+  dependsOn: Preparation
+  jobs:
+    - template: ./xfel-ci-build.yml

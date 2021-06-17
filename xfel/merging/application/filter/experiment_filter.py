@@ -85,7 +85,7 @@ class experiment_filter(worker):
 # BEGIN BY-VALUE FILTER
     if self.params.filter.unit_cell.algorithm == "value":
     # If the filter unit cell and/or space group params are Auto, use the corresponding scaling targets.
-      if self.params.filter.unit_cell.value.target_unit_cell == Auto:
+      if self.params.filter.unit_cell.value.target_unit_cell in (Auto, None):
         if self.params.scaling.unit_cell is None:
           try:
             self.params.filter.unit_cell.value.target_unit_cell = self.params.statistics.average_unit_cell
@@ -93,7 +93,7 @@ class experiment_filter(worker):
             pass
         else:
           self.params.filter.unit_cell.value.target_unit_cell = self.params.scaling.unit_cell
-      if self.params.filter.unit_cell.value.target_space_group == Auto:
+      if self.params.filter.unit_cell.value.target_space_group in (Auto, None):
         self.params.filter.unit_cell.value.target_space_group = self.params.scaling.space_group
 
       self.logger.log("Using filter target unit cell: %s"%str(self.params.filter.unit_cell.value.target_unit_cell))

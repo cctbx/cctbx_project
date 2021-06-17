@@ -3,12 +3,12 @@ from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor
 from libtbx import Auto
 from six.moves import cStringIO as StringIO
+from libtbx import adopt_init_args
+from libtbx import group_args
 import traceback
 import os
 import sys
 from six.moves import range
-
-_have_maxtasksperchild = (sys.version_info[:2] >= (2,7))
 
 _problem_cache = Auto
 
@@ -74,7 +74,7 @@ def get_processes(processes):
   :returns: actual number of processes to use
   """
   if (processes in [None, Auto]):
-    if (os.name == "nt") or (sys.version_info < (2,6)):
+    if os.name == "nt":
       return 1
     from libtbx import introspection
     auto_adjust = (processes is Auto)
@@ -359,7 +359,7 @@ def pool_map(
           sub_name_format=func_wrapper[16:])
       else:
         raise RuntimeError("Unknown func_wrapper keyword: %s" % func_wrapper)
-      if (maxtasksperchild is Auto and _have_maxtasksperchild):
+      if (maxtasksperchild is Auto):
         maxtasksperchild = 1
       if (chunksize is Auto):
         chunksize = 1
@@ -374,7 +374,7 @@ def pool_map(
   processes = get_processes(processes)
   # XXX since we want to be able to call this function on Windows too, reset
   # processes to 1
-  if (os.name == "nt") or (sys.version_info < (2,6)):
+  if os.name == "nt":
     processes = 1
   if (args is not None):
     iterable = args
@@ -507,7 +507,8 @@ def parallel_map(
     preserve_order=True,
     preserve_exception_message=False,
     use_manager=False,
-    stacktrace_handling = "ignore"):
+    stacktrace_handling = "ignore",
+    break_condition = None):
   """
   Generic parallel map() implementation for a variety of platforms, including
   the multiprocessing module and supported queuing systems, via the module
@@ -531,6 +532,8 @@ def parallel_map(
   :param qsub_command: command to submit queue jobs (optional)
   :param asynchronous: run queue jobs asynchronously
   :param preserve_exception_message: keeps original exception message
+  :param preserve_order: keeps original order of results
+  :param break_condition:  if break_condition(result) is True, break
   :returns: a list of result objects
   """
   if (params is not None):
@@ -634,6 +637,9 @@ def parallel_map(
         result = res()
         results.append( result )
         callback( result )
+        if break_condition and break_condition(result):
+          manager.terminate()
+          return results
 
     except SetupError as e:
       raise Sorry(e)
@@ -766,8 +772,17 @@ def run_parallel(
    qsub_command='qsub',       # queue command, not supported yet
    nproc=1,                   # number of processors to use
    target_function=None,      # the method to run
-   kw_list=None):             # list of kw dictionaries for target_function
+   kw_list=None,           # list of kw dictionaries for target_function
+   preserve_order=True,
+   break_condition = None,
+   try_single_processor_on_failure = False,
+   ):
 
+  '''
+  :param preserve_order: keeps original order of results
+  :param break_condition:  if break_condition(result) is True, break
+  :param try_single_processor_on_failure:  Try nproc=1 if nproc>1 fails
+  '''
   n=len(kw_list)  # number of jobs to run, one per kw dict
 
   if nproc==1 or n<=1: # just run it for each case in list, no multiprocessing
@@ -775,6 +790,27 @@ def run_parallel(
     ra=run_anything(kw_list=kw_list,target_function=target_function)
     for i in range(n):
       results.append(ra(i))
+  elif try_single_processor_on_failure:
+    try:  # Try as is, then use nproc=1 if it fails for any reason
+      return run_parallel(
+         method=method,
+         qsub_command=qsub_command,
+         nproc=nproc,
+         target_function=target_function,
+         kw_list=kw_list,
+         preserve_order=preserve_order,
+         break_condition=break_condition)
+    except Exception as e:
+      return run_parallel(
+         method=method,
+         qsub_command=qsub_command,
+         nproc=1,
+         target_function=target_function,
+         kw_list=kw_list,
+         preserve_order=preserve_order,
+         break_condition=break_condition)
+
+
   elif 0:  #(method == "multiprocessing") and (sys.platform != "win32"):
     # XXX Can crash 2015-10-13 TT so don't use it
     from libtbx.easy_mp import  pool_map
@@ -791,8 +827,143 @@ def run_parallel(
       processes=nproc,
       callback=None,
       preserve_exception_message=True, # 2016-08-17
+      stacktrace_handling ="excepthook",
       qsub_command=qsub_command,
-      use_manager=True )#  Always use manager 2015-10-13 TT (sys.platform == "win32"))
+      use_manager=True,  #  Always use manager 2015-10-13 TT (sys.platform == "win32"))
+      preserve_order=preserve_order,
+      break_condition = break_condition)
   return results
 
 #  -------  END OF SIMPLE INTERFACE TO MULTIPROCESSING -------------
+
+# --  SIMPLE INTERFACE TO MULTIPROCESSING WITH LARGE FIXED OBJECTS --
+
+def run_jobs_with_large_fixed_objects(
+       nproc = None,
+       verbose = None,
+       kw_dict = None,           # all the common kw for the function to run
+       run_info_list = None,     # list of group_args, each with info of what
+                                 # to do for one run
+       job_to_run = None,   # the function to run
+       multiprocessing_method = 'multiprocessing',  # how to run
+       qsub_command='qsub',       # queue command,
+       break_condition = None,
+       try_single_processor_on_failure = False,
+       log = sys.stdout):
+  '''
+
+    Run jobs in parallel containing large fixed object shared by all jobs
+
+    The purposes of this interface to multiprocessing are: (1) to get around the
+    pickling and duplication of large objects that occurs if the same object
+    is passed to each sub-process, and (2) to allow passing model objects which
+    cannot be pickled.
+
+    NOTE: Your job_to_run should always return the smallest possible result
+    object as a result. Anything very large (like a full-size density map)
+    should be written to disk and a file name returned.  Models are ok to be
+    returned (except possibly very large ones).
+
+    Procedure to run any method (job_to_run) in parallel with a
+    common set of keywords (kw_dict) and one group args for each run
+    specifying what happens in that run (run_info_list)
+
+    You should put all large constant objects in kw_dict.  These are passed
+    to a fixed class that can be accessed by all the runs and that does not
+    have to be pickled or duplicated (depends on the system).
+
+    Put everything that changes between runs in run_info_list.
+
+    The method "job_to_run" should accept all the arguments in kw_dict
+    plus the keywords "run_info", "log", "verbose".  Your job_to_run should
+    decide what to do based on the group_args object "run_info" that it gets.
+
+    The method "job_to_run" should return a result group_args object
+
+    Returns run_info list, with each run_info getting a .result with the
+    result for that run.
+
+    preserve_order: keeps original order of results
+    break_condition:  if break_condition(result) is True, break
+      where result is the returned object from a run
+    try_single_processor_on_failure:  Try nproc=1 if nproc>1 fails
+
+  '''
+
+  index_list=[]
+  for i in range(len(run_info_list)):
+    index_list.append({'i':i})
+
+  if nproc == 1 or verbose:
+    local_log = log
+  else:
+    local_log = None
+
+  from libtbx.easy_mp import run_parallel
+  result_run_info_list = run_parallel(
+     method = multiprocessing_method,
+     nproc = nproc,
+     qsub_command = qsub_command,
+     break_condition = break_condition,
+     try_single_processor_on_failure = try_single_processor_on_failure,
+     target_function = run_one_job_as_class(
+       kw_dict = kw_dict,
+       job_to_run = job_to_run,
+       log = local_log,
+       run_info_list = run_info_list),
+     preserve_order=False,
+     kw_list = index_list)
+
+  # Note log for each result is in run_info.result.log_as_text
+
+  return result_run_info_list
+
+class run_one_job_as_class:
+  '''
+    Class to hold large fixed objects and a set of small run_info objects
+    specifying what to do for each run.  Returns a run_info object with
+    the attribute "result" added containing the result
+  '''
+
+  def __init__(self,
+      kw_dict,
+      job_to_run,
+      log,
+      run_info_list):
+
+    adopt_init_args(self, locals())
+
+  def __call__(self, i):
+
+    # Set up log so that it can be used in multiprocessing
+
+    if self.log is None:
+      log = StringIO()
+      log_type = 'StringIO'
+    else:
+      log = self.log
+      log_type = 'stream'
+
+    # Run the i'th run_info now
+    run_info = self.run_info_list[i]
+    result = self.job_to_run(
+      run_info = run_info,
+      log = log,
+      **self.kw_dict)
+
+    # Save the log if not already written out
+
+    if log_type == 'StringIO':
+      result.log_as_text = log.getvalue() # save the log as text
+    else:
+      result.log_as_text = '' # already sent it to stream
+
+    run_info.result = result  # this is what we are going to return
+
+    #Note that result is pickleable so that it can be passed back
+    # Make sure that result is small. Any large objects should be saved
+    # to disk and a file name returned.
+
+    return run_info
+
+# --  END OF SIMPLE INTERFACE TO MULTIPROCESSING WITH LARGE FIXED OBJECTS --

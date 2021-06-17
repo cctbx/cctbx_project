@@ -95,7 +95,7 @@ def run(args, log=sys.stdout):
   soin = maptbx.shift_origin_if_needed(map_data=map_data,
     sites_cart=model.get_sites_cart(), crystal_symmetry=model.crystal_symmetry())
   map_data = soin.map_data
-  model.set_sites_cart(soin.sites_cart, update_grm=True)
+  model.set_sites_cart(soin.sites_cart)
   ####
   # Compute and show all stats
   ####

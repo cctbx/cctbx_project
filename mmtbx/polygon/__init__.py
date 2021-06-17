@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 import iotbx.phil
 import mmtbx.polygon
-import libtbx, os, re
+import libtbx, os, re, sys
 from libtbx.utils import Sorry
 from libtbx import easy_pickle
 from six.moves import range
@@ -160,6 +160,13 @@ def load_db(file_name=None):
       test = os.path.isfile)
   assert os.path.isfile(file_name)
   database_dict = easy_pickle.load(file_name)
+
+  # Python 3 pickle fix
+  # =========================================================================
+  if sys.version_info.major == 3:
+    database_dict = easy_pickle.fix_py2_pickle(database_dict)
+  # =========================================================================
+
   return database_dict
 
 def polygon(params = master_params.extract(), d_min = None,
@@ -213,7 +220,7 @@ def get_statistics_percentiles(d_min, stats):
     j = len(values) - 1
     while (i != j):
       k = i + (j - i) // 2
-      if (value <= values[k]):
+      if (value and value <= values[k]):
         j = k
       else :
         i = k + 1

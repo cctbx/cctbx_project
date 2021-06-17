@@ -1,4 +1,4 @@
-""" Charge flipping algorithm(s) and related data structures
+r""" Charge flipping algorithm(s) and related data structures
 
 References.
 
@@ -332,8 +332,7 @@ def f_calc_symmetrisations(f_obs, f_calc_in_p1, min_cc_peak_height):
 
 
 def amplitude_quasi_normalisations(f_obs):
-  f_obs.setup_binner_counting_sorted(reflections_per_bin=200,
-                                     d_tolerance=0.01)
+  f_obs.setup_binner_counting_sorted(reflections_per_bin=200)
   return f_obs.amplitude_quasi_normalisations()
 
 

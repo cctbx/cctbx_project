@@ -119,9 +119,9 @@ HETATM   60 FE4  SF4 G 706      19.481  22.300  35.554  1.00 23.79          Fe
         }
 
 links = {
-  'linking_test_F3S.pdb' : [3,3], # 3 bonds from F3S to SGs
-  'linking_test_SF4.pdb' : [4,4],
-  'linking_test_SF4_FE.pdb' : [4,5],
+  'linking_test_F3S.pdb' : [0,3], # 3 bonds from F3S to SGs
+  'linking_test_SF4.pdb' : [0,4],
+  'linking_test_SF4_FE.pdb' : [0,5],
   }
 
 def run_and_test(cmd, pdb, i):
@@ -134,7 +134,7 @@ def run_and_test(cmd, pdb, i):
     raise RuntimeError("Missing expected log output")
   print("OK")
   # test .geo
-  f=open(pdb.replace(".pdb", "_minimized.geo"), "rb")
+  f=open(pdb.replace(".pdb", "_minimized.geo"), "r")
   lines = f.readlines()
   f.close()
   for line in lines:
@@ -157,7 +157,7 @@ def run_and_test(cmd, pdb, i):
              ]:
     return
   number_of_links=0
-  f=open(pdb.replace(".pdb", "_minimized.pdb"), "rb")
+  f=open(pdb.replace(".pdb", "_minimized.pdb"), "r")
   lines = f.readlines()
   f.close()
   for line in lines:
@@ -228,9 +228,9 @@ def run(only_i=None):
       cmd += " link_metal=%d" % i
       if pdb.replace(".pdb", ".params") in pdbs:
         cmd += " %s" % pdb.replace(".pdb", ".params")
-      print("test number:",j)
+      print("test number:", j)
       print(cmd)
-      run_and_test(cmd, pdb,i)
+      run_and_test(cmd, pdb, i)
 
       cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
       cmd += ' superpose_ideal_ligand=all'

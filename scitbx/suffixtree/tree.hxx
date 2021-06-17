@@ -1,7 +1,7 @@
 template< typename Edge, typename Word >
 Cursor< Edge, Word >::Cursor(edge_ptr_type const& edge_ptr, word_ptr_type const& word_ptr)
   : word_ptr_( word_ptr ), edge_ptr_( edge_ptr ),
-    index_( const_cast< edge_type const& >( *edge_ptr_ ).start() )
+    index_( edge_ptr_->get_start() )
 {}
 
 template< typename Edge, typename Word >
@@ -27,14 +27,14 @@ template< typename Edge, typename Word >
 bool
 Cursor< Edge, Word >::is_at_edge_top() const
 {
-  return get_edge_ptr()->start() == get_index();
+  return get_edge_ptr()->get_start() == get_index();
 }
 
 template< typename Edge, typename Word >
 bool
 Cursor< Edge, Word >::is_at_edge_bottom() const
 {
-  return get_edge_ptr()->stop() == get_index();
+  return get_edge_ptr()->get_stop() == get_index();
 }
 
 template< typename Edge, typename Word >
@@ -43,7 +43,7 @@ Cursor< Edge, Word >::is_at_leaf_bottom() const
 {
   edge_ptr_type const& edge_ptr = get_edge_ptr();
 
-  return ( edge_ptr->is_leaf() && edge_ptr->stop() == get_index() );
+  return ( edge_ptr->is_leaf() && edge_ptr->get_stop() == get_index() );
 }
 
 template< typename Edge, typename Word >
@@ -77,7 +77,7 @@ void
 Cursor< Edge, Word >::forth_to_child(glyph_type const& label)
 {
   edge_ptr_ = get_edge_ptr()->get_child_with_label( label );
-  index_ = edge_ptr_->start();
+  index_ = edge_ptr_->get_start();
 }
 
 template< typename Edge, typename Word >
@@ -123,7 +123,7 @@ Cursor< Edge, Word >::break_edge_here()
     throw bad_state();
   }
 
-  index_type start = edge_ptr_->start();
+  index_type start = edge_ptr_->get_start();
   edge_ptr_type new_branch_ptr = edge_type::branch( start, index_ );
 
   edge_weak_ptr_type parent_weak_ptr = edge_ptr_->parent();
@@ -140,7 +140,7 @@ Cursor< Edge, Word >::break_edge_here()
   assert ( pit != parent_ptr->end() );
   pit->second = new_branch_ptr;
 
-  edge_ptr_->start() = index_;
+  edge_ptr_->set_start( index_ );
   edge_ptr_->parent() = new_branch_ptr;
 
   bool res = new_branch_ptr->attach_child_if_not_present( edge_ptr_, word[ index_ ] );
@@ -159,7 +159,7 @@ Cursor< Edge, Word >::to_suffix_position()
   {
     edge_ptr_type suffix_ptr;
     edge_ptr_type parent_ptr = edge_ptr_->get_parent();
-    word_iterator path_begin = word.get_iterator_to( edge_ptr_->start() );
+    word_iterator path_begin = word.get_iterator_to( edge_ptr_->get_start() );
 
     if ( parent_ptr->is_root() )
     {
@@ -176,7 +176,7 @@ Cursor< Edge, Word >::to_suffix_position()
     if ( path_begin == path_end )
     {
       edge_ptr_ = suffix_ptr;
-      index_ = suffix_ptr->stop();
+      index_ = suffix_ptr->get_stop();
     }
     else
     {
@@ -199,14 +199,13 @@ Cursor< Edge, Word >::path_jump_from_top_of(
 {
   while ( true )
   {
-    edge_type const& edge = *edge_ptr;
-    length_type edge_length = edge.stop() - edge.start();
+    length_type edge_length = edge_ptr->get_stop() - edge_ptr->get_start();
     typename word_iterator::difference_type path_length = path_end - path_begin;
 
     if ( path_length <= edge_length )
     {
       edge_ptr_ = edge_ptr;
-      index_ = edge.start() + path_length;
+      index_ = edge_ptr->get_start() + path_length;
       break;
     }
 
@@ -240,7 +239,7 @@ template<
   typename SuffixLabel,
   template< typename, typename > class NodeAdaptor
   >
-typename Tree< Word, SuffixLabel, NodeAdaptor >::const_edge_ptr_type
+typename Tree< Word, SuffixLabel, NodeAdaptor >::edge_ptr_type
 Tree< Word, SuffixLabel, NodeAdaptor >::root() const
 {
   return root_;

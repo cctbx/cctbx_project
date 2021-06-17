@@ -1,0 +1,510 @@
+{% extends "cctbx/header.html" %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="col-sm-9 main">
+<!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
+<!----------------------- EDIT START ---------------------------->
+
+<h2><center>Working with maps:  the cctbx Map manager</center></h2>
+
+<p class="lead mt-4">Learn how to use the cctbx map manager. It lets you do some basic operations on maps. This tutorial shows how to read and save maps, change a map, convert a real-space map to a Fourier representation and back and manipulate maps that represent only a part of a full map. The tutorial also explains how to find and represent map reconstruction symmetry.</p>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-4">The map manager</h3>
+
+<p>The cctbx map_manager lets you read and write MRC/CCP4 format map files, manipulate maps, and create new maps. In this section we will see how to create an example map, how to save the map as a file, how to read maps, change a map, and write a map out. The advanced section covers how to convert a real-space map to a Fourier representation and back and how this can be used to smooth a map. We will also see how to manipulate maps that represent only a part of a full map. We will also see how to find and represent map reconstruction symmetry.</p>
+
+<p>First let’s start up python from cctbx so that python knows all about cctbx. Type the following command in a terminal:<br>
+
+<code>libtbx.python</code></p>
+
+<p>And let’s load in the DataManager:</p>
+
+<pre class="codeDL"><code>from iotbx.data_manager import DataManager     # load in DataManager
+dm = DataManager()                             # Get an initialized version as dm
+</code></pre>
+
+<p>Let’s tell the DataManager we want to overwrite files that have the same name. This is optional of course:
+</p>
+
+<pre class="codeDL"><code>dm.set_overwrite(True)       #   tell the DataManager to overwrite files with the same name
+</code></pre>
+
+<!--
+<p>We will be working with some files that we created in the previous sections (map_coeffs.mtz, model.pdb, map.mrc).</p>
+-->
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Setting up the example files</h3>
+
+<p>Let’s work with a library model and calculate a map for it. We can obtain the example model with the map_model_manager (revisit <a href="{% url 'doc_hlo_intro' %}">this page</a> if you need a refresher on high level objects):</p>
+
+<pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager      #   load in the map_model_manager
+mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
+mmm.generate_map()              #   get a model from a small library model and calculate a map for it
+mmm.write_map("map.mrc")        #   write out a map in ccp4/mrc format
+mmm.write_model("model.pdb")    #   write out a model in PDB format
+</code></pre>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Working with MRC/CCP4 maps: basic operations</h3>
+
+<p>You can read in an MRC/CCP4 format map file called "map.mrc" with the DataManager:</p>
+
+<pre class="codeDL"><code>map_filename="map.mrc"                       #   Name of map file
+mm = dm.get_real_map(map_filename)           #   Deliver map_manager object with map info
+mm.shift_origin()     #  Make sure that the origin is shifted to (0,0,0)
+</code></pre>
+
+<p>Notice that we have made sure that the origin is at (0,0,0) after reading in the map.  We will see why this is important later. For now, keep in mind that if you read in a map directly, you nearly always will want to shift the origin to (0,0,0) with the <code>shift_origin()</code> command before using the map. </p>
+
+<p>The <code>show_summary()</code> method allows you to see a summary of the map that we have just read in:</p>
+
+<pre class="codeDL"><code>mm.show_summary()
+</code></pre>
+
+<p>which yields:</p>
+
+<div class="outputDL"><p><samp>
+header_min:  -0.089924633503<br>
+header_max:  0.496164411306<br>
+header_mean: -4.31608481594e-12<br>
+header_rms:  0.0558838397264<br>
+<br>
+Information about FULL UNIT CELL:<br>
+unit cell grid: (30, 40, 32)<br>
+unit cell parameters: (22.410999298095703, 28.92300033569336, 23.597999572753906, 90.0, 90.0, 90.0)<br>
+space group number:   1<br>
+<br>
+Information about the PART OF MAP THAT IS PRESENT:<br>
+map cell grid: (30, 40, 32)<br>
+map cell parameters: (22.410999298095703, 28.92300033569336, 23.597999572753906, 90.0, 90.0, 90.0)<br>
+map origin: (0, 0, 0)<br>
+pixel size: (0.7470, 0.7231, 0.7374)<br>
+Shift (grid units) to place origin at original position: (0, 0, 0)</samp></p></div>
+
+<p class="mt-3">The output shows the min, max, mean and rms values according to the file header. Then there is information obout the full unit cell and about the part of the map present in the file. In this example, it is the same for the full unit cell and the part. If we cut out a part of a map, the information will be different (we will do this later in this tutorial).</p>
+
+<p>The mm object contains the map itself as an array and we can get that array to work with using this command:</p>
+
+<pre class="codeDL"><code>map_data = mm.map_data()    # get the data.
+</code></pre>
+
+<p>This yields map_data which is a 3-dimensional array. The mm object also contains information about the box that contains the map (such as box dimensions and angles):</p>
+
+<pre class="codeDL"><code>crystal_symmetry=mm.crystal_symmetry()    # get crystal_symmetry
+</code></pre>
+
+<p>Here “crystal_symmetry” is a crystallographic term. For cryo-EM maps the “symmetry” is always space-group P1 which has just one symmetry operator (unity). The crystal_symmetry object is still convenient because it keeps track of the dimensions of the box. You can see the crystal_symmetry just by typing the name of the object:</p>
+
+<pre class="codeDL"><code>crystal_symmetry    # crystal_symmetry summary
+</code></pre>
+
+<p>This produces something like this:</p>
+
+<div class="outputDL"><p><samp>
+crystal.symmetry(<br>
+    unit_cell=(22.4109993, 28.92300034, 23.59799957, 90, 90, 90),<br>
+    space_group_symbol="P 1"<br>
+  )
+</samp></p></div>
+
+<p>The unit_cell are the dimensions (a,b,c) and cell angles (alpha,beta,gamma). The map_manager also has other informational methods, such as <code>mm.show_summary()</code> (see above) and <code>mm.statistics().show_summary()</code>.</p>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">How to know what methods are available and how to run them</h3>
+
+<p>We have been working with the map_manager object mm and we have seen that there are many commands available in mm like <code>mm.show_summary()</code>. We can find all available methods with the <code>help</code> command. You use it like this:</p>
+
+<pre class="codeDL"><code># help(mm)
+</code></pre>
+
+<p>The help command writes out something like this, summarizing the class and giving information on each member of the class.</p>
+
+<p>NOTE: Depending on your system this may open in an editor window and you might need to hit the space bar to scroll through the text and type the letter “q” to get out of that window.  Here is output from the help command:</p>
+
+<div class="outputDL"><p><samp>
+Help on instance of map_manager in module iotbx.map_manager:<br>
+<br>
+class map_manager(iotbx.mrcfile.map_reader, iotbx.mrcfile.write_ccp4_map)<br>
+ |   map_manager, includes map_reader and write_ccp4_map<br>
+ |<br>
+ |   Normally use map_manager to read, write, and carry information about<br>
+ |   maps.  Map_manager keeps track of the origin shifts and also the<br>
+ |   original full unit cell and cell dimensions.  It writes out the map<br>
+ |   in the same place as it was read in.<br>
+… (more text)<br>
+|  Methods defined here:<br>
+…<br>
+ |  fourier_coefficients_as_map_manager(self, map_coeffs=None, d_min=None, log=&lt;open file '&lt;stdout&gt;', mode 'w'&gt;)<br>
+ |      Convert Fourier coefficients into to a real-space map with gridding<br>
+ |      matching this existing map_manager. Optional resolution cutoff of<br>
+ |      d_min.<br>
+…<br>
+ |  map_as_fourier_coefficients(self, d_min =None, resolution_factor=0.333, box=False, log=&lt;open file '&lt;stdout&gt;', mode 'w'&gt;)<br>
+ |      Convert a map to Fourier coefficients to a resolution of dmin.
+</samp></p></div>
+
+<p>The help function can be used to see what parameter you might want to use for a particular method. In the help message above, for example, the method <code>map_as_fourier_coefficients()</code> has a parameter listed as “d_min=None”.  That means that there is a parameter called d_min and its default value is “None”, or not defined. We’ll be setting that parameter later. This method also has a parameter called “resolution_factor” and it has a value of 0.333 (we won’t be setting that parameter here).</p>
+
+<p>You can get information on just one specific method with the help function too:</p>
+
+<pre class="codeDL"><code># help(mm.map_as_fourier_coefficients)
+</code></pre>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Simple map_data operations</h3>
+
+<p>You can make changes to a map_data object and write it out with your map_manager. For example, let’s multiply the map by 2 and write it out.</p>
+
+<p>First let’s get the map data to work with. We call the map_data() method in our map_manager object to do that:</p>
+
+<pre class="codeDL"><code>map_data=mm.map_data()    # get map_data. Note this is just a pointer to the map_data
+</code></pre>
+
+<p>Now the parameter map_data contains our data from the map_manager mm.</p>
+
+<p>Note that map_data is not a copy of mm. It is the same data that is in mm. If you change map_data you change at the same time the information in mm. In the example here we are going to make new arrays, not changing map_data, but you can also change map_data itself if you want.</p>
+
+<p>Let’s multiply map_data by two and put the result in a new array:</p>
+
+<pre class="codeDL"><code>new_map_data  = 2.* map_data    # multiply map_data  times 2 and create new array new_map_data with new values
+</code></pre>
+
+<p>Now new_map_data is a new array with different values than map_data. We can see this by listing the values of each of these arrays at a particular grid point (3,4,5):</p>
+
+<pre class="codeDL"><code>map_data[3,4,5], new_map_data[3,4,5]
+</code></pre>
+
+<p>which produces:</p>
+
+<div class="outputDL"><p><samp>(-0.0119654475468823, -0.0239308950937646)
+</samp></p></div>
+
+<p>and we can see that the two numbers are different. Let’s create a new map_manager with the data from new_map_data in it, but all the background information from our original map_manager mm. We do this by creating a customized_copy of mm with new_map_data:</p>
+
+<pre class="codeDL"><code>new_mm=mm.customized_copy(map_data=new_map_data)    #  new map_manager with data from new_map_data
+</code></pre>
+
+<p>We can write out a map with our new values with the DataManager <code>write_real_map_file()</code> method. In case we want to overwrite an existing file with the same name, we can include the keyword “overwrite=True”:</p>
+
+<pre class="codeDL"><code>dm.write_real_map_file(new_mm,filename="doubled_map.mrc", overwrite=True)    # write map
+</code></pre>
+
+<p>We have just created a new map that is the same as the original, just doubled in values.</p>
+
+<p>You can add maps, multiply maps, and divide them. All these operations produce a new map with the same dimensions as the original one. Here are some examples:</p>
+
+<pre class="codeDL"><code>a=map_data    # get map data
+b=new_map_data    # get other map data
+c=a*b    # multiply the maps
+d=a+b    # add the maps
+e=a/b    # divide the maps (without additionael checks, this will crash if any element is zero)
+</code></pre>
+
+<p>You can write any one of these new maps out with your map_manager like this:</p>
+
+<pre class="codeDL"><code>mm_c=mm.customized_copy(map_data=c)    #  new map_manager with data from map c
+dm.write_real_map_file(mm_c,filename="a_times_b.mrc", overwrite=True) # write map
+</code></pre>
+
+<p>As we saw above, you can get information about the values in a map at particular grid points and also overall. Here is how to get  the value of our map_data at the point (4,5,6):</p>
+
+<pre class="codeDL"><code>value = map_data[4,5,6]  # notice the brackets for specifying indices in a map
+</code></pre>
+
+<p>Usually, to get overall values you will convert your map from a 3D array to a 1D array and use the tools available for 1D arrays (see the section on flex arrays for more things to do with 1 D arrays).  The key thing to note is that if you convert arrays between 3D and 1D you are only converting a little object that says how to interpret the data. The data themselves are not changed by the conversion and the 1D array is a pointer to the same data that is in the 3D array. You can think of these as two views of the same data. That means if you change the data in one view you also change it in the other. We won’t do that here but it is an important thing to keep in mind for later.</p>
+
+<p>Here is how to get some summary information about our 3D map. First let’s get a view of map_data as a 1D array:</p>
+
+<pre class="codeDL"><code>map_data_1d = map_data.as_1d()   #    1D view, note that these contain the same data
+</code></pre>
+
+<p>Now we can get the size of either the 1D or 3D arrays, and the sizes will be the same (the size is the number of elements in the entire array in each case):</p>
+
+<pre class="codeDL"><code>map_data_1d.size()  # get how many points there are
+map_data.size()   # how many points in the original array (the same)
+</code></pre>
+
+<p>We can do many other things as well. Remember you can use help(map_data) to show everything that you can do with map_data, but the help for this C++ class is not so easy to read.</p>
+
+<p>Let’s count how many points in map_data have a value equal to zero (there are none, so it prints “0”):</p>
+
+<pre class="codeDL"><code>map_data.count(0)  # how many points have a value of zero
+</code></pre>
+
+<p>And let’s see what the standard deviation of the values in  map_data is, using the 1d view:</p>
+
+<pre class="codeDL"><code>map_data_1d.standard_deviation_of_the_sample()  #  standard deviation of data in map_data
+</code></pre>
+
+<p>which produces:</p>
+
+<div class="outputDL"><p><samp>0.05588384013188865
+</samp></p></div>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Advanced map operations</h3>
+
+<p>You can select subsets of grid points in a map and do something to them to modify the values in that map. Often you do this by selecting all grid points with a certain value, or greater or less than a certain value. Here is what it looks like if we want to select all the grid points less than zero and set their values to zero. This is basically going to truncate our map at a lower bound of zero. First we define which grid points we want to work with:</p>
+
+<pre class="codeDL"><code>sel = ( map_data < 0 )   # select all grid points with values less than zero and call the selection sel
+</code></pre>
+
+<p>In this command the part that says “map_data < 0“ is identifying which elements of the array map_data we are selecting. This is normally surrounded by parentheses to make it clear what is selected, but they are not required. The new selection array sel is an array with the same dimensions as the array map_data, and each element of the new selection array sel is either True or False. It is True if the corresponding element of the array map_data is less than zero and False otherwise.</p>
+
+<p>Now we can line up the map_data and sel arrays and go through all the elements of each.  For each element in sel that is True, we are going to set the corresponding element of map_data to zero. Here is how to do that:</p>
+
+<pre class="codeDL"><code>map_data.set_selected(sel, 0)   # set all the points specified by selection sel to zero
+</code></pre>
+
+<p>This says, set all the elements of map_data that are True in the corresponding selection array sel  to zero. Notice that we have modified the array map_data directly. It is now changed and we have lost the original. Now we can count how many values are zero in the map_data array, and there will be a lot:</p>
+
+<pre class="codeDL"><code>map_data.count(0)  # how many points now  have a value of zero
+</code></pre>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Converting a real-space map to Fourier coefficients</h3>
+
+<p>Real-space 3D maps like map_data can be represented by Fourier coefficients. The real-space and Fourier-space representations are related by Fourier transformation and it is easy to go back and forth. The reason that Fourier space representations are often useful is that many signal-processing applications are easiest in Fourier space. For example, smoothing of a real-space function is easy in Fourier space because it amounts to removing high-frequency terms. We are going to smooth our map map.mrc in the next few steps.</p>
+
+<p>The 3D map from map.mrc can be converted into its Fourier space equivalent with the method <code>map_as_fourier_coefficients()</code>. If we didn’t already, let’s use the DataManager to read in the map as a map_manager object:</p>
+
+<pre class="codeDL"><code>map_file="map.mrc"                             #   Name of map file
+mm = dm.get_real_map(map_file)                 #   Deliver map_manager object with map info
+</code></pre>
+
+<p>Let’s recall how we can get the map data:</p>
+
+<pre class="codeDL"><code>map_data = mm.map_data() #  the map as a 3D real-space map
+</code></pre>
+
+<p>Now let’s convert the real-space map to its Fourier equivalent:</p>
+
+<pre class="codeDL"><code>map_coeffs = mm.map_as_fourier_coefficients(  # map represented by Fourier coefficients
+     d_min = 3)
+</code></pre>
+
+<p>The key parameter is the high_resolution limit of 3 Angstroms. This tells the <code>map_as_fourier_coefficients</code> method to include high-frequency components up to 3 Angstroms.</p>
+
+<p>The Fourier representation <code>map_coeffs</code> is an array object containing indices (grid points in Fourier space) and complex numbers representing values at each index. It also contains information about the real-space map (crystal_symmetry) and has many methods that can be used to operate on the Fourier coefficients. It is an instance of the miller.array class. We can see how many Fourier coefficients are present, what the resolution limits are, and what the real-space map characteristics are:</p>
+
+<pre class="codeDL"><code>map_coeffs.size()               # number of Fourier coefficients in map_coeffs
+map_coeffs.d_min()              #  high_resolution limit of map_coeffs
+map_coeffs.crystal_symmetry()   # symmetry and cell dimensions of real-space map
+</code></pre>
+
+<p>We can also list the value of any  term in the Fourier representation of the map.  Let’s look at the first term:</p>
+
+<pre class="codeDL"><code>indices = map_coeffs.indices()     # indices of each term in the map_coeffs array
+data = map_coeffs.data()           #  data (complex numbers) for each index
+indices[1], data[1]                # indices and data for first term
+</code></pre>
+
+<p>This looks like:</p>
+
+<div class="outputDL"><p><samp>((-7, -2, 1), (-0.861069670136619+4.389665996500507j))
+</samp></p></div>
+
+<p>The (-7, -2, 1) represents the index and (-0.861069670136619+4.389665996500507j) is the complex number which is the value for that index.</p>
+
+<p>We can make changes in this Fourier representation, for example by truncating high-resolution terms. Let’s cut the resolution to a lower resolution of 4 Angstroms (lower resolution means a bigger number for the resolution):</p>
+
+<pre class="codeDL"><code>map_coeffs_low_res = map_coeffs.resolution_filter(d_min=4)   #  cut resolution to 4 A
+</code></pre>
+
+<p>Now there are fewer data in the array (only 501), which you can see with:</p>
+
+<pre class="codeDL"><code>map_coeffs_low_res.size()   # number of data in the low_res Fourier representation
+</code></pre>
+
+<p>We can save these map coefficients as an MTZ file just as we did in the <a href="{% url 'doc_hlo_data_manager' %}">tutorial on reading and writing files</a>:</p>
+
+<pre class="codeDL"><code>mtz_dataset = map_coeffs_low_res.as_mtz_dataset(column_root_label='F')    # mtz dataset
+mtz_object=mtz_dataset.mtz_object()            #  extract an object that knows mtz format
+dm.write_miller_array_file(mtz_object, filename="map_coeffs_low_res.mtz") #write map coeffs
+</code></pre>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Converting Fourier coefficients back to real space</h3>
+
+<p>A Fourier representation of a map (Fourier coefficients such as map_coeffs_low_res) can be converted back into a real-space map.  The map_manager mm has a tool that we can use for this calculation:</p>
+
+<pre class="codeDL"><code>mm_low_res = mm.fourier_coefficients_as_map_manager(    # convert to real space
+     map_coeffs=map_coeffs_low_res)
+</code></pre>
+
+<p>We have just created a new map mm_low_res that is a low-resolution version of our original map_manager. In effect, we have smoothed our map by Fourier inversion, truncation of high-frequency terms, and conversion back to a map. We can write out our low-resolution map:</p>
+
+<pre class="codeDL"><code>dm.write_real_map_file(mm_low_res,filename="map_low_res.mrc", overwrite=True) # write map
+</code></pre>
+
+<p>If you have software such as Coot or ChimeraX on your computer you can look at the maps in map.mrc and map_low_res.mrc and compare them and you will see that map.mrc shows much more fine detail than map_low_res.mrc.</p>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Shifting the origin of a map: Be sure to use shift_origin() before using a map_manager for anything except as input to the map_model_manager</h3>
+
+<p>MRC maps often are supplied as just a portion of the full map. Instead of the supplied map starting at (0,0,0) and going to (511,511,511) as in the full map, perhaps the supplied map goes only from (100,100,100) to (400,400,400). This is referred to as having an origin of (0,0,0) in the full map and (100,100,100) in the supplied map.</p>
+
+<p>In cctbx, normally all the real work with a map is done after shifting the origin of the map (and any associated models and NCS objects) to (0,0,0).</p>
+
+<p>Then when anything is written out, the origin is shifted back to where it was originally. This is done automatically with your map_manager once you shift the origin to (0,0,0). Also if you use the map_model_manager (we will see this in a separate section), origin shifting is taken care of for you automatically.</p>
+
+<p>Let’s create some map data where the origin is not at (0,0,0) and write it to a file. We can do this to some map_data we read in from map.mrc like this:</p>
+
+<pre class="codeDL"><code>map_file="map.mrc"                             #   Name of map file
+mm = dm.get_real_map(map_file)                #   Deliver map_manager object with map info
+</code></pre>
+
+<p>This reads map.mrc and sets up the map_manager <code>mm</code>. Now let’s modify mm to specify that the origin of the part of the map that is present is at grid point (100,100,100) and that the full map goes from (0,0,0) to (200,200,200). (Note that you would not normally do this, we are doing it just to have a small map that represents part of a big one.)</p>
+
+<pre class="codeDL"><code>mm.set_original_origin_and_gridding(
+   original_origin =(100,100,100),              # Set the origin of the part of map we have
+   gridding=(200,200,200) )                     # set the gridding of the full map
+</code></pre>
+
+<p>We can summarize the map and write it out. Writing it out preserves the information on the origin and gridding of the full map:</p>
+
+<pre class="codeDL"><code>mm.show_summary()   # summarize.  Full map is (0,0,0) to (200,200,200)
+                    # available map is just part of full map
+mm.write_map("non_zero_origin_map.ccp4")    # write the map
+</code></pre>
+
+<p>Now let’s work with an origin-shifted map.  We can read non_zero_origin_map.ccp4 into a new map_manager object and summarize it:</p>
+
+<pre class="codeDL"><code>map_file="non_zero_origin_map.ccp4"                             #   Name of map file
+new_mm = dm.get_real_map(map_file)           #   Deliver map_manager object with map info
+</code></pre>
+
+<p>Now let's look at the map information:</p>
+
+<pre class="codeDL"><code>new_mm.show_summary()    # summarize
+</code></pre>
+
+<p>which will give us:</p>
+
+<div class="outputDL"><p><samp>header_min:  -0.089924633503<br>
+header_max:  0.496164411306<br>
+header_mean: -4.31608481594e-12<br>
+header_rms:  0.0558838397264<br>
+<br>
+Information about FULL UNIT CELL:<br>
+unit cell grid: (200, 200, 200)<br>
+unit cell parameters: (149.4066619873047, 144.61500549316406, 147.4875030517578, 90.0, 90.0, 90.0)<br>
+space group number:   1<br>
+<br>
+Information about the PART OF MAP THAT IS PRESENT:<br>
+map cell grid: (30, 40, 32)<br>
+map cell parameters: (22.410999298095703, 28.923001098632813, 23.59800048828125, 90.0, 90.0, 90.0)<br>
+map origin: (100, 100, 100)<br>
+pixel size: (0.7470, 0.7231, 0.7374)<br>
+Shift (grid units) to place origin at original position: (0, 0, 0)
+</samp></p></div>
+
+<p>Notice that the full unit cell is (200,200,200) and the part that is present is (30,40,32) with an origin of (100,100,100).  We have defined a big “unit cell” and made a map that covers only part of it.</p>
+
+<p>In this case the “crystal_symmetry” of the map describes the size of the map that is present. The unit cell grid describes the size of the full unit cell. Similarly, the map cell grid is the gridding of the part of the map that is present and the unit_cell_grid is the gridding of the full unit cell.</p>
+
+<p>If you have a map like this one where the origin is not (0,0,0), you can shift it to put it at (0,0,0). Here is how you can shift the origin of your map to (0,0,0) with your map_manager object (mm) containing your map data:</p>
+
+<pre class="codeDL"><code>new_mm.shift_origin()    # shift the origin to (0,0,0)
+</code></pre>
+
+<p>Notice that this changes <code>new_mm</code> itself. This is actually a very small change, just a record that the origin is (0,0,0) now and saving the original value. Now you can get the map data with an origin at (0,0,0):</p>
+
+<pre class="codeDL"><code>shifted_map_data=new_mm.map_data()    # get data to work with, origin at (0,0,0)
+</code></pre>
+
+<p>This is the map data that you normally will work with in cctbx. You can call it anything you like, often it is called map_data even though it is different (by an origin shift) from the original map data.
+</p>
+
+<p>You can write out your shifted map with the map_manager and it will automatically be shifted back to its original location.</p>
+
+
+<pre class="codeDL"><code>dm.write_real_map_file(new_mm,filename="map_after_shifting.mrc") # write map
+</code></pre>
+
+<p>This will produce a map that is the same as we read in from non_zero_origin_map.ccp4. The different suffixes (mrc, ccp4) have no significance here.</p>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Keeping track of map reconstruction symmetry</h3>
+
+<p>The map_manager object knows how to find and keep track of the symmetry that was used in the reconstruction of a map. This is different from the “crystal_symmetry” that describes the overall dimensions and P1 symmetry of the box of density used in the reconstruction. The reconstruction symmetry is any symmetry that was assumed (imposed) during the reconstruction process. For example, it might be helical symmetry, or a point-group symmetry such as O, C7, D7, T etc. Map symmetry is recorded with an ncs_object object that can be used to find the unique part of the map or apply symmetry to a model. You can find the symmetry in your map with:</p>
+
+<pre class="codeDL"><code>mm.find_map_symmetry()    # Find symmetry in the map
+</code></pre>
+
+<p>If you already knew that the symmetry was octahedral (O), then you could add the keyword, symmetry= "O". Now in this case, our map does not have any symmetry...this results in a None (not defined) for the ncs_object:</p>
+
+<pre class="codeDL"><code>print ( mm.ncs_object())
+</code></pre>
+
+<p>Yields:</p>
+
+<div class="outputDL"><p><samp>None
+</samp></p></div>
+
+<p>Let’s make a map that does have symmetry and find it. We are going to use a model that is packaged with cctbx that has symmetry, and then we are going to generate a map using the map_model_manager as we did earlier. The model is a text string in a regression file. We can import it and then use it as our source of information:</p>
+
+<pre class="codeDL"><code>from iotbx.regression.ncs.tst_ncs import pdb_str_9 as dimer_text
+</code></pre>
+
+<p>Now let’s create a model from this text:</p>
+
+<pre class="codeDL"><code>dm = DataManager(['model'])
+model_file = 'model_with_ncs.pdb'
+dm.process_model_str(model_file, dimer_text)
+m = dm.get_model(model_file)
+dm.write_model_file(m, model_file, overwrite=True)
+</code></pre>
+
+<p>And let’s create a map that has symmetry  based on this model:</p>
+
+<pre class="codeDL"><code>ncs_mmm=map_model_manager()
+ncs_mmm.generate_map(box_cushion=0, file_name=model_file)
+ncs_map_manager = ncs_mmm.map_manager()
+</code></pre>
+
+<p>Let’s find the symmetry in this map and print it:</p>
+
+<pre class="codeDL"><code>ncs_map_manager.find_map_symmetry()    # Find symmetry in the map
+print ( ncs_map_manager.ncs_object())
+</code></pre>
+
+<p>This results in:</p>
+
+<div class="outputDL"><p><samp>NCS object with 1 groups: NCS group with 2 ops
+</samp></p></div>
+
+<p>You can see the details of the symmetry with:</p>
+
+<pre class="codeDL"><code>text = ncs_map_manager.ncs_object().display_all()
+</code></pre>
+
+<p>Note that the map symmetry is contained in the map_manager, which itself is contained in the map_model_manager. This means that the map_model manager knows about the map, the model, and the map reconstruction symmetry.</p>
+
+<!----------------------- EDIT END ---------------------------->
+<!-- DO NOT EDIT ANYTHING BELOW!!!! -->
+</div> <!-- end col-sm-9 -->
+
+<!-- automatic table of contents
+     located in the sidebar; will move to the top on a small screen -->
+<div class="col-sm-3 mt-5">
+  <nav id="toc" data-toggle="toc"></nav>
+</div> <!-- end col-sm-3 -->
+
+
+{% endblock %}

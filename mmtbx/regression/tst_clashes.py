@@ -60,7 +60,7 @@ def tst_01():
   print()
   o = mmtbx.clashes.from_pdb(pdb_str=pdb_poor, clash_threshold=1.5)
   o.show()
-  assert o.clashing_pairs() == [(9, 18), (9, 19), (8, 18), (7, 18), (9, 17)]
+  assert o.clashing_pairs() == [(9, 18), (7, 19), (8, 19), (9, 19), (9, 17)]
 
 def tst_02():
   # Test for remove_clashes
@@ -69,7 +69,7 @@ def tst_02():
   import iotbx.pdb
   import sys
   pdb_inp = iotbx.pdb.input(lines=pdb_poor.splitlines(),source_info='None')
-  model=  mmtbx.model.manager( model_input= pdb_inp,)
+  model=  mmtbx.model.manager( model_input= pdb_inp, build_grm=True)
 
   model.set_log(log = null_out())
 

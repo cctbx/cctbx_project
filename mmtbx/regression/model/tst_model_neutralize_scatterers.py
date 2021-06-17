@@ -46,7 +46,8 @@ def run_tst_grm_after_neutralize_scatterers():
 
   model = mmtbx.model.manager(
       model_input       = pdb_inp,
-      log = null_out())
+      log = null_out(),
+      build_grm=True)
   atoms = model.get_hierarchy().atoms()
   grm = model.get_restraints_manager()
 #  with open('1.geo', 'w') as f:
@@ -59,7 +60,12 @@ def run_tst_grm_after_neutralize_scatterers():
       assert(atoms[iseq].name.strip()=='CB')
       assert(atoms[jseq].name.strip()=='OE2')
 
+  model = mmtbx.model.manager(
+      model_input       = pdb_inp,
+      log = null_out(),
+      build_grm=False)
   model.neutralize_scatterers()
+  model.process_input_model(make_restraints=True)
   atoms2 = model.get_hierarchy().atoms()
   grm2 = model.get_restraints_manager()
 #  with open('2.geo', 'w') as f:

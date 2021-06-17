@@ -23,10 +23,10 @@ HETATM    7  O   HOH     2       5.150  11.586  12.474  1.00  3.00           O
 
 ATOM      8  CB  PHE A   1      11.914  10.410  11.811  1.00  2.00           C
 ATOM      9  CG  PHE A   1      11.204   9.472  12.746  1.00  2.00           C
-ATOM     10  CD1 PHE A   1      10.636   8.301  12.273  1.00  2.00           C
-ATOM     11  CD2 PHE A   1      11.105   9.762  14.096  1.00  2.00           C
-ATOM     12  CE1 PHE A   1       9.982   7.436  13.131  1.00  2.00           C
-ATOM     13  CE2 PHE A   1      10.452   8.901  14.958  1.00  2.00           C
+ATOM     10  CD2 PHE A   1      10.636   8.301  12.273  1.00  2.00           C
+ATOM     11  CD1 PHE A   1      11.105   9.762  14.096  1.00  2.00           C
+ATOM     12  CE2 PHE A   1       9.982   7.436  13.131  1.00  2.00           C
+ATOM     13  CE1 PHE A   1      10.452   8.901  14.958  1.00  2.00           C
 ATOM     14  CZ  PHE A   1       9.890   7.737  14.475  1.00  2.00           C
 ATOM     15  C   PHE A   1      11.828  12.443  10.351  1.00  2.00           C
 ATOM     16  O   PHE A   1      11.808  12.365   9.123  1.00  2.00           O
@@ -62,10 +62,10 @@ HETATM   11  H1  HOH     2       4.364  12.000  12.888  1.00  3.00           H
 HETATM   12  H2  HOH     2       5.938  11.998  12.886  1.00  3.00           H
 ATOM     13  CB  PHE A   1      11.914  10.410  11.811  1.00  2.00           C
 ATOM     14  CG  PHE A   1      11.204   9.472  12.746  1.00  2.00           C
-ATOM     15  CD1 PHE A   1      10.636   8.301  12.273  1.00  2.00           C
-ATOM     16  CD2 PHE A   1      11.105   9.762  14.096  1.00  2.00           C
-ATOM     17  CE1 PHE A   1       9.982   7.436  13.131  1.00  2.00           C
-ATOM     18  CE2 PHE A   1      10.452   8.901  14.958  1.00  2.00           C
+ATOM     15  CD2 PHE A   1      10.636   8.301  12.273  1.00  2.00           C
+ATOM     16  CD1 PHE A   1      11.105   9.762  14.096  1.00  2.00           C
+ATOM     17  CE2 PHE A   1       9.982   7.436  13.131  1.00  2.00           C
+ATOM     18  CE1 PHE A   1      10.452   8.901  14.958  1.00  2.00           C
 ATOM     19  CZ  PHE A   1       9.890   7.737  14.475  1.00  2.00           C
 ATOM     20  C   PHE A   1      11.828  12.443  10.351  1.00  2.00           C
 ATOM     21  O   PHE A   1      11.808  12.365   9.123  1.00  2.00           O
@@ -102,7 +102,6 @@ def exercise_01():
   ####
   model.add_hydrogens(correct_special_position_tolerance=1.0)
   result = StringIO()
-  model.set_sites_cart_from_xrs()
   pdb_str = model.model_as_pdb()
   result.write(pdb_str)
   result = result.getvalue().splitlines()

@@ -78,7 +78,6 @@ Distl::image_divider::tile_data(const int& module_number)const{
   int* begin = z.begin();
   const int* icount = data.begin();
 
-  int slow_size = data.accessor().focus()[0];
   int fast_size = data.accessor().focus()[1];
 
   icount += slow_tiles[idx_slow].first * fast_size

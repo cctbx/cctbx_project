@@ -179,10 +179,6 @@ namespace absolute_scaling{
     CCTBX_ASSERT(C != 0.0); // avoid numerical issues
     f_t c_scale = 1./C;
     f_t c_scale_sq = c_scale * c_scale;
-    if(C > 1.e+30) {
-      f_t c_scale = 0.0;
-      f_t c_scale_sq = 0.0;
-    }
     f_t grad_scale = 0.0;
     f_t grad_B = 0.0;
     scitbx::af::tiny<double,2> gradients(0.0);

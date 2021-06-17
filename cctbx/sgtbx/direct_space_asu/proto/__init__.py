@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import sys
-import boost.python
-ext = boost.python.import_ext("cctbx_sgtbx_asu_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("cctbx_sgtbx_asu_ext")
 from cctbx_sgtbx_asu_ext import *
 
 def asu_show_(asu, f=None):

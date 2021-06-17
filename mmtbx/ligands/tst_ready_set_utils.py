@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 from libtbx import easy_run
 from libtbx.test_utils import assert_lines_in_file
@@ -180,7 +180,7 @@ def tst_adding_side_chain_acid_hydrogen_atoms(switch):
     hierarchy = pdb_inp.construct_hierarchy()
     add_side_chain_acid_hydrogens(hierarchy, configuration_index=i, element=element)
     hierarchy.write_pdb_file(fn.replace('.pdb', '_updated.pdb'))
-    cmd='phenix.pdb_interpretation %s write_geo=True' % fn.replace('.pdb', '_updated.pdb')
+    cmd='phenix.pdb_interpretation %s flip_sym=0 write_geo=True' % fn.replace('.pdb', '_updated.pdb')
     print(cmd)
     easy_run.go(cmd)
     assert_lines_in_file(file_name='%s.geo' % fn.replace('.pdb', '_updated.pdb'),

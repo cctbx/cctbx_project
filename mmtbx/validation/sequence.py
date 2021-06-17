@@ -5,6 +5,7 @@ import libtbx.phil
 from libtbx.utils import Sorry
 from libtbx.test_utils import approx_equal_core
 from libtbx import adopt_init_args, Auto
+from mmtbx.alignment import align
 import sys
 
 import iotbx.cif.model
@@ -139,6 +140,8 @@ class chain(object):
         self.n_missing_end += 1
         self.n_missing += 1
       i_aln -= 1
+      if i_aln < 0:
+        break
     assert (len(self.sec_str) == len(alignment.a))
 
   def extract_coordinates(self, pdb_chain):
@@ -277,6 +280,18 @@ class validation(object):
       nproc=Auto, include_secondary_structure=False,
       extract_coordinates=False, extract_residue_groups=False,
       minimum_identity=0, custom_residues=[]):
+    #
+    # XXX This is to stop assertion crash that checks lengths of provided
+    # XXX sequence with the length of sequence from model (which can happen to
+    # XXX be different due to presence of altlocs!
+    # XXX Also this assumes altlocs within residue groups are the same resname's
+    # XXX And of course making a copy is a bad idea, obviously!
+    # XXX No test.
+    #
+    pdb_hierarchy = pdb_hierarchy.deep_copy()
+    pdb_hierarchy.remove_alt_confs(always_keep_one_conformer=True)
+    pdb_hierarchy.atoms().reset_i_seq()
+    #
     assert (len(sequences) > 0)
     for seq_object in sequences :
       assert (seq_object.sequence != "")
@@ -315,6 +330,7 @@ class validation(object):
       helix_selection = ssm.helix_selection()
       sheet_selection = ssm.beta_selection()
     pdb_chains = []
+    chain_seq = {}
     for pdb_chain in pdb_hierarchy.models()[0].chains():
       unk = UNK_AA
       chain_id = pdb_chain.id
@@ -334,6 +350,7 @@ class validation(object):
       pad_at_start = False
       seq = pdb_chain.as_padded_sequence(
         substitute_unknown=unk, pad=pad, pad_at_start=pad_at_start)
+      chain_seq[chain_id] = seq
       resids = pdb_chain.get_residue_ids(pad=pad, pad_at_start=pad_at_start)
       resnames = pdb_chain.get_residue_names_padded(
         pad=pad, pad_at_start=pad_at_start)
@@ -364,24 +381,13 @@ class validation(object):
         args=range(len(self.chains)),
         processes=nproc)
     assert (len(alignments_and_names) == len(self.chains) == len(pdb_chains))
-    # Check that everything was aligned, otherwise show Sorry,
-    # because there is no way to produce mmCIF without alignment
-    no_alignment = []
-    for ch, a_and_names in zip(self.chains, alignments_and_names):
-      if a_and_names[0] is None:
-        no_alignment.append(ch.chain_id)
-    if len(no_alignment) > 0:
-      msg = "Could not find sequence for following chains:\n"
-      for c_id in no_alignment:
-        msg += "%s, " % c_id
-      msg += "\nPossible reasons:\n"
-      msg += "  - No sequence in sequence file.\n"
-      msg += "  - Too small amount of residues is modelled.\n"
-      msg += "  - Real sequence provided when model is poly-ALA.\n"
-      raise Sorry(msg)
     for i, c in enumerate(self.chains):
       alignment, seq_name, seq_id = alignments_and_names[i]
-      if (alignment is None) : continue
+      # if no alignment was found, just use the sequence from the model
+      if alignment is None:
+        alignment = align(chain_seq[c.chain_id], chain_seq[c.chain_id]).extract_alignment()
+        seq_name = 'model'
+        seq_id = 0
       pdb_chain = pdb_chains[i]
       try :
         c.set_alignment(alignment, seq_name, seq_id)

@@ -192,7 +192,7 @@ defineDotNodes(pANTLR3_BASE_TREE_ADAPTOR adaptor, void * t, pANTLR3_STRING dotSp
 
                 // Pick up a pointer for the child
                 //
-                child = adaptor->getChild(adaptor, t, i);
+                child = (pANTLR3_BASE_TREE)adaptor->getChild(adaptor, t, i);
 
                 // Name the node
                 //
@@ -275,7 +275,7 @@ defineDotEdges(pANTLR3_BASE_TREE_ADAPTOR adaptor, void * t, pANTLR3_STRING dotSp
 
                 // Next child
                 //
-                child   = adaptor->getChild(adaptor, t, i);
+                child   = (pANTLR3_BASE_TREE)adaptor->getChild(adaptor, t, i);
 
                 // Create the edge relation
                 //
@@ -440,7 +440,7 @@ makeDot (pANTLR3_BASE_TREE_ADAPTOR adaptor, void * theTree)
 static  pANTLR3_BASE_TREE
 nilNode     (pANTLR3_BASE_TREE_ADAPTOR adaptor)
 {
-        return  adaptor->create(adaptor, NULL);
+        return  (pANTLR3_BASE_TREE)adaptor->create(adaptor, NULL);
 }
 
 static  pANTLR3_BASE_TREE
@@ -448,7 +448,7 @@ dbgNil      (pANTLR3_BASE_TREE_ADAPTOR adaptor)
 {
         pANTLR3_BASE_TREE t;
 
-        t = adaptor->create                             (adaptor, NULL);
+        t = (pANTLR3_BASE_TREE)adaptor->create                          (adaptor, NULL);
         adaptor->debugger->createNode   (adaptor->debugger, t);
 
         return  t;
@@ -460,7 +460,7 @@ dbgNil      (pANTLR3_BASE_TREE_ADAPTOR adaptor)
 static  pANTLR3_BASE_TREE
 dupTree  (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE t)
 {
-        return  adaptor->dupTreeTT(adaptor, t, NULL);
+        return  (pANTLR3_BASE_TREE)adaptor->dupTreeTT(adaptor, t, NULL);
 }
 
 pANTLR3_BASE_TREE
@@ -476,7 +476,7 @@ dupTreeTT                       (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE
         {
                 return NULL;
         }
-        newTree = t->dupNode(t);
+        newTree = (pANTLR3_BASE_TREE)t->dupNode(t);
 
         // Ensure new subtree root has parent/child index set
         //
@@ -486,8 +486,8 @@ dupTreeTT                       (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE
 
         for     (i=0; i < n; i++)
         {
-                child = adaptor->getChild               (adaptor, t, i);
-                newSubTree = adaptor->dupTreeTT (adaptor, child, t);
+                child = (pANTLR3_BASE_TREE)adaptor->getChild            (adaptor, t, i);
+                newSubTree = (pANTLR3_BASE_TREE)adaptor->dupTreeTT      (adaptor, child, t);
                 adaptor->addChild                               (adaptor, newTree, newSubTree);
         }
         return  newTree;
@@ -510,7 +510,7 @@ simulateTreeConstruction(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE tr
         n = adaptor->getChildCount(adaptor, tree);
         for     (i = 0; i < n; i++)
         {
-                child = adaptor->getChild(adaptor, tree, i);
+                child = (pANTLR3_BASE_TREE)adaptor->getChild(adaptor, tree, i);
                 simulateTreeConstruction(adaptor, child);
                 adaptor->debugger->addChild(adaptor->debugger, tree, child);
         }
@@ -523,7 +523,7 @@ dbgDupTree              (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE tr
 
         // Call the normal dup tree mechanism first
         //
-        t = adaptor->dupTreeTT(adaptor, tree, NULL);
+        t = (pANTLR3_BASE_TREE)adaptor->dupTreeTT(adaptor, tree, NULL);
 
         // In order to tell the debugger what we have just done, we now
         // simulate the tree building mechanism. THis will fire
@@ -578,7 +578,7 @@ dbgAddChildToken                (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE
 
         if      (t != NULL && child != NULL)
         {
-                tc = adaptor->create(adaptor, child);
+                tc = (pANTLR3_BASE_TREE)adaptor->create(adaptor, child);
                 adaptor->addChild(adaptor, t, tc);
                 adaptor->debugger->addChild(adaptor->debugger, t, tc);
         }
@@ -654,7 +654,7 @@ becomeRoot      (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE newRootTre
          * because if it was a Nil Node, then we can reuse it now.
                  */
         saveRoot    = newRootTree;
-                newRootTree = newRootTree->getChild(newRootTree, 0);
+                newRootTree = (pANTLR3_BASE_TREE)newRootTree->getChild(newRootTree, 0);
 
         // Reclaim the old nilNode()
         //
@@ -718,7 +718,7 @@ static  pANTLR3_BASE_TREE
                 }
                 else if (root->getChildCount(root) == 1)
                 {
-                        root = root->getChild(root, 0);
+                        root = (pANTLR3_BASE_TREE)root->getChild(root, 0);
                         root->setParent(root, NULL);
                         root->setChildIndex(root, -1);
 
@@ -739,14 +739,14 @@ static  pANTLR3_BASE_TREE
 static  pANTLR3_BASE_TREE
    becomeRootToken      (pANTLR3_BASE_TREE_ADAPTOR adaptor, void * newRoot, pANTLR3_BASE_TREE oldRoot)
 {
-        return  adaptor->becomeRoot(adaptor, adaptor->create(adaptor, newRoot), oldRoot);
+        return  (pANTLR3_BASE_TREE)adaptor->becomeRoot(adaptor, adaptor->create(adaptor, (pANTLR3_COMMON_TOKEN)newRoot), oldRoot);
 }
 static  pANTLR3_BASE_TREE
 dbgBecomeRootToken      (pANTLR3_BASE_TREE_ADAPTOR adaptor, void * newRoot, pANTLR3_BASE_TREE oldRoot)
 {
         pANTLR3_BASE_TREE       t;
 
-        t =     adaptor->becomeRoot(adaptor, adaptor->create(adaptor, newRoot), oldRoot);
+        t =     (pANTLR3_BASE_TREE)adaptor->becomeRoot(adaptor, adaptor->create(adaptor, (pANTLR3_COMMON_TOKEN)newRoot), oldRoot);
 
         adaptor->debugger->becomeRoot(adaptor->debugger,t, oldRoot);
 
@@ -765,11 +765,11 @@ createTypeToken (pANTLR3_BASE_TREE_ADAPTOR adaptor, ANTLR3_UINT32 tokenType, pAN
 
         /* Set the type of the new token to that supplied
          */
-        fromToken->type = tokenType;
+        fromToken->setType(fromToken, tokenType);
 
         /* Return a new node based upon this token
          */
-        return  adaptor->create(adaptor, fromToken);
+        return  (pANTLR3_BASE_TREE)adaptor->create(adaptor, fromToken);
 }
 static  pANTLR3_BASE_TREE
 dbgCreateTypeToken      (pANTLR3_BASE_TREE_ADAPTOR adaptor, ANTLR3_UINT32 tokenType, pANTLR3_COMMON_TOKEN fromToken)
@@ -792,7 +792,7 @@ createTypeTokenText     (pANTLR3_BASE_TREE_ADAPTOR adaptor, ANTLR3_UINT32 tokenT
 
         /* Set the type of the new token to that supplied
          */
-        fromToken->type = tokenType;
+        fromToken->setType(fromToken, tokenType);
 
         /* Set the text of the token accordingly
          */
@@ -800,7 +800,7 @@ createTypeTokenText     (pANTLR3_BASE_TREE_ADAPTOR adaptor, ANTLR3_UINT32 tokenT
 
         /* Return a new node based upon this token
          */
-        return  adaptor->create(adaptor, fromToken);
+        return  (pANTLR3_BASE_TREE)adaptor->create(adaptor, fromToken);
 }
 static  pANTLR3_BASE_TREE
 dbgCreateTypeTokenText  (pANTLR3_BASE_TREE_ADAPTOR adaptor, ANTLR3_UINT32 tokenType, pANTLR3_COMMON_TOKEN fromToken, pANTLR3_UINT8 text)
@@ -825,7 +825,7 @@ static  pANTLR3_BASE_TREE
 
         /* Return a new node based upon this token
          */
-        return  adaptor->create(adaptor, fromToken);
+        return  (pANTLR3_BASE_TREE)adaptor->create(adaptor, fromToken);
 }
 static  pANTLR3_BASE_TREE
    dbgCreateTypeText    (pANTLR3_BASE_TREE_ADAPTOR adaptor, ANTLR3_UINT32 tokenType, pANTLR3_UINT8 text)

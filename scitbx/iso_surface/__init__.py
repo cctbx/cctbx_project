@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
-ext = boost.python.import_ext("scitbx_iso_surface_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("scitbx_iso_surface_ext")
 import scitbx_iso_surface_ext
 # the following is essential to load the binding
 # of af::shared<tiny<size_t, 3> >

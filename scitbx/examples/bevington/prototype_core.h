@@ -162,7 +162,6 @@ class linear_ls_eigen_wrapper
     scitbx::af::shared<double> get_cholesky_lower() const {
       SCITBX_ASSERT (!solved_);
       SCITBX_ASSERT(formed_normal_matrix());
-      int N = n_parameters();
       scitbx::af::versa<double, scitbx::af::packed_l_accessor> triangular_result(n_parameters());
       Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
       sparse_matrix_t lower = chol.matrixL();
@@ -303,7 +302,6 @@ class non_linear_ls_eigen_wrapper:  public scitbx::lstbx::normal_equations::non_
       add_residuals(r, w);
       sparse::matrix<scalar_t> a = jacobian.transpose();
       for (int ieqn = 0; ieqn < a.n_cols(); ++ieqn){
-        int ndata = a.col(ieqn).non_zeroes();
         row_iterator iend = a.col(ieqn).end();
         for (row_iterator i = a.col(ieqn).begin(); i != iend; ++i)  {
           std::size_t idx_i = i.index();

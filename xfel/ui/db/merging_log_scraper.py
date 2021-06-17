@@ -106,7 +106,10 @@ class Scraper(object):
     ax1.set_xlabel(u'Resolution ${\AA}$')
     ax1.set_ylabel('%')
     ax2.set_ylabel('Multiplicity')
-    fig.legend(loc="upper right", bbox_to_anchor=(1,1), bbox_transform=ax.transAxes)
+    handles, labels = ax1.get_legend_handles_labels()
+    handles.extend(ax2.get_legend_handles_labels()[0])
+    labels.extend(ax2.get_legend_handles_labels()[1])
+    fig.legend(handles, labels, loc="upper right", bbox_to_anchor=(1,1), bbox_transform=ax.transAxes)
     plt.title(title)
 
     if interactive:
@@ -121,8 +124,7 @@ class Scraper(object):
     from matplotlib.ticker import FuncFormatter
     import numpy as np
     import math
-    fig = plt.figure()
-    ax1a, ax2 = fig.subplots(2,1, sharex=True)
+    fig, (ax1a, ax2) = plt.subplots(2,1, sharex=True)
     ax1b = ax1a.twinx()
 
     xvals = []
@@ -161,6 +163,8 @@ class Scraper(object):
       if 'Multiplicity' in r:
         last = last_res = 0
         for row in r['Multiplicity']:
+          if row[0]=='All':
+            break
           row_n, d_max, d_min, mult = row
           if mult >= 10:
             last = mult; last_res = (d_max + d_min) / 2

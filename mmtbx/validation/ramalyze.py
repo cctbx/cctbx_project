@@ -30,6 +30,10 @@ RAMALYZE_FAVORED = 2
 RAMALYZE_ANY = 3
 RAMALYZE_NOT_FAVORED = 4
 
+# Values are rama_keys, from 0 to 5
+res_types_dict = {"general": 0, "glycine":1, "cis-proline":2, "trans-proline":3,
+             "pre-proline":4, "isoleucine or valine":5}
+
 res_types = ["general", "glycine", "cis-proline", "trans-proline",
              "pre-proline", "isoleucine or valine"]
 res_type_labels = ["General", "Gly", "cis-Pro", "trans-Pro", "pre-Pro",

@@ -2,9 +2,9 @@ from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex # import dependency
 import scitbx.array_family.shared # import dependency
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import zip
-ext = boost.python.import_ext("cctbx_uctbx_ext")
+ext = bp.import_ext("cctbx_uctbx_ext")
 from cctbx_uctbx_ext import *
 
 from scitbx import matrix
@@ -116,7 +116,7 @@ Conversion of Cartesian coordinates to fractional coordinates.
 :rtype: 3-tuple or flex.vec3_double
 """)
 
-@boost.python.inject_into(ext.unit_cell)
+@bp.inject_into(ext.unit_cell)
 class _():
 
   def __str__(self):

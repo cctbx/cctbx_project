@@ -56,6 +56,7 @@ typedef fractional<double> frac_t;
 
 /// Anisotropic displacement tensor used throughout the module
 typedef scitbx::sym_mat3<double> tensor_rank_2_t;
+typedef adptbx::anharmonic::GramCharlier4<double>  anharmonic_adp_t;
 
 
 /// A range of index [first, first+size)
@@ -375,6 +376,38 @@ public:
 
 };
 
+class vector_parameter : public virtual parameter {
+public:
+  virtual af::ref<double> components() { return value.ref(); }
+
+  af::shared<double> value;
+};
+
+
+class independent_vector_parameter : public vector_parameter {
+public:
+  independent_vector_parameter(af::shared<double> const &value,
+    bool variable = true)
+    : parameter(0)
+  {
+    this->value = value;
+    this->set_variable(variable);
+  }
+
+  /// Construct with an intial value equal to the zero vector of dimension n
+  independent_vector_parameter(int n, bool variable = true)
+    : parameter(0)
+  {
+    this->value.resize(n, 0);
+    this->set_variable(variable);
+  }
+
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+    sparse_matrix_type *jacobian_transpose)
+  {}
+
+};
+
 /// Site, isotropic or anisotropic displacement, etc., or combination of those.
 /** They belong to one or more scatterers in the asymmetric unit.
 
@@ -502,7 +535,7 @@ class u_star_parameter : public virtual parameter
 public:
   virtual af::ref<double> components();
 
-  /// The site value in Cartesian coordinates
+  /// The u_star value
   tensor_rank_2_t value;
 };
 
@@ -543,6 +576,68 @@ public:
    */
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
+};
+
+
+/// Anisotropic displacement parameters of a site
+/** A parameter whose components are the coefficients of the tensor
+    in fractional coordinates.
+ */
+class anharmonic_adp_parameter : public virtual parameter
+{
+public:
+  anharmonic_adp_parameter()
+    : value(25)
+  {}
+
+  virtual af::ref<double> components();
+
+  /// The u_star value
+  af::shared<double> value;
+};
+
+
+/// Anisotropic displacement parameters of a site in the asu
+class asu_anharmonic_adp_parameter : public anharmonic_adp_parameter,
+  public virtual single_asu_scatterer_parameter
+{
+public:
+  /// Variability property, directly linked to the scatterer grad_site flag
+  //@{
+  virtual void set_variable(bool f);
+
+  virtual bool is_variable() const;
+  //@}
+
+  virtual void
+    write_component_annotations_for(scatterer_type const *scatterer,
+      std::ostream &output) const;
+
+  virtual void store(uctbx::unit_cell const &unit_cell) const;
+
+};
+
+
+class independent_anharmonic_adp_parameter : public asu_anharmonic_adp_parameter
+{
+public:
+  independent_anharmonic_adp_parameter(scatterer_type *scatterer)
+    : parameter(0),
+    single_asu_scatterer_parameter(scatterer)
+  {
+    for (size_t i = 0; i < 10; i++) {
+      value[i] = scatterer->anharmonic_adp->C[i];
+    }
+    for (size_t i = 0; i < 15; i++) {
+      value[i+10] = scatterer->anharmonic_adp->D[i];
+    }
+  }
+
+  /// Does nothing in this class
+  /** This optimisation relies on class reparametrisation implementation
+   */
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+    sparse_matrix_type *jacobian_transpose);
 };
 
 
@@ -691,9 +786,7 @@ public:
       std::ostream &output) const;
 
   virtual void store(uctbx::unit_cell const &unit_cell) const;
-
   virtual void validate();
-
 };
 
 /// Scatterer fdp that is an independent parameter

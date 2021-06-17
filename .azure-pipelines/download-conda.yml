@@ -10,7 +10,7 @@ jobs:
 - job: conda_packages
   pool:
     vmImage: ubuntu-latest
-  timeoutInMinutes: 360
+  timeoutInMinutes: 120
   strategy:
     maxParallel: 3
     matrix:
@@ -26,6 +26,9 @@ jobs:
       linux_py38:
         OS: linux-64
         PYTHON_VERSION: py38
+      linux_py39:
+        OS: linux-64
+        PYTHON_VERSION: py39
       macos_py27:
         OS: osx-64
         PYTHON_VERSION: py27
@@ -38,9 +41,9 @@ jobs:
       macos_py38:
         OS: osx-64
         PYTHON_VERSION: py38
-      win_py27:
-        OS: win-64
-        PYTHON_VERSION: py27
+      macos_py39:
+        OS: osx-64
+        PYTHON_VERSION: py39
       win_py36:
         OS: win-64
         PYTHON_VERSION: py36
@@ -50,6 +53,9 @@ jobs:
       win_py38:
         OS: win-64
         PYTHON_VERSION: py38
+      win_py39:
+        OS: win-64
+        PYTHON_VERSION: py39
 
   steps:
 
@@ -70,7 +76,7 @@ jobs:
         mkdir -p ${directory}
         cd ${directory}
         echo Downloading ${filename} to ${directory}
-        wget --retry-connrefused --retry-on-http-error=520 ${url}
+        wget --retry-connrefused --retry-on-http-error=503,520,525 ${url}
         cd ..
         if [ "$(OS)" = "win-64" ]; then
           echo ${directory}\\${filename} >> filenames.txt

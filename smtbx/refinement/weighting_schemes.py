@@ -11,9 +11,9 @@ They all feature:
 
 
 from __future__ import absolute_import, division, print_function
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-ext = boost.python.import_ext("smtbx_refinement_least_squares_ext")
+ext = bp.import_ext("smtbx_refinement_least_squares_ext")
 
 
 from cctbx.array_family import flex
@@ -21,7 +21,7 @@ from cctbx.array_family import flex
 import math
 
 
-@boost.python.inject_into(ext.mainstream_shelx_weighting)
+@bp.inject_into(ext.mainstream_shelx_weighting)
 class _():
 
   def __str__(self):
@@ -150,7 +150,7 @@ class _():
     weighting.b = start_b
     return weighting
 
-@boost.python.inject_into(ext.unit_weighting)
+@bp.inject_into(ext.unit_weighting)
 class _():
 
   def __str__(self):
@@ -164,7 +164,7 @@ class _():
     # no parameters to optimise!
     return self
 
-@boost.python.inject_into(ext.sigma_weighting)
+@bp.inject_into(ext.sigma_weighting)
 class _():
 
   def __str__(self): return "w=1/sigma^2"

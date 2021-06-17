@@ -195,9 +195,6 @@ def calculate_expected_f_and_g_least_squares(
         w2 = float(n_dst) / sum(atomic_mask)
         gradients[-n_atm+i_atm] += numpy.sum(-2.0 * w * ud * ur * w2)
 
-  functional *= 1.0 / (n_dst*n_atm)
-  gradients *= 1.0 / (n_dst*n_atm)
-
   return functional, gradients
 
 def calculate_expected_f_and_g_sum_of_amplitudes(
@@ -210,7 +207,7 @@ def calculate_expected_f_and_g_sum_of_amplitudes(
   atomic_mask = None,
   ):
 
-  mult = overall_weight / float(n_atm)
+  mult = overall_weight
 
   dataset_weights = target_weights.as_numpy_array().mean(axis=1)
   assert len(dataset_weights) == n_dst
@@ -229,10 +226,10 @@ def calculate_expected_f_and_g_sum_of_amplitudes(
   # Add to all datasets
   amplitude_sums[:] += atomic_amps.sum()
 
-  f = mult * (amplitude_sums * dataset_weights).mean()
+  f = mult * (amplitude_sums * dataset_weights).sum()
   g = flex.double(
-    [mult*dataset_weights[i_dst]/n_dst for i_dst in dataset_hash] +
-    [mult*dataset_weights.mean()]*n_atm
+    [mult * dataset_weights[i_dst] for i_dst in dataset_hash] +
+    [mult * dataset_weights.sum()]*n_atm
   )
 
   return f,g
@@ -249,7 +246,7 @@ def calculate_expected_f_and_g_sum_of_amplitudes_squared(
   atomic_mask = None,
   ):
 
-  mult = overall_weight / float(n_atm)
+  mult = overall_weight
 
   dataset_weights = target_weights.as_numpy_array().mean(axis=1)
   assert len(dataset_weights) == n_dst
@@ -268,10 +265,10 @@ def calculate_expected_f_and_g_sum_of_amplitudes_squared(
   # Add to all datasets
   amplitude_sums[:] += atomic_amps.sum()
 
-  f = mult * (amplitude_sums * amplitude_sums * dataset_weights).mean()
+  f = mult * (amplitude_sums * amplitude_sums * dataset_weights).sum()
   g = flex.double(
-    [2.0*mult*amplitude_sums[i_dst]*dataset_weights[i_dst]/n_dst for i_dst in dataset_hash] +
-    [2.0*mult*(amplitude_sums*dataset_weights).mean()]*n_atm
+    [2.0 * mult * amplitude_sums[i_dst] * dataset_weights[i_dst] for i_dst in dataset_hash] +
+    [2.0 * mult * (amplitude_sums * dataset_weights).sum()]*n_atm
   )
 
   return f,g
@@ -288,7 +285,7 @@ def calculate_expected_f_and_g_sum_of_squared_amplitudes(
   atomic_mask=None,
   ):
 
-  mult = overall_weight / float(n_atm)
+  mult = overall_weight
 
   dataset_weights = target_weights.as_numpy_array().mean(axis=1)
   assert len(dataset_weights) == n_dst
@@ -304,12 +301,12 @@ def calculate_expected_f_and_g_sum_of_squared_amplitudes(
   assert len(atomic_amps) == n_atm
 
   f = mult * (
-    (group_amplitudes * group_amplitudes * dataset_weights_base).sum() / n_dst +
-    (atomic_amps * atomic_amps * dataset_weights.mean()).sum()
+    (group_amplitudes * group_amplitudes * dataset_weights_base).sum() +
+    (atomic_amps * atomic_amps * dataset_weights.sum()).sum()
   )
   g = flex.double(
-    list(2.0 * mult * group_amplitudes * dataset_weights_base / n_dst) +
-    list(2.0 * mult * atomic_amps * dataset_weights.mean())
+    list(2.0 * mult * group_amplitudes * dataset_weights_base) +
+    list(2.0 * mult * atomic_amps * dataset_weights.sum())
   )
 
   return f,g

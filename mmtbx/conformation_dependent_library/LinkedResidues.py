@@ -3,6 +3,7 @@ class LinkedResidues(list):
   def __init__(self,
                geometry,
                length=3, # CDL & other psi/phi apps
+               allow_poly_ca=False,
                registry=None,
                include_non_linked=False,
               ):
@@ -18,6 +19,7 @@ class LinkedResidues(list):
     self.start = None
     self.end = None
     self.include_non_linked = include_non_linked
+    self.allow_poly_ca = allow_poly_ca
 
   def __repr__(self):
     if 1: return self.show()

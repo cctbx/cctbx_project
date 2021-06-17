@@ -34,10 +34,11 @@ Number of blocks: 1
 """ % cbf)
   print("OK")
 
-tst_list = (
+# unstable test though should now be stable
+tst_list = [
   tst_run,
-  "$D/excercise_compression.py"
-  )
+  "$D/exercise_compression.py"
+  ]
 
 def run():
   build_dir = libtbx.env.under_build("cbflib_adaptbx")

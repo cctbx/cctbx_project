@@ -1,0 +1,30 @@
+# Full conda builds
+
+# no continuous integration builds except for release branches
+trigger:
+  batch: true
+  branches:
+    include:
+      - releases/*
+
+resources:
+  pipelines:
+  - pipeline: data_cache
+    source: 'Update data cache'
+  - pipeline: build_cache
+    source: 'Update build cache'
+
+stages:
+- stage: Preparation
+  displayName: Download
+  jobs:
+    - template: ./download-source.yml
+    - template: ./download-conda.yml
+
+- stage: Build
+  displayName: Build and test
+  dependsOn: Preparation
+  jobs:
+    - template: ./full-build.yml
+      parameters:
+        modules: modules

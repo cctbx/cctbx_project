@@ -330,19 +330,6 @@ class linking_mixins(object):
       for selection_1, selection_2, cutoff in include_selections:
         max_bonded_cutoff = max(max_bonded_cutoff, cutoff)
 
-    # check that linking required
-    ## has_checks = []
-    ## for i, link_boolean in enumerate([link_carbohydrates,
-    ##                                   ]
-    ##                                   ):
-    ##   if i==0:   ct = "common_saccharide"
-    ##   rc = False
-    ##   if link_boolean:
-    ##     rc = check_all_classes(self.pdb_hierarchy, ct)
-    ##   has_checks.append(rc)
-    ## has_checks.append(link_amino_acid_rna_dna)
-    ## if not filter(None, has_checks): return
-    #
     if max_bonded_cutoff > 15:
       raise Sorry("One of the following parameters: \nmetal_coordination_"+
           "cutoff, amino_acid_bond_cutoff,"+
@@ -515,19 +502,20 @@ class linking_mixins(object):
       #  - SF4
       #  - ZN-CYS-HIS
       #
-      if link_metals:
-        moved = ['SF4', 'F3S', 'FES']
-        if ( atom1.parent().resname in moved or
-             atom2.parent().resname in moved
-             ): continue
-        moved = ['ZN', 'CYS']
-        if ( atom1.parent().resname.strip() in moved and
-             atom2.parent().resname.strip() in moved
-             ): continue
-        moved = ['ZN', 'HIS']
-        if ( atom1.parent().resname.strip() in moved and
-             atom2.parent().resname.strip() in moved
-             ): continue
+      moved = ['SF4', 'F3S', 'FES']
+      if ( atom1.parent().resname in moved or
+           atom2.parent().resname in moved
+           ): continue
+      moved = ['ZN', 'CYS']
+      if ( atom1.parent().resname.strip() in moved and
+           atom2.parent().resname.strip() in moved
+           ): continue
+      moved = ['ZN', 'HIS']
+      if ( atom1.parent().resname.strip() in moved and
+           atom2.parent().resname.strip() in moved
+           ): continue
+      #
+      #
       if verbose:
         print(i_seq, j_seq, atom1.quote(), end=' ')
         print(atom2.quote(), end=' ')
@@ -644,7 +632,7 @@ Residue classes
       class_key = tuple(class_key)
       if verbose: print('class_key',class_key)
       #
-      if not link_metals and "metal" in class_key: continue
+      if link_metals!=True and "metal" in class_key: continue
       #atoms_must_be = {}
       if not link_residues:
         if class_key in [
@@ -762,6 +750,7 @@ Residue classes
         origin_id = origin_ids.get_origin_id('link_%s' % key,
                                              return_none_if_absent=True,
                                              )
+        if verbose: print('apply standard link', key, origin_id)
         if origin_id is None:
           # user defined links should not be applied here
           continue

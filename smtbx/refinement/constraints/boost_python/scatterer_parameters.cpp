@@ -47,8 +47,10 @@ struct scatterer_parameters_wrapper
       .def(init<wt::scatterer_type *,
                 asu_parameter *,
                 asu_parameter *,
+                asu_parameter *,
                 asu_parameter *>(
-           (arg("scatterer"), arg("site"), arg("occupancy"), arg("u"))))
+           (arg("scatterer"), arg("site"), arg("occupancy"), arg("u"),
+            arg("anharmonic_adp"))))
       .add_property("scatterer", make_getter(&wt::scatterer, rir))
       .add_property("site"     , make_getter(&wt::site, rir)
                                , make_setter(&wt::site, rir))
@@ -56,10 +58,12 @@ struct scatterer_parameters_wrapper
                                , make_setter(&wt::occupancy, rir))
       .add_property("u"        , make_getter(&wt::u, rir)
                                , make_setter(&wt::u, rir))
-      .add_property("fp"       , make_getter(&wt::fp, rir)
-                               , make_setter(&wt::fp, rir))
-      .add_property("fdp"      , make_getter(&wt::fdp, rir)
-                               , make_setter(&wt::fdp, rir))
+      .add_property("anharmonic_adp" , make_getter(&wt::anharmonic_adp, rir)
+                                     , make_setter(&wt::anharmonic_adp, rir))
+      .add_property("fp" , make_getter(&wt::fp, rir)
+                         , make_setter(&wt::fp, rir))
+      .add_property("fdp", make_getter(&wt::fdp, rir)
+                         , make_setter(&wt::fdp, rir))
       ;
 
     scitbx::af::boost_python::shared_wrapper<wt, rir_t>

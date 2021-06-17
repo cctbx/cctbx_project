@@ -1,5 +1,4 @@
 from __future__ import division, print_function, absolute_import
-from past.builtins import range
 
 '''
 Author      : Lyubimov, A.Y.
@@ -755,7 +754,7 @@ class RuntimeTab(IOTABasePanel):
 
     # Plot mean CC1/2
     meanCC = info['total_cc12']
-    cycles = range(len(meanCC))
+    cycles = list(range(len(meanCC)))
     self.cc_axes.clear()
     self.cc_axes.set_xlim(0, total_cycles)
     self.cc_axes.set_ylim(0, 100)
@@ -764,7 +763,7 @@ class RuntimeTab(IOTABasePanel):
     # Plot mean completeness and multiplicity
     mean_comp = info['total_completeness']
     mean_mult = info['total_n_obs']
-    cycles = range(len(mean_comp))
+    cycles = list(range(len(mean_comp)))
     self.comp_axes.clear()
     self.mult_axes.clear()
     self.comp_axes.set_xlim(0, total_cycles)
@@ -1404,8 +1403,8 @@ class FileListCtrl(ct.CustomListCtrl):
     item.type_selection = inp_sel
 
     # Resize columns to fit content
-    col1_width = max([self.ctr.GetItemWindow(s, col=1).type.GetSize()[0]
-                      for s in range(self.ctr.GetItemCount())]) + 5
+    col1_width = max(self.ctr.GetItemWindow(s, col=1).type.GetSize()[0]
+                     for s in range(self.ctr.GetItemCount())) + 5
     col2_width = item.buttons.GetSize()[0] + 15
     col0_width = self.ctr.GetSize()[0] - col1_width - col2_width
     self.ctr.SetColumnWidth(0, col0_width)

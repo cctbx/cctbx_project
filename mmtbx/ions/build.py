@@ -117,7 +117,7 @@ def find_and_build_ions(
   if (out is None) : out = sys.stdout
   model.set_xray_structure(fmodel.xray_structure)
   model.get_xray_structure().tidy_us()
-  pdb_hierarchy = model.get_hierarchy(sync_with_xray_structure=True)
+  pdb_hierarchy = model.get_hierarchy()
   pdb_atoms = pdb_hierarchy.atoms()
   pdb_atoms.reset_i_seq()
   # FIXME why does B for anisotropic waters end up negative?
@@ -350,7 +350,7 @@ def clean_up_ions(fmodel, model, params, log=None, verbose=True):
   n_sites_start = model.get_number_of_atoms()
   new_model = model.select(~ion_selection)
   ion_model = model.select(ion_selection)
-  ion_pdb_hierarchy = ion_model.get_hierarchy(sync_with_xray_structure=True)
+  ion_pdb_hierarchy = ion_model.get_hierarchy()
   ion_atoms = ion_pdb_hierarchy.atoms()
   ion_xrs = ion_model.get_xray_structure()
   perm = mmtbx.ions.utils.sort_atoms_permutation(

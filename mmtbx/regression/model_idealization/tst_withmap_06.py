@@ -6,6 +6,7 @@ import time
 
 # taken from 3zee multiplied
 pdb_str = """\
+CRYST1  100.000  100.000  100.000  90.00  90.00  90.00 P 1
 ATOM    114  N   VALA1  13      28.866   7.875-103.684  1.00  0.00           N
 ATOM    115  CA  VALA1  13      27.966   7.696-104.717  1.00  0.00           C
 ATOM    116  C   VALA1  13      28.923   7.301-105.774  1.00  0.00           C

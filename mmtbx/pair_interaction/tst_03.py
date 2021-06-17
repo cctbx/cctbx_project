@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from mmtbx.pair_interaction import pair_interaction
-from six.moves import range
 
 pdb_str = """
 REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "./data_files/2lvr.pdb"
@@ -512,23 +511,26 @@ END
 
 def run():
   """
-  Exercise buffer region of cluster.
+  Exercise interaction graph construction.
   """
-  bc_clusters = [[1, 2], [3, 4, 5, 13, 14, 15, 16, 17, 18, 19, 20, 21], [6, 7, 8, 9, 10, 11, 12, 22, 23, 26, 31], [24, 25, 27, 28, 29, 30]]
-  bc_qms = [[1, 2, 3, 4], [1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17,
-                           18, 19, 20, 21, 22, 23, 24, 25],
-            [3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 31],
-            [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]]
-  check_buffer(bc_clusters, bc_qms)
-
-def check_buffer(clusters, qms):
-  qms_calculated = []
-  for i in range(len(clusters)):
-    pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
-    ph = pdb_inp.construct_hierarchy()
-    core_atoms,qm_atoms, qm_molecules = pair_interaction.run(ph,clusters[i])
-    qms_calculated.append(list(qm_molecules))
-    assert(len(set(qms[i])-set(qm_molecules))==0), len(set(qms[i])-set(qm_molecules))
+  pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
+  ph = pdb_inp.construct_hierarchy()
+  interaction_list = pair_interaction.run(ph)
+  interaction_list.sort()
+  expected_list = [(1, 2), (1, 3), (2, 3), (2, 4), (3, 4), (3, 5), (3, 12), (3, 13),
+    (3, 14), (4, 5), (4, 13), (4, 14), (4, 15), (4, 16), (4, 19), (5, 6), (5, 7),
+    (5, 10), (5, 11), (5, 12), (5, 13), (5, 19), (6, 7), (6, 8), (6, 9), (6, 10),
+    (6, 11), (6, 13), (6, 19), (6, 22), (6, 23), (6, 26), (6, 31), (7, 8), (7, 10),
+    (7, 19), (7, 23), (8, 9), (8, 23), (8, 26), (9, 10), (9, 11), (9, 22), (9, 26),
+    (9, 31), (10, 11), (10, 12), (11, 12), (11, 13), (11, 22), (12, 13), (13, 14),
+    (13, 15), (13, 18), (13, 19), (13, 22), (14, 15), (15, 16), (15, 17), (15, 18),
+    (15, 19), (16, 17), (16, 18), (16, 19), (16, 20), (17, 18), (17, 19), (17, 20),
+    (17, 21), (18, 19), (18, 21), (18, 22), (19, 20), (19, 22), (19, 23), (20, 21),
+    (20, 22), (20, 23), (20, 24), (21, 22), (21, 24), (21, 25), (22, 23), (22, 24),
+    (22, 25), (22, 26), (22, 31), (23, 24), (23, 26), (23, 27), (24, 25), (24, 27),
+    (24, 28), (24, 30), (25, 26), (25, 28), (26, 27), (26, 31), (27, 28), (27, 29),
+    (27, 30), (28, 29), (28, 30), (29, 30)]
+  assert interaction_list == expected_list
 
 if(__name__ == "__main__"):
   run()

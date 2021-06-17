@@ -15,6 +15,8 @@
 
 #include <cctbx/maptbx/interpolation.h> //indirect import?
 
+#include <math.h>
+
 namespace cctbx { namespace maptbx {
 
   //! Miller index element corresponding to 1-dimensional array index.
@@ -648,6 +650,13 @@ map_box_average(
 }
 
 template <typename DataType>
+int nint(DataType x)
+{
+  // Analogue of FORTRAN NINT(X)
+  return int(std::ceil(x+0.5)-(std::fmod(x*0.5+0.25,1.0)!=0));
+}
+
+template <typename DataType>
 void set_box_with_symmetry(
   af::const_ref<DataType, af::c_grid<3> > const& map_data_from,
   af::ref<DataType, af::c_grid<3> > map_data_to,
@@ -665,13 +674,14 @@ void set_box_with_symmetry(
   Parameters start, end, unit_cell are related to map_data_to.
   */
   af::c_grid<3> a = map_data_to.accessor();
+  af::c_grid<3> b = map_data_from.accessor();
   for (int i = start[0]; i <= end[0]; i++) {
     for (int j = start[1]; j <= end[1]; j++) {
       for (int k = start[2]; k <= end[2]; k++) {
         // position in map_data_from
-        int p = i-start[0];
-        int q = j-start[1];
-        int r = k-start[2];
+        int p = scitbx::math::mod_positive(i-start[0], static_cast<int>(b[0]));
+        int q = scitbx::math::mod_positive(j-start[1], static_cast<int>(b[1]));
+        int r = scitbx::math::mod_positive(k-start[2], static_cast<int>(b[2]));
         // fractional coordinates of i,j,k
         cctbx::fractional<> grid_node_frac = cctbx::fractional<>(
           i/static_cast<double>(a[0]),
@@ -683,23 +693,25 @@ void set_box_with_symmetry(
           cctbx::fractional<> grid_node_frac_rt = rm * grid_node_frac + tv;
           // position of rotated+translated point in original map
           int ii = scitbx::math::mod_positive(
-            static_cast<int>(grid_node_frac_rt[0]*a[0]), static_cast<int>(a[0]));
+            nint(grid_node_frac_rt[0]*a[0]), static_cast<int>(a[0]));
           int jj = scitbx::math::mod_positive(
-            static_cast<int>(grid_node_frac_rt[1]*a[1]), static_cast<int>(a[1]));
+            nint(grid_node_frac_rt[1]*a[1]), static_cast<int>(a[1]));
           int kk = scitbx::math::mod_positive(
-            static_cast<int>(grid_node_frac_rt[2]*a[2]), static_cast<int>(a[2]));
+            nint(grid_node_frac_rt[2]*a[2]), static_cast<int>(a[2]));
           // Using max avoids overwriting set non-zero values with zeros from the box
-
-          //if(std::abs(map_data_to(ii,jj,kk)) < 0.1 && std::abs(map_data_to(ii,jj,kk))>0.1 ) {
-          //  map_data_to(ii,jj,kk) = map_data_from(p,q,r);
-          //}
-          map_data_to(ii,jj,kk) = std::max(
-            map_data_from(p,q,r), map_data_to(ii,jj,kk));
+         double mv_from = map_data_from(p,q,r);
+         double mv_to   = map_data_to(ii,jj,kk);
+         if(std::abs(mv_to)<1.e-6) {
+           map_data_to(ii,jj,kk) = mv_from;
+         }
+         else {
+           if(std::abs(mv_from)>1.e-6) map_data_to(ii,jj,kk) = (mv_from+mv_to)/2;
+         }
         }
       }
     }
   }
-  map_box_average(map_data_to, 1, 0.1); // This doesn't seem to do much
+  map_box_average(map_data_to, 1, 1.e-6);
 }
 
 template <typename DataType1, typename DataType2>

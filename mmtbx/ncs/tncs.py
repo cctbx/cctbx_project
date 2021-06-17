@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex # import dependency
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import zip
 from six.moves import range
-ext = boost.python.import_ext("mmtbx_ncs_ext")
+ext = bp.import_ext("mmtbx_ncs_ext")
 from scitbx.array_family import flex
 from cctbx import sgtbx
 from libtbx import adopt_init_args

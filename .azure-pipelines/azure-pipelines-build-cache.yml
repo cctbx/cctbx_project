@@ -1,0 +1,44 @@
+# Pipeline name: Update build cache
+
+# Daily update of build cache artifacts
+
+# no continuous integration builds or pull requests
+trigger: none
+pr: none
+
+# Daily builds
+schedules:
+- cron: '0 1 * * *'
+  displayName: Daily update of build cache artifacts
+  branches:
+    include:
+    - master
+
+resources:
+  pipelines:
+  - pipeline: data_cache
+    source: 'Update data cache'
+  - pipeline: build_cache
+    source: 'Update build cache'
+
+stages:
+- stage: Preparation
+  displayName: Download
+  jobs:
+    - template: ./download-source.yml
+    - template: ./xfel/download-source.yml
+    - template: ./download-conda.yml
+
+- stage: Build
+  displayName: Build and test
+  dependsOn: Preparation
+  jobs:
+    - template: ./full-build.yml
+      parameters:
+        modules: modules
+
+- stage: Build_xfel
+  displayName: Build and test XFEL
+  dependsOn: Preparation
+  jobs:
+    - template: ./xfel/xfel-ci-build.yml

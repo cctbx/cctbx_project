@@ -28,6 +28,10 @@ map_model_cc {
     .type = bool
     .help = Keep model-calculated map
     .expert_level=3
+  wrapping = None
+    .type = bool
+    .help = You can specify whether your maps wrap around outside boundaries
+    .expert_level=3
   ignore_symmetry_conflicts = False
     .type = bool
     .help = You can ignore the symmetry information (CRYST1) from \

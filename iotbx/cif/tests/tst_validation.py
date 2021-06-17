@@ -174,7 +174,7 @@ data_test.dic
     _item_type_list.construct
     _item_type_list.detail
                code      char
-               '[_,.;:"&<>()/\{}'`~!@#$%A-Za-z0-9*|+-]*'
+               '[_,.;:"&<>()/\\{}'`~!@#$%A-Za-z0-9*|+-]*'
 ;              code item types/single words ...
 ;
 """

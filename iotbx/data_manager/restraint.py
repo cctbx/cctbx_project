@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function
 from iotbx.file_reader import any_file
 from iotbx.data_manager import DataManagerBase
 from libtbx import Auto
+from libtbx.utils import Sorry
 
 # =============================================================================
 class RestraintDataManager(DataManagerBase):
@@ -52,8 +53,8 @@ class RestraintDataManager(DataManagerBase):
   def write_restraint_file(self, restraint_str, filename=Auto, overwrite=Auto):
     if filename is Auto:
       filename = self.get_default_output_restraint_filename()
-    self._write_text(RestraintDataManager.datatype, restraint_str,
-                     filename=filename, overwrite=overwrite)
+    return self._write_text(RestraintDataManager.datatype, restraint_str,
+                            filename=filename, overwrite=overwrite)
 
 # =============================================================================
 # end

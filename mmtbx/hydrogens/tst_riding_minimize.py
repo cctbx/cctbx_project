@@ -75,7 +75,7 @@ class lbfgs(object):
       new_sites = self.xray_structure.sites_frac().set_selected(
         ~self.hd_selection, scatterers_shifted.extract_sites())
       self.xray_structure.set_sites_frac(new_sites)
-      self.riding_h_manager.idealize(
+      self.riding_h_manager.idealize_riding_h_positions(
           xray_structure = self.xray_structure)
     else:
       self.xray_structure.replace_scatterers(scatterers = scatterers_shifted)
@@ -157,7 +157,6 @@ def run():
     show_energies = False)
   #geometry_restraints.write_geo_file(file_name='start.geo')
   states = mmtbx.utils.states(
-    xray_structure = xray_structure,
     pdb_hierarchy  = pdb_hierarchy)
   states.add(sites_cart = xray_structure.sites_cart())
 

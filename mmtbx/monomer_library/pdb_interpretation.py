@@ -21,7 +21,6 @@ from libtbx.str_utils import show_string
 from libtbx.utils import flat_list, Sorry, user_plus_sys_time, plural_s
 from libtbx.utils import format_exception
 from libtbx import Auto, group_args, slots_getstate_setstate
-from past.builtins import cmp
 from six.moves import cStringIO as StringIO
 import string
 import sys, os
@@ -157,6 +156,9 @@ restraints_library_str = """
     rdl = False
       .type = bool
       .style = hidden
+    rdl_selection = *all TRP
+      .type = choice(multi=True)
+      .style = hidden
     hpdl = False
       .type = bool
       .style = hidden
@@ -164,18 +166,20 @@ restraints_library_str = """
 """
 ideal_ligands = ['SF4', 'F3S', 'DVT']
 ideal_ligands_str = ' '.join(ideal_ligands)
+symmetric_amino_acids = ['ARG', 'ASP', 'GLU', 'PHE', 'TYR', 'LEU', 'VAL']
+symmetric_amino_acids_str = ' '.join(symmetric_amino_acids)
 master_params_str = """\
   %(restraints_library_str)s
   sort_atoms = True
     .type = bool
     .short_caption = Sort atoms in input pdb so they would be in the same order
-  superpose_ideal_ligand = *None all %(ideal_ligands_str)s
-    .type = choice(multi=True)
-    .short_caption = Substitute correctly oriented SF4 metal cluster
-  flip_symmetric_amino_acids = False
+  flip_symmetric_amino_acids = True
     .type = bool
     .short_caption = Flip symmetric amino acids to conform to IUPAC convention
     .style = noauto
+  superpose_ideal_ligand = *None all %(ideal_ligands_str)s
+    .type = choice(multi=True)
+    .short_caption = Substitute correctly oriented SF4 metal cluster
   disable_uc_volume_vs_n_atoms_check = False
     .type = bool
     .short_caption = Disable check of unit cell volume to be compatible with the \
@@ -235,7 +239,7 @@ master_params_str = """\
       .type = bool
       .short_caption = Overrides all automatic linking
       .style = noauto
-    link_metals = False
+    link_metals = Auto
       .type = bool
     link_residues = False
       .type = bool
@@ -276,7 +280,7 @@ master_params_str = """\
   include_in_automatic_linking
     .optional = True
     .multiple = True
-    .short_caption = exclude
+    .short_caption = Include the two atoms in the linking list
     .style = noauto auto_align
   {
     selection_1 = None
@@ -289,7 +293,7 @@ master_params_str = """\
   exclude_from_automatic_linking
     .optional = True
     .multiple = True
-    .short_caption = exclude
+    .short_caption = Exclude the two atoms from any linking
     .style = noauto auto_align
   {
     selection_1 = None
@@ -1713,7 +1717,7 @@ class link_match(object):
     return 0
 
   def __eq__(self, other):
-    if __lt__(other) == 0 and __gt__(other) == 0:
+    if self.__lt__(other) == 0 and self.__gt__(other) == 0:
       return 1
     return 0
 
@@ -1821,7 +1825,7 @@ Corrupt CIF link definition:
     print('_'*80)
   for m in matches:
     if verbose: _show_match(m)
-    if (cmp(m, matches[0]) != 0): break
+    if m != matches[0]: break
     best_matches.append(m)
   match = best_matches[0]
   if (not match.is_proper_match()):
@@ -1870,6 +1874,7 @@ class add_bond_proxies(object):
         sites_cart=None,
         distance_cutoff=None,
         use_neutron_distances=False,
+        origin_id=0,
         ):
     if (m_i.i_conformer != 0 and m_j.i_conformer != 0):
       assert m_i.i_conformer == m_j.i_conformer
@@ -1907,10 +1912,13 @@ class add_bond_proxies(object):
       else:
         counters.resolved += 1
         i_seqs = [atom.i_seq for atom in atoms]
+        self.atoms = atoms
         proxy = geometry_restraints.bond_simple_proxy(
           i_seqs=i_seqs,
           distance_ideal=getattr(bond, value),
-          weight=1/bond.value_dist_esd**2)
+          weight=1/bond.value_dist_esd**2,
+          origin_id=origin_id,
+          )
         is_large_distance = False
         if (sites_cart is not None):
           r = geometry_restraints.bond(sites_cart=sites_cart, proxy=proxy)
@@ -1938,7 +1946,8 @@ class add_angle_proxies(object):
         angle_list,
         angle_proxy_registry,
         special_position_dict,
-        broken_bond_i_seq_pairs=None):
+        broken_bond_i_seq_pairs=None,
+        origin_id=0):
     self.counters = counters
     if (m_j is None):
       m_1,m_2,m_3 = m_i,m_i,m_i
@@ -1986,7 +1995,9 @@ class add_angle_proxies(object):
             proxy=geometry_restraints.angle_proxy(
               i_seqs=i_seqs,
               angle_ideal=angle.value_angle,
-              weight=1/angle.value_angle_esd**2))
+              weight=1/angle.value_angle_esd**2,
+              origin_id=origin_id,
+              ))
           evaluate_registry_process_result(
             proxy_label="angle", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
             registry_process_result=registry_process_result)
@@ -2006,6 +2017,7 @@ class add_dihedral_proxies(object):
         chem_link_id=None,
         broken_bond_i_seq_pairs=None,
         cis_trans_specifications=None,
+        origin_id=0,
         ):
     self.counters = counters
     self.chem_link_id = chem_link_id
@@ -2092,7 +2104,9 @@ class add_dihedral_proxies(object):
             i_seqs=i_seqs,
             angle_ideal=tor.value_angle,
             weight=1/tor.value_angle_esd**2,
-            periodicity=periodicity, alt_angle_ideals=alt_value_angle)
+            periodicity=periodicity,
+            origin_id=origin_id,
+            alt_angle_ideals=alt_value_angle)
           if (sites_cart is not None and tor.id == "omega"):
             assert abs(tor.value_angle - 180) < 1.e-6
             if (peptide_link_params.omega_esd_override_value is not None):
@@ -2143,6 +2157,7 @@ class add_chirality_proxies(object):
         special_position_dict,
         chir_volume_esd,
         lib_link=None,
+        origin_id=0,
         broken_bond_i_seq_pairs=None):
     self.counters = counters
     self.counters.unsupported_volume_sign = dicts.with_default_value(0)
@@ -2215,6 +2230,7 @@ class add_chirality_proxies(object):
                 i_seqs=i_seqs,
                 volume_ideal=volume_ideal,
                 both_signs=(volume_sign == "both"),
+                origin_id=origin_id,
                 weight=1/chir_volume_esd**2))
             evaluate_registry_process_result(
               proxy_label="chirality", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
@@ -2230,6 +2246,7 @@ class add_planarity_proxies(object):
         planarity_proxy_registry,
         special_position_dict,
         peptide_link_params=None,
+        origin_id=0,
         broken_bond_i_seq_pairs=None):
     self.counters = counters
     self.counters.less_than_four_sites = dicts.with_default_value(0)
@@ -2279,6 +2296,7 @@ class add_planarity_proxies(object):
           source_info=source_info_server(m_i=m_i, m_j=m_j),
           proxy=geometry_restraints.planarity_proxy(
             i_seqs=flex.size_t(i_seqs),
+            origin_id=origin_id,
             weights=flex.double(weights)))
         evaluate_registry_process_result(
           proxy_label="planarity", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
@@ -2967,6 +2985,187 @@ class cif_output_holder:
 
 from mmtbx.monomer_library.linking_mixins import linking_mixins
 
+class selection_manager(object):
+
+  def __init__(self,
+               all_monomer_mappings,
+               pdb_hierarchy,
+               special_position_settings,
+               atom_selection_cache):
+    self.all_monomer_mappings      = all_monomer_mappings
+    self.sites_cart                = pdb_hierarchy.atoms().extract_xyz()
+    self.special_position_settings = special_position_settings
+    self.size                      = self.sites_cart.size()
+    self.atom_selection_cache      = atom_selection_cache
+    self.pdb_hierarchy             = pdb_hierarchy
+
+  def sel_classification(self, classification):
+    result = flex.bool(self.size, False)
+    for summary in self.all_monomer_mappings:
+      if (summary.classification == classification):
+        result.set_selected(summary.all_associated_i_seqs(), True)
+    return result
+
+  def sel_backbone_or_sidechain(self, backbone_flag, sidechain_flag):
+    result = flex.bool(self.size, False)
+    for summary in self.all_monomer_mappings:
+      if (summary.classification == "peptide"):
+        for atom in summary.expected_atoms:
+          # XXX hydrogens not included
+          if (atom.name.strip() in ["N", "CA", "C", "O"]):
+            result[atom.i_seq] = backbone_flag
+          else:
+            result[atom.i_seq] = sidechain_flag
+      elif (summary.classification in ["RNA", "DNA"]):
+        for atom in summary.expected_atoms:
+          # XXX hydrogens not included
+          if (atom.name.strip()
+                in ["P", "O1P", "O2P", "O3'", "O5'",
+                         "OP1", "OP2", "O3*", "O5*",
+                                       "O2*", "O2'",
+                    "O4'", "C1'", "C2'", "C3'", "C4'", "C5'",
+                    "O4*", "C1*", "C2*", "C3*", "C4*", "C5*"]):
+            result[atom.i_seq] = backbone_flag
+          else:
+            result[atom.i_seq] = sidechain_flag
+    return result
+
+  def sel_backbone(self):
+    return self.sel_backbone_or_sidechain(True, False)
+
+  def sel_sidechain(self):
+    return self.sel_backbone_or_sidechain(False, True)
+
+  def sel_phosphate(self):
+    result = flex.bool(self.size, False)
+    for summary in self.all_monomer_mappings:
+      if (summary.classification in ["RNA", "DNA"]):
+        for atom in summary.expected_atoms:
+          if (atom.name.strip()
+                in ["P", "O1P", "O2P", "O3'", "O5'",
+                         "OP1", "OP2", "O3*", "O5*"]):
+            result[atom.i_seq] = True
+    return result
+
+  def sel_ribose(self):
+    result = flex.bool(self.size, False)
+    for summary in self.all_monomer_mappings:
+      if (summary.classification in ["RNA", "DNA"]):
+        for atom in summary.expected_atoms:
+          if (atom.name.strip()
+                in ["O4'", "C1'", "C2'", "C3'", "C4'", "C5'", "O2'",
+                    "O4*", "C1*", "C2*", "C3*", "C4*", "C5*", "O2*"]):
+            result[atom.i_seq] = True
+    return result
+
+  def sel_within(self, radius, primary_selection):
+    assert radius > 0
+    assert self.special_position_settings is not None
+    return crystal.neighbors_fast_pair_generator(
+      asu_mappings=self.special_position_settings.asu_mappings(
+        buffer_thickness=radius,
+        sites_cart=self.sites_cart),
+      distance_cutoff=radius).neighbors_of(
+        primary_selection=primary_selection)
+
+  def _selection_callback(self, word, word_iterator, result_stack):
+    lword = word.value.lower()
+    if (lword in ["peptide", "protein"]):
+      result_stack.append(self.sel_classification(classification="peptide"))
+    elif (lword == "rna"):
+      result_stack.append(self.sel_classification(classification="RNA"))
+    elif (lword == "dna"):
+      result_stack.append(self.sel_classification(classification="DNA"))
+    elif (lword == "water"):
+      result_stack.append(self.sel_classification(classification="water"))
+    elif (lword in ["nucleotide", "nuc"]):
+      result_stack.append(
+          self.sel_classification(classification="RNA")
+        | self.sel_classification(classification="DNA"))
+    elif (lword == "backbone"):
+      result_stack.append(self.sel_backbone())
+    elif (lword == "sidechain"):
+      result_stack.append(self.sel_sidechain())
+    elif (lword == "phosphate"):
+      result_stack.append(self.sel_phosphate())
+    elif (lword == "ribose"):
+      result_stack.append(self.sel_ribose())
+    elif (lword == "within"):
+      assert word_iterator.pop().value == "("
+      radius = float(word_iterator.pop().value)
+      assert word_iterator.pop().value == ","
+      sel = self.pdb_hierarchy.atom_selection_cache().selection_parser(
+        word_iterator=word_iterator,
+        callback=self._selection_callback,
+        expect_nonmatching_closing_parenthesis=True)
+      result_stack.append(self.sel_within(radius=radius,primary_selection=sel))
+    else:
+      return False
+    return True
+
+  def selection(self, string, cache=None, optional=True):
+    if (cache is None): cache = self.atom_selection_cache
+    return cache.selection(
+      string   = string,
+      optional = optional,
+      callback = self._selection_callback)
+
+  def iselection(self, string, cache=None, optional=True):
+    result = self.selection(string=string, cache=cache, optional=optional)
+    if (result is None):
+      return None
+    return result.iselection()
+
+  def phil_atom_selection(self,
+        cache,
+        scope_extract,
+        attr,
+        string=None,
+        allow_none=False,
+        allow_auto=False,
+        raise_if_empty_selection=True):
+    return _phil_atom_selection(
+      cache          = cache,
+      scope_extract  = scope_extract,
+      attr           = attr,
+      selection_func = self.selection,
+      string         = string,
+      allow_none     = allow_none,
+      allow_auto     = allow_auto,
+      raise_if_empty_selection = raise_if_empty_selection)
+
+def _phil_atom_selection(
+      cache,
+      scope_extract,
+      attr,
+      selection_func,
+      string=None,
+      allow_none=False,
+      allow_auto=False,
+      raise_if_empty_selection=True):
+  def parameter_name():
+    return scope_extract.__phil_path__(object_name=attr)
+  if (string is None):
+    string = getattr(scope_extract, attr)
+  if (string is None):
+    if (allow_none): return None
+    raise Sorry('Atom selection cannot be None:\n  %s=None' % (
+      parameter_name()))
+  elif (string is Auto):
+    if (allow_auto): return Auto
+    raise Sorry('Atom selection cannot be Auto:\n  %s=Auto' % (
+      parameter_name()))
+  try: result = selection_func(string=string, cache=cache)
+  except KeyboardInterrupt: raise
+  except Exception as e: # keep e alive to avoid traceback
+    fe = format_exception()
+    raise Sorry('Invalid atom selection:\n  %s=%s\n  (%s)' % (
+      parameter_name(), show_string(string), fe))
+  if (raise_if_empty_selection and result.count(True) == 0):
+    raise Sorry('Empty atom selection:\n  %s=%s' % (
+      parameter_name(), show_string(string)))
+  return result
+
 class build_all_chain_proxies(linking_mixins):
 
   def __init__(self,
@@ -3022,7 +3221,7 @@ class build_all_chain_proxies(linking_mixins):
       if info: print(info, file=log)
     if self.params.flip_symmetric_amino_acids:
       info = self.pdb_hierarchy.flip_symmetric_amino_acids()
-      if info:
+      if info and log is not None:
         print("\n  Symmetric amino acids flipped", file=log)
         print(info, file=log)
     if atom_selection_string is not None:
@@ -3408,7 +3607,12 @@ class build_all_chain_proxies(linking_mixins):
               bond_simple_proxy_registry=self.geometry_proxy_registries
                 .bond_simple,
               sites_cart=self.sites_cart,
+              origin_id=origin_ids.get_origin_id('User supplied cif_link'),
               distance_cutoff=self.params.link_distance_cutoff)
+            if hasattr(link_resolution, 'atoms'):
+              atom1, atom2 = link_resolution.atoms
+              self.pdb_link_records.setdefault('LINK', [])
+              self.pdb_link_records["LINK"].append([atom1, atom2, 'x,y,z'])
             raise_if_corrupt(link_resolution)
             n_unresolved_apply_cif_link_bonds \
               += link_resolution.counters.unresolved_non_hydrogen
@@ -3418,6 +3622,7 @@ class build_all_chain_proxies(linking_mixins):
               m_j=m_j,
               angle_list=link.angle_list,
               angle_proxy_registry=self.geometry_proxy_registries.angle,
+              origin_id=origin_ids.get_origin_id('User supplied cif_link'),
               special_position_dict=self.special_position_dict)
             raise_if_corrupt(link_resolution)
             n_unresolved_apply_cif_link_angles \
@@ -3430,6 +3635,7 @@ class build_all_chain_proxies(linking_mixins):
               dihedral_function_type=self.params.dihedral_function_type,
               peptide_link_params=self.params.peptide_link,
               dihedral_proxy_registry=self.geometry_proxy_registries.dihedral,
+              origin_id=origin_ids.get_origin_id('User supplied cif_link'),
               special_position_dict=self.special_position_dict,
               sites_cart=self.sites_cart,
               chem_link_id=link.chem_link.id)
@@ -3442,6 +3648,7 @@ class build_all_chain_proxies(linking_mixins):
               m_j=m_j,
               chir_list=link.chir_list,
               chirality_proxy_registry=self.geometry_proxy_registries.chirality,
+              origin_id=origin_ids.get_origin_id('User supplied cif_link'),
               special_position_dict=self.special_position_dict,
               chir_volume_esd=self.params.chir_volume_esd,
               lib_link=link)
@@ -3454,6 +3661,7 @@ class build_all_chain_proxies(linking_mixins):
               m_j=m_j,
               plane_list=link.get_planes(),
               planarity_proxy_registry=self.geometry_proxy_registries.planarity,
+              origin_id=origin_ids.get_origin_id('User supplied cif_link'),
               special_position_dict=self.special_position_dict)
             raise_if_corrupt(link_resolution)
             n_unresolved_apply_cif_link_planarities \
@@ -3516,6 +3724,12 @@ class build_all_chain_proxies(linking_mixins):
     # Make sure pdb_hierarchy and xray_structure are consistent
     if(self.special_position_settings is not None):
       self.pdb_hierarchy.adopt_xray_structure(self.extract_xray_structure())
+    # Create selection_manager
+    self.selman = selection_manager(
+      all_monomer_mappings      = self.all_monomer_mappings,
+      pdb_hierarchy             = self.pdb_hierarchy,
+      special_position_settings = self.special_position_settings,
+      atom_selection_cache      = None)
 
   def __getstate__(self):
     indexer = dict( ( a, i) for ( i, a ) in enumerate( self.pdb_hierarchy.atoms() ) )
@@ -3596,35 +3810,11 @@ class build_all_chain_proxies(linking_mixins):
     return self._sites_cart_exact
 
   def sel_classification(self, classification):
-    result = flex.bool(self.pdb_atoms.size(), False)
-    for summary in self.all_monomer_mappings:
-      if (summary.classification == classification):
-        result.set_selected(summary.all_associated_i_seqs(), True)
-    return result
+    return self.selman.sel_classification(classification=classification)
 
   def sel_backbone_or_sidechain(self, backbone_flag, sidechain_flag):
-    result = flex.bool(self.pdb_atoms.size(), False)
-    for summary in self.all_monomer_mappings:
-      if (summary.classification == "peptide"):
-        for atom in summary.expected_atoms:
-          # XXX hydrogens not included
-          if (atom.name.strip() in ["N", "CA", "C", "O"]):
-            result[atom.i_seq] = backbone_flag
-          else:
-            result[atom.i_seq] = sidechain_flag
-      elif (summary.classification in ["RNA", "DNA"]):
-        for atom in summary.expected_atoms:
-          # XXX hydrogens not included
-          if (atom.name.strip()
-                in ["P", "O1P", "O2P", "O3'", "O5'",
-                         "OP1", "OP2", "O3*", "O5*",
-                                       "O2*", "O2'",
-                    "O4'", "C1'", "C2'", "C3'", "C4'", "C5'",
-                    "O4*", "C1*", "C2*", "C3*", "C4*", "C5*"]):
-            result[atom.i_seq] = backbone_flag
-          else:
-            result[atom.i_seq] = sidechain_flag
-    return result
+    return self.selman.sel_backbone_or_sidechain(
+      backbone_flag=backbone_flag, sidechain_flag=sidechain_flag)
 
   def sel_backbone(self):
     return self.sel_backbone_or_sidechain(True, False)
@@ -3633,71 +3823,18 @@ class build_all_chain_proxies(linking_mixins):
     return self.sel_backbone_or_sidechain(False, True)
 
   def sel_phosphate(self):
-    result = flex.bool(self.pdb_atoms.size(), False)
-    for summary in self.all_monomer_mappings:
-      if (summary.classification in ["RNA", "DNA"]):
-        for atom in summary.expected_atoms:
-          if (atom.name.strip()
-                in ["P", "O1P", "O2P", "O3'", "O5'",
-                         "OP1", "OP2", "O3*", "O5*"]):
-            result[atom.i_seq] = True
-    return result
+    return self.selman.sel_phosphate()
 
   def sel_ribose(self):
-    result = flex.bool(self.pdb_atoms.size(), False)
-    for summary in self.all_monomer_mappings:
-      if (summary.classification in ["RNA", "DNA"]):
-        for atom in summary.expected_atoms:
-          if (atom.name.strip()
-                in ["O4'", "C1'", "C2'", "C3'", "C4'", "C5'", "O2'",
-                    "O4*", "C1*", "C2*", "C3*", "C4*", "C5*", "O2*"]):
-            result[atom.i_seq] = True
-    return result
+    return self.selman.sel_ribose()
 
   def sel_within(self, radius, primary_selection):
-    assert radius > 0
-    assert self.special_position_settings is not None
-    return crystal.neighbors_fast_pair_generator(
-      asu_mappings=self.special_position_settings.asu_mappings(
-        buffer_thickness=radius,
-        sites_cart=self.sites_cart),
-      distance_cutoff=radius).neighbors_of(
-        primary_selection=primary_selection)
+    return self.selman.sel_within(
+      radius=radius, primary_selection=primary_selection)
 
   def _selection_callback(self, word, word_iterator, result_stack):
-    lword = word.value.lower()
-    if (lword in ["peptide", "protein"]):
-      result_stack.append(self.sel_classification(classification="peptide"))
-    elif (lword == "rna"):
-      result_stack.append(self.sel_classification(classification="RNA"))
-    elif (lword == "dna"):
-      result_stack.append(self.sel_classification(classification="DNA"))
-    elif (lword == "water"):
-      result_stack.append(self.sel_classification(classification="water"))
-    elif (lword in ["nucleotide", "nuc"]):
-      result_stack.append(
-          self.sel_classification(classification="RNA")
-        | self.sel_classification(classification="DNA"))
-    elif (lword == "backbone"):
-      result_stack.append(self.sel_backbone())
-    elif (lword == "sidechain"):
-      result_stack.append(self.sel_sidechain())
-    elif (lword == "phosphate"):
-      result_stack.append(self.sel_phosphate())
-    elif (lword == "ribose"):
-      result_stack.append(self.sel_ribose())
-    elif (lword == "within"):
-      assert word_iterator.pop().value == "("
-      radius = float(word_iterator.pop().value)
-      assert word_iterator.pop().value == ","
-      sel = self.pdb_hierarchy.atom_selection_cache().selection_parser(
-        word_iterator=word_iterator,
-        callback=self._selection_callback,
-        expect_nonmatching_closing_parenthesis=True)
-      result_stack.append(self.sel_within(radius=radius,primary_selection=sel))
-    else:
-      return False
-    return True
+    return self.selman._selection_callback(
+      word=word, word_iterator=word_iterator, result_stack=result_stack)
 
   def selection(self, string, cache=None, optional=True):
     if (cache is None): cache = self.pdb_hierarchy.atom_selection_cache()
@@ -4135,28 +4272,15 @@ class build_all_chain_proxies(linking_mixins):
         allow_none=False,
         allow_auto=False,
         raise_if_empty_selection=True):
-    def parameter_name():
-      return scope_extract.__phil_path__(object_name=attr)
-    if (string is None):
-      string = getattr(scope_extract, attr)
-    if (string is None):
-      if (allow_none): return None
-      raise Sorry('Atom selection cannot be None:\n  %s=None' % (
-        parameter_name()))
-    elif (string is Auto):
-      if (allow_auto): return Auto
-      raise Sorry('Atom selection cannot be Auto:\n  %s=Auto' % (
-        parameter_name()))
-    try: result = self.selection(string=string, cache=cache)
-    except KeyboardInterrupt: raise
-    except Exception as e: # keep e alive to avoid traceback
-      fe = format_exception()
-      raise Sorry('Invalid atom selection:\n  %s=%s\n  (%s)' % (
-        parameter_name(), show_string(string), fe))
-    if (raise_if_empty_selection and result.count(True) == 0):
-      raise Sorry('Empty atom selection:\n  %s=%s' % (
-        parameter_name(), show_string(string)))
-    return result
+    return _phil_atom_selection(
+      cache          = cache,
+      scope_extract  = scope_extract,
+      attr           = attr,
+      selection_func = self.selection,
+      string         = string,
+      allow_none     = allow_none,
+      allow_auto     = allow_auto,
+      raise_if_empty_selection = raise_if_empty_selection)
 
   def phil_atom_selection_multiple(self,
         cache,
@@ -5337,6 +5461,7 @@ class build_all_chain_proxies(linking_mixins):
         #current_geometry=model.xray_structure,
         rdl_proxies=rdl_proxies,
         data_version="8000",
+        rdl_selection=getattr(self.params.restraints_library, "rdl_selection", None),
         log=log,
         verbose=False,
         )
@@ -5579,10 +5704,12 @@ class process(object):
 
       # improved metal coordination
       automatic_linking = self.all_chain_proxies.params.automatic_linking
-      if self.all_chain_proxies.params.restraints_library.mcl:
+      if(self.all_chain_proxies.params.restraints_library.mcl and
+         automatic_linking.link_metals in [Auto, True]):
         from mmtbx.conformation_dependent_library import mcl
         mcl.update(self._geometry_restraints_manager,
                    self.all_chain_proxies.pdb_hierarchy,
+                   link_records=self.all_chain_proxies.pdb_link_records,
                    log=self.log,
                   )
 
@@ -5913,8 +6040,12 @@ class process(object):
       hierarchy                   = new_h,
       params                      = self.all_chain_proxies.params.ncs_search,
       log                         = self.log)
-    print("Found NCS groups:", file=self.log)
-    print(ncs_obj.print_ncs_phil_param(), file=self.log)
+    if(self.log is not None):
+      print("Found NCS groups:", file=self.log)
+      if(len(ncs_obj.get_ncs_restraints_group_list())>0):
+        print(ncs_obj.print_ncs_phil_param(), file=self.log)
+      else:
+        print("  found none.", file=self.log)
     return ncs_obj
 
 def run(

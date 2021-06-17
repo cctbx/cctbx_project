@@ -6,9 +6,9 @@ import mmtbx.refinement.real_space
 import mmtbx.refinement.real_space.fit_residue
 import sys, time
 from cctbx import crystal
-import boost.python
-cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
-fit_ext = boost.python.import_ext("mmtbx_rotamer_fit_ext")
+import boost_adaptbx.boost.python as bp
+cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
+fit_ext = bp.import_ext("mmtbx_rotamer_fit_ext")
 
 negate_map_table = {
   #"ala": False,

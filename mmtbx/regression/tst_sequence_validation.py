@@ -1,9 +1,11 @@
 
 from __future__ import absolute_import, division, print_function
+from iotbx.data_manager import DataManager
 from libtbx import easy_mp
 from libtbx import easy_pickle
 from libtbx.utils import Sorry, null_out
 import os
+import tempfile
 
 def exercise():
   import libtbx.utils
@@ -650,6 +652,98 @@ END
     finally :
       os.remove(seq_file)
 
+def test_modified_residues():
+  # modified amino acid example from 1e0z
+  seq_str1 = """\
+>pdb|1e0z|A
+PTVEYLNYETLDDQGWDMDDDDLFEKAADAGLDGEDYGTMEVAEGEYILEAAEAQGYDWPFSCRAGACANCASIVKEG
+EIDMDMQQILSDEEVEEKDVRLTCIGSPAADEVKIVYNAKHLDYLQNRVI
+"""
+  pdb_str1 = """\
+HETATM 1707  OH  ALY A 118       9.253 -11.285  16.293  1.00  0.00           O
+HETATM 1708  CH  ALY A 118       8.541 -10.835  15.417  1.00  0.00           C
+HETATM 1709  CH3 ALY A 118       8.924  -9.562  14.659  1.00  0.00           C
+HETATM 1710  NZ  ALY A 118       7.420 -11.417  15.087  1.00 50.00           N
+HETATM 1711  CE  ALY A 118       7.573 -12.895  15.202  1.00 50.00           C
+HETATM 1712  CD  ALY A 118       6.273 -13.470  14.634  1.00 12.50           C
+HETATM 1713  CG  ALY A 118       5.506 -14.188  15.746  1.00 12.50           C
+HETATM 1714  CB  ALY A 118       6.259 -15.458  16.148  1.00 12.50           C
+HETATM 1715  CA  ALY A 118       5.885 -15.846  17.580  1.00 12.50           C
+HETATM 1716  N   ALY A 118       4.407 -15.666  17.660  1.00 12.50           N
+HETATM 1717  C   ALY A 118       6.576 -14.924  18.588  1.00 12.50           C
+HETATM 1718  O   ALY A 118       7.674 -15.190  19.036  1.00 12.50           O
+HETATM 1719 HH31 ALY A 118       9.665  -9.016  15.224  1.00  0.00           H
+HETATM 1720 HH32 ALY A 118       8.047  -8.945  14.525  1.00  0.00           H
+HETATM 1721 HH33 ALY A 118       9.329  -9.826  13.694  1.00  0.00           H
+HETATM 1722  HE3 ALY A 118       7.690 -13.181  16.237  1.00  0.00           H
+HETATM 1723  HE2 ALY A 118       8.419 -13.232  14.620  1.00  0.00           H
+HETATM 1724  HD3 ALY A 118       6.503 -14.171  13.845  1.00  0.00           H
+HETATM 1725  HD2 ALY A 118       5.667 -12.668  14.239  1.00  0.00           H
+HETATM 1726  HG3 ALY A 118       4.520 -14.451  15.392  1.00  0.00           H
+HETATM 1727  HG2 ALY A 118       5.419 -13.535  16.602  1.00  0.00           H
+HETATM 1728  HB3 ALY A 118       7.323 -15.279  16.091  1.00  0.00           H
+HETATM 1729  HB2 ALY A 118       5.994 -16.261  15.477  1.00  0.00           H
+HETATM 1730  HCA ALY A 118       6.150 -16.875  17.765  1.00  0.00           H
+HETATM 1731  H   ALY A 118       3.878 -15.580  16.839  1.00 99.00           H
+"""
+  # modified nucleic acid example from 4eec
+  seq_str2 = """\
+>4EEC_1|Chains A,B|StaL|Streptomyces toyocaensis (55952)
+MGSSHHHHHHSSGLVPRGSMCWIASYPKAGGHWLRCMLTSYVTGEPVETWPGIQAGVPHLEGLLRDGEAPSADPDEQV
+LLATHFTADRPVLRFYRESTAKVVCLIRNPRDAMLSLMRMKGIPPEDVEACRKIAETFIADEGFSSVRIWAGEGSWPE
+NIRSWTDSVHESFPNAAVLAVRYEDLRKDPEGELWKVVDFLELGGRDGVADAVANCTLERMREMEERSKLLGLETTGL
+MTRGGKQLPFVGKGGQRKSLKFMGDDIEKAYADLLHGETDFAHYARLYGYAE
+>4EEC_2|Chain C|desulfo-A47934|Streptomyces toyocaensis (55952)
+GXXGXXX
+"""
+  pdb_str2 = """\
+HETATM 3866  P1  A3P A 301     -32.928   0.112  -1.515  1.00 60.90           P
+HETATM 3867  O1P A3P A 301     -32.567   0.971  -2.721  1.00 58.74           O
+HETATM 3868  O2P A3P A 301     -33.836  -1.041  -1.926  1.00 60.18           O
+HETATM 3869  O3P A3P A 301     -33.351   0.858  -0.247  1.00 59.07           O
+HETATM 3870  P2  A3P A 301     -26.843  -0.504   2.943  1.00 61.59           P
+HETATM 3871  O4P A3P A 301     -25.377  -0.388   2.609  1.00 57.50           O
+HETATM 3872  O5P A3P A 301     -27.164  -1.892   3.467  1.00 62.98           O
+HETATM 3873  O6P A3P A 301     -27.445   0.681   3.730  1.00 62.21           O
+HETATM 3874  O5' A3P A 301     -27.694  -0.432   1.563  1.00 60.14           O
+HETATM 3875  C5' A3P A 301     -29.109  -0.472   1.636  1.00 57.46           C
+HETATM 3876  C4' A3P A 301     -29.649  -0.859   0.288  1.00 58.10           C
+HETATM 3877  O4' A3P A 301     -29.334  -2.235   0.029  1.00 59.74           O
+HETATM 3878  C3' A3P A 301     -31.164  -0.780   0.284  1.00 58.44           C
+HETATM 3879  O3' A3P A 301     -31.539  -0.556  -1.069  1.00 59.37           O
+HETATM 3880  C2' A3P A 301     -31.538  -2.197   0.626  1.00 58.35           C
+HETATM 3881  O2' A3P A 301     -32.890  -2.542   0.343  1.00 58.12           O
+HETATM 3882  C1' A3P A 301     -30.561  -2.939  -0.264  1.00 58.48           C
+HETATM 3883  N9  A3P A 301     -30.576  -4.401   0.059  1.00 58.16           N
+HETATM 3884  C8  A3P A 301     -30.559  -4.926   1.312  1.00 57.04           C
+HETATM 3885  N7  A3P A 301     -30.604  -6.285   1.255  1.00 57.35           N
+HETATM 3886  C5  A3P A 301     -30.645  -6.664  -0.042  1.00 55.60           C
+HETATM 3887  C6  A3P A 301     -30.683  -7.957  -0.767  1.00 54.29           C
+HETATM 3888  N6  A3P A 301     -30.686  -9.129  -0.066  1.00 54.08           N
+HETATM 3889  N1  A3P A 301     -30.706  -7.913  -2.130  1.00 53.41           N
+HETATM 3890  C2  A3P A 301     -30.703  -6.743  -2.815  1.00 52.74           C
+HETATM 3891  N3  A3P A 301     -30.659  -5.530  -2.220  1.00 53.74           N
+HETATM 3892  C4  A3P A 301     -30.631  -5.420  -0.849  1.00 56.63           C
+"""
+
+  for pdb_str, seq_str in [(pdb_str1, seq_str1), (pdb_str2, seq_str2)]:
+    seq_file = tempfile.NamedTemporaryFile(suffix='.fasta', mode='w')
+    seq_file.write(seq_str)
+    seq_file.flush()
+    model_file = tempfile.NamedTemporaryFile(suffix='.pdb', mode='w')
+    model_file.write(pdb_str)
+    model_file.flush()
+    dm = DataManager()
+    dm.process_model_file(model_file.name)
+    dm.process_sequence_file(seq_file.name)
+    model = dm.get_model()
+    seq = dm.get_sequence()
+    model.set_sequences(seq)
+    model_file.close()
+    seq_file.close()
+    # model._sequence_validation.show()
+
 if (__name__ == "__main__"):
   exercise()
+  test_modified_residues()
   print("OK")

@@ -71,7 +71,7 @@ def exercise_00():
     model_input = pdb_inp_refined,
     log         = null_out())
 
-  ph = model.get_hierarchy(sync_with_xray_structure=True)
+  ph = model.get_hierarchy()
   ph_refined = model_refined.get_hierarchy()
   sele_bool = ph.atom_selection_cache().selection(
     string = selection_bool)

@@ -51,8 +51,8 @@ def exercise_protein():
   assert approx_equal(result.r_free(), 0.293) # from PDB header
   assert approx_equal(result.d_min(), 2.03)   # from PDB header
   assert (result.d_max_min() is None)
-  assert approx_equal(result.rms_bonds(), 0.02585)
-  assert approx_equal(result.rms_angles(), 2.356740)
+  assert approx_equal(result.rms_bonds(), 0.02586, 1e-5)
+  assert approx_equal(result.rms_angles(), 2.35285, 1e-5)
   assert approx_equal(result.rama_favored(), 96.47059)
   assert (result.cbeta_outliers() == 10)
   assert approx_equal(result.molprobity_score(), 3.39, eps=0.01)
@@ -85,12 +85,12 @@ def exercise_protein():
   stats = result.get_polygon_statistics(["r_work","r_free","adp_mean_all",
     "angle_rmsd", "bond_rmsd", "clashscore"])
   #print stats
-  assert approx_equal(result.r_work(), 0.2276, eps=0.001)
-  assert approx_equal(result.r_free(), 0.2805, eps=0.001)
+  assert approx_equal(result.r_work(), 0.2303, eps=0.001)
+  assert approx_equal(result.r_free(), 0.2804, eps=0.001)
   assert approx_equal(result.d_min(), 2.0302, eps=0.0001)
   assert approx_equal(result.d_max_min(), [34.546125, 2.0302], eps=0.0001)
-  assert approx_equal(result.rms_bonds(), 0.02585)
-  assert approx_equal(result.rms_angles(), 2.356740)
+  assert approx_equal(result.rms_bonds(), 0.02586, 1e-5)
+  assert approx_equal(result.rms_angles(), 2.35285, 1e-5)
   assert approx_equal(result.rama_favored(), 96.47059)
   assert (result.cbeta_outliers() == 10)
   assert approx_equal(result.unit_cell().parameters(),

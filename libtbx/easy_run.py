@@ -7,6 +7,7 @@ import threading
 import signal
 from six.moves import range
 
+
 def _show_lines(lines, out, prefix):
   if (out is None): out = sys.stdout
   for line in lines:

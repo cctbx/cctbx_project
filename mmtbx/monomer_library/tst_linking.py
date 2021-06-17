@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import os
 from libtbx import easy_run
-from libtbx.utils import to_bytes
 from six.moves import range
 
 pdbs = {"linking_test_CYS_CYS_alt_loc.pdb" : """
@@ -2339,7 +2338,7 @@ links = {
   "linking_test_ASN_A-NAG_B.pdb" : [21, 22],
   "linking_test_nstd_rna_dna_h_bond.pdb" : [0,0],
   "linking_test_nstd_rna_dna.pdb" : [0,1],
-  "linking_test_Mg_HOH.pdb" : [0,5],                 #6], # metal coordination
+  "linking_test_Mg_HOH.pdb" : [0,6],                 #6], # metal coordination
   "linking_test_Mg_HOH_CRYST1.pdb" : [0,6],
   "linking_test_Mg_EDT.pdb" : [19,25],               #25],
   "linking_test_1jbe_ALA-SNN-ACY-ALA.pdb" : [10,13],
@@ -2453,7 +2452,7 @@ def run(only_i=None):
   if only_i is not None and only_i==1:
     cifs = ""
     for pdb in pdbs:
-      f=open(pdb, "wb")
+      f=open(pdb, "w")
       f.write(pdbs[pdb])
       f.close()
       if pdb.endswith(".phil"): cifs += " %s" % pdb
@@ -2469,8 +2468,8 @@ def run(only_i=None):
   #
   cifs = ""
   for pdb in pdbs:
-    f=open(pdb, "wb")
-    f.write(to_bytes(pdbs[pdb], codec='utf8'))
+    f=open(pdb, "w")
+    f.write(pdbs[pdb])
     f.close()
     if pdb.endswith(".cif"): cifs += " %s" % pdb
   j=0

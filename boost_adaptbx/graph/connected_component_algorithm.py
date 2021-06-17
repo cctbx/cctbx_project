@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
-import boost.python
-ext = boost.python.import_ext( "boost_adaptbx_graph_connected_component_algorithm_ext" )
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext( "boost_adaptbx_graph_connected_component_algorithm_ext" )
 
 
 def connected_components(graph):
@@ -12,4 +12,3 @@ def connected_components(graph):
     result.setdefault( component, [] ).append( desc )
 
   return list(result.values())
-

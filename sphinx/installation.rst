@@ -26,7 +26,7 @@ Manually building from sources under Linux and macOS
 
 Please note: **The following instructions are for developers!**
 
-Building from sources requires Python 2.5 through 2.7 and a C++
+Building from sources requires Python 2.7, 3.6 or newer and a C++
 compiler. If you like to use the most recent Python, it can be
 installed in the following way::
 

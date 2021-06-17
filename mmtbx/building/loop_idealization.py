@@ -14,13 +14,13 @@ from scitbx.array_family import flex
 from six.moves import cStringIO as StringIO
 from mmtbx.conformation_dependent_library import generate_protein_threes
 import math
-from libtbx import easy_pickle, Auto
+from libtbx import easy_pickle
 import scitbx.math
 import mmtbx.idealized_aa_residues.rotamer_manager
 import mmtbx.refinement.real_space.fit_residues
 
-#import boost.python
-#ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+#import boost_adaptbx.boost.python as bp
+#ext = bp.import_ext("mmtbx_validation_ramachandran_ext")
 #from mmtbx_validation_ramachandran_ext import rama_eval
 
 from iotbx.pdb.hybrid_36 import hy36encode, hy36decode
@@ -259,8 +259,7 @@ class loop_idealization():
               mon_lib_srv       = self.model.get_mon_lib_srv(),
               log               = self.log)
           model.set_sites_cart(
-              sites_cart = result.pdb_hierarchy.atoms().extract_xyz(),
-              update_grm = True)
+              sites_cart = result.pdb_hierarchy.atoms().extract_xyz())
         if self.params.debug:
           self.model.get_hierarchy().write_pdb_file(
               file_name="%d%s_all_not_minized.pdb" % (self.number_of_ccd_trials,
@@ -275,7 +274,7 @@ class loop_idealization():
           mwwm = minimize_wrapper_with_map(
               model = self.model,
               target_map=self.reference_map,
-              number_of_cycles=Auto,
+              number_of_cycles=1,
               log=self.log)
       if self.params.debug:
         self.model.get_hierarchy().write_pdb_file(

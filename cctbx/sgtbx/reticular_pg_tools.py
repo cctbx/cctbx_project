@@ -12,7 +12,7 @@ from __future__ import absolute_import, division, print_function
 from cctbx import sgtbx
 from cctbx.sgtbx import cosets, sub_lattice_tools
 from scitbx import matrix
-from boost import rational
+from boost_adaptbx.boost import rational
 from libtbx.math_utils import ifloor
 from six.moves import zip
 

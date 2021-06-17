@@ -8,6 +8,7 @@ from libtbx.phil import parse
 import six
 from libtbx.utils import Sorry
 import datetime
+from xfel.util.jungfrau import pad_stacked_format
 
 phil_scope = parse("""
   unassembled_file = None
@@ -51,6 +52,24 @@ phil_scope = parse("""
     .type = bool
     .help = Whether the data being analyzed is raw data from the JF16M or has \
             been corrected and padded.
+  unassembled_data_key = None
+    .type = str
+    .expert_level = 2
+    .help = Override hdf5 key name in unassembled file
+  pedestal_file = None
+    .type = str
+    .help = path to Jungfrau pedestal file
+  gain_file = None
+    .type = str
+    .help = path to Jungfrau gain file
+  raw_file = None
+    .type = str
+    .help = path to Jungfrau raw file
+  recalculate_wavelength = False
+    .type = bool
+    .help = If True, the incident_wavelength is recalculated from the \
+            spectrum. The original wavelength is saved as \
+            incident_wavelength_fitted_spectrum_average.
   nexus_details {
     instrument_name = SwissFEL ARAMIS BEAMLINE ESB
       .type = str
@@ -99,6 +118,8 @@ The assumed parameters for the detector can be seen in the __init__ function and
 if they are modified at in the future
 
 '''
+
+
 
 
 class jf16m_cxigeom2nexus(object):
@@ -160,11 +181,59 @@ class jf16m_cxigeom2nexus(object):
     data = entry.create_group('data')
     data.attrs['NX_class'] = 'NXdata'
     data_key = 'data'
-    if self.params.raw:
-      data[data_key] = h5py.ExternalLink(self.params.unassembled_file, "data/JF07T32V01/data")
+    if self.params.unassembled_data_key:
+      unassembled_data_key = self.params.unassembled_data_key
     else:
-      data[data_key] = h5py.ExternalLink(self.params.unassembled_file, "data/data")
-    # --> sample
+      if self.params.raw:
+        unassembled_data_key = "data/JF07T32V01/data"
+      else:
+        unassembled_data_key = "data/data"
+    data[data_key] = h5py.ExternalLink(self.params.unassembled_file, unassembled_data_key)
+
+    if self.params.raw_file is not None:
+      assert not self.params.raw
+      with h5py.File(self.params.pedestal_file, "r") as pedh5:
+        print("Padding raw pedestal data")
+        mean_pedestal = [pad_stacked_format(raw) for raw in pedh5["gains"]]
+        print("Padding raw pedestal RMS  data")
+        sigma_pedestal = [pad_stacked_format(raw) for raw in pedh5["gainsRMS"]]
+        data.create_dataset("pedestal", data=mean_pedestal, dtype=np.float32)
+        data.create_dataset('pedestalRMS', data=sigma_pedestal, dtype=np.float32)
+
+      with h5py.File(self.params.gain_file, "r") as gainh5:
+        print("Padding gains")
+        gains = [pad_stacked_format(raw) for raw in gainh5["gains"]]
+        data.create_dataset("gains", data=gains, dtype=np.float32)
+
+      data.attrs['signal'] = 'data'
+
+      raw_file_handle = h5py.File(self.params.raw_file, "r")
+      res_file_handle = h5py.File(self.params.unassembled_file, "r")
+      raw_dset = raw_file_handle["data/JF07T32V01/data"]
+      raw_shape = raw_dset.shape
+      _, raw_slowDim, raw_fastDim = raw_shape
+      raw_type = raw_dset.dtype
+      num_imgs = res_file_handle['data/data'].shape[0]
+      raw_layout = h5py.VirtualLayout(shape=(num_imgs, raw_slowDim, raw_fastDim), dtype=raw_type)
+      raw_pulses = raw_file_handle['data/JF07T32V01/pulse_id'][()][:, 0]
+      assert np.all(raw_pulses == np.sort(raw_pulses))  # NOTE; this is quick, however I think this is always the case
+      res_pulses = h5py.File(self.params.unassembled_file, 'r')['data/pulse_id'][()]
+      raw_source = h5py.VirtualSource(self.params.raw_file, 'data/JF07T32V01/data', shape=raw_shape)
+      for res_imgnum, raw_imgnum in enumerate(np.searchsorted(raw_pulses, res_pulses)):
+        raw_layout[res_imgnum] = raw_source[raw_imgnum]
+      data.create_virtual_dataset('raw', raw_layout)
+
+    if self.params.raw:
+      if self.params.pedestal_file:
+        # named gains instead of pedestal in JF data files
+        data['pedestal'] = h5py.ExternalLink(self.params.pedestal_file, 'gains')
+        data['pedestalRMS'] = h5py.ExternalLink(self.params.pedestal_file, 'gainsRMS')
+      if self.params.gain_file:
+        data['gains'] = h5py.ExternalLink(self.params.gain_file, 'gains')
+      if self.params.pedestal_file or self.params.gain_file:
+        data.attrs['signal'] = 'data'
+
+    #--> sample
     sample = entry.create_group('sample')
     sample.attrs['NX_class'] = 'NXsample'
     if self.params.nexus_details.sample_name: sample['name'] = self.params.nexus_details.sample_name
@@ -197,6 +266,8 @@ class jf16m_cxigeom2nexus(object):
       beam_pulse_ids = beam_h5['data/SARFE10-PSSS059:SPECTRUM_CENTER/pulse_id'][()]
       beam_energies = beam_h5['data/SARFE10-PSSS059:SPECTRUM_CENTER/data'][()]
       energies = np.ndarray((len(data_pulse_ids),), dtype='f8')
+      if self.params.recalculate_wavelength:
+        orig_energies = np.ndarray((len(data_pulse_ids),), dtype='f8')
       if self.params.include_spectra:
         beam_spectra_x = beam_h5['data/SARFE10-PSSS059:SPECTRUM_X/data'][()]
         beam_spectra_y = beam_h5['data/SARFE10-PSSS059:SPECTRUM_Y/data'][()]
@@ -205,7 +276,16 @@ class jf16m_cxigeom2nexus(object):
 
       for i, pulse_id in enumerate(data_pulse_ids):
         where = np.where(beam_pulse_ids==pulse_id)[0][0]
-        energies[i] = beam_energies[where]
+        if self.params.recalculate_wavelength:
+          assert self.params.beam_file is not None, "Must provide beam file to recalculate wavelength"
+          x = beam_spectra_x[where]
+          y = beam_spectra_y[where].astype(float)
+          ycorr = y - np.percentile(y, 10)
+          e = sum(x*ycorr) / sum(ycorr)
+          energies[i] = e
+          orig_energies[i] = beam_energies[where]
+        else:
+          energies[i] = beam_energies[where]
         if self.params.include_spectra:
           spectra_x[i] = beam_spectra_x[where]
           spectra_y[i] = beam_spectra_y[where]
@@ -213,19 +293,27 @@ class jf16m_cxigeom2nexus(object):
       if self.params.energy_offset:
         energies += self.params.energy_offset
       wavelengths = 12398.4187/energies
+      if self.params.recalculate_wavelength:
+        orig_wavelengths = 12398.4187/orig_energies
 
+      beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
+      if self.params.recalculate_wavelength:
+        beam.create_dataset(
+            'incident_wavelength_fitted_spectrum_average',
+            orig_wavelengths.shape,
+            data=orig_wavelengths,
+            dtype=orig_wavelengths.dtype
+        )
+        beam['incident_wavelength_fitted_spectrum_average'].attrs['variant'] = 'incident_wavelength'
       if self.params.include_spectra:
         if self.params.energy_offset:
           spectra_x += self.params.energy_offset
-        beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
         if (spectra_x == spectra_x[0]).all(): # check if all rows are the same
           spectra_x = spectra_x[0]
         beam.create_dataset('incident_wavelength_1Dspectrum', spectra_x.shape, data=12398.4187/spectra_x, dtype=spectra_x.dtype)
         beam.create_dataset('incident_wavelength_1Dspectrum_weight', spectra_y.shape, data=spectra_y, dtype=spectra_y.dtype)
         beam['incident_wavelength_1Dspectrum'].attrs['units'] = 'angstrom'
         beam['incident_wavelength'].attrs['variant'] = 'incident_wavelength_1Dspectrum'
-      else:
-        beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
     else:
       assert self.params.wavelength is not None, "Provide a wavelength"
       beam.create_dataset('incident_wavelength', (1,), data=self.params.wavelength, dtype='f8')

@@ -8,10 +8,11 @@ env_etc.chiltbx_common_includes = [
   env_etc.chiltbx_include,
 ]
 
-env = env_base.Clone()
-env_etc.include_registry.append(
-  env=env,
-  paths=env_etc.chiltbx_common_includes)
-env.Program(target="handle_test", source="handle_test.cpp")
-#env.Program(target="grammar/test", source="grammar/test.cpp")
-#env.Program(target="chil/test", source="chil/test.cpp")
+if not libtbx.env.module_is_installed("chiltbx"):
+  env = env_base.Clone()
+  env_etc.include_registry.append(
+    env=env,
+    paths=env_etc.chiltbx_common_includes)
+  env.Program(target="handle_test", source="handle_test.cpp")
+  #env.Program(target="grammar/test", source="grammar/test.cpp")
+  #env.Program(target="chil/test", source="chil/test.cpp")

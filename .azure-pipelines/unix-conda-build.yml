@@ -23,11 +23,22 @@ steps:
   displayName: Download modules tarball
 
 - script: |
+    set -x -e
     cd $(Pipeline.Workspace)
     tar -xf modules.tar
   displayName: Extract modules tarball
 
 - script: |
+    set -x -e
+    cd $(Pipeline.Workspace)/modules/dxtbx
+    git remote set-url origin https://github.com/dials/dxtbx.git
+    git fetch origin
+    git checkout dials-2.2
+  displayName: Use dials-2.2 branch for Python 2
+  condition: eq(variables['PYTHON_VERSION'], 'py27')
+
+- script: |
+    set -x -e
     cd $(Pipeline.Workspace)
     ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
   displayName: Link bootstrap.py
@@ -36,8 +47,8 @@ steps:
 - task: DownloadPipelineArtifact@2
   inputs:
     source: 'specific'
-    project: '$(System.TeamProjectId)'
-    pipeline: 4
+    project: '$(resources.pipeline.data_cache.projectID)'
+    pipeline: '$(resources.pipeline.data_cache.pipelineID)'
     artifact: 'miniconda'
     path: $(Pipeline.Workspace)/miniconda
   displayName: Download miniconda
@@ -48,25 +59,32 @@ steps:
   displayName: Install miniconda
 
 # create conda environment
+# fresh downloads for "Update build cache" and "Full" pipelines
 - task: DownloadPipelineArtifact@2
   inputs:
     source: 'current'
     artifact: $(PYTHON_VERSION)_$(OS)
     path: $(Pipeline.Workspace)/channel
   displayName: Download conda packages
-  condition: eq(variables['Build.DefinitionName'], 'Full')
+  condition: >
+    or(eq(variables['Build.DefinitionName'], 'Update build cache'),
+       eq(variables['Build.DefinitionName'], 'Full'))
 
 - task: DownloadPipelineArtifact@2
   inputs:
     source: 'specific'
-    project: '$(System.TeamProjectId)'
-    pipeline: 2
+    project: '$(resources.pipeline.build_cache.projectID)'
+    pipeline: '$(resources.pipeline.build_cache.pipelineID)'
+    allowPartiallySucceededBuilds: true
     artifact: $(PYTHON_VERSION)_$(OS)
     path: $(Pipeline.Workspace)/channel
-  displayName: Download conda packages
-  condition: ne(variables['Build.DefinitionName'], 'Full')
+  displayName: Download cached conda packages
+  condition: >
+    and(ne(variables['Build.DefinitionName'], 'Update build cache'),
+        ne(variables['Build.DefinitionName'], 'Full'))
 
 - script: |
+    set -x -e
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda install -y conda-build
     cd $(Pipeline.Workspace)/channel
@@ -78,6 +96,7 @@ steps:
   displayName: Build local channel
 
 - script: |
+    set -x -e
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
     conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
@@ -92,29 +111,44 @@ steps:
 
 # build
 - script: |
+    set -x -e
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
     python bootstrap.py build --builder=cctbx --use-conda=${CONDA_PREFIX} --nproc=4
     cd build
     source setpaths.sh
-    libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx
+    libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx phenix_regression phenix_examples
     libtbx.scons -j 4
     libtbx.scons -j 4
   displayName: Configure and Build
 
 # test
 - script: |
+    set -x -e
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
     source ./build/setpaths.sh
     mkdir tests
     cd tests
-    libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es \
-      module=fable module=gltbx module=iotbx module=libtbx module=rstbx \
-      module=scitbx module=smtbx module=spotfinder \
-      module=annlib_adaptbx module=cbflib_adaptbx \
+    export PYTHONDEVMODE=1
+    export PYTHONTRACEMALLOC=1
+    libtbx.run_tests_parallel \
+      module=annlib_adaptbx \
+      module=boost_adaptbx \
+      module=cbflib_adaptbx \
+      module=cctbx \
+      module=cctbx_website \
+      module=cma_es \
+      module=fable \
+      module=gltbx \
+      module=iotbx \
+      module=libtbx \
+      module=rstbx \
+      module=scitbx \
+      module=smtbx \
+      module=spotfinder \
       nproc=4
   failOnStderr: false
   displayName: Test

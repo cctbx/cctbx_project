@@ -16,14 +16,14 @@ def clean_clutter_in(files, tabsize=8):
     if os.path.isfile(fname):
       try:
         print(fname)
-        with open(fname, 'r') as ifh, open(tmpname, 'wb') as ofh:
+        with open(fname, 'rb') as ifh, open(tmpname, 'wb') as ofh:
           # explicitly convert Windows linebreaks into Unix linebreaks
-          lines = ifh.read().replace('\r\n', '\n').split('\n')
+          lines = ifh.read().replace(b'\r\n', b'\n').split(b'\n')
           n_empty = 0
           for line in lines:
             clean_line = line.expandtabs(tabsize).rstrip()
             if clean_line:
-              ofh.write("\n" * n_empty + clean_line + "\n")
+              ofh.write(b"\n" * n_empty + clean_line + b"\n")
               n_empty = 0
             else:
               n_empty += 1

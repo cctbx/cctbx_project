@@ -28,10 +28,10 @@ namespace cctbx { namespace maptbx
 //! @todo code duplication: mmtbx/masks/atom_mask.cpp
 inline void translate_into_cell(scitbx::int3 &num, const scitbx::int3 &den)
 {
-  for(register unsigned char i=0; i<3; ++i)
+  for(unsigned char i=0; i<3; ++i)
   {
-    register int tn = num[i];
-    register const int td = den[i];
+    int tn = num[i];
+    const int td = den[i];
     tn %= td;
     if( tn < 0 )
       tn += td;

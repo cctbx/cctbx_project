@@ -12,6 +12,8 @@ fname = libtbx.env.find_in_repositories(
     relative_path="cctbx_project/mmtbx/regression/pdbs/p9.pdb",
     test=os.path.isfile)
 
+cryst1 = "CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1          \n"
+
 def check_function():
   inp = iotbx.pdb.input(fname)
   model = mmtbx.model.manager(model_input=inp)
@@ -38,6 +40,7 @@ def check_function():
 def check_cmd_line():
   cmd = "mmtbx.rama_z %s" % fname
   r = easy_run.fully_buffered(cmd)
+  assert r.return_code == 0
   stdout = r.stdout_lines
   # print ("\n".join(stdout))
   assert_lines_in_text("\n".join(stdout), """\
@@ -46,7 +49,26 @@ def check_cmd_line():
       sheet: -0.06 (0.58), residues: 63
       loop : -0.36 (0.69), residues: 71""")
 
+def check_cmd_line_cryst1(prefix="tst_rama_z_01_cryst1"):
+  with open(fname, 'r') as f:
+    pdbtext = f.read()
+  with open(prefix+'.pdb', 'w') as f:
+    f.write(cryst1)
+    f.write(pdbtext)
+  cmd = "mmtbx.rama_z %s" % (prefix+'.pdb')
+  r = easy_run.fully_buffered(cmd)
+  assert r.return_code == 0
+  stdout = r.stdout_lines
+  # print ("\n".join(stdout))
+  assert_lines_in_text("\n".join(stdout), """\
+      whole: -0.40 (0.66), residues: 134
+      helix:  None (None), residues: 0
+      sheet: -0.06 (0.58), residues: 63
+      loop : -0.36 (0.69), residues: 71""")
+
+
 if __name__ == '__main__':
   check_function()
   check_cmd_line()
+  check_cmd_line_cryst1()
   print("OK")

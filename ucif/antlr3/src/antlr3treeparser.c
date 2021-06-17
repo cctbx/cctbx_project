@@ -232,7 +232,7 @@ getMissingSymbol                        (pANTLR3_BASE_RECOGNIZER recognizer, pAN
                 current = tns->_LT(tns, i--);
     }
 
-        node    = current->dupNode(current);
+        node    = (pANTLR3_BASE_TREE)current->dupNode(current);
 
         // Find the newly dupicated token
         //

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
-ext = boost.python.import_ext("scitbx_graphics_utils_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("scitbx_graphics_utils_ext")
 from scitbx_graphics_utils_ext import *
 from cctbx.array_family import flex
 
@@ -18,6 +18,26 @@ def color_by_property(
     color_all=color_all,
     gradient_type=gradients.index(gradient_type),
     min_value=min_value)
+
+
+def map_to_rgb_colourmap(
+    data_for_colors,
+    colormap,
+    selection,
+    attenuation=None,
+    powscale=1.0,
+    map_directly=False,
+    color_all=False):
+  if attenuation is None:
+    attenuation = flex.double(data_for_colors.size(), 1.0)
+  return map_to_rgb_colourmap_(
+    data_for_colors=data_for_colors.as_double(),
+    colourmap=colormap,
+    selection=selection,
+    attenuation=attenuation,
+    powscale=powscale,
+    map_directly = map_directly,
+    color_all=color_all)
 
 
 def colour_by_phi_FOM(phi, fom = None):

@@ -26,8 +26,8 @@ def raise_sorry(message, wait):
 def crash_python(wait):
 
   time.sleep( wait )
-  import boost.python
-  boost.python.ext.dereference_char_pointer(None)
+  import boost_adaptbx.boost.python as bp
+  bp.ext.dereference_char_pointer(None)
 
 
 class TestManager(unittest.TestCase):

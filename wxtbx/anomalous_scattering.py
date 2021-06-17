@@ -14,14 +14,14 @@ class AnomPlot(wxtbx.plots.plot_container):
   def show_plot(self,
       elements,
       range_type="wavelength",
-      range=(0.75,2.5),
+      range_values=(0.75,2.5),
       n_points=100,
       include_fp=True,
       table="sasaki"):
     assert (range_type in ["wavelength", "energy"])
     assert (table in ["sasaki", "henke"])
     assert (n_points >= 10)
-    x_min, x_max = range
+    x_min, x_max = range_values
     assert (x_max > x_min)
     if (range_type == "wavelength"):
       x_label = "Wavelength (Angstroms)"

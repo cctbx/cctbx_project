@@ -4,6 +4,18 @@
 # skip pull requests
 pr: none
 
+trigger:
+  branches:
+    include:
+      - master
+
+resources:
+  pipelines:
+  - pipeline: data_cache
+    source: 'Update data cache'
+  - pipeline: build_cache
+    source: 'Update build cache'
+
 stages:
 - stage: Preparation
   displayName: Download
@@ -14,16 +26,6 @@ stages:
   displayName: Build and test
   dependsOn: Preparation
   jobs:
-    - template: ./.azure-pipelines/conda-win.yml
+    - template: ./.azure-pipelines/ci-build.yml
       parameters:
-        modules: modules
-    - template: ./.azure-pipelines/conda-linux.yml
-      parameters:
-        distribution: centos
-        version: [6]
-        modules: modules
-    - template: ./.azure-pipelines/conda-osx.yml
-      parameters:
-        vmImage: [10, 14]
-        xcode_version: [11, 3, 1]
         modules: modules

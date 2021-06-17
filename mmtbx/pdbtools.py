@@ -33,13 +33,17 @@ keep = None
   .style = bold noauto
 put_into_box_with_buffer = None
   .type = float
-  .help = Move molecule into center of box.
+  .help = Move molecule into center of box
 selection = None
   .type = atom_selection
   .help = Selection for atoms to be modified
   .short_caption = Modify atom selection
   .input_size=400
   .style = bold noauto
+flip_symmetric_amino_acids = False
+  .type = bool
+  .short_caption = Flip symmetric amino acid side chains
+  .help = Flip symmetric amino acid side chains
 adp
   .help = Scope of options to modify ADP of selected atoms
   .multiple = True
@@ -247,6 +251,11 @@ class modify(object):
     self.params = params
     self.model = model
     self._neutralize_scatterers()
+    if not model.crystal_symmetry() or not model.crystal_symmetry().unit_cell():
+      # Make it up
+      from cctbx.maptbx.box import shift_and_box_model
+      model = shift_and_box_model(model, shift_model=False)
+
     self.pdb_hierarchy = model.get_hierarchy()
     self.crystal_symmetry = model.crystal_symmetry()
     if(self.log is None): self.log = sys.stdout
@@ -320,7 +329,7 @@ class modify(object):
           crystal_symmetry=self.model.crystal_symmetry())
       self.model._update_atom_selection_cache()
       self.model._update_has_hd()
-      self.model._update_pdb_atoms()
+      self.model.get_hierarchy().atoms().reset_i_seq()
 
 
 
@@ -542,6 +551,10 @@ class modify(object):
     self.xray_structure.shake_adp(selection=selection.flags)
 
   def _process_sites(self):
+    if(self.params.flip_symmetric_amino_acids):
+      self.pdb_hierarchy.flip_symmetric_amino_acids()
+      self.xray_structure.set_sites_cart(
+        sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
     for sites in self.params.sites:
       if (sites.atom_selection is None):
         selection = self.top_selection

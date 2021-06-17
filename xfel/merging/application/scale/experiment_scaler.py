@@ -55,7 +55,7 @@ class experiment_scaler(worker):
 
       # Build a miller array for the experiment reflections
       exp_miller_indices = miller.set(target_symm, exp_reflections['miller_index_asymmetric'], True)
-      exp_intensities = miller.array(exp_miller_indices, exp_reflections['intensity.sum.value'], flex.double(flex.sqrt(exp_reflections['intensity.sum.variance'])))
+      exp_intensities = miller.array(exp_miller_indices, exp_reflections['intensity.sum.value'], flex.sqrt(exp_reflections['intensity.sum.variance']))
 
       model_intensities = self.params.scaling.i_model
 

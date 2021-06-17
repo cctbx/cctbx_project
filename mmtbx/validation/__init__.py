@@ -91,10 +91,25 @@ class entity(slots_getstate_setstate):
     same molecular entity and analysis type.  This is intended to be used for
     analysis of a structure before-and-after refinement (etc.).
     """
-    raise NotImplementedError()
+    return self.score == other.score
 
   def __cmp__(self, other):
     return cmp(self.score, other.score)
+
+  def __ne__(self, other):
+    return self.score != other.score
+
+  def __lt__(self, other):
+    return self.score < other.score
+
+  def __le__(self, other):
+    return self.score <= other.score
+
+  def __gt__ (self, other):
+    return self.score > other.score
+
+  def __ge__(self, other):
+    return self.score >= other.score
 
   def is_single_residue_object(self):
     raise NotImplementedError()
@@ -289,6 +304,21 @@ class atom_base(slots_getstate_setstate):
   def __eq__(self, other):
     assert isinstance(other, atom_base), type(other)
     return self.id_str() == other.id_str()
+
+  def __ne__(self, other):
+    return self.id_str() != other.id_str()
+
+  def __lt__(self, other):
+    return self.id_str() < other.id_str()
+
+  def __le__(self, other):
+    return self.id_str() <= other.id_str()
+
+  def __gt__ (self, other):
+    return self.id_str() > other.id_str()
+
+  def __ge__(self, other):
+    return self.id_str() >= other.id_str()
 
   def id_str(self, ignore_altloc=False, ignore_segid=False):
     base = "%2s%4s%1s" % (self.chain_id, self.resseq, self.icode)

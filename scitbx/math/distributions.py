@@ -8,7 +8,7 @@ else:
   class students_t_distribution(object):
     def __init__(self, *args, **keyword_args):
       raise RuntimeError("Implementation not available in this build.")
-import boost.python
+import boost_adaptbx.boost.python as bp
 
 class __distribution_mixin(object):
 
@@ -45,7 +45,7 @@ class __distribution_mixin(object):
   def quantiles(self, n):
     return ext.quantiles(self, n)
 
-boost.python.inject(normal_distribution, __distribution_mixin)
+bp.inject(normal_distribution, __distribution_mixin)
 
 if (hasattr(ext, "students_t_distribution")):
-  boost.python.inject(students_t_distribution, __distribution_mixin)
+  bp.inject(students_t_distribution, __distribution_mixin)

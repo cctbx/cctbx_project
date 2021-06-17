@@ -119,7 +119,7 @@ def tst_args_kwds():
     callback_err    = ch.cb_err,
     callback_other  = ch.cb_other)
   p.start()
-  while p.isAlive():
+  while p.is_alive():
     pass
   ch.tst_run_success(expected_result=True, expected_stdout=None,
     expected_other=None)
@@ -140,7 +140,7 @@ def tst_no_return_value():
     callback_err    = ch.cb_err,
     callback_other  = ch.cb_other)
   p.start()
-  while p.isAlive():
+  while p.is_alive():
     pass
   ch.tst_run_success(expected_result=None)
 
@@ -160,7 +160,7 @@ def tst_callbacks():
     callback_err    = ch.cb_err,
     callback_other  = ch.cb_other)
   p.start()
-  while p.isAlive():
+  while p.is_alive():
     pass
   tstout = \
 """0
@@ -193,7 +193,7 @@ def tst_stdout():
       callback_stdout = ch.cb_stdout,
       buffer_stdout = buffer_stdout)
     p.start()
-    while p.isAlive():
+    while p.is_alive():
       pass
     assert tmpout.getvalue() == ch._stdout
 
@@ -212,7 +212,7 @@ def tst_exceptions():
       callback_err = ch.cb_err,
       callback_final = ch.cb_result)
     p.start()
-    while p.isAlive():
+    while p.is_alive():
       pass
     ch.tst_error_raised()
     if f is _target_function05b :
@@ -233,7 +233,7 @@ def tst_abort_simple():
     callback_abort = ch.cb_abort)
   p.start()
   p.abort()
-  while p.isAlive():
+  while p.is_alive():
     pass
   assert ch._abort == True
 
@@ -248,7 +248,7 @@ def tst_abort_2():
     callback_abort=ch.cb_abort)
   p.start()
   p.abort()
-  while p.isAlive():
+  while p.is_alive():
     pass
   assert ch._abort == True
 
@@ -267,7 +267,7 @@ def tst_warn_callback():
     target=_target_function08,
     callback_other=ch.cb_other)
   p.start()
-  while p.isAlive():
+  while p.is_alive():
     pass
   assert (ch._other[0].message == "warn")
   assert (ch._other[0].data == "Hello, world!")
@@ -318,7 +318,7 @@ def tst_pause_resume_kill():
     assert (ch.lines == current_data)
     p.resume()
     assert ch.resumed
-    while p.isAlive():
+    while p.is_alive():
       pass
     assert not ch.aborted
     assert (ch.lines.splitlines() == ['0','1','2','3','4','5','6','7','8','9'])

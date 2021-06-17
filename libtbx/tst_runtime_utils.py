@@ -24,7 +24,8 @@ def exercise():
   params.run_file = os.path.join(output_dir, "run.pkl")
   eff_file = os.path.join(output_dir, "run.eff")
   working_phil = runtime_utils.process_master_phil.format(python_object=params)
-  working_phil.show(out=open(eff_file, "w"))
+  with open(eff_file, "w") as f:
+    working_phil.show(out=f)
   easy_pickle.dump(params.run_file, run)
   easy_run.call("libtbx.start_process %s &" % eff_file) #params.run_file)
   client = runtime_utils.simple_client(params)

@@ -8,8 +8,7 @@ from scitbx.array_family import flex
 from libtbx.math_utils import ifloor
 from libtbx import adopt_init_args
 from libtbx import easy_pickle
-import time
-import math
+import time, math
 import sys
 from six.moves import range
 from six.moves import zip

@@ -14,6 +14,7 @@ from six.moves import cStringIO as StringIO
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.hydrogens import riding
 import mmtbx.model
+from cctbx import uctbx
 
 base_params_str = """\
 silent = False
@@ -328,10 +329,13 @@ class run(object):
     pdb_combined = combine_unique_pdb_files(file_names = self.pdb_file_names)
     pdb_inp = iotbx.pdb.input(lines=pdb_combined.raw_records, source_info=None)
     if(cs is None):
+      cs=pdb_inp.crystal_symmetry()
+    if(cs is None):
       is_non_crystallographic_unit_cell = True
-      cs = pdb_inp.xray_structure_simple().\
-          cubic_unit_cell_around_centered_scatterers(
-          buffer_size = 10).crystal_symmetry()
+      box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+        sites_cart   = pdb_inp.atoms().extract_xyz(),
+        buffer_layer = 10)
+      cs = box.crystal_symmetry()
     cif_objects = list(self.inputs.cif_objects)
     if (len(self.params.restraints) > 0):
       import iotbx.cif
@@ -346,15 +350,14 @@ class run(object):
           cif_object = iotbx.cif.reader(file_path=full_path,
             strict=False).model()
           cif_objects.append((full_path, cif_object))
-
     self.model = mmtbx.model.manager(
         model_input = pdb_inp,
+        crystal_symmetry = cs,
         restraint_objects = cif_objects,
         pdb_interpretation_params = self.params,
         stop_for_unknowns = self.params.stop_for_unknowns,
         build_grm = True,
         log = self.log)
-
     self.ncs_obj = self.model.get_ncs_obj()
     self.output_crystal_symmetry = not is_non_crystallographic_unit_cell
     self.sites_cart_start = self.model.get_xray_structure().sites_cart().deep_copy()

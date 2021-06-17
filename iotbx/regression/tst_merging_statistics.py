@@ -11,7 +11,7 @@ import sys
 
 
 def exercise(debug=False):
-  if (not libtbx.env.has_module("phenix_regression")):
+  if not libtbx.env.has_module("phenix_regression"):
     print("phenix_regression not configured, skipping.")
     return
   hkl_file = libtbx.env.find_in_repositories(
@@ -24,19 +24,19 @@ def exercise(debug=False):
     "unit_cell=113.949,113.949,32.474,90,90,90",
     "loggraph=True",
   ]
-  if (debug):
+  if debug:
     args.append("debug=True")
     print(" ".join(args))
   out = StringIO()
   result = merging_statistics.run(args, out=out)
-  if (debug):
+  if debug:
     print(out.getvalue())
   assert ("R-merge: 0.073" in out.getvalue())
   assert ("R-meas:  0.079" in out.getvalue())
-  assert ("""  1.81   1.74  12528   2073    6.04  97.05    1449.2     5.2    0.252    0.275    0.110   0.967   0.281""" in out.getvalue()), out.getvalue()
+  assert ("""  1.81   1.74  12528   2073    6.04  97.05    1449.2     5.2    0.252    0.275    0.110    0.294   0.967   0.281""" in out.getvalue()), out.getvalue()
   cif_block = result.as_cif_block()
   assert "_reflns_shell" in cif_block
-  assert approx_equal(float(cif_block["_reflns.pdbx_Rpim_I_obs"]), result.overall.r_pim)
+  assert approx_equal(float(cif_block["_reflns.pdbx_Rpim_I_all"]), result.overall.r_pim)
   assert approx_equal(float(cif_block["_reflns.pdbx_CC_half"]), result.overall.cc_one_half)
   assert approx_equal(
     flex.int(cif_block["_reflns_shell.number_measured_obs"]),
@@ -48,23 +48,23 @@ def exercise(debug=False):
   # test resolution cutoffs
   args2 = list(args[:-1]) + ["high_resolution=2.5", "low_resolution=15"]
   out = StringIO()
-  result = merging_statistics.run(args2, out=out)
-  if (debug):
+  merging_statistics.run(args2, out=out)
+  if debug:
     print(out.getvalue())
   assert ("Resolution: 14.96 - 2.50" in out.getvalue())
   # extend binning
   args2 = list(args[:-1]) + ["high_resolution=1.5", "low_resolution=100",
     "--extend_d_max_min"]
   out = StringIO()
-  result = merging_statistics.run(args2, out=out)
-  if (debug):
+  merging_statistics.run(args2, out=out)
+  if debug:
     print(out.getvalue())
   assert ("Resolution: 100.00 - 1.50" in out.getvalue())
-  assert ("  1.55   1.50      0      0    0.00   0.00       0.0     0.0     None     None     None   0.000   0.000""" in out.getvalue())
+  assert ("  1.55   1.50      0      0    0.00   0.00       0.0     0.0     None     None     None     0.000   0.000""" in out.getvalue())
   args2 = args + ["json.file_name=merging_stats.json", "json.indent=2",
                   "mmcif.file_name=merging_stats.mmcif", "mmcif.data_name=test"]
   out = StringIO()
-  result = merging_statistics.run(args2, out=out)
+  merging_statistics.run(args2, out=out)
   assert os.path.exists("merging_stats.json")
   with open("merging_stats.json", "rb") as f:
     import json
@@ -107,15 +107,15 @@ def exercise(debug=False):
   # these should crash
   args2 = list(args[:-1]) + ["high_resolution=15", "low_resolution=2.5"]
   try :
-    result = merging_statistics.run(args2, out=out)
-  except Sorry as s :
+    merging_statistics.run(args2, out=out)
+  except Sorry:
     pass
   else :
     raise Exception_expected
   args2 = list(args[:-1]) + ["high_resolution=1.5", "low_resolution=1.6"]
   try :
-    result = merging_statistics.run(args2, out=out)
-  except Sorry as s :
+    merging_statistics.run(args2, out=out)
+  except Sorry:
     pass
   else :
     raise Exception_expected
@@ -126,14 +126,14 @@ def exercise(debug=False):
     "unit_cell=113.949,113.949,32.474,90,90,90",
     "loggraph=True",
   ]
-  if (debug):
+  if debug:
     args.append("debug=True")
     print(" ".join(args))
   out = StringIO()
-  result = merging_statistics.run(args, out=out)
-  if (debug):
+  merging_statistics.run(args, out=out)
+  if debug:
     print(out.getvalue())
-  assert (" 28.49   3.76  15737   1224   12.86  99.84   47967.0    11.6    0.482    0.500    0.135   0.973  -0.513" in out.getvalue()), out.getvalue()
+  assert (" 28.49   3.76  15737   1224   12.86  99.84   47967.0    11.6    0.482    0.500    0.135    0.136   0.973  -0.513" in out.getvalue()), out.getvalue()
   # exercise 2: estimate resolution cutoffs (and symmetry_file argument)
   hkl_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/harvesting/unmerged.sca",
@@ -149,8 +149,8 @@ def exercise(debug=False):
     "--estimate_cutoffs",
   ]
   out = StringIO()
-  result = merging_statistics.run(args, out=out)
-  if (debug):
+  merging_statistics.run(args, out=out)
+  if debug:
     print(out.getvalue())
   for line in """\
   resolution of all data          :   2.000
@@ -167,12 +167,17 @@ def exercise(debug=False):
     relative_path="phenix_regression/reflection_files/i_anomalous.mtz",
     test=os.path.isfile)
   assert hkl_file is not None
-  args = [hkl_file]
+
+  # Test that merged anomalous data are already merged.
   try:
-    result = merging_statistics.run(args, out=out)
+    merging_statistics.run([hkl_file, "anomalous=True"], out=out)
   except Sorry as e:
     assert str(e) == 'The data in i_anomalous(+),SIGi_anomalous(+),i_anomalous(-),SIGi_anomalous(-) are already merged.  Only unmerged (but scaled) data may be used in this program.'
   else: raise Exception_expected
+
+  # Test that merged anomalous data can still be merged as non-anomalous data.
+  merging_statistics.run([hkl_file], out=out)
+
   # test use_internal_variance option
   out = StringIO()
   hkl_file = libtbx.env.find_in_repositories(
@@ -209,16 +214,17 @@ def exercise(debug=False):
   assert approx_equal(result.overall.d_max, 52.445602416992195)
   assert result.overall.n_obs == 119045, result.overall.n_obs
   assert approx_equal(result.bins[0].cc_anom, 0.879550520045)
+  assert approx_equal(result.bins[0].r_anom, 0.12112581576975405)
   assert result.bins[0].cc_anom_significance is True
   assert approx_equal(result.bins[0].cc_anom_critical_value, 0.0873548986308)
   assert approx_equal(result.cc_one_half_overall, 0.931122967496)
-  assert approx_equal(result.cc_one_half_sigma_tau_overall, 0.9343213900704643)
+  assert approx_equal(result.cc_one_half_sigma_tau_overall, 0.9280192675969664)
   assert approx_equal(result.bins[0].cc_one_half, 0.9969293192434535)
-  assert approx_equal(result.bins[0].cc_one_half_sigma_tau, 0.9970705896978537)
+  assert approx_equal(result.bins[0].cc_one_half_sigma_tau, 0.9968045160775104)
   assert result.bins[0].cc_one_half_significance is True
   assert result.bins[0].cc_one_half_sigma_tau_significance is True
   assert approx_equal(result.bins[-1].cc_one_half, 0.675340867481686)
-  assert approx_equal(result.bins[-1].cc_one_half_sigma_tau, 0.7360191500836607)
+  assert approx_equal(result.bins[-1].cc_one_half_sigma_tau, 0.6711734115834956)
   assert result.bins[-1].cc_one_half_significance is True
   assert result.bins[-1].cc_one_half_sigma_tau_significance is True
   #
@@ -236,7 +242,7 @@ def exercise(debug=False):
   assert app.expected_delta == 0.9
   d = result.overall.as_dict()
   for k in ("anom_probability_plot_all_data", "anom_probability_plot_expected_delta"):
-    assert d[k].keys() == ["slope", "intercept", "n_pairs", "expected_delta"]
+    assert list(d[k].keys()) == ["slope", "intercept", "n_pairs", "expected_delta"], list(d[k].keys())
   out = StringIO()
   result.overall.show_anomalous_probability_plot(out)
   assert not show_diff(out.getvalue(),
@@ -259,6 +265,6 @@ Anomalous probability plot (expected delta = 0.9):
   assert len(result.bins) == 12
 
 
-if (__name__ == "__main__"):
+if __name__ == "__main__":
   exercise(debug=("--debug" in sys.argv))
   print("OK")

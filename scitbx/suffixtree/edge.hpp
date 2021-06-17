@@ -11,6 +11,7 @@
 #include <boost/type_traits.hpp>
 
 #include <utility>
+#include <iostream>
 
 namespace scitbx
 {
@@ -20,15 +21,6 @@ namespace suffixtree
 
 namespace edge
 {
-
-template< typename Key, typename Value >
-struct ToConstPair
-{
-  typedef std::pair< const Key, boost::shared_ptr< Value > > argument_type;
-  typedef std::pair< const Key, boost::shared_ptr< Value const > > result_type;
-
-  result_type operator ()(argument_type const& arg) const;
-};
 
 template<
   typename Glyph,
@@ -42,10 +34,7 @@ class Edge
 public:
   typedef Edge edge_type;
   typedef boost::shared_ptr< edge_type > ptr_type;
-  typedef boost::shared_ptr< edge_type const > const_ptr_type;
-
   typedef boost::weak_ptr< edge_type > weak_ptr_type;
-  typedef boost::weak_ptr< edge_type const > const_weak_ptr_type;
 
   typedef Glyph glyph_type;
   typedef Index index_type;
@@ -53,22 +42,15 @@ public:
   typedef SuffixLabel suffix_label_type;
   typedef typename NodeAdapter< glyph_type, ptr_type >::type node_type;
 
-  typedef ToConstPair< glyph_type, edge_type > converter_type;
   typedef typename node_type::iterator iterator;
   typedef typename node_type::value_type value_type;
-  typedef boost::transform_iterator<
-    converter_type,
-    typename node_type::const_iterator
-    >
-    const_iterator;
+  typedef typename node_type::const_iterator const_iterator;
 
 public:
   Edge();
   virtual ~Edge();
 
   // Concrete functions
-  bool empty() const;
-
   iterator begin();
   iterator end();
 
@@ -81,30 +63,34 @@ public:
   std::pair< iterator, bool > insert(value_type const& val);
 
   // Convenience functions
-  const_ptr_type get_parent() const;
-  ptr_type get_parent();
+  ptr_type get_parent() const;
+  ptr_type get_suffix() const;
 
-  const_ptr_type get_suffix() const;
-  ptr_type get_suffix();
+  void set_parent(ptr_type const& parent);
 
-  const_ptr_type get_child_with_label(glyph_type const& label) const;
-  ptr_type get_child_with_label(glyph_type const& label);
+private:
+  ptr_type promote_link(weak_ptr_type const& ptr) const;
+
+public:
+  ptr_type get_child_with_label(glyph_type const& label) const;
 
   void attach_child(ptr_type const& child, glyph_type const& label);
   bool attach_child_if_not_present(ptr_type const& child, glyph_type const& label);
 
   // Virtual functions
-  virtual index_type const& start() const = 0;
-  virtual index_type& start() = 0;
+  virtual bool empty() const = 0;
 
-  virtual index_type stop() const = 0;
+  virtual index_type get_start() const = 0;
+  virtual void set_start(index_type const& value) = 0;
+
+  virtual index_type get_stop() const = 0;
 
   virtual suffix_label_type const& label() const = 0;
 
-  virtual const_weak_ptr_type parent() const = 0;
+  virtual weak_ptr_type const& parent() const = 0;
   virtual weak_ptr_type& parent() = 0;
 
-  virtual const_weak_ptr_type suffix() const = 0;
+  virtual weak_ptr_type const& suffix() const = 0;
   virtual weak_ptr_type& suffix() = 0;
 
   virtual bool is_root() const = 0;
@@ -142,31 +128,28 @@ public:
   typedef typename edge_type::suffix_label_type suffix_label_type;
   typedef typename edge_type::node_type node_type;
   typedef typename edge_type::ptr_type ptr_type;
-  typedef typename edge_type::const_ptr_type const_ptr_type;
   typedef typename edge_type::weak_ptr_type weak_ptr_type;
-  typedef typename edge_type::const_weak_ptr_type const_weak_ptr_type;
 
 private:
   node_type node_;
-
-private:
-  static index_type const shared_start;
 
 public:
   Root();
   virtual ~Root();
 
-  virtual index_type const& start() const;
-  virtual index_type& start();
+  virtual bool empty() const;
 
-  virtual index_type stop() const;
+  virtual index_type get_start() const;
+  virtual void set_start(index_type const& value);
+
+  virtual index_type get_stop() const;
 
   virtual suffix_label_type const& label() const;
 
-  virtual const_weak_ptr_type parent() const;
+  virtual weak_ptr_type const& parent() const;
   virtual weak_ptr_type& parent();
 
-  virtual const_weak_ptr_type suffix() const;
+  virtual weak_ptr_type const& suffix() const;
   virtual weak_ptr_type& suffix();
 
   virtual bool is_root() const;
@@ -195,9 +178,7 @@ public:
   typedef typename edge_type::suffix_label_type suffix_label_type;
   typedef typename edge_type::node_type node_type;
   typedef typename edge_type::ptr_type ptr_type;
-  typedef typename edge_type::const_ptr_type const_ptr_type;
   typedef typename edge_type::weak_ptr_type weak_ptr_type;
-  typedef typename edge_type::const_weak_ptr_type const_weak_ptr_type;
 
 private:
   index_type start_;
@@ -210,17 +191,19 @@ public:
   Branch(index_type const& start, index_type const& end);
   virtual ~Branch();
 
-  virtual index_type const& start() const;
-  virtual index_type& start();
+  virtual bool empty() const;
 
-  virtual index_type stop() const;
+  virtual index_type get_start() const;
+  virtual void set_start(index_type const& value);
+
+  virtual index_type get_stop() const;
 
   virtual suffix_label_type const& label() const;
 
-  virtual const_weak_ptr_type parent() const;
+  virtual weak_ptr_type const& parent() const;
   virtual weak_ptr_type& parent();
 
-  virtual const_weak_ptr_type suffix() const;
+  virtual weak_ptr_type const& suffix() const;
   virtual weak_ptr_type& suffix();
 
   virtual bool is_root() const;
@@ -249,17 +232,13 @@ public:
   typedef typename edge_type::suffix_label_type suffix_label_type;
   typedef typename edge_type::node_type node_type;
   typedef typename edge_type::ptr_type ptr_type;
-  typedef typename edge_type::const_ptr_type const_ptr_type;
   typedef typename edge_type::weak_ptr_type weak_ptr_type;
-  typedef typename edge_type::const_weak_ptr_type const_weak_ptr_type;
 
 private:
   index_type start_;
   word_length_type word_length_;
   suffix_label_type suffix_label_;
   weak_ptr_type parent_ptr_;
-
-  static node_type const shared_node;
 
 public:
   Leaf(
@@ -269,17 +248,19 @@ public:
     );
   virtual ~Leaf();
 
-  virtual index_type const& start() const;
-  virtual index_type& start();
+  virtual bool empty() const;
 
-  virtual index_type stop() const;
+  virtual index_type get_start() const;
+  virtual void set_start(index_type const& value);
+
+  virtual index_type get_stop() const;
 
   virtual suffix_label_type const& label() const;
 
-  virtual const_weak_ptr_type parent() const;
+  virtual weak_ptr_type const& parent() const;
   virtual weak_ptr_type& parent();
 
-  virtual const_weak_ptr_type suffix() const;
+  virtual weak_ptr_type const& suffix() const;
   virtual weak_ptr_type& suffix();
 
   virtual bool is_root() const;
@@ -288,29 +269,6 @@ public:
 private:
   virtual node_type const& node() const;
   virtual node_type& node();
-};
-
-template< typename Edge >
-struct Traits
-{
-  typedef boost::is_const< Edge > selector_type;
-  typedef typename boost::mpl::if_<
-    selector_type,
-    typename Edge::const_iterator,
-    typename Edge::iterator
-    >::type iterator;
-
-  typedef typename boost::mpl::if_<
-    selector_type,
-    typename Edge::const_ptr_type,
-    typename Edge::ptr_type
-    >::type ptr_type;
-
-  typedef typename boost::mpl::if_<
-    selector_type,
-    typename Edge::const_weak_ptr_type,
-    typename Edge::weak_ptr_type
-    >::type weak_ptr_type;
 };
 
 #include "edge.hxx"

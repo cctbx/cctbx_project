@@ -2,13 +2,10 @@ from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_to_structure_factors
 
 import iotbx.ccp4_map
-from cctbx import miller
 from cctbx.array_family import flex
 import mmtbx.utils
 import sys
 from libtbx.utils import Sorry
-from cctbx import maptbx
-from cctbx import miller
 from six.moves import range
 
 master_params_str = """
@@ -20,7 +17,7 @@ d_min = None
            gridding of the map and can lead to map coefficients that are \
            at much higher resolution than the map.
   .short_caption = Resolution
-resolution_factor = 0.333
+resolution_factor = 1./3
   .type = float
   .help = Scale factor to guess resolution of output structure factors.\
           A scale factor of 0.5 gives the highest-resolution data allowed by \
@@ -89,24 +86,11 @@ def broadcast(m, log):
   print(m, file=log)
   print("*"*len(m), file=log)
 
-def get_hl(f_obs_cmpl, k_blur, b_blur):
-  f_model_phases = f_obs_cmpl.phases().data()
-  sin_f_model_phases = flex.sin(f_model_phases)
-  cos_f_model_phases = flex.cos(f_model_phases)
-  ss = 1./flex.pow2(f_obs_cmpl.d_spacings().data()) / 4.
-  t = 2*k_blur * flex.exp(-b_blur*ss)
-  hl_a_model = t * cos_f_model_phases
-  hl_b_model = t * sin_f_model_phases
-  hl_data = flex.hendrickson_lattman(a = hl_a_model, b = hl_b_model)
-  hl = f_obs_cmpl.customized_copy(data = hl_data)
-  return hl
-
 def get_cc(f, hl):
   map_coeffs = abs(f).phase_transfer(phase_source = hl)
   return map_coeffs.map_correlation(other=f)
 
-def get_shift_cart(map_data=None,crystal_symmetry=None,
-     origin=None):
+def get_shift_cart(map_data, crystal_symmetry, origin=None):
   # this is the shift applied to the map when origin moves to (0,0,0)
   N = map_data.all()
   if origin is None:
@@ -156,10 +140,6 @@ def run(args, log=None, ccp4_map=None,
   print("map: min/max/mean:", flex.min(m.map_data()), flex.max(m.map_data()), flex.mean(m.map_data()), file=out)
   print("unit cell:", m.unit_cell().parameters(), file=out)
   #
-
-  # Instead use ccp4 map crystal_symmetry and classify according to the case
-  cs = m.crystal_symmetry()
-
   if m.unit_cell_grid == m.map_data().all():
     print("\nOne unit cell of data is present in map", file=out)
   else:
@@ -174,10 +154,15 @@ def run(args, log=None, ccp4_map=None,
     print("New unit cell grid will be: (%s, %s, %s) "%(
       m.map_data().all()), file=out)
 
-  map_data=m.map_data()
+  import iotbx.map_manager
+  mm = iotbx.map_manager.map_manager(
+    map_data                   = m.map_data().as_double(),
+    unit_cell_grid             = m.unit_cell_grid,
+    unit_cell_crystal_symmetry = m.crystal_symmetry(),
+    wrapping                   = True)
 
   # Get origin in grid units and new position of origin in grid units
-  original_origin=map_data.origin()
+  original_origin=mm.map_data().origin()
   print("\nInput map has origin at grid point (%s,%s,%s)" %(
         tuple(original_origin)), file=out)
 
@@ -199,24 +184,18 @@ def run(args, log=None, ccp4_map=None,
 
   # shift_cart is shift away from (0,0,0)
   if new_origin != (0,0,0,):
-    shift_cart=get_shift_cart(map_data=map_data,crystal_symmetry=cs,
+    shift_cart=get_shift_cart(map_data=mm.map_data(), crystal_symmetry=mm.crystal_symmetry(),
       origin=new_origin)
   else:
     shift_cart=(0,0,0,)
-  d_min = params.d_min
-  box = params.box
-  resolution_factor = params.resolution_factor
 
   # Shift the map data if necessary
-  map_data = maptbx.shift_origin_if_needed(map_data = map_data).map_data
+  mm.shift_origin()
 
-  f_obs_cmpl=calculate_inverse_fft(
-     map_data=map_data,
-     crystal_symmetry=cs,
-     d_min=params.d_min,
-     box=params.box,
-     resolution_factor=params.resolution_factor,
-     out=out)
+  f_obs_cmpl = mm.map_as_fourier_coefficients(
+     d_min             = params.d_min,
+     box               = params.box,
+     resolution_factor = params.resolution_factor)
 
   if params.scale_max is not None:
     f_obs_cmpl = f_obs_cmpl.apply_scaling(target_max=params.scale_max)
@@ -226,7 +205,7 @@ def run(args, log=None, ccp4_map=None,
     print("Output origin is at: (%.3f, %.3f, %.3f) A "%(
       tuple(-col(shift_cart))), file=out)
     f_obs_cmpl=f_obs_cmpl.translational_shift(
-        cs.unit_cell().fractionalize(-col(shift_cart)), deg=False)
+        mm.crystal_symmetry().unit_cell().fractionalize(-col(shift_cart)), deg=False)
   else:
     print("Output origin is at (0.000, 0.000, 0.000) A", file=out)
 
@@ -244,10 +223,10 @@ def run(args, log=None, ccp4_map=None,
   mtz_dataset.add_miller_array(
     miller_array      = f_obs.generate_r_free_flags(),
     column_root_label = "R-free-flags")
-  if not nohl and params.k_blur is not None and params.b_blur is None:
+  if not nohl and params.k_blur is not None and params.b_blur is not None:
     # convert phases into HL coefficeints
     broadcast(m="Convert phases into HL coefficients:", log=log)
-    hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=params.b_blur)
+    hl = f_obs_cmpl.make_up_hl_coeffs(k_blur=params.k_blur, b_blur=params.b_blur)
     cc = get_cc(f = f_obs_cmpl, hl = hl)
     print("cc:", cc, file=out)
     if(abs(1.-cc)>1.e-3):
@@ -255,7 +234,7 @@ def run(args, log=None, ccp4_map=None,
       cc_best = 999.
       b_blur_best = params.b_blur
       for b_blur in range(1, 100):
-        hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=b_blur)
+        hl = f_obs_cmpl.make_up_hl_coeffs(k_blur=params.k_blur, b_blur=b_blur)
         cc = get_cc(f = f_obs_cmpl, hl = hl)
         if(cc<cc_best):
           cc_best = cc
@@ -263,7 +242,7 @@ def run(args, log=None, ccp4_map=None,
         if(abs(1.-cc)<1.e-3):
           b_blur_best = b_blur
           break
-      hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=b_blur_best)
+      hl = f_obs_cmpl.make_up_hl_coeffs(k_blur=params.k_blur, b_blur=b_blur_best)
       print("cc:", get_cc(f = f_obs_cmpl, hl = hl), file=out)
       print("b_blur_best:", b_blur_best, file=out)
     mtz_dataset.add_miller_array(
@@ -282,73 +261,6 @@ def run(args, log=None, ccp4_map=None,
     print("  file name:", params.output_file_name, file=log)
     mtz_object = mtz_dataset.mtz_object()
     mtz_object.write(file_name = params.output_file_name)
-
-def calculate_inverse_fft(map_data=None,
-     crystal_symmetry=None,
-     d_min=None,
-     box=False,
-     resolution_factor=0.333,
-     out=sys.stdout):
-
-  '''
-    Combines two possible methods of generating the complete set of
-      indices.  Box means supply all possible reflections that can be
-      calculated using the gridding in map_data in the FFT.
-      Otherwise, generate Miller indices inside a sphere of resolution.
-      This may be faster if the box is large and most indices in the box
-      are not going to be used.
-    If box=True, supply full box of reflections (all possible)
-    Otherwise, generate complete set of Miller indices up to
-     given high resolution d_min. If d_min not specified,
-     use minimum resolution allowed with gridding available and
-     requested resolution_factor (1/2 is finest available, 1/3 is typical)
-  '''
-
-  n_real = map_data.focus()
-
-  # Choose d_min and make sure it is bigger than smallest allowed
-
-  if(d_min is None and not box):
-    d_min = maptbx.d_min_from_map(
-      map_data  = map_data,
-      unit_cell = crystal_symmetry.unit_cell(),
-      resolution_factor = resolution_factor)
-    print("\nResolution of map coefficients using "+\
-     "resolution_factor of %.2f: %.1f A\n" %(resolution_factor,d_min), file=out)
-  elif (not box):  # make sure d_min is big enough
-    d_min_allowed = maptbx.d_min_from_map(
-      map_data  = map_data,
-      unit_cell = crystal_symmetry.unit_cell(),
-      resolution_factor = 0.5)
-    if d_min < d_min_allowed:
-      print("\nResolution of map coefficients allowed by gridding is %.3f " %(
-        d_min_allowed),file=out)
-      d_min=d_min_allowed
-
-  if(d_min is None):
-    # box of reflections in |h|<N1/2, |k|<N2/2, 0<=|l|<N3/2
-    f_obs_cmpl = miller.structure_factor_box_from_map(
-      map              = map_data.as_double(),
-      crystal_symmetry = crystal_symmetry,
-      include_000      = True)
-  else:
-    complete_set = miller.build_set(
-      crystal_symmetry = crystal_symmetry,
-      anomalous_flag   = False,
-      d_min            = d_min)
-    try:
-      f_obs_cmpl = complete_set.structure_factors_from_map(
-        map            = map_data.as_double(),
-        use_scale      = True,
-        anomalous_flag = False,
-        use_sg         = False)
-    except Exception as e:
-      if(str(e) == "cctbx Error: Miller index not in structure factor map."):
-        msg = "Too high resolution requested. Try running with larger d_min."
-        raise Sorry(msg)
-      else:
-        raise Sorry(str(e))
-  return f_obs_cmpl
 
 if(__name__ == "__main__"):
   run(sys.argv[1:])

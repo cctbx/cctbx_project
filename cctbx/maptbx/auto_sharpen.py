@@ -838,7 +838,7 @@ def get_map_and_model(params=None,
          params.input_files.map_coeffs_file,
          str(params.input_files.map_coeffs_labels)), file=out)
     crystal_symmetry=map_coeffs.crystal_symmetry()
-    from cctbx.maptbx.segment_and_split_map import get_map_from_map_coeffs
+    from cctbx.development.create_models_or_maps import get_map_from_map_coeffs
     map_data=get_map_from_map_coeffs(
       map_coeffs=map_coeffs,crystal_symmetry=crystal_symmetry)
     acc=map_data.accessor()

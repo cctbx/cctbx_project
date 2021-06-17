@@ -6,14 +6,19 @@ help_message = '''
 Redesign script for merging xfel data
 '''
 
-from xfel.merging.database.merging_database import mysql_master_phil
-master_phil="""
+dispatch_phil = """
 dispatch {
   step_list = None
     .type = strings
     .help = List of steps to use. None means use the full set of steps to merge.
 }
+"""
+
+input_phil = """
 input {
+  keep_imagesets = False
+    .type = bool
+    .help = If True, keep imagesets attached to experiments
   path = None
     .type = str
     .multiple = True
@@ -48,7 +53,7 @@ input {
     ranks_per_node = 68
         .type = int
         .help = number of MPI ranks per node
-    balance = global per_node
+    balance = *global per_node
       .type = choice
       .multiple = False
       .help = Balance the input file load by distributing experiments uniformly over all available ranks (global) or over the ranks on each node (per_node)
@@ -60,8 +65,20 @@ input {
       .help = memory reduction factor for MPI alltoall.
       .help = Use mpi_alltoall_slices > 1, when available RAM is insufficient for doing MPI alltoall on all data at once.
       .help = The data will then be split into mpi_alltoall_slices parts and, correspondingly, alltoall will be performed in mpi_alltoall_slices iterations.
+    reset_experiment_id_column = False
+      .type = bool
+      .expert_level = 3
   }
 }
+
+mp {
+  method = *mpi
+    .type = choice
+    .help = Muliprocessing method (only mpi at present)
+}
+"""
+
+tdata_phil = """
 tdata{
   output_path = None
     .type = path
@@ -71,13 +88,9 @@ tdata{
     .help = The output_path assumes the *.tdata filename extension will be appended.
     .help = More information about using this option is given in the source code, xfel/merging/application/tdata/README.md
 }
+"""
 
-mp {
-  method = *mpi
-    .type = choice
-    .help = Muliprocessing method (only mpi at present)
-}
-
+filter_phil = """
 filter
   .help = The filter section defines criteria to accept or reject whole experiments
   .help = or to modify the entire experiment by a reindexing operator
@@ -186,15 +199,63 @@ filter
     assmann_diederichs {}
   }
 }
+"""
 
+modify_phil = """
 modify
   .help = The MODIFY section defines operations on the integrated intensities
   {
   algorithm = *polarization
     .type = choice
     .multiple = True
+  reindex_to_reference
+    .help = An algorithm to match input experiments against a reference model to
+    .help = break an indexing ambiguity
+    {
+    dataframe = None
+      .type = path
+      .help = if not None, save a list of which experiments were reindexed (requires pandas)
+      .help = and plot a histogram of correlation coefficients (matplotlib)
+    }
+  cosym
+    .help = Implement the ideas of Gildea and Winter doi:10.1107/S2059798318002978
+    .help = to determine Laue symmetry from individual symops
+    {
+    include scope dials.command_line.cosym.phil_scope
+    dataframe = None
+      .type = path
+      .help = if not None, save a list of which experiments were reindexed (requires pandas)
+      .help = and plot a histogram of correlation coefficients (matplotlib)
+    anchor = False
+      .type = bool
+      .help = Once the patterns are mutually aligned with the Gildea/Winter/Brehm/Diederichs methodology
+      .help = flip the whole set so that it is aligned with a reference model.  For simplicity, the
+      .help = reference model from scaling.model is used.  It should be emphasized that the scaling.model
+      .help = is only used to choose the overall alignment, which may be chosen arbitrarily, it does not
+      .help = bias the mutual alignment of the experimental diffraction patterns.
+    plot
+      {
+      do_plot = True
+        .type = bool
+        .help = Generate embedding plots to assess quality of modify_cosym reindexing.
+      n_max = 1
+        .type = int
+        .help = If shots were divided into tranches for alignment, generate embedding plots for
+        .help = the first n_max tranches.
+      interactive = False
+        .type = bool
+        .help = Open embedding plot in Matplotlib window instead of writing a file.
+      format = *png pdf
+        .type = choice
+        .multiple = False
+      filename = cosym_embedding
+        .type = str
+      }
+    }
 }
+"""
 
+select_phil = """
 select
   .help = The select section accepts or rejects specified reflections
   .help = refer to the filter section for filtering of whole experiments
@@ -231,7 +292,9 @@ select
       .help = Remove highest resolution bins such that all accepted bins have <I/sigma> >= sigma
     }
 }
+"""
 
+scaling_phil = """
 scaling {
   model = None
     .type = str
@@ -282,7 +345,9 @@ scaling {
     .help = "mark1: no scaling, just averaging (i.e. Monte Carlo
              algorithm).  Individual image scale factors are set to 1."
 }
+"""
 
+postrefinement_phil = """
 postrefinement {
   enable = False
     .type = bool
@@ -301,7 +366,6 @@ postrefinement {
     .help = Reimplement postrefinement with the following (Oct 2016):
     .help = Refinement engine now work on analytical derivatives instead of finite differences
     .help = Better convergence using "traditional convergence test"
-    .help = Use a streamlined frame_db schema, currently only supported for FS (filesystem) backend
     {}
   rs_hybrid
     .help = More aggressive postrefinement with the following (Oct 2016):
@@ -338,7 +402,9 @@ postrefinement {
     .help = each-image trumpet plot showing before-after plot. Spot color warmth indicates I/sigma
     .help = Spot radius for lower plot reflects partiality. Only implemented for rs_hybrid
 }
+"""
 
+merging_phil = """
 merging {
   minimum_multiplicity = 2
     .type = int(value_min=2)
@@ -390,7 +456,9 @@ merging {
     .type = bool
     .help = Merge anomalous contributors
 }
+"""
 
+output_phil = """
 output {
   prefix = iobs
     .type = str
@@ -398,7 +466,7 @@ output {
   title = None
     .type = str
     .help = Title for run - will appear in MTZ file header
-  output_dir = None
+  output_dir = .
     .type = str
     .help = output file directory
   tmp_dir = None
@@ -414,7 +482,9 @@ output {
     .type = bool
     .help = If True, dump the final set of experiments and reflections from the last worker
 }
+"""
 
+statistics_phil = """
 statistics {
   n_bins = 10
     .type = int(value_min=1)
@@ -451,7 +521,9 @@ statistics {
     .type = bool
     .help = Report statistics on per-frame attributes modeled by max-likelihood fit (expert only).
 }
+"""
 
+group_phil = """
 parallel {
   a2a = 1
     .type = int
@@ -460,10 +532,31 @@ parallel {
     .help = Use a2a > 1, when available RAM is insufficient for doing MPI alltoall on all data at once.
     .help = The data will be split into a2a parts and, correspondingly, alltoall will be performed in a2a iterations.
 }
+"""
 
-""" + mysql_master_phil
+publish_phil = """
+publish {
+  include scope xfel.command_line.upload_mtz.phil_scope
+}
+"""
 
-phil_scope = parse(master_phil)
+lunus_phil = """
+lunus {
+  deck_file = None
+    .type = path
+}
+"""
+
+# A place to override any defaults included from elsewhere
+program_defaults_phil_str = """
+modify.cosym.use_curvatures=False
+"""
+
+master_phil = dispatch_phil + input_phil + tdata_phil + filter_phil + modify_phil + \
+              select_phil + scaling_phil + postrefinement_phil + merging_phil + \
+              output_phil + statistics_phil + group_phil + lunus_phil + publish_phil
+phil_scope = parse(master_phil, process_includes = True)
+phil_scope = phil_scope.fetch(parse(program_defaults_phil_str))
 
 class Script(object):
   '''A class for running the script.'''

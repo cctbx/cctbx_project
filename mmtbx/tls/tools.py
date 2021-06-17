@@ -18,6 +18,7 @@ import iotbx.pdb.remark_3_interpretation
 from scitbx.linalg import eigensystem
 from six.moves import zip
 from six.moves import range
+from scitbx_array_family_flex_ext import reindexing_array
 
 def combine_tls_and_u_local(xray_structure, tls_selections, tls_groups):
   assert len(tls_selections) == len(tls_groups)
@@ -122,8 +123,11 @@ class tls_groups(object):
     selected_isels = []
     if self.iselections is not None:
       for isel in self.iselections:
+        ra = reindexing_array(n_atoms, selection.iselection().as_int())
         bsel = flex.bool(n_atoms, isel)
-        selected_isels.append((bsel&selection).iselection())
+        selected_isel = (bsel&selection).iselection()
+        new_isel = flex.size_t([ra[i] for i in selected_isel ])
+        selected_isels.append(new_isel)
     else:
       selected_isels = None
     return tls_groups(

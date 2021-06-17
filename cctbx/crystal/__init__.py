@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
 # -*- coding: utf-8 -*-
 from cctbx.array_family import flex
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
 from six.moves import zip
-ext = boost.python.import_ext("cctbx_crystal_ext")
+ext = bp.import_ext("cctbx_crystal_ext")
 from cctbx_crystal_ext import *
 from cctbx.crystal.find_best_cell import find_best_cell
 from cctbx import sgtbx
@@ -171,6 +171,13 @@ class symmetry(object):
 
   def __repr__(self):
     return self.as_py_code(indent="  ")
+
+  def is_identical_symmetry(self, other):
+    ''' True if identical for self and other '''
+    return self.is_similar_symmetry(other,
+      relative_length_tolerance = 0,
+      absolute_angle_tolerance = 0,
+      absolute_length_tolerance = 0,)
 
   def is_similar_symmetry(self,
                           other,
@@ -512,7 +519,7 @@ def select_crystal_symmetry(
       if cs and not cs.is_nonsense() and not cs.is_empty():
         is_similar_cs = cs0.is_similar_symmetry(cs,
            absolute_angle_tolerance=absolute_angle_tolerance,
-           absolute_length_tolerance=absolute_angle_tolerance)
+           absolute_length_tolerance=absolute_length_tolerance)
         if(not is_similar_cs):
           msg = "Crystal symmetry mismatch between different files.\n"
           msg += "%s %s\n" % (cs0.unit_cell(), cs0.space_group_info())
@@ -788,7 +795,7 @@ def correct_special_position(
     return site_special_frac
   return unit_cell.orthogonalize(site_special_frac)
 
-@boost.python.inject_into(pair_asu_table)
+@bp.inject_into(pair_asu_table)
 class _():
 
   def as_nested_lists(self):
@@ -849,6 +856,23 @@ class _():
       sites_frac=sites_frac,
       sites_cart=sites_cart,
       keep_pair_asu_table=keep_pair_asu_table,
+      out=out)
+
+  def show_dihedral_angles(self,
+        site_labels=None,
+        sites_frac=None,
+        sites_cart=None,
+        keep_pair_asu_table=False,
+        max_d=1.7,
+        max_angle=170,
+        out=None):
+    return show_dihedral_angles(
+      pair_asu_table=self,
+      site_labels=site_labels,
+      sites_frac=sites_frac,
+      sites_cart=sites_cart,
+      max_d=max_d,
+      max_angle=max_angle,
       out=out)
 
 class calculate_distances(object):
@@ -1180,6 +1204,197 @@ class show_angles(object):
       print("*%s" %(i+1), end=' ', file=out)
       print(rt_mx, file=out)
 
+
+class dihedral_angle_def(object):
+  def __init__(self, seqs, rt_mxs):
+    libtbx.adopt_init_args(self, locals())
+
+class calculate_dihedrals(object):
+  def __init__(self,
+               pair_asu_table,
+               sites_frac,
+               dihedral_defs=None, #angle definition
+               skip_j_seq_less_than_i_seq=True,
+               covariance_matrix=None,
+               cell_covariance_matrix=None,
+               parameter_map=None,
+               conformer_indices=None,
+               max_d = 1.9,
+               max_angle = 170):
+    libtbx.adopt_init_args(self, locals())
+    if self.covariance_matrix is not None:
+      self.variances = flex.double()
+    else:
+      self.variances = None
+    self.dihedrals = flex.double()
+
+  def __iter__(self):
+    return self.next()
+
+  def next(self):
+
+    class dihedral(object):
+      def __init__(self,
+                   angle,
+                   i_seqs,
+                   rt_mxs,
+                   variance=None):
+        libtbx.adopt_init_args(self, locals())
+      def __eq__(self, other):
+        for i in range(0,4):
+          if self.i_seqs[i] != other.i_seqs[i] or self.rt_mxs[i] != other.rt_mxs[i]:
+            return False
+        return True
+
+    asu_mappings = self.pair_asu_table.asu_mappings()
+    unit_cell = asu_mappings.unit_cell()
+    if self.covariance_matrix is not None:
+      assert self.parameter_map is not None
+      cov_cart = covariance.orthogonalize_covariance_matrix(
+        self.covariance_matrix, unit_cell, self.parameter_map)
+    if self.dihedral_defs is not None:
+      for ad in self.dihedral_defs:
+        sites = []
+        for i in range(0,4):
+          site_frac = ad.rt_mxs[i] * self.sites_frac[ad.seqs[i]]
+          sites.append(unit_cell.orthogonalize(site_frac))
+        a = geometry.dihedral(sites)
+        angle_ = a.dihedral_model
+        self.dihedrals.append(angle_)
+        if self.covariance_matrix is not None:
+          cov = covariance.extract_covariance_matrix_for_sites(
+            flex.size_t(ad.seqs), cov_cart, self.parameter_map)
+          if self.cell_covariance_matrix is not None:
+            var = a.variance(cov, unit_cell, ad.rt_mxs)
+          else:
+            var = a.variance(cov, unit_cell, ad.rt_mxs)
+          self.variances.append(var)
+        else:
+          var = None
+        yield dihedral(angle_, ad.seqs, ad.rt_mxs, variance=var)
+      return
+    table = self.pair_asu_table.table()
+    for i_seq,i_asu_dict in enumerate(table):
+      rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
+      i_site_frac = self.sites_frac[i_seq]
+      for j_seq,j_sym_groups in i_asu_dict.items():
+        if j_seq < i_seq: continue
+        rt_mx_j0_inv = asu_mappings.get_rt_mx(j_seq, 0).inverse()
+        for j_sym_group in j_sym_groups:
+          for j_sym_idx,j_sym in enumerate(j_sym_group):
+            rt_mx_j = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq, j_sym))
+            j_site_frac = rt_mx_j * self.sites_frac[j_seq]
+            for k_seq, k_sym_groups in table[j_seq].items():
+              if k_seq < i_seq: continue
+              if (self.conformer_indices is not None and
+                  self.conformer_indices[j_seq] !=
+                  self.conformer_indices[k_seq]):
+                continue
+              rt_mx_k0_inv = asu_mappings.get_rt_mx(k_seq, 0).inverse()
+              rt_mx_kj = rt_mx_j.multiply(rt_mx_j0_inv)
+              for k_sym_group in k_sym_groups:
+                for k_sym_idx,k_sym in enumerate(k_sym_group):
+                  rt_mx_k = rt_mx_kj.multiply(asu_mappings.get_rt_mx(k_seq, k_sym))
+                  k_site_frac = rt_mx_k *  self.sites_frac[k_seq]
+                  if k_site_frac == i_site_frac:
+                    continue
+                  if unit_cell.distance(j_site_frac, k_site_frac) > self.max_d:
+                    continue
+                  rt_mx_lk = rt_mx_k.multiply(rt_mx_k0_inv)
+                  for l_seq, l_sym_groups in table[k_seq].items():
+                    if l_seq < i_seq: continue
+                    if (self.conformer_indices is not None and
+                        self.conformer_indices[k_seq] !=
+                        self.conformer_indices[l_seq]):
+                      continue
+                    for l_sym_group in l_sym_groups:
+                      for l_sym_idx, l_sym in enumerate(l_sym_group):
+                        rt_mx_l = rt_mx_lk.multiply(asu_mappings.get_rt_mx(l_seq, l_sym))
+                        l_site_frac = rt_mx_l *  self.sites_frac[l_seq]
+                        if l_site_frac in (i_site_frac, j_site_frac):
+                          continue
+                        if unit_cell.angle(i_site_frac, j_site_frac, k_site_frac) > self.max_angle or\
+                           unit_cell.angle(j_site_frac, k_site_frac, l_site_frac) > self.max_angle:
+                          continue
+                        rt_mxs = [sgtbx.rt_mx(), rt_mx_j, rt_mx_k, rt_mx_l]
+                        sites = [i_site_frac, j_site_frac, k_site_frac, l_site_frac]
+                        seqs = [i_seq, j_seq, k_seq, l_seq]
+                        rtmx_count = [0,0,0,0]
+                        # find the most common matrix to eliminate
+                        for idx, rt_mx in enumerate(rt_mxs):
+                          for idx1 in range(idx+1, 4):
+                            if rt_mx == rt_mxs[idx1]:
+                              rtmx_count[idx] += 1
+                        max_idx = rtmx_count.index(max(rtmx_count))
+                        rt_mx_inv = rt_mxs[max_idx].inverse()
+                        for i in range(0, 4):
+                          sites[i] = rt_mxs[i].inverse() * sites[i]
+                          rt_mxs[i] = rt_mx_inv.multiply(rt_mxs[i])
+                          sites[i] = unit_cell.orthogonalize(rt_mxs[i] * sites[i])
+                        a = geometry.dihedral(sites)
+                        angle_ = a.dihedral_model
+                        self.dihedrals.append(angle_)
+                        if self.covariance_matrix is not None:
+                          cov = covariance.extract_covariance_matrix_for_sites(
+                            flex.size_t(seqs), cov_cart, self.parameter_map)
+                          if self.cell_covariance_matrix is not None:
+                            var = a.variance(cov, unit_cell, rt_mxs)
+                          else:
+                            var = a.variance(cov, unit_cell, rt_mxs)
+                          self.variances.append(var)
+                        else:
+                          var = None
+                        yield dihedral(angle_, seqs, rt_mxs, variance=var)
+
+class show_dihedral_angles(object):
+
+  def __init__(self,
+        pair_asu_table,
+        site_labels=None,
+        sites_frac=None,
+        sites_cart=None,
+        show_cartesian=False,
+        max_d=1.7,
+        max_angle=170,
+        out=None):
+
+    assert [sites_frac, sites_cart].count(None) == 1
+    if (out is None): out = sys.stdout
+    rt_mxs = []
+    if (site_labels is None):
+      label_len = len("%d" % (sites_frac.size()+1))
+      label_fmt = "site_%%0%dd" % label_len
+      label_len += 5
+    else:
+      label_len = 1
+      for label in site_labels:
+        label_len = max(label_len, len(label))
+      label_fmt = "%%-%ds" % (label_len+4)
+    angles = calculate_dihedrals(pair_asu_table, sites_frac,
+      max_d=max_d, max_angle=max_angle)
+    for d in angles:
+      if (site_labels is None):
+        s = label_fmt % (d.i_seqs[0]+1) + ":"
+      else:
+        s = ""
+        for idx, i_seq in enumerate(d.i_seqs):
+          label = label_fmt % site_labels[i_seq]
+          rt_mx = d.rt_mxs[idx]
+          if not rt_mx.is_unit_mx():
+            if rt_mx in rt_mxs:
+              j = rt_mxs.index(rt_mx) + 1
+            else:
+              rt_mxs.append(rt_mx)
+              j = len(rt_mxs)
+            label += "*%s" %j
+          s += label
+      s += " %6.2f" % d.angle
+      print(s, file=out)
+
+    self.dihedrals = angles.dihedrals
+    for i, rt_mx in enumerate(rt_mxs):
+      print("*%s %s" %(i+1, rt_mx), file=out)
+
 class sym_pair(libtbx.slots_getstate_setstate):
 
   __slots__ = ["i_seq", "j_seq", "rt_mx_ji"]
@@ -1192,7 +1407,7 @@ class sym_pair(libtbx.slots_getstate_setstate):
   def i_seqs(self):
     return (self.i_seq, self.j_seq)
 
-@boost.python.inject_into(pair_sym_table)
+@bp.inject_into(pair_sym_table)
 class _():
 
   def iterator(self):
@@ -1767,5 +1982,5 @@ def unit_crystal_symmetry():
   from cctbx import crystal
   return crystal.symmetry(unit_cell=uc,space_group_info=sg)
 
-boost.python.inject(ext.neighbors_simple_pair_generator, boost.python.py3_make_iterator)
-boost.python.inject_into(ext.neighbors_fast_pair_generator, boost.python.py3_make_iterator)
+bp.inject(ext.neighbors_simple_pair_generator, bp.py3_make_iterator)
+bp.inject_into(ext.neighbors_fast_pair_generator, bp.py3_make_iterator)

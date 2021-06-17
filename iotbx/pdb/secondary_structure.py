@@ -484,9 +484,10 @@ class structure_base(object):
     for chain in hierarchy.models()[0].chains():
       if chain.id == self.start_chain_id:
         for rg in chain.residue_groups():
-          if rg.resseq == start_resseq:
+          resname = rg.atom_groups()[0].resname
+          if rg.resseq == start_resseq and self.start_resname == resname:
             start_present = True
-          if rg.resseq == end_resseq:
+          if rg.resseq == end_resseq and self.end_resname == resname:
             end_present = True
           if start_present and end_present:
             return True
@@ -1405,6 +1406,11 @@ class annotation(structure_base):
     new_annotation.sheets=new_sheets
     return new_annotation
 
+  def add_helices_and_sheets_simple(self, other_annot):
+    self.helices += other_annot.helices
+    self.sheets += other_annot.sheets
+    self.renumber_helices_and_sheets()
+
   def combine_annotations(self,hierarchy=None,other=None,
     keep_self=None,
     max_h_bond_length=None,
@@ -1813,7 +1819,7 @@ class pdb_helix(structure_base):
         ):
     adopt_init_args(self, locals())
     if (length <= 0):
-      raise Sorry("Bad helix length. Check HELIX records.")
+      raise Sorry("Bad helix length. Check HELIX records.\n%s" % self.as_pdb_str())
     if isinstance(self.helix_class, int):
       self.helix_class = self._helix_class_array[helix_class]
     if self.helix_class not in self._helix_class_array:

@@ -15,7 +15,9 @@ import sys
 from six.moves import range
 import mmtbx.model
 
-def summary(pdb_file=None, pdb_hierarchy=None):
+def summary(pdb_file=None,
+            pdb_hierarchy=None,
+            crystal_symmetry=None):
   header_info = None
   if (pdb_hierarchy is None):
     assert (pdb_file is not None)
@@ -25,9 +27,19 @@ def summary(pdb_file=None, pdb_hierarchy=None):
     pdb_hierarchy.atoms().reset_i_seq()
     header_info = molprobity.pdb_header_info(
       pdb_file=pdb_file)
+    crystal_symmetry=pdb_in.file_object.crystal_symmetry()
   else :
     assert (pdb_file is None)
+  #
+  cache = pdb_hierarchy.atom_selection_cache()
+  sel = cache.selection('protein')
+  pdb_hierarchy = pdb_hierarchy.select(sel)
+  #
   model = mmtbx.model.manager(model_input = pdb_hierarchy.as_pdb_input())
+  if crystal_symmetry and model.crystal_symmetry() is None:
+    model.set_crystal_symmetry(crystal_symmetry) # Somehow pdb_hiearchy lacks cs
+  if not model.crystal_symmetry():
+    aaa=bbb
   return molprobity.molprobity(
     model=model,
     keep_hydrogens=False,
@@ -37,8 +49,9 @@ class parallel_driver(object):
   """
   Simple wrapper for passing to easy_mp.pool_map.
   """
-  def __init__(self, pdb_hierarchy):
+  def __init__(self, pdb_hierarchy, crystal_symmetry):
     self.pdb_hierarchy = pdb_hierarchy
+    self.crystal_symmetry = crystal_symmetry
 
   def __call__(self, i_model):
     import iotbx.pdb.hierarchy
@@ -46,7 +59,8 @@ class parallel_driver(object):
     model = self.pdb_hierarchy.models()[i_model].detached_copy()
     model.id = ""
     model_hierarchy.append_model(model)
-    return summary(pdb_hierarchy=model_hierarchy)
+    return summary(pdb_hierarchy=model_hierarchy,
+        crystal_symmetry=self.crystal_symmetry)
 
 molprobity_stat_labels = [
   "Ramachandran Outliers",
@@ -72,9 +86,9 @@ class ensemble(slots_getstate_setstate):
     "mpscore",
   ]
 
-  def __init__(self, pdb_hierarchy, n_models, nproc=Auto):
+  def __init__(self, pdb_hierarchy, n_models, crystal_symmetry, nproc=Auto):
     assert (len(pdb_hierarchy.models()) == n_models)
-    validate = parallel_driver(pdb_hierarchy)
+    validate = parallel_driver(pdb_hierarchy, crystal_symmetry)
     summaries = easy_mp.pool_map(
       processes=nproc,
       fixed_func=validate,
@@ -134,13 +148,17 @@ run phenix.model_vs_data or the validation GUI.)
   pdb_in = any_file(pdb_file, force_type="pdb").check_file_type("pdb")
   hierarchy = pdb_in.file_object.hierarchy
   xrs = pdb_in.file_object.input.xray_structures_simple()
+  crystal_symmetry=pdb_in.file_object.crystal_symmetry()
+  if not crystal_symmetry:
+    raise Sorry("Need crystal_symmetry in input PDB file")
   s = None
   extra = ""
   if (len(xrs) == 1):
-    s = summary(pdb_file=pdb_file)
+    s = summary(pdb_file=pdb_file,crystal_symmetry=crystal_symmetry)
   else :
     s = ensemble(pdb_hierarchy=hierarchy,
-      n_models=len(xrs))
+      n_models=len(xrs),
+      crystal_symmetry=crystal_symmetry)
     extra = " (%d models)" % len(xrs)
   print("", file=out)
   print("Validation summary for %s%s:" % (pdb_file, extra), file=out)

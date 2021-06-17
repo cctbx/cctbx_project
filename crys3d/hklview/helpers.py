@@ -1,11 +1,22 @@
 from __future__ import absolute_import, division, print_function
 # helper module for our own classes and widgets
 
+import numpy as np
+import matplotlib.pyplot as plt
+from PySide2 import QtWidgets
+from PySide2.QtCore import Qt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+
 from PySide2.QtCore import Qt, QEvent, QAbstractTableModel, QModelIndex
-from PySide2.QtWidgets import ( QCheckBox, QTableWidget, QAction, QMenu, QTableView,
-      QDialog,  QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox
+from PySide2.QtGui import QCursor, QKeySequence
+from PySide2.QtWidgets import ( QAbstractItemView, QCheckBox, QTableWidget, QAction,
+      QMenu, QTableView, QDialog, QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
+      QScrollArea, QVBoxLayout
      )
-import math
+import math, csv
+from io import StringIO
+
 
 class HeaderDataTableWidget(QTableWidget):
   def __init__(self, *args, **kwargs):
@@ -28,6 +39,7 @@ class HeaderDataTableWidget(QTableWidget):
 class MillerArrayTableForm(QDialog):
   def __init__(self, parent=None):
     super(MillerArrayTableForm, self).__init__(parent.window)
+    self.setWindowFlag(Qt.WindowContextHelpButtonHint,False);
     self.setWindowTitle("Tabulated Reflection Data")
     self.precision_spinBox = QSpinBox()
     self.precision_spinBox.setSingleStep(1)
@@ -79,6 +91,14 @@ class MillerArrayTableView(QTableView):
     self.tablemenu.triggered.connect(self.onTableMenuAction)
     self.setContextMenuPolicy(Qt.CustomContextMenu)
     self.customContextMenuRequested.connect(self.onRightClick)
+    self.doubleClicked.connect(self.onDoubleClick)
+    self.setSelectionMode(QAbstractItemView.MultiSelection)
+    #self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+  def onDoubleClick(self, index):
+    hkl = (int(index.siblingAtColumn(0).data()),
+           int(index.siblingAtColumn(1).data()),
+           int(index.siblingAtColumn(2).data()))
+    self.parent().parent().parent().parent.HighlightReflection(hkl)
   def onRightClick(self, QPos=None):
     parent=self.sender()
     self.tablemenu.move(QCursor.pos())
@@ -100,9 +120,9 @@ class MillerArrayTableView(QTableView):
         row = index.row() - rows[0]
         column = index.column() - columns[0]
         table[row][column] = index.data()
-      stream = io.StringIO()
+      stream = StringIO()
       csv.writer(stream, delimiter='\t').writerows(table)
-      app.clipboard().setText(stream.getvalue())
+      self.parent().parent().parent().parent.app.clipboard().setText(stream.getvalue())
 
 
 class MillerArrayTableModel(QAbstractTableModel):
@@ -158,9 +178,173 @@ class MillerArrayTableModel(QAbstractTableModel):
     """
     self.layoutAboutToBeChanged.emit()
     if order == Qt.AscendingOrder:
-      print(self.columnheaderdata[col] + " sort AscendingOrder")
+      #print(self.columnheaderdata[col] + " sort AscendingOrder")
       self._data = sorted(self._data, key= lambda data: self.minvals[col] if math.isnan(data[col]) else data[col])
     if order == Qt.DescendingOrder:
-      print(self.columnheaderdata[col] + " sort DescendingOrder")
+      #print(self.columnheaderdata[col] + " sort DescendingOrder")
       self._data = sorted(self._data, key= lambda data: self.minvals[col] if math.isnan(data[col]) else data[col], reverse=True)
     self.layoutChanged.emit()
+
+
+# Dialog box with MatPlotLib colour gradient charts from
+# http://matplotlib.org/examples/color/colormaps_reference.html
+
+
+# list all colour maps except their reverse which end with "_r"
+cmaps = [ c for c in plt.colormaps() if not c.endswith("_r")]
+gradient = np.linspace(0, 1, 256)
+gradient = np.vstack((gradient, gradient))
+
+dpi=50
+
+
+class MplCanvas(FigureCanvas):
+  def __init__(self, parent=None, width=5, height=4, dpi=dpi):
+    self.parent=parent
+    self.fig = Figure(figsize=(10, 20), dpi=dpi, facecolor=(1, 1, 1), edgecolor=(0.5, 0, 0))
+    self.axes = self.fig.subplots(nrows=len(cmaps), ncols=1)
+    # alignment of each subplot.
+    self.fig.subplots_adjust(top=0.995,
+                             bottom=0.01,
+                             left=0.22, # leave room for the label naming this colour map
+                             right=0.98 # leave a small gap before edge of canvas
+                             )
+    # total size of canvas
+    self.fig.set_size_inches(7,40) # total size of canvas
+    super(MplCanvas, self).__init__(self.fig)
+    cid = self.fig.canvas.mpl_connect('button_press_event', self.on_press)
+
+  def on_press(self, event):
+    if event.inaxes is not None:
+      self.parent.selcolmap = cmaps[event.inaxes.get_subplotspec().rowspan.start]
+      self.parent.updatelabel()
+      self.parent.EnactColourMapSelection()
+
+# TODO work out scaling of canvas to match QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+# and
+class MPLColourSchemes(QtWidgets.QDialog):
+  def __init__(self, parent=None):
+    super(MPLColourSchemes, self).__init__(parent.window)
+    self.setWindowFlags(Qt.Tool)
+    self.parent = parent
+    self.isOK = False
+    self.selcolmap = ""
+    self.datatype = ""
+    self.powscale = 1
+    #self.setWindowFlags(Qt.Tool)
+    # Create the maptlotlib FigureCanvas object,
+    # which defines a single set of axes as self.axes.
+    self.labeltxt = QtWidgets.QLabel()
+    self.labeltxt.setText("Click on a gradient map for colouring data values")
+    self.mycanvas = MplCanvas(self, dpi=dpi)
+    self.draw_axes_and_text()
+    scroll = QtWidgets.QScrollArea()
+    scroll.setWidget(self.mycanvas)
+    scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+    self.reversecheckbox = QtWidgets.QCheckBox()
+    self.reversecheckbox.setText("Reverse colour mapping")
+    self.reversecheckbox.clicked.connect(self.onReverseMap)
+    self.powscale_label = QtWidgets.QLabel()
+    self.powscale_label.setText("Power factor for map scaling:")
+    self.powscaleslider = QtWidgets.QSlider(Qt.Horizontal)
+    self.powscaleslider.setMinimum(-20)
+    self.powscaleslider.setMaximum(20)
+    self.powscaleslider.setTickPosition(QtWidgets.QSlider.TicksAbove)
+    self.powscaleslider.setTickInterval(1)
+    self.powscaleslider.sliderReleased.connect(self.onReleasePowscaleslider)
+    self.powscaleslider.valueChanged.connect(self.onValueChangedPowscaleslider)
+    self.powscaletxtbox = QtWidgets.QLineEdit('')
+    self.powscaletxtbox.setReadOnly(True)
+    self.OKbtn = QtWidgets.QPushButton("OK")
+    self.OKbtn.clicked.connect(self.onOK)
+    self.Cancelbtn =  QtWidgets.QPushButton("Cancel")
+    self.Cancelbtn.clicked.connect(self.onCancel)
+    gridlayout = QtWidgets.QGridLayout()
+    gridlayout.addWidget(self.labeltxt,          0, 0, 1, 2)
+    gridlayout.addWidget(self.reversecheckbox,   1, 0, 1, 1)
+    gridlayout.addWidget(self.powscale_label,    2, 0, 1, 1)
+    gridlayout.addWidget(self.powscaleslider,    2, 1, 1, 1)
+    gridlayout.addWidget(self.powscaletxtbox,    2, 2, 1, 1)
+    gridlayout.addWidget(scroll,                 3, 0, 1, 3)
+    gridlayout.addWidget(self.OKbtn,             4, 0, 1, 1)
+    gridlayout.addWidget(self.Cancelbtn,         4, 2, 1, 2)
+    self.setLayout(gridlayout)
+    #scw = self.parent.app.style().pixelMetric(QtWidgets.QStyle.PM_ScrollBarExtent)
+
+  def draw_axes_and_text(self):
+    for ax, name in zip(self.mycanvas.axes, cmaps):
+      ax.imshow(gradient, aspect='auto', cmap=plt.get_cmap(name))
+      ax.set_axis_off()
+      pos = list(ax.get_position().bounds)
+      x_text = pos[0] - 0.21
+      y_text = pos[1] + pos[3]/2.
+      self.mycanvas.fig.text(x_text, y_text, name, va='center', ha='left',
+                             fontsize= self.parent.app.font().pointSize()*1.5 )
+
+  def resizeEvent(self, event):
+    # MplCanvas doesn't resize with the rest of QtWidgets whenever
+    # triggered by a font size changes from the main GUI. So resize here instead
+    if event.type() == QEvent.Type.Resize:
+      ltxt = len(self.mycanvas.fig.texts)
+      for i in range(ltxt): # delete from the end as the lists is changed
+        self.mycanvas.fig.texts[ltxt-(i+1)].remove()
+      self.draw_axes_and_text()
+      qs = self.sizeHint()
+      self.mycanvas.resize(qs.width()*0.93, qs.height()*4)
+    QtWidgets.QDialog.resizeEvent(self, event)
+
+  def EnactColourMapSelection(self):
+    if hasattr(self.parent,"onColourChartSelect"):
+      self.parent.onColourChartSelect(self.selcolmap, self.powscale)
+
+  def showEvent(self, event):
+    self.updatelabel()
+    self.powscaletxtbox.setText("%2.2f" %self.powscale )
+
+  def onOK(self):
+    self.isOK = True
+    self.EnactColourMapSelection()
+    self.hide()
+
+  def onCancel(self):
+    self.isOK = False
+    self.hide()
+
+  def updatelabel(self):
+    self.labeltxt.setText('Selected colour gradient map: %s for %s data' %(self.selcolmap, self.datatype) )
+
+  def onReverseMap(self):
+    if self.reversecheckbox.isChecked():
+      if not self.selcolmap.endswith( "_r"):
+        self.selcolmap = self.selcolmap + "_r"
+    else:
+      if self.selcolmap.endswith( "_r"):
+        self.selcolmap = self.selcolmap[:-2]
+    self.updatelabel()
+    self.EnactColourMapSelection()
+
+  def onReleasePowscaleslider(self):
+    self.EnactColourMapSelection()
+
+  def onValueChangedPowscaleslider(self):
+    val= self.powscaleslider.value()
+    # want to raise the colour scaling to a power bigger than 0
+    # so compute powscale from an exponential of the slider value
+    self.powscale = math.pow(1.1, val) # 1.1 varies sufficiently slowly for the slider range [-10,10]
+    self.powscaletxtbox.setText("%2.2f" %self.powscale )
+
+  def setPowerScaleSliderVal(self, power):
+    self.powscale = power
+    val = math.log(power)/math.log(1.1)
+    self.powscaleslider.setValue(int(val))
+    self.updatelabel()
+
+  def setDataType(self, datatype):
+    self.datatype = datatype
+    self.updatelabel()
+    if datatype == "Map coeffs" or datatype == "Phases":
+      self.powscaleslider.setDisabled(True)
+      self.setPowerScaleSliderVal(1.0)
+    else:
+      self.powscaleslider.setEnabled(True)

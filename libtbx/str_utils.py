@@ -72,7 +72,7 @@ def string_representation(string, preferred_quote, alternative_quote):
   if (not _have_string_representation):
     _have_string_representation = True
     try:
-      from boost.python import ext as _
+      from boost_adaptbx.boost.python import ext as _
       string_representation = _.string_representation
     except Exception:
       string_representation = py_string_representation

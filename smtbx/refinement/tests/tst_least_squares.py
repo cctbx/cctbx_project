@@ -23,9 +23,12 @@ from six.moves import range
 tested_ls_engines = (
   least_squares.normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_2,
 )
-from fast_linalg import env
-if env.initialised:
-  tested_ls_engines += (  least_squares.normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_3,)
+try:
+  from fast_linalg import env
+  if env.initialised:
+    tested_ls_engines += (  least_squares.normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_3,)
+except ImportError:
+  print('Skipping fast_linalg checks')
 # we use a wrapper to make sure non_linear_ls_with_separable_scale_factor
 # is not an argument with a default value, so as to protect ourself from
 # forgetting to specify that argument in the tests, which would result
@@ -335,7 +338,7 @@ class adp_refinement_test(refinement_test):
       import re
       m = re.search(
         r'^cctbx::adptbx::debye_waller_factor_exp: \s* arg_limit \s+ exceeded'
-        '.* arg \s* = \s* ([\d.eE+-]+)', str(err), re.X)
+        r'.* arg \s* = \s* ([\d.eE+-]+)', str(err), re.X)
       assert m is not None, eval
       print("Warning: refinement of ADP's diverged")
       print('         argument to debye_waller_factor_exp reached %s' % m.group(1))

@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import libtbx.load_env
-import boost.python
-boost.python.import_ext("scitbx_lstbx_normal_equations_ext")
+import boost_adaptbx.boost.python as bp
+bp.import_ext("scitbx_lstbx_normal_equations_ext")
 import scitbx_lstbx_normal_equations_ext as ext
 from scitbx_lstbx_normal_equations_ext import *
 
@@ -55,7 +55,7 @@ class non_linear_ls_mixin(object):
   def step(self):
     return self.step_equations().solution()
 
-@boost.python.inject_into(linear_ls)
+@bp.inject_into(linear_ls)
 class _():
 
   def __iter__(self):

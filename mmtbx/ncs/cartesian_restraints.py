@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import zip
-ext = boost.python.import_ext("mmtbx_ncs_cartesian_restraints_ext")
+ext = bp.import_ext("mmtbx_ncs_cartesian_restraints_ext")
 from mmtbx_ncs_cartesian_restraints_ext import *
 
 from cctbx import adptbx
@@ -32,6 +32,8 @@ class cartesian_ncs_manager(object):
     else:
       self.groups_list = []
       ncs_obj = model.get_ncs_obj()
+      if ncs_obj is None:
+        return
       self.ncs_restraints_group_list = ncs_obj.get_ncs_restraints_group_list()
       ncs_groups_selection_string_list = self.ncs_restraints_group_list.get_array_of_str_selections()
       for i_gr, gr in enumerate(self.ncs_restraints_group_list):

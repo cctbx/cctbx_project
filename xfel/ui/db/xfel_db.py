@@ -239,6 +239,30 @@ class initialize(initialize_base):
         query = "ALTER TABLE `%s_job` ADD INDEX `fk_job_dataset1_idx` (`dataset_id` ASC)"%self.params.experiment_tag
         cursor.execute(query)
 
+      # Maintain backwards compatibility with SQL tables v5: 10/09/20
+      query = "SHOW columns FROM `%s_rungroup`"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = list(zip(*columns))[0]
+      if 'wavelength_offset' not in column_names:
+        print("Upgrading to version 5.1 of mysql database schema")
+        query = "ALTER TABLE `%s_rungroup` ADD COLUMN wavelength_offset DOUBLE NULL"%self.params.experiment_tag
+        cursor.execute(query)
+
+      # Maintain backwards compatibility with SQL tables v5: 12/11/20
+      query = "SHOW columns FROM `%s_rungroup`"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = list(zip(*columns))[0]
+      if 'spectrum_eV_per_pixel' not in column_names:
+        print("Upgrading to version 5.2 of mysql database schema")
+        query = "ALTER TABLE `%s_rungroup` ADD COLUMN spectrum_eV_per_pixel DOUBLE NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_rungroup` ADD COLUMN spectrum_eV_offset DOUBLE NULL"%self.params.experiment_tag
+        cursor.execute(query)
+
     return tables_ok
 
   def set_up_columns_dict(self, app):
@@ -251,13 +275,25 @@ class initialize(initialize_base):
     return columns_dict
 
 class db_application(object):
-  def __init__(self, params, cache_connection = False):
+  def __init__(self, params, cache_connection = False, mode = 'execute'):
     self.params = params
     self.dbobj = None
     self.cache_connection = cache_connection
+    self.query_count = 0
+    self.mode = mode
+    self.last_query = None
+
+  def __setattr__(self, prop, val):
+    if prop == "mode":
+      assert val in ['execute', 'cache_commits']
+    return super(db_application, self).__setattr__(prop, val)
 
   def execute_query(self, query, commit = False):
     from MySQLdb import OperationalError
+
+    if self.mode == 'cache_commits' and commit:
+      self.last_query = query
+      return
 
     if self.params.db.verbose:
       from time import time
@@ -269,8 +305,10 @@ class db_application(object):
     sleep_time = 0.1
     while retry_count < retry_max:
       try:
-        if self.dbobj is None or (not commit and not self.cache_connection):
-          self.dbobj = dbobj = get_db_connection(self.params)
+        if self.dbobj is None:
+          dbobj = get_db_connection(self.params)
+          if self.cache_connection:
+            self.dbobj = dbobj
         else:
           dbobj = self.dbobj
         cursor = dbobj.cursor()
@@ -300,46 +338,45 @@ class db_application(object):
     raise Sorry("Couldn't execute MYSQL query. Too many reconnects. Query: %s"%query)
 
 class xfel_db_application(db_application):
-  def __init__(self, params, drop_tables = False, verify_tables = False, cache_connection = False):
-    super(xfel_db_application, self).__init__(params, cache_connection)
-    self.query_count = 0
+  def __init__(self, params, drop_tables = False, verify_tables = False, **kwargs):
+    super(xfel_db_application, self).__init__(params, **kwargs)
     dbobj = get_db_connection(params)
-    self.init_tables = initialize(params, dbobj) # only place where a connection is held
+    init_tables = initialize(params, dbobj)
 
     if drop_tables:
-      self.drop_tables()
+      init_tables.drop_tables()
 
-    if verify_tables and not self.verify_tables():
-      self.create_tables()
+    if verify_tables and not init_tables.verify_tables():
+      init_tables.create_tables()
       print('Creating experiment tables...')
-      if not self.verify_tables():
+      if not init_tables.verify_tables():
         raise Sorry("Couldn't create experiment tables")
 
-    self.columns_dict = self.init_tables.set_up_columns_dict(self)
+    self.columns_dict = init_tables.set_up_columns_dict(self)
 
   def list_lcls_runs(self):
-    if self.params.facility.lcls.web.user is None or len(self.params.facility.lcls.web.user) == 0:
+    if self.params.facility.lcls.web.location is None or len(self.params.facility.lcls.web.location) == 0:
       from xfel.command_line.auto_submit import match_runs
       import os
       exp_prefix = self.params.facility.lcls.experiment[0:3].upper()
       xtc_dir = os.path.join(os.environ.get('SIT_PSDM_DATA', '/reg/d/psdm'), exp_prefix, self.params.facility.lcls.experiment, 'xtc')
-      return [{'run':str(r.id)} for r in match_runs(xtc_dir, False)]
+      return [{'run':str(r.id)} for r in sorted(match_runs(xtc_dir, False), key=lambda x:x.id)]
     else:
-      from xfel.xpp.simulate import file_table
-      query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s" % (self.params.facility.lcls.experiment)
-      FT = file_table(self.params.facility.lcls, query, enforce80=self.params.facility.lcls.web.enforce80, enforce81=self.params.facility.lcls.web.enforce81)
-      runs = FT.get_runs()
-      for r in runs: r['run'] = str(r['run'])
-      return runs
+      import json
+      from six.moves import urllib
+      basequery = "https://pswww.slac.stanford.edu/ws/lgbk/lgbk/%s/ws/files_for_live_mode_at_location?location=%s"
+      query = basequery%(self.params.facility.lcls.experiment, self.params.facility.lcls.web.location)
+      R = urllib.request.urlopen(query)
+      if R.getcode() != 200:
+        print ("Couldn't connect to LCLS webservice to list runs, code", R.getcode())
+        return []
 
-  def verify_tables(self):
-    return self.init_tables.verify_tables()
+      j = json.loads(R.read())
+      if not j.get('success'):
+        print("Web service query to list runs failed")
+        return []
 
-  def create_tables(self):
-    return self.init_tables.create_tables()
-
-  def drop_tables(self):
-    return self.init_tables.drop_tables()
+      return [{'run':str(int(r['run_num']))} for r in sorted(j['value'], key=lambda x:x['run_num']) if r['all_present']]
 
   def create_trial(self, d_min = 1.5, n_bins = 10, **kwargs):
     # d_min and n_bins only used if isoforms are in this trial
@@ -602,7 +639,14 @@ class xfel_db_application(db_application):
     run_ids = ["%d"%i[0] for i in cursor.fetchall()]
     if len(run_ids) == 0:
       return []
-    return self.get_all_x(Run, "run", where = "WHERE run.id IN (%s)"%",".join(run_ids))
+
+    use_ids = self.params.facility.name not in ['lcls']
+    if use_ids:
+      key = lambda x: x.id
+    else:
+      key = lambda x: int(x.run)
+
+    return sorted(self.get_all_x(Run, "run", where = "WHERE run.id IN (%s)"%",".join(run_ids)), key=key)
 
   def get_trial_tags(self, trial_id):
     tag = self.params.experiment_tag
@@ -834,6 +878,9 @@ class xfel_db_application(db_application):
 
   def get_task(self, task_id):
     return Task(self, task_id)
+
+  def get_all_tasks(self):
+    return self.get_all_x(Task, "task")
 
 # Deprecated, but preserved here in case it proves useful later
 """

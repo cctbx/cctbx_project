@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 import mmtbx.f_model
-import mmtbx.utils
 import mmtbx.masks
 from mmtbx import map_tools
 from iotbx import phil
@@ -351,7 +350,13 @@ class compute_polder_map():
 
   # ---------------------------------------------------------------------------
 
-  def get_polder_diff_map(self, f_obs, r_free_flags, f_calc, f_mask, xrs_selected):
+  def get_polder_diff_map(self,
+                          f_obs,
+                          r_free_flags,
+                          f_calc,
+                          f_mask,
+                          model_selected,
+                          box_cushion):
     fmodel = mmtbx.f_model.manager(
       f_obs        = f_obs,
       r_free_flags = r_free_flags,
@@ -367,18 +372,31 @@ class compute_polder_map():
       crystal_gridding     = self.crystal_gridding,
       fourier_coefficients = mc_diff)
     fft_map.apply_sigma_scaling()
-    map_data = fft_map.real_map_unpadded()
-    return mmtbx.utils.extract_box_around_model_and_map(
-      xray_structure = xrs_selected,
-      map_data       = map_data,
-      box_cushion    = 2.1)
+    mm= fft_map.as_map_manager()
+
+    from iotbx.map_model_manager import map_model_manager
+    inputs=map_model_manager(
+      model=model_selected.deep_copy(),
+      map_manager=mm,) # no need to allow ignore_symmetry_conflicts
+    return inputs
 
   # ---------------------------------------------------------------------------
 
   def validate_polder_map(self,
                           selection_bool,
                           xray_structure_noligand,
-                          mask_data_polder):
+                          mask_data_polder,
+                          box_cushion = 2.1):
+    '''
+    The parameter box_cushion is hardcoded to be 2.1
+    The value is related to the site_radii used for CC calculation (box_cushion - 0.1)
+    Ideally the site_radii are calculated according to resolution, atom type and B factor for each atom
+    However, for the purpose of polder map validation, it is a reasonable approximation
+    to use 2.0.
+    If this value is changed, it will affect the values of the CCs and therefore also the
+    output messages (see mmtbx/programs/polder.py --> result_message)
+    So modify this value with caution.
+    '''
   # Significance check
     fmodel = mmtbx.f_model.manager(
      f_obs          = self.f_obs,
@@ -395,6 +413,7 @@ class compute_polder_map():
       force_update_f_mask = True)
   ## PVA: do we need it? fmodel.update_all_scales(remove_outliers=False)
     f_obs_2 = abs(fmodel.f_model())
+    model_selected = self.model.select(selection_bool)
     pdb_hierarchy_selected = self.pdb_hierarchy.select(selection_bool)
     xrs_selected = pdb_hierarchy_selected.extract_xray_structure(
       crystal_symmetry = self.cs)
@@ -410,30 +429,33 @@ class compute_polder_map():
       r_free_flags = fmodel.r_free_flags(),
       f_calc = f_calc,
       f_mask = f_mask,
-      xrs_selected = xrs_selected)
+      model_selected = model_selected,
+      box_cushion = box_cushion)
     box_2 = self.get_polder_diff_map(
       f_obs = f_obs_2,
       r_free_flags = fmodel.r_free_flags(),
       f_calc = f_calc,
       f_mask = f_mask,
-      xrs_selected = xrs_selected)
+      model_selected = model_selected,
+      box_cushion = box_cushion)
     box_3 = self.get_polder_diff_map(
       f_obs = fmodel.f_obs(),
       r_free_flags = fmodel.r_free_flags(),
       f_calc = f_calc,
       f_mask = f_mask,
-      xrs_selected = xrs_selected)
+      model_selected = model_selected,
+      box_cushion = box_cushion)
 
-    sites_cart_box = box_1.xray_structure_box.sites_cart()
+    sites_cart_box = box_1.model().get_xray_structure().sites_cart()
     sel = maptbx.grid_indices_around_sites(
-      unit_cell  = box_1.xray_structure_box.unit_cell(),
-      fft_n_real = box_1.map_box.focus(),
-      fft_m_real = box_1.map_box.all(),
+      unit_cell  = box_1.model().get_xray_structure().unit_cell(),
+      fft_n_real = box_1.map_manager().map_data().focus(),
+      fft_m_real = box_1.map_manager().map_data().all(),
       sites_cart = sites_cart_box,
-      site_radii = flex.double(sites_cart_box.size(), 2.0))
-    b1 = box_1.map_box.select(sel).as_1d()
-    b2 = box_2.map_box.select(sel).as_1d()
-    b3 = box_3.map_box.select(sel).as_1d()
+      site_radii = flex.double(sites_cart_box.size(), box_cushion-0.1))
+    b1 = box_1.map_manager().map_data().select(sel).as_1d()
+    b2 = box_2.map_manager().map_data().select(sel).as_1d()
+    b3 = box_3.map_manager().map_data().select(sel).as_1d()
     # Map 1: calculated Fobs with ligand
     # Map 2: calculated Fobs without ligand
     # Map 3: real Fobs data
@@ -453,7 +475,7 @@ class compute_polder_map():
     d12 = maptbx.discrepancy_function(map_1=b1, map_2=b2, cutoffs=cutoffs)
     d13 = maptbx.discrepancy_function(map_1=b1, map_2=b3, cutoffs=cutoffs)
     d23 = maptbx.discrepancy_function(map_1=b2, map_2=b3, cutoffs=cutoffs)
-    pdb_hierarchy_selected.adopt_xray_structure(box_1.xray_structure_box)
+    pdb_hierarchy_selected.adopt_xray_structure(box_1.model().get_xray_structure())
     return group_args(
       box_1 = box_1,
       box_2 = box_2,

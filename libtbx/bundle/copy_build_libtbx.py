@@ -45,7 +45,8 @@ def run(target_root):
     if (os.path.isdir(source_dir)):
       target_dir = libtbx.path.norm_join(abs_target_root, sub_dir)
       os.chdir(source_dir)
-      os.path.walk(".", visitor, target_dir)
+      for root, dirs, files in os.walk("."):
+        visitor(target_dir, root, files)
   for sub_dir,visitor in (("lib", copy_lib_and_exe_files),
                           ("exe", copy_lib_and_exe_files),
                           ("base", copy_base_files)):

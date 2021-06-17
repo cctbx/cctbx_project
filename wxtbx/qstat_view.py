@@ -3,20 +3,16 @@ from __future__ import absolute_import, division, print_function
 import wxtbx.bitmaps
 from libtbx.queuing_system_utils import sge_utils
 from libtbx.utils import Sorry
-from functools import cmp_to_key
-from past.builtins import cmp
 import wx
 try :
   from wx.lib.agw.genericmessagedialog import GenericMessageDialog
 except ImportError :
   GenericMessageDialog = wx.MessageBox
 
-import sys, os, time
+import sys, time
 
-if sys.platform in ["linux", "linux2", "linux3", "darwin"] :
-  user = os.environ['USER']
-else :
-  user = None # is it even worth bothering with Windows here?
+import getpass
+user = getpass.getuser()
 
 job_attrs = ["job_id", "state", "name", "user", "submit", "queue"]
 job_labels = ["Job ID", "Status", "Name", "User", "Start time", "Queue"]
@@ -53,17 +49,13 @@ class qsub_list_data(object):
       else :
         self._sort_descending = False
     if col == 0 :
-      cmp_fn = lambda x, y: cmp(int(x.job_id), int(y.job_id))
-      self._data.sort(key=cmp_to_key(cmp_fn))
+      self._data.sort(key=lambda element: int(element.job_id))
     elif col == 4 :
       fmt = "%m/%d/%Y %H:%M:%S"
-      cmp_fn = lambda x, y: cmp(time.strptime(x.submit, fmt),
-                                time.strptime(y.submit, fmt))
-      self._data.sort(key=cmp_to_key(cmp_fn))
+      self._data.sort(key=lambda element: time.strptime(element.submit, fmt))
     else :
       attr = job_attrs[col]
-      cmp_fn = lambda x, y: cmp(getattr(x, attr), getattr(y, attr))
-      self._data.sort(key=cmp_to_key(cmp_fn))
+      self._data.sort(key=lambda element: getattr(element, attr))
     if self._sort_descending :
       self._data.reverse()
     self._sortby = col
@@ -179,7 +171,7 @@ class queue_list_frame(wx.Frame):
   def SetupToolbar(self):
     if wxtbx.bitmaps.icon_lib is None :
       return
-    self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+    self.toolbar = self.CreateToolBar(style=wx.TB_TEXT)
     commands = [
       ("actions","reload", "OnUpdate", "Refresh list"),
       ("actions","editdelete", "OnDelete", "Delete selected"),

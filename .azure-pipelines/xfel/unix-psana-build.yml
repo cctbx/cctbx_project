@@ -3,7 +3,7 @@
 # Variables:
 #   CONDA: Linux, MacOSX
 #   OS: linux-64, osx-64
-#   PYTHON_VERSION: py27, py36
+#   PYTHON_VERSION: py36
 
 steps:
 
@@ -14,12 +14,13 @@ steps:
   displayName: Download modules tarball
   inputs:
     source: 'current'
-    artifact: modules
+    artifact: xfel_modules
     path: $(Pipeline.Workspace)
 
 - script: |
     cd $(Pipeline.Workspace)
     tar -xf modules.tar
+    rm modules.tar
   displayName: Extract modules tarball
 
 - script: |
@@ -29,13 +30,13 @@ steps:
 
 # install miniconda
 - task: DownloadPipelineArtifact@2
-  displayName: Download miniconda
   inputs:
     source: 'specific'
-    project: '$(System.TeamProjectId)'
-    pipeline: 4
+    project: '$(resources.pipeline.data_cache.projectID)'
+    pipeline: '$(resources.pipeline.data_cache.pipelineID)'
     artifact: 'miniconda'
     path: $(Pipeline.Workspace)/miniconda
+  displayName: Download miniconda
 
 - script: |
     set -x -e
@@ -48,6 +49,7 @@ steps:
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda env create -f $(Pipeline.Workspace)/modules/cctbx_project/xfel/conda_envs/psana_environment.yml
     conda install -y -c conda-forge --no-deps -n psana_env junit-xml
+    conda install -y pandas -n psana_env
   displayName: Create conda environment
 
 # build
@@ -55,7 +57,8 @@ steps:
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda activate psana_env
     cd $(Pipeline.Workspace)
-    python bootstrap.py build --builder=xfel --use-conda=${CONDA_PREFIX} --nproc=4
+    rm -rf modules/boost
+    python bootstrap.py --builder=xfel --use-conda $CONDA_PREFIX --nproc=4 --config-flags="--compiler=conda" --config-flags="--use_environment_flags" --config-flags="--enable_cxx11" --config-flags="--no_bin_python" --no-boost-src build
   displayName: Configure and Build
 
 # test

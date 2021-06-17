@@ -238,7 +238,7 @@ class glyco_link_class:
       "_chem_link_chir.volume_sign",
       ))
     value = get_chiral_sign(self.anomeric_carbon.parent().resname)
-    if value>0:
+    if value is not None and value>0:
       value = "positiv"
     else:
       value = "negativ"

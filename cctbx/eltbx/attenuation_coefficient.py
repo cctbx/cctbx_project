@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex # import dependency
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-ext = boost.python.import_ext("cctbx_eltbx_attenuation_coefficient_ext")
+ext = bp.import_ext("cctbx_eltbx_attenuation_coefficient_ext")
 from cctbx_eltbx_attenuation_coefficient_ext import *
 
 

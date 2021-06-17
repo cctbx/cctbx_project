@@ -2,13 +2,13 @@ from __future__ import absolute_import, division, print_function
 import scitbx.array_family.flex # import dependency
 import scitbx.array_family.shared # import dependency
 
-import boost.python
-ext = boost.python.import_ext("scitbx_math_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("scitbx_math_ext")
 from scitbx_math_ext import *
 
 import sys
 
-@boost.python.inject_into(ext.basic_statistics)
+@bp.inject_into(ext.basic_statistics)
 class _():
 
   def show(self, f=None, prefix=""):
@@ -34,7 +34,7 @@ class _():
         print(prefix+"kurtosis:", self.kurtosis, file=f)
         print(prefix+"kurtosis_excess:", self.kurtosis_excess, file=f)
 
-@boost.python.inject_into(ext.line_search_more_thuente_1994)
+@bp.inject_into(ext.line_search_more_thuente_1994)
 class _():
 
   def show_status(self, f=None, prefix=""):
@@ -50,7 +50,7 @@ class _():
     print(prefix+"stp:", self.stp, file=f)
     print(prefix+"nfev:", self.nfev, file=f)
 
-@boost.python.inject_into(ext.unimodular_generator)
+@bp.inject_into(ext.unimodular_generator)
 class _():
 
   def all(self):

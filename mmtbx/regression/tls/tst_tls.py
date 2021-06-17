@@ -10,6 +10,9 @@ import libtbx.load_env
 import os
 from six.moves import zip
 
+params = monomer_library.pdb_interpretation.master_params.extract()
+params.flip_symmetric_amino_acids = False
+
 def uaniso_from_tls_and_back():
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
@@ -19,6 +22,7 @@ def uaniso_from_tls_and_back():
   processed_pdb_file = monomer_library.pdb_interpretation.process(
                                        mon_lib_srv               = mon_lib_srv,
                                        ener_lib                  = ener_lib,
+                                       params = params,
                                        file_name                 = pdb_file,
                                        raw_records               = None,
                                        force_symmetry            = True)

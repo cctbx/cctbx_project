@@ -13,135 +13,136 @@ env_etc.cctbx_common_includes = [
   env_etc.boost_include,
 ]
 
-env = env_base.Clone(
-  SHLINKFLAGS=env_etc.shlinkflags
-)
-env_etc.include_registry.append(
-  env=env,
-  paths=env_etc.cctbx_common_includes)
-envlm = env.Clone(
-  LIBS=env_etc.libm
-)
-
-lib_cctbx_sources = [
-  "eltbx/basic.cpp",
-  "eltbx/xray_scattering/it1992.cpp",
-  "eltbx/xray_scattering/wk1995.cpp",
-  "eltbx/xray_scattering/n_gaussian_raw.cpp",
-  "eltbx/xray_scattering/n_gaussian.cpp",
-  "eltbx/fp_fdp.cpp",
-  "eltbx/henke.cpp",
-  "eltbx/henke_tables_01_12.cpp",
-  "eltbx/henke_tables_13_24.cpp",
-  "eltbx/henke_tables_25_36.cpp",
-  "eltbx/henke_tables_37_48.cpp",
-  "eltbx/henke_tables_49_60.cpp",
-  "eltbx/henke_tables_61_72.cpp",
-  "eltbx/henke_tables_73_84.cpp",
-  "eltbx/henke_tables_85_92.cpp",
-  "eltbx/icsd_radii.cpp",
-  "eltbx/covalent_radii.cpp",
-  "eltbx/neutron.cpp",
-  "eltbx/sasaki.cpp",
-  "eltbx/sasaki_tables_01_12.cpp",
-  "eltbx/sasaki_tables_13_24.cpp",
-  "eltbx/sasaki_tables_25_36.cpp",
-  "eltbx/sasaki_tables_37_48.cpp",
-  "eltbx/sasaki_tables_49_60.cpp",
-  "eltbx/sasaki_tables_61_72.cpp",
-  "eltbx/sasaki_tables_73_82.cpp",
-  "eltbx/tiny_pse.cpp",
-  "eltbx/wavelengths.cpp",
-  "eltbx/electron_scattering/peng1996.cpp",
-  "eltbx/attenuation_coefficient.cpp",
-
-  "miller/asu.cpp",
-  "miller/bins.cpp",
-  "miller/index_generator.cpp",
-  "miller/index_span.cpp",
-  "miller/match_bijvoet_mates.cpp",
-  "miller/match_indices.cpp",
-  "miller/match_multi_indices.cpp",
-  "miller/sym_equiv.cpp",
-
-  "sgtbx/bricks.cpp",
-  "sgtbx/change_of_basis_op.cpp",
-  "sgtbx/find_affine.cpp",
-  "sgtbx/group_codes.cpp",
-  "sgtbx/hall_in.cpp",
-  "sgtbx/lattice_tr.cpp",
-  "sgtbx/lattice_symmetry.cpp",
-  "sgtbx/miller.cpp",
-  "sgtbx/reciprocal_space_asu.cpp",
-  "sgtbx/reciprocal_space_ref_asu.cpp",
-  "sgtbx/rot_mx.cpp",
-  "sgtbx/rot_mx_info.cpp",
-  "sgtbx/row_echelon_solve.cpp",
-  "sgtbx/rt_mx.cpp",
-  "sgtbx/select_generators.cpp",
-  "sgtbx/seminvariant.cpp",
-  "sgtbx/site_symmetry.cpp",
-  "sgtbx/space_group.cpp",
-  "sgtbx/space_group_type.cpp",
-  "sgtbx/symbols.cpp",
-  "sgtbx/tensor_rank_2.cpp",
-  "sgtbx/tr_group.cpp",
-  "sgtbx/tr_vec.cpp",
-  "sgtbx/utils.cpp",
-  "sgtbx/wyckoff.cpp",
-  "sgtbx/reference_settings/hall_symbol_table.cpp",
-  "sgtbx/reference_settings/matrix_group_code_table.cpp",
-  "sgtbx/reference_settings/normalizer.cpp",
-  "sgtbx/reference_settings/wyckoff.cpp",
-
-  "uctbx/uctbx.cpp",
-  "uctbx/spoil_optimization.cpp",
-  "uctbx/crystal_orientation.cpp",
-]
-
-if (env_etc.static_libraries): builder = envlm.StaticLibrary
-else:                          builder = envlm.SharedLibrary
-builder(
-  target="#lib/cctbx",
-  source=lib_cctbx_sources)
-
-SConscript("examples/SConscript")
-
-if (not env_etc.no_boost_python):
-  Import("env_no_includes_boost_python_ext")
-
-  env_cctbx_boost_python_ext = env_no_includes_boost_python_ext.Clone()
-  env_cctbx_boost_python_ext.Prepend(LIBS=["scitbx_boost_python"])
+if not libtbx.env.module_is_installed("cctbx"):
+  env = env_base.Clone(
+    SHLINKFLAGS=env_etc.shlinkflags
+  )
   env_etc.include_registry.append(
-    env=env_cctbx_boost_python_ext,
-    paths=env_etc.cctbx_common_includes + [env_etc.python_include])
-  Export("env_cctbx_boost_python_ext")
+    env=env,
+    paths=env_etc.cctbx_common_includes)
+  envlm = env.Clone(
+    LIBS=env_etc.libm
+  )
 
-  SConscript("math/boost_python/SConscript")
-  SConscript("array_family/boost_python/SConscript")
-  SConscript("eltbx/boost_python/SConscript")
-  SConscript("uctbx/boost_python/SConscript")
-  SConscript("sgtbx/boost_python/SConscript")
-  SConscript("adptbx/boost_python/SConscript")
-  SConscript("miller/boost_python/SConscript")
-  SConscript("xray/boost_python/SConscript")
-  SConscript("maptbx/boost_python/SConscript")
-  SConscript("masks/boost_python/SConscript")
-  SConscript("translation_search/boost_python/SConscript")
-  SConscript("dmtbx/boost_python/SConscript")
-  SConscript("boost_python/SConscript")
-  SConscript("crystal/SConscript")
-  SConscript("geometry_restraints/SConscript")
-  SConscript("geometry/boost_python/SConscript")
-  SConscript("covariance/boost_python/SConscript")
-  SConscript("adp_restraints/SConscript")
-  SConscript("symmetry_search/boost_python/SConscript")
-  SConscript("xray/observations/boost_python/SConscript")
-  SConscript("merging/SConscript")
-  SConscript("multipolar/SConscript")
-  SConscript("uctbx/determine_unit_cell/SConscript")
-  SConscript("examples/merging/SConscript")
+  lib_cctbx_sources = [
+    "eltbx/basic.cpp",
+    "eltbx/xray_scattering/it1992.cpp",
+    "eltbx/xray_scattering/wk1995.cpp",
+    "eltbx/xray_scattering/n_gaussian_raw.cpp",
+    "eltbx/xray_scattering/n_gaussian.cpp",
+    "eltbx/fp_fdp.cpp",
+    "eltbx/henke.cpp",
+    "eltbx/henke_tables_01_12.cpp",
+    "eltbx/henke_tables_13_24.cpp",
+    "eltbx/henke_tables_25_36.cpp",
+    "eltbx/henke_tables_37_48.cpp",
+    "eltbx/henke_tables_49_60.cpp",
+    "eltbx/henke_tables_61_72.cpp",
+    "eltbx/henke_tables_73_84.cpp",
+    "eltbx/henke_tables_85_92.cpp",
+    "eltbx/icsd_radii.cpp",
+    "eltbx/covalent_radii.cpp",
+    "eltbx/neutron.cpp",
+    "eltbx/sasaki.cpp",
+    "eltbx/sasaki_tables_01_12.cpp",
+    "eltbx/sasaki_tables_13_24.cpp",
+    "eltbx/sasaki_tables_25_36.cpp",
+    "eltbx/sasaki_tables_37_48.cpp",
+    "eltbx/sasaki_tables_49_60.cpp",
+    "eltbx/sasaki_tables_61_72.cpp",
+    "eltbx/sasaki_tables_73_82.cpp",
+    "eltbx/tiny_pse.cpp",
+    "eltbx/wavelengths.cpp",
+    "eltbx/electron_scattering/peng1996.cpp",
+    "eltbx/attenuation_coefficient.cpp",
 
-SConscript("sgtbx/direct_space_asu/proto/SConscript")
-SConscript("math/SConscript")
-SConscript("maptbx/SConscript")
+    "miller/asu.cpp",
+    "miller/bins.cpp",
+    "miller/index_generator.cpp",
+    "miller/index_span.cpp",
+    "miller/match_bijvoet_mates.cpp",
+    "miller/match_indices.cpp",
+    "miller/match_multi_indices.cpp",
+    "miller/sym_equiv.cpp",
+
+    "sgtbx/bricks.cpp",
+    "sgtbx/change_of_basis_op.cpp",
+    "sgtbx/find_affine.cpp",
+    "sgtbx/group_codes.cpp",
+    "sgtbx/hall_in.cpp",
+    "sgtbx/lattice_tr.cpp",
+    "sgtbx/lattice_symmetry.cpp",
+    "sgtbx/miller.cpp",
+    "sgtbx/reciprocal_space_asu.cpp",
+    "sgtbx/reciprocal_space_ref_asu.cpp",
+    "sgtbx/rot_mx.cpp",
+    "sgtbx/rot_mx_info.cpp",
+    "sgtbx/row_echelon_solve.cpp",
+    "sgtbx/rt_mx.cpp",
+    "sgtbx/select_generators.cpp",
+    "sgtbx/seminvariant.cpp",
+    "sgtbx/site_symmetry.cpp",
+    "sgtbx/space_group.cpp",
+    "sgtbx/space_group_type.cpp",
+    "sgtbx/symbols.cpp",
+    "sgtbx/tensor_rank_2.cpp",
+    "sgtbx/tr_group.cpp",
+    "sgtbx/tr_vec.cpp",
+    "sgtbx/utils.cpp",
+    "sgtbx/wyckoff.cpp",
+    "sgtbx/reference_settings/hall_symbol_table.cpp",
+    "sgtbx/reference_settings/matrix_group_code_table.cpp",
+    "sgtbx/reference_settings/normalizer.cpp",
+    "sgtbx/reference_settings/wyckoff.cpp",
+
+    "uctbx/uctbx.cpp",
+    "uctbx/spoil_optimization.cpp",
+    "uctbx/crystal_orientation.cpp",
+  ]
+
+  if (env_etc.static_libraries): builder = envlm.StaticLibrary
+  else:                          builder = envlm.SharedLibrary
+  builder(
+    target="#lib/cctbx",
+    source=lib_cctbx_sources)
+
+  SConscript("examples/SConscript")
+
+  if (not env_etc.no_boost_python):
+    Import("env_no_includes_boost_python_ext")
+
+    env_cctbx_boost_python_ext = env_no_includes_boost_python_ext.Clone()
+    env_cctbx_boost_python_ext.Prepend(LIBS=["scitbx_boost_python"])
+    env_etc.include_registry.append(
+      env=env_cctbx_boost_python_ext,
+      paths=env_etc.cctbx_common_includes + [env_etc.python_include])
+    Export("env_cctbx_boost_python_ext")
+
+    SConscript("math/boost_python/SConscript")
+    SConscript("array_family/boost_python/SConscript")
+    SConscript("eltbx/boost_python/SConscript")
+    SConscript("uctbx/boost_python/SConscript")
+    SConscript("sgtbx/boost_python/SConscript")
+    SConscript("adptbx/boost_python/SConscript")
+    SConscript("miller/boost_python/SConscript")
+    SConscript("xray/boost_python/SConscript")
+    SConscript("maptbx/boost_python/SConscript")
+    SConscript("masks/boost_python/SConscript")
+    SConscript("translation_search/boost_python/SConscript")
+    SConscript("dmtbx/boost_python/SConscript")
+    SConscript("boost_python/SConscript")
+    SConscript("crystal/SConscript")
+    SConscript("geometry_restraints/SConscript")
+    SConscript("geometry/boost_python/SConscript")
+    SConscript("covariance/boost_python/SConscript")
+    SConscript("adp_restraints/SConscript")
+    SConscript("symmetry_search/boost_python/SConscript")
+    SConscript("xray/observations/boost_python/SConscript")
+    SConscript("merging/SConscript")
+    SConscript("multipolar/SConscript")
+    SConscript("uctbx/determine_unit_cell/SConscript")
+    SConscript("examples/merging/SConscript")
+
+  SConscript("sgtbx/direct_space_asu/proto/SConscript")
+  SConscript("math/SConscript")
+  SConscript("maptbx/SConscript")

@@ -375,10 +375,6 @@ namespace prime {
         double r_meas = 0;
         double r_meas_w = 0;
         if (multiplicity > 1) {
-          double n_obs = (double)multiplicity;
-          double r_meas_w_top_sum = 0;
-          double r_meas_top_sum = 0;
-
           for (int i = 0; i < multiplicity; i++) {
             r_meas_w_top += std::pow(((I_full_group[i] - I_avg)*SE_norm[i]),2);
             r_meas_w_btm += std::pow(I_full_group[i]*SE_norm[i],2);

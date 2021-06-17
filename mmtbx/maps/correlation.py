@@ -6,9 +6,9 @@ from cctbx import miller
 from cctbx import adptbx
 from mmtbx import masks
 import sys
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
+cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
 from libtbx import group_args
 
 def get_selection_above_cutoff(m, n):

@@ -16,6 +16,7 @@ from scitbx.math import linear_interpolation_2d
 import numpy as np
 import math
 import os
+import sys
 
 master_phil_str = """
 rama_z {
@@ -53,6 +54,13 @@ class rama_z(object):
     self.log = log
     # this takes ~0.15 seconds, so I don't see a need to cache it somehow.
     self.db = easy_pickle.load(db_path)
+
+    # Python 3 pickle fix
+    # =========================================================================
+    if sys.version_info.major == 3:
+      self.db = easy_pickle.fix_py2_pickle(self.db)
+    # =========================================================================
+
     self.calibration_values = {
         'H': (-0.045355950779513175, 0.1951165524439217),
         'S': (-0.0425581278436754, 0.20068584887814633),

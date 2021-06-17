@@ -12,9 +12,9 @@ namespace smtbx { namespace refinement { namespace constraints {
     the latter to define an ordering.
  */
 struct ordered_scatterer_parameters
-  : public af::tiny<asu_parameter *, 5>
+  : public af::tiny<asu_parameter *, 6>
 {
-  typedef af::tiny<asu_parameter *, 5> base_t;
+  typedef af::tiny<asu_parameter *, 6> base_t;
 
   struct is_variable {
     bool operator()(asu_parameter const *p) const {
@@ -29,8 +29,9 @@ struct ordered_scatterer_parameters
                                asu_parameter *p1,
                                asu_parameter *p2,
                                asu_parameter *p3,
-                               asu_parameter *p4)
-  : base_t(p0, p1, p2, p3, p4)
+                               asu_parameter *p4,
+                               asu_parameter *p5)
+  : base_t(p0, p1, p2, p3, p4, p5)
   {}
 
   /// Those iterators skip invariable parameters
@@ -52,30 +53,31 @@ struct scatterer_parameters
   typedef asu_parameter::scatterer_type scatterer_type;
 
   scatterer_type const *scatterer;
-  asu_parameter *site, *occupancy, *u, *fp, *fdp;
+  asu_parameter *site, *occupancy, *u, *anharmonic_adp, *fp, *fdp;
 
   scatterer_parameters() {}
 
   scatterer_parameters(scatterer_type const *scatterer)
     : scatterer(scatterer),
-      site(0), occupancy(0), u(0), fp(0), fdp(0)
+      site(0), occupancy(0), u(0), anharmonic_adp(0), fp(0), fdp(0)
   {}
 
   scatterer_parameters(scatterer_type const *scatterer,
                        asu_parameter *site,
                        asu_parameter *occupancy,
                        asu_parameter *u,
+                       asu_parameter *cd=0,
                        asu_parameter *fp=0,
                        asu_parameter *fdp=0)
     : scatterer(scatterer),
-      site(site), occupancy(occupancy), u(u), fp(fp), fdp(fdp)
+      site(site), occupancy(occupancy), u(u), anharmonic_adp(cd), fp(fp), fdp(fdp)
   {}
 
   /// Parameters in the same order as the derivatives in grad Fc
   /** This shall abide to the convention of smtbx::structure_factors.
    */
   ordered_scatterer_parameters ordered() const {
-    return ordered_scatterer_parameters(site, u, occupancy, fp, fdp);
+    return ordered_scatterer_parameters(site, u, anharmonic_adp, occupancy, fp, fdp);
   }
 };
 
@@ -87,7 +89,7 @@ struct scatterer_parameters
  */
 af::shared<std::size_t>
 mapping_to_grad_fc(af::const_ref<scatterer_parameters> const &params) {
-  af::shared<std::size_t> result((af::reserve(5*params.size()))); // heuristic
+  af::shared<std::size_t> result((af::reserve(4*params.size()))); // heuristic
   for (std::size_t i=0; i<params.size(); ++i) {
     BOOST_FOREACH (asu_parameter const *p, params[i].ordered()) {
       if (!p) continue;

@@ -32,11 +32,11 @@ namespace scitbx {
 
     //! Factor for keV <-> Angstrom conversion.
     /*!
-      http://physics.nist.gov/PhysRefData/codata86/table2.html
+      https://www.bipm.org/utils/common/pdf/CGPM-2018/26th-CGPM-Resolutions.pdf
 
-      h = Plank's Constant = 6.6260755e-34 J s
+      h = Plank's Constant = 6.62607015e-34 J s
       c = speed of light = 2.99792458e+8 m/s
-      1 keV = 1.e+3 * 1.60217733e-19 J
+      1 keV = 1.e+3 * 1.602176634e-19 J
       1 A = Angstrom = 1.e-10 m
 
       E = (h * c) / lamda;
@@ -44,9 +44,9 @@ namespace scitbx {
       Exponents: (-34 + 8) - (3 - 19 - 10) = 0
      */
     static const double
-    factor_kev_angstrom = 6.6260755 * 2.99792458 / 1.60217733;
+    factor_kev_angstrom = 6.62607015 * 2.99792458 / 1.602176634;
     static const double
-    factor_ev_angstrom  = 6626.0755 * 2.99792458 / 1.60217733;
+    factor_ev_angstrom  = factor_kev_angstrom * 1000;
   }
 
   //! Conversions from degrees to radians.

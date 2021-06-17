@@ -1,26 +1,52 @@
 # Script for building CCTBX
 # macOS image descriptions
+# https://github.com/actions/virtual-environments/blob/master/images/macos/macos-10.15-Readme.md
 # https://github.com/Microsoft/azure-pipelines-image-generation/blob/master/images/macos/macos-10.14-Readme.md
-# https://github.com/Microsoft/azure-pipelines-image-generation/blob/master/images/macos/macos-10.13-Readme.md
+#
+# Parameters:
+#   vmImage: [10, 14]  # macOs version
+#   xcode_version: [11, 3, 1]  # xCode version
+#   modules: <modules artifact name>
+#   template: <build template file>
+#   prefix: <build artifact prefix>
 
 jobs:
 - job: ${{ format('{0}_{1}', format('macOS_{0}', join('_', parameters.vmImage)), format('xcode_{0}', join('_', parameters.xcode_version)) ) }}
   pool:
     vmImage: ${{ format('macOS-{0}', join('.', parameters.vmImage)) }}
-  timeoutInMinutes: 360
+  timeoutInMinutes: 120
   strategy:
-    maxParallel: 3
+    maxParallel: 2
     matrix:
-      python2.7:
-        CONDA: MacOSX
-        OS: osx-64
-        PYTHON_VERSION: py27
       python3.6:
         CONDA: MacOSX
         OS: osx-64
         PYTHON_VERSION: py36
+        MODULES: ${{ parameters.modules }}
+      # python3.7:
+      #   CONDA: MacOSX
+      #   OS: osx-64
+      #   PYTHON_VERSION: py37
+      #   MODULES: ${{ parameters.modules }}
+      # python3.8:
+      #   CONDA: MacOSX
+      #   OS: osx-64
+      #   PYTHON_VERSION: py38
+      #   MODULES: ${{ parameters.modules }}
+
+  variables:
+    artifact_name: ${{ parameters.prefix }}${{ format('xcode_{0}', join('_', parameters.xcode_version))  }}_$(PYTHON_VERSION)
+    day: $(Get-Date -Format dddd)
 
   steps:
+  - powershell: |
+      Write-Host $(day)
+      Write-Host "##vso[task.setVariable variable=day]$(day)"
+    displayName: Get day of week
+
+  - script: echo $(day)
+    displayName: Check day of week
+
   - script: |
       echo "Selecting Xcode version ${{ join('.', parameters.xcode_version) }}"
       sudo xcode-select --switch /Applications/Xcode_${{ join('.', parameters.xcode_version) }}.app/Contents/Developer
@@ -28,11 +54,73 @@ jobs:
 
   - script: |
       echo "Removing homebrew from Azure to avoid conflicts."
-      curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall > ~/uninstall_homebrew
+      curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall.sh > ~/uninstall_homebrew
       chmod +x ~/uninstall_homebrew
-      ~/uninstall_homebrew -fq
+      ~/uninstall_homebrew -f -q
       rm ~/uninstall_homebrew
     displayName: Remove homebrew
 
+  # download daily cached build directory for builds
+  # always do builds from scratch for "Update build cache" on Saturday night (Pacific)
+  # always do builds from scratch for "Weekly" pipeline
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(resources.pipeline.build_cache.projectID)'
+      pipeline: '$(resources.pipeline.build_cache.pipelineID)'
+      allowPartiallySucceededBuilds: true
+      allowFailedBuilds: true
+      artifact: '$(artifact_name)'
+      path: $(Pipeline.Workspace)
+    displayName: Download cached build
+    condition: >
+      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+             ne(variables['day'], 'Sunday')),
+         eq(variables['Build.DefinitionName'], 'CI'),
+         eq(variables['Build.DefinitionName'], 'CI branch'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI branch'),
+         eq(variables['Build.DefinitionName'], 'Full'))
+    continueOnError: true
+
+  - script: |
+      cd $(Pipeline.Workspace)
+      tar -xf build.tar
+    displayName: Extract build tarball
+    condition: >
+      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+             ne(variables['day'], 'Sunday')),
+         eq(variables['Build.DefinitionName'], 'CI'),
+         eq(variables['Build.DefinitionName'], 'CI branch'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI branch'),
+         eq(variables['Build.DefinitionName'], 'Full'))
+    continueOnError: true
+    failOnStderr: false
+
   # build
-  - template: ./unix-conda-build.yml
+  - template: ${{ parameters.template }}
+
+  # preserve permissions
+  - script: |
+      cd $(Pipeline.Workspace)
+      tar -chf build.tar build
+    displayName: Build tarball
+    condition: >
+      and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+          or(eq(variables['Build.Reason'], 'Schedule'),
+             eq(variables['Build.Reason'], 'Manual')),
+          eq(variables['System.StageAttempt'], 1),
+          eq('${{ parameters.modules }}', 'xfel_modules'))
+    continueOnError: true
+
+  # cache build directory every week for regular optimization build
+  - publish: $(Pipeline.Workspace)/build.tar
+    artifact: $(artifact_name)
+    condition: >
+      and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+          or(eq(variables['Build.Reason'], 'Schedule'),
+             eq(variables['Build.Reason'], 'Manual')),
+          eq(variables['System.StageAttempt'], 1),
+          eq('${{ parameters.modules }}', 'xfel_modules'))
+    continueOnError: true

@@ -234,8 +234,8 @@ def run(args, out=sys.stdout, validated=False):
     m1 = maps[0].file_object.map_data()
     m2 = maps[1].file_object.map_data()
     if params.options.shift_origin:
-      m1.shift_origin()
-      m2.shift_origin()
+      m1=m1.shift_origin()
+      m2=m2.shift_origin()
 
   # ---------------------------------------------------------------------------
   # analyze maps

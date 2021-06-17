@@ -60,113 +60,6 @@ def generate_rotamer_data(pdb_hierarchy,
            rot.altloc,
            rot.rotamer_name)
 
-def adjust_rotamer_restraints(pdb_hierarchy,
-                              geometry_restraints_manager,
-                              i_seqs_restraints=None,
-                              log=None,
-                              verbose=False,
-                              data_version="8000",
-                              ):
-  assert data_version == "8000","data_version not recognized."
-  assert 0
-  if log is None: log = sys.stdout
-  t0=time.time()
-  print("  Rotamer Conformation Library", file=log)
-  def _get_i_seqs_restraints(pdb_hierarchy):
-    name_restraints = {}
-    chains=[]
-    residues=[]
-    for item in generate_rotamer_data(pdb_hierarchy=pdb_hierarchy,
-                                      data_version=data_version):
-      resname, id_str, chain, altloc, rotamer = item
-      if resname not in rdl_database: continue
-      if rotamer not in rdl_database[resname]: continue
-      if verbose:
-        print("resn %s chain %s id %s altloc %s rotamer %s" % (resname,
-                                                               chain,
-                                                               id_str,
-                                                               altloc,
-                                                               rotamer,
-                                                               ))
-      restraints = rdl_database[resname][rotamer]
-      defaults = rdl_database[resname]["default"]
-      name_restraints[id_str] = (chain,
-                                resname,
-                                altloc,
-                                restraints,
-                                defaults,
-        )
-      chains.append(chain)
-      residues.append(resname)
-    #
-    i_seqs_restraints = {}
-    i_seqs_restraints_reversal = {}
-    #
-    for model in pdb_hierarchy.models():
-      #if verbose: print 'model: "%s"' % model.id
-      for chain in model.chains():
-        if chain.id.strip() not in chains: continue
-        #if verbose: print 'chain: "%s"' % chain.id
-        for conformer in chain.conformers():
-          #if verbose: print '  conformer: altloc="%s" only_residue="%s"' % (
-          #  conformer.altloc, conformer.only_residue)
-          for residue in conformer.residues():
-            if residue.resname not in residues: continue
-            #if verbose:
-            #  if residue.resname not in ["HOH"]:
-            #    print '    residue: resname="%s" resid="%s"' % (
-            #      residue.resname, residue.resid())
-            #    for atom in residue.atoms():
-            #      if verbose: print '         atom: name="%s"' % (atom.name)
-            for id_str, values in name_restraints.items():
-              chain_id, resname, altloc, restraints, defaults = values
-              if chain_id.strip()!=chain.id: continue
-              if resname.strip() !=residue.resname.strip(): continue
-              if altloc.strip()  !=conformer.altloc.strip(): continue
-              for names, values in restraints.items():
-                i_seqs = []
-                for name in names:
-                  for atom in residue.atoms():
-                    if name.strip()==atom.name.strip():
-                      i_seqs.append(atom.i_seq)
-                      break
-                i_seqs_restraints[tuple(i_seqs)] = values
-                i_seqs_restraints_reversal[tuple(i_seqs)] = defaults[names]
-                i_seqs.reverse()
-                i_seqs_restraints[tuple(i_seqs)] = values
-                i_seqs_restraints_reversal[tuple(i_seqs)] = defaults[names]
-    return i_seqs_restraints, i_seqs_restraints_reversal
-  #
-  i_seqs_restraints_reversal = None
-  if i_seqs_restraints is None:
-    i_seqs_restraints, i_seqs_restraints_reversal = _get_i_seqs_restraints(
-      pdb_hierarchy,
-      )
-  count = 0
-  if verbose:
-    atoms = pdb_hierarchy.atoms()
-  for angle_proxy in geometry_restraints_manager.angle_proxies:
-    if angle_proxy.i_seqs in i_seqs_restraints:
-      if verbose: print(" i_seqs %-15s initial %12.3f %12.3f :%s-%s-%s" % (
-          angle_proxy.i_seqs,
-          angle_proxy.angle_ideal,
-          angle_proxy.weight,
-          atoms[angle_proxy.i_seqs[0]].quote()[11:-12],
-          atoms[angle_proxy.i_seqs[1]].quote()[11:-12],
-          atoms[angle_proxy.i_seqs[2]].quote()[11:-12],
-        ))
-      angle_proxy.angle_ideal = i_seqs_restraints[angle_proxy.i_seqs][0]
-      angle_proxy.weight = 1/i_seqs_restraints[angle_proxy.i_seqs][1]**2
-      if verbose: print(" i_seqs %-15s final   %12.3f %12.3f" % (
-        angle_proxy.i_seqs,
-        angle_proxy.angle_ideal,
-        angle_proxy.weight,
-        ))
-      count += 1
-  print("    Number of angles RDL adjusted : %d" % count, file=log)
-  print("    Time to adjust                : %0.3f" % (time.time()-t0), file=log)
-  return i_seqs_restraints, i_seqs_restraints_reversal
-
 def update_restraints(hierarchy,
                       geometry, # restraints_manager,
                       current_geometry=None, # xray_structure!!
@@ -175,6 +68,7 @@ def update_restraints(hierarchy,
                       esd_factor=1.,
                       exclude_backbone=False,
                       assert_rotamer_found=False,
+                      rdl_selection=None,
                       log=None,
                       verbose=False,
                       data_version="8000",
@@ -190,6 +84,7 @@ def update_restraints(hierarchy,
   #
   def _set_or_reset_angle_restraints(geometry,
                                      lookup,
+                                     use_rdl_weights=False,
                                      verbose=False,
                                      ):
     count = 0
@@ -202,7 +97,7 @@ def update_restraints(hierarchy,
           ))
         assert angle_proxy.angle_ideal<181
         angle_proxy.angle_ideal = lookup[angle_proxy.i_seqs][0]
-        angle_proxy.weight = esd_factor/lookup[angle_proxy.i_seqs][1]**2
+        if use_rdl_weights: angle_proxy.weight = esd_factor/lookup[angle_proxy.i_seqs][1]**2
         if verbose: print(" i_seqs %-15s final   %12.3f %12.3f" % (
           angle_proxy.i_seqs,
           angle_proxy.angle_ideal,
@@ -213,6 +108,7 @@ def update_restraints(hierarchy,
   #
   def _set_or_reset_dihedral_restraints(geometry,
                                         lookup,
+                                        use_rdl_weights=False,
                                         verbose=False,
                                         ):
     count = 0
@@ -226,7 +122,7 @@ def update_restraints(hierarchy,
           angle_proxy.periodicity,
           ))
         angle_proxy.angle_ideal = lookup[angle_proxy.i_seqs][0]
-        angle_proxy.weight = esd_factor/lookup[angle_proxy.i_seqs][1]**2
+        if use_rdl_weights: angle_proxy.weight = esd_factor/lookup[angle_proxy.i_seqs][1]**2
         angle_proxy.alt_angle_ideals=None
         angle_proxy.periodicity = lookup[angle_proxy.i_seqs][2]
         if verbose: print(" i_seqs %-15s final   %12.3f %12.3f %s %d" % (
@@ -265,6 +161,10 @@ def update_restraints(hierarchy,
       for residue_group in chain.residue_groups():
         all_dict = rotalyze.construct_complete_sidechain(residue_group)
         for atom_group in residue_group.atom_groups():
+          if rdl_selection is None: pass
+          elif 'all' in rdl_selection: pass
+          elif atom_group.resname in rdl_selection: pass
+          else: continue
           rc = get_rotamer_data(atom_group,
                                 sa,
                                 rotamer_evaluator,

@@ -13,7 +13,9 @@ def exercise():
   for node in os.listdir(inp_dir):
     if (not node.startswith("POSCAR-")): continue
     file_name = op.join(inp_dir, node)
-    poscar = iotbx.poscar.reader(lines=open(file_name).read().splitlines())
+    with open(file_name) as f:
+      lines = f.read().splitlines()
+    poscar = iotbx.poscar.reader(lines=lines)
     assert poscar.make_up_types_if_necessary() is poscar
     xs = poscar.xray_structure(u_iso=0.1)
     assert str(xs.space_group_info()) == "P 1"

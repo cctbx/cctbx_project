@@ -4,7 +4,7 @@ from scitbx.graph.utils import \
 from libtbx import slots_getstate_setstate
 import math
 from six.moves import range
-from past.builtins import cmp
+from libtbx.math_utils import cmp
 from functools import cmp_to_key
 
 class cluster_manager(slots_getstate_setstate):
@@ -146,7 +146,7 @@ class cluster_manager(slots_getstate_setstate):
           if (fb): return 1
       if (len(a) > len(b)): return -1
       if (len(a) < len(b)): return 1
-      if (len(a) != 0): return cmp(a[0], b[0])
+      if len(a): return cmp(a[0], b[0])
       return 0
     O.clusters.sort(key=cmp_to_key(cmp_clusters))
     for ic in range(len(O.clusters)-1,-1,-1):

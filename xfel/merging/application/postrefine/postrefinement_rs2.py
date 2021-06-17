@@ -64,14 +64,14 @@ class postrefinement_rs2(postrefinement_rs):
 
       # Build a miller array with _original_ miller indices of the experiment reflections
       exp_miller_indices_original = miller.set(target_symm, exp_reflections['miller_index'], not self.params.merging.merge_anomalous)
-      observations_original_index = miller.array(exp_miller_indices_original, exp_reflections['intensity.sum.value'], flex.double(flex.sqrt(exp_reflections['intensity.sum.variance'])))
+      observations_original_index = miller.array(exp_miller_indices_original, exp_reflections['intensity.sum.value'], flex.sqrt(exp_reflections['intensity.sum.variance']))
 
       assert exp_reflections.size() == exp_miller_indices_original.size()
       assert observations_original_index.size() == exp_miller_indices_original.size()
 
       # Build a miller array with _asymmetric_ miller indices of the experiment reflections
       exp_miller_indices_asu = miller.set(target_symm, exp_reflections['miller_index_asymmetric'], True)
-      observations = miller.array(exp_miller_indices_asu, exp_reflections['intensity.sum.value'], flex.double(flex.sqrt(exp_reflections['intensity.sum.variance'])))
+      observations = miller.array(exp_miller_indices_asu, exp_reflections['intensity.sum.value'], flex.sqrt(exp_reflections['intensity.sum.variance']))
 
       matches = miller.match_multi_indices(miller_indices_unique = miller_set.indices(), miller_indices = observations.indices())
 
@@ -188,9 +188,9 @@ class postrefinement_rs2(postrefinement_rs):
         new_experiments.append(experiment)
 
         new_exp_reflections = flex.reflection_table()
-        new_exp_reflections['miller_index_asymmetric']  = flex.miller_index(result_observations.indices())
-        new_exp_reflections['intensity.sum.value']      = flex.double(result_observations.data())
-        new_exp_reflections['intensity.sum.variance']   = flex.double(flex.pow(result_observations.sigmas(),2))
+        new_exp_reflections['miller_index_asymmetric']  = result_observations.indices()
+        new_exp_reflections['intensity.sum.value']      = result_observations.data()
+        new_exp_reflections['intensity.sum.variance']   = flex.pow(result_observations.sigmas(),2)
         new_exp_reflections['exp_id']                   = flex.std_string(len(new_exp_reflections), experiment.identifier)
 
         # The original reflection table, i.e. the input to this run() method, has more columns than those used

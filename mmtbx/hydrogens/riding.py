@@ -12,7 +12,8 @@ class manager(object):
       pdb_hierarchy,
       geometry_restraints,
       use_ideal_bonds_angles = True,
-      process_manager        = True):
+      process_manager        = True,
+      use_ideal_dihedral = False):
     self.pdb_hierarchy = pdb_hierarchy
     self.geometry_restraints = geometry_restraints
     self.use_ideal_bonds_angles = use_ideal_bonds_angles
@@ -33,7 +34,8 @@ class manager(object):
         sites_cart             = self.pdb_hierarchy.atoms().extract_xyz(),
         use_ideal_bonds_angles = use_ideal_bonds_angles,
         site_labels         = [atom.id_str().replace('pdb=','').replace('"','')
-                                  for atom in pdb_hierarchy.atoms()])
+                                  for atom in pdb_hierarchy.atoms()],
+        use_ideal_dihedral = use_ideal_dihedral)
       self.h_parameterization = parameterization_manager.h_parameterization
       self.parameterization_cpp = self.get_parameterization_cpp(
         h_parameterization = self.h_parameterization)
@@ -168,7 +170,7 @@ class manager(object):
   def n_parameters(self):
     return self.not_hd_selection.count(True)*3
 
-  def idealize(self,
+  def idealize_riding_h_positions(self,
                sites_cart = None,
                pdb_hierarchy = None,
                xray_structure = None,

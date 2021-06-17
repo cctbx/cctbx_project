@@ -236,8 +236,6 @@ namespace boost_python { namespace {
   xes_ext_init_module() {
     using namespace boost::python;
 
-    typedef return_value_policy<return_by_value> rbv;
-    typedef default_call_policies dcp;
     typedef xes::example::gaussian_fit_inheriting_from_non_linear_ls wt;
     typedef xes::example::gaussian_3fit_inheriting_from_non_linear_ls wt3;
 

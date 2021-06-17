@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import scitbx.math
-import boost.rational
+import boost_adaptbx.boost.rational
 from scitbx.math import line_given_points
 from scitbx.math import dihedral_angle
 from scitbx.math import euler_angles_as_matrix
@@ -1801,7 +1801,7 @@ def exercise_least_squares_plane():
 
 def exercise_continued_fraction():
   continued_fraction = scitbx.math.continued_fraction
-  frac = boost.rational.int
+  frac = boost_adaptbx.boost.rational.int
   cf = continued_fraction(1)
   assert cf.as_rational() == frac(1,1)
   cf.append(1)

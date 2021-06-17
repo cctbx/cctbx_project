@@ -4,12 +4,12 @@ import hashlib
 import six
 import sys
 
-import boost.optional # import dependency
-import boost.std_pair # import dependency
-import boost.python
+import boost_adaptbx.boost.optional # import dependency
+import boost_adaptbx.boost.std_pair # import dependency
+import boost_adaptbx.boost.python as bp
 from six.moves import range
 from six.moves import zip
-boost.python.import_ext("scitbx_array_family_flex_ext")
+bp.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import *
 import scitbx_array_family_flex_ext as ext
 
@@ -41,7 +41,7 @@ def bool_md5(self):
   return hashlib.md5(self.__getstate__()[1])
 bool.md5 = bool_md5
 
-@boost.python.inject_into(grid)
+@bp.inject_into(grid)
 class _():
 
   def show_summary(self, f=None):
@@ -163,7 +163,7 @@ def _format_mean(values, format):
   return format_value(
     format=format, value=mean_default(values=values, default=None))
 
-@boost.python.inject_into(ext.min_max_mean_double)
+@bp.inject_into(ext.min_max_mean_double)
 class _():
 
   def show(self, out=None, prefix="", format="%.6g", show_n=True):
@@ -193,12 +193,18 @@ def _standard_deviation_of_the_sample(self):
 def _sample_standard_deviation(self):
   return _standard_deviation_helper(self, 1)
 
+def _rms(data):
+  den = data.size()
+  if den <= 0: return None
+  return (sum(pow2(data)) / den)**0.5
+
 double.format_min = _format_min
 double.format_max = _format_max
 double.format_mean = _format_mean
 double.min_max_mean = _min_max_mean_double_init
 double.standard_deviation_of_the_sample = _standard_deviation_of_the_sample
 double.sample_standard_deviation = _sample_standard_deviation
+double.rms = _rms
 
 def select(sequence, permutation=None, flags=None):
   result = []
@@ -232,7 +238,7 @@ def condense_as_ranges(integer_array):
   store_range()
   return result
 
-@boost.python.inject_into(mersenne_twister)
+@bp.inject_into(mersenne_twister)
 class _():
 
   def random_selection(self, population_size, sample_size):
@@ -291,7 +297,7 @@ class py_object(object):
   def __setitem__(self, index, value):
     self._data[self._accessor(index)] = value
 
-@boost.python.inject_into(ext.linear_regression_core)
+@bp.inject_into(ext.linear_regression_core)
 class _():
 
   def show_summary(self, f=None, prefix=""):
@@ -300,7 +306,7 @@ class _():
     print(prefix+"y_intercept:", self.y_intercept(), file=f)
     print(prefix+"slope:", self.slope(), file=f)
 
-@boost.python.inject_into(ext.double)
+@bp.inject_into(ext.double)
 class _():
 
   def matrix_inversion(self):
@@ -311,7 +317,7 @@ class _():
   def as_scitbx_matrix(self):
     return as_scitbx_matrix(self)
 
-@boost.python.inject_into(ext.linear_correlation)
+@bp.inject_into(ext.linear_correlation)
 class _():
 
   def show_summary(self, f=None, prefix=""):
@@ -331,7 +337,7 @@ class histogram_slot_info(object):
   def center(self):
     return (self.high_cutoff + self.low_cutoff) / 2
 
-@boost.python.inject_into(ext.histogram)
+@bp.inject_into(ext.histogram)
 class _():
 
   def __getinitargs__(self):
@@ -402,7 +408,7 @@ class weighted_histogram_slot_info(object):
   def center(self):
     return (self.high_cutoff + self.low_cutoff) / 2
 
-@boost.python.inject_into(ext.weighted_histogram)
+@bp.inject_into(ext.weighted_histogram)
 class _():
 
   def __getinitargs__(self):
@@ -585,3 +591,19 @@ def _vec3_double_as_numpy_array(flex_array):
     return flex_array.as_double().as_numpy_array().reshape(-1, 3)
 
 vec3_double.as_numpy_array = _vec3_double_as_numpy_array
+
+# for modern 64-bit platforms, int and int32_t are the same
+int32 = ext.int
+int32_from_byte_str = ext.int_from_byte_str
+int32_range = ext.int_range
+
+# int64_t is the same as long, but not on Windows
+if sys.platform != 'win32':
+  int64 = ext.long
+  int64_from_byte_str = ext.long_from_byte_str
+  int64_range = ext.long_range
+
+# uint64_t is the same as size_t
+uint64 = ext.size_t
+uint64_from_byte_str = ext.size_t_from_byte_str
+uint64_range = ext.size_t_range

@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import sys
 from six.moves import cStringIO as StringIO
 import cctbx
-from boost.rational import int as rint
+from boost_adaptbx.boost.rational import int as rint
 from cctbx.sgtbx import space_group_info
 from cctbx.sgtbx.direct_space_asu import proto as new_asu
 from cctbx.crystal import direct_space_asu_float_asu
@@ -235,4 +235,3 @@ if (__name__ == "__main__"):
       print(log)
       print(">>>>>>>> End Log")
     raise
-

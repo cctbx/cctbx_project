@@ -70,7 +70,7 @@ def exercise_00(verbose):
   res = occupancy_selections(
     model = model,
     as_flex_arrays    = False)
-  res = extract_serials(model.pdb_atoms, res)
+  res = extract_serials(model.get_atoms(), res)
   target = base[:]
   target.insert(3, [[21]])
   target.insert(4, [[23]])
@@ -80,7 +80,7 @@ def exercise_00(verbose):
     model = model,
     add_water         = True,
     as_flex_arrays    = False)
-  res = extract_serials(model.pdb_atoms, res)
+  res = extract_serials(model.get_atoms(), res)
   base_21_23 = target[:]
   target.extend([[[18]], [[19]], [[20]], [[22]]])
   assert approx_equal(res, target)
@@ -89,7 +89,7 @@ def exercise_00(verbose):
     model = model,
     as_flex_arrays    = False,
     other_individual_selection_strings = ['resseq 0 and not (altloc A or altloc B)'])
-  res = extract_serials(model.pdb_atoms, res)
+  res = extract_serials(model.get_atoms(), res)
   target = base_21_23[:]
   target.extend([[[0]], [[1]], [[4]], [[5]]])
   assert approx_equal(res, target)
@@ -98,7 +98,7 @@ def exercise_00(verbose):
     add_water         = True,
     as_flex_arrays    = False,
     other_individual_selection_strings = ['resseq 0 and not (altloc A or altloc B)'])
-  res = extract_serials(model.pdb_atoms, res)
+  res = extract_serials(model.get_atoms(), res)
   target.extend([[[18]], [[19]], [[20]], [[22]]])
   assert approx_equal(res, target)
   # 2
@@ -108,7 +108,7 @@ def exercise_00(verbose):
     model = model,
     as_flex_arrays    = False,
     other_constrained_groups = other_constrained_groups)
-  res = extract_serials(model.pdb_atoms, res)
+  res = extract_serials(model.get_atoms(), res)
   target = base_21_23[:]
   target.extend([[[0, 1]], [[4, 5]]])
   assert approx_equal(res, target)
@@ -119,7 +119,7 @@ def exercise_00(verbose):
     add_water         = True,
     as_flex_arrays    = False,
     other_constrained_groups = other_constrained_groups)
-  res = extract_serials(model.pdb_atoms, res)
+  res = extract_serials(model.get_atoms(), res)
   target.extend([[[18]], [[19]], [[20]], [[22]]])
   assert approx_equal(res, target)
   # 3
@@ -130,7 +130,7 @@ def exercise_00(verbose):
     as_flex_arrays    = False,
     other_individual_selection_strings = ['resseq 0 and (name S or name O1)'],
     other_constrained_groups = other_constrained_groups)
-  res = extract_serials(model.pdb_atoms, res)
+  res = extract_serials(model.get_atoms(), res)
   target = base_21_23[:]
   target.extend([[[0]], [[1]], [[4, 5]]])
   assert approx_equal(res, target)
@@ -147,7 +147,7 @@ def exercise_01(verbose):
   res = occupancy_selections(
     model = model,
     as_flex_arrays    = False)
-  res = extract_serials(model.pdb_atoms, res)
+  res = extract_serials(model.get_atoms(), res)
   assert approx_equal(res, base)
 
 def exercise_02(verbose):
@@ -162,7 +162,7 @@ def exercise_02(verbose):
   res = occupancy_selections(
     model = model,
     as_flex_arrays    = False)
-  res = extract_serials(model.pdb_atoms, res)
+  res = extract_serials(model.get_atoms(), res)
   assert approx_equal(res, base)
 
 def exercise_03(verbose):
@@ -177,7 +177,7 @@ def exercise_03(verbose):
   res = occupancy_selections(
     model = model,
     as_flex_arrays    = False)
-  res = extract_serials(model.pdb_atoms, res)
+  res = extract_serials(model.get_atoms(), res)
   assert approx_equal(res, base)
 
 def exercise_05(verbose):
@@ -195,7 +195,7 @@ def exercise_05(verbose):
   res = occupancy_selections(
     model = model,
     as_flex_arrays      = False)
-  res = extract_serials(model.pdb_atoms, res)
+  res = extract_serials(model.get_atoms(), res)
   assert approx_equal(res, base)
 
 def exercise_06(verbose):
@@ -547,7 +547,7 @@ def exercise_21(verbose):
   res = occupancy_selections(
     model = model,
     as_flex_arrays    = False)
-  res = extract_serials(model.pdb_atoms, res)
+  res = extract_serials(model.get_atoms(), res)
   assert approx_equal(res, base)
 
 def exercise_22(verbose):
@@ -562,7 +562,7 @@ def exercise_22(verbose):
   res = occupancy_selections(
     model = model,
     as_flex_arrays    = False)
-  res = extract_serials(model.pdb_atoms, res)
+  res = extract_serials(model.get_atoms(), res)
   assert approx_equal(res, base)
 
 def exercise_23(verbose):
@@ -577,7 +577,7 @@ def exercise_23(verbose):
   res = occupancy_selections(
     model = model,
     as_flex_arrays    = False)
-  res = extract_serials(model.pdb_atoms, res)
+  res = extract_serials(model.get_atoms(), res)
   assert approx_equal(res, base)
 
 def exercise_24(verbose):

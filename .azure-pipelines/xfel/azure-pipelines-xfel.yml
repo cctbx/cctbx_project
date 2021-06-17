@@ -1,6 +1,19 @@
 # Templates for linux, macOS, and Windows
 # Based on approach from conda-forge
 
+trigger:
+  branches:
+    include:
+      - master
+      - main
+
+resources:
+  pipelines:
+  - pipeline: data_cache
+    source: 'Update data cache'
+  - pipeline: build_cache
+    source: 'Update build cache'
+
 stages:
 - stage: Preparation
   displayName: Download
@@ -11,15 +24,4 @@ stages:
   displayName: Build and test
   dependsOn: Preparation
   jobs:
-    - template: ./conda-linux.yml
-      parameters:
-        distribution: centos
-        version: [6]
-    - template: ./conda-psana.yml
-      parameters:
-        distribution: centos
-        version: [7]
-    - template: ./conda-osx.yml
-      parameters:
-        vmImage: [10, 14]
-        xcode_version: [11, 3, 1]
+    - template: ./xfel-ci-build.yml

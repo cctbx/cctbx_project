@@ -1,0 +1,387 @@
+{% extends "cctbx/header.html" %}
+
+{% load static %}
+
+{% block extra_js %}
+    <script>window.MathJax = { tex: { tags: 'ams' } };</script>
+{% endblock extra_js %}
+
+{% block content %}
+
+<div class="col-sm-9 main">
+<!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
+<!----------------------- EDIT START ---------------------------->
+
+<h2><center>LBFGS minimzer without curvatures</center></h2>
+
+<p class="lead mt-4">This script shows how to use the LBFGS minimizer without curvatures (gradients only), with and without bounds.<br>
+Authors: Pavel V. Afonine, Dorothee Liebschner</p>
+
+<h3 class="mt-4">The LBFGS algorithm</h3>
+<p>The limited-memory Broyden–Fletcher–Goldfarb–Shanno (<a href="https://en.wikipedia.org/wiki/Limited-memory_BFGS">LBFGS</a>) algorithm is an optimization method to find the minimum of a function f(x), with x being a vector in \( \mathbb{R}^3 \) and f(x) a differentiable function.</p>
+
+<p>The basic idea of minimization algorithms is to find iteratively the minimum of a function \( f(x) \). For example, the gradient descent method starts off at a random initial point \( f(x_0) \) and iteratively takes steps that are proportional to the negative gradient of \( f(x) \) at the current point. As this is quite inefficient (a lot of iterations are required to find the minimum), the second order behavior (second derivatives = curvatures) can be used in addition. This is the Newton method, where the iterative scheme is given by:</p>
+
+\begin{equation}
+x_{k+1} = x_k - [H(x_k)]^{-1} \nabla f(x_k)
+\end{equation}
+
+<p>The Newton method is quite efficient, but it is computational expensive to calculate the inverse of the Hessian matrix. This is where the <a href="https://en.wikipedia.org/wiki/Limited-memory_BFGS">BFGS</a> algorithm kicks in: Instead of explicitly calculating the second derivates, it uses approximations of the Hessian matrix to converge faster. At each iteration k+1, an approximate inverse second derivative is calculated using quantities from previous steps (the first derivative from the previous two iterations k and k−1):</p>
+
+\begin{equation}
+x_{k+1} = x_k - f^\prime(x_k) \frac{x_k-x_{k-1}}{f^\prime(x_k) - f^\prime(x_k-1)}
+\end{equation}
+
+<p>The L-BFGS algorithm is an approximation of the BFGS procedure. It uses a limited amount of computer memory.<br>
+L-BFGS does not use boundaries as it was developed to solve unconstrained optimization problems. However, there is an extension of L-BFGS, called L-BFGS-B (<a href="https://dl.acm.org/doi/10.1145/279232.279236">Zhu et al., 1997</a>), that can handle simple bounds. Both options are available in the cctbx.</p>
+
+<p>Further reading:</p>
+  <ul>
+    <li>
+      <a href="https://towardsdatascience.com/bfgs-in-a-nutshell-an-introduction-to-quasi-newton-methods-21b0e13ee504">Introduction to BFGS.</a>
+    </li>
+    <li>
+      David M. Himmelblau, Applied Nonlinear Programming, 1972 (out of print, but can be found second-hand)
+    </li>
+  </ul>
+
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">The Rosenbrock function</h3>
+
+<p>The <a href="https://en.wikipedia.org/wiki/Rosenbrock_function">Rosenbrock function</a> is a test function for evaluate the performance of optimization algorithms, such as convergence rate,
+precision and robustness.<br>
+Simple functions like this are useful to debug and test new algorithms as they are fast to implement and to execute. If the algorithm does not perform well on this standard problem, it indicates that it most likely won't work well on real life problems.<br>
+It is defined by:</p>
+
+\begin{equation}
+f(x,y) = (a-x)^2 +b(y-x^2)^2
+\end{equation}
+
+<p>The partial derivatives are:</p>
+
+\begin{equation}
+\frac{\partial f(x,y)}{\partial x} =  -2a + 2x - 4bxy + 4bx^3
+\end{equation}
+
+\begin{equation}
+\frac{\partial f(x,y)}{\partial y} =  2by - 2bx^2
+\end{equation}
+
+<p>To find the global minimum, we set the partial derivatives to 0. Equation (5) gives the condition \( y = x^2 \). Inserting this into equation (4) gives the coordinates of the global minimum: \( x = a \), \( y = a^2 \).</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">Code</h3>
+
+<p>The code below will compute the minimum of the Rosenbrock function with parameters a = 20 and b = 10:
+
+\(
+f(x,y) = (20-x)^2 +10(y-x^2)^2
+\)
+
+</p>
+
+<pre class="codeDL"><code>from __future__ import division, print_function
+from scitbx.array_family import flex
+from libtbx import adopt_init_args
+import scitbx.lbfgs
+from scitbx import lbfgsb
+
+class rosenbrock(object):
+  def __init__(self, a, b, x):
+    adopt_init_args(self, locals())
+    assert self.x.size() == 2
+
+  def update(self, x):
+    self.x = x
+    assert self.x.size() == 2
+
+  def target(self):
+    return (self.a-self.x[0])**2+self.b*(self.x[1]-self.x[0]**2)**2
+
+  def gradients(self):
+    g1 = 2*(self.x[0]-self.a) + 4*self.b*(self.x[0]**3-self.x[0]*self.x[1])
+    g2 = 2*self.b*(self.x[1]-self.x[0]**2)
+    return flex.double([g1,g2])
+
+def lbfgs_run(target_evaluator, use_bounds, lower_bound, upper_bound):
+  minimizer = lbfgsb.minimizer(
+    n   = target_evaluator.n,
+    l   = lower_bound, # lower bound
+    u   = upper_bound, # upper bound
+    nbd = flex.int(target_evaluator.n, use_bounds)) # flag to apply both bounds
+  minimizer.error = None
+  try:
+    icall = 0
+    while 1:
+      icall += 1
+      x, f, g = target_evaluator()
+      have_request = minimizer.process(x, f, g)
+      if(have_request):
+        requests_f_and_g = minimizer.requests_f_and_g()
+        continue
+      assert not minimizer.requests_f_and_g()
+      if(minimizer.is_terminated()): break
+  except RuntimeError as e:
+    minimizer.error = str(e)
+  minimizer.n_calls = icall
+  return minimizer
+
+class minimizer_bound(object):
+
+  def __init__(self,
+               calculator,
+               use_bounds,
+               lower_bound,
+               upper_bound,
+               initial_values):
+    adopt_init_args(self, locals())
+    self.x = initial_values
+    self.n = self.x.size()
+
+  def run(self):
+    self.minimizer = lbfgs_run(
+      target_evaluator=self,
+      use_bounds=self.use_bounds,
+      lower_bound = self.lower_bound,
+      upper_bound = self.upper_bound)
+    self()
+    return self
+
+  def __call__(self):
+    self.calculator.update(x = self.x)
+    self.f = self.calculator.target()
+    self.g = self.calculator.gradients()
+    return self.x, self.f, self.g
+
+class minimizer_unbound(object):
+  #
+  def __init__(self, max_iterations, calculator):
+    adopt_init_args(self, locals())
+    self.x = self.calculator.x
+    self.minimizer = scitbx.lbfgs.run(
+      target_evaluator=self,
+      termination_params=scitbx.lbfgs.termination_parameters(
+        max_iterations=max_iterations))
+
+  def compute_functional_and_gradients(self):
+    self.calculator.update(x = self.x)
+    t = self.calculator.target()
+    g = self.calculator.gradients()
+    return t,g
+
+def run():
+  # Instantiate rosenbrock class
+  calculator = rosenbrock(a = 20, b = 10, x = flex.double([0,0]))
+  #
+  print('Run L-BFGS (no boundaries)')
+  m_unbound = minimizer_unbound(max_iterations=100, calculator=calculator)
+  print('\tMinimum: ', list(m_unbound.x))
+  print()
+  print('Run L-BFGS-B with boundaries')
+  m_bound = minimizer_bound(
+    calculator     = calculator,
+    use_bounds     = 2,
+    lower_bound    = flex.double([-10000,-10000]),
+    upper_bound    = flex.double([10000,10000]),
+    initial_values = flex.double([0,0])).run()
+  print('\tMinimum: ', list(m_bound.x))
+
+if (__name__ == "__main__"):
+  run()
+</code></pre>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Overview</h3>
+
+<p>The script consists of several parts:</p>
+
+
+<p><b>Imports</b>: At the beginning of the script are import statements. They are used to import the modules needed for a task.</p>
+
+<p><b>Main function:</b> The <code>run()</code> function is used to call the minimizer and to print the result to standard output.</p>
+
+<p><b>class Rosenbrock:</b> The minimizers use this class to compute values and gradients of the Rosenbrock function.</p>
+
+<p><b>class minimizer_unbound: </b>Class to perform minimization of the Rosenbrock function, without bounds.</p>
+
+<p><b>class minimizer_bound: </b>Class to perform minimization of the Rosenbrock function, without bounds.</p>
+
+<p><b>function lbfgs_run</b> Helper function to run the minimizer with bounds. The code could be part of the class but it helps keeping tasks apart by moving it to a separate function.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">The class rosenbrock()</h3>
+
+<p>The minimizer needs a calculator object that represents the function to be minimized. In our example, this is the class <code>rosenbrock()</code>. The class is initialized in the <code>run()</code> function with the two parameters a and b and a starting value \( x = (0,0) \):</p>
+<pre class="bg-code-DL"><code>calculator = rosenbrock(a = 20, b = 10, x = flex.double([0,0]))
+</code></pre>
+
+<p>Note that x is a two-dimensional array that represents the vector (x,y) in equation (3); so x[0] = x and x[1] = y, if we translate the notation in the code to the notation in the equation.<br>
+The <code>update()</code> method assigns the vector (x,y) as attribute x of the rosenbrock class. We get the current value of x from the minimizer and it is used to calculate the next value of the minimization procedure. After enough iterations, this value should correspond to the minimum of the function.<br>
+The <code>target()</code> method returns the value of the rosenbrock function in equ. (3) calculated at (x,y).<br>
+The <code>gradients()</code> method returns the array of partial derivatives (equations 4 and 5).</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">The run() function</h3>
+
+<p>The <code>run()</code> function instantiates the <code>rosenbrock()</code> class with parameters a=20 and b=10:</p>
+<pre class="bg-code-DL"><code>calculator = rosenbrock(a = 20, b = 10, x = flex.double([0,0]))
+</code></pre>
+<p>Then it creates the <code>minimizer_unbound()</code> class:
+
+<pre class="bg-code-DL">m_unbound = minimizer_unbound(max_iterations=100, calculator=calculator)
+</code></pre>
+
+<p>and the <code>minimizer_bound()</code> class:</p>
+
+<pre class="bg-code-DL"><code>  m_bound = minimizer_bound(
+    calculator     = calculator,
+    use_bounds     = 2,
+    lower_bound    = flex.double([-10000,-10000]),
+    upper_bound    = flex.double([10000,10000]),
+    initial_values = flex.double([0,0])).run()
+</code></pre>
+
+<p>In both cases, thiw will launch the minimization. For both computations, we print the result to standard output.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Minimization without bounds</h3>
+
+<p>For minimization without bounds, we will use the minimizer from <code>scitbx.lbfgs</code>.<br>
+First, we initialize the minimizer: We set the starting value (x,y) to the initial value supplied to the rosenbrock class.</p>
+
+<pre class="bg-code-DL"><code>self.x = self.calculator.x
+</code></pre>
+
+<p>In our example, this is \( x = (0,0) \).</p>
+
+<p>Then, we start the minimizer:</p>
+<pre class="bg-code-DL"><code>self.minimizer = scitbx.lbfgs.run(
+  target_evaluator=self,
+  termination_params=scitbx.lbfgs.termination_parameters(
+    max_iterations=max_iterations))
+</code></pre>
+
+<p>As the name suggests, the <code>scitbx.lbfgs.termination_parameters</code> object supplies parameters relevant for decision-making to terminate the minimization. The full set of termination parameters can be found in scitbx/lbfgs/__init__.py. In our example, we only change one parameter, the maximum number of iterations, which we set to 100 when we instantiated the <code>minimizer_unbound()</code> class in the <code>run()</code> function.</p>
+
+<p>To perform L-BFGS minimization, we need to calculate the value and the derivative of our function at a point (x,y). this is done in the <code>compute_functional_and_gradients()</code> method:</p>
+
+<pre class="bg-code-DL"><code>def compute_functional_and_gradients(self):
+  self.calculator.update(x = self.x)
+  t = self.calculator.target()
+  g = self.calculator.gradients()
+  return t,g
+</code></pre>
+
+<p>This is all we need for minimization without boundaries. The attribute x of the <code>minimizer_unbound()</code> object will give us the minimum of the Rosenbrock function. Let's print the value in the <code>run()</code> function:</p>
+
+<pre class="bg-code-DL"><code>print('\tMinimum: ', list(m_unbound.x))
+</code></pre>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Minimization with bounds</h3>
+
+<p>Sometimes, the variables of the function to be minimized are not expected to exceed or be inferior to certain values. Then we can use this information and apply boundaries to the minimization procedure. This means we will use the L-BFGS-B algorithm, which is in scitbx:</p>
+
+<pre class="bg-code-DL"><code>from scitbx import lbfgsb
+</code></pre>
+
+<p>The lbfgsb procedure needs to be constructed a bit differently than the lbfgs minimizer, but the principle is the same.<br>
+First, we construct the <code>minimizer_bound()</code> class in the <code>run()</code> function:<br>
+
+<pre class="bg-code-DL"><code>m_bound = minimizer_bound(
+  calculator     = calculator,
+  use_bounds     = 2,
+  lower_bound    = flex.double([-10000,-10000]),
+  upper_bound    = flex.double([10000,10000]),
+  initial_values = flex.double([0,0])).run()
+</code></pre>
+
+<p>By providing the parameters for <code>use_bounds</code>, <code>lower_bound</code> and <code>upper_bound</code>, we apply a minimum value of -10,000 and a maximum value of 10,000 for both x and y. Note that we could have chosen different values for each variable.</p>
+
+<p>In the class, the minimizer is first initialized. As in the previous example (minimizer_unbound), the starting value is set to \( x = (0,0) \).</p>
+
+<pre class="bg-code-DL"><code>def __init__(self,
+             calculator,
+             use_bounds,
+             lower_bound,
+             upper_bound,
+             initial_values):
+  adopt_init_args(self, locals())
+  self.x = initial_values
+  self.n = self.x.size()
+</code></pre>
+
+<p>The <code>run()</code> method calls our helper function <code>lbfgs_run()</code>.</p>
+
+<pre class="bg-code-DL"><code>def run(self):
+  self.minimizer = lbfgs_run(
+    target_evaluator=self,
+    use_bounds=self.use_bounds,
+    lower_bound = self.lower_bound,
+    upper_bound = self.upper_bound)
+  self()
+  return self
+</code></pre>
+
+The <code>call()</code> method calculates the function value and the derivatives, a bit like in the <code>compute_functional_and_gradients()</code> method of the unbound minimizer.</p>
+
+<pre class="bg-code-DL"><code>def __call__(self):
+  self.calculator.update(x = self.x)
+  self.f = self.calculator.target()
+  self.g = self.calculator.gradients()
+  return self.x, self.f, self.g
+</code></pre>
+
+<p>Let's look at the <code>lbfgs_run()</code> function. We need to define this additional function because the lbfgsb minimizer does not take an evaluator class as input. Instead, we have to provide the variable, its function value and the gradient explicitly:</p>
+
+<pre class="bg-code-DL"><code>have_request = minimizer.process(x, f, g)
+</code></pre>
+
+<p>The rest of the code in the try-except part handles errors and makes sure the minimizer stops when appropriate, according to termination parameters.</p>
+
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Output</h3>
+
+<p>Let's have a look at the output from running the script. We know that the minimum of the Rosenbrock function is at \( x = a \), \( y = a^2 \), so in our example, it is at \( (x,y) = (20, 400) \). The value of the function at this point is 0. The lbfgs minimizer script with our parameters gives:</p>
+
+<pre class="CodeGreen"><code>Run L-BFGS (no boundaries)
+  Minimum:  [19.99999855596643, 399.99994289915264]
+
+Run L-BFGS-B with boundaries
+  Minimum:  [19.99999999985263, 399.9999999940399]
+</code></pre>
+
+<p>The values are very close to the analytical value. Both algorithms converged to the minimum.</p>
+
+<p>We can also quickly check how the minimization progresses. By adding a print statement in the <code>compute_functional_and_gradients()</code> (example: <code>print(t)</code> ) or the <code>__call__()</code> method, we get the current values of f(x,y), i.e. the current value of the function. We can then plot the target value as a function of iterations for each method:</p>
+
+<img style="max-width: 70%;" src="{% static 'cctbx/img/scripts/script_lbfgs_no_curvature.svg' %}" alt="fig" >
+
+<p>In our example, the L-BFGS minimizer without bounds converged after 77 iterations, while the L-BFGS-B minimizer finished after 149 iterations. For better visibility, the y-axis has a limit of 1000. We see that the L-BFGS minimizer spiked once in the beginning. The L-BFGS-B minimizer had additional spikes outside the y-axis range around iteration 40.</p>
+
+
+<!----------------------- EDIT END ---------------------------->
+<!-- DO NOT EDIT ANYTHING BELOW!!!! -->
+</div> <!-- end col-sm-9 -->
+
+<!-- automatic table of contents
+     located in the sidebar; will move to the top on a small screen -->
+<div class="col-sm-3 mt-5">
+  <nav id="toc" data-toggle="toc"></nav>
+</div> <!-- end col-sm-3 -->
+
+{% endblock %}
+
+
+    <!-- block.super will get the content of the block from the parent template -->
+    <!-- {{ block.super }} -->

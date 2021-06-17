@@ -127,11 +127,11 @@ class ComparisonFrame (HKLViewFrame) :
     file_name_1 = wx.FileSelector("Reflections file 1",
       wildcard="Reflection files (*.mtz, *.sca, *.hkl)|*.mtz;*.sca;*.hkl",
       default_path="",
-      flags=wx.OPEN)
+      flags=wx.FD_OPEN)
     file_name_2 = wx.FileSelector("Reflections file 2",
       wildcard="Reflection files (*.mtz, *.sca, *.hkl)|*.mtz;*.sca;*.hkl",
       default_path="",
-      flags=wx.OPEN)
+      flags=wx.FD_OPEN)
     self.load_files(file_name_1, file_name_2)
 
   def load_files (self, file_name_1, file_name_2) :

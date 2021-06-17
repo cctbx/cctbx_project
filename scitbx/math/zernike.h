@@ -1265,7 +1265,7 @@ namespace zernike{
         rr = r;
       }
 
-      FloatType result,tmp;
+      FloatType result;
       result=0.0;
 
       for (int kk=0;kk<n_terms_;kk++){
@@ -1422,7 +1422,7 @@ namespace zernike{
     lgf_(n_max_*2+5)// factorial engine
     {
       delta_ = 1.0 / (m-1);
-      FloatType x,y,z,r,t,p;
+      FloatType r,t,p;
       scitbx::vec3<FloatType> xyz, rtp;
       scitbx::vec3<int> ijk;
       // get all indices please
@@ -1749,7 +1749,7 @@ namespace zernike{
       } else {
         rr = r;
       }
-      FloatType result,tmp;
+      FloatType result;
       result=0.0;
       for (int kk=0;kk<n_terms_;kk++){
         result+=std::pow(rr, n_ - 2*kk) * Nnlk_[kk];
@@ -1932,7 +1932,7 @@ namespace zernike{
     lgf_(n_max_*2+5)// factorial engine
     {
       delta_ = 1.0 / (m);
-      FloatType x,y,r,t;
+      FloatType r,t;
       scitbx::vec2<FloatType> xy, rt;
       scitbx::vec2<int> ij;
       // get all indices please

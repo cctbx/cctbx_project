@@ -283,7 +283,9 @@ class table_data(object):
       else :
         if (self.x_is_inverse_d_min):
           row = [ math.sqrt(1/row[0]) ] + row[1:]
-        return [ (f % x) for f, x in zip(self.column_formats, row) ]
+        return [
+          (f % x) if x is not None else "*" for f, x in zip(self.column_formats, row)
+        ]
     else :
       f1 = "%-g"
       if (precision is not None):
@@ -607,7 +609,8 @@ class _formatting_buffer(object):
 def import_ccp4i_logfile(file_name=None, log_lines=None):
   assert file_name is not None or log_lines is not None
   if not log_lines :
-    log_lines = open(file_name).readlines()
+    with open(file_name) as f:
+      log_lines = f.readlines()
   current_lines = None
   tables_raw = []
   sections_read = 0

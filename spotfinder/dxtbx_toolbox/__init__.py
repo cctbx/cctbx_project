@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 from six.moves import range
 import spotfinder.array_family.flex # implicit import
 
-import boost.python
-ext = boost.python.import_ext("spotfinder_dxtbx_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("spotfinder_dxtbx_ext")
 from spotfinder_dxtbx_ext import *
 
 from libtbx import adopt_init_args

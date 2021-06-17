@@ -2,51 +2,72 @@
 #   modules: <modules artifact name>
 
 jobs:
+  # - template: ./conda-win.yml
+  #   parameters:
+  #     vmImage: vs2017-win2016
+  #     vs: vs2015
+  #     modules: ${{ parameters.modules }}
   - template: ./conda-win.yml
     parameters:
+      vmImage: vs2017-win2016
+      vs: vs2017
+      modules: ${{ parameters.modules }}
+  - template: ./conda-win.yml
+    parameters:
+      vmImage: windows-2019
+      vs: vs2019
       modules: ${{ parameters.modules }}
   - template: ./conda-linux.yml
     parameters:
       distribution: centos
       version: [6]
       modules: ${{ parameters.modules }}
+      template: ./unix-conda-build.yml
   - template: ./conda-linux.yml
     parameters:
       distribution: centos
       version: [7]
       modules: ${{ parameters.modules }}
+      template: ./unix-conda-build.yml
   - template: ./conda-linux.yml
     parameters:
       distribution: centos
       version: [8]
       modules: ${{ parameters.modules }}
+      template: ./unix-conda-build.yml
   - template: ./conda-linux.yml
     parameters:
       distribution: ubuntu
       version: ['18', '04']
       modules: ${{ parameters.modules }}
+      template: ./unix-conda-build.yml
   - template: ./conda-linux.yml
     parameters:
       distribution: ubuntu
       version: ['16', '04']
       modules: ${{ parameters.modules }}
+      template: ./unix-conda-build.yml
   - template: ./conda-linux.yml
     parameters:
       distribution: ubuntu
       version: ['20', '04']
       modules: ${{ parameters.modules }}
+      template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
     parameters:
       vmImage: [10, 15]
-      xcode_version: [11, 4, 1]
+      xcode_version: [12, 2]
       modules: ${{ parameters.modules }}
+      template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
     parameters:
       vmImage: [10, 14]
       xcode_version: [11, 3, 1]
       modules: ${{ parameters.modules }}
+      template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
     parameters:
       vmImage: [10, 14]
       xcode_version: [10, 3]
       modules: ${{ parameters.modules }}
+      template: ./unix-conda-build.yml

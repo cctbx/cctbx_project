@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function
 # geometry from the PDB
 
 import math
+from operator import itemgetter
 from iotbx.pdb import resseq_encode
 import iotbx.phil
 import os,sys
@@ -248,6 +249,17 @@ master_phil = iotbx.phil.parse("""
               Note: None means ignore this test, 0 means allow no poor H-bonds.
       .short_caption = Maximum number of poor H bonds
 
+    tolerant = None
+      .type = bool
+      .help = Set values for tolerant search
+      .short_caption = Tolerant search
+
+     tolerant_max_h_bond_length = 5
+       .type = float
+       .help = Tolerant maximum H-bond length to include in \
+           secondary structure
+       .short_caption = Tolerant maximum H-bond length
+
   }
 
   extract_segments_from_pdb {
@@ -413,7 +425,6 @@ def get_and_split_model(pdb_hierarchy=None,
       hierarchy=pdb_hierarchy,
       info={})
     models=split_model(model=model,verbose=False)
-    print("Split model into %d chains" %(len(models)), file=out)
 
     for model in models:
       model.hierarchy.remove_alt_confs(always_keep_one_conformer=False)
@@ -556,18 +567,18 @@ class segment_library:
     recover_sort_list=[]
     for target,recover in zip(target_order,recover_target_order):
       recover_sort_list.append([target,recover])
-    recover_sort_list.sort() # sorted on target_order, tag is place these go
+    recover_sort_list.sort(key=itemgetter(0)) # sorted on target_order, tag is place these go
 
     sort_list=[]
     for x,orig in zip(xyz,original_order):
       sort_list.append([orig,x])
-    sort_list.sort()  # sorted on original order, tag is xyz
+    sort_list.sort(key=itemgetter(0))  # sorted on original order, tag is xyz
 
 
     second_sort_list=[]
     for [orig,x],[target,recover] in zip(sort_list,recover_sort_list):
       second_sort_list.append([recover,x,orig,target])
-    second_sort_list.sort()
+    second_sort_list.sort(key=itemgetter(0))
 
     new_xyz=flex.vec3_double()
     new_order=[]
@@ -962,12 +973,12 @@ class connected_group:
         original_ca=apply_atom_selection(atom_selection,
           hierarchy=model_to_match.hierarchy)
         original_xyz=original_ca.atoms().extract_xyz()
-        original_sequence=get_sequence(original_ca)
+        original_sequence=get_sequence(original_ca,one_letter_code=False)
 
         atom_selection="name ca "
         replacement_ca=apply_atom_selection(atom_selection,hierarchy=h)
         replacement_xyz=replacement_ca.atoms().extract_xyz()
-        replacement_sequence=get_sequence(replacement_ca)
+        replacement_sequence=get_sequence(replacement_ca,one_letter_code=False)
 
         if original_xyz.size()==replacement_xyz.size():
           diffs.extend(original_xyz-replacement_xyz)
@@ -1300,7 +1311,7 @@ class connected_group:
     sort_list=[]
     for cgs in self.connected_group_segments:
       sort_list.append([cgs.start_resno,cgs])
-    sort_list.sort()
+    sort_list.sort(key=itemgetter(0))
     self.connected_group_segments=[]
     for id,cgs in sort_list:
       self.connected_group_segments.append(cgs)
@@ -1643,7 +1654,8 @@ class replace_with_segments_from_pdb:
     models=self.find_ss_from_pdb(params,pdb_hierarchy=pdb_hierarchy,out=out)
 
     # see if we can replace any secondary structure
-    all_replacement_models=self.replace_secondary_structure(params,models=models,
+    all_replacement_models=self.replace_secondary_structure(
+        params,models=models,
         helix_lib=helix_lib,strand_lib=strand_lib,other_lib=other_lib,
          out=out)
     replacement_model=merge_hierarchies_from_models(
@@ -1757,7 +1769,7 @@ class replace_with_segments_from_pdb:
           [cg.get_left_connection()+cg.get_score()*small_number,cg])
       else:
         sort_list.append([cg.get_score(),cg])
-    sort_list.sort(key = lambda x: x[0])
+    sort_list.sort(key=itemgetter(0))
     if not sort_by_start: # high to low in score, low to high in sort_by_start
       sort_list.reverse()
     connected_groups=[]
@@ -2386,7 +2398,8 @@ class replace_with_segments_from_pdb:
             model.info['chain_number'],
             model.hierarchy.overall_counts().n_residues)+\
             " %d - %d) ..." %(
-           get_first_resno(model.hierarchy),get_last_resno(model.hierarchy)), file=out)
+             get_first_resno(model.hierarchy),
+             get_last_resno(model.hierarchy)), file=out)
 
         connected_groups=self.assemble_segments(params,model=model,
           other_lib=other_lib,
@@ -2421,12 +2434,16 @@ class replace_with_segments_from_pdb:
               model.info['chain_number'],
               replacement_model.hierarchy.overall_counts().n_residues) + \
              " from %d to %d:" %(
-             get_first_resno(model.hierarchy),get_last_resno(model.hierarchy)), file=out)
+             get_first_resno(model.hierarchy),
+             get_last_resno(model.hierarchy)), file=out)
         else:
           print("No replacement model found for this segment", file=out)
           all_replacement_models.append(None)
           completeness_of_all_replacement_models.append(None)
           insertions_deletions_of_all_replacement_models.append(None)
+
+    self.is_complete = (completeness_of_all_replacement_models.count(True) ==
+       len(completeness_of_all_replacement_models))
 
     return all_replacement_models
 

@@ -110,7 +110,6 @@ class ensemble_generator(object):
     sites_cart = xray_structure.sites_cart()-origin
     if(use_states):
       self.states = mmtbx.utils.states(
-        xray_structure = xray_structure,
         pdb_hierarchy  = pdb_hierarchy)
     r = tls_from_motions_object
     print(file=log)

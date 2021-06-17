@@ -4,20 +4,18 @@
 # https://github.com/actions/virtual-environments/blob/master/images/win/Windows2019-Readme.md
 #
 # Parameters:
+#   vmImage: vs2017-win2016, windows-2019
+#   vs: vs2017, vs2019
 #   modules: <modules artifact name>
 
 jobs:
-- job: win_64
+- job: ${{ parameters.vs }}
   pool:
-    vmImage: vs2017-win2016
-  timeoutInMinutes: 360
+    vmImage: ${{ parameters.vmImage }}
+  timeoutInMinutes: 120
   strategy:
     maxParallel: 2
     matrix:
-      python2.7:
-        OS: win-64
-        PYTHON_VERSION: py27
-        MODULES: ${{ parameters.modules }}
       python3.6:
         OS: win-64
         PYTHON_VERSION: py36
@@ -30,45 +28,23 @@ jobs:
         OS: win-64
         PYTHON_VERSION: py38
         MODULES: ${{ parameters.modules }}
+      python3.9:
+        OS: win-64
+        PYTHON_VERSION: py39
+        MODULES: ${{ parameters.modules }}
 
   variables:
-    artifact_name: win_$(PYTHON_VERSION)
+    artifact_name: ${{ parameters.vs }}_$(PYTHON_VERSION)
+    day: $(Get-Date -Format dddd)
 
   steps:
-  # install compilers
-  - script: |
-      choco install vcpython27 -fdv -y --debug
-    condition: eq(variables['PYTHON_VERSION'], 'py27')
-    displayName: Install vcpython27.msi
-
   - powershell: |
-      Set-PSDebug -Trace 1
+      Write-Host $(day)
+      Write-Host "##vso[task.setVariable variable=day]$(day)"
+    displayName: Get day of week
 
-      $batchcontent = @"
-      ECHO ON
-      SET vcpython=C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0
-
-      DIR "%vcpython%"
-
-      CALL "%vcpython%\vcvarsall.bat" %*
-      "@
-
-      $batchDir = "C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0\VC"
-      $batchPath = "$batchDir" + "\vcvarsall.bat"
-      New-Item -Path $batchPath -ItemType "file" -Force
-
-      Set-Content -Value $batchcontent -Path $batchPath
-
-      Get-ChildItem -Path $batchDir
-
-      Get-ChildItem -Path ($batchDir + '\..')
-    condition: eq(variables['PYTHON_VERSION'], 'py27')
-    displayName: Patch vs2008
-
-  - script: |
-      choco install microsoft-visual-cpp-build-tools
-    condition: not(eq(variables['PYTHON_VERSION'], 'py27'))
-    displayName: Install Visual C++ Build Tools 2015
+  - powershell: Write-Host $(day)
+    displayName: Check day of week
 
   # download components
   - checkout: none
@@ -91,102 +67,132 @@ jobs:
     displayName: Copy bootstrap.py
 
   # create conda environment
-  - script: |
-      call %CONDA%\condabin\conda.bat install -y -n base conda=4.7
-    displayName: Update conda
+  # fresh downloads for "Update build cache" and "Full" pipelines
+  - task: DownloadPipelineArtifact@2
+    displayName: Download conda packages
+    inputs:
+      source: 'current'
+      artifact: $(PYTHON_VERSION)_$(OS)
+      path: $(Pipeline.Workspace)/channel
+    condition: >
+      or(eq(variables['Build.DefinitionName'], 'Update build cache'),
+         eq(variables['Build.DefinitionName'], 'Full'))
 
-  # - task: DownloadPipelineArtifact@2
-  #   displayName: Download conda packages
-  #   inputs:
-  #     source: 'current'
-  #     artifact: $(PYTHON_VERSION)_$(OS)
-  #     path: $(Pipeline.Workspace)/channel
-
-  # - script: |
-  #     call %CONDA%\condabin\conda.bat install -y conda-build
-  #     cd $(Pipeline.Workspace)\channel
-  #     more filenames.txt
-  #     call %CONDA%\condabin\conda.bat index $(Pipeline.Workspace)\channel
-  #     echo @EXPLICIT > env.txt
-  #     for /f "tokens=*" %%f in (filenames.txt) do echo file:///$(Pipeline.Workspace)\channel\%%f >> env.txt
-  #     more env.txt
-  #   displayName: Build local channel
-
-  - script: |
-      # call %CONDA%\condabin\conda.bat create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)\channel\env.txt
-      call %CONDA%\condabin\conda.bat create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)\modules\cctbx_project\libtbx\auto_build\conda_envs\cctbx_%PYTHON_VERSION%_%OS%.txt
-      call %CONDA%\condabin\conda.bat install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
-    displayName: Create conda environment
-
-  # download weekly cached build directory for builds
   - task: DownloadPipelineArtifact@2
     inputs:
       source: 'specific'
-      project: '$(System.TeamProjectId)'
-      pipeline: 8
+      project: '$(resources.pipeline.build_cache.projectID)'
+      pipeline: '$(resources.pipeline.build_cache.pipelineID)'
+      allowPartiallySucceededBuilds: true
+      artifact: $(PYTHON_VERSION)_$(OS)
+      path: $(Pipeline.Workspace)/channel
+    displayName: Download cached conda packages
+    condition: >
+      and(ne(variables['Build.DefinitionName'], 'Update build cache'),
+          ne(variables['Build.DefinitionName'], 'Full'))
+
+  - script: |
+      call %CONDA%\condabin\conda.bat install -y conda-build
+      cd $(Pipeline.Workspace)\channel
+      more filenames.txt
+      dir
+      call %CONDA%\condabin\conda.bat index .
+      echo @EXPLICIT > env.txt
+      for /f "tokens=*" %%f in (filenames.txt) do echo $(Pipeline.Workspace)\channel\%%f >> env.txt
+      more env.txt
+      dir
+    displayName: Build local channel
+
+  # call %CONDA%\condabin\conda.bat create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)\modules\cctbx_project\libtbx\auto_build\conda_envs\cctbx_%PYTHON_VERSION%_%OS%.txt
+  - script: |
+      call %CONDA%\condabin\conda.bat create -y --offline -c $(Pipeline.Workspace)\channel\ --override-channels -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)\channel\env.txt
+      call %CONDA%\condabin\conda.bat install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
+    displayName: Create conda environment
+
+  # download daily cached build directory for builds
+  # always do builds from scratch for "Update build cache" and "Weekly"
+  # pipelines
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(resources.pipeline.build_cache.projectID)'
+      pipeline: '$(resources.pipeline.build_cache.pipelineID)'
+      allowPartiallySucceededBuilds: true
+      allowFailedBuilds: true
       artifact: '$(artifact_name)'
       path: $(Pipeline.Workspace)
     displayName: Download cached build
-    condition: ne(variables['Build.DefinitionName'], 'Update build cache')
+    condition: >
+      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+             ne(variables['day'], 'Sunday')),
+         eq(variables['Build.DefinitionName'], 'CI'),
+         eq(variables['Build.DefinitionName'], 'CI branch'),
+         eq(variables['Build.DefinitionName'], 'Full'))
     continueOnError: true
 
   - script: |
       cd $(Pipeline.Workspace)
       tar -xf build.tar
     displayName: Extract build tarball
-    condition: ne(variables['Build.DefinitionName'], 'Update build cache')
+    condition: >
+      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+             ne(variables['day'], 'Sunday')),
+         eq(variables['Build.DefinitionName'], 'CI'),
+         eq(variables['Build.DefinitionName'], 'CI branch'),
+         eq(variables['Build.DefinitionName'], 'Full'))
     continueOnError: true
-
-  # build
-  - script: |
-      cd $(Pipeline.Workspace)
-      call "C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat" amd64
-      call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
-      python bootstrap.py build --builder=cctbx --use-conda=%CONDA_PREFIX% --nproc=4
-      call .\build\setpaths.bat
-      call libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx
-      cd build
-      call libtbx.scons -j 4
-      call libtbx.scons -j 4
-    condition: eq(variables['PYTHON_VERSION'], 'py27')
-    displayName: Configure and Build (Python 2)
+    failOnStderr: false
 
   - script: |
       cd $(Pipeline.Workspace)
-      call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.bat"
+      call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
       python bootstrap.py build --builder=cctbx --use-conda=%CONDA_PREFIX% --nproc=4
       call .\build\setpaths.bat
-      call libtbx.configure cma_es fable rstbx simtbx spotfinder cbflib_adaptbx
+      call libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx phenix_regression phenix_examples
       cd build
       call libtbx.scons -j 4
       call libtbx.scons -j 4
-    condition: not(eq(variables['PYTHON_VERSION'], 'py27'))
-    displayName: Configure and Build (Python 3)
+    condition: eq('${{ parameters.vs }}', 'vs2017')
+    displayName: Configure and Build (Python 3, vs2017)
+
+  - script: |
+      cd $(Pipeline.Workspace)
+      call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
+      python bootstrap.py build --builder=cctbx --use-conda=%CONDA_PREFIX% --nproc=4
+      call .\build\setpaths.bat
+      call libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx phenix_regression phenix_examples
+      cd build
+      call libtbx.scons -j 4
+      call libtbx.scons -j 4
+    condition: eq('${{ parameters.vs }}', 'vs2019')
+    displayName: Configure and Build (Python 3, vs2019)
 
   # test
   - script: |
+      SET PYTHONLEGACYWINDOWSSTDIO=1
       cd $(Pipeline.Workspace)
-      call "C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat" amd64
+      call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       call .\build\setpaths.bat
       mkdir tests
       cd tests
-      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx nproc=4
+      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cctbx_website module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx nproc=4
     failOnStderr: false
-    condition: eq(variables['PYTHON_VERSION'], 'py27')
-    displayName: Test (Python 2)
+    condition: eq('${{ parameters.vs }}', 'vs2017')
+    displayName: Test (Python 3, vs2017)
 
   - script: |
       SET PYTHONLEGACYWINDOWSSTDIO=1
       cd $(Pipeline.Workspace)
-      call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.bat"
+      call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       call .\build\setpaths.bat
       mkdir tests
       cd tests
-      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx nproc=4
+      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cctbx_website module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx nproc=4
     failOnStderr: false
-    condition: not(eq(variables['PYTHON_VERSION'], 'py27'))
-    displayName: Test (Python 3)
+    condition: eq('${{ parameters.vs }}', 'vs2019')
+    displayName: Test (Python 3, vs2019)
 
   - task: PublishTestResults@2
     condition: succeededOrFailed()
@@ -194,7 +200,7 @@ jobs:
       testResultsFormat: 'JUnit'
       testResultsFiles: '$(Pipeline.Workspace)\tests\output.xml'
 
-# preserve permissions
+  # preserve permissions
   - script: |
       cd $(Pipeline.Workspace)
       tar -chf build.tar build

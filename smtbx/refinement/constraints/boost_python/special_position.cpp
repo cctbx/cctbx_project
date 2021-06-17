@@ -35,6 +35,10 @@ namespace boost_python {
     special_position_wrapper<special_position_u_star_parameter,
                              asu_u_star_parameter>
     ::wrap("special_position_u_star_parameter");
+
+    special_position_wrapper<special_position_anharmonic_adp_parameter,
+                             asu_u_star_parameter>
+    ::wrap("special_position_anharmonic_adp_parameter");
   }
 
 }}}}

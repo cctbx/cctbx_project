@@ -1,14 +1,3 @@
-template< typename Key, typename Value >
-typename ToConstPair< Key, Value >::result_type
-ToConstPair< Key, Value >::operator ()(argument_type const& arg) const
-{
-  return result_type(
-    arg.first,
-    boost::const_pointer_cast< Value const >( arg.second )
-    );
-}
-
-
 template<
   typename Glyph,
   typename Index,
@@ -28,21 +17,6 @@ template<
   >
 Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::~Edge()
 {}
-
-
-template<
-  typename Glyph,
-  typename Index,
-  typename WordLength,
-  typename SuffixLabel,
-  template< typename, typename > class NodeAdapter
-  >
-bool
-Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::empty() const
-{
-  node_type const& n = this->node();
-  return n.begin() == n.end();
-}
 
 
 template<
@@ -84,7 +58,7 @@ typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::const_itera
 Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::begin() const
 {
   node_type const& n = this->node();
-  return const_iterator( n.begin(), converter_type() );
+  return n.begin();
 }
 
 template<
@@ -98,7 +72,7 @@ typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::const_itera
 Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::end() const
 {
   node_type const& n = this->node();
-  return const_iterator( n.end(), converter_type() );
+  return n.end();
 }
 
 template<
@@ -126,7 +100,7 @@ typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::const_itera
 Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::find(glyph_type const& key) const
 {
   node_type const& n = this->node();
-  return const_iterator( n.find( key ), converter_type() );
+  return n.find( key );
 }
 
 template<
@@ -153,17 +127,10 @@ template<
   typename SuffixLabel,
   template< typename, typename > class NodeAdapter
   >
-typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::const_ptr_type
+typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::ptr_type
 Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_parent() const
 {
-  const_ptr_type parent = this->parent().lock();
-
-  if ( ! parent )
-  {
-    throw unavailable();
-  }
-
-  return parent;
+  return promote_link( this->parent() );
 }
 
 template<
@@ -174,36 +141,9 @@ template<
   template< typename, typename > class NodeAdapter
   >
 typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::ptr_type
-Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_parent()
-{
-  ptr_type parent = this->parent().lock();
-
-  if ( ! parent )
-  {
-    throw unavailable();
-  }
-
-  return parent;
-}
-
-template<
-  typename Glyph,
-  typename Index,
-  typename WordLength,
-  typename SuffixLabel,
-  template< typename, typename > class NodeAdapter
-  >
-typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::const_ptr_type
 Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_suffix() const
 {
-  const_ptr_type suffix = this->suffix().lock();
-
-  if ( ! suffix )
-  {
-    throw unavailable();
-  }
-
-  return suffix;
+  return promote_link( this->suffix() );
 }
 
 template<
@@ -214,16 +154,18 @@ template<
   template< typename, typename > class NodeAdapter
   >
 typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::ptr_type
-Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_suffix()
+Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::promote_link(
+  weak_ptr_type const& link
+  ) const
 {
-  ptr_type suffix = this->suffix().lock();
+  ptr_type locked = link.lock();
 
-  if ( ! suffix )
+  if ( ! locked )
   {
     throw unavailable();
   }
 
-  return suffix;
+  return locked;
 }
 
 template<
@@ -233,34 +175,27 @@ template<
   typename SuffixLabel,
   template< typename, typename > class NodeAdapter
   >
-typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::const_ptr_type
+void
+Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::set_parent(
+  ptr_type const& parent
+  )
+{
+  this->parent() = parent;
+}
+
+template<
+  typename Glyph,
+  typename Index,
+  typename WordLength,
+  typename SuffixLabel,
+  template< typename, typename > class NodeAdapter
+  >
+typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::ptr_type
 Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_child_with_label(
   glyph_type const& label
   ) const
 {
   const_iterator it = find( label );
-
-  if ( it == end() )
-  {
-    throw nonexistent();
-  }
-
-  return it->second;
-}
-
-template<
-  typename Glyph,
-  typename Index,
-  typename WordLength,
-  typename SuffixLabel,
-  template< typename, typename > class NodeAdapter
-  >
-typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::ptr_type
-Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_child_with_label(
-  glyph_type const& label
-  )
-{
-  iterator it = find( label );
 
   if ( it == end() )
   {
@@ -306,7 +241,6 @@ Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::attach_child_if_not_
 {
   return insert( value_type( label, child ) ).second;
 }
-
 
 template<
   typename Glyph,
@@ -357,18 +291,6 @@ Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::leaf(
   return boost::make_shared< leaf_type >(start, word_length, suffix_label);
 }
 
-
-template<
-  typename Glyph,
-  typename Index,
-  typename WordLength,
-  typename SuffixLabel,
-  template< typename, typename > class NodeAdapter
-  >
-typename Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type const
-Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::shared_start =
-    typename Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type();
-
 template<
   typename Glyph,
   typename Index,
@@ -396,10 +318,11 @@ template<
   typename SuffixLabel,
   template< typename, typename > class NodeAdapter
   >
-typename Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type const&
-Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::start() const
+bool
+Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::empty() const
 {
-  return shared_start;
+  node_type const& n = this->node();
+  return n.empty();
 }
 
 template<
@@ -409,8 +332,23 @@ template<
   typename SuffixLabel,
   template< typename, typename > class NodeAdapter
   >
-typename Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type&
-Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::start()
+typename Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type 
+Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_start() const
+{
+  return index_type();
+}
+
+template<
+  typename Glyph,
+  typename Index,
+  typename WordLength,
+  typename SuffixLabel,
+  template< typename, typename > class NodeAdapter
+  >
+void
+Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::set_start(
+  index_type const& value
+  )
 {
   throw bad_edge_type();
 }
@@ -423,7 +361,7 @@ template<
   template< typename, typename > class NodeAdapter
   >
 typename Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type
-Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::stop() const
+Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_stop() const
 {
   return index_type();
 }
@@ -474,7 +412,7 @@ template<
   typename SuffixLabel,
   template< typename, typename > class NodeAdapter
   >
-typename Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::const_weak_ptr_type
+typename Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::weak_ptr_type const&
 Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::parent() const
 {
   throw bad_edge_type();
@@ -500,7 +438,7 @@ template<
   typename SuffixLabel,
   template< typename, typename > class NodeAdapter
   >
-typename Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::const_weak_ptr_type
+typename Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::weak_ptr_type const&
 Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::suffix() const
 {
   throw bad_edge_type();
@@ -577,23 +515,11 @@ template<
   typename SuffixLabel,
   template< typename, typename > class NodeAdapter
   >
-typename Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type const&
-Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::start() const
+bool
+Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::empty() const
 {
-  return start_;
-}
-
-template<
-  typename Glyph,
-  typename Index,
-  typename WordLength,
-  typename SuffixLabel,
-  template< typename, typename > class NodeAdapter
-  >
-typename Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type&
-Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::start()
-{
-  return start_;
+  node_type const& n = this->node();
+  return n.empty();
 }
 
 template<
@@ -604,7 +530,35 @@ template<
   template< typename, typename > class NodeAdapter
   >
 typename Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type
-Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::stop() const
+Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_start() const
+{
+  return start_;
+}
+
+template<
+  typename Glyph,
+  typename Index,
+  typename WordLength,
+  typename SuffixLabel,
+  template< typename, typename > class NodeAdapter
+  >
+void
+Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::set_start(
+  index_type const& value
+  )
+{
+  start_ = value;
+}
+
+template<
+  typename Glyph,
+  typename Index,
+  typename WordLength,
+  typename SuffixLabel,
+  template< typename, typename > class NodeAdapter
+  >
+typename Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type
+Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_stop() const
 {
   return stop_;
 }
@@ -655,7 +609,7 @@ template<
   typename SuffixLabel,
   template< typename, typename > class NodeAdapter
   >
-typename Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::const_weak_ptr_type
+typename Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::weak_ptr_type const&
 Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::parent() const
 {
   return parent_ptr_;
@@ -681,7 +635,7 @@ template<
   typename SuffixLabel,
   template< typename, typename > class NodeAdapter
   >
-typename Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::const_weak_ptr_type
+typename Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::weak_ptr_type const&
 Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::suffix() const
 {
   return suffix_ptr_;
@@ -726,18 +680,6 @@ Branch< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::is_leaf() const
   return false;
 }
 
-
-template<
-  typename Glyph,
-  typename Index,
-  typename WordLength,
-  typename SuffixLabel,
-  template< typename, typename > class NodeAdapter
-  >
-typename Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::node_type const
-Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::shared_node =
-    typename Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::node_type();
-
 template<
   typename Glyph,
   typename Index,
@@ -770,23 +712,10 @@ template<
   typename SuffixLabel,
   template< typename, typename > class NodeAdapter
   >
-typename Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type const&
-Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::start() const
+bool
+Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::empty() const
 {
-  return start_;
-}
-
-template<
-  typename Glyph,
-  typename Index,
-  typename WordLength,
-  typename SuffixLabel,
-  template< typename, typename > class NodeAdapter
-  >
-typename Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type&
-Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::start()
-{
-  return start_;
+  return true;
 }
 
 template<
@@ -797,7 +726,35 @@ template<
   template< typename, typename > class NodeAdapter
   >
 typename Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type
-Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::stop() const
+Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_start() const
+{
+  return start_;
+}
+
+template<
+  typename Glyph,
+  typename Index,
+  typename WordLength,
+  typename SuffixLabel,
+  template< typename, typename > class NodeAdapter
+  >
+void
+Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::set_start(
+  index_type const& value
+  )
+{
+  start_ = value;
+}
+
+template<
+  typename Glyph,
+  typename Index,
+  typename WordLength,
+  typename SuffixLabel,
+  template< typename, typename > class NodeAdapter
+  >
+typename Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type
+Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_stop() const
 {
   return *word_length_;
 }
@@ -825,7 +782,7 @@ template<
 typename Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::node_type const&
 Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::node() const
 {
-  return shared_node;
+  throw bad_edge_type();
 }
 
 template<
@@ -848,7 +805,7 @@ template<
   typename SuffixLabel,
   template< typename, typename > class NodeAdapter
   >
-typename Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::const_weak_ptr_type
+typename Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::weak_ptr_type const&
 Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::parent() const
 {
   return parent_ptr_;
@@ -874,7 +831,7 @@ template<
   typename SuffixLabel,
   template< typename, typename > class NodeAdapter
   >
-typename Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::const_weak_ptr_type
+typename Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::weak_ptr_type const&
 Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::suffix() const
 {
   throw bad_edge_type();

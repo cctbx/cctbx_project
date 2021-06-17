@@ -1,6 +1,7 @@
+'''
+Child class of MillerArrayDataManager for handling map coefficients
+'''
 from __future__ import absolute_import, division, print_function
-'''
-'''
 
 from iotbx.data_manager.miller_array import MillerArrayDataManager
 from iotbx.cif_mtz_data_labels import mtz_map_coefficient_labels, \
@@ -36,7 +37,7 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
                                          phil_extract)
 
   def add_map_coefficients(self, filename, data):
-    self.add_miller_array(self, filename, data)
+    self.add_miller_array(filename, data)
 
   def set_default_map_coefficients_type(self, array_type=None):
     return self._set_default_miller_array_type(
@@ -73,7 +74,7 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
     '''
     Returns a dict of array types, keyed by label
     '''
-    return self._get_array_types(MapCoefficeintsDataManager.datatype, filename)
+    return self._get_array_types(MapCoefficientsDataManager.datatype, filename)
 
   def get_map_coefficients_arrays(self, labels=None, filename=None):
     '''
@@ -103,15 +104,48 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
   def filter_map_coefficients_arrays(self, filename):
     '''
     Populate data structures by checking labels in miller_arrays to determine
-    type
+    type and by setting all complex miller arrays as map coefficients
     '''
+    # check for labels
     known_labels = mtz_map_coefficient_labels.union(cif_map_coefficient_labels)
-    self._child_filter_arrays(
-      MapCoefficientsDataManager.datatype, filename, known_labels)
+    datatype = MapCoefficientsDataManager.datatype
+    self._child_filter_arrays(datatype, filename, known_labels)
+
+    # check for complex arrays
+    data = self.get_miller_array(filename)
+    miller_arrays = data.as_miller_arrays()
+    current_labels = []
+    if filename in self.get_map_coefficients_names():
+      current_labels = self.get_map_coefficients_labels(filename)
+    labels = []
+    types = {}
+    datatype_dict = getattr(self, '_%s_arrays' % datatype)
+    for array in miller_arrays:
+      label = array.info().label_string()
+      if array.is_complex_array() and label not in current_labels:
+        labels.append(label)
+        if filename not in datatype_dict.keys():
+          datatype_dict[filename] = dict()
+        datatype_dict[filename][label] = array
+        types[label] = getattr(self, '_default_%s_type' % datatype)
+
+    # update data structures
+    if len(labels) > 0:
+      current_labels = getattr(self, '_%s_labels' % datatype)
+      if filename not in current_labels:
+        current_labels[filename] = labels
+      else:
+        current_labels[filename] += labels
+      current_types = getattr(self, '_%s_types' % datatype)
+      if filename not in current_types:
+        current_types[filename] = types
+      else:
+        current_types[filename].update(types)
+      self._add(datatype, filename, data)
 
   def write_map_coefficients_file(
       self, mtz_object, filename=Auto, overwrite=Auto):
-    self.write_miller_array_file(
+    return self.write_miller_array_file(
       mtz_object, filename=filename, overwrite=overwrite)
 
 # =============================================================================

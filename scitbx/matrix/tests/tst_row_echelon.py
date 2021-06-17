@@ -4,7 +4,7 @@ def exercise_rational():
   from scitbx.matrix import row_echelon
   from scitbx import matrix
   from libtbx.utils import flat_list
-  from boost import rational
+  from boost_adaptbx.boost import rational
   import random
   rng = random.Random(0)
   #

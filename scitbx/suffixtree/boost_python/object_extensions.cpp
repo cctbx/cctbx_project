@@ -13,8 +13,7 @@ namespace python
 std::size_t
 hash_value(const object& obj)
 {
-  long raw = extract< long >( obj.attr( "__hash__" )() );
-  return boost::hash_value( raw );
+  return boost::hash_value( PyObject_Hash( obj.ptr() ) );
 }
 
 std::ostream&

@@ -2,6 +2,7 @@
 #define SCITBX_GRAPHICS_UTILS_COLOR_H
 
 //#include <scitbx/array_family/boost_python/flex_fwd.h>
+#include <cctbx/hendrickson_lattman.h>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/vec3.h>
@@ -119,8 +120,8 @@ namespace scitbx { namespace graphics_utils {
 
 
   af::shared< scitbx::vec3<double> >
-  NoNansvec3(af::const_ref< scitbx::vec3<double> > const& vecs,
-          double defx = 0.0, double defy = 0.0, double defz = 0.0)
+    NoNansvec3(af::const_ref< scitbx::vec3<double> > const& vecs,
+      double defx = 0.0, double defy = 0.0, double defz = 0.0)
   {
     af::shared <scitbx::vec3<double> > nonanvecs(vecs.size());
     for (unsigned i_seq = 0; i_seq < vecs.size(); i_seq++)
@@ -131,6 +132,22 @@ namespace scitbx { namespace graphics_utils {
         nonanvecs[i_seq] = scitbx::vec3<double>(defx, defy, defz);
     }
     return nonanvecs;
+  }
+
+
+  af::shared< cctbx::hendrickson_lattman<> >
+    NoNansHL(af::const_ref< cctbx::hendrickson_lattman<> > const& HL,
+      double A = 0.0, double B = 0.0, double C = 0.0, double D = 0.0)
+  {
+    af::shared <cctbx::hendrickson_lattman<> > nonanshl(HL.size());
+    for (unsigned i = 0; i < HL.size(); i++)
+    {
+      if (boost::math::isfinite(HL[i].a() + HL[i].b() + HL[i].c() + HL[i].d()))
+        nonanshl[i] = cctbx::hendrickson_lattman<>(HL[i].a(), HL[i].b(), HL[i].c(), HL[i].d());
+      else
+        nonanshl[i] = cctbx::hendrickson_lattman<>(A, B, C, D);
+    }
+    return nonanshl;
   }
 
 
@@ -299,12 +316,12 @@ namespace scitbx { namespace graphics_utils {
   }
 
   af::shared< scitbx::vec3<double> >
-  color_by_property (
-    af::const_ref< double > const& properties,
-    af::const_ref< bool > const& selection,
-    bool color_all=false,
-    unsigned gradient_type=0,
-    double min_value=0.1)
+    color_by_property(
+      af::const_ref< double > const& properties,
+      af::const_ref< bool > const& selection,
+      bool color_all = false,
+      unsigned gradient_type = 0,
+      double min_value = 0.1)
   {
     SCITBX_ASSERT(properties.size() > 0);
     SCITBX_ASSERT(gradient_type <= 2);
@@ -312,7 +329,7 @@ namespace scitbx { namespace graphics_utils {
     double vmax = -9e99;
     double vmin = 9e99;
     for (unsigned i_seq = 0; i_seq < properties.size(); i_seq++) {
-      if ((! color_all) && (! selection[i_seq])) continue;
+      if ((!color_all) && (!selection[i_seq])) continue;
       if (!boost::math::isfinite(properties[i_seq])) continue;
       if (properties[i_seq] > vmax) vmax = properties[i_seq];
       if (properties[i_seq] < vmin) vmin = properties[i_seq];
@@ -322,15 +339,98 @@ namespace scitbx { namespace graphics_utils {
       vmin = 0.0;
     }
     for (unsigned i_seq = 0; i_seq < properties.size(); i_seq++) {
-      double gradient_ratio = (properties[i_seq]-vmin) / (vmax-vmin);
-      if ((! color_all) && (! selection[i_seq])) { // black
-        colors[i_seq] = scitbx::vec3<double>(0.0,0.0,0.0);
-      } else if (gradient_type == 0) { // rainbow
+      double gradient_ratio = (properties[i_seq] - vmin) / (vmax - vmin);
+      if ((!color_all) && (!selection[i_seq])) { // black
+        colors[i_seq] = scitbx::vec3<double>(0.0, 0.0, 0.0);
+      }
+      else if (gradient_type == 0) { // rainbow
         colors[i_seq] = hsv2rgb(240.0 - (240 * gradient_ratio), 1., 1.);
-      } else if (gradient_type == 1) { // red-blue
+      }
+      else if (gradient_type == 1) { // red-blue
         colors[i_seq] = hsv2rgb(240.0 + (120 * gradient_ratio), 1., 1.);
-      } else if (gradient_type == 2) { // heatmap
+      }
+      else if (gradient_type == 2) { // heatmap
         colors[i_seq] = get_heatmap_color(gradient_ratio, min_value);
+      }
+    }
+    return colors;
+  }
+
+  af::shared< scitbx::vec3<double> >
+    map_to_rgb_colourmap(
+      af::const_ref< double > const& data_for_colors,
+      af::shared< scitbx::vec3<double> > const& colourmap,
+      af::const_ref< bool > const& selection,
+      af::const_ref< double > const& attenuation,
+      double powscale = 1.0,
+      bool map_directly = false,
+      bool color_all = false
+      )
+  {
+    /*
+    Map data_for_colors to the colours given in colourmap
+    data_for_colors could be a large array, say ~ number of reflections in a data set.
+    colourmap is a smallish array of say 200 different colours, like a smooth rgb gradient
+    obtained from https://matplotlib.org/examples/color/colormaps_reference.html
+    */
+    SCITBX_ASSERT(data_for_colors.size() > 0 && data_for_colors.size() == attenuation.size());
+    af::shared <scitbx::vec3<double> > colors(data_for_colors.size());
+    double vmax = -9e99;
+    double vmin = 9e99;
+    int nrgbcolours = colourmap.size();
+    for (unsigned i_seq = 0; i_seq < data_for_colors.size(); i_seq++)
+    {
+      if ((!color_all) && (!selection[i_seq])) continue;
+      if (!boost::math::isfinite(data_for_colors[i_seq])) continue;
+      if (data_for_colors[i_seq] > vmax) vmax = data_for_colors[i_seq];
+      if (data_for_colors[i_seq] < vmin) vmin = data_for_colors[i_seq];
+    }
+    if (vmax == vmin) {
+      vmax = 1.0;
+      vmin = 0.0;
+    }
+    // do the table lookup of rgb colours by mapping data values to indices of colourmap array
+    // and attenutate colours according to attenuation values
+    if (map_directly)
+    {
+      for (unsigned i_seq = 0; i_seq < data_for_colors.size(); i_seq++)
+      {
+        if (boost::math::isfinite(data_for_colors[i_seq]))
+        {
+          int indx = int(data_for_colors[i_seq]) % nrgbcolours;
+          colors[i_seq][0] = colourmap[indx][0] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
+          colors[i_seq][1] = colourmap[indx][1] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
+          colors[i_seq][2] = colourmap[indx][2] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
+        }
+        else
+        {
+          colors[i_seq][0] = FP_NAN;
+          colors[i_seq][1] = FP_NAN;
+          colors[i_seq][2] = FP_NAN;
+        }
+      }
+    }
+    else
+    {
+      for (unsigned i_seq = 0; i_seq < data_for_colors.size(); i_seq++)
+      {
+        if (boost::math::isfinite(data_for_colors[i_seq]))
+        {
+          // applying a power scaling skews the colour mapping towards the smaller numbers for powscale > 1
+          // but skews it towards the larger numbers for 0 < powscale < 1
+          double colindex = (nrgbcolours - 1) * pow(((data_for_colors[i_seq] - vmin) / (vmax - vmin)), powscale);
+          int indx = int(colindex);
+          SCITBX_ASSERT(indx >= 0 && indx < nrgbcolours);
+          colors[i_seq][0] = colourmap[indx][0] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
+          colors[i_seq][1] = colourmap[indx][1] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
+          colors[i_seq][2] = colourmap[indx][2] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
+        }
+        else
+        {
+          colors[i_seq][0] = FP_NAN;
+          colors[i_seq][1] = FP_NAN;
+          colors[i_seq][2] = FP_NAN;
+        }
       }
     }
     return colors;

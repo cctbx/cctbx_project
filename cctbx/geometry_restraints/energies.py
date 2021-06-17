@@ -160,8 +160,8 @@ class energies(scitbx.restraints.energies):
       self.n_reference_coordinate_proxies = None
       self.reference_coordinate_residual_sum = 0
     else:
-      import boost.python
-      ext = boost.python.import_ext("mmtbx_reference_coordinate_ext")
+      import boost_adaptbx.boost.python as bp
+      ext = bp.import_ext("mmtbx_reference_coordinate_ext")
       self.n_reference_coordinate_proxies = reference_coordinate_proxies.size()
       self.reference_coordinate_residual_sum = \
           ext.reference_coordinate_residual_sum(

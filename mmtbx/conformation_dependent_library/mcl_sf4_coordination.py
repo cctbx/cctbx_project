@@ -16,6 +16,9 @@ sf4_coordination = {
     ("FE", "S")      : [  2.311, 0.006*2],
     ("S", "FE", "S") : [113.97,  8.764*2],
   },
+  'HIS' : {
+    ('FE', 'N')        : [  2.04,  0.05],
+  }
 }
 fes_coordination = {
   'CYS' : {
@@ -35,6 +38,12 @@ f3s_coordination = {
     ('FE', 'S')      : [  2.318, 0.008*2],
     ('S', 'FE', 'S') : [112.23,  6.03*2],
   },
+}
+# not coodinated number FE !- S
+f3s_naming = {
+  1 : 4,
+  3 : 2,
+  4 : 1,
 }
 coordination_defaults = {
   'SF4' : sf4_coordination,
@@ -78,8 +87,8 @@ def get_lookup(a1, a2, a3=None):
 def get_distance_ideal_and_weight(a1, a2):
   ligand_lookup = get_lookup(a1, a2)
   key = (a1.element.strip().upper(), a2.element.strip().upper())
-  assert key in ligand_lookup, ' Atom pair %s %s not found in MCL' % (a1.quote(),
-                                                                      a2.quote())
+  if key not in ligand_lookup:
+    return None, ' Atom pair %s %s not found in MCL' % (a1.quote(), a2.quote())
   distance_ideal=ligand_lookup[key][0]
   weight=1.0/ligand_lookup[key][1]**2
   return distance_ideal, weight
@@ -103,6 +112,7 @@ def get_angle_ideal_and_weight(a1,a2,a3):
 
 def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
                                          nonbonded_proxies,
+                                         sorted_nb_proxies_res=None,
                                          coordination_distance_cutoff=3.5,
                                          #params=None,
                                          log=sys.stdout,
@@ -112,11 +122,13 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
   done_aa = []
   atoms = pdb_hierarchy.atoms()
   sites_cart = atoms.extract_xyz()
-  get_sorted_result = nonbonded_proxies.get_sorted(
-      by_value="delta",
-      sites_cart=sites_cart)
-  if get_sorted_result is None:
-    return None
+  get_sorted_result = sorted_nb_proxies_res
+  if sorted_nb_proxies_res is None:
+    get_sorted_result = nonbonded_proxies.get_sorted(
+        by_value="delta",
+        sites_cart=sites_cart)
+    if get_sorted_result is None:
+      return None
   sorted_nonb, n_not_shown = get_sorted_result
 
   # Get potential hbonds
@@ -166,6 +178,9 @@ def get_bond_proxies(coordination):
   if coordination is None: return bonds
   for a1, a2 in coordination:
     distance_ideal, weight = get_distance_ideal_and_weight(a1, a2)
+    if distance_ideal is None:
+      print(weight)
+      continue
     p = geometry_restraints.bond_simple_proxy(
       i_seqs=[a1.i_seq, a2.i_seq],
       distance_ideal=distance_ideal,
@@ -182,11 +197,19 @@ def get_angle_proxies_for_bond(coordination):
   def _get_angle_atoms(a1, a2, resname, second_residues):
     atoms = []
     ii=int(a1.name.strip()[-1])
-    for i in range(1,5):
-      if i==ii: continue
-      name = 'S%d' % i
-      a3 = a1.parent().get_atom(name)
-      if a3: atoms.append(a3)
+    if resname=='F3S':
+      for i in range(1,5):
+        if i == f3s_naming.get(ii, -1): continue
+        name = 'S%d' % i
+        a3 = a1.parent().get_atom(name)
+        if a3: atoms.append(a3)
+    else:
+      # SF4 has a special naming scheme
+      for i in range(1,5):
+        if i==ii: continue
+        name = 'S%d' % i
+        a3 = a1.parent().get_atom(name)
+        if a3: atoms.append(a3)
     if resname in ['FES']:
       for ag in second_residues:
         if ag.id_str()==a2.parent().id_str(): continue

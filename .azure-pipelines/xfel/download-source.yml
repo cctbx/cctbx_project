@@ -2,10 +2,10 @@
 # The artifact name is "modules"
 
 jobs:
-- job: modules
+- job: xfel_modules
   pool:
-    vmImage: ubuntu-latest
-  timeoutInMinutes: 360
+    vmImage: ubuntu-18.04
+  timeoutInMinutes: 120
 
   steps:
 
@@ -20,7 +20,11 @@ jobs:
 
   - script: |
       cd $(Pipeline.Workspace)
-      python bootstrap.py hot update --builder=xfel
+      python bootstrap.py hot update --builder=xfel --python=38
+      cd modules
+      git clone https://github.com/nksauter/LS49.git
+      git clone https://gitlab.com/cctbx/ls49_big_data.git
+      git clone https://github.com/lanl/lunus.git
     displayName: Download sources
 
   - script: |
@@ -28,23 +32,41 @@ jobs:
       cd modules/uc_metrics
       git lfs install --local
       git lfs pull
+      cd ../ls49_big_data
+      git lfs install --local
+      git lfs pull
     displayName: Download LFS files
 
   - task: DownloadPipelineArtifact@2
     inputs:
       source: 'specific'
-      project: '$(System.TeamProjectId)'
-      pipeline: 4
+      project: '$(resources.pipeline.data_cache.projectID)'
+      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
       artifact: 'xfel_regression'
       path: $(Pipeline.Workspace)/modules/xfel_regression
     displayName: Download xfel_regression
+    continueOnError: true
 
-  # preserve permissions
+  - script: |
+      if [ ! -d "$(Pipeline.Workspace)/modules/xfel_regression" ]; then
+        git co https://gitlab.com/cctbx/xfel_regression.git $(Pipeline.Workspace)/modules/xfel_regression
+      fi
+      cd $(Pipeline.Workspace)/modules/xfel_regression
+      git reset --hard origin/main
+      git lfs install --local
+      git pull --rebase
+      git lfs pull
+    displayName: Update xfel_regression
+
+  # preserve permissions and delete extra files
   - script: |
       cd $(Pipeline.Workspace)
+      rm -fr modules/*/.git/*
+      rm -fr modules/*/.svn/*
+      rm -fr modules/*.tar
       tar -cf modules.tar modules
     displayName: Build tarball
 
   # publish artifact
   - publish: $(Pipeline.Workspace)/modules.tar
-    artifact: modules
+    artifact: xfel_modules

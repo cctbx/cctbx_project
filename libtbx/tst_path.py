@@ -106,11 +106,13 @@ def exercise_move_old_create_new_directory():
   for i in range(3):
     mocnd("tmp_mocnd/a")
   assert sorted(os.listdir("tmp_mocnd")) == ["a", "a_001", "a_002"]
-  open("tmp_mocnd/a_23", "w")
+  f = open("tmp_mocnd/a_23", "w")
+  f.close()
   mocnd("tmp_mocnd/a")
   assert sorted(os.listdir("tmp_mocnd")) == [
     "a", "a_001", "a_002", "a_024", "a_23"]
-  open("tmp_mocnd/a_log", "w")
+  f = open("tmp_mocnd/a_log", "w")
+  f.close()
   mocnd("tmp_mocnd/a")
   assert sorted(os.listdir("tmp_mocnd")) == [
     "a", "a_001", "a_002", "a_024", "a_025", "a_23", "a_log"]
@@ -133,15 +135,22 @@ def exercise_cleanup():
   os.makedirs("AutoSol_run_1_/TEMP0")
   os.makedirs("AutoBuild_run_2_/TEMP0")
   os.makedirs("AutoBuild_run_2_/resolve_1.ccp4")
-  open("AutoBuild_run_2_/TEMP0/model.pdb", "w").write("END\n")
+  with open("AutoBuild_run_2_/TEMP0/model.pdb", "w") as f:
+    f.write("END\n")
   os.makedirs("Refine_3/.comm")
-  open("Refine_3/refine_3.geo", "w").write("\n")
-  open("Refine_3/refine_3.kin", "w").write("\n")
-  open("Refine_3/refine_3_2fofc.ccp4", "w").write("\n")
-  open("Refine_3/refine_3_fofc.xplor", "w").write("\n")
-  open("probe.txt", "w").write("\n")
+  with open("Refine_3/refine_3.geo", "w") as f:
+    f.write("\n")
+  with open("Refine_3/refine_3.kin", "w") as f:
+    f.write("\n")
+  with open("Refine_3/refine_3_2fofc.ccp4", "w") as f:
+    f.write("\n")
+  with open("Refine_3/refine_3_fofc.xplor", "w") as f:
+    f.write("\n")
+  with open("probe.txt", "w") as f:
+    f.write("\n")
   os.mkdir("FFT_4")
-  open("FFT_4/refine_3_2fofc.ccp4", "w").write("\n")
+  with open("FFT_4/refine_3_2fofc.ccp4", "w") as f:
+    f.write("\n")
   c_o_d = clean_out_directory(".")
   out = StringIO()
   c_o_d.show(out=out)

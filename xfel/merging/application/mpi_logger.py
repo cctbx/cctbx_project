@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import os
+import os, time
 
 class mpi_logger(object):
   """A class to facilitate each rank writing to its own log file and (optionally) to a special log file for timing"""
@@ -40,6 +40,7 @@ class mpi_logger(object):
 
   def log(self, message, rank_prepend=True):
     '''Log a rank message'''
+    message = time.ctime(self.mpi_helper.time()) + " " + message
 
     # Prepend the message with the rank index - helpful for grep-ping
     if rank_prepend:
@@ -55,6 +56,12 @@ class mpi_logger(object):
     log_file_handle.write(self.log_buffer)
     self.log_buffer = ''
     log_file_handle.close()
+
+  def info(self, message, *args):
+    self.log("INFO: "+str(message) % args)
+
+  def debug(self, message, *args):
+    self.log("DEBUG: "+str(message) % args)
 
   def main_log(self, message):
     '''Log a message to the main log file'''

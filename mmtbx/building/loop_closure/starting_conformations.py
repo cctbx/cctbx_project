@@ -7,10 +7,10 @@ import numpy
 import random
 from libtbx.utils import null_out
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import zip
 from six.moves import range
-ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+ext = bp.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 
 from six.moves import cStringIO as StringIO

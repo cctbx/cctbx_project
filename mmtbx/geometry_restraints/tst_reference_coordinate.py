@@ -53,64 +53,75 @@ ATOM     29  NZ  LYS A   4       0.827  -4.892  34.541  1.00 36.05           N
 
 pdb_str_2 = """\
 CRYST1   26.960   29.455   29.841  90.00  90.00  90.00 P 21 21 21
-ATOM      1  N   TYR A  20      10.702  10.331   8.954  1.00 23.81           N
-ATOM      2  CA  TYR A  20      11.170   9.547   7.817  1.00 35.69           C
-ATOM      3  C   TYR A  20      10.082   8.601   7.319  1.00 28.94           C
-ATOM      4  O   TYR A  20       9.756   7.616   7.982  1.00 25.26           O
-ATOM      5  CB  TYR A  20      12.426   8.758   8.192  1.00 33.37           C
-ATOM      6  CG  TYR A  20      13.016   7.958   7.052  1.00 31.48           C
-ATOM      7  CD1 TYR A  20      13.847   8.558   6.115  1.00 36.91           C
-ATOM      8  CD2 TYR A  20      12.747   6.602   6.916  1.00 21.36           C
-ATOM      9  CE1 TYR A  20      14.389   7.832   5.071  1.00 36.56           C
-ATOM     10  CE2 TYR A  20      13.285   5.868   5.875  1.00 29.56           C
-ATOM     11  CZ  TYR A  20      14.105   6.487   4.957  1.00 35.08           C
-ATOM     12  OH  TYR A  20      14.644   5.760   3.920  1.00 38.73           O
-ATOM     13  N   ARG A  21       9.530   8.915   6.149  1.00 38.95           N
-ATOM     14  CA  ARG A  21       8.473   8.118   5.525  1.00 38.77           C
-ATOM     15  C   ARG A  21       7.250   7.963   6.428  1.00 27.69           C
-ATOM     16  O   ARG A  21       7.134   6.992   7.176  1.00 22.82           O
-ATOM     17  CB  ARG A  21       9.004   6.747   5.093  1.00 20.00           C
-ATOM     18  CG  ARG A  21       8.015   5.920   4.285  1.00 20.00           C
-ATOM     19  CD  ARG A  21       8.608   4.577   3.893  1.00 20.00           C
-ATOM     20  NE  ARG A  21       7.671   3.771   3.116  1.00 20.00           N
-ATOM     21  CZ  ARG A  21       7.939   2.556   2.649  1.00 20.00           C
-ATOM     22  NH1 ARG A  21       9.121   2.001   2.879  1.00 20.00           N
-ATOM     23  NH2 ARG A  21       7.025   1.895   1.951  1.00 20.00           N
-ATOM     24  N   GLY A  22       6.340   8.929   6.351  1.00 24.85           N
-ATOM     25  CA  GLY A  22       5.132   8.903   7.154  1.00 29.53           C
-ATOM     26  C   GLY A  22       5.373   9.358   8.580  1.00 33.22           C
-ATOM     27  O   GLY A  22       5.196  10.531   8.906  1.00 30.06           O
+SCALE1      0.037092  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.033950  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.033511        0.00000
+ATOM      1  N   TYR A  20      10.698  10.334   8.942  1.00 23.81           N
+ATOM      2  CA  TYR A  20      11.165   9.541   7.811  1.00 35.69           C
+ATOM      3  C   TYR A  20      10.073   8.597   7.317  1.00 28.94           C
+ATOM      4  O   TYR A  20       9.745   7.615   7.985  1.00 25.26           O
+ATOM      5  CB  TYR A  20      12.416   8.747   8.193  1.00 33.37           C
+ATOM      6  CG  TYR A  20      13.012   7.952   7.053  1.00 31.48           C
+ATOM      7  CD1 TYR A  20      13.834   8.559   6.112  1.00 36.91           C
+ATOM      8  CD2 TYR A  20      12.755   6.593   6.918  1.00 21.36           C
+ATOM      9  CE1 TYR A  20      14.381   7.836   5.068  1.00 36.56           C
+ATOM     10  CE2 TYR A  20      13.297   5.863   5.878  1.00 29.56           C
+ATOM     11  CZ  TYR A  20      14.109   6.489   4.956  1.00 35.08           C
+ATOM     12  OH  TYR A  20      14.651   5.765   3.919  1.00 38.73           O
+ATOM     13  N   ARG A  21       9.520   8.909   6.142  1.00 38.95           N
+ATOM     14  CA  ARG A  21       8.467   8.117   5.514  1.00 38.77           C
+ATOM     15  C   ARG A  21       7.253   7.977   6.424  1.00 27.69           C
+ATOM     16  O   ARG A  21       7.139   7.005   7.178  1.00 22.82           O
+ATOM     17  CB  ARG A  21       8.995   6.735   5.116  1.00 20.00           C
+ATOM     18  CG  ARG A  21       8.034   5.930   4.254  1.00 20.00           C
+ATOM     19  CD  ARG A  21       8.617   4.574   3.894  1.00 20.00           C
+ATOM     20  NE  ARG A  21       7.684   3.767   3.118  1.00 20.00           N
+ATOM     21  CZ  ARG A  21       7.951   2.554   2.653  1.00 20.00           C
+ATOM     22  NH1 ARG A  21       9.120   1.974   2.868  1.00 20.00           N
+ATOM     23  NH2 ARG A  21       7.022   1.908   1.955  1.00 20.00           N
+ATOM     24  N   GLY A  22       6.339   8.940   6.356  1.00 24.85           N
+ATOM     25  CA  GLY A  22       5.137   8.909   7.168  1.00 29.53           C
+ATOM     26  C   GLY A  22       5.367   9.364   8.595  1.00 33.22           C
+ATOM     27  O   GLY A  22       5.197  10.539   8.917  1.00 30.06           O
+TER
+END
 """
 
 pdb_str_3 = """\
 CRYST1   26.960   29.455   29.841  90.00  90.00  90.00 P 21 21 21
-ATOM      1  N   TYR A  20      10.702  10.331   8.954  1.00 23.81           N
-ATOM      2  CA  TYR A  20      11.170   9.547   7.817  1.00 35.69           C
-ATOM      3  C   TYR A  20      10.082   8.601   7.319  1.00 28.94           C
-ATOM      4  O   TYR A  20       9.756   7.616   7.982  1.00 25.26           O
-ATOM      5  CB  TYR A  20      12.426   8.758   8.192  1.00 33.37           C
-ATOM      6  CG  TYR A  20      13.016   7.958   7.052  1.00 31.48           C
-ATOM      7  CD1 TYR A  20      13.847   8.558   6.115  1.00 36.91           C
-ATOM      8  CD2 TYR A  20      12.747   6.602   6.916  1.00 21.36           C
-ATOM      9  CE1 TYR A  20      14.389   7.832   5.071  1.00 36.56           C
-ATOM     10  CE2 TYR A  20      13.285   5.868   5.875  1.00 29.56           C
-ATOM     11  CZ  TYR A  20      14.105   6.487   4.957  1.00 35.08           C
-ATOM     12  OH  TYR A  20      14.644   5.760   3.920  1.00 38.73           O
-ATOM     13  N   ARG A  21       9.530   8.915   6.149  1.00 38.95           N
-ATOM     14  CA  ARG A  21       8.473   8.118   5.525  1.00 38.77           C
-ATOM     15  C   ARG A  21       7.250   7.963   6.428  1.00 27.69           C
-ATOM     16  O   ARG A  21       7.134   6.992   7.176  1.00 22.82           O
-ATOM     17  CB  ARG A  21       9.004   6.747   5.093  1.00 20.00           C
-ATOM     18  CG  ARG A  21       9.445   5.856   6.245  1.00 20.00           C
-ATOM     19  CD  ARG A  21      10.004   4.536   5.740  1.00 20.00           C
-ATOM     20  NE  ARG A  21      10.410   3.660   6.835  1.00 20.00           N
-ATOM     21  CZ  ARG A  21       9.599   2.802   7.446  1.00 20.00           C
-ATOM     22  NH1 ARG A  21       8.331   2.702   7.070  1.00 20.00           N
-ATOM     23  NH2 ARG A  21      10.055   2.043   8.433  1.00 20.00           N
-ATOM     24  N   GLY A  22       6.340   8.929   6.351  1.00 24.85           N
-ATOM     25  CA  GLY A  22       5.132   8.903   7.154  1.00 29.53           C
-ATOM     26  C   GLY A  22       5.373   9.358   8.580  1.00 33.22           C
-ATOM     27  O   GLY A  22       5.196  10.531   8.906  1.00 30.06           O
+SCALE1      0.037092  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.033950  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.033511        0.00000
+ATOM      1  N   TYR A  20      10.698  10.334   8.942  1.00 23.81           N
+ATOM      2  CA  TYR A  20      11.165   9.541   7.811  1.00 35.69           C
+ATOM      3  C   TYR A  20      10.073   8.597   7.317  1.00 28.94           C
+ATOM      4  O   TYR A  20       9.745   7.615   7.985  1.00 25.26           O
+ATOM      5  CB  TYR A  20      12.416   8.747   8.193  1.00 33.37           C
+ATOM      6  CG  TYR A  20      13.012   7.952   7.053  1.00 31.48           C
+ATOM      7  CD1 TYR A  20      13.834   8.559   6.112  1.00 36.91           C
+ATOM      8  CD2 TYR A  20      12.755   6.593   6.918  1.00 21.36           C
+ATOM      9  CE1 TYR A  20      14.381   7.836   5.068  1.00 36.56           C
+ATOM     10  CE2 TYR A  20      13.297   5.863   5.878  1.00 29.56           C
+ATOM     11  CZ  TYR A  20      14.109   6.489   4.956  1.00 35.08           C
+ATOM     12  OH  TYR A  20      14.651   5.765   3.919  1.00 38.73           O
+ATOM     13  N   ARG A  21       9.520   8.909   6.142  1.00 38.95           N
+ATOM     14  CA  ARG A  21       8.467   8.117   5.514  1.00 38.77           C
+ATOM     15  C   ARG A  21       7.253   7.977   6.424  1.00 27.69           C
+ATOM     16  O   ARG A  21       7.139   7.005   7.178  1.00 22.82           O
+ATOM     17  CB  ARG A  21       8.995   6.735   5.116  1.00 20.00           C
+ATOM     18  CG  ARG A  21       9.549   5.744   6.159  1.00 20.00           C
+ATOM     19  CD  ARG A  21      10.010   4.409   5.622  1.00 20.00           C
+ATOM     20  NE  ARG A  21      10.424   3.528   6.707  1.00 20.00           N
+ATOM     21  CZ  ARG A  21       9.598   2.756   7.400  1.00 20.00           C
+ATOM     22  NH1 ARG A  21       8.303   2.714   7.133  1.00 20.00           N
+ATOM     23  NH2 ARG A  21      10.083   2.005   8.385  1.00 20.00           N
+ATOM     24  N   GLY A  22       6.339   8.940   6.356  1.00 24.85           N
+ATOM     25  CA  GLY A  22       5.137   8.909   7.168  1.00 29.53           C
+ATOM     26  C   GLY A  22       5.367   9.364   8.595  1.00 33.22           C
+ATOM     27  O   GLY A  22       5.197  10.539   8.917  1.00 30.06           O
+TER
+END
+
 """
 
 def exercise_1():
@@ -120,8 +131,8 @@ def exercise_1():
 
   proxies = reference.add_coordinate_restraints(sites_cart=sites_cart)
   assert proxies.size() == 29, "expected 29, got %d" % proxies.size()
-  import boost.python
-  ext = boost.python.import_ext("mmtbx_reference_coordinate_ext")
+  import boost_adaptbx.boost.python as bp
+  ext = bp.import_ext("mmtbx_reference_coordinate_ext")
   grads = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
   residual = ext.reference_coordinate_residual_sum(
       sites_cart=sites_cart,
@@ -159,10 +170,11 @@ def exercise_1():
 def exercise_2():
   for use_reference in [True, False, None]:
     pdb_inp = iotbx.pdb.input(
-        lines=flex.std_string(pdb_str_2.splitlines()), source_info=None)
+      lines=flex.std_string(pdb_str_2.splitlines()), source_info=None)
     model = manager(
-        model_input=pdb_inp,
-        log=null_out())
+      model_input=pdb_inp,
+      log=null_out(),
+      build_grm=True)
     grm = model.get_restraints_manager().geometry
     xrs2 = model.get_xray_structure()
     awl2 = model.get_hierarchy().atoms_with_labels()
@@ -234,7 +246,8 @@ def exercise_3():
         lines=flex.std_string(pdb_str_2.splitlines()), source_info=None)
     model = manager(
         model_input=pdb_inp,
-        log=null_out())
+        log=null_out(),
+        build_grm=True)
     grm = model.get_restraints_manager().geometry
     xrs2 = model.get_xray_structure()
     awl2 = model.get_hierarchy().atoms_with_labels()
@@ -307,8 +320,10 @@ def exercise_3():
     d2 = flex.mean(flex.sqrt((xrs2.sites_cart().select(min_selection) -
                               xrs3.sites_cart().select(min_selection)).dot()))
     print("distance final (use_reference: %s): %6.4f"%(str(use_reference), d2))
-    if(use_reference in ['True', 'top_out']): assert d2<0.02, d2
-    else: assert d2>4.0, d2
+    if (use_reference in ['True', 'top_out']):
+      assert d2<0.3, "%s, %f" % (use_reference, d2)
+    else:
+      assert d2>4.0, d2
     assert approx_equal(
       flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
                           xrs3.sites_cart().select(~selection_bool)).dot())), 0)

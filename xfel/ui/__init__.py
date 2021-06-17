@@ -4,16 +4,15 @@ from iotbx.phil import parse
 from libtbx.utils import Sorry
 
 master_phil_str = """
-dispatcher = cctbx.xfel.xtc_process
+dispatcher = cctbx.xfel.process
   .type = str
-  .help = Which program to run. cxi.xtc_process is for module only based processing, \
-          such as mod_hitfind. cctbx.xfel.xtc_process uses the DIALS back end.
+  .help = Which program to run. cctbx.xfel.process should be used in most cases.
 dry_run = False
   .type = bool
   .help = If True, the program will create the trial directory but not submit the job, \
           and will show the command that would have been executed.
 facility {
-  name = *lcls standalone
+  name = lcls *standalone
     .type = choice
     .help = Facility for the XFEL gui. LCLS configures the GUI to use LCLS services \
             for data monitoring, job submission, and so forth. Standlone runs the \
@@ -23,6 +22,11 @@ facility {
       .type = str
       .help = Experiment name, eg cxid9114
     web {
+      location = "SLAC"
+        .type = str
+        .help = Where to look for XTC streams. Can be SLAC, SLACFFB (active experiment \
+                only, retired), SRCF_FFB (active experiment only), SDF or NERSC \
+                (contact LCLS staff to arrange file mover for SDF or NERSC).
       user = ""
         .type = str
         .help = Username for LCLS run database web service
@@ -112,6 +116,9 @@ db {
   port = 3306
     .type = int
     .help = Port number to be used for connection
+  logging_batch_size = 3
+    .type = int
+    .help = Number of images to log at once. Increase if using many (thousands) of processors.
 }
 """
 master_phil_scope = parse(master_phil_str + db_phil_str, process_includes=True)
@@ -159,7 +166,7 @@ def save_cached_settings(params):
 
   try:
     f = open(settings_file.encode('utf8'), 'wb')
-    f.write(diff_phil.as_str())
+    f.write(diff_phil.as_str().encode('utf8'))
     f.close()
   except IOError:
     raise Sorry('Unable to write %s.' % settings_file)

@@ -46,14 +46,12 @@ def discover(module=None, pytestargs=None):
 
   try:
     import pytest
-    import mock
   except ImportError:
     def pytest_warning():
       print("=" * 55)
       print(" WARNING: Skipping some tests for %s\n" % module)
-      print(" To run all available tests you need to install pytest")
-      print(" and the python mocking package, e.g. by running\n")
-      print("    libtbx.python -m pip install pytest mock")
+      print(" To run all available tests you need to install pytest.")
+      print("    libtbx.python -m pip install pytest")
       print("=" * 55)
     pytest_warning()
     atexit.register(pytest_warning)

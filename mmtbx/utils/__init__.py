@@ -55,15 +55,15 @@ from iotbx.cns.miller_array import crystal_symmetry_as_cns_comments
 from iotbx.file_reader import any_file
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import zip
 from six.moves import range
-utils_ext = boost.python.import_ext("mmtbx_utils_ext")
+utils_ext = bp.import_ext("mmtbx_utils_ext")
 from mmtbx_utils_ext import *
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from mmtbx import bulk_solvent
-ext = boost.python.import_ext("mmtbx_f_model_ext")
+ext = bp.import_ext("mmtbx_f_model_ext")
 
 import mmtbx.rotamer
 
@@ -1176,7 +1176,9 @@ def assert_xray_structures_equal(
       occupancies = True,
       elements = True,
       scattering_types = True,
-      eps = 1.e-6):
+      eps = 1.e-6,
+      eps_occ = None):
+  if(eps_occ is None): eps_occ = eps
   assert x1.scatterers().size() == x2.scatterers().size()
   cs1 = x1.crystal_symmetry()
   cs2 = x2.crystal_symmetry()
@@ -1192,7 +1194,7 @@ def assert_xray_structures_equal(
                         x2.extract_u_iso_or_u_equiv(), eps)
   if(occupancies):
     assert approx_equal(x1.scatterers().extract_occupancies(),
-                        x2.scatterers().extract_occupancies(), eps)
+                        x2.scatterers().extract_occupancies(), eps_occ)
   if(elements):
     sct1 = x1.scatterers().extract_scattering_types()
     sct2 = x2.scatterers().extract_scattering_types()
@@ -2377,130 +2379,32 @@ class shift_origin(object):
 
 class extract_box_around_model_and_map(object):
   def __init__(self,
-               xray_structure, # safe to pass here, does not change
-               map_data,
-               box_cushion,
-               mask_data=None,
-               selection=None,
-               density_select=None,
-               mask_select=None,
-               threshold=None,
-               get_half_height_width=None,
-               soft_mask=False,
-               soft_mask_radius=None,
-               mask_atoms=False,
-               mask_atoms_atom_radius=3.0,
-               value_outside_atoms=None,
-               keep_map_size=False,
-               restrict_map_size=False,
-               lower_bounds=None,
-               upper_bounds=None,
-               bounds_are_absolute=None,
-               zero_outside_original_map=None,
-               extract_unique=None,
-               target_ncs_au_file=None,
-               regions_to_keep=None,
-               box_buffer=None,
-               soft_mask_extract_unique=None,
-               mask_expand_ratio=None,
-               keep_low_density=None,
-               sequence=None,
-               chain_type=None,
-               solvent_content=None,
-               resolution=None,
-               molecular_mass=None,
-               ncs_object=None,
-               symmetry=None,
-               half_map_data_list=None,
+               xray_structure=None, # safe to pass here, does not change
+               map_data=None,
+               box_cushion=None,
                    ):
     adopt_init_args(self, locals())
+
+
     cs = xray_structure.crystal_symmetry()
     origin_as_input=self.map_data.origin()
     soo = shift_origin(map_data=self.map_data,
-      xray_structure=self.xray_structure,
-      ncs_object=self.ncs_object)
+      xray_structure=self.xray_structure,)
     self.map_data = soo.map_data
-    self.ncs_object = soo.ncs_object
     self.crystal_symmetry = soo.crystal_symmetry
     self.shift_cart = soo.shift_cart
-    if(selection is None):
-      xray_structure_selected = soo.xray_structure.deep_copy_scatterers()
-    else:
-      xray_structure_selected = soo.xray_structure.select(selection=selection)
+    xray_structure_selected = soo.xray_structure.deep_copy_scatterers()
     cushion = flex.double(cs.unit_cell().fractionalize((box_cushion,)*3))
 
-    if (extract_unique): # extracts just au density (not everything in the
-      #   box). Map is superimposed on self.map_data. We are going to use this
-      # box_map_data but everything else we will set with lower_bounds and
-      # upper_bounds
-      from scitbx.matrix import col
-      extract_unique_map_data,extract_unique_crystal_symmetry,\
-           extract_unique_box_map_ncs_au_half_map_data_list=\
-         self.get_map_from_segment_and_split(regions_to_keep=regions_to_keep)
-      lower_bounds=extract_unique_map_data.origin()
-      upper_bounds=tuple(
-        col(extract_unique_map_data.focus())-col((1,1,1)))
-      # shift the map so it is in the same position as the box map will be in
-      extract_unique_map_data.reshape(flex.grid(extract_unique_map_data.all()))
-      for hm in extract_unique_box_map_ncs_au_half_map_data_list:
-        hm.reshape(flex.grid(extract_unique_map_data.all()))
-
-      # Now box map is going to extract the same volume, but not the same
-      #  contents because extract_unique keeps just the density for the
-      #  molecule, not the surroundings.  We are going to replace the
-      #  map_box density with extract_unique_map_data below.
-
-    if (keep_map_size):  # do not change anything...keep entire map
-      self.pdb_outside_box_msg=""
-      frac_min = [0.,0.,0.]
-      frac_max = [1.,1.,1.]
-      for kk in range(3):
-        frac_min[kk]=max(0.,frac_min[kk])
-        frac_max[kk]=min(1.-1./map_data.all()[kk], frac_max[kk])
-    elif(density_select or mask_select):
-      if mask_select:
-        self.pdb_outside_box_msg=""
-        frac_min,frac_max=self.select_box_with_mask(
-          crystal_symmetry=xray_structure_selected.crystal_symmetry())
-        if frac_min is None: # failed
-          raise Sorry("Unable to get mask with mask_select")
-      if density_select:
-        frac_min,frac_max=self.select_box(
-          threshold = threshold, xrs = xray_structure_selected,
-          get_half_height_width=get_half_height_width)
-      frac_max = list(flex.double(frac_max)+cushion)
-      frac_min = list(flex.double(frac_min)-cushion)
-      for kk in range(3):
-        frac_min[kk]=max(0.,frac_min[kk])
-        frac_max[kk]=min(1.-1./map_data.all()[kk], frac_max[kk])
-    else:
-      self.pdb_outside_box_msg=""
-      frac_min = xray_structure_selected.sites_frac().min()
-      frac_max = xray_structure_selected.sites_frac().max()
-      if (restrict_map_size):  # check but do not do anything yet
-        new_frac_min,new_frac_max=limit_frac_min_frac_max(frac_min,frac_max)
-        if list(new_frac_min) != list(frac_min) or \
-           list(new_frac_max) != list(frac_max):
-          self.pdb_outside_box_msg="Warning: model is outside box"
-      frac_max = list(flex.double(frac_max)+cushion)
-      frac_min = list(flex.double(frac_min)-cushion)
+    self.pdb_outside_box_msg=""
+    frac_min = xray_structure_selected.sites_frac().min()
+    frac_max = xray_structure_selected.sites_frac().max()
+    frac_max = list(flex.double(frac_max)+cushion)
+    frac_min = list(flex.double(frac_min)-cushion)
 
     na = self.map_data.all()
-    if lower_bounds and upper_bounds:
-      if (not bounds_are_absolute): #usual
-        self.gridding_first=lower_bounds
-        self.gridding_last=upper_bounds
-      else:  # shift lower and upper bounds by origin shift
-        from scitbx.matrix import col
-        self.gridding_first=list(col(lower_bounds)-col(origin_as_input))
-        self.gridding_last=list(col(upper_bounds)-col(origin_as_input))
-    else:
-      self.gridding_first=[ifloor(f*n) for f,n in zip(frac_min,na)]
-      self.gridding_last =[iceil(f*n) for f,n in zip(frac_max,na)]
-      if restrict_map_size:
-        self.gridding_first=[max(0,min(n-2,g)) for n,g in zip(na,self.gridding_first)]
-        # do not go beyond map_data.all()-(1,1,1) which is end of map
-        self.gridding_last=[max(gf+1,min(n-1,g)) for gf,n,g in zip(self.gridding_first,na,self.gridding_last)]
+    self.gridding_first=[ifloor(f*n) for f,n in zip(frac_min,na)]
+    self.gridding_last =[iceil(f*n) for f,n in zip(frac_max,na)]
     self.map_box = self.cut_and_copy_map(map_data=self.map_data)
     secondary_shift_frac = [
       -self.map_box.origin()[i]/self.map_data.all()[i] for i in range(3)]
@@ -2520,23 +2424,6 @@ class extract_box_around_model_and_map(object):
     self.box_crystal_symmetry = crystal.symmetry(
       unit_cell=new_unit_cell_box, space_group="P1")
 
-    if extract_unique: # use extract_unique_map_data in place of map_box
-      assert extract_unique_map_data.origin()==self.map_box.origin()
-      assert extract_unique_map_data.all()==self.map_box.all()
-      assert extract_unique_crystal_symmetry.is_similar_symmetry(
-         self.box_crystal_symmetry)
-      self.map_box=extract_unique_map_data
-      self.map_box_half_map_list=extract_unique_box_map_ncs_au_half_map_data_list
-    else:
-      self.map_box_half_map_list=[]
-
-    # Shift ncs_object to match the box
-    if self.ncs_object:
-      self.ncs_object=self.ncs_object.coordinate_offset(
-         secondary_shift_cart)
-    else:
-      self.ncs_object=None
-
     sp = crystal.special_position_settings(self.box_crystal_symmetry)
     # new xray_structure in the box
     sites_frac_new = xray_structure_selected.sites_frac()+secondary_shift_frac
@@ -2546,49 +2433,13 @@ class extract_box_around_model_and_map(object):
     xray_structure_box = xray_structure_box.replace_sites_frac(sites_frac)
     self.xray_structure_box = xray.structure(
        sp,xray_structure_box.scatterers())
-    if(mask_atoms):
-      import boost.python
-      cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
-      radii = flex.double(
-        self.xray_structure_box.sites_frac().size(), mask_atoms_atom_radius)
-      mask = cctbx_maptbx_ext.mask(
-        sites_frac                  = self.xray_structure_box.sites_frac(),
-        unit_cell                   = self.xray_structure_box.unit_cell(),
-        n_real                      = self.map_box.all(),
-        mask_value_inside_molecule  = 1,
-        mask_value_outside_molecule = 0,
-        radii                       = radii)
-      if(soft_mask):
-        # make the mask a soft mask
-        maptbx.unpad_in_place(map=mask)
-        mask = maptbx.smooth_map(
-          map              = mask,
-          crystal_symmetry = self.box_crystal_symmetry,
-          rad_smooth       = soft_mask_radius)
-      self.map_box = self.map_box*mask
-      if(value_outside_atoms is not None):
-        assert not soft_mask
-        assert value_outside_atoms=='mean'
-        #  make mean outside==mean inside
-        one_d=self.map_box.as_1d()
-        n_zero=mask.count(0)
-        n_tot=mask.size()
-        mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
-        self.map_box=self.map_box+(1-mask)*mean_in_box
-    elif (soft_mask):
-      assert resolution is not None
-      if soft_mask_radius is None:
-        soft_mask_radius=resolution
-      from cctbx.maptbx.segment_and_split_map import set_up_and_apply_soft_mask
-      self.map_box,smoothed_mask_data=\
-         set_up_and_apply_soft_mask(
-       map_data=self.map_box.deep_copy(),
-       shift_origin=False,
-       crystal_symmetry=self.box_crystal_symmetry,
-       resolution=resolution,
-       grid_units_for_boundary=None,
-       radius=soft_mask_radius,
-        )
+    # Just for transition:
+    from iotbx.map_manager import map_manager
+    map_box_as_map_manager=map_manager(
+      map_data=self.map_box,
+      unit_cell_grid=self.map_box.all(),
+      unit_cell_crystal_symmetry=self.xray_structure_box.crystal_symmetry(),
+      wrapping = False) # boxed map is never ok to wrap
 
   def get_solvent_content(self):
     return self.solvent_content
@@ -2607,429 +2458,27 @@ class extract_box_around_model_and_map(object):
     pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
 
   def cut_and_copy_map(self,map_data=None):
-    if (not self.zero_outside_original_map): # usual
-      return maptbx.copy(map_data,self.gridding_first, self.gridding_last)
-    else:
-      # figure out if the new map is outside original
-      lower_bounds=[]
-      upper_bounds=[]
-      outside_bounds=False
-      for o,a,f,l in zip(map_data.origin(),map_data.all(),
-         self.gridding_first,self.gridding_last):
-        lower_bounds.append(max(o,f)-f)  # lower, upper bounds after shifting
-        upper_bounds.append(min(l,o+a-1)-f)
-        if f < o or l >= a+o:
-          outside_bounds=True
-
-      if not outside_bounds: # usual
-        return maptbx.copy(map_data,self.gridding_first, self.gridding_last)
-      else:
-        # zero outside valid region
-        map_copy=maptbx.copy(map_data,self.gridding_first, self.gridding_last)
-        # Now the origin of map_copy is at self.gridding_first and goes to last
-        acc=map_copy.accessor() # save where the origin is
-        map_copy=map_copy.shift_origin()  # put origin at (0,0,0)
-        map_copy_all=map_copy.all() # save size of map
-        # XXX work-around for set_box does not allow offset origin
-
-        map_copy_as_double=flex.double(map_copy.as_1d())
-        map_copy_as_double.resize(flex.grid(map_copy_all))
-        new_map=maptbx.set_box_copy_inside(0,  # puts 0 outside bounds
-          map_data_to   = map_copy_as_double,
-          start         = tuple(lower_bounds),
-          end           = tuple(upper_bounds))
-        # XXX and shift map back
-        new_map=new_map.as_1d()
-        new_map.reshape(acc)
-        return new_map
-
-  def get_map_from_segment_and_split(self,regions_to_keep=None):
-    from cctbx.maptbx.segment_and_split_map import run as segment_and_split_map
-    # NOTE: calling with shifted map data and ncs_object
-    #    (origin shifted to 0,0,0)
-    assert self.map_data.origin()==(0,0,0)
-    args=[]
-    if self.target_ncs_au_file:
-      args.append("target_ncs_au_file=%s" %(self.target_ncs_au_file))
-    args.append("write_files=False")
-    args.append("add_neighbors=False") # XXX perhaps allow user to set this
-    args.append("save_box_map_ncs_au=True")
-    args.append("density_select=False")
-    args.append("solvent_content=%s" %(self.solvent_content))
-    args.append("resolution=%s" %(self.resolution))
-    args.append("auto_sharpen=False")
-    if self.chain_type:
-      args.append("chain_type=%s" %self.chain_type)
-    if self.sequence:
-      args.append("sequence=%s" %self.sequence)
-    if self.molecular_mass:
-      args.append("molecular_mass=%s" %self.molecular_mass)
-    if self.symmetry:
-      args.append("symmetry=%s" %self.symmetry)
-    if self.keep_low_density:
-      args.append("iterate_with_remainder=True")
-    else:
-      args.append("iterate_with_remainder=False")
-    if self.regions_to_keep:
-      args.append("regions_to_keep=%s" %(self.regions_to_keep))
-      args.append("iterate_with_remainder=False")
-
-    if self.box_buffer:
-      args.append("box_buffer=%s" %(self.box_buffer))
-    if self.soft_mask_extract_unique:
-      args.append("soft_mask=True")
-    if self.mask_expand_ratio is not None:
-      args.append("mask_expand_ratio=%s" %(self.mask_expand_ratio))
-
-    # import params from s&s here and set them.  set write_files=false etc.
-    ncs_group_obj,remainder_ncs_group_obj,tracking_data =\
-      segment_and_split_map(args,
-          map_data=self.map_data,
-          half_map_data_list=self.half_map_data_list,
-          crystal_symmetry=self.crystal_symmetry,
-          ncs_obj=self.ncs_object)
-    ncs_au_map_data=tracking_data.box_map_ncs_au_map_data
-    ncs_au_map_data=tracking_data.box_map_ncs_au_map_data
-    box_map_ncs_au_half_map_data_list=\
-       tracking_data.box_map_ncs_au_half_map_data_list
-    ncs_au_crystal_symmetry=tracking_data.box_map_ncs_au_crystal_symmetry
-    return ncs_au_map_data,ncs_au_crystal_symmetry,\
-        box_map_ncs_au_half_map_data_list
-
-  def select_box_with_mask(self,crystal_symmetry=None):
-    # If we have a mask, use it
-    if self.mask_data:
-      mask_data=self.mask_data
-    else:
-      # auto-generate mask and use it to select box
-
-      # See if we can get solvent fraction accurately to start off:
-      if (self.molecular_mass or self.sequence ) and (
-          not self.solvent_content):
-        from cctbx.maptbx.segment_and_split_map import get_solvent_fraction
-        self.solvent_content=get_solvent_fraction(
-           params=None,
-           molecular_mass=self.molecular_mass,
-           sequence=self.sequence,
-           do_not_adjust_dalton_scale=True,
-           crystal_symmetry=self.crystal_symmetry,
-           out=null_out())
-
-      from cctbx.maptbx.segment_and_split_map import \
-          get_iterated_solvent_fraction
-      mask_data,solvent_fraction=get_iterated_solvent_fraction(
-          crystal_symmetry=crystal_symmetry,
-          fraction_of_max_mask_threshold=0.05, #
-          solvent_content=self.solvent_content,
-          cell_cutoff_for_solvent_from_mask=1, # Use low-res method always
-          use_solvent_content_for_threshold=True,
-          mask_resolution=self.resolution,
-          return_mask_and_solvent_fraction=True,
-          verbose=False,
-          map=self.map_data,
-          out=null_out())
-
-      if solvent_fraction is None:
-        raise Sorry("Unable to get solvent fraction in auto-masking")
-
-    from cctbx.maptbx.segment_and_split_map import get_co
-    co,sorted_by_volume,min_b,max_b=get_co(
-       map_data=mask_data,threshold=0.5,wrapping=False)
-
-
-
-    if len(sorted_by_volume)<2:
-      raise Sorry("No mask obtained...")
-    original_id_from_id={}
-    for i in range(1,len(sorted_by_volume)):
-      v,id=sorted_by_volume[i]
-      original_id_from_id[i]=id
-    id=1
-    orig_id=original_id_from_id[id]
-    minb1=min_b[orig_id]
-    maxb1=max_b[orig_id]
-    masked_fraction=sorted_by_volume[1][0]/mask_data.size()
-    nx,ny,nz=self.map_data.all()
-    frac_min=(minb1[0]/nx,minb1[1]/ny,minb1[2]/nz)
-    frac_max=(maxb1[0]/nx,maxb1[1]/ny,maxb1[2]/nz)
-    return frac_min,frac_max
-
-
-  def select_box(self,threshold,xrs=None,get_half_height_width=None):
-    # Select box where data are positive (> threshold*max)
-    map_data=self.map_data
-    origin=list(map_data.origin())
-    assert origin==[0,0,0]
-    all=list(map_data.all())
-    # Get max value vs x,y,z
-    value_list=flex.double()
-    for i in range(0,all[0]):
-      new_map_data = maptbx.copy(map_data,
-         tuple((i,0,0)),
-         tuple((i,all[1],all[2]))
-       )
-      value_list.append(new_map_data.as_1d().as_double().min_max_mean().max)
-    ii=0
-    for z in value_list:
-      ii+=1
-    x_min,x_max=self.get_range(value_list,threshold=threshold,
-      get_half_height_width=get_half_height_width)
-
-    value_list=flex.double()
-    for j in range(0,all[1]):
-      new_map_data = maptbx.copy(map_data,
-         tuple((0,j,0)),
-         tuple((all[0],j,all[2]))
-       )
-      value_list.append(new_map_data.as_1d().as_double().min_max_mean().max)
-    y_min,y_max=self.get_range(value_list,threshold=threshold,
-      get_half_height_width=get_half_height_width)
-
-    value_list=flex.double()
-    for k in range(0,all[2]):
-      new_map_data = maptbx.copy(map_data,
-         tuple((0,0,k)),
-         tuple((all[0],all[1],k))
-       )
-      value_list.append(new_map_data.as_1d().as_double().min_max_mean().max)
-    z_min,z_max=self.get_range(value_list,threshold=threshold,
-      get_half_height_width=get_half_height_width)
-
-    frac_min=(x_min,y_min,z_min)
-    frac_max=(x_max,y_max,z_max)
-
-    self.pdb_outside_box_msg=""
-    if xrs is not None and xrs.sites_frac().size()>0:
-      # warn if outside box chosen
-      c_min= xrs.sites_frac().min()
-      c_max= xrs.sites_frac().max()
-      if c_min[0]<frac_min[0] or \
-         c_min[1]<frac_min[1] or \
-         c_min[2]<frac_min[2] or \
-         c_max[0]>frac_max[0] or \
-         c_max[1]>frac_max[1] or \
-         c_max[2]>frac_max[2]:
-       cs=xrs.crystal_symmetry()
-       self.pdb_outside_box_msg="""
-NOTE: Output model is not contained in box.
-Range for model: %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f
-Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
-     cs.unit_cell().orthogonalize(c_min)+
-     cs.unit_cell().orthogonalize(c_max)+
-     cs.unit_cell().orthogonalize(frac_min)+
-     cs.unit_cell().orthogonalize(frac_max))
-    return frac_min,frac_max
-
-  def get_range(self, value_list, threshold=None, ignore_ends=True,
-     keep_near_ends_frac=0.02, half_height_width=2., get_half_height_width=None,
-     cutoff_ratio=4,ratio_max=0.5): # XXX May need to set cutoff_ratio and
-    #  ratio_max lower.
-    # ignore ends allows ignoring the first and last points which may be off
-    # if get_half_height_width, find width at half max hieght, go
-    #  half_height_width times this width out in either direction, use that as
-    #  baseline instead of full cell. Don't do it if the height at this point
-    #  is over cutoff_ratio times threshold above original baseline.
-    if get_half_height_width:
-      z_min,z_max=self.get_range(value_list,threshold=0.5,
-        ignore_ends=ignore_ends,keep_near_ends_frac=keep_near_ends_frac,
-        get_half_height_width=False)
-      z_mid=0.5*(z_min+z_max)
-      z_width=0.5*(z_max-z_min)
-      z_low=z_mid-2*z_width
-      z_high=z_mid+2*z_width
-      if ignore_ends:
-        i_max=value_list.size()-2
-        i_min=1
-      else:
-        i_max=value_list.size()-1
-        i_min=0
-
-      i_low= max(i_min,min(i_max,int(0.5+z_low* value_list.size())))
-      i_high=max(i_min,min(i_max,int(0.5+z_high*value_list.size())))
-      min_value=value_list.min_max_mean().min
-      max_value=value_list.min_max_mean().max
-      ratio_low=(value_list[i_low]-min_value)/max(
-         1.e-10,(max_value-min_value))
-      ratio_high=(value_list[i_high]-min_value)/max(
-         1.e-10,(max_value-min_value))
-      if ratio_low <= cutoff_ratio*threshold and ratio_low >0 \
-           and ratio_low<ratio_max\
-           and ratio_high <= cutoff_ratio*threshold and ratio_high > 0 \
-           and ratio_high < ratio_max:
-        ratio=min(ratio_low,ratio_high)
-        z_min,z_max=self.get_range(
-          value_list,threshold=threshold+ratio,
-          ignore_ends=ignore_ends,keep_near_ends_frac=keep_near_ends_frac,
-          get_half_height_width=False)
-        return z_min,z_max
-      else:
-        z_min,z_max=self.get_range(value_list,threshold=threshold,
-          ignore_ends=ignore_ends,keep_near_ends_frac=keep_near_ends_frac,
-          get_half_height_width=False)
-        return z_min,z_max
-
-    if threshold is None: threshold=0
-    n_tot=value_list.size()
-    assert n_tot>0
-    min_value=value_list.min_max_mean().min
-    max_value=value_list.min_max_mean().max
-    cutoff=min_value+(max_value-min_value)*threshold
-    if ignore_ends:
-      i_off=1
-    else:
-      i_off=0
-    i_low=None
-    for i in range(i_off,n_tot-i_off):
-      if value_list[i]>cutoff:
-        i_low=max(i_off,i-1)
-        break
-    i_high=None
-    for i in range(i_off,n_tot-i_off):
-      ii=n_tot-1-i
-      if value_list[ii]>cutoff:
-        i_high=min(n_tot-1-i_off,ii+1)
-        break
-    if i_low is None or i_high is None:
-      raise Sorry("Cannot auto-select region...please supply PDB file")
-    if i_low/n_tot<keep_near_ends_frac: i_low=0
-    if (n_tot-1-i_high)/n_tot<keep_near_ends_frac: i_high=n_tot-1
-    return i_low/n_tot,i_high/n_tot
-
-  def write_xplor_map(self, file_name="box.xplor",shift_back=None,
-      output_unit_cell_grid=None,
-      output_crystal_symmetry=None):
-
-    # write out xplor map on same grid as ccp4 map (0 to focus-1)
-    from scitbx.matrix import col
-    if shift_back:
-      map_data=self.shift_map_back(self.map_box)
-    else:
-      map_data=self.map_box
-
-    if output_unit_cell_grid is None:
-     output_unit_cell_grid=map_data.all()
-
-    if output_crystal_symmetry is None:
-      output_crystal_symmetry=self.xray_structure_box.crystal_symmetry()
-
-    gridding = iotbx.xplor.map.gridding(
-        n     = output_unit_cell_grid,
-        first = map_data.origin(),
-        last  = tuple(col(map_data.focus())-col((1,1,1))))
-
-
-    iotbx.xplor.map.writer(
-      file_name          = file_name,
-      is_p1_cell         = None, # XXX temporary flag allowing any cell
-      title_lines        = ['Map in box',],
-      unit_cell          = output_crystal_symmetry.unit_cell(),
-      gridding           = gridding,
-      data               = map_data.as_double(),
-      average            = -1,
-      standard_deviation = -1)
-
-  def origin_shift_grid_units(self,unit_cell=None,
-       reverse=False):
-    # Get origin shift in grid units from shift_cart
-    from scitbx.matrix import col
-    cell=self.xray_structure_box.crystal_symmetry().unit_cell().parameters()[:3]
-    origin_shift_grid=[]
-    for s,c,a in zip(self.shift_cart,cell,self.map_box.all()):
-      if s<0:
-        delta=-0.5
-      else:
-        delta=0.5
-      origin_shift_grid.append( int(delta+ a*s/c))
-    if reverse:
-      return list(-col(origin_shift_grid))
-    else:
-      return origin_shift_grid
-
-  def shift_sites_cart_back(self,sites_cart):
-    # Shift sites from map_box cell to original coordinate system
-    # Normal situation: cut out piece of cell so shift_cart negative;
-    #  box_sites_cart more negative than sites_cart;
-    #  put back with (-shift_cart) which moves sites to more positive values.
-    from scitbx.matrix import col
-    return sites_cart-col(self.shift_cart)
-
-  def shift_map_coeffs_back(self,map_coeffs):
-    # Shift map coeffs from map_box cell to original coordinate system
-    # Apply phase shift corresponding to moving coordinates by self.shift_cart
-    # Note resulting map coeffs are still for the box cell (not original cell).
-    #  They superimpose on the result of shift_sites_cart_back but only
-    #  within the volume of the map_box cell in the original coordinate system
-
-    from scitbx.matrix import col
-    return map_coeffs.translational_shift(
-          self.box_crystal_symmetry.unit_cell().fractionalize(
-          -col(self.shift_cart)), deg=False)
-
-  def shift_map_back(self,map_data):
-    # Shift map from map_box cell to original coordinate system
-    #  Note this map only applies in the region of the map_box cell (the
-    #   map may be repeated in space but only one copy is valid).
-    # The dimensions of this map are the same as the box map.
-    from scitbx.matrix import col
-    new_origin=self.origin_shift_grid_units(reverse=True)
-    new_all=list(col(self.map_box.all())+col(new_origin))
-    shifted_map_data = map_data.deep_copy()
-    shifted_map_data.resize(flex.grid(new_origin,new_all))
-    return shifted_map_data
-
-  def write_ccp4_map(self,
-      map_data=None,
-      file_name="box.ccp4",
-      shift_back=False,
-      output_unit_cell_grid=None,
-      output_sd=None,
-      output_mean=None,
-      output_crystal_symmetry=None,
-      output_external_origin=None,
-      output_map_labels=None):
-
-    # If output_unit_cell_grid is specified, then write this out
-    #  instead of the size of the actual available map (self.map_box.all())
-
-    from iotbx import mrcfile
-    if not map_data:
-      map_data=self.map_box
-
-    assert tuple(map_data.origin())==(0,0,0)
-    if shift_back:
-      map_data=self.shift_map_back(map_data)
-
-    if output_mean is not None or output_sd is not None:
-      mean_value=map_data.as_1d().min_max_mean().mean
-      sd_value=max(1.e-10,map_data.as_1d().standard_deviation_of_the_sample())
-      if output_mean is None: output_mean=mean_value
-      if output_sd is None: output_sd=sd_value
-      map_data = output_mean + (map_data.deep_copy()-mean_value)*\
-          (output_sd/sd_value)
-
-    # Adjust the crystal_symmetry to match the output grid as well
-    if output_crystal_symmetry is None:
-      output_crystal_symmetry=self.xray_structure_box.crystal_symmetry()
-    if output_unit_cell_grid is None:
-      output_unit_cell_grid=map_data.all()
-    if output_map_labels:
-      labels=flex.std_string(output_map_labels)
-    else:
-      labels=flex.std_string([" "])
-    mrcfile.write_ccp4_map(
-      file_name      = file_name,
-      unit_cell      = output_crystal_symmetry.unit_cell(),
-      space_group    = output_crystal_symmetry.space_group(),
-      unit_cell_grid = output_unit_cell_grid,
-      map_data       = map_data,
-      labels         = labels,
-      external_origin=output_external_origin)
+    return maptbx.copy(map_data,self.gridding_first, self.gridding_last)
 
   def box_map_coefficients_as_fft_map(self, d_min, resolution_factor):
     box_map_coeffs = self.box_map_coefficients(d_min = d_min)
     fft_map = box_map_coeffs.fft_map(resolution_factor=resolution_factor)
     fft_map.apply_sigma_scaling()
     return fft_map
+
+  def apply_mask_inplace(self, atom_radius):
+    assert self.map_box.origin() == (0,0,0)
+    import boost_adaptbx.boost.python as bp
+    cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
+    radii = flex.double(self.xray_structure_box.scatterers().size(),atom_radius)
+    mask = cctbx_maptbx_ext.mask(
+      sites_frac                  = self.xray_structure_box.sites_frac(),
+      unit_cell                   = self.crystal_symmetry.unit_cell(),
+      n_real                      = self.map_box.all(),
+      mask_value_inside_molecule  = 1,
+      mask_value_outside_molecule = 0,
+      radii                       = radii)
+    self.map_box = self.map_box * mask
 
   def map_coefficients(self, d_min, resolution_factor, file_name="box.mtz",
      scale_max=None,
@@ -3072,6 +2521,77 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
 
     return box_map_coeffs
 
+  def write_xplor_map(self, file_name):
+    unit_cell = self.xray_structure.unit_cell()
+    sites_frac = self.xray_structure.sites_frac()
+    frac_max = sites_frac.max()
+    frac_min = sites_frac.min()
+    frac_max = list(flex.double(frac_max))
+    frac_min = list(flex.double(frac_min))
+    n_real = self.map_data.all()
+    gridding_first=[ifloor(f*n) for f,n in zip(frac_min,n_real)]
+    gridding_last=[iceil(f*n) for f,n in zip(frac_max,n_real)]
+    gridding = iotbx.xplor.map.gridding(n = self.map_data.focus(),
+      first = gridding_first, last = gridding_last)
+    iotbx.xplor.map.writer(
+      file_name          = file_name,
+      is_p1_cell         = True,
+      title_lines        = [' None',],
+      unit_cell          = unit_cell,
+      gridding           = gridding,
+      data               = self.map_data,
+      average            = -1,
+      standard_deviation = -1)
+
+  def origin_shift_grid_units(self,unit_cell=None,
+       reverse=False):
+    # Get origin shift in grid units from shift_cart
+    from scitbx.matrix import col
+    cell=self.xray_structure_box.crystal_symmetry().unit_cell().parameters()[:3]
+    origin_shift_grid=[]
+    for s,c,a in zip(self.shift_cart,cell,self.map_box.all()):
+      if s<0:
+        delta=-0.5
+      else:
+        delta=0.5
+      origin_shift_grid.append( int(delta+ a*s/c))
+    if reverse:
+      return list(-col(origin_shift_grid))
+    else:
+      return origin_shift_grid
+
+  def shift_sites_cart_back(self,sites_cart):
+    # Shift sites from map_box cell to original coordinate system
+    # Normal situation: cut out piece of cell so shift_cart negative;
+    #  box_sites_cart more negative than sites_cart;
+    #  put back with (-shift_cart) which moves sites to more positive values.
+    from scitbx.matrix import col
+    return sites_cart-col(self.shift_cart)
+
+  def shift_map_coeffs_back(self,map_coeffs):
+    # Shift map coeffs from map_box cell to original coordinate system
+    # Apply phase shift corresponding to moving coordinates by self.shift_cart
+    # Note resulting map coeffs are still for the box cell (not original cell).
+    #  They superimpose on the result of shift_sites_cart_back but only
+    #  within the volume of the map_box cell in the original coordinate system
+
+    from scitbx.matrix import col
+    return map_coeffs.translational_shift(
+          self.box_crystal_symmetry.unit_cell().fractionalize(
+          -col(self.shift_cart)), deg=False)
+
+
+  def shift_map_back(self,map_data):
+    # Shift map from map_box cell to original coordinate system
+    #  Note this map only applies in the region of the map_box cell (the
+    #   map may be repeated in space but only one copy is valid).
+    # The dimensions of this map are the same as the box map.
+    from scitbx.matrix import col
+    new_origin=self.origin_shift_grid_units(reverse=True)
+    new_all=list(col(self.map_box.all())+col(new_origin))
+    shifted_map_data = map_data.deep_copy()
+    shifted_map_data.resize(flex.grid(new_origin,new_all))
+    return shifted_map_data
 
 class experimental_data_target_and_gradients(object):
   def __init__(self, fmodel, alpha_beta=None):
@@ -3164,16 +2684,21 @@ class states(object):
     self.counter = counter
     self.root = iotbx.pdb.hierarchy.root()
     self.sites_carts = []
+    self.add(hierarchy = pdb_hierarchy)
 
-  def add(self, sites_cart):
-    self.sites_carts.append(sites_cart)
+  def add(self, sites_cart=None, hierarchy=None):
+    if(sites_cart is not None):
+      self.sites_carts.append(sites_cart)
     ph = self.pdb_hierarchy.deep_copy()
     if(self.xray_structure is not None):
       xrs = self.xray_structure.replace_sites_cart(new_sites = sites_cart)
       ph.adopt_xray_structure(xrs)
-    else:
+    elif(sites_cart is not None):
       ph.atoms().set_xyz(sites_cart)
-    models = ph.models()
+    if(hierarchy is None):
+      models = ph.models()
+    else:
+      models = hierarchy.deep_copy().models()
     md = models[0].detached_copy()
     md.id = str(self.counter)
     self.root.append_model(md)
@@ -3241,7 +2766,7 @@ def check_and_set_crystal_symmetry(
   for model in models:
     cs = model.crystal_symmetry()
     if(cs is None or cs.is_empty()):
-      model.set_crystal_symmetry_if_undefined(crystal_symmetry)
+      model.set_crystal_symmetry(crystal_symmetry)
   if(len(map_inps)>1):
     m0 = map_inps[0].map_data()
     for m in map_inps[1:]:
@@ -3380,3 +2905,8 @@ class run_reduce_with_timeout(easy_run.fully_buffered):
         join_stdout_stderr=join_stdout_stderr,
         stdout_splitlines=stdout_splitlines,
         bufsize=bufsize)
+
+  def as_pdb_hierarchy(self):
+    return pdb.input(
+      source_info = "from_reduce",
+      lines       = '\n'.join(self.stdout_lines)).construct_hierarchy()

@@ -17,87 +17,120 @@ env_etc.gltbx_common_includes = [
 if (gl2ps_path is not None):
   env_etc.gltbx_common_includes.append(gl2ps_path)
 
-if (not env_etc.no_boost_python):
-  Import("env_base", "env_no_includes_boost_python_ext")
-  trial_env = env_base.Clone()
-  env = env_no_includes_boost_python_ext.Clone()
-  env.Prepend(LIBS=["scitbx_boost_python"])
-  if (env_etc.compiler == "win32_cl"):
-    for e in [trial_env, env]:
-      e.Append(LIBS=["glu32", "opengl32"])
-  elif (env_etc.compiler.startswith("darwin_")):
-    for e in [trial_env, env]:
-      e.Append(SHLINKFLAGS=["-framework", "OpenGL"])
-  else:
-    for e in [trial_env, env]:
-      if ("LIBS" not in e):
-        libs = []
-        i = 0
-      else:
-        libs = list(e["LIBS"])
-        try: i = libs.index("m")
-        except ValueError: i = len(libs)
-      libs.insert(i, "GL")
-      libs.insert(i, "GLU")
-      e.Replace(LIBS=libs)
-  env_etc.include_registry.append(
-    env=trial_env,
-    paths=env_etc.gltbx_common_includes)
-  env_etc.include_registry.append(
-    env=env,
-    paths=env_etc.gltbx_common_includes + [env_etc.python_include])
-  #
-  env_etc.gltbx_has_usable_opengl = False
-  conf = trial_env.Configure()
-  flag, output = conf.TryRun("""
-#include <gltbx/include_opengl.h>
-#include <iostream>
-int main() { std::cout << GL_POINT << std::endl; return 0; }
-""", extension=".cpp")
-  conf.Finish()
-  if (flag and len(output.strip()) != 0) or libtbx.env.build_options.use_conda:
-    conf = env.Configure()
-    if (conf.TryCompile("""
-#include <gltbx/include_opengl.h>
-""", extension=".cpp")):
-      env_etc.gltbx_has_usable_opengl = True
+if not libtbx.env.module_is_installed("gltbx"):
+  if (not env_etc.no_boost_python):
+    Import("env_base", "env_no_includes_boost_python_ext")
+    trial_env = env_base.Clone()
+    env = env_no_includes_boost_python_ext.Clone()
+    env.Prepend(LIBS=["scitbx_boost_python"])
+    if (env_etc.compiler == "win32_cl"):
+      for e in [trial_env, env]:
+        e.Append(LIBS=["glu32", "opengl32"])
+    elif (env_etc.compiler.startswith("darwin_")):
+      for e in [trial_env, env]:
+        e.Append(SHLINKFLAGS=["-framework", "OpenGL"])
+    else:
+      for e in [trial_env, env]:
+        if ("LIBS" not in e):
+          libs = []
+          i = 0
+        else:
+          libs = list(e["LIBS"])
+          try: i = libs.index("m")
+          except ValueError: i = len(libs)
+        libs.insert(i, "GL")
+        libs.insert(i, "GLU")
+        e.Replace(LIBS=libs)
+    env_etc.include_registry.append(
+      env=trial_env,
+      paths=env_etc.gltbx_common_includes)
+    env_etc.include_registry.append(
+      env=env,
+      paths=env_etc.gltbx_common_includes + [env_etc.python_include])
+    #
+    env_etc.gltbx_has_usable_opengl = False
+    conf = trial_env.Configure()
+    flag, output = conf.TryRun("""
+  #include <gltbx/include_opengl.h>
+  #include <iostream>
+  int main() { std::cout << GL_POINT << std::endl; return 0; }
+  """, extension=".cpp")
     conf.Finish()
-  #
-  if (not env_etc.gltbx_has_usable_opengl):
-    print("gltbx: OpenGL headers and/or libraries not available.")
-    print("gltbx: Compilation skipped.")
-  else:
-    for namespace,n_fragments_def,n_fragments_fun in [("gl", 8, 16),
-                                                      ("glu", 2, 4)]:
-      source=["%s_ext.cpp" % namespace]
-      for i_fragment in range(n_fragments_def):
-        source.append("#gltbx/%s_defines_%02d_bpl.cpp" % (
-          namespace, i_fragment))
-      for i_fragment in range(n_fragments_fun):
-        source.append("#gltbx/%s_functions_%02d_bpl.cpp" % (
-          namespace, i_fragment))
-      env.SharedLibrary(
-        target="#lib/gltbx_%s_ext" % namespace,
+    if (flag and len(output.strip()) != 0) or libtbx.env.build_options.use_conda:
+      conf = env.Configure()
+      test_compile_success = conf.TryCompile("""
+  #include <gltbx/include_opengl.h>
+  """, extension=".cpp")
+      if not test_compile_success and env_etc.compiler == "unix_conda":
+        conf.Finish()
+        print("gltbx: Attempting to compile with system libraries")
+        alternative_includes = ["/usr/local/include", "/usr/include"]
+        if "CPPPATH" in trial_env:
+          trial_env.Append(CPPPATH=alternative_includes)
+          env.Append(CPPPATH=alternative_includes)
+        else:
+          trial_env["CPPPATH"]=alternative_includes
+          env["CPPPATH"]=alternative_includes
+        alternative_libs = ["/lib64", "/usr/lib64", "/lib", "/usr/lib"]
+        if "LIBPATH" in trial_env:
+          trial_env.Append(LIBPATH=alternative_libs)
+          env.Append(LIBPATH=alternative_libs)
+        else:
+          trial_env["LIBPATH"]=alternative_libs
+          env["LIBPATH"]=alternative_libs
+        conf = trial_env.Configure()
+        test_compile_success = conf.TryCompile("""
+  #include <gltbx/include_opengl.h>
+  """, extension=".cpp")
+        if test_compile_success:
+          print("gltbx: Will compile with system libraries")
+          if "CPPPATH" in env:
+            env.Append(CPPPATH=alternative_includes)
+          else:
+            env["CPPPATH"]=alternative_includes
+          if "LIBPATH" in env:
+            env.Append(LIBPATH=alternative_libs)
+          else:
+            env["LIBPATH"]=alternative_libs
+      if test_compile_success:
+        env_etc.gltbx_has_usable_opengl = True
+      conf.Finish()
+    #
+    if (not env_etc.gltbx_has_usable_opengl):
+      print("gltbx: OpenGL headers and/or libraries not available.")
+      print("gltbx: Compilation skipped.")
+    else:
+      for namespace,n_fragments_def,n_fragments_fun in [("gl", 8, 16),
+                                                        ("glu", 2, 4)]:
+        source=["%s_ext.cpp" % namespace]
+        for i_fragment in range(n_fragments_def):
+          source.append("#gltbx/%s_defines_%02d_bpl.cpp" % (
+            namespace, i_fragment))
+        for i_fragment in range(n_fragments_fun):
+          source.append("#gltbx/%s_functions_%02d_bpl.cpp" % (
+            namespace, i_fragment))
+        env.SharedLibrary(
+          target="#lib/gltbx_%s_ext" % namespace,
+          source=source)
+      env_util = env
+      source = ["util_ext.cpp"]
+      if (gl2ps_path is not None):
+        source.append("#gui_resources/gl2ps/gl2ps.c")
+        env_util = env.Clone()
+        env_util.Append(SHCXXFLAGS=["-DGLTBX_HAVE_GL2PS"])
+      env_util.SharedLibrary(
+        target="#lib/gltbx_util_ext",
         source=source)
-    env_util = env
-    source = ["util_ext.cpp"]
-    if (gl2ps_path is not None):
-      source.append("#gui_resources/gl2ps/gl2ps.c")
-      env_util = env.Clone()
-      env_util.Append(SHCXXFLAGS=["-DGLTBX_HAVE_GL2PS"])
-    env_util.SharedLibrary(
-      target="#lib/gltbx_util_ext",
-      source=source)
-    env.SharedLibrary(
-      target="#lib/gltbx_viewer_utils_ext",
-      source=["viewer_utils_ext.cpp"])
-    env.SharedLibrary(
-      target="#lib/gltbx_quadrics_ext",
-      source=["quadrics_ext.cpp"])
-    env.SharedLibrary(
-      target="#lib/gltbx_fonts_ext",
-      source=[
-        "fonts_ext.cpp",
-        "font_ucs_8x13.cpp",
-        "font_ucs_9x15.cpp",
-        "font_ucs_10x20.cpp"])
+      env.SharedLibrary(
+        target="#lib/gltbx_viewer_utils_ext",
+        source=["viewer_utils_ext.cpp"])
+      env.SharedLibrary(
+        target="#lib/gltbx_quadrics_ext",
+        source=["quadrics_ext.cpp"])
+      env.SharedLibrary(
+        target="#lib/gltbx_fonts_ext",
+        source=[
+          "fonts_ext.cpp",
+          "font_ucs_8x13.cpp",
+          "font_ucs_9x15.cpp",
+          "font_ucs_10x20.cpp"])

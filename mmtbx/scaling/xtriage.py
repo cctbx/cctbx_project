@@ -25,9 +25,8 @@ from libtbx.str_utils import StringIO, wordwrap
 from libtbx.utils import null_out
 from libtbx import runtime_utils
 import libtbx.callbacks # import dependency
-from functools import cmp_to_key
-from past.builtins import cmp
 from six.moves import cStringIO as StringIO
+import operator
 import os
 import sys
 
@@ -793,7 +792,8 @@ class xtriage_analyses(mmtbx.scaling.xtriage_analysis):
     print("", file=text_out)
     #Do the twinning analyses
     ## resolution check
-    if (flex.min(miller_obs.d_spacings().data())
+    if (twin_params.twin_test_cuts.high_resolution is not None
+        and flex.min(miller_obs.d_spacings().data())
         > twin_params.twin_test_cuts.high_resolution):
       params.scaling.input.xray_data.high_resolution = flex.min(
         miller_obs.d_spacings().data())
@@ -1005,8 +1005,7 @@ class summary(mmtbx.scaling.xtriage_analysis):
   def __init__(self, issues, sort=True):
     self._issues = issues
     if (sort):
-      cmp_fn = lambda a,b: cmp(b[0], a[0])
-      self._issues.sort(key=cmp_to_key(cmp_fn))
+      self._issues.sort(key=operator.itemgetter(0), reverse=True)
 
   @property
   def n_problems(self):

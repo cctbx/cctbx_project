@@ -15,16 +15,19 @@ from six.moves import cStringIO as StringIO
 from six.moves import zip
 from libtbx import easy_run
 
+full_params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+full_params.pdb_interpretation.flip_symmetric_amino_acids=False
+
 class xray_structure_plus(object):
   def __init__(self, file_name):
     log = StringIO()
     pdb_inp = iotbx.pdb.input(file_name=file_name)
     self.model = mmtbx.model.manager(
         model_input = pdb_inp,
+        pdb_interpretation_params = full_params,
         process_input = True,
         log = log)
     self.xray_structure = self.model.get_xray_structure()
-    self.all_chain_proxies = self.model.all_chain_proxies
     uc = self.model.get_xray_structure().unit_cell()
     self.occ           = self.xray_structure.scatterers().extract_occupancies()
     self.u_iso            = self.xray_structure.scatterers().extract_u_iso()
@@ -71,10 +74,10 @@ ATOM     15  CA  PHE A   1       7.000   7.000   7.000  1.00 17.18           C
 ANISOU   15  CA  PHE A   1      931   2249   3347   1119   1342   2337       C
 ATOM     13  CB  PHE B   2      11.715   4.672   7.185  1.00 34.89           C
 ATOM     14  CG  PHE B   2      10.876   4.117   8.301  1.00 35.22           C
-ATOM     15  CD1 PHE B   2      10.127   2.966   8.118  1.00 35.30           C
-ATOM     16  CD2 PHE B   2      10.836   4.746   9.534  1.00 35.63           C
-ATOM     17  CE1 PHE B   2       9.355   2.454   9.143  1.00 35.88           C
-ATOM     18  CE2 PHE B   2      10.066   4.239  10.563  1.00 36.30           C
+ATOM     15  CD2 PHE B   2      10.127   2.966   8.118  1.00 35.30           C
+ATOM     16  CD1 PHE B   2      10.836   4.746   9.534  1.00 35.63           C
+ATOM     17  CE2 PHE B   2       9.355   2.454   9.143  1.00 35.88           C
+ATOM     18  CE1 PHE B   2      10.066   4.239  10.563  1.00 36.30           C
 ATOM     19  CZ  PHE B   2       9.324   3.091  10.367  1.00 36.47           C
 ATOM     20  C   PHE B   2      11.961   6.316   5.313  1.00 34.38           C
 ATOM     21  O   PHE B   2      11.902   5.976   4.132  1.00 34.72           O
@@ -285,8 +288,9 @@ def check_adp_to_aniso(
 
 def check_sites_shake(
       cmd, xrsp_init, output, selection, selection_str, shake, verbose,
-      tolerance=1.e-3):
+      tolerance=1.e-2):
   remove_files(output)
+  print(cmd)
   run_command(command=cmd, verbose=verbose)
   xrsp = xray_structure_plus(file_name = output)
   assert approx_equal(xrsp.occ,    xrsp_init.occ,tolerance)
@@ -855,10 +859,10 @@ loop_
 def exercise_mmcif_support_2(prefix="tst_pdbtools_mmcif2"):
   f = open("%s.pdb" % prefix, 'w')
   f.write("""\
-HELIX    1   1 TRP A   10  VAL A   14  5                                   5
+HELIX    1   1 GLN A   10  GLN A   14  5                                   5
 HELIX    2   2 ARG A   17  ASN A   29  1                                  13
-SHEET    1   A 2 ARG A  33  PRO A  38  0
-SHEET    2   A 2 ARG A  51  VAL A  56  1  O  VAL A  54   N  ILE A  35
+SHEET    1   A 2 GLN A  33  GLN A  38  0
+SHEET    2   A 2 GLN A  51  GLN A  56  1  O  VAL A  54   N  ILE A  35
 SSBOND   1 CYS A    4    CYS A   49
 CRYST1   62.654   62.654   45.906  90.00  90.00  90.00 P 43 21 2
 SCALE1      0.015961  0.000000  0.000000        0.00000
@@ -1155,7 +1159,57 @@ TER
 END
 """), pdb_new
 
+def exercise_flip_symmetric_amino_acids(
+  prefix="exercise_flip_symmetric_amino_acids"):
+  pdb_str_in = """
+ATOM   3356  N   ARG H 228      20.811-103.620  24.514  1.00 56.77           N
+ATOM   3357  CA  ARG H 228      21.863-104.460  23.967  1.00 64.89           C
+ATOM   3358  C   ARG H 228      21.258-105.679  23.284  1.00 69.98           C
+ATOM   3359  O   ARG H 228      20.179-106.141  23.657  1.00 70.23           O
+ATOM   3360  CB  ARG H 228      22.810-104.925  25.075  1.00 63.55           C
+ATOM   3361  CG  ARG H 228      23.354-103.810  25.936  1.00 64.01           C
+ATOM   3362  CD  ARG H 228      24.570-104.271  26.712  1.00 65.11           C
+ATOM   3363  NE  ARG H 228      25.126-103.194  27.523  1.00 68.09           N
+ATOM   3364  CZ  ARG H 228      26.373-103.169  27.982  1.00 66.49           C
+ATOM   3365  NH1 ARG H 228      26.790-102.145  28.717  1.00 64.08           N
+ATOM   3366  NH2 ARG H 228      27.205-104.163  27.694  1.00 65.11           N
+TER
+END
+  """
+  pdb_str_out = """
+ATOM   3355  N   ARG H 228      20.811-103.620  24.514  1.00 56.77           N
+ATOM   3356  CA  ARG H 228      21.863-104.460  23.967  1.00 64.89           C
+ATOM   3357  C   ARG H 228      21.258-105.679  23.284  1.00 69.98           C
+ATOM   3358  O   ARG H 228      20.179-106.141  23.657  1.00 70.23           O
+ATOM   3359  CB  ARG H 228      22.810-104.925  25.075  1.00 63.55           C
+ATOM   3360  CG  ARG H 228      23.354-103.810  25.936  1.00 64.01           C
+ATOM   3361  CD  ARG H 228      24.570-104.271  26.712  1.00 65.11           C
+ATOM   3362  NE  ARG H 228      25.126-103.194  27.523  1.00 68.09           N
+ATOM   3363  CZ  ARG H 228      26.373-103.169  27.982  1.00 66.49           C
+ATOM   3364  NH1 ARG H 228      27.205-104.163  27.694  1.00 65.11           N
+ATOM   3365  NH2 ARG H 228      26.790-102.145  28.717  1.00 64.08           N
+TER
+END
+  """
+  pi = iotbx.pdb.input(source_info=None, lines=pdb_str_in)
+  ph_in = pi.construct_hierarchy()
+  pi.write_pdb_file(file_name="%s.pdb"%prefix)
+  cmd = " ".join([
+    "phenix.pdbtools",
+    "%s.pdb"%prefix,
+    "flip_symmetric_amino_acids=True",
+    "output.prefix=%s"%prefix])
+  print(cmd)
+  run_command(command=cmd, verbose=False)
+  h1 = iotbx.pdb.input(source_info=None, lines=pdb_str_out).construct_hierarchy()
+  h2 = iotbx.pdb.input(file_name=
+    "exercise_flip_symmetric_amino_acids_modified.pdb").construct_hierarchy()
+  assert h1.is_similar_hierarchy(h2)
+  ph_in.flip_symmetric_amino_acids()
+  assert h1.is_similar_hierarchy(ph_in)
+
 def exercise(args):
+  exercise_flip_symmetric_amino_acids()
   exercise_switch_rotamers()
   exercise_mmcif_support_2()
   exercise_basic()

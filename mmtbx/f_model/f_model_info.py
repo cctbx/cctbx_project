@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import adopt_init_args
 from libtbx.str_utils import format_value, round_2_for_cif, round_4_for_cif
-import sys, re, string
+import sys, re
 from six.moves import range
 
 def _scale_helper(num, den, selection=None, num_num=False):
@@ -117,6 +117,7 @@ class info(object):
     self.r_all = fmodel.r_all()
     self.target_work = fmodel.target_w()
     self.target_free = fmodel.target_t()
+    self.wilson_b = fmodel.wilson_b()
     self.target_work_no_norm = fmodel.target_w()
     if(self.target_work_no_norm is not None):
       self.target_work_no_norm *= fmodel.f_calc_w().data().size()
@@ -312,6 +313,9 @@ class info(object):
     print(pr, file=out)
     print(pr+"STRUCTURE FACTORS CALCULATION ALGORITHM : %-s"%\
       self.sf_algorithm.upper(), file=out)
+    print(pr+"B VALUES.", file=out)
+    print(pr+" FROM WILSON PLOT           (A**2) : %s" %\
+      format_value("%-8.2f", self.wilson_b), file=out)
     out.flush()
 
   def as_cif_block(self, cif_block=None, scattering_type="X-RAY DIFFRACTION"):
@@ -570,7 +574,7 @@ def export_bins_table_data(bins, title="Statistics by resolution bin"):
   for bin in bins :
     bin_stats = []
     (min_res_str, max_res_str) = re.sub(r"\s*", "", bin.d_range).split("-")
-    (min_res, max_res) = (string.atof(min_res_str), string.atof(max_res_str))
+    (min_res, max_res) = (float(min_res_str), float(max_res_str))
     bin_stats.append(1 / (max_res ** 2))
     for stat_attr_name in table_stats :
       bin_stats.append(getattr(bin, stat_attr_name))

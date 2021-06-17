@@ -4,6 +4,7 @@ import iotbx.pdb
 from libtbx.utils import format_cpu_times, null_out
 
 pdb_str_1="""
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1
 HELIX    1   1 THR A    1  THR A    2  1                                   6
 HELIX    1   1 THR B    1  THR B    2  1                                   6
 SHEET    1   A 2 THR A   1  THR A   3  0
@@ -56,7 +57,8 @@ def exercise_1():
   inp = iotbx.pdb.input(source_info=None, lines=pdb_str_1)
   model = mmtbx.model.manager(
       model_input = inp,
-      log = null_out())
+      log = null_out(),
+      build_grm=True)
   assert model.get_number_of_atoms() == 21
   assert model.get_hierarchy().atoms_size() == 21
   assert model.get_xray_structure().scatterers().size() == 21

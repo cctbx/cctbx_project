@@ -1014,7 +1014,6 @@ namespace ext {
     {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
-      typedef return_internal_reference<> rir;
       class_<parameters_bp3>("parameters_bp3",
                                   init<scitbx::af::shared<cctbx::miller::index<> >,
                                   cctbx::crystal_orientation const&,

@@ -1,7 +1,16 @@
 from __future__ import absolute_import, division, print_function
 from builtins import object
 import math
+from scitbx import matrix
 from six.moves import range
+
+def cmp(x, y):
+  """
+  cmp(x, y) -> integer
+
+  Return negative if x<y, zero if x==y, positive if x>y.
+  """
+  return (x > y) - (x < y)
 
 def round2(x, d=0):
   '''
@@ -52,6 +61,17 @@ def roundoff(val, precision=3, as_string=False):
     for i,v in enumerate(val):
       val[i] = roundoff(v, precision)
     val = tuple(val)
+  if isinstance(val,  matrix.sqr):
+    val = list(val)
+    for i,v in enumerate(val):
+      val[i] = roundoff(v, precision)
+    val =  matrix.sqr(val)
+  if isinstance(val,  matrix.rec):
+    valn = val.n
+    val = list(val)
+    for i,v in enumerate(val):
+      val[i] = roundoff(v, precision)
+    val =  matrix.rec(elems=val, n=valn)
   return val
 
 def iround(x):

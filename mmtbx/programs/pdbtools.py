@@ -59,7 +59,7 @@ gui
         uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
           sites_cart   = self.model.get_sites_cart(),
           buffer_layer = 5).crystal_symmetry()
-      self.model.set_crystal_symmetry_if_undefined(cs = box_crystal_symmetry)
+      self.model.set_crystal_symmetry(crystal_symmetry = box_crystal_symmetry)
     print('Performing manipulations', file=self.logger)
     self.model = mmtbx.pdbtools.modify(
       model  = self.model,
@@ -93,4 +93,3 @@ gui
 
 # So master_phil_str can be called
 master_phil_str = Program.master_phil_str
-

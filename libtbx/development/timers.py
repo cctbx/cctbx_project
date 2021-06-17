@@ -1,27 +1,35 @@
 from __future__ import absolute_import, division, print_function
 import time,sys
 
+# Restore compatibility to Python >= 3.8, where time.clock() is gone
+py_version = sys.version_info
+if py_version[0]==3 and py_version[1]>=7:
+  #work_clock = time.perf_counter # this is an elapsed time, no good for OpenMP
+  work_clock = time.process_time # includes the extra work done with OpenMP
+else:
+  work_clock = time.clock
+
 class Timer:
   """While the class instance is in scope it accumulates CPU and wall clock
      elapsed time.  A report is printed when the instances goes out of scope"""
   def __init__(self,message):
-    self.start = time.clock()
+    self.start = work_clock()
     self.start_el = time.time()
     self.message = message
     print("start timing %s"%self.message)
 
   def tick(self):
-    return time.clock() - self.start
+    return work_clock() - self.start
 
   def __del__(self):
-    self.end = time.clock()
+    self.end = work_clock()
     self.end_el = time.time()
     print("time for %s: CPU, %8.3fs; elapsed, %8.3fs"%(
       self.message,self.end-self.start,self.end_el-self.start_el))
 
 class DebuggingTimer:
   def __init__(self,message,filename,filemode = 'a'):
-    self.start = time.clock()
+    self.start = work_clock()
     self.start_el = time.time()
     self.message = message
     self.k = open(filename,filemode)
@@ -33,7 +41,7 @@ class DebuggingTimer:
 
 
   def __del__(self):
-    self.end = time.clock()
+    self.end = work_clock()
     self.end_el = time.time()
     print("time for %s: CPU, %8.3fs; elapsed, %8.3fs"%(
       self.message,self.end-self.start,self.end_el-self.start_el))
@@ -78,12 +86,15 @@ class Profiler:
      accumulated.  The Profiler will separately keep track of timings that
      are instantiated with different 'message's."""
   def __init__(self,message):
-    self.start = time.clock()
+    self.start = work_clock()
     self.start_el = time.time()
     self.message = message
 
+  def __enter__(self):pass
+  def __exit__(self,exception_type,exception_value,traceback):pass
+
   def __del__(self):
-    self.end = time.clock()
+    self.end = work_clock()
     self.end_el = time.time()
     if self.message not in timing_singleton:
       timing_singleton[self.message]=[0.,0.,0]
@@ -96,7 +107,7 @@ class Profiler:
 
 class SlimProfiler(Profiler):
   def __del__(self):
-    self.end = time.clock()
+    self.end = work_clock()
     self.end_el = time.time()
     if self.message not in timing_singleton:
       timing_singleton[self.message]=[0.,0.,0]

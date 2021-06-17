@@ -135,7 +135,7 @@ def exercise_symbols():
   if (not os.path.isfile(symbols_cpp)):
     print("Skipping checks based on %s: file not available" % symbols_cpp)
   else:
-    f = iter(open(symbols_cpp))
+    f = open(symbols_cpp)
     for volume,table_name,short_symbols in [
           ("I", "vol_i_short_mono_hm_dict", short_symbols_i),
           ("A", "vol_a_short_mono_hm_dict", short_symbols_a)]:
@@ -153,6 +153,7 @@ def exercise_symbols():
         assert expected_short == short
         assert sgtbx.space_group_symbols(short, volume).hall() \
             == sgtbx.space_group_symbols(long, volume).hall()
+    f.close()
   #
   s = sgtbx.space_group_symbols
   try: s("(x,y,z)")
@@ -2353,38 +2354,40 @@ def exercise_tensor_rank_2_constraints():
   u = uctbx.unit_cell((12,12,15,90,90,120))
   g = sgtbx.space_group("P 6 2")
   ss = sgtbx.site_symmetry(u, g, (0,0,0))
-  tr2c = sgtbx.tensor_rank_2_constraints
-  for c in [tr2c(
-              space_group=g,
-              reciprocal_space=False),
-            tr2c(
-              symmetry_matrices=ss.matrices(),
-              i_first_matrix_to_use=1,
-              reciprocal_space=False)]:
-    assert list(c.row_echelon_form()) \
-        == [1,-1,0,0,0,0,0,1,0,2,0,0,0,0,0,0,1,1,0,0,0,0,0,1]
-  for c in [tr2c(
-              space_group=g,
-              reciprocal_space=True),
-            tr2c(
-              symmetry_matrices=ss.matrices(),
-              i_first_matrix_to_use=1,
-              reciprocal_space=True),
-            ss.adp_constraints()]:
-    assert list(c.row_echelon_form()) \
-        == [1,-1,0,0,0,0,0,1,0,-2,0,0,0,0,0,0,1,-1,0,0,0,0,0,1]
-    assert list(c.independent_indices) == [2,3]
-    assert approx_equal(c.gradient_sum_matrix(), [0,0,1,0,0,0, 2,2,0,1,0,0])
-    assert c.n_independent_params() == 2
-    assert c.n_dependent_params() == 4
-    assert approx_equal(c.independent_params(all_params=[1,2,3,4,5,6]), [3,4])
-    assert approx_equal(c.all_params(independent_params=[1,2]), [4,4,1,2,0,0])
-    a = [1,2,3,4,5,6]
-    s = [3+1/3.,3+1/3.,3,-3-1/3.,0,0]
-    assert approx_equal(c.independent_gradients(all_gradients=a), [3,10])
-    assert approx_equal(c.independent_gradients(all_gradients=s), [3,10])
-    a = flex.double(range(1,22))
-    assert approx_equal(c.independent_curvatures(all_curvatures=a),[12,35,116])
+  tr2ca = sgtbx.tensor_rank_2_constraints
+  tr2cb = sgtbx.rank_2_tensor_constraints
+  for tr2c in (tr2ca,tr2cb):
+    for c in (tr2c(
+                space_group=g,
+                reciprocal_space=False),
+              tr2c(
+                symmetry_matrices=ss.matrices(),
+                i_first_matrix_to_use=1,
+                reciprocal_space=False)):
+      assert list(c.row_echelon_form()) \
+          == [1,-1,0,0,0,0,0,1,0,2,0,0,0,0,0,0,1,1,0,0,0,0,0,1]
+    for c in [tr2c(
+                space_group=g,
+                reciprocal_space=True),
+              tr2c(
+                symmetry_matrices=ss.matrices(),
+                i_first_matrix_to_use=1,
+                reciprocal_space=True),
+              ss.adp_constraints()]:
+      assert list(c.row_echelon_form()) \
+          == [1,-1,0,0,0,0,0,1,0,-2,0,0,0,0,0,0,1,-1,0,0,0,0,0,1]
+      assert list(c.independent_indices) == [2,3]
+      assert approx_equal(c.gradient_sum_matrix(), [0,0,1,0,0,0, 2,2,0,1,0,0])
+      assert c.n_independent_params() == 2
+      assert c.n_dependent_params() == 4
+      assert approx_equal(c.independent_params(all_params=[1,2,3,4,5,6]), [3,4])
+      assert approx_equal(c.all_params(independent_params=[1,2]), [4,4,1,2,0,0])
+      a = [1,2,3,4,5,6]
+      s = [3+1/3.,3+1/3.,3,-3-1/3.,0,0]
+      assert approx_equal(c.independent_gradients(all_gradients=a), [3,10])
+      assert approx_equal(c.independent_gradients(all_gradients=s), [3,10])
+      a = flex.double(range(1,22))
+      assert approx_equal(c.independent_curvatures(all_curvatures=a),[12,35,116])
 
 def exercise_hashing():
   # rt_mx

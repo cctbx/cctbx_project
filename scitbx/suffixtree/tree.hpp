@@ -27,10 +27,9 @@ class Cursor
 {
 public:
   typedef Edge edge_type;
-  typedef edge::Traits< Edge > edge_traits;
-  typedef typename edge_traits::ptr_type edge_ptr_type;
-  typedef typename edge_traits::weak_ptr_type edge_weak_ptr_type;
-  typedef typename edge_traits::iterator edge_iterator;
+  typedef typename edge_type::ptr_type edge_ptr_type;
+  typedef typename edge_type::weak_ptr_type edge_weak_ptr_type;
+  typedef typename edge_type::iterator edge_iterator;
   typedef typename edge_type::glyph_type glyph_type;
   typedef typename edge_type::index_type index_type;
 
@@ -101,11 +100,9 @@ public:
     edge_type;
 
   typedef typename edge_type::ptr_type edge_ptr_type;
-  typedef typename edge_type::const_ptr_type const_edge_ptr_type;
   typedef typename edge_type::weak_ptr_type edge_weak_ptr_type;
-  typedef typename edge_type::const_weak_ptr_type const_edge_weak_ptr_type;
 
-  typedef Cursor< edge_type const, word_type const> cursor_type;
+  typedef Cursor< edge_type, word_type > cursor_type;
 
 private:
   edge_ptr_type root_;
@@ -116,7 +113,7 @@ public:
   Tree();
   ~Tree();
 
-  const_edge_ptr_type root() const;
+  edge_ptr_type root() const;
   word_type const& word() const;
   bool in_construction() const;
   cursor_type cursor() const;

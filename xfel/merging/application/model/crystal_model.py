@@ -6,7 +6,10 @@ from iotbx import file_reader
 import libtbx.phil.command_line
 from cctbx import miller
 from cctbx.crystal import symmetry
+import iotbx.pdb
+import mmtbx.model
 from six.moves import cStringIO as StringIO
+import os
 
 class crystal_model(worker):
 
@@ -22,13 +25,13 @@ class crystal_model(worker):
     self.logger.log_step_time("CREATE_CRYSTAL_MODEL")
 
     # perform some run-time validation
-    assert self.purpose in ["scaling", "statistics"]
+    assert self.purpose in ["scaling", "statistics", "cosym"]
     if self.purpose == "statistics" and self.params.merging.set_average_unit_cell: # without this flag the average unit cell wouldn't have been generated
       assert 'average_unit_cell' in (self.params.statistics).__dict__ # the worker, tasked with averaging the unit cell, would put it there
 
     # Generate the reference, or model, intensities
     i_model = None
-    if self.purpose == "scaling":
+    if self.purpose in ["scaling","cosym"]:
       model_file_path = str(self.params.scaling.model)
       if model_file_path is not None:
         self.logger.log("Scaling model: " + model_file_path)
@@ -54,6 +57,11 @@ class crystal_model(worker):
         i_model = self.create_model_from_mtz(model_file_path)
       elif model_file_path.endswith(".pdb"):
         i_model = self.create_model_from_pdb(model_file_path)
+      elif model_file_path.endswith(".cif"):
+        i_model = self.create_model_from_structure_file(model_file_path)
+
+    if self.purpose == "cosym":
+      return i_model
 
     # Generate a full miller set. If the purpose is scaling and i_model is available, then the miller set has to be consistent with the model
     miller_set, i_model = self.consistent_set_and_model(i_model=i_model)
@@ -81,12 +89,29 @@ class crystal_model(worker):
     return experiments, reflections
 
   def create_model_from_pdb(self, model_file_path):
+      return self.create_model_from_structure_file(model_file_path)
+
+  def create_model_from_structure_file(self, model_file_path):
 
     if self.mpi_helper.rank == 0:
-      from iotbx import file_reader
-      pdb_in = file_reader.any_file(model_file_path, force_type="pdb")
-      pdb_in.assert_file_type("pdb")
-      xray_structure = pdb_in.file_object.xray_structure_simple()
+      model_ext = os.path.splitext(model_file_path)[-1].lower()
+      assert model_ext in [".pdb", ".cif"]
+      if model_ext == ".pdb":
+        from iotbx import file_reader
+        pdb_in = file_reader.any_file(model_file_path, force_type="pdb")
+        pdb_in.assert_file_type("pdb")
+        xray_structure = pdb_in.file_object.xray_structure_simple()
+      elif model_ext == ".cif":
+        from libtbx.utils import Sorry
+        try:
+          from cctbx.xray import structure
+          xs_dict = structure.from_cif(file_path=model_file_path)
+          assert len(xs_dict) == 1, "CIF should contain only one xray structure"
+          xray_structure = list(xs_dict.values())[0]
+        except Sorry:
+          inp = iotbx.pdb.input(model_file_path)
+          model = mmtbx.model.manager(model_input=inp)
+          xray_structure = model.get_xray_structure()
       out = StringIO()
       xray_structure.show_summary(f=out)
       self.logger.main_log(out.getvalue())
@@ -94,9 +119,8 @@ class crystal_model(worker):
       unit_cell = xray_structure.crystal_symmetry().unit_cell()
     else:
       xray_structure = space_group = unit_cell = None
-
-    xray_structure, space_group, unit_cell = self.mpi_helper.comm.bcast((xray_structure, space_group, unit_cell), root=0)
-
+    if self.purpose != "cosym":
+      xray_structure, space_group, unit_cell = self.mpi_helper.comm.bcast((xray_structure, space_group, unit_cell), root=0)
     if self.purpose == "scaling":
       # save space group and unit cell as scaling targets
       self.params.scaling.space_group = space_group
@@ -175,13 +199,13 @@ class crystal_model(worker):
       self.params.scaling.unit_cell   = unit_cell
 
     if self.purpose == "scaling":
-      mtz_column_F = str(self.params.scaling.mtz.mtz_column_F)
+      mtz_column_F = str(self.params.scaling.mtz.mtz_column_F.lower())
     elif self.purpose == "statistics":
-      mtz_column_F = str(self.params.statistics.cciso.mtz_column_F)
+      mtz_column_F = str(self.params.statistics.cciso.mtz_column_F.lower())
 
     for array in arrays:
       this_label = array.info().label_string().lower()
-      if True not in [this_label.find(tag)>=0 for tag in ["iobs","imean", mtz_column_F]]:
+      if True not in ["sig"+tag in this_label for tag in ["iobs","imean", mtz_column_F]]:
         continue
 
       return array.as_intensity_array().change_basis(self.params.scaling.model_reindex_op).map_to_asu()

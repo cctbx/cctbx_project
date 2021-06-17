@@ -1,31 +1,69 @@
 # Script for building CCTBX
 # linux image descriptions
-# https://github.com/Microsoft/azure-pipelines-image-generation/blob/master/images/linux/Ubuntu1604-README.md
+# https://github.com/actions/virtual-environments/blob/master/images/linux/Ubuntu1804-README.md
+#
+# Parameters:
+#   distribution: centos, ubuntu
+#   version: [6, 10]
+#   modules: <modules artifact name>
+#   template: <build template file>
+#   prefix: <build artifact prefix>
 
 jobs:
-- job: ${{ format('{0}_{1}', parameters.distribution, join('_', parameters.version) ) }}
+- job: ${{ format('{0}{1}_{2}', parameters.prefix, parameters.distribution, join('_', parameters.version) ) }}
   pool:
     vmImage: ubuntu-latest
-  timeoutInMinutes: 360
+  timeoutInMinutes: 120
   strategy:
-    maxParallel: 3
+    maxParallel: 2
     matrix:
-      python2.7:
-        CONDA: Linux
-        OS: linux-64
-        PYTHON_VERSION: py27
       python3.6:
         CONDA: Linux
         OS: linux-64
         PYTHON_VERSION: py36
+        MODULES: ${{ parameters.modules }}
+      # python3.7:
+      #   CONDA: Linux
+      #   OS: linux-64
+      #   PYTHON_VERSION: py37
+      #   MODULES: ${{ parameters.modules }}
+      # python3.8:
+      #   CONDA: Linux
+      #   OS: linux-64
+      #   PYTHON_VERSION: py38
+      #   MODULES: ${{ parameters.modules }}
+
   container:
     image: ${{ parameters.distribution }}:${{ join('.', parameters.version) }}
     options: "--name ci-container -v /usr/bin/docker:/tmp/docker:ro"
 
+  variables:
+    artifact_name: ${{ parameters.prefix }}${{ parameters.distribution }}_${{ join('.', parameters.version) }}_$(PYTHON_VERSION)
+    day: Sunday
+
   steps:
+  - script: |
+      day=`date +%A`
+      echo $(day)
+      echo "##vso[task.setVariable variable=day]$day"
+    displayName: Get day of week
+
+  - script: echo $(day)
+    displayName: Check day of week
+
   # https://github.com/ApexAI/performance_test/blob/master/azure-pipelines.yml#L9-L17
 
   # centos setup
+  - script: |
+      set -x -e
+      /tmp/docker exec -t -u 0 ci-container \
+      sh -c "sed -i 's/mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/CentOS-Base.repo"
+      /tmp/docker exec -t -u 0 ci-container \
+      sh -c "sed -i 's/#baseurl=http:\/\/mirror/baseurl=http:\/\/vault/g' /etc/yum.repos.d/CentOS-Base.repo"
+      cat /etc/yum.repos.d/CentOS-Base.repo
+    displayName: Modify yum repositories for CentOS 6
+    condition: eq('${{ parameters.version[0] }}', 6)
+
   - script: |
       /tmp/docker exec -t -u 0 ci-container \
       sh -c "yum install -y sudo"
@@ -43,6 +81,11 @@ jobs:
     displayName: Install argparse for CentOS 6
     condition: eq('${{ parameters.version[0] }}', 6)
 
+  - bash: |
+      echo "##vso[task.setvariable variable=LC_ALL]C.utf8"
+    displayName: Setup locale for CentOS 8
+    condition: eq('${{ parameters.version[0] }}', 8)
+
   # ubuntu setup
   - script: |
       /tmp/docker exec -t -u 0 ci-container \
@@ -57,5 +100,80 @@ jobs:
     displayName: Install dependencies for Ubuntu
     condition: eq('${{ parameters.distribution }}', 'ubuntu')
 
+  - script: |
+      echo $(System.CollectionId)
+      echo $(System.CollectionUri)
+      echo $(System.TeamProject)
+      echo $(System.TeamProjectId)
+      echo $(System.DefinitionID)
+    displayName: Show System variables
+
+  # download daily cached build directory for builds
+  # always do builds from scratch for "Update build cache" on Saturday night (Pacific)
+  # always do builds from scratch for "Weekly" pipeline
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(resources.pipeline.build_cache.projectID)'
+      pipeline: '$(resources.pipeline.build_cache.pipelineID)'
+      allowPartiallySucceededBuilds: true
+      allowFailedBuilds: true
+      artifact: '$(artifact_name)'
+      path: $(Pipeline.Workspace)
+    displayName: Download cached build
+    condition: >
+      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+             ne(variables['day'], 'Sunday')),
+         eq(variables['Build.DefinitionName'], 'CI'),
+         eq(variables['Build.DefinitionName'], 'CI branch'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI branch'),
+         eq(variables['Build.DefinitionName'], 'Full'))
+    continueOnError: true
+
+  - script: |
+      cd $(Pipeline.Workspace)
+      tar -xf build.tar
+      rm build.tar
+    displayName: Extract build tarball
+    condition: >
+      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+             ne(variables['day'], 'Sunday')),
+         eq(variables['Build.DefinitionName'], 'CI'),
+         eq(variables['Build.DefinitionName'], 'CI branch'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI branch'),
+         eq(variables['Build.DefinitionName'], 'Full'))
+    continueOnError: true
+    failOnStderr: false
+
   # build
-  - template: ./unix-conda-build.yml
+  - template: ${{ parameters.template }}
+    parameters:
+      distribution: ${{ parameters.distribution }}
+      version: ${{ parameters.version }}
+
+  # preserve permissions
+  - script: |
+      cd $(Pipeline.Workspace)
+      rm -fr tests
+      tar -chf build.tar build
+    displayName: Build tarball
+    condition: >
+      and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+          or(eq(variables['Build.Reason'], 'Schedule'),
+             eq(variables['Build.Reason'], 'Manual')),
+          eq(variables['System.StageAttempt'], 1),
+          eq('${{ parameters.modules }}', 'xfel_modules'))
+    continueOnError: true
+
+  # cache build directory every week for regular optimization build
+  - publish: $(Pipeline.Workspace)/build.tar
+    artifact: $(artifact_name)
+    condition: >
+      and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+          or(eq(variables['Build.Reason'], 'Schedule'),
+             eq(variables['Build.Reason'], 'Manual')),
+          eq(variables['System.StageAttempt'], 1),
+          eq('${{ parameters.modules }}', 'xfel_modules'))
+    continueOnError: true

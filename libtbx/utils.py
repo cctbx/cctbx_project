@@ -250,7 +250,7 @@ def gzip_open(file_name, mode):
   RuntimeError
       If gzip is not available.
   """
-  assert mode in ["r", "rb", "w", "wb", "a", "ab"]
+  assert mode in ["r", "rb", "rt", "w", "wb", "wt", "a", "ab"]
   if (gzip is None):
     un = ""
     if (mode[0] == "r"): un = "un"
@@ -446,8 +446,9 @@ def copy_file(source, target, compress=None):
   else:
     assert compress == ".gz"
     t = gzip_open(file_name=target+compress, mode="wb")
-  t.write(open(source, "rb").read())
-  del t
+  with open(source, "rb") as f:
+    t.write(f.read())
+  t.close()
 
 def remove_files(pattern=None, paths=None, ensure_success=True):
   """
@@ -1855,8 +1856,8 @@ def get_svn_revision(path=None):
   else:
     # Versions >= 7 of the entries file are flat text.  The first line is
     # the version number. The next set of digits after 'dir' is the revision.
-    if re.match('(\d+)', entries):
-      rev_match = re.search('\d+\s+dir\s+(\d+)', entries)
+    if re.match(r'(\d+)', entries):
+      rev_match = re.search(r'\d+\s+dir\s+(\d+)', entries)
       if rev_match:
         rev = int(rev_match.groups()[0])
   return rev
@@ -2039,7 +2040,8 @@ def concatenate_python_script(out, file_name):
   import to prevent syntax errors.  (This could be dangerous in most contexts
   but is required for some of our Coot-related scripts to work.)
   """
-  data = open(file_name, "r").read()
+  with open(file_name, "r") as f:
+    data = f.read()
   print("", file=out)
   print("#--- script copied from %s" % os.path.basename(file_name), file=out)
   for line in data.splitlines():

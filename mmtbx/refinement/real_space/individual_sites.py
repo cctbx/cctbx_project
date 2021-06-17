@@ -340,12 +340,11 @@ class box_refinement_manager(object):
         if state:
           iselection.append(i)
       box = utils.extract_box_around_model_and_map(
-        xray_structure = self.xray_structure,
+        xray_structure = self.xray_structure.select(selection=selection_within),
         map_data       = self.target_map,
-        selection      = selection_within,
         box_cushion    = box_cushion)
       new_unit_cell = box.xray_structure_box.unit_cell()
-      geo_box = self.geometry_restraints_manager.select(box.selection)
+      geo_box = self.geometry_restraints_manager.select(selection_within)
       geo_box = geo_box.discard_symmetry(new_unit_cell=new_unit_cell)
       geo_box.shift_sites_cart(box.shift_cart) # disaster happens otherwise
       map_box = box.map_box
@@ -411,6 +410,7 @@ class minimize_wrapper_with_map():
       number_of_cycles=1,
       cycles_to_converge=2,
       min_mode='simple_cycles',
+      resolution=3.,
       log=None):
 
     # completely new way of doing this. using RSR macro-cycle
@@ -422,38 +422,39 @@ class minimize_wrapper_with_map():
       print("  Minimizing...", file=log)
     from phenix.refinement.macro_cycle_real_space import run as rsr_mc_run
     import scitbx.math
-    from phenix.command_line.real_space_refine import extract_rigid_body_selections
-    from phenix.command_line.real_space_refine import master_params as rsr_master_params
-    from mmtbx.refinement.real_space.utils import target_map as rsr_target_map
+    from phenix.refinement import rsr
+    rsr_master_params = rsr.master_params_str
+    import iotbx.phil
+    rsr_master_params = iotbx.phil.parse(rsr_master_params, process_includes=True)
     import mmtbx.idealized_aa_residues.rotamer_manager
     sin_cos_table = scitbx.math.sin_cos_table(n=10000)
-    params = rsr_master_params().extract()
+    params = rsr_master_params.extract()
     params.pdb_interpretation = model._pdb_interpretation_params.pdb_interpretation
     params.refinement.run = "minimization_global+local_grid_search"
     params.refine_ncs_operators=False
-    params.output.write_all_states = True
     params.refinement.macro_cycles = number_of_cycles
+    params.resolution = resolution
     rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load(
         rotamers = "favored")
-
-    rigid_body_selections = extract_rigid_body_selections(
-        params        = params,
-        ncs_groups    = model.get_ncs_groups(),
-        pdb_hierarchy = model.get_hierarchy())
-    rsr_tm = rsr_target_map(
-        map_data = target_map,
-        xray_structure = model.get_xray_structure(),
-        d_min = 3.8,
-        atom_radius=params.refinement.atom_radius)
+    rigid_body_selections = [] # no RBR here
+    from iotbx import map_model_manager
+    from iotbx import map_manager
+    mm = map_manager.map_manager(
+      map_data                   = target_map,
+      unit_cell_grid             = target_map.all(),
+      wrapping                   = False,
+      unit_cell_crystal_symmetry = model.crystal_symmetry())
+    mmm = map_model_manager.map_model_manager(
+      model       = model,
+      map_manager = mm)
     res = rsr_mc_run(
-        params=params,
-        model=model,
-        target_map=rsr_tm,
-        log=log,
-        ncs_groups=model.get_ncs_groups(),
-        rotamer_manager=rotamer_manager,
-        sin_cos_table=sin_cos_table,
-        rigid_body_selections=rigid_body_selections)
+      params                = params,
+      map_model_manager     = mmm,
+      log                   = log,
+      rotamer_manager       = rotamer_manager,
+      sin_cos_table         = sin_cos_table,
+      rigid_body_selections = rigid_body_selections)
+
     model.set_sites_cart_from_hierarchy(res.model.get_hierarchy())
     res.structure_monitor.states_collector.write(file_name="rsr_all_states.pdb")
     return

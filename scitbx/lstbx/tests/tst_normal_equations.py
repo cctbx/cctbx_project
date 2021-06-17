@@ -46,12 +46,14 @@ non_linear_ls_with_separable_scale_factor__impls = (
   normal_eqns.non_linear_ls_with_separable_scale_factor__level_2_blas_impl,
 )
 
-from fast_linalg import env
-if env.initialised:
-  non_linear_ls_with_separable_scale_factor__impls += (
-    normal_eqns.non_linear_ls_with_separable_scale_factor__level_3_blas_impl,
-  )
-
+try:
+  from fast_linalg import env
+  if env.initialised:
+    non_linear_ls_with_separable_scale_factor__impls += (
+      normal_eqns.non_linear_ls_with_separable_scale_factor__level_3_blas_impl,
+    )
+except ImportError:
+  print('Skipping fast_linalg checks')
 
 def exercise_non_linear_ls_with_separable_scale_factor():
   for impl in non_linear_ls_with_separable_scale_factor__impls:
@@ -176,8 +178,8 @@ def exercise_levenberg_marquardt(non_linear_ls, plot=False):
   if plot:
     f = open('plot.nb', 'w')
     print("g=%s;" % iterations.gradient_norm_history.mathematica_form(), file=f)
-    print("\[Mu]=%s;" % iterations.mu_history.mathematica_form(), file=f)
-    print("ListLogPlot[{g,\[Mu]},Joined->True]", file=f)
+    print("\\[Mu]=%s;" % iterations.mu_history.mathematica_form(), file=f)
+    print("ListLogPlot[{g,\\[Mu]},Joined->True]", file=f)
     f.close()
 
 def run():

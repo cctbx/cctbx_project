@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 from six.moves import range
 
 def exercise():
-  import boost.python
-  csr = boost.python.ext.string_representation
+  import boost_adaptbx.boost.python as bp
+  csr = bp.ext.string_representation
   from libtbx.str_utils import py_string_representation as psr
   for sr in [csr, psr]:
     assert sr("a", '"', "'") == '"a"'

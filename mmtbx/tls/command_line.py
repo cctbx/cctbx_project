@@ -229,9 +229,9 @@ def run(args, command_name = "phenix.tls"):
       tls_selections = selections, tls_groups = tls_groups)
     print("All done.", file=log)
   #
+  model.set_xray_structure(model.get_xray_structure())
   if(ofn is not None):
     utils.print_header("Write output PDB file %s"%ofn, out = log)
-    model.set_sites_cart_from_xrs()
     pdb_str = model.model_as_pdb()
     ofo.write(pdb_str)
     ofo.close()

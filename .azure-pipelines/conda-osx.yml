@@ -7,12 +7,14 @@
 #   vmImage: [10, 14]  # macOs version
 #   xcode_version: [11, 3, 1]  # xCode version
 #   modules: <modules artifact name>
+#   template: <build template file>
+#   prefix: <build artifact prefix>
 
 jobs:
 - job: ${{ format('{0}_{1}', format('macOS_{0}', join('_', parameters.vmImage)), format('xcode_{0}', join('_', parameters.xcode_version)) ) }}
   pool:
     vmImage: ${{ format('macOS-{0}', join('.', parameters.vmImage)) }}
-  timeoutInMinutes: 360
+  timeoutInMinutes: 120
   strategy:
     maxParallel: 2
     matrix:
@@ -36,45 +38,83 @@ jobs:
         OS: osx-64
         PYTHON_VERSION: py38
         MODULES: ${{ parameters.modules }}
+      python3.9:
+        CONDA: MacOSX
+        OS: osx-64
+        PYTHON_VERSION: py39
+        MODULES: ${{ parameters.modules }}
 
   variables:
-    artifact_name: ${{ format('xcode_{0}', join('_', parameters.xcode_version))  }}_$(PYTHON_VERSION)
+    artifact_name: ${{ parameters.prefix }}${{ format('xcode_{0}', join('_', parameters.xcode_version))  }}_$(PYTHON_VERSION)
+    day: $(Get-Date -Format dddd)
 
   steps:
+  - powershell: |
+      Write-Host $(day)
+      Write-Host "##vso[task.setVariable variable=day]$(day)"
+    displayName: Get day of week
+
+  - script: echo $(day)
+    displayName: Check day of week
+
   - script: |
       echo "Selecting Xcode version ${{ join('.', parameters.xcode_version) }}"
       sudo xcode-select --switch /Applications/Xcode_${{ join('.', parameters.xcode_version) }}.app/Contents/Developer
     displayName: Select Xcode version
 
-  - script: |
-      echo "Removing homebrew from Azure to avoid conflicts."
-      curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall > ~/uninstall_homebrew
-      chmod +x ~/uninstall_homebrew
-      ~/uninstall_homebrew -fq
-      rm ~/uninstall_homebrew
-    displayName: Remove homebrew
+  # - script: |
+  #     echo "Removing homebrew from Azure to avoid conflicts."
+  #     curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall.sh > ~/uninstall_homebrew
+  #     chmod +x ~/uninstall_homebrew
+  #     ~/uninstall_homebrew -f -q
+  #     rm ~/uninstall_homebrew
+  #   displayName: Remove homebrew
 
-  # download weekly cached build directory for builds
+  # download daily cached build directory for builds
+  # always do builds from scratch for "Update build cache" on Saturday night (Pacific)
+  # always do builds from scratch for "Weekly" pipeline
   - task: DownloadPipelineArtifact@2
     inputs:
       source: 'specific'
-      project: '$(System.TeamProjectId)'
-      pipeline: 8
+      project: '$(resources.pipeline.build_cache.projectID)'
+      pipeline: '$(resources.pipeline.build_cache.pipelineID)'
+      allowPartiallySucceededBuilds: true
+      allowFailedBuilds: true
       artifact: '$(artifact_name)'
       path: $(Pipeline.Workspace)
     displayName: Download cached build
-    condition: ne(variables['Build.DefinitionName'], 'Update build cache')
+    condition: >
+      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+             ne(variables['day'], 'Sunday')),
+         eq(variables['Build.DefinitionName'], 'CI'),
+         eq(variables['Build.DefinitionName'], 'CI branch'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI'),
+         eq(variables['Build.DefinitionName'], 'Full'))
     continueOnError: true
 
   - script: |
       cd $(Pipeline.Workspace)
       tar -xf build.tar
     displayName: Extract build tarball
-    condition: ne(variables['Build.DefinitionName'], 'Update build cache')
+    condition: >
+      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+             ne(variables['day'], 'Sunday')),
+         eq(variables['Build.DefinitionName'], 'CI'),
+         eq(variables['Build.DefinitionName'], 'CI branch'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI'),
+         eq(variables['Build.DefinitionName'], 'Full'))
     continueOnError: true
+    failOnStderr: false
+
+  - script: |
+      rm -f $(Pipeline.Workspace)/build/lib/scitbx_array_family_flex_ext.so
+    displayName: Fix broken cache on macOS 10.15
+    condition: and(eq('${{ parameters.vmImage[0] }}', 10), eq('${{ parameters.vmImage[1] }}', 15))
+    continueOnError: true
+    failOnStderr: false
 
   # build
-  - template: ./unix-conda-build.yml
+  - template: ${{ parameters.template }}
 
   # preserve permissions
   - script: |

@@ -987,6 +987,8 @@ class kernel_normalisation(object):
     ## that seems to work reasonable in practice
     self.kernel_width=kernel_width
     if auto_kernel is not False:
+      ## Otherwise we can get into an infinite loop below
+      assert d_star_sq_hkl.size() > 1
       ## get the d_star_sq_array and sort it
       sort_permut = flex.sort_permutation(d_star_sq_hkl)
       ##

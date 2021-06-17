@@ -76,26 +76,26 @@ class gridding(object):
 class reader(object):
 
   def __init__(self, file_name, header_only=False):
-    f = open(file_name, "r")
-    f.readline()
-    self.title_lines = []
-    ntitle = int(f.readline().strip().split("!")[0])
-    self.title_lines=[]
-    for x in range(ntitle):
-      line = f.readline().rstrip()
-      self.title_lines.append(line)
-    line = f.readline()
-    values = [int(line[i:i+8]) for i in range(0,72,8)]
-    self.gridding = gridding(
-      n     = [values[i] for i in range(0,9,3)],
-      first = [values[i] for i in range(1,9,3)],
-      last  = [values[i] for i in range(2,9,3)])
-    line = f.readline()
-    params = [float(line[i:i+12]) for i in range(0,72,12)]
-    self.unit_cell = uctbx.unit_cell(params)
-    order = f.readline().strip()
-    assert order == "ZYX"
-    f.close()
+    with open(file_name, "r") as f:
+      f.readline()
+      self.title_lines = []
+      ntitle = int(f.readline().strip().split("!")[0])
+      self.title_lines=[]
+      for x in range(ntitle):
+        line = f.readline().rstrip()
+        self.title_lines.append(line)
+      line = f.readline()
+      values = [int(line[i:i+8]) for i in range(0,72,8)]
+      self.gridding = gridding(
+        n     = [values[i] for i in range(0,9,3)],
+        first = [values[i] for i in range(1,9,3)],
+        last  = [values[i] for i in range(2,9,3)])
+      line = f.readline()
+      params = [float(line[i:i+12]) for i in range(0,72,12)]
+      self.unit_cell = uctbx.unit_cell(params)
+      order = f.readline().strip()
+      assert order == "ZYX"
+
     if (header_only):
       self.data = None
       self.average = None
@@ -133,13 +133,13 @@ def writer(file_name, title_lines, unit_cell, gridding,
   assert gridding.is_compatible_flex_grid(
     flex_grid=data.accessor(),
     is_p1_cell=is_p1_cell)
-  f = open(file_name, "w")
-  f.write("\n")
-  f.write("%8d !NTITLE\n" % len(title_lines))
-  for line in title_lines:
-    f.write("%-264s\n" % line)
-  f.write("%s\n" % gridding.format_9i8())
-  f.close()
+  with open(file_name, "w") as f:
+    f.write("\n")
+    f.write("%8d !NTITLE\n" % len(title_lines))
+    for line in title_lines:
+      f.write("%-264s\n" % line)
+    f.write("%s\n" % gridding.format_9i8())
+
   if (is_p1_cell is None): # XXX temporary flag allowing any cell
     ext.map_writer(
       file_name=file_name,

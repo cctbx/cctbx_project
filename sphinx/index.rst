@@ -9,7 +9,6 @@ Computational Crystallography Toolbox
 
    installation
    tour
-   build_system
    history
    libtbx/index
    boost_adaptbx/index
@@ -21,36 +20,6 @@ Computational Crystallography Toolbox
 
 Welcome to CCTBX's documentation!
 =================================
-
-The Computational Crystallography Toolbox (cctbx) is being developed as the open
-source component of the PHENIX_ system. The goal of the PHENIX project is to
-advance automation of macromolecular structure determination. PHENIX depends on
-the cctbx, but not vice versa. This hierarchical approach enforces a clean
-design as a reusable library. The cctbx is therefore also useful for
-small-molecule crystallography and even general scientific applications.
-
-To maximize reusability and, maybe even more importantly, to give individual
-developers a notion of privacy, the cctbx is organized as a set of smaller
-modules. This is very much like a village (the cctbx project) with individual
-houses (modules) for each family (groups of developers, of any size including
-one).
-
-The cctbx code base is available without restrictions and free of charge to all
-interested developers, both academic and commercial. The entire community is
-invited to actively participate in the development of the code base. A
-sophisticated technical infrastructure that enables community based software
-development is provided by GitHub_. This service is also free of charge and
-open to the entire world.
-
-The cctbx is designed with an open and flexible architecture to promote
-extendability and easy incorporation into other software environments. The
-package is organized as a set of ISO C++ classes with Python_ bindings. This
-organization combines the computational efficiency of a strongly typed compiled
-language with the convenience and flexibility of a dynamically typed scripting
-language in a strikingly uniform and very maintainable way.
-
-Use of the Python interfaces is highly recommended, but optional. The cctbx can
-also be used purely as a C++ class library.
 
 .. contents:: Table of Contents
 
@@ -153,20 +122,6 @@ routines in iotbx.)
 
 :doc:`API documentation for dxtbx <dxtbx>`
 
-Other
------
-
-Many additional libraries have more specialized functionality, including:
-
-* spotfinder - fast detection of Bragg peaks in diffraction images
-* ucif - the core CIF I/O library (used by iotbx)
-* rstbx - Reciprocal Space Toolbox, used for data processing
-* gltbx - OpenGL bindings, including a wxPython-based viewer framework
-* crys3d - Modules for the display of molecules, electron density, and reciprocal space data
-* fable - a program (and compatibility library) for porting Fortran77 to C++
-* wxtbx - wxPython controls used in the Phenix GUI and various utilities
-* cma_es - a library of derivative-free optimization methods
-
 Tour
 ====
 
@@ -187,56 +142,13 @@ Tutorials
 * `scitbx/rigid_body/essence subset
   <http://cctbx.sourceforge.net/scitbx_rigid_body_essence/>`_
 
-
-Newsletter articles and examples
-================================
-
-* `IUCr Computing Commission No. 1, 2003/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2003.pdf>`_
-   - State of the Toolbox: an overview of the Computational Crystallography Toolbox (CCTBX)
-* `IUCr Computing Commission No. 2, 2003/07 <http://cci.lbl.gov/publications/download/iucrcompcomm_jul2003.pdf>`_
-   - Fast triplet generator for direct methods
-   - Gallery of direct-space asymmetric units
-* `IUCr Computing Commission No. 3, 2004/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2004.pdf>`_
-   - Reduced cell computations
-   - Determination of lattice symmetry
-   - N-Gaussian approximations to scattering factors
-   - Fast structure-factor gradients
-   - Universal reflection file reader
-* `IUCr Computing Commission No. 4, 2004/08 <http://cci.lbl.gov/publications/download/iucrcompcomm_aug2004.pdf>`_
-   - Geometry restraints
-   - Bulk solvent correction and scaling
-* `IUCr Computing Commission No. 5, 2005/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2005.pdf>`_
-   - Phil and friends (:doc:`latest Phil documentation <libtbx/libtbx.phil>`)
-   - Refinement tools
-   - Reflection statistics
-   - Double coset decomposition
-   - iotbx.mtz
-* `IUCr Computing Commission No. 6, 2005/09 <http://cci.lbl.gov/publications/download/iucrcompcomm_sep2005.pdf>`_
-   - See also `Sienna 2005 tutorials <http://cctbx.sourceforge.net/siena2005/>`_
-* `IUCr Computing Commission No. 7, 2006/11 <http://cci.lbl.gov/publications/download/iucrcompcomm_nov2006.pdf>`_
-   - iotbx.pdb
-   - mmtbx.alignment
-   - scitbx.math.superpose
-   - mmtbx.super
-* `IUCr Computing Commission No. 8, 2007/11 <http://cci.lbl.gov/publications/download/iucrcompcomm_nov2007.pdf>`_
-   - Refinement tools for small-molecule crystallographers
-   - Phil developments (:doc:`latest Phil documentation <libtbx/libtbx.phil>`)
-* `IUCr Computing Commission No. 8, 2008/10 <http://cci.lbl.gov/publications/download/iucrcompcomm_oct2008.pdf>`_
-   - Symmetry in crystallographic applications
-* `IUCr Computing Commission No. 8, 2009/11 <http://cci.lbl.gov/publications/download/iucrcompcomm_nov2009.pdf>`_
-   - Experience converting a large Fortran-77 program to C++
-* `CCP4 newsletter No. 42, Summer 2005: The Phenix refinement framework <http://www.ccp4.ac.uk/newsletters/newsletter42/articles/Afonine_GrosseKunstleve_Adams_18JUL2005.doc>`_
-* `CCP4 newsletter No. 42, Summer 2005: Characterization of X-ray data sets <http://www.ccp4.ac.uk/newsletters/newsletter42/articles/CCP4_2005_PHZ_RWGK_PDA.doc>`_
-* `CCP4 newsletter No. 43, Winter 2005: Xtriage and Fest: automatic assessment of X-ray data and substructure structure factor estimation <http://www.ccp4.ac.uk/newsletters/newsletter43/articles/PHZ_RWGK_PDA.pdf>`_
-* `CCP4 newsletter No. 44, Summer 2006: Exploring Metric Symmetry <http://www.ccp4.ac.uk/newsletters/newsletter44/articles/explore_metric_symmetry.html>`_
-
 Installation
 ============
 
 :ref:`Installation instructions <installation>` for both binary installation and
 installation from sources.
 
-The cctbx :ref:`build system <build_system>` is based on SCons_.
+The cctbx build system is based on SCons_.
 
 Reference Documentation
 =======================
@@ -253,21 +165,6 @@ Links
 
 * `cctbx - Automatic multi-platform builds <http://cci.lbl.gov/cctbx_build/>`_
 * `cctbx - Public git repository <https://github.com/cctbx/cctbx_project>`_
-
-Acknowledgments
-===============
-
-We would like to thank David Abrahams for creating the amazing Boost.Python_
-library and for patiently supporting the entire open source community. We would
-like to thank Airlie McCoy for allowing us to adapt some parts of the Phaser
-package (FFT structure factor calculation). Kevin Cowtan has contributed
-algorithms for the handling of reciprocal space asymmetric units. We are also
-grateful for his development of the `Clipper <http://www.ysbl.york.ac.uk/~cowtan/clipper/clipper.html>`_ library from which we have adapted
-some source code fragments. Our work was funded in part by the US Department of
-Energy under Contract No. DE-AC03-76SF00098. We gratefully acknowledge the
-financial support of NIH/NIGMS.
-
-The cctbx git development tree is hosted by GitHub.
 
 Contact
 =======

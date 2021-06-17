@@ -17,7 +17,8 @@ env_etc.boost_include = env_etc.boost_dist
 build_boost_libs = True
 # Boost source does not exist, headers and libraries exist
 # boost directory in cctbx_project is picked up by find_in_repositories
-if not os.path.isdir(env_etc.boost_dist) or 'cctbx_project' in env_etc.boost_dist:
+if not os.path.isdir(env_etc.boost_dist) or 'cctbx_project' in env_etc.boost_dist \
+  or env_etc.boost_dist == sys.prefix or libtbx.env.module_is_installed("boost_adaptbx"):
   # for conda, standard locations are already defined in libtbx/SConscript
   if libtbx.env.build_options.use_conda:
     env_etc.boost_dist = env_etc.conda_prefix
@@ -198,42 +199,43 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
           env['BUILDERS']['SharedObject'].add_emitter(suffix,
                                                       gcc_style_pch_emitter)
 
-  env_pure_boost_python_ext.SharedLibrary(
-    target="#lib/boost_python_hybrid_times_ext",
-    source="hybrid_times_ext.cpp")
+  if not libtbx.env.module_is_installed("boost_adaptbx"):
+    env_pure_boost_python_ext.SharedLibrary(
+      target="#lib/boost_python_hybrid_times_ext",
+      source="hybrid_times_ext.cpp")
 
-  env_pure_boost_python_ext.SharedLibrary(
-    target="#lib/boost_rational_ext",
-    source="rational_ext.cpp")
+    env_pure_boost_python_ext.SharedLibrary(
+      target="#lib/boost_rational_ext",
+      source="rational_ext.cpp")
 
-  env = env_pure_boost_python_ext.Clone()
-  env_etc.include_registry.prepend(
-    env=env,
-    paths=[env_etc.boost_adaptbx_include])
-  env.SharedLibrary(
-    target="#lib/boost_python_meta_ext",
-    source="meta_ext.cpp")
-  env.SharedLibrary(
-    target="#lib/boost_optional_ext",
-    source="optional_ext.cpp")
-  env.SharedLibrary(
-    target="#lib/std_pair_ext",
-    source="std_pair_ext.cpp")
-  env.SharedLibrary(
-    target="#lib/boost_tuple_ext",
-    source="tuple_ext.cpp")
-  env.SharedLibrary(
-    target="#lib/boost_adaptbx_python_streambuf_test_ext",
-    source="tests/python_streambuf_test_ext.cpp")
-  SConscript("graph/SConscript")
+    env = env_pure_boost_python_ext.Clone()
+    env_etc.include_registry.prepend(
+      env=env,
+      paths=[env_etc.boost_adaptbx_include])
+    env.SharedLibrary(
+      target="#lib/boost_python_meta_ext",
+      source="meta_ext.cpp")
+    env.SharedLibrary(
+      target="#lib/boost_optional_ext",
+      source="optional_ext.cpp")
+    env.SharedLibrary(
+      target="#lib/std_pair_ext",
+      source="std_pair_ext.cpp")
+    env.SharedLibrary(
+      target="#lib/boost_tuple_ext",
+      source="tuple_ext.cpp")
+    env.SharedLibrary(
+      target="#lib/boost_adaptbx_python_streambuf_test_ext",
+      source="tests/python_streambuf_test_ext.cpp")
+    SConscript("graph/SConscript")
 
-  env = env_base.Clone()
-  env_etc.include_registry.prepend(
-    env=env,
-    paths=[env_etc.boost_adaptbx_include])
-  env.Program(
-    target="tests/tst_optional_copy",
-    source="tests/tst_optional_copy.cpp")
+    env = env_base.Clone()
+    env_etc.include_registry.prepend(
+      env=env,
+      paths=[env_etc.boost_adaptbx_include])
+    env.Program(
+      target="tests/tst_optional_copy",
+      source="tests/tst_optional_copy.cpp")
 
   if build_boost_libs:
     # Build Boost.filesystem
@@ -241,13 +243,18 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
     env_etc.include_registry.prepend(env=env_fs, paths=[env_etc.boost_include])
     fs_root = '#' + os.path.join(
       os.path.basename(env_etc.boost_dist), 'libs', 'filesystem', 'src')
-    fs_src = [os.path.join(fs_root, path) for path in
-              ['operations.cpp', 'path.cpp', 'path_traits.cpp', 'portability.cpp',
-              'unique_path.cpp', 'utf8_codecvt_facet.cpp',
-              'codecvt_error_category.cpp']]
+    fs_src_base = ['operations.cpp', 'path.cpp', 'path_traits.cpp', 'portability.cpp',
+                   'unique_path.cpp', 'utf8_codecvt_facet.cpp',
+                   'codecvt_error_category.cpp',
+                  ]
+    if env_etc.boost_version >= 107200:
+      fs_src_base.extend(['directory.cpp', 'exception.cpp'])
+      env_fs.Append(LIBS=['boost_system'])
+    fs_src = [os.path.join(fs_root, path) for path in fs_src_base]
     if (sys.platform == 'win32'):     # Windows
       fs_src.append(os.path.join(fs_root, 'windows_file_codecvt.cpp'))
-      env_fs.Append(CPPDEFINES={'BOOST_FILESYSTEM_DYN_LINK':1})
+      #env_fs.Append(CPPDEFINES={'BOOST_FILESYSTEM_DYN_LINK':1})
+      env_fs.Append(CPPDEFINES={'BOOST_FILESYSTEM_STATIC_LINK':1})
       env_fs.StaticLibrary(
         target='#lib/boost_filesystem',
         source=fs_src)
@@ -364,7 +371,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
   # This also constitutes a nice real-life example of
   # how to build such extensions.
   if (libtbx.env.build_options.enable_boost_threads and
-        env_etc.boost_thread_support):
+      env_etc.boost_thread_support and not libtbx.env.module_is_installed("boost_adaptbx")):
     env_boost_threads_test = env_pure_boost_python_ext.Clone()
     env_etc.include_registry.append(
       env=env_boost_threads_test,

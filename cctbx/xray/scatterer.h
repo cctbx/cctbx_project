@@ -4,6 +4,7 @@
 #include <cctbx/xray/scatterer_flags.h>
 #include <cctbx/sgtbx/site_symmetry.h>
 #include <cctbx/adptbx.h>
+#include <cctbx/anharmonic.h>
 
 // XXX backward compatibility 2009-12-12
 #define CCTBX_XRAY_SCATTERER_ANISOTROPIC_FLAG_REMOVED
@@ -38,6 +39,8 @@ namespace xray {
       typedef LabelType label_type;
       //! Facilitates meta-programming.
       typedef ScatteringTypeType scattering_type_type;
+      //
+      typedef adptbx::anharmonic::GramCharlier4<FloatType> anharmonic_adp_type;
 
       //! Default constructor. Data members are not initialized!
       scatterer() {}
@@ -126,6 +129,9 @@ namespace xray {
        */
       scitbx::sym_mat3<FloatType> u_star;
 
+      //anharmonic part of the ADP
+      boost::shared_ptr<anharmonic_adp_type> anharmonic_adp;
+
       //! Support for refinement.
       scatterer_flags flags;
 
@@ -134,7 +140,10 @@ namespace xray {
         flags.set_use_u_iso(iso);
         flags.set_use_u_aniso(aniso);
         if(!iso) u_iso = -1;
-        if(!aniso) u_star.fill(-1);
+        if (!aniso) {
+          u_star.fill(-1);
+          anharmonic_adp.reset();
+        }
       }
 
       void set_use_u_iso_only()
@@ -223,6 +232,10 @@ namespace xray {
           return u_iso >= -u_cart_tolerance;
         }
         return true;
+      }
+
+      bool is_anharmonic_adp() const {
+        return anharmonic_adp != 0;
       }
 
       //! get u_iso as b_iso.

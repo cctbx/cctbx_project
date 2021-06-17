@@ -228,7 +228,6 @@ get_scaling_results_mark2(const shared_double& x,
      */
     const double I = data[i] / G;
     const double s = sigmas[i] / G;
-    const double w_this = G * G * w[i]; // XXX ugly!
     const double IsigI = I / s;
 
     L.summed_N[h] += 1;
@@ -257,8 +256,9 @@ get_scaling_results_mark2(const shared_double& x,
      * looped branch below.
      */
 //#define ESTIMATE_REFINED_UNCERTAINTY 1
-    const double t = I - x[n_frames + h];
 #ifdef ESTIMATE_REFINED_UNCERTAINTY
+    const double w_this = G * G * w[i]; // XXX ugly!
+    const double t = I - x[n_frames + h];
     wssq_dev[h] += w_this * t * t;
     w_tot[h] += w_this;
 #else

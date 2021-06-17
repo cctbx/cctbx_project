@@ -20,8 +20,8 @@ env_etc.cbflib_common_includes = [
   env_etc.cbflib_dist,    # for the adaptor cpp files
   env_etc.cbflib_include[0], # for the cbflib c-files
   env_etc.cbflib_include[1], # for the cbflib c-files
+  env_etc.cbflib_adaptbx_dist,
 ]
-
 # for the hdf5.h file - look at where Python is coming from unless is OS X
 # framework build... messy but appears to work on Linux and OS X
 include_root = os.path.split(env_etc.python_include)[0]
@@ -68,6 +68,7 @@ cpppath = env_etc.cbflib_common_includes
 if (libtbx.env.build_options.use_conda):
   cpppath += env_etc.conda_cpppath
 
+env.Append(CPPPATH=cpppath)
 env.StaticLibrary(target='#lib/cbf',
   source = [prefix+"/"+s for s in [
     "src/img.c",
@@ -100,8 +101,7 @@ env.StaticLibrary(target='#lib/cbf',
     "detectors/cbf_adaptor.cpp",
     "detectors/cbf_byte_offset_optimized.cpp",
     "detectors/buffer_based_service.cpp",
-  ],
-  CPPPATH=cpppath)
+  ])
 
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")

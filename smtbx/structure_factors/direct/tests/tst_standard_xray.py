@@ -184,7 +184,7 @@ class custom_vs_std_test_case(test_case):
     exp_i_2pi_functor = cctbx.math_module.cos_sin_table(1024)
     custom_fc_sq = (
       structure_factors.f_calc_modulus_squared(
-        xs, exp_i_2pi_functor))
+        xs, None, None, exp_i_2pi_functor))
     std_fc_sq = (
       structure_factors.f_calc_modulus_squared(xs))
     deltas = flex.double()

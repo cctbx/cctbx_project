@@ -341,7 +341,7 @@ def exercise_restrained_refinement(options):
   d_lk = min(uc.distance(sc0[l].site, sc0[k].site)*0.8, 0.75*(d_jk + d_jl))
   bond_proxies.append(geom.bond_simple_proxy(
     i_seqs=(l, k),
-    distance_ideal=d_jl,
+    distance_ideal=d_lk,
     weight=w))
   restraints_manager = restraints.manager(bond_proxies=bond_proxies)
 

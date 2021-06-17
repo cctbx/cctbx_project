@@ -11,9 +11,9 @@ import mmtbx
 from mmtbx.building.loop_closure.utils import get_phi_psi_atoms, get_pair_angles
 from libtbx import group_args
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import zip
-ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+ext = bp.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 from mmtbx.validation import ramalyze
 from phenix.pdb_tools.phi_psi_2_data import phi_psi_2_mask_class
@@ -55,7 +55,7 @@ class gather_ss_stats(object):
         sheets = hsh_tuple[1])
     helix = len(hsh_tuple[0]) > 0
     # print temp_annot.as_pdb_str().replace('\n',' '),
-    ss_params = mmtbx.secondary_structure.default_params
+    ss_params = mmtbx.secondary_structure.manager.get_default_ss_params()
     ss_params.secondary_structure.enabled=True
     ss_params.secondary_structure.protein.remove_outliers=False
     ss_params.secondary_structure.protein.helix=[]

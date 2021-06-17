@@ -43,11 +43,15 @@ class NcsSpecDataManager(DataManagerBase):
       filename += '.ncs_spec'
     return filename
 
-  def write_ncs_spec_file(self, ncs_str, filename=Auto, overwrite=Auto):
-    if filename is Auto:
+  def write_ncs_spec_file(self, ncs_object, filename=Auto, overwrite=Auto):
+
+    # default options
+    if (filename is Auto):
       filename = self.get_default_output_ncs_spec_filename()
-    self._write_text(NcsSpecDataManager.datatype, ncs_str,
-                     filename=filename, overwrite=overwrite)
+
+    ncs_str = ncs_object.as_ncs_spec_string()
+    return self._write_text(NcsSpecDataManager.datatype, ncs_str,
+                            filename=filename, overwrite=overwrite)
 
 # =============================================================================
 # end

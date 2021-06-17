@@ -46,7 +46,7 @@ def get_test_list(module_name, test_type='tst_list', valgrind=False,
       target_must_be="",
       where_str="").object)
   except AttributeError:
-    tst_list = list()
+    tst_list = []
   build_path = libtbx.env.under_build(module_name)
   assert (build_path is not None) and (dist_path is not None)
   commands = []
@@ -78,6 +78,9 @@ def get_module_expected_test_failures(module_name):
 
 def get_module_expected_unstable_tests(module_name):
   return get_test_list(module_name, test_type='tst_list_expected_unstable')
+
+def get_module_parallel_tests(module_name):
+  return get_test_list(module_name, test_type='tst_list_parallel')
 
 def find_tests(dir_name):
   if not os.path.isdir(dir_name):
@@ -143,7 +146,7 @@ def reconstruct_test_name(command):
     else:
       test_name = "%s.%s" % (file, filtered_parameter)
 
-    pattern2  = '^/?(.*?/((modules|build)/(cctbx\_project/|xia2/Test/)?))?(.*)/([^/&]*?)(\.py)?$'
+    pattern2 = r'^/?(.*?/((modules|build)/(cctbx\_project/|xia2/Test/)?))?(.*)/([^/&]*?)(\.py)?$'
     m2 = re.search(pattern2, file)
     if m2:
 #     print "M (%s) (%s) (%s) (%s) (%s) (%s) (%s)" % (m2.group(1,2,3,4,5,6,7))
@@ -207,6 +210,7 @@ class run_command_list(object):
                 cmd_list,
                 expected_failure_list=None,
                 expected_unstable_list=None,
+                parallel_list=None,
                 nprocs=1,
                 out=sys.stdout,
                 log=None,
@@ -224,10 +228,13 @@ class run_command_list(object):
 
     self.expected_failure_list = expected_failure_list
     if self.expected_failure_list is None:
-      self.expected_failure_list = list()
+      self.expected_failure_list = []
     self.expected_unstable_list = expected_unstable_list
     if self.expected_unstable_list is None:
-      self.expected_unstable_list = list()
+      self.expected_unstable_list = []
+    self.parallel_list = parallel_list
+    if self.parallel_list is None:
+      self.parallel_list = []
 
     # Filter cmd list for duplicates.
     self.cmd_list = []
@@ -240,20 +247,26 @@ class run_command_list(object):
     # Set number of processors.
     if (nprocs is Auto):
       nprocs = cpu_count()
-    nprocs = min(nprocs, len(self.cmd_list))
+    if len(self.parallel_list) == 0:
+      nprocs = min(nprocs, len(self.cmd_list))
 
     # Starting summary.
     if (self.verbosity > 0):
-      print("Running %d tests on %s processors:"%(len(self.cmd_list), nprocs), file=self.out)
+      print("Running %d tests on %s processors:"%
+        (len(self.cmd_list) + len(self.parallel_list), nprocs), file=self.out)
       for cmd in self.cmd_list:
         print("  %s"%cmd, file=self.out)
+      for cmd in self.parallel_list:
+        print("  %s [Parallel]"%cmd, file=self.out)
       print("", file=self.out)
+      self.out.flush()
 
     # Either run tests in parallel or run parallel tests, but
     # can't run parallel tests in parallel (cctbx#95)
     os.environ['OPENBLAS_NUM_THREADS'] = "1"
 
     t_start = time.time()
+
     if nprocs > 1:
       # Run the tests with multiprocessing pool.
       self.pool = Pool(processes=nprocs)
@@ -274,10 +287,12 @@ class run_command_list(object):
           pass
     else:
       # Run tests serially.
-      for command in self.cmd_list:
-        rc = run_command(command, verbosity=verbosity)
-        if self.save_result(rc) == False:
-          break
+      self.run_serial(self.cmd_list)
+
+    # run parallel tests with multiple processors per test
+    os.environ['OMP_NUM_THREADS'] = str(nprocs)
+    self.run_serial(self.parallel_list)
+    os.environ['OMP_NUM_THREADS'] = "1"
 
     # Print ending summary.
     t_end = time.time()
@@ -353,7 +368,7 @@ class run_command_list(object):
     print("  Known Unstable (% 3d)         :" % len(self.expected_unstable_list),
       self.expected_unstable, file=self.out)
     print("  Stderr output (discouraged)  :",extra_stderr, file=self.out)
-    if (self.finished != len(self.cmd_list)):
+    if (self.finished != len(self.parallel_list) + len(self.cmd_list)):
       print("*" * 80, file=self.out)
       print("  WARNING: NOT ALL TESTS FINISHED!", file=self.out)
       print("*" * 80, file=self.out)
@@ -380,6 +395,12 @@ class run_command_list(object):
       elif result.command in self.expected_unstable_list:
         alert = Status.EXPECTED_UNSTABLE
     return alert
+
+  def run_serial(self, command_list):
+    for command in command_list:
+      rc = run_command(command, verbosity=self.verbosity)
+      if self.save_result(rc) == False:
+        break
 
   def save_result(self, result):
     if result is None:

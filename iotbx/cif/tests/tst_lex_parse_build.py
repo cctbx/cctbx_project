@@ -121,24 +121,24 @@ loop_
   _refln_index_k
   _refln_index_l
   _refln.crystal_id
-  _refln.scale_group_code
   _refln.wavelength_id
+  _refln.scale_group_code
   _refln.pdbx_I_plus
   _refln.pdbx_I_plus_sigma
   _refln.pdbx_I_minus
   _refln.pdbx_I_minus_sigma
-  -87  5  46  1  1  3   40.2  40.4    6.7  63.9
-  -87  5  45  1  1  3   47.8  29.7   35.1  30.5
-  -87  5  44  1  1  3   18.1  33.2    0.5  34.6
-  -87  5  43  1  1  3    6.1  45.4   12.9  51.6
-  -87  5  42  1  1  3   -6.6  45.6  -15.5  55.8
-  -87  7  37  1  1  3    6.3  43.4      ?     ?
-  -87  7  36  1  1  3  -67.2  55.4      ?     ?
-  -88  2  44  1  1  3      0    -1     35  38.5
-  -88  2  43  1  1  3      0    -1   57.4  41.5
-  -88  4  45  1  1  3     -1  46.1   -9.1  45.6
-  -88  4  44  1  1  3  -19.8  49.2    0.3  34.7
-  -88  6  44  1  1  3   -1.8  34.8      ?     ?
+  -87  5  46  1  3  1   40.2  40.4    6.7  63.9
+  -87  5  45  1  3  1   47.8  29.7   35.1  30.5
+  -87  5  44  1  3  1   18.1  33.2    0.5  34.6
+  -87  5  43  1  3  1    6.1  45.4   12.9  51.6
+  -87  5  42  1  3  1   -6.6  45.6  -15.5  55.8
+  -87  7  37  1  3  1    6.3  43.4      ?     ?
+  -87  7  36  1  3  1  -67.2  55.4      ?     ?
+  -88  2  44  1  3  1      0    -1     35  38.5
+  -88  2  43  1  3  1      0    -1   57.4  41.5
+  -88  4  45  1  3  1     -1  46.1   -9.1  45.6
+  -88  4  44  1  3  1  -19.8  49.2    0.3  34.7
+  -88  6  44  1  3  1   -1.8  34.8      ?     ?
 
 """)
 
@@ -228,7 +228,6 @@ _b 2
     cif_miller_array_template %(
       '_refln_F_calc', '_refln_phase_calc', '_refln_F_sigma')),
                                  data_block_name='global')
-  assert sorted(arrays.keys()) == ['_refln_F_calc']
   assert arrays['_refln_F_calc'].is_complex_array()
 
   for data_block_name in (None, "global"):
@@ -604,10 +603,11 @@ def exercise_mmcif_structure_factors():
   miller_arrays = cif.reader(input_string=r3adrsf).as_miller_arrays()
   assert len(miller_arrays) == 16
   hl_coeffs = find_miller_array_from_labels(
-    miller_arrays, ','.join([
-      'scale_group_code=1', 'crystal_id=2', 'wavelength_id=3',
+    miller_arrays, [
       '_refln.pdbx_HL_A_iso', '_refln.pdbx_HL_B_iso',
-      '_refln.pdbx_HL_C_iso', '_refln.pdbx_HL_D_iso']))
+      '_refln.pdbx_HL_C_iso', '_refln.pdbx_HL_D_iso',
+      'scale_group_code=1', 'crystal_id=2', 'wavelength_id=3'
+      ])
   assert hl_coeffs.is_hendrickson_lattman_array()
   assert hl_coeffs.size() == 2
   mas_as_cif_block = cif.miller_arrays_as_cif_block(
@@ -621,9 +621,9 @@ def exercise_mmcif_structure_factors():
   hl_coeffs_from_cif_block = flex.hendrickson_lattman(*abcd)
   assert approx_equal(hl_coeffs.data(), hl_coeffs_from_cif_block)
   f_meas_au = find_miller_array_from_labels(
-    miller_arrays, ','.join([
-      'scale_group_code=1', 'crystal_id=1', 'wavelength_id=1',
-      '_refln.F_meas_au', '_refln.F_meas_sigma_au']))
+    miller_arrays, [
+      '_refln.F_meas_au', '_refln.F_meas_sigma_au',
+      'scale_group_code=1', 'crystal_id=1', 'wavelength_id=1'])
   assert f_meas_au.is_xray_amplitude_array()
   assert f_meas_au.size() == 5
   assert f_meas_au.sigmas() is not None
@@ -631,9 +631,8 @@ def exercise_mmcif_structure_factors():
   assert approx_equal(f_meas_au.unit_cell().parameters(),
                       (163.97, 45.23, 110.89, 90.0, 131.64, 90.0))
   pdbx_I_plus_minus = find_miller_array_from_labels(
-    miller_arrays, ','.join(
-      ['_refln.pdbx_I_plus', '_refln.pdbx_I_plus_sigma',
-       '_refln.pdbx_I_minus', '_refln.pdbx_I_minus_sigma']))
+    miller_arrays, ['_refln.pdbx_I_plus', '_refln.pdbx_I_plus_sigma',
+       '_refln.pdbx_I_minus', '_refln.pdbx_I_minus_sigma'])
   assert pdbx_I_plus_minus.is_xray_intensity_array()
   assert pdbx_I_plus_minus.anomalous_flag()
   assert pdbx_I_plus_minus.size() == 21
@@ -643,28 +642,49 @@ def exercise_mmcif_structure_factors():
   miller_arrays = cif.reader(input_string=r3ad7sf).as_miller_arrays()
   assert len(miller_arrays) == 11
   f_calc = find_miller_array_from_labels(
-    miller_arrays, ','.join([
-      'crystal_id=2', 'wavelength_id=1', '_refln.F_calc', '_refln.phase_calc']))
+    miller_arrays, ['r3ad7sf', '_refln.F_calc', '_refln.phase_calc', 'crystal_id=2']) #, 'wavelength_id=1']))
   assert f_calc.is_complex_array()
   assert f_calc.size() == 4
   #
   miller_arrays = cif.reader(input_string=integer_observations).as_miller_arrays()
   assert len(miller_arrays) == 2
-  assert isinstance(miller_arrays[0].data(), flex.double)
-  assert isinstance(miller_arrays[0].sigmas(), flex.double)
+  fmeas_sigmeas = find_miller_array_from_labels( miller_arrays, [ '_refln.F_meas_au'])
+  assert isinstance(fmeas_sigmeas.data(), flex.double)
+  assert isinstance(fmeas_sigmeas.sigmas(), flex.double)
   #
   miller_arrays = cif.reader(input_string=r3v56sf).as_miller_arrays()
   assert len(miller_arrays) == 2
   for ma in miller_arrays: assert ma.is_complex_array()
-  assert miller_arrays[0].info().labels == [
-    'r3v56sf', '_refln.pdbx_DELFWT', '_refln.pdbx_DELPHWT']
-  assert miller_arrays[1].info().labels == [
-    'r3v56sf', '_refln.pdbx_FWT', '_refln.pdbx_PHWT']
+  find_miller_array_from_labels(miller_arrays, ['r3v56sf', '_refln.pdbx_DELFWT', '_refln.pdbx_DELPHWT'])
+  find_miller_array_from_labels(miller_arrays, ['r3v56sf', '_refln.pdbx_FWT', '_refln.pdbx_PHWT'])
+  # verify _refln.pdbx_FWT', '_refln.pdbx_PHWT' are parsed as complex arrays in the presence of other columns
+  miller_arrays = cif.reader(input_string= r6cxosf).as_miller_arrays()
+  assert len(miller_arrays) == 11
+  ma = find_miller_array_from_labels(miller_arrays, ['r6cxosf', '_refln.pdbx_FWT', '_refln.pdbx_PHWT'])
+  assert ma.is_complex_array()
+  ma = find_miller_array_from_labels(miller_arrays, ['r6cxosf', '_refln.pdbx_DELFWT', '_refln.pdbx_DELPHWT'])
+  assert ma.is_complex_array()
+  # accept unconventional cif column labels resembling mtz column labels
+  miller_arrays = cif.reader(input_string= r6c5f_phases).as_miller_arrays()
+  assert len(miller_arrays) == 8
+  ma = find_miller_array_from_labels(miller_arrays, ['6c5f_phases', '_refln.FP', '_refln.SIGFP'])
+  assert ma.is_xray_amplitude_array()
+  ma = find_miller_array_from_labels(miller_arrays, ['6c5f_phases', '_refln.FC', '_refln.PHIC'])
+  assert ma.is_complex_array()
+  ma = find_miller_array_from_labels(miller_arrays, ['6c5f_phases', '_refln.FC_ALL', '_refln.PHIC_ALL'])
+  assert ma.is_complex_array()
+  ma = find_miller_array_from_labels(miller_arrays, ['6c5f_phases', '_refln.DELFWT', '_refln.PHDELWT'])
+  assert ma.is_complex_array()
 
 
 def find_miller_array_from_labels(miller_arrays, labels):
   for ma in miller_arrays:
-    if labels in str(ma.info()):
+    found = True
+    for label in labels:
+      if label not in ma.info().labels:
+        found = False
+        break
+    if found:
       return ma
   raise RuntimeError("Could not find miller array with labels %s" %labels)
 
@@ -825,6 +845,123 @@ _refln.pdbx_DELPHWT
 0    1    8  42.963  55.666 347.014  55.666
 0    1    9  81.428  68.620  89.690 248.620
 """
+
+r6cxosf ="""
+data_r6cxosf
+#
+_audit.revision_id     1_0
+_audit.creation_date   2018-09-05
+_audit.update_record   "Initial release"
+#
+_cell.entry_id      6cxo
+_cell.length_a      52.588
+_cell.length_b      149.213
+_cell.length_c      165.827
+_cell.angle_alpha   90.000
+_cell.angle_beta    90.000
+_cell.angle_gamma   90.000
+#
+_diffrn_radiation_wavelength.id           1
+_diffrn_radiation_wavelength.wavelength   1.2036
+#
+_entry.id   6cxo
+#
+_exptl_crystal.id   1
+#
+_reflns_scale.group_code   1
+#
+_symmetry.entry_id               6cxo
+_symmetry.space_group_name_H-M   "P 21 2 21"
+_symmetry.Int_Tables_number      2018
+#
+loop_
+_refln.crystal_id
+_refln.wavelength_id
+_refln.scale_group_code
+_refln.index_h
+_refln.index_k
+_refln.index_l
+_refln.status
+_refln.pdbx_r_free_flag
+_refln.F_meas_au
+_refln.F_meas_sigma_au
+_refln.F_calc_au
+_refln.phase_calc
+_refln.pdbx_HL_A_iso
+_refln.pdbx_HL_B_iso
+_refln.pdbx_HL_C_iso
+_refln.pdbx_HL_D_iso
+_refln.pdbx_FWT
+_refln.pdbx_PHWT
+_refln.pdbx_DELFWT
+_refln.pdbx_DELPHWT
+_refln.fom
+1 1 1 0  0  6  o 10 2637.91 60.30 80.15   180.00 -0.30   0.00    0.00 0.00 975.82  180.00 895.68  180.00 0.29
+1 1 1 0  0  8  o 12 976.72  17.78 1455.08 180.00 -3.75   0.00    0.00 0.00 120.17  0.00   1575.25 0.00   1.00
+1 1 1 0  0  10 o 17 473.14  11.64 474.88  0.00   0.84    0.00    0.00 0.00 33.10   180.00 507.98  180.00 0.69
+1 1 1 0  0  18 f 0  2590.99 42.02 1898.47 180.00 -32.04  0.00    0.00 0.00 1546.52 180.00 351.95  0.00   1.00
+1 1 1 0  1  4  o 16 1300.19 15.72 28.41   180.00 -0.06   0.00    0.00 0.00 71.53   180.00 43.12   180.00 0.06
+1 1 1 0  1  5  o 11 106.11  7.63  367.11  90.00  0.00    0.04    0.00 0.00 361.40  270.00 728.52  270.00 0.04
+1 1 1 0  1  6  o 14 946.07  10.00 504.84  180.00 -1.32   0.00    0.00 0.00 620.26  180.00 115.42  180.00 0.87
+1 1 1 0  1  12 o 4  640.34  9.55  59.40   0.00   0.30    0.00    0.00 0.00 191.03  0.00   131.62  0.00   0.29
+1 1 1 0  1  13 o 4  56.14   9.21  53.87   90.00  0.00    0.02    0.00 0.00 52.30   270.00 106.18  270.00 0.02
+"""
+
+r6c5f_phases ="""
+data_6c5f_phases
+#
+loop_
+  _space_group_symop.id
+  _space_group_symop.operation_xyz
+  1  x,y,z
+  2  -y,x-y,z
+  3  -x+y,-x,z
+
+_space_group.crystal_system       trigonal
+_space_group.IT_number            143
+_space_group.name_H-M_alt         'P 3'
+_space_group.name_Hall            ' P 3'
+_symmetry.space_group_name_H-M    'P 3'
+_symmetry.space_group_name_Hall   ' P 3'
+_symmetry.Int_Tables_number       143
+_cell.length_a                    83.936
+_cell.length_b                    83.936
+_cell.length_c                    40.479
+_cell.angle_alpha                 90.000
+_cell.angle_beta                  90.000
+_cell.angle_gamma                 120.000
+_cell.volume                      246977.230
+loop_
+  _refln.index_h
+  _refln.index_k
+  _refln.index_l
+  _refln.FREE
+  _refln.FP
+  _refln.SIGFP
+  _refln.FC
+  _refln.PHIC
+  _refln.FC_ALL
+  _refln.PHIC_ALL
+  _refln.FWT
+  _refln.PHWT
+  _refln.DELFWT
+  _refln.PHDELWT
+  _refln.FOM
+  _refln.FC_ALL_LS
+  _refln.PHIC_ALL_LS
+   0   0    2  1  676.187   6.17276   2809.82        -154.6    452.62      -175.696     839.275      -175.696      386.655      -175.696   0.955279   390.291      176.785
+   0   0    3  1  563.624   5.12057   1839.65       75.6562   786.515       93.5793     309.766       93.5793      476.749      -86.4207   0.972529   862.338      93.9542
+   0   0    4  1  344.711   2.51519   677.686      -13.7128   617.668      -3.12039     36.3321      -3.12039      581.336        176.88   0.948621   693.021     -3.41476
+   0   0    5  1  669.529   4.32892   1158.44      -95.7759   701.642      -69.0476     610.651      -69.0476      90.9919       110.952   0.980012   815.552      -71.438
+   0   0    6  1  208.118   1.47303   348.769       38.3981   150.027      -1.98773     138.218      -1.98773      11.8089       178.012   0.692503   184.095      5.08278
+   0   0    7  1  834.241   7.56552   361.555       58.3196   639.886       67.9106     1003.72       67.9106      363.837       67.9106   0.985092   655.782      66.9071
+   0   0    8  1  268.459   2.64541   328.863      -136.983   259.118      -124.253      211.27      -124.253      47.8489       55.7467   0.876088   296.701     -128.016
+   0   0    9  1  265.482   2.68548    552.45      -169.384   359.081       -166.58     138.292       -166.58      220.789         13.42   0.936738    437.08     -167.718
+   0   0   10  1  183.754   1.99406   195.673       33.4295   219.826        58.527     87.9439        58.527      131.882      -121.473   0.837452   210.823      50.7412
+
+"""
+
+
 
 integer_observations = """
 data_r3ad7sf

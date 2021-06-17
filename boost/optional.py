@@ -1,4 +1,11 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
-ext = boost.python.import_ext("boost_optional_ext")
-from boost_optional_ext import *
+from boost_adaptbx.boost.optional import *
+import warnings
+
+warnings.warn(
+  "importing from boost.optional is deprecated; this module will be removed shortly. "
+  "import from boost_adaptbx.boost.optional instead. "
+  "Please see https://github.com/cctbx/cctbx_project/issues/458 for more information.",
+  FutureWarning,
+  stacklevel=2
+)

@@ -876,7 +876,8 @@ END
 def exercise_00():
   def get_ab(params):
     pdb_inp = iotbx.pdb.input(lines=pdb_str_00.split('\n'), source_info=None)
-    m = mmtbx.model.manager(model_input=pdb_inp, pdb_interpretation_params=params)
+    m = mmtbx.model.manager(model_input=pdb_inp, pdb_interpretation_params=params,
+      build_grm=True)
     xray_structure = m.get_xray_structure()
     assert xray_structure is not None
     s = flex.bool(xray_structure.scatterers().size(),flex.size_t(range(40,504)))
@@ -1082,7 +1083,7 @@ def exercise_convert_atom():
   mol.set_sites_cart_from_hierarchy()
   # if the nonbonded type is set correctly, the nonbonded restraints should
   # not push the
-  for atom in mol.get_hierarchy(sync_with_xray_structure=True).atoms():
+  for atom in mol.get_hierarchy().atoms():
     xyz_max = max([ abs(n) for n in atom.xyz])
     assert (xyz_max < 2.5)
   mol = mol.select(flex.size_t([1,2,3,4,5,6]))
@@ -1186,8 +1187,7 @@ ANISOU 2732  O  BHOH A 380     3169   2234   2532   1183    675   -168       O
 
 def exercise_6():
   pdb_inp = iotbx.pdb.input(lines=pdb_str_00.split('\n'), source_info=None)
-  m = mmtbx.model.manager(model_input=pdb_inp)
-  m.get_restraints_manager()
+  m = mmtbx.model.manager(model_input=pdb_inp, build_grm=True)
   ms = m.geometry_statistics()
   ms.show()
   #
@@ -1226,9 +1226,10 @@ def exercise_from_hierarchy():
 
   pdb_inp1 = iotbx.pdb.input(lines=pdb_str_00.split('\n'), source_info=None)
   pdb_inp2 = iotbx.pdb.input(lines=pdb_str_00.split('\n'), source_info=None)
-  m1 = mmtbx.model.manager(model_input = pdb_inp1)
+  m1 = mmtbx.model.manager(model_input = pdb_inp1, build_grm=True)
   m2 = mmtbx.model.manager(
       model_input = None,
+      build_grm=True,
       crystal_symmetry = pdb_inp2.crystal_symmetry(),
       pdb_hierarchy=pdb_inp2.construct_hierarchy())
   check_consistency(m1, m2)
@@ -1277,7 +1278,7 @@ END
       pdb_interpretation_params = params)
     gs = model.geometry_statistics(use_hydrogens = True).result()
     if(use_neutron_distances):
-      assert approx_equal(gs.bond.mean, 0.0072, 0.0001)
+      assert approx_equal(gs.bond.mean, 0.0068, 0.0001)
     else:
       assert approx_equal(gs.bond.mean, 0.1054, 0.0001)
     bps, asu = model.get_restraints_manager().geometry.get_all_bond_proxies(
@@ -1328,6 +1329,52 @@ ATOM      0  HB3 CYS A   6      -0.371   0.442  10.351  1.00  0.05           H
   sel = model.selection(string="protein")
   assert model.size() == sel.size(), [model.size(), sel.size()]
 
+def exercise_9():
+  """
+  Exercise rotamer_outlier_selection.
+  """
+  pdb_str = """
+CRYST1   82.497   82.497  134.586  90.00  90.00 120.00 P 32 2 1
+ATOM      0  N   LYS A 228      16.753  49.364  44.427  1.00 29.71           N
+ATOM      1  CA  LYS A 228      17.316  50.225  45.462  1.00 30.97           C
+ATOM      2  C   LYS A 228      16.971  51.681  45.225  1.00 32.43           C
+ATOM      3  O   LYS A 228      16.594  52.055  44.120  1.00 32.69           O
+ATOM      4  CB  LYS A 228      18.841  50.152  45.390  1.00 32.79           C
+ATOM      5  CG  LYS A 228      19.434  48.982  46.075  1.00 36.99           C
+ATOM      6  CD  LYS A 228      20.099  49.447  47.331  1.00 40.31           C
+ATOM      7  CE  LYS A 228      20.368  48.266  48.182  1.00 41.44           C
+ATOM      8  NZ  LYS A 228      20.323  48.625  49.612  1.00 41.02           N
+ATOM      9  N   GLN A 229      17.130  52.508  46.260  1.00 32.84           N
+ATOM     10  C   GLN A 229      18.360  54.464  45.732  1.00 33.80           C
+ATOM     11  O   GLN A 229      19.348  54.126  46.386  1.00 34.43           O
+ATOM     12  CA AGLN A 229      16.971  53.942  46.112  0.43 33.76           C
+ATOM     13  CB AGLN A 229      16.506  54.583  47.431  0.43 35.95           C
+ATOM     14  CG AGLN A 229      15.176  55.322  47.295  0.43 39.53           C
+ATOM     15  CD AGLN A 229      14.847  56.184  48.492  0.43 43.68           C
+ATOM     16  OE1AGLN A 229      15.695  56.481  49.340  0.43 45.16           O
+ATOM     17  NE2AGLN A 229      13.608  56.636  48.568  0.43 44.89           N
+ATOM     18  CA BGLN A 229      16.981  53.943  46.113  0.57 33.65           C
+ATOM     19  CB BGLN A 229      16.529  54.590  47.436  0.57 35.47           C
+ATOM     20  CG BGLN A 229      15.105  54.230  47.849  0.57 37.90           C
+ATOM     21  CD BGLN A 229      14.089  54.492  46.764  0.57 40.71           C
+ATOM     22  OE1BGLN A 229      13.564  53.568  46.135  0.57 41.54           O
+ATOM     23  NE2BGLN A 229      13.802  55.759  46.510  0.57 41.34           N
+ATOM     24  N   ALA A 230      18.441  55.247  44.673  1.00 33.30           N
+ATOM     25  CA  ALA A 230      19.683  55.848  44.191  1.00 32.95           C
+ATOM     26  C   ALA A 230      19.661  57.363  44.526  1.00 32.70           C
+ATOM     27  O   ALA A 230      18.597  57.905  44.844  1.00 33.61           O
+ATOM     28  CB  ALA A 230      19.790  55.649  42.683  1.00 32.78           C
+TER
+END
+  """
+  pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    build_grm   = True,
+    log         = null_out())
+  sel = model.rotamer_outlier_selection().iselection()
+  assert list(sel) == [9, 10, 11, 12, 13, 14, 15, 16, 17]
+
 def run():
   exercise_00()
   exercise()
@@ -1341,6 +1388,7 @@ def run():
   exercise_7()
   exercise_8()
   exercise_from_hierarchy()
+  exercise_9()
   print(format_cpu_times())
 
 if (__name__ == "__main__"):

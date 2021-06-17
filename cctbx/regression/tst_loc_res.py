@@ -390,15 +390,21 @@ def make_map_from_pdb(raw_records=None,set_b_iso=None):
     fft_map = fc.fft_map(resolution_factor = 0.25)
     fft_map.apply_sigma_scaling()
     map_data = fft_map.real_map_unpadded()
-    return ph,map_data,crystal_symmetry
+    # Create model instead of pdb_hierarchy
+    ph.adopt_xray_structure(xrs)
+    import mmtbx.model
+    model=mmtbx.model.manager(
+          model_input = ph.as_pdb_input(),
+          crystal_symmetry = crystal_symmetry)
+    return model,map_data,crystal_symmetry
 
 def tst_0():
-  ph,map_data,crystal_symmetry=make_map_from_pdb(raw_records=raw_records)
+  model,map_data,crystal_symmetry=make_map_from_pdb(raw_records=raw_records)
 
   method="rscc"
   pdb_hierarchy_new  = maptbx.loc_res(
      map              = map_data,
-     pdb_hierarchy    = ph,
+     model            = model,
      crystal_symmetry = crystal_symmetry,
      chunk_size       = 10,
      soft_mask_radius = 3.,
@@ -413,7 +419,7 @@ def tst_0():
   method = "fsc"
   pdb_hierarchy_new  = maptbx.loc_res(
      map              = map_data,
-     pdb_hierarchy    = ph,
+     model= model,
      crystal_symmetry = crystal_symmetry,
      chunk_size       = 10,
      soft_mask_radius = 3.,
@@ -432,14 +438,14 @@ def tst_1():
      [[200.0, 200.0],[-20.0, -20.0],[-160.0, -180.0]],
      [[3.0, 3.0],[3.4, 3.0],[3.2, 3.1]]   ):
 
-    ph,map_data,crystal_symmetry=make_map_from_pdb(raw_records=raw_records_2,
+    model,map_data,crystal_symmetry=make_map_from_pdb(raw_records=raw_records_2,
      set_b_iso=set_b_iso)
 
     method = "rscc_d_min_b"
     print("Running test of rscc_d_min_b")
     pdb_hierarchy_new  = maptbx.loc_res(
      map              = map_data,
-     pdb_hierarchy    = ph,
+     model            = model,
      crystal_symmetry = crystal_symmetry,
      chunk_size       = 10,
      method           = method,

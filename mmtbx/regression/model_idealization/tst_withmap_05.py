@@ -6,6 +6,7 @@ import time
 
 # taken from phenix_regression/refinement/ncs/tst_ncs_0.py
 pdb_str = """\
+CRYST1  100.000  100.000  100.000  90.00  90.00  90.00 P 1
 ATOM   1395  N   GLY A  95      55.545  77.050  62.972  1.00 67.65           N
 ATOM   1396  CA  GLY A  95      54.815  76.493  64.067  1.00 66.50           C
 ATOM   1397  C   GLY A  95      55.509  76.948  65.306  1.00 65.94           C

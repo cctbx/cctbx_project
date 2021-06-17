@@ -156,7 +156,7 @@ class conda_manager(object):
     'phenix': os.path.join('phenix', 'conda_envs',
       default_format.format(builder='phenix', version=version,
                             platform=conda_platform[platform.system()])),
-    'phenix_tng': os.path.join('phenix', 'conda_envs',
+    'phenix_voyager': os.path.join('phenix', 'conda_envs',
       default_format.format(builder='phenix', version=version,
                             platform=conda_platform[platform.system()])),
     'xfel': os.path.join('dials', '.conda-envs',
@@ -164,23 +164,32 @@ class conda_manager(object):
                             platform=conda_platform[platform.system()])),
     'xfellegacy': default_file,
     'labelit': default_file,
-    'dials': os.path.join('dials', '.conda-envs',
+    'dials-old': os.path.join('dials', '.conda-envs',
       default_format.format(builder='dials', version=version,
                             platform=conda_platform[platform.system()])),
+    'dials': os.path.join('dials', '.conda-envs',
+             {
+                 "Darwin": "macos.txt",
+                 "Linux": "linux.txt",
+                 "Windows": "windows.txt",
+             }[platform.system()]),
     'external': default_file,
     'molprobity': default_file,
     'qrefine': default_file,
     'phaser': default_file,
-    'phasertng': os.path.join('phaser', 'conda_envs',
-      default_format.format(builder='phaser_tng', version=version,
+    'voyager': os.path.join('phasertng', 'conda_envs',
+      default_format.format(builder='phasertng', version=version,
                             platform=conda_platform[platform.system()]))
   }
+  # A set of builders where the environment files do not specify the python
+  # version
+  env_without_python = [ "dials" ]
 
   # ---------------------------------------------------------------------------
   def __init__(self, root_dir=root_dir, conda_base=None, conda_env=None,
                check_file=True, max_retries=5, verbose=False, log=sys.stdout):
     """
-    Constructor that performs that basic check for the conda installation.
+    Constructor that performs a basic check for the conda installation.
     If an installation is not found, the latest version can be downloaded
     and installed.
 
@@ -344,7 +353,10 @@ an error is encountered, please check that your conda installation and
 environments exist and are working.
 """
         warnings.warn(message, RuntimeWarning)
-      if conda_info['conda_version'] < '4.4':
+      split_version = conda_info['conda_version'].split('.')
+      major_version = int(split_version[0])
+      minor_version = int(split_version[1])
+      if major_version < 4 or (major_version == 4 and minor_version < 4):
         raise RuntimeError("""
 CCTBX programs require conda version 4.4 and greater to make use of the
 common compilers provided by conda. Please update your version with
@@ -464,10 +476,10 @@ common compilers provided by conda. Please update your version with
       for env_dir in env_dirs:
         if os.path.isdir(env_dir):
           dirs = os.listdir(env_dir)
-          for dir in dirs:
-            dir = os.path.join(env_dir, dir)
-            if os.path.isdir(dir):
-              environments.add(dir)
+          for _dir in dirs:
+            _dir = os.path.join(env_dir, _dir)
+            if os.path.isdir(_dir):
+              environments.add(_dir)
 
     return environments
 
@@ -564,6 +576,60 @@ channel
       print(output)
 
   # ---------------------------------------------------------------------------
+  def _retry_command(self, command_list, text, prefix):
+    """
+    Internal convenience function for retrying creation/update of a
+    conda environment.
+
+    Parameters
+    ----------
+      command_list: list
+        Command list for check_output
+      text: str
+        Text to be printed. Usually "installion into" or "update of"
+      prefix: str
+        Directory of conda environment
+
+    Returns
+    -------
+      Nothing
+    """
+
+    run_command = check_output
+    if self.verbose:
+      run_command = call
+
+    for retry in range(self.max_retries):
+      retry += 1
+      try:
+        output = run_command(command_list, env=self.env)
+      except Exception:
+        print("""
+*******************************************************************************
+There was a failure in constructing the conda environment.
+Attempt {retry} of {max_retries} will start {retry} minute(s) from {t}.
+*******************************************************************************
+""".format(retry=retry, max_retries=self.max_retries, t=time.asctime()))
+        time.sleep(retry*60)
+      else:
+        break
+    if retry == self.max_retries:
+      raise RuntimeError("""
+The conda environment could not be constructed. Please check that there is a
+working network connection for downloading conda packages.
+""")
+    print('Completed {text}:\n  {prefix}'.format(text=text, prefix=prefix),
+          file=self.log)
+
+    # check that environment file is updated
+    self.environments = self.update_environments()
+    if prefix not in self.environments:
+      raise RuntimeError("""
+The newly installed environment cannot be found in
+${HOME}/.conda/environments.txt.
+""")
+
+  # ---------------------------------------------------------------------------
   def create_environment(self, builder='cctbx', filename=None, python=None,
     copy=False, offline=False):
     """
@@ -599,6 +665,9 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
 
     if self.conda_base is None:
       raise RuntimeError("""A conda installation is not available.""")
+
+    if builder == "dials" and python in ("27", "36"):
+      builder = "dials-old"
 
     if filename is None:
       filename = os.path.join(
@@ -649,35 +718,23 @@ builder.""".format(filename=filename, builder=builder))
       command_list.append('--copy')
     if offline and not yaml_format:
       command_list.append('--offline')
-    if builder in ["dials", "xfel"]:
+    if builder in ("dials", "dials-old", "xfel") and not yaml_format:
       command_list.append("-y")
+    if builder in self.env_without_python:
+      python_version = tuple(int(i) for i in (python or "36"))
+      python_requirement = "conda-forge::python>=%s.%s,<%s.%s" % (
+          python_version[0],
+          python_version[1],
+          python_version[0],
+          python_version[1] + 1,
+      )
+      command_list.append(python_requirement)
     # RuntimeError is raised on failure
     print('{text} {builder} environment with:\n  {filename}'.format(
           text=text_messages[0], builder=builder, filename=filename),
           file=self.log)
-    for retry in range(self.max_retries):
-      retry += 1
-      try:
-        output = check_output(command_list, env=self.env)
-      except Exception:
-        print("""
-*******************************************************************************
-There was a failure in constructing the conda environment.
-Attempt {retry} of {max_retries} will start {retry} minute(s) from {t}.
-*******************************************************************************
-""".format(retry=retry, max_retries=self.max_retries, t=time.asctime()))
-        time.sleep(retry*60)
-      else:
-        break
-    if retry == self.max_retries:
-      raise RuntimeError("""
-The conda environment could not be constructed. Please check that there is a
-working network connection for downloading conda packages.
-""")
-    if self.verbose:
-      print(output, file=self.log)
-    print('Completed {text}:\n  {prefix}'.format(text=text_messages[1],
-          prefix=prefix), file=self.log)
+
+    self._retry_command(command_list, text_messages[1], prefix)
 
     # on Windows, also download the Visual C++ 2008 Redistributable
     # use the same version as conda-forge
@@ -687,13 +744,59 @@ working network connection for downloading conda packages.
         url='https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe',
         filename=os.path.join(prefix, 'vcredist_x64.exe'))
 
-    # check that environment file is updated
-    self.environments = self.update_environments()
-    if prefix not in self.environments:
-      raise RuntimeError("""
-The newly installed environment cannot be found in
-${HOME}/.conda/environments.txt.
-""")
+# ---------------------------------------------------------------------------
+  def create_dev_environment(self, svn=False, git=True):
+    """
+    Create a separate environment for development tools. Packages from
+    the conda-forge channel are used.
+
+    Package list:
+      svn
+      git
+      git-lfs
+
+    Parameters
+    ----------
+      svn: bool
+        If set to true, svn is installed. This is useful for Xcode 11.4
+        and later where svn is no longer available.
+      git: bool
+        If set to true, git is installed with git-lfs. This is needed
+        for repositories that use git-lfs.
+
+    Returns
+    -------
+      dev_dir: str
+        The directory with the environment
+    """
+
+    package_list = []
+    if svn:
+      package_list.append('svn')
+    if git:
+      package_list.append('git')
+      package_list.append('git-lfs')
+
+    prefix = os.path.join(self.root_dir, 'dev_env')
+    command = 'create'
+    text_messages = ['Installing', 'installation into']
+    if prefix in self.environments:
+      command = 'update'
+      text_messages = ['Updating', 'update of']
+
+    command_list = [self.conda_exe, command, '-y', '-c', 'conda-forge',
+                    '--prefix', prefix] + package_list
+
+    print('-'*79, file=self.log)
+    print('{text} extra development environment containing:'.format(text=text_messages[0]),
+          file=self.log)
+    for package in package_list:
+      print('  -', package, file=self.log)
+
+    self._retry_command(command_list, text_messages[1], prefix)
+
+    print('-'*79, file=self.log)
+    return prefix
 
   # ---------------------------------------------------------------------------
   def write_conda_setpaths(self, prefix='conda', build_dir=None,
@@ -882,7 +985,7 @@ Example usage:
       same as the ones for bootstrap.py. The default builder is "cctbx." """)
   parser.add_argument(
     '--python', default='27', type=str, nargs='?', const='27',
-    choices=['27', '36', '37', '38'],
+    choices=['27', '36', '37', '38', '39'],
     help="""When set, a specific Python version of the environment will be used.
     This only affects environments selected with the --builder flag.""")
   parser.add_argument(
@@ -901,6 +1004,10 @@ Example usage:
     help="""When set, the environment for the builder will be installed. The
       default environment can be overridden by providing a path to the
       environment file.""")
+  parser.add_argument(
+    '--install_dev_env', action='store_true',
+    help="""When set, an additional environment named dev_env will be
+    created that contains extra development tools (svn, git, git-lfs).""")
   parser.add_argument(
     '--conda_base', default=None, type=str, metavar='BASE_DIRECTORY',
     help="""The location of the base conda environment. This is useful for
@@ -964,6 +1071,10 @@ Example usage:
   # if --update_conda is set, try to update now
   if namespace.update_conda:
     m.update_conda()
+
+  # if --install_dev_env is set, construct development environment
+  if namespace.install_dev_env:
+    m.create_dev_environment()
 
   # if builder is available, construct environment
   if builder is not None:

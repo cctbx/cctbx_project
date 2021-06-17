@@ -8,8 +8,8 @@
 jobs:
 - job: modules${{ parameters.optimization }}
   pool:
-    vmImage: ubuntu-latest
-  timeoutInMinutes: 360
+    vmImage: ubuntu-18.04
+  timeoutInMinutes: 120
 
   steps:
 
@@ -24,7 +24,7 @@ jobs:
 
   - script: |
       cd $(Pipeline.Workspace)
-      python bootstrap.py hot update --builder=cctbx ${{ parameters.flags }}
+      python bootstrap.py hot update --builder=cctbx --python=38 ${{ parameters.flags }}
     displayName: Download sources
 
   # change optimization level (linux, macOS)
@@ -48,32 +48,13 @@ jobs:
     condition: or(eq('${{ parameters.optimization }}', 0), eq('${{ parameters.optimization }}', 1))
 
   # download test data
-  # - task: DownloadPipelineArtifact@2
-  #   inputs:
-  #     source: 'specific'
-  #     project: '$(System.TeamProjectId)'
-  #     pipeline: 4
-  #     artifact: 'chem_data'
-  #     path: $(Pipeline.Workspace)/modules/chem_data
-  #   displayName: Download chem_data
+  - template: ./templates/download-data-cache.yml
 
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(System.TeamProjectId)'
-      pipeline: 4
-      artifact: 'phenix_regression'
-      path: $(Pipeline.Workspace)/modules/phenix_regression
-    displayName: Download phenix_regression
-
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(System.TeamProjectId)'
-      pipeline: 4
-      artifact: 'phenix_examples'
-      path: $(Pipeline.Workspace)/modules/phenix_examples
-    displayName: Download phenix_examples
+  # delete chem_data
+  - script: |
+      cd $(Pipeline.Workspace)/modules
+      rm -fr chem_data
+    displayName: Remove chem_data
 
   # preserve permissions
   - script: |

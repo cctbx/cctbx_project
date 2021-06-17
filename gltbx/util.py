@@ -2,9 +2,9 @@ from __future__ import absolute_import, division, print_function
 import scitbx.array_family.flex # import dependency
 import scitbx.matrix
 from libtbx import easy_run
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import zip
-ext = boost.python.import_ext("gltbx_util_ext")
+ext = bp.import_ext("gltbx_util_ext")
 from gltbx_util_ext import *
 import re
 import sys

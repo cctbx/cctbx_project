@@ -1,0 +1,21 @@
+# Parameters:
+#   modules: <modules artifact name>
+
+jobs:
+  - template: ./conda-win.yml
+    parameters:
+      vmImage: vs2017-win2016
+      vs: vs2017
+      modules: modules
+  - template: ./conda-linux.yml
+    parameters:
+      distribution: centos
+      version: [6]
+      modules: modules
+      template: ./unix-conda-build.yml
+  - template: ./conda-osx.yml
+    parameters:
+      vmImage: [10, 14]
+      xcode_version: [11, 3, 1]
+      modules: modules
+      template: ./unix-conda-build.yml

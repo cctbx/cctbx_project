@@ -713,7 +713,9 @@ def get_bp_hbond_proxies(a1, a2, base_pair, hbond_distance_cutoff,
       if base_pair.restrain_hb_angles:
         ap_result += get_angle_proxies_for_bond(hb)
     else:
-      print("NA hbond rejected:",hb[0].id_str(), hb[1].id_str(), "distance=%.2f" % dist)
+      # Use log channel!
+      pass
+      #print("NA hbond rejected:",hb[0].id_str(), hb[1].id_str(), "distance=%.2f" % dist)
   return bp_result, ap_result
 
 def get_bp_plan_proxies(a1, a2, base_pair, grm, mon_lib_srv, plane_cache):

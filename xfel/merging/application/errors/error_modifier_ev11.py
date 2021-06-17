@@ -21,9 +21,8 @@ class error_modifier_ev11(worker):
     assert self.params.merging.error.model == "ev11"
 
     self.logger.log_step_time("ERROR_MODIFIER_EV11")
-    if len(reflections) > 0:
-      self.logger.log("Modifying intensity errors -- ev11 method...")
-      reflections = self.modify_errors(reflections)
+    self.logger.log("Modifying intensity errors -- ev11 method (starting with %d reflections)"%(len(reflections)))
+    reflections = self.modify_errors(reflections)
     self.logger.log_step_time("ERROR_MODIFIER_EV11", True)
 
     return experiments, reflections
@@ -50,34 +49,38 @@ class error_modifier_ev11(worker):
 
   def setup_work_arrays(self, reflections):
     '''Select multiply-measured HKLs. Calculate and cache reflection deltas, deltas squared, and HKL means for every reflection'''
-    self.deltas                      = flex.double()
-    self.work_table                  = flex.reflection_table()
-    self.work_table['delta_sq']      = flex.double()
-    self.work_table['mean']          = flex.double() # mean = <I'_hj>
-    self.work_table['biased_mean']   = flex.double() # biased_mean = <I_h>, so dont leave out any reflection
-    self.work_table['var']           = flex.double()
-    biased_mean_array = flex.double()
+    self.deltas     = flex.double()
+    self.work_table = flex.reflection_table()
+    delta_sq        = flex.double()
+    mean            = flex.double() # mean = <I'_hj>
+    biased_mean     = flex.double() # biased_mean = <I_h>, so dont leave out any reflection
+    var             = flex.double()
+    all_biased_mean = flex.double()
 
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections):
       number_of_measurements = refls.size()
       if number_of_measurements == 0: # if the returned "refls" list is empty, it's the end of the input "reflections" list
         break
-      biased_mean = flex.mean(refls['intensity.sum.value'])
-      biased_mean_array.extend(flex.double([biased_mean]*len(refls)))
+      refls_biased_mean = flex.double(len(refls), flex.mean(refls['intensity.sum.value']))
+      all_biased_mean.extend(refls_biased_mean)
 
       if number_of_measurements > self.params.merging.minimum_multiplicity:
         nn_factor_sqrt = math.sqrt((number_of_measurements - 1) / number_of_measurements)
-        for i, refl in enumerate(refls.rows()):
-          mask = flex.bool(number_of_measurements, True); mask[i] = False
-          refls_without_ith_refl = refls.select(mask)
-          mean = flex.mean(refls_without_ith_refl['intensity.sum.value'])
-          var = refl['intensity.sum.variance']
-          delta = nn_factor_sqrt * (refl['intensity.sum.value'] - flex.mean(refls_without_ith_refl['intensity.sum.value']))
-          delta_sq = delta**2
-          self.deltas.append(delta/math.sqrt(var)) # Please be careful about where to put the var
-          self.work_table.append({'biased_mean':biased_mean, 'mean':mean,'delta_sq':delta_sq, 'var':var})
+        i_sum = flex.double(number_of_measurements, flex.sum(refls['intensity.sum.value']))
+        i_sum_minus_val = i_sum - refls['intensity.sum.value']
+        mean_without_val = i_sum_minus_val/(number_of_measurements-1)
+        delta = nn_factor_sqrt * (refls['intensity.sum.value'] - mean_without_val)
+        self.deltas.extend(delta/flex.sqrt(refls['intensity.sum.variance'])) # Please be careful about where to put the var
+        delta_sq.extend(delta**2)
+        mean.extend(mean_without_val)
+        biased_mean.extend(refls_biased_mean)
+        var.extend(refls['intensity.sum.variance'])
 
-    reflections['biased_mean'] = biased_mean_array
+    self.work_table["delta_sq"]    = delta_sq
+    self.work_table["mean"]        = mean
+    self.work_table["biased_mean"] = biased_mean
+    self.work_table["var"]         = var
+    reflections['biased_mean'] = all_biased_mean
     self.logger.log("Number of work reflections selected: %d"%self.deltas.size())
     return reflections
 
@@ -91,39 +94,34 @@ class error_modifier_ev11(worker):
     comm = self.mpi_helper.comm
     MPI = self.mpi_helper.MPI
 
-    index = 0
-
     for reflections in self.intensity_bins:
       number_of_reflections_in_bin = reflections.size()
 
-      sum_of_delta_squared_in_bin = 0
-      sum_of_der_wrt_sfac_in_bin  = 0
-      sum_of_der_wrt_sb_in_bin    = 0
-      sum_of_der_wrt_sadd_in_bin  = 0
+      sum_of_delta_squared_in_bin = flex.double(number_of_reflections_in_bin, 0)
+      sum_of_der_wrt_sfac_in_bin  = flex.double(number_of_reflections_in_bin, 0)
+      sum_of_der_wrt_sb_in_bin    = flex.double(number_of_reflections_in_bin, 0)
+      sum_of_der_wrt_sadd_in_bin  = flex.double(number_of_reflections_in_bin, 0)
 
       if number_of_reflections_in_bin > 0:
-        for refl in reflections.rows():
-          variance = refl['var']
-          mean_intensity = refl['biased_mean'] # the mean intensity of the sample of HKLs which includes this reflection
+        variance = reflections['var']
+        mean_intensity = reflections['biased_mean'] # the mean intensity of the sample of HKLs which includes this reflection
 
-          var_ev11               = self.sfac**2*(variance + self.sb**2*mean_intensity + self.sadd**2*mean_intensity**2)
-          var_ev11_der_over_sfac = 2*self.sfac * (variance + self.sb**2 * mean_intensity + self.sadd**2 * mean_intensity**2)
-          var_ev11_der_over_sb   = self.sfac**2 * 2*self.sb   * mean_intensity
-          var_ev11_der_over_sadd = self.sfac**2 * 2*self.sadd * mean_intensity**2
+        var_ev11               = self.sfac**2*(variance + self.sb**2*mean_intensity + self.sadd**2*mean_intensity**2)
+        var_ev11_der_over_sfac = 2*self.sfac * (variance + self.sb**2 * mean_intensity + self.sadd**2 * mean_intensity**2)
+        var_ev11_der_over_sb   = self.sfac**2 * 2*self.sb   * mean_intensity
+        var_ev11_der_over_sadd = self.sfac**2 * 2*self.sadd * mean_intensity**2
 
-          sum_of_delta_squared_in_bin += refl['delta_sq'] / var_ev11
+        sum_of_delta_squared_in_bin += reflections['delta_sq'] / var_ev11
 
-          index += 1
-
-          sum_of_der_wrt_sfac_in_bin  -= refl['delta_sq'] / var_ev11**2 * var_ev11_der_over_sfac
-          sum_of_der_wrt_sb_in_bin    -= refl['delta_sq'] / var_ev11**2 * var_ev11_der_over_sb
-          sum_of_der_wrt_sadd_in_bin  -= refl['delta_sq'] / var_ev11**2 * var_ev11_der_over_sadd
+        sum_of_der_wrt_sfac_in_bin  -= reflections['delta_sq'] / var_ev11**2 * var_ev11_der_over_sfac
+        sum_of_der_wrt_sb_in_bin    -= reflections['delta_sq'] / var_ev11**2 * var_ev11_der_over_sb
+        sum_of_der_wrt_sadd_in_bin  -= reflections['delta_sq'] / var_ev11**2 * var_ev11_der_over_sadd
 
       global_number_of_reflections_in_bin   = comm.reduce(number_of_reflections_in_bin, MPI.SUM, root=0)
-      global_sum_of_delta_squared_in_bin    = comm.reduce(sum_of_delta_squared_in_bin,  MPI.SUM, root=0)
-      global_sum_of_der_wrt_sfac_in_bin     = comm.reduce(sum_of_der_wrt_sfac_in_bin,   MPI.SUM, root=0)
-      global_sum_of_der_wrt_sb_in_bin       = comm.reduce(sum_of_der_wrt_sb_in_bin,     MPI.SUM, root=0)
-      global_sum_of_der_wrt_sadd_in_bin     = comm.reduce(sum_of_der_wrt_sadd_in_bin,   MPI.SUM, root=0)
+      global_sum_of_delta_squared_in_bin    = comm.reduce(flex.sum(sum_of_delta_squared_in_bin),  MPI.SUM, root=0)
+      global_sum_of_der_wrt_sfac_in_bin     = comm.reduce(flex.sum(sum_of_der_wrt_sfac_in_bin),   MPI.SUM, root=0)
+      global_sum_of_der_wrt_sb_in_bin       = comm.reduce(flex.sum(sum_of_der_wrt_sb_in_bin),     MPI.SUM, root=0)
+      global_sum_of_der_wrt_sadd_in_bin     = comm.reduce(flex.sum(sum_of_der_wrt_sadd_in_bin),   MPI.SUM, root=0)
 
       if self.mpi_helper.rank == 0:
         if global_number_of_reflections_in_bin > 0:
@@ -227,7 +225,6 @@ class error_modifier_ev11(worker):
     self.deltas = flex.sorted(self.deltas)
 
     self.logger.log("New deltas count: %d"%self.deltas.size())
-    self.logger.log("New deltas:" + str(list(self.deltas)))
 
   def calculate_delta_rankits(self):
     '''Implement expression (12) of Brewster2019'''
@@ -247,9 +244,6 @@ class error_modifier_ev11(worker):
       global_delta_index = base_delta_index + i
       rankit = norm.quantile((global_delta_index+1-a)/(self.global_delta_count+1-(2*a)))
       self.rankits.append(rankit)
-
-    for rankit in self.rankits:
-      self.logger.log("RANKIT: " + str(rankit))
 
   def get_overall_correlation_flex(self, data_a, data_b) :
     """
@@ -474,6 +468,7 @@ class error_modifier_ev11(worker):
                                                             self.sb*self.sb*reflections['biased_mean'] +
                                                             self.sadd*self.sadd*reflections['biased_mean']**2)
 
+    del reflections['biased_mean']
 
     return reflections
 

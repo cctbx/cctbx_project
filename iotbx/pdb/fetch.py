@@ -1,14 +1,14 @@
 # TODO other PDB sites?
 #
 # See RCSB documentation at:
-# http://www.rcsb.org/pdb/static.do?p=download/http/index.html
+# https://www.rcsb.org/pages/download/http
 #
 # File format  Compression   Example URL
-# PDB  uncompressed https://www.rcsb.org/pdb/files/2vz8.pdb
-# CIF  uncompressed https://www.rcsb.org/pdb/files/2vz8.cif
-# XML  uncompressed https://www.rcsb.org/pdb/files/2vz8.xml
-# Data uncompressed https://www.rcsb.org/pdb/files/2vz8-sf.cif
-# CIF  uncompressed https://www.rcsb.org/pdb/files/ligand/ATP.cif
+# PDB  uncompressed https://files.rcsb.org/download/4hhb.pdb
+# CIF  uncompressed https://files.rcsb.org/download/4hhb.cif
+# XML  uncompressed https://files.rcsb.org/download/4hhb.xml
+# Data uncompressed https://files.rcsb.org/download/1btn-sf.cif
+# CIF  uncompressed https://files.rcsb.org/ligands/download/HEM.cif
 #
 # PDBe:
 # https://www.ebi.ac.uk/pdbe-srv/view/files/2vz8.ent
@@ -160,9 +160,9 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
     elif (data_type == 'xray'):
       url = url_base + "{id}/{id}{format}".format(id=id, format=sf_ext)
   if (data_type in ["fasta", "seq"]):
-    # XXX the RCSB doesn't appear to have a simple URL for FASTA files
     if (url is None) : # TODO PDBe equivalent doesn't exist?
-      url = "https://www.rcsb.org/pdb/download/downloadFastaFiles.do?structureIdList=%s&compressionType=uncompressed" % id
+      # Seems that this url should be working:
+      url = "https://www.rcsb.org/fasta/entry/%s" % id
     try :
       data = libtbx.utils.urlopen(url)
     except HTTPError as e :
@@ -259,8 +259,9 @@ def get_chemical_components_cif(code, return_none_if_already_present=False):
     relative_path="chem_data/chemical_components/%s/data_%s.cif" % (first_char,
       code),
     test=os.path.isfile)
+  chem_comp_cif = None
   if (chem_comp_cif is None):
-    url = "http://www.rcsb.org/pdb/files/ligand/%s.cif" % code
+    url = "https://files.rcsb.org/ligands/download/%s.cif" % code
     try :
       data = libtbx.utils.urlopen(url)
     except HTTPError as e :

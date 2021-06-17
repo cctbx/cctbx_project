@@ -306,8 +306,7 @@ def work():
   '''
 
   import os
-  import tempfile
-  import math
+  import tempfile, math
 
   cell_ref = (57.97, 57.97, 150.14, 90.00, 90.00, 90.00)
 

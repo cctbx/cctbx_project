@@ -3,8 +3,8 @@ from scitbx.array_family import flex
 from cctbx import miller
 from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
-import boost.python
-asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+import boost_adaptbx.boost.python as bp
+asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 from mmtbx.maps import composite_omit_map as cfom
 from cctbx import maptbx
 import mmtbx.f_model

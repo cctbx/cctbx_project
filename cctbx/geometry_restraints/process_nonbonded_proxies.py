@@ -174,7 +174,7 @@ class clashes(object):
         i_id_str = atoms[i_seq].id_str().replace('pdb=','').replace('"','')
         j_id_str = atoms[j_seq].id_str().replace('pdb=','').replace('"','')
         line = [i_id_str, j_id_str,round(record[0], 2),round(overlap, 2), symop]
-        print(table_str.format(*line), file=log)
+        print(table_str % line, file=log)
       print('-'*78, file=log)
     else:
       print('No clashes found', file=log)
@@ -266,8 +266,10 @@ class clashes(object):
     if by_value == 'vdw_distance': key = 1
     if by_value == 'overlap': key = 2
     if by_value == 'symmetry': key = 4
+    none_items = [x for x in self._clashes_dict.items() if x[1][key] is None]
+    other_items = [x for x in self._clashes_dict.items() if x[1][key] is not None]
     self._clashes_dict = OrderedDict(
-      sorted(self._clashes_dict.items(), key=lambda x: x[1][key]))
+      none_items + sorted(other_items, key=lambda x: x[1][key]))
 
 
   def _obtain_symmetry_clashes(self):
@@ -391,7 +393,7 @@ class hbonds(object):
       table_str = '{:>16}|{:>16}|{:^16}|{:^10.2f}|{:^10.2f}|{:^14.2f}|{:^15}|'
       print('-'*99, file=log)
       atoms = self.model.get_atoms()
-      for iseq_tuple, record in self._hbonds_dict.iteritems():
+      for iseq_tuple, record in self._hbonds_dict.items():
         iseq_x, iseq_h, iseq_a = iseq_tuple
         if record[4] is not None:
           symop = record[4]
@@ -474,7 +476,6 @@ class h_bond(object):
     self.a_YAH_cutoff = [90, 180]
 
 class manager():
-  __slots__ = ["h_bond_params"]
 
   def __init__(self, model, h_bond_params=None):
     if(h_bond_params is None): h_bond_params = h_bond()
@@ -547,6 +548,8 @@ class manager():
     Process nonbonded_proxies to find bonds, interactions and clashes.
     Clashes code refactored from Youval Dar's code for nonbonded_overlaps (LBNL 2013)
     """
+    if(self.model.get_restraints_manager() is None):
+      self.model.process_input_model(make_restraints=True)
     grm = self.model.get_restraints_manager().geometry
     xrs = self.model.get_xray_structure()
     sites_cart  = self.model.get_sites_cart()
@@ -664,6 +667,11 @@ class manager():
       return is_hbond
 
     crystal_symmetry = self.model.crystal_symmetry()
+    if crystal_symmetry is not None:
+      fm = crystal_symmetry.unit_cell().fractionalization_matrix()
+      om = crystal_symmetry.unit_cell().orthogonalization_matrix()
+    else:
+      fm, om = None, None
     rt_mx_ji = None
     if symop is not None:
       rt_mx_ji = sgtbx.rt_mx(str(symop))
@@ -674,8 +682,8 @@ class manager():
       Hs       = self.Hs,
       fsc0     = fsc0,
       rt_mx_ji = rt_mx_ji,
-      fm       = crystal_symmetry.unit_cell().fractionalization_matrix(),
-      om       = crystal_symmetry.unit_cell().orthogonalization_matrix(),
+      fm       = fm,
+      om       = om,
       atoms    = self.atoms)
 
     d_HA = A.distance(H)

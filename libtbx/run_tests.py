@@ -38,6 +38,7 @@ tst_list_base = [
   "$D/tst_representation.py",
   "$D/tst_find_unused_imports.py",
   "$D/tst_program_template.py",
+  "$D/tst_version.py",
   ]
 
 # generally failing tests
@@ -52,14 +53,6 @@ if sys.platform == 'win32':
   tst_list_fail += tst_list_windows_fail
 else:
   tst_list_base += tst_list_windows_fail
-# failing tests on Windows, Python 3
-tst_list_windows_fail_py3 = [
-  "$D/tst_python3_regression.py",
-]
-if sys.platform == 'win32' and sys.version_info[0] > 2:
-  tst_list_fail += tst_list_windows_fail_py3
-else:
-  tst_list_base += tst_list_windows_fail_py3
 
 # final lists
 tst_list = tst_list_base

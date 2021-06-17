@@ -1366,3 +1366,23 @@ citation {
   pmid = 30988261
   doi_id = 10.1107/S2059798319004522
 }
+
+citation {
+  article_id = find_alt_orig_sym_mate
+  authors = Oeffner RD, Bunkóczi G, Read RJ
+  title = phenix.find_alt_orig_sym_mate
+  journal = Computational Crystallography Newsletter
+  volume = 3
+  pages = 5-10
+  year = 2012
+}
+
+citation {
+  article_id = hklviewer
+  authors = Oeffner RD, McCoy AJ, Stockwell DH, Sammito MD, Hatti KS,Croll TI, Read RJ
+  title = HKLviewer, a new 3D reflection data viewer for CCTBX
+  journal = Computational Crystallography Newsletter
+  volume = 12
+  pages = 15-25
+  year = 2021
+}

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
-ext = boost.python.import_ext("smtbx_refinement_least_squares_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("smtbx_refinement_least_squares_ext")
 from smtbx_refinement_least_squares_ext import *
 
 
@@ -47,15 +47,17 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
     may_parallelise = False
 
     def __init__(self, observations, reparametrisation,
-                 **kwds):
+                 one_h_linearisation=None, **kwds):
       super(klass, self).__init__(reparametrisation.n_independents)
       self.observations = observations
       self.reparametrisation = reparametrisation
       adopt_optional_init_args(self, kwds)
       if self.f_mask is not None:
         assert self.f_mask.size() == observations.fo_sq.size()
-      self.one_h_linearisation = direct.f_calc_modulus_squared(
-        self.xray_structure)
+      self.one_h_linearisation = one_h_linearisation
+      if not self.one_h_linearisation:
+        self.one_h_linearisation = direct.f_calc_modulus_squared(
+          self.xray_structure)
       if self.weighting_scheme == "default":
         self.weighting_scheme = self.default_weighting_scheme()
       self.origin_fixing_restraint = self.origin_fixing_restraints_type(

@@ -3,9 +3,9 @@ from scitbx.array_family import flex
 import sys
 from mmtbx import bulk_solvent
 from cctbx import adptbx
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-ext = boost.python.import_ext("mmtbx_f_model_ext")
+ext = bp.import_ext("mmtbx_f_model_ext")
 from cctbx import sgtbx
 from mmtbx.bulk_solvent import kbu_refinery
 import mmtbx.f_model
@@ -76,6 +76,7 @@ class run(object):
                try_expanal = True,
                try_expmin = False,
                verbose=False):
+    if(log is None): log = sys.stdout
     self.d_hilo = 6
     assert f_obs.indices().all_eq(r_free_flags.indices())
     self.log = log
@@ -121,7 +122,6 @@ class run(object):
         k_isotropic       = None,
         k_mask_fit_params = None)
     self.bss_result = init_result()
-    if(log is None): log = sys.stdout
     if(verbose):
       print("-"*80, file=log)
       print("Overall, iso- and anisotropic scaling and bulk-solvent modeling:", file=log)
@@ -162,24 +162,25 @@ class run(object):
       if(self.bulk_solvent):
         if(cycle==0):
           # NEW
-          use_highres = False
-          if(self.f_obs.d_min() < self.d_hilo - 2):
-            use_highres = True
-          if(use_highres):
-            r_start = self.anisotropic_scaling(r_start = 99, use_highres=True)
-          else:
-            r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
-
-          r_start = self.k_mask_grid_search(r_start=r_start)
-
-          if(use_highres):
-            r_start = self.anisotropic_scaling(r_start = 99, use_highres=True)
-          else:
-            r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
-          # OLD
-          #r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
+          #use_highres = False
+          #if(self.f_obs.d_min() < self.d_hilo - 2):
+          #  use_highres = True
+          #if(use_highres):
+          #  r_start = self.anisotropic_scaling(r_start = r_start, use_highres=True)
+          #else:
+          #  r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
+          #
           #r_start = self.k_mask_grid_search(r_start=r_start)
-          #r_start = self.set_k_isotropic_exp(r_start = r_start,  verbose=verbose)
+          #
+          #if(use_highres):
+          #  r_start = self.anisotropic_scaling(r_start = r_start, use_highres=True)
+          #else:
+          #  r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
+          # OLD
+          for mic in [1,2]:
+            r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
+            r_start = self.k_mask_grid_search(r_start=r_start)
+            r_start = self.set_k_isotropic_exp(r_start = r_start,  verbose=verbose)
         else:
           r_start = self.bulk_solvent_scaling(r_start = r_start)
           if(verbose):
@@ -224,7 +225,7 @@ class run(object):
   def set_k_isotropic_exp(self, r_start, verbose, b_lower_limit = -100):
     if(self.verbose):
       print("    set_k_isotropic_exp:", file=self.log)
-      print("      r_start: %6.4f"%r_start)
+      print("      r_start: %6.4f (r_low: %6.4f)"%(r_start,self._r_low()))
     k_iso   = flex.double(self.core.k_isotropic.size(), 1) # Done at start only!
     k_aniso = flex.double(self.core.k_isotropic.size(), 1) # Done at start only!
     arrays = mmtbx.arrays.init(
@@ -267,7 +268,7 @@ class run(object):
     if(self.verbose):
       print("      r1: %6.4f"%r1)
       print("      r2: %6.4f"%r2)
-      print("      r_final: %6.4f"%r)
+      print("      r_final: %6.4f (r_low: %6.4f)"%(r, self._r_low()))
     return r
 
   def try_scale(self,
@@ -316,19 +317,7 @@ class run(object):
       self.selection_work.data()
 
   def _low_resolution_selection(self):
-    d = self.d_spacings.data()
-    result = None
-    if((d>=8).count(True)>=500):
-      result = d>=8
-    else:
-      sel = self.bin_selections[0].deep_copy()
-      if(sel.count(True)>=500): result = sel
-      else:
-        for i in range(1, len(self.bin_selections)): #XXX
-          sel |= self.bin_selections[i].deep_copy()
-          if(sel.count(True)>=300): break
-        result = sel
-    return result & self.selection_work.data()
+    return self.bin_selections[0] & self.selection_work.data()
 
   def populate_bin_to_individual_k_mask_linear_interpolation(self, k_mask_bin):
     assert len(k_mask_bin) == len(self.cores_and_selections)
@@ -374,7 +363,7 @@ class run(object):
   def k_mask_grid_search(self, r_start):
     if(self.verbose):
       print("    k_mask_grid_search:", file=self.log)
-      print("      r_start: %6.4f"%r_start)
+      print("      r_start: %6.4f (r_low: %6.4f)"%(r_start,self._r_low()))
     #k_mask_trial_range = flex.double([i/1000. for i in range(0,650,50)])
     k_mask_trial_range = flex.double([i/1000. for i in range(0,1010,10)])
     k_mask             = flex.double(self.f_obs.size(), 0)
@@ -400,15 +389,17 @@ class run(object):
     k_mask = self.populate_bin_to_individual_k_mask_linear_interpolation(
       k_mask_bin = k_mask_bin_smooth)
 
-    self.core = self.core.update(k_masks = k_mask, k_isotropic = k_isotropic)
-    # ????
-    self.bss_result.k_mask_bin_orig   = k_mask_bin
-    self.bss_result.k_mask_bin_smooth = k_mask_bin_smooth
-    self.bss_result.k_mask            = k_mask
-    self.bss_result.k_isotropic       = k_isotropic
+    r_try = self.try_scale(k_mask = k_mask, k_isotropic = k_isotropic)
+    if(r_try<r_start):
+      self.core = self.core.update(k_masks = k_mask, k_isotropic = k_isotropic)
+      # ????
+      self.bss_result.k_mask_bin_orig   = k_mask_bin
+      self.bss_result.k_mask_bin_smooth = k_mask_bin_smooth
+      self.bss_result.k_mask            = k_mask
+      self.bss_result.k_isotropic       = k_isotropic
     r = self.r_factor()
     if(self.verbose):
-      print("      r_final: %6.4f"%r)
+      print("      r_final: %6.4f (r_low: %6.4f)"%(r,self._r_low()))
     return r
 
   def apply_overall_scale(self):
@@ -454,7 +445,7 @@ class run(object):
       k_isotropic_   = flex.mean(self.core.k_isotropic.select(sel))
       k_anisotropic_ = flex.mean(self.core.k_anisotropic.select(sel))
       cmpl_          = f_obs_.completeness(d_max=d_max_)*100.
-      r_             = bulk_solvent.r_factor(f_obs_.data(),f_model.select(sel),1)
+      r_             = bulk_solvent.r_factor(f_obs_.data(),f_model.select(sel))
       print(fmt%(ss_, d_max_, d_min_, cmpl_, n_ref_,
         k_mask_bin_orig_, k_mask_bin_smooth_,k_mask_bin_averaged_,
         k_isotropic_, k_anisotropic_, f_obs_mean_, r_), file=self.log)
@@ -492,7 +483,7 @@ class run(object):
   def bulk_solvent_scaling(self, r_start):
     if(self.verbose):
       print("    bulk_solvent_scaling:", file=self.log)
-      print("      r_start: %6.4f"%r_start)
+      print("      r_start: %6.4f (r_low: %6.4f)"%(r_start,self._r_low()))
     k_mask     = flex.double(self.f_obs.size(), -1)
     k_mask_bin = flex.double()
     k_mask_trial_range = flex.double([i/1000. for i in range(0,1000,10)])
@@ -540,11 +531,12 @@ class run(object):
         r = flex.double()
         k = flex.double()
         #
-        x0 = self.bss_result.k_mask_bin_orig[i_cas]
-        k_mask.set_selected(selection, x0)
-        r0 = self.try_scale(k_mask = k_mask, selection=selection)
-        r.append(r0)
-        k.append(x0)
+        if(self.bss_result.k_mask_bin_orig is not None):
+          x0 = self.bss_result.k_mask_bin_orig[i_cas]
+          k_mask.set_selected(selection, x0)
+          r0 = self.try_scale(k_mask = k_mask, selection=selection)
+          r.append(r0)
+          k.append(x0)
         #
         fmv = flex.min(flex.abs(f_mask).select(selection_use))
         if(abs(fmv)>1.e-9):
@@ -581,10 +573,13 @@ class run(object):
     k_mask = self.populate_bin_to_individual_k_mask_linear_interpolation(
       k_mask_bin = k_mask_bin_smooth)
     k_isotropic = self._k_isotropic_as_scale_k1(r_start=r_start,k_mask = k_mask)
-    self.core = self.core.update(k_isotropic = k_isotropic, k_masks = k_mask)
+
+    r_try = self.try_scale(k_mask = k_mask, k_isotropic = k_isotropic)
+    if(r_try<r_start):
+      self.core = self.core.update(k_isotropic = k_isotropic, k_masks = k_mask)
     r = self.r_factor()
     if(self.verbose):
-      print("      r_final: %6.4f"%r)
+      print("      r_final: %6.4f (r_low: %6.4f)"%(r,self._r_low()))
     return r
 
   def smooth(self, x):

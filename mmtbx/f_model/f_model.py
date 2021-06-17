@@ -18,7 +18,7 @@ from cctbx.array_family import flex
 import math
 from cctbx import xray
 from cctbx import adptbx
-import boost.python
+import boost_adaptbx.boost.python as bp
 import mmtbx
 from libtbx.math_utils import iround
 from libtbx.utils import user_plus_sys_time, date_and_time, Sorry
@@ -44,7 +44,7 @@ import mmtbx.bulk_solvent
 import six
 from six.moves import zip, range
 
-ext = boost.python.import_ext("mmtbx_f_model_ext")
+ext = bp.import_ext("mmtbx_f_model_ext")
 
 time_bulk_solvent_and_scale         = 0.0
 time_mask                           = 0.0
@@ -682,6 +682,18 @@ class manager(manager_mixin):
       k_anisotropic = None
     else:
       k_anisotropic = self.arrays.core.k_anisotropic.select(selection)
+    #
+    bin_selections = self.bin_selections
+    if(bin_selections is not None):
+      tmp = []
+      for bs in bin_selections:
+        bs_ = bs.select(selection)
+        tmp.append(bs_)
+        if(bs_.count(True)==0):
+          tmp = None
+          break
+      bin_selections = tmp
+    #
     result = manager(
       f_obs                        = self.f_obs().select(selection=selection),
       r_free_flags                 = self._r_free_flags.select(selection=selection),
@@ -703,6 +715,7 @@ class manager(manager_mixin):
       k_mask                       = new_k_masks,
       k_isotropic                  = k_isotropic,
       k_anisotropic                = k_anisotropic,
+      bin_selections               = bin_selections,
       _target_memory               = self._target_memory,
       n_resolution_bins_output     = self.n_resolution_bins_output,
       k_sol                        = self.k_sol,
@@ -1119,7 +1132,7 @@ class manager(manager_mixin):
     mmtbx_masks_asu_mask_obj = mmtbx.masks.asu_mask(
       xray_structure = S_E_L_F.xray_structure.expand_to_p1(sites_mod_positive=True),
       n_real         = crystal_gridding.n_real())
-    asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+    asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
     bulk_solvent_mask = mmtbx_masks_asu_mask_obj.mask_data_whole_uc()
     # residual map
     mc = S_E_L_F.electron_density_map().map_coefficients(
@@ -1234,7 +1247,7 @@ class manager(manager_mixin):
       ka       = flex.mean(k_anisotropic.select(sel))
       r        = mmtbx.bulk_solvent.r_factor(
         f_obs.select(sel_work).data(),
-        f_model.select(sel_work).data(), 1)
+        f_model.select(sel_work).data())
       km = " ".join(["%5.3f"%flex.mean(km_.select(sel)) for km_ in k_masks])
       result.append(group_args(
         d_min   = d_min,
@@ -1249,6 +1262,19 @@ class manager(manager_mixin):
         r       = r,
         km      = km))
     return result
+
+  def show_short(self, show_k_mask=True, log=None, prefix=""):
+    if(log is None): log = sys.stdout
+    if(show_k_mask):
+      fmt="%s%7.3f-%-7.3f %6.2f %5d %5d %6.4f %9.3f %9.3f %5.3f   %s"
+      print("%s   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> ktotal  kmask"%prefix, file=log)
+      for b in self.bins():
+        print(fmt % (prefix,b.d_max,b.d_min,b.cmpl,b.nw,b.nf,b.r,b.fo_mean,b.fm_mean,b.ki*b.ka,b.km), file=log)
+    else:
+      fmt="%s%7.3f-%-7.3f %6.2f %5d %5d %6.4f %9.3f %9.3f %5.3f"
+      print("%s   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> ktotal"%prefix, file=log)
+      for b in self.bins():
+        print(fmt % (prefix,b.d_max,b.d_min,b.cmpl,b.nw,b.nf,b.r,b.fo_mean,b.fm_mean,b.ki*b.ka), file=log)
 
   def show(self, log=None, suffix=None, show_header=True, show_approx=True):
     if(log is None): log = sys.stdout
@@ -1449,11 +1475,13 @@ class manager(manager_mixin):
         refine_hd_scattering_method = "fast",
         bulk_solvent_and_scaling = True,
         remove_outliers = True,
+        apply_scale_k1_to_f_obs=True,
         show = False,
         verbose=None,
         log = None):
     self.alpha_beta_cache = None
-    self.apply_scale_k1_to_f_obs()
+    if(apply_scale_k1_to_f_obs):
+      self.apply_scale_k1_to_f_obs()
     from mmtbx.bulk_solvent import f_model_all_scales
     o = f_model_all_scales.run(
       fmodel               = self,
@@ -1501,16 +1529,14 @@ class manager(manager_mixin):
     self.russ = o.russ
     return o.russ
 
-  def apply_scale_k1_to_f_obs(self, threshold=10):
-    assert threshold > 0
-    k_total = self.k_isotropic()*self.k_anisotropic()
-    if(k_total.all_ne(1.0)): return
+  def apply_scale_k1_to_f_obs(self):
     r_start = self.r_work()
     fo = self.f_obs().data()
     fc = abs(self.f_model()).data()
     sc = flex.sum(fo*fc)/flex.sum(fc*fc)
-    if(sc == 0 or (abs(sc)<threshold and abs(sc)>1./threshold) or
-       self.twin_law is not None): return
+    if sc < 1.1 and sc > 0.9: return
+    if sc == 0: return
+    if self.twin_law is not None: return
     sigmas = self.f_obs().sigmas()
     if(sigmas is not None):
       sigmas = sigmas/sc
@@ -1520,6 +1546,9 @@ class manager(manager_mixin):
     self.update(f_obs = f_obs_new)
     r_final = self.r_work()
     assert approx_equal(r_start, r_final), [r_start, r_final]
+
+  def r_work4(self):
+    return self.resolution_filter(d_min=4).r_work()
 
   def _get_target_name(self): return self._target_name
   target_name = property(_get_target_name)
@@ -1687,6 +1716,10 @@ class manager(manager_mixin):
 
   def k_isotropic_work(self):
     return self.arrays.k_isotropic_work
+
+  def k_total(self):
+    return self.k_isotropic()*self.k_anisotropic()*self.scale_k1()*\
+      self.arrays.core.k_isotropic_exp
 
   def f_obs_work(self):
     return self.arrays.f_obs_work
@@ -2124,8 +2157,41 @@ class manager(manager_mixin):
     assert approx_equal(flex.min(k_mask_l), flex.max(k_mask_l), 1.e-3)
     return k_mask_l[0]
 
+  def r_n_lowest(self, n=500):
+    ds = self.f_obs().d_spacings().data()
+    sel = flex.sort_permutation(ds,reverse=True)
+    ds = ds.select(sel)
+    d_min = ds[n]
+    return self.resolution_filter(d_min=d_min).r_work()
+
+  def r_two_bins_lowest(self):
+    f = self.select(self.bin_selections[0] | self.bin_selections[1])
+    return mmtbx.bulk_solvent.r_factor(
+      f.f_obs_work().data(), f.f_model_work().data())
+
   def r_work_low(self):
     f = self.select(self.bin_selections[0])
+
+
+    # Scan for best k
+    #fo, fc = f.f_obs_work().data(), f.f_model_work().data()
+    #scale = mmtbx.bulk_solvent.scale(fo, fc)
+    #r1 = mmtbx.bulk_solvent.r_factor(fo, fc, scale)
+    #r1_ = mmtbx.bulk_solvent.r_factor(fo, fc)
+    #assert approx_equal(r1, r1_)
+    #
+    #r2=r1
+    #k_best = scale
+    #k=scale-0.5
+    #while k<=scale+0.5:
+    #  r2_ = mmtbx.bulk_solvent.r_factor(fo, fc,k)
+    #  if(r2_<r2):
+    #    k_best = k
+    #    r2 = r2_
+    #  k+=0.01
+    #return mmtbx.bulk_solvent.r_factor(
+    #  f.f_obs_work().data(), f.f_model_work().data(), k_best)
+
     return mmtbx.bulk_solvent.r_factor(
       f.f_obs_work().data(), f.f_model_work().data())
 
@@ -2133,6 +2199,13 @@ class manager(manager_mixin):
     f = self.select(self.bin_selections[len(self.bin_selections)-1])
     return mmtbx.bulk_solvent.r_factor(
       f.f_obs_work().data(), f.f_model_work().data())
+
+  def r_factors(self, prefix="", as_string=True):
+    rw,rf,rh,rl,r4=self.r_work(),self.r_free(),self.r_work_high(),\
+      self.r_work_low(), self.r_work4()
+    f = "%s r_work=%6.4f r_free=%6.4f r_high=%6.4f r_low=%6.4f r_4=%6.4f"
+    if(as_string): return f%(prefix, rw,rf,rh,rl,r4)
+    else:          return group_args(rw=rw,rf=rf,rh=rh,rl=rl,r4=r4)
 
   def r_overall_low_high(self, d = 6.0):
     r_work = self.r_work()

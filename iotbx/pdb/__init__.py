@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import zip
-ext = boost.python.import_ext("iotbx_pdb_ext")
+ext = bp.import_ext("iotbx_pdb_ext")
 from iotbx_pdb_ext import *
 
 import iotbx.pdb.records
@@ -43,8 +43,11 @@ def construct_special_position_settings(
     u_star_tolerance=u_star_tolerance)
 
 def is_pdb_file(file_name):
-  pdb_raw_records = smart_open.for_reading(
-    file_name = file_name).read().splitlines()
+  for known_binary_extension in ['mtz', 'ccp4', 'mrc', 'pickle', 'pkl']:
+    if file_name.endswith(known_binary_extension):
+      return False
+  with smart_open.for_reading(file_name=file_name) as f:
+    pdb_raw_records = f.read().splitlines()
   for pdb_str in pdb_raw_records:
     if (pdb_str.startswith("CRYST1")):
       try: cryst1 = iotbx.pdb.records.cryst1(pdb_str=pdb_str)
@@ -569,9 +572,8 @@ class combine_unique_pdb_files(object):
         self.file_name_registry[file_name] += 1
       else:
         self.file_name_registry[file_name] = 1
-        r = [s.expandtabs().rstrip()
-          for s in smart_open.for_reading(
-            file_name=file_name).read().splitlines()]
+        with smart_open.for_reading(file_name=file_name) as f:
+          r = [s.expandtabs().rstrip() for s in f.read().splitlines()]
         m = hashlib_md5()
         m.update(to_bytes("\n".join(r), codec='utf8'))
         m = m.hexdigest()
@@ -707,6 +709,16 @@ class pdb_input_from_any(object):
                   and n_unknown_records > 0))
             and n_records>0):
           continue
+        # Additional check that solves 2of6:
+        # if the first non-comment non-empty line contains data_ this is mmCIF
+        if lines is not None and len(lines)>0:
+          len_lines = len(lines)
+          i = 0
+          while i < len_lines and (
+            lines[i].strip().startswith('#') or len(lines[i].strip()) == 0):
+            i += 1
+          if i < len_lines and lines[i][:5].strip() == 'data_':
+            continue
         self.file_format = "pdb"
       else :
         self.file_format = "cif"
@@ -731,9 +743,11 @@ def pdb_input(
     file_name = ent_path_local_mirror(pdb_id=pdb_id)
   if (file_name is not None):
     try :
+      with smart_open.for_reading(file_name, gzip_mode='rt') as f:
+        lines = f.read()
       return ext.input(
         source_info="file " + str(file_name), # XXX unicode hack - dangerous
-        lines=flex.split_lines(smart_open.for_reading(file_name).read()))
+        lines=flex.split_lines(lines))
     except ValueError as e :
       if (raise_sorry_if_format_error):
         raise Sorry("Format error in %s:\n%s" % (str(file_name), str(e)))
@@ -935,10 +949,11 @@ class pdb_input_mixin(object):
     if (crystal_symmetry is not None or cryst1_z is not None):
       if (open_append): mode = "a"
       else:             mode = "w"
-      print(format_cryst1_and_scale_records(
-        crystal_symmetry=crystal_symmetry,
-        cryst1_z=cryst1_z,
-        write_scale_records=write_scale_records), file=open(file_name, mode))
+      with open(file_name, mode) as f:
+        print(format_cryst1_and_scale_records(
+          crystal_symmetry=crystal_symmetry,
+          cryst1_z=cryst1_z,
+          write_scale_records=write_scale_records), file=f)
       open_append = True
     self._write_pdb_file(
       file_name=file_name,
@@ -1071,8 +1086,8 @@ class pdb_input_mixin(object):
       raise Sorry(str(e))
     return result
 
-boost.python.inject(ext.input, pdb_input_mixin)
-@boost.python.inject_into(ext.input)
+bp.inject(ext.input, pdb_input_mixin)
+@bp.inject_into(ext.input)
 class _():
 
   """
@@ -1251,17 +1266,15 @@ class _():
           "Improper set of PDB SCALE records%s" % source_info)
     return self._scale_matrix
 
-  def process_BIOMT_records(self,error_handle=True,eps=1e-4):
+  def process_BIOMT_records(self):
     import iotbx.mtrix_biomt
-    return iotbx.mtrix_biomt.process_BIOMT_records(
-      lines = self.extract_remark_iii_records(350),
-      eps=eps)
+    return iotbx.mtrix_biomt.process_BIOMT_records_pdb(
+      lines = self.extract_remark_iii_records(350))
 
-  def process_MTRIX_records(self, eps=1e-4):
+  def process_MTRIX_records(self):
     import iotbx.mtrix_biomt
-    return iotbx.mtrix_biomt.process_MTRIX_records(
-      lines=self.crystallographic_section(),
-      eps=eps)
+    return iotbx.mtrix_biomt.process_MTRIX_records_pdb(
+      lines=self.crystallographic_section())
 
   def get_r_rfree_sigma(self, file_name=None):
     from iotbx.pdb import extract_rfactors_resolutions_sigma
@@ -1449,7 +1462,8 @@ class rewrite_normalized(object):
         keep_original_atom_serial=False):
     self.input = input(file_name=input_file_name)
     if (keep_original_crystallographic_section):
-      print("\n".join(self.input.crystallographic_section()), file=open(output_file_name, "w"))
+      with open(output_file_name, "w") as f:
+        print("\n".join(self.input.crystallographic_section()), file=f)
       crystal_symmetry = None
     else:
       crystal_symmetry = self.input.crystal_symmetry()
@@ -1866,7 +1880,7 @@ def get_file_summary(pdb_in, hierarchy=None):
     ("Number of atoms", counts.n_atoms),
     ("Number of chains", counts.n_chains),
     ("Chain IDs", ", ".join(chain_ids)),
-    ("Alternate conformations", counts.n_alt_conf_pure),
+    ("Alternate conformations", counts.n_alt_conf),
   ]
   if (counts.n_models > 1):
     info_list.insert(0, ("Number of models", counts.n_models))

@@ -6,6 +6,7 @@ from libtbx.program_template import ProgramTemplate
 from mmtbx.validation import rama_z
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.ramalyze import res_type_labels
+from cctbx.maptbx.box import shift_and_box_model
 
 from libtbx.utils import Sorry, null_out
 from libtbx import Auto
@@ -23,6 +24,7 @@ Usage examples:
   '''
 
   datatypes = ['model', 'phil']
+  data_manager_options = ['model_skip_expand_with_mtrix']
 
   master_phil_str = """\
   write_HSL_models = False
@@ -88,6 +90,9 @@ Usage examples:
         log = self.logger)
     if len(models) == 1:
       model = models[0]
+      cs = model.crystal_symmetry()
+      if (cs is None) or (cs.unit_cell() is None):
+        model = shift_and_box_model(model)
       self._write_plots_if_needed(model, label='whole', type_of_plot='whole')
       helix_sel, sheet_sel, loop_sel = self.rama_z.get_ss_selections()
       if model.get_hierarchy().models_size() != 1:

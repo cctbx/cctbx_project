@@ -8,13 +8,18 @@ from mmtbx.regression.model import tst_model_cart_ref_restraints
 
 
 def exercise_adopting_ref_tors_restraints_h():
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.flip_symmetric_amino_acids=False
   inp_1 = iotbx.pdb.input(lines=tst_model_cart_ref_restraints.pdb_str_h, source_info=None)
-  h_model = mmtbx.model.manager(model_input = inp_1)
+  h_model = mmtbx.model.manager(model_input = inp_1,
+                                pdb_interpretation_params=params, build_grm=True)
 
   inp_2 = iotbx.pdb.input(lines=tst_model_cart_ref_restraints.pdb_str, source_info=None)
-  model = mmtbx.model.manager(model_input = inp_2)
+  model = mmtbx.model.manager(model_input = inp_2,
+                              pdb_interpretation_params=params, build_grm=True)
 
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.flip_symmetric_amino_acids=False
   params.reference_model.enabled=True
   params.reference_model.sigma = 2
 
@@ -62,8 +67,8 @@ def exercise_adopting_ref_tors_restraints_h():
   ]
 
   for i, dp in enumerate(reference_dihedral_proxies):
-    # print dir(dp)
-    # print dp.i_seqs, dp.angle_ideal
+    # print(dir(dp))
+    # print(dp.i_seqs, dp.angle_ideal, answer[i][1])
     assert dp.i_seqs == answer[i][0]
     assert approx_equal(dp.angle_ideal, answer[i][1])
     assert approx_equal(dp.weight, 0.25)

@@ -104,7 +104,7 @@ def run(args):
     packages_to_configure = sorted(packages_to_configure)
     print("Configuring package[s] %s..." % ", ".join(packages_to_configure))
     os.chdir(abs(libtbx.env.build_path))
-    result = procrunner.run_process(['libtbx.configure'] + packages_to_configure,
+    result = procrunner.run(['libtbx.configure'] + packages_to_configure,
                                     print_stdout=False, print_stderr=False)
     if result['exitcode']:
       errors = True
@@ -114,7 +114,7 @@ def run(args):
             "once underlying problem solved, then 'make'"
             % " ".join(packages_to_configure))
     else:
-      result = procrunner.run_process(['make'])
+      result = procrunner.run(['make'])
       if result['exitcode']:
         errors = True
   if errors:
@@ -129,7 +129,7 @@ def install_git(**kwargs):
       print("using reference repository...", end="")
       sys.stdout.flush()
   try:
-    result = procrunner.run_process(['git', 'clone', '--recursive', kwargs['source'], kwargs['location']] + reference,
+    result = procrunner.run(['git', 'clone', '--recursive', kwargs['source'], kwargs['location']] + reference,
                                     print_stdout=False)
     if result['exitcode']:
       if os.path.exists(kwargs['location']) and not os.listdir(kwargs['location']):
@@ -139,7 +139,7 @@ def install_git(**kwargs):
     if reference:
       oldcwd = os.getcwd()
       os.chdir(kwargs['location'])
-      result = procrunner.run_process(['git', 'repack', '-a', '-d'], print_stderr=True)
+      result = procrunner.run(['git', 'repack', '-a', '-d'], print_stderr=True)
       os.chdir(oldcwd)
       assert result['exitcode'] == 0, "Repack operation failed. Delete repository and try again."
       os.remove(os.path.join(kwargs['location'], '.git', 'objects', 'info', 'alternates'))
@@ -196,7 +196,7 @@ def install_pip(**kwargs):
   git_installation = install_git(**kwargs)
   if not git_installation:
     return False
-  result = procrunner.run_process(['libtbx.pip', 'install', '-e', kwargs['location']], print_stderr=True)
+  result = procrunner.run(['libtbx.pip', 'install', '-e', kwargs['location']], print_stderr=True)
   if result['exitcode']:
     return False
   return True
@@ -217,12 +217,12 @@ warehouse = {
     'http-zip': { 'url': 'https://github.com/dials/dials_scratch/archive/master.zip', 'trim': 1 },
   },
   'dlstbx': {
-    'git-auth': 'git@gitlab.diamond.ac.uk:scisoft/mx/dlstbx.git',
+    'git-auth': 'git@github.com:/DiamondLightSource/python-dlstbx.git',
   },
   'dxtbx': {
     'git-auth': 'git@github.com:cctbx/dxtbx',
     'git-anon': 'https://github.com/cctbx/dxtbx.git',
-    'http-zip': { 'url': 'https://github.com/cctbx/dxtbx/archive/master.zip', 'trim': 1 },
+    'http-zip': { 'url': 'https://github.com/cctbx/dxtbx/archive/main.zip', 'trim': 1 },
   },
   'fast_dp': {
     'pip-auth': 'git@github.com:/DiamondLightSource/fast_dp',

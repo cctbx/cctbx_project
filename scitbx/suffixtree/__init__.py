@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from functools import reduce
 from six.moves import range
-ext = boost.python.import_ext( "scitbx_suffixtree_shared_ext" )
+ext = bp.import_ext( "scitbx_suffixtree_shared_ext" )
 from scitbx_suffixtree_shared_ext import *
 
 def dump(root, word):

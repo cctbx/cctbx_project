@@ -32,7 +32,7 @@ class MainWindow(wx.Frame):
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
     # Setup toolbar
-    self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS | wx.TB_TEXT)
+    self.toolbar = self.CreateToolBar(style=wx.TB_TEXT)
     quit_bmp = bitmaps.fetch_icon_bitmap('actions', 'exit')
     self.tb_btn_quit = self.toolbar.AddLabelTool(wx.ID_EXIT, label='Quit',
                                                  bitmap=quit_bmp,

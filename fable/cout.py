@@ -280,7 +280,9 @@ class major_types_cache(object):
       hpp = libtbx.env.under_dist(
         module_name="fable", path="fem/major_types.hpp", test=os.path.isfile)
       using_fem = "  using fem::"
-      for line in open(hpp).read().splitlines():
+      with open(hpp) as f:
+        lines = f.read().splitlines()
+      for line in lines:
         if (line.startswith(using_fem)):
           assert line.endswith(";")
           O.identifiers.add(line[len(using_fem):-1])
@@ -2545,21 +2547,7 @@ def generate_common_report(
     for common_name,sizes in common_fdecl_list_sizes.items():
       size_sums[common_name] = sum(sizes)
 
-    # vv_cmp incompatible with Py3. Create vv_key workaround, revisit later with comprehensive example.
-    #def vv_cmp(a, b):
-    #  result = cmp(size_sums[b], size_sums[a])
-    #  if (result == 0): result = cmp(a, b)
-    #  return result
-    #vv.sort(vv_cmp)
-
-    from past.builtins import cmp
-    from functools import cmp_to_key
-    def vv_cmp(a, b):
-      result = cmp(size_sums[b], size_sums[a])
-      if (result == 0): result = cmp(a, b)
-      return result
-
-    vv.sort(key=cmp_to_key(vv_cmp))
+    vv.sort(key=lambda element: (-size_sums[element], element))
     print("  %-20s   procedures    sum of members" % "common name", file=report)
     for common_name in vv:
       print("  %-20s   %8d         %8d" % (
@@ -3049,7 +3037,8 @@ def process(
     common_commons_info = None
   if (separate_cmn_hpp):
     close_namespace(callback=cmn_callback, namespace=namespace, hpp_guard=True)
-    print("\n".join(break_lines(cpp_text=cmn_buffer)), file=open("cmn.hpp", "w"))
+    with open("cmn.hpp", "w") as f:
+      print("\n".join(break_lines(cpp_text=cmn_buffer)), file=f)
   #
   separate_function_buffers = []
   separate_function_buffer_by_function_name = {}
@@ -3180,8 +3169,8 @@ def process(
       callback=buffer.append, namespace=namespace, hpp_guard=False)
     if (write_separate_files_main_namespace == "All"
           or name in write_separate_files_main_namespace):
-      print("\n".join(
-        break_lines(cpp_text=buffer)), file=open(name+".cpp", "w"))
+      with open(name+".cpp", "w") as f:
+        print("\n".join(break_lines(cpp_text=buffer)), file=f)
   #
   for name,identifiers in separate_files_separate_namespace.items():
     buffers = separate_namespaces_buffers[identifiers[0]]
@@ -3191,8 +3180,8 @@ def process(
         callback=buffer.append, namespace=name, hpp_guard=(ext=="hpp"))
       if (write_separate_files_separate_namespace == "All"
             or name in write_separate_files_separate_namespace):
-        print("\n".join(
-          break_lines(cpp_text=buffer)), file=open(name+"."+ext, "w"))
+        with open(name+"."+ext, "w") as f:
+          print("\n".join(break_lines(cpp_text=buffer)), file=f)
   #
   if (function_declarations is not None):
     def write_functions(buffers, serial=None):
@@ -3221,6 +3210,7 @@ def process(
         callback=fcb,
         namespace=namespace,
         hpp_guard=(buffers is function_declarations))
+      f.close()
     write_functions(function_declarations)
     if (function_definitions is not None and len(function_definitions) != 0):
       buffer_blocks = create_buffer_blocks(
@@ -3251,6 +3241,7 @@ def process(
       show_traceback()
   #
   if (top_cpp_file_name is not None):
-    print("\n".join(result), file=open(top_cpp_file_name, "w"))
+    with open(top_cpp_file_name, "w") as f:
+      print("\n".join(result), file=f)
   #
   return result

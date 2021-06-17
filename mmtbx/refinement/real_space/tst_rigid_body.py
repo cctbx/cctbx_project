@@ -83,8 +83,7 @@ def exercise(d_min = 2.0, resolution_factor = 0.1):
     max_iterations = 250)
   flags = cctbx.geometry_restraints.flags.flags(reference_coordinate=True, default=True)
   states_collector = mmtbx.utils.states(
-    pdb_hierarchy  = pdb_hierarchy,
-    xray_structure = xrs_poor)
+    pdb_hierarchy  = pdb_hierarchy)
   states_collector.add(sites_cart = residue_poor.atoms().extract_xyz())
   for i in [1,2]:
     minimized = mmtbx.refinement.real_space.rigid_body.refine(

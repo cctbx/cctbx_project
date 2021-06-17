@@ -226,8 +226,8 @@ refinement.geometry_restraints.edits {
   cmd = "phenix.pdb_interpretation \"%s\" \"%s\" write_geo_files=True" %(
     pdb_file.name, edits_file.name)
   result = easy_run.fully_buffered(cmd).raise_if_errors()
-  geo_file = open(pdb_file.name+'.geo', "rb")
-  # geo_file = open(pdb_file.name.replace(".pdb", '_minimized.geo'), "rb")
+  geo_file = open(pdb_file.name+'.geo', "r")
+  # geo_file = open(pdb_file.name.replace(".pdb", '_minimized.geo'), "r")
   geo_file_str = geo_file.read()
   assert '''User supplied angle restraints: 1
 Sorted by residual:
@@ -257,7 +257,7 @@ geometry_restraints.edits {
   working_phil = def_params.fetch(edits_phil)
   params = working_phil.extract()
   inp = iotbx.pdb.input(lines=raw_records2, source_info=None)
-  model = mmtbx.model.manager(model_input = inp)
+  model = mmtbx.model.manager(model_input = inp, build_grm=True)
   grm = model.get_restraints_manager().geometry
   assert grm.dihedral_proxies.size() == 9
   dih1 = grm.dihedral_proxies.proxy_select(
@@ -274,7 +274,8 @@ geometry_restraints.edits {
   assert approx_equal(dp1.weight, 0.04)
 
   # Now with modifications
-  model2 = mmtbx.model.manager(model_input = inp,
+  inp = iotbx.pdb.input(lines=raw_records2, source_info=None)
+  model2 = mmtbx.model.manager(model_input = inp, build_grm=True,
       pdb_interpretation_params=params)
   grm2 = model2.get_restraints_manager().geometry
   assert grm2.dihedral_proxies.size() == 9

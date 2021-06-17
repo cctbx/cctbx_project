@@ -21,6 +21,17 @@ __pycache__/
 git-notifier.log
 .gitversion
 
+# Ignores examples from cctbx website
+cctbx_website/examples
+
+# Ignore cctbx version files
+cctbx_version*
+setup.py
+
+# Ignore .yml files created by conda-devenv
+cctbx.yml
+cctbxlite.yml
+
 # Ignores copied over from subversion:
 cctbx/dev
 cctbx/doc

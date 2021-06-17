@@ -54,7 +54,8 @@ class TestMPGeo(unittest.TestCase):
     self.file_to_delete = ['try.geo']
     # import files used in tests
     self.file_name = 'symmetry_SS.pdb'
-    open(self.file_name,'w').write(test_pdb_str)
+    with open(self.file_name,'w')as f:
+      f.write(test_pdb_str)
     self.file_to_delete.append(self.file_name)
 
   def test_mpgeo(self):

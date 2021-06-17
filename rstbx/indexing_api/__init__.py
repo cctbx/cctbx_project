@@ -1,15 +1,15 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
-import boost.python
+import boost_adaptbx.boost.python as bp
 import rstbx.dps_core # import dependency
-boost.python.import_ext("rstbx_indexing_api_ext")
+bp.import_ext("rstbx_indexing_api_ext")
 from rstbx_indexing_api_ext import *
 import rstbx_indexing_api_ext as ext
 from rstbx.array_family import flex
 from scitbx.matrix import col
 from rstbx_ext import * # gets us SpotClass
 
-@boost.python.inject_into(ext.dps_extended)
+@bp.inject_into(ext.dps_extended)
 class _():
 
   def set_beam_vector(self,beam):

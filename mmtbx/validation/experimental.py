@@ -1,4 +1,6 @@
 
+# NOT USED ANYWHERE. STILL EXISTS FOR BACKWARDS COMPATIBILITY. PLEASE REMOVE ONCE READY!
+
 """
 Model validation against experimental data, in both real and reciprocal space.
 This does not actually handle any of the scaling and fmodel calculations,
@@ -193,17 +195,18 @@ class real_space(validation):
       # use mmtbx/command_line/map_model_cc.py for maps
       self.fsc = None
       if (use_maps):
-        from iotbx import map_and_model
+        from iotbx.map_model_manager import map_model_manager
         from mmtbx.maps import map_model_cc
-        from mmtbx.command_line.map_model_cc import get_fsc
+        #  XXX no longer exists from mmtbx.maps.import get_fsc
+        from mmtbx.maps.mtriage import get_fsc  # XXX replaced above
         from iotbx.file_reader import any_file
         params = map_model_cc.master_params().extract()
         params.map_model_cc.resolution = molprobity_map_params.d_min
         map_object = any_file(molprobity_map_params.map_file_name).file_object
 
         # check that model crystal symmetry matches map crystal symmetry
-        mmi = map_and_model.input(
-          map_data = map_object.map_data(),
+        mmi = map_model_manager(
+          map_manager    = map_object,
           model = model)
 
         rsc_object = map_model_cc.map_model_cc(
@@ -262,9 +265,9 @@ class real_space(validation):
         # the real-space correlation, since these are used as the basis for
         # the multi-criterion plot in Phenix.  The show() method will only
         # print outliers, however.
-        if (result_.residue.resname != 'HOH'): # water is handled by waters.py
+        if (result.resname != 'HOH'): # water is handled by waters.py
           self.everything.append(result)
-          if result_.residue.resname in one_letter_given_three_letter:
+          if result.resname in one_letter_given_three_letter:
             self.protein.append(result)
           else:
             self.other.append(result)

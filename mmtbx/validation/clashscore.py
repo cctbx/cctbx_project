@@ -6,6 +6,7 @@ All-atom contact analysis.  Requires Reduce and Probe (installed separately).
 from __future__ import absolute_import, division, print_function
 from mmtbx.validation import validation, atoms, atom_info, residue
 from mmtbx.utils import run_reduce_with_timeout
+from libtbx.math_utils import cmp
 from libtbx.utils import Sorry
 from libtbx import easy_run
 import libtbx.load_env
@@ -13,7 +14,6 @@ import iotbx.pdb
 import os
 import re
 import sys
-from past.builtins import cmp
 import six
 
 class clash(atoms):
@@ -49,6 +49,24 @@ class clash(atoms):
 
   def __cmp__(self, other) : # sort in descending order
     return cmp(self.overlap, other.overlap)
+
+  def __eq__(self, other):
+    return self.overlap == other.overlap
+
+  def __ne__(self, other):
+    return self.overlap != other.overlap
+
+  def __lt__(self, other):
+    return self.overlap < other.overlap
+
+  def __le__(self, other):
+    return self.overlap <= other.overlap
+
+  def __gt__ (self, other):
+    return self.overlap > other.overlap
+
+  def __ge__(self, other):
+    return self.overlap >= other.overlap
 
 class clashscore(validation):
   __slots__ = validation.__slots__ + [
@@ -220,7 +238,7 @@ class probe_line_info(object): # this is parent
     assert self.overlap_value is not None
     atom1 = decode_atom_string(self.srcAtom,  use_segids)
     atom2 = decode_atom_string(self.targAtom, use_segids)
-    if (cmp(self.srcAtom, self.targAtom) < 0):
+    if (self.srcAtom < self.targAtom):
       atoms = [ atom1, atom2 ]
     else:
       atoms = [ atom2, atom1 ]
@@ -337,7 +355,7 @@ class probe_clashscore_manager(object):
 
   def put_group_into_dict(self, line_info, clash_hash, hbond_hash):
     key = line_info.targAtom+line_info.srcAtom
-    if (cmp(line_info.srcAtom,line_info.targAtom) < 0):
+    if (line_info.srcAtom < line_info.targAtom):
       key = line_info.srcAtom+line_info.targAtom
     if self.condensed_probe:
       if (line_info.type == "bo"):

@@ -8,12 +8,10 @@ from cctbx.adp_restraints import adp_restraint_params
 import scitbx
 from scitbx import matrix
 import libtbx.load_env
-import math, os, sys
+import math, os
 from six.moves import cStringIO as StringIO
 import cctbx.xray
 from libtbx.test_utils import approx_equal
-from six.moves import range
-from six.moves import zip
 
 def finite_difference_gradients(restraint_type,
                                 proxy,
@@ -153,7 +151,8 @@ def exercise_rigid_bond_test():
   if (ins_file is None):
     print("Skipping exercise_rigid_bond_test(): input file not available")
     return
-  ins_xray_structure = cctbx.xray.structure.from_shelx(file=open(ins_file))
+  with open(ins_file) as f:
+    ins_xray_structure = cctbx.xray.structure.from_shelx(file=f)
   sites_frac = ins_xray_structure.sites_frac()
   sites_cart = ins_xray_structure.sites_cart()
   ustars = ins_xray_structure.scatterers().extract_u_star()
@@ -417,12 +416,6 @@ def exercise_isotropic_adp():
     assert approx_equal(a.residual(), expected_residual)
 
 def exercise_proxy_show():
-  if sys.platform.startswith("win") and sys.version_info[:2] < (2,6):
-    # This appears to be a windows-specific bug with string formatting
-    # for python versions prior to 2.6, where the exponent is printed
-    # with 3 digits rather than 2.
-    print("Skipping exercise_proxy_show()")
-    return
   sites_cart = flex.vec3_double((
     (-3.1739,10.8317,7.5653),(-2.5419,9.7567,6.6306),
     (-3.3369,8.8794,4.5191),(-3.4640,9.9882,5.3896)))

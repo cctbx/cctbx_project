@@ -16,7 +16,7 @@ import iotbx.pdb
 import iotbx.cif.model
 import iotbx.ncs
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
-from iotbx.pdb.atom_selection import AtomSelectionError
+# from iotbx.pdb.atom_selection import AtomSelectionError
 from iotbx.pdb.misc_records_output import link_record_output
 from iotbx.cif import category_sort_function
 
@@ -53,27 +53,33 @@ from iotbx.bioinformatics import sequence
 from mmtbx.validation.sequence import master_phil as sequence_master_phil
 from mmtbx.validation.sequence import validation as sequence_validation
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 import six
 from six.moves import zip
 from six.moves import range
 
-ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+ext = bp.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx.rotamer.rotamer_eval import RotamerID
 
 from mmtbx.geometry_restraints import ramachandran
 
-ext2 = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
+ext2 = bp.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
 
 from six.moves import cStringIO as StringIO
 from copy import deepcopy
+import re
 import sys
 import math
 
+from mmtbx.monomer_library import pdb_interpretation
+
 time_model_show = 0.0
+
+# Utilties for conversion of models to objects that can be pickled
+# Not yet fully functional
 
 def find_common_water_resseq_max(pdb_hierarchy):
   get_class = iotbx.pdb.common_residue_names_get_class
@@ -177,61 +183,59 @@ class manager(object):
 
   def __init__(self,
       model_input,
-      pdb_hierarchy = None,  # To create model from hierarchy. Makes sence only in model-building when hierarchy created from nothing
-      crystal_symmetry = None,
-      restraint_objects = None, # ligand restraints in cif format
-      monomer_parameters = None, # mmtbx.utils.cif_params scope # temporarily for phenix.refine
+      pdb_hierarchy             = None,
+      crystal_symmetry          = None,
+      restraint_objects         = None,
+      monomer_parameters        = None, # mmtbx.utils.cif_params scope # temporarily for phenix.refine
       pdb_interpretation_params = None,
-      process_input = False, # obtain processed_pdb_file straight away
-      build_grm = False,  # build GRM straight away, without waiting for get_restraints_manager() call
-      stop_for_unknowns = True,
-      log = None,
-      expand_with_mtrix = True,
-      # for GRM, selections etc. Do not use when creating an object.
-                     xray_structure = None, # remove later
-                     restraints_manager = None, # remove later
-                     tls_groups = None,         # remove later? ! used in def select()
-                     ):
-
-    self._xray_structure = xray_structure
+      process_input             = False,
+      build_grm                 = False,
+      stop_for_unknowns         = True,
+      log                       = None,
+      expand_with_mtrix         = True):
+    # Assert basic assumptions
+    if(model_input is not None): assert pdb_hierarchy is None
+    if(pdb_hierarchy is not None):
+      assert model_input is None
+      assert crystal_symmetry is not None
+    # Internals
+    self._processed         = False
+    self._xray_structure    = None
+    self.tls_groups         = None
+    self.restraints_manager = None
     self._pdb_hierarchy = pdb_hierarchy
     self._model_input = model_input
     self._restraint_objects = restraint_objects
     self._monomer_parameters = monomer_parameters
     self._pdb_interpretation_params = None
     self.set_pdb_interpretation_params(pdb_interpretation_params)
-    # Important! if shift_manager is not None, model_input - in original coords,
-    # self.get_hierarchy(), self.get_xray_structure, self.get_sites_cart - in shifted coords.
-    # self.crystal_symmetry() - shifted (boxed) one
-    # If shift_manager is None - everything is consistent.
-    self._shift_manager = None # mmtbx.utils.extract_box_around_model_and_map
-
+    self._shift_cart = None # shift of this model since original location
+    self._unit_cell_crystal_symmetry = None # original crystal symmetry
     self._stop_for_unknowns = stop_for_unknowns
     self._processed_pdb_file = None
-    self._processed_pdb_files_srv = None
     self._crystal_symmetry = crystal_symmetry
-
-    self.restraints_manager = restraints_manager
     self.refinement_flags = None
-    # IAS related, need some cleaning!
-    self.ias_manager = None
-    self.use_ias = False    # remove later, use presence of ias_manager
-                          # somewhat challenging because of ias.build_only parameter in phenix.refine
-    self.tls_groups = tls_groups         # remove later? No action performed on them here
+    self.ias_manager = None # XXX MOVE IAS STUFF OUTSIDE COMPLETELY! XXX
+    self.use_ias = False    # XXX MOVE IAS STUFF OUTSIDE COMPLETELY! XXX
     self._ncs_groups = None
     self._anomalous_scatterer_groups = []
     self.log = log
+    self._model_number = None
+    self._info= group_args() # holds any info desired
     self.exchangable_hd_groups = []
     self.original_xh_lengths = None
     self.riding_h_manager = None
-    self.header_tls_groups = None
-    # for reprocessing. Probably select() will also use...
+    # Used for reprocessing (that needs to go). Only used in this file.
+    # XXX REMOVE WHEN POSSIBLE! XXX
     self.scattering_dict_info = None
-
+    # Extract SS info
     self._ss_annotation = None
+    if(self._model_input is not None):
+      self._ss_annotation = self._model_input.extract_secondary_structure()
+
+
     self.link_records_in_pdb_format = None # Nigel's stuff up to refactoring
-    self.all_chain_proxies = None # probably will keep it. Need to investigate
-          # 'smart' selections provided by it. If they useless, remove.
+    self._all_monomer_mappings = None
 
     # These are new
     self.xray_scattering_dict = None    # 2020: leave only one: self._scattering_dict
@@ -249,76 +253,102 @@ class manager(object):
     self._original_model_format = None
     self._ss_manager = None
     self._site_symmetry_table = None
-
-    # sequence data objects
+    self._clash_guard_msg = None
     self._sequence_validation = None
-
-    # here we start to extract and fill appropriate field one by one
-    # depending on what's available.
+    # This is used to setup torsion restraints only. XXX CAN THIS BE DELETED? XXX
+    self._ter_indices = None
+    if(self._model_input is not None):
+      self._ter_indices = self._model_input.ter_indices()
+    # First attempt to set crystal symmetry
+    if(self._model_input is not None):
+      if(self._crystal_symmetry is None):
+        inp_cs = self._model_input.crystal_symmetry()
+        if(inp_cs and not inp_cs.is_empty() and not inp_cs.is_nonsense()):
+          self._crystal_symmetry = inp_cs
+    # Keep track of the source of model
     if self._model_input is not None:
       s = str(type(model_input))
       if s.find("cif") > 0:
         self._original_model_format = "mmcif"
       elif s.find("pdb") > 0:
         self._original_model_format = "pdb"
-      # input xray_structure most likely don't have proper crystal symmetry
-      if self.crystal_symmetry() is None:
-        inp_cs = self._model_input.crystal_symmetry()
-        if inp_cs and not inp_cs.is_empty() and not inp_cs.is_nonsense():
-          self._crystal_symmetry = inp_cs
-      if expand_with_mtrix:
-        self.expand_with_MTRIX_records()
-
+    # Handle MTRIX. This will create MTRIX expanded pdb_hierarchy, if possible.
+    self.mtrix_operators = None
+    if(self._model_input is not None):
+      self.mtrix_operators = self._model_input.process_MTRIX_records()
+    self._mtrix_expanded = False
+    if(expand_with_mtrix):
+      self.expand_with_MTRIX_records()
+    # Handle BIOMT. Keep track of BIOMT matrices (to allow to expand later)
+    self.biomt_operators = None
+    if(self._model_input is not None):
+      try: # ugly work-around for limited support of BIOMT
+        self.biomt_operators = self._model_input.process_BIOMT_records()
+      except RuntimeError: pass
+    self._biomt_expanded = False
+    # Process model_input and optionally make restraints. This will set
+    # self._pdb_hierarchy, self._xray_structure, self._crystal_symmetry and more
     if process_input or build_grm:
-      assert self._processed_pdb_file is None
-      assert self.all_chain_proxies is None
-      self._process_input_model()
-
-    # do pdb_hierarchy
-    if self._pdb_hierarchy is None: # got nothing in parameters
-      if self._processed_pdb_file is not None:
-        self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
-        self._pdb_hierarchy = self.all_chain_proxies.pdb_hierarchy
-      elif self._model_input is not None:
-        # self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy()
+      self.process_input_model(make_restraints = build_grm)
+    # If self._pdb_hierarchy is still not set by now, try to do it
+    if(self._pdb_hierarchy is None):
+      if self._model_input is not None:
         self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy(
             self._pdb_interpretation_params.pdb_interpretation.sort_atoms)
+        # Perform the flipping of symmertric amino acids - swaps the coordinates
+        if(self._pdb_interpretation_params.pdb_interpretation.flip_symmetric_amino_acids):
+          self._pdb_hierarchy.flip_symmetric_amino_acids()
+
+
     # Move this away from constructor
     self._update_atom_selection_cache()
-    self._update_pdb_atoms()
+    self.get_hierarchy().atoms().reset_i_seq()
 
-    if not self.all_chain_proxies and self._processed_pdb_file:
-      self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
-
-    # do GRM
-    if self.restraints_manager is None and build_grm:
-      self.setup_restraints_manager()
-
-    # do xray_structure
-
-    # if self._xray_structure is None:
-    #   self._create_xray_structure()
-    if self._xray_structure is not None:
-      if self.crystal_symmetry() is None:
-        self._crystal_symmetry = self._xray_structure.crystal_symmetry()
-
-    if self._xray_structure is not None:
-      assert self._xray_structure.scatterers().size() == self._pdb_hierarchy.atoms_size()
 
   @classmethod
   def from_sites_cart(cls,
       sites_cart,
-      atom_name=' CA ',
+      atom_name = None,
+      atom_name_list = None,
+      scatterer = None,
+      scatterer_list = None,
       resname='GLY',
+      resname_list = None,
       chain_id='A',
       b_iso=30.,
       b_iso_list=None,
       occ=1.,
       count=0,
       occ_list=None,
-      scatterer='C',
+      resseq_list = None,
       crystal_symmetry=None):
+
+    '''
+     Convenience function to create a model from a list of cartesian coordinates
+     Default is to use atom name CA, scatterer C, occ 1, b_iso 30, resname GLY,
+       residue numbers starting with 1
+     Can supply:
+       atom_name and scatterer or atom_name_list and scatterer_list
+       occ or occ_list
+       b_iso or b_iso_list
+       resname or resname_list
+       resseq_list
+    '''
+
     assert sites_cart is not None
+    if atom_name is None and atom_name_list is None:
+      atom_name = ' CA '
+      scatterer = 'C'
+      scatterer_list = None
+    elif atom_name:
+      if scatterer is None and scatterer_list is None:
+        if atom_name.strip().upper()=='CA':
+          scatterer = 'C'
+        else:
+         assert scatterer is not None # need scatterer if atom_name is not CA
+    elif atom_name_list:
+      assert scatterer_list is not None
+
     hierarchy = iotbx.pdb.hierarchy.root()
     m = iotbx.pdb.hierarchy.model()
     c = iotbx.pdb.hierarchy.chain()
@@ -329,23 +359,41 @@ class manager(object):
       b_iso_list=sites_cart.size()*[b_iso]
     if not occ_list:
       occ_list=sites_cart.size()*[occ]
+    if not atom_name_list:
+      atom_name_list = sites_cart.size()*[atom_name]
+    if not resname_list:
+      resname_list = sites_cart.size()*[resname]
+    if not scatterer_list:
+      scatterer_list = sites_cart.size()*[scatterer]
+
     assert len(occ_list) == len(b_iso_list) == sites_cart.size()
-    for sc, b_iso, occ in zip(sites_cart,b_iso_list,occ_list):
+    if not resseq_list:
+       resseq_list = []
+       for i in range(1,sites_cart.size()+1):
+         resseq_list.append(iotbx.pdb.resseq_encode(i))
+
+    last_resseq=None
+    for sc, b_iso, occ, name, resseq, scatterer, resname in zip(
+        sites_cart,b_iso_list,occ_list,atom_name_list, resseq_list,
+        scatterer_list, resname_list):
       count+=1
-      rg=iotbx.pdb.hierarchy.residue_group()
-      c.append_residue_group(rg)
+      if last_resseq is None or resseq != last_resseq:
+        rg=iotbx.pdb.hierarchy.residue_group()
+        c.append_residue_group(rg)
       ag=iotbx.pdb.hierarchy.atom_group()
       rg.append_atom_group(ag)
       a=iotbx.pdb.hierarchy.atom()
       ag.append_atom(a)
-      rg.resseq = iotbx.pdb.resseq_encode(count)
+      rg.resseq = resseq
       ag.resname=resname
       a.set_b(b_iso)
       a.set_element(scatterer)
       a.set_occ(occ)
-      a.set_name(atom_name)
+      a.set_name(name)
       a.set_xyz(sc)
       a.set_serial(count)
+      last_resseq = resseq
+
     return cls(model_input = None, pdb_hierarchy=hierarchy,
        crystal_symmetry=crystal_symmetry)
 
@@ -377,23 +425,156 @@ class manager(object):
     """
     return self._pdb_interpretation_params
 
+  def get_xray_structure(self):
+    if(self._xray_structure is None):
+      cs = self.crystal_symmetry()
+      assert cs is not None
+      assert cs.unit_cell() is not None
+      assert cs.space_group() is not None
+      self._xray_structure = self.get_hierarchy().extract_xray_structure(
+        crystal_symmetry = cs)
+    return self._xray_structure
+
+  def set_sites_cart(self, sites_cart, selection=None):
+    if(sites_cart is None): return
+    assert isinstance(sites_cart, flex.vec3_double)
+    if(selection is not None):
+      sites_cart_ = self.get_hierarchy().atoms().extract_xyz()
+      sites_cart_ = sites_cart_.set_selected(selection, sites_cart)
+    else:
+      sites_cart_ = sites_cart
+    self.get_hierarchy().atoms().set_xyz(sites_cart_)
+    if(self._xray_structure is not None):
+      self._xray_structure.set_sites_cart(sites_cart_)
+
+  def set_b_iso(self, values, selection=None):
+    if(values is None): return
+    if(selection is not None):
+      b_iso = self.get_hierarchy().atoms().extract_b()
+      b_iso = b_iso.set_selected(selection, values)
+    else:
+      b_iso = values
+    if(self._xray_structure is not None):
+      self.get_xray_structure().set_b_iso(values = b_iso, selection=selection)
+      u_iso = self.get_xray_structure().scatterers().extract_u_iso()
+      b_iso = u_iso * adptbx.u_as_b(1)
+      b_iso = b_iso.set_selected(~self.get_xray_structure().use_u_iso(), -1)
+    self.get_hierarchy().atoms().set_b(b_iso)
+
+  def convert_to_isotropic(self, selection=None):
+    if(selection is not None and isinstance(selection, flex.bool)):
+      selection = selection.iselection()
+    if(self._xray_structure is not None):
+      self._xray_structure.convert_to_isotropic(selection = selection)
+    atoms = self.get_hierarchy().atoms()
+    if(selection is None):
+      selection = flex.bool(atoms.size(), True).iselection()
+    for i in selection:
+      a = atoms[i]
+      u_cart = a.uij
+      if(u_cart != (-1,-1,-1,-1,-1,-1)):
+        a.set_uij((-1,-1,-1,-1,-1,-1))
+        a.set_b( adptbx.u_as_b(adptbx.u_cart_as_u_iso(u_cart)) )
+
+  def set_occupancies(self, values, selection=None):
+    if(values is None): return
+    if(selection is not None):
+      occ = self.get_hierarchy().atoms().extract_occ()
+      occ = occ.set_selected(selection, values)
+    else:
+      occ = values
+    if(self._xray_structure is not None):
+      self.get_xray_structure().set_occupancies(value = occ)
+    self.get_hierarchy().atoms().set_occ(occ)
+
+  def get_b_iso(self):
+    return self.get_hierarchy().atoms().extract_b()
+
+  def get_occ(self):
+    return self.get_hierarchy().atoms().extract_occ()
+
+  def get_sites_cart(self):
+    return self.get_hierarchy().atoms().extract_xyz()
+
+  def get_sites_frac(self):
+    return self.get_xray_structure().sites_frac()
+
+  def get_atoms(self):
+    return self.get_hierarchy().atoms()
+
+  def processed(self):
+    return self._processed
+
   def set_log(self, log):
     self.log = log
+
+  def set_model_number(self, model_number):
+    self._model_number = model_number
+
+  def model_number(self):
+    return self._model_number
+
+  def set_info(self, info):
+    self._info = info
+
+  def info(self):
+    return self._info
+
+  def __getstate__(self):
+    ''' The _ss_manager is not pickleable. Remove it before pickling
+      It may be present by itself or as an attribute of _processed_pdb_file
+      Also restraints_manager is not pickleable
+      This method removes _ss_manager and restraints_manager
+    '''
+
+    self_dc = self.deep_copy() # Avoid changing the model itself
+    self_dc._ss_manager = None
+    self_dc.unset_restraints_manager()
+
+    state = self_dc.__dict__
+    return state
+
+  def __setstate__(self, state):
+    self.__dict__.update(state)
+
+  def __repr__(self):
+    """
+      Summarize the model_manager
+    """
+    h = self.get_hierarchy()
+    if h:
+      counts = h.overall_counts()
+      nres = counts.n_residues
+      nchains = counts.n_chains
+      from mmtbx.secondary_structure.find_ss_from_ca import \
+          get_first_chain_id_and_resno, get_last_chain_id_and_resno
+      first_residue_text = get_first_chain_id_and_resno(h)
+      last_residue_text = get_last_chain_id_and_resno(h)
+    else:
+      nres = 0
+      nchains = 0
+      first_residue_text = ""
+      last_residue_text = ""
+    if self.shift_cart():
+      sc = tuple(self.shift_cart())
+    else:
+      sc = (0, 0, 0)
+
+    return "Model manager "+\
+      "%s" %(self.model_number()) if self.model_number() is not None else "" + \
+      "\n%s\nChains: %s Residues %s (%s - %s)\nWorking coordinate shift %s)" %(
+      str(self.unit_cell_crystal_symmetry()).replace("\n"," "),
+      str(nchains),
+      str(nres),
+      str(first_residue_text),
+      str(last_residue_text),
+      str(sc))
 
   def set_stop_for_unknowns(self, value):
     self._stop_for_unknowns=value
 
   def get_stop_for_unknowns(self):
     return self._stop_for_unknowns
-
-  def set_shift_manager(self, shift_manager):
-    self._shift_manager = shift_manager
-    if shift_manager is not None:
-      self.set_xray_structure(self._shift_manager.xray_structure_box)
-      self.unset_restraints_manager()
-
-  def get_shift_manager(self):
-    return self._shift_manager
 
   def set_pdb_interpretation_params(self, params):
     #
@@ -423,28 +604,19 @@ class manager(object):
       self._pdb_interpretation_params = full_params
     self.unset_restraints_manager()
 
+  def set_nonbonded_weight(self, value):
+    params = self.get_current_pdb_interpretation_params()
+    if(params.pdb_interpretation.nonbonded_weight == value): return
+    params.pdb_interpretation.nonbonded_weight = value
+    self.set_pdb_interpretation_params(params = params)
+
   def check_consistency(self):
     """
     Primarilly for debugging
     """
-    # print "NUMBER OF ATOMS", self.get_number_of_atoms()
-    assert self.pdb_atoms.size() == self.get_xray_structure().scatterers().size()
-    assert self.pdb_atoms.size() == self.get_hierarchy().atoms().size()
-    # finally, check all_chain_proxies
-    if self.all_chain_proxies is not None:
-      self.all_chain_proxies.extract_xray_structure().scatterers().size() == self.pdb_atoms.size()
-    # checking label consistency
-    # for ha, sc in zip(self.get_hierarchy().atoms_with_labels(),
-    #     self.get_xray_structure().scatterers()):
-    #   if ha.id_str() != sc.label and sc.scattering_type[:2] != "IS":
-    #     print "XXXXXXX: '%s' != '%s'" % (ha.id_str(), sc.label)
-    #     assert 0
     s1 = self.get_hierarchy().atoms().extract_xyz()
     s2 = self.get_xray_structure().sites_cart()
     d = flex.sqrt((s1 - s2).dot())
-    assert d<1.e-4
-    s3 = self.pdb_atoms.extract_xyz()
-    d = flex.sqrt((s1 - s3).dot())
     assert d<1.e-4
 
   def set_ramachandran_plot_restraints(self, rama_params):
@@ -462,9 +634,6 @@ class manager(object):
     grm = self.get_restraints_manager().geometry
     grm.remove_ramachandran_in_place()
 
-  def get_model_input(self):
-    return self._model_input
-
   def crystal_symmetry(self):
     cs = self._crystal_symmetry
     if(cs is None or cs.is_empty() or cs.is_nonsense()):
@@ -477,68 +646,303 @@ class manager(object):
   def set_restraint_objects(self, restraint_objects):
     self._restraint_objects = restraint_objects
     self.unset_restraints_manager()
-    self._processed_pdb_files_srv = None
-    self.all_chain_proxies = None
 
   def get_monomer_parameters(self):
     return self._monomer_parameters
 
-  def setup_ss_annotation(self, log=null_out()):
-    if self._model_input is not None:
-      self._ss_annotation = self._model_input.extract_secondary_structure()
-
   def get_ss_annotation(self, log=null_out()):
-    if self._ss_annotation is None:
-      self.setup_ss_annotation(log=log)
     return self._ss_annotation
 
   def set_ss_annotation(self, ann):
     self._ss_annotation = ann
 
-  def set_crystal_symmetry_if_undefined(self, cs, force=False):
-    """
-    Function to set crystal symmetry if it is not defined yet.
-    Special case when incoming cs is the same to self._crystal_symmetry,
-    then just do nothing for compatibility with existing code.
-    It would be better to remove this function at all.
+  def set_unit_cell_crystal_symmetry_and_shift_cart(self,
+       unit_cell_crystal_symmetry=None,
+       shift_cart=None):
+    '''
+      Set up record of shift_cart (shift since unit_cell location) and
+      unit_cell_crystal_symmetry
 
-    This function can be used ONLY straight after initialization of model,
-    when no xray_structure is constructed yet.
+      Normally used to set up info with zero shift_cart and
+      unit_cell_crystal_symmetry equal to crystal_symmetry
+    '''
+    assert self.shift_cart() is None
+    if not shift_cart:
+      shift_cart = (0,0,0)
+      if not unit_cell_crystal_symmetry:
+        unit_cell_crystal_symmetry = self.crystal_symmetry()
 
-    The keyword force=True sets cs even if it is defined.
-    """
-    assert self._xray_structure is None
-    is_empty_cs = self._crystal_symmetry is None or (
-        self._crystal_symmetry.unit_cell() is None and
-        self._crystal_symmetry.space_group() is None)
-    if not is_empty_cs:
-      if self._crystal_symmetry.is_similar_symmetry(cs):
-        return
-    if not force:
-      assert is_empty_cs, "%s,%s" % (
-          self._crystal_symmetry.show_summary(), cs.show_summary())
-    self._crystal_symmetry = cs
+    self._shift_cart = shift_cart
+    self._unit_cell_crystal_symmetry=unit_cell_crystal_symmetry
+
+  def shift_model_and_set_crystal_symmetry(self,
+       shift_cart,     # shift to apply
+       crystal_symmetry = None, # optional new crystal symmetry
+       unit_cell_crystal_symmetry = None, # optional new
+             #unit_cell_crystal_symmetry
+       ):
+
+    '''
+      Method to apply a coordinate shift to a model object and keep track of
+      it self._shift_cart
+
+      NOTE: Normally use this method along with shift_model_back() to
+      shift the coordinates of the model
+
+      Sets the new crystal_symmetry
+      Optionally sets unit_cell_crystal_symmetry
+
+      Takes into account any previous shifts by looking at existing
+      shift_cart and unit_cell_crystal_symmetry
+    '''
+    # checks
+    assert shift_cart is not None
+    assert len(list(shift_cart)) == 3
+    assert (crystal_symmetry is None) or isinstance(
+      crystal_symmetry,  crystal.symmetry)
+
+    assert unit_cell_crystal_symmetry is None or isinstance(
+      unit_cell_crystal_symmetry,  crystal.symmetry)
+
+    # Get shift info  that knows about unit_cell_crystal_symmetry
+    #   and any prevous shift_cart
+
+    if unit_cell_crystal_symmetry is None:
+      unit_cell_crystal_symmetry = self.unit_cell_crystal_symmetry()
+      if not unit_cell_crystal_symmetry:
+        unit_cell_crystal_symmetry = self.crystal_symmetry()
+
+    # Get the new crystal symmetry to apply
+    if not crystal_symmetry:
+      crystal_symmetry = self.crystal_symmetry()
+
+    if self._shift_cart is not None:
+       original_shift_cart = self._shift_cart
+    else:
+       original_shift_cart = (0, 0, 0)
+
+
+    # Get the total shift since original
+    total_shift=[sm_sc+sc for sm_sc,sc in zip(original_shift_cart,shift_cart)]
+
+    # New coordinates after applying shift_cart
+    sites_cart_new = self.get_sites_cart() + shift_cart
+
+    #Set symmetry and sites_cart
+
+    self.set_crystal_symmetry_and_sites_cart(crystal_symmetry, sites_cart_new)
+
+    # Set up new shift info with updated shift_cart,
+
+    # NOTE: sm.shift_cart is now the total shift since original position of this
+    #   model, it is not the shift in this step alone. It is the shift which
+    #   reversed will put the model back where it belongs
+
+    self._shift_cart = tuple(total_shift)
+    self._unit_cell_crystal_symmetry =  unit_cell_crystal_symmetry
+
+  def shift_model_back(self):
+    '''
+      Shift the model back to its original position and restore original
+      crystal_symmetry.
+
+      Normally use this method to shift coordinates back to original position
+      if needed (in most cases this is not necessary because the model
+      is automatically shifted back when it is written out).
+
+      Requires that shifts have been set up
+    '''
+    assert self.shift_cart() is not None
+    shift_cart_to_apply=tuple([-x for x in self.shift_cart()])  # Shift to apply
+
+    self.shift_model_and_set_crystal_symmetry(
+     shift_cart = shift_cart_to_apply,
+     crystal_symmetry = self._unit_cell_crystal_symmetry)
+
+  def set_unit_cell_crystal_symmetry(self, crystal_symmetry):
+    '''
+      Set the unit_cell_crystal_symmetry (original crystal symmetry)
+
+      Only used to reset original crystal symmetry of model
+      Requires that there is no shift_cart for this model in
+    '''
+    assert crystal_symmetry is not None
+
+    if self._shift_cart is None:
+      self._shift_cart = (0, 0, 0)
+    else:
+      assert tuple(self._shift_cart) == (0 ,0 ,0) # consider map_model_manager.shift_any_model_to_match
+
+    self._unit_cell_crystal_symmetry = crystal_symmetry
+
+  def set_crystal_symmetry(self, crystal_symmetry):
+    '''
+      Set the crystal_symmetry, keeping sites_cart the same
+
+      NOTE: Normally instead use
+        shift_model_and_set_crystal_symmetry(shift_cart=shift_cart) and
+      shift_model_back() to shift the coordinates of the model.
+
+      Uses set_crystal_symmetry_and_sites_cart because sites_cart have to
+      be replaced in either case.
+    '''
+    self.set_crystal_symmetry_and_sites_cart(crystal_symmetry,None)
+
+  def set_crystal_symmetry_and_sites_cart(self, crystal_symmetry, sites_cart):
+
+    '''
+      Set the crystal symmetry and then replace sites_cart with supplied sites
+
+      NOTE: Normally instead use
+        shift_model_and_set_crystal_symmetry(shift_cart=shift_cart) and
+      shift_model_back() to shift the coordinates of the model.
+
+      If there is no xray_structure and no sites_cart are supplied this
+      sets self._crystal_symmetry and updates. This is used to set
+      crystal_symmetry in a model that has coordinates but no crystal_symmetry
+
+      If existing xray_structure and xray_structure.crystal_symmetry is similar
+       to supplied crystal_symmetry, just replace sites_cart and update
+
+      If existing xray_structure and supplied crystal_symmetry is new, make a
+      new xray_structure and put in the supplied sites_cart and update. If no
+      sites_cart, use existing.
+
+    '''
+
+    assert crystal_symmetry is not None  # must supply crystal_symmetry
+
+    # Check for missing _crystal_symmetry
+    if(self._crystal_symmetry is None \
+         or self._crystal_symmetry.unit_cell() is None):
+      # Set self._crystal_symmetry.
+      assert self._xray_structure is None # can't have xrs without crystal sym
+      self._crystal_symmetry = crystal_symmetry
+
+    # Useable crystal symmetry and same as input
+    if self.crystal_symmetry() and self.crystal_symmetry().is_similar_symmetry(
+      crystal_symmetry) and (self.crystal_symmetry().unit_cell().parameters() ==
+         crystal_symmetry.unit_cell().parameters()):
+      # Keep the xray_structure but change sites_cart if present and update
+      xrs=self.get_xray_structure() # Make sure xrs is set up
+      # Make sure xrs has same symmetry as self
+      assert xrs.crystal_symmetry().is_similar_symmetry(self.crystal_symmetry())
+
+      # make self._crystal_symmetry identical to xrs crystal_symmetry
+      self._crystal_symmetry = xrs.crystal_symmetry()
+
+      # set the sites_cart if supplied
+      if sites_cart:
+        self.set_sites_cart(sites_cart = sites_cart)
+      self._update_has_hd()
+
+    else:  # Make a new xray_structure with new symmetry and put in sites
+
+      xrs=self.get_xray_structure() # Make sure xrs is set up
+
+      # Save existing sites_cart and iso or aniso u_cart
+      # Note that u_iso and u_cart are separate entities
+      uc = self._xray_structure.crystal_symmetry().unit_cell()
+      existing_u_cart = self._xray_structure.scatterers().extract_u_cart(uc)
+      existing_u_iso= self._xray_structure.scatterers().extract_u_iso()
+
+      if sites_cart is None:
+        sites_cart = self._xray_structure.sites_cart()
+
+      # Changing crystal_symmetry changes sites_frac but keeps sites_cart same
+      # Also u_iso and u_cart are the same numbers
+
+      # Reset _crystal_symmetry
+      scattering_table = xrs.scattering_type_registry().last_table()
+      scatterers = xrs.scatterers()
+      sp = crystal.special_position_settings(crystal_symmetry)
+      self._xray_structure = xray.structure(sp, scatterers) # new symmetry
+      self._crystal_symmetry = \
+        self._xray_structure.crystal_symmetry() # make it identical
+
+      # Set sites_cart u_cart, u_iso in xray_structure
+      new_uc = self._xray_structure.crystal_symmetry().unit_cell()
+      self._xray_structure.set_sites_cart(sites_cart = sites_cart)
+      self._xray_structure.set_u_iso(values = existing_u_iso)
+      self._xray_structure.set_u_cart(existing_u_cart)
+
+      # Transfer xray_structure info to hierarchy if present
+      if self.get_hierarchy():
+        self.get_hierarchy().adopt_xray_structure(self._xray_structure)
+
+      # Set up scattering table if there was one before
+      if scattering_table:
+        self.setup_scattering_dictionaries(scattering_table = scattering_table)
+      #
+      if(self.get_restraints_manager() is not None):
+        self.get_restraints_manager().geometry.replace_site_symmetry(
+          new_site_symmetry_table   = self._xray_structure.site_symmetry_table(),
+          special_position_settings = self._xray_structure.special_position_settings(),
+          sites_cart                = self._xray_structure.sites_cart())
+        # Not sure if this is needed.
+        self.get_restraints_manager().geometry.crystal_symmetry=crystal_symmetry
+        self.restraints_manager.crystal_symmetry=crystal_symmetry
+        # This updates some of internals
+        self.get_restraints_manager().geometry.pair_proxies(
+          sites_cart = self.get_sites_cart())
+
+  def unit_cell_crystal_symmetry(self):
+    if self._unit_cell_crystal_symmetry is not None:
+      return self._unit_cell_crystal_symmetry
+    else:
+      return None
+
+  def shifted(self, eps=1.e-3):
+    r = self.shift_cart()
+    if(r is None): return False
+    if(flex.max(flex.abs(flex.double(r)))<=eps): return False
+    return True
+
+  def shift_cart(self):
+    '''
+      Return the value of the shift_cart, if available.
+    '''
+    if self._shift_cart:
+      return self._shift_cart
+    else:
+      return None
+
+  def set_shift_cart(self,shift_cart):
+    '''
+      Change the value of the recorded coordinate shift applied to a model
+      without changing anything about the model.  This effectively changes
+        the output shift that is going to be applied to this model when it is
+             written out.
+
+      Also for backwards compatibility make sure
+      self._unit_cell_crystal_symmetry is set if self._crystal_symmetry is set
+
+      NOTE: Normally instead use
+        shift_model_and_set_crystal_symmetry(shift_cart=shift_cart) and
+      shift_model_back() to shift the coordinates of the model.
+
+    '''
+    self._shift_cart = shift_cart
+    if not self._unit_cell_crystal_symmetry: # set  _unit_cell_crystal_symmetry
+      self._unit_cell_crystal_symmetry = self.crystal_symmetry()
+
+  def _shift_back(self, pdb_hierarchy):
+    assert pdb_hierarchy is not None
+    sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    shift_back = [-self._shift_cart[0], -self._shift_cart[1],
+        -self._shift_cart[2]]
+    sites_cart_shifted = sites_cart+\
+      flex.vec3_double(sites_cart.size(), shift_back)
+    pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
 
   def set_refinement_flags(self, flags):
     self.refinement_flags = flags
 
   def get_number_of_atoms(self):
-    return self.pdb_atoms.size()
+    return self.get_hierarchy().atoms().size()
 
   def size(self):
     return self.get_number_of_atoms()
-
-  def get_atoms(self):
-    return self.pdb_atoms
-
-  def get_sites_cart(self):
-    if(self._xray_structure is not None):
-      return self.get_xray_structure().sites_cart()
-    else:
-      return self.get_hierarchy().atoms().extract_xyz()
-
-  def get_sites_frac(self):
-    return self.get_xray_structure().sites_frac()
 
   def get_atom_selection_cache(self):
     if self._atom_selection_cache is None:
@@ -549,10 +953,6 @@ class manager(object):
     return len(self.get_hierarchy().models())
 
   def get_site_symmetry_table(self):
-    if self._site_symmetry_table is not None:
-      return self._site_symmetry_table
-    elif self.all_chain_proxies is not None:
-      self._site_symmetry_table = self.all_chain_proxies.site_symmetry_table()
     return self._site_symmetry_table
 
   def initialize_anomalous_scatterer_groups(
@@ -563,7 +963,7 @@ class manager(object):
     result = []
     if find_automatically:
       result = anomalous_scatterer_groups.find_anomalous_scatterer_groups(
-        pdb_atoms=self.get_atoms(),
+        pdb_atoms=self.get_hierarchy().atoms(),
         xray_structure=self.get_xray_structure(),
         group_same_element=False,
         out=self.log)
@@ -571,22 +971,22 @@ class manager(object):
         self.n_anomalous_total += group.iselection.size()
     else:
       if len(groups_from_params) != 0:
-        chain_proxies = self.all_chain_proxies
+        sm = self._get_selection_manager()
         sel_cache = self.get_atom_selection_cache()
         for group in groups_from_params:
           if (group.f_prime is None): group.f_prime = 0
           if (group.f_double_prime is None): group.f_double_prime = 0
+          iselection = sm.phil_atom_selection(
+            cache         = sel_cache,
+            scope_extract = group,
+            attr          = "selection",
+            raise_if_empty_selection = True).iselection()
           aag = xray.anomalous_scatterer_group(
-            iselection=chain_proxies.phil_atom_selection(
-              cache=sel_cache,
-              scope_extract=group,
-              attr="selection",
-              raise_if_empty_selection=True).iselection(),
-            f_prime=group.f_prime,
-            f_double_prime=group.f_double_prime,
-            refine=group.refine,
-            selection_string=group.selection)
-          # aag.show_summary(out=log)
+            iselection       = iselection,
+            f_prime          = group.f_prime,
+            f_double_prime   = group.f_double_prime,
+            refine           = group.refine,
+            selection_string = group.selection)
           result.append(aag)
           self.n_anomalous_total += aag.iselection.size()
     self._anomalous_scatterer_groups = result
@@ -649,17 +1049,38 @@ class manager(object):
     return self.restraints_manager is not None
 
   def get_restraints_manager(self):
-    if self.restraints_manager is not None:
-      return self.restraints_manager
-    else:
-      self.setup_restraints_manager()
-      return self.restraints_manager
+    return self.restraints_manager
 
   def set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(self,value):
     if self._xray_structure is not None:
       self._xray_structure.set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(value)
       self.set_xray_structure(self._xray_structure.customized_copy(
           non_unit_occupancy_implies_min_distance_sym_equiv_zero=value))
+
+  def ncs_is_strict(self, eps_occ=1.e-2, eps_adp=1.e-2, eps_xyz=1.e-3):
+    """
+    Check sites, ADP and occupancy to obey NCS symmetry
+    """
+    result = group_args(occ = True, adp = True, xyz = True, size = True)
+    result.stop_dynamic_attributes()
+    ncs_groups = self.get_ncs_groups()
+    if(ncs_groups is None or len(ncs_groups)==0): return None
+    for i, g in enumerate(ncs_groups):
+      m_master          = self.select(g.master_iselection)
+      occ_master        = m_master.get_occ()
+      b_master          = m_master.get_b_iso()
+      master_sites_cart = m_master.get_sites_cart()
+      for j, c in enumerate(g.copies):
+        m_copy   = self.select(c.iselection)
+        occ_copy = m_copy.get_occ()
+        b_copy   = m_copy.get_b_iso()
+        if(b_copy.size() != b_master.size()): result.size = False
+        if(flex.max(flex.abs(occ_master-occ_copy))>eps_occ): result.occ = False
+        if(flex.max(flex.abs(b_master-b_copy))>eps_adp): result.adp = False
+        master_on_copy_sites_cart = c.r.elems * master_sites_cart + c.t
+        d = flex.sqrt((master_on_copy_sites_cart-m_copy.get_sites_cart()).dot())
+        if(flex.max(d)>eps_xyz): result.xyz = False
+    return result
 
   def get_hd_selection(self):
     xrs = self.get_xray_structure()
@@ -671,14 +1092,30 @@ class manager(object):
     else:
       return self.ias_manager.get_ias_selection()
 
+  def apply_selection_string(self, selection_string):
+    if not selection_string:
+      return
+    sel = self.selection(selection_string)
+    return self.select(sel)
+
+  def _get_selection_manager(self):
+    assert self._all_monomer_mappings is not None
+    sp = crystal.special_position_settings(self.crystal_symmetry())
+    return pdb_interpretation.selection_manager(
+      all_monomer_mappings      = self._all_monomer_mappings,
+      pdb_hierarchy             = self.get_hierarchy(),
+      special_position_settings = sp,
+      atom_selection_cache      = self._atom_selection_cache)
+
   def selection(self, string, optional=True):
-    if self.all_chain_proxies is None:
+    if(self._all_monomer_mappings is None):
       return self.get_atom_selection_cache().selection(string, optional=optional)
     else:
-      return self.all_chain_proxies.selection(
-          string,
-          cache=self._atom_selection_cache,
-          optional=optional)
+      sm = self._get_selection_manager()
+      return sm.selection(
+        string   = string,
+        cache    = self._atom_selection_cache,
+        optional = optional)
 
   def iselection(self, string):
     result = self.selection(string)
@@ -687,45 +1124,44 @@ class manager(object):
     return result.iselection()
 
   def sel_backbone(self):
-    assert self.all_chain_proxies is not None
-    return self.all_chain_proxies.sel_backbone_or_sidechain(True, False)
+    return self._get_selection_manager().sel_backbone_or_sidechain(True, False)
 
   def sel_sidechain(self):
-    assert self.all_chain_proxies is not None
-    return self.all_chain_proxies.sel_backbone_or_sidechain(False, True)
+    return self._get_selection_manager().sel_backbone_or_sidechain(False, True)
 
-  def get_xray_structure(self):
-    if self._xray_structure is None:
-      self._create_xray_structure()
-    return self._xray_structure
+  def replace_model_hierarchy_with_other(self, other_model):
+    ''' Replace hierarchy with one from another model '''
+    model_ph = self.get_hierarchy() # working hierarchy
+    other_model_ph = other_model.get_hierarchy()
+    for m in model_ph.models():
+      model_ph.remove_model(m)
+    for m in other_model_ph.models():
+      model_ph.append_model(m.detached_copy())
+    self.reset_after_changing_hierarchy()
+
+  def reset_after_changing_hierarchy(self):
+
+    '''  Regenerate xray_structure after changing hierarchy '''
+    self.update_xrs()
+    self._update_atom_selection_cache()
+    self.get_hierarchy().atoms().reset_serial() # redo the numbering
+    self.get_hierarchy().atoms().reset_i_seq() # redo the numbering
+    self.unset_restraints_manager() # no longer applies
 
   def set_xray_structure(self, xray_structure):
+    # XXX Delete as a method or make sure all TLS, NCS, refinement flags etc
+    # XXX are still consistent!
     same_symmetry = True
-    if self._xray_structure is not None:
+    if(self._xray_structure is not None):
       same_symmetry = self._xray_structure.crystal_symmetry().is_similar_symmetry(
-          xray_structure.crystal_symmetry())
-    # This is happening e.g. in iotbx/map_and_model.py where xrs and map are
-    # being boxed and model is updated with this function.
-    if not same_symmetry:
+        xray_structure.crystal_symmetry())
+    if(not same_symmetry):
       self.unset_restraints_manager()
+      self.set_crystal_symmetry(
+        crystal_symmetry = xray_structure.crystal_symmetry())
     self._xray_structure = xray_structure
-    self.set_sites_cart_from_xrs()
+    self.get_hierarchy().adopt_xray_structure(self._xray_structure)
     self._update_has_hd()
-    self._crystal_symmetry = xray_structure.crystal_symmetry()
-    # XXX what else needs to be done here?
-    #     ph.adopt_xray_structure(xray_structure)
-
-  def _create_xray_structure(self):
-    if self._xray_structure is not None:
-      return
-    if self.all_chain_proxies is not None:
-      self._xray_structure = self.all_chain_proxies.extract_xray_structure()
-    else:
-      cs = self.crystal_symmetry()
-      #assert cs is not None # You cannot create xray_structure without
-      #                      # crystal symmetry. And if you can then it is wrong.
-      self._xray_structure = self._pdb_hierarchy.extract_xray_structure(
-          crystal_symmetry=cs)
 
   def get_mon_lib_srv(self):
     if self._mon_lib_srv is None:
@@ -736,6 +1172,19 @@ class manager(object):
     if self._ener_lib is None:
       self._ener_lib = mmtbx.monomer_library.server.ener_lib()
     return self._ener_lib
+
+  def rotamer_outlier_selection(self):
+    rm = self.get_rotamer_manager()
+    result = flex.bool(self.size(), False)
+    for model in self.get_hierarchy().models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for conformer in residue_group.conformers():
+            for residue in conformer.residues():
+               if(rm.evaluate_residue(residue)=="OUTLIER"):
+                 sel = residue.atoms().extract_i_seq()
+                 result = result.set_selected(sel, True)
+    return result
 
   def get_rotamer_manager(self):
     if self._rotamer_eval is None:
@@ -751,11 +1200,6 @@ class manager(object):
     if self._rama_eval is None:
       self._rama_eval = rama_eval()
     return self._rama_eval
-
-  def get_apply_cif_links(self):
-    if self.all_chain_proxies is not None:
-      return self.all_chain_proxies.apply_cif_links
-    return []
 
   def update_xrs(self, hierarchy=None):
     """
@@ -775,10 +1219,10 @@ class manager(object):
     if not output_cs:
       return None
     if do_not_shift_back:
-      return self._shift_manager.get_shifted_cs()
+      return self._crystal_symmetry
     else:
-      if self._shift_manager is not None:
-        return self._shift_manager.get_original_cs()
+      if self._shift_cart is not None:
+        return self.unit_cell_crystal_symmetry()
       else:
         return self.crystal_symmetry()
 
@@ -786,38 +1230,19 @@ class manager(object):
     hierarchy_to_output = self.get_hierarchy()
     if hierarchy_to_output is not None:
       hierarchy_to_output = hierarchy_to_output.deep_copy()
-    if self._shift_manager is not None and not do_not_shift_back:
-      self._shift_manager.shift_back(hierarchy_to_output)
+    if (self._shift_cart is not None) and (not do_not_shift_back):
+      self._shift_back(hierarchy_to_output)
     return hierarchy_to_output
-
-
-  def shift_origin(self, origin_shift_cart=None):
-    if not origin_shift_cart or origin_shift_cart==(0,0,0):
-      return self.deep_copy()
-    else:
-      new_model=self.deep_copy()
-      sites_cart=new_model.get_hierarchy().atoms().extract_xyz()
-      sites_cart+=origin_shift_cart
-      new_model.set_sites_cart(sites_cart)
-      return new_model
 
   def model_as_pdb(self,
       output_cs = True,
       atoms_reset_serial_first_value=None,
-      do_not_shift_back = False,
-      origin_shift_cart=None):
+      do_not_shift_back = False):
     """
     move all the writing here later.
     """
 
-    if origin_shift_cart:
-      return self.shift_origin(
-        origin_shift_cart=origin_shift_cart).model_as_pdb(output_cs=output_cs,
-        atoms_reset_serial_first_value=atoms_reset_serial_first_value,
-        do_not_shift_back=do_not_shift_back,
-        origin_shift_cart=None)
-
-    if do_not_shift_back and self._shift_manager is None:
+    if do_not_shift_back and self._shift_cart is None:
       do_not_shift_back = False
     cs_to_output = self._figure_out_cs_to_output(
         do_not_shift_back=do_not_shift_back, output_cs=output_cs)
@@ -919,26 +1344,45 @@ class manager(object):
       ss_ann.remove_empty_annotations(self.get_hierarchy())
     return ss_ann
 
+  def can_be_unique_with_biomt(self):
+    if not self.ncs_constraints_present():
+      return False
+    original_nrgl = self.get_ncs_groups()
+    if len(original_nrgl) > 1:
+      return False
+    filtered_nrgl = original_nrgl.filter_ncs_restraints_group_list(
+        self.get_hierarchy(), self.get_ncs_obj())
+    if not (original_nrgl == filtered_nrgl):
+      return False
+    if not original_nrgl.check_for_max_rmsd(self.get_sites_cart(), 0.01, null_out()):
+      return False
+    return True
+
   def model_as_mmcif(self,
       cif_block_name = "default",
       output_cs = True,
       additional_blocks = None,
       align_columns = False,
-      origin_shift_cart = None,
       do_not_shift_back = False,
-      keep_original_loops = False):
-
-    if origin_shift_cart:
-      return self.shift_origin(
-        origin_shift_cart=origin_shift_cart).model_as_mmcif(
-        cif_block_name=cif_block_name,
-        output_cs=output_cs,
-        additional_blocks=additional_blocks,
-        align_columns=align_columns,
-        do_not_shift_back=do_not_shift_back,
-        origin_shift_cart=None,
-        keep_original_loops=keep_original_loops)
-
+      try_unique_with_biomt = False):
+    if try_unique_with_biomt:
+      if not self.can_be_unique_with_biomt():
+        return ""
+      sel, cb = self.get_ncs_groups().unique_with_biomt(self.get_hierarchy())
+      cutted_m = self.select(sel)
+      cutted_m.get_hierarchy().atoms_reset_serial()
+      ab = additional_blocks
+      if additional_blocks is not None:
+        ab.append(cb)
+      else:
+        ab = [cb]
+      return cutted_m.model_as_mmcif(
+          cif_block_name = cif_block_name,
+          output_cs = output_cs,
+          additional_blocks = ab,
+          align_columns = align_columns,
+          do_not_shift_back = do_not_shift_back,
+          try_unique_with_biomt = False)
     out = StringIO()
     cif = iotbx.cif.model.cif()
     cif_block = None
@@ -965,7 +1409,7 @@ class manager(object):
         atoms = atoms.select(~ias_selection)
       grm_geometry = self.get_restraints_manager().geometry
       grm_geometry.pair_proxies(sites_cart)
-      struct_conn_loop = grm_geometry.get_struct_conn_mmcif(atoms)
+      struct_conn_loop = grm_geometry.get_struct_conn_mmcif(hierarchy_to_output)
       cif_block.add_loop(struct_conn_loop)
       self.get_model_statistics_info()
     # outputting HELIX/SHEET records
@@ -1016,24 +1460,6 @@ class manager(object):
     if self.restraints_manager_available():
       links = grm_geometry.get_cif_link_entries(self.get_mon_lib_srv())
       cif.update(links)
-
-    # preserve original loops if available
-    if keep_original_loops:
-      if hasattr(self._model_input, 'cif_model'):
-        # FIXME: ordering of dict values changes depending on py2/3 this could break
-        original_cif_model = list(self._model_input.cif_model.values())[0]
-        for key in original_cif_model.loop_keys():
-          if key not in cif_block.loop_keys():
-            loop = original_cif_model.get_loop(key)
-            if loop is not None:
-              cif_block.add_loop(loop)
-        for key in original_cif_model.item_keys():
-          if key not in cif_block.item_keys():
-            item = original_cif_model.get_single_item(key)
-            if item is not None:
-              cif_block.add_data_item(key, item)
-      cif_block.sort(key=category_sort_function)
-
     cif.show(out=out, align_columns=align_columns)
     return out.getvalue()
 
@@ -1077,55 +1503,83 @@ class manager(object):
       return self.model_as_pdb(output_cs=output_cs)
     else: raise RuntimeError("Model source is unknown.")
 
-  def _process_input_model(self):
-    # Not clear if we can handle this correctly for self._xray_structure
-    # assert self.get_number_of_models() < 2
-    # assert 0
-    if self._processed_pdb_files_srv is None:
-      self._processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
-          crystal_symmetry          = self.crystal_symmetry(),
-          pdb_interpretation_params = self._pdb_interpretation_params.pdb_interpretation,
-          stop_for_unknowns         = self._stop_for_unknowns,
-          log                       = self.log,
-          cif_objects               = self._restraint_objects,
-          cif_parameters            = self._monomer_parameters, # mmtbx.utils.cif_params scope - should be refactored to remove
-          mon_lib_srv               = None,
-          ener_lib                  = None,
-          use_neutron_distances     = self._pdb_interpretation_params.pdb_interpretation.use_neutron_distances)
-    if self._processed_pdb_file is None:
-      self._processed_pdb_file, junk = self._processed_pdb_files_srv.process_pdb_files(
-          pdb_inp = self._model_input,
-          hierarchy = self._pdb_hierarchy,
-          # because hierarchy already extracted
-          # raw_records = flex.split_lines(self._pdb_hierarchy.as_pdb_string()),
-          # stop_if_duplicate_labels = True,
-          allow_missing_symmetry=True)
-    if self.all_chain_proxies is None:
-      self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
-    self._atom_selection_cache = self._processed_pdb_file.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
-    if self._pdb_hierarchy is None:
-      self._pdb_hierarchy = self._processed_pdb_file.all_chain_proxies.pdb_hierarchy
-    if self._xray_structure is None:
-      xray_structure_all = \
+  def process_input_model(
+        self,
+        make_restraints    = False,
+        grm_normalization  = True,
+        plain_pairs_radius = 5,
+        custom_nb_excl     = None,
+        run_clash_guard    = False):
+    self._processed = True
+    pip = self._pdb_interpretation_params
+    processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
+      crystal_symmetry          = self.crystal_symmetry(),
+      pdb_interpretation_params = pip.pdb_interpretation,
+      stop_for_unknowns         = self._stop_for_unknowns,
+      log                       = self.log,
+      cif_objects               = self._restraint_objects,
+      cif_parameters            = self._monomer_parameters, # mmtbx.utils.cif_params scope - should be refactored to remove
+      mon_lib_srv               = None,
+      ener_lib                  = None,
+      use_neutron_distances     = pip.pdb_interpretation.use_neutron_distances)
+    if(self._processed_pdb_file is None):
+      self._processed_pdb_file, _ = processed_pdb_files_srv.process_pdb_files(
+        pdb_inp                = self._model_input,
+        hierarchy              = self._pdb_hierarchy,
+        allow_missing_symmetry = True)
+    acp = self._processed_pdb_file.all_chain_proxies
+    self._atom_selection_cache = acp.pdb_hierarchy.atom_selection_cache()
+    self._pdb_hierarchy        = acp.pdb_hierarchy
+    xray_structure_all = \
           self._processed_pdb_file.xray_structure(show_summary = False)
-      # XXX ad hoc manipulation
-      for sc in xray_structure_all.scatterers():
-        lbl=sc.label.split()
-        if("IAS" in lbl and sc.scattering_type=="?" and lbl[1].startswith("IS")):
-          sc.scattering_type = lbl[1]
-      #
-      if(xray_structure_all is None):
-        raise Sorry("Cannot extract xray_structure.")
-      if(xray_structure_all.scatterers().size()==0):
-        raise Sorry("Empty xray_structure.")
-      if self.all_chain_proxies is not None:
-        self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
-      self._xray_structure = xray_structure_all
+    # XXX ad hoc manipulation
+    for sc in xray_structure_all.scatterers():
+      lbl=sc.label.split()
+      if("IAS" in lbl and sc.scattering_type=="?" and lbl[1].startswith("IS")):
+        sc.scattering_type = lbl[1]
+    #
+    if(xray_structure_all is None):
+      raise Sorry("Cannot extract xray_structure.")
+    if(xray_structure_all.scatterers().size()==0):
+      raise Sorry("Empty xray_structure.")
+    self._all_monomer_mappings = acp.all_monomer_mappings
+    self._site_symmetry_table = acp.site_symmetry_table()
+    self._xray_structure = xray_structure_all
 
-    self._mon_lib_srv = self._processed_pdb_files_srv.mon_lib_srv
-    self._ener_lib = self._processed_pdb_files_srv.ener_lib
-    self._ncs_obj = self._processed_pdb_file.ncs_obj
+    self._crystal_symmetry = self._xray_structure.crystal_symmetry()
+    self._mon_lib_srv = processed_pdb_files_srv.mon_lib_srv
+    self._ener_lib    = processed_pdb_files_srv.ener_lib
+    self._ncs_obj     = self._processed_pdb_file.ncs_obj
     self._update_has_hd()
+    #
+    scattering_type_registry = acp.scattering_type_registry
+    if(scattering_type_registry.n_unknown_type_symbols() > 0):
+      scattering_type_registry.report(
+        pdb_atoms = self.get_hierarchy().atoms(),
+        log = log,
+        prefix = "",
+        max_lines = None)
+      raise Sorry("Unknown scattering type symbols.\n"
+        "  Possible ways of resolving this error:\n"
+        "    - Edit columns 77-78 in the PDB file to define"
+          " the scattering type.\n"
+        "    - Provide custom monomer definitions for the affected residues.")
+    #
+    if(make_restraints):
+      self._setup_restraints_manager(
+       grm_normalization  = grm_normalization,
+       plain_pairs_radius = plain_pairs_radius,
+       custom_nb_excl     = custom_nb_excl,
+       run_clash_guard    = run_clash_guard)
+    #
+    self._clash_guard_msg = self._processed_pdb_file.clash_guard(
+      new_sites_cart = self.get_sites_cart())
+    # This must happen after process_input_model call.
+    # Reason: contents of model and _model_input can get out of sync any time.
+    self._model_input = None
+    self._processed_pdb_file = None
+    # Order of calling this matetrs!
+    self.link_records_in_pdb_format = link_record_output(acp)
 
   def has_hd(self):
     if self._has_hd is None:
@@ -1142,9 +1596,7 @@ class manager(object):
         hierarchy = self._pdb_hierarchy)
 
   def _update_atom_selection_cache(self):
-    if self.all_chain_proxies is not None:
-      self._atom_selection_cache = self.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
-    elif self.crystal_symmetry() is not None:
+    if self.crystal_symmetry() is not None:
       self._atom_selection_cache = self.get_hierarchy().atom_selection_cache(
           special_position_settings=crystal.special_position_settings(
               crystal_symmetry = self.crystal_symmetry() ))
@@ -1155,15 +1607,12 @@ class manager(object):
     self.restraints_manager = None
     self.model_statistics_info = None
     self._processed_pdb_file = None
-    self._processed_pdb_files_srv = None
 
   def raise_clash_guard(self):
-    # This is done for phenix.refine when run with shaking coordinates
-    err_msg = self._processed_pdb_file.clash_guard(new_sites_cart=self.get_sites_cart())
-    if err_msg is not None:
-      raise Sorry(err_msg)
+    if self._clash_guard_msg is not None:
+      raise Sorry(self._clash_guard_msg)
 
-  def setup_restraints_manager(
+  def _setup_restraints_manager(
       self,
       grm_normalization = True,
       external_energy_function = None,
@@ -1172,12 +1621,7 @@ class manager(object):
       run_clash_guard = True,
       ):
     if(self.restraints_manager is not None): return
-    if self._processed_pdb_file is None:
-      self._process_input_model()
-
-    # assert self.get_number_of_models() < 2 # one molprobity test triggered this.
-    # not clear how they work with multi-model stuff...
-
+    assert self._processed_pdb_file is not None
     geometry = self._processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
       plain_pairs_radius = plain_pairs_radius,
@@ -1188,10 +1632,6 @@ class manager(object):
       assume_hydrogens_all_missing = not self.has_hd())
     if run_clash_guard:
       self.raise_clash_guard()
-
-    # Link treating should be rewritten. They should not be saved in
-    # all_chain_proxies and they should support mmcif.
-    self.link_records_in_pdb_format = link_record_output(self._processed_pdb_file.all_chain_proxies)
 
     self._ss_manager = self._processed_pdb_file.ss_manager
 
@@ -1239,10 +1679,9 @@ class manager(object):
     if(self._xray_structure is not None):
       restraints_manager.crystal_symmetry = self._xray_structure.crystal_symmetry()
     self.restraints_manager = restraints_manager
-
+    #
     # Here we do all what is necessary when GRM and all related become available
     #
-    self.extract_tls_selections_from_input()
 
   def set_reference_coordinate_restraints(self,
       ref_model,
@@ -1280,11 +1719,6 @@ class manager(object):
         limit=limit,
         top_out=top_out,
         n_atoms_in_target_model=self.get_number_of_atoms())
-    # for debugging
-    # n_rcr = self.get_restraints_manager().geometry.\
-    #     get_n_reference_coordinate_proxies()
-    # print >> self.log, "  Number of reference coordinate restraints generated:",\
-    #    n_rcr
 
   def set_reference_torsion_restraints(self, ref_model, params=None):
     geometry = self.get_restraints_manager().geometry
@@ -1293,7 +1727,7 @@ class manager(object):
     if params is None:
       params = iotbx.phil.parse(reference_model_str).extract()
       params.reference_model.enabled=True
-    ter_indices = self._model_input.ter_indices()
+    ter_indices = self._ter_indices
     if ter_indices is not None:
       check_for_internal_chain_ter_records(
         pdb_hierarchy=self.get_hierarchy(),
@@ -1321,7 +1755,7 @@ class manager(object):
       log):
     check_for_internal_chain_ter_records(
         pdb_hierarchy = self.get_hierarchy(),
-        ter_indices   = self._model_input.ter_indices())
+        ter_indices   = self._ter_indices)
     ncs_obj = self.get_ncs_obj()
     if ncs_obj is None: return
     geometry = self.get_restraints_manager().geometry
@@ -1390,6 +1824,9 @@ class manager(object):
     self._update_master_sel()
 
   def _update_master_sel(self):
+    # self._master_sel here is really unique part of the model,
+    # i.e. all masters + part of model not covered by NCS,
+    # therefore excluding copies instead of using master selections.
     if self._ncs_groups is not None and len(self._ncs_groups) > 0:
       # determine master selections
       self._master_sel = flex.bool(self.get_number_of_atoms(), True)
@@ -1419,9 +1856,16 @@ class manager(object):
     """
     return self._ncs_groups
 
+  def update_ncs_operators(self):
+    ncs_groups = self.get_ncs_groups()
+    if(ncs_groups is not None):
+      ncs_groups.recalculate_ncs_transforms(
+        asu_site_cart = self.get_sites_cart())
+
   def unset_ncs_constraints_groups(self):
     self._ncs_groups=None
     self._ncs_obj=None
+    # shouldn't be None, probably flex.bool(self.get_number_of_atoms(), True)
     self._master_sel=None
 
   def setup_cartesian_ncs_groups(self, ncs_params=None, log=null_out()):
@@ -1518,7 +1962,7 @@ class manager(object):
       log = None,
       set_inelastic_form_factors=None,
       iff_wavelength=None):
-    self._create_xray_structure()
+    self.get_xray_structure()
     self.scattering_dict_info = group_args(
         scattering_table=scattering_table,
         d_min = d_min,
@@ -1555,31 +1999,11 @@ class manager(object):
           "Neutron scattering dictionary", out = log)
         self._xray_structure.scattering_type_registry().show(out = log)
       self._xray_structure.scattering_type_registry_params.table = "neutron"
-    if self.all_chain_proxies is not None:
-      scattering_type_registry = self.all_chain_proxies.scattering_type_registry
-      if(scattering_type_registry.n_unknown_type_symbols() > 0):
-        scattering_type_registry.report(
-          pdb_atoms = self.pdb_atoms,
-          log = log,
-          prefix = "",
-          max_lines = None)
-        raise Sorry("Unknown scattering type symbols.\n"
-          "  Possible ways of resolving this error:\n"
-          "    - Edit columns 77-78 in the PDB file to define"
-            " the scattering type.\n"
-          "    - Provide custom monomer definitions for the affected residues.")
-      if(log is not None):
-        print(file=log)
     if set_inelastic_form_factors is not None and iff_wavelength is not None:
       self._xray_structure.set_inelastic_form_factors(
           photon=iff_wavelength,
           table=set_inelastic_form_factors)
     return self.xray_scattering_dict, self.neutron_scattering_dict
-
-  def get_header_tls_selections(self):
-    if "input_tls_selections" not in self.__dict__.keys():
-      self.extract_tls_selections_from_input()
-    return self.input_tls_selections
 
   def get_searched_tls_selections(self, nproc, log):
     if "searched_tls_selections" not in self.__dict__.keys():
@@ -1587,7 +2011,6 @@ class manager(object):
       tls_params.nproc = nproc
       self.searched_tls_selections = find_tls_groups.find_tls(
         params=tls_params,
-        pdb_inp=self._model_input,
         pdb_hierarchy=self._pdb_hierarchy,
         xray_structure=deepcopy(self._xray_structure),
         return_as_list=True,
@@ -1623,45 +2046,8 @@ class manager(object):
         scattering_type=self.model_statistics_info.get_pdbx_refine_id())
     return cif_block
 
-  def extract_tls_selections_from_input(self):
-    self.input_tls_selections = []
-    acp = self.all_chain_proxies
-    pdb_inp_tls = None
-
-    if self._model_input is not None:
-      pdb_inp_tls = self._model_input.extract_tls_params(self._pdb_hierarchy)
-    elif acp is not None and acp.pdb_inp is not None:
-      pdb_inp_tls = acp.pdb_inp.extract_tls_params(acp.pdb_hierarchy)
-
-    if(pdb_inp_tls and pdb_inp_tls.tls_present):
-      print_statistics.make_header(
-        "TLS group selections from PDB file header", out=self.log)
-      print("TLS group selections:", file=self.log)
-      atom_counts = []
-      for t in pdb_inp_tls.tls_params:
-        try :
-          n_atoms = self.iselection(t.selection_string).size()
-        except AtomSelectionError as e :
-          print("AtomSelectionError:", file=self.log)
-          print(str(e), file=self.log)
-          print("Ignoring PDB header TLS groups", file=self.log)
-          self.input_tls_selections = []
-          return
-        print("  selection string:", file=self.log)
-        print("    %s"%t.selection_string, file=self.log)
-        print("    selects %d atoms"%n_atoms, file=self.log)
-        self.input_tls_selections.append(t.selection_string)
-        atom_counts.append(n_atoms)
-      if(pdb_inp_tls.tls_present):
-        if(pdb_inp_tls.error_string is not None):
-          print("  %s"%pdb_inp_tls.error_string, file=self.log)
-          self.input_tls_selections = []
-      if(0 in atom_counts):
-        msg="""
-  One of TLS selections is an empty selection: skipping TLS infromation found in
-  PDB file header.
-"""
-        print(msg, file=self.log)
+  def get_model_input(self):
+    return self._model_input
 
   def get_riding_h_manager(self, idealize=True, force=False):
     """
@@ -1674,13 +2060,14 @@ class manager(object):
   def unset_riding_h_manager(self):
     self.riding_h_manager = None
 
-  def setup_riding_h_manager(self, idealize=True):
+  def setup_riding_h_manager(self, idealize=True, use_ideal_dihedral=False):
     assert self.riding_h_manager is None
     if not self.has_hd(): return
     if(self.restraints_manager is None): return
     self.riding_h_manager = riding.manager(
       pdb_hierarchy       = self.get_hierarchy(),
-      geometry_restraints = self.get_restraints_manager().geometry)
+      geometry_restraints = self.get_restraints_manager().geometry,
+      use_ideal_dihedral  = use_ideal_dihedral)
     if(idealize):
       self.idealize_h_riding()
 
@@ -1693,23 +2080,16 @@ class manager(object):
         flags = self.refinement_flags.sites_individual
       else:
         flags = None
-      self.riding_h_manager.idealize(
+      self.riding_h_manager.idealize_riding_h_positions(
         sites_cart=sites_cart,
         selection_bool = flags)
       self.set_sites_cart(sites_cart)
 
-  def get_hierarchy(self, sync_with_xray_structure=False):
+  def get_hierarchy(self):
     """
     Accessor for the underlying PDB hierarchy, incorporating optional update of
     properties from the xray_structure attribute.
-
-    :param sync_with_xray_structure: update all properties of the atoms in the
-      hierarchy to agree with the xray_structure scatterers.  Will fail if the
-      scatterer labels do not match the atom labels.
     """
-    if(sync_with_xray_structure and self._xray_structure is not None):
-      self._pdb_hierarchy.adopt_xray_structure(
-        xray_structure = self._xray_structure)
     return self._pdb_hierarchy
 
   def set_sites_cart_from_hierarchy(self, multiply_ncs=False):
@@ -1724,59 +2104,25 @@ class manager(object):
           center_of_coordinates = None)
       self.get_hierarchy().atoms().set_xyz(new_coords)
     self.get_xray_structure().set_sites_cart(self._pdb_hierarchy.atoms().extract_xyz())
-    self._update_pdb_atoms()
+    self.get_hierarchy().atoms().reset_i_seq()
     self.model_statistics_info = None
 
-  def _update_pdb_atoms(self):
-    self.pdb_atoms = self._pdb_hierarchy.atoms()
-    self.pdb_atoms.reset_i_seq()
-
-  def set_sites_cart_from_xrs(self):
-    self._pdb_hierarchy.adopt_xray_structure(self._xray_structure)
-    self._update_pdb_atoms()
-    self.model_statistics_info = None
-
-  def set_b_iso(self, b_iso):
-    self.get_xray_structure().set_b_iso(values = b_iso)
-    self.set_sites_cart_from_xrs()
-
-  def set_occupancies(self, value, selection=None):
-    self.get_xray_structure().set_occupancies(value=value, selection=selection)
-    self.set_sites_cart_from_xrs()
-
-  def set_sites_cart(self, sites_cart, update_grm=False):
-    if not self._xray_structure:
-      self.get_xray_structure()
-    assert sites_cart.size() == self._pdb_hierarchy.atoms_size() == \
-        self._xray_structure.scatterers().size()
-    self._xray_structure.set_sites_cart(sites_cart)
-    self._pdb_hierarchy.adopt_xray_structure(self._xray_structure)
-    if update_grm:
-      self.restraints_manager.geometry.pair_proxies(sites_cart)
-    self.model_statistics_info = None
-    self._update_pdb_atoms()
-
-  def sync_pdb_hierarchy_with_xray_structure(self):
-    # to be deleted.
-    self._pdb_hierarchy.adopt_xray_structure(xray_structure=self._xray_structure)
-    self._update_pdb_atoms()
-    self.model_statistics_info = None
-
-  def normalize_adjacent_adp(self):
+  def normalize_adjacent_adp(self, threshold = 20):
+    if(self.restraints_manager is None): return
     bond_proxies_simple, asu = \
       self.restraints_manager.geometry.get_all_bond_proxies(
-        sites_cart = self._xray_structure.sites_cart())
-    scatterers = self._xray_structure.scatterers()
+        sites_cart = self.get_sites_cart())
+    b_isos = self.get_b_iso()
     for proxy in bond_proxies_simple:
       i_seq, j_seq = proxy.i_seqs
-      bi = adptbx.u_as_b(scatterers[i_seq].u_iso)
-      bj = adptbx.u_as_b(scatterers[j_seq].u_iso)
-      if(abs(bi-bj)>20):
-        if(bi>bj): bi=bj+20
-        else:      bj=bi+20
-        scatterers[i_seq].u_iso = adptbx.b_as_u(bi)
-        scatterers[j_seq].u_iso = adptbx.b_as_u(bj)
-    self.set_sites_cart_from_xrs()
+      bi = b_isos[i_seq]
+      bj = b_isos[j_seq]
+      if(abs(bi-bj)>threshold):
+        if(bi>bj): bi=bj+threshold
+        else:      bj=bi+threshold
+        b_isos[i_seq] = bi
+        b_isos[j_seq] = bj
+    self.set_b_iso(values = b_isos)
 
   def xh_connectivity_table(self):
     result = None
@@ -1861,13 +2207,13 @@ class manager(object):
     if(self.restraints_manager is None): return
     hd_sel = self.get_hd_selection()
     if(hd_sel.count(True) > 0):
+      assert self._xray_structure is not None
       xh_conn_table = self.xh_connectivity_table()
       bfi = self._xray_structure.extract_u_iso_or_u_equiv()
       for t in self.xh_connectivity_table():
         i_x, i_h = t[0], t[1]
         bfi[i_h] = adptbx.u_as_b(bfi[i_x])*scale
-      self._xray_structure.set_b_iso(values = bfi, selection = hd_sel)
-    self.set_sites_cart_from_xrs()
+      self.set_b_iso(values = bfi, selection = hd_sel)
 
   def reset_occupancy_for_hydrogens_simple(self):
     """
@@ -1876,29 +2222,30 @@ class manager(object):
     if(self.restraints_manager is None): return
     hd_sel = self.get_hd_selection()
     if(hd_sel.count(True) > 0):
+      assert self._xray_structure is not None
       xh_conn_table = self.xh_connectivity_table()
-      scatterers = self._xray_structure.scatterers()
-      ofi = scatterers.extract_occupancies()
+      occ = self.get_occ()
       for t in self.xh_connectivity_table():
         i_x, i_h = t[0], t[1]
-        scatterers[i_h].occupancy = ofi[i_x]
-    self.set_sites_cart_from_xrs()
+        occ[i_h] = occ[i_x]
+      self.set_occupancies(values = occ)
 
   def reset_occupancies_for_hydrogens(self):
     """
     Set hydrogen occupancies to those of the associated heavy atoms.
     """
+    if(self.restraints_manager is None): return
     occupancy_refinement_selections_1d = flex.size_t()
     if(self.refinement_flags.s_occupancies is not None):
       for occsel in self.refinement_flags.s_occupancies:
         for occsel_ in occsel:
           occupancy_refinement_selections_1d.extend(occsel_)
-    if(self.restraints_manager is None): return
     hd_sel = self.get_hd_selection()
     scatterers = self._xray_structure.scatterers()
     if(hd_sel.count(True) > 0):
+      assert self._xray_structure is not None
       xh_conn_table = self.xh_connectivity_table()
-      qi = self._xray_structure.scatterers().extract_occupancies()
+      qi = self.get_occ()
       ct = self.xh_connectivity_table2()
       for t_ in ct.values():
         i_x, i_h = t_[0][0],t_[0][1]
@@ -1926,20 +2273,17 @@ class manager(object):
             for rf_ in rf2:
               if(o is not None):
                 qi[rf_] = o
-      self._xray_structure.scatterers().set_occupancies(qi, hd_sel)
-      self.set_sites_cart_from_xrs()
+      self.set_occupancies(values = qi, selection = hd_sel)
 
   def reset_coordinates_for_exchangable_hd(self):
     if(len(self.exchangable_hd_groups) > 0):
-      scatterers =  self._xray_structure.scatterers()
-      occ = scatterers.extract_occupancies()
+      occ = self.get_occ()
+      sites_cart = self.get_sites_cart()
       for g in self.exchangable_hd_groups:
         i, j = g[0][0], g[1][0]
-        if(occ[i] > occ[j]):
-          scatterers[j].site = scatterers[i].site
-        else:
-          scatterers[i].site = scatterers[j].site
-    self.set_sites_cart_from_xrs()
+        if(occ[i] > occ[j]): sites_cart[j] = sites_cart[i]
+        else:                sites_cart[i] = sites_cart[j]
+      self.set_sites_cart(sites_cart = sites_cart)
 
   def rotatable_hd_selection(self, iselection=True, use_shortcut=True):
     rmh_sel = mmtbx.hydrogens.rotatable(
@@ -2000,7 +2344,7 @@ class manager(object):
     xrs = self.get_xray_structure()
     scatterers = xrs.scatterers()
     for scatterer in scatterers:
-      neutralized_scatterer = filter(lambda x: x.isalpha(), scatterer.scattering_type)
+      neutralized_scatterer = re.sub('[^a-zA-Z]', '', scatterer.scattering_type)
       if (neutralized_scatterer != scatterer.scattering_type):
         neutralized = True
         scatterer.scattering_type = neutralized_scatterer
@@ -2025,6 +2369,7 @@ class manager(object):
       pi_scope.pdb_interpretation.use_neutron_distances = use_neutron_distances
       # this will take care of resetting everything (grm, processed pdb)
       self.set_pdb_interpretation_params(params = pi_scope)
+      self.process_input_model(make_restraints=True)
     geometry = self.get_restraints_manager().geometry
     hierarchy = self.get_hierarchy()
     atoms = hierarchy.atoms()
@@ -2114,29 +2459,20 @@ class manager(object):
               restraints_manager = self.get_restraints_manager(),
               pdb_hierarchy = self.get_hierarchy(),
               correct_special_position_tolerance = correct_special_position_tolerance,
-              riding_h_manager               = None, # didn't go in original implementation
-              ncs_restraints_group_list      = [], # didn't go in original implementation
-              max_number_of_iterations       = 500,
-              number_of_macro_cycles         = 5,
-              selection                      = sel,
-              bond                           = True,
-              nonbonded                      = sel_pair[1],
-              angle                          = True,
-              dihedral                       = True,
-              chirality                      = True,
-              planarity                      = True,
-              parallelity                    = True,
-              # rmsd_bonds_termination_cutoff  = rmsd_bonds_termination_cutoff,
-              # rmsd_angles_termination_cutoff = rmsd_angles_termination_cutoff,
-              # alternate_nonbonded_off_on     = False, # default
-              # cdl                            = False,
-              # rdl                            = False,
-              # correct_hydrogens              = False,
-              # fix_rotamer_outliers           = True,
-              # allow_allowed_rotamers         = True,
-              # states_collector               = None,
-              log                            = StringIO(),
-              mon_lib_srv                    = self.get_mon_lib_srv())
+              riding_h_manager          = None, # didn't go in original implementation
+              ncs_restraints_group_list = [], # didn't go in original implementation
+              max_number_of_iterations  = 500,
+              number_of_macro_cycles    = 5,
+              selection                 = sel,
+              bond                      = True,
+              nonbonded                 = sel_pair[1],
+              angle                     = True,
+              dihedral                  = True,
+              chirality                 = True,
+              planarity                 = True,
+              parallelity               = True,
+              log                       = StringIO(),
+              mon_lib_srv               = self.get_mon_lib_srv())
           self.set_sites_cart_from_hierarchy()
       sites_cart_mac_after = \
         self._xray_structure.sites_cart().select(not_hd_selection)
@@ -2196,9 +2532,8 @@ class manager(object):
     for i,rg in enumerate(self.extract_water_residue_groups()):
       rg.resseq = iotbx.pdb.resseq_encode(value=i+1)
       rg.icode = " "
-    self._update_pdb_atoms()
+    self.get_hierarchy().atoms().reset_i_seq()
     self._sync_xrs_labels()
-
 
   def add_hydrogens(self, correct_special_position_tolerance,
         element = "H", neutron = False, occupancy=0.01):
@@ -2324,12 +2659,9 @@ class manager(object):
     pip.pdb_interpretation.proceed_with_excessive_length_bonds=True
     pip.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     flags = self.refinement_flags
-    ppr = self.restraints_manager.geometry.plain_pairs_radius
     cs = self.crystal_symmetry()
-    norm = self.restraints_manager.normalization
     log = self.log
     scattering_dict_info = self.scattering_dict_info
-    self.all_chain_proxies = None
     self.__init__(
         model_input = pdb_inp,
         crystal_symmetry = cs,
@@ -2339,9 +2671,7 @@ class manager(object):
         build_grm = False,
         log = StringIO()
         )
-    self.setup_restraints_manager(
-        plain_pairs_radius = ppr,
-        grm_normalization = norm)
+    self.process_input_model(make_restraints=True)
     self.set_refinement_flags(flags)
     if scattering_dict_info is not None:
       self.setup_scattering_dictionaries(
@@ -2357,6 +2687,7 @@ class manager(object):
     scatterers = self._xray_structure.scatterers()
     adp_fl = self.refinement_flags.adp_individual_iso
     adp_fl_a = self.refinement_flags.adp_individual_aniso
+    b_iso = self.get_b_iso()
     if(adp_fl is not None):
       for gsel in self.hd_group_selections():
         i,j = gsel[0][0], gsel[1][0]
@@ -2377,8 +2708,8 @@ class manager(object):
           adp_fl[i_seq_max_q] = True
           adp_fl[i_seq_min_q] = False
           assert [adp_fl[i_seq_max_q], adp_fl[i_seq_min_q]].count(True) > 0
-          scatterers[i_seq_min_q].u_iso = scatterers[i_seq_max_q].u_iso
-    self.set_sites_cart_from_xrs()
+          b_iso[i_seq_min_q] = b_iso[i_seq_max_q]
+    self.set_b_iso(values = b_iso)
 
   def rms_b_iso_or_b_equiv_bonded(self):
     if(self.ias_manager is not None): return 0
@@ -2407,13 +2738,13 @@ class manager(object):
     self.old_refinement_flags = None
     if not build_only: self.use_ias = True
     self.ias_manager = ias.manager(
-                    geometry             = self.restraints_manager.geometry,
-                    pdb_atoms            = self.pdb_atoms,
-                    xray_structure       = self._xray_structure,
-                    fmodel               = fmodel,
-                    params               = ias_params,
-                    file_name            = file_name,
-                    log                  = self.log)
+      geometry             = self.restraints_manager.geometry,
+      pdb_atoms            = self.get_hierarchy().atoms(),
+      xray_structure       = self._xray_structure,
+      fmodel               = fmodel,
+      params               = ias_params,
+      file_name            = file_name,
+      log                  = self.log)
     size_all = self._xray_structure.scatterers().size()
     if(not build_only):
       ias_xray_structure = self.ias_manager.ias_xray_structure
@@ -2470,12 +2801,9 @@ class manager(object):
       residue_names=residue_names,
       chain_id=" ",
       i_seq_start=0,
-      reset_labels=True, # maybe this will allow to drop IS handling in
-      # adopt_xray_structure()
-      )
+      reset_labels=True)
 
   def remove_ias(self):
-    print(">>> Removing IAS...............", file=self.log)
     self.use_ias = False
     ias_selection = self.get_ias_selection()
     if(self.ias_manager is not None):
@@ -2489,7 +2817,7 @@ class manager(object):
       self._xray_structure.scattering_type_registry().show(out=self.log)
       self._pdb_hierarchy = self._pdb_hierarchy.select(
         atom_selection = ~ias_selection)
-      self._update_pdb_atoms()
+      self.get_hierarchy().atoms().reset_i_seq()
 
   def show_rigid_bond_test(self, out=None, use_id_str=False, prefix=""):
     if (out is None): out = sys.stdout
@@ -2502,11 +2830,12 @@ class manager(object):
       sites_cart = sites_cart.select(~ias_selection)
     bond_proxies_simple, asu = self.restraints_manager.geometry.\
         get_all_bond_proxies(sites_cart=sites_cart)
+    atoms = self.get_hierarchy().atoms()
     for proxy in bond_proxies_simple:
       i_seqs = proxy.i_seqs
       i,j = proxy.i_seqs
-      atom_i = self.pdb_atoms[i]
-      atom_j = self.pdb_atoms[j]
+      atom_i = atoms[i]
+      atom_j = atoms[j]
       if (    atom_i.element.strip() not in ["H","D"]
           and atom_j.element.strip() not in ["H","D"]):
         sc_i = scatterers[i]
@@ -2608,7 +2937,8 @@ class manager(object):
       # extracting info used in .geo files.
       new_restraints_manager.geometry.pair_proxies(
           sites_cart = self.get_sites_cart().select(selection))
-    new_shift_manager = self._shift_manager
+    new_shift_cart = deepcopy(self._shift_cart)
+    new_unit_cell_crystal_symmetry = deepcopy(self._unit_cell_crystal_symmetry)
     new_riding_h_manager = None
     if self.riding_h_manager is not None:
       new_riding_h_manager = self.riding_h_manager.select(selection)
@@ -2619,17 +2949,20 @@ class manager(object):
     if self.tls_groups is not None:
       sel_tls = self.tls_groups.select(selection, self.get_number_of_atoms())
     new = manager(
-      model_input                = self._model_input, # any selection here?
+      model_input                = None,
       crystal_symmetry           = self._crystal_symmetry,
       restraint_objects          = self._restraint_objects,
       monomer_parameters         = self._monomer_parameters,
-      restraints_manager         = new_restraints_manager,
       expand_with_mtrix          = False,
-      xray_structure             = xrs_new,
       pdb_hierarchy              = new_pdb_hierarchy,
       pdb_interpretation_params  = self._pdb_interpretation_params,
-      tls_groups                 = sel_tls,
       log                        = self.log)
+    new.restraints_manager = new_restraints_manager
+    new._xray_structure    = xrs_new
+    new.tls_groups = sel_tls
+    new._model_number = self._model_number
+    new._info = deepcopy(self._info)
+
     if new_riding_h_manager is not None:
       new.riding_h_manager = new_riding_h_manager
     new.get_xray_structure().scattering_type_registry()
@@ -2643,11 +2976,8 @@ class manager(object):
       if new_an_gr.iselection.size() > 0:
         new_anom_groups.append(new_an_gr)
     new.set_anomalous_scatterer_groups(new_anom_groups)
-    # do not use set_shift_manager for this because shifted xray_str and hierarchy
-    # are used here and being cutted. We need only shift_back and get_..._cs
-    # functionality form shift_manager at the moment
-    new._shift_manager = new_shift_manager
-    new._processed_pdb_files_srv = self._processed_pdb_files_srv
+    new._shift_cart = new_shift_cart
+    new._unit_cell_crystal_symmetry = new_unit_cell_crystal_symmetry
     if self.ncs_constraints_present():
       new_ncs_groups = self._ncs_groups.select(selection)
       new._ncs_groups = new_ncs_groups
@@ -2685,6 +3015,7 @@ class manager(object):
     next = "| %5d: %8.3f %6.2f %5s %3s %5s <> %8.3f %6.2f %5s %3s %5s   |"
     sites = self._xray_structure.sites_cart()
     b_isos = self._xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
+    atoms = self.get_hierarchy().atoms()
     for i_seq, selection in enumerate(selections):
       if (isinstance(selection, flex.bool)):
         i_selection = selection.iselection()
@@ -2692,8 +3023,8 @@ class manager(object):
         i_selection = selection
       start = i_selection[0]
       final = i_selection[i_selection.size()-1]
-      first = self.pdb_atoms[start]
-      last  = self.pdb_atoms[final]
+      first = atoms[start]
+      last  = atoms[final]
       first_ag = first.parent()
       first_rg = first_ag.parent()
       last_ag = last.parent()
@@ -2720,7 +3051,6 @@ class manager(object):
     self.update_xrs()
     self._atom_selection_cache = None
     n_old_atoms = self.get_number_of_atoms()
-    self.pdb_atoms = self._pdb_hierarchy.atoms()
     n_new_atoms = self.get_number_of_atoms()
     return n_old_atoms - n_new_atoms
 
@@ -2902,7 +3232,7 @@ class manager(object):
           number=number_of_new_atoms)
       self.restraints_manager.geometry.update_plain_pair_sym_table(
         sites_frac = self._xray_structure.sites_frac())
-    assert self.pdb_atoms.size() == self._xray_structure.scatterers().size()
+    assert self.size() == self._xray_structure.scatterers().size()
     if self.riding_h_manager is not None:
       new_riding_h_manager = self.riding_h_manager.update(
         pdb_hierarchy       = self._pdb_hierarchy,
@@ -2925,7 +3255,7 @@ class manager(object):
     pdb_model = self._pdb_hierarchy.only_model()
     new_chain = iotbx.pdb.hierarchy.chain(id=chain_id)
     orth = new_xray_structure.unit_cell().orthogonalize
-    n_seq = self.pdb_atoms.size()
+    n_seq = self.size()
     i_seq = i_seq_start
     for j_seq, sc in enumerate(new_xray_structure.scatterers()):
       i_seq += 1
@@ -2956,10 +3286,9 @@ class manager(object):
     # part of the model atoms loose their parent(). Not clear why.
     # deep_copy seems to help with it.
     self._pdb_hierarchy = self._pdb_hierarchy.deep_copy()
-    self._update_pdb_atoms()
+    self.get_hierarchy().atoms().reset_i_seq()
     if (reset_labels):
       self._sync_xrs_labels()
-    self.all_chain_proxies = None
     self._processed_pdb_file = None
 
   def _sync_xrs_labels(self):
@@ -2983,7 +3312,7 @@ class manager(object):
     Convert a single atom (usually water) to a different type, including
     adjustment of the xray structure and geometry restraints.
     """
-    atom = self.pdb_atoms[i_seq]
+    atom = self.get_hierarchy().atoms()[i_seq]
     atom.name = atom_name
     atom.element = "%2s" % element.strip()
     assert (atom.element.strip() == element)
@@ -3057,10 +3386,10 @@ class manager(object):
       nonbonded_type=element,
       charge=charge)
     self._xray_structure.discard_scattering_type_registry()
-    assert self.pdb_atoms.size() == self._xray_structure.scatterers().size()
+    assert self.size() == self._xray_structure.scatterers().size()
     self._sync_xrs_labels()
     self.set_xray_structure(self._xray_structure)
-    self._update_pdb_atoms()
+    self.get_hierarchy().atoms().reset_i_seq()
     return atom
 
   def scale_adp(self, scale_max, scale_min):
@@ -3072,8 +3401,7 @@ class manager(object):
     sel_outliers_min = b_isos < min_b_iso
     b_isos.set_selected(sel_outliers_max, max_b_iso)
     b_isos.set_selected(sel_outliers_min, min_b_iso)
-    self._xray_structure.set_b_iso(values = b_isos)
-    self.set_sites_cart_from_xrs()
+    self.set_b_iso(values = b_isos)
 
   def get_model_statistics_info(self,
       fmodel_x          = None,
@@ -3095,7 +3423,9 @@ class manager(object):
     return self.get_xray_structure().scattering_type_registry().last_table() \
       == "neutron"
 
-  def geometry_statistics(self, use_hydrogens=None, fast_clash=True,
+  def geometry_statistics(self,
+                          use_hydrogens=None,
+                          fast_clash=True,
                           condensed_probe=True):
     scattering_table = \
         self.get_xray_structure().scattering_type_registry().last_table()
@@ -3112,7 +3442,7 @@ class manager(object):
         pdb_interpretation_params = self.get_current_pdb_interpretation_params(),
         log                = null_out())
       m.setup_scattering_dictionaries(scattering_table=scattering_table)
-      m.get_restraints_manager()
+      m.process_input_model(make_restraints=True)
     else:
       m = self.deep_copy()
     m.get_hierarchy().atoms().reset_i_seq()
@@ -3139,7 +3469,7 @@ class manager(object):
 
   def occupancy_statistics(self):
     return mmtbx.model.statistics.occupancy(
-      hierarchy = self.get_hierarchy(sync_with_xray_structure=True))
+      hierarchy = self.get_hierarchy())
 
   def adp_statistics(self):
     rm = self.restraints_manager
@@ -3199,18 +3529,31 @@ class manager(object):
         self.u_aniso_gradients = u_aniso_gradients
     return result()
 
+  def is_inside_working_cell(self):
+    """
+      Return True if all fractional coordinates are inside (0,1)
+    """
+    sites_frac = self.get_sites_frac()
+    min_value=flex.double(sites_frac.min()).min_max_mean().min
+    max_value=flex.double(sites_frac.max()).min_max_mean().max
+    if min_value >= 0 and max_value <= 1:
+      return True
+    else:
+      return False
+
   def is_same_model(self, other):
     """
     Return True if models are the same, False otherwise.
     XXX Can be endlessly fortified.
     """
-    a1 = self.get_hierarchy().atoms()
-    a2 = other.get_hierarchy().atoms()
-    f0 = a1.size() == a2.size()
-    if(not f0): return False
-    f1 = flex.max(flex.sqrt((a1.extract_xyz()-a2.extract_xyz()).dot()))<1.e-3
-    f2 = flex.max(flex.abs((a1.extract_occ()-a2.extract_occ())))<1.e-2
-    f3 = flex.max(flex.abs((a1.extract_b()-a2.extract_b())))<1.e-2
+    f0 = self.size() == other.size()
+    f1 = self.get_hierarchy().is_similar_hierarchy(other.get_hierarchy())
+    f2 = self.get_xray_structure().is_similar(other.get_xray_structure())
+    x1 = self.get_hierarchy().extract_xray_structure(
+      crystal_symmetry = self.crystal_symmetry())
+    x2 = other.get_hierarchy().extract_xray_structure(
+      crystal_symmetry = other.crystal_symmetry())
+    f3 = x1.is_similar(x2)
     f = list(set([f0,f1,f2,f3]))
     return len(f)==1 and f[0]
 
@@ -3236,6 +3579,23 @@ class manager(object):
     if(selection_aniso is not None):
       self._xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection = selection_aniso.iselection())
+
+  def as_map_model_manager(self, map_manager = None,
+    create_model_map = False, resolution = None):
+   """ Return a map_model_manager containing this model
+     (and optional map_manager)
+    Note that a map_manager is required for most functions of the
+    map_model_manager.  You can generate a map_manager with
+    create_model_map = True and setting resolution
+   """
+
+   from iotbx.map_model_manager import map_model_manager
+   mmm = map_model_manager(model = self, map_manager = map_manager)
+   if create_model_map:
+     assert resolution is not None
+     mmm.set_resolution(resolution)
+     mmm.generate_map()
+   return mmm
 
   def _expand_symm_helper(self, records_container):
     """
@@ -3305,20 +3665,20 @@ class manager(object):
       # Drop model.id if there is only one model.
       # Otherwise there are problems with set_xray_structure...
       self._pdb_hierarchy.only_model().id = ""
-
     # Now deal with SS annotations
     ssa = self.get_ss_annotation()
     if ssa is not None:
       ssa.multiply_to_asu_2(chain_ids_match_dict)
       self.set_ss_annotation(ssa)
-    self._update_pdb_atoms()
+    # reset
+    self.get_hierarchy().atoms().reset_i_seq()
     self._xray_structure = None
-    self._all_chain_proxies = None
     self._update_atom_selection_cache()
+    self.restraints_manager = None
 
   def _biomt_mtrix_container_is_good(self, records_container):
-    if records_container is None:
-      return False
+    if(records_container is None): return False
+    if(len(records_container.r)==0): return False
     if len(records_container.r)==1:
       r, t = records_container.r[0], records_container.t[0]
       if r.is_r3_identity_matrix() and t.is_col_zero():
@@ -3329,14 +3689,21 @@ class manager(object):
       return False
     return True
 
+  def mtrix_expanded(self):
+    return self._mtrix_expanded
+
+  def biomt_expanded(self):
+    return self._biomt_expanded
+
   def expand_with_MTRIX_records(self):
-    mtrix_records_container = self._model_input.process_MTRIX_records()
-    if not self._biomt_mtrix_container_is_good(mtrix_records_container):
+    if(self.mtrix_expanded()): return
+    if(not self._biomt_mtrix_container_is_good(self.mtrix_operators)):
       return
-    if self.get_hierarchy() is None:
+    if(self.get_hierarchy() is None and self.get_model_input() is not None):
       self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy(
           self._pdb_interpretation_params.pdb_interpretation.sort_atoms)
-    self._expand_symm_helper(mtrix_records_container)
+    self._expand_symm_helper(self.mtrix_operators)
+    self._mtrix_expanded = True
 
   def expand_with_BIOMT_records(self):
     """
@@ -3344,13 +3711,14 @@ class manager(object):
     Known limitations: will expand everything, regardless of what selections
     were setted in BIOMT header.
     """
-    biomt_records_container = self._model_input.process_BIOMT_records()
+    if(self.biomt_expanded()): return
+    if not self._biomt_mtrix_container_is_good(self.biomt_operators):
+      return
     # Check if BIOMT and MTRIX are identical and then do not apply BIOMT
-    mtrix_records_container = self._model_input.process_MTRIX_records()
-    br = biomt_records_container.r
-    bt = biomt_records_container.t
-    mr = mtrix_records_container.r
-    mt = mtrix_records_container.t
+    br = self.biomt_operators.r
+    bt = self.biomt_operators.t
+    mr = self.mtrix_operators.r
+    mt = self.mtrix_operators.t
     if(len(br)==len(mr) and len(bt)==len(mt)):
       cntr1=0
       for bri in br:
@@ -3366,9 +3734,8 @@ class manager(object):
             break
       if(cntr1==len(br) and cntr2==len(bt)): return
     #
-    if not self._biomt_mtrix_container_is_good(biomt_records_container):
-      return
-    self._expand_symm_helper(biomt_records_container)
+    self._expand_symm_helper(self.biomt_operators)
+    self._biomt_expanded = True
 
   def set_sequences(self, sequences, custom_residues=None,
                     similarity_matrix=None, min_allowable_identity=None,

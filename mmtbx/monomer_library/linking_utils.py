@@ -1,7 +1,9 @@
 from __future__ import absolute_import, division, print_function
+from operator import attrgetter
 import iotbx
 from scitbx.array_family import flex
 from mmtbx.chemical_components import get_type
+from libtbx.utils import Sorry
 
 from mmtbx.monomer_library import linking_setup
 from mmtbx.monomer_library.linking_setup import ad_hoc_single_metal_residue_element_types
@@ -16,6 +18,10 @@ get_class = iotbx.pdb.common_residue_names_get_class
 sugar_types = ["SACCHARIDE",
                "D-SACCHARIDE",
                "L-SACCHARIDE",
+               'D-SACCHARIDE, ALPHA LINKING',
+               'D-SACCHARIDE, BETA LINKING',
+               'L-SACCHARIDE, ALPHA LINKING',
+               'L-SACCHARIDE, BETA LINKING',
                ]
 amino_types = ['"L-PEPTIDE LINKING"',
                '"D-PEPTIDE LINKING"',
@@ -163,9 +169,6 @@ def is_o_glyco_bond(atom1, atom2):
   return False
 
 def get_chiral_volume(c_atom, o_atom, angles, verbose=False):
-  def _sort_by_name(a1, a2):
-    if a1.name<a2.name: return -1
-    else: return 1
   others = []
   for angle in angles:
     for atom in angle:
@@ -174,7 +177,7 @@ def get_chiral_volume(c_atom, o_atom, angles, verbose=False):
       if atom.name==c_atom.name: continue
       if atom.name==o_atom.name: continue
       others.append(atom)
-  others.sort(_sort_by_name)
+  others.sort(key=attrgetter('name'))
   others.insert(0, o_atom)
   others.insert(0, c_atom)
   if len(others)!=4:
@@ -189,7 +192,7 @@ def get_chiral_volume(c_atom, o_atom, angles, verbose=False):
 
 def get_hand(c_atom, o_atom, angles, verbose=False):
   v = get_chiral_volume(c_atom, o_atom, angles, verbose=verbose)
-  if v<0:
+  if v is not None and v < 0:
     return "BETA"
   else:
     return "ALPHA"
@@ -403,15 +406,21 @@ def is_atom_pair_linked(atom1,
        ):
       return True
     else:
-      print('lookup',lookup)
-      print(atom1.quote())
-      print(atom2.quote())
-      assert 0
+      outl = '''
+
+Linking of a common element has failed.
+
+  %-20s - %s
+  %-20s - %s
+
+Send details to help@phenix-online.org
+      ''' % (lookup[0], atom1.quote(), lookup[1], atom2.quote())
+      raise Sorry(outl)
   if "metal" in lookup:
     if not linking_setup.skip_if_non_linking(lookup, atom1, atom2):
       return False
     else:
-      if link_metals:
+      if link_metals is True:
         return is_atom_metal_coordinated(lookup, atom1, atom2)
       return link_metals
   #

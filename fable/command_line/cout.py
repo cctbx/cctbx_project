@@ -12,7 +12,8 @@ def compute_hexdigest(text):
   return m.hexdigest()
 
 def check_fingerprint(file_name):
-  lines = open(file_name).read().splitlines()
+  with open(file_name) as f:
+    lines = f.read().splitlines()
   if (len(lines) == 0): return None
   flds = lines[0].split()
   if (len(flds) < 2 or flds[-2] != "fingerprint"): return None
@@ -33,9 +34,9 @@ def write_only_if_safe(file_name, text):
       raise RuntimeError(
         "File appears to be manually modified: %s" % show_string(file_name))
   hexdigest = compute_hexdigest(text=text)
-  f = open(file_name, "w")
-  f.write("// fingerprint %s\n" % hexdigest)
-  f.write(text)
+  with open(file_name, "w") as f:
+    f.write("// fingerprint %s\n" % hexdigest)
+    f.write(text)
 
 class process(object):
 

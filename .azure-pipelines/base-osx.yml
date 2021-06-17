@@ -7,7 +7,7 @@ jobs:
 - job: ${{ format('{0}_{1}', format('macOS_{0}', join('_', parameters.vmImage)), format('xcode_{0}', join('_', parameters.xcode_version)) ) }}
   pool:
     vmImage: ${{ format('macOS-{0}', join('.', parameters.vmImage)) }}
-  timeoutInMinutes: 360
+  timeoutInMinutes: 120
   strategy:
     maxParallel: 1
     matrix:
@@ -29,9 +29,9 @@ jobs:
 
   - script: |
       echo "Removing homebrew from Azure to avoid conflicts."
-      curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall > ~/uninstall_homebrew
+      curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall.sh > ~/uninstall_homebrew
       chmod +x ~/uninstall_homebrew
-      ~/uninstall_homebrew -fq
+      ~/uninstall_homebrew -f -q
       rm ~/uninstall_homebrew
     displayName: Remove homebrew
 

@@ -72,10 +72,10 @@ def example():
                             y_legend='Error free y values')
     chebyshev_plot.add_data(y_data=y_fitted,
                             y_legend='Fitted chebyshev approximation')
-    output_logfile=open('chebyshev.loggraph','w')
-    f = StringIO()
-    data_plots.plot_data_loggraph(chebyshev_plot,f)
-    output_logfile.write(f.getvalue())
+    with open('chebyshev.loggraph', 'w') as output_logfile:
+      f = StringIO()
+      data_plots.plot_data_loggraph(chebyshev_plot, f)
+      output_logfile.write(f.getvalue())
 
 
 def another_example(np=41,nt=5):

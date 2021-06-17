@@ -1,15 +1,15 @@
 from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex # import dependency
 from cctbx import uctbx # import dependency
-import boost.python
-ext = boost.python.import_ext("cctbx_orientation_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("cctbx_orientation_ext")
 from cctbx_orientation_ext import *
 
 class basis_type:
   direct = False
   reciprocal = True
 
-@boost.python.inject_into(ext.crystal_orientation)
+@bp.inject_into(ext.crystal_orientation)
 class _():
 
   def __getattr__(self,tag):

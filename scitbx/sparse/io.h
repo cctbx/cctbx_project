@@ -76,7 +76,6 @@ std::ostream& operator<<(std::ostream& o,
                          const sparse::vector_compressed_display_t<T, C>& disp)
 {
   sparse::vector<T, C> const& v = disp.content;
-  typedef typename sparse::vector<T, C>::index_type size_type;
   typedef typename sparse::vector<T, C>::const_iterator const_iterator;
   o << "{ ";
   bool first = true;
@@ -105,7 +104,6 @@ std::ostream& operator<<(std::ostream& o,
                          const sparse::matrix_dense_display_t<T>& disp)
 {
   typedef typename sparse::matrix<T>::index_type index_type;
-  typedef typename sparse::matrix<T>::const_row_iterator const_row_iterator;
   const sparse::matrix<T>& m = disp.content;
   sparse::matrix<T> mt = m.transpose();
   std::streamsize width = o.width();

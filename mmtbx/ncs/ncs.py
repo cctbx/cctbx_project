@@ -1,11 +1,13 @@
 from __future__ import absolute_import, division, print_function
 # from mmtbx.ncs.ncs_utils import convert_phil_format
 import sys, os, string
+from operator import itemgetter
 from libtbx.utils import Sorry
 from libtbx.utils import null_out
 import scitbx.rigid_body
 from six.moves import zip
 from six.moves import range
+from copy import deepcopy
  # hierarchy:  there can be any number of ncs groups.
  #   each group has a set of NCS operators and centers and may apply
  #      to a part of the structure.
@@ -270,7 +272,22 @@ def get_c_symmetry(n=None,is_d=False,two_fold_along_x=None,ncs_name=None):
 
   return ncs_object
 
+def remove_extra(text):
+  new_text=""
+  for t in text:
+    if not t.lower() in "()abcdefghijklmnopqrstuvwxyz":
+      new_text+=t
+  return new_text
+
+def value(str):
+  try:
+    return int(remove_extra(str[1:]))
+  except Exception as e:
+    return 0
+
+
 def generate_ncs_ops(symmetry=None,
+   must_be_consistent_with_space_group_number = None,
    helical_rot_deg=None,
    helical_trans_z_angstrom=None,
    op_max=None,
@@ -297,11 +314,11 @@ def generate_ncs_ops(symmetry=None,
   elif symmetry.lower().startswith("d"):
     sym_type='D'
     if len(symmetry)>1:
-      sym_n=int(symmetry[1:])
+      sym_n=value(symmetry)
   elif symmetry.lower().startswith("c"):
     sym_type='C'
     if len(symmetry)>1:
-      sym_n=int(symmetry[1:])
+      sym_n=value(symmetry)
   elif symmetry.lower() in ['helical','helix']:
     sym_type='helical'
 
@@ -376,6 +393,12 @@ def generate_ncs_ops(symmetry=None,
       if two_fold_along_x is None or two_fold_along_x==False:
         ncs_list.append(get_d_symmetry(n=i,two_fold_along_x=False,
         ncs_name='D%d (b)' %(i)))
+
+  #  Pare down ncs_list if must_be_consistent_with_space_group_number is set
+  if must_be_consistent_with_space_group_number:
+    ncs_list=remove_ncs_not_consistent_with_space_group_number(
+       must_be_consistent_with_space_group_number,ncs_list)
+
   if sym_type=='helical' or (
       all and include_helical_symmetry):
      if helical_rot_deg is not None and helical_trans_z_angstrom is not None:
@@ -384,6 +407,27 @@ def generate_ncs_ops(symmetry=None,
        helical_trans_z_angstrom=helical_trans_z_angstrom,
        max_ops=max_helical_ops_to_check))
 
+  return ncs_list
+
+def remove_ncs_not_consistent_with_space_group_number(sg_number,ncs_list):
+  ''' remove ncs ojbect that are not consistent with space_group number
+     sg_number
+   NOTE: allows ncs that has higher symmetry than sg_number
+  '''
+
+  from cctbx import crystal
+  from cctbx import sgtbx
+  from cctbx import uctbx
+  sg = sgtbx.space_group_info(sg_number)
+  uc = uctbx.unit_cell((10.,10.,10.,90.,90.,90.))
+  cs = crystal.symmetry(unit_cell=uc ,space_group_info = sg)
+  ncs_from_cs = crystal_symmetry_to_ncs(cs)
+  # Make sure all ops of ncs_from_cs are in each ncs used
+  new_ncs_list =[]
+  for ncs_obj in ncs_list:
+    if ncs_from_cs.is_similar_ncs_object(ncs_obj,abs_tol_t=10000):
+      new_ncs_list.append(ncs_obj)
+  ncs_list = new_ncs_list
   return ncs_list
 
 # Symmetry for icosahedron in 3 settings
@@ -2206,6 +2250,9 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self._have_helical_symmetry=False
     self._have_point_group_symmetry=False
 
+  def __repr__(self):
+    return "NCS group with %s ops" %(self._n_ncs_oper)
+
   def apply_cob_to_vector(self,vector=None,
          change_of_basis_operator=None,
          coordinate_offset=None,
@@ -2226,7 +2273,6 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       scale_factor=None,
       unit_cell=None,new_unit_cell=None):
     # if change_of_basis_operator is None, then return copy of what we have
-    from copy import deepcopy
     from scitbx.math import  matrix
     new_list_of_matrices=[]
     new_list_of_translations=[]
@@ -2306,7 +2352,6 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       coordinate_offset=None,
       scale_factor=None,
          unit_cell=None,new_unit_cell=None):
-    from copy import deepcopy
     from scitbx.math import  matrix
     new_vector_list=[]
     for vector in list_of_vectors:
@@ -2352,7 +2397,6 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       return self.extract_point_group_symmetry()
 
     from mmtbx.ncs.ncs import ncs
-    from copy import deepcopy
     new=ncs_group()
     new._chain_residue_id=self._chain_residue_id
     new._rmsd_list=deepcopy(self._rmsd_list)
@@ -2449,7 +2493,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       id=self.index_from_chain_id.get(x)
       assert id is not None
       sort_list.append([id,x])
-    sort_list.sort()
+    sort_list.sort(key=itemgetter(0))
     new_group=[]
     for [id,x] in sort_list:
       new_group.append(x)
@@ -2473,7 +2517,6 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       hierarchy_to_match_order=hierarchy_to_match_order)
 
     from mmtbx.ncs.ncs import ncs
-    from copy import deepcopy
     new=ncs_group()
     new._chain_residue_id=self._chain_residue_id
     new._rmsd_list=deepcopy(self._rmsd_list)
@@ -2788,14 +2831,12 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
   def invert_matrices(self):
     self.get_inverses()
-    from copy import deepcopy
     # move the inverses to std
     self._translations_orth=deepcopy(self._translations_orth_inv)
     self._rota_matrices=deepcopy(self._rota_matrices_inv)
     self.get_inverses()
 
   def rotate_matrices(self,rot=None):
-    from copy import deepcopy
     translations_orth_rot=deepcopy(self._translations_orth)
     rota_matrices_rot=deepcopy(self._rota_matrices)
 
@@ -2897,40 +2938,32 @@ class ncs_group:  # one group of NCS operators and center and where it applies
    else:
      return None
 
-  def is_point_group_symmetry(self,
+  def is_similar_ncs_group(self, other,
    tol_r=default_tol_r,
    abs_tol_t=default_abs_tol_t,
    rel_tol_t=default_rel_tol_t,
-   symmetry_to_match=None):
-    # return True if any 2 sequential operations is a member of the
-    #  set.  Test by sequentially applying all pairs of
-    # operators and verifying that the result is a member of the set
+   allow_self_contained_in_other = True):
+    '''
+     return True if all operations of self match one of other
+    '''
 
-    # Allow checking self operators vs some other symmetry object if desired:
-
-    if len(self.rota_matrices_inv()) < 2:
+    if (not allow_self_contained_in_other) and \
+       len(self.rota_matrices_inv()) != len(other.rota_matrices_inv()):
       return False
 
-    if symmetry_to_match is None:
-      symmetry_to_match=self
+    if len(self.rota_matrices_inv()) < 1:
+      return False
 
     for r,t in zip(self.rota_matrices_inv(),self.translations_orth_inv()):
-      for r1,t1 in zip(self.rota_matrices_inv(),self.translations_orth_inv()):
-        new_r = r1 * r
-        new_t = (r1 * t) + t1
         is_similar=False
-        for r2,t2 in zip(symmetry_to_match.rota_matrices_inv(),
-           symmetry_to_match.translations_orth_inv()):
-          if is_same_transform(new_r,new_t,r2,t2,tol_r=tol_r,
+        for r2,t2 in zip(other.rota_matrices_inv(),
+           other.translations_orth_inv()):
+          if is_same_transform(r,t,r2,t2,tol_r=tol_r,
             abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t):
             is_similar=True
             break
         if not is_similar:
           return False
-    self._have_point_group_symmetry=True
-    self.tol_r=tol_r
-    self.abs_tol_t=abs_tol_t
-    self.rel_tol_t=rel_tol_t
     return True
 
   def sort_by_z_translation(self,tol_z=0.01):
@@ -2940,7 +2973,6 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     for i1 in range(n): # figure out if translation is along z
       z_translations.append(self.translations_orth_inv()[i1][2])
       sort_z_translations.append([self.translations_orth_inv()[i1][2],i1])
-    from copy import deepcopy
     rota_matrices_sav=deepcopy(self._rota_matrices)
     translations_orth_sav=deepcopy(self._translations_orth)
 
@@ -3018,7 +3050,6 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       return False
 
     is_helical=True
-    from copy import deepcopy
     rota_matrices_sav=deepcopy(self._rota_matrices)
     translations_orth_sav=deepcopy(self._translations_orth)
 
@@ -3110,7 +3141,6 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       max_operators=None):
     assert self._have_helical_symmetry
     # extend the operators to go from -z_range to z_range
-    from copy import deepcopy
     rota_matrices_inv_sav=deepcopy(self.rota_matrices_inv())
     translations_orth_inv_sav=deepcopy(self.translations_orth_inv())
     # only apply centers if some existing ones are not zero
@@ -3125,7 +3155,329 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     for r,t,c in zip(rota_matrices_inv_sav,translations_orth_inv_sav,self._centers):
       z_value=t[2]
       sort_list.append([z_value,r,t,c])
-    sort_list.sort()
+    sort_list.sort(key=itemgetter(0))
+    z_first,r_first,t_first,c_first=sort_list[0]
+    z_last,r_last,t_last,c_last=sort_list[-1]
+    z_next_to_last,r_next_to_last,t_next_to_last,c_next_to_last=sort_list[-2]
+    z_translation=self.get_helix_z_translation()
+    if not z_translation:
+      from libtbx.utils import Sorry
+      raise Sorry("Cannot apply extension of helical NCS operators with no"+
+        " Z-translation")
+
+    # Figure out which direction to add single shifts to each end
+    r_forwards,t_forwards,r_reverse,t_reverse=self.get_forwards_reverse_helix(
+      r1=r_next_to_last,t1=t_next_to_last,r2=r_last,t2=t_last)
+
+    if max_operators:
+      max_new_each_direction=max(0,
+          (1+max_operators-len(rota_matrices_inv_sav))//2)
+    else:
+      max_new_each_direction=None
+
+    # Add on at end until we get to z_max (or z_min if z_translation<0)
+    r_list=[r_last]
+    t_list=[t_last]
+    c_list=[c_last]
+    while 1:
+      new_r = r_forwards*r_list[-1]
+      new_t= (r_forwards * t_list[-1]) + t_forwards
+      new_c= (r_forwards*c_list[-1])+t_forwards
+      if max_new_each_direction and len(c_list)>=max_new_each_direction:
+        break
+      elif is_in_range(new_t[2],-z_range,z_range):
+        r_list.append(new_r)
+        t_list.append(new_t)
+        c_list.append(new_c)
+      else:
+        break
+    rota_matrices_inv=rota_matrices_inv_sav+r_list[1:]
+    translations_orth_inv=translations_orth_inv_sav+t_list[1:]
+    centers=self._centers+c_list[1:]
+
+    # and for other end
+    r_list=[r_first]
+    t_list=[t_first]
+    c_list=[c_first]
+    while 1:
+      new_r = r_reverse*r_list[-1]
+      new_t= (r_reverse * t_list[-1]) + t_reverse
+      new_c= (r_reverse*c_list[-1])+t_reverse
+      if max_new_each_direction and len(c_list)>=max_new_each_direction:
+        break
+      elif is_in_range(new_t[2],-z_range,z_range):
+        r_list.append(new_r)
+        t_list.append(new_t)
+        c_list.append(new_c)
+      else:
+        break
+    rota_matrices_inv+=r_list[1:]
+    translations_orth_inv+=t_list[1:]
+    centers+=c_list[1:]
+    # Now we have a new set...invert and save them
+    self._n_ncs_oper=len(rota_matrices_inv)
+    self._rota_matrices=[]
+    self._translations_orth=[]
+    self._centers=[]
+    for r_inv,t_inv,c in zip(rota_matrices_inv,translations_orth_inv,centers):
+      r_std=r_inv.inverse()
+      t_std=-1.*r_std*t_inv
+      self._rota_matrices.append(r_std)
+      self._translations_orth.append(t_std)
+      if have_non_zero_c:
+        self._centers.append(c)
+      else:
+        self._centers.append(matrix.col((0,0,0)))
+
+    if self._rmsd_list:
+      self._rmsd_list=len(rota_matrices_inv)*[None]
+    if self._residues_in_common_list:
+       self._residues_in_common_list=len(rota_matrices_inv)*[None]
+
+    if self._chain_residue_id:
+       self._chain_residue_id= [
+        len(rota_matrices_inv)*[None],
+        len(rota_matrices_inv)*[[]]
+         ]
+
+    self.delete_inv()
+    self.get_inverses()
+
+    # And reorder them now...
+    self.sort_by_z_translation(tol_z=tol_z)
+
+  def get_helix_z_translation(self):
+    assert self._have_helical_symmetry
+    if hasattr(self,'_helix_z_translation'):
+      return self._helix_z_translation
+    return None
+
+  def is_point_group_symmetry(self,
+   tol_r=default_tol_r,
+   abs_tol_t=default_abs_tol_t,
+   rel_tol_t=default_rel_tol_t,
+   symmetry_to_match=None):
+    # return True if any 2 sequential operations is a member of the
+    #  set.  Test by sequentially applying all pairs of
+    # operators and verifying that the result is a member of the set
+
+    # Allow checking self operators vs some other symmetry object if desired:
+
+    if len(self.rota_matrices_inv()) < 2:
+      return False
+
+    if symmetry_to_match is None:
+      symmetry_to_match=self
+
+    for r,t in zip(self.rota_matrices_inv(),self.translations_orth_inv()):
+      for r1,t1 in zip(self.rota_matrices_inv(),self.translations_orth_inv()):
+        new_r = r1 * r
+        new_t = (r1 * t) + t1
+        is_similar=False
+        for r2,t2 in zip(symmetry_to_match.rota_matrices_inv(),
+           symmetry_to_match.translations_orth_inv()):
+          if is_same_transform(new_r,new_t,r2,t2,tol_r=tol_r,
+            abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t):
+            is_similar=True
+            break
+        if not is_similar:
+          return False
+    self._have_point_group_symmetry=True
+    self.tol_r=tol_r
+    self.abs_tol_t=abs_tol_t
+    self.rel_tol_t=rel_tol_t
+    return True
+
+  def sort_by_z_translation(self,tol_z=0.01):
+    n=len(self.rota_matrices_inv())
+    z_translations=[]
+    sort_z_translations=[]
+    for i1 in range(n): # figure out if translation is along z
+      z_translations.append(self.translations_orth_inv()[i1][2])
+      sort_z_translations.append([self.translations_orth_inv()[i1][2],i1])
+    rota_matrices_sav=deepcopy(self._rota_matrices)
+    translations_orth_sav=deepcopy(self._translations_orth)
+
+    # sort the z-translations to reorder the matrices. Could be backwards
+    sort_z_translations.sort()
+    sorted_indices=[]
+    sorted_z=[]
+    n_plus_one=0
+    n_minus_one=0
+    delta=None
+    all_same_delta=True
+    for z,i1 in sort_z_translations:
+      if sorted_indices:
+        if i1==sorted_indices[-1]+1: n_plus_one+=1
+        if i1==sorted_indices[-1]-1: n_minus_one+=1
+        delta_z=z-sorted_z[-1]
+        if delta is None:
+          delta=delta_z
+        elif abs(delta-delta_z)>tol_z:
+          is_helical=False # XX not used
+      sorted_indices.append(i1)
+      sorted_z.append(z)
+    if n_minus_one>n_plus_one:
+      sorted_indices.reverse()
+    self._helix_z_translation=delta
+
+    # Reorder the operators:
+    self._rota_matrices=len(rota_matrices_sav)*[None]
+    self._translations_orth=len(rota_matrices_sav)*[None]
+    for i1,i2 in zip(sorted_indices,range(n)):
+      self._rota_matrices[i2]=rota_matrices_sav[i1]
+      self._translations_orth[i2]=translations_orth_sav[i1]
+    self.delete_inv() # remove the inv matrices/rotations so they regenerate
+    if len(self._rota_matrices)<2:
+      self._helix_theta=None
+    else:
+      self._helix_theta=self.get_theta_along_z(
+        self._rota_matrices[0],self._rota_matrices[1])
+    self.get_inverses()
+    return sorted_indices
+
+  def get_trans_along_z(self,t0,t1):
+    return t1[2]-t0[2]
+
+  def get_theta_along_z(self,m0,m1):
+    import math
+    cost=m0[0]
+    sint=m0[1]
+    t0=180.*math.atan2(sint,cost)/3.14159
+    cost=m1[0]
+    sint=m1[1]
+    t1=180.*math.atan2(sint,cost)/3.14159
+    return t1 - t0
+
+  def is_helical_along_z(self,tol_z=0.01,
+   tol_r=default_tol_r,
+   abs_tol_t=default_abs_tol_t,
+   rel_tol_t=default_rel_tol_t):
+    # This assumes the operators are in order, but allow special case
+    #   where the identity operator is placed at the beginning but belongs
+    #   at the end
+    # Also assumes the axis of helical symmetry is parallel to the Z-axis.
+    #   and returns False if not
+
+    # For helical symmetry sequential application of operators moves up or
+    #  down the list by an index depending on the indices of the operators.
+    if len(self.rota_matrices_inv()) < 2:
+      return False
+    if self.is_point_group_symmetry(tol_r=tol_r,
+            abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t):
+      return False
+
+    n=len(self.rota_matrices_inv())
+    if n < 3:
+      return False
+
+    is_helical=True
+    rota_matrices_sav=deepcopy(self._rota_matrices)
+    translations_orth_sav=deepcopy(self._translations_orth)
+
+    sorted_indices=self.sort_by_z_translation(tol_z=tol_z)
+
+    offset_list=[]
+    n_missing_list=[]
+    self.helix_oper_forwards=None
+    self.helix_oper_reverse=None
+    self.helix_oper_identity=None
+    for i1 in range(n): # figure out offset made by this self.helix_operator
+      offset,n_missing=self.oper_adds_offset(i1,tol_r=tol_r,
+          abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t)
+      offset_list.append(offset)
+      n_missing_list.append(n_missing)
+      if offset==1:self.helix_oper_forwards=sorted_indices[i1]
+      if offset==-1:self.helix_oper_reverse=sorted_indices[i1]
+      if offset==0:self.helix_oper_identity=sorted_indices[i1]
+    # offset_list should be one instance of each value and will be 0 at the
+    #  operator that is unity
+    if None in offset_list:
+      is_helical=False
+
+    if is_helical:
+      ii=offset_list.index(0)
+      if not is_identity(
+          self.rota_matrices_inv()[ii],self.translations_orth_inv()[ii]):
+        is_helical=False
+
+    if is_helical:
+      for i1 in range(n):
+        if n_missing_list[i1] != abs(i1-ii):
+          is_helical=False
+          break
+    if is_helical:
+      offset_list.sort()
+      start_value=offset_list[0]
+      expected_list=list(range(start_value,start_value+n))
+      if offset_list != expected_list:
+        is_helical=False
+    # restore
+    sys.stdout.flush()
+    self._rota_matrices=rota_matrices_sav
+    self._translations_orth=translations_orth_sav
+    self.delete_inv() # remove the inv matrices/rotations so they regenerate
+    if is_helical:
+      self._have_helical_symmetry=True
+      self.tol_z=tol_z
+      self.tol_r=tol_r
+      self.abs_tol_t=abs_tol_t
+      self.rel_tol_t=rel_tol_t
+      return True
+    else:
+      return False
+
+  def get_forwards_reverse_helix(self,r1=None,t1=None,r2=None,t2=None):
+    # get the forwards and reverse transforms, deciding which is which based
+    # on the order of operators supplied for r1 t1 and r2 t2
+    assert self._have_helical_symmetry
+    for dir in ['forwards','reverse']:
+      if dir=='forwards':
+        r_forwards,t_forwards=self.helix_rt_forwards()
+        r_reverse,t_reverse=self.helix_rt_reverse()
+      else:
+        r_forwards,t_forwards=self.helix_rt_reverse()
+        r_reverse,t_reverse=self.helix_rt_forwards()
+
+      # apply to n-1 and see if we get n:
+      new_r = r_forwards*r1
+      new_t= (r_forwards* t1) + t_forwards
+      if is_same_transform(new_r,new_t,r2,t2,
+         tol_r=self.tol_r,
+         abs_tol_t=self.abs_tol_t,
+         rel_tol_t=self.rel_tol_t):
+        return r_forwards,t_forwards,r_reverse,t_reverse
+    from libtbx.utils import Sorry
+    raise Sorry(
+     "Unable to find forward and reverse operators for this helical symmetry")
+
+  def get_helix_parameters(self,tol_z=default_tol_z):
+    from libtbx import group_args
+    helix_z_translation=self.get_helix_z_translation()
+    helix_theta=self.get_helix_theta()
+    if helix_z_translation is not None and helix_theta is not None:
+      return group_args(helix_z_translation=helix_z_translation,
+        helix_theta=helix_theta)
+
+  def extend_helix_operators(self,z_range=None,tol_z=default_tol_z,
+      max_operators=None):
+    assert self._have_helical_symmetry
+    # extend the operators to go from -z_range to z_range
+    rota_matrices_inv_sav=deepcopy(self.rota_matrices_inv())
+    translations_orth_inv_sav=deepcopy(self.translations_orth_inv())
+    # only apply centers if some existing ones are not zero
+    have_non_zero_c=False
+    from scitbx import matrix
+    for c in self._centers:
+      if list(c)!=[0,0,0]:
+        have_non_zero_c=True
+        break
+
+    sort_list=[]
+    for r,t,c in zip(rota_matrices_inv_sav,translations_orth_inv_sav,self._centers):
+      z_value=t[2]
+      sort_list.append([z_value,r,t,c])
+    sort_list.sort(key=itemgetter(0))
     z_first,r_first,t_first,c_first=sort_list[0]
     z_last,r_last,t_last,c_last=sort_list[-1]
     z_next_to_last,r_next_to_last,t_next_to_last,c_next_to_last=sort_list[-2]
@@ -3359,6 +3711,13 @@ class ncs:
     self._exclude_d=exclude_d
     self._ncs_obj = None
     self._ncs_name = None # an optional name like "D3"
+    self._shift_cart = (0,0,0)  # shift to place object in original location
+
+  def __repr__(self):
+    text = "NCS object with %s groups: " %(len(self._ncs_groups))
+    for g in self._ncs_groups:
+      text+=str(g)
+    return text
 
   def deep_copy(self,change_of_basis_operator=None,unit_cell=None,
       coordinate_offset=None,
@@ -3374,6 +3733,10 @@ class ncs:
     new.source_info=self.source_info
     new._ncs_name=self._ncs_name
     new._ncs_read=self._ncs_read
+    new._shift_cart=deepcopy(self._shift_cart)  # shift_cart is what was applied
+    if coordinate_offset:
+       new._shift_cart=tuple(
+         [a+b for a,b in zip(new._shift_cart,coordinate_offset)])
     # deep_copy over all the ncs groups:
     for ncs_group in self._ncs_groups:
       new_group=ncs_group.deep_copy(
@@ -3401,6 +3764,12 @@ class ncs:
     if scale_factor is None:
        raise Sorry("For magnification a scale factor is required.")
     return self.deep_copy(scale_factor=scale_factor)
+
+  def set_shift_cart(self,shift_cart):
+    self._shift_cart=shift_cart
+
+  def shift_cart(self):
+    return self._shift_cart
 
   def coordinate_offset(self,coordinate_offset=None,unit_cell=None,
       new_unit_cell=None):
@@ -3511,7 +3880,8 @@ class ncs:
       if not os.path.isfile(file_name):
         raise Sorry("The file "+str(file_name)+" does not seem to exist?")
       else:
-        lines=open(file_name).readlines()
+        with open(file_name) as f:
+          lines=f.readlines()
     self.init_ncs_group()
 
     read_something=False
@@ -3770,6 +4140,22 @@ class ncs:
     log.write(text)
     return text
 
+  def shift_cart(self):
+    if self._shift_cart:
+      return self._shift_cart
+    else:
+      return (0,0,0)
+
+  def shift_back_cart(self):
+    return tuple([-a for a in self.shift_cart()])
+
+  def as_ncs_spec_string(self):
+    '''
+     shifts to original location and returns text string
+    '''
+    shifted_ncs=self.coordinate_offset(coordinate_offset=self.shift_back_cart())
+    return shifted_ncs.format_all_for_group_specification(
+         log=null_out(),quiet=True,out=null_out())
 
   def format_all_for_group_specification(self,log=None,quiet=True,out=None,
        file_name=None):
@@ -3779,7 +4165,7 @@ class ncs:
        out=sys.stdout
     if log==None:
       log=sys.stdout
-    else:
+    elif hasattr(out,'name'):
       print("NCS written as ncs object information to:"\
         ,out.name, file=log)
     all_text=""
@@ -3952,6 +4338,38 @@ class ncs:
         n_max=ncs_group.n_ncs_oper()
     return n_max
 
+  def is_similar_ncs_object(self, other,
+   tol_r=default_tol_r,
+   abs_tol_t=default_abs_tol_t,
+   rel_tol_t=default_rel_tol_t,
+   allow_self_contained_in_other = True):
+    '''
+      Determine if self and other are similar ncs objects
+      ncs groups do not have to be in same order
+    '''
+    if not self._ncs_groups and not other._ncs_groups:
+      return True  # nothing there for either one
+
+    if self.shift_cart() != other.shift_cart():
+      return False
+    if not self._ncs_groups:
+      return False
+    if not other._ncs_groups:
+      return False
+    if len(self._ncs_groups) != len (other._ncs_groups):
+      return False
+    for ncs_group in self._ncs_groups:
+      found=False
+      for other_ncs_group in other._ncs_groups:
+        if ncs_group.is_similar_ncs_group(other_ncs_group,tol_r=tol_r,
+            abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t,
+            allow_self_contained_in_other = allow_self_contained_in_other):
+          found=True
+          break
+      if not found:
+        return False
+    return True
+
   def is_point_group_symmetry(self,
    tol_r=default_tol_r,
    abs_tol_t=default_abs_tol_t,
@@ -4020,6 +4438,48 @@ class ncs:
     for ncs_group in self._ncs_groups:
       if ncs_group.identity_op_id() is None:
         ncs_group.add_identity_op()
+
+
+  def apply_ncs_to_sites(self, sites_cart=None,ncs_obj=None,
+      exclude_identity=False,ncs_id=None):
+
+    if type(sites_cart) == type((1,2,3)): # it was a single site
+      from scitbx.array_family import flex
+      sites_cart = flex.vec3_double((sites_cart,))
+
+    if not ncs_obj:
+      ncs_obj = self
+    from scitbx.array_family import flex
+    new_sites_cart=flex.vec3_double()
+    if (not ncs_obj or ncs_obj.max_operators()<=1):
+      if exclude_identity:
+        return new_sites_cart  # nothing as we exclude identity
+      else:
+        return sites_cart
+
+    ncs_group=ncs_obj.ncs_groups()[0]
+    from scitbx.matrix import col
+
+    if ncs_id is not None:
+      t=ncs_group.translations_orth_inv()[ncs_id]
+      r=ncs_group.rota_matrices_inv()[ncs_id]
+      for site in sites_cart:
+        new_sites_cart.append(r * col(site)  + t)
+      return new_sites_cart
+
+    if exclude_identity:
+      identity_op=ncs_group.identity_op_id()
+    else:
+      identity_op=None
+    ii=-1
+    for t,r in zip(
+       ncs_group.translations_orth_inv(),ncs_group.rota_matrices_inv()):
+      ii+=1
+      if exclude_identity and ii==identity_op: continue
+      for site in sites_cart:
+        new_sites_cart.append(r * col(site)  + t)
+    return new_sites_cart
+
 
 test_ncs_info="""
 
@@ -4157,6 +4617,20 @@ if __name__=="__main__":
        std_ncs_text, biomt_text))
      for a,b in zip(std_ncs_text.splitlines(),biomt_text.splitlines()):
        assert a.strip()==b.strip()
+
+     assert std_ncs_object.is_similar_ncs_object(biomt_ncs_object)
+     new_ncs_obj=ncs()
+     # Shift ncs coordinates, make ncs with both, make sure can find
+     #   similarity even if order is different
+     new_ncs_obj._ncs_groups=deepcopy(std_ncs_object._ncs_groups)
+     offset_ncs=std_ncs_object.deep_copy(coordinate_offset=(10,10,10))
+     assert not offset_ncs.is_similar_ncs_object(biomt_ncs_object)
+     new_ncs_obj._ncs_groups.append(deepcopy(offset_ncs._ncs_groups[0]))
+     second_ncs_obj=ncs()
+     second_ncs_obj._ncs_groups=deepcopy(offset_ncs._ncs_groups)
+     second_ncs_obj._ncs_groups.append(deepcopy(std_ncs_object._ncs_groups[0]))
+     assert not new_ncs_obj.is_similar_ncs_object(biomt_ncs_object)
+     assert new_ncs_obj.is_similar_ncs_object(second_ncs_obj)
      print("OK")
 
   elif len(args)>0 and args[0] and os.path.isfile(args[0]):

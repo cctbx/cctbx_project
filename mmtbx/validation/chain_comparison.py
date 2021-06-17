@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 
 import iotbx.phil
 import sys,os
+from operator import itemgetter
 from libtbx.utils import Sorry,null_out
 from scitbx.array_family import flex
 from copy import deepcopy
@@ -613,7 +614,7 @@ def get_sorted_matching_chains(
     else:
         dist=0.
     sort_list.append([dist,chain])
-  sort_list.sort()
+  sort_list.sort(key=itemgetter(0))
   sorted_chains=[]
   sorted_distances=[]
   for dist,chain in sort_list:
@@ -750,7 +751,7 @@ def sort_chains_on_start(chains):
   for chain in chains:
     start=get_first_resno_of_chain(chain)
     sort_list.append([start,chain])
-  sort_list.sort()
+  sort_list.sort(key=itemgetter(0))
   new_chains=[]
   for start,chain in sort_list:
     new_chains.append(chain)
@@ -953,7 +954,7 @@ def write_summary(params=None,file_list=None,rv_list=None,
     target_length=rv.get_target_length('close')
     score=n/(max(1,target_length)*max(0.1,rmsd))
     score_list.append([score,full_f])
-  score_list.sort()
+  score_list.sort(key=itemgetter(0))
   score_list.reverse()
   for score,full_f in score_list:
     rv=results_dict[full_f]
@@ -1351,12 +1352,12 @@ def run(args=None,
   chain_xyz_cart=chain_ca.atoms().extract_xyz()
   target_xyz_cart=target_ca.atoms().extract_xyz()
 
-  if target_xyz_cart.size()<1:
-    print("No suitable atoms in target")
-    return rmsd_values()
-  if chain_xyz_cart.size()<1:
-    print("No suitable atoms in query")
-    return rmsd_values()
+  if target_xyz_cart.size()<1 or chain_xyz_cart.size()<1:
+    print("No suitable atoms in target", file = out)
+    value = rmsd_values()
+    value.n_forward = 0
+    value.n_reverse= 0
+    return value
 
   # for each xyz in chain, figure out closest atom in target and dist
   best_i=None

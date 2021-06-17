@@ -25,6 +25,8 @@
 #include <numeric>
 #include <vector>
 
+#include <scitbx/array_family/accessors/c_grid.h>
+
 
 using namespace std;
 namespace mmtbx { namespace pair_interaction {
@@ -77,7 +79,8 @@ class density_props
     :
       density(0),
       gradient_vector(vec3<FloatType>(0,0,0)),
-      hessian( mat3<FloatType>(0,0,0, 0,0,0, 0,0,0) )
+      hessian( mat3<FloatType>(0,0,0, 0,0,0, 0,0,0) ),
+      gradient(0)
     {}
 
     density_props(
@@ -88,7 +91,8 @@ class density_props
     :
       density(density_),
       gradient_vector(gradient_vector_),
-      hessian(hessian_)
+      hessian(hessian_),
+      gradient(dot(gradient_vector_))
     {}
 
     void add(density_props<> density_props_obj)
@@ -96,6 +100,11 @@ class density_props
       density += density_props_obj.density;
       gradient_vector += density_props_obj.gradient_vector;
       hessian += density_props_obj.hessian;
+      gradient = dot(gradient_vector);
+    }
+
+    FloatType dot(vec3<FloatType> v) {
+      return v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
     }
 
     FloatType cal_silva()
@@ -106,7 +115,7 @@ class density_props
       for(std::size_t j=0; j < 9; j+=increment) {
         FloatType temp = 0;
         for(std::size_t i=0; i < 3; i++) {
-          temp += gradient_vector[j] * hessian[i+j];
+          temp += gradient_vector[i] * hessian[i+j];
         }
         FloatType diff = (density * temp - gradient_vector[cntr] * gradient);
         silva += diff*diff;
@@ -115,25 +124,38 @@ class density_props
       return silva;
     }
 
-  // add argument for dori or sedd
+  double get_dori_value() {
+    FloatType silva = cal_silva();
+    silva *=(4.0 / (gradient*gradient*gradient));
+    silva /=(1.0 + silva);
+    return silva;
+  }
+
+  double get_sedd_value() {
+    FloatType silva = cal_silva();
+    silva *= (4.0 / (std::pow(density, 8)));
+    silva = std::log((1.0 + silva));
+    return silva;
+  }
+
   bool has_silva_interaction(std::string const & silva_type)
     {
-    if(density<0.0001) return false;
-    FloatType silva = cal_silva();
-    MMTBX_ASSERT(gradient != 0);
     if(silva_type.compare("dori")==0) {
-      silva *=(4.0 / (gradient*gradient*gradient));
-      silva /=(1.0 + silva);
-      if(silva>=0.9) return true; // it is 0.8 in original Java version.
-      else           return false;
+      if(density<0.001) return false;
+      if(std::abs(gradient) < 1.e-9) return false;
+      FloatType dori = get_dori_value();
+      if(dori>=0.8 && dori <= 1) { // This breaks mmtbx/pair_interaction/tst_02.py
+      //if(silva>=0.9) {
+        return true; // it is 0.8 in original Java version.
+      }
+      else return false;
     }
     else if(silva_type.compare("sedd")==0) {
-      silva *= (4.0 / (std::pow(density, 8)));
-      silva = std::log((1.0 + silva));
-      if(silva<=5) return true;
-      else         return false;
+      if(density<0.1) return false;
+      if(get_sedd_value()<=5) return true;
+      else                    return false;
     }
-    else { // PVA: is this OK to do. Otherwise compiler doesn't like it.
+    else {
       return false;
     }
     }
@@ -272,7 +294,7 @@ density_props<double> atom_density_props(
   vec3<double> const& a_xyz,
   wfc          const& wfc_obj)
 {
-  vec3<double> d_vector = a_xyz - p;
+  vec3<double> d_vector = p - a_xyz;
   double dx = d_vector[0];
   double dy = d_vector[1];
   double dz = d_vector[2];
@@ -325,33 +347,23 @@ density_props<double> atom_density_props(
     );
 }
 
-// add argument of choosing dori or sedd
-bool has_interaction_at_point(
+density_props<double> build_density_props_obj(
   vec3<double> const&              p,
-  af::shared<vec3<double> > const& a_xyz,
-  af::shared<int> const&           element_flags,
-  boost::python::list const& wfc_obj,
-  std::string const & silva_type
-  )
+  af::const_ref<vec3<double> > const& a_xyz,
+  af::const_ref<int> const&           element_flags,
+  boost::python::list const& wfc_obj)
 {
   density_props<double> density_props_obj = density_props<double>();
   for(std::size_t i=0; i < a_xyz.size(); i++) {
-    vec3<double> d_vector = a_xyz[i] - p;
-    double dx = d_vector[0];
-    double dy = d_vector[1];
-    double dz = d_vector[2];
-    double d = std::sqrt(dx*dx + dy*dy + dz*dz); // norm
-    if(d<15) {
+    vec3<double> diff = a_xyz[i] - p;
+    double dist_sq = diff[0]*diff[0] + diff[1]*diff[1] + diff[2]*diff[2];
+    if(dist_sq<100) {
       wfc tmp = boost::python::extract<wfc>(wfc_obj[element_flags[i]])();
       density_props_obj.add(atom_density_props(p, a_xyz[i], tmp));
     }
   }
   density_props_obj.density  = std::max(density_props_obj.density,1.0E-30);
-  vec3<double> gv = density_props_obj.gradient_vector;
-  double dot = gv[0]*gv[0]+gv[1]*gv[1]+gv[2]*gv[2];
-  density_props_obj.gradient = dot;
-  // add argument of choosing dori or sedd
-  return density_props_obj.has_silva_interaction(silva_type);
+  return density_props_obj;
 }
 
 //template <typename FloatType=double>
@@ -382,13 +394,20 @@ af::shared<vec3<int> > points_and_pairs(
   std::string const & silva_type
   )
 {
+  // Create 2x2 bool map with lengths being max residue number, init with false
+  int max_air = af::max(atom_in_residue.const_ref());
+  af::versa<bool, af::c_grid<2> > pairs;
+  pairs.resize(af::c_grid<2>(max_air+1, max_air+1), false);
+
   af::shared<vec3<int> > interacting_pairs;
   for(std::size_t ix=0; ix < ngrid[0]; ix++) {
+    double stx = xyz_min[0]+ix*step_size;
     for(std::size_t iy=0; iy < ngrid[1]; iy++) {
+      double sty = xyz_min[1]+iy*step_size;
       for(std::size_t iz=0; iz < ngrid[2]; iz++) {
         vec3<double> point = vec3<double>(
-          xyz_min[0]+ix*step_size,
-          xyz_min[1]+iy*step_size,
+          stx,
+          sty,
           xyz_min[2]+iz*step_size);
         int first  = 999999;
         int second = 999999;
@@ -397,7 +416,7 @@ af::shared<vec3<int> > points_and_pairs(
         for(std::size_t j=0; j < xyz.size(); j++) {
           vec3<double> diff = xyz[j] - point;
           double dist_sq = diff[0]*diff[0] + diff[1]*diff[1] + diff[2]*diff[2];
-          if(dist_sq >= 200) continue;
+          if(dist_sq >= 100) continue;
           if(dist_sq < first) {
             second = first;
             first = dist_sq;
@@ -416,12 +435,18 @@ af::shared<vec3<int> > points_and_pairs(
         if(atom_in_residue[atom_id_1] == atom_in_residue[atom_id_2]) continue;
         int ia1 = atom_in_residue[atom_id_1];
         int ia2 = atom_in_residue[atom_id_2];
-        bool has_interaction = has_interaction_at_point(
-          point, xyz, element_flags, wfc_obj, silva_type);
+
+        vec3<int> pair;
+        if(ia1<ia2) pair = vec3<int>(ia1, ia2, 0);
+        else        pair = vec3<int>(ia2, ia1, 0);
+        if(pairs(pair[0], pair[1]) == true) continue;
+
+        density_props<double> density_props_obj = build_density_props_obj(
+          point, xyz.const_ref(), element_flags.const_ref(), wfc_obj);
+        bool has_interaction = density_props_obj.has_silva_interaction(silva_type);
+
         if(has_interaction) {
-          vec3<int> pair;
-          if(ia1<ia2) pair = vec3<int>(ia1, ia2, 0);
-          else        pair = vec3<int>(ia2, ia1, 0);
+          pairs(pair[0], pair[1])=true;
           interacting_pairs.push_back(pair);
         }
   }}}

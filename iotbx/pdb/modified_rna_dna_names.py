@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Fri Feb 28 14:23:03 2020
+The date of file generation: Fri Apr  2 15:47:26 2021
 """
 from __future__ import absolute_import, division, print_function
 
@@ -53,6 +53,7 @@ lookup = {
   "PPU" : "A",
   "PR5" : "A",
   "PU" : "A",
+  "QSQ" : "A",
   "RIA" : "A",
   "SRA" : "A",
   "T6A" : "A",
@@ -85,6 +86,7 @@ lookup = {
   "JMH" : "C",
   "LC" : "C",
   "LHH" : "C",
+  "LV2" : "C",
   "M4C" : "C",
   "M5M" : "C",
   "N5M" : "C",
@@ -198,6 +200,8 @@ lookup = {
   "MCY" : "DC",
   "ME6" : "DC",
   "NCU" : "DC",
+  "OKN" : "DC",
+  "OKQ" : "DC",
   "PVX" : "DC",
   "SC" : "DC",
   "TC1" : "DC",
@@ -281,6 +285,8 @@ lookup = {
   "S6G" : "DG",
   "SDG" : "DG",
   "SDH" : "DG",
+  "T0N" : "DG",
+  "T0Q" : "DG",
   "TGP" : "DG",
   "X" : "DG",
   "XGL" : "DG",
@@ -328,6 +334,7 @@ lookup = {
   "NTT" : "DT",
   "P2T" : "DT",
   "PST" : "DT",
+  "QCK" : "DT",
   "S2M" : "DT",
   "SMT" : "DT",
   "SPT" : "DT",
@@ -379,6 +386,7 @@ lookup = {
   "NDN" : "DU",
   "NDU" : "DU",
   "OHU" : "DU",
+  "OKT" : "DU",
   "P2U" : "DU",
   "PDU" : "DU",
   "T5O" : "DU",
@@ -444,8 +452,10 @@ lookup = {
   "P7G" : "G",
   "PGP" : "G",
   "QUO" : "G",
+  "RFJ" : "G",
   "TG" : "G",
   "TPG" : "G",
+  "VC7" : "G",
   "XTS" : "G",
   "YG" : "G",
   "YYG" : "G",
@@ -499,6 +509,7 @@ lookup = {
   "SSU" : "U",
   "SUR" : "U",
   "T31" : "U",
+  "U23" : "U",
   "U25" : "U",
   "U2L" : "U",
   "U2P" : "U",

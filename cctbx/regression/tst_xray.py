@@ -451,6 +451,42 @@ Si*5  O     Si*6   146.93
 *5 y,-x+y,z+2/3
 *6 -x+y,-x,z+1/3
 """)
+  s = StringIO()
+  quartz.show_dihedral_angles(distance_cutoff=2, max_d=1.62, out=s)
+  assert not show_diff(s.getvalue(), """\
+Si    O     *1Si    *2O     *3 -157.64
+Si    O     *1Si    *2O     *4 -36.91
+Si    O     *1Si    *2O     *5  78.30
+Si    O     *6Si    *7O     *8 -157.64
+Si    O     *6Si    *7O     *9  78.30
+Si    O     *6Si    *7O     *10 -36.91
+Si    O     *11Si    *12O     *13 -157.64
+Si    O     *11Si    *12O     *14 -36.91
+Si    O     *11Si    *12O     *15  78.30
+Si    O     *16Si    *17O     *18 -157.64
+Si    O     *16Si    *17O     *19  78.30
+Si    O     *16Si    *17O     *20 -36.91
+*1 -y,x-y,z-1/3
+*2 x-y,x,z+1/3
+*3 -x,-y,z
+*4 x,y+1,z
+*5 y,-x+y+1,z-1/3
+*6 x-y,x,z-2/3
+*7 y,-x+y,z-1/3
+*8 x,y,z-1
+*9 -x+y+1,-x,z-2/3
+*10 -x+1,-y,z-1
+*11 y+1,-x+y+1,z-1/3
+*12 -x+y+1,-x+1,z+1/3
+*13 x+1,y+1,z
+*14 -x+1,-y,z
+*15 -y+1,x-y,z-1/3
+*16 -x+y+1,-x+1,z-2/3
+*17 -y+1,x-y+1,z-1/3
+*18 -x+1,-y+1,z-1
+*19 x-y,x+1,z-2/3
+*20 x,y+1,z-1
+""")
 ### shake_adp()
   cs = crystal.symmetry((5.01, 6.01, 5.47, 60, 80, 120), "P1")
   sp = crystal.special_position_settings(cs)

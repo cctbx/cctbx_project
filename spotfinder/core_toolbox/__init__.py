@@ -2,10 +2,10 @@ from __future__ import absolute_import, division, print_function
 from six.moves import range
 import spotfinder.array_family.flex # implicit import
 
-import boost.python
-ext = boost.python.import_ext("spotfinder_distltbx_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("spotfinder_distltbx_ext")
 from spotfinder_distltbx_ext import *
-boost.python.import_ext("spotfinder_hough_ext")
+bp.import_ext("spotfinder_hough_ext")
 from spotfinder_hough_ext import *
 from libtbx import adopt_init_args
 from libtbx.utils import Sorry
@@ -158,7 +158,7 @@ class Distl(w_Distl):
         raise Sorry( """dataset_preferences.py parameters -bx0 -bx1 -bx2 are no longer allowed; found %s.
     Use command line option distl.scanbox_windows=bx0,bx1,bx2 instead with three integer arguments."""%self.options)
 
-@boost.python.inject_into(SpotFilterAgent)
+@bp.inject_into(SpotFilterAgent)
 class _():
   def __getinitargs__(self):
     return (self.pixel_size, self.xbeam, self.ybeam, self.distance,

@@ -1,0 +1,253 @@
+{% extends "cctbx/header.html" %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="col-sm-9 main">
+<!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
+<!----------------------- EDIT START ---------------------------->
+
+<h2><center>Compare secondary structure annotations numerically</center></h2>
+
+<p class="lead mt-4">There are several methods to determine the secondary structure of macromolecules. This script shows how to automatically determine secondary structure using several methods with cctbx tools and how to numerically compare the result.<br>
+Author: Pavel V. Afonine</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">Code</h3>
+
+<p>The following script reads in a model file and numerically compares the secondary structure annotation:</p>
+
+<pre class="codeDL"><code>from __future__ import absolute_import, division, print_function
+import sys
+import mmtbx.secondary_structure
+from scitbx.array_family import flex
+from libtbx.utils import null_out
+from iotbx.data_manager import DataManager
+
+def match_score(x,y):
+  assert x.size() == y.size()
+  match_cntr = 0
+  for x_,y_ in zip(x,y):
+    if(x_==y_): match_cntr+=1
+  return match_cntr/x.size()
+
+def get_ss(hierarchy,
+           sec_str_from_pdb_file=None,
+           method="ksdssp",
+           use_recs=False):
+  if(use_recs): params = None
+  else:
+    params = mmtbx.secondary_structure.manager.get_default_ss_params()
+    params.secondary_structure.protein.search_method=method
+    params = params.secondary_structure
+  ssm = mmtbx.secondary_structure.manager(
+    pdb_hierarchy         = hierarchy,
+    sec_str_from_pdb_file = sec_str_from_pdb_file,
+    params                = params,
+    log                   = null_out())
+  alpha = ssm.helix_selection()
+  beta  = ssm.beta_selection()
+  assert alpha.size() == beta.size() == hierarchy.atoms().size()
+  annotation_vector = flex.double(hierarchy.atoms().size(), 0)
+  annotation_vector.set_selected(alpha, 1)
+  annotation_vector.set_selected(beta, 2)
+  return annotation_vector
+
+def run(args):
+  dm = DataManager()                    #   Initialize the DataManager and call it dm
+  dm.set_overwrite(True)                #   tell the DataManager to overwrite files with the same name
+  model_filename = args[0]              #   Name of model file
+  model = dm.get_model(model_filename)  #   Deliver model object with model info
+  pdb_hierarchy = model.get_hierarchy() #   Get hierarchy object
+  sec_str_from_pdb_file = model.get_ss_annotation()
+  # get secodary structure annotation vector from HELIX/SHEET records (file header)
+  print('Running secondary structure annotation...')
+  v1 = get_ss(
+    hierarchy             = pdb_hierarchy,
+    sec_str_from_pdb_file = sec_str_from_pdb_file)
+  # get secodary structure annotation vector from method CA atoms
+  v2 = get_ss(hierarchy = pdb_hierarchy, method = "from_ca")
+  # secodary structure annotation vector from KSDSSP
+  v3 = get_ss(hierarchy = pdb_hierarchy, method = "ksdssp")
+  #
+  print()
+  print("CC REMARK vs from_ca:", flex.linear_correlation(x = v1, y = v2).coefficient())
+  print("CC REMARK vs ksdssp:", flex.linear_correlation(x = v1, y = v3).coefficient())
+  print("CC from_ca vs ksdssp:", flex.linear_correlation(x = v3, y = v2).coefficient())
+  print()
+  print("match REMARK vs from_ca:", match_score(x = v1, y = v2))
+  print("match REMARK vs ksdssp:", match_score(x = v1, y = v3))
+  print("match from_ca vs ksdssp:", match_score(x = v3, y = v2))
+
+if __name__ == '__main__':
+  run(args=sys.argv[1:])
+</code></pre>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Overview</h3>
+
+<p>The script consists of several parts:</p>
+
+<p><b>Imports</b>: At the beginning of the script are import statements. They are used to import the modules needed for a task.</p>
+
+<p><b>Main function:</b> The <code>run()</code> function is used to read the input file, to call the helper functions and to print the result to standard output.</p>
+
+<p><b>Helper functions:</b> <code>match_score()</code> and <code>get_ss()</code>: To avoid duplicating code, some part of the calculations are put into functions. The <code>get_ss()</code> function runs automatic secondary structure annotation, then returns a 1dimensional array representing the annotation. This vector is a linear array of length equal to the number of atoms in the model. It is initialized with zeros. Using the information from the SS annotation, the array elements are set to a non-zero number for helices and to a different number for sheets.</p>
+
+<p>The bottom lines represent best practice. They enable the script to be imported and used from other Python scripts.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Imports</h3>
+
+<p>The script requires the following imports:</p>
+
+<div><textarea class="code">from __future__ import absolute_import, division, print_function
+import sys
+import mmtbx.secondary_structure
+from scitbx.array_family import flex
+from libtbx.utils import null_out
+from iotbx.data_manager import DataManager</textarea></div>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">run() function</h3>
+
+<p>In the beginning of the <code>run()</code> function, we read in a PDB file using the DataManager and create a <code>model</code> object as well as a <code>hierarchy</code> object:</p>
+
+<div><textarea class="code">dm = DataManager()                    #   Initialize the DataManager and call it dm
+dm.set_overwrite(True)                #   tell the DataManager to overwrite files with the same name
+model_filename = args[0]              #   Name of model file
+model = dm.get_model(model_filename)  #   Deliver model object with model info
+pdb_hierarchy = model.get_hierarchy() #   Get hierarchy object</textarea></div>
+
+<p class="mt-3">Model files from the PDB usually have records with secondary structure annotation. Let's get the records from <code>model</code>:</p>
+
+<div><textarea class="code">sec_str_from_pdb_file = model.get_ss_annotation()</textarea></div>
+
+<p class="mt-3">Then we get the annotation vectors from the helper function <code>get_ss()</code>, using three different methods:</p>
+
+<div><textarea class="code">v1 = get_ss(
+    hierarchy             = pdb_hierarchy,
+    sec_str_from_pdb_file = sec_str_from_pdb_file)
+v2 = get_ss(hierarchy = pdb_hierarchy, method = "from_ca")
+v3 = get_ss(hierarchy = pdb_hierarchy, method = "ksdssp")</textarea></div>
+
+<p class="mt-3">v1 represents the annotation vector based on the records in the model file. v2 is obtained from the annotation method "from_ca", which uses CA positions to find out if a residue belongs to secondary structure element. The annotation vector v3 relies on the the KSDSSP method.</p>
+
+<p>The last lines print the results. With the annotation vectors, we can calculatie correlation coefficients using the method <code>flex.linear_correlation(x = v1, y = v2).coefficient()</code>. We can also calculate the percentage of similarity of the vectors, which is done in the <code>match_score()</code> function.</p>
+
+<div><textarea class="code">print("match REMARK vs from_ca:", match_score(x = v1, y = v2))</textarea></div>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Helper function get_ss()</h3>
+
+<p>In the <code>get_ss()</code> function, we calculate the annotation vectors. To do this, we first obtain the default parameters for the secondary structure module:</p>
+
+<div><textarea class="code">params = mmtbx.secondary_structure.manager.get_default_ss_params()</textarea></div>
+
+<p class="mt-3">The <code>params</code> object is a container for the parameters used in the <code>mmtbx.secondary_structure.manager</code>. As we want to get the annotation via different methods, we change the parameter <code>params.secondary_structure.protein.search_method</code>.</p>
+
+<p class="mt-3">Then we get the secondary structure manager object:</p>
+
+<div><textarea class="code">ssm = mmtbx.secondary_structure.manager(
+  pdb_hierarchy         = hierarchy,
+  sec_str_from_pdb_file = sec_str_from_pdb_file,
+  params                = params,
+  log                   = null_out())</textarea></div>
+
+<p class="mt-3">We get the selections for helices and sheets with the <code>helix_selection()</code> and <code>beta_selection()</code> methods:</p>
+
+<div><textarea class="code">alpha = ssm.helix_selection()
+beta  = ssm.beta_selection()</textarea></div>
+
+<p class="mt-3">These selections are flex bool arrays. The length of the array corresponds to the number of atoms. We then make an annotation vector that has the same length. Its values are 1 if the atom is part of a helix, 2 if the atom is part of a sheet and 0 if the atom is not part of a secondary structure element.</p>
+
+<div><textarea class="code">annotation_vector = flex.double(hierarchy.atoms().size(), 0)
+annotation_vector.set_selected(alpha, 1)
+annotation_vector.set_selected(beta, 2)</textarea></div>
+
+<p class="mt-3">We can then use this vector to compare the annotations numerically, as done with <code>flex.linear_correlation(x = v1, y = v2).coefficient()</code> and the <code>match_score()</code> function.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Helper function match_score()</h3>
+
+<p>The <code>match_score()</code> function calculates how many atoms have the same annotation and then divides the result by the number of atoms. This gives therefore a percentage of how many atoms of the model have the same secondary structure annotation.</p>
+
+<div><textarea class="code">assert x.size() == y.size()
+match_cntr = 0
+for x_,y_ in zip(x,y):
+  if(x_==y_): match_cntr+=1
+return match_cntr/x.size()</textarea></div>
+
+<p class="mt-3">Note the assertion in the first line, which makes sure that the arrays x and y have the same length.</p>
+
+
+<h3 class="mt-3">Example output</h3>
+
+<p>You can run the script via the command line:</p>
+
+<pre class="CodeGreen"><code>python script.py my_model.pdb</code></pre>
+
+<p class="mt-3">For example, if you run the script with model 1us0, the output will be the following (you can conveniently fetch a PDB model with "phenix.fetch_pdb 1us0"):</p>
+
+<pre class="CodeGreen"><code>CC REMARK vs from_ca: 0.803945216619
+CC REMARK vs ksdssp: 0.869800857769
+CC from_ca vs ksdssp: 0.727252951902
+
+match REMARK vs from_ca: 0.91220440337
+match REMARK vs ksdssp: 0.916009785268
+match from_ca vs ksdssp: 0.864908942647</code></pre>
+
+<p class="mt-3">You can get some more information about the annotation if you remove the parameter <code>log = null_out()</code> in the generation of the SS manager:</p>
+
+<div><textarea class="code">ssm = mmtbx.secondary_structure.manager(
+  pdb_hierarchy         = hierarchy,
+  sec_str_from_pdb_file = sec_str_from_pdb_file,
+  params                = params)</textarea></div>
+
+<p class="mt-3">(The default for log is the standard output.)</p>
+
+<p>Then we'll get the additional output:</p>
+
+<pre class="CodeGreen"><code>    Secondary structure from input PDB file:
+      14 helices and 2 sheets defined
+      46.5% alpha, 8.6% beta
+      0 base pairs and 0 stacking pairs defined.
+  running find_ss_from_ca liberal...
+    Secondary structure from input PDB file:
+      12 helices and 3 sheets defined
+      47.5% alpha, 13.7% beta
+      0 base pairs and 0 stacking pairs defined.
+  running ksdssp...
+    Secondary structure from input PDB file:
+      14 helices and 3 sheets defined
+      39.5% alpha, 7.6% beta
+      0 base pairs and 0 stacking pairs defined.</code></pre>
+
+<!--
+<div><textarea class="code">
+</textarea></div>
+
+<p class="mt-3"></p>
+
+<h3 class="mt-3">Subtitle_2</h3>
+-->
+
+<!----------------------- EDIT END ---------------------------->
+<!-- DO NOT EDIT ANYTHING BELOW!!!! -->
+</div> <!-- end col-sm-9 -->
+
+<!-- automatic table of contents
+     located in the sidebar; will move to the top on a small screen -->
+<div class="col-sm-3 mt-5">
+  <nav id="toc" data-toggle="toc"></nav>
+</div> <!-- end col-sm-3 -->
+
+
+{% endblock %}

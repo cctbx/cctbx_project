@@ -23,7 +23,17 @@ namespace scitbx { namespace fn {
          for those types explicitly marked as unsigned.
        */
       NumType operator()(NumType x, boost::false_type is_unsigned) {
+        // MS Visual Studio 9 does not define std:abs(int64_t)
+        #if defined(_MSC_VER) && _MSC_VER < 1600
+        if (x < 0) {
+          return -x;
+        }
+        else {
+          return x;
+        }
+        #else
         return std::abs(x);
+        #endif
       }
 
       NumType operator()(NumType x, boost::true_type is_unsigned) {

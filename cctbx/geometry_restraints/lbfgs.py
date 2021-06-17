@@ -73,7 +73,7 @@ class lbfgs(object):
           self.riding_h_manager.not_hd_selection) + flex.vec3_double(self.x)
         self.tmp.sites_shifted.set_selected(
           self.riding_h_manager.not_hd_selection, new_sites)
-        self.riding_h_manager.idealize(sites_cart = self.tmp.sites_shifted)
+        self.riding_h_manager.idealize_riding_h_positions(sites_cart = self.tmp.sites_shifted)
     if(self.states_collector is not None):
       self.states_collector.add(sites_cart = self.tmp.sites_shifted)
     if (self.tmp.geometry_restraints_manager.crystal_symmetry is not None):

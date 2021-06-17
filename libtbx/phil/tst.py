@@ -956,7 +956,7 @@ m=$k
 a=x
 b=$a
 c=$a $b.d
-d=$a \$b
+d=$a \\$b
 answer=yes no
 e="$a"
 f=$(a)
@@ -1058,18 +1058,21 @@ a0 {
     assert params.get(path).objects[0].full_path() == path
 
 def exercise_include():
-  print("""\
+  with open("tmp1.params", "w") as f:
+    print("""\
 !include none
 a=x
-""", file=open("tmp1.params", "w"))
-  print("""\
+""", file=f)
+  with open("tmp2.params", "w") as f:
+    print("""\
 b=y
-""", file=open("tmp2.params", "w"))
-  print("""\
+""", file=f)
+  with open("tmp3.params", "w") as f:
+    print("""\
 c=z
 include file tmp2.params
 d=$z
-""", file=open("tmp3.params", "w"))
+""", file=f)
   parameters = phil.parse(
     input_string="""\
 tmp2=tmp2.params
@@ -1111,15 +1114,18 @@ s = 1
   try: os.makedirs("tmp")
   except OSError: pass
   #
-  print("""\
+  with open("tmp1.params", "w") as f:
+    print("""\
 include file tmp3.params
-""", file=open("tmp1.params", "w"))
-  print("""\
+""", file=f)
+  with open("tmp2.params", "w") as f:
+    print("""\
 include file tmp1.params
-""", file=open("tmp2.params", "w"))
-  print("""\
+""", file=f)
+  with open("tmp3.params", "w") as f:
+    print("""\
 include file tmp2.params
-""", file=open("tmp3.params", "w"))
+""", file=f)
   try: parameters = phil.parse(
     file_name="tmp1.params",
     process_includes=True)
@@ -1128,20 +1134,23 @@ include file tmp2.params
     assert len(str(e).split(",")) == 4
   else: raise Exception_expected
   #
-  print("""\
+  with open("tmp1.params", "w") as f:
+    print("""\
 a=0
 include file tmp/tmp1.params
 x=1
-""", file=open("tmp1.params", "w"))
-  print("""\
+""", file=f)
+  with open("tmp/tmp1.params", "w") as f:
+    print("""\
 b=1
 include file tmp2.params
 y=2
-""", file=open("tmp/tmp1.params", "w"))
-  print("""\
+""", file=f)
+  with open("tmp/tmp2.params", "w") as f:
+    print("""\
 c=2
 z=3
-""", file=open("tmp/tmp2.params", "w"))
+""", file=f)
   parameters = phil.parse(
     file_name="tmp1.params",
     process_includes=True)
@@ -1155,7 +1164,8 @@ z = 3
 y = 2
 x = 1
 """)
-  print("""\
+  with open("tmp4.params", "w") as f:
+    print("""\
 a=1
 include file tmp1.params
 s {
@@ -1169,7 +1179,7 @@ s {
   z=3
 }
 z=1
-""", file=open("tmp4.params", "w"))
+""", file=f)
   parameters = phil.parse(
     file_name="tmp4.params",
     process_includes=True)
@@ -5234,7 +5244,8 @@ Error interpreting command line argument as parameter definition:
     assert str(e) == 'Parameter definition has no effect: "bar {}"'
   else: raise Exception_expected
   #
-  print("foo.limit=-3", file=open("tmp0d5f6e10.phil", "w"))
+  with open("tmp0d5f6e10.phil", "w") as f:
+    print("foo.limit=-3", file=f)
   user_phils = itpr_bar.process(args=[
     "",
     "--flag",
@@ -5258,7 +5269,8 @@ Error interpreting command line argument as parameter definition:
       assert not show_diff(str(e),
         'Uninterpretable command line argument: "%s"' % arg)
     else: raise Exception_expected
-  print("foo$limit=0", file=open("tmp0d5f6e10.phil", "w"))
+  with open("tmp0d5f6e10.phil", "w") as f:
+    print("foo$limit=0", file=f)
   try: itpr_bar.process(args=["tmp0d5f6e10.phil"])
   except RuntimeError as e:
     assert not show_diff(str(e),

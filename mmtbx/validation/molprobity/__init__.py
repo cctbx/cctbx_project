@@ -124,6 +124,8 @@ class molprobity(slots_getstate_setstate):
     "pdb_hierarchy",
     "crystal_symmetry",
     "model_stats",
+    "model_stats_new",
+    "adp_stats",
     "waters",
     "header_info",
     "merging",
@@ -175,6 +177,7 @@ class molprobity(slots_getstate_setstate):
 
     # use objects from model
     self.model = model
+    self.model.process_input_model(make_restraints=True)
     if(self.model is None and pdb_hierarchy is not None):
       import mmtbx.model
       self.model = mmtbx.model.manager(
@@ -188,7 +191,7 @@ class molprobity(slots_getstate_setstate):
       xray_structure = self.model.get_xray_structure()
       geometry_restraints_manager = self.model.get_restraints_manager().geometry
       crystal_symmetry = self.model.crystal_symmetry()
-      all_chain_proxies = self.model.all_chain_proxies
+      all_chain_proxies = None
     else:
       assert (pdb_hierarchy is not None)
       xray_structure = None
@@ -257,13 +260,17 @@ class molprobity(slots_getstate_setstate):
           geometry_restraints_manager=geometry_restraints_manager,
           outliers_only=outliers_only,
           params=None)
-    if (flags.model_stats) and (xray_structure is not None):
+    if (flags.model_stats) and (self.model is not None):
+      # keep for backwards compatibility
       self.model_stats = model_properties.model_statistics(
         pdb_hierarchy=pdb_hierarchy,
         xray_structure=xray_structure,
         all_chain_proxies=all_chain_proxies,
         ignore_hd=(not nuclear),
         ligand_selection=ligand_selection)
+      # ligand_selection is no longer available
+      self.model_stats_new = self.model.composition()
+      self.adp_stats = self.model.adp_statistics()
     if (geometry_restraints_manager is not None) and (flags.restraints):
       assert (xray_structure is not None)
       self.restraints = restraints.combined(
@@ -377,9 +384,9 @@ class molprobity(slots_getstate_setstate):
       if (self.waters is not None):
         make_sub_header("Suspicious water molecules", out=out)
         self.waters.show(out=out, prefix="  ")
-    if (self.model_stats is not None):
+    if (self.model_stats_new is not None):
       make_header("Model properties", out=out)
-      self.model_stats.show(prefix="  ", out=out)
+      self.model_stats_new.show(out, prefix="  ")
     if (self.sequence is not None):
       make_header("Sequence validation", out=out)
       self.sequence.show(out=out)
@@ -531,8 +538,7 @@ class molprobity(slots_getstate_setstate):
     return self.model_statistics_geometry_result.molprobity_score
 
   def b_iso_mean(self):
-    overall_stats = getattr(self.model_stats, "all", None)
-    return getattr(overall_stats, "b_mean", None)
+    return self.adp_stats.result().overall.mean
 
   def space_group(self):
     return getattr(self.crystal_symmetry, "space_group", lambda: None)()
@@ -566,9 +572,9 @@ class molprobity(slots_getstate_setstate):
     return None
 
   def atoms_to_observations_ratio(self, assume_riding_hydrogens=True):
-    n_atoms = self.model_stats.n_atoms
+    n_atoms = self.model_stats_new.result().n_atoms
     if (assume_riding_hydrogens):
-      n_atoms -= self.model_stats.n_hydrogens
+      n_atoms -= self.model_stats_new.result().n_hd
     n_refl = self.data_stats.n_refl
     assert (n_refl > 0)
     return n_atoms / n_refl
@@ -639,8 +645,8 @@ class molprobity(slots_getstate_setstate):
       if (name == "r_work") : val = self.r_work()
       elif (name == "r_free") : val = self.r_free()
       elif (name == "adp_mean_all") : val = self.b_iso_mean()
-      elif (name == "adp_min_all"): val = self.model_stats.all.b_min
-      elif (name == "adp_max_all"): val = self.model_stats.all.b_max
+      elif (name == "adp_min_all"): val = self.adp_stats.result().overall.min
+      elif (name == "adp_max_all"): val = self.adp_stats.result().overall.max
       elif (name == "wilson_b") : val = self.wilson_b
       elif (name == "bond_rmsd") : val = self.rms_bonds()
       elif (name == "bond_max_deviation"):
@@ -885,6 +891,24 @@ class residue_multi_criterion(residue):
 
   def __cmp__(self, other):
     return cmp(self.i_seq, other.i_seq)
+
+  def __eq__(self, other):
+    return self.i_seq == other.i_seq
+
+  def __ne__(self, other):
+    return self.i_seq != other.i_seq
+
+  def __lt__(self, other):
+    return self.i_seq < other.i_seq
+
+  def __le__(self, other):
+    return self.i_seq <= other.i_seq
+
+  def __gt__ (self, other):
+    return self.i_seq > other.i_seq
+
+  def __ge__(self, other):
+    return self.i_seq >= other.i_seq
 
   def get_real_space_plot_values(self, use_numpy_NaN=True):
     for outlier in self.outliers :

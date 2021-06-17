@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 ## Peter Zwart July 5, 2005
+from pytest import raises
+
 from cctbx.array_family import flex
 from cctbx import crystal
 from cctbx import miller
@@ -1005,6 +1007,11 @@ def test_kernel_based_normalisation():
              normalizer.normalised_miller.epsilons().data().as_double()
   z_values = flex.mean(z_values)
   assert approx_equal(1.0,z_values,eps=0.05)
+  # This should raise an error rather than enter an infinite loop
+  with raises(AssertionError) as e:
+    absolute_scaling.kernel_normalisation(
+      miller_array[:1].set_observation_type_xray_amplitude(), auto_kernel=True)
+
 
 def test_ml_murray_rust():
   miller_array = random_data(35.0, d_min=4.5 )

@@ -19,6 +19,7 @@ env.SharedLibrary(target="#lib/cctbx_sgtbx_ext", source=[
   "sym_equiv_sites.cpp",
   "symbols.cpp",
   "tensor_rank_2.cpp",
+  "tensors.cpp",
   "tr_vec.cpp",
   "wyckoff.cpp",
   "select_generators.cpp"

@@ -1,11 +1,11 @@
-
 from __future__ import absolute_import, division, print_function
 from mmtbx.validation import residue, validation
 from mmtbx.validation import graphics
 from iotbx import data_plots
+from iotbx.pdb import aa_utils
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry
-from past.builtins import cmp
+import operator
 import os, sys
 
 OUTLIER_THRESHOLD = 0.003
@@ -23,6 +23,9 @@ class rotamer(residue):
     "incomplete",
   ]
   __slots__ = residue.__slots__ + __rotamer_attr__
+
+  def __hash__(self):
+    return self.as_string().__hash__()
 
   @staticmethod
   def header():
@@ -80,8 +83,7 @@ class rotamer_ensemble(residue):
     for rot_id in set(self.rotamer_name):
       n_rotamer = self.rotamer_name.count(rot_id)
       rotamers.append((rot_id, n_rotamer))
-    cmp_fn = lambda a,b: cmp(b[1], a[1])
-    return sorted(rotamers, key=cmp_to_key(cmp_fn))
+    return sorted(rotamers, key=operator.itemgetter(1), reverse=True)
 
   def as_string(self):
     rotamers = self.rotamer_frequencies()
@@ -104,6 +106,7 @@ class rotalyze(validation):
       data_version="8000",
       outliers_only=False,
       show_errors=False,
+      use_parent=False,
       out=sys.stdout,
       quiet=False):
     validation.__init__(self)
@@ -147,6 +150,9 @@ class rotalyze(validation):
               "occupancy" : occupancy,
             }
             atom_dict = all_dict.get(atom_group.altloc)
+            if use_parent:
+              parent_name = aa_utils.get_aa_parent(atom_group.resname)
+              if parent_name!=atom_group.resname: atom_group.resname=parent_name
             res_key = get_residue_key(atom_group=atom_group)
             try:
               chis = sidechain_angles.measureChiAngles(
@@ -166,6 +172,7 @@ class rotalyze(validation):
               cur_res = resname.lower().strip()
               if cur_res == 'mse':
                 cur_res = 'met'
+              elif use_parent: cur_res=parent_name
               value = rotamer_evaluator.evaluate(cur_res, chis)
               if value is not None:
                 self.n_total += 1
@@ -181,6 +188,7 @@ class rotalyze(validation):
                   kwargs['rotamer_name'] = evaluation
                 else:
                   kwargs['outlier'] = False
+                  if use_parent: resname=parent_name
                   kwargs['rotamer_name'] = rotamer_id.identify(resname,
                     wrap_chis)
                   #deal with unclassified rotamers

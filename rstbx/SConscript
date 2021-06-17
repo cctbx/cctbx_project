@@ -25,41 +25,43 @@ env.Append(LIBS=["cctbx"] + env_etc.libm)
 env_etc.include_registry.append(
   env=env,
   paths=env_etc.rstbx_common_includes)
-if (env_etc.static_libraries): builder = env.StaticLibrary
-else:                          builder = env.SharedLibrary
-builder(
-  target="#lib/rstbx",
-  source=["dps_core/dps_core.cpp",
-          "dps_core/directional_fft.cpp",
-          "dps_core/direction.cpp",
-          "indexing_api/indexing_api.cpp",
-          "diffraction/ewald_sphere.cpp",
-          "diffraction/partial_spot_position_partial_H.cpp"
-  ])
 
-if (not env_etc.no_boost_python):
-  Import("env_boost_python_ext")
-  env_rstbx_boost_python_ext = env_boost_python_ext.Clone()
-  env_rstbx_boost_python_ext.Prepend(
-                 LIBS=["rstbx", "ann", "cctbx", "scitbx_boost_python"])
-  env_rstbx_boost_python_ext.SharedLibrary(
-                 target="#lib/rstbx_ext", source="ext.cpp")
-  env_rstbx_boost_python_ext.SharedLibrary(
-                    target="#lib/rstbx_array_family_flex_ext",
-                    source=[
-                      "array_family/ext.cpp",
-                      "array_family/flex_rstbx_arrays.cpp",
-                    ])
-  env_etc.include_registry.append(
-    env=env_rstbx_boost_python_ext,
-    paths=env_etc.rstbx_common_includes)
-  Export("env_rstbx_boost_python_ext")
+if not libtbx.env.module_is_installed("rstbx"):
+  if (env_etc.static_libraries): builder = env.StaticLibrary
+  else:                          builder = env.SharedLibrary
+  builder(
+    target="#lib/rstbx",
+    source=["dps_core/dps_core.cpp",
+            "dps_core/directional_fft.cpp",
+            "dps_core/direction.cpp",
+            "indexing_api/indexing_api.cpp",
+            "diffraction/ewald_sphere.cpp",
+            "diffraction/partial_spot_position_partial_H.cpp"
+    ])
 
-  SConscript("diffraction/fastbragg/SConscript")
-  SConscript("simulation/SConscript")
-  SConscript("simage/SConscript")
-  SConscript("apps/SConscript")
-  SConscript("bpcx/SConscript")
-  SConscript("bandpass/SConscript")
-  SConscript("symmetry/constraints/SConscript")
-  SConscript("indexing_api/SConscript")
+  if (not env_etc.no_boost_python):
+    Import("env_boost_python_ext")
+    env_rstbx_boost_python_ext = env_boost_python_ext.Clone()
+    env_rstbx_boost_python_ext.Prepend(
+                  LIBS=["rstbx", "ann", "cctbx", "scitbx_boost_python"])
+    env_rstbx_boost_python_ext.SharedLibrary(
+                  target="#lib/rstbx_ext", source="ext.cpp")
+    env_rstbx_boost_python_ext.SharedLibrary(
+                      target="#lib/rstbx_array_family_flex_ext",
+                      source=[
+                        "array_family/ext.cpp",
+                        "array_family/flex_rstbx_arrays.cpp",
+                      ])
+    env_etc.include_registry.append(
+      env=env_rstbx_boost_python_ext,
+      paths=env_etc.rstbx_common_includes)
+    Export("env_rstbx_boost_python_ext")
+
+    SConscript("diffraction/fastbragg/SConscript")
+    SConscript("simulation/SConscript")
+    SConscript("simage/SConscript")
+    SConscript("apps/SConscript")
+    SConscript("bpcx/SConscript")
+    SConscript("bandpass/SConscript")
+    SConscript("symmetry/constraints/SConscript")
+    SConscript("indexing_api/SConscript")

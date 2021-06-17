@@ -6,7 +6,7 @@ from libtbx.test_utils import Exception_expected, approx_equal, \
   not_approx_equal, show_diff
 import libtbx.math_utils
 from six.moves import cStringIO as StringIO
-from past.builtins import cmp
+from libtbx.math_utils import cmp
 from six.moves import range
 from six.moves import cPickle as pickle
 import six
@@ -247,9 +247,15 @@ def exercise_flex_constructors():
         "argument must be a Python list or tuple of lists or tuples."
     else: raise Exception_expected
   #
-  assert list(flex.int_range(stop=3)) == list(range(3))
-  assert list(flex.int_range(start=1, stop=3)) == list(range(1, 3))
-  assert list(flex.int_range(start=1, stop=5, step=2)) == list(range(1, 5, 2))
+  for range_fn in [flex.int_range,
+                   flex.long_range,
+                   flex.int8_range,
+                   flex.int16_range,
+                   flex.int32_range,
+                   flex.int64_range]:
+    assert list(range_fn(stop=3)) == list(range(3))
+    assert list(range_fn(start=1, stop=3)) == list(range(1, 3))
+    assert list(range_fn(start=1, stop=5, step=2)) == list(range(1, 5, 2))
   for start in range(-5,6):
     for stop in range(-5,6):
       for step in range(-5,6):
@@ -257,51 +263,64 @@ def exercise_flex_constructors():
         args = (start,stop,step)
         assert list(flex.int_range(*args)) == list(range(*args))
         assert list(flex.long_range(*args)) == list(range(*args))
+        assert list(flex.int8_range(*args)) == list(range(*args))
+        assert list(flex.int16_range(*args)) == list(range(*args))
+        assert list(flex.int32_range(*args)) == list(range(*args))
+        assert list(flex.int64_range(*args)) == list(range(*args))
         assert approx_equal(flex.double_range(*args), list(range(*args)))
         assert approx_equal(flex.float_range(*args), list(range(*args)))
-  assert list(flex.size_t_range(stop=3)) == list(range(3))
-  assert list(flex.size_t_range(start=8, stop=3, step=-1)) == list(range(8, 3, -1))
-  try: flex.int_range(0, 0, 0)
-  except RuntimeError as e:
-    assert str(e) == "range step argument must not be zero."
-  else: raise Exception_expected
-  try: flex.size_t_range(-1, 0, 1)
-  except RuntimeError as e:
-    assert str(e) == "range start argument must not be negative."
-  else: raise Exception_expected
-  try: flex.size_t_range(0, -1, 1)
-  except RuntimeError as e:
-    assert str(e) == "range stop argument must not be negative."
-  else: raise Exception_expected
+  for range_fn in [flex.size_t_range,
+                   flex.uint8_range,
+                   flex.uint16_range,
+                   flex.uint32_range,
+                   flex.uint64_range]:
+    assert list(range_fn(stop=3)) == list(range(3))
+    assert list(range_fn(start=8, stop=3, step=-1)) == list(range(8, 3, -1))
+    try: range_fn(0, 0, 0)
+    except RuntimeError as e:
+      assert str(e) == "range step argument must not be zero."
+    else: raise Exception_expected
+    try: range_fn(-1, 0, 1)
+    except RuntimeError as e:
+      assert str(e) == "range start argument must not be negative."
+    else: raise Exception_expected
+    try: range_fn(0, -1, 1)
+    except RuntimeError as e:
+      assert str(e) == "range stop argument must not be negative."
+    else: raise Exception_expected
 
 def exercise_numbers_from_string():
-  i = flex.int(flex.std_string(('1','+2','-3')))
-  assert tuple(i.as_string()) == ('1', '2', '-3')
-  assert tuple(i.as_string("%+3d")) == (' +1', ' +2', ' -3')
-  assert tuple(i) == (1,2,-3)
-  #
-  try:
-    flex.int(flex.std_string(['']))
-  except ValueError as e:
-    assert not show_diff(str(e),
-      'Empty string (integer value expected).')
-  else:
-    raise Exception_expected
-  try:
-    flex.int(flex.std_string(['+-0']))
-  except ValueError as e:
-    assert not show_diff(str(e),
-      'Invalid integer value: "+-0"')
-  else:
-    raise Exception_expected
-  s = str(2**1000).replace("L", "")
-  try:
-    flex.int(flex.std_string([s]))
-  except ValueError as e:
-    assert not show_diff(str(e),
-      'Invalid integer value: "%s"' % s)
-  else:
-    raise Exception_expected
+  # skips flex.int8
+  for flex_type in [flex.int, flex.long, flex.int16, flex.int32, flex.int64]:
+    i = flex_type(flex.std_string(('1','+2','-3')))
+    assert tuple(i.as_string()) == ('1', '2', '-3')
+    assert tuple(i.as_string("%+3d")) == (' +1', ' +2', ' -3')
+    assert tuple(i) == (1,2,-3)
+    #
+  for flex_type in [flex.int, flex.long, flex.int8, flex.int16, flex.int32, flex.int64]:
+    try:
+      flex_type(flex.std_string(['']))
+    except ValueError as e:
+      assert not show_diff(str(e),
+        'Empty string (integer value expected).')
+    else:
+      raise Exception_expected
+    try:
+      flex_type(flex.std_string(['+-0']))
+    except ValueError as e:
+      assert not show_diff(str(e),
+        'Invalid integer value: "+-0"')
+    else:
+      raise Exception_expected
+  for flex_type in [flex.int, flex.long, flex.int8, flex.int16, flex.int32, flex.int64]:
+    s = str(2**1000).replace("L", "")
+    try:
+      flex_type(flex.std_string([s]))
+    except ValueError as e:
+      assert not show_diff(str(e),
+        'Invalid integer value: "%s"' % s)
+    else:
+      raise Exception_expected
   #
   f = flex.double(flex.std_string(['1.2','+2e-3','3']))
   assert approx_equal(f, (1.2,.002,3.0))
@@ -455,23 +474,37 @@ def exercise_misc():
   f = flex.double(g)
   assert f.focus_size_1d() == 2*3*4
   assert f.shift_origin().accessor() == g.shift_origin()
-  b = flex.int([0,0,1,0,1,1,1,0,0,1,1,0,0,0]).as_bool()
-  assert b.md5().hexdigest() == "a3a1ff7423c672e6252003c23ad5420f"
-  b = flex.int([0,0,1,0,1,0,1,0,0,1,1,0,0,0]).as_bool()
-  assert b.md5().hexdigest() == "bc115dabbd6dc87323302b082152be14"
+  for flex_type in [flex.int, flex.long, flex.int8, flex.int16, flex.int32, flex.int64]:
+    b = flex_type([0,0,1,0,1,1,1,0,0,1,1,0,0,0]).as_bool()
+    assert b.md5().hexdigest() == "a3a1ff7423c672e6252003c23ad5420f"
+    b = flex_type([0,0,1,0,1,0,1,0,0,1,1,0,0,0]).as_bool()
+    assert b.md5().hexdigest() == "bc115dabbd6dc87323302b082152be14"
+    #
+    try: flex_type([0,0,1,0,2,0,1,0,0,1,1,0,0,0]).as_bool(strict=True)
+    except ValueError as e:
+      if flex_type == flex.int8:  # value= instead of value=2
+        assert "all array elements" in str(e)
+      else:
+        assert str(e) == "scitbx.array_family.flex.int.as_bool(strict=True):" \
+          " all array elements must be 0 or 1, but value=2 at array index=4."
+    else: raise Exception_expected
+    assert flex_type([0,0,1,0,2,0,1,0,0,1,1,0,0,0]) \
+      .as_bool(strict=False).count(True) == 5
   #
-  try: flex.int([0,0,1,0,2,0,1,0,0,1,1,0,0,0]).as_bool(strict=True)
-  except ValueError as e:
-    assert str(e) == "scitbx.array_family.flex.int.as_bool(strict=True):" \
-      " all array elements must be 0 or 1, but value=2 at array index=4."
-  else: raise Exception_expected
-  assert flex.int([0,0,1,0,2,0,1,0,0,1,1,0,0,0]) \
-    .as_bool(strict=False).count(True) == 5
-  #
-  a = flex.int([0,1,2,-1,-2,2**30,2**31-1,-2**30,-2**31, 0]).as_long()
-  a.reshape(flex.grid(2,5))
-  b = flex.long([0,1,2,-1,-2,2**30,2**31-1,-2**30,-2**31, 0])
-  assert a.all_eq(b)
+  for flex_type in (flex.int, flex.int32, flex.long, flex.int64):
+    a = flex_type([0,1,2,-1,-2,2**30,2**31-1,-2**30,-2**31, 0]).as_long()
+    a.reshape(flex.grid(2,5))
+    b = flex.long([0,1,2,-1,-2,2**30,2**31-1,-2**30,-2**31, 0])
+    assert a.all_eq(b)
+  for flex_type in (flex.int, flex.int32, flex.long, flex.int64):
+    a = flex_type([0,1,2,2**30,2**31-1]).as_size_t()
+    b = flex.size_t([0,1,2,2**30,2**31-1])
+    assert a.all_eq(b)
+  for flex_type in (flex.int8, flex.int16):
+    a = flex_type([0,1,2,-1,-2,2**6,2**7-1,-2**6,-2**7, 0]).as_long()
+    a.reshape(flex.grid(2,5))
+    b = flex.long([0,1,2,-1,-2,2**6,2**7-1,-2**6,-2**7, 0])
+    assert a.all_eq(b)
   #
   class old_style:
     def __init__(self, elems):
@@ -509,10 +542,20 @@ def exercise_misc():
   for l in [[], [12], [2,3], [4,6,7], list(range(-123,2345))]:
     for flex_type,flex_from_byte_str in [
           (flex.int, flex.int_from_byte_str),
+          (flex.long, flex.long_from_byte_str),
+          (flex.int16, flex.int16_from_byte_str),
+          (flex.int32, flex.int32_from_byte_str),
+          (flex.int64, flex.int64_from_byte_str),
           (flex.size_t, flex.size_t_from_byte_str),
+          (flex.int8, flex.int8_from_byte_str),
+          (flex.uint8, flex.uint8_from_byte_str),
+          (flex.uint16, flex.uint16_from_byte_str),
+          (flex.uint32, flex.uint32_from_byte_str),
+          (flex.uint64, flex.uint64_from_byte_str),
           (flex.double, flex.double_from_byte_str)]:
-      if (flex_type is flex.size_t and len(l) != 0 and l[0] < 0):
-        l = list(range(0, 2345))
+      if (flex_type in (flex.size_t, flex.uint8, flex.uint16, flex.uint32, flex.uint64)
+          and len(l) != 0 and l[0] < 0):
+        l = list(range(0, 128))
       a = flex_type(l)
       b = a.copy_to_byte_str()
       if (len(l) == 0):
@@ -633,8 +676,7 @@ def exercise_flex_sum_axis():
   try:
     import numpy
   except ImportError:
-    "Skipping flex.sum numpy compatibility testing (numpy not available)"
-    pass
+    print("Skipping flex.sum numpy compatibility testing (numpy not available)")
   else:
     for nd in (1,2,3,4,5):
       dimensions = [random.randint(1,5) for i in range(nd)]
@@ -643,8 +685,8 @@ def exercise_flex_sum_axis():
       fa_double = flex.random_double(fa_size)
       for fa in (fa_int, fa_double):
         fa.resize(flex.grid(dimensions))
-        for axis in range(nd):
-          for axis in (axis, -axis):
+        for dim in range(nd):
+          for axis in (dim, -dim):
             fa_sum = flex.sum(fa, axis=axis)
             assert approx_equal(fa_sum, fa.as_numpy_array().sum(axis=axis).flatten())
   fa = flex.int([1]*4+[2]*4+[3]*4)
@@ -821,31 +863,30 @@ def exercise_push_back_etc():
   assert list(a.concatenate(b)) == [0,1,2,3,4,5,6,10,13,17]
   assert list(b.concatenate(a)) == [10,13,17,0,1,2,3,4,5,6]
   #
-  a = flex.size_t()
-  a.insert(0, 1)
-  assert list(a) == [1]
-  a.insert(1, 2)
-  assert list(a) == [1,2]
-  a.insert(-1, 3)
-  assert list(a) == [1,3,2]
-  vi = sys.version_info
-  if (not (vi[0] == 2 and vi[1] < 3)): # skipping test under Python 2.2 since
-    for i in range(-3,4):             # l.insert(-2, 5) doesn't work right
+  for flex_type in [flex.size_t, flex.uint8, flex.uint16, flex.uint32, flex.uint64]:
+    a = flex_type()
+    a.insert(0, 1)
+    assert list(a) == [1]
+    a.insert(1, 2)
+    assert list(a) == [1,2]
+    a.insert(-1, 3)
+    assert list(a) == [1,3,2]
+    for i in range(-3,4):
       c = a.deep_copy()
       l = list(a)
       c.insert(i, 5)
       l.insert(i, 5)
       assert list(c) == l
-  for i in [-5, -4, 4, 5]:
-    try: a.insert(i, 5)
-    except IndexError: pass
-    else: raise Exception_expected
-  a.insert(1, 3, 5)
-  assert list(a) == [1,5,5,5,3,2]
-  a.insert(-1, 2, 6)
-  assert list(a) == [1,5,5,5,3,6,6,2]
-  a.insert(-5, 1, 7)
-  assert list(a) == [1,5,5,7,5,3,6,6,2]
+    for i in [-5, -4, 4, 5]:
+      try: a.insert(i, 5)
+      except IndexError: pass
+      else: raise Exception_expected
+    a.insert(1, 3, 5)
+    assert list(a) == [1,5,5,5,3,2]
+    a.insert(-1, 2, 6)
+    assert list(a) == [1,5,5,5,3,6,6,2]
+    a.insert(-5, 1, 7)
+    assert list(a) == [1,5,5,7,5,3,6,6,2]
 
 def exercise_setitem():
   a = flex.double(2)
@@ -1065,7 +1106,8 @@ def exercise_select():
 def exercise_from_stl_vector():
   from scitbx import stl
   import scitbx.stl.vector
-  assert list(flex.size_t(stl.vector.unsigned([2,5,9]))) == [2,5,9]
+  for flex_type in [flex.size_t, flex.uint8, flex.uint16, flex.uint32, flex.uint64]:
+    assert list(flex_type(stl.vector.unsigned([2,5,9]))) == [2,5,9]
   assert list(flex.double(stl.vector.double([3,-6,10]))) == [3,-6,10]
 
 def exercise_operators():
@@ -1277,10 +1319,7 @@ def exercise_arith_inplace_operators():
   assert tuple(a) == (12, 10)
   a -= flex.int((4, 3))
   assert tuple(a) == (8, 7)
-  if ("".join([str(n) for n in sys.version_info[:3]]) > "221"):
-    a *= a
-  else:
-    a = flex.int((64, 49))
+  a *= a
   assert tuple(a) == (64, 49)
   a /= flex.int((2, 1))
   assert tuple(a) == (32, 49)
@@ -1459,6 +1498,12 @@ mean:   2.00
   assert approx_equal(flex.double([3,7]).sample_standard_deviation(), 8**0.5)
 
 def exercise_complex_functions():
+  assert (flex.complex_double() == None) is False
+  try:
+    cd_none = flex.complex_double([None])
+  except TypeError as e:
+    assert "converter" in str(e)
+  else: raise Exception_expected
   c = 1+2j
   x = flex.complex_double((c,))
   y = flex.real(x)
@@ -3602,7 +3647,7 @@ def exercise_vec3_double_as_numpy_array():
   try:
     import numpy as np
   except ImportError:
-    "Skipping exercise_vec3_double_as_numpy_array (numpy not available)"
+    print("Skipping exercise_vec3_double_as_numpy_array (numpy not available)")
     return
 
   test_data = [
@@ -3612,6 +3657,50 @@ def exercise_vec3_double_as_numpy_array():
   vec3 = flex.vec3_double(test_data)
   np_vec3 = vec3.as_numpy_array()
   assert np.all(np.isclose(np_vec3, np.array(test_data)))
+
+def exercise_fixed_width_int_types():
+  try:
+    import numpy as np
+  except ImportError:
+    print("No numpy, so skip exercise_fixed_width_int_types")
+    return
+
+  # test numpy conversion
+  for itype, dtype in zip(
+    [flex.int8, flex.int16, flex.int32, flex.int64,
+     flex.uint8, flex.uint16, flex.uint32, flex.uint64],
+    ['int8', 'int16', 'int32', 'int64', 'uint8', 'uint16', 'uint32', 'uint64']):
+    f = itype([1, 2, 3, 4, 5])
+    n = f.as_numpy_array()
+    assert n.dtype == getattr(np, dtype)
+
+  # verify rollover behaviour
+  u8 = flex.uint8([1, 2, 3, 4, 5])
+  u8 += 0xff
+  assert flex.max(u8) == 4
+  assert flex.min(u8) == 0
+
+  # int8
+  i8 = flex.int8([1, 2, 3, 4, 5])
+  assert i8.as_numpy_array().dtype == np.int8
+
+  # verify rollover behaviour
+  i8 += 0x7f
+  assert flex.min(i8) == -128
+
+  # test overflow for signed types
+  for itype, maxvalue in zip(
+    [flex.int8, flex.int16, flex.int32, flex.int64],
+    [0x7f, 0x7fff, 0x7fffffff, 0x7fffffffffffffff]):
+    a = itype([maxvalue])
+    try:
+      a = itype([maxvalue + 1])
+    except OverflowError as e:
+      pass
+    else:
+      raise RuntimeError("should have OverflowError")
+
+  print("Ok")
 
 def run(iterations):
   i = 0
@@ -3675,6 +3764,7 @@ def run(iterations):
     exercise_condense_as_ranges()
     exercise_python_functions()
     exercise_vec3_double_as_numpy_array()
+    exercise_fixed_width_int_types()
     i += 1
 
 if (__name__ == "__main__"):

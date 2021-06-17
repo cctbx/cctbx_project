@@ -1,30 +1,11 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
-from six.moves import range
-ext = boost.python.import_ext("boost_rational_ext")
-from boost_rational_ext import *
+from boost_adaptbx.boost.rational import *
+import warnings
 
-builtin_int = __builtins__["int"]
-
-def from_string(s):
-  flds = [builtin_int(i) for i in s.split("/")]
-  assert len(flds) in (1,2)
-  if (len(flds) == 1):
-    return int(flds[0])
-  return int(flds[0], flds[1])
-
-def vector(numerators, denominators):
-  if (isinstance(denominators, builtin_int)):
-    denominators = [denominators] * len(numerators)
-  else:
-    assert len(numerators) == len(denominators)
-  result = []
-  for i in range(len(numerators)):
-    result.append(int(numerators[i], denominators[i]))
-  return result
-
-def lcm_denominators(array):
-  l = 1
-  for r in array:
-    l = lcm(l, r.denominator())
-  return l
+warnings.warn(
+  "importing from boost.rational is deprecated; this module will be removed shortly. "
+  "import from boost_adaptbx.boost.rational instead. "
+  "Please see https://github.com/cctbx/cctbx_project/issues/458 for more information.",
+  FutureWarning,
+  stacklevel=2
+)

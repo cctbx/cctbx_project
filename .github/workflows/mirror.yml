@@ -1,0 +1,97 @@
+# This workflow will mirror the master branch
+# from https://github.com/cctbx/cctbx_project
+#  to  https://github.com/dials/cctbx
+# whenever the build is stable.
+# This is determined by checking the Azure CI run outcomes.
+
+name: mirror when stable
+on:
+  check_suite:
+    types:
+      - completed
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    if: github.repository == 'cctbx/cctbx_project'
+
+    steps:
+    - name: Wait for Azure Checks to complete
+      uses: Anthchirp/action-wait-for-check@4699210ccc66e2a13260803fadbb77085421b891
+            # Original repository: https://github.com/fountainhead/action-wait-for-check
+            # This is tagged version v1.0.0, but do not use version tags
+            # https://julienrenaux.fr/2019/12/20/github-actions-security-risk/
+      id: wait-for-checks
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        checkName: Checks
+        ref: ${{ github.event.check_suite.head_sha }}
+        intervalSeconds: 30
+        timeoutSeconds: 120
+
+    - name: Wait for Azure XFEL CI build to complete
+      if: steps.wait-for-checks.outputs.conclusion == 'success'
+      uses: Anthchirp/action-wait-for-check@4699210ccc66e2a13260803fadbb77085421b891
+            # Original repository: https://github.com/fountainhead/action-wait-for-check
+            # This is tagged version v1.0.0, but do not use version tags
+            # https://julienrenaux.fr/2019/12/20/github-actions-security-risk/
+      id: wait-for-xfel-build
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        checkName: XFEL CI
+        ref: ${{ github.event.check_suite.head_sha }}
+        intervalSeconds: 30
+        timeoutSeconds: 120
+
+    - name: Wait for main Azure CI build to complete
+      if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-xfel-build.outputs.conclusion == 'success'
+      uses: Anthchirp/action-wait-for-check@4699210ccc66e2a13260803fadbb77085421b891
+            # Original repository: https://github.com/fountainhead/action-wait-for-check
+            # This is tagged version v1.0.0, but do not use version tags
+            # https://julienrenaux.fr/2019/12/20/github-actions-security-risk/
+      id: wait-for-build
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        checkName: CI
+        ref: ${{ github.event.check_suite.head_sha }}
+        intervalSeconds: 30
+        timeoutSeconds: 120
+
+    - name: Check out repository
+      if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-xfel-build.outputs.conclusion == 'success' && steps.wait-for-build.outputs.conclusion == 'success'
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: '0'
+
+    - name: Check if commit is on master
+      if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-xfel-build.outputs.conclusion == 'success' && steps.wait-for-build.outputs.conclusion == 'success'
+      id: is-on-master
+      run: |
+        git status
+        git merge-base --is-ancestor ${{ github.event.check_suite.head_sha }} HEAD && {
+          echo Commit is on master
+          echo "::set-output name=conclusion::proceed"
+        } || {
+          echo Commit is not on master
+          echo "::set-output name=conclusion::skip"
+        }
+
+    - name: Install SSH key
+      if: steps.is-on-master.outputs.conclusion == 'proceed'
+      uses: Anthchirp/action-ssh-key@b4a94d05b860c19f609854947327a4882269b7c1
+            # Original repository: https://github.com/shimataro/ssh-key-action
+            # This is PR https://github.com/shimataro/ssh-key-action/pull/122
+            # in the branch feature/github-key, but do not use branch names
+            # https://julienrenaux.fr/2019/12/20/github-actions-security-risk/
+      with:
+         key: ${{ secrets.DIALS_REPOSITORY_KEY }}
+         name: id_rsa # optional
+
+    - name: Mirror stable branch
+      if: steps.is-on-master.outputs.conclusion == 'proceed'
+      run: |
+        git remote add mirror git@github.com:dials/cctbx.git
+        git reset --hard ${{ github.event.check_suite.head_sha }}
+        git rev-parse HEAD
+        git status
+        git push mirror HEAD:master

@@ -1,0 +1,83 @@
+{% extends "cctbx/header.html" %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="col-sm-9 main">
+<!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
+<!----------------------- EDIT START ---------------------------->
+
+<h2><center>Generate ideal helices and strands</center></h2>
+
+<p class="lead mt-4">This script shows how to generate idealized helices and strands from a sequence.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">Introduction</h3>
+
+<p>For certain purposes, such as writing tests for cctbx, it is useful to generate a model of idealized secondary structure, such as helices and beta strands.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">Code</h3>
+
+<p>The script needs the following imports:</p>
+
+<pre class="codeDL"><code>from __future__ import absolute_import, division, print_function
+from mmtbx.secondary_structure.build import ss_idealization as ssb
+</code></pre>
+
+<p>The first line makes sure that the script runs with both Python2 and Python3.</p>
+
+<p>The second import from the <code>mmtbx/secondary_structure</code> module makes available the function used to generate ideal secondary structure.</p>
+
+<p>Then we create an ideal helix from a sequence, here we use the example sequence "ILMKARNDWYV":</p>
+
+<pre class="codeDL"><code>ph_helix = ssb.secondary_structure_from_sequence(ssb.alpha_helix_str,"ILMKARNDWYV")
+</code></pre>
+
+<p>The <code>secondary_structure_from_sequence</code> function creates a new <code>pdb_hierarchy</code> object. The first argument is a string in PDB format (pdb_str) that has the geometry of the secondary structure. The following strings are available in the code; in parenthesis is the name of the variable in the code:</p>
+<ul>
+  <li>Alpha helix (<code>alpha_helix_str</code>)</li>
+  <li>3-10 helix (<code>a310_helix_str</code>)</li>
+  <li>Pi-helix (<code>pi_helix_str</code>)</li>
+  <li>Beta strand (<code>beta_pdb_str</code>)</li>
+</ul>
+<p>The second argument is the sequence, in form of a string of one-letter codes. It can be an explicit sequence, such as "ILMKARNDWYV", or in form of <code>"A"*20</code> for 20 alanine residues.</p>
+
+<p>Once we have the new <code>pdb_hierarchy</code> for the idealized helix, we can save it as PDB file:</p>
+
+<pre class="codeDL"><code>ph_helix.write_pdb_file(file_name="m-helix.pdb")
+</code></pre>
+
+<p>Similarly, we can create an ideal beta strand:</p>
+
+<pre class="codeDL"><code>ph_strand = ssb.secondary_structure_from_sequence(ssb.beta_pdb_str,"ILMKARNDWYV")
+ph_strand.write_pdb_file(file_name="m-strand.pdb")
+</code></pre>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Example</h3>
+
+<p>For the sequence used in our example ("ILMKARNDWYV"), we get the ideal alpha helix below.</p>
+
+<img style="max-width: 40%;" src="{% static 'cctbx/img/scripts/script_ideal_SS_1_helix.png' %}" alt="fig1" >
+
+<p class="mt-3">For the same sequence, we get the follwing strand. Note the peptide N-H and C=O groups pointing to the top and the bottom.</p>
+
+<img style="max-width: 70%;" src="{% static 'cctbx/img/scripts/script_ideal_SS_2_strand.png' %}" alt="fig2" >
+
+<!----------------------- EDIT END ---------------------------->
+<!-- DO NOT EDIT ANYTHING BELOW!!!! -->
+</div> <!-- end col-sm-9 -->
+
+<!-- automatic table of contents
+     located in the sidebar; will move to the top on a small screen -->
+<div class="col-sm-3 mt-5">
+  <nav id="toc" data-toggle="toc"></nav>
+</div> <!-- end col-sm-3 -->
+
+
+{% endblock %}

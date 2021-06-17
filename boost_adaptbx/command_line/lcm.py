@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import gcd
-from boost.rational import lcm
+from boost_adaptbx.boost.rational import lcm
 import sys
 
 def run(args):

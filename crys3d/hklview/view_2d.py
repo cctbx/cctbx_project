@@ -114,7 +114,11 @@ class hklview_2d (wx.Panel, cctbx.miller.display.render_2d) :
   def process_pick_points (self, x, y) :
     context = wx.ClientDC( self )
     w, h = self.GetClientSize()
-    bitmap = wx.Bitmap( w, h, -1 )
+    if wx.VERSION[0] > 3:
+      bitmap = wx.Bitmap( w, h, -1 )
+    else:
+      # https://discuss.wxpython.org/t/wx-bitmap-x-y-and-wx-bitmap-create-x-y-vs-wx-emptybitmap-x-y/29463
+      bitmap = wx.EmptyBitmap(w, h, -1)
     memory = wx.MemoryDC(bitmap)
     memory.SelectObject(bitmap)
     memory.Blit(0, 0, w, h, context, 0, 0)
@@ -147,7 +151,11 @@ class hklview_2d (wx.Panel, cctbx.miller.display.render_2d) :
   # mimics gltbx.wx_viewer.wxGLWindow.save_screen_shot
   def save_screen_shot (self, file_name, extensions=None) :
     rect = self.GetRect()
-    bitmap = wx.Bitmap(rect.width, rect.height)
+    if wx.VERSION[0] > 3:
+      bitmap = wx.Bitmap(rect.width, rect.height)
+    else:
+      # https://discuss.wxpython.org/t/wx-bitmap-x-y-and-wx-bitmap-create-x-y-vs-wx-emptybitmap-x-y/29463
+      bitmap = wx.EmptyBitmap(rect.width, rect.height)
     memory_dc = wx.MemoryDC()
     memory_dc.SelectObject(bitmap)
     #memory_dc.SetBackgroundMode(wx.TRANSPARENT)

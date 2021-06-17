@@ -6,6 +6,108 @@
 namespace simtbx {
 namespace nanoBragg {
 
+class encapsulated_twodev
+{
+/* Convert gaussdev from a function to a class.
+ * Implemented as a function, the state variable iset
+ * valued at 0 or 1, unintentionally stored global state, thus
+ * producing different gaussian deviates depending on the order in
+ * which images are simulated within a parallel-computing environment.
+ * Despite random seeds being the same, resulting deviates differed.
+ * Switching to a class now forces iset to be initialized for each new
+ * class instance.
+ * Furthermore, implement poidev() within the same new class, since
+ * gaussdev() is a dependency of poidev().
+ */
+  private:
+    // instance variables for gaussdev
+    int iset;
+    double gset; //set value to avoid compiler warnings, but the 0 value must not be used.
+    double fac,rsq,v1,v2;
+    // instance variables for poidev
+    /* oldm is a flag for whether xm has changed since last call */
+    double sq,alxm,g,oldm; //formerly static when poidev was a function
+    double em,t,y;
+
+  public:
+    encapsulated_twodev() : iset(0), gset(0.), sq(0), alxm(0), g(0), oldm(-1.0) {}
+
+    /* return gaussian deviate with rms=1 and FWHM = 2/sqrt(log(2)) */
+    double gaussdev(long *idum){
+    if (iset == 0) {
+        /* no extra deviats handy ... */
+
+        /* so pick two uniform deviates on [-1:1] */
+        do {
+            v1=2.0*ran1(idum)-1.0;
+            v2=2.0*ran1(idum)-1.0;
+            rsq=v1*v1+v2*v2;
+        } while (rsq >= 1.0 || rsq == 0);
+        /* restrained to the unit circle */
+
+        /* apply Box-Muller transformation to convert to a normal deviate */
+        fac=sqrt(-2.0*log(rsq)/rsq);
+        gset=v1*fac;
+        iset=1;         /* we now have a spare deviate */
+        return v2*fac;
+    } else {
+        /* there is an extra deviate in gset */
+        iset=0;
+        return gset;
+    }
+    }
+
+    /* Poisson deviate given expectation value of photon count (xm) */
+    double poidev(double xm, long *idum){
+
+    /* routine below locks up for > 1e6 photons? */
+    if (xm > 1.0e6) {
+        return xm+sqrt(xm)*gaussdev(idum);
+    }
+
+    if (xm < 12.0) {
+        /* use direct method: simulate exponential delays between events */
+        if(xm != oldm) {
+            /* xm is new, compute the exponential */
+            oldm=xm;
+            g=exp(-xm);
+        }
+        /* adding exponential deviates is equivalent to multiplying uniform deviates */
+        /* final comparison is to the pre-computed exponential */
+        em = -1;
+        t = 1.0;
+        do {
+            ++em;
+            t *= ran1(idum);
+        } while (t > g);
+    } else {
+        /* Use rejection method */
+        if(xm != oldm) {
+            /* xm has changed, pre-compute a few things... */
+            oldm=xm;
+            sq=sqrt(2.0*xm);
+            alxm=log(xm);
+            g=xm*alxm-gammln(xm+1.0);
+        }
+        do {
+            do {
+                /* y is a deviate from a lorentzian comparison function */
+                y=tan(M_PI*ran1(idum));
+                /* shift and scale */
+                em=sq*y+xm;
+            } while (em < 0.0);         /* there are no negative Poisson deviates */
+            /* round off to nearest integer */
+            em=floor(em);
+            /* ratio of Poisson distribution to comparison function */
+            /* scale it back by 0.9 to make sure t is never > 1.0 */
+            t=0.9*(1.0+y*y)*exp(em*alxm-gammln(em+1.0)-g);
+        } while (ran1(idum) > t);
+    }
+
+    return em;
+    }
+
+};
 
 /* constructor that takes a dxtbx "panel" detector model */
 nanoBragg::nanoBragg(
@@ -74,43 +176,8 @@ nanoBragg::nanoBragg(
 
     /* direction in 3-space of detector axes */
     beam_convention = CUSTOM;
-    /* typically: 1 0 0 */
-    fdet_vector[1] = detector[panel_id].get_fast_axis()[0];
-    fdet_vector[2] = detector[panel_id].get_fast_axis()[1];
-    fdet_vector[3] = detector[panel_id].get_fast_axis()[2];
-    unitize(fdet_vector,fdet_vector);
-    /* typically: 0 -1 0 */
-    sdet_vector[1] = detector[panel_id].get_slow_axis()[0];
-    sdet_vector[2] = detector[panel_id].get_slow_axis()[1];
-    sdet_vector[3] = detector[panel_id].get_slow_axis()[2];
-    unitize(sdet_vector,sdet_vector);
-    /* set orthogonal vector to the detector pixel array */
-    cross_product(fdet_vector,sdet_vector,odet_vector);
-    unitize(odet_vector,odet_vector);
 
-    /* dxtbx origin is location of outer corner of the first pixel */
-    pix0_vector[1] = detector[panel_id].get_origin()[0]/1000.0;
-    pix0_vector[2] = detector[panel_id].get_origin()[1]/1000.0;
-    pix0_vector[3] = detector[panel_id].get_origin()[2]/1000.0;
-    /* what is the point of closest approach between sample and detector? */
-    Fclose = Xclose = -dot_product(pix0_vector,fdet_vector);
-    Sclose = Yclose = -dot_product(pix0_vector,sdet_vector);
-    close_distance = distance =  dot_product(pix0_vector,odet_vector);
-
-    /* set beam centre */
-    scitbx::vec2<double> dials_bc = detector[panel_id].get_beam_centre(beam.get_s0());
-    Xbeam = dials_bc[0]/1000.0;
-    Ybeam = dials_bc[1]/1000.0;
-
-    /* detector sensor layer properties */
-    detector_thick   = detector[panel_id].get_thickness();
-    temp = detector[panel_id].get_mu();        // is this really a mu? or mu/rho ?
-    if(temp>0.0) detector_attnlen = 1.0/temp;
-
-    /* quantum_gain = amp_gain * electrooptical_gain, does not include capture_fraction */
-    quantum_gain = detector[panel_id].get_gain();
-
-    //adc_offset = detector[panel_id].ADC_OFFSET;
+    set_dxtbx_detector_panel(detector[panel_id], beam.get_s0());
 
     /* SPINDLE properties */
 
@@ -384,6 +451,7 @@ nanoBragg::init_defaults()
     Xclose=NAN;Yclose=NAN;close_distance=NAN;
     Fclose=NAN;Sclose=NAN;
     ORGX=NAN;ORGY=NAN;
+    detector_is_righthanded=true;
     adc_offset = 40.0;
 
     /* use these to remember "user" inputs */
@@ -784,6 +852,8 @@ nanoBragg::init_beamcenter()
         if(verbose) printf("WARNING: auto-generating odet_vector\n");
         cross_product(fdet_vector,sdet_vector,odet_vector);
         unitize(odet_vector,odet_vector);
+        if (! detector_is_righthanded)
+            vector_rescale(odet_vector, odet_vector, -1);
     }
     unitize(polar_vector,polar_vector);
     unitize(spindle_vector,spindle_vector);
@@ -1244,6 +1314,63 @@ nanoBragg::update_beamcenter()
 // end of update_beamcenter()
 
 
+void nanoBragg::set_dxtbx_detector_panel(const dxtbx::model::Panel& panel, const vec3& s0_vector){
+
+    int spixels_new = panel.get_image_size()[1];
+    int fpixels_new = panel.get_image_size()[0];
+    if (spixels_new != spixels || fpixels_new != fpixels){
+        printf("New panel has different dimension than allocated panel!\n");
+        pixel_size = panel.get_pixel_size()[0]/1000.;
+        spixels = panel.get_image_size()[1];
+        fpixels = panel.get_image_size()[0];
+        init_detector();
+    }
+
+    /* typically: 1 0 0 */
+    fdet_vector[1] = panel.get_fast_axis()[0];
+    fdet_vector[2] = panel.get_fast_axis()[1];
+    fdet_vector[3] = panel.get_fast_axis()[2];
+    unitize(fdet_vector,fdet_vector);
+    /* typically: 0 -1 0 */
+    sdet_vector[1] = panel.get_slow_axis()[0];
+    sdet_vector[2] = panel.get_slow_axis()[1];
+    sdet_vector[3] = panel.get_slow_axis()[2];
+    unitize(sdet_vector,sdet_vector);
+    /* set orthogonal vector to the detector pixel array */
+    cross_product(fdet_vector,sdet_vector,odet_vector);
+    unitize(odet_vector,odet_vector);
+
+    /* dxtbx origin is location of outer corner of the first pixel */
+    pix0_vector[1] = panel.get_origin()[0]/1000.0;
+    pix0_vector[2] = panel.get_origin()[1]/1000.0;
+    pix0_vector[3] = panel.get_origin()[2]/1000.0;
+    /* what is the point of closest approach between sample and detector? */
+    Fclose = Xclose = -dot_product(pix0_vector,fdet_vector);
+    Sclose = Yclose = -dot_product(pix0_vector,sdet_vector);
+    close_distance = distance =  dot_product(pix0_vector,odet_vector);
+    if (close_distance < 0){
+        if(verbose)printf("WARNING: dxtbx model seems to be lefthanded. Inverting odet_vector.\n");
+        vector_rescale(odet_vector, odet_vector, -1);
+        close_distance = distance =  dot_product(pix0_vector,odet_vector);
+        detector_is_righthanded = false;
+    }
+
+    /* set beam centre */
+    scitbx::vec2<double> dials_bc = panel.get_beam_centre(s0_vector);
+    Xbeam = dials_bc[0]/1000.0;
+    Ybeam = dials_bc[1]/1000.0;
+
+    user_beam = true; // necessary for tilted dxtbx geometries
+
+    /* detector sensor layer properties */
+    detector_thick   = panel.get_thickness();
+    double temp = panel.get_mu();        // is this really a mu? or mu/rho ?
+    if(temp>0.0) detector_attnlen = 1.0/temp;
+
+    /* quantum_gain = amp_gain * electrooptical_gain, does not include capture_fraction */
+    quantum_gain = panel.get_gain();
+    //adc_offset = detector[panel_id].ADC_OFFSET;
+    }
 
 
 /* automatically decide if we are interpolating, allocate memory if yes */
@@ -1262,6 +1389,7 @@ nanoBragg::init_interpolator()
         }
         if(verbose>6) printf("freeing %d %ld-byte double** Fhkl at %p\n",5,sizeof(double**),sub_Fhkl);
         free(sub_Fhkl);
+        sub_Fhkl = NULL;
     }
 
     if(interpolate > 1){
@@ -2348,6 +2476,7 @@ nanoBragg::show_params()
     if(xtal_shape == ROUND)  printf("ellipsoidal");
     if(xtal_shape == SQUARE) printf("parallelpiped");
     if(xtal_shape == GAUSS ) printf("gaussian");
+    if(xtal_shape == GAUSS_ARGCHK ) printf("gaussian_argchk");
     if(xtal_shape == TOPHAT) printf("tophat-spot");
     printf(" xtal: %.0fx%.0fx%.0f cells\n",Na,Nb,Nc);
     printf("Unit Cell: %g %g %g %g %g %g\n", a_A[0],b_A[0],c_A[0],alpha*RTD,beta*RTD,gamma*RTD);
@@ -2634,6 +2763,14 @@ nanoBragg::add_nanoBragg_spots()
                                         /* fudge the radius so that volume and FWHM are similar to square_xtal spots */
                                         F_latt = Na*Nb*Nc*exp(-( hrad_sqr / 0.63 * fudge ));
                                     }
+                                    if (xtal_shape == GAUSS_ARGCHK)
+                                    {
+                                        /* fudge the radius so that volume and FWHM are similar to square_xtal spots */
+                                        double my_arg = hrad_sqr / 0.63 * fudge; // pre-calculate to check for no Bragg signal
+                                        if (my_arg<35.){ F_latt = Na * Nb * Nc * exp(-(my_arg));}
+                                        else { F_latt = 0.; } // not expected to give performance gain on optimized C++, only on GPU
+                                    }
+
                                     if(xtal_shape == TOPHAT)
                                     {
                                         /* make a flat-top spot of same height and volume as square_xtal spots */
@@ -3604,6 +3741,8 @@ nanoBragg::apply_psf(shapetype psf_type, double fwhm_pixels, int user_psf_radius
 void
 nanoBragg::add_noise()
 {
+    encapsulated_twodev image_deviates;
+    encapsulated_twodev pixel_deviates;
     int i = 0;
     long cseed;
 
@@ -3653,10 +3792,10 @@ nanoBragg::add_noise()
 
             /* simulate 1/f noise in source */
             if(flicker_noise > 0.0){
-                expected_photons *= ( 1.0 + flicker_noise * gaussdev( &seed ) );
+                expected_photons *= ( 1.0 + flicker_noise * image_deviates.gaussdev( &seed ) );
             }
             /* simulate photon-counting error */
-            observed_photons = poidev( expected_photons, &seed );
+            observed_photons = image_deviates.poidev( expected_photons, &seed );
 
             /* now we overwrite the flex array, it is now observed, rather than expected photons */
             floatimage[i] = observed_photons;
@@ -3703,7 +3842,7 @@ nanoBragg::add_noise()
                 }
 
                 /* calibration is same from shot to shot, but varies from pixel to pixel */
-                floatimage[i] *= ( 1.0 + calibration_noise * gaussdev( &cseed ) );
+                floatimage[i] *= ( 1.0 + calibration_noise * pixel_deviates.gaussdev( &cseed ) );
 
                 /* accumulate number of photons, and keep track of max */
                 if(floatimage[i] > max_I) {
@@ -3764,7 +3903,7 @@ nanoBragg::add_noise()
 
                 /* readout noise is in pixel units (adu) */
                 if(readout_noise > 0.0){
-                    adu += readout_noise * gaussdev( &seed );
+                    adu += readout_noise * image_deviates.gaussdev( &seed );
             }
 
             /* once again, overwriting flex array, this time in ADU units */
@@ -4246,94 +4385,6 @@ double *umat2misset(double umat[9],double *missets)
 
 
 /* random number generators */
-
-/* Poisson deviate given expectation value of photon count (xm) */
-double poidev(double xm, long *idum)
-{
-//    double gammln(double xx);
-//    double ran1(long *idum);
-    /* oldm is a flag for whether xm has changed since last call */
-    static double sq,alxm,g,oldm=(-1.0);
-    double em,t,y;
-
-    /* routine below locks up for > 1e6 photons? */
-    if (xm > 1.0e6) {
-        return xm+sqrt(xm)*gaussdev(idum);
-    }
-
-    if (xm < 12.0) {
-        /* use direct method: simulate exponential delays between events */
-        if(xm != oldm) {
-            /* xm is new, compute the exponential */
-            oldm=xm;
-            g=exp(-xm);
-        }
-        /* adding exponential deviates is equivalent to multiplying uniform deviates */
-        /* final comparison is to the pre-computed exponential */
-        em = -1;
-        t = 1.0;
-        do {
-            ++em;
-            t *= ran1(idum);
-        } while (t > g);
-    } else {
-        /* Use rejection method */
-        if(xm != oldm) {
-            /* xm has changed, pre-compute a few things... */
-            oldm=xm;
-            sq=sqrt(2.0*xm);
-            alxm=log(xm);
-            g=xm*alxm-gammln(xm+1.0);
-        }
-        do {
-            do {
-                /* y is a deviate from a lorentzian comparison function */
-                y=tan(M_PI*ran1(idum));
-                /* shift and scale */
-                em=sq*y+xm;
-            } while (em < 0.0);         /* there are no negative Poisson deviates */
-            /* round off to nearest integer */
-            em=floor(em);
-            /* ratio of Poisson distribution to comparison function */
-            /* scale it back by 0.9 to make sure t is never > 1.0 */
-            t=0.9*(1.0+y*y)*exp(em*alxm-gammln(em+1.0)-g);
-        } while (ran1(idum) > t);
-    }
-
-    return em;
-}
-
-
-/* return gaussian deviate with rms=1 and FWHM = 2/sqrt(log(2)) */
-double gaussdev(long *idum)
-{
-//    double ran1(long *idum);
-    static int iset=0;
-    static double gset;
-    double fac,rsq,v1,v2;
-
-    if (iset == 0) {
-        /* no extra deviats handy ... */
-
-        /* so pick two uniform deviates on [-1:1] */
-        do {
-            v1=2.0*ran1(idum)-1.0;
-            v2=2.0*ran1(idum)-1.0;
-            rsq=v1*v1+v2*v2;
-        } while (rsq >= 1.0 || rsq == 0);
-        /* restrained to the unit circle */
-
-        /* apply Box-Muller transformation to convert to a normal deviate */
-        fac=sqrt(-2.0*log(rsq)/rsq);
-        gset=v1*fac;
-        iset=1;         /* we now have a spare deviate */
-        return v2*fac;
-    } else {
-        /* there is an extra deviate in gset */
-        iset=0;
-        return gset;
-    }
-}
 
 
 /* generate Lorentzian deviate with FWHM = 2 */

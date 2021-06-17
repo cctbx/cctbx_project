@@ -130,8 +130,9 @@ class IndexingJob(Job):
           show_plots = False
           verbose = False
           output_bins = False
+          mask = %s
         }
-        """
+        """%(self.rungroup.untrusted_pixel_mask_path)
         phil_scope = orig_phil_scope.fetch(parse(override_str))
       else:
         phil_scope = orig_phil_scope
@@ -139,15 +140,15 @@ class IndexingJob(Job):
       trial_params = phil_scope.fetch(parse(phil_str)).extract()
 
       image_format = self.rungroup.format
-      if image_format == 'cbf':
+      mode = "other"
+      if self.app.params.facility.name == 'lcls':
         if "rayonix" in self.rungroup.detector_address.lower():
           mode = "rayonix"
         elif "cspad" in self.rungroup.detector_address.lower():
           mode = "cspad"
         elif "jungfrau" in self.rungroup.detector_address.lower():
           mode = "jungfrau"
-        else:
-          assert False, "Couldn't figure out what kind of detector is specified by address %s"%self.rungroup.detector_address
+
       if hasattr(trial_params, 'format'):
         trial_params.format.file_format = image_format
         trial_params.format.cbf.mode = mode
@@ -156,6 +157,9 @@ class IndexingJob(Job):
       config_path = os.path.join(configs_dir, identifier_string + ".cfg")
     else:
       config_path = None
+
+    if hasattr(trial_params.dispatch, 'process_percent'):
+      trial_params.dispatch.process_percent = self.trial.process_percent
 
     # Dictionary for formating the submit phil and, if used, the labelit cfg file
     d = dict(
@@ -188,19 +192,34 @@ class IndexingJob(Job):
       experiment_tag            = self.app.params.experiment_tag,
       calib_dir                 = self.rungroup.calib_dir,
       nproc                     = self.app.params.mp.nproc,
+      nnodes                    = self.app.params.mp.nnodes_index or self.app.params.mp.nnodes,
       nproc_per_node            = self.app.params.mp.nproc_per_node,
       queue                     = self.app.params.mp.queue or None,
-      env_script                = self.app.params.mp.env_script[0] if len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
+      env_script                = self.app.params.mp.env_script[0] if self.app.params.mp.env_script is not None and len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
       method                    = self.app.params.mp.method,
+      wall_time                 = self.app.params.mp.wall_time,
       htcondor_executable_path  = self.app.params.mp.htcondor.executable_path,
+      nersc_shifter_image       = self.app.params.mp.shifter.shifter_image,
+      sbatch_script_template    = self.app.params.mp.shifter.sbatch_script_template,
+      srun_script_template      = self.app.params.mp.shifter.srun_script_template,
+      nersc_partition           = self.app.params.mp.shifter.partition,
+      nersc_jobname             = self.app.params.mp.shifter.jobname,
+      nersc_project             = self.app.params.mp.shifter.project,
+      nersc_constraint          = self.app.params.mp.shifter.constraint,
+      nersc_reservation         = self.app.params.mp.shifter.reservation,
+      nersc_staging             = self.app.params.mp.shifter.staging,
       target                    = target_phil_path,
       host                      = self.app.params.db.host,
       dbname                    = self.app.params.db.name,
       user                      = self.app.params.db.user,
       port                      = self.app.params.db.port,
       # always use mpi for 'lcls'
-      use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls')
+      use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls'),
+      mpi_command               = self.app.params.mp.mpi_command,
+      extra_options             = "\n".join(["extra_options = %s"%opt for opt in self.app.params.mp.extra_options]),
     )
+    if self.app.params.mp.method == 'sge':
+      d['use_mpi'] = False
     if self.app.params.db.password is not None and len(self.app.params.db.password) == 0:
       d['password'] = None
     else:
@@ -224,13 +243,14 @@ class IndexingJob(Job):
             trial_params.format.cbf.rayonix.bin_size = self.rungroup.binning
             trial_params.format.cbf.rayonix.override_beam_x = self.rungroup.beamx
             trial_params.format.cbf.rayonix.override_beam_y = self.rungroup.beamy
-        trial_params.dispatch.process_percent = self.trial.process_percent
 
         if trial_params.input.known_orientations_folder is not None:
           trial_params.input.known_orientations_folder = trial_params.input.known_orientations_folder.format(run=self.run.run)
       else:
-        trial_params.spotfinder.lookup.mask = self.rungroup.untrusted_pixel_mask_path
-        trial_params.integration.lookup.mask = self.rungroup.untrusted_pixel_mask_path
+        if trial_params.spotfinder.lookup.mask is None:
+          trial_params.spotfinder.lookup.mask = self.rungroup.untrusted_pixel_mask_path
+        if trial_params.integration.lookup.mask is None:
+          trial_params.integration.lookup.mask = self.rungroup.untrusted_pixel_mask_path
 
         if self.app.params.facility.name == 'lcls':
           locator_path = os.path.join(configs_dir, identifier_string + ".loc")
@@ -238,17 +258,24 @@ class IndexingJob(Job):
           locator.write("experiment=%s\n"%self.app.params.facility.lcls.experiment) # LCLS specific parameter
           locator.write("run=%s\n"%self.run.run)
           locator.write("detector_address=%s\n"%self.rungroup.detector_address)
+          if self.rungroup.wavelength_offset:
+            locator.write("wavelength_offset=%s\n"%self.rungroup.wavelength_offset)
+          if self.rungroup.spectrum_eV_per_pixel:
+            locator.write("spectrum_eV_per_pixel=%s\n"%self.rungroup.spectrum_eV_per_pixel)
+          if self.rungroup.spectrum_eV_offset:
+            locator.write("spectrum_eV_offset=%s\n"%self.rungroup.spectrum_eV_offset)
+          if self.app.params.facility.lcls.use_ffb:
+            locator.write("use_ffb=True\n")
 
-          if image_format == "cbf":
-            if mode == 'rayonix':
-              from xfel.cxi.cspad_ana import rayonix_tbx
-              pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.rungroup.binning)
-              extra_scope = parse("geometry { detector { panel { origin = (%f, %f, %f) } } }"%(-self.rungroup.beamx * pixel_size,
-                                                                                                self.rungroup.beamy * pixel_size,
-                                                                                               -self.rungroup.detz_parameter))
-              locator.write("rayonix.bin_size=%s\n"%self.rungroup.binning)
-            elif mode == 'cspad':
-              locator.write("cspad.detz_offset=%s\n"%self.rungroup.detz_parameter)
+          if mode == 'rayonix':
+            from xfel.cxi.cspad_ana import rayonix_tbx
+            pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.rungroup.binning)
+            extra_scope = parse("geometry { detector { panel { origin = (%f, %f, %f) } } }"%(-self.rungroup.beamx * pixel_size,
+                                                                                              self.rungroup.beamy * pixel_size,
+                                                                                             -self.rungroup.detz_parameter))
+            locator.write("rayonix.bin_size=%s\n"%self.rungroup.binning)
+          elif mode == 'cspad':
+            locator.write("cspad.detz_offset=%s\n"%self.rungroup.detz_parameter)
           locator.close()
           d['locator'] = locator_path
         else:
@@ -503,7 +530,12 @@ class EnsembleRefinementJob(Job):
 
   def get_output_files(self):
     run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
-    return os.path.join(run_path, 'combine_experiments_t%03d'%self.trial.trial, 'intermediates'), '_reintegrated.expt', '_reintegrated.refl'
+    return os.path.join(run_path, 'combine_experiments_t%03d'%self.trial.trial, 'intermediates', "*reintegrated*"), '.expt', '.refl'
+
+  def get_log_path(self):
+    run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
+    return os.path.join(run_path, 'combine_experiments_t%03d'%self.trial.trial, 'intermediates',
+      "combine_t%03d_rg%03d_chunk000.out"%(self.trial.trial, self.rungroup.id)) # XXX there can be multiple chunks or multiple clusters
 
   def submit(self, previous_job = None):
     from xfel.command_line.striping import Script
@@ -526,6 +558,8 @@ class EnsembleRefinementJob(Job):
     mp.method={}
     {}
     mp.use_mpi=False
+    mp.mpi_command={}
+    {}
     striping.results_dir={}
     striping.trial={}
     striping.rungroup={}
@@ -535,21 +569,28 @@ class EnsembleRefinementJob(Job):
     striping.stripe=False
     striping.dry_run=True
     striping.output_folder={}
+    reintegration.integration.lookup.mask={}
+    mp.local.include_mp_in_command=False
     """.format(self.app.params.mp.queue if len(self.app.params.mp.queue) > 0 else None,
                self.app.params.mp.nproc,
                self.app.params.mp.nproc_per_node,
                self.app.params.mp.method,
-               '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script]),
+               '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script if p]),
+               self.app.params.mpi_command,
+               "\n".join(["extra_options={}".format(opt) for opt in self.app.params.mp.extra_options]),
                self.app.params.output_folder,
                self.trial.trial,
                self.rungroup.id,
                self.run.run,
                target_phil_path,
                path,
+               self.rungroup.untrusted_pixel_mask_path,
                ).split()
 
     commands = Script(arguments).run()
     submission_ids = []
+    if self.app.params.mp.method == 'local':
+      self.status = "RUNNING"
     for command in commands:
       try:
         result = easy_run.fully_buffered(command=command)
@@ -558,7 +599,10 @@ class EnsembleRefinementJob(Job):
         if not "Warning: job being submitted without an AFS token." in str(e):
           raise e
       submission_ids.append(get_submission_id(result, self.app.params.mp.method))
-    return ",".join(submission_ids)
+    if self.app.params.mp.method == 'local':
+      self.status = "DONE"
+    else:
+      return ",".join(submission_ids)
 
 class ScalingJob(Job):
   def delete(self, output_only=False):
@@ -593,9 +637,22 @@ class ScalingJob(Job):
       env_script                = self.app.params.mp.env_script[0] if len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
       method                    = self.app.params.mp.method,
       htcondor_executable_path  = self.app.params.mp.htcondor.executable_path,
+      nersc_shifter_image       = self.app.params.mp.shifter.shifter_image,
+      sbatch_script_template    = self.app.params.mp.shifter.sbatch_script_template,
+      srun_script_template      = self.app.params.mp.shifter.srun_script_template,
+      nersc_partition           = self.app.params.mp.shifter.partition,
+      nersc_jobname             = self.app.params.mp.shifter.jobname,
+      nersc_project             = self.app.params.mp.shifter.project,
+      nersc_constraint          = self.app.params.mp.shifter.constraint,
+      nersc_reservation         = self.app.params.mp.shifter.reservation,
+      nersc_staging             = self.app.params.mp.shifter.staging,
       target                    = target_phil_path,
       # always use mpi for 'lcls'
-      use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls')
+      use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls'),
+      mpi_command               = self.app.params.mp.mpi_command,
+      nnodes                    = self.app.params.mp.nnodes_scale or self.app.params.mp.nnodes,
+      wall_time                 = self.app.params.mp.wall_time,
+      extra_options             = "\n".join(["extra_options = %s"%opt for opt in self.app.params.mp.extra_options]),
     )
 
     with open(submit_phil_path, "w") as phil:
@@ -621,14 +678,12 @@ class ScalingJob(Job):
       f.write("input.experiments_suffix=%s\n"%expt_suffix)
       f.write("input.reflections_suffix=%s\n"%refl_suffix)
       f.write("output.output_dir=%s\n"%output_path)
-      f.write("output.prefix=%s\n"%self.dataset.name)
+      f.write("output.prefix=%s_%d\n"%(self.task.type, self.task.id))
       f.write(self.task.parameters)
 
     self.write_submit_phil(submit_phil_path, target_phil_path)
 
     args = [submit_phil_path]
-    if self.app.params.facility.name not in ['lcls']:
-      args.append(self.run.path)
     return submit_script().run(args)
 
 class MergingJob(Job):
@@ -681,7 +736,14 @@ class MergingJob(Job):
 
     command = "cctbx.xfel.merge %s"%target_phil_path
     submit_path = os.path.join(output_path, "submit.sh")
-    return do_submit(command, submit_path, output_path, self.app.params.mp, identifier_string)
+
+    params = self.app.params.mp
+    if params.nnodes_merge:
+      import copy
+      params = copy.deepcopy(params)
+      params.nnodes = params.nnodes_merge
+
+    return do_submit(command, submit_path, output_path, params, identifier_string)
 
 # Support classes and functions for job submission
 
@@ -696,7 +758,10 @@ class _job(object):
 
   def __eq__(self, other):
     ret = True
-    for subitem_name in ['trial', 'rungroup', 'run', 'task', 'dataset']:
+    check = ['trial', 'rungroup', 'run', 'task']
+    if getattr(self, 'task') and self.task.scope == 'global':
+      check.append('dataset')
+    for subitem_name in check:
       subitem = getattr(self, subitem_name)
       other_subitem_id = getattr(other, subitem_name + '_id')
       if subitem is None:
@@ -758,10 +823,12 @@ def submit_all_jobs(app):
     assert trial, "No trial found in task list, don't know where to save the results"
     trial_tags_ids = [t.id for t in trial.tags]
     dataset_tags = [t for t in dataset.tags if t.id in trial_tags_ids]
+    if not dataset_tags: continue
     runs_rungroups = []
     for rungroup in trial.rungroups:
       for run in rungroup.runs:
         run_tags_ids = [t.id for t in run.tags]
+        if not run_tags_ids: continue
         if dataset.tag_operator == "union":
           if any([t.id in run_tags_ids for t in dataset_tags]):
             runs_rungroups.append((run, rungroup))
@@ -789,7 +856,7 @@ def submit_all_jobs(app):
         if task.type == 'indexing':
           job = _job(trial, rungroup, run)
         else:
-          job = _job(trial, rungroup, run, task, dataset)
+          job = _job(trial, rungroup, run, task)
         try:
           submitted_job = submitted_jobs[submitted_jobs.index(job)]
         except ValueError:
@@ -820,9 +887,8 @@ def submit_all_jobs(app):
                                  rungroup_id = rungroup.id,
                                  run_id = run.id,
                                  task_id = task.id,
-                                 dataset_id = dataset.id,
                                  status = "SUBMITTED")
-        j.trial = job.trial; j.rungroup = job.rungroup; j.run = job.run; j.task = job.task; j.dataset = dataset
+        j.trial = job.trial; j.rungroup = job.rungroup; j.run = job.run; j.task = job.task
         try:
           j.submission_id = j.submit(previous_job)
         except Exception as e:
@@ -841,22 +907,17 @@ def submit_all_jobs(app):
       task = dataset.tasks[global_task[1]]
       latest_version = dataset.latest_version
       if latest_version is None:
-        jobs = global_tasks[global_task] # first version
         next_version = 0
-        global_task_submitted = False
       else:
         latest_version_jobs = latest_version.jobs
-        global_task_submitted = any([j.task_id == task.id for j in latest_version_jobs])
-
         latest_verion_job_ids = [j.id for j in latest_version_jobs if j.task_id != task.id]
-        jobs = [j for j in global_tasks[global_task] if j.id not in latest_verion_job_ids]
+        new_jobs = [j for j in global_tasks[global_task] if j.id not in latest_verion_job_ids]
+        if not new_jobs: continue
         next_version = latest_version.version + 1
-      if not jobs and global_task_submitted: continue
 
-      if not global_task_submitted:
-        latest_version = app.create_dataset_version(dataset_id = dataset.id, version=next_version)
-        for job in global_tasks[global_task]:
-          latest_version.add_job(job)
+      latest_version = app.create_dataset_version(dataset_id = dataset.id, version=next_version)
+      for job in global_tasks[global_task]:
+        latest_version.add_job(job)
 
       j = JobFactory.from_args(app,
                                task_id = task.id,

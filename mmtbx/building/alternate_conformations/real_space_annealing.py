@@ -1,4 +1,3 @@
-
 from __future__ import absolute_import, division, print_function
 from mmtbx.building import alternate_conformations as alt_confs
 import mmtbx.building
@@ -8,10 +7,9 @@ from libtbx.utils import null_out
 from libtbx import easy_mp
 import random
 import time
+import operator
 import os
 import sys
-from functools import cmp_to_key
-from past.builtins import cmp
 from six.moves import range
 
 master_params_str = """
@@ -199,8 +197,7 @@ class refine_into_difference_density(object):
               hierarchy.
     """
     if (log is None) : log = null_out()
-    cmp_fn = lambda a,b: cmp(b.cc, a.cc)
-    trials = sorted(self.get_trials(), key=cmp_to_key(cmp_fn))
+    trials = sorted(self.get_trials(), key=operator.attrgetter("cc"), reverse=True)
     filtered = []
     for k, trial in enumerate(trials):
       hierarchy = self.pdb_hierarchy.deep_copy()

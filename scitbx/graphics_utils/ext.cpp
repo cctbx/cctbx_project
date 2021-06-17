@@ -42,6 +42,13 @@ namespace {
       arg("defy") = 0.0,
       arg("defz") = 0.0
       ));
+    def("NoNansHL", NoNansHL, (
+      arg("HL"),
+      arg("a") = 0.0,
+      arg("b") = 0.0,
+      arg("c") = 0.0,
+      arg("d") = 0.0
+      ));
     def("IsNansvec3", IsNansvec3, (
       arg("vecs")));
     def("NoNans", NoNans, (
@@ -61,6 +68,14 @@ namespace {
       arg("color_all") = true,
       arg("gradient_type") = 0,
       arg("min_value") = 0.1));
+    def("map_to_rgb_colourmap_", map_to_rgb_colourmap, (
+      arg("data_for_colors"),
+      arg("colourmap"),
+      arg("selection"),
+      arg("attenuation"),
+      arg("powscale"),
+      arg("map_directly"),
+      arg("color_all") = true));
     def("color_by_phi_fom_", color_by_phi_fom, (
       arg("phases"),
       arg("foms")));

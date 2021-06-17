@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex as flex# import dependency
-import os,time
+import os,time,sys
 from libtbx.utils import Sorry
+from iotbx.file_reader import splitext
 
 import mrcfile
 import warnings
@@ -17,6 +18,10 @@ from six.moves import zip
 INTERNAL_STANDARD_ORDER=[3,2,1]  # THIS CANNOT BE MODIFIED
 
 STANDARD_LIMITATIONS_DICT={  # THIS CAN BE MODIFIED AND ADDED TO
+    "no_wrapping_outside_cell":
+     "Values outside boundaries have no meaning",
+    "wrapping_outside_cell":
+     "Values outside boundaries are wrapped inside",
     "extract_unique":
      "This map is masked around unique region and not suitable for auto-sharpening.",
     "map_is_sharpened":
@@ -62,7 +67,8 @@ class map_reader:
      ignore_missing_machine_stamp=True,
      print_warning_messages=False,
      ignore_all_errors=False,
-     verbose=None):
+     verbose=None,
+     out=sys.stdout):
 
      self.read_map_file(file_name=file_name,
        internal_standard_order=internal_standard_order,
@@ -70,7 +76,8 @@ class map_reader:
        ignore_missing_machine_stamp=ignore_missing_machine_stamp,
        print_warning_messages=print_warning_messages,
        ignore_all_errors=ignore_all_errors,
-       verbose=verbose)
+       verbose=verbose,
+       out=out)
 
   def read_map_file(self, file_name=None,
      internal_standard_order=INTERNAL_STANDARD_ORDER,
@@ -78,7 +85,8 @@ class map_reader:
      ignore_missing_machine_stamp=True,
      print_warning_messages=False,
      ignore_all_errors=False,
-     verbose=None):
+     verbose=None,
+     out=sys.stdout):
 
     # Check for file
 
@@ -86,28 +94,35 @@ class map_reader:
       raise Sorry("Missing file name for map reader")
     if not os.path.isfile(file_name):
       raise Sorry("Missing file %s for map reader" %(file_name))
+    base_name, file_ext, compress_ext = splitext(file_name)
 
     # Read the data
 
+
     with warnings.catch_warnings(record=True) as w:
-      mrc=mrcfile.mmap(file_name, mode='r', permissive=True)
+      if compress_ext is None:
+        mrc=mrcfile.mmap(file_name, mode='r', permissive=True)
+        # Read memory-mapped for speed.
+
+      else:
+        mrc = mrcfile.open(file_name, mode='r', permissive=True)
+
+      # Permissive to allow reading files with no machine stamp
       # Here we can deal with them
       for war in w:
-         text="\n  NOTE: WARNING message for the file '%s':\n  '%s'\n " %(
-            file_name,war.message)
-         if print_warning_messages:
-           print(text)
+        text = "\n  NOTE: WARNING message for the file '%s':\n  '%s'\n " % (
+          file_name, war.message)
+        if print_warning_messages:
+          print(text, file=out)
 
-         if ignore_all_errors:
-           pass
-         elif str(war.message).find("Unrecognised machine stamp")>-1 and \
-              ignore_missing_machine_stamp:
-           pass
-         else:
-           raise Sorry(text)
+        if ignore_all_errors:
+          pass
+        elif str(war.message).find("Unrecognised machine stamp") > -1 and \
+                ignore_missing_machine_stamp:
+          pass
+        else:
+          raise Sorry(text)
 
-    # Read memory-mapped for speed. Permissive to allow reading files with
-    # no machine stamp.
 
     # Note: the numpy function tolist() returns the python objects we need
 
@@ -170,7 +185,7 @@ class map_reader:
     self._crystal_symmetry=None # Set this below after reading data
 
     if verbose:
-      mrc.print_header()
+      mrc.print_header(print_file=out)
 
     if header_only:
       return
@@ -217,12 +232,19 @@ class map_reader:
       self.space_group_number=self.unit_cell_crystal_symmetry(
          ).space_group_number()
 
-  def set_crystal_symmetry_of_partial_map(self):
+  def set_crystal_symmetry_of_partial_map(self,
+     space_group_number  = None):
     '''
       This sets the crystal_symmetry of a partial map based on the
       gridding of the part of the map that is present.
-      If exactly the entire map is present, use space group of
-      entire map, otherwise use space group P1
+      If space_group_number is specified, use it. Otherwise,
+        if exactly the entire map is present, use space group of
+        current self._crystal_symmetry, otherwise use space group P1
+
+      Note that self._crystal_symmetry space group might not match
+      self._unit_cell_crystal_symmetry (space group of entire map) because
+      map may already have been boxed.
+
     '''
     map_all=self.map_data().all()
 
@@ -232,16 +254,21 @@ class map_reader:
     c = c * map_all[2]/self.unit_cell_grid[2]
 
     if tuple(map_all) == tuple(self.unit_cell_grid[:3]):
-      space_group_number_use=self.unit_cell_crystal_symmetry(
+      if space_group_number:
+        space_group_number_use=space_group_number
+      # Take space group we have...
+      elif self.crystal_symmetry():  # use sg of existing box crystal symmetry
+        space_group_number_use=self.crystal_symmetry(
           ).space_group_number()
-    else:
+      else:  # otherwise take the sg of crystal symmetry of full cell
+        space_group_number_use=self.unit_cell_crystal_symmetry(
+           ).space_group_number()
+    else: # boxed, use P1 always
       space_group_number_use=1  # use Space group 1 (P 1) for any partial cell
 
     from cctbx import crystal
     self._crystal_symmetry=crystal.symmetry((a,b,c, al,be,ga),
          space_group_number_use)
-
-
 
   # Code to check for specific text in map labels limiting the use of the map
 
@@ -251,6 +278,31 @@ class map_reader:
     if self.is_in_limitations("map_is_sharpened"):
       return True
     return False
+
+  def wrapping_from_input_file(self):
+    if self.is_in_limitations("no_wrapping_outside_cell"):
+      return False # cannot wrap outside cell
+    elif self.is_in_limitations("wrapping_outside_cell"):
+      return True # can wrap outside cell
+    else:
+      return None # no information
+
+
+  def remove_limitation(self,text):
+    limitations=self.get_limitations()
+    new_labels=[]
+    if not self.labels:
+      return new_labels
+    for label in self.labels:
+      text_matches_key=False
+      for key,message in zip(limitations.limitations,
+         limitations.messages):
+        if label==message and key==text:
+          text_matches_key=True
+          break
+      if not text_matches_key:
+        new_labels.append(label)
+    return new_labels
 
   def is_in_limitations(self,text):
     limitations=self.get_limitations()
@@ -285,22 +337,16 @@ class map_reader:
         if limitation_message:
           limitations.append(label.strip())
           limitation_messages.append(limitation_message.strip())
-    if limitations:
-      from libtbx import group_args
-      return group_args(
+    from libtbx import group_args
+    return group_args(
        limitations=limitations,
        messages=limitation_messages,
       )
-    else:
-      return None
 
   def get_limitation(self,label):
     return STANDARD_LIMITATIONS_DICT.get(label,None)
 
-  def show_summary(self, out=None, prefix=""):
-    if (out is None) :
-      import sys
-      out = sys.stdout
+  def show_summary(self, out=sys.stdout, prefix=""):
     data=self.map_data()
 
     if hasattr(self,'header_min'):
@@ -327,6 +373,17 @@ class map_reader:
     if hasattr(self,'origin_shift_grid_units'):
       print(prefix + "Shift (grid units) to place origin at original position:",
           self.origin_shift_grid_units, file=out)
+
+    if hasattr(self,'wrapping'):
+      print(prefix +
+       "Wrapping (using unit_cell_translations to get map values) allowed:",
+          self.wrapping(), file=out) # don't try too hard
+
+
+    if hasattr(self,'_ncs_object') and self._ncs_object:
+      print (prefix + "Associated ncs_object with",
+          self._ncs_object.max_operators(),"operators",
+           file=out)
 
     if hasattr(self,'_model') and self._model:
       print (prefix + "Associated model with",
@@ -504,8 +561,15 @@ class write_ccp4_map:
       external_origin=None, # Do not use this unless required
       output_axis_order=INTERNAL_STANDARD_ORDER,
       internal_standard_order=INTERNAL_STANDARD_ORDER,
+      replace_backslash = True,
       verbose=None,
+      out=sys.stdout,
       ):
+
+    '''
+     Write mrc/ccp4 format file
+     if replace_backslash then replace backslashes in labels with forward slash
+    '''
 
 
     assert map_data  # should never be called without map_data
@@ -616,7 +680,8 @@ class write_ccp4_map:
 
     # Labels
     # Keep all limitations labels and other labels up to total of 10 or fewer
-    output_labels=select_output_labels(labels)
+    output_labels=select_output_labels(labels,
+       replace_backslash = replace_backslash)
 
     mrc.header.nlabl=len(output_labels)
     for i in range(min(10,len(output_labels))):
@@ -723,10 +788,10 @@ def create_output_labels(
   for label in output_map_labels:
     if not label in final_labels:
       final_labels.append(label)
-  final_labels=final_labels[:10]
+  final_labels=select_output_labels(final_labels)
   return final_labels
 
-def select_output_labels(labels,max_labels=10):
+def select_output_labels(labels,max_labels=10, replace_backslash = None):
   n_limitations=0
   used_labels=[]
   for label in labels:
@@ -745,6 +810,15 @@ def select_output_labels(labels,max_labels=10):
     elif n_general < n_available:
       n_general+=1
       output_labels.append(label)
+
+  if replace_backslash:
+    new_labels = []
+    for label in output_labels:
+      new_label = label
+      if isinstance(label, str):
+        new_label = label.replace("\\","/")
+      new_labels.append(new_label)
+    output_labels = new_labels
   return output_labels
 
 def get_standard_order(mapc,mapr,maps,internal_standard_order=None,

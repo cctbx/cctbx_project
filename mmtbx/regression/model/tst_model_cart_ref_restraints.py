@@ -233,10 +233,10 @@ HETATM   65  O   HOH A  12      13.605   1.327   9.198  1.00 26.17           O
 
 def exercise_adopting_coord_restraints():
   inp_1 = iotbx.pdb.input(lines=pdb_str_h, source_info=None)
-  h_model = mmtbx.model.manager(model_input = inp_1)
+  h_model = mmtbx.model.manager(model_input = inp_1, build_grm=True)
 
   inp_2 = iotbx.pdb.input(lines=pdb_str, source_info=None)
-  model = mmtbx.model.manager(model_input = inp_2)
+  model = mmtbx.model.manager(model_input = inp_2, build_grm=True)
 
   # case 1: big model adopting small model.
   h_model.set_reference_coordinate_restraints(
@@ -277,7 +277,7 @@ def exercise_adopting_coord_restraints():
 
 def exercise_adopting_coord_restraints_water():
   inp_1 = iotbx.pdb.input(lines=pdb_str_base, source_info=None)
-  nowat_model = mmtbx.model.manager(model_input = inp_1)
+  nowat_model = mmtbx.model.manager(model_input = inp_1, build_grm=True)
   # Changing coordinates a little to make sure right ones are used for
   # reference restraints
   for a in nowat_model.get_hierarchy().atoms():
@@ -285,7 +285,7 @@ def exercise_adopting_coord_restraints_water():
   nowat_model.set_sites_cart_from_hierarchy()
 
   inp_2 = iotbx.pdb.input(lines=pdb_str_base+pdb_str_water, source_info=None)
-  wat_model = mmtbx.model.manager(model_input = inp_2)
+  wat_model = mmtbx.model.manager(model_input = inp_2, build_grm=True)
 
   nowat_model.set_reference_coordinate_restraints(
       ref_model = wat_model)

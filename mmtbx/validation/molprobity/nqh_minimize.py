@@ -7,7 +7,7 @@ from six.moves import cStringIO as StringIO
 
 def parse_user_mods(filename):
   flipped_residues = []
-  f = open(filename, 'rb')
+  f = open(filename, 'r')
   for line in f.readlines():
     if line.startswith("USER  MOD"):
       if "FLIP" in line:
@@ -17,7 +17,7 @@ def parse_user_mods(filename):
   return flipped_residues
 
 def finalize_coords(filename, outfile, updated_coords):
-  f = open(filename, 'rb')
+  f = open(filename, 'r')
   out_f = open(outfile, 'w')
   for line in f.readlines():
     if line.startswith("ATOM  "):
@@ -100,7 +100,7 @@ def run(args):
   p.close()
   temp_pdb = os.path.join(temp_dir, "nqh_flips.pdb")
   out = open(temp_pdb, 'w')
-  f = open(filename, 'rb')
+  f = open(filename, 'r')
   for line in f.readlines():
     if line.startswith("ATOM  "):
       id_str = line[16:26]
@@ -124,7 +124,7 @@ def run(args):
   ind = max(0,basename.rfind("."))
   ofn = \
     basename+"_minimized.pdb" if ind==0 else basename[:ind]+"_minimized.pdb"
-  min_file = open(os.path.join(temp_dir, ofn), 'rb')
+  min_file = open(os.path.join(temp_dir, ofn), 'r')
   for line in min_file.readlines():
     if line.startswith("ATOM  "):
       id_str = line[16:26]

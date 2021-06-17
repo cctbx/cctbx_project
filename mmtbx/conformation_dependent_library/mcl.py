@@ -46,12 +46,17 @@ def get_pdb_hierarchy_from_restraints(code):
 
 def update(grm,
            pdb_hierarchy,
-           # link_records=None,
+           link_records=None,
            log=sys.stdout,
            verbose=False,
            ):
-  # if link_records is None: link_records={}
-  # link_records.setdefault('LINK', [])
+  def _atom_id(a, show_i_seq=False):
+    if show_i_seq:
+      return '%s (%5d)' % (a.id_str(), a.i_seq)
+    else:
+      return '%s' % (a.id_str())
+  if link_records is None: link_records={}
+  link_records.setdefault('LINK', [])
   hooks = [
     ["Iron sulfur cluster coordination",
      mcl_sf4_coordination.get_sulfur_iron_cluster_coordination,
@@ -63,16 +68,26 @@ def update(grm,
       ],
     ]
   outl = ''
+  outl_debug = ''
+
+  sites_c = pdb_hierarchy.atoms().extract_xyz()
+  nb_proxies = grm.pair_proxies(
+        sites_cart=sites_c).nonbonded_proxies
+  sorted_nb_pr_result = nb_proxies.get_sorted(
+      by_value="delta",
+      sites_cart=sites_c)
+
   for label, get_coordination, get_all_proxies in hooks:
     rc = get_coordination(
       pdb_hierarchy=pdb_hierarchy,
-      nonbonded_proxies=grm.pair_proxies(
-        sites_cart=pdb_hierarchy.atoms().extract_xyz()).nonbonded_proxies,
+      nonbonded_proxies=nb_proxies,
+      sorted_nb_proxies_res=sorted_nb_pr_result,
       verbose=verbose,
     )
     bproxies, aproxies = get_all_proxies(rc)
     if bproxies is None: continue
     if len(bproxies):
+      outl += '    %s\n' % label
       outl += '    %s\n' % label
       atoms = pdb_hierarchy.atoms()
       sf4_coordination = {}
@@ -81,17 +96,25 @@ def update(grm,
         sf4_coordination.setdefault(sf4_ag.id_str(), [])
         sf4_coordination[sf4_ag.id_str()].append((atoms[bp.i_seqs[0]],
                                                   atoms[bp.i_seqs[1]]))
-        # link = (atoms[bp.i_seqs[0]], atoms[bp.i_seqs[1]], 'x,y,z')
-        # if link not in link_records: link_records['LINK'].append(link)
+        link = (atoms[bp.i_seqs[0]], atoms[bp.i_seqs[1]], 'x,y,z')
+        if link not in link_records: link_records['LINK'].append(link)
       for sf4, aas in sorted(sf4_coordination.items()):
         outl += '%spdb="%s"\n' % (' '*6, sf4)
-        for aa in sorted(aas):
-          outl += '%s%s - %s\n' % (' '*8, aa[0].id_str(), aa[1].id_str())
+        outl_debug += '%spdb="%s"\n' % (' '*6, sf4)
+        for aa in aas:
+          outl += '%s%s - %s\n' % (' '*8, _atom_id(aa[0]), _atom_id(aa[1]))
+          outl_debug += '%s%s - %s\n' % (' '*8,
+                                         _atom_id(aa[0], True),
+                                         _atom_id(aa[1], True))
     if bproxies:
-      grm.add_new_bond_restraints_in_place(
-        proxies=bproxies,
-        sites_cart=pdb_hierarchy.atoms().extract_xyz(),
-      )
+      try:
+        grm.add_new_bond_restraints_in_place(
+          proxies=bproxies,
+          sites_cart=pdb_hierarchy.atoms().extract_xyz(),
+        )
+      except RuntimeError as e:
+        print('\n\n%s' % outl_debug)
+        raise e
     #
     done = []
     remove = []
@@ -137,7 +160,6 @@ def superpose_ideal_residue_coordinates(pdb_hierarchy,
                     #'CLF' : 'Fe', # too flexible
                     'DVT' : 'V',
                     }
-  from iotbx import pdb
   from mmtbx.monomer_library import pdb_interpretation
   t0=time.time()
   rmsd_list = {}
@@ -189,7 +211,37 @@ def superpose_ideal_residue_coordinates(pdb_hierarchy,
     outl += '\n  Time to superpose : %0.2fs\n' % (time.time()-t0)
   return outl
 
+def superpose_ideal_ligand_on_poor_ligand(ideal_hierarchy,
+                                          poor_hierarchy,
+                                          ):
+  """Function superpose an ideal ligand onto the mangled ligand from a
+     ligand fitting procedure
+
+  Args:
+      ideal_hierarchy (pdb_hierarchy): Ideal ligand
+      poor_hierarchy (pdb_hierarchy): Poor ligand with correct c.o.m. and same
+        atom names in order. Could become more sophisticated.
+  """
+  sites_moving = flex.vec3_double()
+  sites_fixed = flex.vec3_double()
+  for atom1, atom2 in zip(ideal_hierarchy.atoms(), poor_hierarchy.atoms()):
+    assert atom1.name==atom2.name, '%s!=%s' % (atom1.quote(),atom2.quote())
+    sites_moving.append(atom1.xyz)
+    sites_fixed.append(atom2.xyz)
+  lsq_fit = superpose.least_squares_fit(
+        reference_sites = sites_fixed,
+        other_sites     = sites_moving)
+  sites_new = ideal_hierarchy.atoms().extract_xyz()
+  sites_new = lsq_fit.r.elems * sites_new + lsq_fit.t.elems
+  # rmsd = sites_fixed.rms_difference(lsq_fit.other_sites_best_fit())
+  ideal_hierarchy.atoms().set_xyz(sites_new)
+  return ideal_hierarchy
+
 if __name__=="__main__":
-  args = sys.argv[1:]
-  del sys.argv[1:]
-  run(*tuple(args))
+  from iotbx import pdb
+  ideal_inp=pdb.pdb_input(sys.argv[1])
+  ideal_hierarchy = ideal_inp.construct_hierarchy()
+  poor_inp=pdb.pdb_input(sys.argv[2])
+  poor_hierarchy = poor_inp.construct_hierarchy()
+  ideal_hierarchy = superpose_ideal_ligand_on_poor_ligand(ideal_hierarchy, poor_hierarchy)
+  ideal_hierarchy.write_pdb_file('new.pdb')

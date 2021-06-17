@@ -358,7 +358,7 @@ class XtriageFrame(wx.Frame):
     return wx_output(parent=self)
 
   def SetupToolbar(self):
-    self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+    self.toolbar = self.CreateToolBar(style=wx.TB_TEXT)
     self.AddAppSpecificButtons()
     bmp = wxtbx.bitmaps.fetch_icon_bitmap("mimetypes", "spreadsheet")
     btn = self.toolbar.AddLabelTool(-1, "Save graph", bmp,
@@ -403,7 +403,7 @@ def OnChangeSymmetry(event):
   file_name = wxtbx.path_dialogs.manager().select_file(
     parent=button,
     message="Output data file in new symmetry",
-    style=wx.SAVE,
+    style=wx.FD_SAVE,
     wildcard="MTZ files (*.mtz)|*.mtz",
     current_file=default_file)
   data = easy_pickle.load(data_file)

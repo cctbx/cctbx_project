@@ -563,7 +563,7 @@ Usage:
   cmdline_phil = []
   for arg in args :
     if os.path.isfile(arg):
-      if iotbx.pdb.is_pdb_file(arg):
+      if iotbx.pdb.is_pdb_file(arg) or iotbx.pdb.is_pdb_mmcif_file(arg):
         pdb_phil = libtbx.phil.parse("pdb_file=%s" % os.path.abspath(arg))
         cmdline_phil.append(pdb_phil)
       else:
@@ -576,8 +576,11 @@ Usage:
       cmdline_phil.append(arg_phil)
   working_phil = master_phil.fetch(sources=cmdline_phil)
   params = working_phil.extract()
+  # XXX params.pdb_file is not used anymore. Maybe should be removed.
   pdb_file_name = params.pdb_file
-  if (pdb_file_name is None) or (not iotbx.pdb.is_pdb_file(pdb_file_name)):
+  if ((pdb_file_name is None) or
+      (not iotbx.pdb.is_pdb_file(pdb_file_name) and
+          not iotbx.pdb.is_pdb_mmcif_file(pdb_file_name))):
     print("A model file is required.")
     return
   if (params.nproc is None):
@@ -590,7 +593,7 @@ Usage:
   xray_structure = pdb_inp.xray_structure_simple()
   return find_tls(
     params         = params,
-    pdb_inp        = pdb_inp,
+    # pdb_inp        = pdb_inp,
     pdb_hierarchy  = pdb_hierarchy,
     xray_structure = xray_structure,
     out            = out)
@@ -703,7 +706,6 @@ def merge_groups_by_connectivity(pdb_hierarchy, xray_structure,
   print()
 
 def find_tls(params,
-              pdb_inp,
               pdb_hierarchy,
               xray_structure,
               return_as_list=False,
@@ -766,14 +768,6 @@ def find_tls(params,
     groups, perms = get_model_partitioning(residues = crs[1],
       secondary_structure_selection = secondary_structure_selection,
       out = out)
-    #
-    #print
-    #selection_arrays = sels_as_selection_arrays(sels = groups)
-    #merge_groups_by_connectivity(
-    #  pdb_hierarchy     = pdb_hierarchy,
-    #  xray_structure    = xray_structure,
-    #  selection_arrays  = selection_arrays)
-    #assert 0
     #
     if(len(perms)==1):
       print("  Whole chain is considered as one TLS group.", file=out)
@@ -849,13 +843,6 @@ def find_tls(params,
       chains_and_atom_selection_strings.append([crs[0],
         permutations_as_atom_selection_string(groups, perm_choice)])
       #
-  if (pdb_inp is not None) and (not ignore_pdb_header_groups):
-    external_tls_selections = external_tls(
-      pdb_inp       = pdb_inp,
-      pdb_hierarchy = pdb_hierarchy,
-      sites_cart    = sites_cart,
-      u_iso         = u_iso,
-      out           = out)
   print_statistics.make_header("SUMMARY", out=out)
   #print "Optimal TLS groups:"
   #for chain_and_permutation in chains_and_permutations:
@@ -911,7 +898,7 @@ class _run_find_tls(object):
   def __call__(self, *args, **kwds):
     return find_tls(
       params=self.params,
-      pdb_inp=None,
+      # pdb_inp=None,
       pdb_hierarchy=self.pdb_hierarchy,
       xray_structure=self.xray_structure)
 

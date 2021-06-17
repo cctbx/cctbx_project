@@ -2,11 +2,11 @@ from __future__ import absolute_import, division, print_function
 import scitbx.array_family.flex
 from scitbx.array_family import flex
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six import string_types
 from six.moves import zip
 from six.moves import range
-ext = boost.python.import_ext("mmtbx_alignment_ext")
+ext = bp.import_ext("mmtbx_alignment_ext")
 
 """
 Written by Tom Ioerger (http://faculty.cs.tamu.edu/ioerger).

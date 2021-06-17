@@ -10,7 +10,7 @@ from six.moves import zip
 Simple utility for printing the contents of a cctbx.xfel pickle file
 """
 
-import sys, os
+import sys, os, six
 from iotbx.detectors.cspad_detector_formats import detector_format_version as detector_format_function
 from iotbx.detectors.cspad_detector_formats import reverse_timestamp
 from cctbx import sgtbx # import dependency
@@ -121,14 +121,18 @@ def generate_data_from_streams(args, verbose=False):
     # interpret the object as a tar of pickles, a pickle, or none of the above
     for fileIO,path in generate_streams_from_path(path):
       try:
-        data = pickle.load(fileIO)
+        if six.PY3:
+          from iotbx.detectors.npy import image_dict_to_unicode
+          data = image_dict_to_unicode(pickle.load(fileIO, encoding='bytes'))
+        else:
+          data = pickle.load(fileIO)
         if not isinstance(data, dict):
           if verbose: print("\nNot a dictionary pickle",path)
           continue
         else:
           if verbose: print("\nPrinting contents of", path)
           data["path"] = path
-          yield data
+          yield data, path
 
       except pickle.UnpicklingError as e:
         if verbose: print("\ndoesn't unpickle",path)
@@ -149,7 +153,7 @@ if __name__=="__main__":
   else:
     doplots = False
 
-  for data in generate_data_from_streams(args, verbose=True):
+  for data, path in generate_data_from_streams(args, verbose=True):
     if 'TIMESTAMP' in data:
       # this is how FormatPYunspecified guesses the address
       if not "DETECTOR_ADDRESS" in data:

@@ -128,7 +128,7 @@ class column(slots_getstate_setstate):
 
   def __repr__(self):
     lines = []
-    for (stat_name, label, format_string) in keywords :
+    for (stat_name, label, format_string, cif_tag) in keywords :
       value = getattr(self, stat_name, None)
       if (value is not None):
         lines.append("%s %s" % (stat_name, value))
@@ -169,14 +169,19 @@ class table(slots_getstate_setstate):
 
   def format_as_csv(self):
     rows = []
-    rows.append([""] + [ column.label for column in self.columns ])
+    rows.append([""] + [ column.label if column.label is not None else "" for column in self.columns ])
     for (stat_name, label, fstring, cif_tag) in keywords :
       row = []
       for column in self.columns :
-        row.append(column.format_stat(stat_name))
+        stat = column.format_stat(stat_name)
+        if stat is None:
+          stat = ""
+        row.append(stat)
       if ( (row == [ None for x in range(len(row)) ]) or
            (row is None) ):
         continue
+      if label is None:
+        label = ""
       row.insert(0, label)
       rows.append(row)
     return "\n".join([ ",".join(row) for row in rows ])

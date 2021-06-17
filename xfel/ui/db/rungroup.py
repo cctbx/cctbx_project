@@ -18,15 +18,24 @@ class Rungroup(db_proxy):
     super(Rungroup, self).__setattr__(name, value)
 
   def get_first_and_last_runs(self):
+    use_ids = self.app.params.facility.name not in ['lcls']
     runs = self.runs
     if len(runs) == 0:
       return (None, None)
-    run_ids = [r.id for r in runs]
-    first = runs[run_ids.index(min(run_ids))]
-    if self.open:
-      last = None
+    if use_ids:
+      run_ids = [r.id for r in runs]
+      first = runs[run_ids.index(min(run_ids))]
+      if self.open:
+        last = None
+      else:
+        last = runs[run_ids.index(max(run_ids))]
     else:
-      last = runs[run_ids.index(max(run_ids))]
+      run_numbers = [int(r.run) for r in runs]
+      first = runs[run_numbers.index(min(run_numbers))]
+      if self.open:
+        last = None
+      else:
+        last = runs[run_numbers.index(max(run_numbers))]
     return first, last
 
   def sync_runs(self, first_run, last_run, use_ids = True):

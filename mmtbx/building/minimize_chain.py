@@ -243,7 +243,7 @@ def run_one_cycle(
   if not pdb_string:
     pdb_string=hierarchy.as_pdb_string()
   # Initialize states accumulator
-  states = mmtbx.utils.states(pdb_hierarchy=hierarchy, xray_structure=xrs)
+  states = mmtbx.utils.states(pdb_hierarchy=hierarchy)
   states.add(sites_cart = xrs.sites_cart())
   pdb_inp_params = monomer_library.pdb_interpretation.master_params.extract()
   pdb_inp_params.clash_guard.nonbonded_distance_threshold=None

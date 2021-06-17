@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import mmtbx.model.statistics
-from StringIO import StringIO
+from six.moves import cStringIO as StringIO
 from libtbx.test_utils import show_diff
 from libtbx.utils import null_out
 import mmtbx.model
@@ -1167,7 +1167,8 @@ ATOM   1152  OE2 GLU A 157     -26.948 -24.562   1.620  1.00 89.52           O
 
 def test_1():
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
-  model = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  model = mmtbx.model.manager(model_input = pdb_inp, log = null_out(),
+    build_grm=True)
   model.get_restraints_manager()
   stats = mmtbx.model.statistics.geometry(model=model)
   out = StringIO()
@@ -1178,10 +1179,10 @@ def test_1():
 GEOMETRY RESTRAINTS LIBRARY: GEOSTD + MONOMER LIBRARY + CDL V1.2
 DEVIATIONS FROM IDEAL VALUES.
   BOND      :  0.004   0.020   1174
-  ANGLE     :  0.901   4.674   1594
+  ANGLE     :  0.908   4.674   1594
   CHIRALITY :  0.038   0.125    186
   PLANARITY :  0.003   0.018    205
-  DIHEDRAL  : 15.184 171.556    440
+  DIHEDRAL  : 11.055  85.166    440
   MIN NONBONDED DISTANCE : 2.457
 
 MOLPROBITY STATISTICS.

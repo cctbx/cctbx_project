@@ -5,6 +5,13 @@ from libtbx import easy_run
 import libtbx.load_env
 
 general_tests = [
+  "$D/regression/tst_sampled_model_density.py",
+  # pair interaction
+  "$D/pair_interaction/tst_00.py",
+  "$D/pair_interaction/tst_01.py",
+  "$D/pair_interaction/tst_02.py",
+  "$D/pair_interaction/tst_03.py",
+  "$D/pair_interaction/tst_04.py",
   # ions SVM
   "$D/ions/svm/tst_classifier.py",
   "$D/ions/tst_pick_ca_svm.py",
@@ -62,6 +69,7 @@ general_tests = [
   "$D/geometry_restraints/torsion_restraints/tst_reference_model_ligands.py",
   # model tests, some more elsewhere in this file
   "$D/regression/model/tst_model_mtrix.py",
+  "$D/regression/model/tst_model_ncs.py",
   "$D/regression/model/tst_model_2.py",
   "$D/regression/model/tst_model_biomt_mtrix.py",
   "$D/regression/model/tst_model_neutralize_scatterers.py",
@@ -158,6 +166,7 @@ general_tests = [
   "$D/bulk_solvent/tst_flat_nonuniform.py",
   "$D/bulk_solvent/tst_aniso_scaler.py",
   "$D/bulk_solvent/tst_kb_sol_u_star_fd.py",
+  "$D/bulk_solvent/tst_mosaic.py",
   #
   "$D/invariant_domain.py",
   # restraints
@@ -178,6 +187,7 @@ general_tests = [
   "$D/conformation_dependent_library/tst_pH_mechanism.py",
   '$D/conformation_dependent_library/tst_mcl_01.py',
   '$D/conformation_dependent_library/tst_mcl_02.py',
+  '$D/conformation_dependent_library/tst_mcl_03.py',
   "$D/regression/tst_find_ss_structure.py",
   "$D/regression/tst_fix_rotamer_outliers.py",
   "$D/regression/tst_chain_comparison.py",
@@ -189,6 +199,7 @@ general_tests = [
   "$D/regression/tst_real_space_correlation.py",
   "$D/regression/tst_examples.py",
   "$D/regression/tst_sort_hetatms.py",
+  "$D/regression/tst_schrodinger_interface.py",
   # real-space tools
   "$D/refinement/real_space/tst_aa_residue_axes_and_clusters.py",
   "$D/refinement/real_space/tst_fit_residue_0.py",
@@ -292,7 +303,7 @@ general_tests = [
   "$D/regression/model_idealization/tst_withmap_06.py",
   "$D/regression/model_idealization/tst_ligands.py",
   "$D/regression/model_idealization/tst_with_mtz.py",
-  "$D/regression/model_idealization/tst_ext_map_01.py",
+  # "$D/regression/model_idealization/tst_ext_map_01.py",
   "$D/utils/tst_switch_rotamers.py",
   "$D/refinement/tst_occupancy_selections.py",
   "$D/regression/ncs/tst_minimization_ncs_constraints.py",
@@ -328,7 +339,6 @@ general_tests = [
   "$D/regression/tst_cis_trans_peptide_link.py",
   "$D/regression/tst_apply_cif_restraints.py",
   "$D/regression/tst_multi_residue_class.py",
-  "$D/regression/tst_flip_symmetric.py",
   "$D/regression/tst_superpose.py",
   "$D/monomer_library/tst_server.py",
   #
@@ -369,7 +379,10 @@ general_tests = [
   "$D/regression/fix_cablam/tst_one_resid_rotation.py",
   "$D/regression/fix_cablam/tst_insertion_codes.py",
   #
-  "$D/regression/tst_scattering_type_registry.py"
+  "$D/regression/tst_scattering_type_registry.py",
+  "$D/atomic_environment_vectors/tst.py",
+  #
+  "$D/building/ligands/tst_00.py",
   ]
 
 probe_tests = [

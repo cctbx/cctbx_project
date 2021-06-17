@@ -1,0 +1,22 @@
+# cctbx environment for basic building and testing
+name: cctbx
+
+channels:
+  - conda-forge
+  - defaults
+
+includes:
+  - {{ root }}/cctbxlite.devenv.yml
+
+dependencies:
+  # dxtbx
+  - h5py
+  - hdf5
+  - hdf5-external-filter-plugins
+  - libtiff
+  - procrunner
+
+  # dxtbx testing
+  - dials-data
+  - pytest-mock
+  - pytest-xdist

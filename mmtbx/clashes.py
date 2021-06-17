@@ -204,10 +204,10 @@ class remove_clashes(object):
        self.remove_selection_string=remove_side_chain_selection_string
 
   def get_atomname(self,i):
-    return self.model.all_chain_proxies.pdb_atoms[i].name
+    return self.model.get_atoms()[i].name
 
   def get_key(self,i):
-      atom=self.model.all_chain_proxies.pdb_atoms[i]
+      atom=self.model.get_atoms()[i]
       ag=atom.parent()
       rg=ag.parent()
       resseq_i=rg.resseq

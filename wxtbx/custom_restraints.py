@@ -566,7 +566,7 @@ class RestraintsFrame(wx.Frame):
     wx.Frame.__init__(self, *args, **kwds)
     self.sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.SetSizer(self.sizer)
-    tb = wx.ToolBar(self, style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+    tb = wx.ToolBar(self, style=wx.TB_TEXT)
     tb.SetToolBitmapSize((32,32))
     self.SetToolBar(tb)
     btn1 = tb.AddLabelTool(-1,

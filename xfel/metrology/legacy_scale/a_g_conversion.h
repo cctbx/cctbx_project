@@ -79,7 +79,6 @@ struct AG { // convert orientation matrix A to metrical matrix g & reverse
     double bstry = std::sqrt(g1-bstrz*bstrz);
     double astry = (g3-astrz*bstrz)/bstry;
     if (g0 - astry*astry -astrz*astrz <= 0.){ g0 = astry*astry + astrz*astrz + 1.E-7; }
-    double astrx = std::sqrt(g0 - astry*astry -astrz*astrz);
 
     G = uc_sym_mat3(g0,g1,g2,g3,g4,g5);
     cctbx::uctbx::unit_cell ersatz_uc ( cctbx::uctbx::unit_cell(G).reciprocal() );

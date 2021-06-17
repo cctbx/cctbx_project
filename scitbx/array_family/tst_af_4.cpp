@@ -101,7 +101,6 @@ namespace {
     ArrayType& a, ResultArrayType const&, BoolArrayType const&)
   {
     typedef typename ArrayType::value_type element_type;
-    typedef typename ResultArrayType::value_type result_element_type;
     a[0] = 0.1;
     a[1] = 0.2;
     a[2] = 0.3;

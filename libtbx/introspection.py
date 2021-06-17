@@ -113,7 +113,8 @@ class virtual_memory_info(proc_file_reader):
 
   def __init__(self):
     try:
-      self.proc_status = open(_proc_status).read()
+      with open(_proc_status) as f:
+        self.proc_status = f.read()
     except IOError:
       self.proc_status = None
 
@@ -228,7 +229,8 @@ class machine_memory_info(proc_file_reader):
     self._memory_free = Auto
     if os.path.isfile("/proc/meminfo"):
       try:
-        self.proc_status = open("/proc/meminfo").read()
+        with open("/proc/meminfo") as fh:
+          self.proc_status = fh.read()
       except IOError:
         pass
     else:
@@ -270,21 +272,22 @@ def number_of_processors(return_value_if_unknown=None):
       else:
         _number_of_processors = n
     if (_number_of_processors is None):
-      try: import boost.python
+      try: import boost_adaptbx.boost.python as bp
       except ImportError: pass
       else:
-        n = boost.python.ext.number_of_processors()
+        n = bp.ext.number_of_processors()
         if (n != 0):
           _number_of_processors = n
     if (_number_of_processors is None):
       cpuinfo = "/proc/cpuinfo" # Linux
       if os.path.isfile(cpuinfo):
         n = 0
-        for line in open(cpuinfo).read().splitlines():
-          if (not line.startswith("processor")): continue
-          line = line[9:].replace(" ", "").replace("\t", "")
-          if (not line.startswith(":")): continue
-          n += 1
+        with open(cpuinfo) as fh:
+          for line in fh.read().splitlines():
+            if (not line.startswith("processor")): continue
+            line = line[9:].replace(" ", "").replace("\t", "")
+            if (not line.startswith(":")): continue
+            n += 1
         if (n != 0):
           _number_of_processors = n
     if (_number_of_processors is None):

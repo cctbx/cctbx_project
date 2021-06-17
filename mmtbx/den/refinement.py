@@ -39,7 +39,7 @@ class manager(object):
     den_manager = model.restraints_manager. \
       geometry.den_manager
     print_statistics.make_header("DEN refinement", out=self.log)
-    pdb_hierarchy = self.model.get_hierarchy(sync_with_xray_structure=True)
+    pdb_hierarchy = self.model.get_hierarchy()
     if den_manager.get_n_proxies() == 0:
       print_statistics.make_sub_header(
         "DEN restraint nework", out = self.log)

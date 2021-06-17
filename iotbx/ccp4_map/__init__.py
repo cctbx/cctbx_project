@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex as flex# import dependency
 import sys
 
-import boost.python
-ext = boost.python.import_ext("iotbx_ccp4_map_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("iotbx_ccp4_map_ext")
 from iotbx_ccp4_map_ext import *
 import iotbx_ccp4_map_ext as ext
 
@@ -161,8 +161,8 @@ class utils :  # These routines are used by ccp4_map
     alpha,beta,gamma = self.unit_cell_parameters[3:6]
     return uctbx.unit_cell((a,b,c,alpha,beta,gamma))
 
-boost.python.inject(ext.map_reader, utils) # A way to access these
-@boost.python.inject_into(ext.map_reader) # A way to access these
+bp.inject(ext.map_reader, utils) # A way to access these
+@bp.inject_into(ext.map_reader) # A way to access these
 class _():
 
   def dummy(self):

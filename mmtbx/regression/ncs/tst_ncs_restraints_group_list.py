@@ -293,6 +293,104 @@ def test_split_by_chain():
   assert splitted_nrgl.get_array_of_str_selections() == \
      [["chain 'Aa'", "chain 'Ae'"], ["chain 'Ab'", "chain 'Af'"]]
 
+def test_split_by_chain_2():
+  """ Test of split_by_chains where chains are splitted, e.g.
+  protein and ligand are separated by TER
+  """
+  pdb_str = """\
+CRYST1  174.866  238.091  243.466  90.00  90.00  90.00 P 21 21 21
+SCALE1      0.005719  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.004200  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.004107        0.00000
+ATOM  15295  N   SER D  74      59.475 -46.773 121.838  1.00383.47           N
+ATOM  15296  CA  SER D  74      59.914 -46.196 120.574  1.00383.24           C
+ATOM  15297  C   SER D  74      59.605 -44.703 120.512  1.00379.51           C
+ATOM  15298  O   SER D  74      58.830 -44.258 119.666  1.00374.31           O
+ATOM  15299  CB  SER D  74      59.247 -46.915 119.397  1.00380.53           C
+ATOM  15300  OG  SER D  74      59.544 -48.301 119.400  1.00383.68           O
+ATOM  15301  N   ASN D  75      60.241 -43.943 121.402  1.00382.45           N
+ATOM  15302  CA  ASN D  75      60.129 -42.482 121.464  1.00380.05           C
+ATOM  15303  C   ASN D  75      58.725 -41.896 121.293  1.00372.68           C
+ATOM  15304  O   ASN D  75      58.581 -40.746 120.881  1.00370.19           O
+ATOM  15305  CB  ASN D  75      61.046 -41.855 120.418  1.00382.20           C
+ATOM  15306  CG  ASN D  75      62.508 -42.175 120.656  1.00389.96           C
+ATOM  15307  OD1 ASN D  75      62.958 -42.273 121.796  1.00394.06           O
+ATOM  15308  ND2 ASN D  75      63.263 -42.322 119.575  1.00392.78           N
+ATOM  15309  N   GLY D  76      57.703 -42.688 121.603  1.00369.47           N
+ATOM  15310  CA  GLY D  76      56.321 -42.306 121.367  1.00362.43           C
+ATOM  15311  C   GLY D  76      55.844 -41.019 122.011  1.00358.49           C
+ATOM  15312  O   GLY D  76      56.116 -40.749 123.182  1.00360.25           O
+ATOM  15313  N   ARG D  77      55.124 -40.219 121.235  1.00353.03           N
+ATOM  15314  CA  ARG D  77      54.452 -39.045 121.771  1.00347.98           C
+ATOM  15315  C   ARG D  77      53.192 -38.773 120.956  1.00340.73           C
+ATOM  15316  O   ARG D  77      53.132 -39.072 119.764  1.00339.65           O
+ATOM  15317  CB  ARG D  77      55.383 -37.824 121.801  1.00349.75           C
+ATOM  15318  CG  ARG D  77      55.931 -37.385 120.451  1.00350.35           C
+ATOM  15319  CD  ARG D  77      57.293 -37.995 120.136  1.00358.77           C
+ATOM  15320  NE  ARG D  77      58.029 -37.121 119.227  1.00359.99           N
+ATOM  15321  CZ  ARG D  77      59.247 -37.355 118.749  1.00366.18           C
+ATOM  15322  NH1 ARG D  77      59.921 -38.437 119.111  1.00371.93           N
+ATOM  15323  NH2 ARG D  77      59.809 -36.473 117.933  1.00366.55           N
+TER
+ATOM  15324  N   TYR D  78      52.166 -38.264 121.625  1.00335.62           N
+ATOM  15325  CA  TYR D  78      50.919 -37.914 120.961  1.00328.66           C
+ATOM  15326  C   TYR D  78      50.974 -36.476 120.456  1.00325.47           C
+ATOM  15327  O   TYR D  78      50.504 -35.558 121.125  1.00322.51           O
+ATOM  15328  CB  TYR D  78      49.734 -38.100 121.913  1.00324.55           C
+ATOM  15329  CG  TYR D  78      49.238 -39.526 122.016  1.00325.38           C
+ATOM  15330  CD1 TYR D  78      49.026 -40.289 120.877  1.00324.97           C
+ATOM  15331  CD2 TYR D  78      48.973 -40.106 123.251  1.00326.27           C
+ATOM  15332  CE1 TYR D  78      48.567 -41.589 120.962  1.00325.32           C
+ATOM  15333  CE2 TYR D  78      48.514 -41.408 123.345  1.00326.09           C
+ATOM  15334  CZ  TYR D  78      48.314 -42.144 122.197  1.00325.64           C
+ATOM  15335  OH  TYR D  78      47.859 -43.439 122.280  1.00325.77           O
+ATOM  19064  N   ASN E  75      29.075   5.259 120.437  1.00232.69           N
+ATOM  19065  CA  ASN E  75      28.096   5.658 121.456  1.00227.54           C
+ATOM  19066  C   ASN E  75      27.246   4.544 122.068  1.00223.14           C
+ATOM  19067  O   ASN E  75      26.146   4.804 122.555  1.00219.10           O
+ATOM  19068  CB  ASN E  75      27.159   6.709 120.876  1.00226.97           C
+ATOM  19069  CG  ASN E  75      27.882   7.970 120.467  1.00230.84           C
+ATOM  19070  OD1 ASN E  75      28.845   8.385 121.111  1.00232.56           O
+ATOM  19071  ND2 ASN E  75      27.417   8.595 119.393  1.00233.24           N
+ATOM  19072  N   GLY E  76      27.759   3.318 122.053  1.00224.32           N
+ATOM  19073  CA  GLY E  76      26.998   2.150 122.461  1.00220.68           C
+ATOM  19074  C   GLY E  76      26.384   2.164 123.847  1.00215.47           C
+ATOM  19075  O   GLY E  76      27.013   2.573 124.823  1.00215.60           O
+ATOM  19076  N   ARG E  77      25.135   1.722 123.922  1.00211.38           N
+ATOM  19077  CA  ARG E  77      24.469   1.517 125.200  1.00206.91           C
+ATOM  19078  C   ARG E  77      23.459   0.384 125.076  1.00203.78           C
+ATOM  19079  O   ARG E  77      22.895   0.146 124.008  1.00203.81           O
+ATOM  19080  CB  ARG E  77      23.800   2.801 125.707  1.00204.73           C
+ATOM  19081  CG  ARG E  77      22.666   3.330 124.849  1.00204.05           C
+ATOM  19082  CD  ARG E  77      23.143   4.321 123.799  1.00208.96           C
+ATOM  19083  NE  ARG E  77      22.118   5.331 123.560  1.00208.57           N
+ATOM  19084  CZ  ARG E  77      22.230   6.335 122.698  1.00211.78           C
+ATOM  19085  NH1 ARG E  77      23.334   6.480 121.983  1.00215.57           N
+ATOM  19086  NH2 ARG E  77      21.241   7.205 122.563  1.00211.19           N
+TER
+ATOM  19087  N   TYR E  78      23.286  -0.346 126.170  1.00201.65           N
+ATOM  19088  CA  TYR E  78      22.334  -1.441 126.223  1.00198.95           C
+ATOM  19089  C   TYR E  78      20.973  -0.908 126.642  1.00195.03           C
+ATOM  19090  O   TYR E  78      20.616  -0.967 127.815  1.00193.71           O
+ATOM  19091  CB  TYR E  78      22.813  -2.517 127.201  1.00199.92           C
+ATOM  19092  CG  TYR E  78      23.854  -3.449 126.623  1.00204.23           C
+ATOM  19093  CD1 TYR E  78      23.681  -4.014 125.369  1.00205.06           C
+ATOM  19094  CD2 TYR E  78      25.014  -3.757 127.326  1.00208.09           C
+ATOM  19095  CE1 TYR E  78      24.627  -4.863 124.832  1.00209.52           C
+ATOM  19096  CE2 TYR E  78      25.969  -4.606 126.795  1.00212.29           C
+ATOM  19097  CZ  TYR E  78      25.769  -5.155 125.547  1.00213.03           C
+ATOM  19098  OH  TYR E  78      26.711  -6.001 125.009  1.00218.33           O
+TER
+  """
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  h = pdb_inp.construct_hierarchy()
+  pars = ncs.input.get_default_params()
+  pars.ncs_search.chain_similarity_threshold = 0.5
+
+  ncs_obj = ncs.input(hierarchy=h, params=pars.ncs_search)
+  spec = ncs_obj.get_ncs_info_as_spec()
+  # ncs_obj.show(format='spec')
+  assert len(spec.ncs_groups()) ==1
 
 def run_tests():
   test_transform_update()
@@ -302,6 +400,7 @@ def run_tests():
   test_whole_group_iselection()
   test_selection()
   test_split_by_chain()
+  test_split_by_chain_2()
 
 if __name__=='__main__':
   t0 = time()

@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+ext = bp.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_asymmetric_map_ext import *
 from cctbx.array_family import flex
 from cctbx import maptbx
@@ -13,8 +13,8 @@ import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from libtbx.test_utils import approx_equal
 from cctbx import adptbx
 
-import boost.python
-ext = boost.python.import_ext("mmtbx_f_model_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("mmtbx_f_model_ext")
 
 def get_f_masks(xrs, miller_array):
   crystal_gridding = maptbx.crystal_gridding(
@@ -178,7 +178,7 @@ def run_group(symbol):
   assert approx_equal(ck_a, ck_fd, eps=1.e-4)
   assert approx_equal(cb_a, cb_fd, eps=1.e-4)
   assert approx_equal(gu_a, gu_fd, eps=1.e-4)
-  assert approx_equal(gu_a2, gu_fd2, eps=1.e-6)
+  assert approx_equal(gu_a2, gu_fd2, eps=1.e-5)
 
 if (__name__ == "__main__"):
   for i in list(range(1,231))[:10]: # XXX Do first 10 (to save time)

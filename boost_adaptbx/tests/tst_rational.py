@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from boost import rational
+from boost_adaptbx.boost import rational
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from six.moves import range
 from six.moves import zip

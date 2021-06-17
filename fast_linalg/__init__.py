@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
 import sys
-import boost.python
+import boost_adaptbx.boost.python as bp
 try:
-  ext = boost.python.import_ext('fast_linalg_ext')
+  ext = bp.import_ext('fast_linalg_ext')
   env = ext.env
   try_to_initialise = True
 except ImportError:
@@ -28,10 +28,17 @@ if not env.initialised and try_to_initialise:
       try:
         import scipy
         scipy_path = os.path.dirname(scipy.__file__)
-        scipy_libs_path = os.path.join(scipy_path, "extra-dll")
-        files = [x for x in os.listdir(scipy_libs_path) if 'openblas' in x and 'dll' in x]
+        lib_dirs = ["extra-dll", ".libs"]
+        files = None
+        for lib_dir in lib_dirs:
+          scipy_libs_path = os.path.join(scipy_path, lib_dir)
+          if not os.path.exists(scipy_libs_path):
+            continue
+          files = [os.path.join(x, scipy_libs_path)\
+            for x in os.listdir(scipy_libs_path) if 'openblas' in x and 'dll' in x]
+          break
         if files:
-          env.initialise(files[0])
+          env.initialise(files[0].encode("utf-8"))
           if env.initialised:
             print("Successfully initialised SciPy OpenBlas:")
             print(env.build_config)

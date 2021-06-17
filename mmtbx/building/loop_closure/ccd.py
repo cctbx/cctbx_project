@@ -11,15 +11,15 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import zip,range
-ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+ext = bp.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 
-ext2 = boost.python.import_ext("mmtbx_building_loop_closure_ext")
+ext2 = bp.import_ext("mmtbx_building_loop_closure_ext")
 from mmtbx_building_loop_closure_ext import ccd_cpp
 
-@boost.python.inject_into(ccd_cpp)
+@bp.inject_into(ccd_cpp)
 class _():
 
   def run(self, direction_forward=True, save_states=False, avoid_allowed_region=False):

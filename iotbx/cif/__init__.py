@@ -11,11 +11,11 @@ http://cctbx.sourceforge.net/iotbx_cif
 """
 from __future__ import absolute_import, division, print_function
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
 from six.moves import zip
 import six
-ext = boost.python.import_ext("iotbx_cif_ext")
+ext = bp.import_ext("iotbx_cif_ext")
 
 from cctbx.array_family import flex
 from cctbx import miller
@@ -25,7 +25,6 @@ from libtbx.utils import Sorry
 from libtbx.utils import flat_list
 from libtbx.utils import detect_binary_file
 from libtbx import smart_open
-import iotbx
 
 import sys
 
@@ -52,12 +51,14 @@ class reader(object):
       builder = builders.cif_model_builder(cif_object)
     else: assert cif_object is None
     self.builder = builder
+    self.original_arrays = None
     if file_path is not None:
       file_object = smart_open.for_reading(file_path)
     else:
       file_path = "memory"
     if file_object is not None:
       input_string = file_object.read()
+      file_object.close()
     # check input_string for binary, and abort if necessary
     binary_detector = detect_binary_file()
     binary_detector.monitor_initial = min(
@@ -98,16 +99,18 @@ class reader(object):
   def build_miller_arrays(self,
                           data_block_name=None,
                           base_array_info=None):
-    arrays = cctbx_data_structures_from_cif(
+    cctbxdat = cctbx_data_structures_from_cif(
       cif_model=self.model(),
       file_path=self.file_path,
       data_block_name=data_block_name,
       data_structure_builder=builders.miller_array_builder,
-      base_array_info=base_array_info).miller_arrays
+      base_array_info=base_array_info)
+
+    self.original_arrays = cctbxdat.original_arrays
     if data_block_name is not None:
-      return arrays[data_block_name]
+      return cctbxdat.miller_arrays[data_block_name]
     else:
-      return arrays
+      return cctbxdat.miller_arrays
 
   def as_miller_arrays(self, data_block_name=None,
                        crystal_symmetry=None,
@@ -139,6 +142,9 @@ class reader(object):
         arrays[i] = arrays[i].customized_copy(
           anomalous_flag=anomalous, info=arrays[i].info())
     return arrays
+
+  def as_original_arrays(self):
+    return self.original_arrays
 
 fast_reader = reader # XXX backward compatibility 2010-08-25
 
@@ -354,7 +360,7 @@ class cctbx_data_structures_from_cif(object):
                data_structure_builder=None,
                data_block_name=None,
                base_array_info=None,
-               **kwds):
+              **kwds):
     assert file_object is None or cif_model is None
     if data_structure_builder is None:
       data_structure_builders = (
@@ -366,6 +372,7 @@ class cctbx_data_structures_from_cif(object):
 
     self.xray_structures = OrderedDict()
     self.miller_arrays = OrderedDict()
+    self.original_arrays = OrderedDict()
     if cif_model is None:
       cif_model = reader(file_path=file_path, file_object=file_object).model()
     if not len(cif_model):
@@ -394,9 +401,10 @@ class cctbx_data_structures_from_cif(object):
           if ( '_refln_index_h' in block or '_refln.index_h' in block or
                '_diffrn_refln' in block
                ):
-            self.miller_arrays.setdefault(
-              key, builder(block, base_array_info=base_array_info,
-                wavelengths=wavelengths).arrays())
+            b = builder(block, base_array_info=base_array_info,
+                wavelengths=wavelengths)
+            self.miller_arrays.setdefault( key, b.arrays())
+            self.original_arrays.setdefault( key, b.origarrays())
 
 
 # This defines the order that categories will appear in the CIF file

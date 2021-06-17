@@ -474,6 +474,10 @@ class Toolbox(object):
       destination = os.path.join('modules', module)
     destpath, destdir = os.path.split(destination)
 
+    # default to using ssh for private phenix repositories
+    if module in ['phenix', 'solve_resolve', 'phenix_pathwalker', 'phaser_voyager', 'phasertng']:
+      use_ssh = True
+
     if os.path.exists(destination):
       if git_available and os.path.exists(os.path.join(destination, '.git')):
         if not open(os.path.join(destination, '.git', 'HEAD'), 'r').read().startswith('ref:'):
@@ -687,21 +691,17 @@ class SourceModule(object):
 # On Windows due to absence of rsync we use pscp from the Putty programs.
 class ccp4io_module(SourceModule):
   module = 'ccp4io'
-  anonymous = ['curl', [
-    'http://cci.lbl.gov/repositories/ccp4io.gz',
-    'https://drive.google.com/uc?id=1EF6AqowSrVnse7pRtRmIsvhS6Q0dsSLT&export=download',
-  ]]
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'ccp4io.tar.gz', '/net/cci/auto_build/repositories/ccp4io']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
+  anonymous = ['git',
+               'git@github.com:cctbx/ccp4io.git',
+               'https://github.com/cctbx/ccp4io.git',
+               'https://github.com/cctbx/ccp4io/archive/master.zip']
 
 class annlib_module(SourceModule):
   module = 'annlib'
-  anonymous = ['curl', [
-    'http://cci.lbl.gov/repositories/annlib.gz',
-    'https://drive.google.com/uc?id=1YD_KDXrfhJ5ryT97j4yxmbAPoecGLjg0&export=download',
-  ]]
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'annlib.tar.gz', '/net/cci/auto_build/repositories/annlib']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/']
+  anonymous = ['git',
+               'git@github.com:cctbx/annlib.git',
+               'https://github.com/cctbx/annlib.git',
+               'https://github.com/cctbx/annlib/archive/master.zip']
 
 class scons_module(SourceModule):
   module = 'scons'
@@ -724,11 +724,6 @@ class afitt_class(SourceModule):
   authenticated = [
     'scp',
     '%(cciuser)s@cci.lbl.gov:/net/cci-filer2/raid1/auto_build/externals/'+afitt_version+'.gz']
-
-class libsvm_module(SourceModule):
-  module = 'libsvm'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/libsvm.gz']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/libsvm/']
 
 # Core CCTBX repositories
 # These must all provide anonymous access.
@@ -785,15 +780,14 @@ class cbflib_module(SourceModule):
   anonymous = ['git',
                'git@github.com:yayahjb/cbflib.git',
                'https://github.com/yayahjb/cbflib.git',
-               'https://github.com/yayahjb/cbflib/archive/master.zip']
+               'https://github.com/yayahjb/cbflib/archive/main.zip']
 
 class ccp4io_adaptbx(SourceModule):
   module = 'ccp4io_adaptbx'
-  anonymous = ['curl', [
-    'http://cci.lbl.gov/repositories/ccp4io_adaptbx.gz',
-    'https://drive.google.com/uc?id=1X5kRE90KkV2yTEyF9zb-PHOjjRXjzYvx&export=download',
-    ]]
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/ccp4io_adaptbx/trunk']
+  anonymous = ['git',
+               'git@github.com:cctbx/ccp4io_adaptbx.git',
+               'https://github.com/cctbx/ccp4io_adaptbx.git',
+               'https://github.com/cctbx/ccp4io_adaptbx/archive/master.zip']
 
 class annlib_adaptbx(SourceModule):
   module = 'annlib_adaptbx'
@@ -804,27 +798,24 @@ class annlib_adaptbx(SourceModule):
 
 class tntbx_module(SourceModule):
   module = 'tntbx'
-  anonymous = ['curl', [
-    'http://cci.lbl.gov/repositories/tntbx.gz',
-    'https://drive.google.com/uc?id=1bDE_rF6iL0SeyplHSTNsfJyI1G1h7ZZv&export=download',
-    ]]
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/tntbx/trunk']
+  anonymous = ['git',
+               'git@github.com:cctbx/tntbx.git',
+               'https://github.com/cctbx/tntbx.git',
+               'https://github.com/cctbx/tntbx/archive/master.zip']
 
 class clipper_module(SourceModule):
   module = 'clipper'
-  anonymous = ['curl', [
-    'http://cci.lbl.gov/repositories/clipper.gz',
-    'https://drive.google.com/uc?id=1xWAj59zoyVn26EoIuBrw7KLNRyGjS5wC&export=download',
-    ]]
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/clipper/trunk']
+  anonymous = ['git',
+               'git@github.com:cctbx/clipper.git',
+               'https://github.com/cctbx/clipper.git',
+               'https://github.com/cctbx/clipper/archive/master.zip']
 
 class gui_resources_module(SourceModule):
   module = 'gui_resources'
-  anonymous = ['curl', [
-    'http://cci.lbl.gov/repositories/gui_resources.gz',
-    'https://drive.google.com/uc?id=1TTibOePamkUiIvwDJF-OMmdgX8jdgNUS&export=download',
-  ]]
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/gui_resources/trunk']
+  anonymous = ['git',
+               'git@github.com:cctbx/gui_resources.git',
+               'https://github.com/cctbx/gui_resources.git',
+               'https://github.com/cctbx/gui_resources/archive/master.zip']
 
 class opt_resources_module(SourceModule):
   module = 'opt_resources'
@@ -832,29 +823,35 @@ class opt_resources_module(SourceModule):
 
 class eigen_module(SourceModule):
   module = 'eigen'
-  anonymous = ['curl', [
-    'http://cci.lbl.gov/repositories/eigen.gz',
-    'https://drive.google.com/uc?id=138kErrF35WbnRRARqUczWaroao2w8p1A&export=download',
-  ]]
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'eigen.tar.gz', '/net/cci/auto_build/repositories/eigen']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/eigen/']
+  anonymous = ['git', '-b 3.3.9',
+               'https://gitlab.com/libeigen/eigen.git']
 
 # Phenix repositories
 class phenix_module(SourceModule):
   module = 'phenix'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix/trunk']
+  anonymous = ['git', 'git@github.com:phenix-project/phenix.git']
 
 class phenix_html(SourceModule):
   module = 'phenix_html'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_html/trunk']
 
+class phenix_dev_doc(SourceModule):
+  module = 'phenix_dev_doc'
+  anonymous = ['git',
+               'git@github.com:phenix-project/phenix_dev_doc.git',
+               'https://github.com/phenix-project/phenix_dev_doc.git']
+
 class phenix_examples(SourceModule):
   module = 'phenix_examples'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_examples/trunk']
+  anonymous = ['git',
+               'git@gitlab.com:phenix_project/phenix_examples.git',
+               'https://gitlab.com/phenix_project/phenix_examples.git']
 
 class phenix_regression(SourceModule):
   module = 'phenix_regression'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_regression/trunk']
+  anonymous = ['git',
+               'git@gitlab.com:phenix_project/phenix_regression.git',
+               'https://gitlab.com/phenix_project/phenix_regression.git']
 
 class plex_module(SourceModule):
   module = 'Plex'
@@ -882,7 +879,7 @@ class pulchra_module(SourceModule):
 
 class solve_resolve_module(SourceModule):
   module = 'solve_resolve'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/solve_resolve/trunk']
+  anonymous = ['git', 'git@github.com:phenix-project/solve_resolve.git']
 
 class reel_module(SourceModule):
   module = 'reel'
@@ -900,24 +897,34 @@ class buildbot_module(SourceModule):
   module = 'buildbot'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/buildbot/trunk']
 
+class phenix_pathwalker_module(SourceModule):
+  module = 'phenix_pathwalker'
+  anonymous = ['git', 'git@github.com:phenix-project/phenix_pathwalker.git']
+
 # Phaser repositories
 class phaser_module(SourceModule):
   module = 'phaser'
   anonymous = ['git',
-               'git://git.uis.cam.ac.uk/cimr-phaser/phaser.git',
-               'https://git.uis.cam.ac.uk/cimr-phaser/phaser.git']
+               'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/phaser.git',
+               'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/phaser.git']
 
 class phasertng_module(SourceModule):
   module = 'phasertng'
   anonymous = ['git',
-               'git://git.uis.cam.ac.uk/cimr-phaser/phasertng.git',
-               'https://git.uis.cam.ac.uk/cimr-phaser/phasertng.git']
+               'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/phasertng.git',
+               'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/phasertng.git']
+
+class phaser_voyager_module(SourceModule):
+  module = 'phaser_voyager'
+  anonymous = ['git', '-b distribution',
+               'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/phaser_voyager.git',
+               'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/phaser_voyager.git']
 
 class phaser_regression_module(SourceModule):
   module = 'phaser_regression'
   anonymous = ['git',
-               'git://git.csx.cam.ac.uk/cimr-phaser/phaser_regression.git',
-               'https://git.csx.cam.ac.uk/cimr-phaser/phaser_regression.git']
+               'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/phaser_regression.git',
+               'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/phaser_regression.git']
 
 # DIALS repositories
 class labelit_module(SourceModule):
@@ -933,14 +940,14 @@ class dials_module(SourceModule):
   anonymous = ['git',
                'git@github.com:dials/dials.git',
                'https://github.com/dials/dials.git',
-               'https://github.com/dials/dials/archive/master.zip']
+               'https://github.com/dials/dials/archive/main.zip']
 
 class dxtbx_module(SourceModule):
   module = 'dxtbx'
   anonymous = ['git',
                'git@github.com:cctbx/dxtbx.git',
                'https://github.com/cctbx/dxtbx.git',
-               'https://github.com/cctbx/dxtbx/archive/master.zip']
+               'https://github.com/cctbx/dxtbx/archive/main.zip']
 
 class dials_regression_module(SourceModule):
   module = 'dials_regression'
@@ -972,7 +979,7 @@ class xia2_module(SourceModule):
   anonymous = ['git',
                'git@github.com:xia2/xia2.git',
                'https://github.com/xia2/xia2.git',
-               'https://github.com/xia2/xia2/archive/master.zip']
+               'https://github.com/xia2/xia2/archive/main.zip']
 
 # Duke repositories
 class probe_module(SourceModule):
@@ -985,7 +992,8 @@ class suitename_module(SourceModule):
 
 class reduce_module(SourceModule):
   module = 'reduce'
-  anonymous = ['svn', 'https://github.com/rlabduke/reduce.git/trunk']
+  anonymous = ['git', '-b v3.7.2',
+               'https://github.com/rlabduke/reduce.git']
 
 class king_module(SourceModule):
   module = 'king'
@@ -1502,6 +1510,22 @@ class Builder(object):
             use_ssh=use_git_ssh, verbose=True, reference=reference_repository_path)
     self.add_step(_indirection())
 
+    # Update version information
+    if module == 'cctbx_project':
+      workdir = ['modules', module]
+      self.add_step(self.shell(command=['python', os.path.join('libtbx', 'version.py')], workdir=workdir))
+
+    # Use dials-2.2 branches for Python 2
+    if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and not self.python3:
+      workdir = ['modules', module]
+      if module == 'dxtbx':
+        self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
+        self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-2.2'], workdir=workdir))
+      self.add_step(self.shell(
+        command=['git', 'branch', '--set-upstream-to=origin/dials-2.2', 'dials-2.2'],
+        workdir=workdir))
+
   def _check_for_Windows_prerequisites(self):
     if self.isPlatformWindows():
       # platform specific checks cannot run on buildbot master so add to build steps to run on slaves
@@ -1534,7 +1558,7 @@ class Builder(object):
     log = open(os.devnull, 'w')
 
     # environment is provided, so do check that it exists
-    if os.path.isdir(self.use_conda):
+    if self.use_conda is not None and os.path.isdir(self.use_conda):
       check_file = True
       self.use_conda = os.path.abspath(self.use_conda)
     # no path provided or file provided
@@ -1879,24 +1903,25 @@ class CCIBuilder(Builder):
     'cctbx_project',
     'dxtbx',
     'gui_resources',
+    'ccp4io',
     'ccp4io_adaptbx',
+    'annlib',
     'annlib_adaptbx',
     'tntbx',
-    'clipper'
+    'clipper',
+    'eigen',
+    'reduce',
   ]
   CODEBASES_EXTRA = []
   # Copy these sources from cci.lbl.gov
   HOT = [
-    'annlib',
     'scons',
-    'ccp4io',
-    'eigen',
-    #"libsvm",
   ]
   HOT_EXTRA = []
   # Configure for these cctbx packages
   LIBTBX = [
     'cctbx',
+    'cctbx_website',
     'cbflib',
     'dxtbx',
     'scitbx',
@@ -1919,7 +1944,9 @@ class MOLPROBITYBuilder(Builder):
     'boost',
     'cbflib',
     'cctbx_project',
+    'ccp4io',
     'ccp4io_adaptbx',
+    'annlib',
     'annlib_adaptbx',
     'tntbx',
   ]
@@ -1932,9 +1959,7 @@ class MOLPROBITYBuilder(Builder):
   ]
   # Copy these sources from cci.lbl.gov
   HOT = [
-    'annlib',
     'scons',
-    'ccp4io',
     #"libsvm",
   ]
   HOT_EXTRA = []
@@ -1965,11 +1990,15 @@ class PhaserBuilder(CCIBuilder):
   CODEBASES = [
     'boost',
     'cctbx_project',
+    'ccp4io',
     'ccp4io_adaptbx',
+    'annlib',
     'annlib_adaptbx',
+    'eigen',
     'tntbx',
     'phaser_regression',
     'phaser',
+    'reduce',
   ]
   # Configure for these cctbx packages
   LIBTBX = [
@@ -1985,7 +2014,9 @@ class PhaserBuilder(CCIBuilder):
   ]
 
   def add_tests(self):
-    self.add_test_command('phaser_regression.regression',
+    self.add_test_parallel(module='phaser_regression') # run phaser_regression/run_tests.py file
+    """
+    self.add_test_command('phaser_regression.regression', # run Gabors tests
                           args=['all',
                                 '-o',
                                 'terse_failed',
@@ -1993,6 +2024,7 @@ class PhaserBuilder(CCIBuilder):
                                 '%s' %self.nproc,
                                 ],
     )
+    """
 
   def add_base(self, extra_opts=[]):
     # skip unnecessary base packages when building phaser only
@@ -2026,8 +2058,8 @@ class PhaserBuilder(CCIBuilder):
     return configlst
 
 class PhaserTNGBuilder(PhaserBuilder):
-  CODEBASES = PhaserBuilder.CODEBASES + ['phasertng']
-  LIBTBX = PhaserBuilder.LIBTBX + ['phasertng']
+  CODEBASES = PhaserBuilder.CODEBASES + ['phasertng', 'phaser_voyager']
+  LIBTBX = PhaserBuilder.LIBTBX + ['phasertng', 'phaser_voyager']
 
   def add_tests(self):
     self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
@@ -2045,14 +2077,18 @@ class CCTBXLiteBuilder(CCIBuilder):
     'boost',
     'cctbx_project',
     'gui_resources',
+    'ccp4io',
     'ccp4io_adaptbx',
+    'annlib',
     'annlib_adaptbx',
     'tntbx',
-    'clipper'
+    'clipper',
+    'eigen'
   ]
   # Configure for these cctbx packages
   LIBTBX = [
     'cctbx',
+    'cctbx_website',
     'scitbx',
     'libtbx',
     'iotbx',
@@ -2122,6 +2158,13 @@ class DIALSBuilder(CCIBuilder):
 
   def rebuild_docs(self):
     pass
+
+  def get_libtbx_configure(self):
+    configlst = super(DIALSBuilder, self).get_libtbx_configure()
+    if self.python != "27":
+      # Do not enable C++11 for Python 2.7 builds, cf. https://github.com/cctbx/cctbx_project/pull/497
+      configlst.append('--enable_cxx11')
+    return configlst
 
 class LABELITBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['labelit', 'dials']
@@ -2204,9 +2247,11 @@ class PhenixBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'chem_data',
     'phenix',
+    'phenix_dev_doc',
     'phenix_regression',
     'phenix_html',
     'phenix_examples',
+    'phenix_pathwalker',
     'labelit',
     'Plex',
     'PyQuante',
@@ -2234,8 +2279,10 @@ class PhenixBuilder(CCIBuilder):
   LIBTBX_EXTRA = [
     'chem_data',
     'phenix',
+    'phenix_dev_doc',
     'phenix_regression',
     'phenix_examples',
+    'phenix_pathwalker',
     'solve_resolve',
     'reel',
     'phaser',
@@ -2248,8 +2295,77 @@ class PhenixBuilder(CCIBuilder):
     'dials',
     'xia2',
     'prime',
-    'iota',
   ]
+
+  def get_codebases(self):
+    """
+    Phenix uses Boost in the conda environment for Python 3
+    """
+    codebases = super(PhenixBuilder, self).get_codebases()
+    if self.python3 and self.use_conda is not None:
+      try:
+        codebases.remove('boost')
+      except ValueError:
+        pass
+    return codebases
+
+  def add_module(self, module, workdir=None, module_directory=None):
+    """
+    Add git-lfs command for phenix_examples and phenix_regression
+    If the dev_env directory already exists, it is assumed that git-lfs
+    is available in that directory
+    """
+    super(PhenixBuilder, self).add_module(module, workdir, module_directory)
+
+    # update phenix_regression and phenix_examples with git-lfs
+    if module == 'phenix_examples' or module == 'phenix_regression':
+      # prepend path for check
+      dev_env = os.path.join('.', 'dev_env', 'bin')
+      if sys.platform == 'win32':
+        dev_env = os.path.join('.', 'dev_env', 'Library', 'bin')
+        os.environ['PATH'] = os.path.abspath(dev_env) + ';'  + os.environ['PATH']
+      else:
+        os.environ['PATH'] = os.path.abspath(dev_env) + ':'  + os.environ['PATH']
+
+      svn_is_available = False
+      git_lfs_is_available = False
+
+      # check if git-lfs and svn are available
+      log = open(os.devnull, 'w')
+
+      try:
+        returncode = subprocess.call(['svn', '--version'], stdout=log, stderr=log)
+        if returncode == 0:
+          svn_is_available = True
+      except Exception:
+        pass
+
+      try:
+        returncode = subprocess.call(['git', 'lfs', '--version'], stdout=log, stderr=log)
+        if returncode == 0:
+          git_lfs_is_available = True
+      except Exception:
+        pass
+
+      log.close()
+
+      # set if dev_env will be created in base step
+      self.install_dev_env = False
+      if not svn_is_available or not git_lfs_is_available:
+        self.install_dev_env = True
+
+      # get lfs files
+      if self.install_dev_env:
+        print('*'*79)
+        print("""\
+An environment containing git-lfs and/or svn will be installed during the "base"
+step. Pleaser re-run the "update" step after "base" completes, so that git-lfs
+files for {module} will be downloaded.""".format(module=module))
+        print('*'*79)
+      else:
+        workdir = ['modules', module]
+        self.add_step(self.shell(command=['git', 'lfs', 'install', '--local'], workdir=workdir))
+        self.add_step(self.shell(command=['git', 'lfs', 'pull'], workdir=workdir))
 
   def add_base(self, extra_opts=[]):
     super(PhenixBuilder, self).add_base(
@@ -2258,6 +2374,27 @@ class PhenixBuilder(CCIBuilder):
                   '--dials',
                   '--xia2',
                  ] + extra_opts)
+
+    # install extra development environment if necessary
+    if hasattr(self, 'install_dev_env') and self.install_dev_env:
+      if self.use_conda is None:
+        raise RuntimeError("""
+Conda is needed for creating the extra environment with git-lfs. Please add
+"--use-conda" to your bootstrap.py command or make sure git-lfs is available
+in your path. """)
+      self.python_base = self._get_conda_python()
+      if self.python_base.startswith('../conda_base'):
+        self.python_base = self.python_base[1:]  # keep current directory
+      env = {
+        'PYTHONPATH': None,
+        'LD_LIBRARY_PATH': None,
+        'DYLD_LIBRARY_PATH': None
+      }
+      command = [self.python_base,
+                 os.path.join('modules', 'cctbx_project', 'libtbx',
+                              'auto_build', 'install_conda.py'),
+                 '--install_dev_env', '--verbose']
+      self.add_step(self.shell(command=command, workdir=['.']))
 
   def add_install(self):
     Builder.add_install(self)
@@ -2566,8 +2703,8 @@ class PhenixTNGBuilder(PhenixBuilder):
   '''
   Phenix with phasertng and c++11
   '''
-  CODEBASES = PhenixBuilder.CODEBASES + ['phasertng']
-  LIBTBX = PhenixBuilder.LIBTBX + ['phasertng']
+  CODEBASES = PhenixBuilder.CODEBASES + ['phasertng', 'phaser_voyager']
+  LIBTBX = PhenixBuilder.LIBTBX + ['phasertng', 'phaser_voyager']
 
   def get_libtbx_configure(self):
     configlst = super(PhenixTNGBuilder, self).get_libtbx_configure()
@@ -2579,7 +2716,7 @@ def run(root=None):
     'cctbxlite': CCTBXLiteBuilder,
     'cctbx': CCTBXBuilder,
     'phenix': PhenixBuilder,
-    'phenix_tng': PhenixTNGBuilder,
+    'phenix_voyager': PhenixTNGBuilder,
     'xfellegacy': XFELLegacyBuilder,
     'xfel': XFELBuilder,
     'labelit': LABELITBuilder,
@@ -2588,7 +2725,7 @@ def run(root=None):
     'molprobity':MOLPROBITYBuilder,
     'qrefine': QRBuilder,
     'phaser': PhaserBuilder,
-    'phasertng': PhaserTNGBuilder
+    'voyager': PhaserTNGBuilder
   }
 
   wrapper = textwrap.TextWrapper(width=80, initial_indent='  ',
@@ -2694,10 +2831,10 @@ def run(root=None):
   python_args = parser.add_mutually_exclusive_group(required=False)
   python_args.add_argument('--python',
                     default='27', type=str, nargs='?', const='27',
-                    choices=['27', '36', '37', '38'],
+                    choices=['27', '36', '37', '38', '39'],
                     help="""When set, a specific Python version of the
 conda environment will be used. This only affects environments selected with
-the --builder flag. For non-conda dependencies, "36", "37", and "38" implies
+the --builder flag. For non-conda dependencies, any Python 3 implies
 Python 3.7.""")
   parser.add_argument("--config-flags", "--config_flags",
                     dest="config_flags",

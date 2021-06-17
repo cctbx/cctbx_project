@@ -2,8 +2,8 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from cctbx import geometry_restraints
-import boost.python
-ext = boost.python.import_ext("mmtbx_reference_coordinate_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("mmtbx_reference_coordinate_ext")
 from mmtbx.rotamer.sidechain_angles import collect_residue_torsion_angles
 
 
@@ -70,8 +70,8 @@ def add_coordinate_restraints(
       sigma=0.5,
       limit=1.0,
       top_out_potential=False):
-  import boost.python
-  ext_rcp = boost.python.import_ext("mmtbx_reference_coordinate_ext")
+  import boost_adaptbx.boost.python as bp
+  ext_rcp = bp.import_ext("mmtbx_reference_coordinate_ext")
   result = ext_rcp.shared_reference_coordinate_proxy()
   if (selection is not None):
     if (isinstance(selection, flex.bool)):

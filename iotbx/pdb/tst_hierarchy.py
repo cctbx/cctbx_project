@@ -4652,7 +4652,9 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
     else:
       assert d == "2c78c9a2e7113216a442c1866979ff26", d
     h.write_pdb_file(file_name="tmp_tst_hierarchy.pdb")
-    assert not show_diff(open("tmp_tst_hierarchy.pdb").read(), s)
+    with open("tmp_tst_hierarchy.pdb") as f:
+      lines = f.read()
+    assert not show_diff(lines, s)
     h = pdb.input(
       source_info=None, lines=flex.split_lines(s)).construct_hierarchy(
         set_atom_i_seq=False, sort_atoms=False)
@@ -4683,7 +4685,8 @@ def check_wpf(hierarchy, kwargs={}, trailing=None, expected=None):
   else:
     assert not show_diff(pdb_str, expected)
   hierarchy.write_pdb_file(file_name="tmp_tst_hierarchy.pdb", **kwargs)
-  pdb_file = open("tmp_tst_hierarchy.pdb").read()
+  with open("tmp_tst_hierarchy.pdb") as f:
+    pdb_file = f.read()
   if (trailing is not None): pdb_file = pdb_file.replace(trailing, "")
   assert not show_diff(pdb_file, pdb_str)
   #
@@ -4694,7 +4697,9 @@ def check_wpf(hierarchy, kwargs={}, trailing=None, expected=None):
     if (discard in kwargs): del kwargs[discard]
   pdb_inp.write_pdb_file(file_name="tmp2.pdb", **kwargs)
   pdb_str2 = pdb_inp.as_pdb_string(**kwargs)
-  assert not show_diff(open("tmp2.pdb").read(), pdb_str2)
+  with open("tmp2.pdb") as f:
+    lines = f.read()
+  assert not show_diff(lines, pdb_str2)
   pdb_inp2 = pdb.input(file_name="tmp2.pdb")
   assert pdb_inp2.atoms().size() == pdb_inp.atoms().size()
   assert pdb_inp.extract_cryst1_z_columns() \
@@ -4902,16 +4907,20 @@ ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
   # with current PDB policy on TER. If pdb_inp is absolutely needed to
   # comply too, welcome to figure out how to modify
   # iotbx/pdb/construct_hierarchy.cpp: input_atoms_with_labels_generator::run
-  print(rem, file=open("tmp_tst_hierarchy.pdb", "w"))
+  with open("tmp_tst_hierarchy.pdb", "w") as f:
+    print(rem, file=f)
   pdb_inp.write_pdb_file(
     file_name="tmp_tst_hierarchy.pdb", open_append=True, append_end=True)
-  assert not show_diff(
-    open("tmp_tst_hierarchy.pdb").read(), rem+"\n"+pdb_string+"TER\nEND\n")
-  print(rem, file=open("tmp_tst_hierarchy.pdb", "w"))
+  with open("tmp_tst_hierarchy.pdb") as f:
+    lines = f.read()
+  assert not show_diff(lines, rem+"\n"+pdb_string+"TER\nEND\n")
+  with open("tmp_tst_hierarchy.pdb", "w") as f:
+    print(rem, file=f)
   hierarchy.write_pdb_file(
     file_name="tmp_tst_hierarchy.pdb", open_append=True, append_end=True)
-  assert not show_diff(
-    open("tmp_tst_hierarchy.pdb").read(), rem+"\n"+pdb_string+"END\n")
+  with open("tmp_tst_hierarchy.pdb") as f:
+    lines = f.read()
+  assert not show_diff(lines, rem+"\n"+pdb_string+"END\n")
 
 
   check_wpf(
@@ -4931,22 +4940,28 @@ CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           7
 """ + pdb_string)
 
   # XXX see comment on L 4898
-  print(rem, file=open("tmp_tst_hierarchy.pdb", "w"))
+  with open("tmp_tst_hierarchy.pdb", "w") as f:
+    print(rem, file=f)
   pdb_inp.write_pdb_file(
     file_name="tmp_tst_hierarchy.pdb",
     cryst1_z="",
     write_scale_records=False,
     open_append=True)
-  assert not show_diff(open("tmp_tst_hierarchy.pdb").read(), rem + """
+  with open("tmp_tst_hierarchy.pdb") as f:
+    lines = f.read()
+  assert not show_diff(lines, rem + """
 CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
 """ + pdb_string+"TER\n")
-  print(rem, file=open("tmp_tst_hierarchy.pdb", "w"))
+  with open("tmp_tst_hierarchy.pdb", "w") as f:
+    print(rem, file=f)
   hierarchy.write_pdb_file(
     file_name="tmp_tst_hierarchy.pdb",
     cryst1_z="",
     write_scale_records=False,
     open_append=True)
-  assert not show_diff(open("tmp_tst_hierarchy.pdb").read(), rem + """
+  with open("tmp_tst_hierarchy.pdb") as f:
+    lines = f.read()
+  assert not show_diff(lines, rem + """
 CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
 """ + pdb_string)
 
@@ -4999,7 +5014,8 @@ TER
   assert h1.is_similar_hierarchy(other=h2)
   assert h2.is_similar_hierarchy(other=h1)
   #
-  open("tmp_tst_hierarchy.pdb", "w").write("""\
+  with open("tmp_tst_hierarchy.pdb", "w") as f:
+    f.write("""\
 CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 2           5
 ATOM      0  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
 ATOM      1  O1  SO4     0       3.497   8.295   7.118  1.00 10.00           O
@@ -5011,7 +5027,9 @@ ATOM      5  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
   pdb.rewrite_normalized(
     input_file_name="tmp_tst_hierarchy.pdb",
     output_file_name="tmp_norm.pdb")
-  assert not show_diff(open("tmp_norm.pdb").read(), """\
+  with open("tmp_norm.pdb") as f:
+    lines = f.read()
+  assert not show_diff(lines, """\
 CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 1 2 1
 SCALE1      0.500000  0.000000 -0.088163        0.00000
 SCALE2      0.000000  0.333333  0.000000        0.00000
@@ -5029,7 +5047,9 @@ END
     output_file_name="tmp_norm.pdb",
     keep_original_crystallographic_section=True,
     keep_original_atom_serial=True)
-  assert not show_diff(open("tmp_norm.pdb").read(), """\
+  with open("tmp_norm.pdb") as f:
+    lines = f.read()
+  assert not show_diff(lines, """\
 CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 2           5
 ATOM      1  O1  SO4     0       3.497   8.295   7.118  1.00 10.00           O
 ATOM      2  O3  SO4     0       4.481   9.037   9.159  1.00 10.00           O
@@ -5291,7 +5311,9 @@ ENDMDL
     if (append_end): expected += "END\n"
     assert not show_diff(pdb_inp.as_pdb_string(append_end=append_end),expected)
     pdb_inp.write_pdb_file(file_name="tmp_tst_hierarchy.pdb", append_end=append_end)
-    assert not show_diff(open("tmp_tst_hierarchy.pdb").read(), expected)
+    with open("tmp_tst_hierarchy.pdb") as f:
+      lines = f.read()
+    assert not show_diff(lines, expected)
   #
   lines = flex.split_lines("""\
 MODEL     SKDI
@@ -6063,7 +6085,7 @@ ATOM      5  O   HOH S   1      -9.523   5.521  11.381  0.10  6.78           O
 Number of atoms:          2691
 Number of chains:         3
 Chain IDs:                A, Z
-Alternate conformations:  0
+Alternate conformations:  2
 Amino acid residues:      289
 Water molecules:          350
 Elemental ions:           1 ( CL)

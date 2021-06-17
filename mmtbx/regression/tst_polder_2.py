@@ -89,7 +89,7 @@ def exercise_01(fobs_1, flags_1, prefix):
   easy_run.call(cmd)
   # exact values: 11.129  16.152  13.006
   check(
-    tuple_calc = [11.1, 16.2, 13.0],
+    tuple_calc = [10.927, 15.138, 12.849],
     selection  = selection,
     prefix     = prefix+'_')
 
@@ -135,7 +135,7 @@ def exercise_03(fobs_1, flags_1, prefix):
   easy_run.call(cmd)
   # exact values: 11.129  16.152  13.006
   check(
-    tuple_calc = [11.1, 16.2, 13.0],
+    tuple_calc = [10.927,  15.138,  12.849],
     selection  = selection,
     prefix     = prefix+'_')
 

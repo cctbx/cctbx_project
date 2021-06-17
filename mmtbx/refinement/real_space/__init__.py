@@ -41,7 +41,7 @@ def setup_test(pdb_answer, pdb_poor, i_pdb, d_min, resolution_factor,
   # answer
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer)
   model_answer = mmtbx.model.manager(model_input=pdb_inp, process_input=True,
-    log=null_out(), pdb_interpretation_params=pip)
+    log=null_out(), pdb_interpretation_params=pip, build_grm=True)
   with open("answer_%s.pdb"%str(i_pdb), "w") as the_file:
     the_file.write(model_answer.model_as_pdb())
   #
@@ -61,7 +61,7 @@ def setup_test(pdb_answer, pdb_poor, i_pdb, d_min, resolution_factor,
   # poor
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_poor)
   model_poor = mmtbx.model.manager(model_input=pdb_inp, log=null_out(),
-    pdb_interpretation_params=pip)
+    pdb_interpretation_params=pip, build_grm=True)
   with open("poor_%s.pdb"%str(i_pdb), "w") as the_file:
     the_file.write(model_poor.model_as_pdb())
   #
@@ -97,14 +97,15 @@ def check_sites_match(ph_answer, ph_refined, tol, exclude_atom_names=[]):
 class rsr_model(object):
   def __init__(self,
                model,
-               target_map_object=None):
+               map_data=None,
+               d_min=None):
     adopt_init_args(self, locals())
     self.unit_cell = self.model.crystal_symmetry().unit_cell()
     self.sites_cart_start = self.model.get_sites_cart()
     self.s1 = self.sites_cart_start.deep_copy()
     self.states_collector = mmtbx.utils.states(
       pdb_hierarchy  = self.model.get_hierarchy().deep_copy(),
-      xray_structure = self.model.get_xray_structure().deep_copy_scatterers(),
+      #xray_structure = self.model.get_xray_structure().deep_copy_scatterers(),
       counter        = 1)
     self.states_collector.add(sites_cart = self.model.get_sites_cart())
     #
@@ -121,9 +122,9 @@ class rsr_model(object):
 
   def initialize(self):
     five_cc_o = five_cc(
-      map               = self.target_map_object.map_data,
+      map               = self.map_data,
       xray_structure    = self.model.get_xray_structure(),
-      d_min             = self.target_map_object.d_min,
+      d_min             = self.d_min,
       compute_cc_box    = True,
       compute_cc_image  = False,
       compute_cc_mask   = True,
@@ -142,10 +143,15 @@ class rsr_model(object):
     if(log is None): log = sys.stdout
     print("%smodel-to-map fit, CC_mask: %-6.4f"%(prefix, self.cc_mask), file=log)
     print("%smoved from start:          %-6.4f"%(prefix, self.dist_from_start), file=log)
+    # Update stats and print out if log is set
+    self.update_statistics(prefix = prefix, log = log)
+
+  def update_statistics(self, prefix = None, log = None):
     gs = self.model.geometry_statistics()
     result = None
     if(gs is not None):
-      gs.show(prefix=prefix, log=log, uppercase=False)
+      if (log):
+        gs.show(prefix=prefix, log=log, uppercase=False)
       result = gs.result()
     self.stats_evaluations.append(group_args(
       cc       = self.cc_mask,
@@ -341,7 +347,7 @@ class side_chain_fit_evaluator(object):
                 atoms.extract_i_seq(), True)
               self.cntr_poormap+=1
     #
-    fmt = "%-d residues out of total %-d (non-ALA, GLY, PRO) need a fit."
+    fmt = "%-d residues out of total %-d non-(ALA, GLY, PRO) need fitting."
     self.mes.append(
       fmt%(self.cntr_poormap+self.cntr_outliers, self.cntr_residues))
     self.mes.append("  rotamer outliers: %d"%self.cntr_outliers)
@@ -416,7 +422,9 @@ class aa_residue_axes_and_clusters(object):
   def __init__(self,
                residue,
                mon_lib_srv,
-               backbone_sample):
+               backbone_sample,
+               log=None):
+    if log is None: log = sys.stdout
     self.clusters               = []
     atoms                       = residue.atoms()
     atoms_as_list               = list(atoms)
@@ -460,7 +468,7 @@ class aa_residue_axes_and_clusters(object):
           selection       = flex.size_t(backrub_atoms_to_evaluate)))
     self.axes_and_atoms_aa_specific = \
       rotatable_bonds.axes_and_atoms_aa_specific(
-        residue = residue, mon_lib_srv = mon_lib_srv)
+        residue = residue, mon_lib_srv = mon_lib_srv, log = log)
     if(self.axes_and_atoms_aa_specific is not None):
       for i_aa, aa in enumerate(self.axes_and_atoms_aa_specific):
         if(i_aa == len(self.axes_and_atoms_aa_specific)-1):
@@ -528,7 +536,6 @@ class structure_monitor(object):
     self.xray_structure_start = xray_structure.deep_copy_scatterers()
     self.states_collector = mmtbx.utils.states(
       pdb_hierarchy  = self.pdb_hierarchy,
-      xray_structure = self.xray_structure,
       counter        = 1)
     self.states_collector.add(sites_cart = self.xray_structure.sites_cart())
     self.rotamer_manager = RotamerEval()

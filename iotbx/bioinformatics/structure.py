@@ -4,8 +4,7 @@ from libtbx import slots_getstate_setstate_default_initializer
 import libtbx.utils
 from six.moves import urllib
 from six.moves import cStringIO as StringIO
-import time
-import os
+import time, os
 
 def get_ncbi_pdb_blast(sequence, file_name=None, blast_type="blastp",
     expect=0.01):

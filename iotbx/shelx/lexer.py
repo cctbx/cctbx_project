@@ -31,6 +31,9 @@ class command_stream(object):
     if file is None: file = open(filename)
     self.file = file
 
+  def __del__(self):
+    self.file.close()
+
   _cmd_pat = re.compile(r"""
     ^
     (?:

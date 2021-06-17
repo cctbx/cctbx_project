@@ -172,7 +172,9 @@ class file_clutter(object):
 def is_text_file(file_name):
   name = file_name.lower()
   for extension in (".c", ".cpp", ".h", ".hpp", ".py", ".java", ".params",
-                    ".dox", ".txt", ".html", ".csh", ".sh", ".cif", ".cc"):
+                    ".dox", ".txt", ".html", ".csh", ".sh", ".cif", ".cc",
+                    '.mol2', '.frcmod',
+                    ):
     if (name.endswith(extension)): return True
   return False
 
