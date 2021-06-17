@@ -607,6 +607,7 @@ class mosaic_f_mask(object):
     self.f_mask_0 = None
     self.f_mask = None
     small_selection = None
+    weak_selection  = None
     #
     if(log is not None):
       print("  #    volume_p1    uc(%) mFo-DFc: min,max,mean,sd", file=log)
@@ -655,6 +656,14 @@ class mosaic_f_mask(object):
             "%7s"%str(None) if diff_map is None else "%7.3f %7.3f %7.3f %7.3f"%(
               mi,ma,me,sd), file=log)
 
+
+      if(mean_diff_map_threshold is not None and
+         mean_diff_map is not None and mean_diff_map<=mean_diff_map_threshold and mean_diff_map>0.1):
+        if(weak_selection is None): weak_selection = self.conn==i
+        else:
+          weak_selection = weak_selection | (self.conn==i)
+
+
       if(mean_diff_map_threshold is not None and
          mean_diff_map is not None and mean_diff_map<=mean_diff_map_threshold):
         continue
@@ -671,21 +680,41 @@ class mosaic_f_mask(object):
       self.do_mosaic = True
 
     # Handle accumulation of small
-    v = small_selection.count(True)
-    volume = v*step**3
-    uc_fraction = v*100./self.conn.size()
-    mask_i = flex.double(flex.grid(self.n_real), 0)
-    mask_i = mask_i.set_selected(small_selection, 1)
-    diff_map = diff_map.set_selected(diff_map<0,0)
-    #diff_map = diff_map.set_selected(diff_map>0,1)
-    mx = flex.mean(diff_map.select((diff_map>0).iselection()))
-    diff_map = diff_map/mx
+    if(small_selection is not None):
+      v = small_selection.count(True)
+      volume = v*step**3
+      uc_fraction = v*100./self.conn.size()
+      mask_i = flex.double(flex.grid(self.n_real), 0)
+      mask_i = mask_i.set_selected(small_selection, 1)
+      diff_map = diff_map.set_selected(diff_map<0,0)
+      #diff_map = diff_map.set_selected(diff_map>0,1)
+      mx = flex.mean(diff_map.select((diff_map>0).iselection()))
+      diff_map = diff_map/mx
 
-    mask_i = mask_i * diff_map
-    mask_i_asu = asu_map_ext.asymmetric_map(
-      self.crystal_symmetry.space_group().type(), mask_i).data()
-    f_mask_i = self.compute_f_mask_i(mask_i_asu)
-    self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
+      mask_i = mask_i * diff_map
+      mask_i_asu = asu_map_ext.asymmetric_map(
+        self.crystal_symmetry.space_group().type(), mask_i).data()
+      f_mask_i = self.compute_f_mask_i(mask_i_asu)
+      self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
+
+
+    if(weak_selection is not None):
+      v = weak_selection.count(True)
+      volume = v*step**3
+      uc_fraction = v*100./self.conn.size()
+      mask_i = flex.double(flex.grid(self.n_real), 0)
+      mask_i = mask_i.set_selected(weak_selection, 1)
+      diff_map = diff_map.set_selected(diff_map<0,0)
+      #diff_map = diff_map.set_selected(diff_map>0,1)
+      mx = flex.mean(diff_map.select((diff_map>0).iselection()))
+      diff_map = diff_map/mx
+
+      mask_i = mask_i * diff_map
+      mask_i_asu = asu_map_ext.asymmetric_map(
+        self.crystal_symmetry.space_group().type(), mask_i).data()
+      f_mask_i = self.compute_f_mask_i(mask_i_asu)
+      self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
+
     #####
     self.f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
     self.f_mask   = f_obs.customized_copy(data = f_mask_data)
