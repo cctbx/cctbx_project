@@ -269,7 +269,7 @@ class refinery(object):
       i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
       K_MASKS = OrderedDict()
 
-      if(alg.endswith('a')):
+      if(alg.endswith('a') or it==0):
         self.bin_selections = [self.f_calc.d_spacings().data()>3]
       else:
         self.bin_selections = thiken_bins(
@@ -680,7 +680,7 @@ class mosaic_f_mask(object):
       self.do_mosaic = True
 
     # Handle accumulation of small
-    if(small_selection is not None):
+    if(small_selection is not None and self.do_mosaic):
       v = small_selection.count(True)
       volume = v*step**3
       uc_fraction = v*100./self.conn.size()
@@ -698,7 +698,7 @@ class mosaic_f_mask(object):
       self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
 
 
-    if(weak_selection is not None):
+    if(weak_selection is not None and self.do_mosaic):
       v = weak_selection.count(True)
       volume = v*step**3
       uc_fraction = v*100./self.conn.size()
@@ -716,8 +716,9 @@ class mosaic_f_mask(object):
       self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
 
     #####
-    self.f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
-    self.f_mask   = f_obs.customized_copy(data = f_mask_data)
+    if(self.do_mosaic):
+      self.f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
+      self.f_mask   = f_obs.customized_copy(data = f_mask_data)
 
   def _inflate(self, f):
     data = flex.complex_double(self.d_spacings.size(), 0)
