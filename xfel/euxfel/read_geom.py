@@ -27,7 +27,7 @@ class PanelGroup(dict):
         self.local_fast = col((1, 0, 0))
         self.local_slow = col((0, 1, 0))
 
-    def setup_centers(self):
+    def setup_centers(self) -> None:
         if self.center is not None:  # the center is already defined
             return
         center = col((0.0, 0.0, 0.0))
