@@ -273,7 +273,7 @@ class refinery(object):
         self.bin_selections = [self.f_calc.d_spacings().data()>3]
       else:
         self.bin_selections = thiken_bins(
-          bins=bin_selections_input, n=100*len(self.F))
+          bins=bin_selections_input, n=50*len(self.F))
 
       for i_bin, sel in enumerate(self.bin_selections):
         d_max, d_min = f_obs.select(sel).d_max_min()
