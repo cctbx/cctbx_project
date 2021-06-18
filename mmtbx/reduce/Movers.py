@@ -350,6 +350,7 @@ def Test():
 
     # See if the results of each of the functions are what we expect in terms of sizes and locations
     # of atoms and preferences.  We'll use the default fine step size.
+    # The first coarse rotation should be by -90 degrees, moving the first atom to (0, -1, 1)
     coarse = rot.CoarsePositions()
     if len(coarse.atoms) != 3:
       return "Movers.Test() MoverRotater basic: Expected 3 atoms for CoarsePositions, got "+str(len(coarse.atoms))
@@ -360,6 +361,22 @@ def Test():
       return "Movers.Test() MoverRotater basic: Expected y location =-1.0, got "+str(atom0pos1)
     if abs( 1.0 - atom0pos1[2]) > 1e-5:
       return "Movers.Test() MoverRotater basic: Expected z location = 1.0, got "+str(atom0pos1)
+    if abs( 1.0 - coarse.preferenceEnergies[0]) > 1e-5:
+      return "Movers.Test() MoverRotater basic: Expected preference energy = 1.0, got "+str(coarse.preferenceEnergies[0])
+
+    # The first fine rotation (index 0) around the second coarse index (index 1) should be to -95 degrees,
+    # moving the first atom to the appropriately rotated location around the Z axis
+    rad = -95 / 180 * math.pi
+    x = math.cos(rad)
+    y = math.sin(rad)
+    fine = rot.FinePositions(1)
+    atom0pos1 = fine.positions[0][0]
+    if abs(x - atom0pos1[0]) > 1e-5:
+      return "Movers.Test() MoverRotater basic: Expected fine x location = "+str(x)+", got "+str(atom0pos1)
+    if abs(y - atom0pos1[1]) > 1e-5:
+      return "Movers.Test() MoverRotater basic: Expected fine y location = "+str(y)+", got "+str(atom0pos1)
+    if abs(1.0 - atom0pos1[2]) > 1e-5:
+      return "Movers.Test() MoverRotater basic: Expected fine z location = 0.0, got "+str(atom0pos1)
     # @todo
 
     # @todo Test coarseStepDegrees default behavior and setting via reduceOptions.
