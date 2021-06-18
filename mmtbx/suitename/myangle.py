@@ -42,11 +42,13 @@ output = sys.stdout  #debug
 
 afile = r"C:\Users\Ken\Desktop\Richardson\molprobity\modules\cctbx_project\mmtbx\suitename\test\4fen.pdb"
 # 1q9a for hard alt test
+alt = 'B' #!!! temporary
 
 def main(inFile):
   wd = os.getcwd()
-  manager = loadModel(inFile)
-  residues = getResidueDihedrals(manager)
+  mgr = loadModel(inFile)
+
+  residues = getResidueDihedrals(mgr, alt)
   for r in residues:
     print(residueString(r))
 
@@ -59,8 +61,11 @@ def loadModel(filename):
   return manager
 
 
-def getResidueDihedrals(manager, altcode=''): # use A or B for real alt work
-  global backbone_hierarchy, chain
+def getResidueDihedrals(mgr, altcode=''): # use A or B for real alt work
+  global manager, hierarchy, backbone_hierarchy, chain
+
+  if altcode=='':  altcode = 'A'
+  manager = mgr
   hierarchy = manager.get_hierarchy()
   i_seq_name_hash = utils.build_name_hash(pdb_hierarchy=hierarchy)
 
@@ -76,7 +81,6 @@ def getResidueDihedrals(manager, altcode=''): # use A or B for real alt work
   chains = backbone_hierarchy.chains()
   all_residues = []
 
-  
   for chain in chains:
     print("chain ", chain.id)
     conf = get_matching_conformer(chain, altcode)
@@ -103,21 +107,13 @@ def getResidueDihedrals(manager, altcode=''): # use A or B for real alt work
 
 def get_matching_conformer(chain, altcode):
     conformers = list(chain.conformers())
-    confo = [c for c in chain.conformers() if c.altloc==altcode]
+    confo = [c for c in chain.conformers() if c.altloc in (altcode, '')]
     if len(confo)>0: 
       conf = confo[0]
     else:
       print("*****no match for ", altcode)
       conf = chain.only_conformer()
     return conf
-
-
-# for debug printouts
-def residueString(r):
-    sizes=[1, 1, 3, 1, 1, 3]
-    id = "".join([f"{x:{y}}:" for x, y in zip(r.pointIDs, sizes)])
-    angles = "".join([f"{a:8.3f}:" for a in r.angle])
-    return id + angles[:-1]
 
 
 def find_start(backbone):
@@ -127,7 +123,7 @@ def find_start(backbone):
     assert False, "backbone atom not recognized"
         
 
-def build_dihedrals(mainchain, chainID, alt): 
+def build_dihedrals(mainchain, chain_id, alt): 
     residues = []
     # print (list(mainchain.extract_name()))
     # gives a list of atom names
@@ -136,52 +132,94 @@ def build_dihedrals(mainchain, chainID, alt):
     # sanity = (backbone == backbone2)
     for atom in backbone:
       print(atom.serial, atom.name)  
-    i = find_start(backbone)
     residue = None
-    for k in range(len(backbone) - 3):
+
+    k = 0
+    i = find_start(backbone)
+    while k < len(backbone) - 3:
         pivot = backbone[k + 1]
         labels = pivot.fetch_labels()
         res_number = int(labels.resseq)
         if residue is None or res_number != residue.sequence:
-            # we are seeing our first of a new residue
-            residue = Residue("", "", [9999, 9999, 9999, 9999, 9999, 9999])
-            residue.sequence = res_number
-            grandpa = pivot.parent().parent()
-            # print(grandpa.id_str(),grandpa.resid())
-            residue_name = grandpa.unique_resnames()[0]
-            print(residue_name)
-            id = ("1", chainID, labels.resseq, "", alt, residue_name)
-            residue.pointIDs = id
-            base = findBase(residue_name)
-            residue.base = base
-            if base is not None:
-                residues.append(residue)
+            # we are seeing our first angle of a new residue
+            residue = new_residue(residues, pivot, chain_id, alt)
         name, angle = easy_make_dihedral(backbone, i, k)
         print(res_number, name, angle)
         # ----------------- can fail! ----------------------
         if angle == 9999:
-            harder_build_dihedrals(backbone, i, k, residue, labels)
-        residue.angle[i] = angle
-        i = (i + 1) % 6
+            # this residue is strangely ordered due to partial alt conformers
+            # build dihedrals the hard way through the following alpha
+            k, angle = harder_build_dihedrals(backbone, i, k, residue, labels)
+            pivot = backbone[k]
+            residue = new_residue(residues, pivot, chain_id, alt)
+            residue.angle[0] = angle  # the following alpha
+            i = 1
+        else:
+            residue.angle[i] = angle
+            k = k + 1
+            i = (i + 1) % 6
     return residues
 
 
 def harder_build_dihedrals(backbone, i, k, residue, labels):
     syn_chain = backbone[k - i - 2:k + 2]
+    ksyn = max(k-i-2, 0)
     # everything for this residue plus 2 before and 2 after  !!!!?
+    print("syn_chain")
+    for atom in syn_chain:
+      print(atom.name, atom.fetch_labels().resseq, atom.serial) # just for debugging
     res = labels.resseq
-    selection=backbone_hierarchy.selection("resseq " + seq)
-    res_hierarchy = backbone_hierarchy.select(selection)
-    res_atoms = res_hierarchy.atoms()
-    res_names = [a.name for a in res_atoms]
-    for j in range(i, 6):  #???
-      if bones[i + 3] in res_names:
-        x = res_names.index(bones[i+3])
-        atom = res_atoms[x]
+    # if i > 3:
+    #   res = str(1 + int(res))
+    res_atoms, res_names = get_one_residue(res)
+    res2_atoms, res2_names = get_one_residue(str(int(res)+1))
+
+    for j in range(i, 8):
+      atoms = res_atoms if j < 6 else res2_atoms
+      names = res_names if j < 6 else res2_names
+      if bones[j+2] in names:
+        x = names.index(bones[j+2])
+        atom = atoms[x]
         syn_chain.append(atom)
+        print("appending", atom.name, atom.fetch_labels().resseq, atom.serial)
+        syn_name = [a.name for a in syn_chain]
+    for j in range(i, 6):
+        name, angle = easy_make_dihedral(syn_chain, j, k-ksyn)
+        print(" ", syn_chain[k-ksyn+1].fetch_labels().resseq, name, angle)
+        residue.angle[j] = angle  # second failure, we get 9999
+        k = k + 1
+    # we need to calculate the next alpha before getting back on the main path
+    name, next_angle = easy_make_dihedral(syn_chain, 0, k-ksyn)
+    return k+1, next_angle
+
+
+def new_residue(residues, pivot, chainID, alt):
+  residue = Residue("", "", [9999, 9999, 9999, 9999, 9999, 9999])
+  labels = pivot.fetch_labels()
+  res_number = int(labels.resseq)
+  residue.sequence = res_number
+  grandpa = pivot.parent().parent()
+  residue_name = grandpa.unique_resnames()[0]
+  print(residue_name)
+  id = ("1", chainID, labels.resseq, "", alt, residue_name)
+  residue.pointIDs = id
+  base = findBase(residue_name)
+  residue.base = base
+  if residue.base is not None:
+      residues.append(residue)
+  return residue
+
+
+def get_one_residue(res):
+    selection=manager.selection("resseq " + res)
+    res_hierarchy = hierarchy.select(selection)
+    atoms = res_hierarchy.atoms()
+    names = [a.name for a in atoms]   
+    return atoms, names
+    
 
 def easy_make_dihedral(backbone, i, k):
-    dh = dihedrals[i]
+    dh = dihedrals[i % 6]
     if backbone[k].name == dh[1][0]:
         group = backbone[k:k+4]
         group_names = tuple((a.name for a in group))
@@ -196,17 +234,19 @@ def easy_make_dihedral(backbone, i, k):
         return "failure: " + str(group_names), 9999
     return "failure: " + backbone[k].name + "!= " + dh[1][0], 9999
                 
-def make_dihedral(backbone, k):
-    for dh in dihedrals:
-        if backbone[k] == dh[1][0]:
-            if len(backbone) >= k + 3 and backbone[k:k + 4] == dh[1]:
-                clump = backbone[k:k + 4]
-                points = [atom.xyz for atom in clump]
-                name = dh[0]
-                labels = clump[1].fetch_labels()
-                angle = calc_dihedral(points)
-                return name, angle
+# def make_dihedral(backbone, k):
+#     for dh in dihedrals:
+#         if backbone[k] == dh[1][0]:
+#             if len(backbone) >= k + 3 and backbone[k:k + 4] == dh[1]:
+#                 clump = backbone[k:k + 4]
+#                 points = [atom.xyz for atom in clump]
+#                 name = dh[0]
+#                 labels = clump[1].fetch_labels()
+#                 angle = calc_dihedral(points)
+#                 return name, angle
                 
+
+# ----------------------------  tool room  -----------------------------
 
 # The following code was used to build the dihedrals list above
 def make_groups():
@@ -218,6 +258,13 @@ def make_groups():
         output.write("))\n")
         i = i+1
 
+
+# for debug printouts
+def residueString(r):
+    sizes=[1, 1, 3, 1, 1, 3]
+    id = "".join([f"{x:{y}}:" for x, y in zip(r.pointIDs, sizes)])
+    angles = "".join([f"{a:8.3f}:" for a in r.angle])
+    return id + angles[:-1]
 
 
 if __name__ == '__main__':
