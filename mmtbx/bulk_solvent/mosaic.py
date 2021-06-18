@@ -269,7 +269,7 @@ class refinery(object):
       i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
       K_MASKS = OrderedDict()
 
-      if(alg.endswith('a') or it==0):
+      if(alg.endswith('a')):
         self.bin_selections = [self.f_calc.d_spacings().data()>3]
       else:
         self.bin_selections = thiken_bins(
