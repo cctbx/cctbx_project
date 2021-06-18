@@ -17,6 +17,7 @@ import math
 import scitbx.matrix
 from scitbx.array_family import flex
 from iotbx import pdb
+import traceback
 
 ##################################################################################
 # This is a set of classes that implement Reduce's "Movers".  These are sets of
@@ -206,7 +207,7 @@ class MoverRotater:
       self._fineAngles.append(-curStep)
       # We only place on the right if we're strictly less than because
       # the interval is open on the right.
-      if curStep < self.fineRange:
+      if curStep < fineRange:
         self._fineAngles.append(curStep)
       curStep += self._fineStepDegrees
 
@@ -220,7 +221,7 @@ class MoverRotater:
     """
     preferences = [0.0] * len(angles)
     if self._preferenceFunction is not None:
-      for i in range(len(angles)):
+      for i, a in enumerate(angles):
         preferences[i] = self._preferenceFunction(a) * scale
     return preferences
 
@@ -274,11 +275,10 @@ class MoverRotater:
         # Find the vector from the closest point towards the atom, which is its offset
         offset = self._lvec3(atm.xyz) - nearPoint
 
-        # Rotate the offset vector around the axis by the specified angle.  Subtract the
-        # original offset and add the new offset to the closest point.
-        # Store this as the new location for this atom and angle.
+        # Rotate the offset vector around the axis by the specified angle.  Add the new
+        # offset to the closest point. Store this as the new location for this atom and angle.
         newOffset = offset.rotate_around_origin(self._lvec3(self._axis[1]), agl*math.pi/180)
-        newPos = nearPoint + newOffset - offset
+        newPos = nearPoint + newOffset
         atoms.append(newPos)
       poses.append(atoms)
     return poses;
@@ -346,13 +346,20 @@ def Test():
     axis = flex.vec3_double([ [ 0.0, 0.0,-2.0], [ 0.0, 0.0, 1.0] ])
     def prefFunc(x):
       return 1.0
-    rot = MoverRotater(atoms,axis, 90.0, True, prefFunc)
+    rot = MoverRotater(atoms,axis, 180, 90.0, True, prefFunc)
 
     # See if the results of each of the functions are what we expect in terms of sizes and locations
     # of atoms and preferences.  We'll use the default fine step size.
     coarse = rot.CoarsePositions()
     if len(coarse.atoms) != 3:
-      return "Movers.Test(): Expected 3 atoms for CoarsePositions, got "+str(len(coarse.atoms))
+      return "Movers.Test() MoverRotater basic: Expected 3 atoms for CoarsePositions, got "+str(len(coarse.atoms))
+    atom0pos1 = coarse.positions[1][0]
+    if abs(0.0 - atom0pos1[0]) > 1e-5:
+      return "Movers.Test() MoverRotater basic: Expected x location = 0.0, got "+str(atom0pos1)
+    if abs(-1.0 - atom0pos1[1]) > 1e-5:
+      return "Movers.Test() MoverRotater basic: Expected y location =-1.0, got "+str(atom0pos1)
+    if abs( 1.0 - atom0pos1[2]) > 1e-5:
+      return "Movers.Test() MoverRotater basic: Expected z location = 1.0, got "+str(atom0pos1)
     # @todo
 
     # @todo Test coarseStepDegrees default behavior and setting via reduceOptions.
@@ -361,7 +368,7 @@ def Test():
     # @todo Test default None preference function and a sinusoidal one.
     # @todo Test default None preference scale factor and a different nonzero value.
   except Exception as e:
-    return "Movers.Test(): Exception during test of MoverRotater: "+str(e)
+    return "Movers.Test() MoverRotater basic: Exception during test of MoverRotater: "+str(e)+"\n"+traceback.format_exc()
 
   # @todo
 
