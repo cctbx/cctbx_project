@@ -17,12 +17,17 @@
 # limitations under the License.
 
 import sys
+import Movers
 import InteractionGraph
 
 def RunReduceTests():
 
   #========================================================================
   # Call the test functions for all of our files.
+
+  print('Testing Movers objects')
+  ret = Movers.Test()
+  assert (len(ret) == 0)
 
   print('Testing InteractionGraph objects')
   ret = InteractionGraph.Test()
