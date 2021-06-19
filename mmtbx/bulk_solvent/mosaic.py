@@ -198,7 +198,7 @@ def write_map_file(crystal_symmetry, map_data, file_name):
     map_data    = map_data,
     labels      = flex.std_string([""]))
 
-def thiken_bins(bins, n):
+def thiken_bins(bins, n, ds):
   result = []
   group = []
   cntr = 0
@@ -224,6 +224,17 @@ def thiken_bins(bins, n):
   #
   if(len(result)==0):
     result = [flex.bool(bins[0].size(), True)]
+  #
+  tmp=[]
+  for i, bin in enumerate(result):
+    ds_ = ds.select(bin)
+    mi, ma = flex.min(ds_), flex.max(ds_)
+    if(mi<3 and ma>=3):
+      tmp[i-1] = tmp[i-1] | bin
+    else:
+      tmp.append(bin)
+  result = tmp
+  #
   return result
 
 class refinery(object):
@@ -273,7 +284,7 @@ class refinery(object):
         self.bin_selections = [self.f_calc.d_spacings().data()>3]
       else:
         self.bin_selections = thiken_bins(
-          bins=bin_selections_input, n=50*len(self.F))
+          bins=bin_selections_input, n=50*len(self.F), ds=self.f_calc.d_spacings().data())
 
       for i_bin, sel in enumerate(self.bin_selections):
         d_max, d_min = f_obs.select(sel).d_max_min()
