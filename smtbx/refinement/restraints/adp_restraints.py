@@ -6,7 +6,7 @@ from cctbx import adp_restraints
 class adp_similarity_restraints(object):
   def __init__(self, xray_structure=None, pair_sym_table=None, proxies=None,
                i_seqs=None, sigma=0.04, sigma_terminal=None,
-               buffer_thickness=3.5):
+               buffer_thickness=3.5, connectivity=None):
     assert [xray_structure, pair_sym_table].count(None) == 1
     if i_seqs is not None and len(i_seqs) == 0: i_seqs = None
     if sigma_terminal is None: sigma_terminal = 2 * sigma
@@ -18,7 +18,8 @@ class adp_similarity_restraints(object):
       scattering_types = xray_structure.scatterers().extract_scattering_types()
       pair_asu_table.add_covalent_pairs(scattering_types)
       pair_sym_table = pair_asu_table.extract_pair_sym_table()
-    connectivity = pair_sym_table.full_simple_connectivity()
+    if connectivity is None:
+      connectivity = pair_sym_table.full_simple_connectivity()
 
     for i_seq, j_seq_dict in enumerate(pair_sym_table):
       if i_seqs is not None and i_seq not in i_seqs: continue
@@ -40,7 +41,7 @@ class adp_similarity_restraints(object):
 class rigid_bond_restraints(object):
   def __init__(self, xray_structure=None, pair_sym_table=None, proxies=None,
                i_seqs=None, sigma_12=0.01, sigma_13=None,
-               buffer_thickness=3.5):
+               buffer_thickness=3.5, connectivity=None):
     """ sigma_12 and sigma_13 are the effective standard deviations used for
         1,2- and 1,3-distances respectively
     """
@@ -55,7 +56,8 @@ class rigid_bond_restraints(object):
       scattering_types = xray_structure.scatterers().extract_scattering_types()
       pair_asu_table.add_covalent_pairs(scattering_types)
       pair_sym_table = pair_asu_table.extract_pair_sym_table()
-    connectivity = pair_sym_table.full_simple_connectivity()
+    if connectivity is None:
+      connectivity = pair_sym_table.full_simple_connectivity()
     ij_seqs = set()
 
     for i_seq, j_seq_dict in enumerate(pair_sym_table):
@@ -100,7 +102,7 @@ class rigid_bond_restraints(object):
 class rigu_restraints(object):
   def __init__(self, xray_structure=None, pair_sym_table=None, proxies=None,
                i_seqs=None, sigma_12=0.004, sigma_13=None,
-               buffer_thickness=3.5):
+               buffer_thickness=3.5, connectivity=None):
     """ sigma_12 and sigma_13 are the effective standard deviations used for
         1,2- and 1,3-distances respectively
     """
@@ -115,7 +117,8 @@ class rigu_restraints(object):
       scattering_types = xray_structure.scatterers().extract_scattering_types()
       pair_asu_table.add_covalent_pairs(scattering_types)
       pair_sym_table = pair_asu_table.extract_pair_sym_table()
-    connectivity = pair_sym_table.full_simple_connectivity()
+    if connectivity is None:
+      connectivity = pair_sym_table.full_simple_connectivity()
     ij_seqs = set()
 
     for i_seq, j_seq_dict in enumerate(pair_sym_table):
@@ -159,7 +162,8 @@ class rigu_restraints(object):
 
 class isotropic_adp_restraints(object):
   def __init__(self, xray_structure, pair_sym_table=None, proxies=None,
-               i_seqs=None, sigma=0.1, sigma_terminal=None, buffer_thickness=3.5):
+               i_seqs=None, sigma=0.1, sigma_terminal=None,
+                buffer_thickness=3.5, connectivity=None):
     if sigma_terminal is None: sigma_terminal = 2 * sigma
     if i_seqs is not None and len(i_seqs) == 0: i_seqs = None
     if proxies is None:
@@ -171,7 +175,8 @@ class isotropic_adp_restraints(object):
       pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
       pair_asu_table.add_covalent_pairs(scattering_types)
       pair_sym_table = pair_asu_table.extract_pair_sym_table()
-    connectivity = pair_sym_table.full_simple_connectivity()
+    if connectivity is None:
+      connectivity = pair_sym_table.full_simple_connectivity()
 
     for i_seq, neighbours in enumerate(connectivity):
       if i_seqs is not None and i_seq not in i_seqs: continue
