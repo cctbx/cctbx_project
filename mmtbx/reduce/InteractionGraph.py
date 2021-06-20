@@ -225,7 +225,6 @@ def Test():
   """Test function for all functions provided above.
   returns: Empty string on success, string describing the problem on failure.
   """
-  # @todo
 
   # Construct a Class that will behave like the Reduce Phil data structure so that
   # we can specify the probe radius.
