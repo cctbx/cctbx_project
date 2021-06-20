@@ -131,7 +131,7 @@ namespace {
       #pyname"_from_byte_str", \
       shared_from_byte_str<uIntType>, \
       (arg("byte_str"))); \
-    range_wrappers<uIntType, long, range_args::unsigned_check>::wrap( \
+    range_wrappers<uIntType, int64_t, range_args::unsigned_check>::wrap( \
       #pyname"_range"); \
   }
 
