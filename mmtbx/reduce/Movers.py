@@ -408,7 +408,7 @@ def Test():
       if p != val:
         return "Movers.Test() MoverRotater Sinusoidal preference function: Expected preference energy = "+str(val)+", got "+str(p)
 
-    # @todo Test coarseStepDegrees default behavior and setting via reduceOptions.
+    # Test coarseStepDegrees default behavior and setting via reduceOptions.
     rot = MoverRotater(atoms,axis, 180)
     coarse = rot.CoarsePositions()
     if len(coarse.positions) != 12:
@@ -419,7 +419,16 @@ def Test():
     if len(coarse.positions) != 24:
       return "Movers.Test() MoverRotater reduceOptions coarse step: Expected 24, got "+str(len(coarse.positions))
 
-    # @todo Test fineStepDegrees setting via reduceOptions.
+    # Test fineStepDegrees setting via reduceOptions.
+    fakePhil.CoarseStepDegrees = None
+    fakePhil.FineStepDegrees = 1
+    rot = MoverRotater(atoms,axis, 180, reduceOptions = fakePhil)
+    fine = rot.FinePositions(0)
+    # +/- 15 degrees in 1-degree steps, but we don't do the +15 because it will be handled by the next
+    # rotation up.
+    if len(fine.positions) != 29:
+      return "Movers.Test() MoverRotater reduceOptions fine step: Expected 29, got "+str(len(fine.positions))
+
     # @todo Test doFineRotations = False and 180 degree coarseStepDegrees.
   except Exception as e:
     return "Movers.Test() MoverRotater basic: Exception during test of MoverRotater: "+str(e)+"\n"+traceback.format_exc()
