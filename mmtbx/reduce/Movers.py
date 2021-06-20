@@ -433,7 +433,7 @@ def Test():
   except Exception as e:
     return "Movers.Test() MoverRotater basic: Exception during test of MoverRotater: "+str(e)+"\n"+traceback.format_exc()
 
-  # @todo
+  # @todo Test other Mover subclasses
 
   return ""
 

@@ -105,12 +105,12 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
     verts.append(ret.add_vertex(m))
 
     # Find all possible positions, coarse and fine.
-    coarses = m.CoarsePositions(reduceOptions)
+    coarses = m.CoarsePositions()
     atoms = coarses.atoms
     coarsePositions = coarses.positions
     total = coarsePositions.copy()
     for c in range(len(coarsePositions)):
-      total.extend(m.FinePositions(c, reduceOptions).positions)
+      total.extend(m.FinePositions(c).positions)
 
     # Find the range of positions of all atoms in X, Y, and Z
     xRange = [ 1e10, -1e10 ]
@@ -190,11 +190,11 @@ def InteractionGraphAllPairs(movers, extraAtomInfo, reduceOptions):
     verts.append(ret.add_vertex(m))
 
     # Find all possible positions, coarse and fine.
-    coarses = m.CoarsePositions(reduceOptions)
+    coarses = m.CoarsePositions()
     coarsePositions = coarses.positions
     total = coarsePositions.copy()
     for c in range(len(coarsePositions)):
-      total.extend(m.FinePositions(c, reduceOptions).positions)
+      total.extend(m.FinePositions(c).positions)
 
     # Add the atoms and positions into our lists
     atoms.append(coarses.atoms)
