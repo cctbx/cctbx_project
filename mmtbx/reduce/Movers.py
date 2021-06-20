@@ -319,8 +319,11 @@ class MoverRotater:
     # No fixups for any coarse index.
     return FixUpReturn([], [])
 
-
+##################################################################################
 # @todo Define each type of Mover
+
+##################################################################################
+# Test function to verify that all Movers behave properly.
 
 def Test():
   """Test function for all classes provided above.
@@ -429,7 +432,15 @@ def Test():
     if len(fine.positions) != 29:
       return "Movers.Test() MoverRotater reduceOptions fine step: Expected 29, got "+str(len(fine.positions))
 
-    # @todo Test doFineRotations = False and 180 degree coarseStepDegrees.
+    # Test doFineRotations = False and 180 degree coarseStepDegrees.
+    rot = MoverRotater(atoms,axis, 180, 180, False)
+    coarse = rot.CoarsePositions()
+    if len(coarse.positions) != 2:
+      return "Movers.Test() MoverRotater 180 coarse steps: Expected 2, got "+str(len(coarse.positions))
+    fine = rot.FinePositions(0)
+    if len(fine.positions) != 0:
+      return "Movers.Test() MoverRotater 180 coarse steps: Expected 0, got "+str(len(fine.positions))
+
   except Exception as e:
     return "Movers.Test() MoverRotater basic: Exception during test of MoverRotater: "+str(e)+"\n"+traceback.format_exc()
 
