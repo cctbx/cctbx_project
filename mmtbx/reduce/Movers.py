@@ -20,6 +20,16 @@ from iotbx import pdb
 import traceback
 
 ##################################################################################
+# Internal helper function to make things that are compatible with vec3_double so
+# that we can do math on them.  We need a left-hand and right-hand one so that
+# we can make both version for multiplication.
+def _rvec3 (xyz) :
+  return scitbx.matrix.rec(xyz, (3,1))
+def _lvec3 (xyz) :
+  return scitbx.matrix.rec(xyz, (1,3))
+
+
+##################################################################################
 # This is a set of classes that implement Reduce's "Movers".  These are sets of
 # atoms that have more than one potential set of locations.
 #  - They may have a-priori preferences for some locations over others.
@@ -238,11 +248,6 @@ class MoverRotater:
       pass
     return ret
 
-  def _rvec3 (self,xyz) :
-    return scitbx.matrix.rec(xyz, (3,1))
-  def _lvec3 (self,xyz) :
-    return scitbx.matrix.rec(xyz, (1,3))
-
   def _posesFor(self, angles):
     """Return the atom poses for the specified angles.
        :param angles: List of angles to compute the poses at.
@@ -267,17 +272,17 @@ class MoverRotater:
         # the location along the line at that time.  t = - (d + (lineOrigin * planeNormal)) /
         # (lineDirection * planeNormal).  Because the line direction and normal are the
         # same, the divisor is 1.
-        normal = self._lvec3(self._axis[1]).normalize()
+        normal = _lvec3(self._axis[1]).normalize()
         d = -normal*atm.xyz
-        t = - (d + (normal * self._rvec3(self._axis[0])))
-        nearPoint = self._lvec3(self._axis[0]) + t * normal
+        t = - (d + (normal * _rvec3(self._axis[0])))
+        nearPoint = _lvec3(self._axis[0]) + t * normal
 
         # Find the vector from the closest point towards the atom, which is its offset
-        offset = self._lvec3(atm.xyz) - nearPoint
+        offset = _lvec3(atm.xyz) - nearPoint
 
         # Rotate the offset vector around the axis by the specified angle.  Add the new
         # offset to the closest point. Store this as the new location for this atom and angle.
-        newOffset = offset.rotate_around_origin(self._lvec3(self._axis[1]), agl*math.pi/180)
+        newOffset = offset.rotate_around_origin(_lvec3(self._axis[1]), agl*math.pi/180)
         newPos = nearPoint + newOffset
         atoms.append(newPos)
       poses.append(atoms)
@@ -355,28 +360,19 @@ def Test():
     if len(coarse.atoms) != 3:
       return "Movers.Test() MoverRotater basic: Expected 3 atoms for CoarsePositions, got "+str(len(coarse.atoms))
     atom0pos1 = coarse.positions[1][0]
-    if abs(0.0 - atom0pos1[0]) > 1e-5:
-      return "Movers.Test() MoverRotater basic: Expected x location = 0.0, got "+str(atom0pos1)
-    if abs(-1.0 - atom0pos1[1]) > 1e-5:
-      return "Movers.Test() MoverRotater basic: Expected y location =-1.0, got "+str(atom0pos1)
-    if abs( 1.0 - atom0pos1[2]) > 1e-5:
-      return "Movers.Test() MoverRotater basic: Expected z location = 1.0, got "+str(atom0pos1)
-    if abs( 1.0 - coarse.preferenceEnergies[0]) > 1e-5:
-      return "Movers.Test() MoverRotater basic: Expected preference energy = 1.0, got "+str(coarse.preferenceEnergies[0])
+    if (_lvec3(atom0pos1) - _lvec3([0,-1,1])).length() > 1e-5:
+      return "Movers.Test() MoverRotater basic: Expected location = (0,-1,1), got "+str(atom0pos1)
 
     # The first fine rotation (index 0) around the second coarse index (index 1) should be to -95 degrees,
     # moving the first atom to the appropriately rotated location around the Z axis
     rad = -95 / 180 * math.pi
     x = math.cos(rad)
     y = math.sin(rad)
+    z = 1
     fine = rot.FinePositions(1)
     atom0pos1 = fine.positions[0][0]
-    if abs(x - atom0pos1[0]) > 1e-5:
-      return "Movers.Test() MoverRotater basic: Expected fine x location = "+str(x)+", got "+str(atom0pos1)
-    if abs(y - atom0pos1[1]) > 1e-5:
-      return "Movers.Test() MoverRotater basic: Expected fine y location = "+str(y)+", got "+str(atom0pos1)
-    if abs(1.0 - atom0pos1[2]) > 1e-5:
-      return "Movers.Test() MoverRotater basic: Expected fine z location = 0.0, got "+str(atom0pos1)
+    if (_lvec3(atom0pos1) - _lvec3([x,y,z])).length() > 1e-5:
+      return "Movers.Test() MoverRotater basic: Expected fine location = "+str([x,y,z])+", got "+str(atom0pos1)
     # @todo
 
     # @todo Test coarseStepDegrees default behavior and setting via reduceOptions.
