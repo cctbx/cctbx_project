@@ -45,10 +45,11 @@ def _lvec3 (xyz) :
 #    They sometimes have optional hydrogen placements on some of the atoms.
 #
 # All Movers have the following methods, parameters, and return types:
-#  - type PositionReturn: ( flex<atom> atoms, flex<flex<vec3>> positions, flex<float> preferenceEnergies )
-#  - PositionReturn CoarsePositions(reduceOptions = None)
-#     The reduceOptions is a Phil option subset.  The relevant options for Movers
-#       are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale
+#  - type PositionReturn: ( flex<atom> atoms, flex<flex<vec3>> positions, flex<float> preferenceEnergies,
+#                           reduceOptions = None)
+#     The reduceOptions is a Phil option subset.  The relevant options for each Mover
+#       type below is specified in its __init__ method.
+#  - PositionReturn CoarsePositions()
 #     The first return lists all of the hierarchy atoms that move.
 #     The second return has a vector that has some number of positions, each of
 #       which is a vector the same length as the first return
@@ -57,11 +58,9 @@ def _lvec3 (xyz) :
 #       each element of the third return; it indicates the relative favorability of
 #       each possible location and should be added to the total energy by an
 #       optimizer to break ties in otherwise-equivalent orientations.
-#  - PositionReturn FinePositions(coarseIndex, reduceOptions = None)
+#  - PositionReturn FinePositions(coarseIndex)
 #     The coarseIndex indicates the index (0 for the first) of the relevant coarse
 #       orientation.
-#     The reduceOptions is a Phil option subset.  The relevant options for Movers
-#       are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale
 #     The return values are the same as for CoarsePositions and they list potential
 #       fine motions around the particular coarse position (not including the position
 #       itself).  This function can be used by optimizers that wish to do heavy-weight
@@ -70,11 +69,9 @@ def _lvec3 (xyz) :
 #       append them to the coarse positions and globally optimize.
 #     Note: Some Movers will return empty arrays.
 #  - type FixUpReturn: ( flex<atom> atoms, flex<vec3> newPositions )
-#  - FixUpReturn FixUp(coarseIndex, reduceOptions = None)
+#  - FixUpReturn FixUp(coarseIndex)
 #     The coarseIndex indicates the index (0 for the first) of the relevant coarse
 #       orientation that was finally chosen.
-#     The reduceOptions is a Phil option subset.  The relevant options for Movers
-#       are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale
 #     The first return lists the atoms that should be repositioned.
 #     The second return lists the new locations for each atom.
 #     Note: This function may ask to modify atoms other than the ones it reported in its
@@ -111,17 +108,17 @@ class FixUpReturn:
 # Useful as a simple and fast test case for programs that use Movers.
 # It also serves as a basic example of how to develop a new Mover.
 class MoverNull:
-  def __init__(self, atom):
+  def __init__(self, atom, reduceOptions = None):
     self._atom = atom
-  def CoarsePositions(self, reduceOptions = None):
+  def CoarsePositions(self):
     # returns: The original atom at its original position.
     return PositionReturn([ self._atom ],
         [ [ [ self._atom.xyz[0], self._atom.xyz[1], self._atom.xyz[2] ] ] ],
         [ 0.0 ])
-  def FinePositions(self, coarseIndex, reduceOptions = None):
+  def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
     return PositionReturn([], [], [])
-  def FixUp(self, coarseIndex, reduceOptions = None):
+  def FixUp(self, coarseIndex):
     # No fixups for any coarse index.
     return FixUpReturn([], [])
 
@@ -134,7 +131,8 @@ class MoverNull:
 # can also be specified, overriding the value from reduceOptions.CoarseStepDegrees.
 class MoverRotater:
   def __init__(self, atoms, axis, coarseRange, coarseStepDegrees = None,
-                doFineRotations = True, preferenceFunction = None):
+                doFineRotations = True, preferenceFunction = None,
+                reduceOptions = None):
     """Constructs a Rotator, to be called by a derived class or test program but
        not usually user code.
        :param atoms: flex array of atoms that will be rotated.  These should be
@@ -150,7 +148,8 @@ class MoverRotater:
        slightly less than +180.
        :param coarseStepDegrees: With the default value of None, the number of
        degrees per coarse step will be determined  by the
-       reduceOptions.CoarseStepDegrees entry passed to CoarsePositions().
+       reduceOptions.CoarseStepDegrees or the default value of 30 if neither specifies
+       the value.
        To test only two fixed orientations, doFineRotations should be set
        to False, coarseRange to 180, and coarseStepDegrees to 180.
        :param doFineRotations: Specifies whether fine rotations are allowed for
@@ -162,12 +161,16 @@ class MoverRotater:
        reduceOptions.PreferredOrientationScale and then added to the energy
        returned for this orientation by CoarsePositions() and FinePositions().
        For the default value of None, no addition is performed.
+       :param reduceOptions: 
+        The reduceOptions is a Phil option subset.  The relevant options for MoverRotater
+          are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale.
     """
     self._atoms = atoms
     self._axis = axis
     self._coarseRange = coarseRange
     self._doFineRotations = doFineRotations
     self._preferenceFunction = preferenceFunction
+    self._reduceOptions = reduceOptions
 
     # Determine the coarse step size in degrees.  If it was specified in the
     # constructor, use that.  Otherwise, if it was specified in
@@ -221,6 +224,15 @@ class MoverRotater:
         self._fineAngles.append(curStep)
       curStep += self._fineStepDegrees
 
+    # Determine the preference scale.  The default of 1 can be overridden by
+    # a value in reduceOptions.PreferredOrientationScale.
+    self._preferredOrientationScale = 1.0
+    try:
+      if reduceOptions.PreferredOrientationScale is not None:
+        self._preferredOrientationScale = reduceOptions.PreferredOrientationScale
+    except:
+      pass
+
   def _preferencesFor(self, angles, scale):
     """Return the preference energies for the specified angles, scaled by the scale.
        :param angles: List of angles to compute the preferences at.
@@ -234,19 +246,6 @@ class MoverRotater:
       for i, a in enumerate(angles):
         preferences[i] = self._preferenceFunction(a) * scale
     return preferences
-
-  def _preferencesScaleFor(self, reduceOptions):
-    """Return the preference energy scale factor from reduceOptions.PreferredOrientationScale or 1 if None.
-       :param reduceOptions: Phil parameter subset.
-       :returns energy scale factor, or 1.0 if there is not one specified.
-    """
-    ret = 1.0
-    try:
-      if reduceOptions.PreferredOrientationScale is not None:
-        ret = reduceOptions.PreferredOrientationScale
-    except:
-      pass
-    return ret
 
   def _posesFor(self, angles):
     """Return the atom poses for the specified angles.
@@ -288,14 +287,14 @@ class MoverRotater:
       poses.append(atoms)
     return poses;
 
-  def CoarsePositions(self, reduceOptions = None):
+  def CoarsePositions(self):
 
     # Return the atoms, coarse-angle poses, and coarse-angle preferences
     return PositionReturn(self._atoms,
       self._posesFor(self._coarseAngles),
-      self._preferencesFor(self._coarseAngles, self._preferencesScaleFor(reduceOptions)))
+      self._preferencesFor(self._coarseAngles, self._preferredOrientationScale))
 
-  def FinePositions(self, coarseIndex, reduceOptions = None):
+  def FinePositions(self, coarseIndex):
     if not self._doFineRotations:
       # returns: No fine positions for any coarse position.
       return PositionReturn([], [], [])
@@ -314,9 +313,9 @@ class MoverRotater:
     # Return the atoms and poses along with the preferences.
     return PositionReturn(self._atoms,
       self._posesFor(angles),
-      self._preferencesFor(angles, self._preferencesScaleFor(reduceOptions)))
+      self._preferencesFor(angles, self._preferredOrientationScale))
 
-  def FixUp(self, coarseIndex, reduceOptions):
+  def FixUp(self, coarseIndex):
     # No fixups for any coarse index.
     return FixUpReturn([], [])
 
@@ -373,13 +372,55 @@ def Test():
     atom0pos1 = fine.positions[0][0]
     if (_lvec3(atom0pos1) - _lvec3([x,y,z])).length() > 1e-5:
       return "Movers.Test() MoverRotater basic: Expected fine location = "+str([x,y,z])+", got "+str(atom0pos1)
-    # @todo
+
+    # The preference function should always return 1.
+    for p in fine.preferenceEnergies:
+      if p != 1:
+        return "Movers.Test() MoverRotater basic: Expected preference energy = 1, got "+str(p)
+
+    # Test None preference scale factor and a different nonzero value.
+    fakePhil.PreferredOrientationScale = None
+    rot = MoverRotater(atoms,axis, 180, 90.0, True, prefFunc, reduceOptions = fakePhil)
+    coarse = rot.CoarsePositions()
+    for p in coarse.preferenceEnergies:
+      if p != 1:
+        return "Movers.Test() MoverRotater None preference: Expected preference energy = 1, got "+str(p)
+    fakePhil.PreferredOrientationScale = 2
+    rot = MoverRotater(atoms,axis, 180, 90.0, True, prefFunc, reduceOptions = fakePhil)
+    coarse = rot.CoarsePositions()
+    for p in coarse.preferenceEnergies:
+      if p != 2:
+        return "Movers.Test() MoverRotater Phil-scaled preference: Expected preference energy = 2, got "+str(p)
+
+    # Test None preference function and a sinusoidal one.
+    rot = MoverRotater(atoms,axis, 180, 90.0, True, None)
+    coarse = rot.CoarsePositions()
+    for p in coarse.preferenceEnergies:
+      if p != 0:
+        return "Movers.Test() MoverRotater None preference function: Expected preference energy = 0, got "+str(p)
+    def prefFunc2(x):
+      return math.cos(x * math.pi / 180)
+    rot = MoverRotater(atoms,axis, 180, 180, True, prefFunc2)
+    coarse = rot.CoarsePositions()
+    expected = [1, -1]
+    for i,p  in enumerate(coarse.preferenceEnergies):
+      val = expected[i]
+      if p != val:
+        return "Movers.Test() MoverRotater Sinusoidal preference function: Expected preference energy = "+str(val)+", got "+str(p)
 
     # @todo Test coarseStepDegrees default behavior and setting via reduceOptions.
+    rot = MoverRotater(atoms,axis, 180)
+    coarse = rot.CoarsePositions()
+    if len(coarse.positions) != 12:
+      return "Movers.Test() MoverRotater Default coarse step: Expected 12, got "+str(len(coarse.positions))
+    fakePhil.CoarseStepDegrees = 15
+    rot = MoverRotater(atoms,axis, 180, reduceOptions = fakePhil)
+    coarse = rot.CoarsePositions()
+    if len(coarse.positions) != 24:
+      return "Movers.Test() MoverRotater reduceOptions coarse step: Expected 24, got "+str(len(coarse.positions))
+
     # @todo Test fineStepDegrees setting via reduceOptions.
     # @todo Test doFineRotations = False and 180 degree coarseStepDegrees.
-    # @todo Test default None preference function and a sinusoidal one.
-    # @todo Test default None preference scale factor and a different nonzero value.
   except Exception as e:
     return "Movers.Test() MoverRotater basic: Exception during test of MoverRotater: "+str(e)+"\n"+traceback.format_exc()
 
