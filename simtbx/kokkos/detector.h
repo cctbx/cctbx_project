@@ -52,7 +52,7 @@ struct kokkos_detector{
   //  metrology.show();
   //}
   //void each_image_allocate_cuda();
-  //void scale_in_place_cuda(const double&);
+  void scale_in_place_cuda(const double&);
   void write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg&);
   //af::flex_double get_raw_pixels_cuda();
   //void set_active_pixels_on_KOKKOS(af::shared<int>);
