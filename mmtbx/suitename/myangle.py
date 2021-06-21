@@ -131,7 +131,7 @@ def build_dihedrals(mainchain, chain_id, alt):
     backbone = [atom for atom in mainchain if atom.name in bone]
     # sanity = (backbone == backbone2)
     for atom in backbone:
-      print(atom.serial, atom.name)  
+      print(atom.serial, atom.name, atom.fetch_labels().resseq)  
     residue = None
 
     k = 0
@@ -144,16 +144,16 @@ def build_dihedrals(mainchain, chain_id, alt):
             # we are seeing our first angle of a new residue
             residue = new_residue(residues, pivot, chain_id, alt)
         name, angle = easy_make_dihedral(backbone, i, k)
-        print(res_number, name, angle)
+        print(res_number, name, angle, k)
         # ----------------- can fail! ----------------------
         if angle == 9999:
             # this residue is strangely ordered due to partial alt conformers
-            # build dihedrals the hard way through the following alpha
-            k, angle = harder_build_dihedrals(backbone, i, k, residue, labels)
-            pivot = backbone[k]
+            # build dihedrals the hard way hereafter
+            k = harder_build_chain(backbone, i, k, residue, residues, 
+                chain_id, alt)
+            return residues
             residue = new_residue(residues, pivot, chain_id, alt)
-            residue.angle[0] = angle  # the following alpha
-            i = 1
+
         else:
             residue.angle[i] = angle
             k = k + 1
@@ -161,36 +161,49 @@ def build_dihedrals(mainchain, chain_id, alt):
     return residues
 
 
-def harder_build_dihedrals(backbone, i, k, residue, labels):
-    syn_chain = backbone[k - i - 2:k + 2]
+def harder_build_chain(backbone, i, k, residue, residues, chain_id, alt):
+    syn_chain = backbone[k - i:k + 3]
     ksyn = max(k-i-2, 0)
     # everything for this residue plus 2 before and 2 after  !!!!?
     print("syn_chain")
     for atom in syn_chain:
       print(atom.name, atom.fetch_labels().resseq, atom.serial) # just for debugging
-    res = labels.resseq
-    # if i > 3:
-    #   res = str(1 + int(res))
+
+    ii = i
+    oops = 1  # first time: we have a "broken" atom to supply before going on
+    while k < len(backbone) - 3:
+      # kk is an index to syn_chain
+      kk = harder_build_residue(syn_chain, ii, oops, k-ksyn-2, residue)
+      k = kk+ksyn+2
+      ii = 0
+      residue = new_residue(residues, syn_chain[kk+1], chain_id, alt)
+      oops = 0
+    # delete a possible final dead one
+    if residues[-1].is_dead():
+      del residues[-1]
+    return k
+
+
+def harder_build_residue(syn_chain, i, oops, kk, residue):
+    res = syn_chain[-1].fetch_labels().resseq
     res_atoms, res_names = get_one_residue(res)
     res2_atoms, res2_names = get_one_residue(str(int(res)+1))
 
-    for j in range(i, 8):
-      atoms = res_atoms if j < 6 else res2_atoms
-      names = res_names if j < 6 else res2_names
-      if bones[j+2] in names:
-        x = names.index(bones[j+2])
+    for j in range(i, 6):
+      atoms = res_atoms if j < 5 else res2_atoms
+      names = res_names if j < 5 else res2_names
+      if bones[j+3] in names:  # add atom 3 ahead of residue start
+                               # so that we have 4 atoms to work with
+        x = names.index(bones[j+3])
         atom = atoms[x]
         syn_chain.append(atom)
         print("appending", atom.name, atom.fetch_labels().resseq, atom.serial)
-        syn_name = [a.name for a in syn_chain]
-    for j in range(i, 6):
-        name, angle = easy_make_dihedral(syn_chain, j, k-ksyn)
-        print(" ", syn_chain[k-ksyn+1].fetch_labels().resseq, name, angle)
-        residue.angle[j] = angle  # second failure, we get 9999
-        k = k + 1
-    # we need to calculate the next alpha before getting back on the main path
-    name, next_angle = easy_make_dihedral(syn_chain, 0, k-ksyn)
-    return k+1, next_angle
+        name, angle = easy_make_dihedral(syn_chain, j, kk)
+        print(" ", syn_chain[kk+1].fetch_labels().resseq, name, angle, kk, j)
+        residue.angle[j] = angle  # if second failure, we get 9999
+        kk = kk + 1
+        # syn_name = [a.name for a in syn_chain]
+    return kk
 
 
 def new_residue(residues, pivot, chainID, alt):

@@ -132,6 +132,11 @@ class Residue:
         self.base = base
         self.angle = angles
 
+    def is_dead(self):
+        dead = [a == 9999 for a in self.angle]
+        return all(dead)
+        
+
     # def __str__(self):
     #     string = "%s:%s:%s:%4s:%s:%s:%s:%s:%s:%s:%s:%s:%s" \
     #        % (" ",
