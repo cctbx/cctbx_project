@@ -303,7 +303,8 @@ class map_model_manager(object):
     # any_map_manager, model, ncs_object know about shift
 
     any_map_manager = mmmn.map_manager()
-    # Put shifted map in the right place. It is either map_manager or map_manager_1
+    # Put shifted map in the right place. It is either map_manager 
+    #   or map_manager_1
     if any_map_manager_is_map_manager:
       map_manager = any_map_manager
     else:
