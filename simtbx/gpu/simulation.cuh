@@ -251,6 +251,29 @@ __global__ void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixel
 							rotate_axis_ldg(b0, bp, spindle_vector, phi);
 							rotate_axis_ldg(c0, cp, spindle_vector, phi);
 
+
+                                                        CUDAREAL hp = dot_product(ap, scattering);
+                                                        CUDAREAL kp = dot_product(bp, scattering);
+                                                        CUDAREAL lp = dot_product(cp, scattering);
+                                                        int h0 = ceil(hp - 0.5);
+                                                        int k0 = ceil(kp - 0.5);
+                                                        int l0 = ceil(lp - 0.5);
+
+                                                        /* structure factor of the unit cell */
+                                                        CUDAREAL F_cell = default_F;
+                                                        //F_cell = quickFcell_ldg(s_hkls, s_h_max, s_h_min, s_k_max, s_k_min, s_l_max, s_l_min, h0, k0, l0, s_h_range, s_k_range, s_l_range, default_F, Fhkl);
+                                                        if (
+                                                            h0 < s_h_min ||
+                                                            k0 < s_k_min ||
+                                                            l0 < s_l_min ||
+                                                            h0 > s_h_max ||
+                                                            k0 > s_k_max ||
+                                                            l0 > s_l_max
+                                                           )
+                                                          F_cell = 0.;
+                                                        else
+                                                          F_cell = __ldg(&Fhkl[(h0-s_h_min)*s_k_range*s_l_range + (k0-s_k_min)*s_l_range + (l0-s_l_min)]);
+
 							/* enumerate mosaic domains */
 							for (int mos_tic = 0; mos_tic < s_mosaic_domains; ++mos_tic) {
 								/* apply mosaic rotation after phi rotation */
@@ -268,10 +291,6 @@ __global__ void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixel
 								CUDAREAL k = dot_product(b, scattering);
 								CUDAREAL l = dot_product(c, scattering);
 
-								/* round off to nearest whole index */
-								int h0 = ceil(h - 0.5);
-								int k0 = ceil(k - 0.5);
-								int l0 = ceil(l - 0.5);
 
 								/* structure factor of the lattice (paralelpiped crystal)
 								 F_latt = sin(M_PI*s_Na*h)*sin(M_PI*s_Nb*k)*sin(M_PI*s_Nc*l)/sin(M_PI*h)/sin(M_PI*k)/sin(M_PI*l);
@@ -284,20 +303,6 @@ __global__ void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixel
                                                                 double my_arg = hrad_sqr / 0.63 * fudge;
                                                                 F_latt = s_Na * s_Nb * s_Nc * exp(-(my_arg));
 
-								/* structure factor of the unit cell */
-								CUDAREAL F_cell = default_F;
-								//F_cell = quickFcell_ldg(s_hkls, s_h_max, s_h_min, s_k_max, s_k_min, s_l_max, s_l_min, h0, k0, l0, s_h_range, s_k_range, s_l_range, default_F, Fhkl);
-                                                                if (
-                                                                    h0 < s_h_min ||
-                                                                    k0 < s_k_min ||
-                                                                    l0 < s_l_min ||
-                                                                    h0 > s_h_max ||
-                                                                    k0 > s_k_max ||
-                                                                    l0 > s_l_max
-                                                                   )
-                                                                  F_cell = 0.;
-                                                                else
-                                                                  F_cell = __ldg(&Fhkl[(h0-s_h_min)*s_k_range*s_l_range + (k0-s_k_min)*s_l_range + (l0-s_l_min)]);
 
 								/* now we have the structure factor for this pixel */
 
