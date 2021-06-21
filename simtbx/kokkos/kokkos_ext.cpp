@@ -42,8 +42,8 @@ namespace simtbx { namespace Kokkos {
    //          "Allocate large pixel arrays")
    //     .def("scale_in_place_cuda", &simtbx::Kokkos::kokkos_detector::scale_in_place_cuda,
    //          "Apply a scale factor directly on the GPU")
-   //     .def("write_raw_pixels_cuda",&simtbx::Kokkos::kokkos_detector::write_raw_pixels_cuda,
-   //          "Update raw_pixels on host with array from GPU")
+        .def("write_raw_pixels_cuda",&simtbx::Kokkos::kokkos_detector::write_raw_pixels_cuda,
+             "Update raw_pixels on host with array from GPU")
    //     .def("get_raw_pixels_cuda",&simtbx::Kokkos::kokkos_detector::get_raw_pixels_cuda,
    //          "return multipanel detector raw pixels as a flex array")
    //     .def("get_whitelist_raw_pixels_cuda",
