@@ -9,6 +9,8 @@
 
 using Kokkos::deep_copy;
 using Kokkos::create_mirror_view;
+using Kokkos::parallel_for;
+using Kokkos::RangePolicy;
 
 namespace simtbx {
 namespace Kokkos {
@@ -175,17 +177,20 @@ namespace Kokkos {
       cudaSafeCall(cudaFree(cu_accumulate_floatimage));
     }
   };
-
+*/
   void
   kokkos_detector::scale_in_place_cuda(const double& factor){
-  int smCount = 84; //deviceProps.multiProcessorCount;
-  dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
-  dim3 numBlocks(smCount * 8, 1);
-  int total_pixels = m_total_pixel_count;
-  scale_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
-    factor, cu_accumulate_floatimage, total_pixels);
+    parallel_for("scale_in_place", RangePolicy<>(0,m_total_pixel_count), KOKKOS_LAMBDA (const int i) {
+      m_accumulate_floatimage( i ) = m_accumulate_floatimage( i ) * factor;
+    });
+//  int smCount = 84; //deviceProps.multiProcessorCount;
+//  dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+//  dim3 numBlocks(smCount * 8, 1);
+//  int total_pixels = m_total_pixel_count;
+//  scale_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
+//    factor, cu_accumulate_floatimage, total_pixels);
   }
-*/
+
   void
   kokkos_detector::write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg& nB){
     //only implement the monolithic detector case, one panel
@@ -205,7 +210,7 @@ namespace Kokkos {
     host_view_t host_floatimage = create_mirror_view(m_accumulate_floatimage);
     deep_copy(host_floatimage, m_accumulate_floatimage);
 
-    printf(" m_total_pixel_count: %d", m_total_pixel_count);
+    printf(" m_total_pixel_count: %d\n", m_total_pixel_count);
 
     double * double_floatimage = nB.raw_pixels.begin();
     for (int i=0; i<m_total_pixel_count; ++i) {
