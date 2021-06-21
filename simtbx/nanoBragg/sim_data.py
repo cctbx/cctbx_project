@@ -129,14 +129,19 @@ class SimData:
     rand_norm = scitbx.random.normal_distribution(mean=0, sigma=(mos_spread_deg * math.pi / 180.0))
     g = scitbx.random.variate(rand_norm)
     mosaic_rotation = g(n_mos_doms)
+    sites, angles = [], []
     for m in mosaic_rotation:
-      site = col(mersenne_twister.random_double_point_on_sphere())
+      site = mersenne_twister.random_double_point_on_sphere()
       if mos_spread_deg > 0:
-        UMAT_nm.append(col(scitbx.math.r3_rotation_axis_and_angle_as_matrix(site, m)))
+        sites.append(site)
+        angles.append(m)
       else:
-        UMAT_nm.append(col(scitbx.math.r3_rotation_axis_and_angle_as_matrix(site, 0)))
+        sites.append(site)
+        angles.append(0)
       if isotropic and mos_spread_deg > 0:
-        UMAT_nm.append(col(scitbx.math.r3_rotation_axis_and_angle_as_matrix(site, -m)))
+        sites.append(site)
+        angles.append(-m)
+    UMAT_nm = scitbx.math.r3_rotation_axis_and_angle_as_matrix_vectorized(sites, angles)
 
     return UMAT_nm
 
