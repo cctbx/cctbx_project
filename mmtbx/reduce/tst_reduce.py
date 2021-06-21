@@ -27,10 +27,14 @@ def RunReduceTests():
 
   print('Testing Movers objects')
   ret = Movers.Test()
+  if len(ret) != 0:
+    print("Failure:",ret)
   assert (len(ret) == 0)
 
   print('Testing InteractionGraph objects')
   ret = InteractionGraph.Test()
+  if len(ret) != 0:
+    print("Failure:",ret)
   assert (len(ret) == 0)
 
   return ret
