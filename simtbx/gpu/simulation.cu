@@ -101,9 +101,8 @@ namespace af = scitbx::af;
         // magic happens here: take pointer from singleton, temporarily use it for add Bragg iteration:
         cu_current_channel_Fhkl = gec.d_channel_Fhkl[ichannel];
 
-        cudaDeviceProp deviceProps = { 0 };
-        cudaSafeCall(cudaGetDeviceProperties(&deviceProps, SIM.device_Id));
-        int smCount = deviceProps.multiProcessorCount;
+        int smCount;
+        cudaDeviceGetAttribute(&smCount, cudaDevAttrMultiProcessorCount, SIM.device_Id);
         dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
         dim3 numBlocks(smCount * 8, 1);
 
@@ -191,9 +190,8 @@ namespace af = scitbx::af;
         // magic happens here: take pointer from singleton, temporarily use it for add Bragg iteration:
         cu_current_channel_Fhkl = gec.d_channel_Fhkl[ichannel];
 
-        cudaDeviceProp deviceProps = { 0 };
-        cudaSafeCall(cudaGetDeviceProperties(&deviceProps, SIM.device_Id));
-        int smCount = deviceProps.multiProcessorCount;
+        int smCount;
+        cudaDeviceGetAttribute(&smCount, cudaDevAttrMultiProcessorCount, SIM.device_Id);
         dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
         dim3 numBlocks(smCount * 8, 1);
 

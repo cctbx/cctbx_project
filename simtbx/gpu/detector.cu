@@ -246,9 +246,8 @@ namespace gpu {
                  selection.begin(), sizeof(*cu_active_pixel_selection) * selection.size(),
                  cudaMemcpyHostToDevice));
 
-    cudaDeviceProp deviceProps = { 0 };
-    cudaSafeCall(cudaGetDeviceProperties(&deviceProps, h_deviceID));
-    int smCount = deviceProps.multiProcessorCount;
+    int smCount;
+    cudaDeviceGetAttribute(&smCount, cudaDevAttrMultiProcessorCount, h_deviceID);
     dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
     dim3 numBlocks(smCount * 8, 1);
     int total_pixels = active_pixel_list.size();
