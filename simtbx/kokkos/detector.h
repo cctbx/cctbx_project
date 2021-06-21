@@ -53,7 +53,7 @@ struct kokkos_detector{
   //}
   //void each_image_allocate_cuda();
   //void scale_in_place_cuda(const double&);
-  //void write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg&);
+  void write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg&);
   //af::flex_double get_raw_pixels_cuda();
   //void set_active_pixels_on_KOKKOS(af::shared<int>);
   //af::shared<double> get_whitelist_raw_pixels_cuda(af::shared<std::size_t>);
@@ -66,7 +66,8 @@ struct kokkos_detector{
 
   int m_panel_count = -1;
   int m_slow_dim_size = -1;
-  int m_fast_dim_size = -1; // variables on host only
+  int m_fast_dim_size = -1;
+  int m_total_pixel_count = -1;
   vector_view_t m_accumulate_floatimage;
   double * cu_accumulate_floatimage; // pointer to GPU memory
 
@@ -88,8 +89,6 @@ struct kokkos_detector{
   int * cu_active_pixel_list;
 
   packed_metrology const metrology;
-  private:
-  int m_total_pixel_count = -1;
 };
 } // Kokkos
 } // simtbx

@@ -7,6 +7,9 @@
 #define THREADS_PER_BLOCK_Y 1
 #define THREADS_PER_BLOCK_TOTAL (THREADS_PER_BLOCK_X * THREADS_PER_BLOCK_Y)
 
+using Kokkos::deep_copy;
+using Kokkos::create_mirror_view;
+
 namespace simtbx {
 namespace Kokkos {
 
@@ -102,17 +105,21 @@ namespace Kokkos {
   vector_view_t
   kokkos_detector::construct_detail(dxtbx::model::Detector const & arg_detector) {
     //1) determine the size
-    m_panel_count = arg_detector.size();
+    //m_panel_count = arg_detector.size();
     SCITBX_ASSERT( m_panel_count >= 1);
 
     //2) confirm that array dimensions are similar for each size
-    m_slow_dim_size = arg_detector[0].get_image_size()[0];
-    m_fast_dim_size = arg_detector[0].get_image_size()[1];
+    //m_slow_dim_size = arg_detector[0].get_image_size()[0];
+    //m_fast_dim_size = arg_detector[0].get_image_size()[1];
     for (int ipanel=1; ipanel < arg_detector.size(); ++ipanel){
       SCITBX_ASSERT(arg_detector[ipanel].get_image_size()[0] == m_slow_dim_size);
       SCITBX_ASSERT(arg_detector[ipanel].get_image_size()[1] == m_fast_dim_size);
     }
-    m_total_pixel_count = m_panel_count * m_slow_dim_size * m_fast_dim_size;
+    //m_total_pixel_count = m_panel_count * m_slow_dim_size * m_fast_dim_size;
+    printf(" m_total_pixel_count: %d\n", m_total_pixel_count);
+    printf("     m_slow_dim_size: %d\n", m_slow_dim_size);
+    printf("     m_fast_dim_size: %d\n", m_fast_dim_size);
+    printf("       m_panel_count: %d\n", m_panel_count);
 
     //3) allocate a cuda array with these dimensions
     // separate accumulator image outside the usual nanoBragg data structure.
@@ -130,6 +137,10 @@ namespace Kokkos {
   kokkos_detector::kokkos_detector(dxtbx::model::Detector const & arg_detector,
                              dxtbx::model::Beam const& arg_beam):
     detector(arg_detector),
+    m_panel_count( arg_detector.size() ),
+    m_slow_dim_size( arg_detector[0].get_image_size()[0] ),
+    m_fast_dim_size( arg_detector[0].get_image_size()[1] ),
+    m_total_pixel_count( m_panel_count * m_slow_dim_size * m_fast_dim_size ),
     cu_active_pixel_list(NULL),
     cu_accumulate_floatimage(NULL),
     metrology(arg_detector, arg_beam),
@@ -174,7 +185,7 @@ namespace Kokkos {
   scale_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
     factor, cu_accumulate_floatimage, total_pixels);
   }
-
+*/
   void
   kokkos_detector::write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg& nB){
     //only implement the monolithic detector case, one panel
@@ -184,14 +195,24 @@ namespace Kokkos {
     // nB.raw_pixels = af::flex_double(af::flex_grid<>(nB.spixels,nB.fpixels));
     // do not reallocate CPU memory for the data write, as it is not needed
     
-    double * double_floatimage = nB.raw_pixels.begin();
-    cudaSafeCall(cudaMemcpy(
-     double_floatimage,
-     cu_accumulate_floatimage,
-     sizeof(*cu_accumulate_floatimage) * m_total_pixel_count,
-     cudaMemcpyDeviceToHost));
-  }
+    //double * double_floatimage = nB.raw_pixels.begin();
+    //cudaSafeCall(cudaMemcpy(
+    // double_floatimage,
+    // cu_accumulate_floatimage,
+    // sizeof(*cu_accumulate_floatimage) * m_total_pixel_count,
+    // cudaMemcpyDeviceToHost));
 
+    host_view_t host_floatimage = create_mirror_view(m_accumulate_floatimage);
+    deep_copy(host_floatimage, m_accumulate_floatimage);
+
+    printf(" m_total_pixel_count: %d", m_total_pixel_count);
+
+    double * double_floatimage = nB.raw_pixels.begin();
+    for (int i=0; i<m_total_pixel_count; ++i) {
+      double_floatimage[i] = host_floatimage( i ); 
+    }
+  }
+/*
   af::flex_double
   kokkos_detector::get_raw_pixels_cuda(){
     //return the data array for the multipanel detector case
