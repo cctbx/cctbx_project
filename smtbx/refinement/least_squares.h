@@ -274,30 +274,58 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
       FloatType process_twinning(int i_h, af::shared<FloatType> &gradients) {
         typedef typename cctbx::xray::observations<FloatType>::iterator itr_t;
+        typedef typename cctbx::xray::twin_fraction<FloatType> twf_t;
+        typedef typename cctbx::xray::observations<FloatType>::index_twin_component twc_t;
         FloatType obs = f_calc_function.observable;
         if (reflections.has_twin_components()) {
           itr_t itr = reflections.iterate(i_h);
-          FloatType identity_part = obs,
+          FloatType measured_part = obs,
+            identity_part = 0,
             obs_scale = reflections.scale(i_h);
           obs *= obs_scale;
+          const twf_t* measured_fraction = reflections.fraction(i_h);
           if (compute_grad) {
             gradients *= obs_scale;
+            if (measured_fraction == 0) {
+              identity_part = measured_part;
+            }
           }
+          std::size_t twc_cnt = 0;
           while (itr.has_next()) {
-            typename cctbx::xray::observations<FloatType>::index_twin_component
-              twc = itr.next();
+            twc_t twc = itr.next();
             f_calc_function.compute(twc.h, boost::none, compute_grad);
-            obs += twc.scale()*f_calc_function.observable;
+            obs += twc.scale() * f_calc_function.observable;
             if (compute_grad) {
               af::shared<FloatType> tmp_gradients =
-                jacobian_transpose_matching_grad_fc*f_calc_function.grad_observable;
-              gradients += twc.scale()*tmp_gradients;
-              if (twc.fraction != 0 && twc.fraction->grad) {
-                SMTBX_ASSERT(!(twc.fraction->grad_index < 0 ||
-                  twc.fraction->grad_index >= gradients.size()));
-                gradients[twc.fraction->grad_index] +=
-                  f_calc_function.observable - identity_part;
+                jacobian_transpose_matching_grad_fc * f_calc_function.grad_observable;
+              gradients += twc.scale() * tmp_gradients;
+              if (twc.fraction != 0) {
+                if (twc.fraction->grad) {
+                  SMTBX_ASSERT(!(twc.fraction->grad_index < 0 ||
+                    twc.fraction->grad_index >= gradients.size()));
+                  gradients[twc.fraction->grad_index] += f_calc_function.observable;
+                }
               }
+              else {
+                identity_part += f_calc_function.observable;
+              }
+              twc_cnt++;
+            }
+          }
+          if (compute_grad) {
+            // consider multiple reflections with the 'prime' scale
+            itr.reset();
+            while (itr.has_next()) {
+              twc_t twc = itr.next();
+              if (twc.fraction != 0 && twc.fraction->grad) {
+                gradients[twc.fraction->grad_index] -= identity_part;
+              }
+            }
+            if (twc_cnt != 0 && measured_fraction != 0 && measured_fraction->grad) {
+              SMTBX_ASSERT(!(measured_fraction->grad_index < 0 ||
+                measured_fraction->grad_index >= gradients.size()));
+              gradients[measured_fraction->grad_index] +=
+                measured_part - identity_part;
             }
           }
         }
