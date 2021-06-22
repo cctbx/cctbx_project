@@ -178,9 +178,9 @@ namespace cctbx { namespace xray {
       for (int i=0; i<indices.size(); i++) {
         if (scale_indices[i] < 0) {
           int s_ind = -scale_indices[i]-1;
-          CCTBX_ASSERT(s_ind <= twin_fractions_.size());
+          CCTBX_ASSERT(s_ind >= 0 && s_ind <= twin_fractions_.size());
           index_components_[index].push_back(
-            local_twin_component(indices[i], twin_fractions_[s_ind-1]));
+            local_twin_component(indices[i], s_ind == 0 ? 0 : twin_fractions_[s_ind-1]));
         }
         else {
           int s_ind = scale_indices[i];
@@ -317,6 +317,11 @@ namespace cctbx { namespace xray {
                       measured_scale_indices_[i] < 2) ? prime_fraction_
                       : twin_fractions_[measured_scale_indices_[i]-2]->value;
       return rv;
+    }
+    const twin_fraction<FloatType>* fraction(int i) const {
+      return (measured_scale_indices_.size() == 0 ||
+        measured_scale_indices_[i] < 2) ? 0
+        : twin_fractions_[measured_scale_indices_[i] - 2];
     }
 
     observations detwin(
