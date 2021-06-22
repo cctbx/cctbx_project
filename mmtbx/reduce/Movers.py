@@ -391,7 +391,7 @@ class MoverSingleHydrogenRotater(MoverRotater):
     bonded = bondedNeighborLists[partner]
     friends = []
     for b in bonded:
-      if b.i_seq != partner.i_seq:
+      if b.i_seq != neighbor.i_seq:
         friends.append(b)
 
     # Determine the preference function (180 or 120) based on friends bonding structure
@@ -420,15 +420,15 @@ class MoverSingleHydrogenRotater(MoverRotater):
 
     friend = friends[0]
     friendFromPartner = _lvec3(friend.xyz) - _lvec3(partner.xyz)
-    alongAxisFrac = (friendFromPartner * normal).length()
+    alongAxisComponent = (friendFromPartner * normal)
     friendFromPartner = _rvec3(friend.xyz) - _rvec3(partner.xyz)
-    inPlane = friendFromPartner - alongAxisFrac*normal
+    inPlane = friendFromPartner - normal*alongAxisComponent
     normalizedOffset = -inPlane.normalize()
 
-    d = -normal*atom.xyz
-    t = - (d + (normal * _rvec3(axis[0])))
-    nearPoint = _lvec3(axis[0]) + t * normal
-    distFromNearPoint = (_lvec3(atom.xyz)-nearPoint).length()
+    d = -_lvec3(atom.xyz)*normal
+    t = - (d + (_lvec3(axis[0])) * normal)
+    nearPoint = _rvec3(axis[0]) + normal*t
+    distFromNearPoint = (_rvec3(atom.xyz)-nearPoint).length()
 
     atom.xyz = nearPoint + distFromNearPoint * normalizedOffset
 
@@ -436,7 +436,7 @@ class MoverSingleHydrogenRotater(MoverRotater):
     atoms = [ atom ]
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
-    MoverRotater.__init__(atoms, axis, 180, coarseStepDegrees,
+    MoverRotater.__init__(self, atoms, axis, 180, coarseStepDegrees,
       preferenceFunction = preferenceFunction, reduceOptions = reduceOptions)
 
 ##################################################################################
@@ -570,11 +570,12 @@ def Test():
     # Construct a MoverSingleHydrogenRotater that has an atom that starts out at 45 degrees around Z
     # that is bonded to a neighbor and partner that are vertical and then partner is bonded to two
     # friends that are in the Y=0 plane.  This should cause us to get the atom rotated to lie in
-    # the X=0 plane and a fitness function that prefers the orientations that are in this plane.
+    # the Y=0 plane at a distance of sqrt(2) and a fitness function that prefers the orientations
+    # that are in this plane.
     h = pdb.hierarchy.atom()
     h.element = "H"
     h.xyz = [ 1.0, 1.0, 1.0 ]
-    # @todo We need different i_seq numbers so that we can tell the atoms apart
+    origXYZ = h.xyz
 
     n = pdb.hierarchy.atom()
     n.xyz = [ 0.0, 0.0, 0.0 ]
@@ -588,6 +589,21 @@ def Test():
     f2 = pdb.hierarchy.atom()
     f2.xyz = [-1.0, 0.0,-2.0 ]
 
+    # Build the hierarchy so we can reset the i_seq values.
+    ag = pdb.hierarchy.atom_group()
+    ag.append_atom(h)
+    ag.append_atom(n)
+    ag.append_atom(p)
+    ag.append_atom(f1)
+    ag.append_atom(f2)
+    rg = pdb.hierarchy.residue_group()
+    rg.append_atom_group(ag)
+    c = pdb.hierarchy.chain()
+    c.append_residue_group(rg)
+    m = pdb.hierarchy.model()
+    m.append_chain(c)
+    m.atoms().reset_i_seq()
+
     bondedNeighborLists = {}
     bondedNeighborLists[h] = [ n ]
     bondedNeighborLists[n] = [ h, p ]
@@ -597,7 +613,18 @@ def Test():
 
     mover = MoverSingleHydrogenRotater(h, bondedNeighborLists)
 
-    # @todo
+    # Check for hydrogen rotated into Y=0 plane at a distance of sqrt(2) from Z axis
+    if h.xyz[2] != 1 or abs(h.xyz[0])-math.sqrt(2) > 1e-5:
+      return "Movers.Test() MoverRotater basic: MoverSingleHydrogenRotater bad H placement"
+
+    # Check fitness function preferring 0 and 180 rotations
+    zero = mover._preferenceFunction(0)
+    ninety = mover._preferenceFunction(90)
+    oneEighty = mover._preferenceFunction(180)
+    if abs(zero - oneEighty) > 1e-5:
+      return "Movers.Test() MoverRotater basic: MoverSingleHydrogenRotater bad preference function"
+    if zero - ninety < 1e-5:
+      return "Movers.Test() MoverRotater basic: MoverSingleHydrogenRotater bad preference function"
 
   except Exception as e:
     return "Movers.Test() MoverRotater basic: Exception during test of MoverSingleHydrogenRotater: "+str(e)+"\n"+traceback.format_exc()
