@@ -25,6 +25,18 @@ namespace Kokkos {
         delete temp;
         return ret;
   }*/
+  void
+  transfer_vector2kokkos(vector_cudareal_t dst, af::shared<double> src) {
+    if (dst.span() < src.size()) {
+      resize(dst, src.size());
+    }
+    vector_cudareal_t::HostMirror host_view = create_mirror_view(dst);
+
+    for (int i=0; i<src.size(); ++i) {
+      host_view( i ) = src[ i ];
+    }
+    deep_copy(dst, host_view);
+  }
 
   packed_metrology::packed_metrology(dxtbx::model::Detector const & arg_detector,
                                    dxtbx::model::Beam const & arg_beam) {
@@ -104,7 +116,7 @@ namespace Kokkos {
     }
   }
 
-  vector_view_t
+  vector_double_t
   kokkos_detector::construct_detail(dxtbx::model::Detector const & arg_detector) {
     //1) determine the size
     //m_panel_count = arg_detector.size();
@@ -127,7 +139,7 @@ namespace Kokkos {
     // separate accumulator image outside the usual nanoBragg data structure.
     //       1. accumulate contributions from a sequence of source energy channels computed separately
     //       2. represent multiple panels, all same rectangular shape; slowest dimension = n_panels
-    vector_view_t view_floatimage( "m_accumulate_floatimage", m_total_pixel_count );
+    vector_double_t view_floatimage( "m_accumulate_floatimage", m_total_pixel_count );
     return view_floatimage;
 
 //    cudaSafeCall(cudaMalloc((void ** )&cu_accumulate_floatimage,
@@ -143,10 +155,10 @@ namespace Kokkos {
     m_slow_dim_size( arg_detector[0].get_image_size()[0] ),
     m_fast_dim_size( arg_detector[0].get_image_size()[1] ),
     m_total_pixel_count( m_panel_count * m_slow_dim_size * m_fast_dim_size ),
+    m_accumulate_floatimage( construct_detail(arg_detector) ),
     cu_active_pixel_list(NULL),
     cu_accumulate_floatimage(NULL),
-    metrology(arg_detector, arg_beam),
-    m_accumulate_floatimage( construct_detail(arg_detector) ) {}
+    metrology(arg_detector, arg_beam) { }
 
 /*  kokkos_detector::kokkos_detector(const simtbx::nanoBragg::nanoBragg& nB):
     metrology(nB),
@@ -207,7 +219,7 @@ namespace Kokkos {
     // sizeof(*cu_accumulate_floatimage) * m_total_pixel_count,
     // cudaMemcpyDeviceToHost));
 
-    host_view_t host_floatimage = create_mirror_view(m_accumulate_floatimage);
+    vector_double_t::HostMirror host_floatimage = create_mirror_view(m_accumulate_floatimage);
     deep_copy(host_floatimage, m_accumulate_floatimage);
 
     printf(" m_total_pixel_count: %d\n", m_total_pixel_count);
@@ -273,11 +285,27 @@ namespace Kokkos {
     cudaSafeCall(cudaFree(cu_active_pixel_results));
     return z;
   }
-
+*/
   void
   kokkos_detector::each_image_allocate_cuda(){
+    resize(m_rangemap, m_total_pixel_count);
+    resize(m_omega_reduction, m_total_pixel_count);
+    resize(m_max_I_x_reduction, m_total_pixel_count);
+    resize(m_max_I_y_reduction, m_total_pixel_count);
+    
+    resize(m_maskimage, m_total_pixel_count);
+    resize(m_floatimage, m_total_pixel_count);
+
+    transfer_vector2kokkos(m_sdet_vector, metrology.sdet);
+    transfer_vector2kokkos(m_fdet_vector, metrology.fdet);
+    transfer_vector2kokkos(m_odet_vector, metrology.odet);
+    transfer_vector2kokkos(m_pix0_vector, metrology.pix0);
+    transfer_vector2kokkos(m_distance, metrology.dists);
+    transfer_vector2kokkos(m_Xbeam, metrology.Xbeam);
+    transfer_vector2kokkos(m_Ybeam, metrology.Ybeam);
+    printf(" resize rangemap, now:%d\n", m_rangemap.span());
     //allocate and zero reductions
-    bool * rangemap = (bool*) calloc(m_total_pixel_count, sizeof(bool));
+ /*   bool * rangemap = (bool*) calloc(m_total_pixel_count, sizeof(bool));
     float * omega_reduction = (float*) calloc(m_total_pixel_count, sizeof(float));
     float * max_I_x_reduction = (float*) calloc(m_total_pixel_count, sizeof(float));
     float * max_I_y_reduction = (float*) calloc(m_total_pixel_count, sizeof(float));
@@ -346,8 +374,8 @@ namespace Kokkos {
 
         cudaSafeCall(cudaMalloc((void ** )&cu_Ybeam,    sizeof(*cu_Ybeam) * metrology.Ybeam.size()));
         cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_Ybeam,    metrology.Ybeam.begin(), metrology.Ybeam.size()));
-  }
-
+  */}
+/*
   void
   kokkos_detector::each_image_free_cuda(){
     cudaSafeCall(cudaDeviceSynchronize());
