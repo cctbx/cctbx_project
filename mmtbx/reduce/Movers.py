@@ -706,18 +706,22 @@ def Test():
     mover = MoverSingleHydrogenRotater(h, bondedNeighborLists)
 
     # Check for a hydrogen on the -X axis at a distance of sqrt(2) from Z axis,
-    # rotated at 180 or +/-120 from there.
-    # @todo A future implementation might not pick the first friend to be opposite,
-    # so we may need to generalize this test to allow it to be at any of the three
-    # symmetric locations.
-    if h.xyz[2] != 1 or h.xyz[0]+math.sqrt(2) > 1e-5:
+    # or +/-120 from there.
+    angles = [0, 120, -120]
+    angle = None
+    for a in angles:
+      rotated = _rotateAroundAxis(h, axis, a)
+      if rotated[2] == 1 and rotated[0]+math.sqrt(2) < 1e-5:
+        angle = a
+    if angle == None:
       return "Movers.Test() MoverSingleHydrogenRotater triple: bad H placement"
 
-    # Check fitness function preferring 180 and +/- 120 from there rotations
-    zero = mover._preferenceFunction(0)
-    oneEighty = mover._preferenceFunction(180)
-    off1 = mover._preferenceFunction(180+120)
-    off2 = mover._preferenceFunction(180-120)
+    # Check fitness function preferring 180 and +/- 120 from there rotations away from
+    # the angle away from 180 degrees.
+    zero = mover._preferenceFunction(angle+0)
+    oneEighty = mover._preferenceFunction(angle+180)
+    off1 = mover._preferenceFunction(angle+180+120)
+    off2 = mover._preferenceFunction(angle+180-120)
     if abs(off1 - oneEighty) > 1e-5:
       return "Movers.Test() MoverSingleHydrogenRotater triple: bad preference function"
     if abs(off2 - oneEighty) > 1e-5:
