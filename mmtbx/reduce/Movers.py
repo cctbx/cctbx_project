@@ -44,16 +44,6 @@ def getBondedNeighborLists(atoms, bondProxies):
   return bondedNeighbors
 
 ##################################################################################
-# Internal helper functions to make things that are compatible with vec3_double so
-# that we can do math on them.  We need a left-hand and right-hand one so that
-# we can make both versions for multiplication.
-def _rvec3 (xyz) :
-  return scitbx.matrix.rec(xyz, (3,1))
-def _lvec3 (xyz) :
-  return scitbx.matrix.rec(xyz, (1,3))
-
-
-##################################################################################
 # This is a set of classes that implement Reduce's "Movers".  These are sets of
 # atoms that have more than one potential set of locations.
 #  - They may have a-priori preferences for some locations over others.
@@ -149,6 +139,11 @@ class MoverNull:
     return FixUpReturn([], [])
 
 ##################################################################################
+# @todo Consider having another constructor parameter that gives the initial rotation
+# offset to place the hydrogens in a good starting location, then derived classes can
+# indicate this rotation without actually having to change the positions of the Hydrogens
+# that are rotating.  This offset will be added to all resulting rotations, and subtracted
+# before applying the preference function.
 class MoverRotater:
   def __init__(self, atoms, axis, coarseRange, coarseStepDegrees = None,
                 doFineRotations = True, preferenceFunction = None,
@@ -163,7 +158,7 @@ class MoverRotater:
        can also be specified, overriding the value from reduceOptions.CoarseStepDegrees.
        :param atoms: flex array of atoms that will be rotated.  These should be
        placed in one of the preferred orientations if there are any.
-       : param axis: flex array with two scitbx::vec3<double> points, the first
+       :param axis: flex array with two scitbx::vec3<double> points, the first
        of which is the origin and the second is a vector pointing in the direction
        of the axis of rotation.  Positive rotations will be right-handed rotations
        around this axis.
@@ -285,31 +280,7 @@ class MoverRotater:
     for agl in angles:
       atoms = flex.vec3_double()
       for atm in self._atoms:
-        # @todo Compute the atom vectors only once in another loop and store them for use
-        # here to speed up calculations.
-
-        # Project the atom position onto the axis, finding its closest point on the axis.
-        # The position lies on a plane whose normal points along the axis vector.  The
-        # point we seek is the intersection of the axis with this plane.
-        # The plane equation will be the normalized axis direction vector and the offset
-        # from the origin such that N.point + d = 0 defines the plane.
-        # Solve for the time at which the line's ray crosses the plane and then solve for
-        # the location along the line at that time.  t = - (d + (lineOrigin * planeNormal)) /
-        # (lineDirection * planeNormal).  Because the line direction and normal are the
-        # same, the divisor is 1.
-        normal = _lvec3(self._axis[1]).normalize()
-        d = -normal*atm.xyz
-        t = - (d + (normal * _rvec3(self._axis[0])))
-        nearPoint = _lvec3(self._axis[0]) + t * normal
-
-        # Find the vector from the closest point towards the atom, which is its offset
-        offset = _lvec3(atm.xyz) - nearPoint
-
-        # Rotate the offset vector around the axis by the specified angle.  Add the new
-        # offset to the closest point. Store this as the new location for this atom and angle.
-        newOffset = offset.rotate_around_origin(_lvec3(self._axis[1]), agl*math.pi/180)
-        newPos = nearPoint + newOffset
-        atoms.append(newPos)
+        atoms.append(_rotateAroundAxis(atm, self._axis, agl))
       poses.append(atoms)
     return poses;
 
@@ -355,7 +326,9 @@ class MoverSingleHydrogenRotater(MoverRotater):
        the tetrahedron.  For partner-partner atoms that are bonded to two atoms, the
        starting orientation is in the plane of these atoms and the partner-partner atom.
        :param atom: Hydrogen atom that will be rotated.  It must be bonded to a single
-       atom, and that atom must also be bonded to a single other atom.
+       atom, and that atom must also be bonded to a single other atom.  NOTE: As a side
+       effect, this Hydrogen is immediately rotated to lie either in the plane of the two
+       friends of the partner atom or to be between two of friends if there are three.
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
        bonded atoms.  Can be obtained by calling getBondedNeighborLists().
@@ -409,30 +382,87 @@ class MoverSingleHydrogenRotater(MoverRotater):
     # Move the atom so that it is in one of the two preferred locations.  The preferred location depends on
     # whether there are two or three friends, it wants to be in the plane if there are two of them and it
     # wants to be between two edges if there are three.  It turns out that rotating it to point away from
-    # one of the friends works in both of those cases.  This means placing it within the plane perpendicular
-    # to the axis of rotation through the point on that axis that it is closest to at the same distance it
-    # starts out from that axis and in a direction that is the negation of the vector from the partner to
-    # the friend projected into the plane perpendicular to the axis and then normalized.
-
-    friend = friends[0]
-    friendFromPartner = _lvec3(friend.xyz) - _lvec3(partner.xyz)
-    alongAxisComponent = (friendFromPartner * normal)
-    friendFromPartner = _rvec3(friend.xyz) - _rvec3(partner.xyz)
-    inPlane = friendFromPartner - normal*alongAxisComponent
-    normalizedOffset = -inPlane.normalize()
-
-    d = -_lvec3(atom.xyz)*normal
-    t = - (d + (_lvec3(axis[0])) * normal)
-    nearPoint = _rvec3(axis[0]) + normal*t
-    distFromNearPoint = (_rvec3(atom.xyz)-nearPoint).length()
-
-    atom.xyz = nearPoint + distFromNearPoint * normalizedOffset
+    # one of the friends works in both of those cases.
+    atom.xyz = _rotateOppositeFriend(atom, axis, partner, friends)
 
     # Make a list that contains just the single atom.
     atoms = [ atom ]
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
     MoverRotater.__init__(self, atoms, axis, 180, coarseStepDegrees,
+      preferenceFunction = preferenceFunction, reduceOptions = reduceOptions)
+
+##################################################################################
+class MoverNH3Rotater(MoverRotater):
+  def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = None, reduceOptions = None):
+    """ A Mover that rotates three Hydrogens around an axis from their bonded Nitrogen neighbor
+       to the single bonded partner of its partner.  This is designed for use with NH3+,
+       whose partner-partner atoms are bonded to a tetrahedron (two Carbons and a Hydrogen)
+       of friends.
+       The starting orientation has one of the Hydrogens aligned between two of the edges of
+       the tetrahedron.
+       :param atom: Nitrogen atom bonded to the three Hydrogens that will be rotated.
+       It must be bonded to a three Hydrogens and a single other
+       atom, and the other atom must be bonded to three other atoms.  NOTE: As a side
+       effect, the Hydrogens are immediately rotated to lie between two of the friends.
+       :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
+       structure that the atom from the first parameter interacts with that lists all of the
+       bonded atoms.  Can be obtained by calling getBondedNeighborLists().
+       :param coarseStepDegrees: With the default value of None, the number of
+       degrees per coarse step will be determined  by the
+       reduceOptions.CoarseStepDegrees or the default value of 30 if neither specifies
+       the value.
+       :param reduceOptions: 
+        The reduceOptions is a Phil option subset.  The relevant options for
+          MoverNH3Rotater are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale.
+    """
+
+    # The Nitrogen is the neighbor in these calculations, making them symmetric with the other
+    # class code.
+    neighbor = atom
+
+    # Check the conditions to make sure we've been called with a valid atom.  This is a nitrogen with
+    # three hydrogens bonded and a single bonded neighbor that has 3 other bonded friends.
+    # Find the friends bonded to the partner besides the neighbor, which will be used to
+    # determine the initial orientation for the hydrogen.
+    if neighbor.element != "N":
+      raise ValueError("MoverNH3Rotater(): atom is not a Nitrogen")
+    partners = bondedNeighborLists[neighbor]
+    if len(partners) != 4:
+      raise ValueError("MoverSingleHydrogenRotater(): atom does not have four bonded neighbors")
+    hydrogens = []
+    for a in partners:
+      if a.element == "H":
+        hydrogens.append(a)
+      else:
+        partner = a
+    if len(hydrogens) != 3:
+      raise ValueError("MoverSingleHydrogenRotater(): atom does not have three bonded hydrogens")
+    bonded = bondedNeighborLists[partner]
+    friends = []
+    for b in bonded:
+      if b.i_seq != neighbor.i_seq:
+        friends.append(b)
+    if len(friends) != 3:
+      raise ValueError("MoverSingleHydrogenRotater(): Partner does not have three bonded friends")
+
+    # Set the preference function to like 120-degree rotations away from the starting location.
+    # @todo Consider parameterizing the magic constant of 0.1 for the preference magnitude
+    def preferenceFunction(degrees): return 0.1 + 0.1 * math.cos(degrees * (math.pi/180) * (360/120))
+
+    # Determine the axis to rotate around, which starts at the partner and points at the neighbor.
+    normal = (_rvec3(neighbor.xyz) - _rvec3(partner.xyz)).normalize()
+    axis = flex.vec3_double([partner.xyz, normal])
+
+    # Move the Hydrogens so that they are in one of the preferred locations by rotating one of them to
+    # point away from one of the friends.  The other two are located at +120 and -120 degrees rotated
+    # around the axis from the first.
+    hydrogens[0].xyz = _rotateOppositeFriend(hydrogens[0], axis, partner, friends)
+    hydrogens[1].xyz = _rotateAroundAxis(hydrogens[0], axis, 120)
+    hydrogens[2].xyz = _rotateAroundAxis(hydrogens[0], axis, -120)
+
+    # Construct our parent class, which will do all of the actual work based on our inputs.
+    MoverRotater.__init__(self, hydrogens, axis, 180, coarseStepDegrees,
       preferenceFunction = preferenceFunction, reduceOptions = reduceOptions)
 
 ##################################################################################
@@ -571,7 +601,6 @@ def Test():
     h = pdb.hierarchy.atom()
     h.element = "H"
     h.xyz = [ 1.0, 1.0, 1.0 ]
-    origXYZ = h.xyz
 
     n = pdb.hierarchy.atom()
     n.xyz = [ 0.0, 0.0, 0.0 ]
@@ -611,25 +640,265 @@ def Test():
 
     # Check for hydrogen rotated into Y=0 plane at a distance of sqrt(2) from Z axis
     if h.xyz[2] != 1 or abs(h.xyz[0])-math.sqrt(2) > 1e-5:
-      return "Movers.Test() MoverRotater basic: MoverSingleHydrogenRotater bad H placement"
+      return "Movers.Test() MoverSingleHydrogenRotater pair: bad H placement"
 
     # Check fitness function preferring 0 and 180 rotations
     zero = mover._preferenceFunction(0)
     ninety = mover._preferenceFunction(90)
     oneEighty = mover._preferenceFunction(180)
     if abs(zero - oneEighty) > 1e-5:
-      return "Movers.Test() MoverRotater basic: MoverSingleHydrogenRotater bad preference function"
+      return "Movers.Test() MoverSingleHydrogenRotater pair: bad preference function"
     if zero - ninety < 1e-5:
-      return "Movers.Test() MoverRotater basic: MoverSingleHydrogenRotater bad preference function"
+      return "Movers.Test() MoverSingleHydrogenRotater pair: bad preference function"
 
   except Exception as e:
-    return "Movers.Test() MoverRotater basic: Exception during test of MoverSingleHydrogenRotater: "+str(e)+"\n"+traceback.format_exc()
+    return "Movers.Test() MoverSingleHydrogenRotater pair: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
+  try:
+    # Construct a MoverSingleHydrogenRotater that has an atom that starts out at 45 degrees around Z
+    # that is bonded to a neighbor and partner that are vertical and then partner is bonded to three
+    # friends one of which is on the +X axis and the other two are +/-120 away from it.
+    # This should cause us to get the atom rotated to be between two of the friends and a fitness
+    # function that prefers its location and +/-120 degrees from it.
+    h = pdb.hierarchy.atom()
+    h.element = "H"
+    h.xyz = [ 1.0, 1.0, 1.0 ]
+
+    n = pdb.hierarchy.atom()
+    n.xyz = [ 0.0, 0.0, 0.0 ]
+
+    p = pdb.hierarchy.atom()
+    p.xyz = [ 0.0, 0.0,-1.0 ]
+
+    f1 = pdb.hierarchy.atom()
+    f1.xyz = [ 1.0, 0.0,-2.0 ]
+
+    f2 = pdb.hierarchy.atom()
+    f2.xyz = _rotateAroundAxis(f1, axis, -120)
+
+    f3 = pdb.hierarchy.atom()
+    f3.xyz = _rotateAroundAxis(f1, axis, 120)
+
+    # Build the hierarchy so we can reset the i_seq values.
+    ag = pdb.hierarchy.atom_group()
+    ag.append_atom(h)
+    ag.append_atom(n)
+    ag.append_atom(p)
+    ag.append_atom(f1)
+    ag.append_atom(f2)
+    ag.append_atom(f3)
+    rg = pdb.hierarchy.residue_group()
+    rg.append_atom_group(ag)
+    c = pdb.hierarchy.chain()
+    c.append_residue_group(rg)
+    m = pdb.hierarchy.model()
+    m.append_chain(c)
+    m.atoms().reset_i_seq()
+
+    bondedNeighborLists = {}
+    bondedNeighborLists[h] = [ n ]
+    bondedNeighborLists[n] = [ h, p ]
+    bondedNeighborLists[p] = [ n, f1, f2, f3 ]
+    bondedNeighborLists[f1] = [ p ]
+    bondedNeighborLists[f2] = [ p ]
+    bondedNeighborLists[f3] = [ p ]
+
+    mover = MoverSingleHydrogenRotater(h, bondedNeighborLists)
+
+    # Check for a hydrogen on the -X axis at a distance of sqrt(2) from Z axis,
+    # rotated at 180 or +/-120 from there.
+    # @todo A future implementation might not pick the first friend to be opposite,
+    # so we may need to generalize this test to allow it to be at any of the three
+    # symmetric locations.
+    if h.xyz[2] != 1 or h.xyz[0]+math.sqrt(2) > 1e-5:
+      return "Movers.Test() MoverSingleHydrogenRotater triple: bad H placement"
+
+    # Check fitness function preferring 180 and +/- 120 from there rotations
+    zero = mover._preferenceFunction(0)
+    oneEighty = mover._preferenceFunction(180)
+    off1 = mover._preferenceFunction(180+120)
+    off2 = mover._preferenceFunction(180-120)
+    if abs(off1 - oneEighty) > 1e-5:
+      return "Movers.Test() MoverSingleHydrogenRotater triple: bad preference function"
+    if abs(off2 - oneEighty) > 1e-5:
+      return "Movers.Test() MoverSingleHydrogenRotater triple: bad preference function"
+    if zero - oneEighty < 1e-5:
+      return "Movers.Test() MoverSingleHydrogenRotater triple: bad preference function"
+
+  except Exception as e:
+    return "Movers.Test() MoverSingleHydrogenRotater triple: Exception during test: "+str(e)+"\n"+traceback.format_exc()
+
+  # Test the MoverNH3Rotater class.
+  try:
+    # Construct a MoverNH3Rotater that has ony hydrogen start out at 45 degrees around Z and the
+    # other two at +/-120 degrees from that one.
+    # They are bonded to a Nitrogen and partner that are vertical and then partner is bonded to three
+    # friends with one on the +X axis and the others +/-120.  This should cause us to get the hydrogens at
+    # 180 and 120 away from that and a fitness function that prefers the orientations 120 degrees
+    # apart.
+    axis = flex.vec3_double([ [0,0,0], [0,0,1] ])
+    h1 = pdb.hierarchy.atom()
+    h1.element = "H"
+    h1.xyz = [ 1.0, 1.0, 1.0 ]
+
+    h2 = pdb.hierarchy.atom()
+    h2.element = "H"
+    h2.xyz = _rotateAroundAxis(h1, axis, -120)
+
+    h3 = pdb.hierarchy.atom()
+    h3.element = "H"
+    h3.xyz = _rotateAroundAxis(h1, axis, 120)
+
+    n = pdb.hierarchy.atom()
+    n.element = "N"
+    n.xyz = [ 0.0, 0.0, 0.0 ]
+
+    p = pdb.hierarchy.atom()
+    p.xyz = [ 0.0, 0.0,-1.0 ]
+
+    f1 = pdb.hierarchy.atom()
+    f1.xyz = [ 1.0, 0.0,-2.0 ]
+
+    f2 = pdb.hierarchy.atom()
+    f2.xyz = _rotateAroundAxis(f1, axis, -120)
+
+    f3 = pdb.hierarchy.atom()
+    f3.xyz = _rotateAroundAxis(f1, axis, 120)
+
+    # Build the hierarchy so we can reset the i_seq values.
+    ag = pdb.hierarchy.atom_group()
+    ag.append_atom(h1)
+    ag.append_atom(h2)
+    ag.append_atom(h3)
+    ag.append_atom(n)
+    ag.append_atom(p)
+    ag.append_atom(f1)
+    ag.append_atom(f2)
+    ag.append_atom(f3)
+    rg = pdb.hierarchy.residue_group()
+    rg.append_atom_group(ag)
+    c = pdb.hierarchy.chain()
+    c.append_residue_group(rg)
+    m = pdb.hierarchy.model()
+    m.append_chain(c)
+    m.atoms().reset_i_seq()
+
+    bondedNeighborLists = {}
+    bondedNeighborLists[h1] = [ n ]
+    bondedNeighborLists[h2] = [ n ]
+    bondedNeighborLists[h3] = [ n ]
+    bondedNeighborLists[n] = [ h1, h2, h3, p ]
+    bondedNeighborLists[p] = [ n, f1, f2, f3 ]
+    bondedNeighborLists[f1] = [ p ]
+    bondedNeighborLists[f2] = [ p ]
+    bondedNeighborLists[f3] = [ p ]
+
+    mover = MoverNH3Rotater(n, bondedNeighborLists)
+
+    # Check for a hydrogen on the -X axis at a distance of sqrt(2) from Z axis
+    found = False
+    for h in [h1, h2, h3]:
+      if h.xyz[2] == 1 and h.xyz[0]+math.sqrt(2) < 1e-5:
+        found = True
+    if not found:
+      return "Movers.Test() MoverNH3Rotater basic: bad H placement"
+
+    # Check fitness function preferring 180 and +/- 120 from there rotations
+    zero = mover._preferenceFunction(0)
+    oneEighty = mover._preferenceFunction(180)
+    off1 = mover._preferenceFunction(180+120)
+    off2 = mover._preferenceFunction(180-120)
+    if abs(off1 - oneEighty) > 1e-5:
+      return "Movers.Test() MoverNH3Rotater basic: bad preference function"
+    if abs(off2 - oneEighty) > 1e-5:
+      return "Movers.Test() MoverNH3Rotater basic: bad preference function"
+    if zero - oneEighty < 1e-5:
+      return "Movers.Test() MoverNH3Rotater basic: bad preference function"
+
+  except Exception as e:
+    return "Movers.Test() MoverNH3Rotater basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
+    
   # @todo Test other Mover subclasses
 
   return ""
 
-  # If we're run on the command line, test our classes and functions.
+##################################################################################
+# Internal helper functions to make things that are compatible with vec3_double so
+# that we can do math on them.  We need a left-hand and right-hand one so that
+# we can make both versions for multiplication.
+def _rvec3 (xyz) :
+  return scitbx.matrix.rec(xyz, (3,1))
+def _lvec3 (xyz) :
+  return scitbx.matrix.rec(xyz, (1,3))
+
+##################################################################################
+# Internal helper functions for angle manipulation.
+def _rotateOppositeFriend(atom, axis, partner, friends):
+  '''Rotate the atom to point away from one of the friends.  This means placing it
+     within the plane perpendicular to the axis of rotation through the point on that axis
+     that it is closest to at the same distance it starts out from that axis and in a
+     direction that is the negation of the vector from the partner to the friend projected
+     into the plane perpendicular to the axis and then normalized.
+     :param atom: iotbx.pdb.hierarchy.atom to be moved.
+     :param partner: iotbx.pdb.hierarchy.atom atom that is bonded to the neighbor of
+     the atom.
+     :param friends: flex iotbx.pdb.hierarchy.atom list of atoms bonded to the partner
+     besides the neighbor.
+     :param axis: flex array with two scitbx::vec3<double> points, the first
+     of which is the origin and the second is a vector pointing in the direction
+     of the axis of rotation.  Positive rotations will be right-handed rotations
+     around this axis.
+     :returns the new location for the atom.
+  '''
+  normal = _rvec3(axis[1])
+  friend = friends[0]
+  friendFromPartner = _lvec3(friend.xyz) - _lvec3(partner.xyz)
+  alongAxisComponent = (friendFromPartner * normal)
+  friendFromPartner = _rvec3(friend.xyz) - _rvec3(partner.xyz)
+  inPlane = friendFromPartner - normal*alongAxisComponent
+  normalizedOffset = -inPlane.normalize()
+
+  d = -_lvec3(atom.xyz)*normal
+  t = - (d + (_lvec3(axis[0])) * normal)
+  nearPoint = _rvec3(axis[0]) + normal*t
+  distFromNearPoint = (_rvec3(atom.xyz)-nearPoint).length()
+
+  return nearPoint + distFromNearPoint * normalizedOffset
+
+def _rotateAroundAxis(atom, axis, degrees):
+  '''Rotate the atom about the specified axis by the specified number of degrees.
+     :param atom: iotbx.pdb.hierarchy.atom to be moved.
+     :param axis: flex array with two scitbx::vec3<double> points, the first
+     of which is the origin and the second is a vector pointing in the direction
+     of the axis of rotation.  Positive rotations will be right-handed rotations
+     around this axis.
+     :param degrees: How much to rotate the atom around the axis.
+     Positive rotation is right-handed around the axis.
+     :returns the new location for the atom.
+  '''
+  # Project the atom position onto the axis, finding its closest point on the axis.
+  # The position lies on a plane whose normal points along the axis vector.  The
+  # point we seek is the intersection of the axis with this plane.
+  # The plane equation will be the normalized axis direction vector and the offset
+  # from the origin such that N.point + d = 0 defines the plane.
+  # Solve for the time at which the line's ray crosses the plane and then solve for
+  # the location along the line at that time.  t = - (d + (lineOrigin * planeNormal)) /
+  # (lineDirection * planeNormal).  Because the line direction and normal are the
+  # same, the divisor is 1.
+  normal = _lvec3(axis[1]).normalize()
+  d = -normal*atom.xyz
+  t = - (d + (normal * _rvec3(axis[0])))
+  nearPoint = _lvec3(axis[0]) + t * normal
+
+  # Find the vector from the closest point towards the atom, which is its offset
+  offset = _lvec3(atom.xyz) - nearPoint
+
+  # Rotate the offset vector around the axis by the specified angle.  Add the new
+  # offset to the closest point. Store this as the new location for this atom and angle.
+  newOffset = offset.rotate_around_origin(_lvec3(axis[1]), degrees*math.pi/180)
+  return nearPoint + newOffset
+
+ # If we're run on the command line, test our classes and functions.
 if __name__ == '__main__':
 
   ret = Test()
