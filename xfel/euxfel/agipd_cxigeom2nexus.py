@@ -100,7 +100,7 @@ class agipd_cxigeom2nexus(object):
         entry = f.create_group("entry")
         entry.attrs["NX_class"] = "NXentry"
         # --> definition
-        definition_string = f"NXmx:{get_git_revision_hash()}"
+        definition_string = f"NXmx"
         self._create_scalar(
             entry,
             "definition",
