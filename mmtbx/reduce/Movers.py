@@ -20,11 +20,11 @@ from iotbx import pdb
 import traceback
 
 ##################################################################################
-# External helper function to produce a dictionary of lists that lists all bonded
-# neighbors for each atom in a set of atoms.
 def getBondedNeighborLists(atoms, bondProxies):
   """Produce a dictionary with one entry for each atom that contains a list of all of
     the atoms that are bonded to it.
+    External helper function to produce a dictionary of lists that lists all bonded
+    neighbors for each atom in a set of atoms.
     :param atoms: Flex aray of atoms (could be obtained using model.get_atoms()).
     :param bondProxies: Flex array of bond proxies for the atoms (could be obtained
     using model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart =
@@ -44,9 +44,9 @@ def getBondedNeighborLists(atoms, bondProxies):
   return bondedNeighbors
 
 ##################################################################################
-# Internal helper function to make things that are compatible with vec3_double so
+# Internal helper functions to make things that are compatible with vec3_double so
 # that we can do math on them.  We need a left-hand and right-hand one so that
-# we can make both version for multiplication.
+# we can make both versions for multiplication.
 def _rvec3 (xyz) :
   return scitbx.matrix.rec(xyz, (3,1))
 def _lvec3 (xyz) :
@@ -114,25 +114,26 @@ def _lvec3 (xyz) :
 #
 
 ##################################################################################
-# Return type from CoarsePosition() and FinePosition() calls.
 class PositionReturn:
+  # Return type from CoarsePosition() and FinePosition() calls.
   def __init__(self, atoms, positions, preferenceEnergies):
     self.atoms = atoms
     self.positions = positions
     self.preferenceEnergies = preferenceEnergies
 
 ##################################################################################
-# Return type from FixUp() calls.
 class FixUpReturn:
+  # Return type from FixUp() calls.
   def __init__(self, atoms, newPositions):
     self.atoms = atoms
     self.newPositions = newPositions
 
 ##################################################################################
-# A trivial Mover that returns a single result atom at a single location.
-# Useful as a simple and fast test case for programs that use Movers.
-# It also serves as a basic example of how to develop a new Mover.
 class MoverNull:
+  '''A trivial Mover that returns a single result atom at a single location.
+     Useful as a simple and fast test case for programs that use Movers.
+     It also serves as a basic example of how to develop a new Mover.
+  '''
   def __init__(self, atom, reduceOptions = None):
     self._atom = atom
   def CoarsePositions(self):
@@ -148,18 +149,18 @@ class MoverNull:
     return FixUpReturn([], [])
 
 ##################################################################################
-# A base class for types of Movers that rotate one or more atoms around a single
-# axis.  The derived class must determine the initial position for each atom, and
-# a preferred-energies function that maps from an angle that is 0 at the initial
-# location to an energy.  The range of coarse rotations is also specified, along
-# with a flag telling whether fine rotations are allowed.  The coarse step size
-# can also be specified, overriding the value from reduceOptions.CoarseStepDegrees.
 class MoverRotater:
   def __init__(self, atoms, axis, coarseRange, coarseStepDegrees = None,
                 doFineRotations = True, preferenceFunction = None,
                 reduceOptions = None):
     """Constructs a Rotator, to be called by a derived class or test program but
        not usually user code.
+       A base class for types of Movers that rotate one or more atoms around a single
+       axis.  The derived class must determine the initial position for each atom, and
+       a preferred-energies function that maps from an angle that is 0 at the initial
+       location to an energy.  The range of coarse rotations is also specified, along
+       with a flag telling whether fine rotations are allowed.  The coarse step size
+       can also be specified, overriding the value from reduceOptions.CoarseStepDegrees.
        :param atoms: flex array of atoms that will be rotated.  These should be
        placed in one of the preferred orientations if there are any.
        : param axis: flex array with two scitbx::vec3<double> points, the first
@@ -345,15 +346,10 @@ class MoverRotater:
     return FixUpReturn([], [])
 
 ##################################################################################
-# A Mover that rotates a single Hydrogen around an axis from its bonded partner
-# to the single bonded partner of its partner.  This is designed for use with OH,
-# SH, and SeH configurations.  For partner-partner atoms that are bonded to a
-# tetrahedron, the starting orientation is aligned between two of the edges of
-# the tetrahedron.  For partner-partner atoms that are bonded to two atoms, the
-# starting orientation is in the plane of these atoms and the partner-partner atom.
 class MoverSingleHydrogenRotater(MoverRotater):
   def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = None, reduceOptions = None):
-    """Constructs a single-hydrogen rotater.  This is designed for use with OH,
+    """ A Mover that rotates a single Hydrogen around an axis from its bonded partner
+       to the single bonded partner of its partner.  This is designed for use with OH,
        SH, and SeH configurations.  For partner-partner atoms that are bonded to a
        tetrahedron, the starting orientation is aligned between two of the edges of
        the tetrahedron.  For partner-partner atoms that are bonded to two atoms, the
