@@ -144,7 +144,7 @@ class MoverNull:
 # indicate this rotation without actually having to change the positions of the Hydrogens
 # that are rotating.  This offset will be added to all resulting rotations, and subtracted
 # before applying the preference function.
-class MoverRotater:
+class _MoverRotater:
   def __init__(self, atoms, axis, coarseRange, coarseStepDegrees = None,
                 doFineRotations = True, preferenceFunction = None,
                 reduceOptions = None):
@@ -183,7 +183,7 @@ class MoverRotater:
        returned for this orientation by CoarsePositions() and FinePositions().
        For the default value of None, no addition is performed.
        :param reduceOptions: 
-        The reduceOptions is a Phil option subset.  The relevant options for MoverRotater
+        The reduceOptions is a Phil option subset.  The relevant options for _MoverRotater
           are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale.
     """
     self._atoms = atoms
@@ -317,7 +317,7 @@ class MoverRotater:
     return FixUpReturn([], [])
 
 ##################################################################################
-class MoverSingleHydrogenRotater(MoverRotater):
+class MoverSingleHydrogenRotater(_MoverRotater):
   def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = None, reduceOptions = None):
     """ A Mover that rotates a single Hydrogen around an axis from its bonded partner
        to the single bonded partner of its partner.  This is designed for use with OH,
@@ -389,11 +389,11 @@ class MoverSingleHydrogenRotater(MoverRotater):
     atoms = [ atom ]
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
-    MoverRotater.__init__(self, atoms, axis, 180, coarseStepDegrees,
+    _MoverRotater.__init__(self, atoms, axis, 180, coarseStepDegrees,
       preferenceFunction = preferenceFunction, reduceOptions = reduceOptions)
 
 ##################################################################################
-class MoverNH3Rotater(MoverRotater):
+class MoverNH3Rotater(_MoverRotater):
   def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = None, reduceOptions = None):
     """ A Mover that rotates three Hydrogens around an axis from their bonded Nitrogen neighbor
        to the single bonded partner of its partner.  This is designed for use with NH3+,
@@ -462,11 +462,11 @@ class MoverNH3Rotater(MoverRotater):
     hydrogens[2].xyz = _rotateAroundAxis(hydrogens[0], axis, -120)
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
-    MoverRotater.__init__(self, hydrogens, axis, 180, coarseStepDegrees,
+    _MoverRotater.__init__(self, hydrogens, axis, 180, coarseStepDegrees,
       preferenceFunction = preferenceFunction, reduceOptions = reduceOptions)
 
 ##################################################################################
-class MoverAromaticMethylRotater(MoverRotater):
+class MoverAromaticMethylRotater(_MoverRotater):
   def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = None, reduceOptions = None):
     """ A Mover that rotates three Hydrogens around an axis from their bonded Carbon neighbor
        to the single bonded partner of its partner.  This is designed for use with Aromatic
@@ -531,7 +531,7 @@ class MoverAromaticMethylRotater(MoverRotater):
     # Construct our parent class, which will do all of the actual work based on our inputs.
     # We have a coarse step size of 180 degrees and a range of 180 degrees and do not
     # allow fine rotations.
-    MoverRotater.__init__(self, hydrogens, axis, 180, 180, doFineRotations = False,
+    _MoverRotater.__init__(self, hydrogens, axis, 180, 180, doFineRotations = False,
       reduceOptions = reduceOptions)
 
 ##################################################################################
@@ -552,9 +552,9 @@ def Test():
     pass
   fakePhil = FakePhil()
 
-  # Test the MoverRotater class.
+  # Test the _MoverRotater class.
   try:
-    # Construct a MoverRotater with three atoms, each at +1 in Z with one at +1 in X and 0 in Y
+    # Construct a _MoverRotater with three atoms, each at +1 in Z with one at +1 in X and 0 in Y
     # and the other two at +/-1 in Y and 0 in X.  It will rotate around the Z axis with an offset
     # of -2 for the axis start location by 180 degrees with a coarse step size of 90 and a
     # preference function that always returns 1.
@@ -569,17 +569,17 @@ def Test():
     axis = flex.vec3_double([ [ 0.0, 0.0,-2.0], [ 0.0, 0.0, 1.0] ])
     def prefFunc(x):
       return 1.0
-    rot = MoverRotater(atoms,axis, 180, 90.0, True, prefFunc)
+    rot = _MoverRotater(atoms,axis, 180, 90.0, True, prefFunc)
 
     # See if the results of each of the functions are what we expect in terms of sizes and locations
     # of atoms and preferences.  We'll use the default fine step size.
     # The first coarse rotation should be by -90 degrees, moving the first atom to (0, -1, 1)
     coarse = rot.CoarsePositions()
     if len(coarse.atoms) != 3:
-      return "Movers.Test() MoverRotater basic: Expected 3 atoms for CoarsePositions, got "+str(len(coarse.atoms))
+      return "Movers.Test() _MoverRotater basic: Expected 3 atoms for CoarsePositions, got "+str(len(coarse.atoms))
     atom0pos1 = coarse.positions[1][0]
     if (_lvec3(atom0pos1) - _lvec3([0,-1,1])).length() > 1e-5:
-      return "Movers.Test() MoverRotater basic: Expected location = (0,-1,1), got "+str(atom0pos1)
+      return "Movers.Test() _MoverRotater basic: Expected location = (0,-1,1), got "+str(atom0pos1)
 
     # The first fine rotation (index 0) around the second coarse index (index 1) should be to -95 degrees,
     # moving the first atom to the appropriately rotated location around the Z axis
@@ -590,75 +590,75 @@ def Test():
     fine = rot.FinePositions(1)
     atom0pos1 = fine.positions[0][0]
     if (_lvec3(atom0pos1) - _lvec3([x,y,z])).length() > 1e-5:
-      return "Movers.Test() MoverRotater basic: Expected fine location = "+str([x,y,z])+", got "+str(atom0pos1)
+      return "Movers.Test() _MoverRotater basic: Expected fine location = "+str([x,y,z])+", got "+str(atom0pos1)
 
     # The preference function should always return 1.
     for p in fine.preferenceEnergies:
       if p != 1:
-        return "Movers.Test() MoverRotater basic: Expected preference energy = 1, got "+str(p)
+        return "Movers.Test() _MoverRotater basic: Expected preference energy = 1, got "+str(p)
 
     # Test None preference scale factor and a different nonzero value.
     fakePhil.PreferredOrientationScale = None
-    rot = MoverRotater(atoms,axis, 180, 90.0, True, prefFunc, reduceOptions = fakePhil)
+    rot = _MoverRotater(atoms,axis, 180, 90.0, True, prefFunc, reduceOptions = fakePhil)
     coarse = rot.CoarsePositions()
     for p in coarse.preferenceEnergies:
       if p != 1:
-        return "Movers.Test() MoverRotater None preference: Expected preference energy = 1, got "+str(p)
+        return "Movers.Test() _MoverRotater None preference: Expected preference energy = 1, got "+str(p)
     fakePhil.PreferredOrientationScale = 2
-    rot = MoverRotater(atoms,axis, 180, 90.0, True, prefFunc, reduceOptions = fakePhil)
+    rot = _MoverRotater(atoms,axis, 180, 90.0, True, prefFunc, reduceOptions = fakePhil)
     coarse = rot.CoarsePositions()
     for p in coarse.preferenceEnergies:
       if p != 2:
-        return "Movers.Test() MoverRotater Phil-scaled preference: Expected preference energy = 2, got "+str(p)
+        return "Movers.Test() _MoverRotater Phil-scaled preference: Expected preference energy = 2, got "+str(p)
 
     # Test None preference function and a sinusoidal one.
-    rot = MoverRotater(atoms,axis, 180, 90.0, True, None)
+    rot = _MoverRotater(atoms,axis, 180, 90.0, True, None)
     coarse = rot.CoarsePositions()
     for p in coarse.preferenceEnergies:
       if p != 0:
-        return "Movers.Test() MoverRotater None preference function: Expected preference energy = 0, got "+str(p)
+        return "Movers.Test() _MoverRotater None preference function: Expected preference energy = 0, got "+str(p)
     def prefFunc2(x):
       return math.cos(x * math.pi / 180)
-    rot = MoverRotater(atoms,axis, 180, 180, True, prefFunc2)
+    rot = _MoverRotater(atoms,axis, 180, 180, True, prefFunc2)
     coarse = rot.CoarsePositions()
     expected = [1, -1]
     for i,p  in enumerate(coarse.preferenceEnergies):
       val = expected[i]
       if p != val:
-        return "Movers.Test() MoverRotater Sinusoidal preference function: Expected preference energy = "+str(val)+", got "+str(p)
+        return "Movers.Test() _MoverRotater Sinusoidal preference function: Expected preference energy = "+str(val)+", got "+str(p)
 
     # Test coarseStepDegrees default behavior and setting via reduceOptions.
-    rot = MoverRotater(atoms,axis, 180)
+    rot = _MoverRotater(atoms,axis, 180)
     coarse = rot.CoarsePositions()
     if len(coarse.positions) != 12:
-      return "Movers.Test() MoverRotater Default coarse step: Expected 12, got "+str(len(coarse.positions))
+      return "Movers.Test() _MoverRotater Default coarse step: Expected 12, got "+str(len(coarse.positions))
     fakePhil.CoarseStepDegrees = 15
-    rot = MoverRotater(atoms,axis, 180, reduceOptions = fakePhil)
+    rot = _MoverRotater(atoms,axis, 180, reduceOptions = fakePhil)
     coarse = rot.CoarsePositions()
     if len(coarse.positions) != 24:
-      return "Movers.Test() MoverRotater reduceOptions coarse step: Expected 24, got "+str(len(coarse.positions))
+      return "Movers.Test() _MoverRotater reduceOptions coarse step: Expected 24, got "+str(len(coarse.positions))
 
     # Test fineStepDegrees setting via reduceOptions.
     fakePhil.CoarseStepDegrees = None
     fakePhil.FineStepDegrees = 1
-    rot = MoverRotater(atoms,axis, 180, reduceOptions = fakePhil)
+    rot = _MoverRotater(atoms,axis, 180, reduceOptions = fakePhil)
     fine = rot.FinePositions(0)
     # +/- 15 degrees in 1-degree steps, but we don't do the +15 because it will be handled by the next
     # rotation up.
     if len(fine.positions) != 29:
-      return "Movers.Test() MoverRotater reduceOptions fine step: Expected 29, got "+str(len(fine.positions))
+      return "Movers.Test() _MoverRotater reduceOptions fine step: Expected 29, got "+str(len(fine.positions))
 
     # Test doFineRotations = False and 180 degree coarseStepDegrees.
-    rot = MoverRotater(atoms,axis, 180, 180, False)
+    rot = _MoverRotater(atoms,axis, 180, 180, False)
     coarse = rot.CoarsePositions()
     if len(coarse.positions) != 2:
-      return "Movers.Test() MoverRotater 180 coarse steps: Expected 2, got "+str(len(coarse.positions))
+      return "Movers.Test() _MoverRotater 180 coarse steps: Expected 2, got "+str(len(coarse.positions))
     fine = rot.FinePositions(0)
     if len(fine.positions) != 0:
-      return "Movers.Test() MoverRotater 180 coarse steps: Expected 0, got "+str(len(fine.positions))
+      return "Movers.Test() _MoverRotater 180 coarse steps: Expected 0, got "+str(len(fine.positions))
 
   except Exception as e:
-    return "Movers.Test() MoverRotater basic: Exception during test of MoverRotater: "+str(e)+"\n"+traceback.format_exc()
+    return "Movers.Test() _MoverRotater basic: Exception during test of _MoverRotater: "+str(e)+"\n"+traceback.format_exc()
 
   # Test the MoverSingleHydrogenRotater class.
   try:
