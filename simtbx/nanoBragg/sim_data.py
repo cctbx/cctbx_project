@@ -140,7 +140,7 @@ class SimData:
       if isotropic and mos_spread_deg > 0:
         sites.append(site)
         angles.append(-m)
-    UMAT_nm = scitbx.math.r3_rotation_axis_and_angle_as_matrix_vectorized(sites, angles)
+    UMAT_nm = scitbx.math.r3_rotation_axis_and_angle_as_matrix(sites, angles)
 
     return UMAT_nm
 

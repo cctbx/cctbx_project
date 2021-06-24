@@ -71,7 +71,7 @@ namespace scitbx { namespace math {
 
   template <typename FloatType>
   af::shared<mat3<FloatType> >
-  axis_and_angle_as_matrix_vectorized(
+  axis_and_angle_as_matrix(
     af::shared<vec3<FloatType> > const& axes,
     af::shared<FloatType> const& angles,
     bool deg=false,
