@@ -9,7 +9,7 @@ from cctbx import sgtbx
 
 class NBcrystal(object):
 
-  def __init__(self, default=True):
+  def __init__(self, default=False):
     if default:
       ucell = (79.1, 79.1, 38.4, 90, 90, 90)
       self.xtal_shape = "gauss"  # shapetype.Gauss
