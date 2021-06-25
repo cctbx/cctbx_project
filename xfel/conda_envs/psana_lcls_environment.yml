@@ -70,3 +70,7 @@ dependencies:
  # xfel gui
  - mysql
  - mysql-connector-python
+
+ # temporarily pin numpy version
+ # See https://github.com/cctbx/cctbx_project/issues/627
+ - numpy=1.20
