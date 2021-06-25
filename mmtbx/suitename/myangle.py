@@ -38,30 +38,37 @@ dihedrals = (
 
 
 output = sys.stdout  #debug
+dbout = sys.stderr  #debug
 
 
 afile = r"C:\Users\Ken\Desktop\Richardson\molprobity\modules\cctbx_project\mmtbx\suitename\test\4fen.pdb"
 # 1q9a for hard alt test
-alt = 'B' #!!! temporary
+alt = 'A' #!!! temporary
 
 def main(inFile):
   wd = os.getcwd()
   mgr = loadModel(inFile)
 
-  residues = getResidueDihedrals(mgr, alt)
+  residues = getResidueDihedrals(mgr, alt, 
+                                 name=os.path.splitext(inFile)[0])
   for r in residues:
-    print(residueString(r))
+    #print(residueString(r))
+    pass
 
 
 def loadModel(filename):
+  global dbout
+  dbout = open(filename, "w")
   dm = DataManager()             #   Initialize the DataManager and call it dm
   dm.set_overwrite(True)         #   tell the DataManager to overwrite files with the same name
-  print("Reading file")
+  #print("Reading file")
   manager = dm.get_model(filename)
   return manager
 
 
-def getResidueDihedrals(mgr, altcode=''): # use A or B for real alt work
+def getResidueDihedrals(mgr, altcode='', name=''): 
+  # use altcode='A', 'B', etc. for real alt work
+  # if name is provided produce a debug file <name>.suites
   global manager, hierarchy, backbone_hierarchy, chain
 
   if altcode=='':  altcode = 'A'
@@ -74,7 +81,7 @@ def getResidueDihedrals(mgr, altcode=''): # use A or B for real alt work
   model = hierarchy.models()[0]  #!!!
   selector = "name P or name O5' or name C5' or name C4' or name C3' or name O3'"
   selection = manager.selection(selector) 
-  print (len(selection))
+  #print (len(selection), "atoms")
   backbone_hierarchy = hierarchy.select(selection)
   hierarchy.show(output)
   #backbone_hierarchy.show(output)
@@ -82,26 +89,32 @@ def getResidueDihedrals(mgr, altcode=''): # use A or B for real alt work
   all_residues = []
 
   for chain in chains:
-    print("chain ", chain.id)
+    #print("chain ", chain.id)
     conf = get_matching_conformer(chain, altcode)
       
     names = conf.get_residue_names_padded(pad=False)
     if all((n == "HOH" for n in names)):
-      print("ignoring water chain")
+      #print("ignoring water chain")
       continue
-    print(list(names))
+    # #print(list(names))
     ids = conf.get_residue_ids(pad=False)
-    print(list(ids))
+    # #print(list(ids))
     backbone_atoms = conf.atoms()
 
-    print(len(backbone_atoms))
+    #print(len(backbone_atoms), "backbone atoms")
     for atom in backbone_atoms:
       print(atom.pdb_label_columns(), file=out2)  
-    residues = build_dihedrals(backbone_atoms, chain.id, altcode)
+    residues = build_dihedrals(backbone_atoms, chain.id, conf.altloc)
     all_residues.extend(residues)
-    print("chain ", chain.id, " complete")
+    #print("chain ", chain.id, " complete")
   out2.close()
-  print("-- finished --")
+  if name != "":
+    file = open(name + ".suites", "w")
+    for r in residues:
+      id = ":".join(r.pointIDs)
+      angles = "".join([f":{a:.3f}" for a in r.angle])
+      print(id + angles, file=file)
+    file.close()
   return all_residues
 
 
@@ -111,7 +124,7 @@ def get_matching_conformer(chain, altcode):
     if len(confo)>0: 
       conf = confo[0]
     else:
-      print("*****no match for ", altcode)
+      #print("*****no match for ", altcode)
       conf = chain.only_conformer()
     return conf
 
@@ -130,8 +143,8 @@ def build_dihedrals(mainchain, chain_id, alt):
 
     backbone = [atom for atom in mainchain if atom.name in bone]
     # sanity = (backbone == backbone2)
-    for atom in backbone:
-      print(atom.serial, atom.name, atom.fetch_labels().resseq)  
+    # for atom in backbone:
+    #   #print(atom.serial, atom.name, atom.fetch_labels().resseq)  
     residue = None
 
     k = 0
@@ -142,9 +155,9 @@ def build_dihedrals(mainchain, chain_id, alt):
         res_number = int(labels.resseq)
         if residue is None or res_number != residue.sequence:
             # we are seeing our first angle of a new residue
-            residue = new_residue(residues, pivot, chain_id, alt)
+            residue = new_residue(residues, pivot)
         name, angle = easy_make_dihedral(backbone, i, k)
-        print(res_number, name, angle, k)
+        #print(res_number, name, angle, k)
         # ----------------- can fail! ----------------------
         if angle == 9999:
             # this residue is strangely ordered due to partial alt conformers
@@ -152,7 +165,6 @@ def build_dihedrals(mainchain, chain_id, alt):
             k = harder_build_chain(backbone, i, k, residue, residues, 
                 chain_id, alt)
             return residues
-            residue = new_residue(residues, pivot, chain_id, alt)
 
         else:
             residue.angle[i] = angle
@@ -165,9 +177,10 @@ def harder_build_chain(backbone, i, k, residue, residues, chain_id, alt):
     syn_chain = backbone[k - i:k + 3]
     ksyn = max(k-i-2, 0)
     # everything for this residue plus 2 before and 2 after  !!!!?
-    print("syn_chain")
+    #print("syn_chain")
     for atom in syn_chain:
-      print(atom.name, atom.fetch_labels().resseq, atom.serial) # just for debugging
+      pass
+      #print(atom.name, atom.fetch_labels().resseq, atom.serial) # just for debugging
 
     ii = i
     oops = 1  # first time: we have a "broken" atom to supply before going on
@@ -176,7 +189,7 @@ def harder_build_chain(backbone, i, k, residue, residues, chain_id, alt):
       kk = harder_build_residue(syn_chain, ii, oops, k-ksyn-2, residue)
       k = kk+ksyn+2
       ii = 0
-      residue = new_residue(residues, syn_chain[kk+1], chain_id, alt)
+      residue = new_residue(residues, syn_chain[kk+1])
       oops = 0
     # delete a possible final dead one
     if residues[-1].is_dead():
@@ -190,31 +203,33 @@ def harder_build_residue(syn_chain, i, oops, kk, residue):
     res2_atoms, res2_names = get_one_residue(str(int(res)+1))
 
     for j in range(i, 6):
-      atoms = res_atoms if j < 5 else res2_atoms
-      names = res_names if j < 5 else res2_names
+      atoms = res_atoms if j < 4 else res2_atoms
+      names = res_names if j < 4 else res2_names
       if bones[j+3] in names:  # add atom 3 ahead of residue start
                                # so that we have 4 atoms to work with
         x = names.index(bones[j+3])
         atom = atoms[x]
         syn_chain.append(atom)
-        print("appending", atom.name, atom.fetch_labels().resseq, atom.serial)
+#        #print("appending", atom.name, atom.fetch_labels().resseq, atom.serial)
         name, angle = easy_make_dihedral(syn_chain, j, kk)
-        print(" ", syn_chain[kk+1].fetch_labels().resseq, name, angle, kk, j)
+        #print(" ", syn_chain[kk+1].fetch_labels().resseq, name, angle, kk, j)
         residue.angle[j] = angle  # if second failure, we get 9999
         kk = kk + 1
         # syn_name = [a.name for a in syn_chain]
     return kk
 
 
-def new_residue(residues, pivot, chainID, alt):
+def new_residue(residues, pivot):
   residue = Residue("", "", [9999, 9999, 9999, 9999, 9999, 9999])
   labels = pivot.fetch_labels()
   res_number = int(labels.resseq)
+  alt = labels.altloc
+  chainID = labels.chain_id
   residue.sequence = res_number
   grandpa = pivot.parent().parent()
   residue_name = grandpa.unique_resnames()[0]
-  print(residue_name)
-  id = ("1", chainID, labels.resseq, "", alt, residue_name)
+  #print(residue_name)
+  id = (" ", "1", f"{chainID:>2}", labels.resseq, " ", f"{alt:1}", residue_name)
   residue.pointIDs = id
   base = findBase(residue_name)
   residue.base = base
@@ -227,7 +242,10 @@ def get_one_residue(res):
     selection=manager.selection("resseq " + res)
     res_hierarchy = hierarchy.select(selection)
     atoms = res_hierarchy.atoms()
-    names = [a.name for a in atoms]   
+    names = [a.name for a in atoms] 
+    # #print("residue ", res)
+    # for a in atoms:
+    #   #print("  ", a.name, a.parent().parent().resseq)
     return atoms, names
     
 
@@ -246,17 +264,6 @@ def easy_make_dihedral(backbone, i, k):
             return name, angle
         return "failure: " + str(group_names), 9999
     return "failure: " + backbone[k].name + "!= " + dh[1][0], 9999
-                
-# def make_dihedral(backbone, k):
-#     for dh in dihedrals:
-#         if backbone[k] == dh[1][0]:
-#             if len(backbone) >= k + 3 and backbone[k:k + 4] == dh[1]:
-#                 clump = backbone[k:k + 4]
-#                 points = [atom.xyz for atom in clump]
-#                 name = dh[0]
-#                 labels = clump[1].fetch_labels()
-#                 angle = calc_dihedral(points)
-#                 return name, angle
                 
 
 # ----------------------------  tool room  -----------------------------

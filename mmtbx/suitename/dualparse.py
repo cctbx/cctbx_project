@@ -97,7 +97,7 @@ def argsToPhilForm(namespace, others):
     
   argsOut = []
   for  key,value in dictionary.items(): # vars turns namespace to dict
-    if value is not None:
+    if value is not None and value != "":
       argsOut.append(f"{key}={value}")
   return argsOut
 

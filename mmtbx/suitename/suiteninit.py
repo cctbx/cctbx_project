@@ -85,7 +85,7 @@ def buildParser(parser):
     parser.add_argument("--ptid", "-ptid", type=int, default=0)
     parser.add_argument("--altid", "-altid", type=str, default="A")
     parser.add_argument("--altidval", "-altidval", type=str, default="A")
-    parser.add_argument("--altidfield", "-altidfield", type=int, default=4)
+    parser.add_argument("--altidfield", "-altidfield", type=int, default=5)
 
     # the following are deprecated:
     parser.add_argument("--angles", type=int, default=9)

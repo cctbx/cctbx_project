@@ -111,10 +111,8 @@ def compute(suites):
         if not s.validate():
             if options.test:
                 sys.stderr.write(f"! failed validation: {s.pointID}\n")
-            if not options.noinc:
-              annotate(s, bins[13], bins[13].cluster[0], 0, 0, " tangled ",
-                  "", "", "", ""
-            )
+            annotate(s, bins[13], bins[13].cluster[0], 0, 0, " tangled ",
+                  "", "", "", "")
             continue
 
         # At this point we have a complete suite

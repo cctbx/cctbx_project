@@ -51,7 +51,8 @@ def run(args):
       main(optionsIn=options)
   else:
       type = analyzeFileType(options.infile)
-      assert type != "", "file extension not recognized"
+      if type=="": 
+        logger.write(f"File extension {type} not recognized")
       if type == "pdb":
           suites.main(options=options)
       else:
@@ -144,9 +145,6 @@ class Program(ProgramTemplate):
         altid="A"
           .type=str
           .help="which alternate conformer to use (A, B, etc)"
-        altidval="A"
-          .type=str
-          .help="which alternate conformer to use (A, B, etc)"
         altidfield = 3
           .type=int
           .help="which field gives the alternate conformer code"
@@ -155,6 +153,12 @@ class Program(ProgramTemplate):
           .help="give the version number of suite name"   
       }
 """
+
+# might add:
+        # altidval="A"
+        #   .type=str
+        #   .help="which alternate conformer to use (A, B, etc)"
+#
   datatypes = ['model', 'phil']  # also 
   data_manager_options = ['model_skip_expand_with_mtrix']
   known_article_ids = ['molprobity']

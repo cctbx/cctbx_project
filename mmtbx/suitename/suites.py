@@ -32,7 +32,9 @@ def main(options, outFile=None):
   inFile = options.infile
   model = loadModel(inFile)
 
-  residues = getResidueDihedrals(model)
+
+  residues = getResidueDihedrals(model, options.altid, 
+                                 name=os.path.splitext(inFile)[0])
   if len(residues) == 0:
       sys.stderr.write("read no residues: perhaps wrong alternate code\n")
       sys.exit(1)
@@ -56,9 +58,9 @@ def setOptions(optionsIn):
 def loadModel(filename):
   dm = DataManager()             #   Initialize the DataManager and call it dm
   dm.set_overwrite(True)         #   tell the DataManager to overwrite files with the same name
-  print("Reading file")
+  #print("Reading file")
   model = dm.get_model(filename)
-  print("Processing model")
+  #print("Processing model")
   #model.process_input_model(make_restraints=True)
   # removed because Restraints Manager will not operate 
   # on unfamiliar residues  KPB 6/10/2021
@@ -66,7 +68,7 @@ def loadModel(filename):
 
 
 def testResidues(model):
-  print("computing dihedrals")
+  #print("computing dihedrals")
   residues = getResidueDihedrals(model)
   for r in residues:
     print(r.pointIDs, " : ", r.angle)

@@ -83,7 +83,7 @@ def readResidues(inFile):
         angleStrings = fields[options.pointidfields :]
         if (
             ids[options.altidfield].strip() != ""
-            and ids[options.altidfield] != options.altidval
+            and ids[options.altidfield] != options.altid
         ):
             continue  # lines for the wrong alternative conformation are ignored
 

@@ -46,7 +46,9 @@ def outSuite(outFile, s):
 
 def writeFinalOutput(outFile, suites, outNote):
     if options.satellites:
-        outNote.comment = " using special general case satellite widths"
+        outNote.comment = " special general case satellite widths, power = 3.00"
+    else:
+        outNote.comment = " all general case widths, power = 3.00"
     if options.string:
         pass
     elif options.kinemage:
@@ -70,7 +72,8 @@ def string1Suite(outFile, suite):
 def reportSuite(outFile, suite):
     global reportCountAll, trigCountAll, suitenessSumAll, binSuiteCountAll
 
-#    if not suite.valid: return
+    if options.noinc and not suite.valid: 
+      return
 
     # 1. write one line of output for this suite
     reason = ""; note=""
@@ -232,8 +235,9 @@ def suitenessAverage(outFile,  mode):
     else:
         average = 0
 
+#fprintf(fpout,"%s %d suites: average suiteness== %5.3f (power==%4.2f)\n"
     outFile.write(
-        "{} {} suites: average suiteness == {:5.3f}\n".format(
+        "{} {} suites: average suiteness== {:5.3f} (power==3.00)\n".format(
             comment, allCount, average
         )
     )
