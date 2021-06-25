@@ -837,20 +837,69 @@ def run_parallel(
 #  -------  END OF SIMPLE INTERFACE TO MULTIPROCESSING -------------
 
 # --  VERY SIMPLE INTERFACE TO MULTIPROCESSING WITH LARGE FIXED OBJECTS --
-"""
+
+def simple_parallel(**kw):
+
+  """
   This simple_parallel interface allows you to run in parallel with
   a call that is very similar to one you would use for a simple iteration
 
-  Example as simple iteration:
+Parameters:
+  function:   the function to run
+  iteration_list:  list of objects to pass, one at a time, to function
+  nproc:  number of processors
+  run_in_batches: If None or True, run nproc jobs, grouping as necessary
+  log:  optional log stream
+  any other kw items:  passed directly to function
 
+Sample use:
+  result_list = simple_parallel(
+    function = run_something,        # function to run
+    iteration_list = iteration_list,  # list of N values or objects that vary
+    nproc = nproc,        # number of processors
+    other_kw1 = other_kw1,  # any other keywords used by run_something
+    other_kw2 = other_kw2,  # any other keywords used by run_something
+    log = log,            # pass log stream if used
+     )
+
+This will run N jobs of run_something, where run_something looks like:
+
+def run_something(
+    one_iteration = None,
+    other_kw1 = None,
+    other_kw2 = None,
+    log = None):
+  # do something with value and other_kw1, other_kw2
+  result = do_something(one_iteration, other_kw1, other_kw2, log = log)
+  return result
+
+
+Example as simple iteration:
+
+def run_something(value):
+  return value * 2
+
+def run_as_is(): # run in usual way
   iteration_list = [5,7,9]  # list of anything
 
   result_list = []
-  for i in r
-"""
+  for i in range(len(iteration_list)):
+    result = run_something(iteration_list[i])
+    result_list.append(result)
+  return result_list
 
+def run_parallel(): # run in parallel
 
-def simple_parallel(**kw):
+  iteration_list = [5,7,9]  # list of anything
+
+  from libtbx.easy_mp import simple_parallel
+  result_list = simple_parallel(
+    iteration_list = iteration_list,
+    function = run_something,
+    nproc = 4, )
+  return result_list
+  """
+
   run_in_batches = kw.get('run_in_batches',None)
   function = kw.get('function',None)
   iteration_list = kw.get('iteration_list',None)
@@ -898,7 +947,7 @@ def simple_parallel(**kw):
     if log is None:
       log = sys.stdout
 
-    from libtbx.easy_mp import run_jobs_with_large_fixed_objects 
+    from libtbx.easy_mp import run_jobs_with_large_fixed_objects
     runs_carried_out = run_jobs_with_large_fixed_objects(
       nproc = nproc,
       verbose = False,
@@ -933,7 +982,7 @@ def simple_parallel(**kw):
     if use_log: # capture the log if it is present in the function call
       kw_dict['log'] = log
 
-    result_list = [] 
+    result_list = []
     for i in range(run_info.start_number, run_info.end_number + 1):
       result_list.append(function(iteration_list[i], **kw_dict))
 
