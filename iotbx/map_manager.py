@@ -2520,7 +2520,7 @@ def dummy_map_manager(crystal_symmetry, n_grid = 12):
   '''
    Make a map manager with crystal symmetry and unit sized map
   '''
-  
+
   map_data = flex.double(n_grid*n_grid*n_grid,1)
   acc = flex.grid((n_grid, n_grid, n_grid))
   map_data.reshape(acc)

@@ -7333,7 +7333,7 @@ class map_model_manager(object):
   def shift_aware_rt_to_superpose_other(self, other,
       selection_string = None):
     '''
-    Identify rotation/translation to transform model from other on to 
+    Identify rotation/translation to transform model from other on to
      model in this object.
     Optionally apply selection_string to both models before doing the
      mapping
@@ -7397,7 +7397,7 @@ class map_model_manager(object):
      shift_aware_rt_info = None,
      selection_string = None):
     '''
-    Identify rotation/translation to transform model from other on to 
+    Identify rotation/translation to transform model from other on to
       model in this object.
     Optionally apply selection_string to both models before doing the
      mapping
