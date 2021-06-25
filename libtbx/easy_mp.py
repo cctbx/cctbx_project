@@ -836,6 +836,114 @@ def run_parallel(
 
 #  -------  END OF SIMPLE INTERFACE TO MULTIPROCESSING -------------
 
+# --  VERY SIMPLE INTERFACE TO MULTIPROCESSING WITH LARGE FIXED OBJECTS --
+"""
+  This simple_parallel interface allows you to run in parallel with
+  a call that is very similar to one you would use for a simple iteration
+
+  Example as simple iteration:
+
+  iteration_list = [5,7,9]  # list of anything
+
+  result_list = []
+  for i in r
+"""
+
+
+def simple_parallel(**kw):
+  run_in_batches = kw.get('run_in_batches',None)
+  function = kw.get('function',None)
+  iteration_list = kw.get('iteration_list',None)
+  nproc = kw.get('nproc',None)
+  run_info = kw.get('run_info',None)
+  log = kw.get('log',None)
+
+  if function is not None: del kw['function']
+  if run_in_batches is not None: del kw['run_in_batches']
+  if iteration_list is not None: del kw['iteration_list']
+  if nproc is not None: del kw['nproc']
+  if log is not None: del kw['log']
+  if run_info is not None: del kw['run_info']
+
+
+  if function is not None and iteration_list is not None and nproc is not None:
+    n_tot = len(list(iteration_list))
+
+    end_number = -1
+    if run_in_batches is None or run_in_batches:
+      n_in_batch = n_tot//nproc
+      if n_in_batch * nproc < n_tot:
+        n_in_batch = n_in_batch + 1
+      assert n_in_batch * nproc >= n_tot
+      n_runs = nproc
+    else:
+      n_in_batch = 1
+      n_runs = n_tot
+
+
+    runs_to_carry_out = []
+    for run_id in range(n_tot):
+      start_number = end_number + 1
+      end_number = min(n_tot-1, start_number + n_in_batch - 1)
+      if end_number < start_number: continue
+      runs_to_carry_out.append(group_args(
+        run_id = run_id,
+        start_number = start_number,
+        end_number = end_number,
+        ))
+
+    kw_dict = kw.copy()
+    kw_dict['function'] = function
+    kw_dict['iteration_list'] = iteration_list
+    if log is None:
+      log = sys.stdout
+
+    from libtbx.easy_mp import run_jobs_with_large_fixed_objects 
+    runs_carried_out = run_jobs_with_large_fixed_objects(
+      nproc = nproc,
+      verbose = False,
+      kw_dict = kw_dict,
+      run_info_list = runs_to_carry_out,
+      job_to_run = simple_parallel,
+      log = log)
+
+
+    runs_carried_out = sorted(runs_carried_out,
+      key = lambda r: r.start_number if r else None)
+    result_list = []
+    printed_something = False
+    for result_info in runs_carried_out:
+      if result_info and result_info.result and result_info.result.result_list:
+        result = result_info.result
+        for r in result.result_list:
+          if r:
+            result_list.append(r)
+            if not printed_something:
+              print (result.log_as_text, file = log)
+              printed_something = True
+    return result_list
+
+  else:
+    assert run_info is not None and iteration_list is not None
+    kw_dict = kw.copy()
+
+    # Determine if function has the kw "log"
+    import inspect
+    use_log = 'log' in inspect.getargspec(function).args
+    if use_log: # capture the log if it is present in the function call
+      kw_dict['log'] = log
+
+    result_list = [] 
+    for i in range(run_info.start_number, run_info.end_number + 1):
+      result_list.append(function(iteration_list[i], **kw_dict))
+
+    return group_args(
+      group_args_type = 'runs %s to %s of %s' %(
+        run_info.start_number, run_info.end_number, str(function)),
+      result_list = result_list)
+
+# --  END VERY SIMPLE INTERFACE TO MULTIPROCESSING WITH LARGE FIXED OBJECTS --
+
 # --  SIMPLE INTERFACE TO MULTIPROCESSING WITH LARGE FIXED OBJECTS --
 
 def run_jobs_with_large_fixed_objects(
