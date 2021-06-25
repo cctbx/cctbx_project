@@ -467,7 +467,7 @@ class MoverNH3Rotater(_MoverRotater):
 
 ##################################################################################
 class MoverAromaticMethylRotater(_MoverRotater):
-  def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = None, reduceOptions = None):
+  def __init__(self, atom, bondedNeighborLists, reduceOptions = None):
     """ A Mover that rotates three Hydrogens around an axis from their bonded Carbon neighbor
        to the single bonded partner of its partner.  This is designed for use with Aromatic
        CH3 (Methly) groups, whose partner-partner atoms are bonded to an aromatic ring, having
@@ -532,6 +532,83 @@ class MoverAromaticMethylRotater(_MoverRotater):
     # We have a coarse step size of 180 degrees and a range of 180 degrees and do not
     # allow fine rotations.
     _MoverRotater.__init__(self, hydrogens, axis, 180, 180, doFineRotations = False,
+      reduceOptions = reduceOptions)
+
+##################################################################################
+class MoverTetrahedralMethylRotater(_MoverRotater):
+  def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = None, reduceOptions = None):
+    """ A Mover that rotates three Hydrogens around an axis from their bonded Carbon neighbor
+       to the single bonded partner of its partner.  This is designed for use with tetrahedral
+       partners whose partner-partner atoms are bonded to three friends.
+       The starting orientation has the Hydrogens pointing between the side of the tetrahedron.
+       It can rotate to any angle to optimize for hydrogen bonds.
+       Note: Reduce does not normally rotate these groups because it is not worth the computational
+       cost to do so (and because this can mask mis-placed atoms by forming spurious hydrogen
+       bonds), but it will construct them so that they will be aligned staggered to the
+       tetrahedron.
+       @todo Construct these in Reduce so that they will be staggered but do not optimize them.
+       :param atom: Carbon atom bonded to the three Hydrogens that will be rotated.
+       It must be bonded to three Hydrogens and a single other
+       atom, and the other atom must be bonded to three other atoms.  NOTE: As a side
+       effect, the Hydrogens are immediately rotated to lie staggered.
+       :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
+       structure that the atom from the first parameter interacts with that lists all of the
+       bonded atoms.  Can be obtained by calling getBondedNeighborLists().
+       :param coarseStepDegrees: With the default value of None, the number of
+       degrees per coarse step will be determined  by the
+       :param reduceOptions: 
+        The reduceOptions is a Phil option subset.  The relevant options for
+          MoverTetrahedralMethylRotater are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale.
+    """
+
+    # The Carbon is the neighbor in these calculations, making this code symmetric with the other
+    # class code.
+    neighbor = atom
+
+    # Check the conditions to make sure we've been called with a valid atom.  This is a Carbon with
+    # three hydrogens bonded and a single bonded neighbor that has 2 other bonded friends.
+    # Find the friends bonded to the partner besides the neighbor, which will be used to
+    # determine the initial orientation for the hydrogens.
+    if neighbor.element != "C":
+      raise ValueError("MoverTetrahedralMethylRotater(): atom is not a Carbon")
+    partners = bondedNeighborLists[neighbor]
+    if len(partners) != 4:
+      raise ValueError("MoverTetrahedralMethylRotater(): atom does not have four bonded neighbors")
+    hydrogens = []
+    for a in partners:
+      if a.element == "H":
+        hydrogens.append(a)
+      else:
+        partner = a
+    if len(hydrogens) != 3:
+      raise ValueError("MoverTetrahedralMethylRotater(): atom does not have three bonded hydrogens")
+    bonded = bondedNeighborLists[partner]
+    friends = []
+    for b in bonded:
+      if b.i_seq != neighbor.i_seq:
+        friends.append(b)
+    if len(friends) != 3:
+      raise ValueError("MoverTetrahedralMethylRotater(): Partner does not have two bonded friends")
+
+    # Determine the axis to rotate around, which starts at the partner and points at the neighbor.
+    normal = (_rvec3(neighbor.xyz) - _rvec3(partner.xyz)).normalize()
+    axis = flex.vec3_double([partner.xyz, normal])
+
+    # Move the Hydrogens so that they are in one of the preferred locations by rotating one of them to
+    # point away from one of the friends.  The other two are located at +120 and -120 degrees rotated
+    # around the axis from the first.
+    hydrogens[0].xyz = _rotateOppositeFriend(hydrogens[0], axis, partner, friends)
+    hydrogens[1].xyz = _rotateAroundAxis(hydrogens[0], axis, 120)
+    hydrogens[2].xyz = _rotateAroundAxis(hydrogens[0], axis, -120)
+
+    # Set the preference function to like 120-degree rotations away from the starting location.
+    # @todo Consider parameterizing the magic constant of 0.1 for the preference magnitude
+    def preferenceFunction(degrees): return 0.1 + 0.1 * math.cos(degrees * (math.pi/180) * (360/120))
+
+    # Construct our parent class, which will do all of the actual work based on our inputs.
+    # We have a coarse step size of 180 degrees and a range of 180 degrees and do not
+    # allow fine rotations.
+    _MoverRotater.__init__(self, hydrogens, axis, 180, preferenceFunction = preferenceFunction,
       reduceOptions = reduceOptions)
 
 ##################################################################################
@@ -896,8 +973,8 @@ def Test():
     # Construct a MoverAromaticMethylRotater that has ony hydrogen start out at 45 degrees around Z and the
     # other two at +/-120 degrees from that one.
     # They are bonded to a Carbon and partner that are vertical and then partner is bonded to two
-    # friends that are in the Y=0 plane.  This should cause us to get the hydrogens at
-    # +90 or -90 and 120 away from that with only two coarse choices and no fine choices.
+    # friends that are in the Y=0 plane.  This should cause us to get the one of the hydrogens at
+    # +90 or -90 and the others 120 away from the first with only two coarse choices and no fine choices.
     axis = flex.vec3_double([ [0,0,0], [0,0,1] ])
     h1 = pdb.hierarchy.atom()
     h1.element = "H"
@@ -971,6 +1048,95 @@ def Test():
   except Exception as e:
     return "Movers.Test() MoverAromaticMethylRotater basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
     
+  # Test the MoverTetrahedralMethylRotater class.
+  try:
+    # Construct a MoverTetrahedralMethylRotater that has ony hydrogen start out at 45 degrees around Z and the
+    # other two at +/-120 degrees from that one.
+    # They are bonded to a Carbon and partner that are vertical and then partner is bonded to three
+    # friends with one in the +X direction.  This should cause us to get the one of the hydrogens at
+    # 180 the others 120 away from the first.
+    axis = flex.vec3_double([ [0,0,0], [0,0,1] ])
+    h1 = pdb.hierarchy.atom()
+    h1.element = "H"
+    h1.xyz = [ 1.0, 1.0, 1.0 ]
+
+    h2 = pdb.hierarchy.atom()
+    h2.element = "H"
+    h2.xyz = _rotateAroundAxis(h1, axis, -120)
+
+    h3 = pdb.hierarchy.atom()
+    h3.element = "H"
+    h3.xyz = _rotateAroundAxis(h1, axis, 120)
+
+    n = pdb.hierarchy.atom()
+    n.element = "C"
+    n.xyz = [ 0.0, 0.0, 0.0 ]
+
+    p = pdb.hierarchy.atom()
+    p.xyz = [ 0.0, 0.0,-1.0 ]
+
+    f1 = pdb.hierarchy.atom()
+    f1.xyz = [ 1.0, 0.0,-2.0 ]
+
+    f2 = pdb.hierarchy.atom()
+    f2.xyz = _rotateAroundAxis(f1, axis, -120)
+
+    f3 = pdb.hierarchy.atom()
+    f3.xyz = _rotateAroundAxis(f1, axis,  120)
+
+    # Build the hierarchy so we can reset the i_seq values.
+    ag = pdb.hierarchy.atom_group()
+    ag.append_atom(h1)
+    ag.append_atom(h2)
+    ag.append_atom(h3)
+    ag.append_atom(n)
+    ag.append_atom(p)
+    ag.append_atom(f1)
+    ag.append_atom(f2)
+    ag.append_atom(f3)
+    rg = pdb.hierarchy.residue_group()
+    rg.append_atom_group(ag)
+    c = pdb.hierarchy.chain()
+    c.append_residue_group(rg)
+    m = pdb.hierarchy.model()
+    m.append_chain(c)
+    m.atoms().reset_i_seq()
+
+    bondedNeighborLists = {}
+    bondedNeighborLists[h1] = [ n ]
+    bondedNeighborLists[h2] = [ n ]
+    bondedNeighborLists[h3] = [ n ]
+    bondedNeighborLists[n] = [ h1, h2, h3, p ]
+    bondedNeighborLists[p] = [ n, f1, f2, f3 ]
+    bondedNeighborLists[f1] = [ p ]
+    bondedNeighborLists[f2] = [ p ]
+    bondedNeighborLists[f3] = [ p ]
+
+    mover = MoverTetrahedralMethylRotater(n, bondedNeighborLists)
+
+    # Check for a hydrogen on the +/-Y axis at a distance of sqrt(2) from the Z axis
+    found = False
+    for h in [h1, h2, h3]:
+      if h.xyz[2] == 1 and h.xyz[0]+math.sqrt(2) < 1e-5:
+        found = True
+    if not found:
+      return "Movers.Test() MoverTetrahedralMethylRotater basic: bad H placement"
+
+    # Check fitness function preferring 180 and +/- 120 from there rotations.
+    zero = mover._preferenceFunction(0)
+    oneEighty = mover._preferenceFunction(180)
+    off1 = mover._preferenceFunction(180+120)
+    off2 = mover._preferenceFunction(180-120)
+    if abs(off1 - oneEighty) > 1e-5:
+      return "Movers.Test() MoverTetrahedralMethylRotater: bad preference function"
+    if abs(off2 - oneEighty) > 1e-5:
+      return "Movers.Test() MoverTetrahedralMethylRotater: bad preference function"
+    if zero - oneEighty < 1e-5:
+      return "Movers.Test() MoverTetrahedralMethylRotater: bad preference function"
+
+  except Exception as e:
+    return "Movers.Test() MoverTetrahedralMethylRotater basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
+
   # @todo Test other Mover subclasses
 
   return ""
