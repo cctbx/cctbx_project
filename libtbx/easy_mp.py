@@ -844,7 +844,7 @@ def simple_parallel(**kw):
   This simple_parallel interface allows you to run in parallel with
   a call that is very similar to one you would use for a simple iteration
 
-  NOTE: all these multiprocessing methods work poorly if a 
+  NOTE: all these multiprocessing methods work poorly if a
    large object (> 1 MB) is returned.  Better to write the object as a pickle
    to a unique file, pass the file name back, and read in the object afterwards.
 
