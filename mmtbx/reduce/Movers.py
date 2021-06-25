@@ -52,7 +52,7 @@ def getBondedNeighborLists(atoms, bondProxies):
 #  - They may have final tune-up behaviors once their final locations are selected.
 #
 # There are two basic types of Movers:
-#  - Rotater: One or more Hydrogen atoms that have a set of orientations spinning
+#  - Rotator: One or more Hydrogen atoms that have a set of orientations spinning
 #    around a common axis.
 #  - Flipper: A structure that has pairs of atom groups that have similar densities, such
 #    that flipping them across a center axis produces similar density fits.
@@ -144,7 +144,7 @@ class MoverNull:
 # indicate this rotation without actually having to change the positions of the Hydrogens
 # that are rotating.  This offset will be added to all resulting rotations, and subtracted
 # before applying the preference function.
-class _MoverRotater:
+class _MoverRotator:
   def __init__(self, atoms, axis, coarseRange, coarseStepDegrees = None,
                 doFineRotations = True, preferenceFunction = None,
                 reduceOptions = None):
@@ -183,7 +183,7 @@ class _MoverRotater:
        returned for this orientation by CoarsePositions() and FinePositions().
        For the default value of None, no addition is performed.
        :param reduceOptions: 
-        The reduceOptions is a Phil option subset.  The relevant options for _MoverRotater
+        The reduceOptions is a Phil option subset.  The relevant options for _MoverRotator
           are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale.
     """
     self._atoms = atoms
@@ -302,7 +302,7 @@ class _MoverRotater:
     try:
       ca = self._coarseAngles[coarseIndex]
     except Exception as e:
-      raise ValueError("MoverRotater.FinePositions(): Bad coarseIndex: "+str(e))
+      raise ValueError("MoverRotator.FinePositions(): Bad coarseIndex: "+str(e))
     for fa in self._fineAngles:
       angle = fa + ca
       angles.append(angle)
@@ -317,7 +317,7 @@ class _MoverRotater:
     return FixUpReturn([], [])
 
 ##################################################################################
-class MoverSingleHydrogenRotater(_MoverRotater):
+class MoverSingleHydrogenRotator(_MoverRotator):
   def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = None, reduceOptions = None):
     """ A Mover that rotates a single Hydrogen around an axis from its bonded partner
        to the single bonded partner of its partner.  This is designed for use with OH,
@@ -338,7 +338,7 @@ class MoverSingleHydrogenRotater(_MoverRotater):
        the value.
        :param reduceOptions: 
         The reduceOptions is a Phil option subset.  The relevant options for
-          MoverSingleHydrogenRotater are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale.
+          MoverSingleHydrogenRotator are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale.
     """
 
     # Check the conditions to make sure we've been called with a valid atom.  This is a hydrogen with
@@ -346,14 +346,14 @@ class MoverSingleHydrogenRotater(_MoverRotater):
     # Find the friends bonded to the partner besides the neighbor, which will be used to
     # determine the initial orientation for the hydrogen.
     if atom.element != "H":
-      raise ValueError("MoverSingleHydrogenRotater(): Atom is not a hydrogen")
+      raise ValueError("MoverSingleHydrogenRotator(): Atom is not a hydrogen")
     neighbors = bondedNeighborLists[atom]
     if len(neighbors) != 1:
-      raise ValueError("MoverSingleHydrogenRotater(): Atom does not have a single bonded neighbor")
+      raise ValueError("MoverSingleHydrogenRotator(): Atom does not have a single bonded neighbor")
     neighbor = neighbors[0]
     partners = bondedNeighborLists[neighbor]
     if len(partners) != 2:  # Me and one other
-      raise ValueError("MoverSingleHydrogenRotater(): Atom does not have a single bonded neighbor's neighbor")
+      raise ValueError("MoverSingleHydrogenRotator(): Atom does not have a single bonded neighbor's neighbor")
     partner = partners[0]
     if partner.i_seq == atom.i_seq:
       partner = partners[1]
@@ -372,7 +372,7 @@ class MoverSingleHydrogenRotater(_MoverRotater):
       # There are three neighbors, so our function repeats every 120 degrees
       def preferenceFunction(degrees): return 0.1 + 0.1 * math.cos(degrees * (math.pi/180) * (360/120))
     else:
-      raise ValueError("MoverSingleHydrogenRotater(): Atom's bonded neighbor's neighbor does not have 2-3 other bonds "+
+      raise ValueError("MoverSingleHydrogenRotator(): Atom's bonded neighbor's neighbor does not have 2-3 other bonds "+
       "it has "+str(len(friends)))
 
     # Determine the axis to rotate around, which starts at the partner atom and points at the neighbor.
@@ -389,11 +389,11 @@ class MoverSingleHydrogenRotater(_MoverRotater):
     atoms = [ atom ]
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
-    _MoverRotater.__init__(self, atoms, axis, 180, coarseStepDegrees,
+    _MoverRotator.__init__(self, atoms, axis, 180, coarseStepDegrees,
       preferenceFunction = preferenceFunction, reduceOptions = reduceOptions)
 
 ##################################################################################
-class MoverNH3Rotater(_MoverRotater):
+class MoverNH3Rotator(_MoverRotator):
   def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = None, reduceOptions = None):
     """ A Mover that rotates three Hydrogens around an axis from their bonded Nitrogen neighbor
        to the single bonded partner of its partner.  This is designed for use with NH3+,
@@ -414,7 +414,7 @@ class MoverNH3Rotater(_MoverRotater):
        the value.
        :param reduceOptions: 
         The reduceOptions is a Phil option subset.  The relevant options for
-          MoverNH3Rotater are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale.
+          MoverNH3Rotator are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale.
     """
 
     # The Nitrogen is the neighbor in these calculations, making this code symmetric with the other
@@ -426,10 +426,10 @@ class MoverNH3Rotater(_MoverRotater):
     # Find the friends bonded to the partner besides the neighbor, which will be used to
     # determine the initial orientation for the hydrogens.
     if neighbor.element != "N":
-      raise ValueError("MoverNH3Rotater(): atom is not a Nitrogen")
+      raise ValueError("MoverNH3Rotator(): atom is not a Nitrogen")
     partners = bondedNeighborLists[neighbor]
     if len(partners) != 4:
-      raise ValueError("MoverNH3Rotater(): atom does not have four bonded neighbors")
+      raise ValueError("MoverNH3Rotator(): atom does not have four bonded neighbors")
     hydrogens = []
     for a in partners:
       if a.element == "H":
@@ -437,14 +437,14 @@ class MoverNH3Rotater(_MoverRotater):
       else:
         partner = a
     if len(hydrogens) != 3:
-      raise ValueError("MoverNH3Rotater(): atom does not have three bonded hydrogens")
+      raise ValueError("MoverNH3Rotator(): atom does not have three bonded hydrogens")
     bonded = bondedNeighborLists[partner]
     friends = []
     for b in bonded:
       if b.i_seq != neighbor.i_seq:
         friends.append(b)
     if len(friends) != 3:
-      raise ValueError("MoverNH3Rotater(): Partner does not have three bonded friends")
+      raise ValueError("MoverNH3Rotator(): Partner does not have three bonded friends")
 
     # Set the preference function to like 120-degree rotations away from the starting location.
     # @todo Consider parameterizing the magic constant of 0.1 for the preference magnitude
@@ -462,11 +462,11 @@ class MoverNH3Rotater(_MoverRotater):
     hydrogens[2].xyz = _rotateAroundAxis(hydrogens[0], axis, -120)
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
-    _MoverRotater.__init__(self, hydrogens, axis, 180, coarseStepDegrees,
+    _MoverRotator.__init__(self, hydrogens, axis, 180, coarseStepDegrees,
       preferenceFunction = preferenceFunction, reduceOptions = reduceOptions)
 
 ##################################################################################
-class MoverAromaticMethylRotater(_MoverRotater):
+class MoverAromaticMethylRotator(_MoverRotator):
   def __init__(self, atom, bondedNeighborLists, reduceOptions = None):
     """ A Mover that rotates three Hydrogens around an axis from their bonded Carbon neighbor
        to the single bonded partner of its partner.  This is designed for use with Aromatic
@@ -484,7 +484,7 @@ class MoverAromaticMethylRotater(_MoverRotater):
        bonded atoms.  Can be obtained by calling getBondedNeighborLists().
        :param reduceOptions: 
         The reduceOptions is a Phil option subset.  The relevant options for
-          MoverAromaticMethylRotater are: None.
+          MoverAromaticMethylRotator are: None.
     """
 
     # The Carbon is the neighbor in these calculations, making this code symmetric with the other
@@ -496,10 +496,10 @@ class MoverAromaticMethylRotater(_MoverRotater):
     # Find the friends bonded to the partner besides the neighbor, which will be used to
     # determine the initial orientation for the hydrogens.
     if neighbor.element != "C":
-      raise ValueError("MoverAromaticMethylRotater(): atom is not a Carbon")
+      raise ValueError("MoverAromaticMethylRotator(): atom is not a Carbon")
     partners = bondedNeighborLists[neighbor]
     if len(partners) != 4:
-      raise ValueError("MoverAromaticMethylRotater(): atom does not have four bonded neighbors")
+      raise ValueError("MoverAromaticMethylRotator(): atom does not have four bonded neighbors")
     hydrogens = []
     for a in partners:
       if a.element == "H":
@@ -507,14 +507,14 @@ class MoverAromaticMethylRotater(_MoverRotater):
       else:
         partner = a
     if len(hydrogens) != 3:
-      raise ValueError("MoverAromaticMethylRotater(): atom does not have three bonded hydrogens")
+      raise ValueError("MoverAromaticMethylRotator(): atom does not have three bonded hydrogens")
     bonded = bondedNeighborLists[partner]
     friends = []
     for b in bonded:
       if b.i_seq != neighbor.i_seq:
         friends.append(b)
     if len(friends) != 2:
-      raise ValueError("MoverAromaticMethylRotater(): Partner does not have two bonded friends")
+      raise ValueError("MoverAromaticMethylRotator(): Partner does not have two bonded friends")
 
     # Determine the axis to rotate around, which starts at the partner and points at the neighbor.
     normal = (_rvec3(neighbor.xyz) - _rvec3(partner.xyz)).normalize()
@@ -531,11 +531,11 @@ class MoverAromaticMethylRotater(_MoverRotater):
     # Construct our parent class, which will do all of the actual work based on our inputs.
     # We have a coarse step size of 180 degrees and a range of 180 degrees and do not
     # allow fine rotations.
-    _MoverRotater.__init__(self, hydrogens, axis, 180, 180, doFineRotations = False,
+    _MoverRotator.__init__(self, hydrogens, axis, 180, 180, doFineRotations = False,
       reduceOptions = reduceOptions)
 
 ##################################################################################
-class MoverTetrahedralMethylRotater(_MoverRotater):
+class MoverTetrahedralMethylRotator(_MoverRotator):
   def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = None, reduceOptions = None):
     """ A Mover that rotates three Hydrogens around an axis from their bonded Carbon neighbor
        to the single bonded partner of its partner.  This is designed for use with tetrahedral
@@ -558,7 +558,7 @@ class MoverTetrahedralMethylRotater(_MoverRotater):
        degrees per coarse step will be determined  by the
        :param reduceOptions: 
         The reduceOptions is a Phil option subset.  The relevant options for
-          MoverTetrahedralMethylRotater are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale.
+          MoverTetrahedralMethylRotator are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale.
     """
 
     # The Carbon is the neighbor in these calculations, making this code symmetric with the other
@@ -570,10 +570,10 @@ class MoverTetrahedralMethylRotater(_MoverRotater):
     # Find the friends bonded to the partner besides the neighbor, which will be used to
     # determine the initial orientation for the hydrogens.
     if neighbor.element != "C":
-      raise ValueError("MoverTetrahedralMethylRotater(): atom is not a Carbon")
+      raise ValueError("MoverTetrahedralMethylRotator(): atom is not a Carbon")
     partners = bondedNeighborLists[neighbor]
     if len(partners) != 4:
-      raise ValueError("MoverTetrahedralMethylRotater(): atom does not have four bonded neighbors")
+      raise ValueError("MoverTetrahedralMethylRotator(): atom does not have four bonded neighbors")
     hydrogens = []
     for a in partners:
       if a.element == "H":
@@ -581,14 +581,14 @@ class MoverTetrahedralMethylRotater(_MoverRotater):
       else:
         partner = a
     if len(hydrogens) != 3:
-      raise ValueError("MoverTetrahedralMethylRotater(): atom does not have three bonded hydrogens")
+      raise ValueError("MoverTetrahedralMethylRotator(): atom does not have three bonded hydrogens")
     bonded = bondedNeighborLists[partner]
     friends = []
     for b in bonded:
       if b.i_seq != neighbor.i_seq:
         friends.append(b)
     if len(friends) != 3:
-      raise ValueError("MoverTetrahedralMethylRotater(): Partner does not have two bonded friends")
+      raise ValueError("MoverTetrahedralMethylRotator(): Partner does not have two bonded friends")
 
     # Determine the axis to rotate around, which starts at the partner and points at the neighbor.
     normal = (_rvec3(neighbor.xyz) - _rvec3(partner.xyz)).normalize()
@@ -608,7 +608,7 @@ class MoverTetrahedralMethylRotater(_MoverRotater):
     # Construct our parent class, which will do all of the actual work based on our inputs.
     # We have a coarse step size of 180 degrees and a range of 180 degrees and do not
     # allow fine rotations.
-    _MoverRotater.__init__(self, hydrogens, axis, 180, preferenceFunction = preferenceFunction,
+    _MoverRotator.__init__(self, hydrogens, axis, 180, preferenceFunction = preferenceFunction,
       reduceOptions = reduceOptions)
 
 ##################################################################################
@@ -629,9 +629,9 @@ def Test():
     pass
   fakePhil = FakePhil()
 
-  # Test the _MoverRotater class.
+  # Test the _MoverRotator class.
   try:
-    # Construct a _MoverRotater with three atoms, each at +1 in Z with one at +1 in X and 0 in Y
+    # Construct a _MoverRotator with three atoms, each at +1 in Z with one at +1 in X and 0 in Y
     # and the other two at +/-1 in Y and 0 in X.  It will rotate around the Z axis with an offset
     # of -2 for the axis start location by 180 degrees with a coarse step size of 90 and a
     # preference function that always returns 1.
@@ -646,17 +646,17 @@ def Test():
     axis = flex.vec3_double([ [ 0.0, 0.0,-2.0], [ 0.0, 0.0, 1.0] ])
     def prefFunc(x):
       return 1.0
-    rot = _MoverRotater(atoms,axis, 180, 90.0, True, prefFunc)
+    rot = _MoverRotator(atoms,axis, 180, 90.0, True, prefFunc)
 
     # See if the results of each of the functions are what we expect in terms of sizes and locations
     # of atoms and preferences.  We'll use the default fine step size.
     # The first coarse rotation should be by -90 degrees, moving the first atom to (0, -1, 1)
     coarse = rot.CoarsePositions()
     if len(coarse.atoms) != 3:
-      return "Movers.Test() _MoverRotater basic: Expected 3 atoms for CoarsePositions, got "+str(len(coarse.atoms))
+      return "Movers.Test() _MoverRotator basic: Expected 3 atoms for CoarsePositions, got "+str(len(coarse.atoms))
     atom0pos1 = coarse.positions[1][0]
     if (_lvec3(atom0pos1) - _lvec3([0,-1,1])).length() > 1e-5:
-      return "Movers.Test() _MoverRotater basic: Expected location = (0,-1,1), got "+str(atom0pos1)
+      return "Movers.Test() _MoverRotator basic: Expected location = (0,-1,1), got "+str(atom0pos1)
 
     # The first fine rotation (index 0) around the second coarse index (index 1) should be to -95 degrees,
     # moving the first atom to the appropriately rotated location around the Z axis
@@ -667,79 +667,79 @@ def Test():
     fine = rot.FinePositions(1)
     atom0pos1 = fine.positions[0][0]
     if (_lvec3(atom0pos1) - _lvec3([x,y,z])).length() > 1e-5:
-      return "Movers.Test() _MoverRotater basic: Expected fine location = "+str([x,y,z])+", got "+str(atom0pos1)
+      return "Movers.Test() _MoverRotator basic: Expected fine location = "+str([x,y,z])+", got "+str(atom0pos1)
 
     # The preference function should always return 1.
     for p in fine.preferenceEnergies:
       if p != 1:
-        return "Movers.Test() _MoverRotater basic: Expected preference energy = 1, got "+str(p)
+        return "Movers.Test() _MoverRotator basic: Expected preference energy = 1, got "+str(p)
 
     # Test None preference scale factor and a different nonzero value.
     fakePhil.PreferredOrientationScale = None
-    rot = _MoverRotater(atoms,axis, 180, 90.0, True, prefFunc, reduceOptions = fakePhil)
+    rot = _MoverRotator(atoms,axis, 180, 90.0, True, prefFunc, reduceOptions = fakePhil)
     coarse = rot.CoarsePositions()
     for p in coarse.preferenceEnergies:
       if p != 1:
-        return "Movers.Test() _MoverRotater None preference: Expected preference energy = 1, got "+str(p)
+        return "Movers.Test() _MoverRotator None preference: Expected preference energy = 1, got "+str(p)
     fakePhil.PreferredOrientationScale = 2
-    rot = _MoverRotater(atoms,axis, 180, 90.0, True, prefFunc, reduceOptions = fakePhil)
+    rot = _MoverRotator(atoms,axis, 180, 90.0, True, prefFunc, reduceOptions = fakePhil)
     coarse = rot.CoarsePositions()
     for p in coarse.preferenceEnergies:
       if p != 2:
-        return "Movers.Test() _MoverRotater Phil-scaled preference: Expected preference energy = 2, got "+str(p)
+        return "Movers.Test() _MoverRotator Phil-scaled preference: Expected preference energy = 2, got "+str(p)
 
     # Test None preference function and a sinusoidal one.
-    rot = _MoverRotater(atoms,axis, 180, 90.0, True, None)
+    rot = _MoverRotator(atoms,axis, 180, 90.0, True, None)
     coarse = rot.CoarsePositions()
     for p in coarse.preferenceEnergies:
       if p != 0:
-        return "Movers.Test() _MoverRotater None preference function: Expected preference energy = 0, got "+str(p)
+        return "Movers.Test() _MoverRotator None preference function: Expected preference energy = 0, got "+str(p)
     def prefFunc2(x):
       return math.cos(x * math.pi / 180)
-    rot = _MoverRotater(atoms,axis, 180, 180, True, prefFunc2)
+    rot = _MoverRotator(atoms,axis, 180, 180, True, prefFunc2)
     coarse = rot.CoarsePositions()
     expected = [1, -1]
     for i,p  in enumerate(coarse.preferenceEnergies):
       val = expected[i]
       if p != val:
-        return "Movers.Test() _MoverRotater Sinusoidal preference function: Expected preference energy = "+str(val)+", got "+str(p)
+        return "Movers.Test() _MoverRotator Sinusoidal preference function: Expected preference energy = "+str(val)+", got "+str(p)
 
     # Test coarseStepDegrees default behavior and setting via reduceOptions.
-    rot = _MoverRotater(atoms,axis, 180)
+    rot = _MoverRotator(atoms,axis, 180)
     coarse = rot.CoarsePositions()
     if len(coarse.positions) != 12:
-      return "Movers.Test() _MoverRotater Default coarse step: Expected 12, got "+str(len(coarse.positions))
+      return "Movers.Test() _MoverRotator Default coarse step: Expected 12, got "+str(len(coarse.positions))
     fakePhil.CoarseStepDegrees = 15
-    rot = _MoverRotater(atoms,axis, 180, reduceOptions = fakePhil)
+    rot = _MoverRotator(atoms,axis, 180, reduceOptions = fakePhil)
     coarse = rot.CoarsePositions()
     if len(coarse.positions) != 24:
-      return "Movers.Test() _MoverRotater reduceOptions coarse step: Expected 24, got "+str(len(coarse.positions))
+      return "Movers.Test() _MoverRotator reduceOptions coarse step: Expected 24, got "+str(len(coarse.positions))
 
     # Test fineStepDegrees setting via reduceOptions.
     fakePhil.CoarseStepDegrees = None
     fakePhil.FineStepDegrees = 1
-    rot = _MoverRotater(atoms,axis, 180, reduceOptions = fakePhil)
+    rot = _MoverRotator(atoms,axis, 180, reduceOptions = fakePhil)
     fine = rot.FinePositions(0)
     # +/- 15 degrees in 1-degree steps, but we don't do the +15 because it will be handled by the next
     # rotation up.
     if len(fine.positions) != 29:
-      return "Movers.Test() _MoverRotater reduceOptions fine step: Expected 29, got "+str(len(fine.positions))
+      return "Movers.Test() _MoverRotator reduceOptions fine step: Expected 29, got "+str(len(fine.positions))
 
     # Test doFineRotations = False and 180 degree coarseStepDegrees.
-    rot = _MoverRotater(atoms,axis, 180, 180, False)
+    rot = _MoverRotator(atoms,axis, 180, 180, False)
     coarse = rot.CoarsePositions()
     if len(coarse.positions) != 2:
-      return "Movers.Test() _MoverRotater 180 coarse steps: Expected 2, got "+str(len(coarse.positions))
+      return "Movers.Test() _MoverRotator 180 coarse steps: Expected 2, got "+str(len(coarse.positions))
     fine = rot.FinePositions(0)
     if len(fine.positions) != 0:
-      return "Movers.Test() _MoverRotater 180 coarse steps: Expected 0, got "+str(len(fine.positions))
+      return "Movers.Test() _MoverRotator 180 coarse steps: Expected 0, got "+str(len(fine.positions))
 
   except Exception as e:
-    return "Movers.Test() _MoverRotater basic: Exception during test of _MoverRotater: "+str(e)+"\n"+traceback.format_exc()
+    return "Movers.Test() _MoverRotator basic: Exception during test of _MoverRotator: "+str(e)+"\n"+traceback.format_exc()
 
-  # Test the MoverSingleHydrogenRotater class.
+  # Test the MoverSingleHydrogenRotator class.
   try:
-    # Construct a MoverSingleHydrogenRotater that has an atom that starts out at 45 degrees around Z
+    # Construct a MoverSingleHydrogenRotator that has an atom that starts out at 45 degrees around Z
     # that is bonded to a neighbor and partner that are vertical and then partner is bonded to two
     # friends that are in the Y=0 plane.  This should cause us to get the atom rotated to lie in
     # the Y=0 plane at a distance of sqrt(2) and a fitness function that prefers the orientations
@@ -782,26 +782,26 @@ def Test():
     bondedNeighborLists[f1] = [ p ]
     bondedNeighborLists[f2] = [ p ]
 
-    mover = MoverSingleHydrogenRotater(h, bondedNeighborLists)
+    mover = MoverSingleHydrogenRotator(h, bondedNeighborLists)
 
     # Check for hydrogen rotated into Y=0 plane at a distance of sqrt(2) from Z axis
     if h.xyz[2] != 1 or abs(abs(h.xyz[0])-math.sqrt(2)) > 1e-5:
-      return "Movers.Test() MoverSingleHydrogenRotater pair: bad H placement"
+      return "Movers.Test() MoverSingleHydrogenRotator pair: bad H placement"
 
     # Check fitness function preferring 0 and 180 rotations
     zero = mover._preferenceFunction(0)
     ninety = mover._preferenceFunction(90)
     oneEighty = mover._preferenceFunction(180)
     if abs(zero - oneEighty) > 1e-5:
-      return "Movers.Test() MoverSingleHydrogenRotater pair: bad preference function"
+      return "Movers.Test() MoverSingleHydrogenRotator pair: bad preference function"
     if zero - ninety < 1e-5:
-      return "Movers.Test() MoverSingleHydrogenRotater pair: bad preference function"
+      return "Movers.Test() MoverSingleHydrogenRotator pair: bad preference function"
 
   except Exception as e:
-    return "Movers.Test() MoverSingleHydrogenRotater pair: Exception during test: "+str(e)+"\n"+traceback.format_exc()
+    return "Movers.Test() MoverSingleHydrogenRotator pair: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
   try:
-    # Construct a MoverSingleHydrogenRotater that has an atom that starts out at 45 degrees around Z
+    # Construct a MoverSingleHydrogenRotator that has an atom that starts out at 45 degrees around Z
     # that is bonded to a neighbor and partner that are vertical and then partner is bonded to three
     # friends one of which is on the +X axis and the other two are +/-120 away from it.
     # This should cause us to get the atom rotated to be between two of the friends and a fitness
@@ -849,7 +849,7 @@ def Test():
     bondedNeighborLists[f2] = [ p ]
     bondedNeighborLists[f3] = [ p ]
 
-    mover = MoverSingleHydrogenRotater(h, bondedNeighborLists)
+    mover = MoverSingleHydrogenRotator(h, bondedNeighborLists)
 
     # Check for a hydrogen on the -X axis at a distance of sqrt(2) from Z axis,
     # or +/-120 from there.
@@ -860,7 +860,7 @@ def Test():
       if rotated[2] == 1 and rotated[0]+math.sqrt(2) < 1e-5:
         angle = a
     if angle == None:
-      return "Movers.Test() MoverSingleHydrogenRotater triple: bad H placement"
+      return "Movers.Test() MoverSingleHydrogenRotator triple: bad H placement"
 
     # Check fitness function preferring 180 and +/- 120 from there rotations away from
     # the angle away from 180 degrees.
@@ -869,18 +869,18 @@ def Test():
     off1 = mover._preferenceFunction(angle+180+120)
     off2 = mover._preferenceFunction(angle+180-120)
     if abs(off1 - oneEighty) > 1e-5:
-      return "Movers.Test() MoverSingleHydrogenRotater triple: bad preference function"
+      return "Movers.Test() MoverSingleHydrogenRotator triple: bad preference function"
     if abs(off2 - oneEighty) > 1e-5:
-      return "Movers.Test() MoverSingleHydrogenRotater triple: bad preference function"
+      return "Movers.Test() MoverSingleHydrogenRotator triple: bad preference function"
     if zero - oneEighty < 1e-5:
-      return "Movers.Test() MoverSingleHydrogenRotater triple: bad preference function"
+      return "Movers.Test() MoverSingleHydrogenRotator triple: bad preference function"
 
   except Exception as e:
-    return "Movers.Test() MoverSingleHydrogenRotater triple: Exception during test: "+str(e)+"\n"+traceback.format_exc()
+    return "Movers.Test() MoverSingleHydrogenRotator triple: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
-  # Test the MoverNH3Rotater class.
+  # Test the MoverNH3Rotator class.
   try:
-    # Construct a MoverNH3Rotater that has ony hydrogen start out at 45 degrees around Z and the
+    # Construct a MoverNH3Rotator that has ony hydrogen start out at 45 degrees around Z and the
     # other two at +/-120 degrees from that one.
     # They are bonded to a Nitrogen and partner that are vertical and then partner is bonded to three
     # friends with one on the +X axis and the others +/-120.  This should cause us to get the hydrogens at
@@ -943,7 +943,7 @@ def Test():
     bondedNeighborLists[f2] = [ p ]
     bondedNeighborLists[f3] = [ p ]
 
-    mover = MoverNH3Rotater(n, bondedNeighborLists)
+    mover = MoverNH3Rotator(n, bondedNeighborLists)
 
     # Check for a hydrogen on the -X axis at a distance of sqrt(2) from Z axis
     found = False
@@ -951,7 +951,7 @@ def Test():
       if h.xyz[2] == 1 and h.xyz[0]+math.sqrt(2) < 1e-5:
         found = True
     if not found:
-      return "Movers.Test() MoverNH3Rotater basic: bad H placement"
+      return "Movers.Test() MoverNH3Rotator basic: bad H placement"
 
     # Check fitness function preferring 180 and +/- 120 from there rotations
     zero = mover._preferenceFunction(0)
@@ -959,18 +959,18 @@ def Test():
     off1 = mover._preferenceFunction(180+120)
     off2 = mover._preferenceFunction(180-120)
     if abs(off1 - oneEighty) > 1e-5:
-      return "Movers.Test() MoverNH3Rotater basic: bad preference function"
+      return "Movers.Test() MoverNH3Rotator basic: bad preference function"
     if abs(off2 - oneEighty) > 1e-5:
-      return "Movers.Test() MoverNH3Rotater basic: bad preference function"
+      return "Movers.Test() MoverNH3Rotator basic: bad preference function"
     if zero - oneEighty < 1e-5:
-      return "Movers.Test() MoverNH3Rotater basic: bad preference function"
+      return "Movers.Test() MoverNH3Rotator basic: bad preference function"
 
   except Exception as e:
-    return "Movers.Test() MoverNH3Rotater basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
+    return "Movers.Test() MoverNH3Rotator basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
     
-  # Test the MoverAromaticMethylRotater class.
+  # Test the MoverAromaticMethylRotator class.
   try:
-    # Construct a MoverAromaticMethylRotater that has ony hydrogen start out at 45 degrees around Z and the
+    # Construct a MoverAromaticMethylRotator that has ony hydrogen start out at 45 degrees around Z and the
     # other two at +/-120 degrees from that one.
     # They are bonded to a Carbon and partner that are vertical and then partner is bonded to two
     # friends that are in the Y=0 plane.  This should cause us to get the one of the hydrogens at
@@ -1027,7 +1027,7 @@ def Test():
     bondedNeighborLists[f1] = [ p ]
     bondedNeighborLists[f2] = [ p ]
 
-    mover = MoverAromaticMethylRotater(n, bondedNeighborLists)
+    mover = MoverAromaticMethylRotator(n, bondedNeighborLists)
 
     # Check for a hydrogen on the +/-Y axis at a distance of sqrt(2) from the Z axis
     found = False
@@ -1035,22 +1035,22 @@ def Test():
       if h.xyz[2] == 1 and abs(abs(h.xyz[1])-math.sqrt(2)) < 1e-5:
         found = True
     if not found:
-      return "Movers.Test() MoverAromaticMethylRotater basic: bad H placement"
+      return "Movers.Test() MoverAromaticMethylRotator basic: bad H placement"
 
     # Check that we get two coarse and no fine orientations
     coarse = mover.CoarsePositions().positions
     if len(coarse) != 2:
-      return "Movers.Test() MoverAromaticMethylRotater basic: bad coarse count: "+str(len(coarse))
+      return "Movers.Test() MoverAromaticMethylRotator basic: bad coarse count: "+str(len(coarse))
     fine = mover.FinePositions(0).positions
     if len(fine) != 0:
-      return "Movers.Test() MoverAromaticMethylRotater basic: bad fine count: "+str(len(fine))
+      return "Movers.Test() MoverAromaticMethylRotator basic: bad fine count: "+str(len(fine))
 
   except Exception as e:
-    return "Movers.Test() MoverAromaticMethylRotater basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
+    return "Movers.Test() MoverAromaticMethylRotator basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
     
-  # Test the MoverTetrahedralMethylRotater class.
+  # Test the MoverTetrahedralMethylRotator class.
   try:
-    # Construct a MoverTetrahedralMethylRotater that has ony hydrogen start out at 45 degrees around Z and the
+    # Construct a MoverTetrahedralMethylRotator that has ony hydrogen start out at 45 degrees around Z and the
     # other two at +/-120 degrees from that one.
     # They are bonded to a Carbon and partner that are vertical and then partner is bonded to three
     # friends with one in the +X direction.  This should cause us to get the one of the hydrogens at
@@ -1112,7 +1112,7 @@ def Test():
     bondedNeighborLists[f2] = [ p ]
     bondedNeighborLists[f3] = [ p ]
 
-    mover = MoverTetrahedralMethylRotater(n, bondedNeighborLists)
+    mover = MoverTetrahedralMethylRotator(n, bondedNeighborLists)
 
     # Check for a hydrogen on the +/-Y axis at a distance of sqrt(2) from the Z axis
     found = False
@@ -1120,7 +1120,7 @@ def Test():
       if h.xyz[2] == 1 and h.xyz[0]+math.sqrt(2) < 1e-5:
         found = True
     if not found:
-      return "Movers.Test() MoverTetrahedralMethylRotater basic: bad H placement"
+      return "Movers.Test() MoverTetrahedralMethylRotator basic: bad H placement"
 
     # Check fitness function preferring 180 and +/- 120 from there rotations.
     zero = mover._preferenceFunction(0)
@@ -1128,14 +1128,14 @@ def Test():
     off1 = mover._preferenceFunction(180+120)
     off2 = mover._preferenceFunction(180-120)
     if abs(off1 - oneEighty) > 1e-5:
-      return "Movers.Test() MoverTetrahedralMethylRotater: bad preference function"
+      return "Movers.Test() MoverTetrahedralMethylRotator: bad preference function"
     if abs(off2 - oneEighty) > 1e-5:
-      return "Movers.Test() MoverTetrahedralMethylRotater: bad preference function"
+      return "Movers.Test() MoverTetrahedralMethylRotator: bad preference function"
     if zero - oneEighty < 1e-5:
-      return "Movers.Test() MoverTetrahedralMethylRotater: bad preference function"
+      return "Movers.Test() MoverTetrahedralMethylRotator: bad preference function"
 
   except Exception as e:
-    return "Movers.Test() MoverTetrahedralMethylRotater basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
+    return "Movers.Test() MoverTetrahedralMethylRotator basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
   # @todo Test other Mover subclasses
 
