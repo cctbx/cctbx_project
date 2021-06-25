@@ -51,7 +51,6 @@ def test_01():
 
   # Test creating mmm from model:
   mmm_from_model = model.as_map_model_manager(create_model_map = False)
-  assert mmm_from_model.map_manager() is None
   mmm_from_model = model.as_map_model_manager(create_model_map = True,
     resolution = 5)
   assert mmm_from_model.map_manager() is not None

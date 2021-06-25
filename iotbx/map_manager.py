@@ -268,6 +268,9 @@ class map_manager(map_reader, write_ccp4_map):
     # Initialize that this is not a mask
     self._is_mask = False
 
+    # Initialize that this is not a dummy map_manager
+    self._is_dummy_map_manager = False
+
     # Initialize program_name, limitations, labels
     self.file_name = file_name # input file (source of this manager)
     self.program_name = None  # Name of program using this manager
@@ -514,6 +517,10 @@ class map_manager(map_reader, write_ccp4_map):
 
        if not self.is_full_size():
          self.set_wrapping(False)
+
+  def is_dummy_map_manager(self):
+    ''' Is this a dummy map manager'''
+    return self._is_dummy_map_manager
 
   def is_mask(self):
     ''' Is this a mask '''
@@ -1846,7 +1853,7 @@ class map_manager(map_reader, write_ccp4_map):
     map_data = self.map_data()
     map_data = map_data - flex.mean(map_data)
     sd = map_data.sample_standard_deviation()
-    if sd != 0:
+    if sd is not None and sd != 0:
       map_data = map_data/sd
       self.set_map_data(map_data)
 
@@ -2508,6 +2515,23 @@ class shift_aware_rt:
 
     return shift_aware_rt(absolute_rt_info = inverse_absolute_rt_info)
 
+
+def dummy_map_manager(crystal_symmetry, n_grid = 12):
+  '''
+   Make a map manager with crystal symmetry and unit sized map
+  '''
+  
+  map_data = flex.double(n_grid*n_grid*n_grid,1)
+  acc = flex.grid((n_grid, n_grid, n_grid))
+  map_data.reshape(acc)
+  mm = map_manager(
+    map_data = map_data,
+    unit_cell_grid = (n_grid, n_grid, n_grid),
+    unit_cell_crystal_symmetry = crystal_symmetry,
+    wrapping = False)
+  mm.set_resolution(min(crystal_symmetry.unit_cell().parameters()[:3])/n_grid)
+  mm._is_dummy_map_manager = True
+  return mm
 
 
 def get_indices_from_index(index = None, all = None):
