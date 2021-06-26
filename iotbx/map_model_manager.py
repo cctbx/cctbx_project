@@ -2644,7 +2644,7 @@ class map_model_manager(object):
       if diffs:
          overall_diffs.extend(diffs)
     all_n = self.get_info(item_name = 'matching_model_ca_size')
-  
+
 
     if overall_diffs.size() > 0:
       self.add_to_info(item_name = 'rms_n', item = overall_diffs.size())
