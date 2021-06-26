@@ -2643,8 +2643,13 @@ class map_model_manager(object):
           diffs = reverse_diffs
       if diffs:
          overall_diffs.extend(diffs)
+    all_n = self.get_info(item_name = 'matching_model_ca_size')
+  
+
     if overall_diffs.size() > 0:
       self.add_to_info(item_name = 'rms_n', item = overall_diffs.size())
+      self.add_to_info(item_name = 'all_n',
+          item = all_n if all_n is not None else overall_diffs.size())
       self.add_to_info(item_name = 'rmsd', item = overall_diffs.rms_length())
       return overall_diffs.rms_length()
     else:
@@ -2896,6 +2901,11 @@ class map_model_manager(object):
       print("Matching model has no sites...skipping select_matching_segments",
          file = self.log)
       return []
+
+    self.add_to_info(
+        item_name = 'target_model_ca_size', item = target_model_ca.size())
+    self.add_to_info(item_name = 'matching_model_ca_size',
+         item = matching_model_ca.size())
 
     if residue_names_must_match:
       ca_residue_names = get_sequence_from_hierarchy(
