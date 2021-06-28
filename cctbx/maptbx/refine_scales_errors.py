@@ -368,6 +368,8 @@ class RefineScalesErrors(RefineBase):
     i_par += n_bins
     asqr_beta = tuple(self.x[i_par:i_par + 6])
     i_par += 6
+    sigmaE_scale = self.x[i_par]
+    i_par += 1
     sigmaE_bins = self.x[i_par:i_par + n_bins]
     i_par += n_bins
     sigmaE_beta = tuple(self.x[i_par:i_par + 6])
@@ -395,7 +397,7 @@ class RefineScalesErrors(RefineBase):
       beta_miller_A = all_ones.apply_debye_waller_factors(u_star=adptbx.beta_as_u_star(asqr_beta))
       u_terms = (asqr_scale * sigmaT_bins[i_bin_used] * self.best_bins[i_bin_used]) * beta_miller_A.data()
       beta_miller_E = all_ones.apply_debye_waller_factors(u_star=adptbx.beta_as_u_star(sigmaE_beta))
-      sigmaE_terms = sigmaE_bins[i_bin_used] * beta_miller_E.data()
+      sigmaE_terms = (sigmaE_scale * sigmaE_bins[i_bin_used]) * beta_miller_E.data()
 
       # Variance term per reflection is function of these terms
       u2sigE = 2 * u_terms + sigmaE_terms
@@ -404,7 +406,7 @@ class RefineScalesErrors(RefineBase):
       f1f2cos = self.f1f2cos_miller.data().select(sel)
       sumfsqr = self.sumfsqr_miller.data().select(sel)
       minusLL_terms = (sumfsqr * (u_terms + sigmaE_terms)
-        - 2 * u_terms * f1f2cos) / var_terms + flex.log(var_terms) + twologpi
+        - 2 * u_terms * f1f2cos) / var_terms + flex.log(var_terms) # Leave out + twologpi*ma_sel.size()
       f += flex.sum(minusLL_terms)
 
       if do_gradient:
@@ -415,7 +417,7 @@ class RefineScalesErrors(RefineBase):
         hyposqr = sumfsqr - 2 * f1f2cos
         if (self.refine_Asqr_scale or self.refine_sigmaT_bins or self.refine_Asqr_beta):
           dmLL_by_du_terms = (2 * u2sigE - sumsqrcos) / u2sigE2
-        if (self.refine_sigmaE_bins or self.refine_sigmaE_beta):
+        if (self.refine_sigmaE_scale or self.refine_sigmaE_bins or self.refine_sigmaE_beta):
           dmLL_by_dsigE_terms = ((2 * sigmaE_terms - hyposqr) / (2 * sigmaE_sqr)
                                 - sumsqrcos / (2 * u2sigE2) + 1. / (u2sigE))
         if (self.refine_Asqr_beta or self.refine_sigmaE_beta):
@@ -455,8 +457,15 @@ class RefineScalesErrors(RefineBase):
           g[i_ref+5] += flex.sum(dmLL_by_du_terms * du_by_dbetaA23)
           i_ref += 6
         i_par += 6
-        if self.refine_sigmaE_bins: # Only affects SigmaE, just current bin
-          dsigE_by_dsigmaE_bin = beta_miller_E.data()
+
+        # Note that sigmaE_scale is fixed if sigmaE_bins and/or sigmaE_beta are refined
+        if self.refine_sigmaE_scale:
+          dsigE_by_dscaleE = sigmaE_terms/sigmaE_scale
+          g[i_ref] += flex.sum(dmLL_by_dsigE_terms * dsigE_by_dscaleE)
+          i_ref += 1
+        i_par += 1
+        if self.refine_sigmaE_bins: # Just current bin
+          dsigE_by_dsigmaE_bin = sigmaE_scale*beta_miller_E.data()
           g[i_ref+i_bin_used] += flex.sum(dmLL_by_dsigE_terms * dsigE_by_dsigmaE_bin)
           i_ref += self.n_bins
         i_par += self.n_bins
@@ -482,7 +491,7 @@ class RefineScalesErrors(RefineBase):
           u2sigE3 = u2sigE * u2sigE2
           if (self.refine_Asqr_scale or self.refine_sigmaT_bins or self.refine_Asqr_beta):
             d2mLL_by_du2_terms = 4 * (sumsqrcos - 2 * u_terms - sigmaE_terms) / u2sigE3
-          if (self.refine_sigmaE_bins or self.refine_sigmaE_beta):
+          if (self.refine_sigmaE_scale or self.refine_sigmaE_bins or self.refine_sigmaE_beta):
             d2mLL_by_dsigE2_terms = ( (hyposqr - sigmaE_terms) / (sigmaE_sqr * sigmaE_terms)
                                     + sumsqrcos / u2sigE3 - 1. / (u2sigE2))
           if (self.refine_Asqr_beta or self.refine_sigmaE_beta):
@@ -497,7 +506,7 @@ class RefineScalesErrors(RefineBase):
           i_ref = 0  # Keep track of refined parameters
           # Note that various second derivatives are zero, i.e. of:
           #   u wrt Asqr_scale and sigmaT_bins
-          #   sigmaE wrt sigmaE_bins
+          #   sigmaE wrt sigmaE_bins and sigmaE_scale
           if self.refine_Asqr_scale: # Only affects U
             h[i_ref,i_ref] += flex.sum(d2mLL_by_du2_terms * flex.pow2(du_by_dAsqr_scale))
             i_ref += 1
@@ -527,8 +536,18 @@ class RefineScalesErrors(RefineBase):
                                   + flex.sum(dmLL_by_du_terms * d2u_by_dbetaA23_2) )
             i_ref += 6
           i_par += 6
-          if self.refine_sigmaE_bins: # Only affects SigmaE, just current bin
-            h[i_ref+i_bin_used, i_ref+i_bin_used] += flex.sum(d2mLL_by_dsigE2_terms * flex.pow2(dsigE_by_dsigmaE_bin))
+
+          # Note that sigmaE_scale and either sigmaE_bins or sigmaE_beta are
+          # mutually exclusive in practice. If scale and bins were refined
+          # simultaneously with no restraints, there would be one redundant parameter
+          if self.refine_sigmaE_scale:
+            h[i_ref, i_ref] += flex.sum(
+              d2mLL_by_dsigE2_terms * flex.pow2(dsigE_by_dscaleE))
+            i_ref += 1
+          i_par += 1
+          if self.refine_sigmaE_bins:
+            h[i_ref+i_bin_used, i_ref+i_bin_used] += flex.sum(
+              d2mLL_by_dsigE2_terms * flex.pow2(dsigE_by_dsigmaE_bin))
             i_ref += self.n_bins
           i_par += self.n_bins
           if self.refine_sigmaE_beta: # Only affects SigmaE
@@ -616,6 +635,9 @@ class RefineScalesErrors(RefineBase):
     if self.refine_Asqr_beta:
       large_shifts.extend(self.large_shifts_beta)
     i_par += 6
+    if self.refine_sigmaE_scale:
+      large_shifts.append(0.01)
+    i_par += 1
     if self.refine_sigmaE_bins:
       for i_bin in range(self.n_bins):
         large_shifts.append(self.start_x[i_par+i_bin]/10.)
@@ -636,16 +658,13 @@ class RefineScalesErrors(RefineBase):
     self.refine_Asqr_scale = True
     self.refine_sigmaT_bins = True
     self.refine_Asqr_beta = True
+    self.refine_sigmaE_scale = True
     self.refine_sigmaE_bins = True
     self.refine_sigmaE_beta = True
 
-    if macrocycle_protocol == ["all"]:
-      self.nmp = len(self.x)
-      return # leave mask empty
-
-    # For other protocols, define variables that aren't refined
+    # For each protocol, define variables that aren't refined
     if macrocycle_protocol == ["default"]:
-      self.refine_Asqr_scale = False
+      self.refine_sigmaE_scale = False
 
     elif macrocycle_protocol == ["noEterms"]:
       self.refine_sigmaE_bins = False
@@ -676,6 +695,12 @@ class RefineScalesErrors(RefineBase):
     else:
       self.refine_mask.extend([False for i in range(6)])
 
+    if self.refine_sigmaE_scale:
+      self.refine_mask.append(True)
+      self.nmp += 1
+    else:
+      self.refine_mask.append(False)
+
     if self.refine_sigmaE_bins:
       self.refine_mask.extend([True for i in range(self.n_bins)])
       self.nmp += self.n_bins
@@ -704,6 +729,8 @@ class RefineScalesErrors(RefineBase):
       parameter_names.append("Asqr_beta12")
       parameter_names.append("Asqr_beta13")
       parameter_names.append("Asqr_beta23")
+    if full_list or self.refine_sigmaE_scale:
+      parameter_names.append("sigmaE_scale")
     if full_list or self.refine_sigmaE_bins:
       for i in range(self.n_bins):
         parameter_names.append("sigmaE_bin#" + str(i + 1))
@@ -736,6 +763,10 @@ class RefineScalesErrors(RefineBase):
     if self.refine_Asqr_beta:
       repar.extend([Reparams(False) for i in range(6)])
     i_par += 6
+
+    if self.refine_sigmaE_scale:
+      repar.append(Reparams(True,0.))
+    i_par += 1
 
     if self.refine_sigmaE_bins:
       repar.extend([Reparams(True, 0.) for i in range(self.n_bins)])
@@ -773,6 +804,12 @@ class RefineScalesErrors(RefineBase):
       for i in range(6):
         bounds_list.append(this_bound)
     i_par += 6
+
+    if self.refine_sigmaE_scale:
+      this_bound = Bounds()
+      this_bound.lower_on(0.01)
+      bounds_list.append(this_bound)
+    i_par += 1
 
     if self.refine_sigmaE_bins:
       for i_bin in range(self.n_bins):
@@ -825,9 +862,12 @@ class RefineScalesErrors(RefineBase):
     # Take out overall isotropic B from anisotropy in errors, put into bins
 
     n_bins = self.n_bins
-    sigmaT_bins = self.x[1:1 + n_bins]
-    sigmaE_bins = self.x[n_bins + 7:2*n_bins + 7]
-    sigmaE_beta = tuple(self.x[2*n_bins + 7 : 2*n_bins + 13])
+    # Asqr_scale = self.x[0] # Unneeded parameters listed for completeness
+    sigmaT_bins = self.x[1:n_bins + 1]
+    # Asqr_beta = self.x[n_bins + 1 : n_bins + 7]
+    # sigmaE_scale = self.x[n_bins + 7]
+    # sigmaE_bins = self.x[n_bins + 8 : 2*n_bins + 8]
+    sigmaE_beta = tuple(self.x[2*n_bins + 8 : 2*n_bins + 14])
     sumw = sumwx = sumwa = sumwx2 = sumwxa = 0.
     for i_bin in range(n_bins):
       x = self.ssqr_bins[i_bin]
@@ -841,29 +881,31 @@ class RefineScalesErrors(RefineBase):
       sumwx2 += w * x ** 2
       sumwxa += w * x * a
 
-    # Make sigmaT_bins values as close as possible to 1 by taking out overall scale
-    # and B, and putting them into asqr_scale and asqr_beta terms
-    slope_a = (sumw * sumwxa - (sumwx * sumwa)) / (sumw * sumwx2 - sumwx ** 2)
-    intercept_a = (sumwa - slope_a * sumwx) / sumw
-    scale_a = math.exp(intercept_a)
-    deltaB_a = -4 * slope_a
-    self.x[0] = self.x[0] * scale_a  # Update overall scale
-    for i_bin in range(n_bins): # Take slope out of sigmaT_bins
-      self.x[1 + i_bin] = self.x[1 + i_bin] / scale_a * math.exp(deltaB_a * self.ssqr_bins[i_bin] / 4)
-    delta_beta_a = list(adptbx.u_iso_as_beta(self.unit_cell,adptbx.b_as_u(deltaB_a)))
-    for i_beta in range(6):  # Then put slope into asqr_beta
-      self.x[1 + n_bins + i_beta] = self.x[1 + n_bins + i_beta] + delta_beta_a[i_beta]
+    if self.refine_sigmaT_bins:
+      # Make sigmaT_bins values as close as possible to 1 by taking out overall scale
+      # and B, and putting them into asqr_scale and asqr_beta terms
+      slope_a = (sumw * sumwxa - (sumwx * sumwa)) / (sumw * sumwx2 - sumwx ** 2)
+      intercept_a = (sumwa - slope_a * sumwx) / sumw
+      scale_a = math.exp(intercept_a)
+      deltaB_a = -4 * slope_a
+      self.x[0] = self.x[0] * scale_a  # Update overall scale
+      for i_bin in range(n_bins): # Take slope out of sigmaT_bins
+        self.x[1 + i_bin] = self.x[1 + i_bin] / scale_a * math.exp(deltaB_a * self.ssqr_bins[i_bin] / 4)
+      delta_beta_a = list(adptbx.u_iso_as_beta(self.unit_cell,adptbx.b_as_u(deltaB_a)))
+      for i_beta in range(6):  # Then put slope into asqr_beta
+        self.x[1 + n_bins + i_beta] = self.x[1 + n_bins + i_beta] + delta_beta_a[i_beta]
 
-    # Extract isotropic B from sigmaE_beta, put it into sigmaE_bins
-    sigmaE_u_cart = adptbx.beta_as_u_cart(self.unit_cell, sigmaE_beta)
-    sigmaE_u_iso = adptbx.u_cart_as_u_iso(sigmaE_u_cart)
-    sigmaE_delta_beta = list(adptbx.u_iso_as_beta(self.unit_cell, sigmaE_u_iso))
-    sigmaE_b_iso = adptbx.u_as_b(sigmaE_u_iso)
-    for i_bin in range(n_bins):  # Put isotropic B into bins
-      self.x[7 + n_bins + i_bin] = (self.x[7 + n_bins + i_bin] *
-          math.exp(-sigmaE_b_iso * self.ssqr_bins[i_bin] / 4))
-    for i_beta in range(6):  # Remove isotropic B from sigmaE_beta
-      self.x[7 + 2 * n_bins + i_beta] = self.x[7 + 2 * n_bins + i_beta] - sigmaE_delta_beta[i_beta]
+    if self.refine_sigmaE_beta:
+      # Extract isotropic B from sigmaE_beta, put it into sigmaE_bins
+      sigmaE_u_cart = adptbx.beta_as_u_cart(self.unit_cell, sigmaE_beta)
+      sigmaE_u_iso = adptbx.u_cart_as_u_iso(sigmaE_u_cart)
+      sigmaE_delta_beta = list(adptbx.u_iso_as_beta(self.unit_cell, sigmaE_u_iso))
+      sigmaE_b_iso = adptbx.u_as_b(sigmaE_u_iso)
+      for i_bin in range(n_bins):  # Put isotropic B into bins
+        self.x[8 + n_bins + i_bin] = (self.x[8 + n_bins + i_bin] *
+            math.exp(-sigmaE_b_iso * self.ssqr_bins[i_bin] / 4))
+      for i_beta in range(6):  # Remove isotropic B from sigmaE_beta
+        self.x[8 + 2*n_bins + i_beta] = self.x[8 + 2*n_bins + i_beta] - sigmaE_delta_beta[i_beta]
 
 def get_d_star_sq_step(f_array, num_per_bin = 1000, max_bins = 50, min_bins = 6):
   d_spacings = f_array.d_spacings().data()
@@ -948,15 +990,10 @@ def runRefineScalesErrors(mmm, d_min,
         boundary_to_smoothing_ratio=boundary_to_smoothing_ratio)
       working_mmm.apply_mask_to_maps(map_ids=[map_1_id, map_2_id], mask_id='mask')
       mask_info = working_mmm.mask_info()
-      weighted_points = mask_info.size*mask_info.mean
-      marked_points = mask_info.marked_points
-      sum_mask_sqr = mask_info.size*(mask_info.mean**2+mask_info.standard_deviation**2)
-      print("Weighted number of points in mask: ", weighted_points)
-      print("Number of marked points in mask: ", marked_points)
-      print("Sum of squared mask values: ", sum_mask_sqr)
-      # print(mask_info)
+      # Keep track of volume of map for determining relative scale of sigmaE in different subvolumes
+      weighted_points = mask_info.size*mask_info.mean # Max-weighted volume in voxels
     else:
-      weighted_points = marked_points = sum_mask_sqr = working_mmm.map_data().size()
+      weighted_points = working_mmm.map_data().size()
 
     mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min, d_max=d_max, map_id=map_1_id)
     mc2 = working_mmm.map_as_fourier_coefficients(d_min=d_min, d_max=d_max, map_id=map_2_id)
@@ -1014,7 +1051,10 @@ def runRefineScalesErrors(mmm, d_min,
   n_bins = ssqr_bins.size()
 
   if (prior_params is not None):
-    print("Available keys:",prior_params.keys())
+    if d_min < 0.99*math.sqrt(1./prior_params['ssqmax']):
+      print("Requested resolution is higher than prior parameters support")
+      exit
+
     from scipy import interpolate
     ssqr_prior = tuple(prior_params['ssqr_bins'])
     sigmaT_prior = tuple(prior_params['sigmaT_bins'])
@@ -1022,13 +1062,17 @@ def runRefineScalesErrors(mmm, d_min,
     sTinterp = interpolate.interp1d(ssqr_prior,sigmaT_prior,fill_value="extrapolate")
     sEinterp = interpolate.interp1d(ssqr_prior,sigmaE_prior,fill_value="extrapolate")
     sigmaT_bins = flex.double(sTinterp(ssqr_bins))
-    # sigmaE_bins = flex.double(sEinterp(ssqr_bins))*(marked_points/prior_params['marked_points'])
-    # sigmaE_bins = flex.double(sEinterp(ssqr_bins))*(weighted_points/prior_params['weighted_points'])
-    sigmaE_bins = flex.double(sEinterp(ssqr_bins))*(sum_mask_sqr/prior_params['sum_mask_sqr'])
+    # Start sigmaE_scale at 1 after rescaling sigmaE_bins by volume comparison.
+    # This is then refined because of uncertainty in weighting of volume and
+    # also about whether masking might have been applied to the periphery of the
+    # map used to obtained prior parameters.
+    sigmaE_scale = 1.
+    sigmaE_bins = flex.double(sEinterp(ssqr_bins))*(weighted_points/prior_params['weighted_points'])
     sigmaE_baniso = prior_params['sigmaE_baniso']
     sigmaE_beta = adptbx.u_star_as_beta(adptbx.u_cart_as_u_star(mc1.unit_cell(),adptbx.b_as_u(sigmaE_baniso)))
   else:
     sigmaT_bins = [1.]*n_bins  # SigmaT_bins correction term for BEST in SigmaT
+    sigmaE_scale = 1. # Fix at 1
     sigmaE_bins = []
     for i_bin in range(n_bins):
       sigmaE = meanfsq_bins[i_bin] * (1.-mapCC_bins[i_bin])
@@ -1041,6 +1085,7 @@ def runRefineScalesErrors(mmm, d_min,
   wilson_u=adptbx.b_as_u(wilson_b_intensity)
   asqr_beta=list(adptbx.u_iso_as_beta(mc1.unit_cell(), wilson_u))
   start_params.extend(asqr_beta)
+  start_params.append(sigmaE_scale)
   start_params.extend(sigmaE_bins)
   start_params.extend(sigmaE_beta)
 
@@ -1048,7 +1093,7 @@ def runRefineScalesErrors(mmm, d_min,
   if (prior_params is not None):
     macro = ["noEterms"]      # protocol: fix error terms using prior
   else:
-    macro = ["all"]           # protocol: all twice works best for unconstrained
+    macro = ["default"]       # protocol: refine sigmaE terms too
   protocol = [macro, macro]   # overall minimization protocol
   ncyc = 50                   # maximum number of microcycles per macrocycle
   minimizer_type = "bfgs"     # minimizer, bfgs or newton
@@ -1072,7 +1117,10 @@ def runRefineScalesErrors(mmm, d_min,
   i_par += n_bins
   asqr_beta = tuple(refined_params[i_par:i_par + 6])
   i_par += 6
-  sigmaE_bins = refined_params[i_par:i_par + n_bins]
+  sigmaE_scale = refined_params[i_par]
+  i_par += 1
+  sigmaE_bins = list(sigmaE_scale * flex.double(refined_params[i_par:i_par + n_bins]))
+  sigmaE_scale = 1. # Redefine after applying
   i_par += n_bins
   sigmaE_beta = tuple(refined_params[i_par:i_par + 6])
   i_par += 6
@@ -1175,11 +1223,9 @@ def runRefineScalesErrors(mmm, d_min,
   resultsdict = dict(
     n_bins = n_bins,
     ssqr_bins = ssqr_bins,
-    marked_points = marked_points,
-    weighted_points = weighted_points,
-    sum_mask_sqr = sum_mask_sqr,
     ssqmin = ssqmin,
     ssqmax = ssqmax,
+    weighted_points = weighted_points,
     asqr_scale = asqr_scale,
     sigmaT_bins = sigmaT_bins,
     asqr_beta = asqr_beta,
