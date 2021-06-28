@@ -1117,10 +1117,9 @@ def runRefineScalesErrors(mmm, d_min,
   i_par += n_bins
   asqr_beta = tuple(refined_params[i_par:i_par + 6])
   i_par += 6
-  sigmaE_scale = refined_params[i_par]
+  sigmaE_scale = refined_params[i_par] # Used here but not saved later
   i_par += 1
   sigmaE_bins = list(sigmaE_scale * flex.double(refined_params[i_par:i_par + n_bins]))
-  sigmaE_scale = 1. # Redefine after applying
   i_par += n_bins
   sigmaE_beta = tuple(refined_params[i_par:i_par + 6])
   i_par += 6
@@ -1145,6 +1144,8 @@ def runRefineScalesErrors(mmm, d_min,
       print("  ",es.values()[iv],es.vectors(iv))
 
     print("\nParameters for SigmaE")
+    if (prior_params is not None):
+      print("  SigmaE scale applied to prior bins:", sigmaE_scale)
     for i_bin in range(n_bins):
       print("  Bin #", i_bin + 1, "SigmaE base: ", sigmaE_bins[i_bin])
     print("  SigmaE tensor as beta:", sigmaE_beta)
@@ -1329,7 +1330,7 @@ def run():
     # mtz_dataset = mcmean.as_mtz_dataset(column_root_label='FWT')
     # mtz_object=mtz_dataset.mtz_object()
     # dm.write_miller_array_file(mtz_object, filename="weighted_map_coeffs.mtz")
-  if (args.write_params is not None):
+  if args.write_params:
     resultsdict = results.resultsdict
     paramsfile = args.file_root + ".pickle"
     outf = open(paramsfile,"wb")
