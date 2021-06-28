@@ -3,14 +3,18 @@
 #include "simtbx/kokkos/detector.h"
 #include "scitbx/vec3.h"
 #include "scitbx/vec2.h"
+
+#include <unistd.h> // for sleep
+
 #define THREADS_PER_BLOCK_X 128
 #define THREADS_PER_BLOCK_Y 1
 #define THREADS_PER_BLOCK_TOTAL (THREADS_PER_BLOCK_X * THREADS_PER_BLOCK_Y)
 
+using Kokkos::fence;
 using Kokkos::deep_copy;
 using Kokkos::create_mirror_view;
 using Kokkos::parallel_for;
-using Kokkos::RangePolicy;
+//using Kokkos::RangePolicy;
 
 namespace simtbx {
 namespace Kokkos {
@@ -26,9 +30,14 @@ namespace Kokkos {
         return ret;
   }*/
   void
-  transfer_vector2kokkos(vector_cudareal_t dst, af::shared<double> src) {
+  transfer_vector2kokkos(vector_cudareal_t &dst, const af::shared<double>  &src) {
+    if (true) {
+      printf("== Transfer %s from %p\n", dst.label().c_str(), (void*) dst.data());
+      printf(" - size src|dst: %d|%d\n", src.size(), dst.span() );
+    }
     if (dst.span() < src.size()) {
       resize(dst, src.size());
+      printf(" - size changed, new size: %d\n", dst.span() );
     }
     vector_cudareal_t::HostMirror host_view = create_mirror_view(dst);
 
@@ -36,6 +45,11 @@ namespace Kokkos {
       host_view( i ) = src[ i ];
     }
     deep_copy(dst, host_view);
+    printf("copied from %p to %p.\n", (void*) host_view.data(), (void*) dst.data());
+
+    parallel_for("print_murks", dst.span(), KOKKOS_LAMBDA (const int i) {
+      printf(" dst[ %d ] = '%f'\n", i, dst(i) );
+    });
   }
 
   packed_metrology::packed_metrology(dxtbx::model::Detector const & arg_detector,
@@ -192,7 +206,7 @@ namespace Kokkos {
 */
   void
   kokkos_detector::scale_in_place_cuda(const double& factor){
-    parallel_for("scale_in_place", RangePolicy<>(0,m_total_pixel_count), KOKKOS_LAMBDA (const int i) {
+    parallel_for("scale_in_place", range_policy(0,m_total_pixel_count), KOKKOS_LAMBDA (const int i) {
       m_accumulate_floatimage( i ) = m_accumulate_floatimage( i ) * factor;
     });
 //  int smCount = 84; //deviceProps.multiProcessorCount;
@@ -296,14 +310,61 @@ namespace Kokkos {
     resize(m_maskimage, m_total_pixel_count);
     resize(m_floatimage, m_total_pixel_count);
 
-    transfer_vector2kokkos(m_sdet_vector, metrology.sdet);
+    //transfer_vector2kokkos(m_sdet_vector, metrology.sdet);
     transfer_vector2kokkos(m_fdet_vector, metrology.fdet);
+    printf("Before: %p\n", (void*) m_odet_vector.data());
+    resize(m_odet_vector, 4);
     transfer_vector2kokkos(m_odet_vector, metrology.odet);
+    printf("After: %p\n", (void*) m_odet_vector.data());
     transfer_vector2kokkos(m_pix0_vector, metrology.pix0);
     transfer_vector2kokkos(m_distance, metrology.dists);
     transfer_vector2kokkos(m_Xbeam, metrology.Xbeam);
     transfer_vector2kokkos(m_Ybeam, metrology.Ybeam);
-    printf(" resize rangemap, now:%d\n", m_rangemap.span());
+
+    metrology.show();
+    fence();
+
+    //m_sdet_vector = vector_cudareal_t("m_sdet_vector", 0);
+    resize(m_sdet_vector, metrology.sdet.size());
+    vector_cudareal_t muh = vector_cudareal_t("muh", metrology.sdet.size());
+    vector_cudareal_t::HostMirror host_view = create_mirror_view(m_sdet_vector);
+    for (int i=0; i<metrology.sdet.size(); ++i) {
+      host_view( i ) = metrology.sdet[ i ];
+    }
+    deep_copy(m_sdet_vector, host_view);
+    //m_sdet_vector = muh;
+    muh = m_sdet_vector;
+    //vector_cudareal_t muh = m_sdet_vector;
+    
+
+    printf(" rangemap size:%d\n", m_rangemap.span());
+    printf(" omega_reduction size:%d\n", m_omega_reduction.span());
+    printf(" max_I_x_reduction size:%d\n", m_max_I_x_reduction.span());
+    printf(" max_I_y_reduction size:%d\n", m_max_I_y_reduction.span());
+    printf(" maskimage size:%d\n", m_maskimage.span());
+    printf(" floatimage size:%d\n", m_floatimage.span());
+    printf(" sdet_vector size:%d\n", m_sdet_vector.span());
+    printf(" fdet_vector size:%d\n", m_fdet_vector.span());
+    printf(" odet_vector size:%d\n", m_odet_vector.span());
+    printf(" pix0_vector size:%d\n", m_pix0_vector.span());
+    printf(" distance size:%d\n", m_distance.span());
+    printf(" Xbeam size:%d\n", m_Xbeam.span());
+    printf(" Ybeam size:%d\n", m_Ybeam.span());
+  
+    sleep(1);
+    parallel_for("print_murks", range_policy(0,m_sdet_vector.span()), KOKKOS_LAMBDA (const int& i) {
+      printf(" sdet[ %d ] = '%f'\n", i, muh( i ) );
+    });
+
+    printf("odet users: %d\n", m_odet_vector.use_count());
+    vector_cudareal_t blub = m_odet_vector;
+    printf("odet users: %d\n", m_odet_vector.use_count());
+    parallel_for("print_murks", range_policy(0,m_odet_vector.span()), KOKKOS_LAMBDA (const int i) {
+      printf(" odet[ %d ] = '%f'\n", i, blub( i ) );
+    });
+
+    printf("Pointers: muh:%p, msdet:%p, blub:%p, odet:%p\n", muh.data(), m_sdet_vector.data(), blub.data(), m_odet_vector.data());
+    printf("DONE.\n");
     //allocate and zero reductions
  /*   bool * rangemap = (bool*) calloc(m_total_pixel_count, sizeof(bool));
     float * omega_reduction = (float*) calloc(m_total_pixel_count, sizeof(float));
