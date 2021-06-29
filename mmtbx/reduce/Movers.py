@@ -658,9 +658,9 @@ def Test():
     if (_lvec3(atom0pos1) - _lvec3([0,-1,1])).length() > 1e-5:
       return "Movers.Test() _MoverRotator basic: Expected location = (0,-1,1), got "+str(atom0pos1)
 
-    # The first fine rotation (index 0) around the second coarse index (index 1) should be to -95 degrees,
+    # The first fine rotation (index 0) around the second coarse index (index 1) should be to -91 degrees,
     # moving the first atom to the appropriately rotated location around the Z axis
-    rad = -95 / 180 * math.pi
+    rad = -91 / 180 * math.pi
     x = math.cos(rad)
     y = math.sin(rad)
     z = 1
