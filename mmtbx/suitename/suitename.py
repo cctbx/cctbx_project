@@ -521,8 +521,8 @@ defaults: -residuein  -pointIDfields {options.pointidfields}
 The -residuein format:
 label:model:chain:number:ins:type:alpha:beta:gamma:delta:epsilon:zeta
 if the file has alternate conformations, then use both -pointIDfields 
-    and -altIDfield # to specify the number of pointID fields and which field
-    contains the altID
+    and -altIDfield # to specify the number of pointID fields 
+    and which field (1-based) contains the altID
 use -altIDval <altID> to specify which alternate conformation to calculate 
     suite for. By default calculated for alt A
 

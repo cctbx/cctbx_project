@@ -85,11 +85,12 @@ def buildParser(parser):
     parser.add_argument("--ptid", "-ptid", type=int, default=0)
     parser.add_argument("--altid", "-altid", type=str, default="A")
     parser.add_argument("--altidval", "-altidval", type=str, default="A")
-    parser.add_argument("--altidfield", "-altidfield", type=int, default=5)
+    parser.add_argument("--altidfield", "-altidfield", type=int, default=6)
 
     # the following are deprecated:
     parser.add_argument("--angles", type=int, default=9)
-    parser.add_argument("--resAngles", type=int, default=6)
+    parser.add_argument("--resAngles", type=int, default=6)    
+    parser.add_argument("--oneline", "-oneline", action="store_true")
     #   "--help" is automatically available, it summarizes this list.
     return parser
 

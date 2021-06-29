@@ -82,9 +82,9 @@ def readResidues(inFile):
         baseCode = fields[options.pointidfields - 1]
         angleStrings = fields[options.pointidfields :]
         if (
-            ids[options.altidfield].strip() != ""
-            and ids[options.altidfield] != options.altid
-        ):
+            ids[options.altidfield-1].strip() != ""
+            and ids[options.altidfield-1] != options.altid
+        ):    # -1 converts 1-based to 0-based counting
             continue  # lines for the wrong alternative conformation are ignored
 
         base = findBase(baseCode)

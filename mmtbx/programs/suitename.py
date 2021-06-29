@@ -145,12 +145,15 @@ class Program(ProgramTemplate):
         altid="A"
           .type=str
           .help="which alternate conformer to use (A, B, etc)"
-        altidfield = 3
+        altidfield = 6
           .type=int
-          .help="which field gives the alternate conformer code"
+          .help="which field (1-based) gives the alternate conformer code"
         version=false
           .type=bool
           .help="give the version number of suite name"   
+      # deprecated
+        oneline=false
+          .type=bool 
       }
 """
 
