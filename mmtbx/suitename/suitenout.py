@@ -50,7 +50,7 @@ def writeFinalOutput(outFile, suites, outNote):
     else:
         outNote.comment = " all general case widths, power = 3.00"
     if options.string:
-        pass
+        outFile.write("\n")
     elif options.kinemage:
         kinemageFinal(outFile, suites, outNote)
     else:
