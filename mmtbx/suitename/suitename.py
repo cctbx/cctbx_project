@@ -1,4 +1,4 @@
-#                Copyright 2021  Richardson Lab
+#        Copyright 2021  Richardson Lab at Duke University
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -113,7 +113,7 @@ def compute(suites):
                 sys.stderr.write(f"! failed validation: {s.pointID}\n")
             annotate(s, bins[13], bins[13].cluster[0], 0, 0, " tangled ",
                   "", "", "", "")
-            continue
+            continue  # makes sense but does not ?? match C version
 
         # At this point we have a complete suite
         bin, issue, text, pointMaster = evaluateSuite(s)
