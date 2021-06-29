@@ -870,7 +870,7 @@ class map_model_manager(object):
     '''
     keys = list(self.map_dict().keys())
     if not keys:
-      # Make a map dummy manager 
+      # Make a map dummy manager
       mm = self.map_manager() # makes a dummy one if possible
       keys = list(self.map_dict().keys())
       if keys:
