@@ -20,50 +20,6 @@
 from boost_adaptbx import graph
 import Movers
 
-def _AABBOverlap(box1, box2):
-  """Helper function that tells whether two axis-aligned bounding boxes overlap.
-  :param box1: list of three ranges, for X, Y, and Z, that indicate one axis-aligned
-  bounding box.
-  :param box2: list of three ranges, for X, Y, and Z, that indicate another axis-aligned
-  bounding box.
-  :returns True if the boxes overlap, False if not.
-  """
-
-  return ( (box1[0][0] <= box2[0][1] and box1[0][1] >= box2[0][0]) and
-           (box1[1][0] <= box2[1][1] and box1[1][1] >= box2[1][0]) and
-           (box1[2][0] <= box2[2][1] and box1[2][1] >= box2[2][0]) )
-
-def _PairsOverlap(atoms1, positions1, atoms2, positions2, extraAtomInfo, probeRad):
-  """Helper function that tells whether any pair of atoms from two Movers overlap.
-  :param atoms1: Atom list for the first Mover
-  :param positions1: probe.PositionReturn.positions holding possible positions for each.
-  :param atoms2: Atom list for the second Mover
-  :param positions2: probe.PositionReturn.positions holding possible positions for each.
-  :param extraAtomInfo: List of information on atom radii by i_seq
-  :param ProbeRad: Probe radius
-  :returns True if a pair of atoms with one from each overlap, False if not.
-  """
-
-  for i1, p1 in enumerate(positions1):
-    for ai1 in range(len(p1)):
-      r1 = extraAtomInfo[atoms1[ai1].i_seq].vdwRadius
-      for i2, p2 in enumerate(positions2):
-        for ai2 in range(len(p2)):
-          r2 = extraAtomInfo[atoms2[ai2].i_seq].vdwRadius
-          dx = p1[ai1][0] - p2[ai2][0]
-          dy = p1[ai1][1] - p2[ai2][1]
-          dz = p1[ai1][2] - p2[ai2][2]
-          dSquared = dx*dx + dy*dy + dz*dz
-          limit = r1 + r2 + 2*probeRad
-          limitSquared = limit*limit
-          if dSquared <= limitSquared:
-            return True
-  return False
-
-  return ( (box1[0][0] <= box2[0][1] and box1[0][1] >= box2[0][0]) and
-           (box1[1][0] <= box2[1][1] and box1[1][1] >= box2[1][0]) and
-           (box1[2][0] <= box2[2][1] and box1[2][1] >= box2[2][0]) )
-
 def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
   """Uses the overlap of the axis-aligned bounding boxes (AABBs) of all possible
   positions of all movable atoms in the set of movers passed in to construct the
@@ -212,6 +168,53 @@ def InteractionGraphAllPairs(movers, extraAtomInfo, reduceOptions):
         ret.add_edge( vertex1 = verts[i], vertex2 = verts[j])
 
   return ret
+
+#######################################################################################################
+# Internal helper functions defined here
+
+def _AABBOverlap(box1, box2):
+  """Helper function that tells whether two axis-aligned bounding boxes overlap.
+  :param box1: list of three ranges, for X, Y, and Z, that indicate one axis-aligned
+  bounding box.
+  :param box2: list of three ranges, for X, Y, and Z, that indicate another axis-aligned
+  bounding box.
+  :returns True if the boxes overlap, False if not.
+  """
+
+  return ( (box1[0][0] <= box2[0][1] and box1[0][1] >= box2[0][0]) and
+           (box1[1][0] <= box2[1][1] and box1[1][1] >= box2[1][0]) and
+           (box1[2][0] <= box2[2][1] and box1[2][1] >= box2[2][0]) )
+
+def _PairsOverlap(atoms1, positions1, atoms2, positions2, extraAtomInfo, probeRad):
+  """Helper function that tells whether any pair of atoms from two Movers overlap.
+  :param atoms1: Atom list for the first Mover
+  :param positions1: probe.PositionReturn.positions holding possible positions for each.
+  :param atoms2: Atom list for the second Mover
+  :param positions2: probe.PositionReturn.positions holding possible positions for each.
+  :param extraAtomInfo: List of information on atom radii by i_seq
+  :param ProbeRad: Probe radius
+  :returns True if a pair of atoms with one from each overlap, False if not.
+  """
+
+  for i1, p1 in enumerate(positions1):
+    for ai1 in range(len(p1)):
+      r1 = extraAtomInfo[atoms1[ai1].i_seq].vdwRadius
+      for i2, p2 in enumerate(positions2):
+        for ai2 in range(len(p2)):
+          r2 = extraAtomInfo[atoms2[ai2].i_seq].vdwRadius
+          dx = p1[ai1][0] - p2[ai2][0]
+          dy = p1[ai1][1] - p2[ai2][1]
+          dz = p1[ai1][2] - p2[ai2][2]
+          dSquared = dx*dx + dy*dy + dz*dz
+          limit = r1 + r2 + 2*probeRad
+          limitSquared = limit*limit
+          if dSquared <= limitSquared:
+            return True
+  return False
+
+  return ( (box1[0][0] <= box2[0][1] and box1[0][1] >= box2[0][0]) and
+           (box1[1][0] <= box2[1][1] and box1[1][1] >= box2[1][0]) and
+           (box1[2][0] <= box2[2][1] and box1[2][1] >= box2[2][0]) )
 
 #######################################################################################################
 # Test code and objects below here
