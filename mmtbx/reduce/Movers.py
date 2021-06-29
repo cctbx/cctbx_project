@@ -222,8 +222,8 @@ class _MoverRotator:
       curStep += self._coarseStepDegrees
 
     # Determine the fine step size from reduceOptions.FineStepDegrees if it
-    # exists; otherwise, default to 5 degrees.
-    self._fineStepDegrees = 5.0
+    # exists; otherwise, default to 1 degrees.
+    self._fineStepDegrees = 1.0
     try:
       if reduceOptions.FineStepDegrees is not None:
         self._fineStepDegrees = reduceOptions.FineStepDegrees
