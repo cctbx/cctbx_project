@@ -16,8 +16,7 @@ using Kokkos::create_mirror_view;
 using Kokkos::parallel_for;
 //using Kokkos::RangePolicy;
 
-namespace simtbx {
-namespace Kokkos {
+namespace simtbx { namespace Kokkos {
 
 //refactor later into helper file
 /*  static cudaError_t detMemcpyVectorDoubleToDevice(CUDAREAL *dst, const double *src, size_t vector_items) {
@@ -29,6 +28,7 @@ namespace Kokkos {
         delete temp;
         return ret;
   }*/
+
   void
   transfer_vector2kokkos(vector_cudareal_t &dst, const af::shared<double>  &src) {
     if (true) {
@@ -47,9 +47,11 @@ namespace Kokkos {
     deep_copy(dst, host_view);
     printf("copied from %p to %p.\n", (void*) host_view.data(), (void*) dst.data());
 
-    parallel_for("print_murks", dst.span(), KOKKOS_LAMBDA (const int i) {
-      printf(" dst[ %d ] = '%f'\n", i, dst(i) );
-    });
+    // parallel_for("print_murks", dst.span(), KOKKOS_LAMBDA (const int i) {
+    //   printf(" dst[ %d ] = '%f'\n", i, dst(i) );
+    // });
+    //vector_cudareal_t temp = dst;
+    print_view(dst);
   }
 
   packed_metrology::packed_metrology(dxtbx::model::Detector const & arg_detector,
@@ -352,16 +354,18 @@ namespace Kokkos {
     printf(" Ybeam size:%d\n", m_Ybeam.span());
   
     sleep(1);
-    parallel_for("print_murks", range_policy(0,m_sdet_vector.span()), KOKKOS_LAMBDA (const int& i) {
-      printf(" sdet[ %d ] = '%f'\n", i, muh( i ) );
-    });
+    print_view(m_fdet_vector);
+    // parallel_for("print_murks", range_policy(0,m_sdet_vector.span()), KOKKOS_LAMBDA (const int& i) {
+    //   printf(" sdet[ %d ] = '%f'\n", i, muh( i ) );
+    // });
 
     printf("odet users: %d\n", m_odet_vector.use_count());
     vector_cudareal_t blub = m_odet_vector;
     printf("odet users: %d\n", m_odet_vector.use_count());
-    parallel_for("print_murks", range_policy(0,m_odet_vector.span()), KOKKOS_LAMBDA (const int i) {
-      printf(" odet[ %d ] = '%f'\n", i, blub( i ) );
-    });
+    // parallel_for("print_murks", range_policy(0,m_odet_vector.span()), KOKKOS_LAMBDA (const int i) {
+    //   printf(" odet[ %d ] = '%f'\n", i, blub( i ) );
+    // });
+    print_view(m_odet_vector, 1, 3);
 
     printf("Pointers: muh:%p, msdet:%p, blub:%p, odet:%p\n", muh.data(), m_sdet_vector.data(), blub.data(), m_odet_vector.data());
     printf("DONE.\n");
