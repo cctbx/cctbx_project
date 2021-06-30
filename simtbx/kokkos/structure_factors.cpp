@@ -7,20 +7,14 @@ using Kokkos::deep_copy;
 using Kokkos::parallel_for;
 using Kokkos::RangePolicy;
 
-namespace simtbx {
-namespace Kokkos {
-
-//  kokkos_energy_channels::kokkos_energy_channels(int const& deviceId){
-//    h_deviceID = deviceId;
-//    cudaSetDevice(deviceId);
-//  }
+namespace simtbx { namespace Kokkos {
 
   void
   kokkos_energy_channels::structure_factors_to_KOKKOS_detail(af::shared<double> linear_amplitudes){
     double * raw_ptr = linear_amplitudes.begin();
 
-    view_vector_type device_Fhkl( "device_Fhkl", linear_amplitudes.size() );
-    view_vector_type::HostMirror host_Fhkl = create_mirror_view( device_Fhkl );
+    vector_cudareal_t device_Fhkl( "device_Fhkl", linear_amplitudes.size() );
+    vector_cudareal_t::HostMirror host_Fhkl = create_mirror_view( device_Fhkl );
 
     for (int i=0; i<linear_amplitudes.size(); ++i) {
       host_Fhkl(i) = (CUDAREAL) raw_ptr[i];

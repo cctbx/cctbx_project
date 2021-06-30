@@ -1,7 +1,7 @@
 #ifndef SIMTBX_KOKKOS_INSTANCE_H
 #define SIMTBX_KOKKOS_INSTANCE_H
 
-#include <Kokkos_Core.hpp>
+#include <kokkos_types.h>
 
 namespace simtbx {
 namespace Kokkos {
