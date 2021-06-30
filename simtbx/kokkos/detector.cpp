@@ -14,23 +14,12 @@ using Kokkos::fence;
 using Kokkos::deep_copy;
 using Kokkos::create_mirror_view;
 using Kokkos::parallel_for;
-//using Kokkos::RangePolicy;
 
 namespace simtbx { namespace Kokkos {
 
-//refactor later into helper file
-/*  static cudaError_t detMemcpyVectorDoubleToDevice(CUDAREAL *dst, const double *src, size_t vector_items) {
-        CUDAREAL * temp = new CUDAREAL[vector_items];
-        for (size_t i = 0; i < vector_items; i++) {
-                temp[i] = src[i];
-        }
-        cudaError_t ret = cudaMemcpy(dst, temp, sizeof(*dst) * vector_items, cudaMemcpyHostToDevice);
-        delete temp;
-        return ret;
-  }*/
-
+  template <typename T>
   void
-  transfer_vector2kokkos(vector_cudareal_t &dst, const af::shared<double>  &src) {
+  transfer_vector2kokkos(view_1d_t<T> &dst, const af::shared<T>  &src) {
     if (true) {
       printf("== Transfer %s from %p\n", dst.label().c_str(), (void*) dst.data());
       printf(" - size src|dst: %d|%d\n", src.size(), dst.span() );
@@ -39,7 +28,7 @@ namespace simtbx { namespace Kokkos {
       resize(dst, src.size());
       printf(" - size changed, new size: %d\n", dst.span() );
     }
-    vector_cudareal_t::HostMirror host_view = create_mirror_view(dst);
+    auto host_view = create_mirror_view(dst);
 
     for (int i=0; i<src.size(); ++i) {
       host_view( i ) = src[ i ];
@@ -47,10 +36,6 @@ namespace simtbx { namespace Kokkos {
     deep_copy(dst, host_view);
     printf("copied from %p to %p.\n", (void*) host_view.data(), (void*) dst.data());
 
-    // parallel_for("print_murks", dst.span(), KOKKOS_LAMBDA (const int i) {
-    //   printf(" dst[ %d ] = '%f'\n", i, dst(i) );
-    // });
-    //vector_cudareal_t temp = dst;
     print_view(dst);
   }
 
@@ -134,18 +119,15 @@ namespace simtbx { namespace Kokkos {
 
   vector_double_t
   kokkos_detector::construct_detail(dxtbx::model::Detector const & arg_detector) {
-    //1) determine the size
-    //m_panel_count = arg_detector.size();
-    SCITBX_ASSERT( m_panel_count >= 1);
+    //1) confirm the size
+    SCITBX_ASSERT( m_panel_count == arg_detector.size() );
+    SCITBX_ASSERT( m_panel_count >= 1 );
 
     //2) confirm that array dimensions are similar for each size
-    //m_slow_dim_size = arg_detector[0].get_image_size()[0];
-    //m_fast_dim_size = arg_detector[0].get_image_size()[1];
     for (int ipanel=1; ipanel < arg_detector.size(); ++ipanel){
-      SCITBX_ASSERT(arg_detector[ipanel].get_image_size()[0] == m_slow_dim_size);
-      SCITBX_ASSERT(arg_detector[ipanel].get_image_size()[1] == m_fast_dim_size);
+      SCITBX_ASSERT( arg_detector[ipanel].get_image_size()[0] == m_slow_dim_size );
+      SCITBX_ASSERT( arg_detector[ipanel].get_image_size()[1] == m_fast_dim_size );
     }
-    //m_total_pixel_count = m_panel_count * m_slow_dim_size * m_fast_dim_size;
     printf(" m_total_pixel_count: %d\n", m_total_pixel_count);
     printf("     m_slow_dim_size: %d\n", m_slow_dim_size);
     printf("     m_fast_dim_size: %d\n", m_fast_dim_size);
@@ -157,11 +139,6 @@ namespace simtbx { namespace Kokkos {
     //       2. represent multiple panels, all same rectangular shape; slowest dimension = n_panels
     vector_double_t view_floatimage( "m_accumulate_floatimage", m_total_pixel_count );
     return view_floatimage;
-
-//    cudaSafeCall(cudaMalloc((void ** )&cu_accumulate_floatimage,
-//                            sizeof(*cu_accumulate_floatimage) * m_total_pixel_count));
-//    cudaSafeCall(cudaMemset((void *)cu_accumulate_floatimage, 0,
-//                            sizeof(*cu_accumulate_floatimage) * m_total_pixel_count));
   };
 
   kokkos_detector::kokkos_detector(dxtbx::model::Detector const & arg_detector,
@@ -198,25 +175,13 @@ namespace simtbx { namespace Kokkos {
     cudaSafeCall(cudaMemset((void *)cu_accumulate_floatimage, 0,
                             sizeof(*cu_accumulate_floatimage) * m_total_pixel_count));
   }
-
-  void kokkos_detector::free_detail(){
-    //4) make sure we can deallocate cuda array later on
-    if (cu_accumulate_floatimage != NULL) {
-      cudaSafeCall(cudaFree(cu_accumulate_floatimage));
-    }
-  };
 */
   void
   kokkos_detector::scale_in_place_cuda(const double& factor){
+    auto local_accumulate_floatimage = m_accumulate_floatimage;
     parallel_for("scale_in_place", range_policy(0,m_total_pixel_count), KOKKOS_LAMBDA (const int i) {
-      m_accumulate_floatimage( i ) = m_accumulate_floatimage( i ) * factor;
+      local_accumulate_floatimage( i ) = local_accumulate_floatimage( i ) * factor;
     });
-//  int smCount = 84; //deviceProps.multiProcessorCount;
-//  dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
-//  dim3 numBlocks(smCount * 8, 1);
-//  int total_pixels = m_total_pixel_count;
-//  scale_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
-//    factor, cu_accumulate_floatimage, total_pixels);
   }
 
   void
@@ -228,13 +193,6 @@ namespace simtbx { namespace Kokkos {
     // nB.raw_pixels = af::flex_double(af::flex_grid<>(nB.spixels,nB.fpixels));
     // do not reallocate CPU memory for the data write, as it is not needed
     
-    //double * double_floatimage = nB.raw_pixels.begin();
-    //cudaSafeCall(cudaMemcpy(
-    // double_floatimage,
-    // cu_accumulate_floatimage,
-    // sizeof(*cu_accumulate_floatimage) * m_total_pixel_count,
-    // cudaMemcpyDeviceToHost));
-
     vector_double_t::HostMirror host_floatimage = create_mirror_view(m_accumulate_floatimage);
     deep_copy(host_floatimage, m_accumulate_floatimage);
 
@@ -303,7 +261,7 @@ namespace simtbx { namespace Kokkos {
   }
 */
   void
-  kokkos_detector::each_image_allocate_cuda(){
+  kokkos_detector::each_image_allocate_cuda() {
     resize(m_rangemap, m_total_pixel_count);
     resize(m_omega_reduction, m_total_pixel_count);
     resize(m_max_I_x_reduction, m_total_pixel_count);
@@ -312,33 +270,17 @@ namespace simtbx { namespace Kokkos {
     resize(m_maskimage, m_total_pixel_count);
     resize(m_floatimage, m_total_pixel_count);
 
-    //transfer_vector2kokkos(m_sdet_vector, metrology.sdet);
+    transfer_vector2kokkos(m_sdet_vector, metrology.sdet);
     transfer_vector2kokkos(m_fdet_vector, metrology.fdet);
-    printf("Before: %p\n", (void*) m_odet_vector.data());
-    resize(m_odet_vector, 4);
     transfer_vector2kokkos(m_odet_vector, metrology.odet);
-    printf("After: %p\n", (void*) m_odet_vector.data());
     transfer_vector2kokkos(m_pix0_vector, metrology.pix0);
     transfer_vector2kokkos(m_distance, metrology.dists);
     transfer_vector2kokkos(m_Xbeam, metrology.Xbeam);
     transfer_vector2kokkos(m_Ybeam, metrology.Ybeam);
-
-    metrology.show();
     fence();
 
-    //m_sdet_vector = vector_cudareal_t("m_sdet_vector", 0);
-    resize(m_sdet_vector, metrology.sdet.size());
-    vector_cudareal_t muh = vector_cudareal_t("muh", metrology.sdet.size());
-    vector_cudareal_t::HostMirror host_view = create_mirror_view(m_sdet_vector);
-    for (int i=0; i<metrology.sdet.size(); ++i) {
-      host_view( i ) = metrology.sdet[ i ];
-    }
-    deep_copy(m_sdet_vector, host_view);
-    //m_sdet_vector = muh;
-    muh = m_sdet_vector;
-    //vector_cudareal_t muh = m_sdet_vector;
+    metrology.show();
     
-
     printf(" rangemap size:%d\n", m_rangemap.span());
     printf(" omega_reduction size:%d\n", m_omega_reduction.span());
     printf(" max_I_x_reduction size:%d\n", m_max_I_x_reduction.span());
@@ -353,113 +295,12 @@ namespace simtbx { namespace Kokkos {
     printf(" Xbeam size:%d\n", m_Xbeam.span());
     printf(" Ybeam size:%d\n", m_Ybeam.span());
   
-    sleep(1);
     print_view(m_fdet_vector);
-    // parallel_for("print_murks", range_policy(0,m_sdet_vector.span()), KOKKOS_LAMBDA (const int& i) {
-    //   printf(" sdet[ %d ] = '%f'\n", i, muh( i ) );
-    // });
-
-    printf("odet users: %d\n", m_odet_vector.use_count());
-    vector_cudareal_t blub = m_odet_vector;
-    printf("odet users: %d\n", m_odet_vector.use_count());
-    // parallel_for("print_murks", range_policy(0,m_odet_vector.span()), KOKKOS_LAMBDA (const int i) {
-    //   printf(" odet[ %d ] = '%f'\n", i, blub( i ) );
-    // });
     print_view(m_odet_vector, 1, 3);
 
-    printf("Pointers: muh:%p, msdet:%p, blub:%p, odet:%p\n", muh.data(), m_sdet_vector.data(), blub.data(), m_odet_vector.data());
     printf("DONE.\n");
-    //allocate and zero reductions
- /*   bool * rangemap = (bool*) calloc(m_total_pixel_count, sizeof(bool));
-    float * omega_reduction = (float*) calloc(m_total_pixel_count, sizeof(float));
-    float * max_I_x_reduction = (float*) calloc(m_total_pixel_count, sizeof(float));
-    float * max_I_y_reduction = (float*) calloc(m_total_pixel_count, sizeof(float));
-    //It is not quite clear why we must zero them on CPU, why not just on GPU?
-
-    cu_omega_reduction = NULL;
-    cudaSafeCall(cudaMalloc((void ** )&cu_omega_reduction, sizeof(*cu_omega_reduction) * m_total_pixel_count));
-    cudaSafeCall(cudaMemcpy(cu_omega_reduction,
-                 omega_reduction, sizeof(*cu_omega_reduction) * m_total_pixel_count,
-                 cudaMemcpyHostToDevice));
-
-    cu_max_I_x_reduction = NULL;
-    cudaSafeCall(cudaMalloc((void ** )&cu_max_I_x_reduction, sizeof(*cu_max_I_x_reduction) * m_total_pixel_count));
-    cudaSafeCall(cudaMemcpy(cu_max_I_x_reduction,
-                 max_I_x_reduction, sizeof(*cu_max_I_x_reduction) * m_total_pixel_count,
-                 cudaMemcpyHostToDevice));
-
-    cu_max_I_y_reduction = NULL;
-    cudaSafeCall(cudaMalloc((void ** )&cu_max_I_y_reduction, sizeof(*cu_max_I_y_reduction) * m_total_pixel_count));
-    cudaSafeCall(cudaMemcpy(cu_max_I_y_reduction, max_I_y_reduction, sizeof(*cu_max_I_y_reduction) * m_total_pixel_count,
-                 cudaMemcpyHostToDevice));
-
-    cu_rangemap = NULL;
-    cudaSafeCall(cudaMalloc((void ** )&cu_rangemap, sizeof(*cu_rangemap) * m_total_pixel_count));
-    cudaSafeCall(cudaMemcpy(cu_rangemap,
-                 rangemap, sizeof(*cu_rangemap) * m_total_pixel_count,
-                 cudaMemcpyHostToDevice));
-
-    // deallocate host arrays
-    // potential memory leaks
-    free(rangemap);
-    free(omega_reduction);
-    free(max_I_x_reduction);
-    free(max_I_y_reduction);
-
-    cu_maskimage = NULL;
-    int unsigned short * maskimage = NULL; //default case, must implement non-trivial initializer elsewhere
-    if (maskimage != NULL) {
-      cudaSafeCall(cudaMalloc((void ** )&cu_maskimage, sizeof(*cu_maskimage) * m_total_pixel_count));
-      cudaSafeCall(cudaMemcpy(cu_maskimage, maskimage, sizeof(*cu_maskimage) * m_total_pixel_count,
-                   cudaMemcpyHostToDevice));
-    }
-
-    // In contrast to old API, new API initializes its own accumulator, does not take values from CPU
-    cu_floatimage = NULL;
-    cudaSafeCall(cudaMalloc((void ** )&cu_floatimage, sizeof(*cu_floatimage) * m_total_pixel_count));
-
-        const int met_length = metrology.sdet.size();
-        cudaSafeCall(cudaMalloc((void ** )&cu_sdet_vector, sizeof(*cu_sdet_vector) * met_length));
-        cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_sdet_vector, metrology.sdet.begin(), met_length));
-
-        cudaSafeCall(cudaMalloc((void ** )&cu_fdet_vector, sizeof(*cu_fdet_vector) * met_length));
-        cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_fdet_vector, metrology.fdet.begin(), met_length));
-
-        cudaSafeCall(cudaMalloc((void ** )&cu_odet_vector, sizeof(*cu_odet_vector) * met_length));
-        cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_odet_vector, metrology.odet.begin(), met_length));
-
-        cudaSafeCall(cudaMalloc((void ** )&cu_pix0_vector, sizeof(*cu_pix0_vector) * met_length));
-        cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_pix0_vector, metrology.pix0.begin(), met_length));
-
-        cudaSafeCall(cudaMalloc((void ** )&cu_distance, sizeof(*cu_distance) * metrology.dists.size()));
-        cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_distance, metrology.dists.begin(), metrology.dists.size()));
-
-        cudaSafeCall(cudaMalloc((void ** )&cu_Xbeam,    sizeof(*cu_Xbeam) * metrology.Xbeam.size()));
-        cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_Xbeam,    metrology.Xbeam.begin(), metrology.Xbeam.size()));
-
-        cudaSafeCall(cudaMalloc((void ** )&cu_Ybeam,    sizeof(*cu_Ybeam) * metrology.Ybeam.size()));
-        cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_Ybeam,    metrology.Ybeam.begin(), metrology.Ybeam.size()));
-  */}
-/*
-  void
-  kokkos_detector::each_image_free_cuda(){
-    cudaSafeCall(cudaDeviceSynchronize());
-    cudaSafeCall(cudaFree(cu_omega_reduction));
-    cudaSafeCall(cudaFree(cu_max_I_x_reduction));
-    cudaSafeCall(cudaFree(cu_max_I_y_reduction));
-    cudaSafeCall(cudaFree(cu_rangemap));
-    cudaSafeCall(cudaFree(cu_maskimage));
-    cudaSafeCall(cudaFree(cu_floatimage));
-    cudaSafeCall(cudaFree(cu_sdet_vector));
-    cudaSafeCall(cudaFree(cu_fdet_vector));
-    cudaSafeCall(cudaFree(cu_odet_vector));
-    cudaSafeCall(cudaFree(cu_pix0_vector));
-    cudaSafeCall(cudaFree(cu_distance));
-    cudaSafeCall(cudaFree(cu_Xbeam));
-    cudaSafeCall(cudaFree(cu_Ybeam));
-    cudaSafeCall(cudaFree(cu_active_pixel_list));
   }
-*/
+
 } // Kokkos
 } // simtbx
 

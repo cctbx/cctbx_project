@@ -52,10 +52,6 @@ struct kokkos_detector{
   //af::flex_double get_raw_pixels_cuda();
   //void set_active_pixels_on_KOKKOS(af::shared<int>);
   //af::shared<double> get_whitelist_raw_pixels_cuda(af::shared<std::size_t>);
-  //void each_image_free_cuda();
-
-  //void free_detail();
-  //inline ~kokkos_detector(){ {free_detail();} }
 
   const dxtbx::model::Detector detector;
 
