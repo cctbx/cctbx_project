@@ -1,6 +1,5 @@
 #ifndef SIMTBX_KOKKOS_DETECTOR_H
 #define SIMTBX_KOKKOS_DETECTOR_H
-// the *.h file can be included for all compiles regardless of the availability of CUDA
 
 // class is intended to capture several concepts:
 //   1) a dxtbx multipanel detector
@@ -17,18 +16,9 @@
 #include "simtbx/nanoBragg/nanoBragg.h"
 #include "kokkos_types.h"
 
-//#include <Kokkos_Core.hpp>
 #include <iostream>
-/*
-using vector_bool_t = Kokkos::View<bool*, Kokkos::CudaSpace>;
-using vector_double_t = Kokkos::View<double*, Kokkos::CudaSpace>;
-using vector_float_t = Kokkos::View<float*, Kokkos::CudaSpace>;
-using vector_cudareal_t = Kokkos::View<CUDAREAL*, Kokkos::CudaSpace>;
-using vector_int_t = Kokkos::View<int*, Kokkos::CudaSpace>;
-using vector_ushort_t = Kokkos::View<unsigned short int*, Kokkos::CudaSpace>;
-*/
-namespace simtbx {
-namespace Kokkos {
+
+namespace simtbx { namespace Kokkos {
 
 namespace af = scitbx::af;
 

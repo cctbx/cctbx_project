@@ -5,13 +5,11 @@
 #include "scitbx/array_family/shared.h"
 #include "cctbx/miller.h"
 #include "simtbx/nanoBragg/nanotypes.h"
+#include "kokkos_types.h"
 
-#include <Kokkos_Core.hpp>
 
 using simtbx::nanoBragg::hklParams;
-typedef Kokkos::View<CUDAREAL*> view_vector_type;
-namespace simtbx {
-namespace Kokkos {
+namespace simtbx { namespace Kokkos {
 
 namespace af = scitbx::af;
 typedef cctbx::miller::index<int> miller_t;
@@ -88,7 +86,7 @@ struct kokkos_energy_channels {
     //int h_deviceID;
 
   /* pointers to data on device */
-  af::shared<view_vector_type> d_channel_Fhkl;
+  af::shared<vector_cudareal_t> d_channel_Fhkl;
   hklParams host_FhklParams;
 };
 } // Kokkos
