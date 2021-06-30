@@ -102,9 +102,11 @@ class map_model_mixins(object):
     if (not model_file) and self.get_model_names() and \
          len(self.get_model_names()) == 1:
       model_file = self.get_default_model_name()
+      map_model.model = model_file
     if not map_files and self.get_real_map_names():
       if len(self.get_real_map_names()) == 1:
         map_files = self.get_default_real_map_name()
+
       elif len(self.get_real_map_names()) in [2,3]:
         map_files = self.get_real_map_names()
 
@@ -113,23 +115,31 @@ class map_model_mixins(object):
     mm_1 = None
     mm_2 = None
     if isinstance(map_files, list):
-      if len(map_files) != 1 and len(map_files) != 2 and len(map_files) != 3:
+      if len(map_files) != 0 and \
+         len(map_files) != 1 and len(map_files) != 2 and len(map_files) != 3:
         msg = 'Please provide only 1 full map or 2 half maps or 1 ' +\
          'full map and 2 half maps.\n Found:\n'
         for map_file in map_files:
           msg += ('  {map_file}\n'.format(map_file=map_file))
         raise Sorry(msg)
-      if len(map_files) == 1:
+      elif len(map_files) == 0:
+        mm = None
+      elif len(map_files) == 1:
         mm = self.get_real_map(map_files[0])
+        map_model.full_map = map_files[0]
       elif len(map_files) == 2:
         mm_1 = self.get_real_map(map_files[0])
         mm_2 = self.get_real_map(map_files[1])
+        map_model.half_maps = map_files[1:3]
       elif len(map_files) == 3:
+        map_model.full_map = map_files[0]
+        map_model.half_maps = map_files[1:3]
         mm = self.get_real_map(map_files[0])
         mm_1 = self.get_real_map(map_files[1])
         mm_2 = self.get_real_map(map_files[2])
     elif map_files:
-      mm = self.get_real_map(map_files)
+      mm = self.get_real_map(map_files) # it is a single file name
+      map_model.full_map = map_files
     else:
       mm = None
 
