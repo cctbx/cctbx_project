@@ -65,6 +65,7 @@ def run(args):
   
 extensionList={
     "pdb": "pdb",
+    "cif": "pdb",
     "kin": "kinemage",
     "dangle": "dangle",
     "suitegeom": "dangle",
