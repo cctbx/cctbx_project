@@ -705,6 +705,16 @@ class AdvancedSettingsDialog(BaseDialog):
                                                 params.mp.env_script[0] is not None else '')
     self.mp_sizer.Add(self.env_script, flag=wx.EXPAND | wx.ALL, border=10)
 
+    self.phenix_script = gctr.TextButtonCtrl(self,
+                                             name='phenix_script',
+                                             label='Phenix setup script:',
+                                             label_style='bold',
+                                             label_size=(200, -1),
+                                             value=params.mp.phenix_script[0] \
+                                                   if len(params.mp.phenix_script) > 0 and \
+                                                   params.mp.phenix_script[0] is not None else '')
+    self.mp_sizer.Add(self.phenix_script, flag=wx.EXPAND | wx.ALL, border=10)
+
     self.htcondor_executable_path = gctr.TextButtonCtrl(self,
                                                         name='htcondor_executable_path',
                                                         label='MPI executable path (mp2script or openmpiscript):',
@@ -941,6 +951,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.wall_time.Hide()
       self.mpi_command.Hide()
       self.env_script.Hide()
+      self.phenix_script.Hide()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
       self.jobtype_nnodes_box.Hide()
@@ -966,6 +977,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.wall_time.Show()
       self.mpi_command.Hide()
       self.env_script.Hide()
+      self.phenix_script.Hide()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
       self.nnodes_index.Show()
@@ -991,6 +1003,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.wall_time.Hide()
       self.mpi_command.Hide()
       self.env_script.Show()
+      self.phenix_script.Show()
       self.htcondor_executable_path.Show()
       self.htcondor_filesystemdomain.Show()
       self.nnodes_index.Hide()
@@ -1016,6 +1029,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.wall_time.Hide()
       self.mpi_command.Show()
       self.env_script.Show()
+      self.phenix_script.Show()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
       self.nnodes_index.Show()
@@ -1045,6 +1059,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.wall_time.Hide()
       self.mpi_command.Show()
       self.env_script.Show()
+      self.phenix_script.Show()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
       self.nnodes_index.Hide()
@@ -1121,6 +1136,7 @@ class AdvancedSettingsDialog(BaseDialog):
         self.params.mp.wall_time = int(self.wall_time.ctr.GetValue())
       else:
         self.params.mp.env_script = [self.env_script.ctr.GetValue()]
+        self.params.mp.phenix_script = [self.phenix_script.ctr.GetValue()]
         self.params.mp.nproc = int(self.nproc.ctr.GetValue())
 
     self.params.mp.mpi_command = self.mpi_command.ctr.GetValue() \
@@ -2914,31 +2930,32 @@ class TaskDialog(BaseDialog):
     from iotbx.phil import parse
     dispatcher, phil_scope = Task.get_phil_scope(self.db, task_type)
 
-    msg = None
-    try:
-      task_params, unused = phil_scope.fetch(parse(parameters), track_unused_definitions = True)
-    except Exception as e:
-      msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (dispatcher, str(e))
-    else:
-      if len(unused) > 0:
-        msg = [str(item) for item in unused]
-        msg = '\n'.join(['  %s' % line for line in msg])
-        msg = 'The following definitions were not recognized:\n%s\n' % msg
-
+    if phil_scope is not None:
+      msg = None
       try:
-        params = task_params.extract()
+        task_params, unused = phil_scope.fetch(parse(parameters), track_unused_definitions = True)
       except Exception as e:
-        if msg is None: msg = ""
-        msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
+        msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (dispatcher, str(e))
+      else:
+        if len(unused) > 0:
+          msg = [str(item) for item in unused]
+          msg = '\n'.join(['  %s' % line for line in msg])
+          msg = 'The following definitions were not recognized:\n%s\n' % msg
 
-    if msg is not None:
-      msg += '\nFix the parameters and press OK again'
-      msgdlg = wx.MessageDialog(self,
-                                message=msg,
-                                caption='Warning',
-                                style=wx.OK |  wx.ICON_EXCLAMATION)
-      msgdlg.ShowModal()
-      return
+        try:
+          params = task_params.extract()
+        except Exception as e:
+          if msg is None: msg = ""
+          msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
+
+      if msg is not None:
+        msg += '\nFix the parameters and press OK again'
+        msgdlg = wx.MessageDialog(self,
+                                  message=msg,
+                                  caption='Warning',
+                                  style=wx.OK |  wx.ICON_EXCLAMATION)
+        msgdlg.ShowModal()
+        return
 
     if self.task is None:
       task = self.db.create_task(type = task_type,

@@ -94,7 +94,8 @@ class db_proxy(object):
     # Called if the property is not found
     assert '_db_dict' in self.__dict__
     if key not in self._db_dict:
-      print(self.table_name, key, 'error!', self._db_dict)
+      if key not in ['_ipython_canary_method_should_not_exist_', '_repr_mimebundle_']: # things IPython checks for
+        print(self.table_name, key, 'error!', self._db_dict)
       raise AttributeError(key)
 
     return self._db_dict[key]
@@ -119,3 +120,9 @@ class db_proxy(object):
       self.table_name, key, v, self.id)
     self.app.execute_query(query, commit=True)
     self._db_dict[key] = value
+
+  def __str__(self):
+    return "db_proxy %s %d"%(self.table_name, self.id)
+
+  def __repr__(self):
+    return self.__str__()
