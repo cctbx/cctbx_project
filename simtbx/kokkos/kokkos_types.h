@@ -28,8 +28,9 @@ using vector_cudareal_t = view_1d_t<CUDAREAL>;
 using vector_int_t = view_1d_t<int>;
 using vector_ushort_t = view_1d_t<unsigned int short>;
 
+
 template <typename T>
-void print_view(view_1d_t<T> &arg_view, size_t arg_first, size_t arg_last) {
+void print_view(const view_1d_t<T> &arg_view, size_t arg_first, size_t arg_last) {
   std::string label = arg_view.label();
   printf("print_view '%s'\n", label.c_str());
 
@@ -40,7 +41,7 @@ void print_view(view_1d_t<T> &arg_view, size_t arg_first, size_t arg_last) {
 }
 
 template <typename T>
-void print_view(view_1d_t<T> &arg_view) {
+void print_view(const view_1d_t<T> &arg_view) {
   print_view(arg_view, 0, arg_view.span()); 
 }
 
