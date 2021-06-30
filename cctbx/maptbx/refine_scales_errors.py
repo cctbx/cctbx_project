@@ -666,7 +666,7 @@ class RefineScalesErrors(RefineBase):
     if macrocycle_protocol == ["default"]:
       self.refine_sigmaE_scale = False
 
-    elif macrocycle_protocol == ["noEterms"]:
+    elif macrocycle_protocol == ["Eprior"]:
       self.refine_sigmaE_bins = False
       self.refine_sigmaE_beta = False
 
@@ -1091,7 +1091,7 @@ def runRefineScalesErrors(mmm, d_min,
 
   # create inputs for the minimizer's run method
   if (prior_params is not None):
-    macro = ["noEterms"]      # protocol: fix error terms using prior
+    macro = ["Eprior"]        # protocol: fix error terms using prior
   else:
     macro = ["default"]       # protocol: refine sigmaE terms too
   protocol = [macro, macro]   # overall minimization protocol
