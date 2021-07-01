@@ -1,4 +1,4 @@
-from suitenamedefs import Suite, Residue, globals
+from suitenamedefs import Suite, Residue, findBase, globals
 
 """
 This module handles reading suites from "dangle" format files
@@ -24,38 +24,6 @@ Extraction of suites from loaded cctbx models is handled elsewhere.
 
 import numpy as np
 import math, sys
-
-
-# The great variety of codes that may represent each base in the input file
-NAListA = ":ADE:  A:A  : Ar:ATP:ADP:AMP:T6A:1MA:RIA:  I:I  :"
-NAListG = ":GUA:  G:G  : Gr:GTP:GDP:GMP:GSP:1MG:2MG:M2G:OMG: 7MG:"
-NAListC = ":CYT:  C:C  : Cr:CTP:CDP:CMP:5MC:OMC:"
-NAListU = ":URA:URI:  U: Ur:U  :UTP:UDP:UMP:5MU:H2U:PSU:4SU:"
-NAListY = ": YG:YG :  Y:Y  :"
-#NAListT = ":THY:  T:T  : Tr:TTP:TDP:TMP:"
-IgnoreDNAList = ": DA: DG: DC: DT:THY:  T:T  : Tr:TTP:TDP:TMP:"
-
-
-# out of the noise, determine the base
-def findBase(baseCode):
-    if len(baseCode) != 3:
-        return "Z"
-
-    if NAListA.find(baseCode) >= 0:
-        base = "A"
-    elif NAListG.find(baseCode) >= 0:
-        base = "G"
-    elif NAListC.find(baseCode) >= 0:
-        base = "C"
-    elif NAListU.find(baseCode) >= 0:
-        base = "U"
-    elif NAListY.find(baseCode) >= 0:
-        base = "Y"
-    elif IgnoreDNAList.find(baseCode) >= 0:
-        return None  # we ignore DNA residues
-    else:
-        base = "?"
-    return base
 
 
 def stringToFloat(string):

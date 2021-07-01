@@ -359,7 +359,9 @@ IgnoreDNAList = ": DA: DG: DC: DT:THY:  T:T  : Tr:TTP:TDP:TMP:"
 
 # out of the noise, determine the base
 def findBase(baseCode):
-    if len(baseCode) != 3:
+    if IgnoreDNAList.find(baseCode) >= 0:
+        return None  # we ignore DNA residues
+    elif len(baseCode) != 3:
         return "Z"
 
     if NAListA.find(baseCode) >= 0:
@@ -372,8 +374,6 @@ def findBase(baseCode):
         base = "U"
     elif NAListY.find(baseCode) >= 0:
         base = "Y"
-    elif IgnoreDNAList.find(baseCode) >= 0:
-        return None  # we ignore DNA residues
     else:
         base = "?"
     return base

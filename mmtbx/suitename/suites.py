@@ -19,7 +19,7 @@ from iotbx.data_manager import DataManager    #   Load in the DataManager
 from mmtbx.validation import utils
 from cctbx import geometry_restraints
 from collections import defaultdict
-from myangle import getResidueDihedrals
+from myangle import getResidueDihedrals, residueString
 
 
 def main(options, outFile=None):
@@ -35,6 +35,10 @@ def main(options, outFile=None):
 
   residues = getResidueDihedrals(model, options.altid, 
                                  name=os.path.splitext(inFile)[0])
+  ### to print mp_geo-like output:
+  # for r in residues:
+  #   print(residueString(r))
+                                   
   if len(residues) == 0:
       sys.stderr.write("read no residues: perhaps wrong alternate code\n")
       sys.exit(1)

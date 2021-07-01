@@ -22,6 +22,7 @@ import sys
 # suitename first
 def parseArgs(programClass, logger):
   for i, arg in enumerate(sys.argv):  # make case insensitive
+    if arg[0]=="-":
       sys.argv[i] = arg.lower()
   parser = argparse.ArgumentParser()
   buildParser(parser)  # set up the arguments for suite name

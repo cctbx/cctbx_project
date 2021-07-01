@@ -176,10 +176,8 @@ def build_dihedrals(mainchain, chain_id, alt):
 def harder_build_chain(backbone, i, k, residue, residues, chain_id, alt):
     syn_chain = backbone[k - i:k + 3]
     ksyn = max(k-i-2, 0)
-    # everything for this residue plus 2 before and 2 after  !!!!?
-    #print("syn_chain")
-    for atom in syn_chain:
-      pass
+    # print("syn_chain")
+    # for atom in syn_chain:
       #print(atom.name, atom.fetch_labels().resseq, atom.serial) # just for debugging
 
     ii = i
@@ -227,7 +225,9 @@ def new_residue(residues, pivot):
   chainID = labels.chain_id
   residue.sequence = res_number
   grandpa = pivot.parent().parent()
-  residue_name = grandpa.unique_resnames()[0]
+  residue_name = grandpa.unique_resnames()[0].rjust(3)
+  # CIF files sometimes give shorter names, but PDB files always give 3 chars
+  # rjust bridges the gap
   #print(residue_name)
   id = (" ", "1", f"{chainID:>2}", labels.resseq, " ", f"{alt:1}", residue_name)
   residue.pointIDs = id
@@ -281,7 +281,7 @@ def make_groups():
 
 # for debug printouts
 def residueString(r):
-    sizes=[1, 1, 3, 1, 1, 3]
+    sizes=[1, 1, 1, 3, 1, 1, 3]
     id = "".join([f"{x:{y}}:" for x, y in zip(r.pointIDs, sizes)])
     angles = "".join([f"{a:8.3f}:" for a in r.angle])
     return id + angles[:-1]
