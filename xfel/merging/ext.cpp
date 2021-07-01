@@ -214,9 +214,9 @@ namespace sx_merging {
     af::shared<int> lower_i_;
     af::shared<int> upper_i_;
     af::shared<double> data_;
+    std::string weights_;
     int n_sym_ops;
     int n_obs_min_;
-    std::string weights_;
 
     void set_indices(cbop_t cb_op,
                      af::shared<cctbx::miller::index<> > index_set){
