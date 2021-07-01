@@ -19,7 +19,7 @@ namespace simtbx { namespace Kokkos {
 
   template <typename T>
   void
-  transfer_vector2kokkos(view_1d_t<T> &dst, const af::shared<T>  &src) {
+  transfer_flex2kokkos(view_1d_t<T> &dst, const af::shared<T>  &src) {
     if (true) {
       printf("== Transfer %s from %p\n", dst.label().c_str(), (void*) dst.data());
       printf(" - size src|dst: %d|%d\n", src.size(), dst.span() );
@@ -153,29 +153,26 @@ namespace simtbx { namespace Kokkos {
     cu_accumulate_floatimage(NULL),
     metrology(arg_detector, arg_beam) { }
 
-/*  kokkos_detector::kokkos_detector(const simtbx::nanoBragg::nanoBragg& nB):
+  kokkos_detector::kokkos_detector(const simtbx::nanoBragg::nanoBragg& nB):
     metrology(nB),
+    m_panel_count(1),
+    m_slow_dim_size(nB.spixels),
+    m_fast_dim_size(nB.fpixels),
+    m_total_pixel_count( m_panel_count * m_slow_dim_size * m_fast_dim_size ),
+    m_accumulate_floatimage( vector_double_t( "m_accumulate_floatimage", m_total_pixel_count) ),
     cu_active_pixel_list(NULL),
-    cu_accumulate_floatimage(NULL){
-
-    //1) determine the size
-    m_panel_count = 1;
-
-    //2) confirm that array dimensions are similar for each size
-    m_slow_dim_size = nB.spixels;
-    m_fast_dim_size = nB.fpixels;
-    m_total_pixel_count = m_panel_count * m_slow_dim_size * m_fast_dim_size;
+    cu_accumulate_floatimage(NULL) {
 
     //3) allocate a cuda array with these dimensions
     // separate accumulator image outside the usual nanoBragg data structure.
     //     1. accumulate contributions from a sequence of source energy channels computed separately
     //     2. represent multiple panels, all same rectangular shape; slowest dimension = n_panels
-    cudaSafeCall(cudaMalloc((void ** )&cu_accumulate_floatimage,
-                            sizeof(*cu_accumulate_floatimage) * m_total_pixel_count));
-    cudaSafeCall(cudaMemset((void *)cu_accumulate_floatimage, 0,
-                            sizeof(*cu_accumulate_floatimage) * m_total_pixel_count));
+    // cudaSafeCall(cudaMalloc((void ** )&cu_accumulate_floatimage,
+    //                         sizeof(*cu_accumulate_floatimage) * m_total_pixel_count));
+    // cudaSafeCall(cudaMemset((void *)cu_accumulate_floatimage, 0,
+    //                         sizeof(*cu_accumulate_floatimage) * m_total_pixel_count));
   }
-*/
+
   void
   kokkos_detector::scale_in_place_cuda(const double& factor){
     auto local_accumulate_floatimage = m_accumulate_floatimage;
@@ -207,16 +204,16 @@ namespace simtbx { namespace Kokkos {
   af::flex_double
   kokkos_detector::get_raw_pixels_cuda(){
     //return the data array for the multipanel detector case
-    af::flex_double host_array(af::flex_grid<>(m_panel_count,m_slow_dim_size,m_fast_dim_size), af::init_functor_null<double>());
-    double* p_host_array = host_array.begin();
+    af::flex_double output_array(af::flex_grid<>(m_panel_count,m_slow_dim_size,m_fast_dim_size), af::init_functor_null<double>());
+    double* output_array_ptr = output_array.begin();
     
     vector_double_t::HostMirror host_floatimage = create_mirror_view(m_accumulate_floatimage);
     deep_copy(host_floatimage, m_accumulate_floatimage);
 
     for (int i=0; i<m_total_pixel_count; ++i) {
-      p_host_array[i] = host_floatimage( i ); 
+      output_array_ptr[ i ] = host_floatimage( i ); 
     }    
-    return host_array;
+    return output_array;
   }
 
   void
@@ -233,45 +230,61 @@ namespace simtbx { namespace Kokkos {
 
     active_pixel_list = active_pixel_list_value;
     
-    // cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_list, sizeof(*cu_active_pixel_list) * active_pixel_list.size() ));
-    // cudaSafeCall(cudaMemcpy(cu_active_pixel_list,
-    //                         ptr_active_pixel_list,
-    //                         sizeof(*cu_active_pixel_list) * active_pixel_list.size(),
-    //                         cudaMemcpyHostToDevice));
   }
-/*
+
   af::shared<double>
-  kokkos_detector::get_whitelist_raw_pixels_cuda(af::shared<std::size_t> selection
-  ){
+  kokkos_detector::get_whitelist_raw_pixels_cuda(af::shared<std::size_t> selection) {
     //return the data array for the multipanel detector case, but only for whitelist pixels
-    af::shared<double> z(active_pixel_list.size(), af::init_functor_null<double>());
-    double* begin = z.begin();
-    CUDAREAL * cu_active_pixel_results;
-    std::size_t * cu_active_pixel_selection;
+    //ToDo check if this function works as intended. It seems like active_pixel is unnecessary or wrong
+    vector_size_t active_pixel_selection = vector_size_t("active_pixel_selection", selection.size());
+    vector_size_t::HostMirror host_selection = create_mirror_view(active_pixel_selection);
+    for (int i=0; i<selection.size(); ++i) {
+      host_selection( i ) = selection[ i ];
+    }
+    deep_copy(active_pixel_selection, host_selection);
 
-    cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_results, sizeof(*cu_active_pixel_results) * active_pixel_list.size() ));
-    cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_selection, sizeof(*cu_active_pixel_selection) * selection.size() ));
-    cudaSafeCall(cudaMemcpy(cu_active_pixel_selection,
-                 selection.begin(), sizeof(*cu_active_pixel_selection) * selection.size(),
-                 cudaMemcpyHostToDevice));
+    vector_cudareal_t active_pixel_results = vector_cudareal_t("active_pixel_results", m_active_pixel_size);
+    // CUDAREAL * cu_active_pixel_results;
+    // std::size_t * cu_active_pixel_selection;
 
-    int smCount = 84; //deviceProps.multiProcessorCount;
-    dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
-    dim3 numBlocks(smCount * 8, 1);
-    int total_pixels = active_pixel_list.size();
-    get_active_pixel_selection_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
-      cu_active_pixel_results, cu_active_pixel_selection, cu_accumulate_floatimage, total_pixels);
+    // cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_results, sizeof(*cu_active_pixel_results) * active_pixel_list.size() ));
+    // cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_selection, sizeof(*cu_active_pixel_selection) * selection.size() ));
+    // cudaSafeCall(cudaMemcpy(cu_active_pixel_selection,
+    //              selection.begin(), sizeof(*cu_active_pixel_selection) * selection.size(),
+    //              cudaMemcpyHostToDevice));
 
-    cudaSafeCall(cudaMemcpy(
-      begin,
-      cu_active_pixel_results,
-      sizeof(*cu_active_pixel_results) * active_pixel_list.size(),
-      cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaFree(cu_active_pixel_selection));
-    cudaSafeCall(cudaFree(cu_active_pixel_results));
-    return z;
+    parallel_for("get_active_pixel_selection",
+                  range_policy(0, m_active_pixel_size),
+                  KOKKOS_LAMBDA (const int i) {
+      size_t index = active_pixel_selection( i );
+      active_pixel_results( i ) = m_accumulate_floatimage( index );
+    });
+    // int smCount = 84; //deviceProps.multiProcessorCount;
+    // dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+    // dim3 numBlocks(smCount * 8, 1);
+    // int total_pixels = active_pixel_list.size();
+    // get_active_pixel_selection_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
+    //   cu_active_pixel_results, cu_active_pixel_selection, cu_accumulate_floatimage, total_pixels);
+
+    vector_cudareal_t::HostMirror host_results = create_mirror_view(active_pixel_results);
+    deep_copy(host_results, active_pixel_results);
+
+    af::shared<double> output_array(m_active_pixel_size, af::init_functor_null<double>());
+    double* output_array_ptr = output_array.begin();
+    for (int i=0; i<m_active_pixel_size; ++i) {
+      output_array_ptr[ i ] = host_results( i );
+    }
+
+    // cudaSafeCall(cudaMemcpy(
+    //   begin,
+    //   cu_active_pixel_results,
+    //   sizeof(*cu_active_pixel_results) * active_pixel_list.size(),
+    //   cudaMemcpyDeviceToHost));
+    // cudaSafeCall(cudaFree(cu_active_pixel_selection));
+    // cudaSafeCall(cudaFree(cu_active_pixel_results));
+    return output_array;
   }
-*/
+
   void
   kokkos_detector::each_image_allocate_cuda() {
     resize(m_rangemap, m_total_pixel_count);
@@ -282,13 +295,13 @@ namespace simtbx { namespace Kokkos {
     resize(m_maskimage, m_total_pixel_count);
     resize(m_floatimage, m_total_pixel_count);
 
-    transfer_vector2kokkos(m_sdet_vector, metrology.sdet);
-    transfer_vector2kokkos(m_fdet_vector, metrology.fdet);
-    transfer_vector2kokkos(m_odet_vector, metrology.odet);
-    transfer_vector2kokkos(m_pix0_vector, metrology.pix0);
-    transfer_vector2kokkos(m_distance, metrology.dists);
-    transfer_vector2kokkos(m_Xbeam, metrology.Xbeam);
-    transfer_vector2kokkos(m_Ybeam, metrology.Ybeam);
+    transfer_flex2kokkos(m_sdet_vector, metrology.sdet);
+    transfer_flex2kokkos(m_fdet_vector, metrology.fdet);
+    transfer_flex2kokkos(m_odet_vector, metrology.odet);
+    transfer_flex2kokkos(m_pix0_vector, metrology.pix0);
+    transfer_flex2kokkos(m_distance, metrology.dists);
+    transfer_flex2kokkos(m_Xbeam, metrology.Xbeam);
+    transfer_flex2kokkos(m_Ybeam, metrology.Ybeam);
     fence();
 
     metrology.show();
