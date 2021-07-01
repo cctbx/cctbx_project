@@ -26,6 +26,7 @@ using vector_double_t = view_1d_t<double>;
 using vector_float_t = view_1d_t<float>;
 using vector_cudareal_t = view_1d_t<CUDAREAL>;
 using vector_int_t = view_1d_t<int>;
+using vector_size_t = view_1d_t<std::size_t>;
 using vector_ushort_t = view_1d_t<unsigned int short>;
 
 
@@ -34,7 +35,9 @@ void print_view(const view_1d_t<T> &arg_view, size_t arg_first, size_t arg_last)
   std::string label = arg_view.label();
   printf("print_view '%s'\n", label.c_str());
 
-  Kokkos::parallel_for("print_view", range_policy(arg_first, arg_last), KOKKOS_LAMBDA (const int i) {
+  Kokkos::parallel_for("print_view",
+                        range_policy(arg_first, arg_last),
+                        KOKKOS_LAMBDA (const int i) {
     printf(" P[ %d ] = '%f'\n", i, arg_view(i) );
   });
   Kokkos::fence();

@@ -38,20 +38,20 @@ struct packed_metrology{
 
 struct kokkos_detector{
   inline kokkos_detector(){printf("NO OPERATION, DEVICE NUMBER IS NEEDED");};
-  //kokkos_detector(const simtbx::nanoBragg::nanoBragg& nB);
+  kokkos_detector(const simtbx::nanoBragg::nanoBragg& nB);
   kokkos_detector(dxtbx::model::Detector const &, dxtbx::model::Beam const &);
   vector_double_t construct_detail(dxtbx::model::Detector const &);
 
-  //inline void show_summary(){
-  //  std::cout << "Detector size" << m_panel_count <<std::endl;
-  //  metrology.show();
-  //}
+  inline void show_summary(){
+    std::cout << "Detector size: " << m_panel_count << " panel" << (m_panel_count>1)? "s" : "" <<std::endl;
+    metrology.show();
+  }
   void each_image_allocate_cuda();
   void scale_in_place_cuda(const double&);
   void write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg&);
   af::flex_double get_raw_pixels_cuda();
   void set_active_pixels_on_KOKKOS(af::shared<int>);
-  //af::shared<double> get_whitelist_raw_pixels_cuda(af::shared<std::size_t>);
+  af::shared<double> get_whitelist_raw_pixels_cuda(af::shared<std::size_t>);
 
   const dxtbx::model::Detector detector;
 
