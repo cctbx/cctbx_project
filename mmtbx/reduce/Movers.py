@@ -612,6 +612,92 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
       reduceOptions = reduceOptions)
 
 ##################################################################################
+class MoverNH2Flip:
+  def __init__(self, nh2Atom, reduceOptions = None):
+    """Constructs a Mover that will handle flipping an NH2 with an O, both of which
+       are attached to the same Carbon atom (and each of which has no other bonds).
+       This Mover uses a simple swap of the center positions of the heavy atoms (with
+       repositioning of the Hydrogens to lie in the plane with the other three atoms)
+       for its testing, but during FixUp it adjusts the bond lengths of the Oxygen
+       and the Nitrogen; per J. Mol. Biol. (1999) 285, 1735-1747.
+       :param nh2Atom: Nitrogen atom that is attached to two Hydrogens.
+       :param reduceOptions: 
+        The reduceOptions is a Phil option subset.  The relevant options for MoverNH2Flip
+          are: None.
+    """
+    self._reduceOptions = reduceOptions
+
+    # The Nitrogen is the neighbor in these calculations, making this code symmetric with the other
+    # class code.
+    neighbor = nh2Atom
+
+    # Verify that we've been run on a valid structure and get a list of all of the
+    # atoms that we will be moving.
+    if neighbor.element != "N":
+      raise ValueError("MoverNH2Flip(): nh2Atom is not a Nitrogen")
+    partners = bondedNeighborLists[neighbor]
+    if len(partners) != 3:
+      raise ValueError("MoverNH2Flip(): nh2Atom does not have three bonded neighbors")
+    hydrogens = []
+    for a in partners:
+      if a.element == "H":
+        hydrogens.append(a)
+      else:
+        partner = a
+    if len(hydrogens) != 2:
+      raise ValueError("MoverNH2Flip(): nh2Atom does not have two bonded hydrogens")
+    bonded = bondedNeighborLists[partner]
+    oyxgen = none
+    for b in bonded:
+      if b.element == "O":
+        oxygen = b
+    if oxygen is None:
+      raise ValueError("MoverNH2Flip(): Partner does not have bonded oxygen friend")
+    if len(bondedNeighborLists[oxygen]) != 1:
+      raise ValueError("MoverNH2Flip(): Oxygen has more than one bonded neighbor")
+    self._atoms = [ hydrogens[0], hyrogens[1], neighbor, partner, oxygen ]
+
+    # Normal to the plane containing Nitrogen, Carbon, and Oxygen
+    normal = (scitbx.matrix.cross_produce_matrix(cToO) * nToO).normalize()
+
+    # Compute the new positions for the Hydrogens such that they are at the same distance from
+    # the Oxygen as one of them is from the Nitrogen and located at +/-120 degrees from the
+    # Carbon-Oxygen bond in the plane of the Nitrogen, Carbon, and Oxygen.
+    cToO = _lvec3(oxygen.xyz) - _lvec3(partner.xyz)
+    nToO = _rvec3(neighbor.xyz) - _rvec3(partner.xyz)
+
+    hBondLen = (_rvec3(hydrogens[0].xyz) - _rvec3(neighbor.xyz)).length()
+    newH0 = _rvec3(oxygen.xyz) + ((-cToO.normalize()) * hBondLen).rotate_around_origin(normal, 120 * math.pi/180)
+    newH1 = _rvec3(oxygen.xyz) + ((-cToO.normalize()) * hBondLen).rotate_around_origin(normal,-120 * math.pi/180)
+
+    # Compute the list of positions for all of the atoms. This consists of the original
+    # location and the flipped location where we swap the locations of the two heavy atoms
+    # and bring the Hydrogens along for the ride.
+    self._coarsePositions = [
+        [hydrogens[0].xyz, hyrogens[1].xyz, neighbor.xyz, partner.xyz, oxygen.xyz],
+        [newH0,            newH1,           oxygen.xyz,   partner.xyz, neighbor.xyz]
+      ]
+
+    # Compute the list of Fixup returns.  This consists of the original location and a
+    # flipped location where we adjust the bond lengths of the two heavy atoms w.r.t.
+    # the carbon and bring the Hydrogens along for the ride.
+    # @todo See FlipMemo::RotHingeDock_Flip() from the original Reduce C++ code
+
+    self._fixUpPositionss = fixUpPositions
+    
+  def CoarsePositions(self):
+    # returns: The two possible coarse positions with 0 energy offset for either.
+    return PositionReturn(self._atoms, self._coarsePositions, [0.0, 0.0])
+
+  def FinePositions(self, coarseIndex):
+    # returns: No fine positions for any coarse position.
+    return PositionReturn([], [], [])
+
+  def FixUp(self, coarseIndex):
+    # Return the appropriate fixup
+    return FixUpReturn(atoms, fixUpPositions[coarseIndex])
+
+##################################################################################
 # @todo Define each type of Mover
 
 ##################################################################################
