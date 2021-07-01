@@ -525,11 +525,13 @@ class manager(object):
       It may be present by itself or as an attribute of _processed_pdb_file
       Also restraints_manager is not pickleable
       This method removes _ss_manager and restraints_manager
+      Also removes log
     '''
 
     self_dc = self.deep_copy() # Avoid changing the model itself
     self_dc._ss_manager = None
     self_dc.unset_restraints_manager()
+    self_dc.log = None
 
     state = self_dc.__dict__
     return state
