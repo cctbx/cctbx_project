@@ -564,6 +564,8 @@ bond pdb="ZN    ZN A   8 "
      pdb=" NE2 HIS B 304 "
   ideal  model  delta    sigma   weight residual sym.op.
   2.900  2.969 -0.069 5.00e-02 4.00e+02 1.92e+00 -x-1/2,y+1/2,-z+3/4
+    """)
+  assert_lines_in_text(outtxt, """\
 bond pdb=" NE2 HIS B 304 "
      pdb="ZN    ZN A   8 "
   ideal  model  delta    sigma   weight residual sym.op.
