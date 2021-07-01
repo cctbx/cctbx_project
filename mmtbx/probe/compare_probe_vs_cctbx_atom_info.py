@@ -96,11 +96,7 @@ def RunProbeVsCCTBXTest(inFileName, useNeutronDistances = False):
 
   # Construct the AtomTypes object we're going to use, telling it whether to use neutron distances
   # or not.
-  class FakePhil:
-    pass
-  fakePhil = FakePhil()
-  fakePhil.useNeutronDistances = useNeutronDistances
-  at = AtomTypes.AtomTypes(fakePhil)
+  at = AtomTypes.AtomTypes(useNeutronDistances)
 
   # Traverse the hierarchy and look up the extra data from Probe and CCTBX.
   # print information on differences, keeping track of how many atoms differed.

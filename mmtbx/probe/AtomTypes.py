@@ -223,16 +223,16 @@ class AtomTypes:
   Reduce modules.
   """
 
-  def __init__(self, probePhilOptions = None):
+  def __init__(self, useNeutronDistances = False):
     """Constructor.
-    :param probePhilOption: An optional set of Phil options for mmtbx.probe.  The
-    relevant ones are: useNeutronDistances (Boolean: default False).
+    :param useNeutronDistances: Use neutron distances for hydrogen-bond scoring.
+    The default is to use electron-cloud distances.
     """
 
     ##################################################################################
     # Store state based on options.
     try:
-      self._useNeutronDistances = probePhilOptions.useNeutronDistances
+      self._useNeutronDistances = useNeutronDistances
     except Exception as e:
       self._useNeutronDistances = False
 
