@@ -20,7 +20,7 @@
 from boost_adaptbx import graph
 import Movers
 
-def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
+def InteractionGraphAABB(movers, extraAtomInfo, probeRadius = 0.25):
   """Uses the overlap of the axis-aligned bounding boxes (AABBs) of all possible
   positions of all movable atoms in the set of movers passed in to construct the
   graph of which might overlap across all possible orientations of each.  The use
@@ -35,18 +35,13 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
   since the extaInfo vector or the atom structure used by the Movers were generated.
   The positions of individual atoms can have been moved but atoms cannot have been
   removed and re-added to the structure.
-  :param reduceOptions: a Phil option subset.  The relevant option is probeRadius.
+  :param probeRadius: Radius of the probe to use to determine neighbor contact.
   If it is not set, the default value of 0.25 will be used.
   :returns An undirected Boost graph whose nodes are Movers and whose edges
   indicate which Movers might overlap in any of their states.
   """
 
-  # Determine the probe radius to use.  If it is specified in the reduceOptions,
-  # then use its value.  Otherwise, use the default value of 0.25
-  try:
-    pr = reduceOptions.probeRadius
-  except:
-    pr = 0.25
+  pr = probeRadius
 
   # Add all of the Movers as nodes in the graph
   # Compute the axis-aligned bounding box for each Mover
@@ -107,7 +102,7 @@ def InteractionGraphAABB(movers, extraAtomInfo, reduceOptions):
 
   return ret
 
-def InteractionGraphAllPairs(movers, extraAtomInfo, reduceOptions):
+def InteractionGraphAllPairs(movers, extraAtomInfo, probeRadius = 0.25):
   """Tests for overlap of all possible positions of all movable atoms between each
   pair of Movers in the set of Movers passed in to construct the
   graph of which overlap across all possible orientations of each.
@@ -119,18 +114,13 @@ def InteractionGraphAllPairs(movers, extraAtomInfo, reduceOptions):
   since the extaInfo vector or the atom structure used by the Movers were generated.
   The positions of individual atoms can have been moved but atoms cannot have been
   removed and re-added to the structure.
-  :param reduceOptions: a Phil option subset.  The relevant option is probeRadius.
+  :param probeRadius: Radius of the probe to use to determine neighbor contact.
   If it is not set, the default value of 0.25 will be used.
   :returns An undirected Boost graph whose nodes are Movers and whose edges
   indicate which Movers overlap in any of their states.
   """
 
-  # Determine the probe radius to use.  If it is specified in the reduceOptions,
-  # then use its value.  Otherwise, use the default value of 0.25
-  try:
-    pr = reduceOptions.probeRadius
-  except:
-    pr = 0.25
+  pr = probeRadius
 
   # Add all of the Movers as nodes in the graph
   # Find all possible atom positions for each.
@@ -229,12 +219,6 @@ def Test():
   returns: Empty string on success, string describing the problem on failure.
   """
 
-  # Construct a Class that will behave like the Reduce Phil data structure so that
-  # we can specify the probe radius.
-  class FakePhil:
-    pass
-  fakePhil = FakePhil()
-
   # Construct a set of Mover/atoms that will be used to test the routines.  They will all be part of the
   # same residue and they will all have the same unit radius in the extraAtomInfo associated with them.
   # There will be a set of five along the X axis, with one pair overlapping slightly and the others
@@ -288,8 +272,8 @@ def Test():
 
   # Specify the probe radius and run the test.  Compare the results to what we expect.
   for i, e in enumerate(_expectedCases):
-    fakePhil.probeRadius = e[1]
-    g = e[0](movers, extras, fakePhil)
+    probeRadius = e[1]
+    g = e[0](movers, extras, probeRadius)
 
     # Find the connected components of the graph and compare their counts and maximum size to
     # what is expected.
