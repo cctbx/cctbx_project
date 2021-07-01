@@ -89,6 +89,12 @@ ensemble_refinement {
   gzip_final_model = True
     .type = bool
     .style = hidden
+  write_centroid_model = False
+    .type = bool
+    .style = hidden
+  write_mean_model = False
+    .type = bool
+    .style = hidden
   random_seed = 2679941
     .type = int
     .help = 'Random seed'
@@ -887,6 +893,25 @@ class run_ensemble_refinement(object):
       prefix=prefix,
       params=self.params)
 
+    if self.params.write_centroid_model or self.params.write_mean_model:
+      results_manager = self.ensemble_utils.ensemble_rmsf_stats(
+          self.er_data.pdb_hierarchys,
+          verbose=True,
+          out=self.log,
+          )
+      crystal_symmetry = self.er_data.xray_structures[0].crystal_symmetry()
+      if self.params.write_centroid_model:
+        print('\nWriting Centroid Model to \n\t%s' % '%s_centroid.pdb' % prefix, file=self.log)
+        results_manager.write_centroid_hierarchy('%s_centroid.pdb' % prefix,
+                                                 crystal_symmetry,
+                                                 )
+      if self.params.write_mean_model:
+        print('\nWriting Mean Model to \n\t%s' % '%s_mean.pdb' % prefix, file=self.log)
+        results_manager.write_mean_hierarchy('%s_mean.pdb' % prefix,
+                                                 crystal_symmetry,
+                                                 )
+      print('', file=self.log)
+
   def show_overall(self, message = "", fmodel_running = True):
     if fmodel_running:
       message = "Running: " + message
@@ -1578,9 +1603,6 @@ class run_ensemble_refinement(object):
 #    # set mode_stats.geometry to None as refers to final structure NOT ensemble
 #    model_stats.geometry = None
 #    model_stats.show(out = out, pdb_deposition =True)
-    self.ensemble_utils.ensemble_rmsf_stats(
-        ensemble_xray_structures = self.er_data.xray_structures,
-        )
     # get mean geometry stats for ensemble
     self.final_geometry_pdb_string = self.ensemble_utils.ensemble_mean_geometry_stats(
         restraints_manager       = self.model.restraints_manager,
@@ -1745,8 +1767,6 @@ def write_mtz_file(fmodel_total, raw_data, raw_flags, prefix, params):
 
 def is_amber_refinement(params):
   if getattr(params, 'amber', False): return params.amber.use_amber
-  print(dir(params))
-  assert 0
   return params.ensemble_refinement.amber.use_amber
 
 #-----------------------------------------------------------------------

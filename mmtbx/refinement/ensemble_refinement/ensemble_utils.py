@@ -36,6 +36,7 @@ def get_selected_hierarchys(hierarchys, ignore_hd=True):
 def ensemble_mean_hierarchy(hierarchys,
                             ignore_hd=True,
                             verbose=False,
+                            out=None,
                             ):
   sites_carts = get_sites_carts(hierarchys, ignore_hd=ignore_hd)
   mean_sites_cart = sites_carts[0].deep_copy()
@@ -44,9 +45,11 @@ def ensemble_mean_hierarchy(hierarchys,
     mean_sites_cart += sites_cart
   mean_sites_cart = mean_sites_cart * float(1./len(sites_carts))
   if verbose:
-    print('Mean Structure Stats')
+    print('Mean Structure Stats', file=out)
     for i, sites_cart in enumerate(sites_carts):
-      print('  RMS to mean %3d : %0.2f' % (i+1, mean_sites_cart.rms_difference(sites_cart)))
+      print('  RMS to mean %3d : %0.2f' % (i+1,
+                                           mean_sites_cart.rms_difference(sites_cart)),
+            file=out)
   mean_hierarchy = hierarchys[0].deep_copy()
   mean_hierarchy = selector(mean_hierarchy, ignore_hd=ignore_hd)
   mean_hierarchy.atoms().set_xyz(mean_sites_cart)
@@ -486,27 +489,27 @@ class manager(object):
 
   def ensemble_rmsf_stats( self,
                            ensemble_hierarchys,
+                           transfer_b_factors=True,
                            ignore_hd = True,
+                           max_print=10,
                            verbose = False,
                            out = None,
                            ):
     if (out is None): out = sys.stdout
     if verbose:
-      utils.print_header("Ensemble mean geometry statistics", out = out)
+      utils.print_header("Ensemble mean and centroid geometry statistics", out = out)
     ensemble_size = len(ensemble_hierarchys)
-    print("Ensemble size : ", ensemble_size, file=out)
-    verbose=1
     self.mean_hierarchy = ensemble_mean_hierarchy( ensemble_hierarchys,
                                                    ignore_hd=ignore_hd,
                                                    verbose=verbose,
                                                    )
     close_hierarchy, self.closest_to_mean_index = closest_to_mean(
       ensemble_hierarchys,
-      mean_hierarchy,
+      self.mean_hierarchy,
       ignore_hd=ignore_hd,
       verbose=verbose,
       )
-    centroid_hierarchy, least_hierarchy, self.centroid_index, self.least_index = \
+    self.centroid_hierarchy, least_hierarchy, self.centroid_index, self.least_index = \
       get_centroid_hierarchy( ensemble_hierarchys,
                               ignore_hd=ignore_hd,
                               verbose=verbose,
@@ -514,30 +517,54 @@ class manager(object):
     self.tempFactor, self.per_residue, self.per_atom = \
       get_rmsf_B_factor_per_residue_per_atom(
         ensemble_hierarchys,
-        centroid_hierarchy,
+        self.centroid_hierarchy,
         # mean_sites_cart,
         ignore_hd=ignore_hd,
         verbose=verbose,
         )
 
     if verbose:
+      print('Per residue rmsf', file=out)
       for i, (key, item) in enumerate(self.per_residue.items()):
-        print('  %5d : %s %0.2f' % (i,key,item))
-        if i>=10: break
+        print('  %5d : %s %0.2f' % (i,key,item), file=out)
+        if i>=max_print: break
 
+      print('B-factor', file=out)
       for i, (key, item) in enumerate(self.tempFactor.items()):
-        print('  %5d : %s %s' % (i,key,item))
-        if i>=10: break
+        print('  %5d : %s %7.2f' % (i,key,item[0]), file=out)
+        if i>=max_print: break
 
+      print('Per atom rmsf', file=out)
       for i, atom in enumerate(ensemble_hierarchys[0].atoms()):
-        print('  %5d : %s %0.2f' % (i, atom.quote(), self.per_atom[i]))
-        if i>=10: break
+        print('  %5d : %s %0.2f' % (i, atom.quote(), self.per_atom[i]), file=out)
+        if i>=max_print: break
 
-  def write_mean_hierarchy(self, filename):
+    if transfer_b_factors:
+      atoms = self.centroid_hierarchy.atoms()
+      occupancies = atoms.extract_occ()
+      occupancies *= len(ensemble_hierarchys)
+      atoms.set_occ(occupancies)
+      for i, (key, item) in enumerate(self.tempFactor.items()):
+        atom = atoms[i]
+        atom.b = item[0]
+
+    return self
+
+  def write_mean_hierarchy(self, filename, crystal_symmetry):
     if not hasattr(self, 'mean_hierarchy'):
       assert 0, 'need to run ensemble_rmsf_stats'
-    print('write')
+    self.mean_hierarchy.write_pdb_file(
+      filename,
+      crystal_symmetry = crystal_symmetry,
+    )
 
+  def write_centroid_hierarchy(self, filename, crystal_symmetry):
+    if not hasattr(self, 'centroid_hierarchy'):
+      assert 0, 'need to run ensemble_rmsf_stats'
+    self.centroid_hierarchy.write_pdb_file(
+      filename,
+      crystal_symmetry = crystal_symmetry,
+    )
 
   def ensemble_mean_geometry_stats(self,
                                    restraints_manager,
@@ -856,17 +883,32 @@ class manager(object):
 
 if __name__ == '__main__':
   from iotbx import pdb
-  # import copy
+
+  def get_pdb_hierarchies(pdb_file_names):
+    pdb_hierarchys = []
+    if len(pdb_file_names)==1:
+      ensemble_filename = pdb_file_names[0]
+      pdb_inp = pdb.input(ensemble_filename)
+      pdb_hierarchy = pdb_inp.construct_hierarchy()
+      for i, model in enumerate(pdb_hierarchy.models()):
+        pdb_hierarchys.append(pdb_hierarchy.deep_copy())
+        for j in range(len(pdb_hierarchy.models())-1,-1,-1):
+          if j!=i:
+            pdb_hierarchys[-1].remove_model(j)
+        # pdb_hierarchys[-1].write_pdb_file('test_%s.pdb' % i)
+    else:
+      for i, pdb_file_name in enumerate(pdb_file_names):
+        print(i,pdb_file_name)
+        pdb_inp = pdb.input(pdb_file_name)
+        pdb_hierarchy = pdb_inp.construct_hierarchy()
+        pdb_hierarchys.append(pdb_hierarchy)
+    return pdb_inp, pdb_hierarchys
+
   erm = manager(None)
   print('Ensemble Refinement Manager')
-  ensemble_filename = sys.argv[1]
-  pdb_inp = pdb.input(ensemble_filename)
-  pdb_hierarchy = pdb_inp.construct_hierarchy()
-  pdb_hierarchys = []
-  for i, model in enumerate(pdb_hierarchy.models()):
-    pdb_hierarchys.append(pdb_hierarchy.deep_copy())
-    for j in range(len(pdb_hierarchy.models())-1,-1,-1):
-      if j!=i:
-        pdb_hierarchys[-1].remove_model(j)
-    # pdb_hierarchys[-1].write_pdb_file('test_%s.pdb' % i)
+  ensemble_filenames = sys.argv[1:]
+  print('ensemble_filename', ensemble_filenames)
+  pdb_input, pdb_hierarchys = get_pdb_hierarchies(ensemble_filenames)
+  print('Number of models : %s' % (len(pdb_hierarchys)))
   erm.ensemble_rmsf_stats(pdb_hierarchys)
+  erm.write_centroid_hierarchy('centroid.pdb', pdb_input.crystal_symmetry())
