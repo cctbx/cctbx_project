@@ -49,8 +49,8 @@ struct kokkos_detector{
   void each_image_allocate_cuda();
   void scale_in_place_cuda(const double&);
   void write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg&);
-  //af::flex_double get_raw_pixels_cuda();
-  //void set_active_pixels_on_KOKKOS(af::shared<int>);
+  af::flex_double get_raw_pixels_cuda();
+  void set_active_pixels_on_KOKKOS(af::shared<int>);
   //af::shared<double> get_whitelist_raw_pixels_cuda(af::shared<std::size_t>);
 
   const dxtbx::model::Detector detector;
@@ -95,6 +95,7 @@ struct kokkos_detector{
 
   // all-panel whitelist of active pixels on GPU
   af::shared<int> active_pixel_list;
+  int m_active_pixel_size;
   vector_int_t m_active_pixel_list = vector_int_t("m_active_pixel_list", 0);
   int * cu_active_pixel_list;
 
