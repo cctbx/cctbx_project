@@ -143,15 +143,12 @@ namespace simtbx { namespace Kokkos {
 
   kokkos_detector::kokkos_detector(dxtbx::model::Detector const & arg_detector,
                              dxtbx::model::Beam const& arg_beam):
-    detector(arg_detector),
+    metrology(arg_detector, arg_beam),
     m_panel_count( arg_detector.size() ),
     m_slow_dim_size( arg_detector[0].get_image_size()[0] ),
     m_fast_dim_size( arg_detector[0].get_image_size()[1] ),
     m_total_pixel_count( m_panel_count * m_slow_dim_size * m_fast_dim_size ),
-    m_accumulate_floatimage( construct_detail(arg_detector) ),
-    cu_active_pixel_list(NULL),
-    cu_accumulate_floatimage(NULL),
-    metrology(arg_detector, arg_beam) { }
+    m_accumulate_floatimage( construct_detail(arg_detector) ) { }
 
   kokkos_detector::kokkos_detector(const simtbx::nanoBragg::nanoBragg& nB):
     metrology(nB),
@@ -159,19 +156,7 @@ namespace simtbx { namespace Kokkos {
     m_slow_dim_size(nB.spixels),
     m_fast_dim_size(nB.fpixels),
     m_total_pixel_count( m_panel_count * m_slow_dim_size * m_fast_dim_size ),
-    m_accumulate_floatimage( vector_double_t( "m_accumulate_floatimage", m_total_pixel_count) ),
-    cu_active_pixel_list(NULL),
-    cu_accumulate_floatimage(NULL) {
-
-    //3) allocate a cuda array with these dimensions
-    // separate accumulator image outside the usual nanoBragg data structure.
-    //     1. accumulate contributions from a sequence of source energy channels computed separately
-    //     2. represent multiple panels, all same rectangular shape; slowest dimension = n_panels
-    // cudaSafeCall(cudaMalloc((void ** )&cu_accumulate_floatimage,
-    //                         sizeof(*cu_accumulate_floatimage) * m_total_pixel_count));
-    // cudaSafeCall(cudaMemset((void *)cu_accumulate_floatimage, 0,
-    //                         sizeof(*cu_accumulate_floatimage) * m_total_pixel_count));
-  }
+    m_accumulate_floatimage( vector_double_t( "m_accumulate_floatimage", m_total_pixel_count) ) { }
 
   void
   kokkos_detector::scale_in_place_cuda(const double& factor){

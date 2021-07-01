@@ -43,7 +43,7 @@ struct kokkos_detector{
   vector_double_t construct_detail(dxtbx::model::Detector const &);
 
   inline void show_summary(){
-    std::cout << "Detector size: " << m_panel_count << " panel" << (m_panel_count>1)? "s" : "" <<std::endl;
+    std::cout << "Detector size: " << m_panel_count << " panel" << ( (m_panel_count>1)? "s" : "" ) << std::endl;
     metrology.show();
   }
   void each_image_allocate_cuda();
@@ -53,7 +53,8 @@ struct kokkos_detector{
   void set_active_pixels_on_KOKKOS(af::shared<int>);
   af::shared<double> get_whitelist_raw_pixels_cuda(af::shared<std::size_t>);
 
-  const dxtbx::model::Detector detector;
+  //const dxtbx::model::Detector detector;
+  packed_metrology const metrology;
 
   // detector size and dimensions in pixels
   int m_panel_count = -1;
@@ -63,23 +64,21 @@ struct kokkos_detector{
 
   // kokkos arrays
   vector_double_t m_accumulate_floatimage = vector_double_t("m_accumulate_floatimage", 0);
-  double * cu_accumulate_floatimage; // pointer to GPU memory
 
   // per image input variables, pointers to GPU memory
+
+  // nanoBragg only manages single-panel, multipanel case must mask elsewhere
   vector_ushort_t m_maskimage = vector_ushort_t("m_maskimage", 0);
-  int unsigned short * cu_maskimage; // nanoBragg only manages single-panel, multipanel case must mask elsewhere
 
   // per kernel-call output variables, pointers to GPU memory
   vector_float_t m_omega_reduction = vector_float_t("m_omega_reduction", 0);
   vector_float_t m_max_I_x_reduction = vector_float_t("m_max_I_x_reduction", 0);
   vector_float_t m_max_I_y_reduction = vector_float_t("m_max_I_y_reduction", 0);
-  float * cu_omega_reduction, * cu_max_I_x_reduction, * cu_max_I_y_reduction;
 
   vector_bool_t m_rangemap = vector_bool_t("m_rangemap", 0);
-  bool * cu_rangemap;
 
+  //most important output, stores the simulated pixel data
   vector_float_t m_floatimage = vector_float_t("m_floatimage", 0);
-  float * cu_floatimage; //most important output, stores the simulated pixel data
 
   // all-panel packed GPU representation of the multi-panel metrology
   vector_cudareal_t m_sdet_vector = vector_cudareal_t("m_sdet_vector", 0);
@@ -89,17 +88,11 @@ struct kokkos_detector{
   vector_cudareal_t m_distance = vector_cudareal_t("m_distance", 0);
   vector_cudareal_t m_Xbeam = vector_cudareal_t("m_Xbeam", 0);
   vector_cudareal_t m_Ybeam = vector_cudareal_t("m_Ybeam", 0);
-  CUDAREAL * cu_sdet_vector, * cu_fdet_vector;
-  CUDAREAL * cu_odet_vector, * cu_pix0_vector;
-  CUDAREAL * cu_distance, * cu_Xbeam, * cu_Ybeam;
 
   // all-panel whitelist of active pixels on GPU
   af::shared<int> active_pixel_list;
   int m_active_pixel_size;
   vector_int_t m_active_pixel_list = vector_int_t("m_active_pixel_list", 0);
-  int * cu_active_pixel_list;
-
-  packed_metrology const metrology;
 };
 } // Kokkos
 } // simtbx
