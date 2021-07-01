@@ -59,10 +59,7 @@ def getBondedNeighborLists(atoms, bondProxies):
 #    They sometimes have optional hydrogen placements in the atom groups.
 #
 # All Movers have the following methods, parameters, and return types:
-#  - type PositionReturn: ( flex<atom> atoms, flex<flex<vec3>> positions, flex<float> preferenceEnergies,
-#                           reduceOptions = None)
-#     The reduceOptions is a Phil option subset.  The relevant options for each Mover
-#       type below is specified in its __init__ method.
+#  - type PositionReturn: ( flex<atom> atoms, flex<flex<vec3>> positions, flex<float> preferenceEnergies)
 #  - PositionReturn CoarsePositions()
 #     The first return lists all of the hierarchy atoms that move.
 #     The second return has a vector that has some number of positions, each of
@@ -124,7 +121,7 @@ class MoverNull:
      Useful as a simple and fast test case for programs that use Movers.
      It also serves as a basic example of how to develop a new Mover.
   '''
-  def __init__(self, atom, reduceOptions = None):
+  def __init__(self, atom):
     self._atom = atom
   def CoarsePositions(self):
     # returns: The original atom at its original position.
@@ -145,9 +142,9 @@ class MoverNull:
 # that are rotating.  This offset will be added to all resulting rotations, and subtracted
 # before applying the preference function.
 class _MoverRotator:
-  def __init__(self, atoms, axis, coarseRange, coarseStepDegrees = None,
-                doFineRotations = True, preferenceFunction = None,
-                reduceOptions = None):
+  def __init__(self, atoms, axis, coarseRange, coarseStepDegrees = 30.0,
+                doFineRotations = True, fineStepDegrees = 1.0,
+                preferenceFunction = None, preferredOrientationScale = 1.0):
     """Constructs a Rotator, to be called by a derived class or test program but
        not usually user code.
        A base class for types of Movers that rotate one or more atoms around a single
@@ -155,7 +152,7 @@ class _MoverRotator:
        a preferred-energies function that maps from an angle that is 0 at the initial
        location to an energy.  The range of coarse rotations is also specified, along
        with a flag telling whether fine rotations are allowed.  The coarse step size
-       can also be specified, overriding the value from reduceOptions.CoarseStepDegrees.
+       can also be specified, overriding the value from coarseStepDegrees.
        :param atoms: flex array of atoms that will be rotated.  These should be
        placed in one of the preferred orientations if there are any.
        :param axis: flex array with two scitbx::vec3<double> points, the first
@@ -167,44 +164,30 @@ class _MoverRotator:
        end and open on the positive: [-coarseRange..coarseRange).  For example a
        range of 180 will rotate all the way around, from -180 (inclusive) to just
        slightly less than +180.
-       :param coarseStepDegrees: With the default value of None, the number of
-       degrees per coarse step will be determined  by the
-       reduceOptions.CoarseStepDegrees or the default value of 30 if neither specifies
-       the value.
+       :param coarseStepDegrees: The coarse step to take.
        To test only two fixed orientations, doFineRotations should be set
        to False, coarseRange to 180, and coarseStepDegrees to 180.
        :param doFineRotations: Specifies whether fine rotations are allowed for
        this instance.  To test only two fixed orientations, this should be set
        to False, coarseRange to 180, and coarseStepDegrees to 180.
+       :param fineStepDegrees: The fine step to take.
        :param preferenceFunction: A function that takes a floating-point
        argument in degrees of rotation about the specified axis and produces
        a floating-point energy value that is multiplied by the value of
-       reduceOptions.PreferredOrientationScale and then added to the energy
+       preferredOrientationScale and then added to the energy
        returned for this orientation by CoarsePositions() and FinePositions().
        For the default value of None, no addition is performed.
-       :param reduceOptions: 
-        The reduceOptions is a Phil option subset.  The relevant options for _MoverRotator
-          are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale.
+       :param preferredOrientationScale: How much to scale the preferred-orientation
+       energy by before adding it to the total.
     """
     self._atoms = atoms
     self._axis = axis
     self._coarseRange = coarseRange
+    self._coarseStepDegrees = coarseStepDegrees
     self._doFineRotations = doFineRotations
     self._preferenceFunction = preferenceFunction
-    self._reduceOptions = reduceOptions
-
-    # Determine the coarse step size in degrees.  If it was specified in the
-    # constructor, use that.  Otherwise, if it was specified in
-    # reduceOptions.CoarseStepDegrees use that.  Otherwise, use a default of
-    # 30 degrees.
-    self._coarseStepDegrees = 30.0
-    try:
-      if reduceOptions.CoarseStepDegrees is not None:
-        self._coarseStepDegrees = reduceOptions.CoarseStepDegrees
-    except:
-      pass
-    if coarseStepDegrees is not None:
-      self._coarseStepDegrees = coarseStepDegrees
+    self._fineStepDegrees = fineStepDegrees
+    self._preferredOrientationScale = preferredOrientationScale
 
     # Make a list of coarse angles to try based on the coarse range (inclusive
     # for negative and exclusive for positive) and the step size.  We always
@@ -221,15 +204,6 @@ class _MoverRotator:
         self._coarseAngles.append(curStep)
       curStep += self._coarseStepDegrees
 
-    # Determine the fine step size from reduceOptions.FineStepDegrees if it
-    # exists; otherwise, default to 1 degrees.
-    self._fineStepDegrees = 1.0
-    try:
-      if reduceOptions.FineStepDegrees is not None:
-        self._fineStepDegrees = reduceOptions.FineStepDegrees
-    except:
-      pass
-
     # Make a list of fine angles to try to cover half the coarse step size (inclusive
     # for negative and exclusive for positive) using the fine step size.  We never
     # try +0 degrees because that is the location of the coarse rotation.
@@ -244,15 +218,6 @@ class _MoverRotator:
       if curStep < fineRange:
         self._fineAngles.append(curStep)
       curStep += self._fineStepDegrees
-
-    # Determine the preference scale.  The default of 1 can be overridden by
-    # a value in reduceOptions.PreferredOrientationScale.
-    self._preferredOrientationScale = 1.0
-    try:
-      if reduceOptions.PreferredOrientationScale is not None:
-        self._preferredOrientationScale = reduceOptions.PreferredOrientationScale
-    except:
-      pass
 
   def _preferencesFor(self, angles, scale):
     """Return the preference energies for the specified angles, scaled by the scale.
@@ -318,7 +283,8 @@ class _MoverRotator:
 
 ##################################################################################
 class MoverSingleHydrogenRotator(_MoverRotator):
-  def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = None, reduceOptions = None):
+  def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = 30.0,
+                  fineStepDegrees = 1.0, preferredOrientationScale = 1.0):
     """ A Mover that rotates a single Hydrogen around an axis from its bonded partner
        to the single bonded partner of its partner.  This is designed for use with OH,
        SH, and SeH configurations.  For partner-partner atoms that are bonded to a
@@ -332,13 +298,10 @@ class MoverSingleHydrogenRotator(_MoverRotator):
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
        bonded atoms.  Can be obtained by calling getBondedNeighborLists().
-       :param coarseStepDegrees: With the default value of None, the number of
-       degrees per coarse step will be determined  by the
-       reduceOptions.CoarseStepDegrees or the default value of 30 if neither specifies
-       the value.
-       :param reduceOptions: 
-        The reduceOptions is a Phil option subset.  The relevant options for
-          MoverSingleHydrogenRotator are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale.
+       :param coarseStepDegrees: The coarse step to take.
+       :param fineStepDegrees: The fine step to take.
+       :param preferredOrientationScale: How much to scale the preferred-orientation
+       energy by before adding it to the total.
     """
 
     # Check the conditions to make sure we've been called with a valid atom.  This is a hydrogen with
@@ -389,12 +352,14 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     atoms = [ atom ]
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
-    _MoverRotator.__init__(self, atoms, axis, 180, coarseStepDegrees,
-      preferenceFunction = preferenceFunction, reduceOptions = reduceOptions)
+    _MoverRotator.__init__(self, atoms, axis, 180, coarseStepDegrees = coarseStepDegrees,
+      fineStepDegrees = fineStepDegrees, preferenceFunction = preferenceFunction, 
+      preferredOrientationScale = preferredOrientationScale)
 
 ##################################################################################
 class MoverNH3Rotator(_MoverRotator):
-  def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = None, reduceOptions = None):
+  def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = 30.0, fineStepDegrees = 1.0,
+                preferredOrientationScale = 1.0):
     """ A Mover that rotates three Hydrogens around an axis from their bonded Nitrogen neighbor
        to the single bonded partner of its partner.  This is designed for use with NH3+,
        whose partner-partner atoms are bonded to a tetrahedron (two Carbons and a Hydrogen)
@@ -408,13 +373,10 @@ class MoverNH3Rotator(_MoverRotator):
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
        bonded atoms.  Can be obtained by calling getBondedNeighborLists().
-       :param coarseStepDegrees: With the default value of None, the number of
-       degrees per coarse step will be determined  by the
-       reduceOptions.CoarseStepDegrees or the default value of 30 if neither specifies
        the value.
-       :param reduceOptions: 
-        The reduceOptions is a Phil option subset.  The relevant options for
-          MoverNH3Rotator are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale.
+       :param fineStepDegrees: The fine step to take.
+       :param preferredOrientationScale: How much to scale the preferred-orientation
+       energy by before adding it to the total.
     """
 
     # The Nitrogen is the neighbor in these calculations, making this code symmetric with the other
@@ -448,6 +410,7 @@ class MoverNH3Rotator(_MoverRotator):
 
     # Set the preference function to like 120-degree rotations away from the starting location.
     # @todo Consider parameterizing the magic constant of 0.1 for the preference magnitude
+    # (for example, we might use preferredOrientationScale for this and not set a separate one?)
     def preferenceFunction(degrees): return 0.1 + 0.1 * math.cos(degrees * (math.pi/180) * (360/120))
 
     # Determine the axis to rotate around, which starts at the partner and points at the neighbor.
@@ -463,11 +426,12 @@ class MoverNH3Rotator(_MoverRotator):
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
     _MoverRotator.__init__(self, hydrogens, axis, 180, coarseStepDegrees,
-      preferenceFunction = preferenceFunction, reduceOptions = reduceOptions)
+      fineStepDegrees = fineStepDegrees, preferenceFunction = preferenceFunction,
+      preferredOrientationScale = preferredOrientationScale)
 
 ##################################################################################
 class MoverAromaticMethylRotator(_MoverRotator):
-  def __init__(self, atom, bondedNeighborLists, reduceOptions = None):
+  def __init__(self, atom, bondedNeighborLists):
     """ A Mover that rotates three Hydrogens around an axis from their bonded Carbon neighbor
        to the single bonded partner of its partner.  This is designed for use with Aromatic
        CH3 (Methly) groups, whose partner-partner atoms are bonded to an aromatic ring, having
@@ -482,9 +446,6 @@ class MoverAromaticMethylRotator(_MoverRotator):
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
        bonded atoms.  Can be obtained by calling getBondedNeighborLists().
-       :param reduceOptions: 
-        The reduceOptions is a Phil option subset.  The relevant options for
-          MoverAromaticMethylRotator are: None.
     """
 
     # The Carbon is the neighbor in these calculations, making this code symmetric with the other
@@ -531,12 +492,12 @@ class MoverAromaticMethylRotator(_MoverRotator):
     # Construct our parent class, which will do all of the actual work based on our inputs.
     # We have a coarse step size of 180 degrees and a range of 180 degrees and do not
     # allow fine rotations.
-    _MoverRotator.__init__(self, hydrogens, axis, 180, 180, doFineRotations = False,
-      reduceOptions = reduceOptions)
+    _MoverRotator.__init__(self, hydrogens, axis, 180, 180, doFineRotations = False)
 
 ##################################################################################
 class MoverTetrahedralMethylRotator(_MoverRotator):
-  def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = None, reduceOptions = None):
+  def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = 30.0,
+                  fineStepDegrees = 1.0, preferredOrientationScale = 1.0):
     """ A Mover that rotates three Hydrogens around an axis from their bonded Carbon neighbor
        to the single bonded partner of its partner.  This is designed for use with tetrahedral
        partners whose partner-partner atoms are bonded to three friends.
@@ -554,11 +515,10 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
        bonded atoms.  Can be obtained by calling getBondedNeighborLists().
-       :param coarseStepDegrees: With the default value of None, the number of
-       degrees per coarse step will be determined  by the
-       :param reduceOptions: 
-        The reduceOptions is a Phil option subset.  The relevant options for
-          MoverTetrahedralMethylRotator are: CoarseStepDegrees, FineStepDegrees, PreferredOrientationScale.
+       :param coarseStepDegrees: The coarse step to take.
+       :param fineStepDegrees: The fine step to take.
+       :param preferredOrientationScale: How much to scale the preferred-orientation
+       energy by before adding it to the total.
     """
 
     # The Carbon is the neighbor in these calculations, making this code symmetric with the other
@@ -608,12 +568,13 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
     # Construct our parent class, which will do all of the actual work based on our inputs.
     # We have a coarse step size of 180 degrees and a range of 180 degrees and do not
     # allow fine rotations.
-    _MoverRotator.__init__(self, hydrogens, axis, 180, preferenceFunction = preferenceFunction,
-      reduceOptions = reduceOptions)
+    _MoverRotator.__init__(self, hydrogens, axis, 180, fineStepDegrees = fineStepDegrees,
+      preferenceFunction = preferenceFunction,
+      preferredOrientationScale = preferredOrientationScale)
 
 ##################################################################################
 class MoverNH2Flip:
-  def __init__(self, nh2Atom, reduceOptions = None):
+  def __init__(self, nh2Atom):
     """Constructs a Mover that will handle flipping an NH2 with an O, both of which
        are attached to the same Carbon atom (and each of which has no other bonds).
        This Mover uses a simple swap of the center positions of the heavy atoms (with
@@ -621,11 +582,7 @@ class MoverNH2Flip:
        for its testing, but during FixUp it adjusts the bond lengths of the Oxygen
        and the Nitrogen; per J. Mol. Biol. (1999) 285, 1735-1747.
        :param nh2Atom: Nitrogen atom that is attached to two Hydrogens.
-       :param reduceOptions: 
-        The reduceOptions is a Phil option subset.  The relevant options for MoverNH2Flip
-          are: None.
     """
-    self._reduceOptions = reduceOptions
 
     # The Nitrogen is the neighbor in these calculations, making this code symmetric with the other
     # class code.
@@ -709,12 +666,6 @@ def Test():
   :returns Empty string on success, string describing the problem on failure.
   """
 
-  # Construct a Class that will behave like the Reduce Phil data structure so that
-  # we can specify the probe radius.
-  class FakePhil:
-    pass
-  fakePhil = FakePhil()
-
   # Test the _MoverRotator class.
   try:
     # Construct a _MoverRotator with three atoms, each at +1 in Z with one at +1 in X and 0 in Y
@@ -732,7 +683,7 @@ def Test():
     axis = flex.vec3_double([ [ 0.0, 0.0,-2.0], [ 0.0, 0.0, 1.0] ])
     def prefFunc(x):
       return 1.0
-    rot = _MoverRotator(atoms,axis, 180, 90.0, True, prefFunc)
+    rot = _MoverRotator(atoms,axis, 180, 90.0, True, preferenceFunction = prefFunc)
 
     # See if the results of each of the functions are what we expect in terms of sizes and locations
     # of atoms and preferences.  We'll use the default fine step size.
@@ -760,29 +711,22 @@ def Test():
       if p != 1:
         return "Movers.Test() _MoverRotator basic: Expected preference energy = 1, got "+str(p)
 
-    # Test None preference scale factor and a different nonzero value.
-    fakePhil.PreferredOrientationScale = None
-    rot = _MoverRotator(atoms,axis, 180, 90.0, True, prefFunc, reduceOptions = fakePhil)
-    coarse = rot.CoarsePositions()
-    for p in coarse.preferenceEnergies:
-      if p != 1:
-        return "Movers.Test() _MoverRotator None preference: Expected preference energy = 1, got "+str(p)
-    fakePhil.PreferredOrientationScale = 2
-    rot = _MoverRotator(atoms,axis, 180, 90.0, True, prefFunc, reduceOptions = fakePhil)
+    # Test different preference scale value.
+    rot = _MoverRotator(atoms,axis, 180, 90.0, True, preferenceFunction = prefFunc, preferredOrientationScale = 2)
     coarse = rot.CoarsePositions()
     for p in coarse.preferenceEnergies:
       if p != 2:
-        return "Movers.Test() _MoverRotator Phil-scaled preference: Expected preference energy = 2, got "+str(p)
+        return "Movers.Test() _MoverRotator Scaled preference: Expected preference energy = 2, got "+str(p)
 
     # Test None preference function and a sinusoidal one.
-    rot = _MoverRotator(atoms,axis, 180, 90.0, True, None)
+    rot = _MoverRotator(atoms,axis, 180, 90.0, True, preferenceFunction = None)
     coarse = rot.CoarsePositions()
     for p in coarse.preferenceEnergies:
       if p != 0:
         return "Movers.Test() _MoverRotator None preference function: Expected preference energy = 0, got "+str(p)
     def prefFunc2(x):
       return math.cos(x * math.pi / 180)
-    rot = _MoverRotator(atoms,axis, 180, 180, True, prefFunc2)
+    rot = _MoverRotator(atoms,axis, 180, 180, True, preferenceFunction = prefFunc2)
     coarse = rot.CoarsePositions()
     expected = [1, -1]
     for i,p  in enumerate(coarse.preferenceEnergies):
@@ -790,26 +734,19 @@ def Test():
       if p != val:
         return "Movers.Test() _MoverRotator Sinusoidal preference function: Expected preference energy = "+str(val)+", got "+str(p)
 
-    # Test coarseStepDegrees default behavior and setting via reduceOptions.
+    # Test coarseStepDegrees default behavior.
     rot = _MoverRotator(atoms,axis, 180)
     coarse = rot.CoarsePositions()
     if len(coarse.positions) != 12:
       return "Movers.Test() _MoverRotator Default coarse step: Expected 12, got "+str(len(coarse.positions))
-    fakePhil.CoarseStepDegrees = 15
-    rot = _MoverRotator(atoms,axis, 180, reduceOptions = fakePhil)
-    coarse = rot.CoarsePositions()
-    if len(coarse.positions) != 24:
-      return "Movers.Test() _MoverRotator reduceOptions coarse step: Expected 24, got "+str(len(coarse.positions))
 
-    # Test fineStepDegrees setting via reduceOptions.
-    fakePhil.CoarseStepDegrees = None
-    fakePhil.FineStepDegrees = 1
-    rot = _MoverRotator(atoms,axis, 180, reduceOptions = fakePhil)
+    # Test fineStepDegrees setting.
+    rot = _MoverRotator(atoms,axis, 180, fineStepDegrees = 2)
     fine = rot.FinePositions(0)
     # +/- 15 degrees in 1-degree steps, but we don't do the +15 because it will be handled by the next
     # rotation up.
-    if len(fine.positions) != 29:
-      return "Movers.Test() _MoverRotator reduceOptions fine step: Expected 29, got "+str(len(fine.positions))
+    if len(fine.positions) != 14:
+      return "Movers.Test() _MoverRotator setting fine step: Expected 14, got "+str(len(fine.positions))
 
     # Test doFineRotations = False and 180 degree coarseStepDegrees.
     rot = _MoverRotator(atoms,axis, 180, 180, False)
