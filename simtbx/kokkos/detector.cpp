@@ -203,31 +203,43 @@ namespace simtbx { namespace Kokkos {
       double_floatimage[i] = host_floatimage( i ); 
     }
   }
-/*
+
   af::flex_double
   kokkos_detector::get_raw_pixels_cuda(){
     //return the data array for the multipanel detector case
-    af::flex_double z(af::flex_grid<>(m_panel_count,m_slow_dim_size,m_fast_dim_size), af::init_functor_null<double>());
-    double* begin = z.begin();
-    cudaSafeCall(cudaMemcpy(
-     begin,
-     cu_accumulate_floatimage,
-     sizeof(*cu_accumulate_floatimage) * m_total_pixel_count,
-     cudaMemcpyDeviceToHost));
-    return z;
+    af::flex_double host_array(af::flex_grid<>(m_panel_count,m_slow_dim_size,m_fast_dim_size), af::init_functor_null<double>());
+    double* p_host_array = host_array.begin();
+    
+    vector_double_t::HostMirror host_floatimage = create_mirror_view(m_accumulate_floatimage);
+    deep_copy(host_floatimage, m_accumulate_floatimage);
+
+    for (int i=0; i<m_total_pixel_count; ++i) {
+      p_host_array[i] = host_floatimage( i ); 
+    }    
+    return host_array;
   }
 
   void
-  kokkos_detector::set_active_pixels_on_KOKKOS(af::shared<int> active_pixel_list_value){
-    active_pixel_list = active_pixel_list_value;
-    int * ptr_active_pixel_list = active_pixel_list.begin();
-    cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_list, sizeof(*cu_active_pixel_list) * active_pixel_list.size() ));
-    cudaSafeCall(cudaMemcpy(cu_active_pixel_list,
-                            ptr_active_pixel_list,
-                            sizeof(*cu_active_pixel_list) * active_pixel_list.size(),
-                            cudaMemcpyHostToDevice));
-  }
+  kokkos_detector::set_active_pixels_on_KOKKOS(af::shared<int> active_pixel_list_value) {
+    m_active_pixel_size = active_pixel_list_value.size();
+    resize(m_active_pixel_list, m_active_pixel_size);
+    vector_int_t::HostMirror host_view = create_mirror_view(m_active_pixel_list);
 
+    int* ptr_active_pixel_list = active_pixel_list.begin();
+    for (int i=0; i<m_active_pixel_size; ++i) {
+      host_view( i ) = ptr_active_pixel_list[ i ];
+    }
+    deep_copy(m_active_pixel_list, host_view);
+
+    active_pixel_list = active_pixel_list_value;
+    
+    // cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_list, sizeof(*cu_active_pixel_list) * active_pixel_list.size() ));
+    // cudaSafeCall(cudaMemcpy(cu_active_pixel_list,
+    //                         ptr_active_pixel_list,
+    //                         sizeof(*cu_active_pixel_list) * active_pixel_list.size(),
+    //                         cudaMemcpyHostToDevice));
+  }
+/*
   af::shared<double>
   kokkos_detector::get_whitelist_raw_pixels_cuda(af::shared<std::size_t> selection
   ){
