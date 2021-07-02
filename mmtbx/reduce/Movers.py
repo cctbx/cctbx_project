@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import math
-import scitbx.matrix
+import scitbx.matrix, scitbx.math
 from scitbx.array_family import flex
 from iotbx import pdb
 import traceback
@@ -574,13 +574,14 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
 
 ##################################################################################
 class MoverNH2Flip:
-  def __init__(self, nh2Atom):
+  def __init__(self, nh2Atom, bondedNeighborLists):
     """Constructs a Mover that will handle flipping an NH2 with an O, both of which
        are attached to the same Carbon atom (and each of which has no other bonds).
        This Mover uses a simple swap of the center positions of the heavy atoms (with
        repositioning of the Hydrogens to lie in the plane with the other three atoms)
        for its testing, but during FixUp it adjusts the bond lengths of the Oxygen
-       and the Nitrogen; per J. Mol. Biol. (1999) 285, 1735-1747.
+       and the Nitrogen; per Protein Science Vol 27:293-315.
+       This handles flips for Asn and Gln.
        :param nh2Atom: Nitrogen atom that is attached to two Hydrogens.
     """
 
@@ -604,43 +605,124 @@ class MoverNH2Flip:
     if len(hydrogens) != 2:
       raise ValueError("MoverNH2Flip(): nh2Atom does not have two bonded hydrogens")
     bonded = bondedNeighborLists[partner]
-    oyxgen = none
+    oyxgen = None
+    alphaCarbon = None
     for b in bonded:
       if b.element == "O":
         oxygen = b
+      if b.element == "C":
+        alphaCarbon = b
+    if alphaCarbon is None:
+      raise ValueError("MoverNH2Flip(): Partner does not have bonded (alpha) Carbon friend")
     if oxygen is None:
       raise ValueError("MoverNH2Flip(): Partner does not have bonded oxygen friend")
     if len(bondedNeighborLists[oxygen]) != 1:
       raise ValueError("MoverNH2Flip(): Oxygen has more than one bonded neighbor")
-    self._atoms = [ hydrogens[0], hyrogens[1], neighbor, partner, oxygen ]
+    self._atoms = [ hydrogens[0], hydrogens[1], neighbor, partner, oxygen ]
 
-    # Normal to the plane containing Nitrogen, Carbon, and Oxygen
-    normal = (scitbx.matrix.cross_produce_matrix(cToO) * nToO).normalize()
-
+    #########################
     # Compute the new positions for the Hydrogens such that they are at the same distance from
     # the Oxygen as one of them is from the Nitrogen and located at +/-120 degrees from the
     # Carbon-Oxygen bond in the plane of the Nitrogen, Carbon, and Oxygen.
     cToO = _lvec3(oxygen.xyz) - _lvec3(partner.xyz)
     nToO = _rvec3(neighbor.xyz) - _rvec3(partner.xyz)
 
-    hBondLen = (_rvec3(hydrogens[0].xyz) - _rvec3(neighbor.xyz)).length()
-    newH0 = _rvec3(oxygen.xyz) + ((-cToO.normalize()) * hBondLen).rotate_around_origin(normal, 120 * math.pi/180)
-    newH1 = _rvec3(oxygen.xyz) + ((-cToO.normalize()) * hBondLen).rotate_around_origin(normal,-120 * math.pi/180)
+    # Normal to the plane containing Nitrogen, Carbon, and Oxygen
+    normal = _lvec3(scitbx.matrix.cross_product_matrix(cToO) * nToO).normalize()
 
+    hBondLen = (_rvec3(hydrogens[0].xyz) - _rvec3(neighbor.xyz)).length()
+    newH0 = _lvec3(oxygen.xyz) + ((-cToO.normalize()) * hBondLen).rotate_around_origin(normal, 120 * math.pi/180)
+    newH1 = _lvec3(oxygen.xyz) + ((-cToO.normalize()) * hBondLen).rotate_around_origin(normal,-120 * math.pi/180)
+
+    #########################
     # Compute the list of positions for all of the atoms. This consists of the original
     # location and the flipped location where we swap the locations of the two heavy atoms
     # and bring the Hydrogens along for the ride.
+
     self._coarsePositions = [
-        [hydrogens[0].xyz, hyrogens[1].xyz, neighbor.xyz, partner.xyz, oxygen.xyz],
+        [hydrogens[0].xyz, hydrogens[1].xyz, neighbor.xyz, partner.xyz, oxygen.xyz],
         [newH0,            newH1,           oxygen.xyz,   partner.xyz, neighbor.xyz]
       ]
 
-    # Compute the list of Fixup returns.  This consists of the original location and a
-    # flipped location where we adjust the bond lengths of the two heavy atoms w.r.t.
-    # the carbon and bring the Hydrogens along for the ride.
-    # @todo See FlipMemo::RotHingeDock_Flip() from the original Reduce C++ code
+    #########################
+    # Compute the list of Fixup returns.
+    # The algorithm is described in Protein Science Vol 27:293-315.  It is
+    # implemented in FlipMemo::RotHingeDock_Flip() in the original Reduce C++ code,
+    # where the partner is a Carbon and its other neighbor is the alpha Carbon.
+    #  A) Rotate the movable atoms around the Carbon-alphaCarbon vector by 180 degrees.
+    #  B) Hinge the movable atoms around the Carbon to place them back into the
+    #     plane that they were originally located in using the axis of least
+    #     rotation that passed through the Carbon.
+    #  C) Rotate the atoms around the alphaCarbon, aligning the O and
+    #     N atoms with their original locations as much as possible.  This is
+    #     done in two steps: 1) Rotating around the shortest axis to make the
+    #     Oxygen lie on the original vector from the alphaCarbon to the original Nitrogen.
+    #     2) Rotating around the alphaCarbon-to-old-Nitrogen (new Oxygen) vector to align the plane
+    #     containing the alphaCarbon, new and old Nitrogen with the plane
+    #     containing the alphaCarbon, the original Oxygen and the original Nitrogen
+    #     (making the dihedral angle new Nitrogen, alphaCarbon, old Nitrogen, old
+    #     Oxygen be 0).
+    nitrogen = nh2Atom
+    carbon = partner
 
-    self._fixUpPositionss = fixUpPositions
+    # A) Rotate the movable atoms by 180 degrees
+    movable = [hydrogens[0].xyz, hydrogens[1].xyz, nitrogen.xyz, carbon.xyz, oxygen.xyz]
+    normal = (_rvec3(alphaCarbon.xyz) - _rvec3(carbon.xyz)).normalize()
+    axis = flex.vec3_double([carbon.xyz, normal])
+    for i in range(len(movable)):
+      movable[i] = _rotateAroundAxis(movable[i], axis, 180)
+
+    # B) Hinge the movable atoms around the Carbon.
+    # Solve for the planes containing the old and new atoms and then the vector
+    # that these planes intersect at (cross product).
+    # The 
+
+    cToO = _lvec3(oxygen.xyz) - _lvec3(carbon.xyz)
+    nToO = _rvec3(nitrogen.xyz) - _rvec3(carbon.xyz)
+    oldNormal = (scitbx.matrix.cross_product_matrix(cToO) * nToO).normalize()
+
+    # Flip the order here because we've rotated 180 degrees
+    newNToO = _lvec3(movable[2]) - _lvec3(movable[3])
+    newCToO = _rvec3(movable[4]) - _rvec3(movable[3])
+    newNormal = (scitbx.matrix.cross_product_matrix(newNToO) * newCToO).normalize()
+
+    # If we don't need to rotate, we'll get a zero-length vector
+    hinge = scitbx.matrix.cross_product_matrix(_lvec3(oldNormal))*_rvec3(newNormal)
+    if hinge.length() > 0:
+      hinge = hinge.normalize()
+      axis = flex.vec3_double([carbon.xyz, hinge])
+      degrees = 180/math.pi * math.acos((_lvec3(oldNormal)*_rvec3(newNormal))[0])
+      for i in range(len(movable)):
+        # Rotate in the opposite direction, taking the new back to the old.
+        movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
+
+    # C) Rotate the atoms around the alphaCarbon
+    #  1) Oxygen to alphaCarbon<-->original Nitrogen line
+    aToNewO = _lvec3(movable[4]) - _lvec3(alphaCarbon.xyz)
+    aToOldN = _rvec3(nitrogen.xyz) - _rvec3(alphaCarbon.xyz)
+    # If we don't need to rotate, we'll get a zero-length vector
+    normal = scitbx.matrix.cross_product_matrix(aToNewO) * aToOldN
+    if normal.length() > 0:
+      normal = normal.normalize()
+      axis = flex.vec3_double([alphaCarbon.xyz, normal])
+      degrees = 180/math.pi * math.acos((_lvec3(aToOldN.normalize())*_rvec3(aToNewO.normalize()))[0])
+      for i in range(len(movable)):
+        # Rotate in the opposite direction, taking the new back to the old.
+        movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
+
+    #  2) Oxygen to the proper plane.
+    sites = flex.vec3_double([ movable[2], alphaCarbon.xyz, nitrogen.xyz, oxygen.xyz ])
+    degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
+    hinge = _rvec3(alphaCarbon.xyz) - _rvec3(nitrogen.xyz)
+    if hinge.length() > 0:
+      hinge = hinge.normalize()
+      axis = flex.vec3_double([alphaCarbon.xyz, hinge])
+      for i in range(len(movable)):
+        # Rotate in the opposite direction, taking the new back to the old.
+        movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
+
+    # No fix-up for coarse position 0, do the above adjustment for position 1
+    self._fixUpPositions = [ [], movable ]
     
   def CoarsePositions(self):
     # returns: The two possible coarse positions with 0 energy offset for either.
@@ -652,7 +734,7 @@ class MoverNH2Flip:
 
   def FixUp(self, coarseIndex):
     # Return the appropriate fixup
-    return FixUpReturn(atoms, fixUpPositions[coarseIndex])
+    return FixUpReturn(self._atoms, self._fixUpPositions[coarseIndex])
 
 ##################################################################################
 # @todo Define each type of Mover
@@ -903,7 +985,7 @@ def Test():
 
   # Test the MoverNH3Rotator class.
   try:
-    # Construct a MoverNH3Rotator that has ony hydrogen start out at 45 degrees around Z and the
+    # Construct a MoverNH3Rotator that has one hydrogen start out at 45 degrees around Z and the
     # other two at +/-120 degrees from that one.
     # They are bonded to a Nitrogen and partner that are vertical and then partner is bonded to three
     # friends with one on the +X axis and the others +/-120.  This should cause us to get the hydrogens at
@@ -993,7 +1075,7 @@ def Test():
     
   # Test the MoverAromaticMethylRotator class.
   try:
-    # Construct a MoverAromaticMethylRotator that has ony hydrogen start out at 45 degrees around Z and the
+    # Construct a MoverAromaticMethylRotator that has one hydrogen start out at 45 degrees around Z and the
     # other two at +/-120 degrees from that one.
     # They are bonded to a Carbon and partner that are vertical and then partner is bonded to two
     # friends that are in the Y=0 plane.  This should cause us to get the one of the hydrogens at
@@ -1073,7 +1155,7 @@ def Test():
     
   # Test the MoverTetrahedralMethylRotator class.
   try:
-    # Construct a MoverTetrahedralMethylRotator that has ony hydrogen start out at 45 degrees around Z and the
+    # Construct a MoverTetrahedralMethylRotator that has one hydrogen start out at 45 degrees around Z and the
     # other two at +/-120 degrees from that one.
     # They are bonded to a Carbon and partner that are vertical and then partner is bonded to three
     # friends with one in the +X direction.  This should cause us to get the one of the hydrogens at
@@ -1160,6 +1242,79 @@ def Test():
   except Exception as e:
     return "Movers.Test() MoverTetrahedralMethylRotator basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
+  # Test the MoverNH2Flip class.
+  try:
+    # @todo Test behavior with offsets for each atom so that we test the generic case.
+    # Construct a MoverNH2Flip that has the N, H's and Oxygen located (non-physically)
+    # slightly in the +Y direction out of the X-Z plane, with the Hydrogens 120 around the
+    # same offset axis.
+    # They are bonded to a Carbon and friend that are on the Z axis.
+    # Non-physically, atoms are 1 unit apart.
+    p = pdb.hierarchy.atom()
+    p.xyz = [ 0.0, 0.0, 0.0 ]
+
+    f = pdb.hierarchy.atom()
+    f.element = "C"
+    f.xyz = [ 0.0, 0.0,-1.0 ]
+
+    # Nitrogen and Oxygen are +/-120 degrees from carbon-carbon bond
+    axis = flex.vec3_double([ [0,0,0], [0,1,0] ])
+    n = pdb.hierarchy.atom()
+    n.element = "N"
+    n.xyz = _rotateAroundAxis(f, axis,-120) + _lvec3([0,0.01,0])
+
+    o = pdb.hierarchy.atom()
+    o.element = "O"
+    o.xyz = _rotateAroundAxis(f, axis, 120) + _lvec3([0,0.01,0])
+
+    # Hydrogens are +/-120 degrees from nitrogen-carbon bond
+    axis = flex.vec3_double([ n.xyz, [0,1,0] ])
+    h1 = pdb.hierarchy.atom()
+    h1.element = "H"
+    h1.xyz = _rotateAroundAxis(p, axis,-120) + _lvec3([0,0.01,0])
+
+    h2 = pdb.hierarchy.atom()
+    h2.element = "H"
+    h2.xyz = _rotateAroundAxis(p, axis, 120) + _lvec3([0,0.01,0])
+
+    # Build the hierarchy so we can reset the i_seq values.
+    ag = pdb.hierarchy.atom_group()
+    ag.append_atom(h1)
+    ag.append_atom(h2)
+    ag.append_atom(n)
+    ag.append_atom(o)
+    ag.append_atom(p)
+    ag.append_atom(f)
+    rg = pdb.hierarchy.residue_group()
+    rg.append_atom_group(ag)
+    c = pdb.hierarchy.chain()
+    c.append_residue_group(rg)
+    m = pdb.hierarchy.model()
+    m.append_chain(c)
+    m.atoms().reset_i_seq()
+
+    bondedNeighborLists = {}
+    bondedNeighborLists[h1] = [ n ]
+    bondedNeighborLists[h2] = [ n ]
+    bondedNeighborLists[n] = [ h1, h2, p ]
+    bondedNeighborLists[o] = [ p ]
+    bondedNeighborLists[p] = [ n, o, f ]
+    bondedNeighborLists[f] = [ p ]
+
+    mover = MoverNH2Flip(n, bondedNeighborLists)
+    fixed = mover.FixUp(1).newPositions
+
+    # Ensure that the results meet the specifications:
+    # 1) New Oxygen on the line from the alpha carbon to the old Nitrogen
+    # 2) New plane of Oxygen, Nitrogen, Alpha Carbon matches old plane, but flipped
+    # 3) Carbon has moved slightly due to rigid-body motion
+
+    # @todo
+
+
+  except Exception as e:
+    return "Movers.Test() MoverNH2Flip basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
+
   # @todo Test other Mover subclasses
 
   return ""
@@ -1209,7 +1364,8 @@ def _rotateOppositeFriend(atom, axis, partner, friends):
 
 def _rotateAroundAxis(atom, axis, degrees):
   '''Rotate the atom about the specified axis by the specified number of degrees.
-     :param atom: iotbx.pdb.hierarchy.atom to be moved.
+     :param atom: iotbx.pdb.hierarchy.atom or scitbx::vec3<double> or
+     scitbx.matrix.rec(xyz, (3,1)) to be moved.
      :param axis: flex array with two scitbx::vec3<double> points, the first
      of which is the origin and the second is a vector pointing in the direction
      of the axis of rotation.  Positive rotations will be right-handed rotations
@@ -1218,6 +1374,13 @@ def _rotateAroundAxis(atom, axis, degrees):
      Positive rotation is right-handed around the axis.
      :returns the new location for the atom.
   '''
+  # If we have an atom, get its position.  Otherwise, we have a position passed
+  # in.
+  try:
+    pos = atom.xyz
+  except:
+    pos = _rvec3(atom)
+
   # Project the atom position onto the axis, finding its closest point on the axis.
   # The position lies on a plane whose normal points along the axis vector.  The
   # point we seek is the intersection of the axis with this plane.
@@ -1228,12 +1391,12 @@ def _rotateAroundAxis(atom, axis, degrees):
   # (lineDirection * planeNormal).  Because the line direction and normal are the
   # same, the divisor is 1.
   normal = _lvec3(axis[1]).normalize()
-  d = -normal*atom.xyz
+  d = -normal*pos
   t = - (d + (normal * _rvec3(axis[0])))
   nearPoint = _lvec3(axis[0]) + t * normal
 
   # Find the vector from the closest point towards the atom, which is its offset
-  offset = _lvec3(atom.xyz) - nearPoint
+  offset = _lvec3(pos) - nearPoint
 
   # Rotate the offset vector around the axis by the specified angle.  Add the new
   # offset to the closest point. Store this as the new location for this atom and angle.
