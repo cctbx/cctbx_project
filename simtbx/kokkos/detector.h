@@ -14,7 +14,7 @@
 #include "dxtbx/model/detector.h"
 #include "dxtbx/model/beam.h"
 #include "simtbx/nanoBragg/nanoBragg.h"
-#include "kokkos_types.h"
+#include "simtbx/kokkos/kokkos_types.h"
 
 #include <iostream>
 
