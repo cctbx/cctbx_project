@@ -39,6 +39,24 @@ namespace simtbx { namespace Kokkos {
     print_view(dst);
   }
 
+  template <typename T>
+  void
+  transfer_kokkos2flex(af::shared<T> &dst, const view_1d_t<T> &src) {
+    if (true) {
+      printf("== Transfer %s from %p\n", src.label().c_str(), (void*) src.data());
+    }
+
+    auto host_view = create_mirror_view(src);
+    deep_copy(host_view, src);
+    fence();
+
+    auto dst_ptr = dst.begin();
+    for (int i=0; i<src.span(); ++i) {
+      dst_ptr[ i ] = host_view( i );
+    }
+  }
+
+
   packed_metrology::packed_metrology(dxtbx::model::Detector const & arg_detector,
                                    dxtbx::model::Beam const & arg_beam) {
 
@@ -167,7 +185,7 @@ namespace simtbx { namespace Kokkos {
   }
 
   void
-  kokkos_detector::write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg& nB){
+  kokkos_detector::write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg& nB) {
     //only implement the monolithic detector case, one panel
     SCITBX_ASSERT(nB.spixels == m_slow_dim_size);
     SCITBX_ASSERT(nB.fpixels == m_fast_dim_size);
@@ -204,17 +222,8 @@ namespace simtbx { namespace Kokkos {
   void
   kokkos_detector::set_active_pixels_on_KOKKOS(af::shared<int> active_pixel_list_value) {
     m_active_pixel_size = active_pixel_list_value.size();
-    resize(m_active_pixel_list, m_active_pixel_size);
-    vector_int_t::HostMirror host_view = create_mirror_view(m_active_pixel_list);
-
-    int* ptr_active_pixel_list = active_pixel_list.begin();
-    for (int i=0; i<m_active_pixel_size; ++i) {
-      host_view( i ) = ptr_active_pixel_list[ i ];
-    }
-    deep_copy(m_active_pixel_list, host_view);
-
-    active_pixel_list = active_pixel_list_value;
-    
+    transfer_flex2kokkos(m_active_pixel_list, active_pixel_list_value);
+    active_pixel_list = active_pixel_list_value;    
   }
 
   af::shared<double>
@@ -251,14 +260,16 @@ namespace simtbx { namespace Kokkos {
     // get_active_pixel_selection_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
     //   cu_active_pixel_results, cu_active_pixel_selection, cu_accumulate_floatimage, total_pixels);
 
-    vector_cudareal_t::HostMirror host_results = create_mirror_view(active_pixel_results);
-    deep_copy(host_results, active_pixel_results);
+    // vector_cudareal_t::HostMirror host_results = create_mirror_view(active_pixel_results);
+    // deep_copy(host_results, active_pixel_results);
 
     af::shared<double> output_array(m_active_pixel_size, af::init_functor_null<double>());
-    double* output_array_ptr = output_array.begin();
-    for (int i=0; i<m_active_pixel_size; ++i) {
-      output_array_ptr[ i ] = host_results( i );
-    }
+    transfer_kokkos2flex(output_array, active_pixel_results);
+    
+    // double* output_array_ptr = output_array.begin();
+    // for (int i=0; i<m_active_pixel_size; ++i) {
+    //   output_array_ptr[ i ] = host_results( i );
+    // }
 
     // cudaSafeCall(cudaMemcpy(
     //   begin,
