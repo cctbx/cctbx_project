@@ -1,9 +1,10 @@
 //#include "cudatbx/cuda_base.cuh"
 #include "simtbx/kokkos/structure_factors.h"
+#include "simtbx/kokkos/kokkos_utils.h"
 #include <cstdio>
 
-using Kokkos::create_mirror_view;
-using Kokkos::deep_copy;
+//using Kokkos::create_mirror_view;
+//using Kokkos::deep_copy;
 using Kokkos::parallel_for;
 using Kokkos::RangePolicy;
 
@@ -14,13 +15,14 @@ namespace simtbx { namespace Kokkos {
     double * raw_ptr = linear_amplitudes.begin();
 
     vector_cudareal_t device_Fhkl( "device_Fhkl", linear_amplitudes.size() );
-    vector_cudareal_t::HostMirror host_Fhkl = create_mirror_view( device_Fhkl );
+    transfer_shared2kokkos(device_Fhkl, linear_amplitudes);
+    // vector_cudareal_t::HostMirror host_Fhkl = create_mirror_view( device_Fhkl );
 
-    for (int i=0; i<linear_amplitudes.size(); ++i) {
-      host_Fhkl(i) = (CUDAREAL) raw_ptr[i];
-    }
+    // for (int i=0; i<linear_amplitudes.size(); ++i) {
+    //   host_Fhkl(i) = (CUDAREAL) raw_ptr[i];
+    // }
 
-    deep_copy(device_Fhkl, host_Fhkl);
+    // deep_copy(device_Fhkl, host_Fhkl);
     d_channel_Fhkl.push_back(device_Fhkl);
 
     if (d_channel_Fhkl.size()==1) { //first time through

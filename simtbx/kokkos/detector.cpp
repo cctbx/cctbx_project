@@ -18,46 +18,6 @@ using Kokkos::parallel_for;
 
 namespace simtbx { namespace Kokkos {
 
-/*  template <typename T>
-  void
-  transfer_flex2kokkos(view_1d_t<T> &dst, const af::shared<T>  &src) {
-    if (true) {
-      printf("== Transfer %s from %p\n", dst.label().c_str(), (void*) dst.data());
-      printf(" - size src|dst: %d|%d\n", src.size(), dst.span() );
-    }
-    if (dst.span() < src.size()) {
-      resize(dst, src.size());
-      printf(" - size changed, new size: %d\n", dst.span() );
-    }
-    auto host_view = create_mirror_view(dst);
-
-    for (int i=0; i<src.size(); ++i) {
-      host_view( i ) = src[ i ];
-    }
-    deep_copy(dst, host_view);
-    printf("copied from %p to %p.\n", (void*) host_view.data(), (void*) dst.data());
-
-    print_view(dst);
-  }
-
-  template <typename T>
-  void
-  transfer_kokkos2flex(af::shared<T> &dst, const view_1d_t<T> &src) {
-    if (true) {
-      printf("== Transfer %s from %p\n", src.label().c_str(), (void*) src.data());
-    }
-
-    auto host_view = create_mirror_view(src);
-    deep_copy(host_view, src);
-    fence();
-
-    auto dst_ptr = dst.begin();
-    for (int i=0; i<src.span(); ++i) {
-      dst_ptr[ i ] = host_view( i );
-    }
-  }*/
-
-
   packed_metrology::packed_metrology(dxtbx::model::Detector const & arg_detector,
                                    dxtbx::model::Beam const & arg_beam) {
 
@@ -194,15 +154,16 @@ namespace simtbx { namespace Kokkos {
     // nB.raw_pixels = af::flex_double(af::flex_grid<>(nB.spixels,nB.fpixels));
     // do not reallocate CPU memory for the data write, as it is not needed
     
-    vector_double_t::HostMirror host_floatimage = create_mirror_view(m_accumulate_floatimage);
-    deep_copy(host_floatimage, m_accumulate_floatimage);
+    transfer_kokkos2flex(nB.raw_pixels, m_accumulate_floatimage);
+    // vector_double_t::HostMirror host_floatimage = create_mirror_view(m_accumulate_floatimage);
+    // deep_copy(host_floatimage, m_accumulate_floatimage);
 
-    printf(" m_total_pixel_count: %d\n", m_total_pixel_count);
+    // printf(" m_total_pixel_count: %d\n", m_total_pixel_count);
 
-    double * double_floatimage = nB.raw_pixels.begin();
-    for (int i=0; i<m_total_pixel_count; ++i) {
-      double_floatimage[i] = host_floatimage( i ); 
-    }
+    // double * double_floatimage = nB.raw_pixels.begin();
+    // for (int i=0; i<m_total_pixel_count; ++i) {
+    //   double_floatimage[i] = host_floatimage( i ); 
+    // }
   }
 
   af::flex_double
@@ -211,19 +172,20 @@ namespace simtbx { namespace Kokkos {
     af::flex_double output_array(af::flex_grid<>(m_panel_count,m_slow_dim_size,m_fast_dim_size), af::init_functor_null<double>());
     double* output_array_ptr = output_array.begin();
     
-    vector_double_t::HostMirror host_floatimage = create_mirror_view(m_accumulate_floatimage);
-    deep_copy(host_floatimage, m_accumulate_floatimage);
+    transfer_kokkos2flex(output_array, m_accumulate_floatimage);
+    // vector_double_t::HostMirror host_floatimage = create_mirror_view(m_accumulate_floatimage);
+    // deep_copy(host_floatimage, m_accumulate_floatimage);
 
-    for (int i=0; i<m_total_pixel_count; ++i) {
-      output_array_ptr[ i ] = host_floatimage( i ); 
-    }    
+    // for (int i=0; i<m_total_pixel_count; ++i) {
+    //   output_array_ptr[ i ] = host_floatimage( i ); 
+    // }    
     return output_array;
   }
 
   void
   kokkos_detector::set_active_pixels_on_KOKKOS(af::shared<int> active_pixel_list_value) {
     m_active_pixel_size = active_pixel_list_value.size();
-    transfer_flex2kokkos(m_active_pixel_list, active_pixel_list_value);
+    transfer_shared2kokkos(m_active_pixel_list, active_pixel_list_value);
     active_pixel_list = active_pixel_list_value;    
   }
 
@@ -232,11 +194,12 @@ namespace simtbx { namespace Kokkos {
     //return the data array for the multipanel detector case, but only for whitelist pixels
     //ToDo check if this function works as intended. It seems like active_pixel is unnecessary or wrong
     vector_size_t active_pixel_selection = vector_size_t("active_pixel_selection", selection.size());
-    vector_size_t::HostMirror host_selection = create_mirror_view(active_pixel_selection);
-    for (int i=0; i<selection.size(); ++i) {
-      host_selection( i ) = selection[ i ];
-    }
-    deep_copy(active_pixel_selection, host_selection);
+    transfer_shared2kokkos(active_pixel_selection, selection);
+    // vector_size_t::HostMirror host_selection = create_mirror_view(active_pixel_selection);
+    // for (int i=0; i<selection.size(); ++i) {
+    //   host_selection( i ) = selection[ i ];
+    // }
+    // deep_copy(active_pixel_selection, host_selection);
 
     vector_cudareal_t active_pixel_results = vector_cudareal_t("active_pixel_results", m_active_pixel_size);
     // CUDAREAL * cu_active_pixel_results;
@@ -265,7 +228,7 @@ namespace simtbx { namespace Kokkos {
     // deep_copy(host_results, active_pixel_results);
 
     af::shared<double> output_array(m_active_pixel_size, af::init_functor_null<double>());
-    transfer_kokkos2flex(output_array, active_pixel_results);
+    transfer_kokkos2shared(output_array, active_pixel_results);
     
     // double* output_array_ptr = output_array.begin();
     // for (int i=0; i<m_active_pixel_size; ++i) {
@@ -292,13 +255,13 @@ namespace simtbx { namespace Kokkos {
     resize(m_maskimage, m_total_pixel_count);
     resize(m_floatimage, m_total_pixel_count);
 
-    transfer_flex2kokkos(m_sdet_vector, metrology.sdet);
-    transfer_flex2kokkos(m_fdet_vector, metrology.fdet);
-    transfer_flex2kokkos(m_odet_vector, metrology.odet);
-    transfer_flex2kokkos(m_pix0_vector, metrology.pix0);
-    transfer_flex2kokkos(m_distance, metrology.dists);
-    transfer_flex2kokkos(m_Xbeam, metrology.Xbeam);
-    transfer_flex2kokkos(m_Ybeam, metrology.Ybeam);
+    transfer_shared2kokkos(m_sdet_vector, metrology.sdet);
+    transfer_shared2kokkos(m_fdet_vector, metrology.fdet);
+    transfer_shared2kokkos(m_odet_vector, metrology.odet);
+    transfer_shared2kokkos(m_pix0_vector, metrology.pix0);
+    transfer_shared2kokkos(m_distance, metrology.dists);
+    transfer_shared2kokkos(m_Xbeam, metrology.Xbeam);
+    transfer_shared2kokkos(m_Ybeam, metrology.Ybeam);
     fence();
 
     metrology.show();
