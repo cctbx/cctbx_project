@@ -1,6 +1,7 @@
 #include "scitbx/array_family/boost_python/flex_fwd.h"
 //#include "cudatbx/cuda_base.cuh"
 #include "simtbx/kokkos/detector.h"
+#include "simtbx/kokkos/kokkos_utils.h"
 #include "scitbx/vec3.h"
 #include "scitbx/vec2.h"
 
@@ -17,7 +18,7 @@ using Kokkos::parallel_for;
 
 namespace simtbx { namespace Kokkos {
 
-  template <typename T>
+/*  template <typename T>
   void
   transfer_flex2kokkos(view_1d_t<T> &dst, const af::shared<T>  &src) {
     if (true) {
@@ -54,7 +55,7 @@ namespace simtbx { namespace Kokkos {
     for (int i=0; i<src.span(); ++i) {
       dst_ptr[ i ] = host_view( i );
     }
-  }
+  }*/
 
 
   packed_metrology::packed_metrology(dxtbx::model::Detector const & arg_detector,
