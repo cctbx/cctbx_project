@@ -29,7 +29,6 @@ using vector_int_t = view_1d_t<int>;
 using vector_size_t = view_1d_t<std::size_t>;
 using vector_ushort_t = view_1d_t<unsigned int short>;
 
-
 template <typename T>
 void print_view(const view_1d_t<T> &arg_view, size_t arg_first, size_t arg_last) {
   std::string label = arg_view.label();
@@ -38,7 +37,7 @@ void print_view(const view_1d_t<T> &arg_view, size_t arg_first, size_t arg_last)
   Kokkos::parallel_for("print_view",
                         range_policy(arg_first, arg_last),
                         KOKKOS_LAMBDA (const int i) {
-    printf(" P[ %d ] = '%f'\n", i, arg_view(i) );
+    printf(" P[ %d ] = '%f'\n", i, (double) arg_view(i) );
   });
   Kokkos::fence();
 }
