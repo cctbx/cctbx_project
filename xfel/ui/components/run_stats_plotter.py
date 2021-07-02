@@ -396,6 +396,6 @@ def plot_multirun_stats(runs,
     except Exception:
       return None
   else:
-    png = plot_run_stats(stats_tuple, d_min, n_multiples=n_multiples, run_tags=run_tags, run_statuses=run_statuses, minimalist=minimalist,
+    png = plot_run_stats(stats_tuple, d_min, n_multiples=n_multiples, run_tags=run_tags_with_data, run_statuses=run_statuses_with_data, minimalist=minimalist,
       interactive=interactive, xsize=xsize, ysize=ysize, high_vis=high_vis, title=title, figure=figure)
   return png
