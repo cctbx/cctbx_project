@@ -1,4 +1,4 @@
-#include "kokkos_instance.h"
+#include "simtbx/kokkos/kokkos_instance.h"
 
 using Kokkos::InitArguments;
 using Kokkos::initialize;
