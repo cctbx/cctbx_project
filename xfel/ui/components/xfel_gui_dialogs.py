@@ -660,13 +660,13 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.nnodes, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.nppn_box = gctr.CtrlBase(self)
-    nppn_txt = wx.StaticText(self.nppn_box, label="Number of processors per node")
+    nppn_txt = wx.StaticText(self.nppn_box, label="Number of processors per node:")
     self.chk_auto_nproc_per_node = wx.CheckBox(self.nppn_box, label='Auto')
     self.chk_auto_nproc_per_node.SetValue(params.mp.nproc_per_node is None)
-    self.nproc_per_node = gctr.IntFloatSpin(self.nppn_box,
-                                            name='nproc_per_node',
-                                            value='%d'%params.mp.nproc_per_node if params.mp.nproc_per_node else 1,
-                                            min_val = 1, max_val = 1000)
+    self.nproc_per_node = gctr.SpinCtrl(self.nppn_box,
+                                        name='nproc_per_node',
+                                        ctrl_value='%d'%params.mp.nproc_per_node if params.mp.nproc_per_node else 1,
+                                        ctrl_min = 1, ctrl_max = 1000, label_size=(-1,-1))
     if not params.mp.nproc_per_node: self.nproc_per_node.Disable()
 
     nppn_sizer = wx.FlexGridSizer(1, 3, 0, 10)
@@ -674,7 +674,7 @@ class AdvancedSettingsDialog(BaseDialog):
     nppn_sizer.Add(self.chk_auto_nproc_per_node, flag=wx.ALL, border=10)
     nppn_sizer.Add(self.nproc_per_node, flag=wx.EXPAND | wx.ALL, border=10)
     self.nppn_box.SetSizer(nppn_sizer)
-    self.mp_sizer.Add(self.nppn_box, flag=wx.EXPAND | wx.ALL, border=10)
+    self.mp_sizer.Add(self.nppn_box, flag=wx.EXPAND | wx.RIGHT | wx.TOP | wx.BOTTOM, border=10)
 
     self.wall_time = gctr.SpinCtrl(self,
                                    name='wall_time',
@@ -1077,7 +1077,6 @@ class AdvancedSettingsDialog(BaseDialog):
       self.log_staging.Hide()
       self.staging_help.Hide()
 
-    self.Layout()
     self.Fit()
 
   def onQueueChoice(self, e):

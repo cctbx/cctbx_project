@@ -505,7 +505,6 @@ class ChoiceCtrl(CtrlBase):
         self.ctr.SetClientData(item_idx, choice[1])
     else:
       self.ctr = Choice(self, name=self.Name + "_ctr", size=ctrl_size, choices=choices)
-    print(self.ctr.Name)
 
     ctr_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
     ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL)

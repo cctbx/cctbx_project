@@ -2672,7 +2672,6 @@ class UnitCellTab(BaseTab):
     self.main_sizer.Add(self.tab_sizer, 1,
                         flag=wx.EXPAND | wx.ALL, border=10)
 
-    self.selection_columns_sizer.Layout()
 
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
     self.Bind(wx.EVT_BUTTON, self.onAddTagSet, self.add_sele_button)
