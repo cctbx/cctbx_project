@@ -581,7 +581,7 @@ class EnsembleRefinementJob(Job):
                self.app.params.mp.method,
                '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script if p]),
                '\n'.join(['mp.phenix_script={}'.format(p) for p in self.app.params.mp.phenix_script if p]),
-               self.app.params.mpi_command,
+               self.app.params.mp.mpi_command,
                "\n".join(["extra_options={}".format(opt) for opt in self.app.params.mp.extra_options]),
                self.app.params.output_folder,
                self.trial.trial,
