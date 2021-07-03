@@ -454,6 +454,10 @@ def __rna_dna_atom_names_backbone_aliases():
   return result
 rna_dna_atom_names_backbone_aliases = __rna_dna_atom_names_backbone_aliases()
 
+class mon_lib_names_hidden(list):
+  def __init__(self):
+    self.old_names = []
+
 class rna_dna_atom_names_interpretation(object):
 
   def __init__(self, residue_name, atom_names):
@@ -475,9 +479,10 @@ class rna_dna_atom_names_interpretation(object):
     return result
 
   def mon_lib_names(self):
-    result = []
+    result = mon_lib_names_hidden()
     for info in self.infos:
       rn = info.reference_name
+      result.old_names.append(rn.strip())
       if (rn is None):
         result.append(None)
       else:
