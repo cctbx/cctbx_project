@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.merge
 from xfel.merging.application.mpi_helper import mpi_helper
 from xfel.merging.application.mpi_logger import mpi_logger
+import os
 
 default_steps = [
   'input',
@@ -63,6 +64,13 @@ class Script(object):
 
       # prepare for transmitting input parameters to all ranks
       transmitted = dict(params = params, options = options)
+
+      # make the output folders
+      try:
+        os.mkdir(params.output.output_dir)
+      except FileExistsError:
+        pass
+
     else:
       transmitted = None
 
@@ -145,7 +153,6 @@ class Script(object):
         self.mpi_logger.log("Ending step with %d experiments"%len(experiments))
 
     if self.params.output.save_experiments_and_reflections:
-      import os
       if len(reflections) and 'id' not in reflections:
         from dials.array_family import flex
         id_ = flex.int(len(reflections), -1)
