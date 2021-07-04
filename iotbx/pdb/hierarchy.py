@@ -821,7 +821,7 @@ class _():
     assert shift_best is not None # should never happen
     self.atoms().set_xyz(uc.orthogonalize(sites_frac+shift_best))
 
-  def expand_to_p1(self, crystal_symmetry):
+  def expand_to_p1(self, crystal_symmetry, exclude_self=False):
     # ANISOU will be invalid
     import string
     import scitbx.matrix
@@ -835,6 +835,7 @@ class _():
       for smx in crystal_symmetry.space_group().all_ops():
         m3 = smx.r().as_double()
         m3 = scitbx.matrix.sqr(m3)
+        if(exclude_self and m3.is_r3_identity_matrix()): continue
         t = smx.t().as_double()
         t = scitbx.matrix.col((t[0],t[1],t[2]))
         for c_ in m_.chains():
