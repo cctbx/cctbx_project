@@ -2953,7 +2953,11 @@ class MergingStatsTab(BaseTab):
   def plot_merging_stats(self):
     if self.png is not None:
       if self.static_bitmap is not None:
-        self.static_bitmap.Destroy()
+        try:
+          self.static_bitmap.Destroy()
+        except RuntimeError as e:
+          if "StaticBitmap has been deleted" not in str(e):
+            raise
       img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
       self.static_bitmap = wx.StaticBitmap(
         self.plots_panel, wx.ID_ANY, wx.Bitmap(img))

@@ -592,7 +592,14 @@ class EnsembleRefinementJob(Job):
                self.rungroup.untrusted_pixel_mask_path,
                ).split()
 
-    commands = Script(arguments).run()
+    try:
+      commands = Script(arguments).run()
+    except Exception as e:
+      if 'no DIALS integration results found' in str(e):
+        print("No DIALS integration results found")
+        self.status = "EXIT"
+        return
+      else: raise
     submission_ids = []
     if self.app.params.mp.method == 'local':
       self.status = "RUNNING"

@@ -23,6 +23,7 @@ class polarization(worker):
 
     for experiment in experiments:
       refls = reflections.select(reflections['exp_id'] == experiment.identifier)
+      if len(refls) == 0: continue
       beam = experiment.beam
       # Remove the need for pixel size within cxi.merge.  Allows multipanel detector with dissimilar panels.
       # Relies on new frame extractor code called by dials.stills_process that writes s0, s1 and polarization normal

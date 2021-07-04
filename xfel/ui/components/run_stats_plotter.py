@@ -306,7 +306,9 @@ def plot_run_stats(stats,
       ts = t[flex.first_index(diffs, flex.min(diffs))]
       print(get_paths_from_timestamps([ts], tag="shot", ext=ext)[0])
 
-    f.canvas.mpl_connect('button_press_event', onclick)
+    if hasattr(f, '_cid'):
+      f.canvas.mpl_disconnect(f._cid)
+    f._cid = f.canvas.mpl_connect('button_press_event', onclick)
 
     if not figure:
       plt.show()
