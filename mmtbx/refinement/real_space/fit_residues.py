@@ -207,7 +207,7 @@ class run(object):
             function(residue = residue)
             # Check for symmetry clash
             sels = self._selection_around_minus_self(residue=residue, radius=1.5)
-            if(sels.size()>0):
+            if(sels is not None and sels.size()>0):
               print("   revert: symmetry clash", file=self.log)
               residue.atoms().set_xyz(xyz_start)
               # XXX
