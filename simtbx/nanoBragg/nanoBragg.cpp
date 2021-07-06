@@ -186,6 +186,7 @@ nanoBragg::nanoBragg(
     spindle_vector[2] = fdet_vector[2];
     spindle_vector[3] = fdet_vector[3];
     unitize(spindle_vector,spindle_vector);
+    user_beam=true;
 
     /* NOT IMPLEMENTED: read in any other stuff?  */
     /*TODO: consider reading in a crystal model as well, showing params without crystal model can be confusing*/
@@ -201,7 +202,8 @@ nanoBragg::nanoBragg(
 // constructor for the nanoBragg class that takes most any member as an argument, defaults in nanoBragg_ext.cpp
 nanoBragg::nanoBragg(
         scitbx::vec2<int> detpixels_slowfast, // = 1024, 1024
-        scitbx::vec3<int> Ncells_abc, // 1 1 1
+        //scitbx::vec3<int> Ncells_abc, // 1 1 1
+        scitbx::vec3<double> Ncells_abc, // 1 1 1
         cctbx::uctbx::unit_cell unitcell, // lysozyme
         vec3 missets_deg, // 0 0 0
         vec2 beam_center_mm, // NAN NAN
@@ -795,6 +797,7 @@ nanoBragg::init_beamcenter()
     {
         if(! user_beam)
         {
+        //printf("HITTTTTTTT!");
             Xbeam = Xclose;
             Ybeam = Yclose;
         }
@@ -1254,9 +1257,16 @@ nanoBragg::update_beamcenter()
     /* make sure beam center is preserved */
     if(detector_pivot == BEAM){
         if(verbose) printf("pivoting detector around direct beam spot\n");
+        //printf("BIGZSZZZZ");
         pix0_vector[1] = -Fbeam*fdet_vector[1]-Sbeam*sdet_vector[1]+distance*beam_vector[1];
         pix0_vector[2] = -Fbeam*fdet_vector[2]-Sbeam*sdet_vector[2]+distance*beam_vector[2];
         pix0_vector[3] = -Fbeam*fdet_vector[3]-Sbeam*sdet_vector[3]+distance*beam_vector[3];
+        //SCITBX_EXAMINE(Fbeam);
+        //SCITBX_EXAMINE(Sbeam);
+        //SCITBX_EXAMINE(pix0_vector[1]);
+        //SCITBX_EXAMINE(pix0_vector[2]);
+        //SCITBX_EXAMINE(pix0_vector[3]);
+        //printf("BIGZSZZZZ");
     }
 
     /* what is the point of closest approach between sample and detector? */
@@ -1707,9 +1717,9 @@ void
 nanoBragg::update_oversample()
 {
     /* now we know the cell, calculate crystal size in meters */
-    if(xtal_size_x > 0) Na = ceil(xtal_size_x/a[0]-1e-6);
-    if(xtal_size_y > 0) Nb = ceil(xtal_size_y/b[0]-1e-6);
-    if(xtal_size_z > 0) Nc = ceil(xtal_size_z/c[0]-1e-6);
+    if(xtal_size_x > 0) Na = xtal_size_x/a[0]-1e-6;
+    if(xtal_size_y > 0) Nb = xtal_size_y/b[0]-1e-6;
+    if(xtal_size_z > 0) Nc = xtal_size_z/c[0]-1e-6;
     if(Na <= 1.0) Na = 1.0;
     if(Nb <= 1.0) Nb = 1.0;
     if(Nc <= 1.0) Nc = 1.0;
@@ -2165,7 +2175,7 @@ nanoBragg::init_sources()
             init_beam();
         }
         /* make sure stored source intensities are fractional */
-        double norm = flux_sum/sources;
+        double norm = flux_sum ; //sources;
         for (i=0; i < sources && norm>0.0; ++i)
         {
             source_I[i] /= norm;
@@ -2478,7 +2488,7 @@ nanoBragg::show_params()
     if(xtal_shape == GAUSS ) printf("gaussian");
     if(xtal_shape == GAUSS_ARGCHK ) printf("gaussian_argchk");
     if(xtal_shape == TOPHAT) printf("tophat-spot");
-    printf(" xtal: %.0fx%.0fx%.0f cells\n",Na,Nb,Nc);
+    printf(" xtal: %.1fx%.1fx%.1f cells\n",Na,Nb,Nc);
     printf("Unit Cell: %g %g %g %g %g %g\n", a_A[0],b_A[0],c_A[0],alpha*RTD,beta*RTD,gamma*RTD);
     printf("Recp Cell: %g %g %g %g %g %g\n", a_star[0],b_star[0],c_star[0],alpha_star*RTD,beta_star*RTD,gamma_star*RTD);
     printf("volume = %g A^3\n",V_cell);
@@ -2959,6 +2969,24 @@ nanoBragg::add_nanoBragg_spots()
             {
                 if((fpixel==printout_fpixel && spixel==printout_spixel) || printout_fpixel < 0)
                 {
+                    //printf("LAKSLDKLASKDLKSLAKDA\n");
+                    //SCITBX_EXAMINE(scattering[1]);
+                    //SCITBX_EXAMINE(scattering[2]);
+                    //SCITBX_EXAMINE(scattering[3]);
+
+                    //SCITBX_EXAMINE(incident[1]);
+                    //SCITBX_EXAMINE(incident[2]);
+                    //SCITBX_EXAMINE(incident[3]);
+
+                    //SCITBX_EXAMINE(diffracted[1]) ;
+                    //SCITBX_EXAMINE(diffracted[2]) ;
+                    //SCITBX_EXAMINE(diffracted[3]) ;
+
+                    //SCITBX_EXAMINE(pix0_vector[1]);
+                    //SCITBX_EXAMINE(pix0_vector[2]);
+                    //SCITBX_EXAMINE(pix0_vector[3]);
+
+                    //printf("LAKSLDKLASKDLKSLAKDA\n");
                     twotheta = atan2(sqrt(pixel_pos[2]*pixel_pos[2]+pixel_pos[3]*pixel_pos[3]),pixel_pos[1]);
                     test = sin(twotheta/2.0)/(lambda0*1e10);
                     printf("%4d %4d : stol = %g or %g\n", fpixel,spixel,stol,test);
@@ -2966,6 +2994,7 @@ nanoBragg::add_nanoBragg_spots()
                     printf("hkl= %f %f %f  hkl0= %d %d %d\n", h,k,l,h0,k0,l0);
                     printf(" F_cell=%g  F_latt=%g   I = %g\n", F_cell,F_latt,I);
                     printf("I/steps %15.10g\n", I/steps);
+                    printf("cap frac   %f\n", capture_fraction);
                     printf("polar   %15.10g\n", polar);
                     printf("omega   %15.10g\n", omega_pixel);
                     printf("pixel   %15.10g\n", floatimage[i]);
@@ -2974,6 +3003,24 @@ nanoBragg::add_nanoBragg_spots()
                     printf("X: %11.8f %11.8f %11.8f\n",a[1]*1e10,b[1]*1e10,c[1]*1e10);
                     printf("Y: %11.8f %11.8f %11.8f\n",a[2]*1e10,b[2]*1e10,c[2]*1e10);
                     printf("Z: %11.8f %11.8f %11.8f\n",a[3]*1e10,b[3]*1e10,c[3]*1e10);
+                    SCITBX_EXAMINE(fluence);
+                    SCITBX_EXAMINE(source_I[0]);
+                    SCITBX_EXAMINE(spot_scale);
+                    SCITBX_EXAMINE(Na);
+                    SCITBX_EXAMINE(Nb);
+                    SCITBX_EXAMINE(Nc);
+                    SCITBX_EXAMINE(airpath);
+                    SCITBX_EXAMINE(Fclose);
+                    SCITBX_EXAMINE(Sclose);
+                    SCITBX_EXAMINE(close_distance);
+                    SCITBX_EXAMINE(pix0_vector[0]);
+                    SCITBX_EXAMINE(pix0_vector[1]);
+                    SCITBX_EXAMINE(pix0_vector[2]);
+                    SCITBX_EXAMINE(pix0_vector[3]);
+                    SCITBX_EXAMINE(odet_vector[0]);
+                    SCITBX_EXAMINE(odet_vector[1]);
+                    SCITBX_EXAMINE(odet_vector[2]);
+                    SCITBX_EXAMINE(odet_vector[3]);
                 }
             }
             else
@@ -3022,10 +3069,12 @@ nanoBragg::add_background( int oversample, int source )
     /* allow user to override automated oversampling decision at call time with arguments */
     if(oversample<=0) oversample = this->oversample;
     if(oversample<=0) oversample = 1;
+    bool single_source = false;
     if(source>=0) {
         /* user-specified source in the argument */
         source_start = source;
         sources = source_start +1;
+        single_source = true;
     }
 
     /* make sure we are normalizing with the right number of sub-steps */
@@ -3149,7 +3198,10 @@ nanoBragg::add_background( int oversample, int source )
                             }
 
                             /* accumulate unscaled pixel intensity from this */
-                            Ibg += sign*Fbg*Fbg*polar*omega_pixel*source_I[source]*capture_fraction;
+                            if (single_source)
+                                Ibg += sign*Fbg*Fbg*polar*omega_pixel*capture_fraction;
+                            else
+                                Ibg += sign*Fbg*Fbg*polar*omega_pixel*source_I[source]*capture_fraction;
                             if(verbose>7 && i==1)printf("DEBUG: Fbg= %g polar= %g omega_pixel= %g source[%d]= %g capture_fraction= %g\n",
                                                            Fbg,polar,omega_pixel,source,source_I[source],capture_fraction);
                         }

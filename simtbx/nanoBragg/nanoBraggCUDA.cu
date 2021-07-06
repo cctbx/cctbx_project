@@ -42,16 +42,6 @@ static void CheckCudaErrorAux(const char *file, unsigned line, const char *state
 	exit(1);
 }
 
-static cudaError_t cudaMemcpyVectorDoubleToDevice(CUDAREAL *dst, double *src, size_t vector_items) {
-	CUDAREAL * temp = new CUDAREAL[vector_items];
-	for (size_t i = 0; i < vector_items; i++) {
-		temp[i] = src[i];
-	}
-	cudaError_t ret = cudaMemcpy(dst, temp, sizeof(*dst) * vector_items, cudaMemcpyHostToDevice);
-	delete temp;
-	return ret;
-}
-
 /* make a unit vector pointing in same direction and report magnitude (both args can be same vector) */
 double cpu_unitize(double *vector, double *new_unit_vector);
 double cpu_unitize(double * vector, double * new_unit_vector) {
@@ -168,72 +158,115 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
 	CUDA_CHECK_RETURN(cudaMemcpy(cu_FhklParams, &FhklParams, sizeof(*cu_FhklParams), cudaMemcpyHostToDevice));
 
 	const int vector_length = 4;
+	CUDAREAL * _temp = new CUDAREAL[vector_length];
+
 	CUDAREAL * cu_sdet_vector;
+	const int NN = sizeof(*cu_sdet_vector) *vector_length;
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_sdet_vector, sizeof(*cu_sdet_vector) * vector_length));
-	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_sdet_vector, sdet_vector, vector_length));
+	for(size_t i=0; i < vector_length; i++)
+	    _temp[i] = sdet_vector[i];
+	CUDA_CHECK_RETURN(cudaMemcpy(cu_sdet_vector, _temp, NN, cudaMemcpyHostToDevice));
 
 	CUDAREAL * cu_fdet_vector;
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_fdet_vector, sizeof(*cu_fdet_vector) * vector_length));
-	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_fdet_vector, fdet_vector, vector_length));
+	for(size_t i=0; i < vector_length; i++)
+	    _temp[i] = fdet_vector[i];
+	CUDA_CHECK_RETURN(cudaMemcpy(cu_fdet_vector, _temp, NN, cudaMemcpyHostToDevice));
 
 	CUDAREAL * cu_odet_vector;
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_odet_vector, sizeof(*cu_odet_vector) * vector_length));
-	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_odet_vector, odet_vector, vector_length));
+	for(size_t i=0; i < vector_length; i++)
+	    _temp[i] = odet_vector[i];
+	CUDA_CHECK_RETURN(cudaMemcpy(cu_odet_vector, _temp, NN, cudaMemcpyHostToDevice));
 
 	CUDAREAL * cu_pix0_vector;
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_pix0_vector, sizeof(*cu_pix0_vector) * vector_length));
-	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_pix0_vector, pix0_vector, vector_length));
+	for(size_t i=0; i < vector_length; i++)
+	    _temp[i] = pix0_vector[i];
+	CUDA_CHECK_RETURN(cudaMemcpy(cu_pix0_vector, _temp, NN, cudaMemcpyHostToDevice));
 
 	CUDAREAL * cu_beam_vector;
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_beam_vector, sizeof(*cu_beam_vector) * vector_length));
-	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_beam_vector, beam_vector, vector_length));
+	for(size_t i=0; i < vector_length; i++)
+	    _temp[i] = beam_vector[i];
+	CUDA_CHECK_RETURN(cudaMemcpy(cu_beam_vector, _temp, NN, cudaMemcpyHostToDevice));
 
 	CUDAREAL * cu_spindle_vector;
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_spindle_vector, sizeof(*cu_spindle_vector) * vector_length));
-	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_spindle_vector, spindle_vector, vector_length));
+	for(size_t i=0; i < vector_length; i++)
+	    _temp[i] = spindle_vector[i];
+	CUDA_CHECK_RETURN(cudaMemcpy(cu_spindle_vector, _temp, NN, cudaMemcpyHostToDevice));
 
 	CUDAREAL * cu_a0;
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_a0, sizeof(*cu_a0) * vector_length));
-	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_a0, a0, vector_length));
+	for(size_t i=0; i < vector_length; i++)
+	    _temp[i] = a0[i];
+	CUDA_CHECK_RETURN(cudaMemcpy(cu_a0, _temp, NN, cudaMemcpyHostToDevice));
 
 	CUDAREAL * cu_b0;
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_b0, sizeof(*cu_b0) * vector_length));
-	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_b0, b0, vector_length));
+	for(size_t i=0; i < vector_length; i++)
+	    _temp[i] = b0[i];
+	CUDA_CHECK_RETURN(cudaMemcpy(cu_b0, _temp, NN, cudaMemcpyHostToDevice));
 
 	CUDAREAL * cu_c0;
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_c0, sizeof(*cu_c0) * vector_length));
-	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_c0, c0, vector_length));
+	for(size_t i=0; i < vector_length; i++)
+	    _temp[i] = c0[i];
+	CUDA_CHECK_RETURN(cudaMemcpy(cu_c0, _temp, NN, cudaMemcpyHostToDevice));
 
 	//	Unitize polar vector before sending it to the GPU. Optimization do it only once here rather than multiple time per pixel in the GPU.
 	CUDAREAL * cu_polar_vector;
 	double polar_vector_unitized[4];
 	cpu_unitize(polar_vector, polar_vector_unitized);
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_polar_vector, sizeof(*cu_polar_vector) * vector_length));
-	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_polar_vector, polar_vector_unitized, vector_length));
+	for(size_t i=0; i < vector_length; i++)
+	    _temp[i] = polar_vector_unitized[i];
+	CUDA_CHECK_RETURN(cudaMemcpy(cu_polar_vector, _temp, NN, cudaMemcpyHostToDevice));
 
 	CUDAREAL * cu_source_X = NULL;
+	const int sourcesNN = sizeof(*cu_source_X) *sources;
+	CUDAREAL * source_temp = new CUDAREAL[sources];
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_source_X, sizeof(*cu_source_X) * sources));
-	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_source_X, source_X, sources));
+	for(size_t i=0; i < sources; i++)
+	    source_temp[i] = source_X[i];
+	CUDA_CHECK_RETURN(cudaMemcpy(cu_source_X, source_temp, sourcesNN, cudaMemcpyHostToDevice));
 
 	CUDAREAL * cu_source_Y = NULL;
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_source_Y, sizeof(*cu_source_Y) * sources));
-	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_source_Y, source_Y, sources));
+	for(size_t i=0; i < sources; i++)
+	    source_temp[i] = source_Y[i];
+	CUDA_CHECK_RETURN(cudaMemcpy(cu_source_Y, source_temp, sourcesNN, cudaMemcpyHostToDevice));
 
 	CUDAREAL * cu_source_Z = NULL;
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_source_Z, sizeof(*cu_source_Z) * sources));
-	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_source_Z, source_Z, sources));
+	for(size_t i=0; i < sources; i++)
+	    source_temp[i] = source_Z[i];
+	CUDA_CHECK_RETURN(cudaMemcpy(cu_source_Z, source_temp, sourcesNN, cudaMemcpyHostToDevice));
 
 	CUDAREAL * cu_source_I = NULL;
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_source_I, sizeof(*cu_source_I) * sources));
-	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_source_I, source_I, sources));
+	for(size_t i=0; i < sources; i++)
+	    source_temp[i] = source_I[i];
+	CUDA_CHECK_RETURN(cudaMemcpy(cu_source_I, source_temp, sourcesNN, cudaMemcpyHostToDevice));
 
 	CUDAREAL * cu_source_lambda = NULL;
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_source_lambda, sizeof(*cu_source_lambda) * sources));
-	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_source_lambda, source_lambda, sources));
+	for(size_t i=0; i < sources; i++)
+	    source_temp[i] = source_lambda[i];
+	CUDA_CHECK_RETURN(cudaMemcpy(cu_source_lambda, source_temp, sourcesNN, cudaMemcpyHostToDevice));
 
 	CUDAREAL * cu_mosaic_umats = NULL;
+	const int mosNN = sizeof(*cu_mosaic_umats)*mosaic_domains*9;
+	CUDAREAL * mos_temp = new CUDAREAL[mosaic_domains*9];
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_mosaic_umats, sizeof(*cu_mosaic_umats) * mosaic_domains * 9));
-	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_mosaic_umats, mosaic_umats, mosaic_domains * 9));
+	for(size_t i=0; i < mosaic_domains*9; i++)
+	    mos_temp[i] = mosaic_umats[i];
+	CUDA_CHECK_RETURN(cudaMemcpy(cu_mosaic_umats, mos_temp, mosNN, cudaMemcpyHostToDevice));
+
+	delete _temp;
+	delete source_temp;
+	delete mos_temp;
 
 	float * cu_floatimage = NULL;
 	CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_floatimage, sizeof(*cu_floatimage) * total_pixels));

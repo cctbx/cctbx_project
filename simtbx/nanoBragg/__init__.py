@@ -108,7 +108,7 @@ class _():
   @property
   def beam(self):
     # Does this handle the conventions ? Im always confused about where the beam is pointing, whats s0 and whats beam_vector
-    beam_dict = {'direction': tuple([-1*x for x in self.beam_vector]),  # TODO: is this correct?
+    beam_dict = {'direction': self.beam_vector, #tuple([x for x in self.beam_vector]),  # TODO: is this correct?
                   'divergence': 0.0,  # TODO
                   'flux': self.flux,
                   'polarization_fraction': self.polarization,  #TODO
@@ -195,6 +195,45 @@ class _():
   def to_cbf(self, cbf_filename):
     writer = cbf_writer.FullCBFWriter(imageset=self.imageset)
     writer.write_cbf(cbf_filename, index=0)
+
+
+def make_imageset(data, beam, detector):
+  format_class = FormatBraggInMemoryMultiPanel(data)
+  reader = MemReaderNamedPath("virtual_Bragg_path", [format_class])
+  reader.format_class = FormatBraggInMemory
+  imageset_data = ImageSetData(reader, None)
+  imageset = ImageSet(imageset_data)
+  imageset.set_beam(beam)
+  imageset.set_detector(detector)
+  return imageset
+
+
+class FormatBraggInMemoryMultiPanel:
+
+  def __init__(self, raw_pixels_lst):
+    if not isinstance(raw_pixels_lst[0], flex.double):
+      raw_pixels_lst = [flex.double(data) for data in raw_pixels_lst]
+    self.raw_pixels_panels = tuple(raw_pixels_lst)
+    panel_shape = self.raw_pixels_panels[0].focus()
+    self.mask = tuple([flex.bool(flex.grid(panel_shape), True)]*len(self.raw_pixels_panels) )  # TODO: use nanoBragg internal mask
+
+  def get_path(self, index):
+    if index == 0:
+      return "Virtual"
+    else:
+      raise ValueError("index must be 0 for format %s" % self.__name__)
+
+  def get_raw_data(self):
+    """
+    return as a tuple, multi panel with 1 panel
+    currently nanoBragg doesnt support simulating directly to a multi panel detector
+    so this is the best we can do..
+    """
+    return self.raw_pixels_panels
+
+  def get_mask(self, goniometer=None):
+    """dummie place holder for mask, consider using internal nanoBragg mask"""
+    return self.mask
 
 
 class FormatBraggInMemory:
