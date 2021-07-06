@@ -57,3 +57,5 @@ env.SharedLibrary(
     nanoBragg_obj
   ]
 )
+
+Export("nanoBragg_env nanoBragg_obj")

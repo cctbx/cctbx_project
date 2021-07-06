@@ -1,0 +1,27 @@
+
+Import("env_etc env_simtbx nanoBragg_obj nanoBragg_env")
+
+env_etc.include_registry.append(
+  env=nanoBragg_env,
+  paths=[env_etc.eigen_include]
+)
+
+diffBragg_obj = nanoBragg_env.SharedObject(
+  source=[
+    "src/diffBragg_ext.cpp",
+    "src/diffBragg.cpp",
+    "src/diffBragg_cpu_kernel.cpp"
+  ])
+
+if (env_etc.enable_cuda):
+  nanoBragg_env.cudaSharedLibrary(
+    target="#lib/libsimtbx_diffBraggCUDA",
+    source=["src/diffBraggCUDA.cu", "src/diffBragg_gpu_kernel.cu"])
+  env_simtbx.Prepend(LIBS=["simtbx_diffBraggCUDA"])
+
+env_simtbx.SharedLibrary(
+  target="#lib/simtbx_diffBragg_ext",
+  source=[
+    diffBragg_obj
+  ]
+)
