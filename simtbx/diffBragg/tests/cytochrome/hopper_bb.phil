@@ -1,0 +1,74 @@
+no_Nabc_scale=False
+temp=0.01
+stepsize=0.05
+ucell_edge_perc=15
+ucell_ang_abs=1
+method="L-BFGS-B"
+use_likelihood_target=True
+niter=10
+niter_per_J=3
+rescale_params=True
+quiet=True
+
+roi {
+  deltaQ = 0.015
+  fit_tilt=True
+  fit_tilt_using_weights = False
+  hotpixel_mask = /global/cfs/cdirs/m3562/der/master_files/newmask_withbad.pkl
+  reject_edge_reflections = False
+  reject_roi_with_hotpix = False
+  pad_shoebox_for_background_estimation=10
+}
+refiner {
+  mask = /global/cfs/cdirs/m3562/der/master_files/newmask_withbad.pkl
+  adu_per_photon = 9.481
+  sigma_r=10
+  randomize_devices=False
+}
+simulator {
+  oversample=2
+  crystal.has_isotropic_ncells = False
+  #structure_factors.mtz_name = /global/cscratch1/sd/dermen/merge_cy/mark0_from_mark1/iobs_all.mtz
+  #structure_factors.mtz_column = "Iobs(+),SIGIobs(+),Iobs(-),SIGIobs(-)"
+  structure_factors.mtz_name = 5wp2_noAnom.mtz
+  structure_factors.mtz_column = "F(+),F(-)"
+  init_scale = 15
+  beam.size_mm = 0.001
+  detector.force_zero_thickness = True
+}
+init {
+  Nabc=[33.7,32.6,9.5]
+  G=100
+  B=10
+}
+mins {
+  Nabc=[3,3,3]
+  detz_shift=-1.5
+  B=0
+  RotXYZ=[-15,-15,-15]
+  G=0
+}
+maxs {
+  RotXYZ=[15,15,15]
+  Nabc=[1600,1600,1600]
+  G=100000
+  detz_shift=1.5
+  B=1e5
+}
+betas {
+  RotXYZ=1e-5
+  Nabc=[1e3,1e3,1e2]
+  G=1e5
+  ucell=[1e-3,1e-3]
+  detz_shift=1e-8
+}
+centers {
+  G=50
+  Nabc=[33.7,32.6,9.4]
+  ucell=[78.61,265.12]
+  B=10
+}
+sigmas {
+  RotXYZ=[1e-3,1e-3,1e-3]
+  B=1
+}
