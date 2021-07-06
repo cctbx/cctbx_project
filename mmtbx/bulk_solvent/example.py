@@ -10,7 +10,6 @@ from scitbx.array_family import flex
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from libtbx.utils import null_out
-import mmtbx.utils
 import mmtbx.f_model
 from libtbx import easy_mp
 from mmtbx.bulk_solvent import mosaic
@@ -18,6 +17,7 @@ from libtbx import group_args
 from libtbx.test_utils import approx_equal
 from libtbx import easy_pickle
 import traceback
+from iotbx import extract_xtal_data
 
 pdb_files = "/net/cci/pdb_mirror/pdb/"
 hkl_files = "/net/cci-filer2/raid1/share/pdbmtz/mtz_files/"
@@ -76,7 +76,7 @@ def get_data(pdbf, mtzf):
     force_symmetry=True,
     reflection_files=[reflection_file],
     err=null_out())
-  determine_data_and_flags_result = mmtbx.utils.determine_data_and_flags(
+  determine_data_and_flags_result = extract_xtal_data.run(
     reflection_file_server  = rfs,
     keep_going              = True,
     extract_r_free_flags    = False,

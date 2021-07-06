@@ -14,6 +14,7 @@ from iotbx import reflection_file_utils
 import mmtbx.masks
 from six.moves import zip
 from six.moves import range
+from iotbx import extract_xtal_data
 
 master_params_str = """\
 bulk_solvent_mode = *fast slow
@@ -69,12 +70,12 @@ def get_f_obs_and_flags(reflection_file_name,
     force_symmetry   = True,
     reflection_files = reflection_files,
     err              = log)
-  parameters = mmtbx.utils.data_and_flags_master_params().extract()
+  parameters = extract_xtal_data.data_and_flags_master_params().extract()
   if(f_obs_label is not None):
     parameters.labels = command_line.options.f_obs_label
   if(r_free_flags_label is not None):
     parameters.r_free_flags.label = command_line.options.r_free_flags_label
-  determine_data_and_flags_result = mmtbx.utils.determine_data_and_flags(
+  determine_data_and_flags_result = extract_xtal_data.run(
     reflection_file_server  = reflection_file_server,
     parameters              = parameters,
     keep_going              = True,

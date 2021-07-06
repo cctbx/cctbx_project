@@ -15,6 +15,7 @@ from iotbx import pdb
 from libtbx.utils import Sorry, multi_out
 from six.moves import cStringIO as StringIO
 from six.moves import range
+from iotbx import extract_xtal_data
 
 master_phil = iotbx.phil.parse("""\
 ensemble_probability {
@@ -334,8 +335,8 @@ class ensemble_probability(object):
         reflection_files = processed_args.reflection_files,
         log              = self.log)
 
-      parameters = utils.data_and_flags_master_params().extract()
-      determine_data_and_flags_result = utils.determine_data_and_flags(
+      parameters = extract_xtal_data.data_and_flags_master_params().extract()
+      determine_data_and_flags_result = extract_xtal_data.run(
         reflection_file_server  = rfs,
         parameters              = parameters,
         data_parameter_scope    = "refinement.input.xray_data",

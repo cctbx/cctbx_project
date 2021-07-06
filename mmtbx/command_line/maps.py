@@ -12,6 +12,7 @@ from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
 from cctbx import crystal
+from iotbx import extract_xtal_data
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -251,14 +252,14 @@ def run(args, log = sys.stdout, use_output_directory=True,
     reflection_files = reflection_files, #[],
     err              = log)
   #
-  reflection_data_master_params = mmtbx.utils.data_and_flags_master_params(
+  reflection_data_master_params = extract_xtal_data.data_and_flags_master_params(
     master_scope_name="reflection_data")
   reflection_data_input_params = processed_args.params.get(
     "maps.input.reflection_data")
   reflection_data_params = reflection_data_master_params.fetch(
     reflection_data_input_params).extract().reflection_data
   #
-  determine_data_and_flags_result = mmtbx.utils.determine_data_and_flags(
+  determine_data_and_flags_result = extract_xtal_data.run(
     reflection_file_server  = reflection_file_server,
     parameters              = reflection_data_params,
     data_parameter_scope    = "maps.input.reflection_data",
