@@ -1,6 +1,7 @@
 """
 Organizer for nanoBragg beam properties
 """
+from __future__ import division, print_function
 from dxtbx.model.beam import BeamFactory
 from dxtbx_model_ext import flex_Beam
 

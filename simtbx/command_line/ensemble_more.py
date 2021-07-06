@@ -7,10 +7,13 @@ from collections import Counter
 from scipy.optimize import basinhopping
 from simtbx.diffBragg import hopper_utils
 import h5py
+try:
+    import pandas
+except ImportError:
+    print("Please intsall pandas, libtbx.python -m pip install pandas")
+    exit()
 import pandas
-from scitbx.matrix import sqr, col
-import sys
-from io import StringIO
+from scitbx.matrix import sqr
 from stream_redirect import Redirect
 
 # diffBragg internal parameter indices
@@ -29,8 +32,7 @@ COMM = MPI.COMM_WORLD
 from libtbx.phil import parse
 
 from simtbx.diffBragg import utils
-from simtbx.diffBragg.phil import philz
-from simtbx.diffBragg.refiners.parameters import NormalParameter, RangedParameter
+from simtbx.diffBragg.refiners.parameters import RangedParameter
 
 ensemble_phil = """
 include scope simtbx.command_line.hopper.phil_scope
@@ -48,11 +50,11 @@ sanity_test_amplitudes = False
   .help = if True, then quickly run a sanity check ensuring that all h,k,l are predicted
   .help = and/or in the starting miller array
 x_write_freq = 25
-  .type = int 
+  .type = int
   .help = save x arrays every x_write_freq iterations
 percentile_cut = None
   .type = float
-  .help = percentile below which pixels are masked 
+  .help = percentile below which pixels are masked
 space_group = P6522
   .type = str
   .help = space group to refine structure factors in

@@ -719,7 +719,7 @@ void diffBragg::update_dxtbx_geoms(
     /* OMG So important otherwise center walks */
     ORGX=NAN;
     ORGY=NAN;
-    
+
     user_beam=true;
 
     init_beam();
@@ -2206,39 +2206,39 @@ void diffBragg::diffBragg_list_steps(
 }
 
 void diffBragg::sanity_check_linear_Fhkl(){
-	for (int h = 0; h < h_range; h++) {
-		for (int k = 0; k < k_range; k++) {
-			for (int l = 0; l < l_range; l++) {
-				SCITBX_ASSERT(FhklLinear[h*k_range*l_range + k*l_range  + l] == Fhkl[h][k][l]);
-			}
-		}
-	}
+        for (int h = 0; h < h_range; h++) {
+                for (int k = 0; k < k_range; k++) {
+                        for (int l = 0; l < l_range; l++) {
+                                SCITBX_ASSERT(FhklLinear[h*k_range*l_range + k*l_range  + l] == Fhkl[h][k][l]);
+                        }
+                }
+        }
 }
 
 
 void diffBragg::update_linear_Fhkl(){
-	for (int h = 0; h < h_range; h++) {
-		for (int k = 0; k < k_range; k++) {
-			for (int l = 0; l < l_range; l++) {
-				FhklLinear[h*k_range*l_range + k*l_range  + l] = Fhkl[h][k][l];
-			}
-		}
-	}
+        for (int h = 0; h < h_range; h++) {
+                for (int k = 0; k < k_range; k++) {
+                        for (int l = 0; l < l_range; l++) {
+                                FhklLinear[h*k_range*l_range + k*l_range  + l] = Fhkl[h][k][l];
+                        }
+                }
+        }
 }
 
 void diffBragg::linearize_Fhkl(){
-	//int hklsize = h_range * k_range * l_range;
-	FhklLinear.clear();
-	Fhkl2Linear.clear();
-	for (int h = 0; h < h_range; h++) {
-		for (int k = 0; k < k_range; k++) {
-			for (int l = 0; l < l_range; l++) {
-				FhklLinear.push_back(Fhkl[h][k][l]);
-				if (complex_miller)
+        //int hklsize = h_range * k_range * l_range;
+        FhklLinear.clear();
+        Fhkl2Linear.clear();
+        for (int h = 0; h < h_range; h++) {
+                for (int k = 0; k < k_range; k++) {
+                        for (int l = 0; l < l_range; l++) {
+                                FhklLinear.push_back(Fhkl[h][k][l]);
+                                if (complex_miller)
                     Fhkl2Linear.push_back(Fhkl2[h][k][l]);
-			}
-		}
-	}
+                        }
+                }
+        }
 }
 
 void diffBragg::update_number_of_sausages(int _num_sausages){

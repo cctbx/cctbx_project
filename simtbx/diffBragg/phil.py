@@ -25,7 +25,7 @@ simulator {
       .help = number of unit cells along each crystal axis making up a mosaic domain
     ncells_def = (0,0,0)
       .type = floats(size=3)
-      .help = off-diagonal components for mosaic domain model (experimental) 
+      .help = off-diagonal components for mosaic domain model (experimental)
     has_isotropic_ncells = False
       .type = bool
       .help = if True, ncells_abc are constrained to be the same values during refinement
@@ -104,7 +104,7 @@ refiner_phil = """
 refiner {
   res_ranges = None
     .type = str
-    .help = resolution-defining strings, where each string is 
+    .help = resolution-defining strings, where each string is
     .help = is comma-separated substrings, formatted according to "%f-%f,%f-%f" where the first float
     .help = in each substr specifies the high-resolution for the refinement trial, and the second float
     .help = specifies the low-resolution for the refinement trial. Should be same length as max_calls
@@ -130,7 +130,7 @@ refiner {
     .type = bool
     .help = if True, try to exrtact per pixel dark data from image format
     .help = (only supported for Jungfrau16M formats)
-    .help = see dxtbx FormatNexusJungfrauResRaw 
+    .help = see dxtbx FormatNexusJungfrauResRaw
   use_cuda = False
     .type = bool
     .help = Use GPU acceleration during refinement (requires a CCTBX cuda build)
@@ -471,7 +471,7 @@ roi {
     .help = path to a hotpixel mask (hot pixels set to True)
   panels = None
     .type = str
-    .help = panel list for refinement as a string, e.g. "0-8,10,32-40" . The ranges are inclusive, 
+    .help = panel list for refinement as a string, e.g. "0-8,10,32-40" . The ranges are inclusive,
     .help = e.g. 0-8 means panels 0,1,2,3,4,5,6,7,8
   fit_tilt_using_weights = True
     .type = bool

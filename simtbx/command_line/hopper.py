@@ -5,7 +5,11 @@ from copy import deepcopy
 from simtbx.diffBragg.hopper_utils import look_at_x, model, get_param_from_x, DataModeler, get_data_model_pairs
 import h5py
 from dxtbx.model.experiment_list import ExperimentList
-import pandas
+try:
+    import pandas
+except ImportError:
+    print("Please intsall pandas, libtbx.python -m pip install pandas")
+    exit()
 from scitbx.matrix import sqr, col
 
 ROTX_ID = 0
@@ -43,7 +47,7 @@ load_data_from_refls = False
   .help = load image data, background etc from reflection tables
 gathered_output_file = None
   .type = str
-  .help = optional file for storing a new hopper input file which points to the gathered data dumps 
+  .help = optional file for storing a new hopper input file which points to the gathered data dumps
 only_dump_gathers = False
   .type = bool
   .help = only reads in image data, fits background planes, and dumps
@@ -96,8 +100,8 @@ nelder_mead_maxfev = 60
   .help = multiplied by total number of modeled pixels to get max number of iterations
 niter_per_J = 3
   .type = int
-  .help = if using gradient descent, compute gradients 
-  .help = every niter_per_J iterations . 
+  .help = if using gradient descent, compute gradients
+  .help = every niter_per_J iterations .
 rescale_params = True
   .type = bool
   .help = use rescaled range parameters
@@ -111,7 +115,7 @@ best_pickle = None
 betas {
   detz_shift = 10
     .type = float
-    .help = restraint variance for detector shift target 
+    .help = restraint variance for detector shift target
   ucell = [0,0,0,0,0,0]
     .type = floats
     .help = beta values for unit cell constants
@@ -123,7 +127,7 @@ betas {
     .help = restraint factor for the ncells abc
   G = 0
     .type = float
-    .help = restraint factor for the scale G 
+    .help = restraint factor for the scale G
   B = 0
     .type = float
     .help = restraint factor for Bfactor
@@ -132,15 +136,15 @@ dual {
   initial_temp = 5230
     .type = float
     .help = init temp for dual annealing
-  no_local_search = False 
+  no_local_search = False
     .type = bool
     .help = whether to try local search procedure with dual annealing
     .help = if False, then falls back on classical simulated annealing
-  visit = 2.62 
+  visit = 2.62
     .type = float
     .help = dual_annealing visit param, see scipy optimize docs
   accept = -5
-    .type = float 
+    .type = float
     .help = dual_annealing accept param, see scipy optimize docs
 }
 centers {
@@ -152,13 +156,13 @@ centers {
     .help = centers for unit cell constants
   RotXYZ = [0,0,0]
     .type = floats(size=3)
-    .help = restraint target for Umat rotations 
+    .help = restraint target for Umat rotations
   Nabc = [100,100,100]
     .type = floats(size=3)
     .help = restraint target for Nabc
   G = 100
     .type = float
-    .help = restraint target for scale G 
+    .help = restraint target for scale G
   B = 0
     .type = float
     .help = restraint target for Bfactor
@@ -171,11 +175,11 @@ levmar {
     .type = int
     .help = max iterations
   up = 10
-    .type = float 
+    .type = float
     .help = scale-up factor
   down = 10
     .type = float
-    .help = scale-down factor 
+    .help = scale-down factor
   eps4 = 1e-3
     .type = float
     .help = metric improvement threshold for accepting parameter shift
@@ -254,7 +258,7 @@ sigmas {
     .type = float
     .help = sensitivity for Bfactor
   ucell = [1,1,1,1,1,1]
-    .type = floats 
+    .type = floats
     .help = sensitivity for unit cell params
   Fhkl = 1
     .type = float
@@ -284,10 +288,10 @@ mins {
   detz_shift = -10
     .type = float
     .help = min value for detector z-shift in millimeters
-  Nabc = [3,3,3] 
+  Nabc = [3,3,3]
     .type = floats(size=3)
     .help = min for Nabc
-  Ndef = [-200,-200,-200] 
+  Ndef = [-200,-200,-200]
     .type = floats(size=3)
     .help = min for Ndef
   RotXYZ = [-1,-1,-1]
@@ -298,7 +302,7 @@ mins {
     .help = min for scale G
   B = 0
     .type = float
-    .help = min for Bfactor 
+    .help = min for Bfactor
   Fhkl = 0
     .type = float
     .help = min for structure factors
@@ -310,10 +314,10 @@ maxs {
   eta = 0.1
     .type = float
     .help = maximum mosaic spread in degrees
-  Nabc = [300,300,300] 
+  Nabc = [300,300,300]
     .type = floats(size=3)
     .help = max for Nabc
-  Ndef = [200,200,200] 
+  Ndef = [200,200,200]
     .type = floats(size=3)
     .help = max for Ndef
   RotXYZ = [1,1,1]
@@ -324,7 +328,7 @@ maxs {
     .help = max for scale G
   B = 1e3
     .type = float
-    .help = max for Bfactor 
+    .help = max for Bfactor
   Fhkl = 1e6
     .type = float
     .help = max for structure factors
@@ -355,11 +359,11 @@ ucell_refine = False
   .help = refine the unit cell
 eta_refine = False
   .type = bool
-  .help = refine the mosaic sp v         
+  .help = refine the mosaic sp v
 num_mosaic_blocks = 1
   .type = int
   .help = number of mosaic blocks
-ucell_edge_perc = 10 
+ucell_edge_perc = 10
   .type = float
   .help = precentage for allowing ucell to fluctuate during refinement
 ucell_ang_abs = 5

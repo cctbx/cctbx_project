@@ -218,7 +218,7 @@ class diffBragg: public nanoBragg{
     inline void gpu_free(){
         freedom(device_pointers);
     }
-    
+
 #endif
 
   std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dF_vecs, dS_vecs;

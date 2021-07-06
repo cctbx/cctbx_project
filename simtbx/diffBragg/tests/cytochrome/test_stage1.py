@@ -1,3 +1,4 @@
+from __future__ import division, print_function
 
 phil_str = """
 include scope simtbx.command_line.hopper.phil_scope

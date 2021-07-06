@@ -914,7 +914,7 @@ def refine(exp, ref, params, spec=None, gpu_device=None):
 
     try:
         new_exp.beam.set_wavelength(Modeler.SIM.dxtbx_spec.get_weighted_wavelength())
-    except:pass
+    except Exception: pass
     # if we strip the thickness from the detector, then update it here:
     #new_exp.detector. shift Z mm
     new_det = update_detector_from_x(Modeler.SIM, x)

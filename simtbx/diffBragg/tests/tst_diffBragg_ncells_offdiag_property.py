@@ -50,7 +50,7 @@ print("OK")
 S.D.isotropic_ncells = False
 S.D.refine(Ncells_def_id)
 S.D.initialize_managers()
-ncells_def_GT = 10,11,12 
+ncells_def_GT = 10,11,12
 
 S.D.Ncells_abc_aniso = (20, 15, 17)
 S.D.Ncells_def = ncells_def_GT

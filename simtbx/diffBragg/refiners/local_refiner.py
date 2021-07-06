@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 
 import time
 import warnings
-from simtbx.nanoBragg.anisotropic_mosaicity import generate_Umats
 from collections import Iterable
 warnings.filterwarnings("ignore")
 
@@ -52,7 +51,6 @@ from numpy import array as ARRAY
 from numpy import all as np_all
 from numpy import pi as PI
 from numpy import zeros as NP_ZEROS
-from numpy import ones as NP_ONES
 from numpy import nan as NAN
 
 from json import dump as JSON_DUMP

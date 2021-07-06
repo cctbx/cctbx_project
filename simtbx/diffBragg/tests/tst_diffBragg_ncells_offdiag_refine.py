@@ -41,7 +41,7 @@ ncells_abc_gt = 23,25,15
 nbcryst.Ncells_abc = ncells_abc_gt
 nbcryst.Ncells_def = ncells_def_gt
 
-print("Ground truth ncells DEF abc=%f %f %f" % (ncells_def_gt)) 
+print("Ground truth ncells DEF abc=%f %f %f" % (ncells_def_gt))
 
 # generate the ground truth image
 SIM = SimData()
