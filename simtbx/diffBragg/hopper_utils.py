@@ -906,7 +906,7 @@ def refine(exp, ref, params, spec=None, gpu_device=None):
         x0[n_per_xtal * Modeler.SIM.num_xtals + nucell] = Modeler.SIM.DetZ_param.init
 
     x = Modeler.Minimize(x0)
-    best_model,_ = model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
+    best_model, _ = model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
 
     new_crystal = update_crystal_from_x(Modeler.SIM, x)
     new_exp = deepcopy(Modeler.E)
@@ -917,12 +917,22 @@ def refine(exp, ref, params, spec=None, gpu_device=None):
     except:pass
     # if we strip the thickness from the detector, then update it here:
     #new_exp.detector. shift Z mm
+    new_det = update_detector_from_x(Modeler.SIM, x)
+    new_exp.detector = new_det
 
-    new_refl = new_xycalcs(Modeler, best_model)
+    new_refl = get_new_xycalcs(Modeler, best_model, new_exp)
 
     Modeler.clean_up()
 
     return new_exp, new_refl
+
+
+def update_detector_from_x(SIM, x):
+    scale, rotX, rotY, rotZ, Na, Nb, Nc, a, b, c, al, be, ga, detz_shift = get_param_from_x(x, SIM)
+    detz_shift_mm = detz_shift*1e3
+    det = SIM.detector
+    det = utils.shift_panelZ(det, detz_shift_mm)
+    return det
 
 
 def update_crystal_from_x(SIM, x):
@@ -947,33 +957,52 @@ def update_crystal_from_x(SIM, x):
     return new_C
 
 
-def new_xycalcs(Modeler, best_model):
+def get_new_xycalcs(Modeler, best_model, new_exp):
     _,_,_, bragg_subimg = get_data_model_pairs(Modeler.rois, Modeler.pids, Modeler.roi_id, best_model, Modeler.all_data, background=Modeler.all_background)
     new_refls = deepcopy(Modeler.refls)
     new_refls['dials.xyzcal.px'] = deepcopy(new_refls['xyzcal.px'])
-    new_xycalcs = flex.vec3_double(len(Modeler.refls), (0,0,0))
+    new_refls['dials.xyzcal.mm'] = deepcopy(new_refls['xyzcal.mm'])
+    new_refls['dials.xyzobs.mm.value'] = deepcopy(new_refls['xyzobs.mm.value'])
+    new_xycalcs = flex.vec3_double(len(Modeler.refls), (np.nan, np.nan, np.nan))
+    new_xycalcs_mm = flex.vec3_double(len(Modeler.refls), (np.nan, np.nan, np.nan))
+    new_xyobs_mm = flex.vec3_double(len(Modeler.refls), (np.nan, np.nan, np.nan))
     for i_roi in range(len(bragg_subimg)):
-        com = np.nan, np.nan, np.nan
-        if np.any(bragg_subimg[i_roi]>0):
+
+        ref_idx = Modeler.refls_idx[i_roi]
+
+        if np.any(bragg_subimg[i_roi] > 0):
             I = bragg_subimg[i_roi]
-            Y,X = np.indices(bragg_subimg[i_roi].shape)
-            x1,_,y1,_ = Modeler.rois[i_roi]
+            Y, X = np.indices(bragg_subimg[i_roi].shape)
+            x1, _, y1, _ = Modeler.rois[i_roi]
             X += x1
             Y += y1
             Isum = I.sum()
-            xcom = (X*I).sum() / Isum
-            ycom = (Y*I).sum() / Isum
-            com = xcom+.5, ycom+.5, 0
+            xcom = (X * I).sum() / Isum + .5
+            ycom = (Y * I).sum() / Isum + .5
+            com = xcom, ycom, 0
 
-        ref_idx = Modeler.refls_idx[i_roi]
-        new_xycalcs[ref_idx] = com
+            pid = Modeler.pids[i_roi]
+            assert pid == new_refls[ref_idx]['panel']
+            panel = new_exp.detector[pid]
+            xmm, ymm = panel.pixel_to_millimeter((xcom, ycom))
+            com_mm = xmm, ymm, 0
+            xobs, yobs, _ = new_refls[ref_idx]["xyzobs.px.value"]
+            xobs_mm, yobs_mm = panel.pixel_to_millimeter((xobs, yobs))
+            obs_com_mm = xobs_mm, yobs_mm, 0
+
+            new_xycalcs[ref_idx] = com
+            new_xycalcs_mm[ref_idx] = com_mm
+            new_xyobs_mm[ref_idx] = obs_com_mm
 
     new_refls["xyzcal.px"] = new_xycalcs
-    if Modeler.params.filter_unpredicted_refls_in_output:
-        sel = [not np.isnan(x) for x,_,_ in new_xycalcs]
-        new_refls = new_refls.select(flex.bool(sel))
-    return new_refls
+    new_refls["xyzcal.mm"] = new_xycalcs_mm
+    new_refls["xyzobs.mm.value"] = new_xyobs_mm
 
+    if Modeler.params.filter_unpredicted_refls_in_output:
+        sel = [not np.isnan(x) for x,_,_ in new_refls['xyzcal.px']]
+        new_refls = new_refls.select(flex.bool(sel))
+
+    return new_refls
 
 
 def get_data_model_pairs(rois, pids, roi_id, best_model, all_data, strong_flags=None, background=None):

@@ -1,0 +1,89 @@
+hopper {
+  spectrum_from_imageset = True
+  simulator.oversample=2
+  init.Nabc=[33.7,32.6,9.5]
+  init.G=100
+  init.B=10
+  mins.Nabc=[3,3,3]
+  mins.RotXYZ=[-15,-15,-15]
+  mins.G=0
+  mins.detz_shift=-1.5
+  mins.B=0
+  maxs.RotXYZ=[15,15,15]
+  maxs.Nabc=[1600,1600,1600]
+  maxs.G=100000
+  maxs.detz_shift=1.5
+  maxs.B=1e5
+  no_Nabc_scale=False
+  temp=0.01
+  stepsize=0.05
+  ucell_edge_perc=15
+  ucell_ang_abs=1
+  method="L-BFGS-B"
+  betas.RotXYZ=1e-5
+  betas.Nabc=[1e3,1e3,1e2]
+  betas.G=1e5
+  betas.ucell=[1e-3,1e-3]
+  betas.detz_shift=1e-8
+  betas.B=1
+  centers.Nabc=[33.7,32.6,9.4]
+  centers.G=50
+  centers.ucell=[78.61,265.12]
+  centers.B=10
+  use_likelihood_target=True
+  niter=0
+  rescale_params=True
+  sigmas.RotXYZ=[1e-3,1e-3,1e-3]
+  niter_per_J=1
+  ignore_existing=True
+  sigmas.B=1
+  max_process=1
+  quiet=False
+  nelder_mead_maxfev = 60
+  roi.fit_tilt=False
+  roi.deltaQ = 0.015
+  roi.fit_tilt_using_weights = False
+  roi.hotpixel_mask = /global/cfs/cdirs/m3562/der/master_files/newmask_withbad.pkl
+  roi.reject_edge_reflections = False
+  roi.reject_roi_with_hotpix = False
+  roi.pad_shoebox_for_background_estimation=10
+  refiner.adu_per_photon = 9.481
+  refiner.mask = /global/cfs/cdirs/m3562/der/master_files/newmask_withbad.pkl
+  refiner.sigma_r=10
+  refiner.num_devices=1
+  refiner.randomize_devices=False
+  simulator.crystal.has_isotropic_ncells = False
+  simulator.structure_factors.mtz_name = /global/cfs/cdirs/m3562/der/braggnanimous/5wp2_noAnom.mtz
+  simulator.structure_factors.mtz_column = "F(+),F(-)"
+  simulator.init_scale = 15
+  simulator.beam.size_mm = 0.001
+  simulator.detector.force_zero_thickness = True
+}
+
+spotfinder.threshold.dispersion.gain=9.481
+spotfinder.threshold.dispersion.sigma_background=1
+spotfinder.threshold.dispersion.sigma_strong=1.2
+spotfinder.threshold.dispersion.kernel_size=[3,3]
+spotfinder.threshold.dispersion.global_threshold=0
+spotfinder.filter.min_spot_size=4
+spotfinder.filter.d_min=1.7
+spotfinder.lookup.mask=/global/cfs/cdirs/m3562/der/master_files/newmask_withbad.pkl
+
+indexing{
+  stills.refine_candidates_with_known_symmetry=True    
+  known_symmetry{
+    unit_cell=78.6763,78.6763,265.49,90,90,120
+    space_group=P6522
+  }
+}
+
+#input.reference_geometry=/global/cfs/cdirs/m3562/der/braggnanimous/refined_000.expt
+#input.reference_geometry=/global/cfs/cdirs/m3562/der/braggnanimous/flat_det.expt
+
+integration{
+  debug.output=True
+  lookup.mask = /global/cfs/cdirs/m3562/der/master_files/newmask_withbad.pkl
+  summation.detector_gain=9.5
+}
+dispatch.integrate=True
+profile.gaussian_rs.centroid_definition=com

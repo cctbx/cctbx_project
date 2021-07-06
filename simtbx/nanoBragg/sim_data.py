@@ -46,32 +46,40 @@ def determine_spot_scale(beam_size_mm, crystal_thick_mm, mosaic_vol_mm3):
 
 class SimData:
   def __init__(self):
-    self.detector = SimData.simple_detector(180, 0.1, (512, 512))
-    self.seed = 1
-    self.crystal = NBcrystal()
-    self.add_air = False
-    self.Umats_method = 0
-    self.add_water = True
-    self.water_path_mm = 0.005
-    self.air_path_mm = 0
-    self.using_diffBragg_spots = False
+    self.detector = SimData.simple_detector(180, 0.1, (512, 512))  # dxtbx detector model
+    self.seed = 1  # nanoBragg seed member
+    self.crystal = NBcrystal()  # nanoBragg crystal object
+    self.add_air = False  # whether to add air in the generate_simulated_image method
+    self.Umats_method = 0  # how to generate mosaic rotation umats (can be 0,1,2,3)
+    self.add_water = True  # whether to add water in the generate_simulated_image method
+    self.water_path_mm = 0.005  # path length through water
+    self.air_path_mm = 0  # path length through air
+    self.using_diffBragg_spots = False  # whether to use diffBragg
     nbBeam = NBbeam()
     nbBeam.unit_s0 = (0, 0, -1)
-    self.beam = nbBeam
-    self.using_cuda = False
-    self.using_omp = False
-    self.rois = None
-    self.readout_noise = 3
-    self.gain = 1
-    self.psf_fwhm = 0
-    self.include_noise = True
+    self.beam = nbBeam  # nanoBragg_beam object
+    self.using_cuda = False  # whether to use giles mullen cuda acceleration
+    self.using_omp = False  # whether to use add_nanoBragg_spots_nks with open mp accel
+    self.rois = None  # a list of rois for simiuting rois only
+    self.readout_noise = 3  # detector readout noise
+    self.gain = 1  # detector gain
+    self.psf_fwhm = 0  # detector point spread width
+    self.include_noise = True  # include noise in the simulation if using generate_simulated_image method
     self.background_raw_pixels = None  # background raw pixels, should be a 2D flex double array
     self.backrground_scale = 1  # scale factor to apply to background raw pixels
-    self.functionals = []
-    self.mosaic_seeds = 777, 777
-    self.D = None # nanoBragg instance
-    self.panel_id = 0
-    self.umat_maker = None
+    self.mosaic_seeds = 777, 777  # two random seeds governing the legacy Umats method
+    self.D = None  # nanoBragg or diffBragg instance
+    self.panel_id = 0  # detector panel id
+    self.umat_maker = None  # an instance of AnisoUmats for generating ensembles of mosaic rotations
+    self.ucell_man = None   # place holder for a unit cell manager (used in hopper)
+    self.Nabc_params = None   # RangedParameter (refiners/parameters) objects used by hopper
+    self.RotXYZ_params = None  # RangedParameter (refiners/parameters) objects used by hopper
+    self.ucell_params = None  # RangedParameter (refiners/parameters) objects used by hopper
+    self.Scale_params = None  # RangedParameter (refiners/parameters) objects used by hopper
+    self.DetZ_params = None  # RangedParameter (refiners/parameters) objects used by hopper
+    self.num_xtals = 1  # number of xtals, used in the hopper script
+    self.dxtbx_spec = None  # spectrum object from dxtbx
+    self.functionals = []  # target functionals  container ?
 
   @property
   def background_raw_pixels(self):

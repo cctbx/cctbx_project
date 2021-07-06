@@ -1,16 +1,18 @@
 from __future__ import absolute_import, division, print_function
 
-import os
 
 # LIBTBX_SET_DISPATCHER_NAME simtbx.diffBragg.hopper_process
 
 from dials.command_line.stills_process import Processor
-from libtbx.utils import Abort, Sorry
 from simtbx.diffBragg.hopper_utils import refine
-from dxtbx.model import Experiment, ExperimentList
-from dxtbx.model.experiment_list import ExperimentListFactory
+from dxtbx.model import ExperimentList
+import numpy as np
+import socket
+from libtbx.mpi4py import MPI
+COMM = MPI.COMM_WORLD
 
 import logging
+
 logger = logging.getLogger("dials.command_line.stills_process")
 
 
@@ -24,8 +26,16 @@ from libtbx.phil import parse
 phil_scope = parse(phil_str, process_includes=True)
 
 
-
 class Hopper_Processor(Processor):
+
+    def __init__(self, *args, **kwargs):
+        super(Hopper_Processor, self).__init__(*args, **kwargs)
+        if self.params.hopper.quiet:
+            logging.getLogger("dials.algorithms.indexing.nave_parameters").setLevel(logging.ERROR)
+            logging.getLogger("dials.algorithms.indexing.stills_indexer").setLevel(logging.ERROR)
+            logging.getLogger("dials.algorithms.refinement.refiner").setLevel(logging.ERROR)
+            logging.getLogger("dials.algorithms.refinement.reflection_manager").setLevel(logging.ERROR)
+            logging.getLogger("dials.algorithms.refinement.reflection_manager").setLevel(logging.ERROR)
 
     def refine(self, exps, ref):
         if self.params.dispatch.refine:
@@ -33,9 +43,16 @@ class Hopper_Processor(Processor):
         self.params.dispatch.refine = False
         assert len(exps)==1
         # TODO MPI select GPU device
-        spec='/global/cfs/cdirs/m3562/der/braggnanimous/7534_new_lams_p05/run802_shot343_newlam.lam'
-        exp, ref = refine(exps[0], ref, self.params.hopper, spec=spec, gpu_device=0)
-        El =ExperimentList()
+
+        if self.params.hopper.refiner.randomize_devices:
+            dev = np.random.choice(self.params.hopper.refiner.num_devices)
+            print("Rank %d will use random device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
+        else:
+            dev = COMM.rank % self.params.hopper.refiner.num_devices
+            print("Rank %d will use fixed device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
+
+        exp, ref = refine(exps[0], ref, self.params.hopper, gpu_device=dev)
+        El = ExperimentList()
         El.append(exp)
         return super(Hopper_Processor, self).refine(El, ref)
 
