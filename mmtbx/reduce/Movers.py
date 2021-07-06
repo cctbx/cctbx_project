@@ -1244,7 +1244,7 @@ def Test():
 
   # Test the MoverNH2Flip class.
   try:
-    # @todo Test behavior with offsets for each atom so that we test the generic case.
+    # Test behavior with offsets for each atom so that we test the generic case.
     # Construct a MoverNH2Flip that has the N, H's and Oxygen located (non-physically)
     # slightly in the +Y direction out of the X-Z plane, with the Hydrogens 120 around the
     # same offset axis.
@@ -1261,21 +1261,21 @@ def Test():
     axis = flex.vec3_double([ [0,0,0], [0,1,0] ])
     n = pdb.hierarchy.atom()
     n.element = "N"
-    n.xyz = _rotateAroundAxis(f, axis,-120) + _lvec3([0,0.01,0])
+    n.xyz = _rotateAroundAxis(f, axis,-120) + _lvec3([0,0.01,0]) + _lvec3([ 0.002, 0.003,-0.004])
 
     o = pdb.hierarchy.atom()
     o.element = "O"
-    o.xyz = _rotateAroundAxis(f, axis, 120) + _lvec3([0,0.01,0])
+    o.xyz = _rotateAroundAxis(f, axis, 120) + _lvec3([0,0.01,0]) + _lvec3([-0.003, 0.002, 0.003])
 
     # Hydrogens are +/-120 degrees from nitrogen-carbon bond
     axis = flex.vec3_double([ n.xyz, [0,1,0] ])
     h1 = pdb.hierarchy.atom()
     h1.element = "H"
-    h1.xyz = _rotateAroundAxis(p, axis,-120) + _lvec3([0,0.01,0])
+    h1.xyz = _rotateAroundAxis(p, axis,-120) + _lvec3([0,0.01,0]) + _lvec3([-0.008, 0.001, 0.008])
 
     h2 = pdb.hierarchy.atom()
     h2.element = "H"
-    h2.xyz = _rotateAroundAxis(p, axis, 120) + _lvec3([0,0.01,0])
+    h2.xyz = _rotateAroundAxis(p, axis, 120) + _lvec3([0,0.01,0]) + _lvec3([ 0.007,-0.001, 0.007])
 
     # Build the hierarchy so we can reset the i_seq values.
     ag = pdb.hierarchy.atom_group()
@@ -1309,8 +1309,22 @@ def Test():
     # 2) New plane of Oxygen, Nitrogen, Alpha Carbon matches old plane, but flipped
     # 3) Carbon has moved slightly due to rigid-body motion
 
-    # @todo
+    newODir = (fixed[4] - _lvec3(f.xyz)).normalize()
+    oldNDir = (_rvec3(n.xyz) - _rvec3(f.xyz)).normalize()
+    if (newODir * oldNDir)[0] < 0.9999:
+      return "Movers.Test() MoverNH2Flip basic: Bad oxygen alignment: "+str((newODir * oldNDir)[0])
 
+    newNDir = (fixed[2] - _lvec3(f.xyz)).normalize()
+    oldODir = (_rvec3(o.xyz) - _rvec3(f.xyz)).normalize()
+    newNormal = (scitbx.matrix.cross_product_matrix(_lvec3(newNDir)) * _rvec3(newODir)).normalize()
+    oldNormal = (scitbx.matrix.cross_product_matrix(_lvec3(oldNDir)) * _rvec3(oldODir)).normalize()
+    dot = (_lvec3(newNormal) * _rvec3(oldNormal))[0]
+    if dot > -0.99999:
+      return "Movers.Test() MoverNH2Flip basic: Bad plane alignment: "+str(dot)
+
+    dCarbon = (fixed[3] - _lvec3(p.xyz)).length()
+    if dCarbon < 0.001 or dCarbon > 0.1:
+      return "Movers.Test() MoverNH2Flip basic: Bad carbon motion: "+str(dCarbon)
 
   except Exception as e:
     return "Movers.Test() MoverNH2Flip basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
