@@ -2269,6 +2269,22 @@ class array(set):
     assert self.is_complex_array()
     return array.customized_copy(self, data=flex.conj(self.data()))
 
+  def regularize(self):
+    """
+    A series of conversions that are required for many downstream tests, such as
+    refinement, map calculation, etc.
+    """
+    result = self.deep_copy()
+    info = result.info()
+    result = result.eliminate_sys_absent()
+    info = info.customized_copy(systematic_absences_eliminated = True)
+    if(not result.is_unique_set_under_symmetry()):
+      merged = result.merge_equivalents()
+      result = merged.array()
+      info = info.customized_copy(merged=True)
+    result = result.map_to_asu()
+    return result.set_info(info)
+
   def as_double(self):
     """
     Create a copy of the array with the data converted to a flex.double type.

@@ -379,7 +379,7 @@ class load_model_and_data(object):
         prefer_anomalous=prefer_anomalous,
         force_non_anomalous=force_non_anomalous,
         log=self.log)
-      self.intensity_flag = data_and_flags.intensity_flag
+      self.intensity_flag = data_and_flags.f_obs.is_xray_intensity_array()
       self.raw_data = data_and_flags.raw_data
       self.raw_flags = data_and_flags.raw_flags
       self.test_flag_value = data_and_flags.test_flag_value

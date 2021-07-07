@@ -212,9 +212,6 @@ def data_and_flags_master_params(master_scope_name=None):
   else:
     return iotbx.phil.parse(data_and_flags_str, process_includes=True)
 
-###
-# XXX Severe duplicaiton. Remove once transition is over.
-###
 class run(object):
   """
   Encapsulates logic for extracting experimental amplitudes and R-free flags
@@ -223,33 +220,31 @@ class run(object):
   as possible, or will give clear feedback when ambiguity exists.  If not
   found in the inputs, the R-free flags can be created if desired.
   """
-  def __init__(self, reflection_file_server,
-                     parameters = None,
-                     data_parameter_scope = "",
-                     flags_parameter_scope = "",
-                     data_description = None,
-                     working_point_group = None,
-                     symmetry_safety_check = None,
-                     remark_r_free_flags_md5_hexdigest = None,
-                     extract_r_free_flags = True,
-                     keep_going = False,
-                     log = None,
-                     prefer_anomalous = None,
-                     force_non_anomalous = False):
+  def __init__(self,
+               reflection_file_server,
+               parameters = None,
+               data_parameter_scope = "",
+               flags_parameter_scope = "",
+               data_description = None, # XXX Remove
+               working_point_group = None,
+               symmetry_safety_check = None,
+               remark_r_free_flags_md5_hexdigest = None,
+               extract_r_free_flags = True,
+               keep_going = False,
+               log = None,
+               prefer_anomalous = None,
+               force_non_anomalous = False):
     adopt_init_args(self, locals())
     if(self.parameters is None):
       self.parameters = data_and_flags_master_params().extract()
-    self.intensity_flag = False
-    self.f_obs = None
-    self.r_free_flags = None
-    self.test_flag_value = None
+    self.f_obs                      = None
+    self.r_free_flags               = None
+    self.test_flag_value            = None
     self.r_free_flags_md5_hexdigest = None
-    if(data_description is not None):
-      print_statistics.make_header(data_description, out = log)
+    # Get data first
     self.raw_data = self.extract_data()
-    data_info = self.raw_data.info()
     self.f_obs = self.data_as_f_obs(f_obs = self.raw_data)
-    self.f_obs.set_info(data_info)
+    # Then extract or generate flags
     if(extract_r_free_flags):
       self.raw_flags = self.extract_flags(data = self.raw_data)
       if(self.raw_flags is not None):
@@ -257,6 +252,13 @@ class run(object):
     if(extract_r_free_flags and self.raw_flags is not None):
       self.get_r_free_flags()
       self.r_free_flags.set_info(flags_info)
+    # Finally, make sure they match
+    if(self.r_free_flags is not None):
+      f_obs_info = self.f_obs.info()
+      flags_info = self.r_free_flags.info()
+      self.f_obs, self.r_free_flags = self.f_obs.common_sets(self.r_free_flags)
+      self.f_obs        = self.f_obs.set_info(f_obs_info)
+      self.r_free_flags = self.r_free_flags.set_info(flags_info)
 
   def get_r_free_flags(self):
     self.r_free_flags,self.test_flag_value,self.r_free_flags_md5_hexdigest =\
@@ -272,13 +274,7 @@ class run(object):
       parameter_scope  = self.data_parameter_scope,
       prefer_anomalous = self.prefer_anomalous)
     self.parameters.file_name = data.info().source
-    self.parameters.labels = [data.info().label_string()]
-    if(data.is_xray_intensity_array()):
-      print("I-obs:", file=self.log)
-      self.intensity_flag = True
-    else:
-      print("F-obs:", file=self.log)
-    print(" ", data.info(), file=self.log)
+    self.parameters.labels    = [data.info().label_string()]
     if([self.data_description, self.working_point_group,
        self.symmetry_safety_check].count(None) == 0):
       miller_array_symmetry_safety_check(
@@ -287,24 +283,8 @@ class run(object):
         working_point_group   = self.working_point_group,
         symmetry_safety_check = self.symmetry_safety_check,
         log                   = self.log)
-      print(file=self.log)
-    info = data.info()
-    processed = data.eliminate_sys_absent(log = self.log)
-    if(processed is not data):
-      info = info.customized_copy(systematic_absences_eliminated = True)
-    if(not processed.is_unique_set_under_symmetry()):
-      if(data.is_xray_intensity_array()):
-        print("Merging symmetry-equivalent intensities:", file=self.log)
-      else:
-        print("Merging symmetry-equivalent amplitudes:", file=self.log)
-      merged = processed.merge_equivalents()
-      merged.show_summary(out = self.log, prefix="  ")
-      print(file=self.log)
-      processed = merged.array()
-      info = info.customized_copy(merged=True)
-    if (self.force_non_anomalous):
-      processed = processed.average_bijvoet_mates()
-    return processed.set_info(info)
+
+    return data.regularize()
 
   def extract_flags(self, data, data_description = "R-free flags"):
     r_free_flags, test_flag_value = None, None
@@ -326,11 +306,12 @@ class run(object):
           raise Sorry("Please try again.")
         r_free_flags, test_flag_value = None, None
       else:
-        params.file_name = r_free_flags.info().source
-        params.label = r_free_flags.info().label_string()
+        params.file_name       = r_free_flags.info().source
+        params.label           = r_free_flags.info().label_string()
         params.test_flag_value = test_flag_value
         print(data_description+":", file=self.log)
         print(" ", r_free_flags.info(), file=self.log)
+
         if([self.working_point_group,
            self.symmetry_safety_check].count(None) == 0):
           miller_array_symmetry_safety_check(
@@ -340,30 +321,17 @@ class run(object):
             symmetry_safety_check = self.symmetry_safety_check,
             log                   = self.log)
           print(file=self.log)
+
         info = r_free_flags.info()
-        processed = r_free_flags.eliminate_sys_absent(log = self.log)
-        if(processed is not r_free_flags):
-          info = info.customized_copy(systematic_absences_eliminated = True)
-        if(not processed.is_unique_set_under_symmetry()):
-           print("Checking symmetry-equivalent R-free flags for consistency:", end=' ', file=self.log)
-           try:
-             merged = processed.merge_equivalents()
-           except RuntimeError as e:
-             print(file=self.log)
-             error_message = str(e)
-             expected_error_message = "cctbx Error: merge_equivalents_exact: "
-             assert error_message.startswith(expected_error_message)
-             raise Sorry("Incompatible symmetry-equivalent R-free flags: %s" %
-               error_message[len(expected_error_message):])
-           else:
-             print("OK", file=self.log)
-             print(file=self.log)
-           processed = merged.array()
-           info = info.customized_copy(merged=True)
-           del merged
+        try:
+          processed = r_free_flags.regularize()
+        except RuntimeError as e:
+          raise Sorry("Bad free-r flags:\n %s"%str(e))
+
         if (self.force_non_anomalous):
           processed = processed.average_bijvoet_mates()
         r_free_flags = processed.set_info(info)
+
     if(r_free_flags is None):
       if ((params.fraction is None) or
           (params.lattice_symmetry_max_delta is None) or
@@ -403,6 +371,10 @@ class run(object):
     :returns: :py:class:`cctbx.miller.array` of real numbers with observation
       type set to amplitudes
     """
+
+    if(self.force_non_anomalous):
+      f_obs = f_obs.average_bijvoet_mates()
+
     if(not f_obs.sigmas_are_sensible()):
       f_obs = f_obs.customized_copy(
         indices=f_obs.indices(),
@@ -459,7 +431,7 @@ class run(object):
         f_obs = f_obs.select(selection)
     #
     f_obs.set_observation_type_xray_amplitude()
-    f_obs = f_obs.map_to_asu()
+#    f_obs = f_obs.map_to_asu()
     selection = f_obs.all_selection()
     if(self.parameters.low_resolution is not None):
       selection &= f_obs.d_spacings().data() <= self.parameters.low_resolution
@@ -512,6 +484,7 @@ class run(object):
     if(f_obs_data_size != f_obs.data().size()):
       print("\nFobs statistics after all cutoffs applied:\n", file=self.log)
       f_obs.show_comprehensive_summary(f = self.log)
+    f_obs.set_info(self.raw_data.info())
     return f_obs
 
   def _apply_sigma_cutoff(self, f_obs, n, message):
