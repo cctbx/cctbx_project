@@ -30,7 +30,6 @@ hopper {
   centers.G=50
   centers.ucell=[78.61,265.12]
   centers.B=10
-  use_likelihood_target=True
   niter=0
   rescale_params=True
   sigmas.RotXYZ=[1e-3,1e-3,1e-3]

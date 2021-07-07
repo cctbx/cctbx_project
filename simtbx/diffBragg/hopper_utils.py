@@ -22,6 +22,8 @@ UCELL_ID_OFFSET = 3
 DETZ_ID = 10
 FHKL_ID = 11
 
+DEG = 180 / np.pi
+
 
 class DataModeler:
 
@@ -766,14 +768,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
 
     model_pix = model_bragg + background
 
-    LL = params.use_likelihood_target
-
-    #if not LL:
-    W = 1/sigmas**2
-    if LL:
-        resid = (data - model_pix)  #minor technicality , to accommodate hand-written notes
-    else:
-        resid = (model_pix - data)
+    resid = data - model_pix
 
     G, rotX,rotY, rotZ, Na,Nb,Nc,a,b,c,al,be,ga,detz_shift = get_param_from_x(x, SIM)
 
@@ -781,81 +776,50 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
     ucvar = SIM.ucell_man.variables
     n_uc_param = len(ucvar)
 
-    del_detz = detz_shift - params.centers.detz_shift
+    # data contributions to target function
+    sigma_rdout = params.refiner.sigma_r / params.refiner.adu_per_photon
+    V = model_pix + sigma_rdout**2
+    resid_square = resid**2
+    fchi = (.5*(np.log(2*np.pi*V) + resid_square / V))[trusted].sum()   # negative log Likelihood target
 
-    G0 = params.centers.G
-    delG = (G0-G)
+    # width of z-score should decrease as refinement proceeds
+    zscore_sigma = np.std(resid / np.sqrt(V))
 
+    # scale factor restraint
+    delG = (params.centers.G-G)
+    fG = .5*(np.log(2*np.pi*params.betas.G) + delG**2/params.betas.G)
 
-    deg = 180 / np.pi
-    rotX = deg*rotX
-    rotY = deg*rotY
-    rotZ = deg*rotZ
-    rotX0,rotY0,rotZ0 = params.centers.RotXYZ
-    Na0,Nb0,Nc0 = params.centers.Nabc
-    del_rX = rotX0-rotX
-    del_rY = rotY0-rotY
-    del_rZ = rotZ0-rotZ
+    # Umat restraint
+    RotXYZ = rotX, rotY, rotZ
+    delta_RotXYZ = [params.centers.RotXYZ[i_rot] - RotXYZ[i_rot]*DEG for i_rot in range(3)]
+    frot =  0
+    for i_rot in range(3):
+        r_V = params.betas.RotXYZ  # Note just 1 beta for all 3 rot angles
+        frot += .5*(np.log(2*np.pi*r_V) + delta_RotXYZ[i_rot]**2 / r_V)
 
-    del_Na = Na0 - Na
-    del_Nb = Nb0 - Nb
-    del_Nc = Nc0 - Nc
+    # mosaic domain size restraint
+    Nabc = Na,Nb,Nc
+    delta_Nabc = [params.centers.Nabc[i_N] -Nabc[i_N] for i_N in range(3)]
+    fN = 0
+    for i_N in range(3):
+        N_V = params.betas.Nabc[i_N]
+        fN += .5*(np.log(2*np.pi*N_V) + delta_Nabc[i_N]**2 / N_V)
 
-    if LL:
-        sigma_rdout = params.refiner.sigma_r / params.refiner.adu_per_photon
-        V = model_pix + sigma_rdout**2
-        resid_square = resid**2
-        fchi = (.5*(np.log(2*np.pi*V) + resid_square / V))[trusted].sum()   # negative log Likelihood target
-        zscore = np.std((data - model_pix) / np.sqrt(V))
-        # TODo make this a method the __call__ method of a class, and cache these terms
-        Na_V = params.betas.Nabc[0]
-        Nb_V = params.betas.Nabc[1]
-        Nc_V = params.betas.Nabc[2]
-        rx_V = params.betas.RotXYZ
-        ry_V = params.betas.RotXYZ
-        rz_V = params.betas.RotXYZ
-        fN = .5*(np.log(2*np.pi*Na_V) + del_Na**2  / Na_V)
-        fN += .5*(np.log(2*np.pi*Nb_V) + del_Nb**2  / Nb_V)
-        fN += .5*(np.log(2*np.pi*Nc_V) + del_Nc**2  / Nc_V)
+    # unit cell restraint
+    fucell = [0]*n_uc_param
+    for i_ucell in range(n_uc_param):
+        beta = params.betas.ucell[i_ucell]
+        cent = params.centers.ucell[i_ucell]
+        fucell[i_ucell] = .5*(np.log(2*np.pi*beta) + (cent-ucvar[i_ucell])**2/beta)
+    fucell = sum(fucell)  # TODO distinguish between edge terms and angle terms
 
-        frot = .5*(np.log(2*np.pi*rx_V) + del_rX**2  / rx_V)
-        frot += .5*(np.log(2*np.pi*ry_V) + del_rY**2  / ry_V)
-        frot += .5*(np.log(2*np.pi*rz_V) + del_rZ**2  / rz_V)
+    # det dist shift restraint
+    #del_detz = detz_shift - params.centers.detz_shift
+    del_detz = params.centers.detz_shift - detz_shift
+    fz = .5*(np.log(2*np.pi*params.betas.detz_shift) + del_detz**2/params.betas.detz_shift)
 
-        G_V = params.betas.G
-        fG = .5*(np.log(2*np.pi*G_V) + delG**2/G_V)
-
-        detz_V = params.betas.detz_shift
-        fz = .5*(np.log(2*np.pi*detz_V) + del_detz**2/detz_V)
-
-        fucell = [0]*n_uc_param
-        for i_ucell in range(n_uc_param):
-            beta = params.betas.ucell[i_ucell]
-            cent = params.centers.ucell[i_ucell]
-            fucell[i_ucell] = .5*(np.log(2*np.pi*beta) + (cent-ucvar[i_ucell])**2/beta)
-
-
-    else:
-        fchi = (resid[trusted] ** 2 * W[trusted]).sum()   # weighted least squares target
-        zscore = 0
-        fN = params.betas.Nabc[0]*(del_Na )**2 + \
-             params.betas.Nabc[1]*(del_Nb )**2 + \
-             params.betas.Nabc[2]*(del_Nc )**2
-        frot = params.betas.RotXYZ*((del_rX)**2+ (del_rY)**2 + (del_rZ )**2)
-        fG = params.betas.G*delG**2
-        fucell = [0]*n_uc_param
-        for i_ucell in range(n_uc_param):
-            beta = params.betas.ucell[i_ucell]
-            if beta == 0:
-                continue
-            cent = params.centers.ucell[i_ucell]
-            fucell[i_ucell] += beta * (cent - ucvar[i_ucell]) ** 2
-
-        fz = 0
-
-    fucell = sum(fucell)  # TODO distinguish betweem edge terms and angle terms
-    #f = fchi + frot + fN + fG + fucell + fz
-    f = fchi #+ frot + fN + fG + fucell + fz
+#   accumulate target function
+    f = fchi  # target function is f
     if SIM.Nabc_params[0].refine:
         f += fN
     if SIM.RotXYZ_params[0].refine:
@@ -866,57 +830,43 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
         f += fz
     if SIM.Scale_params[0].refine:
         f += fG
+
+    # fractions of the target function
     chi = fchi / f *100
     rot = frot / f*100
     uc = fucell / f*100
     n = fN / f*100
     gg = fG / f *100
     zz = fz / f * 100.
-    g = None
-    gnorm = -1
-    if compute_grad:
-        if LL:
-            grad_term = (0.5 /V * (1-2*resid - resid_square / V))[trusted]
-        else:
-            grad_term = (2*resid*W)[trusted]
-        Jac_t = Jac[:,trusted]
-        g = np.array([np.sum(grad_term*Jac_t[param_idx]) for param_idx in range(Jac_t.shape[0])])
-        if LL:
-            g[0] += SIM.Scale_params[0].get_deriv(x[0], -delG / G_V)
-            g[1] += SIM.RotXYZ_params[0].get_deriv(x[1], -del_rX / rx_V)
-            g[2] += SIM.RotXYZ_params[1].get_deriv(x[2], -del_rY / ry_V)
-            g[3] += SIM.RotXYZ_params[2].get_deriv(x[3], -del_rZ / rz_V)
-            g[4] += SIM.Nabc_params[0].get_deriv(x[4], -del_Na / Na_V)
-            g[5] += SIM.Nabc_params[1].get_deriv(x[5], del_Nb / Nb_V)
-            g[6] += SIM.Nabc_params[2].get_deriv(x[6], -del_Nc / Nc_V)
-            for i_uc in range(n_uc_param):
-                beta = params.betas.ucell[i_uc]
-                del_uc = params.centers.ucell[i_uc] - ucvar[i_uc]
-                g[7+i_uc] += SIM.ucell_params[i_uc].get_deriv(x[7+i_uc], -del_uc / beta)
-            g[7+n_uc_param] += SIM.DetZ_param.get_deriv(x[7+n_uc_param], -del_detz/detz_V)
 
-        else:
-            # TODO apply change of variable correction, as done for Likelihood restraint gradients above
-            ber = params.betas.RotXYZ
-            g[0] += -2*params.betas.G*delG
-            g[1] += -ber*2*deg*del_rX
-            g[2] += -ber*2*deg*del_rY
-            g[3] += -ber*2*deg*del_rZ
-            g[4] += -params.betas.Nabc[0]*2*del_Na
-            g[5] += -params.betas.Nabc[1]*2*del_Nb
-            g[6] += -params.betas.Nabc[2]*2*del_Nc
-            for i_uc in range(n_uc_param):
-                beta = params.betas.ucell[i_uc]
-                if beta == 0:
-                    continue
-                del_uc = params.centers.ucell[i_uc] - ucvar[i_uc]
-                g[7+i_uc] += -2*beta*del_uc
-            #TODO detz gradient update for detz restraint,
+    g = None  # gradient vector
+    gnorm = -1  # norm of gradient vector
+    if compute_grad:
+        common_grad_term = (0.5 /V * (1-2*resid - resid_square / V))[trusted]
+
+        # trusted pixels portion of Jacobian
+        Jac_t = Jac[:,trusted]
+
+        # gradient vector
+        g = np.array([np.sum(common_grad_term*Jac_t[param_idx]) for param_idx in range(Jac_t.shape[0])])
+
+        # update gradients according to restraints
+        g[0] += SIM.Scale_params[0].get_deriv(x[0], -delG / params.betas.G)
+        for i_rot in range(3):
+            g[1+i_rot] += SIM.RotXYZ_params[i_rot].get_deriv(x[1], -delta_RotXYZ[i_rot] / params.betas.RotXYZ)
+        for i_N in range(3):
+            g[4+i_N] += SIM.Nabc_params[i_N].get_deriv(x[4], -delta_Nabc[i_N]/ params.betas.Nabc[i_N])
+        for i_uc in range(n_uc_param):
+            beta = params.betas.ucell[i_uc]
+            del_uc = params.centers.ucell[i_uc] - ucvar[i_uc]
+            g[7+i_uc] += SIM.ucell_params[i_uc].get_deriv(x[7+i_uc], -del_uc / beta)
+        g[7+n_uc_param] += SIM.DetZ_param.get_deriv(x[7+n_uc_param], -del_detz/params.betas.detz_shift)
+
         gnorm = np.linalg.norm(g)
 
     if verbose:
-        print("F=%10.7g Z=%10.7g (chi: %.1f%%, rot: %.1f%% N: %.1f%%, G: %.1f%%, uc: %.1f%%, detz: %.1f%%), |g|=%10.7g" \
-              % (f, zscore, chi, rot, n, gg, uc,zz,gnorm))
+        print("F=%10.7g sZ=%10.7g (chi: %.1f%%, rot: %.1f%% N: %.1f%%, G: %.1f%%, uc: %.1f%%, detz: %.1f%%), |g|=%10.7g" \
+              % (f, zscore_sigma, chi, rot, n, gg, uc,zz,gnorm))
 
     return f, g, model_bragg, Jac
 

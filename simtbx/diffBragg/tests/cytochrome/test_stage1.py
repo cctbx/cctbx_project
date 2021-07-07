@@ -7,17 +7,21 @@ from libtbx.phil import parse
 master_phil = parse(phil_str, process_includes=True)
 
 import sys
-file_params = parse(open(sys.argv[1], "r").read())
+sources = [parse(open(sys.argv[1], "r").read())]
 extra_params = parse("""
 exp_ref_spec_file=gath_753_out.txt
 niter_per_J=1
 niter=0
 load_data_from_refls=True
 quiet=True
-num_devices=8
+refiner.num_devices=1
 """)
+sources.append(extra_params)
 
-working_phil = master_phil.fetch(sources=[file_params, extra_params])
+#if len(sys.argv) > 2:
+#    sources.append(parse("\n".join([l.strip() for l in sys.argv[2:]])))
+
+working_phil = master_phil.fetch(sources=sources) # [file_params, extra_params, more_params])
 params = working_phil.extract()
 
 from simtbx.diffBragg import utils
@@ -36,9 +40,13 @@ for i_exp, (exp_name, ref_name, spec_name) in enumerate(exp_ref_spec):
         continue
     #if COMM.rank==0:
     #print("Processing exp %s (%d /%d" %(exp_name, i_exp+1, len(exp_ref_spec)))
+    from IPython import embed
+    embed()
     # NOTE refine script accepts either string names or exp and ref objects
     dev_id = COMM.rank % params.refiner.num_devices
-    new_exp, new_ref = hopper_utils.refine(exp_name, ref_name, params, spec_name, gpu_device=0)
+    if params.refiner.randomize_devices:
+        dev_id = np.random.choice(params.refiner.num_devices)
+    new_exp, new_ref = hopper_utils.refine(exp_name, ref_name, params, spec_name, gpu_device=dev_id)
 
     old_resid = np.vstack(new_ref["dials.xyzcal.px"] - new_ref["xyzobs.px.value"])[:,:2]
     new_resid = np.vstack(new_ref["xyzcal.px"] - new_ref["xyzobs.px.value"])[:,:2]
