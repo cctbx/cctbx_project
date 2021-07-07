@@ -7,7 +7,6 @@ import iotbx.phil
 from iotbx import reflection_file_utils
 from libtbx import adopt_init_args
 import os
-from mmtbx.refinement import print_statistics
 from cctbx import french_wilson
 import libtbx.callbacks # import dependency
 from six.moves import zip
@@ -245,6 +244,7 @@ class run(object):
     self.raw_data = self.extract_data()
     self.f_obs = self.data_as_f_obs(f_obs = self.raw_data)
     # Then extract or generate flags
+    self.raw_flags = None
     if(extract_r_free_flags):
       self.raw_flags = self.extract_flags(data = self.raw_data)
       if(self.raw_flags is not None):
@@ -283,7 +283,6 @@ class run(object):
         working_point_group   = self.working_point_group,
         symmetry_safety_check = self.symmetry_safety_check,
         log                   = self.log)
-
     return data.regularize()
 
   def extract_flags(self, data, data_description = "R-free flags"):
