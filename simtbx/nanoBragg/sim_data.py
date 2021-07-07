@@ -37,10 +37,10 @@ def determine_spot_scale(beam_size_mm, crystal_thick_mm, mosaic_vol_mm3):
 
 class SimData:
 
-  def __init__(self):
+  def __init__(self, use_default_crystal=False):
     self.detector = SimData.simple_detector(180, 0.1, (512, 512))
     self.seed = 1
-    self.crystal = NBcrystal()
+    self.crystal = NBcrystal(use_default_crystal=use_default_crystal)
     self.add_air = False
     self.add_water = True
     self.water_path_mm = 0.005
