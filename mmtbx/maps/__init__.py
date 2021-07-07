@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-import mmtbx.utils
 import iotbx.phil
 from scitbx.array_family import flex
 from libtbx.utils import Sorry, date_and_time
@@ -14,6 +13,7 @@ from cctbx import miller
 from cctbx import maptbx
 from six.moves import zip
 from six.moves import range
+from iotbx import extract_xtal_data
 
 map_coeff_params_base_str = """\
   map_coefficients
@@ -213,8 +213,8 @@ maps {
   %s
   %s
 }
-"""%(mmtbx.utils.data_and_flags_str_part1,
-     mmtbx.utils.data_and_flags_str_part2,
+"""%(extract_xtal_data.data_and_flags_str_part1,
+     extract_xtal_data.data_and_flags_str_part2,
      map_coeff_params_str,
      map_params_str)
 

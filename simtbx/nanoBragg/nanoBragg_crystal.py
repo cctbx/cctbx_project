@@ -207,6 +207,6 @@ class NBcrystal(object):
 
     @staticmethod
     def dummie_Fhkl(ucell, symbol):
-        from simtbx.diffBragg.utils import fcalc_from_pdb
+        from simtbx.nanoBragg.utils import fcalc_from_pdb
         Fhkl = fcalc_from_pdb(resolution=2, algorithm="fft", wavelength=1, symbol=symbol, ucell=ucell)
         return Fhkl
