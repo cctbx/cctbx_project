@@ -26,6 +26,9 @@ class RangedParameter:
   #    if val >self.maxval:
   #      raise ValueError("Parameter cannot be initialized to more than the maximum")
   #  self._init = val
+  @property
+  def refine(self):
+    return not self.fix
 
   @property
   def maxval(self):

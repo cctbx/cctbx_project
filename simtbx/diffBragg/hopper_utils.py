@@ -10,7 +10,6 @@ from scitbx.matrix import sqr, col
 from dxtbx.model.experiment_list import ExperimentListFactory
 from simtbx.nanoBragg.utils import downsample_spectrum
 from dials.array_family import flex
-from simtbx.nanoBragg.anisotropic_mosaicity import AnisoUmats
 from simtbx.diffBragg import utils
 from simtbx.diffBragg.refiners.parameters import NormalParameter, RangedParameter
 
@@ -314,8 +313,8 @@ class DataModeler:
 
         self.SIM.D.no_Nabc_scale = self.params.no_Nabc_scale
         self.SIM.num_xtals = self.params.number_of_xtals
-        if self.params.eta_refine:
-            self.SIM.umat_maker = AnisoUmats(num_random_samples=self.params.num_mosaic_blocks)
+        #if self.params.eta_refine:
+        #    self.SIM.umat_maker = AnisoUmats(num_random_samples=self.params.num_mosaic_blocks)
         self.SIM.Nabc_params = []
         self.SIM.RotXYZ_params = []
         self.SIM.Scale_params = []
@@ -327,6 +326,7 @@ class DataModeler:
                 # set the mosaic block size
                 p.minval = self.params.mins.Nabc[ii]
                 p.maxval = self.params.maxs.Nabc[ii]
+                p.fix = self.params.fix.Nabc
                 self.SIM.Nabc_params.append(p)
 
                 p = ParameterType()
@@ -334,6 +334,7 @@ class DataModeler:
                 p.init = 0
                 p.minval = self.params.mins.RotXYZ[ii] * np.pi / 180.
                 p.maxval = self.params.maxs.RotXYZ[ii] * np.pi / 180.
+                p.fix = self.params.fix.RotXYZ
                 self.SIM.RotXYZ_params.append(p)
 
             p = ParameterType()
@@ -341,6 +342,7 @@ class DataModeler:
             p.init = self.params.init.G
             p.minval = self.params.mins.G
             p.maxval = self.params.maxs.G
+            p.fix = self.params.fix.G
             self.SIM.Scale_params.append(p)
 
         ucell_man = utils.manager_from_crystal(self.E.crystal)
@@ -359,6 +361,7 @@ class DataModeler:
             p.init = val
             p.minval = minval
             p.maxval = maxval
+            p.fix = self.params.fix.ucell
             if not self.params.quiet: print(
                 "Unit cell variable %s (currently=%f) is bounded by %f and %f" % (name, val, minval, maxval))
             self.SIM.ucell_params.append(p)
@@ -369,6 +372,7 @@ class DataModeler:
         p.sigma = self.params.sigmas.detz_shift
         p.minval = self.params.mins.detz_shift * 1e-3
         p.maxval = self.params.maxs.detz_shift * 1e-3
+        p.fix = self.params.fix.detz_shift
         self.SIM.DetZ_param = p
 
         # eta_max = self.params.maxs.eta
@@ -376,9 +380,33 @@ class DataModeler:
         # P.add("eta_b", value=0, min=0, max=eta_max * rad, vary=self.params.eta_refine)
         # P.add("eta_c", value=0, min=0, max=eta_max * rad, vary=self.params.eta_refine)
 
-
     def Minimize(self, x0):
         target = TargetFunc(SIM=self.SIM, niter_per_J=self.params.niter_per_J)
+
+        # set up the refinement flags
+        vary = np.ones(len(x0), bool)
+        n_param_per_xtal = 7
+        for i_xtal in range(self.SIM.num_xtals):
+            if self.params.fix.G:
+                vary[i_xtal * n_param_per_xtal] = False
+            if self.params.fix.RotXYZ:
+                vary[i_xtal*n_param_per_xtal+1] = False
+                vary[i_xtal * n_param_per_xtal + 2] = False
+                vary[i_xtal * n_param_per_xtal + 3] = False
+            if self.params.fix.Nabc:
+                vary[i_xtal * n_param_per_xtal + 4] = False
+                vary[i_xtal * n_param_per_xtal + 5] = False
+                vary[i_xtal * n_param_per_xtal + 6] = False
+        n_uc_param = len(self.SIM.ucell_man.variables)
+        if self.params.fix.ucell:
+            for i_uc in range(n_uc_param):
+                vary[self.SIM.num_xtals*n_param_per_xtal + i_uc] = False
+        if self.params.fix.detz_shift:
+            vary[self.SIM.num_xtals*n_param_per_xtal + n_uc_param] = False
+
+        target.vary = vary  # fixed flags
+        target.x0 = np.array(x0, np.float64)  # initial full parameter list
+        x0_for_refinement = target.x0[vary]
 
         if self.params.method is None:
             method = "Nelder-Mead"
@@ -392,13 +420,17 @@ class DataModeler:
             at_min = target.at_minimum_quiet
 
         if method in ["L-BFGS-B", "BFGS", "CG", "dogleg", "SLSQP", "Newton-CG", "trust-ncg", "trust-krylov", "trust-exact", "trust-ncg"]:
-            self.SIM.D.refine(ROTX_ID)
-            self.SIM.D.refine(ROTY_ID)
-            self.SIM.D.refine(ROTZ_ID)
-            self.SIM.D.refine(NCELLS_ID)
-            for i_ucell in range(len(self.SIM.ucell_man.variables)):
-                self.SIM.D.refine(UCELL_ID_OFFSET + i_ucell)
-            self.SIM.D.refine(DETZ_ID)
+            if self.SIM.RotXYZ_params[0].refine:
+                self.SIM.D.refine(ROTX_ID)
+                self.SIM.D.refine(ROTY_ID)
+                self.SIM.D.refine(ROTZ_ID)
+            if self.SIM.Nabc_params[0].refine:
+                self.SIM.D.refine(NCELLS_ID)
+            if self.SIM.ucell_params[0].refine:
+                for i_ucell in range(len(self.SIM.ucell_man.variables)):
+                    self.SIM.D.refine(UCELL_ID_OFFSET + i_ucell)
+            if self.SIM.DetZ_param.refine:
+                self.SIM.D.refine(DETZ_ID)
 
             args = (self.SIM, self.pan_fast_slow, self.all_data,
                     self.all_sigmas, self.all_trusted, self.all_background, not self.params.quiet, self.params, True)
@@ -410,7 +442,7 @@ class DataModeler:
             min_kwargs = {'args': args, "method": method, 'options':{'maxfev': maxfev}}
 
         if self.params.global_method=="basinhopping":
-            out = basinhopping(target, x0,
+            out = basinhopping(target, x0_for_refinement,
                                niter=self.params.niter,
                                minimizer_kwargs=min_kwargs,
                                T=self.params.temp,
@@ -418,7 +450,7 @@ class DataModeler:
                                disp=not self.params.quiet,
                                stepsize=self.params.stepsize)
         else:
-            bounds = [(-100,100)] * len(x0)  # TODO decide about bounds, usually x remains close to 1 during refinement
+            bounds = [(-100,100)] * len(x0_for_refinement)  # TODO decide about bounds, usually x remains close to 1 during refinement
             print("Beginning the annealing process")
             args = min_kwargs.pop("args")
             if self.params.dual.no_local_search:
@@ -430,7 +462,7 @@ class DataModeler:
                 args = tuple(args)
             out = dual_annealing(target, bounds=bounds, args=args,
                                  no_local_search=self.params.dual.no_local_search,
-                                 x0=x0,
+                                 x0=x0_for_refinement,
                                  accept=self.params.dual.accept,
                                  visit=self.params.dual.visit,
                                  maxiter=self.params.niter,
@@ -454,9 +486,8 @@ class DataModeler:
             n = 7+len(self.SIM.ucell_man.variables)
             print("DetZ", sig[n], sig2[n])
 
-        P = out.x
-        return P
-
+        target.x0[vary] = out.x
+        return target.x0
 
 
 def model(x, SIM, pfs, verbose=True, compute_grad=True):
@@ -501,7 +532,7 @@ def model(x, SIM, pfs, verbose=True, compute_grad=True):
         rotZ = SIM.RotXYZ_params[i_xtal * 3 + 2].get_val(rotZ_reparam)
 
         ## update parameters:
-
+        # TODO: if not refining Umat, assert these are 0 , and dont set them here
         SIM.D.set_value(ROTX_ID, rotX)
         SIM.D.set_value(ROTY_ID, rotY)
         SIM.D.set_value(ROTZ_ID, rotZ)
@@ -531,42 +562,47 @@ def model(x, SIM, pfs, verbose=True, compute_grad=True):
             model_pix += scale*pix #SIM.D.raw_pixels_roi.as_numpy_array()[:npix]
 
         if compute_grad:
-            scale_grad = model_pix / scale
-            scale_grad = SIM.Scale_params[i_xtal].get_deriv(scale_reparam, scale_grad)
-            J[7*i_xtal] += scale_grad
+            if SIM.Scale_params[0].refine:
+                scale_grad = model_pix / scale
+                scale_grad = SIM.Scale_params[i_xtal].get_deriv(scale_reparam, scale_grad)
+                J[7*i_xtal] += scale_grad
 
-            rotX_grad = scale*SIM.D.get_derivative_pixels(ROTX_ID).as_numpy_array()[:npix]
-            rotY_grad = scale*SIM.D.get_derivative_pixels(ROTY_ID).as_numpy_array()[:npix]
-            rotZ_grad = scale*SIM.D.get_derivative_pixels(ROTZ_ID).as_numpy_array()[:npix]
-            rotX_grad = SIM.RotXYZ_params[i_xtal*3].get_deriv(rotX_reparam, rotX_grad)
-            rotY_grad = SIM.RotXYZ_params[i_xtal*3+1].get_deriv(rotY_reparam, rotY_grad)
-            rotZ_grad = SIM.RotXYZ_params[i_xtal*3+2].get_deriv(rotZ_reparam, rotZ_grad)
-            J[7*i_xtal + 1] += rotX_grad
-            J[7*i_xtal + 2] += rotY_grad
-            J[7*i_xtal + 3] += rotZ_grad
+            if SIM.RotXYZ_params[0].refine:
+                rotX_grad = scale*SIM.D.get_derivative_pixels(ROTX_ID).as_numpy_array()[:npix]
+                rotY_grad = scale*SIM.D.get_derivative_pixels(ROTY_ID).as_numpy_array()[:npix]
+                rotZ_grad = scale*SIM.D.get_derivative_pixels(ROTZ_ID).as_numpy_array()[:npix]
+                rotX_grad = SIM.RotXYZ_params[i_xtal*3].get_deriv(rotX_reparam, rotX_grad)
+                rotY_grad = SIM.RotXYZ_params[i_xtal*3+1].get_deriv(rotY_reparam, rotY_grad)
+                rotZ_grad = SIM.RotXYZ_params[i_xtal*3+2].get_deriv(rotZ_reparam, rotZ_grad)
+                J[7*i_xtal + 1] += rotX_grad
+                J[7*i_xtal + 2] += rotY_grad
+                J[7*i_xtal + 3] += rotZ_grad
 
-            Nabc_grad = SIM.D.get_ncells_derivative_pixels()
-            #Na_grad = scale*SIM.D.get_Na_derivative_pixels()[:npix]
-            Na_grad = scale*(Nabc_grad[0][:npix].as_numpy_array())
-            Nb_grad = scale*(Nabc_grad[1][:npix].as_numpy_array())
-            Nc_grad = scale*(Nabc_grad[2][:npix].as_numpy_array())
+            if SIM.Nabc_params[0].refine:
+                Nabc_grad = SIM.D.get_ncells_derivative_pixels()
+                #Na_grad = scale*SIM.D.get_Na_derivative_pixels()[:npix]
+                Na_grad = scale*(Nabc_grad[0][:npix].as_numpy_array())
+                Nb_grad = scale*(Nabc_grad[1][:npix].as_numpy_array())
+                Nc_grad = scale*(Nabc_grad[2][:npix].as_numpy_array())
 
-            #Na_grad, Nb_grad, Nc_grad = [scale*d.as_numpy_array()[:npix] for d in SIM.D.get_ncells_derivative_pixels()]
-            Na_grad = SIM.Nabc_params[i_xtal * 3].get_deriv(Na_reparam, Na_grad)
-            Nb_grad = SIM.Nabc_params[i_xtal * 3 + 1].get_deriv(Nb_reparam, Nb_grad)
-            Nc_grad = SIM.Nabc_params[i_xtal * 3 + 2].get_deriv(Nc_reparam, Nc_grad)
-            J[7*i_xtal + 4] += Na_grad
-            J[7*i_xtal + 5] += Nb_grad
-            J[7*i_xtal + 6] += Nc_grad
+                #Na_grad, Nb_grad, Nc_grad = [scale*d.as_numpy_array()[:npix] for d in SIM.D.get_ncells_derivative_pixels()]
+                Na_grad = SIM.Nabc_params[i_xtal * 3].get_deriv(Na_reparam, Na_grad)
+                Nb_grad = SIM.Nabc_params[i_xtal * 3 + 1].get_deriv(Nb_reparam, Nb_grad)
+                Nc_grad = SIM.Nabc_params[i_xtal * 3 + 2].get_deriv(Nc_reparam, Nc_grad)
+                J[7*i_xtal + 4] += Na_grad
+                J[7*i_xtal + 5] += Nb_grad
+                J[7*i_xtal + 6] += Nc_grad
 
-            for i_ucell in range(n_ucell_param):
-                d = scale*SIM.D.get_derivative_pixels(UCELL_ID_OFFSET+i_ucell).as_numpy_array()[:npix]
-                d = SIM.ucell_params[i_ucell].get_deriv(unitcell_var_reparam[i_ucell], d)
-                J[7*SIM.num_xtals + i_ucell] += d
+            if SIM.ucell_params[0].refine:
+                for i_ucell in range(n_ucell_param):
+                    d = scale*SIM.D.get_derivative_pixels(UCELL_ID_OFFSET+i_ucell).as_numpy_array()[:npix]
+                    d = SIM.ucell_params[i_ucell].get_deriv(unitcell_var_reparam[i_ucell], d)
+                    J[7*SIM.num_xtals + i_ucell] += d
 
-            d = SIM.D.get_derivative_pixels(DETZ_ID).as_numpy_array()[:npix]
-            d = SIM.DetZ_param.get_deriv(x_shiftZ, d)
-            J[7*SIM.num_xtals + n_ucell_param] += d
+            if SIM.DetZ_param.refine:
+                d = SIM.D.get_derivative_pixels(DETZ_ID).as_numpy_array()[:npix]
+                d = SIM.DetZ_param.get_deriv(x_shiftZ, d)
+                J[7*SIM.num_xtals + n_ucell_param] += d
 
 
     #if verbose: print("\tunitcell= %3.5f %3.5f %3.5f %3.5f %3.5f %3.5f" % SIM.ucell_man.unit_cell_parameters)
@@ -636,12 +672,13 @@ def get_param_from_x(x, SIM):
     return scale, rotX, rotY, rotZ, Na, Nb, Nc,a,b,c,al,be,ga, detz
 
 
-
 class TargetFunc:
     def __init__(self, SIM, niter_per_J=1):
         self.niter_per_J = niter_per_J
         self.global_x = []
         self.all_x = []
+        self.vary = None #boolean numpy array specifying which params to refine
+        self.x0 = None  # 1d array of parameters (should be numpy array, same length as vary)
         self.old_J = None
         self.old_model = None
         self.delta_x = None
@@ -657,29 +694,29 @@ class TargetFunc:
     def at_minimum(self, x, f, accept):
         self.iteration = 0
         self.all_x = []
-        look_at_x(x,self.SIM)
-        self.minima.append((f,x,accept))
+        self.x0[self.vary] = x
+        look_at_x(self.x0,self.SIM)
+        self.minima.append((f,self.x0,accept))
 
     def jac(self, x, *args):
-        return self.g
+        if self.g is not None:
+            return self.g[self.vary]
 
     def __call__(self, x, *args, **kwargs):
+        self.x0[self.vary] = x
         if self.all_x:
-            self.delta_x = x - self.all_x[-1]
+            self.delta_x = self.x0 - self.all_x[-1]
         update_terms = None
         if not self.iteration % (self.niter_per_J) == 0:
             update_terms = (self.delta_x, self.old_J, self.old_model)
-        self.all_x.append(x)
-        f, g, model, J = target_func(x, update_terms, *args, **kwargs)
+        self.all_x.append(self.x0)
+        f, g, model, J = target_func(self.x0, update_terms, *args, **kwargs)
         self.old_model = model
         self.old_J = J
         self.iteration += 1
         self.g = g
         return f
-        #if g is not None:
-        #    return f, g
-        #else:
-        #    return f
+
 
 def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, verbose=True, params=None, compute_grad=True):
 
@@ -700,13 +737,17 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
     elif compute_grad:
         # actually compute the gradients
         _compute_grad = True
-        SIM.D.let_loose(NCELLS_ID)
-        SIM.D.let_loose(ROTX_ID)
-        SIM.D.let_loose(ROTY_ID)
-        SIM.D.let_loose(ROTZ_ID)
-        for i_ucell in range(len(SIM.ucell_man.variables)):
-            SIM.D.let_loose(UCELL_ID_OFFSET + i_ucell)
-        SIM.D.let_loose(DETZ_ID)
+        if SIM.Nabc_params[0].refine:
+            SIM.D.let_loose(NCELLS_ID)
+        if SIM.RotXYZ_params[0].refine:
+            SIM.D.let_loose(ROTX_ID)
+            SIM.D.let_loose(ROTY_ID)
+            SIM.D.let_loose(ROTZ_ID)
+        if SIM.ucell_params[0].refine:
+            for i_ucell in range(len(SIM.ucell_man.variables)):
+                SIM.D.let_loose(UCELL_ID_OFFSET + i_ucell)
+        if SIM.DetZ_param.refine:
+            SIM.D.let_loose(DETZ_ID)
     else:
         _compute_grad = False
     model_bragg, Jac = model(x, SIM, pfs, verbose=verbose, compute_grad=_compute_grad)
@@ -784,7 +825,6 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
         G_V = params.betas.G
         fG = .5*(np.log(2*np.pi*G_V) + delG**2/G_V)
 
-
         detz_V = params.betas.detz_shift
         fz = .5*(np.log(2*np.pi*detz_V) + del_detz**2/detz_V)
 
@@ -814,7 +854,18 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
         fz = 0
 
     fucell = sum(fucell)  # TODO distinguish betweem edge terms and angle terms
-    f = fchi + frot + fN + fG + fucell + fz
+    #f = fchi + frot + fN + fG + fucell + fz
+    f = fchi #+ frot + fN + fG + fucell + fz
+    if SIM.Nabc_params[0].refine:
+        f += fN
+    if SIM.RotXYZ_params[0].refine:
+        f += frot
+    if SIM.ucell_params[0].refine:
+        f += fucell
+    if SIM.DetZ_param.refine:
+        f += fz
+    if SIM.Scale_params[0].refine:
+        f += fG
     chi = fchi / f *100
     rot = frot / f*100
     uc = fucell / f*100
