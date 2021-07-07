@@ -31,7 +31,7 @@ Q = rec(rotation.as_quat(), n=(4, 1))
 rot_ang, rot_axis = Q.unit_quaternion_as_axis_and_angle()
 C.rotate_around_origin(rot_axis, rot_ang)
 
-S = sim_data.SimData()
+S = sim_data.SimData(use_default_crystal=True)
 S.crystal.dxtbx_crystal = C
 spectrum = S.beam.spectrum
 wave, flux = spectrum[0]

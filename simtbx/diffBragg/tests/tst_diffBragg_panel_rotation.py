@@ -36,7 +36,7 @@ elif args.idx == "fdet":
 else:
     panel_rot_id = 18
 
-S = sim_data.SimData()
+S = sim_data.SimData(use_default_crystal=True)
 S.crystal.dxtbx_crystal = C
 S.detector = sim_data.SimData.simple_detector(180, 0.1, (1024, 1024))
 

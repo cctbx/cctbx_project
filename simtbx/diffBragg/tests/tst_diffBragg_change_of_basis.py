@@ -16,7 +16,7 @@ C = Crystal(a_real, b_real, c_real, symbol)
 nbr = NBcrystal()
 nbr.dxtbx_crystal = C
 
-S = sim_data.SimData()
+S = sim_data.SimData(use_default_crystal=True)
 S.crystal = nbr
 S.instantiate_diffBragg(auto_set_spotscale=True)
 S.D.add_diffBragg_spots()

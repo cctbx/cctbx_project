@@ -175,7 +175,7 @@ print ("deriv", dq)
 
 # take derivative of V-vector
 # V = N*(U*B*q- h0)
-SIM = sim_data.SimData()
+SIM = sim_data.SimData(use_default_crystal=True)
 C = SIM.crystal.dxtbx_crystal
 B = sqr(C.get_B()).inverse().transpose()
 U = sqr(C.get_U())

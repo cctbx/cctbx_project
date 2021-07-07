@@ -13,7 +13,7 @@ from dxtbx.model import Panel
 # make a simple detector
 det = sim_data.SimData.simple_detector(detector_distance_mm=150, pixelsize_mm=0.1, image_shape=(512, 512))
 
-SIM = sim_data.SimData()
+SIM = sim_data.SimData(use_default_crystal=True)
 # snag the beam for later use
 B = SIM.beam.nanoBragg_constructor_beam
 # set the detector
@@ -45,7 +45,7 @@ D.free_all()  # free c++ objects
 
 # make a new diffBragg instantiating directly using the shifted detector
 # e.g. use the nanoBragg dxtbx constructor
-SIM = sim_data.SimData()
+SIM = sim_data.SimData(use_default_crystal=True)
 SIM.detector = det2
 SIM.instantiate_diffBragg(auto_set_spotscale=True)
 # make the new pattern and verify its the same as img3

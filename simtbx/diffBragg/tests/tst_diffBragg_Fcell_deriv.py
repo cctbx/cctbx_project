@@ -35,14 +35,14 @@ rot_ang, rot_axis = Q.unit_quaternion_as_axis_and_angle()
 C.rotate_around_origin(rot_axis, rot_ang)
 
 # make a nanoBragg crystal to pass to diffBragg
-nbcryst = NBcrystal()
+nbcryst = NBcrystal(init_defaults=True)
 nbcryst.dxtbx_crystal = C
 nbcryst.n_mos_domains = 1
 nbcryst.thick_mm = 0.01
 nbcryst.Ncells_abc = (7, 7, 7)
 
 # make an instance of diffBRagg, use the simData wrapper
-SIM = SimData()
+SIM = SimData(use_default_crystal=True)
 # overwrite the default detector with a smaller pixels one
 SIM.detector = SimData.simple_detector(300, 0.1, (700, 700))
 SIM.crystal = nbcryst

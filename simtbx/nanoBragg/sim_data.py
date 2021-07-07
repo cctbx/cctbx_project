@@ -11,7 +11,6 @@ from simtbx.nanoBragg.nanoBragg_beam import NBbeam
 from copy import deepcopy
 from scitbx.matrix import sqr
 from simtbx.nanoBragg.tst_gaussian_mosaicity2 import run_uniform
-from simtbx.nanoBragg.anisotropic_mosaicity import generate_Umats
 
 
 def Amatrix_dials2nanoBragg(crystal):
@@ -45,10 +44,10 @@ def determine_spot_scale(beam_size_mm, crystal_thick_mm, mosaic_vol_mm3):
 
 
 class SimData:
-  def __init__(self):
+  def __init__(self, use_default_crystal=False):
     self.detector = SimData.simple_detector(180, 0.1, (512, 512))  # dxtbx detector model
     self.seed = 1  # nanoBragg seed member
-    self.crystal = NBcrystal()  # nanoBragg crystal object
+    self.crystal = NBcrystal(init_defaults=use_default_crystal)
     self.add_air = False  # whether to add air in the generate_simulated_image method
     self.Umats_method = 0  # how to generate mosaic rotation umats (can be 0,1,2,3)
     self.add_water = True  # whether to add water in the generate_simulated_image method
@@ -178,95 +177,6 @@ class SimData:
       if isotropic and mos_spread_deg > 0:
         UMAT_nm.append(col(scitbx.math.r3_rotation_axis_and_angle_as_matrix(site, -m)))
     return UMAT_nm
-
-  #@staticmethod
-  #def Umats(mos_spread_deg, n_mos_doms=None, isotropic=True,
-  #          seed=777, norm_dist_seed=777, method=0, angles_per_axis=10, num_axes=10,
-  #          crystal=None):
-  #  """
-
-  #  :param mos_spread_deg: a float (if method is in [0,1,2], 3-tuple (if method is 3), or 6-tuple (if method is 4)
-  #  :param n_mos_doms: for method 0 or 1, how many mosaic domains
-  #  :param isotropic: only for method 0; for each rotation angle, also model its negative
-  #  :param seed: random seed for method 0 axes
-  #  :param norm_dist_seed: random seed for method 0 angles
-  #  :param method: 0,1,2,3 or 4  TODO explain methods
-  #  :param angles_per_axis: if method in [2,3,4] how many hemispher samples for rotation axes
-  #  :param num_axes: if method in [2,3,4] how many rotation angles per axis on hemisphere
-  #  :param crystal: if method in [3,4], crystal model for producing the anisptropic mosaicity model
-  #  :return:  Umats, Umats_prime and Umats_dblprime (the derivatives will be None  depending on method)
-  #  """
-  #  if method == 0:
-  #    assert n_mos_doms is not None
-  #    import scitbx
-  #    from scitbx.matrix import col
-  #    import scitbx.math
-  #    import math
-  #    UMAT_nm = flex.mat3_double()
-  #    mersenne_twister = flex.mersenne_twister(seed=seed)
-  #    scitbx.random.set_random_seed(norm_dist_seed)
-  #    rand_norm = scitbx.random.normal_distribution(mean=0, sigma=(mos_spread_deg * math.pi / 180.0))
-  #    g = scitbx.random.variate(rand_norm)
-  #    mosaic_rotation = g(n_mos_doms)
-  #    for m in mosaic_rotation:
-  #      site = col(mersenne_twister.random_double_point_on_sphere())
-  #      if mos_spread_deg > 0:
-  #        UMAT_nm.append(col(scitbx.math.r3_rotation_axis_and_angle_as_matrix(site, m)))
-  #      else:
-  #        UMAT_nm.append(col(scitbx.math.r3_rotation_axis_and_angle_as_matrix(site, 0)))
-  #      if isotropic and mos_spread_deg > 0:
-  #        UMAT_nm.append(col(scitbx.math.r3_rotation_axis_and_angle_as_matrix(site, -m)))
-
-  #    return UMAT_nm
-
-  #  else:
-  #    if method == 1:
-  #      assert n_mos_doms is not None
-  #      print("Setting Umats using method 1")
-  #      if mos_spread_deg == 0 or n_mos_doms == 1:
-  #        UMAT_nm = [(1, 0, 0, 0, 1, 0, 0, 0, 1)]
-  #        UMAT_prime = [(0, 0, 0, 0, 0, 0, 0, 0, 0)]
-  #      else:
-  #        UMAT_nm, UMAT_prime = run_uniform(mos_spread_deg, n_mos_doms)
-  #    elif method in [2, 3, 4]:
-  #      if method in [3, 4] and crystal is None:
-  #        raise ValueError("Crystal cannot be None for methods 3,4 which makes anisotropic mosaicity models")
-  #      if mos_spread_deg == 0:
-  #        UMAT_nm = [(1, 0, 0, 0, 1, 0, 0, 0, 1)]
-  #        UMAT_prime = [(0, 0, 0, 0, 0, 0, 0, 0, 0)]
-  #      else:
-  #        if method == 2:  # isotropic eta
-  #          print("Setting Umats using method 2")
-  #          eta = mos_spread_deg
-  #          eta_tensor = eta, 0, 0, 0, eta, 0, 0, 0, eta
-  #          generation_method = 2
-  #        elif method == 3:
-  #          print("Setting Umats using method 3")
-  #          if not isinstance(mos_spread_deg, Iterable):
-  #            raise ValueError("for method 3 of Umats, mosaic_spread_def needs to be a 3-tuple")
-  #          if len(mos_spread_deg) != 3:
-  #            raise ValueError("for method 3 of Umats, mosaic_spread_def needs to be a 3-tuple")
-  #          eta_a, eta_b, eta_c = mos_spread_deg
-  #          eta_tensor = eta_a, 0, 0, 0, eta_b, 0, 0, 0, eta_c
-  #          generation_method=1
-  #        elif method==4:
-  #          raise NotImplementedError("Not yet supporting full 6-parameter mosaic spread")
-  #          if not isinstance(mos_spread_deg, Iterable):
-  #            raise ValueError("for method 4 of Umats, mosaic_spread_def needs to be a 6-tuple")
-  #          if len(mos_spread_deg) != 6:
-  #            raise ValueError("for method 4 of Umats, mosaic_spread_def needs to be a 6-tuple")
-  #          eta_a, eta_b, eta_c, eta_d, eta_e, eta_f = mos_spread_deg
-  #          eta_tensor = eta_a, eta_d, eta_f, eta_d, eta_b, eta_e, eta_f, eta_e, eta_c
-  #          generation_method=0
-
-  #        UMAT_nm, UMAT_prime, UMAT_dblprime = generate_Umats(eta_tensor,
-
-  #  if UMAT_dblprime is not None:
-  #    return UMAT_nm, UMAT_prime, UMAT_dblprime
-  #  else:
-  #    return UMAT_nm, UMAT_prime                                                         plot=None,
-  #                                                            num_random_samples=n_mos_doms,
-  #                                                            how=generation_method)
 
   @property
   def Umats_method(self):
@@ -413,10 +323,9 @@ class SimData:
       # TODO fix for anisotropic
       self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
       self.D.mosaic_domains = self.crystal.n_mos_domains
-      mos_blocks, _ = SimData.Umats(self.crystal.mos_spread_deg,
+      mos_blocks = SimData.Umats(self.crystal.mos_spread_deg,
                                     self.crystal.n_mos_domains,
-                                    seed=self.mosaic_seeds[0], norm_dist_seed=self.mosaic_seeds[1],
-                                    angles_per_axis=self.crystal.mos_angles_per_axis, num_axes=self.crystal.num_mos_axes)
+                                    seed=self.mosaic_seeds[0], norm_dist_seed=self.mosaic_seeds[1])
       self.D.set_mosaic_blocks(mos_blocks)
 
   def update_umats(self, mos_spread, mos_domains, crystal=None):

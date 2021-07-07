@@ -35,7 +35,7 @@ nbcryst.thick_mm = 0.01
 nbcryst.Ncells_abc = (7, 7, 7)
 
 # make an instance of diffBRagg, use the simData wrapper
-SIM = SimData()
+SIM = SimData(use_default_crystal=True)
 # overwrite the default detector with a smaller pixels one
 SIM.detector = SimData.simple_detector(220, 0.1, (1000, 1000))
 SIM.crystal = nbcryst

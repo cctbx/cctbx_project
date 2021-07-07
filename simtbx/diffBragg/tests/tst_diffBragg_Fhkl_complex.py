@@ -15,7 +15,7 @@ def sim_spots(F):
     c_real = (0,0,38)
     C = Crystal(a_real, b_real, c_real, 'P43212')
 
-    nbcryst = NBcrystal()
+    nbcryst = NBcrystal(init_defaults=True)
     nbcryst.dxtbx_crystal = C  # simulate ground truth
     nbcryst.thick_mm = 0.1
     nbcryst.Ncells_abc = 10,10,10
@@ -28,7 +28,7 @@ def sim_spots(F):
     DET_gt = SimData.simple_detector(150, 0.177, (600, 600))
 
     # initialize the simulator
-    SIM = SimData()
+    SIM = SimData(use_default_crystal=True)
     SIM.detector = DET_gt
     SIM.crystal = nbcryst
     SIM.instantiate_diffBragg(oversample=0)

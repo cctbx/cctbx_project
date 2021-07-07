@@ -44,7 +44,7 @@ C.rotate_around_origin(rot_axis, rot_ang)
 # Setup the simulation and create a realistic image
 # with background and noise
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
-nbcryst = NBcrystal()
+nbcryst = NBcrystal(init_defaults=True)
 nbcryst.dxtbx_crystal = C   # simulate ground truth
 nbcryst.thick_mm = 0.1
 nbcryst.Ncells_abc = Ncells_gt  # ground truth Ncells
@@ -56,7 +56,7 @@ print("Ground truth ncells = %f" % (nbcryst.Ncells_abc[0]))
 DET_gt = SimData.simple_detector(150, 0.177, (600, 600))
 
 # initialize the simulator
-SIM = SimData()
+SIM = SimData(use_default_crystal=True)
 spec = SIM.beam.spectrum
 total_flux = spec[0][1]
 wave = spec[0][0]

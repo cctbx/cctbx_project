@@ -76,7 +76,7 @@ nbcryst.Ncells_abc = Ncells_gt  # ground truth Ncells
 nbcryst.miller_array = fcalc_from_pdb(resolution=2, wavelength=1,algorithm='fft', ucell=ucell, symbol=symbol)
 print("Ground truth ncells = %f" % (nbcryst.Ncells_abc[0]))
 
-SIM = SimData()
+SIM = SimData(use_default_crystal=True)
 SIM.detector = SimData.simple_detector(150, 0.177, (600, 600))
 
 # TODO get the detector model

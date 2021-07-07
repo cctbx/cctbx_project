@@ -170,7 +170,7 @@ for i_shot in range(N_SHOTS):
     originZ_gt[i_shot] = DET_gt[0].get_origin()[2]
 
     # initialize the simulator
-    SIM = SimData()
+    SIM = SimData(use_default_crystal=True)
     if args.spectra:
 
         if waves is None:

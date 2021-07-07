@@ -49,7 +49,7 @@ nbcryst.Ncells_abc = ncells_gt
 print("Ground truth ncells abc=%f %f %f" % (ncells_gt)) #nbcryst.Ncells_abc[0]))
 
 # generate the ground truth image
-SIM = SimData()
+SIM = SimData(use_default_crystal=True)
 SIM.detector = SimData.simple_detector(200, 0.1, (1024, 1024))
 SIM.crystal = nbcryst
 SIM.instantiate_diffBragg(oversample=0, auto_set_spotscale=True)

@@ -50,7 +50,7 @@ C.rotate_around_origin(rot_axis, rot_ang)
 # Setup the simulation and create a realistic image
 # with background and noise
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
-nbcryst = NBcrystal()
+nbcryst = NBcrystal(init_defaults=True)
 nbcryst.dxtbx_crystal = C   # simulate ground truth
 nbcryst.thick_mm = 0.1
 nbcryst.Ncells_abc = Ncells_gt  # ground truth Ncells

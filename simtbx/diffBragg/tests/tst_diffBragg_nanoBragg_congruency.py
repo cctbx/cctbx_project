@@ -4,7 +4,7 @@ from __future__ import division
 def main():
     from simtbx.nanoBragg.sim_data import SimData
 
-    S = SimData()
+    S = SimData(use_default_crystal=True)
     S.instantiate_diffBragg()
     S.D.nopolar = True
     S.D.oversample = 3

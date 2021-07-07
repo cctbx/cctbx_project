@@ -36,12 +36,12 @@ C.rotate_around_origin(rot_axis, rot_ang)
 # Setup the simulation and create a realistic image
 # with background and noise
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
-nbcryst = NBcrystal()
+nbcryst = NBcrystal(init_defaults=True)
 nbcryst.dxtbx_crystal = C   # simulate ground truth
 nbcryst.thick_mm = 0.1
 nbcryst.Ncells_abc = 12, 12, 12
 
-SIM = SimData()
+SIM = SimData(use_default_crystal=True)
 SIM.detector = SimData.simple_detector(160, 0.1, (1024, 1024))
 
 # grab the detector node (ground truth)

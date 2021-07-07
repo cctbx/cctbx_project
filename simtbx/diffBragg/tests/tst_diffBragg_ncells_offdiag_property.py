@@ -31,7 +31,7 @@ Q = rec(rotation.as_quat(), n=(4, 1))
 rot_ang, rot_axis = Q.unit_quaternion_as_axis_and_angle()
 C.rotate_around_origin(rot_axis, rot_ang)
 
-S = sim_data.SimData()
+S = sim_data.SimData(use_default_crystal=True)
 S.crystal.dxtbx_crystal = C
 S.detector = sim_data.SimData.simple_detector(180, 0.1, (1024, 1024))
 S.instantiate_diffBragg(verbose=0, oversample=0, auto_set_spotscale=True)
