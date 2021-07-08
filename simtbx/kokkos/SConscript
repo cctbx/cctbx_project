@@ -13,7 +13,7 @@ print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 link_cmd = "cd ../../../build;"
 
 link_cmd += " ../modules/kokkos//bin/nvcc_wrapper -o lib/libsimtbx_kokkos.so -shared"
-link_cmd += " simtbx/kokkos/kokkos_instance.o simtbx/kokkos/detector.o simtbx/kokkos/structure_factors.o"
+link_cmd += " simtbx/kokkos/kokkos_utils.o simtbx/kokkos/kokkos_instance.o simtbx/kokkos/detector.o simtbx/kokkos/structure_factors.o simtbx/kokkos/simulation.o"
 link_cmd += " -Llib -L/usr/common/software/sles15_cgpu/cuda/11.1.1/lib64 -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/lib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/cctbx_project/lib -L/global/cfs/cdirs/nstaff/wittwer/alcc-recipes/cctbx/modules/cctbx_project/simtbx/kokkos/"
 link_cmd += " -lkokkos -ldl -lcudart -lcuda -lboost_thread -lboost_system -lboost_python -lm;"
 
