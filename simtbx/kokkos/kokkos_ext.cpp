@@ -6,6 +6,7 @@
 #include "simtbx/kokkos/kokkos_instance.h"
 #include "simtbx/kokkos/detector.h"
 #include "simtbx/kokkos/structure_factors.h"
+#include "simtbx/kokkos/simulation.h"
 
 namespace simtbx { namespace Kokkos {
 
@@ -71,11 +72,36 @@ namespace simtbx { namespace Kokkos {
     }
   };
 
+  struct simulation_wrapper
+  {
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<simtbx::Kokkos::exascale_api>("exascale_api",no_init )
+        .def(init<const simtbx::nanoBragg::nanoBragg&>(
+            ( arg("nanoBragg"))))
+        .def("allocate_cuda",&simtbx::Kokkos::exascale_api::allocate_cuda,
+             "Allocate and transfer input data on the GPU")
+        .def("add_energy_channel_from_kokkos_amplitudes_cuda",
+             &simtbx::Kokkos::exascale_api::add_energy_channel_from_kokkos_amplitudes_cuda,
+             "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spot contributions to the detector's accumulator array")
+        .def("add_energy_channel_mask_allpanel_cuda",
+             &simtbx::Kokkos::exascale_api::add_energy_channel_mask_allpanel_cuda,
+             "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spots on mask==True pixels")
+        .def("add_background_cuda", &simtbx::Kokkos::exascale_api::add_background_cuda,
+             "Add a background field directly on the GPU")
+        .def("show",&simtbx::Kokkos::exascale_api::show)
+        ;
+    }
+  };
+
   } // namespace Kokkos
 
   BOOST_PYTHON_MODULE(simtbx_kokkos_ext) {
     simtbx::Kokkos::kokkos_instance_wrapper::wrap();
-    simtbx::Kokkos::detector_wrapper::wrap();
     simtbx::Kokkos::structure_factor_wrapper::wrap();
+    simtbx::Kokkos::detector_wrapper::wrap();
+    simtbx::Kokkos::simulation_wrapper::wrap();
   }
 } // namespace simtbx

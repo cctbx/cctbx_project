@@ -19,6 +19,16 @@ namespace {
 
   template <typename T, typename U>
   void
+  transfer_X2kokkos(view_1d_t<T> &dst, const U *src, const size_t length) {
+    auto host_view = Kokkos::create_mirror_view(dst);
+    for (int i=0; i<length; ++i) {
+      host_view( i ) = src[ i ];
+    }
+    Kokkos::deep_copy(dst, host_view);
+  }
+
+  template <typename T, typename U>
+  void
   transfer_kokkos2X(T &dst, const view_1d_t<U> &src) {
     auto host_view = Kokkos::create_mirror_view(src);
     Kokkos::deep_copy(host_view, src);
@@ -31,7 +41,7 @@ namespace {
 
 namespace simtbx { namespace Kokkos { 
 
-namespace af = scitbx::af;
+  namespace af = scitbx::af;
 
   template <typename T>
   void
@@ -46,8 +56,12 @@ namespace af = scitbx::af;
     }
 
     transfer_X2kokkos(dst, src);
-    //print_view(dst);
+    if (src.size() < 20) {
+      print_view(dst);
+    }
   }
+
+  void transfer_double2kokkos(vector_cudareal_t &dst, const double *src, const size_t length);
 
   template <typename T>
   void
