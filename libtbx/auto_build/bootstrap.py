@@ -2134,6 +2134,19 @@ class CCTBXBuilder(CCIBuilder):
   def rebuild_docs(self):
     pass
 
+  # select dials-3.5 branch
+  def _add_git(self, module, parameters, destination=None):
+    super(CCTBXBuilder, self)._add_git(module, parameters, destination)
+    if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and self.python3:
+      workdir = ['modules', module]
+      if module == 'dxtbx':
+        self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
+        self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.5'], workdir=workdir))
+      self.add_step(self.shell(
+        command=['git', 'branch', '--set-upstream-to=origin/dials-3.5', 'dials-3.5'],
+        workdir=workdir))
+
 class DIALSBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['dials', 'iota', 'xia2']
   LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
@@ -2310,6 +2323,19 @@ class PhenixBuilder(CCIBuilder):
       except ValueError:
         pass
     return codebases
+
+  # select dials-3.5 branch
+  def _add_git(self, module, parameters, destination=None):
+    super(PhenixBuilder, self)._add_git(module, parameters, destination)
+    if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and self.python3:
+      workdir = ['modules', module]
+      if module == 'dxtbx':
+        self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
+        self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.5'], workdir=workdir))
+      self.add_step(self.shell(
+        command=['git', 'branch', '--set-upstream-to=origin/dials-3.5', 'dials-3.5'],
+        workdir=workdir))
 
   def add_module(self, module, workdir=None, module_directory=None):
     """
