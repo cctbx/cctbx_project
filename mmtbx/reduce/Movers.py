@@ -646,80 +646,11 @@ class MoverNH2Flip:
 
     #########################
     # Compute the list of Fixup returns.
-    # The algorithm is described in Protein Science Vol 27:293-315.  It is
-    # implemented in FlipMemo::RotHingeDock_Flip() in the original Reduce C++ code,
-    # where the partner is a Carbon and its other neighbor is the alpha Carbon.
-    #  A) Rotate the movable atoms around the Carbon-alphaCarbon vector by 180 degrees.
-    #  B) Hinge the movable atoms around the Carbon to place them back into the
-    #     plane that they were originally located in using the axis of least
-    #     rotation that passed through the Carbon.
-    #  C) Rotate the atoms around the alphaCarbon, aligning the O and
-    #     N atoms with their original locations as much as possible.  This is
-    #     done in two steps: 1) Rotating around the shortest axis to make the
-    #     Oxygen lie on the original vector from the alphaCarbon to the original Nitrogen.
-    #     2) Rotating around the alphaCarbon-to-old-Nitrogen (new Oxygen) vector to align the plane
-    #     containing the alphaCarbon, new and old Nitrogen with the plane
-    #     containing the alphaCarbon, the original Oxygen and the original Nitrogen
-    #     (making the dihedral angle new Nitrogen, alphaCarbon, old Nitrogen, old
-    #     Oxygen be 0).
-    nitrogen = nh2Atom
-    carbon = partner
-
-    # A) Rotate the movable atoms by 180 degrees
-    movable = [hydrogens[0].xyz, hydrogens[1].xyz, nitrogen.xyz, carbon.xyz, oxygen.xyz]
-    normal = (_rvec3(alphaCarbon.xyz) - _rvec3(carbon.xyz)).normalize()
-    axis = flex.vec3_double([carbon.xyz, normal])
-    for i in range(len(movable)):
-      movable[i] = _rotateAroundAxis(movable[i], axis, 180)
-
-    # B) Hinge the movable atoms around the Carbon.
-    # Solve for the planes containing the old and new atoms and then the vector
-    # that these planes intersect at (cross product).
-    # The 
-
-    cToO = _lvec3(oxygen.xyz) - _lvec3(carbon.xyz)
-    nToO = _rvec3(nitrogen.xyz) - _rvec3(carbon.xyz)
-    oldNormal = (scitbx.matrix.cross_product_matrix(cToO) * nToO).normalize()
-
-    # Flip the order here because we've rotated 180 degrees
-    newNToO = _lvec3(movable[2]) - _lvec3(movable[3])
-    newCToO = _rvec3(movable[4]) - _rvec3(movable[3])
-    newNormal = (scitbx.matrix.cross_product_matrix(newNToO) * newCToO).normalize()
-
-    # If we don't need to rotate, we'll get a zero-length vector
-    hinge = scitbx.matrix.cross_product_matrix(_lvec3(oldNormal))*_rvec3(newNormal)
-    if hinge.length() > 0:
-      hinge = hinge.normalize()
-      axis = flex.vec3_double([carbon.xyz, hinge])
-      degrees = 180/math.pi * math.acos((_lvec3(oldNormal)*_rvec3(newNormal))[0])
-      for i in range(len(movable)):
-        # Rotate in the opposite direction, taking the new back to the old.
-        movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
-
-    # C) Rotate the atoms around the alphaCarbon
-    #  1) Oxygen to alphaCarbon<-->original Nitrogen line
-    aToNewO = _lvec3(movable[4]) - _lvec3(alphaCarbon.xyz)
-    aToOldN = _rvec3(nitrogen.xyz) - _rvec3(alphaCarbon.xyz)
-    # If we don't need to rotate, we'll get a zero-length vector
-    normal = scitbx.matrix.cross_product_matrix(aToNewO) * aToOldN
-    if normal.length() > 0:
-      normal = normal.normalize()
-      axis = flex.vec3_double([alphaCarbon.xyz, normal])
-      degrees = 180/math.pi * math.acos((_lvec3(aToOldN.normalize())*_rvec3(aToNewO.normalize()))[0])
-      for i in range(len(movable)):
-        # Rotate in the opposite direction, taking the new back to the old.
-        movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
-
-    #  2) Oxygen to the proper plane.
-    sites = flex.vec3_double([ movable[2], alphaCarbon.xyz, nitrogen.xyz, oxygen.xyz ])
-    degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
-    hinge = _rvec3(alphaCarbon.xyz) - _rvec3(nitrogen.xyz)
-    if hinge.length() > 0:
-      hinge = hinge.normalize()
-      axis = flex.vec3_double([alphaCarbon.xyz, hinge])
-      for i in range(len(movable)):
-        # Rotate in the opposite direction, taking the new back to the old.
-        movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
+    movableAtoms = [hydrogens[0], hydrogens[1], nh2Atom, partner, oxygen]
+    hingeIndex = 3
+    firstDockIndex = 4
+    secondDockIndex = 2
+    movable = _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, alphaCarbon)
 
     # No fix-up for coarse position 0, do the above adjustment for position 1
     self._fixUpPositions = [ [], movable ]
@@ -1417,7 +1348,110 @@ def _rotateAroundAxis(atom, axis, degrees):
   newOffset = offset.rotate_around_origin(_lvec3(axis[1]), degrees*math.pi/180)
   return nearPoint + newOffset
 
- # If we're run on the command line, test our classes and functions.
+def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, alphaCarbon):
+  '''Perform the three-step rotate-hinge-dock calculation described in 
+     Protein Science Vol 27:293-315 and implemented in
+     FlipMemo::RotHingeDock_Flip() in the original Reduce C++ code.
+     :param movableAtoms: flex array of iotbx.pdb.hierarchy.atom objects that
+     are the original locations of atoms that can be moved, including the Carbon
+     atom that is bonded to the alpha carbon but not the alpha carbon itself.
+     :param hingeIndex: Index in the movableAtoms array that tells which is
+     the atom to hinge around (this will be a Carbon atom).
+     :param firstDockIndex: Index in the movableAtoms array that tells which is
+     the atom to dock first (this will be the Oxygen atom for Asn and Gln,
+     CE1 for His).
+     :param secondDockIndex: Index in the movableAtoms array that tells which is
+     the atom to dock second (this will be the Nitrogen atom for Asn and Gln,
+     NE2 for His).
+     :param alphaCarbon: iotbx.pdb.hierarchy.atom that is the alpha carbon.
+     The original rotation is around the bond from this atom to the original
+     carbon atom.
+     :returns A flex array of scitbx.matrix.rec(xyz, (1,3)) entries giving the new locations.
+  '''
+  #########################
+  # A) Rotate the movable atoms around the hinge-alphaCarbon vector by 180 degrees.
+  # B) Hinge the movable atoms around the hinge to place them back into the
+  #    plane that they the two docked atoms originally located in using the axis of least
+  #    rotation that passed through the hinge.
+  # C) Rotate the atoms around the alphaCarbon, aligning the docked
+  #    atoms with their original locations as much as possible.  This is
+  #    done in two steps: 1) Rotating around the shortest axis to make the
+  #    first docked atom lie on the original vector from the alphaCarbon to the original second
+  #    docked atom.
+  #    2) Rotating around the alphaCarbon-to-new-firstDockIndex vector to align the plane
+  #    containing the alphaCarbon, new and old secondDockIndex with the plane
+  #    containing the alphaCarbon, the original firstDockIndex and the original secondDockIndex
+  #    (making the dihedral angle new secondDockIndex, alphaCarbon, old secondDockIndex, old
+  #    firstDockIndex be 0).
+
+  # Find the special atoms
+  first = movableAtoms[firstDockIndex]
+  second = movableAtoms[secondDockIndex]
+  hingeAtom = movableAtoms[hingeIndex]
+
+  # Construct a list of output locations, initializing with the input locations.
+  movable = []
+  for a in movableAtoms:
+    movable.append(a.xyz)
+
+  # A) Rotate the movable atoms by 180 degrees
+  normal = (_rvec3(alphaCarbon.xyz) - _rvec3(hingeAtom.xyz)).normalize()
+  axis = flex.vec3_double([hingeAtom.xyz, normal])
+  for i in range(len(movable)):
+    movable[i] = _rotateAroundAxis(movable[i], axis, 180)
+
+  # B) Hinge the movable atoms around the hinge.
+  # Solve for the planes containing the old and new atoms and then the vector
+  # that these planes intersect at (cross product).
+
+  cToO = _lvec3(first.xyz) - _lvec3(hingeAtom.xyz)
+  nToO = _rvec3(second.xyz) - _rvec3(hingeAtom.xyz)
+  oldNormal = (scitbx.matrix.cross_product_matrix(cToO) * nToO).normalize()
+
+  # Flip the order here because we've rotated 180 degrees
+  newNToO = _lvec3(movable[secondDockIndex]) - _lvec3(movable[hingeIndex])
+  newCToO = _rvec3(movable[firstDockIndex]) - _rvec3(movable[hingeIndex])
+  newNormal = (scitbx.matrix.cross_product_matrix(newNToO) * newCToO).normalize()
+
+  # If we don't need to rotate, we'll get a zero-length vector
+  hinge = scitbx.matrix.cross_product_matrix(_lvec3(oldNormal))*_rvec3(newNormal)
+  if hinge.length() > 0:
+    hinge = hinge.normalize()
+    axis = flex.vec3_double([hingeAtom.xyz, hinge])
+    degrees = 180/math.pi * math.acos((_lvec3(oldNormal)*_rvec3(newNormal))[0])
+    for i in range(len(movable)):
+      # Rotate in the opposite direction, taking the new back to the old.
+      movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
+
+  # C) Rotate the atoms around the alphaCarbon
+  #  1) firstDockIndex to alphaCarbon<-->original secondDockIndex line
+  aToNewO = _lvec3(movable[firstDockIndex]) - _lvec3(alphaCarbon.xyz)
+  aToOldN = _rvec3(second.xyz) - _rvec3(alphaCarbon.xyz)
+  # If we don't need to rotate, we'll get a zero-length vector
+  normal = scitbx.matrix.cross_product_matrix(aToNewO) * aToOldN
+  if normal.length() > 0:
+    normal = normal.normalize()
+    axis = flex.vec3_double([alphaCarbon.xyz, normal])
+    degrees = 180/math.pi * math.acos((_lvec3(aToOldN.normalize())*_rvec3(aToNewO.normalize()))[0])
+    for i in range(len(movable)):
+      # Rotate in the opposite direction, taking the new back to the old.
+      movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
+
+  #  2) firstDockIndex to the proper plane.
+  sites = flex.vec3_double([ movable[secondDockIndex], alphaCarbon.xyz, second.xyz, first.xyz ])
+  degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
+  hinge = _rvec3(alphaCarbon.xyz) - _rvec3(second.xyz)
+  if hinge.length() > 0:
+    hinge = hinge.normalize()
+    axis = flex.vec3_double([alphaCarbon.xyz, hinge])
+    for i in range(len(movable)):
+      # Rotate in the opposite direction, taking the new back to the old.
+      movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
+
+  return movable
+
+##################################################################################
+# If we're run on the command line, test our classes and functions.
 if __name__ == '__main__':
 
   ret = Test()
