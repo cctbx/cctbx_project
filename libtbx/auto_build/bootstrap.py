@@ -2246,6 +2246,11 @@ class XFELBuilder(CCIBuilder):
     super(XFELBuilder, self).add_base(
       extra_opts=['--dials'] + extra_opts)
 
+  def get_libtbx_configure(self):
+    configlst = super(XFELBuilder, self).get_libtbx_configure()
+    configlst.append('--enable_cxx11')
+    return configlst
+
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel(module='uc_metrics')
