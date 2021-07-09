@@ -2562,8 +2562,7 @@ class build_chain_proxies(object):
             self.type_energies.append(al.type_energy)
           else:
             self.type_energies.append(None)
-            print(atom.quote())
-            assert 0
+            raise Sorry('Not able to determine energy type for atom %s' % atom.quote())
       #
       if (mm.monomer is None):
         def use_scattering_type_if_available_to_define_nonbonded_type():
