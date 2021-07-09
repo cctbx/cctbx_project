@@ -592,15 +592,11 @@ class MoverNH2Flip:
        bonded atoms.  Can be obtained by calling getBondedNeighborLists().
     """
 
-    # The Nitrogen is the neighbor in these calculations, making this code symmetric with the other
-    # class code.
-    neighbor = nh2Atom
-
     # Verify that we've been run on a valid structure and get a list of all of the
     # atoms up to and including the pivot atom.
-    if neighbor.element != "N":
+    if nh2Atom.element != "N":
       raise ValueError("MoverNH2Flip(): nh2Atom is not a Nitrogen")
-    partners = bondedNeighborLists[neighbor]
+    partners = bondedNeighborLists[nh2Atom]
     if len(partners) != 3:
       raise ValueError("MoverNH2Flip(): nh2Atom does not have three bonded neighbors")
     hydrogens = []
