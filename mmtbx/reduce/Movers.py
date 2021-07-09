@@ -712,7 +712,6 @@ class MoverNH2Flip:
     return FixUpReturn(self._atoms, self._fixUpPositions[coarseIndex])
 
 ##################################################################################
-# @todo Fix below here, deciding which atom to use as the canonical one.
 class MoverHistidineFlip:
   def __init__(self, ne2Atom, bondedNeighborLists):
     """Constructs a Mover that will handle flipping a Histidine ring.
@@ -746,13 +745,13 @@ class MoverHistidineFlip:
       raise ValueError("MoverHistidineFlip(): ne2Atom does not have two bonded carbons")
     ne2HAtom = hydrogens[0]
 
-    # Determine if the first Carbon is CE1, which is bonded to two hydrogens.  If not,
+    # Determine if the first Carbon is CE1, which is bonded to two Carbons.  If not,
     # then the second one must be.  Fill in CD2 and CE1 based on this information, then we
     # can check them and continue parsing.
     cTest = carbons[0]
     bonded = bondedNeighborLists[cTest]
-    if len(bonded < 2):
-      raise ValueError("MoverHistidineFlip(): ne2Atom neighbor does not have at least two bonded neighbors")
+    if len(bonded != 3):
+      raise ValueError("MoverHistidineFlip(): ne2Atom neighbor does not have three bonded neighbors")
     cs = 0
     for b in bonded:
       if b.element == "C":
@@ -763,6 +762,28 @@ class MoverHistidineFlip:
     else:
       ce1Atom = carbons[1]
       cd2Atom = carbons[0]
+
+    # Find the Hydrogen on CE1.
+    bonded = bondedNeighborLists[ce1Atom]
+    if len(bonded != 3):
+      raise ValueError("MoverHistidineFlip(): CE1 does not have three bonded neighbors")
+    ce1HAtom = None
+    for b in bonded:
+      if b.element == "H":
+        ce1HAtom = b
+    if ce1HAtom is None:
+      raise ValueError("MoverHistidineFlip(): Could not find Hydrogen attached to CE1")
+
+    # Find the Hydrogen on CD2.
+    bonded = bondedNeighborLists[cd2Atom]
+    if len(bonded != 3):
+      raise ValueError("MoverHistidineFlip(): CD2 does not have three bonded neighbors")
+    cd2HAtom = None
+    for b in bonded:
+      if b.element == "H":
+        cd2HAtom = b
+    if cd2HAtom is None:
+      raise ValueError("MoverHistidineFlip(): Could not find Hydrogen attached to CD2")
 
     # Find CG on the other side of CD2.
     cgAtom = None
@@ -785,7 +806,7 @@ class MoverHistidineFlip:
       if b.i_seq == cgAtom.i_seq:
         continue
       elif b.element == "N":
-        nd1Adom = b
+        nd1Atom = b
       elif b.element == "C":
         cbAtom = b
     if nd1Atom is None:
@@ -793,8 +814,20 @@ class MoverHistidineFlip:
     if cbAtom is None:
       raise ValueError("MoverHistidineFlip(): Could not find CB")
 
-    # Find CA on the other side of CB
+    # Find the Hydrogen attached to ND1
+    bonded = bondedNeighborLists[nd1Atom]
+    if len(bonded) != 3:
+      raise ValueError("MoverHistidineFlip(): ND1 does not have three bonded neighbors")
+    nd1HAtom = None
+    for a in bonded:
+      if a.element == "H":
+        nd1HAtom = b
+    if nd1HAtom is None:
+      raise ValueError("MoverHistidineFlip(): ND1 does not have a bonded hydrogen")
+
+    # Find CA on the other side of CB and find CBs Hydrogens
     caAtom = None
+    cbHydrogens = []
     bonded = bondedNeighborLists[cbAtom]
     if len(bonded != 4):
       raise ValueError("MoverHistidineFlip(): CB does not have four bonded neighbors")
@@ -803,60 +836,60 @@ class MoverHistidineFlip:
         continue
       elif b.element == "C":
         caAtom = b
+      elif b.element == "H":
+        cbHydrogens.append(b)
     if caAtom is None:
       raise ValueError("MoverHistidineFlip(): Could not find CA")
+    if len(cbHydrogens) != 2:
+      raise ValueError("MoverHistidineFlip(): Could not find Hydrogens on CB")
 
-    # @todo Find Hydrogens above, some of which will go in head and others after pivot
-    # @todo Fix below here
+    self._atoms = [ ne2Atom, ne2HAtom, ce1Atom, ce1HAtom, nd1Atom, nd1HAtom, cd2Atom, cd2HAtom,
+      cgAtom, cbAtom, cbHydrogens[0], cbHydrogens[1] ]
 
-    hinge = None
-    for a in partners:
-      if a.element == "H":
-        hydrogens.append(a)
-      else:
-        hinge = a
-    if len(hydrogens) != 2:
-      raise ValueError("MoverHistidineFlip(): ne2Atom does not have two bonded hydrogens")
-    if hinge is None:
-      raise ValueError("MoverHistidineFlip(): ne2Atom does not have bonded (hinge) Carbon friend")
-    bonded = bondedNeighborLists[hinge]
-    oyxgen = None
-    pivot = None
-    for b in bonded:
-      if b.element == "O":
-        oxygen = b
-      if b.element == "C":
-        pivot = b
-    if pivot is None:
-      raise ValueError("MoverHistidineFlip(): Hinge does not have bonded (pivot) Carbon friend")
-    if oxygen is None:
-      raise ValueError("MoverHistidineFlip(): Hinge does not have bonded oxygen friend")
-    if len(bondedNeighborLists[oxygen]) != 1:
-      raise ValueError("MoverHistidineFlip(): Oxygen has more than one bonded neighbor")
-    self._atoms = [ hydrogens[0], hydrogens[1], ne2Atom, oxygen, hinge, pivot ]
+    #########################
+    # Compute the new positions for the Hydrogens such that they are at the same distance from
+    # their swapped parent atoms and in the direction of the Hydrogens from the original atoms at
+    # each location.  We swap ND1 with CD2 and NE2 with CE1.
+    nd1HVec = _lvec3(nd1HAtom.xyz) - _lvec3(nd1Atom.xyz)
+    ne2HVec = _lvec3(ne2HAtom.xyz) - _lvec3(ne2Atom.xyz)
+    ce1HVec = _lvec3(ce1HAtom.xyz) - _lvec3(ce1Atom.xyz)
+    cd2HVec = _lvec3(cd2HAtom.xyz) - _lvec3(cd2Atom.xyz)
 
-    # Find any linking atoms between the pivot atom and the Alpha Carbon and add them to the list.
-    linkers = []
-    prevID = hinge.i_seq
-    foundAlpha = False
-    cur = pivot
-    while not foundAlpha:
-      bonded = bondedNeighborLists[cur]
-      link = None
-      if len(bonded) != 2:
-        raise ValueError("MoverHistidineFlip(): Linker chain has an element with other than two bonds")
-      for b in bonded:
-        if b.i_seq != prevID:
-          link = b
-      if link.i_seq == caAtom.i_seq:
-        foundAlpha = True
-      else:
-        linkers.append(link)
-        prevID = cur.i_seq
-        cur = link
-    self._atoms.extend(linkers)
+    nd1HNew = _lvec3(cd2Atom.xyz) + nd1HVec.length * cd2HVec.normalize()
+    cd2HNew = _lvec3(nd1Atom.xyz) + cd2HVec.length * nd1HVec.normalize()
+    ce1HNew = _lvec3(ne2Atom.xyz) + ce1HVec.length * ne2HVec.normalize()
+    ne2HNew = _lvec3(ce1Atom.xyz) + ne2HVec.length * ce1HVec.normalize()
 
-    # @todo
+    #########################
+    # Compute the list of positions for all of the atoms. This consists of the original
+    # location and the flipped location where we swap the locations of the two pairs of heavy atoms
+    # and bring the Hydrogens along for the ride.
+
+    startPos = []
+    for a in self._atoms:
+      startPos.append(a.xyz)
+
+    newPos = startPos.copy()
+    newPos[0] = ce1Atom.xyz
+    newPos[1] = ce1HNew
+    newPos[2] = ne2Atom.xyz
+    newPos[3] = ne2HNew
+    newPos[4] = cd2Atom.xyz
+    newPos[5] = cd2HNew
+    newPos[6] = nd1Atom.xyz
+    newPos[8] = nd1HNew
+
+    self._coarsePositions = [ startPos, newPos ]
+
+    #########################
+    # Compute the list of Fixup returns.
+    hingeIndex = 8
+    firstDockIndex = 0
+    secondDockIndex = 2
+    movable = _rotateHingeDock(self._atoms, hingeIndex, firstDockIndex, secondDockIndex, caAtom)
+
+    # No fix-up for coarse position 0, do the above adjustment for position 1
+    self._fixUpPositions = [ [], movable ]
 
   def CoarsePositions(self):
     # returns: The two possible coarse positions with 0 energy offset for either.
