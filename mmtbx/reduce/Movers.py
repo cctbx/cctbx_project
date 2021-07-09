@@ -652,7 +652,7 @@ class MoverNH2Flip:
     # the Oxygen as one of them is from the Nitrogen and located at +/-120 degrees from the
     # Carbon-Oxygen bond in the plane of the Nitrogen, Carbon, and Oxygen.
     cToO = _lvec3(oxygen.xyz) - _lvec3(hinge.xyz)
-    nToO = _rvec3(neighbor.xyz) - _rvec3(hinge.xyz)
+    nToO = _rvec3(nh2Atom.xyz) - _rvec3(hinge.xyz)
 
     # Normal to the plane containing Nitrogen, Carbon, and Oxygen
     normal = _lvec3(scitbx.matrix.cross_product_matrix(cToO) * nToO).normalize()
@@ -674,13 +674,12 @@ class MoverNH2Flip:
     newPos[0] = newH0
     newPos[1] = newH1
     newPos[2] = oxygen.xyz
-    newPos[3] = neighbor.xyz
+    newPos[3] = nh2Atom.xyz
 
     self._coarsePositions = [ startPos, newPos ]
 
     #########################
     # Compute the list of Fixup returns.
-    # @todo fix
     hingeIndex = 4
     firstDockIndex = 3
     secondDockIndex = 2
