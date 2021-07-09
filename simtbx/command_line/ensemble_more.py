@@ -159,7 +159,7 @@ class Script:
 
         # count up the total number of pixels being modeled by this rank
         npix = [len(modeler.all_data) for modeler in Modelers.values()]
-        if not self.params.quiet: print("Rank %d wil model %d pixels in total" %(COMM.rank, sum(npix)))
+        if not self.params.quiet: print("Rank %d wil model %d pixels in total" %(COMM.rank, sum(npix)), flush=True)
         COMM.barrier()
 
         # these are the experient ids corresponding to exper-ref-spectrum input file lines , for this rank
@@ -239,7 +239,7 @@ class Script:
         nparam_per_shot = 7   # 1 scale factor, 3 Nabc terms, 3 RotXYZ terms
         total_params = nparam_per_shot*global_Nshots + self.SIM.n_global_fcell  # total refinement paramters
         if COMM.rank==0:
-            print("Refining %d parameters in total" % total_params)
+            print("Refining %d parameters in total" % total_params, flush=True)
 
         # here we organize the global parameter array which includes per-shot params and Fhkl params shared amongst shots
         total_pershot_params = global_Nshots*nparam_per_shot
@@ -387,6 +387,8 @@ class Script:
                 print("Sanity checked hkl variation")
             exit()
 
+        if COMM.rank==0:
+            print("MINIMIZE!", flush=True)
         min_out = Minimize(x0, rank_xidx, self.params, self.SIM, Modelers, ntimes, global_Nshots)
         x = min_out.x
         # TODO analyze the convergence data here
