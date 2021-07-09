@@ -819,8 +819,8 @@ class MoverHistidineFlip:
     if len(bonded) != 3:
       raise ValueError("MoverHistidineFlip(): ND1 does not have three bonded neighbors")
     nd1HAtom = None
-    for a in bonded:
-      if a.element == "H":
+    for b in bonded:
+      if b.element == "H":
         nd1HAtom = b
     if nd1HAtom is None:
       raise ValueError("MoverHistidineFlip(): ND1 does not have a bonded hydrogen")
@@ -877,7 +877,7 @@ class MoverHistidineFlip:
     newPos[4] = cd2Atom.xyz
     newPos[5] = cd2HNew
     newPos[6] = nd1Atom.xyz
-    newPos[8] = nd1HNew
+    newPos[7] = nd1HNew
 
     self._coarsePositions = [ startPos, newPos ]
 
@@ -1670,6 +1670,18 @@ def Test():
     if dHydrogen < 0.0002 or dHydrogen > 0.1:
       return "Movers.Test() MoverNH2Flip linked: Bad linker hydrogen motion: "+str(dHydrogen)
 
+    # Ensure that the Hydrogens moved along with their parent in the flip.
+    dHydrogen = (fixed[0] - fixed[2]).length()
+    oldDHydrogen = (_lvec3(h1.xyz)-_lvec3(n.xyz)).length()
+    if abs(dHydrogen-oldDHydrogen) > 0.0001:
+      return "Movers.Test() MoverNH2Flip linked: Bad nitrogen-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+
+    dHydrogen = (fixed[1] - fixed[2]).length()
+    oldDHydrogen = (_lvec3(h2.xyz)-_lvec3(n.xyz)).length()
+    if abs(dHydrogen-oldDHydrogen) > 0.0001:
+      return "Movers.Test() MoverNH2Flip linked: Bad nitrogen-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+
+
   except Exception as e:
     return "Movers.Test() MoverNH2Flip linked: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
@@ -1797,7 +1809,7 @@ def Test():
     if dCarbon < 0.001 or dCarbon > 0.1:
       return "Movers.Test() MoverHistidineFlip: Bad hinge motion: "+str(dCarbon)
 
-    dCarbon = (fixed[5] - _lvec3(f.xyz)).length()
+    dCarbon = (fixed[9] - _lvec3(f.xyz)).length()
     if dCarbon < 0.0005 or dCarbon > 0.1:
       return "Movers.Test() MoverHistidineFlip: Bad pivot motion: "+str(dCarbon)
 
@@ -1808,6 +1820,27 @@ def Test():
     dHydrogen = (fixed[11] - _lvec3(fh2.xyz)).length()
     if dHydrogen < 0.0005 or dHydrogen > 0.1:
       return "Movers.Test() MoverHistidineFlip: Bad pivot hydrogen motion: "+str(dHydrogen)
+
+    # Ensure that the Hydrogens moved along with their parent in the flip.
+    dHydrogen = (fixed[0] - fixed[1]).length()
+    oldDHydrogen = (_lvec3(ne2h.xyz)-_lvec3(ne2.xyz)).length()
+    if abs(dHydrogen-oldDHydrogen) > 0.0001:
+      return "Movers.Test() MoverHistidineFlip: Bad NE2-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+
+    dHydrogen = (fixed[2] - fixed[3]).length()
+    oldDHydrogen = (_lvec3(ce1h.xyz)-_lvec3(ce1.xyz)).length()
+    if abs(dHydrogen-oldDHydrogen) > 0.0001:
+      return "Movers.Test() MoverHistidineFlip: Bad CE1-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+
+    dHydrogen = (fixed[4] - fixed[5]).length()
+    oldDHydrogen = (_lvec3(nd1h.xyz)-_lvec3(nd1.xyz)).length()
+    if abs(dHydrogen-oldDHydrogen) > 0.0001:
+      return "Movers.Test() MoverHistidineFlip: Bad ND1-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+
+    dHydrogen = (fixed[6] - fixed[7]).length()
+    oldDHydrogen = (_lvec3(cd2h.xyz)-_lvec3(cd2.xyz)).length()
+    if abs(dHydrogen-oldDHydrogen) > 0.0001:
+      return "Movers.Test() MoverHistidineFlip: Bad CD2-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
   except Exception as e:
     return "Movers.Test() MoverHistidineFlip: Exception during test: "+str(e)+"\n"+traceback.format_exc()
