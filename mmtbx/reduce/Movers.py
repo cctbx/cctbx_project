@@ -599,24 +599,25 @@ class MoverNH2Flip:
     partners = bondedNeighborLists[nh2Atom]
     if len(partners) != 3:
       raise ValueError("MoverNH2Flip(): nh2Atom does not have three bonded neighbors")
-    hydrogens = []
+    nh2Hydrogens = []
     hinge = None
     for a in partners:
       if a.element == "H":
-        hydrogens.append(a)
+        nh2Hydrogens.append(a)
       else:
         hinge = a
-    if len(hydrogens) != 2:
+    if len(nh2Hydrogens) != 2:
       raise ValueError("MoverNH2Flip(): nh2Atom does not have two bonded hydrogens")
     if hinge is None:
       raise ValueError("MoverNH2Flip(): nh2Atom does not have bonded (hinge) Carbon friend")
+
     bonded = bondedNeighborLists[hinge]
     oyxgen = None
     pivot = None
     for b in bonded:
       if b.element == "O":
         oxygen = b
-      if b.element == "C":
+      elif b.element == "C":
         pivot = b
     if pivot is None:
       raise ValueError("MoverNH2Flip(): Hinge does not have bonded (pivot) Carbon friend")
@@ -624,28 +625,38 @@ class MoverNH2Flip:
       raise ValueError("MoverNH2Flip(): Hinge does not have bonded oxygen friend")
     if len(bondedNeighborLists[oxygen]) != 1:
       raise ValueError("MoverNH2Flip(): Oxygen has more than one bonded neighbor")
-    self._atoms = [ hydrogens[0], hydrogens[1], neighbor, oxygen, hinge, pivot ]
+    self._atoms = [ nh2Hydrogens[0], nh2Hydrogens[1], nh2Atom, oxygen, hinge, pivot ]
 
     # Find any linking atoms between the pivot atom and the Alpha Carbon and add them to the list.
+    # Also add hydrogens that are bound to the pivot and linker atoms.
     linkers = []
     prevID = hinge.i_seq
     foundAlpha = False
     cur = pivot
+    linkerHydrogens = []
     while not foundAlpha:
       bonded = bondedNeighborLists[cur]
       link = None
-      if len(bonded) != 2:
-        raise ValueError("MoverNH2Flip(): Linker chain has an element with other than two bonds")
+      if len(bonded) != 4:
+        raise ValueError("MoverNH2Flip(): Linker chain has an element with other than four bonds")
       for b in bonded:
-        if b.i_seq != prevID:
+        if b.i_seq == prevID:
+          continue
+        elif b.element == "C":
           link = b
+        elif b.element == "H":
+          linkerHydrogens.append(b)
       if link.i_seq == caAtom.i_seq:
         foundAlpha = True
       else:
         linkers.append(link)
         prevID = cur.i_seq
         cur = link
+    if len(linkerHydrogens) != 2*(len(linkers)+1):
+      raise ValueError("MoverNH2Flip(): Linker carbons do not have two Hydrogens each: "+
+        str(len(linkers))+","+str(len(linkerHydrogens)))
     self._atoms.extend(linkers)
+    self._atoms.extend(linkerHydrogens)
 
     #########################
     # Compute the new positions for the Hydrogens such that they are at the same distance from
@@ -657,7 +668,7 @@ class MoverNH2Flip:
     # Normal to the plane containing Nitrogen, Carbon, and Oxygen
     normal = _lvec3(scitbx.matrix.cross_product_matrix(cToO) * nToO).normalize()
 
-    hBondLen = (_rvec3(hydrogens[0].xyz) - _rvec3(neighbor.xyz)).length()
+    hBondLen = (_rvec3(nh2Hydrogens[0].xyz) - _rvec3(nh2Atom.xyz)).length()
     newH0 = _lvec3(oxygen.xyz) + ((-cToO.normalize()) * hBondLen).rotate_around_origin(normal, 120 * math.pi/180)
     newH1 = _lvec3(oxygen.xyz) + ((-cToO.normalize()) * hBondLen).rotate_around_origin(normal,-120 * math.pi/180)
 
@@ -715,6 +726,149 @@ class MoverHistidineFlip:
        bonded atoms.  Can be obtained by calling getBondedNeighborLists().
     """
 
+    # Verify that we've been run on a valid structure and get a list of all of the
+    # atoms up to and including the pivot atom.
+    if ne2Atom.element != "N":
+      raise ValueError("MoverHistidineFlip(): ne2Atom is not a Nitrogen")
+    partners = bondedNeighborLists[ne2Atom]
+    if len(partners) != 3:
+      raise ValueError("MoverHistidineFlip(): ne2Atom does not have three bonded neighbors")
+    hydrogens = []
+    carbons = []
+    for a in partners:
+      if a.element == "H":
+        hydrogens.append(a)
+      elif a.element == "C":
+        carbons.append(a)
+    if len(hydrogens) != 1:
+      raise ValueError("MoverHistidineFlip(): ne2Atom does not have one bonded hydrogen")
+    if len(carbon) != 2:
+      raise ValueError("MoverHistidineFlip(): ne2Atom does not have two bonded carbons")
+    ne2HAtom = hydrogens[0]
+
+    # Determine if the first Carbon is CE1, which is bonded to two hydrogens.  If not,
+    # then the second one must be.  Fill in CD2 and CE1 based on this information, then we
+    # can check them and continue parsing.
+    cTest = carbons[0]
+    bonded = bondedNeighborLists[cTest]
+    if len(bonded < 2):
+      raise ValueError("MoverHistidineFlip(): ne2Atom neighbor does not have at least two bonded neighbors")
+    cs = 0
+    for b in bonded:
+      if b.element == "C":
+        cs += 1
+    if cs == 0:
+      ce1Atom = carbons[0]
+      cd2Atom = carbons[1]
+    else:
+      ce1Atom = carbons[1]
+      cd2Atom = carbons[0]
+
+    # Find CG on the other side of CD2.
+    cgAtom = None
+    bonded = bondedNeighborLists[cd2Atom]
+    if len(bonded < 2):
+      raise ValueError("MoverHistidineFlip(): CD2 does not have at least two bonded neighbors")
+    for b in bonded:
+      if b.i_seq != cd2Atom.i_seq and b.element == "C":
+        cgAtom = b
+    if cgAtom is None:
+      raise ValueError("MoverHistidineFlip(): Could not find CG")
+
+    # Find CB and ND1 on the other side of CG
+    cbAtom = None
+    nd1Atom = None
+    bonded = bondedNeighborLists[cgAtom]
+    if len(bonded != 3):
+      raise ValueError("MoverHistidineFlip(): CG does not have three bonded neighbors")
+    for b in bonded:
+      if b.i_seq == cgAtom.i_seq:
+        continue
+      elif b.element == "N":
+        nd1Adom = b
+      elif b.element == "C":
+        cbAtom = b
+    if nd1Atom is None:
+      raise ValueError("MoverHistidineFlip(): Could not find ND1")
+    if cbAtom is None:
+      raise ValueError("MoverHistidineFlip(): Could not find CB")
+
+    # Find CA on the other side of CB
+    caAtom = None
+    bonded = bondedNeighborLists[cbAtom]
+    if len(bonded != 4):
+      raise ValueError("MoverHistidineFlip(): CB does not have four bonded neighbors")
+    for b in bonded:
+      if b.i_seq == cgAtom.i_seq:
+        continue
+      elif b.element == "C":
+        caAtom = b
+    if caAtom is None:
+      raise ValueError("MoverHistidineFlip(): Could not find CA")
+
+    # @todo Find Hydrogens above, some of which will go in head and others after pivot
+    # @todo Fix below here
+
+    hinge = None
+    for a in partners:
+      if a.element == "H":
+        hydrogens.append(a)
+      else:
+        hinge = a
+    if len(hydrogens) != 2:
+      raise ValueError("MoverHistidineFlip(): ne2Atom does not have two bonded hydrogens")
+    if hinge is None:
+      raise ValueError("MoverHistidineFlip(): ne2Atom does not have bonded (hinge) Carbon friend")
+    bonded = bondedNeighborLists[hinge]
+    oyxgen = None
+    pivot = None
+    for b in bonded:
+      if b.element == "O":
+        oxygen = b
+      if b.element == "C":
+        pivot = b
+    if pivot is None:
+      raise ValueError("MoverHistidineFlip(): Hinge does not have bonded (pivot) Carbon friend")
+    if oxygen is None:
+      raise ValueError("MoverHistidineFlip(): Hinge does not have bonded oxygen friend")
+    if len(bondedNeighborLists[oxygen]) != 1:
+      raise ValueError("MoverHistidineFlip(): Oxygen has more than one bonded neighbor")
+    self._atoms = [ hydrogens[0], hydrogens[1], ne2Atom, oxygen, hinge, pivot ]
+
+    # Find any linking atoms between the pivot atom and the Alpha Carbon and add them to the list.
+    linkers = []
+    prevID = hinge.i_seq
+    foundAlpha = False
+    cur = pivot
+    while not foundAlpha:
+      bonded = bondedNeighborLists[cur]
+      link = None
+      if len(bonded) != 2:
+        raise ValueError("MoverHistidineFlip(): Linker chain has an element with other than two bonds")
+      for b in bonded:
+        if b.i_seq != prevID:
+          link = b
+      if link.i_seq == caAtom.i_seq:
+        foundAlpha = True
+      else:
+        linkers.append(link)
+        prevID = cur.i_seq
+        cur = link
+    self._atoms.extend(linkers)
+
+    # @todo
+
+  def CoarsePositions(self):
+    # returns: The two possible coarse positions with 0 energy offset for either.
+    return PositionReturn(self._atoms, self._coarsePositions, [0.0, 0.0])
+
+  def FinePositions(self, coarseIndex):
+    # returns: No fine positions for any coarse position.
+    return PositionReturn([], [], [])
+
+  def FixUp(self, coarseIndex):
+    # Return the appropriate fixup
+    return FixUpReturn(self._atoms, self._fixUpPositions[coarseIndex])
 
 
 ##################################################################################
@@ -1238,6 +1392,14 @@ def Test():
     f.element = "C"
     f.xyz = [ 0.0, 0.0,-1.0 ]
 
+    fh1 = pdb.hierarchy.atom()
+    fh1.element = "H"
+    fh1.xyz = [ 1.0, 0.0,-1.0 ]
+
+    fh2 = pdb.hierarchy.atom()
+    fh2.element = "H"
+    fh2.xyz = [-1.0, 0.0,-1.0 ]
+
     ca = pdb.hierarchy.atom()
     ca.element = "C"
     ca.xyz = [ 0.0, 0.0,-2.0 ]
@@ -1270,6 +1432,8 @@ def Test():
     ag.append_atom(o)
     ag.append_atom(p)
     ag.append_atom(f)
+    ag.append_atom(fh1)
+    ag.append_atom(fh2)
     ag.append_atom(ca)
     rg = pdb.hierarchy.residue_group()
     rg.append_atom_group(ag)
@@ -1285,7 +1449,9 @@ def Test():
     bondedNeighborLists[n] = [ h1, h2, p ]
     bondedNeighborLists[o] = [ p ]
     bondedNeighborLists[p] = [ n, o, f ]
-    bondedNeighborLists[f] = [ p, ca ]
+    bondedNeighborLists[f] = [ p, ca, fh1, fh2 ]
+    bondedNeighborLists[fh1] = [ f ]
+    bondedNeighborLists[fh2] = [ f ]
     bondedNeighborLists[ca] = [ f ]
 
     mover = MoverNH2Flip(n, ca, bondedNeighborLists)
@@ -1294,7 +1460,7 @@ def Test():
     # Ensure that the results meet the specifications:
     # 1) New Oxygen on the line from the alpha carbon to the old Nitrogen
     # 2) New plane of Oxygen, Nitrogen, Alpha Carbon matches old plane, but flipped
-    # 3) Carbon has moved slightly due to rigid-body motion
+    # 3) Carbons and pivot Hydrogens move slightly due to rigid-body motion
 
     newODir = (fixed[3] - _lvec3(f.xyz)).normalize()
     oldNDir = (_rvec3(n.xyz) - _rvec3(f.xyz)).normalize()
@@ -1317,10 +1483,19 @@ def Test():
     if dCarbon < 0.0005 or dCarbon > 0.1:
       return "Movers.Test() MoverNH2Flip basic: Bad pivot motion: "+str(dCarbon)
 
+    dHydrogen = (fixed[6] - _lvec3(fh1.xyz)).length()
+    if dHydrogen < 0.0005 or dHydrogen > 0.1:
+      return "Movers.Test() MoverNH2Flip basic: Bad pivot hydrogen motion: "+str(dHydrogen)
+
+    dHydrogen = (fixed[7] - _lvec3(fh2.xyz)).length()
+    if dHydrogen < 0.0005 or dHydrogen > 0.1:
+      return "Movers.Test() MoverNH2Flip basic: Bad pivot hydrogen motion: "+str(dHydrogen)
+
   except Exception as e:
     return "Movers.Test() MoverNH2Flip basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
   # Test the MoverNH2Flip class with a linker (similar to Gln).
+  # @todo Add Hydrogens to the pivot and linker Carbons and check that they move as well.
   try:
     # Test behavior with offsets for each atom so that we test the generic case.
     # Construct a MoverNH2Flip that has the N, H's and Oxygen located (non-physically)
@@ -1336,9 +1511,25 @@ def Test():
     f.element = "C"
     f.xyz = [ 0.0, 0.0,-1.0 ]
 
+    fh1 = pdb.hierarchy.atom()
+    fh1.element = "H"
+    fh1.xyz = [ 1.0, 0.0,-1.0 ]
+
+    fh2 = pdb.hierarchy.atom()
+    fh2.element = "H"
+    fh2.xyz = [-1.0, 0.0,-1.0 ]
+
     ln = pdb.hierarchy.atom()
     ln.element = "C"
     ln.xyz = [ 0.0, 0.0,-2.0 ]
+
+    lnh1 = pdb.hierarchy.atom()
+    lnh1.element = "H"
+    lnh1.xyz = [ 1.0, 0.0,-2.0 ]
+
+    lnh2 = pdb.hierarchy.atom()
+    lnh2.element = "H"
+    lnh2.xyz = [-1.0, 0.0,-2.0 ]
 
     ca = pdb.hierarchy.atom()
     ca.element = "C"
@@ -1372,7 +1563,11 @@ def Test():
     ag.append_atom(o)
     ag.append_atom(p)
     ag.append_atom(f)
+    ag.append_atom(fh1)
+    ag.append_atom(fh2)
     ag.append_atom(ln)
+    ag.append_atom(lnh1)
+    ag.append_atom(lnh2)
     ag.append_atom(ca)
     rg = pdb.hierarchy.residue_group()
     rg.append_atom_group(ag)
@@ -1388,8 +1583,12 @@ def Test():
     bondedNeighborLists[n] = [ h1, h2, p ]
     bondedNeighborLists[o] = [ p ]
     bondedNeighborLists[p] = [ n, o, f ]
-    bondedNeighborLists[f] = [ p, ln ]
-    bondedNeighborLists[ln] = [ f, ca ]
+    bondedNeighborLists[f] = [ p, ln, fh1, fh2 ]
+    bondedNeighborLists[fh1] = [ f ]
+    bondedNeighborLists[fh2] = [ f ]
+    bondedNeighborLists[ln] = [ f, ca, lnh1, lnh2 ]
+    bondedNeighborLists[lnh1] = [ ln ]
+    bondedNeighborLists[lnh2] = [ ln ]
     bondedNeighborLists[ca] = [ ln ]
 
     mover = MoverNH2Flip(n, ca, bondedNeighborLists)
@@ -1398,7 +1597,7 @@ def Test():
     # Ensure that the results meet the specifications:
     # 1) New Oxygen on the line from the alpha carbon to the old Nitrogen
     # 2) New plane of Oxygen, Nitrogen, Alpha Carbon matches old plane, but flipped
-    # 3) Carbon has moved slightly due to rigid-body motion
+    # 3) Pivot and linker Carbons and Hydrogens move slightly due to rigid-body motion
 
     newODir = (fixed[3] - _lvec3(f.xyz)).normalize()
     oldNDir = (_rvec3(n.xyz) - _rvec3(f.xyz)).normalize()
@@ -1424,6 +1623,23 @@ def Test():
     dCarbon = (fixed[6] - _lvec3(ln.xyz)).length()
     if dCarbon < 0.0002 or dCarbon > 0.1:
       return "Movers.Test() MoverNH2Flip linked: Bad linker motion: "+str(dCarbon)
+
+    # Hydrogens come after all linkers
+    dHydrogen = (fixed[7] - _lvec3(fh1.xyz)).length()
+    if dHydrogen < 0.0004 or dHydrogen > 0.1:
+      return "Movers.Test() MoverNH2Flip linked: Bad pivot hydrogen motion: "+str(dHydrogen)
+
+    dHydrogen = (fixed[8] - _lvec3(fh2.xyz)).length()
+    if dHydrogen < 0.0004 or dHydrogen > 0.1:
+      return "Movers.Test() MoverNH2Flip linked: Bad pivot hydrogen motion: "+str(dHydrogen)
+
+    dHydrogen = (fixed[9] - _lvec3(lnh1.xyz)).length()
+    if dHydrogen < 0.0002 or dHydrogen > 0.1:
+      return "Movers.Test() MoverNH2Flip linked: Bad linker hydrogen motion: "+str(dHydrogen)
+
+    dHydrogen = (fixed[10] - _lvec3(lnh2.xyz)).length()
+    if dHydrogen < 0.0002 or dHydrogen > 0.1:
+      return "Movers.Test() MoverNH2Flip linked: Bad linker hydrogen motion: "+str(dHydrogen)
 
   except Exception as e:
     return "Movers.Test() MoverNH2Flip linked: Exception during test: "+str(e)+"\n"+traceback.format_exc()
@@ -1526,7 +1742,8 @@ def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, 
      The order of atoms is as follows: The first ones are in the set that is rotated
      around the vector from the hinge atom to the pivot atom.  Then comes the hinge
      atom, then the pivot atom.  Then all of the atoms between the pivot and the
-     Alpha Carbon (if any), excluding the Alpha Carbon itself.
+     Alpha Carbon (if any) including any Hydrogens bound to the pivot atom or the
+     linking atoms, excluding the Alpha Carbon itself.
      :param hingeIndex: Index in the movableAtoms array that tells which is
      the atom to hinge around (this will be a Carbon atom).
      :param firstDockIndex: Index in the movableAtoms array that tells which is
