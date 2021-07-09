@@ -668,9 +668,10 @@ class MoverNH2Flip:
     # Normal to the plane containing Nitrogen, Carbon, and Oxygen
     normal = _lvec3(scitbx.matrix.cross_product_matrix(cToO) * nToO).normalize()
 
-    hBondLen = (_rvec3(nh2Hydrogens[0].xyz) - _rvec3(nh2Atom.xyz)).length()
-    newH0 = _lvec3(oxygen.xyz) + ((-cToO.normalize()) * hBondLen).rotate_around_origin(normal, 120 * math.pi/180)
-    newH1 = _lvec3(oxygen.xyz) + ((-cToO.normalize()) * hBondLen).rotate_around_origin(normal,-120 * math.pi/180)
+    hBond0Len = (_rvec3(nh2Hydrogens[0].xyz) - _rvec3(nh2Atom.xyz)).length()
+    hBond1Len = (_rvec3(nh2Hydrogens[1].xyz) - _rvec3(nh2Atom.xyz)).length()
+    newH0 = _lvec3(oxygen.xyz) + ((-cToO.normalize()) * hBond0Len).rotate_around_origin(normal, 120 * math.pi/180)
+    newH1 = _lvec3(oxygen.xyz) + ((-cToO.normalize()) * hBond1Len).rotate_around_origin(normal,-120 * math.pi/180)
 
     #########################
     # Compute the list of positions for all of the atoms. This consists of the original
@@ -1485,13 +1486,38 @@ def Test():
     bondedNeighborLists[ca] = [ f ]
 
     mover = MoverNH2Flip(n, ca, bondedNeighborLists)
-    fixed = mover.FixUp(1).newPositions
 
-    # Ensure that the results meet the specifications:
+    # Ensure that the coarse-flip results meet the expections:
+    # 1) N and O are flipped in position
+    # 2) H remain at the same distance from the new N.
+
+    coarse = mover.CoarsePositions()
+    if len(coarse.positions) != 2:
+      return "Movers.Test() MoverNH2Flip basic: Did not find two locations: "+str(len(coarse.positions))
+    newPos = coarse.positions[1]
+    dist = (_lvec3(newPos[2]) - _lvec3(o.xyz)).length()
+    if dist > 0.01:
+      return "Movers.Test() MoverNH2Flip basic: Nitrogen moved incorrectly: "+str(dist)
+    dist = (_lvec3(newPos[3]) - _lvec3(n.xyz)).length()
+    if dist > 0.01:
+      return "Movers.Test() MoverNH2Flip basic: Oxygen moved incorrectly: "+str(dist)
+
+    dHydrogen = (_lvec3(newPos[0]) - _lvec3(newPos[2])).length()
+    oldDHydrogen = (_lvec3(h1.xyz)-_lvec3(n.xyz)).length()
+    if abs(dHydrogen - oldDHydrogen) > 0.0001:
+      return "Movers.Test() MoverNH2Flip basic: Bad coarse hydrogen1 motion: "+str(dHydrogen-oldDHydrogen)
+
+    dHydrogen = (_lvec3(newPos[1]) - _lvec3(newPos[2])).length()
+    oldDHydrogen = (_lvec3(h2.xyz)-_lvec3(n.xyz)).length()
+    if abs(dHydrogen - oldDHydrogen) > 0.0001:
+      return "Movers.Test() MoverNH2Flip basic: Bad coarse hydrogen2 motion: "+str(dHydrogen-oldDHydrogen)
+
+    # Ensure that the Fixup results meet the specifications:
     # 1) New Oxygen on the line from the alpha carbon to the old Nitrogen
     # 2) New plane of Oxygen, Nitrogen, Alpha Carbon matches old plane, but flipped
     # 3) Carbons and pivot Hydrogens move slightly due to rigid-body motion
 
+    fixed = mover.FixUp(1).newPositions
     newODir = (fixed[3] - _lvec3(f.xyz)).normalize()
     oldNDir = (_rvec3(n.xyz) - _rvec3(f.xyz)).normalize()
     if (newODir * oldNDir)[0] < 0.9999:
