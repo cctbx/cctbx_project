@@ -1124,7 +1124,7 @@ class AdvancedSettingsDialog(BaseDialog):
       if self.chk_auto_nproc_per_node.GetValue():
         self.params.mp.nproc_per_node = None
       else:
-        self.params.mp.nproc_per_node = int(self.nproc_per_node.GetValue())
+        self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
       self.params.mp.queue = self.queue_text.ctr.GetValue()
       if self.mp_option.ctr.GetStringSelection() in ['shifter', 'slurm']:
         self.params.mp.nnodes_index = int(self.nnodes_index.ctr.GetValue())
