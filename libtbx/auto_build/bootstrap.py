@@ -833,7 +833,9 @@ class phenix_module(SourceModule):
 
 class phenix_html(SourceModule):
   module = 'phenix_html'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_html/trunk']
+  anonymous = ['git',
+               'git@github.com:phenix-project/phenix_html.git',
+               'https://github.com/phenix-project/phenix_html.git']
 
 class phenix_dev_doc(SourceModule):
   module = 'phenix_dev_doc'
