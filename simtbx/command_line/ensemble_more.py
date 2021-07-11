@@ -61,6 +61,12 @@ space_group = P6522
 first_n = None
   .type = int
   .help = refine the first n shots only
+maxiter = None
+  .type = int
+  .help = stop refiner after this many iters
+disp = False
+  .type = bool
+  .help = scipy minimize convergence printouts
 """
 
 phil_scope = parse(ensemble_phil, process_includes=True)
@@ -469,12 +475,15 @@ class DataModeler:
         self.all_slow =None
         self.rois=None
         self.pids=None
+        self.refls_idx = None
+        self.all_refls_idx = None
         self.tilt_abc=None
         self.selection_flags=None
         self.background=None
         self.tilt_cov = None
         self.simple_weights = None
         self.ref_id = None
+        self.ref_name = None
 
         self.Hi_asu = None
         self.hi_asu_perpix = None
@@ -496,9 +505,9 @@ class DataModeler:
         if self.params.opt_det is not None:
             opt_det_E = ExperimentListFactory.from_json_file(self.params.opt_det, False)[0]
             self.E.detector = opt_det_E.detector
-
+        self.ref_name = ref
         refls = flex.reflection_table.from_file(ref)
-        refls["refl_idx"] = flex.int(list(range(len(refls))))
+        refls["refls_idx"] = flex.int(list(range(len(refls))))
         if ref_indices is not None:
             refl_sel = np.zeros(len(refls), bool)
             for i_roi in ref_indices:
@@ -535,6 +544,8 @@ class DataModeler:
         self.rois = [roi for i_roi, roi in enumerate(self.rois) if self.selection_flags[i_roi]]
         self.tilt_abc = [abc for i_roi, abc in enumerate(self.tilt_abc) if self.selection_flags[i_roi]]
         self.pids = [pid for i_roi, pid in enumerate(self.pids) if self.selection_flags[i_roi]]
+
+        self.refls_idx = [refls[i_roi]["refls_idx"] for i_roi in range(len(refls)) if self.selection_flags[i_roi]]
         self.tilt_cov = [cov for i_roi, cov in enumerate(self.tilt_cov) if self.selection_flags[i_roi]]
         #self.refl_index = [refls[i_roi]["refl_index"] for i_roi in range(len(self.rois)) if self.selection_flags[i_roi]]
 
@@ -544,6 +555,7 @@ class DataModeler:
         self.Hi_asu = utils.map_hkl_list(Hi, True, sg_symbol)
 
         all_data = []
+        all_refls_idx = []
         hi_asu_perpix = []
         all_pid = []
         all_fast = []
@@ -576,6 +588,7 @@ class DataModeler:
             all_data += list(data)
             npix = len(data)  # np.sum(trusted)
             all_pid += [pid] * npix
+            all_refls_idx += [self.refls_idx[i_roi]] * npix
             hi_asu_perpix += [self.Hi_asu[i_roi]] * npix
             roi_id += [i_roi] * npix
             self.all_nominal_hkl += [tuple(Hi[i_roi])]*npix  # this is the nominal l component of the miller index in the P1 setting
@@ -593,6 +606,7 @@ class DataModeler:
         self.npix_total = len(all_data)
         self.simple_weights = 1/self.all_sigmas**2
         self.u_id = set(self.roi_id)
+        self.all_refls_idx = np.array(all_refls_idx)
         return True
 
     def SimulatorParamsForExperiment(self, best=None):
@@ -669,7 +683,7 @@ def Minimize(x0, rank_xidx, params, SIM, Modelers, ntimes, nshots_total):
     out = basinhopping(target, x0,
                        niter=niter,
                        minimizer_kwargs={'args': args, "method": params.method,
-                                         "jac": jac,
+                           "jac": jac,'options':{'maxiter':params.maxiter, 'disp': params.disp},
                                          'hess': params.hess},
                        T=params.temp,
                        callback=None,
@@ -797,7 +811,8 @@ def model(x, SIM, Modeler, compute_grad=True, sanity_test=None):
 
     # compute the forward model, and gradients when instructed
     SIM.D.add_diffBragg_spots(pfs, Modeler.all_nominal_hkl)
-    bragg = scale*(SIM.D.raw_pixels_roi[:npix].as_numpy_array())
+    bragg_no_scale = SIM.D.raw_pixels_roi[:npix].as_numpy_array()
+    bragg = scale*bragg_no_scale
 
     model_pix = bragg + Modeler.all_background
     resid = (Modeler.all_data - model_pix)
@@ -808,7 +823,7 @@ def model(x, SIM, Modeler, compute_grad=True, sanity_test=None):
         common_grad_term = (0.5 / V * (1 - 2 * resid - resid_square / V))
 
         # compute the scale factor gradient term, which is related directly to the forward model
-        scale_grad = bragg / scale
+        scale_grad = bragg_no_scale 
         scale_grad = PAR.Scale.get_deriv(scale_reparam, scale_grad)
         grad[0] += (common_grad_term * scale_grad)[Modeler.all_trusted].sum()
 
@@ -890,9 +905,11 @@ def model(x, SIM, Modeler, compute_grad=True, sanity_test=None):
     #    #        raise ValueError("Scale factor gradient is Nan!")
 
 
-    #assert not np.any(np.isnan(grad)) , "%s, %s" % \
-    #    (Modeler.exp_name, ",".join( [str(x) for x in np.where(np.isnan(grad))[0]] ) )
-    #if np.any(np.isnan(grad)):
+    grad_is_nan = np.isnan(grad)
+    assert not np.any(grad_is_nan) , "%s, %s" % \
+        (Modeler.exp_name, ",".join( [str(x) for x in np.where(grad_is_nan)[0]] ) )
+    #    bad_i = np.where(grad_is_nan)[0]
+    #    for i in bad_i:
     #    print("")
     #    print(Modeler.exp_name)
 
@@ -1117,7 +1134,12 @@ def save_model_Z(img_path, Modeler, model_pix):
         h5.create_dataset("pids", data=pids, **comp)
         h5.create_dataset("ys", data=ys, **comp)
         h5.create_dataset("xs", data=xs, **comp)
+        h5.create_dataset("refls_idx", data=Modeler.all_refls_idx, **comp)
         h5.create_dataset("trusted", data=Modeler.all_trusted, **comp)
+
+        h5.create_dataset("exp_name", data=Modeler.exp_name)
+        h5.create_dataset("ref_name", data=Modeler.ref_name)
+
 
 
 class Fhkl_updater:
