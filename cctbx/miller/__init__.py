@@ -2283,6 +2283,27 @@ class array(set):
       result = merged.array()
       info = info.customized_copy(merged=True)
     result = result.map_to_asu()
+    if(not result.sigmas_are_sensible()):
+      result = result.customized_copy(
+        indices=result.indices(),
+        data=result.data(),
+        sigmas=None).set_observation_type(result)
+    sel = result.indices()==(0,0,0)
+    if(not sel.all_eq(False)):
+      result = result.select(~sel)
+    sigmas = result.sigmas()
+    if(sigmas is not None):
+      selection  = sigmas > 0
+      selection &= result.data()>=0
+      n_both_zero = selection.count(False)
+      if(n_both_zero>0):
+        result = result.select(selection)
+    if(result.is_xray_intensity_array() or result.is_xray_amplitude_array()):
+      selection_zero = result.data() == 0
+      result = result.select(~selection_zero)
+    if(result.is_xray_amplitude_array()):
+      selection_positive = result.data() >= 0
+      result = result.select(selection_positive)
     return result.set_info(info)
 
   def as_double(self):

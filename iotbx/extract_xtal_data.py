@@ -236,19 +236,24 @@ class run(object):
     adopt_init_args(self, locals())
     if(self.parameters is None):
       self.parameters = data_and_flags_master_params().extract()
-    self.f_obs                      = None
     self.r_free_flags               = None
     self.test_flag_value            = None
     self.r_free_flags_md5_hexdigest = None
     # Get data first
-    self.raw_data = self.extract_data()
-    self.f_obs = self.data_as_f_obs(f_obs = self.raw_data)
+    self.raw_data            = self.extract_data()
+    # Apply resolution and sigma cutoffs, if requested
+    self.raw_data_truncated  = self.apply_cutoffs()
+    self.raw_flags_truncated = None
+    # Convert to usable Fobs
+    self.f_obs               = self.data_as_f_obs()
     # Then extract or generate flags
     self.raw_flags = None
     if(extract_r_free_flags):
-      self.raw_flags = self.extract_flags(data = self.raw_data)
+      self.raw_flags = self.extract_flags()
       if(self.raw_flags is not None):
         flags_info = self.raw_flags.info()
+        self.raw_flags_truncated = self.raw_flags.common_set(
+          self.raw_data_truncated)
     if(extract_r_free_flags and self.raw_flags is not None):
       self.get_r_free_flags()
       self.r_free_flags.set_info(flags_info)
@@ -259,6 +264,25 @@ class run(object):
       self.f_obs, self.r_free_flags = self.f_obs.common_sets(self.r_free_flags)
       self.f_obs        = self.f_obs.set_info(f_obs_info)
       self.r_free_flags = self.r_free_flags.set_info(flags_info)
+
+  def show_summary(self, prefix=""):
+    log = self.log
+    if(log is None): log = sys.stdout
+    print("%sInput data summary:"%prefix, file=log)
+    self.raw_data.show_comprehensive_summary(f=log, prefix="  "+prefix)
+    if(not self.raw_data.indices().all_eq(self.f_obs.indices()) or
+       type(self.raw_data.observation_type()) !=
+       type(self.f_obs.observation_type())):
+      print(prefix, file=log)
+      print("%sData used summary:"%prefix, file=log)
+      self.f_obs.show_comprehensive_summary(f=log, prefix="  "+prefix)
+    if(self.r_free_flags is not None):
+      print(prefix, file=log)
+      print("%sFree-R flags summary:"%prefix, file=log)
+      self.r_free_flags.show_comprehensive_summary(f=log, prefix="  "+prefix)
+      print("%s  Test (R-free) flag value: %d"%(prefix, self.test_flag_value),
+        file=self.log)
+      self.r_free_flags.show_r_free_flags_info(out=log, prefix="  "+prefix)
 
   def get_r_free_flags(self):
     self.r_free_flags,self.test_flag_value,self.r_free_flags_md5_hexdigest =\
@@ -285,9 +309,10 @@ class run(object):
         log                   = self.log)
     return data.regularize()
 
-  def extract_flags(self, data, data_description = "R-free flags"):
+  def extract_flags(self, data_description = "R-free flags"):
     r_free_flags, test_flag_value = None, None
     params = self.parameters.r_free_flags
+    # Extract
     if(not self.parameters.r_free_flags.generate):
       try:
         r_free_flags, test_flag_value = \
@@ -308,29 +333,23 @@ class run(object):
         params.file_name       = r_free_flags.info().source
         params.label           = r_free_flags.info().label_string()
         params.test_flag_value = test_flag_value
-        print(data_description+":", file=self.log)
-        print(" ", r_free_flags.info(), file=self.log)
-
         if([self.working_point_group,
-           self.symmetry_safety_check].count(None) == 0):
+            self.symmetry_safety_check].count(None) == 0):
           miller_array_symmetry_safety_check(
             miller_array          = r_free_flags,
             data_description      = data_description,
             working_point_group   = self.working_point_group,
             symmetry_safety_check = self.symmetry_safety_check,
             log                   = self.log)
-          print(file=self.log)
-
         info = r_free_flags.info()
         try:
           processed = r_free_flags.regularize()
         except RuntimeError as e:
           raise Sorry("Bad free-r flags:\n %s"%str(e))
-
         if (self.force_non_anomalous):
           processed = processed.average_bijvoet_mates()
         r_free_flags = processed.set_info(info)
-
+    # Generate or stop
     if(r_free_flags is None):
       if ((params.fraction is None) or
           (params.lattice_symmetry_max_delta is None) or
@@ -346,7 +365,7 @@ class run(object):
           "disable generation of new flags.  If the program you are running "+
           "outputs an MTZ file, you should be sure to use that file in all "+
           "future refinements.")
-      r_free_flags = data.generate_r_free_flags(
+      r_free_flags = self.f_obs.generate_r_free_flags(
         fraction                   = params.fraction,
         max_free                   = params.max_free,
         lattice_symmetry_max_delta = params.lattice_symmetry_max_delta,
@@ -354,14 +373,38 @@ class run(object):
         use_dataman_shells         = params.use_dataman_shells,
         n_shells                   = params.n_shells
         ).set_info(miller.array_info(labels = ["R-free-flags"]))
-      params.label = r_free_flags.info().label_string()
+      params.label           = r_free_flags.info().label_string()
       params.test_flag_value = 1
     # check if anomalous pairs are sound
     if(r_free_flags is not None):
       r_free_flags.deep_copy().as_non_anomalous_array()
+    # make sure flags match anomalous flag of data
+    if(self.raw_data.anomalous_flag() and not r_free_flags.anomalous_flag()):
+      info = r_free_flags.info()
+      observation_type = r_free_flags.observation_type()
+      r_free_flags = r_free_flags.generate_bijvoet_mates()
+      r_free_flags.set_observation_type(observation_type)
+      r_free_flags.set_info(info)
     return r_free_flags
 
-  def data_as_f_obs(self, f_obs):
+  def apply_cutoffs(self):
+    if(self.raw_data is None): return None
+    selection = self.raw_data.all_selection()
+    dd = self.raw_data.d_spacings().data()
+    if(self.parameters.low_resolution is not None):
+      selection &= dd <= self.parameters.low_resolution
+    if(self.parameters.high_resolution is not None):
+      selection &= dd >= self.parameters.high_resolution
+    if(self.raw_data.sigmas() is not None):
+      sigma_cutoff = self.parameters.sigma_fobs_rejection_criterion
+      if(sigma_cutoff is not None and sigma_cutoff > 0):
+        s = self.raw_data.data() > self.raw_data.sigmas()*sigma_cutoff
+        selection &= s
+    if(selection.count(True) == 0):
+      raise Sorry("No data left after applying resolution and sigma cutoffs.")
+    return self.raw_data.select(selection)
+
+  def data_as_f_obs(self):
     """
     Convert input data array to amplitudes, adjusting the data type and
     applying additional filters if necessary.
@@ -370,132 +413,46 @@ class run(object):
     :returns: :py:class:`cctbx.miller.array` of real numbers with observation
       type set to amplitudes
     """
-
+    if(self.raw_data_truncated is None): return None
+    f_obs = self.raw_data_truncated.deep_copy()
+    # Convert to non-anomalous if requested
     if(self.force_non_anomalous):
       f_obs = f_obs.average_bijvoet_mates()
-
-    if(not f_obs.sigmas_are_sensible()):
-      f_obs = f_obs.customized_copy(
-        indices=f_obs.indices(),
-        data=f_obs.data(),
-        sigmas=None).set_observation_type(f_obs)
-    # Delete F(0,0,0) if present
-    sel = f_obs.indices()==(0,0,0)
-    if(sel.count(True)>0):
-      print("F(0,0,0) will be removed.", file=self.log)
-      f_obs = f_obs.select(~sel)
     #
     d_min = f_obs.d_min()
-    if(d_min < 0.25): # XXX what is the equivalent for neutrons ???
+    if(d_min < 0.25):
       raise Sorry("Resolution of data is too high: %-6.4f A"%d_min)
-    f_obs.show_comprehensive_summary(f = self.log)
-    f_obs_data_size = f_obs.data().size()
-    print(file=self.log)
     if(f_obs.is_complex_array()): f_obs = abs(f_obs)
-    f_obs_fw = None
     if(f_obs.is_xray_intensity_array()):
       if(self.parameters.french_wilson_scale):
         try:
-          f_obs_fw = french_wilson.french_wilson_scale(
-            miller_array=f_obs,
-            params=self.parameters.french_wilson,
-            sigma_iobs_rejection_criterion=\
-              self.parameters.sigma_iobs_rejection_criterion,
-            log=self.log)
+          sigI_cutoff = self.parameters.sigma_iobs_rejection_criterion
+          f_obs = french_wilson.french_wilson_scale(
+            miller_array                   = f_obs,
+            params                         = self.parameters.french_wilson,
+            sigma_iobs_rejection_criterion = sigI_cutoff,
+            log                            = self.log)
         except Exception as e:
           print(str(e), file=self.log)
           print("Using alternative Iobs->Fobs conversion.", file=self.log)
-          f_obs_fw = f_obs.f_sq_as_f()
-        if f_obs_fw is not None:
-          f_obs = f_obs_fw
-      if (not self.parameters.french_wilson_scale or f_obs_fw is None):
-        selection_by_isigma = self._apply_sigma_cutoff(
-          f_obs   = f_obs,
-          n       = self.parameters.sigma_iobs_rejection_criterion,
-          message = "Number of reflections with |Iobs|/sigma(Iobs) < %5.2f: %d")
-        if(selection_by_isigma is not None):
-          f_obs = f_obs.select(selection_by_isigma)
-        f_obs = f_obs.f_sq_as_f()
-      print("Intensities converted to amplitudes for use in refinement.", file=self.log)
-      print(file=self.log)
-    #
-    sigmas = f_obs.sigmas()
-    if(sigmas is not None):
-      selection  = sigmas > 0
-      selection &= f_obs.data()>=0
-      n_both_zero = selection.count(False)
-      if(n_both_zero>0):
-        print("Number of pairs (Fobs,sigma)=(0,0) is %s. They will be removed"%\
-          n_both_zero, file=self.log)
-        f_obs = f_obs.select(selection)
+          f_obs = f_obs.f_sq_as_f()
     #
     f_obs.set_observation_type_xray_amplitude()
-#    f_obs = f_obs.map_to_asu()
-    selection = f_obs.all_selection()
-    if(self.parameters.low_resolution is not None):
-      selection &= f_obs.d_spacings().data() <= self.parameters.low_resolution
-    if(self.parameters.high_resolution is not None):
-      selection &= f_obs.d_spacings().data() >= self.parameters.high_resolution
-    selection_positive = f_obs.data() >= 0
-    print("Number of F-obs in resolution range:                  ", \
-      selection.count(True), file=self.log)
-    print("Number of F-obs<0 (these reflections will be rejected):", \
-      selection_positive.count(False), file=self.log)
-    selection_zero = f_obs.data() == 0
-    print("Number of F-obs=0 (these reflections will be used in refinement):", \
-      selection_zero.count(True), file=self.log)
-    selection &= selection_positive
-    selection_by_fsigma = self._apply_sigma_cutoff(
-      f_obs   = f_obs,
-      n       = self.parameters.sigma_fobs_rejection_criterion,
-      message = "Number of reflections with |Fobs|/sigma(Fobs) < %5.2f: %d")
-    if(selection_by_fsigma is not None): selection &= selection_by_fsigma
-    selection &= f_obs.d_star_sq().data() > 0
-    f_obs = f_obs.select(selection)
-    rr = f_obs.resolution_range()
-    print("Refinement resolution range: d_max = %8.4f" % rr[0], file=self.log)
-    print("                             d_min = %8.4f" % rr[1], file=self.log)
-    print(file=self.log)
-    if(f_obs.indices().size() == 0):
-      raise Sorry(
-        "No data left after applying resolution limits and sigma cutoff.")
     if(self.parameters.force_anomalous_flag_to_be_equal_to is not None):
       if(not self.parameters.force_anomalous_flag_to_be_equal_to):
-        print("force_anomalous_flag_to_be_equal_to=False", file=self.log)
         if(f_obs.anomalous_flag()):
-          print("Reducing data to non-anomalous array.", file=self.log)
           merged = f_obs.as_non_anomalous_array().merge_equivalents()
-          merged.show_summary(out = self.log, prefix="  ")
           f_obs = merged.array().set_observation_type( f_obs )
-          del merged
-          print(file=self.log)
       elif(not f_obs.anomalous_flag()):
-        print("force_anomalous_flag_to_be_equal_to=True", file=self.log)
-        print("Generating Bijvoet mates of X-ray data.", file=self.log)
         observation_type = f_obs.observation_type()
         f_obs = f_obs.generate_bijvoet_mates()
         f_obs.set_observation_type(observation_type)
-        print(file=self.log)
     else:
       f_obs = f_obs.convert_to_non_anomalous_if_ratio_pairs_lone_less_than(
         threshold=self.parameters.
           convert_to_non_anomalous_if_ratio_pairs_lone_less_than_threshold)
-    if(f_obs_data_size != f_obs.data().size()):
-      print("\nFobs statistics after all cutoffs applied:\n", file=self.log)
-      f_obs.show_comprehensive_summary(f = self.log)
     f_obs.set_info(self.raw_data.info())
     return f_obs
-
-  def _apply_sigma_cutoff(self, f_obs, n, message):
-    selection = None
-    if(f_obs.sigmas() is not None):
-      sigma_cutoff = n
-      if(sigma_cutoff is not None and sigma_cutoff > 0):
-        selection_by_sigma = f_obs.data() > f_obs.sigmas()*sigma_cutoff
-        print(message % (sigma_cutoff,
-          selection_by_sigma.count(False)), file=self.log)
-        selection = selection_by_sigma
-    return selection
 
   def flags_as_r_free_flags(self,
         f_obs,
@@ -507,10 +464,6 @@ class run(object):
         "for the data with label(s) '%s'.  This may happen if they are all "+
         "a single value; please check the file to make sure the flags are "+
         "suitable for use.") % self.parameters.r_free_flags.label)
-    r_free_flags.show_comprehensive_summary(f = self.log)
-    print(file=self.log)
-    print("Test (R-free flags) flag value:", test_flag_value, file=self.log)
-    print(file=self.log)
     if (isinstance(r_free_flags.data(), flex.bool)):
       r_free_flags = r_free_flags.array(
         data = r_free_flags.data() == bool(test_flag_value))
@@ -566,7 +519,6 @@ class run(object):
         if (n_not_shown != 0):
           msg.append("    ... (remaining %d not shown)" % n_not_shown)
       raise Sorry("\n".join(msg))
-    r_free_flags.show_r_free_flags_info(out = self.log, prefix="")
     return r_free_flags, test_flag_value, r_free_flags_md5_hexdigest
 
   def verify_r_free_flags_md5_hexdigest(self,
