@@ -90,6 +90,12 @@ class interpreter(object):
       expected=expected,
       unexpected=unexpected)
 
+class mon_lib_names_hidden(list):
+  def __init__(self, l):
+    self.old_names = []
+    for i in range(l):
+      self.append(None)
+
 class matched_atom_names(object):
 
   def __init__(self, interpreter, atom_names, expected, unexpected):
@@ -142,7 +148,7 @@ class matched_atom_names(object):
     return result
 
   def mon_lib_names(self):
-    result = [None] * len(self.atom_names)
+    result = mon_lib_names_hidden(len(self.atom_names))
     name_indices = {}
     for i,name in enumerate(self.atom_names):
       name_indices.setdefault(name, []).append(i)
