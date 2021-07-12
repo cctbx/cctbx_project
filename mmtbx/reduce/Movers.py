@@ -283,7 +283,8 @@ class _MoverRotator:
 
 ##################################################################################
 class MoverSingleHydrogenRotator(_MoverRotator):
-  def __init__(self, atom, bondedNeighborLists, coarseStepDegrees = 30.0,
+  def __init__(self, atom, bondedNeighborLists, potentialAcceptors = [],
+                  coarseStepDegrees = 10.0,
                   fineStepDegrees = 1.0, preferredOrientationScale = 1.0):
     """ A Mover that rotates a single Hydrogen around an axis from its bonded partner
        to the single bonded partner of its partner.  This is designed for use with OH,
@@ -298,6 +299,9 @@ class MoverSingleHydrogenRotator(_MoverRotator):
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
        bonded atoms.  Can be obtained by calling getBondedNeighborLists().
+       :param potentialAcceptors: A flex array of atoms that are nearby potential acceptors.
+       Coarse orientations are added that aim the hydrogen in the direction of these potential
+       partners.
        :param coarseStepDegrees: The coarse step to take.
        :param fineStepDegrees: The fine step to take.
        :param preferredOrientationScale: How much to scale the preferred-orientation
@@ -355,6 +359,18 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     _MoverRotator.__init__(self, atoms, axis, 180, coarseStepDegrees = coarseStepDegrees,
       fineStepDegrees = fineStepDegrees, preferenceFunction = preferenceFunction, 
       preferredOrientationScale = preferredOrientationScale)
+
+    # Now add orientations that point in the direction of the potential acceptors.
+    # @todo The original C++ code aimed only at these (or near them for clashes) and in a
+    # direction far from clashes.  We may need to do this for speed reasons and to reduce the
+    # number of elements in each clique, but for now we try all coarse orientations.
+
+    # Compute the dihedral angle from the Hydrogen to the potential acceptor through
+    # the partner and neighbor.  This is the amount to rotate the hydrogen by.
+    for a in potentialAcceptors:
+      sites = [ atom.xyz, partner.xyz, neighbor.xyz, a.xyz ]
+      degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
+      self._coarseAngles.append(degrees)
 
 ##################################################################################
 class MoverNH3Rotator(_MoverRotator):
@@ -1053,7 +1069,12 @@ def Test():
     bondedNeighborLists[f1] = [ p ]
     bondedNeighborLists[f2] = [ p ]
 
-    mover = MoverSingleHydrogenRotator(h, bondedNeighborLists)
+    # Add a non-bonded potential acceptor atom at 13 degrees rotation towards the Y axis from
+    # the X axis.
+    acc = pdb.hierarchy.atom()
+    acc.xyz = [ math.cos(13*math.pi/180), math.sin(13*math.pi/180), 1.0 ]
+
+    mover = MoverSingleHydrogenRotator(h, bondedNeighborLists, [acc])
 
     # Check for hydrogen rotated into Y=0 plane at a distance of sqrt(2) from Z axis
     if h.xyz[2] != 1 or abs(abs(h.xyz[0])-math.sqrt(2)) > 1e-5:
@@ -1067,6 +1088,18 @@ def Test():
       return "Movers.Test() MoverSingleHydrogenRotator pair: bad preference function"
     if zero - ninety < 1e-5:
       return "Movers.Test() MoverSingleHydrogenRotator pair: bad preference function"
+
+    # Check that one of the orientations has a dihedral angle of 0 compared to the original
+    # 13-degree-off potential acceptor atom.
+    found = False
+    for pos in mover.CoarsePositions().positions:
+      sites = [ pos[0], p.xyz, n.xyz, acc.xyz ]
+      dihedral = scitbx.math.dihedral_angle(sites=sites, deg=True)
+      if abs(dihedral) < 1e-5:
+        found = True
+        break
+    if not found:
+      return "Movers.Test() MoverSingleHydrogenRotator pair: no orientation towards acceptor"
 
   except Exception as e:
     return "Movers.Test() MoverSingleHydrogenRotator pair: Exception during test: "+str(e)+"\n"+traceback.format_exc()
