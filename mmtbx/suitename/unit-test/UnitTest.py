@@ -286,8 +286,10 @@ def test():
 
   output = outFile.getvalue()
   if output.strip() == canonicalOutput.strip():
+   result = True
    sys.stderr.write("Success\n")
   else:
+   result = False
    sys.stderr.write("Failed\n")
    sys.stderr.write("========================================\n=")
    sys.stderr.write(canonicalOutput.strip())
@@ -296,6 +298,7 @@ def test():
 
    out2 = open("UnitTest-output.txt", "w")
    out2.write(output.strip())
+  return result
 
 
 test()

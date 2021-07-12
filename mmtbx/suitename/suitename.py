@@ -122,8 +122,7 @@ def compute(suites):
             s.cluster = bins[0].cluster[0]
             bins[0].cluster[0].count += 1
             annotate(s, bins[0], bins[0].cluster[0], 0, 0, text, issue,
-                "", "", ""
-            )
+                "", pointMaster, pointColor)
         else:
             memberPack = membership(bin, s)
             (cluster, distance, suiteness, situation, comment,

@@ -387,12 +387,6 @@ def kinemageHeader(outFile, outNote):
     outFile.write(kinemageFrame)
 
 
-def formatAngles(angles, separator):
-    strings = ["{:7.3f}".format(a) for a in angles]
-    out = separator.join(strings)
-    return out
-
-
 def binGroupOut(outFile, deltaMinus, delta, suites):
     # If any bin in the group has data, generate a group header
     groupCount = 0
@@ -471,3 +465,20 @@ def outPoints(outFile, bin, cluster, suites, extra1):
                + formatAngles(s.angle, ",") + "\n"
             outFile.write(line)
    
+
+def formatAngles(angles, separator):
+#    strings = ["{:8.4f}".format(a) for a in angles]
+    strings = ["{:7.2f}".format(a) for a in angles]
+    out = separator.join(strings)
+    return out
+
+
+""" from decimal import Decimal, getcontext, ROUND_HALF_UP
+getcontext().rounding = ROUND_HALF_UP
+getcontext().prec = 3  # including one before decimal
+def formatAngles2(angles, separator):
+    strings = [str(Decimal(a)+0) for a in angles]
+#    strings = ["{:7.3f}".format(a) for a in angles]
+    out = separator.join(strings)
+    return out
+ """
