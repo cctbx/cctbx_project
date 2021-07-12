@@ -2235,3 +2235,49 @@ def get_rs(name):
 
 def read_exp_ref_spec(fname):
     return [l.strip().split() for l in open(fname, 'r').readlines()]
+
+
+def _rfactor_minimizer_target(k, F1, F2):
+    return F1.r1_factor(F2, scale_factor=k[0])
+
+
+def compute_scale_to_minmize_r_factor(F1, F2, anom=True):
+    """
+    F1, F2 : two miller arrays (should be of type amplitude)
+    scale factor should be applied to F2 such that the R factor is minmized between the two arrays!"""
+    if min(F1.data()) < 0:
+        F1 = F1.as_amplitude_array()
+    if min(F2.data()) < 0:
+        F2 = F2.as_amplitude_array()
+
+    indices_common = set(F1.indices()).intersection(F2.indices())
+    indices_common = flex.miller_index(list(indices_common))
+    F1 = F1.select_indices(indices_common)
+    F2_mset = F1.miller_set(indices_common, anom)
+    F2_map = {h:d for h,d in zip(F2.indices(), F2.data())}
+    F2_data = flex.double([F2_map[h] for h in indices_common])
+    F2 = miller.array(F2_mset, F2_data)
+    F1=F1.sort(by_value='packed_indices')
+    F2=F2.sort(by_value='packed_indices')
+
+    res = minimize(_rfactor_minimizer_target,
+                       x0=[1], args=(F1, F2),
+                   method='Nelder-Mead')
+
+    assert res.success
+    r1_scale = res.x[0]
+    print("Optimization successful!, using scale factor=%f" % r1_scale)
+    return r1_scale
+
+
+def get_ave_FF(F):
+    d = np.array(F.d_spacings().data())
+    order = np.argsort(d)
+    amps = np.array(F.data())**2
+    amps_ave = moving_average( amps[order], 500)
+    d_ave = moving_average(d[order], 500)
+    return d_ave, amps_ave
+
+
+def moving_average(x, w):  # stack overflow recipe
+    return np.convolve(x, np.ones(w), 'valid') / w

@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from scipy.interpolate import interp1d
 
 from simtbx.command_line.hopper import get_data_model_pairs
 from cctbx import sgtbx, miller
@@ -14,7 +15,10 @@ except ImportError:
     exit()
 import pandas
 from scitbx.matrix import sqr
-from stream_redirect import Redirect
+try:
+    from stream_redirect import Redirect
+except ImportError:
+    pass
 
 # diffBragg internal parameter indices
 FHKL_ID = 11
@@ -36,6 +40,17 @@ from simtbx.diffBragg.refiners.parameters import RangedParameter
 
 ensemble_phil = """
 include scope simtbx.command_line.hopper.phil_scope
+use_wilson_restraints = None
+  .type = bool
+  .help = if True, must provide scaling_reference_mtz information below
+scaling_reference_mtz_name = None
+  .type = str
+  .help = path to mtz file containing amplitudes
+  .help = that will be used to restrain the mean squared structure factor
+  .help = intensity at each resolution
+scaling_reference_mtz_col = None
+  .type = str
+  .help = mtz column name
 sigma_frac = None
   .type = float
   .help = sigma for Fhkl restraints will be some fraction of the starting value
@@ -1073,23 +1088,47 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
     Fhkl_current = np.array([ \
         SIM.Fhkl_modelers[i_fcell].get_val(x[-SIM.n_global_fcell+i_fcell]) \
         for i_fcell in range(SIM.n_global_fcell)])
-    Fhkl_init = np.array([SIM.Fhkl_modelers[i_fcell].init for i_fcell in range(SIM.n_global_fcell)])
-    delta_F = Fhkl_init - Fhkl_current
-    if params.sigma_frac is None:
-        var_F = np.sum(Fhkl_init**2)
-    else:
-        var_F = (params.sigma_frac*Fhkl_init)**2
 
-    f_Fhkl = np.sum(delta_F**2 / var_F)
+    if params.use_wilson_restraints:
+        # TODO vectorize or MPI this loop
+        f_Fhkl = 0
+        for i_fcell in range(SIM.n_global_fcell):
+            hkl = SIM.asu_from_i_fcell[i_fcell]
+            L = SIM.Fsquared_reference_for_asu[hkl]
+            F = Fhkl_current[i_fcell]
+            if SIM.asu_is_centric[hkl]:
+                f_Fhkl += -.5 * np.log(2/np.pi/L) + F**2 / L
+            else:
+                f_Fhkl += -np.log(2 * F / L) + F**2 / L
+
+    else:
+        Fhkl_init = np.array([SIM.Fhkl_modelers[i_fcell].init for i_fcell in range(SIM.n_global_fcell)])
+        delta_F = Fhkl_init - Fhkl_current
+        if params.sigma_frac is None:
+            var_F = np.sum(Fhkl_init**2)
+        else:
+            var_F = (params.sigma_frac*Fhkl_init)**2
+        f_Fhkl = np.sum(delta_F**2 / var_F)
 
     if compute_grad:
         # update the gradient restraint term for structure factor amplitudes
         Fhkl_rescaled = x[-SIM.n_global_fcell:]
-        Fhkl_restraint_grad = -2*delta_F / var_F
-        g[-SIM.n_global_fcell:] += np.array([ \
-            SIM.Fhkl_modelers[i_fcell].get_deriv(Fhkl_rescaled[i_fcell], Fhkl_restraint_grad[i_fcell]) \
-            for i_fcell in range(SIM.n_global_fcell)])
-
+        if params.use_wilson_restraints:
+            # TODO vectorize or MPI this loop
+            for i_fcell in range(SIM.n_global_fcell):
+                hkl = SIM.asu_from_i_fcell[i_fcell]
+                L = SIM.Fsquared_reference_for_asu[hkl]
+                F = Fhkl_current[i_fcell]
+                if SIM.asu_is_centric[hkl]:
+                    g_term = 2*F/L
+                else:
+                    g_term = 2*F/L - 1/F
+                g[-SIM.n_global_fcell+i_fcell] = SIM.Fhkl_modelers[i_fcell].get_deriv(Fhkl_rescaled[i_fcell], g_term)
+        else:
+            Fhkl_restraint_grad = -2*delta_F / var_F
+            g[-SIM.n_global_fcell:] += np.array([ \
+                SIM.Fhkl_modelers[i_fcell].get_deriv(Fhkl_rescaled[i_fcell], Fhkl_restraint_grad[i_fcell]) \
+                for i_fcell in range(SIM.n_global_fcell)])
 
     f = fchi + fG + f_Fhkl + fNabc + f_RotXYZ
     chi = fchi / f *100
@@ -1208,6 +1247,7 @@ def update_Fhkl(SIM, x):
         #    Fdata[p1_idx] = new_amplitude  # set the data with the new value
     return Fidx,Fdata
 
+
 def setup_Fhkl_attributes(SIM, params, Modelers):
     SIM.space_group_symbol = params.space_group
     SIM.space_group = sgtbx.space_group(sgtbx.space_group_info(symbol=params.space_group).type().hall_symbol())
@@ -1240,6 +1280,36 @@ def setup_Fhkl_attributes(SIM, params, Modelers):
     #    h = SIM.asu_from_i_fcell[i]
     #    val2 = SIM.crystal.miller_array.value_at_index(h)
     #    assert np.allclose(val1, val2)
+    # are we using a reference for restraints?
+    if params.scaling_reference_mtz_name is not None:
+        Fref = utils.open_mtz(params.scaling_reference_mtz_name, params.scaling_reference_mtz_col)
+        if not Fref.is_xray_amplitude_array() or np.min(Fref.data()) < 0:
+            Fref = Fref.as_amplitude_array()
+        temp_mset = Fref.miller_set(flex.miller_index(asu_hi), True)
+        temp_data = flex.double([SIM.fcell_init_from_asu[h] for h in asu_hi])
+        temp_mill_arr = miller.array(temp_mset, temp_data)
+        # this scale factor is applied to Fref to bring it on the same scale as the data
+        Fref_scale_factor = utils.compute_scale_to_minmize_r_factor(temp_mill_arr, Fref)
+        dspacing_ref, F_amp_squared_ref = utils.get_ave_FF(Fref)
+        F_squared = F_amp_squared_ref* Fref_scale_factor**2
+        # get the dspacing at each i_fcell
+
+        d_spacing_map = {h: d for h,d in zip(temp_mill_arr.indices(), temp_mill_arr.d_spacings())}
+        dspacing_at_asu = {h: d_spacing_map[h]  for h in asu_hi}
+        min_d_in_data = np.min(list(dspacing_at_asu.values()))
+        max_d_in_data = np.max(list(dspacing_at_asu.values()))
+
+        assert min_d_in_data > np.min(dspacing_ref)
+        assert max_d_in_data < np.max(dspacing_ref)
+
+        # this is variable "L" in my notes
+        Fsquared_reference_at_dspacing = interp1d(dspacing_ref, F_amp_squared_ref)
+        SIM.Fsquared_reference_for_asu = {h: Fsquared_reference_at_dspacing(d) for h,d in dspacing_at_asu.items()}
+
+        # we will also need the centric flags as well for determining the proper probability distribution
+        is_centric = temp_mill_arr.centric_flags()
+        is_centric_map = {h: c for h,c in zip(is_centric.indices(), is_centric.data())}
+        SIM.asu_is_centric = {h: is_centric_map[h] for h in asu_hi}
 
 
 def aggregate_Hi(Modelers):
