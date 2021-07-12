@@ -871,14 +871,14 @@ class MoverHistidineFlip:
       startPos.append(a.xyz)
 
     newPos = startPos.copy()
-    newPos[0] = ce1Atom.xyz
-    newPos[1] = ce1HNew
-    newPos[2] = ne2Atom.xyz
-    newPos[3] = ne2HNew
-    newPos[4] = cd2Atom.xyz
-    newPos[5] = cd2HNew
-    newPos[6] = nd1Atom.xyz
-    newPos[7] = nd1HNew
+    newPos[0] = ce1Atom.xyz   # ne2 swapped to this location
+    newPos[1] = ne2HNew
+    newPos[2] = ne2Atom.xyz   # ce1 swapped to this location
+    newPos[3] = ce1HNew
+    newPos[4] = cd2Atom.xyz   # nd1 swapped to this location
+    newPos[5] = nd1HNew
+    newPos[6] = nd1Atom.xyz   # cd2 swapped to this location
+    newPos[7] = cd2HNew
 
     self._coarsePositions = [ startPos, newPos ]
 
@@ -1813,7 +1813,48 @@ def Test():
     mover = MoverHistidineFlip(ne2, bondedNeighborLists)
     fixed = mover.FixUp(1).newPositions
 
-    # Ensure that the results meet the specifications:
+    # Ensure that the coarse-flip results meet the expections:
+    # 1) N and C atoms are flipped in pairs
+    # 2) H remain at the same distance from the new locations.
+
+    coarse = mover.CoarsePositions()
+    if len(coarse.positions) != 2:
+      return "Movers.Test() MoverHistidineFlip: Did not find two locations: "+str(len(coarse.positions))
+    newPos = coarse.positions[1]
+    dist = (_lvec3(newPos[0]) - _lvec3(ce1.xyz)).length()
+    if dist > 0.01:
+      return "Movers.Test() MoverHistidineFlip: NE2 moved incorrectly: "+str(dist)
+    dist = (_lvec3(newPos[2]) - _lvec3(ne2.xyz)).length()
+    if dist > 0.01:
+      return "Movers.Test() MoverHistidineFlip: CE1 moved incorrectly: "+str(dist)
+    dist = (_lvec3(newPos[4]) - _lvec3(cd2.xyz)).length()
+    if dist > 0.01:
+      return "Movers.Test() MoverHistidineFlip: ND1 moved incorrectly: "+str(dist)
+    dist = (_lvec3(newPos[6]) - _lvec3(nd1.xyz)).length()
+    if dist > 0.01:
+      return "Movers.Test() MoverHistidineFlip: CD2 moved incorrectly: "+str(dist)
+
+    dHydrogen = (_lvec3(newPos[0]) - _lvec3(newPos[1])).length()
+    oldDHydrogen = (_lvec3(ne2h.xyz)-_lvec3(ne2.xyz)).length()
+    if abs(dHydrogen - oldDHydrogen) > 0.0001:
+      return "Movers.Test() MoverHistidineFlip: Bad coarse NE2 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+
+    dHydrogen = (_lvec3(newPos[2]) - _lvec3(newPos[3])).length()
+    oldDHydrogen = (_lvec3(ce1h.xyz)-_lvec3(ce1.xyz)).length()
+    if abs(dHydrogen - oldDHydrogen) > 0.0001:
+      return "Movers.Test() MoverHistidineFlip: Bad coarse CE1 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+
+    dHydrogen = (_lvec3(newPos[4]) - _lvec3(newPos[5])).length()
+    oldDHydrogen = (_lvec3(nd1h.xyz)-_lvec3(nd1.xyz)).length()
+    if abs(dHydrogen - oldDHydrogen) > 0.0001:
+      return "Movers.Test() MoverHistidineFlip: Bad coarse ND1 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+
+    dHydrogen = (_lvec3(newPos[6]) - _lvec3(newPos[7])).length()
+    oldDHydrogen = (_lvec3(cd2h.xyz)-_lvec3(cd2.xyz)).length()
+    if abs(dHydrogen - oldDHydrogen) > 0.0001:
+      return "Movers.Test() MoverHistidineFlip: Bad coarse ND1 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+
+    # Ensure that the FixUp results meet the specifications:
     # 1) New CE1 on the line from the alpha carbon to the old NE2
     # 2) New plane of CE1, NE2, Alpha Carbon matches old plane, but flipped
     # 3) Carbons and pivot Hydrogens move slightly due to rigid-body motion
