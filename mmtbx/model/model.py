@@ -973,6 +973,13 @@ class manager(object):
   def get_site_symmetry_table(self):
     return self._site_symmetry_table
 
+  def altlocs_present(self):
+    result = False
+    conformer_indices = self.get_hierarchy().get_conformer_indices()
+    if(len(list(set(list(conformer_indices))))>1):
+      result = True
+    return result
+
   def initialize_anomalous_scatterer_groups(
       self,
       find_automatically=True,
