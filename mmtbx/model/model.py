@@ -1555,6 +1555,8 @@ class manager(object):
     acp = self._processed_pdb_file.all_chain_proxies
     self._atom_selection_cache = acp.pdb_hierarchy.atom_selection_cache()
     self._pdb_hierarchy        = acp.pdb_hierarchy
+    self._type_energies        = acp.type_energies
+    self._type_h_bonds         = acp.type_h_bonds
     xray_structure_all = \
           self._processed_pdb_file.xray_structure(show_summary = False)
     # XXX ad hoc manipulation
@@ -1905,6 +1907,16 @@ class manager(object):
     else:
       print("No NCS restraint groups specified.", file=self.log)
       print(file=self.log)
+
+  def get_specific_h_bond_type(self, atom):
+    type_h_bond = self._type_h_bonds[atom.i_seq]
+    return type_h_bond
+
+  def get_specific_vdw_radii(self, atom):
+    e = self.get_ener_lib()
+    type_energy = self._type_energies[atom.i_seq]
+    vdw = e.lib_atom[type_energy].vdw_radius
+    return vdw
 
   def get_vdw_radii(self, vdw_radius_default = 1.0):
     """

@@ -2457,6 +2457,10 @@ class build_chain_proxies(object):
     if restraints_loading_flags is None: restraints_loading_flags={}
     self._cif = cif_output_holder()
     self.pdb_link_records = {}
+    #
+    self.type_energies = []
+    self.type_h_bonds = []
+    #
     self.conformation_dependent_restraints_list = \
       conformation_dependent_restraints_list
     unknown_residues = dicts.with_default_value(0)
@@ -2549,6 +2553,23 @@ class build_chain_proxies(object):
           self._cif.cif["comp_specific_%s" % residue.resname.strip()] = mm.monomer.cif_object
         else:
           self._cif.cif["comp_%s" % residue.resname.strip()] = mm.monomer.cif_object
+      #
+      if mm.monomer is not None:
+        atom_dict = mm.monomer.atom_dict()
+        for i, atom in enumerate(residue.atoms()):
+          name = atom.name.strip()
+          if mm.mon_lib_names is not None:
+            name = mm.mon_lib_names[i]
+          al = atom_dict.get(name.strip(), None)
+          if al:
+            self.type_energies.append(al.type_energy)
+            entry = ener_lib.lib_atom.get(al.type_energy, None)
+            assert entry
+            self.type_h_bonds.append(entry.hb_type)
+          else:
+            self.type_energies.append(None)
+            raise Sorry('Not able to determine energy type for atom %s' % atom.quote())
+      #
       if (mm.monomer is None):
         def use_scattering_type_if_available_to_define_nonbonded_type():
           if (   residue.atoms_size() != 1
@@ -3190,6 +3211,8 @@ class build_all_chain_proxies(linking_mixins):
     # Proposal: use origin id in proxies.
     self.pdb_link_records = {}
     # END_MARKED_FOR_DELETION_OLEG
+    self.type_energies = []
+    self.type_h_bonds = []
     if restraints_loading_flags is None:
       restraints_loading_flags = get_restraints_loading_flags(params)
     self.mon_lib_srv = mon_lib_srv
@@ -3467,6 +3490,8 @@ class build_all_chain_proxies(linking_mixins):
           assert not chain_proxies.pdb_link_records
           self.conformation_dependent_restraints_list = \
             chain_proxies.conformation_dependent_restraints_list
+          self.type_energies += chain_proxies.type_energies
+          self.type_h_bonds += chain_proxies.type_h_bonds
           del chain_proxies
           flush_log(log)
       if apply_restraints_specifications:
