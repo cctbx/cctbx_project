@@ -93,26 +93,27 @@ def getResidueDihedrals(mgr, altcode='', name=''):
   all_residues = []
 
   for chain in chains:
-    print("chain ", chain.id)
+    # print("chain ", chain.id)
     conf = get_matching_conformer(chain, altcode)
       
     names = conf.get_residue_names_padded(pad=False)
     if all((n == "HOH" for n in names)):
-      print("ignoring water chain")
+      # print("ignoring water chain")
       continue
-    print(list(names))
+    # print(list(names))
     ids = conf.get_residue_ids(pad=False)
     # #print(list(ids))
     backbone_atoms = conf.atoms()
 
     #print(len(backbone_atoms), "backbone atoms")
-    for atom in backbone_atoms:
-      print(atom.pdb_label_columns(), file=out2)  
+    # for atom in backbone_atoms:
+    #   print(atom.pdb_label_columns(), file=out2)  
     try: 
       residues = build_dihedrals(backbone_atoms, chain.id, conf.altloc)
       all_residues.extend(residues)
     except Failure:
-      print("chain ", chain.id, " unable to find a backbone")
+      pass
+      # print("chain ", chain.id, " unable to find a backbone")
 
     #print("chain ", chain.id, " complete")
   out2.close()
@@ -121,7 +122,7 @@ def getResidueDihedrals(mgr, altcode='', name=''):
     for r in residues:
       id = ":".join(r.pointIDs)
       angles = "".join([f":{a:.3f}" for a in r.angle])
-      print(id + angles, file=file)
+      # print(id + angles, file=file)
     file.close()
   return all_residues
 
@@ -178,18 +179,18 @@ def harder_build_chain(backbone, i, k, residue, residues, chain_id, alt):
     if k - i - 2 < 0:
       syn_chain, i = jump_start()
       k = 0
-      ksyn = 0
     else:
-      syn_chain = backbone[k - i:k + 3]
-      ksyn = k-i-2
-    print("syn_chain")
-    for atom in syn_chain:
-      print(atom.name, atom.fetch_labels().resseq, atom.serial) #just for debugging
+      syn_chain = backbone[k:k + 3]
+    ksyn = k  # point on backbone where syn_chain shadowing begins
+    # print("syn_chain")
+    # for atom in syn_chain:
+    #   print(atom.name, atom.fetch_labels().resseq, atom.serial) #just for debugging
 
-    ii = i
+    ii = i  # indicates which dihedral angle we are working on
     while k < len(backbone) - 3:
-      k2 = harder_build_residue(syn_chain, ii, k-ksyn-2, residue)
-      k = k2+ksyn+2
+      k2 = harder_build_residue(syn_chain, ii, k-ksyn, residue)
+      # k2 is an index into syn_chain
+      k = k2+ksyn
       ii = 0
       residue = new_residue(residues, syn_chain[k2+1])
     # delete a possible final dead one
@@ -221,10 +222,9 @@ def jump_start():
       # we have found our starting point
       atom = res_atoms[res_names.index(bones[i])]
       syn_chain.append(atom)
-      i += 1
       break
     i += 1
-  j = i; n = 1
+  j = i+1; n = 1
   jmax = 10  # if we haven't got them by now, give up
   while n<3 and j<jmax:
     atoms = res_atoms if j < 6 else res2_atoms
@@ -237,11 +237,13 @@ def jump_start():
     j += 1
   if j>=jmax:
     raise Failure
-  return syn_chain, i-1
+  return syn_chain, i
 
 
 def harder_build_residue(syn_chain, i, kk, residue):
     # kk is an index to syn_chain
+    assert len(syn_chain) >= kk + 3
+
     res = syn_chain[-1].fetch_labels().resseq
     res_atoms, res_names = get_one_residue(res)
     res2_atoms, res2_names = get_one_residue(str(int(res)+1))
@@ -249,14 +251,14 @@ def harder_build_residue(syn_chain, i, kk, residue):
     for j in range(i, 6):
       atoms = res_atoms if j < 4 else res2_atoms
       names = res_names if j < 4 else res2_names
-      if bones[j+3] in names:  # add atom 3 ahead of residue start
+      if bones[j+3] in names:  # add atom 3 ahead of dihedral start
                                # so that we have 4 atoms to work with
         x = names.index(bones[j+3])
         atom = atoms[x]
         syn_chain.append(atom)
-#        #print("appending", atom.name, atom.fetch_labels().resseq, atom.serial)
+        # print("appending", atom.name, atom.fetch_labels().resseq, atom.serial)
         name, angle = easy_make_dihedral(syn_chain, j, kk)
-        #print(" ", syn_chain[kk+1].fetch_labels().resseq, name, angle, kk, j)
+        # print(" ", syn_chain[kk+1].fetch_labels().resseq, name, angle, kk, j)
         residue.angle[j] = angle  # if second failure, we get 9999
         kk = kk + 1
         # syn_name = [a.name for a in syn_chain]
