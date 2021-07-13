@@ -8,7 +8,7 @@ class linking_class(dict):
     for oi in origin_ids:
       for i, item in oi.items():
         if item[0] in self: continue
-        self[item[0]] = i #origin_id
+        self[item[0]] = i
         self.data[item[0]] = item
         origin_id+=1
 
@@ -50,6 +50,12 @@ Look for a key in the list below
       else:
         assert rc is not None, 'linking origin id not found for "%s"' % key
     return rc
+
+  def get_origin_key(self, origin_id):
+    for key, item in self.items():
+      if item==origin_id:
+        return key
+    return None
 
   def _get_origin_id_labels(self, internals=None):
     keys = list(self.keys())
@@ -108,3 +114,5 @@ Look for a key in the list below
 if __name__=='__main__':
   lc = linking_class()
   print(lc)
+  print('SS BOND',lc.get_origin_id('SS BOND'))
+  print('1',lc.get_origin_key(1))

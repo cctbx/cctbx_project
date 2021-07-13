@@ -289,8 +289,8 @@ class validation(object):
     # XXX No test.
     #
     pdb_hierarchy = pdb_hierarchy.deep_copy()
-    pdb_hierarchy.atoms().reset_i_seq()
     pdb_hierarchy.remove_alt_confs(always_keep_one_conformer=True)
+    pdb_hierarchy.atoms().reset_i_seq()
     #
     assert (len(sequences) > 0)
     for seq_object in sequences :

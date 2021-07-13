@@ -2164,8 +2164,14 @@ class manager(manager_mixin):
     d_min = ds[n]
     return self.resolution_filter(d_min=d_min).r_work()
 
+  def r_two_bins_lowest(self):
+    f = self.select(self.bin_selections[0] | self.bin_selections[1])
+    return mmtbx.bulk_solvent.r_factor(
+      f.f_obs_work().data(), f.f_model_work().data())
+
   def r_work_low(self):
     f = self.select(self.bin_selections[0])
+
 
     # Scan for best k
     #fo, fc = f.f_obs_work().data(), f.f_model_work().data()
@@ -2195,10 +2201,11 @@ class manager(manager_mixin):
       f.f_obs_work().data(), f.f_model_work().data())
 
   def r_factors(self, prefix="", as_string=True):
-    rw,rf,rh,rl=self.r_work(),self.r_free(),self.r_work_high(),self.r_work_low()
-    f = "%s r_work=%6.4f r_free=%6.4f r_high=%6.4f r_low=%6.4f"
-    if(as_string): return f%(prefix, rw,rf,rh,rl)
-    else:          return group_args(rw=rw,rf=rf,rh=rh,rl=rl)
+    rw,rf,rh,rl,r4=self.r_work(),self.r_free(),self.r_work_high(),\
+      self.r_work_low(), self.r_work4()
+    f = "%s r_work=%6.4f r_free=%6.4f r_high=%6.4f r_low=%6.4f r_4=%6.4f"
+    if(as_string): return f%(prefix, rw,rf,rh,rl,r4)
+    else:          return group_args(rw=rw,rf=rf,rh=rh,rl=rl,r4=r4)
 
   def r_overall_low_high(self, d = 6.0):
     r_work = self.r_work()

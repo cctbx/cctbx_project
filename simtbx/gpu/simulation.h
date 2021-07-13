@@ -27,6 +27,11 @@ struct exascale_api {
     simtbx::gpu::gpu_detector &,
     af::shared<bool>
   );
+  void add_energy_channel_mask_allpanel_cuda(int const&,
+    simtbx::gpu::gpu_energy_channels &,
+    simtbx::gpu::gpu_detector &,
+    af::shared<int> const
+  );
   void add_background_cuda(simtbx::gpu::gpu_detector &);
   void allocate_cuda();
   ~exascale_api();

@@ -46,6 +46,11 @@ from libtbx.easy_mp import run_jobs_with_large_fixed_objects
   and your result will be available with:
 
   ga.get_best_gene()
+
+  NOTE: you may need to import some functions...see the top of this file
+  Example:
+    import numpy.random as np_random
+
 '''
 ##############################################################################
 ##########  EXAMPLE PARAMS FOR GENETIC ALGORITHM WITH MULTIPROCESSING #######
@@ -499,7 +504,8 @@ class genetic_algorithm:
       nproc = self.params.nproc if self.params.nproc is not None else 1
       n_total_cycles = self.get_total_number_of_cycles()
       n_macro_cycles = self.get_number_of_macro_cycles()
-      n_cycles = int(0.999 + n_total_cycles//max(1,n_macro_cycles*nproc))
+      n_cycles = max(1,
+        int(0.999 + n_total_cycles//max(1,n_macro_cycles*nproc)))
       return n_cycles
 
   def get_number_of_macro_cycles(self):

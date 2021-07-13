@@ -221,8 +221,8 @@ def exercise_phil():
   phil_data = """\
 refinement {
   input {
-    include scope mmtbx.utils.neutron_data_str
-    include scope mmtbx.utils.xray_data_str
+    include scope iotbx.extract_xtal_data.neutron_data_str
+    include scope iotbx.extract_xtal_data.xray_data_str
   }
   refine {
     strategy = *individual_adp *individual_sites *tls occupancies group_adp

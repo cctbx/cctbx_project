@@ -515,7 +515,7 @@ class Script(object):
 
         # reintegration
         if self.params.reintegration.enable:
-          self.set_up_section("reintegration", "mpirun -n %d cctbx.xfel.mpi_integrate"% self.params.mp.nproc,
+          self.set_up_section("reintegration", "%s cctbx.xfel.mpi_integrate"%self.params.mp.mpi_command,
             clustering=self.clustering)
 
         # extract results to integration pickles for merging

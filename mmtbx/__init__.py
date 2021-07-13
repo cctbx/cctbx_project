@@ -1,6 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
 from libtbx.utils import Sorry
+from libtbx.version import get_version
+
+__version__ = get_version()
 
 class fmodels(object):
   """

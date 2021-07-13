@@ -6,7 +6,7 @@ from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s, null_out
 from libtbx import Auto, dict_with_default_0, group_args
 from iotbx.pdb import hy36encode, hy36decode, common_residue_names_get_class
-from iotbx.pdb import amino_acid_codes
+from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
 from iotbx.pdb.modified_aa_names import lookup as aa_3_as_1_mod
 from iotbx.pdb.modified_rna_dna_names import lookup as na_3_as_1_mod
 from iotbx.pdb.utils import all_chain_ids, all_label_asym_ids
@@ -821,7 +821,7 @@ class _():
     assert shift_best is not None # should never happen
     self.atoms().set_xyz(uc.orthogonalize(sites_frac+shift_best))
 
-  def expand_to_p1(self, crystal_symmetry):
+  def expand_to_p1(self, crystal_symmetry, exclude_self=False):
     # ANISOU will be invalid
     import string
     import scitbx.matrix
@@ -835,6 +835,7 @@ class _():
       for smx in crystal_symmetry.space_group().all_ops():
         m3 = smx.r().as_double()
         m3 = scitbx.matrix.sqr(m3)
+        if(exclude_self and m3.is_r3_identity_matrix()): continue
         t = smx.t().as_double()
         t = scitbx.matrix.col((t[0],t[1],t[2]))
         for c_ in m_.chains():
@@ -1365,7 +1366,7 @@ class _():
   def truncate_to_poly(self, atom_names_set=set()):
     pdb_atoms = self.atoms()
     pdb_atoms.reset_i_seq()
-    aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
+    aa_resnames = one_letter_given_three_letter
     for model in self.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
@@ -1910,7 +1911,7 @@ class _():
     n_na = residue_classes["common_rna_dna"] + residue_classes["modified_rna_dna"]
     seq = []
     if (n_aa > n_na):
-      aa_3_as_1 = amino_acid_codes.one_letter_given_three_letter
+      aa_3_as_1 = one_letter_given_three_letter
       for rn in rn_seq:
         if (rn in aa_3_as_1_mod):
           seq.append(aa_3_as_1_mod.get(rn, substitute_unknown))
@@ -2241,7 +2242,7 @@ class _():
     n_na = residue_classes["common_rna_dna"] + residue_classes["modified_rna_dna"]
     seq = []
     if (n_aa > n_na):
-      aa_3_as_1 = amino_acid_codes.one_letter_given_three_letter
+      aa_3_as_1 = one_letter_given_three_letter
       for rn in rn_seq:
         if (rn in aa_3_as_1_mod):
           seq.append(aa_3_as_1_mod.get(rn, substitute_unknown))

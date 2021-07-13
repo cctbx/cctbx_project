@@ -71,25 +71,29 @@ namespace scitbx { namespace af {
 #endif
       {}
 
-      ~sharing_handle() {
+      virtual ~sharing_handle() {
+        if (data != NULL) {
 #ifdef SCITBX_AF_HAS_ALIGNED_MALLOC
-        aligned_free(data);
+            aligned_free(data);
 #else
-        delete[] data;
+            delete[] data;
 #endif
+        }
       }
 
-      void deallocate() {
+      virtual void deallocate() {
+        if (data != NULL) {
 #ifdef SCITBX_AF_HAS_ALIGNED_MALLOC
-        aligned_free(data);
+            aligned_free(data);
 #else
-        delete[] data;
+            delete[] data;
 #endif
+        }
         capacity = 0;
         data = 0;
       }
 
-      void swap(sharing_handle& other) {
+      virtual void swap(sharing_handle& other) {
         std::swap(size, other.size);
         std::swap(capacity, other.capacity);
         std::swap(data, other.data);

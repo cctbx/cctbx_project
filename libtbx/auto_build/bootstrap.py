@@ -833,7 +833,9 @@ class phenix_module(SourceModule):
 
 class phenix_html(SourceModule):
   module = 'phenix_html'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_html/trunk']
+  anonymous = ['git',
+               'git@github.com:phenix-project/phenix_html.git',
+               'https://github.com/phenix-project/phenix_html.git']
 
 class phenix_dev_doc(SourceModule):
   module = 'phenix_dev_doc'
@@ -2134,6 +2136,19 @@ class CCTBXBuilder(CCIBuilder):
   def rebuild_docs(self):
     pass
 
+  # select dials-3.5 branch
+  def _add_git(self, module, parameters, destination=None):
+    super(CCTBXBuilder, self)._add_git(module, parameters, destination)
+    if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and self.python3:
+      workdir = ['modules', module]
+      if module == 'dxtbx':
+        self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
+        self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.5'], workdir=workdir))
+      self.add_step(self.shell(
+        command=['git', 'branch', '--set-upstream-to=origin/dials-3.5', 'dials-3.5'],
+        workdir=workdir))
+
 class DIALSBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['dials', 'iota', 'xia2']
   LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
@@ -2233,6 +2248,11 @@ class XFELBuilder(CCIBuilder):
     super(XFELBuilder, self).add_base(
       extra_opts=['--dials'] + extra_opts)
 
+  def get_libtbx_configure(self):
+    configlst = super(XFELBuilder, self).get_libtbx_configure()
+    configlst.append('--enable_cxx11')
+    return configlst
+
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel(module='uc_metrics')
@@ -2273,6 +2293,7 @@ class PhenixBuilder(CCIBuilder):
     'xia2',
     'phaser',
     'phaser_regression',
+    'phaser_voyager',
     'iota',
   ]
   HOT_EXTRA = ['msgpack']
@@ -2287,6 +2308,7 @@ class PhenixBuilder(CCIBuilder):
     'reel',
     'phaser',
     'phaser_regression',
+    'phaser_voyager',
     'labelit',
     'elbow',
     'amber_adaptbx',
@@ -2296,6 +2318,31 @@ class PhenixBuilder(CCIBuilder):
     'xia2',
     'prime',
   ]
+
+  def get_codebases(self):
+    """
+    Phenix uses Boost in the conda environment for Python 3
+    """
+    codebases = super(PhenixBuilder, self).get_codebases()
+    if self.python3 and self.use_conda is not None:
+      try:
+        codebases.remove('boost')
+      except ValueError:
+        pass
+    return codebases
+
+  # select dials-3.5 branch
+  def _add_git(self, module, parameters, destination=None):
+    super(PhenixBuilder, self)._add_git(module, parameters, destination)
+    if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and self.python3:
+      workdir = ['modules', module]
+      if module == 'dxtbx':
+        self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
+        self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-2.2'], workdir=workdir))
+      self.add_step(self.shell(
+        command=['git', 'branch', '--set-upstream-to=origin/dials-2.2', 'dials-2.2'],
+        workdir=workdir))
 
   def add_module(self, module, workdir=None, module_directory=None):
     """
@@ -2819,10 +2866,10 @@ def run(root=None):
   python_args = parser.add_mutually_exclusive_group(required=False)
   python_args.add_argument('--python',
                     default='27', type=str, nargs='?', const='27',
-                    choices=['27', '36', '37', '38'],
+                    choices=['27', '36', '37', '38', '39'],
                     help="""When set, a specific Python version of the
 conda environment will be used. This only affects environments selected with
-the --builder flag. For non-conda dependencies, "36", "37", and "38" implies
+the --builder flag. For non-conda dependencies, any Python 3 implies
 Python 3.7.""")
   parser.add_argument("--config-flags", "--config_flags",
                     dest="config_flags",

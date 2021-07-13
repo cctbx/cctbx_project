@@ -65,6 +65,10 @@ mp_phil_str = '''
       .type = str
       .multiple = True
       .help = Path to script sourcing a particular environment (optional)
+    phenix_script = None
+      .type = str
+      .multiple = True
+      .help = Path to script sourcing a phenix environment (optional)
     local {
       include_mp_in_command = True
         .type = bool

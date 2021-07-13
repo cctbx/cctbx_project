@@ -1,18 +1,28 @@
 from __future__ import absolute_import, division, print_function
 from xfel.ui.db.xfel_db import xfel_db_application
-from xfel.ui.db.experiment import Experiment, Event, Bin, Cell_Bin
+from xfel.ui.db.experiment import Imageset, Experiment, Event, Bin, Cell_Bin, Cell, Detector, Crystal, Beam
 from scitbx.array_family import flex
 
 def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
-              two_theta_low = None, two_theta_high = None, db_event = None, app = None):
+              two_theta_low = None, two_theta_high = None, db_event = None, app = None, trial = None):
   if app is None:
-    app = dxtbx_xfel_db_application(params)
-  db_run = app.get_run(run_number=run)
-  if params.input.trial is None:
-    db_trial = app.get_trial(trial_id = params.input.trial_id)
-    params.input.trial = db_trial.trial
+    app = dxtbx_xfel_db_application(params, mode = 'cache_commits')
   else:
-    db_trial = app.get_trial(trial_number = params.input.trial)
+    app.mode = 'cache_commits'
+
+  if isinstance(run, int):
+    db_run = app.get_run(run_number=run)
+  else:
+    db_run = run
+
+  if trial is None:
+    if params.input.trial is None:
+      db_trial = app.get_trial(trial_id = params.input.trial_id)
+      params.input.trial = db_trial.trial
+    else:
+      db_trial = app.get_trial(trial_number = params.input.trial)
+  else:
+    db_trial = trial
 
   if db_event is None:
     if params.input.rungroup is None:
@@ -31,39 +41,70 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
                                   two_theta_low = two_theta_low,
                                   two_theta_high = two_theta_high)
 
+  inserts = ""
+
+  def save_last_id(name):
+    nonlocal inserts
+    inserts += app.last_query + ";\n"
+    inserts += "SELECT LAST_INSERT_ID() INTO @%s_id;\n"%name
+
+  if experiments:
+    save_last_id('event')
+  else:
+    inserts += app.last_query + ";\n"
+
   for i, experiment in enumerate(experiments or []):
     reflections_i = reflections.select(reflections['id']==i)
-    db_experiment = app.create_experiment(experiment)
-    app.link_imageset_frame(db_experiment.imageset, db_event)
+
+    imageset = Imageset(app)
+    save_last_id('imageset')
+
+    beam = Beam(app, beam = experiment.beam)
+    save_last_id('beam')
+
+    detector = Detector(app, detector = experiment.detector)
+    save_last_id('detector')
+
+    cell = Cell(app, crystal=experiment.crystal, isoform_id = None)
+    save_last_id('cell')
+
+    crystal = Crystal(app, crystal = experiment.crystal, make_cell = False, cell_id = "@cell_id")
+    save_last_id('crystal')
+
+    inserts += ("INSERT INTO `%s_experiment` (imageset_id, beam_id, detector_id, crystal_id, crystal_cell_id) " + \
+                "VALUES (@imageset_id, @beam_id, @detector_id, @crystal_id, @cell_id);\n") % (
+      params.experiment_tag)
+
+    inserts += "INSERT INTO `%s_imageset_event` (imageset_id, event_id, event_run_id) VALUES (@imageset_id, @event_id, %d);\n" % (
+      params.experiment_tag, db_run.id)
 
     d = experiment.crystal.get_unit_cell().d(reflections['miller_index']).select(reflections['id']==i)
-    if len(db_experiment.crystal.cell.bins) == 0: # will be [] if there are no isoforms and no target cells
-      from cctbx.crystal import symmetry
-      cs = symmetry(unit_cell = db_experiment.crystal.cell.unit_cell, space_group_symbol = db_experiment.crystal.cell.lookup_symbol)
-      mset = cs.build_miller_set(anomalous_flag=False, d_min=db_trial.d_min)
-      n_bins = 10 # FIXME use n_bins as an attribute on the trial table
-      binner = mset.setup_binner(n_bins=n_bins)
-      for i in binner.range_used():
-        d_max, d_min = binner.bin_d_range(i)
-        Bin(app, number = i, d_min = d_min, d_max = d_max,
-            total_hkl = binner.counts_complete()[i], cell_id = db_experiment.crystal.cell.id)
-      db_experiment.crystal.cell.bins = app.get_cell_bins(db_experiment.crystal.cell.id)
-      assert len(db_experiment.crystal.cell.bins) == n_bins
+    from cctbx.crystal import symmetry
+    cs = symmetry(unit_cell = experiment.crystal.get_unit_cell(), space_group = experiment.crystal.get_space_group())
+    mset = cs.build_miller_set(anomalous_flag=False, d_min=db_trial.d_min)
+    n_bins = 10 # FIXME use n_bins as an attribute on the trial table
+    binner = mset.setup_binner(n_bins=n_bins)
+    for i in binner.range_used():
+      d_max, d_min = binner.bin_d_range(i)
+      Bin(app, number = i, d_min = d_min, d_max = d_max,
+          total_hkl = binner.counts_complete()[i], cell_id = '@cell_id')
+      save_last_id('bin')
 
-    for db_bin in db_experiment.crystal.cell.bins:
-      sel = (d <= float(db_bin.d_max)) & (d > float(db_bin.d_min))
+      sel = (d <= float(d_max)) & (d > float(d_min))
       sel &= reflections_i['intensity.sum.value'] > 0
       refls = reflections_i.select(sel)
       n_refls = len(refls)
       Cell_Bin(app,
                count = n_refls,
-               bin_id = db_bin.id,
-               crystal_id = db_experiment.crystal.id,
+               bin_id = '@bin_id',
+               crystal_id = '@crystal_id',
                avg_intensity = flex.mean(refls['intensity.sum.value']) if n_refls > 0 else None,
                avg_sigma = flex.mean(flex.sqrt(refls['intensity.sum.variance'])) if n_refls > 0 else None,
                avg_i_sigi = flex.mean(refls['intensity.sum.value'] /
                                       flex.sqrt(refls['intensity.sum.variance'])) if n_refls > 0 else None)
-  return db_event
+      inserts += app.last_query + ";\n"
+  app.mode = 'execute'
+  return inserts
 
 class dxtbx_xfel_db_application(xfel_db_application):
   def create_experiment(self, experiment):

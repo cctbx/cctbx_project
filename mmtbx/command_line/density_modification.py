@@ -14,6 +14,7 @@ from mmtbx.ncs import ncs
 from scitbx.math import nearest_phase, phase_error
 import os, sys
 from six.moves import range
+from iotbx import extract_xtal_data
 
 master_params_including_IO_str = """\
 density_modification {
@@ -81,8 +82,8 @@ density_modification {
 include scope libtbx.phil.interface.tracking_params
 %s
 }
-""" %(mmtbx.utils.data_and_flags_str,
-      mmtbx.utils.experimental_phases_params_str,
+""" %(iotbx.extract_xtal_data.data_and_flags_str,
+      iotbx.extract_xtal_data.experimental_phases_params_str,
       mmtbx.utils.map_coefficents_params_str,
       density_modification.master_params_str)
 
@@ -133,11 +134,11 @@ def run(args, log = sys.stdout, as_gui_program=False):
   server = iotbx.reflection_file_utils.reflection_file_server(
     crystal_symmetry=crystal_symmetry,
     reflection_files=list(reflection_files.values()))
-  fo = mmtbx.utils.determine_data_and_flags(
+  fo = extract_xtal_data.run(
     server,
     parameters=params.input.reflection_data,
     extract_r_free_flags=False,log=log).f_obs
-  hl_coeffs = mmtbx.utils.determine_experimental_phases(
+  hl_coeffs = extract_xtal_data.determine_experimental_phases(
     server,
     params.input.experimental_phases,
     log=log,

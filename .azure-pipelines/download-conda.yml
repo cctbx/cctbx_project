@@ -76,7 +76,7 @@ jobs:
         mkdir -p ${directory}
         cd ${directory}
         echo Downloading ${filename} to ${directory}
-        wget --retry-connrefused --retry-on-http-error=520,525 ${url}
+        wget --retry-connrefused --retry-on-http-error=500,503,520,525 ${url}
         cd ..
         if [ "$(OS)" = "win-64" ]; then
           echo ${directory}\\${filename} >> filenames.txt

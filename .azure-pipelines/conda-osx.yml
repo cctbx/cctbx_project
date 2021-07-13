@@ -108,8 +108,9 @@ jobs:
 
   - script: |
       rm -f $(Pipeline.Workspace)/build/lib/scitbx_array_family_flex_ext.so
-    displayName: Fix broken cache on macOS 10.15
-    condition: and(eq('${{ parameters.vmImage[0] }}', 10), eq('${{ parameters.vmImage[1] }}', 15))
+    displayName: Fix broken cache on macOS 10.15 and 11
+    condition: or(and(eq('${{ parameters.vmImage[0] }}', 10), eq('${{ parameters.vmImage[1] }}', 15)),
+                  eq('${{ parameters.vmImage[0] }}', 11))
     continueOnError: true
     failOnStderr: false
 

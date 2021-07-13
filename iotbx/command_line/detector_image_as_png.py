@@ -2,7 +2,7 @@
 
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, Usage
-from six.moves import cStringIO as StringIO
+from six import BytesIO
 import os
 import sys
 
@@ -57,7 +57,7 @@ class convert_image:
   flex_img.spot_convention(0)
   flex_img.adjust(color_scheme=0)
   flex_img.prep_string()
-  data_string = flex_img.export_string
+  data_string = flex_img.as_bytes()
   try: # fromstring raises Exception in Pillow >= 3.0.0
     self.imageout = Image.fromstring("RGB",
                          (flex_img.ex_size2(), flex_img.ex_size1()),
@@ -68,7 +68,7 @@ class convert_image:
                          data_string)
 
  def output(self):
-  out = StringIO()
+  out = BytesIO()
   self.imageout.save(out, "PNG")
   return out
 

@@ -34,8 +34,11 @@ jobs:
         MODULES: ${{ parameters.modules }}
 
   variables:
-    artifact_name: ${{ parameters.vs }}_$(PYTHON_VERSION)
-    day: $(Get-Date -Format dddd)
+  - name: artifact_name
+    value: ${{ parameters.vs }}_$(PYTHON_VERSION)
+  - name: day
+    value: $(Get-Date -Format dddd)
+  - group: Settings
 
   steps:
   - powershell: |
@@ -59,6 +62,7 @@ jobs:
   - script: |
       cd $(Pipeline.Workspace)
       tar -xf modules.tar
+      del modules.tar
     displayName: Extract modules tarball
 
   - script: |
@@ -109,6 +113,10 @@ jobs:
       call %CONDA%\condabin\conda.bat install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
     displayName: Create conda environment
 
+  - script: |
+      rmdir /S /Q $(Pipeline.Workspace)\channel
+    displayName: Clean up conda channel
+
   # download daily cached build directory for builds
   # always do builds from scratch for "Update build cache" and "Weekly"
   # pipelines
@@ -123,25 +131,33 @@ jobs:
       path: $(Pipeline.Workspace)
     displayName: Download cached build
     condition: >
-      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
-             ne(variables['day'], 'Sunday')),
-         eq(variables['Build.DefinitionName'], 'CI'),
-         eq(variables['Build.DefinitionName'], 'CI branch'),
-         eq(variables['Build.DefinitionName'], 'Full'))
+      and(or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+                 ne(variables['day'], 'Sunday')),
+             eq(variables['Build.DefinitionName'], 'CI'),
+             eq(variables['Build.DefinitionName'], 'CI branch'),
+             eq(variables['Build.DefinitionName'], 'Full')),
+          ne(variables['SKIP_CACHED_BUILD'], 'true'))
     continueOnError: true
 
   - script: |
       cd $(Pipeline.Workspace)
       tar -xf build.tar
+      del build.tar
     displayName: Extract build tarball
     condition: >
-      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
-             ne(variables['day'], 'Sunday')),
-         eq(variables['Build.DefinitionName'], 'CI'),
-         eq(variables['Build.DefinitionName'], 'CI branch'),
-         eq(variables['Build.DefinitionName'], 'Full'))
+      and(or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+                 ne(variables['day'], 'Sunday')),
+             eq(variables['Build.DefinitionName'], 'CI'),
+             eq(variables['Build.DefinitionName'], 'CI branch'),
+             eq(variables['Build.DefinitionName'], 'Full')),
+          ne(variables['SKIP_CACHED_BUILD'], 'true'))
     continueOnError: true
     failOnStderr: false
+
+  - script: |
+      cd $(Pipeline.Workspace)
+      dir
+    displayName: Check disk space
 
   - script: |
       cd $(Pipeline.Workspace)
