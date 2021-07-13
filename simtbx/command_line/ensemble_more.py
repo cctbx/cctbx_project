@@ -103,7 +103,7 @@ class Script:
                 read_experiments=True,
                 read_reflections=True,
                 check_format=False,
-                epilog="PyCuties")
+                epilog="StageDos")
         self.parser = COMM.bcast(self.parser)
         if COMM.rank == 0:
             self.params, _ = self.parser.parse_args(show_diff_phil=True)
@@ -229,6 +229,9 @@ class Script:
 
         self.SIM.update_Fhkl = Fhkl_updater(self.SIM, Modelers)
 
+        nucell_p = len(self.SIM.ucell_man.variables)
+        ucell_var_names = self.SIM.ucell_man.variable_names
+
         # there is variable 1 scale factor per shot
         # Bookkeeping:
         # each i_exp in shot_roi_dict should globally point to a single index
@@ -260,7 +263,7 @@ class Script:
         self.SIM.D.Npix_to_allocate = int(self.NPIX_TO_ALLOC)
 
         global_Nshots = len(shot_mapping)  # total number of shots being modeled
-        nparam_per_shot = 7   # 1 scale factor, 3 Nabc terms, 3 RotXYZ terms
+        nparam_per_shot = 7 + nucell_p + 1   # 1 scale factor, 3 Nabc terms, 3 RotXYZ terms, N unit cell param, 1 detz shift
         total_params = nparam_per_shot*global_Nshots + self.SIM.n_global_fcell  # total refinement paramters
         if COMM.rank==0:
             print("Refining %d parameters in total" % total_params, flush=True)
@@ -274,7 +277,6 @@ class Script:
         # each rank has different modelers, and those will need to each reference different
         # portions of the global parameter array, and rank_xidx holds the referencing information
         rank_xidx = {}
-        # Also, in this loop we will get the parameter objects and send em to rank0 for writing to disk
         param_data = []
         for i_exp in i_exps:
             xidx_start = shot_mapping[i_exp]*nparam_per_shot
@@ -282,9 +284,14 @@ class Script:
             xidx += Fhkl_xidx
             rank_xidx[i_exp] = xidx
 
+            # Also, in this loop we will get the parameter objects and send em to rank0 for writing to disk
             Scale_param = Modelers[i_exp].PAR.Scale
             Nabc_params = Modelers[i_exp].PAR.Nabc_params
-            param_data.append([shot_mapping[i_exp], Scale_param, Nabc_params])
+            RotXYZ_params = Modelers[i_exp].PAR.RotXYZ_params
+            ucell_params = Modelers[i_exp].PAR.ucell_params
+            #ucell_man = Modelers[i_exp].PAR.ucell_man
+            DetZ_param = Modelers[i_exp].PAR.DetZ_param
+            param_data.append([shot_mapping[i_exp], Scale_param, Nabc_params, RotXYZ_params, ucell_params, DetZ_param])
 
         mpi_safe_makedirs(self.params.outdir)
         mpi_safe_makedirs(os.path.join(self.params.outdir, "x"))
@@ -293,28 +300,32 @@ class Script:
         if COMM.rank == 0:
             tsave = time.time()
 
-            all_i_shots, all_Scales, all_Nabc_params = zip(*all_param_data)
+            all_i_shots, all_Scales, all_Nabc_params, all_Rot_params, all_ucell_params, all_detz_params\
+                = zip(*all_param_data)
 
             # sometimes a shot is distributed across multiple ranks, hence there are duplicates
             # in all_scale_param_data, so we will remove the duplicates here
             output_params = {}
-            for i_shot, Scale, Nabc_params in zip(all_i_shots, all_Scales, all_Nabc_params):
+            for i_shot, Scale, Nabc_params, RotXYZ_params, ucell_params, detz_params in \
+                    zip(all_i_shots, all_Scales, all_Nabc_params, all_Rot_params, all_ucell_params, all_detz_params):
                 if i_shot not in output_params:
-                    output_params[i_shot] = Scale, Nabc_params
+                    output_params[i_shot] = Scale, Nabc_params, RotXYZ_params, ucell_params, detz_params
                 else:
                     assert output_params[i_shot][0].init == Scale.init
                     for i_N in range(3):
                         assert output_params[i_shot][1][i_N].init == Nabc_params[i_N].init
+                    # TODO add other asserts for other parameters..
 
             # at this point there should be a single scale per shot! We verify that here:
             ordered_shot_inds = np.sort(list(output_params.keys()))
             assert np.all(ordered_shot_inds == np.arange(global_Nshots))
-            scale_params = [output_params[i_shot][0] for i_shot in range(global_Nshots)]
 
             # save the parameter objects to pickle files using numpy
             scale_params_file = os.path.join(self.params.outdir, "x", "scale_params.npy")
             print("Saving scale parameter objects to %s" % scale_params_file)
+            scale_params = [output_params[i_shot][0] for i_shot in range(global_Nshots)]
             np.save(scale_params_file, scale_params)
+
             Nabc_params_file = os.path.join(self.params.outdir, "x", "Nabc_params.npz")
             print("Saving Nabc parameter objects to %s" % Nabc_params_file)
             N_params = []
@@ -322,6 +333,28 @@ class Script:
                 params_i_N = [output_params[i_shot][1][i_N] for i_shot in range(global_Nshots)]
                 N_params.append(params_i_N)
             np.savez(Nabc_params_file, Na=N_params[0], Nb=N_params[1], Nc=N_params[2])
+
+            RotXYZ_params_file = os.path.join(self.params.outdir, "x", "RotXYZ_params.npz")
+            print("Saving RotXYZ parameter objects to %s" % RotXYZ_params_file)
+            rot_params = []
+            for i_rot in range(3):
+                params_i_rot = [output_params[i_shot][2][i_rot] for i_shot in range(global_Nshots)]
+                rot_params.append(params_i_rot)
+            np.savez(RotXYZ_params_file, rotX=rot_params[0], rotY=rot_params[1], rotZ=rot_params[2])
+
+            ucell_params_file = os.path.join(self.params.outdir, "x", "ucell_params.npz")
+            print("Saving ucell parameter objects to %s" % ucell_params_file)
+            uc_params = {}
+            for i_uc in range(nucell_p):
+                params_i_uc = [output_params[i_shot][3][i_uc] for i_shot in range(global_Nshots)]
+                var_name = ucell_var_names[i_uc]
+                uc_params[var_name] = params_i_uc
+            np.savez(ucell_params_file,  **uc_params)
+
+            detz_params_file = os.path.join(self.params.outdir, "x", "detz_params.npy")
+            print("Saving detz parameter objects to %s" % detz_params_file)
+            detz_params = [output_params[i_shot][4] for i_shot in range(global_Nshots)]
+            np.save(detz_params_file, detz_params)
 
             Fhkl_params_file =os.path.join(self.params.outdir, "x", "Fhkl_params.npy")
             print("Saving Fhkl parameter objects to %s" % Fhkl_params_file)
@@ -413,8 +446,7 @@ class Script:
 
         if COMM.rank==0:
             print("MINIMIZE!", flush=True)
-        min_out = Minimize(x0, rank_xidx, self.params, self.SIM, Modelers, ntimes, global_Nshots)
-        x = min_out.x
+        x = Minimize(x0, rank_xidx, self.params, self.SIM, Modelers, ntimes, global_Nshots)
         # TODO analyze the convergence data here
 
         # save the final models
@@ -506,10 +538,6 @@ class DataModeler:
         self.Hi_asu = None
         self.hi_asu_perpix = None
         self.all_nominal_hkl = []
-
-
-
-
 
     def GatherFromExperiment(self, exp, ref, sg_symbol, ref_indices=None):
         #TODO delete the background attribute because its large(full image)
@@ -633,6 +661,12 @@ class DataModeler:
         ParameterType = RangedParameter
         PAR = SimParams()
 
+        # each modeler has an experiment self.E, with a crystal attached
+        if best is not None:
+            self.E.crystal.set_A(best.Amats.values[0])
+        PAR.Umatrix = sqr(self.E.crystal.get_U())
+        PAR.Bmatrix = sqr(self.E.crystal.get_B())
+
         # per shot Scale factor
         p = ParameterType()
         p.sigma = self.params.sigmas.G
@@ -672,11 +706,41 @@ class DataModeler:
             p.fix = self.params.fix.RotXYZ
             PAR.RotXYZ_params.append(p)
 
-        # each modeler has an experiment self.E, with a crystal attached
+
+        # unit cell parameters
+        ucell_man = utils.manager_from_crystal(self.E.crystal)  # Note ucell man contains the best parameters (if best is not None)
+        ucell_vary_perc = self.params.ucell_edge_perc / 100.
+        PAR.ucell_params = []
+        for i_uc, (name, val) in enumerate(zip(ucell_man.variable_names, ucell_man.variables)):
+            if "Ang" in name:
+                minval = val - ucell_vary_perc * val
+                maxval = val + ucell_vary_perc * val
+            else:
+                val_in_deg = val * 180 / np.pi
+                minval = (val_in_deg - self.params.ucell_ang_abs) * np.pi / 180.
+                maxval = (val_in_deg + self.params.ucell_ang_abs) * np.pi / 180.
+            p = ParameterType()
+            p.sigma = self.params.sigmas.ucell[i_uc]
+            p.init = val
+            p.minval = minval
+            p.maxval = maxval
+            p.fix = self.params.fix.ucell
+            if not self.params.quiet: print(
+                "Unit cell variable %s (currently=%f) is bounded by %f and %f" % (name, val, minval, maxval))
+            PAR.ucell_params.append(p)
+        PAR.ucell_man = ucell_man
+
+        # detector distance param:
+        p = ParameterType()
         if best is not None:
-            self.E.crystal.set_A(best.Amats.values[0])
-        PAR.Umatrix = sqr(self.E.crystal.get_U())
-        PAR.Bmatrix = sqr(self.E.crystal.get_B())
+            p.init = best.detz_shift_mm.values[0]*1e-3
+        else:
+            p.init = self.params.init.detz_shift *1e-3
+        p.sigma = self.params.sigmas.detz_shift
+        p.minval = self.params.mins.detz_shift * 1e-3
+        p.maxval = self.params.maxs.detz_shift * 1e-3
+        p.fix = self.params.fix.detz_shift
+        PAR.DetZ_param = p
 
         self.PAR = PAR
 
@@ -688,7 +752,9 @@ def Minimize(x0, rank_xidx, params, SIM, Modelers, ntimes, nshots_total):
     SIM.D.device_Id = dev
 
     vary = np.ones(len(x0), bool)
-    nparam_per_shot = 7  # 1 scale, 3 Nabc, 3 RotXYZ  # TODO make param order in agreement with hopper_utils
+
+    nucell_p = len(SIM.ucell_man.variables)
+    nparam_per_shot = 1+3+3 + nucell_p + 1  # 1 scale, 3 Nabc, 3 RotXYZ, N ucell, 1 detz  # TODO make param order in agreement with hopper_utils
     for i_shot in range(nshots_total):
         if params.fix.G:
             vary[i_shot * nparam_per_shot] = False
@@ -700,13 +766,11 @@ def Minimize(x0, rank_xidx, params, SIM, Modelers, ntimes, nshots_total):
             vary[i_shot * nparam_per_shot + 4] = False
             vary[i_shot * nparam_per_shot + 5] = False
             vary[i_shot * nparam_per_shot + 6] = False
-
-    #n_uc_param = len(SIM.ucell_man.variables)
-    #if params.fix.ucell:
-    #    for i_uc in range(n_uc_param):
-    #        vary[SIM.num_xtals*n_param_per_xtal + i_uc] = False
-    #if params.fix.detz_shift:
-    #    vary[SIM.num_xtals*n_param_per_xtal + n_uc_param] = False
+        if params.fix.ucell:
+            for i_uc in range(nucell_p):
+                vary[i_shot*nparam_per_shot + 7 + i_uc] = False
+        if params.fix.detz_shift:
+            vary[i_shot*nparam_per_shot + 7 + nucell_p] = False
 
     target = TargetFunc(params, SIM)
 
@@ -721,6 +785,11 @@ def Minimize(x0, rank_xidx, params, SIM, Modelers, ntimes, nshots_total):
     if not params.fix.RotXYZ:
         for ROT_ID in hopper_utils.ROTXYZ_IDS:
             SIM.D.refine(ROT_ID)
+    if not params.fix.ucell:
+        for i_ucell in range(nucell_p):
+            SIM.D.refine(hopper_utils.UCELL_ID_OFFSET + i_ucell)
+    if not params.fix.detz_shift:
+        SIM.D.refine(hopper_utils.DETZ_ID)
 
     if params.method in ["Nelder-Mead", "Powell"]:
         args = (rank_xidx, SIM, Modelers, True, params, False, ntimes)
@@ -760,24 +829,28 @@ def model(x, SIM, Modeler, compute_grad=True, sanity_test=None):
     pfs = Modeler.pan_fast_slow
     PAR = Modeler.PAR
 
-    # update the simlator crystal model
+    # Umat
     SIM.D.Umatrix = PAR.Umatrix
-    SIM.D.Bmatrix = PAR.Bmatrix
-    #SIM.D.set_ncells_values(PAR.Nabc)
-    SIM.D.shift_origin_z(SIM.detector, Modeler.shiftZ_meters)  # set the originZ as SIM.detector.origin plus the shiftZ which should be in meters
-    # detector shift code looks like
-    # for (int pid=0; pid< detector.size(); pid++)
-    #  pix0_vectors[pid*3 + 2] = detector[pid].get_origin()[2]/1000.0 + shiftZ;
-    #print(PAR.Nabc)
-    #print(PAR.Umatrix)
-    #print(PAR.Bmatrix)
+
+    # Bmat
+    n_ucell_param = len(PAR.ucell_man.variables)
+    unitcell_rescaled = x[7:7+n_ucell_param]
+    unitcell_variables = [PAR.ucell_params[i].get_val(xval) for i, xval in enumerate(unitcell_rescaled)]
+    PAR.ucell_man.variables = unitcell_variables
+    SIM.D.Bmatrix = PAR.ucell_man.B_recipspace
+    if compute_grad:
+        for i_ucell in range(len(unitcell_variables)):
+            SIM.D.set_ucell_derivative_matrix(
+                i_ucell + hopper_utils.UCELL_ID_OFFSET,
+                PAR.ucell_man.derivative_matrices[i_ucell])
+
+    # detector parameters
+    x_shiftZ = x[7 + n_ucell_param]
+    shiftZ = PAR.DetZ_param.get_val(x_shiftZ)
+    SIM.D.shift_origin_z(SIM.detector, shiftZ)
 
     # update the energy spectrum
-    #SIM.beam.spectrum = Modeler.spectrum
-    #SIM.D.xray_beams = SIM.beam.xray_beams
-    #print("Simulating %d energy channels" % len(SIM.D.xray_beams))
     SIM.D.xray_beams = Modeler.xray_beams #SIM.beam.xray_beams
-    #SIM.D.update_xray_beams(SIM.beam.xray_beams)
 
     # how many parameters we simulate
     npix = int(len(pfs) / 3)
@@ -892,6 +965,17 @@ def model(x, SIM, Modeler, compute_grad=True, sanity_test=None):
                 rot_grad = PAR.RotXYZ_params[i_rot].get_deriv(x[4+i_rot], rot_grad)
                 grad[4+i_rot] += (common_grad_term * rot_grad)[Modeler.all_trusted].sum()
 
+        if PAR.ucell_params[0].refine:
+            for i_ucell in range(n_ucell_param):
+                uc_grad = scale*SIM.D.get_derivative_pixels(hopper_utils.UCELL_ID_OFFSET+i_ucell).as_numpy_array()[:npix]
+                uc_grad = PAR.ucell_params[i_ucell].get_deriv(unitcell_rescaled[i_ucell], uc_grad)
+                grad[7 + i_ucell] += (common_grad_term * uc_grad)[Modeler.all_trusted].sum()
+
+        if PAR.DetZ_param.refine:
+            detz_grad = SIM.D.get_derivative_pixels(hopper_utils.DETZ_ID).as_numpy_array()[:npix]
+            detz_grad = PAR.DetZ_param.get_deriv(x_shiftZ, detz_grad)
+            grad[7 + n_ucell_param] += (common_grad_term * detz_grad)[Modeler.all_trusted].sum()
+
         # TODO add a dimension to get_derivative_pixels(FHKL_ID), in case that pixels hold information on multiple HKL
         fcell_grad = SIM.D.get_derivative_pixels(FHKL_ID)
         fcell_grad = scale * (fcell_grad[:npix].as_numpy_array())
@@ -956,7 +1040,6 @@ def model(x, SIM, Modeler, compute_grad=True, sanity_test=None):
     #    #    if i==0:
     #    #        raise ValueError("Scale factor gradient is Nan!")
 
-
     grad_is_nan = np.isnan(grad)
     assert not np.any(grad_is_nan) , "%s, %s" % \
         (Modeler.exp_name, ",".join( [str(x) for x in np.where(grad_is_nan)[0]] ) )
@@ -964,7 +1047,6 @@ def model(x, SIM, Modeler, compute_grad=True, sanity_test=None):
     #    for i in bad_i:
     #    print("")
     #    print(Modeler.exp_name)
-
 
     return resid_term, grad, model_pix
 
@@ -1024,7 +1106,7 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
     verbose = verbose and COMM.rank==0
     t_start = time.time()
     timestamps = list(Modelers.keys())
-    fchi = fG = fNabc = f_RotXYZ = 0
+    fchi = fG = fNabc = f_RotXYZ = f_ucell = f_detz = 0
     g = np.zeros_like(x)
 
     #   do a global update of the Fhkl parameters in the simulator object
@@ -1061,6 +1143,8 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
         # restraint terms by that factor
         nn = 1. / ntimes[t]  # n times is the number of ranks which are modeling part of a shot, id imagine its usually a small number like 1 or 2
 
+        n_uc_param = len(Mod_t.PAR.ucell_man.variables)
+
         # scale factor "G" restraint
         if Mod_t.PAR.Scale.refine:
             G_rescaled = x_t[0]
@@ -1087,6 +1171,20 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
                 delRotXYZ.append(del_rot)
                 f_RotXYZ += nn*.5*del_rot**2 / rot_V
 
+        if Mod_t.PAR.ucell_params[0].refine:
+            ucell_p_deltas = []
+            for i_ucell in range(n_uc_param):
+                beta = params.betas.ucell[i_ucell]
+                del_u = params.centers.ucell[i_ucell]-ucvar[i_ucell]
+                ucell_p_deltas.append(del_u)
+                f_ucell += nn*.5*del_u**2/beta
+
+        # det dist shift restraint
+        if Mod_t.PAR.DetZ_param.refine:
+            #del_detz = detz_shift - params.centers.detz_shift
+            del_detz = params.centers.detz_shift - detz_shift
+            f_detz += nn*.5*del_detz**2/params.betas.detz_shift
+
         if compute_grad:
             # copy the per-shot contributions of the gradients to the global gradient array
 
@@ -1094,7 +1192,7 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
             if Mod_t.PAR.Scale.refine:
                 scale_global_idx = rank_xidx[t][0]
                 g[scale_global_idx] += grad[0] # model
-                g[scale_global_idx] += nn*Mod_t.PAR.Scale.get_deriv(G_rescaled, -delG / G_V) # restraint
+                g[scale_global_idx] += nn*Mod_t.PAR.Scale.get_deriv(G_rescaled, -nn*delG / G_V) # restraint
 
             # Nabc gradient term
             if Mod_t.PAR.Nabc_params[0].refine:
@@ -1105,7 +1203,7 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
                     N_var = params.betas.Nabc[i_N]
                     del_N = delNabc[i_N]
                     g[Nabc_global_idx] += \
-                        Mod_t.PAR.Nabc_params[i_N].get_deriv(x_t[1+i_N], -nn*.5*del_N / N_var) # restraint
+                        Mod_t.PAR.Nabc_params[i_N].get_deriv(x_t[1+i_N], -nn*del_N / N_var) # restraint
 
             # RotXYZ gradient term
             if Mod_t.PAR.RotXYZ_params[0].refine:
@@ -1116,7 +1214,23 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
                     rot_var = params.betas.RotXYZ  #TODO make this beta a list?
                     del_rot = delRotXYZ[i_rot]
                     g[RotXYZ_global_idx] += \
-                        Mod_t.PAR.RotXYZ_params[i_rot].get_deriv(x_t[4+i_rot], -nn*.5*del_rot / rot_var) # restraint
+                        Mod_t.PAR.RotXYZ_params[i_rot].get_deriv(x_t[4+i_rot], -nn*del_rot / rot_var) # restraint
+                    # RotXYZ gradient term
+
+            if Mod_t.PAR.ucell_params[0].refine:
+                for i_uc in range(n_uc_param):
+                    # 7+i_uc is the per-shot position for the ucell_p
+                    ucp_global_idx = rank_xidx[t][7+i_uc]
+                    g[ucp_global_idx] += grad[7+i_uc]  # model
+                    ucp_var = params.betas.ucell[i_uc]
+                    del_u = ucell_p_deltas[i_uc]
+                    g[ucp_global_idx] += \
+                        Mod_t.PAR.ucell_params[i_uc].get_deriv(x_t[7+i_uc], -nn*del_u / ucp_var) # restraint
+
+            if Mod_t.PAR.DetZ_param.refine:
+                dz_global_idx = rank_xidx[t][7+n_uc_param]
+                g[dz_global_idx] += grad[7+n_uc_param]  # model
+                g[dz_global_idx] += Mod_t.PAR.DetZ_param.get_deriv(x[7+n_uc_param], -nn*del_detz/params.betas.detz_shift)  # restraint
 
             # Fhkl term updates
             g[-SIM.n_global_fcell:] += grad[-SIM.n_global_fcell:]
@@ -1131,6 +1245,8 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
     fG = COMM.bcast(COMM.reduce(fG))
     fNabc = COMM.bcast(COMM.reduce(fNabc))
     f_RotXYZ = COMM.bcast(COMM.reduce(f_RotXYZ))
+    f_ucell = COMM.bcast(COMM.reduce(f_ucell))
+    f_detz = COMM.bcast(COMM.reduce(f_detz))
     g = COMM.bcast(COMM.reduce(g))
     t_mpi_done = time.time()
 
@@ -1181,12 +1297,14 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
                 SIM.Fhkl_modelers[i_fcell].get_deriv(Fhkl_rescaled[i_fcell], Fhkl_restraint_grad[i_fcell]) \
                 for i_fcell in range(SIM.n_global_fcell)])
 
-    f = fchi + fG + f_Fhkl + fNabc + f_RotXYZ
+    f = fchi + fG + f_Fhkl + fNabc + f_RotXYZ + f_ucell + f_detz
     chi = fchi / f *100
     gg = fG / f*100
     ff = f_Fhkl / f *100
     nn = fNabc / f * 100
     rr = f_RotXYZ / f * 100
+    uu = f_ucell / f * 100
+    dd = f_detz / f * 100
     gnorm = np.linalg.norm(g)
 
     t_done = time.time()
@@ -1198,8 +1316,8 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
     frac_update = t_update / t_total * 100.
 
     if verbose:
-        print("F=%10.7g (chi: %.1f%%, G: %.1f%%, N: %.1f%%, Rot: %.1f%%, Fhkl: %.1f%%); |g|=%10.7e; Total iter time=%.1f millisec (mpi: %.1f%% , model: %.1f%%, updateFhkl: %.1f%%)" \
-              % (f, chi, gg, nn, rr, ff, gnorm, t_total*1000, frac_mpi, frac_model, frac_update))
+        print("F=%10.7g (chi: %.1f%%, G: %.1f%%, N: %.1f%%, Rot: %.1f%%, UC: %.1f%%, Dz: %.1f%%, Fhkl: %.1f%%); |g|=%10.7e; Total iter time=%.1f millisec (mpi: %.1f%% , model: %.1f%%, updateFhkl: %.1f%%)" \
+              % (f, chi, gg, nn, rr, uu, dd, ff, gnorm, t_total*1000, frac_mpi, frac_model, frac_update))
     return f, g
 
 
