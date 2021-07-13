@@ -2457,7 +2457,10 @@ class build_chain_proxies(object):
     if restraints_loading_flags is None: restraints_loading_flags={}
     self._cif = cif_output_holder()
     self.pdb_link_records = {}
+    #
     self.type_energies = []
+    self.type_h_bonds = []
+    #
     self.conformation_dependent_restraints_list = \
       conformation_dependent_restraints_list
     unknown_residues = dicts.with_default_value(0)
@@ -2560,6 +2563,9 @@ class build_chain_proxies(object):
           al = atom_dict.get(name.strip(), None)
           if al:
             self.type_energies.append(al.type_energy)
+            entry = ener_lib.lib_atom.get(al.type_energy, None)
+            assert entry
+            self.type_h_bonds.append(entry.hb_type)
           else:
             self.type_energies.append(None)
             raise Sorry('Not able to determine energy type for atom %s' % atom.quote())
@@ -3206,6 +3212,7 @@ class build_all_chain_proxies(linking_mixins):
     self.pdb_link_records = {}
     # END_MARKED_FOR_DELETION_OLEG
     self.type_energies = []
+    self.type_h_bonds = []
     if restraints_loading_flags is None:
       restraints_loading_flags = get_restraints_loading_flags(params)
     self.mon_lib_srv = mon_lib_srv
@@ -3484,6 +3491,7 @@ class build_all_chain_proxies(linking_mixins):
           self.conformation_dependent_restraints_list = \
             chain_proxies.conformation_dependent_restraints_list
           self.type_energies += chain_proxies.type_energies
+          self.type_h_bonds += chain_proxies.type_h_bonds
           del chain_proxies
           flush_log(log)
       if apply_restraints_specifications:
