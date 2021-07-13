@@ -20,30 +20,6 @@ from iotbx import pdb
 import traceback
 
 ##################################################################################
-def getBondedNeighborLists(atoms, bondProxies):
-  """Produce a dictionary with one entry for each atom that contains a list of all of
-    the atoms that are bonded to it.
-    External helper function to produce a dictionary of lists that lists all bonded
-    neighbors for each atom in a set of atoms.
-    :param atoms: Flex aray of atoms (could be obtained using model.get_atoms()).
-    :param bondProxies: Flex array of bond proxies for the atoms (could be obtained
-    using model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart =
-    model.get_sites_cart()) ).
-    :returns a dictionary with one entry for each atom that contains a list of all of
-    the atoms that are bonded to it.
-  """
-  atomDict = {}
-  for a in atoms:
-    atomDict[a.i_seq] = a
-  bondedNeighbors = {}
-  for a in atoms:
-    bondedNeighbors[a] = []
-  for bp in bondProxies:
-    bondedNeighbors[atomDict[bp.i_seqs[0]]].append(atomDict[bp.i_seqs[1]])
-    bondedNeighbors[atomDict[bp.i_seqs[1]]].append(atomDict[bp.i_seqs[0]])
-  return bondedNeighbors
-
-##################################################################################
 # This is a set of classes that implement Reduce's "Movers".  These are sets of
 # atoms that have more than one potential set of locations.
 #  - They may have a-priori preferences for some locations over others.
@@ -2140,6 +2116,32 @@ def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, 
       movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
 
   return movable
+
+##################################################################################
+# External helper functions.
+
+def getBondedNeighborLists(atoms, bondProxies):
+  """Produce a dictionary with one entry for each atom that contains a list of all of
+    the atoms that are bonded to it.
+    External helper function to produce a dictionary of lists that lists all bonded
+    neighbors for each atom in a set of atoms.
+    :param atoms: Flex aray of atoms (could be obtained using model.get_atoms()).
+    :param bondProxies: Flex array of bond proxies for the atoms (could be obtained
+    using model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart =
+    model.get_sites_cart()) ).
+    :returns a dictionary with one entry for each atom that contains a list of all of
+    the atoms that are bonded to it.
+  """
+  atomDict = {}
+  for a in atoms:
+    atomDict[a.i_seq] = a
+  bondedNeighbors = {}
+  for a in atoms:
+    bondedNeighbors[a] = []
+  for bp in bondProxies:
+    bondedNeighbors[atomDict[bp.i_seqs[0]]].append(atomDict[bp.i_seqs[1]])
+    bondedNeighbors[atomDict[bp.i_seqs[1]]].append(atomDict[bp.i_seqs[0]])
+  return bondedNeighbors
 
 ##################################################################################
 # If we're run on the command line, test our classes and functions.
