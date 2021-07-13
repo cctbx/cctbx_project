@@ -40,6 +40,9 @@ from simtbx.diffBragg.refiners.parameters import RangedParameter
 
 ensemble_phil = """
 include scope simtbx.command_line.hopper.phil_scope
+wilson_fat = 1
+  .type = float
+  .help = scales the width of wilson distribution
 use_wilson_restraints = None
   .type = bool
   .help = if True, must provide scaling_reference_mtz information below
@@ -1021,7 +1024,7 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
         G = Mod_t.PAR.Scale.get_val(G_rescaled)
         delG = params.centers.G - G
         G_V = params.betas.G
-        fG += nn*(.5*(np.log(2*np.pi*G_V) + delG**2/G_V))
+        fG += nn*.5* delG**2/G_V
 
         delNabc = []  # cache delta N for restraints gradient term below
         for i_N in range(3):
@@ -1029,7 +1032,7 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
             N_current = Mod_t.PAR.Nabc_params[i_N].get_val(x_t[1+i_N])  # N always ranges 1-3 in the per-shot param list x_t
             del_N =  params.centers.Nabc[i_N] - N_current
             delNabc.append(del_N)
-            fNabc += .5*(np.log(2*np.pi*N_V) + del_N**2 / N_V)
+            fNabc += nn *.5 * del_N**2 / N_V
 
         delRotXYZ = []
         for i_rot in range(3):
@@ -1037,7 +1040,7 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
             rot_current = Mod_t.PAR.RotXYZ_params[i_rot].get_val(x_t[4+i_rot])
             del_rot = params.centers.RotXYZ[i_rot] - rot_current
             delRotXYZ.append(del_rot)
-            f_RotXYZ += .5*(np.log(2*np.pi*rot_V) + del_rot**2 / rot_V)
+            f_RotXYZ += nn*.5*del_rot**2 / rot_V
 
         if compute_grad:
             # copy the per-shot contributions of the gradients to the global gradient array
@@ -1055,7 +1058,7 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
                 N_var = params.betas.Nabc[i_N]
                 del_N = delNabc[i_N]
                 g[Nabc_global_idx] += \
-                    Mod_t.PAR.Nabc_params[i_N].get_deriv(x_t[1+i_N], -del_N / N_var) # restraint
+                    Mod_t.PAR.Nabc_params[i_N].get_deriv(x_t[1+i_N], -nn*.5*del_N / N_var) # restraint
 
             # RotXYZ gradient term
             for i_rot in range(3):
@@ -1065,7 +1068,7 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
                 rot_var = params.betas.RotXYZ  #TODO make this beta a list?
                 del_rot = delRotXYZ[i_rot]
                 g[RotXYZ_global_idx] += \
-                    Mod_t.PAR.RotXYZ_params[i_rot].get_deriv(x_t[4+i_rot], -del_rot / rot_var) # restraint
+                    Mod_t.PAR.RotXYZ_params[i_rot].get_deriv(x_t[4+i_rot], -nn*.5*del_rot / rot_var) # restraint
 
 
             # Fhkl term updates
@@ -1094,12 +1097,13 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
         f_Fhkl = 0
         for i_fcell in range(SIM.n_global_fcell):
             hkl = SIM.asu_from_i_fcell[i_fcell]
-            L = SIM.Fsquared_reference_for_asu[hkl]
+            L = SIM.Fsq_ref_for_asu[hkl]
             F = Fhkl_current[i_fcell]
             if SIM.asu_is_centric[hkl]:
-                f_Fhkl += -.5 * np.log(2/np.pi/L) + F**2 / L
+                f_Fhkl += F**2 / L/2
             else:
-                f_Fhkl += -np.log(2 * F / L) + F**2 / L
+                #f_Fhkl += -np.log(2 * F / L) + F**2 / L
+                f_Fhkl += F**2 / L - np.log(F) 
 
     else:
         Fhkl_init = np.array([SIM.Fhkl_modelers[i_fcell].init for i_fcell in range(SIM.n_global_fcell)])
@@ -1117,10 +1121,10 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
             # TODO vectorize or MPI this loop
             for i_fcell in range(SIM.n_global_fcell):
                 hkl = SIM.asu_from_i_fcell[i_fcell]
-                L = SIM.Fsquared_reference_for_asu[hkl]
+                L = SIM.Fsq_ref_for_asu[hkl]
                 F = Fhkl_current[i_fcell]
                 if SIM.asu_is_centric[hkl]:
-                    g_term = 2*F/L
+                    g_term = F/L
                 else:
                     g_term = 2*F/L - 1/F
                 g[-SIM.n_global_fcell+i_fcell] = SIM.Fhkl_modelers[i_fcell].get_deriv(Fhkl_rescaled[i_fcell], g_term)
@@ -1149,10 +1153,7 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
     if verbose:
         print("F=%10.7g (chi: %.1f%%, G: %.1f%%, N: %.1f%%, Rot: %.1f%%, Fhkl: %.1f%%); |g|=%10.7e; Total iter time=%.1f millisec (mpi: %.1f%% , model: %.1f%%, updateFhkl: %.1f%%)" \
               % (f, chi, gg, nn, rr, ff, gnorm, t_total*1000, frac_mpi, frac_model, frac_update))
-    if compute_grad:
-        return f, g
-    else:
-        return f
+    return f, g
 
 
 def save_model_Z(img_path, Modeler, model_pix):
@@ -1282,29 +1283,28 @@ def setup_Fhkl_attributes(SIM, params, Modelers):
     #    assert np.allclose(val1, val2)
     # are we using a reference for restraints?
     if params.scaling_reference_mtz_name is not None:
+
         Fref = utils.open_mtz(params.scaling_reference_mtz_name, params.scaling_reference_mtz_col)
         if not Fref.is_xray_amplitude_array() or np.min(Fref.data()) < 0:
             Fref = Fref.as_amplitude_array()
+        dspacing_ref, Fsq_ref = utils.get_ave_FF(Fref)
+
         temp_mset = Fref.miller_set(flex.miller_index(asu_hi), True)
         temp_data = flex.double([SIM.fcell_init_from_asu[h] for h in asu_hi])
         temp_mill_arr = miller.array(temp_mset, temp_data)
         # this scale factor is applied to Fref to bring it on the same scale as the data
         Fref_scale_factor = utils.compute_scale_to_minmize_r_factor(temp_mill_arr, Fref)
-        dspacing_ref, F_amp_squared_ref = utils.get_ave_FF(Fref)
-        F_squared = F_amp_squared_ref* Fref_scale_factor**2
-        # get the dspacing at each i_fcell
+        Fsq_ref = Fsq_ref*Fref_scale_factor**2
+        Fsq_ref = Fsq_ref*params.wilson_fat  # does this have any effect at all ?
 
-        d_spacing_map = {h: d for h,d in zip(temp_mill_arr.indices(), temp_mill_arr.d_spacings())}
+        dspace_arr = temp_mill_arr.d_spacings()
+        d_spacing_map = {h: d for h,d in zip(dspace_arr.indices(), dspace_arr.data())}
         dspacing_at_asu = {h: d_spacing_map[h]  for h in asu_hi}
-        min_d_in_data = np.min(list(dspacing_at_asu.values()))
-        max_d_in_data = np.max(list(dspacing_at_asu.values()))
-
-        assert min_d_in_data > np.min(dspacing_ref)
-        assert max_d_in_data < np.max(dspacing_ref)
 
         # this is variable "L" in my notes
-        Fsquared_reference_at_dspacing = interp1d(dspacing_ref, F_amp_squared_ref)
-        SIM.Fsquared_reference_for_asu = {h: Fsquared_reference_at_dspacing(d) for h,d in dspacing_at_asu.items()}
+        Fsq_endpt = Fsq_ref[0], Fsq_ref[-1]
+        Fsq_ref_at_d = interp1d(dspacing_ref, Fsq_ref, bounds_error=False, fill_value=Fsq_endpt)
+        SIM.Fsq_ref_for_asu = {h: Fsq_ref_at_d(d) for h, d in dspacing_at_asu.items()}
 
         # we will also need the centric flags as well for determining the proper probability distribution
         is_centric = temp_mill_arr.centric_flags()
