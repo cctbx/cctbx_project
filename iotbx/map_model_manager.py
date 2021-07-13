@@ -24,14 +24,14 @@ map_model {
   full_map = None
     .type = path
     .help = Input full map file
-    .short_caption = Full map
+    .short_caption = Map
     .style = file_type:ccp4_map input_file
 
   half_map = None
     .type = path
     .multiple = True
     .help = Input half map files
-    .short_caption = Half maps
+    .short_caption = Half map
     .style = file_type:ccp4_map input_file
   model = None
     .type = path
