@@ -1,7 +1,4 @@
 ##################################################################################
-# This is a test program to validate that the Python wrapping of Reduce worked.
-#
-
 #                Copyright 2021  Richardson Lab at Duke University
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,39 +13,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import Movers
 import InteractionGraph
-import Optimizers
 
-def RunReduceTests():
+##################################################################################
+# This is a set of functions that implement placement and optimization of
+# Reduce's "Movers".
 
-  #========================================================================
-  # Call the test functions for all of our files.
+##################################################################################
+# Test function to verify that all functions behave properly.
 
-  print('Testing Movers objects')
-  ret = Movers.Test()
-  if len(ret) != 0:
-    print("Failure:",ret)
-  assert (len(ret) == 0)
+def Test():
+  """Test function for all functions provided above.
+  :returns Empty string on success, string describing the problem on failure.
+  :returns Empty string on success, string describing the problem on failure.
+  """
 
-  print('Testing InteractionGraph objects')
-  ret = InteractionGraph.Test()
-  if len(ret) != 0:
-    print("Failure:",ret)
-  assert (len(ret) == 0)
+  # @todo
+  return ""
 
-  print('Testing Optimizers')
-  ret = Optimizers.Test()
-  if len(ret) != 0:
-    print("Failure:",ret)
-  assert (len(ret) == 0)
-
-  return ret
-
+##################################################################################
+# If we're run on the command line, test our classes and functions.
 if __name__ == '__main__':
 
-  ret = RunReduceTests()
+  ret = Test()
   if len(ret) == 0:
     print('Success!')
   else:
