@@ -1,10 +1,17 @@
 from __future__ import absolute_import, division, print_function
+
+from collections import Iterable
+
+#from simtbx.diffBragg import diffBragg
 from scitbx.array_family import flex
-from scitbx.matrix import sqr
+import numpy as np
+from simtbx.nanoBragg.anisotropic_mosaicity import AnisoUmats
 from simtbx.nanoBragg import shapetype, nanoBragg
 from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
 from simtbx.nanoBragg.nanoBragg_beam import NBbeam
 from copy import deepcopy
+from scitbx.matrix import sqr
+from simtbx.nanoBragg.tst_gaussian_mosaicity2 import run_uniform
 
 
 def Amatrix_dials2nanoBragg(crystal):
@@ -15,7 +22,9 @@ def Amatrix_dials2nanoBragg(crystal):
   :return: Amatrix as a tuple
   """
   sgi = crystal.get_space_group().info()
-  if sgi.type().lookup_symbol().startswith('C'):
+  cb_op = sgi.change_of_basis_op_to_primitive_setting()
+  dtrm = sqr(cb_op.c().r().as_double()).determinant()
+  if not dtrm == 1:
     raise ValueError('You need to convert your crystal model to its primitive setting first')
   Amatrix = sqr(crystal.get_A()).transpose()
   return Amatrix
@@ -36,30 +45,41 @@ def determine_spot_scale(beam_size_mm, crystal_thick_mm, mosaic_vol_mm3):
 
 
 class SimData:
-
   def __init__(self, use_default_crystal=False):
-    self.detector = SimData.simple_detector(180, 0.1, (512, 512))
-    self.seed = 1
-    self.crystal = NBcrystal(use_default_crystal=use_default_crystal)
-    self.add_air = False
-    self.add_water = True
-    self.water_path_mm = 0.005
-    self.air_path_mm = 0
+    self.detector = SimData.simple_detector(180, 0.1, (512, 512))  # dxtbx detector model
+    self.seed = 1  # nanoBragg seed member
+    self.crystal = NBcrystal(use_default_crystal)
+    self.add_air = False  # whether to add air in the generate_simulated_image method
+    self.Umats_method = 0  # how to generate mosaic rotation umats (can be 0,1,2,3)
+    self.add_water = True  # whether to add water in the generate_simulated_image method
+    self.water_path_mm = 0.005  # path length through water
+    self.air_path_mm = 0  # path length through air
+    self.using_diffBragg_spots = False  # whether to use diffBragg
     nbBeam = NBbeam()
     nbBeam.unit_s0 = (0, 0, -1)
-    self.beam = nbBeam
-    self.using_cuda = False
-    self.using_omp = False
-    self.rois = None
-    self.readout_noise = 3
-    self.gain = 1
-    self.psf_fwhm = 0
-    self.include_noise = True
+    self.beam = nbBeam  # nanoBragg_beam object
+    self.using_cuda = False  # whether to use giles mullen cuda acceleration
+    self.using_omp = False  # whether to use add_nanoBragg_spots_nks with open mp accel
+    self.rois = None  # a list of rois for simiuting rois only
+    self.readout_noise = 3  # detector readout noise
+    self.gain = 1  # detector gain
+    self.psf_fwhm = 0  # detector point spread width
+    self.include_noise = True  # include noise in the simulation if using generate_simulated_image method
     self.background_raw_pixels = None  # background raw pixels, should be a 2D flex double array
     self.backrground_scale = 1  # scale factor to apply to background raw pixels
-    self.functionals = []
-    self.mosaic_seeds = 777, 777
-    self.D = None # nanoBragg instance
+    self.mosaic_seeds = 777, 777  # two random seeds governing the legacy Umats method
+    self.D = None  # nanoBragg or diffBragg instance
+    self.panel_id = 0  # detector panel id
+    self.umat_maker = None  # an instance of AnisoUmats for generating ensembles of mosaic rotations
+    self.ucell_man = None   # place holder for a unit cell manager (used in hopper)
+    self.Nabc_params = None   # RangedParameter (refiners/parameters) objects used by hopper
+    self.RotXYZ_params = None  # RangedParameter (refiners/parameters) objects used by hopper
+    self.ucell_params = None  # RangedParameter (refiners/parameters) objects used by hopper
+    self.Scale_params = None  # RangedParameter (refiners/parameters) objects used by hopper
+    self.DetZ_params = None  # RangedParameter (refiners/parameters) objects used by hopper
+    self.num_xtals = 1  # number of xtals, used in the hopper script
+    self.dxtbx_spec = None  # spectrum object from dxtbx
+    self.functionals = []  # target functionals  container ?
 
   @property
   def background_raw_pixels(self):
@@ -76,6 +96,26 @@ class SimData:
   @gain.setter
   def gain(self, val):
     self._gain = val
+
+  @staticmethod
+  def default_panels_fast_slow(detector):
+    Npanel = len(detector)
+    nfast, nslow = detector[0].get_image_size()
+    slows, fasts = np.indices((nslow, nfast))
+    fasts = list(map(int, np.ravel(fasts)))
+    slows = list(map(int, np.ravel(slows)))
+    fasts = fasts*Npanel
+    slows = slows*Npanel
+    pids = []
+    for pid in range(Npanel):
+      pids += [pid]*(nfast*nslow)
+
+    npix = nslow*nfast*Npanel
+    panels_fasts_slows = np.zeros(npix*3, int)
+    panels_fasts_slows[0::3] = pids
+    panels_fasts_slows[1::3] = fasts
+    panels_fasts_slows[2::3] = slows
+    return flex.size_t(panels_fasts_slows)
 
   @property
   def air_path_mm(self):
@@ -137,8 +177,17 @@ class SimData:
         UMAT_nm.append(col(scitbx.math.r3_rotation_axis_and_angle_as_matrix(site, 0)))
       if isotropic and mos_spread_deg > 0:
         UMAT_nm.append(col(scitbx.math.r3_rotation_axis_and_angle_as_matrix(site, -m)))
-
     return UMAT_nm
+
+  @property
+  def Umats_method(self):
+    return self._Umats_method
+
+  @Umats_method.setter
+  def Umats_method(self, val):
+    if val not in [0, 1, 2, 3, 4]:
+      raise ValueError("Umats method needs to be 0,1,2,3, or 4 (but 4 aint yet supported)")
+    self._Umats_method = val
 
   @property
   def psf_fwhm(self):
@@ -198,12 +247,21 @@ class SimData:
     self._using_omp = val
 
   @property
+  def using_diffBragg_spots(self):
+    return self._using_diffBragg_spots
+
+  @using_diffBragg_spots.setter
+  def using_diffBragg_spots(self, val):
+    assert(val in [True, False])
+    self._using_diffBragg_spots = val
+
+  @property
   def using_cuda(self):
     return self._using_cuda
 
   @using_cuda.setter
   def using_cuda(self, val):
-    assert val in (True, False)
+    assert(val in [True, False])
     self._using_cuda = val
 
   @property
@@ -216,19 +274,131 @@ class SimData:
 
   def update_Fhkl_tuple(self):
     if self.crystal.miller_array is not None:
-      self.D.Fhkl_tuple = (
-        self.crystal.miller_array.indices(), self.crystal.miller_array.data())
+      if self.using_diffBragg_spots and self.crystal.miller_is_complex:
+        Freal, Fimag = zip(*[(val.real, val.imag) for val in self.crystal.miller_array.data()])
+        Freal = flex.double(Freal)
+        Fimag = flex.double(Fimag)
+        self.D.Fhkl_tuple = self.crystal.miller_array.indices(), Freal, Fimag
+      else:
+        self.D.Fhkl_tuple = self.crystal.miller_array.indices(), self.crystal.miller_array.data(), None
 
   def _crystal_properties(self):
-    if self.crystal is not None:
+    if self.crystal is None:
+      return
+    self.D.xtal_shape = self.crystal.xtal_shape
+
+    self.update_Fhkl_tuple()
+
+    ## TODO: am I unnecessary?
+    #self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
+    if self.using_diffBragg_spots:
+      self.D.Omatrix = self.crystal.Omatrix
+      self.D.Bmatrix = self.crystal.dxtbx_crystal.get_B() #
+      self.D.Umatrix = self.crystal.dxtbx_crystal.get_U()
+      if self.crystal.isotropic_ncells:
+        self.D.Ncells_abc = self.crystal.Ncells_abc[0]
+      else:
+        self.D.Ncells_abc_aniso = self.crystal.Ncells_abc
+      if self.crystal.Ncells_def is not None:
+        self.D.Ncells_def = self.crystal.Ncells_def
+
+      if self.crystal.anisotropic_mos_spread_deg is not None:
+        mosaicity = self.crystal.anisotropic_mos_spread_deg
+        self.Umats_method = 3 if 3 == len(mosaicity) else 4
+        crystal=self.crystal.dxtbx_crystal
+      else:
+        mosaicity = self.crystal.mos_spread_deg
+        self.Umats_method = 2
+        crystal=None
+      self.update_umats(mosaicity, self.crystal.n_mos_domains, crystal)
+
+    else:
       self.D.xtal_shape = self.crystal.xtal_shape
       self.update_Fhkl_tuple()
       self.D.Amatrix = Amatrix_dials2nanoBragg(self.crystal.dxtbx_crystal)
-      self.D.Ncells_abc = self.crystal.Ncells_abc
+      #Nabc = tuple([int(round(x)) for x in self.crystal.Ncells_abc])
+      Nabc = self.crystal.Ncells_abc
+      if len(Nabc) == 1:
+        Nabc = Nabc[0], Nabc[0], Nabc[0]
+      self.D.Ncells_abc = Nabc
+      # TODO fix for anisotropic
       self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
       self.D.mosaic_domains = self.crystal.n_mos_domains
-      self.D.set_mosaic_blocks(SimData.Umats(self.crystal.mos_spread_deg, self.crystal.n_mos_domains,
-                                             seed=self.mosaic_seeds[0], norm_dist_seed=self.mosaic_seeds[1]) )
+      mos_blocks = SimData.Umats(self.crystal.mos_spread_deg,
+                                    self.crystal.n_mos_domains,
+                                    seed=self.mosaic_seeds[0], norm_dist_seed=self.mosaic_seeds[1])
+      self.D.set_mosaic_blocks(mos_blocks)
+
+  def update_umats(self, mos_spread, mos_domains, crystal=None):
+
+    if mos_spread == 0 or mos_domains == 1:
+      Umats = [(1, 0, 0, 0, 1, 0, 0, 0, 1)]
+      Umats_prime = [(0, 0, 0, 0, 0, 0, 0, 0, 0)]
+      self.D.set_mosaic_blocks(Umats)
+      self.D.set_mosaic_blocks_prime(Umats_prime)
+      return
+
+    #TODO remove arguments from this function as they are already in crystal attribute
+    if not hasattr(self, "D"):
+      print("Cannot set umats if diffBragg/nanoBragg is not yet instantiated")
+      return
+    if isinstance(mos_spread, Iterable):
+      # TODO does this matter to set the ave spread under the hood ?
+      ave_spread =  sum(mos_spread) / len(list(mos_spread))
+      assert ave_spread > 0
+      self.D.mosaic_spread_deg = ave_spread
+      self.crystal.mos_spread_deg = ave_spread
+      self.crystal.anisotropic_mosaic_spread_deg = mos_spread
+      assert self.Umats_method in [3, 4]
+      assert crystal is not None
+      self.D.has_anisotropic_mosaic_spread = True
+    else:
+      self.D.mosaic_spread_deg = mos_spread
+      self.crystal.mos_spread_deg = mos_spread
+      self.crystal.anisotropic_mosaic_spread_deg = None
+      assert self.Umats_method in [0, 1, 2]
+      self.D.has_anisotropic_mosaic_spread = False
+
+    self.D.mosaic_domains = mos_domains
+    self.crystal.n_mos_domains = mos_domains
+
+    Umats_prime = Umats_dbl_prime = None
+
+    if self.umat_maker is None and self.Umats_method in [2,3,4]:
+      assert mos_domains % 2 ==0
+      self.umat_maker = AnisoUmats(num_random_samples=mos_domains)
+
+    # legacy
+    if self.Umats_method == 0:
+      Umats = SimData.Umats(mos_spread, mos_domains)
+
+    elif self.Umats_method == 1:
+      Umats, Umats_prime = run_uniform(mos_spread, mos_domains)
+
+    elif self.Umats_method == 2:
+      eta = mos_spread
+      eta_tensor = eta, 0, 0, 0, eta, 0, 0, 0, eta
+      Umats, Umats_prime, Umats_dbl_prime = self.umat_maker.generate_Umats(eta_tensor, crystal,how=2, compute_derivs=True)
+
+    elif self.Umats_method == 3:
+      eta_a, eta_b, eta_c = mos_spread
+      eta_tensor = eta_a, 0, 0, 0, eta_b, 0, 0, 0, eta_c
+      Umats, Umats_prime, Umats_dbl_prime = self.umat_maker.generate_Umats(eta_tensor, crystal,how=1, compute_derivs=True)
+      Umats_prime = Umats_prime[0::3] + Umats_prime[1::3] + Umats_prime[2::3]
+      Umats_dbl_prime = Umats_dbl_prime[0::3] + Umats_dbl_prime[1::3] + Umats_dbl_prime[2::3]
+
+    else: # self.Umats_method == 4:
+      raise NotImplementedError("full 6 parameter mosaic model still not refine-able")
+
+    self.D.set_mosaic_blocks(Umats)
+    if Umats_prime is not None:
+      self.D.set_mosaic_blocks_prime(Umats_prime)
+    if Umats_dbl_prime is not None:
+      print("Setting second derivatives")
+      self.D.set_mosaic_blocks_dbl_prime(Umats_dbl_prime)
+
+    # here we move the umats from the flex mat3 into vectors of Eigen:
+    self.D.vectorize_umats()
 
   def _beam_properties(self):
     self.D.xray_beams = self.beam.xray_beams
@@ -243,10 +413,10 @@ class SimData:
     if self.crystal is None:
       return 1
     if self.beam.size_mm <= self.crystal.thick_mm:
-      illum_xtal_vol = self.crystal.thick_mm * self.beam.size_mm ** 2
+      illum_xtal_vol = self.crystal.thick_mm * self.beam.size_mm**2
     else:
-      illum_xtal_vol = self.crystal.thick_mm ** 3
-    mosaic_vol = self.D.xtal_size_mm[0] * self.D.xtal_size_mm[1] * self.D.xtal_size_mm[2]
+      illum_xtal_vol = self.crystal.thick_mm**3
+    mosaic_vol = self.D.xtal_size_mm[0]*self.D.xtal_size_mm[1]*self.D.xtal_size_mm[2]
     return illum_xtal_vol / mosaic_vol
 
   def update_nanoBragg_instance(self, parameter, value):
@@ -268,26 +438,47 @@ class SimData:
       self.D.set_dxtbx_detector_panel(self.detector[int(val)], self.beam.nanoBragg_constructor_beam.get_s0())
       self._panel_id = int(val)
 
-  def instantiate_nanoBragg(self, verbose=0, oversample=0, device_Id=0, adc_offset=0, default_F=1000.0, interpolate=0,
-                            pid=0):
-    self.D = nanoBragg(self.detector, self.beam.nanoBragg_constructor_beam, verbose=verbose,
-                       panel_id=int(pid))
+  def instantiate_nanoBragg(self, verbose=0, oversample=0, device_Id=0, adc_offset=0,
+                            default_F=1e3, interpolate=0):
+
+    self.instantiate_diffBragg(verbose=verbose, oversample=oversample, device_Id=device_Id,
+                               adc_offset=adc_offset, default_F=default_F, interpolate=interpolate,
+                               use_diffBragg=False)
+
+  def instantiate_diffBragg(self, verbose=0, oversample=0, device_Id=0,
+                            adc_offset=0, default_F=1e3, interpolate=0, use_diffBragg=True,
+                            auto_set_spotscale=False):
+
+    if not use_diffBragg:
+      self.D = nanoBragg(self.detector, self.beam.nanoBragg_constructor_beam,
+                         verbose=verbose, panel_id=int(self.panel_id))
+    else:
+      self.D = diffBragg(self.detector,
+                         self.beam.nanoBragg_constructor_beam,
+                         verbose)
+    self.using_diffBragg_spots = use_diffBragg
     self._seedlings()
     self.D.interpolate = interpolate
     self._crystal_properties()
     self._beam_properties()
-    self.D.spot_scale = self.determine_spot_scale()
+    if auto_set_spotscale:
+      self.D.spot_scale = self.determine_spot_scale()
     self.D.adc_offset_adu = adc_offset
     self.D.default_F = default_F
+
     if oversample > 0:
-      self.D.oversample = oversample
+      self.D.oversample = int(oversample)
+
     if self.using_cuda:
       self.D.device_Id = device_Id
-    self._full_roi = self.D.region_of_interest
+    if not self.using_diffBragg_spots:
+      self._full_roi = self.D.region_of_interest
+    else:
+      self.D.vectorize_umats()
 
   def generate_simulated_image(self, instantiate=False):
     if instantiate:
-      self.instantiate_nanoBragg()
+      self.instantiate_diffBragg()
     self._add_nanoBragg_spots()
     self._add_background()
     if self.include_noise:
@@ -295,28 +486,34 @@ class SimData:
     return self.D.raw_pixels.as_numpy_array()
 
   def _add_nanoBragg_spots(self):
-    rois = self.rois
-    if rois is None:
-      rois = [self._full_roi]
-    _rawpix = None # cuda_add_spots doesnt add spots, it resets each time.. hence we need this
-    for roi in rois:
-      self.D.region_of_interest = roi
-      if self.using_cuda:
-        self.D.add_nanoBragg_spots_cuda()
-        if _rawpix is None and len(rois) > 1:
-          _rawpix = deepcopy(self.D.raw_pixels)
-        elif _rawpix is not None:
-          _rawpix += self.D.raw_pixels
+    if self.using_diffBragg_spots:
+      self.D.add_diffBragg_spots()
+    else:
+      rois = self.rois
+      if rois is None:
+        rois = [self._full_roi]
+      _rawpix = None  # cuda_add_spots doesnt add spots, it resets each time.. hence we need this
+      for roi in rois:
+        if len(roi)==4:
+          roi = (roi[0], roi[1]), (roi[2],roi[3])
+        self.D.region_of_interest = roi
+        if self.using_cuda:
+          self.D.add_nanoBragg_spots_cuda()
+          if _rawpix is None and len(rois) > 1:
+            _rawpix = deepcopy(self.D.raw_pixels)
+          elif _rawpix is not None:
+            _rawpix += self.D.raw_pixels
 
-      elif self.using_omp:
-        from boost_adaptbx.boost.python import streambuf  # will deposit printout into dummy StringIO as side effect
-        from six.moves import StringIO
-        self.D.add_nanoBragg_spots_nks(streambuf(StringIO()))
-      else:
-        self.D.add_nanoBragg_spots()
+        elif self.using_omp:
+          from boost_adaptbx.boost.python import streambuf  # will deposit printout into dummy StringIO as side effect
+          from six.moves import StringIO
+          self.D.progress_meter = False
+          self.D.add_nanoBragg_spots_nks(streambuf(StringIO()))
+        else:
+          self.D.add_nanoBragg_spots()
 
-    if self.using_cuda and _rawpix is not None:
-      self.D.raw_pixels = _rawpix
+      if self.using_cuda and _rawpix is not None:
+        self.D.raw_pixels = _rawpix
 
   def _add_background(self):
     if self.background_raw_pixels is not None:
@@ -332,14 +529,15 @@ class SimData:
         self.D.amorphous_density_gcm3 = 1
         self.D.amorphous_molecular_weight_Da = 18
         self.D.add_background(1, 0)
-      if self.add_air:
-        print('add air %f mm' % self.air_path_mm)
-        air_scatter = flex.vec2_double([(0, 14.1), (0.045, 13.5), (0.174, 8.35), (0.35, 4.78), (0.5, 4.22)])
-        self.D.Fbg_vs_stol = air_scatter
-        self.D.amorphous_sample_thick_mm = self.air_path_mm
-        self.D.amorphous_density_gcm3 = 0.0012
-        self.D.amorphous_sample_molecular_weight_Da = 28
-        self.D.add_background(1, 0)
+
+    if self.add_air:
+      print("add air %f mm" % self.air_path_mm)
+      air_scatter = flex.vec2_double([(0, 14.1), (0.045, 13.5), (0.174, 8.35), (0.35, 4.78), (0.5, 4.22)])
+      self.D.Fbg_vs_stol = air_scatter
+      self.D.amorphous_sample_thick_mm = self.air_path_mm
+      self.D.amorphous_density_gcm3 = 1.2e-3
+      self.D.amorphous_sample_molecular_weight_Da = 28  # nitrogen = N2
+      self.D.add_background(1, 0)
 
   def _add_noise(self):
     self.D.detector_psf_kernel_radius_pixels = 5
@@ -350,22 +548,23 @@ class SimData:
     self.D.add_noise()
 
   @staticmethod
-  def simple_detector(detector_distance_mm, pixelsize_mm, image_shape, fast=(1, 0, 0), slow=(0, -1, 0)):
+  def simple_detector(detector_distance_mm, pixelsize_mm, image_shape,
+                      fast=(1, 0, 0), slow=(0, -1, 0)):
     from dxtbx.model.detector import DetectorFactory
     import numpy as np
-    trusted_range = (0, 200000000000000.0)
-    detsize_s = image_shape[0] * pixelsize_mm
-    detsize_f = image_shape[1] * pixelsize_mm
-    cent_s = (detsize_s + pixelsize_mm * 2) / 2.0
-    cent_f = (detsize_f + pixelsize_mm * 2) / 2.0
+    trusted_range = 0, 2e14
+    detsize_s = image_shape[0]*pixelsize_mm
+    detsize_f = image_shape[1]*pixelsize_mm
+    cent_s = (detsize_s + pixelsize_mm*2)/2.
+    cent_f = (detsize_f + pixelsize_mm*2)/2.
     beam_axis = np.cross(fast, slow)
-    origin = -np.array(fast) * cent_f - np.array(slow) * cent_s + beam_axis * detector_distance_mm
-    return DetectorFactory.make_detector('', fast, slow, origin, (
-      pixelsize_mm, pixelsize_mm), image_shape, trusted_range)
+    origin = -np.array(fast)*cent_f - np.array(slow)*cent_s + beam_axis*detector_distance_mm
 
+    return DetectorFactory.make_detector("", fast, slow, origin,
+                                         (pixelsize_mm, pixelsize_mm), image_shape, trusted_range)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   S = SimData()
-  img = S.generate_simulated_image(instantiate=True)
-  print('Maximum pixel value: %.3g' % img.max())
-  print('Minimum pixel value: %.3g' % img.min())
+  img = S.generate_simulated_image()
+  print ("Maximum pixel value: %.3g" % img.max())
+  print ("Minimum pixel value: %.3g" % img.min())
