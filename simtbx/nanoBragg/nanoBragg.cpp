@@ -186,6 +186,7 @@ nanoBragg::nanoBragg(
     spindle_vector[2] = fdet_vector[2];
     spindle_vector[3] = fdet_vector[3];
     unitize(spindle_vector,spindle_vector);
+    user_beam=true;//needed for tilted dxtbx geometries, locks user (dxtbx) geom in place
 
     /* NOT IMPLEMENTED: read in any other stuff?  */
     /*TODO: consider reading in a crystal model as well, showing params without crystal model can be confusing*/

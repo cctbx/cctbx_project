@@ -108,7 +108,7 @@ class _():
   @property
   def beam(self):
     # Does this handle the conventions ? Im always confused about where the beam is pointing, whats s0 and whats beam_vector
-    beam_dict = {'direction': tuple([-1*x for x in self.beam_vector]),  # TODO: is this correct?
+    beam_dict = {'direction': self.beam_vector, #tuple([x for x in self.beam_vector]),  # TODO: is this correct?
                   'divergence': 0.0,  # TODO
                   'flux': self.flux,
                   'polarization_fraction': self.polarization,  #TODO
