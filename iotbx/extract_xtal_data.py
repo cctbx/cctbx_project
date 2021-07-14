@@ -11,6 +11,7 @@ from cctbx import french_wilson
 import libtbx.callbacks # import dependency
 from six.moves import zip
 from six.moves import range
+from libtbx import group_args
 
 def miller_array_symmetry_safety_check(miller_array,
                                        data_description,
@@ -224,6 +225,8 @@ class run(object):
                parameters = None,
                data_parameter_scope = "",
                flags_parameter_scope = "",
+               experimental_phases_params = None,
+               experimental_phases_parameter_scope = "",
                data_description = None, # XXX Remove
                working_point_group = None,
                symmetry_safety_check = None,
@@ -239,6 +242,8 @@ class run(object):
     self.r_free_flags               = None
     self.test_flag_value            = None
     self.r_free_flags_md5_hexdigest = None
+    self.experimental_phases        = None
+    self.raw_experimental_phases    = None
     # Get data first
     self.raw_data            = self.extract_data()
     # Apply resolution and sigma cutoffs, if requested
@@ -257,18 +262,37 @@ class run(object):
     if(extract_r_free_flags and self.raw_flags is not None):
       self.get_r_free_flags()
       self.r_free_flags.set_info(flags_info)
-    # Finally, make sure they match
+    # Make sure they match
     if(self.r_free_flags is not None):
       f_obs_info = self.f_obs.info()
       flags_info = self.r_free_flags.info()
       self.f_obs, self.r_free_flags = self.f_obs.common_sets(self.r_free_flags)
       self.f_obs        = self.f_obs.set_info(f_obs_info)
       self.r_free_flags = self.r_free_flags.set_info(flags_info)
+    # extract phases
+    self.experimental_phases = self.determine_experimental_phases(
+      parameters      = experimental_phases_params,
+      parameter_scope = experimental_phases_parameter_scope)
+
+  def essence(self):
+    o = group_args(
+      raw_data                   = self.raw_data,
+      raw_flags                  = self.raw_flags,
+      f_obs                      = self.f_obs,
+      r_free_flags               = self.r_free_flags,
+      r_free_flags_md5_hexdigest = self.r_free_flags_md5_hexdigest,
+      experimental_phases        = self.experimental_phases,
+      raw_experimental_phases    = self.raw_experimental_phases)
+    o.stop_dynamic_attributes()
+    return o
+
+  def _print(self, m):
+    print(m, file=self.log)
 
   def show_summary(self, prefix=""):
     log = self.log
     if(log is None): log = sys.stdout
-    print("%sInput data summary:"%prefix, file=log)
+    self._print("%sInput data summary:"%prefix)
     self.raw_data.show_comprehensive_summary(f=log, prefix="  "+prefix)
     if(not self.raw_data.indices().all_eq(self.f_obs.indices()) or
        type(self.raw_data.observation_type()) !=
@@ -278,11 +302,78 @@ class run(object):
       self.f_obs.show_comprehensive_summary(f=log, prefix="  "+prefix)
     if(self.r_free_flags is not None):
       print(prefix, file=log)
-      print("%sFree-R flags summary:"%prefix, file=log)
+      self._print("%sFree-R flags summary:"%prefix)
       self.r_free_flags.show_comprehensive_summary(f=log, prefix="  "+prefix)
       print("%s  Test (R-free) flag value: %d"%(prefix, self.test_flag_value),
         file=self.log)
       self.r_free_flags.show_r_free_flags_info(out=log, prefix="  "+prefix)
+    if(self.experimental_phases is not None):
+      self._print("%sExperimental phases:"%prefix)
+      self.experimental_phases.show_comprehensive_summary(f=log, prefix="  "+prefix)
+      print("%s  Average figures of merit by resolution:"%prefix, file=log)
+      figures_of_merit = abs(self.experimental_phases.phase_integrals())
+      figures_of_merit.setup_binner(n_bins=10)
+      legend_len = figures_of_merit.mean(use_binning=True).show(
+        data_fmt="%6.3f", show_unused=False, f = log, prefix="    "+prefix)
+      print("   ", ("%%%ds"%legend_len)%"overall", \
+        "%6.3f"%figures_of_merit.mean(), file=log)
+      print("%s  Note: Figures of merit are determined by integration of"%prefix, file=log)
+      print("%s        Hendrickson-Lattman coefficients."%prefix, file=log)
+      print(file=log)
+      print("%s  Number and fraction of available experimental phases by resolution:"%prefix, file=log)
+      self.experimental_phases.setup_binner(n_bins=10)
+      self.experimental_phases.count_and_fraction_in_bins(
+        data_value_to_count = (0,0,0,0),
+        count_not_equal= True).show(show_unused = False, f = log, prefix="    "+prefix)
+      print(file=log)
+
+  def determine_experimental_phases(
+        self,
+        parameters=None,
+        parameter_scope=None,
+        ignore_all_zeros = True):
+    from libtbx.utils import null_out              # XXX
+    rfs_err_save = self.reflection_file_server.err # XXX
+    self.reflection_file_server.err=null_out()     # XXX
+    try:
+      file_name = None
+      labels = None
+      if(parameters is not None):
+        file_name = parameters.file_name
+        labels    = parameters.labels
+      experimental_phases = \
+        self.reflection_file_server.get_experimental_phases(
+          file_name        = file_name,
+          labels           = labels,
+          ignore_all_zeros = ignore_all_zeros,
+          parameter_scope  = parameter_scope)
+      self.reflection_file_server.err = rfs_err_save # XXX
+    except reflection_file_utils.Sorry_No_array_of_the_required_type:
+      experimental_phases = None
+    except reflection_file_utils.Sorry_No_array_of_the_required_type:
+      experimental_phases = None
+    else:
+      info = experimental_phases.info()
+      if(parameters is not None):
+        parameters.file_name = experimental_phases.info().source
+        parameters.labels = [experimental_phases.info().label_string()]
+      miller_array_symmetry_safety_check(
+        miller_array          = experimental_phases,
+        data_description      = "Experimental phases",
+        working_point_group   = self.working_point_group,
+        symmetry_safety_check = self.symmetry_safety_check,
+        log                   = self.log)
+      experimental_phases = experimental_phases.regularize()
+      self.raw_experimental_phases = experimental_phases
+      if(not self.f_obs.anomalous_flag()):
+        if(experimental_phases.anomalous_flag()):
+          experimental_phases = experimental_phases.average_bijvoet_mates()
+      elif(not experimental_phases.anomalous_flag()):
+         experimental_phases = experimental_phases.generate_bijvoet_mates()
+      self.experimental_phases = experimental_phases.matching_set(
+        other = self.f_obs, data_substitute=(0,0,0,0))
+      experimental_phases.set_info(info)
+    return experimental_phases
 
   def get_r_free_flags(self):
     self.r_free_flags,self.test_flag_value,self.r_free_flags_md5_hexdigest =\
