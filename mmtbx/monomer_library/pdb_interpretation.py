@@ -2560,6 +2560,11 @@ class build_chain_proxies(object):
           name = atom.name.strip()
           if mm.mon_lib_names is not None:
             name = mm.mon_lib_names[i]
+          if name is None:
+            # incorrect atom name, skip
+            self.type_energies.append(False)
+            self.type_h_bonds.append(False)
+            continue
           al = atom_dict.get(name.strip(), None)
           if al:
             self.type_energies.append(al.type_energy)
@@ -2568,6 +2573,7 @@ class build_chain_proxies(object):
             self.type_h_bonds.append(entry.hb_type)
           else:
             self.type_energies.append(None)
+            self.type_h_bonds.append(None)
             raise Sorry('Not able to determine energy type for atom %s' % atom.quote())
       #
       if (mm.monomer is None):
