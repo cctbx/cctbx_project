@@ -18,7 +18,7 @@
 # Probe and Reduce portions of MolProbity to determine how to properly handle
 # them.  This includes color information for Kinemage outputs but also information
 # that may be available from CCTBX such as Van der Waals radii, donor/acceptor
-# status, and whether the atom is metalic.
+# status, and whether the atom is metallic.
 #
 # Use the FindExtraAtomInfo() function to get an ExtraAtomInfo structure filled
 # based on a specific atom along with a second tuple value that has a list of all
