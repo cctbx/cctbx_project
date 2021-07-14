@@ -1172,6 +1172,9 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
                 f_RotXYZ += nn*.5*del_rot**2 / rot_V
 
         if Mod_t.PAR.ucell_params[0].refine:
+            ucell_rescaled = x_t[7:7+n_uc_param]
+            ucvar = [Mod_t.PAR.ucell_params[i].get_val(xval) for i, xval in enumerate(ucell_rescaled)]
+            #ucvar = Mod_t.PAR.ucell_man.variables  # NOTE I think the above two lines can be replaced with this one
             ucell_p_deltas = []
             for i_ucell in range(n_uc_param):
                 beta = params.betas.ucell[i_ucell]
@@ -1181,7 +1184,7 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
 
         # det dist shift restraint
         if Mod_t.PAR.DetZ_param.refine:
-            #del_detz = detz_shift - params.centers.detz_shift
+            detz_shift = Mod_t.PAR.DetZ_param.get_val(x_t[7+n_uc_param])
             del_detz = params.centers.detz_shift - detz_shift
             f_detz += nn*.5*del_detz**2/params.betas.detz_shift
 
