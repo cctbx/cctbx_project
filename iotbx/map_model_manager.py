@@ -7312,7 +7312,10 @@ class map_model_manager(object):
          map_id))
 
 
-    assert self.map_manager().is_compatible_model(model) # model must match
+    if not self.map_manager().is_compatible_model(model): # model must match
+      print("Setting model crystal symmetry to match map", file = self.log)
+      model = model.deep_copy()
+      model.set_crystal_symmetry(self.map_manager().crystal_symmetry())
 
     if not resolution:
       resolution = self.resolution()
