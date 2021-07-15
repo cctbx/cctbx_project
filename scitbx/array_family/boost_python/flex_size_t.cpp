@@ -14,6 +14,7 @@
 namespace scitbx { namespace af { namespace boost_python {
 namespace {
 
+  inline //identify as inline to avoid an unused-function compiler warning
   flex<std::size_t>::type*
   from_stl_vector_unsigned(std::vector<unsigned> const& v)
   {
