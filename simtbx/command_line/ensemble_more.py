@@ -40,51 +40,7 @@ from simtbx.diffBragg.refiners.parameters import RangedParameter
 
 ensemble_phil = """
 include scope simtbx.command_line.hopper.phil_scope
-wilson_fat = 1
-  .type = float
-  .help = scales the width of wilson distribution
-use_wilson_restraints = None
-  .type = bool
-  .help = if True, must provide scaling_reference_mtz information below
-scaling_reference_mtz_name = None
-  .type = str
-  .help = path to mtz file containing amplitudes
-  .help = that will be used to restrain the mean squared structure factor
-  .help = intensity at each resolution
-scaling_reference_mtz_col = None
-  .type = str
-  .help = mtz column name
-sigma_frac = None
-  .type = float
-  .help = sigma for Fhkl restraints will be some fraction of the starting value
-sanity_test_hkl_variation = False
-  .type = bool
-  .help = measure the variation of each HKL within the shoebox
-sanity_test_models = False
-  .type = bool
-  .help = make sure best models from stage 1 are reproduced at the start
-sanity_test_amplitudes = False
-  .type = bool
-  .help = if True, then quickly run a sanity check ensuring that all h,k,l are predicted
-  .help = and/or in the starting miller array
-x_write_freq = 25
-  .type = int
-  .help = save x arrays every x_write_freq iterations
-percentile_cut = None
-  .type = float
-  .help = percentile below which pixels are masked
-space_group = P6522
-  .type = str
-  .help = space group to refine structure factors in
-first_n = None
-  .type = int
-  .help = refine the first n shots only
-maxiter = None
-  .type = int
-  .help = stop refiner after this many iters
-disp = False
-  .type = bool
-  .help = scipy minimize convergence printouts
+
 """
 
 phil_scope = parse(ensemble_phil, process_includes=True)
@@ -1269,7 +1225,7 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
                 f_Fhkl += F**2 / L/2
             else:
                 #f_Fhkl += -np.log(2 * F / L) + F**2 / L
-                f_Fhkl += F**2 / L - np.log(F) 
+                f_Fhkl += F**2 / L - np.log(F)
 
     else:
         Fhkl_init = np.array([SIM.Fhkl_modelers[i_fcell].init for i_fcell in range(SIM.n_global_fcell)])
