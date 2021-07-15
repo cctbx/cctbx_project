@@ -21,6 +21,11 @@ from iotbx.data_manager import DataManager
 import mmtbx
 from scitbx.array_family import flex
 
+# To enable addition of Hydrogens
+# @todo 
+from cctbx.maptbx.box import shift_and_box_model
+from mmtbx.hydrogens import reduce_hydrogen
+
 ##################################################################################
 # This is a set of functions that implement placement and optimization of
 # Reduce's "Movers".
@@ -164,7 +169,10 @@ def Test():
   model.process_input_model(make_restraints=True) # make restraints
 
   # Add Hydrogens to the model
-  # @todo
+  model = shift_and_box_model(model = model)
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
+  reduce_add_h_obj.run()
+  model = reduce_add_h_obj.get_model()
 
   # Get the first model in the hierarchy.
   firstModel = model.get_hierarchy().models()[0]
