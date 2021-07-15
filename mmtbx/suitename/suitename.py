@@ -291,9 +291,9 @@ def membership(bin, suite):
     comment = ""
     pointMaster = ""
     pointColor = "white"
-
-    lDominant = bin.dominant > 0
-    if lDominant:  # this bin has a dominant cluster, note it
+    lDominant = False
+    
+    if bin.dominant > 0:  # this bin has a dominant cluster, note it
         dominantJ = bin.dominant
         domCluster = bin.cluster[bin.dominant]
 
@@ -314,6 +314,9 @@ def membership(bin, suite):
         matches[j] = distance
         if distance < 1:  # suite could be a member of this cluster
             matchCount += 1
+            if c.dominance == "dom":
+                lDominant = True
+                # there is a close dominant cluster to consider
 
     if matchCount == 1:
         theCluster = closestCluster

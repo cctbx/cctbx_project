@@ -260,8 +260,8 @@ def harder_build_residue(syn_chain, i, kk, residue):
         name, angle = easy_make_dihedral(syn_chain, j, kk)
         # print(" ", syn_chain[kk+1].fetch_labels().resseq, name, angle, kk, j)
         residue.angle[j] = angle  # if second failure, we get 9999
-        kk = kk + 1
-        # syn_name = [a.name for a in syn_chain]
+      kk = kk + 1
+      # syn_name = [a.name for a in syn_chain]
     return kk
 
 
