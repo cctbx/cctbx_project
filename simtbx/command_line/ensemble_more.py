@@ -1101,57 +1101,59 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
 
         n_uc_param = len(Mod_t.PAR.ucell_man.variables)
 
-        # scale factor "G" restraint
-        if Mod_t.PAR.Scale.refine:
-            G_rescaled = x_t[0]
-            G = Mod_t.PAR.Scale.get_val(G_rescaled)
-            delG = params.centers.G - G
-            G_V = params.betas.G
-            fG += nn*.5* delG**2/G_V
+        if params.use_restraints:
+            # scale factor "G" restraint
+            if Mod_t.PAR.Scale.refine:
+                G_rescaled = x_t[0]
+                G = Mod_t.PAR.Scale.get_val(G_rescaled)
+                delG = params.centers.G - G
+                G_V = params.betas.G
+                fG += nn*.5* delG**2/G_V
 
-        if Mod_t.PAR.Nabc_params[0].refine:
-            delNabc = []  # cache delta N for restraints gradient term below
-            for i_N in range(3):
-                N_V = params.betas.Nabc[i_N]
-                N_current = Mod_t.PAR.Nabc_params[i_N].get_val(x_t[1+i_N])  # N always ranges 1-3 in the per-shot param list x_t
-                del_N =  params.centers.Nabc[i_N] - N_current
-                delNabc.append(del_N)
-                fNabc += nn *.5 * del_N**2 / N_V
+            if Mod_t.PAR.Nabc_params[0].refine:
+                delNabc = []  # cache delta N for restraints gradient term below
+                for i_N in range(3):
+                    N_V = params.betas.Nabc[i_N]
+                    N_current = Mod_t.PAR.Nabc_params[i_N].get_val(x_t[1+i_N])  # N always ranges 1-3 in the per-shot param list x_t
+                    del_N =  params.centers.Nabc[i_N] - N_current
+                    delNabc.append(del_N)
+                    fNabc += nn *.5 * del_N**2 / N_V
 
-        if Mod_t.PAR.RotXYZ_params[0].refine:
-            delRotXYZ = []
-            for i_rot in range(3):
-                rot_V = params.betas.RotXYZ # TODO this beta a list ?
-                rot_current = Mod_t.PAR.RotXYZ_params[i_rot].get_val(x_t[4+i_rot])
-                del_rot = params.centers.RotXYZ[i_rot] - rot_current
-                delRotXYZ.append(del_rot)
-                f_RotXYZ += nn*.5*del_rot**2 / rot_V
+            if Mod_t.PAR.RotXYZ_params[0].refine:
+                delRotXYZ = []
+                for i_rot in range(3):
+                    rot_V = params.betas.RotXYZ # TODO this beta a list ?
+                    rot_current = Mod_t.PAR.RotXYZ_params[i_rot].get_val(x_t[4+i_rot])
+                    del_rot = params.centers.RotXYZ[i_rot] - rot_current
+                    delRotXYZ.append(del_rot)
+                    f_RotXYZ += nn*.5*del_rot**2 / rot_V
 
-        if Mod_t.PAR.ucell_params[0].refine:
-            ucell_rescaled = x_t[7:7+n_uc_param]
-            ucvar = [Mod_t.PAR.ucell_params[i].get_val(xval) for i, xval in enumerate(ucell_rescaled)]
-            #ucvar = Mod_t.PAR.ucell_man.variables  # NOTE I think the above two lines can be replaced with this one
-            ucell_p_deltas = []
-            for i_ucell in range(n_uc_param):
-                beta = params.betas.ucell[i_ucell]
-                del_u = params.centers.ucell[i_ucell]-ucvar[i_ucell]
-                ucell_p_deltas.append(del_u)
-                f_ucell += nn*.5*del_u**2/beta
+            if Mod_t.PAR.ucell_params[0].refine:
+                ucell_rescaled = x_t[7:7+n_uc_param]
+                ucvar = [Mod_t.PAR.ucell_params[i].get_val(xval) for i, xval in enumerate(ucell_rescaled)]
+                #ucvar = Mod_t.PAR.ucell_man.variables  # NOTE I think the above two lines can be replaced with this one
+                ucell_p_deltas = []
+                for i_ucell in range(n_uc_param):
+                    beta = params.betas.ucell[i_ucell]
+                    del_u = params.centers.ucell[i_ucell]-ucvar[i_ucell]
+                    ucell_p_deltas.append(del_u)
+                    f_ucell += nn*.5*del_u**2/beta
 
-        # det dist shift restraint
-        if Mod_t.PAR.DetZ_param.refine:
-            detz_shift = Mod_t.PAR.DetZ_param.get_val(x_t[7+n_uc_param])
-            del_detz = params.centers.detz_shift - detz_shift
-            f_detz += nn*.5*del_detz**2/params.betas.detz_shift
+            # det dist shift restraint
+            if Mod_t.PAR.DetZ_param.refine:
+                detz_shift = Mod_t.PAR.DetZ_param.get_val(x_t[7+n_uc_param])
+                del_detz = params.centers.detz_shift - detz_shift
+                f_detz += nn*.5*del_detz**2/params.betas.detz_shift
 
         if compute_grad:
-            # copy the per-shot contributions of the gradients to the global gradient array
+            # accumulate the per-shot contributions of the gradients to the global gradient array
 
             # scale gradient term
             if Mod_t.PAR.Scale.refine:
                 scale_global_idx = rank_xidx[t][0]
-                g[scale_global_idx] += grad[0] # model
-                g[scale_global_idx] += nn*Mod_t.PAR.Scale.get_deriv(G_rescaled, -nn*delG / G_V) # restraint
+                g[scale_global_idx] += grad[0]  # model
+                if params.use_restraints:
+                    g[scale_global_idx] += nn*Mod_t.PAR.Scale.get_deriv(G_rescaled, -nn*delG / G_V) # restraint
 
             # Nabc gradient term
             if Mod_t.PAR.Nabc_params[0].refine:
@@ -1159,10 +1161,11 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
                     # 1+i_N is the per-shot position for Nabc
                     Nabc_global_idx = rank_xidx[t][1+i_N]
                     g[Nabc_global_idx] += grad[1+i_N]  # model
-                    N_var = params.betas.Nabc[i_N]
-                    del_N = delNabc[i_N]
-                    g[Nabc_global_idx] += \
-                        Mod_t.PAR.Nabc_params[i_N].get_deriv(x_t[1+i_N], -nn*del_N / N_var) # restraint
+                    if params.use_restraints:
+                        N_var = params.betas.Nabc[i_N]
+                        del_N = delNabc[i_N]
+                        g[Nabc_global_idx] += \
+                            Mod_t.PAR.Nabc_params[i_N].get_deriv(x_t[1+i_N], -nn*del_N / N_var)  # restraint
 
             # RotXYZ gradient term
             if Mod_t.PAR.RotXYZ_params[0].refine:
@@ -1170,26 +1173,28 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
                     # 4+i_rot is the per-shot position for Rot_i
                     RotXYZ_global_idx = rank_xidx[t][4+i_rot]
                     g[RotXYZ_global_idx] += grad[4+i_rot]  # model
-                    rot_var = params.betas.RotXYZ  #TODO make this beta a list?
-                    del_rot = delRotXYZ[i_rot]
-                    g[RotXYZ_global_idx] += \
-                        Mod_t.PAR.RotXYZ_params[i_rot].get_deriv(x_t[4+i_rot], -nn*del_rot / rot_var) # restraint
-                    # RotXYZ gradient term
+                    if params.use_restraints:
+                        rot_var = params.betas.RotXYZ  #TODO make this beta a list?
+                        del_rot = delRotXYZ[i_rot]
+                        g[RotXYZ_global_idx] += \
+                            Mod_t.PAR.RotXYZ_params[i_rot].get_deriv(x_t[4+i_rot], -nn*del_rot / rot_var)  # restraint
 
             if Mod_t.PAR.ucell_params[0].refine:
                 for i_uc in range(n_uc_param):
                     # 7+i_uc is the per-shot position for the ucell_p
                     ucp_global_idx = rank_xidx[t][7+i_uc]
                     g[ucp_global_idx] += grad[7+i_uc]  # model
-                    ucp_var = params.betas.ucell[i_uc]
-                    del_u = ucell_p_deltas[i_uc]
-                    g[ucp_global_idx] += \
-                        Mod_t.PAR.ucell_params[i_uc].get_deriv(x_t[7+i_uc], -nn*del_u / ucp_var) # restraint
+                    if params.use_restraints:
+                        ucp_var = params.betas.ucell[i_uc]
+                        del_u = ucell_p_deltas[i_uc]
+                        g[ucp_global_idx] += \
+                            Mod_t.PAR.ucell_params[i_uc].get_deriv(x_t[7+i_uc], -nn*del_u / ucp_var)  # restraint
 
             if Mod_t.PAR.DetZ_param.refine:
                 dz_global_idx = rank_xidx[t][7+n_uc_param]
                 g[dz_global_idx] += grad[7+n_uc_param]  # model
-                g[dz_global_idx] += Mod_t.PAR.DetZ_param.get_deriv(x[7+n_uc_param], -nn*del_detz/params.betas.detz_shift)  # restraint
+                if params.use_restraints:
+                    g[dz_global_idx] += Mod_t.PAR.DetZ_param.get_deriv(x[7+n_uc_param], -nn*del_detz/params.betas.detz_shift)  # restraint
 
             # Fhkl term updates
             g[-SIM.n_global_fcell:] += grad[-SIM.n_global_fcell:]
@@ -1209,34 +1214,35 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
     g = COMM.bcast(COMM.reduce(g))
     t_mpi_done = time.time()
 
-    # add the Fhkl restraints
-    Fhkl_current = np.array([ \
-        SIM.Fhkl_modelers[i_fcell].get_val(x[-SIM.n_global_fcell+i_fcell]) \
-        for i_fcell in range(SIM.n_global_fcell)])
+    f_Fhkl = 0
+    if params.use_restraints:
+        # add the Fhkl restraints
+        Fhkl_current = np.array([ \
+            SIM.Fhkl_modelers[i_fcell].get_val(x[-SIM.n_global_fcell+i_fcell]) \
+            for i_fcell in range(SIM.n_global_fcell)])
 
-    if params.use_wilson_restraints:
-        # TODO vectorize or MPI this loop
-        f_Fhkl = 0
-        for i_fcell in range(SIM.n_global_fcell):
-            hkl = SIM.asu_from_i_fcell[i_fcell]
-            L = SIM.Fsq_ref_for_asu[hkl]
-            F = Fhkl_current[i_fcell]
-            if SIM.asu_is_centric[hkl]:
-                f_Fhkl += F**2 / L/2
-            else:
-                #f_Fhkl += -np.log(2 * F / L) + F**2 / L
-                f_Fhkl += F**2 / L - np.log(F)
+        if params.use_wilson_restraints:
+            # TODO vectorize or MPI this loop
+            for i_fcell in range(SIM.n_global_fcell):
+                hkl = SIM.asu_from_i_fcell[i_fcell]
+                L = SIM.Fsq_ref_for_asu[hkl]
+                F = Fhkl_current[i_fcell]
+                if SIM.asu_is_centric[hkl]:
+                    f_Fhkl += F**2 / L/2
+                else:
+                    #f_Fhkl += -np.log(2 * F / L) + F**2 / L
+                    f_Fhkl += F**2 / L - np.log(F)
 
-    else:
-        Fhkl_init = np.array([SIM.Fhkl_modelers[i_fcell].init for i_fcell in range(SIM.n_global_fcell)])
-        delta_F = Fhkl_init - Fhkl_current
-        if params.sigma_frac is None:
-            var_F = np.sum(Fhkl_init**2)
         else:
-            var_F = (params.sigma_frac*Fhkl_init)**2
-        f_Fhkl = np.sum(delta_F**2 / var_F)
+            Fhkl_init = np.array([SIM.Fhkl_modelers[i_fcell].init for i_fcell in range(SIM.n_global_fcell)])
+            delta_F = Fhkl_init - Fhkl_current
+            if params.sigma_frac is None:
+                var_F = np.sum(Fhkl_init**2)
+            else:
+                var_F = (params.sigma_frac*Fhkl_init)**2
+            f_Fhkl = np.sum(delta_F**2 / var_F)
 
-    if compute_grad:
+    if params.use_restraints and compute_grad:
         # update the gradient restraint term for structure factor amplitudes
         Fhkl_rescaled = x[-SIM.n_global_fcell:]
         if params.use_wilson_restraints:
@@ -1249,10 +1255,10 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
                     g_term = F/L
                 else:
                     g_term = 2*F/L - 1/F
-                g[-SIM.n_global_fcell+i_fcell] = SIM.Fhkl_modelers[i_fcell].get_deriv(Fhkl_rescaled[i_fcell], g_term)
+                g[-SIM.n_global_fcell+i_fcell] += SIM.Fhkl_modelers[i_fcell].get_deriv(Fhkl_rescaled[i_fcell], g_term)
         else:
             Fhkl_restraint_grad = -2*delta_F / var_F
-            g[-SIM.n_global_fcell:] += np.array([ \
+            g[-SIM.n_global_fcell:] += np.array([\
                 SIM.Fhkl_modelers[i_fcell].get_deriv(Fhkl_rescaled[i_fcell], Fhkl_restraint_grad[i_fcell]) \
                 for i_fcell in range(SIM.n_global_fcell)])
 

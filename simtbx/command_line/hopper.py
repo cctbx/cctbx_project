@@ -406,6 +406,9 @@ maxiter = None
 disp = False
   .type = bool
   .help = scipy minimize convergence printouts
+use_restraints = True
+  .type = bool
+  .help = disable the parameter restraints
 """
 
 philz = hopper_phil + philz

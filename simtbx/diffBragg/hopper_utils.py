@@ -785,38 +785,40 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
     # width of z-score should decrease as refinement proceeds
     zscore_sigma = np.std(resid / np.sqrt(V))
 
-    # scale factor restraint
-    delG = (params.centers.G-G)
-    fG = .5*(np.log(2*np.pi*params.betas.G) + delG**2/params.betas.G)
+    if params.use_restraints:
+        # scale factor restraint
+        delG = (params.centers.G-G)
+        fG = .5*(np.log(2*np.pi*params.betas.G) + delG**2/params.betas.G)
 
-    # Umat restraint
-    RotXYZ = rotX, rotY, rotZ
-    delta_RotXYZ = [params.centers.RotXYZ[i_rot] - RotXYZ[i_rot]*DEG for i_rot in range(3)]
-    frot =  0
-    for i_rot in range(3):
-        r_V = params.betas.RotXYZ  # Note just 1 beta for all 3 rot angles
-        frot += .5*(np.log(2*np.pi*r_V) + delta_RotXYZ[i_rot]**2 / r_V)
+        # Umat restraint
+        RotXYZ = rotX, rotY, rotZ
+        delta_RotXYZ = [params.centers.RotXYZ[i_rot] - RotXYZ[i_rot]*DEG for i_rot in range(3)]
+        frot =  0
+        for i_rot in range(3):
+            r_V = params.betas.RotXYZ  # Note just 1 beta for all 3 rot angles
+            frot += .5*(np.log(2*np.pi*r_V) + delta_RotXYZ[i_rot]**2 / r_V)
 
-    # mosaic domain size restraint
-    Nabc = Na,Nb,Nc
-    delta_Nabc = [params.centers.Nabc[i_N] -Nabc[i_N] for i_N in range(3)]
-    fN = 0
-    for i_N in range(3):
-        N_V = params.betas.Nabc[i_N]
-        fN += .5*(np.log(2*np.pi*N_V) + delta_Nabc[i_N]**2 / N_V)
+        # mosaic domain size restraint
+        Nabc = Na,Nb,Nc
+        delta_Nabc = [params.centers.Nabc[i_N] -Nabc[i_N] for i_N in range(3)]
+        fN = 0
+        for i_N in range(3):
+            N_V = params.betas.Nabc[i_N]
+            fN += .5*(np.log(2*np.pi*N_V) + delta_Nabc[i_N]**2 / N_V)
 
-    # unit cell restraint
-    fucell = [0]*n_uc_param
-    for i_ucell in range(n_uc_param):
-        beta = params.betas.ucell[i_ucell]
-        cent = params.centers.ucell[i_ucell]
-        fucell[i_ucell] = .5*(np.log(2*np.pi*beta) + (cent-ucvar[i_ucell])**2/beta)
-    fucell = sum(fucell)  # TODO distinguish between edge terms and angle terms
+        # unit cell restraint
+        fucell = [0]*n_uc_param
+        for i_ucell in range(n_uc_param):
+            beta = params.betas.ucell[i_ucell]
+            cent = params.centers.ucell[i_ucell]
+            fucell[i_ucell] = .5*(np.log(2*np.pi*beta) + (cent-ucvar[i_ucell])**2/beta)
+        fucell = sum(fucell)  # TODO distinguish between edge terms and angle terms
 
-    # det dist shift restraint
-    #del_detz = detz_shift - params.centers.detz_shift
-    del_detz = params.centers.detz_shift - detz_shift
-    fz = .5*(np.log(2*np.pi*params.betas.detz_shift) + del_detz**2/params.betas.detz_shift)
+        # det dist shift restraint
+        del_detz = params.centers.detz_shift - detz_shift
+        fz = .5*(np.log(2*np.pi*params.betas.detz_shift) + del_detz**2/params.betas.detz_shift)
+    else:
+        fN = frot = fucell = fz = fG = 0
 
 #   accumulate target function
     f = fchi  # target function is f
@@ -850,17 +852,18 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
         # gradient vector
         g = np.array([np.sum(common_grad_term*Jac_t[param_idx]) for param_idx in range(Jac_t.shape[0])])
 
-        # update gradients according to restraints
-        g[0] += SIM.Scale_params[0].get_deriv(x[0], -delG / params.betas.G)
-        for i_rot in range(3):
-            g[1+i_rot] += SIM.RotXYZ_params[i_rot].get_deriv(x[1], -delta_RotXYZ[i_rot] / params.betas.RotXYZ)
-        for i_N in range(3):
-            g[4+i_N] += SIM.Nabc_params[i_N].get_deriv(x[4], -delta_Nabc[i_N]/ params.betas.Nabc[i_N])
-        for i_uc in range(n_uc_param):
-            beta = params.betas.ucell[i_uc]
-            del_uc = params.centers.ucell[i_uc] - ucvar[i_uc]
-            g[7+i_uc] += SIM.ucell_params[i_uc].get_deriv(x[7+i_uc], -del_uc / beta)
-        g[7+n_uc_param] += SIM.DetZ_param.get_deriv(x[7+n_uc_param], -del_detz/params.betas.detz_shift)
+        if params.use_restraints:
+            # update gradients according to restraints
+            g[0] += SIM.Scale_params[0].get_deriv(x[0], -delG / params.betas.G)
+            for i_rot in range(3):
+                g[1+i_rot] += SIM.RotXYZ_params[i_rot].get_deriv(x[1], -delta_RotXYZ[i_rot] / params.betas.RotXYZ)
+            for i_N in range(3):
+                g[4+i_N] += SIM.Nabc_params[i_N].get_deriv(x[4], -delta_Nabc[i_N]/ params.betas.Nabc[i_N])
+            for i_uc in range(n_uc_param):
+                beta = params.betas.ucell[i_uc]
+                del_uc = params.centers.ucell[i_uc] - ucvar[i_uc]
+                g[7+i_uc] += SIM.ucell_params[i_uc].get_deriv(x[7+i_uc], -del_uc / beta)
+            g[7+n_uc_param] += SIM.DetZ_param.get_deriv(x[7+n_uc_param], -del_detz/params.betas.detz_shift)
 
         gnorm = np.linalg.norm(g)
 
