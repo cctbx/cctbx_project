@@ -361,12 +361,6 @@ ucell_ang_abs = 5
 no_Nabc_scale = False
   .type = bool
   .help = toggle Nabc scaling of the intensity
-wilson_fat = 1
-  .type = float
-  .help = scales the width of wilson distribution
-use_wilson_restraints = None
-  .type = bool
-  .help = if True, must provide scaling_reference_mtz information below
 scaling_reference_mtz_name = None
   .type = str
   .help = path to mtz file containing amplitudes
@@ -400,7 +394,7 @@ space_group = P6522
 first_n = None
   .type = int
   .help = refine the first n shots only
-maxiter = None
+maxiter = 15000
   .type = int
   .help = stop refiner after this many iters
 disp = False
@@ -409,6 +403,17 @@ disp = False
 use_restraints = True
   .type = bool
   .help = disable the parameter restraints
+wilson_restraints { 
+  use = False
+    .type = bool
+    .help = let the Fhkl be restrained by Wilson distribution during refinement
+  moving_with_refinement = False
+    .type = bool
+    .help = allow the wilson restraint distribution to optimize during refinement of Fhkl
+  num_res_bins = 100
+    .type = int
+    .help = number of resolution bins for computing the average Fhkl^2
+}
 """
 
 philz = hopper_phil + philz

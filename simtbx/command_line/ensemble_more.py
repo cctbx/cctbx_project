@@ -850,7 +850,7 @@ def model(x, SIM, Modeler, compute_grad=True, sanity_test=None):
                 if l.startswith("Pixel"):
                     hkl = l.split()[5]
                     hkl = tuple(map(int, hkl.split(",")))
-                    hkl = utils.map_hkl_list([hkl], True, SIM.space_group_symbol)[0]
+                    hkl = utils.map_hkl_list([hkl], True, SIM.crystal.symbol)[0]
                     count = int(l.split()[8])
                     if hkl in count_stats:
                         count_stats[hkl] += count
@@ -1221,20 +1221,29 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
             SIM.Fhkl_modelers[i_fcell].get_val(x[-SIM.n_global_fcell+i_fcell]) \
             for i_fcell in range(SIM.n_global_fcell)])
 
-        if params.use_wilson_restraints:
+        if params.wilson_restraints.moving_with_refinement:
+            SIM.Fsq_ref_at_i_fcell = SIM.wilson_updater.get_reference(Fhkl_current)
+            # compute the new L here:
+
+        if params.wilson_restraints.use:
             # TODO vectorize or MPI this loop
             for i_fcell in range(SIM.n_global_fcell):
                 hkl = SIM.asu_from_i_fcell[i_fcell]
-                L = SIM.Fsq_ref_for_asu[hkl]
+                L = SIM.Fsq_ref_at_i_fcell[i_fcell]
                 F = Fhkl_current[i_fcell]
                 if SIM.asu_is_centric[hkl]:
                     f_Fhkl += F**2 / L/2
                 else:
-                    #f_Fhkl += -np.log(2 * F / L) + F**2 / L
                     f_Fhkl += F**2 / L - np.log(F)
 
+                if params.wilson_restraints.moving_with_refinement:  # if we are optimizing the wilson curve, then L is a variable
+                    if SIM.asu_is_centric:
+                        f_Fhkl += np.log(L)/2.
+                    else:
+                        f_Fhkl += np.log(L)
+
         else:
-            Fhkl_init = np.array([SIM.Fhkl_modelers[i_fcell].init for i_fcell in range(SIM.n_global_fcell)])
+            Fhkl_init = SIM.Fhkl_init_at_i_fcell
             delta_F = Fhkl_init - Fhkl_current
             if params.sigma_frac is None:
                 var_F = np.sum(Fhkl_init**2)
@@ -1245,16 +1254,24 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
     if params.use_restraints and compute_grad:
         # update the gradient restraint term for structure factor amplitudes
         Fhkl_rescaled = x[-SIM.n_global_fcell:]
-        if params.use_wilson_restraints:
+        if params.wilson_restraints.use:
             # TODO vectorize or MPI this loop
             for i_fcell in range(SIM.n_global_fcell):
                 hkl = SIM.asu_from_i_fcell[i_fcell]
-                L = SIM.Fsq_ref_for_asu[hkl]
+                L = SIM.Fsq_ref_at_i_fcell[i_fcell]
                 F = Fhkl_current[i_fcell]
                 if SIM.asu_is_centric[hkl]:
                     g_term = F/L
                 else:
                     g_term = 2*F/L - 1/F
+
+                if params.wilson_restraints.moving_with_refinement:
+                    # note this Lprime definition is assuming the reference is the mean squared value in the resolution bin
+                    Lprime = 2*F / SIM.num_hkl_in_wilson_updater_res_bin[i_fcell]
+                    if SIM.asu_is_centric[hkl]:
+                        g_term += (1/L - F**2/L**2) * .5 * Lprime
+                    else:
+                        g_term += (1/L - F**2/L**2) * Lprime
                 g[-SIM.n_global_fcell+i_fcell] += SIM.Fhkl_modelers[i_fcell].get_deriv(Fhkl_rescaled[i_fcell], g_term)
         else:
             Fhkl_restraint_grad = -2*delta_F / var_F
@@ -1381,6 +1398,7 @@ def update_Fhkl(SIM, x):
 
 def setup_Fhkl_attributes(SIM, params, Modelers):
     SIM.space_group_symbol = params.space_group
+    SIM.crystal.symbol = params.space_group
     SIM.space_group = sgtbx.space_group(sgtbx.space_group_info(symbol=params.space_group).type().hall_symbol())
     a,b = aggregate_Hi(Modelers)
     SIM.i_fcell_from_asu = a
@@ -1393,7 +1411,7 @@ def setup_Fhkl_attributes(SIM, params, Modelers):
 
     # get the initial amplitude value from the asu miller-index
     asu_hi = [SIM.asu_from_i_fcell[i_fcell] for i_fcell in range(SIM.n_global_fcell)]
-    SIM.fcell_init_from_asu = {h: SIM.Fdata[SIM.idx_from_p1[h]] for h in asu_hi}
+    SIM.Fhkl_init_at_i_fcell = np.array([SIM.Fdata[SIM.idx_from_p1[h]] for h in asu_hi])
 
     SIM.Fhkl_modelers = []
     for i_fcell in range(SIM.n_global_fcell):
@@ -1401,8 +1419,7 @@ def setup_Fhkl_attributes(SIM, params, Modelers):
         p.sigma = params.sigmas.Fhkl
         p.maxval = params.maxs.Fhkl
         p.minval = params.mins.Fhkl
-        asu = SIM.asu_from_i_fcell[i_fcell]
-        p.init = SIM.fcell_init_from_asu[asu]
+        p.init = SIM.Fhkl_init_at_i_fcell[i_fcell]
         SIM.Fhkl_modelers.append(p)
 
     # sanity test, passes
@@ -1412,34 +1429,55 @@ def setup_Fhkl_attributes(SIM, params, Modelers):
     #    val2 = SIM.crystal.miller_array.value_at_index(h)
     #    assert np.allclose(val1, val2)
     # are we using a reference for restraints?
-    if params.scaling_reference_mtz_name is not None:
+    if params.wilson_restraints.use:
 
-        Fref = utils.open_mtz(params.scaling_reference_mtz_name, params.scaling_reference_mtz_col)
-        if not Fref.is_xray_amplitude_array() or np.min(Fref.data()) < 0:
-            Fref = Fref.as_amplitude_array()
-        dspacing_ref, Fsq_ref = utils.get_ave_FF(Fref)
-
-        temp_mset = Fref.miller_set(flex.miller_index(asu_hi), True)
-        temp_data = flex.double([SIM.fcell_init_from_asu[h] for h in asu_hi])
-        temp_mill_arr = miller.array(temp_mset, temp_data)
-        # this scale factor is applied to Fref to bring it on the same scale as the data
-        Fref_scale_factor = utils.compute_scale_to_minmize_r_factor(temp_mill_arr, Fref)
-        Fsq_ref = Fsq_ref*Fref_scale_factor**2
-        Fsq_ref = Fsq_ref*params.wilson_fat  # does this have any effect at all ?
-
-        dspace_arr = temp_mill_arr.d_spacings()
-        d_spacing_map = {h: d for h,d in zip(dspace_arr.indices(), dspace_arr.data())}
-        dspacing_at_asu = {h: d_spacing_map[h]  for h in asu_hi}
+        dspace_arr = SIM.crystal.miller_array_high_symmetry.d_spacings()  # speed up with high symmetry array ?
+        d_spacing_map = {h: d for h, d in zip(dspace_arr.indices(), dspace_arr.data())}
+        dspacing_at_i_fcell = {h: d_spacing_map[h] for h in asu_hi}
+        SIM.wilson_updater = WilsonUpdater(dspacing_at_i_fcell, nbins=params.wilson_floater.num_res_bins)
+        SIM.num_hkl_in_wilson_updater_res_bin = SIM.wilson_updater.num_in_i_fcells_res_bin()
 
         # this is variable "L" in my notes
-        Fsq_endpt = Fsq_ref[0], Fsq_ref[-1]
-        Fsq_ref_at_d = interp1d(dspacing_ref, Fsq_ref, bounds_error=False, fill_value=Fsq_endpt)
-        SIM.Fsq_ref_for_asu = {h: Fsq_ref_at_d(d) for h, d in dspacing_at_asu.items()}
+        SIM.Fsq_ref_at_i_fcell = SIM.wilson_updater.get_reference(SIM.Fhkl_init_at_i_fcell)
 
         # we will also need the centric flags as well for determining the proper probability distribution
-        is_centric = temp_mill_arr.centric_flags()
+        is_centric = SIM.crystal.miller_array_high_symmetry.centric_flags()
         is_centric_map = {h: c for h,c in zip(is_centric.indices(), is_centric.data())}
         SIM.asu_is_centric = {h: is_centric_map[h] for h in asu_hi}
+
+
+class WilsonUpdater:
+    def __init__(self, dspacing_at_i_fcell, nbins=100):
+        self.order = np.argsort(dspacing_at_i_fcell)
+        self.dsort = dspacing_at_i_fcell[self.order]
+        self.bins = [b[0]-1e-6 for b in np.array_split(self.dsort, nbins)] + [self.dsort[-1]+1e-6]
+        #assert min(self.bins) < min(dspacing_at_i_fcell)
+        #assert max(self.bins) > max(dspacing_at_i_fcell)
+        self.unsorted_digs = np.digitize(dspacing_at_i_fcell, self.bins)
+        self.sorted_digs = np.digitize(self.dsort, self.bins)
+        self.nbins = nbins
+
+    def num_in_i_fcells_res_bin(self):
+        """returns the number of Fhkl in the res bin belonging to i_fcell"""
+        mapper = {}
+        for i in range(1, self.nbins):
+            num_in_bin = np.sum(self.sorted_digs == i)
+            mapper[i] = num_in_bin
+        mapped_vals = np.array([mapper[i] for i in self.unsorted_digs])
+        return mapped_vals
+
+    def get_reference(self, fhkl_current_at_i_fcell):
+        datsort = fhkl_current_at_i_fcell[self.order]**2
+        #valmeans = []
+        mapper = {}
+        for i in range(1, self.nbins):
+            val_mean = np.mean(datsort[self.sorted_digs == i])
+            #valmeans.append(val_mean)
+            #d_mean = self.bins[i-1].mean()
+            #dmeans.append(d_mean)
+            mapper[i] = val_mean
+        mapped_vals = np.array([mapper[i] for i in self.unsorted_digs])
+        return mapped_vals
 
 
 def aggregate_Hi(Modelers):

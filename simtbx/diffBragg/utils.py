@@ -2270,14 +2270,39 @@ def compute_scale_to_minmize_r_factor(F1, F2, anom=True):
     return r1_scale
 
 
-def get_ave_FF(F):
+def get_ave_FF(F, w=500, use_fft=True):
     d = np.array(F.d_spacings().data())
     order = np.argsort(d)
     amps = np.array(F.data())**2
-    amps_ave = moving_average( amps[order], 500)
-    d_ave = moving_average(d[order], 500)
+    MA = moving_average
+    if use_fft:
+        MA = moving_average_fft
+    amps_ave = MA(amps[order], w)
+    d_ave = MA(d[order], w)
     return d_ave, amps_ave
 
 
 def moving_average(x, w):  # stack overflow recipe
     return np.convolve(x, np.ones(w), 'valid') / w
+
+
+def moving_average_fft(x, w):
+    fftx = np.fft.fft(x)
+    fftw = np.fft.fft(np.ones(w))
+    move_ave = np.fft.ifft( fftx*fftw ).real
+    return move_ave / w
+
+
+#def moving_average_fft(x, w):
+#    fftx = np.fft.fft(x)
+#
+#    nx = len(x)
+#    fw = np.zeros(nx)
+#    start = int(nx/2) - int(w/2)
+#    fw[start: start+w] = 1
+#    fftw = np.fft.fft(fw)
+#    move_ave = np.fft.ifft( fftx[:len(x)]*fftw[:len(x)] ).real
+#    return move_ave / w
+
+
+
