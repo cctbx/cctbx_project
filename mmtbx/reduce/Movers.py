@@ -741,7 +741,7 @@ class MoverHistidineFlip:
       raise ValueError("MoverHistidineFlip(): ne2Atom does not have two bonded carbons")
     ne2HAtom = hydrogens[0]
 
-    # Determine if the first Carbon is CE1, which is bonded to two Carbons.  If not,
+    # Determine if the first Carbon is CE1, which is bonded to two Nitrogens (zero Carbons).  If not,
     # then the second one must be.  Fill in CD2 and CE1 based on this information, then we
     # can check them and continue parsing.
     cTest = carbons[0]
@@ -799,7 +799,7 @@ class MoverHistidineFlip:
     if len(bonded) != 3:
       raise ValueError("MoverHistidineFlip(): CG does not have three bonded neighbors")
     for b in bonded:
-      if b.i_seq == cgAtom.i_seq:
+      if b.i_seq == cd2Atom.i_seq: # We already know about CD2
         continue
       elif b.element == "N":
         nd1Atom = b
@@ -826,7 +826,7 @@ class MoverHistidineFlip:
     cbHydrogens = []
     bonded = bondedNeighborLists[cbAtom]
     if len(bonded) != 4:
-      raise ValueError("MoverHistidineFlip(): CB does not have four bonded neighbors")
+      raise ValueError("MoverHistidineFlip(): CB does not have four bonded neighbors, has "+str(len(bonded)))
     for b in bonded:
       if b.i_seq == cgAtom.i_seq:
         continue
