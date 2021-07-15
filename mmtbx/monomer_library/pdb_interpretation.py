@@ -1091,6 +1091,8 @@ class monomer_mapping(slots_getstate_setstate):
     "residue_name",
     "unexpected_atoms",
     "chainid",
+    #
+    'atom_names_mappings',
     ]
 
   def __init__(self,
@@ -1240,6 +1242,7 @@ class monomer_mapping(slots_getstate_setstate):
     self.expected_atoms = {}
     self.unexpected_atoms = {}
     self.duplicate_atoms = {}
+    self.atom_names_mappings = {}
     if (self.atom_name_interpretation is not None):
       replace_primes = False
     elif (self.is_rna_dna or self.monomer.is_rna_dna()):
@@ -1308,6 +1311,8 @@ class monomer_mapping(slots_getstate_setstate):
         cif_name = rna_dna_bb_cif_by_ref.get(ref_name)
         if (cif_name is not None):
           atom_name = cif_name
+      if atom.name.strip()!=atom_name:
+        self.atom_names_mappings[atom.name.strip()]=atom_name
       prev_atom = processed_atom_names.get(atom_name)
       if (prev_atom is None):
         processed_atom_names[atom_name] = atom
@@ -2558,13 +2563,12 @@ class build_chain_proxies(object):
         atom_dict = mm.monomer.atom_dict()
         for i, atom in enumerate(residue.atoms()):
           name = atom.name.strip()
-          if mm.mon_lib_names is not None:
-            name = mm.mon_lib_names[i]
-          if name is None:
+          if name in mm.unexpected_atoms:
             # incorrect atom name, skip
             self.type_energies.append(False)
             self.type_h_bonds.append(False)
             continue
+          name = mm.atom_names_mappings.get(name, name)
           al = atom_dict.get(name.strip(), None)
           if al:
             self.type_energies.append(al.type_energy)
