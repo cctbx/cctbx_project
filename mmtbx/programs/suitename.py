@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import sys, os, pprint
-# pp = pprint.PrettyPrinter(indent=4)
-# pp.pprint (sys.path)
 
 from mmtbx.suitename import dualparse, suites
 from mmtbx.suitename.suitename import main, version
@@ -38,31 +36,30 @@ def run(args):
 
   parser = dualparse.parseArgs(Program, logger)
   working_phil = parser.working_phil
-  # print("\n \n")
-  # working_phil.show()
   options = working_phil.extract().suitename
   
   # now we call into the core of suitename itself
   if options.version:
-      print(version)
+      print(version, file=logger2)
       return
   if options.infile == "" or options.residuein or options.suitein:
       # let the core figure out the input
-      main(optionsIn=options)
+      main(optionsIn=options, outFile=logger2, errorFile=logger)
   else:
       type = analyzeFileType(options.infile)
       if type=="": 
         logger.write(f"File extension {type} not recognized")
       if type == "pdb":
-          suites.main(options=options)
+          suites.main(options=options, outFile=logger2, errorFile=logger)
       else:
         # help the core figure out the input file type
         if type == "kinemage":
           options.suitein = True
         elif type == "dangle":
           options.residuein = True
-        main(optionsIn=options)
-  
+        main(optionsIn=options, outFile=logger2, errorFile=logger)
+
+
 extensionList={
     "pdb": "pdb",
     "cif": "pdb",

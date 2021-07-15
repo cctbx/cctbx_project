@@ -22,16 +22,15 @@ from collections import defaultdict
 from myangle import getResidueDihedrals, residueString
 
 
-def main(options, outFile=None):
+def main(options, outFile=None, errorFile=None):
   from mmtbx.suitename.suitename import compute, write, finalStats, clearStats
   setOptions(options)
   import suiteninput  # AFTER setOptions
 
-  if not outFile:
-    outFile = sys.stdout
+  if not outFile: outFile = sys.stdout
+  if not errorFile: errorFile = sys.stderr
   inFile = options.infile
   model = loadModel(inFile)
-
 
   residues = getResidueDihedrals(model, options.altid, 
                                  name=os.path.splitext(inFile)[0])

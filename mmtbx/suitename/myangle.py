@@ -40,11 +40,6 @@ dihedrals = (
 class Failure(Exception):
   pass
 
-
-output = sys.stdout  #debug
-dbout = sys.stderr  #debug
-
-
 afile = r"C:\Users\Ken\Desktop\Richardson\molprobity\modules\cctbx_project\mmtbx\suitename\test\4fen.pdb"
 # 1q9a for hard alt test
 alt = 'A' #!!! temporary
@@ -61,8 +56,6 @@ def main(inFile):
 
 
 def loadModel(filename):
-  global dbout
-  dbout = open(filename, "w")
   dm = DataManager()             #   Initialize the DataManager and call it dm
   dm.set_overwrite(True)         #   tell the DataManager to overwrite files with the same name
   #print("Reading file")
@@ -80,15 +73,13 @@ def getResidueDihedrals(mgr, altcode='', name=''):
   hierarchy = manager.get_hierarchy()
   i_seq_name_hash = utils.build_name_hash(pdb_hierarchy=hierarchy)
 
-  output = open("hierarchy.show.txt", "w")
-  out2 = open("atoms.show.txt", "w")
+  # output = open("hierarchy.show.txt", "w")
   model = hierarchy.models()[0]  #!!!
   selector = "name P or name O5' or name C5' or name C4' or name C3' or name O3'"
   selection = manager.selection(selector) 
   #print (len(selection), "atoms")
   backbone_hierarchy = hierarchy.select(selection)
-  hierarchy.show(output)
-  #backbone_hierarchy.show(output)
+  # hierarchy.show(output)
   chains = backbone_hierarchy.chains()
   all_residues = []
 
@@ -107,7 +98,6 @@ def getResidueDihedrals(mgr, altcode='', name=''):
 
     #print(len(backbone_atoms), "backbone atoms")
     # for atom in backbone_atoms:
-    #   print(atom.pdb_label_columns(), file=out2)  
     try: 
       residues = build_dihedrals(backbone_atoms, chain.id, conf.altloc)
       all_residues.extend(residues)
@@ -115,8 +105,6 @@ def getResidueDihedrals(mgr, altcode='', name=''):
       pass
       # print("chain ", chain.id, " unable to find a backbone")
 
-    #print("chain ", chain.id, " complete")
-  out2.close()
   if name != "":
     file = open(name + ".suites", "w")
     for r in residues:
@@ -141,10 +129,9 @@ def get_matching_conformer(chain, altcode):
 def build_dihedrals(mainchain, chain_id, alt): 
     residues = []
     # print (list(mainchain.extract_name()))
-    # gives a list of atom names
+    ## gives a list of atom names
 
     backbone = [atom for atom in mainchain if atom.name in bone]
-    # sanity = (backbone == backbone2)
     # for atom in backbone:
     #   #print(atom.serial, atom.name, atom.fetch_labels().resseq)  
     residue = None
@@ -317,7 +304,7 @@ def easy_make_dihedral(backbone, i, k):
 # ----------------------------  tool room  -----------------------------
 
 # The following code was used to build the dihedrals list above
-def make_groups():
+def make_groups(output):
     i = 0
     for name in names:
         output.write(f'("{name}" (')
@@ -340,5 +327,6 @@ def residueString(r):
     return id + angles[:-1]
 
 
+# The following is for debugging and not for production use:
 if __name__ == '__main__':
   main(sys.argv[1])

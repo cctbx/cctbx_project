@@ -51,7 +51,7 @@ outNote.outliers = 0
 
 
 # ***main()******************************************************************
-def main(inStream=None, outFile=None, optionsIn=None):
+def main(inStream=None, outFile=None, errorFile=None, optionsIn=None):
     # inStream is used in internal testing
     global options
     if optionsIn is None:
@@ -74,10 +74,11 @@ def main(inStream=None, outFile=None, optionsIn=None):
         inFile = open(options.infile)
     else:
         inFile = sys.stdin
-    if not outFile:
-        outFile = sys.stdout
+    
+    if not outFile:  outFile = sys.stdout
+    if not errorFile: errorFile = sys.stderr
 
-    suites = read(inFile)
+    suites = read(inFile, errorFile)
     suites = compute(suites)
     finalStats()
     write(outFile, suites)
@@ -89,16 +90,16 @@ def loadOptions(optionsIn):
     options = optionsIn
 
 
-def read(inFile):
+def read(inFile, errorFile=sys.stderr):
     if options.suitein:
         suites = readKinemageFile(inFile)
         if len(suites) == 0:
-            sys.stderr.write("read no suites: perhaps wrong type of kinemage file\n")
+            errorFile.write("read no suites: perhaps wrong type of kinemage file\n")
             sys.exit(1)
     else:
         residues = readResidues(inFile)
         if len(residues) == 0:
-            sys.stderr.write("read no residues: perhaps wrong alternate code\n")
+            errorFile.write("read no residues: perhaps wrong alternate code\n")
             sys.exit(1)
         suites = buildSuites(residues)
         suites = suites[:-1]
@@ -478,12 +479,12 @@ def hyperEllipsoidDistance(suiteAngles, clusterAngles, nAngles, widthArray):
         delta = delta / widthArray[k]
         delToPower = pow(delta, power)
         summation = summation + delToPower
-        if dbCounter >= dbTarget and nAngles > 4:  # KPB debug 120221
-            sys.stderr.write("db=%3d, k=%d, del=%8.4f, delpower=%10.6f, dpower=%10.6f\n" % 
-                        (dbCounter, k, delta, delToPower, summation) )
+        # if dbCounter >= dbTarget and nAngles > 4:  # KPB debug 120221
+        #     sys.stderr.write("db=%3d, k=%d, del=%8.4f, delpower=%10.6f, dpower=%10.6f\n" % 
+        #                 (dbCounter, k, delta, delToPower, summation) )
     result = pow(summation, 1 / power)
-    if dbCounter == dbTarget and nAngles > 4:
-        sys.stderr.write("final = %7.3f\n" % result)
+    # if dbCounter == dbTarget and nAngles > 4:
+    #     sys.stderr.write("final = %7.3f\n" % result)
     return result
 
 
@@ -504,60 +505,60 @@ def modifyWidths(dom, sat, satInfo):
             dom[m] = satInfo.dominantWidths[m]
 
 
-def showHelpText():
-    sys.stderr.write(
-        f"""
-Version {version}
-suitename -flags <stdin >stdout
-  or
-suitename inputfile -flags >stdout
-output flags: [ -report || -string || -kinemage ]
-default:  -report
-
-input flags: [ -residuein || -suitein  ]
-flags: [ -residuein [ -pointIDfields # ] ] default#=={options.pointidfields}
- OR 
-flags: [ -suitein [ -anglefields # ] ]   default#=={options.anglefields}
-defaults: -residuein  -pointIDfields {options.pointidfields}
-
-The -residuein format:
-label:model:chain:number:ins:type:alpha:beta:gamma:delta:epsilon:zeta
-if the file has alternate conformations, then use both -pointIDfields 
-    and -altIDfield # to specify the number of pointID fields 
-    and which field (1-based) contains the altID
-use -altIDval <altID> to specify which alternate conformation to calculate 
-    suite for. By default calculated for alt A
-
--suitein takes a kinemage format,  and uses records from 
-    @ballists and/or @dotlists in this format:
-{{ptID}} [chi] deltam epsilon zeta alpha beta gamma delta [chi] 
-    @dimension in the file, if present, overrides -anglefields
-
-Note dangle trick to make theta,...,eta suites directly
-
-flag: -report [ -chart ]
- suites in order of input, suiteness summary at end
-( -chart : NO summary at end, for MolProbity multichart)
-
-flag: -string [-nosequence] [-oneline] 
- 3 character per suite string in order of input
-    20 per line, ptID of n*20th at end of line
-  flag: -nosequence
-    only suite names, no Base sequence character
-  flag: -oneline
-    string all one line, no point IDs
-
-flag: -kinemage
- kinemage of clusters grouped by pucker,pucker ... 
- group {{delta,delta}},subgroup {{gamma}},list {{cluster name}}
-  flag: -etatheta or -thetaeta
-    kinemage labels theta,eta instead of chi-1,chi
-flag: -satellite
-  use special general case satellite widths
-flag: -nowannabe   
-  never assign suites to wannabe clusters
-Note: any DNA residues found in the input will be ignored.
-""")
+# def showHelpText():
+#     sys.stderr.write(
+#         f"""
+# Version {version}
+# suitename -flags <stdin >stdout
+#   or
+# suitename inputfile -flags >stdout
+# output flags: [ -report || -string || -kinemage ]
+# default:  -report
+# 
+# input flags: [ -residuein || -suitein  ]
+# flags: [ -residuein [ -pointIDfields # ] ] default#=={options.pointidfields}
+#  OR 
+# flags: [ -suitein [ -anglefields # ] ]   default#=={options.anglefields}
+# defaults: -residuein  -pointIDfields {options.pointidfields}
+# 
+# The -residuein format:
+# label:model:chain:number:ins:type:alpha:beta:gamma:delta:epsilon:zeta
+# if the file has alternate conformations, then use both -pointIDfields 
+#     and -altIDfield # to specify the number of pointID fields 
+#     and which field (1-based) contains the altID
+# use -altIDval <altID> to specify which alternate conformation to calculate 
+#     suite for. By default calculated for alt A
+# 
+# -suitein takes a kinemage format,  and uses records from 
+#     @ballists and/or @dotlists in this format:
+# {{ptID}} [chi] deltam epsilon zeta alpha beta gamma delta [chi] 
+#     @dimension in the file, if present, overrides -anglefields
+# 
+# Note dangle trick to make theta,...,eta suites directly
+# 
+# flag: -report [ -chart ]
+#  suites in order of input, suiteness summary at end
+# ( -chart : NO summary at end, for MolProbity multichart)
+# 
+# flag: -string [-nosequence] [-oneline] 
+#  3 character per suite string in order of input
+#     20 per line, ptID of n*20th at end of line
+#   flag: -nosequence
+#     only suite names, no Base sequence character
+#   flag: -oneline
+#     string all one line, no point IDs
+# 
+# flag: -kinemage
+#  kinemage of clusters grouped by pucker,pucker ... 
+#  group {{delta,delta}},subgroup {{gamma}},list {{cluster name}}
+#   flag: -etatheta or -thetaeta
+#     kinemage labels theta,eta instead of chi-1,chi
+# flag: -satellite
+#   use special general case satellite widths
+# flag: -nowannabe   
+#   never assign suites to wannabe clusters
+# Note: any DNA residues found in the input will be ignored.
+# """)
 
 
 if (__name__ == "__main__"):
