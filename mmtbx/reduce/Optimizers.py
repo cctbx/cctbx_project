@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
+
 import Movers
 import InteractionGraph
 
@@ -133,7 +135,7 @@ def GetAtomsForConformer(model, conf):
     confs = ch.conformers()
     which = 0
     for i in range(1,len(confs)):
-      if c.name == conf:
+      if confs[i].altloc == conf:
         which = i
         break
     ret.extend(ch.atoms())
@@ -142,8 +144,9 @@ def GetAtomsForConformer(model, conf):
 ##################################################################################
 # Test function to verify that all functions behave properly.
 
-def Test():
+def Test(inFileName = None):
   """Test function for all functions provided above.
+  :param inFileName: Name of a PDB or CIF file to load (default makes a small molecule)
   :returns Empty string on success, string describing the problem on failure.
   """
 
@@ -156,12 +159,20 @@ def Test():
   # @todo
 
   #========================================================================
-  # Generate an example data model with a small molecule in it using the built-in
-  # model generator.
-  print('Generating model')
-  mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
-  mmm.generate_map()              #   get a model from a generated small library model and calculate a map for it
-  model = mmm.model()             #   get the model
+  # Generate an example data model with a small molecule in it or else read
+  # from the specified file.
+  if inFileName is not None and len(inFileName) > 0:
+    # Read a model from a file using the DataManager
+    print('Reading model from',inFileName)
+    dm = DataManager()
+    dm.process_model_file(inFileName)
+    model = dm.get_model(inFileName)
+  else:
+    # Generate a small-molecule model using the map model manager
+    print('Generating model')
+    mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
+    mmm.generate_map()              #   get a model from a generated small library model and calculate a map for it
+    model = mmm.model()             #   get the model
 
   print('Interpreting model')
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -207,7 +218,14 @@ def Test():
 # If we're run on the command line, test our classes and functions.
 if __name__ == '__main__':
 
-  ret = Test()
+  #==============================================================
+  # Parse command-line arguments.  The 0th argument is the name
+  # of the script. There can be the name of a PDB file to read.
+  parser = argparse.ArgumentParser(description='Test mmtbx.reduce.Optimizers.')
+  parser.add_argument('inputFile', nargs='?', default="")
+  args = parser.parse_args()
+
+  ret = Test(args.inputFile)
   if len(ret) == 0:
     print('Success!')
   else:
