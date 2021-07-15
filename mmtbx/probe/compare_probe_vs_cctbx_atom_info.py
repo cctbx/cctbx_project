@@ -82,7 +82,7 @@ def RunProbeVsCCTBXTest(inFileName, useNeutronDistances = False):
     model = mmm.model()             #   get the model
 
   # Fix up bogus unit cell when it occurs by checking crystal symmetry.
-  cs =model.crystal_symmetry()
+  cs = model.crystal_symmetry()
   if (cs is None) or (cs.unit_cell() is None):
     model = shift_and_box_model(model = model)
 
