@@ -566,7 +566,7 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
 
 ##################################################################################
 class MoverNH2Flip:
-  def __init__(self, nh2Atom, caAtom, bondedNeighborLists):
+  def __init__(self, nh2Atom, caAtomName, bondedNeighborLists):
     """Constructs a Mover that will handle flipping an NH2 with an O, both of which
        are attached to the same Carbon atom (and each of which has no other bonds).
        This Mover uses a simple swap of the center positions of the heavy atoms (with
@@ -575,7 +575,7 @@ class MoverNH2Flip:
        and the Nitrogen; per Protein Science Vol 27:293-315.
        This handles flips for Asn and Gln.
        :param nh2Atom: Nitrogen atom that is attached to two Hydrogens.
-       :param ca2Atom: Alpha Carbon for the amino acid -- the atom around which the
+       :param ca2AtomName: Name of the Alpha Carbon for the amino acid -- the atom around which the
        rigid body is rotated for the final docking motion.  All atoms linked to before
        this one is reached will be included in the list of movable atoms -- there is one
        more of these for Gln than for Asn.
@@ -638,7 +638,10 @@ class MoverNH2Flip:
           link = b
         elif b.element == "H":
           linkerHydrogens.append(b)
-      if link.i_seq == caAtom.i_seq:
+      if link is None:
+        raise ValueError("MoverNH2Flip(): Did not find Carbon in linker chain step")
+      if link.name.strip().upper() == caAtomName.strip().upper():
+        caAtom = link
         foundAlpha = True
       else:
         linkers.append(link)
@@ -1442,6 +1445,7 @@ def Test():
 
     ca = pdb.hierarchy.atom()
     ca.element = "C"
+    ca.name = "CA"
     ca.xyz = [ 0.0, 0.0,-2.0 ]
 
     # Nitrogen and Oxygen are +/-120 degrees from carbon-carbon bond
@@ -1494,7 +1498,7 @@ def Test():
     bondedNeighborLists[fh2] = [ f ]
     bondedNeighborLists[ca] = [ f ]
 
-    mover = MoverNH2Flip(n, ca, bondedNeighborLists)
+    mover = MoverNH2Flip(n, ca.name, bondedNeighborLists)
 
     # Ensure that the coarse-flip results meet the expections:
     # 1) N and O are flipped in position
@@ -1597,6 +1601,7 @@ def Test():
 
     ca = pdb.hierarchy.atom()
     ca.element = "C"
+    ca.name = "CA"
     ca.xyz = [ 0.0, 0.0,-3.0 ]
 
     # Nitrogen and Oxygen are +/-120 degrees from carbon-carbon bond
@@ -1655,7 +1660,7 @@ def Test():
     bondedNeighborLists[lnh2] = [ ln ]
     bondedNeighborLists[ca] = [ ln ]
 
-    mover = MoverNH2Flip(n, ca, bondedNeighborLists)
+    mover = MoverNH2Flip(n, ca.name, bondedNeighborLists)
     fixed = mover.FixUp(1).newPositions
 
     # Ensure that the results meet the specifications:
@@ -2125,10 +2130,13 @@ def getBondedNeighborLists(atoms, bondProxies):
     the atoms that are bonded to it.
     External helper function to produce a dictionary of lists that lists all bonded
     neighbors for each atom in a set of atoms.
-    :param atoms: Flex aray of atoms (could be obtained using model.get_atoms()).
-    :param bondProxies: Flex array of bond proxies for the atoms (could be obtained
+    :param atoms: Flex array of atoms (could be obtained using model.get_atoms() if there
+    are no chains with multiple conformations, must be a subset of the atoms including
+    all in the base conformation and in a particular conformation otherwise).
+    :param bondProxies: Flex array of bond proxies for the atoms.  This could be obtained
     using model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart =
-    model.get_sites_cart()) ).
+    model.get_sites_cart())[0] if the model has only a single conformation.  Otherwise,
+    it should be a flex array of atom positions for the atoms that are in the first argument.
     :returns a dictionary with one entry for each atom that contains a list of all of
     the atoms that are bonded to it.
   """
