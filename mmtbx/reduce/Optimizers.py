@@ -16,9 +16,123 @@
 import Movers
 import InteractionGraph
 
+from iotbx.map_model_manager import map_model_manager
+from iotbx.data_manager import DataManager
+import mmtbx
+from scitbx.array_family import flex
+
 ##################################################################################
 # This is a set of functions that implement placement and optimization of
 # Reduce's "Movers".
+
+class PlacementReturn:
+  # Return type from PlaceMovers() call.  List of movers and then an information string
+  # that may contain information the user would like to know (where Movers were placed,
+  # failed Mover placements due to missing Hydrogens, etc.).
+  def __init__(self, moverList, infoString):
+    self.moverList = moverList
+    self.infoString = infoString
+
+def PlaceMovers(atoms, bondedNeighborLists):
+  """Produce a list of Movers for atoms in a pdb.hierarchy.conformer that has added Hydrogens.
+  :param atoms: flex array of atoms to search.  This must have all Hydrogens needed by the
+  Movers present in the structure already.
+  :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
+  structure that the atom from the first parameter interacts with that lists all of the
+  bonded atoms.  Can be obtained by calling getBondedNeighborLists().
+  :returns PlacementReturn giving the list of Movers found in the conformation and
+  an error string that is empty if no errors are found during the process and which
+  has a printable message in case one or more errors are found.
+  """
+
+  # List of Movers to return
+  movers = []
+
+  # Information string to return, filled in when we cannot place a Mover.
+  infoString = ""
+
+  # For each atom, check to see if it is the main atom from a Mover.  If so, attempt to
+  # construct the appropriate Mover.  The construction may fail because not all required
+  # atoms are present (especially the Hydrogens).  If the construction succeeds, add the
+  # Mover to the list of those to return.  When they fail, add the output to the information
+  # string.
+  print('XXX Number of atoms =',len(atoms))
+  for a in atoms:
+    # Find the stripped upper-case atom and residue names and the residue ID,
+    # and an identifier string
+    aName = a.name.strip().upper()
+    resName = a.parent().resname.strip().upper()
+    resID = str(a.parent().parent().resseq_as_int())
+    resNameAndID = resName+" "+resID
+
+    # See if we should construct a MoverSingleHydrogenRotator here.
+    # @todo
+
+    # See if we should construct a MoverNH3Rotator here.
+    # @todo
+
+    # See if we should construct a MoverAromaticMethylRotator here.
+    # @todo
+
+    # See if we should construct a MoverTetrahedralMethylRotator here so that we
+    # ensure that the Hydrogens are staggered but don't add it to those that are
+    # optimized.
+    # @todo
+
+    # See if we should insert a MoverNH2Flip here.
+    # @todo Is there a more general way than looking for specific names?
+    if (aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN'):
+      # Find the alpha carbon associated with this residue
+      try:
+        movers.append(Movers.MoverNH2Flip(a, "CA", bondedNeighborLists))
+        infoString += "Added MoverNH2Flip to "+resNameAndID+"\n"
+      except Exception as e:
+        infoString += "Could not add MoverNH2Flip to "+resNameAndID+": "+str(e)+"\n"
+
+    # See if we should insert a MoverHistidineFlip here.
+    if aName == 'NE2' and resName == 'HIS':
+      try:
+        movers.append(Movers.MoverHistidineFlip(a, bondedNeighborLists))
+        infoString += "Added MoverHistidineFlip to "+resNameAndID+"\n"
+      except Exception as e:
+        infoString += "Could not add MoverHistidineFlip to "+resNameAndID+": "+str(e)+"\n"
+
+  return PlacementReturn(movers, infoString)
+
+##################################################################################
+# Helper functions
+
+def AlternatesInModel(model):
+  """Returns a list of altloc names of all conformers in all chains.
+  :returns Set of strings.  The set is will include only the empty string if no
+  chains in the model have alternates.  It has an additional entry for every altloc
+  found in every chain.
+  """
+  ret = set()
+  for c in model.chains():
+    for alt in c.conformers():
+      ret.add(alt.altloc)
+  return ret
+
+def GetAtomsForConformer(model, conf):
+  """Returns a list of atoms in the named conformer.  It also includes atoms from
+  the first conformation in chains that do not have this conformation, to provide a
+  complete model.  For a model whose chains only have one conformer, it will return
+  all of the atoms.
+  :param model: pdb.hierarchy.model to search for atoms.
+  :param conf: String name of the conformation to find.  Can be "".
+  :returns List of atoms consistent with the specified conformer.
+  """
+  ret = []
+  for ch in model.chains():
+    confs = ch.conformers()
+    which = 0
+    for i in range(1,len(confs)):
+      if c.name == conf:
+        which = i
+        break
+    ret.extend(ch.atoms())
+  return ret
 
 ##################################################################################
 # Test function to verify that all functions behave properly.
@@ -26,8 +140,57 @@ import InteractionGraph
 def Test():
   """Test function for all functions provided above.
   :returns Empty string on success, string describing the problem on failure.
-  :returns Empty string on success, string describing the problem on failure.
   """
+
+  #========================================================================
+  # Test the AlternatesInModel() function.
+  # @todo
+
+  #========================================================================
+  # Test the GetAtomsForConformer() function.
+  # @todo
+
+  #========================================================================
+  # Generate an example data model with a small molecule in it using the built-in
+  # model generator.
+  print('Generating model')
+  mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
+  mmm.generate_map()              #   get a model from a generated small library model and calculate a map for it
+  model = mmm.model()             #   get the model
+
+  print('Interpreting model')
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  model.set_pdb_interpretation_params(params = p)
+  model.process_input_model(make_restraints=True) # make restraints
+
+  # Add Hydrogens to the model
+  # @todo
+
+  # Get the first model in the hierarchy.
+  firstModel = model.get_hierarchy().models()[0]
+
+  # Get the list of alternate conformation names present in all chains for this model.
+  alts = AlternatesInModel(firstModel)
+
+  # Get the atoms from the first conformer in the first model.
+  atoms = GetAtomsForConformer(firstModel, "")
+
+  # Get the Cartesian positions of all of the atoms we're considering for this alternate
+  # conformation.
+  carts = flex.vec3_double()
+  for a in atoms:
+    carts.append(a.xyz)
+
+  # Get the bond proxies for the atoms in the model and conformation we're using and
+  # use them to determine the bonded neighbor lists.
+  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+  bondedNeighborLists = Movers.getBondedNeighborLists(atoms, bondProxies)
+
+  # Get the list of Movers
+  ret = PlaceMovers(atoms, bondedNeighborLists)
+  movers = ret.moverList
+  print('XXX info:\n'+ret.infoString)
+  print('XXX Found',len(movers),'Movers')
 
   # @todo
   return ""
