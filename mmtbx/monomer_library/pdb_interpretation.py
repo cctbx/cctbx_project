@@ -2479,6 +2479,7 @@ class build_chain_proxies(object):
     classifications = dicts.with_default_value(0)
     modifications_used = dicts.with_default_value(0)
     incomplete_infos = dicts.with_default_value(0)
+    missing_h_bond_type = dicts.with_default_value(0)
     link_ids = dicts.with_default_value(0)
     mm_pairs_not_linked = []
     n_unresolved_chain_links = 0
@@ -2573,8 +2574,12 @@ class build_chain_proxies(object):
           if al:
             self.type_energies.append(al.type_energy)
             entry = ener_lib.lib_atom.get(al.type_energy, None)
-            assert entry
-            self.type_h_bonds.append(entry.hb_type)
+            if entry is None:
+              # print('Not able to determine H bond type for atom %s %s' % (atom.quote(), al.type_energy))
+              self.type_h_bonds.append(None)
+              missing_h_bond_type[al.type_energy]+=1
+            else:
+              self.type_h_bonds.append(entry.hb_type)
           else:
             self.type_energies.append(None)
             self.type_h_bonds.append(None)
@@ -2854,6 +2859,8 @@ class build_chain_proxies(object):
         print("          Modifications used:", modifications_used, file=log)
       if (len(incomplete_infos) > 0):
         print("          Incomplete info:", incomplete_infos, file=log)
+      if (len(missing_h_bond_type) > 0):
+        print('          Missing H bond types:', missing_h_bond_type, file=log)
     if (log is not None):
       if (len(link_ids) > 0):
         print("          Link IDs:", link_ids, file=log)
