@@ -67,6 +67,10 @@ def PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, 
   # Information string to return, filled in when we cannot place a Mover.
   infoString = ""
 
+  # The radius of a Polar Hydrogen (one that forms Hydrogen bonds)
+  # @todo Can we look this up from inside CCTBX?
+  polarHydrogenRadius = 1.05
+
   # For each atom, check to see if it is the main atom from a Mover.  If so, attempt to
   # construct the appropriate Mover.  The construction may fail because not all required
   # atoms are present (especially the Hydrogens).  If the construction succeeds, add the
@@ -93,24 +97,40 @@ def PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, 
           # Construct a list of nearby atoms that are potential acceptors.
           potentialAcceptors = []
 
-          # Get the list of nearby atoms.  The center of the search is the point along
-          # the line from the partner of the neighbor atom to the neighbor atom that is
-          # closest to the Hydrogen.  The radius of the search is @todo
-          # @todo
-          loc = a.xyz # @todo Fix
-          maxDist = 3 # @todo Fix
-          nearby = spatialQuery.neighbors(loc, 0.0, maxDist)
+          # Get the list of nearby atoms.  The center of the search is the atom that
+          # the Hydrogen is bound to and its radius is 4 (these values are pulled from
+          # the Reduce C++ code).
+          maxDist = 4.0
+          nearby = spatialQuery.neighbors(neighbor.xyz, extraAtomInfo[neighbor.i_seq].vdwRadius, maxDist)
 
-          # See if each is a potential acceptor or a flip partner from in Histidine or NH2 flips
-          # (which may be moved into that atom's position during a flip).
+          # Check each nearby atom to see if it distance from the neighbor is within
+          # the sum of the hydrogen-bond length of the neighbor atom, the radius of
+          # a polar Hydrogen, and the radius of the nearby atom, indicating potential
+          # overlap.
+          # O-H & N-H bond len == 1.0, S-H bond len == 1.3
+          XHbondlen = 1.0
+          if neighbor.element == "S":
+            XHbondlen = 1.3
+          candidates = []
           for n in nearby:
-            aName = n.name.strip().upper()
-            resName = n.parent().resname.strip().upper()
+            d = (Movers._rvec3(neighbor.xyz) - Movers._rvec3(n.xyz)).length()
+            if d <= XHbondlen + extraAtomInfo[n.i_seq].vdwRadius + polarHydrogenRadius:
+              candidates.append(n)
+
+          # See if each nearby atom is a potential acceptor or a flip partner from
+          # Histidine or NH2 flips (which may be moved into that atom's position during a flip).
+          # We check the partner (N's for GLN And ASN, C's for HIS) because if it is the O or
+          # N atom, we will already be checking it as an acceptor now.
+          # @todo Ensure that Hydrogenate does not change the acceptor state of the HIS Nitrogens when it adds
+          # Hydrogen to them so that they will show up here.
+          for c in candidates:
+            aName = c.name.strip().upper()
+            resName = c.parent().resname.strip().upper()
             flipPartner = ( (aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN') or
               (aName == 'CE1' and resName == 'HIS') or (aName == 'CD2' and resName == 'HIS') )
-            acceptor = extraAtomInfo[n.i_seq].isDonor
+            acceptor = extraAtomInfo[c.i_seq].isDonor
             if acceptor or flipPartner:
-              potentialAcceptors.append(n)
+              potentialAcceptors.append(c)
 
           movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, potentialAcceptors))
           infoString += ("Added MoverSingleHydrogenRotator to "+resNameAndID+" "+aName+
