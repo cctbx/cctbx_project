@@ -23,8 +23,11 @@ from iotbx.data_manager import DataManager
 import mmtbx
 from scitbx.array_family import flex
 
+from mmtbx.probe import AtomTypes
+import mmtbx_probe_ext as probe
+
 # To enable addition of Hydrogens
-# @todo 
+# @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 
@@ -40,13 +43,19 @@ class PlacementReturn:
     self.moverList = moverList
     self.infoString = infoString
 
-def PlaceMovers(atoms, bondedNeighborLists):
+def PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, extraAtomInfo):
   """Produce a list of Movers for atoms in a pdb.hierarchy.conformer that has added Hydrogens.
   :param atoms: flex array of atoms to search.  This must have all Hydrogens needed by the
   Movers present in the structure already.
+  :param rotateableHydrogenIDs: List of sequence IDs for single hydrogens that are rotatable.
   :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
   structure that the atom from the first parameter interacts with that lists all of the
   bonded atoms.  Can be obtained by calling getBondedNeighborLists().
+  :param spatialQuery: Probe.SpatialQuery structure to rapidly determine which atoms
+  are within a specified distance of a location.
+  :param extraAtomInfo: Probe.ExtraAtomInfo structure that provides radius and other
+  information about atoms beyond what is in the pdb.hierarchy.  Used here to determine
+  which atoms may be acceptors.
   :returns PlacementReturn giving the list of Movers found in the conformation and
   an error string that is empty if no errors are found during the process and which
   has a printable message in case one or more errors are found.
@@ -64,6 +73,7 @@ def PlaceMovers(atoms, bondedNeighborLists):
   # Mover to the list of those to return.  When they fail, add the output to the information
   # string.
   print('XXX Number of atoms =',len(atoms))
+
   for a in atoms:
     # Find the stripped upper-case atom and residue names and the residue ID,
     # and an identifier string
@@ -73,7 +83,40 @@ def PlaceMovers(atoms, bondedNeighborLists):
     resNameAndID = resName+" "+resID
 
     # See if we should construct a MoverSingleHydrogenRotator here.
-    # @todo
+    if a.i_seq in rotatableHydrogenIDs:
+      try:
+        # Skip Hydrogens that are not bound to an atom that only has a single other
+        # atom bound to it -- we will handle those in other cases.
+        neighbor = bondedNeighborLists[a][0]
+        if len(bondedNeighborLists[neighbor]) == 2:
+
+          # Construct a list of nearby atoms that are potential acceptors.
+          potentialAcceptors = []
+
+          # Get the list of nearby atoms.  The center of the search is the point along
+          # the line from the partner of the neighbor atom to the neighbor atom that is
+          # closest to the Hydrogen.  The radius of the search is @todo
+          # @todo
+          loc = a.xyz # @todo Fix
+          maxDist = 3 # @todo Fix
+          nearby = spatialQuery.neighbors(loc, 0.0, maxDist)
+
+          # See if each is a potential acceptor or a flip partner from in Histidine or NH2 flips
+          # (which may be moved into that atom's position during a flip).
+          for n in nearby:
+            aName = n.name.strip().upper()
+            resName = n.parent().resname.strip().upper()
+            flipPartner = ( (aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN') or
+              (aName == 'CE1' and resName == 'HIS') or (aName == 'CD2' and resName == 'HIS') )
+            acceptor = extraAtomInfo[n.i_seq].isDonor
+            if acceptor or flipPartner:
+              potentialAcceptors.append(n)
+
+          movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, potentialAcceptors))
+          infoString += ("Added MoverSingleHydrogenRotator to "+resNameAndID+" "+aName+
+            " with "+str(len(potentialAcceptors))+" potential nearby acceptors\n")
+      except Exception as e:
+        infoString += "Could not add MoverSingleHydrogenRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n"
 
     # See if we should construct a MoverNH3Rotator here.
     # @todo
@@ -89,7 +132,6 @@ def PlaceMovers(atoms, bondedNeighborLists):
     # See if we should insert a MoverNH2Flip here.
     # @todo Is there a more general way than looking for specific names?
     if (aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN'):
-      # Find the alpha carbon associated with this residue
       try:
         movers.append(Movers.MoverNH2Flip(a, "CA", bondedNeighborLists))
         infoString += "Added MoverNH2Flip to "+resNameAndID+"\n"
@@ -161,6 +203,7 @@ def Test(inFileName = None):
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
   # from the specified file.
+  infoString = ""
   if inFileName is not None and len(inFileName) > 0:
     # Read a model from a file using the DataManager
     print('Reading model from',inFileName)
@@ -194,21 +237,84 @@ def Test(inFileName = None):
   # Get the atoms from the first conformer in the first model.
   atoms = GetAtomsForConformer(firstModel, "")
 
+  ################################################################################
   # Get the Cartesian positions of all of the atoms we're considering for this alternate
   # conformation.
   carts = flex.vec3_double()
   for a in atoms:
     carts.append(a.xyz)
 
+  ################################################################################
   # Get the bond proxies for the atoms in the model and conformation we're using and
   # use them to determine the bonded neighbor lists.
   bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
   bondedNeighborLists = Movers.getBondedNeighborLists(atoms, bondProxies)
 
+  ################################################################################
+  # Get the spatial-query information needed to quickly determine which atoms are nearby
+  sq = probe.SpatialQuery(atoms)
+
+  ################################################################################
+  # Get the probe.ExtraAtomInfo needed to determine which atoms are potential acceptors.
+
+  # Fill in a list of ExtraAtomInfo with an empty entry for each atom in the hierarchy.
+  # We first find the largest i_seq sequence number in the model and reserve that
+  # many entries so we will always be able to fill in the entry for an atom.
+  maxI = atoms[0].i_seq
+  for a in atoms:
+    if a.i_seq > maxI:
+      maxI = a.i_seq
+  extra = []
+  for i in range(maxI+1):
+    extra.append(probe.ExtraAtomInfo())
+
+  # Construct the AtomTypes object we're going to use, telling it whether to use neutron distances
+  # or not.  This object will be use as a backup plan to look up ExtraAtomInfo if we can't get
+  # it from CCTBX.
+  # @todo useNeutronDistance should be a parameter
+  useNeutronDistances = False
+  at = AtomTypes.AtomTypes(useNeutronDistances)
+
+  # Traverse the hierarchy and look up the extra data to be filled in.
+  mon_lib_srv = model.get_mon_lib_srv()
+  ener_lib = mmtbx.monomer_library.server.ener_lib()
+  for chain in firstModel.chains():
+    for rg in chain.residue_groups():
+      for ag in rg.atom_groups():
+        md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
+              residue_name=ag.resname, atom_names=ag.atoms().extract_name())
+        atom_dict = md.atom_dict()
+
+        for a in ag.atoms():
+          name = a.name.strip()
+          # First try looking it up in CCTBX, then fall back to Probe lookup if
+          # that fails.
+          try:
+            te = atom_dict[name].type_energy
+            extra[a.i_seq].vdwRadius = ener_lib.lib_atom[te].vdw_radius
+            hb_type = ener_lib.lib_atom[te].hb_type
+            if hb_type == "A":
+              extra[a.i_seq].isAcceptor = True
+            if hb_type == "D":
+              extra[a.i_seq].isDonor = True
+          except KeyError:
+            infoString += ('Warning: Could not find entry in atom dictionary for '+
+              ag.resname+" "+name+', using Probe lookup')
+            extra[a.i_seq], warn = at.FindProbeExtraAtomInfo(a)
+            if len(warn) > 0:
+              infoString += "\n  Probe lookup says: "+warn
+            infoString += "\n"
+
+
+  ################################################################################
   # Get the list of Movers
-  ret = PlaceMovers(atoms, bondedNeighborLists)
+  # @todo PlaceMovers should be a method on a base Optimizer, and the constructor should
+  # take in all the info.  The helper functions should be methods, so the client code
+  # doesn't need to see it.
+  ret = PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True), bondedNeighborLists, sq, extra)
+  infoString += ret.infoString
   movers = ret.moverList
-  print('XXX info:\n'+ret.infoString)
+  print('XXX info:\n'+infoString)
   print('XXX Found',len(movers),'Movers')
 
   # @todo
