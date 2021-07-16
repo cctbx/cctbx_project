@@ -326,7 +326,7 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     # whether there are two or three friends, it wants to be in the plane if there are two of them and it
     # wants to be between two edges if there are three.  It turns out that rotating it to point away from
     # one of the friends works in both of those cases.
-    atom.xyz = _rotateOppositeFriend(atom, axis, partner, friends)
+    atom.xyz = _rotateOppositeFriend(atom, axis, partner, friends[0])
 
     # Make a list that contains just the single atom.
     atoms = [ atom ]
@@ -412,7 +412,7 @@ class MoverNH3Rotator(_MoverRotator):
     # Move the Hydrogens so that they are in one of the preferred locations by rotating one of them to
     # point away from one of the friends.  The other two are located at +120 and -120 degrees rotated
     # around the axis from the first.
-    hydrogens[0].xyz = _rotateOppositeFriend(hydrogens[0], axis, partner, friends)
+    hydrogens[0].xyz = _rotateOppositeFriend(hydrogens[0], axis, partner, friends[0])
     hydrogens[1].xyz = _rotateAroundAxis(hydrogens[0], axis, 120)
     hydrogens[2].xyz = _rotateAroundAxis(hydrogens[0], axis, -120)
 
@@ -476,7 +476,7 @@ class MoverAromaticMethylRotator(_MoverRotator):
     # Move the Hydrogens so that they are in one of the preferred locations by rotating one of them to
     # point away from one of the friends and then rotating it 90 degrees.  The other two are located
     # at +120 and -120 degrees rotated around the axis from the first.
-    hydrogens[0].xyz = _rotateOppositeFriend(hydrogens[0], axis, partner, friends)
+    hydrogens[0].xyz = _rotateOppositeFriend(hydrogens[0], axis, partner, friends[0])
     hydrogens[0].xyz = _rotateAroundAxis(hydrogens[0], axis, 90)
     hydrogens[1].xyz = _rotateAroundAxis(hydrogens[0], axis, 120)
     hydrogens[2].xyz = _rotateAroundAxis(hydrogens[0], axis, -120)
@@ -492,7 +492,8 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
                   fineStepDegrees = 1.0, preferredOrientationScale = 1.0):
     """ A Mover that rotates three Hydrogens around an axis from their bonded Carbon neighbor
        to the single bonded partner of its partner.  This is designed for use with tetrahedral
-       partners whose partner-partner atoms are bonded to three friends.
+       partners whose partner-partner atoms are bonded to three friends but can also be used
+       with Methyl's attached to partners with a single other bond like the S in MET.
        The starting orientation has the Hydrogens pointing between the side of the tetrahedron.
        It can rotate to any angle to optimize for hydrogen bonds.
        Note: Reduce does not normally rotate these groups because it is not worth the computational
@@ -539,8 +540,8 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
     for b in bonded:
       if b.i_seq != neighbor.i_seq:
         friends.append(b)
-    if len(friends) != 3:
-      raise ValueError("MoverTetrahedralMethylRotator(): Partner does not have two bonded friends")
+    if len(friends) != 1 and len(friends) != 3:
+      raise ValueError("MoverTetrahedralMethylRotator(): Partner does not have one or three bonded friends")
 
     # Determine the axis to rotate around, which starts at the partner and points at the neighbor.
     normal = (_rvec3(neighbor.xyz) - _rvec3(partner.xyz)).normalize()
@@ -549,7 +550,7 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
     # Move the Hydrogens so that they are in one of the preferred locations by rotating one of them to
     # point away from one of the friends.  The other two are located at +120 and -120 degrees rotated
     # around the axis from the first.
-    hydrogens[0].xyz = _rotateOppositeFriend(hydrogens[0], axis, partner, friends)
+    hydrogens[0].xyz = _rotateOppositeFriend(hydrogens[0], axis, partner, friends[0])
     hydrogens[1].xyz = _rotateAroundAxis(hydrogens[0], axis, 120)
     hydrogens[2].xyz = _rotateAroundAxis(hydrogens[0], axis, -120)
 
@@ -1939,8 +1940,8 @@ def _lvec3 (xyz) :
 
 ##################################################################################
 # Internal helper functions for angle manipulation.
-def _rotateOppositeFriend(atom, axis, partner, friends):
-  '''Rotate the atom to point away from one of the friends.  This means placing it
+def _rotateOppositeFriend(atom, axis, partner, friend):
+  '''Rotate the atom to point away from the friend.  This means placing it
      within the plane perpendicular to the axis of rotation through the point on that axis
      that it is closest to at the same distance it starts out from that axis and in a
      direction that is the negation of the vector from the partner to the friend projected
@@ -1957,7 +1958,6 @@ def _rotateOppositeFriend(atom, axis, partner, friends):
      :returns the new location for the atom.
   '''
   normal = _rvec3(axis[1])
-  friend = friends[0]
   friendFromPartner = _lvec3(friend.xyz) - _lvec3(partner.xyz)
   alongAxisComponent = (friendFromPartner * normal)
   friendFromPartner = _rvec3(friend.xyz) - _rvec3(partner.xyz)
