@@ -149,6 +149,8 @@ class Script:
         self.SIM = get_diffBragg_simulator(Modelers[i_exps[0]].E, self.params)
         setup_Fhkl_attributes(self.SIM, self.params, Modelers)
 
+        flag_obs_with_low_multiplicity()
+
         # iterate over the shot-modelers on this rank, and set the
         # free parameters and spectrum for each shot
         for i_exp, Modeler in Modelers.items():
@@ -313,9 +315,12 @@ class Script:
             np.save(detz_params_file, detz_params)
 
             Fhkl_params_file =os.path.join(self.params.outdir, "x", "Fhkl_params.npy")
+
             print("Saving Fhkl parameter objects to %s" % Fhkl_params_file)
             np.savez(Fhkl_params_file, 
                     wilson_updater=self.SIM.wilson_updater,
+                    multiplicity=self.SIM.multiplicity_from_i_fcell,
+                    allowed_multi=self.SIM.has_allowed_multiplicity,
                     modelers=self.SIM.Fhkl_modelers)
             tsave = time.time()-tsave
             print("Time to save parameter arrays: %f sec" % tsave)
@@ -1230,6 +1235,8 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
         if params.wilson_restraints.use:
             # TODO vectorize or MPI this loop
             for i_fcell in range(SIM.n_global_fcell):
+                if not SIM.has_allowed_multiplicity[i_fcell]:
+                    continue
                 hkl = SIM.asu_from_i_fcell[i_fcell]
                 L = SIM.Fsq_ref_at_i_fcell[i_fcell]
                 F = Fhkl_current[i_fcell]
@@ -1248,10 +1255,10 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
             Fhkl_init = SIM.Fhkl_init_at_i_fcell
             delta_F = Fhkl_init - Fhkl_current
             if params.sigma_frac is None:
-                var_F = np.sum(Fhkl_init**2)
+                var_F = np.sum(Fhkl_init[SIM.has_allowed_multiplicity]**2)
             else:
                 var_F = (params.sigma_frac*Fhkl_init)**2
-            f_Fhkl = np.sum(delta_F**2 / var_F)
+            f_Fhkl = np.sum((delta_F**2 / var_F)[SIM.has_allowed_multiplicity])
 
     if params.use_restraints and compute_grad:
         # update the gradient restraint term for structure factor amplitudes
@@ -1259,6 +1266,8 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
         if params.wilson_restraints.use:
             # TODO vectorize or MPI this loop
             for i_fcell in range(SIM.n_global_fcell):
+                if not SIM.has_allowed_multiplicity[i_fcell]:
+                    continue
                 hkl = SIM.asu_from_i_fcell[i_fcell]
                 L = SIM.Fsq_ref_at_i_fcell[i_fcell]
                 F = Fhkl_current[i_fcell]
@@ -1277,9 +1286,10 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
                 g[-SIM.n_global_fcell+i_fcell] += SIM.Fhkl_modelers[i_fcell].get_deriv(Fhkl_rescaled[i_fcell], g_term)
         else:
             Fhkl_restraint_grad = -2*delta_F / var_F
-            g[-SIM.n_global_fcell:] += np.array([\
-                SIM.Fhkl_modelers[i_fcell].get_deriv(Fhkl_rescaled[i_fcell], Fhkl_restraint_grad[i_fcell]) \
-                for i_fcell in range(SIM.n_global_fcell)])
+            for i_fcell in range(SIM.n_global_fcell):
+                if not SIM.has_allowed_multiplicity[i_fcell]:
+                    continue
+                g[-SIM.n_global_fcell + i_fcell] += SIM.Fhkl_modelers[i_fcell].get_deriv(Fhkl_rescaled[i_fcell], Fhkl_restraint_grad[i_fcell])
 
     f = fchi + fG + f_Fhkl + fNabc + f_RotXYZ + f_ucell + f_detz
     chi = fchi / f *100
@@ -1402,10 +1412,14 @@ def setup_Fhkl_attributes(SIM, params, Modelers):
     SIM.space_group_symbol = params.space_group
     SIM.crystal.symbol = params.space_group
     SIM.space_group = sgtbx.space_group(sgtbx.space_group_info(symbol=params.space_group).type().hall_symbol())
-    a,b = aggregate_Hi(Modelers)
+    a,b,c = aggregate_Hi(Modelers)
     SIM.i_fcell_from_asu = a
     SIM.asu_from_i_fcell = b
+    SIM.multiplicity_from_i_fcell = c
     SIM.n_global_fcell = len(SIM.i_fcell_from_asu)
+
+    SIM.has_allowed_multiplicity = np.array(
+        [SIM.multiplicity_from_i_fcell[i_fcell] >= params.min_multi for i_fcell in range(SIM.n_global_fcell)])
 
     # get the nanoBragg internal p1 positional index from the asu miller-index
     SIM.Fidx, SIM.Fdata = SIM.D.Fhkl_tuple
@@ -1500,12 +1514,16 @@ def aggregate_Hi(Modelers):
     Hi_asu_all_ranks = COMM.reduce(Hi_asu_all_ranks)
     Hi_asu_all_ranks = COMM.bcast(Hi_asu_all_ranks)
 
-    # this will map the measured miller indices to their index in the LBFGS parameter array self.x
-    idx_from_asu = {h: i for i, h in enumerate(set(Hi_asu_all_ranks))}
-    # we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
-    asu_from_idx = {i: h for i, h in enumerate(set(Hi_asu_all_ranks))}
+    MULTIPLICITY = Counter(Hi_asu_all_ranks)
 
-    return idx_from_asu, asu_from_idx
+    hset = set(Hi_asu_all_ranks)
+    # this will map the measured miller indices to their index in the LBFGS parameter array self.x
+    idx_from_asu = {h: i for i, h in enumerate(hset)}
+    # we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
+    asu_from_idx = {i: h for i, h in enumerate(hset)}
+    multi_from_idx = {i: MULTIPLICITY[h] for i, h in enumerate(hset)}
+
+    return idx_from_asu, asu_from_idx, multi_from_idx
 
 
 def mpi_safe_makedirs(dname):
@@ -1524,6 +1542,19 @@ def determine_per_rank_max_num_pix(Modelers):
         print("Rank %d, shot %d has %d pixels" % (COMM.rank, i_exp + 1, npix))
     print("Rank %d, max pix to be modeled: %d" % (COMM.rank, max_npix))
     return max_npix
+
+
+def flag_obs_with_low_multiplicity(SIM, Modelers, params):
+    for i_fcell in range(SIM.n_global_fcell):
+        multi = SIM.multiplicity_from_i_fcell[i_fcell]
+        if multi < params.min_multi:
+            for i_exp in Modelers:
+                M = Modelers[i_exp]
+                M.all_trusted[M.is_i_fcell[i_fcell]] = False
+                Modelers[i_exp] = M
+    return Modelers
+
+
 
 
 if __name__ == '__main__':

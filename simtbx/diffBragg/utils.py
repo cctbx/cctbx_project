@@ -2303,6 +2303,21 @@ def moving_average_fft(x, w):
 #    fftw = np.fft.fft(fw)
 #    move_ave = np.fft.ifft( fftx[:len(x)]*fftw[:len(x)] ).real
 #    return move_ave / w
+def smooth(x, beta=10.0, window_size=11):
+    # make sure the window size is odd
+    if window_size % 2 == 0:
+        window_size += 1
+
+    # apply the smoothing function
+    s = np.r_[x[window_size-1:0:-1], x, x[-1:-window_size:-1]]
+    w = np.kaiser(window_size, beta)
+    y = np.convolve( w/w.sum(), s, mode='valid' )
+
+    # remove the extra array length convolve adds
+    b = int((window_size-1) / 2.)
+    smoothed = y[b:len(y)-b]
+
+    return smoothed
 
 
 class WilsonUpdater:

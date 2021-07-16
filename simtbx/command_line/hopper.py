@@ -414,6 +414,10 @@ wilson_restraints {
     .type = int
     .help = number of resolution bins for computing the average Fhkl^2
 }
+min_multi = 2
+  .type = int
+  .help = minimum ASU multiplicity, obs that fall below this threshold
+  .help = are removed from analysis
 """
 
 philz = hopper_phil + philz
