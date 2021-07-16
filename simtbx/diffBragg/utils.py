@@ -2305,4 +2305,40 @@ def moving_average_fft(x, w):
 #    return move_ave / w
 
 
+class WilsonUpdater:
+    def __init__(self, dspacing_at_i_fcell, nbins=100):
+        self.order = np.argsort(dspacing_at_i_fcell)
+        self.dsort = dspacing_at_i_fcell[self.order]
+        self.bins = [b[0]-1e-6 for b in np.array_split(self.dsort, nbins)] + [self.dsort[-1]+1e-6]
+        #assert min(self.bins) < min(dspacing_at_i_fcell)
+        #assert max(self.bins) > max(dspacing_at_i_fcell)
+        self.unsorted_digs = np.digitize(dspacing_at_i_fcell, self.bins)
+        self.sorted_digs = np.digitize(self.dsort, self.bins)
+        self.nbins = nbins
+        self.dspacing_at_i_fcell = dspacing_at_i_fcell
+
+    def num_in_i_fcells_res_bin(self):
+        """returns the number of Fhkl in the res bin belonging to i_fcell"""
+        mapper = {}
+        for i in range(1, self.nbins+1):
+            num_in_bin = np.sum(self.sorted_digs == i)
+            mapper[i] = num_in_bin
+        mapped_vals = np.array([mapper[i] for i in self.unsorted_digs])
+        return mapped_vals
+
+    def get_reference(self, fhkl_current_at_i_fcell):
+        datsort = fhkl_current_at_i_fcell[self.order]**2
+        #valmeans = []
+        mapper = {}
+        for i in range(1, self.nbins+1):
+            val_mean = np.mean(datsort[self.sorted_digs == i])
+            #val_mean = np.median(datsort[self.sorted_digs == i])
+            #valmeans.append(val_mean)
+            #d_mean = self.bins[i-1].mean()
+            #dmeans.append(d_mean)
+            mapper[i] = val_mean
+        mapped_vals = np.array([mapper[i] for i in self.unsorted_digs])
+        return mapped_vals
+
+
 

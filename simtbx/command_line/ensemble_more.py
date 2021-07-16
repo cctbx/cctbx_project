@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from scipy.interpolate import interp1d
+
 
 from simtbx.command_line.hopper import get_data_model_pairs
 from cctbx import sgtbx, miller
@@ -314,7 +314,9 @@ class Script:
 
             Fhkl_params_file =os.path.join(self.params.outdir, "x", "Fhkl_params.npy")
             print("Saving Fhkl parameter objects to %s" % Fhkl_params_file)
-            np.save(Fhkl_params_file, self.SIM.Fhkl_modelers)
+            np.savez(Fhkl_params_file, 
+                    wilson_updater=self.SIM.wilson_updater,
+                    modelers=self.SIM.Fhkl_modelers)
             tsave = time.time()-tsave
             print("Time to save parameter arrays: %f sec" % tsave)
             # These files can be used later in conjunction with the x-array output
@@ -1429,16 +1431,24 @@ def setup_Fhkl_attributes(SIM, params, Modelers):
     #    val2 = SIM.crystal.miller_array.value_at_index(h)
     #    assert np.allclose(val1, val2)
     # are we using a reference for restraints?
+    SIM.wilson_updater = None
     if params.wilson_restraints.use:
 
         dspace_arr = SIM.crystal.miller_array_high_symmetry.d_spacings()  # speed up with high symmetry array ?
         d_spacing_map = {h: d for h, d in zip(dspace_arr.indices(), dspace_arr.data())}
-        dspacing_at_i_fcell = {h: d_spacing_map[h] for h in asu_hi}
-        SIM.wilson_updater = WilsonUpdater(dspacing_at_i_fcell, nbins=params.wilson_floater.num_res_bins)
+        dspacing_at_i_fcell = np.array([d_spacing_map[h] for h in asu_hi])
+        SIM.wilson_updater = utils.WilsonUpdater(dspacing_at_i_fcell, nbins=params.wilson_restraints.num_res_bins)
         SIM.num_hkl_in_wilson_updater_res_bin = SIM.wilson_updater.num_in_i_fcells_res_bin()
 
         # this is variable "L" in my notes
         SIM.Fsq_ref_at_i_fcell = SIM.wilson_updater.get_reference(SIM.Fhkl_init_at_i_fcell)
+
+        #np.savez("Fsq_ref", 
+        #    nper=SIM.num_hkl_in_wilson_updater_res_bin,
+        #    ref=SIM.Fsq_ref_at_i_fcell,
+        #    dspace=dspacing_at_i_fcell,
+        #    init=SIM.Fhkl_init_at_i_fcell,
+        #    wilson_updater=SIM.wilson_updater)
 
         # we will also need the centric flags as well for determining the proper probability distribution
         is_centric = SIM.crystal.miller_array_high_symmetry.centric_flags()
@@ -1446,38 +1456,40 @@ def setup_Fhkl_attributes(SIM, params, Modelers):
         SIM.asu_is_centric = {h: is_centric_map[h] for h in asu_hi}
 
 
-class WilsonUpdater:
-    def __init__(self, dspacing_at_i_fcell, nbins=100):
-        self.order = np.argsort(dspacing_at_i_fcell)
-        self.dsort = dspacing_at_i_fcell[self.order]
-        self.bins = [b[0]-1e-6 for b in np.array_split(self.dsort, nbins)] + [self.dsort[-1]+1e-6]
-        #assert min(self.bins) < min(dspacing_at_i_fcell)
-        #assert max(self.bins) > max(dspacing_at_i_fcell)
-        self.unsorted_digs = np.digitize(dspacing_at_i_fcell, self.bins)
-        self.sorted_digs = np.digitize(self.dsort, self.bins)
-        self.nbins = nbins
-
-    def num_in_i_fcells_res_bin(self):
-        """returns the number of Fhkl in the res bin belonging to i_fcell"""
-        mapper = {}
-        for i in range(1, self.nbins):
-            num_in_bin = np.sum(self.sorted_digs == i)
-            mapper[i] = num_in_bin
-        mapped_vals = np.array([mapper[i] for i in self.unsorted_digs])
-        return mapped_vals
-
-    def get_reference(self, fhkl_current_at_i_fcell):
-        datsort = fhkl_current_at_i_fcell[self.order]**2
-        #valmeans = []
-        mapper = {}
-        for i in range(1, self.nbins):
-            val_mean = np.mean(datsort[self.sorted_digs == i])
-            #valmeans.append(val_mean)
-            #d_mean = self.bins[i-1].mean()
-            #dmeans.append(d_mean)
-            mapper[i] = val_mean
-        mapped_vals = np.array([mapper[i] for i in self.unsorted_digs])
-        return mapped_vals
+#class WilsonUpdater:
+#    def __init__(self, dspacing_at_i_fcell, nbins=100):
+#        self.order = np.argsort(dspacing_at_i_fcell)
+#        self.dsort = dspacing_at_i_fcell[self.order]
+#        self.bins = [b[0]-1e-6 for b in np.array_split(self.dsort, nbins)] + [self.dsort[-1]+1e-6]
+#        #assert min(self.bins) < min(dspacing_at_i_fcell)
+#        #assert max(self.bins) > max(dspacing_at_i_fcell)
+#        self.unsorted_digs = np.digitize(dspacing_at_i_fcell, self.bins)
+#        self.sorted_digs = np.digitize(self.dsort, self.bins)
+#        self.nbins = nbins
+#        self.dspacing_at_i_fcell = dspacing_at_i_fcell
+#
+#    def num_in_i_fcells_res_bin(self):
+#        """returns the number of Fhkl in the res bin belonging to i_fcell"""
+#        mapper = {}
+#        for i in range(1, self.nbins+1):
+#            num_in_bin = np.sum(self.sorted_digs == i)
+#            mapper[i] = num_in_bin
+#        mapped_vals = np.array([mapper[i] for i in self.unsorted_digs])
+#        return mapped_vals
+#
+#    def get_reference(self, fhkl_current_at_i_fcell):
+#        datsort = fhkl_current_at_i_fcell[self.order]**2
+#        #valmeans = []
+#        mapper = {}
+#        for i in range(1, self.nbins+1):
+#            val_mean = np.mean(datsort[self.sorted_digs == i])
+#            #val_mean = np.median(datsort[self.sorted_digs == i])
+#            #valmeans.append(val_mean)
+#            #d_mean = self.bins[i-1].mean()
+#            #dmeans.append(d_mean)
+#            mapper[i] = val_mean
+#        mapped_vals = np.array([mapper[i] for i in self.unsorted_digs])
+#        return mapped_vals
 
 
 def aggregate_Hi(Modelers):
