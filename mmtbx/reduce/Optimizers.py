@@ -87,6 +87,7 @@ def PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, 
     resNameAndID = resName+" "+resID
 
     # See if we should construct a MoverSingleHydrogenRotator here.
+    # @todo This is placing on atoms C and N in CYS 352; and on HE2 and CA in SER 500 of 4z4d
     if a.i_seq in rotatableHydrogenIDs:
       try:
         # Skip Hydrogens that are not bound to an atom that only has a single other
@@ -139,15 +140,47 @@ def PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, 
         infoString += "Could not add MoverSingleHydrogenRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n"
 
     # See if we should construct a MoverNH3Rotator here.
-    # @todo
+    # Find any Nitrogen that has four total bonded neighbors, three of which are Hydrogens.
+    # @todo Is this a valid way to search for them?
+    if a.element == 'N' and len(bondedNeighborLists[a]) == 4:
+      numH = 0
+      for n in bondedNeighborLists[a]:
+        if n.element == "H":
+          numH += 1
+      if numH == 3:
+        try:
+          movers.append(Movers.MoverNH3Rotator(a, bondedNeighborLists))
+          infoString += "Added MoverNH3Rotator to "+resNameAndID+"\n"
+        except Exception as e:
+          infoString += "Could not add MoverNH3Rotator to "+resNameAndID+": "+str(e)+"\n"
 
-    # See if we should construct a MoverAromaticMethylRotator here.
-    # @todo
-
-    # See if we should construct a MoverTetrahedralMethylRotator here so that we
-    # ensure that the Hydrogens are staggered but don't add it to those that are
-    # optimized.
-    # @todo
+    # See if we should construct a MoverAromaticMethylRotator or MoverTetrahedralMethylRotator here.
+    # Find any Carbon that has four total bonded neighbors, three of which are Hydrogens.
+    # @todo Is this a valid way to search for them?
+    if a.element == 'C' and len(bondedNeighborLists[a]) == 4:
+      numH = 0
+      neighbor = None
+      for n in bondedNeighborLists[a]:
+        if n.element == "H":
+          numH += 1
+        else:
+          neighbor = n
+      if numH == 3:
+        # See if the Carbon's other neighbor is attached to two other atoms (3 total).  If so,
+        # then insert a MoverAromaticMethylRotator and if not, generate a MoverTetrahedralMethylRotator
+        # so that they Hydrogens will be staggered but do not add it to those to be optimized.
+        if len(bondedNeighborLists[neighbor]) == 3:
+          try:
+            movers.append(Movers.MoverAromaticMethylRotator(a, bondedNeighborLists))
+            infoString += "Added MoverAromaticMethylRotator to "+resNameAndID+" "+aName+"\n"
+          except Exception as e:
+            infoString += "Could not add MoverAromaticMethylRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n"
+        else:
+          try:
+            ignored = Movers.MoverTetrahedralMethylRotator(a, bondedNeighborLists)
+            infoString += "Used MoverTetrahedralMethylRotator to stagger "+resNameAndID+" "+aName+"\n"
+          except Exception as e:
+            infoString += "Could not add MoverTetrahedralMethylRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n"
 
     # See if we should insert a MoverNH2Flip here.
     # @todo Is there a more general way than looking for specific names?
