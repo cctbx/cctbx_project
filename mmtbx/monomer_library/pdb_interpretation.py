@@ -1350,6 +1350,7 @@ class monomer_mapping(slots_getstate_setstate):
     e = self.expected_atoms
     if ("H1" in e or "D1" in e):
       return
+    assert hasattr(self, 'atom_names_mappings')
     u = self.unexpected_atoms
     h = u.get("H")
     d = u.get("D")
@@ -1362,6 +1363,7 @@ class monomer_mapping(slots_getstate_setstate):
     if (h is not None):
       e["H1"] = h
       del u[key]
+      self.atom_names_mappings[h.name.strip()] = 'H1'
 
   def _set_missing_atoms(self):
     self.missing_non_hydrogen_atoms = {}
