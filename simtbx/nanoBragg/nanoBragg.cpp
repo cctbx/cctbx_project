@@ -186,6 +186,7 @@ nanoBragg::nanoBragg(
     spindle_vector[2] = fdet_vector[2];
     spindle_vector[3] = fdet_vector[3];
     unitize(spindle_vector,spindle_vector);
+    user_beam=true;//needed for tilted dxtbx geometries, locks user (dxtbx) geom in place
 
     /* NOT IMPLEMENTED: read in any other stuff?  */
     /*TODO: consider reading in a crystal model as well, showing params without crystal model can be confusing*/
@@ -2966,6 +2967,7 @@ nanoBragg::add_nanoBragg_spots()
                     printf("hkl= %f %f %f  hkl0= %d %d %d\n", h,k,l,h0,k0,l0);
                     printf(" F_cell=%g  F_latt=%g   I = %g\n", F_cell,F_latt,I);
                     printf("I/steps %15.10g\n", I/steps);
+                    printf("cap frac   %f\n", capture_fraction);
                     printf("polar   %15.10g\n", polar);
                     printf("omega   %15.10g\n", omega_pixel);
                     printf("pixel   %15.10g\n", floatimage[i]);
@@ -2974,6 +2976,24 @@ nanoBragg::add_nanoBragg_spots()
                     printf("X: %11.8f %11.8f %11.8f\n",a[1]*1e10,b[1]*1e10,c[1]*1e10);
                     printf("Y: %11.8f %11.8f %11.8f\n",a[2]*1e10,b[2]*1e10,c[2]*1e10);
                     printf("Z: %11.8f %11.8f %11.8f\n",a[3]*1e10,b[3]*1e10,c[3]*1e10);
+                    SCITBX_EXAMINE(fluence);
+                    SCITBX_EXAMINE(source_I[0]);
+                    SCITBX_EXAMINE(spot_scale);
+                    SCITBX_EXAMINE(Na);
+                    SCITBX_EXAMINE(Nb);
+                    SCITBX_EXAMINE(Nc);
+                    SCITBX_EXAMINE(airpath);
+                    SCITBX_EXAMINE(Fclose);
+                    SCITBX_EXAMINE(Sclose);
+                    SCITBX_EXAMINE(close_distance);
+                    SCITBX_EXAMINE(pix0_vector[0]);
+                    SCITBX_EXAMINE(pix0_vector[1]);
+                    SCITBX_EXAMINE(pix0_vector[2]);
+                    SCITBX_EXAMINE(pix0_vector[3]);
+                    SCITBX_EXAMINE(odet_vector[0]);
+                    SCITBX_EXAMINE(odet_vector[1]);
+                    SCITBX_EXAMINE(odet_vector[2]);
+                    SCITBX_EXAMINE(odet_vector[3]);
                 }
             }
             else

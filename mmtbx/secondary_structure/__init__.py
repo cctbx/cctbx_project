@@ -412,7 +412,7 @@ class manager(object):
     if not use_segid:
       base_pairs = ""
       stacking_pairs = ""
-      if self.pdb_hierarchy.contains_nucleic_acid():
+      if self.pdb_hierarchy.contains_nucleic_acid(min_content=0.01):
         stacking_pairs = nucleic_acids.get_phil_stacking_pairs(
           pdb_hierarchy=self.pdb_hierarchy,
           prefix="secondary_structure.nucleic_acid",
@@ -437,7 +437,7 @@ class manager(object):
         stacking_pairs = ""
         isel = self.selection_cache.selection("segid '%s'" % segid).iselection()
         selected_pdb_h = self.pdb_hierarchy.select(isel)
-        if selected_pdb_h.contains_nucleic_acid():
+        if selected_pdb_h.contains_nucleic_acid(min_content=0.01):
           stacking_pairs = nucleic_acids.get_phil_stacking_pairs(
             pdb_hierarchy=selected_pdb_h,
             prefix="secondary_structure.nucleic_acid",

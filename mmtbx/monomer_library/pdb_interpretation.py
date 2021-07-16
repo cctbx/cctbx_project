@@ -1091,6 +1091,8 @@ class monomer_mapping(slots_getstate_setstate):
     "residue_name",
     "unexpected_atoms",
     "chainid",
+    #
+    'atom_names_mappings',
     ]
 
   def __init__(self,
@@ -1240,6 +1242,7 @@ class monomer_mapping(slots_getstate_setstate):
     self.expected_atoms = {}
     self.unexpected_atoms = {}
     self.duplicate_atoms = {}
+    self.atom_names_mappings = {}
     if (self.atom_name_interpretation is not None):
       replace_primes = False
     elif (self.is_rna_dna or self.monomer.is_rna_dna()):
@@ -1308,6 +1311,8 @@ class monomer_mapping(slots_getstate_setstate):
         cif_name = rna_dna_bb_cif_by_ref.get(ref_name)
         if (cif_name is not None):
           atom_name = cif_name
+      if atom.name.strip()!=atom_name:
+        self.atom_names_mappings[atom.name.strip()]=atom_name
       prev_atom = processed_atom_names.get(atom_name)
       if (prev_atom is None):
         processed_atom_names[atom_name] = atom
@@ -1345,6 +1350,7 @@ class monomer_mapping(slots_getstate_setstate):
     e = self.expected_atoms
     if ("H1" in e or "D1" in e):
       return
+    assert hasattr(self, 'atom_names_mappings')
     u = self.unexpected_atoms
     h = u.get("H")
     d = u.get("D")
@@ -1357,6 +1363,7 @@ class monomer_mapping(slots_getstate_setstate):
     if (h is not None):
       e["H1"] = h
       del u[key]
+      self.atom_names_mappings[h.name.strip()] = 'H1'
 
   def _set_missing_atoms(self):
     self.missing_non_hydrogen_atoms = {}
@@ -2457,7 +2464,10 @@ class build_chain_proxies(object):
     if restraints_loading_flags is None: restraints_loading_flags={}
     self._cif = cif_output_holder()
     self.pdb_link_records = {}
+    #
     self.type_energies = []
+    self.type_h_bonds = []
+    #
     self.conformation_dependent_restraints_list = \
       conformation_dependent_restraints_list
     unknown_residues = dicts.with_default_value(0)
@@ -2471,6 +2481,7 @@ class build_chain_proxies(object):
     classifications = dicts.with_default_value(0)
     modifications_used = dicts.with_default_value(0)
     incomplete_infos = dicts.with_default_value(0)
+    missing_h_bond_type = dicts.with_default_value(0)
     link_ids = dicts.with_default_value(0)
     mm_pairs_not_linked = []
     n_unresolved_chain_links = 0
@@ -2555,13 +2566,25 @@ class build_chain_proxies(object):
         atom_dict = mm.monomer.atom_dict()
         for i, atom in enumerate(residue.atoms()):
           name = atom.name.strip()
-          if mm.mon_lib_names is not None:
-            name = mm.mon_lib_names[i]
+          if name in mm.unexpected_atoms:
+            # incorrect atom name, skip
+            self.type_energies.append(False)
+            self.type_h_bonds.append(False)
+            continue
+          name = mm.atom_names_mappings.get(name, name)
           al = atom_dict.get(name.strip(), None)
           if al:
             self.type_energies.append(al.type_energy)
+            entry = ener_lib.lib_atom.get(al.type_energy, None)
+            if entry is None:
+              # print('Not able to determine H bond type for atom %s %s' % (atom.quote(), al.type_energy))
+              self.type_h_bonds.append(None)
+              missing_h_bond_type[al.type_energy]+=1
+            else:
+              self.type_h_bonds.append(entry.hb_type)
           else:
             self.type_energies.append(None)
+            self.type_h_bonds.append(None)
             raise Sorry('Not able to determine energy type for atom %s' % atom.quote())
       #
       if (mm.monomer is None):
@@ -2838,6 +2861,8 @@ class build_chain_proxies(object):
         print("          Modifications used:", modifications_used, file=log)
       if (len(incomplete_infos) > 0):
         print("          Incomplete info:", incomplete_infos, file=log)
+      if (len(missing_h_bond_type) > 0):
+        print('          Missing H bond types:', missing_h_bond_type, file=log)
     if (log is not None):
       if (len(link_ids) > 0):
         print("          Link IDs:", link_ids, file=log)
@@ -3206,6 +3231,7 @@ class build_all_chain_proxies(linking_mixins):
     self.pdb_link_records = {}
     # END_MARKED_FOR_DELETION_OLEG
     self.type_energies = []
+    self.type_h_bonds = []
     if restraints_loading_flags is None:
       restraints_loading_flags = get_restraints_loading_flags(params)
     self.mon_lib_srv = mon_lib_srv
@@ -3484,6 +3510,7 @@ class build_all_chain_proxies(linking_mixins):
           self.conformation_dependent_restraints_list = \
             chain_proxies.conformation_dependent_restraints_list
           self.type_energies += chain_proxies.type_energies
+          self.type_h_bonds += chain_proxies.type_h_bonds
           del chain_proxies
           flush_log(log)
       if apply_restraints_specifications:
@@ -5187,6 +5214,21 @@ class build_all_chain_proxies(linking_mixins):
             weight=angle_weight,
             origin_id=specific_origin_id)
           self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
+          if 0:
+            indent=14
+            print("      Atoms : %s\n%s%s\n%s%s\n%s%s\n%s%s\n%s%s" % (
+              self.pdb_atoms[lookup["1CA"]].quote(),
+              ' '*indent,
+              self.pdb_atoms[lookup["1CB"]].quote(),
+              ' '*indent,
+              self.pdb_atoms[lookup["1SG"]].quote(),
+              ' '*indent,
+              self.pdb_atoms[lookup["2SG"]].quote(),
+              ' '*indent,
+              self.pdb_atoms[lookup["2CB"]].quote(),
+              ' '*indent,
+              self.pdb_atoms[lookup["2CA"]].quote(),
+              ), file=log)
           for disulfide_torsion in disulfide_torsions:
             assert disulfide_torsion.value_angle is not None
             assert disulfide_torsion.value_angle_esd is not None
@@ -5220,6 +5262,9 @@ class build_all_chain_proxies(linking_mixins):
                                     self.pdb_atoms[j_seq].pdb_label_columns(),
                                     sym_str,
                                     ))
+        # added = True
+    # if added:
+    #   self._cif.cif["link_SS"] = disulfide_link.as_cif_block()
     #
     # ====================== End of disulfides ========================
     #
@@ -5227,6 +5272,8 @@ class build_all_chain_proxies(linking_mixins):
       for proxy in processed_edits.bond_sym_proxies:
         if (proxy.weight <= 0): continue
         i_seq, j_seq = proxy.i_seqs
+        # print (dir(bond_params_table))
+        # STOP()
         bond_params_table.update(i_seq=i_seq, j_seq=j_seq, params=proxy)
         bond_asu_table.add_pair(
           i_seq=i_seq,

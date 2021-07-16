@@ -155,5 +155,3 @@ if __name__=="__main__":
   print(torsion_origin_ids)
   print('-'*80)
   print(parallelity_origin_ids)
-  print('='*80)
-  print(origins)

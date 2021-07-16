@@ -37,11 +37,11 @@
     }
   }
 
-  void check_false(long line, bool stat) {
+  inline void check_false(long line, bool stat) {
     check_true(line, !stat);
   }
 
-  bool approx_equal(double x, double y, double tolerance=1.e-5)
+  inline bool approx_equal(double x, double y, double tolerance=1.e-5)
   {
     x -= y;
     if (x < 0) x = -x;
