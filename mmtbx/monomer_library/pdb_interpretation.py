@@ -2424,6 +2424,18 @@ def is_same_model_as_before(model_type_indices, i_model, models):
   model_type_indices[i_model] = i_model
   return False
 
+class conformer_i_seq(dict):
+  def __iadd__(self, other):
+    self.update(other)
+    return self
+
+  def convert(self):
+    rc = []
+    for i, (i_seq, item) in enumerate(sorted(self.items())):
+      assert len(rc)==i
+      rc.append(item)
+    return rc
+
 class build_chain_proxies(object):
 
   def __init__(self,
@@ -2465,8 +2477,8 @@ class build_chain_proxies(object):
     self._cif = cif_output_holder()
     self.pdb_link_records = {}
     #
-    self.type_energies = []
-    self.type_h_bonds = []
+    self.type_energies = conformer_i_seq()
+    self.type_h_bonds = conformer_i_seq()
     #
     self.conformation_dependent_restraints_list = \
       conformation_dependent_restraints_list
@@ -2568,23 +2580,23 @@ class build_chain_proxies(object):
           name = atom.name.strip()
           if name in mm.unexpected_atoms:
             # incorrect atom name, skip
-            self.type_energies.append(False)
-            self.type_h_bonds.append(False)
+            self.type_energies[atom.i_seq] = False
+            self.type_h_bonds[atom.i_seq] = False
             continue
           name = mm.atom_names_mappings.get(name, name)
           al = atom_dict.get(name.strip(), None)
           if al:
-            self.type_energies.append(al.type_energy)
+            self.type_energies[atom.i_seq] = al.type_energy
             entry = ener_lib.lib_atom.get(al.type_energy, None)
             if entry is None:
               # print('Not able to determine H bond type for atom %s %s' % (atom.quote(), al.type_energy))
-              self.type_h_bonds.append(None)
+              self.type_h_bonds[atom.i_seq] = None
               missing_h_bond_type[al.type_energy]+=1
             else:
-              self.type_h_bonds.append(entry.hb_type)
+              self.type_h_bonds[atom.i_seq] = entry.hb_type
           else:
-            self.type_energies.append(None)
-            self.type_h_bonds.append(None)
+            self.type_energies[atom.i_seq] = None
+            self.type_h_bonds[atom.i_seq] = None
             raise Sorry('Not able to determine energy type for atom %s' % atom.quote())
       #
       if (mm.monomer is None):
@@ -3230,8 +3242,8 @@ class build_all_chain_proxies(linking_mixins):
     # Proposal: use origin id in proxies.
     self.pdb_link_records = {}
     # END_MARKED_FOR_DELETION_OLEG
-    self.type_energies = []
-    self.type_h_bonds = []
+    self.type_energies = conformer_i_seq()
+    self.type_h_bonds = conformer_i_seq()
     if restraints_loading_flags is None:
       restraints_loading_flags = get_restraints_loading_flags(params)
     self.mon_lib_srv = mon_lib_srv
@@ -3764,6 +3776,8 @@ class build_all_chain_proxies(linking_mixins):
     self.process_custom_nonbonded_symmetry_exclusions(
       log=log,
       curr_sym_excl_index=len(sym_excl_residue_groups))
+    self.type_energies = self.type_energies.convert()
+    self.type_h_bonds = self.type_h_bonds.convert()
     self.time_building_chain_proxies = timer.elapsed()
     # Make sure pdb_hierarchy and xray_structure are consistent
     if(self.special_position_settings is not None):
