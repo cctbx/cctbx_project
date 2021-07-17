@@ -41,7 +41,7 @@ namespace scitbx { namespace af { namespace boost_python {
 // import_array returns NULL in python3, and somehow that makes this function
 // need a return type as well.
 #ifdef IS_PY3K
-  int
+  void*
 #else
   void
 #endif
@@ -49,7 +49,7 @@ namespace scitbx { namespace af { namespace boost_python {
   {
 #if defined(SCITBX_HAVE_NUMPY_INCLUDE)
     {
-    // Fix segmentaion faults
+    // Fix segmentation faults
     // http://boostorg.github.io/python/doc/html/numpy/tutorial/simple.html
     using namespace boost_adaptbx::floating_point;
     exception_trapping guard(exception_trapping::dont_trap);
