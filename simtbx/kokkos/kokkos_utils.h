@@ -5,6 +5,10 @@
 #include "scitbx/array_family/flex_types.h"
 #include "simtbx/kokkos/kokkos_types.h"
 
+//*******************************************************************
+// Transfer data
+//*******************************************************************
+
 namespace {
   template <typename T, typename U>
   void
@@ -37,6 +41,18 @@ namespace {
       dst_ptr[ i ] = host_view( i );
     }
   }
+}
+
+//*******************************************************************
+// math functions
+//*******************************************************************
+
+template <typename T, typename U>
+void
+add_array( view_1d_t<T> lhs, const view_1d_t<U> rhs ) {
+  Kokkos::parallel_for("add_arrays", lhs.span(), KOKKOS_LAMBDA(const int& i) {
+    lhs( i ) = lhs( i ) + (T)rhs( i );  
+  });
 }
 
 namespace simtbx { namespace Kokkos { 
