@@ -1,6 +1,7 @@
 #include "scitbx/array_family/boost_python/flex_fwd.h"
 //#include <cudatbx/cuda_base.cuh>
 #include "simtbx/kokkos/simulation.h"
+#include "simtbx/kokkos/simulation_kernels.h"
 #include "simtbx/kokkos/kokkos_utils.h"
 #include "scitbx/array_family/flex_types.h"
 
@@ -22,6 +23,12 @@ namespace Kokkos {
         delete temp;
         return ret;
   }*/
+
+  // extract subview from [start_index * length; (start_index + 1) * length)
+  template <typename T>
+  view_1d_t<T> extract_subview(view_1d_t<T> A, int start_index, int length) {
+    return ::Kokkos::subview(A, ::Kokkos::pair<int, int>(start_index * length, (start_index + 1) * length ));
+  }
 
   // make a unit vector pointing in same direction and report magnitude (both args can be same vector)
   double cpu_unitize(const double * vector, double * new_unit_vector) {
@@ -152,9 +159,7 @@ namespace Kokkos {
     //don't want to free the gec data when the nanoBragg goes out of scope, so switch the pointer
     // cu_current_channel_Fhkl = NULL;
 
-    add_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(gdt.m_accumulate_floatimage,
-      gdt.m_floatimage,
-      gdt.m_n_panels * gdt.m_slow_dim_size * gdt.m_fast_dim_size);
+    add_array(gdt.m_accumulate_floatimage, gdt.m_floatimage);
   */}
 
   void
@@ -229,77 +234,87 @@ namespace Kokkos {
         //don't want to free the gec data when the nanoBragg goes out of scope, so switch the pointer
         // cu_current_channel_Fhkl = NULL;
 
-        add_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(gdt.m_accumulate_floatimage,
-          gdt.m_floatimage,
-          gdt.m_panel_count * gdt.m_slow_dim_size * gdt.m_fast_dim_size);
+        add_array(gdt.m_accumulate_floatimage, gdt.m_floatimage);
   */}
 
 
   void
-  exascale_api::add_background_cuda(simtbx::Kokkos::kokkos_detector & gdt) {/*
-        cudaSafeCall(cudaSetDevice(SIM.device_Id));
+  exascale_api::add_background_cuda(simtbx::Kokkos::kokkos_detector & gdt) {
+        // cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
         // transfer source_I, source_lambda
         // the int arguments are for sizes of the arrays
-        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(m_source_I, SIM.source_I, SIM.sources));
-        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(m_source_lambda, SIM.source_lambda, SIM.sources));
+        int sources_count = SIM.sources;
+        transfer_double2kokkos(m_source_I, SIM.source_I, sources_count);
+        transfer_double2kokkos(m_source_lambda, SIM.source_lambda, sources_count);
+        // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(m_source_I, SIM.source_I, SIM.sources));
+        // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(m_source_lambda, SIM.source_lambda, SIM.sources));
 
-        CUDAREAL * cu_stol_of;
-        cudaSafeCall(cudaMalloc((void ** )&cu_stol_of, sizeof(*cu_stol_of) * SIM.stols));
-        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_stol_of, SIM.stol_of, SIM.stols));
+        vector_cudareal_t stol_of("stol_of", SIM.stols);
+        transfer_X2kokkos(stol_of, SIM.stol_of, SIM.stols);
+        // CUDAREAL * cu_stol_of;
+        // cudaSafeCall(cudaMalloc((void ** )&cu_stol_of, sizeof(*cu_stol_of) * SIM.stols));
+        // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_stol_of, SIM.stol_of, SIM.stols));
 
-        CUDAREAL * cu_Fbg_of;
-        cudaSafeCall(cudaMalloc((void ** )&cu_Fbg_of, sizeof(*cu_Fbg_of) * SIM.stols));
-        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_Fbg_of, SIM.Fbg_of, SIM.stols));
+        vector_cudareal_t Fbg_of("Fbg_of", SIM.stols);
+        transfer_X2kokkos(Fbg_of, SIM.Fbg_of, SIM.stols);
+        // CUDAREAL * cu_Fbg_of;
+        // cudaSafeCall(cudaMalloc((void ** )&cu_Fbg_of, sizeof(*cu_Fbg_of) * SIM.stols));
+        // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_Fbg_of, SIM.Fbg_of, SIM.stols));
 
-        cudaDeviceProp deviceProps = { 0 };
-        cudaSafeCall(cudaGetDeviceProperties(&deviceProps, SIM.device_Id));
-        int smCount = deviceProps.multiProcessorCount;
-        dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
-        dim3 numBlocks(smCount * 8, 1);
+        // cudaDeviceProp deviceProps = { 0 };
+        // cudaSafeCall(cudaGetDeviceProperties(&deviceProps, SIM.device_Id));
+        // int smCount = deviceProps.multiProcessorCount;
+        // dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+        // dim3 numBlocks(smCount * 8, 1);
 
         //  initialize the device memory within a kernel.
         //  modify the arguments to initialize multipanel detector.
-        nanoBraggSpotsInitCUDAKernel<<<numBlocks, threadsPerBlock>>>(
-          gdt.m_panel_count * gdt.m_slow_dim_size, gdt.m_fast_dim_size,
-          gdt.cu_floatimage, gdt.cu_omega_reduction,
-          gdt.cu_max_I_x_reduction, gdt.cu_max_I_y_reduction,
-          gdt.cu_rangemap);
-        cudaSafeCall(cudaPeekAtLastError());
-        cudaSafeCall(cudaDeviceSynchronize());
+        ::Kokkos::parallel_for("nanoBraggSpotsInit", gdt.m_panel_count * gdt.m_slow_dim_size * gdt.m_fast_dim_size, KOKKOS_LAMBDA (const int& j) {
+          gdt.m_floatimage(j) = 0;
+          gdt.m_omega_reduction(j) = 0;
+          gdt.m_max_I_x_reduction(j) = 0;
+          gdt.m_max_I_y_reduction(j) = 0;
+          gdt.m_rangemap(j) = false;
+        });       
+        // nanoBraggSpotsInitCUDAKernel<<<numBlocks, threadsPerBlock>>>(
+        //   gdt.m_panel_count * gdt.m_slow_dim_size, gdt.m_fast_dim_size,
+        //   gdt.cu_floatimage, gdt.cu_omega_reduction,
+        //   gdt.cu_max_I_x_reduction, gdt.cu_max_I_y_reduction,
+        //   gdt.cu_rangemap);
+        // cudaSafeCall(cudaPeekAtLastError());
+        // cudaSafeCall(cudaDeviceSynchronize());
 
         std::size_t panel_size = gdt.m_slow_dim_size * gdt.m_fast_dim_size;
-        const int m_vector_length = 4;
 
         // the for loop around panels.  Offsets given.
-        for (std::size_t panel_id = 0; panel_id < gdt.m_panel_count; panel_id++){
-          add_background_CUDAKernel<<<numBlocks, threadsPerBlock>>>(SIM.sources,
+        for (std::size_t panel_id = 0; panel_id < gdt.m_panel_count; panel_id++) {
+          add_background(SIM.sources,
           SIM.oversample,
           SIM.pixel_size, gdt.m_slow_dim_size, gdt.m_fast_dim_size, SIM.detector_thicksteps,
           SIM.detector_thickstep, SIM.detector_attnlen,
-          &(gdt.cu_sdet_vector[m_vector_length * panel_id]),
-          &(gdt.cu_fdet_vector[m_vector_length * panel_id]),
-          &(gdt.cu_odet_vector[m_vector_length * panel_id]),
-          &(gdt.cu_pix0_vector[m_vector_length * panel_id]),
+          extract_subview(gdt.m_sdet_vector, panel_id, m_vector_length),
+          extract_subview(gdt.m_fdet_vector, panel_id, m_vector_length),
+          extract_subview(gdt.m_odet_vector, panel_id, m_vector_length),
+          extract_subview(gdt.m_pix0_vector, panel_id, m_vector_length),
           gdt.metrology.dists[panel_id], SIM.point_pixel, SIM.detector_thick,
           m_source_X, m_source_Y, m_source_Z,
           m_source_lambda, m_source_I,
-          SIM.stols, cu_stol_of, cu_Fbg_of,
-          SIM.nopolar, SIM.polarization, cu_polar_vector,
+          SIM.stols, stol_of, Fbg_of,
+          SIM.nopolar, SIM.polarization, m_polar_vector,
           simtbx::nanoBragg::r_e_sqr, SIM.fluence, SIM.amorphous_molecules,
           // returns:
-          &(gdt.cu_floatimage[panel_size * panel_id]));
+          extract_subview(gdt.m_floatimage, panel_id, panel_size));
 
-          cudaSafeCall(cudaPeekAtLastError());
+          // cudaSafeCall(cudaPeekAtLastError());
         }
-        cudaSafeCall(cudaDeviceSynchronize());
-        add_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(gdt.cu_accumulate_floatimage,
-          gdt.cu_floatimage,
-          gdt.m_panel_count * gdt.m_slow_dim_size * gdt.m_fast_dim_size);
+        // cudaSafeCall(cudaDeviceSynchronize());
+        ::Kokkos::fence();
+        add_array(gdt.m_accumulate_floatimage, gdt.m_floatimage);
 
-        cudaSafeCall(cudaFree(cu_stol_of));
-        cudaSafeCall(cudaFree(cu_Fbg_of));
-  */}
+        // cudaSafeCall(cudaFree(cu_stol_of));
+        // cudaSafeCall(cudaFree(cu_Fbg_of));
+  }
 
   void
   exascale_api::allocate_cuda() {
