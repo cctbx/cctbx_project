@@ -418,6 +418,9 @@ min_multi = 2
   .type = int
   .help = minimum ASU multiplicity, obs that fall below this threshold
   .help = are removed from analysis
+min_spot = 5
+  .type = int
+  .help = minimum spots on a shot in order to optimize that shot
 """
 
 philz = hopper_phil + philz

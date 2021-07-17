@@ -149,7 +149,6 @@ class Script:
         self.SIM = get_diffBragg_simulator(Modelers[i_exps[0]].E, self.params)
         setup_Fhkl_attributes(self.SIM, self.params, Modelers)
 
-        flag_obs_with_low_multiplicity()
 
         # iterate over the shot-modelers on this rank, and set the
         # free parameters and spectrum for each shot
@@ -186,6 +185,9 @@ class Script:
                     Modeler.shiftZ_meters = bests[i_exp].detz_shift_mm.values[0]*1e-3
 
         self.SIM.update_Fhkl = Fhkl_updater(self.SIM, Modelers)
+        
+        Modelers = flag_obs_with_low_multiplicity(self.SIM, self.params, Modelers)
+        Modelers, empty_shots = flag_empty_shots(self.params, Modelers)
 
         nucell_p = len(self.SIM.ucell_man.variables)
         ucell_var_names = self.SIM.ucell_man.variable_names
@@ -197,8 +199,13 @@ class Script:
         # we need a mapping from i_exp to a number on the range 0 to N-1 where N is the total number
         # of shots being modeled. If a shot fails to load in the GatherFromExperiment step, then i_exp
         # will no longer form a uniform range of values from 0 to N-1, hence why we need this mapping
-        shot_mapping = {}
+        shot_mapping = {}   # TODO rename shot_mapping to i_shot_from_i_exp
+        name_from_i_shot = {}
         rank_exp_indices = COMM.gather(i_exps, root=0)
+
+        name_and_i_exp = [(Modelers[iexp].exp_name, iexp) for iexp in Modelers]
+        name_and_i_exp = COMM.reduce(name_and_i_exp)
+
         ntimes = None
         if COMM.rank == 0:
             all_indices = [i_exp for indices in rank_exp_indices for i_exp in indices]
@@ -207,8 +214,23 @@ class Script:
             # the restraint terms
             ntimes = Counter(all_indices)  # how many times a shot appears on a ranks list of shots, this is used later to normalize restraint terms
             shot_mapping = {i_exp: ii for ii, i_exp in enumerate(set(all_indices))}
-        shot_mapping = COMM.bcast(shot_mapping)  # this now maps each i_exp to a number on [0-1)
+
+            # names coresponding to each global shot index
+            for exp_name, iexp in name_and_i_exp:
+                i_shot = shot_mapping[iexp]
+                if i_shot not in name_from_i_shot:
+                    name_from_i_shot[i_shot] = exp_name
+                else:
+                    assert name_from_i_shot[i_shot] == exp_name
+
+        shot_mapping = COMM.bcast(shot_mapping)  # this now maps each i_exp to a number on [0-Nshots)
+        name_from_i_shot = COMM.bcast(name_from_i_shot)
         ntimes = COMM.bcast(ntimes)
+        global_Nshots = len(shot_mapping)  # total number of shots being modeled
+
+        empty_iexps, _ = map(set, zip(*empty_shots))
+        i_exp_from_i_shot = {ii: i_exp for i_exp, ii in shot_mapping.items()}
+        shot_is_empty = [i_exp_from_i_shot[i_shot] in empty_iexps for i_shot in range(global_Nshots)]
 
         # for GPU usage, allocate enough pixels! We only allocate once,
         # and shots are modeled one-at-a-time , so allocate enough pixels to model the shot with the most pixels
@@ -220,11 +242,16 @@ class Script:
         self.NPIX_TO_ALLOC = COMM.bcast(n)
         self.SIM.D.Npix_to_allocate = int(self.NPIX_TO_ALLOC)
 
-        global_Nshots = len(shot_mapping)  # total number of shots being modeled
         nparam_per_shot = 7 + nucell_p + 1   # 1 scale factor, 3 Nabc terms, 3 RotXYZ terms, N unit cell param, 1 detz shift
         total_params = nparam_per_shot*global_Nshots + self.SIM.n_global_fcell  # total refinement paramters
         if COMM.rank==0:
-            print("Refining %d parameters in total" % total_params, flush=True)
+            print("There are %d parameters in total:" % total_params, flush=True)
+            npershot_tot = nparam_per_shot*global_Nshots
+            npershot_mod = (global_Nshots - len(empty_shots)) * nparam_per_shot
+            print("%d of the parameters are per-shot parameters (G,Nabc, RotXYZ, Nucell, DetZ), \nand %d of those will be modeled (after considering min multiplicity and trusted pixel flags)" % (npershot_tot, npershot_mod))
+            nhkl_mod = np.sum(self.SIM.has_allowed_multiplicity)
+            print("%d params are Fhkls, of which %d have allowed multiplicity" % (self.SIM.n_global_fcell, nhkl_mod ))
+            print("Total refinable parameters: %d" % (nhkl_mod+npershot_mod))
 
         # here we organize the global parameter array which includes per-shot params and Fhkl params shared amongst shots
         total_pershot_params = global_Nshots*nparam_per_shot
@@ -322,9 +349,13 @@ class Script:
                     multiplicity=self.SIM.multiplicity_from_i_fcell,
                     allowed_multi=self.SIM.has_allowed_multiplicity,
                     modelers=self.SIM.Fhkl_modelers)
+
+            expname_lookup_file = os.path.join(self.params.outdir, "x", "exp_names.npy")
+            print("Saving the experiment name lookup table to %s" % expname_lookup_file)
+            np.savez(expname_lookup_file, name=name_from_i_shot, is_empty=shot_is_empty)
+
             tsave = time.time()-tsave
             print("Time to save parameter arrays: %f sec" % tsave)
-            # These files can be used later in conjunction with the x-array output
         COMM.barrier()
 
         # initial parameter values, all parameters initialize at 1 due to rescaling
@@ -409,7 +440,7 @@ class Script:
 
         if COMM.rank==0:
             print("MINIMIZE!", flush=True)
-        x = Minimize(x0, rank_xidx, self.params, self.SIM, Modelers, ntimes, global_Nshots)
+        x = Minimize(x0, rank_xidx, self.params, self.SIM, Modelers, ntimes, global_Nshots, shot_is_empty)
         # TODO analyze the convergence data here
 
         # save the final models
@@ -501,6 +532,7 @@ class DataModeler:
         self.Hi_asu = None
         self.hi_asu_perpix = None
         self.all_nominal_hkl = []
+        self.has_no_trusted_pixels = False
 
     def GatherFromExperiment(self, exp, ref, sg_symbol, ref_indices=None):
         #TODO delete the background attribute because its large(full image)
@@ -707,33 +739,39 @@ class DataModeler:
 
         self.PAR = PAR
 
-def Minimize(x0, rank_xidx, params, SIM, Modelers, ntimes, nshots_total):
+
+def Minimize(x0, rank_xidx, params, SIM, Modelers, ntimes, nshots_total, shot_is_empty):
     if params.refiner.randomize_devices is not None:
         dev = np.random.choice(params.refiner.num_devices)
     else:
         dev = COMM.rank % params.refiner.num_devices
     SIM.D.device_Id = dev
 
+    # set refinement flags
     vary = np.ones(len(x0), bool)
-
     nucell_p = len(SIM.ucell_man.variables)
-    nparam_per_shot = 1+3+3 + nucell_p + 1  # 1 scale, 3 Nabc, 3 RotXYZ, N ucell, 1 detz  # TODO make param order in agreement with hopper_utils
+    nparam_per_shot = 1+3+3+nucell_p + 1  # 1 scale, 3 Nabc, 3 RotXYZ, N ucell, 1 detz  # TODO make param order in agreement with hopper_utils
     for i_shot in range(nshots_total):
-        if params.fix.G:
+        if params.fix.G or shot_is_empty[i_shot]:
             vary[i_shot * nparam_per_shot] = False
-        if params.fix.RotXYZ:
+        if params.fix.RotXYZ or shot_is_empty[i_shot]:
             vary[i_shot*nparam_per_shot + 1] = False
             vary[i_shot * nparam_per_shot + 2] = False
             vary[i_shot * nparam_per_shot + 3] = False
-        if params.fix.Nabc:
+        if params.fix.Nabc or shot_is_empty[i_shot]:
             vary[i_shot * nparam_per_shot + 4] = False
             vary[i_shot * nparam_per_shot + 5] = False
             vary[i_shot * nparam_per_shot + 6] = False
-        if params.fix.ucell:
+        if params.fix.ucell or shot_is_empty[i_shot]:
             for i_uc in range(nucell_p):
                 vary[i_shot*nparam_per_shot + 7 + i_uc] = False
-        if params.fix.detz_shift:
+        if params.fix.detz_shift or shot_is_empty[i_shot]:
             vary[i_shot*nparam_per_shot + 7 + nucell_p] = False
+
+    # only refine those hkl with sufficient multiplicity
+    for i_fcell in range(SIM.n_global_fcell):
+        if not SIM.has_allowed_multiplicity[i_fcell]:
+            vary[-SIM.n_global_fcell + i_fcell] = False
 
     target = TargetFunc(params, SIM)
 
@@ -783,8 +821,8 @@ class SimParams:
         self.Scale = None
         self.shift = None
         self.Nabc = None
-        self.center = None # fdp edge center
-        self.slope = None # fdp edge slope
+        self.center = None  # fdp edge center
+        self.slope = None  # fdp edge slope
 
 #@profile
 def model(x, SIM, Modeler, compute_grad=True, sanity_test=None):
@@ -1081,6 +1119,8 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
     for t in timestamps:
         # data modeler for this expt
         Mod_t = Modelers[t]
+        if Mod_t.has_no_trusted_pixels:
+            continue
 
         #  x_t should be [G,Fhkl0, Fhkl1, Fhkl2, ..]
         x_t = x[rank_xidx[t]]
@@ -1224,7 +1264,7 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
     f_Fhkl = 0
     if params.use_restraints:
         # add the Fhkl restraints
-        Fhkl_current = np.array([ \
+        Fhkl_current = np.array([
             SIM.Fhkl_modelers[i_fcell].get_val(x[-SIM.n_global_fcell+i_fcell]) \
             for i_fcell in range(SIM.n_global_fcell)])
 
@@ -1308,6 +1348,14 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
     frac_mpi = t_mpi / t_total *100.
     frac_model = all_t_model / t_total * 100.
     frac_update = t_update / t_total * 100.
+
+    if COMM.rank==0:
+        for t in timestamps:
+            Mod_t = Modelers[t]
+            if Mod_t.has_no_trusted_pixels:
+                nuc = len(SIM.ucell_man.variables)
+                for ii in range(7+nuc+1):
+                    assert np.allclose(g[rank_xidx[t][ii]],0), "Parameter gradient %d for shot %s is non-zero but it should be 0" % (ii, Mod_t.exp_name)
 
     if verbose:
         print("F=%10.7g (chi: %.1f%%, G: %.1f%%, N: %.1f%%, Rot: %.1f%%, UC: %.1f%%, Dz: %.1f%%, Fhkl: %.1f%%); |g|=%10.7e; Total iter time=%.1f millisec (mpi: %.1f%% , model: %.1f%%, updateFhkl: %.1f%%)" \
@@ -1544,17 +1592,41 @@ def determine_per_rank_max_num_pix(Modelers):
     return max_npix
 
 
-def flag_obs_with_low_multiplicity(SIM, Modelers, params):
+def flag_obs_with_low_multiplicity(SIM, params, Modelers):
     for i_fcell in range(SIM.n_global_fcell):
         multi = SIM.multiplicity_from_i_fcell[i_fcell]
         if multi < params.min_multi:
             for i_exp in Modelers:
                 M = Modelers[i_exp]
+                if i_fcell not in M.unique_i_fcell:
+                    continue
                 M.all_trusted[M.is_i_fcell[i_fcell]] = False
                 Modelers[i_exp] = M
     return Modelers
 
 
+def flag_empty_shots(params, Modelers):
+    empty_shots = []
+    for i_exp in Modelers:
+        M = Modelers[i_exp]
+        trusted_spots = set(list(M.all_refls_idx[M.all_trusted]))
+        if len(trusted_spots) < params.min_spot:
+            M.all_trusted = np.zeros(M.all_trusted.shape, bool)
+
+        if not np.any(M.all_trusted):
+            empty_shots.append((i_exp, M.exp_name))
+            M.has_no_trusted_pixels = True
+            Modelers[i_exp] = M
+            continue
+    empty_shots = COMM.reduce(empty_shots)
+    if COMM.rank == 0:
+        iexps, exp_names = zip(*empty_shots)
+        assert len(set(exp_names)) == len(set(iexps)), "shot mapping will be screwed up because i_exp points to different shots"
+        nempty = len(empty_shots)
+        empty_shots = set(empty_shots)
+        print("%d shots have 0 trusted pixel" % nempty)
+    empty_shots = COMM.bcast(empty_shots)
+    return Modelers, empty_shots
 
 
 if __name__ == '__main__':
