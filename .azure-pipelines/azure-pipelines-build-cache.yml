@@ -13,6 +13,7 @@ schedules:
   branches:
     include:
     - master
+  always: true
 
 resources:
   pipelines:
