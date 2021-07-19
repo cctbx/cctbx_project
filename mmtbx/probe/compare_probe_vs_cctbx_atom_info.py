@@ -128,9 +128,9 @@ def RunProbeVsCCTBXTest(inFileName, useNeutronDistances = False):
             ccei = probe.ExtraAtomInfo()
             ccei.vdwRadius = ener_lib.lib_atom[te].vdw_radius
             hb_type = ener_lib.lib_atom[te].hb_type
-            if hb_type == "A":
+            if hb_type == "A" or hb_type == "B":  # B is for Both
               ccei.isAcceptor = True
-            if hb_type == "D":
+            if hb_type == "D" or hb_type == "B":  # B is for Both
               ccei.isDonor = True
 
             # Look up in Probe
@@ -139,14 +139,13 @@ def RunProbeVsCCTBXTest(inFileName, useNeutronDistances = False):
               print(warn)
 
             # Compare the results.
-            ''' @todo Donor and Acceptor info relies on information other than the tables.
+            ''' @todo Donor and Acceptor info relies on information other than the tables.'''
             if ei.isDonor != ccei.isDonor:
               print(ag.resname,a.name,'Mismatched Donor status: Probe thinks',ei.isDonor)
               diffs += 1
             if ei.isAcceptor != ccei.isAcceptor:
               print(ag.resname,a.name,'Mismatched Acceptor status: Probe thinks',ei.isAcceptor)
               diffs += 1
-            '''
             if abs(ei.vdwRadius - ccei.vdwRadius) > 1.0E-4:
               print(ag.resname,a.name,'Mismatched radii: Probe thinks',ei.vdwRadius,'CCTBX thinks',ccei.vdwRadius)
               diffs += 1
