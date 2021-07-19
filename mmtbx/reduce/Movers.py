@@ -274,7 +274,7 @@ class MoverSingleHydrogenRotator(_MoverRotator):
        friends of the partner atom or to be between two of friends if there are three.
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
-       bonded atoms.  Can be obtained by calling getBondedNeighborLists().
+       bonded atoms.  Can be obtained by calling probe.Helpers.getBondedNeighborLists().
        :param potentialAcceptors: A flex array of atoms that are nearby potential acceptors.
        Coarse orientations are added that aim the hydrogen in the direction of these potential
        partners.
@@ -364,7 +364,7 @@ class MoverNH3Rotator(_MoverRotator):
        effect, the Hydrogens are immediately rotated to lie between two of the friends.
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
-       bonded atoms.  Can be obtained by calling getBondedNeighborLists().
+       bonded atoms.  Can be obtained by calling probe.Helpers.getBondedNeighborLists().
        the value.
        :param fineStepDegrees: The fine step to take.
        :param preferredOrientationScale: How much to scale the preferred-orientation
@@ -437,7 +437,7 @@ class MoverAromaticMethylRotator(_MoverRotator):
        effect, the Hydrogens are immediately rotated to lie perpendicular to the friends.
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
-       bonded atoms.  Can be obtained by calling getBondedNeighborLists().
+       bonded atoms.  Can be obtained by calling probe.Helpers.getBondedNeighborLists().
     """
 
     # The Carbon is the neighbor in these calculations, making this code symmetric with the other
@@ -507,7 +507,7 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
        effect, the Hydrogens are immediately rotated to lie staggered.
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
-       bonded atoms.  Can be obtained by calling getBondedNeighborLists().
+       bonded atoms.  Can be obtained by calling probe.Helpers.getBondedNeighborLists().
        :param coarseStepDegrees: The coarse step to take.
        :param fineStepDegrees: The fine step to take.
        :param preferredOrientationScale: How much to scale the preferred-orientation
@@ -582,7 +582,7 @@ class MoverNH2Flip:
        more of these for Gln than for Asn.
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
-       bonded atoms.  Can be obtained by calling getBondedNeighborLists().
+       bonded atoms.  Can be obtained by calling probe.Helpers.getBondedNeighborLists().
     """
 
     # Verify that we've been run on a valid structure and get a list of all of the
@@ -719,7 +719,7 @@ class MoverHistidineFlip:
        :param ne2Atom: NE2 atom within the Histidine ring.
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
-       bonded atoms.  Can be obtained by calling getBondedNeighborLists().
+       bonded atoms.  Can be obtained by calling probe.Helpers.getBondedNeighborLists().
     """
 
     # Verify that we've been run on a valid structure and get a list of all of the
@@ -2121,35 +2121,6 @@ def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, 
       movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
 
   return movable
-
-##################################################################################
-# External helper functions.
-
-def getBondedNeighborLists(atoms, bondProxies):
-  """Produce a dictionary with one entry for each atom that contains a list of all of
-    the atoms that are bonded to it.
-    External helper function to produce a dictionary of lists that lists all bonded
-    neighbors for each atom in a set of atoms.
-    :param atoms: Flex array of atoms (could be obtained using model.get_atoms() if there
-    are no chains with multiple conformations, must be a subset of the atoms including
-    all in the base conformation and in a particular conformation otherwise).
-    :param bondProxies: Flex array of bond proxies for the atoms.  This could be obtained
-    using model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart =
-    model.get_sites_cart())[0] if the model has only a single conformation.  Otherwise,
-    it should be a flex array of atom positions for the atoms that are in the first argument.
-    :returns a dictionary with one entry for each atom that contains a list of all of
-    the atoms that are bonded to it.
-  """
-  atomDict = {}
-  for a in atoms:
-    atomDict[a.i_seq] = a
-  bondedNeighbors = {}
-  for a in atoms:
-    bondedNeighbors[a] = []
-  for bp in bondProxies:
-    bondedNeighbors[atomDict[bp.i_seqs[0]]].append(atomDict[bp.i_seqs[1]])
-    bondedNeighbors[atomDict[bp.i_seqs[1]]].append(atomDict[bp.i_seqs[0]])
-  return bondedNeighbors
 
 ##################################################################################
 # If we're run on the command line, test our classes and functions.
