@@ -30,6 +30,7 @@ import mmtbx.model
 import mmtbx.refinement.real_space.fit_residues
 import scitbx.math
 import mmtbx.idealized_aa_residues.rotamer_manager
+from iotbx import extract_xtal_data
 
 from elbow.command_line.ready_set import model_interface as ready_set_model_interface
 
@@ -908,12 +909,12 @@ def get_map_from_hkl(hkl_file_object, params, xrs, log):
     err              = StringIO())
 
 
-  parameters = mmtbx.utils.data_and_flags_master_params().extract()
+  parameters = extract_xtal_data.data_and_flags_master_params().extract()
   if (params.data_labels is not None):
     parameters.labels = params.data_labels
   if (params.r_free_flags_labels is not None):
     parameters.r_free_flags.label = params.r_free_flags_labels
-  determined_data_and_flags = mmtbx.utils.determine_data_and_flags(
+  determined_data_and_flags = extract_xtal_data.run(
     reflection_file_server = rfs,
     parameters             = parameters,
     keep_going             = True,
@@ -1110,6 +1111,8 @@ def run(args):
   mi_object.print_runtime()
   # add hydrogens if needed ?
   print("All done.", file=log)
+  log.flush()
+  sys.stderr = sys.__stderr__
   log.close()
 
 if __name__ == "__main__":

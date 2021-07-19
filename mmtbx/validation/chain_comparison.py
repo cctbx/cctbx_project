@@ -1352,12 +1352,12 @@ def run(args=None,
   chain_xyz_cart=chain_ca.atoms().extract_xyz()
   target_xyz_cart=target_ca.atoms().extract_xyz()
 
-  if target_xyz_cart.size()<1:
-    print("No suitable atoms in target")
-    return rmsd_values()
-  if chain_xyz_cart.size()<1:
-    print("No suitable atoms in query")
-    return rmsd_values()
+  if target_xyz_cart.size()<1 or chain_xyz_cart.size()<1:
+    print("No suitable atoms in target", file = out)
+    value = rmsd_values()
+    value.n_forward = 0
+    value.n_reverse= 0
+    return value
 
   # for each xyz in chain, figure out closest atom in target and dist
   best_i=None

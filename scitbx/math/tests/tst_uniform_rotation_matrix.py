@@ -24,7 +24,7 @@ def add_point(lm,c,R):
 
 # -----------------------------------------------------------------------------
 def test_uniform_rotation_matrix(N=10000,choice=2,verbose=False):
-  """
+  r"""
   The surface integral of a spherical harmonic function with its conjugate
   should be 1. (http://mathworld.wolfram.com/SphericalHarmonic.html, Eq 7)
 

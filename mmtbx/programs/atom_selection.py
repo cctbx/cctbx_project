@@ -67,7 +67,8 @@ Usage examples:
     if self.params.atom_selection_program.write_pdb_file is not None:
       print ("Writing file:", show_string(self.params.atom_selection_program.write_pdb_file),file=self.logger)
       ss_ann = model.get_ss_annotation()
-      if model.crystal_symmetry() is None:
+      if not model.crystal_symmetry() or \
+        (not model.crystal_symmetry().unit_cell()):
         model = shift_and_box_model(model, shift_model=False)
       selected_model = model.select(all_bsel)
       if(ss_ann is not None):

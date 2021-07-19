@@ -83,13 +83,13 @@ ramachandran_plot_restraints {
     .type = bool
     .short_caption = Ramachandran restraints
 
-  favored = *oldfield emsley emsley8k
+  favored = *oldfield emsley emsley8k phi_psi_2
     .type = choice(multi=False)
 
-  allowed = *oldfield emsley emsley8k
+  allowed = *oldfield emsley emsley8k phi_psi_2
     .type = choice(multi=False)
 
-  outlier = *oldfield emsley emsley8k
+  outlier = *oldfield emsley emsley8k phi_psi_2
     .type = choice(multi=False)
 
   selection = None
@@ -165,6 +165,16 @@ ramachandran_plot_restraints {
       .type = float
       .short_caption = Ramachandran plot restraints weight (emsley8k, outlier)
       .expert_level = 1
+  }
+  phi_psi_2
+    .style = box
+  {
+    favored_strategy = *closest highest_probability random weighted_random
+      .type = choice(multi=False)
+    allowed_strategy = *closest highest_probability random weighted_random
+      .type = choice(multi=False)
+    outlier_strategy = *closest highest_probability random weighted_random
+      .type = choice(multi=False)
   }
 }
   """)
@@ -248,17 +258,21 @@ class ramachandran_manager(object):
     self._oldfield_proxies = ext.shared_phi_psi_proxy()
     self._emsley_proxies   = ext.shared_phi_psi_proxy()
     self._emsley8k_proxies = ext.shared_phi_psi_proxy()
+    self._phi_psi_2_proxies = ext.shared_phi_psi_proxy()
     self._oldfield_tables = None
     self._emsley_tables   = None
     self._emsley8k_tables = None
+    self._phi_psi_2_tables = None
     if proxies is not None:
       self._oldfield_proxies, \
       self._emsley_proxies, \
-      self._emsley8k_proxies = proxies
+      self._emsley8k_proxies, \
+      self._phi_psi_2_proxies = proxies
     if tables is not None:
       self._oldfield_tables, \
       self._emsley_tables, \
-      self._emsley8k_tables = tables
+      self._emsley8k_tables, \
+      self._phi_psi_2_tables = tables
     self.initialize = initialize
     # bad hack to keep emsley potential in working(?) condition after
     # changing from rama500 to rama8000
@@ -278,6 +292,8 @@ class ramachandran_manager(object):
       #
       if 'emsley8k' in fao or self.params.inject_emsley8k_into_oldfield_favored:
         self._emsley8k_tables = load_emsley8k_tables()
+      if 'phi_psi_2' in fao:
+        self._phi_psi_2_tables = load_phi_psi_2_tables()
       # get proxies
       self.extract_proxies(pdb_hierarchy)
     if 'oldfield' in fao:
@@ -301,12 +317,23 @@ class ramachandran_manager(object):
       log           = self.log,
       proxies = (None if self.get_n_oldfield_proxies() == 0 else self._oldfield_proxies.proxy_select(n_seq, iselection),
                  None if self.get_n_emsley_proxies()   == 0 else self._emsley_proxies.proxy_select(n_seq, iselection),
-                 None if self.get_n_emsley8k_proxies() == 0 else self._emsley8k_proxies.proxy_select(n_seq, iselection)),
-      tables = (self._oldfield_tables, self._emsley_tables, self._emsley8k_tables),
+                 None if self.get_n_emsley8k_proxies() == 0 else self._emsley8k_proxies.proxy_select(n_seq, iselection),
+                 None if self.get_n_phi_psi_2_proxies() == 0 else self._phi_psi_2_proxies.proxy_select(n_seq, iselection),
+                 ),
+      tables = (self._oldfield_tables, self._emsley_tables, self._emsley8k_tables, self._phi_psi_2_tables),
       initialize=False)
     return new_manager
 
   def extract_proxies(self, hierarchy):
+    def _get_motifs():
+      from phenix.programs.phi_psi_2 import results_manager as pp2
+      phi_psi_2_motifs = pp2.get_overall_motif_count_and_output(
+        None,
+        self.hierarchy,
+        return_rama_restraints=True,
+        )
+      return phi_psi_2_motifs
+    phi_psi_2_motifs = None
     favored = ramalyze.RAMALYZE_FAVORED
     allowed = ramalyze.RAMALYZE_ALLOWED
     outlier = ramalyze.RAMALYZE_OUTLIER
@@ -318,8 +345,11 @@ class ramachandran_manager(object):
     self._oldfield_proxies = ext.shared_phi_psi_proxy()
     self._emsley_proxies   = ext.shared_phi_psi_proxy()
     self._emsley8k_proxies = ext.shared_phi_psi_proxy()
+    self._phi_psi_2_proxies = ext.shared_phi_psi_proxy()
     # it would be great to save rama_eval, but the fact that this is called in
     # pdb_interpretation, not in mmtbx.model makes it impossible
+    self.rama_eval = rama_eval()
+    outl = []
     for three in generate_protein_threes(hierarchy=selected_h, geometry=None):
       rc = three.get_phi_psi_atoms()
       if rc is None: continue
@@ -374,6 +404,27 @@ class ramachandran_manager(object):
           i_seqs       = i_seqs,
           weight       = weight)
         self.append_emsley8k_proxies(proxy, n_seq)
+      elif r_type == 'phi_psi_2':
+        from phenix.pdb_tools.phi_psi_2_data import get_phi_psi_key_for_rama_proxy
+        if phi_psi_2_motifs is None: phi_psi_2_motifs = _get_motifs()
+        if(  r_eval is favored): strategy=self.params.phi_psi_2.favored_strategy
+        elif(r_eval is allowed): strategy=self.params.phi_psi_2.allowed_strategy
+        elif(r_eval is outlier): strategy=self.params.phi_psi_2.outlier_strategy
+        else:                    raise RuntimeError("Rama eveluation failed.")
+        if strategy=='closest':
+          strategy+='_%0.1f_%0.1f' % tuple(three.get_phi_psi_angles())
+        pp2_key = get_phi_psi_key_for_rama_proxy(phi_psi_2_motifs,
+                                                 three,
+                                                 strategy=strategy,
+                                                 )
+        if pp2_key is None: continue
+        weight=1
+        proxy = ext.phi_psi_proxy(
+          residue_type = pp2_key,
+          i_seqs       = i_seqs,
+          weight       = weight)
+        outl.append([proxy.residue_type, three])
+        self.append_phi_psi_2_proxies(proxy, n_seq)
       elif(r_type is None): pass
       else:
         raise RuntimeError("Not an option: %s"%str(r_type))
@@ -381,10 +432,15 @@ class ramachandran_manager(object):
     print("", file=self.log)
     print("  %d Ramachandran restraints generated." % (
         self.get_n_proxies()), file=self.log)
-    print("    %d Oldfield and %d Emsley and %d emsley8k." % (
+    print("    %d Oldfield, %d Emsley, %d emsley8k and %d Phi/Psi/2." % (
       self.get_n_oldfield_proxies(),
       self.get_n_emsley_proxies(),
-      self.get_n_emsley8k_proxies()), file=self.log)
+      self.get_n_emsley8k_proxies(),
+      self.get_n_phi_psi_2_proxies()), file=self.log)
+    if outl:
+      print('    Rama restraints by Phi/Psi/2')
+      for pp2, three in outl:
+        print('      %s : %s' % (three[1].id_str(), pp2.split('|')[0]), file=self.log)
 
   @staticmethod
   def _append_proxies(proxies, proxy, n_seq):
@@ -399,6 +455,9 @@ class ramachandran_manager(object):
 
   def append_emsley8k_proxies(self, proxy, n_seq):
     ramachandran_manager._append_proxies(self._emsley8k_proxies, proxy, n_seq)
+
+  def append_phi_psi_2_proxies(self, proxy, n_seq):
+    ramachandran_manager._append_proxies(self._phi_psi_2_proxies, proxy, n_seq)
 
   def update_phi_psi_targets_on_init(self, hierarchy):
     if 'oldfield' in [self.params.favored, self.params.allowed, self.params.outlier]:
@@ -477,6 +536,26 @@ class ramachandran_manager(object):
           proxy          = proxy,
           epsilon        = 1.0) # XXX
       overall_residual_sum += flex.sum(self.residuals_array_emsley8k)
+    # phi/psi/2
+    from phenix.pdb_tools.phi_psi_2_data import get_rama_table
+    self.residuals_array_phi_psi_2 = None
+    n_phi_psi_2_proxies = self.get_n_phi_psi_2_proxies()
+    if n_phi_psi_2_proxies:
+      if self.residuals_array_phi_psi_2 is None:
+        self.residuals_array_phi_psi_2 = flex.double(n_phi_psi_2_proxies, 0.)
+      for i, proxy in enumerate(self._phi_psi_2_proxies):
+        # assert self.params.phi_psi_2.outlier_strategy=='highest_probability'
+        rama_table = get_rama_table(
+          proxy,
+          self._phi_psi_2_tables,
+          )
+        if rama_table is None: continue
+        self.residuals_array_phi_psi_2[i] = rama_table.compute_gradients(
+          gradient_array = gradient_array,
+          sites_cart     = sites_cart,
+          proxy          = proxy,
+          epsilon        = 1.0) # XXX
+      overall_residual_sum += flex.sum(self.residuals_array_phi_psi_2)
     return overall_residual_sum
 
   def get_n_oldfield_proxies(self):
@@ -494,10 +573,15 @@ class ramachandran_manager(object):
       return self._emsley8k_proxies.size()
     return 0
 
+  def get_n_phi_psi_2_proxies(self):
+    if self._phi_psi_2_proxies is not None:
+      return self._phi_psi_2_proxies.size()
+    return 0
+
   def get_n_proxies(self):
     return self.get_n_emsley_proxies() + \
            self.get_n_oldfield_proxies() + \
-           self.get_n_emsley8k_proxies()
+           self.get_n_emsley8k_proxies() + self.get_n_phi_psi_2_proxies()
 
   def _get_sorted_proxies_for_show(self,
       by_value,
@@ -518,12 +602,15 @@ class ramachandran_manager(object):
     result_oldfield = []
     result_emsley   = []
     result_emsley8k  = []
+    result_phi_psi_2 = []
     labels = site_labels if site_labels is not None \
         else [str(i) for i in range(sites_cart.size())]
     for proxies, residual_array, result in [
         (self._oldfield_proxies, self.residuals_array_oldfield, result_oldfield),
         (self._emsley_proxies, self.residuals_array_emsley, result_emsley),
-        (self._emsley8k_proxies, self.residuals_array_emsley8k, result_emsley8k)]:
+        (self._emsley8k_proxies, self.residuals_array_emsley8k, result_emsley8k),
+        (self._phi_psi_2_proxies, self.residuals_array_phi_psi_2, result_phi_psi_2),
+        ]:
       if proxies is not None and proxies.size() > 0:
         for i, pr in enumerate(proxies):
           i_seqs = pr.get_i_seqs()
@@ -536,7 +623,7 @@ class ramachandran_manager(object):
               residual_array[i]))
         if by_value == "residual":
           result.sort(key=lambda x: x.residual, reverse=True)
-    return result_oldfield, result_emsley, result_emsley8k
+    return result_oldfield, result_emsley, result_emsley8k, result_phi_psi_2
 
   def show_sorted(self,
       by_value,
@@ -553,7 +640,8 @@ class ramachandran_manager(object):
       by_value = "residual"
     sorted_oldfield_proxies_for_show, \
     sorted_emsley_proxies_for_show, \
-    sorted_emsley8k_proxies_for_show = \
+    sorted_emsley8k_proxies_for_show, \
+    sorted_phi_psi_2_proxies_for_show = \
       self._get_sorted_proxies_for_show(
         by_value=by_value,
         sites_cart=sites_cart,
@@ -561,7 +649,9 @@ class ramachandran_manager(object):
     for proxies, label in [
         (sorted_oldfield_proxies_for_show, "Oldfield"),
         (sorted_emsley_proxies_for_show, "Emsley"),
-        (sorted_emsley8k_proxies_for_show, "emsley8k")]:
+        (sorted_emsley8k_proxies_for_show, "emsley8k"),
+        (sorted_phi_psi_2_proxies_for_show, "phi/psi/2"),
+        ]:
       print("Ramachandran plot restraints (%s): %d" % (label, len(proxies)), file=f)
       print("Sorted by %s:" % by_value, file=f)
       for p in proxies:
@@ -578,9 +668,10 @@ def load_tables():
       relative_path="chem_data/rotarama_data/%s.rama.combined.data" %
         residue_type,
       test=os.path.isfile)
-    f = open(file_name, "r")
     data = flex.double()
-    for line in f.readlines():
+    with open(file_name, "r") as f:
+      lines = f.readlines()
+    for line in lines:
       val, phi, psi = line.split()
       assert ((int(phi) % 2 == 1) and (int(psi) % 2 == 1))
       data.append(float(val))
@@ -616,25 +707,26 @@ def load_emsley8k_tables():
     allowed_vals = flex.double()
     status       = {}
     with open(file_name, "r") as f:
-      for line in f.readlines():
-        if line[0]=="#": continue
-        phi, psi, val = line.split()
-        phi=int(float(phi))
-        psi=int(float(psi))
-        val=float(val)
-        di[(phi,psi)]=val
-        rama_score = R.rama_eval.get_score(selfstore, phi, psi)
-        evaluation = R.rama_eval.evaluate_score(selfstore, rama_score)
-        if  (evaluation==outlier):
-          outlier_vals.append(val)
-          status[(phi,psi)]=outlier
-        elif(evaluation==favored):
-          favored_vals.append(val)
-          status[(phi,psi)]=favored
-        elif(evaluation==allowed):
-          allowed_vals.append(val)
-          status[(phi,psi)]=allowed
-        else: raise RuntimeError("Not supposed to be here.")
+      lines = f.readlines()
+    for line in lines:
+      if line[0]=="#": continue
+      phi, psi, val = line.split()
+      phi=int(float(phi))
+      psi=int(float(psi))
+      val=float(val)
+      di[(phi,psi)]=val
+      rama_score = R.rama_eval.get_score(selfstore, phi, psi)
+      evaluation = R.rama_eval.evaluate_score(selfstore, rama_score)
+      if  (evaluation==outlier):
+        outlier_vals.append(val)
+        status[(phi,psi)]=outlier
+      elif(evaluation==favored):
+        favored_vals.append(val)
+        status[(phi,psi)]=favored
+      elif(evaluation==allowed):
+        allowed_vals.append(val)
+        status[(phi,psi)]=allowed
+      else: raise RuntimeError("Not supposed to be here.")
     data = flex.double()
     max_outlier = flex.max(outlier_vals)
     max_favored = flex.max(favored_vals)
@@ -652,6 +744,10 @@ def load_emsley8k_tables():
     t = lookup_table(data, 180)
     tables[rama_key] = t
   return tables
+
+def load_phi_psi_2_tables():
+  from phenix.pdb_tools.phi_psi_2_data import load_phi_psi_2_rama_restraints_tables
+  return load_phi_psi_2_rama_restraints_tables()
 
 class ramachandran_plot_data(object):
   def __init__(self, plot_cutoff=0.027):
@@ -675,8 +771,9 @@ class ramachandran_plot_data(object):
         relative_path="chem_data/rotarama_data/%s" % file_name,
         test = os.path.isfile)
       stuff[selfstore] = flex.vec3_double()
-      fo = open(file_name, "r")
-      for line in fo.readlines():
+      with open(file_name, "r") as f:
+        lines = f.readlines()
+      for line in lines:
         line = line.split()
         if(len(line)==3):
           phi_, psi_, val = float(line[0]),float(line[1]),float(line[2])

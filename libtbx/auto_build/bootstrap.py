@@ -475,7 +475,7 @@ class Toolbox(object):
     destpath, destdir = os.path.split(destination)
 
     # default to using ssh for private phenix repositories
-    if module in ['phenix', 'solve_resolve', 'phaser_voyager', 'phasertng']:
+    if module in ['phenix', 'solve_resolve', 'phenix_pathwalker', 'phaser_voyager', 'phasertng']:
       use_ssh = True
 
     if os.path.exists(destination):
@@ -780,7 +780,7 @@ class cbflib_module(SourceModule):
   anonymous = ['git',
                'git@github.com:yayahjb/cbflib.git',
                'https://github.com/yayahjb/cbflib.git',
-               'https://github.com/yayahjb/cbflib/archive/master.zip']
+               'https://github.com/yayahjb/cbflib/archive/main.zip']
 
 class ccp4io_adaptbx(SourceModule):
   module = 'ccp4io_adaptbx'
@@ -823,10 +823,8 @@ class opt_resources_module(SourceModule):
 
 class eigen_module(SourceModule):
   module = 'eigen'
-  anonymous = ['git', '-b 3.3.7',
-               'git@github.com:cctbx/eigen.git',
-               'https://github.com/cctbx/eigen.git',
-               'https://github.com/cctbx/eigen/archive/master.zip']
+  anonymous = ['git', '-b 3.3.9',
+               'https://gitlab.com/libeigen/eigen.git']
 
 # Phenix repositories
 class phenix_module(SourceModule):
@@ -835,7 +833,9 @@ class phenix_module(SourceModule):
 
 class phenix_html(SourceModule):
   module = 'phenix_html'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_html/trunk']
+  anonymous = ['git',
+               'git@github.com:phenix-project/phenix_html.git',
+               'https://github.com/phenix-project/phenix_html.git']
 
 class phenix_dev_doc(SourceModule):
   module = 'phenix_dev_doc'
@@ -899,6 +899,10 @@ class buildbot_module(SourceModule):
   module = 'buildbot'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/buildbot/trunk']
 
+class phenix_pathwalker_module(SourceModule):
+  module = 'phenix_pathwalker'
+  anonymous = ['git', 'git@github.com:phenix-project/phenix_pathwalker.git']
+
 # Phaser repositories
 class phaser_module(SourceModule):
   module = 'phaser'
@@ -938,14 +942,14 @@ class dials_module(SourceModule):
   anonymous = ['git',
                'git@github.com:dials/dials.git',
                'https://github.com/dials/dials.git',
-               'https://github.com/dials/dials/archive/master.zip']
+               'https://github.com/dials/dials/archive/main.zip']
 
 class dxtbx_module(SourceModule):
   module = 'dxtbx'
   anonymous = ['git',
                'git@github.com:cctbx/dxtbx.git',
                'https://github.com/cctbx/dxtbx.git',
-               'https://github.com/cctbx/dxtbx/archive/master.zip']
+               'https://github.com/cctbx/dxtbx/archive/main.zip']
 
 class dials_regression_module(SourceModule):
   module = 'dials_regression'
@@ -977,7 +981,7 @@ class xia2_module(SourceModule):
   anonymous = ['git',
                'git@github.com:xia2/xia2.git',
                'https://github.com/xia2/xia2.git',
-               'https://github.com/xia2/xia2/archive/master.zip']
+               'https://github.com/xia2/xia2/archive/main.zip']
 
 # Duke repositories
 class probe_module(SourceModule):
@@ -990,7 +994,8 @@ class suitename_module(SourceModule):
 
 class reduce_module(SourceModule):
   module = 'reduce'
-  anonymous = ['svn', 'https://github.com/rlabduke/reduce.git/trunk']
+  anonymous = ['git', '-b v3.7.2',
+               'https://github.com/rlabduke/reduce.git']
 
 class king_module(SourceModule):
   module = 'king'
@@ -1507,6 +1512,11 @@ class Builder(object):
             use_ssh=use_git_ssh, verbose=True, reference=reference_repository_path)
     self.add_step(_indirection())
 
+    # Update version information
+    if module == 'cctbx_project':
+      workdir = ['modules', module]
+      self.add_step(self.shell(command=['python', os.path.join('libtbx', 'version.py')], workdir=workdir))
+
     # Use dials-2.2 branches for Python 2
     if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and not self.python3:
       workdir = ['modules', module]
@@ -1902,6 +1912,7 @@ class CCIBuilder(Builder):
     'tntbx',
     'clipper',
     'eigen',
+    'reduce',
   ]
   CODEBASES_EXTRA = []
   # Copy these sources from cci.lbl.gov
@@ -1989,6 +2000,7 @@ class PhaserBuilder(CCIBuilder):
     'tntbx',
     'phaser_regression',
     'phaser',
+    'reduce',
   ]
   # Configure for these cctbx packages
   LIBTBX = [
@@ -2124,6 +2136,19 @@ class CCTBXBuilder(CCIBuilder):
   def rebuild_docs(self):
     pass
 
+  # select dials-3.5 branch
+  def _add_git(self, module, parameters, destination=None):
+    super(CCTBXBuilder, self)._add_git(module, parameters, destination)
+    if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and self.python3:
+      workdir = ['modules', module]
+      if module == 'dxtbx':
+        self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
+        self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.5'], workdir=workdir))
+      self.add_step(self.shell(
+        command=['git', 'branch', '--set-upstream-to=origin/dials-3.5', 'dials-3.5'],
+        workdir=workdir))
+
 class DIALSBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['dials', 'iota', 'xia2']
   LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
@@ -2223,6 +2248,11 @@ class XFELBuilder(CCIBuilder):
     super(XFELBuilder, self).add_base(
       extra_opts=['--dials'] + extra_opts)
 
+  def get_libtbx_configure(self):
+    configlst = super(XFELBuilder, self).get_libtbx_configure()
+    configlst.append('--enable_cxx11')
+    return configlst
+
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel(module='uc_metrics')
@@ -2241,6 +2271,7 @@ class PhenixBuilder(CCIBuilder):
     'phenix_regression',
     'phenix_html',
     'phenix_examples',
+    'phenix_pathwalker',
     'labelit',
     'Plex',
     'PyQuante',
@@ -2262,6 +2293,7 @@ class PhenixBuilder(CCIBuilder):
     'xia2',
     'phaser',
     'phaser_regression',
+    'phaser_voyager',
     'iota',
   ]
   HOT_EXTRA = ['msgpack']
@@ -2271,10 +2303,12 @@ class PhenixBuilder(CCIBuilder):
     'phenix_dev_doc',
     'phenix_regression',
     'phenix_examples',
+    'phenix_pathwalker',
     'solve_resolve',
     'reel',
     'phaser',
     'phaser_regression',
+    'phaser_voyager',
     'labelit',
     'elbow',
     'amber_adaptbx',
@@ -2284,6 +2318,31 @@ class PhenixBuilder(CCIBuilder):
     'xia2',
     'prime',
   ]
+
+  def get_codebases(self):
+    """
+    Phenix uses Boost in the conda environment for Python 3
+    """
+    codebases = super(PhenixBuilder, self).get_codebases()
+    if self.python3 and self.use_conda is not None:
+      try:
+        codebases.remove('boost')
+      except ValueError:
+        pass
+    return codebases
+
+  # select dials-3.2 branch
+  def _add_git(self, module, parameters, destination=None):
+    super(PhenixBuilder, self)._add_git(module, parameters, destination)
+    if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and self.python3:
+      workdir = ['modules', module]
+      if module == 'dxtbx':
+        self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
+        self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.2'], workdir=workdir))
+      self.add_step(self.shell(
+        command=['git', 'branch', '--set-upstream-to=origin/dials-3.2', 'dials-3.2'],
+        workdir=workdir))
 
   def add_module(self, module, workdir=None, module_directory=None):
     """
@@ -2807,10 +2866,10 @@ def run(root=None):
   python_args = parser.add_mutually_exclusive_group(required=False)
   python_args.add_argument('--python',
                     default='27', type=str, nargs='?', const='27',
-                    choices=['27', '36', '37', '38'],
+                    choices=['27', '36', '37', '38', '39'],
                     help="""When set, a specific Python version of the
 conda environment will be used. This only affects environments selected with
-the --builder flag. For non-conda dependencies, "36", "37", and "38" implies
+the --builder flag. For non-conda dependencies, any Python 3 implies
 Python 3.7.""")
   parser.add_argument("--config-flags", "--config_flags",
                     dest="config_flags",

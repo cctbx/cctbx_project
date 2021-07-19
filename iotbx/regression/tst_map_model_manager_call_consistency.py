@@ -43,13 +43,24 @@ def get_method(key, base_method_name):
   else:
     raise AssertionError("unknown key for get_method")
 
-def check_args(text, method,expected_args,group_text):
+def all_expected_in_found(found = None, expected = None):
+  for x in expected:
+    if not x in found:
+      print("Expected to find",x," but did not")
+      return False
+  return True
+
+def check_args(text, method,expected_args,group_text,
+       allow_extra_in_found=None):
     found_args = inspect.getargspec(method).args
     expected_args.sort()
     found_args.sort()
     print ("\n%s :\nExpected :%s \nFound   : %s" %(
        text,str(expected_args),str(found_args)))
     if expected_args == found_args:
+      return
+    elif allow_extra_in_found and all_expected_in_found(
+      found = found_args, expected = expected_args):
       return
     else:  # give message
       error_message="""
@@ -79,11 +90,12 @@ def test_01():
   # Args that should be in common for all calls to specific methods
   method_args_dict = {
     'with_bounds': ['lower_bounds', 'upper_bounds','model_can_be_outside_bounds'],
-    'around_model':[ 'box_cushion','model_can_be_outside_bounds'],
+    'around_model':[ 'box_cushion','model_can_be_outside_bounds','stay_inside_current_map'],
     'around_density':[ 'box_cushion','threshold', 'get_half_height_width',
        'model_can_be_outside_bounds'],
     'around_mask':[ 'box_cushion','model_can_be_outside_bounds'],
     'around_unique':['box_cushion', 'target_ncs_au_model', 'regions_to_keep',
+    'residues_per_region','keep_this_region_only',
         'solvent_content', 'resolution', 'sequence', 'molecular_mass',
          'symmetry', 'chain_type', 'keep_low_density', 'soft_mask',
          'mask_expand_ratio'],
@@ -146,7 +158,8 @@ def test_01():
 
     expected_args = common_args + method_args_dict[base_method_name] + \
        manager_method_args_dict[base_method_name] + box_all_maps_args
-    check_args(text,method,expected_args,group_text)
+    check_args(text,method,expected_args,group_text,
+       allow_extra_in_found = True)
 
     # Check call in iotbx.map_model_manager extract_all_maps_xxx
     method = get_method('extract_all_maps',base_method_name)
@@ -154,7 +167,8 @@ def test_01():
 
     expected_args = common_args + method_args_dict[base_method_name] + \
        manager_method_args_dict[base_method_name] + extract_args
-    check_args(text,method,expected_args,group_text)
+    check_args(text,method,expected_args,group_text,
+       allow_extra_in_found = True)
 
 def test_02():
   # Make sure calls in map_model_manager to
@@ -168,15 +182,15 @@ def test_02():
 
   init_arg_dict = {
      'around_atoms':['self', 'mask_atoms_atom_radius', 'model',
-          'xray_structure', 'map_manager','n_real', 'wrapping'],
-     'around_edges':['self', 'soft_mask_radius', 'map_manager'],
+          'invert_mask','xray_structure', 'map_manager','n_real', 'wrapping'],
+     'around_edges':['self', 'boundary_radius', 'map_manager'],
      'around_density':['self', 'map_manager','resolution','molecular_mass',
         'sequence','solvent_content'],
   }
   method_arg_dict = {
      'around_atoms':['self', 'soft_mask_radius', 'mask_atoms_atom_radius',
-          'soft_mask', 'mask_id', 'model'],
-     'around_edges':['self', 'soft_mask_radius', 'mask_id',],
+          'invert_mask','soft_mask', 'mask_id', 'model'],
+     'around_edges':['self', 'boundary_radius', 'mask_id',],
      'around_density':['self', 'resolution', 'solvent_content', 'soft_mask',
            'soft_mask_radius', 'mask_id','map_id'],
   }
@@ -198,7 +212,7 @@ def test_02():
     method = get_method('create_mask',base_method_name)
     text = get_method_text('create_mask',base_method_name)
     expected_args = method_arg_dict[base_method_name]
-    check_args(text,method,expected_args,group_text)
+    check_args(text,method,expected_args,group_text,allow_extra_in_found=True)
 
 
 if (__name__  ==  '__main__'):

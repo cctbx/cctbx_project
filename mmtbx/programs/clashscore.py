@@ -72,6 +72,7 @@ Example:
     .help = '''dummy variable for MolProbity, will be removed after MP update'''
 """
   datatypes = ['model','phil']
+  data_manager_options = ['model_skip_expand_with_mtrix']
   known_article_ids = ['molprobity']
 
   def validate(self):

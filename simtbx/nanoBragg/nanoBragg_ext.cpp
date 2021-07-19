@@ -194,14 +194,14 @@ namespace boost_python { namespace {
 
 
   /* number of unit cells along edge in each cell axis direction */
-  static scitbx::vec3<int> get_Nabc(nanoBragg const& nanoBragg) {
-      scitbx::vec3<int> value;
-      value[0]=static_cast<int>(nanoBragg.Na);
-      value[1]=static_cast<int>(nanoBragg.Nb);
-      value[2]=static_cast<int>(nanoBragg.Nc);
+  static scitbx::vec3<double> get_Nabc(nanoBragg const& nanoBragg) {
+      scitbx::vec3<double> value;
+      value[0]=static_cast<double>(nanoBragg.Na);
+      value[1]=static_cast<double>(nanoBragg.Nb);
+      value[2]=static_cast<double>(nanoBragg.Nc);
       return value;
   }
-  static void   set_Nabc(nanoBragg& nanoBragg, scitbx::vec3<int> const& value) {
+  static void   set_Nabc(nanoBragg& nanoBragg, scitbx::vec3<double> const& value) {
       nanoBragg.Na = value[0];
       nanoBragg.Nb = value[1];
       nanoBragg.Nc = value[2];
@@ -552,7 +552,13 @@ namespace boost_python { namespace {
       /* need to update everything? */
       nanoBragg.init_detector();
   }
-
+  static vec3 get_pix0_vector(nanoBragg const& nanoBragg) {
+      vec3 value;
+      value[0]=1000*nanoBragg.pix0_vector[1];
+      value[1]=1000*nanoBragg.pix0_vector[2];
+      value[2]=1000*nanoBragg.pix0_vector[3];
+      return value;
+  }
   /* the direction vector of detector_twotheta rotation axis (about the sample), default is (0,1,0) */
   static vec3 get_twotheta_axis(nanoBragg const& nanoBragg) {
       vec3 value;
@@ -1330,6 +1336,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       .value("Square",SQUARE)
       .value("Round",ROUND)
       .value("Gauss",GAUSS)
+      .value("Gauss_argchk",GAUSS_ARGCHK)
       .value("Tophat",TOPHAT)
       .value("Fiber",FIBER)
       .value("Unknown",UNKNOWN)
@@ -1358,7 +1365,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
 
        /* constructor that takes any and all parameters with sensible defaults */
       .def(init<scitbx::vec2<int>,
-                scitbx::vec3<int>,
+                scitbx::vec3<double>,
                 cctbx::uctbx::unit_cell,
                 vec3,
                 vec2,
@@ -1371,7 +1378,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
                 int,
                 int>(
         (arg_("detpixels_slowfast")=scitbx::vec2<int>(1024,1024),
-         arg_("Ncells_abc")=scitbx::vec3<int>(1,1,1),
+         arg_("Ncells_abc")=scitbx::vec3<double>(1,1,1),
          arg_("unit_cell_Adeg")=cctbx::uctbx::unit_cell(scitbx::af::double6(78.0,78.0,38.0,90.0,90.0,90.0)),
          arg_("misset_deg")=vec3(0.0,0.0,0.0),
          arg_("beam_center_mm")=vec2(NAN,NAN),
@@ -1520,6 +1527,10 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
 
       /* specify convention? Custom, MOSFLM, XDS, DENZO, ADXV, DIALS */
 
+      /* dxtbx origin vector getter */
+      .add_property("pix0_vector_mm", /* No setter allowed for pix0 */
+                     make_function(&get_pix0_vector,rbv()),
+                     "Current state of the internal origin vector (in mm) pointing to the first pixel in memory")
       /* unit vectors specifying coordinate system */
       .add_property("fdet_vector",
                      make_function(&get_fdet_vector,rbv()),
@@ -1898,7 +1909,6 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
                      make_setter(&nanoBragg::psf_radius,dcp()),
                      "override size of kernel used to compute PSF.  Set to zero for automatic (the default).")
 
-
       /* 2D flex array representing pixel values in expected photons, not neccesarily integers */
       .add_property("raw_pixels",
                      make_getter(&nanoBragg::raw_pixels,rbv()),
@@ -1935,6 +1945,10 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       .def("add_nanoBragg_spots_cuda",&nanoBragg::add_nanoBragg_spots_cuda,
        "actually run the spot simulation, going pixel-by-pixel over the region-of-interest, CUDA version")
 #endif
+
+    .def("set_dxtbx_detector_panel", &nanoBragg::set_dxtbx_detector_panel,
+        (arg_("panel"), arg_("s0_vector")),
+        "Updates the pixel array geometry using a dxtbx panel model (panel dimension should be conserved)")
 
       /* actual run of the background simulation */
       .def("add_background",&nanoBragg::add_background,

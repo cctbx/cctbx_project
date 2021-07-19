@@ -9,7 +9,7 @@ from websocket_server import WebsocketServer
 class WBmessenger(object):
   def __init__(self, viewerparent ):
     self.parent = viewerparent
-    self.ProcessMessage = self.parent.ProcessMessage
+    self.ProcessBrowserMessage = self.parent.ProcessBrowserMessage
     self.websockport = self.parent.websockport
     self.sleeptime = self.parent.sleeptime
     self.mprint = self.parent.mprint
@@ -30,7 +30,7 @@ class WBmessenger(object):
 
 
   def OnWebsocketClientMessage(self, client, server, message):
-    self.ProcessMessage(message)
+    self.ProcessBrowserMessage(message)
 
 
   def StartWebsocket(self):

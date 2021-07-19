@@ -61,13 +61,18 @@ class RefineTG(RefineBase):
 #    bnd_y.on(-5,5)
 #    return [bnd_x, bnd_y]
 
+  def initial_statistics(self):
+    #see min_logging.py for logging functions that roughly mirror those in
+    #phasertng's minimiser.
+    self.log_tab(1,0,"Demonstrate dtmin logging call")
+
   def current_statistics(self):
     print("x,f: " + str(tuple(self.get_macrocycle_parameters())) + " " + str(self.target()))
 
 def run():
   """
   Run the dtmin minimizer with only the target() implemented.
-  (no target_gradient orr target_gradient hessian).
+  (no target_gradient or target_gradient_hessian).
   The target function is simply x**2 + y**2.
   Gradients are done by finite difference and the hessian is estimated
   by one over large_shifts squared. (This is handled by the minimizer)

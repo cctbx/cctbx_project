@@ -12,6 +12,25 @@ from six.moves import cStringIO as StringIO
 import sys
 from six.moves import range
 
+def exercise_similarity():
+  xs = crystal.symmetry((3,4,5), "P 2 2 2")
+  assert xs.is_similar_symmetry(crystal.symmetry((3,4,5), "P 2 2 2"))
+  assert xs.is_similar_symmetry(crystal.symmetry((3.001,4,5), "P 2 2 2"))
+  assert not xs.is_similar_symmetry(crystal.symmetry((3.3,4,5), "P 2 2 2"))
+  assert not xs.is_similar_symmetry(crystal.symmetry((3,4,5), "P 2"))
+
+  assert xs.is_identical_symmetry(crystal.symmetry((3,4,5), "P 2 2 2"))
+  assert not xs.is_identical_symmetry(crystal.symmetry((3.001,4,5), "P 2 2 2"))
+  assert not xs.is_identical_symmetry(crystal.symmetry((3.3,4,5), "P 2 2 2"))
+  assert not xs.is_identical_symmetry(crystal.symmetry((3,4,5), "P 2"))
+
+  xs = crystal.symmetry((5,5,29,90,90,120), "R 3")
+  ps = xs.primitive_setting()
+  rs = ps.as_reference_setting()
+  assert xs.is_similar_symmetry(rs)
+  assert not xs.is_identical_symmetry(rs)
+
+
 def exercise_symmetry():
   xs = crystal.symmetry()
   xs = crystal.symmetry(uctbx.unit_cell((3,4,5)))
@@ -380,6 +399,7 @@ def run_call_back(flags, space_group_info):
       use_niggli_cell=use_niggli_cell)
 
 def run():
+  exercise_similarity()
   exercise_str_repr()
   exercise_symmetry()
   exercise_correct_rhombohedral_setting_if_necessary()

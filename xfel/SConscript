@@ -20,6 +20,7 @@ env_etc.xfel_common_includes = [
   env_etc.annlib_include[1],
   env_etc.annlib_adaptbx_include[0],
   env_etc.annlib_adaptbx_include[1],
+  env_etc.dxtbx_include,
 ]
 
 env = env_base.Clone(SHLINKFLAGS=env_etc.shlinkflags)

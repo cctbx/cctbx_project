@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import json, h5py, numpy as np
+from scipy.stats import binned_statistic
+from scipy import signal
 from scipy import constants
 from scipy.signal import argrelmax, argrelmin, savgol_filter
 import time
@@ -101,37 +103,38 @@ def flexBeam_sim_colors(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
 
   panel_images = []
 
-  for pid in pids:
-    tinit = time.time()
-    S = SimData()
-    S.detector = DETECTOR
-    S.beam = nbBeam
-    S.crystal = nbCrystal
-    S.panel_id = pid
-    S.using_cuda = cuda
-    S.using_omp = omp
-    S.add_air = add_air
-    S.air_path_mm = air_path_mm
-    S.add_water = add_water
-    S.water_path_mm = water_path_mm
-    S.background_raw_pixels = background_raw_pixels[pid]
-    S.rois = rois_perpanel[pid]
-    S.readout_noise = readout_noise
-    S.gain = gain
-    S.psf_fwhm = psf_fwhm
-    S.include_noise = include_noise
+  tinit = time.time()
+  S = SimData()
+  S.detector = DETECTOR
+  S.beam = nbBeam
+  S.crystal = nbCrystal
+  S.using_cuda = cuda
+  S.using_omp = omp
+  S.add_air = add_air
+  S.air_path_mm = air_path_mm
+  S.add_water = add_water
+  S.water_path_mm = water_path_mm
+  S.readout_noise = readout_noise
+  S.gain = gain
+  S.psf_fwhm = psf_fwhm
+  S.include_noise = include_noise
 
-    if mosaicity_random_seeds is not None:
-      S.mosaic_seeds = mosaicity_random_seeds
+  if mosaicity_random_seeds is not None:
+    S.mosaic_seeds = mosaicity_random_seeds
 
-    S.instantiate_nanoBragg(verbose=verbose, oversample=oversample, interpolate=interpolate, device_Id=device_Id,
+  S.instantiate_nanoBragg(verbose=verbose, oversample=oversample, interpolate=interpolate, device_Id=device_Id,
                             default_F=default_F, adc_offset=adc_offset)
-    if recenter:
-      S.update_nanoBragg_instance("beam_center_mm", DETECTOR[int(pid)].get_beam_centre(BEAM.get_s0()))
-    if printout_pix is not None:
-      S.update_nanoBragg_instance("printout_pixel_fastslow", printout_pix)
-    if spot_scale_override is not None:
-      S.update_nanoBragg_instance("spot_scale", spot_scale_override)
+
+  if printout_pix is not None:
+    S.update_nanoBragg_instance("printout_pixel_fastslow", printout_pix)
+  if spot_scale_override is not None:
+    S.update_nanoBragg_instance("spot_scale", spot_scale_override)
+
+  for pid in pids:
+    t_panel = time.time()
+    S.background_raw_pixels = background_raw_pixels[pid]
+    S.panel_id = pid
+    S.rois = rois_perpanel[pid]
 
     S.generate_simulated_image()
 
@@ -140,11 +143,13 @@ def flexBeam_sim_colors(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
       print('spot scale: %2.7g' % S.D.spot_scale)
     panel_image = S.D.raw_pixels.as_numpy_array()
     panel_images.append([pid, panel_image])
-    S.D.free_all()
+    S.D.raw_pixels*=0
     if time_panels:
       tdone = time.time() - tinit
-      print('Panel %d took %.4f seconds' % (pid, tdone))
-    del S.D
+      t_panel = time.time() - t_panel
+      print('Panel %d took %.4f seconds (Total sim time = %.4f seconds)' % (pid,t_panel, tdone))
+
+  S.D.free_all()
 
   return panel_images
 
@@ -174,7 +179,7 @@ def sim_background(DETECTOR, BEAM, wavelengths, wavelength_weights, total_flux, 
   SIM.xray_beams = xray_beams
   if Fbg_vs_stol is None:
     Fbg_vs_stol = flex.vec2_double([
-      (0, 2.57), (0.0365, 2.58), (0.07, 2.8), (0.12, 5), (0.162, 8), (0.2, 6.75), (0.18, 7.32),
+      (0, 2.57), (0.0365, 2.58), (0.07, 2.8), (0.12, 5), (0.162, 8), (0.18, 7.32), (0.2, 6.75),
       (0.216, 6.75), (0.236, 6.5), (0.28, 4.5), (0.3, 4.3), (0.345, 4.36), (0.436, 3.77), (0.5, 3.17)])
   SIM.flux = sum(weights)
   SIM.Fbg_vs_stol = Fbg_vs_stol
@@ -296,7 +301,8 @@ def fcalc_from_pdb(resolution, algorithm=None, wavelength=0.9, anom=True, ucell=
   return fcalc
 
 
-def downsample_spectrum(energies, fluences, total_flux=1e12, nbins=100, method=0, ev_width=1.5, baseline_sigma=3.5):
+def downsample_spectrum(energies, fluences, total_flux=1e12, nbins=100, method=0, ev_width=1.5, baseline_sigma=3.5,
+                        method2_param=None):
   """
   :param energies:
   :param fluences:
@@ -307,6 +313,8 @@ def downsample_spectrum(energies, fluences, total_flux=1e12, nbins=100, method=0
   :param baseline_sigma:
   :return:
   """
+  if method2_param is None:
+    method2_param = {"filt_freq": 0.07, "filt_order": 3, "tail": 50, "delta_en": 1}
   if method == 0:
     energy_bins = np.linspace(energies.min() - 1e-6, energies.max() + 1e-6, nbins + 1)
     fluences = np.histogram(energies, bins=energy_bins, weights=fluences)[0]
@@ -317,7 +325,7 @@ def downsample_spectrum(energies, fluences, total_flux=1e12, nbins=100, method=0
     is_finite = fluences > cutoff
     fluences = fluences[is_finite]
     energies = energies[is_finite]
-  else:  # method==1:
+  elif method==1:
     w = fluences
     med = np.median(np.hstack((w[:100], w[-100:])))
     sigma = np.std(np.hstack((w[:100], w[-100:])))
@@ -329,6 +337,23 @@ def downsample_spectrum(energies, fluences, total_flux=1e12, nbins=100, method=0
     kept_idx = [i for i in idx if w[i] > baseline]
     energies = energies[kept_idx]
     fluences = fluences[kept_idx]
+
+  elif method==2:
+    delta_en = method2_param["delta_en"]
+    tail = method2_param["tail"]
+    filt_order = method2_param["filt_order"]
+    filt_freq = method2_param["filt_freq"]
+    xdata = np.hstack((energies[:tail], energies[-tail:]))
+    ydata = np.hstack((fluences[:tail], fluences[-tail:]))
+    pfit = np.polyfit(xdata, ydata, deg=1)
+    baseline = np.polyval(pfit, energies)
+    butter_b, butter_a = signal.butter(filt_order, filt_freq, 'low')
+    denz = signal.filtfilt(butter_b, butter_a, fluences-baseline)
+    enbin = np.arange(energies.min(), energies.max(), delta_en)
+    fluences, _, _ = binned_statistic(energies, denz, bins=enbin)
+    energies = (enbin[1:] + enbin[:-1])*0.5
+    fluences[fluences < 0] = 0  # probably ok
+
   fluences /= fluences.sum()
   fluences *= total_flux
   return energies, fluences

@@ -6085,7 +6085,7 @@ ATOM      5  O   HOH S   1      -9.523   5.521  11.381  0.10  6.78           O
 Number of atoms:          2691
 Number of chains:         3
 Chain IDs:                A, Z
-Alternate conformations:  0
+Alternate conformations:  2
 Amino acid residues:      289
 Water molecules:          350
 Elemental ions:           1 ( CL)

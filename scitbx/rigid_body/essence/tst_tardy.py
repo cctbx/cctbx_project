@@ -175,7 +175,7 @@ def exercise_accumulate_in_each_tree():
 
 def exercise_near_singular_hinges():
   # similar to scitbx/graph/test_cases_tardy_pdb.py, "collinear" test case
-  """
+  r"""
     0                6
     | \             /
     |  2---3---4---5

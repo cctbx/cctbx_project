@@ -29,7 +29,7 @@ def run():
   xray_structure.scatterers().flags_set_grad_u_iso(sel.iselection())
   for use_hd in [True, False]:
     energies_adp = cctbx.adp_restraints.energies_iso(
-      geometry_restraints_manager=grm,
+      plain_pair_sym_table=grm.plain_pair_sym_table,
       xray_structure=xray_structure,
       use_hd = use_hd,
       use_u_local_only = False,

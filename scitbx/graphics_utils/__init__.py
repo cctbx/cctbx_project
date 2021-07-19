@@ -20,6 +20,26 @@ def color_by_property(
     min_value=min_value)
 
 
+def map_to_rgb_colourmap(
+    data_for_colors,
+    colormap,
+    selection,
+    attenuation=None,
+    powscale=1.0,
+    map_directly=False,
+    color_all=False):
+  if attenuation is None:
+    attenuation = flex.double(data_for_colors.size(), 1.0)
+  return map_to_rgb_colourmap_(
+    data_for_colors=data_for_colors.as_double(),
+    colourmap=colormap,
+    selection=selection,
+    attenuation=attenuation,
+    powscale=powscale,
+    map_directly = map_directly,
+    color_all=color_all)
+
+
 def colour_by_phi_FOM(phi, fom = None):
   if not fom:
     fom = flex.double(phi.size(), 1.0)

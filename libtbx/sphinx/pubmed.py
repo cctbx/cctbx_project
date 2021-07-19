@@ -35,7 +35,7 @@ class PubMedDirective(docutils.parsers.rst.Directive):
       if not raw_cache:
         handle = Entrez.efetch(db="pubmed", id=PMID, retmode="xml")
         raw_cache = handle.read()
-        if six.PY3:
+        if six.PY3 and not isinstance(raw_cache, bytes):
           raw_cache = raw_cache.encode('utf-8')
       handle = io.BytesIO(raw_cache)
       XML = Entrez.read(handle)['PubmedArticle']

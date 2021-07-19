@@ -6,7 +6,7 @@ from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s, null_out
 from libtbx import Auto, dict_with_default_0, group_args
 from iotbx.pdb import hy36encode, hy36decode, common_residue_names_get_class
-from iotbx.pdb import amino_acid_codes
+from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
 from iotbx.pdb.modified_aa_names import lookup as aa_3_as_1_mod
 from iotbx.pdb.modified_rna_dna_names import lookup as na_3_as_1_mod
 from iotbx.pdb.utils import all_chain_ids, all_label_asym_ids
@@ -517,7 +517,12 @@ class _():
       n_water      = rc("water"),
       n_hd         = rc(sel_str="element H or element D",as_atoms=True),
       n_other      = rc(sel_str_other),
-      other_cnts   = other_cnts)
+      other_cnts   = other_cnts,
+      # atom counts for Table 1
+      n_protein_atoms    = rc("protein and not (element H or element D)", as_atoms=True),
+      n_nucleotide_atoms = rc("nucleotide and not (element H or element D)", as_atoms=True),
+      n_water_atoms      = rc("water", as_atoms=True),
+      n_other_atoms      = rc(sel_str_other, as_atoms=True))
 
   def show(self,
         out=None,
@@ -816,7 +821,7 @@ class _():
     assert shift_best is not None # should never happen
     self.atoms().set_xyz(uc.orthogonalize(sites_frac+shift_best))
 
-  def expand_to_p1(self, crystal_symmetry):
+  def expand_to_p1(self, crystal_symmetry, exclude_self=False):
     # ANISOU will be invalid
     import string
     import scitbx.matrix
@@ -830,6 +835,7 @@ class _():
       for smx in crystal_symmetry.space_group().all_ops():
         m3 = smx.r().as_double()
         m3 = scitbx.matrix.sqr(m3)
+        if(exclude_self and m3.is_r3_identity_matrix()): continue
         t = smx.t().as_double()
         t = scitbx.matrix.col((t[0],t[1],t[2]))
         for c_ in m_.chains():
@@ -1360,7 +1366,7 @@ class _():
   def truncate_to_poly(self, atom_names_set=set()):
     pdb_atoms = self.atoms()
     pdb_atoms.reset_i_seq()
-    aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
+    aa_resnames = one_letter_given_three_letter
     for model in self.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
@@ -1905,7 +1911,7 @@ class _():
     n_na = residue_classes["common_rna_dna"] + residue_classes["modified_rna_dna"]
     seq = []
     if (n_aa > n_na):
-      aa_3_as_1 = amino_acid_codes.one_letter_given_three_letter
+      aa_3_as_1 = one_letter_given_three_letter
       for rn in rn_seq:
         if (rn in aa_3_as_1_mod):
           seq.append(aa_3_as_1_mod.get(rn, substitute_unknown))
@@ -1926,8 +1932,32 @@ class _():
           "DT": "T"}.get(rn, "N"))
     return seq
 
+  def _residue_is_aa_or_na(self, residue_name, include_modified=True):
+    """
+    Helper function for checking if a residue is an amino acid or
+    nucleic acid
+
+    Parameters
+    ----------
+      residue_name: str
+        The residue name
+      include_modified: bool
+        If set, include modified amino and nucleic acids
+
+    Returns
+    -------
+      bool
+        True if the residue is an amino or nucleic acid, false otherwise
+    """
+    residue_class = common_residue_names_get_class(residue_name)
+    acceptable_classes = ['common_amino_acid', 'common_rna_dna']
+    if include_modified:
+      acceptable_classes += ['d_amino_acid', 'modified_amino_acid', 'modified_rna_dna']
+    return residue_class in acceptable_classes
+
   def as_padded_sequence(self, missing_char='X', skip_insertions=False,
-                         pad=True, substitute_unknown='X', pad_at_start=True):
+                         pad=True, substitute_unknown='X', pad_at_start=True,
+                         ignore_hetatm=False):
     """
     Extract protein or nucleic acid sequence, taking residue numbering into
     account so that apparent gaps will be filled with substitute characters.
@@ -1940,6 +1970,8 @@ class _():
     for i, residue_group in enumerate(self.residue_groups()):
       if (skip_insertions) and (residue_group.icode != " "):
         continue
+      if ignore_hetatm and not self._residue_is_aa_or_na(residue_group.unique_resnames()[0]):
+        continue
       resseq = residue_group.resseq_as_int()
       if (pad) and (resseq > (last_resseq + 1)):
         for x in range(resseq - last_resseq - 1):
@@ -1949,12 +1981,15 @@ class _():
       padded_seq.append(seq[i])
     return "".join(padded_seq)
 
-  def get_residue_ids(self, skip_insertions=False, pad=True, pad_at_start=True):
+  def get_residue_ids(self, skip_insertions=False, pad=True, pad_at_start=True,
+                      ignore_hetatm=False):
     resids = []
     last_resseq = 0
     last_icode = " "
     for i, residue_group in enumerate(self.residue_groups()):
-      if (skip_insertions) and (residue.icode != " "):
+      if (skip_insertions) and (residue_group.icode != " "):
+        continue
+      if ignore_hetatm and not self._residue_is_aa_or_na(residue_group.unique_resnames()[0]):
         continue
       resseq = residue_group.resseq_as_int()
       if (pad) and (resseq > (last_resseq + 1)):
@@ -1966,12 +2001,15 @@ class _():
     return resids
 
   def get_residue_names_padded(
-      self, skip_insertions=False, pad=True, pad_at_start=True):
+      self, skip_insertions=False, pad=True, pad_at_start=True,
+      ignore_hetatm=False):
     resnames = []
     last_resseq = 0
     last_icode = " "
     for i, residue_group in enumerate(self.residue_groups()):
-      if (skip_insertions) and (residue.icode != " "):
+      if (skip_insertions) and (residue_group.icode != " "):
+        continue
+      if ignore_hetatm and not self._residue_is_aa_or_na(residue_group.unique_resnames()[0]):
         continue
       resseq = residue_group.resseq_as_int()
       if (pad) and (resseq > (last_resseq + 1)):
@@ -2236,7 +2274,7 @@ class _():
     n_na = residue_classes["common_rna_dna"] + residue_classes["modified_rna_dna"]
     seq = []
     if (n_aa > n_na):
-      aa_3_as_1 = amino_acid_codes.one_letter_given_three_letter
+      aa_3_as_1 = one_letter_given_three_letter
       for rn in rn_seq:
         if (rn in aa_3_as_1_mod):
           seq.append(aa_3_as_1_mod.get(rn, substitute_unknown))

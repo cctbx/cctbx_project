@@ -80,6 +80,9 @@ class rotarama_plot_mixin(object):
           for x, y, label, _ in out:
             self.plot.text(x, y, label, color='black')
       if len(non_out) > 0:
+        # make non-outliers smaller and translucent if there are many points
+        if len(non_out) > 2500:
+          markersize = 3
         self.plot.plot(non_out_columns[0], non_out_columns[1], point_style,
           markerfacecolor=markerfacecolor, markersize=markersize,
           markeredgecolor=markeredgecolor)

@@ -5,10 +5,8 @@ import wxtbx.bitmaps
 import wx.lib.colourselect
 import wx
 import mmtbx.polygon.output
-from mmtbx import polygon
 from libtbx import adopt_init_args
 from math import radians
-import sys
 
 class wx_renderer(mmtbx.polygon.output.renderer):
   def draw_bin(self, out, start, end, angle, color):
@@ -60,7 +58,7 @@ class wx_renderer(mmtbx.polygon.output.renderer):
     stat_font = wx.Font(12, wx.MODERN, wx.NORMAL, wx.NORMAL)
     gc.PushState()
     gc.SetPen(wx.Pen("black", 1))
-    gc.SetFont(label_font)
+    gc.SetFont(gc.CreateFont(label_font, wx.BLACK))
     (text_w, text_h) = gc.GetTextExtent(label)
     (anchor_x, anchor_y) = pos
     (text_x, text_y) = self.get_text_position(text_w, text_h, anchor_x,
@@ -158,7 +156,7 @@ class PolygonPanel(wx.Panel):
     self.renderer.draw(gc)
     output_file = wx.FileSelector("Save image as:",
       default_filename="polygon.png",
-      wildcard="PNG image (*.png)|*.png", flags=wx.SAVE)
+      wildcard="PNG image (*.png)|*.png", flags=wx.FD_SAVE)
     if output_file != "" :
       bitmap.SaveFile(output_file, wx.BITMAP_TYPE_PNG)
     if event is not None :
@@ -194,11 +192,8 @@ class PolygonFrame(wx.Frame):
     plot_icon = wxtbx.bitmaps.fetch_icon_bitmap("mimetypes", "spreadsheet")
     if (save_icon is not None) and (plot_icon is not None):
       self.toolbar = wx.ToolBar(self, style=wx.TB_TEXT)
-      if sys.platform == "darwin" :
-        save_btn = self.toolbar.AddLabelTool(-1, "Save", save_icon,
-          kind=wx.ITEM_NORMAL)
-      else :
-        save_btn = self.toolbar.AddSimpleTool(-1, save_icon, "Save")
+      save_btn = self.toolbar.AddLabelTool(-1, "Save", save_icon,
+        kind=wx.ITEM_NORMAL)
       self.Bind(wx.EVT_MENU, self.OnSave, save_btn)
       hist_btn = self.toolbar.AddLabelTool(-1, "Show histograms", plot_icon,
         kind=wx.ITEM_NORMAL)
@@ -260,7 +255,7 @@ in each bin to the average number per bin:""")
     caption.Wrap(320)
     lower_sizer.Add(caption, 0, wx.ALL, 5)
     key_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    key_sizer = wx.FlexGridSizer(rows=0, cols=6)
+    key_sizer = wx.FlexGridSizer(rows=0, cols=6, vgap=0, hgap=0)
     lower_sizer.Add(key_sizer)
     colors, cutoffs = self.renderer.get_color_key()
     for i, color in enumerate(colors):

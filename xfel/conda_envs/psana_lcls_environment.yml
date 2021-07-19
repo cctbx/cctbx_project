@@ -1,6 +1,6 @@
 name: psana_env
 channels:
- - file:///reg/g/psdm/sw/conda1/channels/system-rhel7
+ - file:///cds/sw/ds/ana/conda1/channels/system-rhel7/
  - lcls-i
  - conda-forge
  - cctbx
@@ -9,13 +9,14 @@ dependencies:
  # conda compilers
  - c-compiler
  - cxx-compiler
+ - scons
 
  # mpi
  - mpi4py
  - openmpi
 
  # psana
- - psana-conda  >= 2.0.9
+ - psana
 
  # python
  - biopython
@@ -37,13 +38,15 @@ dependencies:
  - pyopengl
 
  # HDF5 (main libraries come with psana)
- - hdf5_plugins                      # [unix]
+ - hdf5plugin # [unix]
 
  # other
  - libsvm
  - mrcfile
  - psutil
  - distro
+ - pandas
+ - pybind11
 
  # cctbx channel
  - libsvm_py
@@ -68,3 +71,7 @@ dependencies:
  # xfel gui
  - mysql
  - mysql-connector-python
+
+ # temporarily pin numpy version
+ # See https://github.com/cctbx/cctbx_project/issues/627
+ - numpy=1.20

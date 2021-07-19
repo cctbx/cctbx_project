@@ -163,7 +163,8 @@ class simple_file_loader(worker):
     from xfel.merging.application.reflection_table_utils import reflection_table_utils
     reflections = reflection_table_utils.prune_reflection_table_keys(reflections=reflections,
                     keys_to_keep=['intensity.sum.value', 'intensity.sum.variance', 'miller_index', 'miller_index_asymmetric', \
-                                  'exp_id', 's1', 'intensity.sum.value.unmodified', 'intensity.sum.variance.unmodified'])
+                                  'exp_id', 's1', 'intensity.sum.value.unmodified', 'intensity.sum.variance.unmodified',
+                                  'kapton_absorption_correction', 'flags'])
     self.logger.log("Pruned reflection table")
     self.logger.log("Memory usage: %d MB"%get_memory_usage())
     return reflections

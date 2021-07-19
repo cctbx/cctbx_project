@@ -43,6 +43,24 @@ class radial_deviation:
     if self.r<other.r: return -1
     return 1
 
+  def __eq__(self, other):
+    return self.r == other.r
+
+  def __ne__(self, other):
+    return self.r != other.r
+
+  def __lt__(self, other):
+    return self.r < other.r
+
+  def __le__(self, other):
+    return self.r <= other.r
+
+  def __gt__ (self, other):
+    return self.r > other.r
+
+  def __ge__(self, other):
+    return self.r >= other.r
+
 def get_phi_psi_correction(result,
                            residue,
                            phi_psi,

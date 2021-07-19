@@ -166,7 +166,6 @@ secondary_structure
 master_phil_str = sec_str_master_phil_str # for docs
 
 sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
-default_params = sec_str_master_phil.fetch().extract()
 
 class manager(object):
   def __init__(self,
@@ -209,6 +208,10 @@ class manager(object):
       self.selection_cache = pdb_hierarchy.atom_selection_cache()
     self.pdb_atoms = atoms
     self.initialize()
+
+  @staticmethod
+  def get_default_ss_params():
+    return sec_str_master_phil.fetch().extract()
 
   def as_phil_str(self, master_phil=sec_str_master_phil):
     # used in secondary_structure_restraints...
@@ -409,7 +412,7 @@ class manager(object):
     if not use_segid:
       base_pairs = ""
       stacking_pairs = ""
-      if self.pdb_hierarchy.contains_nucleic_acid():
+      if self.pdb_hierarchy.contains_nucleic_acid(min_content=0.01):
         stacking_pairs = nucleic_acids.get_phil_stacking_pairs(
           pdb_hierarchy=self.pdb_hierarchy,
           prefix="secondary_structure.nucleic_acid",
@@ -434,7 +437,7 @@ class manager(object):
         stacking_pairs = ""
         isel = self.selection_cache.selection("segid '%s'" % segid).iselection()
         selected_pdb_h = self.pdb_hierarchy.select(isel)
-        if selected_pdb_h.contains_nucleic_acid():
+        if selected_pdb_h.contains_nucleic_acid(min_content=0.01):
           stacking_pairs = nucleic_acids.get_phil_stacking_pairs(
             pdb_hierarchy=selected_pdb_h,
             prefix="secondary_structure.nucleic_acid",

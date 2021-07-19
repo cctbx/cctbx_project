@@ -1547,6 +1547,9 @@ class manager(manager_mixin):
     r_final = self.r_work()
     assert approx_equal(r_start, r_final), [r_start, r_final]
 
+  def r_work4(self):
+    return self.resolution_filter(d_min=4).r_work()
+
   def _get_target_name(self): return self._target_name
   target_name = property(_get_target_name)
 
@@ -2154,8 +2157,21 @@ class manager(manager_mixin):
     assert approx_equal(flex.min(k_mask_l), flex.max(k_mask_l), 1.e-3)
     return k_mask_l[0]
 
+  def r_n_lowest(self, n=500):
+    ds = self.f_obs().d_spacings().data()
+    sel = flex.sort_permutation(ds,reverse=True)
+    ds = ds.select(sel)
+    d_min = ds[n]
+    return self.resolution_filter(d_min=d_min).r_work()
+
+  def r_two_bins_lowest(self):
+    f = self.select(self.bin_selections[0] | self.bin_selections[1])
+    return mmtbx.bulk_solvent.r_factor(
+      f.f_obs_work().data(), f.f_model_work().data())
+
   def r_work_low(self):
     f = self.select(self.bin_selections[0])
+
 
     # Scan for best k
     #fo, fc = f.f_obs_work().data(), f.f_model_work().data()
@@ -2185,10 +2201,11 @@ class manager(manager_mixin):
       f.f_obs_work().data(), f.f_model_work().data())
 
   def r_factors(self, prefix="", as_string=True):
-    rw,rf,rh,rl=self.r_work(),self.r_free(),self.r_work_high(),self.r_work_low()
-    f = "%s r_work=%6.4f r_free=%6.4f r_high=%6.4f r_low=%6.4f"
-    if(as_string): return f%(prefix, rw,rf,rh,rl)
-    else:          return group_args(rw=rw,rf=rf,rh=rh,rl=rl)
+    rw,rf,rh,rl,r4=self.r_work(),self.r_free(),self.r_work_high(),\
+      self.r_work_low(), self.r_work4()
+    f = "%s r_work=%6.4f r_free=%6.4f r_high=%6.4f r_low=%6.4f r_4=%6.4f"
+    if(as_string): return f%(prefix, rw,rf,rh,rl,r4)
+    else:          return group_args(rw=rw,rf=rf,rh=rh,rl=rl,r4=r4)
 
   def r_overall_low_high(self, d = 6.0):
     r_work = self.r_work()

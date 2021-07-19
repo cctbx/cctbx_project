@@ -90,6 +90,9 @@ class Profiler:
     self.start_el = time.time()
     self.message = message
 
+  def __enter__(self):pass
+  def __exit__(self,exception_type,exception_value,traceback):pass
+
   def __del__(self):
     self.end = work_clock()
     self.end_el = time.time()

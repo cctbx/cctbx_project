@@ -18,6 +18,10 @@ get_class = iotbx.pdb.common_residue_names_get_class
 sugar_types = ["SACCHARIDE",
                "D-SACCHARIDE",
                "L-SACCHARIDE",
+               'D-SACCHARIDE, ALPHA LINKING',
+               'D-SACCHARIDE, BETA LINKING',
+               'L-SACCHARIDE, ALPHA LINKING',
+               'L-SACCHARIDE, BETA LINKING',
                ]
 amino_types = ['"L-PEPTIDE LINKING"',
                '"D-PEPTIDE LINKING"',
@@ -188,7 +192,7 @@ def get_chiral_volume(c_atom, o_atom, angles, verbose=False):
 
 def get_hand(c_atom, o_atom, angles, verbose=False):
   v = get_chiral_volume(c_atom, o_atom, angles, verbose=verbose)
-  if v<0:
+  if v is not None and v < 0:
     return "BETA"
   else:
     return "ALPHA"

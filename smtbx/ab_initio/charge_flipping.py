@@ -1,4 +1,4 @@
-""" Charge flipping algorithm(s) and related data structures
+r""" Charge flipping algorithm(s) and related data structures
 
 References.
 

@@ -127,6 +127,7 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
   pdb_hierarchy = model.get_hierarchy()
   geometry = None
   if pdb_hierarchy.contains_nucleic_acid():
+    model.process_input_model(make_restraints = True)
     geometry = model.get_restraints_manager().geometry
   if len(pdb_hierarchy.models()) != 1 :
     raise Sorry("Multiple models not supported.")

@@ -23,10 +23,11 @@ from scitbx.array_family import flex
 from six import string_types
 from six.moves import cStringIO as StringIO
 import sys
+from iotbx import extract_xtal_data
 
 cmdline_input_phil_base_str = """
 input {
-  include scope mmtbx.utils.xray_data_str
+  include scope iotbx.extract_xtal_data.xray_data_str
   %(phases)s
   %(unmerged)s
   pdb {
@@ -113,7 +114,7 @@ def generate_master_phil_with_inputs(
   if (enable_experimental_phases):
     phil_extra_dict["phases"] = """
       experimental_phases {
-        include scope mmtbx.utils.experimental_phases_params_str
+        include scope iotbx.extract_xtal_data.experimental_phases_params_str
       }"""
     phil_extra_dict["phases_flag"] = """
       use_experimental_phases = Auto
@@ -370,7 +371,7 @@ class load_model_and_data(object):
           raise Sorry("No crystal symmetry information found in input files.")
       if (hkl_server is None):
         hkl_server = hkl_in.file_server
-      data_and_flags = mmtbx.utils.determine_data_and_flags(
+      data_and_flags = extract_xtal_data.run(
         reflection_file_server=hkl_server,
         parameters=params.input.xray_data,
         data_parameter_scope="input.xray_data",
@@ -378,7 +379,7 @@ class load_model_and_data(object):
         prefer_anomalous=prefer_anomalous,
         force_non_anomalous=force_non_anomalous,
         log=self.log)
-      self.intensity_flag = data_and_flags.intensity_flag
+      self.intensity_flag = data_and_flags.f_obs.is_xray_intensity_array()
       self.raw_data = data_and_flags.raw_data
       self.raw_flags = data_and_flags.raw_flags
       self.test_flag_value = data_and_flags.test_flag_value
@@ -460,7 +461,7 @@ class load_model_and_data(object):
         phases_in.file_server.err = self.log # redirect error output
         space_group = self.crystal_symmetry.space_group()
         point_group = space_group.build_derived_point_group()
-        hl_coeffs = mmtbx.utils.determine_experimental_phases(
+        hl_coeffs = extract_xtal_data.determine_experimental_phases(
           reflection_file_server = phases_in.file_server,
           parameters             = params.input.experimental_phases,
           log                    = self.log,

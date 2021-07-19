@@ -156,6 +156,8 @@ class MillerArrayDataManager(DataManagerBase):
     self._output_files.append(filename)
     self._output_types.append(MillerArrayDataManager.datatype)
 
+    return filename
+
   def get_reflection_file_server(self, filenames=None, labels=None,
                                  array_type=None,
                                  crystal_symmetry=None, force_symmetry=None,
@@ -260,6 +262,7 @@ class MillerArrayDataManager(DataManagerBase):
 {
   file = None
     .type = path
+    .short_caption = MTZ file
     .style = file_type:hkl input_file
   labels
     .multiple = True

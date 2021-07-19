@@ -2,9 +2,9 @@ from __future__ import absolute_import, division, print_function
 from xfel.ui.db import db_proxy
 from xfel.ui import load_phil_scope_from_dispatcher
 
-task_types = ["indexing", "ensemble_refinement", "scaling", "merging"]
-task_dispatchers = [None, "cctbx.xfel.stripe_experiment", "cctbx.xfel.merge", "cctbx.xfel.merge"]
-task_scope = ["local", "local", "local", "global"]
+task_types = ["indexing", "ensemble_refinement", "scaling", "merging", "phenix"]
+task_dispatchers = [None, "cctbx.xfel.stripe_experiment", "cctbx.xfel.merge", "cctbx.xfel.merge", None]
+task_scope = ["local", "local", "local", "global", "global"]
 
 class Task(db_proxy):
   def __init__(self, app, task_id = None, **kwargs):
@@ -41,5 +41,8 @@ class Task(db_proxy):
         return cxi_phil.cxi_versioned_extract().persist.phil_scope
     else:
       dispatcher = task_dispatchers[task_types.index(task_type)]
+
+    if dispatcher is None:
+      return dispatcher, None
 
     return dispatcher, load_phil_scope_from_dispatcher(dispatcher)

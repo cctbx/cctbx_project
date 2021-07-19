@@ -55,7 +55,7 @@ static void                 reuse                   (pANTLR3_BASE_TREE tree);
 
 // Factory functions for the Arboretum
 //
-static void                                     newPool                         (pANTLR3_ARBORETUM factory);
+static ANTLR3_BOOLEAN           newPool                         (pANTLR3_ARBORETUM factory);
 static pANTLR3_BASE_TREE    newPoolTree                 (pANTLR3_ARBORETUM factory);
 static pANTLR3_BASE_TREE    newFromTree                 (pANTLR3_ARBORETUM factory, pANTLR3_COMMON_TREE tree);
 static pANTLR3_BASE_TREE    newFromToken                (pANTLR3_ARBORETUM factory, pANTLR3_COMMON_TOKEN token);
@@ -120,25 +120,40 @@ antlr3ArboretumNew(pANTLR3_STRING_FACTORY strFactory)
 
 }
 
-static void
+static ANTLR3_BOOLEAN
 newPool(pANTLR3_ARBORETUM factory)
 {
+        pANTLR3_COMMON_TREE *newPools;
+
     // Increment factory count
     //
-    factory->thisPool++;
+    ++factory->thisPool;
 
     // Ensure we have enough pointers allocated
     //
-    factory->pools = (pANTLR3_COMMON_TREE *)
+    newPools = (pANTLR3_COMMON_TREE *)
                                         ANTLR3_REALLOC( (void *)factory->pools,                                                                         // Current pools pointer (starts at NULL)
                                         (ANTLR3_UINT32)((factory->thisPool + 1) * sizeof(pANTLR3_COMMON_TREE *))        // Memory for new pool pointers
                                         );
+        if (newPools == NULL)
+        {
+                // realloc failed, but we still have the old allocation
+                --factory->thisPool;
+                return ANTLR3_FALSE;
+        }
+        factory->pools = newPools;
 
     // Allocate a new pool for the factory
     //
     factory->pools[factory->thisPool]   =
                             (pANTLR3_COMMON_TREE)
                                 ANTLR3_MALLOC((size_t)(sizeof(ANTLR3_COMMON_TREE) * ANTLR3_FACTORY_POOL_SIZE));
+        if (factory->pools[factory->thisPool] == NULL)
+        {
+                // malloc failed
+                --factory->thisPool;
+                return ANTLR3_FALSE;
+        }
 
 
     // Reset the counters
@@ -147,7 +162,7 @@ newPool(pANTLR3_ARBORETUM factory)
 
     // Done
     //
-    return;
+    return ANTLR3_TRUE;
 }
 
 static  pANTLR3_BASE_TREE
@@ -157,7 +172,7 @@ newPoolTree         (pANTLR3_ARBORETUM factory)
 
     // If we have anything on the re claim stack, reuse that sucker first
     //
-    tree = factory->nilStack->peek(factory->nilStack);
+    tree = (pANTLR3_COMMON_TREE)factory->nilStack->peek(factory->nilStack);
 
     if  (tree != NULL)
     {
@@ -176,7 +191,11 @@ newPoolTree         (pANTLR3_ARBORETUM factory)
         {
                 // We ran out of tokens in the current pool, so we need a new pool
                 //
-                newPool(factory);
+                if (!newPool(factory))
+                {
+                        // new pool creation failed
+                        return NULL;
+                }
         }
 
         // Assuming everything went well - we are trying for performance here so doing minimal
@@ -337,7 +356,7 @@ ANTLR3_API pANTLR3_COMMON_TREE
 antlr3CommonTreeNew()
 {
         pANTLR3_COMMON_TREE     tree;
-        tree    = ANTLR3_CALLOC(1, sizeof(ANTLR3_COMMON_TREE));
+        tree = (pANTLR3_COMMON_TREE)ANTLR3_CALLOC(1, sizeof(ANTLR3_COMMON_TREE));
 
         if      (tree == NULL)
         {
@@ -432,7 +451,7 @@ getType                 (pANTLR3_BASE_TREE tree)
         }
         else
         {
-                return  theTree->token->type;
+                return  theTree->token->getType(theTree->token);
         }
 }
 
@@ -451,7 +470,7 @@ static ANTLR3_UINT32        getLine                     (pANTLR3_BASE_TREE tree)
 
         token   = cTree->token;
 
-        if      (token == NULL || token->line == 0)
+        if      (token == NULL || token->getLine(token) == 0)
         {
                 if  (tree->getChildCount(tree) > 0)
                 {
@@ -462,7 +481,7 @@ static ANTLR3_UINT32        getLine                     (pANTLR3_BASE_TREE tree)
                 }
                 return 0;
         }
-        return  token->line;
+        return  token->getLine(token);
 }
 
 static ANTLR3_UINT32        getCharPositionInLine       (pANTLR3_BASE_TREE tree)
@@ -471,7 +490,7 @@ static ANTLR3_UINT32        getCharPositionInLine       (pANTLR3_BASE_TREE tree)
 
         token   = ((pANTLR3_COMMON_TREE)(tree->super))->token;
 
-        if      (token == NULL || token->charPosition == -1)
+        if      (token == NULL || token->getCharPositionInLine(token) == -1)
         {
                 if  (tree->getChildCount(tree) > 0)
                 {
@@ -483,7 +502,7 @@ static ANTLR3_UINT32        getCharPositionInLine       (pANTLR3_BASE_TREE tree)
                 }
                 return 0;
         }
-        return  token->charPosition;
+        return  token->getCharPositionInLine(token);
 }
 
 static pANTLR3_STRING       toString                    (pANTLR3_BASE_TREE tree)
@@ -503,13 +522,15 @@ static pANTLR3_STRING       toString                    (pANTLR3_BASE_TREE tree)
 static pANTLR3_BASE_TREE
 getParent                               (pANTLR3_BASE_TREE tree)
 {
+        if (((pANTLR3_COMMON_TREE)(tree->super))->parent == NULL)
+                return NULL;
         return & (((pANTLR3_COMMON_TREE)(tree->super))->parent->baseTree);
 }
 
 static void
 setParent                               (pANTLR3_BASE_TREE tree, pANTLR3_BASE_TREE parent)
 {
-        ((pANTLR3_COMMON_TREE)(tree->super))->parent = parent == NULL ? NULL : ((pANTLR3_COMMON_TREE)(parent->super))->parent;
+        ((pANTLR3_COMMON_TREE)(tree->super))->parent = parent == NULL ? NULL : ((pANTLR3_COMMON_TREE)(parent->super));
 }
 
 static void

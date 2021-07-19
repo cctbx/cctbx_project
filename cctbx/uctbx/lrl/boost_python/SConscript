@@ -1,0 +1,7 @@
+Import("env_lrl_boost_python_ext")
+env = env_lrl_boost_python_ext.Clone()
+env.Prepend(LIBS=['lrl',])
+env.SharedLibrary(
+    target="#lib/cctbx_uctbx_lrl_ext",
+    source="lrl_ext.cpp")
+

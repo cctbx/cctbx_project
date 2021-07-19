@@ -13,7 +13,7 @@ def run(filenames,
         filename,
         no_file_access=False,
         no_file_but_save=False,
-        verbose=True,
+        verbose=False,
         ):
   outl = "  Joining"
   for f in filenames:

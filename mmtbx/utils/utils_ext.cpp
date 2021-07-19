@@ -58,10 +58,12 @@ namespace {
          (af::shared<std::size_t>(*)
                (af::shared<vec3<double> > const&,
                 af::shared<vec3<double> > const&,
+                af::shared<vec3<double> > const&,
                 double const&,
                 double const&,
                 cctbx::uctbx::unit_cell const&)) filter_water,
-                  (arg("sites_frac"),
+                  (arg("sites_frac_interaction"),
+                   arg("sites_frac_other"),
                    arg("sites_frac_water"),
                    arg("dist_max"),
                    arg("dist_min"),

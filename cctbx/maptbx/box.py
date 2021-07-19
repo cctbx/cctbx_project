@@ -48,6 +48,7 @@ class with_bounds(object):
     self._map_manager = map_manager
     self._model = model
     self.model_can_be_outside_bounds = model_can_be_outside_bounds
+    self._info = None
 
 
     # safeguards
@@ -104,6 +105,17 @@ class with_bounds(object):
   def map_manager(self):
     return self._map_manager
 
+  def info(self):
+    return self._info
+
+  def set_info(self, info):
+    ''' Holder for anything you want.
+      Usually set it to a group_args object:
+         self.set_info(group_args(group_args_type='my_group_args', value = value))
+    '''
+
+    self._info = info
+
   def ncs_object(self):
     if self.map_manager():
       return self.map_manager().ncs_object()
@@ -128,6 +140,7 @@ class with_bounds(object):
     full_cs = self._map_manager.unit_cell_crystal_symmetry()
     full_uc = full_cs.unit_cell()
     self.box_all = [j-i+1 for i, j in zip(self.gridding_first, self.gridding_last)]
+    assert min(self.box_all) >= 1 # box size must be greater than zero. Check stay_inside_current_map and bounds
     # get shift vector as result of boxing
     full_all_orig = self._map_manager.unit_cell_grid
     self.shift_frac = \
@@ -238,8 +251,12 @@ class with_bounds(object):
     #  Set up new map_manager. This will contain new data and not overwrite
     #   original
     #  NOTE: origin_shift_grid_units is required as bounds have changed
+
+    # Crystal symmetry is now always P1 and wrapping is False
     new_map_manager = map_manager.customized_copy(map_data = map_box,
-      origin_shift_grid_units = origin_shift_grid_units)
+      origin_shift_grid_units = origin_shift_grid_units,
+      crystal_symmetry_space_group_number = 1,
+      wrapping = False)
     if self._force_wrapping:
       # Set the wrapping of the new map if it is possible
       if (self._force_wrapping and (new_map_manager.is_full_size())) or \
@@ -323,11 +340,14 @@ class around_model(with_bounds):
     undefined.  If a box is specified that uses points outside the defined
     region, those points are set to zero.
 
-
+  Bounds:
+    if model_can_be_outside_bounds, allow model to be outside the bounds
+    if stay_inside_current_map, adjust bounds to not go outside current map
   """
   def __init__(self, map_manager, model, box_cushion,
       wrapping = None,
       model_can_be_outside_bounds = False,
+      stay_inside_current_map = None,
       log = sys.stdout):
 
     self._map_manager = map_manager
@@ -360,10 +380,10 @@ class around_model(with_bounds):
     info = get_bounds_around_model(
       map_manager = map_manager,
       model = model,
-      box_cushion = box_cushion)
+      box_cushion = box_cushion,
+      stay_inside_current_map = stay_inside_current_map)
     self.gridding_first = info.lower_bounds
     self.gridding_last = info.upper_bounds
-
 
     # Ready with gridding...set up shifts and box crystal_symmetry
     self.set_shifts_and_crystal_symmetry()
@@ -426,6 +446,9 @@ class around_unique(with_bounds):
          keep_low_density:  keep low density regions
          regions_to_keep:   Allows choosing just highest-density contiguous
                             region (regions_to_keep=1) or a few
+         keep_this_region_only: Allows choosing any specific region (first region is 0 not 1)
+         residues_per_region: Allows setting threshold to try and get about this many
+                              residues in each region. Default is 50.
 
   '''
 
@@ -433,6 +456,8 @@ class around_unique(with_bounds):
     model = None,
     target_ncs_au_model = None,
     regions_to_keep = None,
+    residues_per_region = None,
+    keep_this_region_only = None,
     solvent_content = None,
     resolution = None,
     sequence = None,
@@ -472,18 +497,23 @@ class around_unique(with_bounds):
       assert map_manager.unit_cell_grid == map_manager.map_data().all()
 
     # Get crystal_symmetry
-    self.crystal_symmetry = map_manager.crystal_symmetry()
+    crystal_symmetry = map_manager.crystal_symmetry()
     # Convert to map_data
 
     from cctbx.maptbx.segment_and_split_map import run as segment_and_split_map
     assert self._map_manager.map_data().origin() == (0, 0, 0)
 
     args = []
+    if residues_per_region:
+      args.append("residues_per_region=%s" %(residues_per_region))
+
+    if keep_this_region_only is not None:
+      regions_to_keep = -1 * keep_this_region_only
 
     ncs_group_obj, remainder_ncs_group_obj, tracking_data  = \
       segment_and_split_map(args,
         map_data = self._map_manager.map_data(),
-        crystal_symmetry = self.crystal_symmetry,
+        crystal_symmetry = crystal_symmetry,
         ncs_obj = self._map_manager.ncs_object(),
         target_model = target_ncs_au_model,
         write_files = False,
@@ -505,6 +535,13 @@ class around_unique(with_bounds):
         out = log)
 
     from scitbx.matrix import col
+
+    # Note number of selected regions used.
+    if hasattr(tracking_data, 'available_selected_regions'):
+      self.set_info(group_args(
+        group_args_type = 'available selected regions from around_unique',
+        available_selected_regions = tracking_data.available_selected_regions,
+        ))
 
     if not hasattr(tracking_data, 'box_mask_ncs_au_map_data'):
       raise Sorry(" Extraction of unique part of map failed...")
@@ -559,7 +596,7 @@ class around_unique(with_bounds):
       map_manager.soft_mask(soft_mask_radius = resolution)
       map_manager.apply_mask()
       # Now mask around edges
-      map_manager.create_mask_around_edges(soft_mask_radius = resolution)
+      map_manager.create_mask_around_edges(boundary_radius = resolution)
       map_manager.soft_mask(soft_mask_radius = resolution)
       map_manager.apply_mask()
 
@@ -1006,6 +1043,7 @@ def get_boxes_to_tile_map(target_for_boxes = 24,
       cushion_nx_ny_nz = None,
       wrapping = False,
       do_not_go_over_target = None,
+      target_xyz_center_list = None,
      ):
 
     '''
@@ -1013,13 +1051,33 @@ def get_boxes_to_tile_map(target_for_boxes = 24,
       If cushion_nx_ny_nz is set ... create a second set of boxes that are
         expanded by cushion_nx_ny_nz in each direction
       Try to make boxes symmetrical in full map
+      If target_xyz_center_list is set, try to use them as centers but keep
+       size the same as would otherwise be used
     '''
     nx,ny,nz = n_real
     smallest = min(nx,ny,nz)
     largest = max(nx,ny,nz)
     target_volume_per_box = (nx*ny*nz)/target_for_boxes
     target_length = target_volume_per_box**0.33
-    if target_for_boxes == 1:
+    if target_xyz_center_list:
+      lower_bounds_list = []
+      upper_bounds_list = []
+      uc = crystal_symmetry.unit_cell()
+      for site_frac in uc.fractionalize(target_xyz_center_list):
+        center_ijk = tuple([ int(0.5+x * n) for x,n in zip(site_frac, n_real)])
+        lower_bounds_list.append(
+          tuple( [
+             int(max(1,min(n-2,(i - (1+target_length)//2)))) for i,n in
+            zip(center_ijk,n_real)
+             ]
+          ))
+        upper_bounds_list.append(
+          tuple( [
+             int(max(1,min(n-2,(i + (1+target_length)//2)))) for i,n in
+            zip(center_ijk,n_real)
+             ]
+          ))
+    elif target_for_boxes == 1:
       lower_bounds_list = [(0,0,0)]
       upper_bounds_list = [tuple([i - 1 for i in n_real])]
     else:
@@ -1058,6 +1116,20 @@ def get_boxes_to_tile_map(target_for_boxes = 24,
     else:
       lower_bounds_with_cushion_list = lower_bounds_list
       upper_bounds_with_cushion_list = upper_bounds_list
+
+    # Now remove any duplicates
+    lb_ub_list = []
+    new_lb_list = []
+    new_ub_list = []
+    for lb,ub in zip (
+         lower_bounds_with_cushion_list,upper_bounds_with_cushion_list):
+       if [lb,ub] in lb_ub_list: continue
+       lb_ub_list.append([lb,ub])
+       new_lb_list.append(lb)
+       new_ub_list.append(ub)
+    lower_bounds_with_cushion_list = new_lb_list
+    upper_bounds_with_cushion_list = new_ub_list
+
     return group_args(
       lower_bounds_list = lower_bounds_list,
       upper_bounds_list = upper_bounds_list,
@@ -1159,11 +1231,12 @@ def get_bounds_around_model(
       map_manager = None,
       model = None,
       box_cushion = None,
+      stay_inside_current_map = None,
      ):
     '''
       Calculate the lower and upper bounds to box around a model
-      Allow bounds to go outside the available box (this has to be
-        dealt with at the boxing stage)
+      Allow bounds to go outside the available box unless
+        stay_inside_current_map (this has to be dealt with at the boxing stage)
     '''
 
     # get items needed to do the shift
@@ -1184,6 +1257,10 @@ def get_bounds_around_model(
 
     lower_bounds = [ifloor(f*n) for f, n in zip(frac_min, all_orig)]
     upper_bounds = [ iceil(f*n) for f, n in zip(frac_max, all_orig)]
+    n = all_orig[-1]
+    if stay_inside_current_map:
+      lower_bounds = [ min(n-1,max (0,lb)) for lb in lower_bounds]
+      upper_bounds = [ min (ub, n-1) for ub,n in zip(upper_bounds,all_orig)]
     return group_args(
       lower_bounds = lower_bounds,
       upper_bounds = upper_bounds,

@@ -116,6 +116,7 @@ Example:
   master_phil_str = master_phil_str
 
   datatypes = ['model','phil']
+  data_manager_options = ['model_skip_expand_with_mtrix']
   known_article_ids = ['molprobity']
 
   def validate(self):

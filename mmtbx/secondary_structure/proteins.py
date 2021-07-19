@@ -410,9 +410,12 @@ def create_sheet_hydrogen_bond_proxies(
         error_msg = """\
 Wrong registration in SHEET record. One of these selections
 "%s" or "%s"
-yielded zero or several atoms. Possible reason for it is the presence of
-insertion codes or alternative conformations for one of these residues or
-the .pdb file was edited without updating SHEET records.""" \
+yielded zero or several atoms. Possible reasons for this are:
+  - the presence of insertion codes or alternative conformations
+    for one of these residues;
+  - the model file was edited without updating SHEET records;
+  - SHEET definition in model header or parameter file mismatch
+    (delete or update SHEET definitions).""" \
 % (curr_strand.bond_start_current, curr_strand.bond_start_previous)
         raise Sorry(error_msg)
 

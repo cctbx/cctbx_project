@@ -12,6 +12,7 @@ from iotbx.pdb import resseq_encode
 import iotbx.phil
 import os,sys
 from libtbx.utils import Sorry
+from libtbx import group_args
 from scitbx.matrix import col
 from scitbx.math import superpose, matrix
 from scitbx.array_family import flex
@@ -203,6 +204,16 @@ master_phil = iotbx.phil.parse("""
               Note: None means ignore this test, 0 means allow no poor H-bonds.
       .short_caption = Maximum number of poor H bonds
 
+    tolerant = None
+      .type = bool
+      .help = Set values for tolerant search
+      .short_caption = Tolerant search
+
+     tolerant_max_h_bond_length = 5
+       .type = float
+       .help = Tolerant maximum H-bond length to include in \
+           secondary structure
+       .short_caption = Tolerant maximum H-bond length
   }
 
   alpha {
@@ -415,7 +426,9 @@ def sort_models_and_sequences(models,sequences):
 def merge_hierarchies_from_models(models=None,resid_offset=None,
     renumber=None,first_residue_number=None,
     sequences=None,chain_id=None,trim_side_chains=None,
-    remove_ter_records=False,):
+    remove_ter_records=False,
+    remove_break_records=False,
+     ):
   # assumes one chain from each model
   # if resid_offset, space by to next even n of this number of residues
   # otherwise if renumber, start at first_residue_number and sequence
@@ -489,10 +502,11 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
       "name ca or name c or name o or name n or (name cb and not resname gly)"
     new_hierarchy=apply_atom_selection(atom_selection,hierarchy=new_hierarchy)
 
-  if remove_ter_records:
+  if remove_ter_records or remove_break_records:
     new_records=flex.split_lines("")
     for line in new_hierarchy.as_pdb_string().splitlines():
-      if not line.startswith("TER"):
+      if  ( ((not remove_ter_records)   or (not line.startswith("TER"  )) ) and
+            ((not remove_break_records) or (not line.startswith("BREAK")) )  ):
         new_records.append(line)
 
     new_hierarchy=iotbx.pdb.input(
@@ -515,6 +529,35 @@ def get_average_direction(diffs=None, i=None,j=None):
     average_direction/=nn
     return average_direction.normalize()
 
+def get_first_chain_id_and_resno(hierarchy):
+  text = ""
+  if not hierarchy:
+    return text
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        return "%s%s" %(chain.id,rg.resseq_as_int())
+
+def get_last_chain_id_and_resno(hierarchy):
+  text = ""
+  if not hierarchy:
+    return text
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        text = "%s%s" %(chain.id,rg.resseq_as_int())
+  return text
+
+def remove_all_models_except_first(hierarchy):
+  ''' removes all models except the first in this hierarchy'''
+  model = hierarchy.models()[0]
+  new_hierarchy=iotbx.pdb.input(
+         source_info="Model",
+             lines=flex.split_lines("")).construct_hierarchy()
+  new_hierarchy.append_model(model.detached_copy())
+  return new_hierarchy
+
+
 def get_chain_ids(hierarchy,unique_only=None):
   chain_ids=[]
   if not hierarchy:
@@ -524,6 +567,15 @@ def get_chain_ids(hierarchy,unique_only=None):
       if (not unique_only) or (not chain.id in chain_ids):
         chain_ids.append(chain.id)
   return chain_ids
+
+def set_chain_id(hierarchy, chain_id = None):
+  assert chain_id
+  for model in hierarchy.models():
+    n_chains = 0
+    for chain in model.chains():
+      n_chains+=1
+      chain.id = chain_id
+
 
 def get_chain_id(hierarchy):
   if not hierarchy:
@@ -769,6 +821,229 @@ def have_n_or_o(models):
     if have_n and have_o:
       return True
     return False
+
+def are_sites_parallel(sites_1,sites_2, try_reverse=True):
+      point = flex.vec3_double()
+      point.append(sites_1[0])
+      dist, id1, id2 =  point.min_distance_between_any_pair_with_id(sites_2)
+      point = flex.vec3_double()
+      point.append(sites_1[-1])
+      dist, id1, id2b =  point.min_distance_between_any_pair_with_id(sites_2)
+      if id2b < id2:  # antiparallel
+        return False
+      elif id2b > id2: # parallel
+        return True
+      elif not try_reverse:
+        return None
+      else:
+        return are_sites_parallel(sites_2,sites_1,try_reverse=False)
+
+def evaluate_sheet_topology(annotation, hierarchy = None,
+   chain_id = None,
+   out = sys.stdout):
+  print("\nEvaluating sheet topology", file = out)
+  ca_ph=apply_atom_selection("name ca", hierarchy = hierarchy)
+  if chain_id:
+    ca_ph=apply_atom_selection("chain %s" %(chain_id), hierarchy = ca_ph)
+  unique_chain_ids = []
+  for x in get_chain_ids(ca_ph):
+    if not x in unique_chain_ids:
+      unique_chain_ids.append(x)
+  if len(unique_chain_ids) != 1:
+    raise Sorry("Need just 1 chain for evaluate_sheet_topology (found %s)" %(
+      " ".join(unique_chain_ids)))
+
+  rh_connections = 0
+  lh_connections = 0
+  mixed_on_same_side_of_sheet = 0
+  connection_list = []
+  for sheet in annotation.sheets:
+    rh_on_up_side = 0
+    lh_on_up_side = 0
+    rh_on_down_side = 0
+    lh_on_down_side = 0
+    if len(sheet.strands) <  2: continue # nothing to do
+    # Get first, last residue number in each strand
+    # Get directions for each strand in the sheet
+    new_strands = []
+    previous_direction = 1
+    for strand in sheet.strands:
+      new_strand = deepcopy(strand)
+      if new_strand.sense == -1: # antiparallel to previous
+        new_strand.direction = -1 * previous_direction
+      elif new_strand.sense == 0:
+        new_strand.direction = 1
+      else:
+        new_strand.direction = previous_direction
+      previous_direction = new_strand.direction
+      new_strands.append(new_strand)
+
+    strand_list = sorted(new_strands, key = lambda sheet: sheet.start_resseq)
+    overall_up = None
+    for ii in range(len(strand_list)-1):
+     s1 = strand_list[ii]
+     for jj in range(ii+1, len(strand_list)):
+      s2 = strand_list[jj]
+      if s2.get_start_resseq_as_int() - s1.get_end_resseq_as_int() < 3:
+        continue  # just a continuation
+      sites_1 =apply_atom_selection("resseq %s:%s" %(
+        s1.get_start_resseq_as_int(),
+        s1.get_end_resseq_as_int()), hierarchy = ca_ph).atoms().extract_xyz()
+      sites_2 =apply_atom_selection("resseq %s:%s" %(
+        s2.get_start_resseq_as_int(),
+        s2.get_end_resseq_as_int()), hierarchy = ca_ph).atoms().extract_xyz()
+      sites_between = apply_atom_selection("resseq %s:%s" %(
+        s1.get_end_resseq_as_int() + 1,
+        s2.get_start_resseq_as_int() - 1),
+          hierarchy = ca_ph).atoms().extract_xyz()
+      if sites_1.size() < 2 or sites_2.size()< 2 or sites_between.size()<2:
+        continue  # nothing to do
+
+      if s1.direction == 0 or s2.direction == 0 or s1.direction != s2.direction:
+        continue # not parallel
+
+
+      # Pare down sites to be only close ones
+      direction_1 = get_direction(sites_1)
+      direction_2 = get_direction(sites_2)
+      up = get_up(sites_1, sites_2)
+      direction_along_strands = direction_1
+      sites_1 = get_close_sites(sites_1, close_to = sites_2,
+        direction_along_strands = direction_along_strands, max_dist = 10)
+      sites_2= get_close_sites(sites_2, close_to = sites_1,
+         direction_along_strands = direction_along_strands, max_dist = 10)
+      if sites_1.size() < 2 or sites_2.size()< 2 or sites_between.size()<2:
+        continue  # nothing to do
+
+      direction_1 = get_direction(sites_1)
+      direction_2 = get_direction(sites_2)
+      up = get_up(sites_1, sites_2)
+      direction_between_strands = direction_1.cross(up)
+      sites_1 = get_close_sites_perp(sites_1, close_to = sites_2,
+        direction_between_strands = direction_between_strands, max_dist = 10)
+      sites_2= get_close_sites_perp(sites_2, close_to = sites_1,
+         direction_between_strands = direction_between_strands, max_dist = 15)
+      if sites_1.size() < 2 or sites_2.size()< 2 or sites_between.size()<2:
+        continue  # nothing to do
+
+      direction_1 = get_direction(sites_1)
+      direction_2 = get_direction(sites_2)
+      up = get_up(sites_1, sites_2)
+
+      # Get direction of "up" if we didn't already. It is direction_1 x (
+      #   (sites_2[0] - sites_1[-1]).  If sites_2 is to left of sites_1, then
+      #   "up"  is up.
+      #  Now if the chain goes "up" then the connection is left_handed
+      if not overall_up: overall_up = up
+
+      #Get location of connection. Find point closest to a point up or down
+      #  from middle of sheet.
+      all_sites = sites_1.deep_copy()
+      all_sites.extend(sites_2)
+      center = col(all_sites.mean())
+      point_up = center + 10 * up
+      point_down = center - 10 * up
+      point = flex.vec3_double()
+      point.append(point_up)
+      dist_up, id1, id2 =  point.min_distance_between_any_pair_with_id(
+         sites_between)
+      point = flex.vec3_double()
+      point.append(point_down)
+      dist_down, id1_down, id2_down =  \
+          point.min_distance_between_any_pair_with_id(sites_between)
+      if dist_up < dist_down:
+        is_right_handed = False
+      else:
+        is_right_handed = True
+      if up.dot(overall_up) > 0:
+        crosses_on_overall_up_side = True
+        if is_right_handed:
+          rh_on_up_side += 1
+        else:
+          lh_on_up_side += 1
+      else:
+        crosses_on_overall_up_side = False
+        if is_right_handed:
+          rh_on_down_side += 1
+        else:
+          lh_on_down_side += 1
+
+      result = group_args(
+       group_args_type = 'connections in sheet',
+       s1 = "resseq %s:%s" %(
+         s1.get_start_resseq_as_int(),
+         s1.get_end_resseq_as_int()),
+       s2 = "resseq %s:%s" %(
+         s2.get_start_resseq_as_int(),
+         s2.get_end_resseq_as_int()),
+       is_right_handed = is_right_handed,
+       crosses_on_overall_up_side = crosses_on_overall_up_side)
+      connection_list.append(result)
+
+      if rh_on_up_side and lh_on_up_side:
+        mixed_on_same_side_of_sheet += (rh_on_up_side + lh_on_up_side)
+      rh_connections += (rh_on_up_side + rh_on_down_side)
+      lh_connections += (lh_on_up_side + lh_on_down_side)
+
+  print("Total right-handed connections: %s" %(rh_connections), file = out)
+  print("Total left-handed connections: %s" %(lh_connections), file = out)
+  print("Total mixed connections on same side of sheet: %s" %(
+     mixed_on_same_side_of_sheet), file = out)
+  return group_args(
+    group_args_type = 'sheet connectivity analysis',
+       rh_connections = rh_connections,
+       lh_connections = lh_connections,
+       mixed_on_same_side_of_sheet = mixed_on_same_side_of_sheet,
+       connection_list = connection_list,
+     )
+
+def get_close_sites_perp(sites_1,
+     close_to = None, direction_between_strands = None,
+       max_dist = 15):
+  close = flex.vec3_double()
+  if sites_1.size()< 1 or close_to.size()<1:
+    return close
+  for i in range(sites_1.size()):
+    dist, id1, id2 =  sites_1[i:i+1].min_distance_between_any_pair_with_id(
+         close_to)
+    vector_between = col(close_to[id2]) - col(sites_1[i])
+    dist_perp= direction_between_strands.dot(vector_between)
+    if abs(dist) <= max_dist:
+       close.append(sites_1[i])
+  return close
+
+def get_close_sites(sites_1, close_to = None, direction_along_strands = None,
+       max_dist = 8):
+  close = flex.vec3_double()
+  if sites_1.size()< 1 or close_to.size()<1:
+    return close
+  for i in range(sites_1.size()):
+    dist, id1, id2 =  sites_1[i:i+1].min_distance_between_any_pair_with_id(
+         close_to)
+    vector_between = col(close_to[id2]) - col(sites_1[i])
+    dist_parallel = direction_along_strands.dot(vector_between)
+    if abs(dist_parallel)<= max_dist:
+       close.append(sites_1[i])
+  return close
+
+
+def get_up(sites_1, sites_2):
+  direction_1 = get_direction(sites_1)
+  one_to_two = normalize(col(sites_2[0]) - col(sites_1[-1]))
+  up = direction_1.cross(one_to_two)
+  return normalize(up)
+
+def normalize(site):
+  dist = site.length()
+  if dist > 0:
+    return site * (1./dist)
+  else:
+    return site
+
+def get_direction(sites_cart):
+  if sites_cart.size() < 2:
+    return None
+  return normalize(col(sites_cart[-1]) - col(sites_cart[0]))
 
 def remove_bad_annotation(annotation,hierarchy=None,
      maximize_h_bonds=True,
@@ -1206,6 +1481,7 @@ class segment:  # object for holding a helix or a strand or other
       sites_offset_1=self.sites[1:]
       self.diffs_single=sites_offset_1-self.sites[:-1]
       norms=self.diffs_single.norms()
+      norms.set_selected(norms==0,1.e-10)
       self.diffs_single=self.diffs_single/norms
     return self.diffs_single
 
@@ -1404,7 +1680,9 @@ class helix(segment): # Methods specific to helices
         average_offset=0.5*(sites_offset_3+sites_offset_4)
       self.diffs=average_offset-self.sites[:-4]
       self.norms=self.diffs.norms()
-      self.diffs=self.diffs/self.diffs.norms()
+      self.norms.set_selected(self.norms<1.e-10,1.e-10)
+      self.diffs=self.diffs/self.norms
+
     return self.diffs,self.norms
 
 
@@ -1478,6 +1756,8 @@ class strand(segment):
       sites_offset_2=self.sites[2:]
       self.diffs=sites_offset_2-self.sites[:-2]
       self.norms=self.diffs.norms()
+      if self.norms.count(0) > 0:
+        self.norms.set_selected(self.norms==0,1.e-10)
       self.diffs=self.diffs/self.norms
 
     return self.diffs,self.norms
@@ -1927,7 +2207,7 @@ class find_segment: # class to look for a type of segment
             segment_start=None
             still_changing=True
       segment_dict=new_segment_dict
-      for i in segment_dict.keys():
+      for i in list(segment_dict.keys()):
         segment_length=segment_dict[i]+1+self.last_residue_offset-i
         if segment_length<minimum_length:
           del segment_dict[i] # not long enough
@@ -3362,6 +3642,7 @@ class find_secondary_structure: # class to look for secondary structure
       maximum_poor_h_bonds=None,
       helices_are_alpha=False,
       ss_by_chain=None,
+      evaluate_sheet_topology=None,
       use_representative_chains=None,
       max_representative_chains=None,
       max_rmsd=None,
@@ -3398,6 +3679,8 @@ class find_secondary_structure: # class to look for secondary structure
       params.input_files.force_secondary_structure_input
     if ss_by_chain is not None:
       params.find_ss_structure.ss_by_chain=ss_by_chain
+    if evaluate_sheet_topology is not None:
+      params.find_ss_structure.evaluate_sheet_topology=evaluate_sheet_topology
     if max_rmsd is not None:
       params.find_ss_structure.max_rmsd=max_rmsd
     if use_representative_chains is not None:
@@ -3406,6 +3689,40 @@ class find_secondary_structure: # class to look for secondary structure
     if max_representative_chains is not None:
       params.find_ss_structure.max_representative_chains=\
         max_representative_chains
+
+    # Overwrite parameters for tolerant search
+    if params.find_ss_structure.tolerant:
+      print("Setting parameters for tolerant search", file = out)
+      if params.find_ss_structure.ss_by_chain:
+        params.find_ss_structure.ss_by_chain=False
+        print("Set ss_by_chain=%s" %(
+          params.find_ss_structure.ss_by_chain), file = out)
+      if not params.find_ss_structure.include_single_strands:
+        params.find_ss_structure.include_single_strands=True
+        print("Set include_single_strands=%s" %(
+          params.find_ss_structure.include_single_strands), file = out)
+      if params.find_ss_structure.max_h_bond_length < \
+          params.find_ss_structure.tolerant_max_h_bond_length:
+        params.find_ss_structure.max_h_bond_length = \
+          params.find_ss_structure.tolerant_max_h_bond_length
+        print("Set max_h_bond_length=%s" %(
+          params.find_ss_structure.tolerant_max_h_bond_length),
+          file = out)
+      if params.beta.max_sheet_ca_ca_dist < \
+          params.beta.tolerant_max_sheet_ca_ca_dist:
+        params.beta.max_sheet_ca_ca_dist = \
+          params.beta.tolerant_max_sheet_ca_ca_dist
+        print("Set max_sheet_ca_ca_dist=%s" %(
+          params.beta.tolerant_max_sheet_ca_ca_dist),
+          file = out)
+      if params.beta.min_sheet_length > \
+          params.beta.tolerant_min_sheet_length:
+        params.beta.min_sheet_length = \
+          params.beta.tolerant_min_sheet_length
+        print("Set min_sheet_length=%s" %(
+          params.beta.tolerant_min_sheet_length),
+          file = out)
+
 
     secondary_structure_input=params.input_files.secondary_structure_input
 
@@ -3540,7 +3857,6 @@ class find_secondary_structure: # class to look for secondary structure
         out=out)
 
     # Now get final values of H-bonds etc with our final annotation
-
     if params.find_ss_structure.require_h_bonds:
       remove_text=""
       if params.find_ss_structure.minimum_h_bonds>0:

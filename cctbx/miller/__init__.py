@@ -1729,16 +1729,17 @@ class set(crystal.symmetry):
       assert d_star_sq_step > 0 or (d_star_sq_step is None)
     if auto_binning:
       d_spacings = self.d_spacings().data()
-      d_max=flex.min(d_spacings)
-      d_min=flex.max(d_spacings)
+      d_max=flex.max(d_spacings)
+      d_min=flex.min(d_spacings)
       del d_spacings
       if d_star_sq_step is None:
         d_star_sq_step = 0.004
     assert (d_star_sq_step>0.0)
+    d_min, d_max = sorted((d_min, d_max))
     return self.use_binning(binning=binning(self.unit_cell(),
       self.indices(),
-      d_min,
       d_max,
+      d_min,
       d_star_sq_step))
 
   def setup_binner_counting_sorted(self,
@@ -2268,6 +2269,43 @@ class array(set):
     assert self.is_complex_array()
     return array.customized_copy(self, data=flex.conj(self.data()))
 
+  def regularize(self):
+    """
+    A series of conversions that are required for many downstream tests, such as
+    refinement, map calculation, etc.
+    """
+    result = self.deep_copy()
+    info = result.info()
+    result = result.eliminate_sys_absent()
+    info = info.customized_copy(systematic_absences_eliminated = True)
+    if(not result.is_unique_set_under_symmetry()):
+      merged = result.merge_equivalents()
+      result = merged.array()
+      info = info.customized_copy(merged=True)
+    result = result.map_to_asu()
+    if(not result.sigmas_are_sensible()):
+      result = result.customized_copy(
+        indices=result.indices(),
+        data=result.data(),
+        sigmas=None).set_observation_type(result)
+    sel = result.indices()==(0,0,0)
+    if(not sel.all_eq(False)):
+      result = result.select(~sel)
+    sigmas = result.sigmas()
+    if(sigmas is not None):
+      selection  = sigmas > 0
+      selection &= result.data()>=0
+      n_both_zero = selection.count(False)
+      if(n_both_zero>0):
+        result = result.select(selection)
+    if(result.is_xray_intensity_array() or result.is_xray_amplitude_array()):
+      selection_zero = result.data() == 0
+      result = result.select(~selection_zero)
+    if(result.is_xray_amplitude_array()):
+      selection_positive = result.data() >= 0
+      result = result.select(selection_positive)
+    return result.set_info(info)
+
   def as_double(self):
     """
     Create a copy of the array with the data converted to a flex.double type.
@@ -2290,6 +2328,16 @@ class array(set):
     print(prefix + "Type of sigmas:", raw_array_summary(self.sigmas()), file=f)
     set.show_summary(self, f=f, prefix=prefix)
     return self
+
+  def make_up_hl_coeffs(self, k_blur, b_blur):
+    assert isinstance(self.data(), flex.complex_double)
+    phases = self.phases().data()
+    sin_phases = flex.sin(phases)
+    cos_phases = flex.cos(phases)
+    ss = 1./flex.pow2(self.d_spacings().data()) / 4.
+    t = 2*k_blur * flex.exp(-b_blur*ss)
+    return self.customized_copy(
+      data = flex.hendrickson_lattman(a = t * cos_phases, b = t * sin_phases))
 
   def disagreeable_reflections(self, f_calc_sq, n_reflections=20):
     assert f_calc_sq.is_xray_intensity_array()

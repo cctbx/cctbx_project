@@ -3,6 +3,8 @@ from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor
 from libtbx import Auto
 from six.moves import cStringIO as StringIO
+from libtbx import adopt_init_args
+from libtbx import group_args
 import traceback
 import os
 import sys
@@ -773,7 +775,8 @@ def run_parallel(
    kw_list=None,           # list of kw dictionaries for target_function
    preserve_order=True,
    break_condition = None,
-   try_single_processor_on_failure = False,):
+   try_single_processor_on_failure = False,
+   ):
 
   '''
   :param preserve_order: keeps original order of results
@@ -832,3 +835,296 @@ def run_parallel(
   return results
 
 #  -------  END OF SIMPLE INTERFACE TO MULTIPROCESSING -------------
+
+# --  VERY SIMPLE INTERFACE TO MULTIPROCESSING WITH LARGE FIXED OBJECTS --
+
+def simple_parallel(**kw):
+
+  """
+  This simple_parallel interface allows you to run in parallel with
+  a call that is very similar to one you would use for a simple iteration
+
+  NOTE: all these multiprocessing methods work poorly if a
+   large object (> 1 MB) is returned.  Better to write the object as a pickle
+   to a unique file, pass the file name back, and read in the object afterwards.
+
+Parameters:
+  function:   the function to run
+  iteration_list:  list of objects to pass, one at a time, to function
+  nproc:  number of processors
+  run_in_batches: If None or True, run nproc jobs, grouping as necessary
+  log:  optional log stream
+  any other kw items:  passed directly to function
+
+Sample use:
+  result_list = simple_parallel(
+    function = run_something,        # function to run
+    iteration_list = iteration_list,  # list of N values or objects that vary
+    nproc = nproc,        # number of processors
+    other_kw1 = other_kw1,  # any other keywords used by run_something
+    other_kw2 = other_kw2,  # any other keywords used by run_something
+    log = log,            # pass log stream if used
+     )
+
+This will run N jobs of run_something, where run_something looks like:
+
+def run_something(
+    one_iteration = None,
+    other_kw1 = None,
+    other_kw2 = None,
+    log = None):
+  # do something with value and other_kw1, other_kw2
+  result = do_something(one_iteration, other_kw1, other_kw2, log = log)
+  return result
+
+
+Example as simple iteration:
+
+def run_something(value):
+  return value * 2
+
+def run_as_is(): # run in usual way
+  iteration_list = [5,7,9]  # list of anything
+
+  result_list = []
+  for i in range(len(iteration_list)):
+    result = run_something(iteration_list[i])
+    result_list.append(result)
+  return result_list
+
+def run_parallel(): # run in parallel
+
+  iteration_list = [5,7,9]  # list of anything
+
+  from libtbx.easy_mp import simple_parallel
+  result_list = simple_parallel(
+    iteration_list = iteration_list,
+    function = run_something,
+    nproc = 4, )
+  return result_list
+  """
+
+  run_in_batches = kw.get('run_in_batches',None)
+  function = kw.get('function',None)
+  iteration_list = kw.get('iteration_list',None)
+  nproc = kw.get('nproc',None)
+  run_info = kw.get('run_info',None)
+  log = kw.get('log',None)
+
+  if function is not None: del kw['function']
+  if run_in_batches is not None: del kw['run_in_batches']
+  if iteration_list is not None: del kw['iteration_list']
+  if nproc is not None: del kw['nproc']
+  if log is not None: del kw['log']
+  if run_info is not None: del kw['run_info']
+
+
+  if function is not None and iteration_list is not None and nproc is not None:
+    n_tot = len(list(iteration_list))
+
+    end_number = -1
+    if run_in_batches is None or run_in_batches:
+      n_in_batch = n_tot//nproc
+      if n_in_batch * nproc < n_tot:
+        n_in_batch = n_in_batch + 1
+      assert n_in_batch * nproc >= n_tot
+      n_runs = nproc
+    else:
+      n_in_batch = 1
+      n_runs = n_tot
+
+
+    runs_to_carry_out = []
+    for run_id in range(n_tot):
+      start_number = end_number + 1
+      end_number = min(n_tot-1, start_number + n_in_batch - 1)
+      if end_number < start_number: continue
+      runs_to_carry_out.append(group_args(
+        run_id = run_id,
+        start_number = start_number,
+        end_number = end_number,
+        ))
+
+    kw_dict = kw.copy()
+    kw_dict['function'] = function
+    kw_dict['iteration_list'] = iteration_list
+    if log is None:
+      log = sys.stdout
+
+    from libtbx.easy_mp import run_jobs_with_large_fixed_objects
+    runs_carried_out = run_jobs_with_large_fixed_objects(
+      nproc = nproc,
+      verbose = False,
+      kw_dict = kw_dict,
+      run_info_list = runs_to_carry_out,
+      job_to_run = simple_parallel,
+      log = log)
+
+
+    runs_carried_out = sorted(runs_carried_out,
+      key = lambda r: r.start_number if r else None)
+    result_list = []
+    printed_something = False
+    for result_info in runs_carried_out:
+      if result_info and result_info.result and result_info.result.result_list:
+        result = result_info.result
+        for r in result.result_list:
+          if r:
+            result_list.append(r)
+            if not printed_something:
+              print (result.log_as_text, file = log)
+              printed_something = True
+    return result_list
+
+  else:
+    assert run_info is not None and iteration_list is not None
+    kw_dict = kw.copy()
+
+    # Determine if function has the kw "log"
+    import inspect
+    use_log = 'log' in inspect.getargspec(function).args
+    if use_log: # capture the log if it is present in the function call
+      kw_dict['log'] = log
+
+    result_list = []
+    for i in range(run_info.start_number, run_info.end_number + 1):
+      result_list.append(function(iteration_list[i], **kw_dict))
+
+    return group_args(
+      group_args_type = 'runs %s to %s of %s' %(
+        run_info.start_number, run_info.end_number, str(function)),
+      result_list = result_list)
+
+# --  END VERY SIMPLE INTERFACE TO MULTIPROCESSING WITH LARGE FIXED OBJECTS --
+
+# --  SIMPLE INTERFACE TO MULTIPROCESSING WITH LARGE FIXED OBJECTS --
+
+def run_jobs_with_large_fixed_objects(
+       nproc = None,
+       verbose = None,
+       kw_dict = None,           # all the common kw for the function to run
+       run_info_list = None,     # list of group_args, each with info of what
+                                 # to do for one run
+       job_to_run = None,   # the function to run
+       multiprocessing_method = 'multiprocessing',  # how to run
+       qsub_command='qsub',       # queue command,
+       break_condition = None,
+       try_single_processor_on_failure = False,
+       log = sys.stdout):
+  '''
+
+    Run jobs in parallel containing large fixed object shared by all jobs
+
+    The purposes of this interface to multiprocessing are: (1) to get around the
+    pickling and duplication of large objects that occurs if the same object
+    is passed to each sub-process, and (2) to allow passing model objects which
+    cannot be pickled.
+
+    NOTE: Your job_to_run should always return the smallest possible result
+    object as a result. Anything very large (like a full-size density map)
+    should be written to disk and a file name returned.  Models are ok to be
+    returned (except possibly very large ones).
+
+    Procedure to run any method (job_to_run) in parallel with a
+    common set of keywords (kw_dict) and one group args for each run
+    specifying what happens in that run (run_info_list)
+
+    You should put all large constant objects in kw_dict.  These are passed
+    to a fixed class that can be accessed by all the runs and that does not
+    have to be pickled or duplicated (depends on the system).
+
+    Put everything that changes between runs in run_info_list.
+
+    The method "job_to_run" should accept all the arguments in kw_dict
+    plus the keywords "run_info", "log", "verbose".  Your job_to_run should
+    decide what to do based on the group_args object "run_info" that it gets.
+
+    The method "job_to_run" should return a result group_args object
+
+    Returns run_info list, with each run_info getting a .result with the
+    result for that run.
+
+    preserve_order: keeps original order of results
+    break_condition:  if break_condition(result) is True, break
+      where result is the returned object from a run
+    try_single_processor_on_failure:  Try nproc=1 if nproc>1 fails
+
+  '''
+
+  index_list=[]
+  for i in range(len(run_info_list)):
+    index_list.append({'i':i})
+
+  if nproc == 1 or verbose:
+    local_log = log
+  else:
+    local_log = None
+
+  from libtbx.easy_mp import run_parallel
+  result_run_info_list = run_parallel(
+     method = multiprocessing_method,
+     nproc = nproc,
+     qsub_command = qsub_command,
+     break_condition = break_condition,
+     try_single_processor_on_failure = try_single_processor_on_failure,
+     target_function = run_one_job_as_class(
+       kw_dict = kw_dict,
+       job_to_run = job_to_run,
+       log = local_log,
+       run_info_list = run_info_list),
+     preserve_order=False,
+     kw_list = index_list)
+
+  # Note log for each result is in run_info.result.log_as_text
+
+  return result_run_info_list
+
+class run_one_job_as_class:
+  '''
+    Class to hold large fixed objects and a set of small run_info objects
+    specifying what to do for each run.  Returns a run_info object with
+    the attribute "result" added containing the result
+  '''
+
+  def __init__(self,
+      kw_dict,
+      job_to_run,
+      log,
+      run_info_list):
+
+    adopt_init_args(self, locals())
+
+  def __call__(self, i):
+
+    # Set up log so that it can be used in multiprocessing
+
+    if self.log is None:
+      log = StringIO()
+      log_type = 'StringIO'
+    else:
+      log = self.log
+      log_type = 'stream'
+
+    # Run the i'th run_info now
+    run_info = self.run_info_list[i]
+    result = self.job_to_run(
+      run_info = run_info,
+      log = log,
+      **self.kw_dict)
+
+    # Save the log if not already written out
+
+    if log_type == 'StringIO':
+      result.log_as_text = log.getvalue() # save the log as text
+    else:
+      result.log_as_text = '' # already sent it to stream
+
+    run_info.result = result  # this is what we are going to return
+
+    #Note that result is pickleable so that it can be passed back
+    # Make sure that result is small. Any large objects should be saved
+    # to disk and a file name returned.
+
+    return run_info
+
+# --  END OF SIMPLE INTERFACE TO MULTIPROCESSING WITH LARGE FIXED OBJECTS --

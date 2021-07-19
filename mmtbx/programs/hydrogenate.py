@@ -4,7 +4,7 @@ from libtbx.program_template import ProgramTemplate
 #from libtbx.utils import null_out
 from libtbx import group_args
 from libtbx.str_utils import make_sub_header
-from mmtbx.hydrogens import reduce
+from mmtbx.hydrogens import reduce_hydrogen
 
 master_phil_str = '''
 use_neutron_distances = False
@@ -48,7 +48,7 @@ Inputs:
     self.model = self.data_manager.get_model()
     #
     make_sub_header('Add H atoms', out=self.logger)
-    reduce_add_h_obj = reduce.place_hydrogens(
+    reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
       model = self.model,
       use_neutron_distances = self.params.use_neutron_distances)
     reduce_add_h_obj.run()
@@ -56,7 +56,7 @@ Inputs:
     reduce_add_h_obj.show(log = self.logger)
     #
     make_sub_header('Optimize H atoms', out=self.logger)
-    self.model = reduce.optimize(model=self.model)
+    self.model = reduce_hydrogen.optimize(model=self.model)
     #
     if(self.params.output.file_name_prefix is not None):
       base = self.params.output.file_name_prefix

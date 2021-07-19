@@ -182,6 +182,11 @@ xtc_phil_str = '''
       .help = Folder with previous processing results including crystal orientations. \
               If specified, images will not be re-indexed, but instead the known \
               orientations will be used.
+    ignore_gain_mismatch = False
+      .type = bool
+      .expert_level = 3
+      .help = Detector gain should be set on the detector models loaded from the images or in the \
+              processing parameters, not both. Override the check that this is true with this flag. \
  }
   format {
     file_format = *cbf pickle
@@ -1184,9 +1189,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         return
 
     # Load a dials mask from the trusted range and psana mask
-    from dials.util.masking import MaskGenerator
-    generator = MaskGenerator(self.params.border_mask)
-    mask = generator.generate(imgset)
+    import dials.util.masking
+    mask = dials.util.masking.generate_mask(imgset, self.params.border_mask)
     if self.params.format.file_format == "cbf" and self.dials_mask is not None:
       mask = tuple([a&b for a, b in zip(mask,self.dials_mask)])
     if self.spotfinder_mask is None:
@@ -1294,9 +1298,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       imgset = ImageSet(ImageSetData(MemReader([dxtbx_img]), None))
       imgset.set_beam(dxtbx_img.get_beam())
       imgset.set_detector(dxtbx_img.get_detector())
-      from dials.util.masking import MaskGenerator
-      generator = MaskGenerator(self.params.border_mask)
-      mask = generator.generate(imgset)
+      import dials.util.masking
+      mask = dials.util.masking.generate_mask(imgset, self.params.border_mask)
       if self.params.format.file_format == "cbf" and self.dials_mask is not None:
         mask = tuple([a&b for a, b in zip(mask,self.dials_mask)])
     if self.integration_mask is None:

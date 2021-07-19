@@ -275,11 +275,11 @@ print(map_data_deep_copy[27])  # prints original value of -0.0131240713008
 
 <!-- ----------------------------------------------------------------------- -->
 
-<h3 class="mt-5">Default in a function call set to an empty list (dont do this)</h3>
+<h3 class="mt-5">Default in a function call set to an empty list (don't do this)</h3>
 
 <p>You might be tempted to make a function call with a default argument that is an empty list, like this:</p>
 
-<pre class="codeDL"><code>def my_bad_function(value, current_list = []):   # dont do this
+<pre class="codeDL"><code>def my_bad_function(value, current_list = []):   # don't do this
   current_list.append(value)      # current_list from previous call
   return current_list   # returns current_list
 </code></pre>

@@ -165,16 +165,18 @@ def stats(model, prefix, no_ticks=True):
   # Create model; this is a single-model pure protein with new H added
   pdb_inp = iotbx.pdb.input(source_info = None, lines = rr.stdout_lines)
   model = mmtbx.model.manager(
-    model_input      = None,
-    build_grm        = True,
-    pdb_hierarchy    = pdb_inp.construct_hierarchy(),
-    process_input    = True,
+    model_input      = pdb_inp,
+    #build_grm        = True,
+    #pdb_hierarchy    = pdb_inp.construct_hierarchy(),
+    #process_input    = True,
     log              = null_out())
-  box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
-    sites_cart   = model.get_sites_cart(),
-    buffer_layer = 5)
-  model.set_sites_cart(box.sites_cart)
-  model._crystal_symmetry = box.crystal_symmetry()
+  if(model.crystal_symmetry() is None):
+    box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+      sites_cart   = model.get_sites_cart(),
+      buffer_layer = 5)
+    model.set_sites_cart(box.sites_cart)
+    model._crystal_symmetry = box.crystal_symmetry()
+  model.process_input_model(make_restraints = True)
   #
   N = 10
   #

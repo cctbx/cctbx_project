@@ -250,6 +250,19 @@ class initialize(initialize_base):
         query = "ALTER TABLE `%s_rungroup` ADD COLUMN wavelength_offset DOUBLE NULL"%self.params.experiment_tag
         cursor.execute(query)
 
+      # Maintain backwards compatibility with SQL tables v5: 12/11/20
+      query = "SHOW columns FROM `%s_rungroup`"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = list(zip(*columns))[0]
+      if 'spectrum_eV_per_pixel' not in column_names:
+        print("Upgrading to version 5.2 of mysql database schema")
+        query = "ALTER TABLE `%s_rungroup` ADD COLUMN spectrum_eV_per_pixel DOUBLE NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_rungroup` ADD COLUMN spectrum_eV_offset DOUBLE NULL"%self.params.experiment_tag
+        cursor.execute(query)
+
     return tables_ok
 
   def set_up_columns_dict(self, app):
@@ -262,13 +275,25 @@ class initialize(initialize_base):
     return columns_dict
 
 class db_application(object):
-  def __init__(self, params, cache_connection = False):
+  def __init__(self, params, cache_connection = False, mode = 'execute'):
     self.params = params
     self.dbobj = None
     self.cache_connection = cache_connection
+    self.query_count = 0
+    self.mode = mode
+    self.last_query = None
+
+  def __setattr__(self, prop, val):
+    if prop == "mode":
+      assert val in ['execute', 'cache_commits']
+    return super(db_application, self).__setattr__(prop, val)
 
   def execute_query(self, query, commit = False):
     from MySQLdb import OperationalError
+
+    if self.mode == 'cache_commits' and commit:
+      self.last_query = query
+      return
 
     if self.params.db.verbose:
       from time import time
@@ -280,8 +305,10 @@ class db_application(object):
     sleep_time = 0.1
     while retry_count < retry_max:
       try:
-        if self.dbobj is None or (not commit and not self.cache_connection):
-          self.dbobj = dbobj = get_db_connection(self.params)
+        if self.dbobj is None:
+          dbobj = get_db_connection(self.params)
+          if self.cache_connection:
+            self.dbobj = dbobj
         else:
           dbobj = self.dbobj
         cursor = dbobj.cursor()
@@ -311,22 +338,21 @@ class db_application(object):
     raise Sorry("Couldn't execute MYSQL query. Too many reconnects. Query: %s"%query)
 
 class xfel_db_application(db_application):
-  def __init__(self, params, drop_tables = False, verify_tables = False, cache_connection = False):
-    super(xfel_db_application, self).__init__(params, cache_connection)
-    self.query_count = 0
+  def __init__(self, params, drop_tables = False, verify_tables = False, **kwargs):
+    super(xfel_db_application, self).__init__(params, **kwargs)
     dbobj = get_db_connection(params)
-    self.init_tables = initialize(params, dbobj) # only place where a connection is held
+    init_tables = initialize(params, dbobj)
 
     if drop_tables:
-      self.drop_tables()
+      init_tables.drop_tables()
 
-    if verify_tables and not self.verify_tables():
-      self.create_tables()
+    if verify_tables and not init_tables.verify_tables():
+      init_tables.create_tables()
       print('Creating experiment tables...')
-      if not self.verify_tables():
+      if not init_tables.verify_tables():
         raise Sorry("Couldn't create experiment tables")
 
-    self.columns_dict = self.init_tables.set_up_columns_dict(self)
+    self.columns_dict = init_tables.set_up_columns_dict(self)
 
   def list_lcls_runs(self):
     if self.params.facility.lcls.web.location is None or len(self.params.facility.lcls.web.location) == 0:
@@ -351,15 +377,6 @@ class xfel_db_application(db_application):
         return []
 
       return [{'run':str(int(r['run_num']))} for r in sorted(j['value'], key=lambda x:x['run_num']) if r['all_present']]
-
-  def verify_tables(self):
-    return self.init_tables.verify_tables()
-
-  def create_tables(self):
-    return self.init_tables.create_tables()
-
-  def drop_tables(self):
-    return self.init_tables.drop_tables()
 
   def create_trial(self, d_min = 1.5, n_bins = 10, **kwargs):
     # d_min and n_bins only used if isoforms are in this trial

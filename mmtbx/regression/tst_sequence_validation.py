@@ -232,6 +232,7 @@ ATOM    108  CA  CYS A  16      -1.466  10.260   1.363  1.00  7.32           C
 ATOM    113  N   NH2 A  17      -2.612  12.308   2.058  1.00  8.11           N
 """)
   seq = iotbx.bioinformatics.sequence("GCCSLPPCALSNPDYCX")
+  # match last residue
   v = validation(
     pdb_hierarchy=pdb_in.construct_hierarchy(),
     sequences=[seq],
@@ -241,6 +242,19 @@ ATOM    113  N   NH2 A  17      -2.612  12.308   2.058  1.00  8.11           N
   v.show(out=out)
   assert v.chains[0].n_missing == 0
   assert v.chains[0].n_missing_end == 0
+  assert v.chains[0].n_missing_start == 0
+  assert len(v.chains[0].alignment.matches()) == 17
+  # ignore non-protein residue
+  v = validation(
+    pdb_hierarchy=pdb_in.construct_hierarchy(),
+    sequences=[seq],
+    log=null_out(),
+    nproc=1,
+    ignore_hetatm=True)
+  out = StringIO()
+  v.show(out=out)
+  assert v.chains[0].n_missing == 1
+  assert v.chains[0].n_missing_end == 1
   assert v.chains[0].n_missing_start == 0
   assert len(v.chains[0].alignment.matches()) == 17
   #
@@ -727,10 +741,10 @@ HETATM 3892  C4  A3P A 301     -30.631  -5.420  -0.849  1.00 56.63           C
 """
 
   for pdb_str, seq_str in [(pdb_str1, seq_str1), (pdb_str2, seq_str2)]:
-    seq_file = tempfile.NamedTemporaryFile(suffix='.fasta')
+    seq_file = tempfile.NamedTemporaryFile(suffix='.fasta', mode='w')
     seq_file.write(seq_str)
     seq_file.flush()
-    model_file = tempfile.NamedTemporaryFile(suffix='.pdb')
+    model_file = tempfile.NamedTemporaryFile(suffix='.pdb', mode='w')
     model_file.write(pdb_str)
     model_file.flush()
     dm = DataManager()

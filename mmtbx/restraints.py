@@ -204,7 +204,7 @@ class manager(object):
       result.geometry = None
     else:
       result.geometry = cctbx.adp_restraints.energies_iso(
-        geometry_restraints_manager=self.geometry,
+        plain_pair_sym_table=self.geometry.plain_pair_sym_table,
         xray_structure=xray_structure,
         parameters=parameters,
         wilson_b=wilson_b,

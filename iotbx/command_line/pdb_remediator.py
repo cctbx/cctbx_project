@@ -64,7 +64,7 @@ def run(args=(), params=None, out=sys.stdout):
       work_params.remediator.output_file = base + "_remediated.pdb"
   if (work_params.remediator.file_name is None):
     if (pdb_file is None):
-      summary = remediator.get_summary()
+      summary = remediator.Program.description
       raise Usage(summary)
     else :
       work_params.remediator.file_name = pdb_file.file_name

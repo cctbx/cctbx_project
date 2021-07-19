@@ -106,7 +106,7 @@ class SitesList(wx.ListCtrl,
     from iotbx import file_reader
     wildcards = file_reader.get_wildcard_strings(["pdb"])
     file_name = wx.FileSelector(
-      flags=wx.SAVE,
+      flags=wx.FD_SAVE,
       wildcard=wildcards)
     if (file_name != ""):
       self.SaveSites(file_name)

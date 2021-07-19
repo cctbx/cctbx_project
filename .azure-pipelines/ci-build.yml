@@ -5,7 +5,7 @@ jobs:
   - template: ./conda-win.yml
     parameters:
       vmImage: vs2017-win2016
-      vs: vs2015
+      vs: vs2017
       modules: modules
   - template: ./conda-linux.yml
     parameters:

@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import os, string
+import os
 from iotbx import pdb
 from mmtbx import monomer_library
 from mmtbx.chemical_components import get_bond_pairs
@@ -413,7 +413,7 @@ def make_probe_dots(hierarchy, keep_hydrogens=False):
                                   stdin_lines=r.as_pdb_string())
       build_out = easy_run.fully_buffered(build,
                                   stdin_lines=clean_out.stdout_lines)
-      input_str = string.join(build_out.stdout_lines, '\n')
+      input_str = '\n'.join(build_out.stdout_lines)
     else:
       input_str = r.as_pdb_string()
     probe_out = easy_run.fully_buffered(probe,

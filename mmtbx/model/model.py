@@ -70,12 +70,16 @@ from iotbx_pdb_hierarchy_ext import *
 
 from six.moves import cStringIO as StringIO
 from copy import deepcopy
+import re
 import sys
 import math
 
 from mmtbx.monomer_library import pdb_interpretation
 
 time_model_show = 0.0
+
+# Utilties for conversion of models to objects that can be pickled
+# Not yet fully functional
 
 def find_common_water_resseq_max(pdb_hierarchy):
   get_class = iotbx.pdb.common_residue_names_get_class
@@ -216,6 +220,8 @@ class manager(object):
     self._ncs_groups = None
     self._anomalous_scatterer_groups = []
     self.log = log
+    self._model_number = None
+    self._info= group_args() # holds any info desired
     self.exchangable_hd_groups = []
     self.original_xh_lengths = None
     self.riding_h_manager = None
@@ -302,17 +308,47 @@ class manager(object):
   @classmethod
   def from_sites_cart(cls,
       sites_cart,
-      atom_name=' CA ',
+      atom_name = None,
+      atom_name_list = None,
+      scatterer = None,
+      scatterer_list = None,
       resname='GLY',
+      resname_list = None,
       chain_id='A',
       b_iso=30.,
       b_iso_list=None,
       occ=1.,
       count=0,
       occ_list=None,
-      scatterer='C',
+      resseq_list = None,
       crystal_symmetry=None):
+
+    '''
+     Convenience function to create a model from a list of cartesian coordinates
+     Default is to use atom name CA, scatterer C, occ 1, b_iso 30, resname GLY,
+       residue numbers starting with 1
+     Can supply:
+       atom_name and scatterer or atom_name_list and scatterer_list
+       occ or occ_list
+       b_iso or b_iso_list
+       resname or resname_list
+       resseq_list
+    '''
+
     assert sites_cart is not None
+    if atom_name is None and atom_name_list is None:
+      atom_name = ' CA '
+      scatterer = 'C'
+      scatterer_list = None
+    elif atom_name:
+      if scatterer is None and scatterer_list is None:
+        if atom_name.strip().upper()=='CA':
+          scatterer = 'C'
+        else:
+         assert scatterer is not None # need scatterer if atom_name is not CA
+    elif atom_name_list:
+      assert scatterer_list is not None
+
     hierarchy = iotbx.pdb.hierarchy.root()
     m = iotbx.pdb.hierarchy.model()
     c = iotbx.pdb.hierarchy.chain()
@@ -323,23 +359,41 @@ class manager(object):
       b_iso_list=sites_cart.size()*[b_iso]
     if not occ_list:
       occ_list=sites_cart.size()*[occ]
+    if not atom_name_list:
+      atom_name_list = sites_cart.size()*[atom_name]
+    if not resname_list:
+      resname_list = sites_cart.size()*[resname]
+    if not scatterer_list:
+      scatterer_list = sites_cart.size()*[scatterer]
+
     assert len(occ_list) == len(b_iso_list) == sites_cart.size()
-    for sc, b_iso, occ in zip(sites_cart,b_iso_list,occ_list):
+    if not resseq_list:
+       resseq_list = []
+       for i in range(1,sites_cart.size()+1):
+         resseq_list.append(iotbx.pdb.resseq_encode(i))
+
+    last_resseq=None
+    for sc, b_iso, occ, name, resseq, scatterer, resname in zip(
+        sites_cart,b_iso_list,occ_list,atom_name_list, resseq_list,
+        scatterer_list, resname_list):
       count+=1
-      rg=iotbx.pdb.hierarchy.residue_group()
-      c.append_residue_group(rg)
+      if last_resseq is None or resseq != last_resseq:
+        rg=iotbx.pdb.hierarchy.residue_group()
+        c.append_residue_group(rg)
       ag=iotbx.pdb.hierarchy.atom_group()
       rg.append_atom_group(ag)
       a=iotbx.pdb.hierarchy.atom()
       ag.append_atom(a)
-      rg.resseq = iotbx.pdb.resseq_encode(count)
+      rg.resseq = resseq
       ag.resname=resname
       a.set_b(b_iso)
       a.set_element(scatterer)
       a.set_occ(occ)
-      a.set_name(atom_name)
+      a.set_name(name)
       a.set_xyz(sc)
       a.set_serial(count)
+      last_resseq = resseq
+
     return cls(model_input = None, pdb_hierarchy=hierarchy,
        crystal_symmetry=crystal_symmetry)
 
@@ -371,7 +425,6 @@ class manager(object):
     """
     return self._pdb_interpretation_params
 
-
   def get_xray_structure(self):
     if(self._xray_structure is None):
       cs = self.crystal_symmetry()
@@ -381,8 +434,6 @@ class manager(object):
       self._xray_structure = self.get_hierarchy().extract_xray_structure(
         crystal_symmetry = cs)
     return self._xray_structure
-
-  # Setters
 
   def set_sites_cart(self, sites_cart, selection=None):
     if(sites_cart is None): return
@@ -405,7 +456,25 @@ class manager(object):
       b_iso = values
     if(self._xray_structure is not None):
       self.get_xray_structure().set_b_iso(values = b_iso, selection=selection)
+      u_iso = self.get_xray_structure().scatterers().extract_u_iso()
+      b_iso = u_iso * adptbx.u_as_b(1)
+      b_iso = b_iso.set_selected(~self.get_xray_structure().use_u_iso(), -1)
     self.get_hierarchy().atoms().set_b(b_iso)
+
+  def convert_to_isotropic(self, selection=None):
+    if(selection is not None and isinstance(selection, flex.bool)):
+      selection = selection.iselection()
+    if(self._xray_structure is not None):
+      self._xray_structure.convert_to_isotropic(selection = selection)
+    atoms = self.get_hierarchy().atoms()
+    if(selection is None):
+      selection = flex.bool(atoms.size(), True).iselection()
+    for i in selection:
+      a = atoms[i]
+      u_cart = a.uij
+      if(u_cart != (-1,-1,-1,-1,-1,-1)):
+        a.set_uij((-1,-1,-1,-1,-1,-1))
+        a.set_b( adptbx.u_as_b(adptbx.u_cart_as_u_iso(u_cart)) )
 
   def set_occupancies(self, values, selection=None):
     if(values is None): return
@@ -417,8 +486,6 @@ class manager(object):
     if(self._xray_structure is not None):
       self.get_xray_structure().set_occupancies(value = occ)
     self.get_hierarchy().atoms().set_occ(occ)
-
-  # Getters
 
   def get_b_iso(self):
     return self.get_hierarchy().atoms().extract_b()
@@ -441,6 +508,37 @@ class manager(object):
   def set_log(self, log):
     self.log = log
 
+  def set_model_number(self, model_number):
+    self._model_number = model_number
+
+  def model_number(self):
+    return self._model_number
+
+  def set_info(self, info):
+    self._info = info
+
+  def info(self):
+    return self._info
+
+  def __getstate__(self):
+    ''' The _ss_manager is not pickleable. Remove it before pickling
+      It may be present by itself or as an attribute of _processed_pdb_file
+      Also restraints_manager is not pickleable
+      This method removes _ss_manager and restraints_manager
+      Also removes log
+    '''
+
+    self_dc = self.deep_copy() # Avoid changing the model itself
+    self_dc._ss_manager = None
+    self_dc.unset_restraints_manager()
+    self_dc.log = None
+
+    state = self_dc.__dict__
+    return state
+
+  def __setstate__(self, state):
+    self.__dict__.update(state)
+
   def __repr__(self):
     """
       Summarize the model_manager
@@ -450,18 +548,28 @@ class manager(object):
       counts = h.overall_counts()
       nres = counts.n_residues
       nchains = counts.n_chains
+      from mmtbx.secondary_structure.find_ss_from_ca import \
+          get_first_chain_id_and_resno, get_last_chain_id_and_resno
+      first_residue_text = get_first_chain_id_and_resno(h)
+      last_residue_text = get_last_chain_id_and_resno(h)
     else:
       nres = 0
       nchains = 0
+      first_residue_text = ""
+      last_residue_text = ""
     if self.shift_cart():
       sc = tuple(self.shift_cart())
     else:
       sc = (0, 0, 0)
+
     return "Model manager "+\
-      "\n%s\nChains: %s Residues %s \nWorking coordinate shift %s)" %(
+      "%s" %(self.model_number()) if self.model_number() is not None else "" + \
+      "\n%s\nChains: %s Residues %s (%s - %s)\nWorking coordinate shift %s)" %(
       str(self.unit_cell_crystal_symmetry()).replace("\n"," "),
       str(nchains),
       str(nres),
+      str(first_residue_text),
+      str(last_residue_text),
       str(sc))
 
   def set_stop_for_unknowns(self, value):
@@ -500,6 +608,7 @@ class manager(object):
 
   def set_nonbonded_weight(self, value):
     params = self.get_current_pdb_interpretation_params()
+    if(params.pdb_interpretation.nonbonded_weight == value): return
     params.pdb_interpretation.nonbonded_weight = value
     self.set_pdb_interpretation_params(params = params)
 
@@ -549,6 +658,22 @@ class manager(object):
   def set_ss_annotation(self, ann):
     self._ss_annotation = ann
 
+  def add_crystal_symmetry_if_necessary(self, box_cushion = 3):
+    '''
+      If this model does not have crystal_symmetry set, create a dummy
+      crystal_symmetry that goes around the model.  Do not shift position.
+    '''
+    if self.crystal_symmetry() and self.crystal_symmetry().unit_cell() and \
+        self.crystal_symmetry().space_group() :
+      return  # nothing to do
+
+    sites_cart=self.get_sites_cart()
+
+    a,b,c = matrix.col(sites_cart.max()) - matrix.col(sites_cart.min()) + \
+      2 * matrix.col((box_cushion,box_cushion,box_cushion))
+    crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
+    self.set_crystal_symmetry(crystal_symmetry)
+
   def set_unit_cell_crystal_symmetry_and_shift_cart(self,
        unit_cell_crystal_symmetry=None,
        shift_cart=None):
@@ -571,7 +696,8 @@ class manager(object):
   def shift_model_and_set_crystal_symmetry(self,
        shift_cart,     # shift to apply
        crystal_symmetry = None, # optional new crystal symmetry
-       unit_cell_crystal_symmetry = None, # optional new unit_cell_crystal_symmetry
+       unit_cell_crystal_symmetry = None, # optional new
+             #unit_cell_crystal_symmetry
        ):
 
     '''
@@ -595,7 +721,6 @@ class manager(object):
 
     assert unit_cell_crystal_symmetry is None or isinstance(
       unit_cell_crystal_symmetry,  crystal.symmetry)
-
 
     # Get shift info  that knows about unit_cell_crystal_symmetry
     #   and any prevous shift_cart
@@ -631,7 +756,7 @@ class manager(object):
     #   model, it is not the shift in this step alone. It is the shift which
     #   reversed will put the model back where it belongs
 
-    self._shift_cart = total_shift
+    self._shift_cart = tuple(total_shift)
     self._unit_cell_crystal_symmetry =  unit_cell_crystal_symmetry
 
   def shift_model_back(self):
@@ -664,7 +789,7 @@ class manager(object):
     if self._shift_cart is None:
       self._shift_cart = (0, 0, 0)
     else:
-      assert tuple(self._shift_cart) == (0 ,0 ,0)
+      assert tuple(self._shift_cart) == (0 ,0 ,0) # consider map_model_manager.shift_any_model_to_match
 
     self._unit_cell_crystal_symmetry = crystal_symmetry
 
@@ -705,22 +830,17 @@ class manager(object):
 
     assert crystal_symmetry is not None  # must supply crystal_symmetry
 
-
-    # Save existing sites_cart
-    if self._xray_structure:
-      existing_sites_cart = self._xray_structure.sites_cart()
-    else:
-      existing_sites_cart = None
-
     # Check for missing _crystal_symmetry
-    if(self._crystal_symmetry is None):
+    if(self._crystal_symmetry is None \
+         or self._crystal_symmetry.unit_cell() is None):
       # Set self._crystal_symmetry.
       assert self._xray_structure is None # can't have xrs without crystal sym
       self._crystal_symmetry = crystal_symmetry
 
     # Useable crystal symmetry and same as input
     if self.crystal_symmetry() and self.crystal_symmetry().is_similar_symmetry(
-        crystal_symmetry):
+      crystal_symmetry) and (self.crystal_symmetry().unit_cell().parameters() ==
+         crystal_symmetry.unit_cell().parameters()):
       # Keep the xray_structure but change sites_cart if present and update
       xrs=self.get_xray_structure() # Make sure xrs is set up
       # Make sure xrs has same symmetry as self
@@ -730,35 +850,56 @@ class manager(object):
       self._crystal_symmetry = xrs.crystal_symmetry()
 
       # set the sites_cart if supplied
-      self.set_sites_cart(sites_cart = sites_cart)
+      if sites_cart:
+        self.set_sites_cart(sites_cart = sites_cart)
       self._update_has_hd()
 
     else:  # Make a new xray_structure with new symmetry and put in sites
 
       xrs=self.get_xray_structure() # Make sure xrs is set up
 
+      # Save existing sites_cart and iso or aniso u_cart
+      # Note that u_iso and u_cart are separate entities
+      uc = self._xray_structure.crystal_symmetry().unit_cell()
+      existing_u_cart = self._xray_structure.scatterers().extract_u_cart(uc)
+      existing_u_iso= self._xray_structure.scatterers().extract_u_iso()
+
       if sites_cart is None:
-        sites_cart = existing_sites_cart
+        sites_cart = self._xray_structure.sites_cart()
 
       # Changing crystal_symmetry changes sites_frac but keeps sites_cart same
+      # Also u_iso and u_cart are the same numbers
 
       # Reset _crystal_symmetry
       scattering_table = xrs.scattering_type_registry().last_table()
       scatterers = xrs.scatterers()
       sp = crystal.special_position_settings(crystal_symmetry)
-      self._xray_structure = xray.structure(sp, scatterers)
+      self._xray_structure = xray.structure(sp, scatterers) # new symmetry
       self._crystal_symmetry = \
         self._xray_structure.crystal_symmetry() # make it identical
-      self.set_sites_cart(sites_cart = sites_cart)
 
-      if scattering_table: # if not there, were not any scattering tables before
+      # Set sites_cart u_cart, u_iso in xray_structure
+      new_uc = self._xray_structure.crystal_symmetry().unit_cell()
+      self._xray_structure.set_sites_cart(sites_cart = sites_cart)
+      self._xray_structure.set_u_iso(values = existing_u_iso)
+      self._xray_structure.set_u_cart(existing_u_cart)
+
+      # Transfer xray_structure info to hierarchy if present
+      if self.get_hierarchy():
+        self.get_hierarchy().adopt_xray_structure(self._xray_structure)
+
+      # Set up scattering table if there was one before
+      if scattering_table:
         self.setup_scattering_dictionaries(scattering_table = scattering_table)
       #
       if(self.get_restraints_manager() is not None):
         self.get_restraints_manager().geometry.replace_site_symmetry(
-          new_site_symmetry_table = self._xray_structure.site_symmetry_table())
+          new_site_symmetry_table   = self._xray_structure.site_symmetry_table(),
+          special_position_settings = self._xray_structure.special_position_settings(),
+          sites_cart                = self._xray_structure.sites_cart())
         # Not sure if this is needed.
         self.get_restraints_manager().geometry.crystal_symmetry=crystal_symmetry
+        self.restraints_manager.crystal_symmetry=crystal_symmetry
         # This updates some of internals
         self.get_restraints_manager().geometry.pair_proxies(
           sites_cart = self.get_sites_cart())
@@ -768,6 +909,12 @@ class manager(object):
       return self._unit_cell_crystal_symmetry
     else:
       return None
+
+  def shifted(self, eps=1.e-3):
+    r = self.shift_cart()
+    if(r is None): return False
+    if(flex.max(flex.abs(flex.double(r)))<=eps): return False
+    return True
 
   def shift_cart(self):
     '''
@@ -825,6 +972,13 @@ class manager(object):
 
   def get_site_symmetry_table(self):
     return self._site_symmetry_table
+
+  def altlocs_present(self):
+    result = False
+    conformer_indices = self.get_hierarchy().get_conformer_indices()
+    if(len(list(set(list(conformer_indices))))>1):
+      result = True
+    return result
 
   def initialize_anomalous_scatterer_groups(
       self,
@@ -928,6 +1082,31 @@ class manager(object):
       self.set_xray_structure(self._xray_structure.customized_copy(
           non_unit_occupancy_implies_min_distance_sym_equiv_zero=value))
 
+  def ncs_is_strict(self, eps_occ=1.e-2, eps_adp=1.e-2, eps_xyz=1.e-3):
+    """
+    Check sites, ADP and occupancy to obey NCS symmetry
+    """
+    result = group_args(occ = True, adp = True, xyz = True, size = True)
+    result.stop_dynamic_attributes()
+    ncs_groups = self.get_ncs_groups()
+    if(ncs_groups is None or len(ncs_groups)==0): return None
+    for i, g in enumerate(ncs_groups):
+      m_master          = self.select(g.master_iselection)
+      occ_master        = m_master.get_occ()
+      b_master          = m_master.get_b_iso()
+      master_sites_cart = m_master.get_sites_cart()
+      for j, c in enumerate(g.copies):
+        m_copy   = self.select(c.iselection)
+        occ_copy = m_copy.get_occ()
+        b_copy   = m_copy.get_b_iso()
+        if(b_copy.size() != b_master.size()): result.size = False
+        if(flex.max(flex.abs(occ_master-occ_copy))>eps_occ): result.occ = False
+        if(flex.max(flex.abs(b_master-b_copy))>eps_adp): result.adp = False
+        master_on_copy_sites_cart = c.r.elems * master_sites_cart + c.t
+        d = flex.sqrt((master_on_copy_sites_cart-m_copy.get_sites_cart()).dot())
+        if(flex.max(d)>eps_xyz): result.xyz = False
+    return result
+
   def get_hd_selection(self):
     xrs = self.get_xray_structure()
     return xrs.hd_selection()
@@ -974,6 +1153,25 @@ class manager(object):
 
   def sel_sidechain(self):
     return self._get_selection_manager().sel_backbone_or_sidechain(False, True)
+
+  def replace_model_hierarchy_with_other(self, other_model):
+    ''' Replace hierarchy with one from another model '''
+    model_ph = self.get_hierarchy() # working hierarchy
+    other_model_ph = other_model.get_hierarchy()
+    for m in model_ph.models():
+      model_ph.remove_model(m)
+    for m in other_model_ph.models():
+      model_ph.append_model(m.detached_copy())
+    self.reset_after_changing_hierarchy()
+
+  def reset_after_changing_hierarchy(self):
+
+    '''  Regenerate xray_structure after changing hierarchy '''
+    self.update_xrs()
+    self._update_atom_selection_cache()
+    self.get_hierarchy().atoms().reset_serial() # redo the numbering
+    self.get_hierarchy().atoms().reset_i_seq() # redo the numbering
+    self.unset_restraints_manager() # no longer applies
 
   def set_xray_structure(self, xray_structure):
     # XXX Delete as a method or make sure all TLS, NCS, refinement flags etc
@@ -1171,12 +1369,45 @@ class manager(object):
       ss_ann.remove_empty_annotations(self.get_hierarchy())
     return ss_ann
 
+  def can_be_unique_with_biomt(self):
+    if not self.ncs_constraints_present():
+      return False
+    original_nrgl = self.get_ncs_groups()
+    if len(original_nrgl) > 1:
+      return False
+    filtered_nrgl = original_nrgl.filter_ncs_restraints_group_list(
+        self.get_hierarchy(), self.get_ncs_obj())
+    if not (original_nrgl == filtered_nrgl):
+      return False
+    if not original_nrgl.check_for_max_rmsd(self.get_sites_cart(), 0.01, null_out()):
+      return False
+    return True
+
   def model_as_mmcif(self,
       cif_block_name = "default",
       output_cs = True,
       additional_blocks = None,
       align_columns = False,
-      do_not_shift_back = False):
+      do_not_shift_back = False,
+      try_unique_with_biomt = False):
+    if try_unique_with_biomt:
+      if not self.can_be_unique_with_biomt():
+        return ""
+      sel, cb = self.get_ncs_groups().unique_with_biomt(self.get_hierarchy())
+      cutted_m = self.select(sel)
+      cutted_m.get_hierarchy().atoms_reset_serial()
+      ab = additional_blocks
+      if additional_blocks is not None:
+        ab.append(cb)
+      else:
+        ab = [cb]
+      return cutted_m.model_as_mmcif(
+          cif_block_name = cif_block_name,
+          output_cs = output_cs,
+          additional_blocks = ab,
+          align_columns = align_columns,
+          do_not_shift_back = do_not_shift_back,
+          try_unique_with_biomt = False)
     out = StringIO()
     cif = iotbx.cif.model.cif()
     cif_block = None
@@ -1324,6 +1555,8 @@ class manager(object):
     acp = self._processed_pdb_file.all_chain_proxies
     self._atom_selection_cache = acp.pdb_hierarchy.atom_selection_cache()
     self._pdb_hierarchy        = acp.pdb_hierarchy
+    self._type_energies        = acp.type_energies
+    self._type_h_bonds         = acp.type_h_bonds
     xray_structure_all = \
           self._processed_pdb_file.xray_structure(show_summary = False)
     # XXX ad hoc manipulation
@@ -1618,6 +1851,9 @@ class manager(object):
     self._update_master_sel()
 
   def _update_master_sel(self):
+    # self._master_sel here is really unique part of the model,
+    # i.e. all masters + part of model not covered by NCS,
+    # therefore excluding copies instead of using master selections.
     if self._ncs_groups is not None and len(self._ncs_groups) > 0:
       # determine master selections
       self._master_sel = flex.bool(self.get_number_of_atoms(), True)
@@ -1671,6 +1907,16 @@ class manager(object):
     else:
       print("No NCS restraint groups specified.", file=self.log)
       print(file=self.log)
+
+  def get_specific_h_bond_type(self, atom):
+    type_h_bond = self._type_h_bonds[atom.i_seq]
+    return type_h_bond
+
+  def get_specific_vdw_radii(self, atom):
+    e = self.get_ener_lib()
+    type_energy = self._type_energies[atom.i_seq]
+    vdw = e.lib_atom[type_energy].vdw_radius
+    return vdw
 
   def get_vdw_radii(self, vdw_radius_default = 1.0):
     """
@@ -2135,7 +2381,7 @@ class manager(object):
     xrs = self.get_xray_structure()
     scatterers = xrs.scatterers()
     for scatterer in scatterers:
-      neutralized_scatterer = filter(lambda x: x.isalpha(), scatterer.scattering_type)
+      neutralized_scatterer = re.sub('[^a-zA-Z]', '', scatterer.scattering_type)
       if (neutralized_scatterer != scatterer.scattering_type):
         neutralized = True
         scatterer.scattering_type = neutralized_scatterer
@@ -2751,6 +2997,8 @@ class manager(object):
     new.restraints_manager = new_restraints_manager
     new._xray_structure    = xrs_new
     new.tls_groups = sel_tls
+    new._model_number = self._model_number
+    new._info = deepcopy(self._info)
 
     if new_riding_h_manager is not None:
       new.riding_h_manager = new_riding_h_manager
@@ -3369,6 +3617,23 @@ class manager(object):
       self._xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection = selection_aniso.iselection())
 
+  def as_map_model_manager(self, map_manager = None,
+    create_model_map = False, resolution = None):
+   """ Return a map_model_manager containing this model
+     (and optional map_manager)
+    Note that a map_manager is required for most functions of the
+    map_model_manager.  You can generate a map_manager with
+    create_model_map = True and setting resolution
+   """
+
+   from iotbx.map_model_manager import map_model_manager
+   mmm = map_model_manager(model = self, map_manager = map_manager)
+   if create_model_map:
+     assert resolution is not None
+     mmm.set_resolution(resolution)
+     mmm.generate_map()
+   return mmm
+
   def _expand_symm_helper(self, records_container):
     """
     This will expand hierarchy and ss annotations. In future anything else that
@@ -3555,5 +3820,6 @@ class manager(object):
       custom_residues=custom_residues,
       params=params,
       log=self.log,
-      minimum_identity=minimum_identity
+      minimum_identity=minimum_identity,
+      ignore_hetatm=True
     )

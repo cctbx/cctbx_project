@@ -16,8 +16,7 @@ all integrated lattices.
 ```
 cores=32
 
-export effective_params="dispatch.step_list=input \
-dispatch.step_list=tdata \
+export effective_params="dispatch.step_list=\"input tdata\" \
 input.path=${DIALS_OUTPUT}/r*/*/out \
 input.experiments_suffix=_integrated_experiments.json \
 input.reflections_suffix=_integrated.pickle \

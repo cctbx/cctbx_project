@@ -172,6 +172,13 @@ class symmetry(object):
   def __repr__(self):
     return self.as_py_code(indent="  ")
 
+  def is_identical_symmetry(self, other):
+    ''' True if identical for self and other '''
+    return self.is_similar_symmetry(other,
+      relative_length_tolerance = 0,
+      absolute_angle_tolerance = 0,
+      absolute_length_tolerance = 0,)
+
   def is_similar_symmetry(self,
                           other,
                           relative_length_tolerance=0.01,

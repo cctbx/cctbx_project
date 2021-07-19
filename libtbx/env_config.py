@@ -659,6 +659,19 @@ class environment:
     return result
 
   def has_module(self, name):
+    # check installed environment first
+    result = self.check_installed_env('_has_module', name)
+    if result:
+      return result
+    # check current environment
+    result = self._has_module(name)
+    if result:
+      return result
+    # then check local environment
+    result = self.check_local_env('_has_module', name)
+    return result
+
+  def _has_module(self, name):
     return name in self.module_dist_paths
 
   def require_module(self, name, error=RuntimeError):
@@ -908,6 +921,7 @@ Wait for the command to finish, then try again.""" % vars())
         path = abs(self.build_path / path)
       self.add_repository(path=path)
     module_names = []
+    installed_env = get_installed_env()
     for module_name in command_line.args:
       if (len(module_name) == 0): continue # ignore arguments like ""
       if (module_name == ".."):
@@ -973,7 +987,6 @@ Wait for the command to finish, then try again.""" % vars())
       self.build_options.get_flags_from_environment()
       # if an installed environment exists, override with build_options
       # from installed environment
-      installed_env = get_installed_env()
       if installed_env is not None:
         self.build_options = installed_env.build_options
       if (self.build_options.use_conda):
@@ -989,7 +1002,6 @@ Wait for the command to finish, then try again.""" % vars())
     module_names.insert(0, "libtbx")
 
     # check for installed environment and remove installed modules
-    installed_env = get_installed_env()
     if installed_env is not None and not self.installed:
       module_set = set(module_names)
       installed_module_names = set([module.name for module in self.installed_modules])
@@ -1026,9 +1038,14 @@ Wait for the command to finish, then try again.""" % vars())
         pass
       else:
         self.scons_dist_path = self.as_relocatable_path(sys.prefix)
-    self.path_utility = self.under_dist(
-      "libtbx", "command_line/path_utility.py",
-      return_relocatable_path=True)
+    if installed_env is not None and not self.installed:
+      self.path_utility = installed_env.under_dist(
+        "libtbx", "command_line/path_utility.py",
+        return_relocatable_path=True)
+    else:
+      self.path_utility = self.under_dist(
+        "libtbx", "command_line/path_utility.py",
+        return_relocatable_path=True)
     assert self.path_utility.isfile()
 
   def dispatcher_precall_commands(self):
@@ -3019,7 +3036,7 @@ def unpickle(build_path=None, env_name="libtbx_env"):
   if build_path is None:
     build_path = os.getenv("LIBTBX_BUILD")
   # try default installed location
-  if build_path is None:
+  if not build_path:
     build_path = get_installed_path()
   set_preferred_sys_prefix_and_sys_executable(build_path=build_path)
   with open(op.join(build_path, env_name), "rb") as libtbx_env:
@@ -3051,6 +3068,7 @@ def unpickle(build_path=None, env_name="libtbx_env"):
     env.exe_path._anchor = sys_prefix
     env.include_path._anchor = sys_prefix
     env.lib_path._anchor = sys_prefix
+    env.path_utility._anchor = sys_prefix
   return env
 
 def warm_start(args):

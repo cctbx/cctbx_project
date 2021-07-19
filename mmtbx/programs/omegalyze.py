@@ -63,6 +63,7 @@ Example:
       .help = "Path for output file"
 """
   datatypes = ['model','phil']
+  data_manager_options = ['model_skip_expand_with_mtrix']
 
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)

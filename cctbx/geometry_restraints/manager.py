@@ -94,9 +94,25 @@ class manager(Base_geometry):
     self.effective_nonbonded_buffer = self.nonbonded_buffer
     self.n_updates_pair_proxies = 0
 
-  def replace_site_symmetry(self, new_site_symmetry_table):
+  def replace_site_symmetry(self, new_site_symmetry_table,
+                                  special_position_settings,
+                                  sites_cart):
     assert self.site_symmetry_table is not None
     self.site_symmetry_table = new_site_symmetry_table
+    # Recompute shell_sym_tables
+    asu_mappings = special_position_settings.asu_mappings(
+      buffer_thickness = self.max_reasonable_bond_distance*3)
+    asu_mappings.process_sites_cart(
+      original_sites      = sites_cart,
+      site_symmetry_table = self.site_symmetry_table)
+    bond_asu_table = crystal.pair_asu_table(asu_mappings = asu_mappings)
+    # Add all previously defined bonds
+    bond_asu_table.add_pair_sym_table(self.shell_sym_tables[0])
+    shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
+      pair_asu_table = bond_asu_table,
+      max_shell      = 3)
+    self.shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
+      for shell_asu_table in shell_asu_tables]
     self.reset_internals()
 
   def simple_edge_list(self, omit_slack_greater_than=0):
@@ -328,7 +344,8 @@ class manager(Base_geometry):
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
       parallelity_proxies=self.parallelity_proxies,
-      plain_pairs_radius=self.plain_pairs_radius)
+      plain_pairs_radius=self.plain_pairs_radius,
+      max_reasonable_bond_distance=self.max_reasonable_bond_distance)
     result.set_source(source = self.get_source())
     return result
 
@@ -410,7 +427,8 @@ class manager(Base_geometry):
       chirality_proxies=selected_proxies[6],
       planarity_proxies=selected_proxies[7],
       parallelity_proxies=selected_proxies[8],
-      plain_pairs_radius=self.plain_pairs_radius)
+      plain_pairs_radius=self.plain_pairs_radius,
+      max_reasonable_bond_distance=self.max_reasonable_bond_distance)
     result.set_source(source = self.get_source())
     return result
 
@@ -448,7 +466,8 @@ class manager(Base_geometry):
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
       parallelity_proxies=self.parallelity_proxies,
-      plain_pairs_radius=self.plain_pairs_radius)
+      plain_pairs_radius=self.plain_pairs_radius,
+      max_reasonable_bond_distance=self.max_reasonable_bond_distance)
     result.set_source(source = self.get_source())
     return result
 
@@ -822,9 +841,10 @@ class manager(Base_geometry):
         pdb_hierarchy=hierarchy,
         grm=self,
         log=log)
+    # print ('Total proxies:', len(hb_proxies))
     # for p in hb_proxies:
-    #   print p.i_seqs[0], p.i_seqs[1], hierarchy.atoms()[p.i_seqs[0]].id_str(), '<-->', hierarchy.atoms()[p.i_seqs[1]].id_str(),
-    #   print hierarchy.atoms()[p.i_seqs[0]].distance(hierarchy.atoms()[p.i_seqs[1]])
+    #   print (p.i_seqs[0], p.i_seqs[1], hierarchy.atoms()[p.i_seqs[0]].id_str(), '<-->', hierarchy.atoms()[p.i_seqs[1]].id_str())
+    #   print ("  ", hierarchy.atoms()[p.i_seqs[0]].distance(hierarchy.atoms()[p.i_seqs[1]]))
     self.add_new_hbond_restraints_in_place(
         proxies=hb_proxies,
         sites_cart=hierarchy.atoms().extract_xyz(),
@@ -1009,6 +1029,8 @@ class manager(Base_geometry):
     paired atoms is determined here, therefore the proxy.rt_mx_ji may be
     anything."""
     import time
+    if len(proxies) == 0:
+      return
     rt_mx_ji_options = [[] for x in proxies]
     # Get current max bond distance, copied from pair_proxies()
     t0 = time.time()
