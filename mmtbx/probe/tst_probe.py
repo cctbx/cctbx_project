@@ -23,6 +23,8 @@ from iotbx.data_manager import DataManager
 from cctbx.maptbx.box import shift_and_box_model
 import mmtbx
 
+import Helpers
+
 def BestMatch(name, d):
   '''Find the best match for the name in the dictionary keys.  It must match the
   first character of the name and then pick the one with the maximum number of
@@ -81,23 +83,13 @@ def RunProbeTests(inFileName):
     mmm.generate_map()              #   get a model from a generated small library model and calculate a map for it
     model = mmm.model()             #   get the model
 
-  # Fill in an ExtraAtomInfoList with an entry for each atom in the hierarchy.
-  # We first find the largest i_seq sequence number in the model and reserve that
-  # many entries so we will always be able to fill in the entry for an atom.
-  print('Filling in extra atom information needed for probe score')
-  atoms = model.get_atoms()
-  maxI = atoms[0].i_seq
-  for a in atoms:
-    if a.i_seq > maxI:
-      maxI = a.i_seq
-  extra = []
-  for i in range(maxI+1):
-    extra.append(probe.ExtraAtomInfo())
-
   # Fix up bogus unit cell when it occurs by checking crystal symmetry.
   cs =model.crystal_symmetry()
   if (cs is None) or (cs.unit_cell() is None):
     model = shift_and_box_model(model = model)
+
+  # Get the list of all atoms in the model
+  atoms = model.get_atoms()
 
   # Get the bonding information we'll need to exclude our bonded neighbors.
   try:
@@ -110,51 +102,14 @@ def RunProbeTests(inFileName):
         geometry.get_all_bond_proxies(sites_cart = sites_cart)
   except Exception as e:
     return "Could not get bonding information for input file: " + str(e)
-
-  # Make a mapping from sequence number to atom so that we can quickly look this
-  # up when finding bonded neighbors
-  # Make a dictionary for each atom listing all of its bonded neighbors
-  # @todo There may be a faster way to find bonded neighbors that does not require
-  # this.
-  atomDict = {}
-  for a in atoms:
-    atomDict[a.i_seq] = a
-  bondedNeighbors = {}
-  for a in atoms:
-    bondedNeighbors[a] = []
-  for bp in bond_proxies_simple:
-    bondedNeighbors[atomDict[bp.i_seqs[0]]].append(atomDict[bp.i_seqs[1]])
-    bondedNeighbors[atomDict[bp.i_seqs[1]]].append(atomDict[bp.i_seqs[0]])
+  bondedNeighbors = Helpers.getBondedNeighborLists(atoms, bond_proxies_simple)
 
   # Traverse the hierarchy and look up the extra data to be filled in.
-  # Get a list of all the atoms in the chain while we're at it
-  atoms = []
-  mon_lib_srv = model.get_mon_lib_srv()
-  ener_lib = mmtbx.monomer_library.server.ener_lib()
-  ph = model.get_hierarchy()
-  for m in ph.models():
-    for chain in m.chains():
-      for rg in chain.residue_groups():
-        for ag in rg.atom_groups():
-          md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
-                residue_name=ag.resname, atom_names=ag.atoms().extract_name())
-          atom_dict = md.atom_dict()
-
-          for a in ag.atoms():
-            atoms.append(a)
-            name = a.name.strip()
-            try:
-              te = atom_dict[name].type_energy
-            except KeyError:
-              match = BestMatch(name, atom_dict)
-              print('Warning: Could not find entry in atom dictionary for',name,'replacing with',match, flush=True)
-              te = atom_dict[match].type_energy
-            extra[a.i_seq].vdwRadius = ener_lib.lib_atom[te].vdw_radius
-            hb_type = ener_lib.lib_atom[te].hb_type
-            if hb_type == "A":
-              extra[a.i_seq].isAcceptor = True
-            if hb_type == "D":
-              extra[a.i_seq].isDonor = True
+  print('Filling in extra atom information needed for probe score')
+  ret = Helpers.getExtraAtomInfo(model)
+  extra = ret.extraAtomInfo
+  if len(ret.warnings) > 0:
+    print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings)
 
   # Construct a SpatialQuery and fill in the atoms.  Ensure that we can make a
   # query within 1000 Angstroms of the origin.
