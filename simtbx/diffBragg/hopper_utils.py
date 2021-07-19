@@ -565,7 +565,7 @@ def model(x, SIM, pfs, verbose=True, compute_grad=True):
 
         if compute_grad:
             if SIM.Scale_params[0].refine:
-                scale_grad = model_pix / scale
+                scale_grad = pix  # TODO double check multi crystal case
                 scale_grad = SIM.Scale_params[i_xtal].get_deriv(scale_reparam, scale_grad)
                 J[7*i_xtal] += scale_grad
 
@@ -820,6 +820,12 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
     else:
         fN = frot = fucell = fz = fG = 0
 
+    fN_vol = 0
+    if params.centers.Nvol is not None:
+        Nvol = Na*Nb*Nc
+        del_Nvol = params.centers.Nvol - Nvol
+        fN_vol = .5*del_Nvol**2/params.betas.Nvol
+
 #   accumulate target function
     f = fchi  # target function is f
     if SIM.Nabc_params[0].refine:
@@ -832,6 +838,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
         f += fz
     if SIM.Scale_params[0].refine:
         f += fG
+    f += fN_vol
 
     # fractions of the target function
     chi = fchi / f *100
@@ -856,14 +863,20 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
             # update gradients according to restraints
             g[0] += SIM.Scale_params[0].get_deriv(x[0], -delG / params.betas.G)
             for i_rot in range(3):
-                g[1+i_rot] += SIM.RotXYZ_params[i_rot].get_deriv(x[1], -delta_RotXYZ[i_rot] / params.betas.RotXYZ)
+                g[1+i_rot] += SIM.RotXYZ_params[i_rot].get_deriv(x[1+i_rot], -delta_RotXYZ[i_rot] / params.betas.RotXYZ)
             for i_N in range(3):
-                g[4+i_N] += SIM.Nabc_params[i_N].get_deriv(x[4], -delta_Nabc[i_N]/ params.betas.Nabc[i_N])
+                g[4+i_N] += SIM.Nabc_params[i_N].get_deriv(x[4+i_N], -delta_Nabc[i_N]/ params.betas.Nabc[i_N])
             for i_uc in range(n_uc_param):
                 beta = params.betas.ucell[i_uc]
                 del_uc = params.centers.ucell[i_uc] - ucvar[i_uc]
                 g[7+i_uc] += SIM.ucell_params[i_uc].get_deriv(x[7+i_uc], -del_uc / beta)
             g[7+n_uc_param] += SIM.DetZ_param.get_deriv(x[7+n_uc_param], -del_detz/params.betas.detz_shift)
+
+        if params.centers.Nvol is not None:
+            dNvol_dN = Nb*Nc, Na*Nc, Na*Nb
+            for i_N in range(3):
+                gterm = -del_Nvol / params.betas.Nvol * dNvol_dN[i_N]
+                g[4+i_N] += SIM.Nabc_params[i_N].get_deriv(x[4+i_N], gterm)
 
         gnorm = np.linalg.norm(g)
 

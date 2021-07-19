@@ -109,6 +109,9 @@ best_pickle = None
   .type = str
   .help = path to a pandas pickle containing the best models for the experiments
 betas {
+  Nvol = 1e-10
+    .type = float
+    .help = tightness of the Nabc volume contraint
   detz_shift = 10
     .type = float
     .help = restraint variance for detector shift target
@@ -144,6 +147,9 @@ dual {
     .help = dual_annealing accept param, see scipy optimize docs
 }
 centers {
+  Nvol = None
+    .type = float
+    .help = if provided, constrain the product Na*Nb*Nc to this value
   detz_shift = 0
     .type = float
     .help = restraint target for detector shift along z-direction
