@@ -18,12 +18,12 @@
 # needed by Probe.
 
 import sys
-from iotbx.map_model_manager import map_model_manager
-from iotbx.data_manager import DataManager
-from cctbx.maptbx.box import shift_and_box_model
+import iotbx.map_model_manager
+import iotbx.data_manager
+import cctbx.maptbx.box
 import mmtbx
 import mmtbx_probe_ext as probe
-import AtomTypes
+import mmtbx.probe.AtomTypes
 
 def getBondedNeighborLists(atoms, bondProxies):
   """
@@ -81,7 +81,7 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
   warnings = ""
 
   # Construct the AtomTypes object we're going to use, telling it whether to use neutron distances.
-  at = AtomTypes.AtomTypes(useNeutronDistances)
+  at = mmtbx.probe.AtomTypes.AtomTypes(useNeutronDistances)
 
   # Fill in an ExtraAtomInfoList with an entry for each atom in the hierarchy.
   # We first find the largest i_seq sequence number in the model and reserve that
@@ -138,7 +138,7 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
 
   return getExtraAtomInfoReturn(extra, warnings)
 
-def RunHelperTests(inFileName = None):
+def Test(inFileName = None):
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
@@ -146,20 +146,21 @@ def RunHelperTests(inFileName = None):
   if inFileName is not None and len(inFileName) > 0:
     # Read a model from a file using the DataManager
     print('Reading model from',inFileName)
-    dm = DataManager()
+    dm = iotbx.data_manager.DataManager()
     dm.process_model_file(inFileName)
     model = dm.get_model(inFileName)
   else:
     # Generate a small-molecule model using the map model manager
     print('Generating model')
-    mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
-    mmm.generate_map()              #   get a model from a generated small library model and calculate a map for it
-    model = mmm.model()             #   get the model
+    # get an initialized instance of the map_model_manager
+    mmm=iotbx.map_model_manager.map_model_manager()
+    mmm.generate_map()     #   get a model from a generated small library model and calculate a map for it
+    model = mmm.model()    #   get the model
 
   # Fix up bogus unit cell when it occurs by checking crystal symmetry.
   cs =model.crystal_symmetry()
   if (cs is None) or (cs.unit_cell() is None):
-    model = shift_and_box_model(model = model)
+    model = cctbx.maptbx.box.shift_and_box_model(model = model)
 
   # Run PDB interpretation on the model to fill in the required CCTBX information.
   print('Interpreting model')
@@ -191,7 +192,7 @@ if __name__ == '__main__':
   for i in range(1,len(sys.argv)):
     fileName = sys.argv[i]
 
-  ret = RunHelperTests(fileName)
+  ret = Test(fileName)
   if len(ret) == 0:
     print('Success!')
 
