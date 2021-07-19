@@ -1069,7 +1069,9 @@ def downsamp_spec(SIM, params, expt):
         raise ValueError("Incorrect value for pinkstride")
     downsamp_en = downsamp_en[::stride]
     downsamp_wt = downsamp_wt[::stride]
-    downsamp_wt = downsamp_wt / sum(downsamp_wt) * params.simulator.total_flux
+    tot_fl = params.simulator.total_flux
+    if tot_fl is not None:
+        downsamp_wt = downsamp_wt / sum(downsamp_wt) * tot_fl 
 
     downsamp_wave = utils.ENERGY_CONV / downsamp_en
     SIM.beam.spectrum = list(zip(downsamp_wave, downsamp_wt))

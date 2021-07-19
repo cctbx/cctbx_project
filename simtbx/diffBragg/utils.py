@@ -1076,6 +1076,7 @@ def simulator_from_expt_and_params(expt, params=None, oversample=0, device_id=0,
     if spectra_file is not None:
         init_spectrum = load_spectra_file(spectra_file, total_flux, spectra_stride, as_spectrum=True)
     else:
+        assert total_flux is not None
         init_spectrum = [(expt.beam.get_wavelength(), total_flux)]
     beam.spectrum = init_spectrum
     SIM.beam = beam
@@ -1137,7 +1138,7 @@ def save_spectra_file(spec_file, wavelengths, weights):
     np.savetxt(spec_file, data.T, delimiter=',', header="wavelengths, weights")
 
 
-def load_spectra_file(spec_file, total_flux=1., pinkstride=1, as_spectrum=False):
+def load_spectra_file(spec_file, total_flux=None, pinkstride=1, as_spectrum=False):
     wavelengths, weights = np.loadtxt(spec_file, float, delimiter=',', skiprows=1).T
     if isinstance(wavelengths, float) and isinstance(weights, float):
         # the file had one entry:
@@ -1148,11 +1149,12 @@ def load_spectra_file(spec_file, total_flux=1., pinkstride=1, as_spectrum=False)
     wavelengths = wavelengths[::pinkstride]
     weights = weights[::pinkstride]
     energies = ENERGY_CONV/wavelengths
-    FLUXES = weights / weights.sum() * total_flux
+    if total_flux is not None:
+        weights = weights / weights.sum() * total_flux
     if as_spectrum:
-        return list(zip(list(wavelengths), list(FLUXES)))
+        return list(zip(list(wavelengths), list(weights)))
     else:
-        return FLUXES, energies
+        return weights, energies
 
 
 def load_mask(maskfile):
