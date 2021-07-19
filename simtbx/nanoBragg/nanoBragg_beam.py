@@ -1,7 +1,7 @@
 """
 Organizer for nanoBragg beam properties
 """
-from __future__ import absolute_import, division, print_function
+from __future__ import print_function, division
 from dxtbx.model.beam import BeamFactory
 from dxtbx_model_ext import flex_Beam
 
@@ -9,12 +9,12 @@ from dxtbx_model_ext import flex_Beam
 class NBbeam(object):
 
   def __init__(self):
-    self.spectrum = [
-      (1.8, 1000000000000.0)]
-    self.unit_s0 = (1, 0, 0)
+    self.spectrum = [(1.8, 1e12)]   # angstroms, photons per pulse
+    self.unit_s0 = 1, 0, 0
     self.polarization_fraction = 1
     self.divergence = 0
     self.size_mm = 0.001
+    self.undo_nanoBragg_norm_by_nbeams = True  # we undo it by default
 
   @property
   def size_mm(self):
@@ -60,9 +60,13 @@ class NBbeam(object):
   @property
   def xray_beams(self):
     self._xray_beams = flex_Beam()
+    norm = 1
+    if self.undo_nanoBragg_norm_by_nbeams:
+      norm = float(len(self.spectrum))
+
     for wavelen, flux in self.spectrum:
-      beam = BeamFactory.simple(wavelen * 1e-10)
-      beam.set_flux(flux)
+      beam = BeamFactory.simple(wavelen*1e-10)
+      beam.set_flux(flux / norm)
       beam.set_unit_s0(self.unit_s0)
       beam.set_polarization_fraction(self.polarization_fraction)
       beam.set_divergence(self.divergence)
@@ -74,5 +78,5 @@ class NBbeam(object):
   def nanoBragg_constructor_beam(self):
     """dumb necessity FIXME please"""
     beam = BeamFactory.from_dict(self.xray_beams[0].to_dict())
-    beam.set_wavelength(beam.get_wavelength() * 10000000000.0)
+    beam.set_wavelength(beam.get_wavelength()*1e10)
     return beam
