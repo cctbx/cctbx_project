@@ -36,7 +36,7 @@ from mmtbx.hydrogens import reduce_hydrogen
 # This is a set of functions that implement placement and optimization of
 # Reduce's "Movers".
 
-class PlacementReturn:
+class PlaceMoverstReturn:
   # Return type from PlaceMovers() call.  List of movers and then an information string
   # that may contain information the user would like to know (where Movers were placed,
   # failed Mover placements due to missing Hydrogens, etc.).
@@ -57,7 +57,7 @@ def PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, 
   :param extraAtomInfo: Probe.ExtraAtomInfo structure that provides radius and other
   information about atoms beyond what is in the pdb.hierarchy.  Used here to determine
   which atoms may be acceptors.
-  :returns PlacementReturn giving the list of Movers found in the conformation and
+  :returns PlaceMoverstReturn giving the list of Movers found in the conformation and
   an error string that is empty if no errors are found during the process and which
   has a printable message in case one or more errors are found.
   """
@@ -200,7 +200,7 @@ def PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, 
       except Exception as e:
         infoString += "Could not add MoverHistidineFlip to "+resNameAndID+": "+str(e)+"\n"
 
-  return PlacementReturn(movers, infoString)
+  return PlaceMoverstReturn(movers, infoString)
 
 ##################################################################################
 # Helper functions
@@ -292,7 +292,9 @@ def Test(inFileName = None):
   # Get the list of alternate conformation names present in all chains for this model.
   alts = AlternatesInModel(firstModel)
 
-  # Get the atoms from the first conformer in the first model.
+  # Get the atoms from the first conformer in the first model (the empty string is the name
+  # of the first conformation in the model; if there is no empty conformation, then it will
+  # pick the first available conformation for each atom group.
   atoms = GetAtomsForConformer(firstModel, "")
 
   ################################################################################
@@ -320,9 +322,6 @@ def Test(inFileName = None):
 
   ################################################################################
   # Get the list of Movers
-  # @todo PlaceMovers should be a method on a base Optimizer, and the constructor should
-  # take in all the info.  The helper functions should be methods, so the client code
-  # doesn't need to see it.
   ret = PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True), bondedNeighborLists, sq, extra)
   infoString += ret.infoString
   movers = ret.moverList
