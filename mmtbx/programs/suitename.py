@@ -29,12 +29,13 @@ import os, sys
 def run(args):
   # create parser
   logger = multi_out()
-  # logger.register('stderr', sys.stderr)
-  logger.register('stderr', open("suitename.stderr.log", "w"))
+  logger.register('stderr', sys.stderr)
   logger2 = multi_out()
   logger2.register('stdout', sys.stdout)
+  logger3 = multi_out()
+  logger3.register('verbiage', open("suitename.stderr.log", "w"))
 
-  parser = dualparse.parseArgs(Program, logger)
+  parser = dualparse.parseArgs(Program, logger3)
   working_phil = parser.working_phil
   options = working_phil.extract().suitename
   

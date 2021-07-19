@@ -1,10 +1,12 @@
 import os,sys,inspect
+from io import StringIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir) 
 
+import regression
 
-from io import StringIO
+
 # The test data:
 #
 # The first portion is to test membership in every cluster.
@@ -185,12 +187,12 @@ canonicalOutput='''
  :1m: : : : :  Z 33 p 1m 1.000 3-OUTSIDE-sat
  :1L: : : : :  Z 33 p 1L 1.000 4-OUTSIDE-sat
  :&a: : : : :  Z 33 p &a 1.000 5-OUTSIDE-sat
- :7a: : : : :  Z 33 p 7a 1.000 4-not-sat
- :3a: : : : :  Z 33 p 3a 1.000 3-not-sat
- :9a: : : : :  Z 33 p 9a 1.000 2-not-sat
+ :7a: : : : :  Z 33 p 7a 1.000 4-None-dom
+ :3a: : : : :  Z 33 p 3a 1.000 3-None-dom
+ :9a: : : : :  Z 33 p 9a 1.000 2-None-dom
  :1g: : : : :  Z 33 p 1g 1.000 1-only-one
- :7d: : : : :  Z 33 p 7d 1.000 2-not-sat
- :3d: : : : :  Z 33 p 3d 1.000 2-not-sat
+ :7d: : : : :  Z 33 p 7d 1.000 2-None-dom
+ :3d: : : : :  Z 33 p 3d 1.000 2-None-dom
  :5d: : : : :  Z 33 p 5d 1.000 1-only-one
  :3g: : : : :  Z 33 p 3g 1.000 1-only-one wannabe
  :1e: : : : :  Z 33 t 1e 1.000 1-only-one
@@ -257,7 +259,7 @@ canonicalOutput='''
 3bns:1: A:  22: : :  G 33 t 1c 0.901 2-OUTSIDE-dom
 3gm7:1: H:   6: : :  G 33 p !! 0.000 7D dist 1a
 6qit:1: A:   3: : :  A 32 p 1[ 0.899 2-OUTSIDE-sat
-3rer:1: K:   8: : :  A 33 p 7a 0.047 2-not-sat
+3rer:1: K:   8: : :  A 33 p 7a 0.047 2-None-dom
 3diL:1: A:  60: : :  G 33 t !! 0.000 7D dist 1e
 5ho4:1: B:   4: : :  G 23 p !! 0.000 7D dist 4a
 4mcf:1: E:   5: : :  G 33 p !! 0.000 7D dist 1a
@@ -285,6 +287,17 @@ def test():
   suitename.main(stream, outFile=outFile)
 
   output = outFile.getvalue()
+  assert output.strip() == canonicalOutput.strip(), "core unit test"
+  regression.test()
+
+
+# Not normally used, but useful for diagnosing failures in the core unit test
+def test_verbose():
+  stream = StringIO(data)
+  outFile=StringIO("")
+  suitename.main(stream, outFile=outFile)
+
+  output = outFile.getvalue()
   if output.strip() == canonicalOutput.strip():
    result = True
    sys.stderr.write("Success\n")
@@ -300,5 +313,6 @@ def test():
    out2.write(output.strip())
   return result
 
-
 test()
+
+# test_verbose()

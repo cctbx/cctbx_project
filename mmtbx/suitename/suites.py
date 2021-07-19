@@ -1,5 +1,7 @@
 import sys, os, inspect
 
+from numpy.lib.arraysetops import ediff1d
+
 #        Copyright 2021  Richardson Lab at Duke University
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,21 +35,20 @@ def main(options, outFile=None, errorFile=None):
   model = loadModel(inFile)
 
   residues = getResidueDihedrals(model, options.altid, 
-                                 name=os.path.splitext(inFile)[0])
+                                 name=os.path.splitext(inFile)[0],
+                                 errorFile=errorFile)
   ### to print mp_geo-like output:
   # for r in residues:
   #   print(residueString(r))
-                                   
-  if len(residues) == 0:
-      sys.stderr.write("read no residues: perhaps wrong alternate code\n")
-      sys.exit(1)
-  suiteList = suiteninput.buildSuites(residues)
-  suiteList = suiteList[:-1]
-  
-  suiteList = compute(suiteList)
-  finalStats()
-  write(outFile, suiteList)
-  clearStats()
+# useful for seeing what suites were generated
+  if len(residues) > 0:
+    suiteList = suiteninput.buildSuites(residues)
+    suiteList = suiteList[:-1]
+    
+    suiteList = compute(suiteList)
+    finalStats()
+    write(outFile, suiteList)
+    clearStats()
 
 
 def setOptions(optionsIn):

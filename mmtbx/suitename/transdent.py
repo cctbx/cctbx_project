@@ -1,9 +1,9 @@
 import re, os, sys
 
-white = "(\s*)"
+N = 2   # indentation standard
+white = "([ \t]*)"
 simple = re.compile(".*(#|:)")
-stringy = re.compile(".*(\".*\"|'.*'|#|:)")
-
+stringy = re.compile("[^\"]*(\".*\"|'.*'|#|:)")
 
 class Line:
     content = ""
@@ -11,19 +11,31 @@ class Line:
     actual = 0  # the actual whitespace at the front
 
 
+def analyzeWhitespace(white):
+    count = 0
+    for char in white:
+        if char == "\t":
+            count += N
+        else:
+            count += 1
+    return count
+
+
 def analyzeLine(raw):
     # discover indentation of raw line and whether it ends with a colon
     content = raw.strip()
     match1 = re.match(white, raw)
     mark = match1.end()
-    spaces = match1[1]
+    spaces = analyzeWhitespace(match1[1])
+    if content == "":  # blank line
+        spaces = 0
     while True:
         # this loop is exited only by returning
         match2 = stringy.match(raw, mark)
-        what = match2.group(1)
-        if what is None:
+        if match2 is None:
             return content, spaces, False
 
+        what = match2.group(1)
         char = what[0]
         if char == "#":
             return content, spaces, False
@@ -34,23 +46,32 @@ def analyzeLine(raw):
 
 
 def main():
-    file = sys.argv[1]
+    # file = sys.argv[1]
+    file = "target.py"
     stream = open(file)
     lines = stream.readlines()
-
+    
+    indents = []
     prevSpaces = 0
     level = 0
-    newLevel = True
+    newLevel = False
     for rawLine in lines:
         if newLevel:
             # Determined by PREVIOUS line
             level += 1
+            indents.append(prevSpaces)
             newLevel = False
         content, spaces, indenting = analyzeLine(rawLine)
-        if spaces < prevSpaces and level > 0:
-            level -= 1
-            prevSpaces = spaces
-        pass
+#        if spaces < prevSpaces and level > 0:
+        if spaces < prevSpaces:
+            oldSpaces = indents.pop()
+            while spaces < oldSpaces:
+                oldSpaces = indents.pop()
+            level = len(indents)
+        prevSpaces = spaces
         print(level * N * " " + content)
         if indenting:
-            newLevel = level + 1
+            newLevel = True
+
+main()
+ 

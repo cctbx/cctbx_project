@@ -63,7 +63,7 @@ def loadModel(filename):
   return manager
 
 
-def getResidueDihedrals(mgr, altcode='', name=''): 
+def getResidueDihedrals(mgr, altcode='', name='', errorFile = sys.stderr): 
   # use altcode='A', 'B', etc. for real alt work
   # if name is provided produce a debug file <name>.suites
   global manager, hierarchy, backbone_hierarchy, chain
@@ -82,9 +82,12 @@ def getResidueDihedrals(mgr, altcode='', name=''):
   # hierarchy.show(output)
   chains = backbone_hierarchy.chains()
   all_residues = []
+  if len(list(chains)) == 0:
+    print("Model contains no RNA", file=errorFile)
+    return []
 
   for chain in chains:
-    # print("chain ", chain.id)
+    print("chain ", chain.id)
     conf = get_matching_conformer(chain, altcode)
       
     names = conf.get_residue_names_padded(pad=False)
@@ -102,17 +105,15 @@ def getResidueDihedrals(mgr, altcode='', name=''):
       residues = build_dihedrals(backbone_atoms, chain.id, conf.altloc)
       all_residues.extend(residues)
     except Failure:
-      pass
-      # print("chain ", chain.id, " unable to find a backbone")
+      print("chain ", chain.id, " unable to find a backbone", file=errorFile)
+      continue
 
-  if name != "":
-    file = open(name + ".suites", "w")
-    for r in residues:
-      id = ":".join(r.pointIDs)
-      angles = "".join([f":{a:.3f}" for a in r.angle])
-      # print(id + angles, file=file)
-    file.close()
-  return all_residues
+  # if name != "":  # useful for seeing what suites were generated
+  #   writeSuitesFile(residues, name)
+
+    if len(all_residues) == 0:
+      errorFile.write("read no residues: perhaps wrong alternate code\n")
+      return all_residues
 
 
 def get_matching_conformer(chain, altcode):
@@ -301,7 +302,31 @@ def easy_make_dihedral(backbone, i, k):
     return "failure: " + backbone[k].name + "!= " + dh[1][0], 9999
                 
 
+def residueString(r):
+    sizes=[1, 1, 1, 3, 1, 1, 3]
+    id = "".join([f"{x:{y}}:" for x, y in zip(r.pointIDs, sizes)])
+    angles = "".join([f"{a:8.3f}:" for a in r.angle])
+    return id + angles[:-1]
+
+
+
 # ----------------------------  tool room  -----------------------------
+
+# useful for seeing what suites were generated
+def writeSuitesFile(r, name):
+    file = open(name + ".suites", "w")
+    for r in all_residues:
+      id = ":".join(r.pointIDs)
+      angles = "".join([f":{a:.3f}" for a in r.angle])
+      # print(id + angles, file=file)
+    file.close()
+    
+
+# for debug printouts
+def nameList(atoms):
+  list = [a.name for a in atoms]
+  return list
+
 
 # The following code was used to build the dihedrals list above
 def make_groups(output):
@@ -312,19 +337,6 @@ def make_groups(output):
             output.write(f'"{a[i+j]}", ')
         output.write("))\n")
         i = i+1
-
-
-# for debug printouts
-def nameList(atoms):
-  list = [a.name for a in atoms]
-  return list
-
-
-def residueString(r):
-    sizes=[1, 1, 1, 3, 1, 1, 3]
-    id = "".join([f"{x:{y}}:" for x, y in zip(r.pointIDs, sizes)])
-    angles = "".join([f"{a:8.3f}:" for a in r.angle])
-    return id + angles[:-1]
 
 
 # The following is for debugging and not for production use:
