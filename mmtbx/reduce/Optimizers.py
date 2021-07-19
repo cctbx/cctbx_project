@@ -24,7 +24,8 @@ import mmtbx
 from scitbx.array_family import flex
 
 from mmtbx.probe import AtomTypes
-import mmtbx_probe_ext as probe
+from mmtbx.probe import Helpers
+import mmtbx_probe_ext as probeExt
 
 # To enable addition of Hydrogens
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
@@ -50,7 +51,7 @@ def PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, 
   :param rotateableHydrogenIDs: List of sequence IDs for single hydrogens that are rotatable.
   :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
   structure that the atom from the first parameter interacts with that lists all of the
-  bonded atoms.  Can be obtained by calling getBondedNeighborLists().
+  bonded atoms.  Can be obtained by calling mmtbx.probe.Helpers.getBondedNeighborLists().
   :param spatialQuery: Probe.SpatialQuery structure to rapidly determine which atoms
   are within a specified distance of a location.
   :param extraAtomInfo: Probe.ExtraAtomInfo structure that provides radius and other
@@ -270,16 +271,20 @@ def Test(inFileName = None):
     mmm.generate_map()              #   get a model from a generated small library model and calculate a map for it
     model = mmm.model()             #   get the model
 
+  # Make sure we have a valid unit cell.  Do this before we interpret the model because
+  # it clobbers information that we need from interpretation.
+  model = shift_and_box_model(model = model)
+
   print('Interpreting model')
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
   model.set_pdb_interpretation_params(params = p)
   model.process_input_model(make_restraints=True) # make restraints
 
   # Add Hydrogens to the model
-  model = shift_and_box_model(model = model)
   reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
   reduce_add_h_obj.run()
   model = reduce_add_h_obj.get_model()
+  model.process_input_model(make_restraints=True) # make restraints
 
   # Get the first model in the hierarchy.
   firstModel = model.get_hierarchy().models()[0]
@@ -301,63 +306,17 @@ def Test(inFileName = None):
   # Get the bond proxies for the atoms in the model and conformation we're using and
   # use them to determine the bonded neighbor lists.
   bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-  bondedNeighborLists = Movers.getBondedNeighborLists(atoms, bondProxies)
+  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
   ################################################################################
   # Get the spatial-query information needed to quickly determine which atoms are nearby
-  sq = probe.SpatialQuery(atoms)
+  sq = probeExt.SpatialQuery(atoms)
 
   ################################################################################
-  # Get the probe.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-
-  # Fill in a list of ExtraAtomInfo with an empty entry for each atom in the hierarchy.
-  # We first find the largest i_seq sequence number in the model and reserve that
-  # many entries so we will always be able to fill in the entry for an atom.
-  maxI = atoms[0].i_seq
-  for a in atoms:
-    if a.i_seq > maxI:
-      maxI = a.i_seq
-  extra = []
-  for i in range(maxI+1):
-    extra.append(probe.ExtraAtomInfo())
-
-  # Construct the AtomTypes object we're going to use, telling it whether to use neutron distances
-  # or not.  This object will be use as a backup plan to look up ExtraAtomInfo if we can't get
-  # it from CCTBX.
-  # @todo useNeutronDistance should be a parameter
-  useNeutronDistances = False
-  at = AtomTypes.AtomTypes(useNeutronDistances)
-
-  # Traverse the hierarchy and look up the extra data to be filled in.
-  mon_lib_srv = model.get_mon_lib_srv()
-  ener_lib = mmtbx.monomer_library.server.ener_lib()
-  for chain in firstModel.chains():
-    for rg in chain.residue_groups():
-      for ag in rg.atom_groups():
-        md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
-              residue_name=ag.resname, atom_names=ag.atoms().extract_name())
-        atom_dict = md.atom_dict()
-
-        for a in ag.atoms():
-          name = a.name.strip()
-          # First try looking it up in CCTBX, then fall back to Probe lookup if
-          # that fails.
-          try:
-            te = atom_dict[name].type_energy
-            extra[a.i_seq].vdwRadius = ener_lib.lib_atom[te].vdw_radius
-            hb_type = ener_lib.lib_atom[te].hb_type
-            if hb_type == "A":
-              extra[a.i_seq].isAcceptor = True
-            if hb_type == "D":
-              extra[a.i_seq].isDonor = True
-          except KeyError:
-            infoString += ('Warning: Could not find entry in atom dictionary for '+
-              ag.resname+" "+name+', using Probe lookup')
-            extra[a.i_seq], warn = at.FindProbeExtraAtomInfo(a)
-            if len(warn) > 0:
-              infoString += "\n  Probe lookup says: "+warn
-            infoString += "\n"
-
+  # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
+  ret = Helpers.getExtraAtomInfo(model)
+  extra = ret.extraAtomInfo
+  infoString += ret.warnings
 
   ################################################################################
   # Get the list of Movers
