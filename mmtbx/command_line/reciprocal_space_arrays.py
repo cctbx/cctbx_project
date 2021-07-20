@@ -181,20 +181,7 @@ def run(args, log = sys.stdout):
   r_free_flags = determine_data_and_flags_result.r_free_flags
   print("  Free-R flags:", r_free_flags.info().labels)
   #
-  parameters = extract_xtal_data.experimental_phases_params.extract()
-  parameters.labels = params.hendrickson_lattman_coefficients_label
-  experimental_phases_result = extract_xtal_data.determine_experimental_phases(
-    reflection_file_server = rfs,
-    parameters             = parameters,
-    log                    = StringIO(),
-    parameter_scope        = "",
-    working_point_group    = None,
-    symmetry_safety_check  = True,
-    ignore_all_zeros       = True)
-  if(experimental_phases_result is not None):
-    print("  HL coefficients:", experimental_phases_result.info().labels)
-  experimental_phases = extract_experimental_phases(
-    experimental_phases = experimental_phases_result, f_obs = f_obs)
+  experimental_phases = determine_data_and_flags_result.experimental_phases
   #
   if(r_free_flags is None):
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))

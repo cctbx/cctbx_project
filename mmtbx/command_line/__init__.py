@@ -371,11 +371,16 @@ class load_model_and_data(object):
           raise Sorry("No crystal symmetry information found in input files.")
       if (hkl_server is None):
         hkl_server = hkl_in.file_server
+      try:
+        pp = params.input.experimental_phases
+      except AttributeError: pp=None
       data_and_flags = extract_xtal_data.run(
         reflection_file_server=hkl_server,
         parameters=params.input.xray_data,
         data_parameter_scope="input.xray_data",
         flags_parameter_scope="input.xray_data.r_free_flags",
+        experimental_phases_params = pp,
+        experimental_phases_parameter_scope = "input.experimental_phases",
         prefer_anomalous=prefer_anomalous,
         force_non_anomalous=force_non_anomalous,
         log=self.log)
@@ -386,6 +391,11 @@ class load_model_and_data(object):
       self.f_obs = data_and_flags.f_obs
       self.r_free_flags = data_and_flags.r_free_flags
       self.miller_arrays = hkl_in.file_server.miller_arrays
+      self.hl_coeffs = None
+      target_name = "ml"
+      if(data_and_flags.experimental_phases is not None):
+        target_name = "mlhl"
+        self.hl_coeffs = data_and_flags.experimental_phases
       hkl_symm = self.raw_data.crystal_symmetry()
     if len(self.cif_file_names) > 0 :
       for file_name in self.cif_file_names :
@@ -446,38 +456,6 @@ class load_model_and_data(object):
       self.r_free_flags = self.r_free_flags.customized_copy(
         crystal_symmetry=self.crystal_symmetry).eliminate_sys_absent().set_info(
           self.r_free_flags.info())
-    # EXPERIMENTAL PHASES
-    target_name = "ml"
-    if hasattr(params.input, "experimental_phases"):
-      flag = params.input.use_experimental_phases
-      if (flag in [True, Auto]):
-        phases_file = params.input.experimental_phases.file_name
-        if (phases_file is None):
-          phases_file = params.input.xray_data.file_name
-          phases_in = hkl_in
-        else :
-          phases_in = file_reader.any_file(phases_file)
-          phases_in.check_file_type("hkl")
-        phases_in.file_server.err = self.log # redirect error output
-        space_group = self.crystal_symmetry.space_group()
-        point_group = space_group.build_derived_point_group()
-        hl_coeffs = extract_xtal_data.determine_experimental_phases(
-          reflection_file_server = phases_in.file_server,
-          parameters             = params.input.experimental_phases,
-          log                    = self.log,
-          parameter_scope        = "input.experimental_phases",
-          working_point_group    = point_group,
-          symmetry_safety_check  = True)
-        if (hl_coeffs is not None):
-          hl_coeffs = hl_coeffs.map_to_asu()
-          if hl_coeffs.anomalous_flag():
-            if (not self.f_obs.anomalous_flag()):
-              hl_coeffs = hl_coeffs.average_bijvoet_mates()
-          elif self.f_obs.anomalous_flag():
-            hl_coeffs = hl_coeffs.generate_bijvoet_mates()
-          self.hl_coeffs = hl_coeffs.matching_set(other=self.f_obs,
-            data_substitute=(0,0,0,0))
-          target_name = "mlhl"
     # PDB INPUT
     self.unknown_residues_flag = False
     self.unknown_residues_error_message = False
