@@ -20,11 +20,8 @@ if (not env_etc.no_boost_python):
   Import("env_cctbx_boost_python_ext")
   env_bpl = env_cctbx_boost_python_ext.Clone()
   if (env_etc.compiler != "win32_cl"):
-    env_bpl.Append(
-      SHCXXFLAGS=[
-        "-std=c++11"])
-    env_bpl.Append(SHCXXFLAGS=[
-      "-std=c++11"]
+    env_bpl.Append(CXXFLAGS=["-std=c++11"])
+    env_bpl.Append(SHCXXFLAGS=["-std=c++11"]
     )
 
   # We need Boost Python to compile this C++ library because Scoring.cpp uses it.
