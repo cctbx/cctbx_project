@@ -275,27 +275,33 @@ canonicalOutput='''
  
  # here, before importing suitename, is an opportunity to set command line
  # options and to redirect output.
-sys.argv.extend(["--noinc", "--chart", "--causes"])
+# sys.argv.extend(["--noinc", "--chart", "--causes"])
 #sys.stdout = StringIO("")
 sys.stdout = open("output.txt", "w")
-import suitename
+import suitename, suites
 
 
-def test():
+def coreTest():
+  options1 = suites.parseOptions("chart=true, noinc=true, causes=true")
   stream = StringIO(data)
   outFile=StringIO("")
-  suitename.main(stream, outFile=outFile)
+  suitename.main(stream, outFile=outFile, optionsIn=options1)
 
   output = outFile.getvalue()
   assert output.strip() == canonicalOutput.strip(), "core unit test"
+
+
+def test():
+  coreTest()
   regression.test()
 
 
 # Not normally used, but useful for diagnosing failures in the core unit test
 def test_verbose():
+  options1 = suites.parseOptions("suitename{chart=true, noinc=true, causes=true}")
   stream = StringIO(data)
   outFile=StringIO("")
-  suitename.main(stream, outFile=outFile)
+  suitename.main(stream, outFile=outFile, optionsIn=options1)
 
   output = outFile.getvalue()
   if output.strip() == canonicalOutput.strip():
@@ -313,6 +319,6 @@ def test_verbose():
    out2.write(output.strip())
   return result
 
-test()
+# test()
 
-# test_verbose()
+test_verbose()

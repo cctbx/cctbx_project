@@ -46,10 +46,13 @@ def analyzeLine(raw):
 
 
 def main():
-    # file = sys.argv[1]
-    file = "target.py"
+    file = sys.argv[1] + ".py"
+    #root, ext = os.path.splitext(file)
+    outFile = file + ".ind.py"
+    # file = "target.py"
     stream = open(file)
     lines = stream.readlines()
+    oStream = open(outFile, "w")
     
     indents = []
     prevSpaces = 0
@@ -69,9 +72,10 @@ def main():
                 oldSpaces = indents.pop()
             level = len(indents)
         prevSpaces = spaces
-        print(level * N * " " + content)
+        print(level * N * " " + content, file=oStream)
         if indenting:
             newLevel = True
+    oStream.close()
 
 main()
  

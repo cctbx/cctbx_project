@@ -3,7 +3,7 @@ from sys import stderr
 from io import StringIO
 
 from mmtbx.suitename.suitename import main
-
+from mmtbx.suitename import suites
 
 input_1ehz = \
 """ :1: A:   1: : :  G:__?__:-128.053:67.793:82.863:-155.568:-68.623
@@ -202,19 +202,14 @@ For all 51 suites: average suiteness== 0.750 (power==3.00)
      3 suites have suiteness >=.8 <.9
      0 suites have suiteness >=.9    
 """
-from libtbx import phil
-
-options = "report=True"
-
-def make_options(opt):
-  parsed_options = phil.parse(opt)
-  return parsed_options.extract()
 
 
 def regression(name, input, canonical_output):
   inp = StringIO(input)
   out = StringIO()
-  main(inStream=inp, outFile=out, optionsIn=make_options(options))
+  options2 = suites.parseOptions("report=True")
+
+  main(inStream=inp, outFile=out, optionsIn=options2)
   output = out.getvalue()
   assert output == canonical_output, name + " regression test failed"
 
@@ -222,4 +217,3 @@ def regression(name, input, canonical_output):
 def test():
   regression("1ehz", input_1ehz, output_1ehz)
 
-test()
