@@ -33,10 +33,60 @@ from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 
 ##################################################################################
-# This is a set of functions that implement placement and optimization of
+# This file includes a set of functions and classes that implement placement and optimization of
 # Reduce's "Movers".
 
-class PlaceMoverstReturn:
+##################################################################################
+# Optimizers:
+#     NullOptimer: This is a base Optimizer class that implements the placement and scoring
+# of Movers but does not actually perform any optimization.  The useful Optimizers will all
+# be derived from this base class.
+#     BruteForceOptimizer: This tries all possible coarse and fine orientations of all
+# Movers in all combinations.  It is too slow for any but very small numbers of Movers but it
+# is guaranteed to find the minimum score across all combinations.  It is used mainly to
+# provide results for test comparisons with the other optimizers.
+#     CliqueOptimizer: This produces an InteractionGraph telling which Movers might possibly
+# interact during their motion and runs brute-force optimization on each subgraph independently.
+# This greatly reduces the number of calculations but is still much to slow for many molecules
+# that have a large number of interacting Movers in their largest clique.
+#     HyperGraphOptimizer: This uses a divide-and-conquer, dynamic-programming approach to break
+# each clique into separate non-interacting subgraphs so that it only has to compute complete
+# interactions for a small number of interacting Movers at a time.
+
+class NullOptimizer:
+
+  def __init__(self, model, modelIndex = 0, altID = "", useNeutronDistances = False):
+    """Constructor for NullOptimizer.
+    :param model: iotbx model (a group of hierarchy models).  Can be obtained using
+    iotbx.map_model_manager.map_model_manager.model().  The model must have Hydrogens,
+    which can be added using mmtbx.hydrogens.reduce_hydrogen.place_hydrogens().get_model().
+    It must have a valid unit cell, which can be helped by calling
+    cctbx.maptbx.box.shift_and_box_model().  It must have had PDB interpretation run on it,
+    which can be done using model.process_input_model(make_restraints=True) with PDB
+    interpretation parameters and hydrogen placement matching the value of the
+    useNeutronDistances parameter below.
+    :param modelIndex: Identifies which index from the hierarchy is to be selected.
+    If this value is None, optimization will be run sequentially on every model in the
+    hierarchy.
+    :param altID: The conformer alternate location specifier to use.  The value "" will
+    cause it to run on the first conformer found in each model.  If this is None, optimization
+    will be run sequentially for every conformer in the model, starting with the last and
+    ending with "".  This will leave the initial conformer's values as the final location
+    for atoms that are not inside a conformer.
+    :param useNeutronDistances: Defaults to using X-ray/electron cloud distances.  If set to
+    True, it will use neutron (nuclear) distances.  This must be set consistently with the
+    values used to generate the hydrogens and to run PDB interpretation.
+    """
+    # @todo What to do about the Nitrogen tagging and Hydrogen moving for Histidine?
+    # @todo
+
+    # @todo Scaffolding to run optimization for every conformer and every model, calling
+    # placement and then a derived-class single optimization routine for each.
+
+##################################################################################
+# Placement
+
+class _PlaceMoversReturn:
   # Return type from PlaceMovers() call.  List of movers and then an information string
   # that may contain information the user would like to know (where Movers were placed,
   # failed Mover placements due to missing Hydrogens, etc.).
@@ -44,7 +94,7 @@ class PlaceMoverstReturn:
     self.moverList = moverList
     self.infoString = infoString
 
-def PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, extraAtomInfo):
+def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, extraAtomInfo):
   """Produce a list of Movers for atoms in a pdb.hierarchy.conformer that has added Hydrogens.
   :param atoms: flex array of atoms to search.  This must have all Hydrogens needed by the
   Movers present in the structure already.
@@ -57,7 +107,7 @@ def PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, 
   :param extraAtomInfo: Probe.ExtraAtomInfo structure that provides radius and other
   information about atoms beyond what is in the pdb.hierarchy.  Used here to determine
   which atoms may be acceptors.
-  :returns PlaceMoverstReturn giving the list of Movers found in the conformation and
+  :returns _PlaceMoversReturn giving the list of Movers found in the conformation and
   an error string that is empty if no errors are found during the process and which
   has a printable message in case one or more errors are found.
   """
@@ -200,7 +250,7 @@ def PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, 
       except Exception as e:
         infoString += "Could not add MoverHistidineFlip to "+resNameAndID+": "+str(e)+"\n"
 
-  return PlaceMoverstReturn(movers, infoString)
+  return _PlaceMoversReturn(movers, infoString)
 
 ##################################################################################
 # Helper functions
@@ -271,19 +321,22 @@ def Test(inFileName = None):
     mmm.generate_map()              #   get a model from a generated small library model and calculate a map for it
     model = mmm.model()             #   get the model
 
-  # Make sure we have a valid unit cell.  Do this before we interpret the model because
-  # it clobbers information that we need from interpretation.
+  # Make sure we have a valid unit cell.  Do this before we add hydrogens to the model
+  # to make sure we have a valid unit cell.
   model = shift_and_box_model(model = model)
 
-  print('Interpreting model')
-  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-  model.set_pdb_interpretation_params(params = p)
-  model.process_input_model(make_restraints=True) # make restraints
-
   # Add Hydrogens to the model
+  print('Adding Hydrogens')
   reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
   reduce_add_h_obj.run()
   model = reduce_add_h_obj.get_model()
+
+  # Interpret the model after shifting and adding Hydrogens to it so that
+  # all of the needed fields are filled in when we use them below.
+  # @todo Remove this once place_hydrogens() does all the interpretation we need.
+  print('Interpreting model')
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  model.set_pdb_interpretation_params(params = p)
   model.process_input_model(make_restraints=True) # make restraints
 
   # Get the first model in the hierarchy.
@@ -321,8 +374,8 @@ def Test(inFileName = None):
   infoString += ret.warnings
 
   ################################################################################
-  # Get the list of Movers
-  ret = PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True), bondedNeighborLists, sq, extra)
+  # Test getting the list of Movers using the _PlaceMovers private function.
+  ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True), bondedNeighborLists, sq, extra)
   infoString += ret.infoString
   movers = ret.moverList
   print('XXX info:\n'+infoString)
