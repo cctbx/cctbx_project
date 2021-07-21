@@ -176,10 +176,10 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           # @todo Ensure that Hydrogenate does not change the acceptor state of the HIS Nitrogens when it adds
           # Hydrogen to them so that they will show up here.
           for c in candidates:
-            aName = c.name.strip().upper()
+            cName = c.name.strip().upper()
             resName = c.parent().resname.strip().upper()
-            flipPartner = ( (aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN') or
-              (aName == 'CE1' and resName == 'HIS') or (aName == 'CD2' and resName == 'HIS') )
+            flipPartner = ( (cName == 'ND2' and resName == 'ASN') or (cName == 'NE2' and resName == 'GLN') or
+              (cName == 'CE1' and resName == 'HIS') or (cName == 'CD2' and resName == 'HIS') )
             acceptor = extraAtomInfo[c.i_seq].isDonor
             if acceptor or flipPartner:
               potentialAcceptors.append(c)
