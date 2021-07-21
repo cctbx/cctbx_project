@@ -118,15 +118,57 @@ namespace molprobity {
     };
 
     //=====================================================================================================
+    /// @brief Class to map from an atom to the ExtraAtomInfo associated with it.
 
+    class ExtraAtomInfoMap {
+    public:
+      /// @brief Constructor creates the map from vectors of atoms and ExtraAtomInfo.
+      /// @param [in] atoms Vector of atoms that will be mapped from.  Must include all of the ones added
+      ///             to the SpatialQuery structure so that anyone using its outputs will find an entry.
+      /// @param [in] extraInfo Vector of extra information pertaining to each atom.  Must be the same
+      ///             length as the atoms vector.
+      ExtraAtomInfoMap(scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms
+        , scitbx::af::shared<ExtraAtomInfo> extraInfo)
+      {
+        if (atoms.size() == extraInfo.size()) {
+          // Build the map from the vector of atoms and vector of extra atom info
+          for (size_t i = 0; i < atoms.size(); i++) {
+            std::pair < iotbx::pdb::hierarchy::atom_data*, ExtraAtomInfo>
+              element(atoms[i].data.get(), extraInfo[i]);
+            m_extraInfo.insert(element);
+            // Keep a shared pointer so that the data doesn't go away while we're still
+            // using it.
+            m_keepPointers.push_back(atoms[i].data);
+          }
+        }
+      }
+
+      /// @brief Get and set methods
+      ExtraAtomInfo  getMappingFor(iotbx::pdb::hierarchy::atom const &atom)
+      {
+        return m_extraInfo[atom.data.get()];
+      }
+      void setMappingFor(iotbx::pdb::hierarchy::atom const &atom, ExtraAtomInfo const &info)
+      {
+        m_extraInfo[atom.data.get()] = info;
+      }
+
+    protected:
+      // Constructed map from the atom_data elements to the extra-atom information so that we
+      // can look up extra info based on particular atoms without having to rely on the sequence
+      // IDs being correct.
+      std::map< iotbx::pdb::hierarchy::atom_data*, ExtraAtomInfo > m_extraInfo;
+      // This keeps around shared pointers to the data we placed into our map so that they don't
+      // get deleted out from under us.
+      std::vector< boost::shared_ptr<iotbx::pdb::hierarchy::atom_data> > m_keepPointers;
+    };
+
+    //=====================================================================================================
     /// @brief Class to handle scoring dots given sets of atoms.
     class DotScorer {
     public:
       /// @brief Constructor stores the non-bonded parameters to be used to determine atom features.
-      /// @param [in] atoms Vector of atoms that will be scored.  Must include all of the ones added
-      ///             to the SpatialQuery structure.
-      /// @param [in] extraInfo Vector of extra information pertaining to each atom.  Must be the same
-      ///             length as the atoms vector.
+      /// @param [in] extraInfoMap maps from atoms to ExtraAtomInfo.
       /// @param [in] gapScale Scale factor to apply to gap between atoms (gap is divided by this)
       /// @param [in] bumpWeight Factor to apply when atoms are in bumping overlap
       /// @param [in] hBondWeight Factor to apply to hydrogen-bond overlaps
@@ -139,15 +181,15 @@ namespace molprobity {
       ///             atoms are both charged.  It must go badBumpOverlap beyond this before we call
       ///             it a bad clash.
       /// @param [in] badBumpOverlap Atoms that overlap more than this will cause bad bump to be flagged.
-      DotScorer(scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms
-        , scitbx::af::shared<ExtraAtomInfo> extraInfo
+      DotScorer(ExtraAtomInfoMap extraInfoMap
         , double gapScale = 0.25
         , double bumpWeight = 10.0
         , double hBondWeight = 4.0
         , double maxRegularHydrogenOverlap = 0.6
         , double maxChargedHydrogenOverlap = 0.8
         , double badBumpOverlap = 0.4
-      ) : m_gapScale(gapScale), m_bumpWeight(bumpWeight), m_hBondWeight(hBondWeight)
+      ) : m_extraInfoMap(extraInfoMap)
+        , m_gapScale(gapScale), m_bumpWeight(bumpWeight), m_hBondWeight(hBondWeight)
         , m_maxRegularHydrogenOverlap(maxRegularHydrogenOverlap)
         , m_maxChargedHydrogenOverlap(maxChargedHydrogenOverlap)
         , m_badBumpOverlap(badBumpOverlap)
@@ -239,20 +281,13 @@ namespace molprobity {
 
     protected:
       /// Parameters stored from constructor.
+      ExtraAtomInfoMap m_extraInfoMap;
       double m_gapScale;
       double m_bumpWeight;
       double m_hBondWeight;
       double m_maxRegularHydrogenOverlap;
       double m_maxChargedHydrogenOverlap;
       double m_badBumpOverlap;
-
-      // Constructed map from the atom_data elements to the extra-atom information so that we
-      // can look up extra info based on particular atoms without having to rely on the sequence
-      // IDs being correct.
-      std::map< iotbx::pdb::hierarchy::atom_data *, ExtraAtomInfo > m_extraInfo;
-      // This keeps around shared pointers to the data we placed into our map so that they don't
-      // get deleted out from under us.
-      std::vector< boost::shared_ptr<iotbx::pdb::hierarchy::atom_data> > m_keepPointers;
     };
 
     /// @todo Figure out what all of the things needed by Probe (as opposed to Reduce) are.

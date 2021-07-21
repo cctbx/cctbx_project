@@ -122,7 +122,7 @@ def RunProbeTests(inFileName):
   # them. Find the atoms that are bonded to them and add them to an excluded list.
   # Then compute the score for each of them and report the summed score over the
   # whole molecule the way that Reduce will.
-  ds = probe.DotScorer(atoms, extra)
+  ds = probe.DotScorer(probe.ExtraAtomInfoMap(atoms, extra))
   total = 0
   badBumpTotal = 0
   for a in atoms:
