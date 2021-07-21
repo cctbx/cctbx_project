@@ -558,10 +558,10 @@ class Script:
 
             if self.params.refiner.randomize_devices:
                 dev = np.random.choice(self.params.refiner.num_devices)
-                print("Rank %d will use random device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
+                print("Rank %d will use randomly chosen device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
             else:
                 dev = COMM.rank % self.params.refiner.num_devices
-                print("Rank %d will use fixed device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
+                print("Rank %d will use device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
 
             Modeler.SIM.D.device_Id = dev
 
@@ -747,9 +747,13 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     new_exp_list.append(expt)
     new_exp_list.as_file(opt_exp_path)
 
-    df["spectrum_filename"] = os.path.abspath(params.simulator.spectrum.filename)
+    if params.simulator.spectrum.filename is None:
+        df['spectrum_filename'] = None
+    else:
+        df["spectrum_filename"] = os.path.abspath(params.simulator.spectrum.filename)
     df["spectrum_stride"] = params.simulator.spectrum.stride
-    df["total_flux"] = params.simulator.total_flux
+
+    df["total_flux"] = SIM.D.flux #params.simulator.total_flux
     df["beamsize_mm"] = SIM.beam.size_mm
     df["exp_name"] = os.path.abspath(orig_exp_name)
     df["opt_exp_name"] = os.path.abspath(opt_exp_path)
