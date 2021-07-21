@@ -55,6 +55,11 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
     scitbx::af::shared<ExtraAtomInfo> >();
 
+  class_<ExtraAtomInfoMap>("ExtraAtomInfoMap", init< scitbx::af::shared<iotbx::pdb::hierarchy::atom>, scitbx::af::shared<ExtraAtomInfo> >())
+    .def("getMappingFor", &ExtraAtomInfoMap::getMappingFor)
+    .def("setMappingFor", &ExtraAtomInfoMap::setMappingFor)
+    ;
+
   enum_<DotScorer::InteractionType>("InteractionType")
     .value("None", DotScorer::InteractionType::None)
     .value("Clash", DotScorer::InteractionType::Clash)
@@ -102,7 +107,7 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
   ;
 
   class_<DotScorer>("DotScorer",
-        init< scitbx::af::shared<iotbx::pdb::hierarchy::atom>,scitbx::af::shared<ExtraAtomInfo>,
+        init< ExtraAtomInfoMap,
         optional<double, double, double, double, double, double> >())
     .def("check_dot", &DotScorer::check_dot)
     .def("score_dots", &DotScorer::score_dots)
