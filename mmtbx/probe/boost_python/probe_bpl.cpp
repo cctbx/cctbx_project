@@ -101,7 +101,8 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     .def("test", &SpatialQuery::test)
   ;
 
-  class_<DotScorer>("DotScorer", init<scitbx::af::shared<ExtraAtomInfo>,
+  class_<DotScorer>("DotScorer",
+        init< scitbx::af::shared<iotbx::pdb::hierarchy::atom>,scitbx::af::shared<ExtraAtomInfo>,
         optional<double, double, double, double, double, double> >())
     .def("check_dot", &DotScorer::check_dot)
     .def("score_dots", &DotScorer::score_dots)
