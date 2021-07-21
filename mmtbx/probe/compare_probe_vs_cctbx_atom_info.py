@@ -27,41 +27,10 @@ from iotbx.data_manager import DataManager
 from cctbx.maptbx.box import shift_and_box_model
 import mmtbx
 
-def BestMatch(name, d):
-  '''Find the best match for the name in the dictionary keys.  It must match the
-  first character of the name and then pick the one with the maximum number of
-  matched characters.
-  :param name: Name of the atom to match.
-  :param d: atom_dict dictionary mapping atom names to type and energy.
-  :returns Best match on success, raises KeyError on no match.
-  '''
-
-  # Get a list of names from the dictionary that match the first character.
-  keys = d.keys()
-  matches = []
-  for k in keys:
-    if k[0] == name[0]:
-      matches.append(k)
-  if len(matches) == 0:
-    raise KeyError('Could not find atom name with matching first character from '+name)
-
-  # Keep track of the match that has a maximum number of matching characters.
-  # Prefer strings of the same length to break ties when there are the same number
-  # of character matches.
-  maxCount = 0
-  bestMatch = ""
-  for m in matches:
-    count = 0
-    for c in name:
-      if c in m:
-        count += 1
-    if len(name) == len(m):
-      count += 0.1
-    if count > maxCount:
-      maxCount = count
-      bestMatch = m
-
-  return bestMatch
+# To enable addition of Hydrogens
+# @todo See if we can remove the shift and box once reduce_hydrogen is complete
+from cctbx.maptbx.box import shift_and_box_model
+from mmtbx.hydrogens import reduce_hydrogen
 
 def RunProbeVsCCTBXTest(inFileName, useNeutronDistances = False):
 
@@ -86,6 +55,12 @@ def RunProbeVsCCTBXTest(inFileName, useNeutronDistances = False):
   if (cs is None) or (cs.unit_cell() is None):
     model = shift_and_box_model(model = model)
 
+  # Add Hydrogens to the model
+  print('Adding Hydrogens')
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
+  reduce_add_h_obj.run()
+  model = reduce_add_h_obj.get_model()
+
   # Run PDB interpretation on the model
   # @todo Not sure this does anything... setting Neutron distances does not change radii?
   print('Interpreting model')
@@ -109,25 +84,14 @@ def RunProbeVsCCTBXTest(inFileName, useNeutronDistances = False):
     for chain in m.chains():
       for rg in chain.residue_groups():
         for ag in rg.atom_groups():
-          md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
-                residue_name=ag.resname, atom_names=ag.atoms().extract_name())
-          atom_dict = md.atom_dict()
-
           for a in ag.atoms():
 
             count += 1
 
             # Look up in CCTBX
-            name = a.name.strip()
-            try:
-              te = atom_dict[name].type_energy
-            except KeyError:
-              match = BestMatch(name, atom_dict)
-              print('Warning: Could not find entry in CCTBX for',name,'replacing with',match, flush=True)
-              te = atom_dict[match].type_energy
             ccei = probe.ExtraAtomInfo()
-            ccei.vdwRadius = ener_lib.lib_atom[te].vdw_radius
-            hb_type = ener_lib.lib_atom[te].hb_type
+            ccei.vdwRadius = model.get_specific_vdw_radii(a)
+            hb_type = model.get_specific_h_bond_type(a)
             if hb_type == "A" or hb_type == "B":  # B is for Both
               ccei.isAcceptor = True
             if hb_type == "D" or hb_type == "B":  # B is for Both
