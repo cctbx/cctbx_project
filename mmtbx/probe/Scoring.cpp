@@ -374,13 +374,13 @@ std::string DotScorer::test()
              scitbx::af::shared<ExtraAtomInfo> infos;
              infos.push_back(e);
 
-             // Construct the source atom, including its extra info looked up by
-             // its i_seq value.
+             // Construct the source atom, including its extra info.
              iotbx::pdb::hierarchy::atom source;
              source.set_charge(sourceCharge.c_str());
              source.set_occ(1);
              source.data->i_seq = atomSeq++;
              ExtraAtomInfo se(sourceRad, sourceAccept, sourceDonor, false);
+             atoms.push_back(source);
              infos.push_back(se);
 
              // Construct the scorer to be used.
@@ -395,15 +395,18 @@ std::string DotScorer::test()
              // Skip the remainder of the tests in this case
              scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
              if (excludeAtom) {
-                // Describe the extra atom to the system, including its extra info looked up by
-                // its i_seq value.
+                // Describe the extra atom to the system, including its extra info.
                 iotbx::pdb::hierarchy::atom ea;
                 ea.set_xyz({ 0,0,0 });
                 ea.set_occ(1);
                 ea.data->i_seq = atomSeq++;
                 ExtraAtomInfo ex(targetRad + 0.2, targetAccept, targetDonor, targetDummy);
+                atoms.push_back(ea);
                 infos.push_back(ex);
                 exclude.push_back(ea);
+
+                // We added an atom, so we need a new DotScorer
+                DotScorer as(atoms, infos);
 
                 // Even when we have a close clash, we should get no response.
                 source.set_xyz({ sourceRad,0,0 });
@@ -520,12 +523,12 @@ std::string DotScorer::test()
     scitbx::af::shared<ExtraAtomInfo> infos;
     infos.push_back(e);
 
-    // Construct the source atom, including its extra info looked up by
-    // its i_seq value.
+    // Construct the source atom, including its extra info.
     iotbx::pdb::hierarchy::atom source;
     source.set_occ(1);
     source.data->i_seq = atomSeq++;
     ExtraAtomInfo se(sourceRad);
+    atoms.push_back(source);
     infos.push_back(se);
 
     // Construct an empty exclusion list.
@@ -591,14 +594,15 @@ std::string DotScorer::test()
     }
     SpatialQuery sq(atoms);
 
-    // Construct the source atom, including its extra info looked up by
-    // its i_seq value.  It is a hydrogen donor and is located halfway
+    // Construct the source atom, including its extra info. 
+    // It is a hydrogen donor and is located halfway
     // between the two atoms.
     iotbx::pdb::hierarchy::atom source;
     source.set_xyz({ targetRad + sourceRad * 0.8 ,0,0 });
     source.set_occ(1);
     source.data->i_seq = atomSeq++;
     ExtraAtomInfo se(sourceRad, false, true);
+    atoms.push_back(source);
     infos.push_back(se);
 
     // Construct an empty exclusion list.
@@ -680,8 +684,8 @@ std::string DotScorer::test()
     // Construct an empty exclusion list.
     scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
 
-    // Construct a source atom, including its extra info looked up by
-    // its i_seq value.  This will be a hydrogen but not a donor to check
+    // Construct a source atom, including its extra info .
+    // This will be a hydrogen but not a donor to check
     // for the standard bad-bump result.
     // Test it against both sides of the bad-bump line to see if it responds correctly.
     {
@@ -689,6 +693,7 @@ std::string DotScorer::test()
       source.set_occ(1);
       source.data->i_seq = atomSeq++;
       ExtraAtomInfo se(sourceRad);
+      atoms.push_back(source);
       infos.push_back(se);
       ScoreDotsResult res;
 
@@ -718,8 +723,8 @@ std::string DotScorer::test()
       }
     }
 
-    // Construct a source atom, including its extra info looked up by
-    // its i_seq value.  This will be an uncharged hydrogen donor to check
+    // Construct a source atom, including its extra info.
+    // This will be an uncharged hydrogen donor to check
     // for the non-charged hydrogen bad-bump result.
     // Test it against both sides of the bad-bump line to see if it responds correctly.
     {
@@ -727,6 +732,7 @@ std::string DotScorer::test()
       source.set_occ(1);
       source.data->i_seq = atomSeq++;
       ExtraAtomInfo se(sourceRad,false, true);
+      atoms.push_back(source);
       infos.push_back(se);
       ScoreDotsResult res;
 
@@ -756,8 +762,8 @@ std::string DotScorer::test()
       }
     }
 
-    // Construct a source atom, including its extra info looked up by
-    // its i_seq value.  This will be a charged hydrogen donor to check
+    // Construct a source atom, including its extra info.
+    // This will be a charged hydrogen donor to check
     // for the charged hydrogen bad-bump result.
     // Test it against both sides of the bad-bump line to see if it responds correctly.
     {
@@ -766,6 +772,7 @@ std::string DotScorer::test()
       source.set_charge("+");
       source.data->i_seq = atomSeq++;
       ExtraAtomInfo se(sourceRad, false, true);
+      atoms.push_back(source);
       infos.push_back(se);
       ScoreDotsResult res;
 
@@ -819,13 +826,14 @@ std::string DotScorer::test()
     // Construct an empty exclusion list.
     scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
 
-    // Construct a source atom, including its extra info looked up by
-    // its i_seq value.  This will be a hydrogen but not a donor.
+    // Construct a source atom, including its extra info.
+    // This will be a hydrogen but not a donor.
     // It will have an occupancy of 0.25.
     iotbx::pdb::hierarchy::atom source;
     source.set_occ(0.25);
     source.data->i_seq = atomSeq++;
     ExtraAtomInfo se(sourceRad);
+    atoms.push_back(source);
     infos.push_back(se);
     ScoreDotsResult res;
 
@@ -873,12 +881,13 @@ std::string DotScorer::test()
     // Construct an empty exclusion list.
     scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
 
-    // Construct a source atom, including its extra info looked up by
-    // its i_seq value.  This will be a hydrogen but not a donor.
+    // Construct a source atom, including its extra info.
+    // This will be a hydrogen but not a donor.
     iotbx::pdb::hierarchy::atom source;
     source.set_occ(1);
     source.data->i_seq = atomSeq++;
     ExtraAtomInfo se(sourceRad);
+    atoms.push_back(source);
     infos.push_back(se);
     ScoreDotsResult res;
 
