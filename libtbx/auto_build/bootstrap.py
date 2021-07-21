@@ -930,7 +930,7 @@ class phaser_regression_module(SourceModule):
 
 class voyager_regression_module(SourceModule):
   module = 'voyager_regression'
-  anonymous = ['git', 
+  anonymous = ['git',
                'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/voyager_regression.git',
                'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/voyager_regression.git']
 
