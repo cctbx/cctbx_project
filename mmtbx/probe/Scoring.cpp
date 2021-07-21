@@ -926,7 +926,6 @@ std::string Scoring_test()
     }
   }
 
-
   // Test the DotScorer class
   ret = DotScorer::test();
   if (ret.size() > 0) {
