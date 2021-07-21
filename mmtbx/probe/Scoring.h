@@ -155,9 +155,7 @@ namespace molprobity {
         if (atoms.size() == extraInfo.size()) {
           // Build the map from the vector of atoms and vector of extra atom info
           for (size_t i = 0; i < atoms.size(); i++) {
-            std::pair < iotbx::pdb::hierarchy::atom_data*, ExtraAtomInfo>
-              element(atoms[i].data.get(), extraInfo[i]);
-            m_extraInfo.insert(element);
+            m_extraInfo[atoms[i].data.get()] = extraInfo[i];
             // Keep a shared pointer so that the data doesn't go away while we're still
             // using it.
             m_keepPointers.push_back(atoms[i].data);
