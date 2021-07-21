@@ -2078,6 +2078,18 @@ class PhaserTNGBuilder(PhaserBuilder):
     configlst.append('--enable_cxx11')
     return configlst
 
+  def get_codebases(self):
+    """
+    Phaser uses Boost in the conda environment for Python 3 and Windows
+    """
+    codebases = super(PhaserTNGBuilder, self).get_codebases()
+    if (self.python3 and self.use_conda is not None):
+      try:
+        codebases.remove('boost')
+      except ValueError:
+        pass
+    return codebases
+
 class CCTBXLiteBuilder(CCIBuilder):
   BASE_PACKAGES = 'cctbx'
     # Checkout these codebases
