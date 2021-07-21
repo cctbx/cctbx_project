@@ -59,8 +59,8 @@ SpatialQuery::SpatialQuery(scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms
   Point lowerBounds(1e10, 1e10, 1e10);
   Point upperBounds(-1e10, -1e10, -1e10);
   for (iotbx::pdb::hierarchy::atom const& a : atoms) {
+    Point loc = a.data->xyz;
     for (size_t i = 0; i < 3; i++) {
-      Point loc = a.data->xyz;
       if (loc[i] < lowerBounds[i]) { lowerBounds[i] = loc[i]; }
       if (loc[i] > upperBounds[i]) { upperBounds[i] = loc[i]; }
     }

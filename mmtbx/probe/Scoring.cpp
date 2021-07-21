@@ -88,7 +88,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   // Defaults to "no overlap" type
   CheckDotResult ret;
 
-  ExtraAtomInfo const& sourceExtra = m_extraInfo[sourceAtom.data->i_seq];
+  ExtraAtomInfo const& sourceExtra = m_extraInfo[sourceAtom.data.get()];
 
   // Find the world-space location of the dot by adding it to the location of the source atom.
   // The probe location is in the same direction as d from the source but is further away by the
@@ -104,7 +104,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   // Look through each atom to find the one with the smallest gap, which is the one that
   // the dot would interact with.
   for (iotbx::pdb::hierarchy::atom const& b : interacting) {
-    ExtraAtomInfo const& bExtra = m_extraInfo[b.data->i_seq];
+    ExtraAtomInfo const& bExtra = m_extraInfo[b.data.get()];
     Point locb = b.data->xyz;
     double vdwb = bExtra.getVdwRadius();
 
@@ -159,7 +159,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   // from consideration because it is also inside an excluded atom.
   if (keepDot) {
     for (iotbx::pdb::hierarchy::atom const& e : exclude) {
-      double vdwe = m_extraInfo[e.data->i_seq].getVdwRadius();
+      double vdwe = m_extraInfo[e.data.get()].getVdwRadius();
       if ((absoluteDotLocation - e.data->xyz).length_sq() < vdwe * vdwe) {
         keepDot = false;
         break;
@@ -188,7 +188,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
 
     /// @todo We may be able to speed things up by only computing this for contact dots
     ret.annular = annularDots(absoluteDotLocation, sourceAtom.data->xyz, sourceExtra.getVdwRadius(),
-      ret.cause.data->xyz, m_extraInfo[ret.cause.data->i_seq].getVdwRadius(), probeRadius);
+      ret.cause.data->xyz, m_extraInfo[ret.cause.data.get()].getVdwRadius(), probeRadius);
   }
  
   return ret;
@@ -237,13 +237,10 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   // gap between the Van Der Waals surfaces is less than the probe radius, and which
   // are not in the excluded list.
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> interacting;
-  unsigned sourceID = sourceAtom.data->i_seq;
+  iotbx::pdb::hierarchy::atom_data* sourceID = sourceAtom.data.get();
   ExtraAtomInfo const& sourceExtra = m_extraInfo[sourceID];
   for (iotbx::pdb::hierarchy::atom const &a : neighbors) {
-    unsigned aID = a.data->i_seq;
-    if ((sourceID >= m_extraInfo.size()) || (aID >= m_extraInfo.size())) {
-      return ret;
-    }
+    iotbx::pdb::hierarchy::atom_data* aID = a.data.get();
     ExtraAtomInfo const& aExtra = m_extraInfo[aID];
     double nonBondedDistance = sourceExtra.getVdwRadius() + aExtra.getVdwRadius();
     bool excluded = false;
@@ -387,7 +384,7 @@ std::string DotScorer::test()
              infos.push_back(se);
 
              // Construct the scorer to be used.
-             DotScorer as(infos);
+             DotScorer as(atoms, infos);
 
              // Determine our hydrogen-bond state
              bool compatibleCharge = atom_charge(source) * atom_charge(a) <= 0;
@@ -535,7 +532,7 @@ std::string DotScorer::test()
     scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
 
     // Construct the scorer to be used.
-    DotScorer as(infos);
+    DotScorer as(atoms, infos);
 
     // Sweep the source atom
     double lastAttract = 1e10;
@@ -618,7 +615,7 @@ std::string DotScorer::test()
         for (double wBond = 0.25; wBond < 10; wBond += 3) {
 
           // Construct the scorer to be used.
-          DotScorer as(infos,wGap, wBump, wBond);
+          DotScorer as(atoms, infos,wGap, wBump, wBond);
 
           // Get the dot results and store all of the params and results in a vector
           ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
@@ -696,7 +693,8 @@ std::string DotScorer::test()
       ScoreDotsResult res;
 
       // Construct the scorer to be used with the specified bond gaps.
-      DotScorer as(infos, 0.25, 10.0, 4.0, maxRegularHydrogenOverlap, maxChargedHydrogenOverlap, badOverlap);
+      DotScorer as(atoms, infos, 0.25, 10.0, 4.0, maxRegularHydrogenOverlap,
+        maxChargedHydrogenOverlap, badOverlap);
 
       // Check the source atom against outside and inside the gap
       source.set_xyz({ targetRad + sourceRad - badOverlap + 0.1, 0, 0 });
@@ -733,7 +731,8 @@ std::string DotScorer::test()
       ScoreDotsResult res;
 
       // Construct the scorer to be used with the specified bond gaps.
-      DotScorer as(infos, 0.25, 10.0, 4.0, maxRegularHydrogenOverlap, maxChargedHydrogenOverlap, badOverlap);
+      DotScorer as(atoms, infos, 0.25, 10.0, 4.0, maxRegularHydrogenOverlap,
+        maxChargedHydrogenOverlap, badOverlap);
 
       // Check the source atom against outside and inside the gap
       source.set_xyz({ targetRad + sourceRad - maxRegularHydrogenOverlap - badOverlap + 0.1, 0, 0 });
@@ -771,7 +770,8 @@ std::string DotScorer::test()
       ScoreDotsResult res;
 
       // Construct the scorer to be used with the specified bond gaps.
-      DotScorer as(infos, 0.25, 10.0, 4.0, maxRegularHydrogenOverlap, maxChargedHydrogenOverlap, badOverlap);
+      DotScorer as(atoms, infos, 0.25, 10.0, 4.0, maxRegularHydrogenOverlap,
+        maxChargedHydrogenOverlap, badOverlap);
 
       // Check the source atom against outside and inside the gap
       source.set_xyz({ targetRad + sourceRad - maxChargedHydrogenOverlap - badOverlap + 0.1, 0, 0 });
@@ -830,7 +830,7 @@ std::string DotScorer::test()
     ScoreDotsResult res;
 
     // Construct the scorer to be used with the specified bond gaps.
-    DotScorer as(infos);
+    DotScorer as(atoms, infos);
 
     // Check the source atom just overlapping with the target.
     source.set_xyz({ targetRad + sourceRad - 0.1, 0, 0 });
@@ -883,7 +883,7 @@ std::string DotScorer::test()
     ScoreDotsResult res;
 
     // Construct the scorer to be used with the specified bond gaps.
-    DotScorer as(infos);
+    DotScorer as(atoms, infos);
 
     // Check the source atom just overlapping with the target.
     source.set_xyz({ targetRad + sourceRad - 0.1, 0, 0 });
