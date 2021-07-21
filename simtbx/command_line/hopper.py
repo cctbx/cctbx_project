@@ -64,6 +64,10 @@ spectrum_from_imageset = False
   .type = bool
   .help = if True, load the spectrum from the imageset in the experiment, then probably downsample it
 downsamp_spec {
+  skip = False
+    .type = bool
+    .help = if reading spectra from imageset, optionally skip the downsample portion
+    .help = Note, if skip=True, then total flux will be determined by whats in the imageset spectrum (sum of the weights)
   filt_freq = 0.07
     .type = float
     .help = low pass filter frequency in units of inverse spectrometer pixels (??)
