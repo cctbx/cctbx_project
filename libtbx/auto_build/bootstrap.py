@@ -2292,6 +2292,7 @@ class PhenixBuilder(CCIBuilder):
     'dials',
     'xia2',
     'phaser',
+    'phasertng',
     'phaser_regression',
     'phaser_voyager',
     'iota',
