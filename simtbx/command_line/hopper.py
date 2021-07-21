@@ -460,9 +460,12 @@ class Script:
             input_lines = open(self.params.exp_ref_spec_file, "r").readlines()
             if self.params.sanity_test_input:
                 for line in input_lines:
-                    for fname in line.strip().split():
+                    line_fields = line.strip().split()
+                    if len(line_fields) not in [2, 3]:
+                        raise IOError("Input line %s is not formatted properly" % line)
+                    for fname in line_fields:
                         if not os.path.exists(fname):
-                            raise FileNotFoundError("File %s not there " % fname)
+                            raise FileNotFoundError("File %s does not exist" % fname)
             if self.params.best_pickle is not None:
                 if not self.params.quiet: print("reading pickle %s" % self.params.best_pickle)
                 best_models = pandas.read_pickle(self.params.best_pickle)
@@ -489,7 +492,13 @@ class Script:
                 continue
 
             print("COMM.rank %d on shot  %d / %d" % (COMM.rank, i_exp + 1, len(input_lines)))
-            exp, ref, spec = line.strip().split()
+            line_fields = line.strip().split()
+            assert len(line_fields) in [2, 3]
+            if len(line_fields) == 2:
+                exp, ref = line_fields
+                spec = None
+            else:
+                exp, ref, spec = line_fields
 
             if self.params.ignore_existing:
                 basename = os.path.splitext(os.path.basename(exp))[0]
@@ -578,10 +587,13 @@ class Script:
 
         if self.params.dump_gathers and self.params.gathered_output_file is not None:
             exp_gatheredRef_spec = COMM.reduce(exp_gatheredRef_spec)
-            if COMM.rank==0:
+            if COMM.rank == 0:
                 o = open(self.params.gathered_output_file, "w")
-                for e,r,s in exp_gatheredRef_spec:
-                    o.write("%s %s %s\n" % (e,r,s))
+                for e, r, s in exp_gatheredRef_spec:
+                    if s is not None:
+                        o.write("%s %s %s\n" % (e,r,s))
+                    else:
+                        o.write("%s %s\n" % (e,r))
                 o.close()
 
 

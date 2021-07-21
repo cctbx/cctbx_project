@@ -1055,25 +1055,31 @@ def downsamp_spec(SIM, params, expt):
     SIM.dxtbx_spec = expt.imageset.get_spectrum(0)
     spec_en = SIM.dxtbx_spec.get_energies_eV()
     spec_wt = SIM.dxtbx_spec.get_weights()
-    # ---- downsample the spectrum
-    method2_param = {"filt_freq": params.downsamp_spec.filt_freq,
-                     "filt_order": params.downsamp_spec.filt_order,
-                     "tail": params.downsamp_spec.tail,
-                     "delta_en": params.downsamp_spec.delta_en}
-    downsamp_en, downsamp_wt = downsample_spectrum(spec_en.as_numpy_array(),
-                                                   spec_wt.as_numpy_array(),
-                                                   method=2, method2_param=method2_param)
+    if params.downsamp_spec.skip:
+        spec_wave = utils.ENERGY_CONV / spec_en.as_numpy_array()
+        SIM.beam.spectrum = list(zip(spec_wave, spec_wt))
+    else:
+        spec_en = SIM.dxtbx_spec.get_energies_eV()
+        spec_wt = SIM.dxtbx_spec.get_weights()
+        # ---- downsample the spectrum
+        method2_param = {"filt_freq": params.downsamp_spec.filt_freq,
+                         "filt_order": params.downsamp_spec.filt_order,
+                         "tail": params.downsamp_spec.tail,
+                         "delta_en": params.downsamp_spec.delta_en}
+        downsamp_en, downsamp_wt = downsample_spectrum(spec_en.as_numpy_array(),
+                                                       spec_wt.as_numpy_array(),
+                                                       method=2, method2_param=method2_param)
 
-    stride = params.simulator.spectrum.stride
-    if stride > len(downsamp_en) or stride == 0:
-        raise ValueError("Incorrect value for pinkstride")
-    downsamp_en = downsamp_en[::stride]
-    downsamp_wt = downsamp_wt[::stride]
-    tot_fl = params.simulator.total_flux
-    if tot_fl is not None:
-        downsamp_wt = downsamp_wt / sum(downsamp_wt) * tot_fl 
+        stride = params.simulator.spectrum.stride
+        if stride > len(downsamp_en) or stride == 0:
+            raise ValueError("Incorrect value for pinkstride")
+        downsamp_en = downsamp_en[::stride]
+        downsamp_wt = downsamp_wt[::stride]
+        tot_fl = params.simulator.total_flux
+        if tot_fl is not None:
+            downsamp_wt = downsamp_wt / sum(downsamp_wt) * tot_fl
 
-    downsamp_wave = utils.ENERGY_CONV / downsamp_en
-    SIM.beam.spectrum = list(zip(downsamp_wave, downsamp_wt))
+        downsamp_wave = utils.ENERGY_CONV / downsamp_en
+        SIM.beam.spectrum = list(zip(downsamp_wave, downsamp_wt))
     # the nanoBragg beam has an xray_beams property that is used internally in diffBragg
     SIM.D.xray_beams = SIM.beam.xray_beams
