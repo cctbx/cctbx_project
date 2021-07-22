@@ -24,14 +24,14 @@ map_model {
   full_map = None
     .type = path
     .help = Input full map file
-    .short_caption = Full map
+    .short_caption = Map
     .style = file_type:ccp4_map input_file
 
   half_map = None
     .type = path
     .multiple = True
     .help = Input half map files
-    .short_caption = Half maps
+    .short_caption = Half map
     .style = file_type:ccp4_map input_file
   model = None
     .type = path
@@ -303,7 +303,8 @@ class map_model_manager(object):
     # any_map_manager, model, ncs_object know about shift
 
     any_map_manager = mmmn.map_manager()
-    # Put shifted map in the right place. It is either map_manager or map_manager_1
+    # Put shifted map in the right place. It is either map_manager
+    #   or map_manager_1
     if any_map_manager_is_map_manager:
       map_manager = any_map_manager
     else:
@@ -599,6 +600,15 @@ class map_model_manager(object):
         map_manager.file_name = file_name
 
         self._map_dict['map_manager'] = map_manager
+    if self.model() and not map_manager:  # make one based on model
+      crystal_symmetry = self.model().unit_cell_crystal_symmetry()
+      if not crystal_symmetry:
+        crystal_symmetry = self.model().crystal_symmetry()
+      if crystal_symmetry:
+        from iotbx.map_manager import dummy_map_manager
+        map_manager = dummy_map_manager(crystal_symmetry)
+        self._map_dict['map_manager'] = map_manager
+        self.info().dummy_map_manager = True # mark it
 
     return map_manager
 
@@ -860,7 +870,13 @@ class map_model_manager(object):
     '''
     keys = list(self.map_dict().keys())
     if not keys:
-      return
+      # Make a map dummy manager
+      mm = self.map_manager() # makes a dummy one if possible
+      keys = list(self.map_dict().keys())
+      if keys:
+        return self.map_dict()[keys[0]]
+      else:
+        return None
     else:
       return self.map_dict()[keys[0]]
 
@@ -907,14 +923,14 @@ class map_model_manager(object):
     self.add_map_manager_by_id(map_manager, 'map_manager')
 
   def add_map_manager_by_id(self, map_manager, map_id,
-     overwrite = True):
+     overwrite = True, force = False):
     '''
      Add a new map_manager
      Must be similar to existing
      Overwrites any existing with the same id unless overwrite = False
      Is a mask if is_mask is set
     '''
-    if not map_manager:
+    if not map_manager and not force:
       print("No map_manager supplied for '%s' ... skipping addition" %(
         map_id), file = self.log)
       return
@@ -2633,7 +2649,14 @@ class map_model_manager(object):
           diffs = reverse_diffs
       if diffs:
          overall_diffs.extend(diffs)
+    all_n = self.get_info(item_name = 'matching_model_ca_size')
+
+
     if overall_diffs.size() > 0:
+      self.add_to_info(item_name = 'rms_n', item = overall_diffs.size())
+      self.add_to_info(item_name = 'all_n',
+          item = all_n if all_n is not None else overall_diffs.size())
+      self.add_to_info(item_name = 'rmsd', item = overall_diffs.rms_length())
       return overall_diffs.rms_length()
     else:
       return None
@@ -2884,6 +2907,11 @@ class map_model_manager(object):
       print("Matching model has no sites...skipping select_matching_segments",
          file = self.log)
       return []
+
+    self.add_to_info(
+        item_name = 'target_model_ca_size', item = target_model_ca.size())
+    self.add_to_info(item_name = 'matching_model_ca_size',
+         item = matching_model_ca.size())
 
     if residue_names_must_match:
       ca_residue_names = get_sequence_from_hierarchy(
@@ -7284,7 +7312,10 @@ class map_model_manager(object):
          map_id))
 
 
-    assert self.map_manager().is_compatible_model(model) # model must match
+    if not self.map_manager().is_compatible_model(model): # model must match
+      print("Setting model crystal symmetry to match map", file = self.log)
+      model = model.deep_copy()
+      model.set_crystal_symmetry(self.map_manager().crystal_symmetry())
 
     if not resolution:
       resolution = self.resolution()
@@ -7321,8 +7352,8 @@ class map_model_manager(object):
   def shift_aware_rt_to_superpose_other(self, other,
       selection_string = None):
     '''
-    Identify rotation/translation to map model from other on to model in this
-     object.
+    Identify rotation/translation to transform model from other on to
+     model in this object.
     Optionally apply selection_string to both models before doing the
      mapping
 
@@ -7385,8 +7416,8 @@ class map_model_manager(object):
      shift_aware_rt_info = None,
      selection_string = None):
     '''
-    Identify rotation/translation to map model from other on to model in this
-     object.
+    Identify rotation/translation to transform model from other on to
+      model in this object.
     Optionally apply selection_string to both models before doing the
      mapping
     Then extract map from other to cover map in this object,
@@ -7843,7 +7874,8 @@ class map_model_manager(object):
       If no map_manager is present, use supplied or existing model to
          generate map_manager and model.
 
-      If map_manager is present, use supplied or existing model as model and
+      If map_manager is present and is not a dummy map_manager,
+         use supplied or existing model as model and
          create new entry in this this map_model_manager with name map_id.
          If map_id is None, use 'model_map'
 
@@ -7875,17 +7907,24 @@ class map_model_manager(object):
                  applies if there is an existing map_manager)
     '''
 
+    # See if we have a map_manager
+    if (not self.map_manager()) or (
+        self.map_manager() and self.map_manager().is_dummy_map_manager()):
+      have_map_manager = False
+    else:
+      have_map_manager = True
+
 
     #  Choose scattering table
     if not scattering_table:
       scattering_table = self.scattering_table()
 
     # Set the resolution now if not already set
-    if d_min and self.map_manager() and (not self.resolution()):
+    if d_min and have_map_manager and (not self.resolution()):
       self.set_resolution(d_min)
 
     # Get some value for resolution
-    if not d_min:
+    if not have_map_manager and d_min:
       d_min = self.resolution()
     if not d_min:
       d_min = 3  # default
@@ -7896,8 +7935,8 @@ class map_model_manager(object):
       self._print("NOTE: using existing model to generate map data\n")
       model = self.model()
 
-    # See if we have a map_manager
-    if self.map_manager():
+
+    if have_map_manager:
       if not gridding:
         gridding = self.map_manager().map_data().all()
         origin_shift_grid_units = self.map_manager().origin_shift_grid_units
@@ -7922,7 +7961,7 @@ class map_model_manager(object):
         space_group_number = 1,
         log = null_out())
 
-    if self.map_manager():  #  make sure model matches
+    if have_map_manager:  #  make sure model matches
       if not self.map_manager().is_compatible_model(model):
          self.shift_any_model_to_match(model)
 
@@ -7943,7 +7982,7 @@ class map_model_manager(object):
       high_resolution_real_space_noise_fraction = fractional_error,
       log = null_out())
 
-    if self.get_any_map_manager():
+    if have_map_manager and self.get_any_map_manager():
       if not map_id:
         map_id = 'model_map'
       new_mm = self.get_any_map_manager().customized_copy(

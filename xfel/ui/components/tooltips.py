@@ -25,6 +25,7 @@ tooltips = {
   'wall_time_ctr': get_help('mp.wall_time'),
   'mpi_command_ctr': get_help('mp.mpi_command'),
   'env_script_ctr': get_help('mp.env_script'),
+  'phenix_script_ctr': get_help('mp.phenix_script'),
   'htcondor_executable_path_ctr': get_help('mp.htcondor.executable_path'),
   'htcondor_filesystemdomain_ctr': get_help('mp.htcondor.filesystemdomain'),
   'nnodes_index_ctr': get_help('mp.nnodes_index'),

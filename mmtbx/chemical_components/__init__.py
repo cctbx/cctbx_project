@@ -10,7 +10,7 @@ from six.moves import zip
 l_amino_types = ['L-PEPTIDE LINKING']
 d_amino_types = ['D-PEPTIDE LINKING']
 amino_types = ['PEPTIDE LINKING',
-               # 'PEPTIDE-LIKE',
+               'PEPTIDE-LIKE',
                ] + l_amino_types + d_amino_types
 rna_types = [
   'RNA LINKING',
@@ -41,7 +41,7 @@ terminii = [
   '"L-PEPTIDE COOH CARBOXY TERMINUS"',
   '"D-PEPTIDE NH3 AMINO TERMINUS"',
 ]
-non_polyer = [
+non_polymer = [
   "NON-POLYMER",
   ]
 non_alpha_peptide = [

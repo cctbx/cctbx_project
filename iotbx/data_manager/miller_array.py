@@ -262,6 +262,7 @@ class MillerArrayDataManager(DataManagerBase):
 {
   file = None
     .type = path
+    .short_caption = MTZ file
     .style = file_type:hkl input_file
   labels
     .multiple = True

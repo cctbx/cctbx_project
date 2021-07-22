@@ -1,5 +1,5 @@
 # Template for updating data cache artifacts
-#   - miniconda
+#   - miniforge
 #   - chem_data
 #   - phenix_regression
 #   - phenix_examples
@@ -22,16 +22,16 @@ jobs:
       sshKeySecureFile: id_rsa
     displayName: Download SSH key
 
-  # miniconda
+  # miniforge
   - script: |
-      mkdir -p $(System.DefaultWorkingDirectory)/miniconda
-      cd $(System.DefaultWorkingDirectory)/miniconda
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
-    displayName: Download miniconda
+      mkdir -p $(System.DefaultWorkingDirectory)/miniforge
+      cd $(System.DefaultWorkingDirectory)/miniforge
+      wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+      wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-x86_64.sh
+    displayName: Download miniforge
 
-  - publish: $(System.DefaultWorkingDirectory)/miniconda
-    artifact: miniconda
+  - publish: $(System.DefaultWorkingDirectory)/miniforge
+    artifact: miniforge
 
   # chem_data
   - task: DownloadPipelineArtifact@2
@@ -52,6 +52,7 @@ jobs:
       cd $(System.DefaultWorkingDirectory)/chem_data
       svn update
     displayName: Update chem_data
+    continueOnError: true
 
   - publish: $(System.DefaultWorkingDirectory)/chem_data
     artifact: chem_data
@@ -78,6 +79,7 @@ jobs:
       git pull --rebase
       git lfs pull
     displayName: Update phenix_regression
+    continueOnError: true
 
   - publish: $(System.DefaultWorkingDirectory)/phenix_regression
     artifact: phenix_regression
@@ -104,6 +106,7 @@ jobs:
       git pull --rebase
       git lfs pull
     displayName: Update phenix_examples
+    continueOnError: true
 
   - publish: $(System.DefaultWorkingDirectory)/phenix_examples
     artifact: phenix_examples
@@ -130,6 +133,7 @@ jobs:
       git pull --rebase
       git lfs pull
     displayName: Update xfel_regression
+    continueOnError: true
 
   - publish: $(System.DefaultWorkingDirectory)/xfel_regression
     artifact: xfel_regression

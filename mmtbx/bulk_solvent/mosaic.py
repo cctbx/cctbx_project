@@ -198,198 +198,48 @@ def write_map_file(crystal_symmetry, map_data, file_name):
     map_data    = map_data,
     labels      = flex.std_string([""]))
 
-
-
-
-
-
-class refinery_(object):
-  """
-  Sub-algorithm "a" -- EXPERIMENTAL
-  """
-  def __init__(self, fmodel, fv, alg, anomaly=True, log = sys.stdout):
-    assert alg in ["alg0", "alg2", "alg4", None]
-    self.log             = log
-    self.f_obs           = fmodel.f_obs()
-    self.r_free_flags    = fmodel.r_free_flags()
-    k_mask_overall       = fmodel.k_masks()[0]
-    bin_selections_input = fmodel.bin_selections
-    self.f_calc          = fmodel.f_calc()
-    phase_source_init    = fmodel.f_model()
-    k_total              = fmodel.k_total()
-    self.F               = [self.f_calc.deep_copy()] + fv.keys()
-    self.F_JUNK          = [self.f_calc.deep_copy()] + fv.keys()
-    n_zones_start        = len(self.F)
-    r4_start             = fmodel.r_work4()
-    r4_best              = r4_start
-    self.fmodel_best     = fmodel.deep_copy()
-    del fmodel
-    #
-    tmp = []
-    for mi in fv.keys():
-      mi_ = mi.deep_copy()
-      mi_ = mi_.customized_copy(data = mi_.data()*k_mask_overall)
-      tmp.append(mi_)
-    #
-    for it in range(5):
-      #
-      if(it>0):
-        r4 = self.fmodel.r_work4()
-        if(abs(round(r4-r4_start,4))<1.e-4):
-          break
-        r4_start = r4
-      #if(it>0 and n_zones_start == len(self.F)): break
-      #
-      #if it>0:
-      #  self.F = [self.fmodel.f_model().deep_copy()] + self.F[1:]
-      self._print("cycle: %2d"%it)
-      self._print("  volumes: "+" ".join([str(fv[f]) for f in self.F_JUNK[1:]]))
-      f_obs   = self.f_obs.deep_copy()
-      if it>0: k_total = self.fmodel.k_total()
-      i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
-      K_MASKS = OrderedDict()
-
-      self.bin_selections = [self.f_calc.d_spacings().data()>3]
-
-      for i_bin, sel in enumerate(self.bin_selections):
-        d_max, d_min = f_obs.select(sel).d_max_min()
-        bin = "  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min)
-        F = [f.select(sel) for f in self.F]
-        k_total_sel = k_total.select(sel)
-        F_scaled = [f.customized_copy(data=f.data()*k_total_sel) for f in F]
-
-        # algorithm_0
-        if(alg=="alg0"):
-          k_masks = algorithm_0(
-            f_obs = f_obs.select(sel),
-            F     = F_scaled,
-            kt=k_total_sel)
-
-        # algorithm_4
-        if(alg=="alg4"):
-          if it==0: phase_source = phase_source_init.select(sel)
-          else:     phase_source = self.fmodel.f_model().select(sel)
-          k_masks = algorithm_4(
-            f_obs             = self.f_obs.select(sel),
-            F                 = F_scaled,
-            auto_converge_eps = 0.0001,
-            phase_source = phase_source)
-
-        # algorithm_2
-        if(alg=="alg2"):
-          k_masks = algorithm_2(
-            i_obs          = i_obs.select(sel),
-            F              = F_scaled,
-            x              = self._get_x_init(i_bin),
-            use_curvatures = False)
-
-        self._print(bin+" ".join(["%6.2f"%k for k in k_masks]) )
-        K_MASKS[sel] = [k_masks, k_masks]
-      #
-      if(len(self.F)==2): break # stop and fall back onto using largest mask
-      #
-      f_calc_data = self.f_calc.data().deep_copy()
-      f_bulk_data = flex.complex_double(self.f_calc.data().size(), 0)
-      k_mask_0 = None
-      for sel, k_masks in zip(K_MASKS.keys(), K_MASKS.values()):
-        k_masks = k_masks[0] # 1 is shifted!
-        f_bulk_data_ = flex.complex_double(sel.count(True), 0)
-        for i_mask, k_mask in enumerate(k_masks):
-          if i_mask==0:
-            f_calc_data = f_calc_data.set_selected(sel,
-              f_calc_data.select(sel)*k_mask)
-            k_mask_0 = k_mask
-            continue
-          if k_mask_0 is not None: k_mask = k_mask/k_mask_0
-          f_bulk_data_ += self.F[i_mask].data().select(sel)*k_mask
-        f_bulk_data = f_bulk_data.set_selected(sel,f_bulk_data_ )
-      #
-      self.update_F(K_MASKS)
-      f_bulk = self.f_calc.customized_copy(data = f_bulk_data)
-
-      if(len(self.F)==2):
-        self.fmodel = mmtbx.f_model.manager(
-          f_obs          = self.f_obs,
-          r_free_flags   = self.r_free_flags,
-          f_calc         = self.f_calc,
-          f_mask         = self.F[1],
-          k_mask         = flex.double(f_obs.data().size(),1)
-          )
-        self.fmodel.update_all_scales(remove_outliers=False,
-          apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
-        self._print(self.fmodel.r_factors(prefix="  "))
-      else:
-        self.fmodel = mmtbx.f_model.manager(
-          f_obs          = self.f_obs,
-          r_free_flags   = self.r_free_flags,
-          f_calc         = self.f_calc,
-          bin_selections = bin_selections_input,
-          f_mask         = f_bulk,
-          k_mask         = flex.double(f_obs.data().size(),1)
-          )
-        self.fmodel.update_all_scales(remove_outliers=False,
-          apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
-        #
-        k_mask_overall      = self.fmodel.k_masks()[0]
-        tmp = []
-        for mi in fv.keys():
-          mi_ = mi.deep_copy()
-          mi_ = mi_.customized_copy(data = mi_.data()*k_mask_overall)
-          tmp.append(mi_)
-        self.F      = [self.f_calc.deep_copy()] + tmp
-        #
-        self._print(self.fmodel.r_factors(prefix="  "))
-
-      self.mc = self.fmodel.electron_density_map().map_coefficients(
-        map_type   = "mFobs-DFmodel",
-        isotropize = True,
-        exclude_free_r_reflections = False)
-      #
-      r4 = self.fmodel.r_work4()
-      if(r4<=r4_best):
-        r4_best = r4
-        self.fmodel_best = self.fmodel.deep_copy()
-    self.fmodel = self.fmodel_best
-
-  def _print(self, m):
-    if(self.log is not None):
-      print(m, file=self.log)
-
-  def update_F(self, K_MASKS):
-    tmp = []
-    for i_mask, F in enumerate(self.F):
-      k_masks = [k_masks_bin[1][i_mask] for k_masks_bin in K_MASKS.values()]
-      if(i_mask == 0):                        tmp.append(self.F[0])
-      elif moving_average(k_masks,2)[0]>=0.03: tmp.append(F)
-      self.F = tmp[:]
-
-  def _get_x_init(self, i_bin):
-    return flex.double([1] + [1]*len(self.F[1:]))
-    #k_maks1_init = 0.35 - i_bin*0.35/len(self.bin_selections)
-    #x = flex.double([1,k_maks1_init])
-    #x.extend( flex.double(len(self.F)-2, 0.1))
-    #return x
-
-
-
-
-
-
-
-
-
-
-
-
-
-def chunker(l,n):
- f = lambda l, n: [l[i:i+n] for i in range(0, len(l), n)]
- return f(l,n)
-
+def thiken_bins(bins, n, ds):
+  result = []
+  group = []
+  cntr = 0
+  for bin in bins:
+    bs = bin.count(True)
+    if bs>=n and len(group)==0:
+      result.append(bin)
+      cntr=0
+    else:
+      group.append(bin)
+      cntr += bs
+    if cntr>=n:
+      result.append(group)
+      group = []
+      cntr = 0
+  #
+  for i, r in enumerate(result):
+    if(not isinstance(r, flex.bool)):
+      r0 = r[0]
+      for r_ in r:
+        r0 = r0 | r_
+      result[i] = r0
+  #
+  if(len(result)==0):
+    result = [flex.bool(bins[0].size(), True)]
+  #
+  tmp=[]
+  for i, bin in enumerate(result):
+    ds_ = ds.select(bin)
+    mi, ma = flex.min(ds_), flex.max(ds_)
+    if(mi<3 and ma>=3):
+      tmp[i-1] = tmp[i-1] | bin
+    else:
+      tmp.append(bin)
+  result = tmp
+  #
+  return result
 
 class refinery(object):
   def __init__(self, fmodel, fv, alg, log = sys.stdout):
-    assert alg in ["alg0", "alg2", "alg4", None]
+    assert alg in ["alg0", "alg2", "alg4", "alg4a"]
     self.log             = log
     self.f_obs           = fmodel.f_obs()
     self.r_free_flags    = fmodel.r_free_flags()
@@ -430,25 +280,29 @@ class refinery(object):
       i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
       K_MASKS = OrderedDict()
 
-      self.bin_selections = self.f_obs.log_binning(
-        n_reflections_in_lowest_resolution_bin = 100*len(self.F))
+      if(alg.endswith('a')):
+        self.bin_selections = [self.f_calc.d_spacings().data()>3]
+      else:
+        self.bin_selections = thiken_bins(
+          bins=bin_selections_input, n=50*len(self.F), ds=self.f_calc.d_spacings().data())
 
       for i_bin, sel in enumerate(self.bin_selections):
         d_max, d_min = f_obs.select(sel).d_max_min()
-        if d_max<3 or d_min<3: continue
+        #if d_max<3 or d_min<3: continue
+        if d_max<3: continue
         bin = "  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min)
         F = [f.select(sel) for f in self.F]
         k_total_sel = k_total.select(sel)
         #
         F_scaled = [f.customized_copy(data=f.data()*k_total_sel) for f in F]
         # algorithm_0
-        if(alg=="alg0"):
+        if(alg.startswith("alg0")):
           k_masks = algorithm_0(
             f_obs = f_obs.select(sel),
             F     = F_scaled,
             kt=k_total_sel)
         # algorithm_4
-        if(alg=="alg4"):
+        if(alg.startswith("alg4")):
           if it==0: phase_source = phase_source_init.select(sel)
           else:     phase_source = self.fmodel.f_model().select(sel)
           k_masks = algorithm_4(
@@ -457,7 +311,7 @@ class refinery(object):
             auto_converge_eps = 0.0001,
             phase_source = phase_source)
         # algorithm_2
-        if(alg=="alg2"):
+        if(alg.startswith("alg2")):
           k_masks = algorithm_2(
             i_obs          = i_obs.select(sel),
             F              = F_scaled,
@@ -505,7 +359,8 @@ class refinery(object):
           r_free_flags   = self.r_free_flags,
           #f_calc         = self.f_obs.customized_copy(data = f_calc_data),
           f_calc         = self.f_calc,
-          bin_selections = self.bin_selections,
+          bin_selections = bin_selections_input,
+          #bin_selections = self.bin_selections,
           f_mask         = f_bulk,
           k_mask         = flex.double(f_obs.data().size(),1)
           )
@@ -762,6 +617,8 @@ class mosaic_f_mask(object):
     self.regions = OrderedDict()
     self.f_mask_0 = None
     self.f_mask = None
+    small_selection = None
+    weak_selection  = None
     #
     if(log is not None):
       print("  #    volume_p1    uc(%) mFo-DFc: min,max,mean,sd", file=log)
@@ -774,6 +631,11 @@ class mosaic_f_mask(object):
       volume = v*step**3
       uc_fraction = v*100./self.conn.size()
       if(volume_cutoff is not None):
+        if(volume < volume_cutoff and volume >= 10):
+          if(small_selection is None): small_selection = self.conn==i
+          else:
+            small_selection = small_selection | (self.conn==i)
+          continue
         if volume < volume_cutoff: continue
 
       self.regions[i_seq] = group_args(
@@ -784,7 +646,6 @@ class mosaic_f_mask(object):
 
       selection = self.conn==i
       mask_i_asu = self.compute_i_mask_asu(selection = selection, volume = volume)
-      volume_asu = (mask_i_asu>0).count(True)*step**3
 
       if(uc_fraction >= 1):
         f_mask_i = self.compute_f_mask_i(mask_i_asu)
@@ -806,6 +667,14 @@ class mosaic_f_mask(object):
             "%7s"%str(None) if diff_map is None else "%7.3f %7.3f %7.3f %7.3f"%(
               mi,ma,me,sd), file=log)
 
+
+      if(mean_diff_map_threshold is not None and
+         mean_diff_map is not None and mean_diff_map<=mean_diff_map_threshold and mean_diff_map>0.1):
+        if(weak_selection is None): weak_selection = self.conn==i
+        else:
+          weak_selection = weak_selection | (self.conn==i)
+
+
       if(mean_diff_map_threshold is not None and
          mean_diff_map is not None and mean_diff_map<=mean_diff_map_threshold):
         continue
@@ -814,14 +683,53 @@ class mosaic_f_mask(object):
       f_mask_data += f_mask_i.data()
 
       self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
-    #
-    self.f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
-    self.f_mask   = f_obs.customized_copy(data = f_mask_data)
-    self.do_mosaic = False
-    # Determine number of secondary regions
+    #####
+    # Determine number of secondary regions. Must happen here!
     self.n_regions = len(self.FV.values())
+    self.do_mosaic = False
     if(self.n_regions>1):
       self.do_mosaic = True
+
+    # Handle accumulation of small
+    if(small_selection is not None and self.do_mosaic):
+      v = small_selection.count(True)
+      volume = v*step**3
+      uc_fraction = v*100./self.conn.size()
+      mask_i = flex.double(flex.grid(self.n_real), 0)
+      mask_i = mask_i.set_selected(small_selection, 1)
+      diff_map = diff_map.set_selected(diff_map<0,0)
+      #diff_map = diff_map.set_selected(diff_map>0,1)
+      mx = flex.mean(diff_map.select((diff_map>0).iselection()))
+      diff_map = diff_map/mx
+
+      mask_i = mask_i * diff_map
+      mask_i_asu = asu_map_ext.asymmetric_map(
+        self.crystal_symmetry.space_group().type(), mask_i).data()
+      f_mask_i = self.compute_f_mask_i(mask_i_asu)
+      self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
+
+
+    if(weak_selection is not None and self.do_mosaic):
+      v = weak_selection.count(True)
+      volume = v*step**3
+      uc_fraction = v*100./self.conn.size()
+      mask_i = flex.double(flex.grid(self.n_real), 0)
+      mask_i = mask_i.set_selected(weak_selection, 1)
+      diff_map = diff_map.set_selected(diff_map<0,0)
+      #diff_map = diff_map.set_selected(diff_map>0,1)
+      mx = flex.mean(diff_map.select((diff_map>0).iselection()))
+      diff_map = diff_map/mx
+
+      mask_i = mask_i * diff_map
+      mask_i_asu = asu_map_ext.asymmetric_map(
+        self.crystal_symmetry.space_group().type(), mask_i).data()
+      f_mask_i = self.compute_f_mask_i(mask_i_asu)
+      self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
+
+    #####
+    if(self.do_mosaic):
+      self.f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
+      self.f_mask   = f_obs.customized_copy(data = f_mask_data)
 
   def _inflate(self, f):
     data = flex.complex_double(self.d_spacings.size(), 0)

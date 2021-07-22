@@ -18,6 +18,7 @@ from six.moves import cStringIO as StringIO
 import os
 import sys
 from six.moves import range
+from iotbx import extract_xtal_data
 
 core_params_str = """\
 atom_radius = None
@@ -130,7 +131,7 @@ def extract_data_and_flags(params, crystal_symmetry=None):
       crystal_symmetry = crystal_symmetry,
       force_symmetry   = True,
       reflection_files = [reflection_file])
-    parameters = mmtbx.utils.data_and_flags_master_params().extract()
+    parameters = extract_xtal_data.data_and_flags_master_params().extract()
     parameters.force_anomalous_flag_to_be_equal_to = False
     if(params.data_labels is not None):
       parameters.labels = [params.data_labels]
@@ -138,7 +139,7 @@ def extract_data_and_flags(params, crystal_symmetry=None):
       parameters.high_resolution = params.high_resolution
     if(params.low_resolution is not None):
       parameters.low_resolution = params.low_resolution
-    data_and_flags = mmtbx.utils.determine_data_and_flags(
+    data_and_flags = extract_xtal_data.run(
       reflection_file_server = reflection_file_server,
       parameters             = parameters,
       data_description       = "X-ray data",

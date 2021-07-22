@@ -170,7 +170,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
             }
             f_calc_beg[i] = sum.f_calc();
           }
-          catch (std::runtime_error e) {
+          catch (std::runtime_error const& e) {
             #pragma omp critical
             {
               // The first error will be recorded only.

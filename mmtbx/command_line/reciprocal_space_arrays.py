@@ -12,6 +12,7 @@ from libtbx import runtime_utils
 from libtbx.utils import Sorry
 from six.moves import cStringIO as StringIO
 import sys, os
+from iotbx import extract_xtal_data
 
 legend = """\
 
@@ -166,10 +167,10 @@ def run(args, log = sys.stdout):
     force_symmetry   = True,
     reflection_files = reflection_files,
     err              = StringIO())
-  parameters = mmtbx.utils.data_and_flags_master_params().extract()
+  parameters = extract_xtal_data.data_and_flags_master_params().extract()
   parameters.labels = params.f_obs_label
   parameters.r_free_flags.label = params.r_free_flags_label
-  determine_data_and_flags_result = mmtbx.utils.determine_data_and_flags(
+  determine_data_and_flags_result = extract_xtal_data.run(
     reflection_file_server = rfs,
     parameters             = parameters,
     keep_going             = True,
@@ -180,20 +181,7 @@ def run(args, log = sys.stdout):
   r_free_flags = determine_data_and_flags_result.r_free_flags
   print("  Free-R flags:", r_free_flags.info().labels)
   #
-  parameters = mmtbx.utils.experimental_phases_params.extract()
-  parameters.labels = params.hendrickson_lattman_coefficients_label
-  experimental_phases_result = mmtbx.utils.determine_experimental_phases(
-    reflection_file_server = rfs,
-    parameters             = parameters,
-    log                    = StringIO(),
-    parameter_scope        = "",
-    working_point_group    = None,
-    symmetry_safety_check  = True,
-    ignore_all_zeros       = True)
-  if(experimental_phases_result is not None):
-    print("  HL coefficients:", experimental_phases_result.info().labels)
-  experimental_phases = extract_experimental_phases(
-    experimental_phases = experimental_phases_result, f_obs = f_obs)
+  experimental_phases = determine_data_and_flags_result.experimental_phases
   #
   if(r_free_flags is None):
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))

@@ -8,7 +8,7 @@ from mmtbx.validation import validate_ligands
 from libtbx.utils import null_out, Sorry
 from iotbx import crystal_symmetry_from_any
 from libtbx.str_utils import make_sub_header
-
+from iotbx import extract_xtal_data
 
 
 master_phil_str = """
@@ -82,8 +82,8 @@ electron density values/CC.
       filenames = [self.data_manager.get_default_miller_array_name()],
       crystal_symmetry = crystal_symmetry,
       logger=null_out())
-    parameters = mmtbx.utils.data_and_flags_master_params().extract()
-    determined_data_and_flags = mmtbx.utils.determine_data_and_flags(
+    parameters = extract_xtal_data.data_and_flags_master_params().extract()
+    determined_data_and_flags = extract_xtal_data.run(
       reflection_file_server = rfs,
       parameters             = parameters,
       keep_going             = True,

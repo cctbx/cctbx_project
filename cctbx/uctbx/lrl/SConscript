@@ -1,0 +1,70 @@
+import libtbx.load_env
+import os
+Import("env_cctbx_boost_python_ext", "env_etc")
+Import("env_base")
+
+
+env_etc.lrl_dist = libtbx.env.dist_path("LatticeRepLib")
+if env_etc.lrl_dist is not None:
+  lrl_names = [
+      'MatS6.cpp',
+      'S6.cpp',
+      'VecN.cpp',
+      'LRL_Cell.cpp',
+      'MatG6.cpp',
+      'MatN.cpp',
+      'MatMN.cpp',
+      'LatticeConverter.cpp',
+      'G6.cpp',
+      'LRL_CoordinateConversionMatrices.cpp',
+      'C3.cpp',
+      'Delone.cpp',
+      'D7.cpp',
+      'MatD7.cpp',
+      'D7_Boundary.cpp',
+      'D7_BoundaryList.cpp',
+      'D7_Subboundary.cpp',
+      'LRL_Cell_Degrees.cpp',
+      'B4.cpp',
+      'Selling.cpp',
+      'S6Dist.cpp',
+      'Niggli.cpp',
+      'D7_ClassifySubboundaries.cpp',
+      'LRL_ReadLatticeData.cpp',
+      'CellInputData.cpp',
+      'LRL_LatticeMatcher.cpp',
+      'DC.cpp',
+  ]
+
+  lrl_paths = [
+      os.path.join('../../../LatticeRepLib', 'LatticeRepresentationLib', name)
+      for name in lrl_names
+  ]
+  lrltools_paths = Glob(
+      os.path.join('../../../LatticeRepLib', 'LRL_Tools', '*.cpp')
+  )
+  source_paths = lrl_paths + lrltools_paths
+
+  include_paths = [
+      os.path.join(env_etc.lrl_dist, name)
+      for name in ['LatticeRepresentationLib', 'LRL_Tools']
+  ]
+
+  env = env_base.Clone(SHLINKFLAGS=env_etc.shlinkflags)
+  env.Append(CPPPATH=include_paths)
+
+  if (env_etc.static_libraries):
+    builder = env.StaticLibrary
+  else:
+    builder = env.SharedLibrary
+  builder(
+      target='#lib/lrl',
+      source=source_paths
+  )
+
+
+  if not env_etc.no_boost_python:
+    env_lrl_boost_python_ext = env_cctbx_boost_python_ext.Clone()
+    env_lrl_boost_python_ext.Prepend(CPPPATH=include_paths)
+    Export("env_lrl_boost_python_ext")
+    SConscript("boost_python/SConscript")

@@ -660,13 +660,13 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.nnodes, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.nppn_box = gctr.CtrlBase(self)
-    nppn_txt = wx.StaticText(self.nppn_box, label="Number of processors per node")
+    nppn_txt = wx.StaticText(self.nppn_box, label="Number of processors per node:")
     self.chk_auto_nproc_per_node = wx.CheckBox(self.nppn_box, label='Auto')
     self.chk_auto_nproc_per_node.SetValue(params.mp.nproc_per_node is None)
-    self.nproc_per_node = gctr.IntFloatSpin(self.nppn_box,
-                                            name='nproc_per_node',
-                                            value='%d'%params.mp.nproc_per_node if params.mp.nproc_per_node else 1,
-                                            min_val = 1, max_val = 1000)
+    self.nproc_per_node = gctr.SpinCtrl(self.nppn_box,
+                                        name='nproc_per_node',
+                                        ctrl_value='%d'%params.mp.nproc_per_node if params.mp.nproc_per_node else 1,
+                                        ctrl_min = 1, ctrl_max = 1000, label_size=(-1,-1))
     if not params.mp.nproc_per_node: self.nproc_per_node.Disable()
 
     nppn_sizer = wx.FlexGridSizer(1, 3, 0, 10)
@@ -674,7 +674,7 @@ class AdvancedSettingsDialog(BaseDialog):
     nppn_sizer.Add(self.chk_auto_nproc_per_node, flag=wx.ALL, border=10)
     nppn_sizer.Add(self.nproc_per_node, flag=wx.EXPAND | wx.ALL, border=10)
     self.nppn_box.SetSizer(nppn_sizer)
-    self.mp_sizer.Add(self.nppn_box, flag=wx.EXPAND | wx.ALL, border=10)
+    self.mp_sizer.Add(self.nppn_box, flag=wx.EXPAND | wx.RIGHT | wx.TOP | wx.BOTTOM, border=10)
 
     self.wall_time = gctr.SpinCtrl(self,
                                    name='wall_time',
@@ -704,6 +704,16 @@ class AdvancedSettingsDialog(BaseDialog):
                                                 if len(params.mp.env_script) > 0 and \
                                                 params.mp.env_script[0] is not None else '')
     self.mp_sizer.Add(self.env_script, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.phenix_script = gctr.TextButtonCtrl(self,
+                                             name='phenix_script',
+                                             label='Phenix setup script:',
+                                             label_style='bold',
+                                             label_size=(200, -1),
+                                             value=params.mp.phenix_script[0] \
+                                                   if len(params.mp.phenix_script) > 0 and \
+                                                   params.mp.phenix_script[0] is not None else '')
+    self.mp_sizer.Add(self.phenix_script, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.htcondor_executable_path = gctr.TextButtonCtrl(self,
                                                         name='htcondor_executable_path',
@@ -941,6 +951,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.wall_time.Hide()
       self.mpi_command.Hide()
       self.env_script.Hide()
+      self.phenix_script.Hide()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
       self.jobtype_nnodes_box.Hide()
@@ -966,6 +977,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.wall_time.Show()
       self.mpi_command.Hide()
       self.env_script.Hide()
+      self.phenix_script.Hide()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
       self.nnodes_index.Show()
@@ -991,6 +1003,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.wall_time.Hide()
       self.mpi_command.Hide()
       self.env_script.Show()
+      self.phenix_script.Show()
       self.htcondor_executable_path.Show()
       self.htcondor_filesystemdomain.Show()
       self.nnodes_index.Hide()
@@ -1016,6 +1029,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.wall_time.Hide()
       self.mpi_command.Show()
       self.env_script.Show()
+      self.phenix_script.Show()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
       self.nnodes_index.Show()
@@ -1045,6 +1059,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.wall_time.Hide()
       self.mpi_command.Show()
       self.env_script.Show()
+      self.phenix_script.Show()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
       self.nnodes_index.Hide()
@@ -1062,7 +1077,6 @@ class AdvancedSettingsDialog(BaseDialog):
       self.log_staging.Hide()
       self.staging_help.Hide()
 
-    self.Layout()
     self.Fit()
 
   def onQueueChoice(self, e):
@@ -1110,7 +1124,7 @@ class AdvancedSettingsDialog(BaseDialog):
       if self.chk_auto_nproc_per_node.GetValue():
         self.params.mp.nproc_per_node = None
       else:
-        self.params.mp.nproc_per_node = int(self.nproc_per_node.GetValue())
+        self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
       self.params.mp.queue = self.queue_text.ctr.GetValue()
       if self.mp_option.ctr.GetStringSelection() in ['shifter', 'slurm']:
         self.params.mp.nnodes_index = int(self.nnodes_index.ctr.GetValue())
@@ -1121,6 +1135,7 @@ class AdvancedSettingsDialog(BaseDialog):
         self.params.mp.wall_time = int(self.wall_time.ctr.GetValue())
       else:
         self.params.mp.env_script = [self.env_script.ctr.GetValue()]
+        self.params.mp.phenix_script = [self.phenix_script.ctr.GetValue()]
         self.params.mp.nproc = int(self.nproc.ctr.GetValue())
 
     self.params.mp.mpi_command = self.mpi_command.ctr.GetValue() \
@@ -2278,7 +2293,6 @@ class RunBlockDialog(BaseDialog):
         self.beam_xyz.Y.SetValue(str(last.beamy))
         self.bin_nrg_gain.binning.SetValue(str(last.binning))
         self.bin_nrg_gain.energy.SetValue(str(last.energy))
-        self.bin_nrg_gain.gain_mask_level.SetValue(str(last.gain_mask_level))
         self.wavelength_offset.wavelength_offset.SetValue(str(last.wavelength_offset))
         self.spectrum_calibration.spectrum_eV_per_pixel.SetValue(str(last.spectrum_eV_per_pixel))
         self.spectrum_calibration.spectrum_eV_offset.SetValue(str(last.spectrum_eV_offset))
@@ -2287,6 +2301,7 @@ class RunBlockDialog(BaseDialog):
           self.dark_avg_path.ctr.SetValue(str(last.dark_avg_path))
           self.dark_stddev_path.ctr.SetValue(str(last.dark_stddev_path))
           self.gain_map_path.ctr.SetValue(str(last.gain_map_path))
+          self.bin_nrg_gain.gain_mask_level.SetValue(str(last.gain_mask_level))
           self.calib_dir.ctr.SetValue(str(last.calib_dir))
       self.two_thetas.two_theta_low.SetValue(str(last.two_theta_low))
       self.two_thetas.two_theta_high.SetValue(str(last.two_theta_high))
@@ -2914,31 +2929,32 @@ class TaskDialog(BaseDialog):
     from iotbx.phil import parse
     dispatcher, phil_scope = Task.get_phil_scope(self.db, task_type)
 
-    msg = None
-    try:
-      task_params, unused = phil_scope.fetch(parse(parameters), track_unused_definitions = True)
-    except Exception as e:
-      msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (dispatcher, str(e))
-    else:
-      if len(unused) > 0:
-        msg = [str(item) for item in unused]
-        msg = '\n'.join(['  %s' % line for line in msg])
-        msg = 'The following definitions were not recognized:\n%s\n' % msg
-
+    if phil_scope is not None:
+      msg = None
       try:
-        params = task_params.extract()
+        task_params, unused = phil_scope.fetch(parse(parameters), track_unused_definitions = True)
       except Exception as e:
-        if msg is None: msg = ""
-        msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
+        msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (dispatcher, str(e))
+      else:
+        if len(unused) > 0:
+          msg = [str(item) for item in unused]
+          msg = '\n'.join(['  %s' % line for line in msg])
+          msg = 'The following definitions were not recognized:\n%s\n' % msg
 
-    if msg is not None:
-      msg += '\nFix the parameters and press OK again'
-      msgdlg = wx.MessageDialog(self,
-                                message=msg,
-                                caption='Warning',
-                                style=wx.OK |  wx.ICON_EXCLAMATION)
-      msgdlg.ShowModal()
-      return
+        try:
+          params = task_params.extract()
+        except Exception as e:
+          if msg is None: msg = ""
+          msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
+
+      if msg is not None:
+        msg += '\nFix the parameters and press OK again'
+        msgdlg = wx.MessageDialog(self,
+                                  message=msg,
+                                  caption='Warning',
+                                  style=wx.OK |  wx.ICON_EXCLAMATION)
+        msgdlg.ShowModal()
+        return
 
     if self.task is None:
       task = self.db.create_task(type = task_type,

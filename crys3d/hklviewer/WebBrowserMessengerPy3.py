@@ -15,7 +15,7 @@ from websockets.exceptions import (
   ConnectionClosedOK,
 )
 
-class MyWebSocketServerProtocol(websockets.server.WebSocketServerProtocol):
+class MyWebSocketServerProtocol(websockets.WebSocketServerProtocol):
   def __init__(self, *args, **kwargs):
     self.client_connected = None
     self.onconnect = None

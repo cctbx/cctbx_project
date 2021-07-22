@@ -280,7 +280,7 @@ master_params_str = """\
   include_in_automatic_linking
     .optional = True
     .multiple = True
-    .short_caption = exclude
+    .short_caption = Include the two atoms in the linking list
     .style = noauto auto_align
   {
     selection_1 = None
@@ -293,7 +293,7 @@ master_params_str = """\
   exclude_from_automatic_linking
     .optional = True
     .multiple = True
-    .short_caption = exclude
+    .short_caption = Exclude the two atoms from any linking
     .style = noauto auto_align
   {
     selection_1 = None
@@ -1091,6 +1091,8 @@ class monomer_mapping(slots_getstate_setstate):
     "residue_name",
     "unexpected_atoms",
     "chainid",
+    #
+    'atom_names_mappings',
     ]
 
   def __init__(self,
@@ -1240,6 +1242,7 @@ class monomer_mapping(slots_getstate_setstate):
     self.expected_atoms = {}
     self.unexpected_atoms = {}
     self.duplicate_atoms = {}
+    self.atom_names_mappings = {}
     if (self.atom_name_interpretation is not None):
       replace_primes = False
     elif (self.is_rna_dna or self.monomer.is_rna_dna()):
@@ -1308,6 +1311,8 @@ class monomer_mapping(slots_getstate_setstate):
         cif_name = rna_dna_bb_cif_by_ref.get(ref_name)
         if (cif_name is not None):
           atom_name = cif_name
+      if atom.name.strip()!=atom_name:
+        self.atom_names_mappings[atom.name.strip()]=atom_name
       prev_atom = processed_atom_names.get(atom_name)
       if (prev_atom is None):
         processed_atom_names[atom_name] = atom
@@ -1345,6 +1350,7 @@ class monomer_mapping(slots_getstate_setstate):
     e = self.expected_atoms
     if ("H1" in e or "D1" in e):
       return
+    assert hasattr(self, 'atom_names_mappings')
     u = self.unexpected_atoms
     h = u.get("H")
     d = u.get("D")
@@ -1357,6 +1363,7 @@ class monomer_mapping(slots_getstate_setstate):
     if (h is not None):
       e["H1"] = h
       del u[key]
+      self.atom_names_mappings[h.name.strip()] = 'H1'
 
   def _set_missing_atoms(self):
     self.missing_non_hydrogen_atoms = {}
@@ -2417,6 +2424,18 @@ def is_same_model_as_before(model_type_indices, i_model, models):
   model_type_indices[i_model] = i_model
   return False
 
+class conformer_i_seq(dict):
+  def __iadd__(self, other):
+    self.update(other)
+    return self
+
+  def convert(self):
+    rc = []
+    for i, (i_seq, item) in enumerate(sorted(self.items())):
+      assert len(rc)==i
+      rc.append(item)
+    return rc
+
 class build_chain_proxies(object):
 
   def __init__(self,
@@ -2457,6 +2476,10 @@ class build_chain_proxies(object):
     if restraints_loading_flags is None: restraints_loading_flags={}
     self._cif = cif_output_holder()
     self.pdb_link_records = {}
+    #
+    self.type_energies = conformer_i_seq()
+    self.type_h_bonds = conformer_i_seq()
+    #
     self.conformation_dependent_restraints_list = \
       conformation_dependent_restraints_list
     unknown_residues = dicts.with_default_value(0)
@@ -2470,6 +2493,7 @@ class build_chain_proxies(object):
     classifications = dicts.with_default_value(0)
     modifications_used = dicts.with_default_value(0)
     incomplete_infos = dicts.with_default_value(0)
+    missing_h_bond_type = dicts.with_default_value(0)
     link_ids = dicts.with_default_value(0)
     mm_pairs_not_linked = []
     n_unresolved_chain_links = 0
@@ -2549,6 +2573,32 @@ class build_chain_proxies(object):
           self._cif.cif["comp_specific_%s" % residue.resname.strip()] = mm.monomer.cif_object
         else:
           self._cif.cif["comp_%s" % residue.resname.strip()] = mm.monomer.cif_object
+      #
+      if mm.monomer is not None:
+        atom_dict = mm.monomer.atom_dict()
+        for i, atom in enumerate(residue.atoms()):
+          name = atom.name.strip()
+          if name in mm.unexpected_atoms:
+            # incorrect atom name, skip
+            self.type_energies[atom.i_seq] = False
+            self.type_h_bonds[atom.i_seq] = False
+            continue
+          name = mm.atom_names_mappings.get(name, name)
+          al = atom_dict.get(name.strip(), None)
+          if al:
+            self.type_energies[atom.i_seq] = al.type_energy
+            entry = ener_lib.lib_atom.get(al.type_energy, None)
+            if entry is None:
+              # print('Not able to determine H bond type for atom %s %s' % (atom.quote(), al.type_energy))
+              self.type_h_bonds[atom.i_seq] = None
+              missing_h_bond_type[al.type_energy]+=1
+            else:
+              self.type_h_bonds[atom.i_seq] = entry.hb_type
+          else:
+            self.type_energies[atom.i_seq] = None
+            self.type_h_bonds[atom.i_seq] = None
+            raise Sorry('Not able to determine energy type for atom %s' % atom.quote())
+      #
       if (mm.monomer is None):
         def use_scattering_type_if_available_to_define_nonbonded_type():
           if (   residue.atoms_size() != 1
@@ -2823,6 +2873,8 @@ class build_chain_proxies(object):
         print("          Modifications used:", modifications_used, file=log)
       if (len(incomplete_infos) > 0):
         print("          Incomplete info:", incomplete_infos, file=log)
+      if (len(missing_h_bond_type) > 0):
+        print('          Missing H bond types:', missing_h_bond_type, file=log)
     if (log is not None):
       if (len(link_ids) > 0):
         print("          Link IDs:", link_ids, file=log)
@@ -3190,6 +3242,8 @@ class build_all_chain_proxies(linking_mixins):
     # Proposal: use origin id in proxies.
     self.pdb_link_records = {}
     # END_MARKED_FOR_DELETION_OLEG
+    self.type_energies = conformer_i_seq()
+    self.type_h_bonds = conformer_i_seq()
     if restraints_loading_flags is None:
       restraints_loading_flags = get_restraints_loading_flags(params)
     self.mon_lib_srv = mon_lib_srv
@@ -3467,6 +3521,8 @@ class build_all_chain_proxies(linking_mixins):
           assert not chain_proxies.pdb_link_records
           self.conformation_dependent_restraints_list = \
             chain_proxies.conformation_dependent_restraints_list
+          self.type_energies += chain_proxies.type_energies
+          self.type_h_bonds += chain_proxies.type_h_bonds
           del chain_proxies
           flush_log(log)
       if apply_restraints_specifications:
@@ -3720,6 +3776,8 @@ class build_all_chain_proxies(linking_mixins):
     self.process_custom_nonbonded_symmetry_exclusions(
       log=log,
       curr_sym_excl_index=len(sym_excl_residue_groups))
+    self.type_energies = self.type_energies.convert()
+    self.type_h_bonds = self.type_h_bonds.convert()
     self.time_building_chain_proxies = timer.elapsed()
     # Make sure pdb_hierarchy and xray_structure are consistent
     if(self.special_position_settings is not None):

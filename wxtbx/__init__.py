@@ -2,6 +2,10 @@ from __future__ import absolute_import, division, print_function
 import wx
 import os
 
+from libtbx.version import get_version
+
+__version__ = get_version()
+
 global default_font_size
 
 MAC_OS_X_MAVERICKS = False

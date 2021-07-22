@@ -785,7 +785,7 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
   assert max_dod_angle<180 and min_dod_angle>30 and max_dod_angle>min_dod_angle
   peaks = find_hydrogen_peaks(
     fmodel = fmodel,
-    pdb_atoms = model.pdb_atoms,
+    pdb_atoms = model.get_hierarchy().atoms(),
     params = params,
     log = log)
   if peaks is None:

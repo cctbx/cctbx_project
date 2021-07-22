@@ -3702,6 +3702,27 @@ def exercise_fixed_width_int_types():
 
   print("Ok")
 
+def exercise_numpy_conversions():
+  try:
+    import numpy as np
+  except ImportError:
+    print("Skipping exercise_numpy_conversions (numpy not available)")
+    return
+
+  for npy_type_name in ['int8', 'int16', 'int32', 'int64',
+                        'uint8', 'uint16', 'uint32', 'uint64',
+                        'single', 'double']:
+    npy_type = getattr(np, npy_type_name)
+    for flex_type_name in ['int8', 'int16', 'int32', 'int64',
+                           'uint8', 'uint16', 'uint32', 'uint64',
+                           'int', 'long', 'float', 'double']:
+      flex_type = getattr(flex, flex_type_name)
+      l = 2**7 - 1
+      n = np.arange(l).astype(npy_type)
+      f = flex_type(n)
+      for i in range(l):
+        assert(approx_equal(n[i], f[i]))
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
@@ -3765,6 +3786,7 @@ def run(iterations):
     exercise_python_functions()
     exercise_vec3_double_as_numpy_array()
     exercise_fixed_width_int_types()
+    exercise_numpy_conversions()
     i += 1
 
 if (__name__ == "__main__"):

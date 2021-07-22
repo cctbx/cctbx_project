@@ -27,6 +27,7 @@ steps:
     cd $(Pipeline.Workspace)/modules/chem_data
     svn update
   displayName: Update chem_data
+  continueOnError: true
 
 - task: DownloadPipelineArtifact@2
   inputs:
@@ -44,6 +45,7 @@ steps:
     git pull --rebase
     git lfs pull
   displayName: Update phenix_regression
+  continueOnError: true
 
 - task: DownloadPipelineArtifact@2
   inputs:
@@ -61,3 +63,4 @@ steps:
     git pull --rebase
     git lfs pull
   displayName: Update phenix_examples
+  continueOnError: true

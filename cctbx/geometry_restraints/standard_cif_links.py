@@ -67,5 +67,7 @@ standard_cif_links = [
   ['link_gap', 'Taken from Monomer Library or GeoStd'],
   ['link_p', 'Taken from Monomer Library or GeoStd'],
   ['link_symmetry', 'Taken from Monomer Library or GeoStd'],
+  # for MTN radical
+  ['link_MTN-CYS', 'Taken from Monomer Library or GeoStd'],
 ]
 

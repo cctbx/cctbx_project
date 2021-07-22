@@ -92,8 +92,8 @@ namespace bessel {
     f_t q2 = q - d;
     f_t r1 = std::pow(std::fabs(q1), 1.0/3.0);
     f_t r2 = std::pow(std::fabs(q2), 1.0/3.0);
-    if (x >= 0.0) return  (((q1>0.0)? r1 : -r1) + ((q2>0.0)? r2 : -r2) - w);
-                  return -(((q1>0.0)? r1 : -r1) + ((q2>0.0)? r2 : -r2) - w);
+    if (x >= 0.0) {return  (((q1>0.0)? r1 : -r1) + ((q2>0.0)? r2 : -r2) - w);}
+    else          {return -(((q1>0.0)? r1 : -r1) + ((q2>0.0)? r2 : -r2) - w);}
   }
 
   template <typename FloatType>

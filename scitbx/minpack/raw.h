@@ -512,7 +512,9 @@ namespace raw {
           //
           // update the step bound.
           //
-          if (ratio > p25) goto lbl_240; {
+          if (ratio > p25) goto lbl_240;
+          // explicitly dedenting this bracket to remove a misleading-indentation compiler warning:
+          {
             double temp;
             if (actred >= zero) {
               temp = p5;

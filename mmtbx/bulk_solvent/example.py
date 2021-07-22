@@ -10,7 +10,6 @@ from scitbx.array_family import flex
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from libtbx.utils import null_out
-import mmtbx.utils
 import mmtbx.f_model
 from libtbx import easy_mp
 from mmtbx.bulk_solvent import mosaic
@@ -18,6 +17,7 @@ from libtbx import group_args
 from libtbx.test_utils import approx_equal
 from libtbx import easy_pickle
 import traceback
+from iotbx import extract_xtal_data
 
 pdb_files = "/net/cci/pdb_mirror/pdb/"
 hkl_files = "/net/cci-filer2/raid1/share/pdbmtz/mtz_files/"
@@ -76,7 +76,7 @@ def get_data(pdbf, mtzf):
     force_symmetry=True,
     reflection_files=[reflection_file],
     err=null_out())
-  determine_data_and_flags_result = mmtbx.utils.determine_data_and_flags(
+  determine_data_and_flags_result = extract_xtal_data.run(
     reflection_file_server  = rfs,
     keep_going              = True,
     extract_r_free_flags    = False,
@@ -204,15 +204,18 @@ class compute(object):
 
 def get_map(mc, cg):
   fft_map = mc.fft_map(crystal_gridding = cg)
-  fft_map.apply_sigma_scaling()
-  return fft_map.real_map_unpadded()
+  #fft_map.apply_sigma_scaling()
+  md = fft_map.real_map_unpadded()
+  sd = md.sample_standard_deviation()
+  #return fft_map.real_map_unpadded()
+  return md/sd, sd
 
-def map_stat(m, conn, i):
+def map_stat(m, conn, i, map_sd):
   selection = conn==i
   blob = m.select(selection.iselection())
   mi,ma,me = flex.min(blob), flex.max(blob), flex.mean(blob)
   sd = blob.sample_standard_deviation()
-  return group_args(mi=mi, ma=ma, me=me, sd=sd)
+  return group_args(mi=mi, ma=ma, me=me, sd=sd, map_sd=map_sd)
 
 def run_one(args):
   pdbf, mtzf, code, alg = args
@@ -248,18 +251,18 @@ def run_one(args):
       mtz_object = mtz_dataset.mtz_object()
       mtz_object.write(file_name = "%s_mc.mtz"%code)
       # map stats
-      map_0         = get_map(mc=o.mm.mc,         cg=o.mm.crystal_gridding)
-      map_WholeMask = get_map(mc=o.mc_whole_mask, cg=o.mm.crystal_gridding)
-      map_Mosaic    = get_map(mc=mbs.mc,          cg=o.mm.crystal_gridding)
+      map_0        , sd_map_0         = get_map(mc=o.mm.mc,         cg=o.mm.crystal_gridding)
+      map_WholeMask, sd_map_WholeMask = get_map(mc=o.mc_whole_mask, cg=o.mm.crystal_gridding)
+      map_Mosaic   , sd_map_Mosaic    = get_map(mc=mbs.mc,          cg=o.mm.crystal_gridding)
       ###
       #write_map_file(cg=o.mm.crystal_gridding, mc=o.mm.mc,         file_name="first.ccp4")
       #write_map_file(cg=o.mm.crystal_gridding, mc=o.mc_whole_mask, file_name="whole.ccp4")
       #write_map_file(cg=o.mm.crystal_gridding, mc=mbs.mc,          file_name="mosaic.ccp4")
       ###
       for region in o.mm.regions.values():
-        region.m_0         = map_stat(m=map_0,         conn = o.mm.conn, i=region.id)
-        region.m_WholeMask = map_stat(m=map_WholeMask, conn = o.mm.conn, i=region.id)
-        region.m_Mosaic    = map_stat(m=map_Mosaic,    conn = o.mm.conn, i=region.id)
+        region.m_0         = map_stat(m=map_0,         conn = o.mm.conn, i=region.id, map_sd=sd_map_0        )
+        region.m_WholeMask = map_stat(m=map_WholeMask, conn = o.mm.conn, i=region.id, map_sd=sd_map_WholeMask)
+        region.m_Mosaic    = map_stat(m=map_Mosaic,    conn = o.mm.conn, i=region.id, map_sd=sd_map_Mosaic   )
     #
     result = group_args(
       code            = code,
@@ -292,7 +295,7 @@ def write_map_file(cg, mc, file_name):
 def run(cmdargs):
   if(len(cmdargs)==1):
     alg = cmdargs[0]
-    assert alg in ["alg0", "alg2", "alg4", "None"]
+    assert alg in ["alg0", "alg2", "alg4", "alg4a"]
     if alg=="None": alg=None
     NPROC=70
     pdbs, mtzs, codes, sizes = get_files_sorted(pdb_files, hkl_files)
@@ -312,7 +315,7 @@ def run(cmdargs):
     assert len(cmdargs) == 3
     # Usage: python example.py 4qnn.pdb 4qnn.mtz alg4
     pdb, mtz, alg = cmdargs
-    assert alg in ["alg0", "alg2", "alg4", "None"]
+    assert alg in ["alg0", "alg2", "alg4", "alg4a"]
     if alg=="None": alg=None
     assert os.path.isfile(pdb)
     assert os.path.isfile(mtz)

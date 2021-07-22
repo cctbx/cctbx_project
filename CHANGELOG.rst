@@ -1,3 +1,16 @@
+2021.6
+======
+
+* More improvements to bulk solvent masking for multiple regions
+* Updates to ensemble refinement
+* Enable conversion of some numpy types into flex types instead of
+  requiring that the types match (e.g. int to float is now supported)
+
+2021.5
+======
+
+* Improved bulk solvent masking with support for multiple regions
+
 2021.4
 ======
 
