@@ -77,6 +77,7 @@ class HKLViewFrame() :
       self.context = zmq.Context()
       self.guisocket = self.context.socket(zmq.PAIR)
       self.guisocket.connect("tcp://127.0.0.1:%s" %self.guiSocketPort )
+      #self.guisocket.connect("tcp://127.0.0.1:42348" ) # test connecting to the wrong port
       self.STOP = False
       self.mprint("CCTBX starting socket thread", 1)
       # name this thread to ensure any asyncio functions are called only from main thread

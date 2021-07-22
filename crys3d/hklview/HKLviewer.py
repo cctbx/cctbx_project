@@ -1891,19 +1891,22 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def send_message(self, cmdstr, msgtype="philstr"):
-    if self.cctbxpythonversion is None: # not connected to CCTBX
-      return
-    msg = str([msgtype, cmdstr])
-    if sys.version_info.major==3:
-      self.socket.send(bytes(msg,"utf-8"))
-    else:
-      self.socket.send(bytes(msg))
+    try:
+      msg = str([msgtype, cmdstr])
+      if sys.version_info.major==3:
+        self.socket.send(bytes(msg,"utf-8"), zmq.NOBLOCK)
+      else:
+        self.socket.send(bytes(msg), zmq.NOBLOCK)
+      return True
+    except Exception as e:
+      print( str(e) + "\nFailed sending message to the CCTBX\n" + traceback.format_exc(limit=10))
+      return False
 
 
   def setDatatypedict(self, datatypedict):
     self.datatypedict = datatypedict
     # send persisted colour schemes and raddi mappings to jsview_3d.py
-    self.send_message(str(self.datatypedict), msgtype="dict")
+    return self.send_message(str(self.datatypedict), msgtype="dict")
 
 
 def run(isembedded=False, cctbxpython=None, chimeraxsession=None):
@@ -1924,6 +1927,7 @@ def run(isembedded=False, cctbxpython=None, chimeraxsession=None):
         if "devmode" in e:  # --single-process will freeze the WebEngineDebugForm at breakpoints
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
 
+    # read the users persisted settings from disc
     settings = QSettings("CCTBX", "HKLviewer" )
     # In case of more than one PySide2 installation tag the settings by version number of PySide2
     # as different versions may use different metrics for font and window sizes
@@ -1998,17 +2002,16 @@ def run(isembedded=False, cctbxpython=None, chimeraxsession=None):
       timer.timeout.connect(HKLguiobj.ProcessMessages)
       timer.start()
     else:
-      from time import time
-      start_time = [time()]
+      start_time = [time.time()]
 
       def ChXTimer(trigger, trigger_data):
-        elapsed_time = time()-start_time[0]
+        elapsed_time = time.time()-start_time[0]
         if elapsed_time > 0.02:
-          start_time[0] = time()
+          start_time[0] = time.time()
           HKLguiobj.ProcessMessages()
 
       HKLguiobj.chimeraxprocmsghandler = chimeraxsession.triggers.add_handler('new frame', ChXTimer)
-      
+    # Now assign the users persisted settings to the GUI
     if fontsize is not None:
       HKLguiobj.onFontsizeChanged(int(fontsize))
       HKLguiobj.fontspinBox.setValue(int(fontsize))
