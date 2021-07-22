@@ -110,6 +110,16 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
                   extra.isDonor = True
                 # @todo How to tell this code whether or not to use neutron distances?
                 extra.vdwRadius = model.get_specific_vdw_radii(a)
+
+                # Mark aromatic ring N and C atoms as acceptors as a hack to enable the
+                # ring itself to behave as an acceptor.
+                # @todo Remove this once we have a better way to model the ring itself
+                # as an acceptor, perhaps making it a cylinder or a sphere in the center
+                # of the ring.
+                if a.element in ['C','N']:
+                  if mmtbx.probe.AtomTypes.IsAromaticAcceptor(ag.resname, a.name):
+                    extra.IsAcceptor = True
+
                 continue
 
               # Did not find the information from CCTBX, so look it up using
@@ -125,6 +135,7 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
             extra, warn = at.FindProbeExtraAtomInfo(a)
             if len(warn) > 0:
               warnings += "  Probe says: "+warn+"\n"
+
             extras.setMappingFor(a, extra)
 
   return getExtraAtomInfoReturn(extras, warnings)
