@@ -153,7 +153,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           # the Hydrogen is bound to and its radius is 4 (these values are pulled from
           # the Reduce C++ code).
           maxDist = 4.0
-          nearby = spatialQuery.neighbors(neighbor.xyz, extraAtomInfo[neighbor.i_seq].vdwRadius, maxDist)
+          nearby = spatialQuery.neighbors(neighbor.xyz, extraAtomInfo.getMappingFor(neighbor).vdwRadius, maxDist)
 
           # Check each nearby atom to see if it distance from the neighbor is within
           # the sum of the hydrogen-bond length of the neighbor atom, the radius of
@@ -166,21 +166,21 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           candidates = []
           for n in nearby:
             d = (Movers._rvec3(neighbor.xyz) - Movers._rvec3(n.xyz)).length()
-            if d <= XHbondlen + extraAtomInfo[n.i_seq].vdwRadius + polarHydrogenRadius:
+            if d <= XHbondlen + extraAtomInfo.getMappingFor(n).vdwRadius + polarHydrogenRadius:
               candidates.append(n)
 
           # See if each nearby atom is a potential acceptor or a flip partner from
           # Histidine or NH2 flips (which may be moved into that atom's position during a flip).
           # We check the partner (N's for GLN And ASN, C's for HIS) because if it is the O or
           # N atom, we will already be checking it as an acceptor now.
-          # @todo Ensure that Hydrogenate does not change the acceptor state of the HIS Nitrogens when it adds
-          # Hydrogen to them so that they will show up here.
           for c in candidates:
             cName = c.name.strip().upper()
             resName = c.parent().resname.strip().upper()
-            flipPartner = ( (cName == 'ND2' and resName == 'ASN') or (cName == 'NE2' and resName == 'GLN') or
+            flipPartner = (
+              (cName == 'ND2' and resName == 'ASN') or
+              (cName == 'NE2' and resName == 'GLN') or
               (cName == 'CE1' and resName == 'HIS') or (cName == 'CD2' and resName == 'HIS') )
-            acceptor = extraAtomInfo[c.i_seq].isDonor
+            acceptor = extraAtomInfo.getMappingFor(c).isAcceptor
             if acceptor or flipPartner:
               potentialAcceptors.append(c)
 
