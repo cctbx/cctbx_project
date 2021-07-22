@@ -18,9 +18,9 @@ except Exception as e: # if invoked by a generic python that doesn't know cctbx 
 
 from .qt import QCoreApplication, QMetaObject, QRect, QSize, Qt
 from .qt import QAbstractItemView, QAction, QCheckBox, QComboBox, \
- QDoubleSpinBox, QFrame, QGridLayout, QGroupBox, QLabel, QMenu, QMenuBar, \
- QPlainTextEdit, QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox, \
- QStatusBar, QTableWidget, QTabWidget, QTextEdit, QWidget
+ QDoubleSpinBox, QFrame, QGridLayout, QGroupBox, QLabel, QPlainTextEdit, QPushButton, \
+ QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox, \
+ QTableWidget, QTabWidget, QTextEdit, QWidget
 from .qt import QIcon
 
 # for the sake of embedding remove MainWindow.setCentralWidget(self.centralwidget) from below
