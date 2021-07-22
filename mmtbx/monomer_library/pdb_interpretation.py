@@ -149,6 +149,12 @@ restraints_library_str = """
       .help = Use Omega Conformation Dependent Library (omega-CDL) \
         for geometry restraints
       .style = hidden
+    cdl_nucleic_acids = False
+      .type = bool
+      .short_caption = Use RestraintsLib for DNA and RNA
+      .help = Use RestraintsLib for DNA and RNA \
+        for geometry restraints
+      .style = hidden
     cdl_svl = False
       .type = bool
       .short_caption = Use improved SVL values for CDL classes
