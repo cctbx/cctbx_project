@@ -3026,14 +3026,17 @@ nanoBragg::add_nanoBragg_spots()
 
 /* member function to generate background from Fbg vs stol list
    arguments allow override of features that usually just slow things down,
-   like oversampling pixels and multiple sources.  Providing these arguments
-   does NOT change the values of the member variables */
+   like oversampling pixels and multiple sources.
+   oversample: user can provide a smaller override value to save time.
+   override_source: user can select a single source from the collection to save time.
+   Providing these arguments does NOT change the values of the member variables */
 void
-nanoBragg::add_background( int oversample, int source )
+nanoBragg::add_background( int oversample, int const& override_source )
 {
     int i;
     int source_start = 0;
-    int sources = this->sources;
+    int orig_sources = this->sources;
+    int end_sources = this->sources;
     max_I = 0.0;
     floatimage = raw_pixels.begin();
 //    double* floatimage(raw_pixels.begin());
@@ -3042,10 +3045,12 @@ nanoBragg::add_background( int oversample, int source )
     /* allow user to override automated oversampling decision at call time with arguments */
     if(oversample<=0) oversample = this->oversample;
     if(oversample<=0) oversample = 1;
-    if(source>=0) {
-        /* user-specified source in the argument */
-        source_start = source;
-        sources = source_start +1;
+    bool have_single_source = false;
+    if(override_source>=0) {
+        /* user-specified idx_single_source in the argument */
+        source_start = override_source;
+        end_sources = source_start +1;
+        have_single_source = true;
     }
 
     /* make sure we are normalizing with the right number of sub-steps */
@@ -3126,7 +3131,8 @@ nanoBragg::add_background( int oversample, int source )
                         }
 
                         /* loop over sources now */
-                        for(source=source_start;source<sources;++source){
+                        for(source=source_start; source < end_sources; ++source){
+                            double n_source_scale = (have_single_source) ? orig_sources : source_I[source];
 
                             /* retrieve stuff from cache */
                             incident[1] = -source_X[source];
@@ -3169,7 +3175,7 @@ nanoBragg::add_background( int oversample, int source )
                             }
 
                             /* accumulate unscaled pixel intensity from this */
-                            Ibg += sign*Fbg*Fbg*polar*omega_pixel*source_I[source]*capture_fraction;
+                            Ibg += sign*Fbg*Fbg*polar*omega_pixel*capture_fraction*n_source_scale;
                             if(verbose>7 && i==1)printf("DEBUG: Fbg= %g polar= %g omega_pixel= %g source[%d]= %g capture_fraction= %g\n",
                                                            Fbg,polar,omega_pixel,source,source_I[source],capture_fraction);
                         }

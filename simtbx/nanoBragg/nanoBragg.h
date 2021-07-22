@@ -571,7 +571,7 @@ class nanoBragg {
 #endif
 
     /* member function for triggering background simulation */
-    void add_background(int oversample, int source);
+    void add_background(int oversample, int const& override_source);
 
     /* member function for extracting background from raw image */
     void extract_background(int source);

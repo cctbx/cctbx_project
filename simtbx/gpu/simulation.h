@@ -32,7 +32,7 @@ struct exascale_api {
     simtbx::gpu::gpu_detector &,
     af::shared<int> const
   );
-  void add_background_cuda(simtbx::gpu::gpu_detector &);
+  void add_background_cuda(simtbx::gpu::gpu_detector &, int const&);
   void allocate_cuda();
   ~exascale_api();
 
