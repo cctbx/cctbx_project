@@ -11,9 +11,9 @@ import scitbx.math
 from libtbx.utils import Sorry, to_str
 import threading, math, sys, cmath
 if sys.version_info[0] > 2: # using websockets which is superior to websocket_server
-  from crys3d.hklviewer.WebBrowserMessengerPy3 import WBmessenger
+  from crys3d.hklview.WebBrowserMessengerPy3 import WBmessenger
 else: # using websocket_server
-  from crys3d.hklviewer.WebBrowserMessengerPy2 import WBmessenger
+  from crys3d.hklview.WebBrowserMessengerPy2 import WBmessenger
 
 import os.path, time, copy
 import libtbx
@@ -135,7 +135,7 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
 
   for (fomsarray, fidx) in fomsarrays_idx:
     hklscene = display.scene(miller_array=proc_array, merge=merge,
-      settings=settings, foms_array=fomsarray, fullprocessarray=True, mprint=mprint)
+      settings=settings, foms_array=fomsarray, fullprocessarray=True )
     if not hklscene.SceneCreated:
       mprint("The " + proc_array.info().label_string() + " array was not processed")
       #return False
@@ -294,9 +294,9 @@ class hklview_3d:
 </body></html>
 
     """
-    Html2Canvaslibpath = libtbx.env.under_dist("crys3d","hklviewer/html2canvas.min.js")
-    NGLlibpath = libtbx.env.under_dist("crys3d","hklviewer/ngl.js")
-    HKLjscriptpath = libtbx.env.under_dist("crys3d","hklviewer/HKLJavaScripts.js")
+    Html2Canvaslibpath = libtbx.env.under_dist("crys3d","hklview/html2canvas.min.js")
+    NGLlibpath = libtbx.env.under_dist("crys3d","hklview/ngl.js")
+    HKLjscriptpath = libtbx.env.under_dist("crys3d","hklview/HKLJavaScripts.js")
     HKLjscriptpath = os.path.abspath( HKLjscriptpath)
     Html2Canvasliburl = "file:///" + Html2Canvaslibpath.replace("\\","/")
     NGLliburl = "file:///" + NGLlibpath.replace("\\","/")

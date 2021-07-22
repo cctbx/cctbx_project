@@ -12,7 +12,7 @@ from scitbx import graphics_utils
 from libtbx import object_oriented_patterns as oop # causes crash in easy_mp.multi_core_run
 from math import sqrt
 import math, traceback
-import math, sys
+import math
 from six.moves import zip
 
 import matplotlib as mpl
@@ -136,12 +136,11 @@ class scene(object):
   a web page).
   """
   def __init__(self, miller_array, settings, merge=None, foms_array=None,
-   fullprocessarray=True, mprint=sys.stdout.write):
+   fullprocessarray=True):
     self.miller_array = miller_array
     self.renderscale = 100.0
     self.foms_workarray = foms_array
     self.SceneCreated = False
-    self.mprint = mprint
     if isinstance(miller_array.data(), flex.std_string):
       return
     self.settings = settings
@@ -333,7 +332,7 @@ class scene(object):
         self.singletonsiness.set_selected( array.select_acentric().match_bijvoet_mates()[1].singles("-"), -1.0 )
       work_array = array
     except Exception as e:
-      self.mprint(to_str(e) + "".join(traceback.format_stack(limit=10)))
+      print(to_str(e) + "".join(traceback.format_stack(limit=10)))
       raise e
       return None, None
     work_array.set_info(arr.info() )
@@ -527,7 +526,7 @@ class scene(object):
       absence_array = absence_array.select(slice_selection)
     absence_flags = absence_array.data()
     if (absence_flags.count(True) == 0):
-      self.mprint("No systematic absences found!")
+      print("No systematic absences found!")
     else :
       new_indices = flex.miller_index()
       for i_seq in absence_flags.iselection():
@@ -540,7 +539,7 @@ class scene(object):
         #  self.sys_absent_flags[j_seq] = True
         #else :
         if hkl in self.indices:
-          self.mprint("Systematically absent reflection %s is unexpectedly present in %s" %(hkl, array.info().label_string()) )
+          print("Systematically absent reflection %s is unexpectedly present in %s" %(hkl, array.info().label_string()) )
         else:
           new_indices.append(hkl)
       if (new_indices.size() > 0):

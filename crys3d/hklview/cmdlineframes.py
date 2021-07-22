@@ -3,8 +3,8 @@ from __future__ import absolute_import, division, print_function
 
 from iotbx.reflection_file_reader import any_reflection_file
 from cctbx.miller import display2 as display
-from crys3d.hklviewer import jsview_3d as view_3d
-from crys3d.hklviewer.jsview_3d import ArrayInfo
+from crys3d.hklview import jsview_3d as view_3d
+from crys3d.hklview.jsview_3d import ArrayInfo
 from cctbx import miller
 from libtbx.math_utils import roundoff
 from libtbx.str_utils import format_value
@@ -68,8 +68,8 @@ class HKLViewFrame() :
     self.uservectors = []
     self.new_miller_array_operations_lst = []
     self.copyrightpaths = [("CCTBX copyright", libtbx.env.under_root(os.path.join("modules","cctbx_project","COPYRIGHT.txt"))),
-     ("NGL copyright", libtbx.env.under_dist("crys3d","hklviewer/License_for_NGL.txt")),
-     ("html2canvas copyright", libtbx.env.under_dist("crys3d","hklviewer/LICENSE_for_html2canvas.txt"))
+     ("NGL copyright", libtbx.env.under_dist("crys3d","hklview/License_for_NGL.txt")),
+     ("html2canvas copyright", libtbx.env.under_dist("crys3d","hklview/LICENSE_for_html2canvas.txt"))
     ]
     self.zmqsleeptime = 0.1
     if 'useGuiSocket' in kwds:
@@ -78,7 +78,7 @@ class HKLViewFrame() :
       self.guisocket = self.context.socket(zmq.PAIR)
       self.guisocket.connect("tcp://127.0.0.1:%s" %self.guiSocketPort )
       self.STOP = False
-      self.mprint("CCTBX starting socket thread", 1)
+      self.mprint("starting socketthread", 1)
       # name this thread to ensure any asyncio functions are called only from main thread
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen, name="HKLviewerZmqThread" )
       self.msgqueuethrd.daemon = True
@@ -108,7 +108,7 @@ class HKLViewFrame() :
     self.mprint("Destroying HKLViewFrame", verbose=0) # this string is expected by HKLviewer.py so don't change
     self.STOP = True
     del self
-    #sys.exit()
+    sys.exit()
 
 
   def mprint(self, msg, verbose=0):
@@ -1355,8 +1355,8 @@ def run():
     if os.path.isfile(arg) and '=' not in arg:
       kwargs['hklin'] = arg
 
+
   myHKLview = HKLViewFrame(**kwargs)
-  return myHKLview
 
 
 if __name__ == '__main__':
