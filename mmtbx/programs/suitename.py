@@ -33,7 +33,8 @@ def run(args):
   logger2 = multi_out()
   logger2.register('stdout', sys.stdout)
   logger3 = multi_out()
-  logger3.register('verbiage', open("suitename.stderr.log", "w"))
+  # TO DIAGNOSE OPTIONS TROUBLES:
+  # logger3.register('verbiage', open("suitename.stderr.log", "w"))
 
   parser = dualparse.parseArgs(Program, logger3)
   working_phil = parser.working_phil
@@ -47,9 +48,10 @@ def run(args):
       # let the core figure out the input
       main(optionsIn=options, outFile=logger2, errorFile=logger)
   else:
-      type = analyzeFileType(options.infile)
+      type, ext = analyzeFileType(options.infile)
       if type=="": 
-        logger.write(f"File extension {type} not recognized")
+        logger.write(f"File extension {ext} not recognized\n")
+        return
       if type == "pdb":
           suites.main(options=options, outFile=logger2, errorFile=logger)
       else:
@@ -73,7 +75,7 @@ def analyzeFileType(filename):
     base, extension = os.path.splitext(filename)
     extension = extension[1:]
     type = extensionList.get(extension, "")
-    return type
+    return type, extension
 
 
 class Program(ProgramTemplate):

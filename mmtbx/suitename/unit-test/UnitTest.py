@@ -11,12 +11,9 @@ import regression
 #
 # The first portion is to test membership in every cluster.
 # The second portion is to test triage by out of bounds angle
-# for each dihedral angle.
-# The third portion is a manually selected group of test cases from real files
-# designed to test each code path through membership(). The first residue from 
-# each pair has intentionally been damaged so that it will not produce separate
-# output from a report.
-data=''' :1a: : : : :  Z:  9999.000: 9999.000: 9999.000:   81.495:  212.250:  288.831:  180.000
+# for each dihedral angle. The unnecessary part of each residue is damaged so
+# the extra suite generated will be incomplete and will vanish.
+input1=''' :1a: : : : :  Z:  9999.000: 9999.000: 9999.000:   81.495:  212.250:  288.831:  180.000
  :1a: : : : :  Z:   294.967:  173.990:   53.550:   81.035: 9999.000: 9999.000:  180.000
  :1m: : : : :  Z:  9999.000: 9999.000: 9999.000:   83.513:  218.120:  291.593:  180.000
  :1m: : : : :  Z:   292.247:  222.300:   58.067:   86.093: 9999.000: 9999.000:  180.000
@@ -140,7 +137,14 @@ data=''' :1a: : : : :  Z:  9999.000: 9999.000: 9999.000:   81.495:  212.250:  28
  :gamma: : : : :  Z:   294.967:  173.990:  139.000:   81.495:  212.250:  288.831:  180.000
  :delta: : : : :  Z:   294.967:  173.990:   53.550:   81.495:  212.250:  288.831:  180.000
  :delta: : : : :  Z:   294.967:  173.990:   53.550:   59.000:  212.250:  288.831:  180.000
-2xLk:1: C:  11: : :  G:__?__:__?__:__?__:81.132:-127.583:-70.677
+'''
+
+# A manually selected group of test cases from real files
+# designed to test each code path through membership(). The first residue from 
+# each pair has intentionally been damaged so that it will not produce separate
+# output from a report. We use the causes option to illustrate what code path
+# is being used.
+input2 = '''2xLk:1: C:  11: : :  G:__?__:__?__:__?__:81.132:-127.583:-70.677
 2xLk:1: C:  12: : :  U:169.008:153.891:51.391:80.277:-135.347:-70.614
 3cgp:1: B:  19: : :  U:__?__:__?__:__?__:82.839:-147.528:-179.087
 3cgp:1: B:  20: : :  A:139.983:-154.445:63.134:88.055:-145.599:70.874
@@ -182,76 +186,78 @@ data=''' :1a: : : : :  Z:  9999.000: 9999.000: 9999.000:   81.495:  212.250:  28
 3pdr:1: X: 133: : :  U:47.309:136.943:-25.259:83.460:-150.210:-61.763
 '''
 
-canonicalOutput='''
-:1a: : : : :  Z 33 p 1a 1.000 4-OUTSIDE-dom
- :1m: : : : :  Z 33 p 1m 1.000 3-OUTSIDE-sat
- :1L: : : : :  Z 33 p 1L 1.000 4-OUTSIDE-sat
- :&a: : : : :  Z 33 p &a 1.000 5-OUTSIDE-sat
- :7a: : : : :  Z 33 p 7a 1.000 4-None-dom
- :3a: : : : :  Z 33 p 3a 1.000 3-None-dom
- :9a: : : : :  Z 33 p 9a 1.000 2-None-dom
- :1g: : : : :  Z 33 p 1g 1.000 1-only-one
- :7d: : : : :  Z 33 p 7d 1.000 2-None-dom
- :3d: : : : :  Z 33 p 3d 1.000 2-None-dom
- :5d: : : : :  Z 33 p 5d 1.000 1-only-one
- :3g: : : : :  Z 33 p 3g 1.000 1-only-one wannabe
- :1e: : : : :  Z 33 t 1e 1.000 1-only-one
- :1c: : : : :  Z 33 t 1c 1.000 2-OUTSIDE-dom
- :1f: : : : :  Z 33 t 1f 1.000 2-OUTSIDE-sat
- :5j: : : : :  Z 33 t 5j 1.000 1-only-one
- :5n: : : : :  Z 33 t 5n 1.000 1-only-one wannabe
+output1='''
+ :1a: : : : :  Z 33 p 1a 1.000
+ :1m: : : : :  Z 33 p 1m 1.000
+ :1L: : : : :  Z 33 p 1L 1.000
+ :&a: : : : :  Z 33 p &a 1.000
+ :7a: : : : :  Z 33 p 7a 1.000
+ :3a: : : : :  Z 33 p 3a 1.000
+ :9a: : : : :  Z 33 p 9a 1.000
+ :1g: : : : :  Z 33 p 1g 1.000
+ :7d: : : : :  Z 33 p 7d 1.000
+ :3d: : : : :  Z 33 p 3d 1.000
+ :5d: : : : :  Z 33 p 5d 1.000
+ :3g: : : : :  Z 33 p 3g 1.000 wannabe
+ :1e: : : : :  Z 33 t 1e 1.000
+ :1c: : : : :  Z 33 t 1c 1.000
+ :1f: : : : :  Z 33 t 1f 1.000
+ :5j: : : : :  Z 33 t 5j 1.000
+ :5n: : : : :  Z 33 t 5n 1.000 wannabe
  :!!: : : : :  Z trig !! 0.000 epsilon-1
- :1b: : : : :  Z 32 p 1b 1.000 2-OUTSIDE-dom
- :1[: : : : :  Z 32 p 1[ 1.000 2-OUTSIDE-sat
- :3b: : : : :  Z 32 p 3b 1.000 1-only-one
- :1z: : : : :  Z 32 p 1z 1.000 1-only-one
- :5z: : : : :  Z 32 p 5z 1.000 1-only-one
- :7p: : : : :  Z 32 p 7p 1.000 1-only-one
- :5p: : : : :  Z 32 p 5p 1.000 1-only-one wannabe
- :1t: : : : :  Z 32 t 1t 1.000 1-only-one
- :5q: : : : :  Z 32 t 5q 1.000 1-only-one
- :1o: : : : :  Z 32 m 1o 1.000 1-only-one
- :7r: : : : :  Z 32 m 7r 1.000 1-only-one
- :5r: : : : :  Z 32 m 5r 1.000 1-only-one wannabe
- :2a: : : : :  Z 23 p 2a 1.000 1-only-one
- :4a: : : : :  Z 23 p 4a 1.000 2-OUTSIDE-sat
- :0a: : : : :  Z 23 p 0a 1.000 3-OUTSIDE-dom
- :#a: : : : :  Z 23 p #a 1.000 2-OUTSIDE-sat
- :4g: : : : :  Z 23 p 4g 1.000 1-only-one
- :6g: : : : :  Z 23 p 6g 1.000 1-only-one
- :8d: : : : :  Z 23 p 8d 1.000 1-only-one
- :4d: : : : :  Z 23 p 4d 1.000 1-only-one
- :6d: : : : :  Z 23 p 6d 1.000 1-only-one
- :2g: : : : :  Z 23 p 2g 1.000 1-only-one wannabe
- :2h: : : : :  Z 23 t 2h 1.000 1-only-one
- :4n: : : : :  Z 23 t 4n 1.000 1-only-one
- :0i: : : : :  Z 23 t 0i 1.000 2-OUTSIDE-sat
- :6n: : : : :  Z 23 t 6n 1.000 2-OUTSIDE-dom
- :6j: : : : :  Z 23 t 6j 1.000 1-only-one
- :0k: : : : :  Z 23 m 0k 1.000 1-only-one wannabe
- :2[: : : : :  Z 22 p 2[ 1.000 1-only-one
- :4b: : : : :  Z 22 p 4b 1.000 2-None-dom
- :0b: : : : :  Z 22 p 0b 1.000 2-None-dom
- :4p: : : : :  Z 22 p 4p 1.000 1-only-one
- :6p: : : : :  Z 22 p 6p 1.000 1-only-one
- :2z: : : : :  Z 22 p 2z 1.000 1-only-one wannabe
- :4s: : : : :  Z 22 t 4s 1.000 1-only-one
- :2u: : : : :  Z 22 t 2u 1.000 1-only-one wannabe
- :2o: : : : :  Z 22 m 2o 1.000 1-only-one
+ :1b: : : : :  Z 32 p 1b 1.000
+ :1[: : : : :  Z 32 p 1[ 1.000
+ :3b: : : : :  Z 32 p 3b 1.000
+ :1z: : : : :  Z 32 p 1z 1.000
+ :5z: : : : :  Z 32 p 5z 1.000
+ :7p: : : : :  Z 32 p 7p 1.000
+ :5p: : : : :  Z 32 p 5p 1.000 wannabe
+ :1t: : : : :  Z 32 t 1t 1.000
+ :5q: : : : :  Z 32 t 5q 1.000
+ :1o: : : : :  Z 32 m 1o 1.000
+ :7r: : : : :  Z 32 m 7r 1.000
+ :5r: : : : :  Z 32 m 5r 1.000 wannabe
+ :2a: : : : :  Z 23 p 2a 1.000
+ :4a: : : : :  Z 23 p 4a 1.000
+ :0a: : : : :  Z 23 p 0a 1.000
+ :#a: : : : :  Z 23 p #a 1.000
+ :4g: : : : :  Z 23 p 4g 1.000
+ :6g: : : : :  Z 23 p 6g 1.000
+ :8d: : : : :  Z 23 p 8d 1.000
+ :4d: : : : :  Z 23 p 4d 1.000
+ :6d: : : : :  Z 23 p 6d 1.000
+ :2g: : : : :  Z 23 p 2g 1.000 wannabe
+ :2h: : : : :  Z 23 t 2h 1.000
+ :4n: : : : :  Z 23 t 4n 1.000
+ :0i: : : : :  Z 23 t 0i 1.000
+ :6n: : : : :  Z 23 t 6n 1.000
+ :6j: : : : :  Z 23 t 6j 1.000
+ :0k: : : : :  Z 23 m 0k 1.000 wannabe
+ :2[: : : : :  Z 22 p 2[ 1.000
+ :4b: : : : :  Z 22 p 4b 1.000
+ :0b: : : : :  Z 22 p 0b 1.000
+ :4p: : : : :  Z 22 p 4p 1.000
+ :6p: : : : :  Z 22 p 6p 1.000
+ :2z: : : : :  Z 22 p 2z 1.000 wannabe
+ :4s: : : : :  Z 22 t 4s 1.000
+ :2u: : : : :  Z 22 t 2u 1.000 wannabe
+ :2o: : : : :  Z 22 m 2o 1.000
  :epsilon: : : : :  Z trig !! 0.000 epsilon-1
- :alpha: : : : :  Z 33 p 1a 0.999 4-OUTSIDE-dom
+ :alpha: : : : :  Z 33 p 1a 0.999
  :alpha: : : : :  Z trig !! 0.000 alpha
- :beta: : : : :  Z 33 p 1a 0.999 4-OUTSIDE-dom
+ :beta: : : : :  Z 33 p 1a 0.999
  :beta: : : : :  Z trig !! 0.000 beta
- :zeta: : : : :  Z 33 p 1a 0.999 4-OUTSIDE-dom
+ :zeta: : : : :  Z 33 p 1a 0.999
  :zeta: : : : :  Z trig !! 0.000 zeta-1
  :delta-1: : : : :  Z trig !! 0.000 delta
  :delta-1: : : : :  Z trig !! 0.000 delta-1
- :gamma: : : : :  Z 33 p 1a 0.999 4-OUTSIDE-dom
+ :gamma: : : : :  Z 33 p 1a 0.999
  :gamma: : : : :  Z trig !! 0.000 gamma
- :delta: : : : :  Z 33 p 1a 0.999 4-OUTSIDE-dom
+ :delta: : : : :  Z 33 p 1a 0.999
  :delta: : : : :  Z trig !! 0.000 delta
-2xLk:1: C:  12: : :  U 33 p 1g 0.839 1-only-one
+'''
+
+output2 = '''2xLk:1: C:  12: : :  U 33 p 1g 0.839 1-only-one
 3cgp:1: B:  20: : :  A 33 p 3g 0.040 1-only-one wannabe
 4pco:1: B:   4: : :  G 33 t 1c 0.890 2-BETWEEN-dom-sat(   0.22|  0.913)
 5b2q:1: B:  63: : :  U 32 p 1[ 0.072 2-BETWEEN-dom-sat(  0.941|  0.829)
@@ -277,48 +283,50 @@ canonicalOutput='''
  # options and to redirect output.
 # sys.argv.extend(["--noinc", "--chart", "--causes"])
 #sys.stdout = StringIO("")
-sys.stdout = open("output.txt", "w")
-import suitename, suites
+# sys.st ifdout = open("output.txt", "w")
+import suitename, suites, regression
 
-
-def coreTest():
-  options1 = suites.parseOptions("chart=true, noinc=true, causes=true")
-  stream = StringIO(data)
+def test(input, canonicalOutput, options, identity):
+  opt = suites.parseOptions(options)
+  stream = StringIO(input)
   outFile=StringIO("")
-  suitename.main(stream, outFile=outFile, optionsIn=options1)
+  suitename.clearStats()
+  suitename.main(stream, outFile=outFile, optionsIn=opt)
 
   output = outFile.getvalue()
-  assert output.strip() == canonicalOutput.strip(), "core unit test"
+  assert output.strip() == canonicalOutput.strip(), identity
 
 
-def test():
-  coreTest()
-  regression.test()
+def testAll():
+  test(input1, output1, "chart=true noinc=true", "cluster and triage test")
+  test(input2, output2, "chart=true noinc=true causes=true", 
+      "code paths test")
+  test(regression.in_1ehz, regression.out_1ehz, "", "1ehz regression test")
 
 
-# Not normally used, but useful for diagnosing failures in the core unit test
-def test_verbose():
-  options1 = suites.parseOptions("suitename{chart=true, noinc=true, causes=true}")
-  stream = StringIO(data)
+# Not normally used, but useful for diagnosing failures
+def testVerbose(input, canonicalOutput, options, identity):
+  opt = suites.parseOptions(options)
+  stream = StringIO(input)
   outFile=StringIO("")
-  suitename.main(stream, outFile=outFile, optionsIn=options1)
+  suitename.clearStats()
+  suitename.main(stream, outFile=outFile, optionsIn=opt)
 
   output = outFile.getvalue()
   if output.strip() == canonicalOutput.strip():
    result = True
    sys.stderr.write("Success\n")
   else:
-   result = False
-   sys.stderr.write("Failed\n")
-   sys.stderr.write("========================================\n=")
-   sys.stderr.write(canonicalOutput.strip())
-   sys.stderr.write("\n\n=========================================\n")
-   sys.stderr.write(output.strip())
+    result = False
+    sys.stderr.write("Failed\n")
+    sys.stderr.write("========================================\n")
+    sys.stderr.write(canonicalOutput.strip())
+    sys.stderr.write("\n\n=========================================\n")
+    sys.stderr.write(output.strip())
 
-   out2 = open("UnitTest-output.txt", "w")
-   out2.write(output.strip())
-  return result
+    out2 = open("UnitTest-output.txt", "w")
+    out2.write(output.strip())
+    out2.close()
+    return result
 
-# test()
-
-test_verbose()
+testAll()

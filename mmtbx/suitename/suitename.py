@@ -12,18 +12,63 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# 0.2.070524 preserve chi-1 and chi, so could preserve eta, theta
-# 0.3.070525 general read dangle record for, e.g.,  eta, theta
-# 0.3.070628 triage reports zeta-1, epsilon-1, delta-1,... Ltriage codes
-# 0.3.070803 notes: rearranged suitenhead.h/janesviews ...
-#                  put something in to say what veiws mean
-#  what are masters e and d ????
-# 0.3.070919 3g wannabe (tRNA TpseudoUC loop)
-# 0.3.110606 range of delta updated by S.J.
-# 01/07/2014 S.J. updated so that it can take input with alternate conformations, *nd by default will calculate the suite for altA
-# 09/18/2014 S.J. updated so that suitename will ignore DNA residues
-# 03/01/2021 Ken Brooks converted to Python
+"""
+Suitename is a program to aid model-building and perform validation of RNA 
+backbone conformation. Rather than focusing on the 6 dihedral angles of each 
+phosphate-to-phosphate nucleotide, it parses the RNA backbone into the more 
+conformationally diagnostic unit of 7 dihedrals from delta of one nucleotide to 
+delta of the next. This unit is known as a "suite", because it runs between the 
+ribose sugars (and also between adjacent bases).
 
+These seven dihedral angles define a 7-dimensional space, analogous to the 2-D 
+Ramachandran phi,psi space but vastly larger. Suitename’s analysis encapsulates 
+the results of research that used the well-ordered parts of a high-accuracy 
+reference structure dataset to classify feasible conformations of these angles 
+into several dozen well-populated clusters of observed cases 
+(Richardson 2008, RNA 14: 465). Each “conformer” cluster has been given a 
+2-character number-letter name, such as 1a for A-form conformation. The outer 
+limit of each cluster is a “super-ellipse” shape (Gridgeman 1970, Math Gaz 54:31) 
+which fits this data better than either a radially symmetric or a box shape. 
+Its extent in each direction uses the overall standard deviation of all clusters 
+in that dihedral angle. Some clusters are not cleanly separated, but are 
+“satellites” of a “dominant” larger cluster such as 1a. Those are distinguished 
+by a plane closer to the satellite center, at a distance split proportional to
+their relative populations.
+
+Delta-1 and delta are cleanly bimodal by C2'-endo vs C3'-endo ribose pucker and 
+gamma is cleanly trimodal, so each input suite is initially placed into one of 12 
+delta-delta-gamma “bins” or else is triaged as an outlier if outside all bins or 
+outside the allowable ranges in any dihedral. Then, most of the detailed work of 
+cluster definition is done in the 4-dimensional space of epsilon-1, zeta-1, alpha, 
+and beta, with a final refinement of the fit calculation in all 7 parameters. Each 
+suite within an input RNA model file is thus assigned the 2-character name of the 
+cluster it falls into and a 0-1.0 "suiteness" value for how centrally it fits 
+within that cluster. Suites that lie outside any cluster are marked as outliers, 
+tagged with '!!' (bang-bang) as their 2-character code.
+
+
+Suitename can take input in several formats:
+1. A PDB or CIF format file, from which it will extract the dihedral angles.
+2. A "dangle" format file of nucleotides with the 6 dihedral angles already 
+   calculated, most often provided by the mp_geo utility.
+3. A kinemage format file of suites with their 7 dihedral angles already calculated.
+The latter two formats may be provided as a file, or as standard input. 
+
+Suitename can output in several formats:
+1. A report showing the classification and suiteness of each suite, and 
+   optionally a statistical summary.
+2. A compact string showing only the 2-character conformer names in lower case, 
+   alternating with the single upper-case letter for the base type.
+3. A kinemage file showing all the suites of that model as points in 
+   7-dimensional space, colored according to their classification.
+Each suite is tagged with the ID information of the SECOND of the two 
+nucleotides that make it up, because that one contains 4 of the 7 dihedrals.
+The output is typically written to standard output.
+
+The various operations of Suitename are also provided as a library, suites.py, 
+for use by other CCTBX programs.
+
+"""
 import sys, os
 # print ("suitename: ", sys.path)
 
@@ -455,10 +500,8 @@ def finalStats():
 
 
 def clearStats():
-    for bin in bins.values():
-        bin.count = 0
-        for c in bin.cluster:
-            c.count = 0
+    from suitenout import clearStatistics
+    clearStatistics()
 
 
 # *** The fancy math ********************************************************
@@ -563,3 +606,17 @@ def modifyWidths(dom, sat, satInfo):
 
 if (__name__ == "__main__"):
   main()
+
+
+# CHANGE LOG (yymmdd datestamp format):
+# 0.2.070524 preserve chi-1 and chi, so could preserve eta, theta
+# 0.3.070525 general read dangle record for, e.g.,  eta, theta
+# 0.3.070628 triage reports zeta-1, epsilon-1, delta-1,... Ltriage codes
+# 0.3.070803 notes: rearranged suitenhead.h/janesviews ...
+#                  put something in to say what veiws mean
+# 0.3.070919 3g wannabe (tRNA TpseudoUC loop)
+# 0.3.110606 range of delta updated by S.J.
+# 01/07/2014 S.J. updated so that it can take input with alternate conformations, 
+#            and by default will calculate the suite for altA
+# 09/18/2014 S.J. updated so that suitename will ignore DNA residues
+# 03/01/2021 Ken Brooks converted to Python

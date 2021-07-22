@@ -73,20 +73,23 @@ def getResidueDihedrals(mgr, altcode='', name='', errorFile = sys.stderr):
   hierarchy = manager.get_hierarchy()
   i_seq_name_hash = utils.build_name_hash(pdb_hierarchy=hierarchy)
 
-  # output = open("hierarchy.show.txt", "w")
+  output = open("hierarchy.show.txt", "w")
   model = hierarchy.models()[0]  #!!!
   selector = "name P or name O5' or name C5' or name C4' or name C3' or name O3'"
   selection = manager.selection(selector) 
   #print (len(selection), "atoms")
   backbone_hierarchy = hierarchy.select(selection)
-  # hierarchy.show(output)
+  backbone_hierarchy.show(output)
   chains = backbone_hierarchy.chains()
   all_residues = []
-  if len(list(chains)) == 0:
+  cchains = list(chains)  
+  nchains = len(cchains)
+  print(cchains)
+  if nchains == 0:
     print("Model contains no RNA", file=errorFile)
     return []
 
-  for chain in chains:
+  for chain in cchains:
     print("chain ", chain.id)
     conf = get_matching_conformer(chain, altcode)
       

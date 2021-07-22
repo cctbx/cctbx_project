@@ -48,31 +48,42 @@ def analyzeLine(raw):
 def main():
     file = sys.argv[1] + ".py"
     #root, ext = os.path.splitext(file)
-    outFile = file + ".ind.py"
+    outFile = sys.argv[1] + ".ind.py"
     # file = "target.py"
     stream = open(file)
     lines = stream.readlines()
-    oStream = open(outFile, "w")
+    #oStream = open(outFile, "w")
+    oStream = sys.stderr
     
     indents = []
     prevSpaces = 0
     level = 0
     newLevel = False
+    freeze = False
     for rawLine in lines:
+        content, spaces, indenting = analyzeLine(rawLine)
         if newLevel:
             # Determined by PREVIOUS line
             level += 1
             indents.append(prevSpaces)
             newLevel = False
-        content, spaces, indenting = analyzeLine(rawLine)
+        elif spaces > prevSpaces:
+          # indent without : is a line-continuation or data-formatting situation
+          freeze = True
+        if content == "":  # blank lines influence nothing
+          continue
 #        if spaces < prevSpaces and level > 0:
-        if spaces < prevSpaces:
+        if spaces < prevSpaces and spaces == indents[-1]:
             oldSpaces = indents.pop()
             while spaces < oldSpaces:
                 oldSpaces = indents.pop()
             level = len(indents)
+            freeze = False
         prevSpaces = spaces
-        print(level * N * " " + content, file=oStream)
+        if freeze:
+          print(rawLine, file=oStream)
+        else:
+          print(level * N * " " + content, file=oStream)
         if indenting:
             newLevel = True
     oStream.close()

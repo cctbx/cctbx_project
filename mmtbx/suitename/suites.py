@@ -19,6 +19,7 @@ from numpy.lib.arraysetops import ediff1d
 from suitenamedefs import Residue, Suite, globals
 from iotbx.data_manager import DataManager    #   Load in the DataManager
 from libtbx import phil
+from libtbx.utils import Sorry
 from mmtbx.validation import utils
 from cctbx import geometry_restraints
 from collections import defaultdict
@@ -114,7 +115,7 @@ def main(options, outFile=None, errorFile=None):
   # for r in residues:
   #   print(residueString(r))
 # useful for seeing what suites were generated
-  if len(residues) > 0:
+  if residues is not None and len(residues) > 0:
     suiteList = suiteninput.buildSuites(residues)
     suiteList = suiteList[:-1]
     
@@ -124,14 +125,32 @@ def main(options, outFile=None, errorFile=None):
     clearStats()
 
 
-def parseOptions(optionString):
-  "example string: 'report=true, chart=true, anglefields=7'  "
-  master_phil = phil.parse(philOptions)
-  user_phil = phil.parse(optionString)
-  merge = master_phil.fetch(sources=[user_phil])
-  full_options = merge.extract()
-  return full_options.suitename
+def parseOptions(optionString, errorFile=None):
+  """ Use optionString to modify the defaults given in philOptions above. 
+  Returns a Python object that has an attribute for every option listed
+  in philOptions.  Example: "chart=true noinc=true causes=true"
+  The values in optionString are case insensitive.
+  """
+  opt2 = """  # use this for more complex option types e.g. multiples
+  suitename {
+    report=true
+    chart=true
+}  """
+  # user_phil = phil.parse(opt2)
 
+  master_phil = phil.parse(philOptions)
+  interp = master_phil.command_line_argument_interpreter() 
+  optionList = optionString.split()
+  try:
+    user_phil = interp.process(args=optionList)
+  except Sorry as e:
+    if errorFile is None:  errorFile = sys.stderr
+    print(e, file=errorFile)
+  
+  working_phil = master_phil.fetch(sources=user_phil)
+  full_options = working_phil.extract()
+  return full_options.suitename
+  
 
 def setOptions(optionsIn):
   """optionsIn may be the result of parseOptions above

@@ -20,7 +20,7 @@ from enum import Enum
 import numpy as np
 from numpy import array
 
-options = globals.options
+options = None  # global,  will be copied from suitename.py global
 
 reportCountAll = 0
 trigCountAll = 0
@@ -29,6 +29,8 @@ binSuiteCountAll = 0
 
 
 def output(outFile, suites, outNote):
+    global options
+    options = globals.options
     for s in suites:
         outSuite(outFile, s)
     writeFinalOutput(outFile, suites, outNote)
@@ -253,13 +255,13 @@ def suitenessAverage(outFile,  mode):
 
 
 def clearStatistics():
+    global reportCountAll, trigCountAll, suitenessSumAll, binSuiteCountAll
     reportCountAll = 0
     trigCountAll = 0
     suitenessSumAll = 0
-    binsSuiteCountAll = 0
+    binSuiteCountAll = 0
 
-    for i in range(1, 13):
-        bin = bins[i]
+    for bin in bins.values():
         for cluster in bin.cluster:
             cluster.count = 0
             cluster.suitenessSum = 0
