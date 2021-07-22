@@ -53,7 +53,7 @@ def getBondedNeighborLists(atoms, bondProxies):
 class getExtraAtomInfoReturn:
   """
     Return type from getExtraAtomInfo() call.
-      extraAtomInfo: a list with an entry for every i_seq for every atom in the model suitable for
+      extraAtomInfo: ExtraAtomInfoMap with an entry for every atom in the model suitable for
                      passing to the scoring functions.
       warnings: a string that if not empty lists warnings that the person running the program
                 might want to know about.  Suitable for printing or logging.
@@ -64,7 +64,7 @@ class getExtraAtomInfoReturn:
 
 def getExtraAtomInfo(model, useNeutronDistances = False):
   """
-    Helper function to provide a list of ExtraAtomInfo needed by Probe when scoring
+    Helper function to provide a mapper for ExtraAtomInfo needed by Probe when scoring
     models.  It first tries to find the information in CCTBX.  If it cannot, it looks
     the information up using the original C-code Probe tables and algorithms.
     :param model: Map Model Manager's Model containing all of the atoms to be described.
@@ -74,7 +74,7 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
     :param useNeutronDistances: Default is to use x-ray distances, but setting this to
     True uses neutron distances instead.
     Can be obtained by calling iotbx.map_model_manager.map_model_manager().model().
-    :returns a list with an entry for every i_seq for every atom in the model suitable for
+    :returns a ExtraAtomInfoMap with an entry for every atom in the model suitable for
     passing to the scoring functions.
   """
 
@@ -83,19 +83,8 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
   # Construct the AtomTypes object we're going to use, telling it whether to use neutron distances.
   at = mmtbx.probe.AtomTypes.AtomTypes(useNeutronDistances)
 
-  # Fill in an ExtraAtomInfoList with an entry for each atom in the hierarchy.
-  # We first find the largest i_seq sequence number in the model and reserve that
-  # many entries so we will always be able to fill in the entry for an atom.
-  atoms = model.get_atoms()
-  maxI = atoms[0].i_seq
-  for a in atoms:
-    if a.i_seq > maxI:
-      maxI = a.i_seq
-  extra = []
-  for i in range(maxI+1):
-    extra.append(probe.ExtraAtomInfo())
-
   # Traverse the hierarchy and look up the extra data to be filled in.
+  extras = probe.ExtraAtomInfoMap([],[])
   mon_lib_srv = model.get_mon_lib_srv()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
   ph = model.get_hierarchy()
@@ -108,6 +97,7 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
           atom_dict = md.atom_dict()
 
           for a in ag.atoms():
+            extra = probe.ExtraAtomInfo()
             # See if we can find out about its Hydrogen-bonding status from the
             # model.  If so, we fill it and the vdwRadius information from
             # CCTBX.
@@ -115,11 +105,11 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
               hb_type = model.get_specific_h_bond_type(a)
               if isinstance(hb_type, str):
                 if hb_type == "A" or hb_type == "B":
-                  extra[a.i_seq].isAcceptor = True
+                  extra.isAcceptor = True
                 if hb_type == "D" or hb_type == "B":
-                  extra[a.i_seq].isDonor = True
+                  extra.isDonor = True
                 # @todo How to tell this code whether or not to use neutron distances?
-                extra[a.i_seq].vdwRadius = model.get_specific_vdw_radii(a)
+                extra.vdwRadius = model.get_specific_vdw_radii(a)
                 continue
 
               # Did not find the information from CCTBX, so look it up using
@@ -132,11 +122,12 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
                 "(perhaps interpretation was not run on the model?), using Probe tables\n")
 
             # Did not find what we were looking for in CCTBX, so drop through to Probe
-            extra[a.i_seq], warn = at.FindProbeExtraAtomInfo(a)
+            extra, warn = at.FindProbeExtraAtomInfo(a)
             if len(warn) > 0:
               warnings += "  Probe says: "+warn+"\n"
+            extras.setMappingFor(a, extra)
 
-  return getExtraAtomInfoReturn(extra, warnings)
+  return getExtraAtomInfoReturn(extras, warnings)
 
 def Test(inFileName = None):
 
