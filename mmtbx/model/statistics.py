@@ -414,6 +414,16 @@ class geometry(object):
       result = result.upper()
     print(result, file=log)
 
+  def show_rms_details(self, out=None):
+    if(out is None): out = sys.stdout
+    result='%srms(d/Z) details\n' % (' '*4)
+    res = self.result()
+    a,b,c,d,p,n = res.angle, res.bond, res.chirality, res.dihedral, \
+      res.planarity, res.nonbonded
+    az, bz = res.angle_z, res.bond_z
+    result += 'rmsd %s' % a
+    print(result, file=out)
+
   def as_cif_block(self, cif_block=None, pdbx_refine_id=''):
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
@@ -667,6 +677,10 @@ class info(object):
       if len(info_pdb_str) > 0:
         print(prefix, file=out)
         print(info_pdb_str, end='', file=out)
+
+  def show_rms_details(self, out=None):
+    if(out is None): out = sys.stdout
+    self.geometry.show_rms_details(out=out)
 
   def get_pdbx_refine_id(self):
     return self._pdbx_refine_id
