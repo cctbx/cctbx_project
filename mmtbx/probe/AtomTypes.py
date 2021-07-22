@@ -65,6 +65,57 @@ def IsAminoAcidCarbonyl(resName, atomName):
     return resName in ['GLU','GLN','GLX']
   return False
 
+# Table of aromatic-acceptor atoms by residue and atom name.  The first entry in each list element is
+# the residue name.  The second is a list of atoms that qualify.
+_AromaticTable = [
+  # Note: Some atoms from these residues are listed in other sections.  The combination of
+  # reside and atom name is not duplicated, but there are multiple entries for some residues --
+  # this is not a set.
+
+  ['HIS', [' ND1',' NE2'] ],
+
+  ['ADE', [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+  ['  A', [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+  ['A',   [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+  ['CYT', [' N3',' N1',' C2',' C4',' C5',' C6'] ],
+  ['  C', [' N3',' N1',' C2',' C4',' C5',' C6'] ],
+  ['C',   [' N3',' N1',' C2',' C4',' C5',' C6'] ],
+  ['GUA', [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+  ['  G', [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+  ['G',   [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+  ['THY', [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+  ['  T', [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+  ['T',   [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+  ['URA', [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+  ['  U', [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+  ['U',   [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+
+  ['DA',  [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+  [' DA',  [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+  ['DC',  [' N3',' N1',' C2',' C4',' C5',' C6'] ],
+  [' DC',  [' N3',' N1',' C2',' C4',' C5',' C6'] ],
+  ['DG',  [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+  [' DG',  [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+  ['DT',  [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+  [' DT',  [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+
+  ['HEM', [' N A',' N B',' N C',' N D'] ],
+
+  # Here we treat the aromatic Pi-bonds as hydrogen bond acceptors.
+  # Note: Some atoms from these residues are listed in other sections.  The combination of
+  # reside and atom name is not duplicated, but there are multiple entries for some residues --
+  # this is not a set.
+
+  ['HEM', [' C1A',' C2A',' C3A',' C4A',
+            ' C1B',' C2B',' C3B',' C4B',
+            ' C1C',' C2C',' C3C',' C4C',
+            ' C1D',' C2D',' C3D',' C4D'] ],
+  ['PHE', [' CZ',' CE2',' CE1',' CD2',' CD1',' CG'] ],
+  ['TYR', [' CZ',' CE2',' CE1',' CD2',' CD1',' CG'] ],
+  # ['HIS', [' CD2',' CE1',' CG'] ],
+  ['TRP', [' CH2',' CZ3',' CZ2',' CE3',' CE2',' NE1',' CD2',' CD1',' CG'] ]
+]
+
 # Is a carbon or nitrogen atom an acceptor and part of an aromatic ring?
 def IsAromaticAcceptor(resName, atomName):
   """Given a residue and atom name, determine whether that atom is an acceptor as part of an aromatic ring.
@@ -73,58 +124,7 @@ def IsAromaticAcceptor(resName, atomName):
   :returns True if the atom is a C=O in a standard resize, False if not.  Does not handle HET atoms.
   """
 
-  # Table of aromatic-acceptor atoms by residue and atom name.  The first entry in each list element is
-  # the residue name.  The second is a list of atoms that qualify.
-  AromaticTable = [
-    # Note: Some atoms from these residues are listed in other sections.  The combination of
-    # reside and atom name is not duplicated, but there are multiple entries for some residues --
-    # this is not a set.
-
-    ['HIS', [' ND1',' NE2'] ],
-
-    ['ADE', [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-    ['  A', [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-    ['A',   [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-    ['CYT', [' N3',' N1',' C2',' C4',' C5',' C6'] ],
-    ['  C', [' N3',' N1',' C2',' C4',' C5',' C6'] ],
-    ['C',   [' N3',' N1',' C2',' C4',' C5',' C6'] ],
-    ['GUA', [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-    ['  G', [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-    ['G',   [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-    ['THY', [' N1',' C2',' N3',' C4',' C5',' C6'] ],
-    ['  T', [' N1',' C2',' N3',' C4',' C5',' C6'] ],
-    ['T',   [' N1',' C2',' N3',' C4',' C5',' C6'] ],
-    ['URA', [' N1',' C2',' N3',' C4',' C5',' C6'] ],
-    ['  U', [' N1',' C2',' N3',' C4',' C5',' C6'] ],
-    ['U',   [' N1',' C2',' N3',' C4',' C5',' C6'] ],
-
-    ['DA',  [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-    [' DA',  [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-    ['DC',  [' N3',' N1',' C2',' C4',' C5',' C6'] ],
-    [' DC',  [' N3',' N1',' C2',' C4',' C5',' C6'] ],
-    ['DG',  [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-    [' DG',  [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-    ['DT',  [' N1',' C2',' N3',' C4',' C5',' C6'] ],
-    [' DT',  [' N1',' C2',' N3',' C4',' C5',' C6'] ],
-
-    ['HEM', [' N A',' N B',' N C',' N D'] ],
-
-    # Here we treat the aromatic Pi-bonds as hydrogen bond acceptors.
-    # Note: Some atoms from these residues are listed in other sections.  The combination of
-    # reside and atom name is not duplicated, but there are multiple entries for some residues --
-    # this is not a set.
-
-    ['HEM', [' C1A',' C2A',' C3A',' C4A',
-             ' C1B',' C2B',' C3B',' C4B',
-             ' C1C',' C2C',' C3C',' C4C',
-             ' C1D',' C2D',' C3D',' C4D'] ],
-    ['PHE', [' CZ',' CE2',' CE1',' CD2',' CD1',' CG'] ],
-    ['TYR', [' CZ',' CE2',' CE1',' CD2',' CD1',' CG'] ],
-    ['HIS', [' CD2',' CE1',' CG'] ],
-    ['TRP', [' CH2',' CZ3',' CZ2',' CE3',' CE2',' NE1',' CD2',' CD1',' CG'] ]
-  ]
-
-  for e in AromaticTable:
+  for e in _AromaticTable:
     if Unpad(resName) == e[0] and Unpad(atomName) in e[1]:
       return True
   return False
