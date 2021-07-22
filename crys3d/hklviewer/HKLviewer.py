@@ -1881,7 +1881,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     # the subprocess after execution). Since we need cmdlineframes.run() to be interactive 
     # we start it with shell=True and flags -i -c for cmdlineframes.run() to remain running.
     # Care must be taken when closing HKLviewer to ensure the shell and its child process are both closed.
-    cmdargs =  self.cctbxpython + ' -i -c "from crys3d.hklview import cmdlineframes;' \
+    cmdargs =  self.cctbxpython + ' -i -c "from crys3d.hklviewer import cmdlineframes;' \
      + ' cmdlineframes.run()" ' + ' '.join( guiargs + sys.argv[1:])
     self.cctbxproc = subprocess.Popen( cmdargs, shell=True, 
                                       universal_newlines=True,
