@@ -17,9 +17,9 @@ if sys.version_info[0] < 3:
   sys.exit(-42)
 
 from .qt import Qt, QCoreApplication, QEvent, QItemSelectionModel, QSize, QSettings, QTimer, QUrl
-from .qt import (  QAction, QCheckBox, QComboBox, QDialog, QDoubleSpinBox, 
+from .qt import (  QAction, QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
     QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
-    QMainWindow, QMenu, QMenuBar, QProgressBar, QPushButton, QRadioButton, QRect, 
+    QMainWindow, QMenu, QMenuBar, QProgressBar, QPushButton, QRadioButton, QRect,
     QScrollBar, QSizePolicy, QSlider, QSpinBox, QStyleFactory, QStatusBar, QTableView, QTableWidget,
     QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget )
 
@@ -476,7 +476,7 @@ newarray._sigmas = sigs
       #self.cctbxproc.terminate()
       self.out, self.err = self.cctbxproc.communicate(input="exit()", timeout=maxtime)
       print(str(self.out) + "\n" + str(self.err))
-    except Exception as e: 
+    except Exception as e:
       print("Terminating hanging cctbx.python process...")
       import psutil
       parent_pid = self.cctbxproc.pid   # my example
@@ -1878,15 +1878,15 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.cctbxpython is None:
       self.cctbxpython = "cctbx.python"
     # subprocess will not create interactive programs ( using popen.communicate() will simply terminate
-    # the subprocess after execution). Since we need cmdlineframes.run() to be interactive 
+    # the subprocess after execution). Since we need cmdlineframes.run() to be interactive
     # we start it with shell=True and flags -i -c for cmdlineframes.run() to remain running.
     # Care must be taken when closing HKLviewer to ensure the shell and its child process are both closed.
     cmdargs =  self.cctbxpython + ' -i -c "from crys3d.hklviewer import cmdlineframes;' \
      + ' cmdlineframes.run()" ' + ' '.join( guiargs + sys.argv[1:])
-    self.cctbxproc = subprocess.Popen( cmdargs, shell=True, 
+    self.cctbxproc = subprocess.Popen( cmdargs, shell=True,
                                       universal_newlines=True,
-                                      stdin=subprocess.PIPE, 
-                                      stdout=subprocess.PIPE, 
+                                      stdin=subprocess.PIPE,
+                                      stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE)
 
 
@@ -2037,4 +2037,3 @@ def run(isembedded=False, cctbxpython=None, chimeraxsession=None):
 
   except Exception as e:
     print( str(e)  +  traceback.format_exc(limit=10) )
-

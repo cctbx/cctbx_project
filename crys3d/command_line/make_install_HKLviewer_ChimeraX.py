@@ -8,7 +8,7 @@ import libtbx.load_env
 
 # Bundle up a python wheel of the HKLviewer for chimeraX and subsequently install it into the local
 # chimeraX installation
-# Usage: 
+# Usage:
 # cctbx.make_install_HKLviewer_ChimeraX "A:\Program Files\ChimeraX 1.2.5\bin\ChimeraX-console.exe"
 
 if (__name__ == "__main__"):
@@ -33,8 +33,8 @@ if (__name__ == "__main__"):
   os.chdir(wheeldir)
   buildproc = subprocess.Popen( cmdargs, shell=True, cwd=wheeldir,
                                     universal_newlines=True,
-                                    stdin=subprocess.PIPE, 
-                                    stdout=subprocess.PIPE, 
+                                    stdin=subprocess.PIPE,
+                                    stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
   out, err = buildproc.communicate()
   print(out)
