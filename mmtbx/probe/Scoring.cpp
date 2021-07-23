@@ -318,18 +318,6 @@ static bool closeTo(double a, double b) {
   return fabs(a - b) < 1e-10;
 }
 
-/// @brief holds parameters needed to initialize an atom and its associated extra information.
-class AtomInfo {
-public:
-  Point loc;
-  double occ;
-  std::string charge;
-  double radius;
-  bool isAcceptor;
-  bool isDonor;
-  bool isDummyHydrogen;
-};
-
 std::string DotScorer::test()
 {
   // Construct test cases with all combinations of charges and extra information, holding the
