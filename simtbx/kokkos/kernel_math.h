@@ -13,11 +13,11 @@ KOKKOS_FUNCTION static CUDAREAL dot_product(const CUDAREAL *x, const CUDAREAL *y
 // make a unit vector pointing in same direction and report magnitude (both args can be same vector)
 KOKKOS_FUNCTION static CUDAREAL unitize(CUDAREAL * vector, CUDAREAL *new_unit_vector);
 // polarization factor from vectors
-KOKKOS_FUNCTION static CUDAREAL polarization_factor(CUDAREAL kahn_factor, CUDAREAL *incident, CUDAREAL *diffracted, const CUDAREAL *axis);
-/* vector cross product where vector magnitude is 0th element */
+KOKKOS_FUNCTION static CUDAREAL polarization_factor(CUDAREAL kahn_factor, CUDAREAL *incident, CUDAREAL *diffracted, const vector_cudareal_t axis);
+// vector cross product where vector magnitude is 0th element
 KOKKOS_INLINE_FUNCTION static void cross_product(CUDAREAL *x, CUDAREAL *y, CUDAREAL *z);
 /* rotate a 3-vector about a unit vector axis */
-KOKKOS_INLINE_FUNCTION static CUDAREAL *rotate_axis(const CUDAREAL * __restrict__ v, CUDAREAL * newv, const CUDAREAL * __restrict__ axis, const CUDAREAL phi);
+KOKKOS_INLINE_FUNCTION static CUDAREAL *rotate_axis(const vector_cudareal_t v, CUDAREAL * newv, const vector_cudareal_t axis, const CUDAREAL phi);
 /* rotate a 3-vector using a 9-element unitary matrix */
 KOKKOS_INLINE_FUNCTION static void rotate_umat(CUDAREAL * v, CUDAREAL *newv, const CUDAREAL * __restrict__ umat);
 // measure magnitude of vector and put it in 0th element
@@ -68,7 +68,7 @@ KOKKOS_FUNCTION CUDAREAL unitize(CUDAREAL * vector, CUDAREAL * new_unit_vector) 
 }
 
 // polarization factor
-KOKKOS_FUNCTION CUDAREAL polarization_factor(CUDAREAL kahn_factor, CUDAREAL *incident, CUDAREAL *diffracted, const CUDAREAL *axis) {
+KOKKOS_FUNCTION CUDAREAL polarization_factor(CUDAREAL kahn_factor, CUDAREAL *incident, CUDAREAL *diffracted, const vector_cudareal_t axis) {
         CUDAREAL cos2theta, cos2theta_sqr, sin2theta_sqr;
         CUDAREAL psi = 0.0;
         CUDAREAL E_in[4], B_in[4], E_out[4], B_out[4];
@@ -86,7 +86,7 @@ KOKKOS_FUNCTION CUDAREAL polarization_factor(CUDAREAL kahn_factor, CUDAREAL *inc
                 // tricky bit here is deciding which direciton the E-vector lies in for each source
                 // here we assume it is closest to the "axis" defined above
 
-                CUDAREAL unitAxis[] = { axis[0], axis[1], axis[2], axis[3] };
+                CUDAREAL unitAxis[] = { axis(0), axis(1), axis(2), axis(3) };
                 // this is already unitized. Optimize this out.
                 unitize(unitAxis, unitAxis);
 
@@ -121,16 +121,16 @@ KOKKOS_INLINE_FUNCTION void cross_product(CUDAREAL *x, CUDAREAL *y, CUDAREAL *z)
 }
 
 /* rotate a point about a unit vector axis */
-KOKKOS_INLINE_FUNCTION CUDAREAL *rotate_axis(const CUDAREAL * __restrict__ v, CUDAREAL * newv, const CUDAREAL * __restrict__ axis, const CUDAREAL phi) {
+KOKKOS_INLINE_FUNCTION CUDAREAL *rotate_axis(const vector_cudareal_t v, CUDAREAL * newv, const vector_cudareal_t axis, const CUDAREAL phi) {
 
         const CUDAREAL sinphi = sin(phi);
         const CUDAREAL cosphi = cos(phi);
-        const CUDAREAL a1 = axis[1];
-        const CUDAREAL a2 = axis[2];
-        const CUDAREAL a3 = axis[3];
-        const CUDAREAL v1 = v[1];
-        const CUDAREAL v2 = v[2];
-        const CUDAREAL v3 = v[3];
+        const CUDAREAL a1 = axis(1);
+        const CUDAREAL a2 = axis(2);
+        const CUDAREAL a3 = axis(3);
+        const CUDAREAL v1 = v(1);
+        const CUDAREAL v2 = v(2);
+        const CUDAREAL v3 = v(3);
         const CUDAREAL dot = (a1 * v1 + a2 * v2 + a3 * v3) * (1.0 - cosphi);
 
         newv[1] = a1 * dot + v1 * cosphi + (-a3 * v2 + a2 * v3) * sinphi;

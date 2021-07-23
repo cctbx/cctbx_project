@@ -16,17 +16,10 @@ namespace simtbx { namespace Kokkos {
 
     vector_cudareal_t device_Fhkl( "device_Fhkl", linear_amplitudes.size() );
     transfer_shared2kokkos(device_Fhkl, linear_amplitudes);
-    // vector_cudareal_t::HostMirror host_Fhkl = create_mirror_view( device_Fhkl );
-
-    // for (int i=0; i<linear_amplitudes.size(); ++i) {
-    //   host_Fhkl(i) = (CUDAREAL) raw_ptr[i];
-    // }
-
-    // deep_copy(device_Fhkl, host_Fhkl);
     d_channel_Fhkl.push_back(device_Fhkl);
 
     if (d_channel_Fhkl.size()==1) { //first time through
-      host_FhklParams = { h_range * k_range * l_range,
+      m_FhklParams = { h_range * k_range * l_range,
                              h_min, h_max, h_range, k_min, k_max, k_range, l_min, l_max, l_range };
     }
   }
