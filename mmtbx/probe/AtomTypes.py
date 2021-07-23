@@ -414,12 +414,15 @@ class AtomTypes:
 
     ##################################################################################
     # Make a dictionary for upper-case second letters in multi-letter atom names where
-    # the first letter is H.  It stores the list of residues for which this name is valid.
+    # the first letter is H but the atom is not a Hydrogen.
+    # It stores the list of residues for which this name is valid.
     # For example, "Hg" would have an entry named 'G' which lists the residues that can
     # have an atom named "Hg" in it.
     # Making an empty list here will have the same effect as not having an entry for
     # a given letter.  All names in the list must be fully upper case.  Spaces are
     # significant in the residue names.
+    # Atoms whose names start with H but are not on one of the lists will be converted
+    # to Hydrogen.
     self._legalResiduesForHElements = {
       'E' : [],
       'F' : ['PHF', 'HF3', 'HF5'],
