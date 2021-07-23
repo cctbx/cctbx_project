@@ -50,7 +50,7 @@ struct kokkos_energy_channels {
         if(verbose) printf("l: %d - %d\n",l_min,l_max);
         SCITBX_ASSERT (!(h_range < 0 || k_range < 0 || l_range < 0));
     }
-    host_FhklParams = { h_range * k_range * l_range,
+    m_FhklParams = { h_range * k_range * l_range,
                         h_min, h_max, h_range, 
                         k_min, k_max, k_range,
                         l_min, l_max, l_range };
@@ -87,7 +87,7 @@ struct kokkos_energy_channels {
 
   /* pointers to data on device */
   af::shared<vector_cudareal_t> d_channel_Fhkl;
-  hklParams host_FhklParams;
+  hklParams m_FhklParams;
 };
 } // Kokkos
 } // simtbx
