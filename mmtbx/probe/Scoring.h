@@ -88,6 +88,10 @@ namespace molprobity {
         bool isDummyHydrogen = false)
         : m_vdwRadius(vdwRadius), m_isAcceptor(isAcceptor), m_isDonor(isDonor)
         , m_isDummyHydrogen(isDummyHydrogen) {}
+      /// @brief Constructor from another ExtraAtomInfo
+      ExtraAtomInfo(const ExtraAtomInfo &e)
+        : m_vdwRadius(e.m_vdwRadius), m_isAcceptor(e.m_isAcceptor), m_isDonor(e.m_isDonor)
+        , m_isDummyHydrogen(e.m_isDummyHydrogen) {}
 
       /// @brief Get and set methods
       double  getVdwRadius() const { return m_vdwRadius; }
