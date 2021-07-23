@@ -225,9 +225,11 @@ class Script:
         ntimes = COMM.bcast(ntimes)
         global_Nshots = len(shot_mapping)  # total number of shots being modeled
 
-        empty_iexps, _ = map(set, zip(*empty_shots))
-        i_exp_from_i_shot = {ii: i_exp for i_exp, ii in shot_mapping.items()}
-        shot_is_empty = [i_exp_from_i_shot[i_shot] in empty_iexps for i_shot in range(global_Nshots)]
+        shot_is_empty = [False]*global_Nshots
+        if empty_shots:
+            empty_iexps, _ = map(set, zip(*empty_shots))
+            i_exp_from_i_shot = {ii: i_exp for i_exp, ii in shot_mapping.items()}
+            shot_is_empty = [i_exp_from_i_shot[i_shot] in empty_iexps for i_shot in range(global_Nshots)]
 
         # for GPU usage, allocate enough pixels! We only allocate once,
         # and shots are modeled one-at-a-time , so allocate enough pixels to model the shot with the most pixels
@@ -367,7 +369,7 @@ class Script:
                 model(x0[rank_xidx[i_exp]], self.SIM, M, compute_grad=False, sanity_test=0)
                 continue
             else:
-                _, _, best_mod = model(x0[rank_xidx[i_exp]], self.SIM, M, compute_grad=False)
+                _, _, best_mod,_ = model(x0[rank_xidx[i_exp]], self.SIM, M, compute_grad=False)
             #self.SIM.D.nopolar=False
             if self.params.sanity_test_models:
                 # NOTE works on one MPI rank only, because shots are divided across ranks
@@ -443,7 +445,7 @@ class Script:
         # save the final models
         for i_exp in Modelers:
             M = Modelers[i_exp]
-            _,_,best_mod = model(x[rank_xidx[i_exp]], self.SIM, M, compute_grad=False)
+            _,_,best_mod,_ = model(x[rank_xidx[i_exp]], self.SIM, M, compute_grad=False)
             img_path = "rank%d_img%d_after.h5" %(COMM.rank, i_exp)
             img_path = os.path.join(self.params.outdir, img_path)
             save_model_Z(img_path, M, best_mod)
@@ -749,6 +751,8 @@ def Minimize(x0, rank_xidx, params, SIM, Modelers, ntimes, nshots_total, shot_is
     SIM.D.device_Id = dev
 
     # set refinement flags
+    if not params.quiet:
+        print("Setting up refinement flags")
     vary = np.ones(len(x0), bool)
     nucell_p = len(SIM.ucell_man.variables)
     nparam_per_shot = 1+3+3+nucell_p + 1  # 1 scale, 3 Nabc, 3 RotXYZ, N ucell, 1 detz  # TODO make param order in agreement with hopper_utils
@@ -773,6 +777,10 @@ def Minimize(x0, rank_xidx, params, SIM, Modelers, ntimes, nshots_total, shot_is
     for i_fcell in range(SIM.n_global_fcell):
         if not SIM.has_allowed_multiplicity[i_fcell]:
             vary[-SIM.n_global_fcell + i_fcell] = False
+
+    if not params.quiet:
+        nvary = sum(vary)
+        print("%d / %d parameters will be free to vary during refinement" % (nvary, len(vary)))
 
     target = TargetFunc(params, SIM)
 
@@ -799,6 +807,9 @@ def Minimize(x0, rank_xidx, params, SIM, Modelers, ntimes, nshots_total, shot_is
     else:
         args = (rank_xidx, SIM, Modelers, True, params, True, ntimes)
         jac = target.jac
+
+    if not params.quiet:
+        print("Basinhopping starts now: %d iters using method %s" % (params.niter, params.method))
     out = basinhopping(target, x0_for_refinement,
                        niter=niter,
                        minimizer_kwargs={'args': args, "method": params.method,
@@ -880,15 +891,23 @@ def model(x, SIM, Modeler, compute_grad=True, sanity_test=None):
         all_good_count_stats = []
         all_bad_count_stats = []
         for ii,i_roi in enumerate(uroi):
-            output = Redirect(stdout=True)
+            try:
+                output = Redirect(stdout=True)
+            except NameError:
+                print("HKL VARIATION SANITY CHECK FAILED!")
+                print("  |\n  |\n  >>>> Install the stream_redirect package using `libtbx.python -m pip install stream_redirect`, and note this debugging sanity test only works in CPU mode")
+                exit()
             i_roi_sel = Modeler.roi_id==i_roi
+            i_fcell = Modeler.all_fcell_global_idx[i_roi_sel][0]
+            if not SIM.has_allowed_multiplicity[i_fcell]:
+                continue
+
             with output:
                 sel = np.logical_and(i_roi_sel, Modeler.all_trusted)
                 pfs_roi = PFS[sel]
                 pfs_roi = np.ascontiguousarray(pfs_roi.ravel())
                 pfs_roi = flex.size_t(pfs_roi)
                 SIM.D.add_diffBragg_spots(pfs_roi)
-            i_fcell = Modeler.all_fcell_global_idx[i_roi_sel][0]
             shoebox_hkl = SIM.asu_from_i_fcell[i_fcell]
             lines = output.stdout.split("\n")
             count_stats = {}
@@ -903,6 +922,9 @@ def model(x, SIM, Modeler, compute_grad=True, sanity_test=None):
                     else:
                         count_stats[hkl] = count
             ntot = sum(count_stats.values())
+            if shoebox_hkl not in count_stats:
+                print("WARNING, SOMETHING IS WRONG, CHECK THE SPACE_GROUP PHIL PARAM, Shoebox missing HKL", shoebox_hkl)
+                exit()
             assert shoebox_hkl in count_stats
             print("Shoebox hkl", shoebox_hkl)
             for hkl in count_stats:
@@ -942,6 +964,7 @@ def model(x, SIM, Modeler, compute_grad=True, sanity_test=None):
     resid = (Modeler.all_data - model_pix)
     resid_square = resid ** 2
     V = model_pix + Modeler.sigma_rdout ** 2
+    zscore_sigma = np.std(resid / np.sqrt(V))
 
     if compute_grad:
         common_grad_term = (0.5 / V * (1 - 2 * resid - resid_square / V))
@@ -995,6 +1018,7 @@ def model(x, SIM, Modeler, compute_grad=True, sanity_test=None):
 
     ## sanity check on amplitudes:
     if sanity_test==1:
+        print("Performing sanity check on Amplitudes...")
         bad_rois = []
         for i in set(Modeler.roi_id):
             bragg_i = bragg[Modeler.roi_id == i]
@@ -1043,14 +1067,16 @@ def model(x, SIM, Modeler, compute_grad=True, sanity_test=None):
     #    #        raise ValueError("Scale factor gradient is Nan!")
 
     grad_is_nan = np.isnan(grad)
-    assert not np.any(grad_is_nan) , "%s, %s" % \
-        (Modeler.exp_name, ",".join( [str(x) for x in np.where(grad_is_nan)[0]] ) )
+    #assert not np.any(grad_is_nan) , "%s, %s" % \
+    #                                 (Modeler.exp_name, ",".join( [str(x) for x in np.where(grad_is_nan)[0]] ) )
+    if np.any(grad_is_nan):
+        print("%s, %s" % (Modeler.exp_name, ",".join( [str(x) for x in np.where(grad_is_nan)[0]] )))
     #    bad_i = np.where(grad_is_nan)[0]
     #    for i in bad_i:
     #    print("")
     #    print(Modeler.exp_name)
 
-    return resid_term, grad, model_pix
+    return resid_term, grad, model_pix, zscore_sigma
 
 
 class TargetFunc:
@@ -1117,6 +1143,7 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
     t_update = time.time()-t_update
 
     all_t_model = 0
+    all_zscore_sigmas = []
     for t in timestamps:
         # data modeler for this expt
         Mod_t = Modelers[t]
@@ -1135,8 +1162,9 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
         else:
             sanity_test=None
 
-        resid_term, grad, _ = model(x_t, SIM, Mod_t, compute_grad=compute_grad, sanity_test=sanity_test)
-        t_model  = time.time()-t_model
+        resid_term, grad, _, zscore_sigma = model(x_t, SIM, Mod_t, compute_grad=compute_grad, sanity_test=sanity_test)
+        all_zscore_sigmas.append(zscore_sigma)
+        t_model = time.time()-t_model
         all_t_model += t_model
 
         # update global target functional
@@ -1253,6 +1281,8 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
         COMM.barrier()
         exit()
     t_mpi_start = time.time()  # This time should have large variance amongst ranks, as some ranks finish ealy and have to wait
+    COMM.barrier()
+    tbarrier = time.time()-t_mpi_start  # some ranks finish fast, how much time is spent waiting at the barrier
     fchi = COMM.bcast(COMM.reduce(fchi))
     fG = COMM.bcast(COMM.reduce(fG))
     fNabc = COMM.bcast(COMM.reduce(fNabc))
@@ -1260,6 +1290,7 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
     f_ucell = COMM.bcast(COMM.reduce(f_ucell))
     f_detz = COMM.bcast(COMM.reduce(f_detz))
     g = COMM.bcast(COMM.reduce(g))
+    all_zscore_sigmas = COMM.bcast(COMM.reduce(all_zscore_sigmas))
     t_mpi_done = time.time()
 
     f_Fhkl = 0
@@ -1358,9 +1389,14 @@ def target_func(x, rank_xidx, SIM, Modelers, verbose=True, params=None, compute_
                 for ii in range(7+nuc+1):
                     assert np.allclose(g[rank_xidx[t][ii]],0), "Parameter gradient %d for shot %s is non-zero but it should be 0" % (ii, Mod_t.exp_name)
 
+
+    zscore_sigma = np.mean(all_zscore_sigmas)
+    minsZ = np.min(all_zscore_sigmas)
+    maxsZ = np.max(all_zscore_sigmas)
+    sigsZ = np.std(all_zscore_sigmas)
     if verbose:
-        print("F=%10.7g (chi: %.1f%%, G: %.1f%%, N: %.1f%%, Rot: %.1f%%, UC: %.1f%%, Dz: %.1f%%, Fhkl: %.1f%%); |g|=%10.7e; Total iter time=%.1f millisec (mpi: %.1f%% , model: %.1f%%, updateFhkl: %.1f%%)" \
-              % (f, chi, gg, nn, rr, uu, dd, ff, gnorm, t_total*1000, frac_mpi, frac_model, frac_update))
+        print("F=%10.7g sZ=%10.7g +- %10.7g  minsZ=%10.7g, maxsZ=%10.7g (chi: %.1f%%, G: %.1f%%, N: %.1f%%, Rot: %.1f%%, UC: %.1f%%, Dz: %.1f%%, Fhkl: %.1f%%); |g|=%10.7e; Total iter time=%.1f millisec (mpi: %.1f%% , model: %.1f%%, updateFhkl: %.1f%%)" \
+              % (f, zscore_sigma, sigsZ, minsZ, maxsZ,chi, gg, nn, rr, uu, dd, ff, gnorm, t_total*1000, frac_mpi, frac_model, frac_update))
     return f, g
 
 
@@ -1620,13 +1656,14 @@ def flag_empty_shots(params, Modelers):
             Modelers[i_exp] = M
             continue
     empty_shots = COMM.reduce(empty_shots)
-    if COMM.rank == 0:
-        iexps, exp_names = zip(*empty_shots)
-        assert len(set(exp_names)) == len(set(iexps)), "shot mapping will be screwed up because i_exp points to different shots"
-        nempty = len(empty_shots)
-        empty_shots = set(empty_shots)
-        print("%d shots have 0 trusted pixel" % nempty)
-    empty_shots = COMM.bcast(empty_shots)
+    if empty_shots:
+        if COMM.rank == 0:
+            iexps, exp_names = zip(*empty_shots)
+            assert len(set(exp_names)) == len(set(iexps)), "shot mapping will be screwed up because i_exp points to different shots"
+            nempty = len(empty_shots)
+            empty_shots = set(empty_shots)
+            print("%d shots have 0 trusted pixel" % nempty)
+        empty_shots = COMM.bcast(empty_shots)
     return Modelers, empty_shots
 
 
