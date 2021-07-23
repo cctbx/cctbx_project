@@ -258,14 +258,20 @@ def construct_frames_from_files(refl_name, json_name, outname=None, outdir=None)
     easy_pickle.dump(os.path.join(outdir, name), frame)
 
 if __name__ == "__main__":
-  parser = OptionParser(phil=phil_scope)
-  params, options = parser.parse_args(show_diff_phil=True)
-  if params.output.dirname is not None:
-    assert os.path.isdir(params.output.dirname)
-  for refl_name, json_name in zip(sorted(glob.glob(params.input.reflections)), sorted(glob.glob(params.input.experiments))):
-    if params.output.filename is None:
-      basename = os.path.basename(refl_name)
-      name = os.path.splitext(basename)[0] + "_extracted.pickle"
-    else:
-      name = params.output.filename
-    construct_frames_from_files(refl_name, json_name, outname=name, outdir=params.output.dirname)
+  from mpi4py import MPI
+  comm = MPI.COMM_WORLD
+  rank = comm.Get_rank() # each process in MPI has a unique id, 0-indexed
+  size = comm.Get_size() # size: number of processes running in this job
+  if rank == 0:
+    parser = OptionParser(phil=phil_scope)
+    params, options = parser.parse_args(show_diff_phil=True)
+    if params.output.dirname is not None:
+      assert os.path.isdir(params.output.dirname)
+    for refl_name, json_name in zip(sorted(glob.glob(params.input.reflections)), sorted(glob.glob(params.input.experiments))):
+      if params.output.filename is None:
+        basename = os.path.basename(refl_name)
+        name = os.path.splitext(basename)[0] + "_extracted.pickle"
+      else:
+        name = params.output.filename
+      construct_frames_from_files(refl_name, json_name, outname=name, outdir=params.output.dirname)
+  comm.barrier()

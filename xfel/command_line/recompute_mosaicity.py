@@ -116,6 +116,13 @@ class Script(object):
       plt.show()
 
 if __name__ == '__main__':
-  with show_mail_on_error():
-    script = Script()
-    script.run()
+  from mpi4py import MPI
+  comm = MPI.COMM_WORLD
+  rank = comm.Get_rank() # each process in MPI has a unique id, 0-indexed
+  size = comm.Get_size() # size: number of processes running in this job
+
+  if rank == 0:
+    with show_mail_on_error():
+      script = Script()
+      script.run()
+  comm.barrier()
