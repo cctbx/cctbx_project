@@ -1,4 +1,4 @@
-# vim: set expandtab shiftwidth=4 softtabstop=4:
+from __future__ import division
 
 # === UCSF ChimeraX Copyright ===
 # Copyright 2016 Regents of the University of California.
@@ -68,7 +68,7 @@ class TutorialTool(ToolInstance):
         # arrange them horizontally side by side we use QHBoxLayout
         from Qt.QtWidgets import QHBoxLayout
         from . import HKLviewer
-	
+
         hbox = QHBoxLayout()
         self.Guiobj = HKLviewer.run(isembedded=True,
                                  cctbxpython=r"C:\Users\Oeffner\OeffnerStuff\Work\CCTBX\build\bin\cctbx.python.bat",
@@ -88,7 +88,7 @@ class TutorialTool(ToolInstance):
     def fill_context_menu(self, menu, x, y):
         # Add any tool-specific items to the given context menu (a QMenu instance).
         # The menu will then be automatically filled out with generic tool-related actions
-        # (e.g. Hide Tool, Help, Dockable Tool, etc.) 
+        # (e.g. Hide Tool, Help, Dockable Tool, etc.)
         #
         # The x,y args are the x() and y() values of QContextMenuEvent, in the rare case
         # where the items put in the menu depends on where in the tool interface the menu

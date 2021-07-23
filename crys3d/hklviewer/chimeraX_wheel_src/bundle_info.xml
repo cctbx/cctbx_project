@@ -6,7 +6,7 @@ will be displayed without the ChimeraX- prefix.
 -->
 
 <BundleInfo name="ChimeraX-HKLviewer"
-	    version="0.1" package="chimerax.cctbx.HKLviewer"
+	    version="0.2" package="chimerax.cctbx.HKLviewer"
   	    minSessionVersion="1" maxSessionVersion="1">
 
   <!-- Additional information about bundle source -->
