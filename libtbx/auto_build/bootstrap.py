@@ -3010,6 +3010,4 @@ available. This flag only affects the "update" step.""",
   print("\nBootstrap success: %s" % ", ".join(actions))
 
 if __name__ == "__main__":
-  import time
-  time.sleep(10)
   run()
