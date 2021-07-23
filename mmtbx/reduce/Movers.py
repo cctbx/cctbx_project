@@ -35,12 +35,8 @@ import traceback
 #    They sometimes have optional hydrogen placements in the atom groups.
 #
 # All Movers have the following methods, parameters, and return types:
-#  - type StateReturn: (
-#       flex<atom> atoms,
-#       flex<flex<vec3>> positions,
-#       flex<float> preferenceEnergies
-#    )
-#  - StateReturn CoarsePositions()
+#  - type PositionReturn: ( flex<atom> atoms, flex<flex<vec3>> positions, flex<float> preferenceEnergies)
+#  - PositionReturn CoarsePositions()
 #     The first return lists all of the hierarchy atoms that move.
 #     The second return has a vector that has some number of positions, each of
 #       which is a vector the same length as the first return
@@ -49,7 +45,7 @@ import traceback
 #       each element of the third return; it indicates the relative favorability of
 #       each possible location and should be added to the total energy by an
 #       optimizer to break ties in otherwise-equivalent orientations.
-#  - StateReturn FinePositions(coarseIndex)
+#  - PositionReturn FinePositions(coarseIndex)
 #     The coarseIndex indicates the index (0 for the first) of the relevant coarse
 #       orientation.
 #     The return values are the same as for CoarsePositions and they list potential
@@ -59,7 +55,8 @@ import traceback
 #       scale; other optimizers may choose to ask for all of the fine positions and
 #       append them to the coarse positions and globally optimize.
 #     Note: Some Movers will return empty arrays.
-#  - StateReturn FixUp(coarseIndex)
+#  - type FixUpReturn: ( flex<atom> atoms, flex<vec3> newPositions )
+#  - FixUpReturn FixUp(coarseIndex)
 #     The coarseIndex indicates the index (0 for the first) of the relevant coarse
 #       orientation that was finally chosen.
 #     The first return lists the atoms that should be repositioned.
@@ -80,12 +77,19 @@ import traceback
 #
 
 ##################################################################################
-class StateReturn:
+class PositionReturn:
   # Return type from CoarsePosition() and FinePosition() calls.
   def __init__(self, atoms, positions, preferenceEnergies):
     self.atoms = atoms
     self.positions = positions
     self.preferenceEnergies = preferenceEnergies
+
+##################################################################################
+class FixUpReturn:
+  # Return type from FixUp() calls.
+  def __init__(self, atoms, newPositions):
+    self.atoms = atoms
+    self.newPositions = newPositions
 
 ##################################################################################
 class MoverNull:
@@ -97,15 +101,15 @@ class MoverNull:
     self._atom = atom
   def CoarsePositions(self):
     # returns: The original atom at its original position.
-    return StateReturn([ self._atom ],
+    return PositionReturn([ self._atom ],
         [ [ [ self._atom.xyz[0], self._atom.xyz[1], self._atom.xyz[2] ] ] ],
         [ 0.0 ])
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
-    return StateReturn([], [], [])
+    return PositionReturn([], [], [])
   def FixUp(self, coarseIndex):
     # No fixups for any coarse index.
-    return StateReturn([], [], [])
+    return FixUpReturn([], [])
 
 ##################################################################################
 # @todo Consider having another constructor parameter that gives the initial rotation
@@ -224,14 +228,14 @@ class _MoverRotator:
   def CoarsePositions(self):
 
     # Return the atoms, coarse-angle poses, and coarse-angle preferences
-    return StateReturn(self._atoms,
+    return PositionReturn(self._atoms,
       self._posesFor(self._coarseAngles),
       self._preferencesFor(self._coarseAngles, self._preferredOrientationScale))
 
   def FinePositions(self, coarseIndex):
     if not self._doFineRotations:
       # No fine positions for any coarse position.
-      return StateReturn([], [], [])
+      return PositionReturn([], [], [])
 
     # We add the range of values to the coarse angle we're starting with to provide
     # the list of fine angles to try.
@@ -245,13 +249,13 @@ class _MoverRotator:
       angles.append(angle)
 
     # Return the atoms and poses along with the preferences.
-    return StateReturn(self._atoms,
+    return PositionReturn(self._atoms,
       self._posesFor(angles),
       self._preferencesFor(angles, self._preferredOrientationScale))
 
   def FixUp(self, coarseIndex):
     # No fixups for any coarse index.
-    return StateReturn([], [], [])
+    return FixUpReturn([], [])
 
 ##################################################################################
 class MoverSingleHydrogenRotator(_MoverRotator):
@@ -694,15 +698,15 @@ class MoverNH2Flip:
     
   def CoarsePositions(self):
     # returns: The two possible coarse positions with 0 energy offset for either.
-    return StateReturn(self._atoms, self._coarsePositions, [0.0, 0.0])
+    return PositionReturn(self._atoms, self._coarsePositions, [0.0, 0.0])
 
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
-    return StateReturn([], [], [])
+    return PositionReturn([], [], [])
 
   def FixUp(self, coarseIndex):
     # Return the appropriate fixup
-    return StateReturn(self._atoms, self._fixUpPositions[coarseIndex], [0]*len(self._atoms))
+    return FixUpReturn(self._atoms, self._fixUpPositions[coarseIndex])
 
 ##################################################################################
 class MoverHistidineFlip:
@@ -886,208 +890,16 @@ class MoverHistidineFlip:
 
   def CoarsePositions(self):
     # returns: The two possible coarse positions with 0 energy offset for either.
-    return StateReturn(self._atoms, self._coarsePositions, [0.0, 0.0])
+    return PositionReturn(self._atoms, self._coarsePositions, [0.0, 0.0])
 
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
-    return StateReturn([], [], [])
+    return PositionReturn([], [], [])
 
   def FixUp(self, coarseIndex):
     # Return the appropriate fixup
-    return StateReturn(self._atoms, self._fixUpPositions[coarseIndex], [0]*len(self._atoms))
+    return FixUpReturn(self._atoms, self._fixUpPositions[coarseIndex])
 
-##################################################################################
-# Internal helper functions to make things that are compatible with vec3_double so
-# that we can do math on them.  We need a left-hand and right-hand one so that
-# we can make both versions for multiplication.
-def _rvec3 (xyz) :
-  return scitbx.matrix.rec(xyz, (3,1))
-def _lvec3 (xyz) :
-  return scitbx.matrix.rec(xyz, (1,3))
-
-##################################################################################
-# Internal helper functions for angle manipulation.
-def _rotateOppositeFriend(atom, axis, partner, friend):
-  '''Rotate the atom to point away from the friend.  This means placing it
-     within the plane perpendicular to the axis of rotation through the point on that axis
-     that it is closest to at the same distance it starts out from that axis and in a
-     direction that is the negation of the vector from the partner to the friend projected
-     into the plane perpendicular to the axis and then normalized.
-     :param atom: iotbx.pdb.hierarchy.atom to be moved.
-     :param partner: iotbx.pdb.hierarchy.atom atom that is bonded to the neighbor of
-     the atom.
-     :param friends: flex iotbx.pdb.hierarchy.atom list of atoms bonded to the partner
-     besides the neighbor.
-     :param axis: flex array with two scitbx::vec3<double> points, the first
-     of which is the origin and the second is a vector pointing in the direction
-     of the axis of rotation.  Positive rotations will be right-handed rotations
-     around this axis.
-     :returns the new location for the atom.
-  '''
-  normal = _rvec3(axis[1])
-  friendFromPartner = _lvec3(friend.xyz) - _lvec3(partner.xyz)
-  alongAxisComponent = (friendFromPartner * normal)
-  friendFromPartner = _rvec3(friend.xyz) - _rvec3(partner.xyz)
-  inPlane = friendFromPartner - normal*alongAxisComponent
-  normalizedOffset = -inPlane.normalize()
-
-  d = -_lvec3(atom.xyz)*normal
-  t = - (d + (_lvec3(axis[0])) * normal)
-  nearPoint = _rvec3(axis[0]) + normal*t
-  distFromNearPoint = (_rvec3(atom.xyz)-nearPoint).length()
-
-  return nearPoint + distFromNearPoint * normalizedOffset
-
-def _rotateAroundAxis(atom, axis, degrees):
-  '''Rotate the atom about the specified axis by the specified number of degrees.
-     :param atom: iotbx.pdb.hierarchy.atom or scitbx::vec3<double> or
-     scitbx.matrix.rec(xyz, (3,1)) to be moved.
-     :param axis: flex array with two scitbx::vec3<double> points, the first
-     of which is the origin and the second is a vector pointing in the direction
-     of the axis of rotation.  Positive rotations will be right-handed rotations
-     around this axis.
-     :param degrees: How much to rotate the atom around the axis.
-     Positive rotation is right-handed around the axis.
-     :returns the new location for the atom.
-  '''
-  # If we have an atom, get its position.  Otherwise, we have a position passed
-  # in.
-  try:
-    pos = atom.xyz
-  except:
-    pos = _rvec3(atom)
-
-  # Project the atom position onto the axis, finding its closest point on the axis.
-  # The position lies on a plane whose normal points along the axis vector.  The
-  # point we seek is the intersection of the axis with this plane.
-  # The plane equation will be the normalized axis direction vector and the offset
-  # from the origin such that N.point + d = 0 defines the plane.
-  # Solve for the time at which the line's ray crosses the plane and then solve for
-  # the location along the line at that time.  t = - (d + (lineOrigin * planeNormal)) /
-  # (lineDirection * planeNormal).  Because the line direction and normal are the
-  # same, the divisor is 1.
-  normal = _lvec3(axis[1]).normalize()
-  d = -normal*pos
-  t = - (d + (normal * _rvec3(axis[0])))
-  nearPoint = _lvec3(axis[0]) + t * normal
-
-  # Find the vector from the closest point towards the atom, which is its offset
-  offset = _lvec3(pos) - nearPoint
-
-  # Rotate the offset vector around the axis by the specified angle.  Add the new
-  # offset to the closest point. Store this as the new location for this atom and angle.
-  newOffset = offset.rotate_around_origin(_lvec3(axis[1]), degrees*math.pi/180)
-  return nearPoint + newOffset
-
-def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, alphaCarbon):
-  '''Perform the three-step rotate-hinge-dock calculation described in 
-     Protein Science Vol 27:293-315 and implemented in
-     FlipMemo::RotHingeDock_Flip() in the original Reduce C++ code.
-     :param movableAtoms: flex array of iotbx.pdb.hierarchy.atom objects that
-     are the original locations of atoms that can be moved, including the Carbon
-     atom that is bonded to the alpha carbon but not the alpha carbon itself.
-     The order of atoms is as follows: The first ones are in the set that is rotated
-     around the vector from the hinge atom to the pivot atom.  Then comes the hinge
-     atom, then the pivot atom.  Then all of the atoms between the pivot and the
-     Alpha Carbon (if any) including any Hydrogens bound to the pivot atom or the
-     linking atoms, excluding the Alpha Carbon itself.
-     :param hingeIndex: Index in the movableAtoms array that tells which is
-     the atom to hinge around (this will be a Carbon atom).
-     :param firstDockIndex: Index in the movableAtoms array that tells which is
-     the atom to dock first (this will be the Oxygen atom for Asn and Gln,
-     CE1 for His).
-     :param secondDockIndex: Index in the movableAtoms array that tells which is
-     the atom to dock second (this will be the Nitrogen atom for Asn and Gln,
-     NE2 for His).
-     :param alphaCarbon: iotbx.pdb.hierarchy.atom that is the alpha carbon.
-     The original rotation is around the bond from this atom to the original
-     carbon atom.
-     :returns A flex array of scitbx.matrix.rec(xyz, (1,3)) entries giving the new locations.
-  '''
-  #########################
-  # A) Rotate the movable atoms that are listed before the hinge atom around the
-  #    hinge-pivot vector by 180 degrees.
-  # B) Hinge the movable atoms listed before the hings around the hinge to place them back into the
-  #    plane that they the two docked atoms originally located in using the axis of least
-  #    rotation that passed through the hinge.
-  # C) Rotate all of the movable atoms around the alphaCarbon, aligning the docked
-  #    atoms with their original locations as much as possible.  This is
-  #    done in two steps: 1) Rotating around the shortest axis to make the
-  #    first docked atom lie on the original vector from the alphaCarbon to the original second
-  #    docked atom.
-  #    2) Rotating around the alphaCarbon-to-new-firstDockIndex vector to align the plane
-  #    containing the alphaCarbon, new and old secondDockIndex with the plane
-  #    containing the alphaCarbon, the original firstDockIndex and the original secondDockIndex
-  #    (making the dihedral angle new secondDockIndex, alphaCarbon, old secondDockIndex, old
-  #    firstDockIndex be 0).
-
-  # Find the special atoms
-  first = movableAtoms[firstDockIndex]
-  second = movableAtoms[secondDockIndex]
-  hingeAtom = movableAtoms[hingeIndex]
-  pivotAtom = movableAtoms[hingeIndex+1]
-
-  # Construct a list of output locations, initializing with the input locations.
-  movable = []
-  for a in movableAtoms:
-    movable.append(a.xyz)
-
-  # A) Rotate the movable atoms that come before the hinge atom by 180 degrees
-  # around the pivot-to-hinge vector
-  normal = (_rvec3(pivotAtom.xyz) - _rvec3(hingeAtom.xyz)).normalize()
-  axis = flex.vec3_double([hingeAtom.xyz, normal])
-  for i in range(hingeIndex):
-    movable[i] = _rotateAroundAxis(movable[i], axis, 180)
-
-  # B) Hinge the movable atoms around the hinge.
-  # Solve for the planes containing the old and new atoms and then the vector
-  # that these planes intersect at (cross product).
-
-  cToO = _lvec3(first.xyz) - _lvec3(hingeAtom.xyz)
-  nToO = _rvec3(second.xyz) - _rvec3(hingeAtom.xyz)
-  oldNormal = (scitbx.matrix.cross_product_matrix(cToO) * nToO).normalize()
-
-  # Flip the order here because we've rotated 180 degrees
-  newNToO = _lvec3(movable[secondDockIndex]) - _lvec3(movable[hingeIndex])
-  newCToO = _rvec3(movable[firstDockIndex]) - _rvec3(movable[hingeIndex])
-  newNormal = (scitbx.matrix.cross_product_matrix(newNToO) * newCToO).normalize()
-
-  # If we don't need to rotate, we'll get a zero-length vector
-  hinge = scitbx.matrix.cross_product_matrix(_lvec3(oldNormal))*_rvec3(newNormal)
-  if hinge.length() > 0:
-    hinge = hinge.normalize()
-    axis = flex.vec3_double([hingeAtom.xyz, hinge])
-    degrees = 180/math.pi * math.acos((_lvec3(oldNormal)*_rvec3(newNormal))[0])
-    for i in range(hingeIndex):
-      # Rotate in the opposite direction, taking the new back to the old.
-      movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
-
-  # C) Rotate the atoms around the alphaCarbon
-  #  1) firstDockIndex to alphaCarbon<-->original secondDockIndex line
-  aToNewO = _lvec3(movable[firstDockIndex]) - _lvec3(alphaCarbon.xyz)
-  aToOldN = _rvec3(second.xyz) - _rvec3(alphaCarbon.xyz)
-  # If we don't need to rotate, we'll get a zero-length vector
-  normal = scitbx.matrix.cross_product_matrix(aToNewO) * aToOldN
-  if normal.length() > 0:
-    normal = normal.normalize()
-    axis = flex.vec3_double([alphaCarbon.xyz, normal])
-    degrees = 180/math.pi * math.acos((_lvec3(aToOldN.normalize())*_rvec3(aToNewO.normalize()))[0])
-    for i in range(len(movable)):
-      # Rotate in the opposite direction, taking the new back to the old.
-      movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
-
-  #  2) firstDockIndex to the proper plane.
-  sites = flex.vec3_double([ movable[secondDockIndex], alphaCarbon.xyz, second.xyz, first.xyz ])
-  degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
-  hinge = _rvec3(alphaCarbon.xyz) - _rvec3(second.xyz)
-  if hinge.length() > 0:
-    hinge = hinge.normalize()
-    axis = flex.vec3_double([alphaCarbon.xyz, hinge])
-    for i in range(len(movable)):
-      # Rotate in the opposite direction, taking the new back to the old.
-      movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
-
-  return movable
 
 ##################################################################################
 # Test function to verify that all Movers behave properly.
@@ -1719,7 +1531,7 @@ def Test():
     # 2) New plane of Oxygen, Nitrogen, Alpha Carbon matches old plane, but flipped
     # 3) Carbons and pivot Hydrogens move slightly due to rigid-body motion
 
-    fixed = mover.FixUp(1).positions
+    fixed = mover.FixUp(1).newPositions
     newODir = (fixed[3] - _lvec3(f.xyz)).normalize()
     oldNDir = (_rvec3(n.xyz) - _rvec3(f.xyz)).normalize()
     if (newODir * oldNDir)[0] < 0.9999:
@@ -1850,7 +1662,7 @@ def Test():
     bondedNeighborLists[ca] = [ ln ]
 
     mover = MoverNH2Flip(n, ca.name, bondedNeighborLists)
-    fixed = mover.FixUp(1).positions
+    fixed = mover.FixUp(1).newPositions
 
     # Ensure that the results meet the specifications:
     # 1) New Oxygen on the line from the alpha carbon to the old Nitrogen
@@ -2014,7 +1826,7 @@ def Test():
     bondedNeighborLists[ca] = [ f ]
 
     mover = MoverHistidineFlip(ne2, bondedNeighborLists)
-    fixed = mover.FixUp(1).positions
+    fixed = mover.FixUp(1).newPositions
 
     # Ensure that the coarse-flip results meet the expections:
     # 1) N and C atoms are flipped in pairs
@@ -2116,6 +1928,199 @@ def Test():
     return "Movers.Test() MoverHistidineFlip: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
   return ""
+
+##################################################################################
+# Internal helper functions to make things that are compatible with vec3_double so
+# that we can do math on them.  We need a left-hand and right-hand one so that
+# we can make both versions for multiplication.
+def _rvec3 (xyz) :
+  return scitbx.matrix.rec(xyz, (3,1))
+def _lvec3 (xyz) :
+  return scitbx.matrix.rec(xyz, (1,3))
+
+##################################################################################
+# Internal helper functions for angle manipulation.
+def _rotateOppositeFriend(atom, axis, partner, friend):
+  '''Rotate the atom to point away from the friend.  This means placing it
+     within the plane perpendicular to the axis of rotation through the point on that axis
+     that it is closest to at the same distance it starts out from that axis and in a
+     direction that is the negation of the vector from the partner to the friend projected
+     into the plane perpendicular to the axis and then normalized.
+     :param atom: iotbx.pdb.hierarchy.atom to be moved.
+     :param partner: iotbx.pdb.hierarchy.atom atom that is bonded to the neighbor of
+     the atom.
+     :param friends: flex iotbx.pdb.hierarchy.atom list of atoms bonded to the partner
+     besides the neighbor.
+     :param axis: flex array with two scitbx::vec3<double> points, the first
+     of which is the origin and the second is a vector pointing in the direction
+     of the axis of rotation.  Positive rotations will be right-handed rotations
+     around this axis.
+     :returns the new location for the atom.
+  '''
+  normal = _rvec3(axis[1])
+  friendFromPartner = _lvec3(friend.xyz) - _lvec3(partner.xyz)
+  alongAxisComponent = (friendFromPartner * normal)
+  friendFromPartner = _rvec3(friend.xyz) - _rvec3(partner.xyz)
+  inPlane = friendFromPartner - normal*alongAxisComponent
+  normalizedOffset = -inPlane.normalize()
+
+  d = -_lvec3(atom.xyz)*normal
+  t = - (d + (_lvec3(axis[0])) * normal)
+  nearPoint = _rvec3(axis[0]) + normal*t
+  distFromNearPoint = (_rvec3(atom.xyz)-nearPoint).length()
+
+  return nearPoint + distFromNearPoint * normalizedOffset
+
+def _rotateAroundAxis(atom, axis, degrees):
+  '''Rotate the atom about the specified axis by the specified number of degrees.
+     :param atom: iotbx.pdb.hierarchy.atom or scitbx::vec3<double> or
+     scitbx.matrix.rec(xyz, (3,1)) to be moved.
+     :param axis: flex array with two scitbx::vec3<double> points, the first
+     of which is the origin and the second is a vector pointing in the direction
+     of the axis of rotation.  Positive rotations will be right-handed rotations
+     around this axis.
+     :param degrees: How much to rotate the atom around the axis.
+     Positive rotation is right-handed around the axis.
+     :returns the new location for the atom.
+  '''
+  # If we have an atom, get its position.  Otherwise, we have a position passed
+  # in.
+  try:
+    pos = atom.xyz
+  except:
+    pos = _rvec3(atom)
+
+  # Project the atom position onto the axis, finding its closest point on the axis.
+  # The position lies on a plane whose normal points along the axis vector.  The
+  # point we seek is the intersection of the axis with this plane.
+  # The plane equation will be the normalized axis direction vector and the offset
+  # from the origin such that N.point + d = 0 defines the plane.
+  # Solve for the time at which the line's ray crosses the plane and then solve for
+  # the location along the line at that time.  t = - (d + (lineOrigin * planeNormal)) /
+  # (lineDirection * planeNormal).  Because the line direction and normal are the
+  # same, the divisor is 1.
+  normal = _lvec3(axis[1]).normalize()
+  d = -normal*pos
+  t = - (d + (normal * _rvec3(axis[0])))
+  nearPoint = _lvec3(axis[0]) + t * normal
+
+  # Find the vector from the closest point towards the atom, which is its offset
+  offset = _lvec3(pos) - nearPoint
+
+  # Rotate the offset vector around the axis by the specified angle.  Add the new
+  # offset to the closest point. Store this as the new location for this atom and angle.
+  newOffset = offset.rotate_around_origin(_lvec3(axis[1]), degrees*math.pi/180)
+  return nearPoint + newOffset
+
+def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, alphaCarbon):
+  '''Perform the three-step rotate-hinge-dock calculation described in 
+     Protein Science Vol 27:293-315 and implemented in
+     FlipMemo::RotHingeDock_Flip() in the original Reduce C++ code.
+     :param movableAtoms: flex array of iotbx.pdb.hierarchy.atom objects that
+     are the original locations of atoms that can be moved, including the Carbon
+     atom that is bonded to the alpha carbon but not the alpha carbon itself.
+     The order of atoms is as follows: The first ones are in the set that is rotated
+     around the vector from the hinge atom to the pivot atom.  Then comes the hinge
+     atom, then the pivot atom.  Then all of the atoms between the pivot and the
+     Alpha Carbon (if any) including any Hydrogens bound to the pivot atom or the
+     linking atoms, excluding the Alpha Carbon itself.
+     :param hingeIndex: Index in the movableAtoms array that tells which is
+     the atom to hinge around (this will be a Carbon atom).
+     :param firstDockIndex: Index in the movableAtoms array that tells which is
+     the atom to dock first (this will be the Oxygen atom for Asn and Gln,
+     CE1 for His).
+     :param secondDockIndex: Index in the movableAtoms array that tells which is
+     the atom to dock second (this will be the Nitrogen atom for Asn and Gln,
+     NE2 for His).
+     :param alphaCarbon: iotbx.pdb.hierarchy.atom that is the alpha carbon.
+     The original rotation is around the bond from this atom to the original
+     carbon atom.
+     :returns A flex array of scitbx.matrix.rec(xyz, (1,3)) entries giving the new locations.
+  '''
+  #########################
+  # A) Rotate the movable atoms that are listed before the hinge atom around the
+  #    hinge-pivot vector by 180 degrees.
+  # B) Hinge the movable atoms listed before the hings around the hinge to place them back into the
+  #    plane that they the two docked atoms originally located in using the axis of least
+  #    rotation that passed through the hinge.
+  # C) Rotate all of the movable atoms around the alphaCarbon, aligning the docked
+  #    atoms with their original locations as much as possible.  This is
+  #    done in two steps: 1) Rotating around the shortest axis to make the
+  #    first docked atom lie on the original vector from the alphaCarbon to the original second
+  #    docked atom.
+  #    2) Rotating around the alphaCarbon-to-new-firstDockIndex vector to align the plane
+  #    containing the alphaCarbon, new and old secondDockIndex with the plane
+  #    containing the alphaCarbon, the original firstDockIndex and the original secondDockIndex
+  #    (making the dihedral angle new secondDockIndex, alphaCarbon, old secondDockIndex, old
+  #    firstDockIndex be 0).
+
+  # Find the special atoms
+  first = movableAtoms[firstDockIndex]
+  second = movableAtoms[secondDockIndex]
+  hingeAtom = movableAtoms[hingeIndex]
+  pivotAtom = movableAtoms[hingeIndex+1]
+
+  # Construct a list of output locations, initializing with the input locations.
+  movable = []
+  for a in movableAtoms:
+    movable.append(a.xyz)
+
+  # A) Rotate the movable atoms that come before the hinge atom by 180 degrees
+  # around the pivot-to-hinge vector
+  normal = (_rvec3(pivotAtom.xyz) - _rvec3(hingeAtom.xyz)).normalize()
+  axis = flex.vec3_double([hingeAtom.xyz, normal])
+  for i in range(hingeIndex):
+    movable[i] = _rotateAroundAxis(movable[i], axis, 180)
+
+  # B) Hinge the movable atoms around the hinge.
+  # Solve for the planes containing the old and new atoms and then the vector
+  # that these planes intersect at (cross product).
+
+  cToO = _lvec3(first.xyz) - _lvec3(hingeAtom.xyz)
+  nToO = _rvec3(second.xyz) - _rvec3(hingeAtom.xyz)
+  oldNormal = (scitbx.matrix.cross_product_matrix(cToO) * nToO).normalize()
+
+  # Flip the order here because we've rotated 180 degrees
+  newNToO = _lvec3(movable[secondDockIndex]) - _lvec3(movable[hingeIndex])
+  newCToO = _rvec3(movable[firstDockIndex]) - _rvec3(movable[hingeIndex])
+  newNormal = (scitbx.matrix.cross_product_matrix(newNToO) * newCToO).normalize()
+
+  # If we don't need to rotate, we'll get a zero-length vector
+  hinge = scitbx.matrix.cross_product_matrix(_lvec3(oldNormal))*_rvec3(newNormal)
+  if hinge.length() > 0:
+    hinge = hinge.normalize()
+    axis = flex.vec3_double([hingeAtom.xyz, hinge])
+    degrees = 180/math.pi * math.acos((_lvec3(oldNormal)*_rvec3(newNormal))[0])
+    for i in range(hingeIndex):
+      # Rotate in the opposite direction, taking the new back to the old.
+      movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
+
+  # C) Rotate the atoms around the alphaCarbon
+  #  1) firstDockIndex to alphaCarbon<-->original secondDockIndex line
+  aToNewO = _lvec3(movable[firstDockIndex]) - _lvec3(alphaCarbon.xyz)
+  aToOldN = _rvec3(second.xyz) - _rvec3(alphaCarbon.xyz)
+  # If we don't need to rotate, we'll get a zero-length vector
+  normal = scitbx.matrix.cross_product_matrix(aToNewO) * aToOldN
+  if normal.length() > 0:
+    normal = normal.normalize()
+    axis = flex.vec3_double([alphaCarbon.xyz, normal])
+    degrees = 180/math.pi * math.acos((_lvec3(aToOldN.normalize())*_rvec3(aToNewO.normalize()))[0])
+    for i in range(len(movable)):
+      # Rotate in the opposite direction, taking the new back to the old.
+      movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
+
+  #  2) firstDockIndex to the proper plane.
+  sites = flex.vec3_double([ movable[secondDockIndex], alphaCarbon.xyz, second.xyz, first.xyz ])
+  degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
+  hinge = _rvec3(alphaCarbon.xyz) - _rvec3(second.xyz)
+  if hinge.length() > 0:
+    hinge = hinge.normalize()
+    axis = flex.vec3_double([alphaCarbon.xyz, hinge])
+    for i in range(len(movable)):
+      # Rotate in the opposite direction, taking the new back to the old.
+      movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
+
+  return movable
 
 ##################################################################################
 # If we're run on the command line, test our classes and functions.
