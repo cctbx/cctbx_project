@@ -123,6 +123,10 @@ class DataModeler:
 
         refls = self.load_refls(ref)
 
+        if "rlp" not in list(refls[0].keys()):
+            utils.add_rlp_column(refls, self.E)
+            assert "rlp" in list(refls[0].keys())
+
         img_data = utils.image_data_from_expt(self.E)
         img_data /= self.params.refiner.adu_per_photon
         is_trusted = np.ones(img_data.shape, bool)

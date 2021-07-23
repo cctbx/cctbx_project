@@ -627,6 +627,19 @@ def get_roi_from_spot(refls, fdim, sdim, shoebox_sz=10):
     return rois, is_on_edge
 
 
+def add_rlp_column(refls, experiment):
+    keys = list(refls[0].keys())
+    if "s1" in keys:
+        s1 = refls['s1']
+        s1_norm = np.array(s1) / np.linalg.norm(s1,axis=1)[:,None]
+        wavelen = experiment.beam.get_wavelength()
+        s0 = np.array([list(experiment.beam.get_unit_s0())]*len(refls))
+        q_vecs = 1/wavelen*(s1_norm-s0)
+        refls['rlp'] = flex.vec3_double(tuple(map(tuple, q_vecs)))
+    else:
+        raise KeyError("Need rlp or s1 column in refl table!")
+
+
 def get_roi_deltaQ(refls, delta_Q, experiment):
     """
     :param refls: reflection table (needs rlp column)
@@ -639,15 +652,7 @@ def get_roi_deltaQ(refls, delta_Q, experiment):
 
     keys = list(refls[0].keys())
     if "rlp" not in  keys:
-        if "s1" in keys:
-            s1 = refls['s1']
-            s1_norm = np.array(s1) / np.linalg.norm(s1,axis=1)[:,None]
-            wavelen = experiment.beam.get_wavelength()
-            s0 = np.array([list(experiment.beam.get_unit_s0())]*len(refls))
-            q_vecs = 1/wavelen*(s1_norm-s0)
-            refls['rlp'] = flex.vec3_double(tuple(map(tuple, q_vecs)))
-        else:
-            raise KeyError("Need rlp or s1 column in refl table!")
+        add_rlp_column(refls, experiment)
 
     beam = experiment.beam
     detector = experiment.detector
