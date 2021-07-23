@@ -556,9 +556,10 @@ class DataModeler:
             refls = refls.select(flex.bool(refl_sel))
         img_data = utils.image_data_from_expt(self.E)
         img_data /= self.params.refiner.adu_per_photon
-        is_trusted = utils.load_mask(self.params.roi.hotpixel_mask)
+        is_trusted = np.ones(img_data.shape, bool)
         hotpix_mask = None
-        if is_trusted is not None:
+        if self.params.roi.hotpixel_mask is not None:
+            is_trusted = utils.load_mask(self.params.roi.hotpixel_mask)
             hotpix_mask = ~is_trusted
         self.sigma_rdout = self.params.refiner.sigma_r / self.params.refiner.adu_per_photon
         roi_packet = utils.get_roi_background_and_selection_flags(
