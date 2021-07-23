@@ -32,296 +32,281 @@ using simtbx::nanoBragg::hklParams;
 //     float * omega_reduction/*out*/, float * max_I_x_reduction/*out*/,
 //     float * max_I_y_reduction /*out*/, bool * rangemap);
 
-// __global__ void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixels, int total_pixels,
-//     int oversample, int point_pixel,
-//     CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps,
-//     CUDAREAL detector_thickstep, int detector_thicksteps, CUDAREAL detector_thick, CUDAREAL detector_mu,
-//     const int vec_len,
-//     const CUDAREAL * __restrict__ sdet_vector, const CUDAREAL * __restrict__ fdet_vector,
-//     const CUDAREAL * __restrict__ odet_vector,
-//     const CUDAREAL * __restrict__ pix0_vector,
-//     const CUDAREAL * __restrict__ distance, const CUDAREAL * __restrict__ close_distance,
-//     const CUDAREAL * __restrict__ beam_vector,
-//     const CUDAREAL * __restrict__ Xbeam, const CUDAREAL * __restrict__ Ybeam, // not even used, after all the work
-//     CUDAREAL dmin, CUDAREAL phi0, CUDAREAL phistep, int phisteps,
-//     const CUDAREAL * __restrict__ spindle_vector, int sources,
-//     const CUDAREAL * __restrict__ source_X, const CUDAREAL * __restrict__ source_Y,
-//     const CUDAREAL * __restrict__ source_Z,
-//     const CUDAREAL * __restrict__ source_I, const CUDAREAL * __restrict__ source_lambda,
-//     const CUDAREAL * __restrict__ a0, const CUDAREAL * __restrict__ b0,
-//     const CUDAREAL * __restrict__ c0, shapetype xtal_shape,
-//     int mosaic_domains, const CUDAREAL * __restrict__ mosaic_umats,
-//     CUDAREAL Na, CUDAREAL Nb, CUDAREAL Nc, CUDAREAL V_cell, CUDAREAL water_size, CUDAREAL water_F, CUDAREAL water_MW,
-//     CUDAREAL r_e_sqr, CUDAREAL fluence,
-//     CUDAREAL Avogadro, CUDAREAL spot_scale, int integral_form, CUDAREAL default_F,
-//     const CUDAREAL * __restrict__ Fhkl, const hklParams * __restrict__ FhklParams,
-//     int nopolar, const CUDAREAL * __restrict__ polar_vector,
-//     CUDAREAL polarization, CUDAREAL fudge,
-//     const int * __restrict__ pixel_lookup,
-//     float * floatimage /*out*/, float * omega_reduction/*out*/,
-//     float * max_I_x_reduction/*out*/, float * max_I_y_reduction /*out*/, bool * rangemap) {
-//         __shared__ int s_vec_len;
-// 	__shared__ CUDAREAL s_dmin;
+void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixels, int total_pixels,
+    int oversample, int point_pixel,
+    CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps,
+    CUDAREAL detector_thickstep, int detector_thicksteps, CUDAREAL detector_thick, CUDAREAL detector_mu,
+    const int vec_len,
+    const vector_cudareal_t sdet_vector, const vector_cudareal_t fdet_vector,
+    const vector_cudareal_t odet_vector,
+    const vector_cudareal_t pix0_vector,
+    const vector_cudareal_t distance, const vector_cudareal_t close_distance,
+    const vector_cudareal_t beam_vector,
+    const vector_cudareal_t Xbeam, const vector_cudareal_t Ybeam, // not even used, after all the work
+    CUDAREAL dmin, CUDAREAL phi0, CUDAREAL phistep, int phisteps,
+    const vector_cudareal_t spindle_vector, int sources,
+    const vector_cudareal_t source_X, const vector_cudareal_t source_Y,
+    const vector_cudareal_t source_Z,
+    const vector_cudareal_t source_I, const vector_cudareal_t source_lambda,
+    const vector_cudareal_t a0, const vector_cudareal_t b0,
+    const vector_cudareal_t c0, shapetype xtal_shape,
+    int mosaic_domains, const vector_cudareal_t mosaic_umats,
+    CUDAREAL Na, CUDAREAL Nb, CUDAREAL Nc, CUDAREAL V_cell, CUDAREAL water_size, CUDAREAL water_F, CUDAREAL water_MW,
+    CUDAREAL r_e_sqr, CUDAREAL fluence,
+    CUDAREAL Avogadro, CUDAREAL spot_scale, int integral_form, CUDAREAL default_F,
+    const vector_cudareal_t Fhkl, const hklParams FhklParams,
+    int nopolar, const vector_cudareal_t polar_vector,
+    CUDAREAL polarization, CUDAREAL fudge,
+    const vector_int_t pixel_lookup,
+    vector_float_t floatimage /*out*/, vector_float_t omega_reduction/*out*/,
+    vector_float_t max_I_x_reduction/*out*/, vector_float_t max_I_y_reduction /*out*/, vector_bool_t rangemap) {
 
-// 	__shared__ bool s_nopolar;
 
-// 	__shared__ int s_phisteps;
-// 	__shared__ CUDAREAL s_phi0, s_phistep;
-// 	__shared__ int s_mosaic_domains;
+		const int s_h_min = FhklParams.h_min;
+		const int s_k_min = FhklParams.k_min;
+		const int s_l_min = FhklParams.l_min;
+		const int s_h_range = FhklParams.h_range;
+		const int s_k_range = FhklParams.k_range;
+		const int s_l_range = FhklParams.l_range;
+		const int s_h_max = s_h_min + s_h_range - 1;
+		const int s_k_max = s_k_min + s_k_range - 1;
+		const int s_l_max = s_l_min + s_l_range - 1;
 
-// 	__shared__ CUDAREAL s_Na, s_Nb, s_Nc;
-// 	__shared__ int s_h_min, s_k_min, s_l_min, s_h_range, s_k_range, s_l_range,
-//                        s_h_max, s_k_max, s_l_max;
-
-// 	if (threadIdx.x == 0 && threadIdx.y == 0) {
-//                 s_vec_len = vec_len;
-// 		s_dmin = dmin;
-
-// 		s_nopolar = nopolar;
-
-// 		s_phisteps = phisteps;
-// 		s_phi0 = phi0;
-// 		s_phistep = phistep;
-
-// 		s_mosaic_domains = mosaic_domains;
-
-// 		s_Na = Na;
-// 		s_Nb = Nb;
-// 		s_Nc = Nc;
-
-// 		s_h_min = FhklParams->h_min;
-// 		s_k_min = FhklParams->k_min;
-// 		s_l_min = FhklParams->l_min;
-// 		s_h_range = FhklParams->h_range;
-// 		s_k_range = FhklParams->k_range;
-// 		s_l_range = FhklParams->l_range;
-//                 s_h_max = s_h_min + s_h_range - 1;
-//                 s_k_max = s_k_min + s_k_range - 1;
-//                 s_l_max = s_l_min + s_l_range - 1;
-
-// 	}
-// 	__syncthreads();
-// /* Implementation notes.  This kernel is aggressively debranched, therefore the assumptions are:
+// Implementation notes.  This kernel is aggressively debranched, therefore the assumptions are:
 // 1) mosaicity non-zero positive
 // 2) xtal shape is "Gauss" i.e. 3D spheroid.
 // 3) No bounds check for access to the structure factor array.
 // 4) No check for Flatt=0.
-// */
-// 	//NKS new design, one-function call covers all panels with mask
-// 	const int fstride = gridDim.x * blockDim.x;
-// 	const int sstride = gridDim.y * blockDim.y;
-// 	const int stride = fstride * sstride;
 
-// 	/* add background from something amorphous */
-// 	CUDAREAL F_bg = water_F;
-// 	CUDAREAL I_bg = F_bg * F_bg * r_e_sqr * fluence * water_size * water_size * water_size * 1e6 * Avogadro / water_MW;
 
-// 	for (int pixIdx = (blockDim.y * blockIdx.y + threadIdx.y) * fstride + blockDim.x * blockIdx.x + threadIdx.x;
-//              pixIdx < total_pixels;
-//              pixIdx += stride) {
-// 		/* position in pixel array */
-// 		const int j = pixel_lookup[pixIdx];//pixIdx: index into pixel subset; j: index into the data.
-//                 const int i_panel = j / (fpixels*spixels); // the panel number
-//                 const int j_panel = j % (fpixels*spixels); // the pixel number within the panel
-// 		const int fpixel = j_panel % fpixels;
-// 		const int spixel = j_panel / fpixels;
+	// add background from something amorphous
+	CUDAREAL F_bg = water_F;
+	CUDAREAL I_bg = F_bg * F_bg * r_e_sqr * fluence * water_size * water_size * water_size * 1e6 * Avogadro / water_MW;
 
-// 		/* reset photon count for this pixel */
-// 		CUDAREAL I = I_bg;
-// 		CUDAREAL omega_sub_reduction = 0.0;
-// 		CUDAREAL max_I_x_sub_reduction = 0.0;
-// 		CUDAREAL max_I_y_sub_reduction = 0.0;
-// 		CUDAREAL polar = 0.0;
-// 		if (s_nopolar) {
-// 			polar = 1.0;
-// 		}
+	Kokkos::parallel_for("add_background", total_pixels, KOKKOS_LAMBDA(const int& pixIdx) {
+		// position in pixel array
+		const int j = pixel_lookup(pixIdx);//pixIdx: index into pixel subset; j: index into the data.
+		const int i_panel = j / (fpixels*spixels); // the panel number
+		const int j_panel = j % (fpixels*spixels); // the pixel number within the panel
+		const int fpixel = j_panel % fpixels;
+		const int spixel = j_panel / fpixels;
 
-// 		/* add this now to avoid problems with skipping later */
-// 		// move this to the bottom to avoid accessing global device memory. floatimage[j] = I_bg;
-// 		/* loop over sub-pixels */
-// 		int subS, subF;
-// 		for (subS = 0; subS < oversample; ++subS) { // Y voxel
-// 			for (subF = 0; subF < oversample; ++subF) { // X voxel
-// 				/* absolute mm position on detector (relative to its origin) */
-// 				CUDAREAL Fdet = subpixel_size * (fpixel * oversample + subF) + subpixel_size / 2.0; // X voxel
-// 				CUDAREAL Sdet = subpixel_size * (spixel * oversample + subS) + subpixel_size / 2.0; // Y voxel
-// 				//                  Fdet = pixel_size*fpixel;
-// 				//                  Sdet = pixel_size*spixel;
+		// reset photon count for this pixel
+		CUDAREAL I = I_bg;
+		CUDAREAL omega_sub_reduction = 0.0;
+		CUDAREAL max_I_x_sub_reduction = 0.0;
+		CUDAREAL max_I_y_sub_reduction = 0.0;
+		CUDAREAL polar = 0.0;
+		if (nopolar) {
+			polar = 1.0;
+		}
 
-// 				max_I_x_sub_reduction = Fdet;
-// 				max_I_y_sub_reduction = Sdet;
+		// add this now to avoid problems with skipping later
+		// move this to the bottom to avoid accessing global device memory. floatimage[j] = I_bg;
+		// loop over sub-pixels
+		int subS, subF;
+		for (subS = 0; subS < oversample; ++subS) { // Y voxel
+			for (subF = 0; subF < oversample; ++subF) { // X voxel
+				// absolute mm position on detector (relative to its origin)
+				CUDAREAL Fdet = subpixel_size * (fpixel * oversample + subF) + subpixel_size / 2.0; // X voxel
+				CUDAREAL Sdet = subpixel_size * (spixel * oversample + subS) + subpixel_size / 2.0; // Y voxel
+				// Fdet = pixel_size*fpixel;
+				// Sdet = pixel_size*spixel;
 
-// 				int thick_tic;
-// 				for (thick_tic = 0; thick_tic < detector_thicksteps; ++thick_tic) {
-// 					/* assume "distance" is to the front of the detector sensor layer */
-// 					CUDAREAL Odet = thick_tic * detector_thickstep; // Z Orthagonal voxel.
+				max_I_x_sub_reduction = Fdet;
+				max_I_y_sub_reduction = Sdet;
 
-// 					/* construct detector subpixel position in 3D space */
-// 					//                      pixel_X = distance;
-// 					//                      pixel_Y = Sdet-Ybeam;
-// 					//                      pixel_Z = Fdet-Xbeam;
-// 					//CUDAREAL * pixel_pos = tmpVector1;
-// 					CUDAREAL pixel_pos[4];
-//                                         int iVL = s_vec_len * i_panel;
-//                                         pixel_pos[1] = Fdet * __ldg(&fdet_vector[iVL+1]) +
-//                                                        Sdet * __ldg(&sdet_vector[iVL+1]) +
-//                                                        Odet * __ldg(&odet_vector[iVL+1]) +
-//                                                               __ldg(&pix0_vector[iVL+1]); // X
-//                                         pixel_pos[2] = Fdet * __ldg(&fdet_vector[iVL+2]) +
-//                                                        Sdet * __ldg(&sdet_vector[iVL+2]) +
-//                                                        Odet * __ldg(&odet_vector[iVL+2]) +
-//                                                               __ldg(&pix0_vector[iVL+2]); // X
-//                                         pixel_pos[3] = Fdet * __ldg(&fdet_vector[iVL+3]) +
-//                                                        Sdet * __ldg(&sdet_vector[iVL+3]) +
-//                                                        Odet * __ldg(&odet_vector[iVL+3]) +
-//                                                               __ldg(&pix0_vector[iVL+3]); // X
+				int thick_tic;
+				for (thick_tic = 0; thick_tic < detector_thicksteps; ++thick_tic) {
+					// assume "distance" is to the front of the detector sensor layer
+					CUDAREAL Odet = thick_tic * detector_thickstep; // Z Orthagonal voxel.
 
-// 					/* construct the diffracted-beam unit vector to this sub-pixel */
-// 					//CUDAREAL * diffracted = tmpVector2;
-// 					CUDAREAL diffracted[4];
-// 					CUDAREAL airpath = unitize(pixel_pos, diffracted);
+					// construct detector subpixel position in 3D space
+					//                      pixel_X = distance;
+					//                      pixel_Y = Sdet-Ybeam;
+					//                      pixel_Z = Fdet-Xbeam;
+					//CUDAREAL * pixel_pos = tmpVector1;
+					CUDAREAL pixel_pos[4];
+					int iVL = vec_len * i_panel;
+					pixel_pos[1] = Fdet * fdet_vector(iVL+1)
+					             + Sdet * sdet_vector(iVL+1)
+					             + Odet * odet_vector(iVL+1)
+							            + pix0_vector(iVL+1); // X
+					pixel_pos[2] = Fdet * fdet_vector(iVL+2)
+					             + Sdet * sdet_vector(iVL+2)
+					             + Odet * odet_vector(iVL+2)
+					                    + pix0_vector(iVL+2); // Y
+					pixel_pos[3] = Fdet * fdet_vector(iVL+3)
+					             + Sdet * sdet_vector(iVL+3)
+					             + Odet * odet_vector(iVL+3)
+					                    + pix0_vector(iVL+3); // Z
 
-// 					/* solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta) */
-// 					CUDAREAL omega_pixel = pixel_size * pixel_size / airpath / airpath * close_distance[i_panel] / airpath;
-// 					/* option to turn off obliquity effect, inverse-square-law only */
-// 					if (point_pixel) {
-// 						omega_pixel = 1.0 / airpath / airpath;
-// 					}
+					// construct the diffracted-beam unit vector to this sub-pixel
+					//CUDAREAL * diffracted = tmpVector2;
+					CUDAREAL diffracted[4];
+					CUDAREAL airpath = unitize(pixel_pos, diffracted);
 
-// 					/* now calculate detector thickness effects */
-// 					CUDAREAL capture_fraction = 1.0;
-// 					if (detector_thick > 0.0 && detector_mu> 0.0) {
-// 						/* inverse of effective thickness increase */
-// 						CUDAREAL parallax = dot_product_ldg(&(odet_vector[iVL]), diffracted);
-// 						capture_fraction = exp(-thick_tic * detector_thickstep / detector_mu / parallax)
-// 								- exp(-(thick_tic + 1) * detector_thickstep / detector_mu / parallax);
-// 					}
+					// solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta)
+					CUDAREAL omega_pixel = pixel_size * pixel_size / airpath / airpath * close_distance(i_panel) / airpath;
+					// option to turn off obliquity effect, inverse-square-law only
+					if (point_pixel) {
+						omega_pixel = 1.0 / airpath / airpath;
+					}
 
-// 					/* loop over sources now */
-// 					int source;
-// 					for (source = 0; source < sources; ++source) {
+					// now calculate detector thickness effects
+					CUDAREAL capture_fraction = 1.0;
+					if (detector_thick > 0.0 && detector_mu> 0.0) {
+						// inverse of effective thickness increase
+						CUDAREAL odet[4];
+						odet[1] = odet_vector(iVL+1);
+						odet[2] = odet_vector(iVL+2);
+						odet[3] = odet_vector(iVL+3);
+						CUDAREAL parallax = dot_product(odet, diffracted);
+						capture_fraction = exp(-thick_tic * detector_thickstep / detector_mu / parallax)
+								- exp(-(thick_tic + 1) * detector_thickstep / detector_mu / parallax);
+					}
 
-// 						/* retrieve stuff from cache */
-// 						CUDAREAL incident[4];
-// 						incident[1] = -__ldg(&source_X[source]);
-// 						incident[2] = -__ldg(&source_Y[source]);
-// 						incident[3] = -__ldg(&source_Z[source]);
-// 						CUDAREAL lambda = __ldg(&source_lambda[source]);
-// 						CUDAREAL source_fraction = __ldg(&source_I[source]);
+					// loop over sources now
+					int source;
+					for (source = 0; source < sources; ++source) {
 
-// 						/* construct the incident beam unit vector while recovering source distance */
-// 						// TODO[Giles]: Optimization! We can unitize the source vectors before passing them in.
-// 						unitize(incident, incident);
+						// retrieve stuff from cache
+						CUDAREAL incident[4];
+						incident[1] = -source_X(source);
+						incident[2] = -source_Y(source);
+						incident[3] = -source_Z(source);
+						CUDAREAL lambda = source_lambda(source);
+						CUDAREAL source_fraction = source_I(source);
 
-// 						/* construct the scattering vector for this pixel */
-// 						CUDAREAL scattering[4];
-// 						scattering[1] = (diffracted[1] - incident[1]) / lambda;
-// 						scattering[2] = (diffracted[2] - incident[2]) / lambda;
-// 						scattering[3] = (diffracted[3] - incident[3]) / lambda;
+						// construct the incident beam unit vector while recovering source distance
+						// TODO[Giles]: Optimization! We can unitize the source vectors before passing them in.
+						unitize(incident, incident);
 
-// 						CUDAREAL stol = 0.5 * norm3d(scattering[1], scattering[2], scattering[3]);
+						// construct the scattering vector for this pixel
+						CUDAREAL scattering[4];
+						scattering[1] = (diffracted[1] - incident[1]) / lambda;
+						scattering[2] = (diffracted[2] - incident[2]) / lambda;
+						scattering[3] = (diffracted[3] - incident[3]) / lambda;
 
-// 						/* rough cut to speed things up when we aren't using whole detector */
-// 						if (s_dmin > 0.0 && stol > 0.0) {
-// 							if (s_dmin > 0.5 / stol) {
-// 								continue;
-// 							}
-// 						}
+						#ifdef __CUDA_ARCH__
+						CUDAREAL stol = 0.5 * norm3d(scattering[1], scattering[2], scattering[3]);
+						#else
+						CUDAREAL stol = 0.5 * sqrt(scattering[1]*scattering[1] + scattering[2]*scattering[2] + scattering[3]*scattering[3]);
+						#endif
+						
+						// rough cut to speed things up when we aren't using whole detector
+						if (dmin > 0.0 && stol > 0.0) {
+							if (dmin > 0.5 / stol) {
+								continue;
+							}
+						}
 
-// 						/* polarization factor */
-// 						if (!s_nopolar) {
-// 							/* need to compute polarization factor */
-// 							polar = polarization_factor(polarization, incident, diffracted, polar_vector);
-// 						} else {
-// 							polar = 1.0;
-// 						}
+						// polarization factor
+						if (!nopolar) {
+							// need to compute polarization factor
+							polar = polarization_factor(polarization, incident, diffracted, polar_vector);
+						} else {
+							polar = 1.0;
+						}
 
-// 						/* sweep over phi angles */
-// 						for (int phi_tic = 0; phi_tic < s_phisteps; ++phi_tic) {
-// 							CUDAREAL phi = s_phistep * phi_tic + s_phi0;
+						// sweep over phi angles
+						for (int phi_tic = 0; phi_tic < phisteps; ++phi_tic) {
+							CUDAREAL phi = phistep * phi_tic + phi0;
 
-// 							CUDAREAL ap[4];
-// 							CUDAREAL bp[4];
-// 							CUDAREAL cp[4];
+							CUDAREAL ap[4];
+							CUDAREAL bp[4];
+							CUDAREAL cp[4];
 
-// 							/* rotate about spindle if necessary */
-// 							rotate_axis_ldg(a0, ap, spindle_vector, phi);
-// 							rotate_axis_ldg(b0, bp, spindle_vector, phi);
-// 							rotate_axis_ldg(c0, cp, spindle_vector, phi);
+							// rotate about spindle if necessary
+							rotate_axis(a0, ap, spindle_vector, phi);
+							rotate_axis(b0, bp, spindle_vector, phi);
+							rotate_axis(c0, cp, spindle_vector, phi);
 
-// 							/* enumerate mosaic domains */
-// 							for (int mos_tic = 0; mos_tic < s_mosaic_domains; ++mos_tic) {
-// 								/* apply mosaic rotation after phi rotation */
-// 								CUDAREAL a[4];
-// 								CUDAREAL b[4];
-// 								CUDAREAL c[4];
+							// enumerate mosaic domains
+							for (int mos_tic = 0; mos_tic < mosaic_domains; ++mos_tic) {
+								// apply mosaic rotation after phi rotation
+								CUDAREAL a[4];
+								CUDAREAL b[4];
+								CUDAREAL c[4];
 
-// 								rotate_umat_ldg(ap, a, &mosaic_umats[mos_tic * 9]);
-// 								rotate_umat_ldg(bp, b, &mosaic_umats[mos_tic * 9]);
-// 								rotate_umat_ldg(cp, c, &mosaic_umats[mos_tic * 9]);
+								CUDAREAL umat[] = {mosaic_umats(mos_tic * 9 + 0),
+								                   mosaic_umats(mos_tic * 9 + 1),
+								                   mosaic_umats(mos_tic * 9 + 2),
+								                   mosaic_umats(mos_tic * 9 + 3),
+								                   mosaic_umats(mos_tic * 9 + 4),
+								                   mosaic_umats(mos_tic * 9 + 5),
+								                   mosaic_umats(mos_tic * 9 + 6),
+								                   mosaic_umats(mos_tic * 9 + 7),
+								                   mosaic_umats(mos_tic * 9 + 8)};
 
-// 								/* construct fractional Miller indicies */
+								rotate_umat(ap, a, umat);
+								rotate_umat(bp, b, umat);
+								rotate_umat(cp, c, umat);
 
-// 								CUDAREAL h = dot_product(a, scattering);
-// 								CUDAREAL k = dot_product(b, scattering);
-// 								CUDAREAL l = dot_product(c, scattering);
+								// construct fractional Miller indicies
 
-// 								/* round off to nearest whole index */
-// 								int h0 = ceil(h - 0.5);
-// 								int k0 = ceil(k - 0.5);
-// 								int l0 = ceil(l - 0.5);
+								CUDAREAL h = dot_product(a, scattering);
+								CUDAREAL k = dot_product(b, scattering);
+								CUDAREAL l = dot_product(c, scattering);
 
-// 								/* structure factor of the lattice (paralelpiped crystal)
-// 								 F_latt = sin(M_PI*s_Na*h)*sin(M_PI*s_Nb*k)*sin(M_PI*s_Nc*l)/sin(M_PI*h)/sin(M_PI*k)/sin(M_PI*l);
-// 								 */
-// 								CUDAREAL F_latt = 1.0; // Shape transform for the crystal.
-// 								CUDAREAL hrad_sqr = 0.0;
-// 								/* handy radius in reciprocal space, squared */
-// 								hrad_sqr = (h - h0) * (h - h0) * s_Na * s_Na + (k - k0) * (k - k0) * s_Nb * s_Nb + (l - l0) * (l - l0) * s_Nc * s_Nc;
-//                                                                 /* fudge the radius so that volume and FWHM are similar to square_xtal spots */
-//                                                                 double my_arg = hrad_sqr / 0.63 * fudge;
-//                                                                 F_latt = s_Na * s_Nb * s_Nc * exp(-(my_arg));
+								// round off to nearest whole index
+								int h0 = ceil(h - 0.5);
+								int k0 = ceil(k - 0.5);
+								int l0 = ceil(l - 0.5);
 
-// 								/* structure factor of the unit cell */
-// 								CUDAREAL F_cell = default_F;
-// 								//F_cell = quickFcell_ldg(s_hkls, s_h_max, s_h_min, s_k_max, s_k_min, s_l_max, s_l_min, h0, k0, l0, s_h_range, s_k_range, s_l_range, default_F, Fhkl);
-//                                                                 if (
-//                                                                     h0 < s_h_min ||
-//                                                                     k0 < s_k_min ||
-//                                                                     l0 < s_l_min ||
-//                                                                     h0 > s_h_max ||
-//                                                                     k0 > s_k_max ||
-//                                                                     l0 > s_l_max
-//                                                                    )
-//                                                                   F_cell = 0.;
-//                                                                 else
-//                                                                   F_cell = __ldg(&Fhkl[(h0-s_h_min)*s_k_range*s_l_range + (k0-s_k_min)*s_l_range + (l0-s_l_min)]);
+								// structure factor of the lattice (paralelpiped crystal)
+								// F_latt = sin(M_PI*s_Na*h)*sin(M_PI*s_Nb*k)*sin(M_PI*s_Nc*l)/sin(M_PI*h)/sin(M_PI*k)/sin(M_PI*l);
+								
+								CUDAREAL F_latt = 1.0; // Shape transform for the crystal.
+								CUDAREAL hrad_sqr = 0.0;
+								// handy radius in reciprocal space, squared
+								hrad_sqr = (h - h0) * (h - h0) * Na * Na + (k - k0) * (k - k0) * Nb * Nb + (l - l0) * (l - l0) * Nc * Nc;
+								// fudge the radius so that volume and FWHM are similar to square_xtal spots
+								double my_arg = hrad_sqr / 0.63 * fudge;
+								F_latt = Na * Nb * Nc * exp(-(my_arg));
 
-// 								/* now we have the structure factor for this pixel */
+								// structure factor of the unit cell
+								CUDAREAL F_cell = default_F;
+								//F_cell = quickFcell_ldg(s_hkls, s_h_max, s_h_min, s_k_max, s_k_min, s_l_max, s_l_min, h0, k0, l0, s_h_range, s_k_range, s_l_range, default_F, Fhkl);
+								if (
+									h0 < s_h_min ||
+									k0 < s_k_min ||
+									l0 < s_l_min ||
+									h0 > s_h_max ||
+									k0 > s_k_max ||
+									l0 > s_l_max
+									) {
+									F_cell = 0.;
+								} else {
+									const int hkl_index = (h0-s_h_min)*s_k_range*s_l_range + (k0-s_k_min)*s_l_range + (l0-s_l_min);
+									F_cell = Fhkl[hkl_index];
+								}
 
-// 								/* convert amplitudes into intensity (photons per steradian) */
-// 								I += F_cell * F_cell * F_latt * F_latt * source_fraction * capture_fraction * omega_pixel;
-// 								omega_sub_reduction += omega_pixel;
-// 							}
-// 							/* end of mosaic loop */
-// 						}
-// 						/* end of phi loop */
-// 					}
-// 					/* end of source loop */
-// 				}
-// 				/* end of detector thickness loop */
-// 			}
-// 			/* end of sub-pixel y loop */
-// 		}
-// 		/* end of sub-pixel x loop */
-// 		const double photons = I_bg + (r_e_sqr * spot_scale * fluence * polar * I) / steps;
-// 		floatimage[j] = photons;
-// 		omega_reduction[j] = omega_sub_reduction; // shared contention
-// 		max_I_x_reduction[j] = max_I_x_sub_reduction;
-// 		max_I_y_reduction[j] = max_I_y_sub_reduction;
-// 		rangemap[j] = true;
-// 	}
-// }
+								// now we have the structure factor for this pixel
+
+								// convert amplitudes into intensity (photons per steradian)
+								I += F_cell * F_cell * F_latt * F_latt * source_fraction * capture_fraction * omega_pixel;
+								omega_sub_reduction += omega_pixel;
+							}
+							// end of mosaic loop
+						}
+						// end of phi loop
+					}
+					// end of source loop
+				}
+				// end of detector thickness loop
+			}
+			// end of sub-pixel y loop
+		}
+		// end of sub-pixel x loop
+		const double photons = I_bg + (r_e_sqr * spot_scale * fluence * polar * I) / steps;
+		floatimage( j ) = photons;
+		omega_reduction( j ) = omega_sub_reduction; // shared contention
+		max_I_x_reduction( j ) = max_I_x_sub_reduction;
+		max_I_y_reduction( j ) = max_I_y_sub_reduction;
+		rangemap( j ) = true;
+	});
+}
 
 // __global__ void nanoBraggSpotsInitCUDAKernel(int spixels, int fpixesl, float * floatimage, float * omega_reduction,
 //                 float * max_I_x_reduction,
@@ -360,9 +345,9 @@ void add_background(int sources, int nanoBragg_oversample,
 
     // sweep over detector
     const int total_pixels = spixels * fpixels;
-    const int fstride = gridDim.x * blockDim.x;
-    const int sstride = gridDim.y * blockDim.y;
-    const int stride = fstride * sstride;
+    // const int fstride = gridDim.x * blockDim.x;
+    // const int sstride = gridDim.y * blockDim.y;
+    // const int stride = fstride * sstride;
     Kokkos::parallel_for("add_background", total_pixels, KOKKOS_LAMBDA(const int& pixIdx) {
 
         const int fpixel = pixIdx % fpixels;
@@ -457,7 +442,7 @@ void add_background(int sources, int nanoBragg_oversample,
                         if(! nopolar){
                             // need to compute polarization factor
                             CUDAREAL axis[] = {polar_vector(0), polar_vector(1), polar_vector(2), polar_vector(3)};
-                            polar = polarization_factor(polarization, incident, diffracted,axis);
+                            polar = polarization_factor(polarization, incident, diffracted, polar_vector);
                         }
 
                         // accumulate unscaled pixel intensity from this
