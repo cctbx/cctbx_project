@@ -53,11 +53,12 @@ def Unpad(n):
   return n
 
 # Is a carbon atom a Carbonyl from a standard amino acid?
-def IsAminoAcidCarbonyl(resName, atomName):
+def IsSpecialAminoAcidCarbonyl(resName, atomName):
   """Given a residue and atom name, determine whether that atom is a C=O.
+  This does not mark the ' C  ' atom that is always a Carbonyl; that is checked separately.
   :param resName: String containing the 1-3-character residue name in all caps, including leading space.
   :param atomName: String containing the 1-4-character atom name in all caps, including leading space.
-  :returns True if the atom is a C=O in a standard resize, False if not.  Does not handle HET atoms.
+  :returns True if the atom is a C=O in a standard residue, False if not.  Does not handle HET atoms.
   """
   if Unpad(atomName) == ' CG':
     return resName in ['ASP','ASN','ASX']
@@ -121,7 +122,7 @@ def IsAromaticAcceptor(resName, atomName):
   """Given a residue and atom name, determine whether that atom is an acceptor as part of an aromatic ring.
   :param resName: String containing the 1-3-character residue name in all caps, including leading space.
   :param atomName: String containing the 1-4-character atom name in all caps, including leading space.
-  :returns True if the atom is a C=O in a standard resize, False if not.  Does not handle HET atoms.
+  :returns True if the atom is a C=O in a standard residue, False if not.  Does not handle HET atoms.
   """
 
   for e in _AromaticTable:
@@ -139,7 +140,7 @@ class AtomFlags(IntFlag):
   IGNORE_ATOM = auto()          # This atom should be ignored during processing, as if it did not exist
   DONOR_ATOM = auto()           # Can be an electron donor
   ACCEPTOR_ATOM = auto()        # Can be an electron acceptor
-  HB_ONLY_DUMMY_ATOM = auto()   # This is a dummy hydrogen added to a water, it can hydrogen bond by not clash
+  HB_ONLY_DUMMY_ATOM = auto()   # This is a dummy hydrogen added temporarily to a water when a donor is needed; it can Hbond but not clash.
   METALLIC_ATOM = auto()        # The atom is metallic
 
 ##################################################################################
@@ -225,8 +226,10 @@ class AtomTypes:
 
   def __init__(self, useNeutronDistances = False):
     """Constructor.
-    :param useNeutronDistances: Use neutron distances for hydrogen-bond scoring.
-    The default is to use electron-cloud distances.
+    :param useNeutronDistances: Use neutron distances and radii for scoring.
+    The default is to use electron-cloud distances.  This is used both for the
+    separation between a Hydgrogen and its bound partner and for the radius of the
+    Hydrogen and it must be set consistently across the entire code base.
     """
 
     ##################################################################################
@@ -251,7 +254,8 @@ class AtomTypes:
     #     IGNORE_ATOM : This atom should be ignored
     #     DONOR_ATOM : This atom can be a hydrogen bond donor
     #     ACCEPTOR_ATOM : This atom can be a hydrogen bond acceptor
-    #     HB_ONLY_DUMMY_ATOM : This atom is a phantom hydrogen bond from a water that cannot collide
+    #     HB_ONLY_DUMMY_ATOM : This is a dummy hydrogen added temporarily
+    #         to a water when a donor is needed; it can Hbond but not clash.
     #     METALLIC_ATOM : This atom is metallic
     #
     # This table is based on the following:
@@ -269,7 +273,7 @@ class AtomTypes:
       [ 1, "Har","hydrogen(aromatic)", 1.05, 1.00, 0.00, 0.30, "grey",   AtomFlags.EMPTY_FLAGS],
       [ 1, "Hpol","hydrogen(polar)",   1.05, 1.00, 0.00, 0.30, "grey",   AtomFlags.DONOR_ATOM],
       [ 1, "Ha+p","hydrogen(aromatic&polar)", 1.05, 1.00, 0.00, 0.30, "grey",   AtomFlags.DONOR_ATOM],
-      [ 1, "HOd","hydrogen(omnidirectional)", 1.05, 1.00, 0.00, 0.30, "grey",   AtomFlags.DONOR_ATOM|AtomFlags.HB_ONLY_DUMMY_ATOM],
+      [ 1, "HOd","hydrogen(only dummy)", 1.05, 1.00, 0.00, 0.30, "grey",   AtomFlags.DONOR_ATOM|AtomFlags.HB_ONLY_DUMMY_ATOM],
       [ 6, "C",  "carbon",             1.70, 1.70, 1.90, 0.77, "white",  AtomFlags.EMPTY_FLAGS],
       [ 6, "Car","carbon(aromatic)",   1.75, 1.75, 1.90, 0.77, "white",  AtomFlags.ACCEPTOR_ATOM],
       [ 6, "C=O","carbon(carbonyl)",   1.65, 1.65, 1.80, 0.77, "white",  AtomFlags.EMPTY_FLAGS],
@@ -286,44 +290,46 @@ class AtomTypes:
       [53, "I",  "iodine",             2.10, 2.10, 2.10, 1.33, "brown",  AtomFlags.ACCEPTOR_ATOM],
 
       # for most common metals we use Pauling's ionic radii
-      # "covalent radii" = ionic + 0.74 (i.e., oxygenVDW(1.4) - oxygenCov(0.66))
-      # because the ionic radii are usually calculated from Oxygen-Metal distance
-      [ 3, "Li", "lithium",            0.60, 0.60, 0.60, 1.34, "grey", AtomFlags.METALLIC_ATOM],
-      [11, "Na", "sodium",             0.95, 0.95, 0.95, 1.69, "grey", AtomFlags.METALLIC_ATOM],
-      [13, "Al", "aluminum",           0.50, 0.50, 0.50, 1.24, "grey", AtomFlags.METALLIC_ATOM],
-      [19, "K",  "potassium",          1.33, 1.33, 1.33, 2.07, "grey", AtomFlags.METALLIC_ATOM],
-      [12, "Mg", "magnesium",          0.65, 0.65, 0.65, 1.39, "grey", AtomFlags.METALLIC_ATOM],
-      [20, "Ca", "calcium",            0.99, 0.99, 0.99, 1.73, "grey", AtomFlags.METALLIC_ATOM],
-      [25, "Mn", "manganese",          0.80, 0.80, 0.80, 1.54, "grey", AtomFlags.METALLIC_ATOM],
-      [26, "Fe", "iron",               0.74, 0.74, 0.74, 1.48, "grey", AtomFlags.METALLIC_ATOM],
-      [27, "Co", "cobolt",             0.70, 0.70, 0.70, 1.44, "blue", AtomFlags.METALLIC_ATOM],
-      [28, "Ni", "nickel",             0.66, 0.66, 0.66, 1.40, "grey", AtomFlags.METALLIC_ATOM],
-      [29, "Cu", "copper",             0.72, 0.72, 0.72, 1.46,"orange",AtomFlags.METALLIC_ATOM],
-      [30, "Zn", "zinc",               0.71, 0.71, 0.71, 1.45, "grey", AtomFlags.METALLIC_ATOM],
-      [37, "Rb", "rubidium",           1.48, 1.48, 1.48, 2.22, "grey", AtomFlags.METALLIC_ATOM],
-      [38, "Sr", "strontium",          1.10, 1.10, 1.10, 1.84, "grey", AtomFlags.METALLIC_ATOM],
-      [42, "Mo", "molybdenum",         0.93, 0.93, 0.93, 1.67, "grey", AtomFlags.METALLIC_ATOM],
-      [47, "Ag", "silver",             1.26, 1.26, 1.26, 2.00, "white",AtomFlags.METALLIC_ATOM],
-      [48, "Cd", "cadmium",            0.91, 0.91, 0.91, 1.65, "grey", AtomFlags.METALLIC_ATOM],
-      [49, "In", "indium",             0.81, 0.81, 0.81, 1.55, "grey", AtomFlags.METALLIC_ATOM],
-      [55, "Cs", "cesium",             1.69, 1.69, 1.69, 2.43, "grey", AtomFlags.METALLIC_ATOM],
-      [56, "Ba", "barium",             1.29, 1.29, 1.29, 2.03, "grey", AtomFlags.METALLIC_ATOM],
-      [79, "Au", "gold",               1.10, 1.10, 1.10, 1.84, "gold", AtomFlags.METALLIC_ATOM],
-      [80, "Hg", "mercury",            1.00, 1.00, 1.00, 1.74, "grey", AtomFlags.METALLIC_ATOM],
-      [81, "Tl", "thallium",           1.44, 1.44, 1.44, 2.18, "grey", AtomFlags.METALLIC_ATOM],
-      [82, "Pb", "lead",               0.84, 0.84, 0.84, 1.58, "grey", AtomFlags.METALLIC_ATOM],
+      # "covalent radii" does not really mean anything, but the interaction distance for
+      # all interactions uses the same, ionic, radius.  This code differs from the C++
+      # and C tables from Probe and Reduce.  It was modified because of further study by the
+      # Richardson group in 2021.
+      [ 3, "Li", "lithium",            0.60, 0.60, 0.60, 0.60, "grey", AtomFlags.METALLIC_ATOM],
+      [11, "Na", "sodium",             0.95, 0.95, 0.95, 0.95, "grey", AtomFlags.METALLIC_ATOM],
+      [13, "Al", "aluminum",           0.50, 0.50, 0.50, 0.50, "grey", AtomFlags.METALLIC_ATOM],
+      [19, "K",  "potassium",          1.33, 1.33, 1.33, 1.33, "grey", AtomFlags.METALLIC_ATOM],
+      [12, "Mg", "magnesium",          0.65, 0.65, 0.65, 0.65, "grey", AtomFlags.METALLIC_ATOM],
+      [20, "Ca", "calcium",            0.99, 0.99, 0.99, 0.99, "grey", AtomFlags.METALLIC_ATOM],
+      [25, "Mn", "manganese",          0.80, 0.80, 0.80, 0.80, "grey", AtomFlags.METALLIC_ATOM],
+      [26, "Fe", "iron",               0.74, 0.74, 0.74, 0.74, "grey", AtomFlags.METALLIC_ATOM],
+      [27, "Co", "cobalt",             0.70, 0.70, 0.70, 0.70, "blue", AtomFlags.METALLIC_ATOM],
+      [28, "Ni", "nickel",             0.66, 0.66, 0.66, 0.66, "grey", AtomFlags.METALLIC_ATOM],
+      [29, "Cu", "copper",             0.72, 0.72, 0.72, 0.72,"orange",AtomFlags.METALLIC_ATOM],
+      [30, "Zn", "zinc",               0.71, 0.71, 0.71, 0.71, "grey", AtomFlags.METALLIC_ATOM],
+      [37, "Rb", "rubidium",           1.48, 1.48, 1.48, 1.48, "grey", AtomFlags.METALLIC_ATOM],
+      [38, "Sr", "strontium",          1.10, 1.10, 1.10, 1.10, "grey", AtomFlags.METALLIC_ATOM],
+      [42, "Mo", "molybdenum",         0.93, 0.93, 0.93, 0.93, "grey", AtomFlags.METALLIC_ATOM],
+      [47, "Ag", "silver",             1.26, 1.26, 1.26, 1.26, "white",AtomFlags.METALLIC_ATOM],
+      [48, "Cd", "cadmium",            0.91, 0.91, 0.91, 0.91, "grey", AtomFlags.METALLIC_ATOM],
+      [49, "In", "indium",             0.81, 0.81, 0.81, 0.81, "grey", AtomFlags.METALLIC_ATOM],
+      [55, "Cs", "cesium",             1.69, 1.69, 1.69, 1.69, "grey", AtomFlags.METALLIC_ATOM],
+      [56, "Ba", "barium",             1.29, 1.29, 1.29, 1.29, "grey", AtomFlags.METALLIC_ATOM],
+      [79, "Au", "gold",               1.10, 1.10, 1.10, 1.10, "gold", AtomFlags.METALLIC_ATOM],
+      [80, "Hg", "mercury",            1.00, 1.00, 1.00, 1.00, "grey", AtomFlags.METALLIC_ATOM],
+      [81, "Tl", "thallium",           1.44, 1.44, 1.44, 1.44, "grey", AtomFlags.METALLIC_ATOM],
+      [82, "Pb", "lead",               0.84, 0.84, 0.84, 0.84, "grey", AtomFlags.METALLIC_ATOM],
 
       # for other metals we use Shannon's ionic radii
       # Acta Crystallogr. (1975) A32, pg751.
-      [23, "V",  "vanadium",           0.79, 0.79, 0.79, 1.53, "grey", AtomFlags.METALLIC_ATOM],
-      [24, "Cr", "chromium",           0.73, 0.73, 0.73, 1.47, "grey", AtomFlags.METALLIC_ATOM],
-      [52, "Te", "tellurium",          0.97, 0.97, 0.97, 1.71, "grey", AtomFlags.METALLIC_ATOM],
-      [62, "Sm", "samarium",           1.08, 1.08, 1.08, 1.82, "grey", AtomFlags.METALLIC_ATOM],
-      [64, "Gd", "gadolinium",         1.05, 1.05, 1.05, 1.79, "grey", AtomFlags.METALLIC_ATOM],
-      [70, "Yb", "ytterbium",          1.14, 1.14, 1.14, 1.88, "grey", AtomFlags.METALLIC_ATOM],
-      [74, "W",  "tungsten",           0.66, 0.66, 0.66, 1.40, "grey", AtomFlags.METALLIC_ATOM],
-      [78, "Pt", "platinum",           0.63, 0.63, 0.63, 1.37, "grey", AtomFlags.METALLIC_ATOM],
-      [92, "U",  "unanium",            1.03, 1.03, 1.03, 1.77, "grey", AtomFlags.METALLIC_ATOM],
+      [23, "V",  "vanadium",           0.79, 0.79, 0.79, 0.79, "grey", AtomFlags.METALLIC_ATOM],
+      [24, "Cr", "chromium",           0.73, 0.73, 0.73, 0.73, "grey", AtomFlags.METALLIC_ATOM],
+      [52, "Te", "tellurium",          0.97, 0.97, 0.97, 0.97, "grey", AtomFlags.METALLIC_ATOM],
+      [62, "Sm", "samarium",           1.08, 1.08, 1.08, 1.08, "grey", AtomFlags.METALLIC_ATOM],
+      [64, "Gd", "gadolinium",         1.05, 1.05, 1.05, 1.05, "grey", AtomFlags.METALLIC_ATOM],
+      [70, "Yb", "ytterbium",          1.14, 1.14, 1.14, 1.14, "grey", AtomFlags.METALLIC_ATOM],
+      [74, "W",  "tungsten",           0.66, 0.66, 0.66, 0.66, "grey", AtomFlags.METALLIC_ATOM],
+      [78, "Pt", "platinum",           0.63, 0.63, 0.63, 0.63, "grey", AtomFlags.METALLIC_ATOM],
+      [92, "U",  "uranium",            1.03, 1.03, 1.03, 1.03, "grey", AtomFlags.METALLIC_ATOM],
 
       # Cotton & Wilkinson and also-
       # L.E. Sutton (ed.) in Table of interatomic distances and configuration in molecules
@@ -340,12 +346,12 @@ class AtomTypes:
       [22, "Ti",  "titanium",          0.75, 0.75, 0.75, 1.49, "grey", AtomFlags.METALLIC_ATOM],
       [31, "Ga",  "gallium",           0.53, 0.53, 0.53, 1.27, "grey", AtomFlags.METALLIC_ATOM],
       [32, "Ge",  "germanium",         0.60, 0.60, 0.60, 1.34, "grey", AtomFlags.METALLIC_ATOM],
-      [36, "Kr",  "krypton",           2.01, 2.01, 2.01, 1.15, "greentint",    AtomFlags.EMPTY_FLAGS],
+      [36, "Kr",  "krypton",           2.01, 2.01, 2.01, 0.00, "greentint",    AtomFlags.EMPTY_FLAGS],
       [39, "Y",   "yttrium",           0.90, 0.90, 0.90, 1.64, "grey", AtomFlags.METALLIC_ATOM],
       [40, "Zr",  "zirconium",         0.77, 0.77, 0.77, 1.51, "grey", AtomFlags.METALLIC_ATOM],
       [50, "Sn",  "tin",               0.71, 0.71, 0.71, 1.45, "grey", AtomFlags.METALLIC_ATOM],
       [51, "Sb",  "antimony",          2.20, 2.20, 2.20, 1.41, "grey", AtomFlags.METALLIC_ATOM],
-      [54, "Xe",  "xenon",             2.18, 2.18, 2.18, 1.28, "magenta",      AtomFlags.EMPTY_FLAGS],
+      [54, "Xe",  "xenon",             2.18, 2.18, 2.18, 0.00, "magenta",      AtomFlags.EMPTY_FLAGS],
       [57, "La",  "lanthanum",         1.03, 1.03, 1.03, 1.77, "grey", AtomFlags.METALLIC_ATOM],
       [58, "Ce",  "cerium",            0.87, 0.87, 0.87, 1.61, "grey", AtomFlags.METALLIC_ATOM],
       [87, "Fr",  "francium",          1.94, 1.94, 1.94, 2.68, "grey", AtomFlags.METALLIC_ATOM],
@@ -377,7 +383,7 @@ class AtomTypes:
       [83, "Bi",  "bismuth",           1.17, 1.17, 1.17, 1.71, "grey", AtomFlags.METALLIC_ATOM],
       [84, "Po",  "polonium",          0.99, 0.99, 0.99, 1.53, "grey", AtomFlags.METALLIC_ATOM],
       [85, "At",  "astatine",          0.91, 0.91, 0.91, 1.45, "grey", AtomFlags.METALLIC_ATOM],
-      [86, "Rn",  "radon",             2.50, 2.50, 2.50, 1.25, "pinktint",     AtomFlags.EMPTY_FLAGS],
+      [86, "Rn",  "radon",             2.50, 2.50, 2.50, 0.00, "pinktint",     AtomFlags.EMPTY_FLAGS],
       [89, "Ac",  "actinium",          1.30, 1.30, 1.30, 2.00, "grey", AtomFlags.METALLIC_ATOM],
       [91, "Pa",  "protoactinium",     1.10, 1.10, 1.10, 1.85, "grey", AtomFlags.METALLIC_ATOM],
       [93, "Np",  "neptunium",         1.00, 1.00, 1.00, 1.72, "grey", AtomFlags.METALLIC_ATOM],
@@ -441,7 +447,7 @@ class AtomTypes:
       [ r'A.2',    'N',  True ],
       [ r'B.*',    'B',  False ],
       [ r'C.*',    'C',  False ],
-      [ r'D.*',    'H',  False ],
+      [ r'D.*',    'H',  True ],  # These are counted as H internally, but output at D
       [ r'F.*',    'F',  False ],
       # H atoms are handled separately
       [ r'I.*',    'I',  False ],
@@ -766,7 +772,7 @@ class AtomTypes:
         elementName = 'Car'
       elif atomPadded == ' C  ' and atom.parent().resname in aa_resnames:
         elementName = 'C=O'
-      elif IsAminoAcidCarbonyl(resName, atomPadded):
+      elif IsSpecialAminoAcidCarbonyl(resName, atomPadded):
         elementName = 'C=O'
       # @todo Aromatic and carbonyl carbons in non-standard HET residues need to be identified somehow
 
@@ -827,14 +833,15 @@ def RunAtomTypeTests(inFileName):
   # Make sure we can fill in mmtbx.probe.ExtraAtomInfoList info.
   # Generate an example data model with a small molecule in it unless we
   # were given a file name on the command line.
-  print('Generating model')
   if inFileName is not None and len(inFileName) > 0:
     # Read a model from a file using the DataManager
+    print('Reading model from', inFileName)
     dm = DataManager()
     dm.process_model_file(inFileName)
     model = dm.get_model(inFileName)
   else:
     # Generate a small-molecule model using the map model manager
+    print('Generating model')
     mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
     mmm.generate_map()              #   get a model from a generated small library model and calculate a map for it
     model = mmm.model()             #   get the model
