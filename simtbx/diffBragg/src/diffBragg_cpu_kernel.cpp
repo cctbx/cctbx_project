@@ -576,10 +576,11 @@ void diffBragg::diffBragg_sum_over_steps(
                     nom_l = nominal_hkl[i_pix*3+2];
                     //f_cell_idx = _l0 - nom_l + 1;
                 }
-                double value = 2*Iincrement/_F_cell ;
+                double value = 2*I_noFcell*_F_cell; //2*Iincrement/_F_cell ;
                 double value2=0;
                 if (compute_curvatures){
-                    value2 = value/_F_cell;
+                    if (_F_cell > 0)
+                        value2 = value/_F_cell;
                 }
                 //if (f_cell_idx >= 0 && f_cell_idx <= 2){
                 // NOTE use nominal hkl to regulate when gradients are compputed, as h,k,l can drift within a shoebox
@@ -781,7 +782,7 @@ void diffBragg::diffBragg_sum_over_steps(
             // final scale term to being everything to photon number units
             _scale_term = _r_e_sqr*_fluence*_spot_scale*_polar*_om/Nsteps*num_sausages;
 
-            int roi_i = i_pix; // TODO replace roi_i with i_pix
+            //int roi_i = i_pix; // TODO replace roi_i with i_pix
 
             floatimage[i_pix] = _scale_term*_I;
 
