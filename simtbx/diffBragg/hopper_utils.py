@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+import os
 from dials.algorithms.shoebox import MaskCode
 from copy import deepcopy
 from dials.model.data import Shoebox
@@ -1088,3 +1089,13 @@ def downsamp_spec(SIM, params, expt):
         SIM.beam.spectrum = list(zip(downsamp_wave, downsamp_wt))
     # the nanoBragg beam has an xray_beams property that is used internally in diffBragg
     SIM.D.xray_beams = SIM.beam.xray_beams
+
+
+def sanity_test_input_lines(input_lines):
+    for line in input_lines:
+        line_fields = line.strip().split()
+        if len(line_fields) not in [2, 3]:
+            raise IOError("Input line %s is not formatted properly" % line)
+        for fname in line_fields:
+            if not os.path.exists(fname):
+                raise FileNotFoundError("File %s does not exist" % fname)

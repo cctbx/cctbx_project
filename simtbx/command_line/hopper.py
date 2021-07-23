@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import socket
 import glob
 from copy import deepcopy
-from simtbx.diffBragg.hopper_utils import look_at_x, model, get_param_from_x, DataModeler, get_data_model_pairs
+from simtbx.diffBragg.hopper_utils import look_at_x, model, get_param_from_x, DataModeler, get_data_model_pairs, sanity_test_input_lines
 import h5py
 from dxtbx.model.experiment_list import ExperimentList
 try:
@@ -467,13 +467,8 @@ class Script:
         if COMM.rank == 0:
             input_lines = open(self.params.exp_ref_spec_file, "r").readlines()
             if self.params.sanity_test_input:
-                for line in input_lines:
-                    line_fields = line.strip().split()
-                    if len(line_fields) not in [2, 3]:
-                        raise IOError("Input line %s is not formatted properly" % line)
-                    for fname in line_fields:
-                        if not os.path.exists(fname):
-                            raise FileNotFoundError("File %s does not exist" % fname)
+                sanity_test_input_lines(input_lines)
+
             if self.params.best_pickle is not None:
                 if not self.params.quiet: print("reading pickle %s" % self.params.best_pickle)
                 best_models = pandas.read_pickle(self.params.best_pickle)

@@ -73,15 +73,8 @@ class Script:
         if COMM.rank == 0:
             input_lines = open(self.params.exp_ref_spec_file, "r").readlines()
             if self.params.sanity_test_input:
-                for line in input_lines:
-                    for fname in line.strip().split():
-                        if not os.path.exists(fname):
-                            raise FileNotFoundError("File %s not there " % fname)
-            #if self.params.best_pickle is not None:
-            #    if not self.params.quiet: print("reading pickle %s" % self.params.best_pickle)
-            #    best_models = pandas.read_pickle(self.params.best_pickle)
+                hopper_utils.sanity_test_input_lines(input_lines)
         input_lines = COMM.bcast(input_lines)
-        #best_models = COMM.bcast(best_models)
         if self.params.best_pickle is not None:
             if not self.params.quiet: print("reading pickle %s" % self.params.best_pickle)
             best_models = pandas.read_pickle(self.params.best_pickle)
@@ -109,7 +102,7 @@ class Script:
             rois_to_load = shot_roi_dict[i_exp]
 
             # the filenames
-            exp, ref, spec = line.strip().split()
+            exp, ref, spec = get_fields_from_input_line(line)
 
             # if there is a starting model, then load it
             best = None
@@ -125,6 +118,7 @@ class Script:
 
             # each shot gets a data modeler
             Modeler = DataModeler(self.params)
+            Modeler.spectrum_filename = spec
             # gather the data from the input files
             if not Modeler.GatherFromExperiment(exp, ref, self.params.space_group, rois_to_load):
                 continue
@@ -160,8 +154,11 @@ class Script:
             else:
                 total_flux = self.params.simulator.total_flux
                 spectrum_stride = self.params.simulator.spectrum.stride
-            spectra_file = input_lines[i_exp].strip().split()[2]
-            spectrum = utils.load_spectra_file(spectra_file, total_flux, spectrum_stride, as_spectrum=True)
+
+            if Modeler.spectrum_filename is not None:
+                spectrum = utils.load_spectra_file(Modeler.spectrum_filename, total_flux, spectrum_stride, as_spectrum=True)
+            else:
+                spectrum = [(Modeler.E.beam.get_wavelength(), total_flux)]
 
             # set parameter objects for this shot
             Modeler.SimulatorParamsForExperiment(bests[i_exp])
@@ -182,7 +179,7 @@ class Script:
 
             Modeler.shiftZ_meters = 0
             if bests[i_exp] is not None and "detz_shift_mm" in list(bests[i_exp]):
-                    Modeler.shiftZ_meters = bests[i_exp].detz_shift_mm.values[0]*1e-3
+                Modeler.shiftZ_meters = bests[i_exp].detz_shift_mm.values[0]*1e-3
 
         self.SIM.update_Fhkl = Fhkl_updater(self.SIM, Modelers)
         
@@ -468,7 +465,7 @@ def count_rois(lines, quiet):
     for i_line, line in enumerate(lines):
         if i_line % COMM.size != COMM.rank:
             continue
-        e,r,s = line.strip().split()
+        e,r,s = get_fields_from_input_line(line)
         R = flex.reflection_table.from_file(r)
         info.append((i_line, len(R)))
     info = COMM.reduce(info)
@@ -548,6 +545,9 @@ class DataModeler:
             self.E.detector = opt_det_E.detector
         self.ref_name = ref
         refls = flex.reflection_table.from_file(ref)
+        if "rlp" not in list(refls[0].keys()):
+            utils.add_rlp_column(refls, self.E)
+            assert "rlp" in list(refls[0].keys())
         refls["refls_idx"] = flex.int(list(range(len(refls))))
         if ref_indices is not None:
             refl_sel = np.zeros(len(refls), bool)
@@ -1628,6 +1628,15 @@ def flag_empty_shots(params, Modelers):
     empty_shots = COMM.bcast(empty_shots)
     return Modelers, empty_shots
 
+
+def get_fields_from_input_line(line):
+    line_fields = line.strip().split()
+    if len(line_fields)==2:
+        e,r = line_fields
+        s = None
+    else:
+        e,r,s = line_fields
+    return e,r,s
 
 if __name__ == '__main__':
     from dials.util import show_mail_on_error
