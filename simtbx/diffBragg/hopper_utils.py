@@ -314,7 +314,7 @@ class DataModeler:
         if self.params.spectrum_from_imageset:
             downsamp_spec(self.SIM, self.params, self.E)
 
-        self.SIM.D.no_Nabc_scale = self.params.no_Nabc_scale
+        self.SIM.D.no_Nabc_scale = self.params.no_Nabc_scale  # TODO check gradients for this setting
         self.SIM.num_xtals = self.params.number_of_xtals
         #if self.params.eta_refine:
         #    self.SIM.umat_maker = AnisoUmats(num_random_samples=self.params.num_mosaic_blocks)

@@ -102,6 +102,10 @@ simulator {
 
 refiner_phil = """
 refiner {
+  debug_pixel_panelfastslow = None
+    .type = ints(size=3)
+    .help = 3-tuple of panel ID, fast coord, slow coord. If set, show the state of diffBragg
+    .help = for this pixel once refinement has finished
   res_ranges = None
     .type = str
     .help = resolution-defining strings, where each string is

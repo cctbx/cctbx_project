@@ -30,6 +30,10 @@ from dials.array_family import flex
 from libtbx.mpi4py import MPI
 
 COMM = MPI.COMM_WORLD
+# TODO, figure out why next 3 lines are sometimes necessary?!
+if not hasattr(COMM, "rank"):
+    COMM.rank = 0
+    COMM.size = 1
 from libtbx.phil import parse
 
 from simtbx.diffBragg import utils
@@ -669,9 +673,16 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
         from IPython import embed
         embed()
 
+    if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
+        utils.show_diffBragg_state(Modeler.SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
+        print("Refiner scale=%f" % Modeler.SIM.Scale_params[0].get_val(x[0]))
+
     Modeler.SIM.D.free_all()
     Modeler.SIM.D.free_Fhkl2()
-    Modeler.SIM.D.gpu_free()
+    try:
+        Modeler.SIM.D.gpu_free()
+    except TypeError:
+        pass  # occurs on CPU-only builds
 
 
 def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls, stg1_img_path):
@@ -747,10 +758,10 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     new_exp_list.append(expt)
     new_exp_list.as_file(opt_exp_path)
 
-    if params.simulator.spectrum.filename is None:
-        df['spectrum_filename'] = None
-    else:
-        df["spectrum_filename"] = os.path.abspath(params.simulator.spectrum.filename)
+    spec_file = None
+    if params.simulator.spectrum.filename is not None:
+        spec_file = os.path.abspath(params.simulator.spectrum.filename)
+    df["spectrum_filename"] = spec_file
     df["spectrum_stride"] = params.simulator.spectrum.stride
 
     df["total_flux"] = SIM.D.flux #params.simulator.total_flux

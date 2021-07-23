@@ -1403,7 +1403,7 @@ def spots_from_pandas(pandas_frame, mtz_file=None, mtz_col=None,
         oversample = oversample_override
 
     # get the optimized spectra
-    if "spectrum_filename" in list(df):
+    if "spectrum_filename" in list(df) and df.spectrum_filename.values[0] is not None:
         spectrum_file = df.spectrum_filename.values[0]
         pink_stride = df.spectrum_stride.values[0]
         if norm_by_spectrum:
@@ -1414,6 +1414,7 @@ def spots_from_pandas(pandas_frame, mtz_file=None, mtz_col=None,
         fluxes, energies = load_spectra_file(spectrum_file, total_flux=total_flux,
                                              pinkstride=pink_stride)
     else:
+        assert total_flux is not None
         fluxes = np.array([total_flux])
         energies = np.array([ENERGY_CONV/expt.beam.get_wavelength()])
         if not quiet: print("Running MONO sim")
@@ -2358,4 +2359,18 @@ class WilsonUpdater:
         return mapped_vals
 
 
+def show_diffBragg_state(D, debug_pixel_panelfastslow):
+    """
+    D, diffBragg instance
+    debug_pixel_panelfastslow, 3-tuple of ints, panelId, fast coord, slow coord
+    """
+    # TODO be careful with zero-ing the pixels - is this really what we want to do ?
+    # TODO, rather than print the state, pickle the state
+    D.show_params()
+    print("internal spot scale=%f" % D.spot_scale)
+    D.raw_pixels*=0
+    p, f, s = debug_pixel_panelfastslow
+    D.printout_pixel_fastslow = f, s
+    D.add_diffBragg_spots((p, f, s))
+    D.raw_pixels*=0
 

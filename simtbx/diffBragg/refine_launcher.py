@@ -458,6 +458,11 @@ class LocalRefinerLauncher:
                 self.RUC.use_curvatures = True
                 self.RUC.run(setup=False)
 
+            if self.params.refiner.debug_pixel_panelfastslow is not None:
+                utils.show_diffBragg_state(self.RUC.S.D, self.params.refiner.debug_pixel_panelfastslow)
+                s = self.RUC._get_spot_scale(0)
+                print("refiner spot scale=%f" % (s**2))
+
             x_init = self.RUC.x
             if self.params.refiner.only_predict_model:
                 if self.RUC.gnorm > 0:
@@ -465,6 +470,7 @@ class LocalRefinerLauncher:
 
             if self.params.refiner.use_cuda:
                 self.RUC.S.D.gpu_free()
+
 
     def will_refine(self, param):
         return param is not None and any(param)
