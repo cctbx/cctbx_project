@@ -509,6 +509,9 @@ class get_slurm_submit_command(get_submit_command):
       env_str = "source %s\n" % env
       self.source_env_scripts.append(env_str)
 
+    if 'phenix' in self.command:
+      self.source_env_scripts.append("cd %s\n"%os.path.dirname(self.submit_path))
+
     # <args> (optional, following the command)
     for arg in self.params.extra_args:
       self.args.append(arg)

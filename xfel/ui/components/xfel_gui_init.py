@@ -795,6 +795,8 @@ class UnitCellSentinel(Thread):
         params.eps = float(self.parent.run_window.unitcell_tab.plot_eps.eps.GetValue())
         params.show_plot = True
         params.plot.legend = legend_list[0]
+        reject_outliers = self.parent.run_window.unitcell_tab.chk_reject_outliers.GetValue()
+        params.plot.outliers = not reject_outliers
 
         sginfo = space_group_info(params.input.space_group)
         cs = sginfo.group().crystal_system()
