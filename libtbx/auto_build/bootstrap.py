@@ -2758,8 +2758,8 @@ class PhenixTNGBuilder(PhenixBuilder):
   '''
   Phenix with phasertng and c++11
   '''
-  CODEBASES = PhaserBuilder.CODEBASES + ['phasertng', 'phaser_voyager', 'voyager_regression']
-  LIBTBX = PhaserBuilder.LIBTBX + ['phasertng', 'phaser_voyager', 'voyager_regression']
+  CODEBASES = PhenixBuilder.CODEBASES + ['phasertng', 'phaser_voyager', 'voyager_regression']
+  LIBTBX = PhenixBuilder.LIBTBX + ['phasertng', 'phaser_voyager', 'voyager_regression']
 
   def get_libtbx_configure(self):
     configlst = super(PhenixTNGBuilder, self).get_libtbx_configure()
@@ -3010,4 +3010,6 @@ available. This flag only affects the "update" step.""",
   print("\nBootstrap success: %s" % ", ".join(actions))
 
 if __name__ == "__main__":
+  import time
+  time.sleep(10)
   run()
