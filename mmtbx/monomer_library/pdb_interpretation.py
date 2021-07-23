@@ -149,11 +149,15 @@ restraints_library_str = """
       .help = Use Omega Conformation Dependent Library (omega-CDL) \
         for geometry restraints
       .style = hidden
-    cdl_nucleic_acids = False
+    cdl_nucleotides = False
       .type = bool
       .short_caption = Use RestraintsLib for DNA and RNA
       .help = Use RestraintsLib for DNA and RNA \
         for geometry restraints
+      .style = hidden
+    cdl_nucleotides_esd = *phenix csd
+      .type = choice
+      .short_caption = Apply the e.s.d. values from Phenix or CSD
       .style = hidden
     cdl_svl = False
       .type = bool
@@ -5547,6 +5551,23 @@ class build_all_chain_proxies(linking_mixins):
       print("""\
   Histidine protonation dependent restraints added in %0.1f %sseconds
   """ % utils.greek_time(hpr_time), file=log)
+    if getattr(self.params.restraints_library, "cdl_nucleotides", False):
+      from mmtbx.conformation_dependent_library import nucleotides
+      from libtbx import utils
+      restraints_source += ' + Nucleotide CDL'
+      t0=time.time()
+      nucleotides.update_restraints(
+        self.pdb_hierarchy,
+        result, # geometry
+        #current_geometry=model.xray_structure,
+        log=log,
+        verbose=False,
+        )
+      cdl_nucleotides_time = time.time()-t0
+      print("""\
+  Nucleotide conformation dependent restraints added in %0.1f %sseconds
+  """ % utils.greek_time(cdl_nucleotides_time), file=log)
+      assert 0
     #
     if self.pdb_inp and self.pdb_inp.used_amber_restraints():
       restraints_source = 'Amber'
