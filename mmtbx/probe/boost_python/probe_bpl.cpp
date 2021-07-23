@@ -45,7 +45,9 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     .add_property("distAboveSurface", &ContactResult::distAboveSurface)
     ;
 
-  class_<ExtraAtomInfo>("ExtraAtomInfo", init< optional<double, bool, bool, bool> >())
+  class_<ExtraAtomInfo>("ExtraAtomInfo")
+    .def(init< optional<double, bool, bool, bool> >())
+    .def(init<ExtraAtomInfo const &>())
     .add_property("vdwRadius", &ExtraAtomInfo::getVdwRadius, &ExtraAtomInfo::setVdwRadius)
     .add_property("isAcceptor", &ExtraAtomInfo::getIsAcceptor, &ExtraAtomInfo::setIsAcceptor)
     .add_property("isDonor", &ExtraAtomInfo::getIsDonor, &ExtraAtomInfo::setIsDonor)
