@@ -3200,7 +3200,6 @@ def get_boost_library_with_python_version(name, libpath):
         return name_version
   return name
 
-
 if (__name__ == "__main__"):
   if (len(sys.argv) == 2 and sys.argv[1] == "__libtbx_refresh__"):
     unpickle().refresh()
