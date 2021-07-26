@@ -583,20 +583,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     """
     if self.webpagedebugform is not None:
       self.webpagedebugform.update()
-    """
-    if self.cctbxproc:
-      if self.cctbxproc.stdout:
-        self.out = self.cctbxproc.stdout.read().decode("utf-8")
-      if self.cctbxproc.stderr:
-        self.err = self.cctbxproc.stderr.read().decode("utf-8")
-    currentinfostr = None
-    if self.out:
-      currentinfostr = self.out.decode("utf-8")
-      print(self.out.decode("utf-8"))
-    if self.err:
-      currentinfostr += self.err.decode("utf-8")
-      print(self.err.decode("utf-8"))
-    """
     if self.zmq_context:
       try:
         binmsg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
@@ -1928,10 +1914,6 @@ def run(isembedded=False, chimeraxsession=None):
 
     # read the users persisted settings from disc
     settings = QSettings("CCTBX", "HKLviewer" )
-    cctbxpython = settings.value("PythonPath", None)
-    if not cctbxpython:
-      cctbxpython = input("Enter the absolute path for the cctbx.python dispatcher: ")
-    print("cctbxpython = %s" %cctbxpython)
     # In case of more than one PySide2 installation tag the settings by version number of PySide2
     # as different versions may use different metrics for font and window sizes
     settings.beginGroup("Qt" + Qtversion)
@@ -1974,6 +1956,16 @@ def run(isembedded=False, chimeraxsession=None):
     if not isembedded:
       QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     app = QApplication(sys.argv)
+    cctbxpython = settings.value("PythonPath", None)
+    if not cctbxpython:
+      from .qt import QInputDialog
+      cctbxpython, ok = QInputDialog.getText(None, "cctbx.python needs specifying",
+                          'The HKLviewer GUI needs to know where the cctbx.python is located.\n' +
+                          'Enter the full path for the executable cctbx.python dispatcher file.\n' +
+                          'Tip: Use the "which" or "where" command from a shell with an active CCTBX environment.')
+    assert cctbxpython
+    #print("cctbxpython = %s" %cctbxpython)
+
     HKLguiobj = NGL_HKLViewer(app, isembedded, cctbxpython)
     time.sleep(1) # make time for zmq_listen loop to start in cctbx subprocess
 

@@ -12,7 +12,11 @@ import libtbx.load_env
 # cctbx.make_install_HKLviewer_ChimeraX "A:\Program Files\ChimeraX 1.2.5\bin\ChimeraX-console.exe"
 
 if (__name__ == "__main__"):
+  print("Bundling up and installing a ChimeraX wheel of cctbx.HKLviewer")
   chimeraXpath = sys.argv[1] # supply the chimeraX commandline compiler as argument
+  if not chimeraXpath:
+    print("Supply path to the chimeraX commandline compiler as argument")
+    exit()
 
   builddir = libtbx.env.under_root(os.path.join("build","ChimeraX_tools","HKLviewer","src"))
   wheeldir = libtbx.env.under_root(os.path.join("build","ChimeraX_tools","HKLviewer"))

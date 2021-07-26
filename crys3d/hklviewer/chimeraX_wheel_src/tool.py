@@ -25,7 +25,7 @@ class TutorialTool(ToolInstance):
     SESSION_SAVE = True         # We do save/restore in sessions
     help = "help:user/tools/tutorial.html"
                                 # Let ChimeraX know about our help page
-   
+
 
     def __init__(self, session, tool_name):
         # 'session'   - chimerax.core.session.Session instance
@@ -56,8 +56,6 @@ class TutorialTool(ToolInstance):
         # the code right here, but for any kind of even moderately complex
         # interface, it is probably better to put the code in a method so
         # that this __init__ method remains readable.
-        from Qt.QtWidgets import QInputDialog
-        QInputDialog.getText(self, "waffle", "wibble")
         self._build_ui()
         session.HKLviewer = self
 
