@@ -233,6 +233,14 @@ modify
       .help = reference model from scaling.model is used.  It should be emphasized that the scaling.model
       .help = is only used to choose the overall alignment, which may be chosen arbitrarily, it does not
       .help = bias the mutual alignment of the experimental diffraction patterns.
+    tranch_size = 600
+      .type = int(value_min=12)
+      .help = Best guess as to the ideal tranch size for generating embedding plots.  Total number of
+      .help = experiments will be divided among the MPI ranks so as to approximate the tranch size,
+      .help = referring to the composite size (each experiment appears in 3 composite tranches).
+      .help = Size represents a tradeoff,  larger size will take longer to compute but use fewer MPI ranks
+      .help = and converge to more accurate coset assignment (higher % consensus).  Ideal value is data
+      .help = dependent, default of 600 is good for a 200-Angstrom cell, but value should increase for smaller cell.
     plot
       {
       do_plot = True
@@ -244,7 +252,7 @@ modify
         .help = the first n_max tranches.
       interactive = False
         .type = bool
-        .help = Open embedding plot in Matplotlib window instead of writing a file.
+        .help = Open embedding plot in Matplotlib window instead of writing a file, overrides do_plot
       format = *png pdf
         .type = choice
         .multiple = False
