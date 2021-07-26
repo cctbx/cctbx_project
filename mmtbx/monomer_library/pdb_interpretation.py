@@ -5567,7 +5567,6 @@ class build_all_chain_proxies(linking_mixins):
       print("""\
   Nucleotide conformation dependent restraints added in %0.1f %sseconds
   """ % utils.greek_time(cdl_nucleotides_time), file=log)
-      assert 0
     #
     if self.pdb_inp and self.pdb_inp.used_amber_restraints():
       restraints_source = 'Amber'
