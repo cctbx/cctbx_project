@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from   __future__        import division
 
 import sys
 import libtbx.env_config
-from   libtbx             import easy_run
-from   os                 import listdir
+from   libtbx            import easy_run
+from   os                import listdir
 
 
 
