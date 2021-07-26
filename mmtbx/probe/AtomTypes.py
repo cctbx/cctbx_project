@@ -830,7 +830,22 @@ class AtomTypes:
 
     return ( ret, warn )
 
-def RunAtomTypeTests(inFileName):
+  def MaximumVDWRadius(self):
+    """Return the maximum VdW radius of any atom type in our table.
+    Cache the result after the first computation so that is faster when we called
+    more than once.
+    """
+    try:
+      return self._maxVDW
+    except:
+      self._maxVDW = self._AtomTable[0][3]
+      for a in self._AtomTable[1:]:
+        v = a[3]
+        if v > self._maxVDW:
+          self._maxVDW = v
+      return self._maxVDW
+
+def Test(inFileName):
 
   #========================================================================
   # Make sure we can fill in mmtbx.probe.ExtraAtomInfoList info.
@@ -878,6 +893,12 @@ def RunAtomTypeTests(inFileName):
 
   print('Found info for', len(extra), 'atoms, the last with radius',extra[-1].vdwRadius)
 
+  # Check MaximumVDWRadius, calling it twice to make sure both the cached and non-cached
+  # results work.
+  for i in range(2):
+    if at.MaximumVDWRadius() != 2.5:
+      return "AtomTypes.Test(): Unexpected MaximumVDWRadius(): got "+str(MaximumVDWRadius())+", expected "+str(2.5)
+
   return ""
 
 if __name__ == '__main__':
@@ -890,7 +911,7 @@ if __name__ == '__main__':
   for i in range(1,len(sys.argv)):
     fileName = sys.argv[i]
 
-  ret = RunAtomTypeTests(fileName)
+  ret = Test(fileName)
   if len(ret) == 0:
     print('Success!')
 
