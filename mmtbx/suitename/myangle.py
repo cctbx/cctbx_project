@@ -90,7 +90,7 @@ def getResidueDihedrals(mgr, altcode='', name='', errorFile = sys.stderr):
     return []
 
   for chain in cchains:
-    print("chain ", chain.id)
+    # print("chain ", chain.id)
     conf = get_matching_conformer(chain, altcode)
       
     names = conf.get_residue_names_padded(pad=False)
@@ -104,7 +104,7 @@ def getResidueDihedrals(mgr, altcode='', name='', errorFile = sys.stderr):
 
     #print(len(backbone_atoms), "backbone atoms")
     # for atom in backbone_atoms:
-    try: 
+    try:
       residues = build_dihedrals(backbone_atoms, chain.id, conf.altloc)
       all_residues.extend(residues)
     except Failure:
@@ -114,9 +114,9 @@ def getResidueDihedrals(mgr, altcode='', name='', errorFile = sys.stderr):
   # if name != "":  # useful for seeing what suites were generated
   #   writeSuitesFile(residues, name)
 
-    if len(all_residues) == 0:
-      errorFile.write("read no residues: perhaps wrong alternate code\n")
-      return all_residues
+  if len(all_residues) == 0:
+    errorFile.write("read no residues: perhaps wrong alternate code\n")
+  return all_residues
 
 
 def get_matching_conformer(chain, altcode):
