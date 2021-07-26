@@ -1875,8 +1875,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     guiargs = [ 'useGuiSocket=' + str(self.sockport),
                'high_quality=True',
               ]
-    if self.cctbxpython is None:
-      self.cctbxpython = "cctbx.python"
+    assert self.cctbxpython is not None
     # subprocess will not create interactive programs ( using popen.communicate() will simply terminate
     # the subprocess after execution). Since we need cmdlineframes.run() to be interactive
     # we start it with shell=True and flags -i -c for cmdlineframes.run() to remain running.
@@ -1909,7 +1908,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     return self.send_message(str(self.datatypedict), msgtype="dict")
 
 
-def run(isembedded=False, cctbxpython=None, chimeraxsession=None):
+def run(isembedded=False, chimeraxsession=None):
   import time
   #time.sleep(10) # enough time for attaching debugger
   try:
@@ -1929,9 +1928,13 @@ def run(isembedded=False, cctbxpython=None, chimeraxsession=None):
 
     # read the users persisted settings from disc
     settings = QSettings("CCTBX", "HKLviewer" )
+    cctbxpython = settings.value("PythonPath", None)
+    if not cctbxpython:
+      cctbxpython = input("Enter the absolute path for the cctbx.python dispatcher: ")
+    print("cctbxpython = %s" %cctbxpython)
     # In case of more than one PySide2 installation tag the settings by version number of PySide2
     # as different versions may use different metrics for font and window sizes
-    settings.beginGroup("PySide2_" + Qtversion)
+    settings.beginGroup("Qt" + Qtversion)
     settings.beginGroup("DataTypesGroups")
     datatypes = settings.childGroups()
     datatypedict = { }
@@ -1975,7 +1978,8 @@ def run(isembedded=False, cctbxpython=None, chimeraxsession=None):
     time.sleep(1) # make time for zmq_listen loop to start in cctbx subprocess
 
     def MyAppClosing():
-      settings.beginGroup("PySide2_" + Qtversion )
+      settings.setValue("PythonPath", HKLguiobj.cctbxpython )
+      settings.beginGroup("Qt" + Qtversion )
       settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
       settings.setValue("FontSize", HKLguiobj.fontsize )
       settings.setValue("BrowserFontSize", HKLguiobj.browserfontsize )

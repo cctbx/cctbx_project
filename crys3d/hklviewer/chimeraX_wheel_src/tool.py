@@ -21,11 +21,11 @@ class TutorialTool(ToolInstance):
     #
     # If cleaning up is needed on finish, override the 'delete' method
     # but be sure to call 'delete' from the superclass at the end.
-
     SESSION_ENDURING = False    # Does this instance persist when session closes
     SESSION_SAVE = True         # We do save/restore in sessions
     help = "help:user/tools/tutorial.html"
                                 # Let ChimeraX know about our help page
+   
 
     def __init__(self, session, tool_name):
         # 'session'   - chimerax.core.session.Session instance
@@ -37,7 +37,6 @@ class TutorialTool(ToolInstance):
         # Set name displayed on title bar (defaults to tool_name)
         # Must be after the superclass init, which would override it.
         self.display_name = "HKLviewer"
-
         # Create the main window for our tool.  The window object will have
         # a 'ui_area' where we place the widgets composing our interface.
         # The window isn't shown until we call its 'manage' method.
@@ -57,6 +56,8 @@ class TutorialTool(ToolInstance):
         # the code right here, but for any kind of even moderately complex
         # interface, it is probably better to put the code in a method so
         # that this __init__ method remains readable.
+        from Qt.QtWidgets import QInputDialog
+        QInputDialog.getText(self, "waffle", "wibble")
         self._build_ui()
         session.HKLviewer = self
 
@@ -70,9 +71,7 @@ class TutorialTool(ToolInstance):
         from . import HKLviewer
 
         hbox = QHBoxLayout()
-        self.Guiobj = HKLviewer.run(isembedded=True,
-                                 cctbxpython=r"C:\Users\Oeffner\OeffnerStuff\Work\CCTBX\build\bin\cctbx.python.bat",
-                                 chimeraxsession=self.session)
+        self.Guiobj = HKLviewer.run(isembedded=True, chimeraxsession=self.session)
         hbox.addWidget(self.Guiobj.window)
         self.tool_window.ui_area.setLayout(hbox)
         # Show the window on the user-preferred side of the ChimeraX
