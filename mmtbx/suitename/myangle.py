@@ -84,7 +84,7 @@ def getResidueDihedrals(mgr, altcode='', name='', errorFile = sys.stderr):
   all_residues = []
   cchains = list(chains)  
   nchains = len(cchains)
-  print(cchains)
+  # print(cchains)
   if nchains == 0:
     print("Model contains no RNA", file=errorFile)
     return []
