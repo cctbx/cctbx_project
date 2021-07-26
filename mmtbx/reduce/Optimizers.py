@@ -104,7 +104,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
   bonded atoms.  Can be obtained by calling mmtbx.probe.Helpers.getBondedNeighborLists().
   :param spatialQuery: Probe.SpatialQuery structure to rapidly determine which atoms
   are within a specified distance of a location.
-  :param extraAtomInfo: Probe.ExtraAtomInfo structure that provides radius and other
+  :param extraAtomInfo: Probe.ExtraAtomInfo mapper that provides radius and other
   information about atoms beyond what is in the pdb.hierarchy.  Used here to determine
   which atoms may be acceptors.
   :returns _PlaceMoversReturn giving the list of Movers found in the conformation and
@@ -243,9 +243,32 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         infoString += "Could not add MoverNH2Flip to "+resNameAndID+": "+str(e)+"\n"
 
     # See if we should insert a MoverHistidineFlip here.
+    # @todo Is there a more general way than looking for specific names?
     if aName == 'NE2' and resName == 'HIS':
       try:
-        movers.append(Movers.MoverHistidineFlip(a, bondedNeighborLists))
+        # Get a potential Mover and test both of its Nitrogens in the original and flipped
+        # locations.  If one or both of them are near enough to be ionically bound to an
+        # ion, then we remove the Hydrogen(s) and lock the Histidine at that orientation
+        # rather than inserting the Mover into the list of those to be optimized.
+        hist = Movers.MoverHistidineFlip(a, bondedNeighborLists, extraAtomInfo)
+
+        # Find the four positions to check for Nitrogen ionic bonds
+        ne2Orig = hist.CoarsePositions().positions[0][0]
+        ne2Flip = hist.CoarsePositions().positions[3][0]
+        nd1Orig = hist.CoarsePositions().positions[0][4]
+        nd1Flip = hist.CoarsePositions().positions[3][4]
+
+        # See if any are close enough to an ion to be ionically bonded.
+        # If any are, record whether it is the original or
+        # the flipped configuration.  Check the original configuration first.
+        # Ignore all of the atoms that are part of the Histidine that might be
+        # moved (including its hydrogens) when checking for these distances.
+        # Check out to the furthest distance of any atom's VdW radius.
+        #for i,pos in enumerate([ne2Orig, nd1Orig, ne2Flip, nd2Flip]):
+        #  neighbors = spatialQuery.neighbors(pos, 0.2, )
+
+        # @todo Add tests
+        movers.append(hist)
         infoString += "Added MoverHistidineFlip to "+resNameAndID+"\n"
       except Exception as e:
         infoString += "Could not add MoverHistidineFlip to "+resNameAndID+": "+str(e)+"\n"
