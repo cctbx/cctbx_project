@@ -17,6 +17,7 @@ import math
 import scitbx.matrix, scitbx.math
 from scitbx.array_family import flex
 from iotbx import pdb
+import mmtbx_probe_ext as probe
 import traceback
 
 ##################################################################################
@@ -35,16 +36,33 @@ import traceback
 #    They sometimes have optional hydrogen placements in the atom groups.
 #
 # All Movers have the following methods, parameters, and return types:
-#  - type PositionReturn: ( flex<atom> atoms, flex<flex<vec3>> positions, flex<float> preferenceEnergies)
+#  - type PositionReturn: (
+#       flex<atom> atoms,
+#       flex<flex<vec3>> positions,
+#       flex<flex<probe.ExtraAtomInfo>> extraInfo,
+#       flex<flex<bool>> deleteMe,
+#       flex<float> preferenceEnergies
+#    )
+#       The atoms element has a list of all of the atoms to be adjusted.
+#       The other elements each have a list of entries, where there is one entry
+#     for each set of positions.  For the elements that have a double list, the
+#     outer list is per entry and the inner list is per atom in the atoms element,
+#     each with a corresponding list index.
+#       The positions element has the new location of each atom in each set of positions.
+#       The extrainfo element has the new ExtraAtomInfo for each atom in each set of positions.
+#     This array may be shorter in length than the number of atoms (any may be empty) because
+#     some Movers to not need to change the information for any or all atoms.  The index in
+#     this array will match the index in the atoms array so the earliest atoms will be
+#     changed if a subset is present.
+#       The deleteMe element tells whether each atom in each set of positions should be
+#     deleted.  This means that it should be ignored in all calculations and also should be
+#     deleted from the model if this configuration is chosen.  This array may be shorter in
+#     length than the number of atoms (any may be empty) because some Movers to not need to
+#     change the information for any or all atoms.  The index in this array will match the
+#     index in the atoms array so the earliest atoms will be deleted if a subset is present.
+#       The preferenceEnergies entry holds an additional bias term that should be added to
+#     the Probe score for each set of positions before comparing them with each other.
 #  - PositionReturn CoarsePositions()
-#     The first return lists all of the hierarchy atoms that move.
-#     The second return has a vector that has some number of positions, each of
-#       which is a vector the same length as the first return
-#       with a vec3 position for each atom.
-#     The third return has a vector of the same length as the number of positions in
-#       each element of the third return; it indicates the relative favorability of
-#       each possible location and should be added to the total energy by an
-#       optimizer to break ties in otherwise-equivalent orientations.
 #  - PositionReturn FinePositions(coarseIndex)
 #     The coarseIndex indicates the index (0 for the first) of the relevant coarse
 #       orientation.
@@ -55,22 +73,27 @@ import traceback
 #       scale; other optimizers may choose to ask for all of the fine positions and
 #       append them to the coarse positions and globally optimize.
 #     Note: Some Movers will return empty arrays.
-#  - type FixUpReturn: ( flex<atom> atoms, flex<vec3> newPositions )
+#  - type FixUpReturn: (
+#       flex<atom> atoms,
+#       flex<vec3> positions,
+#       flex<probe.ExtraAtomInfo> extraInfo,
+#       flex<bool> deleteMe
+#    )
+#       These are lists with one entry per atom telling the same information as the
+#     PositionReturn does, but only for a single set of positions.
 #  - FixUpReturn FixUp(coarseIndex)
 #     The coarseIndex indicates the index (0 for the first) of the relevant coarse
 #       orientation that was finally chosen.
-#     The first return lists the atoms that should be repositioned.
-#     The second return lists the new locations for each atom.
-#     Note: This function may ask to modify atoms other than the ones it reported in its
-#       coarse and fine position functions.  This is to attempt to optimizing bonds
+#     Note: This function may ask to modify atoms other than the ones reported in the
+#       coarse and fine position functions.  This is to enable optimizing bonds
 #       for Flippers.  None of these depend on fine index.
 #     Note: Some Movers will return empty arrays.  This indicates that no fix-up is
 #       needed and the atoms are in their final positions.
 #
-# The caller is responsible for moving the specified atoms to their final positions,
-# whether based on coarse or fine positions.  After applying the coarse or fine
-# adjustment, they must call FixUp() and apply any final changes (which may require
-# removing Hydrogens).
+# The caller is responsible for moving the specified atoms to their positions,
+# modifying the ExtraAtomInfo, and deleting/ignoring them before dong any calculations
+# with them.  After selecting the coarse or fine adjustment, they must call FixUp()
+# and apply any final changes that it returns.
 #
 # The InteractionGraph.py script provides functions for determining which pairs of
 # Movers have overlaps between movable atoms.
@@ -79,17 +102,21 @@ import traceback
 ##################################################################################
 class PositionReturn:
   # Return type from CoarsePosition() and FinePosition() calls.
-  def __init__(self, atoms, positions, preferenceEnergies):
+  def __init__(self, atoms, positions, extraInfos, deleteMes, preferenceEnergies):
     self.atoms = atoms
     self.positions = positions
+    self.extraInfos = extraInfos
+    self.deleteMes = deleteMes
     self.preferenceEnergies = preferenceEnergies
 
 ##################################################################################
 class FixUpReturn:
   # Return type from FixUp() calls.
-  def __init__(self, atoms, newPositions):
+  def __init__(self, atoms, positions, extraInfos, deleteMes):
     self.atoms = atoms
-    self.newPositions = newPositions
+    self.positions = positions
+    self.extraInfos = extraInfos
+    self.deleteMes = deleteMes
 
 ##################################################################################
 class MoverNull:
@@ -97,19 +124,38 @@ class MoverNull:
      Useful as a simple and fast test case for programs that use Movers.
      It also serves as a basic example of how to develop a new Mover.
   '''
-  def __init__(self, atom):
+  def __init__(self, atom, extraAtomInfoMap):
+    """Constructs a MoverNull.
+       :param atom: Single atom to be moved.
+       :param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
+       up the information for atoms whose values need to be changed.  Can be
+       obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
+    """
     self._atom = atom
+    # Make a copy of the extra information so that we can be sure it is not modified
+    # elsewhere before we return it.
+    self._extraAtomInfo = probe.ExtraAtomInfo(extraAtomInfoMap.getMappingFor(self._atom))
   def CoarsePositions(self):
     # returns: The original atom at its original position.
-    return PositionReturn([ self._atom ],
-        [ [ [ self._atom.xyz[0], self._atom.xyz[1], self._atom.xyz[2] ] ] ],
-        [ 0.0 ])
+    return PositionReturn(
+        # Single array of atoms
+        [ self._atom ],
+        # List of lists of positions.  Must be a list rather than a tuple
+        [ [ self._atom.xyz[0], self._atom.xyz[1], self._atom.xyz[2] ] ],
+        # Array of arrays of ExtraAtomInfos
+        # Return a copy of our data so that someone won't modify it outside of us
+        [ [ probe.ExtraAtomInfo(self._extraAtomInfo) ] ],
+        # Array of array of DeleteMes
+        [ [ False ] ],
+        # Single array of preference energies
+        [ 0.0 ]
+    )
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
-    return PositionReturn([], [], [])
+    return PositionReturn([], [], [], [], [])
   def FixUp(self, coarseIndex):
     # No fixups for any coarse index.
-    return FixUpReturn([], [])
+    return FixUpReturn([], [], [], [])
 
 ##################################################################################
 # @todo Consider having another constructor parameter that gives the initial rotation
@@ -229,13 +275,13 @@ class _MoverRotator:
 
     # Return the atoms, coarse-angle poses, and coarse-angle preferences
     return PositionReturn(self._atoms,
-      self._posesFor(self._coarseAngles),
+      self._posesFor(self._coarseAngles), [], [],
       self._preferencesFor(self._coarseAngles, self._preferredOrientationScale))
 
   def FinePositions(self, coarseIndex):
     if not self._doFineRotations:
       # No fine positions for any coarse position.
-      return PositionReturn([], [], [])
+      return PositionReturn([], [], [], [], [])
 
     # We add the range of values to the coarse angle we're starting with to provide
     # the list of fine angles to try.
@@ -250,12 +296,12 @@ class _MoverRotator:
 
     # Return the atoms and poses along with the preferences.
     return PositionReturn(self._atoms,
-      self._posesFor(angles),
+      self._posesFor(angles), [], [],
       self._preferencesFor(angles, self._preferredOrientationScale))
 
   def FixUp(self, coarseIndex):
     # No fixups for any coarse index.
-    return FixUpReturn([], [])
+    return FixUpReturn([], [], [], [])
 
 ##################################################################################
 class MoverSingleHydrogenRotator(_MoverRotator):
@@ -500,7 +546,7 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
        cost to do so (and because this can mask mis-placed atoms by forming spurious hydrogen
        bonds), but it will construct them so that they will be aligned staggered to the
        tetrahedron.
-       @todo Construct these in Reduce so that they will be staggered but do not optimize them.
+       Construct these in Reduce so that they will be staggered but do not optimize them.
        :param atom: Carbon atom bonded to the three Hydrogens that will be rotated.
        It must be bonded to three Hydrogens and a single other
        atom, and the other atom must be bonded to three other atoms.  NOTE: As a side
@@ -698,19 +744,19 @@ class MoverNH2Flip:
     
   def CoarsePositions(self):
     # returns: The two possible coarse positions with 0 energy offset for either.
-    return PositionReturn(self._atoms, self._coarsePositions, [0.0, 0.0])
+    return PositionReturn(self._atoms, self._coarsePositions, [], [], [0.0, 0.0])
 
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
-    return PositionReturn([], [], [])
+    return PositionReturn([], [], [], [], [])
 
   def FixUp(self, coarseIndex):
     # Return the appropriate fixup
-    return FixUpReturn(self._atoms, self._fixUpPositions[coarseIndex])
+    return FixUpReturn(self._atoms, self._fixUpPositions[coarseIndex], [], [])
 
 ##################################################################################
 class MoverHistidineFlip:
-  def __init__(self, ne2Atom, bondedNeighborLists):
+  def __init__(self, ne2Atom, bondedNeighborLists, extraAtomInfoMap):
     """Constructs a Mover that will handle flipping a Histidine ring.
        This Mover uses a simple swap of the center positions of the heavy atoms (with
        repositioning of the Hydrogens to lie in the same directions)
@@ -720,6 +766,9 @@ class MoverHistidineFlip:
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
        bonded atoms.  Can be obtained by calling probe.Helpers.getBondedNeighborLists().
+       :param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
+       up the information for atoms whose values need to be changed.  Can be
+       obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
     """
 
     # Verify that we've been run on a valid structure and get a list of all of the
@@ -858,6 +907,16 @@ class MoverHistidineFlip:
     ne2HNew = _lvec3(ce1Atom.xyz) + ne2HVec.length() * ce1HVec.normalize()
 
     #########################
+    # There are six possible states for the flipped Histidine.  The first three
+    # use the original orientation and the second three use the swapped or fixed
+    # orientation.  The swapped orientation is used for the coarse tests and if
+    # one is accepted, then the fixed orienations are used in place of the swapped.
+    #   For each set of three for a given location, we have three cases of Hydrogen
+    # placement; both (as found), first N Hydrogen removed, and second N Hydrogen
+    # removed.  When the Hydrogen is removed, the associated N is turned into
+    # an Acceptor; when it is present, the N is not an acceptor.
+
+    #########################
     # Compute the list of positions for all of the atoms. This consists of the original
     # location and the flipped location where we swap the locations of the two pairs of heavy atoms
     # and bring the Hydrogens along for the ride.
@@ -867,38 +926,68 @@ class MoverHistidineFlip:
       startPos.append(a.xyz)
 
     newPos = startPos.copy()
-    newPos[0] = ce1Atom.xyz   # ne2 swapped to this location
+    newPos[0] = ce1Atom.xyz   # ne2 moved to this location
     newPos[1] = ne2HNew
-    newPos[2] = ne2Atom.xyz   # ce1 swapped to this location
+    newPos[2] = ne2Atom.xyz   # ce1 moved to this location
     newPos[3] = ce1HNew
-    newPos[4] = cd2Atom.xyz   # nd1 swapped to this location
+    newPos[4] = cd2Atom.xyz   # nd1 moved to this location
     newPos[5] = nd1HNew
-    newPos[6] = nd1Atom.xyz   # cd2 swapped to this location
+    newPos[6] = nd1Atom.xyz   # cd2 moved to this location
     newPos[7] = cd2HNew
 
-    self._coarsePositions = [ startPos, newPos ]
+    self._coarsePositions = [ startPos, startPos, startPos, newPos, newPos, newPos ]
 
     #########################
     # Compute the list of Fixup returns.
     hingeIndex = 8
     firstDockIndex = 0
     secondDockIndex = 2
-    movable = _rotateHingeDock(self._atoms, hingeIndex, firstDockIndex, secondDockIndex, caAtom)
+    fixedUp = _rotateHingeDock(self._atoms, hingeIndex, firstDockIndex, secondDockIndex, caAtom)
 
-    # No fix-up for coarse position 0, do the above adjustment for position 1
-    self._fixUpPositions = [ [], movable ]
+    # No fix-up for coarse positions 0-2, do the above adjustment for position3 3-5
+    self._fixUpPositions = [ [], [], [], fixedUp, fixedUp, fixedUp ]
+
+    #########################
+    # Compute the ExtraAtomInfo and deleteMe values.  They are all as provided and False
+    # for the initial configuration (0th and 3rd).  The first Hydrogen and
+    # Nitrogen are removed and adjusted for the 1st and 4th, the second for the 2nd and 5th.
+    # We make copies of each by constructing new ones so we can independently change them.
+    self._extras = []
+    self._deleteMes = []
+    for i in range(6):
+      # Copy the initial values
+      extras = []
+      deleteMes = []
+      for a in self._atoms:
+        extras.append(probe.ExtraAtomInfo(extraAtomInfoMap.getMappingFor(a)))
+        deleteMes.append(False)
+
+      # Replace any that need it for this configuration.
+      if i % 3 == 1: # Remove the Hydrogen from NE2
+        extras[0].isAcceptor = True
+        deleteMes[1] = True
+
+      if i % 3 == 2: # Remove the Hydrogen from ND1
+        extras[4].isAcceptor = True
+        deleteMes[5] = True
+
+      # Append to the lists.
+      self._extras.append(extras)
+      self._deleteMes.append(deleteMes)
 
   def CoarsePositions(self):
     # returns: The two possible coarse positions with 0 energy offset for either.
-    return PositionReturn(self._atoms, self._coarsePositions, [0.0, 0.0])
+    return PositionReturn(self._atoms, self._coarsePositions,
+      self._extras, self._deleteMes, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
-    return PositionReturn([], [], [])
+    return PositionReturn([], [], [], [], [])
 
   def FixUp(self, coarseIndex):
     # Return the appropriate fixup
-    return FixUpReturn(self._atoms, self._fixUpPositions[coarseIndex])
+    return FixUpReturn(self._atoms, self._fixUpPositions[coarseIndex],
+      self._extras[coarseIndex], self._deleteMes[coarseIndex])
 
 ##################################################################################
 # Internal helper functions to make things that are compatible with vec3_double so
@@ -1102,6 +1191,34 @@ def Test():
   :returns Empty string on success, string describing the problem on failure.
   """
 
+  # Test the behavior of probe.ExtraAtomInfo to ensure that when we make a copy
+  # we can independently modify it.
+  info = probe.ExtraAtomInfo()
+  info2 = probe.ExtraAtomInfo(info)
+  info2.isAcceptor = True
+  if info == info2:
+    return "Movers.Test() Got unexpected behavior when modifying copy-constructed probe.ExtraAtomInfo() "
+
+  # Test the MoverNull class.
+  try:
+    atom = pdb.hierarchy.atom()
+    atoms = [atom]
+    extras = [probe.ExtraAtomInfo()]
+    extrasMap = probe.ExtraAtomInfoMap(atoms, extras)
+    m = MoverNull(atom, extrasMap)
+    coarse = m.CoarsePositions()
+    if len(coarse.atoms) != 1:
+      return "Movers.Test() MoverNull: Expected 1 atom for CoarsePositions, got "+str(len(coarse.atoms))
+    fine = m.FinePositions(0)
+    if len(fine.atoms) != 0:
+      return "Movers.Test() MoverNull: Expected 0 atoms for FinePositions, got "+str(len(fine.atoms))
+    fixUp = m.FixUp(0)
+    if len(fixUp.atoms) != 0:
+      return "Movers.Test() MoverNull: Expected 0 atoms for FixUp, got "+str(len(fixUp.atoms))
+
+  except Exception as e:
+    return "Movers.Test() MoverNull: Exception during test of MoverNull: "+str(e)+"\n"+traceback.format_exc()
+
   # Test the _MoverRotator class.
   try:
     # Construct a _MoverRotator with three atoms, each at +1 in Z with one at +1 in X and 0 in Y
@@ -1165,6 +1282,8 @@ def Test():
     rot = _MoverRotator(atoms,axis, 180, 180, True, preferenceFunction = prefFunc2)
     coarse = rot.CoarsePositions()
     expected = [1, -1]
+    if len(coarse.preferenceEnergies) != len(expected):
+      return "Movers.Test() _MoverRotator Sinusoidal preference function: Unexpected preference length:  "+str(len(coarse.preferenceEnergies))
     for i,p  in enumerate(coarse.preferenceEnergies):
       val = expected[i]
       if p != val:
@@ -1723,7 +1842,7 @@ def Test():
     # 2) New plane of Oxygen, Nitrogen, Alpha Carbon matches old plane, but flipped
     # 3) Carbons and pivot Hydrogens move slightly due to rigid-body motion
 
-    fixed = mover.FixUp(1).newPositions
+    fixed = mover.FixUp(1).positions
     newODir = (fixed[3] - _lvec3(f.xyz)).normalize()
     oldNDir = (_rvec3(n.xyz) - _rvec3(f.xyz)).normalize()
     if (newODir * oldNDir)[0] < 0.9999:
@@ -1854,7 +1973,7 @@ def Test():
     bondedNeighborLists[ca] = [ ln ]
 
     mover = MoverNH2Flip(n, ca.name, bondedNeighborLists)
-    fixed = mover.FixUp(1).newPositions
+    fixed = mover.FixUp(1).positions
 
     # Ensure that the results meet the specifications:
     # 1) New Oxygen on the line from the alpha carbon to the old Nitrogen
@@ -2002,6 +2121,7 @@ def Test():
     m.append_chain(c)
     m.atoms().reset_i_seq()
 
+    # Prepare our bonded-neighbor information
     bondedNeighborLists = {}
     bondedNeighborLists[nd1] = [ nd1h, p, ce1 ]
     bondedNeighborLists[nd1h] = [ nd1 ]
@@ -2017,17 +2137,23 @@ def Test():
     bondedNeighborLists[fh2] = [ f ]
     bondedNeighborLists[ca] = [ f ]
 
-    mover = MoverHistidineFlip(ne2, bondedNeighborLists)
-    fixed = mover.FixUp(1).newPositions
+    # Prepare our extraAtomInfoMap
+    atoms = c.atoms()
+    extras = []
+    for a in atoms:
+      extras.append(probe.ExtraAtomInfo())
+    extrasMap = probe.ExtraAtomInfoMap(atoms, extras)
 
-    # Ensure that the coarse-flip results meet the expections:
+    mover = MoverHistidineFlip(ne2, bondedNeighborLists, extrasMap)
+
+    # Ensure that the coarse-flip results meet the expections (spot check 3rd position):
     # 1) N and C atoms are flipped in pairs
     # 2) H remain at the same distance from the new locations.
 
     coarse = mover.CoarsePositions()
-    if len(coarse.positions) != 2:
-      return "Movers.Test() MoverHistidineFlip: Did not find two locations: "+str(len(coarse.positions))
-    newPos = coarse.positions[1]
+    if len(coarse.positions) != 6:
+      return "Movers.Test() MoverHistidineFlip: Did not find six locations: "+str(len(coarse.positions))
+    newPos = coarse.positions[3]
     dist = (_lvec3(newPos[0]) - _lvec3(ce1.xyz)).length()
     if dist > 0.01:
       return "Movers.Test() MoverHistidineFlip: NE2 moved incorrectly: "+str(dist)
@@ -2061,11 +2187,12 @@ def Test():
     if abs(dHydrogen - oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverHistidineFlip: Bad coarse ND1 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
-    # Ensure that the FixUp results meet the specifications:
+    # Ensure that the FixUp results meet the specifications (spot check 3rd position):
     # 1) New CE1 on the line from the alpha carbon to the old NE2
     # 2) New plane of CE1, NE2, Alpha Carbon matches old plane, but flipped
     # 3) Carbons and pivot Hydrogens move slightly due to rigid-body motion
 
+    fixed = mover.FixUp(3).positions
     newCE1Dir = (fixed[2] - _lvec3(ca.xyz)).normalize()
     oldNE2Dir = (_rvec3(ne2.xyz) - _rvec3(ca.xyz)).normalize()
     if (newCE1Dir * oldNE2Dir)[0] < 0.9999:
@@ -2115,6 +2242,39 @@ def Test():
     oldDHydrogen = (_lvec3(cd2h.xyz)-_lvec3(cd2.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverHistidineFlip: Bad CD2-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+
+    # Ensure that the extraInfo and deleteMe information matches expectations:
+    # 1) First hydrogen removed and first N is an acceptor on % = 1
+    # 2) Second hydrogen removed and second N is an acceptor on % = 2
+    for i in range(6):
+      coarseNE2Accept = coarse.extraInfos[i][0].isAcceptor
+      coarseNE2HDelete = coarse.deleteMes[i][1]
+      fixedNE2Accept = mover.FixUp(i).extraInfos[0].isAcceptor
+      fixedNE2HDelete = mover.FixUp(i).deleteMes[1]
+      coarseND1Accept = coarse.extraInfos[i][4].isAcceptor
+      coarseND1HDelete = coarse.deleteMes[i][5]
+      fixedND1Accept = mover.FixUp(i).extraInfos[4].isAcceptor
+      fixedND1HDelete = mover.FixUp(i).deleteMes[5]
+      if i % 3 == 1:
+        if not coarseNE2Accept:
+          return "Movers.Test() MoverHistidineFlip: No NE2 acceptor, pos "+str(i)
+        if not coarseNE2HDelete:
+          return "Movers.Test() MoverHistidineFlip: Missing NE2 hydrygen deletion, pos "+str(i)
+      else:
+        if coarseNE2Accept:
+          return "Movers.Test() MoverHistidineFlip: Unexpected NE2 acceptor, pos "+str(i)
+        if coarseNE2HDelete:
+          return "Movers.Test() MoverHistidineFlip: Unexpected NE2 hydrygen deletion, pos "+str(i)
+      if i % 3 == 2:
+        if not coarseND1Accept:
+          return "Movers.Test() MoverHistidineFlip: No ND1 acceptor, pos "+str(i)
+        if not coarseND1HDelete:
+          return "Movers.Test() MoverHistidineFlip: Missing ND1 hydrygen deletion, pos "+str(i)
+      else:
+        if coarseND1Accept:
+          return "Movers.Test() MoverHistidineFlip: Unexpected ND1 acceptor, pos "+str(i)
+        if coarseND1HDelete:
+          return "Movers.Test() MoverHistidineFlip: Unexpected ND1 hydrygen deletion, pos "+str(i)
 
   except Exception as e:
     return "Movers.Test() MoverHistidineFlip: Exception during test: "+str(e)+"\n"+traceback.format_exc()
