@@ -94,7 +94,8 @@ class _PlaceMoversReturn:
     self.moverList = moverList
     self.infoString = infoString
 
-def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, extraAtomInfo):
+def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, extraAtomInfo,
+                  maxVDWRadius):
   """Produce a list of Movers for atoms in a pdb.hierarchy.conformer that has added Hydrogens.
   :param atoms: flex array of atoms to search.  This must have all Hydrogens needed by the
   Movers present in the structure already.
@@ -107,6 +108,8 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
   :param extraAtomInfo: Probe.ExtraAtomInfo mapper that provides radius and other
   information about atoms beyond what is in the pdb.hierarchy.  Used here to determine
   which atoms may be acceptors.
+  :param maxVDWRadius: Maximum VdW radius of an atom.  Can be obtained from
+  mmtbx.probe.AtomTypes.AtomTypes().MaximumVDWRadius()
   :returns _PlaceMoversReturn giving the list of Movers found in the conformation and
   an error string that is empty if no errors are found during the process and which
   has a printable message in case one or more errors are found.
@@ -253,21 +256,33 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         hist = Movers.MoverHistidineFlip(a, bondedNeighborLists, extraAtomInfo)
 
         # Find the four positions to check for Nitrogen ionic bonds
-        ne2Orig = hist.CoarsePositions().positions[0][0]
-        ne2Flip = hist.CoarsePositions().positions[3][0]
-        nd1Orig = hist.CoarsePositions().positions[0][4]
-        nd1Flip = hist.CoarsePositions().positions[3][4]
+        cp = hist.CoarsePositions()
+        ne2Orig = cp.positions[0][0]
+        ne2Flip = cp.positions[3][0]
+        nd1Orig = cp.positions[0][4]
+        nd1Flip = cp.positions[3][4]
 
         # See if any are close enough to an ion to be ionically bonded.
         # If any are, record whether it is the original or
         # the flipped configuration.  Check the original configuration first.
-        # Ignore all of the atoms that are part of the Histidine that might be
-        # moved (including its hydrogens) when checking for these distances.
         # Check out to the furthest distance of any atom's VdW radius.
-        #for i,pos in enumerate([ne2Orig, nd1Orig, ne2Flip, nd2Flip]):
-        #  neighbors = spatialQuery.neighbors(pos, 0.2, )
+        myRad = extraAtomInfo.getMappingFor(a).vdwRadius
+        minDist = myRad
+        maxDist = 0.25 + myRad + maxVDWRadius
+        for i,pos in enumerate([ne2Orig, nd1Orig, ne2Flip, nd1Flip]):
+          neighbors = spatialQuery.neighbors(pos, minDist, maxDist)
+          for n in neighbors:
+            # @todo Add a function on native-probe AtomTypes telling whether an atom is metallic.
+            # Pass the AtomTypes object and use it both for the maximum radius and for this
+            # function internally (or make it an Optimizer member and use it internally).
+            # Check this rather than whether the atom is in our group.
+            # @todo Replace with CCTBX native approach to checking for metallic if there is one.
+            if not n.parent() == a.parent():
+              print('XXX found',n.parent().resname,n.parent().parent().resseq_as_int(),n.name,'from HIS',
+                a.parent().parent().resseq_as_int(),'Nitrogen',i)
 
-        # @todo Add tests
+        # @todo Add tests and respond to finding an ionic bond
+
         movers.append(hist)
         infoString += "Added MoverHistidineFlip to "+resNameAndID+"\n"
       except Exception as e:
@@ -398,7 +413,8 @@ def Test(inFileName = None):
 
   ################################################################################
   # Test getting the list of Movers using the _PlaceMovers private function.
-  ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True), bondedNeighborLists, sq, extra)
+  ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True),
+                     bondedNeighborLists, sq, extra, AtomTypes.AtomTypes().MaximumVDWRadius())
   infoString += ret.infoString
   movers = ret.moverList
   print('XXX info:\n'+infoString)
