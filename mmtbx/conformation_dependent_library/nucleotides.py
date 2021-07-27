@@ -13,7 +13,7 @@ def update_restraints(hierarchy,
   from restraintlib.printer import TuplePrinter
   from restraintlib.restraints import analyze_pdb_hierarhy
   restraint_groups = launcher.load_restraints_lib()
-  printer = TuplePrinter(override_sigma=use_phenix_esd)
+  printer = TuplePrinter(override_sigma=use_phenix_esd) # use_phenix_esd not really needed here
   rc = analyze_pdb_hierarhy(hierarchy, restraint_groups, restraint_groups, printer)
   bond_restraints = []
   angle_restraints = {}
@@ -47,7 +47,8 @@ def update_restraints(hierarchy,
     bond=geometry.bond_params_table.lookup(*list(i_seqs))
     remove.append(i)
     bond.distance_ideal=ideal
-    bond.weight = 1/esd**2
+    if not use_phenix_esd:
+      bond.weight = 1/esd**2
     n_bonds+=1
   remove.reverse()
   for r in remove:
@@ -75,8 +76,8 @@ def update_restraints(hierarchy,
           ), end=' ', file=log)
       assert angle_proxy.angle_ideal<181
       angle_proxy.angle_ideal = angle_restraints[i_seqs][0]
-      # if not ignore_esd:
-      angle_proxy.weight = 1/angle_restraints[i_seqs][1]**2
+      if not use_phenix_esd:
+        angle_proxy.weight = 1/angle_restraints[i_seqs][1]**2
       del angle_restraints[i_seqs]
       n_angles+=1
       if verbose:
