@@ -140,6 +140,26 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
 
   return getExtraAtomInfoReturn(extras, warnings)
 
+def isMetallic(atom):
+  """
+    Helper function to report whether a given atom is metallic.
+    :param atom: iotbx.pdb.hierarchy.atom to check.
+    :returns True if the atoms is metallic, False if it is not.  Bases this on
+    the mmtbx.probe.AtomTypes _AtomTable.
+  """
+  # See if we've already made the set to look these up in to save time.
+  element = atom.element
+  try:
+    return element in isMettalic.metallics
+  except:
+    # Build the set by filling in all of the entries in the atom table.
+    at = mmtbx.probe.AtomTypes.AtomTypes()
+    isMetallic.metallics = set()
+    for e in at._AtomTable:
+      if e[8] & mmtbx.probe.AtomTypes.AtomFlags.METALLIC_ATOM:
+        isMetallic.metallics.add(e[1])
+    return element in isMetallic.metallics
+
 def Test(inFileName = None):
 
   #========================================================================
@@ -181,6 +201,15 @@ def Test(inFileName = None):
 
   # Run unit test on getExtraAtomInfo().
   # @todo
+
+  # Run spot checks on isMetallic()
+  a = iotbx.pdb.hierarchy.atom()
+  a.element = "Li"
+  if not isMetallic(a):
+    return "Helpers.Test(): Lithium not listed as metallic"
+  a.element = "He"
+  if isMetallic(a):
+    return "Helpers.Test(): Helium listed as metallic"
 
   return ""
 
