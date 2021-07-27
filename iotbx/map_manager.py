@@ -370,6 +370,8 @@ class map_manager(map_reader, write_ccp4_map):
       self.log = sys.stdout
 
   def __repr__(self):
+    if self.is_dummy_map_manager():
+      return "Dummy map_manager"
     text = "Map manager (from %s)" %(self.file_name)+\
         "\n%s, \nUnit-cell grid: %s, (present: %s), origin shift %s " %(
       str(self.unit_cell_crystal_symmetry()).replace("\n"," "),

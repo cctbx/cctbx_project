@@ -203,8 +203,8 @@ master_phil = iotbx.phil.parse("""
 
      b_sharpen = None
        .type = float
-       .short_caption = Sharpening
-       .help = Sharpen with this b-value. Contrast with b_iso that yield a \
+       .short_caption = B-sharpen to apply
+       .help = Sharpen with this b-value. Contrast with b_iso that yields a \
            targeted value of b_iso
 
      b_blur_hires = 200
@@ -405,7 +405,7 @@ master_phil = iotbx.phil.parse("""
 
      remove_aniso = True
        .type = bool
-       .short_caption = Remove aniso
+       .short_caption = Remove anisotropy
        .help = You can remove anisotropy (overall and locally) during sharpening
 
      max_box_fraction = 0.5

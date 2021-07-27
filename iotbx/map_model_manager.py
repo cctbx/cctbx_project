@@ -195,7 +195,8 @@ class map_model_manager(object):
     if any_map_manager:
       for m in [model] + extra_model_list:
         if not m: continue
-        self.add_crystal_symmetry_if_necessary(m, map_manager = any_map_manager)
+        self.add_crystal_symmetry_to_model_if_necessary(
+            m, map_manager = any_map_manager)
         self.shift_any_model_to_match(m, map_manager = any_map_manager)
 
 
@@ -2835,7 +2836,7 @@ class map_model_manager(object):
     if target_model:
       if target_model.shift_cart() != self.shift_cart():
         if not shift_without_deep_copy:
-          self.add_crystal_symmetry_if_necessary(target_model,
+          self.add_crystal_symmetry_to_model_if_necessary(target_model,
             map_manager = self.map_manager())
           target_model = target_model.deep_copy()
         self.shift_any_model_to_match(target_model)
@@ -2844,7 +2845,7 @@ class map_model_manager(object):
     if matching_model:
       if matching_model.shift_cart() != self.shift_cart():
         if not shift_without_deep_copy:
-          self.add_crystal_symmetry_if_necessary(matching_model,
+          self.add_crystal_symmetry_to_model_if_necessary(matching_model,
             map_manager = self.map_manager())
           matching_model = matching_model.deep_copy()
         self.shift_any_model_to_match(matching_model)
@@ -3360,7 +3361,8 @@ class map_model_manager(object):
     # And propagate these sites to rest of molecule with internal ncs
     model.set_sites_cart_from_hierarchy(multiply_ncs=True)
 
-  def add_crystal_symmetry_if_necessary(self, model, map_manager = None):
+  def add_crystal_symmetry_to_model_if_necessary(self,
+       model, map_manager = None):
     '''
     Take any model and add crystal symmetry if it is missing
     Changes model in place
@@ -3378,7 +3380,6 @@ class map_model_manager(object):
     if (not model.crystal_symmetry()) or (
         not model.crystal_symmetry().unit_cell()):
       map_manager.set_model_symmetries_and_shift_cart_to_match_map(model)
-      model.set_shift_cart((0, 0, 0))
 
   def shift_any_model_to_match(self, model, map_manager = None):
     '''
@@ -3396,7 +3397,8 @@ class map_model_manager(object):
       map_manager = self.get_any_map_manager()
     assert map_manager is not None
 
-    self.add_crystal_symmetry_if_necessary(model, map_manager = map_manager)
+    self.add_crystal_symmetry_to_model_if_necessary(
+        model, map_manager = map_manager)
 
     if not model.shift_cart():
       model.set_shift_cart((0, 0, 0))
