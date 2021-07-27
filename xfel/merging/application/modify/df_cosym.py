@@ -4,7 +4,6 @@ import pandas as pd
 from scitbx.array_family import flex
 from collections import OrderedDict
 from itertools import permutations
-import copy
 
 class reconcile_cosym_reports:
   def __init__(self, reports):
@@ -141,7 +140,7 @@ class reconcile_cosym_reports:
     return n_proposal_score
 
   def composite_tranch_merge(self, voting_method="consensus"):
-    print("simple merge")
+    print("composite tranch merge")
     pd.set_option('display.max_rows', 300)
     pd.set_option('display.max_columns', 8)
     pd.set_option("display.width", None)
@@ -160,45 +159,15 @@ class reconcile_cosym_reports:
     print("There are %d reports"%len(reports_as_lists))
     print([(len(reports_as_lists[i][0]),len(reports_as_lists[i][1])) for i in range(len(reports_as_lists))])
 
+    #Bypass reconciliation and voting if there is only one tranch
+    if len(reports_as_lists)==1 : return self.reports[0][0] # dataframe with one tranch
+
     # now modify the reports-as-list structure so ranks line up with respect to their coset assignments
     # entire function is same as simple_merge except in this block, where attention is paid to whether
     # there are sufficient overlap with base tranch.
 
     from xfel.merging.application.modify.cosym_tranch_align import alignment_by_embedding
     reports_as_lists = alignment_by_embedding(reports_as_lists)
-    """
-    current_score = self.get_proposal_score(reports_as_lists)
-
-    for irow in range(len(reports_as_lists)):
-      base_report = reports_as_lists[irow]
-      base_all = set(base_report[0]) # base_all is the union of all uuids for irow
-      for icoset in range(1, len(base_report)):
-        base_all = base_all.union(set(base_report[icoset]))
-
-      for icolumn in range(irow, len(reports_as_lists)):
-        test_report = reports_as_lists[icolumn]
-        test_all = set(test_report[0]) # test_all is the union of all uuids for icolumn
-        for icoset in range(1, len(test_report)):
-          test_all = test_all.union(set(test_report[icoset]))
-        # total overlay between base and test irrespective of cosets;
-        total_overlay = len(base_all.intersection(test_all))
-        if total_overlay == 0 : continue # nothing to be gained due to no overlap
-
-        cache_permutations = list(permutations(reports_as_lists[icolumn]))
-        for iperm in range(1,len(cache_permutations)):
-          matches = 0
-          for icoset in range(len(test_report)):
-            matches += len(set(base_report[icoset]).intersection(set(test_report[icoset])))
-          #print ('%3d/%3d'%(matches, total_overlay),end=' ')
-          if matches/total_overlay > 0.5: break
-          new_proposal = copy.deepcopy(reports_as_lists)
-          new_proposal[icolumn] = cache_permutations[iperm] # all that is needed is to increment to next permutation?
-          proposal_score = self.get_proposal_score(new_proposal)
-          current_score = proposal_score
-          reports_as_lists = new_proposal
-          print("evaluating irow %d icolumn %d permutation %d"%(irow, icolumn,iperm))
-          print("Current",current_score)
-    """
 
     # merge everything together into experiments plus votes
     experiment_lookup = dict()
