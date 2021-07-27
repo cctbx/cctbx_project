@@ -1,4 +1,4 @@
-import os, sys
+from __future__ import division
 
 def update_restraints(hierarchy,
                       geometry, # restraints_manager,
