@@ -148,7 +148,7 @@ def isMetallic(atom):
     the mmtbx.probe.AtomTypes _AtomTable.
   """
   # See if we've already made the set to look these up in to save time.
-  element = atom.element
+  element = atom.element.upper()
   try:
     return element in isMettalic.metallics
   except:
@@ -157,7 +157,7 @@ def isMetallic(atom):
     isMetallic.metallics = set()
     for e in at._AtomTable:
       if e[8] & mmtbx.probe.AtomTypes.AtomFlags.METALLIC_ATOM:
-        isMetallic.metallics.add(e[1])
+        isMetallic.metallics.add(e[1].upper())
     return element in isMetallic.metallics
 
 def Test(inFileName = None):
@@ -226,5 +226,7 @@ if __name__ == '__main__':
   ret = Test(fileName)
   if len(ret) == 0:
     print('Success!')
+  else:
+    print(ret)
 
   assert (len(ret) == 0)
