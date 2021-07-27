@@ -457,6 +457,8 @@ class miller_array_builder(crystal_symmetry_builder):
                 scale_group_code=scale_group)
               # millarr will be None for column data not matching w_id,crys_id,scale_group values
               if millarr is None or phasesmillarr is None: continue
+              if(not check_array_sizes(millarr, phasesmillarr, phaseamplabl[0], phaseamplabl[1])):
+                continue
               phases = as_flex_double(phasesmillarr, phaseamplabl[1])
               millarr = millarr.phase_transfer(phases, deg=True)
               labl = basearraylabels + phaseamplabl + labelsuffix
@@ -478,8 +480,14 @@ class miller_array_builder(crystal_symmetry_builder):
                   sigmasstrarray, wavelength_id=w_id, crystal_id=crys_id,
                   scale_group_code=scale_group)
                 sigmas = as_flex_double(sigmas, siglabl)
-                millarr.set_sigmas(sigmas.data())
-                datsiglabl = [datlabl, siglabl]
+                if check_array_sizes(millarr, sigmas, datlabl, siglabl):
+                  millarr.set_sigmas(sigmas.data())
+                  datsiglabl = [datlabl, siglabl]
+                else:
+                  sigmas.set_info(base_array_info.customized_copy(labels= [siglabl],
+                                                    wavelength=wavelengths.get(w_id, None)))
+                  self._arrays[ siglabl +jlablsufx ] = sigmas
+
               datsiglabl = basearraylabels + datsiglabl + labelsuffix
               millarr.set_info(base_array_info.customized_copy(labels= datsiglabl,
                                                 wavelength=wavelengths.get(w_id, None)))
