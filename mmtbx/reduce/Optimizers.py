@@ -269,22 +269,35 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         myRad = extraAtomInfo.getMappingFor(a).vdwRadius
         minDist = myRad
         maxDist = 0.25 + myRad + maxVDWRadius
+        bondedConfig = None
         for i,pos in enumerate([ne2Orig, nd1Orig, ne2Flip, nd1Flip]):
           neighbors = spatialQuery.neighbors(pos, minDist, maxDist)
           for n in neighbors:
-            # @todo Add a function on native-probe AtomTypes telling whether an atom is metallic.
-            # Pass the AtomTypes object and use it both for the maximum radius and for this
-            # function internally (or make it an Optimizer member and use it internally).
-            # Check this rather than whether the atom is in our group.
-            # @todo Replace with CCTBX native approach to checking for metallic if there is one.
-            if not n.parent() == a.parent():
-              print('XXX found',n.parent().resname,n.parent().parent().resseq_as_int(),n.name,'from HIS',
-                a.parent().parent().resseq_as_int(),'Nitrogen',i)
+            if Helpers.isMetallic(n):
+              dist = (Movers._rvec3(a.xyz) - Movers._rvec3(n.xyz)).length()
+              expected = extraAtomInfo.getMappingFor(a).vdwRadius + extraAtomInfo.getMappingFor(n).vdwRadius
+              if dist >= (expected - 0.55) and dist <= (expected + 0.25):
+                bondedConfig = i // 2
+                print('XXX Ionic bond, config',bondedConfig)
 
-        # @todo Add tests and respond to finding an ionic bond
+        # If one of the bonded configurations has at least one Ionic bond, then check each of
+        # the Nitrogens in that configuration, removing its Hydrogen if it is bonded to an ion.
+        # Set the histidine in that flip state; it will not be inserted as a Mover.
+        if bondedConfig is not None:
+          # Set the histidine in that flip state
+          fixUp = hist.fixUp(bondedConfig):
+          for i,a in enumerate fixUp.atoms:
+            a.xyz = fixUp.positions[i]
+            extraAtomInfo.setMappingFor(a, fixUp.extraInfo[i])
 
-        movers.append(hist)
-        infoString += "Added MoverHistidineFlip to "+resNameAndID+"\n"
+          # See if we should remove the Hydrogen from each of the two potentially-bonded
+          # Nitrogens.
+          # @todo
+
+          infoString += "Set MoverHistidineFlip on "+resNameAndID+" to state "+str(i)+"\n"
+        else:
+          movers.append(hist)
+          infoString += "Added MoverHistidineFlip to "+resNameAndID+"\n"
       except Exception as e:
         infoString += "Could not add MoverHistidineFlip to "+resNameAndID+": "+str(e)+"\n"
 
@@ -326,7 +339,7 @@ def GetAtomsForConformer(model, conf):
   return ret
 
 ##################################################################################
-# Test function to verify that all functions behave properly.
+# Test function and associated data and helpers to verify that all functions behave properly.
 
 def Test(inFileName = None):
   """Test function for all functions provided above.
@@ -419,6 +432,28 @@ def Test(inFileName = None):
   movers = ret.moverList
   print('XXX info:\n'+infoString)
   print('XXX Found',len(movers),'Movers')
+
+  ################################################################################
+  # Test using 1xso to ensure that the Histidine placement code will lock down the
+  # Histidine, set its Nitrogen states, and mark its Hydrogens for deletion.  To
+  # ensure that hydrogen placement puts them there in the first place, we first
+  # move the CU and ZN far from the Histidine before adding Hydrogens, then move
+  # them back before building the spatial hierarchy and testing.
+  pdb_1xso_his_61_and_ions ="""
+  ATOM    442  N   HIS A  61      26.965  32.911   7.593  1.00  7.19           N  
+  ATOM    443  CA  HIS A  61      27.557  32.385   6.403  1.00  7.24           C  
+  ATOM    444  C   HIS A  61      28.929  31.763   6.641  1.00  7.38           C  
+  ATOM    445  O   HIS A  61      29.744  32.217   7.397  1.00  9.97           O  
+  ATOM    446  CB  HIS A  61      27.707  33.547   5.385  1.00  9.38           C  
+  ATOM    447  CG  HIS A  61      26.382  33.956   4.808  1.00  8.78           C  
+  ATOM    448  ND1 HIS A  61      26.168  34.981   3.980  1.00  9.06           N  
+  ATOM    449  CD2 HIS A  61      25.174  33.397   5.004  1.00 11.08           C  
+  ATOM    450  CE1 HIS A  61      24.867  35.060   3.688  1.00 12.84           C  
+  ATOM    451  NE2 HIS A  61      24.251  34.003   4.297  1.00 11.66           N  
+  HETATM 2190 CU    CU A   1      22.291  33.388   3.996  1.00 13.22          CU  
+  HETATM 2191 ZN    ZN A 152      27.539  36.010   2.881  1.00  9.34          ZN  
+  """
+  # @todo
 
   # @todo
   return ""
