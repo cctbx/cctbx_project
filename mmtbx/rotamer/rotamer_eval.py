@@ -23,8 +23,10 @@ def find_rotarama_data_dir(optional=False):
       if result is None and not optional:
         raise Sorry("""\
 Can't find chem_data/rotarama_data/ directory:
-  Please run
-    svn co svn://quiddity.biochem.duke.edu:21/phenix/rotarama_data
+  Inside chem_data, please run
+    svn --quiet --non-interactive --trust-server-cert export https://github.com/rlabduke/reference_data.git/trunk/Top8000/Top8000_rotamer_pct_contour_grids rotarama_data
+    svn --quiet --non-interactive --trust-server-cert --force export https://github.com/rlabduke/reference_data.git/trunk/Top8000/Top8000_ramachandran_pct_contour_grids rotarama_data
+    mmtbx.rebuild_rotarama_cache
   to resolve this problem.""")
   return result
 
