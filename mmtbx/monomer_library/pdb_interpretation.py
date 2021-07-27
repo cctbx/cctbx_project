@@ -5555,11 +5555,13 @@ class build_all_chain_proxies(linking_mixins):
       from mmtbx.conformation_dependent_library import nucleotides
       from libtbx import utils
       restraints_source += ' + Nucleotide CDL'
+      use_phenix_esd = self.params.restraints_library.cdl_nucleotides_esd=='phenix'
       t0=time.time()
       nucleotides.update_restraints(
         self.pdb_hierarchy,
         result, # geometry
         #current_geometry=model.xray_structure,
+        use_phenix_esd=use_phenix_esd,
         log=log,
         verbose=False,
         )
