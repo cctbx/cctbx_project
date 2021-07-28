@@ -111,6 +111,7 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
                 self._experiments, self._reflections = select_datasets_on_identifiers(
                     self._experiments, self._reflections, use_datasets=identifiers
                 )
+                self.uuid_cache = [self.uuid_cache[int(id)] for id in identifiers]
 
         # Map experiments and reflections to minimum cell
         cb_ops = change_of_basis_ops_to_minimum_cell(
