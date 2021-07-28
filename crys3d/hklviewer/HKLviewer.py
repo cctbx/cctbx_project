@@ -1956,15 +1956,27 @@ def run(isembedded=False, chimeraxsession=None):
     if not isembedded:
       QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     app = QApplication(sys.argv)
+    # Locate cctbx.python. If not in the Qsettings then try if in the executable path environment
     cctbxpython = settings.value("PythonPath", "")
-    if not os.path.exists(cctbxpython):
+    if not os.path.isfile(cctbxpython):
+      wherecmd = "which"
+      if sys.platform == 'win32':
+        wherecmd = "where"
+      proc = subprocess.Popen([wherecmd, "cctbx.python"],
+                              universal_newlines=True, # avoid them annoying byte strings
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE).communicate()
+      if proc[0] != "":
+        cctbxpython = proc[0].strip()
+    if not os.path.isfile(cctbxpython):
       from .qt import QInputDialog
       cctbxpython, ok = QInputDialog.getText(None, "cctbx.python needs specifying",
                           'The HKLviewer GUI needs to know where the cctbx.python is located.\n' +
                           'Enter the full path for the executable cctbx.python dispatcher file.\n' +
                           'Tip: Use the "which" or "where" command from a shell with an active CCTBX environment.')
-    if not os.path.exists(cctbxpython):
+    if not os.path.isfile(cctbxpython):
       raise Exception("The file, %s, does not exists!\n" %cctbxpython)
+    print("HKLviewer using cctbx.python from: %s" %cctbxpython)
 
     HKLguiobj = NGL_HKLViewer(app, isembedded, cctbxpython)
     time.sleep(1) # make time for zmq_listen loop to start in cctbx subprocess
