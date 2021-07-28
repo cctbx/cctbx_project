@@ -23,6 +23,7 @@ import iotbx.data_manager
 import cctbx.maptbx.box
 import mmtbx
 import mmtbx_probe_ext as probe
+from scitbx.array_family import flex
 import mmtbx.probe.AtomTypes
 
 def getBondedNeighborLists(atoms, bondProxies):
@@ -49,6 +50,34 @@ def getBondedNeighborLists(atoms, bondProxies):
     bondedNeighbors[atomDict[bp.i_seqs[0]]].append(atomDict[bp.i_seqs[1]])
     bondedNeighbors[atomDict[bp.i_seqs[1]]].append(atomDict[bp.i_seqs[0]])
   return bondedNeighbors
+
+def getAtomsWithinNBonds(atom, bondedNeighborLists, N):
+  """
+    Helper function to produce a list of all of the atoms that are bonded to the
+    specified atoms, or to one of the atoms bonded to the specified atom, recursively
+    to a depth of N.  The atom itself will not be included in the list, so an atom that
+    has no bonded neighbors will always have an empty result.  This can be used to
+    produce a list of excluded atoms for dot scoring.
+    :param atom: The atom to be tested.
+    :param bondedNeighborLists: Dictionary of lists that contain all bonded neighbors for
+    each atom in a set of atoms.  Should be obtained using
+    mmtbx.probe.Helpers.getBondedNeighborLists().
+    :param N: Depth of recursion.  N=1 will return the atoms bonded to atom.  N=2 will
+    also return those bonded to these neighbors (but not the atom itself).
+    :returns a list of all atoms that are bonded to atom within a depth of N.  The original
+    atom is never on the list.
+  """
+  # Find all atoms to the specified depth
+  atoms = {atom}            # Initialize the set with the atom itself
+  for i in range(N):        # Repeat the recursion this many times
+    current = list(atoms)   # Make a copy so we're not modifying the list we are traversing
+    for a in current:       # Add all neighbors of all atoms in the current level
+      for n in bondedNeighborLists[a]:
+        atoms.add(n)
+
+  # Remove the original atom from the result and turn the result into a list.
+  atoms.discard(atom)
+  return list(atoms)
 
 class getExtraAtomInfoReturn:
   """
@@ -181,8 +210,64 @@ def Test(inFileName = None):
   # @todo
 
   #========================================================================
-  # Run unit test on getBondedNeighborLists().
-  # @todo
+  # Run unit test on getBondedNeighborLists().  We use a specific PDB snippet
+  # for which we know the answer and then we verify that the results are what
+  # we expect.
+  pdb_1xso_his_61 = (
+"""
+ATOM    442  N   HIS A  61      26.965  32.911   7.593  1.00  7.19           N  
+ATOM    443  CA  HIS A  61      27.557  32.385   6.403  1.00  7.24           C  
+ATOM    444  C   HIS A  61      28.929  31.763   6.641  1.00  7.38           C  
+ATOM    445  O   HIS A  61      29.744  32.217   7.397  1.00  9.97           O  
+ATOM    446  CB  HIS A  61      27.707  33.547   5.385  1.00  9.38           C  
+ATOM    447  CG  HIS A  61      26.382  33.956   4.808  1.00  8.78           C  
+ATOM    448  ND1 HIS A  61      26.168  34.981   3.980  1.00  9.06           N  
+ATOM    449  CD2 HIS A  61      25.174  33.397   5.004  1.00 11.08           C  
+ATOM    450  CE1 HIS A  61      24.867  35.060   3.688  1.00 12.84           C  
+ATOM    451  NE2 HIS A  61      24.251  34.003   4.297  1.00 11.66           N  
+END
+"""
+    )
+
+  dm = iotbx.data_manager.DataManager(['model'])
+  dm.process_model_str("1xso_snip.pdb",pdb_1xso_his_61)
+  model = dm.get_model()
+  model.process_input_model(make_restraints=True) # make restraints
+
+  # Get the first model in the hierarchy.
+  atoms = model.get_hierarchy().models()[0].atoms()
+
+  # Get the Cartesian positions of all of the atoms we're considering for this alternate
+  # conformation.
+  carts = flex.vec3_double()
+  for a in atoms:
+    carts.append(a.xyz)
+
+  # Get the bond proxies for the atoms in the model and conformation we're using and
+  # use them to determine the bonded neighbor lists.
+  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+  bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies)
+
+  # Check the counts in the neighbor lists to make sure they match what we expect
+  neighborCounts = {"N": 1, "CA": 3, "C": 2, "O": 1, "CB": 2,
+                    "CG": 3, "ND1": 2, "CD2": 2, "CE1":2, "NE2": 2}
+  for a in atoms:
+    if len(bondedNeighborLists[a]) != neighborCounts[a.name.strip()]:
+      return ("Helpers.Test(): Neighbor count for "+a.name.strip()+" was "+
+        str(len(bondedNeighborLists[a]))+", expected "+str(neighborCounts[a.name.strip()]))
+
+  #========================================================================
+  # Run unit test on getAtomsWithinNBonds().
+  # Get the atoms within N bounds for a range for the "N" atom and verify that the
+  # counts match what is expected.
+  # NOTE: This re-uses the bondedNeighborLists test results from above
+  nestedNeighborsForN = [ None, 1, 3, 5, 7, 9, 9]
+  for N in range(1,7):
+    count = len(getAtomsWithinNBonds(atoms[0], bondedNeighborLists, N))
+    if count != nestedNeighborsForN[N]:
+      return ("Helpers.Test(): Nested count for "+atoms[0].name.strip()+
+        " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN[N]))
+
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
