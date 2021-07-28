@@ -208,6 +208,14 @@ geo_asserts.append(
    104.20   91.11   13.09 1.50e+00 4.44e-01 7.61e+01''',
   ])
 
+restraintlib_installed=True
+try:
+  from restraintlib import launcher
+  from restraintlib.printer import TuplePrinter
+  from restraintlib.restraints import analyze_pdb_hierarhy
+except ImportError as e:
+  restraintlib_installed = False
+
 def main():
   i=0
   filename = 'cdl_nucleotide.pdb'
@@ -215,6 +223,7 @@ def main():
   f.write(pdb)
   del f
   for param1 in range(2):
+    if param1 and not restraintlib_installed: break
     for param2 in ['phenix', 'csd']:
       cmd = 'phenix.pdb_interpretation %s write_geo=True cdl_nucleotides=%s cdl_nucleotides_esd=%s' % (
         filename,
