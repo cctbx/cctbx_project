@@ -420,7 +420,10 @@ def membership(bin, suite):
     if distance <= 1:
         suiteness = (cos(pi * distance) + 1) / 2
         if suiteness < 0.01:
-            suiteness = 0.01
+          suiteness = 0.01
+        elif suiteness >= 0.1 and suiteness < 0.2:
+          suite.dbflag = True   # chasing a specific bug KPB
+
     else:
         if closestJ != 0:
             # 7D distance forces this suite to be an outlier

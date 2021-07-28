@@ -252,6 +252,7 @@ class Suite:
         self.suiteness = 0.0
         self.distance = 0.0
         self.notes = ""
+        self.dbflag = False
 
     def validate(self):
         # make sure that angles deltaMinus through delta are reasonable

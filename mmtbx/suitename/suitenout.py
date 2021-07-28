@@ -79,6 +79,9 @@ def reportSuite(outFile, suite):
 
     # 1. write one line of output for this suite
     reason = ""; note=""
+    outIDs = ":".join(suite.pointID)
+    if suite.dbflag: # debug KPB 
+       suite.comment = "FLAG" + suite.comment    
     if suite.issue:
         reason = " " + reasons[suite.issue]
     elif suite.comment:
@@ -87,7 +90,6 @@ def reportSuite(outFile, suite):
         reason += " " + suite.situation
     if suite.cluster.status == "wannabe":
         note = " wannabe"
-    outIDs = ":".join(suite.pointID)
     output = (
         f"{outIDs} {suite.bin.name} {suite.cluster.name} {float(suite.suiteness):5.3f}{reason}{note}\n"
     )
@@ -99,52 +101,6 @@ def reportSuite(outFile, suite):
     bin = suite.bin
     cluster = suite.cluster
     suiteness = suite.suiteness
-    if bin.ordinal == 0:
-        trigCountAll += 1
-    elif bin.ordinal < 13:
-        suitenessSumAll += suiteness
-        binSuiteCountAll += 1
-
-    if cluster.ordinal == 0:
-        cluster.suitenessCounts[11] += 1
-    else:
-        cluster.suitenessSum += suiteness
-        # report in statistical baskets at intervals of 0.1:
-        # everything from 0 to 0.1 goes in bucket 1
-        # ... everything from 0.9 to 1.o goes into bucket 10
-        if suiteness == 0:
-            bucket = 0
-        else:
-            bucket = 1 + int(suiteness * 10)
-        cluster.suitenessCounts[bucket] += 1
-
-
-# deprecated, superseded by reportSuite
-def report1Suite(
-    suite, bin, cluster, notes, distance, suiteness, issue, comment
-):  # ? LComment, Ltriage
-    global reportCountAll, trigCountAll, suitenessSumAll, binSuiteCountAll
-
-    # 1. write one line of output for this suite
-    reason = ""
-    if issue:
-        reason = " " + reasons[issue]
-    elif comment:
-        reason = " " + comment
-        comment = ""
-    elif notes and options.causes:
-        reason += " " + notes
-    if cluster.status == "wannabe":
-        comment = " wannabe"
-    outIDs = ":".join(suite.pointID)
-    output = (
-        f"{outIDs} {bin.name} {cluster.name} {float(suiteness):5.3f}{reason}{comment}\n"
-    )
-    sys.stdout.write(output)
-
-    # 2. gather statistics
-    reportCountAll += 1
-
     if bin.ordinal == 0:
         trigCountAll += 1
     elif bin.ordinal < 13:
@@ -450,7 +406,7 @@ def binOut(outFile, bin, suites):
             "nohilite master= {{data}}\n"
         ).format(bin.name, cluster.name, cluster.clusterColor)
         outFile.write(ballList)
-        outPoints(outFile, bin, cluster, suites, "")
+        outPoints(outFile, bin, cluster, suites, "'O' white")
 
 
 def outPoints(outFile, bin, cluster, suites, extra1):
