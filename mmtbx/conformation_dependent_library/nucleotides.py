@@ -43,9 +43,12 @@ def update_restraints(hierarchy,
       assert 0
   remove=[]
   n_bonds=0
+  c_bonds=0
   for i, (i_seqs, ideal, esd) in enumerate(bond_restraints):
     bond=geometry.bond_params_table.lookup(*list(i_seqs))
     remove.append(i)
+    if bond.distance_ideal!=ideal:
+      c_bonds+=1
     bond.distance_ideal=ideal
     if not use_phenix_esd:
       bond.weight = 1/esd**2
@@ -54,6 +57,7 @@ def update_restraints(hierarchy,
   for r in remove:
     del bond_restraints[r]
   n_angles=0
+  c_angles=0
   for angle_proxy in geometry.angle_proxies:
     i_seqs = list(angle_proxy.i_seqs)
     ap = None
@@ -75,6 +79,8 @@ def update_restraints(hierarchy,
           angle_proxy.weight,
           ), end=' ', file=log)
       assert angle_proxy.angle_ideal<181
+      if angle_proxy.angle_ideal!=angle_restraints[i_seqs][0]:
+        c_angles+=1
       angle_proxy.angle_ideal = angle_restraints[i_seqs][0]
       if not use_phenix_esd:
         angle_proxy.weight = 1/angle_restraints[i_seqs][1]**2
@@ -98,7 +104,7 @@ def update_restraints(hierarchy,
   assert not angle_restraints, 'not finished angle_restraints: %s' % angle_restraints
   if n_bonds or n_angles:
     print('''  CDL for nucleotides adjusted restraints counts
-    bonds  : %-5d
-    angles : %-5d''' % (n_bonds, n_angles),
+    bonds  : %5d (%5d)
+    angles : %5d (%5d)''' % (n_bonds, c_bonds, n_angles, c_angles),
       file=log)
   return
