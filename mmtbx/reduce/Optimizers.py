@@ -89,10 +89,13 @@ class NullOptimizer:
 class _PlaceMoversReturn:
   # Return type from PlaceMovers() call.  List of movers and then an information string
   # that may contain information the user would like to know (where Movers were placed,
-  # failed Mover placements due to missing Hydrogens, etc.).
-  def __init__(self, moverList, infoString):
+  # failed Mover placements due to missing Hydrogens, etc.).  Also returns a list of
+  # atoms that should be deleted as a result of situations determined during the
+  # placement.
+  def __init__(self, moverList, infoString, deleteAtoms):
     self.moverList = moverList
     self.infoString = infoString
+    self.deleteAtoms = deleteAtoms
 
 def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, extraAtomInfo,
                   maxVDWRadius):
@@ -117,6 +120,9 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
 
   # List of Movers to return
   movers = []
+
+  # List of atoms to delete
+  deleteAtoms = []
 
   # Information string to return, filled in when we cannot place a Mover.
   infoString = ""
@@ -256,6 +262,8 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         hist = Movers.MoverHistidineFlip(a, bondedNeighborLists, extraAtomInfo)
 
         # Find the four positions to check for Nitrogen ionic bonds
+        # The two atoms are NE2 (0th atom with its Hydrogen at atom 1) and
+        # ND1 (4th atom with its Hydrogen at atom 5).
         cp = hist.CoarsePositions()
         ne2Orig = cp.positions[0][0]
         ne2Flip = cp.positions[3][0]
@@ -274,25 +282,53 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           neighbors = spatialQuery.neighbors(pos, minDist, maxDist)
           for n in neighbors:
             if Helpers.isMetallic(n):
-              dist = (Movers._rvec3(a.xyz) - Movers._rvec3(n.xyz)).length()
+              print('XXX Checking metallic',n.name)
+              dist = (Movers._rvec3(pos) - Movers._rvec3(n.xyz)).length()
+              print('XXX dist =',dist,'r1 =',extraAtomInfo.getMappingFor(a).vdwRadius,'r2 =',extraAtomInfo.getMappingFor(n).vdwRadius)
               expected = extraAtomInfo.getMappingFor(a).vdwRadius + extraAtomInfo.getMappingFor(n).vdwRadius
               if dist >= (expected - 0.55) and dist <= (expected + 0.25):
-                bondedConfig = i // 2
+                # The first two elements come from configuration 0 and the second two from configuration 3
+                bondedConfig = (i // 2) * 3
                 print('XXX Ionic bond, config',bondedConfig)
+                break
+          if bondedConfig is not None:
+            # We want the first configuration that is found, not flipping if we don't need to.
+            break
 
         # If one of the bonded configurations has at least one Ionic bond, then check each of
         # the Nitrogens in that configuration, removing its Hydrogen if it is bonded to an ion.
-        # Set the histidine in that flip state; it will not be inserted as a Mover.
+        # Set the histidine to that flip state; it will not be inserted as a Mover.
         if bondedConfig is not None:
           # Set the histidine in that flip state
-          fixUp = hist.fixUp(bondedConfig):
-          for i,a in enumerate fixUp.atoms:
+          fixUp = hist.FixUp(bondedConfig)
+          for i,a in enumerate(fixUp.atoms):
             a.xyz = fixUp.positions[i]
             extraAtomInfo.setMappingFor(a, fixUp.extraInfo[i])
 
           # See if we should remove the Hydrogen from each of the two potentially-bonded
-          # Nitrogens.
-          # @todo
+          # Nitrogens and make each an acceptor if we do remove its Hydrogen.  The two atoms
+          # are NE2 (0th atom with its Hydrogen at atom 1) and ND1 (4th atom with
+          # its Hydrogen at atom 5).
+          def _modifyIfNeeded(nitro, hydro):
+            # Helper function to check and change things for one of the Nitrogens.
+            myRad = extraAtomInfo.getMappingFor(nitro).vdwRadius
+            minDist = myRad
+            maxDist = 0.25 + myRad + maxVDWRadius
+            neighbors = spatialQuery.neighbors(nitro.xyz, minDist, maxDist)
+            for n in neighbors:
+              if Helpers.isMetallic(n):
+                dist = (Movers._rvec3(nitro.xyz) - Movers._rvec3(n.xyz)).length()
+                expected = extraAtomInfo.getMappingFor(a).vdwRadius + extraAtomInfo.getMappingFor(n).vdwRadius
+                if dist >= (expected - 0.55) and dist <= (expected + 0.25):
+                  print('XXX Removing Hydrogen from NE3 and marking at an acceptor')
+                  extra = extraAtomInfo.getMappingFor(nitro)
+                  extra.isAcceptor = True
+                  extraAtomInfo.setMappingFor(nitro, extra)
+                  deleteAtoms.append(hydro)
+                  break
+
+          _modifyIfNeeded(fixUp.atoms[0], fixUp.atoms[1])
+          _modifyIfNeeded(fixUp.atoms[4], fixUp.atoms[5])
 
           infoString += "Set MoverHistidineFlip on "+resNameAndID+" to state "+str(i)+"\n"
         else:
@@ -301,7 +337,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
       except Exception as e:
         infoString += "Could not add MoverHistidineFlip to "+resNameAndID+": "+str(e)+"\n"
 
-  return _PlaceMoversReturn(movers, infoString)
+  return _PlaceMoversReturn(movers, infoString, deleteAtoms)
 
 ##################################################################################
 # Helper functions
@@ -353,6 +389,114 @@ def Test(inFileName = None):
 
   #========================================================================
   # Test the GetAtomsForConformer() function.
+  # @todo
+
+  ################################################################################
+  # Test using snippet from 1xso to ensure that the Histidine placement code will lock down the
+  # Histidine, set its Nitrogen states, and mark its Hydrogens for deletion.  To
+  # ensure that hydrogen placement puts them there in the first place, we first
+  # move the CU and ZN far from the Histidine before adding Hydrogens, then move
+  # them back before building the spatial hierarchy and testing.
+  pdb_1xso_his_61_and_ions = (
+"""ATOM    442  N   HIS A  61      26.965  32.911   7.593  1.00  7.19           N  
+ATOM    443  CA  HIS A  61      27.557  32.385   6.403  1.00  7.24           C  
+ATOM    444  C   HIS A  61      28.929  31.763   6.641  1.00  7.38           C  
+ATOM    445  O   HIS A  61      29.744  32.217   7.397  1.00  9.97           O  
+ATOM    446  CB  HIS A  61      27.707  33.547   5.385  1.00  9.38           C  
+ATOM    447  CG  HIS A  61      26.382  33.956   4.808  1.00  8.78           C  
+ATOM    448  ND1 HIS A  61      26.168  34.981   3.980  1.00  9.06           N  
+ATOM    449  CD2 HIS A  61      25.174  33.397   5.004  1.00 11.08           C  
+ATOM    450  CE1 HIS A  61      24.867  35.060   3.688  1.00 12.84           C  
+ATOM    451  NE2 HIS A  61      24.251  34.003   4.297  1.00 11.66           N  
+HETATM 2190 CU    CU A   1      22.291  33.388   3.996  1.00 13.22          CU  
+HETATM 2191 ZN    ZN A 152      27.539  36.010   2.881  1.00  9.34          ZN  
+END
+"""
+    )
+  dm = DataManager(['model'])
+  dm.process_model_str("1xso_snip.pdb",pdb_1xso_his_61_and_ions)
+  model = dm.get_model()
+
+  # Make sure we have a valid unit cell.  Do this before we add hydrogens to the model
+  # to make sure we have a valid unit cell.
+  model = shift_and_box_model(model = model)
+
+  # Find and move the Copper and Zinc atoms far from the Histidine so that
+  # Hydrogen placement and bond proxies won't consider them to be bonded.
+  # This tests the algorithm behavior for the case of all Hydrogens present
+  # in all cases.
+  for a in model.get_hierarchy().models()[0].atoms():
+    if a.element.upper() == "CU":
+      origPositionCU = a.xyz
+      a.xyz = (1000, 1000, 1000)
+    if a.element.upper() == "ZN":
+      origPositionZN = a.xyz
+      a.xyz = (1000, 1000, 1000)
+
+  # Add Hydrogens to the model
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
+  reduce_add_h_obj.run()
+  model = reduce_add_h_obj.get_model()
+
+  # Interpret the model after adding Hydrogens to it so that
+  # all of the needed fields are filled in when we use them below.
+  # @todo Remove this once place_hydrogens() does all the interpretation we need.
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  model.set_pdb_interpretation_params(params = p)
+  model.process_input_model(make_restraints=True) # make restraints
+
+  # Get the first model in the hierarchy.
+  firstModel = model.get_hierarchy().models()[0]
+
+  # Get the list of alternate conformation names present in all chains for this model.
+  alts = AlternatesInModel(firstModel)
+
+  # Get the atoms from the first conformer in the first model (the empty string is the name
+  # of the first conformation in the model; if there is no empty conformation, then it will
+  # pick the first available conformation for each atom group.
+  atoms = GetAtomsForConformer(firstModel, "")
+
+  ################################################################################
+  # Get the Cartesian positions of all of the atoms we're considering for this alternate
+  # conformation.
+  carts = flex.vec3_double()
+  for a in atoms:
+    carts.append(a.xyz)
+
+  ################################################################################
+  # Get the bond proxies for the atoms in the model and conformation we're using and
+  # use them to determine the bonded neighbor lists.
+  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+
+  ################################################################################
+  # Put the Copper and Zinc back in their original positions before we build the
+  # spatial-query structure.
+  for a in model.get_hierarchy().models()[0].atoms():
+    if a.element.upper() == "CU":
+      a.xyz = origPositionCU
+    if a.element.upper() == "ZN":
+      a.xyz = origPositionZN
+
+  ################################################################################
+  # Get the spatial-query information needed to quickly determine which atoms are nearby
+  sq = probeExt.SpatialQuery(atoms)
+
+  ################################################################################
+  # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
+  ret = Helpers.getExtraAtomInfo(model)
+  extra = ret.extraAtomInfo
+  #@todo Why is this radius 0, and the one for the other later model?
+  print('XXX extraAtomInfo radius for first atom =',extra.getMappingFor(atoms[0]).vdwRadius)
+
+  ################################################################################
+  # Test getting the list of Movers using the _PlaceMovers private function.
+  ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True),
+                     bondedNeighborLists, sq, extra, AtomTypes.AtomTypes().MaximumVDWRadius())
+  movers = ret.moverList
+  print('XXX Found',len(movers),'Movers')
+  print('XXX info:',ret.infoString)
+  print('XXX Need to delete',len(ret.deleteAtoms),'atoms')
   # @todo
 
   #========================================================================
@@ -423,6 +567,7 @@ def Test(inFileName = None):
   ret = Helpers.getExtraAtomInfo(model)
   extra = ret.extraAtomInfo
   infoString += ret.warnings
+  print('XXX extraAtomInfo radius for first atom =',extra.getMappingFor(atoms[0]).vdwRadius)
 
   ################################################################################
   # Test getting the list of Movers using the _PlaceMovers private function.
@@ -432,28 +577,7 @@ def Test(inFileName = None):
   movers = ret.moverList
   print('XXX info:\n'+infoString)
   print('XXX Found',len(movers),'Movers')
-
-  ################################################################################
-  # Test using 1xso to ensure that the Histidine placement code will lock down the
-  # Histidine, set its Nitrogen states, and mark its Hydrogens for deletion.  To
-  # ensure that hydrogen placement puts them there in the first place, we first
-  # move the CU and ZN far from the Histidine before adding Hydrogens, then move
-  # them back before building the spatial hierarchy and testing.
-  pdb_1xso_his_61_and_ions ="""
-  ATOM    442  N   HIS A  61      26.965  32.911   7.593  1.00  7.19           N  
-  ATOM    443  CA  HIS A  61      27.557  32.385   6.403  1.00  7.24           C  
-  ATOM    444  C   HIS A  61      28.929  31.763   6.641  1.00  7.38           C  
-  ATOM    445  O   HIS A  61      29.744  32.217   7.397  1.00  9.97           O  
-  ATOM    446  CB  HIS A  61      27.707  33.547   5.385  1.00  9.38           C  
-  ATOM    447  CG  HIS A  61      26.382  33.956   4.808  1.00  8.78           C  
-  ATOM    448  ND1 HIS A  61      26.168  34.981   3.980  1.00  9.06           N  
-  ATOM    449  CD2 HIS A  61      25.174  33.397   5.004  1.00 11.08           C  
-  ATOM    450  CE1 HIS A  61      24.867  35.060   3.688  1.00 12.84           C  
-  ATOM    451  NE2 HIS A  61      24.251  34.003   4.297  1.00 11.66           N  
-  HETATM 2190 CU    CU A   1      22.291  33.388   3.996  1.00 13.22          CU  
-  HETATM 2191 ZN    ZN A 152      27.539  36.010   2.881  1.00  9.34          ZN  
-  """
-  # @todo
+  print('XXX Need to delete',len(ret.deleteAtoms),'atoms')
 
   # @todo
   return ""
