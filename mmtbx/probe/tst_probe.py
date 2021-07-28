@@ -122,11 +122,13 @@ def RunProbeTests(inFileName):
   # them. Find the atoms that are bonded to them and add them to an excluded list.
   # Then compute the score for each of them and report the summed score over the
   # whole molecule the way that Reduce will.
-  ds = probe.DotScorer(probe.ExtraAtomInfoMap(atoms, extra))
+  ds = probe.DotScorer(extra)
   total = 0
   badBumpTotal = 0
   for a in atoms:
-    rad = extra[a.i_seq].vdwRadius
+    rad = extra.getMappingFor(a).vdwRadius
+    if rad <= 0:
+      return "Invalid radius for atom look-up: "+a.name+" rad = "+str(rad)
     sphere = cache.get_sphere(rad)
 
     # Excluded atoms that are bonded to me or to one of my neightbors.
