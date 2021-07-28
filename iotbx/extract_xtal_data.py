@@ -682,7 +682,7 @@ will become meaningful only after many cycles of refinement.
         else :
           raise Sorry("Please resolve the R-free flags mismatch.")
 
-map_coefficents_params_str = """\
+map_coefficients_params_str = """\
   file_name=None
     .type=path
     .short_caption=Map coefficients file

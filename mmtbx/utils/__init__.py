@@ -66,7 +66,7 @@ ext = bp.import_ext("mmtbx_f_model_ext")
 
 import mmtbx.rotamer
 
-map_coefficents_params_str = """\
+map_coefficients_params_str = """\
   file_name=None
     .type=path
     .short_caption=Map coefficients file

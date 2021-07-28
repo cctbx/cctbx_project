@@ -84,7 +84,7 @@ include scope libtbx.phil.interface.tracking_params
 }
 """ %(iotbx.extract_xtal_data.data_and_flags_str,
       iotbx.extract_xtal_data.experimental_phases_params_str,
-      mmtbx.utils.map_coefficents_params_str,
+      mmtbx.utils.map_coefficients_params_str,
       density_modification.master_params_str)
 
 def defaults(log):
