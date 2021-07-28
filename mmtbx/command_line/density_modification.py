@@ -137,6 +137,7 @@ def run(args, log = sys.stdout, as_gui_program=False):
   o = extract_xtal_data.run(
     server,
     parameters=params.input.reflection_data,
+    experimental_phases_params=params.input.experimental_phases,
     extract_r_free_flags=False,log=log)
   fo = o.f_obs
   hl_coeffs = o.experimental_phases
