@@ -1,4 +1,12 @@
-from __future__ import division
+from __future__ import division, print_function
+
+restraintlib_installed=True
+try:
+  from restraintlib import launcher
+  from restraintlib.printer import TuplePrinter
+  from restraintlib.restraints import analyze_pdb_hierarhy
+except ImportError as e:
+  restraintlib_installed = False
 
 def update_restraints(hierarchy,
                       geometry, # restraints_manager,
@@ -9,9 +17,9 @@ def update_restraints(hierarchy,
                       log=None,
                       verbose=False,
                       ):
-  from restraintlib import launcher
-  from restraintlib.printer import TuplePrinter
-  from restraintlib.restraints import analyze_pdb_hierarhy
+  if not restraintlib_installed:
+    print('  RestraintLib not installed\n', file=log)
+    return False
   restraint_groups = launcher.load_restraints_lib()
   printer = TuplePrinter(override_sigma=use_phenix_esd) # use_phenix_esd not really needed here
   rc = analyze_pdb_hierarhy(hierarchy, restraint_groups, restraint_groups, printer)
@@ -107,4 +115,4 @@ def update_restraints(hierarchy,
     bonds  : %5d (%5d)
     angles : %5d (%5d)''' % (n_bonds, c_bonds, n_angles, c_angles),
       file=log)
-  return
+  return True

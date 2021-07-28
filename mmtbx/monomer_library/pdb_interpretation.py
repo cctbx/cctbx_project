@@ -5557,7 +5557,7 @@ class build_all_chain_proxies(linking_mixins):
       restraints_source += ' + Nucleotide CDL'
       use_phenix_esd = self.params.restraints_library.cdl_nucleotides_esd=='phenix'
       t0=time.time()
-      nucleotides.update_restraints(
+      rc = nucleotides.update_restraints(
         self.pdb_hierarchy,
         result, # geometry
         #current_geometry=model.xray_structure,
@@ -5566,7 +5566,8 @@ class build_all_chain_proxies(linking_mixins):
         verbose=False,
         )
       cdl_nucleotides_time = time.time()-t0
-      print("""\
+      if rc:
+        print("""\
   Nucleotide conformation dependent restraints added in %0.1f %sseconds
   """ % utils.greek_time(cdl_nucleotides_time), file=log)
     #
