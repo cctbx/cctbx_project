@@ -109,7 +109,17 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
                   extra.isAcceptor = True
                 if hb_type == "D" or hb_type == "B":
                   extra.isDonor = True
-                extra.vdwRadius = model.get_specific_vdw_radii(a)
+
+                # For metallic atoms, the Richardsons determined in discussion with
+                # Michael Prisant that we want to use the ionic radius rather than the
+                # larger radius for all purposes.
+                # @todo If CCTBX starts returning ionic radius as VdW radius, then we
+                # can remove this check and always just use get_specific_vdw_radii()
+                if isMetallic(a):
+                  # @todo Replace this with CCTBX ionic radius function when Nigel adds it
+                  extra.vdwRadius = at.FindProbeExtraAtomInfo(a).vdwRadius
+                else:
+                  extra.vdwRadius = model.get_specific_vdw_radii(a)
 
                 # Mark aromatic ring N and C atoms as acceptors as a hack to enable the
                 # ring itself to behave as an acceptor.
@@ -163,9 +173,14 @@ def isMetallic(atom):
 
 def Test(inFileName = None):
 
+  #========================================================================
   # Run unit test on getExtraAtomInfo().
   # @todo
 
+  # Spot check that we're getting ionic radii for metals.
+  # @todo
+
+  #========================================================================
   # Run unit test on getBondedNeighborLists().
   # @todo
 
