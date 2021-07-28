@@ -1109,6 +1109,11 @@ def downsamp_spec(SIM, params, expt):
         downsamp_wave = utils.ENERGY_CONV / downsamp_en
         SIM.beam.spectrum = list(zip(downsamp_wave, downsamp_wt))
     # the nanoBragg beam has an xray_beams property that is used internally in diffBragg
+    starting_wave = expt.beam.get_wavelength()
+    waves, specs = map(np.array, zip(*SIM.beam.spectrum))
+    ave_wave = sum(waves*specs) / sum(specs)
+    expt.beam.set_wavelength(ave_wave)
+    REFINE_LOGGER.debug("Shifting wavelength from %f to %f" % (starting_wave, ave_wave))
     SIM.D.xray_beams = SIM.beam.xray_beams
 
 

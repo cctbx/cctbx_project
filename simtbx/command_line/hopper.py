@@ -651,8 +651,9 @@ class Script:
 
 
 def save_up(Modeler, x, exp, i_exp, input_refls):
+    LOGGER = logging.getLogger("refine")
     best_model,_ = model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
-    print("Optimized:")
+    LOGGER.info("Optimized values for i_exp %d:" % i_exp)
     look_at_x(x,Modeler.SIM)
 
     rank_imgs_outdir = os.path.join(Modeler.params.outdir, "imgs", "rank%d" % COMM.rank)
@@ -732,6 +733,7 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
 
 
 def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls, stg1_img_path):
+    LOGGER = logging.getLogger("refine")
     rank_exper_outdir = os.path.join(params.outdir, "expers", "rank%d" % COMM.rank)
     rank_pandas_outdir = os.path.join(params.outdir, "pandas", "rank%d" % COMM.rank)
     for d in [rank_exper_outdir, rank_pandas_outdir]:
@@ -803,6 +805,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     new_exp_list = ExperimentList()
     new_exp_list.append(expt)
     new_exp_list.as_file(opt_exp_path)
+    LOGGER.debug("saved opt_exp %s with wavelength %f" % (opt_exp_path, expt.beam))
 
     spec_file = None
     if params.simulator.spectrum.filename is not None:
@@ -810,10 +813,11 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     df["spectrum_filename"] = spec_file
     df["spectrum_stride"] = params.simulator.spectrum.stride
 
-    df["total_flux"] = SIM.D.flux #params.simulator.total_flux
+    df["total_flux"] = SIM.D.flux  # params.simulator.total_flux
     df["beamsize_mm"] = SIM.beam.size_mm
     df["exp_name"] = os.path.abspath(orig_exp_name)
     df["opt_exp_name"] = os.path.abspath(opt_exp_path)
+    df["spectrum_from_imageset"] = params.spectrum_from_imageset
     df["oversample"] = params.simulator.oversample
     if params.opt_det is not None:
         df["opt_det"] = params.opt_det
