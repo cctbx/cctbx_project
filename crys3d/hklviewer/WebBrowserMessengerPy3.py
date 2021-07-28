@@ -44,22 +44,25 @@ class MyWebSocketServerProtocol(websockets.WebSocketServerProtocol):
 
 class WBmessenger(object):
   def __init__(self, viewerparent ):
-    self.parent = viewerparent
-    self.ProcessBrowserMessage = self.parent.ProcessBrowserMessage
-    self.websockport = self.parent.websockport
-    self.sleeptime = self.parent.sleeptime
-    self.mprint = self.parent.mprint
-    self.parent.lastviewmtrx
-    self.browserisopen = False
-    self.msgqueue = []
-    self.clientmsgqueue = []
-    self.msgdelim = ":\n"
-    self.ishandling = False
-    self.websockclient = None
-    self.isterminating = False
-    self.was_disconnected = None
-    self.mywebsock = None
-    self.websockeventloop = None
+    try:
+      self.parent = viewerparent
+      self.ProcessBrowserMessage = self.parent.ProcessBrowserMessage
+      self.websockport = self.parent.websockport
+      self.sleeptime = self.parent.sleeptime
+      self.mprint = self.parent.mprint
+      self.parent.lastviewmtrx
+      self.browserisopen = False
+      self.msgqueue = []
+      self.clientmsgqueue = []
+      self.msgdelim = ":\n"
+      self.ishandling = False
+      self.websockclient = None
+      self.isterminating = False
+      self.was_disconnected = None
+      self.mywebsock = None
+      self.websockeventloop = None
+    except Exception as e:
+      print( to_str(e) + "\n" + traceback.format_exc(limit=10))
 
 
   def start_server_loop(self):
