@@ -72,7 +72,8 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
     model.process_input_model(make_restraints=True), with useNeutronDistances matching
     the parameter to this function.
     :param useNeutronDistances: Default is to use x-ray distances, but setting this to
-    True uses neutron distances instead.
+    True uses neutron distances instead.  This must be set consistently with the
+    PDB interpretation parameter used on the model.
     Can be obtained by calling iotbx.map_model_manager.map_model_manager().model().
     :returns a ExtraAtomInfoMap with an entry for every atom in the model suitable for
     passing to the scoring functions.
@@ -108,7 +109,6 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
                   extra.isAcceptor = True
                 if hb_type == "D" or hb_type == "B":
                   extra.isDonor = True
-                # @todo How to tell this code whether or not to use neutron distances?
                 extra.vdwRadius = model.get_specific_vdw_radii(a)
 
                 # Mark aromatic ring N and C atoms as acceptors as a hack to enable the
@@ -120,6 +120,7 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
                   if mmtbx.probe.AtomTypes.IsAromaticAcceptor(ag.resname, a.name):
                     extra.IsAcceptor = True
 
+                extras.setMappingFor(a, extra)
                 continue
 
               # Did not find the information from CCTBX, so look it up using
@@ -162,6 +163,12 @@ def isMetallic(atom):
 
 def Test(inFileName = None):
 
+  # Run unit test on getExtraAtomInfo().
+  # @todo
+
+  # Run unit test on getBondedNeighborLists().
+  # @todo
+
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
   # from the specified file.
@@ -195,12 +202,6 @@ def Test(inFileName = None):
   ret = getExtraAtomInfo(model)
   if len(ret.warnings) > 0:
     print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings)
-
-  # Run unit test on getBondedNeighborLists().
-  # @todo
-
-  # Run unit test on getExtraAtomInfo().
-  # @todo
 
   # Run spot checks on isMetallic()
   a = iotbx.pdb.hierarchy.atom()
