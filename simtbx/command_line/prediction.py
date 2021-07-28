@@ -200,7 +200,7 @@ class Script:
                 processed_frames.append(panda_frame)
 
         if auto_parsed_stage_one_folder:
-            processed_frames = COMM.reduce(processed_frames, operation=MPI.SUM)
+            processed_frames = COMM.reduce(processed_frames)
             if COMM.rank == 0:
                 if self.params.pandas_outfile is None:
                     master_outfile = os.path.splitext(self.params.pandas_table)[0] + "_predict.pkl"

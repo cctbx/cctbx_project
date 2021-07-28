@@ -1115,6 +1115,7 @@ class TargetFunc:
             Fidx, Fdata = update_Fhkl(self.SIM, self.all_x[-1])
             # TODO save scale factors
             np.savez(outpath, f_evals=self.f_evals, x=self.all_x[-1], Fidx=Fidx, Fdata=Fdata, Nhkl=self.SIM.n_global_fcell)
+            print("Saved refinement variables to %s" % outpath, flush=True)
         COMM.barrier()
         self.all_x = []
         self.save_count += 1
