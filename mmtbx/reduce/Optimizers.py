@@ -306,7 +306,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
                 infoString += _VerboseCheck(5,'Found ionic bond in coarse configuration '+str(bondedConfig)+'\n')
                 break
           if bondedConfig is not None:
-            # We want the first configuration that is found, not flipping if we don't need to.
+            # We want the first configuration that is found, so we don't flip if we don't need to.
             break
 
         # If one of the bonded configurations has at least one Ionic bond, then check each of
@@ -316,9 +316,12 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           # Set the histidine in that flip state
           fixUp = hist.FixUp(bondedConfig)
           coarsePositions = hist.CoarsePositions().positions[bondedConfig]
+          infoString += _VerboseCheck(5,'XXX Before fixup\n')
           for i,a in enumerate(fixUp.atoms):
-            a.xyz = fixUp.positions[i]
-            extraAtomInfo.setMappingFor(a, fixUp.extraInfos[i])
+            if i < len(fixUp.positions):
+              a.xyz = fixUp.positions[i]
+            if i < len(fixUp.extraInfos):
+              extraAtomInfo.setMappingFor(a, fixUp.extraInfos[i])
 
           # See if we should remove the Hydrogen from each of the two potentially-bonded
           # Nitrogens and make each an acceptor if we do remove its Hydrogen.  The two atoms
@@ -340,7 +343,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
                 if dist >= (expected - 0.55) and dist <= (expected + 0.25):
                   nonlocal infoString
                   infoString += _VerboseCheck(1,'Removing Hydrogen from '+resNameAndID+nitro.name+' and marking as an acceptor '+
-                    '(ionic bond to '+n.name+')\n')
+                    '(ionic bond to '+n.name.strip()+')\n')
                   extra = extraAtomInfo.getMappingFor(nitro)
                   extra.isAcceptor = True
                   extraAtomInfo.setMappingFor(nitro, extra)
@@ -418,7 +421,8 @@ def Test(inFileName = None):
   # move the CU and ZN far from the Histidine before adding Hydrogens, then move
   # them back before building the spatial hierarchy and testing.
   pdb_1xso_his_61_and_ions = (
-"""ATOM    442  N   HIS A  61      26.965  32.911   7.593  1.00  7.19           N  
+"""
+ATOM    442  N   HIS A  61      26.965  32.911   7.593  1.00  7.19           N  
 ATOM    443  CA  HIS A  61      27.557  32.385   6.403  1.00  7.24           C  
 ATOM    444  C   HIS A  61      28.929  31.763   6.641  1.00  7.38           C  
 ATOM    445  O   HIS A  61      29.744  32.217   7.397  1.00  9.97           O  
@@ -476,20 +480,17 @@ END
   # pick the first available conformation for each atom group.
   atoms = GetAtomsForConformer(firstModel, "")
 
-  ################################################################################
   # Get the Cartesian positions of all of the atoms we're considering for this alternate
   # conformation.
   carts = flex.vec3_double()
   for a in atoms:
     carts.append(a.xyz)
 
-  ################################################################################
   # Get the bond proxies for the atoms in the model and conformation we're using and
   # use them to determine the bonded neighbor lists.
   bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
-  ################################################################################
   # Put the Copper and Zinc back in their original positions before we build the
   # spatial-query structure.  This will make them close enough to be bonded to
   # the Nitrogens and should cause Hydrogen removal and marking of the Nitrogens
@@ -500,26 +501,31 @@ END
     if a.element.upper() == "ZN":
       a.xyz = origPositionZN
 
-
-  ################################################################################
   # Get the spatial-query information needed to quickly determine which atoms are nearby
   sq = probeExt.SpatialQuery(atoms)
 
-  ################################################################################
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
   ret = Helpers.getExtraAtomInfo(model)
   extra = ret.extraAtomInfo
 
-  ################################################################################
-  # Test getting the list of Movers using the _PlaceMovers private function.
+  # Place the movers, which should include only an NH3 rotator because the Histidine flip
+  # will be constrained by the ionic bonds.
   ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True),
                      bondedNeighborLists, sq, extra, AtomTypes.AtomTypes().MaximumVDWRadius())
   movers = ret.moverList
-  #dm.write_model_file(model, "deleteme.pdb", overwrite=True)
-  print('XXX Found',len(movers),'Movers')
-  print('XXX info:',ret.infoString)
-  print('XXX Need to delete',len(ret.deleteAtoms),'atoms')
-  # @todo
+  if len(movers) != 1:
+    return "Optimizers.Test(): Incorrect number of Movers for 1xso Histidine test"
+
+  # Make sure that the two ring Nitrogens have been marked as acceptors.
+  # Make sure that the two hydrogens have been marked for deletion.
+  for a in model.get_hierarchy().models()[0].atoms():
+    name = a.name.strip()
+    if name in ["ND1", "NE2"]:
+      if not extra.getMappingFor(a).isAcceptor:
+        return "Optimizers.Test(): '+a+' in 1xso Histidine test was not an acceptor"
+    if name in ["HD1", "HE2"]:
+      if not a in ret.deleteAtoms:
+        return "Optimizers.Test(): '+a+' in 1xso Histidine test was not set for deletion"
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
@@ -589,7 +595,6 @@ END
   ret = Helpers.getExtraAtomInfo(model)
   extra = ret.extraAtomInfo
   infoString += ret.warnings
-  print('XXX extraAtomInfo radius for first atom =',extra.getMappingFor(atoms[0]).vdwRadius)
 
   ################################################################################
   # Test getting the list of Movers using the _PlaceMovers private function.
