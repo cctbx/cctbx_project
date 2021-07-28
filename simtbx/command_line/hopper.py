@@ -3,6 +3,7 @@ import socket
 import glob
 from copy import deepcopy
 from simtbx.diffBragg.hopper_utils import look_at_x, model, get_param_from_x, DataModeler, get_data_model_pairs, sanity_test_input_lines
+from simtbx.diffBragg import hopper_utils
 import h5py
 from dxtbx.model.experiment_list import ExperimentList
 try:
@@ -11,6 +12,12 @@ except ImportError:
     print("Please intsall pandas, libtbx.python -m pip install pandas")
     exit()
 from scitbx.matrix import sqr, col
+
+try:
+    from line_profiler import LineProfiler
+except ImportError:
+    LineProfiler = None
+
 
 ROTX_ID = 0
 ROTY_ID = 1
@@ -38,6 +45,15 @@ from libtbx.phil import parse
 
 from simtbx.diffBragg import utils
 from simtbx.diffBragg.phil import philz
+
+import logging
+LOGFORMAT = 'RANK%d | ' % COMM.rank + '%(asctime)s | %(levelname)s | %(message)s'
+LOGFORMATER = logging.Formatter(LOGFORMAT)
+#if COMM.rank > 0:  # DISABLES MOST CONSOLE OUTPUT FOR RANKS higher than 0
+CONSOLE_LOG = logging.StreamHandler()
+CONSOLE_LOG.setLevel(logging.WARNING)  # but we still care about warning messages and higher
+logging.getLogger().addHandler(CONSOLE_LOG)
+from simtbx.diffBragg.mpi_logger import MPIFileHandler
 
 hopper_phil = """
 use_float32 = False
@@ -230,7 +246,7 @@ number_of_xtals = 1
 sanity_test_input = True
   .type = bool
   .help = sanity test input
-outdir = True
+outdir = None
   .type = str
   .help = output folder
 quiet = False
@@ -435,7 +451,14 @@ min_multi = 2
 min_spot = 5
   .type = int
   .help = minimum spots on a shot in order to optimize that shot
+logfiles = False
+  .type = bool 
+  .help = write log files in the outputdir 
+profile = False
+  .type = bool
+  .help = profile the workhorse functions
 """
+
 
 philz = hopper_phil + philz
 phil_scope = parse(philz)
@@ -458,7 +481,27 @@ class Script:
         self.parser = COMM.bcast(self.parser)
         if COMM.rank == 0:
             self.params, _ = self.parser.parse_args(show_diff_phil=True)
+            assert self.params.outdir is not None
         self.params = COMM.bcast(self.params)
+
+        if self.params.logfiles:
+            if COMM.rank == 0:
+                if not os.path.exists(self.params.outdir):
+                    utils.safe_makedirs(self.params.outdir)
+            COMM.barrier()
+
+            def make_logger(name):
+                handler = MPIFileHandler(os.path.join(self.params.outdir, "%s.log" % name))
+                handler.setFormatter(LOGFORMATER)
+                logger = logging.getLogger(name)
+                logger.setLevel(logging.DEBUG)
+                logger.addHandler(handler)
+
+            make_logger("refine")
+            make_logger("profile")
+
+        else:
+            logging.basicConfig(level=logging.DEBUG, format=LOGFORMAT)
 
     def run(self):
         assert os.path.exists(self.params.exp_ref_spec_file)
@@ -470,7 +513,7 @@ class Script:
                 sanity_test_input_lines(input_lines)
 
             if self.params.best_pickle is not None:
-                if not self.params.quiet: print("reading pickle %s" % self.params.best_pickle)
+                if not self.params.quiet: logging.info("reading pickle %s" % self.params.best_pickle)
                 best_models = pandas.read_pickle(self.params.best_pickle)
 
             if self.params.dump_gathers:
@@ -494,7 +537,7 @@ class Script:
             if i_exp % COMM.size != COMM.rank:
                 continue
 
-            print("COMM.rank %d on shot  %d / %d" % (COMM.rank, i_exp + 1, len(input_lines)))
+            logging.info("COMM.rank %d on shot  %d / %d" % (COMM.rank, i_exp + 1, len(input_lines)))
             line_fields = line.strip().split()
             assert len(line_fields) in [2, 3]
             if len(line_fields) == 2:
@@ -523,7 +566,7 @@ class Script:
             else:
                 gathered = Modeler.GatherFromExperiment(exp, ref)
             if not gathered:
-                print("No refls in %s; CONTINUE; COMM.rank=%d" % (ref, COMM.rank))
+                logging.warning("No refls in %s; CONTINUE; COMM.rank=%d" % (ref, COMM.rank))
                 continue
             if self.params.dump_gathers:
                 output_name = os.path.splitext(os.path.basename(exp))[0]
@@ -551,16 +594,18 @@ class Script:
                     continue
 
             Modeler.SimulatorFromExperiment(best)
+            if self.params.profile:
+                Modeler.SIM.record_timings = True
             if self.params.use_float32:
                 Modeler.all_data = Modeler.all_data.astype(np.float32)
                 Modeler.all_background = Modeler.all_background.astype(np.float32)
 
             if self.params.refiner.randomize_devices:
                 dev = np.random.choice(self.params.refiner.num_devices)
-                print("Rank %d will use randomly chosen device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
+                logging.info("Rank %d will use randomly chosen device %d on host %s" % (COMM.rank, dev, socket.gethostname()))
             else:
                 dev = COMM.rank % self.params.refiner.num_devices
-                print("Rank %d will use device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
+                logging.info("Rank %d will use device %d on host %s" % (COMM.rank, dev, socket.gethostname()))
 
             Modeler.SIM.D.device_Id = dev
 
@@ -586,6 +631,11 @@ class Script:
                 x0[7*Modeler.SIM.num_xtals+nucell] = Modeler.SIM.DetZ_param.init
 
             x = Modeler.Minimize(x0)
+            if self.params.profile:
+                #from six.moves import StringIO
+                #from boost_adaptbx.boost.python import streambuf
+                #out = streambuf(StringIO())
+                Modeler.SIM.D.show_timings(COMM.rank) #, out)
             save_up(Modeler, x, exp, i_exp, ref)
 
         if self.params.dump_gathers and self.params.gathered_output_file is not None:
@@ -669,6 +719,7 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
         embed()
 
     if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
+        # TODO separate diffBragg logger
         utils.show_diffBragg_state(Modeler.SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
         print("Refiner scale=%f" % Modeler.SIM.Scale_params[0].get_val(x[0]))
 
@@ -777,4 +828,18 @@ if __name__ == '__main__':
 
     with show_mail_on_error():
         script = Script()
-        script.run()
+        RUN = script.run
+        lp = None
+        if LineProfiler is not None and script.params.profile:
+            lp = LineProfiler()
+            lp.add_function(hopper_utils.model)
+            lp.add_function(hopper_utils.target_func)
+            RUN = lp(script.run)
+        elif script.params.profile:
+            print("Install line_profiler in order to use logging: libtbx.python -m pip install line_profiler")
+
+        RUN()
+
+        if lp is not None:
+            stats = lp.get_stats()
+            hopper_utils.print_profile(stats, ["model", "target_func"])

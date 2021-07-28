@@ -85,7 +85,7 @@ void diffBragg_loopy(
         std::vector<CUDAREAL>& fpfdp,
         std::vector<CUDAREAL>& fpfdp_derivs,
         std::vector<CUDAREAL>&atom_data,
-        std::vector<int>&nominal_hkl){ // diffBragg cuda loopy
+        std::vector<int>&nominal_hkl,  timer_variables & TIMERS){ // diffBragg cuda loopy
 
 
     if (phi0 != 0 || phisteps > 1){
@@ -245,6 +245,7 @@ void diffBragg_loopy(
 
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+    if (TIMERS.recording) TIMERS.cuda_alloc+= time;
     if(verbose>1)
         printf("TIME SPENT ALLOCATING (TOTAL):  %3.10f ms \n", time);
 
@@ -440,6 +441,7 @@ void diffBragg_loopy(
 
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+    if (TIMERS.recording) TIMERS.cuda_copy_to_dev += time;
     if(verbose>1)
         printf("TIME SPENT COPYING DATA HOST->DEV:  %3.10f ms \n", time);
 
@@ -518,6 +520,7 @@ void diffBragg_loopy(
         printf("KERNEL_COMPLETE gpu_sum_over_steps\n");
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+    if (TIMERS.recording) TIMERS.cuda_kernel += time;
     if(verbose>1)
         printf("TIME SPENT(KERNEL):  %3.10f ms \n", time);
 
@@ -553,6 +556,7 @@ void diffBragg_loopy(
 
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+    if (TIMERS.recording) TIMERS.cuda_copy_from_dev += time;
     if(verbose>1)
         printf("TIME SPENT COPYING BACK :  %3.10f ms \n", time);
     error_msg(cudaGetLastError(), "After copy to host");

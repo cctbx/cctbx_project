@@ -14,6 +14,18 @@ from dials.array_family import flex
 from simtbx.diffBragg import utils
 from simtbx.diffBragg.refiners.parameters import NormalParameter, RangedParameter
 
+
+try:
+    from line_profiler import LineProfiler
+except ImportError:
+    LineProfiler = None
+
+
+import logging
+REFINE_LOGGER = logging.getLogger("refine")
+PROFILE_LOGGER = logging.getLogger("profile")
+
+
 ROTX_ID = 0
 ROTY_ID = 1
 ROTZ_ID = 2
@@ -370,7 +382,7 @@ class DataModeler:
             p.minval = minval
             p.maxval = maxval
             p.fix = self.params.fix.ucell
-            if not self.params.quiet: print(
+            if not self.params.quiet: REFINE_LOGGER.info(
                 "Unit cell variable %s (currently=%f) is bounded by %f and %f" % (name, val, minval, maxval))
             self.SIM.ucell_params.append(p)
         self.SIM.ucell_man = ucell_man
@@ -389,7 +401,7 @@ class DataModeler:
         # P.add("eta_c", value=0, min=0, max=eta_max * rad, vary=self.params.eta_refine)
 
     def Minimize(self, x0):
-        target = TargetFunc(SIM=self.SIM, niter_per_J=self.params.niter_per_J)
+        target = TargetFunc(SIM=self.SIM, niter_per_J=self.params.niter_per_J, profile=self.params.profile)
 
         # set up the refinement flags
         vary = np.ones(len(x0), bool)
@@ -450,13 +462,24 @@ class DataModeler:
             min_kwargs = {'args': args, "method": method, 'options':{'maxfev': maxfev}}
 
         if self.params.global_method=="basinhopping":
-            out = basinhopping(target, x0_for_refinement,
+            HOPPER = basinhopping
+            #lp = None
+            #if self.params.profile and LineProfiler is not None:
+            #    lp = LineProfiler()
+            #    lp.add_function(model)
+            #    lp.add_function(target_func)
+            #    HOPPER = lp(basinhopping)
+
+            out = HOPPER(target, x0_for_refinement,
                                niter=self.params.niter,
                                minimizer_kwargs=min_kwargs,
                                T=self.params.temp,
                                callback=at_min,
                                disp=not self.params.quiet,
                                stepsize=self.params.stepsize)
+            #if lp is not None:
+            #    stats = lp.get_stats()
+            #    print_profile(stats, ["model", "target_func"])
         else:
             bounds = [(-100,100)] * len(x0_for_refinement)  # TODO decide about bounds, usually x remains close to 1 during refinement
             print("Beginning the annealing process")
@@ -681,7 +704,7 @@ def get_param_from_x(x, SIM):
 
 
 class TargetFunc:
-    def __init__(self, SIM, niter_per_J=1):
+    def __init__(self, SIM, niter_per_J=1, profile=False):
         self.niter_per_J = niter_per_J
         self.global_x = []
         self.all_x = []
@@ -718,8 +741,8 @@ class TargetFunc:
         if not self.iteration % (self.niter_per_J) == 0:
             update_terms = (self.delta_x, self.old_J, self.old_model)
         self.all_x.append(self.x0)
-        f, g, model, J = target_func(self.x0, update_terms, *args, **kwargs)
-        self.old_model = model
+        f, g, modelpix, J = target_func(self.x0, update_terms, *args, **kwargs)
+        self.old_model = modelpix
         self.old_J = J
         self.iteration += 1
         self.g = g
@@ -728,8 +751,6 @@ class TargetFunc:
 
 def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, verbose=True, params=None, compute_grad=True):
 
-    #for i_x, xval in enumerate(x):
-    #    all_x[xidx[i_x]] = xval
 
     if udpate_terms is not None:
         # if approximating the gradients, then fix the parameter refinment managers in diffBragg
@@ -887,7 +908,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
         gnorm = np.linalg.norm(g)
 
     if verbose:
-        print("F=%10.7g sZ=%10.7g (chi: %.1f%%, rot: %.1f%% N: %.1f%%, G: %.1f%%, uc: %.1f%%, detz: %.1f%%), |g|=%10.7g" \
+        REFINE_LOGGER.info("F=%10.7g sZ=%10.7g (chi: %.1f%%, rot: %.1f%% N: %.1f%%, G: %.1f%%, uc: %.1f%%, detz: %.1f%%), |g|=%10.7g" \
               % (f, zscore_sigma, chi, rot, n, gg, uc,zz,gnorm))
 
     return f, g, model_bragg, Jac
@@ -1099,3 +1120,28 @@ def sanity_test_input_lines(input_lines):
         for fname in line_fields:
             if not os.path.exists(fname):
                 raise FileNotFoundError("File %s does not exist" % fname)
+
+
+def print_profile(stats, timed_methods):
+    for method in stats.timings.keys():
+        filename, header_ln, name = method
+        if name not in timed_methods:
+            continue
+        info = stats.timings[method]
+        unit = stats.unit
+
+        line_nums, ncalls, timespent = zip(*info)
+        fp = open(filename, 'r').readlines()
+        total_time = sum(timespent)
+        header_line = fp[header_ln-1][:-1]
+        PROFILE_LOGGER.info("\n")
+        PROFILE_LOGGER.info("FILE: %s" % filename)
+        PROFILE_LOGGER.info(header_line)
+        PROFILE_LOGGER.info("<><><><><><><><><><><><><><><><><><><><><><><>")
+        PROFILE_LOGGER.info("%5s%14s%9s%10s" % ("Line#", "Time", "%Time", "Line" ))
+        PROFILE_LOGGER.info("%5s%14s%9s%10s" % ("", "(ms)", "", ""))
+        PROFILE_LOGGER.info("<><><><><><><><><><><><><><><><><><><><><><><>")
+        for i_l, l in enumerate(line_nums):
+            frac_t = timespent[i_l] / total_time * 100.
+            line = fp[l-1][:-1]
+            PROFILE_LOGGER.info("%5d%14.2f%9.2f%s" % (l, timespent[i_l]*unit*1e3, frac_t, line))

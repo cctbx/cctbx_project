@@ -2,6 +2,7 @@
 #include <iostream>
 #include <math.h>
 #include <vector>
+#include <simtbx/diffBragg/src/util.h>
 #ifndef CUDAREAL
 #define CUDAREAL double
 #endif
@@ -158,7 +159,7 @@ void diffBragg_loopy(
         int detector_thicksteps, int phisteps, int Npix_to_allocate, bool no_Nabc_scale,
         std::vector<double>& fpfdp,
         std::vector<double>& fpfdp_derivs,
-        std::vector<double>& atom_data, std::vector<int>& nominal_hkl);
+        std::vector<double>& atom_data, std::vector<int>& nominal_hkl , timer_variables& TIMERS);
 
 
 void freedom(diffBragg_cudaPointers& cp);

@@ -153,7 +153,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             if "rlp" in refls:
                 self.shot_reso[shot_idx] = 1/np.linalg.norm(refls["rlp"], axis=1)
 
-            if "spectrum_filename" in list(exper_dataframe):
+            if "spectrum_filename" in list(exper_dataframe) and exper_dataframe.spectrum_filename.values[0] is not None:
                 self.shot_spectra[shot_idx] = utils.load_spectra_from_dataframe(exper_dataframe)
             else:
                 self.shot_spectra[shot_idx] = [(expt.beam.get_wavelength(), self.params.simulator.total_flux)]

@@ -1,5 +1,6 @@
 
 #include <simtbx/nanoBragg/nanoBragg.h>
+#include <simtbx/diffBragg/src/util.h>
 #include <vector>
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <Eigen/Dense>
@@ -469,6 +470,11 @@ class diffBragg: public nanoBragg{
   int num_sausages=1;
   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > sausages_RXYZ, d_sausages_RXYZ, sausages_U;
   std::vector<double> sausages_scale;
+
+  timer_variables TIMERS;
+  bool record_time = true;
+
+  void show_timing_stats(int MPI_RANK);
 }; // end of diffBragg
 
 } // end of namespace nanoBragg

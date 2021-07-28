@@ -418,6 +418,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
 
     linearize_Fhkl();
     //sanity_check_linear_Fhkl();
+
 }
 
 void diffBragg::set_close_distances(){
@@ -1798,6 +1799,12 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
 // BEGIN diffBragg_add_spots
 void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows){
+
+    TIMERS.recording = record_time;
+    // timer variables
+    struct timeval t1,t2;
+    gettimeofday(&t1,0 );
+
     Npix_to_model = panels_fasts_slows.size()/3;
     SCITBX_ASSERT(Npix_to_model <= Npix_total);
     double * floatimage_roi = raw_pixels_roi.begin();
@@ -1899,8 +1906,12 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     image_type d_sausage_XYZ_scale_images(Npix_to_model*num_sausages*4,0.0);
     image_type d_fp_fdp_images(Npix_to_model*2,0.0); // for now only support two parameters for fp, fdp
 
+    gettimeofday(&t2, 0);
+    double time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+    if (record_time)
+        TIMERS.add_spots_pre += time;
+
     //fudge = 1.1013986013; // from manuscript computation
-    struct timeval t1,t2;
     gettimeofday(&t1,0 );
     if (! use_cuda && getenv("DIFFBRAGG_USE_CUDA")==NULL){
         diffBragg::diffBragg_sum_over_steps(
@@ -2007,13 +2018,13 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
            update_dB_matrices_on_device, update_rotmats_on_device,
            update_Fhkl_on_device, update_detector_on_device, update_refine_flags_on_device,
            update_panel_deriv_vecs_on_device, update_sausages_on_device, detector_thicksteps, phisteps,
-           Npix_to_allocate, no_Nabc_scale, fpfdp, fpfdp_derivs, atom_data, nominal_hkl);
+           Npix_to_allocate, no_Nabc_scale, fpfdp, fpfdp_derivs, atom_data, nominal_hkl, TIMERS);
 #else
        // no statement
 #endif
     }
     gettimeofday(&t2, 0);
-    double time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+    time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
     if(verbose){
         unsigned long long long_Nsteps = Nsteps;
         unsigned long long long_Npix = Npix_to_model;
@@ -2025,6 +2036,9 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         else
             printf("TIME TO RUN DIFFBRAGG -CPU- (%llu iterations):  %3.10f ms \n",n_total_iter, time);
     }
+    if (record_time) TIMERS.add_spots_kernel_wrapper += time;
+
+    gettimeofday(&t1,0 );
     // TODO behold inefficient
     for (int i_pix=0; i_pix< Npix_to_model; i_pix++){
         floatimage_roi[i_pix] = image[i_pix];
@@ -2128,6 +2142,15 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     delete[] phi_pos;
     delete[] mos_pos;
     delete[] sausage_pos;
+
+    gettimeofday(&t2, 0);
+    time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+    if (record_time) {
+        TIMERS.add_spots_post += time;
+        TIMERS.timings += 1; // only increment timings at the end of the add_diffBragg_spots call
+    }
+
+
     if(verbose) printf("done with pixel loop\n");
 } // END  of add_diffBragg_spots
 
@@ -2283,6 +2306,34 @@ void diffBragg::allocate_sausages(){
         gpu_free();  // free to ensure we re-allocate space for new mosaic textures (sausages)
     }
     #endif
+}
+
+void diffBragg::show_timing_stats(int MPI_RANK){ //}, boost_adaptbx::python::streambuf & output){
+    //std::ostream& outs = std::cout;
+    //if (output != boost::python::api::object())
+    //    boost_adaptbx::python::streambuf::ostream outs(output);
+    if (TIMERS.timings > 0){
+        //outs << "TIMINGS: Unit for timers is milliseconds\n";
+        //outs << "TIMINGS: add_diffBragg_spots pre kernel wrapper: " << TIMERS.add_spots_pre << std::endl;
+        //outs << "TIMINGS: add_diffBragg_spots post kernel wrapper: " << TIMERS.add_spots_post << std::endl;
+        //outs << "TIMINGS: add_diffBragg_spots kernel wrapper: " << TIMERS.add_spots_kernel_wrapper << std::endl;
+        //outs << "TIMINGS: add_diffBragg_spots CUDA alloc: " << TIMERS.cuda_alloc << std::endl;
+        //outs << "TIMINGS: add_diffBragg_spots CUDA copy host to dev: " << TIMERS.cuda_copy_to_dev << std::endl;
+        //outs << "TIMINGS: add_diffBragg_spots CUDA copy dev to host: " << TIMERS.cuda_copy_from_dev << std::endl;
+        //outs << "TIMINGS: add_diffBragg_spots CUDA main kernel: " << TIMERS.cuda_kernel << std::endl;
+
+        printf("Unit is milliseconds\n");
+        printf("RANK%d TIMINGS: add_diffBragg_spots pre kernel wrapper: %10.3f\n", MPI_RANK, TIMERS.add_spots_pre );
+        printf("RANK%d TIMINGS: add_diffBragg_spots post kernel wrapper: %10.3f\n", MPI_RANK , TIMERS.add_spots_post);
+        printf("RANK%d TIMINGS: add_diffBragg_spots kernel wrapper: %10.3f\n", MPI_RANK, TIMERS.add_spots_kernel_wrapper );
+        printf("RANK%d TIMINGS: add_diffBragg_spots CUDA alloc: %10.3f\n", MPI_RANK, TIMERS.cuda_alloc );
+        printf("RANK%d TIMINGS: add_diffBragg_spots CUDA copy host to dev: %10.3f\n", MPI_RANK, TIMERS.cuda_copy_to_dev );
+        printf("RANK%d TIMINGS: add_diffBragg_spots CUDA copy dev to host: %10.3f\n", MPI_RANK, TIMERS.cuda_copy_from_dev );
+        printf("RANK%d TIMINGS: add_diffBragg_spots CUDA kernel: %10.3f\n", MPI_RANK, TIMERS.cuda_kernel );
+    }
+    else printf("RANK%d No timing has occured since instantiation of diffBragg\n", MPI_RANK);
+
+
 }
 
 } // end of namespace nanoBragg

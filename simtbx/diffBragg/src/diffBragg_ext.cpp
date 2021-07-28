@@ -429,6 +429,10 @@ namespace boost_python { namespace {
              &simtbx::nanoBragg::diffBragg::set_mosaic_blocks_dbl_prime,
              "enter a list of unitary matrix 2nd derivatives Uprime")
 
+      .def("show_timings",
+             &simtbx::nanoBragg::diffBragg::show_timing_stats,
+             "Shows a few key accumulated timings (in milliseconds) of specific code portions")
+
       //.add_property("region_of_interest",
       //       make_function(&get_roi,rbv()),
       //       make_function(&set_roi,dcp()),
@@ -559,6 +563,11 @@ namespace boost_python { namespace {
              make_getter(&simtbx::nanoBragg::diffBragg::use_cuda,rbv()),
              make_setter(&simtbx::nanoBragg::diffBragg::use_cuda,dcp()),
              "use GPU acceleration")
+
+      .add_property("record_time",
+             make_getter(&simtbx::nanoBragg::diffBragg::record_time,rbv()),
+             make_setter(&simtbx::nanoBragg::diffBragg::record_time,dcp()),
+             "store timing data for key aspects of the code")
 
       .add_property("Npix_to_allocate",
             make_getter(&simtbx::nanoBragg::diffBragg::Npix_to_allocate,rbv()),
