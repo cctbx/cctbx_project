@@ -26,7 +26,28 @@ help_message = "stage 2 (global) diffBragg refinement"
 script_phil = """
 pandas_table = None
   .type = str 
-  .help = path to an input pandas table (usually output by simtbx.diffBragg.predictions) 
+  .help = path to an input pandas table (usually output by simtbx.diffBragg.predictions)
+spectrum_from_imageset = False
+  .type = bool
+  .help = if True, load the spectrum from the imageset in the experiment, then probably downsample it
+downsamp_spec {
+  skip = False
+    .type = bool
+    .help = if reading spectra from imageset, optionally skip the downsample portion
+    .help = Note, if skip=True, then total flux will be determined by whats in the imageset spectrum (sum of the weights)
+  filt_freq = 0.07
+    .type = float
+    .help = low pass filter frequency in units of inverse spectrometer pixels (??)
+  filt_order = 3
+    .type = int
+    .help = order for bandpass butter filter
+  tail = 50
+    .type = int
+    .help = endpoints of the spectrum that are used in background estimation
+  delta_en = 0.5
+    .type = float
+    .help = final resolution of downsampled spectrum in eV
+}
 """
 
 philz = script_phil + philz

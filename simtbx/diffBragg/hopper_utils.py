@@ -22,9 +22,8 @@ except ImportError:
 
 
 import logging
-REFINE_LOGGER = logging.getLogger("refine")
+MAIN_LOGGER = logging.getLogger("main")
 PROFILE_LOGGER = logging.getLogger("profile")
-
 
 ROTX_ID = 0
 ROTY_ID = 1
@@ -382,7 +381,7 @@ class DataModeler:
             p.minval = minval
             p.maxval = maxval
             p.fix = self.params.fix.ucell
-            if not self.params.quiet: REFINE_LOGGER.info(
+            if not self.params.quiet: MAIN_LOGGER.info(
                 "Unit cell variable %s (currently=%f) is bounded by %f and %f" % (name, val, minval, maxval))
             self.SIM.ucell_params.append(p)
         self.SIM.ucell_man = ucell_man
@@ -751,7 +750,6 @@ class TargetFunc:
 
 def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, verbose=True, params=None, compute_grad=True):
 
-
     if udpate_terms is not None:
         # if approximating the gradients, then fix the parameter refinment managers in diffBragg
         # so we dont waste time computing them
@@ -908,7 +906,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
         gnorm = np.linalg.norm(g)
 
     if verbose:
-        REFINE_LOGGER.info("F=%10.7g sZ=%10.7g (chi: %.1f%%, rot: %.1f%% N: %.1f%%, G: %.1f%%, uc: %.1f%%, detz: %.1f%%), |g|=%10.7g" \
+        MAIN_LOGGER.info("F=%10.7g sZ=%10.7g (chi: %.1f%%, rot: %.1f%% N: %.1f%%, G: %.1f%%, uc: %.1f%%, detz: %.1f%%), |g|=%10.7g" \
               % (f, zscore_sigma, chi, rot, n, gg, uc,zz,gnorm))
 
     return f, g, model_bragg, Jac
@@ -1078,7 +1076,7 @@ def get_data_model_pairs(rois, pids, roi_id, best_model, all_data, strong_flags=
 
 
 # set the X-ray spectra for this shot
-def downsamp_spec(SIM, params, expt):
+def downsamp_spec(SIM, params, expt, return_and_dont_set=False):
     SIM.dxtbx_spec = expt.imageset.get_spectrum(0)
     spec_en = SIM.dxtbx_spec.get_energies_eV()
     spec_wt = SIM.dxtbx_spec.get_weights()
@@ -1113,8 +1111,11 @@ def downsamp_spec(SIM, params, expt):
     waves, specs = map(np.array, zip(*SIM.beam.spectrum))
     ave_wave = sum(waves*specs) / sum(specs)
     expt.beam.set_wavelength(ave_wave)
-    REFINE_LOGGER.debug("Shifting wavelength from %f to %f" % (starting_wave, ave_wave))
-    SIM.D.xray_beams = SIM.beam.xray_beams
+    MAIN_LOGGER.debug("Shifting wavelength from %f to %f" % (starting_wave, ave_wave))
+    if return_and_dont_set:
+        return SIM.beam.spectrum
+    else:
+        SIM.D.xray_beams = SIM.beam.xray_beams
 
 
 def sanity_test_input_lines(input_lines):
@@ -1133,20 +1134,25 @@ def print_profile(stats, timed_methods):
         if name not in timed_methods:
             continue
         info = stats.timings[method]
+        PROFILE_LOGGER.warning("\n")
+        PROFILE_LOGGER.warning("FILE: %s" % filename)
+        if not info:
+            PROFILE_LOGGER.warning("<><><><><><><><><><><><><><><><><><><><><><><>")
+            PROFILE_LOGGER.warning("METHOD %s : Not profiled because never called" % (name))
+            PROFILE_LOGGER.warning("<><><><><><><><><><><><><><><><><><><><><><><>")
+            continue
         unit = stats.unit
 
         line_nums, ncalls, timespent = zip(*info)
         fp = open(filename, 'r').readlines()
         total_time = sum(timespent)
         header_line = fp[header_ln-1][:-1]
-        PROFILE_LOGGER.info("\n")
-        PROFILE_LOGGER.info("FILE: %s" % filename)
-        PROFILE_LOGGER.info(header_line)
-        PROFILE_LOGGER.info("<><><><><><><><><><><><><><><><><><><><><><><>")
-        PROFILE_LOGGER.info("%5s%14s%9s%10s" % ("Line#", "Time", "%Time", "Line" ))
-        PROFILE_LOGGER.info("%5s%14s%9s%10s" % ("", "(ms)", "", ""))
-        PROFILE_LOGGER.info("<><><><><><><><><><><><><><><><><><><><><><><>")
+        PROFILE_LOGGER.warning(header_line)
+        PROFILE_LOGGER.warning("<><><><><><><><><><><><><><><><><><><><><><><>")
+        PROFILE_LOGGER.warning("%5s%14s%9s%10s" % ("Line#", "Time", "%Time", "Line" ))
+        PROFILE_LOGGER.warning("%5s%14s%9s%10s" % ("", "(ms)", "", ""))
+        PROFILE_LOGGER.warning("<><><><><><><><><><><><><><><><><><><><><><><>")
         for i_l, l in enumerate(line_nums):
             frac_t = timespent[i_l] / total_time * 100.
             line = fp[l-1][:-1]
-            PROFILE_LOGGER.info("%5d%14.2f%9.2f%s" % (l, timespent[i_l]*unit*1e3, frac_t, line))
+            PROFILE_LOGGER.warning("%5d%14.2f%9.2f%s" % (l, timespent[i_l]*unit*1e3, frac_t, line))

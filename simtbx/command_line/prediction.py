@@ -18,6 +18,9 @@ import time
 from libtbx.phil import parse
 import os
 
+import logging
+from simtbx.diffBragg import mpi_logger
+MAIN_LOGGER = logging.getLogger("main")
 
 help_message = "predictions using diffBragg refinement results"
 
@@ -81,9 +84,12 @@ max_process = None
 pandas_outfile = None
   .type = str
   .help = output file name (this file is suitable input to stage_two refinement, e.g. the pandas_table parameter)
+hopper {
+  include scope simtbx.command_line.hopper.phil_scope
+}
 """
 
-phil_scope = parse(script_phil)
+phil_scope = parse(script_phil, process_includes=True)
 
 class Script:
 
@@ -99,8 +105,17 @@ class Script:
             check_format=False,
             epilog=help_message)
 
-    def run(self):
         self.params, _ = self.parser.parse_args(show_diff_phil=True)
+
+    def run(self):
+
+        if self.params.hopper.outdir is None:
+            self.params.hopper.outdir = self.params.stage_one_folder[0] if self.params.stage_one_folder is not None else ".'"
+        if self.params.hopper.logging.logname is None:
+            self.params.hopper.logging.logname = "main_pred.log"
+        if self.params.hopper.profile_name is None:
+            self.params.hopper.profile_name = "prof_pred.log"
+        mpi_logger.setup_logging_from_params(self.params.hopper)
 
         if self.params.stage_one_folder is None:
             explist = self.load_filelist(self.params.exper_list)
@@ -141,16 +156,16 @@ class Script:
                 panda_frame = pandas.read_pickle(panda_file)
                 panda_cols = list(panda_frame)
                 if "opt_exp_name" not in panda_cols:
-                    print("WARNING: panda frame %s doesnt contain experiment path" % panda_file)
+                    MAIN_LOGGER.warning("WARNING: panda frame %s doesnt contain experiment path" % panda_file)
                     continue
                 exper_file = panda_frame.opt_exp_name.values[0]
                 if not os.path.exists(exper_file):
-                    print("WARNING: path to experiment %s does not exist" % exper_file)
+                    MAIN_LOGGER.warning("WARNING: path to experiment %s does not exist" % exper_file)
                     continue
 
-            print("<><><><><><><><><><><><><><><><><><>")
-            print("\tRank %d : iter %d / %d" % (COMM.rank, i_exp+1, NUM_PROCESS))
-            print("<><><><><><><><><><><><><><><><><><>")
+            MAIN_LOGGER.info("<><><><><><><><><><><><><><><><><><>")
+            MAIN_LOGGER.info("\tRank %d : iter %d / %d" % (COMM.rank, i_exp+1, NUM_PROCESS))
+            MAIN_LOGGER.info("<><><><><><><><><><><><><><><><><><>")
 
             El = ExperimentListFactory.from_json_file(exper_file, check_format=False)
             exper = El[0]
@@ -174,7 +189,7 @@ class Script:
                     output_img=self.params.output_img,
                     njobs=self.params.njobs, device_Id=dev_id, as_numpy_array=True)
             else:
-                print("Modeling spots from pandas")
+                MAIN_LOGGER.info("Modeling spots from pandas")
                 model_imgs = utils.spots_from_pandas(panda_frame,
                     oversample_override=self.params.oversample_override,
                     Ncells_abc_override=self.params.Ncells_abc_override,
@@ -189,11 +204,11 @@ class Script:
             Rindexed['id'] = flex.int(len(Rindexed), 0)
             if strong is not None:
                 Rindexed = utils.remove_multiple_indexed(Rindexed)
-                print("%d / %d are indexed!" % (len(Rindexed), len(strong)))
+                MAIN_LOGGER.info("%d / %d are indexed!" % (len(Rindexed), len(strong)))
             prediction_outfile = os.path.splitext(exper_file)[0] + "_diffBragg_prediction.refl"
             Rindexed.as_file(prediction_outfile)
             tdone = time.time() - tstart
-            print("Done, saved indexed refls to file %s (took %.4f sec)" % (prediction_outfile, tdone))
+            MAIN_LOGGER.info("Done, saved indexed refls to file %s (took %.4f sec)" % (prediction_outfile, tdone))
 
             if auto_parsed_stage_one_folder:
                 panda_frame["predictions"] = os.path.abspath(prediction_outfile)
@@ -208,7 +223,7 @@ class Script:
                     master_outfile = self.params.pandas_outfile
                 master_frame = pandas.concat(processed_frames)
                 master_frame.to_pickle(master_outfile)
-                print("Saved predictions dataframe (this is ready for stage_two!): %s" % master_outfile)
+                MAIN_LOGGER.info("Saved predictions dataframe (this is ready for stage_two!): %s" % master_outfile)
 
     @staticmethod
     def load_filelist(fname):
@@ -225,11 +240,11 @@ class Script:
             all_panda_names = []
             for stage_one_path in self.params.stage_one_folder:
                 if not os.path.exists(stage_one_path):
-                    print("Path does not exist: %s" % stage_one_path)
+                    MAIN_LOGGER.warning("Path does not exist: %s" % stage_one_path)
                     continue
                 panda_glob = os.path.join(stage_one_path, "pandas", "rank*", "*pkl")
                 panda_names = glob.glob(panda_glob)
-                print("Found %d pandas files in folder %s" % (len(panda_names), stage_one_path))
+                MAIN_LOGGER.info("Found %d pandas files in folder %s" % (len(panda_names), stage_one_path))
                 all_panda_names += panda_names
         else:
             all_panda_names = None
@@ -239,6 +254,26 @@ class Script:
 
 if __name__ == '__main__':
     from dials.util import show_mail_on_error
+    try:
+        from line_profiler import LineProfiler
+    except ImportError:
+        LineProfiler = None
+
     with show_mail_on_error():
         script = Script()
-        script.run()
+        RUN = script.run
+        lp = None
+        if LineProfiler is not None and script.params.hopper.profile:
+            lp = LineProfiler()
+            lp.add_function(utils.spots_from_pandas)
+            lp.add_function(utils.spots_from_pandas_and_experiment)
+            from simtbx.nanoBragg import utils as nbutils
+            lp.add_function(nbutils.flexBeam_sim_colors)
+            RUN = lp(script.run)
+
+        RUN()
+
+        if lp is not None:
+            stats = lp.get_stats()
+            from simtbx.diffBragg import hopper_utils
+            hopper_utils.print_profile(stats, ["spots_from_pandas", "spots_from_pandas_and_experiment", "flexBeam_sim_colors"])

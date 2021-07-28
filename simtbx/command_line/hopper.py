@@ -47,13 +47,7 @@ from simtbx.diffBragg import utils
 from simtbx.diffBragg.phil import philz
 
 import logging
-LOGFORMAT = 'RANK%d | ' % COMM.rank + '%(asctime)s | %(levelname)s | %(message)s'
-LOGFORMATER = logging.Formatter(LOGFORMAT)
-#if COMM.rank > 0:  # DISABLES MOST CONSOLE OUTPUT FOR RANKS higher than 0
-CONSOLE_LOG = logging.StreamHandler()
-CONSOLE_LOG.setLevel(logging.WARNING)  # but we still care about warning messages and higher
-logging.getLogger().addHandler(CONSOLE_LOG)
-from simtbx.diffBragg.mpi_logger import MPIFileHandler
+from simtbx.diffBragg import mpi_logger
 
 hopper_phil = """
 use_float32 = False
@@ -451,12 +445,31 @@ min_multi = 2
 min_spot = 5
   .type = int
   .help = minimum spots on a shot in order to optimize that shot
-logfiles = False
-  .type = bool 
-  .help = write log files in the outputdir 
+logging {
+  logfiles = False
+    .type = bool 
+    .help = write log files in the outputdir 
+  rank0_level = low *normal high 
+    .type = choice
+    .help = console log level for rank 0, ignored if logfiles=True 
+  other_ranks_level = *low normal high
+    .type = choice
+    .help = console log level for all ranks > 0, ignored if logfiles=True
+  overwrite = True
+    .type = bool
+    .help = overwrite the existing logfiles
+  logname = None
+    .type = str
+    .help = if logfiles=True, then write the log to this file, stored in the folder specified by outdir
+    .help = if None, then defaults to main_stage1.log for hopper, main_pred.log for prediction, main_stage2.log for stage_two
+}
 profile = False
   .type = bool
   .help = profile the workhorse functions
+profile_name = None
+  .type = str
+  .help = name of the output file that stores the line-by-line profile (written to folder specified by outdir)
+  .help = if None, defaults to prof_stage1.log, prof_pred.log, prof_stage2.log for hopper, prediction, stage_two respectively
 """
 
 
@@ -483,25 +496,16 @@ class Script:
             self.params, _ = self.parser.parse_args(show_diff_phil=True)
             assert self.params.outdir is not None
         self.params = COMM.bcast(self.params)
+        if COMM.rank == 0:
+            if not os.path.exists(self.params.outdir):
+                utils.safe_makedirs(self.params.outdir)
+        COMM.barrier()
 
-        if self.params.logfiles:
-            if COMM.rank == 0:
-                if not os.path.exists(self.params.outdir):
-                    utils.safe_makedirs(self.params.outdir)
-            COMM.barrier()
-
-            def make_logger(name):
-                handler = MPIFileHandler(os.path.join(self.params.outdir, "%s.log" % name))
-                handler.setFormatter(LOGFORMATER)
-                logger = logging.getLogger(name)
-                logger.setLevel(logging.DEBUG)
-                logger.addHandler(handler)
-
-            make_logger("refine")
-            make_logger("profile")
-
-        else:
-            logging.basicConfig(level=logging.DEBUG, format=LOGFORMAT)
+        if self.params.logging.logname is None:
+            self.params.logging.logname = "main_stage1.log"
+        if self.params.profile_name is None:
+            self.params.profile_name = "prof_stage1.log"
+        mpi_logger.setup_logging_from_params(self.params)
 
     def run(self):
         assert os.path.exists(self.params.exp_ref_spec_file)
@@ -805,7 +809,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     new_exp_list = ExperimentList()
     new_exp_list.append(expt)
     new_exp_list.as_file(opt_exp_path)
-    LOGGER.debug("saved opt_exp %s with wavelength %f" % (opt_exp_path, expt.beam))
+    LOGGER.debug("saved opt_exp %s with wavelength %f" % (opt_exp_path, expt.beam.get_wavelength()))
 
     spec_file = None
     if params.simulator.spectrum.filename is not None:

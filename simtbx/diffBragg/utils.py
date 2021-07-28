@@ -31,6 +31,9 @@ from dxtbx.imageset import ImageSet, ImageSetData
 from dxtbx.model.experiment_list import ExperimentListFactory
 from dxtbx.model import ExperimentList
 
+import logging
+MAIN_LOGGER = logging.getLogger("main")
+
 
 def get_spot_data(img, thresh=0, filter=None, **kwargs):
     """
@@ -348,7 +351,6 @@ def perturb_miller_array(F, factor, perturb_log_vals=True):
     try:
         Fdat = np.random.uniform(Fdat-factor, Fdat+factor)
     except OverflowError:
-        print ('You suck')
         return None
     if perturb_log_vals:
         Fdat = np.exp(Fdat)
@@ -417,7 +419,7 @@ def compare_with_ground_truth(a, b, c, dxcryst_models, symbol="C121", verbose=Fa
         aligned_Ori = integrated_Ori.change_basis(sqr(cb_op_align))
         if verbose:
             aligned_Ori.show(legend="integrated, aligned")
-            print("alignment matrix", cb_op_align)
+            MAIN_LOGGER.debug("alignment matrix", cb_op_align)
 
         U_integrated = aligned_Ori.get_U_as_sqr()
         U_ground_truth = C2_ground_truth.get_U_as_sqr()
@@ -715,7 +717,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
         #rect = plt.Rectangle(xy=(i1,j1), width=i2-i1, height=j2-j1, fc='none', ec='w')
         is_selected = True
         if is_on_edge[i_roi] and reject_edge_reflections:
-            print("is on edge")
+            MAIN_LOGGER.debug("Reflection %d bounded by x1=%d,x2=%d,y1=%d,y2=%d is on edge" % (i_roi, i1,i1,j2,j2))
             is_selected = False
         pid = refls[i_roi]['panel']
 
@@ -723,7 +725,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
             is_hotpix = hotpix_mask[pid, j1:j2, i1:i2]
             num_hotpix = is_hotpix.sum()
             if num_hotpix > 0 and reject_roi_with_hotpix:
-                #print("has hot pixel")
+                MAIN_LOGGER.debug("reflection %d has hot pixel" % i_roi)
                 is_selected = False
             if num_hotpix > min_trusted_pix_per_roi:
                 is_selected = False
@@ -779,8 +781,8 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                 weighted=weighted_fit)
             if fit_results is None:
                 tilt_a = tilt_b = tilt_c = covariance = 0
-                is_selected=False
-                print("tilt fit failed, probably too few pixels")
+                is_selected = False
+                MAIN_LOGGER.debug("tilt fit failed for reflection %d, probably too few pixels" % i_roi)
                 tilt_plane = np.zeros_like(Xcoords)
             else:
                 (tilt_a, tilt_b, tilt_c), covariance = fit_results
@@ -795,12 +797,8 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                     num_roi_negative_bg += 1
                     is_selected = False
 
-        #if i_roi==235:
-        #    print("WHOOPS!")
-        #    from IPython import embed
-        #    embed()
         if not np.all(background[pid, j1_nopad:j2_nopad, i1_nopad:i2_nopad] == -1):
-            #print( "region of interest already accounted for roi size= %d %d" % (i2_nopad-i1_nopad, j2_nopad-j1_nopad))
+            MAIN_LOGGER.debug("region of interest already accounted for roi size= %d %d" % (i2_nopad-i1_nopad, j2_nopad-j1_nopad))
             rois[i_roi] = i1_nopad+1,i2_nopad,j1_nopad+1,j2_nopad
             continue
 
@@ -837,8 +835,8 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
     #for p in patches:
     #    plt.gca().add_patch(p)
     #plt.show()
-    #print("Number of ROI with negative BGs: %d / %d" % (num_roi_negative_bg, len(rois)))
-    #print("Number of ROI with NAN in BGs: %d / %d" % (num_roi_nan_bg, len(rois)))
+    MAIN_LOGGER.debug("Number of ROI with negative BGs: %d / %d" % (num_roi_negative_bg, len(rois)))
+    MAIN_LOGGER.debug("Number of ROI with NAN in BGs: %d / %d" % (num_roi_nan_bg, len(rois)))
     if ret_cov:
         return kept_rois, panel_ids, tilt_abc, selection_flags, background, all_cov
     else:
@@ -922,7 +920,7 @@ def fit_plane_equation_to_background_pixels(shoebox_img, fit_sel, sigma_rdout=3,
     try:
         AWA_inv = np.linalg.inv(AWA)
     except np.linalg.LinAlgError:
-        print("WARNING: Fit did not work.. investigate reflection")
+        MAIN_LOGGER.warning("WARNING: Fit did not work.. investigate reflection, number of pixels used in fit=%d" % len(fast))
         return None
     AtW = np.dot(A.T, W)
     t1, t2, t3 = np.dot(np.dot(AWA_inv, AtW), rho_bg)
@@ -974,7 +972,7 @@ def get_pedestalRMS_from_jungfrau(expt, gain_modes_too=False):
 
 def gain_data_from_expt(expt):
     gainexp_path = expt.gainmap_path
-    print("Loading gainmap data from experiment %s" % gainexp_path)
+    MAIN_LOGGER.info("Loading gainmap data from experiment %s" % gainexp_path)
     gainexp = ExperimentListFactory.from_json_file(gainexp_path, check_format=True)[0]
     iset = gainexp.imageset
     gain_data = [rawdat.as_numpy_array() >> 14 for rawdat in iset.get_raw_data(0)]
@@ -1109,7 +1107,7 @@ def open_mtz(mtzfname, mtzlabel=None, verbose=False):
     if mtzlabel is None:
         mtzlabel = "fobs(+)fobs(-)"
     if verbose:
-        print("Opening mtz file %s , label %s" % (mtzfname, mtzlabel))
+        MAIN_LOGGER.info("Opening mtz file %s , label %s" % (mtzfname, mtzlabel))
     from iotbx.reflection_file_reader import any_reflection_file
     miller_arrays = any_reflection_file(mtzfname).as_miller_arrays()
 
@@ -1342,7 +1340,7 @@ def parse_panel_input_string(panel_str):
             pids = [int(s)]
         all_pids += pids
     if len(all_pids) != len(set(all_pids)):
-        print("WARNING: duplicate pids found in panel input string %s, please double check!" % panel_str)
+        MAIN_LOGGER.warning("WARNING: duplicate pids found in panel input string %s, please double check!" % panel_str)
     return list(set(all_pids))
 
 
@@ -1375,13 +1373,13 @@ def spots_from_pandas(pandas_frame, mtz_file=None, mtz_col=None,
                       output_img=None, omp=False, norm_by_spectrum=False,
                       symbol_override=None, quiet=False, reset_Bmatrix=False):
     if time_panels and quiet:
-        print("NOTE: quiet=True will suppress panel simulation timing print output")
+        MAIN_LOGGER.debug("NOTE: quiet=True will suppress panel simulation timing print output")
     from joblib import Parallel, delayed
     from simtbx.nanoBragg.utils import flexBeam_sim_colors
 
     df = pandas_frame
 
-    if not quiet:print("Loading experiment models")
+    if not quiet:MAIN_LOGGER.info("Loading experiment models")
     expt_name = df.opt_exp_name.values[0]
     El = ExperimentListFactory.from_json_file(expt_name, check_format=False)
     expt = El[0]
@@ -1393,8 +1391,8 @@ def spots_from_pandas(pandas_frame, mtz_file=None, mtz_col=None,
         ucell_params = df[["a", "b", "c", "al", "be", "ga"]].values[0]
         ucell_man = manager_from_params(ucell_params)
         expt.crystal.set_B(ucell_man.B_recipspace)
-    if not quiet:print("Done loading models!")
-    if not quiet:print("Crystal model:")
+    if not quiet:MAIN_LOGGER.info("Done loading models!")
+    if not quiet:MAIN_LOGGER.info("Crystal model:")
     if not quiet:El[0].crystal.show()
     assert len(df) == 1
     Ncells_abc = tuple(map(lambda x: int(round(x)), df.ncells.values[0]))
@@ -1422,7 +1420,7 @@ def spots_from_pandas(pandas_frame, mtz_file=None, mtz_col=None,
         assert total_flux is not None
         fluxes = np.array([total_flux])
         energies = np.array([ENERGY_CONV/expt.beam.get_wavelength()])
-        if not quiet: print("Running MONO sim")
+        if not quiet: MAIN_LOGGER.info("Running MONO sim")
         nspec = 1
     lam0 = df.lam0.values[0]
     lam1 = df.lam1.values[0]
@@ -1480,12 +1478,12 @@ def roi_spots_from_pandas(pandas_frame,  rois_per_panel, mtz_file=None, mtz_col=
                       symbol_override=None, quiet=False, reset_Bmatrix=False, nopolar=False,
                       force_no_detector_thickness=False, printout_pix=None, norm_by_nsource=False):
     if time_panels and quiet:
-        print("NOTE: quiet=True will suppress panel simulation timing print output")
+        MAIN_LOGGER.info("NOTE: quiet=True will suppress panel simulation timing print output")
     from simtbx.nanoBragg.utils import flexBeam_sim_colors
 
     df = pandas_frame
 
-    if not quiet:print("Loading experiment models")
+    if not quiet:MAIN_LOGGER.info("Loading experiment models")
     expt_name = df.opt_exp_name.values[0]
     El = ExperimentListFactory.from_json_file(expt_name, check_format=False)
     expt = El[0]
@@ -1498,8 +1496,8 @@ def roi_spots_from_pandas(pandas_frame,  rois_per_panel, mtz_file=None, mtz_col=
         ucell_params = df[["a", "b", "c", "al", "be", "ga"]].values[0]
         ucell_man = manager_from_params(ucell_params)
         expt.crystal.set_B(ucell_man.B_recipspace)
-    if not quiet:print("Done loading models!")
-    if not quiet:print("Crystal model:")
+    if not quiet:MAIN_LOGGER.info("Done loading models!")
+    if not quiet:MAIN_LOGGER.info("Crystal model:")
     if not quiet:expt.crystal.show()
     assert len(df) == 1
     Ncells_abc = df.ncells.values[0]  #tuple(map(lambda x: int(round(x)), df.ncells.values[0]))
@@ -1526,7 +1524,7 @@ def roi_spots_from_pandas(pandas_frame,  rois_per_panel, mtz_file=None, mtz_col=
     else:
         fluxes = np.array([total_flux])
         energies = np.array([ENERGY_CONV/expt.beam.get_wavelength()])
-        if not quiet: print("Running MONO sim")
+        if not quiet: MAIN_LOGGER.info("Running MONO sim")
     lam0 = df.lam0.values[0]
     lam1 = df.lam1.values[0]
     if lam0 == -1:
@@ -1571,13 +1569,13 @@ def spots_from_pandas_and_experiment(expt, pandas_pickle, mtz_file=None, mtz_col
     from joblib import Parallel, delayed
     from simtbx.nanoBragg.utils import flexBeam_sim_colors
 
-    print("Loading experiment")
+    MAIN_LOGGER.info("Loading experiment")
     if isinstance(expt, str):
         El = ExperimentListFactory.from_json_file(expt, check_format=save_expt_data)
         expt = El[0]
     else:
         assert "Experiment" in str(type(expt))
-    print("Done loading!")
+    MAIN_LOGGER.info("Done loading!")
     df = pandas.read_pickle(pandas_pickle)
     assert len(df) == 1
     Ncells_abc = tuple(map(lambda x : int(round(x)), df.ncells.values[0]))
@@ -1656,7 +1654,7 @@ def save_model_to_image(expt, model_results, output_img_file, save_experiment_da
         if save_experiment_data:
             exp_data = image_data_from_expt(expt)
             writer.add_image(exp_data)
-    print("Wrote model to image %s" % output_img_file)
+    MAIN_LOGGER.info("Wrote model to image %s" % output_img_file)
 
 
 def index_refls(refls, exper, tolerance=0.333):
@@ -1684,7 +1682,7 @@ def indexed_from_model(strong_refls, model_images, expt, thresh=1, tolerance=0.3
 
     #_=refls_to_hkl(model_refls, expt.detector, expt.beam, expt.crystal,
     #                                update_table=True)
-    print("Indexed %d / %d spots from the model using the nominal wavelength"
+    MAIN_LOGGER.info("Indexed %d / %d spots from the model using the nominal wavelength"
           % (sum(model_refls['id'] == 0), len(model_refls)))
     if strong_refls is None:
         model_refls['xyzcal.mm'] = model_refls['xyzobs.mm.value']
@@ -1738,7 +1736,7 @@ def remove_multiple_indexed(R):
     selected_rows = []
     for hkl in hkls:
         g = gb.get_group(hkl)
-        print( hkl, len(g))
+        MAIN_LOGGER.debug( hkl, len(g))
         if len(g) > 1:
             row = g.iloc[g.dist.argmin()].name
         else:
@@ -1972,7 +1970,7 @@ def parse_reso_string(s):
             assert a < b
             vals.append((a,b))
     except Exception as error:
-        print("Failed to parse string!", error)
+        MAIN_LOGGER.error("Failed to parse string!", error)
         raise ValueError("Wrong string format, see error above")
     return vals
 
@@ -2274,7 +2272,7 @@ def compute_scale_to_minmize_r_factor(F1, F2, anom=True):
 
     assert res.success
     r1_scale = res.x[0]
-    print("Optimization successful!, using scale factor=%f" % r1_scale)
+    MAIN_LOGGER.debug("Optimization successful!, using scale factor=%f" % r1_scale)
     return r1_scale
 
 
@@ -2372,7 +2370,7 @@ def show_diffBragg_state(D, debug_pixel_panelfastslow):
     # TODO be careful with zero-ing the pixels - is this really what we want to do ?
     # TODO, rather than print the state, pickle the state
     D.show_params()
-    print("internal spot scale=%f" % D.spot_scale)
+    MAIN_LOGGER.info("internal spot scale=%f" % D.spot_scale)
     D.raw_pixels*=0
     p, f, s = debug_pixel_panelfastslow
     D.printout_pixel_fastslow = f, s

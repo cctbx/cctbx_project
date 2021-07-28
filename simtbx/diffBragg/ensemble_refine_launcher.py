@@ -16,6 +16,7 @@ from simtbx.diffBragg.utils import map_hkl_list
 from simtbx.diffBragg.refiners.global_refiner import GlobalRefiner
 from simtbx.diffBragg.refine_launcher import LocalRefinerLauncher
 from simtbx.diffBragg import utils
+from simtbx.diffBragg import hopper_utils
 from dxtbx.model.experiment_list import ExperimentListFactory
 
 
@@ -153,10 +154,18 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             if "rlp" in refls:
                 self.shot_reso[shot_idx] = 1/np.linalg.norm(refls["rlp"], axis=1)
 
-            if "spectrum_filename" in list(exper_dataframe) and exper_dataframe.spectrum_filename.values[0] is not None:
+            if self.params.spectrum_from_imageset:
+                self.shot_spectra[shot_idx] = hopper_utils.downsamp_spec(self.SIM, self.params, expt, return_and_dont_set=True)
+
+            elif "spectrum_filename" in list(exper_dataframe) and exper_dataframe.spectrum_filename.values[0] is not None:
                 self.shot_spectra[shot_idx] = utils.load_spectra_from_dataframe(exper_dataframe)
+
             else:
-                self.shot_spectra[shot_idx] = [(expt.beam.get_wavelength(), self.params.simulator.total_flux)]
+                total_flux = exper_dataframe.total_flux.values[0]
+                if total_flux is None:
+                    total_flux = self.params.simulator.total_flux
+                self.shot_spectra[shot_idx] = [(expt.beam.get_wavelength(), total_flux)]
+
             self.shot_crystal_models[shot_idx] = expt.crystal
             self.shot_crystal_model_refs[shot_idx] = deepcopy(expt.crystal)
             self.shot_xrel[shot_idx] = shot_data.xrel
