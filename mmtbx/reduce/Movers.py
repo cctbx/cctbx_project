@@ -76,7 +76,7 @@ import traceback
 #  - type FixUpReturn: (
 #       flex<atom> atoms,
 #       flex<vec3> positions,
-#       flex<probe.ExtraAtomInfo> extraInfo,
+#       flex<probe.ExtraAtomInfo> extraInfos,
 #       flex<bool> deleteMe
 #    )
 #       These are lists with one entry per atom telling the same information as the

@@ -37,6 +37,20 @@ from mmtbx.hydrogens import reduce_hydrogen
 # Reduce's "Movers".
 
 ##################################################################################
+# Module-scoped attributes that can be set to modify behavior.
+
+# Default value of 1 reports standard information.
+# Setting it to 0 removes all inforamtional messages.
+# Setting it above 1 provides additional debugging information.
+verbosity = 1
+def _VerboseCheck(level, message):
+  # Returns "" if the level is less than global verbosity level, message if it is at or above
+  if verbosity >= level:
+    return message
+  else:
+    return ""
+
+##################################################################################
 # Optimizers:
 #     NullOptimer: This is a base Optimizer class that implements the placement and scoring
 # of Movers but does not actually perform any optimization.  The useful Optimizers will all
@@ -136,7 +150,6 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
   # atoms are present (especially the Hydrogens).  If the construction succeeds, add the
   # Mover to the list of those to return.  When they fail, add the output to the information
   # string.
-  print('XXX Number of atoms =',len(atoms))
 
   for a in atoms:
     # Find the stripped upper-case atom and residue names and the residue ID,
@@ -194,10 +207,10 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
               potentialAcceptors.append(c)
 
           movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, potentialAcceptors))
-          infoString += ("Added MoverSingleHydrogenRotator to "+resNameAndID+" "+aName+
+          infoString += _VerboseCheck(1,"Added MoverSingleHydrogenRotator to "+resNameAndID+" "+aName+
             " with "+str(len(potentialAcceptors))+" potential nearby acceptors\n")
       except Exception as e:
-        infoString += "Could not add MoverSingleHydrogenRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n"
+        infoString += _VerboseCheck(0,"Could not add MoverSingleHydrogenRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n")
 
     # See if we should construct a MoverNH3Rotator here.
     # Find any Nitrogen that has four total bonded neighbors, three of which are Hydrogens.
@@ -210,9 +223,9 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
       if numH == 3:
         try:
           movers.append(Movers.MoverNH3Rotator(a, bondedNeighborLists))
-          infoString += "Added MoverNH3Rotator to "+resNameAndID+"\n"
+          infoString += _VerboseCheck(1,"Added MoverNH3Rotator to "+resNameAndID+"\n")
         except Exception as e:
-          infoString += "Could not add MoverNH3Rotator to "+resNameAndID+": "+str(e)+"\n"
+          infoString += _VerboseCheck(0,"Could not add MoverNH3Rotator to "+resNameAndID+": "+str(e)+"\n")
 
     # See if we should construct a MoverAromaticMethylRotator or MoverTetrahedralMethylRotator here.
     # Find any Carbon that has four total bonded neighbors, three of which are Hydrogens.
@@ -232,24 +245,24 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         if len(bondedNeighborLists[neighbor]) == 3:
           try:
             movers.append(Movers.MoverAromaticMethylRotator(a, bondedNeighborLists))
-            infoString += "Added MoverAromaticMethylRotator to "+resNameAndID+" "+aName+"\n"
+            infoString += _VerboseCheck(1,"Added MoverAromaticMethylRotator to "+resNameAndID+" "+aName+"\n")
           except Exception as e:
-            infoString += "Could not add MoverAromaticMethylRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n"
+            infoString += _VerboseCheck(0,"Could not add MoverAromaticMethylRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n")
         else:
           try:
             ignored = Movers.MoverTetrahedralMethylRotator(a, bondedNeighborLists)
-            infoString += "Used MoverTetrahedralMethylRotator to stagger "+resNameAndID+" "+aName+"\n"
+            infoString += _VerboseCheck(1,"Used MoverTetrahedralMethylRotator to stagger "+resNameAndID+" "+aName+"\n")
           except Exception as e:
-            infoString += "Could not add MoverTetrahedralMethylRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n"
+            infoString += _VerboseCheck(0,"Could not add MoverTetrahedralMethylRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n")
 
     # See if we should insert a MoverNH2Flip here.
     # @todo Is there a more general way than looking for specific names?
     if (aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN'):
       try:
         movers.append(Movers.MoverNH2Flip(a, "CA", bondedNeighborLists))
-        infoString += "Added MoverNH2Flip to "+resNameAndID+"\n"
+        infoString += _VerboseCheck(1,"Added MoverNH2Flip to "+resNameAndID+"\n")
       except Exception as e:
-        infoString += "Could not add MoverNH2Flip to "+resNameAndID+": "+str(e)+"\n"
+        infoString += _VerboseCheck(0,"Could not add MoverNH2Flip to "+resNameAndID+": "+str(e)+"\n")
 
     # See if we should insert a MoverHistidineFlip here.
     # @todo Is there a more general way than looking for specific names?
@@ -266,8 +279,8 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         # ND1 (4th atom with its Hydrogen at atom 5).
         cp = hist.CoarsePositions()
         ne2Orig = cp.positions[0][0]
-        ne2Flip = cp.positions[3][0]
         nd1Orig = cp.positions[0][4]
+        ne2Flip = cp.positions[3][0]
         nd1Flip = cp.positions[3][4]
 
         # See if any are close enough to an ion to be ionically bonded.
@@ -282,14 +295,15 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           neighbors = spatialQuery.neighbors(pos, minDist, maxDist)
           for n in neighbors:
             if Helpers.isMetallic(n):
-              print('XXX Checking metallic',n.name)
               dist = (Movers._rvec3(pos) - Movers._rvec3(n.xyz)).length()
-              print('XXX dist =',dist,'r1 =',extraAtomInfo.getMappingFor(a).vdwRadius,'r2 =',extraAtomInfo.getMappingFor(n).vdwRadius)
-              expected = extraAtomInfo.getMappingFor(a).vdwRadius + extraAtomInfo.getMappingFor(n).vdwRadius
+              expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
+              infoString += _VerboseCheck(5,'Checking '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
+                ' dist = '+str(dist)+', expected = '+str(expected)+'; N rad = '+str(myRad)+
+                ', '+n.name.strip()+' rad = '+str(extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
               if dist >= (expected - 0.55) and dist <= (expected + 0.25):
                 # The first two elements come from configuration 0 and the second two from configuration 3
                 bondedConfig = (i // 2) * 3
-                print('XXX Ionic bond, config',bondedConfig)
+                infoString += _VerboseCheck(5,'Found ionic bond in coarse configuration '+str(bondedConfig)+'\n')
                 break
           if bondedConfig is not None:
             # We want the first configuration that is found, not flipping if we don't need to.
@@ -301,41 +315,47 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         if bondedConfig is not None:
           # Set the histidine in that flip state
           fixUp = hist.FixUp(bondedConfig)
+          coarsePositions = hist.CoarsePositions().positions[bondedConfig]
           for i,a in enumerate(fixUp.atoms):
             a.xyz = fixUp.positions[i]
-            extraAtomInfo.setMappingFor(a, fixUp.extraInfo[i])
+            extraAtomInfo.setMappingFor(a, fixUp.extraInfos[i])
 
           # See if we should remove the Hydrogen from each of the two potentially-bonded
           # Nitrogens and make each an acceptor if we do remove its Hydrogen.  The two atoms
           # are NE2 (0th atom with its Hydrogen at atom 1) and ND1 (4th atom with
           # its Hydrogen at atom 5).
-          def _modifyIfNeeded(nitro, hydro):
+          # NOTE that we must check the position of the atom in its coarse configuration rather
+          # than its FixUp configuration because that is the location that we use to determine if
+          # we have an ionic bond.
+          def _modifyIfNeeded(nitro, coarseNitroPos, hydro):
             # Helper function to check and change things for one of the Nitrogens.
             myRad = extraAtomInfo.getMappingFor(nitro).vdwRadius
             minDist = myRad
             maxDist = 0.25 + myRad + maxVDWRadius
-            neighbors = spatialQuery.neighbors(nitro.xyz, minDist, maxDist)
+            neighbors = spatialQuery.neighbors(coarseNitroPos, minDist, maxDist)
             for n in neighbors:
               if Helpers.isMetallic(n):
-                dist = (Movers._rvec3(nitro.xyz) - Movers._rvec3(n.xyz)).length()
-                expected = extraAtomInfo.getMappingFor(a).vdwRadius + extraAtomInfo.getMappingFor(n).vdwRadius
+                dist = (Movers._rvec3(coarseNitroPos) - Movers._rvec3(n.xyz)).length()
+                expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
                 if dist >= (expected - 0.55) and dist <= (expected + 0.25):
-                  print('XXX Removing Hydrogen from NE3 and marking at an acceptor')
+                  nonlocal infoString
+                  infoString += _VerboseCheck(1,'Removing Hydrogen from '+resNameAndID+nitro.name+' and marking as an acceptor '+
+                    '(ionic bond to '+n.name+')\n')
                   extra = extraAtomInfo.getMappingFor(nitro)
                   extra.isAcceptor = True
                   extraAtomInfo.setMappingFor(nitro, extra)
                   deleteAtoms.append(hydro)
                   break
 
-          _modifyIfNeeded(fixUp.atoms[0], fixUp.atoms[1])
-          _modifyIfNeeded(fixUp.atoms[4], fixUp.atoms[5])
+          _modifyIfNeeded(fixUp.atoms[0], coarsePositions[0], fixUp.atoms[1])
+          _modifyIfNeeded(fixUp.atoms[4], coarsePositions[4], fixUp.atoms[5])
 
-          infoString += "Set MoverHistidineFlip on "+resNameAndID+" to state "+str(i)+"\n"
+          infoString += _VerboseCheck(1,"Set MoverHistidineFlip on "+resNameAndID+" to state "+str(bondedConfig)+"\n")
         else:
           movers.append(hist)
-          infoString += "Added MoverHistidineFlip to "+resNameAndID+"\n"
+          infoString += _VerboseCheck(1,"Added MoverHistidineFlip to "+resNameAndID+"\n")
       except Exception as e:
-        infoString += "Could not add MoverHistidineFlip to "+resNameAndID+": "+str(e)+"\n"
+        infoString += _VerboseCheck(0,"Could not add MoverHistidineFlip to "+resNameAndID+": "+str(e)+"\n")
 
   return _PlaceMoversReturn(movers, infoString, deleteAtoms)
 
@@ -471,12 +491,15 @@ END
 
   ################################################################################
   # Put the Copper and Zinc back in their original positions before we build the
-  # spatial-query structure.
+  # spatial-query structure.  This will make them close enough to be bonded to
+  # the Nitrogens and should cause Hydrogen removal and marking of the Nitrogens
+  # as acceptors.
   for a in model.get_hierarchy().models()[0].atoms():
     if a.element.upper() == "CU":
       a.xyz = origPositionCU
     if a.element.upper() == "ZN":
       a.xyz = origPositionZN
+
 
   ################################################################################
   # Get the spatial-query information needed to quickly determine which atoms are nearby
@@ -486,14 +509,13 @@ END
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
   ret = Helpers.getExtraAtomInfo(model)
   extra = ret.extraAtomInfo
-  #@todo Why is this radius 0, and the one for the other later model?
-  print('XXX extraAtomInfo radius for first atom =',extra.getMappingFor(atoms[0]).vdwRadius)
 
   ################################################################################
   # Test getting the list of Movers using the _PlaceMovers private function.
   ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True),
                      bondedNeighborLists, sq, extra, AtomTypes.AtomTypes().MaximumVDWRadius())
   movers = ret.moverList
+  #dm.write_model_file(model, "deleteme.pdb", overwrite=True)
   print('XXX Found',len(movers),'Movers')
   print('XXX info:',ret.infoString)
   print('XXX Need to delete',len(ret.deleteAtoms),'atoms')
