@@ -29,14 +29,20 @@ def InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius = 0.25):
   in the product of the number of movers times the number of atoms times the number
   of possible positions for each and quadratic in the number of Movers.
 
-  :param movers: flex array of movers to add to the graph.
+  :param movers: flex array of movers to add to the graph.  Note that this list must
+  not be modified after the graph has been constructed because that will change the
+  index of its elements, making the graph point to the wrong elements (or to elements
+  that no longer exist).
   :param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
   up the information for atoms whose values need to be changed.  Can be
   obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
   :param probeRadius: Radius of the probe to use to determine neighbor contact.
   If it is not set, the default value of 0.25 will be used.
-  :returns An undirected Boost graph whose nodes are Movers and whose edges
-  indicate which Movers might overlap in any of their states.
+  :returns An undirected Boost graph whose nodes are indices into the movers list
+  and whose edges indicate which Movers might overlap in any of their states.  Note that
+  the mover list must not be modified after the graph has been constructed because
+  that will change the index of its elements, making the graph point to the wrong
+  elements (or to elements that no longer exist).
   """
 
   pr = probeRadius
@@ -90,7 +96,7 @@ def InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius = 0.25):
     AABBs.append( [xRange, yRange, zRange] )
 
   # For each pair of Movers whose bounding boxes overlap, add an
-  # edge to the graph
+  # edge to the graph.  We add them based on their indices.
   for i in range(len(movers)-1):
     for j in range(i+1, len(movers)):
       if _AABBOverlap(AABBs[i], AABBs[j]):
@@ -103,50 +109,52 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   pair of Movers in the set of Movers passed in to construct the
   graph of which overlap across all possible orientations of each.
 
-  :param movers: flex array of movers to add to the graph.
+  :param movers: flex array of movers to add to the graph.  Note that this list must
+  not be modified after the graph has been constructed because that will change the
+  index of its elements, making the graph point to the wrong elements (or to elements
+  that no longer exist).
   :param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
   up the information for atoms whose values need to be changed.  Can be
   obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
   :param probeRadius: Radius of the probe to use to determine neighbor contact.
   If it is not set, the default value of 0.25 will be used.
-  :returns An undirected Boost graph whose nodes are Movers and whose edges
-  indicate which Movers overlap in any of their states.
+  :returns An undirected Boost graph whose nodes are indices into the movers list
+  and whose edges indicate which Movers might overlap in any of their states.  Note that
+  the mover list must not be modified after the graph has been constructed because
+  that will change the index of its elements, making the graph point to the wrong
+  elements (or to elements that no longer exist).
   """
 
-  pr = probeRadius
+  # Run the AABB test to get a superset of the list of pairs that we need to check for
+  # overlap.  If we try to brute-force all of the Movers against all of the others, it
+  # takes too long.
+  ret = InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius)
 
-  # Add all of the Movers as nodes in the graph
-  # Find all possible atom positions for each.
-  ret = graph.adjacency_list(
-        graph_type = "undirected",
-        )
-  verts = []
-  positions = []
+  # List of atoms per mover and list of list of positions per atom per mover.
+  # Each of these is indexed the same way that movers is, so finding the index of the
+  # mover gets the same index for them.
   atoms = []
+  positions = []
   for m in movers:
-    verts.append(ret.add_vertex(m))
 
-    # Find all possible positions, coarse and fine.
+    # Find all possible positions, coarse and fine, for each atom
+    # in this mover.
     coarses = m.CoarsePositions()
     coarsePositions = coarses.positions
     total = coarsePositions.copy()
     for c in range(len(coarsePositions)):
       total.extend(m.FinePositions(c).positions)
 
-    # Add the atoms and positions into our lists
+    # Add the atoms and positions into our dictionaries
     atoms.append(coarses.atoms)
     positions.append(total)
 
-  # @todo Do the AABB overlap test before doing the pairwise comparisons to reduce
-  # the number of comparisons that are required.  Only test the ones that overlap
-  # in the AABB test.
-
-  # For each pair of Movers, see if they have any overlapping atoms.
-  # If so, add an edge to the graph for the pair.
-  for i in range(len(movers)-1):
-    for j in range(i+1, len(movers)):
-      if _PairsOverlap(atoms[i], positions[i], atoms[j], positions[j], extraAtomInfoMap, pr):
-        ret.add_edge( vertex1 = verts[i], vertex2 = verts[j])
+  # For each pair of movers that are connected by an edge in the graph produced
+  # by the AABB algorithm to see if they actually overlap.  If not, remove that edge.
+  for e in ret.edges():
+    if not _PairsOverlap(atoms[ret.source(e)], positions[ret.source(e)],
+        atoms[ret.target(e)], positions[ret.target(e)], extraAtomInfoMap, probeRadius):
+      ret.remove_edge( e )
 
   return ret
 
