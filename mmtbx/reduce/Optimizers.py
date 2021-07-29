@@ -69,7 +69,11 @@ def _VerboseCheck(level, message):
 
 class NullOptimizer:
 
-  def __init__(self, model, modelIndex = 0, altID = "", useNeutronDistances = False):
+  def __init__(self, model, modelIndex = 0, altID = "",
+                bondedNeighborDepth = 3,
+                probeRadius = 0.25,
+                useNeutronDistances = False
+              ):
     """Constructor for NullOptimizer.
     :param model: iotbx model (a group of hierarchy models).  Can be obtained using
     iotbx.map_model_manager.map_model_manager.model().  The model must have Hydrogens,
@@ -78,7 +82,7 @@ class NullOptimizer:
     cctbx.maptbx.box.shift_and_box_model().  It must have had PDB interpretation run on it,
     which can be done using model.process_input_model(make_restraints=True) with PDB
     interpretation parameters and hydrogen placement matching the value of the
-    useNeutronDistances parameter below.
+    useNeutronDistances parameter described below.
     :param modelIndex: Identifies which index from the hierarchy is to be selected.
     If this value is None, optimization will be run sequentially on every model in the
     hierarchy.
@@ -87,15 +91,137 @@ class NullOptimizer:
     will be run sequentially for every conformer in the model, starting with the last and
     ending with "".  This will leave the initial conformer's values as the final location
     for atoms that are not inside a conformer.
+    :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
+    The default is to ignore interactions to a depth of 3 (my bonded neighbors and their bonded
+    neighbors and their bonded neighbors).
+    :param probeRadius: Radius of the probe to be used in Probe calculations (Angstroms).
     :param useNeutronDistances: Defaults to using X-ray/electron cloud distances.  If set to
     True, it will use neutron (nuclear) distances.  This must be set consistently with the
     values used to generate the hydrogens and to run PDB interpretation.
     """
-    # @todo What to do about the Nitrogen tagging and Hydrogen moving for Histidine?
-    # @todo
 
-    # @todo Scaffolding to run optimization for every conformer and every model, calling
-    # placement and then a derived-class single optimization routine for each.
+    ################################################################################
+    # Initialize my information string to empty.
+    self._infoString = ""
+
+    ################################################################################
+    # Run optimization for every desired conformer and every desired model, calling
+    # placement and then a derived-class single optimization routine for each.  When
+    # the modelIndex or altID is None, that means to run over all available cases.
+    # For alternates, if there is a non-empty ("" or " ") case, then we run backwards
+    # from the last to the first but do not run for the empty case; if there are only
+    # empty cases, then we run just once.  We run the models in order, all of them when
+    # None is specified and the specified one if it is specified.
+
+    startModelIndex = 0
+    stopModelIndex = len(model.get_hierarchy().models())
+    if modelIndex is not None:
+      startModelIndex = modelIndex
+      stopModelIndex = modelIndex + 1
+    for mi in range(startModelIndex, stopModelIndex):
+      # Get the specified model from the hierarchy.
+      myModel = model.get_hierarchy().models()[mi]
+
+      # Get the list of alternate conformation names present in all chains for this model.
+      # If there is more than one result, remove the empty results and then sort them
+      # in reverse order.
+      alts = AlternatesInModel(myModel)
+      if len(alts) > 1:
+        alts.discard("")
+        alts.discard(" ")
+      alts = sorted(list(alts), reverse=True)
+
+      # If there is a specified alternate, use it.
+      if altID is not None:
+        alts = [altID]
+
+      for ai in alts:
+
+        # Tell about the run we are currently doing.
+        self._infoString += _VerboseCheck(1,"Running Reduce optimization on model index "+str(mi)+
+          ", alternate '"+ai+"'\n")
+        self._infoString += _VerboseCheck(1,"  bondedNeighborDepth = "+str(bondedNeighborDepth)+"\n")
+        self._infoString += _VerboseCheck(1,"  probeRadius = "+str(probeRadius)+"\n")
+        self._infoString += _VerboseCheck(1,"  useNeutronDistances = "+str(useNeutronDistances)+"\n")
+
+        # Get the atoms from the specified conformer in the model (the empty string is the name
+        # of the first conformation in the model; if there is no empty conformation, then it will
+        # pick the first available conformation for each atom group.
+        atoms = GetAtomsForConformer(myModel, ai)
+
+        ################################################################################
+        # Get the Cartesian positions of all of the atoms we're considering for this alternate
+        # conformation.
+        carts = flex.vec3_double()
+        for a in atoms:
+          carts.append(a.xyz)
+
+        ################################################################################
+        # Get the bond proxies for the atoms in the model and conformation we're using and
+        # use them to determine the bonded neighbor lists.
+        bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+        bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+
+        ################################################################################
+        # Placement of water phantom Hydrogens, including adding them to our 'atoms' list but
+        # not adding them to the hierarchy.  This must be done after the bond proxies are
+        # constructed but before making the spatial-query data structure.  They should be
+        # placed in an atom group that indicates that they are waters, but that group should
+        # not be inserted into the hierarchy.
+        # @todo
+
+        ################################################################################
+        # Construct the spatial-query information needed to quickly determine which atoms are nearby
+        sq = probeExt.SpatialQuery(atoms)
+
+        ################################################################################
+        # Determine excluded atoms to a specified hop count for each atom that will
+        # be moved.
+        # @todo
+
+        ################################################################################
+        # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
+        # @todo Ensure that waters are marked as acceptors and their phantom Hydrogens as donors.
+        ret = Helpers.getExtraAtomInfo(model)
+        extra = ret.extraAtomInfo
+        self._infoString += ret.warnings
+
+        ################################################################################
+        # Test getting the list of Movers using the _PlaceMovers private function.
+        ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True),
+                           bondedNeighborLists, sq, extra, AtomTypes.AtomTypes().MaximumVDWRadius())
+        self._infoString += ret.infoString
+        movers = ret.moverList
+        self._infoString += _VerboseCheck(1,"Inserted "+str(len(movers))+" Movers\n")
+        self._infoString += _VerboseCheck(1,'Marked '+str(len(ret.deleteAtoms))+' atoms for deletion\n')
+
+        ################################################################################
+        # Compute the interaction graph, of which each connected component is a Clique.
+        # Get a list of singleton Cliques and a list of other Cliques.  For more verbose
+        # cases, print out how many of each size there are.
+        # @todo
+
+        ################################################################################
+        # Call internal methods to optimize the single-element Cliques and then to optimize
+        # the multi-element Cliques and then to do indepenedent fine adjustment of all
+        # Cliques.  Subclasses should overload the called routines, but the global approach
+        # taken here will be the same for all of them.  If we want to change the recipe
+        # so that we can do global fine optimization, we'll do that here as well.
+        # @todo
+
+        ################################################################################
+        # @todo Deletion of Hydrogens that were requested by Histidine FixUp()s.
+
+  def getInfo(self):
+    """
+      Returns information that the user may care about regarding the processing.  The level of
+      detail on this can be set by setting Optimizers.verbosity before creating or calling methods.
+      :returns the information so far collected in the string.  Calling this function also clears
+      the information, so that later calls will not repeat it.
+    """
+    ret = self._infoString
+    self._infoString = ""
+    return ret
 
 ##################################################################################
 # Placement
@@ -366,7 +492,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
 # Helper functions
 
 def AlternatesInModel(model):
-  """Returns a list of altloc names of all conformers in all chains.
+  """Returns a set of altloc names of all conformers in all chains.
   :returns Set of strings.  The set is will include only the empty string if no
   chains in the model have alternates.  It has an additional entry for every altloc
   found in every chain.
@@ -420,6 +546,8 @@ def Test(inFileName = None):
   # ensure that hydrogen placement puts them there in the first place, we first
   # move the CU and ZN far from the Histidine before adding Hydrogens, then move
   # them back before building the spatial hierarchy and testing.
+  # @todo Why are CU and ZN not being found in CCTBX for this snippet?  Missing ligands?  Print info to see.
+  #   (Running 1sxo produces this as well).
   pdb_1xso_his_61_and_ions = (
 """
 ATOM    442  N   HIS A  61      26.965  32.911   7.593  1.00  7.19           N  
@@ -562,51 +690,18 @@ END
   model.set_pdb_interpretation_params(params = p)
   model.process_input_model(make_restraints=True) # make restraints
 
-  # Get the first model in the hierarchy.
-  firstModel = model.get_hierarchy().models()[0]
-
-  # Get the list of alternate conformation names present in all chains for this model.
-  alts = AlternatesInModel(firstModel)
-
-  # Get the atoms from the first conformer in the first model (the empty string is the name
-  # of the first conformation in the model; if there is no empty conformation, then it will
-  # pick the first available conformation for each atom group.
-  atoms = GetAtomsForConformer(firstModel, "")
-
-  ################################################################################
-  # Get the Cartesian positions of all of the atoms we're considering for this alternate
-  # conformation.
-  carts = flex.vec3_double()
-  for a in atoms:
-    carts.append(a.xyz)
-
-  ################################################################################
-  # Get the bond proxies for the atoms in the model and conformation we're using and
-  # use them to determine the bonded neighbor lists.
-  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
-
-  ################################################################################
-  # Get the spatial-query information needed to quickly determine which atoms are nearby
-  sq = probeExt.SpatialQuery(atoms)
-
-  ################################################################################
-  # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  ret = Helpers.getExtraAtomInfo(model)
-  extra = ret.extraAtomInfo
-  infoString += ret.warnings
-
-  ################################################################################
-  # Test getting the list of Movers using the _PlaceMovers private function.
-  ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True),
-                     bondedNeighborLists, sq, extra, AtomTypes.AtomTypes().MaximumVDWRadius())
-  infoString += ret.infoString
-  movers = ret.moverList
-  print('XXX info:\n'+infoString)
-  print('XXX Found',len(movers),'Movers')
-  print('XXX Need to delete',len(ret.deleteAtoms),'atoms')
+  nullOpt = NullOptimizer(model, modelIndex = None, altID = None)
+  info = nullOpt.getInfo()
+  print('XXX info:\n'+info)
 
   # @todo
+
+  #========================================================================
+  # Unit tests for each type of Optimizer.
+  # @todo
+
+  # @todo Unit test a multi-model case, a multi-alternate case, and singles of each.
+
   return ""
 
 ##################################################################################
