@@ -80,8 +80,8 @@ def reportSuite(outFile, suite):
     # 1. write one line of output for this suite
     reason = ""; note=""
     outIDs = ":".join(suite.pointID)
-    if suite.dbflag: # debug KPB 
-       suite.comment = "FLAG" + suite.comment    
+    # if suite.dbflag: # debug KPB 
+    #    suite.comment = "FLAG" + suite.comment    
     if suite.issue:
         reason = " " + reasons[suite.issue]
     elif suite.comment:

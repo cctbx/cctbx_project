@@ -85,7 +85,7 @@ from math import cos, pi
 
 version = "suitename.1.0.030821"
 dbCounter = 0
-dbTarget = 10000  # triggers extra output on this suite
+dbTarget = -99  # triggers extra output on this suite
 
 # A collection of variables used for output
 outNote = Holder()
@@ -421,9 +421,6 @@ def membership(bin, suite):
         suiteness = (cos(pi * distance) + 1) / 2
         if suiteness < 0.01:
           suiteness = 0.01
-        elif suiteness >= 0.1 and suiteness < 0.2:
-          suite.dbflag = True   # chasing a specific bug KPB
-
     else:
         if closestJ != 0:
             # 7D distance forces this suite to be an outlier
