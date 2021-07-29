@@ -11,6 +11,8 @@ from scitbx.lbfgs import core_parameters
 class BreakToUseCurvatures(Exception):
     pass
 
+class BreakBecauseSignal(Exception):
+    pass
 
 class ReachedMaxIterations(Exception):
     pass
@@ -28,6 +30,9 @@ class BaseRefiner:
     def __init__(self):
         # TODO , organize and be more descriptive, also ensure documentation for all attributes from local_refiner.LocalRefiner
 
+        self.break_signal = None  # check for this signal during refinement, and break refinement if signal is received (see python signal module)
+        self._sig_hand = None  # method for handling the break_signal, e.g. SIGHAND.handle defined above (theres an MPI version in global_refiner that overwrites this in stage 2)
+        self.hit_break_signal = False  # internal flag in case of hitting the beak signal
         self.print_end = "\n"  # value appended to the end of each printed string
         self.S = None   # instance of simtbx.nanoBragg.sim_data.SimData
         self.update_spectra_during_refinement = False
@@ -547,6 +552,8 @@ class BaseRefiner:
                     gradient_only=self.gradient_only)
             except BreakToUseCurvatures:
                 self.hit_break_to_use_curvatures = True
+            except BreakBecauseSignal:
+                self.hit_break_signal = True
                 pass
 
         else:
@@ -560,6 +567,9 @@ class BaseRefiner:
                     gradient_only=self.gradient_only)
             except BreakToUseCurvatures:
                 self.hit_break_to_use_curvatures = True
+                pass
+            except BreakBecauseSignal:
+                self.hit_break_signal = True
                 pass
 
     def _filter_spot_rois(self):

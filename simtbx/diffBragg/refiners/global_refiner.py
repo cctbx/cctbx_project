@@ -8,8 +8,26 @@ size = comm.size
 import warnings
 from copy import deepcopy
 from simtbx.diffBragg.refiners.local_refiner import LocalRefiner
+from simtbx.diffBragg.refiners import BreakBecauseSignal
 
 warnings.filterwarnings("ignore")
+
+import time, signal
+class MPISignalHandler:
+    """help to exit from HPC jobs before timeout, requires knowing exit signal, for summit its 12 or SIGUSR2 last I checked"""
+    def __init__(self):
+        self.t = time.time()
+
+    def handle(self, signum, frame):
+        t = time.time()-self.t
+        print("COMM.rank%d Recived signal " % comm.rank, signum," after program running for %f sec" % t)
+        for i in range(comm.size):
+            if i != comm.rank:
+                comm.iend(signum, i, tag=42)
+        raise BreakBecauseSignal
+
+
+MPISIGHAND = MPISignalHandler()
 
 
 class GlobalRefiner(LocalRefiner):
@@ -19,6 +37,7 @@ class GlobalRefiner(LocalRefiner):
         self.rank = rank
         self.I_AM_ROOT = rank == 0
         print("STARTINGREFINEMENT!!! Rank %d Sz %d"% (self.rank, comm.size))
+        self._sig_hand = MPISIGHAND  # overwrite single rank version
 
     def _MPI_sync_hkl_freq(self):
         if self.refine_Fcell:
@@ -82,3 +101,13 @@ class GlobalRefiner(LocalRefiner):
 
     def _MPI_barrier(self):
         comm.Barrier()
+
+    def _MPI_check_for_break_signal(self):
+        if self.break_signal is not None:
+            for i in range(comm.size):
+                if i==comm.rank:
+                    continue
+                req = comm.irecv(source=i, tag=42)
+                received_signal, signal = req.test()
+                if received_signal and signal == self.break_signal:
+                    raise BreakBecauseSignal

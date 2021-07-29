@@ -4,8 +4,10 @@ from __future__ import absolute_import, division, print_function
 
 from libtbx.mpi4py import MPI
 from dxtbx.model import ExperimentList
+from simtbx.command_line.hopper import hopper_phil
 import os
 import time
+from simtbx.diffBragg import mpi_logger
 
 COMM = MPI.COMM_WORLD
 
@@ -27,31 +29,11 @@ script_phil = """
 pandas_table = None
   .type = str 
   .help = path to an input pandas table (usually output by simtbx.diffBragg.predictions)
-spectrum_from_imageset = False
-  .type = bool
-  .help = if True, load the spectrum from the imageset in the experiment, then probably downsample it
-downsamp_spec {
-  skip = False
-    .type = bool
-    .help = if reading spectra from imageset, optionally skip the downsample portion
-    .help = Note, if skip=True, then total flux will be determined by whats in the imageset spectrum (sum of the weights)
-  filt_freq = 0.07
-    .type = float
-    .help = low pass filter frequency in units of inverse spectrometer pixels (??)
-  filt_order = 3
-    .type = int
-    .help = order for bandpass butter filter
-  tail = 50
-    .type = int
-    .help = endpoints of the spectrum that are used in background estimation
-  delta_en = 0.5
-    .type = float
-    .help = final resolution of downsampled spectrum in eV
-}
 """
 
-philz = script_phil + philz
+philz = script_phil + philz + hopper_phil
 phil_scope = parse(philz)
+
 
 class Script:
 
@@ -69,12 +51,12 @@ class Script:
                 check_format=False,
                 epilog=help_message)
         self.parser = COMM.bcast(self.parser)
+        self.params, _ = self.parser.parse_args(show_diff_phil=True)
 
     def run(self):
-        self.params = None
-        if COMM.rank == 0:
-            self.params, _ = self.parser.parse_args(show_diff_phil=True)
-        self.params = COMM.bcast(self.params)
+        #self.params = None
+        #if COMM.rank == 0:
+        #self.params = COMM.bcast(self.params)
         if self.params.pandas_table is None:
             raise ValueError("Pandas table input required")
 
@@ -88,6 +70,35 @@ class Script:
 
 
 if __name__ == '__main__':
+    try:
+        from line_profiler import LineProfiler
+    except ImportError:
+        LineProfiler = None
+    from simtbx.diffBragg.refiners import local_refiner
     with show_mail_on_error():
         script = Script()
-        script.run()
+        RUN = script.run
+        lp = None
+        if LineProfiler is not None and script.params.profile:
+            lp = LineProfiler()
+            lp.add_function(ensemble_refine_launcher.GlobalRefinerLauncher.launch_refiner)
+            lp.add_function(local_refiner.LocalRefiner._compute_functional_and_gradients)
+            lp.add_function(local_refiner.LocalRefiner._run_diffBragg_current)
+            RUN = lp(script.run)
+
+        if script.params.outdir is None:
+            od = script.params.refiner.io.output_dir
+            script.params.outdir = od if od is not None else '.'
+
+        if script.params.logging.logname is None:
+            script.params.logging.logname = "main_stage2.log"
+        if script.params.profile_name is None:
+            script.params.profile_name = "prof_stage2.log"
+        mpi_logger.setup_logging_from_params(script.params)
+
+        RUN()
+
+        if lp is not None:
+            stats = lp.get_stats()
+            from simtbx.diffBragg import hopper_utils
+            hopper_utils.print_profile(stats, ["launch_refiner", "_compute_functional_and_gradients", "_run_diffBragg_current"])

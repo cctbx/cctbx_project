@@ -265,6 +265,8 @@ class LocalRefinerLauncher:
 
             self.RUC.parameter_hdf5_path = self.get_parameter_hdf5_path()
 
+            self.RUC.break_signal = self.params.refiner.break_signal
+
             self.RUC.panel_group_from_id = self.panel_group_from_id
 
             self.RUC.panel_reference_from_id = self.panel_reference_from_id
@@ -458,6 +460,12 @@ class LocalRefinerLauncher:
                 self.RUC.use_curvatures = True
                 self.RUC.run(setup=False)
 
+            if self.RUC.hit_break_signal:
+                if self.params.profile:
+                    self.RUC.S.D.show_timings(self.RUC.rank)
+                self.RUC._MPI_barrier()
+                break
+
             if self.params.refiner.debug_pixel_panelfastslow is not None:
                 utils.show_diffBragg_state(self.RUC.S.D, self.params.refiner.debug_pixel_panelfastslow)
                 s = self.RUC._get_spot_scale(0)
@@ -468,6 +476,8 @@ class LocalRefinerLauncher:
                 if self.RUC.gnorm > 0:
                     raise ValueError("Only predciting model, but the gradient is finite! This means the model changed, somethings wrong!")
 
+            if self.params.profile:
+                self.RUC.S.D.show_timings(self.RUC.rank)
             if self.params.refiner.use_cuda:
                 self.RUC.S.D.gpu_free()
 

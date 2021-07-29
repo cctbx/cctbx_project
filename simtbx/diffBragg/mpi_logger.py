@@ -31,8 +31,12 @@ def make_logger(loggername, filename=None, formatter=None, level=None, overwrite
   return logger
 
 
+from simtbx.diffBragg import utils
 def setup_logging_from_params(params):
   if params.logging.logfiles:
+    if COMM.rank == 0:
+      utils.safe_makedirs(params.outdir)
+    COMM.barrier()
     main_logger = make_logger("main",
                               os.path.join(params.outdir, params.logging.logname),
                               level=logging.DEBUG,

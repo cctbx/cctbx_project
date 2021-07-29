@@ -102,6 +102,10 @@ simulator {
 
 refiner_phil = """
 refiner {
+  break_signal = None
+    .type = int
+    .help = intended to be used to break out of a long refinement job prior to a timeout on a super computer
+    .help = On summit, set this to 12 (SIGUSR2), at least thats what it was last I checked (July 2021)
   debug_pixel_panelfastslow = None
     .type = ints(size=3)
     .help = 3-tuple of panel ID, fast coord, slow coord. If set, show the state of diffBragg

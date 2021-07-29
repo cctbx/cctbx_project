@@ -121,6 +121,8 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
                     print("WARNING: resetting params.simulator.init_scale to 1!")
                     self.params.simulator.init_scale = 1
                 self._init_simulator(expt, miller_data)
+                if self.params.profile:
+                    self.SIM.record_timings = True
                 if self.params.refiner.stage_two.Fref_mtzname is not None:
                     self.Fref = utils.open_mtz(self.params.refiner.stage_two.Fref_mtzname,
                                                self.params.refiner.stage_two.Fref_mtzcol)

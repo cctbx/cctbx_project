@@ -2,8 +2,24 @@ from __future__ import absolute_import, division, print_function
 
 import time
 import warnings
+import signal
 from collections import Iterable
 warnings.filterwarnings("ignore")
+
+
+class SignalHandler:
+    """help to exit from HPC jobs before timeout, requires knowing exit signal, for summit its 12 or SIGUSR2 last I checked"""
+    def __init__(self):
+        self.t = time.time()
+
+    def handle(self, signum, frame):
+        t = time.time()-self.t
+        print("Recived signal ",signum," after program running for %f sec" % t)
+        raise BreakBecauseSignal
+
+
+SIGHAND = SignalHandler()
+
 
 class Bcolors:
     HEADER = '\033[95m'
@@ -59,7 +75,7 @@ from os.path import exists as EXISTS
 from os.path import join as PATHJOIN
 
 from simtbx.diffBragg.refiners.parameters import Parameters, RangedParameter
-from simtbx.diffBragg.refiners import BreakToUseCurvatures
+from simtbx.diffBragg.refiners import BreakBecauseSignal, BreakToUseCurvatures
 from scitbx.array_family import flex
 from cctbx.array_family import flex as cctbx_flex
 flex_miller_index = cctbx_flex.miller_index
@@ -132,6 +148,7 @@ class LocalRefiner(BaseRefiner):
         if not isinstance(local_idx_start, int):
             raise TypeError("local idx start should be an integer")
 
+        self._sig_hand = SIGHAND
         self.rank = 0
         self.num_negative_model = 0
         self.global_ncells_param = global_ncells
@@ -2123,6 +2140,11 @@ class LocalRefiner(BaseRefiner):
                 # CREATE THE PANEL FAST SLOW ARRAY AND RUN DIFFBRAGG
                 self._run_diffBragg_current()
 
+                # CHECK FOR SIGNAL INTERRUPT HERE
+                if self.break_signal is not None:
+                    signal.signal(self.break_signal, self._sig_hand.handle)
+                    self._MPI_check_for_break_signal()
+
                 # TODO pre-extractions for all parameters
                 self._append_local_parameters()
                 self._pre_extract_deriv_arrays()
@@ -3867,4 +3889,7 @@ class LocalRefiner(BaseRefiner):
             return self.sigma_r
 
     def _MPI_barrier(self):
+        pass
+
+    def _MPI_check_for_break_signal(self):
         pass
