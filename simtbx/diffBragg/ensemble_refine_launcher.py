@@ -174,7 +174,10 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             self.shot_yrel[shot_idx] = shot_data.yrel
             self.shot_abc_inits[shot_idx] = shot_data.tilt_abc
             self.shot_panel_ids[shot_idx] = shot_data.pids
-            self.shot_originZ_init[shot_idx] = 0
+            if "detz_shift_mm" in list(exper_dataframe):
+                self.shot_originZ_init[shot_idx] = exper_dataframe.detz_shift_mm.values[0]*1e-3
+            else:
+                self.shot_originZ_init[shot_idx] = 0
             self.shot_selection_flags[shot_idx] = shot_data.selection_flags
             self.shot_background[shot_idx] = shot_data.background
             self.shot_expernames[shot_idx] = exper_name

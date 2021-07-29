@@ -472,6 +472,7 @@ class LocalRefiner(BaseRefiner):
         if self.refine_Fcell:
             idx, data = self.S.D.Fhkl_tuple
             self.idx_from_p1 = {h: i for i, h in enumerate(idx)}
+            self._make_p1_equiv_mapping()
             # self.p1_from_idx = {i: h for i, h in zip(idx, data)}
 
         # Make a mapping of panel id to parameter index and backwards
@@ -896,6 +897,23 @@ class LocalRefiner(BaseRefiner):
         #    self.D.fix(self._sausage_id)
         self.D.initialize_managers()
 
+    def _make_p1_equiv_mapping(self):
+
+        self.p1_indices_from_i_fcell = {}
+        for i_fcell in range(self.n_global_fcell):
+            hkl_asu = self.asu_from_idx[i_fcell]
+
+            self.p1_indices_from_i_fcell[i_fcell] = []
+            equivs = [i.h() for i in miller.sym_equiv_indices(self.space_group, hkl_asu).indices()]
+            for h_equiv in equivs:
+                # get the nanoBragg p1 miller table index corresponding to this hkl equivalent
+                try:
+                    p1_idx = self.idx_from_p1[h_equiv]  # T
+                except KeyError:
+                    self.print("Whoops, missing index", h_equiv)
+                    continue
+                self.p1_indices_from_i_fcell[i_fcell].append(p1_idx)
+
     def _MPI_setup_global_params(self):
         if self.I_AM_ROOT:
             self.print("--2 Setting up global parameters")
@@ -1061,6 +1079,11 @@ class LocalRefiner(BaseRefiner):
                         raise KeyError("something wrong Fobs does not contain the asu indices")
                     i_fcell = self.idx_from_asu[asu_index]
                     self.res_group_id_from_fcell_index[i_fcell] = miller_bin_idx[ii]
+
+                if self.rescale_params:
+                    self.resolution_ids_from_i_fcell = ARRAY([self.res_group_id_from_fcell_index[i_fcell] for i_fcell in range(self.n_global_fcell)])
+                    self.fcell_sigmas_from_i_fcell = ARRAY([ self.sigma_for_res_id[res_id]*self.fcell_sigma_scale for res_id in self.resolution_ids_from_i_fcell])
+                    self.fcell_init_from_i_fcell = ARRAY(self.fcell_init)
 
     def determine_parameter_freeze_order(self):
         param_sels = []
@@ -1309,6 +1332,8 @@ class LocalRefiner(BaseRefiner):
         if self.refine_detdist:
             xval = self.Xall[self.detector_distance_xpos[i_shot]]
             val = self.detector_distance_params[i_shot].get_val(xval)
+        elif self.pershot_detdist_shifts:
+            val = self.shot_detector_distance_init[i_shot]
         return val
 
     def _get_ncells_def_vals(self, i_shot):
@@ -1564,29 +1589,41 @@ class LocalRefiner(BaseRefiner):
                 self.num_Fcell_negative_model += 1
         return val
 
+    def _store_updated_Fcell(self):
+        if not self.refine_Fcell:
+            return
+        xvals = self.Xall[self.fcell_xstart: self.fcell_xstart+self.n_global_fcell]
+        if self.rescale_params and self.log_fcells:
+            sigs = self.fcell_sigmas_from_i_fcell
+            inits = self.fcell_init_from_i_fcell
+            if self.log_fcells:
+                vals = np_exp(sigs*(xvals - 1))*inits
+            else:
+                vals = sigs*(xvals - 1) + inits
+                vals[vals < 0] = 0
+        else:
+            if self.log_fcells:
+                vals = np_exp(xvals)
+            else:
+                vals = xvals
+                vals [vals < 0] = 0
+        self._fcell_at_i_fcell = vals
+
     def _update_Fcell(self):
         if not self.refine_Fcell:
             return
         idx, data = self.S.D.Fhkl_tuple
+        data = data.as_numpy_array()
         for i_fcell in range(self.n_global_fcell):
-            # get the asu miller index
-            hkl_asu = self.asu_from_idx[i_fcell]
-
-            new_Fcell_amplitude = self._get_fcell_val(i_fcell)
+            #new_Fcell_amplitude = self._get_fcell_val(i_fcell)
+            new_Fcell_amplitude = self._fcell_at_i_fcell[i_fcell]
 
             # now surgically update the p1 array in nanoBragg with the new amplitudes
             # (need to update each symmetry equivalent)
-            equivs = [i.h() for i in miller.sym_equiv_indices(self.space_group, hkl_asu).indices()] # todo: speed test.
-            for h_equiv in equivs:
-                # get the nanoBragg p1 miller table index corresponding to this hkl equivalent
-                try:
-                    p1_idx = self.idx_from_p1[h_equiv]  # TODO change name to be more specific
-                except KeyError as err:
-                    if self.debug:
-                        self.print( h_equiv, err)
-                    continue
-                data[p1_idx] = new_Fcell_amplitude  # set the data with the new value
-        self.S.D.Fhkl_tuple = idx, data  # update nanoBragg again  # TODO: add flag to not re-allocate in nanoBragg!
+            p1_indices = self.p1_indices_from_i_fcell[i_fcell]
+            data[p1_indices] = new_Fcell_amplitude
+
+        self.S.D.Fhkl_tuple = idx, flex_double(data)  # update nanoBragg again  # TODO: add flag to not re-allocate in nanoBragg!
 
     def _update_spectra_coefficients(self):
         if self.refine_lambda0 or self.refine_lambda1 or self.update_spectra_during_refinement:
@@ -1718,6 +1755,10 @@ class LocalRefiner(BaseRefiner):
                 self.D.update_dxtbx_geoms(self.S.detector, self.S.beam.nanoBragg_constructor_beam, pid,
                                           panel_rot_angO, panel_rot_angF, panel_rot_angS, new_offsetX, new_offsetY, new_offsetZ,
                                           force=False)
+        elif self.pershot_detdist_shifts:  # TODO we are hijacking the API to use the shifts from hopper in the legacy code, clean this up
+            shiftZ = self._get_detector_distance_val(self._i_shot)
+            print("DETZ shift: %1.3e meters" % shiftZ)
+            self.S.D.shift_origin_z(self.S.detector,  shiftZ)
 
     def _extract_spectra_coefficient_derivatives(self):
         self.spectra_derivs = [0]*self.n_spectra_param
@@ -1959,7 +2000,7 @@ class LocalRefiner(BaseRefiner):
         self.fcell_deriv = self.fcell_second_deriv = 0
         if self.refine_Fcell:
             SG = self.scale_fac*self.G2
-            self.fcell_deriv = SG*self._extracted_fcell_deriv[self.roi_slice]
+            self.fcell_deriv = SG*(self._extracted_fcell_deriv[self.roi_slice])
             # handles Nan's when Fcell is 0 for whatever reason
             if self.calc_curvatures:
                 self.fcell_second_deriv = SG*self._extracted_fcell_second_deriv[self.roi_slice]
@@ -1979,7 +2020,7 @@ class LocalRefiner(BaseRefiner):
 
     def _extract_pixel_data(self):
         self.roi_slice = self.roi_ids == self._i_spot
-        self.model_bragg_spots = self.scale_fac*self._model_pix[self.roi_slice]
+        self.model_bragg_spots = self.scale_fac*(self._model_pix[self.roi_slice])
         self.model_bragg_spots *= self._get_per_spot_scale(self._i_shot, self._i_spot)
         self._extract_Umatrix_derivative_pixels()
         self._extract_sausage_derivs()
@@ -2007,8 +2048,6 @@ class LocalRefiner(BaseRefiner):
 
     def _update_beams(self):
         # sim_data instance has a nanoBragg beam object, which takes spectra and converts to nanoBragg xray_beams
-        #NOTE holy shit this typo was HYOOGE
-        #self.S.beam.spectra = self.SPECTRA[self._i_shot]
         self.S.beam.spectrum = self.SPECTRA[self._i_shot]
         if self.verbose and self._i_shot == 0:
             self.print("Using %d BEAMZ!" % len(self.SPECTRA[self._i_shot]))
@@ -2100,6 +2139,7 @@ class LocalRefiner(BaseRefiner):
             self.gain_fac = 1 #self.Xall[self.gain_xpos]
             self.G2 = self.gain_fac ** 2
 
+            self._store_updated_Fcell()
             self._update_Fcell()  # update the structure factor with the new x
             self._update_spectra_coefficients()  # updates the diffBragg lambda coefficients if refinining spectra
 
@@ -2738,6 +2778,7 @@ class LocalRefiner(BaseRefiner):
         freeze_this_hkl = False
         if self.freeze_idx is not None:
             freeze_this_hkl = self.freeze_idx[miller_idx]
+
         # do the derivative
         if self.refine_Fcell and multi >= self.min_multiplicity and not freeze_this_hkl:
             i_fcell = self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
@@ -2746,22 +2787,24 @@ class LocalRefiner(BaseRefiner):
             self.fcell_dI_dtheta = self.fcell_deriv
             self.fcell_d2I_d2theta2 = self.fcell_second_deriv
 
+            d = self.fcell_dI_dtheta
+            d2 = self.fcell_d2I_d2theta2
             if self.rescale_params:
-                fcell = self._get_fcell_val(i_fcell)  # todo: interact with a vectorized object instead
+                #fcell = self._get_fcell_val(i_fcell)  # todo: interact with a vectorized object instead
+                fcell = self._fcell_at_i_fcell[i_fcell]
                 resolution_id = self.res_group_id_from_fcell_index[i_fcell]
                 sig = self.sigma_for_res_id[resolution_id] * self.fcell_sigma_scale
                 if self.log_fcells:
                     # case 2 rescaling
                     sig_times_fcell = sig*fcell
                     d = sig_times_fcell*self.fcell_dI_dtheta
-                    d2 = (sig_times_fcell*sig_times_fcell)*self.fcell_d2I_d2theta2 + (sig*sig_times_fcell)*self.fcell_dI_dtheta
+                    if self.calc_curvatures:
+                        d2 = (sig_times_fcell*sig_times_fcell)*self.fcell_d2I_d2theta2 + (sig*sig_times_fcell)*self.fcell_dI_dtheta
                 else:
                     # case 1 rescaling
                     d = sig*self.fcell_dI_dtheta
-                    d2 = (sig*sig)*self.fcell_d2I_d2theta2
-            else:
-                d = self.fcell_dI_dtheta
-                d2 = self.fcell_d2I_d2theta2
+                    if self.calc_curvatures:
+                        d2 = (sig*sig)*self.fcell_d2I_d2theta2
 
             self.grad[xpos] += self._grad_accumulate(d)
             if self.calc_curvatures:

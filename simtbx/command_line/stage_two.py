@@ -84,6 +84,11 @@ if __name__ == '__main__':
             lp.add_function(ensemble_refine_launcher.GlobalRefinerLauncher.launch_refiner)
             lp.add_function(local_refiner.LocalRefiner._compute_functional_and_gradients)
             lp.add_function(local_refiner.LocalRefiner._run_diffBragg_current)
+            lp.add_function(local_refiner.LocalRefiner._update_Fcell)
+            lp.add_function(local_refiner.LocalRefiner._extract_pixel_data)
+            lp.add_function(local_refiner.LocalRefiner._Fcell_derivatives)
+            lp.add_function(local_refiner.LocalRefiner._get_fcell_val)
+            lp.add_function(local_refiner.LocalRefiner.print_step_grads)
             RUN = lp(script.run)
 
         if script.params.outdir is None:
@@ -101,4 +106,6 @@ if __name__ == '__main__':
         if lp is not None:
             stats = lp.get_stats()
             from simtbx.diffBragg import hopper_utils
-            hopper_utils.print_profile(stats, ["launch_refiner", "_compute_functional_and_gradients", "_run_diffBragg_current"])
+            hopper_utils.print_profile(stats,
+                    ["launch_refiner", "_compute_functional_and_gradients", "_run_diffBragg_current",
+                     "_update_Fcell", "_extract_pixel_data", "_Fcell_derivatives", "print_step_grads", "_get_fcell_val"])

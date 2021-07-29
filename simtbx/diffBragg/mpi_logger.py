@@ -17,8 +17,9 @@ def make_logger(loggername, filename=None, formatter=None, level=None, overwrite
                 propagate=False):
   logger = logging.getLogger(loggername)
   if filename is not None:
-    if overwrite and os.path.exists(filename):
+    if COMM.rank == 0 and overwrite and os.path.exists(filename):
       os.remove(filename)
+    COMM.barrier()
     handler = MPIFileHandler(filename)
   else:
     handler = logging.StreamHandler()

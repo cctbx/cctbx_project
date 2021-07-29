@@ -30,6 +30,7 @@ class BaseRefiner:
     def __init__(self):
         # TODO , organize and be more descriptive, also ensure documentation for all attributes from local_refiner.LocalRefiner
 
+        self.pershot_detdist_shifts = False  # should be a dict of {i_shot: detdist_shift_meters} , with one i_shot for each shot modeled by the rank
         self.break_signal = None  # check for this signal during refinement, and break refinement if signal is received (see python signal module)
         self._sig_hand = None  # method for handling the break_signal, e.g. SIGHAND.handle defined above (theres an MPI version in global_refiner that overwrites this in stage 2)
         self.hit_break_signal = False  # internal flag in case of hitting the beak signal
@@ -85,6 +86,7 @@ class BaseRefiner:
         self.freeze_idx = None  # same length as number of asu indices, whether we freeze it or refine it
         self.rescale_params = True  # whether to rescale parameters during refinement  # TODO this will always be true, so remove the ability to disable
         self.ignore_line_search_failed_step_at_lower_bound = False  # TODO: why is this sometimes necessary ?
+        self.p1_indices_from_i_fcell = {}  # map i_fcell index (0 to number of Fcell -1) to the list of p1 indices corresponding to hkl equivs
 
         #optional properties.. make this obvious # TODO deprecate
         self.FNAMES = None  # dict of {rank_shot_index: image_file_path }

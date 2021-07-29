@@ -326,6 +326,9 @@ class LocalRefinerLauncher:
             self.RUC.lambda_coef_ranges = [self.params.refiner.ranges.spectra0, self.params.refiner.ranges.spectra1]
             self.RUC.detector_distance_range = self.params.refiner.ranges.originZ
 
+            self.RUC.pershot_detdist_shifts = np.any(list(self.shot_originZ_init.values()))
+            self.RUC.update_detector_during_refinement = False  # TODO is this ok ? maybe some tests will fail
+
             self.RUC.compute_image_model_correlation = self.params.refiner.compute_image_model_correlation
 
             # plot things
