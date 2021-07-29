@@ -1368,7 +1368,7 @@ def spots_from_pandas(pandas_frame, mtz_file=None, mtz_col=None,
                       Ncells_abc_override=None,
                       pink_stride_override=None,
                       cuda=False, device_Id=0, time_panels=False,
-                      d_max=999, d_min=1.5, defaultF=1e3,
+                      d_max=999, d_min=1.5, defaultF=1000.,
                       njobs=1,
                       output_img=None, omp=False, norm_by_spectrum=False,
                       symbol_override=None, quiet=False, reset_Bmatrix=False):

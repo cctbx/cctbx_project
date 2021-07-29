@@ -84,6 +84,12 @@ max_process = None
 pandas_outfile = None
   .type = str
   .help = output file name (this file is suitable input to stage_two refinement, e.g. the pandas_table parameter)
+symbol_override = None
+  .type = str
+  .help = space group symbol e.g. P43212
+defaultF = 1e3
+  .type = float
+  .help = default structure factor amplitude
 hopper {
   include scope simtbx.command_line.hopper.phil_scope
 }
@@ -105,7 +111,7 @@ class Script:
             check_format=False,
             epilog=help_message)
 
-        self.params, _ = self.parser.parse_args(show_diff_phil=True)
+        self.params, _ = self.parser.parse_args(show_diff_phil=COMM.rank==0)
 
     def run(self):
 
@@ -195,7 +201,8 @@ class Script:
                     Ncells_abc_override=self.params.Ncells_abc_override,
                     cuda=self.params.cuda, d_max=self.params.d_max, d_min=self.params.d_min,
                     output_img=self.params.output_img,
-                    njobs=self.params.njobs, device_Id=dev_id, quiet=True)
+                    njobs=self.params.njobs, device_Id=dev_id, quiet=True,
+                    symbol_override=self.params.symbol_override, defaultF=self.params.defaultF)
 
             # if strong is None, this will just return all the predictions
             # else it returns the strong reflections that are indexed by the prediction model
