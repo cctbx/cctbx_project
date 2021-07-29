@@ -19,8 +19,9 @@
 # of Cliques (connected components of this graph).
 from boost_adaptbx import graph
 import Movers
+import mmtbx_probe_ext as probeExt
 
-def InteractionGraphAABB(movers, extraAtomInfo, probeRadius = 0.25):
+def InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius = 0.25):
   """Uses the overlap of the axis-aligned bounding boxes (AABBs) of all possible
   positions of all movable atoms in the set of movers passed in to construct the
   graph of which might overlap across all possible orientations of each.  The use
@@ -29,12 +30,9 @@ def InteractionGraphAABB(movers, extraAtomInfo, probeRadius = 0.25):
   of possible positions for each and quadratic in the number of Movers.
 
   :param movers: flex array of movers to add to the graph.
-  :param extaAtomInfo: flex array of Probe.ExtraAtomInfo classes that have a vdwRadius
-  property.  Warning: The i_seq values from the atoms in the Movers are used to look
-  up directly in this vector so they must not have changed (due to structure modification)
-  since the extaInfo vector or the atom structure used by the Movers were generated.
-  The positions of individual atoms can have been moved but atoms cannot have been
-  removed and re-added to the structure.
+  :param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
+  up the information for atoms whose values need to be changed.  Can be
+  obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
   :param probeRadius: Radius of the probe to use to determine neighbor contact.
   If it is not set, the default value of 0.25 will be used.
   :returns An undirected Boost graph whose nodes are Movers and whose edges
@@ -47,8 +45,6 @@ def InteractionGraphAABB(movers, extraAtomInfo, probeRadius = 0.25):
   # Compute the axis-aligned bounding box for each Mover
   ret = graph.adjacency_list(
         graph_type = "undirected",
-        # vertex_type = "Mover",
-        # edge_type = "set",
         )
   AABBs = []
   verts = []
@@ -71,7 +67,7 @@ def InteractionGraphAABB(movers, extraAtomInfo, probeRadius = 0.25):
       for i, atomLoc in enumerate(pos):
         # Find the radius of the atom, which is used to extend it in all directions
         # so that we catch all potential overlaps.
-        r = extraAtomInfo[atoms[i].i_seq].vdwRadius
+        r = extraAtomInfoMap.getMappingFor(atoms[i]).vdwRadius
 
         x = atomLoc[0]
         xRange[0] = min(xRange[0], x - r)
@@ -102,18 +98,15 @@ def InteractionGraphAABB(movers, extraAtomInfo, probeRadius = 0.25):
 
   return ret
 
-def InteractionGraphAllPairs(movers, extraAtomInfo, probeRadius = 0.25):
+def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   """Tests for overlap of all possible positions of all movable atoms between each
   pair of Movers in the set of Movers passed in to construct the
   graph of which overlap across all possible orientations of each.
 
   :param movers: flex array of movers to add to the graph.
-  :param extaAtomInfo: flex array of Probe.ExtraAtomInfo classes that have a vdwRadius
-  property.  Warning: The i_seq values from the atoms in the Movers are used to look
-  up directly in this vector so they must not have changed (due to structure modification)
-  since the extaInfo vector or the atom structure used by the Movers were generated.
-  The positions of individual atoms can have been moved but atoms cannot have been
-  removed and re-added to the structure.
+  :param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
+  up the information for atoms whose values need to be changed.  Can be
+  obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
   :param probeRadius: Radius of the probe to use to determine neighbor contact.
   If it is not set, the default value of 0.25 will be used.
   :returns An undirected Boost graph whose nodes are Movers and whose edges
@@ -126,8 +119,6 @@ def InteractionGraphAllPairs(movers, extraAtomInfo, probeRadius = 0.25):
   # Find all possible atom positions for each.
   ret = graph.adjacency_list(
         graph_type = "undirected",
-        # vertex_type = "Mover",
-        # edge_type = "set",
         )
   verts = []
   positions = []
@@ -154,7 +145,7 @@ def InteractionGraphAllPairs(movers, extraAtomInfo, probeRadius = 0.25):
   # If so, add an edge to the graph for the pair.
   for i in range(len(movers)-1):
     for j in range(i+1, len(movers)):
-      if _PairsOverlap(atoms[i], positions[i], atoms[j], positions[j], extraAtomInfo, pr):
+      if _PairsOverlap(atoms[i], positions[i], atoms[j], positions[j], extraAtomInfoMap, pr):
         ret.add_edge( vertex1 = verts[i], vertex2 = verts[j])
 
   return ret
@@ -175,23 +166,25 @@ def _AABBOverlap(box1, box2):
            (box1[1][0] <= box2[1][1] and box1[1][1] >= box2[1][0]) and
            (box1[2][0] <= box2[2][1] and box1[2][1] >= box2[2][0]) )
 
-def _PairsOverlap(atoms1, positions1, atoms2, positions2, extraAtomInfo, probeRad):
+def _PairsOverlap(atoms1, positions1, atoms2, positions2, extraAtomInfoMap, probeRad):
   """Helper function that tells whether any pair of atoms from two Movers overlap.
   :param atoms1: Atom list for the first Mover
   :param positions1: probe.PositionReturn.positions holding possible positions for each.
   :param atoms2: Atom list for the second Mover
   :param positions2: probe.PositionReturn.positions holding possible positions for each.
-  :param extraAtomInfo: List of information on atom radii by i_seq
+  :param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
+  up the information for atoms whose values need to be changed.  Can be
+  obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
   :param ProbeRad: Probe radius
   :returns True if a pair of atoms with one from each overlap, False if not.
   """
 
   for i1, p1 in enumerate(positions1):
     for ai1 in range(len(p1)):
-      r1 = extraAtomInfo[atoms1[ai1].i_seq].vdwRadius
+      r1 = extraAtomInfoMap.getMappingFor(atoms1[ai1]).vdwRadius
       for i2, p2 in enumerate(positions2):
         for ai2 in range(len(p2)):
-          r2 = extraAtomInfo[atoms2[ai2].i_seq].vdwRadius
+          r2 = extraAtomInfoMap.getMappingFor(atoms2[ai2]).vdwRadius
           dx = p1[ai1][0] - p2[ai2][0]
           dy = p1[ai1][1] - p2[ai2][1]
           dz = p1[ai1][2] - p2[ai2][2]
@@ -252,7 +245,8 @@ def Test():
     atoms.append(a)
     e = probe.ExtraAtomInfo(rad)
     extras.append(e)
-    movers.append(Movers.MoverNull(a))
+    extrasMap = probeExt.ExtraAtomInfoMap(atoms, extras)
+    movers.append(Movers.MoverNull(a, extrasMap))
   # Fix the sequence numbers, which are otherwise all 0
   atoms.reset_i_seq()
 
@@ -273,7 +267,7 @@ def Test():
   # Specify the probe radius and run the test.  Compare the results to what we expect.
   for i, e in enumerate(_expectedCases):
     probeRadius = e[1]
-    g = e[0](movers, extras, probeRadius)
+    g = e[0](movers, extrasMap, probeRadius)
 
     # Find the connected components of the graph and compare their counts and maximum size to
     # what is expected.
