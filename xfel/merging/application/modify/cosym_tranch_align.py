@@ -32,6 +32,7 @@ def get_proposal_score(reports_as_lists):
           matches += len(set(base_report[icoset]).intersection(set(test_report[icoset])))
         print ('%3d/%3d'%(matches, total_overlay),end=' ')
         rij [(ix,iy)] = matches/total_overlay if total_overlay>0 else 0.
+        wij [(ix,iy)] = total_overlay if total_overlay>0 else 1.
         n_proposal_score += matches
       print()
     return rij, wij
