@@ -89,7 +89,6 @@ class Script(object):
     self.mpi_logger.log_step_time("BROADCAST_INPUT_PARAMS", True)
 
   def run(self):
-
     import datetime
     time_now = datetime.datetime.now()
 
@@ -102,6 +101,11 @@ class Script(object):
     self.mpi_logger.log_step_time("PARSE_INPUT_PARAMS")
     self.parse_input()
     self.mpi_logger.log_step_time("PARSE_INPUT_PARAMS", True)
+
+    if self.params.mp.debug.cProfile:
+      import cProfile
+      pr = cProfile.Profile()
+      pr.enable()
 
     # Create the workers using the factories
     self.mpi_logger.log_step_time("CREATE_WORKERS")
@@ -179,6 +183,10 @@ class Script(object):
         experiments.as_file(os.path.join(self.params.output.output_dir, "%s%s.expt"%(self.params.output.prefix, filename_suffix)))
 
     self.mpi_logger.log_step_time("TOTAL", True)
+
+    if self.params.mp.debug.cProfile:
+      pr.disable()
+      pr.dump_stats(os.path.join(self.params.output.output_dir, "cpu_%s_%d.prof"%(self.params.output.prefix, self.mpi_helper.rank)))
 
 if __name__ == '__main__':
   script = Script()
