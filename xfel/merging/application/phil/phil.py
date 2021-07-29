@@ -75,6 +75,11 @@ mp {
   method = *mpi
     .type = choice
     .help = Muliprocessing method (only mpi at present)
+  debug {
+    cProfile = False
+      .type = bool
+      .help = Enable code profiling. Use (for example) runsnake to visualize processing performance
+  }
 }
 """
 
