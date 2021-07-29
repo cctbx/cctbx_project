@@ -885,7 +885,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
       except Exception as e:
         errmsg = str(e)
-        if "Resource temporarily unavailable" not in errmsg:
+        if e.errno != zmq.EAGAIN: #"Resource temporarily unavailable" not in errmsg:
           print( errmsg  +  traceback.format_exc(limit=10) )
         #print(errmsg)
 
@@ -1873,6 +1873,21 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
                                       stdin=subprocess.PIPE,
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE)
+    # Wait for connection from CCTBX by testing if we can send an empty string
+    t=0.0; dt = 0.3; timeout = 5
+    err = zmq.EAGAIN
+    while err == zmq.EAGAIN:
+      try:
+        err = 0
+        self.socket.send(bytes("","utf-8"), zmq.NOBLOCK)
+      except Exception as e:
+        err = e.errno # if EAGAIN then message cannot be sent at the moment.
+      time.sleep(dt)
+      t += dt
+      if  t > timeout:
+        raise Exception("HKLviewer GUI failed making the ZMQ socket connection to the CCTBX.")
+        break
+
 
 
   def send_message(self, cmdstr, msgtype="philstr"):
@@ -1979,7 +1994,6 @@ def run(isembedded=False, chimeraxsession=None):
     print("HKLviewer using cctbx.python from: %s" %cctbxpython)
 
     HKLguiobj = NGL_HKLViewer(app, isembedded, cctbxpython)
-    time.sleep(1) # make time for zmq_listen loop to start in cctbx subprocess
 
     def MyAppClosing():
       settings.setValue("PythonPath", HKLguiobj.cctbxpython )
