@@ -17,6 +17,7 @@ import argparse
 
 import Movers
 import InteractionGraph
+from boost_adaptbx.graph import connected_component_algorithm as cca
 
 from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
@@ -197,16 +198,31 @@ class NullOptimizer:
 
         ################################################################################
         # Compute the interaction graph, of which each connected component is a Clique.
-        # Get a list of singleton Cliques and a list of other Cliques.  For more verbose
-        # cases, print out how many of each size there are.
-        # @todo
+        # Get a list of singleton Cliques and a list of other Cliques.  Keep separate lists
+        # of the singletons and the groups.
+        interactionGraph = InteractionGraph.InteractionGraphAllPairs(movers, extra)
+        components = cca.connected_components( graph = interactionGraph )
+        maxLen = 0
+        singletonCliques = []
+        groupCliques = []
+        for c in components:
+          if len(c) == 1:
+            singletonCliques.append(c)
+          else:
+            groupCliques.append(c)
+          if len(c) > maxLen:
+            maxLen = len(c)
+        self._infoString += _VerboseCheck(1,"Found "+str(len(components))+" Cliques, "+
+            str(len(singletonCliques))+" singletons; largest Clique size = "+
+            str(maxLen)+"\n")
 
         ################################################################################
         # Call internal methods to optimize the single-element Cliques and then to optimize
         # the multi-element Cliques and then to do indepenedent fine adjustment of all
         # Cliques.  Subclasses should overload the called routines, but the global approach
         # taken here will be the same for all of them.  If we want to change the recipe
-        # so that we can do global fine optimization, we'll do that here as well.
+        # so that we can do global fine optimization, we'll do that here rather than in the
+        # subclasses.
         # @todo
 
         ################################################################################
@@ -690,7 +706,9 @@ END
   model.set_pdb_interpretation_params(params = p)
   model.process_input_model(make_restraints=True) # make restraints
 
-  nullOpt = NullOptimizer(model, modelIndex = None, altID = None)
+  print('Constructing Optimizer')
+  # @todo Let the caller specify the model index and altID rather than doing only the first.
+  nullOpt = NullOptimizer(model)
   info = nullOpt.getInfo()
   print('XXX info:\n'+info)
 
