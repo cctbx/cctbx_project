@@ -292,6 +292,11 @@ class binner(ext.binner):
       column_headers=labels,
       table_rows=table_rows)
 
+
+AnomalousProbabilityPlotResult = namedtuple("AnomalousProbabilityPlotResult", [
+  "slope", "intercept", "n_pairs", "expected_delta"])
+
+
 class binned_data(object):
 
   def __init__(self, binner, data, data_fmt=None):
@@ -3126,12 +3131,9 @@ class array(set):
     assert self.is_unique_set_under_symmetry()
     assert self.anomalous_flag()
 
-    result = namedtuple("anomalous_probability_plot", [
-      "slope", "intercept", "n_pairs", "expected_delta"])
-
     dI = self.anomalous_differences()
     if not dI.size():
-      return result(None, None, None, expected_delta)
+      return AnomalousProbabilityPlotResult(None, None, None, expected_delta)
 
     y = dI.data() / dI.sigmas()
     perm = flex.sort_permutation(y)
@@ -3146,8 +3148,8 @@ class array(set):
 
     fit = flex.linear_regression(x, y)
     if fit.is_well_defined():
-      return result(fit.slope(), fit.y_intercept(), x.size(), expected_delta)
-    return result(None, None, None, expected_delta)
+      return AnomalousProbabilityPlotResult(fit.slope(), fit.y_intercept(), x.size(), expected_delta)
+    return AnomalousProbabilityPlotResult(None, None, None, expected_delta)
 
   def phase_entropy(self, exponentiate=False, return_binned_data=False,
                           return_mean=False):
