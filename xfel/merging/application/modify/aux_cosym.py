@@ -193,7 +193,7 @@ class TargetWithFastRij(Target):
 
     # nproc is an init arg that was removed from class
     # dials.algorithms.symmetry.cosym.target.Target in dials commit 1cd5afe4
-    self._nproc = kwargs.pop('nproc', None)
+    self._nproc = kwargs.pop('nproc', 1)
 
     # if test_data_path is provided, we are constructing this for a unit test
     test_data_path = kwargs.pop('test_data_path', None)
@@ -276,10 +276,10 @@ class TargetWithFastRij(Target):
         indices[cb_op.as_xyz()] = indices_reindexed
         CC.set_indices(cb_op, indices_reindexed)
 
-    results = easy_mp.parallel_map(
+    assert self._nproc==1
+    results = map(
         _compute_one_row,
-        [(CC, i, NN) for i in range(n_lattices)],
-        processes=self._nproc
+        [(CC, i, NN) for i in range(n_lattices)]
     )
 
     rij_matrix = None
