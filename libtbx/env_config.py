@@ -3069,6 +3069,11 @@ def unpickle(build_path=None, env_name="libtbx_env"):
     env.include_path._anchor = sys_prefix
     env.lib_path._anchor = sys_prefix
     env.path_utility._anchor = sys_prefix
+    if sys.platform == 'win32':
+      for module in env.module_list:
+        for dist_path in module.dist_paths:
+          if dist_path is not None:
+            dist_path._anchor = sys_prefix
   return env
 
 def warm_start(args):
