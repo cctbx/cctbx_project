@@ -141,7 +141,7 @@ class MoverNull:
         # Single array of atoms
         [ self._atom ],
         # List of lists of positions.  Must be a list rather than a tuple
-        [ [ self._atom.xyz[0], self._atom.xyz[1], self._atom.xyz[2] ] ],
+        [ [ [ self._atom.xyz[0], self._atom.xyz[1], self._atom.xyz[2] ] ] ],
         # Array of arrays of ExtraAtomInfos
         # Return a copy of our data so that someone won't modify it outside of us
         [ [ probe.ExtraAtomInfo(self._extraAtomInfo) ] ],
