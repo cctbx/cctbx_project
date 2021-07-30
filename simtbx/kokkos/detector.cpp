@@ -107,10 +107,10 @@ namespace simtbx { namespace Kokkos {
       SCITBX_ASSERT( arg_detector[ipanel].get_image_size()[0] == m_slow_dim_size );
       SCITBX_ASSERT( arg_detector[ipanel].get_image_size()[1] == m_fast_dim_size );
     }
-    printf(" m_total_pixel_count: %d\n", m_total_pixel_count);
-    printf("     m_slow_dim_size: %d\n", m_slow_dim_size);
-    printf("     m_fast_dim_size: %d\n", m_fast_dim_size);
-    printf("       m_panel_count: %d\n", m_panel_count);
+    // printf(" m_total_pixel_count: %d\n", m_total_pixel_count);
+    // printf("     m_slow_dim_size: %d\n", m_slow_dim_size);
+    // printf("     m_fast_dim_size: %d\n", m_fast_dim_size);
+    // printf("       m_panel_count: %d\n", m_panel_count);
 
     //3) allocate a cuda array with these dimensions
     // separate accumulator image outside the usual nanoBragg data structure.
@@ -264,26 +264,26 @@ namespace simtbx { namespace Kokkos {
     transfer_shared2kokkos(m_Ybeam, metrology.Ybeam);
     fence();
 
-    metrology.show();
+    // metrology.show();
     
-    printf(" rangemap size:%d\n", m_rangemap.span());
-    printf(" omega_reduction size:%d\n", m_omega_reduction.span());
-    printf(" max_I_x_reduction size:%d\n", m_max_I_x_reduction.span());
-    printf(" max_I_y_reduction size:%d\n", m_max_I_y_reduction.span());
-    printf(" maskimage size:%d\n", m_maskimage.span());
-    printf(" floatimage size:%d\n", m_floatimage.span());
-    printf(" sdet_vector size:%d\n", m_sdet_vector.span());
-    printf(" fdet_vector size:%d\n", m_fdet_vector.span());
-    printf(" odet_vector size:%d\n", m_odet_vector.span());
-    printf(" pix0_vector size:%d\n", m_pix0_vector.span());
-    printf(" distance size:%d\n", m_distance.span());
-    printf(" Xbeam size:%d\n", m_Xbeam.span());
-    printf(" Ybeam size:%d\n", m_Ybeam.span());
+    // printf(" rangemap size:%d\n", m_rangemap.span());
+    // printf(" omega_reduction size:%d\n", m_omega_reduction.span());
+    // printf(" max_I_x_reduction size:%d\n", m_max_I_x_reduction.span());
+    // printf(" max_I_y_reduction size:%d\n", m_max_I_y_reduction.span());
+    // printf(" maskimage size:%d\n", m_maskimage.span());
+    // printf(" floatimage size:%d\n", m_floatimage.span());
+    // printf(" sdet_vector size:%d\n", m_sdet_vector.span());
+    // printf(" fdet_vector size:%d\n", m_fdet_vector.span());
+    // printf(" odet_vector size:%d\n", m_odet_vector.span());
+    // printf(" pix0_vector size:%d\n", m_pix0_vector.span());
+    // printf(" distance size:%d\n", m_distance.span());
+    // printf(" Xbeam size:%d\n", m_Xbeam.span());
+    // printf(" Ybeam size:%d\n", m_Ybeam.span());
   
-    print_view(m_fdet_vector);
-    print_view(m_odet_vector, 1, 3);
+    // print_view(m_fdet_vector);
+    // print_view(m_odet_vector, 1, 3);
 
-    printf("DONE.\n");
+    // printf("DONE.\n");
   }
 
 } // Kokkos
