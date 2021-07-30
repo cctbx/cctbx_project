@@ -16,7 +16,7 @@ if sys.version_info[0] < 3:
   print("HKLviewer GUI must be run from Python 3")
   sys.exit(-42)
 
-from .qt import Qt, QCoreApplication, QEvent, QItemSelectionModel, QSize, QSettings, QTimer, QUrl
+from .qt import Qt, QtCore, QCoreApplication, QEvent, QItemSelectionModel, QSize, QSettings, QTimer, QUrl
 from .qt import (  QAction, QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
     QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
     QMainWindow, QMenu, QMenuBar, QProgressBar, QPushButton, QRadioButton, QRect,
@@ -187,10 +187,16 @@ class MyQMainDialog(QDialog):
 
 
 class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
+  settings = QSettings("CCTBX", "HKLviewer" )
+  # qversion() comes out like '5.12.5'. We just want '5.12'
+  Qtversion = "Qt" + ".".join( QtCore.qVersion().split(".")[0:2])
+
   def __init__(self, thisapp, isembedded=False): #, cctbxpython=None):
     self.datatypedict = { }
     self.browserfontsize = None
     self.isembedded = isembedded
+    print("version " + self.Qtversion)
+
     self.ReadPersistedQsettings()
 
     if isembedded:
@@ -1914,34 +1920,31 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def PersistQsettings(self):
-    settings = QSettings("CCTBX", "HKLviewer" )
-    settings.setValue("PythonPath", self.cctbxpython )
-    settings.beginGroup("Qt" + self.Qtversion )
-    settings.setValue("QWebEngineViewFlags", self.QWebEngineViewFlags)
-    settings.setValue("FontSize", self.fontsize )
-    settings.setValue("BrowserFontSize", self.browserfontsize )
-    settings.setValue("ttip_click_invoke", self.ttip_click_invoke)
-    settings.setValue("windowsize", self.window.size())
-    settings.setValue("splitter1Sizes", self.splitter.saveState())
-    settings.setValue("splitter2Sizes", self.splitter_2.saveState())
+    self.settings.setValue("PythonPath", self.cctbxpython )
+    self.settings.beginGroup(self.Qtversion )
+    self.settings.setValue("QWebEngineViewFlags", self.QWebEngineViewFlags)
+    self.settings.setValue("FontSize", self.fontsize )
+    self.settings.setValue("BrowserFontSize", self.browserfontsize )
+    self.settings.setValue("ttip_click_invoke", self.ttip_click_invoke)
+    self.settings.setValue("windowsize", self.window.size())
+    self.settings.setValue("splitter1Sizes", self.splitter.saveState())
+    self.settings.setValue("splitter2Sizes", self.splitter_2.saveState())
 
-    settings.beginGroup("DataTypesGroups")
-    datatypesgroups = settings.childGroups()
+    self.settings.beginGroup("DataTypesGroups")
+    datatypesgroups = self.settings.childGroups()
     for datatype in list(self.datatypedict.keys()):
-      settings.setValue(datatype + "/ColourChart", self.datatypedict[ datatype ][0] )
-      settings.setValue(datatype + "/ColourPowerScale", self.datatypedict[ datatype ][1] )
-      settings.setValue(datatype + "/PowerScale", self.datatypedict[ datatype ][2])
-      settings.setValue(datatype + "/RadiiScale", self.datatypedict[ datatype ][3])
-    settings.endGroup() # DataTypesGroups
-    settings.endGroup() # PySide2_ + Qtversion
+      self.settings.setValue(datatype + "/ColourChart", self.datatypedict[ datatype ][0] )
+      self.settings.setValue(datatype + "/ColourPowerScale", self.datatypedict[ datatype ][1] )
+      self.settings.setValue(datatype + "/PowerScale", self.datatypedict[ datatype ][2])
+      self.settings.setValue(datatype + "/RadiiScale", self.datatypedict[ datatype ][3])
+    self.settings.endGroup() # DataTypesGroups
+    self.settings.endGroup() # PySide2_ + Qtversion
 
 
   def ReadPersistedQsettings(self):
     # read the users persisted settings from disc
-    settings = QSettings("CCTBX", "HKLviewer" )
-
     # Locate cctbx.python. If not in the Qsettings then try if in the executable path environment
-    self.cctbxpython = settings.value("PythonPath", "")
+    self.cctbxpython = self.settings.value("PythonPath", "")
     if not os.path.isfile(self.cctbxpython):
       wherecmd = "which"
       if sys.platform == 'win32':
@@ -1963,29 +1966,26 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     print("HKLviewer using cctbx.python from: %s" %self.cctbxpython)
     # In case of more than one PySide2 installation tag the settings by version number of PySide2
     # as different versions may use different metrics for font and window sizes
-    from .qt import QtCore
-    self.Qtversion = str(QtCore.qVersion())
-    print("Qt version " + self.Qtversion)
-    settings.beginGroup("Qt" + self.Qtversion)
-    settings.beginGroup("DataTypesGroups")
-    datatypes = settings.childGroups()
+    self.settings.beginGroup(self.Qtversion)
+    self.settings.beginGroup("DataTypesGroups")
+    datatypes = self.settings.childGroups()
     #datatypedict = { }
     if datatypes:
       for datatype in datatypes:
-        self.datatypedict[ datatype ] = [ settings.value(datatype + "/ColourChart", "brg"),
-                                      float(settings.value(datatype + "/ColourPowerScale", 1.0)),
-                                      float(settings.value(datatype + "/PowerScale", 1.0)),
-                                      float(settings.value(datatype + "/RadiiScale", 1.0)),
+        self.datatypedict[ datatype ] = [ self.settings.value(datatype + "/ColourChart", "brg"),
+                                      float(self.settings.value(datatype + "/ColourPowerScale", 1.0)),
+                                      float(self.settings.value(datatype + "/PowerScale", 1.0)),
+                                      float(self.settings.value(datatype + "/RadiiScale", 1.0)),
                                     ]
-    settings.endGroup()
-    self.QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
-    self.fontsize = settings.value("FontSize", None)
-    self.browserfontsize = settings.value("BrowserFontSize", 9)
-    self.ttip_click_invoke = settings.value("ttip_click_invoke", None)
-    self.windowsize = settings.value("windowsize", None)
-    self.splitter1sizes = settings.value("splitter1Sizes", None)
-    self.splitter2sizes = settings.value("splitter2Sizes", None)
-    settings.endGroup()
+    self.settings.endGroup()
+    self.QWebEngineViewFlags = self.settings.value("QWebEngineViewFlags", None)
+    self.fontsize = self.settings.value("FontSize", 10)
+    self.browserfontsize = self.settings.value("BrowserFontSize", 9)
+    self.ttip_click_invoke = self.settings.value("ttip_click_invoke", None)
+    self.windowsize = self.settings.value("windowsize", None)
+    self.splitter1sizes = self.settings.value("splitter1Sizes", None)
+    self.splitter2sizes = self.settings.value("splitter2Sizes", None)
+    self.settings.endGroup()
     # test for any necessary flags for WebGL to work on this platform
     if self.QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       self.QWebEngineViewFlags = " --disable-web-security" # for chromium
@@ -2024,6 +2024,14 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.setDatatypedict(self.datatypedict)
 
 
+  @staticmethod
+  def RemoveQsettings(all=False):
+    mstr = NGL_HKLViewer.Qtversion
+    if all:
+      mstr = ""
+    NGL_HKLViewer.settings.remove(mstr)
+
+
 def run(isembedded=False, chimeraxsession=None):
   import time
   #time.sleep(10) # enough time for attaching debugger
@@ -2038,6 +2046,14 @@ def run(isembedded=False, chimeraxsession=None):
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
         if "devmode" in e:  # --single-process will freeze the WebEngineDebugForm at breakpoints
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
+      if "remove_settings" in e:
+        NGL_HKLViewer.RemoveQsettings()
+        print("HKLViewer settings for %s removed." %NGL_HKLViewer.Qtversion)
+        exit()
+      if "remove_all_settings" in e:
+        NGL_HKLViewer.RemoveQsettings(all=True)
+        print("All HKLViewer settings removed.")
+        exit()
 
     from .qt import QApplication
     # ensure QWebEngineView scales correctly on a screen with high DPI
