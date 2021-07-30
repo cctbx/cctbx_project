@@ -210,9 +210,9 @@ geo_asserts.append(
 
 restraintlib_installed=True
 try:
-  from restraintlib import launcher
-  from restraintlib.printer import TuplePrinter
-  from restraintlib.restraints import analyze_pdb_hierarhy
+  from restraintlib import launcher  # special import
+  from restraintlib.printer import TuplePrinter  # special import
+  from restraintlib.restraints import analyze_pdb_hierarhy  # special import
 except ImportError as e:
   restraintlib_installed = False
 

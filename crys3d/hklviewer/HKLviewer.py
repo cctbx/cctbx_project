@@ -1635,7 +1635,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
           myqa = QAction("Display %s" %scenelabelstr, self.window, triggered=self.testaction)
           myqa.setData((sceneid, row))
           self.millertablemenu.addAction(myqa)
-    myqa = QAction("Make a new dataset from this dataset and another dataset...", 
+    myqa = QAction("Make a new dataset from this dataset and another dataset...",
                    self.window, triggered=self.testaction)
     myqa.setData( ("newdata", row ))
     self.millertablemenu.addAction(myqa)
@@ -1645,7 +1645,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       labels = []
       for i,r in enumerate(self.millertable.selectedrows):
         labels.extend( self.millerarraylabels[r].split(",") ) # to cope with I,SigI or other multiple labels
-      myqa = QAction("Show a table of the %s dataset ..." %  " and ".join(labels), 
+      myqa = QAction("Show a table of the %s dataset ..." %  " and ".join(labels),
                      self.window, triggered=self.testaction)
       lbls =[] # group any crystal_id=1, wavelength_id, scale_group_code with labels in lists
       for i,r in enumerate(self.millertable.selectedrows):
@@ -1993,7 +1993,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
         print("testing if WebGL works in QWebEngineView....")
         QtChromiumCheck_fpath = os.path.join(os.path.split(HKLviewerGui.__file__)[0], "QtChromiumCheck.py")
         cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
-        webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE, 
+        webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         procout, procerr = webglproc.communicate()
         if not "WebGL works" in procout.decode():
