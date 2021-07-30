@@ -63,17 +63,17 @@ namespace simtbx { namespace Kokkos {
   void
   transfer_shared2kokkos(view_1d_t<T> &dst, const af::shared<T>  &src) {
     if (true) {
-      printf("== Transfer %s from %p\n", dst.label().c_str(), (void*) dst.data());
-      printf(" - size src|dst: %d|%d\n", src.size(), dst.span() );
+      // printf("== Transfer %s from %p\n", dst.label().c_str(), (void*) dst.data());
+      // printf(" - size src|dst: %d|%d\n", src.size(), dst.span() );
     }
     if (dst.span() < src.size()) {
       resize(dst, src.size());
-      printf(" - size changed, new size: %d\n", dst.span() );
+      // printf(" - size changed, new size: %d\n", dst.span() );
     }
 
     transfer_X2kokkos(dst, src);
     if (src.size() < 20) {
-      print_view(dst);
+      // print_view(dst);
     }
   }
 
@@ -83,7 +83,7 @@ namespace simtbx { namespace Kokkos {
   void
   transfer_kokkos2shared(af::shared<T> &dst, const view_1d_t<T> &src) {
     if (true) {
-      printf("== Transfer %s from %p\n", src.label().c_str(), (void*) src.data());
+      // printf("== Transfer %s from %p\n", src.label().c_str(), (void*) src.data());
     }
     transfer_kokkos2X(dst, src);
   }
@@ -92,7 +92,7 @@ namespace simtbx { namespace Kokkos {
   void
   transfer_kokkos2flex(af::flex_double &dst, const view_1d_t<T> &src) {
     if (true) {
-      printf("== Transfer %s from %p\n", src.label().c_str(), (void*) src.data());
+      // printf("== Transfer %s from %p\n", src.label().c_str(), (void*) src.data());
     }
     transfer_kokkos2X(dst, src);
   }
@@ -101,7 +101,7 @@ namespace simtbx { namespace Kokkos {
   void
   transfer_kokkos2flex(af::flex_int &dst, const view_1d_t<T> &src) {
     if (true) {
-      printf("== Transfer %s from %p\n", src.label().c_str(), (void*) src.data());
+      // printf("== Transfer %s from %p\n", src.label().c_str(), (void*) src.data());
     }
     transfer_kokkos2X(dst, src);
   }
