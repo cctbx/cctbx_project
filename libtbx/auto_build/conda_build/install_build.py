@@ -184,7 +184,8 @@ def copy_build(env, prefix=None, ext_dir=None, sp_dir=None, copy_egg=False, link
   src_path = os.path.join(abs(env.build_path), 'lib')
   dst_path = os.path.join(prefix, 'lib')
   os.chdir(src_path)
-  all_names = glob.glob('lib*') + glob.glob('*.lib')
+  all_names = glob.glob('lib*') \
+              + [f for f in glob.glob('*.lib') if not f.endswith('_ext.lib')]
   lib_names = []
   for name in all_names:
     if name.endswith('egg-info'):
