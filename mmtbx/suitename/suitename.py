@@ -140,14 +140,16 @@ def read(inFile, errorFile=sys.stderr):
         suites = readKinemageFile(inFile)
         if len(suites) == 0:
             errorFile.write("read no suites: perhaps wrong type of kinemage file\n")
-            sys.exit(1)
+            # sys.exit(1)
     else:
         residues = readResidues(inFile)
         if len(residues) == 0:
             errorFile.write("read no residues: perhaps wrong alternate code\n")
-            sys.exit(1)
-        suites = buildSuites(residues)
-        suites = suites[:-1]
+            # sys.exit(1)
+            suites = []
+        else:
+            suites = buildSuites(residues)
+            suites = suites[:-1]
     return suites
 
 def compute(suites):
