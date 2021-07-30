@@ -58,8 +58,6 @@ class HKLViewFrame() :
     if 'verbose' in kwds:
       self.verbose = eval(kwds['verbose'])
     self.guiSocketPort=None
-    self.mprint("kwds= " +str(kwds), 1)
-    self.mprint("args= " + str(args), 1)
     kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
     self.infostr = ""
@@ -88,6 +86,8 @@ class HKLViewFrame() :
       self.SendInfoToGUI(pyversion )
       self.SendInfoToGUI({"copyrights": self.copyrightpaths,
                           "cctbxversion": version.get_version()} )
+    self.mprint("kwds= " +str(kwds), 1)
+    self.mprint("args= " + str(args), 1)
     kwds['websockport'] = self.find_free_port()
     kwds['parent'] = self
     self.viewer = view_3d.hklview_3d( **kwds )
@@ -133,6 +133,8 @@ class HKLViewFrame() :
     while not self.STOP:
       try:
         msgstr = self.guisocket.recv().decode("utf-8")
+        if msgstr == "":
+          continue
         self.mprint("Received string:\n" + msgstr, verbose=1)
         msgtype, mstr = eval(msgstr)
         if msgtype=="dict":

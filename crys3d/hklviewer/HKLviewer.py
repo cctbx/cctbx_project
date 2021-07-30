@@ -187,8 +187,12 @@ class MyQMainDialog(QDialog):
 
 
 class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
-  def __init__(self, thisapp, isembedded=False, cctbxpython=None):
+  def __init__(self, thisapp, isembedded=False): #, cctbxpython=None):
+    self.datatypedict = { }
+    self.browserfontsize = None
     self.isembedded = isembedded
+    self.ReadPersistedQsettings()
+
     if isembedded:
       self.window = MyQMainDialog(self)
       self.window.hide()
@@ -244,7 +248,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.zmq_context = None
     self.unfeedback = False
     self.cctbxpythonversion = None
-    self.cctbxpython = cctbxpython
+    #self.cctbxpython = cctbxpython
     self.mousespeed_labeltxt = QLabel()
     self.mousespeed_labeltxt.setText("Mouse speed:")
     self.mousemoveslider = QSlider(Qt.Horizontal)
@@ -265,7 +269,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
     self.Fontsize_labeltxt = QLabel()
     self.Fontsize_labeltxt.setText("Font size:")
-    self.fontsize = self.font.pointSize()
 
     self.browserfontspinBox = QDoubleSpinBox()
     self.browserfontspinBox.setSingleStep(1)
@@ -274,7 +277,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.browserfontspinBox.valueChanged.connect(self.onBrowserFontsizeChanged)
     self.BrowserFontsize_labeltxt = QLabel()
     self.BrowserFontsize_labeltxt.setText("Browser font size:")
-    self.browserfontsize = None
 
     self.cameraPerspectCheckBox = QCheckBox()
     self.cameraPerspectCheckBox.setText("Perspective camera")
@@ -309,14 +311,12 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.ttipalpha_spinBox.valueChanged.connect(self.onTooltipAlphaChanged)
     self.ttipalpha_labeltxt = QLabel()
     self.ttipalpha_labeltxt.setText("Tooltip Opacity:")
-    self.ttip_click_invoke = "hover"
+    #self.ttip_click_invoke = "hover"
 
     self.ColourMapSelectDlg = MPLColourSchemes(self)
     self.ColourMapSelectDlg.setWindowTitle("HKLviewer Colour Gradient Maps")
     # colour schemes and radii mapping for types of datasets stored in jsview_3d.py but persisted here:
     # colourmap=brg, colourpower=1, powerscale=1, radiiscale=1
-    self.datatypedict = { }
-
     self.settingsform = SettingsForm(self)
     self.aboutform = AboutForm(self)
     self.webpagedebugform = None
@@ -438,6 +438,8 @@ newarray._sigmas = sigs
       self.actionExit.triggered.connect(self.window.close)
       self.actionSave_reflection_file.triggered.connect(self.onSaveReflectionFile)
       self.actionColour_Gradient.triggered.connect(self.ColourMapSelectDlg.show)
+    else:
+      self.textInfo.setVisible(False) # stdout sent to chimeraX's console instead
 
     self.functionTabWidget.setCurrentIndex(0) # if accidentally set to a different tab in the Qtdesigner
     self.window.show()
@@ -454,9 +456,6 @@ newarray._sigmas = sigs
   def onOpenCCTBXwebsite(self):
     QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/")
 
-
-  def AppAboutToQuit(self):
-    print("in AppAboutToQuit")
 
   def closeEvent(self, event):
     self.send_message('action = is_terminating')
@@ -490,6 +489,7 @@ newarray._sigmas = sigs
         self.webpagedebugform.deleteLater()
       self.BrowserBox.close()
       self.BrowserBox.deleteLater()
+    self.PersistQsettings()
     if not self.isembedded:
       event.accept()
 
@@ -752,14 +752,14 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
               for col,elm in enumerate((label, hklop, hkls, abcs)):
                 item = QTableWidgetItem(str(elm))
                 if col == 0:
-                  item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled ^ Qt.ItemIsEditable)
+                  item.setFlags((Qt.ItemIsUserCheckable | Qt.ItemIsEnabled) ^ Qt.ItemIsEditable)
                   item.setCheckState(Qt.Unchecked)
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 self.vectortable2.setItem(row, col, item)
 
             rc = self.vectortable2.rowCount()-1 # last row is for user defined vector
             item = QTableWidgetItem("new vector")
-            item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled ^ Qt.ItemIsEditable)
+            item.setFlags((Qt.ItemIsUserCheckable | Qt.ItemIsEnabled) ^ Qt.ItemIsEditable)
             item.setCheckState(Qt.Unchecked)
             self.vectortable2.setItem(rc, 0, item)
 
@@ -845,12 +845,14 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
           #print("ngl_hkl_infodict: " + str(ngl_hkl_infodict))
 
           if currentinfostr:
-            #print(currentinfostr)
-            self.infostr += currentinfostr + "\n"
-            # display no more than self.bufsize bytes of text
-            self.infostr = self.infostr[-1000*self.bufsizespinBox.value():]
-            self.textInfo.setPlainText(self.infostr)
-            self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
+            if self.isembedded:
+              print(currentinfostr)
+            else:
+              self.infostr += currentinfostr + "\n"
+              # display no more than self.bufsize bytes of text
+              self.infostr = self.infostr[-1000*self.bufsizespinBox.value():]
+              self.textInfo.setPlainText(self.infostr)
+              self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
             currentinfostr = ""
 
           if (self.NewFileLoaded or self.NewMillerArray) and self.NewHKLscenes:
@@ -885,9 +887,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
       except Exception as e:
         errmsg = str(e)
-        if e.errno != zmq.EAGAIN: #"Resource temporarily unavailable" not in errmsg:
+        if "Resource temporarily unavailable" not in errmsg: # ignore errors from no connection to ZMQ socket
           print( errmsg  +  traceback.format_exc(limit=10) )
-        #print(errmsg)
 
 
   def UpdateGUI(self):
@@ -1634,7 +1635,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
           myqa = QAction("Display %s" %scenelabelstr, self.window, triggered=self.testaction)
           myqa.setData((sceneid, row))
           self.millertablemenu.addAction(myqa)
-    myqa = QAction("Make a new dataset from this dataset and another dataset...", self.window, triggered=self.testaction)
+    myqa = QAction("Make a new dataset from this dataset and another dataset...", 
+                   self.window, triggered=self.testaction)
     myqa.setData( ("newdata", row ))
     self.millertablemenu.addAction(myqa)
 
@@ -1643,7 +1645,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       labels = []
       for i,r in enumerate(self.millertable.selectedrows):
         labels.extend( self.millerarraylabels[r].split(",") ) # to cope with I,SigI or other multiple labels
-      myqa = QAction("Show a table of the %s dataset ..." %  " and ".join(labels), self.window, triggered=self.testaction)
+      myqa = QAction("Show a table of the %s dataset ..." %  " and ".join(labels), 
+                     self.window, triggered=self.testaction)
       lbls =[] # group any crystal_id=1, wavelength_id, scale_group_code with labels in lists
       for i,r in enumerate(self.millertable.selectedrows):
         lbls.extend( [ self.millerarraylabels[r].split(",") ] ) # to cope with I,SigI or other multiple labels
@@ -1866,14 +1869,15 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     # the subprocess after execution). Since we need cmdlineframes.run() to be interactive
     # we start it with shell=True and flags -i -c for cmdlineframes.run() to remain running.
     # Care must be taken when closing HKLviewer to ensure the shell and its child process are both closed.
+    args = ' '.join( guiargs + sys.argv[1:])
     cmdargs =  self.cctbxpython + ' -i -c "from crys3d.hklviewer import cmdlineframes;' \
-     + ' cmdlineframes.run()" ' + ' '.join( guiargs + sys.argv[1:])
+     + ' cmdlineframes.run()" ' + args
     self.cctbxproc = subprocess.Popen( cmdargs, shell=True,
                                       universal_newlines=True,
                                       stdin=subprocess.PIPE,
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE)
-    # Wait for connection from CCTBX by testing if we can send an empty string
+    # Wait for connection from the zmq socket in CCTBX by testing if we can send an empty string
     t=0.0; dt = 0.3; timeout = 5
     err = zmq.EAGAIN
     while err == zmq.EAGAIN:
@@ -1909,71 +1913,36 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     return self.send_message(str(self.datatypedict), msgtype="dict")
 
 
-def run(isembedded=False, chimeraxsession=None):
-  import time
-  #time.sleep(10) # enough time for attaching debugger
-  try:
-    from .qt import QtCore
-    Qtversion = str(QtCore.qVersion())
-    debugtrue = False
-    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
-    for e in sys.argv:
-      if "devmode" in e or "debug" in e and not "UseOSBrowser" in e:
-        debugtrue = True
-        print("Qt version " + Qtversion)
-        # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
-        if "debug" in e:
-          os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
-        if "devmode" in e:  # --single-process will freeze the WebEngineDebugForm at breakpoints
-          os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
+  def PersistQsettings(self):
+    settings = QSettings("CCTBX", "HKLviewer" )
+    settings.setValue("PythonPath", self.cctbxpython )
+    settings.beginGroup("Qt" + self.Qtversion )
+    settings.setValue("QWebEngineViewFlags", self.QWebEngineViewFlags)
+    settings.setValue("FontSize", self.fontsize )
+    settings.setValue("BrowserFontSize", self.browserfontsize )
+    settings.setValue("ttip_click_invoke", self.ttip_click_invoke)
+    settings.setValue("windowsize", self.window.size())
+    settings.setValue("splitter1Sizes", self.splitter.saveState())
+    settings.setValue("splitter2Sizes", self.splitter_2.saveState())
 
+    settings.beginGroup("DataTypesGroups")
+    datatypesgroups = settings.childGroups()
+    for datatype in list(self.datatypedict.keys()):
+      settings.setValue(datatype + "/ColourChart", self.datatypedict[ datatype ][0] )
+      settings.setValue(datatype + "/ColourPowerScale", self.datatypedict[ datatype ][1] )
+      settings.setValue(datatype + "/PowerScale", self.datatypedict[ datatype ][2])
+      settings.setValue(datatype + "/RadiiScale", self.datatypedict[ datatype ][3])
+    settings.endGroup() # DataTypesGroups
+    settings.endGroup() # PySide2_ + Qtversion
+
+
+  def ReadPersistedQsettings(self):
     # read the users persisted settings from disc
     settings = QSettings("CCTBX", "HKLviewer" )
-    # In case of more than one PySide2 installation tag the settings by version number of PySide2
-    # as different versions may use different metrics for font and window sizes
-    settings.beginGroup("Qt" + Qtversion)
-    settings.beginGroup("DataTypesGroups")
-    datatypes = settings.childGroups()
-    datatypedict = { }
-    if datatypes:
-      for datatype in datatypes:
-        datatypedict[ datatype ] = [ settings.value(datatype + "/ColourChart", "brg"),
-                                     float(settings.value(datatype + "/ColourPowerScale", 1.0)),
-                                     float(settings.value(datatype + "/PowerScale", 1.0)),
-                                     float(settings.value(datatype + "/RadiiScale", 1.0)),
-                                   ]
-    settings.endGroup()
-    QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
-    fontsize = settings.value("FontSize", None)
-    browserfontsize = settings.value("BrowserFontSize", 9)
-    ttip_click_invoke = settings.value("ttip_click_invoke", None)
-    windowsize = settings.value("windowsize", None)
-    splitter1sizes = settings.value("splitter1Sizes", None)
-    splitter2sizes = settings.value("splitter2Sizes", None)
-    settings.endGroup()
 
-    if QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
-      QWebEngineViewFlags = " --disable-web-security" # for chromium
-      if not isembedded:
-        print("testing if WebGL works in QWebEngineView....")
-        QtChromiumCheck_fpath = os.path.join(os.path.split(HKLviewerGui.__file__)[0], "QtChromiumCheck.py")
-        cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
-        webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        procout, procerr = webglproc.communicate()
-        if not "WebGL works" in procout.decode():
-          QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist "
-    if "verbose" in sys.argv[1:]:
-      print("using flags for QWebEngineView: " + QWebEngineViewFlags)
-    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += QWebEngineViewFlags
-
-    from .qt import QApplication
-    # ensure QWebEngineView scales correctly on a screen with high DPI
-    if not isembedded:
-      QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
-    app = QApplication(sys.argv)
     # Locate cctbx.python. If not in the Qsettings then try if in the executable path environment
-    cctbxpython = settings.value("PythonPath", "")
-    if not os.path.isfile(cctbxpython):
+    self.cctbxpython = settings.value("PythonPath", "")
+    if not os.path.isfile(self.cctbxpython):
       wherecmd = "which"
       if sys.platform == 'win32':
         wherecmd = "where"
@@ -1982,41 +1951,101 @@ def run(isembedded=False, chimeraxsession=None):
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE).communicate()
       if proc[0] != "":
-        cctbxpython = proc[0].strip()
-    if not os.path.isfile(cctbxpython):
+        self.cctbxpython = proc[0].strip()
+    if not os.path.isfile(self.cctbxpython):
       from .qt import QInputDialog
-      cctbxpython, ok = QInputDialog.getText(None, "cctbx.python needs specifying",
-                          'The HKLviewer GUI needs to know where the cctbx.python is located.\n' +
-                          'Enter the full path for the executable cctbx.python dispatcher file.\n' +
-                          'Tip: Use the "which" or "where" command from a shell with an active CCTBX environment.')
-    if not os.path.isfile(cctbxpython):
-      raise Exception("The file, %s, does not exists!\n" %cctbxpython)
-    print("HKLviewer using cctbx.python from: %s" %cctbxpython)
+      self.cctbxpython, ok = QInputDialog.getText(None, "cctbx.python needs specifying",
+              'The HKLviewer GUI needs to know where the cctbx.python is located.\n' +
+              'Enter the full path for the executable cctbx.python dispatcher file.\n' +
+              'Tip: Use the "which" or "where" command from a shell with an active CCTBX environment.')
+    if not os.path.isfile(self.cctbxpython):
+      raise Exception("The file, %s, does not exists!\n" %self.cctbxpython)
+    print("HKLviewer using cctbx.python from: %s" %self.cctbxpython)
+    # In case of more than one PySide2 installation tag the settings by version number of PySide2
+    # as different versions may use different metrics for font and window sizes
+    from .qt import QtCore
+    self.Qtversion = str(QtCore.qVersion())
+    print("Qt version " + self.Qtversion)
+    settings.beginGroup("Qt" + self.Qtversion)
+    settings.beginGroup("DataTypesGroups")
+    datatypes = settings.childGroups()
+    #datatypedict = { }
+    if datatypes:
+      for datatype in datatypes:
+        self.datatypedict[ datatype ] = [ settings.value(datatype + "/ColourChart", "brg"),
+                                      float(settings.value(datatype + "/ColourPowerScale", 1.0)),
+                                      float(settings.value(datatype + "/PowerScale", 1.0)),
+                                      float(settings.value(datatype + "/RadiiScale", 1.0)),
+                                    ]
+    settings.endGroup()
+    self.QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
+    self.fontsize = settings.value("FontSize", None)
+    self.browserfontsize = settings.value("BrowserFontSize", 9)
+    self.ttip_click_invoke = settings.value("ttip_click_invoke", None)
+    self.windowsize = settings.value("windowsize", None)
+    self.splitter1sizes = settings.value("splitter1Sizes", None)
+    self.splitter2sizes = settings.value("splitter2Sizes", None)
+    settings.endGroup()
+    # test for any necessary flags for WebGL to work on this platform
+    if self.QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
+      self.QWebEngineViewFlags = " --disable-web-security" # for chromium
+      if not self.isembedded:
+        print("testing if WebGL works in QWebEngineView....")
+        QtChromiumCheck_fpath = os.path.join(os.path.split(HKLviewerGui.__file__)[0], "QtChromiumCheck.py")
+        cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
+        webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE, 
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        procout, procerr = webglproc.communicate()
+        if not "WebGL works" in procout.decode():
+          self.QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist "
+    if "verbose" in sys.argv[1:]:
+      print("using flags for QWebEngineView: " + self.QWebEngineViewFlags)
+    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += self.QWebEngineViewFlags
 
-    HKLguiobj = NGL_HKLViewer(app, isembedded, cctbxpython)
 
-    def MyAppClosing():
-      settings.setValue("PythonPath", HKLguiobj.cctbxpython )
-      settings.beginGroup("Qt" + Qtversion )
-      settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
-      settings.setValue("FontSize", HKLguiobj.fontsize )
-      settings.setValue("BrowserFontSize", HKLguiobj.browserfontsize )
-      settings.setValue("ttip_click_invoke", HKLguiobj.ttip_click_invoke)
-      settings.setValue("windowsize", HKLguiobj.window.size())
-      settings.setValue("splitter1Sizes", HKLguiobj.splitter.saveState())
-      settings.setValue("splitter2Sizes", HKLguiobj.splitter_2.saveState())
+  def UsePersistedQsettings(self):
+    # Now assign the users persisted settings to the GUI
+    if self.fontsize is not None:
+      self.onFontsizeChanged(int(self.fontsize))
+      self.fontspinBox.setValue(int(self.fontsize))
+    if self.browserfontsize is not None:
+      self.onBrowserFontsizeChanged(int(self.browserfontsize))
+      self.browserfontspinBox.setValue(int(self.browserfontsize))
+    if self.ttip_click_invoke is not None:
+      self.onShowTooltips(self.ttip_click_invoke)
+      self.ttipClickradio.setChecked(self.ttip_click_invoke == "click")
+      self.ttipHoverradio.setChecked(self.ttip_click_invoke == "hover")
+    if self.splitter1sizes is not None and self.splitter2sizes is not None and self.windowsize is not None:
+      self.window.resize(self.windowsize)
+      if self.webpagedebugform and self.devmode:
+        self.webpagedebugform.resize( self.window.size())
+      self.splitter.restoreState(self.splitter1sizes)
+      self.splitter_2.restoreState(self.splitter2sizes)
+    self.setDatatypedict(self.datatypedict)
 
-      settings.beginGroup("DataTypesGroups")
-      datatypesgroups = settings.childGroups()
-      for datatype in list(HKLguiobj.datatypedict.keys()):
-        settings.setValue(datatype + "/ColourChart", HKLguiobj.datatypedict[ datatype ][0] )
-        settings.setValue(datatype + "/ColourPowerScale", HKLguiobj.datatypedict[ datatype ][1] )
-        settings.setValue(datatype + "/PowerScale", HKLguiobj.datatypedict[ datatype ][2])
-        settings.setValue(datatype + "/RadiiScale", HKLguiobj.datatypedict[ datatype ][3])
-      settings.endGroup() # DataTypesGroups
-      settings.endGroup() # PySide2_ + Qtversion
 
-    app.lastWindowClosed.connect(MyAppClosing) # persist settings on disk
+def run(isembedded=False, chimeraxsession=None):
+  import time
+  #time.sleep(10) # enough time for attaching debugger
+  try:
+    debugtrue = False
+    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
+    for e in sys.argv:
+      if "devmode" in e or "debug" in e and not "UseOSBrowser" in e:
+        debugtrue = True
+        # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
+        if "debug" in e:
+          os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
+        if "devmode" in e:  # --single-process will freeze the WebEngineDebugForm at breakpoints
+          os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
+
+    from .qt import QApplication
+    # ensure QWebEngineView scales correctly on a screen with high DPI
+    if not isembedded:
+      QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+    app = QApplication(sys.argv)
+
+    HKLguiobj = NGL_HKLViewer(app, isembedded)
 
     if not isembedded:
       timer = QTimer()
@@ -2033,24 +2062,8 @@ def run(isembedded=False, chimeraxsession=None):
           HKLguiobj.ProcessMessages()
 
       HKLguiobj.chimeraxprocmsghandler = chimeraxsession.triggers.add_handler('new frame', ChXTimer)
-    # Now assign the users persisted settings to the GUI
-    if fontsize is not None:
-      HKLguiobj.onFontsizeChanged(int(fontsize))
-      HKLguiobj.fontspinBox.setValue(int(fontsize))
-    if browserfontsize is not None:
-      HKLguiobj.onBrowserFontsizeChanged(int(browserfontsize))
-      HKLguiobj.browserfontspinBox.setValue(int(browserfontsize))
-    if ttip_click_invoke is not None:
-      HKLguiobj.onShowTooltips(ttip_click_invoke)
-      HKLguiobj.ttipClickradio.setChecked(ttip_click_invoke == "click")
-      HKLguiobj.ttipHoverradio.setChecked(ttip_click_invoke == "hover")
-    if splitter1sizes is not None and splitter2sizes is not None and windowsize is not None:
-      HKLguiobj.window.resize(windowsize)
-      if HKLguiobj.webpagedebugform and HKLguiobj.devmode:
-        HKLguiobj.webpagedebugform.resize( HKLguiobj.window.size())
-      HKLguiobj.splitter.restoreState(splitter1sizes)
-      HKLguiobj.splitter_2.restoreState(splitter2sizes)
-    HKLguiobj.setDatatypedict( datatypedict)
+
+    HKLguiobj.UsePersistedQsettings()
 
     if isembedded:
       return HKLguiobj
