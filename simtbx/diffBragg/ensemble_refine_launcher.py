@@ -18,12 +18,20 @@ from simtbx.diffBragg.refine_launcher import LocalRefinerLauncher
 from simtbx.diffBragg import utils
 from simtbx.diffBragg import hopper_utils
 from dxtbx.model.experiment_list import ExperimentListFactory
+from simtbx.diffBragg.prep_stage2_input import prep_dataframe
+import logging
+
+LOGGER = logging.getLogger("main")
 
 
 def global_refiner_from_parameters(params):
     launcher = GlobalRefinerLauncher(params)
     # TODO read on each rank, or read and broadcast ?
+    LOGGER.info("EVENT: read input pickle")
     pandas_table = pandas.read_pickle(params.pandas_table)
+    LOGGER.info("EVENT: prep dataframe")
+    if params.prep_time > 0:
+        pandas_table = prep_dataframe(pandas_table, params.prep_time)
     return launcher.launch_refiner(pandas_table)
 
 
@@ -72,13 +80,16 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         shot_idx = 0  # each rank keeps index of the shots local to it
         rank_panel_groups_refined = set()
         rank_local_parameters = []
-        #exper_names = pandas_table.opt_exp_name.unique()
-        exper_names = pandas_table.exp_name.unique()
+        exper_names = pandas_table.exp_name
+        assert len(exper_names) == len(set(exper_names))
         # TODO assert all exper are single-file, probably way before this point
+        LOGGER.info("EVENT: begin loading inputs")
         for i_exp, exper_name in enumerate(exper_names):
             if i_exp % COMM.size != COMM.rank:
                 continue
+            LOGGER.info("EVENT: BEGIN loading experiment list")
             expt_list = ExperimentListFactory.from_json_file(exper_name, check_format=True)
+            LOGGER.info("EVENT: DONE loading experiment list")
             if len(expt_list) != 1:
                 print("Input experiments need to have length 1, %s does not" % exper_name)
             expt = expt_list[0]
@@ -128,6 +139,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
                                                self.params.refiner.stage_two.Fref_mtzcol)
 
             # FIXME what if a prediction doesnt have an observed structure factor amplitude
+            LOGGER.info("EVENT: verifying input refl HKLs are included in input Fobs")
             observed_Hi_p1, _ = map(set, self.SIM.D.Fhkl_tuple)
             good_sel = []
             hkl_observed = observed_Hi_p1.intersection(set(refls["miller_index"]))
@@ -143,10 +155,12 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             self.Hi[shot_idx] = Hi
             self.Hi_asu[shot_idx] = map_hkl_list(Hi, True, self.symbol)
 
+            LOGGER.info("EVENT: LOADING ROI DATA")
             shot_data = self.load_roi_data(refls, expt)
             if shot_data is None:
                 raise ValueError("Cannot refine!")
 
+            LOGGER.info("EVENT: DONE LOADING ROI")
             self.shot_ucell_managers[shot_idx] = UcellMan
             self.shot_rois[shot_idx] = shot_data.rois
             self.shot_nanoBragg_rois[shot_idx] = shot_data.nanoBragg_rois
@@ -243,6 +257,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
 
         self.panel_groups_refined = list(COMM.bcast(panel_groups_refined))
 
+        LOGGER.info("EVENT: Gathering global HKL information")
         self._gather_Hi_information()
         if self.params.roi.cache_dir_only:
             print("Done creating cache directory and cache_dir_only=True, so goodbye.")
@@ -278,6 +293,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
 
         self._mem_usage()
 
+        LOGGER.info("EVENT: launch refiner")
         self._launch(total_local_param_on_rank, n_global_params,
                      local_idx_start=local_param_offset_per_rank,
                      global_idx_start=total_local_unknowns_all_ranks)

@@ -29,6 +29,10 @@ script_phil = """
 pandas_table = None
   .type = str 
   .help = path to an input pandas table (usually output by simtbx.diffBragg.predictions)
+prep_time = 60
+  .type = float
+  .help = Time spent optimizing order of input dataframe to better divide shots across ranks
+  .help = Unit is seconds, 1-2 minutes of prep might save a lot of time during refinement!
 """
 
 philz = script_phil + philz + hopper_phil
@@ -51,7 +55,7 @@ class Script:
                 check_format=False,
                 epilog=help_message)
         self.parser = COMM.bcast(self.parser)
-        self.params, _ = self.parser.parse_args(show_diff_phil=True)
+        self.params, _ = self.parser.parse_args(show_diff_phil=COMM.rank==0)
 
     def run(self):
         #self.params = None

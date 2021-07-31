@@ -1483,7 +1483,7 @@ def roi_spots_from_pandas(pandas_frame,  rois_per_panel, mtz_file=None, mtz_col=
 
     df = pandas_frame
 
-    if not quiet:MAIN_LOGGER.info("Loading experiment models")
+    if not quiet: MAIN_LOGGER.info("Loading experiment models")
     expt_name = df.opt_exp_name.values[0]
     El = ExperimentListFactory.from_json_file(expt_name, check_format=False)
     expt = El[0]
@@ -1511,20 +1511,26 @@ def roi_spots_from_pandas(pandas_frame,  rois_per_panel, mtz_file=None, mtz_col=
         oversample = oversample_override
 
     # get the optimized spectra
-    if "spectrum_filename" in list(df):
-        spectrum_file = df.spectrum_filename.values[0]
-        pink_stride = df.spectrum_stride.values[0]
-        if norm_by_spectrum:
-            nspec = load_spectra_file(spectrum_file)[0].shape[0]
-            spot_scale = spot_scale / nspec
-        if pink_stride_override is not None:
-            pink_stride = pink_stride_override
-        fluxes, energies = load_spectra_file(spectrum_file, total_flux=total_flux,
-                                             pinkstride=pink_stride)
+    if spectrum_override is None:
+        if "spectrum_filename" in list(df) and df.spectrum_filename.values[0] is not None:
+            spectrum_file = df.spectrum_filename.values[0]
+            pink_stride = df.spectrum_stride.values[0]
+            if norm_by_spectrum:
+                nspec = load_spectra_file(spectrum_file)[0].shape[0]
+                spot_scale = spot_scale / nspec
+            if pink_stride_override is not None:
+                pink_stride = pink_stride_override
+            fluxes, energies = load_spectra_file(spectrum_file, total_flux=total_flux,
+                                                 pinkstride=pink_stride)
+        else:
+            fluxes = np.array([total_flux])
+            energies = np.array([ENERGY_CONV/expt.beam.get_wavelength()])
+            if not quiet: MAIN_LOGGER.info("Running MONO sim")
+
     else:
-        fluxes = np.array([total_flux])
-        energies = np.array([ENERGY_CONV/expt.beam.get_wavelength()])
-        if not quiet: MAIN_LOGGER.info("Running MONO sim")
+        wavelens, fluxes = map(np.array, zip(*spectrum_override))
+        energies = ENERGY_CONV / wavelens
+
     lam0 = df.lam0.values[0]
     lam1 = df.lam1.values[0]
     if lam0 == -1:
@@ -1534,10 +1540,6 @@ def roi_spots_from_pandas(pandas_frame,  rois_per_panel, mtz_file=None, mtz_col=
     wavelens = ENERGY_CONV / energies
     wavelens = lam0 + lam1*wavelens
     energies = ENERGY_CONV / wavelens
-
-    if spectrum_override is not None:
-        wavelens, fluxes = map(np.array, zip(*spectrum_override))
-        energies = ENERGY_CONV / wavelens
 
     if mtz_file is not None:
         assert mtz_col is not None
@@ -1554,9 +1556,9 @@ def roi_spots_from_pandas(pandas_frame,  rois_per_panel, mtz_file=None, mtz_col=
                                   omp=omp, show_params=not quiet, nopolar=nopolar,
                                   printout_pix=printout_pix)
     if norm_by_nsource:
-        return {pid:image/len(energies) for pid,image in results}
+        return {pid: image/len(energies) for pid, image in results}
     else:
-        return {pid:image for pid,image in results}
+        return {pid: image for pid, image in results}
 
 
 def spots_from_pandas_and_experiment(expt, pandas_pickle, mtz_file=None, mtz_col=None,

@@ -1075,6 +1075,45 @@ def get_data_model_pairs(rois, pids, roi_id, best_model, all_data, strong_flags=
     return all_dat_img, all_mod_img, all_strong, all_bragg
 
 
+def downsamp_spec_from_params(params, expt):
+    dxtbx_spec = expt.imageset.get_spectrum(0)
+    spec_en = dxtbx_spec.get_energies_eV()
+    spec_wt = dxtbx_spec.get_weights()
+    if params.downsamp_spec.skip:
+        spec_wave = utils.ENERGY_CONV / spec_en.as_numpy_array()
+        spectrum = list(zip(spec_wave, spec_wt))
+    else:
+        spec_en = dxtbx_spec.get_energies_eV()
+        spec_wt = dxtbx_spec.get_weights()
+        # ---- downsample the spectrum
+        method2_param = {"filt_freq": params.downsamp_spec.filt_freq,
+                         "filt_order": params.downsamp_spec.filt_order,
+                         "tail": params.downsamp_spec.tail,
+                         "delta_en": params.downsamp_spec.delta_en}
+        downsamp_en, downsamp_wt = downsample_spectrum(spec_en.as_numpy_array(),
+                                                       spec_wt.as_numpy_array(),
+                                                       method=2, method2_param=method2_param)
+
+        stride = params.simulator.spectrum.stride
+        if stride > len(downsamp_en) or stride == 0:
+            raise ValueError("Incorrect value for pinkstride")
+        downsamp_en = downsamp_en[::stride]
+        downsamp_wt = downsamp_wt[::stride]
+        tot_fl = params.simulator.total_flux
+        if tot_fl is not None:
+            downsamp_wt = downsamp_wt / sum(downsamp_wt) * tot_fl
+
+        downsamp_wave = utils.ENERGY_CONV / downsamp_en
+        spectrum = list(zip(downsamp_wave, downsamp_wt))
+    # the nanoBragg beam has an xray_beams property that is used internally in diffBragg
+    starting_wave = expt.beam.get_wavelength()
+    waves, specs = map(np.array, zip(*spectrum))
+    ave_wave = sum(waves*specs) / sum(specs)
+    expt.beam.set_wavelength(ave_wave)
+    MAIN_LOGGER.debug("Shifting wavelength from %f to %f" % (starting_wave, ave_wave))
+    MAIN_LOGGER.debug("USING %d ENERGY CHANNELS" % len(spectrum))
+    return spectrum
+
 # set the X-ray spectra for this shot
 def downsamp_spec(SIM, params, expt, return_and_dont_set=False):
     SIM.dxtbx_spec = expt.imageset.get_spectrum(0)

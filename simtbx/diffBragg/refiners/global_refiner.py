@@ -10,6 +10,9 @@ from copy import deepcopy
 from simtbx.diffBragg.refiners.local_refiner import LocalRefiner
 from simtbx.diffBragg.refiners import BreakBecauseSignal
 
+import logging
+LOGGER = logging.getLogger("main")
+
 warnings.filterwarnings("ignore")
 
 import time, signal
@@ -77,6 +80,7 @@ class GlobalRefiner(LocalRefiner):
         return all_data
 
     def _MPI_aggregate_model_data_correlations(self):
+        LOGGER.info("image corr")
         self.all_image_corr = [self._get_image_correlation(i) for i in self.shot_ids]
         if self.init_image_corr is None:
             self.init_image_corr = deepcopy(self.all_image_corr)

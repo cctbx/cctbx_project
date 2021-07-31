@@ -3,6 +3,9 @@ from __future__ import absolute_import, division, print_function
 import time
 import warnings
 import signal
+import logging
+
+LOGGER = logging.getLogger("main")
 from collections import Iterable
 warnings.filterwarnings("ignore")
 
@@ -1003,6 +1006,7 @@ class LocalRefiner(BaseRefiner):
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index)
             self.print("---- -- counting hkl totes")
             self.hkl_frequency = Counter(self.hkl_totals)
+            SAVE(os.path.join(self.output_dir, "f_asu_multi"), self.hkl_frequency)
 
             # initialize the Fhkl global values
             self.print("--- --- --- inserting the Fhkl array in the parameter array... ")
@@ -1757,7 +1761,7 @@ class LocalRefiner(BaseRefiner):
                                           force=False)
         elif self.pershot_detdist_shifts:  # TODO we are hijacking the API to use the shifts from hopper in the legacy code, clean this up
             shiftZ = self._get_detector_distance_val(self._i_shot)
-            print("DETZ shift: %1.3e meters" % shiftZ)
+            #self.print("DETZ shift: %1.3e meters" % shiftZ)
             self.S.D.shift_origin_z(self.S.detector,  shiftZ)
 
     def _extract_spectra_coefficient_derivatives(self):
@@ -2116,6 +2120,7 @@ class LocalRefiner(BaseRefiner):
         return out
 
     def _compute_functional_and_gradients(self):
+        LOGGER.info("BEGIN FUNC GRAD ; iteration %d" % self.iterations)
         if self.calc_func:
             if self.verbose:
                 self._print_iteration_header()
@@ -2139,14 +2144,18 @@ class LocalRefiner(BaseRefiner):
             self.gain_fac = 1 #self.Xall[self.gain_xpos]
             self.G2 = self.gain_fac ** 2
 
+            LOGGER.info("start update Fcell")
             self._store_updated_Fcell()
             self._update_Fcell()  # update the structure factor with the new x
+            LOGGER.info("done update Fcell")
             self._update_spectra_coefficients()  # updates the diffBragg lambda coefficients if refinining spectra
 
             if self.CRYSTAL_GT is not None and not self.only_save_model_for_shot:
                 self._MPI_initialize_GT_crystal_misorientation_analysis()
             tshots = time.time()
 
+            LOGGER.info("Iterate over %d shots" % len(self.shot_ids))
+            self._shot_Zscores = []
             for self._i_shot in self.shot_ids:
 
                 if self.save_model_for_shot is not None:
@@ -2165,6 +2174,7 @@ class LocalRefiner(BaseRefiner):
                 self.scale_fac = self._get_spot_scale(self._i_shot)**2
 
                 # TODO: Omatrix update? All crystal models here should have the same to_primitive operation, ideally
+                LOGGER.info("update models shot %d " % self._i_shot)
                 self._update_beams()
                 self._update_umatrix()
                 self._update_ucell()
@@ -2178,7 +2188,9 @@ class LocalRefiner(BaseRefiner):
                 printed_geom_updates = False
 
                 # CREATE THE PANEL FAST SLOW ARRAY AND RUN DIFFBRAGG
+                LOGGER.info("run diffBragg for shot %d" % self._i_shot)
                 self._run_diffBragg_current()
+                LOGGER.info("finished diffBragg for shot %d" % self._i_shot)
 
                 # CHECK FOR SIGNAL INTERRUPT HERE
                 if self.break_signal is not None:
@@ -2187,8 +2199,11 @@ class LocalRefiner(BaseRefiner):
 
                 # TODO pre-extractions for all parameters
                 self._append_local_parameters()
+                LOGGER.info("access arrays from diffBragg for shot %d" % self._i_shot)
                 self._pre_extract_deriv_arrays()
                 #self._per_shot_Z_data = []
+                LOGGER.info("iterate over %d spots and compute gradients for shot %d" % (n_spots, self._i_shot))
+                self._spot_Zscores = []
                 for i_spot in range(n_spots):
                     self._i_spot = i_spot
                     (x1, x2), (y1, y2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
@@ -2247,6 +2262,10 @@ class LocalRefiner(BaseRefiner):
 
                     #if self.save_Z_freq is not None:
                     #   self._per_shot_Z_data.append((self.u_times_one_over_v, self._panel_id, self.NANOBRAGG_ROIS[self._i_shot]))
+                    sigZ = (self._Zscore[self._is_trusted] ).std()
+                    miller_idx = self.ASU[self._i_shot][i_spot]
+                    i_fcell = self.idx_from_asu[miller_idx]
+                    self._spot_Zscores.append((i_fcell, sigZ))
 
                     self.target_functional += self._target_accumulate()
 
@@ -2273,10 +2292,10 @@ class LocalRefiner(BaseRefiner):
                     self._spectra_derivatives()
                     self._sausage_derivatives()
                     # Done with derivative accumulation
-
+                self._shot_Zscores.append(self._spot_Zscores)
             #    self.image_corr[self._i_shot] = self.image_corr[self._i_shot] / self.image_corr_norm[self._i_shot]
             tshots =time.time()-tshots
-            self.print("Time rank worked on shots=%.4f" % tshots)
+            LOGGER.info("Time rank worked on shots=%.4f" % tshots)
             self._append_global_parameters()
             if not self.only_save_model_for_shot:
                 self._MPI_aggregate_model_data_correlations()
@@ -2287,9 +2306,10 @@ class LocalRefiner(BaseRefiner):
             #    self._save_Z()
             if not self.only_save_model_for_shot:
                 tmpi = time.time()
+                LOGGER.info("MPI aggregation of func and grad")
                 self._mpi_aggregation()
                 tmpi = tmpi-time.time()
-                self.print("Time for MPIaggregation=%.4f" % tmpi)
+                LOGGER.info("Time for MPIaggregation=%.4f" % tmpi)
 
                 self._f = self.target_functional
                 self._g = self.g_for_lbfgs
@@ -2313,9 +2333,11 @@ class LocalRefiner(BaseRefiner):
                 self.print_step_grads()
 
             tsave = time.time()
+            LOGGER.info("DUMP param and Zscore data")
             self._dump_parameters_to_hdf5()
+            self._save_Zscore_data()
             tsave = time.time()-tsave
-            self.print("Time to save parameters to hdf5=%.4f" % tsave)
+            LOGGER.info("Time to dump param and Zscore data: %.4f" % tsave)
 
             self.iterations += 1
             self.f_vals.append(self.target_functional)
@@ -2329,7 +2351,18 @@ class LocalRefiner(BaseRefiner):
         if self.save_model:
             self._close_model_output_file()
 
+        LOGGER.info("DONE WITH FUNC GRAD")
         return self._f, self._g
+
+    def _save_Zscore_data(self):
+        if not self.iterations % self.saveZ_freq == 0:
+            return
+        outdir = PATHJOIN(self.output_dir, "rank%d_Zscore" % self.rank)
+        if not EXISTS(outdir):
+            MAKEDIRS(outdir)
+        #i_fcell, sigZ = zip(*self._shot_Zscores)
+        fname = PATHJOIN(outdir, "sigZ_iter%d_rank%d" % (self.iterations, self.rank))
+        SAVE(fname, self._shot_Zscores)
 
     def _sanity_check_grad(self):
         if not self.refine_background_planes:
@@ -2936,8 +2969,11 @@ class LocalRefiner(BaseRefiner):
         # reduce the broadcast summed results:
         if self.I_AM_ROOT:
             self.print("\nMPI reduce on functionals and gradients...")
+        LOGGER.info("Functional")
         self.target_functional = self._MPI_reduce_broadcast(self.target_functional)
+        LOGGER.info("gradients")
         self.grad = self._MPI_reduce_broadcast(self.grad)
+        LOGGER.info("unpacks")
         self.rotx, self.roty, self.rotz, self.uc_vals, self.ncells_vals, self.scale_vals, \
         self.scale_vals_truths, self.origZ_vals = self._unpack_internal(self.Xall, lst_is_x=True)
         self.Grotx, self.Groty, self.Grotz, self.Guc_vals, self.Gncells_vals, self.Gscale_vals, _, self.GorigZ_vals = \
@@ -2946,6 +2982,7 @@ class LocalRefiner(BaseRefiner):
             self.curv = self._MPI_reduce_broadcast(self.curv)
             self.CUrotx, self.CUroty, self.CUrotz, self.CUuc_vals, self.CUncells_vals, self.CUscale_vals, _, self.CUorigZ_vals = \
                 self._unpack_internal(self.curv, lst_is_x=False)
+        LOGGER.info("negative fcells")
         self.tot_fcell_negative_model = self._MPI_reduce_broadcast(self.num_Fcell_negative_model)
 
     def _curvature_analysis(self):
@@ -3247,9 +3284,7 @@ class LocalRefiner(BaseRefiner):
         self.u_u_one_over_v = self.u*self.u_times_one_over_v
         self.one_over_v_times_one_minus_2u_minus_u_squared_over_v = self.one_over_v*self.one_minus_2u_minus_u_squared_over_v
         #if self.compute_Z:
-        #    self._Zscore = self.u*self.one_over_v
-        #    one_over_v2 = 1. / (self.Imeas + self.sigma_r**2)
-        #    self._Zscore2 = (self.model_Lambda - self.Imeas) *one_over_v2
+        self._Zscore = self.u*SQRT(self.one_over_v)
 
     def _evaluate_log_averageI(self):  # for Poisson only stats
         try:
