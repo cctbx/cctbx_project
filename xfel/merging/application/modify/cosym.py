@@ -638,7 +638,8 @@ class cosym(worker):
 
     # still have to reindex the reflection table, but try to do it efficiently
     from xfel.merging.application.modify.reindex_cosym import reindex_refl_by_coset
-    reindex_refl_by_coset(refl = selected_reflections,
+    if (len(result_experiments_for_cosym) > 0):
+      reindex_refl_by_coset(refl = selected_reflections,
                           data = transmitted,
                           symms=[E.crystal.get_crystal_symmetry() for E in result_experiments_for_cosym],
                           uuids=[E.identifier for E in result_experiments_for_cosym],
