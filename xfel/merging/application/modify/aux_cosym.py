@@ -119,6 +119,7 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
             params.relative_length_tolerance,
             params.absolute_angle_tolerance,
         )
+        in_cb_ops = len(cb_ops)
         exclude = [
             expt.identifier
             for expt, cb_op in zip(self._experiments, cb_ops)
@@ -135,6 +136,7 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
             )
             cb_ops = list(filter(None, cb_ops))
 
+        ex_cb_ops = len(cb_ops)
         # Eliminate reflections that are systematically absent due to centring
         # of the lattice, otherwise they would lead to non-integer miller indices
         # when reindexing to a primitive setting
@@ -170,9 +172,21 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
         # without storing the op in self, we can never trace back to input setting.
         self.cb_op_to_minimum = cb_ops
 
-        #Not sure yet, we may be assuming that all the cb_ops are the same (applicable for PSI with P63)
-        assertion_set = set(cb_ops)
-        assert len(assertion_set)==1 # guarantees all are the same; revisit with different use cases later
+        #Normally we expect that all the cb_ops are the same (applicable for PSI with P63)
+        assertion_dict = {}
+        for cb_op in cb_ops:
+          key_ = cb_op.as_hkl()
+          assertion_dict[key_] = assertion_dict.get(key_, 0)
+          assertion_dict[key_] += 1
+        if len(assertion_dict) != 1:
+          # unexpected, there is normally only 1 cb operator to minimum cell
+          from libtbx.mpi4py import MPI
+          mpi_rank = MPI.COMM_WORLD.Get_rank()
+          mpi_size = MPI.COMM_WORLD.Get_size()
+          print ("RANK %02d, # experiments %d, after exclusion %d, unexpectedly there are %d unique cb_ops: %s"%(
+            mpi_rank, in_cb_ops, ex_cb_ops, len(assertion_dict),
+            ", ".join(["%s:%d"%(key,assertion_dict[key]) for key in assertion_dict])))
+          # revisit with different use cases later
 
     def _filter_min_reflections(self, experiments, reflections, uuid_cache_in):
         identifiers = []
