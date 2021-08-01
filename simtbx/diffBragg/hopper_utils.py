@@ -906,7 +906,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
         gnorm = np.linalg.norm(g)
 
     if verbose:
-        MAIN_LOGGER.info("F=%10.7g sZ=%10.7g (chi: %.1f%%, rot: %.1f%% N: %.1f%%, G: %.1f%%, uc: %.1f%%, detz: %.1f%%), |g|=%10.7g" \
+        MAIN_LOGGER.debug("F=%10.7g sZ=%10.7g (chi: %.1f%%, rot: %.1f%% N: %.1f%%, G: %.1f%%, uc: %.1f%%, detz: %.1f%%), |g|=%10.7g" \
               % (f, zscore_sigma, chi, rot, n, gg, uc,zz,gnorm))
 
     return f, g, model_bragg, Jac
