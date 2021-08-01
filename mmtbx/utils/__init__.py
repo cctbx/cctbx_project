@@ -685,6 +685,7 @@ def setup_scattering_dictionaries(scattering_table,
 
 def fmodel_manager(
       f_obs,
+      i_obs                         = None,
       xray_structure                = None,
       r_free_flags                  = None,
       f_mask                        = None,
@@ -716,6 +717,7 @@ def fmodel_manager(
       mask_params                  = mask_params,
       target_name                  = target_name,
       f_obs                        = f_obs,
+      i_obs                        = i_obs,
       f_mask                       = f_mask,
       f_calc                       = f_calc,
       abcd                         = hl_coeff,
