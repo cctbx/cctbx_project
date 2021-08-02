@@ -1049,7 +1049,7 @@ citation {
   volume = 4
   pages = 269-75
   year = 1997
-  doi_id = None
+  doi_id = 10.1038/nsb0497-269
   pmid = 9095194
 }
 
@@ -1271,11 +1271,11 @@ citation {
   authors = Terwilliger TC, Ludtke SJ, Read RJ, Adams PD, Afonine
   title = Improvement of cryo-EM maps by density modification
   year = 2020
-  journal = Nature Methods 
-  volume = 17 
-  pages = 923-927 
-  pmid = None
-  doi_id = None
+  journal = Nature Methods
+  volume = 17
+  pages = 923-927
+  pmid = 32807957
+  doi_id = 10.1038/s41592-020-0914-9
 }
 
 citation {
@@ -1283,11 +1283,11 @@ citation {
   authors = Terwilliger TC, Afonine PV, Sobolev, OV, Adams PD
   title = Automated map sharpening by maximization of detail and connectivity
   year = 2018
-  journal = bioRxiv
-  volume = None
-  pages = None
-  pmid = None
-  doi_id = 10.1101/247049
+  journal = Acta Cryst. D
+  volume = 74
+  pages = 545-559
+  pmid = 29872005
+  doi_id = 10.1107/S2059798318004655
 }
 
 citation {
@@ -1310,13 +1310,13 @@ citation {
   journal = Protein Science
   volume = 29
   pages = 87-99
-  pmid = 31599033 
+  pmid = 31599033
   doi_id = 10.1002/pro.3740
 }
 
 
 citation {
-  article_id = sequence_from_map 
+  article_id = sequence_from_map
   authors = Terwilliger TC, Sobolev OV, Afonine, PV, Adams PD, Ho, CM, Li, X, Zhou, ZH
   title = Protein identification from electron cryomicroscopy maps by automated model-building and side-chain matching
   year = 2021
@@ -1335,7 +1335,7 @@ citation {
   journal = Struct Biol
   volume = 204
   pages = 319-328
-  pmid = None
+  pmid = 30107233
   doi_id = 10.1016/j.jsb.2018.08.007
 }
 
@@ -1347,7 +1347,7 @@ citation {
   journal = Science
   volume = 240(4859)
   pages = 1648-52
-  pmid = None
+  pmid = 3381086
   doi_id = 10.1126/science.3381086
 }
 
@@ -1359,7 +1359,7 @@ citation {
   journal = PNAS
   volume = 75(6)
   pages = 2574-8
-  pmid = None
+  pmid = 275827
   doi_id = 10.1073/pnas.75.6.2574
 }
 
