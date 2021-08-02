@@ -2330,6 +2330,7 @@ void diffBragg::show_timing_stats(int MPI_RANK){ //}, boost_adaptbx::python::str
         printf("RANK%d TIMINGS: add_diffBragg_spots CUDA copy host to dev: %10.3f\n", MPI_RANK, TIMERS.cuda_copy_to_dev );
         printf("RANK%d TIMINGS: add_diffBragg_spots CUDA copy dev to host: %10.3f\n", MPI_RANK, TIMERS.cuda_copy_from_dev );
         printf("RANK%d TIMINGS: add_diffBragg_spots CUDA kernel: %10.3f\n", MPI_RANK, TIMERS.cuda_kernel );
+        printf("RANK%d TIMINGS: Total kernel calls=%d\n", MPI_RANK, TIMERS.timings );
     }
     else printf("RANK%d No timing has occured since instantiation of diffBragg\n", MPI_RANK);
 

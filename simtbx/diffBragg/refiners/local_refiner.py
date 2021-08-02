@@ -1562,7 +1562,9 @@ class LocalRefiner(BaseRefiner):
         #ys = self.pfs[2::3]
         #SAVEZ("shit", pids=pids, ys=ys, xs=xs)
         #exit()
+        LOGGER.info("run diffBragg for shot %d" % self._i_shot)
         self.D.add_diffBragg_spots(self.pfs)
+        LOGGER.info("finished diffBragg for shot %d" % self._i_shot)
 
     def _get_fcell_val(self, i_fcell):
         # TODO vectorize me
@@ -2187,9 +2189,9 @@ class LocalRefiner(BaseRefiner):
                 printed_geom_updates = False
 
                 # CREATE THE PANEL FAST SLOW ARRAY AND RUN DIFFBRAGG
-                LOGGER.info("run diffBragg for shot %d" % self._i_shot)
+                #LOGGER.info("run diffBragg for shot %d" % self._i_shot)
                 self._run_diffBragg_current()
-                LOGGER.info("finished diffBragg for shot %d" % self._i_shot)
+                #LOGGER.info("finished diffBragg for shot %d" % self._i_shot)
 
                 # CHECK FOR SIGNAL INTERRUPT HERE
                 if self.break_signal is not None:
@@ -2297,8 +2299,8 @@ class LocalRefiner(BaseRefiner):
             tshots =time.time()-tshots
             LOGGER.info("Time rank worked on shots=%.4f" % tshots)
             self._append_global_parameters()
-            if not self.only_save_model_for_shot:
-                self._MPI_aggregate_model_data_correlations()
+            #if not self.only_save_model_for_shot:
+            #    self._MPI_aggregate_model_data_correlations()
             # TODO add in the priors:
             self._priors()
             self._parameter_freezes()
