@@ -104,7 +104,7 @@ class LocalRefinerLauncher:
         self._check_experiment_integrity(expt)
         self.create_cache_dir()
 
-        self.verbose = self.params.refiner.verbose is not None
+        self.verbose = self.params.refiner.verbose > 0
         self.DEVICE_ID = self.params.simulator.device_id
 
         shot_data = self.load_roi_data(refls, expt)

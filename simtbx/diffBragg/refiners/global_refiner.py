@@ -108,7 +108,7 @@ class GlobalRefiner(LocalRefiner):
         return data_to_send
 
     def _MPI_barrier(self):
-        comm.Barrier()
+        comm.barrier()
 
     def _MPI_check_for_break_signal(self):
         if self.break_signal is not None:

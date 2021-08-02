@@ -2125,7 +2125,6 @@ class LocalRefiner(BaseRefiner):
             if self.verbose:
                 self._print_iteration_header()
 
-
             if self.iteratively_freeze_parameters:
                 if self.param_sels is None:
                     self.determine_parameter_freeze_order()
@@ -2147,7 +2146,7 @@ class LocalRefiner(BaseRefiner):
             self._update_Fcell()  # update the structure factor with the new x
             LOGGER.info("done update Fcell")
             if not self.only_save_model_for_shot:
-                self._MPI_save_state_of_refiner()  # actually, just saves Fcell
+                self._MPI_save_state_of_refiner()
             self._update_spectra_coefficients()  # updates the diffBragg lambda coefficients if refinining spectra
 
             if self.CRYSTAL_GT is not None and not self.only_save_model_for_shot:
@@ -2975,15 +2974,18 @@ class LocalRefiner(BaseRefiner):
         self.target_functional = self._MPI_reduce_broadcast(self.target_functional)
         LOGGER.info("gradients")
         self.grad = self._MPI_reduce_broadcast(self.grad)
-        LOGGER.info("unpacks")
-        self.rotx, self.roty, self.rotz, self.uc_vals, self.ncells_vals, self.scale_vals, \
-        self.scale_vals_truths, self.origZ_vals = self._unpack_internal(self.x, lst_is_x=True)
-        self.Grotx, self.Groty, self.Grotz, self.Guc_vals, self.Gncells_vals, self.Gscale_vals, _, self.GorigZ_vals = \
-            self._unpack_internal(self.grad, lst_is_x=False)
-        if self.calc_curvatures:
-            self.curv = self._MPI_reduce_broadcast(self.curv)
-            self.CUrotx, self.CUroty, self.CUrotz, self.CUuc_vals, self.CUncells_vals, self.CUscale_vals, _, self.CUorigZ_vals = \
-                self._unpack_internal(self.curv, lst_is_x=False)
+        if not self._MPI_reduce_broadcast(self.verbose):
+            LOGGER.info("NO NEED TO UNPACKS!!!!!")
+        else:
+            LOGGER.info("unpacks")
+            self.rotx, self.roty, self.rotz, self.uc_vals, self.ncells_vals, self.scale_vals, \
+            self.scale_vals_truths, self.origZ_vals = self._unpack_internal(self.x, lst_is_x=True)
+            self.Grotx, self.Groty, self.Grotz, self.Guc_vals, self.Gncells_vals, self.Gscale_vals, _, self.GorigZ_vals = \
+                self._unpack_internal(self.grad, lst_is_x=False)
+            if self.calc_curvatures:
+                self.curv = self._MPI_reduce_broadcast(self.curv)
+                self.CUrotx, self.CUroty, self.CUrotz, self.CUuc_vals, self.CUncells_vals, self.CUscale_vals, _, self.CUorigZ_vals = \
+                    self._unpack_internal(self.curv, lst_is_x=False)
         LOGGER.info("negative fcells")
         self.tot_fcell_negative_model = self._MPI_reduce_broadcast(self.num_Fcell_negative_model)
 
@@ -3183,12 +3185,6 @@ class LocalRefiner(BaseRefiner):
     def _MPI_save_state_of_refiner(self):
         if self.I_AM_ROOT and self.output_dir is not None and self.refine_Fcell:
             outf = os.path.join(self.output_dir, "_fcell_trial%d_iter%d" % (self.trial_id, self.iterations))
-            #if self.rescale_params:
-            #    fvals = [self._get_fcell_val(i_fcell) for i_fcell in range(self.n_global_fcell)]
-            #    fvals = ARRAY(fvals)
-            #else:
-            #    fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
-            #SAVEZ(outf, fvals=fvals, x=self.x.as_numpy_array())
             SAVEZ(outf, fvals=self._fcell_at_i_fcell)
 
     def _show_plots(self, i_spot, n_spots):
