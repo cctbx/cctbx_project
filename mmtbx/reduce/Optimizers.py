@@ -43,19 +43,20 @@ from mmtbx.hydrogens import reduce_hydrogen
 # Default value of 1 reports standard information.
 # Setting it to 0 removes all inforamtional messages.
 # Setting it above 1 provides additional debugging information.
-verbosity = 1
+verbosity = 100
 def _VerboseCheck(level, message):
   # Returns "" if the level is less than global verbosity level, message if it is at or above
   if verbosity >= level:
-    return message
+    return " "*level + message
   else:
     return ""
 
 ##################################################################################
 # Optimizers:
-#     NullOptimer: This is a base Optimizer class that implements the placement and scoring
-# of Movers but does not actually perform any optimization.  The useful Optimizers will all
-# be derived from this base class.
+#     SingletonOptimer: This is a base Optimizer class that implements the placement and scoring
+# of Movers and optimizes all Movers independently, not taking into account their impacts
+# on each other.  The other Optimizers will all be derived from this base class and will
+# override the multi-Mover Clique optimization routine.
 #     BruteForceOptimizer: This tries all possible coarse and fine orientations of all
 # Movers in all combinations.  It is too slow for any but very small numbers of Movers but it
 # is guaranteed to find the minimum score across all combinations.  It is used mainly to
@@ -68,14 +69,21 @@ def _VerboseCheck(level, message):
 # each clique into separate non-interacting subgraphs so that it only has to compute complete
 # interactions for a small number of interacting Movers at a time.
 
-class NullOptimizer:
+class SingletonOptimizer:
 
   def __init__(self, model, modelIndex = 0, altID = "",
                 bondedNeighborDepth = 3,
                 probeRadius = 0.25,
-                useNeutronDistances = False
+                useNeutronDistances = False,
+                probeDensity = 16.0,
+                minOccupancy = 0.01
               ):
-    """Constructor for NullOptimizer.
+    """Constructor for SingletonOptimizer.  This is the base class for all optimizers and
+    it implements the machinery that finds and optimized Movers.
+    This class optimizes all Movers independently,
+    ignoring their impact on one another.  This means that it will not find the global
+    minimum for any multi-Mover Cliques.  Derived classes should override the Clique
+    optimization function to improve this behavior.
     :param model: iotbx model (a group of hierarchy models).  Can be obtained using
     iotbx.map_model_manager.map_model_manager.model().  The model must have Hydrogens,
     which can be added using mmtbx.hydrogens.reduce_hydrogen.place_hydrogens().get_model().
@@ -99,7 +107,17 @@ class NullOptimizer:
     :param useNeutronDistances: Defaults to using X-ray/electron cloud distances.  If set to
     True, it will use neutron (nuclear) distances.  This must be set consistently with the
     values used to generate the hydrogens and to run PDB interpretation.
+    :param probeDensity: How many dots per sq Angstroms in VDW calculations.
+    :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
     """
+
+    ################################################################################
+    # Store the parameters that will be accessed by other methods
+    self._bondedNeighborDepth = bondedNeighborDepth
+    self._probeRadius = probeRadius
+    self._useNeutronDistances = useNeutronDistances
+    self._probeDensity = probeDensity
+    self._minOccupancy = minOccupancy
 
     ################################################################################
     # Initialize my information string to empty.
@@ -141,8 +159,8 @@ class NullOptimizer:
         # Tell about the run we are currently doing.
         self._infoString += _VerboseCheck(1,"Running Reduce optimization on model index "+str(mi)+
           ", alternate '"+ai+"'\n")
-        self._infoString += _VerboseCheck(1,"  bondedNeighborDepth = "+str(bondedNeighborDepth)+"\n")
-        self._infoString += _VerboseCheck(1,"  probeRadius = "+str(probeRadius)+"\n")
+        self._infoString += _VerboseCheck(1,"  bondedNeighborDepth = "+str(self._bondedNeighborDepth)+"\n")
+        self._infoString += _VerboseCheck(1,"  probeRadius = "+str(self._probeRadius)+"\n")
         self._infoString += _VerboseCheck(1,"  useNeutronDistances = "+str(useNeutronDistances)+"\n")
 
         # Get the atoms from the specified conformer in the model (the empty string is the name
@@ -164,47 +182,53 @@ class NullOptimizer:
         bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
         ################################################################################
-        # Placement of water phantom Hydrogens, including adding them to our 'atoms' list but
-        # not adding them to the hierarchy.  This must be done after the bond proxies are
-        # constructed but before making the spatial-query data structure.  They should be
-        # placed in an atom group that indicates that they are waters, but that group should
-        # not be inserted into the hierarchy.
+        # Placement of water phantom Hydrogens, including adding them to our 'atoms' list 
+        # and the spatial query but not adding them to the hierarchy.  This must be done after
+        # the bond proxies are constructed but before making the spatial-query data structure.
+        # They should be placed in an atom group that indicates that they are waters, but that
+        # group should not be inserted into the hierarchy.
         # @todo
 
         ################################################################################
         # Construct the spatial-query information needed to quickly determine which atoms are nearby
-        sq = probeExt.SpatialQuery(atoms)
-
-        ################################################################################
-        # Determine excluded atoms to a specified hop count for each atom that will
-        # be moved.
-        # @todo
+        self._spatialQuery = probeExt.SpatialQuery(atoms)
 
         ################################################################################
         # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
         # @todo Ensure that waters are marked as acceptors and their phantom Hydrogens as donors.
         ret = Helpers.getExtraAtomInfo(model)
-        extra = ret.extraAtomInfo
+        self._extraAtomInfo = ret.extraAtomInfo
         self._infoString += ret.warnings
 
         ################################################################################
-        # Test getting the list of Movers using the _PlaceMovers private function.
+        # Get the list of Movers using the _PlaceMovers private function.
         ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True),
-                           bondedNeighborLists, sq, extra, AtomTypes.AtomTypes().MaximumVDWRadius())
+                           bondedNeighborLists, self._spatialQuery, self._extraAtomInfo,
+                           AtomTypes.AtomTypes().MaximumVDWRadius())
         self._infoString += ret.infoString
         movers = ret.moverList
         self._infoString += _VerboseCheck(1,"Inserted "+str(len(movers))+" Movers\n")
         self._infoString += _VerboseCheck(1,'Marked '+str(len(ret.deleteAtoms))+' atoms for deletion\n')
 
         ################################################################################
+        # Construct a set of atoms that are marked for deletion in the current set of
+        # orientations for all Movers.  This is initialized with the atoms that were
+        # unconditionally marked for deletion during placement and then we add
+        # those for all Movers in their initial orientation by moving each to that state.
+        self._deleteMes = set(ret.deleteAtoms)
+        for m in movers:
+          pr = m.CoarsePositions()
+          self._setCoarseMoverState(pr, 0)
+
+        ################################################################################
         # Compute the interaction graph, of which each connected component is a Clique.
         # Get a list of singleton Cliques and a list of other Cliques.  Keep separate lists
         # of the singletons and the groups.
-        interactionGraph = InteractionGraph.InteractionGraphAllPairs(movers, extra)
+        interactionGraph = InteractionGraph.InteractionGraphAllPairs(movers, self._extraAtomInfo)
         components = cca.connected_components( graph = interactionGraph )
         maxLen = 0
-        singletonCliques = []
-        groupCliques = []
+        singletonCliques = []   # Each entry is a list of integer indices into models with one entry
+        groupCliques = []       # Each entry is a list of integer indices into models with >1 entry
         for c in components:
           if len(c) == 1:
             singletonCliques.append(c)
@@ -217,12 +241,47 @@ class NullOptimizer:
             str(maxLen)+"\n")
 
         ################################################################################
+        # Determine excluded atoms to a specified hop count for each atom that will
+        # be moved.  Make a dictionary of lists that includes all atoms in all Movers.
+
+        # Get the set of all atoms that can be returns from all conformations of all Movers.
+        moverAtoms = set()
+        for m in movers:
+          for a in m.CoarsePositions().atoms:
+            moverAtoms.add(a)
+          for a in m.FixUp(0).atoms:
+            moverAtoms.add(a)
+
+        # Get the excluded list for each atom in the set, making a dictionary
+        self._excludeDict = {}
+        for a in moverAtoms:
+          self._excludeDict[a] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
+            bondedNeighborLists, self._bondedNeighborDepth)
+
+        ################################################################################
+        # Contruct the DotScorer object we'll use to score the dots.
+        self._dotScorer = probeExt.DotScorer(self._extraAtomInfo)
+
+        ################################################################################
         # Call internal methods to optimize the single-element Cliques and then to optimize
         # the multi-element Cliques and then to do indepenedent fine adjustment of all
         # Cliques.  Subclasses should overload the called routines, but the global approach
         # taken here will be the same for all of them.  If we want to change the recipe
         # so that we can do global fine optimization, we'll do that here rather than in the
         # subclasses.
+
+        # Do coarse optimization on the singleton Movers
+        for s in singletonCliques:
+          self._optimizeSingleMoverCoarse(movers[s[0]])
+
+        # Do coarse optimization on the multi-Mover Cliques
+        # @todo
+
+        # Do fine optimization on the singleton Movers
+        # @todo
+
+        # Do fine optimization on the multi-Mover Cliques
+        # This is simply done independently on each element
         # @todo
 
         ################################################################################
@@ -238,6 +297,55 @@ class NullOptimizer:
     ret = self._infoString
     self._infoString = ""
     return ret
+
+  def _setCoarseMoverState(self, positionReturn, index):
+    # Move the atoms to their new positions, updating the spatial query structure
+    # by removing the old and adding the new location.
+    for i, a in enumerate(positionReturn.atoms):
+      self._spatialQuery.remove(a)
+      a.xyz = positionReturn.positions[index][i]
+      self._spatialQuery.add(a)
+    # Update the extra atom information associated with the atom.
+    for i, e in enumerate(positionReturn.extraInfos[index]):
+      self._extraAtomInfo.setMappingFor(positionReturn.atoms[i], e)
+    # Manage the deletion status of each atom, including ensuring
+    # consistency with the spatial-query structure.
+    for i, doDelete in enumerate(positionReturn.deleteMes[index]):
+      if doDelete:
+        self._spatialQuery.add(positionReturn.atoms[i])
+        self._deleteMes.add(positionReturn.atoms[i])
+        self._infoString += _VerboseCheck(20,"Deleting atom\n")
+      else:
+        self._spatialQuery.remove(positionReturn.atoms[i])
+        self._deleteMes.discard(positionReturn.atoms[i])
+        self._infoString += _VerboseCheck(20,"Ensuring deletable atom is present\n")
+
+  def _scoreAtom(self, atom):
+    # @todo
+    maxRadiusWithoutProbe = (self._extraAtomInfo.getMappingFor(atom).vdwRadius +
+      AtomTypes.AtomTypes().MaximumVDWRadius())
+
+  def _optimizeSingleMoverCoarse(self, mover):
+    # Find the coarse score for the Mover in its 0th orientation by moving each atom into the
+    # specified position and summing the scores over all of them.
+    score0 = 0
+    coarse = mover.CoarsePositions()
+    self._infoString += _VerboseCheck(10,"Setting single Mover to initial orientation\n")
+    self._setCoarseMoverState(coarse, 0)
+    # @todo score
+
+    # Try all of the other alternatives, keeping track of the best score and its index.
+    # @todo Handle preference energies
+    # @todo
+
+    # @todo Ensure it is far enough about the base to be swapped (global threshold)
+
+    # Put the Mover into its final position (which may be its initial position)
+    # @todo
+
+    # @todo
+
+    return
 
 ##################################################################################
 # Placement
@@ -708,8 +816,8 @@ END
 
   print('Constructing Optimizer')
   # @todo Let the caller specify the model index and altID rather than doing only the first.
-  nullOpt = NullOptimizer(model)
-  info = nullOpt.getInfo()
+  singleOpt = SingletonOptimizer(model)
+  info = singleOpt.getInfo()
   print('XXX info:\n'+info)
 
   # @todo
