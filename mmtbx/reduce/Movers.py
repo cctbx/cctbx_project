@@ -39,8 +39,8 @@ import traceback
 #  - type PositionReturn: (
 #       flex<atom> atoms,
 #       flex<flex<vec3>> positions,
-#       flex<flex<probe.ExtraAtomInfo>> extraInfo,
-#       flex<flex<bool>> deleteMe,
+#       flex<flex<probe.ExtraAtomInfo>> extraInfos,
+#       flex<flex<bool>> deleteMes,
 #       flex<float> preferenceEnergies
 #    )
 #       The atoms element has a list of all of the atoms to be adjusted.
@@ -49,12 +49,12 @@ import traceback
 #     outer list is per entry and the inner list is per atom in the atoms element,
 #     each with a corresponding list index.
 #       The positions element has the new location of each atom in each set of positions.
-#       The extrainfo element has the new ExtraAtomInfo for each atom in each set of positions.
+#       The extraInfos element has the new ExtraAtomInfo for each atom in each set of positions.
 #     This array may be shorter in length than the number of atoms (any may be empty) because
 #     some Movers to not need to change the information for any or all atoms.  The index in
 #     this array will match the index in the atoms array so the earliest atoms will be
 #     changed if a subset is present.
-#       The deleteMe element tells whether each atom in each set of positions should be
+#       The deleteMes element tells whether each atom in each set of positions should be
 #     deleted.  This means that it should be ignored in all calculations and also should be
 #     deleted from the model if this configuration is chosen.  This array may be shorter in
 #     length than the number of atoms (any may be empty) because some Movers to not need to
@@ -77,7 +77,7 @@ import traceback
 #       flex<atom> atoms,
 #       flex<vec3> positions,
 #       flex<probe.ExtraAtomInfo> extraInfos,
-#       flex<bool> deleteMe
+#       flex<bool> deleteMes
 #    )
 #       These are lists with one entry per atom telling the same information as the
 #     PositionReturn does, but only for a single set of positions.
