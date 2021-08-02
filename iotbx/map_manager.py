@@ -2144,12 +2144,13 @@ class map_manager(map_reader, write_ccp4_map):
     # Find threshold to get exactly n points
     low_bounds = 0.
     high_bounds = 20
-    self.set_mean_zero_sd_one()
+    mm = self.deep_copy()
+    mm.set_mean_zero_sd_one() # avoid altering the working map
     tries = 0
 
     # Check ends
-    count_high = (self.map_data() >= high_bounds).count(True)
-    count_low = (self.map_data() >=  low_bounds).count(True)
+    count_high = (mm.map_data() >= high_bounds).count(True)
+    count_low = (mm.map_data() >=  low_bounds).count(True)
     if count_low < n or count_high > n:
       return flex.vec3_double()
 
@@ -2157,7 +2158,7 @@ class map_manager(map_reader, write_ccp4_map):
     while tries < max_tries:
       tries += 1
       threshold = 0.5 * (low_bounds + high_bounds)
-      count = (self.map_data() >= threshold ).count(True)
+      count = (mm.map_data() >= threshold ).count(True)
       if count == n or low_bounds == high_bounds or threshold == last_threshold:
         break
       elif count > n:
@@ -2168,10 +2169,10 @@ class map_manager(map_reader, write_ccp4_map):
     if abs (count - n ) > n_tolerance:
       return flex.vec3_double()
     # Now convert to xyz and we are done
-    sel = (self.map_data() >= threshold )
+    sel = (mm.map_data() >= threshold )
     from scitbx.array_family.flex import grid
-    g = grid(self.map_data().all())
-    mask_data = flex.int(self.map_data().size(),0)
+    g = grid(mm.map_data().all())
+    mask_data = flex.int(mm.map_data().size(),0)
     mask_data.reshape(g)
     mask_data.set_selected(sel,1)
     mask_data.set_selected(~sel,0)
@@ -2183,7 +2184,7 @@ class map_manager(map_reader, write_ccp4_map):
       mask = mask_data,
       volumes = volume_list,
       sampling_rates = sampling_rates,
-      unit_cell = self.crystal_symmetry().unit_cell())
+      unit_cell = mm.crystal_symmetry().unit_cell())
 
     return sample_regs_obj.get_array(1)
 
