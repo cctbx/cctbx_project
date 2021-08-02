@@ -346,12 +346,11 @@ class SingletonOptimizer:
     coarse = mover.CoarsePositions()
     scores = coarse.preferenceEnergies.copy()
     for i in range(len(coarse.positions)):
-      self._infoString += _VerboseCheck(5,"Checking single Mover at orientation "+str(i)+"\n")
       self._setCoarseMoverState(coarse, i)
 
       for a in coarse.atoms:
         scores[i] += self._scoreAtom(a)
-      self._infoString += _VerboseCheck(5,"Score at orientation "+str(i)+" = "+str(scores[i])+"\n")
+      self._infoString += _VerboseCheck(5,f"Single Mover score at orientation {i} = {scores[i]:.2f}\n")
 
     # Find the maximum score, keeping track of the best score and its index.
     maxScore = scores[0]
@@ -365,8 +364,8 @@ class SingletonOptimizer:
     # @todo
 
     # Put the Mover into its final position (which may be back to its initial position)
-    self._infoString += _VerboseCheck(1,"Setting single Mover to coarse orientation "+str(maxIndex)+
-      ", score = "+str(maxScore)+" (initial score "+str(scores[0])+")\n")
+    self._infoString += _VerboseCheck(1,f"Setting single Mover to coarse orientation {maxIndex}"+
+      f", score = {maxScore:.2f} (initial score {scores[0]:.2f})\n")
     self._setCoarseMoverState(coarse, maxIndex)
 
     # @todo
