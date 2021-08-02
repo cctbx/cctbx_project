@@ -43,7 +43,7 @@ from mmtbx.hydrogens import reduce_hydrogen
 # Default value of 1 reports standard information.
 # Setting it to 0 removes all inforamtional messages.
 # Setting it above 1 provides additional debugging information.
-verbosity = 100
+verbosity = 1
 def _VerboseCheck(level, message):
   # Returns "" if the level is less than global verbosity level, message if it is at or above
   if verbosity >= level:
@@ -201,6 +201,13 @@ class SingletonOptimizer:
         self._infoString += ret.warnings
 
         ################################################################################
+        # Construct dot-spheres for each atom that we may need to find interactions for.
+        dotSphereCache = probeExt.DotSphereCache(self._probeDensity)
+        self._dotSpheres = {}
+        for a in atoms:
+          self._dotSpheres[a] = dotSphereCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius)
+
+        ################################################################################
         # Get the list of Movers using the _PlaceMovers private function.
         ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True),
                            bondedNeighborLists, self._spatialQuery, self._extraAtomInfo,
@@ -236,8 +243,8 @@ class SingletonOptimizer:
             groupCliques.append(c)
           if len(c) > maxLen:
             maxLen = len(c)
-        self._infoString += _VerboseCheck(1,"Found "+str(len(components))+" Cliques, "+
-            str(len(singletonCliques))+" singletons; largest Clique size = "+
+        self._infoString += _VerboseCheck(1,"Found "+str(len(components))+" Cliques ("+
+            str(len(singletonCliques))+" are singletons); largest Clique size = "+
             str(maxLen)+"\n")
 
         ################################################################################
@@ -270,18 +277,21 @@ class SingletonOptimizer:
         # so that we can do global fine optimization, we'll do that here rather than in the
         # subclasses.
 
-        # Do coarse optimization on the singleton Movers
+        # Do coarse optimization on the singleton Movers.  Record the selected coarse
+        # index.
+        self._coarseLocation = {}
         for s in singletonCliques:
-          self._optimizeSingleMoverCoarse(movers[s[0]])
+          mover = movers[s[0]]
+          self._coarseLocation[mover] = self._optimizeSingleMoverCoarse(mover)
 
         # Do coarse optimization on the multi-Mover Cliques
         # @todo
 
-        # Do fine optimization on the singleton Movers
+        # Do fine optimization on the Movers.  This is done independently for
+        # all of them, whether they are part of a multi-Mover Clique or not.
         # @todo
 
-        # Do fine optimization on the multi-Mover Cliques
-        # This is simply done independently on each element
+        # Do FixUp on the final orientations.
         # @todo
 
         ################################################################################
@@ -314,38 +324,54 @@ class SingletonOptimizer:
       if doDelete:
         self._spatialQuery.add(positionReturn.atoms[i])
         self._deleteMes.add(positionReturn.atoms[i])
-        self._infoString += _VerboseCheck(20,"Deleting atom\n")
+        self._infoString += _VerboseCheck(10,"Deleting atom\n")
       else:
         self._spatialQuery.remove(positionReturn.atoms[i])
         self._deleteMes.discard(positionReturn.atoms[i])
-        self._infoString += _VerboseCheck(20,"Ensuring deletable atom is present\n")
+        self._infoString += _VerboseCheck(10,"Ensuring deletable atom is present\n")
 
   def _scoreAtom(self, atom):
     # @todo
     maxRadiusWithoutProbe = (self._extraAtomInfo.getMappingFor(atom).vdwRadius +
       AtomTypes.AtomTypes().MaximumVDWRadius())
+    return self._dotScorer.score_dots(atom, self._minOccupancy, self._spatialQuery,
+      maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom], self._dotSpheres[atom].dots(),
+      self._probeDensity, False).totalScore()
 
   def _optimizeSingleMoverCoarse(self, mover):
-    # Find the coarse score for the Mover in its 0th orientation by moving each atom into the
+    # Find the coarse score for the Mover in all orientations by moving each atom into the
     # specified position and summing the scores over all of them.
-    score0 = 0
+    # Including counting the preference energies.
+    # :return the index of the coarse position selected for the Mover.
     coarse = mover.CoarsePositions()
-    self._infoString += _VerboseCheck(10,"Setting single Mover to initial orientation\n")
-    self._setCoarseMoverState(coarse, 0)
-    # @todo score
+    scores = coarse.preferenceEnergies.copy()
+    for i in range(len(coarse.positions)):
+      self._infoString += _VerboseCheck(5,"Checking single Mover at orientation "+str(i)+"\n")
+      self._setCoarseMoverState(coarse, i)
 
-    # Try all of the other alternatives, keeping track of the best score and its index.
-    # @todo Handle preference energies
+      for a in coarse.atoms:
+        scores[i] += self._scoreAtom(a)
+      self._infoString += _VerboseCheck(5,"Score at orientation "+str(i)+" = "+str(scores[i])+"\n")
+
+    # Find the maximum score, keeping track of the best score and its index.
+    maxScore = scores[0]
+    maxIndex = 0
+    for i in range(1,len(coarse.positions)):
+      if scores[i] > maxScore:
+        maxScore = scores[i]
+        maxIndex = i;
+
+    # Ensure it is far enough about the base to be swapped (global threshold)
     # @todo
 
-    # @todo Ensure it is far enough about the base to be swapped (global threshold)
+    # Put the Mover into its final position (which may be back to its initial position)
+    self._infoString += _VerboseCheck(1,"Setting single Mover to coarse orientation "+str(maxIndex)+
+      ", score = "+str(maxScore)+" (initial score "+str(scores[0])+")\n")
+    self._setCoarseMoverState(coarse, maxIndex)
 
-    # Put the Mover into its final position (which may be its initial position)
     # @todo
 
-    # @todo
-
-    return
+    return maxIndex
 
 ##################################################################################
 # Placement
