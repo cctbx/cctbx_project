@@ -2125,8 +2125,6 @@ class LocalRefiner(BaseRefiner):
             if self.verbose:
                 self._print_iteration_header()
 
-            if not self.only_save_model_for_shot:
-                self._MPI_save_state_of_refiner()
 
             if self.iteratively_freeze_parameters:
                 if self.param_sels is None:
@@ -2148,6 +2146,8 @@ class LocalRefiner(BaseRefiner):
             self._store_updated_Fcell()
             self._update_Fcell()  # update the structure factor with the new x
             LOGGER.info("done update Fcell")
+            if not self.only_save_model_for_shot:
+                self._MPI_save_state_of_refiner()  # actually, just saves Fcell
             self._update_spectra_coefficients()  # updates the diffBragg lambda coefficients if refinining spectra
 
             if self.CRYSTAL_GT is not None and not self.only_save_model_for_shot:
@@ -3183,12 +3183,13 @@ class LocalRefiner(BaseRefiner):
     def _MPI_save_state_of_refiner(self):
         if self.I_AM_ROOT and self.output_dir is not None and self.refine_Fcell:
             outf = os.path.join(self.output_dir, "_fcell_trial%d_iter%d" % (self.trial_id, self.iterations))
-            if self.rescale_params:
-                fvals = [self._get_fcell_val(i_fcell) for i_fcell in range(self.n_global_fcell)]
-                fvals = ARRAY(fvals)
-            else:
-                fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
-            SAVEZ(outf, fvals=fvals, x=self.x.as_numpy_array())
+            #if self.rescale_params:
+            #    fvals = [self._get_fcell_val(i_fcell) for i_fcell in range(self.n_global_fcell)]
+            #    fvals = ARRAY(fvals)
+            #else:
+            #    fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
+            #SAVEZ(outf, fvals=fvals, x=self.x.as_numpy_array())
+            SAVEZ(outf, fvals=self._fcell_at_i_fcell)
 
     def _show_plots(self, i_spot, n_spots):
         if self.I_AM_ROOT and self.plot_images and self.iterations % self.plot_stride == 0 and self._i_shot == self.index_of_displayed_image:

@@ -76,7 +76,9 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
                              % (COMM.size, num_exp, num_exp))
         self._init_panel_group_information(detector)
 
-        self.verbose = self.params.refiner.verbose is not None and COMM.rank == 0
+        self.verbose = False
+        if COMM.rank == 0:
+            self.verbose = self.params.refiner.verbose:
         shot_idx = 0  # each rank keeps index of the shots local to it
         rank_panel_groups_refined = set()
         rank_local_parameters = []
