@@ -88,6 +88,8 @@ def InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius = 0.25):
         zRange[1] = max(zRange[1], z + r)
 
     # Dilate the bounding box by the radius of the probe.
+    # Because we're dilating each box by this radius, we're properly
+    # checking to twice the probe radius between two Movers.
     xRange = [ xRange[0] - pr, xRange[1] + pr ]
     yRange = [ yRange[0] - pr, yRange[1] + pr ]
     zRange = [ zRange[0] - pr, zRange[1] + pr ]
@@ -202,10 +204,6 @@ def _PairsOverlap(atoms1, positions1, atoms2, positions2, extraAtomInfoMap, prob
           if dSquared <= limitSquared:
             return True
   return False
-
-  return ( (box1[0][0] <= box2[0][1] and box1[0][1] >= box2[0][0]) and
-           (box1[1][0] <= box2[1][1] and box1[1][1] >= box2[1][0]) and
-           (box1[2][0] <= box2[2][1] and box1[2][1] >= box2[2][0]) )
 
 #######################################################################################################
 # Test code and objects below here
