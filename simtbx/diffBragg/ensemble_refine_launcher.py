@@ -142,16 +142,15 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
 
             # FIXME what if a prediction doesnt have an observed structure factor amplitude
             LOGGER.info("EVENT: verifying input refl HKLs are included in input Fobs")
-            observed_Hi_p1, _ = map(set, self.SIM.D.Fhkl_tuple)
-            good_sel = []
-            hkl_observed = observed_Hi_p1.intersection(set(refls["miller_index"]))
-            for h in refls["miller_index"]:
-                if h not in hkl_observed:
-                    good_sel.append(False)
-                else:
-                    good_sel.append(True)
-
-            refls = refls.select(flex.bool(good_sel))
+            #observed_Hi_p1, _ = map(set, self.SIM.D.Fhkl_tuple)
+            #good_sel = []
+            #hkl_observed = observed_Hi_p1.intersection(set(refls["miller_index"]))
+            #for h in refls["miller_index"]:
+            #    if h not in hkl_observed:
+            #        good_sel.append(False)
+            #    else:
+            #        good_sel.append(True)
+            #refls = refls.select(flex.bool(good_sel))
 
             Hi = list(refls["miller_index"])
             self.Hi[shot_idx] = Hi
