@@ -446,6 +446,9 @@ min_spot = 5
   .type = int
   .help = minimum spots on a shot in order to optimize that shot
 logging {
+  disable = False
+    .type = bool
+    .help = turn off logging
   logfiles_level = low *normal high
     .type = choice
     .help = level of the main log when writing logfiles

@@ -134,6 +134,9 @@ class DataModeler:
         self.set_experiment(exp, load_imageset=True)
 
         refls = self.load_refls(ref)
+        if len(refls)==0:
+            MAIN_LOGGER.warning("no refls loaded!")
+            return False
 
         if "rlp" not in list(refls[0].keys()):
             utils.add_rlp_column(refls, self.E)

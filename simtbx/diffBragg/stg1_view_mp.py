@@ -1,6 +1,7 @@
 # coding: utf-8
 import glob
 from joblib import Parallel,delayed
+from joblib import parallel_backend
 
 from argparse import ArgumentParser
 parser = ArgumentParser()
@@ -11,7 +12,11 @@ parser.add_argument("--j", type=int, help="number of jobs", default=1)
 parser.add_argument("--save", type=str, help="optional file name for saving figure output", default=None)
 parser.add_argument("--signalcut", type=float, default=None, help="optional signal to backgroud cutoff")
 parser.add_argument("--symbol", type=str, default="P1", help="space group symbol for mapping HKL list")
+parser.add_argument("--summit", action="store_true")
 args = parser.parse_args()
+if args.save is not None:
+    import matplotlib
+    matplotlib.use('Agg')
 import h5py
 import numpy as np
 import pandas
@@ -307,7 +312,12 @@ def main(jid):
                 ,per_img_dials_vec_dists, per_img_shot_roi, per_img_signal, img_names, per_img_ref_index,\
            (Nno_sig, Nposs, Nroi), per_img_hkl
 
-results = Parallel(n_jobs=args.j)(delayed(main)(j) for j in range(args.j))
+if args.summit:
+    with parallel_backend("multiprocessing"):
+        results = Parallel(n_jobs=args.j)(delayed(main)(j) for j in range(args.j))
+
+else:
+    results = Parallel(n_jobs=args.j)(delayed(main)(j) for j in range(args.j))
 
 dev_res =[]
 per_img_dists = []

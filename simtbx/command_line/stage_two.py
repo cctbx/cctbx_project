@@ -7,6 +7,7 @@ from dxtbx.model import ExperimentList
 from simtbx.command_line.hopper import hopper_phil
 import os
 import time
+import logging
 from simtbx.diffBragg import mpi_logger
 
 COMM = MPI.COMM_WORLD
@@ -92,6 +93,7 @@ if __name__ == '__main__':
             lp.add_function(local_refiner.LocalRefiner._extract_pixel_data)
             lp.add_function(local_refiner.LocalRefiner._Fcell_derivatives)
             lp.add_function(local_refiner.LocalRefiner._get_fcell_val)
+            lp.add_function(local_refiner.LocalRefiner._mpi_aggregation)
             lp.add_function(local_refiner.LocalRefiner.print_step_grads)
             RUN = lp(script.run)
 
@@ -103,7 +105,10 @@ if __name__ == '__main__':
             script.params.logging.logname = "main_stage2.log"
         if script.params.profile_name is None:
             script.params.profile_name = "prof_stage2.log"
-        mpi_logger.setup_logging_from_params(script.params)
+        if script.params.logging.disable:
+            logging.disable(level=logging.CRITICAL)  # disables CRITICAL and below
+        else:
+            mpi_logger.setup_logging_from_params(script.params)
 
         RUN()
 
@@ -112,4 +117,4 @@ if __name__ == '__main__':
             from simtbx.diffBragg import hopper_utils
             hopper_utils.print_profile(stats,
                     ["launch_refiner", "_compute_functional_and_gradients", "_run_diffBragg_current",
-                     "_update_Fcell", "_extract_pixel_data", "_Fcell_derivatives", "print_step_grads", "_get_fcell_val"])
+                     "_update_Fcell", "_extract_pixel_data", "_Fcell_derivatives", "print_step_grads", "_get_fcell_val", "_mpi_aggregation"])

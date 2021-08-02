@@ -4,19 +4,24 @@ parser = ArgumentParser()
 parser.add_argument("--pkl", type=str, help="input pickle")
 parser.add_argument("--erf", type=str, default=None, help="expref file for filtering")
 parser.add_argument("--minscore", type=float, default=None, help="minimum prediction offset loss")
+parser.add_argument("--plot", action="store_true")
 args = parser.parse_args()
 
 from simtbx.diffBragg.utils import is_outlier
 import sys
+if not args.plot:
+    import matplotlib
+    matplotlib.use('Agg')
+
 from pylab import *
 
-thresh_a = 10
-thresh_c = 10
-thresh_N = 5
-thresh_Na = 6
-thresh_Nb = 7
-thresh_Nc = 7
+thresh_a = 15
+thresh_c = 70
 thresh_d = 7
+thresh_N = 7
+thresh_Nc =7
+thresh_Na = 10
+thresh_Nb = 10
 thresh_s = 1350
 thresh_rot = 45
 thresh_rotx = 25
@@ -223,6 +228,6 @@ if args.erf is not None:
         new_ers.write(l)
     new_ers.close()
     print("Wrote new file %s" % new_ers_name)
-
-show()
+if args.plot:
+    show()
 

@@ -2174,7 +2174,7 @@ class LocalRefiner(BaseRefiner):
                 self.scale_fac = self._get_spot_scale(self._i_shot)**2
 
                 # TODO: Omatrix update? All crystal models here should have the same to_primitive operation, ideally
-                LOGGER.info("update models shot %d " % self._i_shot)
+                #LOGGER.info("update models shot %d " % self._i_shot)
                 self._update_beams()
                 self._update_umatrix()
                 self._update_ucell()
@@ -2199,10 +2199,10 @@ class LocalRefiner(BaseRefiner):
 
                 # TODO pre-extractions for all parameters
                 self._append_local_parameters()
-                LOGGER.info("access arrays from diffBragg for shot %d" % self._i_shot)
+                #LOGGER.info("access arrays from diffBragg for shot %d" % self._i_shot)
                 self._pre_extract_deriv_arrays()
                 #self._per_shot_Z_data = []
-                LOGGER.info("iterate over %d spots and compute gradients for shot %d" % (n_spots, self._i_shot))
+                #LOGGER.info("iterate over %d spots and compute gradients for shot %d" % (n_spots, self._i_shot))
                 self._spot_Zscores = []
                 for i_spot in range(n_spots):
                     self._i_spot = i_spot
