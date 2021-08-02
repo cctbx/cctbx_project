@@ -2261,10 +2261,11 @@ class LocalRefiner(BaseRefiner):
 
                     #if self.save_Z_freq is not None:
                     #   self._per_shot_Z_data.append((self.u_times_one_over_v, self._panel_id, self.NANOBRAGG_ROIS[self._i_shot]))
-                    sigZ = (self._Zscore[self._is_trusted] ).std()
-                    miller_idx = self.ASU[self._i_shot][i_spot]
-                    i_fcell = self.idx_from_asu[miller_idx]
-                    self._spot_Zscores.append((i_fcell, sigZ))
+                    if self.iterations % self.saveZ_freq == 0:
+                        sigZ = (self._Zscore[self._is_trusted] ).std()
+                        miller_idx = self.ASU[self._i_shot][i_spot]
+                        i_fcell = self.idx_from_asu[miller_idx]
+                        self._spot_Zscores.append((i_fcell, sigZ))
 
                     self.target_functional += self._target_accumulate()
 
@@ -3530,6 +3531,8 @@ class LocalRefiner(BaseRefiner):
         self.parameters.add_rotXYZ(exper_name, (rotX, rotY, rotZ))
 
     def _append_global_parameters(self):
+        if self.parameter_hdf5_path is None:
+            return
         opt_det = self.get_optimized_detector(i_shot=0)
         origs = []
         fasts = []

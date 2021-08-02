@@ -494,15 +494,16 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
 
     def get_parameter_hdf5_path(self):
         hdf5_path = None
-        if self.params.refiner.parameter_hdf5_path is not None:
-            param_folder = self.params.refiner.parameter_hdf5_path
-            if not os.path.exists(param_folder):
-                os.makedirs(param_folder)
-            hdf5_path = os.path.join(param_folder, "params_rank%d.h5" % COMM.rank)
-        elif self.params.refiner.io.output_dir is not None:
-            param_dir = os.path.join(self.params.refiner.io.output_dir, "params")
-            if COMM.rank == 0:
-                if not os.path.exists(param_dir):
-                    os.makedirs(param_dir)
-            hdf5_path = os.path.join(param_dir, "params_rank%d.h5" %COMM.rank)
+        if self.params.refiner.dump_params:
+            if self.params.refiner.parameter_hdf5_path is not None:
+                param_folder = self.params.refiner.parameter_hdf5_path
+                if not os.path.exists(param_folder):
+                    os.makedirs(param_folder)
+                hdf5_path = os.path.join(param_folder, "params_rank%d.h5" % COMM.rank)
+            elif self.params.refiner.io.output_dir is not None:
+                param_dir = os.path.join(self.params.refiner.io.output_dir, "params")
+                if COMM.rank == 0:
+                    if not os.path.exists(param_dir):
+                        os.makedirs(param_dir)
+                hdf5_path = os.path.join(param_dir, "params_rank%d.h5" %COMM.rank)
         return hdf5_path

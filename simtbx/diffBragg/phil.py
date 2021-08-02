@@ -119,6 +119,9 @@ refiner {
   parameter_hdf5_path = None
     .type = str
     .help = path to an output file where parameter log can be written (stage 1 only)
+  dump_params = False
+    .type = bool
+    .help = save params to the parameter_hdf5_path folder
   n_sausages_one_scale = False
     .type = bool
     .help = force all mosaic textures blocks to have the same scale factor
