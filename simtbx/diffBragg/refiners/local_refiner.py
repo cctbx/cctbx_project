@@ -363,13 +363,13 @@ class LocalRefiner(BaseRefiner):
         Npanels = len(self.S.detector)
         return Npanels, panelYdim, panelXdim
 
-    @property
-    def x_for_lbfgs(self):
-        """LBFGS parameter array"""
-        if self.only_pass_refined_x_to_lbfgs:
-            return self.Xall.select(self.is_being_refined)
-        else:
-            return self.Xall
+    #@property
+    #def x_for_lbfgs(self):
+    #    """LBFGS parameter array"""
+    #    if self.only_pass_refined_x_to_lbfgs:
+    #        return self.Xall.select(self.is_being_refined)
+    #    else:
+    #        return self.Xall
 
     @property
     def g_for_lbfgs(self):
@@ -489,7 +489,7 @@ class LocalRefiner(BaseRefiner):
         #n_global_params += 3*self.n_panel_groups
 
         # Make the global sized parameter array, though here we only update the local portion
-        self.Xall = flex_double(self.n_total_params)
+        self.x = flex_double(self.n_total_params)
         assert isinstance(self.n_total_params, int)
         self.is_being_refined = FLEX_BOOL(self.n_total_params, False)
 
@@ -534,7 +534,7 @@ class LocalRefiner(BaseRefiner):
 
             if self.bg_extracted:
                 self.bg_coef_xpos[i_shot] = _local_pos
-                self.Xall[self.bg_coef_xpos[i_shot]] = 1
+                self.x[self.bg_coef_xpos[i_shot]] = 1
                 if not self.rescale_params:
                     raise NotImplementedError("bg coef mode only works in rescale mode")
                 if self.refine_background_planes:
@@ -559,14 +559,14 @@ class LocalRefiner(BaseRefiner):
                         else:
                             c = np_log(c)
                     if self.rescale_params:
-                        self.Xall[self.bg_a_xstart[i_shot][i_spot]] = 1
-                        self.Xall[self.bg_b_xstart[i_shot][i_spot]] = 1
-                        self.Xall[self.bg_c_xstart[i_shot][i_spot]] = 1
+                        self.x[self.bg_a_xstart[i_shot][i_spot]] = 1
+                        self.x[self.bg_b_xstart[i_shot][i_spot]] = 1
+                        self.x[self.bg_c_xstart[i_shot][i_spot]] = 1
 
                     else:
-                        self.Xall[self.bg_a_xstart[i_shot][i_spot]] = float(a)
-                        self.Xall[self.bg_b_xstart[i_shot][i_spot]] = float(b)
-                        self.Xall[self.bg_c_xstart[i_shot][i_spot]] = float(c)
+                        self.x[self.bg_a_xstart[i_shot][i_spot]] = float(a)
+                        self.x[self.bg_b_xstart[i_shot][i_spot]] = float(b)
+                        self.x[self.bg_c_xstart[i_shot][i_spot]] = float(c)
 
                     _spot_start += 3
                     if self.refine_background_planes:
@@ -583,13 +583,13 @@ class LocalRefiner(BaseRefiner):
             self.rotZ_xpos[i_shot] = self.rotY_xpos[i_shot] + 1
 
             if self.rescale_params:
-                self.Xall[self.rotX_xpos[i_shot]] = 1
-                self.Xall[self.rotY_xpos[i_shot]] = 1
-                self.Xall[self.rotZ_xpos[i_shot]] = 1
+                self.x[self.rotX_xpos[i_shot]] = 1
+                self.x[self.rotY_xpos[i_shot]] = 1
+                self.x[self.rotZ_xpos[i_shot]] = 1
             else:
-                self.Xall[self.rotX_xpos[i_shot]] = 0
-                self.Xall[self.rotY_xpos[i_shot]] = 0
-                self.Xall[self.rotZ_xpos[i_shot]] = 0
+                self.x[self.rotX_xpos[i_shot]] = 0
+                self.x[self.rotY_xpos[i_shot]] = 0
+                self.x[self.rotZ_xpos[i_shot]] = 0
             if self.refine_Umatrix:
                 if self.refine_rotX:
                     self.is_being_refined[self.rotX_xpos[i_shot]] = True
@@ -613,7 +613,7 @@ class LocalRefiner(BaseRefiner):
                 self.ucell_params[i_shot] = []
                 for i_cell in range(self.n_ucell_param):
                     if self.rescale_params:
-                        self.Xall[self.ucell_xstart[i_shot] + i_cell] = 1  #self.UCELL_MAN[i_shot].variables[i_cell]
+                        self.x[self.ucell_xstart[i_shot] + i_cell] = 1  #self.UCELL_MAN[i_shot].variables[i_cell]
                         uc_param = RangedParameter()
                         if self.use_ucell_ranges:
                             uc_param.init = self.ucell_inits[i_shot][i_cell]
@@ -622,7 +622,7 @@ class LocalRefiner(BaseRefiner):
                             uc_param.minval = self.ucell_mins[i_shot][i_cell]
                             self.ucell_params[i_shot].append(uc_param)
                     else:
-                        self.Xall[self.ucell_xstart[i_shot] + i_cell] = self.UCELL_MAN[i_shot].variables[i_cell]
+                        self.x[self.ucell_xstart[i_shot] + i_cell] = self.UCELL_MAN[i_shot].variables[i_cell]
 
             # set refinement flags
             if self.refine_Bmatrix:
@@ -640,9 +640,9 @@ class LocalRefiner(BaseRefiner):
                     ncells_xval = np_log(self.S.crystal.Ncells_abc[i_ncells]-3)
                     # TODO: each shot gets own starting Ncells
                     if self.use_Ncells_range or self.rescale_params:
-                        self.Xall[self.ncells_xstart[i_shot] + i_ncells] = 1
+                        self.x[self.ncells_xstart[i_shot] + i_ncells] = 1
                     else:
-                        self.Xall[self.ncells_xstart[i_shot] + i_ncells] = ncells_xval
+                        self.x[self.ncells_xstart[i_shot] + i_ncells] = ncells_xval
                     if self.use_Ncells_range:
                         ncells_param = RangedParameter()
                         ncells_param.init = self.m_init[i_shot][i_ncells]
@@ -664,7 +664,7 @@ class LocalRefiner(BaseRefiner):
             _local_pos += 3
             self.Ncells_def_params[i_shot] = []
             for i_ncells in range(3):
-                self.Xall[self.ncells_def_xstart[i_shot] + i_ncells] = 1
+                self.x[self.ncells_def_xstart[i_shot] + i_ncells] = 1
                 ncells_param = RangedParameter()
                 ncells_param.init = self.ncells_def_init[i_shot][i_ncells]
                 ncells_param.sigma = self.ncells_def_sigma[i_ncells]
@@ -683,7 +683,7 @@ class LocalRefiner(BaseRefiner):
             detdist_param.maxval = self.detector_distance_range[1]
             self.detector_distance_params[i_shot] = detdist_param
             _local_pos += 1
-            self.Xall[self.detector_distance_xpos[i_shot]] = 1
+            self.x[self.detector_distance_xpos[i_shot]] = 1
             # set refinement flag
             if self.refine_detdist:
                 assert self.rescale_params
@@ -692,9 +692,9 @@ class LocalRefiner(BaseRefiner):
             self.spot_scale_xpos[i_shot] = _local_pos
             _local_pos += 1
             if self.rescale_params:
-                self.Xall[self.spot_scale_xpos[i_shot]] = 1
+                self.x[self.spot_scale_xpos[i_shot]] = 1
             else:
-                self.Xall[self.spot_scale_xpos[i_shot]] = self.log_of_init_crystal_scales[i_shot]
+                self.x[self.spot_scale_xpos[i_shot]] = self.log_of_init_crystal_scales[i_shot]
             if self.refine_crystal_scale:
                 self.is_being_refined[self.spot_scale_xpos[i_shot]] = True
 
@@ -702,7 +702,7 @@ class LocalRefiner(BaseRefiner):
             self.eta_params[i_shot] = []
             for i_eta in range(3):
                 xpos = self.eta_xstart[i_shot] + i_eta
-                self.Xall[xpos] = 1
+                self.x[xpos] = 1
                 eta_param = RangedParameter()
                 eta_param.init = self.eta_init[i_shot][i_eta]
                 eta_param.sigma = self.eta_sigma
@@ -718,7 +718,7 @@ class LocalRefiner(BaseRefiner):
             n_spots = len(self.NANOBRAGG_ROIS[i_shot])
             self.per_spot_scale_xpos[i_shot] = list(range(_local_pos, _local_pos + n_spots))
             for x in range(_local_pos, _local_pos + n_spots):
-                self.Xall[x] = 1
+                self.x[x] = 1
             _local_pos += n_spots
 
             if self.refine_blueSausages:
@@ -728,7 +728,7 @@ class LocalRefiner(BaseRefiner):
                 for i_sausage_param in range(4):
                     #idx = i_sausage_param + 4 * i_sausage
                     self.sausages_xpos[i_shot].append(_local_pos)
-                    self.Xall[_local_pos] = 1+i_sausage #idx #*0.1 #i_sausage
+                    self.x[_local_pos] = 1+i_sausage #idx #*0.1 #i_sausage
                     self.is_being_refined[_local_pos] = True
                     _local_pos += 1
 
@@ -775,7 +775,7 @@ class LocalRefiner(BaseRefiner):
         if self.I_AM_ROOT == 0:
             self.print("--3 combining parameters across ranks")
 
-        self.Xall = self._MPI_reduce_broadcast(self.Xall)
+        self.x = self._MPI_reduce_broadcast(self.x)
 
         # flex bool has no + operator so we convert to numpy
         self.is_being_refined = self._MPI_reduce_broadcast(self.is_being_refined.as_numpy_array())
@@ -784,7 +784,7 @@ class LocalRefiner(BaseRefiner):
 
         #self._MPI_barrier()
         # set the BFGS parameter array
-        self.x = self.x_for_lbfgs
+        #self.x = self.x_for_lbfgs
 
         # make the mapping from x to Xall
         refine_pos = WHERE(self.is_being_refined.as_numpy_array())[0]
@@ -797,16 +797,16 @@ class LocalRefiner(BaseRefiner):
 
         if self.x_init is not None: #NOTEX
             print("Initializing with provided x_init array")
-            self.Xall = self.x_init
-            self.x = self.x_for_lbfgs
+            self.x = self.x_init
+            #self.x = self.x_for_lbfgs
         elif self.restart_file is not None:
             print("Restarting from parameter file %s" % self.restart_file)
-            self.Xall = flex_double(np_load(self.restart_file)["x"])
-            self.x = self.x_for_lbfgs
+            self.x = flex_double(np_load(self.restart_file)["x"])
+            #self.x = self.x_for_lbfgs
 
         if self.I_AM_ROOT:
             self.print("--4 print initial stats")
-        rotx, roty, rotz, uc_vals, ncells_vals, scale_vals, _, origZ = self._unpack_internal(self.Xall, lst_is_x=True)
+        rotx, roty, rotz, uc_vals, ncells_vals, scale_vals, _, origZ = self._unpack_internal(self.x, lst_is_x=True)
         if self.I_AM_ROOT and self.big_dump and HAS_PANDAS:
 
             master_data = {"a": uc_vals[0], "c": uc_vals[1],
@@ -817,7 +817,7 @@ class LocalRefiner(BaseRefiner):
                            "rotz": rotz,
                            "origZ": origZ}
             master_data = pandas.DataFrame(master_data)
-            master_data["gain"] = 1 #self.Xall[self.gain_xpos]
+            master_data["gain"] = 1
             self.print(master_data.to_string())
 
         # make the parameter masks for isolating parameters of different types
@@ -928,9 +928,9 @@ class LocalRefiner(BaseRefiner):
                 # TODO have parameter for global init of unit cell, right now its handled in the global_bboxes scripts
                 for i_cell in range(self.n_ucell_param):
                     if self.rescale_params:
-                        self.Xall[self.ucell_xstart[0] + i_cell] = 1
+                        self.x[self.ucell_xstart[0] + i_cell] = 1
                     else:
-                        self.Xall[self.ucell_xstart[0] + i_cell] = self.UCELL_MAN[0].variables[i_cell]
+                        self.x[self.ucell_xstart[0] + i_cell] = self.UCELL_MAN[0].variables[i_cell]
 
             if self.global_ncells_param:
                 for i_ncells in range(self.n_ncells_param):
@@ -938,14 +938,14 @@ class LocalRefiner(BaseRefiner):
                         ncells_xval = 1
                     else:
                         ncells_xval = np_log(self.S.crystal.Ncells_abc[i_ncells] - 3)
-                    self.Xall[self.ncells_xstart[0] + i_ncells] = ncells_xval
+                    self.x[self.ncells_xstart[0] + i_ncells] = ncells_xval
 
             # if self.refine_lambda0 or self.refine_lambda1:
             lambda_is_refined = self.refine_lambda0, self.refine_lambda1
             for i_spec_coef in range(self.n_spectra_param):
                 xpos = self.spectra_coef_xstart + i_spec_coef
                 self.is_being_refined[xpos] = lambda_is_refined[i_spec_coef]
-                self.Xall[xpos] = 1
+                self.x[xpos] = 1
                 if not self.rescale_params:
                     raise NotImplementedError("Cant refine spectra without rescale_params=True")
 
@@ -962,10 +962,10 @@ class LocalRefiner(BaseRefiner):
                     if refine_panelRot[i_pan_rot]:
                         assert self.rescale_params
                         self.is_being_refined[xpos] = i_pan_group in self.panel_groups_being_refined
-                    self.Xall[xpos] = 1
+                    self.x[xpos] = 1
 
                 xpos_X = self.panelXY_xstart + 2*i_pan_group
-                self.Xall[xpos_X] = 1
+                self.x[xpos_X] = 1
                 if self.refine_panelXY:
                     assert self.rescale_params
                     self.is_being_refined[xpos_X] = i_pan_group in self.panel_groups_being_refined #True
@@ -975,7 +975,7 @@ class LocalRefiner(BaseRefiner):
                 self.panelX_params[i_pan_group].maxval = self.panelX_range[1]
 
                 xpos_Y = xpos_X + 1
-                self.Xall[xpos_Y] = 1
+                self.x[xpos_Y] = 1
                 if self.refine_panelXY:
                     self.is_being_refined[xpos_Y] = i_pan_group in self.panel_groups_being_refined #True
                 self.panelY_params[i_pan_group].init = 0   # self.panelY_init[i_pan_group]
@@ -984,7 +984,7 @@ class LocalRefiner(BaseRefiner):
                 self.panelY_params[i_pan_group].maxval = self.panelY_range[1]
 
                 xpos_Z = self.panelZ_xstart + i_pan_group
-                self.Xall[xpos_Z] = 1
+                self.x[xpos_Z] = 1
                 if self.refine_panelZ:
                     self.is_being_refined[xpos_Z] = i_pan_group in self.panel_groups_being_refined #True
                 self.panelZ_params[i_pan_group].init = 0  # self.panelX_init[i_pan_group]
@@ -1020,9 +1020,9 @@ class LocalRefiner(BaseRefiner):
                 vals = np_log(vals)
             for i_fcell in range(self.n_global_fcell):
                 if self.rescale_params:
-                    self.Xall[self.fcell_xstart + i_fcell] = 1
+                    self.x[self.fcell_xstart + i_fcell] = 1
                 else:
-                    self.Xall[self.fcell_xstart + i_fcell] = vals[i_fcell]
+                    self.x[self.fcell_xstart + i_fcell] = vals[i_fcell]
                 if self.refine_Fcell:  # TODO only refine if fcell is in the res range
                     self.is_being_refined[self.fcell_xstart + i_fcell] = True
 
@@ -1115,7 +1115,7 @@ class LocalRefiner(BaseRefiner):
                 Xall_pos = self.x2xall[i]
             else:
                 Xall_pos = i
-            self.Xall[Xall_pos] = val
+            self.x[Xall_pos] = val
         # TODO maybe its more quick to use set_selected with is_being_refined ?
         # seomthing like self.Xall.set_selected(self.is_being_refined, self.x)
 
@@ -1208,13 +1208,13 @@ class LocalRefiner(BaseRefiner):
 
     def _make_parameter_type_selection_arrays(self):  # experimental , not really used
         from cctbx.array_family import flex
-        self.umatrix_sel = flex.bool(len(self.Xall), True)
-        self.bmatrix_sel = flex.bool(len(self.Xall), True)
-        self.Fcell_sel = flex.bool(len(self.Xall), True)
-        self.origin_sel = flex.bool(len(self.Xall), True)
-        self.spot_scale_sel = flex.bool(len(self.Xall), True)
-        self.ncells_sel = flex.bool(len(self.Xall), True)
-        self.bg_sel = flex.bool(len(self.Xall), True)
+        self.umatrix_sel = flex.bool(len(self.x), True)
+        self.bmatrix_sel = flex.bool(len(self.x), True)
+        self.Fcell_sel = flex.bool(len(self.x), True)
+        self.origin_sel = flex.bool(len(self.x), True)
+        self.spot_scale_sel = flex.bool(len(self.x), True)
+        self.ncells_sel = flex.bool(len(self.x), True)
+        self.bg_sel = flex.bool(len(self.x), True)
         for i_shot in range(self.n_shots):
             self.umatrix_sel[self.rotX_xpos[i_shot]] = False
             self.umatrix_sel[self.rotY_xpos[i_shot]] = False
@@ -1248,35 +1248,35 @@ class LocalRefiner(BaseRefiner):
                 sigma = self.sausages_sigma[i_param]
                 init = self.sausages_init[i_shot][idx] #_param]
                 xval_init = 1 + i_sausage #idx #*0.1
-                val = sigma*(self.Xall[xpos] - xval_init) + init
+                val = sigma*(self.x[xpos] - xval_init) + init
                 vals.append(val)
         return vals
 
     def _get_rotX(self, i_shot):
         if self.rescale_params:
             # FIXME ?
-            return self.rotX_sigma*(self.Xall[self.rotX_xpos[i_shot]]-1) + self.rotXYZ_inits[i_shot][0]
+            return self.rotX_sigma*(self.x[self.rotX_xpos[i_shot]]-1) + self.rotXYZ_inits[i_shot][0]
         else:
-            return self.Xall[self.rotX_xpos[i_shot]]
+            return self.x[self.rotX_xpos[i_shot]]
 
     def _get_rotY(self, i_shot):
         if self.rescale_params:
-            return self.rotY_sigma * (self.Xall[self.rotY_xpos[i_shot]] - 1) + self.rotXYZ_inits[i_shot][1]
+            return self.rotY_sigma * (self.x[self.rotY_xpos[i_shot]] - 1) + self.rotXYZ_inits[i_shot][1]
         else:
-            return self.Xall[self.rotY_xpos[i_shot]]
+            return self.x[self.rotY_xpos[i_shot]]
 
     def _get_rotZ(self, i_shot):
         if self.rescale_params:
-            return self.rotZ_sigma * (self.Xall[self.rotZ_xpos[i_shot]] - 1) + self.rotXYZ_inits[i_shot][2]
+            return self.rotZ_sigma * (self.x[self.rotZ_xpos[i_shot]] - 1) + self.rotXYZ_inits[i_shot][2]
 
         else:
-            return self.Xall[self.rotZ_xpos[i_shot]]
+            return self.x[self.rotZ_xpos[i_shot]]
 
     def _get_spectra_coefficients(self):
         vals = []
         if self.rescale_params:
             for i in range(self.n_spectra_param):
-                xval = self.Xall[self.spectra_coef_xstart + i]
+                xval = self.x[self.spectra_coef_xstart + i]
                 sig = self.spectra_coefficients_sigma[i]
                 init = self.spectra_coefficients_init[i]
                 low, high = self.lambda_coef_ranges[i]
@@ -1293,15 +1293,15 @@ class LocalRefiner(BaseRefiner):
         all_p = []
         for i in range(self.n_ucell_param):
             if self.rescale_params:
-                x = self.Xall[self.ucell_xstart[i_shot]+i]
+                x = self.x[self.ucell_xstart[i_shot]+i]
                 if self.use_ucell_ranges:
                     p = self.ucell_params[i_shot][i].get_val(x)
                 else:
                     sig = self.ucell_sigmas[i]
                     init = self.ucell_inits[i_shot][i]
-                    p = sig*(self.Xall[self.ucell_xstart[i_shot]+i] - 1) + init
+                    p = sig*(self.x[self.ucell_xstart[i_shot]+i] - 1) + init
             else:
-                p = self.Xall[self.ucell_xstart[i_shot]+i]
+                p = self.x[self.ucell_xstart[i_shot]+i]
             all_p.append(p)
         return all_p
 
@@ -1309,7 +1309,7 @@ class LocalRefiner(BaseRefiner):
         vals = []
         for i_rot in range(3):
             panel_group_id = self.panel_group_from_id[panel_id]
-            lbfgs_xval = self.Xall[self.panelRot_xstart + 3*panel_group_id + i_rot]
+            lbfgs_xval = self.x[self.panelRot_xstart + 3*panel_group_id + i_rot]
             val = self.panelRot_params[panel_group_id][i_rot].get_val(lbfgs_xval)
             vals.append(val)
         return vals
@@ -1317,15 +1317,15 @@ class LocalRefiner(BaseRefiner):
     def _get_panelXYZ_val(self, panel_id, i_shot=0):
         panel_group_id = self.panel_group_from_id[panel_id]
         xpos_X = self.panelXY_xstart + 2*panel_group_id
-        valX = self.Xall[xpos_X]
+        valX = self.x[xpos_X]
         offsetX = self.panelX_params[panel_group_id].get_val(valX)
 
         xpos_Y = xpos_X + 1
-        valY = self.Xall[xpos_Y]
+        valY = self.x[xpos_Y]
         offsetY = self.panelY_params[panel_group_id].get_val(valY)
 
         xpos_Z = self.panelZ_xstart + self.panel_group_from_id[panel_id]
-        valZ = self.Xall[xpos_Z]
+        valZ = self.x[xpos_Z]
         offsetZ = self.panelZ_params[i_shot].get_val(valZ)
 
         return offsetX, offsetY, offsetZ
@@ -1334,7 +1334,7 @@ class LocalRefiner(BaseRefiner):
         val = 0
         # TODO will this work with multi-step refinement ?
         if self.refine_detdist:
-            xval = self.Xall[self.detector_distance_xpos[i_shot]]
+            xval = self.x[self.detector_distance_xpos[i_shot]]
             val = self.detector_distance_params[i_shot].get_val(xval)
         elif self.pershot_detdist_shifts:
             val = self.shot_detector_distance_init[i_shot]
@@ -1343,7 +1343,7 @@ class LocalRefiner(BaseRefiner):
     def _get_ncells_def_vals(self, i_shot):
         vals = []
         for i_ncell in range(3):
-            xval = self.Xall[self.ncells_def_xstart[i_shot] + i_ncell]
+            xval = self.x[self.ncells_def_xstart[i_shot] + i_ncell]
             val = self.Ncells_def_params[i_shot][i_ncell].get_val(xval)
             vals.append(val)
         return vals
@@ -1354,7 +1354,7 @@ class LocalRefiner(BaseRefiner):
         # NOTE   and should be dropped for readability
         vals = []
         if self.S.D.isotropic_ncells:
-            xval = self.Xall[self.ncells_xstart[i_shot]]
+            xval = self.x[self.ncells_xstart[i_shot]]
             if self.use_Ncells_range:
                 val = self.Ncells_params[i_shot][0].get_val(xval)
 
@@ -1375,7 +1375,7 @@ class LocalRefiner(BaseRefiner):
             vals.append(val)
         else:
             for i_ncell in range(self.n_ncells_param):
-                xval = self.Xall[self.ncells_xstart[i_shot] + i_ncell]
+                xval = self.x[self.ncells_xstart[i_shot] + i_ncell]
                 if self.use_Ncells_range:
                     val = self.Ncells_params[i_shot][i_ncell].get_val(xval)
                 elif self.rescale_params:
@@ -1395,7 +1395,7 @@ class LocalRefiner(BaseRefiner):
     def _get_eta(self, i_shot):
         vals = [0, 0, 0]
         for i_eta in range(3):
-            xval = self.Xall[self.eta_xstart[i_shot]+ i_eta]
+            xval = self.x[self.eta_xstart[i_shot]+ i_eta]
             val = self.eta_params[i_shot][i_eta].get_val(xval)
             vals[i_eta] = val
             if not self.S.crystal.has_anisotropic_mosaicity:
@@ -1403,7 +1403,7 @@ class LocalRefiner(BaseRefiner):
         return vals
 
     def _get_spot_scale(self, i_shot):
-        xval = self.Xall[self.spot_scale_xpos[i_shot]]
+        xval = self.x[self.spot_scale_xpos[i_shot]]
         if self.rescale_params:
             sig = self.spot_scale_sigma
             init = self.spot_scale_init[i_shot]
@@ -1416,7 +1416,7 @@ class LocalRefiner(BaseRefiner):
 
     def _get_bg_coef(self, i_shot):
         assert (self.rescale_params)
-        val = self.Xall[self.bg_coef_xpos[i_shot]]
+        val = self.x[self.bg_coef_xpos[i_shot]]
         sig = self.bg_coef_sigma
         init = self.shot_bg_coef[i_shot]
         val = np_exp(sig*(val-1))*init
@@ -1426,14 +1426,14 @@ class LocalRefiner(BaseRefiner):
         """just used in testsing derivatives"""
         if self.rescale_params:
             self.spot_scale_init[0] = new_val
-            self.Xall[self.spot_scale_xpos[0]] = 1
+            self.x[self.spot_scale_xpos[0]] = 1
         else:
-            self.Xall[self.spot_scale_xpos[0]] = np_log(new_val)
+            self.x[self.spot_scale_xpos[0]] = np_log(new_val)
 
     def _get_bg_vals(self, i_shot, i_spot):
-        a_val = self.Xall[self.bg_a_xstart[i_shot][i_spot]]
-        b_val = self.Xall[self.bg_b_xstart[i_shot][i_spot]]
-        c_val = self.Xall[self.bg_c_xstart[i_shot][i_spot]]
+        a_val = self.x[self.bg_a_xstart[i_shot][i_spot]]
+        b_val = self.x[self.bg_b_xstart[i_shot][i_spot]]
+        c_val = self.x[self.bg_c_xstart[i_shot][i_spot]]
         if self.rescale_params:
             a_sig = self.a_sigma
             b_sig = self.b_sigma
@@ -1569,7 +1569,7 @@ class LocalRefiner(BaseRefiner):
         # i_fcell is between 0 and self.n_global_fcell
         # get the asu index and its updated amplitude
         xpos = self.fcell_xstart + i_fcell
-        val = self.Xall[xpos]  # new amplitude
+        val = self.x[xpos]  # new amplitude
         if self.rescale_params:
             resolution_id = self.res_group_id_from_fcell_index[i_fcell]  # TODO
             sig = self.sigma_for_res_id[resolution_id]*self.fcell_sigma_scale  # TODO
@@ -1578,7 +1578,7 @@ class LocalRefiner(BaseRefiner):
                 val = np_exp(sig*(val - 1))*init
             else:
                 if val < 0:  # NOTE this easily happens without the log c.o.v.
-                    self.Xall[xpos] = 0
+                    self.x[xpos] = 0
                     val = 0
                     self.num_Fcell_negative_model += 1
                 else:
@@ -1588,7 +1588,7 @@ class LocalRefiner(BaseRefiner):
             if self.log_fcells:
                 val = np_exp(val)
             if val < 0:  # NOTE this easily happens without the log c.o.v.
-                self.Xall[xpos] = 0
+                self.x[xpos] = 0
                 val = 0
                 self.num_Fcell_negative_model += 1
         return val
@@ -1596,7 +1596,7 @@ class LocalRefiner(BaseRefiner):
     def _store_updated_Fcell(self):
         if not self.refine_Fcell:
             return
-        xvals = self.Xall[self.fcell_xstart: self.fcell_xstart+self.n_global_fcell]
+        xvals = self.x[self.fcell_xstart: self.fcell_xstart+self.n_global_fcell]
         if self.rescale_params and self.log_fcells:
             sigs = self.fcell_sigmas_from_i_fcell
             inits = self.fcell_init_from_i_fcell
@@ -2015,7 +2015,7 @@ class LocalRefiner(BaseRefiner):
             assert self.rescale_params
 
             xpos = self.per_spot_scale_xpos[i_shot][i_spot]
-            val = self.Xall[xpos]
+            val = self.x[xpos]
             sig = self.per_spot_scale_sigma
             init = 1
             val = np_exp(sig * (val - 1)) * init
@@ -2042,7 +2042,7 @@ class LocalRefiner(BaseRefiner):
             pars = self._get_ucell_vars(self._i_shot)
         else:
             _s = slice(self.ucell_xstart[self._i_shot], self.ucell_xstart[self._i_shot] + self.n_ucell_param, 1)
-            pars = list(self.Xall[_s])
+            pars = list(self.x[_s])
         self.UCELL_MAN[self._i_shot].variables = pars
         self._send_ucell_gradients_to_derivative_managers()
         self.D.Bmatrix = self.UCELL_MAN[self._i_shot].B_recipspace
@@ -2134,14 +2134,14 @@ class LocalRefiner(BaseRefiner):
 
             # reset gradient and functional
             self.target_functional = 0
-            self._update_Xall_from_x()
+            #self._update_Xall_from_x()
 
             self.grad = flex_double(self.n_total_params)
             if self.calc_curvatures:
                 self.curv = flex_double(self.n_total_params)
 
             # current work has gain_fac at 1 (#TODO gain factor should effect the probability of observing the photons)
-            self.gain_fac = 1 #self.Xall[self.gain_xpos]
+            self.gain_fac = 1
             self.G2 = self.gain_fac ** 2
 
             LOGGER.info("start update Fcell")
@@ -2322,7 +2322,9 @@ class LocalRefiner(BaseRefiner):
             if self.only_save_model_for_shot:
                 return
             self._sanity_check_grad()
-            self.gnorm = norm(self.grad)
+            self.gnorm = -1
+            if self.compute_gnorm:
+                self.gnorm = norm(self.grad)
 
             if self.verbose:
                 # TODO, some of this is becoming crucial, so move out of verobse
@@ -2584,7 +2586,7 @@ class LocalRefiner(BaseRefiner):
                 # TODO make this part of a `parameter class`, so other parameters can borrow same code when using bounds
                 init = self.spectra_coefficients_init[i_coef]
                 sigma = self.spectra_coefficients_sigma[i_coef]
-                x = self.Xall[self.spectra_coef_xstart + i_coef]
+                x = self.x[self.spectra_coef_xstart + i_coef]
                 low, high = self.lambda_coef_ranges[i_coef]
                 rng = high - low
                 cos_arg = sigma * (x-1) + ASIN(2*(init-low)/rng - 1)
@@ -2636,7 +2638,7 @@ class LocalRefiner(BaseRefiner):
             if self.rescale_params:
                 if self.use_ucell_ranges:
                     xpos = self.ucell_xstart[self._i_shot] + i_ucell
-                    xval = self.Xall[xpos]
+                    xval = self.x[xpos]
                     d = self.ucell_params[self._i_shot][i_ucell].get_deriv(xval, d)
                 else:
                     sigma = self.ucell_sigmas[i_ucell]
@@ -2652,7 +2654,7 @@ class LocalRefiner(BaseRefiner):
                 if self.use_ucell_ranges:
                     d = self.ucell_dI_dtheta[i_ucell]
                     xpos = self.ucell_xstart[self._i_shot] + i_ucell
-                    xval = self.Xall[xpos]
+                    xval = self.x[xpos]
                     d2 = self.ucell_params[self._i_shot][i_ucell].get_second_deriv(xval, d, d2)
                 else:
                     sigma_squared = self.ucell_sigmas[i_ucell]**2
@@ -2677,7 +2679,7 @@ class LocalRefiner(BaseRefiner):
         if self.refine_ncells_def:
             for i_ncell in range(3):
                 xpos = self.ncells_def_xstart[self._i_shot] + i_ncell
-                xval = self.Xall[xpos]
+                xval = self.x[xpos]
                 d = self.Ncells_def_params[self._i_shot][i_ncell].get_deriv(xval, self.ncells_def_dI_dtheta[i_ncell])
                 self.grad[xpos] += self._grad_accumulate(d)
                 if self.calc_curvatures:
@@ -2699,7 +2701,7 @@ class LocalRefiner(BaseRefiner):
             for i_ncell in range(self.n_ncells_param):
                 if self.use_Ncells_range:
                     xpos = self.ncells_xstart[self._i_shot] + i_ncell
-                    xval = self.Xall[xpos]
+                    xval = self.x[xpos]
                     d = self.Ncells_params[self._i_shot][i_ncell].get_deriv(xval, self.m_dI_dtheta[i_ncell])
                     d2 = 0
                     if self.calc_curvatures:
@@ -2740,7 +2742,7 @@ class LocalRefiner(BaseRefiner):
 
                 panel_group_id = self.panel_group_from_id[self._panel_id]
                 xpos = self.panelRot_xstart + 3*panel_group_id + i_rot
-                xval = self.Xall[xpos]
+                xval = self.x[xpos]
                 d = self.panelRot_params[panel_group_id][i_rot].get_deriv(xval, d) ## apply chain rule for reparameterization
 
                 self.grad[xpos] += self._grad_accumulate(d)
@@ -2762,12 +2764,12 @@ class LocalRefiner(BaseRefiner):
             xpos_Z = self.panelZ_xstart + panel_group_id
 
             if self.refine_panelXY:
-                d_X = self.panelX_params[panel_group_id].get_deriv(self.Xall[xpos_X], d_X)
-                d_Y = self.panelY_params[panel_group_id].get_deriv(self.Xall[xpos_Y], d_Y)
+                d_X = self.panelX_params[panel_group_id].get_deriv(self.x[xpos_X], d_X)
+                d_Y = self.panelY_params[panel_group_id].get_deriv(self.x[xpos_Y], d_Y)
                 self.grad[xpos_X] += self._grad_accumulate(d_X)
                 self.grad[xpos_Y] += self._grad_accumulate(d_Y)
             if self.refine_panelZ:
-                d_Z = self.panelZ_params[panel_group_id].get_deriv(self.Xall[xpos_Z], d_Z)
+                d_Z = self.panelZ_params[panel_group_id].get_deriv(self.x[xpos_Z], d_Z)
                 self.grad[xpos_Z] += self._grad_accumulate(d_Z)
 
     def _detector_distance_derivatives(self):
@@ -2776,7 +2778,7 @@ class LocalRefiner(BaseRefiner):
                 if self.detector_distance_range is not None:
                     init = self.shot_detector_distance_init[self._i_shot]
                     sigma = self.detector_distance_sigma
-                    x = self.Xall[self.detector_distance_xpos[self._i_shot]]
+                    x = self.x[self.detector_distance_xpos[self._i_shot]]
                     low, high = self.detector_distance_range
                     rng = high - low
                     cos_arg = sigma * (x - 1) + ASIN(2 * (init - low) / rng - 1)
@@ -2888,7 +2890,7 @@ class LocalRefiner(BaseRefiner):
             for i_eta in range(3):
                 xpos = self.eta_xstart[self._i_shot] + i_eta
                 dI_dtheta = self.G2*self.scale_fac*self._eta_deriv[i_eta][self.roi_slice]
-                xval = self.Xall[xpos]
+                xval = self.x[xpos]
                 d = self.eta_params[self._i_shot][i_eta].get_deriv(xval, dI_dtheta)
                 self.grad[xpos] += self._grad_accumulate(d)
                 if self.calc_curvatures:
@@ -2937,7 +2939,7 @@ class LocalRefiner(BaseRefiner):
             for ii in range(self.n_shots):
                 for jj in range(self.n_ucell_param):
                     xpos = self.ucell_xstart[ii] + jj
-                    ucell_p = self.Xall[xpos]
+                    ucell_p = self.x[xpos]
                     sig_square = self.sig_ucell[jj] ** 2
                     self.target_functional += (ucell_p - self.ave_ucell[jj]) ** 2 / 2 / sig_square
                     self.grad[xpos] += (ucell_p - self.ave_ucell[jj]) / sig_square
@@ -2950,7 +2952,7 @@ class LocalRefiner(BaseRefiner):
                                self.rotY_xpos[self._i_shot],
                                self.rotZ_xpos[self._i_shot]]
                 for xpos in x_positions:
-                    rot_p = self.Xall[xpos]
+                    rot_p = self.x[xpos]
                     sig_square = self.sig_rot ** 2
                     self.target_functional += rot_p ** 2 / 2 / sig_square
                     self.grad[xpos] += rot_p / sig_square
@@ -2975,7 +2977,7 @@ class LocalRefiner(BaseRefiner):
         self.grad = self._MPI_reduce_broadcast(self.grad)
         LOGGER.info("unpacks")
         self.rotx, self.roty, self.rotz, self.uc_vals, self.ncells_vals, self.scale_vals, \
-        self.scale_vals_truths, self.origZ_vals = self._unpack_internal(self.Xall, lst_is_x=True)
+        self.scale_vals_truths, self.origZ_vals = self._unpack_internal(self.x, lst_is_x=True)
         self.Grotx, self.Groty, self.Grotz, self.Guc_vals, self.Gncells_vals, self.Gscale_vals, _, self.GorigZ_vals = \
             self._unpack_internal(self.grad, lst_is_x=False)
         if self.calc_curvatures:
@@ -3014,7 +3016,7 @@ class LocalRefiner(BaseRefiner):
                 is_ref[self.is_negative_curvature] = False
                 self.is_being_refined = FLEX_BOOL(is_ref)
                 # set the BFGS parameter array
-                self.x = self.x_for_lbfgs
+                #self.x = self.x_for_lbfgs
                 assert( self.n == len(self.x))
                 # make the mapping from x to Xall
                 refine_pos = WHERE(self.is_being_refined.as_numpy_array())[0]
@@ -3185,8 +3187,8 @@ class LocalRefiner(BaseRefiner):
                 fvals = [self._get_fcell_val(i_fcell) for i_fcell in range(self.n_global_fcell)]
                 fvals = ARRAY(fvals)
             else:
-                fvals = self.Xall[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
-            SAVEZ(outf, fvals=fvals, x=self.Xall.as_numpy_array())
+                fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
+            SAVEZ(outf, fvals=fvals, x=self.x.as_numpy_array())
 
     def _show_plots(self, i_spot, n_spots):
         if self.I_AM_ROOT and self.plot_images and self.iterations % self.plot_stride == 0 and self._i_shot == self.index_of_displayed_image:
@@ -3329,7 +3331,7 @@ class LocalRefiner(BaseRefiner):
 
 
                 master_data = pandas.DataFrame(master_data)
-                master_data["gain"] = 1 #self.Xall[self.gain_xpos]
+                master_data["gain"] = 1
                 self.print(master_data.to_string(float_format="%2.7g"))
 
     def print_step_grads(self):
@@ -3649,7 +3651,7 @@ class LocalRefiner(BaseRefiner):
             if self.rescale_params:
                 a = vars[i]
             else:
-                a = self.Xall[self.ucell_xstart[0] + i]
+                a = self.x[self.ucell_xstart[0] + i]
 
             if i == 3:
                 a = a * 180 /PI
@@ -3743,7 +3745,7 @@ class LocalRefiner(BaseRefiner):
     def _combine_data_to_save(self):
         # Here we can save the refined parameters
         my_shots = self.NANOBRAGG_ROIS.keys()
-        x = self.Xall
+        x = self.x
         self.data_to_send = []
         image_corr = self.image_corr
         if image_corr is None:
