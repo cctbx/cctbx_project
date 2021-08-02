@@ -38,6 +38,9 @@ def readResidues(inFile):
     options = globals.options
 
     lines = inFile.readlines()
+    # catch a specific  error notation:
+    if lines[0].strip().startswith("Atom pair"):
+        del lines[0]
     residues = []
     for line in lines:
         if len(line.strip()) == 0 or line[0] == "#":  # blank or comment line
