@@ -989,6 +989,13 @@ class xia2_module(SourceModule):
                'https://github.com/xia2/xia2.git',
                'https://github.com/xia2/xia2/archive/main.zip']
 
+class kokkos_module(SourceModule):
+  module = 'kokkos'
+  anonymous = ['git',
+               'git@github.com:kokkos/kokkos.git',
+               'https://github.com/kokkos/kokkos.git',
+               'https://github.com/kokkos/kokkos/archive/master.zip']
+
 # Duke repositories
 class probe_module(SourceModule):
   module = 'probe'
@@ -2168,7 +2175,7 @@ class CCTBXBuilder(CCIBuilder):
         workdir=workdir))
 
 class DIALSBuilder(CCIBuilder):
-  CODEBASES_EXTRA = ['dials', 'iota', 'xia2']
+  CODEBASES_EXTRA = ['dials', 'iota', 'xia2', 'kokkos']
   LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
   HOT_EXTRA = ['msgpack']
   def add_tests(self):
