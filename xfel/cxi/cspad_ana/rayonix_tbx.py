@@ -38,6 +38,7 @@ def get_rayonix_detector_dimensions(env):
   import psana
   cfgs = env.configStore()
   rayonix_cfg = cfgs.get(psana.Rayonix.ConfigV2, psana.Source('Rayonix'))
+  if not rayonix_cfg: return None, None
   return rayonix_cfg.width(), rayonix_cfg.height()
 
 def get_rayonix_cbf_handle(tiles, metro, timestamp, cbf_root, wavelength, distance, bin_size, detector_size, verbose = True, header_only = False):
