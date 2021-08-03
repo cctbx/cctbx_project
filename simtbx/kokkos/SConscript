@@ -18,9 +18,16 @@ if os.getenv('KOKKOS_CUDA_OPTIONS') is None:
   os.environ['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
 os.environ['LDFLAGS'] = '-Llib -L$(CUDA_HOME)/lib64'
 os.environ['LDLIBS'] = '-lkokkos -ldl -lcudart -lcuda'
+if os.getenv('CXX') is not None:
+  os.environ['ORIGINAL_SIMTBX_CXX'] = os.environ['CXX']
+os.environ['CXX'] = os.path.join(os.environ['KOKKOS_PATH'], 'bin', 'nvcc_wrapper')
 try:
+  print('='*79)
+  print('Building Kokkos')
+  print('-'*79)
   returncode = subprocess.call(['make', '-f', 'Makefile.kokkos', 'libkokkos.a'],
                                cwd=os.environ['KOKKOS_PATH'])
+  print('='*79)
 except Exception:
   print('Error: libkokkos.a did not build correctly')
   EXIT(returncode)
@@ -28,6 +35,10 @@ except Exception:
 # libsimtbx_kokkos.so
 
 # simtbx_kokkos_ext.so
+
+# reset CXX
+if os.getenv('ORIGINAL_SIMTBX_CXX') is not None:
+  os.environ['CXX'] = os.environ['ORIGINAL_SIMTBX_CXX']
 
 # cmd = "cd ../../../modules/cctbx_project/simtbx/kokkos/;"
 # cmd += "make"
