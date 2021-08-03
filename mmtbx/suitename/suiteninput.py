@@ -39,7 +39,7 @@ def readResidues(inFile):
 
     lines = inFile.readlines()
     # catch a specific  error notation:
-    if lines[0].strip().startswith("Atom pair"):
+    while lines[0].strip().startswith("Atom pair"):
         del lines[0]
     residues = []
     for line in lines:
