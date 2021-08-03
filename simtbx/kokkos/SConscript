@@ -1,16 +1,45 @@
 import os
+import subprocess
 
-cmd = "cd ../../../modules/cctbx_project/simtbx/kokkos/;"
-cmd += "make"
-#cmd += " KOKKOS_PATH=../../../kokkos/"
-#cmd += " KOKKOS_DEVICES=Cuda"
-cmd += " VERBOSE=1"
+import libtbx.load_env
 
-print("********** ALL HIER ************")
-print(os.system('pwd'))
-retval = os.system(cmd)
-print(retval)
-print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+Import("env", "env_etc")
+
+# libkokkos.a
+# call kokkos build system directly
+# set environment variable defaults if necessary
+if os.getenv('KOKKOS_DEVICES') is None:
+  os.environ['KOKKOS_DEVICES'] = "Cuda"
+if os.getenv('KOKKOS_PATH') is None:
+  os.environ['KOKKOS_PATH'] = libtbx.env.under_dist('simtbx', '../../kokkos')
+if os.getenv('KOKKOS_ARCH') is None:
+  os.environ['KOKKOS_ARCH'] = "Volta70"
+if os.getenv('KOKKOS_CUDA_OPTIONS') is None:
+  os.enivron['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
+os.environ['LDFLAGS'] = '-Llib -L$(CUDA_HOME)/lib64'
+os.environ['LDLIBS'] = '-lkokkos -ldl -lcudart -lcuda'
+try:
+  returncode = subprocess.call(['make', '-f', 'Makefile.kokkos', 'libkokkos.a'],
+                               cwd=os.environ['KOKKOS_PATH'])
+except Exception:
+  print('Error: libkokkos.a did not build correctly')
+  EXIT(returncode)
+
+# libsimtbx_kokkos.so
+
+# simtbx_kokkos_ext.so
+
+# cmd = "cd ../../../modules/cctbx_project/simtbx/kokkos/;"
+# cmd += "make"
+# #cmd += " KOKKOS_PATH=../../../kokkos/"
+# #cmd += " KOKKOS_DEVICES=Cuda"
+# cmd += " VERBOSE=1"
+
+# print("********** ALL HIER ************")
+# print(os.system('pwd'))
+# retval = os.system(cmd)
+# print(retval)
+# print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 
 
 #Import("env", "env_etc")
@@ -27,4 +56,3 @@ print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 #env_bpl = env_boost_python_ext.Clone()
 
 #env_bpl.Prepend()
-
