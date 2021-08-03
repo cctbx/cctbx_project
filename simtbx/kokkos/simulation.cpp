@@ -46,7 +46,7 @@ namespace Kokkos {
                 new_unit_vector[2] = v2 / mag;
                 new_unit_vector[3] = v3 / mag;
         } else {
-                // can't normalize, report zero vector 
+                // can't normalize, report zero vector
                 new_unit_vector[0] = 0.0;
                 new_unit_vector[1] = 0.0;
                 new_unit_vector[2] = 0.0;
@@ -144,7 +144,7 @@ namespace Kokkos {
       SIM.interpolate, current_channel_Fhkl, kec.m_FhklParams, SIM.nopolar,
       m_polar_vector, SIM.polarization, SIM.fudge,
       // &(kdt.m_maskimage[panel_size * panel_id]),
-      NULL, 
+      NULL,
       // return arrays:
       &(kdt.m_floatimage[panel_size * panel_id]),
       &(kdt.m_omega_reduction[panel_size * panel_id]),
@@ -279,7 +279,7 @@ namespace Kokkos {
           kdt.m_max_I_x_reduction(j) = 0;
           kdt.m_max_I_y_reduction(j) = 0;
           kdt.m_rangemap(j) = false;
-        });       
+        });
         // nanoBraggSpotsInitCUDAKernel<<<numBlocks, threadsPerBlock>>>(
         //   kdt.m_panel_count * kdt.m_slow_dim_size, kdt.m_fast_dim_size,
         //   kdt.cu_floatimage, kdt.cu_omega_reduction,
@@ -385,7 +385,7 @@ namespace Kokkos {
 
     int mosaic_domains_count = SIM.mosaic_domains;
     transfer_double2kokkos(m_mosaic_umats, SIM.mosaic_umats, mosaic_domains_count * 9);
-    
+
     // cudaSafeCall(cudaMalloc((void ** )&cu_polar_vector, sizeof(*cu_polar_vector) * vector_length));
     // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_polar_vector, polar_vector_unitized, vector_length));
 
