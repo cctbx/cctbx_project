@@ -285,13 +285,21 @@ class SingletonOptimizer:
 
         # Do coarse optimization on the singleton Movers.  Record the selected coarse
         # index.
-        self._coarseLocation = {}
+        self._coarseLocations = {}
         for s in singletonCliques:
           mover = movers[s[0]]
-          self._coarseLocation[mover] = self._optimizeSingleMoverCoarse(mover)
+          self._coarseLocations[mover] = self._optimizeSingleMoverCoarse(mover)
 
-        # Do coarse optimization on the multi-Mover Cliques
-        # @todo
+        # Do coarse optimization on the multi-Mover Cliques.  Record the selected
+        # coarse indices for each Mover in each Clique.
+        for g in groupCliques:
+          clique = []
+          for m in g:
+            mover = movers[m]
+            clique.append(mover)
+          ret = self._optimizeCliqueCoarse(clique)
+          for i,v in enumerate(ret):
+            self._coarseLocations[clique[i]] = v
 
         # Do fine optimization on the Movers.  This is done independently for
         # all of them, whether they are part of a multi-Mover Clique or not.
@@ -337,7 +345,6 @@ class SingletonOptimizer:
         self._infoString += _VerboseCheck(10,"Ensuring deletable atom is present\n")
 
   def _scoreAtom(self, atom):
-    # @todo
     maxRadiusWithoutProbe = (self._extraAtomInfo.getMappingFor(atom).vdwRadius +
       AtomTypes.AtomTypes().MaximumVDWRadius())
     return self._dotScorer.score_dots(atom, self._minOccupancy, self._spatialQuery,
@@ -346,8 +353,10 @@ class SingletonOptimizer:
 
   def _optimizeSingleMoverCoarse(self, mover):
     # Find the coarse score for the Mover in all orientations by moving each atom into the
-    # specified position and summing the scores over all of them.
-    # Including counting the preference energies.
+    # specified position and summing the scores over all of them.  Determine the best
+    # orientation by selecting the highest scorer unless it is not more than the bias
+    # above the original.
+    # Add the preference energy to the sum for each orientation.
     # :return the index of the coarse position selected for the Mover.
     coarse = mover.CoarsePositions()
     scores = coarse.preferenceEnergies.copy()
@@ -367,7 +376,7 @@ class SingletonOptimizer:
         maxIndex = i;
 
     # Ensure it is far enough about the base to be swapped (global threshold) by adding a bias
-    # to the original score.
+    # to the original score.  If not, reset to the original orientation.
     if maxScore < scores[0] + self._initialOrientationBias:
       maxIndex = 0
 
@@ -376,9 +385,22 @@ class SingletonOptimizer:
       f", max score = {maxScore:.2f} (initial score {scores[0]:.2f})\n")
     self._setCoarseMoverState(coarse, maxIndex)
 
-    # @todo
-
     return maxIndex
+
+  def _optimizeCliqueCoarse(self, movers):
+    # @todo Override this method in derived classes.
+    # The SingletonOptimizer class just calls the single-Mover optimimization for each
+    # of the elements in the Clique and returns the vector of their results.  This should
+    # be overridden in derived classes to actually check for the joint maximum score over
+    # all of the Movers simultaneously.
+    # :param movers: List of Movers in the clique to be optimized.
+    # :return List of the indices of the coarse position selected for each Mover in the same
+    # order they were listed in the movers list.
+    ret = []
+    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(movers)} as singletons\n")
+    for m in movers:
+      ret.append(self._optimizeSingleMoverCoarse(m))
+    return ret
 
 ##################################################################################
 # Placement
