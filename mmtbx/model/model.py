@@ -282,9 +282,24 @@ class manager(object):
     # Handle BIOMT. Keep track of BIOMT matrices (to allow to expand later)
     self.biomt_operators = None
     if(self._model_input is not None):
-      try: # ugly work-around for limited support of BIOMT
-        self.biomt_operators = self._model_input.process_BIOMT_records()
-      except RuntimeError: pass
+      if self._original_model_format == "mmcif":
+        from iotbx.mtrix_biomt import StructAssemblies
+        assemblies = StructAssemblies(self._model_input)
+        try:
+          self._assembly_operators = assemblies.get_assembly_operators()
+          # select first one by default, set to None if none found
+          if len(self._assembly_operators.keys()) > 0:
+            key = self._assembly_operators.keys()[0]
+            self.biomt_operators = self._assembly_operators[key]
+          else:
+            self.biomt_operators = None
+        except RuntimeError:
+          pass
+          self._assembly_operators= None
+      if self._original_model_format == "pdb":
+        try: # ugly work-around for limited support of BIOMT
+          self.biomt_operators = self._model_input.process_BIOMT_records()
+        except RuntimeError: pass
     self._biomt_expanded = False
     # Process model_input and optionally make restraints. This will set
     # self._pdb_hierarchy, self._xray_structure, self._crystal_symmetry and more
@@ -3747,13 +3762,22 @@ class manager(object):
     self._expand_symm_helper(self.mtrix_operators)
     self._mtrix_expanded = True
 
-  def expand_with_BIOMT_records(self):
+  def expand_with_BIOMT_records(self,assembly_id=None):
     """
     expanding current hierarchy and ss_annotations with BIOMT matrices.
     Known limitations: will expand everything, regardless of what selections
     were setted in BIOMT header.
     """
     if(self.biomt_expanded()): return
+
+    # if assembly_id is provided, reset biomt_operators
+    if assembly_id is not None and self._assembly_operators is not None:
+      if isinstance(assembly_id,int):
+        assembly_id = str(assembly_id)
+      if assembly_id in self._assembly_operators.keys():
+        self.biomt_operators = self._assembly_operators[assembly_id]
+      else:
+        return
     if not self._biomt_mtrix_container_is_good(self.biomt_operators):
       return
     # Check if BIOMT and MTRIX are identical and then do not apply BIOMT

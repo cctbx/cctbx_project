@@ -4,6 +4,8 @@ import iotbx.pdb
 from libtbx.utils import Sorry
 from six import string_types
 from six.moves import range, zip
+import re
+from collections import OrderedDict
 
 class container(object):
 
@@ -71,24 +73,231 @@ class container(object):
   def is_empty(self):
     return len(self.r) == 0
 
+
+from libtbx import adopt_init_args
+from libtbx import group_args
+import re
+from libtbx.utils import Sorry
+from iotbx.mtrix_biomt import container
+
+
+class StructAssemblies:
+  def __init__(self, mmcif_input):
+    model_input = mmcif_input
+    cif_block = model_input.cif_block
+
+    adopt_init_args(self, locals())
+
+    self.has_assembly = self.cif_block.get("_pdbx_struct_assembly") is not None
+    self.has_assembly_gen = self.cif_block.get(
+      "_pdbx_struct_assembly_gen") is not None
+    self.has_assembly_oper = self.cif_block.get(
+      "_pdbx_struct_oper_list") is not None
+    self.has_structs = all(
+      [self.has_assembly, self.has_assembly_gen, self.has_assembly_oper])
+    self.has_assembly_ncs = self.cif_block.get('_struct_ncs_oper') is not None
+    if self.has_structs:
+      self.assembly_ids = list(
+        self.cif_block.get("_pdbx_struct_assembly_gen.assembly_id"))
+
+  @property
+  def ncs_full_container(self):
+    if not hasattr(self, "_ncs_full_container"):
+      if not self.has_assembly_ncs:
+        self._ncs_full_container = None
+      else:
+        rots, trans, serial_number, coordinates_present = \
+          self.get_all_rots_trans(block_name='_struct_ncs_oper')
+        self._ncs_full_container = container.from_lists(rots, trans,
+                                                        serial_number,
+                                                        coordinates_present)
+    return self._ncs_full_container
+
+  @property
+  def struct_full_container(self):
+    if not hasattr(self, "_struct_full_container"):
+      if not self.has_assembly_oper:
+        self._struct_full_container = None
+      else:
+        rots, trans, serial_number, coordinates_present = \
+          self.get_all_rots_trans(block_name="_pdbx_struct_oper_list")
+        self._struct_full_container = container.from_lists(rots, trans,
+                                                           serial_number,
+                                                           coordinates_present)
+    return self._struct_full_container
+
+  def get_all_rots_trans(self, block_name="_pdbx_struct_oper_list"):
+    cif_block = self.cif_block
+    assert block_name in ["_pdbx_struct_oper_list", '_struct_ncs_oper']
+    rots = []
+    trans = []
+    serial_number = []
+    coordinates_present = []
+    oper_types = []
+
+    oper_type = ncs_oper_type = cif_block.get('%s.type' % block_name)
+    oper_id = cif_block.get('%s.id' % block_name)
+    if oper_id is not None:
+      for i, sn in enumerate(oper_id):
+        serial_number.append((sn, i))
+        if block_name == '_struct_ncs_oper':
+          coordinates_present.append(
+            cif_block.get('%s.code' % block_name)[i] == 'given')
+        else:
+          coordinates_present.append(False)  # no way to figure out
+        r = [(cif_block.get('%s.matrix[%s][%s]' % (block_name, x, y)))
+             for x, y in ('11', '12', '13', '21', '22', '23', '31', '32', '33')]
+        if not isinstance(r[0], string_types):
+          r = [elem[i] for elem in r]
+        try:
+          rots.append(matrix.sqr([float(r_elem) for r_elem in r]))
+          t = [(cif_block.get('%s.vector[%s]' % (block_name, x)))
+               for x in '123']
+          if not isinstance(t[0], string_types):
+            t = [elem[i] for elem in t]
+          trans.append(matrix.col([float(t_elem) for t_elem in t]))
+        except ValueError:
+          raise Sorry(
+            "Error in %s information. Likely '?' instead of a number." % block_name)
+      if block_name == "_struct_ncs_oper":
+        # sort records by serial number
+        serial_number.sort()
+        items_order = [i for (_, i) in serial_number]
+        trans = [trans[i] for i in items_order]
+        rots = [rots[i] for i in items_order]
+        coordinates_present = [coordinates_present[i] for i in items_order]
+      serial_number = [j for (j, _) in serial_number]
+    return rots, trans, serial_number, coordinates_present
+
+  def get_ncs_container(self):
+    return self.ncs_full_container
+
+  def get_assembly_operators(self):
+    struct_containers = OrderedDict()
+    if self.has_structs:
+      for assembly_id in self.assembly_ids:
+        new_container = self.container_by_id(assembly_id=assembly_id)
+        struct_containers[assembly_id] = new_container
+    return struct_containers
+
+  def container_by_id(self, assembly_id=None):
+    if assembly_id is None:
+      assembly_id = self.assembly_ids[0]
+
+    elif isinstance(assembly_id, int):
+      assembly_id = str(assembly_id)
+
+    if assembly_id not in self.assembly_ids:
+      raise Sorry(
+        "Assembly id requested not found in pdbx_struct_assembly information.")
+
+    oper_ids = self.extract_oper_expression(assembly_id)
+    rots = []
+    trans = []
+    serial_number = []
+    coordinates_present = []
+    for i, sn in enumerate(self.struct_full_container.serial_number):
+      if sn in oper_ids:
+        if sn not in ["X0"]:
+          rots.append(self.struct_full_container.r[i])
+          trans.append(self.struct_full_container.t[i])
+          serial_number.append(self.struct_full_container.serial_number[i])
+          coordinates_present.append(
+            self.struct_full_container.coordinates_present[i])
+    new_container = container.from_lists(rots, trans, serial_number,
+                                         coordinates_present)
+
+    return new_container
+
+  def extract_oper_expression(self, assembly_id=None):
+    """
+    Reads cif file to parse assembly expressions, ie:
+
+    loop_
+    _pdbx_struct_assembly_gen.assembly_id
+    _pdbx_struct_assembly_gen.oper_expression
+    _pdbx_struct_assembly_gen.asym_id_list
+    1 '(1-60)'                       A,B,C,D
+    3 '(1-5)'                        A,B,C,D
+    # etc
+    returns: list of oper ids
+    """
+    if self.has_assembly and self.has_assembly_gen and self.has_assembly_oper:
+      if assembly_id is None:
+        assembly_id = self.assembly_ids[0]
+
+      assembly_idx = self.assembly_ids.index(assembly_id)
+      cif_block = self.cif_block
+
+      all_ids = list(cif_block.get("_pdbx_struct_oper_list.id"))
+      oper_expressions = list(
+        cif_block.get("_pdbx_struct_assembly_gen.oper_expression"))
+      expression = oper_expressions[assembly_idx]
+      oper_ids = []
+      paren_groups = re.findall('\(([^)]+)', expression)
+      if len(paren_groups) == 0:
+        oper_ids.append(expression)
+      else:
+        comma_groups = []
+        for paren_group in paren_groups:
+          if "," in paren_group:
+            split = paren_group.split(",")
+            for s in split:
+              comma_groups.append(s)
+          else:
+            comma_groups.append(paren_group)
+        for comma_group in comma_groups:
+          dash_groups = []
+          if "-" in comma_group:
+            split = comma_group.split("-")
+            assert (len(split) == 2)
+            a, b = int(split[0]), int(split[1])
+            rang = [str(i) for i in range(a, b + 1)]
+            for r in rang:
+              dash_groups.append(r)
+          else:
+            dash_groups.append(comma_group)
+          for dash_group in dash_groups:
+            oper_ids.append(dash_group)
+
+      return oper_ids
+
+  def show(self):
+    # for debugging
+    cif_block = self.cif_block
+    print("Has assemblies:", self.has_assembly)
+    if self.has_assembly:
+      cif_block.get("_pdbx_struct_assembly").show()
+    print("\nHas assembly gen:", self.has_assembly_gen)
+    if self.has_assembly_gen:
+      cif_block.get("_pdbx_struct_assembly_gen").show()
+
+    print("\nHas assembly oper:", self.has_assembly_oper)
+    if self.has_assembly_oper:
+      print("N operations:",
+            len(list(cif_block.get("_pdbx_struct_oper_list.id"))))
+
+    print("\nHas assembly ncs:", self.has_assembly_ncs)
+    if self.has_assembly_ncs:
+      print("N operations:", len(list(cif_block.get('_struct_ncs_oper.id'))))
+
 def parse_MTRIX_BIOMT_records_cif(cif_block, recs='mtrix'):
   # this is temporarily work-around. Whole thing for matrices need to be
   # rewritten to be able to carry all the info from mmCIF, see
   # https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/biological-assemblies#Anchor-Biol
-
+  # --> See new class StructAssemblies as a potential replacement.
   assert recs in ['mtrix', 'biomt']
   block_name = '_struct_ncs_oper' if recs=='mtrix' else '_pdbx_struct_oper_list'
   rots = []
   trans = []
   serial_number = []
   coordinates_present = []
-  ncs_oper = cif_block.get('%s.id' % block_name)
-  if ncs_oper is not None:
-    if recs=='mtrix' or (recs=='biomt' and ncs_oper != "P" and ncs_oper != "X0" and ncs_oper != "H"):
-      # filter everything for X0 and P here:
-      # Why??? Nobody promised that id would be integer, it is a 'single word':
-      # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_pdbx_struct_oper_list.id.html
-      for i,sn in enumerate(ncs_oper):
+  ncs_oper_id = cif_block.get('%s.id' % block_name)
+  if recs == "biomt":
+    ncs_oper_type = cif_block.get('%s.type' % block_name)
+  if ncs_oper_id is not None:
+    for i,sn in enumerate(ncs_oper_id):
+      if recs == 'mtrix' or (recs == 'biomt' and ncs_oper_type[i] == "point symmetry operation"):
         serial_number.append((sn,i))
         if recs == 'mtrix':
           coordinates_present.append(cif_block.get('%s.code' % block_name)[i] == 'given')
@@ -114,7 +323,7 @@ def parse_MTRIX_BIOMT_records_cif(cif_block, recs='mtrix'):
     trans = [trans[i] for i in items_order]
     rots = [rots[i] for i in items_order]
     coordinates_present = [coordinates_present[i] for i in items_order]
-    serial_number = [j for (j,_) in serial_number]
+  serial_number = [j for (j,_) in serial_number]
   return rots, trans, serial_number, coordinates_present
 
 def process_BIOMT_records_cif(cif_block):
