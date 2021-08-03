@@ -15,7 +15,7 @@ if os.getenv('KOKKOS_PATH') is None:
 if os.getenv('KOKKOS_ARCH') is None:
   os.environ['KOKKOS_ARCH'] = "Volta70"
 if os.getenv('KOKKOS_CUDA_OPTIONS') is None:
-  os.enivron['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
+  os.environ['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
 os.environ['LDFLAGS'] = '-Llib -L$(CUDA_HOME)/lib64'
 os.environ['LDLIBS'] = '-lkokkos -ldl -lcudart -lcuda'
 try:
