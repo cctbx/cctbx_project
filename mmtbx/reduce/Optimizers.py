@@ -76,7 +76,8 @@ class SingletonOptimizer:
                 probeRadius = 0.25,
                 useNeutronDistances = False,
                 probeDensity = 16.0,
-                minOccupancy = 0.01
+                minOccupancy = 0.01,
+                initialOrientationBias = 1.0
               ):
     """Constructor for SingletonOptimizer.  This is the base class for all optimizers and
     it implements the machinery that finds and optimized Movers.
@@ -109,6 +110,8 @@ class SingletonOptimizer:
     values used to generate the hydrogens and to run PDB interpretation.
     :param probeDensity: How many dots per sq Angstroms in VDW calculations.
     :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
+    :param initialOrientationBias: A rotated orientation has to be this much better than the
+    score for the original rotation for a Mover to cause it to switch orientations.
     """
 
     ################################################################################
@@ -118,6 +121,7 @@ class SingletonOptimizer:
     self._useNeutronDistances = useNeutronDistances
     self._probeDensity = probeDensity
     self._minOccupancy = minOccupancy
+    self._initialOrientationBias = initialOrientationBias
 
     ################################################################################
     # Initialize my information string to empty.
@@ -169,7 +173,10 @@ class SingletonOptimizer:
           ", alternate '"+ai+"'\n")
         self._infoString += _VerboseCheck(1,"  bondedNeighborDepth = "+str(self._bondedNeighborDepth)+"\n")
         self._infoString += _VerboseCheck(1,"  probeRadius = "+str(self._probeRadius)+"\n")
-        self._infoString += _VerboseCheck(1,"  useNeutronDistances = "+str(useNeutronDistances)+"\n")
+        self._infoString += _VerboseCheck(1,"  useNeutronDistances = "+str(self._useNeutronDistances)+"\n")
+        self._infoString += _VerboseCheck(1,"  probeDensity = "+str(self._probeDensity)+"\n")
+        self._infoString += _VerboseCheck(1,"  minOccupancy = "+str(self._minOccupancy)+"\n")
+        self._infoString += _VerboseCheck(1,"  initialOrientationBias = "+str(self._initialOrientationBias)+"\n")
 
         # Get the atoms from the specified conformer in the model (the empty string is the name
         # of the first conformation in the model; if there is no empty conformation, then it will
@@ -359,12 +366,14 @@ class SingletonOptimizer:
         maxScore = scores[i]
         maxIndex = i;
 
-    # Ensure it is far enough about the base to be swapped (global threshold)
-    # @todo
+    # Ensure it is far enough about the base to be swapped (global threshold) by adding a bias
+    # to the original score.
+    if maxScore < scores[0] + self._initialOrientationBias:
+      maxIndex = 0
 
     # Put the Mover into its final position (which may be back to its initial position)
     self._infoString += _VerboseCheck(1,f"Setting single Mover to coarse orientation {maxIndex}"+
-      f", score = {maxScore:.2f} (initial score {scores[0]:.2f})\n")
+      f", max score = {maxScore:.2f} (initial score {scores[0]:.2f})\n")
     self._setCoarseMoverState(coarse, maxIndex)
 
     # @todo
