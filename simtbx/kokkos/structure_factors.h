@@ -51,7 +51,7 @@ struct kokkos_energy_channels {
         SCITBX_ASSERT (!(h_range < 0 || k_range < 0 || l_range < 0));
     }
     m_FhklParams = { h_range * k_range * l_range,
-                        h_min, h_max, h_range, 
+                        h_min, h_max, h_range,
                         k_min, k_max, k_range,
                         l_min, l_max, l_range };
 
