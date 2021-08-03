@@ -305,11 +305,33 @@ class SingletonOptimizer:
         # all of them, whether they are part of a multi-Mover Clique or not.
         # @todo
 
-        # Do FixUp on the final orientations.
-        # @todo
+        # Do FixUp on the final coarse orientations.  Set the positions, extra atom info
+        # and deletion status for all atoms that have entries for each.
+        self._infoString += _VerboseCheck(1,f"FixUp on all Movers\n")
+        for m in movers:
+          loc = self._coarseLocations[m]
+          self._infoString += _VerboseCheck(2,f"FixUp on {type(m)} coarse location {loc}\n")
+          fixUp = m.FixUp(loc)
+          myAtoms = fixUp.atoms
+          for i, p in enumerate(fixUp.positions):
+            self._infoString += _VerboseCheck(5,f"Moving atom to {p}\n")
+            myAtoms[i].xyz = p
+          for i, e in enumerate(fixUp.extraInfos):
+            self._infoString += _VerboseCheck(5,f"Atom info to {e}\n")
+            self._extraAtomInfo.setMappingFor(myAtoms[i], e)
+          for i, d in enumerate(fixUp.deleteMes):
+            # Either ensure that it is deleted or ensure that it is not depending on the
+            # value of the deletion result.
+            self._infoString += _VerboseCheck(5,f"Atom deleted is {d}\n")
+            if d:
+              self._deleteMes.add(myAtoms[i])
+            else:
+              self._deleteMes.discard(myAtoms[i])
 
         ################################################################################
-        # @todo Deletion of Hydrogens that were requested by Histidine FixUp()s.
+        # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,
+        # both in the initial setup and determined during optimization.
+        # @todo
 
   def getInfo(self):
     """
