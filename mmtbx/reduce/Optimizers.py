@@ -77,7 +77,7 @@ class SingletonOptimizer:
                 useNeutronDistances = False,
                 probeDensity = 16.0,
                 minOccupancy = 0.01,
-                initialOrientationBias = 1.0
+                preferenceMagnitude = 1.0
               ):
     """Constructor for SingletonOptimizer.  This is the base class for all optimizers and
     it implements the machinery that finds and optimized Movers.
@@ -110,8 +110,8 @@ class SingletonOptimizer:
     values used to generate the hydrogens and to run PDB interpretation.
     :param probeDensity: How many dots per sq Angstroms in VDW calculations.
     :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
-    :param initialOrientationBias: A rotated orientation has to be this much better than the
-    score for the original rotation for a Mover to cause it to switch orientations.
+    :param preferenceMagnitude: Multiplier for the preference energies expressed
+    by some Movers for particular orientations.
     """
 
     ################################################################################
@@ -121,7 +121,7 @@ class SingletonOptimizer:
     self._useNeutronDistances = useNeutronDistances
     self._probeDensity = probeDensity
     self._minOccupancy = minOccupancy
-    self._initialOrientationBias = initialOrientationBias
+    self._preferenceMagnitude = preferenceMagnitude
 
     ################################################################################
     # Initialize my information string to empty.
@@ -176,7 +176,7 @@ class SingletonOptimizer:
         self._infoString += _VerboseCheck(1,"  useNeutronDistances = "+str(self._useNeutronDistances)+"\n")
         self._infoString += _VerboseCheck(1,"  probeDensity = "+str(self._probeDensity)+"\n")
         self._infoString += _VerboseCheck(1,"  minOccupancy = "+str(self._minOccupancy)+"\n")
-        self._infoString += _VerboseCheck(1,"  initialOrientationBias = "+str(self._initialOrientationBias)+"\n")
+        self._infoString += _VerboseCheck(1,"  preferenceMagnitude = "+str(self._preferenceMagnitude)+"\n")
 
         # Get the atoms from the specified conformer in the model (the empty string is the name
         # of the first conformation in the model; if there is no empty conformation, then it will
@@ -302,7 +302,11 @@ class SingletonOptimizer:
             self._coarseLocations[clique[i]] = v
 
         # Do fine optimization on the Movers.  This is done independently for
-        # all of them, whether they are part of a multi-Mover Clique or not.
+        # each of them, whether they are part of a multi-Mover Clique or not.
+        self._infoString += _VerboseCheck(1,f"Fine optimization on all Movers\n")
+        #for m in movers:
+        #  self.
+
         # @todo
 
         # Do FixUp on the final coarse orientations.  Set the positions, extra atom info
@@ -330,7 +334,9 @@ class SingletonOptimizer:
 
         ################################################################################
         # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,
-        # both in the initial setup and determined during optimization.
+        # both in the initial setup and determined during optimization.  Phantom Hydrogens
+        # on waters do not need to be adjusted because they were never added to the
+        # structure.
         # @todo
 
   def getInfo(self):
@@ -378,10 +384,13 @@ class SingletonOptimizer:
     # specified position and summing the scores over all of them.  Determine the best
     # orientation by selecting the highest scorer unless it is not more than the bias
     # above the original.
-    # Add the preference energy to the sum for each orientation.
+    # Add the preference energy to the sum for each orientation scaled by our preference
+    # magnitude.
     # :return the index of the coarse position selected for the Mover.
     coarse = mover.CoarsePositions()
     scores = coarse.preferenceEnergies.copy()
+    for i in range(len(scores)):
+      scores[i] *= self._preferenceMagnitude
     for i in range(len(coarse.positions)):
       self._setCoarseMoverState(coarse, i)
 
@@ -396,11 +405,6 @@ class SingletonOptimizer:
       if scores[i] > maxScore:
         maxScore = scores[i]
         maxIndex = i;
-
-    # Ensure it is far enough about the base to be swapped (global threshold) by adding a bias
-    # to the original score.  If not, reset to the original orientation.
-    if maxScore < scores[0] + self._initialOrientationBias:
-      maxIndex = 0
 
     # Put the Mover into its final position (which may be back to its initial position)
     self._infoString += _VerboseCheck(1,f"Setting single Mover to coarse orientation {maxIndex}"+
