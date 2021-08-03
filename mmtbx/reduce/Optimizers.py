@@ -96,10 +96,10 @@ class SingletonOptimizer:
     If this value is None, optimization will be run sequentially on every model in the
     hierarchy.
     :param altID: The conformer alternate location specifier to use.  The value "" will
-    cause it to run on the first conformer found in each model.  If this is None, optimization
-    will be run sequentially for every conformer in the model, starting with the last and
-    ending with "".  This will leave the initial conformer's values as the final location
-    for atoms that are not inside a conformer.
+    cause it to run on the first conformer found in each model.  If this is set to None,
+    optimization will be run sequentially for every conformer in the model, starting with
+    the last and ending with the first.  This will leave the initial conformer's values as the
+    final location for atoms that are not inside a conformer or are in the first conformer.
     :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
     The default is to ignore interactions to a depth of 3 (my bonded neighbors and their bonded
     neighbors and their bonded neighbors).
@@ -141,6 +141,14 @@ class SingletonOptimizer:
       # Get the specified model from the hierarchy.
       myModel = model.get_hierarchy().models()[mi]
 
+      ################################################################################
+      # Get the Cartesian positions of all of the atoms in the entire model and find
+      # the bond proxies for all of them.
+      carts = flex.vec3_double()
+      for a in myModel.atoms():
+        carts.append(a.xyz)
+      bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+
       # Get the list of alternate conformation names present in all chains for this model.
       # If there is more than one result, remove the empty results and then sort them
       # in reverse order.
@@ -169,16 +177,7 @@ class SingletonOptimizer:
         atoms = GetAtomsForConformer(myModel, ai)
 
         ################################################################################
-        # Get the Cartesian positions of all of the atoms we're considering for this alternate
-        # conformation.
-        carts = flex.vec3_double()
-        for a in atoms:
-          carts.append(a.xyz)
-
-        ################################################################################
-        # Get the bond proxies for the atoms in the model and conformation we're using and
-        # use them to determine the bonded neighbor lists.
-        bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+        # Get the bonded neighbor lists for the atoms that are in this conformation.
         bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
         ################################################################################
@@ -432,7 +431,8 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
     aName = a.name.strip().upper()
     resName = a.parent().resname.strip().upper()
     resID = str(a.parent().parent().resseq_as_int())
-    resNameAndID = resName+" "+resID
+    chainID = a.parent().parent().parent().id
+    resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
 
     # See if we should construct a MoverSingleHydrogenRotator here.
     # @todo This is placing on atoms C and N in CYS 352; and on HE2 and CA in SER 500 of 4z4d
@@ -591,7 +591,6 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           # Set the histidine in that flip state
           fixUp = hist.FixUp(bondedConfig)
           coarsePositions = hist.CoarsePositions().positions[bondedConfig]
-          infoString += _VerboseCheck(5,'XXX Before fixup\n')
           for i,a in enumerate(fixUp.atoms):
             if i < len(fixUp.positions):
               a.xyz = fixUp.positions[i]
@@ -669,7 +668,7 @@ def GetAtomsForConformer(model, conf):
       if confs[i].altloc == conf:
         which = i
         break
-    ret.extend(ch.atoms())
+    ret.extend(confs[which].atoms())
   return ret
 
 ##################################################################################
