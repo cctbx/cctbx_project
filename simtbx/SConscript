@@ -1,5 +1,5 @@
 import libtbx.load_env
-import os
+import os, sys
 
 from libtbx.env_config import get_boost_library_with_python_version
 
