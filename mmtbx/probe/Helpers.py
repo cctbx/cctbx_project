@@ -38,7 +38,7 @@ def getBondedNeighborLists(atoms, bondProxies):
     model.get_sites_cart())[0] if the model has only a single conformation.  Otherwise,
     it should be a flex array of atom positions for the atoms that are in the first argument.
     :returns a dictionary with one entry for each atom that contains a list of all of
-    the atoms that are bonded to it.
+    the atoms (within the atoms list) that are bonded to it.
   """
   atomDict = {}
   for a in atoms:
@@ -47,8 +47,15 @@ def getBondedNeighborLists(atoms, bondProxies):
   for a in atoms:
     bondedNeighbors[a] = []
   for bp in bondProxies:
-    bondedNeighbors[atomDict[bp.i_seqs[0]]].append(atomDict[bp.i_seqs[1]])
-    bondedNeighbors[atomDict[bp.i_seqs[1]]].append(atomDict[bp.i_seqs[0]])
+    try:
+      first = atomDict[bp.i_seqs[0]]
+      second = atomDict[bp.i_seqs[1]]
+      bondedNeighbors[first].append(second)
+      bondedNeighbors[second].append(first)
+    except:
+      # When an atom is bonded to an atom in a different conformer (not in our atom list)
+      # we just ignore it.
+      pass
   return bondedNeighbors
 
 def getAtomsWithinNBonds(atom, bondedNeighborLists, N):
