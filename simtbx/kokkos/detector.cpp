@@ -153,7 +153,7 @@ namespace simtbx { namespace Kokkos {
     SCITBX_ASSERT(m_panel_count == 1);
     // nB.raw_pixels = af::flex_double(af::flex_grid<>(nB.spixels,nB.fpixels));
     // do not reallocate CPU memory for the data write, as it is not needed
-    
+
     transfer_kokkos2flex(nB.raw_pixels, m_accumulate_floatimage);
     // vector_double_t::HostMirror host_floatimage = create_mirror_view(m_accumulate_floatimage);
     // deep_copy(host_floatimage, m_accumulate_floatimage);
@@ -162,7 +162,7 @@ namespace simtbx { namespace Kokkos {
 
     // double * double_floatimage = nB.raw_pixels.begin();
     // for (int i=0; i<m_total_pixel_count; ++i) {
-    //   double_floatimage[i] = host_floatimage( i ); 
+    //   double_floatimage[i] = host_floatimage( i );
     // }
   }
 
@@ -171,14 +171,14 @@ namespace simtbx { namespace Kokkos {
     //return the data array for the multipanel detector case
     af::flex_double output_array(af::flex_grid<>(m_panel_count,m_slow_dim_size,m_fast_dim_size), af::init_functor_null<double>());
     double* output_array_ptr = output_array.begin();
-    
+
     transfer_kokkos2flex(output_array, m_accumulate_floatimage);
     // vector_double_t::HostMirror host_floatimage = create_mirror_view(m_accumulate_floatimage);
     // deep_copy(host_floatimage, m_accumulate_floatimage);
 
     // for (int i=0; i<m_total_pixel_count; ++i) {
-    //   output_array_ptr[ i ] = host_floatimage( i ); 
-    // }    
+    //   output_array_ptr[ i ] = host_floatimage( i );
+    // }
     return output_array;
   }
 
@@ -186,7 +186,7 @@ namespace simtbx { namespace Kokkos {
   kokkos_detector::set_active_pixels_on_KOKKOS(af::shared<int> active_pixel_list_value) {
     m_active_pixel_size = active_pixel_list_value.size();
     transfer_shared2kokkos(m_active_pixel_list, active_pixel_list_value);
-    active_pixel_list = active_pixel_list_value;    
+    active_pixel_list = active_pixel_list_value;
   }
 
   af::shared<double>
@@ -229,7 +229,7 @@ namespace simtbx { namespace Kokkos {
 
     af::shared<double> output_array(m_active_pixel_size, af::init_functor_null<double>());
     transfer_kokkos2shared(output_array, active_pixel_results);
-    
+
     // double* output_array_ptr = output_array.begin();
     // for (int i=0; i<m_active_pixel_size; ++i) {
     //   output_array_ptr[ i ] = host_results( i );
@@ -251,7 +251,7 @@ namespace simtbx { namespace Kokkos {
     resize(m_omega_reduction, m_total_pixel_count);
     resize(m_max_I_x_reduction, m_total_pixel_count);
     resize(m_max_I_y_reduction, m_total_pixel_count);
-    
+
     resize(m_maskimage, m_total_pixel_count);
     resize(m_floatimage, m_total_pixel_count);
 
@@ -265,7 +265,7 @@ namespace simtbx { namespace Kokkos {
     fence();
 
     // metrology.show();
-    
+
     // printf(" rangemap size:%d\n", m_rangemap.span());
     // printf(" omega_reduction size:%d\n", m_omega_reduction.span());
     // printf(" max_I_x_reduction size:%d\n", m_max_I_x_reduction.span());
@@ -279,7 +279,7 @@ namespace simtbx { namespace Kokkos {
     // printf(" distance size:%d\n", m_distance.span());
     // printf(" Xbeam size:%d\n", m_Xbeam.span());
     // printf(" Ybeam size:%d\n", m_Ybeam.span());
-  
+
     // print_view(m_fdet_vector);
     // print_view(m_odet_vector, 1, 3);
 
@@ -288,4 +288,3 @@ namespace simtbx { namespace Kokkos {
 
 } // Kokkos
 } // simtbx
-

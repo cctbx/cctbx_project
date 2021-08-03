@@ -13,7 +13,7 @@ namespace simtbx { namespace Kokkos {
     }
 
     transfer_X2kokkos(dst, src, length);
-    
+
     if (length < 20) {
       // print_view(dst);
     }

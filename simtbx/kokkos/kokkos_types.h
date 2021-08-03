@@ -44,7 +44,7 @@ void print_view(const view_1d_t<T> &arg_view, size_t arg_first, size_t arg_last)
 
 template <typename T>
 void print_view(const view_1d_t<T> &arg_view) {
-  print_view(arg_view, 0, arg_view.span()); 
+  print_view(arg_view, 0, arg_view.span());
 }
 
 #endif // SIMTBX_KOKKOS_TYPES_H

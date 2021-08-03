@@ -19,7 +19,7 @@ class kokkos_instance {
   private:
     bool bFinalized = false;
     int deviceID = -1;
-   
+
 };
 } // Kokkos
 } // simtbx
