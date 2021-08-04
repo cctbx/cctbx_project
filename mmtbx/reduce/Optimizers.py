@@ -341,7 +341,15 @@ class SingletonOptimizer:
         # both in the initial setup and determined during optimization.  Phantom Hydrogens
         # on waters do not need to be adjusted because they were never added to the
         # structure.
-        # @todo
+        self._infoString += _VerboseCheck(1,f"Deleting Hydrogens tagged by Histidine Movers\n")
+        for a in self._deleteMes:
+          aName = a.name.strip().upper()
+          resName = a.parent().resname.strip().upper()
+          resID = str(a.parent().parent().resseq_as_int())
+          chainID = a.parent().parent().parent().id
+          resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
+          self._infoString += _VerboseCheck(5,f"Deleting {resNameAndID} {aName}\n")
+          a.parent().remove_atom(a)
 
   def getInfo(self):
     """
@@ -952,6 +960,8 @@ END
   info = singleOpt.getInfo()
   print('XXX info:\n'+info)
 
+  f = open("deleteme.pdb","w")
+  f.write(model.model_as_pdb())
   # @todo
 
   #========================================================================
