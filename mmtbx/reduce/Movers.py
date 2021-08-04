@@ -152,7 +152,7 @@ class MoverNull:
     )
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
-    return PositionReturn([], [ [] ], [ [] ], [ [] ], [])
+    return PositionReturn([], [], [], [], [])
   def FixUp(self, coarseIndex):
     # No fixups for any coarse index.
     return FixUpReturn([], [], [], [])
@@ -283,7 +283,7 @@ class _MoverRotator:
   def FinePositions(self, coarseIndex):
     if not self._doFineRotations:
       # No fine positions for any coarse position.
-      return PositionReturn([], [ [] ], [ [] ], [ [] ], [])
+      return PositionReturn([], [], [], [], [])
 
     # We add the range of values to the coarse angle we're starting with to provide
     # the list of fine angles to try.
@@ -752,7 +752,7 @@ class MoverNH2Flip:
 
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
-    return PositionReturn([], [ [] ], [ [] ], [ [] ], [])
+    return PositionReturn([], [], [], [], [])
 
   def FixUp(self, coarseIndex):
     # Return the appropriate fixup
@@ -986,7 +986,7 @@ class MoverHistidineFlip:
 
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
-    return PositionReturn([], [ [] ], [ [] ], [ [] ], [])
+    return PositionReturn([], [], [], [], [])
 
   def FixUp(self, coarseIndex):
     # Return the appropriate fixup
