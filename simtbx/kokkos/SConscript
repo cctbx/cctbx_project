@@ -17,12 +17,14 @@ if os.getenv('KOKKOS_CUDA_OPTIONS') is None:
   os.environ['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
 os.environ['LDFLAGS'] = '-Llib -L$(CUDA_HOME)/lib64'
 os.environ['LDLIBS'] = '-lkokkos -ldl -lcudart -lcuda'
-if os.getenv('CXX') is not None:
-  os.environ['ORIGINAL_SIMTBX_CXX'] = os.environ['CXX']
-os.environ['CXX'] = os.path.join(os.environ['KOKKOS_PATH'], 'bin', 'nvcc_wrapper')
+
+original_cxx = None
+kokkos_lib = 'libkokkos.a'
 kokkos_cxxflags = None
 
-kokkos_lib = 'libkokkos.a'
+if os.getenv('CXX') is not None:
+  original_cxx = os.environ['CXX']
+os.environ['CXX'] = os.path.join(os.environ['KOKKOS_PATH'], 'bin', 'nvcc_wrapper')
 print('='*79)
 print('Building Kokkos')
 print('-'*79)
@@ -34,13 +36,13 @@ print('Copying Kokkos library')
 print('-'*79)
 src = os.path.join(os.environ['KOKKOS_PATH'], kokkos_lib)
 dst = os.path.join(libtbx.env.under_build('lib'), kokkos_lib)
-copy(src, dst)
-if os.path.isfile(dst):
+if os.path.isfile(src):
+  copy(src, dst)
   print('Copied')
   print('  source:     ', src)
   print('  destination:', dst)
 else:
-  print('Error: {kokkos_lib} failed to copy'.format(kokkos_lib=kokkos_lib))
+  print('Error: {src} does not exist'.format(src=src))
 print()
 
 print('Getting environment variables')
@@ -75,8 +77,8 @@ simtbx_kokkos_lib = kokkos_env.SharedLibrary(
 # simtbx_kokkos_ext.so
 
 # reset CXX
-if os.getenv('ORIGINAL_SIMTBX_CXX') is not None:
-  os.environ['CXX'] = os.environ['ORIGINAL_SIMTBX_CXX']
+if original_cxx is not None:
+  os.environ['CXX'] = original_cxx
 
 # cmd = "cd ../../../modules/cctbx_project/simtbx/kokkos/;"
 # cmd += "make"
