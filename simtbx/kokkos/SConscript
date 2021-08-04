@@ -23,37 +23,37 @@ if os.getenv('CXX') is not None:
   os.environ['ORIGINAL_SIMTBX_CXX'] = os.environ['CXX']
 os.environ['CXX'] = os.path.join(os.environ['KOKKOS_PATH'], 'bin', 'nvcc_wrapper')
 kokkos_cxxflags = None
-try:
-  kokkos_lib = 'libkokkos.a'
-  print('='*79)
-  print('Building Kokkos')
-  print('-'*79)
-  returncode = subprocess.call(['make', '-f', 'Makefile.kokkos', kokkos_lib],
-                               cwd=os.environ['KOKKOS_PATH'])
-  print()
-  print('Copying Kokkos library')
-  print('-'*79)
-  src = os.path.join(os.environ['KOKKOS_PATH'], kokkos_lib)
-  dst = os.path.join(libtbx.env.under_build('lib'), kokkos_lib)
-  copy(src, dst)
-  if os.path.isfile(dst):
-    print('Copied')
-    print('  source:     ', src)
-    print('  destination:', dst)
-  else:
-    print('Error: {kokkos_lib} failed to copy'.format(kokkos_lib=kokkos_lib))
-  print()
-  print('Getting environment variables')
-  print('-'*79)
-  kokkos_cxxflags = subprocess.check_output(
-    ['make', '-f', 'Makefile.kokkos', 'print-cxx-flags'],
-    cwd=os.environ['KOKKOS_PATH'])
-  kokkos_cxxflags = kokkos_cxxflags.split(b'\n')
-  kokkos_cxxflags = kokkos_cxxflags[1].decode('utf8')
-  print('KOKKOS_CXXFLAGS:', kokkos_cxxflags)
-  print('='*79)
-except Exception:
-  print('Error: {kokkos_lib} did not build correctly'.format(kokkos_lib=kokkos_lib))
+
+kokkos_lib = 'libkokkos.a'
+print('='*79)
+print('Building Kokkos')
+print('-'*79)
+returncode = subprocess.call(['make', '-f', 'Makefile.kokkos', kokkos_lib],
+                              cwd=os.environ['KOKKOS_PATH'])
+print()
+
+print('Copying Kokkos library')
+print('-'*79)
+src = os.path.join(os.environ['KOKKOS_PATH'], kokkos_lib)
+dst = os.path.join(libtbx.env.under_build('lib'), kokkos_lib)
+copy(src, dst)
+if os.path.isfile(dst):
+  print('Copied')
+  print('  source:     ', src)
+  print('  destination:', dst)
+else:
+  print('Error: {kokkos_lib} failed to copy'.format(kokkos_lib=kokkos_lib))
+print()
+
+print('Getting environment variables')
+print('-'*79)
+kokkos_cxxflags = subprocess.check_output(
+  ['make', '-f', 'Makefile.kokkos', 'print-cxx-flags'],
+  cwd=os.environ['KOKKOS_PATH'])
+kokkos_cxxflags = kokkos_cxxflags.split(b'\n')
+kokkos_cxxflags = kokkos_cxxflags[1].decode('utf8')
+print('KOKKOS_CXXFLAGS:', kokkos_cxxflags)
+print('='*79)
 
 # libsimtbx_kokkos.so
 
