@@ -124,7 +124,7 @@ class SingletonOptimizer:
     self._preferenceMagnitude = preferenceMagnitude
 
     ################################################################################
-    # Initialize my information string to empty.
+    # Initialize internal variables.
     self._infoString = ""
 
     ################################################################################
@@ -224,6 +224,12 @@ class SingletonOptimizer:
         self._infoString += _VerboseCheck(1,'Marked '+str(len(ret.deleteAtoms))+' atoms for deletion\n')
 
         ################################################################################
+        # Initialize high scores for each Mover, filling in very negative values.
+        self._highScores = {}
+        for m in movers:
+          self._highScores[m] = -1.e10
+
+        ################################################################################
         # Construct a set of atoms that are marked for deletion in the current set of
         # orientations for all Movers.  This is initialized with the atoms that were
         # unconditionally marked for deletion during placement and then we add
@@ -231,7 +237,7 @@ class SingletonOptimizer:
         self._deleteMes = set(ret.deleteAtoms)
         for m in movers:
           pr = m.CoarsePositions()
-          self._setCoarseMoverState(pr, 0)
+          self._setMoverState(pr, 0)
 
         ################################################################################
         # Compute the interaction graph, of which each connected component is a Clique.
@@ -304,10 +310,8 @@ class SingletonOptimizer:
         # Do fine optimization on the Movers.  This is done independently for
         # each of them, whether they are part of a multi-Mover Clique or not.
         self._infoString += _VerboseCheck(1,f"Fine optimization on all Movers\n")
-        #for m in movers:
-        #  self.
-
-        # @todo
+        for m in movers:
+          self._optimizeSingleMoverFine(m)
 
         # Do FixUp on the final coarse orientations.  Set the positions, extra atom info
         # and deletion status for all atoms that have entries for each.
@@ -343,14 +347,14 @@ class SingletonOptimizer:
     """
       Returns information that the user may care about regarding the processing.  The level of
       detail on this can be set by setting Optimizers.verbosity before creating or calling methods.
-      :returns the information so far collected in the string.  Calling this function also clears
+      :return: the information so far collected in the string.  Calling this function also clears
       the information, so that later calls will not repeat it.
     """
     ret = self._infoString
     self._infoString = ""
     return ret
 
-  def _setCoarseMoverState(self, positionReturn, index):
+  def _setMoverState(self, positionReturn, index):
     # Move the atoms to their new positions, updating the spatial query structure
     # by removing the old and adding the new location.
     for i, a in enumerate(positionReturn.atoms):
@@ -382,17 +386,18 @@ class SingletonOptimizer:
   def _optimizeSingleMoverCoarse(self, mover):
     # Find the coarse score for the Mover in all orientations by moving each atom into the
     # specified position and summing the scores over all of them.  Determine the best
-    # orientation by selecting the highest scorer unless it is not more than the bias
-    # above the original.
+    # orientation by selecting the highest scorer.
     # Add the preference energy to the sum for each orientation scaled by our preference
     # magnitude.
-    # :return the index of the coarse position selected for the Mover.
+    # :return: the index of the coarse position selected for the Mover.
+    # :side effect: Changes the value of self._highScores[mover] to the score at the coarse position
+    # selected
     coarse = mover.CoarsePositions()
     scores = coarse.preferenceEnergies.copy()
     for i in range(len(scores)):
       scores[i] *= self._preferenceMagnitude
     for i in range(len(coarse.positions)):
-      self._setCoarseMoverState(coarse, i)
+      self._setMoverState(coarse, i)
 
       for a in coarse.atoms:
         scores[i] += self._scoreAtom(a)
@@ -409,24 +414,70 @@ class SingletonOptimizer:
     # Put the Mover into its final position (which may be back to its initial position)
     self._infoString += _VerboseCheck(1,f"Setting single Mover to coarse orientation {maxIndex}"+
       f", max score = {maxScore:.2f} (initial score {scores[0]:.2f})\n")
-    self._setCoarseMoverState(coarse, maxIndex)
+    self._setMoverState(coarse, maxIndex)
 
+    # Record the best score for this Mover.
+    self._highScores[mover] = maxScore
     return maxIndex
 
   def _optimizeCliqueCoarse(self, movers):
-    # @todo Override this method in derived classes.
+    # Override this method in derived classes.
     # The SingletonOptimizer class just calls the single-Mover optimimization for each
     # of the elements in the Clique and returns the vector of their results.  This should
     # be overridden in derived classes to actually check for the joint maximum score over
     # all of the Movers simultaneously.
     # :param movers: List of Movers in the clique to be optimized.
-    # :return List of the indices of the coarse position selected for each Mover in the same
+    # :return: List of the indices of the coarse position selected for each Mover in the same
     # order they were listed in the movers list.
     ret = []
     self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(movers)} as singletons\n")
     for m in movers:
       ret.append(self._optimizeSingleMoverCoarse(m))
     return ret
+
+  def _optimizeSingleMoverFine(self, mover):
+    # Find the score for the Mover in all fine orientations by moving each atom into the
+    # specified position and summing the scores over all of them.  Determine the best
+    # orientation by selecting the highest scorer.
+    # Add the preference energy to the sum for each orientation scaled by our preference
+    # magnitude.
+    # :return: nothing.
+    # :side effect: Changes the value of self._highScores[mover] to the score at the fine position
+    # selected if one is selected.
+    coarse = mover.CoarsePositions()  # Record in case we need to put it back
+    fine = mover.FinePositions(self._coarseLocations[mover])
+    if len(fine.positions) > 0:
+      scores = fine.preferenceEnergies.copy()
+      for i in range(len(scores)):
+        scores[i] *= self._preferenceMagnitude
+      for i in range(len(fine.positions)):
+        self._setMoverState(fine, i)
+
+        for a in fine.atoms:
+          scores[i] += self._scoreAtom(a)
+        self._infoString += _VerboseCheck(5,f"Single Mover score at orientation {i} = {scores[i]:.2f}\n")
+
+      # Find the maximum score, keeping track of the best score and its index.
+      maxScore = scores[0]
+      maxIndex = 0
+      for i in range(1,len(fine.positions)):
+        if scores[i] > maxScore:
+          maxScore = scores[i]
+          maxIndex = i;
+
+      # Put the Mover into its final position (which may be back to its initial position)
+      # and update the high score.
+      if maxScore > self._highScores[mover]:
+        self._infoString += _VerboseCheck(1,f"Setting single Mover to fine orientation {maxIndex}"+
+          f", max score = {maxScore:.2f} (coarse score {self._highScores[mover]:.2f})\n")
+        self._setMoverState(fine, maxIndex)
+
+        # Record the best score for this Mover.
+        self._highScores[mover] = maxScore
+      else:
+        # Put us back to the initial coarse location and don't change the high score.
+        self._infoString += _VerboseCheck(1,f"Leaving single Mover at coarse orientation\n")
+        self._setMoverState(coarse, self._coarseLocations[mover])
 
 ##################################################################################
 # Placement
@@ -458,7 +509,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
   which atoms may be acceptors.
   :param maxVDWRadius: Maximum VdW radius of an atom.  Can be obtained from
   mmtbx.probe.AtomTypes.AtomTypes().MaximumVDWRadius()
-  :returns _PlaceMoversReturn giving the list of Movers found in the conformation and
+  :return: _PlaceMoversReturn giving the list of Movers found in the conformation and
   an error string that is empty if no errors are found during the process and which
   has a printable message in case one or more errors are found.
   """
@@ -698,7 +749,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
 
 def AlternatesInModel(model):
   """Returns a set of altloc names of all conformers in all chains.
-  :returns Set of strings.  The set is will include only the empty string if no
+  :return: Set of strings.  The set is will include only the empty string if no
   chains in the model have alternates.  It has an additional entry for every altloc
   found in every chain.
   """
@@ -715,7 +766,7 @@ def GetAtomsForConformer(model, conf):
   all of the atoms.
   :param model: pdb.hierarchy.model to search for atoms.
   :param conf: String name of the conformation to find.  Can be "".
-  :returns List of atoms consistent with the specified conformer.
+  :return: List of atoms consistent with the specified conformer.
   """
   ret = []
   for ch in model.chains():
@@ -734,7 +785,7 @@ def GetAtomsForConformer(model, conf):
 def Test(inFileName = None):
   """Test function for all functions provided above.
   :param inFileName: Name of a PDB or CIF file to load (default makes a small molecule)
-  :returns Empty string on success, string describing the problem on failure.
+  :return: Empty string on success, string describing the problem on failure.
   """
 
   #========================================================================
@@ -896,7 +947,7 @@ END
   model.process_input_model(make_restraints=True) # make restraints
 
   print('Constructing Optimizer')
-  # @todo Let the caller specify the model index and altID rather than doing only the first.
+  # @todo Let the caller specify the model index and altID rather than doing only the default (first).
   singleOpt = SingletonOptimizer(model)
   info = singleOpt.getInfo()
   print('XXX info:\n'+info)
