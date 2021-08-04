@@ -2,6 +2,10 @@ from __future__ import absolute_import, division, print_function
 from scitbx import matrix
 import iotbx.pdb
 from libtbx.utils import Sorry
+from libtbx import adopt_init_args
+from libtbx.utils import Sorry
+from iotbx.mtrix_biomt import container
+
 from six import string_types
 from six.moves import range, zip
 import re
@@ -72,13 +76,6 @@ class container(object):
 
   def is_empty(self):
     return len(self.r) == 0
-
-
-from libtbx import adopt_init_args
-from libtbx import group_args
-import re
-from libtbx.utils import Sorry
-from iotbx.mtrix_biomt import container
 
 
 class StructAssemblies:
