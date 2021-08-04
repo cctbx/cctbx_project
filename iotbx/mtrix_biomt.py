@@ -4,8 +4,6 @@ import iotbx.pdb
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 from libtbx.utils import Sorry
-from iotbx.mtrix_biomt import container
-
 from six import string_types
 from six.moves import range, zip
 import re
