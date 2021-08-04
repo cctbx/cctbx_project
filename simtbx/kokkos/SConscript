@@ -59,10 +59,14 @@ print('='*79)
 Import("env", "env_etc")
 
 kokkos_env = env.Clone()
+print(kokkos_env['CXXCOM'])
 kokkos_env.Replace(CXX=os.environ['CXX'])
-kokkos_env.Prepend(CXXFLAGS=kokkos_cxxflags)
+kokkos_env.Replace(SHCXX=os.environ['CXX'])
+kokkos_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
+kokkos_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
 kokkos_env.Append(LIBS=['kokkos'])
+
 simtbx_kokkos_lib = kokkos_env.SharedLibrary(
   target="#lib/libsimtbx_kokkos.so",
   source=[
