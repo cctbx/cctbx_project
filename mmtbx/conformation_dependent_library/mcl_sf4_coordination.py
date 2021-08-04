@@ -172,14 +172,14 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
           done_aa.append(aag.id_str())
   return coordination
 
-def get_bond_proxies(coordination):
+def get_bond_proxies(coordination, verbose=False):
   #
   bonds = []
   if coordination is None: return bonds
   for a1, a2 in coordination:
     distance_ideal, weight = get_distance_ideal_and_weight(a1, a2)
     if distance_ideal is None:
-      print(weight)
+      if verbose: print('no distance_ideal %s %s' % (distance_ideal, weight))
       continue
     p = geometry_restraints.bond_simple_proxy(
       i_seqs=[a1.i_seq, a2.i_seq],
