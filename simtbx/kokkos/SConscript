@@ -4,8 +4,6 @@ from shutil import copy
 
 import libtbx.load_env
 
-Import("env", "env_etc")
-
 # libkokkos.a
 # call kokkos build system directly
 # set environment variable defaults if necessary
@@ -51,11 +49,28 @@ kokkos_cxxflags = subprocess.check_output(
   ['make', '-f', 'Makefile.kokkos', 'print-cxx-flags'],
   cwd=os.environ['KOKKOS_PATH'])
 kokkos_cxxflags = kokkos_cxxflags.split(b'\n')
-kokkos_cxxflags = kokkos_cxxflags[1].decode('utf8')
+kokkos_cxxflags = [f.decode('utf8').encode('ascii', 'ignore').decode('ascii') for f in kokkos_cxxflags[1].split()]
 print('KOKKOS_CXXFLAGS:', kokkos_cxxflags)
 print('='*79)
 
 # libsimtbx_kokkos.so
+Import("env", "env_etc")
+
+kokkos_env = env.Clone()
+kokkos_env.Replace(CXX=os.environ['CXX'])
+kokkos_env.Prepend(CXXFLAGS=kokkos_cxxflags)
+kokkos_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
+kokkos_env.Append(LIBS=['kokkos'])
+simtbx_kokkos_lib = kokkos_env.SharedLibrary(
+  target="#lib/libsimtbx_kokkos.so",
+  source=[
+    'detector.cpp',
+    'kokkos_instance.cpp',
+    'kokkos_utils.cpp',
+    'simulation.cpp',
+    'structure_factors.cpp'
+  ]
+)
 
 # simtbx_kokkos_ext.so
 
