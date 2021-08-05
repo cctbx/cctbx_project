@@ -307,6 +307,8 @@ def kinemageFinal(outFile, suites, outNote):
     Output the content of a kinemage file
     The 3, 2 order may seem odd, but it is a standard
     """
+    if not suites:  # empty input gives empty output
+        return
     kinemageHeader(outFile, outNote)
     for deltaMinus in (3, 2): 
       for delta in (3, 2):
