@@ -899,6 +899,7 @@ class LocalRefiner(BaseRefiner):
         #else:
         #    self.D.fix(self._sausage_id)
         self.D.initialize_managers()
+        self._MPI_barrier()
 
     def _make_p1_equiv_mapping(self):
 
@@ -1121,6 +1122,7 @@ class LocalRefiner(BaseRefiner):
 
     def _make_x_identifier_array(self):
         """do this in case we need to identify what the parameters in X are at a later time"""
+        return
         #TODO update for new parameter types
         parameter_dict = {}
         for i_shot in range(self.n_shots):

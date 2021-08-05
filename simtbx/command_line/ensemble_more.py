@@ -635,7 +635,7 @@ class DataModeler:
             all_refls_idx += [self.refls_idx[i_roi]] * npix
             hi_asu_perpix += [self.Hi_asu[i_roi]] * npix
             roi_id += [i_roi] * npix
-            self.all_nominal_hkl += [tuple(Hi[i_roi])]*npix  # this is the nominal l component of the miller index in the P1 setting
+            self.all_nominal_hkl += [tuple(Hi[i_roi])]*npix
             #refl_id += [self.refl_index[i_roi]] * npix
         pan_fast_slow = np.ascontiguousarray((np.vstack([all_pid, all_fast, all_slow]).T).ravel())
         self.pan_fast_slow = flex.size_t(pan_fast_slow)

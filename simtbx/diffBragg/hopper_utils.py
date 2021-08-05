@@ -1190,6 +1190,7 @@ def print_profile(stats, timed_methods):
         total_time = sum(timespent)
         header_line = fp[header_ln-1][:-1]
         PROFILE_LOGGER.warning(header_line)
+        PROFILE_LOGGER.warning("TOTAL FUNCTION TIME: %f ms" % (total_time*unit*1e3))
         PROFILE_LOGGER.warning("<><><><><><><><><><><><><><><><><><><><><><><>")
         PROFILE_LOGGER.warning("%5s%14s%9s%10s" % ("Line#", "Time", "%Time", "Line" ))
         PROFILE_LOGGER.warning("%5s%14s%9s%10s" % ("", "(ms)", "", ""))
