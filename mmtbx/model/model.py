@@ -425,6 +425,17 @@ class manager(object):
     """
     return self._pdb_interpretation_params
 
+  def get_header_r_free_flags_md5_hexdigest(self):
+    """
+    XXX Limited to PDB format XXX
+    """
+    result = []
+    if(self.get_model_input() is None): return result
+    for line in self.get_model_input().remark_section():
+      if (line.startswith("REMARK r_free_flags.md5.hexdigest ")):
+        result.append(line.rstrip())
+    return result
+
   def get_xray_structure(self):
     if(self._xray_structure is None):
       cs = self.crystal_symmetry()
