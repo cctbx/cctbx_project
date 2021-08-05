@@ -425,6 +425,17 @@ class manager(object):
     """
     return self._pdb_interpretation_params
 
+  def get_header_r_free_flags_md5_hexdigest(self):
+    """
+    XXX Limited to PDB format XXX
+    """
+    result = []
+    if(self.get_model_input() is None): return result
+    for line in self.get_model_input().remark_section():
+      if (line.startswith("REMARK r_free_flags.md5.hexdigest ")):
+        result.append(line.rstrip())
+    return result
+
   def get_xray_structure(self):
     if(self._xray_structure is None):
       cs = self.crystal_symmetry()
@@ -3031,13 +3042,18 @@ class manager(object):
                         out = None, text="Information about rigid groups"):
     global time_model_show
     timer = user_plus_sys_time()
+    # Decide automatically based on available data
+    if(rigid_body is None and self.refinement_flags is not None and
+       self.refinement_flags.rigid_body and tls is None):
+     rigid_body = True
+    #
     selections = None
     if(rigid_body is not None):
        selections = self.refinement_flags.sites_rigid_body
     if(tls is not None): selections = self.refinement_flags.adp_tls
     if(self.refinement_flags.sites_rigid_body is None and
                                  self.refinement_flags.adp_tls is None): return
-    assert selections is not None
+    if(selections is None): return
     if (out is None): out = sys.stdout
     print(file=out)
     line_len = len("| "+text+"|")

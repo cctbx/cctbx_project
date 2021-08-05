@@ -556,7 +556,7 @@ class EnsembleRefinementJob(Job):
 
     arguments = """
     mp.queue={}
-    mp.nproc={}
+    mp.nnodes={}
     mp.nproc_per_node={}
     mp.method={}
     {}
@@ -569,14 +569,14 @@ class EnsembleRefinementJob(Job):
     striping.rungroup={}
     striping.run={}
     {}
-    striping.chunk_size=3000
+    striping.chunk_size=200
     striping.stripe=False
     striping.dry_run=True
     striping.output_folder={}
     reintegration.integration.lookup.mask={}
     mp.local.include_mp_in_command=False
     """.format(self.app.params.mp.queue if len(self.app.params.mp.queue) > 0 else None,
-               self.app.params.mp.nproc,
+               1,#self.app.params.mp.nproc,
                self.app.params.mp.nproc_per_node,
                self.app.params.mp.method,
                '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script if p]),
@@ -759,7 +759,7 @@ class MergingJob(Job):
 
 class PhenixJob(Job):
   def get_global_path(self):
-    return self.dataset_version.output_path()
+    return os.path.join(self.dataset_version.output_path(), self.get_identifier_string())
 
   def get_log_path(self):
     return self.get_global_path()
@@ -768,12 +768,12 @@ class PhenixJob(Job):
     return "%s_%s%03d_v%03d"%(self.dataset.name, self.task.type, self.task.id, self.dataset_version.version)
 
   def delete(self, output_only=False):
-    #job_folder = self.get_global_path()
-    #if os.path.exists(job_folder):
-    #  print("Deleting job folder for job", self.id)
-    #  shutil.rmtree(job_folder)
-    #else:
-    #  print("Cannot find job folder (%s)"%job_folder)
+    job_folder = self.get_global_path()
+    if os.path.exists(job_folder):
+      print("Deleting job folder for job", self.id)
+      shutil.rmtree(job_folder)
+    else:
+      print("Cannot find job folder (%s)"%job_folder)
     self.status = "DELETED"
 
   def get_output_files(self):
@@ -793,7 +793,9 @@ class PhenixJob(Job):
     command = self.task.parameters.split('\n')[0]
     phil_params = '\n'.join(self.task.parameters.split('\n')[1:])
     phil_params = phil_params.replace('<PREVIOUS_TASK_MTZ>', os.path.join(input_folder, input_mtz))
-    phil_params += "\nrefinement.gui.base_output_dir=%s\n"%output_path
+    phil_params = phil_params.replace('<PREVIOUS_TASK_FOLDER>', input_folder)
+    phil_params = phil_params.replace('<DATASET_NAME>', self.dataset.name)
+    phil_params = phil_params.replace('<DATASET_VERSION>', str(self.dataset_version.version))
 
     with open(target_phil_path, 'w') as f:
       f.write(phil_params)
@@ -805,7 +807,8 @@ class PhenixJob(Job):
     if params.nnodes_merge:
       params.nnodes = params.nnodes_merge
     params.use_mpi = False
-    params.env_script = params.phenix_script
+    if 'upload' not in command:
+      params.env_script = params.phenix_script
 
     return do_submit(command, submit_path, output_path, params, identifier_string)
 

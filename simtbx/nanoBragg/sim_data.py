@@ -289,7 +289,6 @@ class SimData:
     if instantiate:
       self.instantiate_nanoBragg()
     self._add_nanoBragg_spots()
-    self.D.raw_pixels /= len(self.beam.xray_beams)
     self._add_background()
     if self.include_noise:
       self._add_noise()

@@ -928,6 +928,12 @@ class phaser_regression_module(SourceModule):
                'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/phaser_regression.git',
                'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/phaser_regression.git']
 
+class voyager_regression_module(SourceModule):
+  module = 'voyager_regression'
+  anonymous = ['git',
+               'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/voyager_regression.git',
+               'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/voyager_regression.git']
+
 # DIALS repositories
 class labelit_module(SourceModule):
   module = 'labelit'
@@ -2060,17 +2066,29 @@ class PhaserBuilder(CCIBuilder):
     return configlst
 
 class PhaserTNGBuilder(PhaserBuilder):
-  CODEBASES = PhaserBuilder.CODEBASES + ['phasertng', 'phaser_voyager']
-  LIBTBX = PhaserBuilder.LIBTBX + ['phasertng', 'phaser_voyager']
+  CODEBASES = PhaserBuilder.CODEBASES + ['phasertng', 'phaser_voyager', 'voyager_regression']
+  LIBTBX = PhaserBuilder.LIBTBX + ['phasertng', 'phaser_voyager', 'voyager_regression']
 
   def add_tests(self):
-    self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
-    self.add_test_command('cctbx_regression.test_nightly')
+    self.add_test_parallel(module='phaser_regression') # run phaser_regression/run_tests.py file
+    self.add_test_parallel(module='voyager_regression') # run voyager_regression/run_tests.py file
 
   def get_libtbx_configure(self):
     configlst = super(PhaserTNGBuilder, self).get_libtbx_configure()
     configlst.append('--enable_cxx11')
     return configlst
+
+  def get_codebases(self):
+    """
+    Phaser uses Boost in the conda environment for Python 3 and Windows
+    """
+    codebases = super(PhaserTNGBuilder, self).get_codebases()
+    if (self.python3 and self.use_conda is not None):
+      try:
+        codebases.remove('boost')
+      except ValueError:
+        pass
+    return codebases
 
 class CCTBXLiteBuilder(CCIBuilder):
   BASE_PACKAGES = 'cctbx'
@@ -2292,7 +2310,9 @@ class PhenixBuilder(CCIBuilder):
     'dials',
     'xia2',
     'phaser',
+    'phasertng',
     'phaser_regression',
+    'voyager_regression',
     'phaser_voyager',
     'iota',
   ]
@@ -2738,8 +2758,8 @@ class PhenixTNGBuilder(PhenixBuilder):
   '''
   Phenix with phasertng and c++11
   '''
-  CODEBASES = PhenixBuilder.CODEBASES + ['phasertng', 'phaser_voyager']
-  LIBTBX = PhenixBuilder.LIBTBX + ['phasertng', 'phaser_voyager']
+  CODEBASES = PhenixBuilder.CODEBASES + ['phasertng', 'phaser_voyager', 'voyager_regression']
+  LIBTBX = PhenixBuilder.LIBTBX + ['phasertng', 'phaser_voyager', 'voyager_regression']
 
   def get_libtbx_configure(self):
     configlst = super(PhenixTNGBuilder, self).get_libtbx_configure()

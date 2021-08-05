@@ -144,7 +144,10 @@ def update_libtbx_env(default_dir=None):
     module = env.module_dict[name]
     new_paths = [relocatable_sys_prefix, relocatable_sys_prefix]
     for path in sys.path:
-      if path.startswith(sys_prefix):
+      check_this_path = path.startswith(sys_prefix)
+      if sys.platform == 'win32':
+        check_this_path = path.lower().startswith(abs(relocatable_sys_prefix).lower())
+      if check_this_path:
         new_path = os.path.join(path, name)
         if os.path.isdir(new_path):
           new_paths[0] = env.as_relocatable_path(new_path)

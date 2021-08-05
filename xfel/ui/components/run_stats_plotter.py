@@ -302,6 +302,7 @@ def plot_run_stats(stats,
     def onclick(event):
       import math
       ts = event.xdata
+      if ts is None: return
       diffs = flex.abs(t - ts)
       ts = t[flex.first_index(diffs, flex.min(diffs))]
       print(get_paths_from_timestamps([ts], tag="shot", ext=ext)[0])

@@ -332,9 +332,6 @@ class run(object):
         parameters=None,
         parameter_scope=None,
         ignore_all_zeros = True):
-    from libtbx.utils import null_out              # XXX
-    rfs_err_save = self.reflection_file_server.err # XXX
-    self.reflection_file_server.err=null_out()     # XXX
     try:
       file_name = None
       labels = None
@@ -345,11 +342,10 @@ class run(object):
         self.reflection_file_server.get_experimental_phases(
           file_name        = file_name,
           labels           = labels,
+          raise_no_array   = False,
           ignore_all_zeros = ignore_all_zeros,
           parameter_scope  = parameter_scope)
-      self.reflection_file_server.err = rfs_err_save # XXX
-    except reflection_file_utils.Sorry_No_array_of_the_required_type:
-      experimental_phases = None
+      if(experimental_phases is None): return None
     except reflection_file_utils.Sorry_No_array_of_the_required_type:
       experimental_phases = None
     else:
@@ -686,7 +682,7 @@ will become meaningful only after many cycles of refinement.
         else :
           raise Sorry("Please resolve the R-free flags mismatch.")
 
-map_coefficents_params_str = """\
+map_coefficients_params_str = """\
   file_name=None
     .type=path
     .short_caption=Map coefficients file
@@ -709,47 +705,5 @@ experimental_phases_params_str = """\
 experimental_phases_params = iotbx.phil.parse(
   input_string=experimental_phases_params_str)
 
-def determine_experimental_phases(reflection_file_server,
-                                  parameters,
-                                  log,
-                                  parameter_scope,
-                                  working_point_group,
-                                  symmetry_safety_check,
-                                  ignore_all_zeros = True):
-  """
-  Extract experimental phases from the given inputs if possible.  Returns None
-  if not found.
-  """
-  try:
-    experimental_phases = \
-      reflection_file_server.get_experimental_phases(
-        file_name        = parameters.file_name,
-        labels           = parameters.labels,
-        ignore_all_zeros = ignore_all_zeros,
-        parameter_scope  = parameter_scope)
-  except reflection_file_utils.Sorry_No_array_of_the_required_type:
-    experimental_phases = None
-  else:
-    parameters.file_name = experimental_phases.info().source
-    parameters.labels = [experimental_phases.info().label_string()]
-    print("Experimental phases:", file=log)
-    print(" ", experimental_phases.info(), file=log)
-    miller_array_symmetry_safety_check(
-      miller_array          = experimental_phases,
-      data_description      = "Experimental phases",
-      working_point_group   = working_point_group,
-      symmetry_safety_check = symmetry_safety_check,
-      log                   = log)
-    print(file=log)
-    info = experimental_phases.info()
-    processed = experimental_phases.eliminate_sys_absent(log = log)
-    if(processed is not experimental_phases):
-       info = info.customized_copy(systematic_absences_eliminated = True)
-    if(not processed.is_unique_set_under_symmetry()):
-       print("Merging symmetry-equivalent Hendrickson-Lattman coefficients:", file=log)
-       merged = processed.merge_equivalents()
-       merged.show_summary(out = log, prefix="  ")
-       print(file=log)
-       processed = merged.array()
-       info = info.customized_copy(merged = True)
-    return processed.set_info(info)
+def experimental_phases_master_params():
+  return experimental_phases_params

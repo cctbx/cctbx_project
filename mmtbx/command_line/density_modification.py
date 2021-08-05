@@ -84,7 +84,7 @@ include scope libtbx.phil.interface.tracking_params
 }
 """ %(iotbx.extract_xtal_data.data_and_flags_str,
       iotbx.extract_xtal_data.experimental_phases_params_str,
-      mmtbx.utils.map_coefficents_params_str,
+      mmtbx.utils.map_coefficients_params_str,
       density_modification.master_params_str)
 
 def defaults(log):
@@ -134,18 +134,13 @@ def run(args, log = sys.stdout, as_gui_program=False):
   server = iotbx.reflection_file_utils.reflection_file_server(
     crystal_symmetry=crystal_symmetry,
     reflection_files=list(reflection_files.values()))
-  fo = extract_xtal_data.run(
+  o = extract_xtal_data.run(
     server,
     parameters=params.input.reflection_data,
-    extract_r_free_flags=False,log=log).f_obs
-  hl_coeffs = extract_xtal_data.determine_experimental_phases(
-    server,
-    params.input.experimental_phases,
-    log=log,
-    parameter_scope="",
-    working_point_group=None,
-    symmetry_safety_check=True,
-    ignore_all_zeros=True)
+    experimental_phases_params=params.input.experimental_phases,
+    extract_r_free_flags=False,log=log)
+  fo = o.f_obs
+  hl_coeffs = o.experimental_phases
   if params.input.map_coefficients.file_name is not None:
     map_coeffs = server.get_phases_deg(
       file_name=params.input.map_coefficients.file_name,

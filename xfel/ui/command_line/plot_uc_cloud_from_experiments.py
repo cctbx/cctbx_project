@@ -83,7 +83,7 @@ class Script(object):
     experiments_list = [e.data for e in params.input.experiments]
     if params.extract_tags:
       import os
-      experiments_tags = [os.path.basename(f.filename).split("_combined_experiments")[0] for f in params.input.experiments]
+      experiments_tags = [os.path.splitext(os.path.basename(f.filename))[0] for f in params.input.experiments]
       info_list = []
       for experiments in experiments_list:
         infos = []

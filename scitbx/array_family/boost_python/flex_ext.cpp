@@ -34,7 +34,7 @@
 namespace scitbx { namespace af { namespace boost_python {
 
 #ifdef IS_PY3K
-  int import_numpy_api_if_available();
+  void* import_numpy_api_if_available();
 #else
   void import_numpy_api_if_available();
 #endif

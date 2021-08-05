@@ -91,6 +91,7 @@ namespace simtbx { namespace gpu {
              (arg_("channel_number"), arg_("gpu_amplitudes"), arg_("gpu_detector"), arg_("pixel_active_mask_bools")),
              "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spots on mask==True pixels")
         .def("add_background_cuda", &simtbx::gpu::exascale_api::add_background_cuda,
+             (arg_("detector"), arg_("override_source")=-1),
              "Add a background field directly on the GPU")
         .def("show",&simtbx::gpu::exascale_api::show)
         ;
