@@ -428,6 +428,7 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
     sequences=None,chain_id=None,trim_side_chains=None,
     remove_ter_records=False,
     remove_break_records=False,
+    replace_hetatm=False,
      ):
   # assumes one chain from each model
   # if resid_offset, space by to next even n of this number of residues
@@ -436,6 +437,7 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
   # If sequence or chain_id are supplied, use them
   # Trim off side chains (and CB for GLY) if trim_side_chains
   # sort by chain_type if provided in one or more
+  # replace hetero=True by hetero=False if replace_hetatm is set
 
   new_hierarchy=iotbx.pdb.input(
          source_info="Model",
@@ -496,6 +498,10 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
           nn=resid_offset*((resid+resid_offset-1)//resid_offset)
           if nn-resid<2: nn+=resid_offset
           resid=nn
+  if replace_hetatm:
+    for atom in new_hierarchy.atoms():
+      atom.hetero = False
+
   new_hierarchy.reset_atom_i_seqs()
   if trim_side_chains:
     atom_selection=\
