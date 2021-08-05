@@ -6,7 +6,7 @@ from cctbx import sgtbx
 from cctbx.sgtbx import change_of_basis_op
 from dxtbx.model.crystal import MosaicCrystalSauter2014
 from dxtbx.model.experiment_list import ExperimentList
-from libtbx.development.timers import Profiler, Timer
+#from libtbx.development.timers import Profiler, Timer
 
 import dials.algorithms.symmetry.cosym.target
 from xfel.merging.application.modify.aux_cosym import TargetWithFastRij
@@ -46,10 +46,10 @@ class cosym(worker):
       sampling_reflections_for_cosym = []
       if params.modify.cosym.anchor:
         from xfel.merging.application.model.crystal_model import crystal_model
-        P = Timer("construct the anchor reference model")
+        #P = Timer("construct the anchor reference model")
         XM = crystal_model(params = params, purpose="cosym")
         model_intensities = XM.run([],[])
-        del P
+        #del P
         from dxtbx.model import Experiment, Crystal
         from scitbx.matrix import sqr
         O = sqr(model_intensities.unit_cell().orthogonalization_matrix()).transpose().elems
@@ -104,8 +104,7 @@ class cosym(worker):
     from collections import OrderedDict
     if self.mpi_helper.rank == 0:
       print("Starting cosym worker")
-      from libtbx.development.timers import Profiler
-      Overall = Profiler("Cosym total time")
+      #Overall = Profiler("Cosym total time")
 
     #  Evenly distribute all experiments from mpi_helper ranks
     reports = self.mpi_helper.comm.gather((len(input_experiments)),root=0) # report from all ranks on experiment count
@@ -159,9 +158,9 @@ class cosym(worker):
     There are %d experiments with %d reflections, averaging %.1f reflections/experiment"""%(
       len(COSYM.experiments), flex.sum(rank_N_refl), flex.mean(rank_N_refl))
       self.logger.log(message)
-      if self.mpi_helper.rank == 1: print(message); P = Timer("COSYM.run")
+      if self.mpi_helper.rank == 1: print(message) #; P = Timer("COSYM.run")
       COSYM.run()
-      if self.mpi_helper.rank == 1: del P
+      #if self.mpi_helper.rank == 1: del P
 
       keyval = [("experiment", []), ("reindex_op", []), ("coset", [])]
       raw = OrderedDict(keyval)
@@ -237,9 +236,9 @@ class cosym(worker):
             sampling_experiments_for_cosym, sampling_reflections_for_cosym,
             uuid_starting=["anchor structure"], communicator_size=1) # only run on the rank==0 tranch.
           self.uuid_cache = ANCHOR.uuid_cache # reformed uuid list after n_refls filter
-          P = Timer("ANCHOR.run")
+          #P = Timer("ANCHOR.run")
           ANCHOR.run() # Future redesign XXX FIXME do this in rank 0 in parallel with distributed composite tranches
-          del P
+          #del P
 
           keyval = [("experiment", []), ("coset", [])]
           raw = OrderedDict(keyval)
