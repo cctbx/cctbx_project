@@ -3,6 +3,7 @@ import subprocess
 from shutil import copy
 
 import libtbx.load_env
+from libtbx.env_config import get_boost_library_with_python_version
 
 # libkokkos.a
 # call kokkos build system directly
@@ -79,6 +80,32 @@ simtbx_kokkos_lib = kokkos_env.SharedLibrary(
 )
 
 # simtbx_kokkos_ext.so
+if not env_etc.no_boost_python:
+  Import("env_no_includes_boost_python_ext")
+  kokkos_ext_env = env_no_includes_boost_python_ext.Clone()
+
+  env_etc.include_registry.append(
+    env=kokkos_ext_env,
+    paths=env_etc.simtbx_common_includes + [env_etc.python_include])
+  kokkos_ext_env.Replace(CXX=os.environ['CXX'])
+  kokkos_ext_env.Replace(SHCXX=os.environ['CXX'])
+  kokkos_ext_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
+  kokkos_ext_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
+  kokkos_ext_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
+  kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'lib64')])
+  kokkos_ext_env.Append(LIBS=env_etc.libm +
+    ["simtbx_kokkos",
+     "scitbx_boost_python",
+     get_boost_library_with_python_version("boost_python", kokkos_ext_env['LIBPATH']),
+     "cctbx",
+     "kokkos",
+     "cudart",
+     "cuda"])
+
+  simtbx_kokkos_ext = kokkos_ext_env.SharedLibrary(
+    target="#lib/simtbx_kokkos_ext.so",
+    source=['kokkos_ext.cpp']
+  )
 
 # reset CXX
 if original_cxx is not None:
