@@ -97,8 +97,8 @@ class SingletonOptimizer:
     If this value is None, optimization will be run sequentially on every model in the
     hierarchy.
     :param altID: The conformer alternate location specifier to use.  The value "" will
-    cause it to run on the first conformer found in each model.  If this is set to None,
-    optimization will be run sequentially for every conformer in the model, starting with
+    cause it to run on the first conformer found in each model.  If this is set to None
+    (the default), optimization will be run sequentially for every conformer in the model, starting with
     the last and ending with the first.  This will leave the initial conformer's values as the
     final location for atoms that are not inside a conformer or are in the first conformer.
     :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
