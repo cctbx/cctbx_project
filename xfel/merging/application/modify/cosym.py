@@ -8,6 +8,10 @@ from dxtbx.model.crystal import MosaicCrystalSauter2014
 from dxtbx.model.experiment_list import ExperimentList
 from libtbx.development.timers import Profiler, Timer
 
+import dials.algorithms.symmetry.cosym.target
+from xfel.merging.application.modify.aux_cosym import TargetWithFastRij
+dials.algorithms.symmetry.cosym.target.Target = TargetWithFastRij
+
 class cosym(worker):
   """
   Resolve indexing ambiguity using dials.cosym
@@ -472,8 +476,13 @@ class cosym(worker):
 
     if self.params.modify.cosym.plot.interactive:
       self.params.modify.cosym.plot.filename = None
+
+    has_tokens = len(tokens) > 0
+    all_has_tokens = self.mpi_helper.comm.allgather(has_tokens)
+    ranks_with_tokens = [i for (i, val) in enumerate(all_has_tokens) if val]
+    ranks_to_plot = ranks_with_tokens[:self.params.modify.cosym.plot.n_max]
     do_plot = (self.params.modify.cosym.plot.do_plot
-        and self.mpi_helper.rank < self.params.modify.cosym.plot.n_max)
+        and self.mpi_helper.rank in ranks_to_plot)
 
     if len(tokens) > 0: # Only select ranks that have been assigned tranch data, for mutual coset determination
       # because cosym has a problem with hashed identifiers, use simple experiment identifiers
@@ -484,9 +493,6 @@ class cosym(worker):
         communicator_size=self.mpi_helper.size, do_plot=do_plot)
       self.uuid_cache = COSYM.uuid_cache # reformed uuid list after n_refls filter
 
-      import dials.algorithms.symmetry.cosym.target
-      from xfel.merging.application.modify.aux_cosym import TargetWithFastRij
-      dials.algorithms.symmetry.cosym.target.Target = TargetWithFastRij
 
       rank_N_refl=flex.double([r.size() for r in COSYM.reflections])
       message = """Task 1. Prepare the data for cosym
