@@ -38,6 +38,8 @@ def readResidues(inFile):
     options = globals.options
 
     lines = inFile.readlines()
+    if not lines:
+        return []
     # catch a specific  error notation:
     while lines[0].strip().startswith("Atom pair"):
         del lines[0]
