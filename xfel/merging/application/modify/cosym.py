@@ -72,48 +72,6 @@ class cosym(worker):
       return sampling_experiments_for_cosym, sampling_reflections_for_cosym
 
   @staticmethod
-  def taDEPRECATEsk_1(params, mpi_helper, logger, input_experiments, input_reflections,
-      sampling_experiments_for_cosym, sampling_reflections_for_cosym, uuid_starting=[], communicator_size=1, do_plot=False):
-      uuid_cache = uuid_starting
-      if communicator_size == 1: # simple case, one rank
-       for experiment in input_experiments:
-
-        sampling_experiments_for_cosym.append(experiment)
-        uuid_cache.append(experiment.identifier)
-
-        exp_reflections = input_reflections.select(input_reflections['exp_id'] == experiment.identifier)
-        # prepare individual reflection tables for each experiment
-
-        cosym.experiment_id_detail(sampling_experiments_for_cosym, sampling_reflections_for_cosym, exp_reflections)
-
-      else: # complex case, overlap tranches for mutual coset determination
-        print("SHOULD NEVER HIT THIS AFTER composite tranch redesign")
-        mpi_helper.MPI.COMM_WORLD.barrier()
-        from xfel.merging.application.modify.token_passing_left_right import token_passing_left_right
-        values = token_passing_left_right((input_experiments,input_reflections), mpi_helper.comm)
-        for tranch_experiments, tranch_reflections in values:
-          for experiment in tranch_experiments:
-            sampling_experiments_for_cosym.append(experiment)
-            uuid_cache.append(experiment.identifier)
-
-            exp_reflections = tranch_reflections.select(tranch_reflections['exp_id'] == experiment.identifier)
-            # prepare individual reflection tables for each experiment
-
-            cosym.experiment_id_detail(sampling_experiments_for_cosym, sampling_reflections_for_cosym, exp_reflections)
-      P = Timer ("task 1 constructor")
-      from dials.command_line import cosym as cosym_module
-      cosym_module.logger = logger
-
-      i_plot = mpi_helper.rank
-      from xfel.merging.application.modify.aux_cosym import dials_cl_cosym_subclass as dials_cl_cosym_wrapper
-      COSYM = dials_cl_cosym_wrapper(
-                sampling_experiments_for_cosym, sampling_reflections_for_cosym,
-                uuid_cache, params=params.modify.cosym,
-                output_dir=params.output.output_dir, do_plot=do_plot,
-                i_plot=i_plot)
-      return COSYM
-
-  @staticmethod
   def task_c(params, mpi_helper, logger, tokens,
       sampling_experiments_for_cosym, sampling_reflections_for_cosym, uuid_starting=[], communicator_size=1, do_plot=False):
       # Purpose: assemble a composite tranch from src inputs, and instantiate the COSYM class
