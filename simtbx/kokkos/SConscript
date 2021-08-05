@@ -15,6 +15,7 @@ if os.getenv('KOKKOS_ARCH') is None:
   os.environ['KOKKOS_ARCH'] = "Volta70"
 if os.getenv('KOKKOS_CUDA_OPTIONS') is None:
   os.environ['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
+os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double'
 os.environ['LDFLAGS'] = '-Llib -L$(CUDA_HOME)/lib64'
 os.environ['LDLIBS'] = '-lkokkos -ldl -lcudart -lcuda'
 
@@ -59,7 +60,6 @@ print('='*79)
 Import("env", "env_etc")
 
 kokkos_env = env.Clone()
-print(kokkos_env['CXXCOM'])
 kokkos_env.Replace(CXX=os.environ['CXX'])
 kokkos_env.Replace(SHCXX=os.environ['CXX'])
 kokkos_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
