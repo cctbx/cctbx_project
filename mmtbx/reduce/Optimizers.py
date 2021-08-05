@@ -21,6 +21,8 @@ from boost_adaptbx.graph import connected_component_algorithm as cca
 
 from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
+from iotbx import pdb
+from iotbx.pdb import common_residue_names_get_class
 import mmtbx
 from scitbx.array_family import flex
 
@@ -188,30 +190,15 @@ class SingletonOptimizer:
         bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
         ################################################################################
-        # Placement of water phantom Hydrogens, including adding them to our 'atoms' list 
-        # and the spatial query but not adding them to the hierarchy.  This must be done after
-        # the bond proxies are constructed but before making the spatial-query data structure.
-        # They should be placed in an atom group that indicates that they are waters, but that
-        # group should not be inserted into the hierarchy.
-        # @todo
-
-        ################################################################################
         # Construct the spatial-query information needed to quickly determine which atoms are nearby
         self._spatialQuery = probeExt.SpatialQuery(atoms)
 
         ################################################################################
         # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-        # @todo Ensure that waters are marked as acceptors and their phantom Hydrogens as donors.
+        # @todo Ensure that waters are marked as acceptors.
         ret = Helpers.getExtraAtomInfo(model)
         self._extraAtomInfo = ret.extraAtomInfo
         self._infoString += ret.warnings
-
-        ################################################################################
-        # Construct dot-spheres for each atom that we may need to find interactions for.
-        dotSphereCache = probeExt.DotSphereCache(self._probeDensity)
-        self._dotSpheres = {}
-        for a in atoms:
-          self._dotSpheres[a] = dotSphereCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius)
 
         ################################################################################
         # Get the list of Movers using the _PlaceMovers private function.
@@ -224,12 +211,6 @@ class SingletonOptimizer:
         self._infoString += _VerboseCheck(1,'Marked '+str(len(ret.deleteAtoms))+' atoms for deletion\n')
 
         ################################################################################
-        # Initialize high scores for each Mover, filling in very negative values.
-        self._highScores = {}
-        for m in movers:
-          self._highScores[m] = -1.e10
-
-        ################################################################################
         # Construct a set of atoms that are marked for deletion in the current set of
         # orientations for all Movers.  This is initialized with the atoms that were
         # unconditionally marked for deletion during placement and then we add
@@ -238,6 +219,12 @@ class SingletonOptimizer:
         for m in movers:
           pr = m.CoarsePositions()
           self._setMoverState(pr, 0)
+
+        ################################################################################
+        # Initialize high score for each Mover, filling in a None value for each.
+        self._highScores = {}
+        for m in movers:
+          self._highScores[m] = None
 
         ################################################################################
         # Compute the interaction graph, of which each connected component is a Clique.
@@ -276,6 +263,51 @@ class SingletonOptimizer:
         for a in moverAtoms:
           self._excludeDict[a] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
             bondedNeighborLists, self._bondedNeighborDepth)
+
+        ################################################################################
+        # Placement of water phantom Hydrogens, including adding them to our 'atoms' list 
+        # and the spatial query but not adding them to the hierarchy.  This must be done after
+        # the bond proxies are constructed and the Movers have been placed so that these
+        # fake atoms do not confuse placement.
+        # These atoms will not be part of any atom group, and we'll fill in their extra atom
+        # info directly.
+
+        # Find every Oxygen that is part of a water
+        phantoms = []
+        for a in atoms:
+          if common_residue_names_get_class(name=a.parent().resname) == "common_water":
+            resName = a.parent().resname.strip().upper()
+            resID = str(a.parent().parent().resseq_as_int())
+            chainID = a.parent().parent().parent().id
+            resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
+            newPhantoms = self._getPhantomHydrogensFor(a)
+            if len(newPhantoms) > 0:
+              self._infoString += _VerboseCheck(3,f"Added {len(newPhantoms)} phantom Hydrogens on {resNameAndID}\n")
+            phantoms.extend(newPhantoms)
+
+        if len(phantoms) > 0:
+
+          # Add these atoms to the list of atoms we deal with.
+          # Add these atoms to the spatial-query structure.
+          # Insert ExtraAtomInfo for each of these atoms, marking each as a dummy.
+          PHANTOM_HYDROGEN_RADIUS = 1.05
+          origCount = len(atoms)
+          for a in phantoms:
+            atoms.append(a)
+            self._spatialQuery.add(a)
+            eai = probeExt.ExtraAtomInfo(PHANTOM_HYDROGEN_RADIUS, False, True, True)
+            self._extraAtomInfo.setMappingFor(a, eai)
+
+          self._infoString += _VerboseCheck(1,"Added "+str(len(phantoms))+" phantom Hydrogens on waters")
+          self._infoString += _VerboseCheck(1," (Old total "+str(origCount)+", new total "+str(len(atoms))+")\n")
+
+        ################################################################################
+        # Construct dot-spheres for each atom that we may need to find interactions for.
+        # This must be done after the phantom Hydrogens have been added so that they will be included.
+        dotSphereCache = probeExt.DotSphereCache(self._probeDensity)
+        self._dotSpheres = {}
+        for a in atoms:
+          self._dotSpheres[a] = dotSphereCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius)
 
         ################################################################################
         # Contruct the DotScorer object we'll use to score the dots.
@@ -360,6 +392,85 @@ class SingletonOptimizer:
     """
     ret = self._infoString
     self._infoString = ""
+    return ret
+
+  def _getPhantomHydrogensFor(self, atom):
+    """
+      Get a list of phantom Hydrogens for the atom specified, which is asserted to be an Oxygen
+      atom for a water.
+      :param atom: The Oxygen that is to have phantoms added to it.
+      :return: List of new atoms that make up the phantom Hydrogens, with only their name and
+      element type and xyz positions filled in.  They will have i_seq 0 and they should not be
+      inserted into a structure.
+    """
+    ret = []
+
+    # Get the list of nearby atoms.  The center of the search is the water atom
+    # and the search radius is 4 (these values are pulled from the Reduce C++ code).
+    maxDist = 4.0
+    nearby = self._spatialQuery.neighbors(atom.xyz, 0.001, maxDist)
+
+    # Candidates for nearby atoms.  We use this list to keep track of one ones we
+    # have already found so that we can compare against them to only get one for each
+    # aromatic ring.
+    class Candidate:
+      def __init__(self, atom, overlap):
+        self._atom = atom
+        self._overlap = overlap
+    candidates = []
+
+    for a in nearby:
+      # @todo The C++ checked to see if the atom was either marked as an acceptor or
+      # the flipped position for one in a Mover, but we go ahead and check them pointing
+      # towards all nearby atoms.  This may make things slower, but because they are only
+      # able to make Hydrogen bonds it should not affect the outcome.
+      #   Check to ensure the occupancy of the neighbor is above threshold and that it is
+      # close enough to potentially bond to the atom.
+      OH_BOND_LENGTH = 1.0
+      WATER_EXPLICIT_RADIUS = 1.05
+      overlap = ( (Movers._rvec3(atom.xyz) - Movers._rvec3(a.xyz)).length()  -
+                  (WATER_EXPLICIT_RADIUS + self._extraAtomInfo.getMappingFor(atom).vdwRadius + OH_BOND_LENGTH) )
+      if overlap < -0.01 and a.occ > self._minOccupancy:
+        # If we have multiple atoms in the same Aromatic ring (part of the same residue)
+        # we only point at the closest one.  To ensure this, we check all current candidates
+        # and if we find one that is on the same aromatic ring then we either ignore this new
+        # atom (if it is further) or replace the existing one (if it is closer).
+        if AtomTypes.IsAromaticAcceptor(a.parent().resname.strip().upper(), a.name.strip().upper()):
+          for c in candidates:
+            # See if we belong to the same atom group and are both ring acceptors.  If so, we need to replace
+            # or else squash this atom.
+            if (AtomTypes.IsAromaticAcceptor(c.parent().resname.strip().upper(), c.name.strip().upper()) and
+                a.parent() == c.parent()):
+              if overlap < c._overlap:
+                # Replace the further atom with this atom.
+                c._atom = a
+                c._overlap = overlap
+              else:
+                # This is further away, so we don't insert it.
+                continue
+
+        # Add the Candidate
+        candidates.append(Candidate(a, overlap))
+
+    # Generate phantoms pointing toward all of the remaining candidates.
+    for c in candidates:
+      h = pdb.hierarchy.atom()
+      h.element = "H"
+      h.name = "H"
+
+      # Place the hydrogen pointing from the Oxygen towards the candidate at a distance
+      # of 1 plus an offset that is clamped to the range -1..0 that is the sum of the overlap
+      # and the best hydrogen-bonding overlap.  If we have overlapping atoms, don't add.
+      BEST_HBOND_OVERLAP=0.6
+      distance = 1.0 + max(-1.0, min(0.0, c._overlap + BEST_HBOND_OVERLAP))
+      try:
+        normOffset = (Movers._rvec3(atom.xyz) - Movers._rvec3(c._atom.xyz)).normalize()
+        h.xyz = Movers._rvec3(atom.xyz) + distance * normOffset
+        ret.append(h)
+        self._infoString += _VerboseCheck(5,"Added phantom Hydrogen at "+str(h.xyz)+"\n")
+      except:
+        self._infoString += _VerboseCheck(0,"Could not add phantom Hydrogen\n")
+
     return ret
 
   def _setMoverState(self, positionReturn, index):
@@ -962,6 +1073,10 @@ END
 
   f = open("deleteme.pdb","w")
   f.write(model.model_as_pdb())
+  # @todo
+
+  #========================================================================
+  # Unit test for phantom Hydrogen placement.
   # @todo
 
   #========================================================================
