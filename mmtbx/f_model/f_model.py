@@ -330,6 +330,7 @@ class manager(manager_mixin):
 
   def __init__(self,
          f_obs                        = None,
+         i_obs                        = None,
          r_free_flags                 = None,
          f_mask                       = None,
          f_part1                      = None,
@@ -390,6 +391,7 @@ class manager(manager_mixin):
         abcd = abcd.complete_array(
           new_data_value=(0,0,0,0), d_min=f_obs.d_min()).common_set(f_obs)
     self._f_obs = f_obs
+    self._i_obs = i_obs
     self._r_free_flags = r_free_flags
     assert type(f_obs) == type(r_free_flags)
     self._hl_coeffs = abcd
@@ -1547,6 +1549,9 @@ class manager(manager_mixin):
     r_final = self.r_work()
     assert approx_equal(r_start, r_final), [r_start, r_final]
 
+  def r_work4(self):
+    return self.resolution_filter(d_min=4).r_work()
+
   def _get_target_name(self): return self._target_name
   target_name = property(_get_target_name)
 
@@ -1668,11 +1673,14 @@ class manager(manager_mixin):
     else:
       return self.arrays.hl_coeffs
 
-  def f_obs(self): # XXX CLEAN
+  def f_obs(self):
     if(self.arrays is not None):
       return self.arrays.f_obs
     else:
       return self._f_obs
+
+  def i_obs(self):
+    return self._i_obs
 
   def r_free_flags(self):
       return self._r_free_flags
@@ -2161,8 +2169,14 @@ class manager(manager_mixin):
     d_min = ds[n]
     return self.resolution_filter(d_min=d_min).r_work()
 
+  def r_two_bins_lowest(self):
+    f = self.select(self.bin_selections[0] | self.bin_selections[1])
+    return mmtbx.bulk_solvent.r_factor(
+      f.f_obs_work().data(), f.f_model_work().data())
+
   def r_work_low(self):
     f = self.select(self.bin_selections[0])
+
 
     # Scan for best k
     #fo, fc = f.f_obs_work().data(), f.f_model_work().data()
@@ -2192,10 +2206,11 @@ class manager(manager_mixin):
       f.f_obs_work().data(), f.f_model_work().data())
 
   def r_factors(self, prefix="", as_string=True):
-    rw,rf,rh,rl=self.r_work(),self.r_free(),self.r_work_high(),self.r_work_low()
-    f = "%s r_work=%6.4f r_free=%6.4f r_high=%6.4f r_low=%6.4f"
-    if(as_string): return f%(prefix, rw,rf,rh,rl)
-    else:          return group_args(rw=rw,rf=rf,rh=rh,rl=rl)
+    rw,rf,rh,rl,r4=self.r_work(),self.r_free(),self.r_work_high(),\
+      self.r_work_low(), self.r_work4()
+    f = "%s r_work=%6.4f r_free=%6.4f r_high=%6.4f r_low=%6.4f r_4=%6.4f"
+    if(as_string): return f%(prefix, rw,rf,rh,rl,r4)
+    else:          return group_args(rw=rw,rf=rf,rh=rh,rl=rl,r4=r4)
 
   def r_overall_low_high(self, d = 6.0):
     r_work = self.r_work()

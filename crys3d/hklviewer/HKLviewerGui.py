@@ -1,35 +1,37 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'HKLviewer2.ui'
+## Form generated from reading UI file 'HKLviewer3.ui'
 ##
 ## Created by: Qt User Interface Compiler version 5.14.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
+
 from __future__ import absolute_import, division, print_function
 
-from PySide2.QtWebEngineWidgets import QWebEngineView
+from .qt import QWebEngineView
 try: # if invoked by cctbx.python or some such
   from crys3d.hklview.helpers import HeaderDataTableWidget
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
-  from helpers import HeaderDataTableWidget
+  from .helpers import HeaderDataTableWidget
 
-from PySide2.QtCore import QCoreApplication, QMetaObject, QRect, QSize, Qt
-from PySide2.QtWidgets import QAbstractItemView, QAction, QCheckBox, QComboBox, \
- QDoubleSpinBox, QFrame, QGridLayout, QGroupBox, QLabel, QMenu, QMenuBar, \
- QPlainTextEdit, QPushButton, QRadioButton, QSlider, QSplitter, QSizePolicy, QSpinBox, \
- QStatusBar, QTableWidget, QTabWidget, QTextEdit, QWidget
-from PySide2.QtGui import QIcon
+from .qt import QCoreApplication, QMetaObject, QRect, QSize, Qt
+from .qt import QAbstractItemView, QAction, QCheckBox, QComboBox, \
+ QDoubleSpinBox, QFrame, QGridLayout, QGroupBox, QLabel, QPlainTextEdit, \
+ QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox, \
+ QTableWidget, QTabWidget, QTextEdit, QWidget
+from .qt import QIcon
 
+# for the sake of embedding remove MainWindow.setCentralWidget(self.centralwidget) from below
 
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(1093, 862)
-        sizePolicy = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
+        MainWindow.resize(844, 862)
+        sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(MainWindow.sizePolicy().hasHeightForWidth())
@@ -56,14 +58,20 @@ class Ui_MainWindow(object):
         self.actionAbout.setObjectName(u"actionAbout")
         self.actionColour_Gradient = QAction(MainWindow)
         self.actionColour_Gradient.setObjectName(u"actionColour_Gradient")
+        self.actionHKLviewer_Tutorial = QAction(MainWindow)
+        self.actionHKLviewer_Tutorial.setObjectName(u"actionHKLviewer_Tutorial")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
+        sizePolicy.setHeightForWidth(self.centralwidget.sizePolicy().hasHeightForWidth())
+        self.centralwidget.setSizePolicy(sizePolicy)
         self.gridLayout_2 = QGridLayout(self.centralwidget)
         self.gridLayout_2.setSpacing(4)
         self.gridLayout_2.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_2.setObjectName(u"gridLayout_2")
         self.widget = QWidget(self.centralwidget)
         self.widget.setObjectName(u"widget")
+        sizePolicy.setHeightForWidth(self.widget.sizePolicy().hasHeightForWidth())
+        self.widget.setSizePolicy(sizePolicy)
         self.gridLayout = QGridLayout(self.widget)
         self.gridLayout.setSpacing(4)
         self.gridLayout.setContentsMargins(3, 3, 3, 3)
@@ -71,46 +79,53 @@ class Ui_MainWindow(object):
         self.gridLayout.setContentsMargins(0, 0, 0, 0)
         self.splitter = QSplitter(self.widget)
         self.splitter.setObjectName(u"splitter")
+        sizePolicy1 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.splitter.sizePolicy().hasHeightForWidth())
+        self.splitter.setSizePolicy(sizePolicy1)
         self.splitter.setMidLineWidth(0)
         self.splitter.setOrientation(Qt.Horizontal)
         self.splitter.setHandleWidth(5)
         self.widget_2 = QWidget(self.splitter)
         self.widget_2.setObjectName(u"widget_2")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        sizePolicy1.setHorizontalStretch(0)
-        sizePolicy1.setVerticalStretch(0)
-        sizePolicy1.setHeightForWidth(self.widget_2.sizePolicy().hasHeightForWidth())
-        self.widget_2.setSizePolicy(sizePolicy1)
-        self.gridLayout_4 = QGridLayout(self.widget_2)
-        self.gridLayout_4.setSpacing(4)
-        self.gridLayout_4.setContentsMargins(3, 3, 3, 3)
-        self.gridLayout_4.setObjectName(u"gridLayout_4")
+        sizePolicy.setHeightForWidth(self.widget_2.sizePolicy().hasHeightForWidth())
+        self.widget_2.setSizePolicy(sizePolicy)
+        self.gridLayout_23 = QGridLayout(self.widget_2)
+        self.gridLayout_23.setSpacing(4)
+        self.gridLayout_23.setContentsMargins(3, 3, 3, 3)
+        self.gridLayout_23.setObjectName(u"gridLayout_23")
         self.splitter_2 = QSplitter(self.widget_2)
         self.splitter_2.setObjectName(u"splitter_2")
+        sizePolicy2 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.splitter_2.sizePolicy().hasHeightForWidth())
+        self.splitter_2.setSizePolicy(sizePolicy2)
         self.splitter_2.setOrientation(Qt.Vertical)
         self.widget_4 = QWidget(self.splitter_2)
         self.widget_4.setObjectName(u"widget_4")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        sizePolicy2.setHorizontalStretch(0)
-        sizePolicy2.setVerticalStretch(3)
-        sizePolicy2.setHeightForWidth(self.widget_4.sizePolicy().hasHeightForWidth())
-        self.widget_4.setSizePolicy(sizePolicy2)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(3)
+        sizePolicy3.setHeightForWidth(self.widget_4.sizePolicy().hasHeightForWidth())
+        self.widget_4.setSizePolicy(sizePolicy3)
         self.gridLayout_5 = QGridLayout(self.widget_4)
         self.gridLayout_5.setSpacing(4)
         self.gridLayout_5.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_5.setObjectName(u"gridLayout_5")
-        self.gridLayout_5.setContentsMargins(0, 3, 0, 3)
+        self.gridLayout_5.setContentsMargins(0, 0, 0, 0)
         self.millertable = HeaderDataTableWidget(self.widget_4)
         if (self.millertable.columnCount() < 9):
             self.millertable.setColumnCount(9)
         if (self.millertable.rowCount() < 1):
             self.millertable.setRowCount(1)
         self.millertable.setObjectName(u"millertable")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        sizePolicy3.setHorizontalStretch(0)
-        sizePolicy3.setVerticalStretch(1)
-        sizePolicy3.setHeightForWidth(self.millertable.sizePolicy().hasHeightForWidth())
-        self.millertable.setSizePolicy(sizePolicy3)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(1)
+        sizePolicy4.setHeightForWidth(self.millertable.sizePolicy().hasHeightForWidth())
+        self.millertable.setSizePolicy(sizePolicy4)
         self.millertable.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.millertable.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.millertable.setRowCount(1)
@@ -123,35 +138,44 @@ class Ui_MainWindow(object):
 
         self.label = QLabel(self.widget_4)
         self.label.setObjectName(u"label")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.label.sizePolicy().hasHeightForWidth())
-        self.label.setSizePolicy(sizePolicy4)
+        sizePolicy5 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+        sizePolicy5.setHorizontalStretch(0)
+        sizePolicy5.setVerticalStretch(0)
+        sizePolicy5.setHeightForWidth(self.label.sizePolicy().hasHeightForWidth())
+        self.label.setSizePolicy(sizePolicy5)
+        self.label.setWordWrap(True)
 
         self.gridLayout_5.addWidget(self.label, 0, 0, 1, 1)
 
         self.splitter_2.addWidget(self.widget_4)
         self.SpaceGrpUCellText = QTextEdit(self.splitter_2)
         self.SpaceGrpUCellText.setObjectName(u"SpaceGrpUCellText")
-        sizePolicy5 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
-        sizePolicy5.setHorizontalStretch(0)
-        sizePolicy5.setVerticalStretch(0)
-        sizePolicy5.setHeightForWidth(self.SpaceGrpUCellText.sizePolicy().hasHeightForWidth())
-        self.SpaceGrpUCellText.setSizePolicy(sizePolicy5)
+        sizePolicy6 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Ignored)
+        sizePolicy6.setHorizontalStretch(0)
+        sizePolicy6.setVerticalStretch(0)
+        sizePolicy6.setHeightForWidth(self.SpaceGrpUCellText.sizePolicy().hasHeightForWidth())
+        self.SpaceGrpUCellText.setSizePolicy(sizePolicy6)
         self.SpaceGrpUCellText.setMinimumSize(QSize(0, 30))
         self.SpaceGrpUCellText.setMaximumSize(QSize(16777215, 16777215))
         self.SpaceGrpUCellText.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.SpaceGrpUCellText.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.SpaceGrpUCellText.setReadOnly(True)
         self.splitter_2.addWidget(self.SpaceGrpUCellText)
-        self.functionTabWidget = QTabWidget(self.splitter_2)
+        self.scrollArea = QScrollArea(self.splitter_2)
+        self.scrollArea.setObjectName(u"scrollArea")
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollAreaWidgetContents = QWidget()
+        self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 421, 364))
+        self.gridLayout_4 = QGridLayout(self.scrollAreaWidgetContents)
+        self.gridLayout_4.setSpacing(4)
+        self.gridLayout_4.setContentsMargins(3, 3, 3, 3)
+        self.gridLayout_4.setObjectName(u"gridLayout_4")
+        self.gridLayout_4.setContentsMargins(0, 0, 0, 0)
+        self.functionTabWidget = QTabWidget(self.scrollAreaWidgetContents)
         self.functionTabWidget.setObjectName(u"functionTabWidget")
-        sizePolicy6 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        sizePolicy6.setHorizontalStretch(0)
-        sizePolicy6.setVerticalStretch(0)
-        sizePolicy6.setHeightForWidth(self.functionTabWidget.sizePolicy().hasHeightForWidth())
-        self.functionTabWidget.setSizePolicy(sizePolicy6)
+        sizePolicy2.setHeightForWidth(self.functionTabWidget.sizePolicy().hasHeightForWidth())
+        self.functionTabWidget.setSizePolicy(sizePolicy2)
         self.tab = QWidget()
         self.tab.setObjectName(u"tab")
         self.gridLayout_28 = QGridLayout(self.tab)
@@ -588,8 +612,11 @@ class Ui_MainWindow(object):
 
         self.Nbins_spinBox = QSpinBox(self.groupBox_5)
         self.Nbins_spinBox.setObjectName(u"Nbins_spinBox")
-        sizePolicy.setHeightForWidth(self.Nbins_spinBox.sizePolicy().hasHeightForWidth())
-        self.Nbins_spinBox.setSizePolicy(sizePolicy)
+        sizePolicy20 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
+        sizePolicy20.setHorizontalStretch(0)
+        sizePolicy20.setVerticalStretch(0)
+        sizePolicy20.setHeightForWidth(self.Nbins_spinBox.sizePolicy().hasHeightForWidth())
+        self.Nbins_spinBox.setSizePolicy(sizePolicy20)
         self.Nbins_spinBox.setMinimum(1)
         self.Nbins_spinBox.setMaximum(20)
 
@@ -618,8 +645,8 @@ class Ui_MainWindow(object):
         if (self.binstable.rowCount() < 5):
             self.binstable.setRowCount(5)
         self.binstable.setObjectName(u"binstable")
-        sizePolicy3.setHeightForWidth(self.binstable.sizePolicy().hasHeightForWidth())
-        self.binstable.setSizePolicy(sizePolicy3)
+        sizePolicy4.setHeightForWidth(self.binstable.sizePolicy().hasHeightForWidth())
+        self.binstable.setSizePolicy(sizePolicy4)
         self.binstable.setRowCount(5)
         self.binstable.setColumnCount(4)
 
@@ -637,11 +664,11 @@ class Ui_MainWindow(object):
         self.gridLayout_14.setObjectName(u"gridLayout_14")
         self.RotationVectorsBox = QGroupBox(self.tab_5)
         self.RotationVectorsBox.setObjectName(u"RotationVectorsBox")
-        sizePolicy20 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
-        sizePolicy20.setHorizontalStretch(0)
-        sizePolicy20.setVerticalStretch(0)
-        sizePolicy20.setHeightForWidth(self.RotationVectorsBox.sizePolicy().hasHeightForWidth())
-        self.RotationVectorsBox.setSizePolicy(sizePolicy20)
+        sizePolicy21 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
+        sizePolicy21.setHorizontalStretch(0)
+        sizePolicy21.setVerticalStretch(0)
+        sizePolicy21.setHeightForWidth(self.RotationVectorsBox.sizePolicy().hasHeightForWidth())
+        self.RotationVectorsBox.setSizePolicy(sizePolicy21)
         self.RotationVectorsBox.setMaximumSize(QSize(16777215, 16777215))
         self.RotationVectorsBox.setCheckable(False)
         self.gridLayout_8 = QGridLayout(self.RotationVectorsBox)
@@ -655,11 +682,11 @@ class Ui_MainWindow(object):
         if (self.vectortable2.rowCount() < 4):
             self.vectortable2.setRowCount(4)
         self.vectortable2.setObjectName(u"vectortable2")
-        sizePolicy21 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        sizePolicy21.setHorizontalStretch(3)
-        sizePolicy21.setVerticalStretch(3)
-        sizePolicy21.setHeightForWidth(self.vectortable2.sizePolicy().hasHeightForWidth())
-        self.vectortable2.setSizePolicy(sizePolicy21)
+        sizePolicy22 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        sizePolicy22.setHorizontalStretch(3)
+        sizePolicy22.setVerticalStretch(3)
+        sizePolicy22.setHeightForWidth(self.vectortable2.sizePolicy().hasHeightForWidth())
+        self.vectortable2.setSizePolicy(sizePolicy22)
         self.vectortable2.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.vectortable2.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.vectortable2.setWordWrap(False)
@@ -681,11 +708,11 @@ class Ui_MainWindow(object):
 
         self.RotateAroundframe = QFrame(self.RotationVectorsBox)
         self.RotateAroundframe.setObjectName(u"RotateAroundframe")
-        sizePolicy22 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-        sizePolicy22.setHorizontalStretch(1)
-        sizePolicy22.setVerticalStretch(0)
-        sizePolicy22.setHeightForWidth(self.RotateAroundframe.sizePolicy().hasHeightForWidth())
-        self.RotateAroundframe.setSizePolicy(sizePolicy22)
+        sizePolicy23 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        sizePolicy23.setHorizontalStretch(1)
+        sizePolicy23.setVerticalStretch(0)
+        sizePolicy23.setHeightForWidth(self.RotateAroundframe.sizePolicy().hasHeightForWidth())
+        self.RotateAroundframe.setSizePolicy(sizePolicy23)
         self.RotateAroundframe.setFrameShape(QFrame.StyledPanel)
         self.RotateAroundframe.setFrameShadow(QFrame.Raised)
         self.gridLayout_18 = QGridLayout(self.RotateAroundframe)
@@ -694,11 +721,11 @@ class Ui_MainWindow(object):
         self.gridLayout_18.setObjectName(u"gridLayout_18")
         self.rotavecangle_labeltxt = QLabel(self.RotateAroundframe)
         self.rotavecangle_labeltxt.setObjectName(u"rotavecangle_labeltxt")
-        sizePolicy23 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        sizePolicy23.setHorizontalStretch(0)
-        sizePolicy23.setVerticalStretch(0)
-        sizePolicy23.setHeightForWidth(self.rotavecangle_labeltxt.sizePolicy().hasHeightForWidth())
-        self.rotavecangle_labeltxt.setSizePolicy(sizePolicy23)
+        sizePolicy24 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        sizePolicy24.setHorizontalStretch(0)
+        sizePolicy24.setVerticalStretch(0)
+        sizePolicy24.setHeightForWidth(self.rotavecangle_labeltxt.sizePolicy().hasHeightForWidth())
+        self.rotavecangle_labeltxt.setSizePolicy(sizePolicy24)
         self.rotavecangle_labeltxt.setMinimumSize(QSize(120, 0))
         self.rotavecangle_labeltxt.setWordWrap(True)
 
@@ -706,11 +733,11 @@ class Ui_MainWindow(object):
 
         self.rotavecangle_slider = QSlider(self.RotateAroundframe)
         self.rotavecangle_slider.setObjectName(u"rotavecangle_slider")
-        sizePolicy24 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
-        sizePolicy24.setHorizontalStretch(0)
-        sizePolicy24.setVerticalStretch(0)
-        sizePolicy24.setHeightForWidth(self.rotavecangle_slider.sizePolicy().hasHeightForWidth())
-        self.rotavecangle_slider.setSizePolicy(sizePolicy24)
+        sizePolicy25 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
+        sizePolicy25.setHorizontalStretch(0)
+        sizePolicy25.setVerticalStretch(0)
+        sizePolicy25.setHeightForWidth(self.rotavecangle_slider.sizePolicy().hasHeightForWidth())
+        self.rotavecangle_slider.setSizePolicy(sizePolicy25)
         self.rotavecangle_slider.setMinimumSize(QSize(120, 0))
         self.rotavecangle_slider.setMaximum(720)
         self.rotavecangle_slider.setPageStep(20)
@@ -723,8 +750,8 @@ class Ui_MainWindow(object):
         self.AlignVectorGroupBox = QGroupBox(self.RotateAroundframe)
         self.AlignVectorGroupBox.setObjectName(u"AlignVectorGroupBox")
         self.AlignVectorGroupBox.setEnabled(True)
-        sizePolicy4.setHeightForWidth(self.AlignVectorGroupBox.sizePolicy().hasHeightForWidth())
-        self.AlignVectorGroupBox.setSizePolicy(sizePolicy4)
+        sizePolicy5.setHeightForWidth(self.AlignVectorGroupBox.sizePolicy().hasHeightForWidth())
+        self.AlignVectorGroupBox.setSizePolicy(sizePolicy5)
         self.AlignVectorGroupBox.setCheckable(True)
         self.AlignVectorGroupBox.setChecked(False)
         self.gridLayout_17 = QGridLayout(self.AlignVectorGroupBox)
@@ -748,8 +775,8 @@ class Ui_MainWindow(object):
 
         self.AnimaRotCheckBox = QCheckBox(self.RotateAroundframe)
         self.AnimaRotCheckBox.setObjectName(u"AnimaRotCheckBox")
-        sizePolicy24.setHeightForWidth(self.AnimaRotCheckBox.sizePolicy().hasHeightForWidth())
-        self.AnimaRotCheckBox.setSizePolicy(sizePolicy24)
+        sizePolicy25.setHeightForWidth(self.AnimaRotCheckBox.sizePolicy().hasHeightForWidth())
+        self.AnimaRotCheckBox.setSizePolicy(sizePolicy25)
 
         self.gridLayout_18.addWidget(self.AnimaRotCheckBox, 3, 0, 1, 2)
 
@@ -796,11 +823,11 @@ class Ui_MainWindow(object):
 
         self.reciprocunitcellslider = QSlider(self.DrawReciprocUnitCellBox)
         self.reciprocunitcellslider.setObjectName(u"reciprocunitcellslider")
-        sizePolicy25 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        sizePolicy25.setHorizontalStretch(0)
-        sizePolicy25.setVerticalStretch(0)
-        sizePolicy25.setHeightForWidth(self.reciprocunitcellslider.sizePolicy().hasHeightForWidth())
-        self.reciprocunitcellslider.setSizePolicy(sizePolicy25)
+        sizePolicy26 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        sizePolicy26.setHorizontalStretch(0)
+        sizePolicy26.setVerticalStretch(0)
+        sizePolicy26.setHeightForWidth(self.reciprocunitcellslider.sizePolicy().hasHeightForWidth())
+        self.reciprocunitcellslider.setSizePolicy(sizePolicy26)
         self.reciprocunitcellslider.setMinimum(0)
         self.reciprocunitcellslider.setMaximum(100)
         self.reciprocunitcellslider.setOrientation(Qt.Horizontal)
@@ -849,21 +876,25 @@ class Ui_MainWindow(object):
         self.gridLayout_14.addWidget(self.DrawRealUnitCellBox, 2, 0, 1, 1)
 
         self.functionTabWidget.addTab(self.tab_5, "")
-        self.splitter_2.addWidget(self.functionTabWidget)
+
+        self.gridLayout_4.addWidget(self.functionTabWidget, 0, 0, 1, 1)
+
+        self.scrollArea.setWidget(self.scrollAreaWidgetContents)
+        self.splitter_2.addWidget(self.scrollArea)
         self.textInfo = QPlainTextEdit(self.splitter_2)
         self.textInfo.setObjectName(u"textInfo")
-        sizePolicy26 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        sizePolicy26.setHorizontalStretch(0)
-        sizePolicy26.setVerticalStretch(2)
-        sizePolicy26.setHeightForWidth(self.textInfo.sizePolicy().hasHeightForWidth())
-        self.textInfo.setSizePolicy(sizePolicy26)
+        sizePolicy27 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        sizePolicy27.setHorizontalStretch(0)
+        sizePolicy27.setVerticalStretch(2)
+        sizePolicy27.setHeightForWidth(self.textInfo.sizePolicy().hasHeightForWidth())
+        self.textInfo.setSizePolicy(sizePolicy27)
         self.textInfo.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.textInfo.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.textInfo.setLineWrapMode(QPlainTextEdit.NoWrap)
         self.textInfo.setReadOnly(True)
         self.splitter_2.addWidget(self.textInfo)
 
-        self.gridLayout_4.addWidget(self.splitter_2, 0, 0, 1, 1)
+        self.gridLayout_23.addWidget(self.splitter_2, 0, 0, 1, 1)
 
         self.splitter.addWidget(self.widget_2)
         self.BrowserBox = QWebEngineView(self.splitter)
@@ -876,32 +907,6 @@ class Ui_MainWindow(object):
 
 
         self.gridLayout_2.addWidget(self.widget, 0, 0, 1, 1)
-
-        MainWindow.setCentralWidget(self.centralwidget)
-        self.menubar = QMenuBar(MainWindow)
-        self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 1093, 22))
-        self.menuFile = QMenu(self.menubar)
-        self.menuFile.setObjectName(u"menuFile")
-        self.menuHelp = QMenu(self.menubar)
-        self.menuHelp.setObjectName(u"menuHelp")
-        MainWindow.setMenuBar(self.menubar)
-        self.statusBar = QStatusBar(MainWindow)
-        self.statusBar.setObjectName(u"statusBar")
-        MainWindow.setStatusBar(self.statusBar)
-
-        self.menubar.addAction(self.menuFile.menuAction())
-        self.menubar.addAction(self.menuHelp.menuAction())
-        self.menuFile.addAction(self.actionOpen_reflection_file)
-        self.menuFile.addAction(self.actionSave_reflection_file)
-        self.menuFile.addAction(self.actionSettings)
-        self.menuFile.addAction(self.actiondebug)
-        self.menuFile.addAction(self.actionColour_Gradient)
-        self.menuFile.addAction(self.actionSave_Current_Image)
-        self.menuFile.addAction(self.actionExit)
-        self.menuHelp.addAction(self.actionLocal_Help)
-        self.menuHelp.addAction(self.actionCCTBXwebsite)
-        self.menuHelp.addAction(self.actionAbout)
 
         self.retranslateUi(MainWindow)
 
@@ -922,10 +927,11 @@ class Ui_MainWindow(object):
         self.actionSave_reflection_file.setText(QCoreApplication.translate("MainWindow", u"Save reflection file...", None))
         self.actionReset_View.setText(QCoreApplication.translate("MainWindow", u"Reset View", None))
         self.actionSave_Current_Image.setText(QCoreApplication.translate("MainWindow", u"Save Current Image...", None))
-        self.actionCCTBXwebsite.setText(QCoreApplication.translate("MainWindow", u"CCTBX website", None))
-        self.actionLocal_Help.setText(QCoreApplication.translate("MainWindow", u"HKLviewer Help", None))
-        self.actionAbout.setText(QCoreApplication.translate("MainWindow", u"About HKLviewer", None))
+        self.actionCCTBXwebsite.setText(QCoreApplication.translate("MainWindow", u"CCTBX Documentation", None))
+        self.actionLocal_Help.setText(QCoreApplication.translate("MainWindow", u"Documentation", None))
+        self.actionAbout.setText(QCoreApplication.translate("MainWindow", u"About", None))
         self.actionColour_Gradient.setText(QCoreApplication.translate("MainWindow", u"Colour Gradient...", None))
+        self.actionHKLviewer_Tutorial.setText(QCoreApplication.translate("MainWindow", u"Tutorial", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"Display a dataset with a double-click. Right-click table for more options.", None))
         self.SpaceGrpUCellText.setHtml(QCoreApplication.translate("MainWindow", u"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
@@ -1001,7 +1007,7 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.label_12.setText(QCoreApplication.translate("MainWindow", u"Number of bins:", None))
 #if QT_CONFIG(tooltip)
-        self.Nbins_spinBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Select the number of bins for ordering the currently displayed dataset. More than about 10-15 bins will slow down the HKLviewer when working with large datasets.<br/>The requested number of bins may not be created if there are zero reflections in some bins.</p></body></html>", None))
+        self.Nbins_spinBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Select the number of bins for ordering the currently displayed data set. More than about 10-15 bins will slow down the HKLviewer when working with large datasets.<br/>The requested number of bins may not be created if there are zero reflections in some bins.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.OpaqueAllCheckbox.setText(QCoreApplication.translate("MainWindow", u"Show/hide all data", None))
 #if QT_CONFIG(tooltip)
@@ -1041,6 +1047,5 @@ class Ui_MainWindow(object):
         self.label_6.setText(QCoreApplication.translate("MainWindow", u"True to Scale", None))
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"Close to radius of sphere of reflections", None))
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_5), QCoreApplication.translate("MainWindow", u"Vectors", None))
-        self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
-        self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", u"Help", None))
     # retranslateUi
+

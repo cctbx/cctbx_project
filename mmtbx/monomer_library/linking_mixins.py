@@ -750,6 +750,7 @@ Residue classes
         origin_id = origin_ids.get_origin_id('link_%s' % key,
                                              return_none_if_absent=True,
                                              )
+        if verbose: print('apply standard link', key, origin_id)
         if origin_id is None:
           # user defined links should not be applied here
           continue

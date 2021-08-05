@@ -31,9 +31,19 @@ input {
   log_file = None
     .type = path
     .help = Location of the log file to upload. If None, guess from mtz name.
+  other_files = None
+    .type = path
+    .multiple = True
+    .help = Any additional files to upload.
+  dataset_root = None
+    .type = path
+    .help = Path to folder with dataset versions. Can be None if guess_root_and_version = True
   version = None
     .type = int
     .help = Dataset version number. If None, guess from mtz name.
+  guess_root_and_version = True
+    .type = bool
+    .help = Whether to guess the file paths from the mtz_file path
 }
 """
 phil_scope = parse(phil_str)
@@ -134,7 +144,10 @@ def run(args):
 
   for arg in args:
     try:
-      user_phil.append(parse(arg))
+      if os.path.isfile(arg):
+        user_phil.append(parse(file_name=arg))
+      else:
+        user_phil.append(parse(arg))
     except Exception as e:
       raise Sorry("Unrecognized argument %s"%arg)
   params = phil_scope.fetch(sources=user_phil).extract()
@@ -146,16 +159,21 @@ def run_with_preparsed(params):
   assert params.drive.credential_file is not None
   assert params.drive.shared_folder_id is not None
   assert params.input.mtz_file is not None
+  if params.input.other_files is None: params.input.other_files = []
 
 
   mtz_dirname, mtz_fname = os.path.split(params.input.mtz_file)
   mtz_path = params.input.mtz_file
 
-  if params.input.version is not None:
-    dataset_root = _get_root_and_version(mtz_fname)[0]
-    version_str = "v{:03d}".format(params.input.version)
+  if params.input.guess_root_and_version:
+    if params.input.version is not None:
+      dataset_root = _get_root_and_version(mtz_fname)[0]
+      version_str = "v{:03d}".format(params.input.version)
+    else:
+      dataset_root, version_str = _get_root_and_version(mtz_fname)
   else:
-    dataset_root, version_str = _get_root_and_version(mtz_fname)
+    dataset_root = params.input.dataset_root
+    version_str = "v{:03d}".format(params.input.version)
 
   if params.input.log_file is not None:
     log_path = params.input.log_file
@@ -168,7 +186,7 @@ def run_with_preparsed(params):
       params.drive.shared_folder_id
   )
   folders = [dataset_root, version_str]
-  files = [mtz_path, log_path]
+  files = [mtz_path, log_path] + params.input.other_files
   drive.upload(folders, files)
 
 

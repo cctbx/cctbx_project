@@ -119,10 +119,11 @@ class PopUpCharts(object):
   ''' Class to generate chargs and graphs that will appear in separate
   windows when user requests them, e.g. unit cell histogram chart '''
 
-  def __init__(self, interactive = True):
+  def __init__(self, interactive = True, figure = None):
     import matplotlib.pyplot as plt
     self.plt=plt
     self.interactive = interactive
+    self.figure = figure
 
   def reject_outliers(self, data, iqr_ratio = 1.5):
     eps = 1e-6
@@ -169,7 +170,10 @@ class PopUpCharts(object):
       separator = "\n"
 
     # Initialize figure
-    fig = plt.figure(figsize=(xsize, ysize))
+    if self.figure:
+      fig = self.figure
+    else:
+      fig = plt.figure(figsize=(xsize, ysize))
     gsp = GridSpec(3, 4)
     legend_sub_a = fig.add_subplot(gsp[3])
     legend_sub_b = fig.add_subplot(gsp[7])

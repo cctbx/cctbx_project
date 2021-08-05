@@ -160,8 +160,6 @@ namespace af = scitbx::af;
     simtbx::gpu::gpu_detector & gdt,
     af::shared<bool> all_panel_mask
   ){
-        cudaSafeCall(cudaSetDevice(SIM.device_Id));
-
         // here or there, need to convert the all_panel_mask (3D map) into a 1D list of accepted pixels
         // coordinates for the active pixel list are absolute offsets into the detector array
         af::shared<int> active_pixel_list;
@@ -171,6 +169,19 @@ namespace af = scitbx::af;
             active_pixel_list.push_back(j);
           }
         }
+        add_energy_channel_mask_allpanel_cuda(
+          ichannel, gec, gdt, active_pixel_list);
+  }
+
+  void
+  exascale_api::add_energy_channel_mask_allpanel_cuda(
+    int const& ichannel,
+    simtbx::gpu::gpu_energy_channels & gec,
+    simtbx::gpu::gpu_detector & gdt,
+    af::shared<int> const active_pixel_list
+  ){
+        cudaSafeCall(cudaSetDevice(SIM.device_Id));
+
         gdt.set_active_pixels_on_GPU(active_pixel_list);
 
         // transfer source_I, source_lambda
@@ -232,7 +243,7 @@ namespace af = scitbx::af;
 
 
   void
-  exascale_api::add_background_cuda(simtbx::gpu::gpu_detector & gdt){
+  exascale_api::add_background_cuda(simtbx::gpu::gpu_detector & gdt, int const& override_source){
         cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
         // transfer source_I, source_lambda
@@ -270,7 +281,7 @@ namespace af = scitbx::af;
         // the for loop around panels.  Offsets given.
         for (std::size_t idx_p = 0; idx_p < gdt.cu_n_panels; idx_p++){
           add_background_CUDAKernel<<<numBlocks, threadsPerBlock>>>(SIM.sources,
-          SIM.oversample,
+          SIM.oversample, override_source,
           SIM.pixel_size, gdt.cu_slow_pixels, gdt.cu_fast_pixels, SIM.detector_thicksteps,
           SIM.detector_thickstep, SIM.detector_attnlen,
           &(gdt.cu_sdet_vector[vec_len * idx_p]),

@@ -425,6 +425,17 @@ class manager(object):
     """
     return self._pdb_interpretation_params
 
+  def get_header_r_free_flags_md5_hexdigest(self):
+    """
+    XXX Limited to PDB format XXX
+    """
+    result = []
+    if(self.get_model_input() is None): return result
+    for line in self.get_model_input().remark_section():
+      if (line.startswith("REMARK r_free_flags.md5.hexdigest ")):
+        result.append(line.rstrip())
+    return result
+
   def get_xray_structure(self):
     if(self._xray_structure is None):
       cs = self.crystal_symmetry()
@@ -525,11 +536,13 @@ class manager(object):
       It may be present by itself or as an attribute of _processed_pdb_file
       Also restraints_manager is not pickleable
       This method removes _ss_manager and restraints_manager
+      Also removes log
     '''
 
     self_dc = self.deep_copy() # Avoid changing the model itself
     self_dc._ss_manager = None
     self_dc.unset_restraints_manager()
+    self_dc.log = None
 
     state = self_dc.__dict__
     return state
@@ -655,6 +668,22 @@ class manager(object):
 
   def set_ss_annotation(self, ann):
     self._ss_annotation = ann
+
+  def add_crystal_symmetry_if_necessary(self, box_cushion = 3):
+    '''
+      If this model does not have crystal_symmetry set, create a dummy
+      crystal_symmetry that goes around the model.  Do not shift position.
+    '''
+    if self.crystal_symmetry() and self.crystal_symmetry().unit_cell() and \
+        self.crystal_symmetry().space_group() :
+      return  # nothing to do
+
+    sites_cart=self.get_sites_cart()
+
+    a,b,c = matrix.col(sites_cart.max()) - matrix.col(sites_cart.min()) + \
+      2 * matrix.col((box_cushion,box_cushion,box_cushion))
+    crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
+    self.set_crystal_symmetry(crystal_symmetry)
 
   def set_unit_cell_crystal_symmetry_and_shift_cart(self,
        unit_cell_crystal_symmetry=None,
@@ -954,6 +983,13 @@ class manager(object):
 
   def get_site_symmetry_table(self):
     return self._site_symmetry_table
+
+  def altlocs_present(self):
+    result = False
+    conformer_indices = self.get_hierarchy().get_conformer_indices()
+    if(len(list(set(list(conformer_indices))))>1):
+      result = True
+    return result
 
   def initialize_anomalous_scatterer_groups(
       self,
@@ -1530,6 +1566,8 @@ class manager(object):
     acp = self._processed_pdb_file.all_chain_proxies
     self._atom_selection_cache = acp.pdb_hierarchy.atom_selection_cache()
     self._pdb_hierarchy        = acp.pdb_hierarchy
+    self._type_energies        = acp.type_energies
+    self._type_h_bonds         = acp.type_h_bonds
     xray_structure_all = \
           self._processed_pdb_file.xray_structure(show_summary = False)
     # XXX ad hoc manipulation
@@ -1880,6 +1918,16 @@ class manager(object):
     else:
       print("No NCS restraint groups specified.", file=self.log)
       print(file=self.log)
+
+  def get_specific_h_bond_type(self, atom):
+    type_h_bond = self._type_h_bonds[atom.i_seq]
+    return type_h_bond
+
+  def get_specific_vdw_radii(self, atom):
+    e = self.get_ener_lib()
+    type_energy = self._type_energies[atom.i_seq]
+    vdw = e.lib_atom[type_energy].vdw_radius
+    return vdw
 
   def get_vdw_radii(self, vdw_radius_default = 1.0):
     """
@@ -2994,13 +3042,18 @@ class manager(object):
                         out = None, text="Information about rigid groups"):
     global time_model_show
     timer = user_plus_sys_time()
+    # Decide automatically based on available data
+    if(rigid_body is None and self.refinement_flags is not None and
+       self.refinement_flags.rigid_body and tls is None):
+     rigid_body = True
+    #
     selections = None
     if(rigid_body is not None):
        selections = self.refinement_flags.sites_rigid_body
     if(tls is not None): selections = self.refinement_flags.adp_tls
     if(self.refinement_flags.sites_rigid_body is None and
                                  self.refinement_flags.adp_tls is None): return
-    assert selections is not None
+    if(selections is None): return
     if (out is None): out = sys.stdout
     print(file=out)
     line_len = len("| "+text+"|")
@@ -3580,6 +3633,23 @@ class manager(object):
       self._xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection = selection_aniso.iselection())
 
+  def as_map_model_manager(self, map_manager = None,
+    create_model_map = False, resolution = None):
+   """ Return a map_model_manager containing this model
+     (and optional map_manager)
+    Note that a map_manager is required for most functions of the
+    map_model_manager.  You can generate a map_manager with
+    create_model_map = True and setting resolution
+   """
+
+   from iotbx.map_model_manager import map_model_manager
+   mmm = map_model_manager(model = self, map_manager = map_manager)
+   if create_model_map:
+     assert resolution is not None
+     mmm.set_resolution(resolution)
+     mmm.generate_map()
+   return mmm
+
   def _expand_symm_helper(self, records_container):
     """
     This will expand hierarchy and ss annotations. In future anything else that
@@ -3766,5 +3836,6 @@ class manager(object):
       custom_residues=custom_residues,
       params=params,
       log=self.log,
-      minimum_identity=minimum_identity
+      minimum_identity=minimum_identity,
+      ignore_hetatm=True
     )

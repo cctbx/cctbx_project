@@ -194,14 +194,14 @@ namespace boost_python { namespace {
 
 
   /* number of unit cells along edge in each cell axis direction */
-  static scitbx::vec3<int> get_Nabc(nanoBragg const& nanoBragg) {
-      scitbx::vec3<int> value;
-      value[0]=static_cast<int>(nanoBragg.Na);
-      value[1]=static_cast<int>(nanoBragg.Nb);
-      value[2]=static_cast<int>(nanoBragg.Nc);
+  static scitbx::vec3<double> get_Nabc(nanoBragg const& nanoBragg) {
+      scitbx::vec3<double> value;
+      value[0]=static_cast<double>(nanoBragg.Na);
+      value[1]=static_cast<double>(nanoBragg.Nb);
+      value[2]=static_cast<double>(nanoBragg.Nc);
       return value;
   }
-  static void   set_Nabc(nanoBragg& nanoBragg, scitbx::vec3<int> const& value) {
+  static void   set_Nabc(nanoBragg& nanoBragg, scitbx::vec3<double> const& value) {
       nanoBragg.Na = value[0];
       nanoBragg.Nb = value[1];
       nanoBragg.Nc = value[2];
@@ -1365,7 +1365,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
 
        /* constructor that takes any and all parameters with sensible defaults */
       .def(init<scitbx::vec2<int>,
-                scitbx::vec3<int>,
+                scitbx::vec3<double>,
                 cctbx::uctbx::unit_cell,
                 vec3,
                 vec2,
@@ -1378,7 +1378,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
                 int,
                 int>(
         (arg_("detpixels_slowfast")=scitbx::vec2<int>(1024,1024),
-         arg_("Ncells_abc")=scitbx::vec3<int>(1,1,1),
+         arg_("Ncells_abc")=scitbx::vec3<double>(1,1,1),
          arg_("unit_cell_Adeg")=cctbx::uctbx::unit_cell(scitbx::af::double6(78.0,78.0,38.0,90.0,90.0,90.0)),
          arg_("misset_deg")=vec3(0.0,0.0,0.0),
          arg_("beam_center_mm")=vec2(NAN,NAN),
@@ -1952,7 +1952,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
 
       /* actual run of the background simulation */
       .def("add_background",&nanoBragg::add_background,
-        (arg_("oversample")=-1,arg_("source")=-1),
+        (arg_("oversample")=-1,arg_("override_source")=-1),
        "run the non-Bragg simulation, adding background from speficied amorphous materials")
 
       /* retrieve radial-median filtered average background from the image */

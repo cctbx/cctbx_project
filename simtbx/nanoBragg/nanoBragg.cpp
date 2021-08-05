@@ -186,6 +186,7 @@ nanoBragg::nanoBragg(
     spindle_vector[2] = fdet_vector[2];
     spindle_vector[3] = fdet_vector[3];
     unitize(spindle_vector,spindle_vector);
+    user_beam=true;//needed for tilted dxtbx geometries, locks user (dxtbx) geom in place
 
     /* NOT IMPLEMENTED: read in any other stuff?  */
     /*TODO: consider reading in a crystal model as well, showing params without crystal model can be confusing*/
@@ -201,7 +202,7 @@ nanoBragg::nanoBragg(
 // constructor for the nanoBragg class that takes most any member as an argument, defaults in nanoBragg_ext.cpp
 nanoBragg::nanoBragg(
         scitbx::vec2<int> detpixels_slowfast, // = 1024, 1024
-        scitbx::vec3<int> Ncells_abc, // 1 1 1
+        scitbx::vec3<double> Ncells_abc, // 1. 1. 1.
         cctbx::uctbx::unit_cell unitcell, // lysozyme
         vec3 missets_deg, // 0 0 0
         vec2 beam_center_mm, // NAN NAN
@@ -1707,9 +1708,9 @@ void
 nanoBragg::update_oversample()
 {
     /* now we know the cell, calculate crystal size in meters */
-    if(xtal_size_x > 0) Na = ceil(xtal_size_x/a[0]-1e-6);
-    if(xtal_size_y > 0) Nb = ceil(xtal_size_y/b[0]-1e-6);
-    if(xtal_size_z > 0) Nc = ceil(xtal_size_z/c[0]-1e-6);
+    if(xtal_size_x > 0) Na = xtal_size_x/a[0];
+    if(xtal_size_y > 0) Nb = xtal_size_y/b[0];
+    if(xtal_size_z > 0) Nc = xtal_size_z/c[0];
     if(Na <= 1.0) Na = 1.0;
     if(Nb <= 1.0) Nb = 1.0;
     if(Nc <= 1.0) Nc = 1.0;
@@ -2478,7 +2479,7 @@ nanoBragg::show_params()
     if(xtal_shape == GAUSS ) printf("gaussian");
     if(xtal_shape == GAUSS_ARGCHK ) printf("gaussian_argchk");
     if(xtal_shape == TOPHAT) printf("tophat-spot");
-    printf(" xtal: %.0fx%.0fx%.0f cells\n",Na,Nb,Nc);
+    printf(" xtal: %.1fx%.1fx%.1f cells\n",Na,Nb,Nc);
     printf("Unit Cell: %g %g %g %g %g %g\n", a_A[0],b_A[0],c_A[0],alpha*RTD,beta*RTD,gamma*RTD);
     printf("Recp Cell: %g %g %g %g %g %g\n", a_star[0],b_star[0],c_star[0],alpha_star*RTD,beta_star*RTD,gamma_star*RTD);
     printf("volume = %g A^3\n",V_cell);
@@ -2966,6 +2967,7 @@ nanoBragg::add_nanoBragg_spots()
                     printf("hkl= %f %f %f  hkl0= %d %d %d\n", h,k,l,h0,k0,l0);
                     printf(" F_cell=%g  F_latt=%g   I = %g\n", F_cell,F_latt,I);
                     printf("I/steps %15.10g\n", I/steps);
+                    printf("cap frac   %f\n", capture_fraction);
                     printf("polar   %15.10g\n", polar);
                     printf("omega   %15.10g\n", omega_pixel);
                     printf("pixel   %15.10g\n", floatimage[i]);
@@ -2974,6 +2976,24 @@ nanoBragg::add_nanoBragg_spots()
                     printf("X: %11.8f %11.8f %11.8f\n",a[1]*1e10,b[1]*1e10,c[1]*1e10);
                     printf("Y: %11.8f %11.8f %11.8f\n",a[2]*1e10,b[2]*1e10,c[2]*1e10);
                     printf("Z: %11.8f %11.8f %11.8f\n",a[3]*1e10,b[3]*1e10,c[3]*1e10);
+                    SCITBX_EXAMINE(fluence);
+                    SCITBX_EXAMINE(source_I[0]);
+                    SCITBX_EXAMINE(spot_scale);
+                    SCITBX_EXAMINE(Na);
+                    SCITBX_EXAMINE(Nb);
+                    SCITBX_EXAMINE(Nc);
+                    SCITBX_EXAMINE(airpath);
+                    SCITBX_EXAMINE(Fclose);
+                    SCITBX_EXAMINE(Sclose);
+                    SCITBX_EXAMINE(close_distance);
+                    SCITBX_EXAMINE(pix0_vector[0]);
+                    SCITBX_EXAMINE(pix0_vector[1]);
+                    SCITBX_EXAMINE(pix0_vector[2]);
+                    SCITBX_EXAMINE(pix0_vector[3]);
+                    SCITBX_EXAMINE(odet_vector[0]);
+                    SCITBX_EXAMINE(odet_vector[1]);
+                    SCITBX_EXAMINE(odet_vector[2]);
+                    SCITBX_EXAMINE(odet_vector[3]);
                 }
             }
             else
@@ -3006,14 +3026,17 @@ nanoBragg::add_nanoBragg_spots()
 
 /* member function to generate background from Fbg vs stol list
    arguments allow override of features that usually just slow things down,
-   like oversampling pixels and multiple sources.  Providing these arguments
-   does NOT change the values of the member variables */
+   like oversampling pixels and multiple sources.
+   oversample: user can provide a smaller override value to save time.
+   override_source: user can select a single source from the collection to save time.
+   Providing these arguments does NOT change the values of the member variables */
 void
-nanoBragg::add_background( int oversample, int source )
+nanoBragg::add_background( int oversample, int const& override_source )
 {
     int i;
     int source_start = 0;
-    int sources = this->sources;
+    int orig_sources = this->sources;
+    int end_sources = this->sources;
     max_I = 0.0;
     floatimage = raw_pixels.begin();
 //    double* floatimage(raw_pixels.begin());
@@ -3022,10 +3045,12 @@ nanoBragg::add_background( int oversample, int source )
     /* allow user to override automated oversampling decision at call time with arguments */
     if(oversample<=0) oversample = this->oversample;
     if(oversample<=0) oversample = 1;
-    if(source>=0) {
-        /* user-specified source in the argument */
-        source_start = source;
-        sources = source_start +1;
+    bool have_single_source = false;
+    if(override_source>=0) {
+        /* user-specified idx_single_source in the argument */
+        source_start = override_source;
+        end_sources = source_start +1;
+        have_single_source = true;
     }
 
     /* make sure we are normalizing with the right number of sub-steps */
@@ -3106,7 +3131,8 @@ nanoBragg::add_background( int oversample, int source )
                         }
 
                         /* loop over sources now */
-                        for(source=source_start;source<sources;++source){
+                        for(source=source_start; source < end_sources; ++source){
+                            double n_source_scale = (have_single_source) ? orig_sources : source_I[source];
 
                             /* retrieve stuff from cache */
                             incident[1] = -source_X[source];
@@ -3149,7 +3175,7 @@ nanoBragg::add_background( int oversample, int source )
                             }
 
                             /* accumulate unscaled pixel intensity from this */
-                            Ibg += sign*Fbg*Fbg*polar*omega_pixel*source_I[source]*capture_fraction;
+                            Ibg += sign*Fbg*Fbg*polar*omega_pixel*capture_fraction*n_source_scale;
                             if(verbose>7 && i==1)printf("DEBUG: Fbg= %g polar= %g omega_pixel= %g source[%d]= %g capture_fraction= %g\n",
                                                            Fbg,polar,omega_pixel,source,source_I[source],capture_fraction);
                         }

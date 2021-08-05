@@ -41,7 +41,7 @@ namespace scitbx { namespace af { namespace boost_python {
 // import_array returns NULL in python3, and somehow that makes this function
 // need a return type as well.
 #ifdef IS_PY3K
-  int
+  void*
 #else
   void
 #endif
@@ -49,7 +49,7 @@ namespace scitbx { namespace af { namespace boost_python {
   {
 #if defined(SCITBX_HAVE_NUMPY_INCLUDE)
     {
-    // Fix segmentaion faults
+    // Fix segmentation faults
     // http://boostorg.github.io/python/doc/html/numpy/tutorial/simple.html
     using namespace boost_adaptbx::floating_point;
     exception_trapping guard(exception_trapping::dont_trap);
@@ -102,7 +102,7 @@ namespace scitbx { namespace af { namespace boost_python {
     TargetType* t)
   {
     for(std::size_t i=0;i<n;i++) {
-      t[i] = static_cast<TargetType>(s[i]);
+      t[i] = static_cast<TargetType>(static_cast<SourceType>(s[i]));
     }
   }
 
@@ -140,27 +140,43 @@ namespace scitbx { namespace af { namespace boost_python {
       grid, init_functor_null<ElementType>());
     void* data = PyArray_DATA(arr_ptr);
     int type_num = PyArray_TYPE(arr_ptr);
-#define SCITBX_LOC(tn) \
+#define SCITBX_LOC(tn, t) \
     (type_num == tn) { \
-      copy_data_with_cast( \
+      copy_data_with_cast<t, ElementType>( \
+        grid.size_1d(), \
+        reinterpret_cast<t*>(data), \
+        result.begin()); \
+    }
+#define SCITBX_LOC_COMPLEX(tn) \
+    (type_num == tn) { \
+      copy_data_with_cast<ElementType, ElementType>( \
         grid.size_1d(), \
         reinterpret_cast<ElementType*>(data), \
         result.begin()); \
     }
-    if      SCITBX_LOC(NPY_BOOL)
-    else if SCITBX_LOC(NPY_INT)
-    else if SCITBX_LOC(NPY_LONG)
-    else if SCITBX_LOC(NPY_FLOAT)
-    else if SCITBX_LOC(NPY_DOUBLE)
-    else if SCITBX_LOC(NPY_CDOUBLE)
-    else if SCITBX_LOC(NPY_USHORT)
-    else if SCITBX_LOC(NPY_UINT)
-    else if SCITBX_LOC(NPY_ULONG)
-    else if SCITBX_LOC(NPY_ULONGLONG)
+    if      SCITBX_LOC(NPY_BOOL, npy_bool)
+    else if SCITBX_LOC(NPY_INT, npy_int)
+    else if SCITBX_LOC(NPY_LONG, npy_long)
+    else if SCITBX_LOC(NPY_FLOAT, npy_float)
+    else if SCITBX_LOC(NPY_DOUBLE, npy_double)
+    else if SCITBX_LOC_COMPLEX(NPY_CDOUBLE)
+    else if SCITBX_LOC(NPY_USHORT, npy_ushort)
+    else if SCITBX_LOC(NPY_UINT, npy_uint)
+    else if SCITBX_LOC(NPY_ULONG, npy_ulong)
+    else if SCITBX_LOC(NPY_ULONGLONG, npy_ulonglong)
+    else if SCITBX_LOC(NPY_INT8, npy_int8)
+    else if SCITBX_LOC(NPY_INT16, npy_int16)
+    else if SCITBX_LOC(NPY_INT32, npy_int32)
+    else if SCITBX_LOC(NPY_INT64, npy_int64)
+    else if SCITBX_LOC(NPY_UINT8, npy_uint8)
+    else if SCITBX_LOC(NPY_UINT16, npy_uint16)
+    else if SCITBX_LOC(NPY_UINT32, npy_uint32)
+    else if SCITBX_LOC(NPY_UINT64, npy_uint64)
     else {
       throw std::runtime_error(
         "Unsupported numpy.ndarray element type");
     }
+#undef SCITBX_LOC_COMPLEX
 #undef SCITBX_LOC
     return result;
 #endif

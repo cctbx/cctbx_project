@@ -1880,7 +1880,7 @@ def get_file_summary(pdb_in, hierarchy=None):
     ("Number of atoms", counts.n_atoms),
     ("Number of chains", counts.n_chains),
     ("Chain IDs", ", ".join(chain_ids)),
-    ("Alternate conformations", counts.n_alt_conf_pure),
+    ("Alternate conformations", counts.n_alt_conf),
   ]
   if (counts.n_models > 1):
     info_list.insert(0, ("Number of models", counts.n_models))

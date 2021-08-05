@@ -8,7 +8,7 @@
 jobs:
 - job: modules${{ parameters.optimization }}
   pool:
-    vmImage: ubuntu-latest
+    vmImage: ubuntu-18.04
   timeoutInMinutes: 120
 
   steps:
@@ -48,48 +48,13 @@ jobs:
     condition: or(eq('${{ parameters.optimization }}', 0), eq('${{ parameters.optimization }}', 1))
 
   # download test data
-  # - task: DownloadPipelineArtifact@2
-  #   inputs:
-  #     source: 'specific'
-  #     project: '$(System.TeamProjectId)'
-  #     pipeline: 4
-  #     artifact: 'chem_data'
-  #     path: $(Pipeline.Workspace)/modules/chem_data
-  #   displayName: Download chem_data
+  - template: ./templates/download-data-cache.yml
 
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(resources.pipeline.data_cache.projectID)'
-      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
-      artifact: 'phenix_regression'
-      path: $(Pipeline.Workspace)/modules/phenix_regression
-    displayName: Download phenix_regression
-
+  # delete chem_data
   - script: |
-      cd $(Pipeline.Workspace)/modules/phenix_regression
-      git reset --hard origin/master
-      git lfs install --local
-      git pull --rebase
-      git lfs pull
-    displayName: Update phenix_regression
-
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(resources.pipeline.data_cache.projectID)'
-      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
-      artifact: 'phenix_examples'
-      path: $(Pipeline.Workspace)/modules/phenix_examples
-    displayName: Download phenix_examples
-
-  - script: |
-      cd $(Pipeline.Workspace)/modules/phenix_examples
-      git reset --hard origin/master
-      git lfs install --local
-      git pull --rebase
-      git lfs pull
-    displayName: Update phenix_examples
+      cd $(Pipeline.Workspace)/modules
+      rm -fr chem_data
+    displayName: Remove chem_data
 
   # preserve permissions
   - script: |

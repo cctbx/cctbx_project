@@ -10,6 +10,16 @@ import boost_adaptbx.boost.python as bp
 cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
 fit_ext = bp.import_ext("mmtbx_rotamer_fit_ext")
 
+# XXX Keep for debugging
+#def write_map_file(crystal_symmetry, map_data, file_name):
+#  from iotbx import mrcfile
+#  mrcfile.write_ccp4_map(
+#    file_name   = file_name,
+#    unit_cell   = crystal_symmetry.unit_cell(),
+#    space_group = crystal_symmetry.space_group(),
+#    map_data    = map_data,
+#    labels      = flex.std_string([""]))
+
 negate_map_table = {
   #"ala": False,
   "asn": 5,
@@ -99,7 +109,7 @@ class run(object):
       print("%s%s"%(prefix,m), file=self.log)
     self.log.flush()
 
-  def get_nonbonded_bumpers(self, residue, radius):
+  def _selection_around_minus_self(self, residue, radius):
     if(self.special_position_settings is None): return None
     if(self.vdw_radii is None): return None
     residue_i_selection = flex.size_t()
@@ -113,6 +123,9 @@ class run(object):
       sites_cart      = sites_cart,
       distance_cutoff = radius
         ).neighbors_of(primary_selection = residue_b_selection).iselection()
+
+    residue_i_selection = residue.atoms().extract_i_seq()
+
     selection_around_residue_minus_residue = flex.size_t(
       list(set(selection_around_residue).difference(
         set(residue_i_selection)).difference(self.selection_water_as_set)))
@@ -121,6 +134,17 @@ class run(object):
     for s in selection_around_residue_minus_residue:
       if(not self.rotatable_hd[s]):
         selection_around_residue_minus_residue_minus_rotatableH.append(s)
+    return selection_around_residue_minus_residue_minus_rotatableH
+
+  def get_nonbonded_bumpers(self, residue, radius):
+    #
+    # Symmetry-related atoms are treated differently and less comprihensively
+    # See fit_residue.py in "def loop(..)"
+    #
+    if(self.special_position_settings is None): return None
+    if(self.vdw_radii is None): return None
+    selection_around_residue_minus_residue_minus_rotatableH = \
+      self._selection_around_minus_self(residue=residue, radius=radius)
     #
     radii = flex.double()
     sites_cart = flex.vec3_double()
@@ -179,7 +203,22 @@ class run(object):
           for conformer in residue_group.conformers():
             residue = conformer.only_residue()
             if(not self.bselection[residue.atoms()[0].i_seq]): continue
+            xyz_start = residue.atoms().extract_xyz()
             function(residue = residue)
+            # Check for symmetry clash
+            sels = self._selection_around_minus_self(residue=residue, radius=1.5)
+            if(sels is not None and sels.size()>0):
+              print("   revert: symmetry clash", file=self.log)
+              residue.atoms().set_xyz(xyz_start)
+              # XXX
+              # XXX For debugging
+              # XXX
+              #atoms=self.pdb_hierarchy.atoms()
+              #for s in sels:
+              #  atom = atoms[s]
+              #  key = "%s_%s_%s"%(
+              #    atom.parent().parent().parent().id, atom.parent().resname, atom.name)
+              #  print(key, residue.resname, "LOOK-"*10)
 
   def count_outliers(self):
     o = mmtbx.refinement.real_space.side_chain_fit_evaluator(

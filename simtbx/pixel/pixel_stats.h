@@ -46,7 +46,6 @@ struct pixel_stats {
     proposal_ctr_of_mass = af::shared<scitbx::vec3<double> >();
 
     af::shared<double> all_Z_values;
-    af::shared<double> sauter_eq_15_likelihood;
     LLG = 0;
     int firstpass_idx = -1;
     int whiteidx = -1;
@@ -62,6 +61,7 @@ struct pixel_stats {
         white_ptr[firstpass_idx] = proposal_value;
         proposal_shoebox_sum += proposal_value;
       }
+      SCITBX_ASSERT(firstpass_idx <= whitelist_kernel_model.size());
       double refrence_shoebox_sum = reference_shoebox_sums[sidx];
       double scale_factor = refrence_shoebox_sum / proposal_shoebox_sum;
       //result verified up to here
@@ -96,11 +96,12 @@ struct pixel_stats {
         double Z = (diff_pixel_photons/std_dev_denominator_photons);
         shoebox_Z_values.push_back(Z);
         all_Z_values.push_back(Z);
+if (renormalize_bragg_plus_background_photons <=0.0) {continue;} //cannot take log of negative value
         double pixel_ll = renormalize_bragg_plus_background_photons -
-          mock_model_photons * std::log(renormalize_bragg_plus_background_photons);
-        sauter_eq_15_likelihood.push_back( pixel_ll );
+          mock_model_photons * std::log(renormalize_bragg_plus_background_photons); //sauter_eq_15_likelihood
         LLG+=pixel_ll;
       }
+      SCITBX_ASSERT(whiteidx <= whitelist_kernel_model.size());
       // properties calculated per shoebox
       scitbx::math::mean_and_variance<double> stats(shoebox_Z_values.const_ref());
       proposal_shoebox_mean_Z.push_back( stats.mean() );

@@ -9,7 +9,6 @@ Computational Crystallography Toolbox
 
    installation
    tour
-   build_system
    history
    libtbx/index
    boost_adaptbx/index
@@ -149,7 +148,7 @@ Installation
 :ref:`Installation instructions <installation>` for both binary installation and
 installation from sources.
 
-The cctbx :ref:`build system <build_system>` is based on SCons_.
+The cctbx build system is based on SCons_.
 
 Reference Documentation
 =======================

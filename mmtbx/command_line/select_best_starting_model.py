@@ -2,13 +2,14 @@
 from __future__ import absolute_import, division, print_function
 import libtbx.phil
 import sys
+from iotbx import extract_xtal_data
 
 master_phil_str = """
 input {
   model = None
     .type = path
     .multiple = True
-  include scope mmtbx.utils.xray_data_str
+  include scope iotbx.extract_xtal_data.xray_data_str
   skip_twin_detection = False
     .type = bool
 }
@@ -30,7 +31,6 @@ def master_params():
 
 def run(args, external_params=None, out=sys.stdout):
   from mmtbx.refinement import select_best_starting_model
-  import mmtbx.utils
   from iotbx.file_reader import any_file
   import iotbx.phil
   cmdline = iotbx.phil.process_command_line_with_files(
@@ -48,7 +48,7 @@ rigid-body refinement on suitable models if requested.""")
   params = cmdline.work.extract()
   validate_params(params)
   hkl_in = any_file(params.input.xray_data.file_name)
-  data_and_flags = mmtbx.utils.determine_data_and_flags(
+  data_and_flags = extract_xtal_data.run(
     reflection_file_server=hkl_in.file_server,
     parameters=params.input.xray_data,
     data_parameter_scope="input.data",

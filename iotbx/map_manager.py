@@ -268,6 +268,9 @@ class map_manager(map_reader, write_ccp4_map):
     # Initialize that this is not a mask
     self._is_mask = False
 
+    # Initialize that this is not a dummy map_manager
+    self._is_dummy_map_manager = False
+
     # Initialize program_name, limitations, labels
     self.file_name = file_name # input file (source of this manager)
     self.program_name = None  # Name of program using this manager
@@ -367,6 +370,8 @@ class map_manager(map_reader, write_ccp4_map):
       self.log = sys.stdout
 
   def __repr__(self):
+    if self.is_dummy_map_manager():
+      return "Dummy map_manager"
     text = "Map manager (from %s)" %(self.file_name)+\
         "\n%s, \nUnit-cell grid: %s, (present: %s), origin shift %s " %(
       str(self.unit_cell_crystal_symmetry()).replace("\n"," "),
@@ -514,6 +519,10 @@ class map_manager(map_reader, write_ccp4_map):
 
        if not self.is_full_size():
          self.set_wrapping(False)
+
+  def is_dummy_map_manager(self):
+    ''' Is this a dummy map manager'''
+    return self._is_dummy_map_manager
 
   def is_mask(self):
     ''' Is this a mask '''
@@ -1846,7 +1855,7 @@ class map_manager(map_reader, write_ccp4_map):
     map_data = self.map_data()
     map_data = map_data - flex.mean(map_data)
     sd = map_data.sample_standard_deviation()
-    if sd != 0:
+    if sd is not None and sd != 0:
       map_data = map_data/sd
       self.set_map_data(map_data)
 
@@ -2135,12 +2144,13 @@ class map_manager(map_reader, write_ccp4_map):
     # Find threshold to get exactly n points
     low_bounds = 0.
     high_bounds = 20
-    self.set_mean_zero_sd_one()
+    mm = self.deep_copy()
+    mm.set_mean_zero_sd_one() # avoid altering the working map
     tries = 0
 
     # Check ends
-    count_high = (self.map_data() >= high_bounds).count(True)
-    count_low = (self.map_data() >=  low_bounds).count(True)
+    count_high = (mm.map_data() >= high_bounds).count(True)
+    count_low = (mm.map_data() >=  low_bounds).count(True)
     if count_low < n or count_high > n:
       return flex.vec3_double()
 
@@ -2148,7 +2158,7 @@ class map_manager(map_reader, write_ccp4_map):
     while tries < max_tries:
       tries += 1
       threshold = 0.5 * (low_bounds + high_bounds)
-      count = (self.map_data() >= threshold ).count(True)
+      count = (mm.map_data() >= threshold ).count(True)
       if count == n or low_bounds == high_bounds or threshold == last_threshold:
         break
       elif count > n:
@@ -2159,10 +2169,10 @@ class map_manager(map_reader, write_ccp4_map):
     if abs (count - n ) > n_tolerance:
       return flex.vec3_double()
     # Now convert to xyz and we are done
-    sel = (self.map_data() >= threshold )
+    sel = (mm.map_data() >= threshold )
     from scitbx.array_family.flex import grid
-    g = grid(self.map_data().all())
-    mask_data = flex.int(self.map_data().size(),0)
+    g = grid(mm.map_data().all())
+    mask_data = flex.int(mm.map_data().size(),0)
     mask_data.reshape(g)
     mask_data.set_selected(sel,1)
     mask_data.set_selected(~sel,0)
@@ -2174,7 +2184,7 @@ class map_manager(map_reader, write_ccp4_map):
       mask = mask_data,
       volumes = volume_list,
       sampling_rates = sampling_rates,
-      unit_cell = self.crystal_symmetry().unit_cell())
+      unit_cell = mm.crystal_symmetry().unit_cell())
 
     return sample_regs_obj.get_array(1)
 
@@ -2508,6 +2518,23 @@ class shift_aware_rt:
 
     return shift_aware_rt(absolute_rt_info = inverse_absolute_rt_info)
 
+
+def dummy_map_manager(crystal_symmetry, n_grid = 12):
+  '''
+   Make a map manager with crystal symmetry and unit sized map
+  '''
+
+  map_data = flex.double(n_grid*n_grid*n_grid,1)
+  acc = flex.grid((n_grid, n_grid, n_grid))
+  map_data.reshape(acc)
+  mm = map_manager(
+    map_data = map_data,
+    unit_cell_grid = (n_grid, n_grid, n_grid),
+    unit_cell_crystal_symmetry = crystal_symmetry,
+    wrapping = False)
+  mm.set_resolution(min(crystal_symmetry.unit_cell().parameters()[:3])/n_grid)
+  mm._is_dummy_map_manager = True
+  return mm
 
 
 def get_indices_from_index(index = None, all = None):
