@@ -71,7 +71,7 @@ def _VerboseCheck(level, message):
 
 class SingletonOptimizer:
 
-  def __init__(self, model, modelIndex = 0, altID = "",
+  def __init__(self, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 3,
                 probeRadius = 0.25,
                 useNeutronDistances = False,
