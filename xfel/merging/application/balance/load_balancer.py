@@ -65,7 +65,7 @@ class load_balancer(worker):
     if number_of_empty_chunks > 0 and len(experiments) != 0:
       import random
       #random.seed(8)
-      random.shuffle(self.split_experiments)
+      #random.shuffle(self.split_experiments)
     self.logger.log_step_time("LB_SHUFFLE", True)
 
     '''
