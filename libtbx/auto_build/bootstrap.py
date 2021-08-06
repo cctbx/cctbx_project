@@ -2766,6 +2766,20 @@ class PhenixTNGBuilder(PhenixBuilder):
     configlst.append('--enable_cxx11')
     return configlst
 
+def set_builder_defaults(options):
+  '''
+  Updates defaults for specific builders
+  '''
+  if options.builder == 'phenix_voyager':
+    if options.no_boost_src is False:
+      options.no_boost_src = True
+    if options.python == '27':
+      options.python = '37'
+    if options.use_conda is None:
+      options.use_conda = ''
+
+  return options
+
 def run(root=None):
   builders = {
     'cctbxlite': CCTBXLiteBuilder,
@@ -2976,6 +2990,9 @@ available. This flag only affects the "update" step.""",
     auth['sfuser'] = options.sfuser
   if options.sfmethod:
     auth['sfmethod'] = options.sfmethod
+
+  # Apply defaults for specific builders
+  options = set_builder_defaults(options)
 
   # Build
   builder = builders[options.builder]
