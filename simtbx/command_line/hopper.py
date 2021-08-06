@@ -142,6 +142,9 @@ betas {
   Nabc = [0,0,0]
     .type = floats(size=3)
     .help = restraint factor for the ncells abc
+  Ndef = [0,0,0]
+    .type = floats(size=3)
+    .help = restraint factor for the ncells def  
   G = 0
     .type = float
     .help = restraint factor for the scale G
@@ -180,6 +183,9 @@ centers {
   Nabc = [100,100,100]
     .type = floats(size=3)
     .help = restraint target for Nabc
+  Ndef = [0,0,0]
+    .type = floats(size=3)
+    .help = restraint target for Ndef
   G = 100
     .type = float
     .help = restraint target for scale G
@@ -361,6 +367,9 @@ fix {
     .type = bool
     .help = fix the misorientation matrix during refinement
   Nabc = False
+    .type = bool
+    .help = fix the diagonal mosaic domain size parameters during refinement
+  Ndef = False 
     .type = bool
     .help = fix the diagonal mosaic domain size parameters during refinement
   ucell = False

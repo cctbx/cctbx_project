@@ -21,23 +21,7 @@ class LocalRefinerLauncher:
         self.params = self.check_parameter_integrity(params)
 
         self.rotXYZ_inits = {0: [0, 0, 0]}
-        self.shot_reso = {}
-        self.shot_expernames = {} # NOTE optional place holder for the experiment names
-        self.shot_ucell_managers = {}
-        self.shot_rois = {}
-        self.shot_nanoBragg_rois = {}
-        self.shot_roi_imgs = {}
-        self.shot_roi_darkRMS = {}
-        self.shot_spectra = {}
-        self.shot_crystal_models = {}
-        self.shot_crystal_model_refs = {}
-        self.shot_xrel = {}
-        self.shot_yrel = {}
-        self.shot_abc_inits = {}
-        self.shot_panel_ids = {}
-        self.shot_originZ_init = {}
-        self.shot_selection_flags = {}
-        self.shot_background = {}
+        self.Modelers = {}
 
         self.panel_groups_refined = None
         self.panel_group_from_id = None
@@ -202,7 +186,7 @@ class LocalRefinerLauncher:
 
             self.RUC = self._init_refiner(n_local_unknowns, n_global_unknowns, local_idx_start, global_idx_start)
 
-            self.RUC.FNAMES = self.shot_expernames if self.shot_expernames else None
+            self.RUC.FNAMES = None # self.shot_expernames if self.shot_expernames else None
 
             self.RUC.print_end = self.params.refiner.print_end
 
@@ -305,7 +289,7 @@ class LocalRefinerLauncher:
             # SIGMA VALUES
             self.RUC.rotX_sigma, self.RUC.rotY_sigma, self.RUC.rotZ_sigma = self.params.refiner.sensitivity.rotXYZ
             self.RUC.detector_distance_sigma = self.params.refiner.sensitivity.originZ
-            self.RUC.ucell_sigmas = utils.unitcell_sigmas(self.shot_ucell_managers[0],
+            self.RUC.ucell_sigmas = utils.unitcell_sigmas(self.Modelers[list(self.Modelers.keys())[0]].ucell_man,
                                                           self.params.refiner.sensitivity.unitcell)
             self.RUC.m_sigma = self.params.refiner.sensitivity.ncells_abc
             self.RUC.ncells_def_sigma = self.params.refiner.sensitivity.ncells_def
@@ -326,7 +310,8 @@ class LocalRefinerLauncher:
             self.RUC.lambda_coef_ranges = [self.params.refiner.ranges.spectra0, self.params.refiner.ranges.spectra1]
             self.RUC.detector_distance_range = self.params.refiner.ranges.originZ
 
-            self.RUC.pershot_detdist_shifts = np.any(list(self.shot_originZ_init.values()))
+            Zvalues = [self.Modelers[i_exp].originZ_init for i_exp in self.Modelers]
+            self.RUC.pershot_detdist_shifts = np.any(list(Zvalues))
             self.RUC.update_detector_during_refinement = False  # TODO is this ok ? maybe some tests will fail
 
             self.RUC.compute_image_model_correlation = self.params.refiner.compute_image_model_correlation
@@ -338,7 +323,6 @@ class LocalRefinerLauncher:
             self.RUC.plot_images = self.params.refiner.plot.display
             self.RUC.plot_residuals = self.params.refiner.plot.as_residuals
             self.RUC.plot_stride = self.params.refiner.plot.iteration_stride
-            self.RUC.setup_plots()
 
             # Fcell stuff
             self.RUC.rescale_fcell_by_resolution = self.params.refiner.rescale_fcell_by_resolution
@@ -397,7 +381,6 @@ class LocalRefinerLauncher:
             self.RUC.verbose = self.verbose
             if self.params.refiner.quiet:
                 self.RUC.verbose = False
-            self.RUC.background = self.shot_background
             # TODO optional properties.. make this obvious
             self.RUC.PROC_FNAMES = None
             self.RUC.PROC_IDX = None
@@ -415,18 +398,18 @@ class LocalRefinerLauncher:
             self.RUC.hit_break_to_use_curvatures = False
 
             # selection flags set here:
-            self.RUC.selection_flags = self.shot_selection_flags
-            if self.params.refiner.res_ranges is not None:
-                assert self.shot_reso is not None, "cant set reso flags is rlp is not in refl tables"
-                nshots = len(self.shot_selection_flags)
-                more_sel_flags = {}
-                res_ranges = utils.parse_reso_string(self.params.refiner.res_ranges)
-                for i_shot in range(nshots):
-                    rhigh, rlow = (res_ranges*nmacro)[i_trial]
-                    sel_flags = self.shot_selection_flags[i_shot]
-                    res_flags = [rhigh < r < rlow for r in self.shot_reso[i_shot]]
-                    more_sel_flags[i_shot] = [flag1 and flag2 for flag1,flag2 in zip(sel_flags, res_flags)]
-                self.RUC.selection_flags = more_sel_flags
+            #self.RUC.selection_flags = self.shot_selection_flags
+            #if self.params.refiner.res_ranges is not None:
+            #    assert self.shot_reso is not None, "cant set reso flags is rlp is not in refl tables"
+            #    nshots = len(self.shot_selection_flags)
+            #    more_sel_flags = {}
+            #    res_ranges = utils.parse_reso_string(self.params.refiner.res_ranges)
+            #    for i_shot in range(nshots):
+            #        rhigh, rlow = (res_ranges*nmacro)[i_trial]
+            #        sel_flags = self.shot_selection_flags[i_shot]
+            #        res_flags = [rhigh < r < rlow for r in self.shot_reso[i_shot]]
+            #        more_sel_flags[i_shot] = [flag1 and flag2 for flag1,flag2 in zip(sel_flags, res_flags)]
+            #    self.RUC.selection_flags = more_sel_flags
 
             self.RUC.record_model_predictions = self.params.refiner.record_xy_calc
 
@@ -713,24 +696,7 @@ class LocalRefinerLauncher:
         ref_crystals = None
         if self.WATCH_MISORIENTATION:
             ref_crystals = self.shot_crystal_model_refs
-        RUC = self._Refiner(
-            n_total_params=global_idx_start + n_global_unknowns,
-            n_local_params=n_local_unknowns,
-            local_idx_start=local_idx_start,
-            shot_ucell_managers=self.shot_ucell_managers,
-            shot_rois=self.shot_rois,
-            shot_nanoBragg_rois=self.shot_nanoBragg_rois,
-            shot_roi_imgs=self.shot_roi_imgs, shot_spectra=self.shot_spectra,
-            shot_crystal_GTs=ref_crystals, shot_crystal_models=self.shot_crystal_models,
-            shot_xrel=self.shot_xrel, shot_yrel=self.shot_yrel, shot_abc_inits=self.shot_abc_inits,
-            shot_asu=self.Hi_asu if self.Hi_asu else None,
-            sgsymbol=self.symbol,
-            global_param_idx_start=global_idx_start,
-            shot_panel_ids=self.shot_panel_ids,
-            all_crystal_scales=None,
-            global_ncells=False, global_ucell=False,
-            shot_roi_darkRMS=self.shot_roi_darkRMS,
-            shot_detector_distance_init=self.shot_originZ_init)
+        RUC = self._Refiner(self.Modelers, self.symbol)
         return RUC
 
     def extract_roi_data_from_cachefile(self, expt):

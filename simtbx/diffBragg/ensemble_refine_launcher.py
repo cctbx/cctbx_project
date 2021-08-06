@@ -1,4 +1,6 @@
 from __future__ import absolute_import, division, print_function
+from simtbx.diffBragg.stage_two_utils import PAR_from_params
+from simtbx.diffBragg import hopper_utils
 import os
 import sys
 from copy import deepcopy
@@ -48,7 +50,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
 
     @property
     def num_shots_on_rank(self):
-        return len(self.shot_rois)
+        return len(self.Modelers)
 
     def _alias_refiner(self):
         self._Refiner = GlobalRefiner
@@ -142,62 +144,44 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
 
             # FIXME what if a prediction doesnt have an observed structure factor amplitude
             LOGGER.info("EVENT: verifying input refl HKLs are included in input Fobs")
-            #observed_Hi_p1, _ = map(set, self.SIM.D.Fhkl_tuple)
-            #good_sel = []
-            #hkl_observed = observed_Hi_p1.intersection(set(refls["miller_index"]))
-            #for h in refls["miller_index"]:
-            #    if h not in hkl_observed:
-            #        good_sel.append(False)
-            #    else:
-            #        good_sel.append(True)
-            #refls = refls.select(flex.bool(good_sel))
 
             Hi = list(refls["miller_index"])
             self.Hi[shot_idx] = Hi
             self.Hi_asu[shot_idx] = map_hkl_list(Hi, True, self.symbol)
 
             LOGGER.info("EVENT: LOADING ROI DATA")
-            shot_data = self.load_roi_data(refls, expt)
-            if shot_data is None:
-                raise ValueError("Cannot refine!")
+            shot_modeler = hopper_utils.DataModeler(self.params)
+            if not shot_modeler.GatherFromExperiment(expt, refls, sg_symbol=self.symbol):
+                raise("Failed to gather data from experiment %s", exper_name)
 
             LOGGER.info("EVENT: DONE LOADING ROI")
-            self.shot_ucell_managers[shot_idx] = UcellMan
-            self.shot_rois[shot_idx] = shot_data.rois
-            self.shot_nanoBragg_rois[shot_idx] = shot_data.nanoBragg_rois
-            self.shot_roi_imgs[shot_idx] = shot_data.roi_imgs
-            if shot_data.roi_darkRMS is not None:
-                self.shot_roi_darkRMS[shot_idx] = shot_data.roi_darkRMS
-            if "rlp" in refls:
-                self.shot_reso[shot_idx] = 1/np.linalg.norm(refls["rlp"], axis=1)
+            shot_modeler.ucell_man = UcellMan
+            #if shot_data.roi_darkRMS is not None:
+            #    self.shot_roi_darkRMS[shot_idx] = shot_data.roi_darkRMS
+            #if "rlp" in refls:
+            #    self.shot_reso[shot_idx] = 1/np.linalg.norm(refls["rlp"], axis=1)
 
             if self.params.spectrum_from_imageset:
-                self.shot_spectra[shot_idx] = hopper_utils.downsamp_spec(self.SIM, self.params, expt, return_and_dont_set=True)
+                shot_spectra = hopper_utils.downsamp_spec(self.SIM, self.params, expt, return_and_dont_set=True)
 
             elif "spectrum_filename" in list(exper_dataframe) and exper_dataframe.spectrum_filename.values[0] is not None:
-                self.shot_spectra[shot_idx] = utils.load_spectra_from_dataframe(exper_dataframe)
+                shot_spectra = utils.load_spectra_from_dataframe(exper_dataframe)
 
             else:
                 total_flux = exper_dataframe.total_flux.values[0]
                 if total_flux is None:
                     total_flux = self.params.simulator.total_flux
-                self.shot_spectra[shot_idx] = [(expt.beam.get_wavelength(), total_flux)]
+                shot_spectra = [(expt.beam.get_wavelength(), total_flux)]
 
-            self.shot_crystal_models[shot_idx] = expt.crystal
-            self.shot_crystal_model_refs[shot_idx] = deepcopy(expt.crystal)
-            self.shot_xrel[shot_idx] = shot_data.xrel
-            self.shot_yrel[shot_idx] = shot_data.yrel
-            self.shot_abc_inits[shot_idx] = shot_data.tilt_abc
-            self.shot_panel_ids[shot_idx] = shot_data.pids
+            shot_modeler.spectra = shot_spectra
+
             if "detz_shift_mm" in list(exper_dataframe):
-                self.shot_originZ_init[shot_idx] = exper_dataframe.detz_shift_mm.values[0]*1e-3
+                shot_modeler.originZ_init = exper_dataframe.detz_shift_mm.values[0]*1e-3
             else:
-                self.shot_originZ_init[shot_idx] = 0
-            self.shot_selection_flags[shot_idx] = shot_data.selection_flags
-            self.shot_background[shot_idx] = shot_data.background
-            self.shot_expernames[shot_idx] = exper_name
+                shot_modeler.originZ_init = 0
+            shot_modeler.exper_name = exper_name
 
-            shot_panel_groups_refined = self.determine_refined_panel_groups(shot_data.pids, shot_data.selection_flags)
+            shot_panel_groups_refined = self.determine_refined_panel_groups(shot_modeler.pids)
             rank_panel_groups_refined = rank_panel_groups_refined.union(set(shot_panel_groups_refined))
 
             # <><><><><><>><><><><><><><><><>
@@ -216,9 +200,9 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             n_spotscale_params = 1
             n_originZ_params = 1
             n_eta_params = 3
-            n_tilt_params = 3 * len(shot_data.nanoBragg_rois)
+            n_tilt_params = 3 * len(shot_modeler.rois)
             n_sausage_params = 4*self.params.simulator.crystal.num_sausages
-            n_per_spot_scales = len(shot_data.nanoBragg_rois)
+            n_per_spot_scales = len(shot_modeler.rois)
             n_local_unknowns = nrot_params + n_unitcell_params + n_ncells_param + n_ncells_def_params + n_spotscale_params + n_originZ_params \
                                + n_tilt_params + n_eta_params + n_sausage_params + n_per_spot_scales
 
@@ -228,11 +212,13 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
                 self._mem_usage()
                 print("Finished loading image %d / %d" % (i_exp+1, len(exper_names)), flush=True)
 
-        if not self.shot_rois:
-            raise RuntimeError("Cannot refine without shots! Probably Ranks than shots!")
+
+            shot_modeler.PAR = PAR_from_params(self.params, expt, best=exper_dataframe)
+            self.Modelers[i_exp] = shot_modeler
+
         COMM.Barrier()
-        if not self.shot_roi_darkRMS:
-            self.shot_roi_darkRMS = None
+        #if not self.shot_roi_darkRMS:
+        self.shot_roi_darkRMS = None
 
         # TODO warn that per_spot_scale refinement not intended for ensemble mode
 
@@ -336,7 +322,6 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
 
         self.sausages_init = {}
         self.RUC.eta_init = {}
-        self.RUC.ucell_inits = {}
         self.RUC.ucell_mins = {}
         self.RUC.ucell_maxs = {}
 
@@ -352,7 +337,6 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             if self.params.simulator.crystal.anisotropic_mosaicity is not None:
                 raise NotImplemented("Stage 2 doesnt support aniso mosaicity")
             self.RUC.eta_init[i_shot] = [self.params.simulator.crystal.mosaicity, 0, 0]
-            self.RUC.ucell_inits[i_shot] = self.shot_ucell_managers[i_shot].variables
 
             if ucell_maxs and ucell_mins:
                 self.RUC.ucell_mins[i_shot] = ucell_mins
@@ -382,19 +366,19 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             scale = flex.double(init[3::4])
             self.SIM.D.set_sausages(x, y, z, scale)
 
-    def determine_refined_panel_groups(self, pids, selection_flags):
+    def determine_refined_panel_groups(self, pids):
         refined_groups = []
-        assert len(pids) == len(selection_flags)
+        #assert len(pids) == len(selection_flags)
         for i, pid in enumerate(pids):
-            if selection_flags[i] and self.panel_group_from_id[pid] not in refined_groups:
+            if self.panel_group_from_id[pid] not in refined_groups:
                 refined_groups.append(self.panel_group_from_id[pid])
         return refined_groups
 
     def _determine_per_rank_max_num_pix(self):
         max_npix = 0
-        for i_shot in self.shot_rois:
-            rois = self.shot_rois[i_shot]
-            x1, x2, y1, y2 = map(np.array, zip(*rois))
+        for i_shot in self.Modelers:
+            modeler = self.Modelers[i_shot]
+            x1, x2, y1, y2 = map(np.array, zip(*modeler.rois))
             npix = np.sum((x2-x1)*(y2-y1))
             max_npix = max(npix, max_npix)
             print("Rank %d, shot %d has %d pixels" % (COMM.rank, i_shot+1, npix))
@@ -442,7 +426,8 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             from cctbx import miller
             from cctbx.array_family import flex as cctbx_flex
 
-            uc = self.shot_ucell_managers[0]  # TODO allow an override, or an average over all Crystals
+            ii = list(self.Modelers.keys())[0]
+            uc = self.Modelers[ii].ucell_man
             params = uc.a, uc.b, uc.c, uc.al * 180 / np.pi, uc.be * 180 / np.pi, uc.ga * 180 / np.pi
             if self.params.refiner.force_unit_cell is not None:
                 params = self.params.refiner.force_unit_cell

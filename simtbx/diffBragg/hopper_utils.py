@@ -64,6 +64,8 @@ class DataModeler:
         self.refls_idx = None
         self.refls = None
 
+        self.Hi_asu = None
+
     def clean_up(self):
         if self.SIM is not None:
             self.SIM.D.free_all()
@@ -130,7 +132,7 @@ class DataModeler:
         self.data_to_one_dim(img_data, is_trusted, background)
         return True
 
-    def GatherFromExperiment(self, exp, ref, remove_duplicate_hkl=True):
+    def GatherFromExperiment(self, exp, ref, remove_duplicate_hkl=True, sg_symbol=None):
         self.set_experiment(exp, load_imageset=True)
 
         refls = self.load_refls(ref)
@@ -186,6 +188,13 @@ class DataModeler:
         self.tilt_cov = [cov for i_roi, cov in enumerate(self.tilt_cov) if self.selection_flags[i_roi]]
         self.Q = [np.linalg.norm(refls[i_roi]["rlp"]) for i_roi in range(len(refls)) if self.selection_flags[i_roi]]
 
+        refls = refls.select(flex.bool(self.selection_flags))
+        self.Hi = list(refls["miller_index"])
+        if sg_symbol is not None:
+            self.Hi_asu = utils.map_hkl_list(self.Hi, True, sg_symbol)
+        else:
+            self.Hi_asu = self.Hi
+
         self.data_to_one_dim(img_data, is_trusted, self.background)
         return True
 
@@ -200,8 +209,10 @@ class DataModeler:
         all_sigmas = []
         all_background = []
         roi_id = []
-        all_a, all_b, all_c = [], [], []
         all_q_perpix = []
+        all_refls_idx = []
+        self.all_nominal_hkl = []
+        self.hi_asu_perpix = []
         for i_roi in range(len(self.rois)):
             pid = self.pids[i_roi]
             x1, x2, y1, y2 = self.rois[i_roi]
@@ -229,12 +240,10 @@ class DataModeler:
             npix = len(data)  # np.sum(trusted)
             all_pid += [pid] * npix
             roi_id += [i_roi] * npix
-            #if self.tilt_abc is not None:
-            #    a, b, c = self.tilt_abc[i_roi]
-            #    all_a += [a] * npix
-            #    all_b += [b] * npix
-            #    all_c += [c] * npix
             all_q_perpix += [self.Q[i_roi]]*npix
+            self.all_nominal_hkl += [tuple(self.Hi[i_roi])]*npix
+            all_refls_idx += [self.refls_idx[i_roi]] * npix
+            self.hi_asu_perpix += [self.Hi_asu[i_roi]] * npix
 
         self.all_q_perpix = np.array(all_q_perpix)
         pan_fast_slow = np.ascontiguousarray((np.vstack([all_pid, all_fast, all_slow]).T).ravel())
@@ -250,6 +259,7 @@ class DataModeler:
         self.all_slow = np.array(all_slow)
         self.simple_weights = 1/self.all_sigmas**2
         self.u_id = set(self.roi_id)
+        self.all_refls_idx = np.array(all_refls_idx)
 
     def dump_gathered_to_refl(self, output_name, do_xyobs_sanity_check=False):
         """after running GatherFromExperiment, dump the gathered results

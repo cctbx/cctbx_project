@@ -36,7 +36,7 @@ MPISIGHAND = MPISignalHandler()
 class GlobalRefiner(LocalRefiner):
 
     def __init__(self, *args, **kwargs):
-        super(GlobalRefiner, self).__init__(verbose=rank==0, *args, **kwargs)
+        super(GlobalRefiner, self).__init__(*args, **kwargs)
         self.rank = rank
         self.I_AM_ROOT = rank == 0
         print("STARTINGREFINEMENT!!! Rank %d Sz %d"% (self.rank, comm.size))
