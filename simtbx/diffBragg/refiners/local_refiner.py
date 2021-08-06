@@ -13,7 +13,6 @@ import signal
 import logging
 
 LOGGER = logging.getLogger("main")
-from collections import Iterable
 warnings.filterwarnings("ignore")
 
 
@@ -40,8 +39,6 @@ class Bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-from dxtbx.model import Panel, Detector
-import os
 import h5py
 
 try:
@@ -53,22 +50,14 @@ except ImportError:
 # TODO : consider PEP-8 ing these numpy imports, but do a NERSC massively MPI time-test first...
 # for now, if it aint broke, dont fix it ...
 import numpy as np
-from simtbx.diffBragg.utils import makeMoffat_integPSF, convolve_with_psf
-from scipy.stats import pearsonr
 import os
-import json
 
-from simtbx.diffBragg.refiners.parameters import Parameters, RangedParameter
 from simtbx.diffBragg.refiners import BreakBecauseSignal, BreakToUseCurvatures
 from dials.array_family import flex
 from simtbx.diffBragg.refiners import BaseRefiner
-from scipy.optimize import minimize
 from collections import Counter
-import pylab as plt
 from copy import deepcopy
-from simtbx.diffBragg.utils import compare_with_ground_truth
 from cctbx import miller, sgtbx
-import itertools
 
 
 class LocalRefiner(BaseRefiner):
@@ -617,6 +606,8 @@ class LocalRefiner(BaseRefiner):
             # TODO pre-extractions for all parameters
             self._pre_extract_deriv_arrays()
             self._spot_Zscores = []
+            from IPython import embed
+            embed()
             for i_spot in range(n_spots):
                 self._i_spot = i_spot
                 x1, x2, y1, y2 = self.Modelers[self._i_shot].rois[i_spot]
@@ -625,7 +616,7 @@ class LocalRefiner(BaseRefiner):
 
                 self._panel_id = int(self.Modelers[self._i_shot].pids[i_spot])
                 self.mod = self.Modelers[self._i_shot]
-                self.roi_sel = self.mod.roi_id==i_spot
+                self.roi_sel = self.mod.roi_id == i_spot
                 self.Imeas = self.mod.all_data[self.roi_sel]
                 self._set_background_plane()
                 self._extract_pixel_data()
@@ -651,7 +642,7 @@ class LocalRefiner(BaseRefiner):
                 self._Fcell_derivatives(i_spot)
                 # Done with derivative accumulation
             self._shot_Zscores.append(self._spot_Zscores)
-        #    self.image_corr[self._i_shot] = self.image_corr[self._i_shot] / self.image_corr_norm[self._i_shot]
+        # self.image_corr[self._i_shot] = self.image_corr[self._i_shot] / self.image_corr_norm[self._i_shot]
         tshots = time.time()-tshots
         LOGGER.info("Time rank worked on shots=%.4f" % tshots)
         self._append_global_parameters()

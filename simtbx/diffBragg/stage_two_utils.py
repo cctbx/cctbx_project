@@ -22,6 +22,7 @@ def PAR_from_params(params, experiment, best=None):
         p.init = best.spot_scales.values[0]
     else:
         p.init = params.init.G
+    p.init = np.sqrt(p.init)
     p.minval = params.mins.G
     p.maxval = params.maxs.G
     p.fix = params.fix.G

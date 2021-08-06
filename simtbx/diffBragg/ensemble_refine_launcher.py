@@ -145,14 +145,17 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             # FIXME what if a prediction doesnt have an observed structure factor amplitude
             LOGGER.info("EVENT: verifying input refl HKLs are included in input Fobs")
 
-            Hi = list(refls["miller_index"])
-            self.Hi[shot_idx] = Hi
-            self.Hi_asu[shot_idx] = map_hkl_list(Hi, True, self.symbol)
+            #Hi = list(refls["miller_index"])
+            #self.Hi[shot_idx] = Hi
+            #self.Hi_asu[shot_idx] = map_hkl_list(Hi, True, self.symbol)
 
             LOGGER.info("EVENT: LOADING ROI DATA")
             shot_modeler = hopper_utils.DataModeler(self.params)
             if not shot_modeler.GatherFromExperiment(expt, refls, sg_symbol=self.symbol):
                 raise("Failed to gather data from experiment %s", exper_name)
+
+            self.Hi[shot_idx] = shot_modeler.Hi
+            self.Hi_asu[shot_idx] = shot_modeler.Hi_asu
 
             LOGGER.info("EVENT: DONE LOADING ROI")
             shot_modeler.ucell_man = UcellMan
