@@ -29,6 +29,7 @@ class BaseRefiner:
 
     def __init__(self):
         # TODO , organize and be more descriptive, also ensure documentation for all attributes from local_refiner.LocalRefiner
+        self.save_model_freq = 100
         self.ABC_INIT = None
         self.compute_gnorm = False  # compute the norm of g in order to monitor convergence
         self.saveZ_freq = 5  # save Zscore data every N iterations

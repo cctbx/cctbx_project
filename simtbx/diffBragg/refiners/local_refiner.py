@@ -398,7 +398,8 @@ class LocalRefiner(BaseRefiner):
     def _run_diffBragg_current(self):
         LOGGER.info("run diffBragg for shot %d" % self._i_shot)
         pfs = self.Modelers[self._i_shot].pan_fast_slow
-        self.D.add_diffBragg_spots(pfs)
+        nom_h = self.Modelers[self._i_shot].all_nominal_hkl
+        self.D.add_diffBragg_spots(pfs, nom_h)
         LOGGER.info("finished diffBragg for shot %d" % self._i_shot)
 
     def _store_updated_Fcell(self):
@@ -579,6 +580,10 @@ class LocalRefiner(BaseRefiner):
 
         LOGGER.info("Iterate over %d shots" % len(self.shot_ids))
         self._shot_Zscores = []
+        save_model = self.iterations % self.save_model_freq == 0
+        if save_model:
+            # output buffers for panel, fast, slow, model, backgorund, data, braggSignal, Zscore, i_fcell
+            P,F,S,M,B,D,C,Z,iF = [],[],[],[],[],[],[],[],[]
         for self._i_shot in self.shot_ids:
 
             self.scale_fac = self._get_spot_scale(self._i_shot)**2
@@ -606,8 +611,6 @@ class LocalRefiner(BaseRefiner):
             # TODO pre-extractions for all parameters
             self._pre_extract_deriv_arrays()
             self._spot_Zscores = []
-            from IPython import embed
-            embed()
             for i_spot in range(n_spots):
                 self._i_spot = i_spot
                 x1, x2, y1, y2 = self.Modelers[self._i_shot].rois[i_spot]
@@ -622,6 +625,7 @@ class LocalRefiner(BaseRefiner):
                 self._extract_pixel_data()
                 self._evaluate_averageI()
 
+
                 if self.poisson_only:
                     self._evaluate_log_averageI()
                 else:
@@ -630,17 +634,35 @@ class LocalRefiner(BaseRefiner):
                 self._derivative_convenience_factors()
 
                 if self.iterations % self.saveZ_freq == 0:
-                    sigZ = (self._Zscore[self._is_trusted] ).std()
+                    sigZ = (self._Zscore[self._is_trusted]).std()
                     miller_idx = self.mod.Hi_asu[i_spot]
                     i_fcell = self.idx_from_asu[miller_idx]
                     self._spot_Zscores.append((i_fcell, sigZ))
 
+                if save_model:
+                    Npix = len(self.model_Lambda)
+                    P += [self._panel_id]*Npix
+                    Y, X = np.indices((y2-y1, x2-x1))
+                    F += list(X.ravel() + x1)
+                    S += list(Y.ravel() + y1)
+                    M += list(self.model_Lambda)
+                    B += list(self.tilt_plane)
+                    D += list(self.Imeas)
+                    C += list(self.model_bragg_spots)
+                    miller_idx = self.mod.Hi_asu[i_spot]
+                    i_fcell = self.idx_from_asu[miller_idx]
+                    Z += list(self._Zscore)
+                    iF += [i_fcell] * Npix
                 self.target_functional += self._target_accumulate()
 
                 # accumulate the per pixel derivatives
                 self._spot_scale_derivatives()
                 self._Fcell_derivatives(i_spot)
                 # Done with derivative accumulation
+            if save_model:
+                model_info = {"pan": P, "fast": F, "slow": S, "model": M, "background": B, "data": D, "bragg": C,
+                              "Zscore": Z, "i_fcell": iF}
+                self._save_model(model_info)
             self._shot_Zscores.append(self._spot_Zscores)
         # self.image_corr[self._i_shot] = self.image_corr[self._i_shot] / self.image_corr_norm[self._i_shot]
         tshots = time.time()-tshots
@@ -678,81 +700,27 @@ class LocalRefiner(BaseRefiner):
         LOGGER.info("DONE WITH FUNC GRAD")
         return self._f, self._g
 
+    def _save_model(self, model_info):
+        df = pandas.DataFrame(model_info)
+        outdir = os.path.join(self.output_dir, "model_info")
+        if not os.path.exists(outdir):
+            if COMM.rank == 0:
+                os.makedirs(outdir)
+            COMM.barrier()
+        outname = os.path.join(outdir, "rank%d_iter%d_shot%d.pkl" % (COMM.rank, self.iterations, self._i_shot))
+        df.to_pickle(outname)
+
     def _save_Zscore_data(self):
         if not self.iterations % self.saveZ_freq == 0:
             return
         outdir = os.path.join(self.output_dir, "rank%d_Zscore" % self.rank)
         if not os.path.exists(outdir):
             os.makedirs(outdir)
-        #i_fcell, sigZ = zip(*self._shot_Zscores)
         fname = os.path.join(outdir, "sigZ_iter%d_rank%d" % (self.iterations, self.rank))
         np.save(fname, self._shot_Zscores)
 
     def _sanity_check_grad(self):
         pass
-        #if not self.refine_background_planes:
-        #    for xp in self.bg_a_xstart[self._i_shot]:
-        #        assert self.grad[xp] == 0
-        #    for xp in self.bg_b_xstart[self._i_shot]:
-        #        assert self.grad[xp] == 0
-        #    for xp in self.bg_c_xstart[self._i_shot]:
-        #        assert self.grad[xp] == 0
-        #if not self.refine_blueSausages:
-        #    for i_saus in range(self.num_sausages):
-        #        for i_saus_param in range(4):
-        #            idx = i_saus * 4 + i_saus_param
-        #            assert self.grad[self.sausages_xpos[self._i_shot][idx]] == 0
-        #if not self.refine_eta:
-        #    for i_eta in range(3):
-        #        assert self.grad[self.eta_xstart[self._i_shot]+i_eta] == 0
-        #        if i_eta in [1, 2] and not self.S.crystal.has_anisotropic_mosaicity:
-        #            assert self.grad[self.eta_xstart[self._i_shot] + i_eta] == 0
-
-        #if not self.refine_spectra:
-        #    for i_p in range(2):
-        #        assert self.grad[self.spectra_coef_xstart + i_p] == 0
-        #if not self.refine_ncells:
-        #    for i_ncells in range(self.n_ncells_param):
-        #        assert self.grad[self.ncells_xstart[self._i_shot] + i_ncells] == 0
-        #if not self.refine_ncells_def:
-        #    for i_ncells in range(3):
-        #        assert self.grad[self.ncells_def_xstart[self._i_shot] + i_ncells] == 0
-
-        #if not self.refine_Umatrix:
-        #    # if not self.refine_rotX:
-        #    assert self.grad[self.rotX_xpos[self._i_shot]] == 0
-        #    # if not self.refine_rotY:
-        #    assert self.grad[self.rotY_xpos[self._i_shot]] == 0
-        #    # if not self.refine_rotZ:
-        #    assert self.grad[self.rotZ_xpos[self._i_shot]] == 0
-
-        #if not self.refine_Bmatrix:
-        #    for i_p in range(self.n_ucell_param):
-        #        assert self.grad[self.ucell_xstart[self._i_shot] + i_p] == 0
-
-        #if not self.refine_crystal_scale:
-        #    assert self.grad[self.spot_scale_xpos[self._i_shot]] == 0
-
-        #for pg in set(list(self.panel_group_from_id.values())):
-        #    if not self.refine_panelRotO:
-        #        assert self.grad[self.panelRot_xstart + 3 * pg] == 0
-        #    if not self.refine_panelRotF:
-        #        assert self.grad[self.panelRot_xstart + 3 * pg + 1] == 0
-        #    if not self.refine_panelRotS:
-        #        assert self.grad[self.panelRot_xstart + 3 * pg + 2] == 0
-
-        #    if not self.refine_panelXY:
-        #        assert self.grad[self.panelXY_xstart + 2 * pg] == 0
-        #        assert self.grad[self.panelXY_xstart + 2 * pg + 1] == 0
-        #    if not self.refine_panelZ:
-        #        assert self.grad[self.panelZ_xstart] == 0
-
-        #if not self.refine_detdist:
-        #    assert self.grad[self.detector_distance_xpos[self._i_shot]] == 0
-
-        #if not self.refine_per_spot_scale:
-        #    for xp in self.per_spot_scale_xpos[self._i_shot]:
-        #        assert self.grad[xp] == 0
 
     def _open_model_output_file(self):
         if not self.I_AM_ROOT:
@@ -790,12 +758,8 @@ class LocalRefiner(BaseRefiner):
         # get multiplicity of this index
         multi = self.hkl_frequency[self.idx_from_asu[miller_idx]]
         # check if we are freezing this index during refinement
-        freeze_this_hkl = False
-        if self.freeze_idx is not None:
-            freeze_this_hkl = self.freeze_idx[miller_idx]
-
         # do the derivative
-        if self.refine_Fcell and multi >= self.min_multiplicity and not freeze_this_hkl:
+        if self.refine_Fcell and multi >= self.min_multiplicity:
             hkl_asu = self.Modelers[self._i_shot].Hi_asu[i_spot]
             i_fcell = self.idx_from_asu[hkl_asu]
             xpos = self.fcell_xstart + i_fcell
@@ -866,7 +830,7 @@ class LocalRefiner(BaseRefiner):
         if self.calc_curvatures and not self.use_curvatures:
             if self.tot_neg_curv == 0:
                 self.num_positive_curvatures += 1
-                self.d = self.d_for_lbfgs #flex_double(self.curv.as_numpy_array())
+                self.d = self.curv
                 self._verify_diag()
             else:
                 self.num_positive_curvatures = 0
@@ -876,7 +840,7 @@ class LocalRefiner(BaseRefiner):
             assert self.tot_neg_curv == 0
             self.request_diag_once = False
             self.diag_mode = "always"  # TODO is this proper place to set ?
-            self.d = self.d_for_lbfgs #flex_double(self.curv.as_numpy_array())
+            self.d = self.curv
             self._verify_diag()
         else:
             self.d = None
