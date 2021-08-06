@@ -54,8 +54,43 @@ def _VerboseCheck(level, message):
     return ""
 
 ##################################################################################
+# Helper functions
+
+def AlternatesInModel(model):
+  """Returns a set of altloc names of all conformers in all chains.
+  :return: Set of strings.  The set is will include only the empty string if no
+  chains in the model have alternates.  It has an additional entry for every altloc
+  found in every chain.
+  """
+  ret = set()
+  for c in model.chains():
+    for alt in c.conformers():
+      ret.add(alt.altloc)
+  return ret
+
+def GetAtomsForConformer(model, conf):
+  """Returns a list of atoms in the named conformer.  It also includes atoms from
+  the first conformation in chains that do not have this conformation, to provide a
+  complete model.  For a model whose chains only have one conformer, it will return
+  all of the atoms.
+  :param model: pdb.hierarchy.model to search for atoms.
+  :param conf: String name of the conformation to find.  Can be "".
+  :return: List of atoms consistent with the specified conformer.
+  """
+  ret = []
+  for ch in model.chains():
+    confs = ch.conformers()
+    which = 0
+    for i in range(1,len(confs)):
+      if confs[i].altloc == conf:
+        which = i
+        break
+    ret.extend(confs[which].atoms())
+  return ret
+
+##################################################################################
 # Optimizers:
-#     SingletonOptimer: This is a base Optimizer class that implements the placement and scoring
+#     SingletonOptimizer: This is a base Optimizer class that implements the placement and scoring
 # of Movers and optimizes all Movers independently, not taking into account their impacts
 # on each other.  The other Optimizers will all be derived from this base class and will
 # override the multi-Mover Clique optimization routine.
@@ -598,6 +633,134 @@ class SingletonOptimizer:
         self._infoString += _VerboseCheck(1,f"Leaving single Mover at coarse orientation\n")
         self._setMoverState(coarse, self._coarseLocations[mover])
 
+class BruteForceOptimizer(SingletonOptimizer):
+  def __init__(self, model, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 3,
+                probeRadius = 0.25,
+                useNeutronDistances = False,
+                probeDensity = 16.0,
+                minOccupancy = 0.01,
+                preferenceMagnitude = 1.0
+              ):
+    """Constructor for BruteForceOptimizer.  This tries all combinations of Mover positions
+    within a Clique.  It will be too slow for many files, but it provides a baseline against
+    which to compare the results from faster optimizers.
+    :param model: iotbx model (a group of hierarchy models).  Can be obtained using
+    iotbx.map_model_manager.map_model_manager.model().  The model must have Hydrogens,
+    which can be added using mmtbx.hydrogens.reduce_hydrogen.place_hydrogens().get_model().
+    It must have a valid unit cell, which can be helped by calling
+    cctbx.maptbx.box.shift_and_box_model().  It must have had PDB interpretation run on it,
+    which can be done using model.process_input_model(make_restraints=True) with PDB
+    interpretation parameters and hydrogen placement matching the value of the
+    useNeutronDistances parameter described below.
+    :param modelIndex: Identifies which index from the hierarchy is to be selected.
+    If this value is None, optimization will be run sequentially on every model in the
+    hierarchy.
+    :param altID: The conformer alternate location specifier to use.  The value "" will
+    cause it to run on the first conformer found in each model.  If this is set to None
+    (the default), optimization will be run sequentially for every conformer in the model, starting with
+    the last and ending with the first.  This will leave the initial conformer's values as the
+    final location for atoms that are not inside a conformer or are in the first conformer.
+    :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
+    The default is to ignore interactions to a depth of 3 (my bonded neighbors and their bonded
+    neighbors and their bonded neighbors).
+    :param probeRadius: Radius of the probe to be used in Probe calculations (Angstroms).
+    :param useNeutronDistances: Defaults to using X-ray/electron cloud distances.  If set to
+    True, it will use neutron (nuclear) distances.  This must be set consistently with the
+    values used to generate the hydrogens and to run PDB interpretation.
+    :param probeDensity: How many dots per sq Angstroms in VDW calculations.
+    :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
+    :param preferenceMagnitude: Multiplier for the preference energies expressed
+    by some Movers for particular orientations.
+    """
+    super().__init__(model, modelIndex = modelIndex, altID = altID, bondedNeighborDepth = bondedNeighborDepth,
+                probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
+                minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude)
+
+  def _optimizeCliqueCoarse(self, movers):
+    # The BruteForceOptimizer class checks for the joint maximum score over
+    # all of the Movers simultaneously.  It tries all Movers in all possible positions against all
+    # other Movers in all combinations of positions.
+    # :param movers: List of Movers in the clique to be optimized.
+    # :return: List of the indices of the coarse position selected for each Mover in the same
+    # order they were listed in the movers list.
+    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(movers)} using brute force\n")
+
+    # Prepare some data structures to keep track of the joint state of the Movers, and of the
+    # best combination found so far.
+    curStateValues = [] # Cycles through available indices, one per Mover
+    states = []         # Coarse position state return for each Mover
+    numStates = []      # Records maximum number of states per Mover
+    for m in movers:
+      curStateValues.append(0)  # Start all in state 0
+      states.append(m.CoarsePositions())
+      numStates.append(len(states[-1].positions))
+
+    # Find the value for the current set of states, compare it against the max, and store it if
+    # it is the best so far.
+    # We will cycle the states[] list through all possible states for each Mover,
+    # incremementing each until it rolls over and then jumping up to the next.
+    # This is similar to doing +1 arithmetic with carry.
+    curState = 0
+    bestState = None
+    bestScore = -1e100  # Any score will be better than this
+    done = False
+    while not done:
+      # Set all movers to match the state list.
+      # @todo Optimize this so that it only changes states that differed from last time.
+      for i in range(len(movers)):
+        self._setMoverState(states[i], curStateValues[i])
+
+      # Compute the score over all atoms in all Movers and see if it is the best.  If so,
+      # update the best.
+      score = 0
+      for i in range(len(movers)):
+        for a in states[i].atoms:
+          score += self._scoreAtom(a)
+      self._infoString += _VerboseCheck(5,f"Score is {score:.2f} at {curStateValues}\n")
+      if score > bestScore:
+        self._infoString += _VerboseCheck(4,f"New best score is {score:.2f} at {curStateValues}\n")
+        bestScore = score
+        bestState = curStateValues.copy()
+
+      # Increment the state.  We do this by increasing the current element until it reaches its
+      # number of values, then we bump it and all of its neighbors to the right back to 0 and, if
+      # we're not at the left end, bump the next one up.  If we are at the left end, we're done.
+      # When done, leave all states at 0.
+      curStateValues[curState] += 1
+      rippled = False
+      while curStateValues[curState] == numStates[curState]:  # Ripple to the left if we overflow more than one
+        # Clear all of the values to the right, and ours, because we're rolling over
+        for i in range(curState+1):
+          curStateValues[i] = 0
+        # If we're the left-most state, we're done
+        if curState+1 >= len(movers):
+          done = True
+        else:
+          curState += 1
+          curStateValues[curState] += 1
+          rippled = True
+      # If we rippled, bump back to the right-most column and start counting there again.
+      if rippled:
+        curState = 0
+
+    # Put each Mover into its best state and compute its high-score value.
+    # Compute the best individual scores for these Movers for use in later fine-motion
+    # processing.
+    # @todo Consider moving high-score calculation to the fine-motion code so we don't need to do it
+    # in all of the subclasses.
+    for i,m in enumerate(movers):
+      self._setMoverState(states[i], bestState[i])
+      self._highScores[m] = 0
+      for a in states[i].atoms:
+        self._highScores[m] += self._scoreAtom(a)
+      self._infoString += _VerboseCheck(1,f"Setting Mover in clique to coarse orientation {bestState[i]}"+
+        f", max score = {self._highScores[m]:.2f}\n")
+
+    # Return the state
+    return bestState
+
+
 ##################################################################################
 # Placement
 
@@ -864,41 +1027,6 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
   return _PlaceMoversReturn(movers, infoString, deleteAtoms)
 
 ##################################################################################
-# Helper functions
-
-def AlternatesInModel(model):
-  """Returns a set of altloc names of all conformers in all chains.
-  :return: Set of strings.  The set is will include only the empty string if no
-  chains in the model have alternates.  It has an additional entry for every altloc
-  found in every chain.
-  """
-  ret = set()
-  for c in model.chains():
-    for alt in c.conformers():
-      ret.add(alt.altloc)
-  return ret
-
-def GetAtomsForConformer(model, conf):
-  """Returns a list of atoms in the named conformer.  It also includes atoms from
-  the first conformation in chains that do not have this conformation, to provide a
-  complete model.  For a model whose chains only have one conformer, it will return
-  all of the atoms.
-  :param model: pdb.hierarchy.model to search for atoms.
-  :param conf: String name of the conformation to find.  Can be "".
-  :return: List of atoms consistent with the specified conformer.
-  """
-  ret = []
-  for ch in model.chains():
-    confs = ch.conformers()
-    which = 0
-    for i in range(1,len(confs)):
-      if confs[i].altloc == conf:
-        which = i
-        break
-    ret.extend(confs[which].atoms())
-  return ret
-
-##################################################################################
 # Test function and associated data and helpers to verify that all functions behave properly.
 
 def Test(inFileName = None):
@@ -1067,8 +1195,8 @@ END
 
   print('Constructing Optimizer')
   # @todo Let the caller specify the model index and altID rather than doing only the default (first).
-  singleOpt = SingletonOptimizer(model)
-  info = singleOpt.getInfo()
+  opt = BruteForceOptimizer(model)
+  info = opt.getInfo()
   print('XXX info:\n'+info)
 
   f = open("deleteme.pdb","w")
