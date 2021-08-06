@@ -27,11 +27,24 @@ class integrate(worker):
     log.config(logfile=logfile)
     processor = integrate_only_processor(self.params)
 
+    # make sure that all ranks make an imageset
+    first_imageset_path = experiments[0].imageset.paths()[0] if experiments else None
+    all_first_imageset_paths = self.mpi_helper.comm.gather(first_imageset_path, root=0)
+    if self.mpi_helper.rank==0:
+      all_first_imageset_paths = [x for x in all_first_imageset_paths if x is not None]
+      dummy_imageset_path = all_first_imageset_paths[0]
+    else:
+      dummy_imageset_path = None
+    current_imageset_path = self.mpi_helper.comm.bcast(dummy_imageset_path, root=0)
+    current_imageset = ImageSetFactory.make_imageset([current_imageset_path])
+
+
+
     # Re-generate the image sets using their format classes so we can read the raw data
     # Integrate the experiments one at a time to not use up memory
     all_integrated = flex.reflection_table()
-    current_imageset = None
-    current_imageset_path = None
+#    current_imageset = None
+#    current_imageset_path = None
     for expt_id, expt in enumerate(experiments):
       assert len(expt.imageset.paths()) == 1 and len(expt.imageset) == 1
       self.logger.log("Starting integration experiment %d"%expt_id)
