@@ -90,6 +90,27 @@ def construct_src_to_dst_plan(icount, tranch_size, comm, verbose=True):
         print(todst)
       return todst
 
+def construct_anchor_src_to_dst_plan(min_anchor, icount, tranch_size, comm, verbose=True):
+      """The overall purpose is to recruit enough total experiments from several ranks to perform anchor alignment"""
+      mpi_rank = comm.Get_rank()
+      mpi_size = comm.Get_size()
+      todst = {} # plan of action: src rank values to dst keys
+      todst[0] = []
+      anchor_sum = 0
+      rank = 0
+      rank_count = []
+      while anchor_sum < min_anchor and rank < mpi_size:
+        todst[0].append(rank)
+        rank_count.append(icount[rank])
+        anchor_sum += icount[rank]
+        rank += 1
+      if verbose:
+        print("anchor tranch:",rank_count, anchor_sum)
+        print(todst)
+      if anchor_sum < min_anchor:
+        raise Exception("Cannot align to anchor with %d total experiments, need at least %d"%(anchor_sum, min_anchor))
+      return todst
+
 def get_experiment_counts_by_comm_size():
   return {
     64:[52, 48, 48, 48, 47, 47, 46, 45, 44, 43, 43, 42, 43, 42, 42, 40, 40, 38, 38, 38, 38, 38,

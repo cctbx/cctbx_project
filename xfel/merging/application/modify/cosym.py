@@ -369,7 +369,7 @@ class cosym(worker):
       return sampling_experiments_for_cosym, sampling_reflections_for_cosym
 
   @staticmethod
-  def task_1(params, mpi_helper, logger, input_experiments, input_reflections,
+  def taDEPRECATEsk_1(params, mpi_helper, logger, input_experiments, input_reflections,
       sampling_experiments_for_cosym, sampling_reflections_for_cosym, uuid_starting=[], communicator_size=1, do_plot=False):
       uuid_cache = uuid_starting
       if communicator_size == 1: # simple case, one rank
@@ -416,7 +416,6 @@ class cosym(worker):
       # Purpose: assemble a composite tranch from src inputs, and instantiate the COSYM class
       uuid_cache = uuid_starting
 
-      from xfel.merging.application.modify.token_passing_left_right import token_passing_left_right
       for tranch_experiments, tranch_reflections in tokens:
           for experiment in tranch_experiments:
             sampling_experiments_for_cosym.append(experiment)
@@ -455,11 +454,20 @@ class cosym(worker):
     else:
       plan = 0
     plan = self.mpi_helper.comm.bcast(plan, root = 0)
-    dst_offset = 1 if self.mpi_helper.size>1 else 0
+    dst_offset = 1 if self.mpi_helper.size>1 else 0 # decision whether to reserve rank 0 for parallel anchor determination
+                                                    # FIXME XXX probably need to look at plan size to decide dst_offset or not
     from xfel.merging.application.modify.token_passing_left_right import apply_all_to_all
     tokens = apply_all_to_all(plan=plan, dst_offset=dst_offset,
                    value=(input_experiments, input_reflections), comm = self.mpi_helper.comm)
 
+    if self.params.modify.cosym.anchor:
+      if self.mpi_helper.rank == 0:
+        MIN_ANCHOR = 20
+        from xfel.merging.application.modify.token_passing_left_right import construct_anchor_src_to_dst_plan
+        anchor_plan = construct_anchor_src_to_dst_plan(MIN_ANCHOR, flex.int(reports), self.params.modify.cosym.tranch_size, self.mpi_helper.comm)
+      else:
+        anchor_plan = 0
+      anchor_plan = self.mpi_helper.comm.bcast(anchor_plan, root = 0)
     self.logger.log_step_time("COSYM")
 
     if self.params.modify.cosym.plot.interactive:
@@ -549,6 +557,10 @@ class cosym(worker):
     self.mpi_helper.comm.barrier()
     # end of distributed embedding
 
+    if self.params.modify.cosym.anchor:
+        anchor_tokens = apply_all_to_all(plan=anchor_plan, dst_offset=0,
+        value=(input_experiments, input_reflections), comm = self.mpi_helper.comm)
+
     if self.mpi_helper.rank == 0:
         from xfel.merging.application.modify.df_cosym import reconcile_cosym_reports
         REC = reconcile_cosym_reports(reports)
@@ -558,7 +570,7 @@ class cosym(worker):
         # recycle the data structures for anchor determination
         if self.params.modify.cosym.anchor:
           sampling_experiments_for_cosym, sampling_reflections_for_cosym = self.task_a(self.params)
-          ANCHOR = self.task_1(self.params, self.mpi_helper, self.logger, input_experiments, input_reflections,
+          ANCHOR = self.task_c(self.params, self.mpi_helper, self.logger, anchor_tokens,
             sampling_experiments_for_cosym, sampling_reflections_for_cosym,
             uuid_starting=["anchor structure"], communicator_size=1) # only run on the rank==0 tranch.
           self.uuid_cache = ANCHOR.uuid_cache # reformed uuid list after n_refls filter
@@ -638,7 +650,8 @@ class cosym(worker):
 
     # still have to reindex the reflection table, but try to do it efficiently
     from xfel.merging.application.modify.reindex_cosym import reindex_refl_by_coset
-    reindex_refl_by_coset(refl = selected_reflections,
+    if (len(result_experiments_for_cosym) > 0):
+      reindex_refl_by_coset(refl = selected_reflections,
                           data = transmitted,
                           symms=[E.crystal.get_crystal_symmetry() for E in result_experiments_for_cosym],
                           uuids=[E.identifier for E in result_experiments_for_cosym],
