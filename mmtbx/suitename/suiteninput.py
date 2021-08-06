@@ -44,32 +44,35 @@ def readResidues(inFile):
     while lines[0].strip().startswith("Atom pair"):
         del lines[0]
     residues = []
-    for line in lines:
-        if len(line.strip()) == 0 or line[0] == "#":  # blank or comment line
-            continue
-        fields = line.split(":")
-        ids = fields[: options.pointidfields]
-        # if ids[3].strip() != "":
-        #   print('yes')
-
-        baseCode = fields[options.pointidfields - 1]
-        angleStrings = fields[options.pointidfields :]
-        if (
-            ids[options.altidfield-1].strip() != ""
-            and ids[options.altidfield-1] != options.altid
-        ):    # -1 converts 1-based to 0-based counting
-            continue  # lines for the wrong alternative conformation are ignored
-
-        base = findBase(baseCode)
-        if not base:  # ignore DNA bases
-            continue
-        angles = np.array([stringToFloat(s) for s in angleStrings])
-        for i in range(len(angles)):
-            if angles[i] < 0:
-                angles[i] += 360.0
-
-        residue = Residue(ids, base, angles)
-        residues.append(residue)
+    try:
+        i = 0
+        for line in lines:
+            i += 1
+            if len(line.strip()) == 0 or line[0] == "#":  # blank or comment line
+                continue
+            fields = line.split(":")
+            ids = fields[: options.pointidfields]
+            baseCode = fields[options.pointidfields - 1]
+            angleStrings = fields[options.pointidfields :]
+            if (
+                ids[options.altidfield-1].strip() != ""
+                and ids[options.altidfield-1] != options.altid
+            ):    # -1 converts 1-based to 0-based counting
+                continue  # lines for the wrong alternative conformation are ignored
+    
+            base = findBase(baseCode)
+            if not base:  # ignore DNA bases
+                continue
+            angles = np.array([stringToFloat(s) for s in angleStrings])
+            for i in range(len(angles)):
+                if angles[i] < 0:
+                    angles[i] += 360.0
+    
+            residue = Residue(ids, base, angles)
+            residues.append(residue)
+    except IndexError:
+        print(f"Suitename found malformed input on line {i}, reading no further",
+            file=sys.stderr)
     return residues
 
 
