@@ -403,6 +403,12 @@ refiner {
     .type = str
     .help = path to expt list file containing a detector model
   stage_two {
+    use_nominal_hkl = True
+      .type = bool
+      .help = use the nominal hkl as a filter for Fhkl gradients
+    save_model_freq = 50
+      .type = int 
+      .help = save the model  after this many iterations
     merge_stat_freq = 3
       .type = int
       .help = show merge stats after this many iterations

@@ -54,6 +54,7 @@ class DataModeler:
         self.npix_total =None
         self.all_fast =None
         self.all_slow =None
+        self.all_pid = None
         self.rois=None
         self.pids=None
         self.tilt_abc=None
@@ -257,6 +258,7 @@ class DataModeler:
         self.npix_total = len(all_data)
         self.all_fast = np.array(all_fast)
         self.all_slow = np.array(all_slow)
+        self.all_pid = np.array(all_pid)
         self.simple_weights = 1/self.all_sigmas**2
         self.u_id = set(self.roi_id)
         self.all_refls_idx = np.array(all_refls_idx)

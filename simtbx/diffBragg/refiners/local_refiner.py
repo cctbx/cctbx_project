@@ -63,9 +63,12 @@ from cctbx import miller, sgtbx
 class LocalRefiner(BaseRefiner):
 
     def __init__(self,
-                 shot_modelers, sgsymbol):
+                 shot_modelers, sgsymbol, params):
         BaseRefiner.__init__(self)
         self.rank = COMM.rank
+        self.params = params
+        self.save_model_freq = self.params.refiner.stage_two.save_model_freq
+        self.use_nominal_h = self.params.refiner.stage_two.use_nominal_hkl
 
         self.Modelers = shot_modelers
         self.shot_ids = sorted(self.Modelers.keys())
@@ -138,11 +141,17 @@ class LocalRefiner(BaseRefiner):
 
     def _evaluate_averageI(self):
         """model_Lambda means expected intensity in the pixel"""
-        self.model_Lambda = self.tilt_plane + self.model_bragg_spots
+        self.model_Lambda = self.Modelers[self._i_shot].all_background + self.model_bragg_spots
 
     def make_output_dir(self):
-        if self.I_AM_ROOT and self.output_dir is not None and not os.path.exists(self.output_dir):
+        if self.I_AM_ROOT and not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
+        self.Zdir = os.path.join(self.output_dir, "Z")
+        self.model_dir = os.path.join(self.output_dir, "model")
+        for dirname in (self.Zdir, self.model_dir):
+            if self.I_AM_ROOT and not os.path.exists(dirname):
+                os.makedirs(dirname)
+        COMM.barrier()
 
     def _dump_parameters_to_hdf5(self):
         if self.parameter_hdf5_path is not None and self.iterations % self.parameter_hdf5_write_freq == 0:
@@ -236,6 +245,38 @@ class LocalRefiner(BaseRefiner):
 
         self.D.refine(self._fcell_id)
         self.D.initialize_managers()
+
+        for sid in self.shot_ids:
+            Modeler = self.Modelers[sid]
+            Modeler.all_fcell_global_idx = np.array([self.idx_from_asu[h] for h in Modeler.hi_asu_perpix])
+            Modeler.unique_i_fcell = set(Modeler.all_fcell_global_idx)
+            #Modeler.is_i_fcell = {}
+            #for i_fcell in Modeler.unique_i_fcell:
+            #    sel = np.logical_and( Modeler.all_fcell_global_idx == i_fcell, Modeler.all_trusted)
+            #    Modeler.is_i_fcell[i_fcell] = sel
+            Modeler.i_fcell_slices = {}
+            for i_fcell in Modeler.unique_i_fcell:
+                Modeler.i_fcell_slices[i_fcell] = []
+                a = np.where(Modeler.all_fcell_global_idx==i_fcell)[0]
+                sels = []
+                sel = []
+                for i in range(len(a)-1):
+                    val = a[i]
+                    val2 = a[i+1]
+                    sel.append(val)
+                    if val2-val > 1:
+                        sels.append(sel)
+                        sel = []
+                sel.append(a[-1])
+                sels.append(sel)
+                for sel in sels:
+                    a1 = min(sel)
+                    a2 = max(sel)
+                    assert np.all(np.arange(a1, a2+1) == sel)
+                    Modeler.i_fcell_slices[i_fcell].append(slice(a1,a2+1,1))
+
+            self.Modelers[sid] = Modeler  # TODO: VERIFY IF THIS IS NECESSARY ?
+
         self._MPI_barrier()
 
     def _get_shot_mapping(self):
@@ -269,10 +310,12 @@ class LocalRefiner(BaseRefiner):
         if self.I_AM_ROOT:
             self.print("--2 Setting up global parameters")
             if self.output_dir is not None:
-                # np.save(os.path.join(self.output_dir, "f_truth"), self.f_truth)  #FIXME by adding in the correct truth from Fref
                 np.save(os.path.join(self.output_dir, "f_asu_map"), self.asu_from_idx)
 
             self._setup_fcell_params()
+
+    #def _set_roi_mask(self):
+    #    self._is_trusted = self.Modelers[self._i_shot].all_trusted
 
     def _setup_fcell_params(self):
         if self.refine_Fcell:
@@ -398,8 +441,11 @@ class LocalRefiner(BaseRefiner):
     def _run_diffBragg_current(self):
         LOGGER.info("run diffBragg for shot %d" % self._i_shot)
         pfs = self.Modelers[self._i_shot].pan_fast_slow
-        nom_h = self.Modelers[self._i_shot].all_nominal_hkl
-        self.D.add_diffBragg_spots(pfs, nom_h)
+        if self.use_nominal_h:
+            nom_h = self.Modelers[self._i_shot].all_nominal_hkl
+            self.D.add_diffBragg_spots(pfs, nom_h)
+        else:
+            self.D.add_diffBragg_spots(pfs)
         LOGGER.info("finished diffBragg for shot %d" % self._i_shot)
 
     def _store_updated_Fcell(self):
@@ -469,18 +515,14 @@ class LocalRefiner(BaseRefiner):
 
     def _pre_extract_deriv_arrays(self):
         npix = len(self.Modelers[self._i_shot].all_data)
-        self._model_pix = self.D.raw_pixels_roi.as_numpy_array()[:npix]
+        self._model_pix = self.D.raw_pixels_roi[:npix].as_numpy_array()
 
         if self.refine_Fcell:
             dF = self.D.get_derivative_pixels(self._fcell_id)
-
-            self._extracted_fcell_deriv = dF.set_selected(dF != dF, 0)
-            self._extracted_fcell_deriv = self._extracted_fcell_deriv.as_numpy_array()[:npix]
+            self._extracted_fcell_deriv = dF[:npix].as_numpy_array()
             if self.calc_curvatures:
                 d2F = self.D.get_second_derivative_pixels(self._fcell_id)
-                self._extracted_fcell_second_deriv = d2F.set_selected(d2F != d2F, 0)
-                self._extracted_fcell_second_deriv = self._extracted_fcell_second_deriv.as_numpy_array()[:npix]
-
+                self._extracted_fcell_second_deriv = d2F[:npix].as_numpy_array()
 
     def _extract_sausage_derivs(self):
         pass
@@ -511,16 +553,16 @@ class LocalRefiner(BaseRefiner):
         self.fcell_deriv = self.fcell_second_deriv = 0
         if self.refine_Fcell:
             SG = self.scale_fac
-            self.fcell_deriv = SG*(self._extracted_fcell_deriv[self.roi_sel])
+            self.fcell_deriv = SG*(self._extracted_fcell_deriv)
             # handles Nan's when Fcell is 0 for whatever reason
             if self.calc_curvatures:
-                self.fcell_second_deriv = SG*self._extracted_fcell_second_deriv[self.roi_sel]
+                self.fcell_second_deriv = SG*self._extracted_fcell_second_deriv
 
     def _get_per_spot_scale(self, i_shot, i_spot):
         pass
 
     def _extract_pixel_data(self):
-        self.model_bragg_spots = self.scale_fac*(self._model_pix[self.roi_sel])
+        self.model_bragg_spots = self.scale_fac*(self._model_pix)
         #self.model_bragg_spots *= self._get_per_spot_scale(self._i_shot, self._i_spot)
         #self._extract_Umatrix_derivative_pixels()
         #self._extract_sausage_derivs()
@@ -581,9 +623,7 @@ class LocalRefiner(BaseRefiner):
         LOGGER.info("Iterate over %d shots" % len(self.shot_ids))
         self._shot_Zscores = []
         save_model = self.iterations % self.save_model_freq == 0
-        if save_model:
-            # output buffers for panel, fast, slow, model, backgorund, data, braggSignal, Zscore, i_fcell
-            P,F,S,M,B,D,C,Z,iF = [],[],[],[],[],[],[],[],[]
+
         for self._i_shot in self.shot_ids:
 
             self.scale_fac = self._get_spot_scale(self._i_shot)**2
@@ -599,7 +639,6 @@ class LocalRefiner(BaseRefiner):
             self._update_eta()  # mosaic spread
             self._update_dxtbx_detector()
             self._update_sausages()
-            n_spots = len(self.Modelers[self._i_shot].rois)
 
             self._run_diffBragg_current()
 
@@ -610,68 +649,55 @@ class LocalRefiner(BaseRefiner):
 
             # TODO pre-extractions for all parameters
             self._pre_extract_deriv_arrays()
-            self._spot_Zscores = []
-            for i_spot in range(n_spots):
-                self._i_spot = i_spot
-                x1, x2, y1, y2 = self.Modelers[self._i_shot].rois[i_spot]
-                if x2 - x1 == 0 or y2 - y1 == 0:
-                    continue
+            self._extract_pixel_data()
+            self._evaluate_averageI()
+            if self.poisson_only:
+                self._evaluate_log_averageI()
+            else:
+                self._evaluate_log_averageI_plus_sigma_readout()
 
-                self._panel_id = int(self.Modelers[self._i_shot].pids[i_spot])
-                self.mod = self.Modelers[self._i_shot]
-                self.roi_sel = self.mod.roi_id == i_spot
-                self.Imeas = self.mod.all_data[self.roi_sel]
-                self._set_background_plane()
-                self._extract_pixel_data()
-                self._evaluate_averageI()
+            self._derivative_convenience_factors()
 
+            if self.iterations % self.saveZ_freq == 0:
+                MOD = self.Modelers[self._i_shot]
+                self._spot_Zscores = []
+                for i_fcell in MOD.unique_i_fcell:
+                    for slc in MOD.i_fcell_slices[i_fcell]:
+                        sigZ = self._Zscore[slc]
+                        trus = MOD.all_trusted[slc]
+                        sigZ = sigZ[trus].std()
+                        self._spot_Zscores.append((i_fcell, sigZ))
+                self._shot_Zscores.append(self._spot_Zscores)
 
-                if self.poisson_only:
-                    self._evaluate_log_averageI()
-                else:
-                    self._evaluate_log_averageI_plus_sigma_readout()
-
-                self._derivative_convenience_factors()
-
-                if self.iterations % self.saveZ_freq == 0:
-                    sigZ = (self._Zscore[self._is_trusted]).std()
-                    miller_idx = self.mod.Hi_asu[i_spot]
-                    i_fcell = self.idx_from_asu[miller_idx]
-                    self._spot_Zscores.append((i_fcell, sigZ))
-
-                if save_model:
-                    Npix = len(self.model_Lambda)
-                    P += [self._panel_id]*Npix
-                    Y, X = np.indices((y2-y1, x2-x1))
-                    F += list(X.ravel() + x1)
-                    S += list(Y.ravel() + y1)
-                    M += list(self.model_Lambda)
-                    B += list(self.tilt_plane)
-                    D += list(self.Imeas)
-                    C += list(self.model_bragg_spots)
-                    miller_idx = self.mod.Hi_asu[i_spot]
-                    i_fcell = self.idx_from_asu[miller_idx]
-                    Z += list(self._Zscore)
-                    iF += [i_fcell] * Npix
-                self.target_functional += self._target_accumulate()
-
-                # accumulate the per pixel derivatives
-                self._spot_scale_derivatives()
-                self._Fcell_derivatives(i_spot)
-                # Done with derivative accumulation
             if save_model:
-                model_info = {"pan": P, "fast": F, "slow": S, "model": M, "background": B, "data": D, "bragg": C,
-                              "Zscore": Z, "i_fcell": iF}
+                MOD = self.Modelers[self._i_shot]
+                P = MOD.all_pid
+                F = MOD.all_fast
+                S = MOD.all_slow
+                M = self.model_Lambda
+                B = MOD.all_background
+                D = MOD.all_data
+                C = self.model_bragg_spots
+                Z = self._Zscore
+                iF = MOD.all_fcell_global_idx
+                trust = MOD.all_trusted
+
+                model_info = {"p": P, "f": F, "s": S, "model": M, "background": B, "data": D, "bragg": C,
+                              "Zscore": Z, "i_fcell": iF, "trust": trust}
                 self._save_model(model_info)
             self._shot_Zscores.append(self._spot_Zscores)
-        # self.image_corr[self._i_shot] = self.image_corr[self._i_shot] / self.image_corr_norm[self._i_shot]
+            self._is_trusted = self.Modelers[self._i_shot].all_trusted
+            self.target_functional += self._target_accumulate()
+            self._spot_scale_derivatives()
+            self._Fcell_derivatives()
+            self._shot_Zscores.append(self._spot_Zscores)
         tshots = time.time()-tshots
         LOGGER.info("Time rank worked on shots=%.4f" % tshots)
         self._append_global_parameters()
         tmpi = time.time()
         LOGGER.info("MPI aggregation of func and grad")
         self._mpi_aggregation()
-        tmpi = tmpi-time.time()
+        tmpi = time.time() - tmpi
         LOGGER.info("Time for MPIaggregation=%.4f" % tmpi)
 
         self._f = self.target_functional
@@ -702,18 +728,18 @@ class LocalRefiner(BaseRefiner):
 
     def _save_model(self, model_info):
         df = pandas.DataFrame(model_info)
-        outdir = os.path.join(self.output_dir, "model_info")
-        if not os.path.exists(outdir):
-            if COMM.rank == 0:
+        outdir = os.path.join(self.model_dir, "iter%d" % self.iterations)
+        if COMM.rank == 0:
+            if not os.path.exists(outdir):
                 os.makedirs(outdir)
-            COMM.barrier()
-        outname = os.path.join(outdir, "rank%d_iter%d_shot%d.pkl" % (COMM.rank, self.iterations, self._i_shot))
+        COMM.barrier()
+        outname = os.path.join(outdir, "rank%d_shot%d.pkl" % (COMM.rank, self._i_shot))
         df.to_pickle(outname)
 
     def _save_Zscore_data(self):
         if not self.iterations % self.saveZ_freq == 0:
             return
-        outdir = os.path.join(self.output_dir, "rank%d_Zscore" % self.rank)
+        outdir = os.path.join(self.Zdir, "rank%d_Zscore" % self.rank)
         if not os.path.exists(outdir):
             os.makedirs(outdir)
         fname = os.path.join(outdir, "sigZ_iter%d_rank%d" % (self.iterations, self.rank))
@@ -750,45 +776,76 @@ class LocalRefiner(BaseRefiner):
         self.model_hout.close()
         self.print("Save time took %.4f seconds total" % self.save_time)
 
-    def _Fcell_derivatives(self, i_spot):
+    def _Fcell_derivatives(self):
         if not self.refine_Fcell:
             return
-        # asu index
-        miller_idx = self.Modelers[self._i_shot].Hi_asu[i_spot]
-        # get multiplicity of this index
-        multi = self.hkl_frequency[self.idx_from_asu[miller_idx]]
-        # check if we are freezing this index during refinement
-        # do the derivative
-        if self.refine_Fcell and multi >= self.min_multiplicity:
-            hkl_asu = self.Modelers[self._i_shot].Hi_asu[i_spot]
-            i_fcell = self.idx_from_asu[hkl_asu]
+        MOD = self.Modelers[self._i_shot]
+        for i_fcell in MOD.unique_i_fcell:
+
+            multi = self.hkl_frequency[i_fcell]
+            if multi < self.min_multiplicity:
+                continue
+
             xpos = self.fcell_xstart + i_fcell
+            Famp = self._fcell_at_i_fcell[i_fcell]
+            resolution_id = self.res_group_id_from_fcell_index[i_fcell]
+            sig = self.sigma_for_res_id[resolution_id] * self.fcell_sigma_scale
+            for slc in MOD.i_fcell_slices[i_fcell]:
+                self.fcell_dI_dtheta = self.fcell_deriv[slc]
 
-            self.fcell_dI_dtheta = self.fcell_deriv
-            self.fcell_d2I_d2theta2 = self.fcell_second_deriv
-
-            d = self.fcell_dI_dtheta
-            d2 = self.fcell_d2I_d2theta2
-            if self.rescale_params:
-                #fcell = self._get_fcell_val(i_fcell)  # todo: interact with a vectorized object instead
-                fcell = self._fcell_at_i_fcell[i_fcell]
-                resolution_id = self.res_group_id_from_fcell_index[i_fcell]
-                sig = self.sigma_for_res_id[resolution_id] * self.fcell_sigma_scale
                 if self.log_fcells:
                     # case 2 rescaling
-                    sig_times_fcell = sig*fcell
+                    sig_times_fcell = sig*Famp
                     d = sig_times_fcell*self.fcell_dI_dtheta
-                    if self.calc_curvatures:
-                        d2 = (sig_times_fcell*sig_times_fcell)*self.fcell_d2I_d2theta2 + (sig*sig_times_fcell)*self.fcell_dI_dtheta
                 else:
                     # case 1 rescaling
                     d = sig*self.fcell_dI_dtheta
-                    if self.calc_curvatures:
-                        d2 = (sig*sig)*self.fcell_d2I_d2theta2
 
-            self.grad[xpos] += self._grad_accumulate(d)
+                gterm = self.common_grad_term[slc]
+                g_accum = d*gterm
+                trust = MOD.all_trusted[slc]
+                self.grad[xpos] += (g_accum[trust].sum())*.5
+
+    def _Fcell_derivatives_OLD(self):
+        if not self.refine_Fcell:
+            return
+        MOD = self.Modelers[self._i_shot]
+        npix = len(MOD.all_data)
+        dimg = np.zeros(npix)
+        if self.calc_curvatures:
+            d2img = np.zeros_like(dimg)
+
+        for i_fcell in MOD.unique_i_fcell:
+            xpos = self.fcell_xstart + i_fcell
+
+            multi = self.hkl_frequency[i_fcell]
+            # do the derivative
+            if multi < self.min_multiplicity:
+                continue
+            is_i_fcell = MOD.is_i_fcell[i_fcell]
+
+            self.fcell_dI_dtheta = self.fcell_deriv[is_i_fcell]
             if self.calc_curvatures:
-                self.curv[xpos] += self._curv_accumulate(d, d2)
+                self.fcell_d2I_d2theta2 = self.fcell_second_deriv[is_i_fcell]
+
+            fcell = self._fcell_at_i_fcell[i_fcell]
+            resolution_id = self.res_group_id_from_fcell_index[i_fcell]
+            sig = self.sigma_for_res_id[resolution_id] * self.fcell_sigma_scale
+            if self.log_fcells:
+                # case 2 rescaling
+                sig_times_fcell = sig*fcell
+                d = sig_times_fcell*self.fcell_dI_dtheta
+                if self.calc_curvatures:
+                    d2 = (sig_times_fcell*sig_times_fcell)*self.fcell_d2I_d2theta2 + (sig*sig_times_fcell)*self.fcell_dI_dtheta
+            else:
+                # case 1 rescaling
+                d = sig*self.fcell_dI_dtheta
+                if self.calc_curvatures:
+                    d2 = (sig*sig)*self.fcell_d2I_d2theta2
+
+            gterm = self.common_grad_term[is_i_fcell]
+            g_accum = d*gterm
+            self.grad[xpos] += (g_accum.sum())*.5
 
     def _spot_scale_derivatives(self, return_derivatives=False):
         if not self.refine_crystal_scale:
@@ -949,16 +1006,19 @@ class LocalRefiner(BaseRefiner):
         return cterm
 
     def _derivative_convenience_factors(self):
-        one_over_Lambda = 1. / self.model_Lambda
-        self.one_minus_k_over_Lambda = (1. - self.Imeas * one_over_Lambda)
-        self.k_over_squared_Lambda = self.Imeas * one_over_Lambda * one_over_Lambda
+        self.Imeas = self.Modelers[self._i_shot].all_data
+        #one_over_Lambda = 1. / self.model_Lambda
+        #self.one_minus_k_over_Lambda = (1. - self.Imeas * one_over_Lambda)
+        #self.k_over_squared_Lambda = self.Imeas * one_over_Lambda * one_over_Lambda
+
 
         self.u = self.Imeas - self.model_Lambda
         self.one_over_v = 1. / (self.model_Lambda + self.sigma_r ** 2)
         self.one_minus_2u_minus_u_squared_over_v = 1 - 2 * self.u - self.u * self.u * self.one_over_v
-        self.u_times_one_over_v = self.u*self.one_over_v
-        self.u_u_one_over_v = self.u*self.u_times_one_over_v
-        self.one_over_v_times_one_minus_2u_minus_u_squared_over_v = self.one_over_v*self.one_minus_2u_minus_u_squared_over_v
+        #self.u_times_one_over_v = self.u*self.one_over_v
+        #self.u_u_one_over_v = self.u*self.u_times_one_over_v
+        #self.one_over_v_times_one_minus_2u_minus_u_squared_over_v = self.one_over_v*self.one_minus_2u_minus_u_squared_over_v
+        self.common_grad_term = self.one_over_v * self.one_minus_2u_minus_u_squared_over_v
         #if self.compute_Z:
         self._Zscore = self.u*np.sqrt(self.one_over_v)
 

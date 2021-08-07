@@ -696,7 +696,7 @@ class LocalRefinerLauncher:
         ref_crystals = None
         if self.WATCH_MISORIENTATION:
             ref_crystals = self.shot_crystal_model_refs
-        RUC = self._Refiner(self.Modelers, self.symbol)
+        RUC = self._Refiner(self.Modelers, self.symbol, self.params)
         return RUC
 
     def extract_roi_data_from_cachefile(self, expt):
