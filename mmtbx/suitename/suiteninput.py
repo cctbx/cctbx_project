@@ -40,12 +40,13 @@ def readResidues(inFile):
     lines = inFile.readlines()
     if not lines:
         return []
-    # catch a specific  error notation:
+    # catch a specific error notation from mp_geo:
     while lines[0].strip().startswith("Atom pair"):
         del lines[0]
     residues = []
     try:
         i = 0
+        line = ""
         for line in lines:
             i += 1
             if len(line.strip()) == 0 or line[0] == "#":  # blank or comment line
@@ -71,8 +72,9 @@ def readResidues(inFile):
             residue = Residue(ids, base, angles)
             residues.append(residue)
     except IndexError:
-        print(f"Suitename found malformed input on line {i}, reading no further",
+        print(f"Suitename found malformed input on line {i}, reading no further:",
             file=sys.stderr)
+        print("    ", line, file=sys.stderr)
     return residues
 
 
