@@ -85,8 +85,10 @@ def run_group(symbol):
   assert mean_rel_dif < 1.e-6
 
 def run():
-  for i in range(1,231):
-    run_group(i);
+  # for i in range(1,231):
+  #   run_group(i);
+
+  run_group(75);
 
 if (__name__ == "__main__"):
   run()

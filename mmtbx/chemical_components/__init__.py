@@ -7,6 +7,50 @@ import os
 import sys
 from six.moves import zip
 
+l_amino_types = ['L-PEPTIDE LINKING']
+d_amino_types = ['D-PEPTIDE LINKING']
+amino_types = ['PEPTIDE LINKING',
+               'PEPTIDE-LIKE',
+               ] + l_amino_types + d_amino_types
+rna_types = [
+  'RNA LINKING',
+  'L-RNA LINKING',
+  'RNA OH 3 PRIME TERMINUS',
+  'RNA OH 5 PRIME TERMINUS',
+  ]
+dna_types = [
+  'DNA LINKING',
+  'L-DNA LINKING',
+  'DNA OH 3 PRIME TERMINUS',
+  'DNA OH 5 PRIME TERMINUS',
+  ]
+rna_dna_types = rna_types + dna_types
+
+sugar_types = ["SACCHARIDE",
+               "L-SACCHARIDE",
+               "D-SACCHARIDE",
+               'D-SACCHARIDE, ALPHA LINKING',
+               'D-SACCHARIDE, BETA LINKING',
+               'L-SACCHARIDE, ALPHA LINKING',
+               'L-SACCHARIDE, BETA LINKING',
+               'D-SACCHARIDE 1,4 AND 1,4 LINKING',
+               'L-SACCHARIDE 1,4 AND 1,4 LINKING',
+               ]
+terminii = [
+  'L-PEPTIDE NH3 AMINO TERMINUS',
+  'L-PEPTIDE COOH CARBOXY TERMINUS',
+  'D-PEPTIDE NH3 AMINO TERMINUS',
+]
+non_polymer = [
+  "NON-POLYMER",
+  ]
+non_alpha_peptide = [
+  'L-BETA-PEPTIDE, C-GAMMA LINKING', # IAS
+  'D-BETA-PEPTIDE, C-GAMMA LINKING', # ACB
+  'D-GAMMA-PEPTIDE, C-DELTA LINKING', # FGA
+  'L-GAMMA-PEPTIDE, C-DELTA LINKING', # GGL
+  ]
+
 loaded_cifs = {}
 
 def find_data_dir():
@@ -176,7 +220,9 @@ def get_bond_pairs(code, alternate=False):
       tmp.append([item.atom_id_1, item.atom_id_2])
   return tmp
 
-def generate_chemical_components_codes(sort_reverse_by_smiles=False):
+def generate_chemical_components_codes(sort_reverse_by_smiles=False,
+                                       only_non_polyer=False,
+                                       ):
   def _cmp_smiles_length(f1, f2):
     c1 = f1[5:-4]
     c2 = f2[5:-4]
@@ -204,7 +250,9 @@ def generate_chemical_components_codes(sort_reverse_by_smiles=False):
     filenames.sort()
   for filename in filenames:
     if filename.find("data_")!=0: continue
-    yield filename[5:-4]
+    code = filename[5:-4]
+    if only_non_polyer and get_group(code)!='non-polymer': continue
+    yield code
 
 def get_header(code):
   filename=get_cif_filename(code)
@@ -219,6 +267,35 @@ def get_header(code):
     if line.find("_chem_comp.")==-1:
       break
   return outl
+
+def get_group(code, split_rna_dna=False, split_l_d=False):
+  t = get_type(code)
+  t=t.replace('"','').upper()
+  if t in sugar_types:
+    assert not split_l_d
+    return 'sugar'
+  elif t in amino_types:
+    assert not split_l_d
+    return 'amino_acid'
+  elif t in terminii:
+    assert not split_l_d
+    return 'amino_acid_terminal'
+  elif t in rna_dna_types:
+    assert not split_l_d
+    if split_rna_dna:
+      if t in rna_types:
+        return 'rna'
+      elif t in dna_types:
+        return dna
+      else:
+        assert 0
+    return 'rna_dna'
+  elif t in ['NON-POLYMER',
+             'PEPTIDE-LIKE',
+            ]:
+    return t.lower()
+  print(t)
+  assert 0
 
 if __name__=="__main__":
   print('\nSMILES')

@@ -38,13 +38,15 @@ dependencies:
  - pyopengl
 
  # HDF5 (main libraries come with psana)
- - hdf5-external-filter-plugins # [unix]
+ - hdf5plugin # [unix]
 
  # other
  - libsvm
  - mrcfile
  - psutil
  - distro
+ - pandas
+ - pybind11
 
  # cctbx channel
  - libsvm_py
@@ -69,3 +71,7 @@ dependencies:
  # xfel gui
  - mysql
  - mysql-connector-python
+
+ # temporarily pin numpy version
+ # See https://github.com/cctbx/cctbx_project/issues/627
+ - numpy=1.20

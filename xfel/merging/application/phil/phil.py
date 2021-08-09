@@ -540,10 +540,23 @@ publish {
 }
 """
 
+lunus_phil = """
+lunus {
+  deck_file = None
+    .type = path
+}
+"""
+
+# A place to override any defaults included from elsewhere
+program_defaults_phil_str = """
+modify.cosym.use_curvatures=False
+"""
+
 master_phil = dispatch_phil + input_phil + tdata_phil + filter_phil + modify_phil + \
               select_phil + scaling_phil + postrefinement_phil + merging_phil + \
-              output_phil + statistics_phil + group_phil + publish_phil
+              output_phil + statistics_phil + group_phil + lunus_phil + publish_phil
 phil_scope = parse(master_phil, process_includes = True)
+phil_scope = phil_scope.fetch(parse(program_defaults_phil_str))
 
 class Script(object):
   '''A class for running the script.'''

@@ -46,12 +46,14 @@ non_linear_ls_with_separable_scale_factor__impls = (
   normal_eqns.non_linear_ls_with_separable_scale_factor__level_2_blas_impl,
 )
 
-from fast_linalg import env
-if env.initialised:
-  non_linear_ls_with_separable_scale_factor__impls += (
-    normal_eqns.non_linear_ls_with_separable_scale_factor__level_3_blas_impl,
-  )
-
+try:
+  from fast_linalg import env
+  if env.initialised:
+    non_linear_ls_with_separable_scale_factor__impls += (
+      normal_eqns.non_linear_ls_with_separable_scale_factor__level_3_blas_impl,
+    )
+except ImportError:
+  print('Skipping fast_linalg checks')
 
 def exercise_non_linear_ls_with_separable_scale_factor():
   for impl in non_linear_ls_with_separable_scale_factor__impls:

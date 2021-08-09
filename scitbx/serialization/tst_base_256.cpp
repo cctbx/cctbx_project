@@ -145,7 +145,7 @@ int main(int argc, char* /*argv*/[])
     if (n_delta_8 != 0) std::cout << "n_delta_8: " << n_delta_8 << std::endl;
     std::cout << "OK" << std::endl;
   }
-  catch (error e) {
+  catch (error const& e) {
     std::cout << e.what() << std::endl;
   }
 

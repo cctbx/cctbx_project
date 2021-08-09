@@ -48,8 +48,11 @@ jobs:
     options: "--name ci-container -v /usr/bin/docker:/tmp/docker:ro"
 
   variables:
-    artifact_name: ${{ parameters.prefix }}${{ parameters.distribution }}_${{ join('.', parameters.version) }}_$(PYTHON_VERSION)
-    day: Sunday
+    - name: artifact_name
+      value: ${{ parameters.prefix }}${{ parameters.distribution }}_${{ join('.', parameters.version) }}_$(PYTHON_VERSION)
+    - name: day
+      value: $(Get-Date -Format dddd)
+    - group: Settings
 
   steps:
   - script: |
@@ -132,12 +135,13 @@ jobs:
       path: $(Pipeline.Workspace)
     displayName: Download cached build
     condition: >
-      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
-             ne(variables['day'], 'Sunday')),
-         eq(variables['Build.DefinitionName'], 'CI'),
-         eq(variables['Build.DefinitionName'], 'CI branch'),
-         eq(variables['Build.DefinitionName'], 'XFEL CI'),
-         eq(variables['Build.DefinitionName'], 'Full'))
+      and(or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+                 ne(variables['day'], 'Sunday')),
+             eq(variables['Build.DefinitionName'], 'CI'),
+             eq(variables['Build.DefinitionName'], 'CI branch'),
+             eq(variables['Build.DefinitionName'], 'XFEL CI'),
+             eq(variables['Build.DefinitionName'], 'Full')),
+          ne(variables['SKIP_CACHED_BUILD'], 'true'))
     continueOnError: true
 
   - script: |
@@ -145,12 +149,13 @@ jobs:
       tar -xf build.tar
     displayName: Extract build tarball
     condition: >
-      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
-             ne(variables['day'], 'Sunday')),
-         eq(variables['Build.DefinitionName'], 'CI'),
-         eq(variables['Build.DefinitionName'], 'CI branch'),
-         eq(variables['Build.DefinitionName'], 'XFEL CI'),
-         eq(variables['Build.DefinitionName'], 'Full'))
+      and(or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+                 ne(variables['day'], 'Sunday')),
+             eq(variables['Build.DefinitionName'], 'CI'),
+             eq(variables['Build.DefinitionName'], 'CI branch'),
+             eq(variables['Build.DefinitionName'], 'XFEL CI'),
+             eq(variables['Build.DefinitionName'], 'Full')),
+          ne(variables['SKIP_CACHED_BUILD'], 'true'))
     continueOnError: true
     failOnStderr: false
 

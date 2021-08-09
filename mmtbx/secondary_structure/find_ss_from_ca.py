@@ -568,13 +568,22 @@ def get_chain_ids(hierarchy,unique_only=None):
         chain_ids.append(chain.id)
   return chain_ids
 
+def renumber_residues(hierarchy, first_resno = 1):
+  for model in hierarchy.models():
+    for chain in model.chains():
+      current_resno = first_resno
+      for rg in chain.residue_groups():
+        if current_resno is None:
+          current_resno = rg.resseq_as_int()
+        rg.resseq = resseq_encode(current_resno)
+        current_resno += 1
+
 def set_chain_id(hierarchy, chain_id = None):
   assert chain_id
   for model in hierarchy.models():
     n_chains = 0
     for chain in model.chains():
       n_chains+=1
-      assert n_chains <=1
       chain.id = chain_id
 
 

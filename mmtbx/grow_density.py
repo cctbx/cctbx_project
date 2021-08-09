@@ -19,6 +19,7 @@ from mmtbx import maps
 import mmtbx.masks
 from six.moves import zip
 from six.moves import range
+from iotbx import extract_xtal_data
 
 
 master_params_str = """\
@@ -592,10 +593,10 @@ def run(processed_args, params):
     rfs = reflection_file_server(
       crystal_symmetry = crystal_symmetry,
       reflection_files = [reflection_file])
-    parameters = utils.data_and_flags_master_params().extract()
+    parameters = extract_xtal_data.data_and_flags_master_params().extract()
     if(params.data_labels is not None):
       parameters.labels = [processed_args.data_labels]
-    determine_data_and_flags_result = utils.determine_data_and_flags(
+    determine_data_and_flags_result = extract_xtal_data.run(
       reflection_file_server  = rfs,
       parameters              = parameters,
       keep_going              = True,

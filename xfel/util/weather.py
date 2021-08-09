@@ -25,7 +25,7 @@ phil_scope = parse('''
   num_cores_per_node = 72
     .type = int
     .help = Number of cores per node in the machine (default is for Cori KNL)
-  wall_time = 3600
+  wall_time = None
     .type = int
     .help = total wall time (seconds) taken for job to finish. Used for plotting node-partitioning
   plot_title = Computational weather plot
@@ -112,8 +112,9 @@ def run(params):
   if fail_deltas: print("Five number summary of %d fail image processing times:"%fail_total, five_number_summary(flex.double(fail_deltas)))
   if good_deltas: print("Five number summary of %d good image processing times:"%good_total, five_number_summary(flex.double(good_deltas)))
 
-  for i in range(params.num_nodes):
-    plt.plot([0,params.wall_time], [i*params.num_cores_per_node-0.5, i*params.num_cores_per_node-0.5], 'r-')
+  if params.wall_time and params.num_nodes and params.num_cores_per_node-0.5:
+    for i in range(params.num_nodes):
+      plt.plot([0,params.wall_time], [i*params.num_cores_per_node-0.5, i*params.num_cores_per_node-0.5], 'r-')
   plt.xlabel('Wall time (sec)')
   plt.ylabel('MPI Rank Number')
   plt.title(params.plot_title)

@@ -111,6 +111,7 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
                 self._experiments, self._reflections = select_datasets_on_identifiers(
                     self._experiments, self._reflections, use_datasets=identifiers
                 )
+                self.uuid_cache = [self.uuid_cache[int(id)] for id in identifiers]
 
         # Map experiments and reflections to minimum cell
         cb_ops = change_of_basis_ops_to_minimum_cell(
@@ -189,6 +190,12 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
 
 class TargetWithFastRij(Target):
   def __init__(self, *args, **kwargs):
+
+    # nproc is an init arg that was removed from class
+    # dials.algorithms.symmetry.cosym.target.Target in dials commit 1cd5afe4
+    self._nproc = kwargs.pop('nproc', None)
+
+    # if test_data_path is provided, we are constructing this for a unit test
     test_data_path = kwargs.pop('test_data_path', None)
     if test_data_path is None:
       super(TargetWithFastRij, self).__init__(*args, **kwargs)
@@ -210,6 +217,15 @@ class TargetWithFastRij(Target):
         self._lattices = self._lattices[:10]
         i_last = self._lattices[-1]
         self._data = self._data[:i_last]
+
+  def _lattice_lower_upper_index(self, lattice_id):
+       lower_index = int(self._lattices[lattice_id])
+       upper_index = None
+       if lattice_id < len(self._lattices) - 1:
+           upper_index = int(self._lattices[lattice_id + 1])
+       else:
+           assert lattice_id == len(self._lattices) - 1
+       return lower_index, upper_index
 
   def compute_gradients(self, x):
     grad = super(TargetWithFastRij, self).compute_gradients(x)

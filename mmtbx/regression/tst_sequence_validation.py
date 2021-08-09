@@ -232,6 +232,7 @@ ATOM    108  CA  CYS A  16      -1.466  10.260   1.363  1.00  7.32           C
 ATOM    113  N   NH2 A  17      -2.612  12.308   2.058  1.00  8.11           N
 """)
   seq = iotbx.bioinformatics.sequence("GCCSLPPCALSNPDYCX")
+  # match last residue
   v = validation(
     pdb_hierarchy=pdb_in.construct_hierarchy(),
     sequences=[seq],
@@ -241,6 +242,19 @@ ATOM    113  N   NH2 A  17      -2.612  12.308   2.058  1.00  8.11           N
   v.show(out=out)
   assert v.chains[0].n_missing == 0
   assert v.chains[0].n_missing_end == 0
+  assert v.chains[0].n_missing_start == 0
+  assert len(v.chains[0].alignment.matches()) == 17
+  # ignore non-protein residue
+  v = validation(
+    pdb_hierarchy=pdb_in.construct_hierarchy(),
+    sequences=[seq],
+    log=null_out(),
+    nproc=1,
+    ignore_hetatm=True)
+  out = StringIO()
+  v.show(out=out)
+  assert v.chains[0].n_missing == 1
+  assert v.chains[0].n_missing_end == 1
   assert v.chains[0].n_missing_start == 0
   assert len(v.chains[0].alignment.matches()) == 17
   #

@@ -13,8 +13,10 @@ output {{
 mp {{
   method = {method}
   use_mpi = {use_mpi}
+  mpi_command = {mpi_command}
   nproc = {nproc}
   queue = {queue}
+  {extra_options}
 }}
 experiment_tag = {experiment_tag}
 db {{

@@ -46,7 +46,7 @@ else:
     #pass
 if (sys.platform == "win32" and env_etc.compiler == "win32_cl"):
   env_etc.cbflib_common_includes.append(libtbx.env.under_base(os.path.join('HDF5-1.8.16', 'include')))
-  env_etc.cbflib_common_includes.append(os.path.join(env_etc.cctbx_include,"msvc9.0_include"))
+  env_etc.cbflib_common_includes.append(libtbx.env.under_dist("cbflib_adaptbx","../msvc9.0_include"))
 
 env = env_base.Clone(
   SHLINKFLAGS=env_etc.shlinkflags)

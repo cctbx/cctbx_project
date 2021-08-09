@@ -268,42 +268,19 @@ namespace gpu {
   void
   gpu_detector::each_image_allocate_cuda(){
     cudaSetDevice(h_deviceID);
-    /*allocate and zero reductions */
-    bool * rangemap = (bool*) calloc(_image_size, sizeof(bool));
-    float * omega_reduction = (float*) calloc(_image_size, sizeof(float));
-    float * max_I_x_reduction = (float*) calloc(_image_size, sizeof(float));
-    float * max_I_y_reduction = (float*) calloc(_image_size, sizeof(float));
-    //It is not quite clear why we must zero them on CPU, why not just on GPU?
-
+    /*allocate but do not initialize (set to 0) the reductions (the code was too inefficient and was removed as the reductions
+      are not utilized in practice.  Should they be needed in the future a faster zeroing API must be found*/
     cu_omega_reduction = NULL;
     cudaSafeCall(cudaMalloc((void ** )&cu_omega_reduction, sizeof(*cu_omega_reduction) * _image_size));
-    cudaSafeCall(cudaMemcpy(cu_omega_reduction,
-                 omega_reduction, sizeof(*cu_omega_reduction) * _image_size,
-                 cudaMemcpyHostToDevice));
 
     cu_max_I_x_reduction = NULL;
     cudaSafeCall(cudaMalloc((void ** )&cu_max_I_x_reduction, sizeof(*cu_max_I_x_reduction) * _image_size));
-    cudaSafeCall(cudaMemcpy(cu_max_I_x_reduction,
-                 max_I_x_reduction, sizeof(*cu_max_I_x_reduction) * _image_size,
-                 cudaMemcpyHostToDevice));
 
     cu_max_I_y_reduction = NULL;
     cudaSafeCall(cudaMalloc((void ** )&cu_max_I_y_reduction, sizeof(*cu_max_I_y_reduction) * _image_size));
-    cudaSafeCall(cudaMemcpy(cu_max_I_y_reduction, max_I_y_reduction, sizeof(*cu_max_I_y_reduction) * _image_size,
-                 cudaMemcpyHostToDevice));
 
     cu_rangemap = NULL;
     cudaSafeCall(cudaMalloc((void ** )&cu_rangemap, sizeof(*cu_rangemap) * _image_size));
-    cudaSafeCall(cudaMemcpy(cu_rangemap,
-                 rangemap, sizeof(*cu_rangemap) * _image_size,
-                 cudaMemcpyHostToDevice));
-
-    // deallocate host arrays
-    // potential memory leaks
-    free(rangemap);
-    free(omega_reduction);
-    free(max_I_x_reduction);
-    free(max_I_y_reduction);
 
     cu_maskimage = NULL;
     int unsigned short * maskimage = NULL; //default case, must implement non-trivial initializer elsewhere

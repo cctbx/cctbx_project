@@ -1,22 +1,22 @@
-
 from __future__ import absolute_import, division, print_function
 import mmtbx.solvent.ensemble_ordered_solvent as ensemble_ordered_solvent
 from mmtbx.refinement.ensemble_refinement import ensemble_utils
 from mmtbx.dynamics import ensemble_cd
+from mmtbx import conformation_dependent_library as cdl
+from mmtbx.conformation_dependent_library import cdl_setup
 import mmtbx.tls.tools as tls_tools
 import mmtbx.command_line
 import mmtbx.utils
 import mmtbx.model
 import mmtbx.maps
+from mmtbx.den import den_restraints
 from iotbx.option_parser import iotbx_option_parser
 from iotbx import pdb
 import iotbx.phil
 import iotbx
-from cctbx import geometry_restraints
+from phenix import phenix_info
 from cctbx.array_family import flex
-from cctbx import miller
 from cctbx import adptbx
-from cctbx import xray
 import scitbx.math
 from libtbx.utils import Sorry, user_plus_sys_time, multi_out, show_total_time
 from libtbx import adopt_init_args, slots_getstate_setstate
@@ -29,15 +29,13 @@ from six.moves import cPickle as pickle
 import random
 import gzip
 import math
-import time, os
+import os
 import sys
 from six.moves import range
 
 # these supersede the defaults in included scopes
 customization_params = iotbx.phil.parse("""
-ensemble_refinement.mask.ignore_hydrogens = False
-ensemble_refinement.mask.n_radial_shells = 1
-ensemble_refinement.mask.radial_shell_width = 1.5
+ensemble_refinement.den.kappa_burn_in_cycles = 0
 ensemble_refinement.cartesian_dynamics.number_of_steps = 10
 ensemble_refinement.ensemble_ordered_solvent.b_iso_min = 0.0
 ensemble_refinement.ensemble_ordered_solvent.b_iso_max = 100.0
@@ -65,6 +63,13 @@ ensemble_refinement {
       .type = bool
       .help = Use protein atoms thermostat
   }
+    den_restraints = False
+      .type = bool
+      .help = 'Use DEN restraints'
+    den
+      {
+      include scope mmtbx.den.den_params
+      }
   update_sigmaa_rfree = 0.001
     .type = float
     .help = test function
@@ -82,6 +87,12 @@ ensemble_refinement {
 #  write_mmcif_file = False
 #    .type = bool
   gzip_final_model = True
+    .type = bool
+    .style = hidden
+  write_centroid_model = False
+    .type = bool
+    .style = hidden
+  write_mean_model = False
     .type = bool
     .style = hidden
   random_seed = 2679941
@@ -132,6 +143,11 @@ ensemble_refinement {
     .optional = False
     .help = 'The fraction of atoms to include in TLS fitting'
     .short_caption = Fraction of atoms to include in TLS fitting
+    .style = bold
+  import_tls_pdb = None
+    .type = str
+    .help = 'PDB path to import TLS from external structure'
+    .short_caption = PDB path to import TLS from external structure
     .style = bold
   max_ptls_cycles = 25
     .type = int
@@ -320,8 +336,6 @@ class run_ensemble_refinement(object):
                      ptls,
                      run_number=None):
     adopt_init_args(self, locals())
-    # self.params = params.extract().ensemble_refinement
-
     if self.params.target_name in ['ml', 'mlhl'] :
       self.fix_scale = False
     else:
@@ -369,6 +383,8 @@ class run_ensemble_refinement(object):
                                                   * self.cdp.number_of_steps * self.cdp.time_step, file=log)
     #
     print("\nAcquisition block", file=log)
+    print("    Number blocks        : ",  self.params.number_of_acquisition_periods, file=log)
+
     print("    Number Tx periods    : ",  self.params.acquisition_block_n_tx, file=log)
     print("    Number macro cycles  : ",  self.acquisition_block_macro_cycles, file=log)
     print("    Time (ps)            : ",  self.acquisition_block_macro_cycles \
@@ -446,15 +462,26 @@ class run_ensemble_refinement(object):
         self.target_k1 = self.fmodel_running.scale_k1()
         self.update_normalisation_factors()
       else:
-        make_header("Calculate and fix scale of Ncalc", out = self.log)
-        self.fmodel_running.n_obs_n_calc(update_nobs_ncalc = True)
+        make_header("Calculate and fix scale of Ncalc", out=self.log)
+        self.fmodel_running.n_obs_n_calc(update_nobs_ncalc=True)
         print("Fix Ncalc scale          : True", file=self.log)
         print("Sum current Ncalc        : {0:5.3f}".format(sum(self.fmodel_running.n_calc)), file=self.log)
 
     #Set ADP model
     self.tls_manager = er_tls_manager()
-    self.setup_tls_selections(tls_group_selection_strings = self.params.tls_group_selections)
-    self.fit_tls(input_model = self.model)
+
+    # Fit pTLS to starting atomic model
+    if self.params.import_tls_pdb is None:
+      self.setup_tls_selections(
+        tls_group_selection_strings=self.params.tls_group_selections)
+      self.fit_tls(input_model=self.model)
+    # Import TLS from reference model
+    else:
+      fit_tlsos, fit_tls_strings = self.import_tls_selections()
+      self.setup_tls_selections(tls_group_selection_strings=fit_tls_strings)
+      self.model.tls_groups.tlsos = fit_tlsos
+      self.tls_manager.tls_operators = fit_tlsos
+    # Assign solvent to TLS group
     self.assign_solvent_tls_groups()
 
     #Set occupancies to 1.0
@@ -518,6 +545,69 @@ class run_ensemble_refinement(object):
       if is_amber_refinement(self.params):
         assert str(self.model.restraints_manager.geometry)=='Amber manager'
 
+      if self.params.den_restraints:
+        if self.macro_cycle == 1:
+          make_header("Create DEN restraints", out = self.log)
+          # Update den manager due to solvent chain changes from start model
+          pdb_hierarchy = self.model.get_hierarchy()
+          den_manager = den_restraints(
+            pdb_hierarchy     = pdb_hierarchy,
+            pdb_hierarchy_ref = None,
+            params            = self.params.den,
+            log               = self.log)
+          self.model.restraints_manager.geometry.den_manager = den_manager
+          print(
+            "DEN weight  : ",
+            self.model.restraints_manager.geometry.den_manager.weight,
+            file=self.log)
+          print(
+            "DEN gamma  : ",
+            self.model.restraints_manager.geometry.den_manager.gamma,
+            file=self.log)
+          #
+          den_seed = self.params.random_seed
+          flex.set_random_seed(value=den_seed)
+          random.seed(den_seed)
+          self.model.restraints_manager.geometry.den_manager.build_den_proxies(
+          pdb_hierarchy=pdb_hierarchy)
+          self.model.restraints_manager.geometry.den_manager.build_den_restraints()
+          self.model.restraints_manager.geometry.den_manager.current_cycle = 1
+          sites_cart = self.model.get_xray_structure().sites_cart()
+          if self.params.verbose > 0:
+            print(
+              self.model.restraints_manager.geometry.den_manager.show_den_summary(
+                sites_cart=sites_cart),
+              file=self.log)
+
+        else:
+          # Reassign random pairs
+          if self.macro_cycle % 500 == 0:
+            make_header("Create DEN restraints", out = self.log)
+            den_seed += 1
+            flex.set_random_seed(value=den_seed)
+            pdb_hierarchy = self.model.get_hierarchy()
+            den_manager = den_restraints(
+              pdb_hierarchy     = pdb_hierarchy,
+              pdb_hierarchy_ref = None,
+              params            = self.params.den,
+              log               = self.log)
+            self.model.restraints_manager.geometry.den_manager = den_manager
+            self.model.restraints_manager.geometry.den_manager.build_den_proxies(
+              pdb_hierarchy=pdb_hierarchy)
+            self.model.restraints_manager.geometry.den_manager.build_den_restraints()
+            self.model.restraints_manager.geometry.den_manager.current_cycle = 1
+            sites_cart = self.model.get_xray_structure().sites_cart()
+            if self.params.verbose > 0:
+                print(
+                  self.model.restraints_manager.geometry.den_manager.show_den_summary(
+                    sites_cart=sites_cart),
+                  file=self.log)
+
+        # Update eq distances per macro cycle
+        self.model.restraints_manager.geometry.den_manager.current_cycle = 1
+        self.model.restraints_manager.geometry.den_manager.update_eq_distances(
+          sites_cart=self.model.get_xray_structure().sites_cart())
+
       cd_manager = ensemble_cd.cartesian_dynamics(
         structure                   = self.model.get_xray_structure(),
         restraints_manager          = self.model.restraints_manager,
@@ -542,6 +632,15 @@ class run_ensemble_refinement(object):
 
       self.reset_velocities = False
       self.cmremove = False
+
+      # Update CDL restraints
+      cdl_proxies = cdl_setup.setup_restraints(
+        self.model.restraints_manager.geometry,
+        verbose=True)
+      cdl.update_restraints(self.model.get_hierarchy(),
+        geometry=self.model.restraints_manager.geometry,
+        cdl_proxies=cdl_proxies,
+        verbose=True)
 
       #Calc rolling average KE energy
       self.kinetic_energy_running_average()
@@ -794,6 +893,25 @@ class run_ensemble_refinement(object):
       prefix=prefix,
       params=self.params)
 
+    if self.params.write_centroid_model or self.params.write_mean_model:
+      results_manager = self.ensemble_utils.ensemble_rmsf_stats(
+          self.er_data.pdb_hierarchys,
+          verbose=True,
+          out=self.log,
+          )
+      crystal_symmetry = self.er_data.xray_structures[0].crystal_symmetry()
+      if self.params.write_centroid_model:
+        print('\nWriting Centroid Model to \n\t%s' % '%s_centroid.pdb' % prefix, file=self.log)
+        results_manager.write_centroid_hierarchy('%s_centroid.pdb' % prefix,
+                                                 crystal_symmetry,
+                                                 )
+      if self.params.write_mean_model:
+        print('\nWriting Mean Model to \n\t%s' % '%s_mean.pdb' % prefix, file=self.log)
+        results_manager.write_mean_hierarchy('%s_mean.pdb' % prefix,
+                                                 crystal_symmetry,
+                                                 )
+      print('', file=self.log)
+
   def show_overall(self, message = "", fmodel_running = True):
     if fmodel_running:
       message = "Running: " + message
@@ -895,6 +1013,16 @@ class run_ensemble_refinement(object):
     self.best_r_free = self.fmodel_running.r_free()
     print("|"+"-"*77+"|\n", file=self.log)
 
+  def import_tls_selections(self):
+    make_header("Import External TLS", out = self.log)
+    print('External TLS model: ' + self.params.import_tls_pdb, file=self.log)
+    pdb_import_tls = self.params.import_tls_pdb
+    pdb_tls_inp = iotbx.pdb.input(file_name=pdb_import_tls)
+    tls_params = pdb_tls_inp.extract_tls_params(pdb_tls_inp.construct_hierarchy())
+    fit_tlsos = [tls_tools.tlso(t=o.t, l=o.l, s=o.s, origin=o.origin) for o in tls_params.tls_params]
+    tls_strings = [o.selection_string for o in tls_params.tls_params]
+    return fit_tlsos, tls_strings
+
   def setup_tls_selections(self, tls_group_selection_strings):
     make_header("Generating TLS selections from input parameters (not including solvent)", out = self.log)
     model_no_solvent = self.model.deep_copy()
@@ -971,7 +1099,7 @@ class run_ensemble_refinement(object):
         selection_strings = self.tls_manager.tls_selection_strings_no_sol,
         tlsos             = self.tls_manager.tls_operators)
 
-  def fit_tls(self, input_model, verbose = False):
+  def fit_tls(self, input_model, verbose=False):
     make_header("Fit TLS from reference model", out = self.log)
     model_copy = input_model.deep_copy()
     model_copy = model_copy.remove_solvent()
@@ -1142,7 +1270,8 @@ class run_ensemble_refinement(object):
       update_f_mask  = False)
 
   def assign_solvent_tls_groups(self):
-    self.model.get_xray_structure().convert_to_anisotropic(selection =  self.model.solvent_selection())
+    self.model.get_xray_structure().convert_to_anisotropic(
+      selection=self.model.solvent_selection())
     self.fmodel_running.update_xray_structure(
       xray_structure  = self.model.get_xray_structure(),
       update_f_calc   = False,
@@ -1443,7 +1572,6 @@ class run_ensemble_refinement(object):
     pr = "REMARK   3"
     print(pr, file=tmp_out)
     print("REMARK   3 TIME-AVERAGED ENSEMBLE REFINEMENT.", file=tmp_out)
-    from phenix import phenix_info # FIXME ???
     ver, tag = phenix_info.version_and_release_tag(f = tmp_out)
     if(ver is None):
       prog = "   PROGRAM     : PHENIX (phenix.ensemble_refinement)"
@@ -1769,6 +1897,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
       self.sites_individual     = flex.bool(size, True)
       self.sites_torsion_angles = None
       self.torsion_angles       = None
+      self.den                  = er_params.den_restraints
       self.adp_individual_iso   = None
       self.adp_individual_aniso = None
     def inflate(self, **keywords): pass

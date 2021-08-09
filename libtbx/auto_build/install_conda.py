@@ -177,8 +177,8 @@ class conda_manager(object):
     'molprobity': default_file,
     'qrefine': default_file,
     'phaser': default_file,
-    'voyager': os.path.join('phaser', 'conda_envs',
-      default_format.format(builder='phaser_tng', version=version,
+    'voyager': os.path.join('phasertng', 'conda_envs',
+      default_format.format(builder='phasertng', version=version,
                             platform=conda_platform[platform.system()]))
   }
   # A set of builders where the environment files do not specify the python
@@ -985,7 +985,7 @@ Example usage:
       same as the ones for bootstrap.py. The default builder is "cctbx." """)
   parser.add_argument(
     '--python', default='27', type=str, nargs='?', const='27',
-    choices=['27', '36', '37', '38'],
+    choices=['27', '36', '37', '38', '39'],
     help="""When set, a specific Python version of the environment will be used.
     This only affects environments selected with the --builder flag.""")
   parser.add_argument(

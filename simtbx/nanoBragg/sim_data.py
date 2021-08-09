@@ -37,10 +37,10 @@ def determine_spot_scale(beam_size_mm, crystal_thick_mm, mosaic_vol_mm3):
 
 class SimData:
 
-  def __init__(self):
+  def __init__(self, use_default_crystal=False):
     self.detector = SimData.simple_detector(180, 0.1, (512, 512))
     self.seed = 1
-    self.crystal = NBcrystal()
+    self.crystal = NBcrystal(use_default_crystal=use_default_crystal)
     self.add_air = False
     self.add_water = True
     self.water_path_mm = 0.005
@@ -121,6 +121,7 @@ class SimData:
   def Umats(mos_spread_deg, n_mos_doms, isotropic=True, seed=777, norm_dist_seed=777):
     import scitbx
     from scitbx.matrix import col
+    import scitbx.math
     import math
     UMAT_nm = flex.mat3_double()
     mersenne_twister = flex.mersenne_twister(seed=seed)
@@ -131,11 +132,11 @@ class SimData:
     for m in mosaic_rotation:
       site = col(mersenne_twister.random_double_point_on_sphere())
       if mos_spread_deg > 0:
-        UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(m, deg=False))
+        UMAT_nm.append(col(scitbx.math.r3_rotation_axis_and_angle_as_matrix(site, m)))
       else:
-        UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(0, deg=False))
+        UMAT_nm.append(col(scitbx.math.r3_rotation_axis_and_angle_as_matrix(site, 0)))
       if isotropic and mos_spread_deg > 0:
-        UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix((-m), deg=False))
+        UMAT_nm.append(col(scitbx.math.r3_rotation_axis_and_angle_as_matrix(site, -m)))
 
     return UMAT_nm
 
@@ -288,7 +289,6 @@ class SimData:
     if instantiate:
       self.instantiate_nanoBragg()
     self._add_nanoBragg_spots()
-    self.D.raw_pixels /= len(self.beam.xray_beams)
     self._add_background()
     if self.include_noise:
       self._add_noise()

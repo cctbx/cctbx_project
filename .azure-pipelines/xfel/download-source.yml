@@ -24,6 +24,7 @@ jobs:
       cd modules
       git clone https://github.com/nksauter/LS49.git
       git clone https://gitlab.com/cctbx/ls49_big_data.git
+      git clone https://github.com/lanl/lunus.git
     displayName: Download sources
 
   - script: |

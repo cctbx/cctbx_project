@@ -51,6 +51,12 @@ Look for a key in the list below
         assert rc is not None, 'linking origin id not found for "%s"' % key
     return rc
 
+  def get_origin_key(self, origin_id):
+    for key, item in self.items():
+      if item==origin_id:
+        return key
+    return None
+
   def _get_origin_id_labels(self, internals=None):
     keys = list(self.keys())
     def _sort_on_values(k1, k2):

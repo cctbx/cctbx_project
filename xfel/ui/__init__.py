@@ -12,7 +12,7 @@ dry_run = False
   .help = If True, the program will create the trial directory but not submit the job, \
           and will show the command that would have been executed.
 facility {
-  name = *lcls standalone
+  name = lcls *standalone
     .type = choice
     .help = Facility for the XFEL gui. LCLS configures the GUI to use LCLS services \
             for data monitoring, job submission, and so forth. Standlone runs the \
@@ -25,7 +25,8 @@ facility {
       location = "SLAC"
         .type = str
         .help = Where to look for XTC streams. Can be SLAC, SLACFFB (active experiment \
-                only) or NERSC (contact authors to arrange file mover for NERSC).
+                only, retired), SRCF_FFB (active experiment only), SDF or NERSC \
+                (contact LCLS staff to arrange file mover for SDF or NERSC).
       user = ""
         .type = str
         .help = Username for LCLS run database web service

@@ -139,7 +139,7 @@ int main() {
     std::cout << "OK\n";
     return 0;
   }
-  catch(scitbx::error e) {
+  catch(scitbx::error const& e) {
     std::cerr << e.what() << std::endl;
     return 1;
   }

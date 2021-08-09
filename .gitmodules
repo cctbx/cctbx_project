@@ -1,0 +1,3 @@
+[submodule "xfel/euxfel/definitions"]
+	path = xfel/euxfel/definitions
+	url = https://github.com/HDRMX/definitions

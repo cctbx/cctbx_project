@@ -7,6 +7,7 @@ from iotbx import crystal_symmetry_from_any
 import iotbx.phil
 import iotbx.mtz
 import iotbx.pdb
+from iotbx import cif_mtz_data_labels
 from cctbx.array_family import flex
 from cctbx import crystal
 from libtbx import runtime_utils
@@ -183,7 +184,13 @@ def process_files(file_name,
 def get_label(miller_array, output_r_free_label):
   label = None
   for l in miller_array.info().labels:
-    if ('_meas' in l):
+    if miller_array.anomalous_flag():
+      if miller_array.is_xray_amplitude_array():
+        label = "F"
+      elif miller_array.is_xray_intensity_array():
+        label = "I"
+      break
+    elif ('_meas' in l):
       if miller_array.is_xray_amplitude_array():
         label = "FOBS"
       elif miller_array.is_xray_intensity_array():
@@ -196,36 +203,35 @@ def get_label(miller_array, output_r_free_label):
         label = "FC"
       elif miller_array.is_xray_intensity_array():
         label = "ICALC"
-      elif l.endswith(".F_calc"):
+      elif ".F_calc" in l: # cope with _refln.F_calc_au  and _refln.F_calc labels
         label = "FC"
       elif l.endswith(".phase_calc"):
         label = "PHIC"
-      break
-    elif miller_array.anomalous_flag():
-      if miller_array.is_xray_amplitude_array():
-        label = "F"
-      elif miller_array.is_xray_intensity_array():
-        label = "I"
       break
     elif 'status' in l or '_free' in l:
       label = output_r_free_label
       break
     elif miller_array.is_hendrickson_lattman_array():
       label = "HL"
+      break
     elif (miller_array.is_complex_array()):
-      if (l.endswith("DELFWT")):
+      if "DELFWT" in l:
         label = "DELFWT"
         break
-      elif (l.endswith("FWT")):
+      elif "FWT" in l:
         label = "FWT"
         break
     elif (miller_array.is_real_array()):
-      if ("pdbx_anom_difference" in l):
+      if (l.endswith( "pdbx_anom_difference")):
         label = "DANO"
         break
       elif (l.endswith(".fom")):
         label = "FOM"
         break
+    # as a last resort try find a match in cif_mtz_data_labels dictionary
+    label = cif_mtz_data_labels.ccp4_label_from_cif(l)
+    if label:
+      return label
   return label
 
 def extract(file_name,
@@ -456,9 +462,8 @@ def extract(file_name,
       dec = None
       if ("FWT" in label):
         dec = iotbx.mtz.ccp4_label_decorator()
-      # XXX what about DANO,SIGDANO?
       column_types = None
-      if ("PHI" in label) and (ma.is_real_array()):
+      if ("PHI" in label or "PHWT" in label) and (ma.is_real_array()):
         column_types = "P"
       elif (label.startswith("DANO") and ma.is_real_array()):
         if (ma.sigmas() is not None):
@@ -673,4 +678,4 @@ def finish_job(results):
   return ([], [])
 
 if(__name__ == "__main__"):
-   run(sys.argv[1:])
+  run(sys.argv[1:])

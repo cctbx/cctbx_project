@@ -415,7 +415,8 @@ def select_array(
       err,
       error_message_no_array,
       error_message_not_a_suitable_array,
-      error_message_multiple_equally_suitable):
+      error_message_multiple_equally_suitable,
+      raise_no_array=True):
   if (labels is not None): assert parameter_name is not None
   if (len(miller_arrays) == 0):
     raise Sorry_No_array_of_the_required_type(
@@ -440,8 +441,10 @@ def select_array(
     raise Sorry(error)
   if (max(data_scores) == 0):
     if (label_scores is None):
-      print("\n" + error_message_no_array + "\n", file=err)
-      raise Sorry_No_array_of_the_required_type(error_message_no_array)
+      if(raise_no_array):
+        print("\n" + error_message_no_array + "\n", file=err)
+        raise Sorry_No_array_of_the_required_type(error_message_no_array)
+      else: return
     error = "%s%s=%s" % (
       error_message_not_a_suitable_array, parameter_name, " ".join(labels))
     print("\n" + error + "\n", file=err)
@@ -767,6 +770,7 @@ class reflection_file_server(object):
         labels,
         ignore_all_zeros,
         parameter_scope,
+        raise_no_array=True,
         parameter_name="labels",
         return_all_valid_arrays=False,
         minimum_score=1):
@@ -782,12 +786,14 @@ class reflection_file_server(object):
       miller_arrays=miller_arrays,
       data_scores=data_scores,
       err=self.err,
+      raise_no_array=raise_no_array,
       error_message_no_array
         ="No array of experimental phases found.",
       error_message_not_a_suitable_array
         ="Not a suitable array of experimental phases: ",
       error_message_multiple_equally_suitable
         ="Multiple equally suitable arrays of experimental phases found.")
+    if i is None: return None
     return miller_arrays[i]
 
 def cif_status_flags_as_int_r_free_flags(miller_array, test_flag_value):

@@ -31,7 +31,7 @@ def regressionTest(molecule):
 
 def fullTest():
     print("----------------------------  unit test  -----------------------------", file=stderr)
-    UnitTest.test()
+    UnitTest.testAll()
 
     print("--------------------------  regression test  -------------------------", file=stderr)
     code = regressionTest("1ehz")
