@@ -2259,6 +2259,7 @@ class XFELBuilder(CCIBuilder):
     'iota',
     'uc_metrics',
     'ncdist',
+    'kokkos',
   ]
   LIBTBX_EXTRA = [
     'dials',
