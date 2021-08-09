@@ -39,6 +39,12 @@ f3s_coordination = {
     ('S', 'FE', 'S') : [112.23,  6.03*2],
   },
 }
+# not coodinated number FE !- S
+f3s_naming = {
+  1 : 4,
+  3 : 2,
+  4 : 1,
+}
 coordination_defaults = {
   'SF4' : sf4_coordination,
   'F3S' : f3s_coordination,
@@ -166,14 +172,14 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
           done_aa.append(aag.id_str())
   return coordination
 
-def get_bond_proxies(coordination):
+def get_bond_proxies(coordination, verbose=False):
   #
   bonds = []
   if coordination is None: return bonds
   for a1, a2 in coordination:
     distance_ideal, weight = get_distance_ideal_and_weight(a1, a2)
     if distance_ideal is None:
-      print(weight)
+      if verbose: print('no distance_ideal %s %s' % (distance_ideal, weight))
       continue
     p = geometry_restraints.bond_simple_proxy(
       i_seqs=[a1.i_seq, a2.i_seq],
@@ -191,11 +197,19 @@ def get_angle_proxies_for_bond(coordination):
   def _get_angle_atoms(a1, a2, resname, second_residues):
     atoms = []
     ii=int(a1.name.strip()[-1])
-    for i in range(1,5):
-      if i==ii: continue
-      name = 'S%d' % i
-      a3 = a1.parent().get_atom(name)
-      if a3: atoms.append(a3)
+    if resname=='F3S':
+      for i in range(1,5):
+        if i == f3s_naming.get(ii, -1): continue
+        name = 'S%d' % i
+        a3 = a1.parent().get_atom(name)
+        if a3: atoms.append(a3)
+    else:
+      # SF4 has a special naming scheme
+      for i in range(1,5):
+        if i==ii: continue
+        name = 'S%d' % i
+        a3 = a1.parent().get_atom(name)
+        if a3: atoms.append(a3)
     if resname in ['FES']:
       for ag in second_residues:
         if ag.id_str()==a2.parent().id_str(): continue

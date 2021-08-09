@@ -1,1 +1,5 @@
-crys3d/hklview/WebBrowserMessengerPy3.py
+crys3d/hklviewer/WebBrowserMessengerPy3.py
+xfel/ui/db/dxtbx_db.py
+xfel/euxfel/agipd_from_defs.py
+xfel/euxfel/agipd_cxigeom2nexus.py
+xfel/euxfel/read_geom.py

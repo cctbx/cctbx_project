@@ -31,6 +31,7 @@ import libtbx.phil
 
 from libtbx import Auto, citations
 from libtbx.utils import multi_out
+from libtbx.version import get_version
 
 # =============================================================================
 class ProgramTemplate(object):
@@ -39,6 +40,10 @@ class ProgramTemplate(object):
   # name of the program, this overrides the LIBTBX_DISPATCHER_NAME
   # environment variable
   program_name = None
+
+  # custom version, this overrides the default version from
+  # libtbx.version.get_version
+  version = None
 
   # description of the program
   description = '''
@@ -438,5 +443,26 @@ output {
           filename += '_{serial:03d}'.format(serial=serial)
 
     return filename
+
+  # ---------------------------------------------------------------------------
+  @classmethod
+  def get_version(cls):
+    '''
+    Function for returning the version
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    version: str
+    '''
+    # try the class first
+    if cls.version is not None:
+      return cls.version
+
+    # the default version
+    return get_version()
 
 # =============================================================================

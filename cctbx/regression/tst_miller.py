@@ -739,9 +739,10 @@ def exercise_array():
     assert approx_equal(tuple(hm.sigmas()), (0.2,0.4))
   assert approx_equal(ma.anomalous_signal(), 0.5063697)
   app = ma.anomalous_probability_plot()
-  assert approx_equal(app.slope, 6.280403781181725)
-  assert approx_equal(app.intercept, -0.23606797749978936)
-  assert app.n_pairs ==  2
+  for app in (app, pickle.loads(pickle.dumps(app))):
+    assert approx_equal(app.slope, 6.280403781181725)
+    assert approx_equal(app.intercept, -0.23606797749978936)
+    assert app.n_pairs ==  2
   assert ma.measurability() == 1.0
   assert approx_equal(ma.anomalous_completeness(), 0.018018)
   assert approx_equal(ma.anomalous_completeness(

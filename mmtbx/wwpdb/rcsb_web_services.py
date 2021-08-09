@@ -14,7 +14,7 @@ import json
 import requests
 
 search_base_url = "https://search.rcsb.org/rcsbsearch/v1/query?json="
-report_base_url = "http://data.rcsb.org/graphql"
+report_base_url = "https://data.rcsb.org/graphql"
 
 xray_only_filter = {
   "type": "terminal",

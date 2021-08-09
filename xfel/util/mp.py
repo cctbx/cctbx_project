@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function
 #
 from libtbx.utils import Sorry
 import os
+import math
 
 mp_phil_str = '''
   mp {
@@ -14,6 +15,10 @@ mp_phil_str = '''
     use_mpi = True
       .type = bool
       .help = Use mpi multiprocessing
+    mpi_command = mpirun
+      .type = str
+      .help = Command to invoke MPI processing. Include extra arguments to \
+              this command here.
     nproc = 1
       .type = int
       .help = Number of processes total (== nnodes x nproc_per_node). \
@@ -24,6 +29,18 @@ mp_phil_str = '''
     nnodes = 1
       .type = int
       .help = Number of nodes to request
+    nnodes_index = None
+      .type = int
+      .help = If defined, use this many nodes for indexing and integration. \
+              Currently only works for mp.method=shifter or slurm.
+    nnodes_scale = None
+      .type = int
+      .help = If defined, use this many nodes for scaling. \
+              Currently only works for mp.method=shifter or slurm.
+    nnodes_merge = None
+      .type = int
+      .help = If defined, use this many nodes for merging. \
+              Currently only works for mp.method=shifter or slurm.
     nproc_per_node = 1
       .type = int
       .help = Number of processes to allocate per node
@@ -48,6 +65,10 @@ mp_phil_str = '''
       .type = str
       .multiple = True
       .help = Path to script sourcing a particular environment (optional)
+    phenix_script = None
+      .type = str
+      .multiple = True
+      .help = Path to script sourcing a phenix environment (optional)
     local {
       include_mp_in_command = True
         .type = bool
@@ -220,7 +241,7 @@ class get_local_submit_command(get_submit_command):
   def customize_for_method(self):
     if self.params.local.include_mp_in_command:
       if self.params.use_mpi:
-        self.command = "mpirun -n %d %s mp.method=mpi" % (self.params.nproc, self.command)
+        self.command = "%s -n %d %s mp.method=mpi" % (self.params.mpi_command, self.params.nproc, self.command)
       elif self.params.nproc > 1:
         self.command += " mp.nproc=%d" % self.params.nproc
 
@@ -232,7 +253,7 @@ class get_lsf_submit_command(get_submit_command):
   def customize_for_method(self):
     self.submit_head = "bsub"
     if self.params.use_mpi:
-      self.command = "mpirun %s mp.method=mpi" % self.command
+      self.command = "%s %s mp.method=mpi" % (self.params.mpi_command, self.command)
 
   def eval_params(self):
     # -n <nproc>
@@ -283,12 +304,16 @@ class get_sge_submit_command(get_submit_command):
   def customize_for_method(self):
     self.shell_path += " -q"
     self.options.append("-cwd")
-    self.options.append("mp.method=sge")
+#    self.options.append("mp.method=sge")
+    if self.params.use_mpi:
+      self.command = "%s -n ${NSLOTS} %s mp.method=mpi"%(self.params.mpi_command, self.command) #This command currently (14/10/2020) has problems at Diamond as it will randomly use incorrect number of cores
+    else:
+      self.command = "%s mp.nproc=${NSLOTS}"%(self.command)
 
   def eval_params(self):
     # -t 1-<nproc>
     if self.params.nproc > 1:
-      nproc_str = "-t 1-%d" % self.params.nproc
+      nproc_str = "-pe smp %d" % self.params.nproc #Change the submission command to smp, as the openmpi currently confilicts with mpi of Dials and cctbx.xfel.merge
       self.options.append(nproc_str)
 
     # -o <outfile>
@@ -433,34 +458,14 @@ class get_slurm_submit_command(get_submit_command):
 
   def customize_for_method(self):
     self.submit_head = "sbatch"
-    if (self.params.nnodes > 1) or (self.params.nproc_per_node > 1):
-      self.params.nproc = self.params.nnodes * self.params.nproc_per_node
     if self.params.use_mpi:
-      self.command = "mpirun %s mp.method=mpi" % (self.command)
+      self.command = "%s %s mp.method=mpi" % (self.params.mpi_command, self.command)
 
   def eval_params(self):
-    if max(self.params.nproc, self.params.nproc_per_node, self.params.nnodes) > 1:
-      # If specified, nproc overrides procs_per_node and procs_per_node overrides
-      # nnodes. One process per node is requested if only nproc is specified.
-      if self.params.nproc > 1:
-        import math
-        if self.params.nproc <= self.params.nproc_per_node:
-          procs_per_node = self.params.nproc
-          nnodes = 1
-        elif self.params.nproc_per_node > 1:
-          procs_per_node = self.params.nproc_per_node
-          nnodes = int(math.ceil(self.params.nproc/procs_per_node))
-        elif self.params.nnodes > 1:
-          procs_per_node = int(math.ceil(self.params.nproc/self.params.nnodes))
-          nnodes = self.params.nnodes
-        else: # insufficient information; allocate 1 proc per node
-          procs_per_node = 1
-          nnodes = self.params.nproc
-      else:
-        procs_per_node = self.params.nproc_per_node
-        nnodes = self.params.nnodes
-      nproc_str = "#SBATCH --nodes %d\n#SBATCH --ntasks-per-node=%d" % (nnodes, procs_per_node)
-      self.options_inside_submit_script.append(nproc_str)
+    nproc_str = "#SBATCH --nodes %d" % self.params.nnodes
+    if self.params.nproc_per_node:
+      nproc_str += "\n#SBATCH --ntasks-per-node=%d" % self.params.nproc_per_node
+    self.options_inside_submit_script.append(nproc_str)
 
     # -o <outfile>
     out_str = "#SBATCH --output=%s" % os.path.join(self.stdoutdir, self.log_name)
@@ -481,7 +486,7 @@ class get_slurm_submit_command(get_submit_command):
     if self.params.wall_time is not None:
       hours = self.params.wall_time // 60
       minutes = self.params.wall_time % 60
-      wt_str = "#SBATCH --time=%2d:%02d:00" % (hours, minutes)
+      wt_str = "#SBATCH --time=%02d:%02d:00" % (hours, minutes)
       self.options_inside_submit_script.append(wt_str)
 
     # -l mem_free=<memory_requested> (optional)
@@ -503,6 +508,9 @@ class get_slurm_submit_command(get_submit_command):
     for env in self.params.env_script:
       env_str = "source %s\n" % env
       self.source_env_scripts.append(env_str)
+
+    if 'phenix' in self.command:
+      self.source_env_scripts.append("cd %s\n"%os.path.dirname(self.submit_path))
 
     # <args> (optional, following the command)
     for arg in self.params.extra_args:

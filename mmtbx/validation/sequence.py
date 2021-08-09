@@ -279,7 +279,19 @@ class validation(object):
   def __init__(self, pdb_hierarchy, sequences, params=None, log=None,
       nproc=Auto, include_secondary_structure=False,
       extract_coordinates=False, extract_residue_groups=False,
-      minimum_identity=0, custom_residues=[]):
+      minimum_identity=0, custom_residues=[], ignore_hetatm=False):
+    #
+    # XXX This is to stop assertion crash that checks lengths of provided
+    # XXX sequence with the length of sequence from model (which can happen to
+    # XXX be different due to presence of altlocs!
+    # XXX Also this assumes altlocs within residue groups are the same resname's
+    # XXX And of course making a copy is a bad idea, obviously!
+    # XXX No test.
+    #
+    pdb_hierarchy = pdb_hierarchy.deep_copy()
+    pdb_hierarchy.remove_alt_confs(always_keep_one_conformer=True)
+    pdb_hierarchy.atoms().reset_i_seq()
+    #
     assert (len(sequences) > 0)
     for seq_object in sequences :
       assert (seq_object.sequence != "")
@@ -337,11 +349,12 @@ class validation(object):
       pad = True
       pad_at_start = False
       seq = pdb_chain.as_padded_sequence(
-        substitute_unknown=unk, pad=pad, pad_at_start=pad_at_start)
+        substitute_unknown=unk, pad=pad, pad_at_start=pad_at_start, ignore_hetatm=ignore_hetatm)
       chain_seq[chain_id] = seq
-      resids = pdb_chain.get_residue_ids(pad=pad, pad_at_start=pad_at_start)
+      resids = pdb_chain.get_residue_ids(pad=pad, pad_at_start=pad_at_start,
+        ignore_hetatm=ignore_hetatm)
       resnames = pdb_chain.get_residue_names_padded(
-        pad=pad, pad_at_start=pad_at_start)
+        pad=pad, pad_at_start=pad_at_start, ignore_hetatm=ignore_hetatm)
       assert (len(seq) == len(resids) == len(resnames))
       sec_str = None
       if (helix_selection is not None) and (main_conf.is_protein()):

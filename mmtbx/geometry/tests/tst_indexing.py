@@ -37,6 +37,11 @@ class TestLinearIndexer(unittest.TestCase):
 
 class TestHashIndexer(unittest.TestCase):
 
+  def split_sorted(self, input_list):
+    ints = [x for x in input_list if isinstance(x, (int, float))]
+    strs = [x for x in input_list if isinstance(x, str)]
+    return sorted(ints) + sorted(strs)
+
   def test_1(self):
 
     from mmtbx.geometry.shared_types import voxelizer
@@ -70,15 +75,15 @@ class TestHashIndexer(unittest.TestCase):
       [ 1, 2 ],
       )
     self.assertEqual(
-      sorted( indexer.close_to( centre = ( 3, 3, 3 ) ) ),
+      self.split_sorted( indexer.close_to( centre = ( 3, 3, 3 ) ) ),
       [ 1, "foo" ],
       )
     self.assertEqual(
-      sorted( indexer.close_to( centre = ( 4, 4, 4 ) ) ),
+      self.split_sorted( indexer.close_to( centre = ( 4, 4, 4 ) ) ),
       [ 1, 3, "foo" ],
       )
     self.assertEqual(
-      sorted( indexer.close_to( centre = ( 5, 5, 5 ) ) ),
+      self.split_sorted( indexer.close_to( centre = ( 5, 5, 5 ) ) ),
       [ 3, 4, "foo" ],
       )
     self.assertEqual(
@@ -120,23 +125,23 @@ class TestHashIndexer(unittest.TestCase):
       [ 1, 1, 1, 1.5, 1.7, 2 ],
       )
     self.assertEqual(
-      sorted( indexer.close_to( centre = ( 2, 2, 2 ) ) ),
+      self.split_sorted( indexer.close_to( centre = ( 2, 2, 2 ) ) ),
       [ 1, 1, 1, 1.5, 1.7, 2, "foo" ],
       )
     self.assertEqual(
-      sorted( indexer.close_to( centre = ( 3, 3, 3 ) ) ),
+      self.split_sorted( indexer.close_to( centre = ( 3, 3, 3 ) ) ),
       [ 1, 2, 3, "foo" ],
       )
     self.assertEqual(
-      sorted( indexer.close_to( centre = ( 4, 4, 4 ) ) ),
+      self.split_sorted( indexer.close_to( centre = ( 4, 4, 4 ) ) ),
       [ 1, 3, 4, "foo" ],
       )
     self.assertEqual(
-      sorted( indexer.close_to( centre = ( 5, 5, 5 ) ) ),
+      self.split_sorted( indexer.close_to( centre = ( 5, 5, 5 ) ) ),
       [ 1, 3, 4, 5, "foo" ],
       )
     self.assertEqual(
-      sorted( indexer.close_to( centre = ( 6, 6, 6 ) ) ),
+      self.split_sorted( indexer.close_to( centre = ( 6, 6, 6 ) ) ),
       [ 3, 4, 5, "foo" ],
       )
     self.assertEqual(
@@ -174,27 +179,27 @@ class TestHashIndexer(unittest.TestCase):
       [ 1, 1, 1, 1.5, 1.7, 2 ],
       )
     self.assertEqual(
-      sorted( indexer.close_to( centre = ( 2, 2, 2 ) ) ),
+      self.split_sorted( indexer.close_to( centre = ( 2, 2, 2 ) ) ),
       [ 1, 1, 1, 1.5, 1.7, 2, 3, "foo" ],
       )
     self.assertEqual(
-      sorted( indexer.close_to( centre = ( 3, 3, 3 ) ) ),
+      self.split_sorted( indexer.close_to( centre = ( 3, 3, 3 ) ) ),
       [ 1, 1, 1, 1.5, 1.7, 2, 3, "foo" ],
       )
     self.assertEqual(
-      sorted( indexer.close_to( centre = ( 4, 4, 4 ) ) ),
+      self.split_sorted( indexer.close_to( centre = ( 4, 4, 4 ) ) ),
       [ 1, 3, 4, 5, "foo" ],
       )
     self.assertEqual(
-      sorted( indexer.close_to( centre = ( 5, 5, 5 ) ) ),
+      self.split_sorted( indexer.close_to( centre = ( 5, 5, 5 ) ) ),
       [ 1, 3, 4, 5, "foo" ],
       )
     self.assertEqual(
-      sorted( indexer.close_to( centre = ( 6, 6, 6 ) ) ),
+      self.split_sorted( indexer.close_to( centre = ( 6, 6, 6 ) ) ),
       [ 3, 4, 5, "foo" ],
       )
     self.assertEqual(
-      sorted( indexer.close_to( centre = ( 7, 7, 7 ) ) ),
+      self.split_sorted( indexer.close_to( centre = ( 7, 7, 7 ) ) ),
       [ 3, 4, 5, "foo" ],
       )
 
@@ -222,4 +227,3 @@ def load_tests(loader, tests, pattern):
 
 if __name__ == "__main__":
     unittest.TextTestRunner( verbosity = 2 ).run( alltests )
-

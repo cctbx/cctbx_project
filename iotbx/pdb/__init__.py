@@ -709,6 +709,16 @@ class pdb_input_from_any(object):
                   and n_unknown_records > 0))
             and n_records>0):
           continue
+        # Additional check that solves 2of6:
+        # if the first non-comment non-empty line contains data_ this is mmCIF
+        if lines is not None and len(lines)>0:
+          len_lines = len(lines)
+          i = 0
+          while i < len_lines and (
+            lines[i].strip().startswith('#') or len(lines[i].strip()) == 0):
+            i += 1
+          if i < len_lines and lines[i][:5].strip() == 'data_':
+            continue
         self.file_format = "pdb"
       else :
         self.file_format = "cif"
@@ -733,7 +743,7 @@ def pdb_input(
     file_name = ent_path_local_mirror(pdb_id=pdb_id)
   if (file_name is not None):
     try :
-      with smart_open.for_reading(file_name) as f:
+      with smart_open.for_reading(file_name, gzip_mode='rt') as f:
         lines = f.read()
       return ext.input(
         source_info="file " + str(file_name), # XXX unicode hack - dangerous
@@ -1870,7 +1880,7 @@ def get_file_summary(pdb_in, hierarchy=None):
     ("Number of atoms", counts.n_atoms),
     ("Number of chains", counts.n_chains),
     ("Chain IDs", ", ".join(chain_ids)),
-    ("Alternate conformations", counts.n_alt_conf_pure),
+    ("Alternate conformations", counts.n_alt_conf),
   ]
   if (counts.n_models > 1):
     info_list.insert(0, ("Number of models", counts.n_models))

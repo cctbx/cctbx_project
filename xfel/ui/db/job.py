@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from xfel.ui import settings_dir
 from xfel.ui.db import db_proxy, get_run_path
-import os, shutil
+import os, shutil, copy
 
 known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED", "SUBMIT_FAIL", "SUBMITTED", "HOLD"]
 finished_job_statuses = ["DONE", "EXIT", "DELETED", "UNKWN", "ERR", "SUBMIT_FAIL"]
@@ -21,6 +21,8 @@ class JobFactory(object):
       return ScalingJob(job.app, job.id, **job._db_dict)
     if task.type == "merging":
       return MergingJob(job.app, job.id, **job._db_dict)
+    if task.type == "phenix":
+      return PhenixJob(job.app, job.id, **job._db_dict)
 
   @staticmethod
   def from_args(app, job_id = None, **kwargs):
@@ -99,7 +101,7 @@ class Job(db_proxy):
 class IndexingJob(Job):
   def get_output_files(self):
     run_path = str(get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run))
-    return os.path.join(run_path, 'out'), '_integrated.expt', '_integrated.refl'
+    return os.path.join(run_path, 'out'), '_integrated.expt', '_integrated.refl', None, None
 
   def submit(self, previous_job = None):
     import libtbx.load_env
@@ -140,14 +142,15 @@ class IndexingJob(Job):
       trial_params = phil_scope.fetch(parse(phil_str)).extract()
 
       image_format = self.rungroup.format
-      if "rayonix" in self.rungroup.detector_address.lower():
-        mode = "rayonix"
-      elif "cspad" in self.rungroup.detector_address.lower():
-        mode = "cspad"
-      elif "jungfrau" in self.rungroup.detector_address.lower():
-        mode = "jungfrau"
-      else:
-        mode = "other"
+      mode = "other"
+      if self.app.params.facility.name == 'lcls':
+        if "rayonix" in self.rungroup.detector_address.lower():
+          mode = "rayonix"
+        elif "cspad" in self.rungroup.detector_address.lower():
+          mode = "cspad"
+        elif "jungfrau" in self.rungroup.detector_address.lower():
+          mode = "jungfrau"
+
       if hasattr(trial_params, 'format'):
         trial_params.format.file_format = image_format
         trial_params.format.cbf.mode = mode
@@ -191,10 +194,11 @@ class IndexingJob(Job):
       experiment_tag            = self.app.params.experiment_tag,
       calib_dir                 = self.rungroup.calib_dir,
       nproc                     = self.app.params.mp.nproc,
-      nnodes                    = self.app.params.mp.nnodes,
+      nnodes                    = self.app.params.mp.nnodes_index or self.app.params.mp.nnodes,
       nproc_per_node            = self.app.params.mp.nproc_per_node,
       queue                     = self.app.params.mp.queue or None,
       env_script                = self.app.params.mp.env_script[0] if self.app.params.mp.env_script is not None and len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
+      phenix_script             = self.app.params.mp.phenix_script[0] if self.app.params.mp.phenix_script is not None and len(self.app.params.mp.phenix_script) > 0 and len(self.app.params.mp.phenix_script[0]) > 0 else None,
       method                    = self.app.params.mp.method,
       wall_time                 = self.app.params.mp.wall_time,
       htcondor_executable_path  = self.app.params.mp.htcondor.executable_path,
@@ -213,8 +217,12 @@ class IndexingJob(Job):
       user                      = self.app.params.db.user,
       port                      = self.app.params.db.port,
       # always use mpi for 'lcls'
-      use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls')
+      use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls'),
+      mpi_command               = self.app.params.mp.mpi_command,
+      extra_options             = "\n".join(["extra_options = %s"%opt for opt in self.app.params.mp.extra_options]),
     )
+    if self.app.params.mp.method == 'sge':
+      d['use_mpi'] = False
     if self.app.params.db.password is not None and len(self.app.params.db.password) == 0:
       d['password'] = None
     else:
@@ -525,7 +533,7 @@ class EnsembleRefinementJob(Job):
 
   def get_output_files(self):
     run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
-    return os.path.join(run_path, 'combine_experiments_t%03d'%self.trial.trial, 'intermediates', "*reintegrated*"), '.expt', '.refl'
+    return os.path.join(run_path, 'combine_experiments_t%03d'%self.trial.trial, 'intermediates', "*reintegrated*"), '.expt', '.refl', None, None
 
   def get_log_path(self):
     run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
@@ -548,27 +556,33 @@ class EnsembleRefinementJob(Job):
 
     arguments = """
     mp.queue={}
-    mp.nproc={}
+    mp.nnodes={}
     mp.nproc_per_node={}
     mp.method={}
     {}
+    {}
     mp.use_mpi=False
+    mp.mpi_command={}
+    {}
     striping.results_dir={}
     striping.trial={}
     striping.rungroup={}
     striping.run={}
     {}
-    striping.chunk_size=3000
+    striping.chunk_size=200
     striping.stripe=False
     striping.dry_run=True
     striping.output_folder={}
     reintegration.integration.lookup.mask={}
     mp.local.include_mp_in_command=False
     """.format(self.app.params.mp.queue if len(self.app.params.mp.queue) > 0 else None,
-               self.app.params.mp.nproc,
+               1,#self.app.params.mp.nproc,
                self.app.params.mp.nproc_per_node,
                self.app.params.mp.method,
                '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script if p]),
+               '\n'.join(['mp.phenix_script={}'.format(p) for p in self.app.params.mp.phenix_script if p]),
+               self.app.params.mp.mpi_command,
+               "\n".join(["extra_options={}".format(opt) for opt in self.app.params.mp.extra_options]),
                self.app.params.output_folder,
                self.trial.trial,
                self.rungroup.id,
@@ -578,7 +592,14 @@ class EnsembleRefinementJob(Job):
                self.rungroup.untrusted_pixel_mask_path,
                ).split()
 
-    commands = Script(arguments).run()
+    try:
+      commands = Script(arguments).run()
+    except Exception as e:
+      if 'no DIALS integration results found' in str(e):
+        print("No DIALS integration results found")
+        self.status = "EXIT"
+        return
+      else: raise
     submission_ids = []
     if self.app.params.mp.method == 'local':
       self.status = "RUNNING"
@@ -607,7 +628,7 @@ class ScalingJob(Job):
 
   def get_output_files(self):
     run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
-    return os.path.join(run_path, 'out'), ".expt", ".refl"
+    return os.path.join(run_path, 'out'), ".expt", ".refl", None, None
 
   def write_submit_phil(self, submit_phil_path, target_phil_path):
     import libtbx.load_env
@@ -626,6 +647,7 @@ class ScalingJob(Job):
       nproc_per_node            = self.app.params.mp.nproc_per_node,
       queue                     = self.app.params.mp.queue or None,
       env_script                = self.app.params.mp.env_script[0] if len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
+      phenix_script                = self.app.params.mp.phenix_script[0] if len(self.app.params.mp.phenix_script) > 0 and len(self.app.params.mp.phenix_script[0]) > 0 else None,
       method                    = self.app.params.mp.method,
       htcondor_executable_path  = self.app.params.mp.htcondor.executable_path,
       nersc_shifter_image       = self.app.params.mp.shifter.shifter_image,
@@ -640,8 +662,10 @@ class ScalingJob(Job):
       target                    = target_phil_path,
       # always use mpi for 'lcls'
       use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls'),
-      nnodes                    = self.app.params.mp.nnodes,
+      mpi_command               = self.app.params.mp.mpi_command,
+      nnodes                    = self.app.params.mp.nnodes_scale or self.app.params.mp.nnodes,
       wall_time                 = self.app.params.mp.wall_time,
+      extra_options             = "\n".join(["extra_options = %s"%opt for opt in self.app.params.mp.extra_options]),
     )
 
     with open(submit_phil_path, "w") as phil:
@@ -660,7 +684,7 @@ class ScalingJob(Job):
     submit_phil_path = os.path.join(configs_dir, identifier_string + "_submit.phil")
 
     target_phil_path = os.path.join(configs_dir, identifier_string + "_params.phil")
-    input_folder, expt_suffix, refl_suffix = previous_job.get_output_files()
+    input_folder, expt_suffix, refl_suffix, _, _ = previous_job.get_output_files()
 
     with open(target_phil_path, 'w') as f:
       f.write("input.path=%s\n"%input_folder)
@@ -673,8 +697,6 @@ class ScalingJob(Job):
     self.write_submit_phil(submit_phil_path, target_phil_path)
 
     args = [submit_phil_path]
-    if self.app.params.facility.name not in ['lcls']:
-      args.append(self.run.path)
     return submit_script().run(args)
 
 class MergingJob(Job):
@@ -698,7 +720,7 @@ class MergingJob(Job):
 
   def get_output_files(self):
     path = self.get_global_path()
-    return path, ".expt", ".refl"
+    return path, None, None, "%s_v%03d_all.mtz"%(self.dataset.name, self.dataset_version.version), None
 
   def submit(self, previous_job = None):
     from xfel.command_line.cxi_mpi_submit import do_submit
@@ -712,7 +734,7 @@ class MergingJob(Job):
     with open(target_phil_path, 'w') as f:
       expt_suffix = refl_suffix = None
       for job in self.dataset_version.jobs:
-        input_folder, _expt_suffix, _refl_suffix = job.get_output_files()
+        input_folder, _expt_suffix, _refl_suffix, _, _ = job.get_output_files()
         if expt_suffix is None: expt_suffix = _expt_suffix
         else: assert expt_suffix == _expt_suffix
         if refl_suffix is None: refl_suffix = _refl_suffix
@@ -726,8 +748,69 @@ class MergingJob(Job):
       f.write(self.task.parameters)
 
     command = "cctbx.xfel.merge %s"%target_phil_path
-    submit_path = os.path.join(output_path, "submit.sh")
-    return do_submit(command, submit_path, output_path, self.app.params.mp, identifier_string)
+    submit_path = os.path.join(output_path, identifier_string + "_submit.sh")
+
+    params = self.app.params.mp
+    if params.nnodes_merge:
+      params = copy.deepcopy(params)
+      params.nnodes = params.nnodes_merge
+
+    return do_submit(command, submit_path, output_path, params, identifier_string)
+
+class PhenixJob(Job):
+  def get_global_path(self):
+    return os.path.join(self.dataset_version.output_path(), self.get_identifier_string())
+
+  def get_log_path(self):
+    return self.get_global_path()
+
+  def get_identifier_string(self):
+    return "%s_%s%03d_v%03d"%(self.dataset.name, self.task.type, self.task.id, self.dataset_version.version)
+
+  def delete(self, output_only=False):
+    job_folder = self.get_global_path()
+    if os.path.exists(job_folder):
+      print("Deleting job folder for job", self.id)
+      shutil.rmtree(job_folder)
+    else:
+      print("Cannot find job folder (%s)"%job_folder)
+    self.status = "DELETED"
+
+  def get_output_files(self):
+    path = self.get_global_path()
+    return path, None, None, ".mtz", ".pdb"
+
+  def submit(self, previous_job = None):
+    from xfel.command_line.cxi_mpi_submit import do_submit
+
+    output_path = self.get_global_path()
+    if not os.path.exists(output_path):
+      os.makedirs(output_path)
+    identifier_string = self.get_identifier_string()
+    target_phil_path = os.path.join(output_path, identifier_string + "_params.phil")
+    input_folder, _, _, input_mtz, _ = previous_job.get_output_files()
+
+    command = self.task.parameters.split('\n')[0]
+    phil_params = '\n'.join(self.task.parameters.split('\n')[1:])
+    phil_params = phil_params.replace('<PREVIOUS_TASK_MTZ>', os.path.join(input_folder, input_mtz))
+    phil_params = phil_params.replace('<PREVIOUS_TASK_FOLDER>', input_folder)
+    phil_params = phil_params.replace('<DATASET_NAME>', self.dataset.name)
+    phil_params = phil_params.replace('<DATASET_VERSION>', str(self.dataset_version.version))
+
+    with open(target_phil_path, 'w') as f:
+      f.write(phil_params)
+
+    command = "%s %s"%(command, target_phil_path)
+    submit_path = os.path.join(output_path, identifier_string + "_submit.sh")
+
+    params = copy.deepcopy(self.app.params.mp)
+    if params.nnodes_merge:
+      params.nnodes = params.nnodes_merge
+    params.use_mpi = False
+    if 'upload' not in command:
+      params.env_script = params.phenix_script
+
+    return do_submit(command, submit_path, output_path, params, identifier_string)
 
 # Support classes and functions for job submission
 
@@ -739,6 +822,14 @@ class _job(object):
     self.run = run
     self.task = task
     self.dataset = dataset
+
+  def __str__(self):
+    s = "Job: Trial %d, rg %d, run %s"%(self.trial.trial, self.rungroup.id, self.run.run)
+    if self.task:
+      s += ", task %d %s"%(self.task.id, self.task.type)
+    if self.dataset:
+      s += ", dataset %d %s"%(self.dataset.id, self.dataset.name)
+    return s
 
   def __eq__(self, other):
     ret = True
@@ -798,7 +889,8 @@ def submit_all_jobs(app):
 
     # one of the tasks will have a trial, otherwise we don't know where to save the data
     trial = None
-    for task in dataset.tasks:
+    tasks = dataset.tasks
+    for task in tasks:
       if task.trial is not None:
         if trial is None:
           trial = task.trial
@@ -827,7 +919,6 @@ def submit_all_jobs(app):
     for run, rungroup in runs_rungroups:
       submit_next_task = False
       last_task_status = ""
-      tasks = dataset.tasks
       previous_job = None
       for task_idx, task in enumerate(tasks):
         if task.scope == 'global':
@@ -886,36 +977,78 @@ def submit_all_jobs(app):
           return
         break # job submitted so don't look for more in this run for this dataset
 
-    for global_task in global_tasks:
-      dataset = datasets[global_task[0]]
-      task = dataset.tasks[global_task[1]]
+    versions = dataset.versions
+    for task_idx, task in enumerate(tasks):
+      if task.scope == 'local':
+        # only global tasks follow global tasks
+        if task_idx: assert tasks[task_idx-1].scope != 'global'
+        continue
+      assert task.scope == 'global' # only two task scopes
+      assert task_idx # first task cannot be global
+      prev_task = tasks[task_idx-1]
+      if prev_task.scope == 'global':
+        # Submit a job for this task for any versions where it has not been
+        prev_j = _job(None, None, None, prev_task, dataset)
+        test_j = _job(None, None, None, task, dataset)
+        for version in versions:
+          prev_job = this_job = None
+          for j in version.jobs:
+            if prev_j == j:
+              prev_job = j
+              continue
+            elif test_j == j:
+              this_job = j
+              continue
+            if prev_job and this_job: break
+
+          if not this_job and prev_job and prev_job.status == 'DONE':
+            j = JobFactory.from_args(app,
+                                     task_id = task.id,
+                                     dataset_id = dataset.id,
+                                     status = "SUBMITTED")
+            j.task = task; j.dataset = dataset; j.dataset_version = version
+
+            try:
+              j.submission_id = j.submit(prev_job)
+            except Exception as e:
+              print("Couldn't submit job:", str(e))
+              j.status = "SUBMIT_FAIL"
+              raise
+            version.add_job(j)
+
+            if app.params.mp.method == 'local': # only run one job at a time
+              return
+
+      key = dataset_idx, task_idx
+      if key not in global_tasks: continue # no jobs ready yet
       latest_version = dataset.latest_version
+      next_version = None
       if latest_version is None:
         next_version = 0
       else:
-        latest_version_jobs = latest_version.jobs
-        latest_verion_job_ids = [j.id for j in latest_version_jobs if j.task_id != task.id]
-        new_jobs = [j for j in global_tasks[global_task] if j.id not in latest_verion_job_ids]
-        if not new_jobs: continue
-        next_version = latest_version.version + 1
+        latest_version_local_jobs = [j.id for j in latest_version.jobs if j.task.scope == 'local']
+        new_jobs = [j for j in global_tasks[key] if j.id not in latest_version_local_jobs]
+        if new_jobs:
+          next_version = latest_version.version + 1
 
-      latest_version = app.create_dataset_version(dataset_id = dataset.id, version=next_version)
-      for job in global_tasks[global_task]:
-        latest_version.add_job(job)
+      if next_version is not None:
+        latest_version = app.create_dataset_version(dataset_id = dataset.id, version=next_version)
+        for job in global_tasks[key]:
+          latest_version.add_job(job)
 
-      j = JobFactory.from_args(app,
-                               task_id = task.id,
-                               dataset_id = dataset.id,
-                               status = "SUBMITTED")
-      j.task = task; j.dataset = dataset; j.dataset_version = latest_version
+        j = JobFactory.from_args(app,
+                                 task_id = task.id,
+                                 dataset_id = dataset.id,
+                                 status = "SUBMITTED")
+        j.task = task; j.dataset = dataset; j.dataset_version = latest_version
 
-      try:
-        j.submission_id = j.submit()
-      except Exception as e:
-        print("Couldn't submit job:", str(e))
-        j.status = "SUBMIT_FAIL"
-        raise
-      latest_version.add_job(j)
+        try:
+          j.submission_id = j.submit()
+        except Exception as e:
+          print("Couldn't submit job:", str(e))
+          j.status = "SUBMIT_FAIL"
+          raise
+        latest_version.add_job(j)
 
-      if app.params.mp.method == 'local': # only run one job at a time
-        return
+        if app.params.mp.method == 'local': # only run one job at a time
+          return

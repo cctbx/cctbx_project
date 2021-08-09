@@ -1,0 +1,43 @@
+diff --git a/ucif/antlr3/src/antlr3baserecognizer.c b/ucif/antlr3/src/antlr3baserecognizer.c
+index 38171adae6..95d9ff8ce3 100644
+--- a/ucif/antlr3/src/antlr3baserecognizer.c
++++ b/ucif/antlr3/src/antlr3baserecognizer.c
+@@ -2119,6 +2119,8 @@ synpred (pANTLR3_BASE_RECOGNIZER recognizer, void * ctx, void (*predicate)(void
+ static void
+ reset(pANTLR3_BASE_RECOGNIZER recognizer)
+ {
++  pANTLR3_EXCEPTION thisE;
++
+     if  (recognizer->state->following != NULL)
+     {
+                 recognizer->state->following->free(recognizer->state->following);
+@@ -2143,7 +2145,7 @@ reset(pANTLR3_BASE_RECOGNIZER recognizer)
+         }
+ 
+   // ml: 2013-11-05, added reset of old exceptions.
+-  pANTLR3_EXCEPTION thisE = recognizer->state->exception;
++  thisE = recognizer->state->exception;
+   if    (thisE != NULL)
+   {
+     thisE->freeEx(thisE);
+diff --git a/ucif/antlr3/src/antlr3basetree.c b/ucif/antlr3/src/antlr3basetree.c
+index 1380e03614..27a224ab90 100644
+--- a/ucif/antlr3/src/antlr3basetree.c
++++ b/ucif/antlr3/src/antlr3basetree.c
+@@ -145,6 +145,7 @@ addChild (pANTLR3_BASE_TREE tree, pANTLR3_BASE_TREE child)
+ {
+         ANTLR3_UINT32   n;
+         ANTLR3_UINT32   i;
++        ANTLR3_UINT32 count;
+ 
+         if      (child == NULL)
+         {
+@@ -214,7 +215,7 @@ addChild (pANTLR3_BASE_TREE tree, pANTLR3_BASE_TREE child)
+                         tree->createChildrenList(tree);
+                 }
+ 
+-                ANTLR3_UINT32 count = tree->children->add(tree->children, child, (void (ANTLR3_CDECL *)(void *))child->free);
++                count = tree->children->add(tree->children, child, (void (ANTLR3_CDECL *)(void *))child->free);
+                 child->setChildIndex(child, count - 1);
+                 child->setParent(child, tree);
+         }

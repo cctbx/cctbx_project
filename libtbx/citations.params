@@ -1049,7 +1049,7 @@ citation {
   volume = 4
   pages = 269-75
   year = 1997
-  doi_id = None
+  doi_id = 10.1038/nsb0497-269
   pmid = 9095194
 }
 
@@ -1270,35 +1270,61 @@ citation {
   article_id = resolve_cryo_em
   authors = Terwilliger TC, Ludtke SJ, Read RJ, Adams PD, Afonine
   title = Improvement of cryo-EM maps by density modification
-  year = 2019
-  journal = bioRxiv
-  volume = None
-  pages = None
-  pmid = None
-  doi_id = 10.1101/845032
+  year = 2020
+  journal = Nature Methods
+  volume = 17
+  pages = 923-927
+  pmid = 32807957
+  doi_id = 10.1038/s41592-020-0914-9
 }
+
 citation {
   article_id = autosharpen
   authors = Terwilliger TC, Afonine PV, Sobolev, OV, Adams PD
   title = Automated map sharpening by maximization of detail and connectivity
   year = 2018
-  journal = bioRxiv
-  volume = None
-  pages = None
-  pmid = None
-  doi_id = 10.1101/247049
+  journal = Acta Cryst. D
+  volume = 74
+  pages = 545-559
+  pmid = 29872005
+  doi_id = 10.1107/S2059798318004655
 }
 
 citation {
   article_id = map_to_model
   authors = Terwilliger TC, Adams PD, Afonine PV, Sobolev OV
   title = A fully automatic method yielding initial models from high-resolution electron cryo-microscopy maps
-  year = 2018
-  journal = bioRxiv
-  volume = None
-  pages = None
-  pmid = None
-  doi_id = 10.1101/267138
+  year = 2019
+  journal = Nature Methods
+  volume = 15
+  pages = 905-9080
+  pmid = 30377346
+  doi_id = 10.1038/s41592-018-0173-1
+}
+
+citation {
+  article_id = map_to_model_2
+  authors = Terwilliger TC, Adams PD, Afonine PV, Sobolev OV
+  title = Cryo-EM map interpretation and protein model-building using iterative map segmentation
+  year = 2020
+  journal = Protein Science
+  volume = 29
+  pages = 87-99
+  pmid = 31599033
+  doi_id = 10.1002/pro.3740
+}
+
+
+citation {
+  article_id = sequence_from_map
+  authors = Terwilliger TC, Sobolev OV, Afonine, PV, Adams PD, Ho, CM, Li, X, Zhou, ZH
+  title = Protein identification from electron cryomicroscopy maps by automated model-building and side-chain matching
+  year = 2021
+  journal = Acta Cryst D.
+  volume = 77
+  pages = 457-462
+  pmid = 33825706
+  doi_id = 10.1107/S2059798321001765
 }
 
 citation {
@@ -1309,7 +1335,7 @@ citation {
   journal = Struct Biol
   volume = 204
   pages = 319-328
-  pmid = None
+  pmid = 30107233
   doi_id = 10.1016/j.jsb.2018.08.007
 }
 
@@ -1321,7 +1347,7 @@ citation {
   journal = Science
   volume = 240(4859)
   pages = 1648-52
-  pmid = None
+  pmid = 3381086
   doi_id = 10.1126/science.3381086
 }
 
@@ -1333,7 +1359,7 @@ citation {
   journal = PNAS
   volume = 75(6)
   pages = 2574-8
-  pmid = None
+  pmid = 275827
   doi_id = 10.1073/pnas.75.6.2574
 }
 
@@ -1365,4 +1391,24 @@ citation {
   pages = 451-454
   pmid = 30988261
   doi_id = 10.1107/S2059798319004522
+}
+
+citation {
+  article_id = find_alt_orig_sym_mate
+  authors = Oeffner RD, Bunkóczi G, Read RJ
+  title = phenix.find_alt_orig_sym_mate
+  journal = Computational Crystallography Newsletter
+  volume = 3
+  pages = 5-10
+  year = 2012
+}
+
+citation {
+  article_id = hklviewer
+  authors = Oeffner RD, McCoy AJ, Stockwell DH, Sammito MD, Hatti KS,Croll TI, Read RJ
+  title = HKLviewer, a new 3D reflection data viewer for CCTBX
+  journal = Computational Crystallography Newsletter
+  volume = 12
+  pages = 15-25
+  year = 2021
 }

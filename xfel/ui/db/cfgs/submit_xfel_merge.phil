@@ -15,12 +15,15 @@ output {{
 mp {{
   method = {method}
   use_mpi = {use_mpi}
+  mpi_command = {mpi_command}
   nproc = {nproc}
   nproc_per_node = {nproc_per_node}
   queue = {queue}
   env_script = {env_script}
+  phenix_script = {phenix_script}
   nnodes = {nnodes}
   wall_time = {wall_time}
+  {extra_options}
   htcondor {{
     executable_path = {htcondor_executable_path}
   }}

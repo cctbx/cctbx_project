@@ -57,13 +57,13 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
 
   :param id: 4-character PDB ID (e.g. '1hbb')
   :param data_type: type of content to download: pdb, xray, or fasta
-  :param format: format of data: cif, pdb, or xml
+  :param format: format of data: cif, pdb, or xml (or cif_or_pdb)
   :param mirror: remote site to use, either rcsb, pdbe, pdbj or pdb-redo
 
   :returns: a filehandle-like object (with read() method)
   """
   assert data_type in ["pdb", "xray", "fasta", "seq"]
-  assert format in ["cif", "pdb", "xml"]
+  assert format in ["cif", "pdb", "xml", "cif_or_pdb"]
   assert mirror in ["rcsb", "pdbe", "pdbj", "pdb-redo"]
   validate_pdb_id(id)
   if (log is None) : log = null_out()
@@ -86,7 +86,7 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
               f = smart_open.for_reading(file_name)
               return f
     # try local mirror for PDB and X-ray data files first, if it exists
-    if (data_type == "pdb") and (format == "pdb") and \
+    if (data_type == "pdb") and (format in ["pdb", "cif_or_pdb"]) and \
            ("PDB_MIRROR_PDB" in os.environ):
       subdir = os.path.join(os.environ["PDB_MIRROR_PDB"], id[1:3])
       if (os.path.isdir(subdir)):
@@ -96,7 +96,7 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
           print("  " + file_name, file=log)
           f = smart_open.for_reading(file_name)
           return f
-    if (data_type == "pdb") and (format == "cif") and \
+    if (data_type == "pdb") and (format in ["cif", "cif_or_pdb"]) and \
            ("PDB_MIRROR_MMCIF" in os.environ):
       subdir = os.path.join(os.environ["PDB_MIRROR_MMCIF"], id[1:3])
       if (os.path.isdir(subdir)):
@@ -136,7 +136,7 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       compressed = True
       if (format == "pdb"):
         url = url_base + "pdb/%s/pdb%s.ent.gz" % (id[1:3], id)
-      elif (format == "cif"):
+      elif (format in ["cif", "cif_or_pdb"]):
         url = url_base + "mmCIF/%s/%s.cif.gz" % (id[1:3], id)
     elif (data_type == "xray"):
       compressed = True
@@ -155,7 +155,7 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
     if (data_type == 'pdb'):
       if (format == 'pdb'):
         url = url_base + "{id}/{id}{format}".format(id=id, format=pdb_ext)
-      elif (format == 'cif'):
+      elif (format in ['cif', 'cif_or_pdb']):
         url = url_base + "{id}/{id}{format}".format(id=id, format=cif_ext)
     elif (data_type == 'xray'):
       url = url_base + "{id}/{id}{format}".format(id=id, format=sf_ext)
@@ -184,6 +184,8 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
     if (url is None):
       if format == "pdb" :
         url = url_base + id + pdb_ext
+      elif format == "cif_or_pdb" :
+        url = url_base + id + "." + "cif"
       else :
         url = url_base + id + "." + format
     try :

@@ -428,6 +428,7 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
     sequences=None,chain_id=None,trim_side_chains=None,
     remove_ter_records=False,
     remove_break_records=False,
+    replace_hetatm=False,
      ):
   # assumes one chain from each model
   # if resid_offset, space by to next even n of this number of residues
@@ -436,6 +437,7 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
   # If sequence or chain_id are supplied, use them
   # Trim off side chains (and CB for GLY) if trim_side_chains
   # sort by chain_type if provided in one or more
+  # replace hetero=True by hetero=False if replace_hetatm is set
 
   new_hierarchy=iotbx.pdb.input(
          source_info="Model",
@@ -496,6 +498,10 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
           nn=resid_offset*((resid+resid_offset-1)//resid_offset)
           if nn-resid<2: nn+=resid_offset
           resid=nn
+  if replace_hetatm:
+    for atom in new_hierarchy.atoms():
+      atom.hetero = False
+
   new_hierarchy.reset_atom_i_seqs()
   if trim_side_chains:
     atom_selection=\
@@ -568,13 +574,22 @@ def get_chain_ids(hierarchy,unique_only=None):
         chain_ids.append(chain.id)
   return chain_ids
 
+def renumber_residues(hierarchy, first_resno = 1):
+  for model in hierarchy.models():
+    for chain in model.chains():
+      current_resno = first_resno
+      for rg in chain.residue_groups():
+        if current_resno is None:
+          current_resno = rg.resseq_as_int()
+        rg.resseq = resseq_encode(current_resno)
+        current_resno += 1
+
 def set_chain_id(hierarchy, chain_id = None):
   assert chain_id
   for model in hierarchy.models():
     n_chains = 0
     for chain in model.chains():
       n_chains+=1
-      assert n_chains <=1
       chain.id = chain_id
 
 
@@ -900,7 +915,7 @@ def evaluate_sheet_topology(annotation, hierarchy = None,
       if sites_1.size() < 2 or sites_2.size()< 2 or sites_between.size()<2:
         continue  # nothing to do
 
-      if s1.direction is 0 or s2.direction is 0 or s1.direction != s2.direction:
+      if s1.direction == 0 or s2.direction == 0 or s1.direction != s2.direction:
         continue # not parallel
 
 
@@ -1681,7 +1696,9 @@ class helix(segment): # Methods specific to helices
         average_offset=0.5*(sites_offset_3+sites_offset_4)
       self.diffs=average_offset-self.sites[:-4]
       self.norms=self.diffs.norms()
-      self.diffs=self.diffs/self.diffs.norms()
+      self.norms.set_selected(self.norms<1.e-10,1.e-10)
+      self.diffs=self.diffs/self.norms
+
     return self.diffs,self.norms
 
 
@@ -2206,7 +2223,7 @@ class find_segment: # class to look for a type of segment
             segment_start=None
             still_changing=True
       segment_dict=new_segment_dict
-      for i in segment_dict.keys():
+      for i in list(segment_dict.keys()):
         segment_length=segment_dict[i]+1+self.last_residue_offset-i
         if segment_length<minimum_length:
           del segment_dict[i] # not long enough

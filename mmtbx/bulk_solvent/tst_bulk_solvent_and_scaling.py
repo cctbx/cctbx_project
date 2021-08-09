@@ -165,7 +165,7 @@ def exercise_01_general(d_mins = [1.6,],
           if(not fast):
             assert approx_equal(fmodel.r_work(), result.fmodel_kbu.r_factor())
           else:
-            assert fmodel.r_work() < 0.02, fmodel.r_work()
+            assert fmodel.r_work() < 0.036, fmodel.r_work()
           assert approx_equal(result.fmodel_kbu.r_factor(), 0.0, eps = 1.e-4)
           assert approx_equal(result.k_sols()[0],      kb[0],    eps = 1.e-4)
           assert approx_equal(result.b_sols()[0],      kb[1],    eps = 1.e-4)

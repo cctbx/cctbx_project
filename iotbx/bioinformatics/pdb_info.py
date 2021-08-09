@@ -65,7 +65,7 @@ class pdb_info_local(object):
     pdb_info_file = libtbx.env.find_in_repositories(
       relative_path="cctbx_project/iotbx/bioinformatics/pdb_info.csv.gz",
       test=os.path.isfile)
-    csv_file = smart_open.for_reading(file_name=pdb_info_file)
+    csv_file = smart_open.for_reading(file_name=pdb_info_file, gzip_mode="rt")
     csv_reader = csv.reader(csv_file,delimiter=";")
     for row in csv_reader:
       db_dict[row[0]] = (row[1],row[2],row[3],row[4],row[5])
@@ -159,7 +159,11 @@ def tst_pdb_info_local():
   # assert info_local.get_info_list(["1ucs", "1yjp"]) == ans_list_1
   ans_dict_2 = {'1YJP': (1.8, 0.18086, 0.19014), '1UCS': (0.62, 0.133, 0.155)}
   ans_list_2 = [('1UCS', 0.62, 0.133, 0.155), ('1YJP', 1.8, 0.18086, 0.19014)]
-  rlist, rdict = get_experimental_pdb_info(["1ucs", "1yjp"])
+  try:
+    rlist, rdict = get_experimental_pdb_info(["1ucs", "1yjp"])
+  except requests.exceptions.ReadTimeout:
+    print("Skipped test: transient read timeout, can't run test right now")
+    return
   assert rlist == ans_list_2
   assert rdict == ans_dict_2
 

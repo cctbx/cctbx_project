@@ -104,13 +104,13 @@ _refln.intensity_sigma
 1 1 1    0    2   16  o     135.6     76.3
 1 1 1    0   -2   16  o     117.0     60.4
 """
-  cif_file = prefix + "_in.cif"
+  cif_file = prefix + ".cif"
   with open(cif_file, "w") as f:
     f.write(cif_in)
   hkl_orig = any_reflection_file(cif_file).file_content()
   i_obs_orig = hkl_orig.as_miller_arrays(merge_equivalents=False)[0]
   ofn = export_scalepack_unmerged.run(args=[cif_file], out=null_out())[0]
-  assert (ofn == "tst_export_scalepack_unmerged_in_w1_unmerged.sca")
+  assert (ofn == prefix + "_unmerged.sca")
   hkl_new = any_reflection_file(ofn).file_content()
   i_obs_new = hkl_new.as_miller_arrays(merge_equivalents=False)[0]
   assert (not i_obs_new.is_unique_set_under_symmetry())

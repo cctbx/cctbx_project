@@ -425,6 +425,17 @@ class manager(object):
     """
     return self._pdb_interpretation_params
 
+  def get_header_r_free_flags_md5_hexdigest(self):
+    """
+    XXX Limited to PDB format XXX
+    """
+    result = []
+    if(self.get_model_input() is None): return result
+    for line in self.get_model_input().remark_section():
+      if (line.startswith("REMARK r_free_flags.md5.hexdigest ")):
+        result.append(line.rstrip())
+    return result
+
   def get_xray_structure(self):
     if(self._xray_structure is None):
       cs = self.crystal_symmetry()
@@ -525,11 +536,13 @@ class manager(object):
       It may be present by itself or as an attribute of _processed_pdb_file
       Also restraints_manager is not pickleable
       This method removes _ss_manager and restraints_manager
+      Also removes log
     '''
 
     self_dc = self.deep_copy() # Avoid changing the model itself
     self_dc._ss_manager = None
     self_dc.unset_restraints_manager()
+    self_dc.log = None
 
     state = self_dc.__dict__
     return state
@@ -656,6 +669,22 @@ class manager(object):
   def set_ss_annotation(self, ann):
     self._ss_annotation = ann
 
+  def add_crystal_symmetry_if_necessary(self, box_cushion = 3):
+    '''
+      If this model does not have crystal_symmetry set, create a dummy
+      crystal_symmetry that goes around the model.  Do not shift position.
+    '''
+    if self.crystal_symmetry() and self.crystal_symmetry().unit_cell() and \
+        self.crystal_symmetry().space_group() :
+      return  # nothing to do
+
+    sites_cart=self.get_sites_cart()
+
+    a,b,c = matrix.col(sites_cart.max()) - matrix.col(sites_cart.min()) + \
+      2 * matrix.col((box_cushion,box_cushion,box_cushion))
+    crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
+    self.set_crystal_symmetry(crystal_symmetry)
+
   def set_unit_cell_crystal_symmetry_and_shift_cart(self,
        unit_cell_crystal_symmetry=None,
        shift_cart=None):
@@ -678,7 +707,8 @@ class manager(object):
   def shift_model_and_set_crystal_symmetry(self,
        shift_cart,     # shift to apply
        crystal_symmetry = None, # optional new crystal symmetry
-       unit_cell_crystal_symmetry = None, # optional new unit_cell_crystal_symmetry
+       unit_cell_crystal_symmetry = None, # optional new
+             #unit_cell_crystal_symmetry
        ):
 
     '''
@@ -702,7 +732,6 @@ class manager(object):
 
     assert unit_cell_crystal_symmetry is None or isinstance(
       unit_cell_crystal_symmetry,  crystal.symmetry)
-
 
     # Get shift info  that knows about unit_cell_crystal_symmetry
     #   and any prevous shift_cart
@@ -738,7 +767,7 @@ class manager(object):
     #   model, it is not the shift in this step alone. It is the shift which
     #   reversed will put the model back where it belongs
 
-    self._shift_cart = total_shift
+    self._shift_cart = tuple(total_shift)
     self._unit_cell_crystal_symmetry =  unit_cell_crystal_symmetry
 
   def shift_model_back(self):
@@ -876,9 +905,12 @@ class manager(object):
       #
       if(self.get_restraints_manager() is not None):
         self.get_restraints_manager().geometry.replace_site_symmetry(
-          new_site_symmetry_table = self._xray_structure.site_symmetry_table())
+          new_site_symmetry_table   = self._xray_structure.site_symmetry_table(),
+          special_position_settings = self._xray_structure.special_position_settings(),
+          sites_cart                = self._xray_structure.sites_cart())
         # Not sure if this is needed.
         self.get_restraints_manager().geometry.crystal_symmetry=crystal_symmetry
+        self.restraints_manager.crystal_symmetry=crystal_symmetry
         # This updates some of internals
         self.get_restraints_manager().geometry.pair_proxies(
           sites_cart = self.get_sites_cart())
@@ -888,6 +920,12 @@ class manager(object):
       return self._unit_cell_crystal_symmetry
     else:
       return None
+
+  def shifted(self, eps=1.e-3):
+    r = self.shift_cart()
+    if(r is None): return False
+    if(flex.max(flex.abs(flex.double(r)))<=eps): return False
+    return True
 
   def shift_cart(self):
     '''
@@ -945,6 +983,13 @@ class manager(object):
 
   def get_site_symmetry_table(self):
     return self._site_symmetry_table
+
+  def altlocs_present(self):
+    result = False
+    conformer_indices = self.get_hierarchy().get_conformer_indices()
+    if(len(list(set(list(conformer_indices))))>1):
+      result = True
+    return result
 
   def initialize_anomalous_scatterer_groups(
       self,
@@ -1048,6 +1093,31 @@ class manager(object):
       self.set_xray_structure(self._xray_structure.customized_copy(
           non_unit_occupancy_implies_min_distance_sym_equiv_zero=value))
 
+  def ncs_is_strict(self, eps_occ=1.e-2, eps_adp=1.e-2, eps_xyz=1.e-3):
+    """
+    Check sites, ADP and occupancy to obey NCS symmetry
+    """
+    result = group_args(occ = True, adp = True, xyz = True, size = True)
+    result.stop_dynamic_attributes()
+    ncs_groups = self.get_ncs_groups()
+    if(ncs_groups is None or len(ncs_groups)==0): return None
+    for i, g in enumerate(ncs_groups):
+      m_master          = self.select(g.master_iselection)
+      occ_master        = m_master.get_occ()
+      b_master          = m_master.get_b_iso()
+      master_sites_cart = m_master.get_sites_cart()
+      for j, c in enumerate(g.copies):
+        m_copy   = self.select(c.iselection)
+        occ_copy = m_copy.get_occ()
+        b_copy   = m_copy.get_b_iso()
+        if(b_copy.size() != b_master.size()): result.size = False
+        if(flex.max(flex.abs(occ_master-occ_copy))>eps_occ): result.occ = False
+        if(flex.max(flex.abs(b_master-b_copy))>eps_adp): result.adp = False
+        master_on_copy_sites_cart = c.r.elems * master_sites_cart + c.t
+        d = flex.sqrt((master_on_copy_sites_cart-m_copy.get_sites_cart()).dot())
+        if(flex.max(d)>eps_xyz): result.xyz = False
+    return result
+
   def get_hd_selection(self):
     xrs = self.get_xray_structure()
     return xrs.hd_selection()
@@ -1094,6 +1164,16 @@ class manager(object):
 
   def sel_sidechain(self):
     return self._get_selection_manager().sel_backbone_or_sidechain(False, True)
+
+  def replace_model_hierarchy_with_other(self, other_model):
+    ''' Replace hierarchy with one from another model '''
+    model_ph = self.get_hierarchy() # working hierarchy
+    other_model_ph = other_model.get_hierarchy()
+    for m in model_ph.models():
+      model_ph.remove_model(m)
+    for m in other_model_ph.models():
+      model_ph.append_model(m.detached_copy())
+    self.reset_after_changing_hierarchy()
 
   def reset_after_changing_hierarchy(self):
 
@@ -1486,6 +1566,8 @@ class manager(object):
     acp = self._processed_pdb_file.all_chain_proxies
     self._atom_selection_cache = acp.pdb_hierarchy.atom_selection_cache()
     self._pdb_hierarchy        = acp.pdb_hierarchy
+    self._type_energies        = acp.type_energies
+    self._type_h_bonds         = acp.type_h_bonds
     xray_structure_all = \
           self._processed_pdb_file.xray_structure(show_summary = False)
     # XXX ad hoc manipulation
@@ -1780,6 +1862,9 @@ class manager(object):
     self._update_master_sel()
 
   def _update_master_sel(self):
+    # self._master_sel here is really unique part of the model,
+    # i.e. all masters + part of model not covered by NCS,
+    # therefore excluding copies instead of using master selections.
     if self._ncs_groups is not None and len(self._ncs_groups) > 0:
       # determine master selections
       self._master_sel = flex.bool(self.get_number_of_atoms(), True)
@@ -1833,6 +1918,16 @@ class manager(object):
     else:
       print("No NCS restraint groups specified.", file=self.log)
       print(file=self.log)
+
+  def get_specific_h_bond_type(self, atom):
+    type_h_bond = self._type_h_bonds[atom.i_seq]
+    return type_h_bond
+
+  def get_specific_vdw_radii(self, atom):
+    e = self.get_ener_lib()
+    type_energy = self._type_energies[atom.i_seq]
+    vdw = e.lib_atom[type_energy].vdw_radius
+    return vdw
 
   def get_vdw_radii(self, vdw_radius_default = 1.0):
     """
@@ -2947,13 +3042,18 @@ class manager(object):
                         out = None, text="Information about rigid groups"):
     global time_model_show
     timer = user_plus_sys_time()
+    # Decide automatically based on available data
+    if(rigid_body is None and self.refinement_flags is not None and
+       self.refinement_flags.rigid_body and tls is None):
+     rigid_body = True
+    #
     selections = None
     if(rigid_body is not None):
        selections = self.refinement_flags.sites_rigid_body
     if(tls is not None): selections = self.refinement_flags.adp_tls
     if(self.refinement_flags.sites_rigid_body is None and
                                  self.refinement_flags.adp_tls is None): return
-    assert selections is not None
+    if(selections is None): return
     if (out is None): out = sys.stdout
     print(file=out)
     line_len = len("| "+text+"|")
@@ -3533,6 +3633,23 @@ class manager(object):
       self._xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection = selection_aniso.iselection())
 
+  def as_map_model_manager(self, map_manager = None,
+    create_model_map = False, resolution = None):
+   """ Return a map_model_manager containing this model
+     (and optional map_manager)
+    Note that a map_manager is required for most functions of the
+    map_model_manager.  You can generate a map_manager with
+    create_model_map = True and setting resolution
+   """
+
+   from iotbx.map_model_manager import map_model_manager
+   mmm = map_model_manager(model = self, map_manager = map_manager)
+   if create_model_map:
+     assert resolution is not None
+     mmm.set_resolution(resolution)
+     mmm.generate_map()
+   return mmm
+
   def _expand_symm_helper(self, records_container):
     """
     This will expand hierarchy and ss annotations. In future anything else that
@@ -3719,5 +3836,6 @@ class manager(object):
       custom_residues=custom_residues,
       params=params,
       log=self.log,
-      minimum_identity=minimum_identity
+      minimum_identity=minimum_identity,
+      ignore_hetatm=True
     )

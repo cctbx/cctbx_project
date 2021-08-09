@@ -8,13 +8,16 @@ tst_list = [
     "$D/nanoBragg/tst_gaussian_mosaicity.py",
     "$D/nanoBragg/tst_gaussian_mosaicity2.py",
     "$D/nanoBragg/tst_nanoBragg_cbf_write.py",
+    "$D/nanoBragg/tst_multisource_background.py",
     ]
 
 OPT = libtbx.env.build_options
 if OPT.enable_cuda:
 
   tst_list_parallel = [
-    ["$D/nanoBragg/tst_gauss_argchk_gpu.py","GPU"] # tests CPU+GPU, argchk optimization
+    ["$D/nanoBragg/tst_gauss_argchk.py","GPU"], # tests CPU+GPU, argchk optimization
+    "$D/gpu/tst_exafel_api.py",                 # CPU / GPU, polychromatic beam, monolithic detector
+    "$D/gpu/tst_gpu_multisource_background.py", # CPU / GPU background comparison
   ]
 else:
   tst_list.append(

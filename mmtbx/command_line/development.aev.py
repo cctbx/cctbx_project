@@ -6,19 +6,21 @@ import mmtbx
 import iotbx.pdb
 import mmtbx.model
 from libtbx.utils import null_out
-import mmtbx.atomic_environment_vectors as aev
+import __init__ as aev
 
-def main(filename, precision):
+def main(filename):
   t0 = time.time()
   pdb_inp = iotbx.pdb.input(file_name = filename)
   model = mmtbx.model.manager(
     model_input   = pdb_inp,
-    build_grm     = True,
     log           = null_out())
+  sel = model.selection(string="protein")
+  model = model.select(selection=sel)
+  model.crystal_symmetry()
   a = aev.AEV(model = model)
-  b = aev.compare(a)
-  print(b)
-  recs = aev.format_HELIX_records_from_AEV(b, float(precision))
+  CC_value = aev.compare(a)
+  print(CC_value)
+  recs = aev.format_HELIX_records_from_AEV(CC_value)
   print("\n".join(recs))
   print('time', time.time()-t0)
 

@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
-import math,os
-from libtbx.path import norm_join
+import math
+import libtbx.load_env
 from libtbx.test_utils import approx_equal
 from scitbx import matrix
 from rstbx.array_family import flex
@@ -30,8 +30,7 @@ def parse_input(filename):
   return reciprocal_vectors
 
 def test_automatic_monoscan(verbose=True):
-  datadir = norm_join(os.environ['RSTBX_DIST'],"indexing")
-  R = parse_input(norm_join(datadir,"results2.dat"))
+  R = parse_input(libtbx.env.under_dist('rstbx', 'indexing/results2.dat'))
   return do_index(R,verbose)
 
 if __name__=='__main__':

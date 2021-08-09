@@ -1,3 +1,50 @@
+2021.7
+======
+
+* Fix pickling error with anomalous_probability_plot
+* Fix bug in reading data CIF file with paired data and sigma arrays of
+  different sizes
+* Added functions for retrieving H-bond types and Van der Waals radii to
+  the model manager class
+* Sequence validation will only use protein or nucleic acid residues for
+  alignment
+
+2021.6
+======
+
+* More improvements to bulk solvent masking for multiple regions
+* Updates to ensemble refinement
+* Enable conversion of some numpy types into flex types instead of
+  requiring that the types match (e.g. int to float is now supported)
+
+2021.5
+======
+
+* Improved bulk solvent masking with support for multiple regions
+
+2021.4
+======
+
+* Improved parsing of reciprocal space data in CIF
+* CCTBXParser can handle intermixed arguments for Python >= 3.7
+* Consolidate management of conda depenencies with conda-devenv
+
+2021.3
+======
+
+* Initial support for native compilation on Apple Silicon
+* Real-space refinement of occupancies and isotropic ADP
+* Improvements in map_model_manager
+
+  * Split up map and model by NCS groups
+  * Create new map_model_manager with resampled maps
+
+2021.2
+======
+
+* Improved remediator code for converting PDB version 2 format to version 3
+* Add compilation support for Boost 1.72 and 1.74
+
 2021.1
 ======
 

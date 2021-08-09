@@ -243,7 +243,7 @@ errorNode                               (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANT
         // need to track and free the memory allocated to it, so for now, we just
         // want something in the tree that isn't a NULL pointer.
         //
-        return adaptor->createTypeText(adaptor, ANTLR3_TOKEN_INVALID, (pANTLR3_UINT8)"Tree Error Node");
+        return (pANTLR3_BASE_TREE)adaptor->createTypeText(adaptor, ANTLR3_TOKEN_INVALID, (pANTLR3_UINT8)"Tree Error Node");
 
 }
 
@@ -252,7 +252,7 @@ errorNode                               (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANT
 static  pANTLR3_BASE_TREE
 dupNode         (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE treeNode)
 {
-        return  treeNode == NULL ? NULL : treeNode->dupNode(treeNode);
+        return  treeNode == NULL ? NULL : (pANTLR3_BASE_TREE)treeNode->dupNode(treeNode);
 }
 
 static  pANTLR3_BASE_TREE
@@ -298,7 +298,7 @@ createToken             (pANTLR3_BASE_TREE_ADAPTOR adaptor, ANTLR3_UINT32 tokenT
     {
                 newToken->textState             = ANTLR3_TEXT_CHARP;
                 newToken->tokText.chars = (pANTLR3_UCHAR)text;
-                newToken->type = tokenType;
+                newToken->setType(newToken, tokenType);
                 newToken->input                         = adaptor->tokenFactory->input;
         newToken->strFactory        = adaptor->strFactory;
     }
@@ -337,6 +337,8 @@ createTokenFromToken    (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_COMMON_TOKEN
                 //
                 pANTLR3_STRING  text;
 
+                newToken->toString  = fromToken->toString;
+
                 if      (fromToken->textState == ANTLR3_TEXT_CHARP)
                 {
                         newToken->textState             = ANTLR3_TEXT_CHARP;
@@ -349,11 +351,11 @@ createTokenFromToken    (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_COMMON_TOKEN
                         newToken->tokText.text      = adaptor->strFactory->newPtr(adaptor->strFactory, text->chars, text->len);
                 }
 
-                newToken->line         = fromToken->line;
-                newToken->index        = fromToken->index;
-                newToken->charPosition = fromToken->charPosition;
-                newToken->channel      = fromToken->channel;
-                newToken->type         = fromToken->type;
+                newToken->setLine                               (newToken, fromToken->getLine(fromToken));
+                newToken->setTokenIndex                 (newToken, fromToken->getTokenIndex(fromToken));
+                newToken->setCharPositionInLine (newToken, fromToken->getCharPositionInLine(fromToken));
+                newToken->setChannel                    (newToken, fromToken->getChannel(fromToken));
+                newToken->setType                               (newToken, fromToken->getType(fromToken));
     }
 
     return  newToken;
@@ -381,7 +383,7 @@ setTokenBoundaries      (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE t,
 
         if      ( startToken != NULL)
         {
-                start = startToken->index;
+                start = startToken->getTokenIndex(startToken);
         }
         else
         {
@@ -390,7 +392,7 @@ setTokenBoundaries      (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE t,
 
         if      ( stopToken != NULL)
         {
-                stop = stopToken->index;
+                stop = stopToken->getTokenIndex(stopToken);
         }
         else
         {
@@ -410,7 +412,7 @@ dbgSetTokenBoundaries   (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE t,
 
         if      (t != NULL && startToken != NULL && stopToken != NULL)
         {
-                adaptor->debugger->setTokenBoundaries(adaptor->debugger, t, startToken->index, stopToken->index);
+                adaptor->debugger->setTokenBoundaries(adaptor->debugger, t, startToken->getTokenIndex(startToken), stopToken->getTokenIndex(stopToken));
         }
 }
 
@@ -451,7 +453,7 @@ replaceChildren
 static  pANTLR3_BASE_TREE
 getChild                                (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE t, ANTLR3_UINT32 i)
 {
-        return t->getChild(t, i);
+        return (pANTLR3_BASE_TREE)t->getChild(t, i);
 }
 static  void
 setChild                                (pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE t, ANTLR3_UINT32 i, pANTLR3_BASE_TREE child)

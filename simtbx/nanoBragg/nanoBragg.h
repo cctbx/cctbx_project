@@ -21,6 +21,7 @@
 #include <boost/math/special_functions/fpclassify.hpp>
 #include <boost_adaptbx/python_streambuf.h>
 #include <omptbx/omp_or_stubs.h>
+#include <simtbx/nanoBragg/nanotypes.h>
 
 using boost::math::erf;
 using boost::math::isnan;
@@ -126,11 +127,6 @@ double sincg(double x, double N);
 double sinc3(double x);
 /* Fourier transform of a spherically-truncated lattice */
 double sinc_conv_sinc3(double x);
-
-/* typedefs to help remember options */
-typedef enum { SAMPLE, BEAM } pivot;
-typedef enum { UNKNOWN, SQUARE, ROUND, GAUSS, GAUSS_ARGCHK, TOPHAT, FIBER } shapetype;
-typedef enum { CUSTOM, ADXV, MOSFLM, XDS, DIALS, DENZO } convention;
 
 /* math functions for point spread */
 /* 2D Gaussian integral=1 */
@@ -459,7 +455,7 @@ class nanoBragg {
     /* member-wise constructor, allowing all members to be initialized in various ways */
     nanoBragg(
         scitbx::vec2<int> detpixels_slowfast, // = 1024, 1024
-        scitbx::vec3<int> Nabc, // 1 1 1
+        scitbx::vec3<double> Nabc, // 1. 1. 1.
         cctbx::uctbx::unit_cell unitcell, // lysozyme
         vec3 misset, // 0 0 0
         vec2 beam_center, // NAN NAN
@@ -575,7 +571,7 @@ class nanoBragg {
 #endif
 
     /* member function for triggering background simulation */
-    void add_background(int oversample, int source);
+    void add_background(int oversample, int const& override_source);
 
     /* member function for extracting background from raw image */
     void extract_background(int source);

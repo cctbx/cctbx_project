@@ -149,7 +149,7 @@ def exercise_mp_geo():
           'outliers_only=False',
           'bonds_and_angles=True']
   mp_geo.run(args)
-  f = file('mp_geo.out', 'rb')
+  f = open('mp_geo.out', 'r')
   # Strip out newline and carriage return chars to
   # prevent platform-specific errors.
   lines = [i.rstrip('\n\r') for i in f.readlines()]
@@ -163,7 +163,7 @@ def exercise_mp_geo():
           'out_file=mp_geo.out',
           'rna_backbone=True']
   mp_geo.run(args)
-  f = open('mp_geo.out', 'rb')
+  f = open('mp_geo.out', 'r')
   lines = [i.rstrip('\n\r') for i in f.readlines()]
   assert lines[0] == \
     ' :1: B: 115: : :  C:__?__:178.072:55.525:76.414:-158.236:-67.172'

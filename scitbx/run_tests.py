@@ -4,6 +4,7 @@ import libtbx.load_env
 
 tst_list = [
   "$D/tests/tst_smoothing.py",
+  "$D/tests/tst_genetic_algorithm_with_mp.py",
   "$D/tests/tst_basic.py",
   "$B/array_family/tst_af_1",
   "$B/array_family/tst_af_2",

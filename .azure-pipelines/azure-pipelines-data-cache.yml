@@ -1,7 +1,7 @@
 # Pipeline name: Update data cache
 
 # Daily update of data cache artifacts
-#   - miniconda
+#   - miniforge
 #   - chem_data
 #   - phenix_regression
 #   - phenix_examples
@@ -17,6 +17,7 @@ schedules:
   branches:
     include:
     - master
+    - main
   always: true
 
 resources:
@@ -24,128 +25,5 @@ resources:
   - pipeline: data_cache
     source: 'Update data cache'
 
-jobs:
-- job: artifacts
-  pool:
-    vmImage: ubuntu-latest
-  timeoutInMinutes: 120
-
-  steps:
-
-  - checkout: none
-
-  - task: InstallSSHKey@0
-    inputs:
-      knownHostsEntry: cci.lbl.gov,131.243.194.153 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAnPOtqyYASs6hc3fsmUQn92ovSozJsMsJyrMWjppUERX1tD4Fh0D7YaNhLvYpKi5mYVREo+tsKoOatCcqKGHCONWpzx7JHXUzfIBsy6nCeygRyyW4yuyoCuYFvOYLkaM4PrN/7XaZEnp1ux6/ZcbRxBDNK4f42svJUV39OX33tRuQWpP+O85paJr1ePHVz6U2n14a+3fRN3DBMti1dJuKOThU4djYEBQimx54pnW71eYORN2oUz+N/4RHAcomtxZpcUMl3Qadw8hD4s1XM6fzJ0Que7KefnnrPOgAEtZxKl9j09aaE70Oh+ie5Y6ckwddJ/4qZB5m2tBaEi3xuy0TSQ==
-      sshPublicKey: ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA7XgVgdU9GmZuo5yVyW/htrAuxe7ypuq7IowWwfUC0WZw9SPzQ8kOGj63plF3ytx/qpgvUlS1AiywO20rZ83gHmRdAiuvt9laH09KlWEUhIhAQTzesqBG5aUT0MKo01yxijoRl5HC8w/MdOanc0h01e6IxnZvgG0N30RB1i4xVPCtR/VBmXSp4R0T+Q/gJjfQssuBxHVMrrute4V3uUHek58FL2QgUB0+zq6ipETjuCJxTSyYVAFtCYDPYs+0lAYYkWrXALCr9kX9s22jYtkyv5kNw6mEW8nhtA7GbTdJLv4M6/WYtcvQV8TDcNCfltOfl81U3gcZ9zhQDKGVoNaJEw== buildbot@cci.lbl.gov
-      sshKeySecureFile: id_rsa
-    displayName: Download SSH key
-
-  # miniconda
-  - script: |
-      mkdir -p $(System.DefaultWorkingDirectory)/miniconda
-      cd $(System.DefaultWorkingDirectory)/miniconda
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
-    displayName: Download miniconda
-
-  - publish: $(System.DefaultWorkingDirectory)/miniconda
-    artifact: miniconda
-
-  # chem_data
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(resources.pipeline.data_cache.projectID)'
-      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
-      allowPartiallySucceededBuilds: true
-      artifact: 'chem_data'
-      path: $(System.DefaultWorkingDirectory)/chem_data
-    displayName: Download chem_data
-    continueOnError: true
-
-  - script: |
-      if [ ! -d "$(System.DefaultWorkingDirectory)/chem_data" ]; then
-        svn co svn+ssh://builder@cci.lbl.gov/chem_data/trunk chem_data
-      fi
-      cd $(System.DefaultWorkingDirectory)/chem_data
-      svn update
-    displayName: Update chem_data
-
-  - publish: $(System.DefaultWorkingDirectory)/chem_data
-    artifact: chem_data
-
-  # phenix_regression
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(resources.pipeline.data_cache.projectID)'
-      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
-      allowPartiallySucceededBuilds: true
-      artifact: 'phenix_regression'
-      path: $(System.DefaultWorkingDirectory)/phenix_regression
-    displayName: Download phenix_regression
-    continueOnError: true
-
-  - script: |
-      if [ ! -d "$(System.DefaultWorkingDirectory)/phenix_regression" ]; then
-        git clone https://gitlab.com/phenix_project/phenix_regression.git
-      fi
-      cd $(System.DefaultWorkingDirectory)/phenix_regression
-      git reset --hard origin/master
-      git lfs install --local
-      git pull --rebase
-      git lfs pull
-    displayName: Update phenix_regression
-
-  - publish: $(System.DefaultWorkingDirectory)/phenix_regression
-    artifact: phenix_regression
-
-  # phenix_examples
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(resources.pipeline.data_cache.projectID)'
-      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
-      allowPartiallySucceededBuilds: true
-      artifact: 'phenix_examples'
-      path: $(System.DefaultWorkingDirectory)/phenix_examples
-    displayName: Download phenix_examples
-    continueOnError: true
-
-  - script: |
-      if [ ! -d "$(System.DefaultWorkingDirectory)/phenix_examples" ]; then
-        git clone https://gitlab.com/phenix_project/phenix_examples.git
-      fi
-      cd $(System.DefaultWorkingDirectory)/phenix_examples
-      git reset --hard origin/master
-      git lfs install --local
-      git pull --rebase
-      git lfs pull
-    displayName: Update phenix_examples
-
-  - publish: $(System.DefaultWorkingDirectory)/phenix_examples
-    artifact: phenix_examples
-
-  # xfel_regression
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(resources.pipeline.data_cache.projectID)'
-      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
-      allowPartiallySucceededBuilds: true
-      artifact: 'xfel_regression'
-      path: $(System.DefaultWorkingDirectory)/xfel_regression
-    displayName: Download xfel_regression
-    continueOnError: true
-
-  - script: |
-      if [ ! -d "$(System.DefaultWorkingDirectory)/xfel_regression" ]; then
-        svn co svn+ssh://builder@cci.lbl.gov/xfel_regression/trunk xfel_regression
-      fi
-      cd $(System.DefaultWorkingDirectory)/xfel_regression
-      svn update
-    displayName: Update xfel_regression
-
-  - publish: $(System.DefaultWorkingDirectory)/xfel_regression
-    artifact: xfel_regression
+extends:
+  template: ./templates/update-data-cache.yml

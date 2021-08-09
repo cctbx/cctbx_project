@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import xray
-from mmtbx import utils
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, multi_out
 import iotbx.phil
@@ -16,6 +15,7 @@ from mmtbx import f_model
 from mmtbx.twinning import twin_f_model
 from six.moves import cStringIO as StringIO
 import sys, os
+from iotbx import extract_xtal_data
 
 master_params = iotbx.phil.parse("""\
 twin_utils{
@@ -208,14 +208,14 @@ def run(args, command_name="phenix.twin_map_utils"):
     miller_array = None
     free_flags = None
 
-    tmp_params = utils.data_and_flags_master_params().extract()
+    tmp_params = extract_xtal_data.data_and_flags_master_params().extract()
     # insert proper values please
     tmp_params.file_name = params.twin_utils.input.xray_data.file_name
     tmp_params.labels = params.twin_utils.input.xray_data.obs_labels
     tmp_params.r_free_flags.file_name=params.twin_utils.input.xray_data.file_name
     tmp_params.r_free_flags.label=params.twin_utils.input.xray_data.free_flag
 
-    tmp_object = utils.determine_data_and_flags( reflection_file_server = xray_data_server,
+    tmp_object = extract_xtal_data.run( reflection_file_server = xray_data_server,
                                                  parameters = tmp_params, log=log )
 
     miller_array = tmp_object.extract_data()

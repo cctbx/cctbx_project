@@ -346,7 +346,7 @@ class _mtriage(object):
     return self
 
   def _adjust(self):
-    if(self.d99>10.): # Atomic model isn't suitable?
+    if(self.d99 and self.d99>10.): # Atomic model isn't suitable?
       self.params.compute.fsc_curve_model = False
       self.params.compute.d_fsc_model_05  = False
       self.params.compute.d_fsc_model_0   = False

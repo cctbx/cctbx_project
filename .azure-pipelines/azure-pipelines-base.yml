@@ -1,15 +1,16 @@
 # Nightly builds for updates to base
 
-# no continuous integration builds
+# no continuous integration builds or pull requests
 trigger: none
+pr: none
 
 # only nightly and pull request builds
-schedules:
-- cron: '0 3 * * *'
-  displayName: Nightly base build
-  branches:
-    include:
-    - master
+# schedules:
+# - cron: '0 3 * * *'
+#   displayName: Nightly base build
+#   branches:
+#     include:
+#     - master
 
 resources:
   pipelines:
@@ -26,7 +27,6 @@ stages:
   displayName: Build and test
   dependsOn: Preparation
   jobs:
-    - template: ./base-win.yml
     - template: ./base-linux.yml
       parameters:
         distribution: centos

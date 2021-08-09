@@ -1,0 +1,66 @@
+# Template for updating data cache artifacts
+#   - chem_data
+#   - phenix_regression
+#   - phenix_examples
+
+steps:
+- task: InstallSSHKey@0
+  inputs:
+    knownHostsEntry: cci.lbl.gov,131.243.194.153 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAnPOtqyYASs6hc3fsmUQn92ovSozJsMsJyrMWjppUERX1tD4Fh0D7YaNhLvYpKi5mYVREo+tsKoOatCcqKGHCONWpzx7JHXUzfIBsy6nCeygRyyW4yuyoCuYFvOYLkaM4PrN/7XaZEnp1ux6/ZcbRxBDNK4f42svJUV39OX33tRuQWpP+O85paJr1ePHVz6U2n14a+3fRN3DBMti1dJuKOThU4djYEBQimx54pnW71eYORN2oUz+N/4RHAcomtxZpcUMl3Qadw8hD4s1XM6fzJ0Que7KefnnrPOgAEtZxKl9j09aaE70Oh+ie5Y6ckwddJ/4qZB5m2tBaEi3xuy0TSQ==
+    sshPublicKey: ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA7XgVgdU9GmZuo5yVyW/htrAuxe7ypuq7IowWwfUC0WZw9SPzQ8kOGj63plF3ytx/qpgvUlS1AiywO20rZ83gHmRdAiuvt9laH09KlWEUhIhAQTzesqBG5aUT0MKo01yxijoRl5HC8w/MdOanc0h01e6IxnZvgG0N30RB1i4xVPCtR/VBmXSp4R0T+Q/gJjfQssuBxHVMrrute4V3uUHek58FL2QgUB0+zq6ipETjuCJxTSyYVAFtCYDPYs+0lAYYkWrXALCr9kX9s22jYtkyv5kNw6mEW8nhtA7GbTdJLv4M6/WYtcvQV8TDcNCfltOfl81U3gcZ9zhQDKGVoNaJEw== buildbot@cci.lbl.gov
+    sshKeySecureFile: id_rsa
+  displayName: Download SSH key
+
+- task: DownloadPipelineArtifact@2
+  inputs:
+    source: 'specific'
+    project: '$(resources.pipeline.data_cache.projectID)'
+    pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+    artifact: 'chem_data'
+    path: $(Pipeline.Workspace)/modules/chem_data
+  displayName: Download chem_data
+
+- script: |
+    if [ ! -d "$(Pipeline.Workspace)/modules/chem_data" ]; then
+      svn co svn+ssh://builder@cci.lbl.gov/chem_data/trunk chem_data
+    fi
+    cd $(Pipeline.Workspace)/modules/chem_data
+    svn update
+  displayName: Update chem_data
+  continueOnError: true
+
+- task: DownloadPipelineArtifact@2
+  inputs:
+    source: 'specific'
+    project: '$(resources.pipeline.data_cache.projectID)'
+    pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+    artifact: 'phenix_regression'
+    path: $(Pipeline.Workspace)/modules/phenix_regression
+  displayName: Download phenix_regression
+
+- script: |
+    cd $(Pipeline.Workspace)/modules/phenix_regression
+    git reset --hard origin/master
+    git lfs install --local
+    git pull --rebase
+    git lfs pull
+  displayName: Update phenix_regression
+  continueOnError: true
+
+- task: DownloadPipelineArtifact@2
+  inputs:
+    source: 'specific'
+    project: '$(resources.pipeline.data_cache.projectID)'
+    pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+    artifact: 'phenix_examples'
+    path: $(Pipeline.Workspace)/modules/phenix_examples
+  displayName: Download phenix_examples
+
+- script: |
+    cd $(Pipeline.Workspace)/modules/phenix_examples
+    git reset --hard origin/master
+    git lfs install --local
+    git pull --rebase
+    git lfs pull
+  displayName: Update phenix_examples
+  continueOnError: true

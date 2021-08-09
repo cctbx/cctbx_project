@@ -61,6 +61,12 @@ def inspect(py_lines):
         l = l[:noqa.start()].strip()
       flds = split()
     elif (l.startswith("from ")):
+      if (l.endswith(" # import dependency")):
+        continue
+      if (l.endswith(" # implicit import")):
+        continue
+      if (l.endswith(" # special import")):
+        continue
       # from _ import _ handling is rather broken, don't try to flake8 properly
       if "noqa" in l:
         continue

@@ -23,10 +23,11 @@ from scitbx.array_family import flex
 from six import string_types
 from six.moves import cStringIO as StringIO
 import sys
+from iotbx import extract_xtal_data
 
 cmdline_input_phil_base_str = """
 input {
-  include scope mmtbx.utils.xray_data_str
+  include scope iotbx.extract_xtal_data.xray_data_str
   %(phases)s
   %(unmerged)s
   pdb {
@@ -113,7 +114,7 @@ def generate_master_phil_with_inputs(
   if (enable_experimental_phases):
     phil_extra_dict["phases"] = """
       experimental_phases {
-        include scope mmtbx.utils.experimental_phases_params_str
+        include scope iotbx.extract_xtal_data.experimental_phases_params_str
       }"""
     phil_extra_dict["phases_flag"] = """
       use_experimental_phases = Auto
@@ -370,21 +371,31 @@ class load_model_and_data(object):
           raise Sorry("No crystal symmetry information found in input files.")
       if (hkl_server is None):
         hkl_server = hkl_in.file_server
-      data_and_flags = mmtbx.utils.determine_data_and_flags(
+      try:
+        pp = params.input.experimental_phases
+      except AttributeError: pp=None
+      data_and_flags = extract_xtal_data.run(
         reflection_file_server=hkl_server,
         parameters=params.input.xray_data,
         data_parameter_scope="input.xray_data",
         flags_parameter_scope="input.xray_data.r_free_flags",
+        experimental_phases_params = pp,
+        experimental_phases_parameter_scope = "input.experimental_phases",
         prefer_anomalous=prefer_anomalous,
         force_non_anomalous=force_non_anomalous,
         log=self.log)
-      self.intensity_flag = data_and_flags.intensity_flag
+      self.intensity_flag = data_and_flags.f_obs.is_xray_intensity_array()
       self.raw_data = data_and_flags.raw_data
       self.raw_flags = data_and_flags.raw_flags
       self.test_flag_value = data_and_flags.test_flag_value
       self.f_obs = data_and_flags.f_obs
       self.r_free_flags = data_and_flags.r_free_flags
       self.miller_arrays = hkl_in.file_server.miller_arrays
+      self.hl_coeffs = None
+      target_name = "ml"
+      if(data_and_flags.experimental_phases is not None):
+        target_name = "mlhl"
+        self.hl_coeffs = data_and_flags.experimental_phases
       hkl_symm = self.raw_data.crystal_symmetry()
     if len(self.cif_file_names) > 0 :
       for file_name in self.cif_file_names :
@@ -445,38 +456,6 @@ class load_model_and_data(object):
       self.r_free_flags = self.r_free_flags.customized_copy(
         crystal_symmetry=self.crystal_symmetry).eliminate_sys_absent().set_info(
           self.r_free_flags.info())
-    # EXPERIMENTAL PHASES
-    target_name = "ml"
-    if hasattr(params.input, "experimental_phases"):
-      flag = params.input.use_experimental_phases
-      if (flag in [True, Auto]):
-        phases_file = params.input.experimental_phases.file_name
-        if (phases_file is None):
-          phases_file = params.input.xray_data.file_name
-          phases_in = hkl_in
-        else :
-          phases_in = file_reader.any_file(phases_file)
-          phases_in.check_file_type("hkl")
-        phases_in.file_server.err = self.log # redirect error output
-        space_group = self.crystal_symmetry.space_group()
-        point_group = space_group.build_derived_point_group()
-        hl_coeffs = mmtbx.utils.determine_experimental_phases(
-          reflection_file_server = phases_in.file_server,
-          parameters             = params.input.experimental_phases,
-          log                    = self.log,
-          parameter_scope        = "input.experimental_phases",
-          working_point_group    = point_group,
-          symmetry_safety_check  = True)
-        if (hl_coeffs is not None):
-          hl_coeffs = hl_coeffs.map_to_asu()
-          if hl_coeffs.anomalous_flag():
-            if (not self.f_obs.anomalous_flag()):
-              hl_coeffs = hl_coeffs.average_bijvoet_mates()
-          elif self.f_obs.anomalous_flag():
-            hl_coeffs = hl_coeffs.generate_bijvoet_mates()
-          self.hl_coeffs = hl_coeffs.matching_set(other=self.f_obs,
-            data_substitute=(0,0,0,0))
-          target_name = "mlhl"
     # PDB INPUT
     self.unknown_residues_flag = False
     self.unknown_residues_error_message = False

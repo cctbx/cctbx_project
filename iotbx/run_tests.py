@@ -57,6 +57,7 @@ tst_list_base = [
   "$D/pdb/tst_secondary_structure.py",
   "$D/pdb/tst_utils.py",
   "$D/pdb/tst_secondary_structure_2.py",
+  "$D/pdb/remediation/tst_remediator.py",
   "$D/examples/pdb_to_map_simple.py",
   "$D/examples/pdb_truncate_to_ala/tst.py",
   "$D/examples/pdb_tardy_conf_sampling_simple.py",
@@ -92,6 +93,7 @@ tst_list_base = [
   "$D/regression/tst_reflection_file_editor.py",
   "$D/regression/tst_split_models.py",
   "$D/regression/tst_pdb_as_fasta.py",
+  "$D/regression/tst_pdb_link_records.py",
   "$D/regression/tst_merging_statistics.py",
   "$D/regression/tst_simple_map_coefficients.py",
   "$D/regression/tst_sort_atoms.py",
@@ -111,6 +113,7 @@ tst_list_base = [
   "$D/regression/ncs/tst_ncs_input.py",
   "$D/regression/ncs/tst_ncs_user_selections.py",
   "$D/regression/ncs/tst_ncs.py",
+  "$D/regression/ncs/tst_ncs_without_validation.py",
   "$D/pdb/tst_read_mtrix_records_from_cif.py",
   "$D/regression/tst_show_systematic_absences.py",
   "$D/regression/tst_miller_sort_asu.py",
@@ -123,6 +126,7 @@ tst_list_base = [
   "$D/regression/tst_cif_as_pdb_1atom.py",
   "$D/regression/tst_split_data_cif.py",
   "$D/regression/tst_all_chain_ids.py",
+  "$D/regression/tst_extract_xtal_data.py",
   ]
 
 # failing tests on Windows, Python 2.7

@@ -69,22 +69,28 @@ class geometry(object):
         self.from_restraints.den_residual_sum+
         self.from_restraints.ramachandran_residual_sum)
 
-  def angle(self):
+  def angle(self, return_rmdZ=False):
     mi,ma,me,n = 0,0,0,0
     outliers = 0
     if(self.from_restraints is not None):
-      mi,ma,me = self.from_restraints.angle_deviations()
+      if return_rmdZ:
+        mi,ma,me = self.from_restraints.angle_deviations_z()
+      else:
+        mi,ma,me = self.from_restraints.angle_deviations()
       n = self.from_restraints.get_filtered_n_angle_proxies()
       outliers = self.from_restraints.get_angle_outliers(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
         sigma_threshold=4)
     return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
 
-  def bond(self):
+  def bond(self, return_rmdZ=False):
     mi,ma,me,n = 0,0,0,0
     outliers = 0
     if(self.from_restraints is not None):
-      mi,ma,me = self.from_restraints.bond_deviations()
+      if return_rmdZ:
+        mi,ma,me = self.from_restraints.bond_deviations_z()
+      else:
+        mi,ma,me = self.from_restraints.bond_deviations()
       n = self.from_restraints.get_filtered_n_bond_proxies()
       outliers = self.from_restraints.get_bond_outliers(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
@@ -232,6 +238,8 @@ class geometry(object):
       self.cached_result = group_args(
          angle            = self.angle(),
          bond             = self.bond(),
+         angle_z          = self.angle(return_rmdZ=True),
+         bond_z           = self.bond(return_rmdZ=True),
          chirality        = self.chirality(),
          dihedral         = self.dihedral(),
          planarity        = self.planarity(),
@@ -265,19 +273,24 @@ class geometry(object):
 
   def show(self, log=None, prefix="", uppercase=True):
     if(log is None): log = sys.stdout
-    def fmt(f1,f2,d1):
-      fmt_str= "%6.3f %7.3f %6d"
+    def fmt(f1,f2,d1,z1=None):
       if f1 is None  : return '   -       -       -  '
-      return fmt_str%(f1,f2,d1)
+      if z1 is None:
+        fmt_str= "%6.3f %7.3f %6d"
+        return fmt_str%(f1,f2,d1)
+      else:
+        fmt_str= "%6.3f %7.3f %6d  Z=%6.3f"
+        return fmt_str%(f1,f2,d1,z1)
     def fmt2(f1):
       if f1 is None: return '  -   '
       return "%-6.3f"%(f1)
     res = self.result()
     a,b,c,d,p,n = res.angle, res.bond, res.chirality, res.dihedral, \
       res.planarity, res.nonbonded
+    az, bz = res.angle_z, res.bond_z
     result = """
 %sGeometry Restraints Library: %s
-%sDeviations from Ideal Values.
+%sDeviations from Ideal Values - rmsd. rmsZ for bonds and angles.
 %s  Bond      : %s
 %s  Angle     : %s
 %s  Chirality : %s
@@ -287,8 +300,8 @@ class geometry(object):
 %s"""%(prefix,
        self.restraints_source,
        prefix,
-       prefix, fmt(b.mean, b.max, b.n),
-       prefix, fmt(a.mean, a.max, a.n),
+       prefix, fmt(b.mean, b.max, b.n, bz.mean),
+       prefix, fmt(a.mean, a.max, a.n, az.mean),
        prefix, fmt(c.mean, c.max, c.n),
        prefix, fmt(p.mean, p.max, p.n),
        prefix, fmt(d.mean, d.max, d.n),

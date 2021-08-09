@@ -10,6 +10,7 @@ from iotbx import mrcfile
 
 def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
     split_pdb_file_name = None,
+    ncs_pdb_file_name = None,
     out = sys.stdout):
 
   # Set up source data
@@ -76,11 +77,33 @@ def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
   dm = DataManager()
   aa = dm.get_map_model_manager(model_file=pdb_file_name,
     map_files=map_file_name)
+  cc = dm.get_map_model_manager(model_file=ncs_pdb_file_name,
+    map_files=map_file_name)
   bb = dm.get_map_model_manager(model_file=split_pdb_file_name,
     map_files=map_file_name)
 
-  for selection_method in ['by_chain', 'by_segment','supplied_selections',
-      'boxes']:
+  # Merge by models
+  a = aa.deep_copy()
+  n_starting_models = len(list(a.model().get_hierarchy().models()))
+  box_info = a.split_up_map_and_model_by_boxes()
+  # Change the hierarchy in a box
+  small_hierarchy = box_info.mmm_list[0].model().get_hierarchy()
+  # delete an atom
+  for m in small_hierarchy.models():
+    for chain in m.chains()[:1]:
+       chain.remove_residue_group(i = 0)
+  box_info.mmm_list[0].model().reset_after_changing_hierarchy()  # REQUIRED
+  # Put everything back together
+  a.merge_split_maps_and_models(box_info = box_info,
+      allow_changes_in_hierarchy = True)
+  n_merged_models = len(list(a.model().get_hierarchy().models()))
+  assert n_starting_models == 1
+  assert n_merged_models == 7
+
+
+  # Merge in various ways
+  for selection_method in ['by_ncs_groups', 'by_chain', 'by_segment',
+       'supplied_selections', 'boxes']:
     if selection_method == 'boxes':
       choices = [True, False]
     else:
@@ -92,6 +115,8 @@ def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
     for select_final_boxes_based_on_model in choices:
       for skip_empty_boxes in choices:
         for mask_choice in mask_choices:
+          if selection_method == 'by_ncs_groups':
+            a=cc.deep_copy()
           if mask_choice: # use split model
             a=bb.deep_copy()
           else: # usual
@@ -111,11 +136,14 @@ def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
             selection = a.model().selection('all')
             box_info = a.split_up_map_and_model_by_supplied_selections(
               selection_list = [selection])
+          elif selection_method == 'by_ncs_groups':
+            box_info = a.split_up_map_and_model_by_ncs_groups()
           elif selection_method == 'boxes':
             box_info = a.split_up_map_and_model_by_boxes(
               skip_empty_boxes = skip_empty_boxes,
               select_final_boxes_based_on_model =
                 select_final_boxes_based_on_model)
+          assert box_info is not None
           print (selection_method,skip_empty_boxes,
               len(box_info.selection_list),
               box_info.selection_list[0].count(True))
@@ -126,6 +154,7 @@ def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
                 ("by_chain",True,1,86,),
                 ("by_segment",True,1,86,),
                 ("supplied_selections",True,1,86,),
+                ("by_ncs_groups",True,1,86),
                 ("boxes",True,7,9),
                 ("boxes",False,12,0,),
                 ("boxes",True,13,1,),
@@ -343,9 +372,13 @@ if __name__ == "__main__":
     map_file_name = libtbx.env.under_dist(
       module_name = "iotbx",
       path = "regression/data/non_zero_origin_map.ccp4")
-    args = [file_name,pdb_file_name, map_file_name,split_pdb_file_name]
+    ncs_pdb_file_name = libtbx.env.under_dist(
+      module_name = "iotbx",
+      path = "regression/data/non_zero_origin_ncs_model.pdb")
+    args = [file_name,pdb_file_name, map_file_name,split_pdb_file_name,
+        ncs_pdb_file_name]
   if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
     exercise(file_name = args[0], pdb_file_name=args[1], map_file_name=args[2],
-     split_pdb_file_name=args[3])
+     split_pdb_file_name=args[3],ncs_pdb_file_name=args[4])
   else:
     print('chem_data is not available, skipping')

@@ -28,32 +28,33 @@ steps:
     ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
   displayName: Link bootstrap.py
 
-# install miniconda
+# install miniforge
 - task: DownloadPipelineArtifact@2
   inputs:
     source: 'specific'
     project: '$(resources.pipeline.data_cache.projectID)'
     pipeline: '$(resources.pipeline.data_cache.pipelineID)'
-    artifact: 'miniconda'
-    path: $(Pipeline.Workspace)/miniconda
-  displayName: Download miniconda
+    artifact: 'miniforge'
+    path: $(Pipeline.Workspace)/miniforge
+  displayName: Download miniforge
 
 - script: |
     set -x -e
-    bash $(Pipeline.Workspace)/miniconda/Miniconda3-latest-$(CONDA)-x86_64.sh -b -u -p $(Pipeline.Workspace)/miniconda
+    bash $(Pipeline.Workspace)/miniforge/Miniforge3-$(CONDA)-x86_64.sh -b -u -p $(Pipeline.Workspace)/miniforge
     # psana1 needs some discontinued packages
-    echo "restore_free_channel: true" > $(Pipeline.Workspace)/miniconda/.condarc
-  displayName: Install miniconda
+    echo "restore_free_channel: true" > $(Pipeline.Workspace)/miniforge/.condarc
+  displayName: Install miniforge
 
 - script: |
-    source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
+    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda env create -f $(Pipeline.Workspace)/modules/cctbx_project/xfel/conda_envs/psana_environment.yml
     conda install -y -c conda-forge --no-deps -n psana_env junit-xml
+    conda install -y pandas -n psana_env
   displayName: Create conda environment
 
 # build
 - script: |
-    source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
+    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda activate psana_env
     cd $(Pipeline.Workspace)
     rm -rf modules/boost
@@ -62,7 +63,7 @@ steps:
 
 # test
 - script: |
-    source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
+    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda activate psana_env
     cd $(Pipeline.Workspace)
     source ./build/setpaths.sh
