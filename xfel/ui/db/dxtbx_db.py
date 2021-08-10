@@ -6,11 +6,9 @@ from scitbx.array_family import flex
 def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
               two_theta_low = None, two_theta_high = None, db_event = None, app = None, trial = None):
   if app is None:
-    app = dxtbx_xfel_db_application(params, mode = 'cache_commits')
-  else:
-    app.mode = 'cache_commits'
+    app = dxtbx_xfel_db_application(params)
 
-  if isinstance(run, int):
+  if isinstance(run, int) or isinstance(run, str):
     db_run = app.get_run(run_number=run)
   else:
     db_run = run

@@ -116,7 +116,7 @@ db {
   port = 3306
     .type = int
     .help = Port number to be used for connection
-  logging_batch_size = 3
+  logging_batch_size = 0
     .type = int
     .help = Number of images to log at once. Increase if using many (thousands) of processors.
 }

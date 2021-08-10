@@ -22,7 +22,7 @@ class DialsProcessorWithLogging(Processor):
       self.rank = rank
 
       if self.rank == 0:
-        db_app = dxtbx_xfel_db_application(params, cache_connection=False)
+        db_app = dxtbx_xfel_db_application(params, cache_connection=False, mode='cache_commits')
         run = db_app.get_run(run_number=self.params.input.run_num)
         run_id = run.id
         rund = run._db_dict
@@ -40,7 +40,8 @@ class DialsProcessorWithLogging(Processor):
       self.trial = Trial(self.db_app, trial_id = trial_id, **triald)
 
     else:
-      self.db_app = dxtbx_xfel_db_application(params, cache_connection=True)
+      self.db_app = dxtbx_xfel_db_application(params, cache_connection=False, mode='execute')
+      self.trial = self.db_app.get_trial(trial_number = params.input.trial)
     self.n_strong = None
 
   def finalize(self):
@@ -49,6 +50,7 @@ class DialsProcessorWithLogging(Processor):
       return
     if self.params.db.logging_batch_size:
       self.log_batched_frames()
+    self.trial = None
 
   def log_batched_frames(self):
     current_run = self.params.input.run_num
