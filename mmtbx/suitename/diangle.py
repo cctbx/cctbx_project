@@ -77,7 +77,6 @@ def getResidueDihedrals(mgr, altcode='', name='', errorFile = sys.stderr):
   if altcode=='':  altcode = 'A'
   manager = mgr
   hierarchy = manager.get_hierarchy()
-  i_seq_name_hash = utils.build_name_hash(pdb_hierarchy=hierarchy)
 
   # dboutput = open("hierarchy.show.txt", "w")
   model = hierarchy.models()[0]  #!!!
@@ -195,7 +194,7 @@ def harder_build_chain(backbone, i, k, residue, residues, chain_id, alt):
     while k < len(backbone) - 3:
       k2 = harder_build_residue(syn_chain, ii, k-ksyn, residue)
       # k2 is an index into syn_chain
-      if k2 > 0:
+      if k2 > k-ksyn:
         k = k2+ksyn
         ii = 0
         residue = new_residue(residues, syn_chain[k2+1])
