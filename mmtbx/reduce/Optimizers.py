@@ -265,7 +265,8 @@ class SingletonOptimizer:
         # Compute the interaction graph, of which each connected component is a Clique.
         # Get a list of singleton Cliques and a list of other Cliques.  Keep separate lists
         # of the singletons and the groups.
-        interactionGraph = InteractionGraph.InteractionGraphAllPairs(movers, self._extraAtomInfo)
+        interactionGraph, self._atomMoverSets = InteractionGraph.InteractionGraphAllPairs(movers, self._extraAtomInfo,
+          probeRadius=probeRadius)
         components = cca.connected_components( graph = interactionGraph )
         maxLen = 0
         singletonCliques = []   # Each entry is a list of integer indices into models with one entry
@@ -285,7 +286,7 @@ class SingletonOptimizer:
         # Determine excluded atoms to a specified hop count for each atom that will
         # be moved.  Make a dictionary of lists that includes all atoms in all Movers.
 
-        # Get the set of all atoms that can be returns from all conformations of all Movers.
+        # Get the set of all atoms that can be returned from all conformations of all Movers.
         moverAtoms = set()
         for m in movers:
           for a in m.CoarsePositions().atoms:
