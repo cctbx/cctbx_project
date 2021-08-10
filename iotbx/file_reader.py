@@ -422,6 +422,11 @@ class any_file_input(object):
 #              (line == "*") or
 #              ((line[-1] == '*') and line[:-1].isalpha()) or
 #              line.isalpha())
+    # Filter out empty sequences
+    tmp = []
+    for o in self._file_object:
+      if(len(o)!=0): tmp.append(o)
+    self._file_object = tmp
     self._file_type = "seq"
 
   def _try_as_hhr(self):
