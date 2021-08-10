@@ -99,7 +99,7 @@ def argsToPhilForm(namespace, others):
   argsOut = []
   for  key,value in dictionary.items(): # vars turns namespace to dict
     if value is not None and value != "":
-      argsOut.append(f"{key}={value}")
+      argsOut.append(str(key)+"="+str(value))
   return argsOut
 
 # CCTBX first

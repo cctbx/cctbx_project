@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys, os, inspect
 
 from numpy.lib.arraysetops import ediff1d

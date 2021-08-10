@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function 
 import sys, os, pprint
 
 from mmtbx.suitename import dualparse, suites
@@ -50,7 +51,7 @@ def run(args):
   else:
       type, ext = analyzeFileType(options.infile)
       if type=="": 
-        logger.write(f"File extension {ext} not recognized\n")
+        logger.write("File extension "+str(ext)+" not recognized\n")
         return
       if type == "pdb":
           suites.main(options=options, outFile=logger2, errorFile=logger)

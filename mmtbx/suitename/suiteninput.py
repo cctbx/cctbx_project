@@ -1,3 +1,4 @@
+from __future__ import print_function
 from suitenamedefs import Suite, Residue, findBase, globals
 
 """
@@ -72,7 +73,7 @@ def readResidues(inFile):
             residue = Residue(ids, base, angles)
             residues.append(residue)
     except IndexError:
-        print(f"Suitename found malformed input on line {i}, reading no further:",
+        print("Suitename found malformed input on line {}, reading no further:".format(i),
             file=sys.stderr)
         print("    ", line, file=sys.stderr)
     return residues
