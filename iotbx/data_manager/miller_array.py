@@ -178,6 +178,8 @@ class MillerArrayDataManager(DataManagerBase):
     to None, e.g. labels[0] = None.
 
     If array_type is None, files of any type are allowed.
+
+    None is returned if the file_server has no arrays
     '''
 
     # use default logger if no logger for reflection_file_server is provided
@@ -240,6 +242,8 @@ class MillerArrayDataManager(DataManagerBase):
       force_symmetry=force_symmetry,
       miller_arrays=miller_arrays,
       err=logger)
+    if len(file_server.miller_arrays) == 0:
+      file_server = None
     return file_server
 
   # -----------------------------------------------------------------------------

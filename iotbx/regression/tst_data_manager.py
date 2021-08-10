@@ -548,7 +548,7 @@ def test_miller_array_datatype():
   assert len(fs.get_miller_arrays(None)) == 13
   fs = dm.get_reflection_file_server(filenames=[data_mtz],
     labels=[['I,SIGI,merged', 'IPR,SIGIPR,merged']], array_type='neutron')
-  assert len(fs.get_miller_arrays(None)) == 0
+  assert fs is None
   for label in ['I,SIGI,merged', 'IPR,SIGIPR,merged']:
     dm.set_miller_array_type(label=label, array_type='x_ray')
   fs = dm.get_reflection_file_server(filenames=[data_mtz],
@@ -590,7 +590,7 @@ def test_miller_array_datatype():
   fs = new_dm.get_reflection_file_server(array_type='x_ray')
   assert len(fs.get_miller_arrays(None)) == 13
   fs = new_dm.get_reflection_file_server(array_type='electron')
-  assert len(fs.get_miller_arrays(None)) == 0
+  assert fs is None
   os.remove('test.phil')
 
 # -----------------------------------------------------------------------------
