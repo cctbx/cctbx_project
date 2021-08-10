@@ -3,7 +3,7 @@ import re, os, sys
 N = 2   # indentation standard
 white = "([ \t]*)"
 simple = re.compile(".*(#|:)")
-stringy = re.compile("[^\"]*(\".*\"|'.*'|#|:)")
+stringy = re.compile("[^\"#:]*(\".*\"|'.*'|#|:[ \t]*(#.*)?$)")
 
 class Line:
     content = ""
@@ -46,21 +46,24 @@ def analyzeLine(raw):
 
 
 def main():
+    sys.argv.append("suiteninput")
     file = sys.argv[1] + ".py"
     #root, ext = os.path.splitext(file)
     outFile = sys.argv[1] + ".ind.py"
     # file = "target.py"
     stream = open(file)
     lines = stream.readlines()
-    #oStream = open(outFile, "w")
-    oStream = sys.stderr
+    oStream = open(outFile, "w")
+    #oStream = sys.stderr
     
     indents = []
     prevSpaces = 0
     level = 0
     newLevel = False
     freeze = False
+    count=-1
     for rawLine in lines:
+        count += 1
         content, spaces, indenting = analyzeLine(rawLine)
         if newLevel:
             # Determined by PREVIOUS line
@@ -71,6 +74,7 @@ def main():
           # indent without : is a line-continuation or data-formatting situation
           freeze = True
         if content == "":  # blank lines influence nothing
+          print("", file=oStream)
           continue
 #        if spaces < prevSpaces and level > 0:
         if spaces < prevSpaces and spaces == indents[-1]:

@@ -38,13 +38,19 @@ dihedrals = (
 
 
 class Failure(Exception):
-  pass
+  message = ""
+
+  def __init__(self, msg):
+    self.message=msg
+
 
 afile = r"C:\Users\Ken\Desktop\Richardson\molprobity\modules\cctbx_project\mmtbx\suitename\test\4fen.pdb"
 # 1q9a for hard alt test
-alt = 'A' #!!! temporary
+ #!!! temporary
 
 def main(inFile):
+  # for testing only
+  alt = 'A'
   wd = os.getcwd()
   mgr = loadModel(inFile)
 
@@ -73,13 +79,13 @@ def getResidueDihedrals(mgr, altcode='', name='', errorFile = sys.stderr):
   hierarchy = manager.get_hierarchy()
   i_seq_name_hash = utils.build_name_hash(pdb_hierarchy=hierarchy)
 
-  output = open("hierarchy.show.txt", "w")
+  # dboutput = open("hierarchy.show.txt", "w")
   model = hierarchy.models()[0]  #!!!
   selector = "name P or name O5' or name C5' or name C4' or name C3' or name O3'"
   selection = manager.selection(selector) 
   #print (len(selection), "atoms")
   backbone_hierarchy = hierarchy.select(selection)
-  backbone_hierarchy.show(output)
+  # backbone_hierarchy.show(dboutput)
   chains = backbone_hierarchy.chains()
   all_residues = []
   cchains = list(chains)  
@@ -107,8 +113,8 @@ def getResidueDihedrals(mgr, altcode='', name='', errorFile = sys.stderr):
     try:
       residues = build_dihedrals(backbone_atoms, chain.id, conf.altloc)
       all_residues.extend(residues)
-    except Failure:
-      print("chain ", chain.id, " unable to find a backbone", file=errorFile)
+    except Failure as e:
+      print("chain ", chain.id, e.message, file=errorFile)
       continue
 
   # if name != "":  # useful for seeing what suites were generated
@@ -166,6 +172,13 @@ def build_dihedrals(mainchain, chain_id, alt):
     return residues
 
 
+def find_start(backbone):
+    for i in range(len(bones)):
+        if backbone[0].name == bones[i]:
+            return i
+    assert False, "backbone atom not recognized"
+
+
 def harder_build_chain(backbone, i, k, residue, residues, chain_id, alt):
     if k - i - 2 < 0:
       syn_chain, i = jump_start()
@@ -173,6 +186,7 @@ def harder_build_chain(backbone, i, k, residue, residues, chain_id, alt):
     else:
       syn_chain = backbone[k:k + 3]
     ksyn = k  # point on backbone where syn_chain shadowing begins
+    broken = False
     # print("syn_chain")
     # for atom in syn_chain:
     #   print(atom.name, atom.fetch_labels().resseq, atom.serial) #just for debugging
@@ -181,24 +195,67 @@ def harder_build_chain(backbone, i, k, residue, residues, chain_id, alt):
     while k < len(backbone) - 3:
       k2 = harder_build_residue(syn_chain, ii, k-ksyn, residue)
       # k2 is an index into syn_chain
-      k = k2+ksyn
-      ii = 0
-      residue = new_residue(residues, syn_chain[k2+1])
+      if k2 > 0:
+        k = k2+ksyn
+        ii = 0
+        residue = new_residue(residues, syn_chain[k2+1])
+      else:
+        # things are horribly broken, just keep on looking for sanity
+        ok = resync(residues, syn_chain, k2)
+        if not ok:  # we can't fix it, terminate here
+          break
+        k += 1
     # delete a possible final dead one
-    if residues[-1].is_dead():
+    if residues[-1].is_dead() or \
+        (len(residues) > 1 and residues[-1].sequence == residues[-2].sequence):
       del residues[-1]
     return k
 
 
-def find_start(backbone):
-    for i in range(len(bones)):
-        if backbone[0].name == bones[i]:
-            return i
-    assert False, "backbone atom not recognized"
+def harder_build_residue(syn_chain, i, kk, residue):
+    # kk is an index to syn_chain
+    assert len(syn_chain) >= kk + 3, "We have run out of syn_chain"
 
+    res = syn_chain[-1].fetch_labels().resseq
+    res_atoms, res_names = get_one_residue(res)
+    res2_atoms, res2_names = get_one_residue(str(int(res)+1))
+
+    for j in range(i, 6):
+      atoms = res_atoms if j < 4 else res2_atoms
+      names = res_names if j < 4 else res2_names
+      if bones[j+3] in names:  # add atom 3 ahead of dihedral start
+                               # so that we have 4 atoms to work with
+        x = names.index(bones[j+3])
+        atom = atoms[x]
+        syn_chain.append(atom)
+        # print("appending", atom.name, atom.fetch_labels().resseq, atom.serial)
+        name, angle = easy_make_dihedral(syn_chain, j, kk)
+        # print(" ", syn_chain[kk+1].fetch_labels().resseq, name, angle, kk, j)
+        residue.angle[j] = angle  # if second failure, we get 9999
+        kk = kk + 1
+      # syn_name = [a.name for a in syn_chain]
+    assert len(syn_chain) >= kk + 3, "We have run out of syn_chain"
+    return kk
+
+
+def resync(residues, syn_chain, k2):
+  "previous residue is not working for us, find next useful one"
+  oldres = syn_chain[-1].fetch_labels().resseq
+  for r in range(1, 21):
+    res = str(int(oldres) + r)
+    selection=manager.selection("resseq " + res + " and (name P or name O5' or name C5' or name C4' or name C3' or name O3')")
+    res_hierarchy = hierarchy.select(selection)
+    atoms = res_hierarchy.atoms()
+    if len(atoms) > 0:  # yes! we have found a useful residue
+      syn_chain.append(atoms[0])
+      return True
+      # residue = new_residue(residues, syn_chain[k2+1])
+      # return residue
+  return False
+     
 
 def jump_start():
-  """Used when the hiccup occurs at the beginning of the chain
+  """Used when a hiccup occurs at the beginning of the chain
   Get three items on the start of syn_chain so that harder_build_residue
   has an adequate starting point to work with.
   """
@@ -227,34 +284,9 @@ def jump_start():
       n += 1
     j += 1
   if j>=jmax:
-    raise Failure
+    raise Failure(" unable to find a backbone")
   return syn_chain, i
 
-
-def harder_build_residue(syn_chain, i, kk, residue):
-    # kk is an index to syn_chain
-    assert len(syn_chain) >= kk + 3
-
-    res = syn_chain[-1].fetch_labels().resseq
-    res_atoms, res_names = get_one_residue(res)
-    res2_atoms, res2_names = get_one_residue(str(int(res)+1))
-
-    for j in range(i, 6):
-      atoms = res_atoms if j < 4 else res2_atoms
-      names = res_names if j < 4 else res2_names
-      if bones[j+3] in names:  # add atom 3 ahead of dihedral start
-                               # so that we have 4 atoms to work with
-        x = names.index(bones[j+3])
-        atom = atoms[x]
-        syn_chain.append(atom)
-        # print("appending", atom.name, atom.fetch_labels().resseq, atom.serial)
-        name, angle = easy_make_dihedral(syn_chain, j, kk)
-        # print(" ", syn_chain[kk+1].fetch_labels().resseq, name, angle, kk, j)
-        residue.angle[j] = angle  # if second failure, we get 9999
-        kk = kk + 1
-      # syn_name = [a.name for a in syn_chain]
-    assert len(syn_chain) >= kk + 3
-    return kk
 
 
 def new_residue(residues, pivot):

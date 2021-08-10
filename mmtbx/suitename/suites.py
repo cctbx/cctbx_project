@@ -23,7 +23,7 @@ from libtbx.utils import Sorry
 from mmtbx.validation import utils
 from cctbx import geometry_restraints
 from collections import defaultdict
-from myangle import getResidueDihedrals, residueString
+from diangle import getResidueDihedrals, residueString
 
 
 # The following are the options available, in Phil format, 
@@ -114,11 +114,11 @@ def main(options, outFile=None, errorFile=None):
   ### to print mp_geo-like output:
   # for r in residues:
   #   print(residueString(r))
-# useful for seeing what suites were generated
+  # useful for seeing what suites were generated
+
   if residues is not None and len(residues) > 0:
     suiteList = suiteninput.buildSuites(residues)
     suiteList = suiteList[:-1]
-    
     suiteList = compute(suiteList)
     finalStats()
     write(outFile, suiteList)
