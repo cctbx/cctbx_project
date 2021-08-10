@@ -85,7 +85,7 @@ import numpy as np
 from math import cos, pi
 
 
-version = "suitename.1.0.030821"
+version = "suitename.1.1.081021"
 dbCounter = 0
 dbTarget = -99  # triggers extra output on this suite
 
