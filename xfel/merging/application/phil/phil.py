@@ -241,6 +241,23 @@ modify
       .help = Size represents a tradeoff,  larger size will take longer to compute but use fewer MPI ranks
       .help = and converge to more accurate coset assignment (higher % consensus).  Ideal value is data
       .help = dependent, default of 600 is good for a 200-Angstrom cell, but value should increase for smaller cell.
+    twin_axis = None
+      .type = ints(size=3)
+      .multiple = True
+      .help = Rotation axis to test as a reindexing operator. Given as a direct \
+          axis, e.g. 1,0,0 is a rotation around the a axis.
+    twin_rotation = None
+      .type = int
+      .multiple = True
+      .help = Rotation corresponding to a value of twin_axis. Given as an \
+          n-fold rotation, e.g. 2 denotes a twofold rotation.
+    single_cb_op_to_minimum = False
+      .type = bool
+      .help = Internally the lattices are transformed to a primitive cell \
+          before cosym analysis. Typically each cb_op_to_minimum is determined \
+          individually, but if the options twin_axis and twin_rotation are \
+          used, the transformation has to be the same for every lattice. \
+          Forcing this is probably harmless but has not been tested extensively.
     plot
       {
       do_plot = True
