@@ -14,14 +14,17 @@ class DialsProcessorWithLogging(Processor):
     self.tt_high = None
     if self.params.experiment_tag is None:
       return
-    if params.db.logging_batch_size:
-      from mpi4py import MPI
-      comm = MPI.COMM_WORLD
 
-      self.queries = []
-      self.rank = rank
+    assert params.db.logging_batch_size >= 1
 
-      if self.rank == 0:
+    from libtbx.mpi4py import MPI
+    comm = MPI.COMM_WORLD
+
+    self.queries = []
+    self.rank = rank
+
+    if comm.size > 1:
+      if rank == 0:
         db_app = dxtbx_xfel_db_application(params, cache_connection=False, mode='cache_commits')
         run = db_app.get_run(run_number=self.params.input.run_num)
         run_id = run.id
@@ -38,9 +41,9 @@ class DialsProcessorWithLogging(Processor):
       self.db_app, run_id, rund, trial_id, triald = comm.bcast((db_app, run_id, rund, trial_id, triald), root=0)
       self.run = Run(self.db_app, run_id = run_id, **rund)
       self.trial = Trial(self.db_app, trial_id = trial_id, **triald)
-
     else:
-      self.db_app = dxtbx_xfel_db_application(params, cache_connection=False, mode='execute')
+      self.db_app = dxtbx_xfel_db_application(params, cache_connection=False, mode='cache_commits')
+      self.run = self.db_app.get_run(run_number=self.params.input.run_num)
       self.trial = self.db_app.get_trial(trial_number = params.input.trial)
     self.n_strong = None
 
@@ -48,8 +51,7 @@ class DialsProcessorWithLogging(Processor):
     super(DialsProcessorWithLogging, self).finalize()
     if self.params.experiment_tag is None:
       return
-    if self.params.db.logging_batch_size:
-      self.log_batched_frames()
+    self.log_batched_frames()
     self.trial = None
 
   def log_batched_frames(self):
@@ -88,16 +90,11 @@ class DialsProcessorWithLogging(Processor):
     # update an existing db_event if db_event is not None
     if self.params.experiment_tag is None:
       return
-    if self.params.db.logging_batch_size:
-      self.queries.append((experiments, reflections, run, n_strong, timestamp,
-                           two_theta_low, two_theta_high,
-                           db_event))
-      if len(self.queries) >= self.params.db.logging_batch_size:
-        self.log_batched_frames()
-    else:
-      db_event = log_frame(experiments, reflections, self.params, run, n_strong, timestamp = timestamp,
-                           two_theta_low = two_theta_low, two_theta_high = two_theta_high,
-                           db_event = db_event, app = self.db_app, trial = self.trial)
+    self.queries.append((experiments, reflections, run, n_strong, timestamp,
+                         two_theta_low, two_theta_high,
+                         db_event))
+    if len(self.queries) >= self.params.db.logging_batch_size:
+      self.log_batched_frames()
     return db_event
 
   def get_run_and_timestamp(self, obj):

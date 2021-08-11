@@ -6,7 +6,9 @@ from scitbx.array_family import flex
 def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
               two_theta_low = None, two_theta_high = None, db_event = None, app = None, trial = None):
   if app is None:
-    app = dxtbx_xfel_db_application(params)
+    app = dxtbx_xfel_db_application(params, mode = 'cache_commits')
+  else:
+    app.mode = 'cache_commits'
 
   if isinstance(run, int) or isinstance(run, str):
     db_run = app.get_run(run_number=run)
@@ -40,6 +42,9 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
                                   two_theta_high = two_theta_high)
 
   inserts = ""
+
+  if app.last_query is None:
+    app.last_query = ""
 
   def save_last_id(name):
     nonlocal inserts
