@@ -95,6 +95,8 @@ class NBcrystal(object):
     @miller_array.setter
     def miller_array(self, val):
         if val is not None:
+            sym = val.crystal_symmetry()
+            self.symbol = sym.space_group_info().type().lookup_symbol()
             if isinstance(val.data()[0], complex):
                 self.miller_is_complex = True
             else:

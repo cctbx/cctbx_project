@@ -205,8 +205,8 @@ class LocalRefiner(BaseRefiner):
 
         LOGGER.info("--0 create an Fcell mapping")
         if self.refine_Fcell:
-            idx, data = self.S.D.Fhkl_tuple
-            self.idx_from_p1 = {h: i for i, h in enumerate(idx)}
+            #idx, data = self.S.D.Fhkl_tuple
+            #self.idx_from_p1 = {h: i for i, h in enumerate(idx)}
             self._make_p1_equiv_mapping()
             # self.p1_from_idx = {i: h for i, h in zip(idx, data)}
 
@@ -291,21 +291,25 @@ class LocalRefiner(BaseRefiner):
         return shot_mapping
 
     def _make_p1_equiv_mapping(self):
-
-        self.p1_indices_from_i_fcell = {}
+        #self.p1_indices_from_i_fcell = {}
+        self.num_equivs_for_i_fcell = {}
+        self.update_indices = []
         for i_fcell in range(self.n_global_fcell):
             hkl_asu = self.asu_from_idx[i_fcell]
 
-            self.p1_indices_from_i_fcell[i_fcell] = []
+            #self.p1_indices_from_i_fcell[i_fcell] = []
             equivs = [i.h() for i in miller.sym_equiv_indices(self.space_group, hkl_asu).indices()]
-            for h_equiv in equivs:
-                # get the nanoBragg p1 miller table index corresponding to this hkl equivalent
-                try:
-                    p1_idx = self.idx_from_p1[h_equiv]  # T
-                except KeyError:
-                    self.print("Whoops, missing index", h_equiv)
-                    continue
-                self.p1_indices_from_i_fcell[i_fcell].append(p1_idx)
+            self.num_equivs_for_i_fcell[i_fcell] = len(equivs)
+            self.update_indices += equivs
+            #for h_equiv in equivs:
+            #    # get the nanoBragg p1 miller table index corresponding to this hkl equivalent
+            #    try:
+            #        p1_idx = self.idx_from_p1[h_equiv]  # T
+            #    except KeyError:
+            #        self.print("Whoops, missing index", h_equiv)
+            #        continue
+            #    self.p1_indices_from_i_fcell[i_fcell].append(p1_idx)
+        self.update_indices = flex.miller_index(self.update_indices)
 
     def _MPI_setup_global_params(self):
         if self.I_AM_ROOT:
@@ -323,61 +327,71 @@ class LocalRefiner(BaseRefiner):
             self.print("----loading fcell data")
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index)
             self.print("---- -- counting hkl totes")
+            LOGGER.info("compute HKL multiplicity")
             self.hkl_frequency = Counter(self.hkl_totals)
+            LOGGER.info("save HKL multiplicity")
             np.save(os.path.join(self.output_dir, "f_asu_multi"), self.hkl_frequency)
+            LOGGER.info("Done ")
 
             # initialize the Fhkl global values
-            self.print("--- --- --- inserting the Fhkl array in the parameter array... ")
-            asu_idx = [self.asu_from_idx[idx] for idx in range(self.n_global_fcell)]
-            self._refinement_millers = flex.miller_index(tuple(asu_idx))
-            Findices, Fdata = self.S.D.Fhkl_tuple
-            vals = [Fdata[self.idx_from_p1[h]] for h in asu_idx]  # TODO am I correct/
-            self.fcell_init = deepcopy(vals)  # store the initial values  for rescaling procedure
+            #LOGGER.info("--- --- --- inserting the Fhkl array in the parameter array... ")
+            #asu_idx = [self.asu_from_idx[idx] for idx in range(self.n_global_fcell)]
+            #self._refinement_millers = flex.miller_index(tuple(asu_idx))
+            #Findices, Fdata = self.S.D.Fhkl_tuple
+            #vals = [Fdata[self.idx_from_p1[h]] for h in asu_idx]  # TODO am I correct/
+            LOGGER.info("local refiner symbol=%s ; nanoBragg crystal symbol: %s" % (self.symbol, self.S.crystal.symbol))
+            ma = self.S.crystal.miller_array_high_symmetry.map_to_asu()
+            LOGGER.info("make an Fhkl map")
+            ma_map = {h: d for h,d in zip(ma.indices(), ma.data())}
+            LOGGER.info("make fcell_init")
+            self.fcell_init_from_i_fcell = np.array([ma_map[self.asu_from_idx[i_fcell]] for i_fcell in range(self.n_global_fcell)])
+            self.fcell_sigmas_from_i_fcell = 1
+            LOGGER.info("DONE make fcell_init")
 
-            if self.Fobs is not None:  # TODO should this ever be None ?
-                miller_binner = self.Fobs.binner()
-                miller_bin_idx = miller_binner.bin_indices()
+            #if self.Fobs is not None:  # TODO should this ever be None ?
+            #    miller_binner = self.Fobs.binner()
+            #    miller_bin_idx = miller_binner.bin_indices()
 
-                unique_bins = sorted(set(miller_bin_idx))
-                sigmas = []
-                for i_bin in unique_bins:
-                    dmax, dmin = miller_binner.bin_d_range(i_bin)
-                    f_selection = self.Fobs.resolution_filter(d_min=dmin, d_max=dmax)
-                    sigma = np.sqrt(np.mean(f_selection.data().as_numpy_array() ** 2))
-                    sigmas.append(sigma)  # sigma_for_res_id[i_bin] = sigma
-                self.sigma_for_res_id = {}
-                summed_sigma = 0
-                for ii, sigma in enumerate(sigmas):
-                    i_bin = unique_bins[ii]
-                    if sigma == 0:
-                        sigma = nearest_non_zero(sigmas, ii)
-                    if sigma == 0:
-                        bin_rng = miller_binner.bin_d_range(i_bin)
-                        raise ValueError("sigma is being set to 0 for all fcell in range %.4f - %.4f" % bin_rng)
-                    if self.rescale_fcell_by_resolution:
-                        assert sigma > 0
-                        self.sigma_for_res_id[i_bin] = 1. / sigma
-                        summed_sigma += 1. / sigma
-                    else:
-                        self.sigma_for_res_id[i_bin] = 1.
-                if self.rescale_fcell_by_resolution:
-                    assert summed_sigma > 0
-                    for ii in self.sigma_for_res_id.keys():
-                        self.sigma_for_res_id[ii] = self.sigma_for_res_id[ii] / summed_sigma
+            #    unique_bins = sorted(set(miller_bin_idx))
+            #    sigmas = []
+            #    for i_bin in unique_bins:
+            #        dmax, dmin = miller_binner.bin_d_range(i_bin)
+            #        f_selection = self.Fobs.resolution_filter(d_min=dmin, d_max=dmax)
+            #        sigma = np.sqrt(np.mean(f_selection.data().as_numpy_array() ** 2))
+            #        sigmas.append(sigma)  # sigma_for_res_id[i_bin] = sigma
+            #    self.sigma_for_res_id = {}
+            #    summed_sigma = 0
+            #    for ii, sigma in enumerate(sigmas):
+            #        i_bin = unique_bins[ii]
+            #        if sigma == 0:
+            #            sigma = nearest_non_zero(sigmas, ii)
+            #        if sigma == 0:
+            #            bin_rng = miller_binner.bin_d_range(i_bin)
+            #            raise ValueError("sigma is being set to 0 for all fcell in range %.4f - %.4f" % bin_rng)
+            #        if self.rescale_fcell_by_resolution:
+            #            assert sigma > 0
+            #            self.sigma_for_res_id[i_bin] = 1. / sigma
+            #            summed_sigma += 1. / sigma
+            #        else:
+            #            self.sigma_for_res_id[i_bin] = 1.
+            #    if self.rescale_fcell_by_resolution:
+            #        assert summed_sigma > 0
+            #        for ii in self.sigma_for_res_id.keys():
+            #            self.sigma_for_res_id[ii] = self.sigma_for_res_id[ii] / summed_sigma
 
-                self.print("SIGMA FOR RES ID:")
-                self.print(self.sigma_for_res_id)
+            #    self.print("SIGMA FOR RES ID:")
+            #    self.print(self.sigma_for_res_id)
 
-                self.res_group_id_from_fcell_index = {}
-                for ii, asu_index in enumerate(miller_binner.miller_indices()):
-                    if asu_index not in self.idx_from_asu:
-                        raise KeyError("something wrong Fobs does not contain the asu indices")
-                    i_fcell = self.idx_from_asu[asu_index]
-                    self.res_group_id_from_fcell_index[i_fcell] = miller_bin_idx[ii]
+            #    self.res_group_id_from_fcell_index = {}
+            #    for ii, asu_index in enumerate(miller_binner.miller_indices()):
+            #        if asu_index not in self.idx_from_asu:
+            #            raise KeyError("something wrong Fobs does not contain the asu indices")
+            #        i_fcell = self.idx_from_asu[asu_index]
+            #        self.res_group_id_from_fcell_index[i_fcell] = miller_bin_idx[ii]
 
-                self.resolution_ids_from_i_fcell = np.array([self.res_group_id_from_fcell_index[i_fcell] for i_fcell in range(self.n_global_fcell)])
-                self.fcell_sigmas_from_i_fcell = np.array([ self.sigma_for_res_id[res_id]*self.fcell_sigma_scale for res_id in self.resolution_ids_from_i_fcell])
-                self.fcell_init_from_i_fcell = np.array(self.fcell_init)
+            #    self.resolution_ids_from_i_fcell = np.array([self.res_group_id_from_fcell_index[i_fcell] for i_fcell in range(self.n_global_fcell)])
+            #    self.fcell_sigmas_from_i_fcell = np.array([ self.sigma_for_res_id[res_id]*self.fcell_sigma_scale for res_id in self.resolution_ids_from_i_fcell])
+            #    self.fcell_init_from_i_fcell = np.array(self.fcell_init)
 
     def _get_sausage_parameters(self, i_shot):
         pass
@@ -472,20 +486,21 @@ class LocalRefiner(BaseRefiner):
     def _update_Fcell(self):
         if not self.refine_Fcell:
             return
-        idx, data = self.S.D.Fhkl_tuple
-        data = data.as_numpy_array()
+        #idx, data = self.S.D.Fhkl_tuple
+        #data = data.as_numpy_array()
+        update_amps = []
         for i_fcell in range(self.n_global_fcell):
             #new_Fcell_amplitude = self._get_fcell_val(i_fcell)
             new_Fcell_amplitude = self._fcell_at_i_fcell[i_fcell]
-
+            update_amps += [new_Fcell_amplitude] * self.num_equivs_for_i_fcell[i_fcell]
             # now surgically update the p1 array in nanoBragg with the new amplitudes
             # (need to update each symmetry equivalent)
-            p1_indices = self.p1_indices_from_i_fcell[i_fcell]
-            data[p1_indices] = new_Fcell_amplitude
+            #p1_indices = self.p1_indices_from_i_fcell[i_fcell]
+            #data[p1_indices] = new_Fcell_amplitude
 
         #self.S.D.Fhkl_tuple = idx, flex.double(data)  # update nanoBragg again  # TODO: add flag to not re-allocate in nanoBragg!
-        update_amps = flex.double(data)
-        self.S.D.quick_Fhkl_update((idx, update_amps))
+        update_amps = flex.double(update_amps)
+        self.S.D.quick_Fhkl_update((self.update_indices, update_amps))
 
     def _update_spectra_coefficients(self):
         pass
@@ -805,8 +820,8 @@ class LocalRefiner(BaseRefiner):
 
             xpos = self.fcell_xstart + i_fcell
             Famp = self._fcell_at_i_fcell[i_fcell]
-            resolution_id = self.res_group_id_from_fcell_index[i_fcell]
-            sig = self.sigma_for_res_id[resolution_id] * self.fcell_sigma_scale
+            #resolution_id = self.res_group_id_from_fcell_index[i_fcell]
+            sig = 1  # self.sigma_for_res_id[resolution_id] * self.fcell_sigma_scale
             for slc in MOD.i_fcell_slices[i_fcell]:
                 self.fcell_dI_dtheta = self.fcell_deriv[slc]
 

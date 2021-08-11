@@ -143,9 +143,6 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
                     self.Fref = utils.open_mtz(self.params.refiner.stage_two.Fref_mtzname,
                                                self.params.refiner.stage_two.Fref_mtzcol)
 
-            # FIXME what if a prediction doesnt have an observed structure factor amplitude
-            LOGGER.info("EVENT: verifying input refl HKLs are included in input Fobs")
-
             #Hi = list(refls["miller_index"])
             #self.Hi[shot_idx] = Hi
             #self.Hi_asu[shot_idx] = map_hkl_list(Hi, True, self.symbol)
@@ -431,7 +428,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         self.res_from_asu = {h: res for h, res in zip(fres.indices(), fres.data())}
 
     def _get_unique_Hi(self):
-        COMM.Barrier()
+        COMM.barrier()
         if COMM.rank == 0:
             from cctbx.crystal import symmetry
             from cctbx import miller

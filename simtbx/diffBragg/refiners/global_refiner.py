@@ -52,15 +52,15 @@ class GlobalRefiner(LocalRefiner):
         if not self.I_AM_ROOT:
             self.sigma_for_res_id = None
             self.res_group_id_from_fcell_index = None
-            self.fcell_init = None
+            #self.fcell_init = None
             self.resolution_ids_from_i_fcell = self.fcell_sigmas_from_i_fcell = self.fcell_init_from_i_fcell = None
 
         if self.rescale_params:
             if self.refine_Fcell:
-                self.fcell_init = comm.bcast(self.fcell_init)
-                self.sigma_for_res_id = comm.bcast(self.sigma_for_res_id)
-                self.res_group_id_from_fcell_index = comm.bcast(self.res_group_id_from_fcell_index)
-                self.resolution_ids_from_i_fcell = comm.bcast(self.resolution_ids_from_i_fcell)
+                #self.fcell_init = comm.bcast(self.fcell_init)
+                #self.sigma_for_res_id = comm.bcast(self.sigma_for_res_id)
+                #self.res_group_id_from_fcell_index = comm.bcast(self.res_group_id_from_fcell_index)
+                #self.resolution_ids_from_i_fcell = comm.bcast(self.resolution_ids_from_i_fcell)
                 self.fcell_sigmas_from_i_fcell = comm.bcast(self.fcell_sigmas_from_i_fcell)
                 self.fcell_init_from_i_fcell = comm.bcast(self.fcell_init_from_i_fcell)
 
