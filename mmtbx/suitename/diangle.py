@@ -205,8 +205,9 @@ def harder_build_chain(backbone, i, k, residue, residues, chain_id, alt):
           break
         k += 1
     # delete a possible final dead one
-    if residues[-1].is_dead() or \
-        (len(residues) > 1 and residues[-1].sequence == residues[-2].sequence):
+    if residues[-1].is_dead():
+      del residues[-1]
+    if len(residues) > 1 and residues[-1].sequence == residues[-2].sequence:
       del residues[-1]
     return k
 
