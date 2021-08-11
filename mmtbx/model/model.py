@@ -1929,6 +1929,12 @@ class manager(object):
     vdw = e.lib_atom[type_energy].vdw_radius
     return vdw
 
+  def get_specific_ion_radius(self, atom): # from ener_lib.cif
+    e = self.get_ener_lib()
+    type_energy = self._type_energies[atom.i_seq]
+    ion_radii = e.lib_atom[type_energy].ion_radius
+    return ion_radii
+
   def get_vdw_radii(self, vdw_radius_default = 1.0):
     """
     Return van-der-Waals radii for known atom names.

@@ -178,22 +178,26 @@ class MillerArrayDataManager(DataManagerBase):
     to None, e.g. labels[0] = None.
 
     If array_type is None, files of any type are allowed.
+
+    None is returned if the file_server has no arrays
     '''
 
     # use default logger if no logger for reflection_file_server is provided
     if logger is None:
       logger = self.logger
 
-    # use default miller_array file if no filenames provided
+    # use all miller_array files if no filenames are provided
     if filenames is None:
-      default_filename = self._check_miller_array_default_filename(
-        'miller_array')
-      filenames = [default_filename]
+      filenames = self.get_miller_array_names()
 
     # set labels
     if labels is None:
       labels = [None for filename in filenames]
 
+    # set labels if the length of labels does not match length of filenames
+    assert len(filenames) >= len(labels)
+    if len(filenames) > len(labels):
+      labels += [None]*(len(filenames) - len(labels))
     assert len(filenames) == len(labels)
 
     # force crystal symmetry if a crystal symmetry is provided
@@ -238,6 +242,8 @@ class MillerArrayDataManager(DataManagerBase):
       force_symmetry=force_symmetry,
       miller_arrays=miller_arrays,
       err=logger)
+    if len(file_server.miller_arrays) == 0:
+      file_server = None
     return file_server
 
   # -----------------------------------------------------------------------------

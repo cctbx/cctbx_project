@@ -1,5 +1,5 @@
 import libtbx.load_env
-import os
+import os, sys
 
 from libtbx.env_config import get_boost_library_with_python_version
 
@@ -34,3 +34,7 @@ if not env_etc.no_boost_python:
   env_simtbx.SConscript("nanoBragg/SConscript",exports={ 'env' : env_simtbx })
   env_simtbx.SConscript("gpu/SConscript",exports={ 'env' : env_simtbx })
   env_simtbx.SConscript("pixel/SConscript",exports={ 'env' : env_simtbx })
+
+  # only build kokkos on linux and if CUDA is enabled
+  if sys.platform.startswith('linux') and env_etc.enable_cuda:
+    env_simtbx.SConscript("kokkos/SConscript",exports={ 'env' : env_simtbx })

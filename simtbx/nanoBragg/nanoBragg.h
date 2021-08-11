@@ -25,7 +25,7 @@
 
 using boost::math::erf;
 using boost::math::isnan;
-#define isnan(X) boost::math::isnan(X)
+//#define isnan(X) boost::math::isnan(X)
 
 
 /* need this on macs */

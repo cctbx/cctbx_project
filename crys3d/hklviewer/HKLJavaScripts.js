@@ -1,5 +1,4 @@
-
-// 'use strict';
+'use strict';
 
 // Microsoft Edge users follow instructions on
 // https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
@@ -141,12 +140,13 @@ function addElement(el)
 
 function addDivBox(name, t, l, w, h, bgcolour="rgba(255, 255, 255, 0.0)", fsize=10)
 {
+  let txt = "";
   if (name != null && name != "null")
     txt = name.toString();
   else
     txt = "";
 
-  divbox = createElement("div",
+  let divbox = createElement("div",
   {
     innerText: txt
   },
@@ -167,14 +167,14 @@ function addDivBox(name, t, l, w, h, bgcolour="rgba(255, 255, 255, 0.0)", fsize=
 
 function addDiv2Container(container, name, t, l, w, h, bgcolour="rgba(255, 255, 255, 0.0)", fsize=10)
 {
-  divbox = addDivBox(name, t, l, w, h, bgcolour, fsize)
+  let divbox = addDivBox(name, t, l, w, h, bgcolour, fsize)
   container.append( divbox );
 }
 
 
 function createDivElement(label, rgb, cornerposition)
 {
-  var elm = createElement("div", { innerText: label },
+  let elm = createElement("div", { innerText: label },
     {
       color: "rgba(" + rgb[0] + ", " + rgb[1] + ", " + rgb[2] + ", 1.0)",
       backgroundColor: "rgba(255, 255, 255, " + div_annotation_opacity + ")",
@@ -331,6 +331,7 @@ Object.assign(debugmessage.style, {
 
 function ReturnClipPlaneDistances()
 {
+  var cameradist;
   if (stage.viewer.parameters.clipScale == 'relative')
     cameradist = stage.viewer.cDist;
   if (stage.viewer.parameters.clipScale == 'absolute')
@@ -347,7 +348,7 @@ function ReturnClipPlaneDistances()
     else
       return;
 
-  msg = String( [stage.viewer.parameters.clipNear,
+  let msg = String( [stage.viewer.parameters.clipNear,
                   stage.viewer.parameters.clipFar,
                   cameradist ] )
   WebsockSendMsg('ReturnClipPlaneDistances:\n' + msg );
@@ -365,7 +366,7 @@ async function RenderRequest()
 // Log errors to debugger of your browser
 function onError(e)
 {
-  msg = 'WebSocket Error ' + e;
+  let msg = 'WebSocket Error ' + e;
   console.log(msg);
   dbgmsg =msg;
 };
@@ -373,7 +374,7 @@ function onError(e)
 
 function onOpen(e)
 {
-  msg = 'Now connected via websocket to ' + pagename + '\n';
+  let msg = 'Now connected via websocket to ' + pagename + '\n';
   WebsockSendMsg(msg);
   dbgmsg =msg;
   rerendered = false;
@@ -382,7 +383,7 @@ function onOpen(e)
 
 function onClose(e)
 {
-  msg = 'Now disconnecting from websocket ' + pagename + '\n';
+  let msg = 'Now disconnecting from websocket ' + pagename + '\n';
   console.log(msg);
   dbgmsg =msg;
 };
@@ -409,7 +410,7 @@ function onMessage(e)
     // refresh browser with the javascript file
       if (stage != null)
       {
-        msg = getOrientMsg();
+        let msg = getOrientMsg();
         WebsockSendMsg('OrientationBeforeReload:\n' + msg );
       }
       WebsockSendMsg( 'Refreshing ' + pagename );
@@ -429,13 +430,13 @@ function onMessage(e)
 
     if (msgtype === "alpha")
     {
-      bin = parseInt(val[0]);
+      let bin = parseInt(val[0]);
       if (bin < shapebufs.length)
       {
         alphas[bin] = parseFloat(val[1]);
         shapebufs[bin].setParameters({ opacity: alphas[bin] });
         if (br_shapebufs.length)
-          for (var g=0; g < nrots; g++ )
+          for (let g=0; g < nrots; g++ )
             br_shapebufs[bin][g].setParameters({opacity: alphas[bin]});
         RenderRequest();
       }
@@ -443,17 +444,17 @@ function onMessage(e)
 
     if (msgtype === "colour")
     {
-      bin = parseInt(val[0]);
+      let bin = parseInt(val[0]);
       if (bin < shapebufs.length)
       {
-        si =  parseInt(val[1]);
+        let si =  parseInt(val[1]);
         colours[bin][3*si] = parseFloat(val[2]);
         colours[bin][3*si+1] = parseFloat(val[3]);
         colours[bin][3*si+2] = parseFloat(val[4]);
         shapebufs[bin].setAttributes({ color: colours[bin] });
 
         if (br_shapebufs.length)
-          for (var g=0; g < nrots; g++ )
+          for (let g=0; g < nrots; g++ )
           {
             br_colours[bin][3*si] = parseFloat(val[2]);
             br_colours[bin][3*si+1] = parseFloat(val[3]);
@@ -466,7 +467,7 @@ function onMessage(e)
 
     if (msgtype === "DisplayTooltips")
     {
-      displaytooltips = val[0];
+      let displaytooltips = val[0];
       stage.signals.hovered.removeAll();
       if (displaytooltips == "hover")
         stage.signals.hovered.add( HoverPickingProxyfunc );
@@ -495,8 +496,8 @@ function onMessage(e)
     if (msgtype === "ReOrient")
     {
       WebsockSendMsg( 'Reorienting ' + pagename );
-      sm = new Float32Array(16);
-      for (j=0; j<16; j++)
+      let sm = new Float32Array(16);
+      for (let j=0; j<16; j++)
       {
         sm[j] = parseFloat(val[j]);
         if (isNaN( sm[j] ))
@@ -509,7 +510,7 @@ function onMessage(e)
       //stage.viewer.renderer.setClearColor( 0xffffff, 0.01);
       //stage.viewer.requestRender();
       RenderRequest();
-      msg = getOrientMsg();
+      let msg = getOrientMsg();
       WebsockSendMsg('CurrentViewOrientation:\n' + msg );
     }
 
@@ -543,16 +544,16 @@ function onMessage(e)
       //alert('rotations:\n' + val);
       // Rotation matrices for the spacegroup come as a string of floats
       // separated by line breaks between each roation matrix
-      rotationstrs = datval[1].split("\n");
+      let rotationstrs = datval[1].split("\n");
       var Rotmats = [];
       var r = new NGL.Vector3();
 
-      for (var rotmxidx=0; rotmxidx < rotationstrs.length; rotmxidx++ )
+      for (let rotmxidx=0; rotmxidx < rotationstrs.length; rotmxidx++ )
       {
         Rotmats.push( new NGL.Matrix3() );
         // convert string of rotation matrix elements into a Matrix3
         var elmstrs = rotationstrs[rotmxidx].split(",");
-        for (j=0; j<9; j++)
+        for (let j=0; j<9; j++)
           Rotmats[rotmxidx].elements[j] = parseFloat(elmstrs[j]);
       }
 
@@ -561,12 +562,12 @@ function onMessage(e)
       if ( !(msgtype.includes("P1")) && rotationstrs.length == 1 && Rotmats[0].equals(Imx) )
         throw "Only the identity matrix is provided. That means no P1 expansion of reflections!";
 
-      for (var bin=0; bin<nbins; bin++)
+      for (let bin=0; bin<nbins; bin++)
       {
-        var nsize = positions[bin].length/3; // number of reflections in each bin
-        var csize = nsize*3;
-        var nsize3 = nsize*3;
-        var anoexp = false;
+        let nsize = positions[bin].length/3; // number of reflections in each bin
+        let csize = nsize*3;
+        let nsize3 = nsize*3;
+        let anoexp = false;
 
         if (msgtype.includes("Friedel") )
         {
@@ -583,18 +584,18 @@ function onMessage(e)
         br_radii[bin] = radii[bin];
         if (anoexp)
         {
-          var colarr = [];
-          var cl = colours[bin].length;
-          for (var i=0; i<cl; i++)
+          let colarr = [];
+          let cl = colours[bin].length;
+          for (let i=0; i<cl; i++)
           {
             colarr[i] = colours[bin][i];
             colarr[i+cl] = colours[bin][i];
           }
           br_colours[bin] = new Float32Array(colarr);
 
-          var radiiarr = [];
-          var rl = radii[bin].length;
-          for (var i=0; i<rl; i++)
+          let radiiarr = [];
+          let rl = radii[bin].length;
+          for (let i=0; i<rl; i++)
           {
             radiiarr[i] = radii[bin][i];
             radiiarr[i+rl] = radii[bin][i];
@@ -604,7 +605,7 @@ function onMessage(e)
 
         nrots = 0;
         nexpandrefls = 0;
-        for (var rotmxidx=0; rotmxidx < rotationstrs.length; rotmxidx++ )
+        for (let rotmxidx=0; rotmxidx < rotationstrs.length; rotmxidx++ )
         {
           if (rotationstrs[rotmxidx].length < 1 )
             continue;
@@ -619,9 +620,9 @@ function onMessage(e)
           br_positions[bin][rotmxidx] = new Float32Array( csize );
           nexpandrefls += csize;
 
-          for (var i=0; i<nsize; i++)
+          for (let i=0; i<nsize; i++)
           {
-            idx= i*3;
+            let idx= i*3;
             r.x = positions[bin][idx];
             r.y = positions[bin][idx+1];
             r.z = positions[bin][idx+2];
@@ -663,9 +664,9 @@ function onMessage(e)
       }
       MakeHKL_Axis();
 
-      for (var bin=0; bin<nbins; bin++)
+      for (let bin=0; bin<nbins; bin++)
       {
-        for (var rotmxidx=0; rotmxidx < nrots; rotmxidx++ )
+        for (let rotmxidx=0; rotmxidx < nrots; rotmxidx++ )
         {
           br_shapebufs[bin][rotmxidx].setParameters({opacity: alphas[bin]});
         }
@@ -698,7 +699,7 @@ function onMessage(e)
       var sm = new Float32Array(9);
       var m4 = new NGL.Matrix4();
 
-      for (j = 0; j < 9; j++)
+      for (let j = 0; j < 9; j++)
         sm[j] = parseFloat(val[j]);
 
       // GL matrices are the transpose of conventional rotation matrices
@@ -713,7 +714,7 @@ function onMessage(e)
       ReturnClipPlaneDistances();
       RenderRequest();
       sleep(100).then(() => {
-        msg = getOrientMsg();
+        let msg = getOrientMsg();
         WebsockSendMsg('CurrentViewOrientation:\n' + msg);
       }
       );
@@ -737,7 +738,7 @@ function onMessage(e)
       ReturnClipPlaneDistances();
       RenderRequest();
       sleep(100).then(() => {
-        msg = getOrientMsg();
+        let msg = getOrientMsg();
         WebsockSendMsg('CurrentViewOrientation:\n' + msg);
       }
       );
@@ -751,7 +752,7 @@ function onMessage(e)
       var m4 = new NGL.Matrix4();
       stm4 = stage.viewerControls.getOrientation().elements;
 
-      for (j = 0; j < 9; j++)
+      for (let j = 0; j < 9; j++)
         sm[j] = parseFloat(val[j]);
 
       // GL matrices are the transpose of conventional rotation matrices
@@ -766,7 +767,7 @@ function onMessage(e)
         postrotmxflag = true;
       RenderRequest();
       sleep(100).then(() => {
-        msg = String(shapeComp.matrix.elements);
+        let msg = String(shapeComp.matrix.elements);
         WebsockSendMsg('CurrentComponentRotation:\n' + msg);
       }
       );
@@ -784,7 +785,7 @@ function onMessage(e)
       m4.makeRotationAxis(axis, theta);
 
       shapeComp.setTransform(m4);
-      for (i = 0; i < vectorshapeComps.length; i++) {
+      for (let i = 0; i < vectorshapeComps.length; i++) {
         if (typeof vectorshapeComps[i].reprList != "undefined")
           vectorshapeComps[i].setTransform(m4);
       }
@@ -793,7 +794,7 @@ function onMessage(e)
         postrotmxflag = true;
       RenderRequest();
       sleep(100).then(() => {
-        msg = String(shapeComp.matrix.elements);
+        let msg = String(shapeComp.matrix.elements);
         WebsockSendMsg('CurrentComponentRotation:\n' + msg);
       }
       );
@@ -824,7 +825,7 @@ function onMessage(e)
 
         m4.makeRotationAxis(axis, theta);
         shapeComp.setTransform(m4);
-        for (i = 0; i < vectorshapeComps.length; i++) {
+        for (let i = 0; i < vectorshapeComps.length; i++) {
           if (typeof vectorshapeComps[i].reprList != "undefined")
             vectorshapeComps[i].setTransform(m4);
         }
@@ -837,7 +838,7 @@ function onMessage(e)
         requestAnimationFrame(render);
 
       sleep(100).then(() => {
-        msg = String(shapeComp.matrix.elements);
+        let msg = String(shapeComp.matrix.elements);
         WebsockSendMsg('CurrentComponentRotation:\n' + msg);
       }
       );
@@ -846,15 +847,15 @@ function onMessage(e)
     if (msgtype === "TranslateHKLpoints")
     {
       WebsockSendMsg( 'Translating HKLs ' + pagename );
-      strs = datval[1].split("\n");
+      var strs = datval[1].split("\n");
       var sm = new Float32Array(3);
       var elmstrs = strs[0].split(",");
-      for (j=0; j<3; j++)
+      for (let j=0; j<3; j++)
         sm[j] = parseFloat(elmstrs[j]);
       shapeComp.setPosition([ sm[0], sm[1], sm[2] ]);
       RenderRequest();
       sleep(100).then(()=> {
-          msg = getOrientMsg();
+          let msg = getOrientMsg();
           WebsockSendMsg('CurrentViewOrientation:\n' + msg );
         }
       );
@@ -863,7 +864,7 @@ function onMessage(e)
     if (msgtype === "DrawSphere") {
       var pos = new Float32Array(3);
       var rgb = new Float32Array(3);
-      for (j = 0; j < 3; j++) {
+      for (let j = 0; j < 3; j++) {
         pos[j] = parseFloat(val2[j]);
         rgb[j] = parseFloat(val2[j + 3]);
       }
@@ -904,9 +905,9 @@ function onMessage(e)
 
     function DeletePrimitives(reprname)
     {
-      thisrepr = stage.getRepresentationsByName(reprname);
+      var thisrepr = stage.getRepresentationsByName(reprname);
       var wasremoved = false;
-      for (i=0; i<stage.compList.length; i++)
+      for (let i=0; i<stage.compList.length; i++)
         if (stage.compList[i].reprList[0].name == reprname)
         {
           thiscomp = stage.compList[i];
@@ -922,7 +923,7 @@ function onMessage(e)
       var r1 = new Float32Array(3);
       var r2 = new Float32Array(3);
       var rgb = new Float32Array(3);
-      for (j=0; j<3; j++)
+      for (let j=0; j<3; j++)
       {
         r1[j] = parseFloat(val2[j]);
         r2[j] = parseFloat(val2[j+3]);
@@ -954,12 +955,12 @@ function onMessage(e)
       // if reprname is supplied with a vector then make a representation named reprname
       // of this and all pending vectors stored in vectorshape and render them.
       // Otherwise just accummulate the new vector
-      var reprname = val2[10].trim();
+      let reprname = val2[10].trim();
       if (reprname != "")
       {
         DeletePrimitives(reprname); // delete any existing vectors with the same name
         cmp = stage.addComponentFromObject(vectorshape);
-        for (i = 0; i < annodivs.length; i++)
+        for (let i = 0; i < annodivs.length; i++)
         {
           elm = annodivs[i][0];
           pos = annodivs[i][1];
@@ -978,12 +979,12 @@ function onMessage(e)
 
     if (msgtype === "RemovePrimitives")
     {
-      var reprname = val[0].trim(); // elmstrs[0].trim();
+      let reprname = val[0].trim(); // elmstrs[0].trim();
       // if reprname is supplied only remove vectors with that name
-      var reprnamegone = false;
-      var clipvecgone = false;
-      var unitcellgone = false;
-      var reciprocunitcellgone = false;
+      let reprnamegone = false;
+      let clipvecgone = false;
+      let unitcellgone = false;
+      let reciprocunitcellgone = false;
       if (reprname != "")
         reprnamegone = DeletePrimitives(reprname);
       else // otherwise remove all vectors
@@ -998,16 +999,16 @@ function onMessage(e)
 
     if (msgtype === "DefineHKL_Axes")
     {
-      strarrs = datval[1].split("\n\n");
-      hstart = eval(strarrs[0]);
-      hend = eval(strarrs[1]);
-      kstart = eval(strarrs[2]);
-      kend = eval(strarrs[3]);
-      lstart = eval(strarrs[4]);
-      lend = eval(strarrs[5]);
-      hlabelpos = eval(strarrs[6]);
-      klabelpos = eval(strarrs[7]);
-      llabelpos = eval(strarrs[8]);
+      let strarrs = datval[1].split("\n\n");
+      let hstart = eval(strarrs[0]);
+      let hend = eval(strarrs[1]);
+      let kstart = eval(strarrs[2]);
+      let kend = eval(strarrs[3]);
+      let lstart = eval(strarrs[4]);
+      let lend = eval(strarrs[5]);
+      let hlabelpos = eval(strarrs[6]);
+      let klabelpos = eval(strarrs[7]);
+      let llabelpos = eval(strarrs[8]);
 
       DefineHKL_Axes(hstart, hend, kstart, kend, 
                  lstart, lend, hlabelpos, klabelpos, llabelpos)
@@ -1071,7 +1072,7 @@ function onMessage(e)
 
     if (msgtype === "GetBoundingBox")
     {
-      msg = String( [stage.viewer.boundingBoxSize.x,
+      let msg = String( [stage.viewer.boundingBoxSize.x,
                      stage.viewer.boundingBoxSize.y,
                      stage.viewer.boundingBoxSize.z]
                   )
@@ -1103,22 +1104,22 @@ function onMessage(e)
 
     if (msgtype === "AddSpheresBin2ShapeBuffer")
     {
-      strarrs = datval[1].split("\n\n");
-      coordarray = eval(strarrs[0]);
-      colourarray = eval(strarrs[1]);
-      radiiarray = eval(strarrs[2]);
-      ttipids = eval(strarrs[3]);
+      let strarrs = datval[1].split("\n\n");
+      let coordarray = eval(strarrs[0]);
+      let colourarray = eval(strarrs[1]);
+      let radiiarray = eval(strarrs[2]);
+      let ttipids = eval(strarrs[3]);
       AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids);
     }
 
     if (msgtype === "MakeColourChart")
     {
-      msg = datval[1].split("\n\n");
-      ctop = eval(msg[0]);
-      cleft = eval(msg[1]);
-      label = msg[2];
-      fomlabel = msg[3];
-      colourgradvalarrays = eval(msg[4]);
+      let msg = datval[1].split("\n\n");
+      let ctop = eval(msg[0]);
+      let cleft = eval(msg[1]);
+      let label = msg[2];
+      let fomlabel = msg[3];
+      let colourgradvalarrays = eval(msg[4]);
       MakeColourChart(ctop, cleft, label, fomlabel, colourgradvalarrays);
       RenderRequest();
     }
@@ -1191,7 +1192,7 @@ function onMessage(e)
       if (columnSelect != null)
         columnSelect.remove(); 
 
-      msg = datval[1].split("\n\n");
+      let msg = datval[1].split("\n\n");
       var columnSelect = createElement("select", {
         onchange: function (e)
         {
@@ -1368,17 +1369,18 @@ function MakeHKL_Axis()
 
 function getOrientMsg()
 {
+  var cvorientmx = null;
   cvorientmx = stage.viewerControls.getOrientation();
-  if (cvorientmx.determinant() == 0)
+  if (cvorientmx == null || cvorientmx.determinant() == 0)
       return oldmsg; // don't return invalid matrix
 
   cvorient = cvorientmx.elements;
-  for (j=0; j<16; j++)
+  for (var j=0; j<16; j++)
   {
     if (Number.isNaN( cvorient[j]) )
       return oldmsg; // don't return invalid matrix
   }
-
+  var cameradist;
   if (stage.viewer.cDist != 0
         && stage.viewer.parameters.clipFar > stage.viewer.cDist
         && stage.viewer.cDist > stage.viewer.parameters.clipNear)
@@ -1390,7 +1392,7 @@ function getOrientMsg()
   else
     cameradist = cvorient[14]; // fall back if stage.viewer.camera.position.z is corrupted
   cvorient.push( cameradist );
-  msg = String(cvorient);
+  var msg = String(cvorient);
   oldmsg = msg;
   return msg;
 }
@@ -1468,19 +1470,19 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
   Otherwise it's usually a list of colour charts that constitute a gradient across colours,
   typically used for illustrating figure of merits attenuating phase values in map coefficients
   */
-  var hfac = 60.0 / colourgradvalarrays[0].length;
-  var ih = 3.0*hfac,
+  let hfac = 60.0 / colourgradvalarrays[0].length;
+  let ih = 3.0*hfac,
   topr = 25.0,
   topr2 = 0.0,
   lp = 2.0; // vertical margin between edge of white container and labels
 
-  var maxnumberwidth = 0;
-  for (j = 0; j < colourgradvalarrays[0].length; j++)
+  let maxnumberwidth = 0;
+  for (let j = 0; j < colourgradvalarrays[0].length; j++)
   {
-    val = colourgradvalarrays[0][j][0];
+    let val = colourgradvalarrays[0][j][0];
     maxnumberwidth = Math.max( getTextWidth(val, fontsize), maxnumberwidth );
   }
-  wp = maxnumberwidth + 5,
+  let wp = maxnumberwidth + 5,
   lp2 = lp + wp,
   gl = 2,
   wp2 = gl,
@@ -1491,12 +1493,12 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
     wp2 = 15;
     fomlabelheight = 0;
   }
-  var wp3 = wp + colourgradvalarrays.length * wp2 + 2;
-  totalheight = ih * colourgradvalarrays[0].length + 35 + fomlabelheight;
+  let wp3 = wp + colourgradvalarrays.length * wp2 + 2;
+  let totalheight = ih * colourgradvalarrays[0].length + 35 + fomlabelheight;
 
   if (colourchart != null)
     colourchart.remove(); // delete previous colour chart if any
-  colourchart = addDivBox(null, ctop, cleft, wp3, totalheight, bgcolour = "rgba(255, 255, 255, 1.0)");
+  colourchart = addDivBox(null, ctop, cleft, wp3, totalheight, "rgba(255, 255, 255, 1.0)");
 
   // make a white box on top of which boxes with transparent background are placed
   // containing the colour values at regular intervals as well as label legend of
@@ -1504,48 +1506,48 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
   addDiv2Container(colourchart, null, topr2, lp, wp3, totalheight, 'rgba(255, 255, 255, 1.0)');
 
   // print label of the miller array used for colouring
-  lblwidth = getTextWidth(millerlabel, fontsize);
-  addDiv2Container(colourchart, millerlabel, topr2, lp, lblwidth + 5, 20, 'rgba(255, 255, 255, 1.0)', fsize=fontsize);
+  let lblwidth = getTextWidth(millerlabel, fontsize);
+  addDiv2Container(colourchart, millerlabel, topr2, lp, lblwidth + 5, 20, 'rgba(255, 255, 255, 1.0)', fontsize);
 
   if (fomlabel != "" )
   {
     // print FOM label, 1, 0.5 and 0.0 values below colour chart
-    fomtop = topr2 + totalheight - 18;
-    fomlp = lp + wp;
-    fomwp = wp3;
-    fomtop2 = fomtop - 13;
+    let fomtop = topr2 + totalheight - 18;
+    let fomlp = lp + wp;
+    let fomwp = wp3;
+    let fomtop2 = fomtop - 13;
     // print the 1 number
-    addDiv2Container(colourchart, 1, fomtop2, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
+    addDiv2Container(colourchart, 1, fomtop2, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fontsize);
     // print the 0.5 number
     leftp = fomlp + 0.48 * gl * colourgradvalarrays.length;
-    addDiv2Container(colourchart, 0.5, fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
+    addDiv2Container(colourchart, 0.5, fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fontsize);
     // print the FOM label
-    addDiv2Container(colourchart, fomlabel, fomtop, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
+    addDiv2Container(colourchart, fomlabel, fomtop, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fontsize);
     // print the 0 number
     leftp = fomlp + 0.96 * gl * colourgradvalarrays.length;
-    addDiv2Container(colourchart, 0, fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
+    addDiv2Container(colourchart, 0, fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fontsize);
   }
 
-  for (j = 0; j < colourgradvalarrays[0].length; j++)
+  for (let j = 0; j < colourgradvalarrays[0].length; j++)
   {
-    val = colourgradvalarrays[0][j][0];
-    topv = j*ih + topr;
-    toptxt = topv - 5;
+    let val = colourgradvalarrays[0][j][0];
+    let topv = j*ih + topr;
+    let toptxt = topv - 5;
     // print value of miller array if present in colourgradvalarrays[0][j][0]
-    addDiv2Container(colourchart,val, toptxt, lp, wp, ih, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
+    addDiv2Container(colourchart,val, toptxt, lp, wp, ih, 'rgba(255, 255, 255, 0.0)', fontsize);
   }
 
   // if colourgradvalarrays is an array of arrays then draw each array next to the previous one
-  for (g = 0; g < colourgradvalarrays.length; g++)
+  for (let g = 0; g < colourgradvalarrays.length; g++)
   {
-    leftp = g*gl + lp + wp;
-    for (j = 0; j < colourgradvalarrays[g].length; j++)
+    let leftp = g*gl + lp + wp;
+    for (let j = 0; j < colourgradvalarrays[g].length; j++)
     {
-      R = colourgradvalarrays[g][j][1];
-      G = colourgradvalarrays[g][j][2];
-      B = colourgradvalarrays[g][j][3];
-      rgbcol = 'rgba(' + R.toString() + ',' + G.toString() + ',' + B.toString() + ', 1.0)'
-      topv = j * ih + topr;
+      let R = colourgradvalarrays[g][j][1];
+      let G = colourgradvalarrays[g][j][2];
+      let B = colourgradvalarrays[g][j][3];
+      let rgbcol = 'rgba(' + R.toString() + ',' + G.toString() + ',' + B.toString() + ', 1.0)'
+      let topv = j * ih + topr;
       // add an extra pixel to height to ensure no white lines accidentally emerge from roundoff errors
       addDiv2Container(colourchart, null, topv, leftp, wp2, ih + 1, rgbcol);
     }
@@ -1578,7 +1580,7 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
 function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids) 
 {
   // Tooltip ids is a list of numbers matching the array index of the radiiarray 
-  ttiplst = [-1].concat(ttipids); 
+  let ttiplst = [-1].concat(ttipids);
   // Prepend this list with -1. This value will be reassigned with an id nummber of 
   // a rotation operator when expanding to P1. PickingProxyfunc() will send back to cctbx.python the 
   // id number of the rotation operator and number in ttiplst matching the reflection that was clicked.
@@ -1588,7 +1590,7 @@ function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids)
   positions.push( new Float32Array( coordarray ) );
   colours.push( new Float32Array( colourarray ) );
   radii.push( new Float32Array( radiiarray ) );
-  curridx = positions.length -1;
+  let curridx = positions.length -1;
   shapebufs.push( new NGL.SphereBuffer({
     position: positions[curridx], // 1dim array [x0, y0, z0, x1, y1, z1,...] for all reflections
     color: colours[curridx], // 1dim array [R0, G0, B0, R1, G1, B1,...] for all reflections
@@ -1605,23 +1607,23 @@ function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids)
 
 function MakeXYZ_Axis() {
   // draw x and y arrows
-  var linelength = 20;
-  var linestart = 5;
-  var vleft = 2;
-  var hbottom = 2;
-  var arrowhalfwidth = 2;
-  var linewidth = 1;
-  var arrowlength = 7;
-  var labelfromarrow = linelength + linestart + arrowlength + 1;
-  var labelwidth = getTextWidth("x", fontsize)
+  let linelength = 20;
+  let linestart = 5;
+  let vleft = 2;
+  let hbottom = 2;
+  let arrowhalfwidth = 2;
+  let linewidth = 1;
+  let arrowlength = 7;
+  let labelfromarrow = linelength + linestart + arrowlength + 1;
+  let labelwidth = getTextWidth("x", fontsize)
 
   if (XYZaxes != null)
     XYZaxes.remove(); // delete previous colour chart if any
-  XYZaxes = addDivBox(null, 0, 10, 60, 60, bgcolour = "rgba(255, 255, 255, 0.0)");
+  XYZaxes = addDivBox(null, 0, 10, 60, 60, "rgba(255, 255, 255, 0.0)");
   XYZaxes.style.top = ""; // offset from the bottom so leave top distance void
   XYZaxes.style.bottom = "30px";
 
-  velm = createElement("div", { innerText: "" },
+  let velm = createElement("div", { innerText: "" },
     {
       backgroundColor: "rgba(0, 255, 0, 1.0)", color: "rgba(0, 0, 0, 0.0)",
       bottom: linestart.toString() + "px",
@@ -1633,7 +1635,7 @@ function MakeXYZ_Axis() {
   addElement(velm);
   XYZaxes.append(velm);
 
-  uparrow = createElement("div", { innerText: "" }, {
+  let uparrow = createElement("div", { innerText: "" }, {
     backgroundColor: "rgba(0, 0, 255, 0.0)", color: "rgba(0, 0, 0, 0.0)",
     bottom: (linelength + linestart).toString() + "px",
     left: vleft.toString() + "px",
@@ -1645,7 +1647,7 @@ function MakeXYZ_Axis() {
   addElement(uparrow);
   XYZaxes.append(uparrow);
 
-  yelm = createElement("div", { innerText: "y" }, {
+  let yelm = createElement("div", { innerText: "y" }, {
     backgroundColor: "rgba(0, 255, 0, " + div_annotation_opacity + ")", color: "rgba(255, 255, 255, 1.0)",
     left: (vleft - linewidth / 2.0).toString() + "px",
     bottom: labelfromarrow.toString() + "px",
@@ -1655,7 +1657,7 @@ function MakeXYZ_Axis() {
   addElement(yelm);
   XYZaxes.append(yelm);
 
-  helm = createElement("div", { innerText: "" }, {
+  let helm = createElement("div", { innerText: "" }, {
     backgroundColor: "rgba(0, 0, 255, 1.0)", color: "rgba(0, 0, 0, 0.0)",
     left: linestart.toString() + "px",
     width: linelength.toString() + "px",
@@ -1666,7 +1668,7 @@ function MakeXYZ_Axis() {
   addElement(helm);
   XYZaxes.append(helm);
 
-  rightarrow = createElement("div", { innerText: "" }, {
+  let rightarrow = createElement("div", { innerText: "" }, {
     backgroundColor: "rgba(0, 0, 255, 0.0)", color: "rgba(0, 0, 0, 0.0)",
     left: (linelength + linestart).toString() + "px",
     bottom: hbottom.toString() + "px",
@@ -1678,7 +1680,7 @@ function MakeXYZ_Axis() {
   addElement(rightarrow);
   XYZaxes.append(rightarrow);
 
-  xelm = createElement("div", { innerText: "x" }, {
+  let xelm = createElement("div", { innerText: "x" }, {
     backgroundColor: "rgba(0, 0, 255, " + div_annotation_opacity + ")", color: "rgba(255, 255, 255, 1.0)",
     left: labelfromarrow.toString() + "px",
     bottom: (hbottom + arrowhalfwidth - linewidth / 2.0).toString() + "px",
@@ -1688,8 +1690,8 @@ function MakeXYZ_Axis() {
   addElement(xelm);
   XYZaxes.append(xelm);
 
-  var arrowradius = 10;
-  zarrow = createElement("div", { innerText: "" }, {
+  let arrowradius = 10;
+  let zarrow = createElement("div", { innerText: "" }, {
     backgroundColor: "rgba(255,0 ,0, 1.0)", color: "rgba(0, 0, 0, 1.0)",
     left: (linelength / 2 + linestart).toString() + "px",
     bottom: (linelength / 2 + linestart).toString() + "px",
@@ -1701,7 +1703,7 @@ function MakeXYZ_Axis() {
   addElement(zarrow);
   XYZaxes.append(zarrow);
 
-  zarrowtip = createElement("div", { innerText: "" }, {
+  let zarrowtip = createElement("div", { innerText: "" }, {
     backgroundColor: "rgba(255,255,255, 1.0)", color: "rgba(0, 0, 0, 1.0)",
     left: (arrowradius / 2 + linelength / 2 + linestart - 1).toString() + "px",
     bottom: (arrowradius / 2 + linelength / 2 + linestart - 1).toString() + "px",
@@ -1713,7 +1715,7 @@ function MakeXYZ_Axis() {
   addElement(zarrowtip);
   XYZaxes.append(zarrowtip);
 
-  zelm = createElement("div", { innerText: "z" }, {
+  let zelm = createElement("div", { innerText: "z" }, {
     backgroundColor: "rgba(255, 0, 0, " + div_annotation_opacity + ")", color: "rgba(255, 255, 255, 1.0)",
     left: (arrowradius + linelength / 2 + linestart).toString() + "px",
     bottom: (arrowradius + linelength / 2 + linestart).toString() + "px",
@@ -1750,7 +1752,7 @@ function HKLscene()
         stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos -stage.viewer.camera.position.z);
         stage.viewer.requestRender();
       }
-      msg = getOrientMsg();
+      let msg = getOrientMsg();
       rightnow = timefunc();
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
@@ -1766,7 +1768,7 @@ function HKLscene()
   stage.mouseObserver.signals.clicked.add(
     function (x, y)
     {
-      msg = getOrientMsg();
+      let msg = getOrientMsg();
       WebsockSendMsg('CurrentViewOrientation:\n' + msg );
     }
   );
@@ -1781,7 +1783,7 @@ function HKLscene()
         stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos -stage.viewer.camera.position.z);
         stage.viewer.requestRender();
       }
-      msg = getOrientMsg();
+      let msg = getOrientMsg();
       rightnow = timefunc();
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
@@ -1798,7 +1800,7 @@ function HKLscene()
     {
       if (postrotmxflag === true)
       {
-        msg = getOrientMsg();
+        let msg = getOrientMsg();
         WebsockSendMsg('CurrentViewOrientation:\n' + msg );
         postrotmxflag = false;
       }
@@ -1809,7 +1811,7 @@ function HKLscene()
   stage.viewerControls.signals.changed.add(
     function()
     {
-      msg = getOrientMsg();
+      let msg = getOrientMsg();
       rightnow = timefunc();
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
@@ -1826,6 +1828,8 @@ function HKLscene()
 
   function SetDefaultOrientation()
   {
+    if (shapeComp == null)
+      return;
     var m4 = new NGL.Matrix4();
     var axis = new NGL.Vector3();
     axis.x = 0.0;
@@ -1865,12 +1869,12 @@ function HKLscene()
       SetDefaultOrientation();
       RenderRequest();
       sleep(100).then(() => {
-        msg = getOrientMsg();
+        let msg = getOrientMsg();
         WebsockSendMsg('CurrentViewOrientation:\n' + msg);
       }
       );
     },
-  }, { bottom: "10px", left: "10px", width: "90px", position: "absolute" }, fsize = fontsize);
+  }, { bottom: "10px", left: "10px", width: "90px", position: "absolute" }, fontsize);
   addElement(ResetViewBtn);
 
 }
@@ -1878,7 +1882,7 @@ function HKLscene()
 
 function OnUpdateOrientation()
 {
-  msg = getOrientMsg();
+  let msg = getOrientMsg();
   WebsockSendMsg('MouseMovedOrientation:\n' + msg );
 }
 

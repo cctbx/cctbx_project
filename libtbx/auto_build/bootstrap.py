@@ -989,6 +989,13 @@ class xia2_module(SourceModule):
                'https://github.com/xia2/xia2.git',
                'https://github.com/xia2/xia2/archive/main.zip']
 
+class kokkos_module(SourceModule):
+  module = 'kokkos'
+  anonymous = ['git',
+               'git@github.com:kokkos/kokkos.git',
+               'https://github.com/kokkos/kokkos.git',
+               'https://github.com/kokkos/kokkos/archive/master.zip']
+
 # Duke repositories
 class probe_module(SourceModule):
   module = 'probe'
@@ -2168,7 +2175,7 @@ class CCTBXBuilder(CCIBuilder):
         workdir=workdir))
 
 class DIALSBuilder(CCIBuilder):
-  CODEBASES_EXTRA = ['dials', 'iota', 'xia2']
+  CODEBASES_EXTRA = ['dials', 'iota', 'xia2', 'kokkos']
   LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
   HOT_EXTRA = ['msgpack']
   def add_tests(self):
@@ -2252,6 +2259,7 @@ class XFELBuilder(CCIBuilder):
     'iota',
     'uc_metrics',
     'ncdist',
+    'kokkos',
   ]
   LIBTBX_EXTRA = [
     'dials',
@@ -2766,6 +2774,20 @@ class PhenixTNGBuilder(PhenixBuilder):
     configlst.append('--enable_cxx11')
     return configlst
 
+def set_builder_defaults(options):
+  '''
+  Updates defaults for specific builders
+  '''
+  if options.builder == 'phenix_voyager':
+    if options.no_boost_src is False:
+      options.no_boost_src = True
+    if options.python == '27':
+      options.python = '37'
+    if options.use_conda is None:
+      options.use_conda = ''
+
+  return options
+
 def run(root=None):
   builders = {
     'cctbxlite': CCTBXLiteBuilder,
@@ -2976,6 +2998,9 @@ available. This flag only affects the "update" step.""",
     auth['sfuser'] = options.sfuser
   if options.sfmethod:
     auth['sfmethod'] = options.sfmethod
+
+  # Apply defaults for specific builders
+  options = set_builder_defaults(options)
 
   # Build
   builder = builders[options.builder]
