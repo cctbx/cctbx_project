@@ -545,7 +545,8 @@ class SingletonOptimizer:
     # Add the preference energy to the sum for each orientation scaled by our preference
     # magnitude.
     # :return: the index of the coarse position selected for the Mover.
-    # :side effect: Changes the value of self._highScores[mover] to the score at the coarse position
+    # :side_effect: self._setMoverState() is called to put the Mover into its best state.
+    # :side_effect: Changes the value of self._highScores[mover] to the score at the coarse position
     # selected
     coarse = mover.CoarsePositions()
     scores = coarse.preferenceEnergies.copy()
@@ -584,6 +585,8 @@ class SingletonOptimizer:
     # :param movers: List of Movers in the clique to be optimized.
     # :return: List of the indices of the coarse position selected for each Mover in the same
     # order they were listed in the movers list.
+    # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
+    # :side_effect: self._highScores is set to the individual score for each of the Movers.
     ret = []
     self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(movers)} as singletons\n")
     for m in movers:
@@ -685,6 +688,8 @@ class BruteForceOptimizer(SingletonOptimizer):
     # :param movers: List of Movers in the clique to be optimized.
     # :return: List of the indices of the coarse position selected for each Mover in the same
     # order they were listed in the movers list.
+    # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
+    # :side_effect: self._highScores is set to the individual score for each of the Movers.
     self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(movers)} using brute force\n")
 
     # Prepare some data structures to keep track of the joint state of the Movers, and of the
@@ -701,7 +706,7 @@ class BruteForceOptimizer(SingletonOptimizer):
     # it is the best so far.
     # We will cycle the states[] list through all possible states for each Mover,
     # incremementing each until it rolls over and then jumping up to the next.
-    # This is similar to doing +1 arithmetic with carry.
+    # This is similar to doing +1 arithmetic with carry on a multi-digit number.
     curState = 0
     bestState = None
     bestScore = -1e100  # Any score will be better than this
@@ -741,15 +746,14 @@ class BruteForceOptimizer(SingletonOptimizer):
           curState += 1
           curStateValues[curState] += 1
           rippled = True
-      # If we rippled, bump back to the right-most column and start counting there again.
+      # If we rippled, bump back to the right-most column and start counting there again in
+      # the next iteration.
       if rippled:
         curState = 0
 
     # Put each Mover into its best state and compute its high-score value.
     # Compute the best individual scores for these Movers for use in later fine-motion
     # processing.
-    # @todo Consider moving high-score calculation to the fine-motion code so we don't need to do it
-    # in all of the subclasses.
     for i,m in enumerate(movers):
       self._setMoverState(states[i], bestState[i])
       self._highScores[m] = 0
