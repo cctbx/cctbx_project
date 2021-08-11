@@ -8,6 +8,9 @@ from copy import deepcopy
 import os
 import h5py
 from dxtbx.model.experiment_list import ExperimentListFactory
+import logging
+
+LOGGER = logging.getLogger("main")
 
 
 def local_refiner_from_parameters(refls, expt, params, miller_data=None):
@@ -179,6 +182,7 @@ class LocalRefinerLauncher:
         Usually this method should be modified when new features are added to refinement
         """
         # TODO return None or refiner instance
+        LOGGER.info("begin _launch")
         x_init = None
         nmacro = self.params.refiner.num_macro_cycles
         n_trials = len(self.params.refiner.max_calls)
@@ -387,7 +391,9 @@ class LocalRefinerLauncher:
             self.RUC.BBOX_IDX = None
             self.RUC.output_dir = self.params.refiner.io.output_dir
             #self.RUC.iterations=0
+            LOGGER.info("_launch run setup")
             self.RUC.run(setup_only=True)
+            LOGGER.info("_launch done run setup")
             # for debug purposes:
             #if not self.params.refiner.quiet:
             #    print("\n<><><><><><><><>TRIAL %d refinement status:" % i_trial)
@@ -412,7 +418,6 @@ class LocalRefinerLauncher:
             #    self.RUC.selection_flags = more_sel_flags
 
             self.RUC.record_model_predictions = self.params.refiner.record_xy_calc
-
 
             #if True: #self.params.refiner.tryscipy:
             #    self.RUC.calc_curvatures = False
@@ -439,7 +444,9 @@ class LocalRefinerLauncher:
             #                        fprime=fprime, args=[self.RUC], factr=1e7)# args.scipyfactr)
 
             #else:
+            LOGGER.info("_launcher runno setup")
             self.RUC.run(setup=False)
+            LOGGER.info("_launcher done runno setup")
             if self.RUC.hit_break_to_use_curvatures:
                 self.RUC.fix_params_with_negative_curvature = False
                 self.RUC.num_positive_curvatures = 0

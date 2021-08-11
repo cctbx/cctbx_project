@@ -278,6 +278,7 @@ class LocalRefiner(BaseRefiner):
             self.Modelers[sid] = Modeler  # TODO: VERIFY IF THIS IS NECESSARY ?
 
         self._MPI_barrier()
+        LOGGER.info("Setup ends!")
 
     def _get_shot_mapping(self):
 
@@ -482,7 +483,9 @@ class LocalRefiner(BaseRefiner):
             p1_indices = self.p1_indices_from_i_fcell[i_fcell]
             data[p1_indices] = new_Fcell_amplitude
 
-        self.S.D.Fhkl_tuple = idx, flex.double(data)  # update nanoBragg again  # TODO: add flag to not re-allocate in nanoBragg!
+        #self.S.D.Fhkl_tuple = idx, flex.double(data)  # update nanoBragg again  # TODO: add flag to not re-allocate in nanoBragg!
+        update_amps = flex.double(data)
+        self.S.D.quick_Fhkl_update((idx, update_amps))
 
     def _update_spectra_coefficients(self):
         pass

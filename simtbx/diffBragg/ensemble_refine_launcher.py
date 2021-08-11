@@ -31,9 +31,10 @@ def global_refiner_from_parameters(params):
     # TODO read on each rank, or read and broadcast ?
     LOGGER.info("EVENT: read input pickle")
     pandas_table = pandas.read_pickle(params.pandas_table)
-    LOGGER.info("EVENT: prep dataframe")
+    LOGGER.info("EVENT: BEGIN prep dataframe")
     if params.prep_time > 0:
         pandas_table = prep_dataframe(pandas_table, params.prep_time)
+    LOGGER.info("EVENT: DONE prep dataframe")
     return launcher.launch_refiner(pandas_table)
 
 
@@ -219,12 +220,15 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             shot_modeler.PAR = PAR_from_params(self.params, expt, best=exper_dataframe)
             self.Modelers[i_exp] = shot_modeler
 
+        LOGGER.info("DONE LOADING DATA; ENTER BARRIER")
         COMM.Barrier()
+        LOGGER.info("DONE LOADING DATA; EXIT BARRIER")
         #if not self.shot_roi_darkRMS:
         self.shot_roi_darkRMS = None
 
         # TODO warn that per_spot_scale refinement not intended for ensemble mode
 
+        LOGGER.info("parameter stuff")
         total_local_param_on_rank = sum(rank_local_parameters)
         local_per_rank = COMM.gather(total_local_param_on_rank)
         local_param_offset_per_rank = total_local_unknowns_all_ranks = None
@@ -246,9 +250,11 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
                 panel_groups_refined = panel_groups_refined.union(set_of_panels)
 
         self.panel_groups_refined = list(COMM.bcast(panel_groups_refined))
+        LOGGER.info("done with parameter stuff")
 
         LOGGER.info("EVENT: Gathering global HKL information")
         self._gather_Hi_information()
+        LOGGER.info("EVENT: FINISHED gather global HKL information")
         if self.params.roi.cache_dir_only:
             print("Done creating cache directory and cache_dir_only=True, so goodbye.")
             sys.exit()
@@ -271,12 +277,14 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         self.n_spectra_params = n_spectra_params
 
         # in case of GPU
+        LOGGER.info("BEGIN DETERMINE MAX PIX")
         self.NPIX_TO_ALLOC = self._determine_per_rank_max_num_pix()
         # TODO in case of randomize devices, shouldnt this be total max across all ranks?
         n = COMM.gather(self.NPIX_TO_ALLOC)
         if COMM.rank == 0:
             n = max(n)
         self.NPIX_TO_ALLOC = COMM.bcast(n)
+        LOGGER.info("DONE DETERMINE MAX PIX")
 
         if not self.params.refiner.randomize_devices:
             self.DEVICE_ID = COMM.rank % self.params.refiner.num_devices

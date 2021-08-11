@@ -2379,3 +2379,23 @@ def show_diffBragg_state(D, debug_pixel_panelfastslow):
     D.add_diffBragg_spots((p, f, s))
     D.raw_pixels*=0
 
+
+from scipy import optimize
+import numpy as np
+
+
+def gauss(x, *p):
+    A, mu, sigma = p
+    return A*np.exp(-(x-mu)**2/(2.*sigma**2))
+
+
+def fit_gauss( peak_pro, xdata, mu=0, sig=1, amp=100):
+
+    guess = amp, mu,  sig
+
+    try:
+        fit,success = optimize.curve_fit(gauss,
+                                         xdata=xdata, ydata=peak_pro, p0 =guess )
+    except RuntimeError:
+        return None
+    return fit, success, gauss(xdata, *fit)
