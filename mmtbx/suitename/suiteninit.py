@@ -18,6 +18,7 @@ this program is built. It exports its primary data structure:
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import, division, print_function
 import suitenamedefs
 from suitenamedefs import Bin, Cluster, SatelliteInfo
 

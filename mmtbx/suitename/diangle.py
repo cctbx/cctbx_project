@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import os, sys
 
 from iotbx.data_manager import DataManager    #   Load in the DataManager
