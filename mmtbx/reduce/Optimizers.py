@@ -724,7 +724,7 @@ class BruteForceOptimizer(SingletonOptimizer):
         for a in states[i].atoms:
           score += self._scoreAtom(a)
       self._infoString += _VerboseCheck(5,f"Score is {score:.2f} at {curStateValues}\n")
-      if score > bestScore:
+      if score > bestScore or bestState is None:
         self._infoString += _VerboseCheck(4,f"New best score is {score:.2f} at {curStateValues}\n")
         bestScore = score
         bestState = curStateValues.copy()
