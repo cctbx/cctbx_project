@@ -94,6 +94,7 @@ if __name__ == '__main__':
             lp.add_function(local_refiner.LocalRefiner._extract_pixel_data)
             lp.add_function(local_refiner.LocalRefiner._Fcell_derivatives)
             lp.add_function(local_refiner.LocalRefiner._mpi_aggregation)
+            lp.add_function(local_refiner.LocalRefiner._setup)
             lp.add_function(hopper_utils.DataModeler.GatherFromExperiment)
             RUN = lp(script.run)
 
@@ -118,4 +119,4 @@ if __name__ == '__main__':
             hopper_utils.print_profile(stats,
                     ["launch_refiner", "_compute_functional_and_gradients", "_run_diffBragg_current",
                      "_update_Fcell", "_extract_pixel_data", "_Fcell_derivatives", "_mpi_aggregation",
-                     "GatherFromExperiment"])
+                     "GatherFromExperiment", "_setup"])

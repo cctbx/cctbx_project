@@ -622,7 +622,14 @@ class LocalRefiner(BaseRefiner):
 
         LOGGER.info("Iterate over %d shots" % len(self.shot_ids))
         self._shot_Zscores = []
-        save_model = self.iterations % self.save_model_freq == 0
+        save_model = self.save_model_freq is not None and self.iterations % self.save_model_freq == 0
+        if save_model:
+            self._save_model_dir = os.path.join(self.model_dir, "iter%d" % self.iterations)
+
+            if COMM.rank == 0 and not os.path.exists(self._save_model_dir):
+                os.makedirs(self._save_model_dir)
+            COMM.barrier()
+
 
         for self._i_shot in self.shot_ids:
 
@@ -680,10 +687,13 @@ class LocalRefiner(BaseRefiner):
                 C = self.model_bragg_spots
                 Z = self._Zscore
                 iF = MOD.all_fcell_global_idx
+                iROI = MOD.roi_id
                 trust = MOD.all_trusted
 
-                model_info = {"p": P, "f": F, "s": S, "model": M, "background": B, "data": D, "bragg": C,
-                              "Zscore": Z, "i_fcell": iF, "trust": trust}
+                model_info = {"p": P, "f": F, "s": S, "model": M, 
+                        "background": B, "data": D, "bragg": C,
+                        "Zscore": Z, "i_fcell": iF, "trust": trust, 
+                        "i_roi": iROI}
                 self._save_model(model_info)
             self._shot_Zscores.append(self._spot_Zscores)
             self._is_trusted = self.Modelers[self._i_shot].all_trusted
@@ -727,13 +737,17 @@ class LocalRefiner(BaseRefiner):
         return self._f, self._g
 
     def _save_model(self, model_info):
+        LOGGER.info("SAVING MODEL FOR SHOT %d" % self._i_shot)
+        #outname = os.path.join(self._save_model_dir, "rank%d_shot%d_ITER%d.h5" % (COMM.rank, self._i_shot, self.iterations))
+        #compress = {"compression": "lzf"}
+        #with h5py.File(outname , "w") as h5:
+        #    for key, data in model_info.items():
+        #        h5.create_dataset(key, data=data, **compress)
         df = pandas.DataFrame(model_info)
-        outdir = os.path.join(self.model_dir, "iter%d" % self.iterations)
-        if COMM.rank == 0:
-            if not os.path.exists(outdir):
-                os.makedirs(outdir)
-        COMM.barrier()
-        outname = os.path.join(outdir, "rank%d_shot%d.pkl" % (COMM.rank, self._i_shot))
+        df["shot_id"] = self._i_shot 
+        outdir = self._save_model_dir
+        #COMM.barrier()
+        outname = os.path.join(outdir, "rank%d_shot%d_ITER%d.pkl" % (COMM.rank, self._i_shot, self.iterations))
         df.to_pickle(outname)
 
     def _save_Zscore_data(self):
