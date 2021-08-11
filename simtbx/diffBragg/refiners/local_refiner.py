@@ -250,35 +250,25 @@ class LocalRefiner(BaseRefiner):
             Modeler = self.Modelers[sid]
             Modeler.all_fcell_global_idx = np.array([self.idx_from_asu[h] for h in Modeler.hi_asu_perpix])
             Modeler.unique_i_fcell = set(Modeler.all_fcell_global_idx)
-            #Modeler.is_i_fcell = {}
-            #for i_fcell in Modeler.unique_i_fcell:
-            #    sel = np.logical_and( Modeler.all_fcell_global_idx == i_fcell, Modeler.all_trusted)
-            #    Modeler.is_i_fcell[i_fcell] = sel
-            Modeler.i_fcell_slices = {}
-            for i_fcell in Modeler.unique_i_fcell:
-                Modeler.i_fcell_slices[i_fcell] = []
-                a = np.where(Modeler.all_fcell_global_idx==i_fcell)[0]
-                sels = []
-                sel = []
-                for i in range(len(a)-1):
-                    val = a[i]
-                    val2 = a[i+1]
-                    sel.append(val)
-                    if val2-val > 1:
-                        sels.append(sel)
-                        sel = []
-                sel.append(a[-1])
-                sels.append(sel)
-                for sel in sels:
-                    a1 = min(sel)
-                    a2 = max(sel)
-                    assert np.all(np.arange(a1, a2+1) == sel)
-                    Modeler.i_fcell_slices[i_fcell].append(slice(a1,a2+1,1))
-
+            Modeler.i_fcell_slices = self._get_i_fcell_slices(Modeler)
             self.Modelers[sid] = Modeler  # TODO: VERIFY IF THIS IS NECESSARY ?
 
         self._MPI_barrier()
         LOGGER.info("Setup ends!")
+
+    def _get_i_fcell_slices(self, Modeler):
+        # TODO move this to Data Modeler class ?
+        splitter = np.where(np.diff(Modeler.all_fcell_global_idx) != 0)[0]+1
+        npix = len(Modeler.all_fcell_global_idx)
+        slices = [slice(V[0], V[-1]+1, 1) for V in np.split(np.arange(npix), splitter)]
+        i_fcells = [V[0] for V in np.split(Modeler.all_fcell_global_idx, splitter)]
+        i_fcell_slices = {}
+        for i_fcell, slc in zip(i_fcells, slices):
+            if i_fcell not in i_fcell_slices:
+                i_fcell_slices[i_fcell] = [slc]
+            else:
+                i_fcell_slices[i_fcell].append(slc)
+        return i_fcell_slices
 
     def _get_shot_mapping(self):
 
@@ -728,12 +718,15 @@ class LocalRefiner(BaseRefiner):
         tmpi = time.time() - tmpi
         LOGGER.info("Time for MPIaggregation=%.4f" % tmpi)
 
+        LOGGER.info("Aliases")
         self._f = self.target_functional
         self._g = self.g = self.grad
         self.d = self.curv
+        LOGGER.info("curvature analysis")
         self._curvature_analysis()
 
         # reset ROI pixels TODO: is this necessary
+        LOGGER.info("Zero pixels")
         self.D.raw_pixels_roi *= 0
         self.gnorm = -1
 
