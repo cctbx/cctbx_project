@@ -396,7 +396,9 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     for a in potentialAcceptors:
       sites = [ atom.xyz, partner.xyz, neighbor.xyz, a.xyz ]
       degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
-      self._coarseAngles.append(degrees)
+      # The degrees can be None in degenerate cases.  We avoid adding an entry in that case.
+      if degrees is not None:
+        self._coarseAngles.append(degrees)
 
 ##################################################################################
 class MoverNH3Rotator(_MoverRotator):
