@@ -340,7 +340,7 @@ def easy_make_dihedral(backbone, i, k):
 
 def residueString(r):
     sizes=[1, 1, 1, 3, 1, 1, 3]
-    id = "".join(["{:{}}:".format(x,y) for x, y in zip(r.pointIDs, sizes)])
+    id = "".join(["{num:{width}}:".format(num=x,width=y) for x, y in zip(r.pointIDs, sizes)])
     angles = "".join(["{:8.3f}:".format(a) for a in r.angle])
     return id + angles[:-1]
 
