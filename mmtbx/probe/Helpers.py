@@ -149,11 +149,8 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
                 # For metallic atoms, the Richardsons determined in discussion with
                 # Michael Prisant that we want to use the ionic radius rather than the
                 # larger radius for all purposes.
-                # @todo If CCTBX starts returning ionic radius as VdW radius, then we
-                # can remove this check and always just use get_specific_vdw_radii()
                 if isMetallic(a):
-                  # @todo Replace this with CCTBX ionic radius function when Nigel adds it
-                  extra.vdwRadius = at.FindProbeExtraAtomInfo(a).vdwRadius
+                  extra.vdwRadius = model.get_specific_ion_radius(a)
                 else:
                   extra.vdwRadius = model.get_specific_vdw_radii(a)
 
@@ -173,12 +170,14 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
               # the original Probe approach by dropping through to below
               else:
                 warnings += "Could not find "+a.name+" in CCTBX, using Probe tables\n"
-            except:
+            except Exception as e:
               # Warn and drop through to below.
-              warnings += ("Could not look up "+a.name+" in CCTBX "+
-                "(perhaps interpretation was not run on the model?), using Probe tables\n")
+              warnings += ("Could not look up "+a.name.strip()+" in CCTBX "+
+                "(perhaps interpretation was not run on the model?), using Probe tables"+
+                ": "+str(e)+"\n")
 
             # Did not find what we were looking for in CCTBX, so drop through to Probe
+            # Probe always returns the result we want as the VdW radius, even for ions.
             extra, warn = at.FindProbeExtraAtomInfo(a)
             if len(warn) > 0:
               warnings += "  Probe says: "+warn+"\n"
