@@ -2215,7 +2215,8 @@ class map_manager(map_reader, write_ccp4_map):
      self.origin_shift_grid_units = (0,0,0)
      working_map_manager = self.resample_on_different_grid(n_real = n_real)
      self.origin_shift_grid_units = origin_shift_grid_units_sav
-     self.ncs_object().set_shift_cart(self.shift_cart())
+     if self.ncs_object():
+       self.ncs_object().set_shift_cart(self.shift_cart())
      return working_map_manager.find_n_highest_grid_points_as_sites_cart(
           n = n_atoms)
 
