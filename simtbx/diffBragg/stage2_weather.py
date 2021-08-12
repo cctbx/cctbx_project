@@ -2,6 +2,8 @@
 import sys
 import glob
 logfiles = glob.glob(sys.argv[1])
+if not logfiles:
+    raise IOError("no files found in glob!")
 
 key_phrases = {
     0: 'MPI aggregation of func and grad',
@@ -30,26 +32,28 @@ key_phrases = {
     23: "Time to dump param and Zscore data",
     24: "EVENT: LOADING ROI DATA",
     25: "EVENT: DONE LOADING ROI",
-    26: "Time for MPIaggregation"
+    26: "Time for MPIaggregation",
+    27: "_launcher runno setup"
 }
 
 def get_color(r,g,b):
     return r/255.,g/255.,b/255.
 
-durations = {(key_phrases[4], key_phrases[5]): {"color": 'C4'},
+durations = {(key_phrases[4], key_phrases[5]): {"color": get_color(255,221,113)},
              (key_phrases[1], key_phrases[2]): {"color": 'tomato'},
-             (key_phrases[10], key_phrases[11]): {"color": 'C0'},
-             (key_phrases[15], key_phrases[16]): {"color": 'C0'},
+             (key_phrases[10], key_phrases[11]): {"color": get_color(23,190,207)},
+             (key_phrases[15], key_phrases[16]): {"color": get_color(23,190,207)},
              (key_phrases[17], key_phrases[18]): {"color": get_color(247,182,210)},
-             (key_phrases[13], key_phrases[19]): {"color": get_color(255,195,86)},
+             (key_phrases[13], key_phrases[19]): {"color": get_color(255,128,14)},
              (key_phrases[20], key_phrases[21]): {"color": get_color(162,200,236)},
-             (key_phrases[22], key_phrases[23]): {"color": get_color(255,221,113)},
+             #(key_phrases[22], key_phrases[23]): {"color": get_color(255,221,113)},
              (key_phrases[24], key_phrases[25]): {"color": get_color(103,191,92)},
              #(key_phrases[11], key_phrases[26]): {"color": get_color(158,218,229)},
              (key_phrases[6], key_phrases[7]): {"color": '#777777'}}
 
 major_events = {
-    key_phrases[3]: {'marker': 'd', 'ms': 4, 'color': get_color(152,  223,   138)},
+    #key_phrases[3]: {'marker': 'd', 'ms': 4, 'color': get_color(152,  223,   138)},
+    key_phrases[27]: {'marker': 's', 'ms': 4, 'color': 'w'},
 }
 
 log = []
@@ -62,7 +66,7 @@ ranks = [int(l.split("|")[0].strip().split("RANK")[1].split(":")[0]) for l in lo
 nranks = len(set(ranks))
 print("Found logs for %d ranks" % nranks)
 
-logs_per_rank = {rnk:[] for rnk in set(ranks)}
+logs_per_rank = {rnk: [] for rnk in set(ranks)}
 for line, rank in zip(log, ranks):
     logs_per_rank[rank].append(line)
 print("Made log for each rank")
@@ -107,8 +111,16 @@ t = time.time()-t
 print("Took %f sec" % t)
 
 from pylab import *
+duration_timers = {}
+startup_times = {}
 for rank in ranks:
     D = all_delt[rank]
+
+    refine_start = D[key_phrases[27]][0]
+    startup_times[rank] = refine_start
+    #from IPython import embed
+    #embed()
+    #exit()
     #from IPython import embed
     #embed()
     #for phrase in key_phrases:
@@ -118,16 +130,21 @@ for rank in ranks:
     for event in major_events:
         tvals = D[event]
         offset = [rank] * len(D[event])
-        plot(tvals, offset, lw=0, mew=0.3, mec='k', **major_events[event])
+        plot(np.array(tvals)-refine_start, offset, lw=0, mew=0.3, mec='k', **major_events[event])
 
     colors = ['C5', 'tomato', 'C0']
-    for i, (start, stop) in enumerate(list(durations)):
-        tvals_start = D[start]
-        tvals_stop = D[stop]
-        patches = []
 
+    for i, dur in enumerate(list(durations)):
+        start,stop = dur
+
+        tvals_start = np.array(D[start]) - refine_start
+        tvals_stop = np.array(D[stop]) - refine_start
+        patches = []
+        if dur not in duration_timers:
+            duration_timers[dur] = []
         for t1,t2 in zip(tvals_start, tvals_stop):
             print(i, t1, t2)
+            duration_timers[dur].append(t2-t1)
             xy = np.array([(t1,rank-0.5), (t1, rank+0.5), (t2, rank+0.5), (t2, rank-0.5)])
             color = durations[(start, stop)]["color"]
             patch = mpl.patches.Polygon(xy=xy, color=color, closed=True) #, ec='k', lw=0.5)
@@ -135,10 +152,31 @@ for rank in ranks:
         C = mpl.collections.PatchCollection(patches, match_original=True)
         gca().add_collection(C)
         #    plot([t1,t2], [rank,rank], color='C%d' % i)
+
+
+for rank in ranks:
+    D = all_delt[rank]
+    times = D[key_phrases[5]]
+    times = np.sort(times)
+    tper = np.diff(times)
+    print(rank, "min, max, mean, median", np.min(tper), np.max(tper), np.mean(tper), np.median(tper))
+    print("first 5:", tper[:5])
+
+for dur in duration_timers:
+    print(dur)
+    print("Average duration: %f sec" % np.mean(duration_timers[dur]))
+    print("Total duration: %f sec" %  ( np.sum(duration_timers[dur]) / len(ranks)))
+    print()
 xlabel("runtime (sec)", fontsize=15)
-ylabel("rank")
+ylabel("rank", fontsize=15)
 xl = gca().get_xlim()
-for r in ranks:
-    plot(xl, [r-0.5, r-0.5], color='k', lw=0.4)
+for r in ranks + [min(ranks)-1, max(ranks)+1]:
+    plot(xl, [r-0.5, r-0.5], color='k', lw=0.25)
 gca().set_facecolor('lightgray')
+#xlim(-refine_start, 0)
+#xlim(0, 60) #-refine_start, 0)
+ylim(min(ranks)-0.5, max(ranks)+0.5)
+gca().set_yticks(ranks)
+gca().tick_params(labelsize=12.5)
+print("Mean startup time=%f sec" % np.mean(list(startup_times.values())))
 show()
