@@ -165,6 +165,10 @@ class SingletonOptimizer:
     self._infoString = ""
 
     ################################################################################
+    # Gather data we need for our calculations.
+    self._maximumVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
+
+    ################################################################################
     # Run optimization for every desired conformer and every desired model, calling
     # placement and then a derived-class single optimization routine for each.  When
     # the modelIndex or altID is None, that means to run over all available cases.
@@ -532,8 +536,7 @@ class SingletonOptimizer:
         self._infoString += _VerboseCheck(10,"Ensuring deletable atom is present\n")
 
   def _scoreAtom(self, atom):
-    maxRadiusWithoutProbe = (self._extraAtomInfo.getMappingFor(atom).vdwRadius +
-      AtomTypes.AtomTypes().MaximumVDWRadius())
+    maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
     return self._dotScorer.score_dots(atom, self._minOccupancy, self._spatialQuery,
       maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom], self._dotSpheres[atom].dots(),
       self._probeDensity, False).totalScore()
