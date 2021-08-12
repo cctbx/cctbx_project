@@ -4,6 +4,10 @@
 // https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
 // to enable websocket connection
 
+//import THREE from './three.js';
+//import NGL from './ngl.esm.js';
+//var three = THREE;
+
 if ((typeof isHKLviewer) != "boolean")
   var isHKLviewer = false;
 
@@ -99,7 +103,7 @@ function sleep(ms) {
 function createElement(name, properties, style, fsize=10)
 {
 // utility function used in for loop over colourgradvalarray
-  var el = document.createElement(name);
+  let el = document.createElement(name);
   Object.assign(el, properties);
   Object.assign(el.style, style);
   Object.assign(el.style,
@@ -116,7 +120,7 @@ function createElement(name, properties, style, fsize=10)
 
 function createSelect(options, properties, style)
 {
-  var select = createElement("select", properties, style);
+  let select = createElement("select", properties, style);
   options.forEach(function (d)
   {
     select.add(createElement("option", { value: d[0], text: d[1] }));
@@ -172,7 +176,7 @@ function addDiv2Container(container, name, t, l, w, h, bgcolour="rgba(255, 255, 
 }
 
 
-function createDivElement(label, rgb, cornerposition)
+function createDivElement(label, rgb)
 {
   let elm = createElement("div", { innerText: label },
     {
@@ -182,10 +186,10 @@ function createDivElement(label, rgb, cornerposition)
     }, fontsize
   );
   
-  pointelm = createElement("pointdiv", // make a small white square to indicate where this elm is pointing
+  let pointelm = createElement("pointdiv", // make a small white square to indicate where this elm is pointing
     {  innerText: ""  },
     {
-      backgroundColor: bgcolour,
+      backgroundColor: "rgba(255, 255, 255, 0.0)",
       color: "rgba(255, 255, 255, 1.0)",
       top: "0px",
       left: "0px",
@@ -331,7 +335,7 @@ Object.assign(debugmessage.style, {
 
 function ReturnClipPlaneDistances()
 {
-  var cameradist;
+  let cameradist;
   if (stage.viewer.parameters.clipScale == 'relative')
     cameradist = stage.viewer.cDist;
   if (stage.viewer.parameters.clipScale == 'absolute')
@@ -391,19 +395,19 @@ function onClose(e)
 
 function onMessage(e)
 {
-  var c,
+  let c,
     si;
-  var showdata = e.data;
+  let showdata = e.data;
   if (showdata.length > 400)
     showdata = e.data.slice(0, 200) + '\n...\n' + e.data.slice(e.data.length - 200, -1);
   if (isdebug)
     WebsockSendMsg('Browser: Got ' + showdata ); // tell server what it sent us
   try
   {
-    var datval = e.data.split(":\n");
-    var msgtype = datval[0];
-    var val = datval[1].split(","); // assuming no commas in the received strings
-    var val2 = datval[1].split(";;"); // in case the received strings contain intended commas
+    let datval = e.data.split(":\n");
+    let msgtype = datval[0];
+    let val = datval[1].split(","); // assuming no commas in the received strings
+    let val2 = datval[1].split(";;"); // in case the received strings contain intended commas
 
     if (msgtype === "Reload")
     {
@@ -504,7 +508,7 @@ function onMessage(e)
           return; // do nothing just in case
       }
 
-      var m = new NGL.Matrix4();
+      let m = new NGL.Matrix4();
       m.fromArray(sm);
       stage.viewerControls.orient(m);
       //stage.viewer.renderer.setClearColor( 0xffffff, 0.01);
@@ -539,25 +543,25 @@ function onMessage(e)
       br_radii = [];
       br_ttips = [];
       br_shapebufs = [];
-      var nexpandrefls = 0;
+      let nexpandrefls = 0;
 
       //alert('rotations:\n' + val);
       // Rotation matrices for the spacegroup come as a string of floats
       // separated by line breaks between each roation matrix
       let rotationstrs = datval[1].split("\n");
-      var Rotmats = [];
-      var r = new NGL.Vector3();
+      let Rotmats = [];
+      let r = new NGL.Vector3();
 
       for (let rotmxidx=0; rotmxidx < rotationstrs.length; rotmxidx++ )
       {
         Rotmats.push( new NGL.Matrix3() );
         // convert string of rotation matrix elements into a Matrix3
-        var elmstrs = rotationstrs[rotmxidx].split(",");
+        let elmstrs = rotationstrs[rotmxidx].split(",");
         for (let j=0; j<9; j++)
           Rotmats[rotmxidx].elements[j] = parseFloat(elmstrs[j]);
       }
 
-      var Imx = new NGL.Matrix3();
+      let Imx = new NGL.Matrix3();
       Imx.identity(); // for testing
       if ( !(msgtype.includes("P1")) && rotationstrs.length == 1 && Rotmats[0].equals(Imx) )
         throw "Only the identity matrix is provided. That means no P1 expansion of reflections!";
@@ -696,8 +700,8 @@ function onMessage(e)
     {
       WebsockSendMsg('Rotating stage ' + pagename);
 
-      var sm = new Float32Array(9);
-      var m4 = new NGL.Matrix4();
+      let sm = new Float32Array(9);
+      let m4 = new NGL.Matrix4();
 
       for (let j = 0; j < 9; j++)
         sm[j] = parseFloat(val[j]);
@@ -724,10 +728,10 @@ function onMessage(e)
     {
       WebsockSendMsg('Rotating stage around axis' + pagename);
 
-      var sm = new Float32Array(9);
-      var m4 = new NGL.Matrix4();
-      var axis = new NGL.Vector3();
-      var theta = parseFloat(val[3]);
+      let sm = new Float32Array(9);
+      let m4 = new NGL.Matrix4();
+      let axis = new NGL.Vector3();
+      let theta = parseFloat(val[3]);
       axis.x = parseFloat(val[0]);
       axis.y = parseFloat(val[1]);
       axis.z = parseFloat(val[2]);
@@ -748,8 +752,8 @@ function onMessage(e)
     {
       WebsockSendMsg('Rotating components ' + pagename);
 
-      var sm = new Float32Array(9);
-      var m4 = new NGL.Matrix4();
+      let sm = new Float32Array(9);
+      let m4 = new NGL.Matrix4();
       stm4 = stage.viewerControls.getOrientation().elements;
 
       for (let j = 0; j < 9; j++)
@@ -775,10 +779,10 @@ function onMessage(e)
 
     if (msgtype === "RotateAxisComponents") {
       WebsockSendMsg('Rotating components around axis ' + pagename);
-      var sm = new Float32Array(9);
-      var m4 = new NGL.Matrix4();
-      var axis = new NGL.Vector3();
-      var theta = parseFloat(val[3]);
+      let sm = new Float32Array(9);
+      let m4 = new NGL.Matrix4();
+      let axis = new NGL.Vector3();
+      let theta = parseFloat(val[3]);
       axis.x = parseFloat(val[0]);
       axis.y = parseFloat(val[1]);
       axis.z = parseFloat(val[2]);
@@ -802,16 +806,16 @@ function onMessage(e)
 
     if (msgtype === "AnimateRotateAxisComponents") {
       WebsockSendMsg('Animate rotating components around axis ' + pagename);
-      var sm = new Float32Array(9);
-      var m4 = new NGL.Matrix4();
-      var axis = new NGL.Vector3();
+      let sm = new Float32Array(9);
+      let m4 = new NGL.Matrix4();
+      let axis = new NGL.Vector3();
       animationspeed = parseFloat(val[3])*0.05;
       axis.x = parseFloat(val[0]);
       axis.y = parseFloat(val[1]);
       axis.z = parseFloat(val[2]);
 
-      var then = 0;
-      var theta = 0.0;
+      let then = 0;
+      let theta = 0.0;
       function render(now)
       { // as in https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Animating_objects_with_WebGL
         now *= 0.001;
@@ -847,9 +851,9 @@ function onMessage(e)
     if (msgtype === "TranslateHKLpoints")
     {
       WebsockSendMsg( 'Translating HKLs ' + pagename );
-      var strs = datval[1].split("\n");
-      var sm = new Float32Array(3);
-      var elmstrs = strs[0].split(",");
+      let strs = datval[1].split("\n");
+      let sm = new Float32Array(3);
+      let elmstrs = strs[0].split(",");
       for (let j=0; j<3; j++)
         sm[j] = parseFloat(elmstrs[j]);
       shapeComp.setPosition([ sm[0], sm[1], sm[2] ]);
@@ -862,8 +866,8 @@ function onMessage(e)
     }
 
     if (msgtype === "DrawSphere") {
-      var pos = new Float32Array(3);
-      var rgb = new Float32Array(3);
+      let pos = new Float32Array(3);
+      let rgb = new Float32Array(3);
       for (let j = 0; j < 3; j++) {
         pos[j] = parseFloat(val2[j]);
         rgb[j] = parseFloat(val2[j + 3]);
@@ -883,7 +887,7 @@ function onMessage(e)
       // if reprname is supplied then make a representation named reprname
       // of this and all pending spheres stored in vectorshape and render them.
       // Otherwise just accummulate the new sphere
-      var reprname = val2[7].trim();
+      let reprname = val2[7].trim();
       if (reprname != "") {
         DeletePrimitives(reprname); // delete any existing vectors with the same name
         vectorshapeComps.push(stage.addComponentFromObject(vectorshape));
@@ -905,12 +909,12 @@ function onMessage(e)
 
     function DeletePrimitives(reprname)
     {
-      var thisrepr = stage.getRepresentationsByName(reprname);
-      var wasremoved = false;
+      let thisrepr = stage.getRepresentationsByName(reprname);
+      let wasremoved = false;
       for (let i=0; i<stage.compList.length; i++)
         if (stage.compList[i].reprList[0].name == reprname)
         {
-          thiscomp = stage.compList[i];
+          let thiscomp = stage.compList[i];
           thiscomp.removeRepresentation(thisrepr);
           stage.removeComponent(thiscomp);
           wasremoved = true;
@@ -920,27 +924,27 @@ function onMessage(e)
 
     if (msgtype === "DrawVector")
     {
-      var r1 = new Float32Array(3);
-      var r2 = new Float32Array(3);
-      var rgb = new Float32Array(3);
+      let r1 = new Float32Array(3);
+      let r2 = new Float32Array(3);
+      let rgb = new Float32Array(3);
       for (let j=0; j<3; j++)
       {
         r1[j] = parseFloat(val2[j]);
         r2[j] = parseFloat(val2[j+3]);
         rgb[j]= parseFloat(val2[j+6]);
       }
-      radius = parseFloat(val2[11]);
+      let radius = parseFloat(val2[11]);
 
       if (vectorshape == null)
         vectorshape = new NGL.Shape('vectorshape');
 
       vectorshape.addArrow(r1, r2, [rgb[0], rgb[1], rgb[2]], radius);
-      var label = val2[9].trim();
+      let label = val2[9].trim();
       if (label !== "")
       {
-        labelpos = parseFloat(val2[12]);
-        var pos = new NGL.Vector3()
-        var txtR = [
+        let labelpos = parseFloat(val2[12]);
+        let pos = new NGL.Vector3()
+        let txtR = [
           r1[0] * (1.0 - labelpos) + r2[0] * labelpos,
           r1[1] * (1.0 - labelpos) + r2[1] * labelpos,
           r1[2] * (1.0 - labelpos) + r2[2] * labelpos
@@ -949,7 +953,7 @@ function onMessage(e)
         pos.y = txtR[1];
         pos.z = txtR[2];
 
-        var elm = createDivElement(label, rgb, "upperright")
+        let elm = createDivElement(label, rgb)
         annodivs.push([elm, pos]);  // store until we get a representation name
       }
       // if reprname is supplied with a vector then make a representation named reprname
@@ -959,11 +963,11 @@ function onMessage(e)
       if (reprname != "")
       {
         DeletePrimitives(reprname); // delete any existing vectors with the same name
-        cmp = stage.addComponentFromObject(vectorshape);
+        let cmp = stage.addComponentFromObject(vectorshape);
         for (let i = 0; i < annodivs.length; i++)
         {
-          elm = annodivs[i][0];
-          pos = annodivs[i][1];
+          let elm = annodivs[i][0];
+          let pos = annodivs[i][1];
           cmp.addAnnotation(pos, elm);
         }
         vectorshapeComps.push(cmp);
@@ -1040,8 +1044,8 @@ function onMessage(e)
 
     if (msgtype === "SetClipPlaneDistances")
     {
-      var near = parseFloat(val[0]);
-      var far = parseFloat(val[1]);
+      let near = parseFloat(val[0]);
+      let far = parseFloat(val[1]);
       origcameraZpos = parseFloat(val[2]);
       stage.viewer.parameters.clipMode =  'camera';
       // clipScale = 'absolute' means clip planes are using scene dimensions
@@ -1193,7 +1197,7 @@ function onMessage(e)
         columnSelect.remove(); 
 
       let msg = datval[1].split("\n\n");
-      var columnSelect = createElement("select", {
+      let columnSelect = createElement("select", {
         onchange: function (e)
         {
           WebsockSendMsg('SelectedBrowserDataColumnComboBox: ' + e.target.value);
@@ -1256,8 +1260,8 @@ function onMessage(e)
 
 
 function timefunc() {
-  var d = new Date();
-  var now = d.getTime();
+  let d = new Date();
+  let now = d.getTime();
   return now
 }
 
@@ -1283,7 +1287,7 @@ window.onbeforeunload = function(event)
 
 if (isdebug)
 {
-  var script=document.createElement('script');
+  let script=document.createElement('script');
   script.src='https://rawgit.com/paulirish/memory-stats.js/master/bookmarklet.js';
   document.head.appendChild(script);
 }
@@ -1338,21 +1342,21 @@ function MakeHKL_Axis()
   //red-z
   shape.addArrow( Lstarstart, Lstarend, [ 1, 0, 0 ], 0.1);
 
-  var Helm = document.createElement("div");
+  let Helm = document.createElement("div");
   Helm.innerText = "h";
   Helm.style.color = "white";
   Helm.style.backgroundColor = "rgba(0, 0, 255, " + div_annotation_opacity + ")";
   Helm.style.fontSize = fontsize.toString() + "pt";
   Helm.style.padding = "4px"
 
-  var Kelm = document.createElement("div");
+  let Kelm = document.createElement("div");
   Kelm.innerText = "k";
   Kelm.style.color = "white";
   Kelm.style.backgroundColor = "rgba(0, 255, 0, " + div_annotation_opacity + ")";
   Kelm.style.fontSize = fontsize.toString() + "pt";
   Kelm.style.padding = "4px"
 
-  var Lelm = document.createElement("div");
+  let Lelm = document.createElement("div");
   Lelm.innerText = "l";
   Lelm.style.color = "white";
   Lelm.style.backgroundColor = "rgba(255, 0, 0, " + div_annotation_opacity + ")";
@@ -1369,18 +1373,18 @@ function MakeHKL_Axis()
 
 function getOrientMsg()
 {
-  var cvorientmx = null;
+  let cvorientmx = null;
   cvorientmx = stage.viewerControls.getOrientation();
   if (cvorientmx == null || cvorientmx.determinant() == 0)
       return oldmsg; // don't return invalid matrix
 
   cvorient = cvorientmx.elements;
-  for (var j=0; j<16; j++)
+  for (let j=0; j<16; j++)
   {
     if (Number.isNaN( cvorient[j]) )
       return oldmsg; // don't return invalid matrix
   }
-  var cameradist;
+  let cameradist;
   if (stage.viewer.cDist != 0
         && stage.viewer.parameters.clipFar > stage.viewer.cDist
         && stage.viewer.cDist > stage.viewer.parameters.clipNear)
@@ -1392,7 +1396,7 @@ function getOrientMsg()
   else
     cameradist = cvorient[14]; // fall back if stage.viewer.camera.position.z is corrupted
   cvorient.push( cameradist );
-  var msg = String(cvorient);
+  let msg = String(cvorient);
   oldmsg = msg;
   return msg;
 }
@@ -1408,14 +1412,14 @@ function PickingProxyfunc(pickingProxy, eventstr) {
   if (pickingProxy
     && (Object.prototype.toString.call(pickingProxy.picker["ids"]) === '[object Array]')
     && displaytooltips) {
-    var cp = pickingProxy.canvasPosition;
-    var sym_id = -1;
-    var hkl_id = -1;
-    var ttipid = "";
+    let cp = pickingProxy.canvasPosition;
+    let sym_id = -1;
+    let hkl_id = -1;
+    let ttipid = "";
+    let is_friedel_mate = 0;
     if (pickingProxy.picker["ids"].length > 0) { // get stored id number of rotation applied to this hkl
       sym_id = pickingProxy.picker["ids"][0]; // id of rotation stored when expanding to P1
-      var ids = pickingProxy.picker["ids"].slice(1); // ids of reflection
-      var is_friedel_mate = 0;
+      let ids = pickingProxy.picker["ids"].slice(1); // ids of reflection
       hkl_id = ids[pickingProxy.pid % ids.length]; // id of reflection if it's not a friedel mate
       if (pickingProxy.pid >= ids.length)
         is_friedel_mate = 1;
@@ -1456,10 +1460,10 @@ function PickingProxyfunc(pickingProxy, eventstr) {
 function getTextWidth(text, fsize=8)
 {
   // re-use canvas object for better performance
-  var canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
-  var context = canvas.getContext("2d");
+  let canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
+  let context = canvas.getContext("2d");
   context.font = fsize.toString() + "pt sans-serif";
-  var metrics = context.measureText(text);
+  let metrics = context.measureText(text);
   return metrics.width;
 }
 
@@ -1568,7 +1572,7 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
     colourchart.style.cursor = "pointer";
 
   colourchart.onclick = function (e) {
-    var sel = window.getSelection();
+    let sel = window.getSelection();
     sel.removeAllRanges(); // don't select numbers or labels on chart when double clicking the coulour chart
     if (isHKLviewer == true)
       WebsockSendMsg('onClick colour chart');
@@ -1830,8 +1834,8 @@ function HKLscene()
   {
     if (shapeComp == null)
       return;
-    var m4 = new NGL.Matrix4();
-    var axis = new NGL.Vector3();
+    let m4 = new NGL.Matrix4();
+    let axis = new NGL.Vector3();
     axis.x = 0.0;
     axis.y = 1.0;
     axis.z = 0.0;
