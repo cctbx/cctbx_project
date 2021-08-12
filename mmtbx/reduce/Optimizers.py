@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import argparse
+import argparse, time
 
 import Movers
 import InteractionGraph
@@ -43,9 +43,14 @@ from mmtbx.hydrogens import reduce_hydrogen
 # Module-scoped attributes that can be set to modify behavior.
 
 # Default value of 1 reports standard information.
+# Value of 2 reports timing information.
 # Setting it to 0 removes all inforamtional messages.
 # Setting it above 1 provides additional debugging information.
-verbosity = 1
+verbosity = 2
+
+##################################################################################
+# Helper functions
+
 def _VerboseCheck(level, message):
   # Returns "" if the level is less than global verbosity level, message if it is at or above
   if verbosity >= level:
@@ -53,9 +58,19 @@ def _VerboseCheck(level, message):
   else:
     return ""
 
-##################################################################################
-# Helper functions
-
+_lastTime = None
+def _ReportTiming(message):
+  """Use None message to start the timer without printing.
+  """
+  global _lastTime
+  if message is None:
+    _lastTime = time.perf_counter()
+    return
+  curTime = time.perf_counter()
+  diff = curTime - _lastTime
+  _lastTime = curTime
+  return _VerboseCheck(2,"Time to {}: {:0.3f}".format(message,diff)+"\n")
+  
 def AlternatesInModel(model):
   """Returns a set of altloc names of all conformers in all chains.
   :return: Set of strings.  The set is will include only the empty string if no
@@ -189,10 +204,13 @@ class SingletonOptimizer:
       ################################################################################
       # Get the Cartesian positions of all of the atoms in the entire model and find
       # the bond proxies for all of them.
+      _ReportTiming(None) # Reset timer
       carts = flex.vec3_double()
       for a in myModel.atoms():
         carts.append(a.xyz)
+      self._infoString += _ReportTiming("get coordinates")
       bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+      self._infoString += _ReportTiming("compute bond proxies")
 
       # Get the list of alternate conformation names present in all chains for this model.
       # If there is more than one result, remove the empty results and then sort them
@@ -202,6 +220,7 @@ class SingletonOptimizer:
         alts.discard("")
         alts.discard(" ")
       alts = sorted(list(alts), reverse=True)
+      self._infoString += _ReportTiming("compute alternates")
 
       # If there is a specified alternate, use it.
       if altID is not None:
@@ -225,12 +244,18 @@ class SingletonOptimizer:
         self._atoms = GetAtomsForConformer(myModel, ai)
 
         ################################################################################
+        # Reset the timer
+        _ReportTiming(None)
+
+        ################################################################################
         # Get the bonded neighbor lists for the atoms that are in this conformation.
         bondedNeighborLists = Helpers.getBondedNeighborLists(self._atoms, bondProxies)
+        self._infoString += _ReportTiming("compute bonded neighbor lists")
 
         ################################################################################
         # Construct the spatial-query information needed to quickly determine which atoms are nearby
         self._spatialQuery = probeExt.SpatialQuery(self._atoms)
+        self._infoString += _ReportTiming("construct spatial query")
 
         ################################################################################
         # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
@@ -238,6 +263,7 @@ class SingletonOptimizer:
         ret = Helpers.getExtraAtomInfo(model)
         self._extraAtomInfo = ret.extraAtomInfo
         self._infoString += ret.warnings
+        self._infoString += _ReportTiming("get extra atom info")
 
         ################################################################################
         # Get the list of Movers using the _PlaceMovers private function.
@@ -248,6 +274,7 @@ class SingletonOptimizer:
         movers = ret.moverList
         self._infoString += _VerboseCheck(1,"Inserted "+str(len(movers))+" Movers\n")
         self._infoString += _VerboseCheck(1,'Marked '+str(len(ret.deleteAtoms))+' atoms for deletion\n')
+        self._infoString += _ReportTiming("place movers")
 
         ################################################################################
         # Construct a set of atoms that are marked for deletion in the current set of
@@ -258,6 +285,7 @@ class SingletonOptimizer:
         for m in movers:
           pr = m.CoarsePositions()
           self._setMoverState(pr, 0)
+        self._infoString += _ReportTiming("initialize Movers")
 
         ################################################################################
         # Initialize high score for each Mover, filling in a None value for each.
@@ -285,6 +313,7 @@ class SingletonOptimizer:
         self._infoString += _VerboseCheck(1,"Found "+str(len(components))+" Cliques ("+
             str(len(singletonCliques))+" are singletons); largest Clique size = "+
             str(maxLen)+"\n")
+        self._infoString += _ReportTiming("compute interaction graph")
 
         ################################################################################
         # Determine excluded atoms to a specified hop count for each atom that will
@@ -303,6 +332,7 @@ class SingletonOptimizer:
         for a in moverAtoms:
           self._excludeDict[a] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
             bondedNeighborLists, self._bondedNeighborDepth)
+        self._infoString += _ReportTiming("determine excluded atoms")
 
         ################################################################################
         # Placement of water phantom Hydrogens, including adding them to our 'atoms' list 
@@ -340,6 +370,7 @@ class SingletonOptimizer:
 
           self._infoString += _VerboseCheck(1,"Added "+str(len(phantoms))+" phantom Hydrogens on waters")
           self._infoString += _VerboseCheck(1," (Old total "+str(origCount)+", new total "+str(len(self._atoms))+")\n")
+        self._infoString += _ReportTiming("place water phantom Hydrogens")
 
         ################################################################################
         # Construct dot-spheres for each atom that we may need to find interactions for.
@@ -348,10 +379,12 @@ class SingletonOptimizer:
         self._dotSpheres = {}
         for a in self._atoms:
           self._dotSpheres[a] = dotSphereCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius)
+        self._infoString += _ReportTiming("compute dot spheres")
 
         ################################################################################
         # Contruct the DotScorer object we'll use to score the dots.
         self._dotScorer = probeExt.DotScorer(self._extraAtomInfo)
+        self._infoString += _ReportTiming("construct dot scorer")
 
         ################################################################################
         # Call internal methods to optimize the single-element Cliques and then to optimize
@@ -369,6 +402,7 @@ class SingletonOptimizer:
         for s in singletonCliques:
           mover = movers[s[0]]
           self._optimizeSingleMoverCoarse(mover)
+        self._infoString += _ReportTiming("optimize singletons (coarse)")
 
         # Do coarse optimization on the multi-Mover Cliques.  Record the selected
         # coarse indices for each Mover in each Clique.
@@ -378,19 +412,21 @@ class SingletonOptimizer:
             mover = movers[m]
             clique.append(mover)
           self._optimizeCliqueCoarse(clique)
+        self._infoString += _ReportTiming("optimize cliques (coarse)")
 
         # Do fine optimization on the Movers.  This is done independently for
         # each of them, whether they are part of a multi-Mover Clique or not.
         self._infoString += _VerboseCheck(1,f"Fine optimization on all Movers\n")
         for m in movers:
           self._optimizeSingleMoverFine(m)
+        self._infoString += _ReportTiming("optimize all Movers (fine)")
 
         # Do FixUp on the final coarse orientations.  Set the positions, extra atom info
         # and deletion status for all atoms that have entries for each.
         self._infoString += _VerboseCheck(1,f"FixUp on all Movers\n")
         for m in movers:
           loc = self._coarseLocations[m]
-          self._infoString += _VerboseCheck(2,f"FixUp on {type(m)} coarse location {loc}\n")
+          self._infoString += _VerboseCheck(3,f"FixUp on {type(m)} coarse location {loc}\n")
           fixUp = m.FixUp(loc)
           myAtoms = fixUp.atoms
           for i, p in enumerate(fixUp.positions):
@@ -407,6 +443,7 @@ class SingletonOptimizer:
               self._deleteMes.add(myAtoms[i])
             else:
               self._deleteMes.discard(myAtoms[i])
+        self._infoString += _ReportTiming("fix up Movers")
 
         ################################################################################
         # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,
@@ -422,6 +459,7 @@ class SingletonOptimizer:
           resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
           self._infoString += _VerboseCheck(5,f"Deleting {resNameAndID} {aName}\n")
           a.parent().remove_atom(a)
+        self._infoString += _ReportTiming("delete Hydrogens")
 
   def getInfo(self):
     """
@@ -1294,23 +1332,32 @@ END
 
   # Add Hydrogens to the model
   print('Adding Hydrogens')
+  startAdd = time.perf_counter()
   reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
   reduce_add_h_obj.run()
   model = reduce_add_h_obj.get_model()
+  doneAdd = time.perf_counter()
 
   # Interpret the model after shifting and adding Hydrogens to it so that
   # all of the needed fields are filled in when we use them below.
   # @todo Remove this once place_hydrogens() does all the interpretation we need.
   print('Interpreting model')
+  startInt = time.perf_counter()
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
   model.set_pdb_interpretation_params(params = p)
   model.process_input_model(make_restraints=True) # make restraints
+  doneInt = time.perf_counter()
 
   print('Constructing Optimizer')
   # @todo Let the caller specify the model index and altID rather than doing only the default (first).
+  startOpt = time.perf_counter()
   opt = ScoreCacheOptimizer(model,probeRadius=0.25, altID="")
+  doneOpt = time.perf_counter()
   info = opt.getInfo()
   print('XXX info:\n'+info)
+  print('XXX Time to Add Hydrogen =',doneAdd-startAdd)
+  print('XXX Time to Interpret =',doneInt-startInt)
+  print('XXX Time to Optimize =',doneOpt-startOpt)
 
   f = open("deleteme.pdb","w")
   f.write(model.model_as_pdb())
