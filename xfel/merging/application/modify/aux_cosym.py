@@ -83,8 +83,12 @@ class CosymAnalysis(BaseClass):
               .primitive_setting()
               .group()
           )
-      twin_axis = [tuple(x) for x in self.params.twin_axis]
-      twin_rotation = self.params.twin_rotation
+      if self.params.twin_axis:
+        twin_axis = [tuple(x) for x in self.params.twin_axis]
+        twin_rotation = self.params.twin_rotation
+      else:
+        twin_axis = None
+        twin_rotation = None
       self.target = TargetWithCustomSymops(
           self.intensities,
           self.dataset_ids.as_numpy_array(),
