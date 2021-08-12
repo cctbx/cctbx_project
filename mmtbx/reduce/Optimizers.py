@@ -120,8 +120,8 @@ class SingletonOptimizer:
     it implements the machinery that finds and optimized Movers.
     This class optimizes all Movers independently,
     ignoring their impact on one another.  This means that it will not find the global
-    minimum for any multi-Mover Cliques.  Derived classes should override the Clique
-    optimization function to improve this behavior.
+    minimum for any multi-Mover Cliques.  Derived classes should override the
+    _optimizeCliqueCoarse() function to improve this behavior.
     :param model: iotbx model (a group of hierarchy models).  Can be obtained using
     iotbx.map_model_manager.map_model_manager.model().  The model must have Hydrogens,
     which can be added using mmtbx.hydrogens.reduce_hydrogen.place_hydrogens().get_model().
@@ -222,15 +222,15 @@ class SingletonOptimizer:
         # Get the atoms from the specified conformer in the model (the empty string is the name
         # of the first conformation in the model; if there is no empty conformation, then it will
         # pick the first available conformation for each atom group.
-        atoms = GetAtomsForConformer(myModel, ai)
+        self._atoms = GetAtomsForConformer(myModel, ai)
 
         ################################################################################
         # Get the bonded neighbor lists for the atoms that are in this conformation.
-        bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+        bondedNeighborLists = Helpers.getBondedNeighborLists(self._atoms, bondProxies)
 
         ################################################################################
         # Construct the spatial-query information needed to quickly determine which atoms are nearby
-        self._spatialQuery = probeExt.SpatialQuery(atoms)
+        self._spatialQuery = probeExt.SpatialQuery(self._atoms)
 
         ################################################################################
         # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
@@ -241,7 +241,7 @@ class SingletonOptimizer:
 
         ################################################################################
         # Get the list of Movers using the _PlaceMovers private function.
-        ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True),
+        ret = _PlaceMovers(self._atoms, model.rotatable_hd_selection(iselection=True),
                            bondedNeighborLists, self._spatialQuery, self._extraAtomInfo,
                            AtomTypes.AtomTypes().MaximumVDWRadius())
         self._infoString += ret.infoString
@@ -314,7 +314,7 @@ class SingletonOptimizer:
 
         # Find every Oxygen that is part of a water
         phantoms = []
-        for a in atoms:
+        for a in self._atoms:
           if common_residue_names_get_class(name=a.parent().resname) == "common_water":
             resName = a.parent().resname.strip().upper()
             resID = str(a.parent().parent().resseq_as_int())
@@ -331,22 +331,22 @@ class SingletonOptimizer:
           # Add these atoms to the spatial-query structure.
           # Insert ExtraAtomInfo for each of these atoms, marking each as a dummy.
           PHANTOM_HYDROGEN_RADIUS = 1.05
-          origCount = len(atoms)
+          origCount = len(self._atoms)
           for a in phantoms:
-            atoms.append(a)
+            self._atoms.append(a)
             self._spatialQuery.add(a)
             eai = probeExt.ExtraAtomInfo(PHANTOM_HYDROGEN_RADIUS, False, True, True)
             self._extraAtomInfo.setMappingFor(a, eai)
 
           self._infoString += _VerboseCheck(1,"Added "+str(len(phantoms))+" phantom Hydrogens on waters")
-          self._infoString += _VerboseCheck(1," (Old total "+str(origCount)+", new total "+str(len(atoms))+")\n")
+          self._infoString += _VerboseCheck(1," (Old total "+str(origCount)+", new total "+str(len(self._atoms))+")\n")
 
         ################################################################################
         # Construct dot-spheres for each atom that we may need to find interactions for.
         # This must be done after the phantom Hydrogens have been added so that they will be included.
         dotSphereCache = probeExt.DotSphereCache(self._probeDensity)
         self._dotSpheres = {}
-        for a in atoms:
+        for a in self._atoms:
           self._dotSpheres[a] = dotSphereCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius)
 
         ################################################################################
@@ -364,9 +364,11 @@ class SingletonOptimizer:
         # Do coarse optimization on the singleton Movers.  Record the selected coarse
         # index.
         self._coarseLocations = {}
+        for m in movers:
+          self._coarseLocations[m] = 0
         for s in singletonCliques:
           mover = movers[s[0]]
-          self._coarseLocations[mover] = self._optimizeSingleMoverCoarse(mover)
+          self._optimizeSingleMoverCoarse(mover)
 
         # Do coarse optimization on the multi-Mover Cliques.  Record the selected
         # coarse indices for each Mover in each Clique.
@@ -375,9 +377,7 @@ class SingletonOptimizer:
           for m in g:
             mover = movers[m]
             clique.append(mover)
-          ret = self._optimizeCliqueCoarse(clique)
-          for i,v in enumerate(ret):
-            self._coarseLocations[clique[i]] = v
+          self._optimizeCliqueCoarse(clique)
 
         # Do fine optimization on the Movers.  This is done independently for
         # each of them, whether they are part of a multi-Mover Clique or not.
@@ -548,7 +548,8 @@ class SingletonOptimizer:
     # Add the preference energy to the sum for each orientation scaled by our preference
     # magnitude.
     # :return: the index of the coarse position selected for the Mover.
-    # :side_effect: self._setMoverState() is called to put the Mover into its best state.
+    # :side_effect: self._setMoverState() is called to put the Mover's atoms into its best state.
+    # :side_effect: self._coarseLocations is set to the Mover's best state.
     # :side_effect: Changes the value of self._highScores[mover] to the score at the coarse position
     # selected
     coarse = mover.CoarsePositions()
@@ -557,6 +558,7 @@ class SingletonOptimizer:
       scores[i] *= self._preferenceMagnitude
     for i in range(len(coarse.positions)):
       self._setMoverState(coarse, i)
+      self._coarseLocations[mover] = i
 
       for a in coarse.atoms:
         scores[i] += self._scoreAtom(a)
@@ -574,10 +576,10 @@ class SingletonOptimizer:
     self._infoString += _VerboseCheck(1,f"Setting single Mover to coarse orientation {maxIndex}"+
       f", max score = {maxScore:.2f} (initial score {scores[0]:.2f})\n")
     self._setMoverState(coarse, maxIndex)
+    self._coarseLocations[mover] = maxIndex
 
     # Record the best score for this Mover.
     self._highScores[mover] = maxScore
-    return maxIndex
 
   def _optimizeCliqueCoarse(self, movers):
     # Override this method in derived classes.
@@ -589,12 +591,11 @@ class SingletonOptimizer:
     # :return: List of the indices of the coarse position selected for each Mover in the same
     # order they were listed in the movers list.
     # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
+    # :side_effect: self._coarseLocations is set to the Mover's best state.
     # :side_effect: self._highScores is set to the individual score for each of the Movers.
-    ret = []
     self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(movers)} as singletons\n")
     for m in movers:
-      ret.append(self._optimizeSingleMoverCoarse(m))
-    return ret
+      self._optimizeSingleMoverCoarse(m)
 
   def _optimizeSingleMoverFine(self, mover):
     # Find the score for the Mover in all fine orientations by moving each atom into the
@@ -680,7 +681,8 @@ class BruteForceOptimizer(SingletonOptimizer):
     :param preferenceMagnitude: Multiplier for the preference energies expressed
     by some Movers for particular orientations.
     """
-    super().__init__(model, modelIndex = modelIndex, altID = altID, bondedNeighborDepth = bondedNeighborDepth,
+    super(BruteForceOptimizer, self).__init__(model, modelIndex = modelIndex, altID = altID,
+                bondedNeighborDepth = bondedNeighborDepth,
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude)
 
@@ -692,6 +694,7 @@ class BruteForceOptimizer(SingletonOptimizer):
     # :return: List of the indices of the coarse position selected for each Mover in the same
     # order they were listed in the movers list.
     # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
+    # :side_effect: self._coarseLocations is set to the Mover's best state.
     # :side_effect: self._highScores is set to the individual score for each of the Movers.
     self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(movers)} using brute force\n")
 
@@ -719,6 +722,7 @@ class BruteForceOptimizer(SingletonOptimizer):
       # @todo Optimize this so that it only changes states that differed from last time.
       for i in range(len(movers)):
         self._setMoverState(states[i], curStateValues[i])
+        self._coarseLocations[movers[i]] = curStateValues[i]
 
       # Compute the score over all atoms in all Movers and see if it is the best.  If so,
       # update the best.
@@ -759,15 +763,116 @@ class BruteForceOptimizer(SingletonOptimizer):
     # processing.
     for i,m in enumerate(movers):
       self._setMoverState(states[i], bestState[i])
+      self._coarseLocations[movers[i]] = bestState[i]
       self._highScores[m] = 0
       for a in states[i].atoms:
         self._highScores[m] += self._scoreAtom(a)
       self._infoString += _VerboseCheck(1,f"Setting Mover in clique to coarse orientation {bestState[i]}"+
         f", max score = {self._highScores[m]:.2f}\n")
 
-    # Return the state
-    return bestState
+class ScoreCacheOptimizer(BruteForceOptimizer):
+  def __init__(self, model, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 3,
+                probeRadius = 0.25,
+                useNeutronDistances = False,
+                probeDensity = 16.0,
+                minOccupancy = 0.01,
+                preferenceMagnitude = 1.0
+              ):
+    """Constructor for ScoreCacheOptimizer.  This uses the same algorithm as the
+    BruteForceOptimizer but first constructs a cache for every atom in every Mover
+    of all the Movers whose positions can affect its answer.  The _scoreAtom() method
+    is overridden to use this cached value in clique optimization (but not in singleton
+    or fine optimization) when it has already been computed for a given configuration
+    of Movers.
+    :param model: iotbx model (a group of hierarchy models).  Can be obtained using
+    iotbx.map_model_manager.map_model_manager.model().  The model must have Hydrogens,
+    which can be added using mmtbx.hydrogens.reduce_hydrogen.place_hydrogens().get_model().
+    It must have a valid unit cell, which can be helped by calling
+    cctbx.maptbx.box.shift_and_box_model().  It must have had PDB interpretation run on it,
+    which can be done using model.process_input_model(make_restraints=True) with PDB
+    interpretation parameters and hydrogen placement matching the value of the
+    useNeutronDistances parameter described below.
+    :param modelIndex: Identifies which index from the hierarchy is to be selected.
+    If this value is None, optimization will be run sequentially on every model in the
+    hierarchy.
+    :param altID: The conformer alternate location specifier to use.  The value "" will
+    cause it to run on the first conformer found in each model.  If this is set to None
+    (the default), optimization will be run sequentially for every conformer in the model, starting with
+    the last and ending with the first.  This will leave the initial conformer's values as the
+    final location for atoms that are not inside a conformer or are in the first conformer.
+    :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
+    The default is to ignore interactions to a depth of 3 (my bonded neighbors and their bonded
+    neighbors and their bonded neighbors).
+    :param probeRadius: Radius of the probe to be used in Probe calculations (Angstroms).
+    :param useNeutronDistances: Defaults to using X-ray/electron cloud distances.  If set to
+    True, it will use neutron (nuclear) distances.  This must be set consistently with the
+    values used to generate the hydrogens and to run PDB interpretation.
+    :param probeDensity: How many dots per sq Angstroms in VDW calculations.
+    :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
+    :param preferenceMagnitude: Multiplier for the preference energies expressed
+    by some Movers for particular orientations.
+    """
+    # Set a flag that will be used by the overridden _scoreAtom() method to determine whether it
+    # should be doing caching or not.  Initially, it should not be -- it should only be doing this
+    # when we're inside a Clique optimization in the overridden _optimizeCliqueCoarse() method.
+    # We do this before constructing the parent class because it is needed by the functions that
+    # it calls.
+    self._doScoreCaching = False
 
+    super(ScoreCacheOptimizer, self).__init__(model, modelIndex = modelIndex, altID = altID,
+                bondedNeighborDepth = bondedNeighborDepth,
+                probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
+                minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude)
+
+
+  def _scoreAtom(self, atom):
+
+    if self._doScoreCaching:
+      # Construct a tuple that holds the entries for the coarse position of all of the Movers
+      # that this atom depends on, using the _atomMoverSets to determine which ones to look up.
+      # See if this result is already in the dictionary for that atom.  If so, use it.  If not,
+      # compute and store it and then return that value.
+      state = tuple([self._coarseLocations[m] for m in self._atomMoverSets[atom]])
+      try:
+        return self._scoreCache[atom][state]
+      except:
+        self._scoreCache[atom][state] = super(ScoreCacheOptimizer, self)._scoreAtom(atom)
+        return self._scoreCache[atom][state]
+    else:
+      return super(ScoreCacheOptimizer, self)._scoreAtom(atom)
+
+  def _optimizeCliqueCoarse(self, movers):
+    # The ScoreCacheOptimizer class generates a per-atom score cache object and uses it along
+    # with an overridden _doScoreCaching() method to avoid recomputing scores for atoms where
+    # there has been no change in any of the Movers they depend on.
+    # It wraps the BruteForceOptimizer method after setting things up to use the cache, and
+    # then turns off the cache before returning.
+    # :param movers: List of Movers in the clique to be optimized.
+    # :return: List of the indices of the coarse position selected for each Mover in the same
+    # order they were listed in the movers list.
+    # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
+    # :side_effect: self._coarseLocations is set to the Mover's best state.
+    # :side_effect: self._highScores is set to the individual score for each of the Movers.
+    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(movers)} using atom-score cache\n")
+
+    # Ensure that we have a per-atom _scoreCache dictionary that will store already-computed
+    # results for a given atom based on the configurations of the Movers that can affect its
+    # results.  The entries will be empty to start with and will be filled in as they are computed.
+    # We build entries for all atoms, even those not in the Movers to avoid having to traverse
+    # the Movers.
+    # This structure is a dictionary (looked up by atom) of dictionaries (looked up by tuple)
+    # of values (scores).
+    if not hasattr(self, "_scoreCache"):
+      self._scoreCache = {}
+      for a in self._atoms:
+        self._scoreCache[a] = {}
+
+    # Call the parent-class optimizer, turning on and off the cache behavior before
+    # and after.
+    self._doScoreCaching = True
+    super(ScoreCacheOptimizer, self)._optimizeCliqueCoarse(movers)
+    self._doScoreCaching = False
 
 ##################################################################################
 # Placement
@@ -1203,7 +1308,7 @@ END
 
   print('Constructing Optimizer')
   # @todo Let the caller specify the model index and altID rather than doing only the default (first).
-  opt = BruteForceOptimizer(model)
+  opt = ScoreCacheOptimizer(model,probeRadius=0.25, altID="")
   info = opt.getInfo()
   print('XXX info:\n'+info)
 
