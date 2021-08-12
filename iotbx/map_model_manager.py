@@ -4446,7 +4446,6 @@ class map_model_manager(object):
      resolution is nominal resolution of map
      d_min is minimum resolution to use in calculation of Fourier coefficients
     '''
-
     from libtbx import adopt_init_args
     kw_obj = group_args()
     adopt_init_args(kw_obj, locals())
