@@ -277,6 +277,13 @@ namespace scitbx { namespace matrix { namespace tensors {
       return r;
     }
 
+    tensor_rank_2& operator = (const scitbx::sym_mat3<FloatType> &m) {
+      for (int i=0; i < 6; i++) {
+        data_[i] = m[i];
+      }
+      return *this;
+    }
+
     static size_t rank() { return 2; }
     static size_t size() { return 6; }
 
