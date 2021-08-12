@@ -427,7 +427,7 @@ newarray._sigmas = sigs
     if not isembedded:
       self.window.statusBar().showMessage("")
       self.hklLabel = QLabel()
-      self.hklLabel.setText("HKL vectors along X-axis, Y-axis, Z-axis:")
+      self.hklLabel.setText("X,Y,Z axes as HKL coordinates:")
       self.Statusbartxtbox = QLineEdit('')
       self.Statusbartxtbox.setReadOnly(True)
       self.Statusbartxtbox.setAlignment(Qt.AlignRight)
