@@ -494,7 +494,7 @@ class solving_iterator(object):
         self.skewness_evolution = observable_evolution()
         for n, flipping in enumerate(
           itertools.islice(self.flipping_iterator,
-                           0, self.max_solving_iterations)):
+                           0, int(self.max_solving_iterations))):
           self.iteration_index = n
           if n % self.yield_solving_interval == 0:
             yield self.solving
