@@ -5,7 +5,7 @@ white = "([ \t]*)"
 simple = re.compile(".*(#|:)")
 stringy = re.compile("[^\"#:]*(\".*\"|'.*'|#|:[ \t]*(#.*)?$)")
 
-class Line:
+class Line(object):
     content = ""
     level = 0
     actual = 0  # the actual whitespace at the front

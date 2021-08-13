@@ -44,7 +44,7 @@ def parseArgs(programClass, logger):
   return parser2
 
 
-class TableItem:
+class TableItem(object):
     main_name = ""
     alias_name = ""
     main_default = "false"

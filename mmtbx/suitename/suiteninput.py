@@ -69,7 +69,6 @@ def readResidues(inFile):
             for i in range(len(angles)):
                 if angles[i] < 0:
                     angles[i] += 360.0
-    
             residue = Residue(ids, base, angles)
             residues.append(residue)
     except IndexError:
