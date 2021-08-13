@@ -1,3 +1,5 @@
+from __future__ import nested_scopes, generators, division, absolute_import 
+from __future__ import  with_statement, print_function, unicode_literals
 from suitenamedefs import Suite, Residue, findBase, globals
 
 """
@@ -68,11 +70,10 @@ def readResidues(inFile):
             for i in range(len(angles)):
                 if angles[i] < 0:
                     angles[i] += 360.0
-    
             residue = Residue(ids, base, angles)
             residues.append(residue)
     except IndexError:
-        print(f"Suitename found malformed input on line {i}, reading no further:",
+        print("Suitename found malformed input on line {}, reading no further:".format(i),
             file=sys.stderr)
         print("    ", line, file=sys.stderr)
     return residues

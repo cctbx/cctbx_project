@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import nested_scopes, generators, division, absolute_import 
+from __future__ import  with_statement, print_function, unicode_literals
 from suitenamedefs import globals, reasons
 from suiteninit import bins
 
@@ -68,7 +70,7 @@ def string1Suite(outFile, suite):
       name = suite.cluster.name
     else:
       name = "!!"
-    outFile.write(f"{name}{basestring}")
+    outFile.write("{}{}".format(name,basestring))
 
 
 def reportSuite(outFile, suite):
@@ -91,7 +93,7 @@ def reportSuite(outFile, suite):
     if suite.cluster.status == "wannabe":
         note = " wannabe"
     output = (
-        f"{outIDs} {suite.bin.name} {suite.cluster.name} {float(suite.suiteness):5.3f}{reason}{note}\n"
+        "{} {} {} {:5.3f}{}{}\n".format(outIDs, suite.bin.name, suite.cluster.name, float(suite.suiteness), reason, note)
     )
     outFile.write(output)
     
@@ -180,9 +182,6 @@ def suitenessAverage(outFile,  mode):
                 if cluster is excludedCluster:
                     continue  # mode 2: ignore cluster 1a
                 sum += cluster.suitenessSum
-                # print(
-                #     f"cluster:{cluster.name} {cluster.count:2} cluster sum: {cluster.suitenessSum} sum: {sum}\n"
-                # )
 
                 for k in range(12):
                     bucket[k] += cluster.suitenessCounts[k]
@@ -200,14 +199,14 @@ def suitenessAverage(outFile,  mode):
         )
     )
     if mode == 0:
-        outFile.write(f"{bucket[11]:6d} suites are  outliers\n")
-    outFile.write(f"{bucket[0]:6d} suites have suiteness == 0    \n")
-    outFile.write(f"{bucket[1]:6d} suites have suiteness >  0 <.1\n")
+        outFile.write("{:6d} suites are  outliers\n".format(bucket[11]))
+    outFile.write("{:6d} suites have suiteness == 0    \n".format(bucket[0]))
+    outFile.write("{:6d} suites have suiteness >  0 <.1\n".format(bucket[1]))
     for k in range(2, 10):
         outFile.write(
             "{:6d} suites have suiteness >=.{} <.{}\n".format(bucket[k], k - 1, k)
         )
-    outFile.write(f"{bucket[10]:6d} suites have suiteness >=.9    \n")
+    outFile.write("{:6d} suites have suiteness >=.9    \n".format(bucket[10]))
 
 
 def clearStatistics():
@@ -322,7 +321,7 @@ def kinemageFinal(outFile, suites, outNote):
 
 def kinemageHeader(outFile, outNote):
     """ The invariant portion of a kinemage file """
-    outFile.write(f"@text\n {outNote.version}\n {outNote.comment}\n")
+    outFile.write("@text\n {}\n {}\n".format(outNote.version, outNote.comment))
     outFile.write("@kinemage 1\n")
     outFile.write("@onewidth\n")
     if options.etatheta: # 070524
@@ -356,7 +355,7 @@ def binGroupOut(outFile, deltaMinus, delta, suites):
       groupCount += bin.count
     if groupCount > 0:        
       outFile.write(
-        f"@group {{{deltaMinus}{delta}}} recessiveon dimension=9"
+        "@group {{{}{}}} recessiveon dimension=9".format(deltaMinus,delta)+
         " wrap=360 select animate off\n")
 
     # generate the data
@@ -368,7 +367,7 @@ def binGroupOut(outFile, deltaMinus, delta, suites):
 
 def binOut(outFile, bin, suites):
     if any([c.count > 0 for c in bin.cluster]):
-        outFile.write(f"@subgroup {{{bin.name}}} recessiveon \n")
+        outFile.write("@subgroup {{{}}} recessiveon \n".format(bin.name))
     for cluster in bin.cluster[1:]:
         # the first cluster, for outliers, will be handled later
         if cluster.count > 0:
@@ -416,13 +415,13 @@ def outPoints(outFile, bin, cluster, suites, extra1):
     for s in suites:
         if s.cluster is cluster:
             if bin.name == "trig":  # the triage bin is especially handled
-                extra = f"'{s.pointMaster}'"
+                extra = "'{}'".format(s.pointMaster)
             else:
                 extra = extra1
             ids = ':'.join(s.pointID)
             line = \
-              (f"{{{bin.name} {cluster.name} :D=={s.distance:5.3f}"
-               f":S=={s.suiteness:5.3f}: {ids}}} {extra} ,") \
+              ("{{{} {} :D=={:5.3f}".format(bin.name, cluster.name, s.distance) \
+               + ":S=={:5.3f}: {}}} {} ,".format(s.suiteness, ids, extra)) \
                + formatAngles(s.angle, ",") + "\n"
             outFile.write(line)
    

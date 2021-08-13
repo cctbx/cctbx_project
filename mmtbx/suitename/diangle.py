@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import nested_scopes, generators, division, absolute_import
+from __future__ import  with_statement, print_function, unicode_literals
 import os, sys
 
 from iotbx.data_manager import DataManager    #   Load in the DataManager
@@ -301,7 +303,7 @@ def new_residue(residues, pivot):
   # CIF files sometimes give shorter names, but PDB files always give 3 chars
   # rjust bridges the gap
   #print(residue_name)
-  id = (" ", "1", f"{chainID:>2}", labels.resseq, " ", f"{alt:1}", residue_name)
+  id = (" ", "1", "{:>2}".format(chainID), labels.resseq, " ", "{:1}".format(alt), residue_name)
   residue.pointIDs = id
   base = findBase(residue_name)
   residue.base = base
@@ -340,8 +342,8 @@ def easy_make_dihedral(backbone, i, k):
 
 def residueString(r):
     sizes=[1, 1, 1, 3, 1, 1, 3]
-    id = "".join([f"{x:{y}}:" for x, y in zip(r.pointIDs, sizes)])
-    angles = "".join([f"{a:8.3f}:" for a in r.angle])
+    id = "".join(["{num:{width}}:".format(num=x,width=y) for x, y in zip(r.pointIDs, sizes)])
+    angles = "".join(["{:8.3f}:".format(a) for a in r.angle])
     return id + angles[:-1]
 
 
@@ -353,7 +355,7 @@ def writeSuitesFile(r, name):
     file = open(name + ".suites", "w")
     for r in all_residues:
       id = ":".join(r.pointIDs)
-      angles = "".join([f":{a:.3f}" for a in r.angle])
+      angles = "".join([":{:.3f}".format(a) for a in r.angle])
       # print(id + angles, file=file)
     file.close()
     
@@ -368,9 +370,9 @@ def nameList(atoms):
 def make_groups(output):
     i = 0
     for name in names:
-        output.write(f'("{name}" (')
+        output.write('("{}" ('.format(name))
         for j in range(4):
-            output.write(f'"{a[i+j]}", ')
+            output.write('"{}".format(a[i+j]), ')
         output.write("))\n")
         i = i+1
 

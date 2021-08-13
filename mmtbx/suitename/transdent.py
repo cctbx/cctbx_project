@@ -1,3 +1,5 @@
+from __future__ import nested_scopes, generators, division, absolute_import 
+from __future__ import  with_statement, print_function, unicode_literals
 import re, os, sys
 
 N = 2   # indentation standard
@@ -5,7 +7,7 @@ white = "([ \t]*)"
 simple = re.compile(".*(#|:)")
 stringy = re.compile("[^\"#:]*(\".*\"|'.*'|#|:[ \t]*(#.*)?$)")
 
-class Line:
+class Line(object):
     content = ""
     level = 0
     actual = 0  # the actual whitespace at the front

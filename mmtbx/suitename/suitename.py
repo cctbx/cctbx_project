@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import nested_scopes, generators, division, absolute_import 
+from __future__ import  with_statement, print_function, unicode_literals
+
 """
 Suitename is a program to aid model-building and perform validation of RNA 
 backbone conformation. Rather than focusing on the 6 dihedral angles of each 
@@ -21,23 +24,23 @@ delta of the next. This unit is known as a "suite", because it runs between the
 ribose sugars (and also between adjacent bases).
 
 These seven dihedral angles define a 7-dimensional space, analogous to the 2-D 
-Ramachandran phi,psi space but vastly larger. Suitename’s analysis encapsulates 
+Ramachandran phi,psi space but vastly larger. Suitename's analysis encapsulates 
 the results of research that used the well-ordered parts of a high-accuracy 
 reference structure dataset to classify feasible conformations of these angles 
 into several dozen well-populated clusters of observed cases 
-(Richardson 2008, RNA 14: 465). Each “conformer” cluster has been given a 
+(Richardson 2008, RNA 14: 465). Each "conformer" cluster has been given a 
 2-character number-letter name, such as 1a for A-form conformation. The outer 
-limit of each cluster is a “super-ellipse” shape (Gridgeman 1970, Math Gaz 54:31) 
+limit of each cluster is a "super-ellipse" shape (Gridgeman 1970, Math Gaz 54:31) 
 which fits this data better than either a radially symmetric or a box shape. 
 Its extent in each direction uses the overall standard deviation of all clusters 
 in that dihedral angle. Some clusters are not cleanly separated, but are 
-“satellites” of a “dominant” larger cluster such as 1a. Those are distinguished 
+"satellites" of a "dominant" larger cluster such as 1a. Those are distinguished 
 by a plane closer to the satellite center, at a distance split proportional to
 their relative populations.
 
 Delta-1 and delta are cleanly bimodal by C2'-endo vs C3'-endo ribose pucker and 
 gamma is cleanly trimodal, so each input suite is initially placed into one of 12 
-delta-delta-gamma “bins” or else is triaged as an outlier if outside all bins or 
+delta-delta-gamma "bins" or else is triaged as an outlier if outside all bins or 
 outside the allowable ranges in any dihedral. Then, most of the detailed work of 
 cluster definition is done in the 4-dimensional space of epsilon-1, zeta-1, alpha, 
 and beta, with a final refinement of the fit calculation in all 7 parameters. Each 
@@ -52,7 +55,7 @@ Suitename can take input in several formats:
 2. A "dangle" format file of nucleotides with the 6 dihedral angles already 
    calculated, most often provided by the mp_geo utility.
 3. A kinemage format file of suites with their 7 dihedral angles already calculated.
-The latter two formats may be provided as a file, or as standard input. 
+The latter two formats may be provided as a file, or as standard input.
 
 Suitename can output in several formats:
 1. A report showing the classification and suiteness of each suite, and 
@@ -83,7 +86,7 @@ import numpy as np
 from math import cos, pi
 
 
-version = "suitename.1.0.030821"
+version = "suitename.1.1.081021"
 dbCounter = 0
 dbTarget = -99  # triggers extra output on this suite
 
@@ -158,7 +161,7 @@ def compute(suites):
     for s in suites:
         if not s.validate():
             if options.test:
-                sys.stderr.write(f"! failed validation: {s.pointID}\n")
+                sys.stderr.write("! failed validation: {}\n".format(s.pointID))
             annotate(s, bins[13], bins[13].cluster[0], 0, 0, " tangled ",
                   "", "", "", "")
             continue  # makes sense but does not ?? match C version
@@ -374,7 +377,7 @@ def membership(bin, suite):
         # dominant cluster is not a possible cluster
         # just output than minimum distance match
         theCluster = closestCluster
-        situation = f"{matchCount}-None-dom"
+        situation = "{}-None-dom".format(matchCount)
 
     elif matchCount > 1:  # and lDominant
         # find the closest cluster that is not the dominant cluster
@@ -397,13 +400,13 @@ def membership(bin, suite):
             if matches[dominantJ] < matches[closestJ]:
                 closestJ = dominantJ
                 theCluster = domCluster
-            situation = f"{matchCount}-not-sat"
+            situation = "{}-not-sat".format(matchCount)
     else:
         # no match, it's an outlier
         closestJ = 0
         theCluster = closestCluster
         if closestCluster.name != "!!":
-            situation = f"outlier distance {closestD:.3}"
+            situation = "outlier distance {:.3}".format(closestD)
         else:
             situation = "vacant bin"
         outNote.outliers += 1
@@ -428,7 +431,7 @@ def membership(bin, suite):
             # 7D distance forces this suite to be an outlier
             # so we deassign it here
             closestJ = 0
-            comment = f"7D dist {theCluster.name}"
+            comment = "7D dist {}".format(theCluster.name)
             # if theCluster.status == "wannabe":
             #     comment += " wannabe"
         theCluster = bin.cluster[0]  # outlier
@@ -476,7 +479,7 @@ def domSatDistinction(suite, domCluster, satCluster, matches, matchCount):
         if disttodom < disttosat:
             closestJ = dominantJ
             closestCluster = domCluster
-        situation = f"{matchCount}-BETWEEN-dom-sat({disttodom:7.3}|{disttosat:7.3})"
+        situation = "{}-BETWEEN-dom-sat({:7.3}|{:7.3})".format(matchCount,disttodom,disttosat)
         # else the satellite cluster remains the chosen cluster
 
     else:
@@ -486,9 +489,9 @@ def domSatDistinction(suite, domCluster, satCluster, matches, matchCount):
             closestJ = dominantJ
             closestCluster = domCluster
         if dps <= 0:
-            situation = f"{matchCount}-OUTSIDE-dom"
+            situation = "{}-OUTSIDE-dom".format(matchCount)
         else:
-            situation = f"{matchCount}-OUTSIDE-sat"
+            situation = "{}-OUTSIDE-sat".format(matchCount)
 
     return closestCluster, closestJ, situation
 
@@ -548,62 +551,6 @@ def modifyWidths(dom, sat, satInfo):
             sat[m] = satInfo.satelliteWidths[m]
         if satInfo.dominantWidths[m] > 0:
             dom[m] = satInfo.dominantWidths[m]
-
-
-# def showHelpText():
-#     sys.stderr.write(
-#         f"""
-# Version {version}
-# suitename -flags <stdin >stdout
-#   or
-# suitename inputfile -flags >stdout
-# output flags: [ -report || -string || -kinemage ]
-# default:  -report
-# 
-# input flags: [ -residuein || -suitein  ]
-# flags: [ -residuein [ -pointIDfields # ] ] default#=={options.pointidfields}
-#  OR 
-# flags: [ -suitein [ -anglefields # ] ]   default#=={options.anglefields}
-# defaults: -residuein  -pointIDfields {options.pointidfields}
-# 
-# The -residuein format:
-# label:model:chain:number:ins:type:alpha:beta:gamma:delta:epsilon:zeta
-# if the file has alternate conformations, then use both -pointIDfields 
-#     and -altIDfield # to specify the number of pointID fields 
-#     and which field (1-based) contains the altID
-# use -altIDval <altID> to specify which alternate conformation to calculate 
-#     suite for. By default calculated for alt A
-# 
-# -suitein takes a kinemage format,  and uses records from 
-#     @ballists and/or @dotlists in this format:
-# {{ptID}} [chi] deltam epsilon zeta alpha beta gamma delta [chi] 
-#     @dimension in the file, if present, overrides -anglefields
-# 
-# Note dangle trick to make theta,...,eta suites directly
-# 
-# flag: -report [ -chart ]
-#  suites in order of input, suiteness summary at end
-# ( -chart : NO summary at end, for MolProbity multichart)
-# 
-# flag: -string [-nosequence] [-oneline] 
-#  3 character per suite string in order of input
-#     20 per line, ptID of n*20th at end of line
-#   flag: -nosequence
-#     only suite names, no Base sequence character
-#   flag: -oneline
-#     string all one line, no point IDs
-# 
-# flag: -kinemage
-#  kinemage of clusters grouped by pucker,pucker ... 
-#  group {{delta,delta}},subgroup {{gamma}},list {{cluster name}}
-#   flag: -etatheta or -thetaeta
-#     kinemage labels theta,eta instead of chi-1,chi
-# flag: -satellite
-#   use special general case satellite widths
-# flag: -nowannabe   
-#   never assign suites to wannabe clusters
-# Note: any DNA residues found in the input will be ignored.
-# """)
 
 
 if (__name__ == "__main__"):

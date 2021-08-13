@@ -14,12 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import nested_scopes, generators, division, absolute_import 
+from __future__ import  with_statement, print_function, unicode_literals
 import numpy as np
 from numpy import array
 from enum import Enum
 
 
-class Holder:
+class Holder(object):
   "these objects exist only to have case specific attributes added to them"
   pass
 
@@ -47,7 +49,7 @@ failMessages = {
 
 
 # primary (coarse grained) classification of suites
-class Bin:
+class Bin(object):
     # permanence properties
     name = ""
     ordinal = 0
@@ -72,7 +74,7 @@ class Bin:
 
 
 # secondary (fine grained) classification of suite
-class Cluster:
+class Cluster(object):
     # intrinsic data:
     ordinal = 0       # its place in the bin
     name = ""         # the name of the cluster
@@ -104,7 +106,7 @@ class Cluster:
         self.suitenessSum = 0
 
 
-class SatelliteInfo:
+class SatelliteInfo(object):
     # numbers used when suite is between satellite and dominant centers
     name = ""
     satelliteWidths = ()   # vector of 9 angles
@@ -116,7 +118,7 @@ class SatelliteInfo:
         self.dominantWidths = dominantWidths
 
 
-class Residue:
+class Residue(object):
     '''
     # A residue as normally read in, consisting of its six dihedral angles
     Used only briefly as input.
@@ -223,7 +225,7 @@ class Residue:
             self.angle[6] = value
 
 
-class Suite:
+class Suite(object):
     '''
     The set of angles forming the linkage BETWEEN residues.
     This is the core data structure used in most operations of the program.

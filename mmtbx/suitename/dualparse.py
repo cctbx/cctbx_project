@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import nested_scopes, generators, division, absolute_import 
+from __future__ import  with_statement, print_function, unicode_literals
 import suiteninit, argparse
 from suiteninit import buildParser
 
@@ -44,7 +46,7 @@ def parseArgs(programClass, logger):
   return parser2
 
 
-class TableItem:
+class TableItem(object):
     main_name = ""
     alias_name = ""
     main_default = "false"
@@ -99,7 +101,7 @@ def argsToPhilForm(namespace, others):
   argsOut = []
   for  key,value in dictionary.items(): # vars turns namespace to dict
     if value is not None and value != "":
-      argsOut.append(f"{key}={value}")
+      argsOut.append(str(key)+"="+str(value))
   return argsOut
 
 # CCTBX first
