@@ -105,7 +105,7 @@ class ArrayInfo:
 
     self.infotpl = ( ",".join(self.labels), self.desc, self.wavelength, arrsize, self.span,
      self.minmaxdata, self.minmaxsigs, (roundoff(dmin), roundoff(dmax)), issymunique, isanomalous )
-    self.infostr = "%s (%s), Lambda: %s, %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
+    self.infostr = "%s (%s), λ(Å): %s, %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
 
 
 def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.stdout.write):
