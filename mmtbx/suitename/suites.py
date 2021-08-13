@@ -1,4 +1,5 @@
-from __future__ import print_function
+from __future__ import nested_scopes, generators, division, absolute_import 
+from __future__ import  with_statement, print_function, unicode_literals
 import sys, os, inspect
 
 from numpy.lib.arraysetops import ediff1d
