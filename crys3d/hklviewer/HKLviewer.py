@@ -1738,7 +1738,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def createFileInfoBox(self):
-    labels = ["Column label", "Type", "# HKLs", "Span of HKLs",
+    labels = ["Column label", "Type", "Lambda", "# HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max", "Symmetry unique", "Anomalous"]
     self.millertable.setHorizontalHeaderLabels(labels)
     self.millertable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)

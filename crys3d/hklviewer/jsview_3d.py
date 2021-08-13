@@ -79,7 +79,7 @@ class ArrayInfo:
       self.minmaxdata = (roundoff(self.mindata), roundoff(self.maxdata))
       self.minmaxsigs = (roundoff(self.minsigmas), roundoff(self.maxsigmas))
 
-    self.labels = self.desc = ""
+    self.labels = self.desc = self.wavelength = ""
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if millarr.info():
       #self.labels = millarr.info().label_string()
@@ -88,6 +88,7 @@ class ArrayInfo:
         self.labels = [ millarr.info().label_string() + " + " + fomlabel ]
         self.datatype = "iscomplex_fom"
       self.desc = get_array_description(millarr)
+      self.wavelength = millarr.info().wavelength
     self.span = ("?" , "?")
     self.spginf = millarr.space_group_info().symbol_and_number()
     self.ucellinf = str(millarr.unit_cell())
@@ -102,9 +103,9 @@ class ArrayInfo:
     issymunique = millarr.is_unique_set_under_symmetry()
     isanomalous = millarr.anomalous_flag()
 
-    self.infotpl = ( ",".join(self.labels), self.desc, arrsize, self.span,
+    self.infotpl = ( ",".join(self.labels), self.desc, self.wavelength, arrsize, self.span,
      self.minmaxdata, self.minmaxsigs, (roundoff(dmin), roundoff(dmax)), issymunique, isanomalous )
-    self.infostr = "%s (%s), %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
+    self.infostr = "%s (%s), Lambda: %s, %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
 
 
 def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.stdout.write):
