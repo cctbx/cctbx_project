@@ -2,7 +2,7 @@
 Suitename - a tool for classifying backbone "suite" conformations (linkages between ribose sugars) in an RNA molecule.
 
 ## Requirements
-Suitename requires Python 3 or later and it requires numpy to have been installed.
+Suitename requires Python 2.7 or later and it requires numpy to have been installed.
 
 ## Running
 
@@ -31,6 +31,17 @@ Three forms of output are supported:
   3. A brief string showing only the cluster assignments. It consists of three characters per suite - base identity (uc) and 2-character number-letter name of the suite cluster (e.g., C1aG1gU1aA1aA1cG). Specify this by using the --string command line flag.
 
 Many other command line options are available; type `python3 suitename.py --help` to display them.
+
+## Testing
+
+This Python code was run across all files in the PDB that have RNA and its output was
+compared to the original C code output for -report, -kinemage, and -string outputs.
+It was tested on the dangle-format output of mmtbx.mp_geo and found to produce the same
+output modulo the following slight differences:
+- Python 3 uses Banker's rounding, so the low-order digit may be off by one.
+- Python performs floating-point calculations at double resolution, so some of
+the calculations are slightly different for numbers right near the cutoffs, sometimes
+making corner cases fall into a neighboring bin.
 
 ## Directories
 
