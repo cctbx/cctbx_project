@@ -36,6 +36,7 @@ Many other command line options are available; type `python3 suitename.py --help
 
 This Python code was run across all files in the PDB that have RNA and its output was
 compared to the original C code output for -report, -kinemage, and -string outputs.
+It was tested with both Python 2.7 and Python 3.6.
 It was tested on the dangle-format output of mmtbx.mp_geo and found to produce the same
 output modulo the following slight differences:
 - Python 3 uses Banker's rounding, so the low-order digit may be off by one.
