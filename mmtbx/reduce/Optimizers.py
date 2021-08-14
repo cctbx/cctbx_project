@@ -275,8 +275,8 @@ class _SingletonOptimizer(object):
                            bondedNeighborLists, self._spatialQuery, self._extraAtomInfo,
                            AtomTypes.AtomTypes().MaximumVDWRadius())
         self._infoString += ret.infoString
-        movers = ret.moverList
-        self._infoString += _VerboseCheck(1,"Inserted "+str(len(movers))+" Movers\n")
+        self._movers = ret.moverList
+        self._infoString += _VerboseCheck(1,"Inserted "+str(len(self._movers))+" Movers\n")
         self._infoString += _VerboseCheck(1,'Marked '+str(len(ret.deleteAtoms))+' atoms for deletion\n')
         self._infoString += _ReportTiming("place movers")
 
@@ -286,7 +286,7 @@ class _SingletonOptimizer(object):
         # unconditionally marked for deletion during placement and then we add
         # those for all Movers in their initial orientation by moving each to that state.
         self._deleteMes = set(ret.deleteAtoms)
-        for m in movers:
+        for m in self._movers:
           pr = m.CoarsePositions()
           self._setMoverState(pr, 0)
         self._infoString += _ReportTiming("initialize Movers")
@@ -294,16 +294,16 @@ class _SingletonOptimizer(object):
         ################################################################################
         # Initialize high score for each Mover, filling in a None value for each.
         self._highScores = {}
-        for m in movers:
+        for m in self._movers:
           self._highScores[m] = None
 
         ################################################################################
         # Compute the interaction graph, of which each connected component is a Clique.
         # Get a list of singleton Cliques and a list of other Cliques.  Keep separate lists
         # of the singletons and the groups.
-        interactionGraph, self._atomMoverSets = InteractionGraph.InteractionGraphAllPairs(movers, self._extraAtomInfo,
+        self._interactionGraph, self._atomMoverSets = InteractionGraph.InteractionGraphAllPairs(self._movers, self._extraAtomInfo,
           probeRadius=probeRadius)
-        components = cca.connected_components( graph = interactionGraph )
+        components = cca.connected_components( graph = self._interactionGraph )
         maxLen = 0
         singletonCliques = []   # Each entry is a list of integer indices into models with one entry
         groupCliques = []       # Each entry is a list of integer indices into models with >1 entry
@@ -325,7 +325,7 @@ class _SingletonOptimizer(object):
 
         # Get the set of all atoms that can be returned from all conformations of all Movers.
         moverAtoms = set()
-        for m in movers:
+        for m in self._movers:
           for a in m.CoarsePositions().atoms:
             moverAtoms.add(a)
           for a in m.FixUp(0).atoms:
@@ -401,19 +401,18 @@ class _SingletonOptimizer(object):
         # Do coarse optimization on the singleton Movers.  Record the selected coarse
         # index.
         self._coarseLocations = {}
-        for m in movers:
+        for m in self._movers:
           self._coarseLocations[m] = 0
         for s in singletonCliques:
-          mover = movers[s[0]]
+          mover = self._movers[s[0]]
           self._optimizeSingleMoverCoarse(mover)
         self._infoString += _ReportTiming("optimize singletons (coarse)")
 
-        # Do coarse optimization on the multi-Mover Cliques.  Record the selected
-        # coarse indices for each Mover in each Clique.
+        # Do coarse optimization on the multi-Mover Cliques.
         for g in groupCliques:
           clique = []
           for m in g:
-            mover = movers[m]
+            mover = self._movers[m]
             clique.append(mover)
           ret = self._optimizeCliqueCoarse(clique)
           self._infoString += _VerboseCheck(1,f"Clique optimized with score {ret:.2f}\n")
@@ -421,15 +420,18 @@ class _SingletonOptimizer(object):
 
         # Do fine optimization on the Movers.  This is done independently for
         # each of them, whether they are part of a multi-Mover Clique or not.
+        self._fineLocations = {}
+        for m in self._movers:
+          self._fineLocations[m] = 0
         self._infoString += _VerboseCheck(1,f"Fine optimization on all Movers\n")
-        for m in movers:
+        for m in self._movers:
           self._optimizeSingleMoverFine(m)
         self._infoString += _ReportTiming("optimize all Movers (fine)")
 
         # Do FixUp on the final coarse orientations.  Set the positions, extra atom info
         # and deletion status for all atoms that have entries for each.
         self._infoString += _VerboseCheck(1,f"FixUp on all Movers\n")
-        for m in movers:
+        for m in self._movers:
           loc = self._coarseLocations[m]
           self._infoString += _VerboseCheck(3,f"FixUp on {type(m)} coarse location {loc}\n")
           fixUp = m.FixUp(loc)
@@ -449,6 +451,12 @@ class _SingletonOptimizer(object):
             else:
               self._deleteMes.discard(myAtoms[i])
         self._infoString += _ReportTiming("fix up Movers")
+
+        ################################################################################
+        # Print the final state and score for all Movers
+        for m in self._movers:
+          self._infoString += _VerboseCheck(1,"Mover {} in coarse state {}, fine state {} with score {:.2f}\n".format(
+            type(m), self._coarseLocations[m], self._fineLocations[m],self._highScores[m]))
 
         ################################################################################
         # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,
@@ -679,6 +687,7 @@ class _SingletonOptimizer(object):
         self._infoString += _VerboseCheck(3,f"Setting single Mover to fine orientation {maxIndex}"+
           f", max score = {maxScore:.2f} (coarse score {self._highScores[mover]:.2f})\n")
         self._setMoverState(fine, maxIndex)
+        self._fineLocations[mover] = maxIndex
 
         # Record the best score for this Mover.
         self._highScores[mover] = maxScore
@@ -686,6 +695,7 @@ class _SingletonOptimizer(object):
         # Put us back to the initial coarse location and don't change the high score.
         self._infoString += _VerboseCheck(3,f"Leaving single Mover at coarse orientation\n")
         self._setMoverState(coarse, self._coarseLocations[mover])
+        self._fineLocations[mover] = 0
     return maxScore
 
 class _BruteForceOptimizer(_SingletonOptimizer):
