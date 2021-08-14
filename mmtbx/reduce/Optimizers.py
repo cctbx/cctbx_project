@@ -17,6 +17,7 @@ import argparse, time
 
 import Movers
 import InteractionGraph
+from boost_adaptbx import graph
 from boost_adaptbx.graph import connected_component_algorithm as cca
 
 from iotbx.map_model_manager import map_model_manager
@@ -404,7 +405,7 @@ class _SingletonOptimizer(object):
         for m in self._movers:
           self._coarseLocations[m] = 0
         for s in singletonCliques:
-          mover = self._movers[s[0]]
+          mover = self._interactionGraph.vertex_label(s[0])
           self._optimizeSingleMoverCoarse(mover)
         self._infoString += _ReportTiming("optimize singletons (coarse)")
 
@@ -744,8 +745,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     # all of the Movers simultaneously.  It tries all Movers in all possible positions against all
     # other Movers in all combinations of positions.
     # :param clique: List of indices of Movers in the clique to be optimized.
-    # :return: List of the indices of the coarse position selected for each Mover in the same
-    # order they were listed in the movers list.
+    # :return: the score for the Movers in their optimal state.
     # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
     # :side_effect: self._coarseLocations is set to the Mover's best state.
     # :side_effect: self._highScores is set to the individual score for each of the Movers.
@@ -753,7 +753,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
 
     # Prepare some data structures to keep track of the joint state of the Movers, and of the
     # best combination found so far.  Start by getting a list of Movers to be handled
-    movers = [self._movers[i] for i in clique]
+    movers = [self._interactionGraph.vertex_label(i) for i in clique]
     curStateValues = [] # Cycles through available indices, one per Mover
     states = []         # Coarse position state return for each Mover
     numStates = []      # Records maximum number of states per Mover
@@ -877,22 +877,68 @@ class _CliqueOptimizer(_BruteForceOptimizer):
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude)
 
+  def _subsetGraph(self, clique):
+    """
+    Return a new graph that is a subset of self._interactionGraph that includes only
+    the Movers in the clique, and edges between these.
+    This may be a subset of a Clique in the main graph.
+    :param clique: Indices of the Movers that should be included in the subgraph.
+    :return: Boost graph that is a subset of the interaction graph.
+    """
+
+    # We keep a dictionary from Movers to vertices that point to that Mover so that we can
+    # construct edges in the new graph.
+    movers = [self._interactionGraph.vertex_label(i) for i in clique]
+    vertexForMover = {}
+
+    # Construct an interaction subgraph that consists only of vertices in the clique and
+    # edges both of whose ends are on vertices in the clique.
+    ret = graph.adjacency_list(
+          vertex_type = "list",   # List so that deletions do not invalidate iterators and descriptors
+          )
+    for v in self._interactionGraph.vertices():
+      m = self._interactionGraph.vertex_label(v)
+      if m in movers:
+        vertexForMover[m] = ret.add_vertex(m)
+    for e in self._interactionGraph.edges():
+      sourceMover = self._interactionGraph.vertex_label( self._interactionGraph.source(e) )
+      targetMover = self._interactionGraph.vertex_label( self._interactionGraph.target(e) )
+      if sourceMover in movers and targetMover in movers:
+        ret.add_edge(vertex1 = vertexForMover[sourceMover], vertex2 = vertexForMover[targetMover])
+
+    return ret
+
   def _optimizeCliqueCoarse(self, clique):
-    # Looks for a vertex cut in the Clique that will separate the remaining vertices into two more
-    # more connected subcomponents.  Test each combined state of the set of Movers in the vertex cut
-    # to find the one with the best overall maximum score.
-    #   For each state, recursively optimize all of the connected subcomponents and then (with each
-    # of the subcomponents in its optimal state) compute the score for the Movers in the vertex cut.
-    #   Recursion terminates when there are two or fewer Movers in the Clique or when no
-    # vertex cut can be found; the parent-class Clique solver is used in these cases.
-    # :param clique: List of indices of Movers in the clique to be optimized.
-    # :return: the score for the Movers in their optimal state.
-    # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
-    # :side_effect: self._coarseLocations is set to the Mover's best state.
-    # :side_effect: self._highScores is set to the individual score for each of the Movers.
+    """
+    Looks for a vertex cut in the Clique that will separate the remaining vertices into two more
+    more connected subcomponents.  Test each combined state of the set of Movers in the vertex cut
+    to find the one with the best overall maximum score.
+      For each state, recursively optimize all of the connected subcomponents and then (with each
+    of the subcomponents in its optimal state) compute the score for the Movers in the vertex cut.
+      Recursion terminates when there are two or fewer Movers in the Clique or when no
+    vertex cut can be found; the parent-class Clique solver is used in these cases.
+    :param clique: List of indices of Movers in the clique to be optimized.
+    :return: the score for the Movers in their optimal state.
+    :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
+    :side_effect: self._coarseLocations is set to the Mover's best state.
+    :side_effect: self._highScores is set to the individual score for each of the Movers.
+    """
     self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(clique)} using recursion\n")
 
+    # If we've gotten down to a clique of size 2, we terminate recursion and call our parent's method
+    # because we can never split this into two connected components.
+    if len(clique) <= 2:
+      self._infoString += _VerboseCheck(1,f"Recursion terminated at clique of size {len(clique)}\n")
+      ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
+      return ret
+
+    # Make a copy of the subset of the InteractionGraph that includes only the Movers in
+    # the (sub)Clique we are currently optimizing.
+    subsetGraph = self._subsetGraph(clique)
     # @todo
+
+    # Give up and use our parent's method.
+    self._infoString += _VerboseCheck(1,f"Could not find vertex split for clique of size {len(clique)}\n")
     ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
     return ret
 
