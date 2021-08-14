@@ -86,7 +86,7 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, N):
   atoms.discard(atom)
   return list(atoms)
 
-class getExtraAtomInfoReturn:
+class getExtraAtomInfoReturn(object):
   """
     Return type from getExtraAtomInfo() call.
       extraAtomInfo: ExtraAtomInfoMap with an entry for every atom in the model suitable for
