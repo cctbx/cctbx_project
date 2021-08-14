@@ -47,17 +47,17 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   # Run the AABB test to get a superset of the list of pairs that we need to check for
   # overlap.  If we try to brute-force all of the Movers against all of the others, it
   # takes too long.
-  graph = _InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius)
+  myGraph = _InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius)
 
   # Dictionary looked up by atom that returns the set of Movers that atom interacts
   # with.
   atomMoverSets = {}
 
-  # List of atoms per mover and list of list of positions per atom per mover.
+  # Dictionaries of list of atoms per mover and dictionary of list of positions per atom per mover.
   # Each of these is indexed the same way that movers is, so finding the index of the
   # mover gets the same index for them.
-  atoms = []
-  positions = []
+  atoms = {}
+  positions = {}
   for m in movers:
 
     # Find all possible positions, coarse and fine, for each atom
@@ -69,21 +69,23 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
       total.extend(m.FinePositions(c).positions)
 
     # Add the atoms and positions into our dictionaries
-    atoms.append(coarses.atoms)
-    positions.append(total)
+    atoms[m] = coarses.atoms
+    positions[m] = total
     for a in coarses.atoms:
       atomMoverSets[a] = {m}
 
   # For each pair of movers that are connected by an edge in the graph produced
   # by the AABB algorithm to see if they actually overlap.  If not, remove that edge.
-  for e in graph.edges():
-    if not _PairsOverlap(movers[graph.source(e)], atoms[graph.source(e)], positions[graph.source(e)],
-        movers[graph.target(e)], atoms[graph.target(e)], positions[graph.target(e)],
+  for e in myGraph.edges():
+    sourceMover = myGraph.vertex_label( myGraph.source(e) )
+    targetMover = myGraph.vertex_label( myGraph.target(e) )
+    if not _PairsOverlap(sourceMover, atoms[sourceMover], positions[sourceMover],
+        targetMover, atoms[targetMover], positions[targetMover],
         extraAtomInfoMap, probeRadius,
         atomMoverSets):
-      graph.remove_edge( e )
+      myGraph.remove_edge( e )
 
-  return graph, atomMoverSets
+  return myGraph, atomMoverSets
 
 #######################################################################################################
 # Internal helper functions defined here
@@ -117,7 +119,7 @@ def _InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius = 0.25):
   # Add all of the Movers as nodes in the graph
   # Compute the axis-aligned bounding box for each Mover
   ret = graph.adjacency_list(
-        graph_type = "undirected",
+        vertex_type = "list",   # List so that deletions do not invalidate iterators and descriptors
         )
   AABBs = []
   verts = []
