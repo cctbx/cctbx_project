@@ -145,7 +145,7 @@ class AtomFlags(IntFlag):
 
 ##################################################################################
 
-class AtomInfo:
+class AtomInfo(object):
   """Class that stores extra information about an atom that is looked up by the AtomTypes
   class methods.  The information is stored in properties.
   """
@@ -219,7 +219,7 @@ class AtomInfo:
   kinemageColor = property(get_kinemageColor, set_kinemageColor)
   flags = property(get_flags, set_flags)
 
-class AtomTypes:
+class AtomTypes(object):
   """Class that looks up extra information for atoms that is required by the MolProbity Probe and
   Reduce modules.
   """
