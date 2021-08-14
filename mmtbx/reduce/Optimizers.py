@@ -411,7 +411,9 @@ class _SingletonOptimizer(object):
 
         # Do coarse optimization on the multi-Mover Cliques.
         for g in groupCliques:
-          ret = self._optimizeCliqueCoarse(g)
+          movers = [self._interactionGraph.vertex_label(i) for i in g]
+          subset = _subsetGraph(self._interactionGraph, movers)
+          ret = self._optimizeCliqueCoarse(subset)
           self._infoString += _VerboseCheck(1,f"Clique optimized with score {ret:.2f}\n")
         self._infoString += _ReportTiming("optimize cliques (coarse)")
 
@@ -636,15 +638,16 @@ class _SingletonOptimizer(object):
     # of the elements in the Clique and returns the vector of their results.  This should
     # be overridden in derived classes to actually check for the joint maximum score over
     # all of the Movers simultaneously.
-    # :param clique: List of indices of Movers in the clique to be optimized.
+    # :param clique: Boost graph whose vertices contain all of the Movers to be optimized
+    # and whose edges contain a description of all pairwise interections between them.
     # :return: the score for the Movers in their optimal state.
     # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
     # :side_effect: self._coarseLocations is set to the Mover's best state.
     # :side_effect: self._highScores is set to the individual score for each of the Movers.
-    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(clique)} as singletons\n")
+    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(list(clique.vertices()))} as singletons\n")
     ret = 0.0
-    for i in clique:
-      ret += self._optimizeSingleMoverCoarse(self._movers[i])
+    for v in clique.vertices():
+      ret += self._optimizeSingleMoverCoarse(clique.vertex_label(v))
     return ret
 
   def _optimizeSingleMoverFine(self, mover):
@@ -744,16 +747,17 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     # The _BruteForceOptimizer class checks for the joint maximum score over
     # all of the Movers simultaneously.  It tries all Movers in all possible positions against all
     # other Movers in all combinations of positions.
-    # :param clique: List of indices of Movers in the clique to be optimized.
+    # :param clique: Boost graph whose vertices contain all of the Movers to be optimized
+    # and whose edges contain a description of all pairwise interections between them.
     # :return: the score for the Movers in their optimal state.
     # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
     # :side_effect: self._coarseLocations is set to the Mover's best state.
     # :side_effect: self._highScores is set to the individual score for each of the Movers.
-    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(clique)} using brute force\n")
+    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(list(clique.vertices()))} using brute force\n")
 
     # Prepare some data structures to keep track of the joint state of the Movers, and of the
     # best combination found so far.  Start by getting a list of Movers to be handled
-    movers = [self._interactionGraph.vertex_label(i) for i in clique]
+    movers = [self._interactionGraph.vertex_label(v) for v in clique.vertices()]
     curStateValues = [] # Cycles through available indices, one per Mover
     states = []         # Coarse position state return for each Mover
     numStates = []      # Records maximum number of states per Mover
@@ -877,36 +881,17 @@ class _CliqueOptimizer(_BruteForceOptimizer):
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude)
 
-  def _subsetGraph(self, clique):
+  def _vertexCut(self, g):
     """
     Return a new graph that is a subset of self._interactionGraph that includes only
     the Movers in the clique, and edges between these.
     This may be a subset of a Clique in the main graph.
-    :param clique: Indices of the Movers that should be included in the subgraph.
+    :param g: Boost graph of Movers that describes a Clique (or a subset of a Clique) and
+    includes only vertices and edges within the subset for which a vertex cut is to be found.
+    This must not be self._interactionGraph() or any other graph that already has multiple
+    connected components.
     :return: Boost graph that is a subset of the interaction graph.
     """
-
-    # We keep a dictionary from Movers to vertices that point to that Mover so that we can
-    # construct edges in the new graph.
-    movers = [self._interactionGraph.vertex_label(i) for i in clique]
-    vertexForMover = {}
-
-    # Construct an interaction subgraph that consists only of vertices in the clique and
-    # edges both of whose ends are on vertices in the clique.
-    ret = graph.adjacency_list(
-          vertex_type = "list",   # List so that deletions do not invalidate iterators and descriptors
-          )
-    for v in self._interactionGraph.vertices():
-      m = self._interactionGraph.vertex_label(v)
-      if m in movers:
-        vertexForMover[m] = ret.add_vertex(m)
-    for e in self._interactionGraph.edges():
-      sourceMover = self._interactionGraph.vertex_label( self._interactionGraph.source(e) )
-      targetMover = self._interactionGraph.vertex_label( self._interactionGraph.target(e) )
-      if sourceMover in movers and targetMover in movers:
-        ret.add_edge(vertex1 = vertexForMover[sourceMover], vertex2 = vertexForMover[targetMover])
-
-    return ret
 
   def _optimizeCliqueCoarse(self, clique):
     """
@@ -917,28 +902,30 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     of the subcomponents in its optimal state) compute the score for the Movers in the vertex cut.
       Recursion terminates when there are two or fewer Movers in the Clique or when no
     vertex cut can be found; the parent-class Clique solver is used in these cases.
-    :param clique: List of indices of Movers in the clique to be optimized.
+    :param clique: Boost graph whose vertices contain all of the Movers to be optimized
+    and whose edges contain a description of all pairwise interections between them.
     :return: the score for the Movers in their optimal state.
     :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
     :side_effect: self._coarseLocations is set to the Mover's best state.
     :side_effect: self._highScores is set to the individual score for each of the Movers.
     """
-    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(clique)} using recursion\n")
+    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(list(clique.vertices()))} using recursion\n")
 
     # If we've gotten down to a clique of size 2, we terminate recursion and call our parent's method
     # because we can never split this into two connected components.
-    if len(clique) <= 2:
-      self._infoString += _VerboseCheck(1,f"Recursion terminated at clique of size {len(clique)}\n")
+    if len(list(clique.vertices())) <= 2:
+      self._infoString += _VerboseCheck(1,f"Recursion terminated at clique of size {len(list(clique.vertices()))}\n")
       ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
       return ret
 
-    # Make a copy of the subset of the InteractionGraph that includes only the Movers in
-    # the (sub)Clique we are currently optimizing.
-    subsetGraph = self._subsetGraph(clique)
+    # Find a vertex cut for the graph we were given.  Run through all states of the vertex cut
+    # and for each recursively find the best score for all of the connected components, followed by the score
+    # for the vertex cut.  Keep track of the best state and score across all of them and set back
+    # to that at the end.
     # @todo
 
     # Give up and use our parent's method.
-    self._infoString += _VerboseCheck(1,f"Could not find vertex split for clique of size {len(clique)}\n")
+    self._infoString += _VerboseCheck(1,f"Could not find vertex split for clique of size {len(list(clique.vertices()))}\n")
     ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
     return ret
 
@@ -1020,12 +1007,13 @@ class FastOptimizer(_CliqueOptimizer):
     # there has been no change in any of the Movers they depend on.
     # It wraps the parent-class method after setting things up to use the cache, and
     # then turns off the cache before returning.
-    # :param clique: List of indices of Movers in the clique to be optimized.
+    # :param clique: Boost graph whose vertices contain all of the Movers to be optimized
+    # and whose edges contain a description of all pairwise interections between them.
     # :return: the score for the Movers in their optimal state.
     # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
     # :side_effect: self._coarseLocations is set to the Mover's best state.
     # :side_effect: self._highScores is set to the individual score for each of the Movers.
-    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(clique)} using atom-score cache\n")
+    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(list(clique.vertices()))} using atom-score cache\n")
 
     # Ensure that we have a per-atom _scoreCache dictionary that will store already-computed
     # results for a given atom based on the configurations of the Movers that can affect its
@@ -1310,6 +1298,41 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         infoString += _VerboseCheck(0,"Could not add MoverHistidineFlip to "+resNameAndID+": "+str(e)+"\n")
 
   return _PlaceMoversReturn(movers, infoString, deleteAtoms)
+
+##################################################################################
+# Private helper functions.
+
+def _subsetGraph(g, keepLabels):
+  """
+  Return a new graph that is a subset of g that includes only
+  the vertices whose labels are listed, and edges between these.
+  :param g: Graph to be subsetted.
+  :param keepLabels: Labels on the vertices that should end up in the resulting
+  graph.  Must be a subset of the vertices in the graph, but it can include all
+  of the vertices, in which case it will make a full copy of the graph.
+  :return: Boost graph that is a subset of the original graph.
+  """
+
+  # We keep a dictionary from labels to the vertex in the new graph that points to
+  # that label so that we can construct edges in the new graph.
+  vertexForLabel = {}
+
+  # Construct a subgraph that consists only of vertices to be kept and
+  # edges both of whose ends are on these vertices.
+  ret = graph.adjacency_list(
+        vertex_type = "list",   # List so that deletions do not invalidate iterators and descriptors
+        )
+  for v in g.vertices():
+    label = g.vertex_label(v)
+    if label in keepLabels:
+      vertexForLabel[label] = ret.add_vertex(label)
+  for e in g.edges():
+    sourceLabel = g.vertex_label( g.source(e) )
+    targetLabel = g.vertex_label( g.target(e) )
+    if sourceLabel in keepLabels and sourceLabel in keepLabels:
+      ret.add_edge(vertex1 = vertexForLabel[sourceLabel], vertex2 = vertexForLabel[targetLabel])
+
+  return ret
 
 ##################################################################################
 # Test function and associated data and helpers to verify that all functions behave properly.
