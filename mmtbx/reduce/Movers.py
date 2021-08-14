@@ -100,7 +100,7 @@ import traceback
 #
 
 ##################################################################################
-class PositionReturn:
+class PositionReturn(object):
   # Return type from CoarsePosition() and FinePosition() calls.
   def __init__(self, atoms, positions, extraInfos, deleteMes, preferenceEnergies):
     self.atoms = atoms
@@ -110,7 +110,7 @@ class PositionReturn:
     self.preferenceEnergies = preferenceEnergies
 
 ##################################################################################
-class FixUpReturn:
+class FixUpReturn(object):
   # Return type from FixUp() calls.
   def __init__(self, atoms, positions, extraInfos, deleteMes):
     self.atoms = atoms
@@ -119,7 +119,7 @@ class FixUpReturn:
     self.deleteMes = deleteMes
 
 ##################################################################################
-class MoverNull:
+class MoverNull(object):
   '''A trivial Mover that returns a single result atom at a single location.
      Useful as a simple and fast test case for programs that use Movers.
      It also serves as a basic example of how to develop a new Mover.
@@ -163,7 +163,7 @@ class MoverNull:
 # indicate this rotation without actually having to change the positions of the Hydrogens
 # that are rotating.  This offset will be added to all resulting rotations, and subtracted
 # before applying the preference function.
-class _MoverRotator:
+class _MoverRotator(object):
   def __init__(self, atoms, axis, coarseRange, coarseStepDegrees = 30.0,
                 doFineRotations = True, fineStepDegrees = 1.0,
                 preferenceFunction = None, preferredOrientationScale = 1.0):
@@ -618,7 +618,7 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
       preferredOrientationScale = preferredOrientationScale)
 
 ##################################################################################
-class MoverNH2Flip:
+class MoverNH2Flip(object):
   def __init__(self, nh2Atom, caAtomName, bondedNeighborLists):
     """Constructs a Mover that will handle flipping an NH2 with an O, both of which
        are attached to the same Carbon atom (and each of which has no other bonds).
@@ -761,7 +761,7 @@ class MoverNH2Flip:
     return FixUpReturn(self._atoms, self._fixUpPositions[coarseIndex], [], [])
 
 ##################################################################################
-class MoverHistidineFlip:
+class MoverHistidineFlip(object):
   def __init__(self, ne2Atom, bondedNeighborLists, extraAtomInfoMap):
     """Constructs a Mover that will handle flipping a Histidine ring.
        This Mover uses a simple swap of the center positions of the heavy atoms (with

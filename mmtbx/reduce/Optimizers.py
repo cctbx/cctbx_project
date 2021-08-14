@@ -121,7 +121,7 @@ def GetAtomsForConformer(model, conf):
 # each clique into separate non-interacting subgraphs so that it only has to compute complete
 # interactions for a small number of interacting Movers at a time.
 
-class SingletonOptimizer:
+class SingletonOptimizer(object):
 
   def __init__(self, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 3,
@@ -491,7 +491,7 @@ class SingletonOptimizer:
     # Candidates for nearby atoms.  We use this list to keep track of one ones we
     # have already found so that we can compare against them to only get one for each
     # aromatic ring.
-    class Candidate:
+    class Candidate(object):
       def __init__(self, atom, overlap):
         self._atom = atom
         self._overlap = overlap
@@ -915,7 +915,7 @@ class ScoreCacheOptimizer(BruteForceOptimizer):
 ##################################################################################
 # Placement
 
-class _PlaceMoversReturn:
+class _PlaceMoversReturn(object):
   # Return type from PlaceMovers() call.  List of movers and then an information string
   # that may contain information the user would like to know (where Movers were placed,
   # failed Mover placements due to missing Hydrogens, etc.).  Also returns a list of
