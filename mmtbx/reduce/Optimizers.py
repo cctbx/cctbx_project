@@ -633,17 +633,19 @@ class _SingletonOptimizer(object):
     return maxScore
 
   def _optimizeCliqueCoarse(self, clique):
-    # Override this method in derived classes.
-    # The _SingletonOptimizer class just calls the single-Mover optimimization for each
-    # of the elements in the Clique and returns the vector of their results.  This should
-    # be overridden in derived classes to actually check for the joint maximum score over
-    # all of the Movers simultaneously.
-    # :param clique: Boost graph whose vertices contain all of the Movers to be optimized
-    # and whose edges contain a description of all pairwise interections between them.
-    # :return: the score for the Movers in their optimal state.
-    # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
-    # :side_effect: self._coarseLocations is set to the Mover's best state.
-    # :side_effect: self._highScores is set to the individual score for each of the Movers.
+    """
+    Override this method in derived classes.
+    The _SingletonOptimizer class just calls the single-Mover optimimization for each
+    of the elements in the Clique and returns the vector of their results.  This should
+    be overridden in derived classes to actually check for the joint maximum score over
+    all of the Movers simultaneously.
+    :param clique: Boost graph whose vertices contain all of the Movers to be optimized
+    and whose edges contain a description of all pairwise interections between them.
+    :return: the score for the Movers in their optimal state.
+    :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
+    :side_effect: self._coarseLocations is set to the Mover's best state.
+    :side_effect: self._highScores is set to the individual score for each of the Movers.
+    """
     self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(list(clique.vertices()))} as singletons\n")
     ret = 0.0
     for v in clique.vertices():
@@ -651,14 +653,15 @@ class _SingletonOptimizer(object):
     return ret
 
   def _optimizeSingleMoverFine(self, mover):
-    # Find the score for the Mover in all fine orientations by moving each atom into the
-    # specified position and summing the scores over all of them.  Determine the best
-    # orientation by selecting the highest scorer.
-    # Add the preference energy to the sum for each orientation scaled by our preference
-    # magnitude.
-    # :return: the score for the Mover in its optimal state.
-    # :side effect: Changes the value of self._highScores[mover] to the score at the fine position
-    # selected if one is selected.
+    """
+    Find the score for the Mover in all fine orientations by moving each atom into the
+    specified position and summing the scores over all of them.  Determine the best
+    orientation by selecting the highest scorer.
+    Add the preference energy to the sum for each orientation scaled by our preference
+    :return: the score for the Mover in its optimal state.
+    :side effect: Changes the value of self._highScores[mover] to the score at the fine position
+    selected if one is selected.
+    """
     maxScore = 0.0
     coarse = mover.CoarsePositions()  # Record in case we need to put it back
     fine = mover.FinePositions(self._coarseLocations[mover])
@@ -744,15 +747,17 @@ class _BruteForceOptimizer(_SingletonOptimizer):
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude)
 
   def _optimizeCliqueCoarse(self, clique):
-    # The _BruteForceOptimizer class checks for the joint maximum score over
-    # all of the Movers simultaneously.  It tries all Movers in all possible positions against all
-    # other Movers in all combinations of positions.
-    # :param clique: Boost graph whose vertices contain all of the Movers to be optimized
-    # and whose edges contain a description of all pairwise interections between them.
-    # :return: the score for the Movers in their optimal state.
-    # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
-    # :side_effect: self._coarseLocations is set to the Mover's best state.
-    # :side_effect: self._highScores is set to the individual score for each of the Movers.
+    """
+    The _BruteForceOptimizer class checks for the joint maximum score over
+    all of the Movers simultaneously.  It tries all Movers in all possible positions against all
+    other Movers in all combinations of positions.
+    :param clique: Boost graph whose vertices contain all of the Movers to be optimized
+    and whose edges contain a description of all pairwise interections between them.
+    :return: the score for the Movers in their optimal state.
+    :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
+    :side_effect: self._coarseLocations is set to the Mover's best state.
+    :side_effect: self._highScores is set to the individual score for each of the Movers.
+    """
     self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(list(clique.vertices()))} using brute force\n")
 
     # Prepare some data structures to keep track of the joint state of the Movers, and of the
@@ -1002,17 +1007,19 @@ class FastOptimizer(_CliqueOptimizer):
       return super(FastOptimizer, self)._scoreAtom(atom)
 
   def _optimizeCliqueCoarse(self, clique):
-    # The FastOptimizer class generates a per-atom score cache object and uses it along
-    # with an overridden _doScoreCaching() method to avoid recomputing scores for atoms where
-    # there has been no change in any of the Movers they depend on.
-    # It wraps the parent-class method after setting things up to use the cache, and
-    # then turns off the cache before returning.
-    # :param clique: Boost graph whose vertices contain all of the Movers to be optimized
-    # and whose edges contain a description of all pairwise interections between them.
-    # :return: the score for the Movers in their optimal state.
-    # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
-    # :side_effect: self._coarseLocations is set to the Mover's best state.
-    # :side_effect: self._highScores is set to the individual score for each of the Movers.
+    """
+    The FastOptimizer class generates a per-atom score cache object and uses it along
+    with an overridden _doScoreCaching() method to avoid recomputing scores for atoms where
+    there has been no change in any of the Movers they depend on.
+    It wraps the parent-class method after setting things up to use the cache, and
+    then turns off the cache before returning.
+    :param clique: Boost graph whose vertices contain all of the Movers to be optimized
+    and whose edges contain a description of all pairwise interections between them.
+    :return: the score for the Movers in their optimal state.
+    :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
+    :side_effect: self._coarseLocations is set to the Mover's best state.
+    :side_effect: self._highScores is set to the individual score for each of the Movers.
+    """
     self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(list(clique.vertices()))} using atom-score cache\n")
 
     # Ensure that we have a per-atom _scoreCache dictionary that will store already-computed
