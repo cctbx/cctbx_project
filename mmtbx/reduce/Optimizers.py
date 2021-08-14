@@ -1336,7 +1336,7 @@ def _subsetGraph(g, keepLabels):
   for e in g.edges():
     sourceLabel = g.vertex_label( g.source(e) )
     targetLabel = g.vertex_label( g.target(e) )
-    if sourceLabel in keepLabels and sourceLabel in keepLabels:
+    if sourceLabel in keepLabels and targetLabel in keepLabels:
       ret.add_edge(vertex1 = vertexForLabel[sourceLabel], vertex2 = vertexForLabel[targetLabel])
 
   return ret
