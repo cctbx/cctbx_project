@@ -410,11 +410,7 @@ class _SingletonOptimizer(object):
 
         # Do coarse optimization on the multi-Mover Cliques.
         for g in groupCliques:
-          clique = []
-          for m in g:
-            mover = self._movers[m]
-            clique.append(mover)
-          ret = self._optimizeCliqueCoarse(clique)
+          ret = self._optimizeCliqueCoarse(g)
           self._infoString += _VerboseCheck(1,f"Clique optimized with score {ret:.2f}\n")
         self._infoString += _ReportTiming("optimize cliques (coarse)")
 
@@ -454,9 +450,9 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Print the final state and score for all Movers
-        for m in self._movers:
-          self._infoString += _VerboseCheck(1,"Mover {} in coarse state {}, fine state {} with score {:.2f}\n".format(
-            type(m), self._coarseLocations[m], self._fineLocations[m],self._highScores[m]))
+        for i,m in enumerate(self._movers):
+          self._infoString += _VerboseCheck(1,"Mover {:4d} in coarse state {:2d}, fine state {:2d} with score {:.2f}\n".format(
+            i, self._coarseLocations[m], self._fineLocations[m],self._highScores[m]))
 
         ################################################################################
         # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,
@@ -633,21 +629,21 @@ class _SingletonOptimizer(object):
     self._highScores[mover] = maxScore
     return maxScore
 
-  def _optimizeCliqueCoarse(self, movers):
+  def _optimizeCliqueCoarse(self, clique):
     # Override this method in derived classes.
     # The _SingletonOptimizer class just calls the single-Mover optimimization for each
     # of the elements in the Clique and returns the vector of their results.  This should
     # be overridden in derived classes to actually check for the joint maximum score over
     # all of the Movers simultaneously.
-    # :param movers: List of Movers in the clique to be optimized.
+    # :param clique: List of indices of Movers in the clique to be optimized.
     # :return: the score for the Movers in their optimal state.
     # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
     # :side_effect: self._coarseLocations is set to the Mover's best state.
     # :side_effect: self._highScores is set to the individual score for each of the Movers.
-    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(movers)} as singletons\n")
+    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(clique)} as singletons\n")
     ret = 0.0
-    for m in movers:
-      ret += self._optimizeSingleMoverCoarse(m)
+    for i in clique:
+      ret += self._optimizeSingleMoverCoarse(self._movers[i])
     return ret
 
   def _optimizeSingleMoverFine(self, mover):
@@ -743,20 +739,21 @@ class _BruteForceOptimizer(_SingletonOptimizer):
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude)
 
-  def _optimizeCliqueCoarse(self, movers):
+  def _optimizeCliqueCoarse(self, clique):
     # The _BruteForceOptimizer class checks for the joint maximum score over
     # all of the Movers simultaneously.  It tries all Movers in all possible positions against all
     # other Movers in all combinations of positions.
-    # :param movers: List of Movers in the clique to be optimized.
+    # :param clique: List of indices of Movers in the clique to be optimized.
     # :return: List of the indices of the coarse position selected for each Mover in the same
     # order they were listed in the movers list.
     # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
     # :side_effect: self._coarseLocations is set to the Mover's best state.
     # :side_effect: self._highScores is set to the individual score for each of the Movers.
-    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(movers)} using brute force\n")
+    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(clique)} using brute force\n")
 
     # Prepare some data structures to keep track of the joint state of the Movers, and of the
-    # best combination found so far.
+    # best combination found so far.  Start by getting a list of Movers to be handled
+    movers = [self._movers[i] for i in clique]
     curStateValues = [] # Cycles through available indices, one per Mover
     states = []         # Coarse position state return for each Mover
     numStates = []      # Records maximum number of states per Mover
@@ -880,7 +877,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude)
 
-  def _optimizeCliqueCoarse(self, movers):
+  def _optimizeCliqueCoarse(self, clique):
     # Looks for a vertex cut in the Clique that will separate the remaining vertices into two more
     # more connected subcomponents.  Test each combined state of the set of Movers in the vertex cut
     # to find the one with the best overall maximum score.
@@ -888,15 +885,15 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     # of the subcomponents in its optimal state) compute the score for the Movers in the vertex cut.
     #   Recursion terminates when there are two or fewer Movers in the Clique or when no
     # vertex cut can be found; the parent-class Clique solver is used in these cases.
-    # :param movers: List of Movers in the clique to be optimized.
+    # :param clique: List of indices of Movers in the clique to be optimized.
     # :return: the score for the Movers in their optimal state.
     # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
     # :side_effect: self._coarseLocations is set to the Mover's best state.
     # :side_effect: self._highScores is set to the individual score for each of the Movers.
-    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(movers)} using recursion\n")
+    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(clique)} using recursion\n")
 
     # @todo
-    ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(movers)
+    ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
     return ret
 
 class FastOptimizer(_CliqueOptimizer):
@@ -971,18 +968,18 @@ class FastOptimizer(_CliqueOptimizer):
     else:
       return super(FastOptimizer, self)._scoreAtom(atom)
 
-  def _optimizeCliqueCoarse(self, movers):
+  def _optimizeCliqueCoarse(self, clique):
     # The FastOptimizer class generates a per-atom score cache object and uses it along
     # with an overridden _doScoreCaching() method to avoid recomputing scores for atoms where
     # there has been no change in any of the Movers they depend on.
     # It wraps the parent-class method after setting things up to use the cache, and
     # then turns off the cache before returning.
-    # :param movers: List of Movers in the clique to be optimized.
+    # :param clique: List of indices of Movers in the clique to be optimized.
     # :return: the score for the Movers in their optimal state.
     # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
     # :side_effect: self._coarseLocations is set to the Mover's best state.
     # :side_effect: self._highScores is set to the individual score for each of the Movers.
-    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(movers)} using atom-score cache\n")
+    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(clique)} using atom-score cache\n")
 
     # Ensure that we have a per-atom _scoreCache dictionary that will store already-computed
     # results for a given atom based on the configurations of the Movers that can affect its
@@ -999,7 +996,7 @@ class FastOptimizer(_CliqueOptimizer):
     # Call the parent-class optimizer, turning on and off the cache behavior before
     # and after.
     self._doScoreCaching = True
-    ret = super(FastOptimizer, self)._optimizeCliqueCoarse(movers)
+    ret = super(FastOptimizer, self)._optimizeCliqueCoarse(clique)
     self._doScoreCaching = False
     return ret
 
@@ -1114,7 +1111,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
               potentialAcceptors.append(c)
 
           movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, potentialAcceptors))
-          infoString += _VerboseCheck(1,"Added MoverSingleHydrogenRotator to "+resNameAndID+" "+aName+
+          infoString += _VerboseCheck(1,"Added MoverSingleHydrogenRotator "+str(len(movers))+" to "+resNameAndID+" "+aName+
             " with "+str(len(potentialAcceptors))+" potential nearby acceptors\n")
       except Exception as e:
         infoString += _VerboseCheck(0,"Could not add MoverSingleHydrogenRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n")
@@ -1130,7 +1127,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
       if numH == 3:
         try:
           movers.append(Movers.MoverNH3Rotator(a, bondedNeighborLists))
-          infoString += _VerboseCheck(1,"Added MoverNH3Rotator to "+resNameAndID+"\n")
+          infoString += _VerboseCheck(1,"Added MoverNH3Rotator "+str(len(movers))+" to "+resNameAndID+"\n")
         except Exception as e:
           infoString += _VerboseCheck(0,"Could not add MoverNH3Rotator to "+resNameAndID+": "+str(e)+"\n")
 
@@ -1152,7 +1149,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         if len(bondedNeighborLists[neighbor]) == 3:
           try:
             movers.append(Movers.MoverAromaticMethylRotator(a, bondedNeighborLists))
-            infoString += _VerboseCheck(1,"Added MoverAromaticMethylRotator to "+resNameAndID+" "+aName+"\n")
+            infoString += _VerboseCheck(1,"Added MoverAromaticMethylRotator "+str(len(movers))+" to "+resNameAndID+" "+aName+"\n")
           except Exception as e:
             infoString += _VerboseCheck(0,"Could not add MoverAromaticMethylRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n")
         else:
@@ -1167,7 +1164,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
     if (aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN'):
       try:
         movers.append(Movers.MoverNH2Flip(a, "CA", bondedNeighborLists))
-        infoString += _VerboseCheck(1,"Added MoverNH2Flip to "+resNameAndID+"\n")
+        infoString += _VerboseCheck(1,"Added MoverNH2Flip "+str(len(movers))+" to "+resNameAndID+"\n")
       except Exception as e:
         infoString += _VerboseCheck(0,"Could not add MoverNH2Flip to "+resNameAndID+": "+str(e)+"\n")
 
@@ -1262,7 +1259,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           infoString += _VerboseCheck(1,"Set MoverHistidineFlip on "+resNameAndID+" to state "+str(bondedConfig)+"\n")
         else:
           movers.append(hist)
-          infoString += _VerboseCheck(1,"Added MoverHistidineFlip to "+resNameAndID+"\n")
+          infoString += _VerboseCheck(1,"Added MoverHistidineFlip "+str(len(movers))+" to "+resNameAndID+"\n")
       except Exception as e:
         infoString += _VerboseCheck(0,"Could not add MoverHistidineFlip to "+resNameAndID+": "+str(e)+"\n")
 
