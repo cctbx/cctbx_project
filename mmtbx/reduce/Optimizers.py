@@ -1333,6 +1333,44 @@ def _subsetGraph(g, keepLabels):
 
   return ret
 
+def _vertexCut(clique):
+  """
+  Return a "vertex cut" of clique such that removal of a subset of the vertices
+  causes the remainder of the vertices to become disconnected.
+  :param clique: Boost graph of Movers that describes a Clique (or a subset of a Clique) and
+  includes only vertices and edges within the subset for which a vertex cut is to be found.
+  This must not be self._interactionGraph() or any other graph that already has multiple
+  connected components.
+  :return: A tuple: (1) List of Movers that were removed.  If this list is empty, no vertex
+  cut was found. (2) New graph with the vertices and edges associated with the removed Movers
+  removed from the graph.  This graph will have at least two connected components.  If no
+  vertex cut is found, this will be a copy of the original graph.
+  """
+
+  # Check all vertex cut sizes from 1 to 2 less than the number of vertices (we must)
+  # have at least 2 vertices left to have a disconnected graph).
+  for n in range(1, len(list(clique.vertices()))+1-2):
+    # Iterate over all sets of vertices of size n that might be removed
+    for removed in itertools.combinations(clique.vertices(),n):
+      movers = [clique.vertex_label(v) for v in removed]
+      # Find the list of remaining vertices, which is all but the ones to be removed.
+      remain = set(clique.vertex_label(v) for v in clique.vertices())
+      for m in movers:
+        remain.remove(m)
+      # Make a copy of the clique with those vertices removed.
+      newGraph = _subsetGraph(clique, remain)
+
+      # If the graph has 2 or more connected components, we've found our answer.
+      components = cca.connected_components( graph = newGraph )
+      if len(components) > 1:
+        return movers, newGraph
+
+  # We didn't find an answer.  Return a complete copy of the graph and an empty set of movers.
+  movers = []
+  newGraph = _subsetGraph(clique, [clique.vertex_label(v) for v in clique.vertices()])
+
+  return movers, newGraph
+
 ##################################################################################
 # Test function and associated data and helpers to verify that all functions behave properly.
 
