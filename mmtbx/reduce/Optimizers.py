@@ -105,23 +105,27 @@ def GetAtomsForConformer(model, conf):
 
 ##################################################################################
 # Optimizers:
-#     SingletonOptimizer: This is a base Optimizer class that implements the placement and scoring
+#     _SingletonOptimizer: This is a base Optimizer class that implements the placement and scoring
 # of Movers and optimizes all Movers independently, not taking into account their impacts
 # on each other.  The other Optimizers will all be derived from this base class and will
-# override the multi-Mover Clique optimization routine.
-#     BruteForceOptimizer: This tries all possible coarse and fine orientations of all
-# Movers in all combinations.  It is too slow for any but very small numbers of Movers but it
-# is guaranteed to find the minimum score across all combinations.  It is used mainly to
-# provide results for test comparisons with the other optimizers.
-#     CliqueOptimizer: This produces an InteractionGraph telling which Movers might possibly
-# interact during their motion and runs brute-force optimization on each subgraph independently.
-# This greatly reduces the number of calculations but is still much to slow for many molecules
-# that have a large number of interacting Movers in their largest clique.
-#     HyperGraphOptimizer: This uses a divide-and-conquer, dynamic-programming approach to break
+# override the multi-Mover Clique optimization routine.  This base class does produce an
+# InteractionGraph telling which Movers might possibly interact during their motion but it
+# treats all Movers as if they were singletons rather than Cliques.  It should not be used
+# by client code.
+#     _BruteForceOptimizer: This runs brute-force optimization on each Clique independently.
+# This is much to slow for many molecules that have a large number of interacting Movers
+# in their largest clique.  It should not be used by client code, and is here mainly to
+# support unit testing by providing a baseline for comparison against faster algorithms.
+#     _CliqueOptimizer: This uses a recursive divide-and-conquer approach to break
 # each clique into separate non-interacting subgraphs so that it only has to compute complete
-# interactions for a small number of interacting Movers at a time.
+# interactions for a small number of interacting Movers at a time.  It should not be used
+# by client code.
+#     FastOptimizer: This is the optimizer that should be used by client code.  This uses
+# a dictionary telling which Movers a given atom may interact with to cache scores for atoms
+# in each combination of coarse locations for these Movers, greatly reducing the number of
+# atom scores that must be computed and speeding up calculations.
 
-class SingletonOptimizer(object):
+class _SingletonOptimizer(object):
 
   def __init__(self, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 3,
@@ -131,12 +135,12 @@ class SingletonOptimizer(object):
                 minOccupancy = 0.01,
                 preferenceMagnitude = 1.0
               ):
-    """Constructor for SingletonOptimizer.  This is the base class for all optimizers and
+    """Constructor for _SingletonOptimizer.  This is the base class for all optimizers and
     it implements the machinery that finds and optimized Movers.
     This class optimizes all Movers independently,
     ignoring their impact on one another.  This means that it will not find the global
     minimum for any multi-Mover Cliques.  Derived classes should override the
-    _optimizeCliqueCoarse() function to improve this behavior.
+    _optimizeCliqueCoarse() and other methods as needed to improve speed.
     :param model: iotbx model (a group of hierarchy models).  Can be obtained using
     iotbx.map_model_manager.map_model_manager.model().  The model must have Hydrogens,
     which can be added using mmtbx.hydrogens.reduce_hydrogen.place_hydrogens().get_model().
@@ -411,7 +415,8 @@ class SingletonOptimizer(object):
           for m in g:
             mover = movers[m]
             clique.append(mover)
-          self._optimizeCliqueCoarse(clique)
+          ret = self._optimizeCliqueCoarse(clique)
+          self._infoString += _VerboseCheck(1,f"Clique optimized with score {ret:.2f}\n")
         self._infoString += _ReportTiming("optimize cliques (coarse)")
 
         # Do fine optimization on the Movers.  This is done independently for
@@ -465,7 +470,7 @@ class SingletonOptimizer(object):
     """
       Returns information that the user may care about regarding the processing.  The level of
       detail on this can be set by setting Optimizers.verbosity before creating or calling methods.
-      :return: the information so far collected in the string.  Calling this function also clears
+      :return: the information so far collected in the string.  Calling this method also clears
       the information, so that later calls will not repeat it.
     """
     ret = self._infoString
@@ -585,7 +590,7 @@ class SingletonOptimizer(object):
     # orientation by selecting the highest scorer.
     # Add the preference energy to the sum for each orientation scaled by our preference
     # magnitude.
-    # :return: the index of the coarse position selected for the Mover.
+    # :return: the score for the Mover in its optimal state.
     # :side_effect: self._setMoverState() is called to put the Mover's atoms into its best state.
     # :side_effect: self._coarseLocations is set to the Mover's best state.
     # :side_effect: Changes the value of self._highScores[mover] to the score at the coarse position
@@ -616,24 +621,26 @@ class SingletonOptimizer(object):
     self._setMoverState(coarse, maxIndex)
     self._coarseLocations[mover] = maxIndex
 
-    # Record the best score for this Mover.
+    # Record and return the best score for this Mover.
     self._highScores[mover] = maxScore
+    return maxScore
 
   def _optimizeCliqueCoarse(self, movers):
     # Override this method in derived classes.
-    # The SingletonOptimizer class just calls the single-Mover optimimization for each
+    # The _SingletonOptimizer class just calls the single-Mover optimimization for each
     # of the elements in the Clique and returns the vector of their results.  This should
     # be overridden in derived classes to actually check for the joint maximum score over
     # all of the Movers simultaneously.
     # :param movers: List of Movers in the clique to be optimized.
-    # :return: List of the indices of the coarse position selected for each Mover in the same
-    # order they were listed in the movers list.
+    # :return: the score for the Movers in their optimal state.
     # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
     # :side_effect: self._coarseLocations is set to the Mover's best state.
     # :side_effect: self._highScores is set to the individual score for each of the Movers.
     self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(movers)} as singletons\n")
+    ret = 0.0
     for m in movers:
-      self._optimizeSingleMoverCoarse(m)
+      ret += self._optimizeSingleMoverCoarse(m)
+    return ret
 
   def _optimizeSingleMoverFine(self, mover):
     # Find the score for the Mover in all fine orientations by moving each atom into the
@@ -641,9 +648,10 @@ class SingletonOptimizer(object):
     # orientation by selecting the highest scorer.
     # Add the preference energy to the sum for each orientation scaled by our preference
     # magnitude.
-    # :return: nothing.
+    # :return: the score for the Mover in its optimal state.
     # :side effect: Changes the value of self._highScores[mover] to the score at the fine position
     # selected if one is selected.
+    maxScore = 0.0
     coarse = mover.CoarsePositions()  # Record in case we need to put it back
     fine = mover.FinePositions(self._coarseLocations[mover])
     if len(fine.positions) > 0:
@@ -668,7 +676,7 @@ class SingletonOptimizer(object):
       # Put the Mover into its final position (which may be back to its initial position)
       # and update the high score.
       if maxScore > self._highScores[mover]:
-        self._infoString += _VerboseCheck(1,f"Setting single Mover to fine orientation {maxIndex}"+
+        self._infoString += _VerboseCheck(3,f"Setting single Mover to fine orientation {maxIndex}"+
           f", max score = {maxScore:.2f} (coarse score {self._highScores[mover]:.2f})\n")
         self._setMoverState(fine, maxIndex)
 
@@ -676,10 +684,11 @@ class SingletonOptimizer(object):
         self._highScores[mover] = maxScore
       else:
         # Put us back to the initial coarse location and don't change the high score.
-        self._infoString += _VerboseCheck(1,f"Leaving single Mover at coarse orientation\n")
+        self._infoString += _VerboseCheck(3,f"Leaving single Mover at coarse orientation\n")
         self._setMoverState(coarse, self._coarseLocations[mover])
+    return maxScore
 
-class BruteForceOptimizer(SingletonOptimizer):
+class _BruteForceOptimizer(_SingletonOptimizer):
   def __init__(self, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 3,
                 probeRadius = 0.25,
@@ -688,7 +697,7 @@ class BruteForceOptimizer(SingletonOptimizer):
                 minOccupancy = 0.01,
                 preferenceMagnitude = 1.0
               ):
-    """Constructor for BruteForceOptimizer.  This tries all combinations of Mover positions
+    """Constructor for _BruteForceOptimizer.  This tries all combinations of Mover positions
     within a Clique.  It will be too slow for many files, but it provides a baseline against
     which to compare the results from faster optimizers.
     :param model: iotbx model (a group of hierarchy models).  Can be obtained using
@@ -719,13 +728,13 @@ class BruteForceOptimizer(SingletonOptimizer):
     :param preferenceMagnitude: Multiplier for the preference energies expressed
     by some Movers for particular orientations.
     """
-    super(BruteForceOptimizer, self).__init__(model, modelIndex = modelIndex, altID = altID,
+    super(_BruteForceOptimizer, self).__init__(model, modelIndex = modelIndex, altID = altID,
                 bondedNeighborDepth = bondedNeighborDepth,
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude)
 
   def _optimizeCliqueCoarse(self, movers):
-    # The BruteForceOptimizer class checks for the joint maximum score over
+    # The _BruteForceOptimizer class checks for the joint maximum score over
     # all of the Movers simultaneously.  It tries all Movers in all possible positions against all
     # other Movers in all combinations of positions.
     # :param movers: List of Movers in the clique to be optimized.
@@ -798,17 +807,20 @@ class BruteForceOptimizer(SingletonOptimizer):
 
     # Put each Mover into its best state and compute its high-score value.
     # Compute the best individual scores for these Movers for use in later fine-motion
-    # processing.
+    # processing.  Return the total score
+    ret = 0.0
     for i,m in enumerate(movers):
       self._setMoverState(states[i], bestState[i])
       self._coarseLocations[movers[i]] = bestState[i]
       self._highScores[m] = 0
       for a in states[i].atoms:
         self._highScores[m] += self._scoreAtom(a)
-      self._infoString += _VerboseCheck(1,f"Setting Mover in clique to coarse orientation {bestState[i]}"+
+      self._infoString += _VerboseCheck(3,f"Setting Mover in clique to coarse orientation {bestState[i]}"+
         f", max score = {self._highScores[m]:.2f}\n")
+      ret += self._highScores[m]
+    return ret
 
-class ScoreCacheOptimizer(BruteForceOptimizer):
+class _CliqueOptimizer(_BruteForceOptimizer):
   def __init__(self, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 3,
                 probeRadius = 0.25,
@@ -817,8 +829,77 @@ class ScoreCacheOptimizer(BruteForceOptimizer):
                 minOccupancy = 0.01,
                 preferenceMagnitude = 1.0
               ):
-    """Constructor for ScoreCacheOptimizer.  This uses the same algorithm as the
-    BruteForceOptimizer but first constructs a cache for every atom in every Mover
+    """Constructor for _CliqueOptimizer.  This uses a recursive algorithm to break down the total
+    clique into sets of smaller cliques.  It looks for a vertex cut in the Clique it is called with
+    that will separate the remaining vertices into two more more connected subcomponents.  It then tests
+    each combined state of the set of Movers in the vertex cut to find the one with the best overall
+    maximum score.  For each state, it first recursively optimizes all of the connected subcomponents
+    and then (with each of the subcomponents in its optimal state) computes the score for the Movers in
+    the vertex cut.  Recursion terminates when there are two or fewer Movers in the Clique or when no
+    vertex cut can be found; the parent-class Clique solver is used in these cases.
+    :param model: iotbx model (a group of hierarchy models).  Can be obtained using
+    iotbx.map_model_manager.map_model_manager.model().  The model must have Hydrogens,
+    which can be added using mmtbx.hydrogens.reduce_hydrogen.place_hydrogens().get_model().
+    It must have a valid unit cell, which can be helped by calling
+    cctbx.maptbx.box.shift_and_box_model().  It must have had PDB interpretation run on it,
+    which can be done using model.process_input_model(make_restraints=True) with PDB
+    interpretation parameters and hydrogen placement matching the value of the
+    useNeutronDistances parameter described below.
+    :param modelIndex: Identifies which index from the hierarchy is to be selected.
+    If this value is None, optimization will be run sequentially on every model in the
+    hierarchy.
+    :param altID: The conformer alternate location specifier to use.  The value "" will
+    cause it to run on the first conformer found in each model.  If this is set to None
+    (the default), optimization will be run sequentially for every conformer in the model, starting with
+    the last and ending with the first.  This will leave the initial conformer's values as the
+    final location for atoms that are not inside a conformer or are in the first conformer.
+    :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
+    The default is to ignore interactions to a depth of 3 (my bonded neighbors and their bonded
+    neighbors and their bonded neighbors).
+    :param probeRadius: Radius of the probe to be used in Probe calculations (Angstroms).
+    :param useNeutronDistances: Defaults to using X-ray/electron cloud distances.  If set to
+    True, it will use neutron (nuclear) distances.  This must be set consistently with the
+    values used to generate the hydrogens and to run PDB interpretation.
+    :param probeDensity: How many dots per sq Angstroms in VDW calculations.
+    :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
+    :param preferenceMagnitude: Multiplier for the preference energies expressed
+    by some Movers for particular orientations.
+    """
+    super(_CliqueOptimizer, self).__init__(model, modelIndex = modelIndex, altID = altID,
+                bondedNeighborDepth = bondedNeighborDepth,
+                probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
+                minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude)
+
+  def _optimizeCliqueCoarse(self, movers):
+    # Looks for a vertex cut in the Clique that will separate the remaining vertices into two more
+    # more connected subcomponents.  Test each combined state of the set of Movers in the vertex cut
+    # to find the one with the best overall maximum score.
+    #   For each state, recursively optimize all of the connected subcomponents and then (with each
+    # of the subcomponents in its optimal state) compute the score for the Movers in the vertex cut.
+    #   Recursion terminates when there are two or fewer Movers in the Clique or when no
+    # vertex cut can be found; the parent-class Clique solver is used in these cases.
+    # :param movers: List of Movers in the clique to be optimized.
+    # :return: the score for the Movers in their optimal state.
+    # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
+    # :side_effect: self._coarseLocations is set to the Mover's best state.
+    # :side_effect: self._highScores is set to the individual score for each of the Movers.
+    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(movers)} using recursion\n")
+
+    # @todo
+    ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(movers)
+    return ret
+
+class FastOptimizer(_CliqueOptimizer):
+  def __init__(self, model, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 3,
+                probeRadius = 0.25,
+                useNeutronDistances = False,
+                probeDensity = 16.0,
+                minOccupancy = 0.01,
+                preferenceMagnitude = 1.0
+              ):
+    """Constructor for FastOptimizer.  This uses the same algorithm as the
+    parent-class but first constructs a cache for every atom in every Mover
     of all the Movers whose positions can affect its answer.  The _scoreAtom() method
     is overridden to use this cached value in clique optimization (but not in singleton
     or fine optimization) when it has already been computed for a given configuration
@@ -858,7 +939,7 @@ class ScoreCacheOptimizer(BruteForceOptimizer):
     # it calls.
     self._doScoreCaching = False
 
-    super(ScoreCacheOptimizer, self).__init__(model, modelIndex = modelIndex, altID = altID,
+    super(FastOptimizer, self).__init__(model, modelIndex = modelIndex, altID = altID,
                 bondedNeighborDepth = bondedNeighborDepth,
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude)
@@ -875,20 +956,19 @@ class ScoreCacheOptimizer(BruteForceOptimizer):
       try:
         return self._scoreCache[atom][state]
       except:
-        self._scoreCache[atom][state] = super(ScoreCacheOptimizer, self)._scoreAtom(atom)
+        self._scoreCache[atom][state] = super(FastOptimizer, self)._scoreAtom(atom)
         return self._scoreCache[atom][state]
     else:
-      return super(ScoreCacheOptimizer, self)._scoreAtom(atom)
+      return super(FastOptimizer, self)._scoreAtom(atom)
 
   def _optimizeCliqueCoarse(self, movers):
-    # The ScoreCacheOptimizer class generates a per-atom score cache object and uses it along
+    # The FastOptimizer class generates a per-atom score cache object and uses it along
     # with an overridden _doScoreCaching() method to avoid recomputing scores for atoms where
     # there has been no change in any of the Movers they depend on.
-    # It wraps the BruteForceOptimizer method after setting things up to use the cache, and
+    # It wraps the parent-class method after setting things up to use the cache, and
     # then turns off the cache before returning.
     # :param movers: List of Movers in the clique to be optimized.
-    # :return: List of the indices of the coarse position selected for each Mover in the same
-    # order they were listed in the movers list.
+    # :return: the score for the Movers in their optimal state.
     # :side_effect: self._setMoverState() is called to put the Movers into the best combined state.
     # :side_effect: self._coarseLocations is set to the Mover's best state.
     # :side_effect: self._highScores is set to the individual score for each of the Movers.
@@ -909,8 +989,9 @@ class ScoreCacheOptimizer(BruteForceOptimizer):
     # Call the parent-class optimizer, turning on and off the cache behavior before
     # and after.
     self._doScoreCaching = True
-    super(ScoreCacheOptimizer, self)._optimizeCliqueCoarse(movers)
+    ret = super(FastOptimizer, self)._optimizeCliqueCoarse(movers)
     self._doScoreCaching = False
+    return ret
 
 ##################################################################################
 # Placement
@@ -1351,7 +1432,7 @@ END
   print('Constructing Optimizer')
   # @todo Let the caller specify the model index and altID rather than doing only the default (first).
   startOpt = time.perf_counter()
-  opt = ScoreCacheOptimizer(model,probeRadius=0.25, altID="")
+  opt = FastOptimizer(model,probeRadius=0.25, altID="")
   doneOpt = time.perf_counter()
   info = opt.getInfo()
   print('XXX info:\n'+info)
