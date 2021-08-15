@@ -760,27 +760,20 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     """
     self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(list(clique.vertices()))} using brute force\n")
 
-    # Prepare some data structures to keep track of the joint state of the Movers, and of the
-    # best combination found so far.  Start by getting a list of Movers to be handled
-    movers = [self._interactionGraph.vertex_label(v) for v in clique.vertices()]
-    curStateValues = [] # Cycles through available indices, one per Mover
-    states = []         # Coarse position state return for each Mover
-    numStates = []      # Records maximum number of states per Mover
-    for m in movers:
-      curStateValues.append(0)  # Start all in state 0
-      states.append(m.CoarsePositions())
-      numStates.append(len(states[-1].positions))
-
     # Find the value for the current set of states, compare it against the max, and store it if
     # it is the best so far.
-    # We will cycle the states[] list through all possible states for each Mover,
-    # incremementing each until it rolls over and then jumping up to the next.
-    # This is similar to doing +1 arithmetic with carry on a multi-digit number.
-    curState = 0
+    # We will cycle the states[] list through all possible states for each Mover;
+    # use the generating function to cycle through all possible states, keeping track of the best.
     bestState = None
     bestScore = -1e100  # Any score will be better than this
-    done = False
-    while not done:
+    states = []         # Coarse position state return for each Mover
+    numStates = []      # Number of positions for each Mover
+    movers = [self._interactionGraph.vertex_label(v) for v in clique.vertices()]
+    for m in movers:
+      states.append(m.CoarsePositions())
+      numStates.append(len(states[-1].positions))
+    for curStateValues in _generateAllStates(numStates):
+
       # Set all movers to match the state list.
       # @todo Optimize this so that it only changes states that differed from last time.
       for i in range(len(movers)):
@@ -798,28 +791,6 @@ class _BruteForceOptimizer(_SingletonOptimizer):
         self._infoString += _VerboseCheck(4,f"New best score is {score:.2f} at {curStateValues}\n")
         bestScore = score
         bestState = curStateValues.copy()
-
-      # Increment the state.  We do this by increasing the current element until it reaches its
-      # number of values, then we bump it and all of its neighbors to the right back to 0 and, if
-      # we're not at the left end, bump the next one up.  If we are at the left end, we're done.
-      # When done, leave all states at 0.
-      curStateValues[curState] += 1
-      rippled = False
-      while curStateValues[curState] == numStates[curState]:  # Ripple to the left if we overflow more than one
-        # Clear all of the values to the right, and ours, because we're rolling over
-        for i in range(curState+1):
-          curStateValues[i] = 0
-        # If we're the left-most state, we're done
-        if curState+1 >= len(movers):
-          done = True
-        else:
-          curState += 1
-          curStateValues[curState] += 1
-          rippled = True
-      # If we rippled, bump back to the right-most column and start counting there again in
-      # the next iteration.
-      if rippled:
-        curState = 0
 
     # Put each Mover into its best state and compute its high-score value.
     # Compute the best individual scores for these Movers for use in later fine-motion
@@ -1370,6 +1341,47 @@ def _vertexCut(clique):
   newGraph = _subsetGraph(clique, [clique.vertex_label(v) for v in clique.vertices()])
 
   return movers, newGraph
+
+def _generateAllStates(numStates):
+  """ This is a generator function that will yield all combinations of states within the
+  counts specified in the state vector.  For example, if numStates is [2, 2] then this will
+  produce the following outputs, one at a time: [0, 0], [1, 0], [0, 1], [1, 1].
+  :param numStates: List of integers specifying the number of states for each element.
+  :return: Yields all combinations of all elements in the state vector.
+  """
+
+  # Cycle the curStateValues[] list through all possible states for each element,
+  # incremementing each until it rolls over and then jumping up to the next.
+  # This is similar to doing +1 arithmetic with carry on a multi-digit number.
+  curStateValues = [0] * len(numStates) # Cycles through available counts, one per element
+  curState = 0
+
+  # Increment the state.  We do this by increasing the current element until it reaches its
+  # number of values, then we bump it and all of its neighbors to the right back to 0 and, if
+  # we're not at the left end, bump the next one up.  If we are at the left end, we're done.
+  # When done, leave all states at 0.
+  while True:
+    # Yield the current value
+    yield curStateValues
+
+    # Go to the next value, if there is one.
+    curStateValues[curState] += 1
+    rippled = False
+    while curStateValues[curState] == numStates[curState]:  # Ripple to the left if we overflow more than one
+      # Clear all of the values to the right, and ours, because we're rolling over
+      for i in range(curState+1):
+        curStateValues[i] = 0
+      # If we're the left-most state, we're done
+      if curState+1 >= len(numStates):
+        return
+      else:
+        curState += 1
+        curStateValues[curState] += 1
+        rippled = True
+    # If we rippled, bump back to the right-most column and start counting there again in
+    # the next iteration.
+    if rippled:
+      curState = 0
 
 ##################################################################################
 # Test function and associated data and helpers to verify that all functions behave properly.
