@@ -406,7 +406,8 @@ class _SingletonOptimizer(object):
           self._coarseLocations[m] = 0
         for s in singletonCliques:
           mover = self._interactionGraph.vertex_label(s[0])
-          self._optimizeSingleMoverCoarse(mover)
+          ret = self._optimizeSingleMoverCoarse(mover)
+          self._infoString += _VerboseCheck(1,f"Singletone optimized with score {ret:.2f}\n")
         self._infoString += _ReportTiming("optimize singletons (coarse)")
 
         # Do coarse optimization on the multi-Mover Cliques.
@@ -623,7 +624,7 @@ class _SingletonOptimizer(object):
         maxIndex = i;
 
     # Put the Mover into its final position (which may be back to its initial position)
-    self._infoString += _VerboseCheck(1,f"Setting single Mover to coarse orientation {maxIndex}"+
+    self._infoString += _VerboseCheck(3,f"Setting single Mover to coarse orientation {maxIndex}"+
       f", max score = {maxScore:.2f} (initial score {scores[0]:.2f})\n")
     self._setMoverState(coarse, maxIndex)
     self._coarseLocations[mover] = maxIndex
@@ -646,7 +647,7 @@ class _SingletonOptimizer(object):
     :side_effect: self._coarseLocations is set to the Mover's best state.
     :side_effect: self._highScores is set to the individual score for each of the Movers.
     """
-    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(list(clique.vertices()))} as singletons\n")
+    self._infoString += _VerboseCheck(3,f"Optimizing clique of size {len(list(clique.vertices()))} as singletons\n")
     ret = 0.0
     for v in clique.vertices():
       ret += self._optimizeSingleMoverCoarse(clique.vertex_label(v))
@@ -758,7 +759,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     :side_effect: self._coarseLocations is set to the Mover's best state.
     :side_effect: self._highScores is set to the individual score for each of the Movers.
     """
-    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(list(clique.vertices()))} using brute force\n")
+    self._infoString += _VerboseCheck(3,f"Optimizing clique of size {len(list(clique.vertices()))} using brute force\n")
 
     # Find the value for the current set of states, compare it against the max, and store it if
     # it is the best so far.
@@ -873,12 +874,12 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     :side_effect: self._coarseLocations is set to the Mover's best state.
     :side_effect: self._highScores is set to the individual score for each of the Movers.
     """
-    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(list(clique.vertices()))} using recursion\n")
+    self._infoString += _VerboseCheck(3,f"Optimizing clique of size {len(list(clique.vertices()))} using recursion\n")
 
     # If we've gotten down to a clique of size 2, we terminate recursion and call our parent's method
     # because we can never split this into two connected components.
     if len(list(clique.vertices())) <= 2:
-      self._infoString += _VerboseCheck(1,f"Recursion terminated at clique of size {len(list(clique.vertices()))}\n")
+      self._infoString += _VerboseCheck(3,f"Recursion terminated at clique of size {len(list(clique.vertices()))}\n")
       ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
       return ret
 
@@ -894,7 +895,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     # to that at the end.  If we have no Movers in the vertex cut, none was found so we don't recur.
     cutMovers, cutGraph = _vertexCut(clique)
     if len(cutMovers) > 0:
-      self._infoString += _VerboseCheck(1,f"Found vertex cut of size {len(cutMovers)}\n")
+      self._infoString += _VerboseCheck(3,f"Found vertex cut of size {len(cutMovers)}\n")
 
       score = 0.0
       bestState = None
@@ -946,7 +947,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
       return ret
 
     # Give up and use our parent's method.
-    self._infoString += _VerboseCheck(1,f"No vertex cut for clique of size {len(list(clique.vertices()))}, calling parent\n")
+    self._infoString += _VerboseCheck(3,f"No vertex cut for clique of size {len(list(clique.vertices()))}, calling parent\n")
     ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
     return ret
 
@@ -1035,7 +1036,7 @@ class FastOptimizer(_CliqueOptimizer):
     :side_effect: self._coarseLocations is set to the Mover's best state.
     :side_effect: self._highScores is set to the individual score for each of the Movers.
     """
-    self._infoString += _VerboseCheck(1,f"Optimizing clique of size {len(list(clique.vertices()))} using atom-score cache\n")
+    self._infoString += _VerboseCheck(3,f"Optimizing clique of size {len(list(clique.vertices()))} using atom-score cache\n")
 
     # Ensure that we have a per-atom _scoreCache dictionary that will store already-computed
     # results for a given atom based on the configurations of the Movers that can affect its
