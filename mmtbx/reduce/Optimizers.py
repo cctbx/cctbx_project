@@ -794,7 +794,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
 
     # Put each Mover into its best state and compute its high-score value.
     # Compute the best individual scores for these Movers for use in later fine-motion
-    # processing.  Return the total score
+    # processing.  Return the total score.
     ret = 0.0
     for i,m in enumerate(movers):
       self._setMoverState(states[i], bestState[i])
@@ -882,6 +882,12 @@ class _CliqueOptimizer(_BruteForceOptimizer):
       ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
       return ret
 
+    # Find all of the Movers in the clique so that we know which ones to capture the state for.
+    movers = [self._interactionGraph.vertex_label(v) for v in clique.vertices()]
+    states = {}         # Coarse position state return for each Mover in the entire Clique
+    for m in movers:
+      states[m]= m.CoarsePositions()
+
     # Find a vertex cut for the graph we were given.  Run through all states of the vertex cut
     # and for each recursively find the best score for all of the connected components, followed by the score
     # for the vertex cut.  Keep track of the best state and score across all of them and set back
@@ -889,11 +895,58 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     cutMovers, cutGraph = _vertexCut(clique)
     if len(cutMovers) > 0:
       self._infoString += _VerboseCheck(1,f"Found vertex cut of size {len(cutMovers)}\n")
-      # @todo
-      pass
+
+      score = 0.0
+      bestState = None
+      bestScore = -1e100
+      numStates = []      # Number of positions for each Mover
+      for m in cutMovers:
+        numStates.append(len(states[m].positions))
+      for curStateValues in _generateAllStates(numStates):
+        # Set all cutMovers to match the state list.
+        # @todo Optimize this so that it only changes states that differed from last time.
+        for i,m in enumerate(cutMovers):
+          self._setMoverState(states[m], curStateValues[i])
+          self._coarseLocations[m] = curStateValues[i]
+
+        # Recursively compute the best score across all connected components in the cutGraph.
+        # This will leave each subgraph in its best state for this set of cutMovers states.
+        score = 0
+        components = cca.connected_components( graph = cutGraph )
+        for g in components:
+          subMovers = [cutGraph.vertex_label(i) for i in g]
+          subset = _subsetGraph(cutGraph, subMovers)
+          score += self._optimizeCliqueCoarse(subset)
+
+        # Add the score over all atoms in the vertex-cut Movers and see if it is the best.  If so,
+        # update the best.
+        for m in cutMovers:
+          for a in states[m].atoms:
+            score += self._scoreAtom(a)
+        self._infoString += _VerboseCheck(5,f"Score is {score:.2f} at {curStateValues}\n")
+        if score > bestScore or bestState is None:
+          self._infoString += _VerboseCheck(4,f"New best score is {score:.2f} at {curStateValues}\n")
+          bestScore = score
+          # Get the current state for all Movers in the Clique, not just the vertex-cut Movers
+          bestState = [self._coarseLocations[m] for m in movers]
+
+      # Put each Mover in the entire Clique into its best state and compute its high-score value.
+      # Compute the best individual scores for these Movers for use in later fine-motion
+      # processing.  Return the total score.
+      ret = 0.0
+      for i,m in enumerate(movers):
+        self._setMoverState(states[m], bestState[i])
+        self._coarseLocations[m] = bestState[i]
+        self._highScores[m] = 0
+        for a in states[m].atoms:
+          self._highScores[m] += self._scoreAtom(a)
+        self._infoString += _VerboseCheck(3,f"Setting Mover in clique to coarse orientation {bestState[i]}"+
+          f", max score = {self._highScores[m]:.2f}\n")
+        ret += self._highScores[m]
+      return ret
 
     # Give up and use our parent's method.
-    self._infoString += _VerboseCheck(1,f"Could not find vertex cut for clique of size {len(list(clique.vertices()))}\n")
+    self._infoString += _VerboseCheck(1,f"No vertex cut for clique of size {len(list(clique.vertices()))}, calling parent\n")
     ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
     return ret
 
@@ -951,7 +1004,6 @@ class FastOptimizer(_CliqueOptimizer):
                 bondedNeighborDepth = bondedNeighborDepth,
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude)
-
 
   def _scoreAtom(self, atom):
 
