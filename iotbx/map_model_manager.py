@@ -4446,7 +4446,6 @@ class map_model_manager(object):
      resolution is nominal resolution of map
      d_min is minimum resolution to use in calculation of Fourier coefficients
     '''
-
     from libtbx import adopt_init_args
     kw_obj = group_args()
     adopt_init_args(kw_obj, locals())
@@ -5774,7 +5773,18 @@ class map_model_manager(object):
 
     average_overall_scale = None
 
+    n_used = 0
     for scaling_group_info in scaling_group_info_list:
+      # Catch case with missing values and skip it
+      ok = True
+      for si in scaling_group_info.scaling_info_list:
+        for key in ('target_scale_factors','cc_list','rms_fo_list'):
+          if getattr(si,key) is None:
+            ok = False
+      if not ok:
+        continue
+      n_used += 1 # ok here
+
       if scaling_group_info.get('overall_scale'):
         if not average_overall_scale:
           average_overall_scale = flex.double(
@@ -5823,13 +5833,13 @@ class map_model_manager(object):
     if scaling_group_info_list:
       for key in ('target_scale_factors','cc_list','rms_fo_list'):
         for si in average_scaling_group_info.scaling_info_list:
-          setattr(si,key, getattr(si,key)/len(scaling_group_info_list))
+          setattr(si,key, getattr(si,key)/max(1,n_used))
         setattr(average_scaling_group_info.overall_si,key,
            getattr(average_scaling_group_info.overall_si,key)/
            len(scaling_group_info_list))
       if average_scaling_group_info.overall_scale:
         average_scaling_group_info.overall_scale = \
-          average_overall_scale/len(scaling_group_info_list)
+          average_overall_scale/max(1, n_used)
 
 
       for key in ('aa_b_cart_as_u_cart','fo_b_cart_as_u_cart',
@@ -5838,7 +5848,7 @@ class map_model_manager(object):
         ):
         xx = average_scaling_group_info.get(key)
         if xx:
-          xx /= len(scaling_group_info_list)
+          xx /= max(1, n_used)
 
     avg = group_args(
       group_args_type = 'average scale_factor_info (averaged over xyz)',

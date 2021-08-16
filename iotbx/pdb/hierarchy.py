@@ -1634,7 +1634,7 @@ class _():
                   result.append(atom.i_seq)
     return result
 
-  def contains_protein(self, min_content=0.1):
+  def contains_protein(self, min_content=0):
     """
     Inspect residue names and counts to determine if enough of them are protein.
     """
@@ -1647,7 +1647,7 @@ class _():
       return n_prot_residues / (oc.n_residues-n_water_residues) > min_content
     return n_prot_residues > min_content
 
-  def contains_nucleic_acid(self, min_content=0.1):
+  def contains_nucleic_acid(self, min_content=0):
     """
     Inspect residue names and counts to determine if enough of
     them are RNA or DNA.

@@ -98,6 +98,10 @@ def find_common_water_resseq_max(pdb_hierarchy):
             break
   return result
 
+def cctbx_depreciation_warning(s):
+  print('%s\n# cctbx depreciation warning: %s\n%s' %(
+    '~'*80, s, '~'*80))
+
 class xh_connectivity_table(object):
   # XXX need angle information as well
   def __init__(self, geometry, xray_structure):
@@ -1919,15 +1923,44 @@ class manager(object):
       print("No NCS restraint groups specified.", file=self.log)
       print(file=self.log)
 
-  def get_specific_h_bond_type(self, atom):
-    type_h_bond = self._type_h_bonds[atom.i_seq]
+  def get_specific_h_bond_type(self, i_seq):
+    if type(i_seq)!=type(0):
+      cctbx_depreciation_warning('get_specific_h_bond_type takes int argument')
+      i_seq = i_seq.i_seq
+    if i_seq>=len(self._type_h_bonds):
+      print('i_seq is larger than array length. Likely due to a unsupported selection.')
+    type_h_bond = self._type_h_bonds[i_seq]
     return type_h_bond
 
-  def get_specific_vdw_radii(self, atom):
+  def get_specific_vdw_radius(self, i_seq):
+    if type(i_seq)!=type(0):
+      cctbx_depreciation_warning('get_specific_vdw_radii takes int argument')
+      i_seq = i_seq.i_seq
+    if i_seq>=len(self._type_energies):
+      print('i_seq is larger than array length. Likely due to a unsupported selection.')
     e = self.get_ener_lib()
-    type_energy = self._type_energies[atom.i_seq]
+    type_energy = self._type_energies[i_seq]
     vdw = e.lib_atom[type_energy].vdw_radius
     return vdw
+
+  def get_specific_ion_radius(self, i_seq):
+    """Accesses the ionic radii stored in ener_lib.cif
+
+    Args:
+        i_seq (int): sequence number of atom
+
+    Returns:
+        float: Ionic radii of element or None
+    """
+    if type(i_seq)!=type(0):
+      cctbx_depreciation_warning('get_specific_ion_radius takes int argument')
+      i_seq = i_seq.i_seq
+    if i_seq>=len(self._type_energies):
+      print('i_seq is larger than array length. Likely due to a unsupported selection.')
+    e = self.get_ener_lib()
+    type_energy = self._type_energies[i_seq]
+    ion_radii = e.lib_atom[type_energy].ion_radius
+    return ion_radii
 
   def get_vdw_radii(self, vdw_radius_default = 1.0):
     """
@@ -3033,6 +3066,9 @@ class manager(object):
     new._mon_lib_srv = self._mon_lib_srv
     new._ener_lib = self._ener_lib
     new._original_model_format = self._original_model_format
+    # brain dead way to avoid issues. Needs to be a selection to retain full functionality
+    self._type_energies = []
+    self._type_h_bonds = []
     return new
 
   def number_of_ordered_solvent_molecules(self):

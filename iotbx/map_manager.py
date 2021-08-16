@@ -2028,6 +2028,7 @@ class map_manager(map_reader, write_ccp4_map):
   def resample_on_different_grid(self, n_real):
     '''
       Resample the map on a grid of n_real and return new map_manager
+      If an ncs_object is present, set its shift_cart too
     '''
 
     original_n_real = self.map_data().all()
@@ -2066,17 +2067,23 @@ class map_manager(map_reader, write_ccp4_map):
     else:
       new_origin_shift_grid_units = (0,0,0)
 
-    return map_manager(
+    if self.ncs_object():
+      new_ncs_object = self.ncs_object().deep_copy()
+      new_ncs_object.set_shift_cart(self.shift_cart())
+    else:
+      new_ncs_object = None
+    mm = map_manager(
       map_data = map_data,
       unit_cell_grid = n_real,
       unit_cell_crystal_symmetry = map_coeffs.crystal_symmetry(),
       origin_shift_grid_units = new_origin_shift_grid_units,
-      ncs_object = self.ncs_object(),
+      ncs_object = new_ncs_object,
       wrapping = self.wrapping(),
       experiment_type = self.experiment_type(),
       scattering_table = self.scattering_table(),
       resolution = self.resolution(),
      )
+    return mm
 
   def get_boxes_to_tile_map(self,
      target_for_boxes = 24,
@@ -2201,9 +2208,15 @@ class map_manager(map_reader, write_ccp4_map):
      n_real = self.get_n_real_for_grid_spacing(grid_spacing = dist_min)
      # temporarily remove origin shift information so we can resample
      origin_shift_grid_units_sav = tuple(self.origin_shift_grid_units)
+     if self.ncs_object():
+       assert tuple(self.ncs_object().shift_cart()) == tuple(
+         self.shift_cart())
+       self.ncs_object().set_shift_cart((0,0,0))
      self.origin_shift_grid_units = (0,0,0)
      working_map_manager = self.resample_on_different_grid(n_real = n_real)
      self.origin_shift_grid_units = origin_shift_grid_units_sav
+     if self.ncs_object():
+       self.ncs_object().set_shift_cart(self.shift_cart())
      return working_map_manager.find_n_highest_grid_points_as_sites_cart(
           n = n_atoms)
 
