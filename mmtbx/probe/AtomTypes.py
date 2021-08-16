@@ -67,66 +67,67 @@ def IsSpecialAminoAcidCarbonyl(resName, atomName):
   return False
 
 # Table of aromatic-acceptor atoms by residue and atom name.  The first entry in each list element is
-# the residue name.  The second is a list of atoms that qualify.
+# a list of residue names with trailing spaces trimmed.  The second is a list of atoms that qualify
+# for all of the entries in the residue names.
 _AromaticTable = [
   # Note: Some atoms from these residues are listed in other sections.  The combination of
   # reside and atom name is not duplicated, but there are multiple entries for some residues --
   # this is not a set.
 
-  ['HIS', [' ND1',' NE2'] ],
+  [ ['HIS'], [' ND1',' NE2'] ],
 
-  ['ADE', [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-  ['  A', [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-  ['A',   [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-  ['CYT', [' N3',' N1',' C2',' C4',' C5',' C6'] ],
-  ['  C', [' N3',' N1',' C2',' C4',' C5',' C6'] ],
-  ['C',   [' N3',' N1',' C2',' C4',' C5',' C6'] ],
-  ['GUA', [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-  ['  G', [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-  ['G',   [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-  ['THY', [' N1',' C2',' N3',' C4',' C5',' C6'] ],
-  ['  T', [' N1',' C2',' N3',' C4',' C5',' C6'] ],
-  ['T',   [' N1',' C2',' N3',' C4',' C5',' C6'] ],
-  ['URA', [' N1',' C2',' N3',' C4',' C5',' C6'] ],
-  ['  U', [' N1',' C2',' N3',' C4',' C5',' C6'] ],
-  ['U',   [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+  [ ['ADE','  A','A'], [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+  [ ['CYT','  C','C'], [' N3',' N1',' C2',' C4',' C5',' C6'] ],
+  [ ['GUA','  G','G'], [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+  [ ['THY','  T','T'], [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+  [ ['URA','  U','U'], [' N1',' C2',' N3',' C4',' C5',' C6'] ],
 
-  ['DA',  [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-  [' DA',  [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-  ['DC',  [' N3',' N1',' C2',' C4',' C5',' C6'] ],
-  [' DC',  [' N3',' N1',' C2',' C4',' C5',' C6'] ],
-  ['DG',  [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-  [' DG',  [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
-  ['DT',  [' N1',' C2',' N3',' C4',' C5',' C6'] ],
-  [' DT',  [' N1',' C2',' N3',' C4',' C5',' C6'] ],
+  [ ['DA',' DA'],  [' N1',' N3',' N7',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+  [ ['DC',' DC'],  [' N3',' N1',' C2',' C4',' C5',' C6'] ],
+  [ ['DG',' DG'],  [' N3',' N7',' N1',' C2',' C4',' C5',' C6',' C8',' N9'] ],
+  [ ['DT',' DT'],  [' N1',' C2',' N3',' C4',' C5',' C6'] ],
 
-  ['HEM', [' N A',' N B',' N C',' N D'] ],
+  [ ['HEM'], [' N A',' N B',' N C',' N D'] ],
 
   # Here we treat the aromatic Pi-bonds as hydrogen bond acceptors.
   # Note: Some atoms from these residues are listed in other sections.  The combination of
   # reside and atom name is not duplicated, but there are multiple entries for some residues --
   # this is not a set.
 
-  ['HEM', [' C1A',' C2A',' C3A',' C4A',
-            ' C1B',' C2B',' C3B',' C4B',
-            ' C1C',' C2C',' C3C',' C4C',
-            ' C1D',' C2D',' C3D',' C4D'] ],
-  ['PHE', [' CZ',' CE2',' CE1',' CD2',' CD1',' CG'] ],
-  ['TYR', [' CZ',' CE2',' CE1',' CD2',' CD1',' CG'] ],
-  # ['HIS', [' CD2',' CE1',' CG'] ],
-  ['TRP', [' CH2',' CZ3',' CZ2',' CE3',' CE2',' NE1',' CD2',' CD1',' CG'] ]
+  [ ['HEM'], [' C1A',' C2A',' C3A',' C4A',
+              ' C1B',' C2B',' C3B',' C4B',
+              ' C1C',' C2C',' C3C',' C4C',
+              ' C1D',' C2D',' C3D',' C4D'] ],
+  [ ['PHE'], [' CZ',' CE2',' CE1',' CD2',' CD1',' CG'] ],
+  [ ['TYR'], [' CZ',' CE2',' CE1',' CD2',' CD1',' CG'] ],
+  # [ ['HIS'], [' CD2',' CE1',' CG'] ],
+  [ ['TRP'], [' CH2',' CZ3',' CZ2',' CE3',' CE2',' NE1',' CD2',' CD1',' CG'] ],
+
+  # Here we add the hydrogens and deuteriums that can be part of a ring from probe:select.c
+  [ ['PHE'], [' HD1',' HD2',' HE1',' HE2',' HZ ',' DD1',' DD2',' DE1',' DE2',' DZ '] ],
+  [ ['HIS'], [' HD1',' HD2',' HE1',' HE2',' DD1',' DD2',' DE1',' DE2'] ],
+  [ ['TYR'], [' HD1',' HD2',' HE1',' HE2',' DD1',' DD2',' DE1',' DE2'] ],
+  [ ['TRP'], [' HD1',' HE1',' HE3',' HZ2',' HZ3',' HH2',' DD1',' DE1',' DE3',' DZ2',' DZ3',' DH2'] ],
+  [ ['  U','URA','UTP','UDP','UMP',' UR'], [' H3 ',' HN3',' H5 ',' H6 ',' D3 ',' DN3',' D5 ',' D6 '] ],
+  [ ['  T','THY','TTP','TDP','TMP','5MU',' DT',' TR'], [' H3 ',' HN3',' H6 ',' D3 ',' DN3',' D6 '] ],
+  [ ['  A','ADE','ATP','ADP','AMP','1MA','RIA','T6A',' DA',' AR'], [' H8 ',' H2 ',' D8 ',' D2 '] ],
+  [ ['  C','CYT','CTP','CDP','CMP','5MC','OMC',' DC',' CR'], [' H5 ',' H6 ',' D5 ',' D6 '] ],
+  [ ['  G','GUA','GTP','GDP','GMP','GSP','2MG','M2G','7MG','OMG',' DG',' GR'], [' H8 ',' H1 ',' HN1',' D8 ',' D1 ',' DN1'] ],
+  [ [' YG','1MG'], [' H8 ',' D8 '] ],
+  [ ['PSU'], [' H6 ',' D6 ',' H1 ',' HN1',' D1 ',' DN1',' H3 ',' HN3',' D3 ',' DN3'] ],
+  [ ['  I',' DI'], [' H8 ',' H2 ',' H1 ',' HN1',' D8 ',' D2 ',' D1 ',' DN1'] ]
 ]
 
-# Is a carbon or nitrogen atom an acceptor and part of an aromatic ring?
-def IsAromaticAcceptor(resName, atomName):
-  """Given a residue and atom name, determine whether that atom is an acceptor as part of an aromatic ring.
+# Is a carbon or nitrogen or hydrogen atom part of an aromatic ring?
+def IsAromatic(resName, atomName):
+  """Given a residue and atom name, determine whether that atom is part of an aromatic ring.
   :param resName: String containing the 1-3-character residue name in all caps, including leading space.
   :param atomName: String containing the 1-4-character atom name in all caps, including leading space.
   :returns True if the atom is a C=O in a standard residue, False if not.  Does not handle HET atoms.
   """
 
   for e in _AromaticTable:
-    if Unpad(resName) == e[0] and Unpad(atomName) in e[1]:
+    if Unpad(resName) in e[0] and Unpad(atomName) in e[1]:
       return True
   return False
   
@@ -771,25 +772,41 @@ class AtomTypes(object):
     # This maps from amino acid names to single letter codes, but we just care if it is in the list.
     aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
     if elementName == 'C':
-      if IsAromaticAcceptor(resName, atomPadded):
+      if IsAromatic(resName, atomPadded):
         elementName = 'Car'
       elif atomPadded == ' C  ' and atom.parent().resname in aa_resnames:
         elementName = 'C=O'
       elif IsSpecialAminoAcidCarbonyl(resName, atomPadded):
         elementName = 'C=O'
       # @todo Aromatic and carbonyl carbons in non-standard HET residues need to be identified somehow
+      # (C++ code had this comment in it without code to handle the situation).
 
     ###
-    # The Acceptor flag for some Nitrogen atoms @todo
+    # Add Acceptor flag for some Nitrogen atoms.
     # Based on reduce.cpp fixupHeavyAtomElementType().
     if elementName == 'N':
-      if IsAromaticAcceptor(resName, atomPadded):
+      # All acceptors in the C++ table were also marked as aromatic and vice-versa,
+      # so we use the test for both to locate them.
+      if IsAromatic(resName, atomPadded):
         elementName = 'Nacc'
-      #elif @todo Het N atoms with 1 or 2 bonded neighbors:
+      #elif @todo Het N atoms with 1 or 2 bonded (connected) neighbors:
+      #  elementName = 'Nacc'
+      #elif @todo This is a fragment and may be an N-terminal (reduce.cpp line 849)
       #  elementName = 'Nacc'
 
     ###
-    # Some Hydrogens are not @todo
+    # Some Hydrogens are aromatic.
+    # Based on probe:select.c:setAromaticProp()
+    if elementName == 'H':
+      if IsAromatic(resName, atomPadded):
+        elementName = 'Har'
+
+    ###
+    # Some Hydrogens are polar
+    # Based on probe:probe.c:updateHydrogenInfo()
+    # If the Hydrogen is bonded to an N, O, or S, then mark it as polar and mark the
+    # parent as not a donor.
+    # @todo
 
     ###
     # Look up the element name, which fails if it is not in the table.
