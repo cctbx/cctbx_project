@@ -427,7 +427,8 @@ def outPoints(outFile, bin, cluster, suites, extra1):
    
 
 def formatAngles(angles, separator):
-    strings = ["{:7.3f}".format(a) for a in angles]
+#    strings = ["{:8.4f}".format(a) for a in angles]
+    strings = ["{:7.2f}".format(a) for a in angles]
     out = separator.join(strings)
     return out
 
