@@ -6,7 +6,7 @@ Suitename requires Python 2.7 or later and it requires numpy to have been instal
 
 ## Running
 
-Suitename is integrated into the CCTBX library and can be run from within it.
+Suitename is integrated into the CCTBX library and can be run from within it as `phenix.suitename`, `molprobity.suitename` or `cctbx.suitename`.
 
 Suitename can also be run from the command line using a Python 3 interpreter: `python3 suitename.py [arguments]`
 
