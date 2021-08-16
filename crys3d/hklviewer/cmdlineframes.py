@@ -519,7 +519,10 @@ class HKLViewFrame() :
       for i,e in enumerate(indices_of_matched_hkls):
         nanarr[e] = procarray.data()[i]
       self.origarrays[label] = list(nanarr)
-      mydict = { "array_infotpls": self.viewer.array_infotpls, "NewHKLscenes" : True, "NewMillerArray" : True}
+      mydict = { "array_infotpls": self.viewer.array_infotpls,
+                "NewHKLscenes" : True,
+                "NewMillerArray" : True
+                }
       self.SendInfoToGUI(mydict)
 
 

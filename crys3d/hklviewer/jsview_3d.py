@@ -79,7 +79,7 @@ class ArrayInfo:
       self.minmaxdata = (roundoff(self.mindata), roundoff(self.maxdata))
       self.minmaxsigs = (roundoff(self.minsigmas), roundoff(self.maxsigmas))
 
-    self.labels = self.desc = ""
+    self.labels = self.desc = self.wavelength = ""
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if millarr.info():
       #self.labels = millarr.info().label_string()
@@ -88,6 +88,7 @@ class ArrayInfo:
         self.labels = [ millarr.info().label_string() + " + " + fomlabel ]
         self.datatype = "iscomplex_fom"
       self.desc = get_array_description(millarr)
+      self.wavelength = millarr.info().wavelength
     self.span = ("?" , "?")
     self.spginf = millarr.space_group_info().symbol_and_number()
     self.ucellinf = str(millarr.unit_cell())
@@ -102,9 +103,9 @@ class ArrayInfo:
     issymunique = millarr.is_unique_set_under_symmetry()
     isanomalous = millarr.anomalous_flag()
 
-    self.infotpl = ( ",".join(self.labels), self.desc, arrsize, self.span,
+    self.infotpl = ( ",".join(self.labels), self.desc, self.wavelength, arrsize, self.span,
      self.minmaxdata, self.minmaxsigs, (roundoff(dmin), roundoff(dmax)), issymunique, isanomalous )
-    self.infostr = "%s (%s), %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
+    self.infostr = "%s (%s), λ(Å): %s, %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
 
 
 def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.stdout.write):
@@ -295,13 +296,16 @@ class hklview_3d:
 
     """
     Html2Canvaslibpath = libtbx.env.under_dist("crys3d","hklviewer/html2canvas.min.js")
+    #Threejslibpath = libtbx.env.under_dist("crys3d","hklviewer/three.js")
     NGLlibpath = libtbx.env.under_dist("crys3d","hklviewer/ngl.js")
     HKLjscriptpath = libtbx.env.under_dist("crys3d","hklviewer/HKLJavaScripts.js")
     HKLjscriptpath = os.path.abspath( HKLjscriptpath)
     Html2Canvasliburl = "file:///" + Html2Canvaslibpath.replace("\\","/")
+    #Threejsliburl = "file:///" + Threejslibpath.replace("\\","/")
     NGLliburl = "file:///" + NGLlibpath.replace("\\","/")
     HKLjscripturl = "file:///" + HKLjscriptpath.replace("\\","/")
-    self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, Html2Canvasliburl, NGLliburl, HKLjscripturl)
+    self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, Html2Canvasliburl,
+                                  NGLliburl, HKLjscripturl)
     self.colourgradientvalues = []
     self.UseOSBrowser = ""
     if 'useGuiSocket' not in kwds:
@@ -1644,15 +1648,17 @@ Distance: %s
     InvMx = OrtMx.inverse()
     # Our local coordinate system has x-axis pointing right and z axis pointing out of the screen
     # unlike threeJS so rotate the coordinates emitted from there before presenting them
-    RotAroundYMx = matrix.sqr([-1.0,0.0,0.0, 0.0,1.0,0.0, 0.0,0.0,-1.0])
     Xvec =  matrix.rec([1,0,0] ,n=(1,3))
-    Xhkl = list(RotAroundYMx.transpose()* InvMx.transpose()* self.currentRotmx.inverse()* Xvec.transpose())
     Yvec =  matrix.rec([0,1,0] ,n=(1,3))
-    Yhkl = list(RotAroundYMx.transpose()*InvMx.transpose()* self.currentRotmx.inverse()* Yvec.transpose())
     Zvec =  matrix.rec([0,0,1] ,n=(1,3))
-    Zhkl = list(RotAroundYMx.transpose()*InvMx.transpose()* self.currentRotmx.inverse()* Zvec.transpose())
+
+    RotAroundYMx = matrix.sqr([-1.0,0.0,0.0, 0.0,1.0,0.0, 0.0,0.0,-1.0])
+    Xhkl = list(InvMx.transpose()*self.currentRotmx.inverse()* RotAroundYMx.transpose()* Xvec.transpose())
+    Yhkl = list(InvMx.transpose()*self.currentRotmx.inverse()* RotAroundYMx.transpose()* Yvec.transpose())
+    Zhkl = list(InvMx.transpose()*self.currentRotmx.inverse()* RotAroundYMx.transpose()* Zvec.transpose())
+
     if self.debug:
-      self.SendInfoToGUI( { "StatusBar": "RotMx: %s, XHKL: %s, YHKL: %s, ZHKL: %s" \
+      self.SendInfoToGUI( { "StatusBar": "RotMx: %s, X: %s, Y: %s, Z: %s" \
         %(str(roundoff(self.currentRotmx,4)), str(roundoff(Xhkl, 2)),
                                               str(roundoff(Yhkl, 2)),
                                               str(roundoff(Zhkl, 2))),
@@ -1665,7 +1671,7 @@ Distance: %s
       self.draw_vector(0,0,0, Xhkl[0],Xhkl[1],Xhkl[2], isreciprocal=True, label="Xhkl",
                       name="XYZhkl", r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
     else:
-      self.SendInfoToGUI( { "StatusBar": "%s , %s , %s" %(str(roundoff(Xhkl, 2)),
+      self.SendInfoToGUI( { "StatusBar": "X: %s , Y: %s , Z: %s" %(str(roundoff(Xhkl, 2)),
                                                      str(roundoff(Yhkl, 2)),
                                                      str(roundoff(Zhkl, 2))),
                            } )
@@ -1872,7 +1878,6 @@ Distance: %s
 
   def draw_cartesian_vector(self, s1, s2, s3, t1, t2, t3, label="", r=0, g=0, b=0, name="", radius = 0.15, labelpos=0.8):
     self.mprint("cartesian vector is: %s to %s" %(str(roundoff([s1, s2, s3])), str(roundoff([t1, t2, t3]))), verbose=2)
-    #self.AddToBrowserMsgQueue("DrawVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
     self.AddToBrowserMsgQueue("DrawVector", "%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s" \
          %(s1, s2, s3, t1, t2, t3, r, g, b, label, name, radius, labelpos) )
     if name=="":
@@ -1912,7 +1917,7 @@ Distance: %s
 
 
   def PointVectorPerpendicularToScreen(self, angle_x_xyvec, angle_z_svec):
-    rotmx = self.Euler2RotMatrix(( angle_x_xyvec, angle_z_svec, 0.0 ))
+    rotmx = self.Euler2RotMatrix(( angle_x_xyvec, angle_z_svec + 180.0, 0.0 ))
     if rotmx.determinant() < 0.99999:
       self.mprint("Rotation matrix determinant is less than 1")
       return rotmx
@@ -2020,17 +2025,13 @@ in the space group %s\nwith unit cell %s\n""" \
 # if this is a rotation operator deduce the group of successive rotation matrices it belongs to
           rt = sgtbx.rt_mx(symbol= hklop, r_den=12, t_den=144)
           RotMx = matrix.sqr(rt.r().as_double() )
-          #self.visual_symmxs.append( RotMx )
           self.visual_symmxs.append( (RotMx, rt.r().as_hkl()) )
-          #self.currentsymop = rt
           nfoldrotmx = RotMx
           nfoldrot = rt.r()
           for ord in range(order -1): # skip identity operator
             nfoldrotmx = RotMx * nfoldrotmx
             nfoldrot = nfoldrot.multiply( rt.r() )
             self.visual_symmxs.append( (nfoldrotmx, nfoldrot.as_hkl()) )
-            #nfoldrotmx = RotMx * nfoldrotmx
-            #self.visual_symmxs.append( nfoldrotmx )
       else:
         self.RemovePrimitives(name)
         self.visual_symmxs = []
@@ -2110,7 +2111,6 @@ in the space group %s\nwith unit cell %s\n""" \
       self.RemovePrimitives("unitcell")
       self.mprint( "Removing real space unit cell", verbose=2)
       return
-    uc = self.miller_array.unit_cell()
     rad = 0.2 # scale # * 0.05 #  1000/ uc.volume()
     self.draw_vector(0,0,0, scale,0,0, False, label="a", r=0.5, g=0.8, b=0.8, radius=rad)
     self.draw_vector(0,0,0, 0,scale,0, False, label="b", r=0.8, g=0.5, b=0.8, radius=rad)
@@ -2322,6 +2322,8 @@ in the space group %s\nwith unit cell %s\n""" \
   def Euler2RotMatrix(self, eulerangles):
     eulerangles1 = eulerangles
     radangles = [e*math.pi/180.0 for e in eulerangles1]
+    # scitbx is using ZYZ convention for euler angles
+    # https://en.wikipedia.org/wiki/Euler_angles#Rotation_matrix
     RotMx = scitbx.math.euler_angles_as_matrix(radangles)
     return RotMx
 

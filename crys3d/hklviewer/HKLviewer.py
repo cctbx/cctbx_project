@@ -427,7 +427,7 @@ newarray._sigmas = sigs
     if not isembedded:
       self.window.statusBar().showMessage("")
       self.hklLabel = QLabel()
-      self.hklLabel.setText("HKL vectors along X-axis, Y-axis, Z-axis:")
+      self.hklLabel.setText("X,Y,Z axes as HKL coordinates:")
       self.Statusbartxtbox = QLineEdit('')
       self.Statusbartxtbox.setReadOnly(True)
       self.Statusbartxtbox.setAlignment(Qt.AlignRight)
@@ -1738,8 +1738,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def createFileInfoBox(self):
-    labels = ["Column label", "Type", "# HKLs", "Span of HKLs",
-       "Min Max data", "Min Max sigmas", "d_min, d_max", "Symmetry unique", "Anomalous"]
+    labels = ["Column label", "Type", "λ(Å)", "# HKLs", "Span of HKLs",
+       "Min Max data", "Min Max sigmas", "d_min, d_max (Å)", "Symmetry unique", "Anomalous"]
     self.millertable.setHorizontalHeaderLabels(labels)
     self.millertable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     # don't allow editing this table
