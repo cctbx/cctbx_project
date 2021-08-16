@@ -72,9 +72,6 @@ The various operations of Suitename are also provided as a library, suites.py,
 for use by other CCTBX programs.
 
 """
-import sys, os
-# print ("suitename: ", sys.path)
-
 from suitenamedefs import Suite, Residue, Bin, Cluster, Issue, failMessages
 from suitenamedefs import Holder, globals
 # suitenamedefs must come first!
@@ -82,6 +79,7 @@ import suiteninit, suiteninput
 from suiteninit import bins, MAX_CLUSTERS, normalWidths, satelliteWidths
 from suiteninput import readResidues, readKinemageFile, buildSuites
 
+import sys, os
 import numpy as np
 from math import cos, pi
 
