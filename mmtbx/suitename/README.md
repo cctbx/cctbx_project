@@ -49,5 +49,5 @@ making corner cases fall into a neighboring bin.
 
 **C** Original C implementation of SuiteName along with build files to compile into a running executable.  The **Conversion** subdirectory contains tools that were used during the re-implementation in Python in 2021.
 
-**unit_test** Contains unit-test code for SuiteName.
+**unit-test** Contains unit-test code for SuiteName.
 
