@@ -69,11 +69,11 @@ class geometry(object):
         self.from_restraints.den_residual_sum+
         self.from_restraints.ramachandran_residual_sum)
 
-  def angle(self, return_rmdZ=False):
+  def angle(self, return_rmsZ=False):
     mi,ma,me,n = 0,0,0,0
     outliers = 0
     if(self.from_restraints is not None):
-      if return_rmdZ:
+      if return_rmsZ:
         mi,ma,me = self.from_restraints.angle_deviations_z()
       else:
         mi,ma,me = self.from_restraints.angle_deviations()
@@ -83,11 +83,11 @@ class geometry(object):
         sigma_threshold=4)
     return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
 
-  def bond(self, return_rmdZ=False):
+  def bond(self, return_rmsZ=False):
     mi,ma,me,n = 0,0,0,0
     outliers = 0
     if(self.from_restraints is not None):
-      if return_rmdZ:
+      if return_rmsZ:
         mi,ma,me = self.from_restraints.bond_deviations_z()
       else:
         mi,ma,me = self.from_restraints.bond_deviations()
@@ -238,8 +238,8 @@ class geometry(object):
       self.cached_result = group_args(
          angle            = self.angle(),
          bond             = self.bond(),
-         angle_z          = self.angle(return_rmdZ=True),
-         bond_z           = self.bond(return_rmdZ=True),
+         angle_z          = self.angle(return_rmsZ=True),
+         bond_z           = self.bond(return_rmsZ=True),
          chirality        = self.chirality(),
          dihedral         = self.dihedral(),
          planarity        = self.planarity(),
