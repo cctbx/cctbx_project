@@ -348,8 +348,9 @@ def is_atom_pair_linked(atom1,
   class2 = get_classes(atom2, important_only=True)
   class1 = linking_setup.adjust_class(atom1, class1)
   class2 = linking_setup.adjust_class(atom2, class2)
-  assert type(class1)==type(''), 'class1 of %s not singular : %s' % (atom1.quote(), class1)
-  assert type(class2)==type(''), 'class2 of %s not singular : %s' % (atom2.quote(), class2)
+  # python3
+  # assert type(class1)==type(''), 'class1 of %s not singular : %s' % (atom1.quote(), class1)
+  # assert type(class2)==type(''), 'class2 of %s not singular : %s' % (atom2.quote(), class2)
   if ( linking_setup.sulfur_class(atom1, class1)=="sulfur" and
        linking_setup.sulfur_class(atom2, class2)=="sulfur" ):
     class1 = 'sulfur'
