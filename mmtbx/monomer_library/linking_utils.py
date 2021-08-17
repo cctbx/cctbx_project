@@ -61,6 +61,18 @@ class empty:
       outl += "  %s : %s\n" % (attr, getattr(self, attr))
     return outl
 
+  def __lt__(self, other):
+    if type(other)==type(''): return False
+    for attr in sorted(self.__dict__):
+      item1 = getattr(self, attr)
+      item2 = getattr(other, attr)
+      rc = item1==item2
+      if rc:
+        continue
+      else:
+        return rc
+    return rc
+
 def _write_warning_line(s):
   print(" !!! %-78s !!!" % s)
 
@@ -221,6 +233,7 @@ def get_classes(atom, important_only=False, verbose=False):
     "other",
     "uncommon_amino_acid",
     "unknown",
+    'd_amino_acid',
     ]
   redirect = {"modified_amino_acid" : "other",
               "modified_rna_dna" : "other",
