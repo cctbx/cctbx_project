@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import nested_scopes, generators, division, absolute_import
+from __future__ import nested_scopes, generators, division, absolute_import, unicode_literals
 import sys
 import mmtbx_probe_ext as probe
 from iotbx.map_model_manager import map_model_manager
