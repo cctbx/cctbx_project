@@ -24,7 +24,7 @@
 # based on a specific atom along with a second tuple value that has a list of all
 # information in the table for that atom.
 
-from __future__ import nested_scopes, generators, division, absolute_import
+from __future__ import nested_scopes, generators, division, absolute_import, unicode_literals
 import sys
 import re
 import iotbx
