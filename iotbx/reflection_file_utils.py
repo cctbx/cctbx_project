@@ -493,6 +493,14 @@ class reflection_file_server(object):
         libtbx.path.canonical_path(
           miller_array.info().source), []).append(miller_array)
 
+  def update_crystal_symmetry(self, crystal_symmetry):
+    self.crystal_symmetry = crystal_symmetry
+    for i, ma in enumerate(self.miller_arrays):
+      info = ma.info()
+      self.miller_arrays[i] = ma.customized_copy(
+        crystal_symmetry = self.crystal_symmetry)
+      self.miller_arrays[i].set_info(info)
+
   def get_miller_arrays(self, file_name):
     if (file_name is None): return self.miller_arrays
     canonical_file_name = libtbx.path.canonical_path(file_name)
