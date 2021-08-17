@@ -31,73 +31,73 @@ from diangle import getResidueDihedrals, residueString
 # The following are the options available, in Phil format, 
 # for human and computer comprehension.
 philOptions = """
-    suitename {
-      # input 
-        infile=""
-          .type=str
-          .help="the file to process"
-        anglefields = 9
-          .type=int
-          .help="number of angle fields provided, for textual input only"
-        pointidfields = 7
-          .type=int
-          .help="number of point id fields before the angle fields"
-        ptid=0
-          .type=int
-          .help="number of point id fields before the angle fields"
-        residuein=false
-          .type=bool
-          .help="expect dangle format giving residues"
-        suitein=false
-          .type=bool
-          .help="expect kinemage format giving suites directly"
-      # output 
-        string=False  
-          .type=bool
-          .help="output in string format, 3 characters per suite"
-        kinemage=False
-          .type=bool
-          .help="output in kinemage format, useful for visualization"
-        report=true
-          .type=bool
-          .help="output as a report, giving statistical details"
-        chart=False
-          .type=bool
-          .help="modifier to standard report, output without statistical summary"
-        nosequence = False
-          .type=bool
-          .help="modifier to string format, do not include base letters"
-        causes=False
-          .type=bool
-          .help="output extra details concerning the causes of each assignment made"
-        test=False
-          .type=bool
-          .help="display a lat of additional information about program internals"
-      # compute 
-        satellites=False
-          .type=bool
-          .help="use the special satelliteWidths values for satellites" 
-        nowannabe=False
-          .type=bool
-          .help="do not consider 'wannabe' clusters"
-        noinc=False
-          .type=bool
-          .help="do not display incomplete suites"
-        etatheta=False
-          .type=bool
-        altid="A"
-          .type=str
-          .help="which alternate conformer to use (A, B, etc)"
-        altidfield = 6
-          .type=int
-          .help="which field (1-based) gives the alternate conformer code"
-        version=false
-          .type=bool
-          .help="give the version number of suite name"   
-      # deprecated
-        oneline=false
-          .type=bool 
-      }
+  suitename {
+    # input 
+      infile=""
+        .type=str
+        .help="the file to process"
+      anglefields = 9
+        .type=int
+        .help="number of angle fields provided, for textual input only"
+      pointidfields = 7
+        .type=int
+        .help="number of point id fields before the angle fields"
+      ptid=0
+        .type=int
+        .help="number of point id fields before the angle fields"
+      residuein=false
+        .type=bool
+        .help="expect dangle format giving residues"
+      suitein=false
+        .type=bool
+        .help="expect kinemage format giving suites directly"
+    # output 
+      string=False  
+        .type=bool
+        .help="output in string format, 3 characters per suite"
+      kinemage=False
+        .type=bool
+        .help="output in kinemage format, useful for visualization"
+      report=true
+        .type=bool
+        .help="output as a report, giving statistical details"
+      chart=False
+        .type=bool
+        .help="modifier to standard report, output without statistical summary"
+      nosequence = False
+        .type=bool
+        .help="modifier to string format, do not include base letters"
+      causes=False
+        .type=bool
+        .help="output extra details concerning the causes of each assignment made"
+      test=False
+        .type=bool
+        .help="display a lat of additional information about program internals"
+    # compute 
+      satellites=False
+        .type=bool
+        .help="use the special satelliteWidths values for satellites" 
+      nowannabe=False
+        .type=bool
+        .help="do not consider 'wannabe' clusters"
+      noinc=False
+        .type=bool
+        .help="do not display incomplete suites"
+      etatheta=False
+        .type=bool
+      altid="A"
+        .type=str
+        .help="which alternate conformer to use (A, B, etc)"
+      altidfield = 6
+        .type=int
+        .help="which field (1-based) gives the alternate conformer code"
+      version=false
+        .type=bool
+        .help="give the version number of suite name"   
+    # deprecated
+      oneline=false
+        .type=bool 
+    }
 """
 
 def main(options, outFile=None, errorFile=None):

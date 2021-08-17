@@ -48,7 +48,6 @@ def analyzeLine(raw):
 
 
 def main():
-    sys.argv.append("suiteninput")
     file = sys.argv[1] + ".py"
     #root, ext = os.path.splitext(file)
     outFile = sys.argv[1] + ".ind.py"
@@ -67,7 +66,11 @@ def main():
     for rawLine in lines:
         count += 1
         content, spaces, indenting = analyzeLine(rawLine)
-        if newLevel:
+        if spaces == 0 and rawLine.startswith("def "):
+            # sanity reset: no matter what, restart at left margin
+            # when defining a top level function
+            level = 0; newLevel = False
+        elif newLevel:
             # Determined by PREVIOUS line
             level += 1
             indents.append(prevSpaces)
@@ -75,11 +78,12 @@ def main():
         elif spaces > prevSpaces:
           # indent without : is a line-continuation or data-formatting situation
           freeze = True
+          indents.append(prevSpaces)
         if content == "":  # blank lines influence nothing
           print("", file=oStream)
           continue
 #        if spaces < prevSpaces and level > 0:
-        if spaces < prevSpaces and spaces == indents[-1]:
+        if spaces < prevSpaces and spaces <= indents[-1]:
             oldSpaces = indents.pop()
             while spaces < oldSpaces:
                 oldSpaces = indents.pop()
@@ -87,7 +91,7 @@ def main():
             freeze = False
         prevSpaces = spaces
         if freeze:
-          print(rawLine, file=oStream)
+          print((level * N + (spaces-indents[-1])) * " " + content, file=oStream)
         else:
           print(level * N * " " + content, file=oStream)
         if indenting:
