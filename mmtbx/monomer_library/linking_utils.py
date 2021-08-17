@@ -211,7 +211,7 @@ def get_classes(atom, important_only=False, verbose=False):
     return class_name
   #
   attrs = [
-    "common_saccharide", # not in get_class
+    "common_saccharide",
     "common_water",
     "common_element",
     "common_small_molecule",
@@ -252,15 +252,23 @@ def get_classes(atom, important_only=False, verbose=False):
     if i:
       rc = gc
     else:
+      gotten_type = None
       if atom_group.resname in one_letter_given_three_letter:
         gotten_type = "L-PEPTIDE LINKING"
       elif atom_group.resname in ["HOH"]:
         gotten_type = "NON-POLYMER"
+      #
+      # special section for getting SOME of the carbohydrates using the get_class
+      # or from the Chem Components which does not work in ccctbx only install
+      #
+      elif gc=='common_saccharide':
+        rc = gc
       else:
         gotten_type = get_type(atom_group.resname)
       if gotten_type is not None:
         if gotten_type.upper() in sugar_types:
           rc = attr
+      #
     if rc==attr:
       if important_only: return _filter_for_metal(atom, rc)
       setattr(classes, attr, True)
@@ -340,11 +348,14 @@ def is_atom_pair_linked(atom1,
   class2 = get_classes(atom2, important_only=True)
   class1 = linking_setup.adjust_class(atom1, class1)
   class2 = linking_setup.adjust_class(atom2, class2)
+  assert type(class1)==type(''), 'class1 of %s not singular : %s' % (atom1.quote(), class1)
+  assert type(class2)==type(''), 'class2 of %s not singular : %s' % (atom2.quote(), class2)
   if ( linking_setup.sulfur_class(atom1, class1)=="sulfur" and
        linking_setup.sulfur_class(atom2, class2)=="sulfur" ):
     class1 = 'sulfur'
     class2 = 'sulfur'
   lookup = [class1, class2]
+  if verbose: print('lookup', lookup, atom1.quote(), atom2.quote())
   lookup.sort()
   if verbose: print('lookup1',lookup,skip_if_both) #.get(lookup, None)
   if lookup in skip_if_both: return False
