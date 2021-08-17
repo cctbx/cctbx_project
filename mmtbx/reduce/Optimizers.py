@@ -485,7 +485,7 @@ class _SingletonOptimizer(object):
         donorChoices = ["noDonor","isDonor"]
         metallicChoices = ["noMetallic","isMetallic"]
         self._atomDump += (
-          " "+str(chainID)+resName+" {:3d} ".format(int(resID))+a.name+" {:5d}".format(a.i_seq)+
+          " "+str(chainID)+" "+resName+" {:3d} ".format(int(resID))+a.name+" {:5d}".format(a.i_seq)+
           " {:7.3f}".format(a.xyz[0])+" {:7.3f}".format(a.xyz[1])+" {:7.3f}".format(a.xyz[2])+
           " {:5.2f}".format(self._extraAtomInfo.getMappingFor(a).vdwRadius)+
           " "+acceptorChoices[self._extraAtomInfo.getMappingFor(a).isAcceptor]+
