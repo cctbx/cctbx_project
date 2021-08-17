@@ -183,6 +183,7 @@ class _SingletonOptimizer(object):
     ################################################################################
     # Initialize internal variables.
     self._infoString = ""
+    self._atomDump = ""
 
     ################################################################################
     # Gather data we need for our calculations.
@@ -474,6 +475,25 @@ class _SingletonOptimizer(object):
           a.parent().remove_atom(a)
         self._infoString += _ReportTiming("delete Hydrogens")
 
+      #################################################################################
+      # Dump information about all of the atoms in the model into a string.
+      for a in myModel.atoms():
+        chainID = a.parent().parent().parent().id
+        resName = a.parent().resname.upper()
+        resID = str(a.parent().parent().resseq_as_int())
+        acceptorChoices = ["noAcceptor","isAcceptor"]
+        donorChoices = ["noDonor","isDonor"]
+        metallicChoices = ["noMetallic","isMetallic"]
+        self._atomDump += (
+          " "+str(chainID)+resName+" {:3d} ".format(int(resID))+a.name+" {:5d}".format(a.i_seq)+
+          " {:7.3f}".format(a.xyz[0])+" {:7.3f}".format(a.xyz[1])+" {:7.3f}".format(a.xyz[2])+
+          " {:5.2f}".format(self._extraAtomInfo.getMappingFor(a).vdwRadius)+
+          " "+acceptorChoices[self._extraAtomInfo.getMappingFor(a).isAcceptor]+
+          " "+donorChoices[self._extraAtomInfo.getMappingFor(a).isDonor]+
+          " "+metallicChoices[Helpers.isMetallic(a)]+
+          "\n"
+        )
+
   def getInfo(self):
     """
       Returns information that the user may care about regarding the processing.  The level of
@@ -483,6 +503,17 @@ class _SingletonOptimizer(object):
     """
     ret = self._infoString
     self._infoString = ""
+    return ret
+
+  def getAtomDump(self):
+    """
+      Returns information about the final status of each atom in each model, including VdW radius
+      and various flags.  Useful for debugging and for regression testing.
+      :return: the information so far collected in the string.  Calling this method also clears
+      the information, so that later calls will not repeat it.
+    """
+    ret = self._atomDump
+    self._atomDump = ""
     return ret
 
   def _getPhantomHydrogensFor(self, atom):
@@ -521,16 +552,16 @@ class _SingletonOptimizer(object):
       WATER_EXPLICIT_RADIUS = 1.05
       overlap = ( (Movers._rvec3(atom.xyz) - Movers._rvec3(a.xyz)).length()  -
                   (WATER_EXPLICIT_RADIUS + self._extraAtomInfo.getMappingFor(atom).vdwRadius + OH_BOND_LENGTH) )
-      if overlap < -0.01 and a.occ > self._minOccupancy:
+      if overlap < -0.01 and a.occ > self._minOccupancy and a.element != "H":
         # If we have multiple atoms in the same Aromatic ring (part of the same residue)
         # we only point at the closest one.  To ensure this, we check all current candidates
         # and if we find one that is on the same aromatic ring then we either ignore this new
         # atom (if it is further) or replace the existing one (if it is closer).
-        if AtomTypes.IsAromaticAcceptor(a.parent().resname.strip().upper(), a.name.strip().upper()):
+        if AtomTypes.IsAromatic(a.parent().resname.strip().upper(), a.name.strip().upper()):
           for c in candidates:
             # See if we belong to the same atom group and are both ring acceptors.  If so, we need to replace
             # or else squash this atom.
-            if (AtomTypes.IsAromaticAcceptor(c.parent().resname.strip().upper(), c.name.strip().upper()) and
+            if (AtomTypes.IsAromatic(c.parent().resname.strip().upper(), c.name.strip().upper()) and
                 a.parent() == c.parent()):
               if overlap < c._overlap:
                 # Replace the further atom with this atom.
@@ -1587,7 +1618,8 @@ END
 
   # Make sure we have a valid unit cell.  Do this before we add hydrogens to the model
   # to make sure we have a valid unit cell.
-  model = shift_and_box_model(model = model)
+  # @todo Only do this when we have a problem with the unit cell.
+  #model = shift_and_box_model(model = model)
 
   # Add Hydrogens to the model
   print('Adding Hydrogens')
@@ -1620,6 +1652,8 @@ END
 
   f = open("deleteme.pdb","w")
   f.write(model.model_as_pdb())
+  f = open("atomDump.pdb","w")
+  f.write(opt.getAtomDump())
   # @todo
 
   #========================================================================
