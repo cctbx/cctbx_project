@@ -24,7 +24,8 @@
 # based on a specific atom along with a second tuple value that has a list of all
 # information in the table for that atom.
 
-from __future__ import nested_scopes, generators, division, absolute_import, unicode_literals
+from __future__ import print_function, nested_scopes, generators, division
+from __future__ import absolute_import, unicode_literals
 import sys
 import re
 import iotbx
@@ -33,7 +34,7 @@ from iotbx.data_manager import DataManager
 import mmtbx
 
 import mmtbx_probe_ext as probe
-from enum import IntFlag, auto
+from enum import Enum
 
 ##################################################################################
 # Helper functions.
@@ -135,15 +136,15 @@ def IsAromatic(resName, atomName):
 
 ##################################################################################
 
-class AtomFlags(IntFlag):
+class AtomFlags(object):
   """Flags describing attributes that atoms can have.
   """
   EMPTY_FLAGS = 0               # No flags set
-  IGNORE_ATOM = auto()          # This atom should be ignored during processing, as if it did not exist
-  DONOR_ATOM = auto()           # Can be an electron donor
-  ACCEPTOR_ATOM = auto()        # Can be an electron acceptor
-  HB_ONLY_DUMMY_ATOM = auto()   # This is a dummy hydrogen added temporarily to a water when a donor is needed; it can Hbond but not clash.
-  METALLIC_ATOM = auto()        # The atom is metallic
+  IGNORE_ATOM = 1 << 0          # This atom should be ignored during processing, as if it did not exist
+  DONOR_ATOM = 1 << 1           # Can be an electron donor
+  ACCEPTOR_ATOM = 1 << 2        # Can be an electron acceptor
+  HB_ONLY_DUMMY_ATOM = 1 << 3   # This is a dummy hydrogen added temporarily to a water when a donor is needed; it can Hbond but not clash.
+  METALLIC_ATOM = 1 << 4        # The atom is metallic
 
 ##################################################################################
 
@@ -838,9 +839,9 @@ class AtomTypes(object):
     if ai is None:
       raise ValueError("FindProbeExtraAtomInfo(): Could not look up atom",atom.name)
     ret = probe.ExtraAtomInfo()
-    ret.isAcceptor = ai.flags & AtomFlags.ACCEPTOR_ATOM
-    ret.isDonor = ai.flags & AtomFlags.DONOR_ATOM
-    ret.isDummyHydrogen = ai.flags & AtomFlags.HB_ONLY_DUMMY_ATOM
+    ret.isAcceptor = bool(ai.flags & AtomFlags.ACCEPTOR_ATOM)
+    ret.isDonor = bool(ai.flags & AtomFlags.DONOR_ATOM)
+    ret.isDummyHydrogen = bool(ai.flags & AtomFlags.HB_ONLY_DUMMY_ATOM)
     if self._useNeutronDistances:
       ret.vdwRadius = ai.vdwNeutronExplicit
     else:
