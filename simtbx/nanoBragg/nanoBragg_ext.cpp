@@ -28,7 +28,7 @@ namespace boost_python { namespace {
   testuple()
   {
     double test = NAN;
-    return boost::python::make_tuple(isnan(test),2,3,4);
+    return boost::python::make_tuple(boost::python::isnan(test),2,3,4);
   }
 
   /* getter/setter functions for convenient python-side members
