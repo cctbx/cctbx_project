@@ -160,7 +160,7 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
                 # as an acceptor, perhaps making it a cylinder or a sphere in the center
                 # of the ring.
                 if a.element in ['C','N']:
-                  if mmtbx.probe.AtomTypes.IsAromaticAcceptor(ag.resname, a.name):
+                  if mmtbx.probe.AtomTypes.IsAromatic(ag.resname, a.name):
                     extra.IsAcceptor = True
 
                 extras.setMappingFor(a, extra)
