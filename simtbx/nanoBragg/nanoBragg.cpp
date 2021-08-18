@@ -6,6 +6,8 @@
 namespace simtbx {
 namespace nanoBragg {
 
+using boost::math::isnan;
+
 class encapsulated_twodev
 {
 /* Convert gaussdev from a function to a class.
