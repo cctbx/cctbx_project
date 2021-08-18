@@ -17,6 +17,10 @@
 # This is a set of functions that implement Reduce's Interaction Graphs.  These are
 # functions that produce Boost graphs of Movers, enabling easy determination
 # of Cliques (connected components of this graph).
+
+from __future__ import print_function, nested_scopes, generators, division
+from __future__ import absolute_import
+
 from boost_adaptbx import graph
 import Movers
 import mmtbx_probe_ext as probeExt
@@ -64,7 +68,7 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
     # in this mover.
     coarses = m.CoarsePositions()
     coarsePositions = coarses.positions
-    total = coarsePositions.copy()
+    total = coarsePositions[:]
     for c in range(len(coarsePositions)):
       total.extend(m.FinePositions(c).positions)
 
@@ -130,7 +134,7 @@ def _InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius = 0.25):
     coarses = m.CoarsePositions()
     atoms = coarses.atoms
     coarsePositions = coarses.positions
-    total = coarsePositions.copy()
+    total = coarsePositions[:]
     for c in range(len(coarsePositions)):
       total.extend(m.FinePositions(c).positions)
 

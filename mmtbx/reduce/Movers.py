@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function, nested_scopes, generators, division
+from __future__ import absolute_import
 import math
 import scitbx.matrix, scitbx.math
 from scitbx.array_family import flex
@@ -730,7 +732,7 @@ class MoverNH2Flip(object):
     for a in self._atoms:
       startPos.append(a.xyz)
 
-    newPos = startPos.copy()
+    newPos = startPos[:]
     newPos[0] = newH0
     newPos[1] = newH1
     newPos[2] = oxygen.xyz
@@ -931,7 +933,7 @@ class MoverHistidineFlip(object):
     for a in self._atoms:
       startPos.append(a.xyz)
 
-    newPos = startPos.copy()
+    newPos = startPos[:]
     newPos[0] = ce1Atom.xyz   # ne2 moved to this location
     newPos[1] = ne2HNew
     newPos[2] = ne2Atom.xyz   # ce1 moved to this location
