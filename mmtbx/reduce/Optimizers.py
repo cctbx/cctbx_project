@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function, nested_scopes, generators, division
+from __future__ import absolute_import
+
 import argparse, time, itertools
 
 import Movers
@@ -65,9 +68,9 @@ def _ReportTiming(message):
   """
   global _lastTime
   if message is None:
-    _lastTime = time.perf_counter()
+    _lastTime = time.clock()
     return
-  curTime = time.perf_counter()
+  curTime = time.clock()
   diff = curTime - _lastTime
   _lastTime = curTime
   return _VerboseCheck(2,"Time to {}: {:0.3f}".format(message,diff)+"\n")
@@ -101,7 +104,7 @@ def GetAtomsForConformer(model, conf):
       if confs[i].altloc == conf:
         which = i
         break
-    ret.extend(confs[which].atoms())
+    ret += confs[which].atoms()
   return ret
 
 ##################################################################################
@@ -358,8 +361,8 @@ class _SingletonOptimizer(object):
             resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
             newPhantoms = self._getPhantomHydrogensFor(a)
             if len(newPhantoms) > 0:
-              self._infoString += _VerboseCheck(3,f"Added {len(newPhantoms)} phantom Hydrogens on {resNameAndID}\n")
-            phantoms.extend(newPhantoms)
+              self._infoString += _VerboseCheck(3,"Added {} phantom Hydrogens on {}\n".format(len(newPhantoms), resNameAndID))
+            phantoms += newPhantoms
 
         if len(phantoms) > 0:
 
@@ -408,7 +411,7 @@ class _SingletonOptimizer(object):
         for s in singletonCliques:
           mover = self._interactionGraph.vertex_label(s[0])
           ret = self._optimizeSingleMoverCoarse(mover)
-          self._infoString += _VerboseCheck(1,f"Singletone optimized with score {ret:.2f}\n")
+          self._infoString += _VerboseCheck(1,"Singletone optimized with score {:.2f}\n".format(ret))
         self._infoString += _ReportTiming("optimize singletons (coarse)")
 
         # Do coarse optimization on the multi-Mover Cliques.
@@ -416,7 +419,7 @@ class _SingletonOptimizer(object):
           movers = [self._interactionGraph.vertex_label(i) for i in g]
           subset = _subsetGraph(self._interactionGraph, movers)
           ret = self._optimizeCliqueCoarse(subset)
-          self._infoString += _VerboseCheck(1,f"Clique optimized with score {ret:.2f}\n")
+          self._infoString += _VerboseCheck(1,"Clique optimized with score {:.2f}\n".format(ret))
         self._infoString += _ReportTiming("optimize cliques (coarse)")
 
         # Do fine optimization on the Movers.  This is done independently for
@@ -424,29 +427,29 @@ class _SingletonOptimizer(object):
         self._fineLocations = {}
         for m in self._movers:
           self._fineLocations[m] = 0
-        self._infoString += _VerboseCheck(1,f"Fine optimization on all Movers\n")
+        self._infoString += _VerboseCheck(1,"Fine optimization on all Movers\n")
         for m in self._movers:
           self._optimizeSingleMoverFine(m)
         self._infoString += _ReportTiming("optimize all Movers (fine)")
 
         # Do FixUp on the final coarse orientations.  Set the positions, extra atom info
         # and deletion status for all atoms that have entries for each.
-        self._infoString += _VerboseCheck(1,f"FixUp on all Movers\n")
+        self._infoString += _VerboseCheck(1,"FixUp on all Movers\n")
         for m in self._movers:
           loc = self._coarseLocations[m]
-          self._infoString += _VerboseCheck(3,f"FixUp on {type(m)} coarse location {loc}\n")
+          self._infoString += _VerboseCheck(3,"FixUp on {} coarse location {}\n".format(type(m),loc))
           fixUp = m.FixUp(loc)
           myAtoms = fixUp.atoms
           for i, p in enumerate(fixUp.positions):
-            self._infoString += _VerboseCheck(5,f"Moving atom to {p}\n")
+            self._infoString += _VerboseCheck(5,"Moving atom to {}\n".format(p))
             myAtoms[i].xyz = p
           for i, e in enumerate(fixUp.extraInfos):
-            self._infoString += _VerboseCheck(5,f"Atom info to {e}\n")
+            self._infoString += _VerboseCheck(5,"Atom info to {}\n".format(e))
             self._extraAtomInfo.setMappingFor(myAtoms[i], e)
           for i, d in enumerate(fixUp.deleteMes):
             # Either ensure that it is deleted or ensure that it is not depending on the
             # value of the deletion result.
-            self._infoString += _VerboseCheck(5,f"Atom deleted is {d}\n")
+            self._infoString += _VerboseCheck(5,"Atom deleted is {}\n".format(d))
             if d:
               self._deleteMes.add(myAtoms[i])
             else:
@@ -464,14 +467,14 @@ class _SingletonOptimizer(object):
         # both in the initial setup and determined during optimization.  Phantom Hydrogens
         # on waters do not need to be adjusted because they were never added to the
         # structure.
-        self._infoString += _VerboseCheck(1,f"Deleting Hydrogens tagged by Histidine Movers\n")
+        self._infoString += _VerboseCheck(1,"Deleting Hydrogens tagged by Histidine Movers\n")
         for a in self._deleteMes:
           aName = a.name.strip().upper()
           resName = a.parent().resname.strip().upper()
           resID = str(a.parent().parent().resseq_as_int())
           chainID = a.parent().parent().parent().id
           resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
-          self._infoString += _VerboseCheck(5,f"Deleting {resNameAndID} {aName}\n")
+          self._infoString += _VerboseCheck(5,"Deleting {} {}\n".format(resNameAndID, aName))
           a.parent().remove_atom(a)
         self._infoString += _ReportTiming("delete Hydrogens")
 
@@ -638,7 +641,7 @@ class _SingletonOptimizer(object):
     # :side_effect: Changes the value of self._highScores[mover] to the score at the coarse position
     # selected
     coarse = mover.CoarsePositions()
-    scores = coarse.preferenceEnergies.copy()
+    scores = coarse.preferenceEnergies[:]
     for i in range(len(scores)):
       scores[i] *= self._preferenceMagnitude
     for i in range(len(coarse.positions)):
@@ -647,7 +650,7 @@ class _SingletonOptimizer(object):
 
       for a in coarse.atoms:
         scores[i] += self._scoreAtom(a)
-      self._infoString += _VerboseCheck(5,f"Single Mover score at orientation {i} = {scores[i]:.2f}\n")
+      self._infoString += _VerboseCheck(5,"Single Mover score at orientation {} = {:.2f}\n".format(i,scores[i]))
 
     # Find the maximum score, keeping track of the best score and its index.
     maxScore = scores[0]
@@ -658,8 +661,8 @@ class _SingletonOptimizer(object):
         maxIndex = i;
 
     # Put the Mover into its final position (which may be back to its initial position)
-    self._infoString += _VerboseCheck(3,f"Setting single Mover to coarse orientation {maxIndex}"+
-      f", max score = {maxScore:.2f} (initial score {scores[0]:.2f})\n")
+    self._infoString += _VerboseCheck(3,"Setting single Mover to coarse orientation {}".format(maxIndex)+
+      ", max score = {:.2f} (initial score {:.2f})\n".format(maxScore, scores[0]))
     self._setMoverState(coarse, maxIndex)
     self._coarseLocations[mover] = maxIndex
 
@@ -681,7 +684,7 @@ class _SingletonOptimizer(object):
     :side_effect: self._coarseLocations is set to the Mover's best state.
     :side_effect: self._highScores is set to the individual score for each of the Movers.
     """
-    self._infoString += _VerboseCheck(3,f"Optimizing clique of size {len(list(clique.vertices()))} as singletons\n")
+    self._infoString += _VerboseCheck(3,"Optimizing clique of size {} as singletons\n".format(len(list(clique.vertices()))))
     ret = 0.0
     for v in clique.vertices():
       ret += self._optimizeSingleMoverCoarse(clique.vertex_label(v))
@@ -701,7 +704,7 @@ class _SingletonOptimizer(object):
     coarse = mover.CoarsePositions()  # Record in case we need to put it back
     fine = mover.FinePositions(self._coarseLocations[mover])
     if len(fine.positions) > 0:
-      scores = fine.preferenceEnergies.copy()
+      scores = fine.preferenceEnergies[:]
       for i in range(len(scores)):
         scores[i] *= self._preferenceMagnitude
       for i in range(len(fine.positions)):
@@ -709,7 +712,7 @@ class _SingletonOptimizer(object):
 
         for a in fine.atoms:
           scores[i] += self._scoreAtom(a)
-        self._infoString += _VerboseCheck(5,f"Single Mover score at orientation {i} = {scores[i]:.2f}\n")
+        self._infoString += _VerboseCheck(5,"Single Mover score at orientation {} = {:.2f}\n".format(i,scores[i]))
 
       # Find the maximum score, keeping track of the best score and its index.
       maxScore = scores[0]
@@ -722,8 +725,8 @@ class _SingletonOptimizer(object):
       # Put the Mover into its final position (which may be back to its initial position)
       # and update the high score.
       if maxScore > self._highScores[mover]:
-        self._infoString += _VerboseCheck(3,f"Setting single Mover to fine orientation {maxIndex}"+
-          f", max score = {maxScore:.2f} (coarse score {self._highScores[mover]:.2f})\n")
+        self._infoString += _VerboseCheck(3,"Setting single Mover to fine orientation {}".format(maxIndex)+
+          ", max score = {:.2f} (coarse score {:.2f})\n".format(maxScore,self._highScores[mover]))
         self._setMoverState(fine, maxIndex)
         self._fineLocations[mover] = maxIndex
 
@@ -731,7 +734,7 @@ class _SingletonOptimizer(object):
         self._highScores[mover] = maxScore
       else:
         # Put us back to the initial coarse location and don't change the high score.
-        self._infoString += _VerboseCheck(3,f"Leaving single Mover at coarse orientation\n")
+        self._infoString += _VerboseCheck(3,"Leaving single Mover at coarse orientation\n")
         self._setMoverState(coarse, self._coarseLocations[mover])
         self._fineLocations[mover] = 0
     return maxScore
@@ -793,7 +796,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     :side_effect: self._coarseLocations is set to the Mover's best state.
     :side_effect: self._highScores is set to the individual score for each of the Movers.
     """
-    self._infoString += _VerboseCheck(3,f"Optimizing clique of size {len(list(clique.vertices()))} using brute force\n")
+    self._infoString += _VerboseCheck(3,"Optimizing clique of size {} using brute force\n".format(len(list(clique.vertices()))))
 
     # Find the value for the current set of states, compare it against the max, and store it if
     # it is the best so far.
@@ -821,11 +824,11 @@ class _BruteForceOptimizer(_SingletonOptimizer):
       for i in range(len(movers)):
         for a in states[i].atoms:
           score += self._scoreAtom(a)
-      self._infoString += _VerboseCheck(5,f"Score is {score:.2f} at {curStateValues}\n")
+      self._infoString += _VerboseCheck(5,"Score is {:.2f} at {}\n".format(score, curStateValues))
       if score > bestScore or bestState is None:
-        self._infoString += _VerboseCheck(4,f"New best score is {score:.2f} at {curStateValues}\n")
+        self._infoString += _VerboseCheck(4,"New best score is {:.2f} at {}\n".format(score, curStateValues))
         bestScore = score
-        bestState = curStateValues.copy()
+        bestState = curStateValues[:]
 
     # Put each Mover into its best state and compute its high-score value.
     # Compute the best individual scores for these Movers for use in later fine-motion
@@ -837,8 +840,8 @@ class _BruteForceOptimizer(_SingletonOptimizer):
       self._highScores[m] = 0
       for a in states[i].atoms:
         self._highScores[m] += self._scoreAtom(a)
-      self._infoString += _VerboseCheck(3,f"Setting Mover in clique to coarse orientation {bestState[i]}"+
-        f", max score = {self._highScores[m]:.2f}\n")
+      self._infoString += _VerboseCheck(3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
+        ", max score = {:.2f}\n".format(self._highScores[m]))
       ret += self._highScores[m]
     return ret
 
@@ -908,12 +911,12 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     :side_effect: self._coarseLocations is set to the Mover's best state.
     :side_effect: self._highScores is set to the individual score for each of the Movers.
     """
-    self._infoString += _VerboseCheck(3,f"Optimizing clique of size {len(list(clique.vertices()))} using recursion\n")
+    self._infoString += _VerboseCheck(3,"Optimizing clique of size {} using recursion\n".format(len(list(clique.vertices()))))
 
     # If we've gotten down to a clique of size 2, we terminate recursion and call our parent's method
     # because we can never split this into two connected components.
     if len(list(clique.vertices())) <= 2:
-      self._infoString += _VerboseCheck(3,f"Recursion terminated at clique of size {len(list(clique.vertices()))}\n")
+      self._infoString += _VerboseCheck(3,"Recursion terminated at clique of size {}\n".format(len(list(clique.vertices()))))
       ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
       return ret
 
@@ -929,7 +932,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     # to that at the end.  If we have no Movers in the vertex cut, none was found so we don't recur.
     cutMovers, cutGraph = _vertexCut(clique)
     if len(cutMovers) > 0:
-      self._infoString += _VerboseCheck(3,f"Found vertex cut of size {len(cutMovers)}\n")
+      self._infoString += _VerboseCheck(3,"Found vertex cut of size {}\n".format(len(cutMovers)))
 
       score = 0.0
       bestState = None
@@ -958,9 +961,9 @@ class _CliqueOptimizer(_BruteForceOptimizer):
         for m in cutMovers:
           for a in states[m].atoms:
             score += self._scoreAtom(a)
-        self._infoString += _VerboseCheck(5,f"Score is {score:.2f} at {curStateValues}\n")
+        self._infoString += _VerboseCheck(5,"Score is {:.2f} at {}\n".format(score, curStateValues))
         if score > bestScore or bestState is None:
-          self._infoString += _VerboseCheck(4,f"New best score is {score:.2f} at {curStateValues}\n")
+          self._infoString += _VerboseCheck(4,"New best score is {:.2f} at {}\n".format(score, curStateValues))
           bestScore = score
           # Get the current state for all Movers in the Clique, not just the vertex-cut Movers
           bestState = [self._coarseLocations[m] for m in movers]
@@ -975,13 +978,13 @@ class _CliqueOptimizer(_BruteForceOptimizer):
         self._highScores[m] = 0
         for a in states[m].atoms:
           self._highScores[m] += self._scoreAtom(a)
-        self._infoString += _VerboseCheck(3,f"Setting Mover in clique to coarse orientation {bestState[i]}"+
-          f", max score = {self._highScores[m]:.2f}\n")
+        self._infoString += _VerboseCheck(3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
+          ", max score = {:.2f}\n".format(self._highScores[m]))
         ret += self._highScores[m]
       return ret
 
     # Give up and use our parent's method.
-    self._infoString += _VerboseCheck(3,f"No vertex cut for clique of size {len(list(clique.vertices()))}, calling parent\n")
+    self._infoString += _VerboseCheck(3,"No vertex cut for clique of size {}, calling parent\n".format(len(list(clique.vertices()))))
     ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
     return ret
 
@@ -1070,7 +1073,7 @@ class FastOptimizer(_CliqueOptimizer):
     :side_effect: self._coarseLocations is set to the Mover's best state.
     :side_effect: self._highScores is set to the individual score for each of the Movers.
     """
-    self._infoString += _VerboseCheck(3,f"Optimizing clique of size {len(list(clique.vertices()))} using atom-score cache\n")
+    self._infoString += _VerboseCheck(3,"Optimizing clique of size {} using atom-score cache\n".format(len(list(clique.vertices()))))
 
     # Ensure that we have a per-atom _scoreCache dictionary that will store already-computed
     # results for a given atom based on the configurations of the Movers that can affect its
@@ -1324,7 +1327,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           # NOTE that we must check the position of the atom in its coarse configuration rather
           # than its FixUp configuration because that is the location that we use to determine if
           # we have an ionic bond.
-          def _modifyIfNeeded(nitro, coarseNitroPos, hydro):
+          def _modifyIfNeeded(nitro, coarseNitroPos, hydro, infoString):
             # Helper function to check and change things for one of the Nitrogens.
             myRad = extraAtomInfo.getMappingFor(nitro).vdwRadius
             minDist = myRad
@@ -1335,7 +1338,6 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
                 dist = (Movers._rvec3(coarseNitroPos) - Movers._rvec3(n.xyz)).length()
                 expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
                 if dist >= (expected - 0.55) and dist <= (expected + 0.25):
-                  nonlocal infoString
                   infoString += _VerboseCheck(1,'Removing Hydrogen from '+resNameAndID+nitro.name+' and marking as an acceptor '+
                     '(ionic bond to '+n.name.strip()+')\n')
                   extra = extraAtomInfo.getMappingFor(nitro)
@@ -1344,8 +1346,8 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
                   deleteAtoms.append(hydro)
                   break
 
-          _modifyIfNeeded(fixUp.atoms[0], coarsePositions[0], fixUp.atoms[1])
-          _modifyIfNeeded(fixUp.atoms[4], coarsePositions[4], fixUp.atoms[5])
+          _modifyIfNeeded(fixUp.atoms[0], coarsePositions[0], fixUp.atoms[1], infoString)
+          _modifyIfNeeded(fixUp.atoms[4], coarsePositions[4], fixUp.atoms[5], infoString)
 
           infoString += _VerboseCheck(1,"Set MoverHistidineFlip on "+resNameAndID+" to state "+str(bondedConfig)+"\n")
         else:
@@ -1626,27 +1628,27 @@ END
 
   # Add Hydrogens to the model
   print('Adding Hydrogens')
-  startAdd = time.perf_counter()
+  startAdd = time.clock()
   reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
   reduce_add_h_obj.run()
   model = reduce_add_h_obj.get_model()
-  doneAdd = time.perf_counter()
+  doneAdd = time.clock()
 
   # Interpret the model after shifting and adding Hydrogens to it so that
   # all of the needed fields are filled in when we use them below.
   # @todo Remove this once place_hydrogens() does all the interpretation we need.
   print('Interpreting model')
-  startInt = time.perf_counter()
+  startInt = time.clock()
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
   model.set_pdb_interpretation_params(params = p)
   model.process_input_model(make_restraints=True) # make restraints
-  doneInt = time.perf_counter()
+  doneInt = time.clock()
 
   print('Constructing Optimizer')
   # @todo Let the caller specify the model index and altID rather than doing only the default (first).
-  startOpt = time.perf_counter()
+  startOpt = time.clock()
   opt = FastOptimizer(model,probeRadius=0.25, altID="")
-  doneOpt = time.perf_counter()
+  doneOpt = time.clock()
   info = opt.getInfo()
   print('XXX info:\n'+info)
   print('XXX Time to Add Hydrogen =',doneAdd-startAdd)
