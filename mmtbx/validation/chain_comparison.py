@@ -192,11 +192,15 @@ class rmsd_values:
     self.used_query=None
     self.n_fragments_list=[]
     self.incorrect_connections = None
+    self.input_fragments = None
     self.file_info=""
     self.params=params
 
   def add_incorrect_connections(self,incorrect_connections):
     self.incorrect_connections = incorrect_connections
+
+  def add_input_fragments(self,input_fragments):
+    self.input_fragments = input_fragments
 
   def add_match_percent(self,id=None,match_percent=None):
     ipoint=self.id_list.index(id)
@@ -947,8 +951,8 @@ def write_summary(params=None,file_list=None,rv_list=None,
       print("               ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %", file=out)
       print("     MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED"+\
               " FOUND  CA                  SEQ", file=out)
-      print("               RMSD   N      N       N       N      N  "+\
-     "        SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH  BAD CONNECTIONS"+"\n",
+      print("               RMSD   N      N       N       N      N "+\
+     "        SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH  FRAGMENTS BAD CONNECTIONS"+"\n",
         file=out)
 
   results_dict={}
@@ -976,11 +980,12 @@ def write_summary(params=None,file_list=None,rv_list=None,
     match_percent=rv.get_match_percent('close')
     fragments=rv.get_n_fragments('forward')+rv.get_n_fragments('reverse')
     incorrect_connections = rv.incorrect_connections
+    input_fragments = rv.input_fragments
     mean_length=close_n/max(1,fragments)
     if full_rows:
-      print("%14s %4.2f %4d   %4d   %4d    %4d    %4d  %5.1f %6.2f   %5.1f      %6.2f  %5.1f %4s" %(file_name,close_rmsd,close_n,far_away_n,forward_n,
+      print("%14s %4.2f %4d   %4d   %4d    %4d    %4d  %5.1f %6.2f   %5.1f      %6.2f  %5.1f %10s %15s" %(file_name,close_rmsd,close_n,far_away_n,forward_n,
          reverse_n,unaligned_n,percent_close,score,match_percent,seq_score,
-         mean_length, incorrect_connections), file=out)
+         mean_length, input_fragments, incorrect_connections), file=out)
     else:
       print("ID: %14s \nClose rmsd: %4.2f A  (N=%4d)  (Far N=%4d) \n" %(
             file_name,close_rmsd,close_n,far_away_n)+\
@@ -993,7 +998,8 @@ def write_summary(params=None,file_list=None,rv_list=None,
              match_percent)+\
          "Sequence score:  %.2f  Mean match length: %.1f" %(
                seq_score, mean_length) +\
-         "Incorrect connections:  %s" %(incorrect_connections),
+         "Fragments: %s  Incorrect connections:  %s" %(
+           input_fragments, incorrect_connections),
            file=out)
 
 def get_target_length(target_chain_ids=None,hierarchy=None,
@@ -1186,6 +1192,10 @@ def get_incorrect_connections(close_match_list):
     if not ok:
       incorrect_connections += 1
   return incorrect_connections
+
+def get_input_fragments(chain_xyz_cart, distance_per_site = 3.8):
+  gaps = ( (chain_xyz_cart[:-1] - chain_xyz_cart[1:]).norms() > 2 * distance_per_site).count(True)
+  return gaps + 1
 
 def run(args=None,
    ncs_obj=None,
@@ -1432,6 +1442,7 @@ def run(args=None,
   best_pair=None
   pair_list=[]
   from scitbx.array_family import flex
+  input_fragments = get_input_fragments(chain_xyz_cart, distance_per_site = distance_per_site)
   chain_xyz_fract=crystal_symmetry.unit_cell().fractionalize(chain_xyz_cart)
   target_xyz_fract=crystal_symmetry.unit_cell().fractionalize(target_xyz_cart)
   far_away_match_list=[]
@@ -1544,6 +1555,7 @@ def run(args=None,
 
   rv=rmsd_values(params=params)
   rv.add_incorrect_connections(incorrect_connections)
+  rv.add_input_fragments(input_fragments)
 
 
   id='forward'
