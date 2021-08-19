@@ -19,11 +19,11 @@
 from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import, unicode_literals
 import sys
+import mmtbx_probe_ext as probe
 from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
 from cctbx.maptbx.box import shift_and_box_model
 import mmtbx
-import mmtbx_probe_ext as probe
 
 import Helpers
 

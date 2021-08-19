@@ -37,6 +37,10 @@ boost::python::tuple wrap_vec3_array(Point const& d) {
 
 BOOST_PYTHON_MODULE(mmtbx_probe_ext)
 {
+  // Dependencies
+  //boost::python::object pdb_hierarchy_ext = boost::python::import( "iotbx_pdb_hierarchy_ext" );
+  //boost::python::object pdb_ext = boost::python::import( "iotbx_pdb_ext" );
+
   // Describe and name compound classes that we need access to beyond those that are
   // already defined for us by scitbx arrays that are defined elsewhere.
 
