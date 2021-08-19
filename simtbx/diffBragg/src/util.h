@@ -27,7 +27,8 @@ struct images{
     image_type lambda;
     image_type panel_rot;
     image_type panel_orig;
-    image_type sausages;
+    image_type sausage;
+    image_type fp_fdp;
 };
 
 #endif

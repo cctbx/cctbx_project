@@ -27,16 +27,7 @@ void error_msg(cudaError_t err, char* msg){
 void diffBragg_loopy(
         int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,
         image_type& floatimage,
-        image_type& d_Umat_images, image_type& d2_Umat_images,
-        image_type& d_Bmat_images, image_type& d2_Bmat_images,
-        image_type& d_Ncells_images, image_type& d2_Ncells_images,
-        image_type& d_fcell_images, image_type& d2_fcell_images,
-        image_type& d_eta_images, image_type& d2_eta_images,
-        image_type& d_lambda_images, image_type& d2_lambda_images,
-        image_type& d_panel_rot_images, image_type& d2_panel_rot_images,
-        image_type& d_panel_orig_images, image_type& d2_panel_orig_images,
-        image_type& d_sausage_XYZ_scale_images,
-        image_type& d_fp_fdp_images,
+        images& d_image, images& d2_image,
         const int Nsteps, int _printout_fpixel, int _printout_spixel, bool _printout, CUDAREAL _default_F,
         int oversample, bool _oversample_omega, CUDAREAL subpixel_size, CUDAREAL pixel_size,
         CUDAREAL detector_thickstep, CUDAREAL _detector_thick, std::vector<CUDAREAL>& close_distances, CUDAREAL detector_attnlen,
@@ -210,29 +201,36 @@ void diffBragg_loopy(
 
         //gettimeofday(&t3, 0));
         gpuErr(cudaMallocManaged(&cp.cu_floatimage, Npix_to_allocate*sizeof(CUDAREAL) ));
-        gpuErr(cudaMallocManaged(&cp.cu_d_fcell_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_eta_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d2_eta_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_Umat_images, Npix_to_allocate*3*sizeof(CUDAREAL) ));
-        gpuErr(cudaMallocManaged(&cp.cu_d_Ncells_images, Npix_to_allocate*6*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_panel_rot_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_panel_orig_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_lambda_images, Npix_to_allocate*2*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_Bmat_images, Npix_to_allocate*6*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images, num_sausages*Npix_to_allocate*4*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_fp_fdp_images, Npix_to_allocate*2*sizeof(CUDAREAL)));
-
-        // allocate curvatures
-        //gpuErr(cudaMallocManaged(&cp.cu_d_eta_images, Npix_to_allocate*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d2_Umat_images, Npix_to_allocate*3*sizeof(CUDAREAL) ));
-        gpuErr(cudaMallocManaged(&cp.cu_d2_Ncells_images, Npix_to_allocate*6*sizeof(CUDAREAL)));
-        //gpuErr(cudaMallocManaged(&cp.cu_d_panel_rot_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
-        //gpuErr(cudaMallocManaged(&cp.cu_d_panel_orig_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
-        //gpuErr(cudaMallocManaged(&cp.cu_d_lambda_images, Npix_to_allocate*2*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d2_Bmat_images, Npix_to_allocate*6*sizeof(CUDAREAL)));
+        if (refine_fcell)
+            gpuErr(cudaMallocManaged(&cp.cu_d_fcell_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
+        if (refine_eta){
+            gpuErr(cudaMallocManaged(&cp.cu_d_eta_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
+            gpuErr(cudaMallocManaged(&cp.cu_d2_eta_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
+        }
+        if (refine_Umat){
+            gpuErr(cudaMallocManaged(&cp.cu_d_Umat_images, Npix_to_allocate*3*sizeof(CUDAREAL) ));
+            gpuErr(cudaMallocManaged(&cp.cu_d2_Umat_images, Npix_to_allocate*3*sizeof(CUDAREAL) ));
+        }
+        if (refine_Ncells){
+            gpuErr(cudaMallocManaged(&cp.cu_d_Ncells_images, Npix_to_allocate*6*sizeof(CUDAREAL)));
+            gpuErr(cudaMallocManaged(&cp.cu_d2_Ncells_images, Npix_to_allocate*6*sizeof(CUDAREAL)));
+        }
+        if (refine_panel_rot)
+            gpuErr(cudaMallocManaged(&cp.cu_d_panel_rot_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
+        if (refine_panel_orig)
+            gpuErr(cudaMallocManaged(&cp.cu_d_panel_orig_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
+        if (refine_lambda)
+            gpuErr(cudaMallocManaged(&cp.cu_d_lambda_images, Npix_to_allocate*2*sizeof(CUDAREAL)));
+        if(refine_Bmat){
+            gpuErr(cudaMallocManaged(&cp.cu_d_Bmat_images, Npix_to_allocate*6*sizeof(CUDAREAL)));
+            gpuErr(cudaMallocManaged(&cp.cu_d2_Bmat_images, Npix_to_allocate*6*sizeof(CUDAREAL)));
+        }
+        if (refine_sausages)
+            gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images, num_sausages*Npix_to_allocate*4*sizeof(CUDAREAL)));
+        if (refine_fp_fdp)
+            gpuErr(cudaMallocManaged(&cp.cu_d_fp_fdp_images, Npix_to_allocate*2*sizeof(CUDAREAL)));
         if(nominal_hkl.size() >0)
             gpuErr(cudaMallocManaged(&cp.cu_nominal_hkl, Npix_to_allocate*3*sizeof(int)));
-        //gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images, num_sausages*Npix_to_allocate*4*sizeof(CUDAREAL)));
 
         //gettimeofday(&t4, 0);
         //time = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
@@ -530,29 +528,29 @@ void diffBragg_loopy(
         floatimage[i] = cp.cu_floatimage[i];
     }
     for (int i=0; i<3*Npix_to_model; i++){
-        d_fcell_images[i] = cp.cu_d_fcell_images[i];
-        d_Umat_images[i] = cp.cu_d_Umat_images[i];
-        d2_Umat_images[i] = cp.cu_d2_Umat_images[i];
-        d_panel_rot_images[i] = cp.cu_d_panel_rot_images[i];
-        d_panel_orig_images[i] = cp.cu_d_panel_orig_images[i];
-        d_eta_images[i] = cp.cu_d_eta_images[i];
-        d2_eta_images[i] = cp.cu_d2_eta_images[i];
+        d_image.fcell[i] = cp.cu_d_fcell_images[i];
+        d_image.Umat[i] = cp.cu_d_Umat_images[i];
+        d2_image.Umat[i] = cp.cu_d2_Umat_images[i];
+        d_image.panel_rot[i] = cp.cu_d_panel_rot_images[i];
+        d_image.panel_orig[i] = cp.cu_d_panel_orig_images[i];
+        d_image.eta[i] = cp.cu_d_eta_images[i];
+        d2_image.eta[i] = cp.cu_d2_eta_images[i];
     }
 
     for(int i=0; i<6*Npix_to_model; i++){
-        d_Ncells_images[i] = cp.cu_d_Ncells_images[i];
-        d2_Ncells_images[i] = cp.cu_d2_Ncells_images[i];
-        d_Bmat_images[i] = cp.cu_d_Bmat_images[i];
-        d2_Bmat_images[i] = cp.cu_d2_Bmat_images[i];
+        d_image.Ncells[i] = cp.cu_d_Ncells_images[i];
+        d2_image.Ncells[i] = cp.cu_d2_Ncells_images[i];
+        d_image.Bmat[i] = cp.cu_d_Bmat_images[i];
+        d2_image.Bmat[i] = cp.cu_d2_Bmat_images[i];
     }
     for(int i=0; i<2*Npix_to_model; i++)
-        d_lambda_images[i] = cp.cu_d_lambda_images[i];
+        d_image.lambda[i] = cp.cu_d_lambda_images[i];
 
     for (int i=0; i< num_sausages*4*Npix_to_model; i++)
-        d_sausage_XYZ_scale_images[i] = cp.cu_d_sausage_XYZ_scale_images[i];
+        d_image.sausage[i] = cp.cu_d_sausage_XYZ_scale_images[i];
 
     for (int i=0; i< 2*Npix_to_model; i++)
-        d_fp_fdp_images[i] = cp.cu_d_fp_fdp_images[i];
+        d_image.fp_fdp[i] = cp.cu_d_fp_fdp_images[i];
 
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;

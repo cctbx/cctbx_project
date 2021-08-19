@@ -1926,64 +1926,46 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
     gettimeofday(&t3,0 );
     image_type image(Npix_to_model,0.0);
-    //if (refine_Umat[0]){
-    //    image_type d_Umat_images(Npix_to_model*3,0.0);
-    //    image_type d2_Umat_images(Npix_to_model*3,0.0);
-    //}
-    //if (refine_Bmat[0]){
-    //    image_type d_Bmat_images(Npix_to_model*6,0.0);
-    //    image_type d2_Bmat_images(Npix_to_model*6,0.0);
-    //}
-    //if (refine_Ncells[0]){
-    //    image_type d_Ncells_images(Npix_to_model*6,0.0);
-    //    image_type d2_Ncells_images(Npix_to_model*6,0.0);
-    //}
-    //if (fcell_managers[0]->refine_me)
-    //    image_type d_fcell_images(Npix_to_model*3,0.0);
-    //    image_type d2_fcell_images(Npix_to_model*3,0.0);
-    //if (eta_managers[0]->refine_me){
-    //    image_type d_eta_images(Npix_to_model*3,0.0);
-    //    image_type d2_eta_images(Npix_to_model*3,0.0);
-    //}
-    //if (refine_lambda[0]){
-    //    image_type d_lambda_images(Npix_to_model*2,0.0);
-    //    image_type d2_lambda_images(Npix_to_model*2,0.0);
-    //}
-    //if(refine_pan_rot[0]){
-    //    image_type d_panel_rot_images(Npix_to_model*3,0.0);
-    //    image_type d2_panel_rot_images(Npix_to_model*3,0.0);
-    //}
-    //if(refine_pan_orig[0]){
-    //    image_type d_panel_orig_images(Npix_to_model*3,0.0);
-    //    image_type d2_panel_orig_images(Npix_to_model*3,0.0);
-    //}
-    //if (refining_sausages){
-    //    image_type d_sausage_XYZ_scale_images(Npix_to_model*num_sausages*4,0.0);
-    //    image_type d_fp_fdp_images(Npix_to_model*2,0.0); // for now only support two parameters for fp, fdp
-    //}
-
-    image_type d_Umat_images(Npix_to_model*3,0.0);
-    image_type d2_Umat_images(Npix_to_model*3,0.0);
-    image_type d_Bmat_images(Npix_to_model*6,0.0);
-    image_type d2_Bmat_images(Npix_to_model*6,0.0);
-    image_type d_Ncells_images(Npix_to_model*6,0.0);
-    image_type d2_Ncells_images(Npix_to_model*6,0.0);
-    image_type d_fcell_images(Npix_to_model*3,0.0);
-    image_type d2_fcell_images(Npix_to_model*3,0.0);
-    image_type d_eta_images(Npix_to_model*3,0.0);
-    image_type d2_eta_images(Npix_to_model*3,0.0);
-    image_type d_lambda_images(Npix_to_model*2,0.0);
-    image_type d2_lambda_images(Npix_to_model*2,0.0);
-    image_type d_panel_rot_images(Npix_to_model*3,0.0);
-    image_type d2_panel_rot_images(Npix_to_model*3,0.0);
-    image_type d_panel_orig_images(Npix_to_model*3,0.0);
-    image_type d2_panel_orig_images(Npix_to_model*3,0.0);
-    image_type d_sausage_XYZ_scale_images(Npix_to_model*num_sausages*4,0.0);
-    image_type d_fp_fdp_images(Npix_to_model*2,0.0); // for now only support two parameters for fp, fdp
+    if (refine_Umat[0]){
+        first_deriv_imgs.Umat.resize(Npix_to_model*3, 0);
+        second_deriv_imgs.Umat.resize(Npix_to_model*3,0);
+    }
+    if (refine_Bmat[0]){
+        first_deriv_imgs.Bmat.resize(Npix_to_model*6, 0);
+        second_deriv_imgs.Bmat.resize(Npix_to_model*6,0);
+    }
+    if(refine_Ncells[0]){
+        first_deriv_imgs.Ncells.resize(Npix_to_model*6,0);
+        second_deriv_imgs.Ncells.resize(Npix_to_model*6,0);
+    }
+    if (fcell_managers[0]->refine_me){
+        first_deriv_imgs.fcell.resize(Npix_to_model*3,0);
+        second_deriv_imgs.fcell.resize(Npix_to_model*3,0);
+    }
+    if (lambda_managers[0]->refine_me){
+        first_deriv_imgs.lambda.resize(Npix_to_model*2,0);
+        second_deriv_imgs.lambda.resize(Npix_to_model*2,0);
+    }
+    if(eta_managers[0]->refine_me){
+        first_deriv_imgs.eta.resize(Npix_to_model*3,0);
+        second_deriv_imgs.eta.resize(Npix_to_model*3,0);
+    }
+    if (refine_pan_rot[0]){
+        first_deriv_imgs.panel_rot.resize(Npix_to_model*3,0);
+        second_deriv_imgs.panel_rot.resize(Npix_to_model*3,0);
+    }
+    if (refine_pan_orig[0]){
+        first_deriv_imgs.panel_orig.resize(Npix_to_model*3,0);
+        second_deriv_imgs.panel_orig.resize(Npix_to_model*3,0);
+    }
+    if(refining_sausages){
+        first_deriv_imgs.sausage.resize(Npix_to_model*4*num_sausages,0);
+    }
+    if(fp_fdp_managers[0]->refine_me){
+        first_deriv_imgs.fp_fdp.resize(Npix_to_model*2,0);
+    }
     gettimeofday(&t4,0 );
     double time_make_images = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
-
-    //first_deriv_imgs.Umat = d_Umat_images
 
     gettimeofday(&t2, 0);
     double time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
@@ -2002,16 +1984,8 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         diffBragg::diffBragg_sum_over_steps(
             Npix_to_model, panels_fasts_slows_vec,
             image,
-            d_Umat_images, d2_Umat_images,
-            d_Bmat_images, d2_Bmat_images,
-            d_Ncells_images, d2_Ncells_images,
-            d_fcell_images,  d2_fcell_images,
-            d_eta_images, d2_eta_images,
-            d_lambda_images, d2_lambda_images,
-            d_panel_rot_images,  d2_panel_rot_images,
-            d_panel_orig_images,  d2_panel_orig_images,
-            d_sausage_XYZ_scale_images,
-            d_fp_fdp_images,
+            first_deriv_imgs,
+            second_deriv_imgs,
             subS_pos,  subF_pos,  thick_pos,
             source_pos,  phi_pos,  mos_pos, sausage_pos,
             Nsteps, _printout_fpixel, _printout_spixel, _printout, _default_F,
@@ -2054,16 +2028,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
        diffBragg_loopy(
            Npix_to_model, panels_fasts_slows_vec,
            image,
-           d_Umat_images, d2_Umat_images,
-           d_Bmat_images, d2_Bmat_images,
-           d_Ncells_images, d2_Ncells_images,
-           d_fcell_images,  d2_fcell_images,
-           d_eta_images, d2_eta_images,
-           d_lambda_images, d2_lambda_images,
-           d_panel_rot_images,  d2_panel_rot_images,
-           d_panel_orig_images,  d2_panel_orig_images,
-           d_sausage_XYZ_scale_images,
-           d_fp_fdp_images,
+           first_deriv_imgs, second_deriv_imgs,
            Nsteps, _printout_fpixel, _printout_spixel, _printout, _default_F,
            oversample, oversample_omega, subpixel_size, pixel_size,
            detector_thickstep, detector_thick, close_distances, detector_attnlen,
@@ -2135,59 +2100,58 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
                   printf("Updating sausage rots %d\n", i_sausage);
                 for (i_param=0; i_param<3; i_param++){
                     idx = (4*i_sausage+i_param)*Npix_to_model + i_pix;
-                    sausage_managers[i_sausage*3+i_param]->increment_image(i_pix, d_sausage_XYZ_scale_images[idx], 0, compute_curvatures);
+                    sausage_managers[i_sausage*3+i_param]->increment_image(i_pix, first_deriv_imgs.sausage[idx], 0, compute_curvatures);
                 }
                 if (verbose > 5)
                   printf("Updating scale %d\n", i_sausage);
                 idx = (4*i_sausage+3)*Npix_to_model + i_pix;
-                sausage_scale_managers[i_sausage]->increment_image(i_pix, d_sausage_XYZ_scale_images[idx], 0, compute_curvatures);
+                sausage_scale_managers[i_sausage]->increment_image(i_pix, first_deriv_imgs.sausage[idx], 0, compute_curvatures);
             }
         }
 
         for (int i_rot=0; i_rot<3; i_rot++){
             if (rot_managers[i_rot]->refine_me){
                 int idx = i_rot*Npix_to_model + i_pix;
-                rot_managers[i_rot]->increment_image(i_pix, d_Umat_images[idx], d2_Umat_images[idx], compute_curvatures);
+                rot_managers[i_rot]->increment_image(i_pix, first_deriv_imgs.Umat[idx], second_deriv_imgs.Umat[idx], compute_curvatures);
             }
         }
         for (int i_uc=0; i_uc<6; i_uc++){
             if (ucell_managers[i_uc]->refine_me){
                 int idx = i_uc*Npix_to_model + i_pix;
-                ucell_managers[i_uc]->increment_image(i_pix, d_Bmat_images[idx], d2_Bmat_images[idx], compute_curvatures);
+                ucell_managers[i_uc]->increment_image(i_pix, first_deriv_imgs.Bmat[idx], second_deriv_imgs.Bmat[idx], compute_curvatures);
             }
         }
         if (Ncells_managers[0]->refine_me){
-            Ncells_managers[0]->increment_image(i_pix, d_Ncells_images[i_pix], d2_Ncells_images[i_pix], compute_curvatures);
+            Ncells_managers[0]->increment_image(i_pix, first_deriv_imgs.Ncells[i_pix], second_deriv_imgs.Ncells[i_pix], compute_curvatures);
             if (! isotropic_ncells){
                 int idx= Npix_to_model+i_pix;
-                Ncells_managers[1]->increment_image(i_pix, d_Ncells_images[idx], d2_Ncells_images[idx], compute_curvatures);
+                Ncells_managers[1]->increment_image(i_pix, first_deriv_imgs.Ncells[idx], second_deriv_imgs.Ncells[idx], compute_curvatures);
                 idx = 2*Npix_to_model + i_pix;
-                Ncells_managers[2]->increment_image(i_pix, d_Ncells_images[idx], d2_Ncells_images[idx], compute_curvatures);
-
+                Ncells_managers[2]->increment_image(i_pix, first_deriv_imgs.Ncells[idx], second_deriv_imgs.Ncells[idx], compute_curvatures);
             }
         }
 
         if (refine_Ncells_def){
             for (int i_nc =3; i_nc < 6; i_nc++){
                 int idx= i_nc*Npix_to_model+i_pix;
-                Ncells_managers[i_nc]->increment_image(i_pix, d_Ncells_images[idx], d2_Ncells_images[idx], compute_curvatures);
+                Ncells_managers[i_nc]->increment_image(i_pix, first_deriv_imgs.Ncells[idx], second_deriv_imgs.Ncells[idx], compute_curvatures);
             }
         }
 
         if (fcell_managers[0]->refine_me){
             for (int i_fcell=0; i_fcell < 3; i_fcell++){
                 int idx=i_fcell*Npix_to_model + i_pix;
-                fcell_managers[i_fcell]->increment_image(i_pix, d_fcell_images[idx], d2_fcell_images[idx], compute_curvatures);
+                fcell_managers[i_fcell]->increment_image(i_pix, first_deriv_imgs.fcell[idx], second_deriv_imgs.fcell[idx], compute_curvatures);
             }
         }
 
         if (eta_managers[0]->refine_me){
-            eta_managers[0]->increment_image(i_pix, d_eta_images[i_pix], d2_eta_images[i_pix], compute_curvatures);
+            eta_managers[0]->increment_image(i_pix, first_deriv_imgs.eta[i_pix], second_deriv_imgs.eta[i_pix], compute_curvatures);
             if (modeling_anisotropic_mosaic_spread){
                 if (verbose && i_pix==0)printf("copying aniso eta derivatives\n");
                 for(int i_eta=1; i_eta < 3; i_eta++){
                     int idx = i_eta*Npix_to_model+i_pix;
-                    eta_managers[i_eta]->increment_image(i_pix, d_eta_images[idx], d2_eta_images[idx], compute_curvatures);
+                    eta_managers[i_eta]->increment_image(i_pix, first_deriv_imgs.eta[idx], second_deriv_imgs.eta[idx], compute_curvatures);
                 }
             }
         }
@@ -2195,7 +2159,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         for(int i_lam=0; i_lam < 2; i_lam++){
             if (lambda_managers[i_lam]->refine_me){
                 int idx= Npix_to_model*i_lam + i_pix;
-                lambda_managers[i_lam]->increment_image(i_pix, d_lambda_images[idx], d2_lambda_images[idx], compute_curvatures);
+                lambda_managers[i_lam]->increment_image(i_pix, first_deriv_imgs.lambda[idx], second_deriv_imgs.lambda[idx], compute_curvatures);
             }
         }
 
@@ -2203,20 +2167,20 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             int i_rot = pan_rot_ids[i_pan];
             if (panels[i_rot]->refine_me){
                 int idx = Npix_to_model*i_pan + i_pix;
-                panels[i_rot]->increment_image(i_pix, d_panel_rot_images[idx], d2_panel_rot_images[idx], compute_curvatures);
+                panels[i_rot]->increment_image(i_pix, first_deriv_imgs.panel_rot[idx], second_deriv_imgs.panel_rot[idx], compute_curvatures);
             }
 
             int i_orig = pan_orig_ids[i_pan];
             if(panels[i_orig]->refine_me){
                 int idx= Npix_to_model*i_pan + i_pix;
-                panels[i_orig]->increment_image(i_pix, d_panel_orig_images[idx], d2_panel_orig_images[idx], compute_curvatures);
+                panels[i_orig]->increment_image(i_pix, first_deriv_imgs.panel_orig[idx], second_deriv_imgs.panel_orig[idx], compute_curvatures);
             }
         }
 
         if (fp_fdp_managers[0]->refine_me)
-            fp_fdp_managers[0]->increment_image(i_pix, d_fp_fdp_images[i_pix], 0, compute_curvatures);
+            fp_fdp_managers[0]->increment_image(i_pix, first_deriv_imgs.fp_fdp[i_pix], 0, compute_curvatures);
         if (fp_fdp_managers[1]->refine_me)
-            fp_fdp_managers[1]->increment_image(i_pix, d_fp_fdp_images[i_pix+Npix_to_model], 0, compute_curvatures);
+            fp_fdp_managers[1]->increment_image(i_pix, first_deriv_imgs.fp_fdp[i_pix+Npix_to_model], 0, compute_curvatures);
 
     } // END of flex array update
 

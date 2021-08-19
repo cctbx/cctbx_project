@@ -9,17 +9,8 @@ namespace simtbx { namespace nanoBragg { // BEGIN namespace simtbx::nanoBragg
 void diffBragg::diffBragg_sum_over_steps(
         int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,
         image_type& floatimage,
-        image_type& d_Umat_images, image_type& d2_Umat_images,
-        image_type& d_Bmat_images, image_type& d2_Bmat_images,
-        image_type& d_Ncells_images, image_type& d2_Ncells_images,
-        image_type& d_fcell_images, image_type& d2_fcell_images,
-        image_type& d_eta_images,
-        image_type& d2_eta_images,
-        image_type& d_lambda_images, image_type& d2_lambda_images,
-        image_type& d_panel_rot_images, image_type& d2_panel_rot_images,
-        image_type& d_panel_orig_images, image_type& d2_panel_orig_images,
-        image_type& d_sausage_XYZ_scale_images,
-        image_type& d_fp_fdp_images,
+        images& d_image,
+        images& d2_image,
         int* subS_pos, int* subF_pos, int* thick_pos,
         int* source_pos, int* phi_pos, int* mos_pos, int* sausage_pos,
         const int Nsteps, int _printout_fpixel, int _printout_spixel, bool _printout, double _default_F,
@@ -463,13 +454,12 @@ void diffBragg::diffBragg_sum_over_steps(
                     num_ncell_deriv = 3;
                 for (int i_nc=0; i_nc < num_ncell_deriv; i_nc++) {
                     Eigen::Matrix3d dN;
-                    dN << 0,0,0,0,0,0,0,0,0;
-                    dN(i_nc, i_nc) = 1;
-                    if (num_ncell_deriv == 1){
-                        dN(0,0) = 1;
-                        dN(1,1) = 1;
-                        dN(2,2) = 1;
-                    }
+                    if (!isotropic_ncells){
+                        dN << 0,0,0,0,0,0,0,0,0;
+                        dN(i_nc, i_nc) = 1;
+                        }
+                    else
+                        dN << 1,0,0,0,1,0,0,0,1;
 
                     double N_i = _NABC(i_nc, i_nc);
                     Eigen::Vector3d dV_dN = dN*delta_H;
@@ -485,10 +475,12 @@ void diffBragg::diffBragg_sum_over_steps(
                     //        _NABC(2,0), _NABC(2,1), _NABC(2,2)
                     //        );
                     //}
-                    double deriv_coef = 1/N_i - C* ( dV_dN.dot(V));
+                    double deriv_coef;
+                    if (isotropic_ncells)
+                        deriv_coef= 3/N_i - C* ( dV_dN.dot(V));
+                    else
+                        deriv_coef= 1/N_i - C* ( dV_dN.dot(V));
                     double value = 2*Iincrement*deriv_coef;
-                    //double deriv_coef = -1*C* (2*dV_dN.dot(V));
-                    //double value = Iincrement*deriv_coef;
                     double value2=0;
                     if(compute_curvatures){
                         dN(i_nc, i_nc) = 0; // TODO check maths
@@ -793,8 +785,8 @@ void diffBragg::diffBragg_sum_over_steps(
                 double value = _scale_term*rot_manager_dI[i_rot];
                 double value2 = _scale_term*rot_manager_dI2[i_rot];
                 int idx = i_rot*Npix_to_model + i_pix;
-                d_Umat_images[idx] = value;
-                d2_Umat_images[idx] = value2;
+                d_image.Umat[idx] = value;
+                d2_image.Umat[idx] = value2;
             }
         } /* end rot deriv image increment */
 
@@ -804,8 +796,8 @@ void diffBragg::diffBragg_sum_over_steps(
                 double value = _scale_term*ucell_manager_dI[i_uc];
                 double value2 = _scale_term*ucell_manager_dI2[i_uc];
                 int idx= i_uc*Npix_to_model + i_pix;
-                d_Bmat_images[idx] = value;
-                d2_Bmat_images[idx] = value2;
+                d_image.Bmat[idx] = value;
+                d2_image.Bmat[idx] = value2;
             }
         }/* end ucell deriv image increment */
 
@@ -814,21 +806,27 @@ void diffBragg::diffBragg_sum_over_steps(
             double value = _scale_term*Ncells_manager_dI[0];
             double value2 = _scale_term*Ncells_manager_dI2[0];
             double idx = i_pix;
-            d_Ncells_images[idx] = value;
-            d2_Ncells_images[idx] = value2;
+            d_image.Ncells[idx] = value;
+            d2_image.Ncells[idx] = value2;
+            //d_Ncells_images[idx] = value;
+            //d2_Ncells_images[idx] = value2;
 
             if (! isotropic_ncells){
                 value = _scale_term*Ncells_manager_dI[1];
                 value2 = _scale_term*Ncells_manager_dI2[1];
                 idx = Npix_to_model + i_pix;
-                d_Ncells_images[idx] = value;
-                d2_Ncells_images[idx] = value2;
+                d_image.Ncells[idx] = value;
+                d2_image.Ncells[idx] = value2;
+                //d_Ncells_images[idx] = value;
+                //d2_Ncells_images[idx] = value2;
 
                 value = _scale_term*Ncells_manager_dI[2];
                 value2 = _scale_term*Ncells_manager_dI2[2];
                 idx = Npix_to_model*2 + i_pix;
-                d_Ncells_images[idx] = value;
-                d2_Ncells_images[idx] = value2;
+                d_image.Ncells[idx] = value;
+                d2_image.Ncells[idx] = value2;
+                //d_Ncells_images[idx] = value;
+                //d2_Ncells_images[idx] = value2;
             }
         }/* end Ncells deriv image increment */
         if (refine_Ncells_def){
@@ -836,8 +834,10 @@ void diffBragg::diffBragg_sum_over_steps(
                 double value = _scale_term*Ncells_manager_dI[i_nc];
                 double value2 = _scale_term*Ncells_manager_dI2[i_nc];
                 int idx = i_nc* Npix_to_model + i_pix;
-                d_Ncells_images[idx] = value;
-                d2_Ncells_images[idx] = value2;
+                //d_Ncells_images[idx] = value;
+                //d2_Ncells_images[idx] = value2;
+                d_image.Ncells[idx] = value;
+                d2_image.Ncells[idx] = value2;
             }
         }
 
@@ -845,8 +845,8 @@ void diffBragg::diffBragg_sum_over_steps(
         if(refine_fcell){
             double value = _scale_term*fcell_manager_dI[1];
             double value2 = _scale_term*fcell_manager_dI2[1];
-            d_fcell_images[Npix_to_model+ i_pix] = value;
-            d2_fcell_images[Npix_to_model + i_pix] = value2;
+            d_image.fcell[Npix_to_model+ i_pix] = value;
+            d2_image.fcell[Npix_to_model + i_pix] = value2;
             //for (int i_fcell=0; i_fcell < 3; i_fcell++){
             //    double value = _scale_term*fcell_manager_dI[i_fcell];
             //    double value2 = _scale_term*fcell_manager_dI2[i_fcell];
@@ -858,10 +858,10 @@ void diffBragg::diffBragg_sum_over_steps(
         if (refine_fp_fdp){
             // c derivative
             double value = _scale_term*fp_fdp_manager_dI[0];
-            d_fp_fdp_images[i_pix] = value;
+            d_image.fp_fdp[i_pix] = value;
             // d derivative
             value = _scale_term*fp_fdp_manager_dI[1];
-            d_fp_fdp_images[Npix_to_model + i_pix] = value;
+            d_image.fp_fdp[Npix_to_model + i_pix] = value;
         }
 
         /* update eta derivative image */
@@ -877,8 +877,8 @@ void diffBragg::diffBragg_sum_over_steps(
                 int idx = i_pix + Npix_to_model*i_eta;
                 double value = _scale_term*eta_manager_dI[i_eta];
                 double value2 = _scale_term*eta_manager_dI2[i_eta];
-                d_eta_images[idx] = value;
-                d2_eta_images[idx] = value2;
+                d_image.fp_fdp[idx] = value;
+                d2_image.fp_fdp[idx] = value2;
             }
             //}
         }/* end eta deriv image increment */
@@ -891,8 +891,8 @@ void diffBragg::diffBragg_sum_over_steps(
                 double value = _scale_term*lambda_manager_dI[i_lam];
                 double value2 = _scale_term*lambda_manager_dI2[i_lam];
                 int idx = i_lam*Npix_to_model + i_pix;
-                d_lambda_images[idx] = value;
-                d2_lambda_images[idx] = value2;
+                d_image.lambda[idx] = value;
+                d2_image.lambda[idx] = value2;
             }
         }/* end lambda deriv image increment */
 
@@ -903,7 +903,7 @@ void diffBragg::diffBragg_sum_over_steps(
                     int sausage_parameter_i = i_sausage*4+i;
                     double value = _scale_term*sausage_manager_dI[sausage_parameter_i];
                     int idx = sausage_parameter_i*Npix_to_model + i_pix;
-                    d_sausage_XYZ_scale_images[idx] = value;
+                    d_image.sausage[idx] = value;
                 }
             }
         }
@@ -915,8 +915,8 @@ void diffBragg::diffBragg_sum_over_steps(
                 double value = _scale_term*pan_rot_manager_dI[i_pan_rot];
                 double value2 = _scale_term*pan_rot_manager_dI2[i_pan_rot];
                 int idx = i_pan_rot*Npix_to_model + i_pix;
-                d_panel_rot_images[idx] = value;
-                d2_panel_rot_images[idx] = value2;
+                d_image.panel_rot[idx] = value;
+                d2_image.panel_rot[idx] = value2;
             }
         }/* end panel rot deriv image increment */
 
@@ -926,8 +926,8 @@ void diffBragg::diffBragg_sum_over_steps(
                 double value = _scale_term*pan_orig_manager_dI[i_pan_orig];
                 double value2 = _scale_term*pan_orig_manager_dI2[i_pan_orig];
                 int idx = i_pan_orig*Npix_to_model + i_pix;
-                d_panel_orig_images[idx] = value;
-                d2_panel_orig_images[idx] = value2;
+                d_image.panel_orig[idx] = value;
+                d2_image.panel_orig[idx] = value2;
             }/* end panel orig deriv image increment */
         }
         if (track_Fhkl){
