@@ -129,7 +129,12 @@ Output:
     for a in atoms:
       rad = extra.getMappingFor(a).vdwRadius
       if rad <= 0:
-        raise Sorry("Invalid radius for atom look-up: "+a.name+" rad = "+str(rad))
+        alt = a.parent().altloc
+        resName = a.parent().resname.strip().upper()
+        resID = str(a.parent().parent().resseq_as_int())
+        chainID = a.parent().parent().parent().id
+        myFullName = "chain "+str(chainID)+" "+resName+" "+resID+" "+a.name+" "+alt
+        raise Sorry("Invalid radius for atom look-up: "+myFullName+"; rad = "+str(rad))
       sphere = cache.get_sphere(rad)
 
       # Excluded atoms that are bonded to me or to one of my neightbors.
