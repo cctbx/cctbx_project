@@ -1,4 +1,6 @@
 
+#ifndef SIMTBX_DIFFBRAGG_H
+#define SIMTBX_DIFFBRAGG_H
 #include <simtbx/nanoBragg/nanoBragg.h>
 #include <simtbx/diffBragg/src/util.h>
 #include <vector>
@@ -135,10 +137,14 @@ class rotZ_manager: public rot_manager{
     void set_R();
 };
 
+
+
 class diffBragg: public nanoBragg{
   public:
   diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model::Beam& beam,
             int verbose);
+
+  images first_deriv_imgs, second_deriv_imgs;
 
   void diffBragg_sum_over_steps(
         int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,
@@ -230,6 +236,8 @@ class diffBragg: public nanoBragg{
   void add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows);
   void add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows, boost::python::list per_pix_nominal_hkl);
   void add_diffBragg_spots();
+
+  af::shared<double> add_diffBragg_spots_full();
   void init_raw_pixels_roi();
   void zero_raw_pixel_rois();
   void set_ucell_derivative_matrix(int refine_id, af::shared<double> const& value);
@@ -479,3 +487,4 @@ class diffBragg: public nanoBragg{
 
 } // end of namespace nanoBragg
 } // end of namespace simtbx
+#endif

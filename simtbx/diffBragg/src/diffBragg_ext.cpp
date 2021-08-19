@@ -350,6 +350,8 @@ namespace boost_python { namespace {
 
       .def("get_sausage_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_sausage_derivative_pixels, "deriv of intensity w.r.t. sausage parameters")
 
+      .def("add_diffBragg_spots_full", &simtbx::nanoBragg::diffBragg::add_diffBragg_spots_full, "forward model and gradients at every pixel")
+
       .def("get_ncells_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_ncells_derivative_pixels, "get derivatives of intensity w.r.t (Na, Nb, Nc)")
 
       .def("get_fp_fdp_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_fp_fdp_derivative_pixels, "get derivatives of intensity w.r.t c,d that describe fprime and fdblprime (see diffBragg.utils)")
@@ -430,8 +432,9 @@ namespace boost_python { namespace {
              "enter a list of unitary matrix 2nd derivatives Uprime")
 
       .def("show_timings",
-             &simtbx::nanoBragg::diffBragg::show_timing_stats,
-             "Shows a few key accumulated timings (in milliseconds) of specific code portions")
+           &simtbx::nanoBragg::diffBragg::show_timing_stats,
+           (arg_("MPI_RANK")=0),
+           "Shows a few key accumulated timings (in milliseconds) of specific code portions")
 
       //.add_property("region_of_interest",
       //       make_function(&get_roi,rbv()),

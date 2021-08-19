@@ -1754,6 +1754,38 @@ void diffBragg::set_mosaic_blocks_dbl_prime(af::shared<mat3> umat_in){
     if(verbose) printf("  imported a total of %d mosaic domain 2nd derivative Umats\n",nmats);
 }
 
+af::shared<double> diffBragg::add_diffBragg_spots_full(){
+
+    struct timeval t1,t2;
+    gettimeofday(&t1,0 );
+
+    int Npanels = pix0_vectors.size() / 3;
+    int fdim = roi_xmax-roi_xmin;
+    int sdim = roi_ymax-roi_ymin;
+    int npix = Npanels*spixels*fpixels;
+    af::shared<size_t> pfs(npix*3);
+    for (int pid=0; pid< Npanels; pid++){
+        for (int s=0; s <spixels; s++){
+            for (int f=0; f <fpixels; f++){
+                int i = pid*sdim*fdim + s*fdim + f;
+                pfs[i*3] = pid;
+                pfs[i*3+1] = f;
+                pfs[i*3+2] = s;
+            }
+        }
+    }
+    gettimeofday(&t2, 0);
+    double time_make_pfs = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+
+    gettimeofday(&t1,0 );
+    add_diffBragg_spots(pfs);
+    gettimeofday(&t2, 0);
+    double time_diffBragg_spots = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+
+    if (verbose)
+        printf("Time to make PFS: %f, Time to run diffBragg spots: %f\n", time_make_pfs, time_diffBragg_spots);
+    return raw_pixels_roi;
+}
 
 void diffBragg::add_diffBragg_spots(){
     int fdim = roi_xmax-roi_xmin;
@@ -1802,7 +1834,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
     TIMERS.recording = record_time;
     // timer variables
-    struct timeval t1,t2;
+    struct timeval t1,t2, t3,t4;
     gettimeofday(&t1,0 );
 
     Npix_to_model = panels_fasts_slows.size()/3;
@@ -1815,6 +1847,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             sausages_scale[i] = sausage_scale_managers[i]->value;
     }
     /* make sure we are normalizing with the right number of sub-steps */
+    gettimeofday(&t3,0 );
     steps = phisteps*mosaic_domains*oversample*oversample;
     subpixel_size = pixel_size/oversample;
     const int Nsteps = oversample*oversample*detector_thicksteps*sources*phisteps*mosaic_domains*num_sausages;
@@ -1827,7 +1860,10 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     int* sausage_pos = new int[Nsteps];
 
     diffBragg_list_steps(subS_pos, subF_pos, thick_pos, source_pos, phi_pos, mos_pos, sausage_pos);
+    gettimeofday(&t4,0 );
+    double time_steps = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
 
+    gettimeofday(&t3,0 );
     int pan_rot_ids[3] = {0,4,5};
     int pan_orig_ids[3] = {1,2,3};
 
@@ -1885,8 +1921,47 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     }
 
     std::vector<unsigned int> panels_fasts_slows_vec(panels_fasts_slows.begin(), panels_fasts_slows.begin() + panels_fasts_slows.size()) ;//(panels_fasts_slows.size());
+    gettimeofday(&t4,0 );
+    double time_other_vecs = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
 
+    gettimeofday(&t3,0 );
     image_type image(Npix_to_model,0.0);
+    //if (refine_Umat[0]){
+    //    image_type d_Umat_images(Npix_to_model*3,0.0);
+    //    image_type d2_Umat_images(Npix_to_model*3,0.0);
+    //}
+    //if (refine_Bmat[0]){
+    //    image_type d_Bmat_images(Npix_to_model*6,0.0);
+    //    image_type d2_Bmat_images(Npix_to_model*6,0.0);
+    //}
+    //if (refine_Ncells[0]){
+    //    image_type d_Ncells_images(Npix_to_model*6,0.0);
+    //    image_type d2_Ncells_images(Npix_to_model*6,0.0);
+    //}
+    //if (fcell_managers[0]->refine_me)
+    //    image_type d_fcell_images(Npix_to_model*3,0.0);
+    //    image_type d2_fcell_images(Npix_to_model*3,0.0);
+    //if (eta_managers[0]->refine_me){
+    //    image_type d_eta_images(Npix_to_model*3,0.0);
+    //    image_type d2_eta_images(Npix_to_model*3,0.0);
+    //}
+    //if (refine_lambda[0]){
+    //    image_type d_lambda_images(Npix_to_model*2,0.0);
+    //    image_type d2_lambda_images(Npix_to_model*2,0.0);
+    //}
+    //if(refine_pan_rot[0]){
+    //    image_type d_panel_rot_images(Npix_to_model*3,0.0);
+    //    image_type d2_panel_rot_images(Npix_to_model*3,0.0);
+    //}
+    //if(refine_pan_orig[0]){
+    //    image_type d_panel_orig_images(Npix_to_model*3,0.0);
+    //    image_type d2_panel_orig_images(Npix_to_model*3,0.0);
+    //}
+    //if (refining_sausages){
+    //    image_type d_sausage_XYZ_scale_images(Npix_to_model*num_sausages*4,0.0);
+    //    image_type d_fp_fdp_images(Npix_to_model*2,0.0); // for now only support two parameters for fp, fdp
+    //}
+
     image_type d_Umat_images(Npix_to_model*3,0.0);
     image_type d2_Umat_images(Npix_to_model*3,0.0);
     image_type d_Bmat_images(Npix_to_model*6,0.0);
@@ -1905,11 +1980,21 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     image_type d2_panel_orig_images(Npix_to_model*3,0.0);
     image_type d_sausage_XYZ_scale_images(Npix_to_model*num_sausages*4,0.0);
     image_type d_fp_fdp_images(Npix_to_model*2,0.0); // for now only support two parameters for fp, fdp
+    gettimeofday(&t4,0 );
+    double time_make_images = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
+
+    //first_deriv_imgs.Umat = d_Umat_images
 
     gettimeofday(&t2, 0);
     double time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
     if (record_time)
         TIMERS.add_spots_pre += time;
+
+    if (verbose){
+        printf("Pre kernel: Time to list steps: %f sec\n", time_steps);
+        printf("Pre kernel: Time to make other vecs: %f sec\n", time_other_vecs);
+        printf("Pre kernel: Time to make images: %f sec\n", time_make_images);
+    }
 
     //fudge = 1.1013986013; // from manuscript computation
     gettimeofday(&t1,0 );
