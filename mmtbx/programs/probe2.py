@@ -4,6 +4,7 @@ from libtbx.program_template import ProgramTemplate
 #from libtbx.utils import null_out
 from libtbx import group_args, phil
 from libtbx.str_utils import make_sub_header
+from libtbx.utils import Sorry
 from mmtbx.hydrogens import reduce_hydrogen
 
 master_phil_str = '''
@@ -55,7 +56,7 @@ Inputs:
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.file_name_prefix is None:
-      raise Sorry("Supply the prefix for an output file name")
+      raise Sorry("Supply the prefix for an output file name using output.file_name_prefix=")
 
 # ------------------------------------------------------------------------------
 
