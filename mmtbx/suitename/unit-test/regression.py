@@ -85,7 +85,7 @@ in_1ehz = \
 """
 
 out_1ehz = \
-""":1: A:   1: : :  G inc  __ 0.000
+""" :1: A:   1: : :  G inc  __ 0.000
  :1: A:   2: : :  C 33 p 1a 0.935
  :1: A:   3: : :  G 33 p 1a 0.868
  :1: A:   4: : :  G 33 p 1a 0.842
@@ -215,5 +215,5 @@ def regression(name, input, canonical_output):
 
 
 def test():
-  regression("1ehz", input_1ehz, output_1ehz)
+  regression("1ehz", in_1ehz, out_1ehz)
 

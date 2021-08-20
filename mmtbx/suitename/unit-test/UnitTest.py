@@ -1,10 +1,14 @@
-import os,sys,inspect
+import os, sys, inspect
 from io import StringIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir) 
 
-import regression
+# here, before importing suitename, is an opportunity to set command line
+# options and to redirect output.
+# sys.argv.extend(["--noinc", "--chart", "--causes"])
+# sys.stdout = open("output.txt", "w")
+import suitename, suites, regression
 
 
 # The test data:
@@ -279,19 +283,13 @@ output2 = '''2xLk:1: C:  12: : :  U 33 p 1g 0.839 1-only-one
 3pdr:1: X: 133: : :  U 33 m !! 0.000 vacant bin
 '''
  
- # here, before importing suitename, is an opportunity to set command line
- # options and to redirect output.
-# sys.argv.extend(["--noinc", "--chart", "--causes"])
-#sys.stdout = StringIO("")
-# sys.st ifdout = open("output.txt", "w")
-import suitename, suites, regression
-
 def test(input, canonicalOutput, options, identity):
   opt = suites.parseOptions(options)
   stream = StringIO(input)
   outFile=StringIO("")
   suitename.clearStats()
   suitename.main(stream, outFile=outFile, optionsIn=opt)
+  suitename.clearStats()
 
   output = outFile.getvalue()
   assert output.strip() == canonicalOutput.strip(), identity

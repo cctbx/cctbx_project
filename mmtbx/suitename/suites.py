@@ -18,14 +18,14 @@ from numpy.lib.arraysetops import ediff1d
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from suitenamedefs import Residue, Suite, globals
+from suitenamedefs import globals
 from iotbx.data_manager import DataManager    #   Load in the DataManager
 from libtbx import phil
 from libtbx.utils import Sorry
-from mmtbx.validation import utils
-from cctbx import geometry_restraints
-from collections import defaultdict
-from diangle import getResidueDihedrals, residueString
+# from mmtbx.validation import utils
+# from cctbx import geometry_restraints
+# from collections import defaultdict
+from diangle import getResidueDihedrals
 
 
 # The following are the options available, in Phil format, 
@@ -103,7 +103,7 @@ philOptions = """
 def main(options, outFile=None, errorFile=None):
   from mmtbx.suitename.suitename import compute, write, finalStats, clearStats
   setOptions(options)
-  import suiteninput  # AFTER setOptions
+  import suiteninput  # must be AFTER setOptions
 
   if not outFile: outFile = sys.stdout
   if not errorFile: errorFile = sys.stderr

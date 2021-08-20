@@ -67,14 +67,15 @@ def main():
         count += 1
         content, spaces, indenting = analyzeLine(rawLine)
         if spaces == 0 and rawLine.startswith("def "):
-            # sanity reset: no matter what, restart at left margin
-            # when defining a top level function
-            level = 0; newLevel = False
+          # sanity reset: no matter what, restart at left margin
+          # when defining a top level function
+          level = 0; newLevel = False
         elif newLevel:
-            # Determined by PREVIOUS line
+          if spaces > prevSpaces:
+            # A true syntactic indent (else a stray colon, ignore)
             level += 1
             indents.append(prevSpaces)
-            newLevel = False
+          newLevel = False
         elif spaces > prevSpaces:
           # indent without : is a line-continuation or data-formatting situation
           freeze = True

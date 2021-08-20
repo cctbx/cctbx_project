@@ -26,7 +26,6 @@ from suitenamedefs import Bin, Cluster, SatelliteInfo
 from numpy import array
 import argparse, sys
 
-
 MAX_CLUSTERS = 16  # practical, observed limit of clusters in a bin
 
 
