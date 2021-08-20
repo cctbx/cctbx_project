@@ -184,33 +184,29 @@ namespace molprobity {
       ///             and the atom it is hydrogen-bonded to before we call it a clash when the
       ///             atoms are both charged.  It must go badBumpOverlap beyond this before we call
       ///             it a bad clash.
+      /// @param [in] bumpOverlap Atoms that overlap more than this will cause a clash.  This is a
+      ///             positive number indicating how much overlap.
       /// @param [in] badBumpOverlap Atoms that overlap more than this will cause bad bump to be flagged.
+      ///             This number can be set very large to cause no bumps to be flagged as bad bumps.  This is a
+      ///             positive number indicating how much overlap.
       DotScorer(ExtraAtomInfoMap extraInfoMap
         , double gapScale = 0.25
         , double bumpWeight = 10.0
         , double hBondWeight = 4.0
         , double maxRegularHydrogenOverlap = 0.6
         , double maxChargedHydrogenOverlap = 0.8
-        , double badBumpOverlap = 0.4
+        , double bumpOverlap = 0.4
+        , double badBumpOverlap = 0.5
       ) : m_extraInfoMap(extraInfoMap)
         , m_gapScale(gapScale), m_bumpWeight(bumpWeight), m_hBondWeight(hBondWeight)
         , m_maxRegularHydrogenOverlap(maxRegularHydrogenOverlap)
         , m_maxChargedHydrogenOverlap(maxChargedHydrogenOverlap)
+        , m_bumpOverlap(bumpOverlap)
         , m_badBumpOverlap(badBumpOverlap)
-      {
-        if (atoms.size() == extraInfo.size()) {
-          // Build the map from the vector of atoms and vector of extra atom info
-          for (size_t i = 0; i < atoms.size(); i++) {
-            m_extraInfo[atoms[i].data.get()] = extraInfo[i];
-            // Keep a shared pointer so that the data doesn't go away while we're still
-            // using it.
-            m_keepPointers.push_back(atoms[i].data);
-          }
-        }
-      };
+      { };
 
       /// @brief Enumeration listing the types of interactions a dot can have with an atom
-      enum class InteractionType { None = -2, Clash = -1, NearContact = 0, HydrogenBond = 1 };
+      enum class InteractionType { None = -2, Clash = -1, Overlap = 0, NearContact = 1, HydrogenBond = 2 };
 
       /// @brief Structure to hold the results from a call to check_dot()
       class CheckDotResult {
@@ -291,6 +287,7 @@ namespace molprobity {
       double m_hBondWeight;
       double m_maxRegularHydrogenOverlap;
       double m_maxChargedHydrogenOverlap;
+      double m_bumpOverlap;
       double m_badBumpOverlap;
     };
 
