@@ -101,6 +101,14 @@ def PAR_from_params(params, experiment, best=None):
     p.fix = params.fix.detz_shift
     PAR.detz_shift = p
 
+    p = ParameterType()
+    p.init = params.init.B
+    p.sigma = params.sigmas.B
+    p.minval = params.mins.B
+    p.maxval = params.maxs.B
+    p.fix = params.fix.B
+    PAR.B = p
+
     return PAR
 
 

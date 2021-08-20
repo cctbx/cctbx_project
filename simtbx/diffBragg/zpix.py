@@ -17,7 +17,7 @@ nbins = 9
 res_bins = [s[0] for s in np.array_split(measured_res, nbins)] + [measured_res[-1]]
 res_bin_cent = [(a+b)/2. for a,b in zip(res_bins, res_bins[1:])]
 
-Zscore_dirs = glob.glob("%s/rank*_Zscore" % datadir)
+Zscore_dirs = glob.glob("%s/Z/rank*_Zscore" % datadir)
 import time
 
 all_res =[]
@@ -73,5 +73,6 @@ ax.tick_params(labelsize=11)
 xlabel("stage 2 L-BFGS iteration", fontsize=14)
 ylabel("average Z-score stdev.", fontsize=14)
 grid(1, alpha=0.5)
+title(sys.argv[2])
 show()
 

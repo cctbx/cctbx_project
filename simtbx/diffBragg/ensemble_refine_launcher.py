@@ -1,9 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from simtbx.diffBragg.stage_two_utils import PAR_from_params
-from simtbx.diffBragg import hopper_utils
 import os
 import sys
-from copy import deepcopy
 from libtbx.mpi4py import MPI
 COMM = MPI.COMM_WORLD
 from dials.array_family import flex
@@ -14,7 +12,6 @@ except ImportError:
     print("Pandas is required. Install using 'libtbx.python -m pip install pandas'")
     exit()
 from xfel.merging.application.utils.memory_usage import get_memory_usage
-from simtbx.diffBragg.utils import map_hkl_list
 from simtbx.diffBragg.refiners.global_refiner import GlobalRefiner
 from simtbx.diffBragg.refine_launcher import LocalRefinerLauncher
 from simtbx.diffBragg import utils
@@ -58,8 +55,6 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
 
     def launch_refiner(self, pandas_table, miller_data=None):
         self._alias_refiner()
-        #if not "opt_exp_name" in list(pandas_table) or not "predictions" in list(pandas_table):
-        #    raise KeyError("Pandas table needs opt_exp_name and predicictions columns")
 
         if COMM.rank == 0:
             self.create_cache_dir()

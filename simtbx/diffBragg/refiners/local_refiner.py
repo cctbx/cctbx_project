@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-from simtbx.diffBragg.utils import nearest_non_zero
 
 from libtbx.mpi4py import MPI
 
@@ -56,7 +55,6 @@ from simtbx.diffBragg.refiners import BreakBecauseSignal, BreakToUseCurvatures
 from dials.array_family import flex
 from simtbx.diffBragg.refiners import BaseRefiner
 from collections import Counter
-from copy import deepcopy
 from cctbx import miller, sgtbx
 
 
@@ -153,33 +151,6 @@ class LocalRefiner(BaseRefiner):
                 os.makedirs(dirname)
         COMM.barrier()
 
-    def _dump_parameters_to_hdf5(self):
-        if self.parameter_hdf5_path is not None and self.iterations % self.parameter_hdf5_write_freq == 0:
-            with h5py.File(self.parameter_hdf5_path, 'w') as h5:
-                for exp_name in self.parameters.keys:
-                    h5.create_dataset("Ncells_abc/%s" % exp_name, data=self.parameters.Ncells_abc[exp_name])
-                    h5.create_dataset("Ncells_def/%s" % exp_name, data=self.parameters.Ncells_def[exp_name])
-                    h5.create_dataset("RotXYZ/%s" % exp_name, data=self.parameters.rotXYZ[exp_name])
-                    h5.create_dataset("Bmat/%s" % exp_name, data=self.parameters.Bmatrix[exp_name])
-                    h5.create_dataset("eta/%s" % exp_name, data=self.parameters.eta[exp_name])
-                    h5.create_dataset("spot_scale/%s" % exp_name, data=self.parameters.spot_scale[exp_name])
-                    h5.create_dataset("wavelen_offset/%s" % exp_name, data=self.parameters.wavelen_offset[exp_name])
-                    h5.create_dataset("wavelen_scale/%s" % exp_name, data=self.parameters.wavelen_scale[exp_name])
-
-                # add global parameters
-                if self.I_AM_ROOT:
-                    h5.create_dataset("panelX", data=self.parameters.panelX)
-                    h5.create_dataset("panelY", data=self.parameters.panelY)
-                    h5.create_dataset("panelZ", data=self.parameters.panelZ)
-                    h5.create_dataset("panelO", data=self.parameters.panelO)
-                    h5.create_dataset("panelF", data=self.parameters.panelF)
-                    h5.create_dataset("panelS", data=self.parameters.panelS)
-                    h5.create_dataset("panelOrig", data=self.parameters.panelOrig)
-                    h5.create_dataset("panelFast", data=self.parameters.panelFast)
-                    h5.create_dataset("panelSlow", data=self.parameters.panelSlow)
-                #if self.refine_detdist:
-                #    panZ = [self._get_detector_distance_val(i_shot)] * len(self.S.detector)
-
     def _setup(self):
         # Here we go!  https://youtu.be/7VvkXA6xpqI
         LOGGER.info("Setup begins!")
@@ -194,14 +165,15 @@ class LocalRefiner(BaseRefiner):
         self.n_total_shots = len(self.shot_mapping)
 
         test_shot = self.shot_ids[0]
-        N_PARAM_PER_SHOT = 1
+        N_PARAM_PER_SHOT = 2
         self.n_ucell_param = len(self.Modelers[test_shot].PAR.ucell_man.variables)
-        #N_PARAM_PER_SHOT = len(self.Modelers[test_shot].PARLIST)
         self.n_total_params = self.n_total_shots*N_PARAM_PER_SHOT + self.n_global_fcell
 
         self.spot_scale_xpos = {}
+        self.Bfactor_xpos = {}
         for shot_id in self.shot_ids:
             self.spot_scale_xpos[shot_id] = self.shot_mapping[shot_id]*N_PARAM_PER_SHOT
+            self.Bfactor_xpos[shot_id] = self.shot_mapping[shot_id]*N_PARAM_PER_SHOT + 1
 
         LOGGER.info("--0 create an Fcell mapping")
         if self.refine_Fcell:
@@ -281,24 +253,14 @@ class LocalRefiner(BaseRefiner):
         return shot_mapping
 
     def _make_p1_equiv_mapping(self):
-        #self.p1_indices_from_i_fcell = {}
         self.num_equivs_for_i_fcell = {}
         self.update_indices = []
         for i_fcell in range(self.n_global_fcell):
             hkl_asu = self.asu_from_idx[i_fcell]
 
-            #self.p1_indices_from_i_fcell[i_fcell] = []
             equivs = [i.h() for i in miller.sym_equiv_indices(self.space_group, hkl_asu).indices()]
             self.num_equivs_for_i_fcell[i_fcell] = len(equivs)
             self.update_indices += equivs
-            #for h_equiv in equivs:
-            #    # get the nanoBragg p1 miller table index corresponding to this hkl equivalent
-            #    try:
-            #        p1_idx = self.idx_from_p1[h_equiv]  # T
-            #    except KeyError:
-            #        self.print("Whoops, missing index", h_equiv)
-            #        continue
-            #    self.p1_indices_from_i_fcell[i_fcell].append(p1_idx)
         self.update_indices = flex.miller_index(self.update_indices)
 
     def _MPI_setup_global_params(self):
@@ -337,51 +299,6 @@ class LocalRefiner(BaseRefiner):
             self.fcell_init_from_i_fcell = np.array([ma_map[self.asu_from_idx[i_fcell]] for i_fcell in range(self.n_global_fcell)])
             self.fcell_sigmas_from_i_fcell = 1
             LOGGER.info("DONE make fcell_init")
-
-            #if self.Fobs is not None:  # TODO should this ever be None ?
-            #    miller_binner = self.Fobs.binner()
-            #    miller_bin_idx = miller_binner.bin_indices()
-
-            #    unique_bins = sorted(set(miller_bin_idx))
-            #    sigmas = []
-            #    for i_bin in unique_bins:
-            #        dmax, dmin = miller_binner.bin_d_range(i_bin)
-            #        f_selection = self.Fobs.resolution_filter(d_min=dmin, d_max=dmax)
-            #        sigma = np.sqrt(np.mean(f_selection.data().as_numpy_array() ** 2))
-            #        sigmas.append(sigma)  # sigma_for_res_id[i_bin] = sigma
-            #    self.sigma_for_res_id = {}
-            #    summed_sigma = 0
-            #    for ii, sigma in enumerate(sigmas):
-            #        i_bin = unique_bins[ii]
-            #        if sigma == 0:
-            #            sigma = nearest_non_zero(sigmas, ii)
-            #        if sigma == 0:
-            #            bin_rng = miller_binner.bin_d_range(i_bin)
-            #            raise ValueError("sigma is being set to 0 for all fcell in range %.4f - %.4f" % bin_rng)
-            #        if self.rescale_fcell_by_resolution:
-            #            assert sigma > 0
-            #            self.sigma_for_res_id[i_bin] = 1. / sigma
-            #            summed_sigma += 1. / sigma
-            #        else:
-            #            self.sigma_for_res_id[i_bin] = 1.
-            #    if self.rescale_fcell_by_resolution:
-            #        assert summed_sigma > 0
-            #        for ii in self.sigma_for_res_id.keys():
-            #            self.sigma_for_res_id[ii] = self.sigma_for_res_id[ii] / summed_sigma
-
-            #    self.print("SIGMA FOR RES ID:")
-            #    self.print(self.sigma_for_res_id)
-
-            #    self.res_group_id_from_fcell_index = {}
-            #    for ii, asu_index in enumerate(miller_binner.miller_indices()):
-            #        if asu_index not in self.idx_from_asu:
-            #            raise KeyError("something wrong Fobs does not contain the asu indices")
-            #        i_fcell = self.idx_from_asu[asu_index]
-            #        self.res_group_id_from_fcell_index[i_fcell] = miller_bin_idx[ii]
-
-            #    self.resolution_ids_from_i_fcell = np.array([self.res_group_id_from_fcell_index[i_fcell] for i_fcell in range(self.n_global_fcell)])
-            #    self.fcell_sigmas_from_i_fcell = np.array([ self.sigma_for_res_id[res_id]*self.fcell_sigma_scale for res_id in self.resolution_ids_from_i_fcell])
-            #    self.fcell_init_from_i_fcell = np.array(self.fcell_init)
 
     def _get_sausage_parameters(self, i_shot):
         pass
@@ -433,6 +350,14 @@ class LocalRefiner(BaseRefiner):
         PAR = self.Modelers[i_shot].PAR
         sig = PAR.Scale.sigma
         init = PAR.Scale.init
+        val = sig*(xval-1) + init
+        return val
+
+    def _get_bfactor(self, i_shot):
+        xval = self.x[self.Bfactor_xpos[i_shot]]
+        PAR = self.Modelers[i_shot].PAR
+        sig = PAR.B.sigma
+        init = PAR.B.init
         val = sig*(xval-1) + init
         return val
 
@@ -570,7 +495,10 @@ class LocalRefiner(BaseRefiner):
         pass
 
     def _extract_pixel_data(self):
-        self.model_bragg_spots = self.scale_fac*(self._model_pix)
+        Mod = self.Modelers[self._i_shot]
+        self.Bfactor_qterm = Mod.all_q_perpix**2 / 4.
+        self._expBq = np.exp(-self.b_fac**2 * self.Bfactor_qterm)
+        self.model_bragg_spots = self._expBq*self.scale_fac*(self._model_pix)
         #self.model_bragg_spots *= self._get_per_spot_scale(self._i_shot, self._i_spot)
         #self._extract_Umatrix_derivative_pixels()
         #self._extract_sausage_derivs()
@@ -638,10 +566,9 @@ class LocalRefiner(BaseRefiner):
                 os.makedirs(self._save_model_dir)
             COMM.barrier()
 
-
         for self._i_shot in self.shot_ids:
-
             self.scale_fac = self._get_spot_scale(self._i_shot)**2
+            self.b_fac = self._get_bfactor(self._i_shot)
 
             # TODO: Omatrix update? All crystal models here should have the same to_primitive operation, ideally
             #LOGGER.info("update models shot %d " % self._i_shot)
@@ -707,11 +634,11 @@ class LocalRefiner(BaseRefiner):
             self._is_trusted = self.Modelers[self._i_shot].all_trusted
             self.target_functional += self._target_accumulate()
             self._spot_scale_derivatives()
+            self._Bfactor_derivatives()
             self._Fcell_derivatives()
             self._shot_Zscores.append(self._spot_Zscores)
         tshots = time.time()-tshots
         LOGGER.info("Time rank worked on shots=%.4f" % tshots)
-        self._append_global_parameters()
         tmpi = time.time()
         LOGGER.info("MPI aggregation of func and grad")
         self._mpi_aggregation()
@@ -749,15 +676,9 @@ class LocalRefiner(BaseRefiner):
 
     def _save_model(self, model_info):
         LOGGER.info("SAVING MODEL FOR SHOT %d" % self._i_shot)
-        #outname = os.path.join(self._save_model_dir, "rank%d_shot%d_ITER%d.h5" % (COMM.rank, self._i_shot, self.iterations))
-        #compress = {"compression": "lzf"}
-        #with h5py.File(outname , "w") as h5:
-        #    for key, data in model_info.items():
-        #        h5.create_dataset(key, data=data, **compress)
         df = pandas.DataFrame(model_info)
         df["shot_id"] = self._i_shot 
         outdir = self._save_model_dir
-        #COMM.barrier()
         outname = os.path.join(outdir, "rank%d_shot%d_ITER%d.pkl" % (COMM.rank, self._i_shot, self.iterations))
         df.to_pickle(outname)
 
@@ -772,34 +693,6 @@ class LocalRefiner(BaseRefiner):
 
     def _sanity_check_grad(self):
         pass
-
-    def _open_model_output_file(self):
-        if not self.I_AM_ROOT:
-            return
-        if self.output_dir is None:
-            self.print("Cannot save without an output dir, continuing without save")
-            return
-        self.save_time = 0
-        from time import time
-        t = time()
-        from os.path import join as path_join
-        from os.path import basename
-        from h5py import File as h5_File
-        dirpath = basename(self.FNAMES[self._i_shot]) + "-model"
-        dirpath = path_join(self.output_dir, "models", dirpath)
-        if not os.path.exists(dirpath):
-            os.makedirs(dirpath)
-        filepath = path_join(dirpath, "model_trial%d.h5" %(self.trial_id+1))
-        self.print("Opening model output file %s" % filepath)
-        self.model_hout = h5_File(filepath, "w")
-        t = time() - t
-        self.save_time += t
-
-    def _close_model_output_file(self):
-        if not self.I_AM_ROOT:
-           return
-        self.model_hout.close()
-        self.print("Save time took %.4f seconds total" % self.save_time)
 
     def _Fcell_derivatives(self):
         if not self.refine_Fcell:
@@ -831,47 +724,6 @@ class LocalRefiner(BaseRefiner):
                 trust = MOD.all_trusted[slc]
                 self.grad[xpos] += (g_accum[trust].sum())*.5
 
-    def _Fcell_derivatives_OLD(self):
-        if not self.refine_Fcell:
-            return
-        MOD = self.Modelers[self._i_shot]
-        npix = len(MOD.all_data)
-        dimg = np.zeros(npix)
-        if self.calc_curvatures:
-            d2img = np.zeros_like(dimg)
-
-        for i_fcell in MOD.unique_i_fcell:
-            xpos = self.fcell_xstart + i_fcell
-
-            multi = self.hkl_frequency[i_fcell]
-            # do the derivative
-            if multi < self.min_multiplicity:
-                continue
-            is_i_fcell = MOD.is_i_fcell[i_fcell]
-
-            self.fcell_dI_dtheta = self.fcell_deriv[is_i_fcell]
-            if self.calc_curvatures:
-                self.fcell_d2I_d2theta2 = self.fcell_second_deriv[is_i_fcell]
-
-            fcell = self._fcell_at_i_fcell[i_fcell]
-            resolution_id = self.res_group_id_from_fcell_index[i_fcell]
-            sig = self.sigma_for_res_id[resolution_id] * self.fcell_sigma_scale
-            if self.log_fcells:
-                # case 2 rescaling
-                sig_times_fcell = sig*fcell
-                d = sig_times_fcell*self.fcell_dI_dtheta
-                if self.calc_curvatures:
-                    d2 = (sig_times_fcell*sig_times_fcell)*self.fcell_d2I_d2theta2 + (sig*sig_times_fcell)*self.fcell_dI_dtheta
-            else:
-                # case 1 rescaling
-                d = sig*self.fcell_dI_dtheta
-                if self.calc_curvatures:
-                    d2 = (sig*sig)*self.fcell_d2I_d2theta2
-
-            gterm = self.common_grad_term[is_i_fcell]
-            g_accum = d*gterm
-            self.grad[xpos] += (g_accum.sum())*.5
-
     def _spot_scale_derivatives(self, return_derivatives=False):
         if not self.refine_crystal_scale:
             return
@@ -890,6 +742,24 @@ class LocalRefiner(BaseRefiner):
 
         if return_derivatives:
             return d, d2
+
+    def _Bfactor_derivatives(self):
+        LOGGER.info("derivatives of Bfactors for shot %d: current B=%e Ang^2" % (self._i_shot, self.b_fac**2))
+        if self.params.fix.B:
+            return
+        dI_dtheta = -.5*self.model_bragg_spots*self.Bfactor_qterm * self.b_fac
+        d2I_dtheta2 = 0 #-.5*self.model_bragg_spots*self.Bfactor_qterm
+        # second derivative is 0 with respect to scale factor
+        sig = self.Modelers[self._i_shot].PAR.B.sigma
+        d = dI_dtheta*sig
+        d2 = d2I_dtheta2*(sig**2)
+        #from IPython import embed
+        #embed()
+
+        xpos = self.Bfactor_xpos[self._i_shot]
+        self.grad[xpos] += self._grad_accumulate(d)
+        if self.calc_curvatures:
+            self.curv[xpos] += self._curv_accumulate(d, d2)
 
     def _mpi_aggregation(self):
         # reduce the broadcast summed results:
@@ -1067,68 +937,6 @@ class LocalRefiner(BaseRefiner):
         #    raise ValueError("model of Bragg spots cannot have negative intensities...")
         self.log_v = np.log(v)
         self.log_v[v <= 0] = 0  # but will I ever negative_model ?
-
-    def _append_local_parameters(self):
-        if self.parameter_hdf5_path is None:
-            return
-
-        exper_name = self.FNAMES[self._i_shot] if self.FNAMES is not None else "shot%d" % self._i_shot
-        exper_name = exper_name.replace("/", "+FORWARD+SLASH+")
-
-        crystal_scale = self._get_spot_scale(self._i_shot) ** 2 * self.D.spot_scale
-        self.parameters.add_spot_scale(exper_name, crystal_scale)
-
-        ncells_shot = self._get_m_val(self._i_shot)
-        if len(ncells_shot) == 1:
-            ncells_shot = [ncells_shot[0]]*3
-        self.parameters.add_Ncells_abc(exper_name, ncells_shot)
-
-        ncells_def_vals = self._get_ncells_def_vals(self._i_shot)
-        self.parameters.add_Ncells_def(exper_name, ncells_def_vals)
-
-        eta_vals = self._get_eta(i_shot=self._i_shot)
-        self.parameters.add_eta(exper_name, eta_vals)
-        lam01 = self._get_spectra_coefficients()
-        if not lam01:
-            lam0, lam1 = 0,1
-        else:
-            lam0, lam1 = lam01
-        self.parameters.add_wavelen_offset(exper_name, lam0)
-        self.parameters.add_wavelen_scale(exper_name, lam1)
-
-        Bmat = self.get_refined_Bmatrix(self._i_shot)
-        self.parameters.add_Bmatrix(exper_name, Bmat)
-
-        rotX = self._get_rotX(self._i_shot)
-        rotY = self._get_rotY(self._i_shot)
-        rotZ = self._get_rotZ(self._i_shot)
-        self.parameters.add_rotXYZ(exper_name, (rotX, rotY, rotZ))
-
-    def _append_global_parameters(self):
-        if self.parameter_hdf5_path is None:
-            return
-        opt_det = self.get_optimized_detector(i_shot=0)
-        origs = []
-        fasts = []
-        slows = []
-        for pid in range(len(opt_det)):
-            orig = list(opt_det[pid].get_origin())
-            fast = list(opt_det[pid].get_fast_axis())
-            slow = list(opt_det[pid].get_slow_axis())
-            origs.append(orig)
-            fasts.append(fast)
-            slows.append(slow)
-        self.parameters.add_panelOrig(origs)
-        self.parameters.add_panelFast(fasts)
-        self.parameters.add_panelSlow(slows)
-        panX, panY, panZ = zip(*[self._get_panelXYZ_val(pid) for pid in range(len(self.S.detector))])
-        panO, panF, panS = zip(*[self._get_panelRot_val(pid) for pid in range(len(self.S.detector))])
-        self.parameters.add_panelX(panX)
-        self.parameters.add_panelY(panY)
-        self.parameters.add_panelZ(panZ)
-        self.parameters.add_panelO(panO)
-        self.parameters.add_panelF(panF)
-        self.parameters.add_panelS(panS)
 
     def get_refined_Bmatrix(self, i_shot):
         return self.Modelers[i_shot].PAR.ucell_man.B_recipspace

@@ -363,6 +363,9 @@ fix {
   G = False
     .type = bool
     .help = fix the Bragg spot scale during refinement
+  B = True
+    .type = bool
+    .help = fix the Bfactor during refinement 
   RotXYZ = False
     .type = bool
     .help = fix the misorientation matrix during refinement
