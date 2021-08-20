@@ -155,12 +155,19 @@ Inputs:
   Ligand CIF file, if needed
 Output:
   Kinemage file describing the score and other information, depending on the parameters.
+Note:
+  The source_selection phil parameter must always be filled in, and some
+  approaches require the target_selection parameter as well.  Setting the
+  target_selection to "=" will re-use the source for the target.  In all
+  other cases, the string passed in will be used as a CCTBX selection on
+  the model to select a subset of its atoms.
 '''
   datatypes = ['model', 'restraint', 'phil']
   master_phil_str = master_phil_str
   citations = program_citations
   epilog = '''
-  For additional information and help, see http://molprobity.biochem.duke.edu
+  For additional information and help, see http://kinemage.biochem.duke.edu/software/probe
+  and http://molprobity.biochem.duke.edu
   '''
 
 # ------------------------------------------------------------------------------
