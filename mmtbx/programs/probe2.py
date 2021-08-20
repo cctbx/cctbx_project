@@ -10,11 +10,11 @@ import mmtbx_probe_ext as probeExt
 from mmtbx.probe import Helpers
 
 master_phil_str = '''
-source_selection = ''
+source_selection = None
   .type = str
   .help = Source selection description
 
-target_selection = ''
+target_selection = None
   .type = str
   .help = Target selection description ('=' means same as source)
 
@@ -24,7 +24,7 @@ use_neutron_distances = False
 
 approach = *self both once out dump
   .type = choice
-  .help = self (src -> src) both (src <=> targ) once (src -> targ) out (VdW surface) dump (count atoms)
+  .help = self (src -> src) both (src <=> targ) once (src -> targ) surface (VdW surface) dump (count atoms)
 
 quiet = False
   .type = bool
@@ -167,15 +167,24 @@ Output:
 
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
+    if self.params.source_selection is None:
+      raise Sorry("Must specify a source parameter for approach "+self.params.approach)
+    if self.params.approach in ['once','both'] and self.params.target_selection is None:
+      raise Sorry("Must specify a target parameter for approach "+self.params.approach)
     if self.params.output.file_name_prefix is None:
       raise Sorry("Supply the prefix for an output file name using output.file_name_prefix=")
 
 # ------------------------------------------------------------------------------
 
   def run(self):
-    self.model = self.data_manager.get_model()
-    #
+    # If the target selection is "=", that means that it should be the same as the source selection.
+    if self.params.target_selection == "=":
+      self.params.target_selection = self.params.source_selection
+
     make_sub_header('Interpret Model', out=self.logger)
+
+    # Get our model.
+    self.model = self.data_manager.get_model()
 
     # Fix up bogus unit cell when it occurs by checking crystal symmetry.
     cs = self.model.crystal_symmetry()
