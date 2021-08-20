@@ -17,6 +17,12 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
    }
 }
 
+inline cudaError_t cudaFree_NULL(void* devPtr){
+    if (! devPtr==NULL){
+        return cudaFree(devPtr);
+    }
+}
+
 void error_msg(cudaError_t err, char* msg){
     if (err != cudaSuccess){
         printf("%s: CUDA error message: %s\n", msg, cudaGetErrorString(err));
@@ -207,21 +213,21 @@ void diffBragg_loopy(
             gpuErr(cudaMallocManaged(&cp.cu_d_eta_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
             gpuErr(cudaMallocManaged(&cp.cu_d2_eta_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
         }
-        if (refine_Umat){
+        if (refine_Umat[0]){
             gpuErr(cudaMallocManaged(&cp.cu_d_Umat_images, Npix_to_allocate*3*sizeof(CUDAREAL) ));
             gpuErr(cudaMallocManaged(&cp.cu_d2_Umat_images, Npix_to_allocate*3*sizeof(CUDAREAL) ));
         }
-        if (refine_Ncells){
+        if (refine_Ncells[0]){
             gpuErr(cudaMallocManaged(&cp.cu_d_Ncells_images, Npix_to_allocate*6*sizeof(CUDAREAL)));
             gpuErr(cudaMallocManaged(&cp.cu_d2_Ncells_images, Npix_to_allocate*6*sizeof(CUDAREAL)));
         }
-        if (refine_panel_rot)
+        if (refine_panel_rot[0])
             gpuErr(cudaMallocManaged(&cp.cu_d_panel_rot_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
-        if (refine_panel_orig)
+        if (refine_panel_origin[0])
             gpuErr(cudaMallocManaged(&cp.cu_d_panel_orig_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
-        if (refine_lambda)
+        if (refine_lambda[0])
             gpuErr(cudaMallocManaged(&cp.cu_d_lambda_images, Npix_to_allocate*2*sizeof(CUDAREAL)));
-        if(refine_Bmat){
+        if(refine_Bmat[0]){
             gpuErr(cudaMallocManaged(&cp.cu_d_Bmat_images, Npix_to_allocate*6*sizeof(CUDAREAL)));
             gpuErr(cudaMallocManaged(&cp.cu_d2_Bmat_images, Npix_to_allocate*6*sizeof(CUDAREAL)));
         }
@@ -527,30 +533,58 @@ void diffBragg_loopy(
     for (int i=0; i< Npix_to_model; i++){
         floatimage[i] = cp.cu_floatimage[i];
     }
-    for (int i=0; i<3*Npix_to_model; i++){
-        d_image.fcell[i] = cp.cu_d_fcell_images[i];
-        d_image.Umat[i] = cp.cu_d_Umat_images[i];
-        d2_image.Umat[i] = cp.cu_d2_Umat_images[i];
-        d_image.panel_rot[i] = cp.cu_d_panel_rot_images[i];
-        d_image.panel_orig[i] = cp.cu_d_panel_orig_images[i];
-        d_image.eta[i] = cp.cu_d_eta_images[i];
-        d2_image.eta[i] = cp.cu_d2_eta_images[i];
+    if (refine_fcell){
+        for (int i=0; i<3*Npix_to_model; i++)
+            d_image.fcell[i] = cp.cu_d_fcell_images[i];
+    }
+    if (refine_Umat[0]){
+        for (int i=0; i<3*Npix_to_model; i++){
+            d_image.Umat[i] = cp.cu_d_Umat_images[i];
+            d2_image.Umat[i] = cp.cu_d2_Umat_images[i];
+        }
+    }
+    if (refine_panel_rot[0]){
+        for (int i=0; i<3*Npix_to_model; i++)
+            d_image.panel_rot[i] = cp.cu_d_panel_rot_images[i];
+    }
+    if (refine_panel_origin[0]){
+        for (int i=0; i<3*Npix_to_model; i++)
+            d_image.panel_orig[i] = cp.cu_d_panel_orig_images[i];
+    }
+    if (refine_eta){
+        for (int i=0; i<3*Npix_to_model; i++){
+            d_image.eta[i] = cp.cu_d_eta_images[i];
+            d2_image.eta[i] = cp.cu_d2_eta_images[i];
+        }
     }
 
-    for(int i=0; i<6*Npix_to_model; i++){
-        d_image.Ncells[i] = cp.cu_d_Ncells_images[i];
-        d2_image.Ncells[i] = cp.cu_d2_Ncells_images[i];
-        d_image.Bmat[i] = cp.cu_d_Bmat_images[i];
-        d2_image.Bmat[i] = cp.cu_d2_Bmat_images[i];
+
+    if (refine_Ncells[0]){
+        for(int i=0; i<6*Npix_to_model; i++){
+            d_image.Ncells[i] = cp.cu_d_Ncells_images[i];
+            d2_image.Ncells[i] = cp.cu_d2_Ncells_images[i];
+        }
     }
-    for(int i=0; i<2*Npix_to_model; i++)
-        d_image.lambda[i] = cp.cu_d_lambda_images[i];
+    if (refine_Bmat[0]){
+        for(int i=0; i<6*Npix_to_model; i++){
+            d_image.Bmat[i] = cp.cu_d_Bmat_images[i];
+            d2_image.Bmat[i] = cp.cu_d2_Bmat_images[i];
+        }
+    }
+    if (refine_lambda[0]){
+        for(int i=0; i<2*Npix_to_model; i++)
+            d_image.lambda[i] = cp.cu_d_lambda_images[i];
+    }
 
-    for (int i=0; i< num_sausages*4*Npix_to_model; i++)
-        d_image.sausage[i] = cp.cu_d_sausage_XYZ_scale_images[i];
+    if (refine_sausages){
+        for (int i=0; i< num_sausages*4*Npix_to_model; i++)
+            d_image.sausage[i] = cp.cu_d_sausage_XYZ_scale_images[i];
+    }
 
-    for (int i=0; i< 2*Npix_to_model; i++)
-        d_image.fp_fdp[i] = cp.cu_d_fp_fdp_images[i];
+    if (refine_fp_fdp){
+        for (int i=0; i< 2*Npix_to_model; i++)
+            d_image.fp_fdp[i] = cp.cu_d_fp_fdp_images[i];
+    }
 
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
@@ -564,74 +598,67 @@ void diffBragg_loopy(
 void freedom(diffBragg_cudaPointers& cp){
 
     if (cp.device_is_allocated){
-        gpuErr(cudaFree( cp.cu_floatimage));
-        gpuErr(cudaFree( cp.cu_d_Umat_images));
-        gpuErr(cudaFree( cp.cu_d_Bmat_images));
-        gpuErr(cudaFree( cp.cu_d_Ncells_images));
-        gpuErr(cudaFree( cp.cu_d2_Umat_images));
-        gpuErr(cudaFree( cp.cu_d2_Bmat_images));
-        gpuErr(cudaFree( cp.cu_d2_Ncells_images));
-        gpuErr(cudaFree( cp.cu_d_eta_images));
-        gpuErr(cudaFree( cp.cu_d2_eta_images));
-        gpuErr(cudaFree( cp.cu_d_fcell_images));
-        gpuErr(cudaFree( cp.cu_d_lambda_images));
-        gpuErr(cudaFree( cp.cu_d_panel_rot_images));
-        gpuErr(cudaFree( cp.cu_d_panel_orig_images));
-        gpuErr(cudaFree( cp.cu_d_sausage_XYZ_scale_images));
-        gpuErr(cudaFree( cp.cu_d_fp_fdp_images));
+        gpuErr(cudaFree_NULL( cp.cu_floatimage));
+        gpuErr(cudaFree_NULL( cp.cu_d_Umat_images));
+        gpuErr(cudaFree_NULL( cp.cu_d_Bmat_images));
+        gpuErr(cudaFree_NULL( cp.cu_d_Ncells_images));
+        gpuErr(cudaFree_NULL( cp.cu_d2_Umat_images));
+        gpuErr(cudaFree_NULL( cp.cu_d2_Bmat_images));
+        gpuErr(cudaFree_NULL( cp.cu_d2_Ncells_images));
+        gpuErr(cudaFree_NULL( cp.cu_d_eta_images));
+        gpuErr(cudaFree_NULL( cp.cu_d2_eta_images));
+        gpuErr(cudaFree_NULL( cp.cu_d_fcell_images));
+        gpuErr(cudaFree_NULL( cp.cu_d_lambda_images));
+        gpuErr(cudaFree_NULL( cp.cu_d_panel_rot_images));
+        gpuErr(cudaFree_NULL( cp.cu_d_panel_orig_images));
+        gpuErr(cudaFree_NULL( cp.cu_d_sausage_XYZ_scale_images));
+        gpuErr(cudaFree_NULL( cp.cu_d_fp_fdp_images));
 
-        gpuErr(cudaFree(cp.cu_Fhkl));
-        if (cp.cu_Fhkl2 != NULL)
-            gpuErr(cudaFree(cp.cu_Fhkl2));
+        gpuErr(cudaFree_NULL(cp.cu_Fhkl));
+        gpuErr(cudaFree_NULL(cp.cu_Fhkl2));
 
-        gpuErr(cudaFree(cp.cu_fdet_vectors));
-        gpuErr(cudaFree(cp.cu_sdet_vectors));
-        gpuErr(cudaFree(cp.cu_odet_vectors));
-        gpuErr(cudaFree(cp.cu_pix0_vectors));
-        gpuErr(cudaFree(cp.cu_close_distances));
-        if (cp.cu_nominal_hkl != NULL)
-          gpuErr(cudaFree(cp.cu_nominal_hkl));
-        if (cp.cu_atom_data != NULL)
-            gpuErr(cudaFree(cp.cu_atom_data));
-        if(cp.cu_fpfdp != NULL)
-            gpuErr(cudaFree(cp.cu_fpfdp));
-        if(cp.cu_fpfdp_derivs != NULL)
-            gpuErr(cudaFree(cp.cu_fpfdp_derivs));
+        gpuErr(cudaFree_NULL(cp.cu_fdet_vectors));
+        gpuErr(cudaFree_NULL(cp.cu_sdet_vectors));
+        gpuErr(cudaFree_NULL(cp.cu_odet_vectors));
+        gpuErr(cudaFree_NULL(cp.cu_pix0_vectors));
+        gpuErr(cudaFree_NULL(cp.cu_close_distances));
+        gpuErr(cudaFree_NULL(cp.cu_nominal_hkl));
+        gpuErr(cudaFree_NULL(cp.cu_atom_data));
+        gpuErr(cudaFree_NULL(cp.cu_fpfdp));
+        gpuErr(cudaFree_NULL(cp.cu_fpfdp_derivs));
 
-        gpuErr(cudaFree(cp.cu_source_X));
-        gpuErr(cudaFree(cp.cu_source_Y));
-        gpuErr(cudaFree(cp.cu_source_Z));
-        gpuErr(cudaFree(cp.cu_source_I));
-        gpuErr(cudaFree(cp.cu_source_lambda));
+        gpuErr(cudaFree_NULL(cp.cu_source_X));
+        gpuErr(cudaFree_NULL(cp.cu_source_Y));
+        gpuErr(cudaFree_NULL(cp.cu_source_Z));
+        gpuErr(cudaFree_NULL(cp.cu_source_I));
+        gpuErr(cudaFree_NULL(cp.cu_source_lambda));
 
-        gpuErr(cudaFree(cp.cu_UMATS));
-        gpuErr(cudaFree(cp.cu_UMATS_RXYZ));
-        gpuErr(cudaFree(cp.cu_AMATS));
-        if(cp.cu_UMATS_RXYZ_prime != NULL)
-            gpuErr(cudaFree(cp.cu_UMATS_RXYZ_prime));
-        if(cp.cu_UMATS_RXYZ_dbl_prime != NULL)
-            gpuErr(cudaFree(cp.cu_UMATS_RXYZ_dbl_prime));
-        gpuErr(cudaFree(cp.cu_RotMats));
-        gpuErr(cudaFree(cp.cu_dRotMats));
-        gpuErr(cudaFree(cp.cu_d2RotMats));
-        gpuErr(cudaFree(cp.cu_dB_Mats));
-        gpuErr(cudaFree(cp.cu_dB2_Mats));
-        gpuErr(cudaFree(cp.cu_sausages_RXYZ));
-        gpuErr(cudaFree(cp.cu_d_sausages_RXYZ));
-        gpuErr(cudaFree(cp.cu_sausages_U));
-        gpuErr(cudaFree(cp.cu_sausages_scale));
+        gpuErr(cudaFree_NULL(cp.cu_UMATS));
+        gpuErr(cudaFree_NULL(cp.cu_UMATS_RXYZ));
+        gpuErr(cudaFree_NULL(cp.cu_AMATS));
+        gpuErr(cudaFree_NULL(cp.cu_UMATS_RXYZ_prime));
+        gpuErr(cudaFree_NULL(cp.cu_UMATS_RXYZ_dbl_prime));
+        gpuErr(cudaFree_NULL(cp.cu_RotMats));
+        gpuErr(cudaFree_NULL(cp.cu_dRotMats));
+        gpuErr(cudaFree_NULL(cp.cu_d2RotMats));
+        gpuErr(cudaFree_NULL(cp.cu_dB_Mats));
+        gpuErr(cudaFree_NULL(cp.cu_dB2_Mats));
+        gpuErr(cudaFree_NULL(cp.cu_sausages_RXYZ));
+        gpuErr(cudaFree_NULL(cp.cu_d_sausages_RXYZ));
+        gpuErr(cudaFree_NULL(cp.cu_sausages_U));
+        gpuErr(cudaFree_NULL(cp.cu_sausages_scale));
 
-        gpuErr(cudaFree(cp.cu_dF_vecs));
-        gpuErr(cudaFree(cp.cu_dS_vecs));
+        gpuErr(cudaFree_NULL(cp.cu_dF_vecs));
+        gpuErr(cudaFree_NULL(cp.cu_dS_vecs));
 
-        gpuErr(cudaFree(cp.cu_refine_Bmat));
-        gpuErr(cudaFree(cp.cu_refine_Umat));
-        gpuErr(cudaFree(cp.cu_refine_Ncells));
-        gpuErr(cudaFree(cp.cu_refine_lambda));
-        gpuErr(cudaFree(cp.cu_refine_panel_origin));
-        gpuErr(cudaFree(cp.cu_refine_panel_rot));
+        gpuErr(cudaFree_NULL(cp.cu_refine_Bmat));
+        gpuErr(cudaFree_NULL(cp.cu_refine_Umat));
+        gpuErr(cudaFree_NULL(cp.cu_refine_Ncells));
+        gpuErr(cudaFree_NULL(cp.cu_refine_lambda));
+        gpuErr(cudaFree_NULL(cp.cu_refine_panel_origin));
+        gpuErr(cudaFree_NULL(cp.cu_refine_panel_rot));
 
-        gpuErr(cudaFree(cp.cu_panels_fasts_slows));
+        gpuErr(cudaFree_NULL(cp.cu_panels_fasts_slows));
 
         cp.device_is_allocated = false;
         cp.npix_allocated = 0;

@@ -23,26 +23,26 @@ struct diffBragg_cudaPointers {
   unsigned int* cu_panels_fasts_slows;
 
   CUDAREAL* cu_floatimage;
-  CUDAREAL* cu_d_Umat_images;
-  CUDAREAL* cu_d_Bmat_images;
-  CUDAREAL* cu_d_Ncells_images;
-  CUDAREAL* cu_d_fcell_images;
-  CUDAREAL* cu_d_eta_images;
-  CUDAREAL* cu_d2_eta_images;
-  CUDAREAL* cu_d_lambda_images;
-  CUDAREAL* cu_d_panel_rot_images;
-  CUDAREAL* cu_d_panel_orig_images;
+  CUDAREAL* cu_d_Umat_images=NULL;
+  CUDAREAL* cu_d_Bmat_images=NULL;
+  CUDAREAL* cu_d_Ncells_images=NULL;
+  CUDAREAL* cu_d_fcell_images=NULL;
+  CUDAREAL* cu_d_eta_images=NULL;
+  CUDAREAL* cu_d2_eta_images=NULL;
+  CUDAREAL* cu_d_lambda_images=NULL;
+  CUDAREAL* cu_d_panel_rot_images=NULL;
+  CUDAREAL* cu_d_panel_orig_images=NULL;
 
-  CUDAREAL* cu_d2_Umat_images;
-  CUDAREAL* cu_d2_Bmat_images;
-  CUDAREAL* cu_d2_Ncells_images;
-  CUDAREAL* cu_d2_fcell_images;
-  CUDAREAL* cu_d2_lambda_images;
-  CUDAREAL* cu_d2_panel_rot_images;
-  CUDAREAL* cu_d2_panel_orig_images;
+  CUDAREAL* cu_d2_Umat_images=NULL;
+  CUDAREAL* cu_d2_Bmat_images=NULL;
+  CUDAREAL* cu_d2_Ncells_images=NULL;
+  CUDAREAL* cu_d2_fcell_images=NULL;
+  CUDAREAL* cu_d2_lambda_images=NULL;
+  CUDAREAL* cu_d2_panel_rot_images=NULL;
+  CUDAREAL* cu_d2_panel_orig_images=NULL;
 
-  CUDAREAL* cu_d_sausage_XYZ_scale_images;
-  CUDAREAL* cu_d_fp_fdp_images;
+  CUDAREAL* cu_d_sausage_XYZ_scale_images=NULL;
+  CUDAREAL* cu_d_fp_fdp_images=NULL;
 
   int* cu_subS_pos;
   int* cu_subF_pos;
