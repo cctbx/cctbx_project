@@ -183,7 +183,13 @@ DotScorer::CheckDotResult DotScorer::check_dot(
       }
     } else {  // ret.gap < 0 and not a hydrogen bond
       ret.overlap = -0.5 * ret.gap;
-      ret.overlapType = DotScorer::InteractionType::Clash;
+      if (ret.gap < -m_bumpOverlap) {
+        // May also be a bad clash, but this will be checked in score_dots.
+        ret.overlapType = DotScorer::InteractionType::Clash;
+      } else {
+        // Not enough overlap to cause a clash, but still some overlap.
+        ret.overlapType = DotScorer::InteractionType::Overlap;
+      }
     }
 
     /// @todo We may be able to speed things up by only computing this for contact dots
@@ -270,7 +276,8 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
     case DotScorer::InteractionType::None: // No interaction
       break;
 
-    case DotScorer::InteractionType::Clash:  // Clash
+    case DotScorer::InteractionType::Overlap: // Overlap or clash
+    case DotScorer::InteractionType::Clash:
       ret.bumpSubScore += -m_bumpWeight * score.overlap;
       // See if we should flag this atom as having a bad bump
       if (score.gap < -m_badBumpOverlap) {
@@ -320,6 +327,77 @@ static bool closeTo(double a, double b) {
 
 std::string DotScorer::test()
 {
+  // Test the check_dot() function to make sure that it gets correct interaction types for
+  // all ranges of interaction.  Also check the cause.
+  /// @todo Check the annular-dots behavior.
+  {
+    double targetRad = 1.5, sourceRad = 1.0, probeRad = 0.25;
+    unsigned int atomSeq = 0;
+
+    // Construct and fill the interaction list with a vector of a single target atom
+    iotbx::pdb::hierarchy::atom a;
+    a.set_xyz({ 0,0,0 });
+    a.set_occ(1);
+    a.data->i_seq = atomSeq++;
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
+    atoms.push_back(a);
+    ExtraAtomInfo e(targetRad);
+    scitbx::af::shared<ExtraAtomInfo> infos;
+    infos.push_back(e);
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> interacting;
+    interacting.push_back(a);
+
+    // Construct the source atom, including its extra info.
+    iotbx::pdb::hierarchy::atom source;
+    source.set_occ(1);
+    source.data->i_seq = atomSeq++;
+    ExtraAtomInfo se(sourceRad);
+    atoms.push_back(source);
+    infos.push_back(se);
+
+    // Construct an empty exclusion list.
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
+
+    // Construct the scorer to be used.
+    DotScorer as(ExtraAtomInfoMap(atoms, infos));
+
+    // Check a dot that is to -X of the source atom by its radius against the
+    // target for various positions of the source atom.
+    CheckDotResult res;
+    source.set_xyz({ sourceRad + targetRad - 0.6,0,0 });
+    res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
+    if (res.overlapType != DotScorer::InteractionType::Clash) {
+      return "DotScorer::test(): Did not find clash when expected for dot_score()";
+    }
+    if (res.cause.data != a.data) {
+      return "DotScorer::test(): Did not find expected cause for dot_score()";
+    }
+
+    source.set_xyz({ sourceRad + targetRad - 0.5,0,0 });
+    res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
+    if (res.overlapType != DotScorer::InteractionType::Clash) {
+      return "DotScorer::test(): Did not find clash when expected for dot_score()";
+    }
+
+    source.set_xyz({ sourceRad + targetRad - 0.01,0,0 });
+    res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
+    if (res.overlapType != DotScorer::InteractionType::Overlap) {
+      return "DotScorer::test(): Did not find overlap when expected for dot_score()";
+    }
+
+    source.set_xyz({ sourceRad + targetRad + 0.01,0,0 });
+    res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
+    if (res.overlapType != DotScorer::InteractionType::NearContact) {
+      return "DotScorer::test(): Did not find near contact when expected for dot_score()";
+    }
+
+    source.set_xyz({ sourceRad + targetRad + 10.0,0,0 });
+    res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
+    if (res.overlapType != DotScorer::InteractionType::None) {
+      return "DotScorer::test(): Did not find no contact when expected for dot_score()";
+    }
+  }
+
   // Construct test cases with all combinations of charges and extra information, holding the
   // radii of the neighbor atom and probe atom constant.  Do this in combination with adding or
   // not adding an excluded atom that completely covers the neighbor atom.
@@ -644,7 +722,7 @@ std::string DotScorer::test()
 
   // Test the setting of bond-gap distances.
   {
-    double badOverlap = 0.2;
+    double bumpOverlap = 0.2, badOverlap = bumpOverlap + 0.1;
     double maxRegularHydrogenOverlap = badOverlap + 0.2;
     double maxChargedHydrogenOverlap = maxRegularHydrogenOverlap + 0.2;
 
@@ -685,7 +763,7 @@ std::string DotScorer::test()
 
       // Construct the scorer to be used with the specified bond gaps.
       DotScorer as(ExtraAtomInfoMap(atoms, infos), 0.25, 10.0, 4.0, maxRegularHydrogenOverlap,
-        maxChargedHydrogenOverlap, badOverlap);
+        maxChargedHydrogenOverlap, bumpOverlap, badOverlap);
 
       // Check the source atom against outside and inside the gap
       source.set_xyz({ targetRad + sourceRad - badOverlap + 0.1, 0, 0 });
@@ -724,7 +802,7 @@ std::string DotScorer::test()
 
       // Construct the scorer to be used with the specified bond gaps.
       DotScorer as(ExtraAtomInfoMap(atoms, infos), 0.25, 10.0, 4.0, maxRegularHydrogenOverlap,
-        maxChargedHydrogenOverlap, badOverlap);
+        maxChargedHydrogenOverlap, bumpOverlap, badOverlap);
 
       // Check the source atom against outside and inside the gap
       source.set_xyz({ targetRad + sourceRad - maxRegularHydrogenOverlap - badOverlap + 0.1, 0, 0 });
@@ -764,7 +842,7 @@ std::string DotScorer::test()
 
       // Construct the scorer to be used with the specified bond gaps.
       DotScorer as(ExtraAtomInfoMap(atoms, infos), 0.25, 10.0, 4.0, maxRegularHydrogenOverlap,
-        maxChargedHydrogenOverlap, badOverlap);
+        maxChargedHydrogenOverlap, bumpOverlap, badOverlap);
 
       // Check the source atom against outside and inside the gap
       source.set_xyz({ targetRad + sourceRad - maxChargedHydrogenOverlap - badOverlap + 0.1, 0, 0 });
