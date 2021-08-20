@@ -10,20 +10,116 @@ import mmtbx_probe_ext as probeExt
 from mmtbx.probe import Helpers
 
 master_phil_str = '''
+source_selection = ''
+  .type = str
+  .help = Source selection description
+
+target_selection = ''
+  .type = str
+  .help = Target selection description ('=' means same as source)
+
 use_neutron_distances = False
   .type = bool
-  .help = Use neutron distances
+  .help = Use neutron distances (-nuclear in probe)
+
+approach = *self both once out dump
+  .type = choice
+  .help = self (src -> src) both (src <=> targ) once (src -> targ) out (VdW surface) dump (count atoms)
+
+quiet = False
+  .type = bool
+  .help = Quiet mode, reduced output
+
+include_mainchain_mainchain = True
+  .type = bool
+  .help = Include mainchain -> mainchain interactions (-mc in probe)
+
+include_het = True
+  .type = bool
+  .help = Include non-water HET group interactions (-het in probe)
+
+include_water = True
+  .type = bool
+  .help = Include water interactions (-waters/-nowaters in probe)
+
+excluded_bond_chain_length = 4
+  .type = int
+  .help = Exclude chain of atoms bonded to source for this many hops (-4H, -3, -2 , -1 in probe)
+
+drop_non_selected_atoms = False
+  .type = bool
+  .help = Drop non selected atoms (-drop in probe)
+
+count_dots = False
+  .type = bool
+  .help = Count dots rather than listing all contacts (-countdots in probe)
+
+raw_output = False
+  .type = bool
+  .help = Unformatted output (-unformated in probe)
+
+one_line = False
+  .type = bool
+  .help = Output one line :contacts:by:severity:type: (-oneline in probe)
+
+hydrogen_bond_output = True
+  .type = bool
+  .help = Output hydrogen-bond contacts (-nohbout in probe)
+
+clash_output = True
+  .type = bool
+  .help = Output clash contacts (-noclashout in probe)
+
+vdw_output = True
+  .type = bool
+  .help = Output van der Waals contacts (-novdwout in probe)
+
+separate_worst_clashes = False
+  .type = bool
+  .help = Separately report the worst clashes, below -0.5 (-sepworse in probe)
+
+set_group_name = dots
+  .type = str
+  .help = Specify the group name (-name in probe)
+
+add_group_name_master_line = False
+  .type = bool
+  .help = Add a master=name line on lists (-dotmaster in probe)
+
+kinemage
+  .style = menu_item auto_align
+{
+  add_lens_keyword = False
+    .type = bool
+    .help = Add lens keywoard to kin file (-lens in probe)
+
+  add_group_statement = True
+    .type = bool
+    .help = Add lens keywoard to kin file (-nogroup in probe)
+}
 
 probe
   .style = menu_item auto_align
 {
   radius = 0.25
     .type = float
-    .help = Probe radius (half distance between touched atoms)
+    .help = Probe radius (half distance between touched atoms) (-radius in probe)
 
   density = 16.0
     .type = float
-    .help = Probe dots per square angstrom on atom surface
+    .help = Probe dots per square angstrom on atom surface (-density in probe)
+
+  worst_clash_cutoff = -0.5
+    .type = float
+    .help = Cutoff for the worst clashes (-divworse in probe)
+
+  clash_cutoff = -0.4
+    .type = float
+    .help = Cutoff for the clashes (-divlow in probe)
+
+  contact_cutoff = 0.25
+    .type = float
+    .help = Cutoff for the contact (-divhigh in probe)
 }
 
 output
