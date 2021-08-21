@@ -320,7 +320,7 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
         ret.bumpSubScore += -m_bumpWeight * score.overlap;
         // See if we should flag this atom as having a bad bump
         DotScorer::InteractionType type = interaction_type(score, false);
-        if ((type == DotScorer::InteractionType::BadOverlap) || (type == DotScorer::InteractionType::WorseOverlap)) {
+        if (type == DotScorer::InteractionType::WorseOverlap) {
           ret.hasBadBump = true;
         }
       }
@@ -782,7 +782,7 @@ std::string DotScorer::test()
 
   // Test the setting of bond-gap distances.
   {
-    double bumpOverlap = 0.2, badOverlap = bumpOverlap + 0.1;
+    double bumpOverlap = 0.2, badOverlap = bumpOverlap + 0.2;
     double maxRegularHydrogenOverlap = badOverlap + 0.2;
     double maxChargedHydrogenOverlap = maxRegularHydrogenOverlap + 0.2;
 
