@@ -205,13 +205,19 @@ namespace molprobity {
         , m_badBumpOverlap(badBumpOverlap)
       { };
 
-      /// @brief Enumeration listing the types of interactions a dot can have with an atom
-      enum class InteractionType { None = -2, Clash = -1, Overlap = 0, NearContact = 1, HydrogenBond = 2 };
+      /// @brief Enumeration listing the basic types of overlap a dot can have with an atom.
+      /// The values mean: None => dot outside atom, Clash => dot inside atom and not hydrogen bonding
+      /// (including too-close hydrogen), HydrogenBond => Hydrogen bond, Ignore = this dot was inside
+      /// an excluded atom or had no neighboring atoms so should be ignored.
+      enum class OverlapType { Ignore = -2, Clash = -1, None = 0, HydrogenBond = 1 };
+
+      /// @brief Enumeration listing the detailed class of interaction a dot can have with an atom.
+      /// @todo
 
       /// @brief Structure to hold the results from a call to check_dot()
       class CheckDotResult {
       public:
-        InteractionType overlapType = DotScorer::InteractionType::None; ///< What kind of interaction, if any, was found
+        OverlapType overlapType = DotScorer::OverlapType::Ignore; ///< What kind of overlap, if any, was found
         iotbx::pdb::hierarchy::atom cause;  ///< Cause of the overlap, if overlapType != None
         double  overlap = 0;                ///< Amount of overlap if there is a clash
         double  gap = 1e100;                ///< Gap distance (overlap may only be a fraction of this).

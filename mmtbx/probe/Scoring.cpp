@@ -172,24 +172,18 @@ DotScorer::CheckDotResult DotScorer::check_dot(
     // Determine the overlap type and amount of overlap.
     if (ret.gap >= 0) {
       ret.overlap = 0;
-      ret.overlapType = DotScorer::InteractionType::NearContact;
+      ret.overlapType = DotScorer::OverlapType::None;
     } else if (isHydrogenBond) {
       ret.overlap = -0.5 * ret.gap;
       if (tooCloseHydrogenBond) {
         ret.gap += hydrogenBondMinDist;
-        ret.overlapType = DotScorer::InteractionType::Clash;
+        ret.overlapType = DotScorer::OverlapType::Clash;
       } else {
-        ret.overlapType = DotScorer::InteractionType::HydrogenBond;
+        ret.overlapType = DotScorer::OverlapType::HydrogenBond;
       }
     } else {  // ret.gap < 0 and not a hydrogen bond
       ret.overlap = -0.5 * ret.gap;
-      if (ret.gap < -m_bumpOverlap) {
-        // May also be a bad clash, but this will be checked in score_dots.
-        ret.overlapType = DotScorer::InteractionType::Clash;
-      } else {
-        // Not enough overlap to cause a clash, but still some overlap.
-        ret.overlapType = DotScorer::InteractionType::Overlap;
-      }
+      ret.overlapType = DotScorer::OverlapType::Clash;
     }
 
     /// @todo We may be able to speed things up by only computing this for contact dots
@@ -273,11 +267,17 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
     double dotScore = 0;
     switch (score.overlapType) {
 
-    case DotScorer::InteractionType::None: // No interaction
+    case DotScorer::OverlapType::Ignore: // The dot should be ignored, so is not scored.
       break;
 
-    case DotScorer::InteractionType::Overlap: // Overlap or clash
-    case DotScorer::InteractionType::Clash:
+    case DotScorer::OverlapType::None: // No overlap, contact dot
+      if ((!onlyBumps) && !score.annular) {
+        double scaledGap = score.gap / m_gapScale;
+        ret.attractSubScore += exp(-scaledGap * scaledGap);
+      }
+      break;
+
+    case DotScorer::OverlapType::Clash:
       ret.bumpSubScore += -m_bumpWeight * score.overlap;
       // See if we should flag this atom as having a bad bump
       if (score.gap < -m_badBumpOverlap) {
@@ -285,14 +285,7 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
       }
       break;
 
-    case DotScorer::InteractionType::NearContact:   // Contact dot
-      if ((!onlyBumps) && !score.annular) {
-        double scaledGap = score.gap / m_gapScale;
-        ret.attractSubScore += exp(-scaledGap * scaledGap);
-      }
-      break;
-
-    case DotScorer::InteractionType::HydrogenBond:   // Hydrogen bond
+    case DotScorer::OverlapType::HydrogenBond:   // Hydrogen bond
       if (!onlyBumps) {
         ret.hBondSubScore += m_hBondWeight * score.overlap;
       } else {  // In this case, we treat it as a bump
@@ -366,7 +359,7 @@ std::string DotScorer::test()
     CheckDotResult res;
     source.set_xyz({ sourceRad + targetRad - 0.6,0,0 });
     res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
-    if (res.overlapType != DotScorer::InteractionType::Clash) {
+    if (res.overlapType != DotScorer::OverlapType::Clash) {
       return "DotScorer::test(): Did not find clash when expected for dot_score()";
     }
     if (res.cause.data != a.data) {
@@ -375,26 +368,27 @@ std::string DotScorer::test()
 
     source.set_xyz({ sourceRad + targetRad - 0.5,0,0 });
     res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
-    if (res.overlapType != DotScorer::InteractionType::Clash) {
+    if (res.overlapType != DotScorer::OverlapType::Clash) {
       return "DotScorer::test(): Did not find clash when expected for dot_score()";
     }
 
     source.set_xyz({ sourceRad + targetRad - 0.01,0,0 });
     res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
-    if (res.overlapType != DotScorer::InteractionType::Overlap) {
-      return "DotScorer::test(): Did not find overlap when expected for dot_score()";
+    if (res.overlapType != DotScorer::OverlapType::Clash) {
+      return "DotScorer::test(): Did not find small clash when expected for dot_score()";
     }
 
     source.set_xyz({ sourceRad + targetRad + 0.01,0,0 });
     res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
-    if (res.overlapType != DotScorer::InteractionType::NearContact) {
-      return "DotScorer::test(): Did not find near contact when expected for dot_score()";
+    if (res.overlapType != DotScorer::OverlapType::None) {
+      return "DotScorer::test(): Did not find no overlap when expected for dot_score()";
     }
 
+    // Check so far away that there won't be any nearby atoms.
     source.set_xyz({ sourceRad + targetRad + 10.0,0,0 });
     res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
-    if (res.overlapType != DotScorer::InteractionType::None) {
-      return "DotScorer::test(): Did not find no contact when expected for dot_score()";
+    if (res.overlapType != DotScorer::OverlapType::Ignore) {
+      return "DotScorer::test(): Did not find ignore when expected for dot_score()";
     }
   }
 
