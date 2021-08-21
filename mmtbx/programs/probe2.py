@@ -22,7 +22,7 @@ use_neutron_distances = False
   .type = bool
   .help = Use neutron distances (-nuclear in probe)
 
-approach = *self both once out count
+approach = *self both once surface count
   .type = choice
   .help = self (src -> src) both (src <=> targ) once (src -> targ) surface (VdW surface) count (count atoms)
 
@@ -109,17 +109,37 @@ probe
     .type = float
     .help = Probe dots per square angstrom on atom surface (-density in probe)
 
-  worst_clash_cutoff = -0.5
+  worst_clash_cutoff = 0.5
     .type = float
-    .help = Cutoff for the worst clashes (-divworse in probe)
+    .help = Cutoff for the worst clashes, a positive (-divworse in probe)
 
-  clash_cutoff = -0.4
+  clash_cutoff = 0.4
     .type = float
-    .help = Cutoff for the clashes (-divlow in probe)
+    .help = Cutoff for the clashes, a positive number (-divlow in probe)
 
   contact_cutoff = 0.25
     .type = float
     .help = Cutoff for the contact (-divhigh in probe)
+
+  uncharged_hydrogen_cutoff = 0.6
+    .type = float
+    .help = Cutoff for uncharged hydrogen overlap (-hbregular in probe)
+
+  charged_hydrogen_cutoff = 0.8
+    .type = float
+    .help = Cutoff for charged hydrogen overlap (-hbcharged in probe)
+
+  bump_weight = 10.0
+    .type = float
+    .help = Weight applied to bump score (-bumpweight in probe)
+
+  hydrogen_bond_weight = 4.0
+    .type = float
+    .help = Weight applied to hydrogen bond score (-hbweight in probe)
+
+  gap_weight = 0.25
+    .type = float
+    .help = Weight applied to gap score (-gapweight in probe)
 }
 
 output
@@ -181,13 +201,13 @@ Note:
     if self.params.output.file_name_prefix is None:
       raise Sorry("Supply the prefix for an output file name using output.file_name_prefix=")
 
+    # Ensure consistency among parameters
+    if self.params.probe.gap_weight < self.params.probe.radius:
+      self.params.probe.gap_weight = self.params.probe.radius
+
 # ------------------------------------------------------------------------------
 
   def run(self):
-    # If the target selection is "=", that means that it should be the same as the source selection.
-    if self.params.target_selection == "=":
-      self.params.target_selection = self.params.source_selection
-
     make_sub_header('Interpret Model', out=self.logger)
 
     # Get our model.
@@ -201,13 +221,29 @@ Note:
     # Get the list of all atoms in the model
     atoms = self.model.get_atoms()
 
+    #===================================================================================
     # Get the source selection (and target selection if there is one)
-    # @todo
-    source_atoms = atoms
+    source_sel = self.model.selection(self.params.source_selection)
+    source_model = self.model.select(source_sel)
+    source_atoms = source_model.get_atoms()
 
+    target_atoms = []
+    if self.params.target_selection is not None:
+      # If the target selection is "=", that means that it should be the same as the source selection.
+      if self.params.target_selection == "=":
+        target_atoms = source_atoms
+      else:
+        target_sel = self.model.selection(self.params.target_selection)
+        target_model = self.model.select(target_sel)
+        target_atoms = target_model.get_atoms()
+
+    #===================================================================================
+    # Do the calculations; which one depends on the approach and other phil parameters
     if self.params.approach == 'count':
+      # Report the number of atoms in the source selection
       ret = 'atoms selected: '+str(len(source_atoms))
 
+    # @todo
     else:
 
       # Get the bonding information we'll need to exclude our bonded neighbors.
@@ -235,7 +271,10 @@ Note:
 
       make_sub_header('Compute Probe Score', out=self.logger)
       # Construct a DotScorer object.
-      ds = probeExt.DotScorer(extra)
+      ds = probeExt.DotScorer(extra, self.params.probe.gap_weight,
+        self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight,
+        self.params.probe.uncharged_hydrogen_cutoff, self.params.probe.charged_hydrogen_cutoff,
+        self.params.probe.clash_cutoff, self.params.probe.worst_clash_cutoff)
 
       # Construct a dot-sphere cache
       cache = probeExt.DotSphereCache(self.params.probe.density)
