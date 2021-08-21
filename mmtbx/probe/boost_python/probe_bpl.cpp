@@ -78,8 +78,8 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     .value("CloseContact", DotScorer::InteractionType::CloseContact)
     .value("WeakHydrogenBond", DotScorer::InteractionType::WeakHydrogenBond)
     .value("SmallOverlap", DotScorer::InteractionType::SmallOverlap)
-    .value("BadOverlap", DotScorer::InteractionType::BadOverlap)
-    .value("WorseOverlap", DotScorer::InteractionType::WorseOverlap)
+    .value("Bump", DotScorer::InteractionType::Bump)
+    .value("BadBump", DotScorer::InteractionType::BadBump)
     .value("HydrogenBond", DotScorer::InteractionType::HydrogenBond)
     ;
 
