@@ -73,6 +73,16 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     .value("HydrogenBond", DotScorer::OverlapType::HydrogenBond)
     ;
 
+  enum_<DotScorer::InteractionType>("InteractionType")
+    .value("WideContact", DotScorer::InteractionType::WideContact)
+    .value("CloseContact", DotScorer::InteractionType::CloseContact)
+    .value("WeakHydrogenBond", DotScorer::InteractionType::WeakHydrogenBond)
+    .value("SmallOverlap", DotScorer::InteractionType::SmallOverlap)
+    .value("BadOverlap", DotScorer::InteractionType::BadOverlap)
+    .value("WorseOverlap", DotScorer::InteractionType::WorseOverlap)
+    .value("HydrogenBond", DotScorer::InteractionType::HydrogenBond)
+    ;
+
   class_<DotScorer::CheckDotResult>("CheckDotResult", init<>())
     .add_property("overlapType", &DotScorer::CheckDotResult::overlapType)
     .add_property("cause", &DotScorer::CheckDotResult::cause)
@@ -117,6 +127,7 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
         optional<double, double, double, double, double, double, double> >())
     .def("check_dot", &DotScorer::check_dot)
     .def("score_dots", &DotScorer::score_dots)
+    .def("interaction_type", &DotScorer::interaction_type)
     .def("test", &DotScorer::test)
     ;
 

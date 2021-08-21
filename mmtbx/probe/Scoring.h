@@ -189,6 +189,9 @@ namespace molprobity {
       /// @param [in] badBumpOverlap Atoms that overlap more than this will cause bad bump to be flagged.
       ///             This number can be set very large to cause no bumps to be flagged as bad bumps.  This is a
       ///             positive number indicating how much overlap.
+      /// @param [in] contactCutoff Atoms that are nearer than this will be considered to be in near
+      ///             contact, with atoms further in far contact.  This should be at least as large
+      ///             as the probe radius.
       DotScorer(ExtraAtomInfoMap extraInfoMap
         , double gapScale = 0.25
         , double bumpWeight = 10.0
@@ -197,22 +200,21 @@ namespace molprobity {
         , double maxChargedHydrogenOverlap = 0.8
         , double bumpOverlap = 0.4
         , double badBumpOverlap = 0.5
+        , double contactCutoff = 0.25
       ) : m_extraInfoMap(extraInfoMap)
         , m_gapScale(gapScale), m_bumpWeight(bumpWeight), m_hBondWeight(hBondWeight)
         , m_maxRegularHydrogenOverlap(maxRegularHydrogenOverlap)
         , m_maxChargedHydrogenOverlap(maxChargedHydrogenOverlap)
         , m_bumpOverlap(bumpOverlap)
         , m_badBumpOverlap(badBumpOverlap)
-      { };
+        , m_contactCutoff(contactCutoff)
+      {}
 
       /// @brief Enumeration listing the basic types of overlap a dot can have with an atom.
       /// The values mean: None => dot outside atom, Clash => dot inside atom and not hydrogen bonding
       /// (including too-close hydrogen), HydrogenBond => Hydrogen bond, Ignore = this dot was inside
       /// an excluded atom or had no neighboring atoms so should be ignored.
       enum class OverlapType { Ignore = -2, Clash = -1, None = 0, HydrogenBond = 1 };
-
-      /// @brief Enumeration listing the detailed class of interaction a dot can have with an atom.
-      /// @todo
 
       /// @brief Structure to hold the results from a call to check_dot()
       class CheckDotResult {
@@ -238,6 +240,24 @@ namespace molprobity {
         Point const& dotOffset, double probeRadius,
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& interacting,
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude);
+
+      /// @brief Enumeration listing the detailed class of interaction a dot can have with an atom.
+      /// This is a weak enumeration rather than a class so that it can by type-cast back into integers
+      /// and used as an index.  These index values are chosen to match those used by the orignal Probe.
+      enum InteractionType {
+        WideContact = 0, CloseContact = 1, WeakHydrogenBond = 2, SmallOverlap = 3,
+        BadOverlap = 4, WorseOverlap = 5, HydrogenBond = 6, Invalid = -1
+      };
+      /// @todo
+
+      /// @brief Determine the type of interaction that is represented by a CheckDotResult.
+      /// @param [in] checkDotResult Value returned from the check_dot() method.
+      /// @param [in] separateWeakHydrogenBonds Include a category for weak Hydrogen bonds.
+      /// @return InteractionType of the contact, Invalid if the OverlapType was Ignore or
+      ///         a non-negative number indicating the index of the interaction type in the
+      ///         original Probe code.
+      InteractionType interaction_type(CheckDotResult checkDotResult,
+         bool separateWeakHydrogenBonds) const;
 
       /// @brief Structure to hold the results from a call to score_dots()
       class ScoreDotsResult {
@@ -295,6 +315,8 @@ namespace molprobity {
       double m_maxChargedHydrogenOverlap;
       double m_bumpOverlap;
       double m_badBumpOverlap;
+      double m_contactCutoff;
+      bool m_reportWeakHydrogenBonds;
     };
 
     /// @todo Figure out what all of the things needed by Probe (as opposed to Reduce) are.

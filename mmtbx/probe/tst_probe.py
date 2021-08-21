@@ -148,13 +148,16 @@ def RunProbeTests(inFileName):
     total += res.totalScore()
     if res.hasBadBump:
       badBumpTotal += 1
-  print('Summed probe score for molecule =',total,'with',badBumpTotal,'bad bumps')
+  print('Summed probe score for molecule = {:.2f} with {} bad bumps'.format(total,badBumpTotal))
 
   # Test calling the single-dot checking code as will be used by Probe to make sure
   # all of the Python linkage is working
   dotOffset = [1, 0, 0]
   check = ds.check_dot(atoms[0], dotOffset, 1, atoms, [atoms[0]])
   print ('Check dot overlap type:',check.overlapType)
+
+  # Test calling the interaction_type method to be sure Python linkage is working
+  print('  dot interaction type: ', ds.interaction_type(check, False))
 
   #========================================================================
   # Call the test functions for all of our files.
