@@ -210,9 +210,9 @@ DotScorer::InteractionType DotScorer::interaction_type(
       if (checkDotResult.gap > -m_bumpOverlap) {
         return SmallOverlap;
       } else if (checkDotResult.gap > -m_badBumpOverlap) {
-        return BadOverlap;
+        return Bump;
       } else {
-        return WorseOverlap;
+        return BadBump;
       }
       break;
     case DotScorer::OverlapType::HydrogenBond:
@@ -320,7 +320,7 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
         ret.bumpSubScore += -m_bumpWeight * score.overlap;
         // See if we should flag this atom as having a bad bump
         DotScorer::InteractionType type = interaction_type(score, false);
-        if (type == DotScorer::InteractionType::WorseOverlap) {
+        if (type == DotScorer::InteractionType::BadBump) {
           ret.hasBadBump = true;
         }
       }
@@ -407,7 +407,7 @@ std::string DotScorer::test()
     if (res.cause.data != a.data) {
       return "DotScorer::test(): Did not find expected cause for dot_score()";
     }
-    if (as.interaction_type(res, true) != DotScorer::InteractionType::WorseOverlap) {
+    if (as.interaction_type(res, true) != DotScorer::InteractionType::BadBump) {
       return "DotScorer::test(): Did not find WorseOverlap when expected for dot_score()";
     }
 
@@ -416,7 +416,7 @@ std::string DotScorer::test()
     if (res.overlapType != DotScorer::OverlapType::Clash) {
       return "DotScorer::test(): Did not find clash when expected for dot_score()";
     }
-    if (as.interaction_type(res, true) != DotScorer::InteractionType::BadOverlap) {
+    if (as.interaction_type(res, true) != DotScorer::InteractionType::Bump) {
       return "DotScorer::test(): Did not find BadOverlap when expected for dot_score()";
     }
 

@@ -246,7 +246,7 @@ namespace molprobity {
       /// and used as an index.  These index values are chosen to match those used by the orignal Probe.
       enum InteractionType {
         WideContact = 0, CloseContact = 1, WeakHydrogenBond = 2, SmallOverlap = 3,
-        BadOverlap = 4, WorseOverlap = 5, HydrogenBond = 6, Invalid = -1
+        Bump = 4, BadBump = 5, HydrogenBond = 6, Invalid = -1
       };
       /// @todo
 
