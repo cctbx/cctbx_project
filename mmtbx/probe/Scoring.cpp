@@ -316,10 +316,13 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
       break;
 
     case DotScorer::OverlapType::Clash:
-      ret.bumpSubScore += -m_bumpWeight * score.overlap;
-      // See if we should flag this atom as having a bad bump
-      if (score.gap < -m_badBumpOverlap) {
-        ret.hasBadBump = true;
+      {
+        ret.bumpSubScore += -m_bumpWeight * score.overlap;
+        // See if we should flag this atom as having a bad bump
+        DotScorer::InteractionType type = interaction_type(score, false);
+        if ((type == DotScorer::InteractionType::BadOverlap) || (type == DotScorer::InteractionType::WorseOverlap)) {
+          ret.hasBadBump = true;
+        }
       }
       break;
 
