@@ -194,6 +194,44 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   return ret;
 }
 
+DotScorer::InteractionType DotScorer::interaction_type(
+  DotScorer::CheckDotResult checkDotResult,
+  bool separateWeakHydrogenBonds) const
+{
+  switch (checkDotResult.overlapType) {
+    case DotScorer::OverlapType::None:
+      if (checkDotResult.gap > m_contactCutoff) {
+        return WideContact;
+      } else {
+        return CloseContact;
+      }
+      break;
+    case DotScorer::OverlapType::Clash:
+      if (checkDotResult.gap > -m_bumpOverlap) {
+        return SmallOverlap;
+      } else if (checkDotResult.gap > -m_badBumpOverlap) {
+        return BadOverlap;
+      } else {
+        return WorseOverlap;
+      }
+      break;
+    case DotScorer::OverlapType::HydrogenBond:
+      if (separateWeakHydrogenBonds) {
+        if (checkDotResult.gap > 0) {
+          return WeakHydrogenBond;
+        } else {
+          return HydrogenBond;
+        }
+      } else {
+        return HydrogenBond;
+      }
+      break;
+    case DotScorer::OverlapType::Ignore:
+    default:
+      return Invalid;
+  }
+}
+
 DotScorer::ScoreDotsResult DotScorer::score_dots(
   iotbx::pdb::hierarchy::atom sourceAtom, double minOccupancy,
   SpatialQuery &spatialQuery, double nearbyRadius, double probeRadius,
@@ -320,9 +358,10 @@ static bool closeTo(double a, double b) {
 
 std::string DotScorer::test()
 {
+  /// @todo Check the annular-dots behavior.
+
   // Test the check_dot() function to make sure that it gets correct interaction types for
   // all ranges of interaction.  Also check the cause.
-  /// @todo Check the annular-dots behavior.
   {
     double targetRad = 1.5, sourceRad = 1.0, probeRad = 0.25;
     unsigned int atomSeq = 0;
@@ -365,11 +404,17 @@ std::string DotScorer::test()
     if (res.cause.data != a.data) {
       return "DotScorer::test(): Did not find expected cause for dot_score()";
     }
+    if (as.interaction_type(res, true) != DotScorer::InteractionType::WorseOverlap) {
+      return "DotScorer::test(): Did not find WorseOverlap when expected for dot_score()";
+    }
 
-    source.set_xyz({ sourceRad + targetRad - 0.5,0,0 });
+    source.set_xyz({ sourceRad + targetRad - 0.45,0,0 });
     res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
     if (res.overlapType != DotScorer::OverlapType::Clash) {
       return "DotScorer::test(): Did not find clash when expected for dot_score()";
+    }
+    if (as.interaction_type(res, true) != DotScorer::InteractionType::BadOverlap) {
+      return "DotScorer::test(): Did not find BadOverlap when expected for dot_score()";
     }
 
     source.set_xyz({ sourceRad + targetRad - 0.01,0,0 });
@@ -377,11 +422,26 @@ std::string DotScorer::test()
     if (res.overlapType != DotScorer::OverlapType::Clash) {
       return "DotScorer::test(): Did not find small clash when expected for dot_score()";
     }
+    if (as.interaction_type(res, true) != DotScorer::InteractionType::SmallOverlap) {
+      return "DotScorer::test(): Did not find SmallOverlap when expected for dot_score()";
+    }
 
     source.set_xyz({ sourceRad + targetRad + 0.01,0,0 });
     res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
     if (res.overlapType != DotScorer::OverlapType::None) {
       return "DotScorer::test(): Did not find no overlap when expected for dot_score()";
+    }
+    if (as.interaction_type(res, true) != DotScorer::InteractionType::CloseContact) {
+      return "DotScorer::test(): Did not find CloseContact when expected for dot_score()";
+    }
+
+    source.set_xyz({ sourceRad + targetRad + 0.26,0,0 });
+    res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
+    if (res.overlapType != DotScorer::OverlapType::None) {
+      return "DotScorer::test(): Did not find no overlap when expected for dot_score()";
+    }
+    if (as.interaction_type(res, true) != DotScorer::InteractionType::WideContact) {
+      return "DotScorer::test(): Did not find WideContact when expected for dot_score()";
     }
 
     // Check so far away that there won't be any nearby atoms.
@@ -389,6 +449,9 @@ std::string DotScorer::test()
     res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
     if (res.overlapType != DotScorer::OverlapType::Ignore) {
       return "DotScorer::test(): Did not find ignore when expected for dot_score()";
+    }
+    if (as.interaction_type(res, true) != DotScorer::InteractionType::Invalid) {
+      return "DotScorer::test(): Did not find Invalid when expected for dot_score()";
     }
   }
 

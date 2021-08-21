@@ -74,9 +74,9 @@ vdw_output = True
   .type = bool
   .help = Output van der Waals contacts (-novdwout in probe)
 
-separate_worst_clashes = False
+separate_worse_clashes = False
   .type = bool
-  .help = Separately report the worst clashes, below -0.5 (-sepworse in probe)
+  .help = Separately report worse clashes (-sepworse in probe)
 
 set_group_name = dots
   .type = str
@@ -109,9 +109,9 @@ probe
     .type = float
     .help = Probe dots per square angstrom on atom surface (-density in probe)
 
-  worst_clash_cutoff = 0.5
+  worse_clash_cutoff = 0.5
     .type = float
-    .help = Cutoff for the worst clashes, a positive (-divworse in probe)
+    .help = Cutoff for worse clashes, a positive (-divworse in probe)
 
   clash_cutoff = 0.4
     .type = float
@@ -140,6 +140,10 @@ probe
   gap_weight = 0.25
     .type = float
     .help = Weight applied to gap score (-gapweight in probe)
+
+  separate_weak_hydrogen_bonds = False
+    .type = bool
+    .help = Separately account for weak hydrogen bonds (-LweakHbonds in probe)
 }
 
 output
@@ -274,7 +278,7 @@ Note:
       ds = probeExt.DotScorer(extra, self.params.probe.gap_weight,
         self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight,
         self.params.probe.uncharged_hydrogen_cutoff, self.params.probe.charged_hydrogen_cutoff,
-        self.params.probe.clash_cutoff, self.params.probe.worst_clash_cutoff)
+        self.params.probe.clash_cutoff, self.params.probe.worse_clash_cutoff)
 
       # Construct a dot-sphere cache
       cache = probeExt.DotSphereCache(self.params.probe.density)
