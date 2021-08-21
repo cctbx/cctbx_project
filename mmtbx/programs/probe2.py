@@ -202,8 +202,8 @@ Note:
       raise Sorry("Supply the prefix for an output file name using output.file_name_prefix=")
 
     # Ensure consistency among parameters
-    if self.params.probe.gap_weight < self.params.probe.radius:
-      self.params.probe.gap_weight = self.params.probe.radius
+    if self.params.probe.contact_cutoff < self.params.probe.radius:
+      self.params.probe.contact_cutoff = self.params.probe.radius
 
 # ------------------------------------------------------------------------------
 

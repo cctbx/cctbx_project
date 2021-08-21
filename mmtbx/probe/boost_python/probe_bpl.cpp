@@ -66,11 +66,11 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     .def("setMappingFor", &ExtraAtomInfoMap::setMappingFor)
     ;
 
-  enum_<DotScorer::InteractionType>("InteractionType")
-    .value("None", DotScorer::InteractionType::None)
-    .value("Clash", DotScorer::InteractionType::Clash)
-    .value("NearContact", DotScorer::InteractionType::NearContact)
-    .value("HydrogenBond", DotScorer::InteractionType::HydrogenBond)
+  enum_<DotScorer::OverlapType>("OverlapType")
+    .value("Ignore", DotScorer::OverlapType::Ignore)
+    .value("None", DotScorer::OverlapType::None)
+    .value("Clash", DotScorer::OverlapType::Clash)
+    .value("HydrogenBond", DotScorer::OverlapType::HydrogenBond)
     ;
 
   class_<DotScorer::CheckDotResult>("CheckDotResult", init<>())
