@@ -3120,14 +3120,14 @@ class map_model_manager(object):
          matching_info = target_and_matching,
          ca_only = True,
          max_dist = max_dist)
-      rms_diffs = diffs.rms_length() if diffs.size()>0 else None
+      rms_diffs = diffs.rms_length() if diffs and diffs.size()>0 else None
       reverse_diffs = self.get_diffs_for_matching_target_and_model(
          matching_info = target_and_matching,
          ca_only = True,
          max_dist = max_dist,
          reverse = True)
       rms_reverse_diffs = \
-         reverse_diffs.rms_length() if reverse_diffs.size()>0 else None
+         reverse_diffs.rms_length() if reverse_diffs and reverse_diffs.size()>0 else None
       if rms_diffs is not None and (rms_reverse_diffs is None or
           rms_diffs <= rms_reverse_diffs):
         target_and_matching.match_direction = True

@@ -66,7 +66,8 @@ def exercise_00():
   print(cmd)
   easy_run.call(cmd)
 
-  pdb_inp_refined = iotbx.pdb.input(file_name='tst_riding_fix_xyz_shaken_refine_001.pdb', source_info=None)
+  pdb_inp_refined = iotbx.pdb.input(
+    file_name='tst_riding_fix_xyz_shaken_001.pdb', source_info=None)
   model_refined = mmtbx.model.manager(
     model_input = pdb_inp_refined,
     log         = null_out())
