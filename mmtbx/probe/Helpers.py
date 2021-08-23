@@ -139,7 +139,7 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
             # model.  If so, we fill it and the vdwRadius information from
             # CCTBX.
             try:
-              hb_type = model.get_specific_h_bond_type(a)
+              hb_type = model.get_specific_h_bond_type(a.i_seq)
               if isinstance(hb_type, str):
                 if hb_type == "A" or hb_type == "B":
                   extra.isAcceptor = True
@@ -150,9 +150,9 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
                 # Michael Prisant that we want to use the ionic radius rather than the
                 # larger radius for all purposes.
                 if isMetallic(a):
-                  extra.vdwRadius = model.get_specific_ion_radius(a)
+                  extra.vdwRadius = model.get_specific_ion_radius(a.i_seq)
                 else:
-                  extra.vdwRadius = model.get_specific_vdw_radii(a)
+                  extra.vdwRadius = model.get_specific_vdw_radius(a.i_seq)
 
                 # Mark aromatic ring N and C atoms as acceptors as a hack to enable the
                 # ring itself to behave as an acceptor.
