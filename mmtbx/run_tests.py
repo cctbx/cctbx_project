@@ -5,7 +5,7 @@ from libtbx import easy_run
 import libtbx.load_env
 
 general_tests = [
-  "$D/suitename/unit-test/UnitTest.py",
+  "$D/suitename/unit-test/FullTest.py",
   #
   "$D/regression/tst_sampled_model_density.py",
   # pair interaction

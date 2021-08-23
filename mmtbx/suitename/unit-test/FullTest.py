@@ -6,8 +6,6 @@ workDir = os.path.dirname(sys.argv[0]).strip()
 if workDir:
   os.chdir(workDir)
   # else we must be there already
-print("working directory=", os.getcwd())
-
 
 def fullTest():
   UnitTest.testAll()
