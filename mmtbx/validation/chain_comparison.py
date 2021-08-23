@@ -10,6 +10,7 @@ import iotbx.phil
 import sys,os
 from operator import itemgetter
 from libtbx.utils import Sorry,null_out
+from libtbx import group_args
 from scitbx.array_family import flex
 from copy import deepcopy
 from six.moves import zip
@@ -190,8 +191,16 @@ class rmsd_values:
     self.used_target=None
     self.used_query=None
     self.n_fragments_list=[]
+    self.incorrect_connections = None
+    self.input_fragments = None
     self.file_info=""
     self.params=params
+
+  def add_incorrect_connections(self,incorrect_connections):
+    self.incorrect_connections = incorrect_connections
+
+  def add_input_fragments(self,input_fragments):
+    self.input_fragments = input_fragments
 
   def add_match_percent(self,id=None,match_percent=None):
     ipoint=self.id_list.index(id)
@@ -336,7 +345,6 @@ def get_best_match(xyz1,xyz2,crystal_symmetry=None,
       distance_per_site=distance_per_site)
   else: # do it without symmetry
     (distance,i,j)=xyz1.min_distance_between_any_pair_with_id(xyz2)
-    from libtbx import group_args
     info=group_args(i=i,j=j,distance=distance)
 
   if used_j_list and info.j in used_j_list: # used an atom twice
@@ -943,8 +951,9 @@ def write_summary(params=None,file_list=None,rv_list=None,
       print("               ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %", file=out)
       print("     MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED"+\
               " FOUND  CA                  SEQ", file=out)
-      print("               RMSD   N      N       N       N      N  "+\
-              "        SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH"+"\n", file=out)
+      print("               RMSD   N      N       N       N      N "+\
+     "        SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH  FRAGMENTS BAD CONNECTIONS"+"\n",
+        file=out)
 
   results_dict={}
   score_list=[]
@@ -970,11 +979,13 @@ def write_summary(params=None,file_list=None,rv_list=None,
     unaligned_rmsd,unaligned_n=rv.get_values('unaligned')
     match_percent=rv.get_match_percent('close')
     fragments=rv.get_n_fragments('forward')+rv.get_n_fragments('reverse')
+    incorrect_connections = rv.incorrect_connections
+    input_fragments = rv.input_fragments
     mean_length=close_n/max(1,fragments)
     if full_rows:
-      print("%14s %4.2f %4d   %4d   %4d    %4d    %4d  %5.1f %6.2f   %5.1f      %6.2f  %5.1f" %(file_name,close_rmsd,close_n,far_away_n,forward_n,
+      print("%14s %4.2f %4d   %4d   %4d    %4d    %4d  %5.1f %6.2f   %5.1f      %6.2f  %5.1f %10s %15s" %(file_name,close_rmsd,close_n,far_away_n,forward_n,
          reverse_n,unaligned_n,percent_close,score,match_percent,seq_score,
-         mean_length), file=out)
+         mean_length, input_fragments, incorrect_connections), file=out)
     else:
       print("ID: %14s \nClose rmsd: %4.2f A  (N=%4d)  (Far N=%4d) \n" %(
             file_name,close_rmsd,close_n,far_away_n)+\
@@ -986,7 +997,10 @@ def write_summary(params=None,file_list=None,rv_list=None,
          "Percent matching sequence: %.1f \n" %(
              match_percent)+\
          "Sequence score:  %.2f  Mean match length: %.1f" %(
-               seq_score, mean_length), file=out)
+               seq_score, mean_length) +\
+         "Fragments: %s  Incorrect connections:  %s" %(
+           input_fragments, incorrect_connections),
+           file=out)
 
 def get_target_length(target_chain_ids=None,hierarchy=None,
      target_length_from_matching_chains=None):
@@ -1119,6 +1133,69 @@ def get_fragment_count(forward_match_list):
       n+=1
     i_last=i
   return n
+
+
+def get_working_fragment():
+  return group_args(
+    group_args_type = 'working fragment',
+    start_i = None,
+    start_j = None,
+    end_i = None,
+    end_j = None,
+    forward = None,
+    )
+
+def get_incorrect_connections(close_match_list):
+  fragments = []
+  wf = get_working_fragment()
+  fragments.append(wf)
+  for i,j in close_match_list:
+    if wf.start_j is None:
+      wf.start_i = i
+      wf.start_j = j
+      wf.end_i = i
+      wf.end_j = j
+    elif wf.forward in [True, None] and wf.end_j + 1 == j: # forward
+      wf.end_i = i
+      wf.end_j = j
+      wf.forward = True
+    elif wf.forward in [False, None] and wf.end_j - 1 == j: # reverse
+      wf.end_i = i
+      wf.end_j = j
+      wf.forward = False
+    else: # new one
+      wf = get_working_fragment()
+      fragments.append(wf)
+      wf.start_i = i
+      wf.start_j = j
+      wf.end_i = i
+      wf.end_j = j
+  # Remove all fragments of length 1
+  new_fragments = []
+  for wf in fragments:
+    if wf.forward is not None:
+      new_fragments.append(wf)
+  fragments = new_fragments
+  # Incorrect connections are:
+  #    True->False or False-> True
+  #    True->True and end_j does not increase
+  #    False->False and end_j does not decrease
+  incorrect_connections = 0
+  for wf,wf1 in zip(fragments[:-1],fragments[1:]):
+    ok = True
+    if wf.forward != wf1.forward:
+      ok = False
+    if wf.forward and wf1.end_j <= wf.end_j:
+      ok = False
+    if (not wf.forward) and wf1.end_j > wf.end_j:
+      ok = False
+    if not ok:
+      incorrect_connections += 1
+  return incorrect_connections
+
+def get_input_fragments(chain_xyz_cart, distance_per_site = 3.8):
+  gaps = ( (chain_xyz_cart[:-1] - chain_xyz_cart[1:]).norms() > 2 * distance_per_site).count(True)
+  return gaps + 1
 
 def run(args=None,
    ncs_obj=None,
@@ -1365,6 +1442,7 @@ def run(args=None,
   best_pair=None
   pair_list=[]
   from scitbx.array_family import flex
+  input_fragments = get_input_fragments(chain_xyz_cart, distance_per_site = distance_per_site)
   chain_xyz_fract=crystal_symmetry.unit_cell().fractionalize(chain_xyz_cart)
   target_xyz_fract=crystal_symmetry.unit_cell().fractionalize(target_xyz_cart)
   far_away_match_list=[]
@@ -1463,6 +1541,8 @@ def run(args=None,
       last_i=i
       last_j=j
 
+  incorrect_connections = get_incorrect_connections(close_match_list)
+
   if n_forward==n_reverse==0:
     direction='none'
   elif n_forward>= n_reverse:
@@ -1474,6 +1554,9 @@ def run(args=None,
      direction,n_forward,n_reverse,chain_xyz_fract.size()), file=out)
 
   rv=rmsd_values(params=params)
+  rv.add_incorrect_connections(incorrect_connections)
+  rv.add_input_fragments(input_fragments)
+
 
   id='forward'
   if forward_match_rmsd_list.size():

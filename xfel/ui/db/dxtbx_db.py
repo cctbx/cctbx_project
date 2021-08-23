@@ -10,7 +10,7 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
   else:
     app.mode = 'cache_commits'
 
-  if isinstance(run, int):
+  if isinstance(run, int) or isinstance(run, str):
     db_run = app.get_run(run_number=run)
   else:
     db_run = run
@@ -42,6 +42,9 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
                                   two_theta_high = two_theta_high)
 
   inserts = ""
+
+  if app.last_query is None:
+    app.last_query = ""
 
   def save_last_id(name):
     nonlocal inserts

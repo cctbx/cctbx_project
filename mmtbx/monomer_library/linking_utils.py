@@ -61,6 +61,18 @@ class empty:
       outl += "  %s : %s\n" % (attr, getattr(self, attr))
     return outl
 
+  def __lt__(self, other):
+    if type(other)==type(''): return False
+    for attr in sorted(self.__dict__):
+      item1 = getattr(self, attr)
+      item2 = getattr(other, attr)
+      rc = item1==item2
+      if rc:
+        continue
+      else:
+        return rc
+    return rc
+
 def _write_warning_line(s):
   print(" !!! %-78s !!!" % s)
 
@@ -211,7 +223,7 @@ def get_classes(atom, important_only=False, verbose=False):
     return class_name
   #
   attrs = [
-    "common_saccharide", # not in get_class
+    "common_saccharide",
     "common_water",
     "common_element",
     "common_small_molecule",
@@ -221,6 +233,7 @@ def get_classes(atom, important_only=False, verbose=False):
     "other",
     "uncommon_amino_acid",
     "unknown",
+    'd_amino_acid',
     ]
   redirect = {"modified_amino_acid" : "other",
               "modified_rna_dna" : "other",
@@ -252,15 +265,23 @@ def get_classes(atom, important_only=False, verbose=False):
     if i:
       rc = gc
     else:
+      gotten_type = None
       if atom_group.resname in one_letter_given_three_letter:
         gotten_type = "L-PEPTIDE LINKING"
       elif atom_group.resname in ["HOH"]:
         gotten_type = "NON-POLYMER"
+      #
+      # special section for getting SOME of the carbohydrates using the get_class
+      # or from the Chem Components which does not work in ccctbx only install
+      #
+      elif gc=='common_saccharide':
+        rc = gc
       else:
         gotten_type = get_type(atom_group.resname)
       if gotten_type is not None:
         if gotten_type.upper() in sugar_types:
           rc = attr
+      #
     if rc==attr:
       if important_only: return _filter_for_metal(atom, rc)
       setattr(classes, attr, True)
@@ -340,11 +361,15 @@ def is_atom_pair_linked(atom1,
   class2 = get_classes(atom2, important_only=True)
   class1 = linking_setup.adjust_class(atom1, class1)
   class2 = linking_setup.adjust_class(atom2, class2)
+  # python3
+  # assert type(class1)==type(''), 'class1 of %s not singular : %s' % (atom1.quote(), class1)
+  # assert type(class2)==type(''), 'class2 of %s not singular : %s' % (atom2.quote(), class2)
   if ( linking_setup.sulfur_class(atom1, class1)=="sulfur" and
        linking_setup.sulfur_class(atom2, class2)=="sulfur" ):
     class1 = 'sulfur'
     class2 = 'sulfur'
   lookup = [class1, class2]
+  if verbose: print('lookup', lookup, atom1.quote(), atom2.quote())
   lookup.sort()
   if verbose: print('lookup1',lookup,skip_if_both) #.get(lookup, None)
   if lookup in skip_if_both: return False
