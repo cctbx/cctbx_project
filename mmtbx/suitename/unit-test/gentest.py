@@ -1,4 +1,4 @@
-# This is an end frequently run file used to generate
+# This is an infrequently run file used to generate
 # unit test data from the data inherent in suitename.py
 # Its output was used to create the canonicalOutput string in UnitTest.py
 
