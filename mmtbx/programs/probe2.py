@@ -144,6 +144,10 @@ probe
   separate_weak_hydrogen_bonds = False
     .type = bool
     .help = Separately account for weak hydrogen bonds (-LweakHbonds in probe)
+
+  implicit_hydrogens = False
+    .type = bool
+    .help = Use implicit hydrogens, no water proxies (-implicit in probe)
 }
 
 output
