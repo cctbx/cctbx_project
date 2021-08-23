@@ -1,1 +1,0 @@
-mmtbx.mp_geo rna_backbone=True %1.pdb > %1.dangle
