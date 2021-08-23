@@ -28,7 +28,7 @@ from libtbx.utils import multi_out, show_total_time
 import os, sys
 
 def run(args):
-  # create parser
+  "The main program, if run from CCTBX / PHENIX."
   logger = multi_out()
   logger.register('stderr', sys.stderr)
   logger2 = multi_out()

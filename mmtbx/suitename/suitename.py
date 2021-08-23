@@ -24,7 +24,7 @@ delta of the next. This unit is known as a "suite", because it runs between the
 ribose sugars (and also between adjacent bases).
 
 These seven dihedral angles define a 7-dimensional space, analogous to the 2-D
-Ramachandran phi,psi space but vastly larger. Suitename's analysis encapsulates
+Ramachandran phi, psi space but vastly larger. Suitename's analysis encapsulates
 the results of research that used the well-ordered parts of a high-accuracy
 reference structure dataset to classify feasible conformations of these angles
 into several dozen well-populated clusters of observed cases
@@ -75,7 +75,7 @@ for use by other CCTBX programs.
 from suitenamedefs import Suite, Residue, Bin, Cluster, Issue, failMessages
 from suitenamedefs import Holder, globals
 # suitenamedefs must come first!
-import suiteninit, suiteninput
+import suiteninit
 from suiteninit import bins, MAX_CLUSTERS, normalWidths, satelliteWidths
 from suiteninput import readResidues, readKinemageFile, buildSuites
 
@@ -97,6 +97,7 @@ outNote.outliers = 0
 
 
 # ***main()******************************************************************
+"The main program, if run without using CCTBX or ProgramTemplate (old style)."""
 def main(inStream=None, outFile=None, errorFile=None, optionsIn=None):
   # inStream is used in internal testing
   global options

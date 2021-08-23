@@ -28,6 +28,11 @@ from libtbx.utils import Sorry
 from diangle import getResidueDihedrals
 
 
+# IMPORT TO EXPORT:
+from mmtbx.suitename.suitename import read, compute, write, \
+    finalStats, clearStats
+
+
 # The following are the options available, in Phil format, 
 # for human and computer comprehension.
 philOptions = """
@@ -94,14 +99,15 @@ philOptions = """
       version=false
         .type=bool
         .help="give the version number of suite name"   
-    # deprecated
+    # deprecated and automatically true:
       oneline=false
         .type=bool 
     }
 """
 
 def main(options, outFile=None, errorFile=None):
-  from mmtbx.suitename.suitename import compute, write, finalStats, clearStats
+  """The main track for handling PDB and CIF input formats, which will involve 
+     parsing the model hierarchy to get the dihedral angles for ourselves"""
   setOptions(options)
   import suiteninput  # must be AFTER setOptions
 
@@ -158,9 +164,7 @@ def setOptions(optionsIn):
   """optionsIn may be the result of parseOptions above
      or the result of an argparse parse_args operation"""
   from mmtbx.suitename.suitename import loadOptions
-  global options
-  options = optionsIn
-  globals.options = options
+  globals.options = optionsIn
   loadOptions(optionsIn)
 
 
