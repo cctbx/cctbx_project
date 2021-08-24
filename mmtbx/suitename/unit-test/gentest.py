@@ -53,8 +53,8 @@ def testCore(id, index, min):
         m = index + 2
         n = 0
     basic[n].angle[m] = min - 1.0
-    r1 = Residue(f" :{id}: : : : Z:", "Z", basic[0].angle)
-    r2 = Residue(f" :{id}: : : : Z:", "Z", basic[1].angle)
+    r1 = Residue(" :{}: : : : Z:".format(id), "Z", basic[0].angle)
+    r2 = Residue(" :{}: : : : Z:",format(id), "Z", basic[1].angle)
     printResidue(r1)
     printResidue(r2)
 
@@ -70,14 +70,14 @@ def run1():
 def residuesFromCluster(angles, id):
     angles1 = np.array(3 * [9999] + list(angles[1:4]) + list(angles[0:1]))
     angles2 = np.array(list(angles[4:8]) + 2 * [9999] + list(angles[8:9]))
-    r1 = Residue(f" :{id}: : : : Z:", "Z", angles1)
-    r2 = Residue(f" :{id}: : : : Z:", "Z", angles2)
+    r1 = Residue(" :{}: : : : Z:".format(id), "Z", angles1)
+    r2 = Residue(" :{}: : : : Z:".format(id), "Z", angles2)
     printResidue(r1)
     printResidue(r2)
 
 
 def printResidue(r):
-    angleText = ":".join([f"{x:9.3f}" for x in r.angle])
+    angleText = ":".join(["{:9.3f}".format(x) for x in r.angle])
     print(r.pointIDs, angleText)
 
 
