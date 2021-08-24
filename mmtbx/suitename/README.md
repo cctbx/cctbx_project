@@ -32,6 +32,11 @@ Three forms of output are supported:
 
 Many other command line options are available; type `python3 suitename.py --help` to display them.
 
+## Use as a library
+
+See the suites.rtf document for more information about using suites as a library
+rather than a program.
+
 ## Testing
 
 In addition to the tests found in the unit-test direcgtory, this Python code was run
