@@ -4,8 +4,8 @@
 # https://github.com/Microsoft/azure-pipelines-image-generation/blob/master/images/macos/macos-10.14-Readme.md
 #
 # Parameters:
-#   vmImage: [10, 14]  # macOs version
-#   xcode_version: [11, 3, 1]  # xCode version
+#   vmImage: [10, 15]  # macOs version
+#   xcode_version: [12, 4]  # xCode version
 #   modules: <modules artifact name>
 #   template: <build template file>
 #   prefix: <build artifact prefix>
@@ -20,17 +20,17 @@ jobs:
     matrix:
       # python3.6:
       #   CONDA: MacOSX
-      #   OS: osx-64
+      #   OS: macos
       #   PYTHON_VERSION: py36
       #   MODULES: ${{ parameters.modules }}
       python3.7:
         CONDA: MacOSX
-        OS: osx-64
+        OS: macos
         PYTHON_VERSION: py37
         MODULES: ${{ parameters.modules }}
       # python3.8:
       #   CONDA: MacOSX
-      #   OS: osx-64
+      #   OS: macos
       #   PYTHON_VERSION: py38
       #   MODULES: ${{ parameters.modules }}
 

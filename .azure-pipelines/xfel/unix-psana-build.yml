@@ -2,7 +2,7 @@
 #
 # Variables:
 #   CONDA: Linux, MacOSX
-#   OS: linux-64, osx-64
+#   OS: linux, macos
 #   PYTHON_VERSION: py37
 
 steps:
