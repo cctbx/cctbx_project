@@ -178,7 +178,7 @@ class conda_manager(object):
       default_format.format(builder='phasertng', version=version,
                             platform=conda_platform[platform.system()]))
   }
-  env_locations['xfel'] = 'dials'
+  env_locations['xfel'] = env_locations['dials']
   # A set of builders where the environment files do not specify the python
   # version
   env_without_python = [ "dials" ]
