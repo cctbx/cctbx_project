@@ -7932,14 +7932,12 @@ class map_model_manager(object):
       scattering_table = self.scattering_table()
 
     # Set the resolution now if not already set
-    if d_min and have_map_manager and (not self.resolution()):
+    if d_min is not None:
       self.set_resolution(d_min)
-
-    # Get some value for resolution
-    if not have_map_manager and d_min:
+    elif self.resolution():
       d_min = self.resolution()
-    if not d_min:
-      d_min = 3  # default
+    else:
+      d_min = 3
 
 
     self._print("\nGenerating new map data\n")
