@@ -159,9 +159,6 @@ class conda_manager(object):
     'phenix_voyager': os.path.join('phenix', 'conda_envs',
       default_format.format(builder='phenix', version=version,
                             platform=conda_platform[platform.system()])),
-    'xfel': os.path.join('dials', '.conda-envs',
-      default_format.format(builder='dials', version=version,
-                            platform=conda_platform[platform.system()])),
     'xfellegacy': default_file,
     'labelit': default_file,
     'dials-old': os.path.join('dials', '.conda-envs',
@@ -181,6 +178,7 @@ class conda_manager(object):
       default_format.format(builder='phasertng', version=version,
                             platform=conda_platform[platform.system()]))
   }
+  env_locations['xfel'] = 'dials'
   # A set of builders where the environment files do not specify the python
   # version
   env_without_python = [ "dials" ]
