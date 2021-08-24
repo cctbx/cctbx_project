@@ -1,5 +1,5 @@
 from __future__ import nested_scopes, generators, division, absolute_import
-from __future__ import  with_statement, print_function, unicode_literals
+from __future__ import  with_statement, print_function
 import os, sys, inspect
 from io import StringIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -19,7 +19,7 @@ import suitename, suites, regression
 # The second portion is to test triage by out of bounds angle
 # for each dihedral angle. The unnecessary part of each residue is damaged so
 # the extra suite generated will be incomplete and will vanish.
-input1=''' :1a: : : : :  Z:  9999.000: 9999.000: 9999.000:   81.495:  212.250:  288.831:  180.000
+input1=u''' :1a: : : : :  Z:  9999.000: 9999.000: 9999.000:   81.495:  212.250:  288.831:  180.000
  :1a: : : : :  Z:   294.967:  173.990:   53.550:   81.035: 9999.000: 9999.000:  180.000
  :1m: : : : :  Z:  9999.000: 9999.000: 9999.000:   83.513:  218.120:  291.593:  180.000
  :1m: : : : :  Z:   292.247:  222.300:   58.067:   86.093: 9999.000: 9999.000:  180.000
@@ -150,7 +150,7 @@ input1=''' :1a: : : : :  Z:  9999.000: 9999.000: 9999.000:   81.495:  212.250:  
 # each pair has intentionally been damaged so that it will not produce separate
 # output from a report. We use the causes option to illustrate what code path
 # is being used.
-input2 = '''2xLk:1: C:  11: : :  G:__?__:__?__:__?__:81.132:-127.583:-70.677
+input2 = u'''2xLk:1: C:  11: : :  G:__?__:__?__:__?__:81.132:-127.583:-70.677
 2xLk:1: C:  12: : :  U:169.008:153.891:51.391:80.277:-135.347:-70.614
 3cgp:1: B:  19: : :  U:__?__:__?__:__?__:82.839:-147.528:-179.087
 3cgp:1: B:  20: : :  A:139.983:-154.445:63.134:88.055:-145.599:70.874
@@ -288,7 +288,7 @@ output2 = '''2xLk:1: C:  12: : :  U 33 p 1g 0.839 1-only-one
 def test(input, canonicalOutput, options, identity):
   opt = suites.parseOptions(options)
   stream = StringIO(input)
-  outFile=StringIO("")
+  outFile=StringIO()
   suitename.clearStats()
   suitename.main(stream, outFile=outFile, optionsIn=opt)
   suitename.clearStats()

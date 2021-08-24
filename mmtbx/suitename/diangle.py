@@ -17,7 +17,6 @@ from __future__ import  with_statement, print_function
 import os, sys
 
 from iotbx.data_manager import DataManager    #   Load in the DataManager
-from mmtbx.validation import utils
 from scitbx.matrix import dihedral_angle
 from suitenamedefs import Residue, findBase
 
