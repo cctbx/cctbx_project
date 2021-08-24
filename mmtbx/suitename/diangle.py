@@ -289,7 +289,7 @@ def jump_start():
 
 
 def new_residue(residues, pivot):
-  """Start a new Residue object, whose angles will be filled in later as we 
+  """Start a new Residue object, whose angles will be filled in later as we
      continue down the chain."""
   residue = Residue("", "", [9999, 9999, 9999, 9999, 9999, 9999])
   labels = pivot.fetch_labels()

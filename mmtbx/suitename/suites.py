@@ -1,17 +1,15 @@
-from __future__ import nested_scopes, generators, division, absolute_import 
+from __future__ import nested_scopes, generators, division, absolute_import
 from __future__ import  with_statement, print_function, unicode_literals
-import sys, os, inspect
-
-from numpy.lib.arraysetops import ediff1d
+import sys, os
 
 #        Copyright 2021  Richardson Lab at Duke University
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,15 +27,15 @@ from diangle import getResidueDihedrals
 
 
 # IMPORT TO EXPORT:
-from mmtbx.suitename.suitename import read, compute, write, \
+from mmtbx.suitename.suitename import compute, write, \
     finalStats, clearStats
 
 
-# The following are the options available, in Phil format, 
+# The following are the options available, in Phil format,
 # for human and computer comprehension.
 philOptions = """
   suitename {
-    # input 
+    # input
       infile=""
         .type=str
         .help="the file to process"
@@ -56,8 +54,8 @@ philOptions = """
       suitein=false
         .type=bool
         .help="expect kinemage format giving suites directly"
-    # output 
-      string=False  
+    # output
+      string=False
         .type=bool
         .help="output in string format, 3 characters per suite"
       kinemage=False
@@ -78,10 +76,10 @@ philOptions = """
       test=False
         .type=bool
         .help="display a lat of additional information about program internals"
-    # compute 
+    # compute
       satellites=False
         .type=bool
-        .help="use the special satelliteWidths values for satellites" 
+        .help="use the special satelliteWidths values for satellites"
       nowannabe=False
         .type=bool
         .help="do not consider 'wannabe' clusters"

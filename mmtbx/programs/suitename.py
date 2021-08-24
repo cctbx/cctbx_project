@@ -1,19 +1,19 @@
 #        Copyright 2021  Richardson Lab at Duke University
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function 
-import sys, os, pprint
+from __future__ import print_function
+import sys, os
 
 from mmtbx.suitename import dualparse, suites
 from mmtbx.suitename.suitename import main, version
@@ -40,7 +40,7 @@ def run(args):
   parser = dualparse.parseArgs(Program, logger3)
   working_phil = parser.working_phil
   options = working_phil.extract().suitename
-  
+
   # now we call into the core of suitename itself
   if options.version:
       print(version, file=logger2)
@@ -50,7 +50,7 @@ def run(args):
       main(optionsIn=options, outFile=logger2, errorFile=logger)
   else:
       type, ext = analyzeFileType(options.infile)
-      if type=="": 
+      if type=="":
         logger.write("File extension "+str(ext)+" not recognized\n")
         return
       if type == "pdb":
@@ -91,7 +91,7 @@ class Program(ProgramTemplate):
   # of CCTBX
   master_phil_str = """
     suitename {
-      # input 
+      # input
         infile=""
           .type=str
           .help="the file to process"
@@ -110,8 +110,8 @@ class Program(ProgramTemplate):
         suitein=false
           .type=bool
           .help="expect kinemage format giving suites directly"
-      # output 
-        string=False  
+      # output
+        string=False
           .type=bool
           .help="output in string format, 3 characters per suite"
         kinemage=False
@@ -132,7 +132,7 @@ class Program(ProgramTemplate):
         test=False
           .type=bool
           .help="display a lat of additional information about program internals"
-      # compute 
+      # compute
         satellites=False
           .type=bool
           .help="use the special satelliteWidths values for satellites" 

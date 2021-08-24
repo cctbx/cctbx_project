@@ -8,4 +8,4 @@ from  mmtbx.programs import suitename
 
 if __name__ == '__main__':
   suitename.run(args=sys.argv[1:])
-  
+

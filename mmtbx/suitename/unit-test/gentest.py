@@ -2,6 +2,7 @@
 # unit test data from the data inherent in suitename.py
 # Its output was used to create the canonicalOutput string in UnitTest.py
 
+from __future__ import division
 import os, sys, inspect, copy
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))

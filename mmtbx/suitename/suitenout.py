@@ -17,10 +17,7 @@ from __future__ import  with_statement, print_function, unicode_literals
 from suitenamedefs import globals, reasons
 from suiteninit import bins
 
-import sys
-from enum import Enum
 import numpy as np
-from numpy import array
 
 options = None  # global,  will be copied from suitename.py global
 

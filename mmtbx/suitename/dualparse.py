@@ -1,20 +1,20 @@
 #        Copyright 2021  Richardson Lab at Duke University
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import nested_scopes, generators, division, absolute_import 
+from __future__ import nested_scopes, generators, division, absolute_import
 from __future__ import  with_statement, print_function, unicode_literals
-import suiteninit, argparse
+import argparse
 from suiteninit import buildParser
 
 from iotbx.cli_parser import CCTBXParser
@@ -35,7 +35,7 @@ def parseArgs(programClass, logger):
   # create the cctbx aspect of the parser
   parser2 = CCTBXParser(
     program_class = programClass,
-    # custom_process_arguments = custom_args_proc, 
+    # custom_process_arguments = custom_args_proc,
     logger=logger
     )
   # do it
@@ -73,7 +73,7 @@ def argsToPhilForm(namespace, others):
   """
   Converting the parseArgs data to phil input format:
   The raw namespace as an entry for every argument that could possibly appear,
-  including some that are aliases for others, some that are deprecated that 
+  including some that are aliases for others, some that are deprecated that
   we will not support in this context. We determine that an alias has been used
   if its value is different from its default. If so, the alias overrides the
   main item. In any case, only one of a main/alias pair will be passed on.
@@ -97,7 +97,7 @@ def argsToPhilForm(namespace, others):
         dictionary[item.main_name] = value
       dictionary[key] = None
       # -- all aliases and deprecated items are suppressed from the dictionary
-    
+
   argsOut = []
   for  key,value in dictionary.items(): # vars turns namespace to dict
     if value is not None and value != "":
@@ -111,13 +111,13 @@ def parseArgs1(Program, logger):
     program_class = Program,
     # custom_process_arguments = custom_args_proc,
     logger=logger)
-    
+
   # add the old suitename aspect of the parser
   buildParser(parser)
   # do it
   namespace = parser.parse_args(sys.argv[1:])
   return parser.working_phil
-  
+
 
 
 

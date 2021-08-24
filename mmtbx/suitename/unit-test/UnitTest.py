@@ -1,3 +1,5 @@
+from __future__ import nested_scopes, generators, division, absolute_import
+from __future__ import  with_statement, print_function, unicode_literals
 import os, sys, inspect
 from io import StringIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))

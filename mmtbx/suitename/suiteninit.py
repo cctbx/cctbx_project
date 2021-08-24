@@ -5,20 +5,20 @@ this program is built. It exports its primary data structure:
 """
 
 #        Copyright 2021  Richardson Lab at Duke University
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import nested_scopes, generators, division, absolute_import 
+from __future__ import nested_scopes, generators, division, absolute_import
 from __future__ import  with_statement, print_function, unicode_literals
 import suitenamedefs
 from suitenamedefs import Bin, Cluster, SatelliteInfo
@@ -48,7 +48,7 @@ def parseCommandLine():
 
 def buildParser(parser):
     "Set up the expected arguments, ready for parsing"
-    
+
     # the input file may be given as an argument or as a redirect
     parser.add_argument("infile", nargs="?", default="")
 
@@ -64,7 +64,7 @@ def buildParser(parser):
     outputStyle.add_argument("--string", "-string", action="store_true")
     outputStyle.add_argument("--kinemage", "-kinemage", action="store_true")
     # output modifiers
-    parser.add_argument("--chart", "-chart", action="store_true")  
+    parser.add_argument("--chart", "-chart", action="store_true")
       # a modifier to --report, suppress as the statistical summary
     parser.add_argument("--causes", "-causes", action="store_true")
       # a modifier to --report, reveals algorithm details
@@ -90,7 +90,7 @@ def buildParser(parser):
 
     # the following are deprecated:
     parser.add_argument("--angles", type=int, default=9)
-    parser.add_argument("--resAngles", type=int, default=6)    
+    parser.add_argument("--resAngles", type=int, default=6)
     parser.add_argument("--oneline", "-oneline", action="store_true")
     #   "--help" is automatically available, it summarizes this list.
     return parser
@@ -195,15 +195,15 @@ bin0data = (0, "trig",
 )
 
 bin1data = (1, "33 p",
-    ( 0 , "!!", "outlier", "white      ", "out", 
+    ( 0 , "!!", "outlier", "white      ", "out",
         (0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0)),
-    ( 1 , "1a", "certain", "yellowtint ", "dom", 
+    ( 1 , "1a", "certain", "yellowtint ", "dom",
         (180.0,  81.495,  212.25,  288.831,  294.967,  173.99,  53.55,  81.035,  180.0)),
     ( 2 , "1m", "certain", "blue       ", "sat",
         (180.0,  83.513,  218.12,  291.593,  292.247,  222.3,  58.067,  86.093,  180.0)),
     ( 3 , "1L", "certain", "green      ", "sat",
         (180.0,  85.664,  245.014,  268.257,  303.879,  138.164,  61.95,  79.457,  180.0)),
-    ( 4 , "&a", "certain", "cyan       ", "sat", 
+    ( 4 , "&a", "certain", "cyan       ", "sat",
         (180.0,  82.112,  190.682,  264.945,  295.967,  181.839,  51.455,  81.512,  180.0)),
     ( 5 , "7a", "certain", "pink       ", "ord", 
         (180.0,  83.414,  217.4,  222.006,  302.856,  160.719,  49.097,  82.444,  180.0)),

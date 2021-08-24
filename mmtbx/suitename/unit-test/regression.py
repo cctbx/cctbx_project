@@ -1,5 +1,5 @@
-import os, sys, subprocess
-from sys import stderr
+from __future__ import nested_scopes, generators, division, absolute_import
+from __future__ import  with_statement, print_function, unicode_literals
 from io import StringIO
 
 from mmtbx.suitename.suitename import main

@@ -1,4 +1,4 @@
-from __future__ import nested_scopes, generators, division, absolute_import 
+from __future__ import nested_scopes, generators, division, absolute_import
 from __future__ import  with_statement, print_function, unicode_literals
 import re, os, sys
 
@@ -56,7 +56,7 @@ def main():
     lines = stream.readlines()
     oStream = open(outFile, "w")
     #oStream = sys.stderr
-    
+
     indents = []
     prevSpaces = 0
     level = 0
@@ -100,4 +100,4 @@ def main():
     oStream.close()
 
 main()
- 
+

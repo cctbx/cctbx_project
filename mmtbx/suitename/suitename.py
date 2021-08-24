@@ -72,14 +72,14 @@ The various operations of Suitename are also provided as a library, suites.py,
 for use by other CCTBX programs.
 
 """
-from suitenamedefs import Suite, Residue, Bin, Cluster, Issue, failMessages
+from suitenamedefs import Cluster, Issue, failMessages
 from suitenamedefs import Holder, globals
 # suitenamedefs must come first!
 import suiteninit
 from suiteninit import bins, MAX_CLUSTERS, normalWidths, satelliteWidths
 from suiteninput import readResidues, readKinemageFile, buildSuites
 
-import sys, os
+import sys
 import numpy as np
 from math import cos, pi
 
@@ -186,7 +186,7 @@ def compute(suites):
 
 def annotate(suite, bin, cluster, distance, suiteness, situation,
                 issue, comment, pointMaster, pointColor):
-  """ Add attributes to suite objects, thus recording the results of 
+  """ Add attributes to suite objects, thus recording the results of
   Suitename computations."""
   suite.bin = bin
   suite.cluster = cluster
@@ -450,15 +450,15 @@ def membership(bin, suite):
 
 
 def domSatDistinction(suite, domCluster, satCluster, matches, matchCount):
-  """ 
-  The special case where the two best matches are the dominant cluster in the 
-  bin, and its satellite. Since dominant clusters are typically much larger 
-  than their satellites, we don't just accept whatever cluster is closest. 
-  First, we do a vector test to see if our suite actually lies in between the 
-  two. If so, we use specially chosen "width" parameters in each dimension to 
-  do a comparison. In a few cases, even more specially chosen width parameters 
-  (satelliteInfo) apply to this exact dominant/satellite pair. Thus we test 
-  our suite's position against two hyperellipsoids of unequal size and shape, 
+  """
+  The special case where the two best matches are the dominant cluster in the
+  bin, and its satellite. Since dominant clusters are typically much larger
+  than their satellites, we don't just accept whatever cluster is closest.
+  First, we do a vector test to see if our suite actually lies in between the
+  two. If so, we use specially chosen "width" parameters in each dimension to
+  do a comparison. In a few cases, even more specially chosen width parameters
+  (satelliteInfo) apply to this exact dominant/satellite pair. Thus we test
+  our suite's position against two hyperellipsoids of unequal size and shape,
   to see which is the better fit.
   """
   closestCluster = satCluster
