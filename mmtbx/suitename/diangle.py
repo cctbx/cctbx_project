@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import nested_scopes, generators, division, absolute_import
-from __future__ import  with_statement, print_function, unicode_literals
+from __future__ import  with_statement, print_function
 import os, sys
 
 from iotbx.data_manager import DataManager    #   Load in the DataManager

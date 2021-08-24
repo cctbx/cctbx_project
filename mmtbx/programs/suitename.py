@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+from __future__ import nested_scopes, generators, division, absolute_import
+from __future__ import with_statement, print_function
 import sys, os
 
 from mmtbx.suitename import dualparse, suites
@@ -150,11 +151,11 @@ class Program(ProgramTemplate):
         altidfield = 6
           .type=int
           .help="which field (1-based) gives the alternate conformer code"
-        version=false
+        version=False
           .type=bool
           .help="give the version number of suite name"
       # deprecated
-        oneline=false
+        oneline=False
           .type=bool
       }
 """

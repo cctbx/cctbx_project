@@ -14,7 +14,7 @@
 
 from __future__ import division
 from __future__ import nested_scopes, generators, absolute_import
-from __future__ import with_statement, print_function, unicode_literals
+from __future__ import with_statement, print_function
 
 """
 Suitename is a program to aid model-building and perform validation of RNA

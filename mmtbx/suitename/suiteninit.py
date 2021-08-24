@@ -19,7 +19,7 @@ this program is built. It exports its primary data structure:
 # limitations under the License.
 
 from __future__ import nested_scopes, generators, division, absolute_import
-from __future__ import  with_statement, print_function, unicode_literals
+from __future__ import  with_statement, print_function
 import suitenamedefs
 from suitenamedefs import Bin, Cluster, SatelliteInfo
 
