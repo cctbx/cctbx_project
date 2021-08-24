@@ -96,15 +96,15 @@ philOptions = """
         .help="which field (1-based) gives the alternate conformer code"
       version=false
         .type=bool
-        .help="give the version number of suite name"   
+        .help="give the version number of suite name"
     # deprecated and automatically true:
       oneline=false
-        .type=bool 
+        .type=bool
     }
 """
 
 def main(options, outFile=None, errorFile=None):
-  """The main track for handling PDB and CIF input formats, which will involve 
+  """The main track for handling PDB and CIF input formats, which will involve
      parsing the model hierarchy to get the dihedral angles for ourselves"""
   setOptions(options)
   import suiteninput  # must be AFTER setOptions
@@ -114,7 +114,7 @@ def main(options, outFile=None, errorFile=None):
   inFile = options.infile
   model = loadModel(inFile)
 
-  residues = getResidueDihedrals(model, options.altid, 
+  residues = getResidueDihedrals(model, options.altid,
                                  name=os.path.splitext(inFile)[0],
                                  errorFile=errorFile)
   ### to print mp_geo-like output:
@@ -132,7 +132,7 @@ def main(options, outFile=None, errorFile=None):
 
 
 def parseOptions(optionString, errorFile=None):
-  """ Use optionString to modify the defaults given in philOptions above. 
+  """ Use optionString to modify the defaults given in philOptions above.
   Returns a Python object that has an attribute for every option listed
   in philOptions.  Example: "chart=true noinc=true causes=true"
   The values in optionString are case insensitive.
@@ -145,18 +145,18 @@ def parseOptions(optionString, errorFile=None):
   # user_phil = phil.parse(opt2)
 
   master_phil = phil.parse(philOptions)
-  interp = master_phil.command_line_argument_interpreter() 
+  interp = master_phil.command_line_argument_interpreter()
   optionList = optionString.split()
   try:
     user_phil = interp.process(args=optionList)
   except Sorry as e:
     if errorFile is None:  errorFile = sys.stderr
     print(e, file=errorFile)
-  
+
   working_phil = master_phil.fetch(sources=user_phil)
   full_options = working_phil.extract()
   return full_options.suitename
-  
+
 
 def setOptions(optionsIn):
   """optionsIn may be the result of parseOptions above
@@ -173,7 +173,7 @@ def loadModel(filename):
   model = dm.get_model(filename)
   #print("Processing model")
   #model.process_input_model(make_restraints=True)
-  # removed because Restraints Manager will not operate 
+  # removed because Restraints Manager will not operate
   # on unfamiliar residues  KPB 6/10/2021
   return model
 

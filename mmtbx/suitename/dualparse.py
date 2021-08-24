@@ -118,6 +118,3 @@ def parseArgs1(Program, logger):
   namespace = parser.parse_args(sys.argv[1:])
   return parser.working_phil
 
-
-
-

@@ -4,7 +4,7 @@ import os, sys, inspect
 from io import StringIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
-sys.path.insert(0, parentdir) 
+sys.path.insert(0, parentdir)
 
 # here, before importing suitename, is an opportunity to set command line
 # options and to redirect output.
@@ -131,12 +131,12 @@ input1=''' :1a: : : : :  Z:  9999.000: 9999.000: 9999.000:   81.495:  212.250:  
  :2o: : : : :  Z:   287.408:  194.525:  293.725:  150.458: 9999.000: 9999.000:  180.000
  :epsilon: : : : :  Z:   294.967:  173.990:   53.550:   81.495:  154.000:  288.831:  180.000
  :epsilon: : : : :  Z:   294.967:  173.990:   53.550:   81.495:  212.250:  288.831:  180.000
- :alpha: : : : :  Z:   294.967:  173.990:   53.550:   81.495:  212.250:  288.831:  180.000  
- :alpha: : : : :  Z:    24.000:  173.990:   53.550:   81.495:  212.250:  288.831:  180.000  
- :beta: : : : :  Z:   294.967:  173.990:   53.550:   81.495:  212.250:  288.831:  180.000   
- :beta: : : : :  Z:   294.967:   49.000:   53.550:   81.495:  212.250:  288.831:  180.000   
- :zeta: : : : :  Z:   294.967:  173.990:   53.550:   81.495:  212.250:   24.000:  180.000   
- :zeta: : : : :  Z:   294.967:  173.990:   53.550:   81.495:  212.250:  288.831:  180.000   
+ :alpha: : : : :  Z:   294.967:  173.990:   53.550:   81.495:  212.250:  288.831:  180.000
+ :alpha: : : : :  Z:    24.000:  173.990:   53.550:   81.495:  212.250:  288.831:  180.000
+ :beta: : : : :  Z:   294.967:  173.990:   53.550:   81.495:  212.250:  288.831:  180.000
+ :beta: : : : :  Z:   294.967:   49.000:   53.550:   81.495:  212.250:  288.831:  180.000
+ :zeta: : : : :  Z:   294.967:  173.990:   53.550:   81.495:  212.250:   24.000:  180.000
+ :zeta: : : : :  Z:   294.967:  173.990:   53.550:   81.495:  212.250:  288.831:  180.000
  :delta-1: : : : :  Z:   294.967:  173.990:   53.550:   59.000:  212.250:  288.831:  180.000
  :delta-1: : : : :  Z:   294.967:  173.990:   53.550:   81.495:  212.250:  288.831:  180.000
  :gamma: : : : :  Z:   294.967:  173.990:   53.550:   81.495:  212.250:  288.831:  180.000
@@ -146,7 +146,7 @@ input1=''' :1a: : : : :  Z:  9999.000: 9999.000: 9999.000:   81.495:  212.250:  
 '''
 
 # A manually selected group of test cases from real files
-# designed to test each code path through membership(). The first residue from 
+# designed to test each code path through membership(). The first residue from
 # each pair has intentionally been damaged so that it will not produce separate
 # output from a report. We use the causes option to illustrate what code path
 # is being used.
@@ -284,7 +284,7 @@ output2 = '''2xLk:1: C:  12: : :  U 33 p 1g 0.839 1-only-one
 3diL:1: A:  14: : :  G 23 p !! 0.000 outlier distance 1.01
 3pdr:1: X: 133: : :  U 33 m !! 0.000 vacant bin
 '''
- 
+
 def test(input, canonicalOutput, options, identity):
   opt = suites.parseOptions(options)
   stream = StringIO(input)
@@ -299,7 +299,7 @@ def test(input, canonicalOutput, options, identity):
 
 def testAll():
   test(input1, output1, "chart=true noinc=true", "cluster and triage test")
-  test(input2, output2, "chart=true noinc=true causes=true", 
+  test(input2, output2, "chart=true noinc=true causes=true",
       "code paths test")
   test(regression.in_1ehz, regression.out_1ehz, "", "1ehz regression test")
 

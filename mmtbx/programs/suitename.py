@@ -135,7 +135,7 @@ class Program(ProgramTemplate):
       # compute
         satellites=False
           .type=bool
-          .help="use the special satelliteWidths values for satellites" 
+          .help="use the special satelliteWidths values for satellites"
         nowannabe=False
           .type=bool
           .help="do not consider 'wannabe' clusters"
@@ -152,10 +152,10 @@ class Program(ProgramTemplate):
           .help="which field (1-based) gives the alternate conformer code"
         version=false
           .type=bool
-          .help="give the version number of suite name"   
+          .help="give the version number of suite name"
       # deprecated
         oneline=false
-          .type=bool 
+          .type=bool
       }
 """
 
@@ -164,7 +164,7 @@ class Program(ProgramTemplate):
         #   .type=str
         #   .help="which alternate conformer to use (A, B, etc)"
 #
-  datatypes = ['model', 'phil']  # also 
+  datatypes = ['model', 'phil']  # also
   data_manager_options = ['model_skip_expand_with_mtrix']
   known_article_ids = ['molprobity']
 
@@ -182,47 +182,47 @@ class Program(ProgramTemplate):
 #   namespace, others = parser.parse_args(sys.argv[1:])
 #   # whatever the old fashioned parser won't use becomes part of <others>
 #   # and will be given to the phil parser
-# 
+#
 #   parser = CCTBXParser(
 #     program_class=Program,
 #     logger=logger)
 #   namespace = parser.parse_args(others)
-# 
+#
 #   # start program
 #   print('Starting job', file=logger)
 #   print('='*79, file=logger)
 #   phil1 = parser.working_phil.extract()
 #   args2 = parseCommandLine()
 #   task = Program(
-#     parser.data_manager, phil1, logger=logger2)  
+#     parser.data_manager, phil1, logger=logger2)
 #   main()
 
 #=============================================================================
 # def run(args):
-# 
+#
 #   # create parser
 #   logger = multi_out()
 #   logger.register('stderr', sys.stderr)
 #   logger2 = multi_out()
 #   logger2.register('stdout', sys.stdout)
-# 
+#
 #   parser = CCTBXParser(
 #     program_class=cablam.Program,
 #     logger=logger)
 #   namespace = parser.parse_args(sys.argv[1:])
-# 
+#
 #   # start program
 #   print('Starting job', file=logger)
 #   print('='*79, file=logger)
 #   task = cablam.Program(
 #     parser.data_manager, parser.working_phil.extract(), logger=logger2)
-# 
+#
 #   # validate inputs
 #   task.validate()
-# 
+#
 #   # run program
 #   task.run()
-# 
+#
 #   # stop timer
 #   print('', file=logger)
 #   print('='*79, file=logger)
