@@ -372,8 +372,7 @@ def findBase(baseCode):
   elif NAListU.find(baseCode) >= 0:
     base = "U"
   elif NAListY.find(baseCode) >= 0:
-    base = "G"
-#!!!        base = "Y"  -- restore after regression testing
+    base = "Y"
   else:
     base = "?"
   return base
