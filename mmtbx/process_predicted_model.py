@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-import sys, os
+import sys
 
 ################################################################################
 #################### Process predicted models ##################################

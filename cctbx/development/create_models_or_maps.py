@@ -297,7 +297,7 @@ def generate_map_coefficients(
 def generate_map(
       output_map_file_name=None,
       map_coeffs=None,  # Required
-      d_min=3,
+      d_min=None,
       map_manager = None, # source of info, not map
       gridding=None,
       wrapping=False,
@@ -338,7 +338,7 @@ def generate_map(
 
       output_map_file_name (string, None):  Output map file (MRC/CCP4 format)
       map_coeffs (miller.array object, None) : map coefficients
-      d_min(float, 3):      high_resolution limit (A)
+      d_min(float):      high_resolution limit (A)
       gridding (tuple (nx,ny,nz), None):  Gridding of map (optional)
       origin_shift_grid_units (tuple (ix,iy,iz), None):  Move location of
           origin of resulting map to (ix,iy,iz) before writing out
@@ -450,6 +450,8 @@ def generate_map(
       origin_shift_grid_units=origin_shift_grid_units,
       wrapping=wrapping)
 
+  if d_min:
+    mm.set_resolution(d_min)
   if output_map_file_name:
     mm.write_map(output_map_file_name)
   else:

@@ -7939,7 +7939,6 @@ class map_model_manager(object):
     else:
       d_min = 3
 
-
     self._print("\nGenerating new map data\n")
     if self.model() and (not model):
       self._print("NOTE: using existing model to generate map data\n")

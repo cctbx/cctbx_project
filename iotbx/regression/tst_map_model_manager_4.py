@@ -8,7 +8,8 @@ def get_map_model_managers():
   # Set up source data
   from iotbx.map_model_manager import map_model_manager
   mmm = map_model_manager()
-  mmm.generate_map(wrapping=True)
+  mmm.generate_map(wrapping=True, d_min=3)
+  print("mm",mmm.resolution(),mmm.map_manager().resolution())
   second_model=mmm.model().deep_copy()
   mmm.box_all_maps_around_model_and_shift_origin()
   mmm.map_manager().set_wrapping(False)
@@ -27,7 +28,7 @@ def get_map_model_managers():
   second_model = shift_and_box_model(second_model)
 
   second_mmm = map_model_manager(model=second_model)
-  second_mmm.generate_map(model=second_model,wrapping=True)
+  second_mmm.generate_map(model=second_model,wrapping=True, d_min=3)
   second_mmm.box_all_maps_around_model_and_shift_origin(box_cushion=10)
   second_mmm.map_manager().set_wrapping(False)
   second_mmm.set_log(sys.stdout)
