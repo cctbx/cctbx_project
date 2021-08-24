@@ -2,7 +2,6 @@ from __future__ import nested_scopes, generators, division, absolute_import
 from __future__ import  with_statement, print_function, unicode_literals
 import UnitTest, regression
 import os, sys
-from sys import stderr
 
 workDir = os.path.dirname(sys.argv[0]).strip()
 if workDir:
