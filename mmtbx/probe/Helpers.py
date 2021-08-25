@@ -22,9 +22,11 @@ import iotbx.map_model_manager
 import iotbx.data_manager
 import cctbx.maptbx.box
 import mmtbx
-import mmtbx_probe_ext as probe
+import mmtbx_probe_ext as probeExt
+import scitbx.matrix
 from scitbx.array_family import flex
-import mmtbx.probe.AtomTypes
+from mmtbx.probe import AtomTypes
+from iotbx import pdb
 
 def getBondedNeighborLists(atoms, bondProxies):
   """
@@ -118,10 +120,10 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
   warnings = ""
 
   # Construct the AtomTypes object we're going to use, telling it whether to use neutron distances.
-  at = mmtbx.probe.AtomTypes.AtomTypes(useNeutronDistances)
+  at = AtomTypes.AtomTypes(useNeutronDistances)
 
   # Traverse the hierarchy and look up the extra data to be filled in.
-  extras = probe.ExtraAtomInfoMap([],[])
+  extras = probeExt.ExtraAtomInfoMap([],[])
   mon_lib_srv = model.get_mon_lib_srv()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
   ph = model.get_hierarchy()
@@ -134,7 +136,7 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
           atom_dict = md.atom_dict()
 
           for a in ag.atoms():
-            extra = probe.ExtraAtomInfo()
+            extra = probeExt.ExtraAtomInfo()
             # See if we can find out about its Hydrogen-bonding status from the
             # model.  If so, we fill it and the vdwRadius information from
             # CCTBX.
@@ -160,7 +162,7 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
                 # as an acceptor, perhaps making it a cylinder or a sphere in the center
                 # of the ring.
                 if a.element in ['C','N']:
-                  if mmtbx.probe.AtomTypes.IsAromatic(ag.resname, a.name):
+                  if AtomTypes.IsAromatic(ag.resname, a.name):
                     extra.IsAcceptor = True
 
                 extras.setMappingFor(a, extra)
@@ -199,12 +201,106 @@ def isMetallic(atom):
     return element in isMettalic.metallics
   except:
     # Build the set by filling in all of the entries in the atom table.
-    at = mmtbx.probe.AtomTypes.AtomTypes()
+    at = AtomTypes.AtomTypes()
     isMetallic.metallics = set()
     for e in at._AtomTable:
-      if e[8] & mmtbx.probe.AtomTypes.AtomFlags.METALLIC_ATOM:
+      if e[8] & AtomTypes.AtomFlags.METALLIC_ATOM:
         isMetallic.metallics.add(e[1].upper())
     return element in isMetallic.metallics
+
+def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy):
+  """
+    Get a list of phantom Hydrogens for the atom specified, which is asserted to be an Oxygen
+    atom for a water.
+    :param atom: The Oxygen that is to have phantoms added to it.
+    :param spatialQuery: mmtbx_probe_ext.SpatialQuery structure to rapidly determine which atoms
+    are within a specified distance of a location.
+    :param extraAtomInfo: mmtbx_probe_ext.ExtraAtomInfo mapper that provides radius and other
+    information about atoms beyond what is in the pdb.hierarchy.  Used here to determine
+    which atoms may be acceptors.
+    :param minOccupancy: Minimum occupancy for an atom to be considered.
+    :return: List of new atoms that make up the phantom Hydrogens, with only their name and
+    element type and xyz positions filled in.  They will have i_seq 0 and they should not be
+    inserted into a structure.
+  """
+  ret = []
+
+  # Get the list of nearby atoms.  The center of the search is the water atom
+  # and the search radius is 4 (these values are pulled from the Reduce C++ code).
+  maxDist = 4.0
+  nearby = spatialQuery.neighbors(atom.xyz, 0.001, maxDist)
+
+  # Candidates for nearby atoms.  We use this list to keep track of one ones we
+  # have already found so that we can compare against them to only get one for each
+  # aromatic ring.
+  class Candidate(object):
+    def __init__(self, atom, overlap):
+      self._atom = atom
+      self._overlap = overlap
+  candidates = []
+
+  for a in nearby:
+    # @todo The C++ checked to see if the atom was either marked as an acceptor or
+    # the flipped position for one in a Mover, but we go ahead and check them pointing
+    # towards all nearby atoms.  This may make things slower, but because they are only
+    # able to make Hydrogen bonds it should not affect the outcome.
+    #   Check to ensure the occupancy of the neighbor is above threshold and that it is
+    # close enough to potentially bond to the atom.
+    OH_BOND_LENGTH = 1.0
+    WATER_EXPLICIT_RADIUS = 1.05
+    overlap = ( (rvec3(atom.xyz) - rvec3(a.xyz)).length()  -
+                (WATER_EXPLICIT_RADIUS + extraAtomInfo.getMappingFor(atom).vdwRadius + OH_BOND_LENGTH) )
+    if overlap < -0.01 and a.occ > minOccupancy and a.element != "H":
+      # If we have multiple atoms in the same Aromatic ring (part of the same residue)
+      # we only point at the closest one.  To ensure this, we check all current candidates
+      # and if we find one that is on the same aromatic ring then we either ignore this new
+      # atom (if it is further) or replace the existing one (if it is closer).
+      if AtomTypes.IsAromatic(a.parent().resname.strip().upper(), a.name.strip().upper()):
+        for c in candidates:
+          # See if we belong to the same atom group and are both ring acceptors.  If so, we need to replace
+          # or else squash this atom.
+          if (AtomTypes.IsAromatic(c.parent().resname.strip().upper(), c.name.strip().upper()) and
+              a.parent() == c.parent()):
+            if overlap < c._overlap:
+              # Replace the further atom with this atom.
+              c._atom = a
+              c._overlap = overlap
+            else:
+              # This is further away, so we don't insert it.
+              continue
+
+      # Add the Candidate
+      candidates.append(Candidate(a, overlap))
+
+  # Generate phantoms pointing toward all of the remaining candidates.
+  for c in candidates:
+    h = pdb.hierarchy.atom()
+    h.element = "H"
+    h.name = "H"
+
+    # Place the hydrogen pointing from the Oxygen towards the candidate at a distance
+    # of 1 plus an offset that is clamped to the range -1..0 that is the sum of the overlap
+    # and the best hydrogen-bonding overlap.
+    BEST_HBOND_OVERLAP=0.6
+    distance = 1.0 + max(-1.0, min(0.0, c._overlap + BEST_HBOND_OVERLAP))
+    try:
+      normOffset = (rvec3(atom.xyz) - rvec3(c._atom.xyz)).normalize()
+      h.xyz = rvec3(atom.xyz) + distance * normOffset
+      ret.append(h)
+    except:
+      # If we have overlapping atoms, don't add.
+      pass
+
+  return ret
+
+##################################################################################
+# Helper functions to make things that are compatible with vec3_double so
+# that we can do math on them.  We need a left-hand and right-hand one so that
+# we can make both versions for multiplication.
+def rvec3 (xyz) :
+  return scitbx.matrix.rec(xyz, (3,1))
+def lvec3 (xyz) :
+  return scitbx.matrix.rec(xyz, (1,3))
 
 def Test(inFileName = None):
 

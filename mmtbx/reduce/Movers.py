@@ -21,6 +21,8 @@ from scitbx.array_family import flex
 from iotbx import pdb
 import mmtbx_probe_ext as probe
 import traceback
+from mmtbx.probe.Helpers import rvec3, lvec3
+
 
 ##################################################################################
 # This is a set of classes that implement Reduce's "Movers".  These are sets of
@@ -371,7 +373,7 @@ class MoverSingleHydrogenRotator(_MoverRotator):
       "it has "+str(len(friends)))
 
     # Determine the axis to rotate around, which starts at the partner atom and points at the neighbor.
-    normal = (_rvec3(neighbor.xyz) - _rvec3(partner.xyz)).normalize()
+    normal = (rvec3(neighbor.xyz) - rvec3(partner.xyz)).normalize()
     axis = flex.vec3_double([partner.xyz, normal])
 
     # Move the atom so that it is in one of the two preferred locations.  The preferred location depends on
@@ -460,7 +462,7 @@ class MoverNH3Rotator(_MoverRotator):
     def preferenceFunction(degrees): return 0.1 + 0.1 * math.cos(degrees * (math.pi/180) * (360/120))
 
     # Determine the axis to rotate around, which starts at the partner and points at the neighbor.
-    normal = (_rvec3(neighbor.xyz) - _rvec3(partner.xyz)).normalize()
+    normal = (rvec3(neighbor.xyz) - rvec3(partner.xyz)).normalize()
     axis = flex.vec3_double([partner.xyz, normal])
 
     # Move the Hydrogens so that they are in one of the preferred locations by rotating one of them to
@@ -524,7 +526,7 @@ class MoverAromaticMethylRotator(_MoverRotator):
       raise ValueError("MoverAromaticMethylRotator(): Partner does not have two bonded friends")
 
     # Determine the axis to rotate around, which starts at the partner and points at the neighbor.
-    normal = (_rvec3(neighbor.xyz) - _rvec3(partner.xyz)).normalize()
+    normal = (rvec3(neighbor.xyz) - rvec3(partner.xyz)).normalize()
     axis = flex.vec3_double([partner.xyz, normal])
 
     # Move the Hydrogens so that they are in one of the preferred locations by rotating one of them to
@@ -598,7 +600,7 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
       raise ValueError("MoverTetrahedralMethylRotator(): Partner does not have one or three bonded friends")
 
     # Determine the axis to rotate around, which starts at the partner and points at the neighbor.
-    normal = (_rvec3(neighbor.xyz) - _rvec3(partner.xyz)).normalize()
+    normal = (rvec3(neighbor.xyz) - rvec3(partner.xyz)).normalize()
     axis = flex.vec3_double([partner.xyz, normal])
 
     # Move the Hydrogens so that they are in one of the preferred locations by rotating one of them to
@@ -712,16 +714,16 @@ class MoverNH2Flip(object):
     # Compute the new positions for the Hydrogens such that they are at the same distance from
     # the Oxygen as one of them is from the Nitrogen and located at +/-120 degrees from the
     # Carbon-Oxygen bond in the plane of the Nitrogen, Carbon, and Oxygen.
-    cToO = _lvec3(oxygen.xyz) - _lvec3(hinge.xyz)
-    nToO = _rvec3(nh2Atom.xyz) - _rvec3(hinge.xyz)
+    cToO = lvec3(oxygen.xyz) - lvec3(hinge.xyz)
+    nToO = rvec3(nh2Atom.xyz) - rvec3(hinge.xyz)
 
     # Normal to the plane containing Nitrogen, Carbon, and Oxygen
-    normal = _lvec3(scitbx.matrix.cross_product_matrix(cToO) * nToO).normalize()
+    normal = lvec3(scitbx.matrix.cross_product_matrix(cToO) * nToO).normalize()
 
-    hBond0Len = (_rvec3(nh2Hydrogens[0].xyz) - _rvec3(nh2Atom.xyz)).length()
-    hBond1Len = (_rvec3(nh2Hydrogens[1].xyz) - _rvec3(nh2Atom.xyz)).length()
-    newH0 = _lvec3(oxygen.xyz) + ((-cToO.normalize()) * hBond0Len).rotate_around_origin(normal, 120 * math.pi/180)
-    newH1 = _lvec3(oxygen.xyz) + ((-cToO.normalize()) * hBond1Len).rotate_around_origin(normal,-120 * math.pi/180)
+    hBond0Len = (rvec3(nh2Hydrogens[0].xyz) - rvec3(nh2Atom.xyz)).length()
+    hBond1Len = (rvec3(nh2Hydrogens[1].xyz) - rvec3(nh2Atom.xyz)).length()
+    newH0 = lvec3(oxygen.xyz) + ((-cToO.normalize()) * hBond0Len).rotate_around_origin(normal, 120 * math.pi/180)
+    newH1 = lvec3(oxygen.xyz) + ((-cToO.normalize()) * hBond1Len).rotate_around_origin(normal,-120 * math.pi/180)
 
     #########################
     # Compute the list of positions for all of the atoms. This consists of the original
@@ -904,15 +906,15 @@ class MoverHistidineFlip(object):
     # Compute the new positions for the Hydrogens such that they are at the same distance from
     # their swapped parent atoms and in the direction of the Hydrogens from the original atoms at
     # each location.  We swap ND1 with CD2 and NE2 with CE1.
-    nd1HVec = _lvec3(nd1HAtom.xyz) - _lvec3(nd1Atom.xyz)
-    ne2HVec = _lvec3(ne2HAtom.xyz) - _lvec3(ne2Atom.xyz)
-    ce1HVec = _lvec3(ce1HAtom.xyz) - _lvec3(ce1Atom.xyz)
-    cd2HVec = _lvec3(cd2HAtom.xyz) - _lvec3(cd2Atom.xyz)
+    nd1HVec = lvec3(nd1HAtom.xyz) - lvec3(nd1Atom.xyz)
+    ne2HVec = lvec3(ne2HAtom.xyz) - lvec3(ne2Atom.xyz)
+    ce1HVec = lvec3(ce1HAtom.xyz) - lvec3(ce1Atom.xyz)
+    cd2HVec = lvec3(cd2HAtom.xyz) - lvec3(cd2Atom.xyz)
 
-    nd1HNew = _lvec3(cd2Atom.xyz) + nd1HVec.length() * cd2HVec.normalize()
-    cd2HNew = _lvec3(nd1Atom.xyz) + cd2HVec.length() * nd1HVec.normalize()
-    ce1HNew = _lvec3(ne2Atom.xyz) + ce1HVec.length() * ne2HVec.normalize()
-    ne2HNew = _lvec3(ce1Atom.xyz) + ne2HVec.length() * ce1HVec.normalize()
+    nd1HNew = lvec3(cd2Atom.xyz) + nd1HVec.length() * cd2HVec.normalize()
+    cd2HNew = lvec3(nd1Atom.xyz) + cd2HVec.length() * nd1HVec.normalize()
+    ce1HNew = lvec3(ne2Atom.xyz) + ce1HVec.length() * ne2HVec.normalize()
+    ne2HNew = lvec3(ce1Atom.xyz) + ne2HVec.length() * ce1HVec.normalize()
 
     #########################
     # There are six possible states for the flipped Histidine.  The first three
@@ -998,15 +1000,6 @@ class MoverHistidineFlip(object):
       self._extras[coarseIndex], self._deleteMes[coarseIndex])
 
 ##################################################################################
-# Internal helper functions to make things that are compatible with vec3_double so
-# that we can do math on them.  We need a left-hand and right-hand one so that
-# we can make both versions for multiplication.
-def _rvec3 (xyz) :
-  return scitbx.matrix.rec(xyz, (3,1))
-def _lvec3 (xyz) :
-  return scitbx.matrix.rec(xyz, (1,3))
-
-##################################################################################
 # Internal helper functions for angle manipulation.
 def _rotateOppositeFriend(atom, axis, partner, friend):
   '''Rotate the atom to point away from the friend.  This means placing it
@@ -1025,17 +1018,17 @@ def _rotateOppositeFriend(atom, axis, partner, friend):
      around this axis.
      :returns the new location for the atom.
   '''
-  normal = _rvec3(axis[1])
-  friendFromPartner = _lvec3(friend.xyz) - _lvec3(partner.xyz)
+  normal = rvec3(axis[1])
+  friendFromPartner = lvec3(friend.xyz) - lvec3(partner.xyz)
   alongAxisComponent = (friendFromPartner * normal)
-  friendFromPartner = _rvec3(friend.xyz) - _rvec3(partner.xyz)
+  friendFromPartner = rvec3(friend.xyz) - rvec3(partner.xyz)
   inPlane = friendFromPartner - normal*alongAxisComponent
   normalizedOffset = -inPlane.normalize()
 
-  d = -_lvec3(atom.xyz)*normal
-  t = - (d + (_lvec3(axis[0])) * normal)
-  nearPoint = _rvec3(axis[0]) + normal*t
-  distFromNearPoint = (_rvec3(atom.xyz)-nearPoint).length()
+  d = -lvec3(atom.xyz)*normal
+  t = - (d + (lvec3(axis[0])) * normal)
+  nearPoint = rvec3(axis[0]) + normal*t
+  distFromNearPoint = (rvec3(atom.xyz)-nearPoint).length()
 
   return nearPoint + distFromNearPoint * normalizedOffset
 
@@ -1056,7 +1049,7 @@ def _rotateAroundAxis(atom, axis, degrees):
   try:
     pos = atom.xyz
   except:
-    pos = _rvec3(atom)
+    pos = rvec3(atom)
 
   # Project the atom position onto the axis, finding its closest point on the axis.
   # The position lies on a plane whose normal points along the axis vector.  The
@@ -1067,17 +1060,17 @@ def _rotateAroundAxis(atom, axis, degrees):
   # the location along the line at that time.  t = - (d + (lineOrigin * planeNormal)) /
   # (lineDirection * planeNormal).  Because the line direction and normal are the
   # same, the divisor is 1.
-  normal = _lvec3(axis[1]).normalize()
+  normal = lvec3(axis[1]).normalize()
   d = -normal*pos
-  t = - (d + (normal * _rvec3(axis[0])))
-  nearPoint = _lvec3(axis[0]) + t * normal
+  t = - (d + (normal * rvec3(axis[0])))
+  nearPoint = lvec3(axis[0]) + t * normal
 
   # Find the vector from the closest point towards the atom, which is its offset
-  offset = _lvec3(pos) - nearPoint
+  offset = lvec3(pos) - nearPoint
 
   # Rotate the offset vector around the axis by the specified angle.  Add the new
   # offset to the closest point. Store this as the new location for this atom and angle.
-  newOffset = offset.rotate_around_origin(_lvec3(axis[1]), degrees*math.pi/180)
+  newOffset = offset.rotate_around_origin(lvec3(axis[1]), degrees*math.pi/180)
   return nearPoint + newOffset
 
 def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, alphaCarbon):
@@ -1135,7 +1128,7 @@ def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, 
 
   # A) Rotate the movable atoms that come before the hinge atom by 180 degrees
   # around the pivot-to-hinge vector
-  normal = (_rvec3(pivotAtom.xyz) - _rvec3(hingeAtom.xyz)).normalize()
+  normal = (rvec3(pivotAtom.xyz) - rvec3(hingeAtom.xyz)).normalize()
   axis = flex.vec3_double([hingeAtom.xyz, normal])
   for i in range(hingeIndex):
     movable[i] = _rotateAroundAxis(movable[i], axis, 180)
@@ -1144,49 +1137,49 @@ def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, 
   # Solve for the planes containing the old and new atoms and then the vector
   # that these planes intersect at (cross product).
 
-  cToO = _lvec3(first.xyz) - _lvec3(hingeAtom.xyz)
-  nToO = _rvec3(second.xyz) - _rvec3(hingeAtom.xyz)
+  cToO = lvec3(first.xyz) - lvec3(hingeAtom.xyz)
+  nToO = rvec3(second.xyz) - rvec3(hingeAtom.xyz)
   oldNormal = (scitbx.matrix.cross_product_matrix(cToO) * nToO).normalize()
 
   # Flip the order here because we've rotated 180 degrees
-  newNToO = _lvec3(movable[secondDockIndex]) - _lvec3(movable[hingeIndex])
-  newCToO = _rvec3(movable[firstDockIndex]) - _rvec3(movable[hingeIndex])
+  newNToO = lvec3(movable[secondDockIndex]) - lvec3(movable[hingeIndex])
+  newCToO = rvec3(movable[firstDockIndex]) - rvec3(movable[hingeIndex])
   newNormal = (scitbx.matrix.cross_product_matrix(newNToO) * newCToO).normalize()
 
   # If we don't need to rotate, we'll get a zero-length vector
-  hinge = scitbx.matrix.cross_product_matrix(_lvec3(oldNormal))*_rvec3(newNormal)
+  hinge = scitbx.matrix.cross_product_matrix(lvec3(oldNormal))*rvec3(newNormal)
   if hinge.length() > 0:
     hinge = hinge.normalize()
     axis = flex.vec3_double([hingeAtom.xyz, hinge])
-    degrees = 180/math.pi * math.acos((_lvec3(oldNormal)*_rvec3(newNormal))[0])
+    degrees = 180/math.pi * math.acos((lvec3(oldNormal)*rvec3(newNormal))[0])
     for i in range(hingeIndex):
       # Rotate in the opposite direction, taking the new back to the old.
-      movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
+      movable[i] = _rotateAroundAxis(rvec3(movable[i]), axis, -degrees)
 
   # C) Rotate the atoms around the alphaCarbon
   #  1) firstDockIndex to alphaCarbon<-->original secondDockIndex line
-  aToNewO = _lvec3(movable[firstDockIndex]) - _lvec3(alphaCarbon.xyz)
-  aToOldN = _rvec3(second.xyz) - _rvec3(alphaCarbon.xyz)
+  aToNewO = lvec3(movable[firstDockIndex]) - lvec3(alphaCarbon.xyz)
+  aToOldN = rvec3(second.xyz) - rvec3(alphaCarbon.xyz)
   # If we don't need to rotate, we'll get a zero-length vector
   normal = scitbx.matrix.cross_product_matrix(aToNewO) * aToOldN
   if normal.length() > 0:
     normal = normal.normalize()
     axis = flex.vec3_double([alphaCarbon.xyz, normal])
-    degrees = 180/math.pi * math.acos((_lvec3(aToOldN.normalize())*_rvec3(aToNewO.normalize()))[0])
+    degrees = 180/math.pi * math.acos((lvec3(aToOldN.normalize())*rvec3(aToNewO.normalize()))[0])
     for i in range(len(movable)):
       # Rotate in the opposite direction, taking the new back to the old.
-      movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
+      movable[i] = _rotateAroundAxis(rvec3(movable[i]), axis, -degrees)
 
   #  2) firstDockIndex to the proper plane.
   sites = flex.vec3_double([ movable[secondDockIndex], alphaCarbon.xyz, second.xyz, first.xyz ])
   degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
-  hinge = _rvec3(alphaCarbon.xyz) - _rvec3(second.xyz)
+  hinge = rvec3(alphaCarbon.xyz) - rvec3(second.xyz)
   if hinge.length() > 0:
     hinge = hinge.normalize()
     axis = flex.vec3_double([alphaCarbon.xyz, hinge])
     for i in range(len(movable)):
       # Rotate in the opposite direction, taking the new back to the old.
-      movable[i] = _rotateAroundAxis(_rvec3(movable[i]), axis, -degrees)
+      movable[i] = _rotateAroundAxis(rvec3(movable[i]), axis, -degrees)
 
   return movable
 
@@ -1253,7 +1246,7 @@ def Test():
     if len(coarse.atoms) != 3:
       return "Movers.Test() _MoverRotator basic: Expected 3 atoms for CoarsePositions, got "+str(len(coarse.atoms))
     atom0pos1 = coarse.positions[1][0]
-    if (_lvec3(atom0pos1) - _lvec3([0,-1,1])).length() > 1e-5:
+    if (lvec3(atom0pos1) - lvec3([0,-1,1])).length() > 1e-5:
       return "Movers.Test() _MoverRotator basic: Expected location = (0,-1,1), got "+str(atom0pos1)
 
     # The first fine rotation (index 0) around the second coarse index (index 1) should be to -91 degrees,
@@ -1264,7 +1257,7 @@ def Test():
     z = 1
     fine = rot.FinePositions(1)
     atom0pos1 = fine.positions[0][0]
-    if (_lvec3(atom0pos1) - _lvec3([x,y,z])).length() > 1e-5:
+    if (lvec3(atom0pos1) - lvec3([x,y,z])).length() > 1e-5:
       return "Movers.Test() _MoverRotator basic: Expected fine location = "+str([x,y,z])+", got "+str(atom0pos1)
 
     # The preference function should always return 1.
@@ -1772,21 +1765,21 @@ def Test():
     axis = flex.vec3_double([ [0,0,0], [0,1,0] ])
     n = pdb.hierarchy.atom()
     n.element = "N"
-    n.xyz = _rotateAroundAxis(f, axis,-120) + _lvec3([0,0.01,0]) + _lvec3([ 0.002, 0.003,-0.004])
+    n.xyz = _rotateAroundAxis(f, axis,-120) + lvec3([0,0.01,0]) + lvec3([ 0.002, 0.003,-0.004])
 
     o = pdb.hierarchy.atom()
     o.element = "O"
-    o.xyz = _rotateAroundAxis(f, axis, 120) + _lvec3([0,0.01,0]) + _lvec3([-0.003, 0.002, 0.003])
+    o.xyz = _rotateAroundAxis(f, axis, 120) + lvec3([0,0.01,0]) + lvec3([-0.003, 0.002, 0.003])
 
     # Hydrogens are +/-120 degrees from nitrogen-carbon bond
     axis = flex.vec3_double([ n.xyz, [0,1,0] ])
     h1 = pdb.hierarchy.atom()
     h1.element = "H"
-    h1.xyz = _rotateAroundAxis(p, axis,-120) + _lvec3([0,0.01,0]) + _lvec3([-0.008, 0.001, 0.008])
+    h1.xyz = _rotateAroundAxis(p, axis,-120) + lvec3([0,0.01,0]) + lvec3([-0.008, 0.001, 0.008])
 
     h2 = pdb.hierarchy.atom()
     h2.element = "H"
-    h2.xyz = _rotateAroundAxis(p, axis, 120) + _lvec3([0,0.01,0]) + _lvec3([ 0.007,-0.001, 0.007])
+    h2.xyz = _rotateAroundAxis(p, axis, 120) + lvec3([0,0.01,0]) + lvec3([ 0.007,-0.001, 0.007])
 
     # Build the hierarchy so we can reset the i_seq values.
     ag = pdb.hierarchy.atom_group()
@@ -1828,20 +1821,20 @@ def Test():
     if len(coarse.positions) != 2:
       return "Movers.Test() MoverNH2Flip basic: Did not find two locations: "+str(len(coarse.positions))
     newPos = coarse.positions[1]
-    dist = (_lvec3(newPos[2]) - _lvec3(o.xyz)).length()
+    dist = (lvec3(newPos[2]) - lvec3(o.xyz)).length()
     if dist > 0.01:
       return "Movers.Test() MoverNH2Flip basic: Nitrogen moved incorrectly: "+str(dist)
-    dist = (_lvec3(newPos[3]) - _lvec3(n.xyz)).length()
+    dist = (lvec3(newPos[3]) - lvec3(n.xyz)).length()
     if dist > 0.01:
       return "Movers.Test() MoverNH2Flip basic: Oxygen moved incorrectly: "+str(dist)
 
-    dHydrogen = (_lvec3(newPos[0]) - _lvec3(newPos[2])).length()
-    oldDHydrogen = (_lvec3(h1.xyz)-_lvec3(n.xyz)).length()
+    dHydrogen = (lvec3(newPos[0]) - lvec3(newPos[2])).length()
+    oldDHydrogen = (lvec3(h1.xyz)-lvec3(n.xyz)).length()
     if abs(dHydrogen - oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverNH2Flip basic: Bad coarse hydrogen1 motion: "+str(dHydrogen-oldDHydrogen)
 
-    dHydrogen = (_lvec3(newPos[1]) - _lvec3(newPos[2])).length()
-    oldDHydrogen = (_lvec3(h2.xyz)-_lvec3(n.xyz)).length()
+    dHydrogen = (lvec3(newPos[1]) - lvec3(newPos[2])).length()
+    oldDHydrogen = (lvec3(h2.xyz)-lvec3(n.xyz)).length()
     if abs(dHydrogen - oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverNH2Flip basic: Bad coarse hydrogen2 motion: "+str(dHydrogen-oldDHydrogen)
 
@@ -1851,32 +1844,32 @@ def Test():
     # 3) Carbons and pivot Hydrogens move slightly due to rigid-body motion
 
     fixed = mover.FixUp(1).positions
-    newODir = (fixed[3] - _lvec3(f.xyz)).normalize()
-    oldNDir = (_rvec3(n.xyz) - _rvec3(f.xyz)).normalize()
+    newODir = (fixed[3] - lvec3(f.xyz)).normalize()
+    oldNDir = (rvec3(n.xyz) - rvec3(f.xyz)).normalize()
     if (newODir * oldNDir)[0] < 0.9999:
       return "Movers.Test() MoverNH2Flip basic: Bad oxygen alignment: "+str((newODir * oldNDir)[0])
 
-    newNDir = (fixed[2] - _lvec3(f.xyz)).normalize()
-    oldODir = (_rvec3(o.xyz) - _rvec3(f.xyz)).normalize()
-    newNormal = (scitbx.matrix.cross_product_matrix(_lvec3(newNDir)) * _rvec3(newODir)).normalize()
-    oldNormal = (scitbx.matrix.cross_product_matrix(_lvec3(oldNDir)) * _rvec3(oldODir)).normalize()
-    dot = (_lvec3(newNormal) * _rvec3(oldNormal))[0]
+    newNDir = (fixed[2] - lvec3(f.xyz)).normalize()
+    oldODir = (rvec3(o.xyz) - rvec3(f.xyz)).normalize()
+    newNormal = (scitbx.matrix.cross_product_matrix(lvec3(newNDir)) * rvec3(newODir)).normalize()
+    oldNormal = (scitbx.matrix.cross_product_matrix(lvec3(oldNDir)) * rvec3(oldODir)).normalize()
+    dot = (lvec3(newNormal) * rvec3(oldNormal))[0]
     if dot > -0.99999:
       return "Movers.Test() MoverNH2Flip basic: Bad plane alignment: "+str(dot)
 
-    dCarbon = (fixed[4] - _lvec3(p.xyz)).length()
+    dCarbon = (fixed[4] - lvec3(p.xyz)).length()
     if dCarbon < 0.001 or dCarbon > 0.1:
       return "Movers.Test() MoverNH2Flip basic: Bad hinge motion: "+str(dCarbon)
 
-    dCarbon = (fixed[5] - _lvec3(f.xyz)).length()
+    dCarbon = (fixed[5] - lvec3(f.xyz)).length()
     if dCarbon < 0.0005 or dCarbon > 0.1:
       return "Movers.Test() MoverNH2Flip basic: Bad pivot motion: "+str(dCarbon)
 
-    dHydrogen = (fixed[6] - _lvec3(fh1.xyz)).length()
+    dHydrogen = (fixed[6] - lvec3(fh1.xyz)).length()
     if dHydrogen < 0.0005 or dHydrogen > 0.1:
       return "Movers.Test() MoverNH2Flip basic: Bad pivot hydrogen motion: "+str(dHydrogen)
 
-    dHydrogen = (fixed[7] - _lvec3(fh2.xyz)).length()
+    dHydrogen = (fixed[7] - lvec3(fh2.xyz)).length()
     if dHydrogen < 0.0005 or dHydrogen > 0.1:
       return "Movers.Test() MoverNH2Flip basic: Bad pivot hydrogen motion: "+str(dHydrogen)
 
@@ -1928,21 +1921,21 @@ def Test():
     axis = flex.vec3_double([ [0,0,0], [0,1,0] ])
     n = pdb.hierarchy.atom()
     n.element = "N"
-    n.xyz = _rotateAroundAxis(f, axis,-120) + _lvec3([0,0.01,0]) + _lvec3([ 0.002, 0.003,-0.004])
+    n.xyz = _rotateAroundAxis(f, axis,-120) + lvec3([0,0.01,0]) + lvec3([ 0.002, 0.003,-0.004])
 
     o = pdb.hierarchy.atom()
     o.element = "O"
-    o.xyz = _rotateAroundAxis(f, axis, 120) + _lvec3([0,0.01,0]) + _lvec3([-0.003, 0.002, 0.003])
+    o.xyz = _rotateAroundAxis(f, axis, 120) + lvec3([0,0.01,0]) + lvec3([-0.003, 0.002, 0.003])
 
     # Hydrogens are +/-120 degrees from nitrogen-carbon bond
     axis = flex.vec3_double([ n.xyz, [0,1,0] ])
     h1 = pdb.hierarchy.atom()
     h1.element = "H"
-    h1.xyz = _rotateAroundAxis(p, axis,-120) + _lvec3([0,0.01,0]) + _lvec3([-0.008, 0.001, 0.008])
+    h1.xyz = _rotateAroundAxis(p, axis,-120) + lvec3([0,0.01,0]) + lvec3([-0.008, 0.001, 0.008])
 
     h2 = pdb.hierarchy.atom()
     h2.element = "H"
-    h2.xyz = _rotateAroundAxis(p, axis, 120) + _lvec3([0,0.01,0]) + _lvec3([ 0.007,-0.001, 0.007])
+    h2.xyz = _rotateAroundAxis(p, axis, 120) + lvec3([0,0.01,0]) + lvec3([ 0.007,-0.001, 0.007])
 
     # Build the hierarchy so we can reset the i_seq values.
     ag = pdb.hierarchy.atom_group()
@@ -1988,56 +1981,56 @@ def Test():
     # 2) New plane of Oxygen, Nitrogen, Alpha Carbon matches old plane, but flipped
     # 3) Pivot and linker Carbons and Hydrogens move slightly due to rigid-body motion
 
-    newODir = (fixed[3] - _lvec3(ca.xyz)).normalize()
-    oldNDir = (_rvec3(n.xyz) - _rvec3(ca.xyz)).normalize()
+    newODir = (fixed[3] - lvec3(ca.xyz)).normalize()
+    oldNDir = (rvec3(n.xyz) - rvec3(ca.xyz)).normalize()
     if (newODir * oldNDir)[0] < 0.9999:
       return "Movers.Test() MoverNH2Flip linked: Bad oxygen alignment: "+str((newODir * oldNDir)[0])
 
-    newNDir = (fixed[2] - _lvec3(ca.xyz)).normalize()
-    oldODir = (_rvec3(o.xyz) - _rvec3(ca.xyz)).normalize()
-    newNormal = (scitbx.matrix.cross_product_matrix(_lvec3(newNDir)) * _rvec3(newODir)).normalize()
-    oldNormal = (scitbx.matrix.cross_product_matrix(_lvec3(oldNDir)) * _rvec3(oldODir)).normalize()
-    dot = (_lvec3(newNormal) * _rvec3(oldNormal))[0]
+    newNDir = (fixed[2] - lvec3(ca.xyz)).normalize()
+    oldODir = (rvec3(o.xyz) - rvec3(ca.xyz)).normalize()
+    newNormal = (scitbx.matrix.cross_product_matrix(lvec3(newNDir)) * rvec3(newODir)).normalize()
+    oldNormal = (scitbx.matrix.cross_product_matrix(lvec3(oldNDir)) * rvec3(oldODir)).normalize()
+    dot = (lvec3(newNormal) * rvec3(oldNormal))[0]
     if dot > -0.99999:
       return "Movers.Test() MoverNH2Flip linked: Bad plane alignment: "+str(dot)
 
-    dCarbon = (fixed[4] - _lvec3(p.xyz)).length()
+    dCarbon = (fixed[4] - lvec3(p.xyz)).length()
     if dCarbon < 0.0006 or dCarbon > 0.1:
       return "Movers.Test() MoverNH2Flip linked: Bad hinge motion: "+str(dCarbon)
 
-    dCarbon = (fixed[5] - _lvec3(f.xyz)).length()
+    dCarbon = (fixed[5] - lvec3(f.xyz)).length()
     if dCarbon < 0.0004 or dCarbon > 0.1:
       return "Movers.Test() MoverNH2Flip linked: Bad pivot motion: "+str(dCarbon)
 
-    dCarbon = (fixed[6] - _lvec3(ln.xyz)).length()
+    dCarbon = (fixed[6] - lvec3(ln.xyz)).length()
     if dCarbon < 0.0002 or dCarbon > 0.1:
       return "Movers.Test() MoverNH2Flip linked: Bad linker motion: "+str(dCarbon)
 
     # Hydrogens come after all linkers
-    dHydrogen = (fixed[7] - _lvec3(fh1.xyz)).length()
+    dHydrogen = (fixed[7] - lvec3(fh1.xyz)).length()
     if dHydrogen < 0.0004 or dHydrogen > 0.1:
       return "Movers.Test() MoverNH2Flip linked: Bad pivot hydrogen motion: "+str(dHydrogen)
 
-    dHydrogen = (fixed[8] - _lvec3(fh2.xyz)).length()
+    dHydrogen = (fixed[8] - lvec3(fh2.xyz)).length()
     if dHydrogen < 0.0004 or dHydrogen > 0.1:
       return "Movers.Test() MoverNH2Flip linked: Bad pivot hydrogen motion: "+str(dHydrogen)
 
-    dHydrogen = (fixed[9] - _lvec3(lnh1.xyz)).length()
+    dHydrogen = (fixed[9] - lvec3(lnh1.xyz)).length()
     if dHydrogen < 0.0002 or dHydrogen > 0.1:
       return "Movers.Test() MoverNH2Flip linked: Bad linker hydrogen motion: "+str(dHydrogen)
 
-    dHydrogen = (fixed[10] - _lvec3(lnh2.xyz)).length()
+    dHydrogen = (fixed[10] - lvec3(lnh2.xyz)).length()
     if dHydrogen < 0.0002 or dHydrogen > 0.1:
       return "Movers.Test() MoverNH2Flip linked: Bad linker hydrogen motion: "+str(dHydrogen)
 
     # Ensure that the Hydrogens moved along with their parent in the flip.
     dHydrogen = (fixed[0] - fixed[2]).length()
-    oldDHydrogen = (_lvec3(h1.xyz)-_lvec3(n.xyz)).length()
+    oldDHydrogen = (lvec3(h1.xyz)-lvec3(n.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverNH2Flip linked: Bad nitrogen-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     dHydrogen = (fixed[1] - fixed[2]).length()
-    oldDHydrogen = (_lvec3(h2.xyz)-_lvec3(n.xyz)).length()
+    oldDHydrogen = (lvec3(h2.xyz)-lvec3(n.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverNH2Flip linked: Bad nitrogen-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
@@ -2076,7 +2069,7 @@ def Test():
     # Put the four ring atoms and their Hydrogens in a lattice with H stickout out in X.
     nd1 = pdb.hierarchy.atom()
     nd1.element = "N"
-    nd1.xyz = _lvec3([ 1.0, 0.0, 1.0]) + _lvec3([0,0.01,0]) + _lvec3([-0.003, 0.002, 0.003])
+    nd1.xyz = lvec3([ 1.0, 0.0, 1.0]) + lvec3([0,0.01,0]) + lvec3([-0.003, 0.002, 0.003])
 
     nd1h = pdb.hierarchy.atom()
     nd1h.element = "H"
@@ -2084,7 +2077,7 @@ def Test():
 
     ce1 = pdb.hierarchy.atom()
     ce1.element = "C"
-    ce1.xyz = _lvec3([ 1.0, 0.0, 2.0]) + _lvec3([0,0.01,0]) + _lvec3([-0.008, 0.001, 0.008])
+    ce1.xyz = lvec3([ 1.0, 0.0, 2.0]) + lvec3([0,0.01,0]) + lvec3([-0.008, 0.001, 0.008])
 
     ce1h = pdb.hierarchy.atom()
     ce1h.element = "H"
@@ -2092,7 +2085,7 @@ def Test():
 
     cd2 = pdb.hierarchy.atom()
     cd2.element = "C"
-    cd2.xyz = _lvec3([-1.0, 0.0, 1.0]) + _lvec3([0,0.01,0]) + _lvec3([ 0.007,-0.001, 0.007])
+    cd2.xyz = lvec3([-1.0, 0.0, 1.0]) + lvec3([0,0.01,0]) + lvec3([ 0.007,-0.001, 0.007])
 
     cd2h = pdb.hierarchy.atom()
     cd2h.element = "H"
@@ -2100,7 +2093,7 @@ def Test():
 
     ne2 = pdb.hierarchy.atom()
     ne2.element = "N"
-    ne2.xyz = _lvec3([-1.0, 0.0, 2.0]) + _lvec3([0,0.01,0]) + _lvec3([-0.002, 0.005, 0.004])
+    ne2.xyz = lvec3([-1.0, 0.0, 2.0]) + lvec3([0,0.01,0]) + lvec3([-0.002, 0.005, 0.004])
 
     ne2h = pdb.hierarchy.atom()
     ne2h.element = "H"
@@ -2162,36 +2155,36 @@ def Test():
     if len(coarse.positions) != 6:
       return "Movers.Test() MoverHistidineFlip: Did not find six locations: "+str(len(coarse.positions))
     newPos = coarse.positions[3]
-    dist = (_lvec3(newPos[0]) - _lvec3(ce1.xyz)).length()
+    dist = (lvec3(newPos[0]) - lvec3(ce1.xyz)).length()
     if dist > 0.01:
       return "Movers.Test() MoverHistidineFlip: NE2 moved incorrectly: "+str(dist)
-    dist = (_lvec3(newPos[2]) - _lvec3(ne2.xyz)).length()
+    dist = (lvec3(newPos[2]) - lvec3(ne2.xyz)).length()
     if dist > 0.01:
       return "Movers.Test() MoverHistidineFlip: CE1 moved incorrectly: "+str(dist)
-    dist = (_lvec3(newPos[4]) - _lvec3(cd2.xyz)).length()
+    dist = (lvec3(newPos[4]) - lvec3(cd2.xyz)).length()
     if dist > 0.01:
       return "Movers.Test() MoverHistidineFlip: ND1 moved incorrectly: "+str(dist)
-    dist = (_lvec3(newPos[6]) - _lvec3(nd1.xyz)).length()
+    dist = (lvec3(newPos[6]) - lvec3(nd1.xyz)).length()
     if dist > 0.01:
       return "Movers.Test() MoverHistidineFlip: CD2 moved incorrectly: "+str(dist)
 
-    dHydrogen = (_lvec3(newPos[0]) - _lvec3(newPos[1])).length()
-    oldDHydrogen = (_lvec3(ne2h.xyz)-_lvec3(ne2.xyz)).length()
+    dHydrogen = (lvec3(newPos[0]) - lvec3(newPos[1])).length()
+    oldDHydrogen = (lvec3(ne2h.xyz)-lvec3(ne2.xyz)).length()
     if abs(dHydrogen - oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverHistidineFlip: Bad coarse NE2 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
-    dHydrogen = (_lvec3(newPos[2]) - _lvec3(newPos[3])).length()
-    oldDHydrogen = (_lvec3(ce1h.xyz)-_lvec3(ce1.xyz)).length()
+    dHydrogen = (lvec3(newPos[2]) - lvec3(newPos[3])).length()
+    oldDHydrogen = (lvec3(ce1h.xyz)-lvec3(ce1.xyz)).length()
     if abs(dHydrogen - oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverHistidineFlip: Bad coarse CE1 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
-    dHydrogen = (_lvec3(newPos[4]) - _lvec3(newPos[5])).length()
-    oldDHydrogen = (_lvec3(nd1h.xyz)-_lvec3(nd1.xyz)).length()
+    dHydrogen = (lvec3(newPos[4]) - lvec3(newPos[5])).length()
+    oldDHydrogen = (lvec3(nd1h.xyz)-lvec3(nd1.xyz)).length()
     if abs(dHydrogen - oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverHistidineFlip: Bad coarse ND1 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
-    dHydrogen = (_lvec3(newPos[6]) - _lvec3(newPos[7])).length()
-    oldDHydrogen = (_lvec3(cd2h.xyz)-_lvec3(cd2.xyz)).length()
+    dHydrogen = (lvec3(newPos[6]) - lvec3(newPos[7])).length()
+    oldDHydrogen = (lvec3(cd2h.xyz)-lvec3(cd2.xyz)).length()
     if abs(dHydrogen - oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverHistidineFlip: Bad coarse ND1 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
@@ -2201,53 +2194,53 @@ def Test():
     # 3) Carbons and pivot Hydrogens move slightly due to rigid-body motion
 
     fixed = mover.FixUp(3).positions
-    newCE1Dir = (fixed[2] - _lvec3(ca.xyz)).normalize()
-    oldNE2Dir = (_rvec3(ne2.xyz) - _rvec3(ca.xyz)).normalize()
+    newCE1Dir = (fixed[2] - lvec3(ca.xyz)).normalize()
+    oldNE2Dir = (rvec3(ne2.xyz) - rvec3(ca.xyz)).normalize()
     if (newCE1Dir * oldNE2Dir)[0] < 0.9999:
       return "Movers.Test() MoverHistidineFlip: Bad CE1 alignment: "+str((newCE1Dir * oldNE2Dir)[0])
 
-    newNE2Dir = (fixed[0] - _lvec3(ca.xyz)).normalize()
-    oldCE1Dir = (_rvec3(ce1.xyz) - _rvec3(ca.xyz)).normalize()
-    newNormal = (scitbx.matrix.cross_product_matrix(_lvec3(newNE2Dir)) * _rvec3(newCE1Dir)).normalize()
-    oldNormal = (scitbx.matrix.cross_product_matrix(_lvec3(oldNE2Dir)) * _rvec3(oldCE1Dir)).normalize()
-    dot = (_lvec3(newNormal) * _rvec3(oldNormal))[0]
+    newNE2Dir = (fixed[0] - lvec3(ca.xyz)).normalize()
+    oldCE1Dir = (rvec3(ce1.xyz) - rvec3(ca.xyz)).normalize()
+    newNormal = (scitbx.matrix.cross_product_matrix(lvec3(newNE2Dir)) * rvec3(newCE1Dir)).normalize()
+    oldNormal = (scitbx.matrix.cross_product_matrix(lvec3(oldNE2Dir)) * rvec3(oldCE1Dir)).normalize()
+    dot = (lvec3(newNormal) * rvec3(oldNormal))[0]
     if dot > -0.99999:
       return "Movers.Test() MoverHistidineFlip: Bad plane alignment: "+str(dot)
 
-    dCarbon = (fixed[8] - _lvec3(p.xyz)).length()
+    dCarbon = (fixed[8] - lvec3(p.xyz)).length()
     if dCarbon < 0.001 or dCarbon > 0.1:
       return "Movers.Test() MoverHistidineFlip: Bad hinge motion: "+str(dCarbon)
 
-    dCarbon = (fixed[9] - _lvec3(f.xyz)).length()
+    dCarbon = (fixed[9] - lvec3(f.xyz)).length()
     if dCarbon < 0.0005 or dCarbon > 0.1:
       return "Movers.Test() MoverHistidineFlip: Bad pivot motion: "+str(dCarbon)
 
-    dHydrogen = (fixed[10] - _lvec3(fh1.xyz)).length()
+    dHydrogen = (fixed[10] - lvec3(fh1.xyz)).length()
     if dHydrogen < 0.0005 or dHydrogen > 0.1:
       return "Movers.Test() MoverHistidineFlip: Bad pivot hydrogen motion: "+str(dHydrogen)
 
-    dHydrogen = (fixed[11] - _lvec3(fh2.xyz)).length()
+    dHydrogen = (fixed[11] - lvec3(fh2.xyz)).length()
     if dHydrogen < 0.0005 or dHydrogen > 0.1:
       return "Movers.Test() MoverHistidineFlip: Bad pivot hydrogen motion: "+str(dHydrogen)
 
     # Ensure that the Hydrogens moved along with their parent in the flip.
     dHydrogen = (fixed[0] - fixed[1]).length()
-    oldDHydrogen = (_lvec3(ne2h.xyz)-_lvec3(ne2.xyz)).length()
+    oldDHydrogen = (lvec3(ne2h.xyz)-lvec3(ne2.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverHistidineFlip: Bad NE2-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     dHydrogen = (fixed[2] - fixed[3]).length()
-    oldDHydrogen = (_lvec3(ce1h.xyz)-_lvec3(ce1.xyz)).length()
+    oldDHydrogen = (lvec3(ce1h.xyz)-lvec3(ce1.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverHistidineFlip: Bad CE1-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     dHydrogen = (fixed[4] - fixed[5]).length()
-    oldDHydrogen = (_lvec3(nd1h.xyz)-_lvec3(nd1.xyz)).length()
+    oldDHydrogen = (lvec3(nd1h.xyz)-lvec3(nd1.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverHistidineFlip: Bad ND1-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     dHydrogen = (fixed[6] - fixed[7]).length()
-    oldDHydrogen = (_lvec3(cd2h.xyz)-_lvec3(cd2.xyz)).length()
+    oldDHydrogen = (lvec3(cd2h.xyz)-lvec3(cd2.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverHistidineFlip: Bad CD2-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
