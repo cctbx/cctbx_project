@@ -50,54 +50,6 @@ drop_non_selected_atoms = False
   .type = bool
   .help = Drop non selected atoms (-drop in probe)
 
-count_dots = False
-  .type = bool
-  .help = Count dots rather than listing all contacts (-countdots in probe)
-
-raw_output = False
-  .type = bool
-  .help = Unformatted output (-unformated in probe)
-
-one_line = False
-  .type = bool
-  .help = Output one line :contacts:by:severity:type: (-oneline in probe)
-
-hydrogen_bond_output = True
-  .type = bool
-  .help = Output hydrogen-bond contacts (-nohbout in probe)
-
-clash_output = True
-  .type = bool
-  .help = Output clash contacts (-noclashout in probe)
-
-vdw_output = True
-  .type = bool
-  .help = Output van der Waals contacts (-novdwout in probe)
-
-separate_worse_clashes = False
-  .type = bool
-  .help = Separately report worse clashes (-sepworse in probe)
-
-set_group_name = dots
-  .type = str
-  .help = Specify the group name (-name in probe)
-
-add_group_name_master_line = False
-  .type = bool
-  .help = Add a master=name line on lists (-dotmaster in probe)
-
-kinemage
-  .style = menu_item auto_align
-{
-  add_lens_keyword = False
-    .type = bool
-    .help = Add lens keywoard to kin file (-lens in probe)
-
-  add_group_statement = True
-    .type = bool
-    .help = Add lens keywoard to kin file (-nogroup in probe)
-}
-
 probe
   .style = menu_item auto_align
 {
@@ -158,6 +110,50 @@ output
     .short_caption = Prefix for file name
     .help = Prefix for file name
     .input_size = 400
+
+  count_dots = False
+    .type = bool
+    .help = Count dots rather than listing all contacts (-countdots in probe)
+
+  raw_output = False
+    .type = bool
+    .help = Unformatted output (-unformated in probe)
+
+  one_line = False
+    .type = bool
+    .help = Output one line :contacts:by:severity:type: (-oneline in probe)
+
+  hydrogen_bond_output = True
+    .type = bool
+    .help = Output hydrogen-bond contacts (-nohbout in probe)
+
+  clash_output = True
+    .type = bool
+    .help = Output clash contacts (-noclashout in probe)
+
+  vdw_output = True
+    .type = bool
+    .help = Output van der Waals contacts (-novdwout in probe)
+
+  separate_worse_clashes = False
+    .type = bool
+    .help = Separately report worse clashes (-sepworse in probe)
+
+  set_group_name = dots
+    .type = str
+    .help = Specify the group name (-name in probe)
+
+  add_group_name_master_line = False
+    .type = bool
+    .help = Add a master=name line on lists (-dotmaster in probe)
+
+  add_lens_keyword = False
+    .type = bool
+    .help = Add lens keywoard to kin file (-lens in probe)
+
+  add_group_statement = True
+    .type = bool
+    .help = Add lens keywoard to kin file (-nogroup in probe)
 }
 '''
 
@@ -244,6 +240,11 @@ Note:
         target_sel = self.model.selection(self.params.target_selection)
         target_model = self.model.select(target_sel)
         target_atoms = target_model.get_atoms()
+
+    #===================================================================================
+    # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
+    # the oxygens as not being donors.
+    #if not self.params.implicit_hydrogens:
 
     #===================================================================================
     # Do the calculations; which one depends on the approach and other phil parameters
