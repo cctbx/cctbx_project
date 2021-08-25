@@ -450,8 +450,6 @@ def generate_map(
       origin_shift_grid_units=origin_shift_grid_units,
       wrapping=wrapping)
 
-  if d_min:
-    mm.set_resolution(d_min)
   if output_map_file_name:
     mm.write_map(output_map_file_name)
   else:
