@@ -359,9 +359,11 @@ class _SingletonOptimizer(object):
             resID = str(a.parent().parent().resseq_as_int())
             chainID = a.parent().parent().parent().id
             resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
-            newPhantoms = self._getPhantomHydrogensFor(a)
+            newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, self._minOccupancy)
             if len(newPhantoms) > 0:
               self._infoString += _VerboseCheck(3,"Added {} phantom Hydrogens on {}\n".format(len(newPhantoms), resNameAndID))
+              for p in newPhantoms:
+                self._infoString += _VerboseCheck(5,"Added phantom Hydrogen at "+str(p.xyz)+"\n")
             phantoms += newPhantoms
 
         if len(phantoms) > 0:
@@ -520,85 +522,6 @@ class _SingletonOptimizer(object):
     """
     ret = self._atomDump
     self._atomDump = ""
-    return ret
-
-  def _getPhantomHydrogensFor(self, atom):
-    """
-      Get a list of phantom Hydrogens for the atom specified, which is asserted to be an Oxygen
-      atom for a water.
-      :param atom: The Oxygen that is to have phantoms added to it.
-      :return: List of new atoms that make up the phantom Hydrogens, with only their name and
-      element type and xyz positions filled in.  They will have i_seq 0 and they should not be
-      inserted into a structure.
-    """
-    ret = []
-
-    # Get the list of nearby atoms.  The center of the search is the water atom
-    # and the search radius is 4 (these values are pulled from the Reduce C++ code).
-    maxDist = 4.0
-    nearby = self._spatialQuery.neighbors(atom.xyz, 0.001, maxDist)
-
-    # Candidates for nearby atoms.  We use this list to keep track of one ones we
-    # have already found so that we can compare against them to only get one for each
-    # aromatic ring.
-    class Candidate(object):
-      def __init__(self, atom, overlap):
-        self._atom = atom
-        self._overlap = overlap
-    candidates = []
-
-    for a in nearby:
-      # @todo The C++ checked to see if the atom was either marked as an acceptor or
-      # the flipped position for one in a Mover, but we go ahead and check them pointing
-      # towards all nearby atoms.  This may make things slower, but because they are only
-      # able to make Hydrogen bonds it should not affect the outcome.
-      #   Check to ensure the occupancy of the neighbor is above threshold and that it is
-      # close enough to potentially bond to the atom.
-      OH_BOND_LENGTH = 1.0
-      WATER_EXPLICIT_RADIUS = 1.05
-      overlap = ( (Movers._rvec3(atom.xyz) - Movers._rvec3(a.xyz)).length()  -
-                  (WATER_EXPLICIT_RADIUS + self._extraAtomInfo.getMappingFor(atom).vdwRadius + OH_BOND_LENGTH) )
-      if overlap < -0.01 and a.occ > self._minOccupancy and a.element != "H":
-        # If we have multiple atoms in the same Aromatic ring (part of the same residue)
-        # we only point at the closest one.  To ensure this, we check all current candidates
-        # and if we find one that is on the same aromatic ring then we either ignore this new
-        # atom (if it is further) or replace the existing one (if it is closer).
-        if AtomTypes.IsAromatic(a.parent().resname.strip().upper(), a.name.strip().upper()):
-          for c in candidates:
-            # See if we belong to the same atom group and are both ring acceptors.  If so, we need to replace
-            # or else squash this atom.
-            if (AtomTypes.IsAromatic(c.parent().resname.strip().upper(), c.name.strip().upper()) and
-                a.parent() == c.parent()):
-              if overlap < c._overlap:
-                # Replace the further atom with this atom.
-                c._atom = a
-                c._overlap = overlap
-              else:
-                # This is further away, so we don't insert it.
-                continue
-
-        # Add the Candidate
-        candidates.append(Candidate(a, overlap))
-
-    # Generate phantoms pointing toward all of the remaining candidates.
-    for c in candidates:
-      h = pdb.hierarchy.atom()
-      h.element = "H"
-      h.name = "H"
-
-      # Place the hydrogen pointing from the Oxygen towards the candidate at a distance
-      # of 1 plus an offset that is clamped to the range -1..0 that is the sum of the overlap
-      # and the best hydrogen-bonding overlap.  If we have overlapping atoms, don't add.
-      BEST_HBOND_OVERLAP=0.6
-      distance = 1.0 + max(-1.0, min(0.0, c._overlap + BEST_HBOND_OVERLAP))
-      try:
-        normOffset = (Movers._rvec3(atom.xyz) - Movers._rvec3(c._atom.xyz)).normalize()
-        h.xyz = Movers._rvec3(atom.xyz) + distance * normOffset
-        ret.append(h)
-        self._infoString += _VerboseCheck(5,"Added phantom Hydrogen at "+str(h.xyz)+"\n")
-      except:
-        self._infoString += _VerboseCheck(0,"Could not add phantom Hydrogen\n")
-
     return ret
 
   def _setMoverState(self, positionReturn, index):
@@ -1185,7 +1108,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
             XHbondlen = 1.3
           candidates = []
           for n in nearby:
-            d = (Movers._rvec3(neighbor.xyz) - Movers._rvec3(n.xyz)).length()
+            d = (Helpers.rvec3(neighbor.xyz) - Helpers.rvec3(n.xyz)).length()
             if d <= XHbondlen + extraAtomInfo.getMappingFor(n).vdwRadius + polarHydrogenRadius:
               candidates.append(n)
 
@@ -1293,7 +1216,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           neighbors = spatialQuery.neighbors(pos, minDist, maxDist)
           for n in neighbors:
             if Helpers.isMetallic(n):
-              dist = (Movers._rvec3(pos) - Movers._rvec3(n.xyz)).length()
+              dist = (Helpers.rvec3(pos) - Helpers.rvec3(n.xyz)).length()
               expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
               infoString += _VerboseCheck(5,'Checking '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
                 ' dist = '+str(dist)+', expected = '+str(expected)+'; N rad = '+str(myRad)+
@@ -1335,7 +1258,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
             neighbors = spatialQuery.neighbors(coarseNitroPos, minDist, maxDist)
             for n in neighbors:
               if Helpers.isMetallic(n):
-                dist = (Movers._rvec3(coarseNitroPos) - Movers._rvec3(n.xyz)).length()
+                dist = (Helpers.rvec3(coarseNitroPos) - Helpers.rvec3(n.xyz)).length()
                 expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
                 if dist >= (expected - 0.55) and dist <= (expected + 0.25):
                   infoString += _VerboseCheck(1,'Removing Hydrogen from '+resNameAndID+nitro.name+' and marking as an acceptor '+
