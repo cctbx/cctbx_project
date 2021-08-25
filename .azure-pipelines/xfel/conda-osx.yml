@@ -23,16 +23,21 @@ jobs:
       #   OS: macos
       #   PYTHON_VERSION: py36
       #   MODULES: ${{ parameters.modules }}
-      python3.7:
-        CONDA: MacOSX
-        OS: macos
-        PYTHON_VERSION: py37
-        MODULES: ${{ parameters.modules }}
+      # python3.7:
+      #   CONDA: MacOSX
+      #   OS: macos
+      #   PYTHON_VERSION: py37
+      #   MODULES: ${{ parameters.modules }}
       # python3.8:
       #   CONDA: MacOSX
       #   OS: macos
       #   PYTHON_VERSION: py38
       #   MODULES: ${{ parameters.modules }}
+      python3.9:
+        CONDA: MacOSX
+        OS: macos
+        PYTHON_VERSION: py39
+        MODULES: ${{ parameters.modules }}
 
   variables:
     artifact_name: ${{ parameters.prefix }}${{ format('xcode_{0}', join('_', parameters.xcode_version))  }}_$(PYTHON_VERSION)

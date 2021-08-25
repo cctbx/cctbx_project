@@ -22,16 +22,21 @@ jobs:
       #   OS: linux
       #   PYTHON_VERSION: py36
       #   MODULES: ${{ parameters.modules }}
-      python3.7:
-        CONDA: Linux
-        OS: linux
-        PYTHON_VERSION: py37
-        MODULES: ${{ parameters.modules }}
+      # python3.7:
+      #   CONDA: Linux
+      #   OS: linux
+      #   PYTHON_VERSION: py37
+      #   MODULES: ${{ parameters.modules }}
       # python3.8:
       #   CONDA: Linux
       #   OS: linux
       #   PYTHON_VERSION: py38
       #   MODULES: ${{ parameters.modules }}
+      python3.9:
+        CONDA: Linux
+        OS: linux
+        PYTHON_VERSION: py39
+        MODULES: ${{ parameters.modules }}
 
   container:
     image: ${{ parameters.distribution }}:${{ join('.', parameters.version) }}
