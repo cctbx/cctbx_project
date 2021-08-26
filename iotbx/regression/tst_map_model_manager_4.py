@@ -194,27 +194,26 @@ def exercise( out = sys.stdout):
   map_info_by_id = mmm1.map_info(map_id = 'map_manager')
   assert mask_info() == mask_info_by_id()
   assert map_info() == map_info_by_id()
-  assert approx_equal(mask_info.fraction_marked, 0.210091991342)
+  assert approx_equal(mask_info.fraction_marked, 0.207070707071)
   assert approx_equal(map_info.fraction_above_sigma_cutoff, 0.0577876984127)
-
 
   # create a spherical mask around a point
   print("Spherical masks", )
   dc = mmm1.deep_copy()
   dc.mask_info()
-  assert dc.mask_info().marked_points == 9318
+  assert dc.mask_info().marked_points == 9184 
   dc.create_spherical_mask()
   dc.mask_info()
-  assert dc.mask_info().marked_points == 1286
+  assert dc.mask_info().marked_points == 1311 
   dc.create_spherical_mask(soft_mask_radius=1)
   dc.mask_info()
-  assert dc.mask_info().marked_points == 8990
+  assert dc.mask_info().marked_points == 8990 
   dc.create_spherical_mask(soft_mask=False)
   dc.mask_info()
-  assert dc.mask_info().marked_points == 1458
+  assert dc.mask_info().marked_points == 1566 
   dc.create_spherical_mask(mask_radius = 4)
   dc.mask_info()
-  assert dc.mask_info().marked_points == 914
+  assert dc.mask_info().marked_points == 886 
   dc.create_spherical_mask(soft_mask=False, mask_radius = 4)
   dc.mask_info()
   assert dc.mask_info().marked_points == 654

@@ -780,8 +780,10 @@ class map_model_manager(object):
       self._queue_run_command = queue_run_command
 
   def set_resolution(self, resolution):
-    ''' Set nominal resolution '''
+    ''' Set nominal resolution. Pass along to any map managers '''
     self._resolution = resolution
+    for mm in self.map_managers():
+      mm.set_resolution(resolution)
 
   def set_minimum_resolution(self, d_min):
     ''' Set minimum resolution used in calculations'''
