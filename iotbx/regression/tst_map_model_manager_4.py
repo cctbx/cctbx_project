@@ -201,19 +201,19 @@ def exercise( out = sys.stdout):
   print("Spherical masks", )
   dc = mmm1.deep_copy()
   dc.mask_info()
-  assert dc.mask_info().marked_points == 9184 
+  assert dc.mask_info().marked_points == 9184
   dc.create_spherical_mask()
   dc.mask_info()
-  assert dc.mask_info().marked_points == 1311 
+  assert dc.mask_info().marked_points == 1311
   dc.create_spherical_mask(soft_mask_radius=1)
   dc.mask_info()
-  assert dc.mask_info().marked_points == 8990 
+  assert dc.mask_info().marked_points == 8990
   dc.create_spherical_mask(soft_mask=False)
   dc.mask_info()
-  assert dc.mask_info().marked_points == 1566 
+  assert dc.mask_info().marked_points == 1566
   dc.create_spherical_mask(mask_radius = 4)
   dc.mask_info()
-  assert dc.mask_info().marked_points == 886 
+  assert dc.mask_info().marked_points == 886
   dc.create_spherical_mask(soft_mask=False, mask_radius = 4)
   dc.mask_info()
   assert dc.mask_info().marked_points == 654
