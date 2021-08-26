@@ -1858,11 +1858,11 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     restraint_objects = cif_objects,
-    #pdb_interpretation_params = params.ensemble_refinement,
     log = log)
+  model.process(pdb_interpretation_params = params.ensemble_refinement,
+    make_restraints=True)
   if model.get_number_of_models() > 1:
     raise Sorry("Multiple models not supported.")
-
   # Remove alternative conformations if present
   n_removed_atoms = 0
   if er_params.remove_alt_conf_from_input_pdb:
