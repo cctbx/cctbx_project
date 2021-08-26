@@ -872,8 +872,8 @@ function onMessage(e)
         pos[j] = parseFloat(val2[j]);
         rgb[j] = parseFloat(val2[j + 3]);
       }
-      radius = parseFloat(val2[6]);
-      iswireframe = parseInt(val2[8]);
+      let radius = parseFloat(val2[6]);
+      let iswireframe = parseInt(val2[8]);
 
       if (vectorshape == null)
       {

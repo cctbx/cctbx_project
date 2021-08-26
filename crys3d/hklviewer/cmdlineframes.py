@@ -553,6 +553,11 @@ class HKLViewFrame() :
     spg = arrays[0].space_group()
     uc = arrays[0].unit_cell()
     for i,array in enumerate(arrays):
+      if type(array.data()) == flex.std_string: # in case of status array from a cif file
+        uniquestrings = list(set(array.data()))
+        info = array.info()
+        array = array.customized_copy(data=flex.int([uniquestrings.index(d) for d in array.data()]))
+        array.set_info(info)
       if array.space_group() is None:
         array._unit_cell = uc
         array._space_group_info = spg.info()

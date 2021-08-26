@@ -142,8 +142,8 @@ class scene(object):
     self.foms_workarray = foms_array
     self.SceneCreated = False
     self.mprint = mprint
-    if isinstance(miller_array.data(), flex.std_string):
-      return
+    #if isinstance(miller_array.data(), flex.std_string):
+    #  return
     self.settings = settings
     self.merge_equivalents = False
     if not self.miller_array.is_unique_set_under_symmetry():
