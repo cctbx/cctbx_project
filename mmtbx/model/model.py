@@ -1511,7 +1511,8 @@ class manager(object):
         custom_nb_excl            = None,
         run_clash_guard           = False):
     self._processed = True
-    self.unset_restraints_manager()
+    if(pdb_interpretation_params is not None):
+      self.unset_restraints_manager()
     if(pdb_interpretation_params is None):
       pdb_interpretation_params = self.get_default_pdb_interpretation_params()
     self._pdb_interpretation_params = pdb_interpretation_params
