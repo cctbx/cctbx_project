@@ -249,7 +249,7 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy):
     OH_BOND_LENGTH = 1.0
     WATER_EXPLICIT_RADIUS = 1.05
     overlap = ( (rvec3(atom.xyz) - rvec3(a.xyz)).length()  -
-                (WATER_EXPLICIT_RADIUS + extraAtomInfo.getMappingFor(atom).vdwRadius + OH_BOND_LENGTH) )
+                (WATER_EXPLICIT_RADIUS + extraAtomInfo.getMappingFor(a).vdwRadius + OH_BOND_LENGTH) )
     if overlap < -0.01 and a.occ > minOccupancy and a.element != "H":
       # If we have multiple atoms in the same Aromatic ring (part of the same residue)
       # we only point at the closest one.  To ensure this, we check all current candidates
