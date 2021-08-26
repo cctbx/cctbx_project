@@ -170,6 +170,10 @@ output
     .type = bool
     .help = Add a master=name line on lists (-dotmaster in probe)
 
+  add_kinemage_keyword = False
+    .type = bool
+    .help = Add kinemage 1 to beginning of kin file (-kinemage in probe)
+
   add_lens_keyword = False
     .type = bool
     .help = Add lens keywoard to kin file (-lens in probe)
@@ -237,6 +241,10 @@ Note:
   def run(self):
     # String that will be output to the specified file.
     outString = ''
+
+    if (self.params.output.add_kinemage_keyword and not self.params.output.count_dots and
+        not self.params.output.raw_output):
+      outString += '@kinemage 1\n'
 
     make_sub_header('Interpret Model', out=self.logger)
 
