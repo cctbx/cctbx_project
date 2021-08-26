@@ -18,8 +18,8 @@ def exercise_00():
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    build_grm   = False,
     log         = null_out())
+  model.process_input_model(make_restraints=True)
   xrs = model.get_xray_structure()
   xrs_shaken = xrs.deep_copy_scatterers()
   xrs_shaken.shake_sites_in_place(rms_difference=0.3)

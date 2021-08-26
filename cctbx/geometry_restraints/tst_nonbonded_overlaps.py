@@ -590,9 +590,9 @@ class test_nonbonded_overlaps(unittest.TestCase):
     pdb_inp = iotbx.pdb.input(lines=raw_records0.split("\n"), source_info=None)
     model = mmtbx.model.manager(
       model_input = pdb_inp,
-      pdb_interpretation_params = params,
-      build_grm   = True,
       log         = null_out())
+    model.process_input_model(pdb_interpretation_params=params,
+      make_restraints=True)
     hd_sel = model.get_hd_selection()
     grm = model.get_restraints_manager().geometry
     full_connectivity_table = grm.shell_sym_tables[0].full_simple_connectivity()
@@ -642,10 +642,9 @@ class test_nonbonded_overlaps(unittest.TestCase):
     pdb_inp = iotbx.pdb.input(lines=raw_records3.split("\n"), source_info=None)
     model = mmtbx.model.manager(
       model_input = pdb_inp,
-      pdb_interpretation_params = params,
-      build_grm   = True,
       log         = null_out())
-
+    model.process_input_model(pdb_interpretation_params=params,
+      make_restraints=True)
     macro_mol_sel = get_macro_mol_sel(model = model)
     nb_overlaps = nbo.info(
       model = model,
@@ -681,8 +680,8 @@ class test_nonbonded_overlaps(unittest.TestCase):
     pdb_inp = iotbx.pdb.input(lines=raw_records3.split('\n'), source_info=None)
     model = mmtbx.model.manager(
       model_input = pdb_inp,
-      build_grm   = True,
       log         = null_out())
+    model.process_input_model(make_restraints=True)
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
     geometry = model.get_restraints_manager().geometry
     xrs = model.get_xray_structure()
@@ -715,9 +714,9 @@ class test_nonbonded_overlaps(unittest.TestCase):
     pdb_inp = iotbx.pdb.input(lines=pdb_str.split('\n'), source_info=None)
     model = mmtbx.model.manager(
       model_input = pdb_inp,
-      build_grm   = True,
-      pdb_interpretation_params = params,
       log         = null_out())
+    model.process_input_model(pdb_interpretation_params=params,
+      make_restraints=True)
     macro_mol_sel = get_macro_mol_sel(model=model)
     nb_overlaps = nbo.info(
       model=model,
@@ -806,10 +805,9 @@ class test_nonbonded_overlaps(unittest.TestCase):
     pdb_inp = iotbx.pdb.input(lines=raw_records1.split("\n"), source_info=None)
     model = mmtbx.model.manager(
       model_input = pdb_inp,
-      pdb_interpretation_params = params,
-      build_grm   = True,
       log         = null_out())
-
+    model.process_input_model(pdb_interpretation_params=params,
+      make_restraints=True)
     hd_sel = model.get_hd_selection()
     xrs = model.get_xray_structure()
     sites_cart = model.get_sites_cart()
@@ -842,10 +840,10 @@ class test_nonbonded_overlaps(unittest.TestCase):
     pdb_inp = iotbx.pdb.input(file_name=self.file_name2, source_info=None)
     model = mmtbx.model.manager(
       model_input = pdb_inp,
-      pdb_interpretation_params = params,
-      build_grm   = True,
       stop_for_unknowns = False,
       log         = null_out())
+    model.process_input_model(pdb_interpretation_params=params,
+      make_restraints=True)
     macro_mol_sel = get_macro_mol_sel(model=model)
     # Make sure we don't have only macro molecule
     self.assertTrue(macro_mol_sel.size() > macro_mol_sel.count(True))
@@ -937,10 +935,10 @@ class test_nonbonded_overlaps(unittest.TestCase):
     pdb_inp = iotbx.pdb.input(file_name=fn_with_h, source_info=None)
     model = mmtbx.model.manager(
       model_input = pdb_inp,
-      pdb_interpretation_params = params,
-      build_grm   = True,
       stop_for_unknowns = False,
       log         = null_out())
+    model.process_input_model(pdb_interpretation_params=params,
+      make_restraints=True)
     grm = model.get_restraints_manager().geometry
     xrs = model.get_xray_structure()
     sites = model.get_sites_cart()
@@ -1038,11 +1036,10 @@ def process_overlaps_count(file_name,return_n_atoms=False,cif_file_name=None):
   pdb_inp = iotbx.pdb.input(file_name=file_name, source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    pdb_interpretation_params = params,
-    build_grm   = True,
     restraint_objects = cif_objects,
     log         = null_out())
-
+  model.process_input_model(pdb_interpretation_params=params,
+    make_restraints=True)
   macro_mol_sel = get_macro_mol_sel(model = model)
   xrs = model.get_xray_structure()
   sites_cart = xrs.sites_cart()
@@ -1083,11 +1080,10 @@ def process_raw_records(
   pdb_inp = iotbx.pdb.input(lines=records, source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    pdb_interpretation_params = params,
-    build_grm   = True,
     log         = null_out())
+  model.process_input_model(pdb_interpretation_params=params,
+    make_restraints=True)
   macro_mol_sel = get_macro_mol_sel(model = model)
-
   result = nbo.info(
     model = model,
     macro_molecule_selection=macro_mol_sel).result

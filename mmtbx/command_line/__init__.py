@@ -494,13 +494,12 @@ class load_model_and_data(object):
         model_input = self.pdb_inp,
         crystal_symmetry= self.crystal_symmetry,
         restraint_objects = self.cif_objects,
-        pdb_interpretation_params = model_params,
-        process_input = False,
         stop_for_unknowns=stop_for_unknowns,
         log=self.log)
     if process_pdb_file:
       make_sub_header("Processing PDB file(s)", out=self.log)
-      self.model.process_input_model(make_restraints=True)
+      self.model.process_input_model(pdb_interpretation_params = model_params,
+        make_restraints=True)
       full_grm = self.model.get_restraints_manager()
       self.geometry = full_grm.geometry
       self.processed_pdb_file = self.model._processed_pdb_file # to remove later XXX

@@ -189,7 +189,6 @@ def run(args, log = sys.stdout):
   pdb_inp = mmtbx.utils.pdb_inp_from_multiple_files(pdb_file_names, log=sys.stdout)
   model = mmtbx.model.manager(
     model_input      = pdb_inp,
-    process_input    = False,
     crystal_symmetry = crystal_symmetry,
     log              = sys.stdout)
   if(model.get_number_of_models()>1): #XXX support multi-models

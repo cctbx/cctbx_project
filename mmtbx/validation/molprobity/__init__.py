@@ -177,11 +177,14 @@ class molprobity(slots_getstate_setstate):
 
     # use objects from model
     self.model = model
-    self.model.process_input_model(make_restraints=True)
+    if(not self.model.processed()):
+      self.model.process_input_model(make_restraints=True)
     if(self.model is None and pdb_hierarchy is not None):
       import mmtbx.model
       self.model = mmtbx.model.manager(
         model_input = pdb_hierarchy.as_pdb_input())
+      self.model.process_input_model(make_restraints=True)
+
     pdb_hierarchy = self.model.get_hierarchy()
     if(nuclear):
       self.model.setup_scattering_dictionaries(scattering_table="neutron")

@@ -122,8 +122,8 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
   model = mmtbx.model.manager(
       model_input=pdb_structure,
       crystal_symmetry=cs,
-      pdb_interpretation_params=defpars,
       stop_for_unknowns=False)
+  model.process_input_model(pdb_interpretation_params=defpars)
   pdb_hierarchy = model.get_hierarchy()
   geometry = None
   if pdb_hierarchy.contains_nucleic_acid():

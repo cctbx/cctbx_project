@@ -214,8 +214,7 @@ def print_header(line, out=None):
 def get_atom_selection(pdb_file_name, selection_string, iselection = False):
   import mmtbx.model
   model = mmtbx.model.manager(
-      model_input = iotbx.pdb.input(file_name=pdb_file_name),
-      process_input = True)
+      model_input = iotbx.pdb.input(file_name=pdb_file_name))
   result = get_atom_selections(
     model             = model,
     selection_strings = [selection_string],

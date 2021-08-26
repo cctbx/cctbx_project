@@ -30,10 +30,10 @@ def obtain_model(raw_records, stop_for_unknowns = True):
   pdb_inp = iotbx.pdb.input(lines=raw_records.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    pdb_interpretation_params = params,
-    build_grm   = True,
     stop_for_unknowns = stop_for_unknowns,
     log         = null_out())
+  model.process_input_model(pdb_interpretation_params=params,
+    make_restraints=True)
   return model
 
 
@@ -47,9 +47,9 @@ def get_clashes_result(raw_records, sel=None):
   pdb_inp = iotbx.pdb.input(lines=raw_records.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    pdb_interpretation_params = params,
-    build_grm   = True,
     log         = null_out())
+  model.process_input_model(pdb_interpretation_params=params,
+    make_restraints=True)
   if sel is not None:
     model = model.select(sel)
 

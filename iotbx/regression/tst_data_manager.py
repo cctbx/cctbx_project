@@ -274,12 +274,6 @@ END
   os.remove(pdb_filename)
   os.remove(cif_filename)
 
-  # test pdb_interpretation
-  extract = mmtbx.model.manager.get_default_pdb_interpretation_params()
-  extract.pdb_interpretation.use_neutron_distances = True
-  dm.update_pdb_interpretation_for_model(test_filename, extract)
-  assert dm.get_model(test_filename).restraints_manager is None
-
 # -----------------------------------------------------------------------------
 def test_model_and_restraint():
 

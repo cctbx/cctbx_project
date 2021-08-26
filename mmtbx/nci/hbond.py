@@ -166,9 +166,6 @@ def stats(model, prefix, no_ticks=True):
   pdb_inp = iotbx.pdb.input(source_info = None, lines = rr.stdout_lines)
   model = mmtbx.model.manager(
     model_input      = pdb_inp,
-    #build_grm        = True,
-    #pdb_hierarchy    = pdb_inp.construct_hierarchy(),
-    #process_input    = True,
     log              = null_out())
   if(model.crystal_symmetry() is None):
     box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(

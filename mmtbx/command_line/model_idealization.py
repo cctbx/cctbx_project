@@ -215,8 +215,8 @@ class model_idealization():
     params.pdb_interpretation.restraints_library.rdl = True
     params.pdb_interpretation.secondary_structure = self.params.secondary_structure
     self.params_for_model = params
-    self.model.set_pdb_interpretation_params(params)
-    self.model.process_input_model(make_restraints=True)
+    self.model.process_input_model(
+      make_restraints=True, pdb_interpretation_params=params)
 
 
     self.original_hierarchy = self.model.get_hierarchy().deep_copy() # original pdb_h, without any processing
@@ -482,7 +482,7 @@ class model_idealization():
     params_h.pdb_interpretation.use_neutron_distances=True
     params_h.pdb_interpretation.ncs_search = self.params_for_model.pdb_interpretation.ncs_search
     params_h.pdb_interpretation.ncs_search.exclude_selection="water"
-    self.model_h.set_pdb_interpretation_params(params_h)
+    #self.model_h.set_pdb_interpretation_params(params_h)
     self.model_h.get_restraints_manager()
     self.model_h.idealize_h_riding()
     self.model_h.setup_ncs_constraints_groups(filter_groups=True)
@@ -1074,7 +1074,6 @@ def run(args):
       model_input = pdb_input,
       restraint_objects = input_objects.cif_objects,
       crystal_symmetry = crystal_symmetry,
-      process_input = False,
       log=log)
 
   map_data = None
