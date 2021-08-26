@@ -48,10 +48,11 @@ def process_predicted_model(model,
            Normally contains a single chain.   If multiple chains, process
            each separately.
 
-    b_value_field_is:  'lddt' or 'rmsd'.  For AlphaFold models
+    b_value_field_is:  'lddt' or 'rmsd' or 'b_value'.  For AlphaFold models
                         the b-value field is a value of LDDT (confidence)
                         on scale of 0-1 or 0-100
                         For RoseTTAFold, the B-value field is rmsd (A)
+                        If b_value... it is left as is.
 
     input_lddt_is_fractional:  if True, input lddt is scale of 0 to 1,
         otherwise 0 - 100
@@ -81,7 +82,7 @@ def process_predicted_model(model,
   # Make sure we have what we expect:
   import mmtbx.model
   assert isinstance(model, mmtbx.model.manager)
-  assert b_value_field_is in ('lddt','rmsd')
+  assert b_value_field_is in ('lddt','rmsd', 'b_value')
 
   # Decide what to do
 
@@ -105,6 +106,9 @@ def process_predicted_model(model,
     b_values = get_b_values_rmsd(b_value_field)
     print("B-value field interpreted as rmsd %s" %("(0 - 1)"), file = log)
 
+  elif b_value_field_is == 'b_value':
+    b_values = b_value_field
+    print("B-value field interpreted as b_values", file = log)
   else:
     raise AssertionError("Please set b_value_field_is to either lddt or rmsd")
 
@@ -777,3 +781,42 @@ def get_best_co(map_data, min_cutoff = 0.5):
 ################################################################################
 ####################   end of split_model_into_compact_units   #################
 ################################################################################
+
+if __name__ == "__main__":
+  # run a simple version by default to demo usage
+  args = sys.argv[1:]
+  if len(args) < 2:
+    print("libtbx.python process_predicted_model.py input.pdb output.pdb")
+  else:
+    input_file_name = args[0]
+    output_file_name = args[1]
+    if len(args) > 2:
+       b_value_field = args[2]
+    else:
+       b_value_field = 'lddt'
+    from iotbx.data_manager import DataManager
+    dm = DataManager()
+    dm.set_overwrite(True)
+    m = dm.get_model(input_file_name)
+
+    print("\nProcessing and splitting model into domains")
+    model_info = process_predicted_model(m,  b_value_field_is = b_value_field,
+      remove_low_confidence_residues = True,
+      maximum_rmsd = 1.5,
+      split_model_by_compact_regions = True,)
+
+    segid_list = model_info.segid_list
+    print("Segments found: %s" %(" ".join(segid_list)))
+
+    mmm = model_info.model.as_map_model_manager()
+    mmm.write_model(output_file_name)
+    for segid in segid_list:
+      selection_string = "segid %s" %(segid)
+      ph = model_info.model.get_hierarchy()
+      asc1 = ph.atom_selection_cache()
+      sel = asc1.selection(selection_string)
+      m1 = model_info.model.select(sel)
+      dm.write_model_file(m1, '%s_%s.pdb' %(output_file_name[:-4],segid))
+
+
+
