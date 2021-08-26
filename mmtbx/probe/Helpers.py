@@ -208,7 +208,7 @@ def isMetallic(atom):
         isMetallic.metallics.add(e[1].upper())
     return element in isMetallic.metallics
 
-def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy):
+def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acceptorOnly = False):
   """
     Get a list of phantom Hydrogens for the atom specified, which is asserted to be an Oxygen
     atom for a water.
@@ -219,6 +219,11 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy):
     information about atoms beyond what is in the pdb.hierarchy.  Used here to determine
     which atoms may be acceptors.
     :param minOccupancy: Minimum occupancy for an atom to be considered.
+    :param acceptorOnly: Only allow bonds with atoms that are acceptors when this is True.
+    This is false by default because Reduce needs to check whether the bonded atom is either
+    an acceptor or a possible flipped position of an acceptor, and that is not something that
+    can be determined at the time we're placing phantom hydrogens.  In that case, we want to
+    include all possible interactions and weed them out during optimization.
     :return: List of new atoms that make up the phantom Hydrogens, with only their name and
     element type and xyz positions filled in.  They will have i_seq 0 and they should not be
     inserted into a structure.
@@ -240,37 +245,34 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy):
   candidates = []
 
   for a in nearby:
-    # @todo The C++ checked to see if the atom was either marked as an acceptor or
-    # the flipped position for one in a Mover, but we go ahead and check them pointing
-    # towards all nearby non-hydrogen atoms.  This may make the probe testing slower,
-    # but because they are only able to make Hydrogen bonds it should not affect the outcome.
-    #   Check to ensure the occupancy of the neighbor is above threshold and that it is
+    # Check to ensure the occupancy of the neighbor is above threshold and that it is
     # close enough to potentially bond to the atom.
     OH_BOND_LENGTH = 1.0
     WATER_EXPLICIT_RADIUS = 1.05
     overlap = ( (rvec3(atom.xyz) - rvec3(a.xyz)).length()  -
                 (WATER_EXPLICIT_RADIUS + extraAtomInfo.getMappingFor(a).vdwRadius + OH_BOND_LENGTH) )
     if overlap < -0.01 and a.occ > minOccupancy and a.element != "H":
-      # If we have multiple atoms in the same Aromatic ring (part of the same residue)
-      # we only point at the closest one.  To ensure this, we check all current candidates
-      # and if we find one that is on the same aromatic ring then we either ignore this new
-      # atom (if it is further) or replace the existing one (if it is closer).
-      if AtomTypes.IsAromatic(a.parent().resname.strip().upper(), a.name.strip().upper()):
-        for c in candidates:
-          # See if we belong to the same atom group and are both ring acceptors.  If so, we need to replace
-          # or else squash this atom.
-          if (AtomTypes.IsAromatic(c.parent().resname.strip().upper(), c.name.strip().upper()) and
-              a.parent() == c.parent()):
-            if overlap < c._overlap:
-              # Replace the further atom with this atom.
-              c._atom = a
-              c._overlap = overlap
-            else:
-              # This is further away, so we don't insert it.
-              continue
+      if not acceptorOnly or extraAtomInfo.getMappingFor(a).isAcceptor:
+        # If we have multiple atoms in the same Aromatic ring (part of the same residue)
+        # we only point at the closest one.  To ensure this, we check all current candidates
+        # and if we find one that is on the same aromatic ring then we either ignore this new
+        # atom (if it is further) or replace the existing one (if it is closer).
+        if AtomTypes.IsAromatic(a.parent().resname.strip().upper(), a.name.strip().upper()):
+          for c in candidates:
+            # See if we belong to the same atom group and are both ring acceptors.  If so, we need to replace
+            # or else squash this atom.
+            if (AtomTypes.IsAromatic(c.parent().resname.strip().upper(), c.name.strip().upper()) and
+                a.parent() == c.parent()):
+              if overlap < c._overlap:
+                # Replace the further atom with this atom.
+                c._atom = a
+                c._overlap = overlap
+              else:
+                # This is further away, so we don't insert it.
+                continue
 
-      # Add the Candidate
-      candidates.append(Candidate(a, overlap))
+        # Add the Candidate
+        candidates.append(Candidate(a, overlap))
 
   # Generate phantoms pointing toward all of the remaining candidates.
   for c in candidates:
