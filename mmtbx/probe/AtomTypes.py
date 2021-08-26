@@ -125,7 +125,7 @@ def IsAromatic(resName, atomName):
   """Given a residue and atom name, determine whether that atom is part of an aromatic ring.
   :param resName: String containing the 1-3-character residue name in all caps, including leading space.
   :param atomName: String containing the 1-4-character atom name in all caps, including leading space.
-  :returns True if the atom is a C=O in a standard residue, False if not.  Does not handle HET atoms.
+  :returns True if the atom is aromatic in a standard residue, False if not.  Does not handle HET atoms.
   """
 
   for e in _AromaticTable:
