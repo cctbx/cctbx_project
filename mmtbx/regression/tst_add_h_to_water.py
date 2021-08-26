@@ -98,7 +98,7 @@ def exercise_01():
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     log = None)
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   ####
   model.add_hydrogens(correct_special_position_tolerance=1.0)
   result = StringIO()

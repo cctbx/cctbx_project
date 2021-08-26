@@ -535,5 +535,5 @@ def get_model_adhoc(crystal_symmetry, ph=None, pdb_inp=None):
        crystal_symmetry = crystal_symmetry,
        log              = null_out(),
        pdb_hierarchy    = ph)
-  model.process_input_model(pdb_interpretation_params=params, make_restraints=True)
+  model.process(pdb_interpretation_params=params, make_restraints=True)
   return model

@@ -681,7 +681,7 @@ def get_results_from_validate_H(neutron_distances, pdb_str):
     model_input = pdb_inp,
     stop_for_unknowns = False,
     log = null_out())
-  model.process_input_model(pdb_interpretation_params=pi_params,
+  model.process(pdb_interpretation_params=pi_params,
     make_restraints=True)
 
   c = validate_H(model = model,

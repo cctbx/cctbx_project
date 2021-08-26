@@ -209,7 +209,7 @@ Usage:
       model_input       = self.pdb_inp,
       stop_for_unknowns = False,
       restraint_objects = self.input_objects.cif_objects)
-    model.process_input_model(pdb_interpretation_params=pi_params,
+    model.process(pdb_interpretation_params=pi_params,
       make_restraints=True)
     print("Model object created from file %s:" % \
       getattr(self.work_params, self.pdbf_def), file=self.log)

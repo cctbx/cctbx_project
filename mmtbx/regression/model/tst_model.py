@@ -877,7 +877,7 @@ def exercise_00():
   def get_ab(params):
     pdb_inp = iotbx.pdb.input(lines=pdb_str_00.split('\n'), source_info=None)
     m = mmtbx.model.manager(model_input=pdb_inp)
-    m.process_input_model(make_restraints=True)
+    m.process(make_restraints=True)
     xray_structure = m.get_xray_structure()
     assert xray_structure is not None
     s = flex.bool(xray_structure.scatterers().size(),flex.size_t(range(40,504)))
@@ -906,7 +906,7 @@ def exercise():
                    relative_path="phenix_regression/pdb/enk.pdb", test=os.path.isfile)
   mol = mmtbx.model.manager(
       model_input = iotbx.pdb.input(file_name=pdb_file))
-  mol.process_input_model(make_restraints=True)
+  mol.process(make_restraints=True)
   mol.setup_scattering_dictionaries(scattering_table = "wk1995")
 ################
 
@@ -981,7 +981,7 @@ def exercise_2():
   params.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None # disable clash_guard
   mol = mmtbx.model.manager(
       model_input = iotbx.pdb.input(file_name=pdb_file))
-  mol.process_input_model(pdb_interpretation_params=params, make_restraints=True)
+  mol.process(pdb_interpretation_params=params, make_restraints=True)
   mol.setup_scattering_dictionaries(scattering_table = "wk1995")
   out = StringIO()
   adp_stat = mol.show_adp_statistics(out = out)
@@ -994,7 +994,7 @@ def exercise_3():
   params.pdb_interpretation.nonbonded_weight = 16
   mol = mmtbx.model.manager(
     model_input               = iotbx.pdb.input(file_name=pdb_file))
-  mol.process_input_model(pdb_interpretation_params=params, make_restraints=True)
+  mol.process(pdb_interpretation_params=params, make_restraints=True)
   mol.setup_scattering_dictionaries(scattering_table = "wk1995")
   out = StringIO()
   mol.set_log(out)
@@ -1018,7 +1018,7 @@ def exercise_4():
     test=os.path.isfile)
   mol = mmtbx.model.manager(
       model_input = iotbx.pdb.input(file_name=pdb_file))
-  mol.process_input_model(make_restraints=True)
+  mol.process(make_restraints=True)
   result = mol.isolated_atoms_selection()
   solvent_sel = mol.solvent_selection()
   assert solvent_sel.count(True)+1 == result.count(True)
@@ -1053,7 +1053,7 @@ def exercise_convert_atom():
   open("tmp_tst_model_5.pdb", "w").write(root.as_pdb_string(symm))
   mol = mmtbx.model.manager(
       model_input = iotbx.pdb.input(file_name="tmp_tst_model_5.pdb"))
-  mol.process_input_model(make_restraints=True)
+  mol.process(make_restraints=True)
   mol.convert_atom(
     i_seq=4,
     scattering_type="Mg2+",
@@ -1153,7 +1153,7 @@ def exercise_h_counts():
   pdb_inp = iotbx.pdb.input(file_name = "exercise_h_counts.pdb")
   model = mmtbx.model.manager(
       model_input = pdb_inp)
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   model.setup_scattering_dictionaries(scattering_table="n_gaussian")
   hc = model.h_counts()
   assert approx_equal(hc.h_count                , 26   , 0.01)
@@ -1178,7 +1178,7 @@ ANISOU 2732  O  BHOH A 380     3169   2234   2532   1183    675   -168       O
   pdb_inp = iotbx.pdb.input(file_name = "exercise_5.pdb")
   model = mmtbx.model.manager(
       model_input = pdb_inp)
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   model.setup_scattering_dictionaries(scattering_table="n_gaussian")
   result = model.extract_water_residue_groups()
   assert len(result)==1
@@ -1186,7 +1186,7 @@ ANISOU 2732  O  BHOH A 380     3169   2234   2532   1183    675   -168       O
 def exercise_6():
   pdb_inp = iotbx.pdb.input(lines=pdb_str_00.split('\n'), source_info=None)
   m = mmtbx.model.manager(model_input=pdb_inp)
-  m.process_input_model(make_restraints=True)
+  m.process(make_restraints=True)
   ms = m.geometry_statistics()
   ms.show()
   #
@@ -1226,12 +1226,12 @@ def exercise_from_hierarchy():
   pdb_inp1 = iotbx.pdb.input(lines=pdb_str_00.split('\n'), source_info=None)
   pdb_inp2 = iotbx.pdb.input(lines=pdb_str_00.split('\n'), source_info=None)
   m1 = mmtbx.model.manager(model_input = pdb_inp1)
-  m1.process_input_model(make_restraints=True)
+  m1.process(make_restraints=True)
   m2 = mmtbx.model.manager(
       model_input = None,
       crystal_symmetry = pdb_inp2.crystal_symmetry(),
       pdb_hierarchy=pdb_inp2.construct_hierarchy())
-  m2.process_input_model(make_restraints=True)
+  m2.process(make_restraints=True)
   check_consistency(m1, m2)
   sel = m1.selection("chain A")
   m11 = m1.select(sel)
@@ -1274,7 +1274,7 @@ END
     model = mmtbx.model.manager(
       model_input = iotbx.pdb.input(source_info=None, lines=lines),
       log = null_out())
-    model.process_input_model(pdb_interpretation_params=params, make_restraints=True)
+    model.process(pdb_interpretation_params=params, make_restraints=True)
     gs = model.geometry_statistics(use_hydrogens = True).result()
     if(use_neutron_distances):
       assert approx_equal(gs.bond.mean, 0.0068, 0.0001)
@@ -1322,7 +1322,7 @@ ATOM      0  HB3 CYS A   6      -0.371   0.442  10.351  1.00  0.05           H
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     log         = null_out())
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   sel = model.selection(string = "element H and not protein")
   model = model.select(~sel)
   sel = model.selection(string="protein")
@@ -1370,7 +1370,7 @@ END
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     log         = null_out())
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   sel = model.rotamer_outlier_selection().iselection()
   assert list(sel) == [9, 10, 11, 12, 13, 14, 15, 16, 17]
 

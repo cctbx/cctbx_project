@@ -124,7 +124,7 @@ END
 def exercise_1():
   pdb_inp = iotbx.pdb.input(lines=flex.std_string(pdb_str_1.splitlines()), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   grm = model.get_restraints_manager().geometry
   pdb_hierarchy = model.get_hierarchy()
   sites_cart = model.get_sites_cart()

@@ -120,7 +120,7 @@ def get_complete_dihedral_proxies(
       restraint_objects=restraint_objects,
       monomer_parameters=monomer_parameters,
       log=null_out())
-  model.process_input_model(pdb_interpretation_params=work_params,
+  model.process(pdb_interpretation_params=work_params,
     make_restraints=True)
   return get_dihedrals_and_phi_psi(model)
 

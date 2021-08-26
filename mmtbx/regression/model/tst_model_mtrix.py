@@ -58,7 +58,7 @@ def exercise_1():
   model = mmtbx.model.manager(
       model_input = inp,
       log = null_out())
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   assert model.get_number_of_atoms() == 21, model.get_number_of_atoms()
   assert model.get_hierarchy().atoms_size() == 21
   assert model.get_xray_structure().scatterers().size() == 21
@@ -85,7 +85,7 @@ def exercise_1():
   model = mmtbx.model.manager(
       model_input = inp,
       log = null_out())
-  model.process_input_model(pdb_interpretation_params = pdb_int_params)
+  model.process(pdb_interpretation_params = pdb_int_params)
   # model.get_xray_structure()
   assert not model.ncs_constraints_present()
   assert model.get_ncs_obj() is not None
@@ -111,7 +111,7 @@ def exercise_2():
   model = mmtbx.model.manager(
       model_input = inp,
       log = null_out())
-  model.process_input_model(pdb_interpretation_params = pdb_int_params)
+  model.process(pdb_interpretation_params = pdb_int_params)
   # model.get_xray_structure()
   ss = model.get_ss_annotation()
   assert ss.get_n_helices() == 3

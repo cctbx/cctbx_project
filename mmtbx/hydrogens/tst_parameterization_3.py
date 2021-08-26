@@ -15,7 +15,7 @@ def exercise(pdb_str):
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     log         = null_out())
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   pdb_hierarchy = model.get_hierarchy()
   sites_cart = model.get_sites_cart()
   atoms = pdb_hierarchy.atoms()

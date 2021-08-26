@@ -619,7 +619,7 @@ def main_hydrogen(model,
   #
   hierarchy = model.get_hierarchy()
   # should be automatic
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   geometry_restraints_manager = model.get_restraints_manager().geometry
   atoms = hierarchy.atoms()
 

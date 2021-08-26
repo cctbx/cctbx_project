@@ -17,7 +17,7 @@ def prepare_inputs(pdb_str, cif_str):
     model_input=pdb_inp,
     restraint_objects = cif_objects,
     log = null_out())
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   model.setup_riding_h_manager()
   riding_h_manager = model.get_riding_h_manager()
 

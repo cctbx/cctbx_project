@@ -591,7 +591,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     model = mmtbx.model.manager(
       model_input = pdb_inp,
       log         = null_out())
-    model.process_input_model(pdb_interpretation_params=params,
+    model.process(pdb_interpretation_params=params,
       make_restraints=True)
     hd_sel = model.get_hd_selection()
     grm = model.get_restraints_manager().geometry
@@ -643,7 +643,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     model = mmtbx.model.manager(
       model_input = pdb_inp,
       log         = null_out())
-    model.process_input_model(pdb_interpretation_params=params,
+    model.process(pdb_interpretation_params=params,
       make_restraints=True)
     macro_mol_sel = get_macro_mol_sel(model = model)
     nb_overlaps = nbo.info(
@@ -681,7 +681,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     model = mmtbx.model.manager(
       model_input = pdb_inp,
       log         = null_out())
-    model.process_input_model(make_restraints=True)
+    model.process(make_restraints=True)
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
     geometry = model.get_restraints_manager().geometry
     xrs = model.get_xray_structure()
@@ -715,7 +715,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     model = mmtbx.model.manager(
       model_input = pdb_inp,
       log         = null_out())
-    model.process_input_model(pdb_interpretation_params=params,
+    model.process(pdb_interpretation_params=params,
       make_restraints=True)
     macro_mol_sel = get_macro_mol_sel(model=model)
     nb_overlaps = nbo.info(
@@ -806,7 +806,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     model = mmtbx.model.manager(
       model_input = pdb_inp,
       log         = null_out())
-    model.process_input_model(pdb_interpretation_params=params,
+    model.process(pdb_interpretation_params=params,
       make_restraints=True)
     hd_sel = model.get_hd_selection()
     xrs = model.get_xray_structure()
@@ -842,7 +842,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
       model_input = pdb_inp,
       stop_for_unknowns = False,
       log         = null_out())
-    model.process_input_model(pdb_interpretation_params=params,
+    model.process(pdb_interpretation_params=params,
       make_restraints=True)
     macro_mol_sel = get_macro_mol_sel(model=model)
     # Make sure we don't have only macro molecule
@@ -937,7 +937,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
       model_input = pdb_inp,
       stop_for_unknowns = False,
       log         = null_out())
-    model.process_input_model(pdb_interpretation_params=params,
+    model.process(pdb_interpretation_params=params,
       make_restraints=True)
     grm = model.get_restraints_manager().geometry
     xrs = model.get_xray_structure()
@@ -1038,7 +1038,7 @@ def process_overlaps_count(file_name,return_n_atoms=False,cif_file_name=None):
     model_input = pdb_inp,
     restraint_objects = cif_objects,
     log         = null_out())
-  model.process_input_model(pdb_interpretation_params=params,
+  model.process(pdb_interpretation_params=params,
     make_restraints=True)
   macro_mol_sel = get_macro_mol_sel(model = model)
   xrs = model.get_xray_structure()
@@ -1081,7 +1081,7 @@ def process_raw_records(
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     log         = null_out())
-  model.process_input_model(pdb_interpretation_params=params,
+  model.process(pdb_interpretation_params=params,
     make_restraints=True)
   macro_mol_sel = get_macro_mol_sel(model = model)
   result = nbo.info(

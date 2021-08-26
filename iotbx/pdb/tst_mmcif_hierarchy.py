@@ -1070,7 +1070,7 @@ ATOM     58  ND2 ASN A  19      21.495  13.232  11.887  1.00  7.24           N
 """
   inp = iotbx.pdb.input(source_info=None, lines=inp_pdb)
   m = mmtbx.model.manager(model_input=inp, log=null_out())
-  m.process_input_model(make_restraints=True)
+  m.process(make_restraints=True)
   cif_txt = m.model_as_mmcif()
   # print(m.model_as_mmcif())
   assert_lines_in_text(cif_txt,

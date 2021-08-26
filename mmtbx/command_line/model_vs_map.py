@@ -76,7 +76,7 @@ def run(args, log=sys.stdout):
   model = mmtbx.model.manager(
       model_input = pdb_inp,
       crystal_symmetry=inputs.crystal_symmetry)
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   if model.get_number_of_models() > 1:
     raise Sorry("Only one model allowed.")
   model.setup_scattering_dictionaries(scattering_table=params.scattering_table)

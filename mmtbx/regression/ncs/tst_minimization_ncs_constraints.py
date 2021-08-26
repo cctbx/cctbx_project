@@ -117,7 +117,7 @@ class ncs_minimization_test(object):
     if(self.use_geometry_restraints):
       pdb_inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
       model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
-      model.process_input_model(make_restraints=True)
+      model.process(make_restraints=True)
       self.grm = model.get_restraints_manager()
       if(self.u_iso):
         temp = mmtbx.refinement.adp_refinement.adp_restraints_master_params

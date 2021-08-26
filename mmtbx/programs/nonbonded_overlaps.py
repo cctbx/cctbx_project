@@ -99,7 +99,7 @@ Example:
       readyset_model = model
 
     readyset_model.set_restraint_objects(restraint_objects)
-    readyset_model.process_input_model(make_restraints=True,
+    readyset_model.process(make_restraints=True,
       pdb_interpretation_params = pi_params)
 
     # TODO: do we need macro_mol_sel, do we care?

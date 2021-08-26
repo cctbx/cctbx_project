@@ -70,7 +70,7 @@ def tst_02():
   import sys
   pdb_inp = iotbx.pdb.input(lines=pdb_poor.splitlines(),source_info='None')
   model= mmtbx.model.manager(model_input=pdb_inp)
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
 
   model.set_log(log = null_out())
 

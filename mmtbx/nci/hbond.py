@@ -173,7 +173,7 @@ def stats(model, prefix, no_ticks=True):
       buffer_layer = 5)
     model.set_sites_cart(box.sites_cart)
     model._crystal_symmetry = box.crystal_symmetry()
-  model.process_input_model(make_restraints = True)
+  model.process(make_restraints = True)
   #
   N = 10
   #

@@ -498,7 +498,7 @@ class load_model_and_data(object):
         log=self.log)
     if process_pdb_file:
       make_sub_header("Processing PDB file(s)", out=self.log)
-      self.model.process_input_model(pdb_interpretation_params = model_params,
+      self.model.process(pdb_interpretation_params = model_params,
         make_restraints=True)
       full_grm = self.model.get_restraints_manager()
       self.geometry = full_grm.geometry

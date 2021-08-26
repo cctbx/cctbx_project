@@ -27,7 +27,7 @@ def run(args, out=sys.stdout):
   validate_params(params)
   model = mmtbx.model.manager(
     model_input = iotbx.pdb.input(file_name = params.model))
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   model.get_xray_structure()
   model.show_rigid_bond_test(
     out=out,

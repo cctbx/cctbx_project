@@ -175,7 +175,7 @@ def get_model_from_file(file_path):
     model_input = pdb_inp,
     stop_for_unknowns = False,
     log = null_out())
-  model.process_input_model(make_restraints=False)
+  model.process(make_restraints=False)
   return model
 
 class Remediator():

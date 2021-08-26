@@ -135,7 +135,7 @@ class place_hydrogens():
       crystal_symmetry  = self.model.crystal_symmetry(),
       restraint_objects = ro,
       log               = null_out())
-    self.model.process_input_model(pdb_interpretation_params=p,
+    self.model.process(pdb_interpretation_params=p,
       make_restraints=True)
     if print_time:
       print("get new model obj and grm:", round(time.time()-t0, 2))

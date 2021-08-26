@@ -42,7 +42,7 @@ def setup_test(pdb_answer, pdb_poor, i_pdb, d_min, resolution_factor,
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer)
   model_answer = mmtbx.model.manager(model_input=pdb_inp,
     log=null_out())
-  model_answer.process_input_model(pdb_interpretation_params=pip,
+  model_answer.process(pdb_interpretation_params=pip,
     make_restraints=True)
   with open("answer_%s.pdb"%str(i_pdb), "w") as the_file:
     the_file.write(model_answer.model_as_pdb())
@@ -63,7 +63,7 @@ def setup_test(pdb_answer, pdb_poor, i_pdb, d_min, resolution_factor,
   # poor
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_poor)
   model_poor = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
-  model_poor.process_input_model(pdb_interpretation_params=pip,
+  model_poor.process(pdb_interpretation_params=pip,
     make_restraints=True)
   with open("poor_%s.pdb"%str(i_pdb), "w") as the_file:
     the_file.write(model_poor.model_as_pdb())

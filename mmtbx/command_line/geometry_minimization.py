@@ -356,7 +356,7 @@ class run(object):
         restraint_objects = cif_objects,
         stop_for_unknowns = self.params.stop_for_unknowns,
         log = self.log)
-    self.model.process_input_model(
+    self.model.process(
       pdb_interpretation_params = self.params,
       make_restraints           = True)
     self.ncs_obj = self.model.get_ncs_obj()

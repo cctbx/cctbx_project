@@ -32,7 +32,7 @@ ATOM    885  H   TRP A 101    -126.863-142.797-102.745  1.00 42.04           H
   ann = pdb_inp.extract_secondary_structure()
   model = mmtbx.model.manager(
     model_input = pdb_inp)
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   model.set_ss_annotation(ann)
   rm = ssb.substitute_ss(
       model,
@@ -67,7 +67,7 @@ ATOM    885  H   TRP A 101    -126.863-142.797-102.745  1.00 42.04           H
   ann = pdb_inp.extract_secondary_structure()
   model = mmtbx.model.manager(
     model_input = pdb_inp)
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   model.set_ss_annotation(ann)
   try:
     rm = ssb.substitute_ss(
@@ -102,7 +102,7 @@ ATOM    881  CE3 TRP A 101    -125.446-147.437-100.384  1.00 42.04           C
   ann = pdb_inp.extract_secondary_structure()
   model = mmtbx.model.manager(
     model_input = pdb_inp)
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   model.set_ss_annotation(ann)
   rm = ssb.substitute_ss(
       model)

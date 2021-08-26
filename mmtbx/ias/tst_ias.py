@@ -30,7 +30,7 @@ def exercise():
     mol = mmtbx.model.manager(
         model_input=copy.deepcopy(pdb_inp),
         restraint_objects=cif_objects)
-    mol.process_input_model(make_restraints=True)
+    mol.process(make_restraints=True)
     if(opt == ["L"]):
       params.build_ias_types = opt
       mol.add_ias(fmodel = None, ias_params = params)

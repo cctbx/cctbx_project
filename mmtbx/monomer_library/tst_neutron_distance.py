@@ -54,7 +54,7 @@ def exercise(tolerance=0.01):
           input_string=grand_master_phil_str, process_includes=True).extract()
     params.pdb_interpretation.use_neutron_distances = use_neutron_distances
     model = mmtbx.model.manager(model_input = inp)
-    model.process_input_model(pdb_interpretation_params=params, make_restraints=True)
+    model.process(pdb_interpretation_params=params, make_restraints=True)
     ph = model.get_hierarchy()
     ph.write_pdb_file(file_name="input.pdb")
 

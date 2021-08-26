@@ -379,7 +379,7 @@ END
 """
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   model = mmtbx.model.manager(model_input = pdb_inp, log=null_out())
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   residue = model.get_hierarchy().only_residue()
   r = mmtbx.utils.rotatable_bonds.axes_and_atoms_aa_specific(
       residue = residue, mon_lib_srv = model.get_mon_lib_srv(), log=null_out())

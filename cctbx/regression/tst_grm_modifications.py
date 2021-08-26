@@ -469,7 +469,7 @@ def exercise_bond_near_symmetry3(mon_lib_srv, ener_lib):
   origin_ids = linking_class()
   pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records8)
   model = mmtbx.model.manager(model_input = pdb_inp, log=null_out())
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   grm = model.get_restraints_manager().geometry
   h = model.get_hierarchy()
   proxy = geometry_restraints.bond_simple_proxy(
@@ -523,7 +523,7 @@ def exercise_bond_over_symmetry(mon_lib_srv, ener_lib):
   model = mmtbx.model.manager(
       model_input = pdb_inp,
       log=null_out())
-  model.process_input_model(pdb_interpretation_params=params, make_restraints=True)
+  model.process(pdb_interpretation_params=params, make_restraints=True)
   grm = model.get_restraints_manager().geometry
   simple, asu = grm.get_all_bond_proxies()
   assert (simple.size(), asu.size()) == (29, 0)
@@ -584,7 +584,7 @@ def exercise_bond_over_symmetry_2(mon_lib_srv, ener_lib):
   model = mmtbx.model.manager(
       model_input = pdb_inp,
       log=null_out())
-  model.process_input_model(pdb_interpretation_params=params, make_restraints=True)
+  model.process(pdb_interpretation_params=params, make_restraints=True)
   grm = model.get_restraints_manager().geometry
   simple, asu = grm.get_all_bond_proxies()
   assert (simple.size(), asu.size()) == (0, 0)

@@ -102,7 +102,7 @@ def run():
   m = mmtbx.model.manager(
     model_input = pdb_inp,
     log         = null_out())
-  m.process_input_model(pdb_interpretation_params=params, make_restraints=True)
+  m.process(pdb_interpretation_params=params, make_restraints=True)
   grm = m.get_restraints_manager()
   ph = m.get_hierarchy()
   atoms = list(ph.atoms())

@@ -114,7 +114,7 @@ ATOM    175  NZ  LYS A  39     -12.408  33.271 -25.337  1.00185.25           N
 def get_necessary_inputs(pdb_str):
   pdb_inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   return model
 
 def exercise_1():

@@ -23,7 +23,7 @@ class xray_structure_plus(object):
     log = StringIO()
     pdb_inp = iotbx.pdb.input(file_name=file_name)
     self.model = mmtbx.model.manager(model_input = pdb_inp, log = log)
-    self.model.process_input_model(pdb_interpretation_params = full_params)
+    self.model.process(pdb_interpretation_params = full_params)
     self.xray_structure = self.model.get_xray_structure()
     uc = self.model.get_xray_structure().unit_cell()
     self.occ           = self.xray_structure.scatterers().extract_occupancies()

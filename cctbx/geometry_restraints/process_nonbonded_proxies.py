@@ -549,7 +549,7 @@ class manager():
     Clashes code refactored from Youval Dar's code for nonbonded_overlaps (LBNL 2013)
     """
     if(self.model.get_restraints_manager() is None):
-      self.model.process_input_model(make_restraints=True)
+      self.model.process(make_restraints=True)
     grm = self.model.get_restraints_manager().geometry
     xrs = self.model.get_xray_structure()
     sites_cart  = self.model.get_sites_cart()

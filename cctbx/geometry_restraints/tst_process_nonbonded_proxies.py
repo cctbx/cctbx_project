@@ -32,7 +32,7 @@ def obtain_model(raw_records, stop_for_unknowns = True):
     model_input = pdb_inp,
     stop_for_unknowns = stop_for_unknowns,
     log         = null_out())
-  model.process_input_model(pdb_interpretation_params=params,
+  model.process(pdb_interpretation_params=params,
     make_restraints=True)
   return model
 
@@ -48,7 +48,7 @@ def get_clashes_result(raw_records, sel=None):
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     log         = null_out())
-  model.process_input_model(pdb_interpretation_params=params,
+  model.process(pdb_interpretation_params=params,
     make_restraints=True)
   if sel is not None:
     model = model.select(sel)

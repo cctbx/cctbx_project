@@ -12,11 +12,11 @@ def exercise_adopting_ref_tors_restraints_h():
   params.pdb_interpretation.flip_symmetric_amino_acids=False
   inp_1 = iotbx.pdb.input(lines=tst_model_cart_ref_restraints.pdb_str_h, source_info=None)
   h_model = mmtbx.model.manager(model_input = inp_1)
-  h_model.process_input_model(pdb_interpretation_params=params, make_restraints=True)
+  h_model.process(pdb_interpretation_params=params, make_restraints=True)
 
   inp_2 = iotbx.pdb.input(lines=tst_model_cart_ref_restraints.pdb_str, source_info=None)
   model = mmtbx.model.manager(model_input = inp_2)
-  model.process_input_model(pdb_interpretation_params=params, make_restraints=True)
+  model.process(pdb_interpretation_params=params, make_restraints=True)
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.flip_symmetric_amino_acids=False
   params.reference_model.enabled=True

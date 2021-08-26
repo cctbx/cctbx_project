@@ -43,7 +43,7 @@ def get_model(file_name, log):
       model_input = pdb_inp,
       stop_for_unknowns = False,
       log=log)
-  model.process_input_model(pdb_interpretation_params=pdb_interpretation_params)
+  model.process(pdb_interpretation_params=pdb_interpretation_params)
   return model
 
 def get_model_str(strings, log):
@@ -55,7 +55,7 @@ def get_model_str(strings, log):
       model_input = pdb_inp,
       stop_for_unknowns = False,
       log=log)
-  model.process_input_model(pdb_interpretation_params=pdb_interpretation_params)
+  model.process(pdb_interpretation_params=pdb_interpretation_params)
   return model
 
 def exercise_00(verbose):

@@ -125,7 +125,7 @@ def run():
       m = mmtbx.model.manager(
         model_input = inp,
         log         = null_out())
-      m.process_input_model(pdb_interpretation_params=params, make_restraints=True)
+      m.process(pdb_interpretation_params=params, make_restraints=True)
       r1 = m.geometry_statistics()
       #m.setup_riding_h_manager()
       m.idealize_h_minimization(show=False)
@@ -315,7 +315,7 @@ END
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.secondary_structure.enabled=True
   model = dm.get_model('exercise_ss_creation_crash_model.pdb')
-  model.process_input_model(make_restraints=True,
+  model.process(make_restraints=True,
     pdb_interpretation_params=params)
 
 if (__name__ == "__main__"):

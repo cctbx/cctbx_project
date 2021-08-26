@@ -386,7 +386,7 @@ def run(args, log = sys.stdout):
     pdbi_params.pdb_interpretation.ramachandran_plot_restraints.enabled=True
   model = mmtbx.model.manager(
     model_input = iotbx.pdb.input(file_name = pdb_file_name))
-  model.process_input_model(make_restraints=True,
+  model.process(make_restraints=True,
     pdb_interpretation_params = pdbi_params)
   root = iotbx.pdb.hierarchy.root()
   loop_1(

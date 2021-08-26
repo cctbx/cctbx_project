@@ -34,7 +34,7 @@ def tst_1():
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     log         = null_out())
-  model.process_input_model(pdb_interpretation_params=params,
+  model.process(pdb_interpretation_params=params,
     make_restraints=True)
   # request neutron bond lengths
   model.set_hydrogen_bond_length(use_neutron_distances=True,
@@ -47,7 +47,7 @@ def tst_1():
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     log         = null_out())
-  model.process_input_model(pdb_interpretation_params=params, make_restraints=False)
+  model.process(pdb_interpretation_params=params, make_restraints=False)
   model.set_hydrogen_bond_length(use_neutron_distances=False,
                                  show=False,
                                  log=sys.stdout)
@@ -65,7 +65,7 @@ def tst_2():
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     log         = null_out())
-  model.process_input_model(pdb_interpretation_params = params)
+  model.process(pdb_interpretation_params = params)
   #
   # Check if selected individual bond lengths are correct
   atoms = model.get_hierarchy().atoms()
@@ -113,7 +113,7 @@ def tst_3():
     model_input = pdb_inp,
     restraint_objects = cif_objects,
     log         = null_out())
-  model.process_input_model(pdb_interpretation_params = params)
+  model.process(pdb_interpretation_params = params)
   # request neutron bond lengths
   model.set_hydrogen_bond_length(use_neutron_distances=True,
                                  show=False,

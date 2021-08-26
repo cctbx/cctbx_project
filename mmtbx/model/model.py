@@ -1502,7 +1502,7 @@ class manager(object):
     else:
       return self.get_default_pdb_interpretation_params()
 
-  def process_input_model(
+  def process(
         self,
         pdb_interpretation_params = None,
         make_restraints           = False,
@@ -1593,7 +1593,7 @@ class manager(object):
     #
     self._clash_guard_msg = self._processed_pdb_file.clash_guard(
       new_sites_cart = self.get_sites_cart())
-    # This must happen after process_input_model call.
+    # This must happen after process call.
     # Reason: contents of model and _model_input can get out of sync any time.
     self._model_input = None
     self._processed_pdb_file = None
@@ -2427,7 +2427,7 @@ class manager(object):
          is not use_neutron_distances):
       pi_scope.pdb_interpretation.use_neutron_distances = use_neutron_distances
       # this will take care of resetting everything (grm, processed pdb)
-      self.process_input_model(make_restraints=True,
+      self.process(make_restraints=True,
         pdb_interpretation_params=pi_scope)
     geometry = self.get_restraints_manager().geometry
     hierarchy = self.get_hierarchy()
@@ -2727,7 +2727,7 @@ class manager(object):
         restraint_objects = self._restraint_objects,
         log = StringIO()
         )
-    self.process_input_model(pdb_interpretation_params = pip, make_restraints=True)
+    self.process(pdb_interpretation_params = pip, make_restraints=True)
     self.set_refinement_flags(flags)
     if scattering_dict_info is not None:
       self.setup_scattering_dictionaries(
@@ -3504,7 +3504,7 @@ class manager(object):
         monomer_parameters = self._monomer_parameters,
         log                = null_out())
       m.setup_scattering_dictionaries(scattering_table=scattering_table)
-      m.process_input_model(make_restraints=True,
+      m.process(make_restraints=True,
         pdb_interpretation_params = self.get_current_pdb_interpretation_params())
     else:
       m = self.deep_copy()

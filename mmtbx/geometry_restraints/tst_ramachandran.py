@@ -236,7 +236,7 @@ def benchmark_structure(pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0):
   model = mmtbx.model.manager(
       model_input=pdb_in,
       log=null_out())
-  model.process_input_model(pdb_interpretation_params=params, make_restraints=True)
+  model.process(pdb_interpretation_params=params, make_restraints=True)
   grm = model.get_restraints_manager().geometry
   pdb_hierarchy = model.get_hierarchy()
   r0 = ramalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
@@ -599,7 +599,7 @@ def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
   model = mmtbx.model.manager(
       model_input=pdb_inp,
       log=null_out())
-  model.process_input_model(pdb_interpretation_params=params, make_restraints=True)
+  model.process(pdb_interpretation_params=params, make_restraints=True)
   grm = model.get_restraints_manager().geometry
   n = grm.ramachandran_manager.get_n_proxies()
   assert n == 53, n
@@ -611,7 +611,7 @@ def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
   params.pdb_interpretation.ramachandran_plot_restraints.enabled=True
   params.pdb_interpretation.ramachandran_plot_restraints.inject_emsley8k_into_oldfield_favored=False
   params.pdb_interpretation.ramachandran_plot_restraints.selection = "chain A and resid 1:7"
-  model.process_input_model(make_restraints=True,
+  model.process(make_restraints=True,
     pdb_interpretation_params=params)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
@@ -624,7 +624,7 @@ def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
   params.pdb_interpretation.ramachandran_plot_restraints.enabled=True
   params.pdb_interpretation.ramachandran_plot_restraints.inject_emsley8k_into_oldfield_favored=False
   params.pdb_interpretation.ramachandran_plot_restraints.selection ="chain A and resid 27:28"
-  model.process_input_model(make_restraints=True,
+  model.process(make_restraints=True,
     pdb_interpretation_params=params)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
@@ -645,7 +645,7 @@ def exercise_allowed_outliers():
   model = mmtbx.model.manager(
       model_input=pdb_inp,
       log=null_out())
-  model.process_input_model(pdb_interpretation_params=params, make_restraints=True)
+  model.process(pdb_interpretation_params=params, make_restraints=True)
   grm = model.get_restraints_manager().geometry
   assert grm.ramachandran_manager.get_n_proxies() == 170, grm.ramachandran_manager.get_n_proxies()
   full_proxies_iseqs = list(tuple(x.get_i_seqs()) for x in grm.ramachandran_manager._oldfield_proxies)
@@ -656,7 +656,7 @@ def exercise_allowed_outliers():
   model = mmtbx.model.manager(
       model_input=pdb_inp,
       log=null_out())
-  model.process_input_model(make_restraints=True,
+  model.process(make_restraints=True,
     pdb_interpretation_params=params)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
@@ -681,7 +681,7 @@ def exercise_allowed_outliers():
   params.pdb_interpretation.ramachandran_plot_restraints.favored="oldfield"
   params.pdb_interpretation.ramachandran_plot_restraints.allowed=None
   params.pdb_interpretation.ramachandran_plot_restraints.outlier="oldfield"
-  model.process_input_model(make_restraints=True,
+  model.process(make_restraints=True,
     pdb_interpretation_params=params)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
@@ -705,7 +705,7 @@ def exercise_allowed_outliers():
   model = mmtbx.model.manager(
       model_input=pdb_inp,
       log=null_out())
-  model.process_input_model(make_restraints=True,
+  model.process(make_restraints=True,
     pdb_interpretation_params=params)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
@@ -743,7 +743,7 @@ def exercise_allowed_outliers_emsley_filling():
   model = mmtbx.model.manager(
       model_input=pdb_inp,
       log=null_out())
-  model.process_input_model(pdb_interpretation_params=params, make_restraints=True)
+  model.process(pdb_interpretation_params=params, make_restraints=True)
   grm = model.get_restraints_manager().geometry
   assert grm.ramachandran_manager.get_n_proxies() == 167
   assert grm.ramachandran_manager.get_n_oldfield_proxies() == 164
@@ -757,7 +757,7 @@ def exercise_allowed_outliers_emsley_filling():
   model = mmtbx.model.manager(
       model_input=pdb_inp,
       log=null_out())
-  model.process_input_model(make_restraints=True,
+  model.process(make_restraints=True,
     pdb_interpretation_params=params)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
@@ -858,7 +858,7 @@ ATOM    537  CB  GLU B   3       7.115  11.041  22.731  1.00 20.00           C
     model = mmtbx.model.manager(
         model_input=pdb_inp,
         log=null_out())
-    model.process_input_model(pdb_interpretation_params=params, make_restraints=True)
+    model.process(pdb_interpretation_params=params, make_restraints=True)
     grm = model.get_restraints_manager().geometry
     nprox = grm.ramachandran_manager.get_n_proxies()
     assert nprox == correct_nprox, ""+\

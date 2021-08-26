@@ -134,7 +134,7 @@ def exercise_1(mon_lib_srv, ener_lib):
   params.pdb_interpretation.ncs_search.enabled=True
   pdb_inp = iotbx.pdb.input(source_info=None, lines=flex.split_lines(pdb_str_1))
   model = mmtbx.model.manager(model_input = pdb_inp)
-  model.process_input_model(pdb_interpretation_params=params,
+  model.process(pdb_interpretation_params=params,
     make_restraints=True)
   ncs_manager = torsion_ncs.torsion_ncs(
                   model = model,
@@ -155,7 +155,7 @@ pdb_interpretation.ncs_group {
   p = params.fetch(cuspars).extract()
   pdb_inp = iotbx.pdb.input(source_info=None, lines=flex.split_lines(pdb_str_1))
   model = mmtbx.model.manager(model_input = pdb_inp)
-  model.process_input_model(pdb_interpretation_params=p, make_restraints=True)
+  model.process(pdb_interpretation_params=p, make_restraints=True)
   ncs_manager = torsion_ncs.torsion_ncs(
                   model = model,
                   log=log)

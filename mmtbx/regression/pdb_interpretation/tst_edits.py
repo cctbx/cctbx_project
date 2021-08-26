@@ -258,7 +258,7 @@ geometry_restraints.edits {
   params = working_phil.extract()
   inp = iotbx.pdb.input(lines=raw_records2, source_info=None)
   model = mmtbx.model.manager(model_input = inp)
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   grm = model.get_restraints_manager().geometry
   assert grm.dihedral_proxies.size() == 9
   dih1 = grm.dihedral_proxies.proxy_select(
@@ -277,7 +277,7 @@ geometry_restraints.edits {
   # Now with modifications
   inp = iotbx.pdb.input(lines=raw_records2, source_info=None)
   model2 = mmtbx.model.manager(model_input = inp)
-  model2.process_input_model(pdb_interpretation_params=params,
+  model2.process(pdb_interpretation_params=params,
     make_restraints=True)
   grm2 = model2.get_restraints_manager().geometry
   assert grm2.dihedral_proxies.size() == 9
