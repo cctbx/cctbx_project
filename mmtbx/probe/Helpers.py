@@ -163,7 +163,7 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
                 # of the ring.
                 if a.element in ['C','N']:
                   if AtomTypes.IsAromatic(ag.resname, a.name):
-                    extra.IsAcceptor = True
+                    extra.isAcceptor = True
 
                 extras.setMappingFor(a, extra)
                 continue
