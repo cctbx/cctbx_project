@@ -605,12 +605,14 @@ class map_model_manager(object):
       crystal_symmetry = self.model().unit_cell_crystal_symmetry()
       if not crystal_symmetry:
         crystal_symmetry = self.model().crystal_symmetry()
+      if not crystal_symmetry:  # make it up
+        self.model().add_crystal_symmetry_if_necessary()
+        crystal_symmetry = self.model().crystal_symmetry()
       if crystal_symmetry:
         from iotbx.map_manager import dummy_map_manager
         map_manager = dummy_map_manager(crystal_symmetry)
         self._map_dict['map_manager'] = map_manager
         self.info().dummy_map_manager = True # mark it
-
     return map_manager
 
   def map_manager_1(self):

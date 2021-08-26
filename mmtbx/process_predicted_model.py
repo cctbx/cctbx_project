@@ -2,32 +2,331 @@ from __future__ import division, print_function
 import sys
 
 ################################################################################
-#################### Process predicted models ##################################
+#################### TOOLS FOR PROCESSING A PREDICTED MODEL ####################
 ################################################################################
 
 """
-   process_predicted_model: tool to update B-values used in some
+   process_predicted_model: tools to update B-values used in some
     model predictions as an error estimate indicator and to split up model
     into domains that contain the more confident predictions
 """
 
 from scitbx.array_family import flex
+from libtbx.utils import Sorry
 from scitbx.matrix import col
 from libtbx import group_args
 from cctbx.maptbx.segment_and_split_map import get_co
 
 ################################################################################
-####################   get_regions_as_segid   ##################################
+####################   process_predicted_model  ################################
 ################################################################################
 
-def get_regions_as_segid(
+def process_predicted_model(model,
+  b_value_field_is = 'lddt',
+  remove_low_confidence_residues = None,
+  minimum_lddt = 0.7,
+  maximum_rmsd = None,
+  split_model_by_compact_regions = None,
+  chain_id = None,
+  log = sys.stdout):
+
+  """
+  process_predicted_model:
+  Purpose:  Convert values in B-value field to pseudo-B-values, remove
+    low_confidence residues, optionally split into compact regions.
+  Rationale: predicted models may have regions of low and high confidence.
+    This routine uses values in the B-value field to identify confidence,
+    removes low-confidence regions, and then examines the remaining model to
+    find regions that are compact (residues have high contact with neighbors)
+    and that are separate from other regions (low contact with neigbors).
+
+  Inputs:
+    model:  iotbx.model.model object containing model information.
+           Normally contains a single chain.   If multiple chains, process
+           each separately.
+
+    b_value_field_is:  'lddt' or 'rmsd'.  For AlphaFold models
+                        the b-value field is a value of LDDT (confidence)
+                        on scale of 0-1 or 0-100
+                        For RoseTTAFold, the B-value field is rmsd (A)
+
+    remove_low_confidence_residues: remove residues with low confidence
+        (lddt or rmsd as set below)
+    minimum_lddt: minimum lddt to keep residues (on scale of 0 to 1).
+    maximum_rmsd: alternative specification of minimum confidence based on rmsd.
+        If not set, calculated from minimum_lddt.
+        maximum_rmsd or minimum_lddt required.
+    split_model_by_compact_regions: split resulting model into compact regions
+    chain_id: if model contains more than one chain, split this chain only.
+              NOTE: only one chain can be processed at a time.
+
+  Output:
+    processed_model_info: group_args object containing:
+      processed_model:  single model with regions identified in SEGID field
+      processed_model_list:  list of iotbx.model.model objects, one for
+                              each compact region
+
+  """
+
+  # Make sure we have what we expect:
+  import mmtbx.model
+  assert isinstance(model, mmtbx.model.manager)
+  assert b_value_field_is in ('lddt','rmsd')
+
+  # Decide what to do
+
+  # Get confidence cutoff if needed
+  if remove_low_confidence_residues:
+    maximum_b_value = get_cutoff_b_value(
+      maximum_rmsd,
+      minimum_lddt,
+      log = log)
+  else:
+    maximum_b_value = None
+
+  # Convert B-value field to B-values
+  b_value_field = model.get_hierarchy().atoms().extract_b()
+  if b_value_field_is == 'lddt':
+    b_values = get_b_values_from_lddt(b_value_field)
+  elif b_value_field_is == 'rmsd':
+    b_values = get_b_values_from_error_estimates(b_value_field)
+  else:
+    raise AssertionError("Please set b_value_field_is to either lddt or rmsd")
+
+
+  # Make a new model with new B-values
+
+  ph  = model.get_hierarchy().deep_copy()
+  ph.atoms().set_b(b_values)
+
+  # Remove low_confidence regions if desired
+  if remove_low_confidence_residues:
+    n_before = ph.overall_counts().n_residues
+    selection_string = " (bfactor < %s)" %maximum_b_value
+    asc1 = ph.atom_selection_cache()
+    sel = asc1.selection(selection_string)
+    ph = ph.select(sel)
+    n_after = ph.overall_counts().n_residues
+    print("Total of %s of %s residues kept after B-factor filtering" %(
+       n_after, n_before), file = log)
+
+  # Get a new model
+  new_model = model.as_map_model_manager().model_from_hierarchy(
+     ph, return_as_model = True)
+
+  # Get high-confidence regions as domains if desired:
+  if split_model_by_compact_regions:
+    # Make sure we have just 1 chain or a chain ID supplied
+    chain_id = get_chain_id(model, chain_id, log = log)
+
+    info = split_model_into_compact_units(new_model, log = log)
+    if info is None:
+      print("No compact regions identified", file = log)
+      segid_list = []
+      model_list = []
+    else:
+      new_model = info.model
+      segid_list = info.segid_list
+      print("Total of %s regions identified" %(
+        len(segid_list)), file = log)
+      model_list = split_model_by_segid(new_model, segid_list)
+  else:
+    model_list = []
+    segid_list = []
+
+  return group_args(
+    group_args_type = 'processed predicted model',
+    model = new_model,
+    model_list = model_list,
+    segid_list = segid_list
+    )
+
+
+def split_model_by_segid(m, segid_list):
+  """
+   Split a model into pieces based on SEGID
+  """
+  split_model_list = []
+  for segid in segid_list:
+    selection_string = "segid %s" %(segid)
+    ph = m.get_hierarchy()
+    asc1 = ph.atom_selection_cache()
+    sel = asc1.selection(selection_string)
+    m1 = m.select(sel)
+    split_model_list.append(m1)
+  return split_model_list
+
+
+def get_chain_id(model, chain_id, log = sys.stdout):
+  from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
+  chain_ids = get_chain_ids(model.get_hierarchy())
+  if len(chain_ids) == 1:
+    chain_id = chain_ids[0]
+  elif chain_id is not None:
+    if chain_id in chain_ids:
+      print("Working on chain '%s' only" %(chain_id), file = log)
+    else:
+      raise Sorry("Chain %s is not in the chains present (%s)" %(
+        chain_id, " ".join(chain_ids)))
+  else:
+    chain_id = chain_ids[0]
+    print("Working on chain '%s' only (skipping other chains: %s)" %(
+      chain_id, " ".join(chain_ids[1:])), file = log)
+
+def get_cutoff_b_value(
+    maximum_rmsd,
+    minimum_lddt,
+    log = sys.stdout):
+
+  # Get B-value cutoff
+
+  if maximum_rmsd is not None:
+    print("Maximum rmsd of %.2f A used" %(maximum_rmsd), file = log)
+  elif minimum_lddt:
+    print("Minimum confidence level is %.2f" %(
+      minimum_lddt), file = log)
+    if minimum_lddt< 0 or \
+      minimum_lddt> 1:
+      raise Sorry("minimum_lddt must "+
+         "be between 0 and 1")
+    maximum_rmsd = get_rmsd_from_lddt(
+           flex.double(1,minimum_lddt),
+           is_fractional = True)[0]
+    print("Maximum rmsd set to %.2f A based on confidence cutoff of %.2f" %(
+       maximum_rmsd, minimum_lddt), file = log)
+  else:
+     raise Sorry( "Need to set either maximum_rmsd or " +
+          "minimum_lddt")
+
+  maximum_b_value = get_b_values_from_error_estimates(
+     flex.double(1,maximum_rmsd))[0]
+
+  print("Maximum B-value to be included: %.2f A**2" %(maximum_b_value),
+    file = log)
+  return maximum_b_value
+
+
+
+
+################################################################################
+####################   get_b_values_from_lddt  ################################
+################################################################################
+
+def get_b_values_from_lddt(lddt_values):
+  """
+  get_b_values_from_lddt:
+  Purpose:  AlphaFold models are supplied with values of LDDT (predicted
+   local-distance difference test) in the B-value field.  This routine
+   uses the formula from:
+
+     Hiranuma, N., Park, H., Baek, M. et al. Improved protein structure
+       refinement guided by deep learning based accuracy estimation.
+       Nat Commun 12, 1340 (2021).
+       https://doi.org/10.1038/s41467-021-21511-x
+
+   to convert these values to error estimates,
+   and then uses the relation between B-values and coordinate rms to
+   generate pseudo-B-factors
+
+  NOTE: formulas taken from phaser_voyager implementation by
+  Claudia Millan and Massimo Sammito at
+  phaser_voyager/src/Voyager/MDSLibraries/pdb_structure.py
+
+
+  Inputs:
+    lddt_values: flex array of lddt values
+  Outputs:
+    flex array of B-values
+  """
+
+  error_estimates = get_rmsd_from_lddt(lddt_values)
+  b_values = get_b_values_from_error_estimates(error_estimates)
+
+  return b_values
+
+################################################################################
+####################   get_rmsd_from_lddt  ################################
+################################################################################
+
+def get_rmsd_from_lddt(lddt_values, is_fractional = None):
+  """
+  get_rmsd_from_lddt:
+  Purpose:  AlphaFold models are supplied with values of LDDT (confidence)
+   in the B-value field.  This routine uses the formula
+   from the alphafold paper to convert these values to error estimates.
+  NOTE: lddt_values can be fractional (0 to 1) or percentage (0 to 100)
+  If is_fractional is not set, assume fractional if all between 0 and 1
+  rmsd_est = 1.5 * flex.exp(4*(0.7-fractional_values))
+
+  NOTE: formulas taken from phaser_voyager implementation by
+  Claudia Millan and Massimo Sammito at
+  phaser_voyager/src/Voyager/MDSLibraries/pdb_structure.py
+
+
+  Inputs:
+    lddt_values: flex array of lddt values
+  Outputs:
+    flex array of error estimates (A)
+  """
+
+  if is_fractional is None:
+    is_fractional = ( lddt_values.min_max_mean().min >= 0  and
+      lddt_values.min_max_mean().max <= 1 )
+
+
+  if is_fractional:
+    fractional_values = lddt_values.deep_copy()
+  else:
+    fractional_values = lddt_values * 0.01
+
+  fractional_values.set_selected((fractional_values < 0), 0)
+  fractional_values.set_selected((fractional_values > 1), 1)
+
+  rmsd_est = 1.5 * flex.exp(4*(0.7-fractional_values))
+  return rmsd_est
+
+################################################################################
+####################   get_b_values_from_error_estimates #######################
+################################################################################
+
+def get_b_values_from_error_estimates(error_estimates):
+  """
+  get_b_values_from_error_estimates:
+  Purpose:  TTAFold models are supplied with values of rmsd (A)
+   in the B-value field.  This routine converts error estimates into
+   b-values
+
+  NOTE: formulas taken from phaser_voyager implementation by
+  Claudia Millan and Massimo Sammito at
+  phaser_voyager/src/Voyager/MDSLibraries/pdb_structure.py
+
+
+  Inputs:
+    error_estimates: flex array of error estimates (A)
+  Outputs:
+    flex array of B-values (A**2)
+  """
+
+  error_estimates = error_estimates.deep_copy() # do not change original
+
+  # Make sure error estimates are in reasonable range
+  error_estimates.set_selected((error_estimates < 0), 0)
+  error_estimates.set_selected((error_estimates > 20), 20)
+
+  b_values = flex.pow2(error_estimates) * ((8 * (3.14159 ** 2)) / 3.0)
+  return b_values
+
+
+################################################################################
+####################   split_model_into_compact_units   ########################
+################################################################################
+
+def split_model_into_compact_units(
      m,
      d_min = 10,
      grid_resolution = 6,
      close_distance = 15,
      minimum_region_size = 10,
-     bfactor_min = None,
-     bfactor_max = None,
      log = sys.stdout):
 
   """
@@ -46,6 +345,7 @@ def get_regions_as_segid(
    d_min:  resolution used for low-res map
    grid_resolution:  resolution of map used to define the gridding
    close_distance:  distance between two CA (or P) atoms considered close
+                    NOTE: may be useful to double default for P compared to CA
    minimum_region_size: typical size (CA or P) of the smallest segments to keep
    bfactor_min: smallest bfactor for atoms to include in calculations
    bfactor_max: largest bfactor for atoms to include in calculations
@@ -67,11 +367,6 @@ def get_regions_as_segid(
 
   # Select CA and P atoms with B-values in range
   selection_string = '(name ca or name p)'
-  if bfactor_min:
-    selection_string += " and (bfactor > %s)" %bfactor_min
-  if bfactor_max:
-    selection_string += " and (bfactor < %s)" %bfactor_max
-
   new_m = m.apply_selection_string(selection_string)
 
   # Put the model inside a box and get a map_model_manager
@@ -134,8 +429,8 @@ def get_regions_as_segid(
   # All done
   return group_args(
     group_args_type = 'model_info',
-    m = m,
-    segid_list = segid_list + [0])
+    model = m,
+    segid_list = segid_list)
 
 def assign_ca_to_region(co_info, m, minimum_region_size, close_distance,
      log = sys.stdout):
@@ -219,10 +514,8 @@ def merge_close_regions(sites_cart, regions_list, minimum_region_size,
       minimum_region_size)
   # Apply close swaps
   for s in closer_to_other_swaps:
-    print("S:",s.i, s.j, s.k_list[0].start,s.k_list[0].end)
     c = s.k_list[0]
     for k in range(c.start, c.end+1):
-      print('RRR',regions_list[k], s.i,s.j)
       regions_list[k] = s.j
       found_something = True
 
@@ -254,7 +547,6 @@ def get_closer_to_other(close_to_other_list, minimum_region_size):
       k_list = get_k_list(i,j,close_to_other_list)
       k_list = merge_k_list(k_list, minimum_region_size)
       if not k_list:continue
-      print("\nCLOSE:",i,j,close_dict[i][j])
       all_k_list.append(group_args(
         group_args_type = 'k list',
         i = i,
@@ -307,7 +599,6 @@ def get_k_list(i,j,close_to_other_list):
 
 def replace_short_segments(regions_list, minimum_region_size):
   id_list = get_unique_values(regions_list)
-  print("Replacing short segments",id_list)
   new_regions_list = regions_list.deep_copy()
   for co_id in id_list:
     indices = (regions_list == co_id).iselection()
@@ -401,11 +692,6 @@ def assign_all_points(co_info, map_data, log = sys.stdout):
       new = (bool_region_mask & available)
       region_id_map.set_selected(new, co_id)
 
-  print("Summary of regions after expansion:", file = log)
-  for i in range(1,len(co_info.sorted_by_volume)):
-    print("Region: %s  Starting size: %s  Final size: %s" %(
-       i, co_info.sorted_by_volume[i][0],
-       (region_id_map == i).count(True)), file = log)
   co_info.region_id_map = region_id_map
   co_info.id_list = id_list
   return co_info
@@ -436,5 +722,5 @@ def get_best_co(map_data, min_cutoff = 0.5):
     sorted_by_volume = sorted_by_volume)
 
 ################################################################################
-####################   end of get_regions_as_segid   ###########################
+####################   end of split_model_into_compact_units   #################
 ################################################################################
