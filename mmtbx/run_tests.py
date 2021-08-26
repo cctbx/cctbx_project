@@ -404,6 +404,7 @@ probe_tests = [
   "$D/validation/regression/tst_nqh_minimize.py",
   "$D/validation/regression/tst_molprobity_1.py",
   "$D/validation/regression/tst_molprobity_4.py",
+  "$D/validation/regression/tst_molprobity_5.py",
   "$D/validation/regression/tst_experimental.py",
   "$D/validation/regression/tst_cablam_2.py",
   # automatic linking
