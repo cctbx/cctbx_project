@@ -7,7 +7,10 @@ from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry
 import mmtbx
 import mmtbx_probe_ext as probeExt
-from mmtbx.probe import Helpers
+from mmtbx.probe import Helpers, AtomTypes
+from scitbx.array_family import flex
+from iotbx import pdb
+from iotbx.pdb import common_residue_names_get_class
 
 master_phil_str = '''
 source_selection = None
@@ -49,6 +52,22 @@ excluded_bond_chain_length = 4
 drop_non_selected_atoms = False
   .type = bool
   .help = Drop non selected atoms (-drop in probe)
+
+use_polar_hydrogens = True
+  .type = bool
+  .help = Use polar hydrogens (-usepolarh in probe)
+
+polar_hydrogen_radius = 1.05
+  .type = float
+  .help = Radius to set for polar hydrogens (1.05 in probe)
+
+minimum_polar_hydrogen_occupancy = 0.25
+  .type = float
+  .help = Minimum occupancy for polar hydrogens (0.25 in probe)
+
+maximum_polar_hydrogen_b = 80.0
+  .type = float
+  .help = Minimum b-factor for polar hydrogens (80.0 in probe)
 
 probe
   .style = menu_item auto_align
@@ -126,6 +145,10 @@ output
   hydrogen_bond_output = True
     .type = bool
     .help = Output hydrogen-bond contacts (-nohbout in probe)
+
+  record_added_hydrogens = False
+    .type = bool
+    .help = Output hydrogen-bond contacts (-dumph2o in probe)
 
   clash_output = True
     .type = bool
@@ -212,6 +235,9 @@ Note:
 # ------------------------------------------------------------------------------
 
   def run(self):
+    # String that will be output to the specified file.
+    outString = ''
+
     make_sub_header('Interpret Model', out=self.logger)
 
     # Get our model.
@@ -222,14 +248,38 @@ Note:
     if (cs is None) or (cs.unit_cell() is None):
       self.model = shift_and_box_model(model = self.model)
 
+    ################################################################################
     # Get the list of all atoms in the model
     atoms = self.model.get_atoms()
 
+    ################################################################################
+    # Get the bonding information we'll need to exclude our bonded neighbors.
+    try:
+      p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+      self.model.set_pdb_interpretation_params(params = p)
+      self.model.process_input_model(make_restraints=True) # make restraints
+      geometry = self.model.get_restraints_manager().geometry
+      sites_cart = self.model.get_sites_cart() # cartesian coordinates
+      bondProxies, asu = \
+          geometry.get_all_bond_proxies(sites_cart = sites_cart)
+    except Exception as e:
+      raise Sorry("Could not get bonding information for input file: " + str(e))
+
+    ################################################################################
+    # Get the extra atom information for all of the atoms in the model.
+    ret = Helpers.getExtraAtomInfo(self.model)
+    extraAtomInfo = ret.extraAtomInfo
+    if len(ret.warnings) > 0:
+      print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings, file=self.logger)
+
     #===================================================================================
-    # Get the source selection (and target selection if there is one)
+    # Get the source selection (and target selection if there is one).  These will be
+    # lists of atoms that are in each selection, a subset of the atoms in the model.
     source_sel = self.model.selection(self.params.source_selection)
-    source_model = self.model.select(source_sel)
-    source_atoms = source_model.get_atoms()
+    source_atoms = []
+    for a in atoms:
+      if source_sel[a.i_seq]:
+        source_atoms.append(a)
 
     target_atoms = []
     if self.params.target_selection is not None:
@@ -238,19 +288,118 @@ Note:
         target_atoms = source_atoms
       else:
         target_sel = self.model.selection(self.params.target_selection)
-        target_model = self.model.select(target_sel)
-        target_atoms = target_model.get_atoms()
+        for a in atoms:
+          if target_sel[a.i_seq]:
+            target_atoms.append(a)
+
+    ################################################################################
+    # Find a list of all of the selected atoms with no duplicates
+    # Get the bonded neighbor lists for the atoms that are in this conformation.
+    all_selected_atoms = set()
+    for a in source_atoms:
+      all_selected_atoms.add(a)
+    for a in target_atoms:
+      all_selected_atoms.add(a)
+    all_selected_atoms = list(all_selected_atoms)
+    bondedNeighborLists = Helpers.getBondedNeighborLists(all_selected_atoms, bondProxies)
+
+    ################################################################################
+    # Build a spatial-query structure that tells which atoms are nearby
+    spatialQuery = probeExt.SpatialQuery(all_selected_atoms)
 
     #===================================================================================
     # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
-    # the oxygens as not being donors.
-    #if not self.params.implicit_hydrogens:
+    # the water oxygens as not being donors in atoms that are in the source or target selection.
+    # Also clear the donor status of all N, O, S atoms because we have explicit hydrogen donors.
+    phantom_hydrogens = []
+    if not self.params.probe.implicit_hydrogens:
+      outString += '@vectorlist {water H?} color= gray\n'
+
+      # Check all atoms
+      for a in all_selected_atoms:
+
+        # See if we're in a water residue, used for check below
+        inWater = common_residue_names_get_class(name=a.parent().resname) == "common_water"
+
+        # If we are a hydrogen that is bonded to a nitrogen, oxygen, or sulfur then we're a donor.
+        if a.element == 'H':
+          # If we are in a water, make sure our occupancy and temperature (b) factor are acceptable.
+          # If they are not, set the occupancy of the atom to -1 so that it will always
+          # be below the minimum and will not be scored.
+          if inWater and (a.occ < self.params.minimum_polar_hydrogen_occupancy or
+              a.b > self.params.maximum_polar_hydrogen_b):
+            a.occ = -1
+          else:
+            for n in bondedNeighborLists[a]:
+              if n.element in ['N','O','S']:
+                # Copy the value, set the new values, then copy the new one back in.
+                # We are a donor and may have our radius adjusted
+                ei = extraAtomInfo.getMappingFor(a)
+                ei.isDonor = True
+                if self.params.use_polar_hydrogens:
+                  ei.vdwRadius = self.params.polar_hydrogen_radius
+                extraAtomInfo.setMappingFor(a, ei)
+
+                # Set our neigbor to not be a donor, since we are the donor
+                ei = extraAtomInfo.getMappingFor(n)
+                ei.isDonor = False
+                extraAtomInfo.setMappingFor(n, ei)
+
+        # If we are the Oxygen in a water, then add phantom hydrogens if it @todo
+        elif inWater and a.element == 'O':
+          # We're an acceptor and not a donor.
+          ei = extraAtomInfo.getMappingFor(a)
+          ei.isDonor = False
+          ei.isAcceptor = True
+          extraAtomInfo.setMappingFor(a, ei)
+
+          # If we don't yet have Hydrogens attached, add phantom hydrogen(s)
+          if len(bondedNeighborLists[a]) == 0:
+            newPhantoms = Helpers.getPhantomHydrogensFor(a, spatialQuery, extraAtomInfo, 0.0)
+            for p in newPhantoms:
+              # Set all of the information other than the name and element and xyz of the atom based
+              # on our parent; then overwrite the name and element and xyz
+              newAtom = pdb.hierarchy.atom(a.parent(),a)
+              newAtom.name = " H?"
+              newAtom.element = p.element
+              newAtom.xyz = p.xyz
+              phantom_hydrogens.append(newAtom)
+              spatialQuery.add(newAtom)
+              ei = probeExt.ExtraAtomInfo(self.params.polar_hydrogen_radius, False, True, True)
+              extraAtomInfo.setMappingFor(newAtom, ei)
+              if self.params.output.record_added_hydrogens:
+
+                resName = a.parent().resname.strip().upper()
+                resID = str(a.parent().parent().resseq_as_int())
+                chainID = a.parent().parent().parent().id
+                iCode = a.parent().parent().icode
+                alt = a.parent().altloc
+                outString += '{{{:4s}{:1s}{:>3s}{:>2s}{:>4s}{}}}P {:8.3f}{:8.3f}{:8.3f}\n'.format(
+                  a.name, alt, resName, chainID, resID, iCode,
+                  a.xyz[0], a.xyz[1], a.xyz[2])
+
+                resName = newAtom.parent().resname.strip().upper()
+                resID = str(newAtom.parent().parent().resseq_as_int())
+                chainID = newAtom.parent().parent().parent().id
+                iCode = newAtom.parent().parent().icode
+                alt = newAtom.parent().altloc
+                outString += '{{{:4s}{:1s}{:>3s}{:>2s}{:>4s}{}}}L {:8.3f}{:8.3f}{:8.3f}\n'.format(
+                  newAtom.name, alt, resName, chainID, resID, iCode,
+                  newAtom.xyz[0], newAtom.xyz[1], newAtom.xyz[2])
+
+        # Otherwise, if we're an N, O, or S then remove our donor status because
+        # the hydrogens will be the donors
+        elif a.element in ['N','O','S']:
+          ei = extraAtomInfo.getMappingFor(a)
+          ei.isDonor = False
+          extraAtomInfo.setMappingFor(a, ei)
 
     #===================================================================================
-    # Do the calculations; which one depends on the approach and other phil parameters
+    # Do the calculations; which one depends on the approach and other phil parameters.
+    # Append the information to the string that will be written to file.
     if self.params.approach == 'count':
       # Report the number of atoms in the source selection
-      ret = 'atoms selected: '+str(len(source_atoms))
+      outString += 'atoms selected: '+str(len(source_atoms)+len(phantom_hydrogens))+'\n'
 
     # @todo
     else:
@@ -321,11 +470,11 @@ Note:
         total += res.totalScore()
         if res.hasBadBump:
           badBumpTotal += 1
-      ret = 'Summed probe score for molecule = {:.2f} with {} bad bumps'.format(total, badBumpTotal)
+      outString += 'Summed probe score for molecule = {:.2f} with {} bad bumps'.format(total, badBumpTotal)
 
     base = self.params.output.file_name_prefix
     of = open("%s.kin"%base,"w")
-    of.write(ret)
+    of.write(outString)
     of.close()
 
 # ------------------------------------------------------------------------------
