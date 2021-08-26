@@ -190,7 +190,8 @@ class molprobity(slots_getstate_setstate):
       self.model.setup_scattering_dictionaries(scattering_table="neutron")
 
     if (self.model is not None):
-      self.model.process(make_restraints=True)
+      if(self.model.get_restraints_manager() is None):
+        self.model.process(make_restraints=True)
       pdb_hierarchy = self.model.get_hierarchy()
       xray_structure = self.model.get_xray_structure()
       geometry_restraints_manager = self.model.get_restraints_manager().geometry
