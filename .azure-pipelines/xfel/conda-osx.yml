@@ -22,21 +22,25 @@ jobs:
       #   CONDA: MacOSX
       #   OS: macos
       #   PYTHON_VERSION: py36
+      #   PYTHON_FULL_VERSION: 3.6
       #   MODULES: ${{ parameters.modules }}
       # python3.7:
       #   CONDA: MacOSX
       #   OS: macos
       #   PYTHON_VERSION: py37
+      #   PYTHON_FULL_VERSION: 3.7
       #   MODULES: ${{ parameters.modules }}
       # python3.8:
       #   CONDA: MacOSX
       #   OS: macos
       #   PYTHON_VERSION: py38
+      #   PYTHON_FULL_VERSION: 3.8
       #   MODULES: ${{ parameters.modules }}
       python3.9:
         CONDA: MacOSX
         OS: macos
         PYTHON_VERSION: py39
+        PYTHON_FULL_VERSION: 3.9
         MODULES: ${{ parameters.modules }}
 
   variables:
