@@ -24,8 +24,9 @@ from cctbx.maptbx.segment_and_split_map import get_co
 def process_predicted_model(model,
   b_value_field_is = 'lddt',
   remove_low_confidence_residues = None,
-  minimum_lddt = 0.7,
-  maximum_rmsd = None,
+  minimum_lddt = None,
+  maximum_rmsd = 1.5,
+  input_lddt_is_fractional = None,
   split_model_by_compact_regions = None,
   chain_id = None,
   log = sys.stdout):
@@ -50,11 +51,15 @@ def process_predicted_model(model,
                         on scale of 0-1 or 0-100
                         For RoseTTAFold, the B-value field is rmsd (A)
 
+    input_lddt_is_fractional:  if True, input lddt is scale of 0 to 1,
+        otherwise 0 - 100
+       If None, set to True if all lddt are from 0 to 1
     remove_low_confidence_residues: remove residues with low confidence
         (lddt or rmsd as set below)
-    minimum_lddt: minimum lddt to keep residues (on scale of 0 to 1).
+    minimum_lddt: minimum lddt to keep residues (on same scale as b_value_field,
+      if not set, calculated from maximum_rmsd).
     maximum_rmsd: alternative specification of minimum confidence based on rmsd.
-        If not set, calculated from minimum_lddt.
+        If not set, calculated from minimum_lddt. Default is 1.5 A
         maximum_rmsd or minimum_lddt required.
     split_model_by_compact_regions: split resulting model into compact regions
     chain_id: if model contains more than one chain, split this chain only.
@@ -75,6 +80,35 @@ def process_predicted_model(model,
 
   # Decide what to do
 
+  # Determine if input lddt is fractional and get b values
+
+  b_value_field = model.get_hierarchy().atoms().extract_b()
+  if b_value_field_is == 'lddt':
+    if input_lddt_is_fractional is None:
+      sel = (b_value_field < 0) | (b_value_field > 1)
+      input_lddt_is_fractional = (sel.count(True) == 0)
+
+    b_values = get_b_values_from_lddt(b_value_field,
+       input_lddt_is_fractional = input_lddt_is_fractional)
+
+    if input_lddt_is_fractional:
+      print("B-value field interpreted as LDDT %s" %("(0 - 1)"), file = log)
+    else:
+      print("B-value field interpreted as LDDT %s" %("(0 - 100)"), file = log)
+
+  elif b_value_field_is == 'rmsd':
+    b_values = get_b_values_rmsd(b_value_field)
+    print("B-value field interpreted as rmsd %s" %("(0 - 1)"), file = log)
+  else:
+    raise AssertionError("Please set b_value_field_is to either lddt or rmsd")
+
+  if input_lddt_is_fractional:
+    if minimum_lddt is not None: # convert to fractional
+      minimum_lddt = minimum_lddt * 0.01
+      print("Minimum LDDT converted to %.2f" %(minimum_lddt), file = log)
+
+  # From here on we work only with fractional lddt
+
   # Get confidence cutoff if needed
   if remove_low_confidence_residues:
     maximum_b_value = get_cutoff_b_value(
@@ -83,15 +117,6 @@ def process_predicted_model(model,
       log = log)
   else:
     maximum_b_value = None
-
-  # Convert B-value field to B-values
-  b_value_field = model.get_hierarchy().atoms().extract_b()
-  if b_value_field_is == 'lddt':
-    b_values = get_b_values_from_lddt(b_value_field)
-  elif b_value_field_is == 'rmsd':
-    b_values = get_b_values_from_error_estimates(b_value_field)
-  else:
-    raise AssertionError("Please set b_value_field_is to either lddt or rmsd")
 
 
   # Make a new model with new B-values
@@ -198,7 +223,7 @@ def get_cutoff_b_value(
      raise Sorry( "Need to set either maximum_rmsd or " +
           "minimum_lddt")
 
-  maximum_b_value = get_b_values_from_error_estimates(
+  maximum_b_value = get_b_values_rmsd(
      flex.double(1,maximum_rmsd))[0]
 
   print("Maximum B-value to be included: %.2f A**2" %(maximum_b_value),
@@ -212,7 +237,8 @@ def get_cutoff_b_value(
 ####################   get_b_values_from_lddt  ################################
 ################################################################################
 
-def get_b_values_from_lddt(lddt_values):
+def get_b_values_from_lddt(lddt_values,
+    input_lddt_is_fractional = True):
   """
   get_b_values_from_lddt:
   Purpose:  AlphaFold models are supplied with values of LDDT (predicted
@@ -235,12 +261,16 @@ def get_b_values_from_lddt(lddt_values):
 
   Inputs:
     lddt_values: flex array of lddt values
+    input_lddt_is_fractional: if False, convert by multiplying * 0.01
   Outputs:
     flex array of B-values
   """
 
-  error_estimates = get_rmsd_from_lddt(lddt_values)
-  b_values = get_b_values_from_error_estimates(error_estimates)
+  if input_lddt_is_fractional:
+    rmsd = get_rmsd_from_lddt(lddt_values) # usual
+  else:
+    rmsd = get_rmsd_from_lddt(0.01 * lddt_values)
+  b_values = get_b_values_rmsd(rmsd)
 
   return b_values
 
@@ -286,12 +316,12 @@ def get_rmsd_from_lddt(lddt_values, is_fractional = None):
   return rmsd_est
 
 ################################################################################
-####################   get_b_values_from_error_estimates #######################
+####################   get_b_values_rmsd #######################
 ################################################################################
 
-def get_b_values_from_error_estimates(error_estimates):
+def get_b_values_rmsd(rmsd):
   """
-  get_b_values_from_error_estimates:
+  get_b_values_rmsd:
   Purpose:  TTAFold models are supplied with values of rmsd (A)
    in the B-value field.  This routine converts error estimates into
    b-values
@@ -302,18 +332,18 @@ def get_b_values_from_error_estimates(error_estimates):
 
 
   Inputs:
-    error_estimates: flex array of error estimates (A)
+    rmsd: flex array of error estimates (A)
   Outputs:
     flex array of B-values (A**2)
   """
 
-  error_estimates = error_estimates.deep_copy() # do not change original
+  rmsd = rmsd.deep_copy() # do not change original
 
   # Make sure error estimates are in reasonable range
-  error_estimates.set_selected((error_estimates < 0), 0)
-  error_estimates.set_selected((error_estimates > 20), 20)
+  rmsd.set_selected((rmsd < 0), 0)
+  rmsd.set_selected((rmsd > 20), 20)
 
-  b_values = flex.pow2(error_estimates) * ((8 * (3.14159 ** 2)) / 3.0)
+  b_values = flex.pow2(rmsd) * ((8 * (3.14159 ** 2)) / 3.0)
   return b_values
 
 

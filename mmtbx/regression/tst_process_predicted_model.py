@@ -2,10 +2,6 @@ from __future__ import division, print_function
 import sys, os, time
 
 from libtbx.test_utils import approx_equal
-from scitbx.array_family import flex
-from scitbx.matrix import col
-from libtbx import group_args
-from cctbx.maptbx.segment_and_split_map import get_co
 
 import libtbx.load_env
 data_dir = libtbx.env.under_dist(
@@ -15,9 +11,9 @@ data_dir = libtbx.env.under_dist(
 
 from iotbx.data_manager import DataManager
 from mmtbx.process_predicted_model import split_model_into_compact_units, \
-  split_model_by_segid, get_chain_id, get_cutoff_b_value, \
+   get_cutoff_b_value, \
    get_b_values_from_lddt, get_rmsd_from_lddt, \
-   get_b_values_from_error_estimates, process_predicted_model
+   process_predicted_model
 
 model_file=os.path.join(data_dir,'fibronectin_af_ca_1358_1537.pdb')
 
@@ -56,6 +52,9 @@ def tst_01(log = sys.stdout):
   print("\nLDDT mean:",lddt_values.min_max_mean().mean)
   assert approx_equal(lddt_values.min_max_mean().mean, 82.5931111111)
 
+  # Multiply lddt_values by 0.01 (fractional)
+  fractional_lddt = lddt_values * 0.01
+
   #  Convert lddt to b
   b_values = get_b_values_from_lddt(lddt_values)
   print("B-value mean:",b_values.min_max_mean().mean)
@@ -73,6 +72,16 @@ def tst_01(log = sys.stdout):
   model = model_info.model
   model_b_values = model.get_hierarchy().atoms().extract_b()
   assert approx_equal(b_values, model_b_values, eps = 0.02) # come back rounded
+
+  print("\nConverting fractional lddt to B values", file = log)
+  ph = model.get_hierarchy().deep_copy()
+  ph.atoms().set_b(fractional_lddt)
+  test_model = model.as_map_model_manager().model_from_hierarchy(ph,
+     return_as_model = True)
+  model_info = process_predicted_model(test_model, b_value_field_is = 'lddt')
+  model = model_info.model
+  model_b_values = model.get_hierarchy().atoms().extract_b()
+  assert approx_equal(b_values, model_b_values, eps = 3) # come back very rounded
 
   ph = model.get_hierarchy().deep_copy()
   ph.atoms().set_b(rmsd_values)
