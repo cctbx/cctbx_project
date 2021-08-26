@@ -30,9 +30,8 @@ def tst_01(log = sys.stdout):
        (None,0.5,293.306328196),]:
     print()
     cutoff_b = get_cutoff_b_value(
-      maximum_rmsd = maximum_rmsd,
-      minimum_lddt = \
-          minimum_lddt,
+      maximum_rmsd,
+      minimum_lddt,
       log = log)
     print("maximum_rmsd: %s min lddt %s Cutoff B:  %.2f" %(
      maximum_rmsd, minimum_lddt,

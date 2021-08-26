@@ -25,10 +25,12 @@ def process_predicted_model(model,
   b_value_field_is = 'lddt',
   remove_low_confidence_residues = None,
   minimum_lddt = None,
-  maximum_rmsd = 1.5,
+  maximum_rmsd = None,
   input_lddt_is_fractional = None,
   split_model_by_compact_regions = None,
   chain_id = None,
+  default_maximum_rmsd = 1.5,
+  subtract_minimum_b = None,
   log = sys.stdout):
 
   """
@@ -59,11 +61,14 @@ def process_predicted_model(model,
     minimum_lddt: minimum lddt to keep residues (on same scale as b_value_field,
       if not set, calculated from maximum_rmsd).
     maximum_rmsd: alternative specification of minimum confidence based on rmsd.
-        If not set, calculated from minimum_lddt. Default is 1.5 A
-        maximum_rmsd or minimum_lddt required.
+        If not set, calculated from minimum_lddt.
+    default_maximum_rmsd:  used as default if nothing specified for
+         maximum_rmsd or minimum_lddt .Default is 1.5 A,
     split_model_by_compact_regions: split resulting model into compact regions
     chain_id: if model contains more than one chain, split this chain only.
               NOTE: only one chain can be processed at a time.
+    if subtract_minimum_b is set, subtract minimum(B values) from all B values
+       after applying any B value cutoffs
 
   Output:
     processed_model_info: group_args object containing:
@@ -99,10 +104,11 @@ def process_predicted_model(model,
   elif b_value_field_is == 'rmsd':
     b_values = get_b_values_rmsd(b_value_field)
     print("B-value field interpreted as rmsd %s" %("(0 - 1)"), file = log)
+
   else:
     raise AssertionError("Please set b_value_field_is to either lddt or rmsd")
 
-  if input_lddt_is_fractional:
+  if (not input_lddt_is_fractional):
     if minimum_lddt is not None: # convert to fractional
       minimum_lddt = minimum_lddt * 0.01
       print("Minimum LDDT converted to %.2f" %(minimum_lddt), file = log)
@@ -114,10 +120,22 @@ def process_predicted_model(model,
     maximum_b_value = get_cutoff_b_value(
       maximum_rmsd,
       minimum_lddt,
+      default_maximum_rmsd = default_maximum_rmsd,
       log = log)
   else:
     maximum_b_value = None
 
+
+  # Offset b-values and cutoff if requested
+  if subtract_minimum_b:
+    minimum_b = b_values.min_max_mean().min
+    b_values -= minimum_b
+    assert b_values.min_max_mean().min == 0
+    if maximum_b_value is not None:
+      maximum_b_value -= minimum_b  # offset this too
+    print("Subtracting minimum B of " +
+      "%.2f from values and from cutoff (now %s)" %(
+      minimum_b, " %.2f" %maximum_b_value if maximum_b_value is not None else "None"), file = log)
 
   # Make a new model with new B-values
 
@@ -201,9 +219,14 @@ def get_chain_id(model, chain_id, log = sys.stdout):
 def get_cutoff_b_value(
     maximum_rmsd,
     minimum_lddt,
+    default_maximum_rmsd = None,
     log = sys.stdout):
 
   # Get B-value cutoff
+
+  if maximum_rmsd is None and minimum_lddt is None:
+    maximum_rmsd = default_maximum_rmsd
+    assert maximum_rmsd is not None
 
   if maximum_rmsd is not None:
     print("Maximum rmsd of %.2f A used" %(maximum_rmsd), file = log)
