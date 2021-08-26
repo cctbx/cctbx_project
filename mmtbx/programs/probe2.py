@@ -312,8 +312,9 @@ Note:
     bondedNeighborLists = Helpers.getBondedNeighborLists(all_selected_atoms, bondProxies)
 
     ################################################################################
-    # Build a spatial-query structure that tells which atoms are nearby
-    spatialQuery = probeExt.SpatialQuery(all_selected_atoms)
+    # Build a spatial-query structure that tells which atoms are nearby.
+    # Include all atoms in the structure, not just the ones that have been selected.
+    spatialQuery = probeExt.SpatialQuery(atoms)
 
     #===================================================================================
     # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
