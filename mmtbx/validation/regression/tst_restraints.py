@@ -90,8 +90,8 @@ atoms                   ideal    model    delta   sigma  residual   deviation
   assert (out2.getvalue() != out1.getvalue())
   assert ("""\
  A   1  LYS  HA        110.00    57.00    53.00  3.00e+00  3.12e+02  17.7*sigma
- A   2  VAL  N
- A   2  VAL  CA
+ A   1  LYS  N
+ A   1  LYS  CA
 """ in "\n".join([ l.rstrip() for l in out2.getvalue().splitlines() ]))
   #
   # C-alpha-only model (from 3b5d)
