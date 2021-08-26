@@ -364,7 +364,7 @@ Note:
 
           # If we don't yet have Hydrogens attached, add phantom hydrogen(s)
           if len(bondedNeighborLists[a]) == 0:
-            newPhantoms = Helpers.getPhantomHydrogensFor(a, spatialQuery, extraAtomInfo, 0.0)
+            newPhantoms = Helpers.getPhantomHydrogensFor(a, spatialQuery, extraAtomInfo, 0.0, True)
             for p in newPhantoms:
               # Set all of the information other than the name and element and xyz of the atom based
               # on our parent; then overwrite the name and element and xyz
