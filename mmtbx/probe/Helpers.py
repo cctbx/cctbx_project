@@ -242,8 +242,8 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy):
   for a in nearby:
     # @todo The C++ checked to see if the atom was either marked as an acceptor or
     # the flipped position for one in a Mover, but we go ahead and check them pointing
-    # towards all nearby atoms.  This may make things slower, but because they are only
-    # able to make Hydrogen bonds it should not affect the outcome.
+    # towards all nearby non-hydrogen atoms.  This may make the probe testing slower,
+    # but because they are only able to make Hydrogen bonds it should not affect the outcome.
     #   Check to ensure the occupancy of the neighbor is above threshold and that it is
     # close enough to potentially bond to the atom.
     OH_BOND_LENGTH = 1.0
@@ -284,7 +284,7 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy):
     BEST_HBOND_OVERLAP=0.6
     distance = 1.0 + max(-1.0, min(0.0, c._overlap + BEST_HBOND_OVERLAP))
     try:
-      normOffset = (rvec3(atom.xyz) - rvec3(c._atom.xyz)).normalize()
+      normOffset = (rvec3(c._atom.xyz) - rvec3(atom.xyz)).normalize()
       h.xyz = rvec3(atom.xyz) + distance * normOffset
       ret.append(h)
     except:
@@ -306,6 +306,10 @@ def Test(inFileName = None):
 
   #========================================================================
   # Run unit test on getExtraAtomInfo().
+  # @todo
+
+  #========================================================================
+  # Run unit test on getPhantomHydrogensFor().
   # @todo
 
   # Spot check that we're getting ionic radii for metals.
