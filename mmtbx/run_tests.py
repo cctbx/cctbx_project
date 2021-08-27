@@ -151,7 +151,6 @@ general_tests = [
   "$D/hydrogens/tst_riding_fd_4.py",
   "$D/hydrogens/tst_riding_fd_5.py",
   "$D/hydrogens/tst_riding_minimize.py",
-  "$D/hydrogens/tst_riding_fix_xyz.py",
   "$D/max_lik/tst_maxlik.py",
   "$D/masks/tst_masks.py",
   "$D/masks/tst_asu_mask.py",
