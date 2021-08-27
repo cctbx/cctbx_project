@@ -28,7 +28,7 @@ def process_predicted_model(model,
   maximum_rmsd = None,
   input_lddt_is_fractional = None,
   split_model_by_compact_regions = None,
-  domain_size = 20,
+  domain_size = 15,
   chain_id = None,
   default_maximum_rmsd = 1.5,
   subtract_minimum_b = None,
@@ -159,6 +159,9 @@ def process_predicted_model(model,
     n_after = ph.overall_counts().n_residues
     print("Total of %s of %s residues kept after B-factor filtering" %(
        n_after, n_before), file = log)
+    if n_after == 0:
+      raise Sorry("No residues remaining after filtering...please check if "+
+         "B-value field is really '%s'" %(b_value_field_is))
 
   # Get a new model
   new_model = model.as_map_model_manager().model_from_hierarchy(
@@ -385,7 +388,7 @@ def get_b_values_rmsd(rmsd):
 
 def split_model_into_compact_units(
      m,
-     d_min = 20,
+     d_min = 15,
      grid_resolution = 6,
      close_distance = 15,
      minimum_region_size = 10,
@@ -801,7 +804,7 @@ if __name__ == "__main__":
     if len(args) > 3:
        domain_size = float(args[3])
     else:
-       domain_size = 20
+       domain_size = 15
     from iotbx.data_manager import DataManager
     dm = DataManager()
     dm.set_overwrite(True)
