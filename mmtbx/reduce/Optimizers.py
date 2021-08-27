@@ -268,7 +268,6 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-        # @todo Ensure that waters are marked as acceptors.
         ret = Helpers.getExtraAtomInfo(model)
         self._extraAtomInfo = ret.extraAtomInfo
         self._infoString += ret.warnings
