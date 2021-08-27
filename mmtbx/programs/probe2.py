@@ -65,6 +65,18 @@ maximum_polar_hydrogen_b = 80.0
   .type = float
   .help = Minimum b-factor for polar hydrogens (80.0 in probe)
 
+do_water_water = False
+  .type = bool
+  .help = Count water-to-water interactions (-wat2wat in probe)
+
+do_water = True
+  .type = bool
+  .help = Count water-to-non-water interactions (-wat2wat, -waters, -nowaters in probe)
+
+do_het = True
+  .type = bool
+  .help = Count het-atom interactions (-hets, -nohets in probe)
+
 probe
   .style = menu_item auto_align
 {
@@ -177,6 +189,10 @@ output
   color_by_dna_base = False
     .type = bool
     .help = Color by DNA base (-basecolor, -colorbase in probe)
+
+  spike_scale_factor = 0.5
+    .type = float
+    .help = Fraction of overlap assigned to each atom (-spike in probe)
 }
 '''
 
@@ -262,6 +278,70 @@ Note:
         return "nonbase"
 
 # ------------------------------------------------------------------------------
+  def _generate_surface_dots_for(self, src, bonded):
+    '''
+      Find all surface dots for the specified atom.
+      :param src: Atom whose surface dots are to be found.
+      :param bonded: Atoms that are bonded to src.
+      :return: List of dots on the surface of the atom.
+    '''
+
+    # Empty list to start with.
+    ret = []
+
+    # Atoms that should be ignored will have their occupancies set < 0.
+    # Generate no dots for these atoms.
+    if src.occ <= 0.0:
+      return ret
+
+    # Check all of the dots for the atom and see if they should be
+    # added to the list.
+    srcInWater = self._inWater[src]
+    r = self._extraAtomInfo.getMappingFor(src).vdwRadius
+    pr = self.params.probe.radius
+    srcDots = self._dots[src]
+    for dotvect in srcDots:
+      # Dot on the surface of the atom, at its radius; both dotloc and spikeloc from original code.
+      # This is where the probe touches the surface.
+      dotloc = Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect)
+      # Dot that is one probe radius past the surface of the atom, exploring for contact with bonded
+      # atoms.  This is the location of the center of the probe.
+      exploc = Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect).normalize() * (r + pr)
+
+      # If the exploring dot is within a probe radius + vdW radius of a bonded atom,
+      # we don't add a dot.
+      okay = True
+      for b in bonded:
+        bInWater = self._inWater[b]
+        # If we should ignore the bonded element, we don't check it.
+        if b.occ <= 0:
+          continue
+        # If we're ignoring water-water interactions and both src and
+        # bonded are in a water, we should ignore this as well (unless
+        # both are hydrogens from the same water, in which case we
+        # continue on to check.)
+        elif (not self.params.do_water_water and srcInWater and bInWater
+              and self.parent() != b.parent() ):
+          continue
+        # If we're ignoring non-water to water interactions, skip check
+        # if b is a water.
+        elif not self.params.do_water and bInWater:
+          continue
+        # If we're ignoring hetatom interactions, skip check
+        # if b is in a non-standard residue.
+        elif not self.params.do_het and self._inHet[b]:
+          continue
+
+        # The bonded neighbor is one that we should check interaction with, see if
+        # we're in range.  If so, mark this dot as not okay.
+
+      # @todo
+
+    # @todo
+
+    return ret
+
+# ------------------------------------------------------------------------------
 
   def run(self):
     # String that will be output to the specified file.
@@ -306,6 +386,15 @@ Note:
       print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings, file=self.logger)
 
     ################################################################################
+    # Get the dot sets we will need for each atom.  This is the set of offsets from the
+    # atom center where dots should be placed.  We use a cache to reduce the calculation
+    # time by returning the same answer for atoms that have the same radius.
+    dotCache = probeExt.DotSphereCache(self.params.probe.density)
+    self._dots = {}
+    for a in atoms:
+      self._dots[a] = dotCache.get_sphere(extraAtomInfo.getMappingFor(a).vdwRadius)
+
+    ################################################################################
     # Get the extra atom information needed to sort all of the atoms in the model
     # into proper classes for reporting.  These classes may be atom names, when we're
     # sorting by atoms and it can be nucleic acid base names when we're sorting by that.
@@ -313,14 +402,23 @@ Note:
     # Rather than a table indexed by type, we directly write the result.
     # Handle all atoms, not only selected atoms.
     allBondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
-    atomClasses = {}
+    self._atomClasses = {}
     for a in atoms:
       if a.element != 'H':
         # All elements except hydrogen use their own names.
-        atomClasses[a] = self._atom_class_for(a)
+        self._atomClasses[a] = self._atom_class_for(a)
       else:
         # For hydrogen, assign based on what it is bonded to.
-        atomClasses[a] = self._atom_class_for(allBondedNeighborLists[a][0])
+        self._atomClasses[a] = self._atom_class_for(allBondedNeighborLists[a][0])
+
+    ################################################################################
+    # Get the other characteristics we need to know about each atom to do our work.
+    self._inWater = {}
+    self._inHet = {}
+    hetatm_sel = self.model.selection("hetatm")
+    for a in atoms:
+      self._inWater[a] = common_residue_names_get_class(name=a.parent().resname) == "common_water"
+      self._inHet[a] = hetatm_sel[a.i_seq]
 
     ################################################################################
     # Get the source selection (and target selection if there is one).  These will be
@@ -369,15 +467,12 @@ Note:
       # Check all atoms
       for a in all_selected_atoms:
 
-        # See if we're in a water residue, used for check below
-        inWater = common_residue_names_get_class(name=a.parent().resname) == "common_water"
-
         # If we are a hydrogen that is bonded to a nitrogen, oxygen, or sulfur then we're a donor.
         if a.element == 'H':
           # If we are in a water, make sure our occupancy and temperature (b) factor are acceptable.
           # If they are not, set the occupancy of the atom to -1 so that it will always
           # be below the minimum and will not be scored.
-          if inWater and (a.occ < self.params.minimum_polar_hydrogen_occupancy or
+          if self._inWater[a] and (a.occ < self.params.minimum_polar_hydrogen_occupancy or
               a.b > self.params.maximum_polar_hydrogen_b):
             a.occ = -1
           else:
@@ -397,7 +492,7 @@ Note:
                 extraAtomInfo.setMappingFor(n, ei)
 
         # If we are the Oxygen in a water, then add phantom hydrogens to nearby acceptors
-        elif inWater and a.element == 'O':
+        elif self._inWater[a] and a.element == 'O':
           # We're an acceptor and not a donor.
           ei = extraAtomInfo.getMappingFor(a)
           ei.isDonor = False
@@ -438,8 +533,10 @@ Note:
                   newAtom.name, alt, resName, chainID, resID, iCode,
                   newAtom.xyz[0], newAtom.xyz[1], newAtom.xyz[2])
 
-              # Set the atomClass based on the parent Oxygen.
-              atomClasses[p] = self._atom_class_for(a)
+              # Set the atomClass and other databased on the parent Oxygen.
+              self._atomClasses[newAtom] = self._atom_class_for(a)
+              self._inWater[newAtom] = self._inWater[a]
+              self._inHet[newAtom] = self._inHet[a]
 
         # Otherwise, if we're an N, O, or S then remove our donor status because
         # the hydrogens will be the donors
@@ -482,6 +579,7 @@ Note:
         neighbors = bondedNeighborLists[src]
 
         # Find out what type of dot we should place for this atom.
+        type = self._atomClasses[src]
 
         # @todo
 
