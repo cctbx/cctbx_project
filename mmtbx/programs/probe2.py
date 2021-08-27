@@ -29,10 +29,6 @@ approach = *self both once surface count
   .type = choice
   .help = self (src -> src) both (src <=> targ) once (src -> targ) surface (VdW surface) count (count atoms)
 
-quiet = False
-  .type = bool
-  .help = Quiet mode, reduced output
-
 include_mainchain_mainchain = True
   .type = bool
   .help = Include mainchain -> mainchain interactions (-mc in probe)
@@ -134,10 +130,6 @@ output
     .type = bool
     .help = Count dots rather than listing all contacts (-countdots in probe)
 
-  raw_output = False
-    .type = bool
-    .help = Unformatted output (-unformated in probe)
-
   one_line = False
     .type = bool
     .help = Output one line :contacts:by:severity:type: (-oneline in probe)
@@ -181,6 +173,10 @@ output
   add_group_statement = True
     .type = bool
     .help = Add lens keywoard to kin file (-nogroup in probe)
+
+  color_by_dna_base = False
+    .type = bool
+    .help = Color by DNA base (-basecolor, -colorbase in probe)
 }
 '''
 
@@ -237,13 +233,41 @@ Note:
       self.params.probe.contact_cutoff = self.params.probe.radius
 
 # ------------------------------------------------------------------------------
+  def _atom_class_for(self, a):
+    '''
+      Assign the atom class for a specified atom.
+      :param a: Atom whose class is to be specified
+      :return: If our parameters have been set to color and sort by NA base,
+      then it returns the appropriate base name.  Otherwise, it returns the
+      element of the atom.
+    '''
+    if not self.params.output.color_by_dna_base:
+      return a.element
+    else:
+      resName = a.parent().resname
+      cl = common_residue_names_get_class(name = resName)
+      if cl == "common_rna_dna" or cl == "modified_rna_dna":
+        cleanName = resName.upper().strip()
+        if cleanName in ['U','URA','UTP','UDP','UMP','UR',
+                         'T','THY','TTP','TDP','TMP','5MU','DT','TR']:
+          return 't/u'
+        elif cleanName in ['A','ADE','ATP','ADP','AMP','1MA','RIA','T6A','DA','AR']:
+          return 'a'
+        elif cleanName in ['C','CYT','CTP','CDP','CMP','5MC','OMC','DC','CR']:
+          return 'c'
+        elif cleanName in ['G','GUA','GTP','GDP','GMP','GSP','1MG','2MG','M2G','7MG','OMG','DG','GR']:
+          return 'g'
+        return 'other na'
+      else:
+        return "nonbase"
+
+# ------------------------------------------------------------------------------
 
   def run(self):
     # String that will be output to the specified file.
     outString = ''
 
-    if (self.params.output.add_kinemage_keyword and not self.params.output.count_dots and
-        not self.params.output.raw_output):
+    if self.params.output.add_kinemage_keyword and not self.params.output.count_dots:
       outString += '@kinemage 1\n'
 
     make_sub_header('Interpret Model', out=self.logger)
@@ -264,6 +288,7 @@ Note:
     # Get the bonding information we'll need to exclude our bonded neighbors.
     try:
       p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+      p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
       self.model.set_pdb_interpretation_params(params = p)
       self.model.process_input_model(make_restraints=True) # make restraints
       geometry = self.model.get_restraints_manager().geometry
@@ -274,13 +299,30 @@ Note:
       raise Sorry("Could not get bonding information for input file: " + str(e))
 
     ################################################################################
-    # Get the extra atom information for all of the atoms in the model.
+    # Get the extra atom information needed to score all of the atoms in the model.
     ret = Helpers.getExtraAtomInfo(self.model)
     extraAtomInfo = ret.extraAtomInfo
     if len(ret.warnings) > 0:
       print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings, file=self.logger)
 
-    #===================================================================================
+    ################################################################################
+    # Get the extra atom information needed to sort all of the atoms in the model
+    # into proper classes for reporting.  These classes may be atom names, when we're
+    # sorting by atoms and it can be nucleic acid base names when we're sorting by that.
+    # Comes from newAtom() and dotType() functions in probe.c.
+    # Rather than a table indexed by type, we directly write the result.
+    # Handle all atoms, not only selected atoms.
+    allBondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+    atomClasses = {}
+    for a in atoms:
+      if a.element != 'H':
+        # All elements except hydrogen use their own names.
+        atomClasses[a] = self._atom_class_for(a)
+      else:
+        # For hydrogen, assign based on what it is bonded to.
+        atomClasses[a] = self._atom_class_for(allBondedNeighborLists[a][0])
+
+    ################################################################################
     # Get the source selection (and target selection if there is one).  These will be
     # lists of atoms that are in each selection, a subset of the atoms in the model.
     source_sel = self.model.selection(self.params.source_selection)
@@ -302,7 +344,7 @@ Note:
 
     ################################################################################
     # Find a list of all of the selected atoms with no duplicates
-    # Get the bonded neighbor lists for the atoms that are in this conformation.
+    # Get the bonded neighbor lists for the atoms that are in this selection.
     all_selected_atoms = set()
     for a in source_atoms:
       all_selected_atoms.add(a)
@@ -316,7 +358,7 @@ Note:
     # Include all atoms in the structure, not just the ones that have been selected.
     spatialQuery = probeExt.SpatialQuery(atoms)
 
-    #===================================================================================
+    ################################################################################
     # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
     # the water oxygens as not being donors in atoms that are in the source or target selection.
     # Also clear the donor status of all N, O, S atoms because we have explicit hydrogen donors.
@@ -354,7 +396,7 @@ Note:
                 ei.isDonor = False
                 extraAtomInfo.setMappingFor(n, ei)
 
-        # If we are the Oxygen in a water, then add phantom hydrogens if it @todo
+        # If we are the Oxygen in a water, then add phantom hydrogens to nearby acceptors
         elif inWater and a.element == 'O':
           # We're an acceptor and not a donor.
           ei = extraAtomInfo.getMappingFor(a)
@@ -396,6 +438,9 @@ Note:
                   newAtom.name, alt, resName, chainID, resID, iCode,
                   newAtom.xyz[0], newAtom.xyz[1], newAtom.xyz[2])
 
+              # Set the atomClass based on the parent Oxygen.
+              atomClasses[p] = self._atom_class_for(a)
+
         # Otherwise, if we're an N, O, or S then remove our donor status because
         # the hydrogens will be the donors
         elif a.element in ['N','O','S']:
@@ -403,12 +448,42 @@ Note:
           ei.isDonor = False
           extraAtomInfo.setMappingFor(a, ei)
 
-    #===================================================================================
+    ################################################################################
     # Do the calculations; which one depends on the approach and other phil parameters.
     # Append the information to the string that will be written to file.
     if self.params.approach == 'count':
       # Report the number of atoms in the source selection
       outString += 'atoms selected: '+str(len(source_atoms)+len(phantom_hydrogens))+'\n'
+
+    elif self.params.approach == 'surface':
+      # Construct a SpatialQuery and fill in the atoms.  We'll use this to find atoms that
+      # are close to each source atom.
+      spatialQuery = probeExt.SpatialQuery(atoms)
+
+      # Produce dots on the surfaces of the selected atoms.
+      maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
+      for src in source_atoms:
+        # Find nearby atoms that might come into contact.  This greatly speeds up the
+        # search for touching atoms.
+        maxRadius = (self._extraAtomInfo.getMappingFor(src).vdwRadius + maxVDWRadius +
+          2 * self.params.probe.radius)
+        nearby = spatialQuery.neighbors(src.xyz, 0.001, maxRadius)
+
+        # Select those that are actually within the contact distance based on their
+        # particular radius.
+        atomList = []
+        for n in nearby:
+          d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
+          if (d <= extraAtomInfo.getMappingFor(n).vdwRadius +
+              extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.radius):
+            atomList.append(n)
+
+        # Find the atoms that are bonded directly to the source atom.
+        neighbors = bondedNeighborLists[src]
+
+        # Find out what type of dot we should place for this atom.
+
+        # @todo
 
     # @todo
     else:
@@ -441,7 +516,8 @@ Note:
       ds = probeExt.DotScorer(extra, self.params.probe.gap_weight,
         self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight,
         self.params.probe.uncharged_hydrogen_cutoff, self.params.probe.charged_hydrogen_cutoff,
-        self.params.probe.clash_cutoff, self.params.probe.worse_clash_cutoff)
+        self.params.probe.clash_cutoff, self.params.probe.worse_clash_cutoff,
+        self.params.probe.contact_cutoff)
 
       # Construct a dot-sphere cache
       cache = probeExt.DotSphereCache(self.params.probe.density)
