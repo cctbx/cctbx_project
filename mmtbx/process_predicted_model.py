@@ -169,7 +169,7 @@ def process_predicted_model(model,
     # Make sure we have just 1 chain or a chain ID supplied
     chain_id = get_chain_id(model, chain_id, log = log)
 
-    info = split_model_into_compact_units(new_model, 
+    info = split_model_into_compact_units(new_model,
       d_min = domain_size,
       log = log)
     if info is None:
@@ -826,6 +826,3 @@ if __name__ == "__main__":
       sel = asc1.selection(selection_string)
       m1 = model_info.model.select(sel)
       dm.write_model_file(m1, '%s_%s.pdb' %(output_file_name[:-4],segid))
-
-
-

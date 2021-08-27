@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
-from six.moves import range
 from libtbx.test_utils import approx_equal
 
 pdb_str = '''
