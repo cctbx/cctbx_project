@@ -102,6 +102,13 @@ simulator {
 
 refiner_phil = """
 refiner {
+  load_data_from_refl = False
+    .type = bool
+  test_gathered_file = False
+    .type = bool
+  gather_dir = None
+    .type = str
+    .help = optional dir for stashing loaded input data in refl files (mainly for tests/portability)
   break_signal = None
     .type = int
     .help = intended to be used to break out of a long refinement job prior to a timeout on a super computer

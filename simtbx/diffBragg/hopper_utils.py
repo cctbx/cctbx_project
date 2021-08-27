@@ -102,7 +102,7 @@ class DataModeler:
 
         return is_duplicate
 
-    def GatherFromReflectionTable(self, exp, ref):
+    def GatherFromReflectionTable(self, exp, ref, sg_symbol=None):
         self.set_experiment(exp, load_imageset=False)
         self.refls = self.load_refls(ref)
         nref = len(self.refls)
@@ -129,6 +129,13 @@ class DataModeler:
         # can be used for Bfactor modeling
         self.Q = np.linalg.norm(self.refls["rlp"], axis=1)
         self.sigma_rdout = self.params.refiner.sigma_r / self.params.refiner.adu_per_photon
+
+        self.Hi = list(self.refls["miller_index"])
+        if sg_symbol is not None:
+            self.Hi_asu = utils.map_hkl_list(self.Hi, True, sg_symbol)
+        else:
+            self.Hi_asu = self.Hi
+
 
         self.data_to_one_dim(img_data, is_trusted, background)
         return True

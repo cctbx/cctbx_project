@@ -608,6 +608,7 @@ class LocalRefiner(BaseRefiner):
                         sigZ = self._Zscore[slc]
                         trus = MOD.all_trusted[slc]
                         sigZ = sigZ[trus].std()
+                        #sigZ = np.abs(sigZ[trus]).mean() 
                         self._spot_Zscores.append((i_fcell, sigZ))
                 self._shot_Zscores.append(self._spot_Zscores)
 
@@ -915,7 +916,9 @@ class LocalRefiner(BaseRefiner):
         #self.one_over_v_times_one_minus_2u_minus_u_squared_over_v = self.one_over_v*self.one_minus_2u_minus_u_squared_over_v
         self.common_grad_term = self.one_over_v * self.one_minus_2u_minus_u_squared_over_v
         #if self.compute_Z:
-        self._Zscore = self.u*np.sqrt(self.one_over_v)
+        #self._Zscore = self.u*np.sqrt(self.one_over_v)
+        self.one_over_v_data = 1. / (self.Imeas + self.sigma_r ** 2)
+        self._Zscore = self.u*np.sqrt(self.one_over_v_data)
 
     def _evaluate_log_averageI(self):  # for Poisson only stats
         try:

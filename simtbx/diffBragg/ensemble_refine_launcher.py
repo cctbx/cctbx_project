@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+import os
 from simtbx.diffBragg.stage_two_utils import PAR_from_params
 import os
 import sys
@@ -64,6 +65,8 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         #first_exper_file = pandas_table.opt_exp_name.values[0]
         first_exper_file = pandas_table.exp_name.values[0]
         detector = ExperimentListFactory.from_json_file(first_exper_file, check_format=False)[0].detector
+        if detector is None and self.params.refiner.reference_geom is None:
+            raise RuntimeError("No detector in experiment, must provide a reference geom.")
         # TODO verify all shots have the same detector ?
         if self.params.refiner.reference_geom is not None:
             detector = ExperimentListFactory.from_json_file(self.params.refiner.reference_geom, check_format=False)[0].detector
@@ -77,6 +80,10 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         self.verbose = False
         if COMM.rank == 0:
             self.verbose = self.params.refiner.verbose > 0
+            if self.params.refiner.gather_dir is not None and not os.path.exists(self.params.refiner.gather_dir):
+              os.makedirs(self.params.refiner.gather_dir)
+              LOGGER.info("MADE GATHER DIR %s" % self.params.refiner.gather_dir)
+        COMM.barrier()
         shot_idx = 0  # each rank keeps index of the shots local to it
         rank_panel_groups_refined = set()
         rank_local_parameters = []
@@ -88,7 +95,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             if i_exp % COMM.size != COMM.rank:
                 continue
             LOGGER.info("EVENT: BEGIN loading experiment list")
-            expt_list = ExperimentListFactory.from_json_file(exper_name, check_format=True)
+            expt_list = ExperimentListFactory.from_json_file(exper_name, check_format=not self.params.refiner.load_data_from_refl)
             LOGGER.info("EVENT: DONE loading experiment list")
             if len(expt_list) != 1:
                 print("Input experiments need to have length 1, %s does not" % exper_name)
@@ -138,14 +145,38 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
                     self.Fref = utils.open_mtz(self.params.refiner.stage_two.Fref_mtzname,
                                                self.params.refiner.stage_two.Fref_mtzcol)
 
-            #Hi = list(refls["miller_index"])
-            #self.Hi[shot_idx] = Hi
-            #self.Hi_asu[shot_idx] = map_hkl_list(Hi, True, self.symbol)
-
             LOGGER.info("EVENT: LOADING ROI DATA")
             shot_modeler = hopper_utils.DataModeler(self.params)
-            if not shot_modeler.GatherFromExperiment(expt, refls, sg_symbol=self.symbol):
+            if self.params.refiner.load_data_from_refl:
+                gathered = shot_modeler.GatherFromReflectionTable(expt, refls, sg_symbol=self.symbol) 
+            else: 
+                gathered = shot_modeler.GatherFromExperiment(expt, refls, sg_symbol=self.symbol)
+            if not gathered:
                 raise("Failed to gather data from experiment %s", exper_name)
+            
+            if self.params.refiner.gather_dir is not None:
+                gathered_name = os.path.splitext(os.path.basename(exper_name))[0]
+                gathered_name += "_withData.refl"
+                gathered_name = os.path.join(self.params.refiner.gather_dir, gathered_name )
+                shot_modeler.dump_gathered_to_refl(gathered_name, do_xyobs_sanity_check=False) #True)
+                LOGGER.info("SAVED ROI DATA TO %s" % gathered_name)
+                if self.params.refiner.test_gathered_file:
+                    all_data = shot_modeler.all_data.copy()
+                    all_roi_id = shot_modeler.roi_id.copy()
+                    all_bg = shot_modeler.all_background.copy()
+                    all_trusted = shot_modeler.all_trusted.copy()
+                    all_pids = np.array(shot_modeler.pids)
+                    all_rois = np.array(shot_modeler.rois)
+                    new_Modeler = hopper_utils.DataModeler(self.params)
+                    assert new_Modeler.GatherFromReflectionTable(exper_name, gathered_name, sg_symbol=self.symbol)
+                    assert np.allclose(new_Modeler.all_data, all_data)
+                    assert np.allclose(new_Modeler.all_background, all_bg)
+                    assert np.allclose(new_Modeler.rois, all_rois)
+                    assert np.allclose(new_Modeler.pids, all_pids)
+                    assert np.allclose(new_Modeler.all_trusted, all_trusted)
+                    assert np.allclose(new_Modeler.roi_id, all_roi_id)
+                    LOGGER.info("Gathered file approved!")
+
 
             self.Hi[shot_idx] = shot_modeler.Hi
             self.Hi_asu[shot_idx] = shot_modeler.Hi_asu
@@ -157,7 +188,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             #if "rlp" in refls:
             #    self.shot_reso[shot_idx] = 1/np.linalg.norm(refls["rlp"], axis=1)
 
-            if self.params.spectrum_from_imageset:
+            if not self.params.refiner.load_data_from_refl and self.params.spectrum_from_imageset:
                 shot_spectra = hopper_utils.downsamp_spec(self.SIM, self.params, expt, return_and_dont_set=True)
 
             elif "spectrum_filename" in list(exper_dataframe) and exper_dataframe.spectrum_filename.values[0] is not None:
@@ -170,6 +201,14 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
                 shot_spectra = [(expt.beam.get_wavelength(), total_flux)]
 
             shot_modeler.spectra = shot_spectra
+            if self.params.refiner.gather_dir is not None and not self.params.refiner.load_data_from_refl:
+                spec_wave, spec_weights = map(np.array, zip(*shot_spectra))
+                spec_filename = os.path.splitext(os.path.basename(exper_name))[0]
+                spec_filename = os.path.join(self.params.refiner.gather_dir, spec_filename+".lam") 
+                utils.save_spectra_file(spec_filename, spec_wave, spec_weights)
+                LOGGER.info("saved spectra filename %s" % spec_filename)
+            
+            LOGGER.info("Will simulate %d energy channels" % len(shot_spectra))
 
             if "detz_shift_mm" in list(exper_dataframe):
                 shot_modeler.originZ_init = exper_dataframe.detz_shift_mm.values[0]*1e-3
