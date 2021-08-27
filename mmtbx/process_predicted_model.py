@@ -28,6 +28,7 @@ def process_predicted_model(model,
   maximum_rmsd = None,
   input_lddt_is_fractional = None,
   split_model_by_compact_regions = None,
+  domain_size = 20,
   chain_id = None,
   default_maximum_rmsd = 1.5,
   subtract_minimum_b = None,
@@ -66,6 +67,8 @@ def process_predicted_model(model,
     default_maximum_rmsd:  used as default if nothing specified for
          maximum_rmsd or minimum_lddt .Default is 1.5 A,
     split_model_by_compact_regions: split resulting model into compact regions
+    domain_size: typical size of domains (resolution used for filtering is
+       the domain size)
     chain_id: if model contains more than one chain, split this chain only.
               NOTE: only one chain can be processed at a time.
     if subtract_minimum_b is set, subtract minimum(B values) from all B values
@@ -166,7 +169,9 @@ def process_predicted_model(model,
     # Make sure we have just 1 chain or a chain ID supplied
     chain_id = get_chain_id(model, chain_id, log = log)
 
-    info = split_model_into_compact_units(new_model, log = log)
+    info = split_model_into_compact_units(new_model, 
+      d_min = domain_size,
+      log = log)
     if info is None:
       print("No compact regions identified", file = log)
       segid_list = []
@@ -380,7 +385,7 @@ def get_b_values_rmsd(rmsd):
 
 def split_model_into_compact_units(
      m,
-     d_min = 10,
+     d_min = 20,
      grid_resolution = 6,
      close_distance = 15,
      minimum_region_size = 10,
@@ -399,7 +404,7 @@ def split_model_into_compact_units(
 
    Inputs:
    m:  cctbx.model.model object containing information about the input model
-   d_min:  resolution used for low-res map
+   d_min:  resolution used for low-res map.  Corresponds roughly to domain size.
    grid_resolution:  resolution of map used to define the gridding
    close_distance:  distance between two CA (or P) atoms considered close
                     NOTE: may be useful to double default for P compared to CA
@@ -417,10 +422,11 @@ def split_model_into_compact_units(
 
    On failure:  returns None
   """
-
+  d_min = min(50, d_min) # limitation in fmodel
 
   # Make sure the model has crystal_symmetry.  Just put a box around it if nec
-  m.add_crystal_symmetry_if_necessary()
+  box_cushion = 0.5 * d_min  # big box
+  m.add_crystal_symmetry_if_necessary(box_cushion = box_cushion, force = True)
 
   # Select CA and P atoms with B-values in range
   selection_string = '(name ca or name p)'
@@ -432,12 +438,10 @@ def split_model_into_compact_units(
 
   # Generate map at medium_res for this model and use it to get domains
 
-  # First generate a map to get the gridding (not the best way but quick)
-  mmm.set_resolution(grid_resolution)
-  mmm.generate_map()
-
-  # Now redo it at low res for the real map to use
-  mmm.generate_map(d_min, map_id = 'map_manager')
+  print("Generating map at resolution of %.1f A to identify domains" %(
+    d_min), file = log)
+  mmm.set_resolution(d_min)
+  mmm.generate_map(d_min, resolution_factor = 0.25 * grid_resolution/d_min )
 
   # Box the map and set SD to 1 mean to 0
   box_mmm = mmm.extract_all_maps_around_model()
@@ -794,6 +798,10 @@ if __name__ == "__main__":
        b_value_field = args[2]
     else:
        b_value_field = 'lddt'
+    if len(args) > 3:
+       domain_size = float(args[3])
+    else:
+       domain_size = 20
     from iotbx.data_manager import DataManager
     dm = DataManager()
     dm.set_overwrite(True)
@@ -803,6 +811,7 @@ if __name__ == "__main__":
     model_info = process_predicted_model(m,  b_value_field_is = b_value_field,
       remove_low_confidence_residues = True,
       maximum_rmsd = 1.5,
+      domain_size = domain_size,
       split_model_by_compact_regions = True,)
 
     segid_list = model_info.segid_list

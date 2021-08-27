@@ -301,6 +301,7 @@ def generate_map(
       map_manager = None, # source of info, not map
       gridding=None,
       wrapping=False,
+      resolution_factor=None,
       origin_shift_grid_units=None,
       low_resolution_fourier_noise_fraction=0,
       high_resolution_fourier_noise_fraction=0,
@@ -368,9 +369,10 @@ def generate_map(
     if type(gridding) in [type((1,2,3)), type([1,2,3])] and type(gridding[0])==type(1):
       pass # already fine
     else:
-      gridding=[]
+      new_gridding=[]
       for x in str(gridding).replace("(","").replace(")","").replace("[","").replace("]","").replace(",","").split():
-        gridding.append(int(x))
+        new_gridding.append(int(x))
+      gridding = new_gridding
   low_resolution_fourier_noise_fraction=float(
      low_resolution_fourier_noise_fraction)
   high_resolution_fourier_noise_fraction=float(
@@ -387,11 +389,11 @@ def generate_map(
     map_coeffs=map_coeffs.resolution_filter(d_min=d_min)
 
   # Calculate a map from Fourier coefficients:
-  from cctbx.maptbx.segment_and_split_map import get_map_from_map_coeffs
   map_data=get_map_from_map_coeffs(
      map_coeffs=map_coeffs,
      crystal_symmetry=map_coeffs.crystal_symmetry(),
      n_real=gridding,
+     resolution_factor=resolution_factor,
      apply_sigma_scaling=False)
 
   # Optionally add noise to this map as an additive noise map
@@ -679,7 +681,9 @@ def scale_map_coeffs(
       n_real           = n_real)
 
 def get_map_from_map_coeffs(map_coeffs = None, crystal_symmetry = None,
-     n_real = None, apply_sigma_scaling = True):
+     n_real = None, resolution_factor = None, apply_sigma_scaling = True):
+    if resolution_factor is None:
+      resolution_factor = 0.25
     from cctbx import maptbx
     from cctbx.maptbx import crystal_gridding
     if not crystal_symmetry:
@@ -697,7 +701,7 @@ def get_map_from_map_coeffs(map_coeffs = None, crystal_symmetry = None,
         pre_determined_n_real = n_real)
     else:
       cg = None
-    fft_map = map_coeffs.fft_map( resolution_factor = 0.25,
+    fft_map = map_coeffs.fft_map( resolution_factor = resolution_factor,
        crystal_gridding = cg,
        symmetry_flags = maptbx.use_space_group_symmetry)
     if apply_sigma_scaling:

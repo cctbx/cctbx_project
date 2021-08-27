@@ -626,12 +626,14 @@ class manager(object):
   def set_ss_annotation(self, ann):
     self._ss_annotation = ann
 
-  def add_crystal_symmetry_if_necessary(self, box_cushion = 3):
+  def add_crystal_symmetry_if_necessary(self, box_cushion = 3,
+     force = False):
     '''
       If this model does not have crystal_symmetry set, create a dummy
       crystal_symmetry that goes around the model.  Do not shift position.
     '''
-    if self.crystal_symmetry() and self.crystal_symmetry().unit_cell() and \
+    if (not force) and \
+       self.crystal_symmetry() and self.crystal_symmetry().unit_cell() and \
         self.crystal_symmetry().space_group() :
       return  # nothing to do
 

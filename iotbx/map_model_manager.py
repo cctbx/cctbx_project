@@ -7874,6 +7874,7 @@ class map_model_manager(object):
       wrapping = False,
       map_id = None,
       f_obs_array = None,
+      resolution_factor = None,
      ):
     '''
       Simple interface to cctbx.development.generate_map allowing only
@@ -7914,6 +7915,7 @@ class map_model_manager(object):
       origin_shift_grid_units (tuple (ix, iy, iz), None):  Move location of
           origin of resulting map to (ix, iy, iz) before writing out
       wrapping:  Defines if map is to be specified as wrapped
+      resolution_factor:  Defines ratio of resolution to gridding if gridding is not set 
       scattering_table (choice, 'electron'): choice of scattering table
            All choices: wk1995 it1992 n_gaussian neutron electron
       fractional_error:  resolution-dependent fractional error, ranging from
@@ -7991,6 +7993,7 @@ class map_model_manager(object):
       d_min = d_min,
       gridding = gridding,
       wrapping = wrapping,
+      resolution_factor = resolution_factor,
       origin_shift_grid_units = origin_shift_grid_units,
       high_resolution_real_space_noise_fraction = fractional_error,
       log = null_out())
