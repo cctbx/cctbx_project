@@ -279,7 +279,7 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def _color_for_atom_class(c):
+  def _color_for_atom_class(self, c):
     '''
       Report the color associated with an atom class.
       Based on atomprops.h:INIT_ATOM_TABLE from original probe.
@@ -288,7 +288,7 @@ Note:
     '''
 
     # Make sure the atom class is one that we know about
-    if not c in self._atomClasses:
+    if not c in self._allAtomClasses:
       return 'magenta'
 
     # Check to see if this atom belongs to one of the special colors.
