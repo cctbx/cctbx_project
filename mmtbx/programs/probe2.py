@@ -278,6 +278,54 @@ Note:
         return "nonbase"
 
 # ------------------------------------------------------------------------------
+
+  def _color_for_atom_class(c):
+    '''
+      Report the color associated with an atom class.
+      Based on atomprops.h:INIT_ATOM_TABLE from original probe.
+      :param c: Class of the atom.
+      :return: Kinemage name of the color associated with the class.
+    '''
+
+    # Make sure the atom class is one that we know about
+    if not c in self._atomClasses:
+      return 'magenta'
+
+    # Check to see if this atom belongs to one of the special colors.
+    if c in ['C','Ag','other na']:
+      return 'white'
+    elif c in ['N','He','t/u']:
+      return 'sky'
+    elif c in ['O']:
+      return 'red'
+    elif c in ['P','Ne','a']:
+      return 'pink'
+    elif c in ['S','c']:
+      return 'yellow'
+    elif c in ['Se','F','Cl']:
+      return 'green'
+    elif c in ['Br','I']:
+      return 'brown'
+    elif c in ['Co']:
+      return 'blue'
+    elif c in ['Cu','Ar']:
+      return 'orange'
+    elif c in ['Au']:
+      return 'gold'
+    elif c in ['Kr']:
+      return 'greentint'
+    elif c in ['Xe']:
+      return 'magenta'
+    elif c in ['Rn']:
+      return 'pinktint'
+    elif c in ['g']:
+      return 'sea'
+
+    # Most atom types, the default.
+    return 'grey'
+
+# ------------------------------------------------------------------------------
+
   def _generate_surface_dots_for(self, src, bonded):
     '''
       Find all surface dots for the specified atom.
@@ -544,6 +592,22 @@ Note:
           ei = extraAtomInfo.getMappingFor(a)
           ei.isDonor = False
           extraAtomInfo.setMappingFor(a, ei)
+
+    ################################################################################
+    # List of all of the keys for atom classes, including all elements and all
+    # nucleic acid types.  These are in the order that the original Probe reported
+    # them.  Based on atomprops.h:INIT_ATOM_TABLE from original probe.
+    self._allAtomClasses = ['ignore',
+                         'H','C','N','O','P','S','As','Se','F','Cl','Br','I',
+                         'Li','Na','Al','K','Mg','Ca','Mn','Fe','Co','Ni','Cu','Zn',
+                         'Rb','Sr','Mo','Ag','Cd','In','Cs','Ba','Au','Hg','Tl','Pb',
+                         'V','Cr','Te','Sm','Gd','Yb','W','Pt','U',
+                         'He','Be','B','Ne','Se','Ar','Sc','Ti','Ga','Ge','Kr','Y','Zr',
+                         'Sn','Sb','Xe','La','Ce','Fr','Ra','Th',
+                         'Nb','Tc','Ru','Rh','Pd','Pr','Nd','Pm','Eu','Tb','Dy','Ho','Er',
+                         'Tm','Lu','Hf','Ta','Re','Os','Ir','Bi','Po','At','Rn','Ac','Pa',
+                         'Np','Pu','Am','Cm','Bk','Cf','Es','Fm','Md','No',
+                         'a','c','t/u','g','other na','nonbase']
 
     ################################################################################
     # Do the calculations; which one depends on the approach and other phil parameters.
