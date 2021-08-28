@@ -29,6 +29,7 @@ def process_predicted_model(model,
   input_lddt_is_fractional = None,
   split_model_by_compact_regions = None,
   domain_size = 15,
+  maximum_domains = 10,
   chain_id = None,
   default_maximum_rmsd = 1.5,
   subtract_minimum_b = None,
@@ -69,6 +70,8 @@ def process_predicted_model(model,
     split_model_by_compact_regions: split resulting model into compact regions
     domain_size: typical size of domains (resolution used for filtering is
        the domain size)
+    maximum_domains: if more than this many domains, merge close ones to reduce
+       number
     chain_id: if model contains more than one chain, split this chain only.
               NOTE: only one chain can be processed at a time.
     if subtract_minimum_b is set, subtract minimum(B values) from all B values
@@ -76,7 +79,7 @@ def process_predicted_model(model,
 
   Output:
     processed_model_info: group_args object containing:
-      processed_model:  single model with regions identified in SEGID field
+      processed_model:  single model with regions identified in chainid field
       processed_model_list:  list of iotbx.model.model objects, one for
                               each compact region
 
@@ -174,36 +177,37 @@ def process_predicted_model(model,
 
     info = split_model_into_compact_units(new_model,
       d_min = domain_size,
+      maximum_domains = maximum_domains,
       log = log)
     if info is None:
       print("No compact regions identified", file = log)
-      segid_list = []
+      chainid_list = []
       model_list = []
     else:
       new_model = info.model
-      segid_list = info.segid_list
+      chainid_list = info.chainid_list
       print("Total of %s regions identified" %(
-        len(segid_list)), file = log)
-      model_list = split_model_by_segid(new_model, segid_list)
+        len(chainid_list)), file = log)
+      model_list = split_model_by_chainid(new_model, chainid_list)
   else:
     model_list = []
-    segid_list = []
+    chainid_list = []
 
   return group_args(
     group_args_type = 'processed predicted model',
     model = new_model,
     model_list = model_list,
-    segid_list = segid_list
+    chainid_list = chainid_list
     )
 
 
-def split_model_by_segid(m, segid_list):
+def split_model_by_chainid(m, chainid_list):
   """
-   Split a model into pieces based on SEGID
+   Split a model into pieces based on chainid
   """
   split_model_list = []
-  for segid in segid_list:
-    selection_string = "segid %s" %(segid)
+  for chainid in chainid_list:
+    selection_string = "chain %s" %(chainid)
     ph = m.get_hierarchy()
     asc1 = ph.atom_selection_cache()
     sel = asc1.selection(selection_string)
@@ -392,6 +396,7 @@ def split_model_into_compact_units(
      grid_resolution = 6,
      close_distance = 15,
      minimum_region_size = 10,
+     maximum_domains = None,
      log = sys.stdout):
 
   """
@@ -414,14 +419,14 @@ def split_model_into_compact_units(
    minimum_region_size: typical size (CA or P) of the smallest segments to keep
    bfactor_min: smallest bfactor for atoms to include in calculations
    bfactor_max: largest bfactor for atoms to include in calculations
-
+   maximum_domains:  If more than this many domains, merge closest ones until
+     reaching this number
 
    Output:
    group_args object with members:
-    m:  new model with SEGID values from 0 to N where there are N domains
-      SEGID value of 0 is all atoms not included in the calculations
-      SEGID 1 to N are the N domains, roughly in order along the chain
-    segid_list:  list of all the SEGID values (0 is last)
+    m:  new model with chainid values from 0 to N where there are N domains
+      chainid 1 to N are the N domains, roughly in order along the chain.
+    chainid_list:  list of all the chainid values
 
    On failure:  returns None
   """
@@ -463,41 +468,73 @@ def split_model_into_compact_units(
 
   #  Assign all CA in model to a region
   regions_list = assign_ca_to_region(co_info, new_m, minimum_region_size,
-     close_distance,  log = log)
+     close_distance,  maximum_domains = maximum_domains,
+     log = log)
 
-  # Set segid based on regions_list
+  # Set chainid based on regions_list
 
   atoms = new_m.get_hierarchy().atoms()  # new
   region_name_dict = {}
   used_regions = []
   i = 0
-  segid_list = []
-  for region in regions_list:
-    if not region in used_regions:
-      used_regions.append(region)
+  chainid_list = []
+  from mmtbx.secondary_structure.find_ss_from_ca import get_chain_id
+  chainid = get_chain_id(m.get_hierarchy()).strip()
+
+  i = 0
+  unique_regions = get_unique_values(regions_list)
+  for region_number in unique_regions:
+    if not region_number in used_regions:
+      used_regions.append(region_number)
       i += 1
-      region_name_dict[region] = i
-      segid_list.append("%s" %(i))
+      if len(chainid) == 1 and i < 10:
+          region_name = "%s%s" %(chainid,region_number)
+      else:
+          region_name = str(i)
+      region_name_dict[region_number] = region_name
+      chainid_list.append(region_name)
 
   region_dict = {}
-  for at, region in zip(atoms, regions_list):
+  for at, region_number in zip(atoms, regions_list):
     resseq_int = at.parent().parent().resseq_as_int()
-    region_dict[resseq_int] = region_name_dict[region]
+    region_dict[resseq_int] = region_number
 
   # And apply to full model
+  full_region_list = flex.int()
   for at in m.get_hierarchy().atoms():
     resseq_int = at.parent().parent().resseq_as_int()
     region = region_dict.get(resseq_int,0)
-    at.set_segid("%s"  %(region))
+    full_region_list.append(region)
+
+  # Now create new model with chains based on region list
+  unique_regions = get_unique_values(regions_list)
+  full_new_model = None
+  for region_number in unique_regions:
+    sel = (full_region_list == region_number)
+    new_m = m.select(sel)
+    # Now put all of new_m in a chain with chain.id = str(region_number)
+    for model in new_m.get_hierarchy().models()[:1]: # only one model
+      for chain in model.chains()[:1]: # only allowing one chain
+        chain.id = region_name_dict[region_number]
+    if full_new_model:
+      full_new_model = add_model(full_new_model, new_m)
+    else:
+      full_new_model = new_m
+  m = full_new_model
 
   # All done
   return group_args(
     group_args_type = 'model_info',
     model = m,
-    segid_list = segid_list)
+    chainid_list = chainid_list)
 
-def assign_ca_to_region(co_info, m, minimum_region_size, close_distance,
-     log = sys.stdout):
+def assign_ca_to_region(co_info,
+    m,
+    minimum_region_size,
+    close_distance,
+    maximum_domains = None,
+    n_cycles = 10,
+    log = sys.stdout):
   region_id_map = co_info.region_id_map
   id_list = co_info.id_list
   regions_list = flex.int()
@@ -505,16 +542,65 @@ def assign_ca_to_region(co_info, m, minimum_region_size, close_distance,
   for sf in sites_frac:
     regions_list.append(int(region_id_map.value_at_closest_grid_point(sf)))
   # Now remove occasional ones out of place
-  for cycle in range(10):
+  for cycle in range(n_cycles):
     regions_list = replace_lone_sites(regions_list)
     regions_list = replace_short_segments(regions_list, minimum_region_size)
     for i in range(len(get_unique_values(regions_list))):
-     new_regions_list = merge_close_regions(
+      new_regions_list = merge_close_regions(
         m.get_sites_cart(), regions_list, minimum_region_size, close_distance)
-     if new_regions_list:
-       regions_list = new_regions_list
-     else:
+      if new_regions_list:
+         regions_list = new_regions_list
+      else:
        break
+  # Finally merge close regions if there are too many
+  for k in range(len(get_unique_values(regions_list))):
+    if maximum_domains and \
+         len((get_unique_values(regions_list))) > maximum_domains:
+      regions_list = merge_closest_regions(m.get_sites_cart(), regions_list,
+        close_distance, log = log)
+    else:
+      break
+  return regions_list
+
+def merge_closest_regions(sites_cart, regions_list, close_distance,
+     log = sys.stdout):
+  unique_values = get_unique_values(regions_list)
+  n = len(unique_values)
+  close_to_other_info  = get_close_to_other_list(sites_cart, regions_list,
+     close_distance)
+  if close_to_other_info.n_close_list:  # there are close pairs
+    # Get best pair
+    n_close_list = sorted(close_to_other_info.n_close_list,
+      key = lambda c: c.n_close, reverse = True)
+    best_pair = n_close_list[0]
+    best_i = best_pair.i
+    best_j = best_pair.j
+    if best_i is not None:
+      print("Merging groups with %s sets of close residues" %(
+        best_pair.n_close), file = log)
+  else:  # just take the pair that comes closest
+    best_i = None
+    best_j = None
+    best_dist = None
+    for k in range(len(unique_values)):
+      i = unique_values[k]
+      sc1 = sites_cart.select(regions_list == i)
+      for l in range(k+1, len(unique_values)):
+        j = unique_values[l]
+        sc2 = sites_cart.select(regions_list == j)
+        dist, i1, i2 = sc1.min_distance_between_any_pair_with_id(sc2)
+        if dist and (best_dist is None or (dist < best_dist)):
+          best_i = i
+          best_j = j
+          best_dist = dist
+    if best_i is not None:
+      print("Merging groups with distance of %.2f A" %(best_dist), file = log)
+
+  if best_i is not None:
+    sel = (regions_list == best_j)
+    regions_list.set_selected(sel, best_i)
+    update_regions_list(regions_list)
+
   return regions_list
 
 def get_unique_values(regions_list):
@@ -530,6 +616,26 @@ def merge_close_regions(sites_cart, regions_list, minimum_region_size,
   # Count number of residues in each pair that are close to the other
   # Split a group if some residues are close to other and not to self
 
+  close_to_other_info  = get_close_to_other_list(sites_cart, regions_list,
+     close_distance)
+  close_to_other_list = close_to_other_info.close_to_other_list
+
+  closer_to_other_swaps = get_closer_to_other(close_to_other_list,
+      minimum_region_size)
+  found_something = False
+  # Apply close swaps
+  for s in closer_to_other_swaps:
+    c = s.k_list[0]
+    for k in range(c.start, c.end+1):
+      regions_list[k] = s.j
+      found_something = True
+
+  update_regions_list(regions_list)
+
+  if found_something:
+    return regions_list
+
+def get_close_to_other_list(sites_cart, regions_list, close_distance):
 
   sites_dict = {}
   index_dict = {}
@@ -544,7 +650,6 @@ def merge_close_regions(sites_cart, regions_list, minimum_region_size,
   typical_n_close = 0
   typical_n_close_n = 0
   close_to_other_list = []
-  found_something = None
   for i in id_list:
     for j in id_list:
       if i==j: continue
@@ -558,7 +663,7 @@ def merge_close_regions(sites_cart, regions_list, minimum_region_size,
            n_close += 1
          distances_self = (sites_dict[i] - col(sites_dict[i][k])).norms()
          self_local_n_close = (distances_self < close_distance).count(True) - 1
-         if local_n_close > self_local_n_close: #ZZ + minimum_region_size/2:
+         if local_n_close > self_local_n_close:
            close_to_other_list.append(
              group_args(group_args_type = 'closer to other',
              excess = local_n_close - self_local_n_close,
@@ -573,20 +678,10 @@ def merge_close_regions(sites_cart, regions_list, minimum_region_size,
         n_close = n_close,
         i = i,
         j = j,))
-
-  closer_to_other_swaps = get_closer_to_other(close_to_other_list,
-      minimum_region_size)
-  # Apply close swaps
-  for s in closer_to_other_swaps:
-    c = s.k_list[0]
-    for k in range(c.start, c.end+1):
-      regions_list[k] = s.j
-      found_something = True
-
-  update_regions_list(regions_list)
-
-  if found_something:
-    return regions_list
+  return group_args(
+    group_args_type = 'close to other and close list',
+      n_close_list = n_close_list,
+      close_to_other_list = close_to_other_list)
 
 def get_closer_to_other(close_to_other_list, minimum_region_size):
   close_dict = {}
@@ -680,14 +775,12 @@ def replace_short_segments(regions_list, minimum_region_size):
 
 def update_regions_list(regions_list):
   id_list = get_unique_values(regions_list)
-  id_list.sort()
   new_id_dict = {}
   i = 0
   for id_value in id_list:
     i += 1
     new_id_dict[id_value] = i
   new_id_list = list(new_id_dict.keys())
-  new_id_list.sort()
 
   for i in range(regions_list.size()):
     regions_list[i] = new_id_dict[regions_list[i]]
@@ -817,15 +910,31 @@ if __name__ == "__main__":
       domain_size = domain_size,
       split_model_by_compact_regions = True,)
 
-    segid_list = model_info.segid_list
-    print("Segments found: %s" %(" ".join(segid_list)))
+    chainid_list = model_info.chainid_list
+    print("Segments found: %s" %(" ".join(chainid_list)))
 
     mmm = model_info.model.as_map_model_manager()
     mmm.write_model(output_file_name)
-    for segid in segid_list:
-      selection_string = "segid %s" %(segid)
+    for chainid in chainid_list:
+      selection_string = "chain %s" %(chainid)
       ph = model_info.model.get_hierarchy()
       asc1 = ph.atom_selection_cache()
       sel = asc1.selection(selection_string)
       m1 = model_info.model.select(sel)
-      dm.write_model_file(m1, '%s_%s.pdb' %(output_file_name[:-4],segid))
+      dm.write_model_file(m1, '%s_%s.pdb' %(output_file_name[:-4],chainid))
+
+def add_model(s1, s2):
+  ''' add chains from s2 to existing s1'''
+  s1 = s1.deep_copy()
+  s1_ph = s1.get_hierarchy() # working hierarchy
+  from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
+  existing_chain_ids = get_chain_ids(s1_ph)
+  for model_mm_2 in s2.get_hierarchy().models()[:1]:
+    for chain in model_mm_2.chains():
+      assert chain.id not in existing_chain_ids # duplicate chains in add_model
+      new_chain = chain.detached_copy()
+      for model_mm in s1_ph.models()[:1]:
+        model_mm.append_chain(new_chain)
+
+  s1.reset_after_changing_hierarchy()
+  return s1

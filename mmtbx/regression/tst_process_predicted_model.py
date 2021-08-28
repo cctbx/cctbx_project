@@ -108,9 +108,9 @@ def tst_01(log = sys.stdout):
   print("\nSplitting model into domains", file = log)
   model_info = split_model_into_compact_units(model, log = log)
 
-  segid_list = model_info.segid_list
-  print("Segments found: %s" %(" ".join(segid_list)), file = log)
-  assert len(segid_list) == 2
+  chainid_list = model_info.chainid_list
+  print("Segments found: %s" %(" ".join(chainid_list)), file = log)
+  assert len(chainid_list) == 2
 
   # Check processing and splitting model into domains
   print("\nProcessing and splitting model into domains", file = log)
@@ -119,22 +119,23 @@ def tst_01(log = sys.stdout):
       maximum_rmsd = 1.5,
       split_model_by_compact_regions = True,
       chain_id = 'A',
+      maximum_domains = 3,
       log = log)
 
-  segid_list = model_info.segid_list
-  print("Segments found: %s" %(" ".join(segid_list)), file = log)
-  assert len(segid_list) == 2
+  chainid_list = model_info.chainid_list
+  print("Segments found: %s" %(" ".join(chainid_list)), file = log)
+  assert len(chainid_list) == 2
 
 
   mmm = model_info.model.as_map_model_manager()
   mmm.write_model('model_with_groupings.pdb')
-  for segid in segid_list:
-    selection_string = "segid %s" %(segid)
+  for chainid in chainid_list:
+    selection_string = "chain %s" %(chainid)
     ph = model_info.model.get_hierarchy()
     asc1 = ph.atom_selection_cache()
     sel = asc1.selection(selection_string)
     m1 = model_info.model.select(sel)
-    dm.write_model_file(m1, 'Dmodel_%s.pdb' %(segid))
+    dm.write_model_file(m1, 'Dmodel_%s.pdb' %(chainid))
 
 if __name__ == "__main__":
 
