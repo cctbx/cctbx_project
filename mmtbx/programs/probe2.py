@@ -326,20 +326,40 @@ Note:
 
 # ------------------------------------------------------------------------------
 
+  def _save_dot(self, src, target, atomClass, loc, spike, overlapType, gap, ptmaster, angle):
+    '''
+      Generate and store a DotInfo entry with the specified parameters.  It will be stored
+      into the self._results data structure.
+      :param src: Source atom for the dot.
+      :param target: Target atom for the dot, if any.
+      :param atomClass: Atom class of this dot, indicates where to store.
+      :param loc: Location of the dot start.
+      :param spike: Location of the dot end.
+      :param overlapType: Type of overlap for the dot.
+      :param gap: Gap spacing for the dot.
+      :param ptmaster: ptmaster entry for the dot.
+      :param angle: angle for the dot.
+      :return: As a side effect, this will add a new entry into one of the lists in the
+      self._results data structure.
+    '''
+    self._results[atomClass][self._dotScorer.interaction_type(overlapType,gap)].append(
+      DotInfo(src, target, loc, spike, overlapType, gap, ptmaster, angle)
+    )
+
+# ------------------------------------------------------------------------------
+
   def _generate_surface_dots_for(self, src, bonded):
     '''
       Find all surface dots for the specified atom.
       :param src: Atom whose surface dots are to be found.
       :param bonded: Atoms that are bonded to src.
-      :return: List of dots on the surface of the atom.
+      :return: Side effect: Add dots on the surface of the atom to the
+              self._results data structure by atomclass and dot type.
     '''
-
-    # Empty list to start with.
-    ret = []
 
     # Generate no dots for ignored atoms.
     if self._atomClasses[src] == 'ignore':
-      return ret
+      return
 
     # Check all of the dots for the atom and see if they should be
     # added to the list.
@@ -380,13 +400,17 @@ Note:
           continue
 
         # The bonded neighbor is one that we should check interaction with, see if
-        # we're in range.  If so, mark this dot as not okay.
+        # we're in range.  If so, mark this dot as not okay because it is inside a
+        # bonded atom.
+        if ( (Helpers.rvec3(b.xyz) - exploc).length() <=
+            pr + self._extraAtomInfo.getMappingFor(b).vdwRadius ):
+          okay = False
 
-      # @todo
-
-    # @todo
-
-    return ret
+      # If this dot is okay, add it to the internal data structure based on its
+      # atom class and overlap type.
+      if okay:
+        self._save_dot(src, None, self._atomClasses[src], dotloc, dotloc,
+                       probeExt.overlapType.None, 0.0, ' ', 0.0)
 
 # ------------------------------------------------------------------------------
 
@@ -592,6 +616,19 @@ Note:
           extraAtomInfo.setMappingFor(a, ei)
 
     ################################################################################
+    # Dot class storing information about an individual dot.
+    class DotInfo:
+      def __init__(self, src, target, loc, spike, overlapType, gap, ptmaster, angle):
+        self.src = src                  # Source atom for the interaction
+        self.target = target            # Target atom for the interactions
+        self.loc = loc                  # Location of the dot start
+        self.spike = spike              # Location of the dot end
+        self.overlapType = overlapType  # Type of overlap the interaction represents
+        self.gap = gap                  # Gap between the atoms
+        self.ptmaster = ptmaster        # Main/side chain interaction type
+        self.angle = angle              # Angle associated with the bump
+
+    ################################################################################
     # List of all of the keys for atom classes, including all elements and all
     # nucleic acid types.  These are in the order that the original Probe reported
     # them.  Based on atomprops.h:INIT_ATOM_TABLE from original probe.
@@ -606,6 +643,17 @@ Note:
                          'Tm','Lu','Hf','Ta','Re','Os','Ir','Bi','Po','At','Rn','Ac','Pa',
                          'Np','Pu','Am','Cm','Bk','Cf','Es','Fm','Md','No',
                          'a','c','t/u','g','other na','nonbase']
+
+    ################################################################################
+    # Dictionary of dictionaries of lists structure holding lists of DotInfo class objects,
+    # indexed by atom class and then by interaction type.  Fill in empty lists for all of
+    # the possible classes and types.
+    self._results = {}
+    for c in self._allAtomClasses:
+      interactionTypeDicts = {}
+      for i in range(probeExt.InteractionType.HydrogenBond + 1):
+        interactionTypeDicts[i] = []
+      self._results[c] = interactionTypeDicts
 
     ################################################################################
     # Do the calculations; which one depends on the approach and other phil parameters.
@@ -640,10 +688,13 @@ Note:
         # Find the atoms that are bonded directly to the source atom.
         neighbors = bondedNeighborLists[src]
 
-        # Find out what type of dot we should place for this atom.
-        type = self._atomClasses[src]
+        # Find out what class of dot we should place for this atom.
+        atomClass = self._atomClasses[src]
 
-        # @todo
+        # Generate all of the dots for this atom.
+        self._generate_surface_dots_for(src, neighbors)
+
+      # @todo
 
     # @todo
     else:
@@ -673,7 +724,7 @@ Note:
 
       make_sub_header('Compute Probe Score', out=self.logger)
       # Construct a DotScorer object.
-      ds = probeExt.DotScorer(extra, self.params.probe.gap_weight,
+      self._dotScorer = probeExt.DotScorer(extra, self.params.probe.gap_weight,
         self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight,
         self.params.probe.uncharged_hydrogen_cutoff, self.params.probe.charged_hydrogen_cutoff,
         self.params.probe.clash_cutoff, self.params.probe.worse_clash_cutoff,
@@ -711,7 +762,8 @@ Note:
         exclude = list(exclude)
 
         dots = sphere.dots()
-        res = ds.score_dots(a, 1.0, sq, rad*3, self.params.probe.radius, exclude, sphere.dots(), sphere.density(), False)
+        res = self._dotScorer.score_dots(a, 1.0, sq, rad*3, self.params.probe.radius,
+              exclude, sphere.dots(), sphere.density(), False)
         total += res.totalScore()
         if res.hasBadBump:
           badBumpTotal += 1
