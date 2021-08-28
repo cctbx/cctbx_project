@@ -172,7 +172,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
     // Determine the overlap type and amount of overlap.
     if (ret.gap >= 0) {
       ret.overlap = 0;
-      ret.overlapType = DotScorer::OverlapType::None;
+      ret.overlapType = DotScorer::OverlapType::NoOverlap;
     } else if (isHydrogenBond) {
       ret.overlap = -0.5 * ret.gap;
       if (tooCloseHydrogenBond) {
@@ -198,7 +198,7 @@ DotScorer::InteractionType DotScorer::interaction_type(
   OverlapType overlapType, double gap, bool separateWeakHydrogenBonds) const
 {
   switch (overlapType) {
-    case DotScorer::OverlapType::None:
+    case DotScorer::OverlapType::NoOverlap:
       if (gap > m_contactCutoff) {
         return WideContact;
       } else {
@@ -307,7 +307,7 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
     case DotScorer::OverlapType::Ignore: // The dot should be ignored, so is not scored.
       break;
 
-    case DotScorer::OverlapType::None: // No overlap, contact dot
+    case DotScorer::OverlapType::NoOverlap: // No overlap, contact dot
       if ((!onlyBumps) && !score.annular) {
         double scaledGap = score.gap / m_gapScale;
         ret.attractSubScore += exp(-scaledGap * scaledGap);
@@ -430,7 +430,7 @@ std::string DotScorer::test()
 
     source.set_xyz({ sourceRad + targetRad + 0.01,0,0 });
     res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
-    if (res.overlapType != DotScorer::OverlapType::None) {
+    if (res.overlapType != DotScorer::OverlapType::NoOverlap) {
       return "DotScorer::test(): Did not find no overlap when expected for dot_score()";
     }
     if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::InteractionType::CloseContact) {
@@ -439,7 +439,7 @@ std::string DotScorer::test()
 
     source.set_xyz({ sourceRad + targetRad + 0.26,0,0 });
     res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
-    if (res.overlapType != DotScorer::OverlapType::None) {
+    if (res.overlapType != DotScorer::OverlapType::NoOverlap) {
       return "DotScorer::test(): Did not find no overlap when expected for dot_score()";
     }
     if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::InteractionType::WideContact) {

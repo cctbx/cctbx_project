@@ -211,10 +211,10 @@ namespace molprobity {
       {}
 
       /// @brief Enumeration listing the basic types of overlap a dot can have with an atom.
-      /// The values mean: None => dot outside atom, Clash => dot inside atom and not hydrogen bonding
+      /// The values mean: NoOverlap => dot outside atom, Clash => dot inside atom and not hydrogen bonding
       /// (including too-close hydrogen), HydrogenBond => Hydrogen bond, Ignore = this dot was inside
       /// an excluded atom or had no neighboring atoms so should be ignored.
-      enum class OverlapType { Ignore = -2, Clash = -1, None = 0, HydrogenBond = 1 };
+      enum class OverlapType { Ignore = -2, Clash = -1, NoOverlap = 0, HydrogenBond = 1 };
 
       /// @brief Structure to hold the results from a call to check_dot()
       class CheckDotResult {
