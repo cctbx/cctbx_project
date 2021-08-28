@@ -337,9 +337,8 @@ Note:
     # Empty list to start with.
     ret = []
 
-    # Atoms that should be ignored will have their occupancies set < 0.
-    # Generate no dots for these atoms.
-    if src.occ <= 0.0:
+    # Generate no dots for ignored atoms.
+    if self._atomClasses[src] == 'ignore':
       return ret
 
     # Check all of the dots for the atom and see if they should be
@@ -362,7 +361,7 @@ Note:
       for b in bonded:
         bInWater = self._inWater[b]
         # If we should ignore the bonded element, we don't check it.
-        if b.occ <= 0:
+        if self._atomClasses[b] == 'ignore':
           continue
         # If we're ignoring water-water interactions and both src and
         # bonded are in a water, we should ignore this as well (unless
@@ -518,11 +517,10 @@ Note:
         # If we are a hydrogen that is bonded to a nitrogen, oxygen, or sulfur then we're a donor.
         if a.element == 'H':
           # If we are in a water, make sure our occupancy and temperature (b) factor are acceptable.
-          # If they are not, set the occupancy of the atom to -1 so that it will always
-          # be below the minimum and will not be scored.
+          # If they are not, set the class for the atom to 'ignore'.
           if self._inWater[a] and (a.occ < self.params.minimum_polar_hydrogen_occupancy or
               a.b > self.params.maximum_polar_hydrogen_b):
-            a.occ = -1
+            self._atomClasses[a] = 'ignore'
           else:
             for n in bondedNeighborLists[a]:
               if n.element in ['N','O','S']:
