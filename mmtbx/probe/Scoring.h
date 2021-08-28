@@ -256,7 +256,7 @@ namespace molprobity {
       /// @return InteractionType of the contact, Invalid if the OverlapType was Ignore or
       ///         a non-negative number indicating the index of the interaction type in the
       ///         original Probe code.
-      InteractionType interaction_type(CheckDotResult checkDotResult,
+      InteractionType interaction_type(OverlapType overlapType, double gap,
          bool separateWeakHydrogenBonds) const;
 
       /// @brief Structure to hold the results from a call to score_dots()

@@ -195,21 +195,20 @@ DotScorer::CheckDotResult DotScorer::check_dot(
 }
 
 DotScorer::InteractionType DotScorer::interaction_type(
-  DotScorer::CheckDotResult checkDotResult,
-  bool separateWeakHydrogenBonds) const
+  OverlapType overlapType, double gap, bool separateWeakHydrogenBonds) const
 {
-  switch (checkDotResult.overlapType) {
+  switch (overlapType) {
     case DotScorer::OverlapType::None:
-      if (checkDotResult.gap > m_contactCutoff) {
+      if (gap > m_contactCutoff) {
         return WideContact;
       } else {
         return CloseContact;
       }
       break;
     case DotScorer::OverlapType::Clash:
-      if (checkDotResult.gap > -m_bumpOverlap) {
+      if (gap > -m_bumpOverlap) {
         return SmallOverlap;
-      } else if (checkDotResult.gap > -m_badBumpOverlap) {
+      } else if (gap > -m_badBumpOverlap) {
         return Bump;
       } else {
         return BadBump;
@@ -217,7 +216,7 @@ DotScorer::InteractionType DotScorer::interaction_type(
       break;
     case DotScorer::OverlapType::HydrogenBond:
       if (separateWeakHydrogenBonds) {
-        if (checkDotResult.gap > 0) {
+        if (gap > 0) {
           return WeakHydrogenBond;
         } else {
           return HydrogenBond;
@@ -319,7 +318,7 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
       {
         ret.bumpSubScore += -m_bumpWeight * score.overlap;
         // See if we should flag this atom as having a bad bump
-        DotScorer::InteractionType type = interaction_type(score, false);
+        DotScorer::InteractionType type = interaction_type(score.overlapType, score.gap, false);
         if (type == DotScorer::InteractionType::BadBump) {
           ret.hasBadBump = true;
         }
@@ -407,7 +406,7 @@ std::string DotScorer::test()
     if (res.cause.data != a.data) {
       return "DotScorer::test(): Did not find expected cause for dot_score()";
     }
-    if (as.interaction_type(res, true) != DotScorer::InteractionType::BadBump) {
+    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::InteractionType::BadBump) {
       return "DotScorer::test(): Did not find WorseOverlap when expected for dot_score()";
     }
 
@@ -416,7 +415,7 @@ std::string DotScorer::test()
     if (res.overlapType != DotScorer::OverlapType::Clash) {
       return "DotScorer::test(): Did not find clash when expected for dot_score()";
     }
-    if (as.interaction_type(res, true) != DotScorer::InteractionType::Bump) {
+    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::InteractionType::Bump) {
       return "DotScorer::test(): Did not find BadOverlap when expected for dot_score()";
     }
 
@@ -425,7 +424,7 @@ std::string DotScorer::test()
     if (res.overlapType != DotScorer::OverlapType::Clash) {
       return "DotScorer::test(): Did not find small clash when expected for dot_score()";
     }
-    if (as.interaction_type(res, true) != DotScorer::InteractionType::SmallOverlap) {
+    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::InteractionType::SmallOverlap) {
       return "DotScorer::test(): Did not find SmallOverlap when expected for dot_score()";
     }
 
@@ -434,7 +433,7 @@ std::string DotScorer::test()
     if (res.overlapType != DotScorer::OverlapType::None) {
       return "DotScorer::test(): Did not find no overlap when expected for dot_score()";
     }
-    if (as.interaction_type(res, true) != DotScorer::InteractionType::CloseContact) {
+    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::InteractionType::CloseContact) {
       return "DotScorer::test(): Did not find CloseContact when expected for dot_score()";
     }
 
@@ -443,7 +442,7 @@ std::string DotScorer::test()
     if (res.overlapType != DotScorer::OverlapType::None) {
       return "DotScorer::test(): Did not find no overlap when expected for dot_score()";
     }
-    if (as.interaction_type(res, true) != DotScorer::InteractionType::WideContact) {
+    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::InteractionType::WideContact) {
       return "DotScorer::test(): Did not find WideContact when expected for dot_score()";
     }
 
@@ -453,7 +452,7 @@ std::string DotScorer::test()
     if (res.overlapType != DotScorer::OverlapType::Ignore) {
       return "DotScorer::test(): Did not find ignore when expected for dot_score()";
     }
-    if (as.interaction_type(res, true) != DotScorer::InteractionType::Invalid) {
+    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::InteractionType::Invalid) {
       return "DotScorer::test(): Did not find Invalid when expected for dot_score()";
     }
   }
