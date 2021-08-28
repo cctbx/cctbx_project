@@ -410,7 +410,7 @@ Note:
       # atom class and overlap type.
       if okay:
         self._save_dot(src, None, self._atomClasses[src], dotloc, dotloc,
-                       probeExt.overlapType.None, 0.0, ' ', 0.0)
+                       probeExt.OverlapType.NoOverlap, 0.0, ' ', 0.0)
 
 # ------------------------------------------------------------------------------
 
