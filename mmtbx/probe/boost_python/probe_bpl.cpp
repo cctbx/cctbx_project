@@ -68,7 +68,7 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
 
   enum_<DotScorer::OverlapType>("OverlapType")
     .value("Ignore", DotScorer::OverlapType::Ignore)
-    .value("None", DotScorer::OverlapType::None)
+    .value("NoOverlap", DotScorer::OverlapType::NoOverlap)
     .value("Clash", DotScorer::OverlapType::Clash)
     .value("HydrogenBond", DotScorer::OverlapType::HydrogenBond)
     ;
