@@ -25,9 +25,9 @@ use_neutron_distances = False
   .type = bool
   .help = Use neutron distances (-nuclear in probe)
 
-approach = *self both once surface count
+approach = *self both once surface count_atoms
   .type = choice
-  .help = self (src -> src) both (src <=> targ) once (src -> targ) surface (VdW surface) count (count atoms)
+  .help = self (src -> src) both (src <=> targ) once (src -> targ) surface (VdW surface) count_atoms (count atoms)
 
 include_mainchain_mainchain = True
   .type = bool
@@ -67,15 +67,15 @@ maximum_polar_hydrogen_b = 80.0
 
 do_water_water = False
   .type = bool
-  .help = Count water-to-water interactions (-wat2wat in probe)
+  .help = Include water-to-water interactions (-wat2wat in probe)
 
 do_water = True
   .type = bool
-  .help = Count water-to-non-water interactions (-wat2wat, -waters, -nowaters in probe)
+  .help = Include water-to-non-water interactions (-wat2wat, -waters, -nowaters in probe)
 
 do_het = True
   .type = bool
-  .help = Count het-atom interactions (-hets, -nohets in probe)
+  .help = Include het-atom interactions (-hets, -nohets in probe)
 
 probe
   .style = menu_item auto_align
@@ -658,7 +658,8 @@ Note:
     ################################################################################
     # Do the calculations; which one depends on the approach and other phil parameters.
     # Append the information to the string that will be written to file.
-    if self.params.approach == 'count':
+    if self.params.approach == 'count_atoms':
+      make_sub_header('Counting atoms', out=self.logger)
       # Report the number of atoms in the source selection
       outString += 'atoms selected: '+str(len(source_atoms)+len(phantom_hydrogens))+'\n'
 
