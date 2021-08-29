@@ -60,7 +60,7 @@ def getBondedNeighborLists(atoms, bondProxies):
       pass
   return bondedNeighbors
 
-def getAtomsWithinNBonds(atom, bondedNeighborLists, N):
+def getAtomsWithinNBonds(atom, bondedNeighborLists, N, nonHydrogenN = 1e10):
   """
     Helper function to produce a list of all of the atoms that are bonded to the
     specified atoms, or to one of the atoms bonded to the specified atom, recursively
@@ -73,16 +73,22 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, N):
     mmtbx.probe.Helpers.getBondedNeighborLists().
     :param N: Depth of recursion.  N=1 will return the atoms bonded to atom.  N=2 will
     also return those bonded to these neighbors (but not the atom itself).
+    :param nonHydrogenN: When neither the original atom nor the bonded atom is a Hydrogen,
+    limit the depth to this value (if this value is less than N).
     :returns a list of all atoms that are bonded to atom within a depth of N.  The original
     atom is never on the list.
   """
+  hFound = atom.element == "H"
   # Find all atoms to the specified depth
   atoms = {atom}            # Initialize the set with the atom itself
   for i in range(N):        # Repeat the recursion this many times
     current = list(atoms)   # Make a copy so we're not modifying the list we are traversing
     for a in current:       # Add all neighbors of all atoms in the current level
       for n in bondedNeighborLists[a]:
-        atoms.add(n)
+        if n.element == "H":
+          hFound = True
+        if i < nonHydrogenN or hFound:
+          atoms.add(n)
 
   # Remove the original atom from the result and turn the result into a list.
   atoms.discard(atom)
@@ -367,15 +373,23 @@ END
   #========================================================================
   # Run unit test on getAtomsWithinNBonds().
   # Get the atoms within N bounds for a range for the "N" atom and verify that the
-  # counts match what is expected.
+  # counts match what is expected.  Do this for the case where we clamp the non-
+  # hydrogen ones to the 3 and when we use the default of very large to count
+  # them all.
   # NOTE: This re-uses the bondedNeighborLists test results from above
+  nestedNeighborsForN = [ None, 1, 3, 5, 5, 5, 5]
+  for N in range(1,7):
+    count = len(getAtomsWithinNBonds(atoms[0], bondedNeighborLists, N, 3))
+    if count != nestedNeighborsForN[N]:
+      return ("Helpers.Test(): Nested clamped count for "+atoms[0].name.strip()+
+        " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN[N]))
   nestedNeighborsForN = [ None, 1, 3, 5, 7, 9, 9]
   for N in range(1,7):
     count = len(getAtomsWithinNBonds(atoms[0], bondedNeighborLists, N))
     if count != nestedNeighborsForN[N]:
-      return ("Helpers.Test(): Nested count for "+atoms[0].name.strip()+
+      return ("Helpers.Test(): Nested unclamped count for "+atoms[0].name.strip()+
         " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN[N]))
-
+  # @todo Test the hydrogen cutoff parameter for getAtomsWithinNBonds
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
