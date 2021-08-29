@@ -94,6 +94,17 @@ class check_distributions:
         umat).r3_rotation_matrix_as_unit_quaternion().unit_quaternion_as_axis_and_angle(deg=True)
       angle_deg.append(angle)
     return angle_deg
+  @staticmethod
+  def get_angle_deg_and_axes(dist):
+    angle_deg = flex.double()
+    rot_ax = flex.vec3_double()
+    for umat in dist:
+      angle,axis = sqr(
+        umat).r3_rotation_matrix_as_unit_quaternion().unit_quaternion_as_axis_and_angle(deg=True)
+      angle_deg.append(angle)
+      rot_ax.append(axis)
+    return angle_deg, rot_ax
+
 
 MOSAIC_SPREAD = 2.0 # top hat half width rotation in degrees
 SAMPLE_SIZE = 100000

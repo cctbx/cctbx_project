@@ -133,7 +133,7 @@ class NBcrystal(object):
   def anisotropic_mos_spread_deg(self, val):
     if val is not None:
       if not isinstance(val, Iterable):
-        raise TypeError("anisotropic_mos_spread_deg needs top be a 3-tuple or 6-tuple")
+        raise TypeError("anisotropic_mos_spread_deg needs to be a 3-tuple or 6-tuple")
       elif len(val) not in [3, 6]:
         raise ValueError("Anisotropic mosaicity should be either a 3-tuple or a 6-tuple")
     self._anisotropic_mos_spread_deg = val
