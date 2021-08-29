@@ -179,7 +179,7 @@ class AnisoUmats:
                 C = col((1, 0, 0))  # arbitrary
 
             # effective mosaic rotation dependent on eta tensor
-            eta_eff = C.dot(eta_tensor*C)
+            eta_eff = C.dot(eta_tensor*C) # XXX Fix me as in tst_anisotropic_mosaicity.py
 
             ang_idx = self.angle_indices[i]
             U, Up, Udp = _compute(rot_ax, ang_idx, eta_eff, C,
