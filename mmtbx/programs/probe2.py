@@ -77,6 +77,14 @@ do_het = True
   .type = bool
   .help = Include het-atom interactions (-hets, -nohets in probe)
 
+atom_radius_scale = 1.0
+  .type = float
+  .help = Atom radius = (r*atom_radius_scale)+atom_radius_offset (-scalevds, -vswscale in probe)
+
+atom_radius_offset = 0.0
+  .type = float
+  .help = Atom radius = (r*atom_radius_scale)+atom_radius_offset (-addvdw in probe)
+
 probe
   .style = menu_item auto_align
 {
@@ -193,6 +201,10 @@ output
   spike_scale_factor = 0.5
     .type = float
     .help = Fraction of overlap assigned to each atom (-spike in probe)
+
+  group_label = ""
+    .type = str
+    .help = Label for the surface-dots group (-name, -scsurface, -exposed, -asurface, -access in probe)
 }
 '''
 
@@ -243,12 +255,41 @@ Note:
       raise Sorry("Must specify a target parameter for approach "+self.params.approach)
     if self.params.output.file_name_prefix is None:
       raise Sorry("Supply the prefix for an output file name using output.file_name_prefix=")
+    aScale = self.params.atom_radius_scale
+    if aScale < 0.0001 or aScale > 1000:
+      raise Sorry("Invalid atom_radius_scale value: {}".format(aScale))
+    ao = self.params.atom_radius_offset
+    if ao < -10 or ao > 1000:
+      raise Sorry("Invalid atom_radius_offset value: {}".format(ao))
 
     # Ensure consistency among parameters
     if self.params.probe.contact_cutoff < self.params.probe.radius:
       self.params.probe.contact_cutoff = self.params.probe.radius
 
 # ------------------------------------------------------------------------------
+
+  def _scaled_atom_radius(self, a):
+    '''
+      Find the scaled and offset radius for the specified atom.  This will be called on each
+      atom after their extra information has been loaded to determine the scaled and offset
+      value to use for the remainder of the program.
+      @todo How to handle asking for the implicit vs. explicit radius, which will presumably
+      be done not here but in the helper function that gets extra atom info.
+      :param a: Atom whose radius is to be scaled
+      :return: Scaled and offset radius of the atom.
+    '''
+    rad = self._extraAtomInfo.getMappingFor(a).vdwRadius
+    if rad <= 0:
+      alt = a.parent().altloc
+      resName = a.parent().resname.strip().upper()
+      resID = str(a.parent().parent().resseq_as_int())
+      chainID = a.parent().parent().parent().id
+      myFullName = "chain "+str(chainID)+" "+resName+" "+resID+" "+a.name+" "+alt
+      raise Sorry("Invalid radius for atom look-up: "+myFullName+"; rad = "+str(rad))
+    return self.params.atom_radius_offset + (rad * self.params.atom_radius_scale)
+
+# ------------------------------------------------------------------------------
+
   def _atom_class_for(self, a):
     '''
       Assign the atom class for a specified atom.
@@ -366,8 +407,11 @@ Note:
   def _generate_surface_dots_for(self, src, bonded):
     '''
       Find all surface dots for the specified atom.
+      This does not include locations where the probe is interacting with
+      a bonded atom, so it is a subset of the skin dots where only the
+      dots themselves are outside of the bonded atoms.
       :param src: Atom whose surface dots are to be found.
-      :param bonded: Atoms that are bonded to src.
+      :param bonded: Atoms that are bonded to src by one or more hops.
       :return: Side effect: Add dots on the surface of the atom to the
               self._results data structure by atomclass and dot type.
     '''
@@ -429,6 +473,96 @@ Note:
 
 # ------------------------------------------------------------------------------
 
+  def _count_src_skin_dots(self, atoms):
+    '''
+      Count all skin dots for the atoms passed in.
+      :param atoms: Atoms to check.
+      This is used to normalize output scores.
+      :return: Number of skin dots on any of the atoms in the source selection.
+    '''
+
+    ret = 0
+
+    maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
+    for src in atoms:
+      # Find nearby atoms that might come into contact.  This greatly speeds up the
+      # search for touching atoms.
+      maxRadius = (self._extraAtomInfo.getMappingFor(src).vdwRadius + maxVDWRadius +
+        2 * self.params.probe.radius)
+      nearby = self._spatialQuery.neighbors(src.xyz, 0.001, maxRadius)
+
+      # Select those that are actually within the contact distance based on their
+      # particular radius.
+      atomList = []
+      for n in nearby:
+        d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
+        if (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
+            self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.radius):
+          atomList.append(n)
+
+      # Find the atoms that are bonded to the source atom within the specified hop
+      # count.  Limit the length of the chain to 3 if neither the source nor the final
+      # atom is a Hydrogen.
+      neighbors = Helpers.getAtomsWithinNBonds(src, allBondedNeighborLists,
+        self.params.excluded_bond_chain_length, 3)
+
+      # Count the skin dots for this atom.
+      ret += self._count_skin_dots_for(src, neighbors)
+
+    # Return the total count
+    return ret
+
+# ------------------------------------------------------------------------------
+
+  def _count_skin_dots_for(self, src, bonded):
+    '''
+      Count all skin dots for the specified atom.
+      :param src: Atom whose surface dots are to be found.
+      :param bonded: Atoms that are bonded to src by one or more hops.
+      :return: Side effect: Add dots on the surface of the atom to the
+              self._results data structure by atomclass and dot type.
+    '''
+
+    # No dots yet...
+    ret = 0
+
+    # Generate no dots for ignored atoms or for phantom Hydrogens.
+    if self._atomClasses[src] == 'ignore' or self._extraAtomInfo.getMappingFor(src).isDummyHydrogen:
+      return 0
+
+    # Check all of the dots for the atom and see if they should be
+    # added to the list.
+    srcDots = self._dots[src]
+    for dotvect in srcDots:
+      # Dot on the surface of the atom, at its radius.
+      # This is where the probe touches the surface.
+      dotloc = Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect)
+
+      # If the exploring dot is within a probe radius + vdW radius of a bonded atom,
+      # we don't add a dot.
+      okay = True
+      for b in bonded:
+        # If we should ignore the bonded element, we don't check it.
+        if self._atomClasses[b] == 'ignore' or self._extraAtomInfo.getMappingFor(b).isDummyHydrogen:
+          continue
+
+        # The bonded neighbor is one that we should check interaction with, see if
+        # we're in range.  If so, mark this dot as not okay because it is inside a
+        # bonded atom.
+        if ( (Helpers.rvec3(b.xyz) - dotloc).length() <=
+             self._extraAtomInfo.getMappingFor(b).vdwRadius ):
+          okay = False
+
+      # If this dot is okay, add it to the internal data structure based on its
+      # atom class and overlap type.
+      if okay:
+        ret += 1
+
+      # Return the number of dots not inside a bonded atom.
+      return ret
+
+# ------------------------------------------------------------------------------
+
   def run(self):
     # String that will be output to the specified file.
     outString = ''
@@ -468,11 +602,18 @@ Note:
 
     ################################################################################
     # Get the extra atom information needed to score all of the atoms in the model.
+    # @todo Handle getting implicit radii here or in the _scaled_atom_radius() function
     make_sub_header('Compute extra atom information', out=self.logger)
     ret = Helpers.getExtraAtomInfo(self.model)
     self._extraAtomInfo = ret.extraAtomInfo
     if len(ret.warnings) > 0:
       print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings, file=self.logger)
+
+    # Scale and offset the radius values for all atoms based on our command-line arguments.
+    for a in atoms:
+      ei = self._extraAtomInfo.getMappingFor(a)
+      ei.vdwRadius = self._scaled_atom_radius(a)
+      self._extraAtomInfo.setMappingFor(a, ei)
 
     ################################################################################
     # Get the extra atom information needed to sort all of the atoms in the model
@@ -581,7 +722,8 @@ Note:
                 ei = self._extraAtomInfo.getMappingFor(a)
                 ei.isDonor = True
                 if self.params.use_polar_hydrogens:
-                  ei.vdwRadius = self.params.polar_hydrogen_radius
+                  ei.vdwRadius = self.params.atom_radius_offset + (
+                    self.params.polar_hydrogen_radius * self.params.atom_radius_scale)
                 self._extraAtomInfo.setMappingFor(a, ei)
 
                 # Set our neigbor to not be a donor, since we are the donor
@@ -609,7 +751,9 @@ Note:
               newAtom.xyz = p.xyz
               phantom_hydrogens.append(newAtom)
               self._spatialQuery.add(newAtom)
-              ei = probeExt.ExtraAtomInfo(self.params.polar_hydrogen_radius, False, True, True)
+              rad = self.params.atom_radius_offset + (
+                    self.params.polar_hydrogen_radius * self.params.atom_radius_scale)
+              ei = probeExt.ExtraAtomInfo(rad, False, True, True)
               self._extraAtomInfo.setMappingFor(newAtom, ei)
               if self.params.output.record_added_hydrogens:
 
@@ -700,7 +844,7 @@ Note:
             atomList.append(n)
 
         # Find the atoms that are bonded directly to the source atom.
-        neighbors = bondedNeighborLists[src]
+        neighbors = Helpers.getAtomsWithinNBonds(src, allBondedNeighborLists, 1)
 
         # Find out what class of dot we should place for this atom.
         atomClass = self._atomClasses[src]
@@ -708,15 +852,28 @@ Note:
         # Generate all of the dots for this atom.
         self._generate_surface_dots_for(src, neighbors)
 
-      # @todo
+      # Count the dots if we've been asked to do so.
+      if self.params.output.count_dots:
+        numSkinDots = self._count_src_skin_dots
+        name = "dots"
+        if len(self.params.output.group_label) > 0:
+          name = self.params.output.group_label
+        outString += "selection: external\nname: {}\n".format(name)
+        outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
+          self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
+          self.params.atom_radius_offset)
+
+        # @todo
+      else:
+        # @todo
+        pass
 
     # @todo
     else:
 
-      make_sub_header('Compute Probe Score', out=self.logger)
+      # @todo Add Phantom Hydrogens to the ones we consider in cases where we should.
 
-      # Construct a dot-sphere cache
-      cache = probeExt.DotSphereCache(self.params.probe.density)
+      make_sub_header('Compute Probe Score', out=self.logger)
 
       # @todo
       # Find the radius of each atom in the structure and construct dot spheres for
@@ -726,15 +883,7 @@ Note:
       total = 0
       badBumpTotal = 0
       for a in atoms:
-        rad = self._extraAtomInfo.getMappingFor(a).vdwRadius
-        if rad <= 0:
-          alt = a.parent().altloc
-          resName = a.parent().resname.strip().upper()
-          resID = str(a.parent().parent().resseq_as_int())
-          chainID = a.parent().parent().parent().id
-          myFullName = "chain "+str(chainID)+" "+resName+" "+resID+" "+a.name+" "+alt
-          raise Sorry("Invalid radius for atom look-up: "+myFullName+"; rad = "+str(rad))
-        sphere = cache.get_sphere(rad)
+        sphere = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius)
 
         # Excluded atoms that are bonded to me or to one of my neightbors.
         # It has the side effect of excluding myself if I have any neighbors.
