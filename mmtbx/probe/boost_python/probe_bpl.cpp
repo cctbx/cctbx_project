@@ -124,7 +124,7 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
 
   class_<DotScorer>("DotScorer",
         init< ExtraAtomInfoMap,
-        optional<double, double, double, double, double, double, double> >())
+        optional<double, double, double, double, double, double, double, double> >())
     .def("check_dot", &DotScorer::check_dot)
     .def("score_dots", &DotScorer::score_dots)
     .def("interaction_type", &DotScorer::interaction_type)
