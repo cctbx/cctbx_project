@@ -16,24 +16,96 @@ from libtbx.utils import Sorry
 from scitbx.matrix import col
 from libtbx import group_args
 from cctbx.maptbx.segment_and_split_map import get_co
+import iotbx.phil
 
 ################################################################################
 ####################   process_predicted_model  ################################
 ################################################################################
 
-def process_predicted_model(model,
-  b_value_field_is = 'lddt',
-  remove_low_confidence_residues = None,
-  minimum_lddt = None,
-  maximum_rmsd = None,
-  input_lddt_is_fractional = None,
-  split_model_by_compact_regions = None,
-  domain_size = 15,
-  maximum_domains = 10,
-  chain_id = None,
-  default_maximum_rmsd = 1.5,
-  subtract_minimum_b = None,
-  log = sys.stdout):
+
+master_phil_str = """
+  process_predicted_model{
+
+    remove_low_confidence_residues = True
+      .type = bool
+      .help = Remove low-confidence residues (based on minimum lddt or \
+             maximum_rmsd, whichever is specified)
+      .short_caption = Remove low-confidence residues
+
+    split_model_by_compact_regions = True
+      .type = bool
+      .help = Split model into compact regions after removing \
+           low-confidence residues.
+      .short_caption = Split model into compact regions
+
+    maximum_domains = None
+      .type = int
+      .help = Maximum domains to obtain.  You can use this to merge \
+                the closest domains at the end of splitting the model
+      .short_caption = Maximum domains (optional)
+
+    domain_size = 15
+      .type = float
+      .help = Approximate size of domains to be found.  This is the \
+               resolution that \
+              will be used to make a domain map.  If you are getting too many \
+              domains, try making domain_size bigger (maximum is 70 A).
+      .short_caption = Domain size
+
+
+    b_value_field_is = *lddt rmsd b_value
+      .type = choice
+      .help = The B-factor field in predicted models can be LDDT \
+             (confidence, 0-1 or 0-100) or rmsd (A) or a B-factor
+      .short_caption = Contents of B-value field (required)
+
+    input_lddt_is_fractional = None
+      .type = bool
+      .help = You can specify if the input lddt values (in B-factor field) \
+                are fractional (0-1) or not (0-100). By default if all  \
+               values are between 0 and 1 it is fractional.
+      .short_caption = Input lddt is fractional (optional)
+
+    minimum_lddt = None
+      .type = float
+      .help = If low-confidence residues are removed, the cutoff is defined by \
+          minimum_lddt or maximum_rmsd, whichever is defined (you cannot \
+          define both).  A minimum lddt of 0.70 corresponds to a maximum rmsd \
+          of 1.5.  Minimum lddt values are fractional or not depending on \
+          the value of input_lddt_is_fractional.
+      .short_caption = Minimum lddt (optional)
+
+
+    maximum_rmsd = 1.5
+      .type = float
+      .help = If low-confidence residues are removed, the cutoff is defined by \
+          minimum_lddt or maximum_rmsd, whichever is defined (you cannot \
+          define both).  A minimum lddt of 0.70 corresponds to a maximum rmsd \
+          of 1.5.  Minimum lddt values are fractional or not depending on \
+          the value of input_lddt_is_fractional.
+      .short_caption = Maximum rmsd (optional)
+
+    default_maximum_rmsd = 1.5
+      .type = float
+      .help = Default value of maximum_rmsd, used if maximum_rmsd is not set
+      .short_caption = default_maximum_rmsd
+
+    subtract_minimum_b = False
+      .type = bool
+      .help = If set, subtract the lowest B-value from all B-values \
+          just before writing \
+          out the final files.  Does not affect the cutoff for removing low-\
+           confidence residues.
+    }
+
+    """
+
+
+def process_predicted_model(
+    model,
+    params,
+    log = sys.stdout):
+
 
   """
   process_predicted_model:
@@ -45,7 +117,7 @@ def process_predicted_model(model,
     find regions that are compact (residues have high contact with neighbors)
     and that are separate from other regions (low contact with neigbors).
 
-  Inputs:
+  Inputs (supplied as model and a params object):
     model:  iotbx.model.model object containing model information.
            Normally contains a single chain.   If multiple chains, process
            each separately.
@@ -80,64 +152,62 @@ def process_predicted_model(model,
   Output:
     processed_model_info: group_args object containing:
       processed_model:  single model with regions identified in chainid field
-      processed_model_list:  list of iotbx.model.model objects, one for
-                              each compact region
 
   """
 
   # Make sure we have what we expect:
   import mmtbx.model
   assert isinstance(model, mmtbx.model.manager)
-  assert b_value_field_is in ('lddt','rmsd', 'b_value')
 
   # Decide what to do
+  p = params.process_predicted_model
 
   # Determine if input lddt is fractional and get b values
 
   b_value_field = model.get_hierarchy().atoms().extract_b()
-  if b_value_field_is == 'lddt':
-    if input_lddt_is_fractional is None:
+  if p.b_value_field_is == 'lddt':
+    if p.input_lddt_is_fractional is None:
       sel = (b_value_field < 0) | (b_value_field > 1)
-      input_lddt_is_fractional = (sel.count(True) == 0)
+      p.input_lddt_is_fractional = (sel.count(True) == 0)
 
     b_values = get_b_values_from_lddt(b_value_field,
-       input_lddt_is_fractional = input_lddt_is_fractional)
+       input_lddt_is_fractional = p.input_lddt_is_fractional)
 
-    if input_lddt_is_fractional:
+    if p.input_lddt_is_fractional:
       print("B-value field interpreted as LDDT %s" %("(0 - 1)"), file = log)
     else:
       print("B-value field interpreted as LDDT %s" %("(0 - 100)"), file = log)
 
-  elif b_value_field_is == 'rmsd':
+  elif p.b_value_field_is == 'rmsd':
     b_values = get_b_values_rmsd(b_value_field)
     print("B-value field interpreted as rmsd %s" %("(0 - 1)"), file = log)
 
-  elif b_value_field_is == 'b_value':
+  elif p.b_value_field_is == 'b_value':
     b_values = b_value_field
     print("B-value field interpreted as b_values", file = log)
   else:
     raise AssertionError("Please set b_value_field_is to either lddt or rmsd")
 
-  if (not input_lddt_is_fractional):
-    if minimum_lddt is not None: # convert to fractional
-      minimum_lddt = minimum_lddt * 0.01
-      print("Minimum LDDT converted to %.2f" %(minimum_lddt), file = log)
+  if (not p.input_lddt_is_fractional):
+    if p.minimum_lddt is not None: # convert to fractional
+      p.minimum_lddt = p.minimum_lddt * 0.01
+      print("Minimum LDDT converted to %.2f" %(p.minimum_lddt), file = log)
 
   # From here on we work only with fractional lddt
 
   # Get confidence cutoff if needed
-  if remove_low_confidence_residues:
+  if p.remove_low_confidence_residues:
     maximum_b_value = get_cutoff_b_value(
-      maximum_rmsd,
-      minimum_lddt,
-      default_maximum_rmsd = default_maximum_rmsd,
+      p.maximum_rmsd,
+      p.minimum_lddt,
+      default_maximum_rmsd = p.default_maximum_rmsd,
       log = log)
   else:
     maximum_b_value = None
 
 
   # Offset b-values and cutoff if requested
-  if subtract_minimum_b:
+  if p.subtract_minimum_b:
     minimum_b = b_values.min_max_mean().min
     b_values -= minimum_b
     assert b_values.min_max_mean().min == 0
@@ -153,7 +223,7 @@ def process_predicted_model(model,
   ph.atoms().set_b(b_values)
 
   # Remove low_confidence regions if desired
-  if remove_low_confidence_residues:
+  if p.remove_low_confidence_residues:
     n_before = ph.overall_counts().n_residues
     selection_string = " (bfactor < %s)" %maximum_b_value
     asc1 = ph.atom_selection_cache()
@@ -164,20 +234,20 @@ def process_predicted_model(model,
        n_after, n_before), file = log)
     if n_after == 0:
       raise Sorry("No residues remaining after filtering...please check if "+
-         "B-value field is really '%s'" %(b_value_field_is))
+         "B-value field is really '%s'" %(p.b_value_field_is))
 
   # Get a new model
   new_model = model.as_map_model_manager().model_from_hierarchy(
      ph, return_as_model = True)
 
   # Get high-confidence regions as domains if desired:
-  if split_model_by_compact_regions:
+  if p.split_model_by_compact_regions:
     # Make sure we have just 1 chain or a chain ID supplied
-    chain_id = get_chain_id(model, chain_id, log = log)
+    chain_id = get_chain_id(model, None, log = log)
 
     info = split_model_into_compact_units(new_model,
-      d_min = domain_size,
-      maximum_domains = maximum_domains,
+      d_min = p.domain_size,
+      maximum_domains = p.maximum_domains,
       log = log)
     if info is None:
       print("No compact regions identified", file = log)
@@ -882,47 +952,9 @@ def get_best_co(map_data, min_cutoff = 0.5):
 ####################   end of split_model_into_compact_units   #################
 ################################################################################
 
-if __name__ == "__main__":
-  # run a simple version by default to demo usage
-  args = sys.argv[1:]
-  if len(args) < 2:
-    print("libtbx.python process_predicted_model.py input.pdb output.pdb")
-  else:
-    input_file_name = args[0]
-    output_file_name = args[1]
-    if len(args) > 2:
-       b_value_field = args[2]
-    else:
-       b_value_field = 'lddt'
-    if len(args) > 3:
-       domain_size = float(args[3])
-    else:
-       domain_size = 15
-    from iotbx.data_manager import DataManager
-    dm = DataManager()
-    dm.set_overwrite(True)
-    m = dm.get_model(input_file_name)
-
-    print("\nProcessing and splitting model into domains")
-    model_info = process_predicted_model(m,  b_value_field_is = b_value_field,
-      remove_low_confidence_residues = True,
-      maximum_rmsd = 1.5,
-      domain_size = domain_size,
-      split_model_by_compact_regions = True,)
-
-    chainid_list = model_info.chainid_list
-    print("Segments found: %s" %(" ".join(chainid_list)))
-
-    mmm = model_info.model.as_map_model_manager()
-    mmm.write_model(output_file_name)
-    for chainid in chainid_list:
-      selection_string = "chain %s" %(chainid)
-      ph = model_info.model.get_hierarchy()
-      asc1 = ph.atom_selection_cache()
-      sel = asc1.selection(selection_string)
-      m1 = model_info.model.select(sel)
-      dm.write_model_file(m1, '%s_%s.pdb' %(output_file_name[:-4],chainid))
-
+################################################################################
+####################   Convenience function add_model ##########################
+################################################################################
 def add_model(s1, s2):
   ''' add chains from s2 to existing s1'''
   s1 = s1.deep_copy()
@@ -938,3 +970,54 @@ def add_model(s1, s2):
 
   s1.reset_after_changing_hierarchy()
   return s1
+################################################################################
+####################   END Convenience function add_model ######################
+################################################################################
+
+if __name__ == "__main__":
+  # run a simple version by default to demo usage
+  args = sys.argv[1:]
+
+  master_phil = iotbx.phil.parse(master_phil_str)
+  params = master_phil.extract()
+  master_phil.format(python_object=params).show(out=sys.stdout)
+  p = params.process_predicted_model
+
+  if len(args) < 2:
+    print("libtbx.python process_predicted_model.py input.pdb output.pdb")
+  else:
+    input_file_name = args[0]
+    output_file_name = args[1]
+    if len(args) > 2:
+       p.b_value_field_is = args[2]
+    else:
+       p.b_value_field_is = 'lddt'
+    if len(args) > 3:
+       p.domain_size = float(args[3])
+    else:
+       p.domain_size = 15
+    from iotbx.data_manager import DataManager
+    dm = DataManager()
+    dm.set_overwrite(True)
+    m = dm.get_model(input_file_name)
+
+    p.remove_low_confidence_residues = True
+    p.maximum_rmsd = 1.5
+    p.split_model_by_compact_regions = True
+
+    print("\nProcessing and splitting model into domains")
+    model_info = process_predicted_model(m,  params)
+
+    chainid_list = model_info.chainid_list
+    print("Segments found: %s" %(" ".join(chainid_list)))
+
+    mmm = model_info.model.as_map_model_manager()
+    mmm.write_model(output_file_name)
+    for chainid in chainid_list:
+      selection_string = "chain %s" %(chainid)
+      ph = model_info.model.get_hierarchy()
+      asc1 = ph.atom_selection_cache()
+      sel = asc1.selection(selection_string)
+      m1 = model_info.model.select(sel)
+      dm.write_model_file(m1, '%s_%s.pdb' %(output_file_name[:-4],chainid))
+

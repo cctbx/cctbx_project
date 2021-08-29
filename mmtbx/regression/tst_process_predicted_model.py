@@ -2,6 +2,7 @@ from __future__ import division, print_function
 import sys, os, time
 
 from libtbx.test_utils import approx_equal
+import iotbx.phil
 
 import libtbx.load_env
 data_dir = libtbx.env.under_dist(
@@ -13,7 +14,11 @@ from iotbx.data_manager import DataManager
 from mmtbx.process_predicted_model import split_model_into_compact_units, \
    get_cutoff_b_value, \
    get_b_values_from_lddt, get_rmsd_from_lddt, \
-   process_predicted_model
+   process_predicted_model, master_phil_str
+
+master_phil = iotbx.phil.parse(master_phil_str)
+params = master_phil.extract()
+
 
 model_file=os.path.join(data_dir,'fibronectin_af_ca_1358_1537.pdb')
 
@@ -67,7 +72,12 @@ def tst_01(log = sys.stdout):
   # use process_predicted_model to convert lddt or rmsd to B
 
   print("\nConverting lddt to B values", file = log)
-  model_info = process_predicted_model(m, b_value_field_is = 'lddt')
+  params.process_predicted_model.b_value_field_is = 'lddt'
+  params.process_predicted_model.remove_low_confidence_residues = False
+  params.process_predicted_model.split_model_by_compact_regions = False
+  params.process_predicted_model.input_lddt_is_fractional = None
+
+  model_info = process_predicted_model(m, params)
   model = model_info.model
   model_b_values = model.get_hierarchy().atoms().extract_b()
   assert approx_equal(b_values, model_b_values, eps = 0.02) # come back rounded
@@ -77,7 +87,11 @@ def tst_01(log = sys.stdout):
   ph.atoms().set_b(fractional_lddt)
   test_model = model.as_map_model_manager().model_from_hierarchy(ph,
      return_as_model = True)
-  model_info = process_predicted_model(test_model, b_value_field_is = 'lddt')
+  params.process_predicted_model.b_value_field_is = 'lddt'
+  params.process_predicted_model.remove_low_confidence_residues = False
+  params.process_predicted_model.split_model_by_compact_regions = False
+  params.process_predicted_model.input_lddt_is_fractional = None
+  model_info = process_predicted_model(test_model, params)
   model = model_info.model
   model_b_values = model.get_hierarchy().atoms().extract_b()
   assert approx_equal(b_values, model_b_values, eps = 3) # come back very rounded
@@ -88,17 +102,25 @@ def tst_01(log = sys.stdout):
      return_as_model = True)
 
   print("\nConverting rmsd to B values", file = log)
-  model_info = process_predicted_model(test_model, b_value_field_is = 'rmsd')
+  params.process_predicted_model.b_value_field_is = 'rmsd'
+  params.process_predicted_model.remove_low_confidence_residues = False
+  params.process_predicted_model.split_model_by_compact_regions = False
+  params.process_predicted_model.input_lddt_is_fractional = None
+  model_info = process_predicted_model(test_model, params)
   model = model_info.model
   model_b_values = model.get_hierarchy().atoms().extract_b()
   assert approx_equal(b_values, model_b_values, eps = 0.5) # come back rounded
 
   print("B-values > 59: %s of %s" %(
      (model_b_values > 59).count(True), model_b_values.size()), file = log)
+
   print("\nConverting rmsd to B values and selecting rmsd < 1.5", file = log)
-  model_info = process_predicted_model(test_model, b_value_field_is = 'rmsd',
-     remove_low_confidence_residues = True,
-     maximum_rmsd = 1.5)
+  params.process_predicted_model.b_value_field_is = 'rmsd'
+  params.process_predicted_model.remove_low_confidence_residues = True
+  params.process_predicted_model.maximum_rmsd = 1.5
+  params.process_predicted_model.split_model_by_compact_regions = False
+  params.process_predicted_model.input_lddt_is_fractional = None
+  model_info = process_predicted_model(test_model, params)
   model = model_info.model
   print("Residues before: %s   After: %s " %(
     test_model.get_hierarchy().overall_counts().n_residues,
@@ -114,13 +136,14 @@ def tst_01(log = sys.stdout):
 
   # Check processing and splitting model into domains
   print("\nProcessing and splitting model into domains", file = log)
-  model_info = process_predicted_model(m,  b_value_field_is = 'lddt',
-      remove_low_confidence_residues = True,
-      maximum_rmsd = 1.5,
-      split_model_by_compact_regions = True,
-      chain_id = 'A',
-      maximum_domains = 3,
-      log = log)
+
+
+  params.process_predicted_model.b_value_field_is = 'lddt'
+  params.process_predicted_model.remove_low_confidence_residues = True
+  params.process_predicted_model.maximum_rmsd = 1.5
+  params.process_predicted_model.split_model_by_compact_regions = True
+  params.process_predicted_model.maximum_domains = 3
+  model_info = process_predicted_model(m,  params, log = log)
 
   chainid_list = model_info.chainid_list
   print("Segments found: %s" %(" ".join(chainid_list)), file = log)
