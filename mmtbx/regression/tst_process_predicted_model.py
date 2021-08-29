@@ -152,13 +152,20 @@ def tst_01(log = sys.stdout):
 
   mmm = model_info.model.as_map_model_manager()
   mmm.write_model('model_with_groupings.pdb')
+  residue_count = []
+  expected_residue_count = [84, 88]
   for chainid in chainid_list:
     selection_string = "chain %s" %(chainid)
     ph = model_info.model.get_hierarchy()
     asc1 = ph.atom_selection_cache()
     sel = asc1.selection(selection_string)
     m1 = model_info.model.select(sel)
-    dm.write_model_file(m1, 'Dmodel_%s.pdb' %(chainid))
+    n = m1.get_hierarchy().overall_counts().n_residues
+    print("Residues in %s: %s" %(
+      selection_string, n),
+       file = log)
+    residue_count.append(n)
+  assert expected_residue_count == residue_count
 
 if __name__ == "__main__":
 
