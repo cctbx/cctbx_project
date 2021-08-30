@@ -653,12 +653,12 @@ Note:
     # Get the source selection (and target selection if there is one).  These will be
     # lists of atoms that are in each selection, a subset of the atoms in the model.
     source_sel = self.model.selection(self.params.source_selection)
-    source_atoms = []
+    source_atoms = set()
     for a in atoms:
       if source_sel[a.i_seq]:
-        source_atoms.append(a)
+        source_atoms.add(a)
 
-    target_atoms = []
+    target_atoms = set()
     if self.params.target_selection is not None:
       # If the target selection is "=", that means that it should be the same as the source selection.
       if self.params.target_selection == "=":
@@ -667,7 +667,7 @@ Note:
         target_sel = self.model.selection(self.params.target_selection)
         for a in atoms:
           if target_sel[a.i_seq]:
-            target_atoms.append(a)
+            target_atoms.add(a)
 
     ################################################################################
     # Find a list of all of the selected atoms with no duplicates
@@ -677,7 +677,6 @@ Note:
       all_selected_atoms.add(a)
     for a in target_atoms:
       all_selected_atoms.add(a)
-    all_selected_atoms = list(all_selected_atoms)
     bondedNeighborLists = Helpers.getBondedNeighborLists(all_selected_atoms, bondProxies)
 
     ################################################################################
@@ -699,7 +698,6 @@ Note:
     # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
     # the water oxygens as not being donors in atoms that are in the source or target selection.
     # Also clear the donor status of all N, O, S atoms because we have explicit hydrogen donors.
-    phantom_hydrogens = []
     if not self.params.probe.implicit_hydrogens:
       if self.params.output.record_added_hydrogens:
         outString += '@vectorlist {water H?} color= gray\n'
@@ -744,17 +742,36 @@ Note:
             newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, 0.0, True)
             for p in newPhantoms:
               # Set all of the information other than the name and element and xyz of the atom based
-              # on our parent; then overwrite the name and element and xyz
+              # on our parent; then overwrite the name and element and xyz.
               newAtom = pdb.hierarchy.atom(a.parent(),a)
               newAtom.name = " H?"
               newAtom.element = p.element
               newAtom.xyz = p.xyz
-              phantom_hydrogens.append(newAtom)
+
+              # Add the atom to the spatial-query data structure
               self._spatialQuery.add(newAtom)
+
+              # Set the extra atom information for this atom
               rad = self.params.atom_radius_offset + (
                     self.params.polar_hydrogen_radius * self.params.atom_radius_scale)
               ei = probeExt.ExtraAtomInfo(rad, False, True, True)
               self._extraAtomInfo.setMappingFor(newAtom, ei)
+
+              # Set the atomClass and other data based on the parent Oxygen.
+              self._atomClasses[newAtom] = self._atom_class_for(a)
+              self._inWater[newAtom] = self._inWater[a]
+              self._inHet[newAtom] = self._inHet[a]
+
+              # Mark the new atom as being bonded to the parent atom.
+              bondedNeighborLists[newAtom] = [a]
+
+              # Add the new atom to any selections that the old atom was in.
+              if a in source_atoms:
+                source_atoms.add(newAtom)
+              if a in target_atoms:
+                target_atoms.add(newAtom)
+
+              # Report on the creation if we've been asked to
               if self.params.output.record_added_hydrogens:
 
                 resName = a.parent().resname.strip().upper()
@@ -775,17 +792,16 @@ Note:
                   newAtom.name, alt, resName, chainID, resID, iCode,
                   newAtom.xyz[0], newAtom.xyz[1], newAtom.xyz[2])
 
-              # Set the atomClass and other databased on the parent Oxygen.
-              self._atomClasses[newAtom] = self._atom_class_for(a)
-              self._inWater[newAtom] = self._inWater[a]
-              self._inHet[newAtom] = self._inHet[a]
-
         # Otherwise, if we're an N, O, or S then remove our donor status because
         # the hydrogens will be the donors
         elif a.element in ['N','O','S']:
           ei = self._extraAtomInfo.getMappingFor(a)
           ei.isDonor = False
           self._extraAtomInfo.setMappingFor(a, ei)
+
+    ################################################################################
+    # Re-fill all_selected_atoms
+    all_selected_atoms = source_atoms.union(target_atoms)
 
     ################################################################################
     # List of all of the keys for atom classes, including all elements and all
@@ -820,7 +836,7 @@ Note:
     if self.params.approach == 'count_atoms':
       make_sub_header('Counting atoms', out=self.logger)
       # Report the number of atoms in the source selection
-      outString += 'atoms selected: '+str(len(source_atoms)+len(phantom_hydrogens))+'\n'
+      outString += 'atoms selected: '+str(len(source_atoms))+'\n'
 
     elif self.params.approach == 'surface':
       make_sub_header('Making surface dots', out=self.logger)
@@ -863,7 +879,10 @@ Note:
           self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
           self.params.atom_radius_offset)
 
+        nsel = len(source_atoms)
         # @todo
+
+      # Otherwise, produce the dots as output
       else:
         # @todo
         pass
