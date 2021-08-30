@@ -10,17 +10,25 @@ data_dir = libtbx.env.under_dist(
   path=os.path.join("regression","pdbs"),
   test=os.path.isdir)
 
+pae_data_dir = libtbx.env.under_dist(
+  module_name="mmtbx",
+  path="regression",
+  test=os.path.isdir)
+
 from iotbx.data_manager import DataManager
 from mmtbx.process_predicted_model import split_model_into_compact_units, \
    get_cutoff_b_value, \
    get_b_values_from_lddt, get_rmsd_from_lddt, \
    process_predicted_model, master_phil_str
 
+from mmtbx.domains_from_pae import parse_pae_file
 master_phil = iotbx.phil.parse(master_phil_str)
 params = master_phil.extract()
 
 
 model_file=os.path.join(data_dir,'fibronectin_af_ca_1358_1537.pdb')
+pae_model_file=os.path.join(data_dir,'pae.pdb')
+pae_file=os.path.join(pae_data_dir,'pae.json')
 
 def tst_01(log = sys.stdout):
 
@@ -51,6 +59,8 @@ def tst_01(log = sys.stdout):
   dm = DataManager()
   dm.set_overwrite(True)
   m = dm.get_model(model_file)
+  pae_m = dm.get_model(pae_model_file)
+  pae_matrix = parse_pae_file(pae_file)
 
   lddt_values = m.get_hierarchy().atoms().extract_b().deep_copy()
   print("\nLDDT mean:",lddt_values.min_max_mean().mean)
@@ -166,6 +176,20 @@ def tst_01(log = sys.stdout):
        file = log)
     residue_count.append(n)
   assert expected_residue_count == residue_count
+
+  # Now process and use pae model and pae model file
+  print("\nProcessing and splitting model into domains with pae", file = log)
+
+
+  params.process_predicted_model.b_value_field_is = 'lddt'
+  params.process_predicted_model.remove_low_confidence_residues = True
+  params.process_predicted_model.maximum_rmsd = 0.7
+  params.process_predicted_model.split_model_by_compact_regions = True
+  params.process_predicted_model.maximum_domains = 3
+  params.process_predicted_model.pae_power= 2
+  model_info = process_predicted_model(pae_m,  params, pae_matrix = pae_matrix,
+     log = log)
+
 
 if __name__ == "__main__":
 

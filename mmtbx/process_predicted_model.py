@@ -46,12 +46,16 @@ master_phil_str = """
 
     domain_size = 15
       .type = float
-      .help = Approximate size of domains to be found.  This is the \
+      .help = Approximate size of domains to be found (A units).  This is the \
                resolution that \
               will be used to make a domain map.  If you are getting too many \
               domains, try making domain_size bigger (maximum is 70 A).
-      .short_caption = Domain size
+      .short_caption = Domain size (A)
 
+    minimum_domain_length = 10
+      .type = float
+      .help = Minimum length of a domain to keep (reject at end if smaller)
+      .short_caption = Minimum domain length (residues)
 
     b_value_field_is = *lddt rmsd b_value
       .type = choice
@@ -96,6 +100,21 @@ master_phil_str = """
           just before writing \
           out the final files.  Does not affect the cutoff for removing low-\
            confidence residues.
+
+     pae_power = 1
+       .type = float
+       .help = If PAE matrix (predicted alignment error matrix) is supplied,\
+            each edge in the graph will be weighted proportional to \
+              (1/pae**pae_power). Use this to try and get the number of domains\
+              that you want (try 1, 0.5, 1.5, 2)
+       .short_caption = PAE power (if PAE matrix supplied)
+
+     pae_cutoff = 5
+       .type = float
+       .help = If PAE matrix (predicted alignment error matrix) is supplied,\
+            graph edges will only be created for residue pairs with \
+            pae<pae_cutoff
+       .short_caption = PAE cutoff (if PAE matrix supplied)
     }
 
     """
@@ -104,6 +123,7 @@ master_phil_str = """
 def process_predicted_model(
     model,
     params,
+    pae_matrix = None,
     log = sys.stdout):
 
 
@@ -140,8 +160,18 @@ def process_predicted_model(
     default_maximum_rmsd:  used as default if nothing specified for
          maximum_rmsd or minimum_lddt .Default is 1.5 A,
     split_model_by_compact_regions: split resulting model into compact regions
+    pae_matrix:  matrix of predicted aligned errors (e.g., from AlphaFold2), NxN
+      matrix of RMSD values, N = number of residues in model.
+      Alternative to splitting by compact regions. Split to minimize predicted
+          aligned errors in each grouping.
+        pae_power (default=1): each edge in the graph will be weighted
+           proportional to (1/pae**pae_power)
+        pae_cutoff (optional, default=5): graph edges will only be created for
+         residue pairs with pae<pae_cutoff
+
     domain_size: typical size of domains (resolution used for filtering is
        the domain size)
+    minimum_domain_length: minimum length (residues) of a domain to keep
     maximum_domains: if more than this many domains, merge close ones to reduce
        number
     chain_id: if model contains more than one chain, split this chain only.
@@ -259,10 +289,19 @@ def process_predicted_model(
     # Make sure we have just 1 chain or a chain ID supplied
     chain_id = get_chain_id(model, None, log = log)
 
-    info = split_model_into_compact_units(new_model,
-      d_min = p.domain_size,
-      maximum_domains = p.maximum_domains,
-      log = log)
+    if pae_matrix is not None: # use pae matrix method
+      info = split_model_with_pae(model, new_model, pae_matrix,
+        maximum_domains = p.maximum_domains,
+        pae_power = p.pae_power,
+        pae_cutoff = p.pae_cutoff,
+        minimum_domain_length = p.minimum_domain_length,
+        log = log)
+    else: # usual
+      info = split_model_into_compact_units(new_model,
+        d_min = p.domain_size,
+        maximum_domains = p.maximum_domains,
+        minimum_domain_length = p.minimum_domain_length,
+        log = log)
     if info is None:
       print("No compact regions identified", file = log)
       chainid_list = []
@@ -469,6 +508,122 @@ def get_b_values_rmsd(rmsd):
   b_values = flex.pow2(rmsd) * ((8 * (3.14159 ** 2)) / 3.0)
   return b_values
 
+################################################################################
+####################   split_model_with_pae  ###################################
+################################################################################
+
+def split_model_with_pae(
+     model,
+     m,
+     pae_matrix,
+     maximum_domains = None,
+     pae_power = 1.,
+     pae_cutoff = 5.,
+     minimum_domain_length = 10,
+     log = sys.stdout):
+
+  """
+   Function to identify groups of atoms in a model that form compact units
+   using a predicted alignment error matrix (pae_matrix).
+   Normally used after trimming low-confidence regions in
+   predicted models to isolate domains that are likely to have indeterminate
+   relationships.
+
+   m:  cctbx.model.model object containing information about the input model
+     after trimming
+   model: model before trimming
+   pae_matrix:  matrix of predicted aligned errors (e.g., from AlphaFold2), NxN
+       matrix of RMSD values, N = number of residues in model.
+   maximum_domains:  If more than this many domains, merge closest ones until
+     reaching this number
+   pae_power (default=1): each edge in the graph will be weighted
+       proportional to (1/pae**pae_power)
+   pae_cutoff (optional, default=5): graph edges will only be created for
+       residue pairs with pae<pae_cutoff
+   minimum_domain_length:  if a region is smaller than this, skip completely
+
+   Output:
+   group_args object with members:
+    m:  new model with chainid values from 0 to N where there are N domains
+      chainid 1 to N are the N domains, roughly in order along the chain.
+    chainid_list:  list of all the chainid values
+
+   On failure:  returns None
+  """
+
+  print("\nSelecting domains with predicted alignment error estimates",
+     file = log)
+  # Select CA and P atoms with B-values in range
+  selection_string = '(name ca or name p)'
+  m_ca= m.apply_selection_string(selection_string)
+  n = model.apply_selection_string(selection_string
+       ).get_hierarchy().overall_counts().n_residues
+
+  # Make sure matrix matches
+  if tuple(pae_matrix.shape) != (n, n):
+     raise Sorry("The pae matrix has a size of (%s,%s) " %(
+      tuple(pae_matrix.shape)) +
+      "but the number of residues in the model is %s" %(n))
+  from mmtbx.secondary_structure.find_ss_from_ca import get_first_resno
+  first_resno = get_first_resno(model.get_hierarchy())
+
+  #  Assign all CA in model to a region
+  from mmtbx.domains_from_pae import get_domain_selections_from_pae_matrix
+  selection_list = get_domain_selections_from_pae_matrix(
+    pae_matrix = pae_matrix,
+     pae_power = pae_power,
+     pae_cutoff = pae_cutoff,
+     first_resno = first_resno,
+    )
+
+  # And apply to full model
+
+  unique_regions = list(range(len(selection_list)))
+
+  keep_list = []
+  good_selections = []
+  ph = m.get_hierarchy()
+  for selection_string, region_number in zip(selection_list,unique_regions):
+    asc1 = ph.atom_selection_cache()
+    sel = asc1.selection(selection_string)
+    if sel.count(True) >= minimum_domain_length:
+      keep_list.append(True)
+      good_selections.append(selection_string)
+    else:
+      keep_list.append(False)
+      print("Skipping region '%s' with size of only %s residues" %(
+         selection_string,sel.count(True)),
+        file = log)
+
+  region_name_dict, chainid_list = get_region_name_dict(m, unique_regions,
+    keep_list = keep_list)
+  print("\nSelection list based on PAE values:", file =log)
+
+  # Now create new model with chains based on region list
+  full_new_model = None
+  for keep, selection_string, region_number in zip(
+     keep_list, selection_list,unique_regions):
+    if not keep: continue
+    new_m = m.apply_selection_string(selection_string)
+    print("%s (%s residues)  "%(selection_string,
+      new_m.get_hierarchy().overall_counts().n_residues), file = log)
+    # Now put all of new_m in a chain with chain.id = str(region_number)
+    for model in new_m.get_hierarchy().models()[:1]: # only one model
+      for chain in model.chains()[:1]: # only allowing one chain
+        chain.id = region_name_dict[region_number]
+    if full_new_model:
+      full_new_model = add_model(full_new_model, new_m)
+    else:
+      full_new_model = new_m
+  m = full_new_model
+
+  # All done
+  return group_args(
+    group_args_type = 'model_info',
+    model = m,
+    chainid_list = chainid_list)
+
+  return set_chain_id_by_region(m, m_ca, regions_list, log = log)
 
 ################################################################################
 ####################   split_model_into_compact_units   ########################
@@ -479,7 +634,7 @@ def split_model_into_compact_units(
      d_min = 15,
      grid_resolution = 6,
      close_distance = 15,
-     minimum_region_size = 10,
+     minimum_domain_length = 10,
      maximum_domains = None,
      log = sys.stdout):
 
@@ -500,7 +655,7 @@ def split_model_into_compact_units(
    grid_resolution:  resolution of map used to define the gridding
    close_distance:  distance between two CA (or P) atoms considered close
                     NOTE: may be useful to double default for P compared to CA
-   minimum_region_size: typical size (CA or P) of the smallest segments to keep
+   minimum_domain_length: typical size (CA or P) of the smallest segments to keep
    bfactor_min: smallest bfactor for atoms to include in calculations
    bfactor_max: largest bfactor for atoms to include in calculations
    maximum_domains:  If more than this many domains, merge closest ones until
@@ -514,6 +669,8 @@ def split_model_into_compact_units(
 
    On failure:  returns None
   """
+  print("\nSelecting domains with compact domains",
+     file = log)
   d_min = min(50, d_min) # limitation in fmodel
 
   # Make sure the model has crystal_symmetry.  Just put a box around it if nec
@@ -522,11 +679,11 @@ def split_model_into_compact_units(
 
   # Select CA and P atoms with B-values in range
   selection_string = '(name ca or name p)'
-  new_m = m.apply_selection_string(selection_string)
+  m_ca= m.apply_selection_string(selection_string)
 
   # Put the model inside a box and get a map_model_manager
-  put_model_inside_cell(new_m, grid_resolution)
-  mmm = new_m.as_map_model_manager()
+  put_model_inside_cell(m_ca, grid_resolution)
+  mmm = m_ca.as_map_model_manager()
 
   # Generate map at medium_res for this model and use it to get domains
 
@@ -551,32 +708,40 @@ def split_model_into_compact_units(
   co_info = assign_all_points(co_info, map_data, log = log)
 
   #  Assign all CA in model to a region
-  regions_list = assign_ca_to_region(co_info, new_m, minimum_region_size,
+  regions_list = assign_ca_to_region(co_info, m_ca, minimum_domain_length,
      close_distance,  maximum_domains = maximum_domains,
      log = log)
 
-  # Set chainid based on regions_list
+  return set_chain_id_by_region(m, m_ca, regions_list, log = log)
 
-  atoms = new_m.get_hierarchy().atoms()  # new
+def get_region_name_dict(m, unique_regions, keep_list = None):
   region_name_dict = {}
-  used_regions = []
-  i = 0
   chainid_list = []
   from mmtbx.secondary_structure.find_ss_from_ca import get_chain_id
   chainid = get_chain_id(m.get_hierarchy()).strip()
+  if not keep_list:
+    keep_list = len(unique_regions) * [True]
+  assert len(keep_list) == len(unique_regions)
 
   i = 0
-  unique_regions = get_unique_values(regions_list)
-  for region_number in unique_regions:
-    if not region_number in used_regions:
-      used_regions.append(region_number)
+  for region_number, keep in zip(unique_regions, keep_list):
+      if not keep: continue
       i += 1
       if len(chainid) == 1 and i < 10:
-          region_name = "%s%s" %(chainid,region_number)
+          region_name = "%s%s" %(chainid,i)
       else:
           region_name = str(i)
       region_name_dict[region_number] = region_name
       chainid_list.append(region_name)
+  return region_name_dict, chainid_list
+
+def set_chain_id_by_region(m, m_ca, regions_list, log = sys.stdout):
+  # Set chainid based on regions_list
+
+  atoms = m_ca.get_hierarchy().atoms()  # new
+  unique_regions = get_unique_values(regions_list)
+
+  region_name_dict, chainid_list = get_region_name_dict(m, unique_regions)
 
   region_dict = {}
   for at, region_number in zip(atoms, regions_list):
@@ -591,11 +756,16 @@ def split_model_into_compact_units(
     full_region_list.append(region)
 
   # Now create new model with chains based on region list
-  unique_regions = get_unique_values(regions_list)
   full_new_model = None
+  print("\nSelection list based on domains:", file =log)
   for region_number in unique_regions:
     sel = (full_region_list == region_number)
     new_m = m.select(sel)
+    selection_string = selection_string_from_model(
+       new_m.apply_selection_string("name ca or name P"))
+
+    print("%s (%s residues)  "%(selection_string,
+      new_m.get_hierarchy().overall_counts().n_residues), file = log)
     # Now put all of new_m in a chain with chain.id = str(region_number)
     for model in new_m.get_hierarchy().models()[:1]: # only one model
       for chain in model.chains()[:1]: # only allowing one chain
@@ -612,9 +782,16 @@ def split_model_into_compact_units(
     model = m,
     chainid_list = chainid_list)
 
+def selection_string_from_model(model):
+    resno_list = get_residue_numbers_in_model(model)
+    from mmtbx.domains_from_pae import cluster_as_selection
+    selection_string = cluster_as_selection(resno_list)
+    return selection_string
+
+
 def assign_ca_to_region(co_info,
     m,
-    minimum_region_size,
+    minimum_domain_length,
     close_distance,
     maximum_domains = None,
     n_cycles = 10,
@@ -628,10 +805,10 @@ def assign_ca_to_region(co_info,
   # Now remove occasional ones out of place
   for cycle in range(n_cycles):
     regions_list = replace_lone_sites(regions_list)
-    regions_list = replace_short_segments(regions_list, minimum_region_size)
+    regions_list = replace_short_segments(regions_list, minimum_domain_length)
     for i in range(len(get_unique_values(regions_list))):
       new_regions_list = merge_close_regions(
-        m.get_sites_cart(), regions_list, minimum_region_size, close_distance)
+        m.get_sites_cart(), regions_list, minimum_domain_length, close_distance)
       if new_regions_list:
          regions_list = new_regions_list
       else:
@@ -694,7 +871,7 @@ def get_unique_values(regions_list):
       unique_values.append(x)
   return unique_values
 
-def merge_close_regions(sites_cart, regions_list, minimum_region_size,
+def merge_close_regions(sites_cart, regions_list, minimum_domain_length,
     close_distance = None):
 
   # Count number of residues in each pair that are close to the other
@@ -705,7 +882,7 @@ def merge_close_regions(sites_cart, regions_list, minimum_region_size,
   close_to_other_list = close_to_other_info.close_to_other_list
 
   closer_to_other_swaps = get_closer_to_other(close_to_other_list,
-      minimum_region_size)
+      minimum_domain_length)
   found_something = False
   # Apply close swaps
   for s in closer_to_other_swaps:
@@ -767,7 +944,7 @@ def get_close_to_other_list(sites_cart, regions_list, close_distance):
       n_close_list = n_close_list,
       close_to_other_list = close_to_other_list)
 
-def get_closer_to_other(close_to_other_list, minimum_region_size):
+def get_closer_to_other(close_to_other_list, minimum_domain_length):
   close_dict = {}
   for c in close_to_other_list:
     i,j = c.i,c.j
@@ -778,7 +955,7 @@ def get_closer_to_other(close_to_other_list, minimum_region_size):
     close_dict[i][j] += 1
   for i in close_dict.keys():
     for j in close_dict[i].keys():
-      if close_dict[i][j] >= 0: # minimum_region_size//2:
+      if close_dict[i][j] >= 0: # minimum_domain_length//2:
         pass
       else:
         del close_dict[i][j]
@@ -788,7 +965,7 @@ def get_closer_to_other(close_to_other_list, minimum_region_size):
   for i in close_dict.keys():
     for j in close_dict[i].keys():
       k_list = get_k_list(i,j,close_to_other_list)
-      k_list = merge_k_list(k_list, minimum_region_size)
+      k_list = merge_k_list(k_list, minimum_domain_length)
       if not k_list:continue
       all_k_list.append(group_args(
         group_args_type = 'k list',
@@ -799,7 +976,7 @@ def get_closer_to_other(close_to_other_list, minimum_region_size):
   return all_k_list
 
 
-def merge_k_list(k_list, minimum_region_size):
+def merge_k_list(k_list, minimum_domain_length):
   n = len(k_list)
   for i in range(n):
     last_n = len(k_list)
@@ -810,7 +987,7 @@ def merge_k_list(k_list, minimum_region_size):
   new_k_list = []
   for k1 in k_list:
     n1 = k1.end - k1.start + 1
-    if n1 >= minimum_region_size//3:
+    if n1 >= minimum_domain_length//3:
       new_k_list.append(k1)
   return new_k_list
 
@@ -840,14 +1017,14 @@ def get_k_list(i,j,close_to_other_list):
   k_list_as_groups = get_indices_as_ranges(k_list)
   return k_list_as_groups
 
-def replace_short_segments(regions_list, minimum_region_size):
+def replace_short_segments(regions_list, minimum_domain_length):
   id_list = get_unique_values(regions_list)
   new_regions_list = regions_list.deep_copy()
   for co_id in id_list:
     indices = (regions_list == co_id).iselection()
     indices_as_ranges = get_indices_as_ranges(indices)
     for r in indices_as_ranges:
-      if r.end - r.start + 1 < minimum_region_size:
+      if r.end - r.start + 1 < minimum_domain_length:
         value = regions_list[r.start - 1] if r.start > 0 else \
            regions_list[min(regions_list.size() - 1, r.end + 1)]
         for i in range(r.start,r.end+1):
@@ -870,6 +1047,7 @@ def update_regions_list(regions_list):
     regions_list[i] = new_id_dict[regions_list[i]]
 
 def get_indices_as_ranges(indices):
+  indices = sorted(indices)
   ranges = []
   grouping = None
   for index in indices:
@@ -967,8 +1145,43 @@ def get_best_co(map_data, min_cutoff = 0.5):
 ################################################################################
 
 ################################################################################
-####################   Convenience function add_model ##########################
+####################   Convenience functions          ##########################
 ################################################################################
+def set_high_pae_for_missing(pae_matrix, pae_cutoff,
+      residues_remaining):
+   n,n = tuple(pae_matrix.shape)
+   pae_1d = pae_matrix.flatten().tolist()
+   skip_this_one = []
+   for i in range(n):
+     if i in residues_remaining:
+        skip_this_one.append(False)
+     else:
+        skip_this_one.append(True)
+   n_skipped = 0
+   ii = -1
+   for i in range(n):
+     for j in range(n):
+       ii += 1
+       if skip_this_one[i] or skip_this_one[j]:
+         pae_1d[ii] = pae_cutoff + 10
+         n_skipped += 1
+   import numpy
+
+   matrix = numpy.empty((n, n))
+
+   matrix.ravel()[:] = pae_1d
+   return matrix
+
+
+def get_residue_numbers_in_model(m_ca, remove_offset_of = None):
+  residue_numbers = []
+  for at in m_ca.get_hierarchy().atoms():
+    resseq_int = at.parent().parent().resseq_as_int()
+    if remove_offset_of is not None:
+      resseq_int = resseq_int - remove_offset_of
+    residue_numbers.append(resseq_int)
+  return residue_numbers
+
 def add_model(s1, s2):
   ''' add chains from s2 to existing s1'''
   s1 = s1.deep_copy()
@@ -985,7 +1198,7 @@ def add_model(s1, s2):
   s1.reset_after_changing_hierarchy()
   return s1
 ################################################################################
-####################   END Convenience function add_model ######################
+####################   END Convenience functions          ######################
 ################################################################################
 
 if __name__ == "__main__":
