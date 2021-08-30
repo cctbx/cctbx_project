@@ -231,6 +231,30 @@ DotScorer::InteractionType DotScorer::interaction_type(
   }
 }
 
+std::string DotScorer::interaction_type_name(InteractionType t) const
+{
+  switch (t) {
+  case WideContact:
+    return "wide contact";
+  case CloseContact:
+    return "close contact";
+  case WeakHydrogenBond:
+    return "weak H-bonds";
+  case SmallOverlap:
+    return "small overlap";
+  case Bump:
+    return "bad overlap";
+  case BadBump:
+    return "worse overlap";
+  case HydrogenBond:
+    return "H-bonds";
+  case Invalid:
+    return "invalid (internal error)";
+  default:
+    return "unrecognized (internal error)";
+  }
+}
+
 DotScorer::ScoreDotsResult DotScorer::score_dots(
   iotbx::pdb::hierarchy::atom sourceAtom, double minOccupancy,
   SpatialQuery &spatialQuery, double nearbyRadius, double probeRadius,
