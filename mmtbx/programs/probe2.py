@@ -832,10 +832,19 @@ Note:
     # Dictionary of dictionaries of lists structure holding lists of DotInfo class objects,
     # indexed by atom class and then by interaction type.  Fill in empty lists for all of
     # the possible classes and types.
+    self._interactionTypes = [
+        probeExt.InteractionType.WideContact,
+        probeExt.InteractionType.CloseContact,
+        probeExt.InteractionType.WeakHydrogenBond,
+        probeExt.InteractionType.SmallOverlap,
+        probeExt.InteractionType.Bump,
+        probeExt.InteractionType.BadBump,
+        probeExt.InteractionType.HydrogenBond
+      ]
     self._results = {}
     for c in self._allAtomClasses:
       interactionTypeDicts = {}
-      for i in range(probeExt.InteractionType.HydrogenBond + 1):
+      for i in self._interactionTypes:
         interactionTypeDicts[i] = []
       self._results[c] = interactionTypeDicts
 
