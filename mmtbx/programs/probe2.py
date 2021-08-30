@@ -517,8 +517,8 @@ Note:
       if okay:
         ret += 1
 
-      # Return the number of dots not inside a bonded atom.
-      return ret
+    # Return the number of dots not inside a bonded atom.
+    return ret
 
 # ------------------------------------------------------------------------------
 
