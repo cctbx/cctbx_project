@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import os
+import math
 from libtbx.program_template import ProgramTemplate
 #from libtbx.utils import null_out
 from libtbx import group_args, phil
@@ -492,6 +493,7 @@ Note:
     # Check all of the dots for the atom and see if they should be
     # added to the list.
     srcDots = self._dots[src]
+    # @todo Use a C++ call to find these dots if we can
     for dotvect in srcDots:
       # Dot on the surface of the atom, at its radius.
       # This is where the probe touches the surface.
@@ -560,6 +562,131 @@ Note:
       ret += self._count_skin_dots_for(src, neighbors)
 
     # Return the total count
+    return ret
+
+# ------------------------------------------------------------------------------
+
+  def _enumerate(self, groupName, numberSelected, reportSubScores, isSurface, numSkinDots):
+    '''
+      Describe summary counts for data of various kinds.
+      :param groupName: Name to give to the group.
+      :param numberSelected: Number of atoms in the selection.
+      :param reportSubScores: Provide reports on different contact subscores.
+      :param isSurface: Are these all surface dots?
+      :param numSkinDots: The number of dots on atom skins. This is used to normalize output scores.
+      :return: String to be added to the output.
+    '''
+
+    ret = ''
+
+    # Store values that we will need often
+    density = self.params.probe.density
+    gap_weight = self.params.probe.gap_weight
+
+    ret += "        \nsubgroup: {}\n".format(groupName)
+    ret += "atoms selected: {}\npotential dots: {}\npotential area: {:.1f} A^2\n".format(
+      numberSelected, numSkinDots, numSkinDots/self.params.probe.density)
+    if numberSelected <=0 or numSkinDots <= 0:
+      ret += "empty selection\n"
+      return
+
+    if reportSubScores:
+      ret += "  type                 #      %       score score/A^2 x 1000\n"
+    else:
+      ret += "  type                 #      %\n"
+
+    # Compute and report the counts
+    tgs = ths = thslen = tbs = tbslen = tsas = 0.0
+    tGscore = tHscore = tBscore = tscore = 0.0
+    for c in self._allAtomClasses:
+      for t in self._interactionTypes:
+        res = self._results[c][t]
+        if len(res) > 0:
+          # gs stores all of the values unless reportSubScores is True
+          gs = hs = hslen = bs = bslen = score = psas = 0.0
+          label = "external dots "
+          if not isSurface:
+            label = probeExt.DotScorer.interaction_type_name(t)
+          ret += "{:>3s} {} ".format(c, label)
+
+          for node in self._results[c][t]:
+            if reportSubScores:
+              if t in [probeExt.InteractionType.WideContact, probeExt.InteractionType.CloseContact,
+                  probeExt.InteractionType.WeakHydrogenBond]:
+                gs += 1
+                dtgp = node.gap
+                scaledGap = dtgp/gap_weight
+                scoreValue = math.exp(-scaledGap*scaledGap)
+                score   += scoreValue
+                tGscore += scoreValue
+              elif t in [probeExt.InteractionType.SmallOverlap, probeExt.InteractionType.Bump,
+                  probeExt.InteractionType.BadBump]:
+                bs += 1
+                slen = 0.5*abs(node.gap);
+                bslen += slen
+                scoreValue = - BUMPweight * slen
+                score   += scoreValue
+                tBscore += scoreValue
+              else: # Hydrogen bond
+                hs += 1
+                slen = 0.5*abs(node.gap)
+                hslen += slen
+                scoreValue = HBweight * slen
+                score   += scoreValue
+                tHscore += scoreValue
+            else:
+              gs += 1
+
+            if self.params.approach == 'surface':
+              p_radius = self.params.probe.radius
+              a_radius = self._extraAtomInfo.getMappingFor(node.src).vdwRadius
+              psas += (a_radius + p_radius)*(a_radius + p_radius)/(a_radius * a_radius)
+
+          # Done computing for this category, report totals
+          if reportSubScores:
+            if t in [probeExt.InteractionType.WideContact, probeExt.InteractionType.CloseContact,
+                probeExt.InteractionType.WeakHydrogenBond]:
+              ret += "{:7.0f} {:5.1f}% {:9.1f} {:9.2}\n".format(gs, 100.0*gs/numSkinDots, score/density,
+                                1000.0*score/numSkinDots)
+            elif t in [probeExt.InteractionType.SmallOverlap, probeExt.InteractionType.Bump,
+                probeExt.InteractionType.BadBump]:
+              ret += "{:7.0} {:5.1f}% {:9.1f} {:9.2f}\n".format(bs, 100.0*bs/numSkinDots, score/density,
+                                1000.0*score/numSkinDots)
+            else: # Hydrogen bond
+              ret += "{:7.0f} {:5.1f}% {:9.1f} {:9.2f}\n".format(hs, 100.0*hs/numSkinDots, score/density,
+                                1000.0*score/numSkinDots)
+          else:
+            ret += "{:7.0f} {:5.1f}%\n".format(gs, 100.0*gs/numSkinDots)
+          tgs += gs
+          ths += hs
+          thslen += hslen
+          tbs += bs
+          tbslen += bslen
+          tscore += score
+          if self.params.approach == 'surface':
+            tsas += psas  # tally the solvent accessible surface
+
+    if reportSubScores:
+      ret += "\n     tot contact:  {:7.0f} {:5.1f}% {:9.1f} {:9.2f}\n".format(
+		    tgs, 100.0*tgs/numSkinDots, tGscore/density, 1000.0*tGscore/numSkinDots
+      )
+      ret += "     tot overlap:  {:7.0f} {:5.1f}% {:9.1f} {:9.2f}\n".format(
+		    tbs,    100.0*tbs/numSkinDots, tBscore/density, 1000.0*tBscore/numSkinDots
+      )
+      ret += "     tot  H-bond:  {:7.0f} {:5.1f}% {:9.1f} {:9.2f}\n".format(
+		    ths,    100.0*ths/numSkinDots, tHscore/density, 1000.0*tHscore/numSkinDots
+      )
+
+      ret += "\n       grand tot:  {:7.0f} {:5.1f}% {:9.1f} {:9.2f}\n".format(
+		    (tgs+tbs+ths), 100.0*(tgs+tbs+ths)/numSkinDots, tscore/density, 1000.0*tscore/numSkinDots
+      )
+      ret += "\ncontact surface area: {:.1f} A^2\n".format((tgs+tbs+ths)/density)
+    else:
+      ret += "             tot:  {:7.0f} {:5.1f}%\n\n".format(tgs, 100.0*tgs/numSkinDots)
+      ret += "   contact surface area: {:.1f} A^2\n".format(tgs/density)
+      if self.params.approach == 'surface':
+        ret += "accessible surface area: {:.1f} A^2\n\n".format(tsas/density)
+
     return ret
 
 # ------------------------------------------------------------------------------
@@ -898,6 +1025,7 @@ Note:
           self.params.atom_radius_offset)
 
         nsel = len(source_atoms)
+        outString += self._enumerate("extern dots", nsel, False, True, numSkinDots)
         # @todo
 
       # Otherwise, produce the dots as output
