@@ -1,9 +1,7 @@
 from __future__ import division, print_function
 import sys, os, time
 
-from libtbx.test_utils import approx_equal
 from libtbx import group_args
-import iotbx.phil
 
 import libtbx.load_env
 data_dir = libtbx.env.under_dist(
@@ -11,7 +9,6 @@ data_dir = libtbx.env.under_dist(
   path="regression",
   test=os.path.isdir)
 
-from iotbx.data_manager import DataManager
 from mmtbx.domains_from_pae import get_domain_selections_from_pae_matrix
 
 pae_file=os.path.join(data_dir,'pae.json')
