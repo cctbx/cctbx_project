@@ -58,8 +58,8 @@ class manager(object):
     #DEN refinement start, turn on
     if params.den.optimize:
       grid = den_manager.get_optimization_grid()
-      print("Running DEN torsion optimization on %d processors..." % \
-        params.main.nproc, file=log)
+        print("Running DEN torsion optimization on %d processors..." % \
+          self.nproc, file=log)
     else:
       grid = [(params.den.gamma, params.den.weight)]
     grid_results = []
