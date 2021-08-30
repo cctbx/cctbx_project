@@ -248,7 +248,6 @@ namespace molprobity {
         WideContact = 0, CloseContact = 1, WeakHydrogenBond = 2, SmallOverlap = 3,
         Bump = 4, BadBump = 5, HydrogenBond = 6, Invalid = -1
       };
-      /// @todo
 
       /// @brief Determine the type of interaction that is represented by a CheckDotResult.
       /// @param [in] checkDotResult Value returned from the check_dot() method.
@@ -258,6 +257,11 @@ namespace molprobity {
       ///         original Probe code.
       InteractionType interaction_type(OverlapType overlapType, double gap,
          bool separateWeakHydrogenBonds) const;
+
+      /// @brief String name for the interaction type, meaningful to the user.
+      /// @param [in] t Type to report on.
+      /// @return String name suitable for printing.
+      std::string interaction_type_name(InteractionType t) const;
 
       /// @brief Structure to hold the results from a call to score_dots()
       class ScoreDotsResult {
