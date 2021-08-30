@@ -98,7 +98,8 @@ def domains_from_pae_matrix_networkx(pae_matrix, pae_power=1,
       clusters = community.greedy_modularity_communities(g, weight='weight')
     return clusters
 
-def domains_from_pae_matrix_igraph(pae_matrix, pae_power=1, pae_cutoff=5, graph_resolution=1):
+def domains_from_pae_matrix_igraph(pae_matrix, pae_power=1, pae_cutoff=5,
+      graph_resolution=1):
     '''
     Takes a predicted aligned error (PAE) matrix representing the predicted error in distances between each
     pair of residues in a model, and uses a graph-based community clustering algorithm to partition the model
@@ -133,7 +134,8 @@ def domains_from_pae_matrix_igraph(pae_matrix, pae_power=1, pae_cutoff=5, graph_
     g.add_edges(edges)
     g.es['weight']=sel_weights
 
-    vc = g.community_leiden(weights='weight', resolution_parameter=graph_resolution/100, n_iterations=-1)
+    vc = g.community_leiden(weights='weight',
+       resolution_parameter=graph_resolution/100, n_iterations=-1)
     membership = numpy.array(vc.membership)
     from collections import defaultdict
     clusters = defaultdict(list)
@@ -167,7 +169,7 @@ def cluster_as_selection(c, first_resno = None):
 
 def get_domain_selections_from_pae_matrix(pae_matrix = None,
       pae_file = None,
-      pae_power = None, pae_cutoff = None, resolution = None,
+      pae_power = None, pae_cutoff = None, graph_resolution = None,
       first_resno = None):
 
     # first_resno is residue number of residue with index of zero
@@ -176,7 +178,7 @@ def get_domain_selections_from_pae_matrix(pae_matrix = None,
       pae_matrix = parse_pae_file(pae_file)
     clusters = domains_from_pae_matrix_networkx(pae_matrix,
       pae_power=pae_power, pae_cutoff=pae_cutoff,
-        graph_resolution=resolution) # NOTE graph_resolution not used in 2.7
+      graph_resolution=graph_resolution) # NOTE graph_resolution not used in 2.7
 
     new_clusters = []
     for c in clusters:
@@ -267,7 +269,7 @@ if __name__ == '__main__':
       selections = get_domain_selections_from_pae_matrix(
         pae_matrix = pae_matrix,
         pae_power = args.pae_power, pae_cutoff = args.pae_cutoff,
-        resolution = args.resolution,)
+        graph_resolution = args.pae_graph_resolution,)
       print("Selections:")
       for s in selections:
        print(s)

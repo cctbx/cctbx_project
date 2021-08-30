@@ -115,6 +115,15 @@ master_phil_str = """
             graph edges will only be created for residue pairs with \
             pae<pae_cutoff
        .short_caption = PAE cutoff (if PAE matrix supplied)
+
+     pae_graph_resolution = 1
+       .type = float
+       .help = If PAE matrix (predicted alignment error matrix) is supplied,\
+            pae_graph_resolution regulates how aggressively the clustering \
+            algorithm is. Smaller values lead to larger clusters. Value \
+            should be larger than zero, and values larger than 5 are \
+            unlikely to be useful
+       .short_caption = PAE graph resolution (if PAE matrix supplied)
     }
 
     """
@@ -294,6 +303,7 @@ def process_predicted_model(
         maximum_domains = p.maximum_domains,
         pae_power = p.pae_power,
         pae_cutoff = p.pae_cutoff,
+        pae_graph_resolution = p.pae_graph_resolution,
         minimum_domain_length = p.minimum_domain_length,
         log = log)
     else: # usual
@@ -519,6 +529,7 @@ def split_model_with_pae(
      maximum_domains = None,
      pae_power = 1.,
      pae_cutoff = 5.,
+     pae_graph_resolution = 1.,
      minimum_domain_length = 10,
      log = sys.stdout):
 
@@ -540,6 +551,10 @@ def split_model_with_pae(
        proportional to (1/pae**pae_power)
    pae_cutoff (optional, default=5): graph edges will only be created for
        residue pairs with pae<pae_cutoff
+   pae_graph_resolution (optional, default = 1): regulates how aggressively
+       the clustering algorithm is. Smaller values lead to larger clusters.
+       Value should be larger than zero, and values larger than 5 are
+        unlikely to be useful
    minimum_domain_length:  if a region is smaller than this, skip completely
 
    Output:
@@ -573,6 +588,7 @@ def split_model_with_pae(
     pae_matrix = pae_matrix,
      pae_power = pae_power,
      pae_cutoff = pae_cutoff,
+     graph_resolution = pae_graph_resolution,
      first_resno = first_resno,
     )
 
