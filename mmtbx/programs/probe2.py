@@ -473,47 +473,6 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def _count_src_skin_dots(self, atoms):
-    '''
-      Count all skin dots for the atoms passed in.
-      :param atoms: Atoms to check.
-      This is used to normalize output scores.
-      :return: Number of skin dots on any of the atoms in the source selection.
-    '''
-
-    ret = 0
-
-    maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
-    for src in atoms:
-      # Find nearby atoms that might come into contact.  This greatly speeds up the
-      # search for touching atoms.
-      maxRadius = (self._extraAtomInfo.getMappingFor(src).vdwRadius + maxVDWRadius +
-        2 * self.params.probe.radius)
-      nearby = self._spatialQuery.neighbors(src.xyz, 0.001, maxRadius)
-
-      # Select those that are actually within the contact distance based on their
-      # particular radius.
-      atomList = []
-      for n in nearby:
-        d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
-        if (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
-            self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.radius):
-          atomList.append(n)
-
-      # Find the atoms that are bonded to the source atom within the specified hop
-      # count.  Limit the length of the chain to 3 if neither the source nor the final
-      # atom is a Hydrogen.
-      neighbors = Helpers.getAtomsWithinNBonds(src, allBondedNeighborLists,
-        self.params.excluded_bond_chain_length, 3)
-
-      # Count the skin dots for this atom.
-      ret += self._count_skin_dots_for(src, neighbors)
-
-    # Return the total count
-    return ret
-
-# ------------------------------------------------------------------------------
-
   def _count_skin_dots_for(self, src, bonded):
     '''
       Count all skin dots for the specified atom.
@@ -560,6 +519,47 @@ Note:
 
       # Return the number of dots not inside a bonded atom.
       return ret
+
+# ------------------------------------------------------------------------------
+
+  def _count_src_skin_dots(self, atoms):
+    '''
+      Count all skin dots for the atoms passed in.
+      :param atoms: Atoms to check.
+      This is used to normalize output scores.
+      :return: Number of skin dots on any of the atoms in the source selection.
+    '''
+
+    ret = 0
+
+    maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
+    for src in atoms:
+      # Find nearby atoms that might come into contact.  This greatly speeds up the
+      # search for touching atoms.
+      maxRadius = (self._extraAtomInfo.getMappingFor(src).vdwRadius + maxVDWRadius +
+        2 * self.params.probe.radius)
+      nearby = self._spatialQuery.neighbors(src.xyz, 0.001, maxRadius)
+
+      # Select those that are actually within the contact distance based on their
+      # particular radius.
+      atomList = []
+      for n in nearby:
+        d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
+        if (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
+            self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.radius):
+          atomList.append(n)
+
+      # Find the atoms that are bonded to the source atom within the specified hop
+      # count.  Limit the length of the chain to 3 if neither the source nor the final
+      # atom is a Hydrogen.
+      neighbors = Helpers.getAtomsWithinNBonds(src, allBondedNeighborLists,
+        self.params.excluded_bond_chain_length, 3)
+
+      # Count the skin dots for this atom.
+      ret += self._count_skin_dots_for(src, neighbors)
+
+    # Return the total count
+    return ret
 
 # ------------------------------------------------------------------------------
 
