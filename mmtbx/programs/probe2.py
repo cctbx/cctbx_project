@@ -522,10 +522,11 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def _count_src_skin_dots(self, atoms):
+  def _count_skin_dots(self, atoms, bondedNeighborLists):
     '''
       Count all skin dots for the atoms passed in.
       :param atoms: Atoms to check.
+      :param bondedNeighborLists: Neighbor list including these atoms.
       This is used to normalize output scores.
       :return: Number of skin dots on any of the atoms in the source selection.
     '''
@@ -552,7 +553,7 @@ Note:
       # Find the atoms that are bonded to the source atom within the specified hop
       # count.  Limit the length of the chain to 3 if neither the source nor the final
       # atom is a Hydrogen.
-      neighbors = Helpers.getAtomsWithinNBonds(src, allBondedNeighborLists,
+      neighbors = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists,
         self.params.excluded_bond_chain_length, 3)
 
       # Count the skin dots for this atom.
@@ -870,7 +871,7 @@ Note:
 
       # Count the dots if we've been asked to do so.
       if self.params.output.count_dots:
-        numSkinDots = self._count_src_skin_dots
+        numSkinDots = self._count_skin_dots(source_atoms, allBondedNeighborLists)
         name = "dots"
         if len(self.params.output.group_label) > 0:
           name = self.params.output.group_label
