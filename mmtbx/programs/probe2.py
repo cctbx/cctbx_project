@@ -763,8 +763,16 @@ Note:
               self._inWater[newAtom] = self._inWater[a]
               self._inHet[newAtom] = self._inHet[a]
 
-              # Mark the new atom as being bonded to the parent atom.
+              # Mark the new atom as being bonded to the parent atom, and the
+              # parent atom as having to children.  Do this in both sets of bonded
+              # neighbor lists.
               bondedNeighborLists[newAtom] = [a]
+              bondedNeighborLists[a] = []
+              allBondedNeighborLists[newAtom] = [a]
+              allBondedNeighborLists[a] = []
+
+              # Generate source dots for the new atom
+              self._dots[newAtom] = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(newAtom).vdwRadius).dots()
 
               # Add the new atom to any selections that the old atom was in.
               if a in source_atoms:
