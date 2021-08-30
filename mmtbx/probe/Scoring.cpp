@@ -231,7 +231,7 @@ DotScorer::InteractionType DotScorer::interaction_type(
   }
 }
 
-std::string DotScorer::interaction_type_name(InteractionType t) const
+std::string DotScorer::interaction_type_name(InteractionType t)
 {
   switch (t) {
   case WideContact:
