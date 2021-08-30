@@ -153,6 +153,20 @@ def process_predicted_model(
     processed_model_info: group_args object containing:
       processed_model:  single model with regions identified in chainid field
 
+  How to get the parameters object set up:
+
+    You can set up a parameters object like this (see example at end of this
+    file as well:
+
+    master_phil = iotbx.phil.parse(master_phil_str)
+    params = master_phil.extract()
+
+    The default values are set in the master_phil_str string above.
+    You can then set values of params:
+
+    params.process_predicted_model.split_model_by_compact_regions = True
+
+
   """
 
   # Make sure we have what we expect:
