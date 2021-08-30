@@ -447,7 +447,7 @@ Note:
         # both are hydrogens from the same water, in which case we
         # continue on to check.)
         elif (not self.params.do_water_water and srcInWater and bInWater
-              and self.parent() != b.parent() ):
+              and src.parent() != b.parent() ):
           continue
         # If we're ignoring non-water to water interactions, skip check
         # if b is a water.
