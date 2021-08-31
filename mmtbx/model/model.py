@@ -1913,7 +1913,7 @@ class manager(object):
     type_h_bond = self._type_h_bonds[i_seq]
     return type_h_bond
 
-  def get_specific_vdw_radius(self, i_seq):
+  def get_specific_vdw_radius(self, i_seq, vdw_radius_without_H=False):
     if type(i_seq)!=type(0):
       cctbx_depreciation_warning('get_specific_vdw_radii takes int argument')
       i_seq = i_seq.i_seq
@@ -1921,7 +1921,10 @@ class manager(object):
       print('i_seq is larger than array length. Likely due to a unsupported selection.')
     e = self.get_ener_lib()
     type_energy = self._type_energies[i_seq]
-    vdw = e.lib_atom[type_energy].vdw_radius
+    if vdw_radius_without_H:
+      vdw = e.lib_atom[type_energy].vdwh_radius
+    else:
+      vdw = e.lib_atom[type_energy].vdw_radius
     return vdw
 
   def get_specific_ion_radius(self, i_seq):
