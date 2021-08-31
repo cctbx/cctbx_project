@@ -30,8 +30,8 @@ DotSphere::DotSphere(double radius, double density)
   if (m_rad == 0 || m_dens == 0) { return; }
 
   // Estimate the number of dots to be placed given the radius and density.
-  // Do an overestimate.  This code is pulled from DotDph.cpp in Reduce.
-  size_t num_dots = static_cast<size_t>(ceil(4.0 * scitbx::constants::pi * density * (radius * radius)));
+  // This code is pulled from DotDph.cpp in Reduce.
+  size_t num_dots = static_cast<size_t>(floor(4.0 * scitbx::constants::pi * density * (radius * radius)));
 
   // Generate the dots, spreading them across the sphere.
   double offset = 0.2;
@@ -39,7 +39,7 @@ DotSphere::DotSphere(double radius, double density)
   int nequator, nvert, nhoriz;
   bool odd = true;
 
-  nequator = static_cast<int>(ceil(sqrt(num_dots * scitbx::constants::pi)));
+  nequator = static_cast<int>(floor(sqrt(num_dots * scitbx::constants::pi)));
 
   ang = 5.0 * scitbx::constants::pi / 360.0;
   cosang = cos(ang);
@@ -102,8 +102,8 @@ std::string DotSphere::test()
       double expected = ceil(4.0 * scitbx::constants::pi * den * (1 * 1));
       long found = static_cast<long>(d.dots().size());
       double diff = abs(found - expected);
-      if (diff > std::max(3.0, expected*0.05)) {
-        return std::string("molprobity::probe::DotSphere::test(): Construction with density")
+      if (diff > std::max(3.0, expected*0.2)) {
+        return std::string("molprobity::probe::DotSphere::test(): Construction with density ")
           +std::to_string(den) + " failed: "
           + "found " + std::to_string(found) + " dots but expected " + std::to_string(expected);
       }
