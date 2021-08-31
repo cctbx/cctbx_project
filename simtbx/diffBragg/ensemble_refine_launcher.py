@@ -573,7 +573,7 @@ class RefineLauncher:
 
             if self.params.profile:
                 self.RUC.S.D.show_timings(self.RUC.rank)
-            if self.params.refiner.use_cuda:
+            if os.environ.get("DIFFBRAGG_USE_CUDA") is not None:
                 self.RUC.S.D.gpu_free()
 
     def will_refine(self, param):
