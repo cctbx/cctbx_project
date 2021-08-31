@@ -486,8 +486,8 @@ Note:
     # No dots yet...
     ret = 0
 
-    # Generate no dots for ignored atoms or for phantom Hydrogens.
-    if self._atomClasses[src] == 'ignore' or self._extraAtomInfo.getMappingFor(src).isDummyHydrogen:
+    # Generate no dots for ignored atoms
+    if self._atomClasses[src] == 'ignore':
       return 0
 
     # Check all of the dots for the atom and see if they should be
