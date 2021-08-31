@@ -405,14 +405,14 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def _generate_surface_dots_for(self, src, bonded):
+  def _generate_surface_dots_for(self, src, nearby):
     '''
       Find all surface dots for the specified atom.
       This does not include locations where the probe is interacting with
-      a bonded atom, so it is a subset of the skin dots where only the
-      dots themselves are outside of the bonded atoms.
+      a nearby atom, so it is a subset of the skin dots (for which only the
+      dots themselves are outside of the nearby atoms).
       :param src: Atom whose surface dots are to be found.
-      :param bonded: Atoms that are bonded to src by one or more hops.
+      :param nearby: Atoms that are nearby to src and might block surface dots.
       :return: Side effect: Add dots on the surface of the atom to the
               self._results data structure by atomclass and dot type.
     '''
@@ -431,23 +431,23 @@ Note:
       # Dot on the surface of the atom, at its radius; both dotloc and spikeloc from original code.
       # This is where the probe touches the surface.
       dotloc = Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect)
-      # Dot that is one probe radius past the surface of the atom, exploring for contact with bonded
+      # Dot that is one probe radius past the surface of the atom, exploring for contact with nearby
       # atoms.  This is the location of the center of the probe.
       exploc = Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect).normalize() * (r + pr)
 
-      # If the exploring dot is within a probe radius + vdW radius of a bonded atom,
+      # If the exploring dot is within a probe radius + vdW radius of a nearby atom,
       # we don't add a dot.
       okay = True
-      for b in bonded:
+      for b in nearby:
         bInWater = self._inWater[b]
-        # If we should ignore the bonded element, we don't check it.
+        # If we should ignore the nearby atom, we don't check it.
         if self._atomClasses[b] == 'ignore':
           continue
         # If we're ignoring water-water interactions and both src and
-        # bonded are in a water, we should ignore this as well (unless
+        # nearby are in a water, we should ignore this as well (unless
         # both are hydrogens from the same water, in which case we
         # continue on to check.)
-        elif (not self.params.do_water_water and srcInWater and bInWater
+        elif ((not self.params.do_water_water) and srcInWater and bInWater
               and src.parent() != b.parent() ):
           continue
         # If we're ignoring non-water to water interactions, skip check
@@ -459,9 +459,9 @@ Note:
         elif not self.params.do_het and self._inHet[b]:
           continue
 
-        # The bonded neighbor is one that we should check interaction with, see if
+        # The nearby neighbor is one that we should check interaction with, see if
         # we're in range.  If so, mark this dot as not okay because it is inside a
-        # bonded atom.
+        # nearby atom.
         if ( (Helpers.rvec3(b.xyz) - exploc).length() <=
             pr + self._extraAtomInfo.getMappingFor(b).vdwRadius ):
           okay = False
@@ -1004,14 +1004,14 @@ Note:
               self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.radius):
             atomList.append(n)
 
-        # Find the atoms that are bonded directly to the source atom.
-        neighbors = Helpers.getAtomsWithinNBonds(src, allBondedNeighborLists, 1)
+        # Find the atoms that are near the source atom.
+        nearby = self._spatialQuery.neighbors(src.xyz, 0.001, maxVDWRadius)
 
         # Find out what class of dot we should place for this atom.
         atomClass = self._atomClasses[src]
 
         # Generate all of the dots for this atom.
-        self._generate_surface_dots_for(src, neighbors)
+        self._generate_surface_dots_for(src, nearby)
 
       # Count the dots if we've been asked to do so.
       if self.params.output.count_dots:
