@@ -48,6 +48,7 @@ class DataModeler:
         self.all_background =None
         self.roi_id =None
         self.u_id = None
+        self.all_freq = None
         self.all_data =None
         self.all_sigmas =None
         self.all_trusted =None
@@ -120,7 +121,7 @@ class DataModeler:
         for i_ref in range(nref):
             ref = self.refls[i_ref]
             pid = ref['panel']
-            x1,x2,y1,y2 = self.rois[i_ref]
+            x1, x2, y1, y2 = self.rois[i_ref]
             sb = ref['shoebox']
             img_data[pid,   y1:y2, x1:x2] = sb.data.as_numpy_array()[0]
             background[pid, y1:y2, x1:x2] = sb.background.as_numpy_array()[0]
@@ -219,6 +220,7 @@ class DataModeler:
         roi_id = []
         all_q_perpix = []
         all_refls_idx = []
+        pixel_counter = np.zeros_like(img_data)
         self.all_nominal_hkl = []
         self.hi_asu_perpix = []
         for i_roi in range(len(self.rois)):
@@ -226,6 +228,7 @@ class DataModeler:
             x1, x2, y1, y2 = self.rois[i_roi]
             Y, X = np.indices((y2 - y1, x2 - x1))
             data = img_data[pid, y1:y2, x1:x2].copy()
+            pixel_counter[pid, y1:y2, x1:x2] += 1
 
             data = data.ravel()
             all_background += list(background[pid, y1:y2, x1:x2].ravel())
@@ -252,6 +255,17 @@ class DataModeler:
             self.all_nominal_hkl += [tuple(self.Hi[i_roi])]*npix
             all_refls_idx += [self.refls_idx[i_roi]] * npix
             self.hi_asu_perpix += [self.Hi_asu[i_roi]] * npix
+
+        all_freq = []
+        for i_roi in range(len(self.rois)):
+            pid = self.pids[i_roi]
+            x1, x2, y1, y2 = self.rois[i_roi]
+            freq = pixel_counter[pid, y1:y2, x1:x2].ravel()
+            all_freq += list(freq)
+        self.all_freq = np.array(all_freq)  # if no overlapping pixels, this should be an array of 1's
+        if not self.params.roi.allow_overlapping_spots:
+            if not np.all(self.all_freq==1):
+                raise ValueError("There are overlapping regions of interest, despite the command to not allow overlaps")
 
         self.all_q_perpix = np.array(all_q_perpix)
         pan_fast_slow = np.ascontiguousarray((np.vstack([all_pid, all_fast, all_slow]).T).ravel())
