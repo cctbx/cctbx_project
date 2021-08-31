@@ -132,15 +132,17 @@ class diffBragg: public nanoBragg{
             int verbose);
 
   images first_deriv_imgs, second_deriv_imgs;
+  step_arrays db_steps;
 
   void diffBragg_sum_over_steps(
         int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,
         image_type& floatimage,
         images& d_image,
         images& d2_image,
-        int* subS_pos, int* subF_pos, int* thick_pos,
-        int* source_pos, int* phi_pos, int* mos_pos,
-        const int Nsteps, int _printout_fpixel, int _printout_spixel, bool _printout, double _default_F,
+        step_arrays& db_steps,
+        const int Nsteps,
+
+        int _printout_fpixel, int _printout_spixel, bool _printout, double _default_F,
         int oversample, bool _oversample_omega, double subpixel_size, double pixel_size,
         double detector_thickstep, double _detector_thick, std::vector<double>& close_distances, double detector_attnlen,
         bool use_lambda_coefficients, double lambda0, double lambda1,
@@ -186,9 +188,7 @@ class diffBragg: public nanoBragg{
   void linearize_Fhkl();
   void sanity_check_linear_Fhkl();
   void update_linear_Fhkl();
-  void diffBragg_list_steps(
-                int* subS_pos,  int* subF_pos,  int* thick_pos,
-                int* source_pos,  int* phi_pos,  int* mos_pos );
+  void diffBragg_list_steps(step_arrays& db_steps);
   ~diffBragg(){};
   void diffBragg_sum_over_steps_cuda();
 

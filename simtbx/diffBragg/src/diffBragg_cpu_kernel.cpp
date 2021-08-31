@@ -11,9 +11,10 @@ void diffBragg::diffBragg_sum_over_steps(
         image_type& floatimage,
         images& d_image,
         images& d2_image,
-        int* subS_pos, int* subF_pos, int* thick_pos,
-        int* source_pos, int* phi_pos, int* mos_pos,
-        const int Nsteps, int _printout_fpixel, int _printout_spixel, bool _printout, double _default_F,
+        step_arrays& db_steps,
+        const int Nsteps,
+
+        int _printout_fpixel, int _printout_spixel, bool _printout, double _default_F,
         int oversample, bool _oversample_omega, double subpixel_size, double pixel_size,
         double detector_thickstep, double _detector_thick, std::vector<double>& close_distances, double detector_attnlen,
         bool use_lambda_coefficients, double lambda0, double lambda1,
@@ -89,12 +90,12 @@ void diffBragg::diffBragg_sum_over_steps(
 
         for (int _i_step=0; _i_step < Nsteps; _i_step++){
 
-            int _subS = subS_pos[_i_step];
-            int _subF = subF_pos[_i_step];
-            int _thick_tic = thick_pos[_i_step];
-            int _source = source_pos[_i_step];
-            int _phi_tic = phi_pos[_i_step];
-            int _mos_tic = mos_pos[_i_step];
+            int _subS = db_steps.subS_pos[_i_step];
+            int _subF = db_steps.subF_pos[_i_step];
+            int _thick_tic = db_steps.thick_pos[_i_step];
+            int _source = db_steps.source_pos[_i_step];
+            int _phi_tic = db_steps.phi_pos[_i_step];
+            int _mos_tic = db_steps.mos_pos[_i_step];
 
             /* absolute mm position on detector (relative to its origin) */
             double _Fdet = subpixel_size*(_fpixel*oversample + _subF ) + subpixel_size/2.0;

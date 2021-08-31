@@ -1776,14 +1776,15 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     steps = phisteps*mosaic_domains*oversample*oversample;
     subpixel_size = pixel_size/oversample;
     const int Nsteps = oversample*oversample*detector_thicksteps*sources*phisteps*mosaic_domains;
-    int* subS_pos = new int[Nsteps];
-    int* subF_pos = new int[Nsteps];
-    int* thick_pos = new int[Nsteps];
-    int* source_pos = new int[Nsteps];
-    int* phi_pos = new int[Nsteps];
-    int* mos_pos = new int[Nsteps];
 
-    diffBragg_list_steps(subS_pos, subF_pos, thick_pos, source_pos, phi_pos, mos_pos);
+    db_steps.subS_pos = new int[Nsteps];
+    db_steps.subF_pos = new int[Nsteps];
+    db_steps.thick_pos = new int[Nsteps];
+    db_steps.source_pos = new int[Nsteps];
+    db_steps.phi_pos = new int[Nsteps];
+    db_steps.mos_pos = new int[Nsteps];
+
+    diffBragg_list_steps(db_steps);
     gettimeofday(&t4,0 );
     double time_steps = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
 
@@ -1907,9 +1908,9 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             image,
             first_deriv_imgs,
             second_deriv_imgs,
-            subS_pos,  subF_pos,  thick_pos,
-            source_pos,  phi_pos,  mos_pos,
-            Nsteps, _printout_fpixel, _printout_spixel, _printout, _default_F,
+            db_steps,
+            Nsteps,
+            _printout_fpixel, _printout_spixel, _printout, _default_F,
             oversample, oversample_omega, subpixel_size, pixel_size,
             detector_thickstep, detector_thick, close_distances, detector_attnlen,
             use_lambda_coefficients, lambda_managers[0]->value, lambda_managers[1]->value,
@@ -2084,12 +2085,12 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
     } // END of flex array update
 
-    delete[] subS_pos;
-    delete[] subF_pos;
-    delete[] thick_pos;
-    delete[] source_pos;
-    delete[] phi_pos;
-    delete[] mos_pos;
+    delete[] db_steps.subS_pos;
+    delete[] db_steps.subF_pos;
+    delete[] db_steps.thick_pos;
+    delete[] db_steps.source_pos;
+    delete[] db_steps.phi_pos;
+    delete[] db_steps.mos_pos;
 
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
@@ -2133,9 +2134,7 @@ void diffBragg::diffBragg_rot_mats(){
     }
 }
 
-void diffBragg::diffBragg_list_steps(
-                int* subS_pos,  int* subF_pos,  int* thick_pos,
-                int* source_pos,  int* phi_pos,  int* mos_pos){
+void diffBragg::diffBragg_list_steps( step_arrays& db_steps){
     /* TODO theres probably a clever way to do this, but oh well */
     // TODO: time me
     int i_step = 0;
@@ -2145,12 +2144,12 @@ void diffBragg::diffBragg_list_steps(
                 for(source=0;source<sources;++source){
                     for(phi_tic = 0; phi_tic < phisteps; ++phi_tic){
                         for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
-                            subS_pos[i_step] = subS;
-                            subF_pos[i_step] = subF;
-                            thick_pos[i_step] = thick_tic;
-                            source_pos[i_step] = source;
-                            phi_pos[i_step] = phi_tic;
-                            mos_pos[i_step] = mos_tic;
+                            db_steps.subS_pos[i_step] = subS;
+                            db_steps.subF_pos[i_step] = subF;
+                            db_steps.thick_pos[i_step] = thick_tic;
+                            db_steps.source_pos[i_step] = source;
+                            db_steps.phi_pos[i_step] = phi_tic;
+                            db_steps.mos_pos[i_step] = mos_tic;
                             i_step ++;
                         }
                     }

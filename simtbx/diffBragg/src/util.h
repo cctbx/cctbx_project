@@ -32,16 +32,13 @@ struct images{
 };
 
 
-struct step_data{
+struct step_arrays{
    int* subS_pos;
    int* subF_pos;
    int* thick_pos;
    int* source_pos;
    int* phi_pos;
    int* mos_pos;
-   const int Nsteps;
-   double phi0;
-   double phistep;
 };
 
 #endif
