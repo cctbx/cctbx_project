@@ -191,8 +191,8 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
 
     no_Nabc_scale = false;
 
-    dF_vecs.clear();
-    dS_vecs.clear();
+    eig_objs.dF_vecs.clear();
+    eig_objs.dS_vecs.clear();
     for (int ii=0; ii < Npanels*3; ii++){
         fdet_vectors.push_back(0);
         sdet_vectors.push_back(0);
@@ -200,8 +200,8 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
         pix0_vectors.push_back(0);
 
         Eigen::Vector3d vec(0,0,0);
-        dF_vecs.push_back(vec);
-        dS_vecs.push_back(vec);
+        eig_objs.dF_vecs.push_back(vec);
+        eig_objs.dS_vecs.push_back(vec);
     }
 
     EYE <<  1,0,0,
@@ -212,16 +212,16 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
                0,0,1;
     psi = 0;
 
-    RotMats.push_back(EYE);
-    RotMats.push_back(EYE);
-    RotMats.push_back(EYE);
+    eig_objs.RotMats.push_back(EYE);
+    eig_objs.RotMats.push_back(EYE);
+    eig_objs.RotMats.push_back(EYE);
 
-    dRotMats.push_back(EYE);
-    dRotMats.push_back(EYE);
-    dRotMats.push_back(EYE);
-    d2RotMats.push_back(EYE);
-    d2RotMats.push_back(EYE);
-    d2RotMats.push_back(EYE);
+    eig_objs.dRotMats.push_back(EYE);
+    eig_objs.dRotMats.push_back(EYE);
+    eig_objs.dRotMats.push_back(EYE);
+    eig_objs.d2RotMats.push_back(EYE);
+    eig_objs.d2RotMats.push_back(EYE);
+    eig_objs.d2RotMats.push_back(EYE);
 
     R3.push_back(EYE);
     R3.push_back(EYE);
@@ -735,8 +735,8 @@ void diffBragg::update_dxtbx_geoms(
 
         int i_rot = pan_rot_ids[ii];
         pan = boost::dynamic_pointer_cast<panel_manager>(panels[i_rot]);
-        dF_vecs[panel_id*3 + ii] = pan->dF;
-        dS_vecs[panel_id*3 + ii] = pan->dS;
+        eig_objs.dF_vecs[panel_id*3 + ii] = pan->dF;
+        eig_objs.dS_vecs[panel_id*3 + ii] = pan->dS;
     }
 
     //SCITBX_EXAMINE(Yclose);
@@ -837,17 +837,17 @@ void diffBragg::initialize_managers(){
 
 void diffBragg::vectorize_umats(){
     /* vector store two copies of Umats, one unperturbed for reference */
-    if (UMATS.size() > 0){
-        UMATS.clear();
-        UMATS_RXYZ.clear();
+    if (eig_objs.UMATS.size() > 0){
+        eig_objs.UMATS.clear();
+        eig_objs.UMATS_RXYZ.clear();
     }
-    if (UMATS_prime.size()> 0){
-        UMATS_prime.clear();
-        UMATS_RXYZ_prime.clear();
+    if (eig_objs.UMATS_prime.size()> 0){
+        eig_objs.UMATS_prime.clear();
+        eig_objs.UMATS_RXYZ_prime.clear();
     }
-    if (UMATS_dbl_prime.size()> 0){
-        UMATS_dbl_prime.clear();
-        UMATS_RXYZ_dbl_prime.clear();
+    if (eig_objs.UMATS_dbl_prime.size()> 0){
+        eig_objs.UMATS_dbl_prime.clear();
+        eig_objs.UMATS_RXYZ_dbl_prime.clear();
     }
     for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
         double uxx,uxy,uxz,uyx,uyy,uyz,uzx,uzy,uzz;
@@ -864,8 +864,8 @@ void diffBragg::vectorize_umats(){
         U << uxx, uxy, uxz,
              uyx, uyy, uyz,
              uzx, uzy, uzz;
-        UMATS.push_back(U);
-        UMATS_RXYZ.push_back(U);
+        eig_objs.UMATS.push_back(U);
+        eig_objs.UMATS_RXYZ.push_back(U);
     }
 
     for (int i_eta=0; i_eta<3; i_eta ++){
@@ -886,8 +886,8 @@ void diffBragg::vectorize_umats(){
                 Up << uxx, uxy, uxz,
                      uyx, uyy, uyz,
                      uzx, uzy, uzz;
-                UMATS_RXYZ_prime.push_back(Up);
-                UMATS_prime.push_back(Up);
+                eig_objs.UMATS_RXYZ_prime.push_back(Up);
+                eig_objs.UMATS_prime.push_back(Up);
 
                 if (mosaic_umats_dbl_prime != NULL){
                     if (verbose && mos_tic==0)
@@ -905,8 +905,8 @@ void diffBragg::vectorize_umats(){
                     Udp << uxx, uxy, uxz,
                          uyx, uyy, uyz,
                          uzx, uzy, uzz;
-                    UMATS_RXYZ_dbl_prime.push_back(Udp);
-                    UMATS_dbl_prime.push_back(Udp);
+                    eig_objs.UMATS_RXYZ_dbl_prime.push_back(Udp);
+                    eig_objs.UMATS_dbl_prime.push_back(Udp);
                 }
             }
         }
@@ -1838,11 +1838,11 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     Eigen::Vector3d eig_spindle_vec(spindle_vector[1], spindle_vector[2], spindle_vector[3]);
     Eigen::Vector3d _polarization_axis(polar_vector[1], polar_vector[2], polar_vector[3]);
 
-    std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dB_Mats;
-    std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dB2_Mats;
+    eig_objs.dB_Mats.clear();
+    eig_objs.dB2_Mats.clear();
     for(int i_uc=0; i_uc< 6; i_uc++){
-        dB_Mats.push_back(ucell_managers[i_uc]->dB);
-        dB2_Mats.push_back(ucell_managers[i_uc]->dB2);
+        eig_objs.dB_Mats.push_back(ucell_managers[i_uc]->dB);
+        eig_objs.dB2_Mats.push_back(ucell_managers[i_uc]->dB2);
     }
 
     std::vector<unsigned int> panels_fasts_slows_vec(panels_fasts_slows.begin(), panels_fasts_slows.begin() + panels_fasts_slows.size()) ;//(panels_fasts_slows.size());
@@ -1889,6 +1889,24 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     gettimeofday(&t4,0 );
     double time_make_images = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
 
+    //eig_objs.eig_U = eig_U;,
+    //eig_objs.eig_O = eig_O;
+    //eig_objs.eig_B = eig_B;
+    //eig_objs.RXYZ = RXYZ;
+    //eig_objs.dF_vecs = dF_vecs;
+    //eig_objs.dS_vecs = dS_vecs;
+    //eig_objs.UMATS_RXYZ = UMATS_RXYZ;
+    //eig_objs.UMATS_RXYZ_prime = UMATS_RXYZ_prime;
+    //eig_objs.UMATS_RXYZ_dbl_prime = UMATS_RXYZ_dbl_prime;
+    //eig_objs.RotMats = RotMats;
+    //eig_objs.dRotMats  = dRotMats;
+    //eig_objs.d2RotMats = d2RotMats;
+    //eig_objs.UMATS = UMATS;
+    //eig_objs.dB_Mats = dB_Mats;
+    //eig_objs.dB2_Mats = dB2_Mats;
+    eig_objs.spindle_vec = eig_spindle_vec;
+    eig_objs._polarization_axis = _polarization_axis;
+
     gettimeofday(&t2, 0);
     double time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
     if (record_time)
@@ -1910,25 +1928,19 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             second_deriv_imgs,
             db_steps,
             Nsteps,
+
             _printout_fpixel, _printout_spixel, _printout, _default_F,
             oversample, oversample_omega, subpixel_size, pixel_size,
             detector_thickstep, detector_thick, close_distances, detector_attnlen,
             use_lambda_coefficients, lambda_managers[0]->value, lambda_managers[1]->value,
-            eig_U, eig_O, eig_B, RXYZ,
-            dF_vecs,
-            dS_vecs,
-            UMATS_RXYZ,
-            UMATS_RXYZ_prime,
-            UMATS_RXYZ_dbl_prime,
-            RotMats, dRotMats, d2RotMats,
-            UMATS,
-            dB_Mats, dB2_Mats,
+
+            eig_objs,
+
             source_X,  source_Y,  source_Z,  source_lambda,  source_I,
             polarization,
             Na, Nb, Nc,
             Nd, Ne, Nf,
             phi0, phistep,
-            eig_spindle_vec, _polarization_axis,
             h_range, k_range, l_range,
             h_max, h_min, k_max, k_min, l_max, l_min, dmin,
             fudge, complex_miller, verbose, only_save_omega_kahn,
@@ -2107,27 +2119,27 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 void diffBragg::diffBragg_rot_mats(){
     for (int i_rot=0; i_rot < 3; i_rot++){
         //if (rot_managers[i_rot]->refine_me){
-            RotMats[i_rot] = rot_managers[i_rot]->R;
-            dRotMats[i_rot] = rot_managers[i_rot]->dR;
-            d2RotMats[i_rot] = rot_managers[i_rot]->dR2;
-            R3[i_rot] = RotMats[i_rot];
-            R3_2[i_rot] = RotMats[i_rot];
+            eig_objs.RotMats[i_rot] = rot_managers[i_rot]->R;
+            eig_objs.dRotMats[i_rot] = rot_managers[i_rot]->dR;
+            eig_objs.d2RotMats[i_rot] = rot_managers[i_rot]->dR2;
+            R3[i_rot] = eig_objs.RotMats[i_rot];
+            R3_2[i_rot] = eig_objs.RotMats[i_rot]; // TODO: is this correct ?
         //}
     }
-    RXYZ = RotMats[0]*RotMats[1]*RotMats[2];
+    eig_objs.RXYZ = eig_objs.RotMats[0]*eig_objs.RotMats[1]*eig_objs.RotMats[2];
 
     /*  update Umats to be U*RXYZ   */
     for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
-        UMATS_RXYZ[mos_tic] = UMATS[mos_tic] * RXYZ;
+        eig_objs.UMATS_RXYZ[mos_tic] = eig_objs.UMATS[mos_tic] * eig_objs.RXYZ;
         for (int i_eta=0; i_eta<3; i_eta++){
             if (eta_managers[i_eta]->refine_me){
                 //printf("setting umat %d in vector of length %d\n" , mos_tic, UMATS_RXYZ_prime.size());
                 int mos_tic2 = mosaic_domains*i_eta + mos_tic;
-                UMATS_RXYZ_prime[mos_tic2] = UMATS_prime[mos_tic2]*RXYZ;
+                eig_objs.UMATS_RXYZ_prime[mos_tic2] = eig_objs.UMATS_prime[mos_tic2]*eig_objs.RXYZ;
                 if (UMATS_dbl_prime.size() > 0){
                     if (verbose && mos_tic ==0)
                         printf("setting UMATS_RXYZ_dblprime\n");
-                    UMATS_RXYZ_dbl_prime[mos_tic2] = UMATS_dbl_prime[mos_tic2]*RXYZ;
+                    eig_objs.UMATS_RXYZ_dbl_prime[mos_tic2] = eig_objs.UMATS_dbl_prime[mos_tic2]*eig_objs.RXYZ;
                 }
             }
         }

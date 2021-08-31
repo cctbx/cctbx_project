@@ -18,24 +18,13 @@ void diffBragg::diffBragg_sum_over_steps(
         int oversample, bool _oversample_omega, double subpixel_size, double pixel_size,
         double detector_thickstep, double _detector_thick, std::vector<double>& close_distances, double detector_attnlen,
         bool use_lambda_coefficients, double lambda0, double lambda1,
-        Eigen::Matrix3d& eig_U, Eigen::Matrix3d& eig_O, Eigen::Matrix3d& eig_B, Eigen::Matrix3d& RXYZ,
-        std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> >& dF_vecs,
-        std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> >& dS_vecs,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& UMATS_RXYZ,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& UMATS_RXYZ_prime,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& UMATS_RXYZ_dbl_prime,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& RotMats,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& dRotMats,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& d2RotMats,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& UMATS,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& dB_Mats,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& dB2_Mats,
+
+        eigen_objects& eig_objs,
         double* source_X, double* source_Y, double* source_Z, double* source_lambda, double* source_I,
         double kahn_factor,
         double Na, double Nb, double Nc,
         double Nd, double Ne, double Nf,
         double phi0, double phistep,
-        Eigen::Vector3d& spindle_vec, Eigen::Vector3d& _polarization_axis,
         int h_range, int k_range, int l_range,
         int h_max, int h_min, int k_max, int k_min, int l_max, int l_min, double dmin,
         double fudge, bool complex_miller, int verbose, bool only_save_omega_kahn,
@@ -156,18 +145,18 @@ void diffBragg::diffBragg_sum_over_steps(
             }
 
             double _phi = phi0 + phistep*_phi_tic;
-            Eigen::Matrix3d Bmat_realspace = eig_B;
+            Eigen::Matrix3d Bmat_realspace = eig_objs.eig_B;
             if( _phi != 0.0 )
             {
                 double cosphi = cos(_phi);
                 double sinphi = sin(_phi);
-                Eigen::Vector3d ap_vec(eig_B(0,0), eig_B(1,0), eig_B(2,0));
-                Eigen::Vector3d bp_vec(eig_B(0,1), eig_B(1,1), eig_B(2,1));
-                Eigen::Vector3d cp_vec(eig_B(0,2), eig_B(1,2), eig_B(2,2));
+                Eigen::Vector3d ap_vec(eig_objs.eig_B(0,0), eig_objs.eig_B(1,0), eig_objs.eig_B(2,0));
+                Eigen::Vector3d bp_vec(eig_objs.eig_B(0,1), eig_objs.eig_B(1,1), eig_objs.eig_B(2,1));
+                Eigen::Vector3d cp_vec(eig_objs.eig_B(0,2), eig_objs.eig_B(1,2), eig_objs.eig_B(2,2));
 
-                ap_vec = ap_vec*cosphi + spindle_vec.cross(ap_vec)*sinphi + spindle_vec*(spindle_vec.dot(ap_vec))*(1-cosphi);
-                bp_vec = bp_vec*cosphi + spindle_vec.cross(bp_vec)*sinphi + spindle_vec*(spindle_vec.dot(bp_vec))*(1-cosphi);
-                cp_vec = cp_vec*cosphi + spindle_vec.cross(cp_vec)*sinphi + spindle_vec*(spindle_vec.dot(cp_vec))*(1-cosphi);
+                ap_vec = ap_vec*cosphi + eig_objs.spindle_vec.cross(ap_vec)*sinphi + eig_objs.spindle_vec*(eig_objs.spindle_vec.dot(ap_vec))*(1-cosphi);
+                bp_vec = bp_vec*cosphi + eig_objs.spindle_vec.cross(bp_vec)*sinphi + eig_objs.spindle_vec*(eig_objs.spindle_vec.dot(bp_vec))*(1-cosphi);
+                cp_vec = cp_vec*cosphi + eig_objs.spindle_vec.cross(cp_vec)*sinphi + eig_objs.spindle_vec*(eig_objs.spindle_vec.dot(cp_vec))*(1-cosphi);
 
                 Bmat_realspace << ap_vec[0], bp_vec[0], cp_vec[0],
                                     ap_vec[1], bp_vec[1], cp_vec[1],
@@ -175,8 +164,8 @@ void diffBragg::diffBragg_sum_over_steps(
             }
             Bmat_realspace *= 1e10;
 
-            Eigen::Matrix3d U = eig_U;
-            Eigen::Matrix3d UBO = (UMATS_RXYZ[_mos_tic] * U*Bmat_realspace*(eig_O.transpose())).transpose();
+            Eigen::Matrix3d U = eig_objs.eig_U;
+            Eigen::Matrix3d UBO = (eig_objs.UMATS_RXYZ[_mos_tic] * U*Bmat_realspace*(eig_objs.eig_O.transpose())).transpose();
 
             Eigen::Vector3d q_vec(_scattering[0], _scattering[1], _scattering[2]);
             q_vec *= 1e-10;
@@ -367,15 +356,15 @@ void diffBragg::diffBragg_sum_over_steps(
             //    printf("hkl= %f %f %f  hkl1= %d %d %d  Fcell=%f\n", _h,_k,_l,_h0,_k0,_l0, _F_cell);
 
             double two_C = 2*C;
-            Eigen::Matrix3d UBOt = U*Bmat_realspace*(eig_O.transpose());
+            Eigen::Matrix3d UBOt = U*Bmat_realspace*(eig_objs.eig_O.transpose());
             if (refine_Umat[0]){
-                Eigen::Matrix3d RyRzUBOt = RotMats[1]*RotMats[2]*UBOt;
-                Eigen::Vector3d delta_H_prime = (UMATS[_mos_tic]*dRotMats[0]*RyRzUBOt).transpose()*q_vec;
+                Eigen::Matrix3d RyRzUBOt = eig_objs.RotMats[1]*eig_objs.RotMats[2]*UBOt;
+                Eigen::Vector3d delta_H_prime = (eig_objs.UMATS[_mos_tic]*eig_objs.dRotMats[0]*RyRzUBOt).transpose()*q_vec;
                 double V_dot_dV = V.dot(_NABC*delta_H_prime);
                 double value = -two_C * V_dot_dV * Iincrement;
                 double value2 =0;
                 if (compute_curvatures) {
-                    Eigen::Vector3d delta_H_dbl_prime = (UMATS[_mos_tic]*d2RotMats[0]*RyRzUBOt).transpose()*q_vec;
+                    Eigen::Vector3d delta_H_dbl_prime = (eig_objs.UMATS[_mos_tic]*eig_objs.d2RotMats[0]*RyRzUBOt).transpose()*q_vec;
                     double dV_dot_dV = (_NABC*delta_H_prime).dot(_NABC*delta_H_prime);
                     double dV2_dot_V = (_NABC*delta_H).dot(_NABC*delta_H_dbl_prime);
                     value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
@@ -384,15 +373,15 @@ void diffBragg::diffBragg_sum_over_steps(
                 rot_manager_dI2[0] += value2;
             }
             if (refine_Umat[1]){
-                Eigen::Matrix3d UmosRx = UMATS[_mos_tic]*RotMats[0];
-                Eigen::Matrix3d RzUBOt = RotMats[2]*UBOt;
-                Eigen::Vector3d delta_H_prime =(UmosRx*dRotMats[1]*RzUBOt).transpose()*q_vec;
+                Eigen::Matrix3d UmosRx = eig_objs.UMATS[_mos_tic]*eig_objs.RotMats[0];
+                Eigen::Matrix3d RzUBOt = eig_objs.RotMats[2]*UBOt;
+                Eigen::Vector3d delta_H_prime =(UmosRx*eig_objs.dRotMats[1]*RzUBOt).transpose()*q_vec;
                 double V_dot_dV = V.dot(_NABC*delta_H_prime);
                 double value = -two_C * V_dot_dV * Iincrement;
 
                 double value2=0;
                 if (compute_curvatures){
-                    Eigen::Vector3d delta_H_dbl_prime = (UmosRx*d2RotMats[1]*RzUBOt).transpose()*q_vec;
+                    Eigen::Vector3d delta_H_dbl_prime = (UmosRx*eig_objs.d2RotMats[1]*RzUBOt).transpose()*q_vec;
                     double dV_dot_dV = (_NABC*delta_H_prime).dot(_NABC*delta_H_prime);
                     double dV2_dot_V = (_NABC*delta_H).dot(_NABC*delta_H_dbl_prime);
                     value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
@@ -401,14 +390,14 @@ void diffBragg::diffBragg_sum_over_steps(
                 rot_manager_dI2[1] += value2;
             }
             if (refine_Umat[2]){
-                Eigen::Matrix3d UmosRxRy = UMATS[_mos_tic]*RotMats[0]*RotMats[1];
-                Eigen::Vector3d delta_H_prime = (UmosRxRy*dRotMats[2]*UBOt).transpose()*q_vec;
+                Eigen::Matrix3d UmosRxRy = eig_objs.UMATS[_mos_tic]*eig_objs.RotMats[0]*eig_objs.RotMats[1];
+                Eigen::Vector3d delta_H_prime = (UmosRxRy*eig_objs.dRotMats[2]*UBOt).transpose()*q_vec;
                 double V_dot_dV = V.dot(_NABC*delta_H_prime);
                 double value = -two_C * V_dot_dV * Iincrement;
 
                 double value2=0;
                 if (compute_curvatures){
-                    Eigen::Vector3d delta_H_dbl_prime = (UmosRxRy*d2RotMats[2]*UBOt).transpose()*q_vec;
+                    Eigen::Vector3d delta_H_dbl_prime = (UmosRxRy*eig_objs.d2RotMats[2]*UBOt).transpose()*q_vec;
                     double dV_dot_dV = (_NABC*delta_H_prime).dot(_NABC*delta_H_prime);
                     double dV2_dot_V = (_NABC*delta_H).dot(_NABC*delta_H_dbl_prime);
                     value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
@@ -417,18 +406,18 @@ void diffBragg::diffBragg_sum_over_steps(
                 rot_manager_dI2[2] += value2;
             }
             /*Checkpoint for unit cell derivatives*/
-            Eigen::Matrix3d Ot = eig_O.transpose();
+            Eigen::Matrix3d Ot = eig_objs.eig_O.transpose();
             Eigen::Matrix3d UmosRxRyRzU ;
             Eigen::Vector3d delta_H_prime;
             for(int i_uc=0; i_uc < 6; i_uc++ ){
                 if (refine_Bmat[i_uc]){
-                    UmosRxRyRzU = UMATS_RXYZ[_mos_tic]*U;
-                    delta_H_prime = ((UmosRxRyRzU*dB_Mats[i_uc]*Ot).transpose()*q_vec);
+                    UmosRxRyRzU = eig_objs.UMATS_RXYZ[_mos_tic]*U;
+                    delta_H_prime = ((UmosRxRyRzU*eig_objs.dB_Mats[i_uc]*Ot).transpose()*q_vec);
                     double V_dot_dV = V.dot(_NABC*delta_H_prime);
                     double value = -two_C * V_dot_dV * Iincrement;
                     double value2 =0;
                     if (compute_curvatures){
-                        Eigen::Vector3d delta_H_dbl_prime = ((UmosRxRyRzU*dB2_Mats[i_uc]*Ot).transpose()*q_vec);
+                        Eigen::Vector3d delta_H_dbl_prime = ((UmosRxRyRzU*eig_objs.dB2_Mats[i_uc]*Ot).transpose()*q_vec);
                         double dV_dot_dV = (_NABC*delta_H_prime).dot(_NABC*delta_H_prime);
                         double dV2_dot_V = (_NABC*delta_H).dot(_NABC*delta_H_dbl_prime);
                         value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
@@ -538,7 +527,7 @@ void diffBragg::diffBragg_sum_over_steps(
                     double lambda_ang = _lambda*1e10;
                     Eigen::Matrix3d M = -two_C*(_NABC*UBO)/lambda_ang;
 
-                    Eigen::Vector3d dk = _Fdet*(dF_vecs[_pid*3 + i_pan_rot]) + _Sdet*(dS_vecs[_pid*3 + i_pan_rot]);
+                    Eigen::Vector3d dk = _Fdet*(eig_objs.dF_vecs[_pid*3 + i_pan_rot]) + _Sdet*(eig_objs.dS_vecs[_pid*3 + i_pan_rot]);
                     af::flex_double dI_and_dI2 = get_panel_increment(Iincrement, _omega_pixel, M, subpixel_size*subpixel_size,
                         _o_vec, _pixel_pos, per_k,  per_k3, per_k5, V, dk);
                     pan_rot_manager_dI[i_pan_rot] += dI_and_dI2[0];
@@ -582,11 +571,11 @@ void diffBragg::diffBragg_sum_over_steps(
             /* checkpoint for eta manager */
             if (refine_eta){
                 for (int i_eta=0; i_eta < 3; i_eta++){
-                    if (i_eta != 0 && UMATS_RXYZ_prime.size()==UMATS_RXYZ.size()){
+                    if (i_eta != 0 && eig_objs.UMATS_RXYZ_prime.size()==eig_objs.UMATS_RXYZ.size()){
                         continue;
                     }
                     int mtic2 = _mos_tic  + i_eta*mosaic_domains;
-                    Eigen::Vector3d DeltaH_deriv = (UMATS_RXYZ_prime[mtic2]*UBOt).transpose()*q_vec;
+                    Eigen::Vector3d DeltaH_deriv = (eig_objs.UMATS_RXYZ_prime[mtic2]*UBOt).transpose()*q_vec;
                     // vector V is _Nabc*Delta_H
                     Eigen::Vector3d dV = _NABC*DeltaH_deriv;
                     double V_dot_dV = V.dot(dV);
@@ -595,7 +584,7 @@ void diffBragg::diffBragg_sum_over_steps(
 
                     double Idbl_prime = 0;
                     if (compute_curvatures){
-                        Eigen::Vector3d DeltaH_second_deriv = (UMATS_RXYZ_dbl_prime[mtic2]*UBOt).transpose()*q_vec;
+                        Eigen::Vector3d DeltaH_second_deriv = (eig_objs.UMATS_RXYZ_dbl_prime[mtic2]*UBOt).transpose()*q_vec;
                         Eigen::Vector3d dV2 = _NABC*DeltaH_second_deriv;
                         Idbl_prime = -two_C*(dV.dot(dV) + V.dot(dV2))*Iincrement;
                         Idbl_prime += -two_C*(V_dot_dV)*Iprime;
@@ -647,7 +636,7 @@ void diffBragg::diffBragg_sum_over_steps(
                     printf("O: %f %f %f\n" , odet_vectors[pid_x], odet_vectors[pid_y], odet_vectors[pid_z]);
                     printf("QVECTOR: %f %f %f\n" , q_vec[0], q_vec[1], q_vec[2]);
                     printf("MOSAIC UMAT RXYZ\n");
-                    std::cout << UMATS_RXYZ[_mos_tic] << std::endl;
+                    std::cout << eig_objs.UMATS_RXYZ[_mos_tic] << std::endl;
                     printf("Bmat_realspace\n");
                     std::cout << Bmat_realspace << std::endl;
                     printf("UBO\n");
@@ -714,7 +703,7 @@ void diffBragg::diffBragg_sum_over_steps(
                 double _psi=0;
                 if(kahn_factor != 0.0){
                     // cross product to get "vertical" axis that is orthogonal to the cannonical "polarization"
-                    Eigen::Vector3d B_in = _polarization_axis.cross(_incident);
+                    Eigen::Vector3d B_in = eig_objs._polarization_axis.cross(_incident);
                     // cross product with incident beam to get E-vector direction
                     Eigen::Vector3d E_in = _incident.cross(B_in);
                     // get components of diffracted ray projected onto the E-B plane
@@ -830,9 +819,9 @@ void diffBragg::diffBragg_sum_over_steps(
             //double value2 = _scale_term*eta_manager_dI2[0];
             //d_eta_images[i_pix] = value;
             //d2_eta_images[i_pix] = value2;
-            //if (UMATS_RXYZ_prime.size() >= 3*mosaic_domains){
+            //if (eig_objs.UMATS_RXYZ_prime.size() >= 3*mosaic_domains){
             for(int i_eta=0; i_eta<3; i_eta++){
-                if (i_eta != 0 && UMATS_RXYZ.size() == UMATS_RXYZ_prime.size())
+                if (i_eta != 0 && eig_objs.UMATS_RXYZ.size() == eig_objs.UMATS_RXYZ_prime.size())
                     continue;
                 int idx = i_pix + Npix_to_model*i_eta;
                 double value = _scale_term*eta_manager_dI[i_eta];

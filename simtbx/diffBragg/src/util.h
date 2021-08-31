@@ -2,6 +2,9 @@
 #ifndef SIMTBX_DIFFBRAGG_UTIL
 #define SIMTBX_DIFFBRAGG_UTIL
 
+#include <Eigen/Dense>
+#include<Eigen/StdVector>
+
 
 typedef std::vector<double> image_type;
 struct timer_variables{
@@ -39,6 +42,32 @@ struct step_arrays{
    int* source_pos;
    int* phi_pos;
    int* mos_pos;
+};
+
+struct eigen_objects{
+   Eigen::Matrix3d eig_U;
+   Eigen::Matrix3d eig_O;
+   Eigen::Matrix3d eig_B;
+   Eigen::Matrix3d RXYZ;
+
+   std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dF_vecs;
+   std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dS_vecs;
+
+   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_RXYZ;
+   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_RXYZ_prime;
+   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_RXYZ_dbl_prime;
+   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > RotMats;
+   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dRotMats;
+   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > d2RotMats;
+   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS;
+   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_prime;
+   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_dbl_prime;
+
+   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dB_Mats;
+   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dB2_Mats;
+
+   Eigen::Vector3d spindle_vec;
+   Eigen::Vector3d _polarization_axis;
 };
 
 #endif

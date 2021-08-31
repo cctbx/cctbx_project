@@ -133,6 +133,7 @@ class diffBragg: public nanoBragg{
 
   images first_deriv_imgs, second_deriv_imgs;
   step_arrays db_steps;
+  eigen_objects eig_objs;
 
   void diffBragg_sum_over_steps(
         int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,
@@ -146,24 +147,13 @@ class diffBragg: public nanoBragg{
         int oversample, bool _oversample_omega, double subpixel_size, double pixel_size,
         double detector_thickstep, double _detector_thick, std::vector<double>& close_distances, double detector_attnlen,
         bool use_lambda_coefficients, double lambda0, double lambda1,
-        Eigen::Matrix3d& eig_U, Eigen::Matrix3d& eig_O, Eigen::Matrix3d& eig_B, Eigen::Matrix3d& RXYZ,
-        std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> >& dF_vecs,
-        std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> >& dS_vecs,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& UMATS_RXYZ,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& UMATS_RXYZ_prime,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& UMATS_RXYZ_dbl_prime,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& RotMats,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& dRotMats,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& d2RotMats,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& UMATS,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& dB_Mats,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& dB2_Mats,
+        eigen_objects& eig_objs,
+
         double* source_X, double* source_Y, double* source_Z, double* source_lambda, double* source_I,
         double kahn_factor,
         double Na, double Nb, double Nc,
         double Nd, double Ne, double Nf,
         double phi0, double phistep,
-        Eigen::Vector3d& spindle_vec, Eigen::Vector3d& _polarization_axis,
         int h_range, int k_range, int l_range,
         int h_max, int h_min, int k_max, int k_min, int l_max, int l_min, double dmin,
         double fudge, bool complex_miller, int verbose, bool only_save_omega_kahn,
