@@ -60,20 +60,62 @@ from cctbx import miller, sgtbx
 
 class LocalRefiner(BaseRefiner):
 
-    def __init__(self,
-                 shot_modelers, sgsymbol, params):
+    def __init__(self, shot_modelers, sgsymbol, params):
         BaseRefiner.__init__(self)
+        self.save_model_freq = 10  # save pixel model values after this many iterations
+        self.saveZ_freq = 5  # save Zscore data every N iterations
+        self.break_signal = None  # check for this signal during refinement, and break refinement if signal is received (see python signal module)
+        self.print_end = "\n"  # value appended to the end of each printed string
+        self.refine_blueSausages = False  # refine multiple crystals per image (e.g. James Holtons blue sausage plot)
+        self.refine_eta = False  # refine the mosaic spread angle
+        self.refine_per_spot_scale = False  # experimental, refine a per spot scale factor for each ROI
+        self.save_model = False  # whether to save the model
+        self.idx_from_asu = {}  # maps global fcell index to asu hkl
+        self.asu_from_idx = {}  # maps asu hkl to global fcell index
+        self.rescale_params = True  # whether to rescale parameters during refinement  # TODO this will always be true, so remove the ability to disable
+        self.fcell_sigma_scale = 0.005  # sensitivity for Fcell during refinement
+        self.pause_after_iteration = 0.001  # pause for this long after each iteration (not used currently)
+        self.request_diag_once = False  # LBFGS refiner property
+        self.output_dir = None  # directory to dump progress files, these can be used to restart simulation later
+        self.min_multiplicity = 1  # only refine a spots Fhkl if multiplicity greater than this number
+        self.restart_file = None  # output file from previous run refinement
+        self.trial_id = 0  # trial id in case multiple trials are run in sequence
+        self.x_init = None  # used to restart the refiner (e.g. self.x gets updated with this)
+        self.log_fcells = True  # to refine Fcell using logarithms to avoid negative Fcells
+        self.refine_background_planes = False  # whether to refine the background planes
+        self.refine_ncells = False  # whether to refine Ncells abc
+        self.refine_ncells_def = False  # whether to refine Ncells abc
+        self.refine_detdist = False  # whether to refine the detdist
+        self.refine_panelXY = False  # whether to refine panel origin X and Y components
+        self.refine_panelZ = False  # whether to refine panel origin X and Y components
+        self.refine_panelRotO = False  # whether to refine the panel rotation
+        self.refine_panelRotF = False  # whether to refine the panel rotation
+        self.refine_panelRotS = False  # whether to refine the panel rotation
+        self.refine_Umatrix = False  # whether to refine the Umatrix
+        self.refine_Bmatrix = False  # whether to refine the Bmatrx
+        self.refine_crystal_scale = False  # whether to refine the crystal scale factor
+        self.refine_Fcell = False  # whether to refine Fhkl for each shoebox ROI
+        self.use_curvatures_threshold = 7  # how many positive curvature iterations required before breaking, after which simulation can be restart with use_curvatures=True
+        self.verbose = True  # whether to print during iterations
+        self.iterations = 0  # iteration counter , used internally
+        self.shot_ids = None  # for global refinement ,
+        self.sigma_r = 3.  # readout noise mean in ADU
+        self.log2pi = np.log(np.pi*2)
+
+        self._sig_hand = None  # method for handling the break_signal, e.g. SIGHAND.handle defined above (theres an MPI version in global_refiner that overwrites this in stage 2)
+        self._is_trusted = None  # used during refinement, 1-D array or trusted pixels corresponding to the pixels in the ROI
+
         self.rank = COMM.rank
         self.params = params
         self.save_model_freq = self.params.refiner.stage_two.save_model_freq
         self.use_nominal_h = self.params.refiner.stage_two.use_nominal_hkl
+        self.init_image_corr = None
 
         self.Modelers = shot_modelers
         self.shot_ids = sorted(self.Modelers.keys())
         self.n_shots = len(shot_modelers)
         self.n_shots_total = COMM.bcast(COMM.reduce(self.n_shots))
         LOGGER.debug("Loaded %d shots across all ranks" % self.n_shots_total)
-        self.init_image_corr = None
         self.f_vals = []  # store the functional over time
 
         self._ncells_id = 9  # diffBragg internal index for Ncells derivative manager
@@ -187,11 +229,10 @@ class LocalRefiner(BaseRefiner):
         self.idx_from_pid = {}
 
         self.x = flex.double(np.ones(self.n_total_params))
-        LOGGER.info("--1 Setting up per shot parameters")
+        LOGGER.info("--Setting up per shot parameters")
 
         self.fcell_xstart = self.n_total_shots*N_PARAM_PER_SHOT
 
-        LOGGER.info("REduction of global data layout")
         self.hkl_totals = []
         if self.refine_Fcell:
             for i_shot in self.shot_ids:
@@ -202,14 +243,14 @@ class LocalRefiner(BaseRefiner):
         self._MPI_setup_global_params()
         self._MPI_sync_fcell_parameters()
         # reduce then broadcast fcell
-        LOGGER.info("--3 combining parameters across ranks")
+        LOGGER.info("--combining parameters across ranks")
         self._MPI_sync_hkl_freq()
 
         if self.x_init is not None:
-            print("Initializing with provided x_init array")
+            LOGGER.info("Initializing with provided x_init array")
             self.x = self.x_init
         elif self.restart_file is not None:
-            print("Restarting from parameter file %s" % self.restart_file)
+            LOGGER.info("Restarting from parameter file %s" % self.restart_file)
             self.x = flex.double(np.load(self.restart_file)["x"])
 
         # setup the diffBragg instance
@@ -229,6 +270,7 @@ class LocalRefiner(BaseRefiner):
         LOGGER.info("Setup ends!")
 
     def _get_i_fcell_slices(self, Modeler):
+        """finds the boundaries for each fcell in the 1-D array of per-shot data"""
         # TODO move this to Data Modeler class ?
         splitter = np.where(np.diff(Modeler.all_fcell_global_idx) != 0)[0]+1
         npix = len(Modeler.all_fcell_global_idx)
@@ -243,7 +285,7 @@ class LocalRefiner(BaseRefiner):
         return i_fcell_slices
 
     def _get_shot_mapping(self):
-
+        """each modeled shot maps to an integer along interval [0,Nshots) """
         all_shot_ids = COMM.gather(self.shot_ids)
         shot_mapping = None
         if COMM.rank == 0:
@@ -271,9 +313,6 @@ class LocalRefiner(BaseRefiner):
 
             self._setup_fcell_params()
 
-    #def _set_roi_mask(self):
-    #    self._is_trusted = self.Modelers[self._i_shot].all_trusted
-
     def _setup_fcell_params(self):
         if self.refine_Fcell:
             self.print("----loading fcell data")
@@ -285,12 +324,6 @@ class LocalRefiner(BaseRefiner):
             np.save(os.path.join(self.output_dir, "f_asu_multi"), self.hkl_frequency)
             LOGGER.info("Done ")
 
-            # initialize the Fhkl global values
-            #LOGGER.info("--- --- --- inserting the Fhkl array in the parameter array... ")
-            #asu_idx = [self.asu_from_idx[idx] for idx in range(self.n_global_fcell)]
-            #self._refinement_millers = flex.miller_index(tuple(asu_idx))
-            #Findices, Fdata = self.S.D.Fhkl_tuple
-            #vals = [Fdata[self.idx_from_p1[h]] for h in asu_idx]  # TODO am I correct/
             LOGGER.info("local refiner symbol=%s ; nanoBragg crystal symbol: %s" % (self.symbol, self.S.crystal.symbol))
             ma = self.S.crystal.miller_array_high_symmetry.map_to_asu()
             LOGGER.info("make an Fhkl map")
@@ -401,19 +434,11 @@ class LocalRefiner(BaseRefiner):
     def _update_Fcell(self):
         if not self.refine_Fcell:
             return
-        #idx, data = self.S.D.Fhkl_tuple
-        #data = data.as_numpy_array()
         update_amps = []
         for i_fcell in range(self.n_global_fcell):
-            #new_Fcell_amplitude = self._get_fcell_val(i_fcell)
             new_Fcell_amplitude = self._fcell_at_i_fcell[i_fcell]
             update_amps += [new_Fcell_amplitude] * self.num_equivs_for_i_fcell[i_fcell]
-            # now surgically update the p1 array in nanoBragg with the new amplitudes
-            # (need to update each symmetry equivalent)
-            #p1_indices = self.p1_indices_from_i_fcell[i_fcell]
-            #data[p1_indices] = new_Fcell_amplitude
 
-        #self.S.D.Fhkl_tuple = idx, flex.double(data)  # update nanoBragg again  # TODO: add flag to not re-allocate in nanoBragg!
         update_amps = flex.double(update_amps)
         self.S.D.quick_Fhkl_update((self.update_indices, update_amps))
 
@@ -499,17 +524,7 @@ class LocalRefiner(BaseRefiner):
         self.Bfactor_qterm = Mod.all_q_perpix**2 / 4.
         self._expBq = np.exp(-self.b_fac**2 * self.Bfactor_qterm)
         self.model_bragg_spots = self._expBq*self.scale_fac*(self._model_pix)
-        #self.model_bragg_spots *= self._get_per_spot_scale(self._i_shot, self._i_spot)
-        #self._extract_Umatrix_derivative_pixels()
-        #self._extract_sausage_derivs()
-        #self._extract_Bmatrix_derivative_pixels()
-        #self._extract_mosaic_parameter_m_derivative_pixels()
-        #self._extract_ncells_def_derivative_pixels()
-        #self._extract_detector_distance_derivative_pixels()
         self._extract_Fcell_derivative_pixels()
-        #self._extract_spectra_coefficient_derivatives()
-        #self._extract_panelRot_derivative_pixels()
-        #self._extract_panelXYZ_derivative_pixels()
 
     def _update_ucell(self):
         self.D.Bmatrix = self.Modelers[self._i_shot].PAR.Bmatrix
@@ -916,9 +931,9 @@ class LocalRefiner(BaseRefiner):
         #self.one_over_v_times_one_minus_2u_minus_u_squared_over_v = self.one_over_v*self.one_minus_2u_minus_u_squared_over_v
         self.common_grad_term = self.one_over_v * self.one_minus_2u_minus_u_squared_over_v
         #if self.compute_Z:
-        #self._Zscore = self.u*np.sqrt(self.one_over_v)
-        self.one_over_v_data = 1. / (self.Imeas + self.sigma_r ** 2)
-        self._Zscore = self.u*np.sqrt(self.one_over_v_data)
+        self._Zscore = self.u*np.sqrt(self.one_over_v)
+        #self.one_over_v_data = 1. / (self.Imeas + self.sigma_r ** 2)
+        #self._Zscore = self.u*np.sqrt(self.one_over_v_data)
 
     def _evaluate_log_averageI(self):  # for Poisson only stats
         try:

@@ -502,6 +502,9 @@ roi {
     .help = if not using robust estimation for background, and instead using tilt plane fit,
     .help = then this parameter will toggle the use of weights. Weights are the estimated
     .help = pixel variance, incuding readout and shot noises.
+  allow_overlapping_spots = False
+    .type = bool
+    .help = if True, then model overlapping spots
 }
 """
 
