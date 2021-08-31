@@ -26,7 +26,7 @@ def tst_01(log = sys.stdout):
 
     selections = get_domain_selections_from_pae_matrix(pae_file = args.pae_file,
         pae_power = args.pae_power, pae_cutoff = args.pae_cutoff,
-         resolution =  args.resolution,)
+         graph_resolution =  args.resolution,)
     print("Selections:")
     for s in selections:
        print(s)
