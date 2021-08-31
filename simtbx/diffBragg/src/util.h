@@ -31,4 +31,17 @@ struct images{
     image_type fp_fdp;
 };
 
+
+struct step_data{
+   int* subS_pos;
+   int* subF_pos;
+   int* thick_pos;
+   int* source_pos;
+   int* phi_pos;
+   int* mos_pos;
+   const int Nsteps;
+   double phi0;
+   double phistep;
+};
+
 #endif

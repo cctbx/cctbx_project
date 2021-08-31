@@ -41,9 +41,6 @@ class panel_manager: public derivative_manager{
     panel_manager();
    virtual void foo(){}
     virtual ~panel_manager(){}
-    //virtual void set_R();
-    //void increment(double Iincrement, double omega_pixel, Eigen::Matrix3d M, double pix2, Eigen::Vector3d o, Eigen::Vector3d k_diffracted,
-    //            double per_k, double per_k3, double per_k5, Eigen::Vector3d V);
 
     Eigen::Matrix3d dR;
     Eigen::Vector3d dF;
@@ -71,7 +68,6 @@ class Ncells_manager: public derivative_manager{
     Ncells_manager();
     virtual ~Ncells_manager(){}
     void increment(double dI_increment, double dI2_increment);
-    //bool single_parameter;  // refine a single parameter (Na=Nb=Nc), or else all 3 parameters (Na, Nb, Nc)
 };
 
 
@@ -103,7 +99,6 @@ class ucell_manager: public derivative_manager{
     ucell_manager();
     virtual ~ucell_manager(){}
     void increment(double value, double value2);
-
     Eigen::Matrix3d dB, dB2;
 };
 
@@ -111,12 +106,6 @@ class origin_manager: public derivative_manager{
   public:
     origin_manager();
     virtual ~origin_manager(){}
-    //void increment(
-    //    const Eigen::Ref<const Eigen::Vector3d>vec3 V,
-    //    const Eigen::Ref<const Eigen::Matrix3d>mat3 N, const Eigen::Ref<const Eigen::Matrix3d>mat3 UBO,
-    //    const Eigen::Ref<const Eigen::Vector3d>vec3 k_diffracted, const Eigen::Ref<const Eigen::Vector3d>vec3 o_vec,
-    //    double air_path, double wavelen, double Hrad, double Fcell, double Flatt, double fudge,
-    //    double source_I, double capture_fraction, double omega_pixel, double pixel_size);
     Eigen::Vector3d dk; /* derivative of the diffracted vector along this origin component */
     double FF, FdF, FdF2, dFdF;
 };
@@ -137,8 +126,6 @@ class rotZ_manager: public rot_manager{
     void set_R();
 };
 
-
-
 class diffBragg: public nanoBragg{
   public:
   diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model::Beam& beam,
@@ -152,7 +139,7 @@ class diffBragg: public nanoBragg{
         images& d_image,
         images& d2_image,
         int* subS_pos, int* subF_pos, int* thick_pos,
-        int* source_pos, int* phi_pos, int* mos_pos, int* sausage_pos,
+        int* source_pos, int* phi_pos, int* mos_pos,
         const int Nsteps, int _printout_fpixel, int _printout_spixel, bool _printout, double _default_F,
         int oversample, bool _oversample_omega, double subpixel_size, double pixel_size,
         double detector_thickstep, double _detector_thick, std::vector<double>& close_distances, double detector_attnlen,
@@ -169,10 +156,6 @@ class diffBragg: public nanoBragg{
         std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& UMATS,
         std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& dB_Mats,
         std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& dB2_Mats,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& sausages_RXYZ,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& d_sausages_RXYZ,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& sausages_U,
-        std::vector<double>& sausages_scale,
         double* source_X, double* source_Y, double* source_Z, double* source_lambda, double* source_I,
         double kahn_factor,
         double Na, double Nb, double Nc,
@@ -186,8 +169,6 @@ class diffBragg: public nanoBragg{
         std::vector<double>& _FhklLinear, std::vector<double>& _Fhkl2Linear,
         std::vector<bool>& refine_Bmat, std::vector<bool>& refine_Ncells, bool refine_Ncells_def,  std::vector<bool>& refine_panel_origin, std::vector<bool>& refine_panel_rot,
         bool refine_fcell, std::vector<bool>& refine_lambda, bool refine_eta, std::vector<bool>& refine_Umat,
-        bool refine_sausages,
-        int num_sausages,
         bool refine_fp_fdp,
         std::vector<double>& fdet_vectors, std::vector<double>& sdet_vectors,
         std::vector<double>& odet_vectors, std::vector<double>& pix0_vectors,
@@ -207,7 +188,7 @@ class diffBragg: public nanoBragg{
   void update_linear_Fhkl();
   void diffBragg_list_steps(
                 int* subS_pos,  int* subF_pos,  int* thick_pos,
-                int* source_pos,  int* phi_pos,  int* mos_pos , int* sausage_pos);
+                int* source_pos,  int* phi_pos,  int* mos_pos );
   ~diffBragg(){};
   void diffBragg_sum_over_steps_cuda();
 
@@ -261,15 +242,11 @@ class diffBragg: public nanoBragg{
         double panel_rot_angF=0,  double panel_rot_angS=0, double panel_offsetX=0,
         double panel_offsetY=0, double panel_offsetZ=0, bool force=true);
   void set_value( int refine_id, double value);
-  void set_sausages(af::flex_double x, af::flex_double y, af::flex_double z, af::flex_double scale);
   void set_ncells_values( boost::python::tuple const& values);
   void set_ncells_def_values( boost::python::tuple const& values);
   void print_if_refining();
   boost::python::tuple get_ncells_values();
   boost::python::tuple get_fcell_derivative_pixels();
-  boost::python::list get_sausage_derivative_pixels();
-  boost::python::list get_sausage_scale_derivative_pixels();
-  bool refining_sausages=false;
   double get_value( int refine_id);
   af::flex_double get_derivative_pixels(int refine_id);
   af::flex_double get_second_derivative_pixels(int refine_id);
@@ -346,8 +323,6 @@ class diffBragg: public nanoBragg{
 
   /* derivative managers */
   std::vector<boost::shared_ptr<Fcell_manager> > fp_fdp_managers;
-  std::vector<boost::shared_ptr<rot_manager> > sausage_managers;
-  std::vector<boost::shared_ptr<derivative_manager> > sausage_scale_managers;
   std::vector<boost::shared_ptr<rot_manager> > rot_managers;
   std::vector<boost::shared_ptr<ucell_manager> > ucell_managers;
   std::vector<boost::shared_ptr<Ncells_manager> > Ncells_managers;
@@ -453,7 +428,6 @@ class diffBragg: public nanoBragg{
   bool update_dB_matrices_on_device=false;
   bool update_detector_on_device=false;
   bool update_rotmats_on_device=false;
-  bool update_sausages_on_device=false;
   bool update_umats_on_device=false;
   bool update_panels_fasts_slows_on_device=false;
   bool update_sources_on_device=false;
@@ -463,12 +437,6 @@ class diffBragg: public nanoBragg{
   bool update_panel_deriv_vecs_on_device=false;
   bool use_cuda=false;
   int Npix_to_allocate=-1; // got GPU allocation, -1 is auto mode
-
-  void update_number_of_sausages(int _num_sausages);
-  void allocate_sausages();
-  int num_sausages=1;
-  std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > sausages_RXYZ, d_sausages_RXYZ, sausages_U;
-  std::vector<double> sausages_scale;
 
   timer_variables TIMERS;
   bool record_time = true;

@@ -12,7 +12,7 @@ void diffBragg::diffBragg_sum_over_steps(
         images& d_image,
         images& d2_image,
         int* subS_pos, int* subF_pos, int* thick_pos,
-        int* source_pos, int* phi_pos, int* mos_pos, int* sausage_pos,
+        int* source_pos, int* phi_pos, int* mos_pos,
         const int Nsteps, int _printout_fpixel, int _printout_spixel, bool _printout, double _default_F,
         int oversample, bool _oversample_omega, double subpixel_size, double pixel_size,
         double detector_thickstep, double _detector_thick, std::vector<double>& close_distances, double detector_attnlen,
@@ -29,10 +29,6 @@ void diffBragg::diffBragg_sum_over_steps(
         std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& UMATS,
         std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& dB_Mats,
         std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& dB2_Mats,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& sausages_RXYZ,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& d_sausages_RXYZ,
-        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& sausages_U,
-        std::vector<double>& sausages_scale,
         double* source_X, double* source_Y, double* source_Z, double* source_lambda, double* source_I,
         double kahn_factor,
         double Na, double Nb, double Nc,
@@ -46,8 +42,6 @@ void diffBragg::diffBragg_sum_over_steps(
         std::vector<double>& _FhklLinear, std::vector<double>& _Fhkl2Linear,
         std::vector<bool>& refine_Bmat, std::vector<bool>& refine_Ncells, bool refine_Ncells_def,  std::vector<bool>& refine_panel_origin, std::vector<bool>& refine_panel_rot,
         bool refine_fcell, std::vector<bool>& refine_lambda, bool refine_eta, std::vector<bool>& refine_Umat,
-        bool refine_sausages,
-        int num_sausages,
         bool refine_fp_fdp,
         std::vector<double>& fdet_vectors, std::vector<double>& sdet_vectors,
         std::vector<double>& odet_vectors, std::vector<double>& pix0_vectors,
@@ -92,7 +86,6 @@ void diffBragg::diffBragg_sum_over_steps(
         double lambda_manager_dI[2] = {0,0};
         double lambda_manager_dI2[2] = {0,0};
         double fp_fdp_manager_dI[2] = {0,0};
-        std::vector<double> sausage_manager_dI(num_sausages*4,0);
 
         for (int _i_step=0; _i_step < Nsteps; _i_step++){
 
@@ -102,7 +95,6 @@ void diffBragg::diffBragg_sum_over_steps(
             int _source = source_pos[_i_step];
             int _phi_tic = phi_pos[_i_step];
             int _mos_tic = mos_pos[_i_step];
-            int _sausage_tic = sausage_pos[_i_step];
 
             /* absolute mm position on detector (relative to its origin) */
             double _Fdet = subpixel_size*(_fpixel*oversample + _subF ) + subpixel_size/2.0;
@@ -182,7 +174,7 @@ void diffBragg::diffBragg_sum_over_steps(
             }
             Bmat_realspace *= 1e10;
 
-            Eigen::Matrix3d U = sausages_U[_sausage_tic] * eig_U;
+            Eigen::Matrix3d U = eig_U;
             Eigen::Matrix3d UBO = (UMATS_RXYZ[_mos_tic] * U*Bmat_realspace*(eig_O.transpose())).transpose();
 
             Eigen::Vector3d q_vec(_scattering[0], _scattering[1], _scattering[2]);
@@ -223,8 +215,7 @@ void diffBragg::diffBragg_sum_over_steps(
                 _omega_pixel = 1;
 
             /* increment to intensity */
-            double sauce = pow(sausages_scale[_sausage_tic],2);
-            double I_noFcell = _F_latt*_F_latt*source_I[_source]*_capture_fraction*_omega_pixel*sauce;
+            double I_noFcell = _F_latt*_F_latt*source_I[_source]*_capture_fraction*_omega_pixel;
 
             /* structure factor of the unit cell */
             double _F_cell = _default_F;
@@ -363,7 +354,6 @@ void diffBragg::diffBragg_sum_over_steps(
                 }
             }
             double Iincrement = _F_cell*_F_cell*I_noFcell;
-            //Iincrement *= sausages_scale[_sausage_tic]*sausages_scale[_sausage_tic];
             _I += Iincrement;
 
             // TODO if test?
@@ -613,32 +603,6 @@ void diffBragg::diffBragg_sum_over_steps(
                 }
             } /* end of eta man deriv */
 
-            // sausage deriv
-            if (refine_sausages){
-                Eigen::Matrix3d UBOt = eig_U*Bmat_realspace*(eig_O.transpose());
-                int x = _sausage_tic*3;
-                int y = _sausage_tic*3+1;
-                int z = _sausage_tic*3+2;
-                double value=0;
-                for (int i=0;i<3; i++){
-                    Eigen::Matrix3d UprimeBOt;
-                    if (i==0)
-                        UprimeBOt = d_sausages_RXYZ[x] * sausages_RXYZ[y] * sausages_RXYZ[z] * UBOt;
-                    else if (i==1)
-                        UprimeBOt = sausages_RXYZ[x] * d_sausages_RXYZ[y] * sausages_RXYZ[z] * UBOt;
-                    else
-                        UprimeBOt = sausages_RXYZ[x] * sausages_RXYZ[y] * d_sausages_RXYZ[z] * UBOt;
-
-                    Eigen::Vector3d DeltaH_deriv = (UMATS_RXYZ[_mos_tic]*UprimeBOt).transpose()*q_vec;
-                    value = -two_C*(V.dot(_NABC*DeltaH_deriv))*Iincrement;
-                    sausage_manager_dI[_sausage_tic*4 + i] += value;
-                }
-                // sausage scale derivative
-                value = 2* Iincrement / sausages_scale[_sausage_tic];
-                sausage_manager_dI[_sausage_tic*4 + 3] += value;
-            }
-            // end of sausage deriv
-
             /*checkpoint for lambda manager*/
             for(int i_lam=0; i_lam < 2; i_lam++){
                 if (refine_lambda[i_lam]){
@@ -669,7 +633,6 @@ void diffBragg::diffBragg_sum_over_steps(
                     printf(" F_cell=%g  F_cell_2=%g F_latt=%g   I = %g\n", _F_cell,_F_cell2,_F_latt,_I);
                     printf("I/steps %15.10g\n", _I/steps);
                     printf("cap frac   %f\n", _capture_fraction);
-                    printf("sauce   %f\n", sauce);
                     printf("Fdet= %g; Sdet= %g ; Odet= %g\n", _Fdet, _Sdet, _Odet);
                     printf("omega   %15.10g\n", _omega_pixel);
                     printf("close_distance    %15.10g\n", _close_distance);
@@ -702,10 +665,6 @@ void diffBragg::diffBragg_sum_over_steps(
                     SCITBX_EXAMINE(pix0_vectors[0]);
                     SCITBX_EXAMINE(pix0_vectors[1]);
                     SCITBX_EXAMINE(pix0_vectors[2]);
-                    for (int i=0; i < num_sausages; i++){
-                        printf("Matrix for sausage %d (scale=%f):\n", i, sausages_scale[i]);
-                        std::cout << sausages_U[i] << std::endl;
-                    }
                 }
             }
         } /* end of i_steps loop */
@@ -772,7 +731,7 @@ void diffBragg::diffBragg_sum_over_steps(
                 _om=_omega_pixel_ave;
 
             // final scale term to being everything to photon number units
-            _scale_term = _r_e_sqr*_fluence*_spot_scale*_polar*_om/Nsteps*num_sausages;
+            _scale_term = _r_e_sqr*_fluence*_spot_scale*_polar*_om/Nsteps;
 
             //int roi_i = i_pix; // TODO replace roi_i with i_pix
 
@@ -895,19 +854,6 @@ void diffBragg::diffBragg_sum_over_steps(
                 d2_image.lambda[idx] = value2;
             }
         }/* end lambda deriv image increment */
-
-        // sausage increment
-        if (refine_sausages){
-            for (int i_sausage=0; i_sausage<num_sausages; i_sausage++){
-                for (int i=0; i < 4; i++){
-                    int sausage_parameter_i = i_sausage*4+i;
-                    double value = _scale_term*sausage_manager_dI[sausage_parameter_i];
-                    int idx = sausage_parameter_i*Npix_to_model + i_pix;
-                    d_image.sausage[idx] = value;
-                }
-            }
-        }
-        // end sausage
 
         // panel rotation
         for (int i_pan_rot=0; i_pan_rot < 3; i_pan_rot++){

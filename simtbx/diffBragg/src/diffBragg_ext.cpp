@@ -344,12 +344,6 @@ namespace boost_python { namespace {
 
       .def("get_ncells_values", &simtbx::nanoBragg::diffBragg::get_ncells_values, "get Ncells values as a 3-tuple (Na, Nb, Nc)")
 
-      .def("update_number_of_sausages", &simtbx::nanoBragg::diffBragg::update_number_of_sausages, "sets the number of mosaic texture blocks (sausages)")
-
-      .def("set_sausages", &simtbx::nanoBragg::diffBragg::set_sausages, "sets the mosaic texture blocks (sausages) rotX, rotY, rotZ and scale factors")
-
-      .def("get_sausage_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_sausage_derivative_pixels, "deriv of intensity w.r.t. sausage parameters")
-
       .def("add_diffBragg_spots_full", &simtbx::nanoBragg::diffBragg::add_diffBragg_spots_full, "forward model and gradients at every pixel")
 
       .def("get_ncells_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_ncells_derivative_pixels, "get derivatives of intensity w.r.t (Na, Nb, Nc)")
