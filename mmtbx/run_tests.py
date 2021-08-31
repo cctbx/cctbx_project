@@ -62,6 +62,7 @@ general_tests = [
   "$D/ias/tst_ias.py",
   "$D/refinement/tst_fit_rotamers.py",
   "$D/regression/tst_process_predicted_model.py",
+  "$D/regression/.tst_domains_from_pae.py",
   ["$D/refinement/tst_anomalous_scatterer_groups.py", "P3"],
   "$D/refinement/tst_rigid_body.py",
   "$D/refinement/tst_rigid_body_groups_from_pdb_chains.py",
