@@ -38,10 +38,12 @@ master_phil_str = """
            low-confidence residues.
       .short_caption = Split model into compact regions
 
-    maximum_domains = None
+    maximum_domains = 3
       .type = int
       .help = Maximum domains to obtain.  You can use this to merge \
-                the closest domains at the end of splitting the model
+                the closest domains at the end of splitting the model. Make\
+                it bigger (and optionally make domain_size smaller) to \
+                get more domains.
       .short_caption = Maximum domains (optional)
 
     domain_size = 15
