@@ -149,9 +149,6 @@ refiner {
     .help = if True, try to exrtact per pixel dark data from image format
     .help = (only supported for Jungfrau16M formats)
     .help = see dxtbx FormatNexusJungfrauResRaw
-  use_cuda = False
-    .type = bool
-    .help = Use GPU acceleration during refinement (requires a CCTBX cuda build)
   randomize_devices = True
     .type = bool
     .help = randomly select a device Id

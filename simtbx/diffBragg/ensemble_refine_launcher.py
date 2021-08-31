@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-import os
 from simtbx.diffBragg.stage_two_utils import PAR_from_params
 import os
 import sys
@@ -13,8 +12,7 @@ except ImportError:
     print("Pandas is required. Install using 'libtbx.python -m pip install pandas'")
     exit()
 from xfel.merging.application.utils.memory_usage import get_memory_usage
-from simtbx.diffBragg.refiners.global_refiner import GlobalRefiner
-from simtbx.diffBragg.refine_launcher import LocalRefinerLauncher
+from simtbx.diffBragg.refiners.global_refiner import LocalRefiner
 from simtbx.diffBragg import utils
 from simtbx.diffBragg import hopper_utils
 from dxtbx.model.experiment_list import ExperimentListFactory
@@ -25,7 +23,7 @@ LOGGER = logging.getLogger("main")
 
 
 def global_refiner_from_parameters(params):
-    launcher = GlobalRefinerLauncher(params)
+    launcher = RefineLauncher(params)
     # TODO read on each rank, or read and broadcast ?
     LOGGER.info("EVENT: read input pickle")
     pandas_table = pandas.read_pickle(params.pandas_table)
@@ -36,33 +34,93 @@ def global_refiner_from_parameters(params):
     return launcher.launch_refiner(pandas_table)
 
 
-class GlobalRefinerLauncher(LocalRefinerLauncher):
+class RefineLauncher:
 
     def __init__(self, params):
-        super().__init__(params)
+        self.params = self.check_parameter_integrity(params)
         self.n_shots_on_rank = None
         self.df = None
-        self.WATCH_MISORIENTAION = False   # TODO add a phil
+        self.Modelers = {}
+        self.Hi = {}
+        self.Hi_asu = {}
+        self.symbol = None
+        self.DEVICE_ID = 0
 
-        self.SCALE_INIT_PER_SHOT = {}
-        self.NCELLS_INIT_PER_SHOT = {}
+
+    @property
+    def NPIX_TO_ALLOC(self):
+        return self._NPIX_TO_ALLOC
+
+    @NPIX_TO_ALLOC.setter
+    def NPIX_TO_ALLOC(self, val):
+        assert val> 0 or val == -1
+        self._NPIX_TO_ALLOC = int(val)
+
+    @staticmethod
+    def check_parameter_integrity(params):
+        if params.refiner.max_calls is None or len(params.refiner.max_calls) == 0:
+            raise ValueError("Cannot refine because params.refiner.max_calls is empty")
+
+        if os.environ.get("DIFFBRAGG_CUDA") is not None:
+            params.refiner.use_cuda = True
+
+        return params
 
     @property
     def num_shots_on_rank(self):
         return len(self.Modelers)
 
-    def _alias_refiner(self):
-        self._Refiner = GlobalRefiner
+    def _init_panel_group_information(self, detector):
+        # default is one group per panel:
+        self.panel_group_from_id = {pid: 0 for pid in range(len(detector))}
+        # if specified in a file, then overwrite:
+        if self.params.refiner.panel_group_file is not None:
+            self.panel_group_from_id = utils.load_panel_group_file(self.params.refiner.panel_group_file)
+            if not self.panel_group_from_id:
+                raise ValueError("Loading panel group file %s  produced an panel group dict!"
+                                 % self.params.refiner.panel_group_file)
+
+        # how many unique panel groups :
+        panel_groups = set(self.panel_group_from_id.values())
+        self.n_panel_groups = len(panel_groups)
+
+        # make dict where the key is the panel group id, and the value is a list of the panel ids within the group
+        panels_per_group = {group_id: [] for group_id in panel_groups}
+        for pid in self.panel_group_from_id:
+            group_id = self.panel_group_from_id[pid]
+            panels_per_group[group_id].append(pid)
+
+        # we should rotate each panel in a group about the same reference point
+        # Make a dict where key is panel id, and the  value is a reference origin
+        self.panel_reference_from_id = {}
+        for pid in self.panel_group_from_id:
+            group_id = self.panel_group_from_id[pid]
+
+            # take as reference, the origin of the first panel in the group
+            reference_panel = detector[panels_per_group[group_id][0]]
+            self.panel_reference_from_id[pid] = reference_panel.get_origin()
+
+    def _init_simulator(self, expt, miller_data):
+        self.SIM = utils.simulator_from_expt_and_params(expt, self.params)
+        # note self.SIM.D is a now diffBragg instance
+        # include mosaic texture ?
+
+        # update the miller data ?
+        if miller_data is not None:
+            self.SIM.crystal.miller_array = miller_data.as_amplitude_array()
+            self.SIM.update_Fhkl_tuple()
+
+    @staticmethod
+    def _check_experiment_integrity(expt):
+        for model in ["crystal", "detector", "beam", "imageset"]:
+            if not hasattr(expt, model):
+                raise ValueError("No %s in experiment, exiting. " % model)
+
 
     def launch_refiner(self, pandas_table, miller_data=None):
-        self._alias_refiner()
 
-        if COMM.rank == 0:
-            self.create_cache_dir()
         COMM.Barrier()
-
         num_exp = len(pandas_table)
-        #first_exper_file = pandas_table.opt_exp_name.values[0]
         first_exper_file = pandas_table.exp_name.values[0]
         detector = ExperimentListFactory.from_json_file(first_exper_file, check_format=False)[0].detector
         if detector is None and self.params.refiner.reference_geom is None:
@@ -103,12 +161,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             expt.detector = detector  # in case of supplied ref geom
             self._check_experiment_integrity(expt)
 
-            #exper_dataframe = pandas_table.query("opt_exp_name=='%s'" % exper_name)
             exper_dataframe = pandas_table.query("exp_name=='%s'" % exper_name)
-            rotX, rotY, rotZ = exper_dataframe[["rotX", "rotY", "rotZ"]].values[0]
-            self.rotXYZ_inits[shot_idx] = rotX, rotY, rotZ
-
-            self._set_initial_model_for_shot(shot_idx, exper_dataframe)
 
             refl_name = exper_dataframe.predictions.values[0]
             refls = flex.reflection_table.from_file(refl_name)
@@ -129,9 +182,6 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
                 if self.params.refiner.force_symbol is None:
                     if expt.crystal.get_space_group().type().lookup_symbol() != self.symbol:
                         raise ValueError("Crystals should all have the same space group symmetry")
-
-            #if "spectrum_filename" in list(exper_dataframe):
-            #    self.params.simulator.spectrum.filename = exper_dataframe.spectrum_filename.values[0] #self.input_spectrumnames[self.i_exp]
 
             if shot_idx == 0:  # each rank initializes a simulator only once
                 if self.params.simulator.init_scale != 1:
@@ -219,34 +269,10 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             shot_panel_groups_refined = self.determine_refined_panel_groups(shot_modeler.pids)
             rank_panel_groups_refined = rank_panel_groups_refined.union(set(shot_panel_groups_refined))
 
-            # <><><><><><>><><><><><><><><><>
-            # determine number of local parameters:
-            # <><><><><><>><><><><><><><><><><>
-            if not any(self.NCELLS_MASK):
-                n_ncells_param = 3
-            elif all(self.NCELLS_MASK):
-                n_ncells_param = 1
-            else:
-                n_ncells_param = 2
-
-            n_ncells_def_params = 3
-            nrot_params = 3
-            n_unitcell_params = len(UcellMan.variables)  # TODO verify all crystals have same space group sym
-            n_spotscale_params = 1
-            n_originZ_params = 1
-            n_eta_params = 3
-            n_tilt_params = 3 * len(shot_modeler.rois)
-            n_sausage_params = 4*self.params.simulator.crystal.num_sausages
-            n_per_spot_scales = len(shot_modeler.rois)
-            n_local_unknowns = nrot_params + n_unitcell_params + n_ncells_param + n_ncells_def_params + n_spotscale_params + n_originZ_params \
-                               + n_tilt_params + n_eta_params + n_sausage_params + n_per_spot_scales
-
-            rank_local_parameters.append(n_local_unknowns)
             shot_idx += 1
             if COMM.rank == 0:
                 self._mem_usage()
                 print("Finished loading image %d / %d" % (i_exp+1, len(exper_names)), flush=True)
-
 
             shot_modeler.PAR = PAR_from_params(self.params, expt, best=exper_dataframe)
             self.Modelers[i_exp] = shot_modeler
@@ -258,30 +284,13 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         self.shot_roi_darkRMS = None
 
         # TODO warn that per_spot_scale refinement not intended for ensemble mode
-
-        LOGGER.info("parameter stuff")
-        total_local_param_on_rank = sum(rank_local_parameters)
-        local_per_rank = COMM.gather(total_local_param_on_rank)
-        local_param_offset_per_rank = total_local_unknowns_all_ranks = None
-        if COMM.rank == 0:
-            local_param_offset_per_rank = {}
-            xpos = 0
-            for rank, n_unknown in enumerate(local_per_rank):
-                local_param_offset_per_rank[rank] = xpos
-                xpos += n_unknown
-            total_local_unknowns_all_ranks = sum(local_per_rank)
-        total_local_unknowns_all_ranks = COMM.bcast(total_local_unknowns_all_ranks)
-        local_param_offset_per_rank = COMM.bcast(local_param_offset_per_rank)[COMM.rank]
-
         all_refined_groups = COMM.gather(rank_panel_groups_refined)
         panel_groups_refined = None
         if COMM.rank == 0:
             panel_groups_refined = set()
             for set_of_panels in all_refined_groups:
                 panel_groups_refined = panel_groups_refined.union(set_of_panels)
-
         self.panel_groups_refined = list(COMM.bcast(panel_groups_refined))
-        LOGGER.info("done with parameter stuff")
 
         LOGGER.info("EVENT: Gathering global HKL information")
         self._gather_Hi_information()
@@ -289,23 +298,6 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         if self.params.roi.cache_dir_only:
             print("Done creating cache directory and cache_dir_only=True, so goodbye.")
             sys.exit()
-
-        n_spectra_params = 2 # if self.params.refiner.refine_spectra is not None else 0
-        n_panelRot_params = 3*self.n_panel_groups
-        n_panelXYZ_params = 3*self.n_panel_groups
-        n_global_params = n_spectra_params + n_panelRot_params + n_panelXYZ_params
-
-        #if self.params.refiner.refine_Fcell is not None and any(self.params.refiner.refine_Fcell):
-        n_global_params += self.num_hkl_global
-
-        #TODO why is this init_refiner call here ?
-        self._init_refiner(n_local_unknowns=total_local_param_on_rank,
-                           n_global_unknowns=n_global_params,
-                           local_idx_start=local_param_offset_per_rank,
-                           global_idx_start=total_local_unknowns_all_ranks)
-
-        self.n_ncells_param = n_ncells_param
-        self.n_spectra_params = n_spectra_params
 
         # in case of GPU
         LOGGER.info("BEGIN DETERMINE MAX PIX")
@@ -317,15 +309,12 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         self.NPIX_TO_ALLOC = COMM.bcast(n)
         LOGGER.info("DONE DETERMINE MAX PIX")
 
-        if not self.params.refiner.randomize_devices:
-            self.DEVICE_ID = COMM.rank % self.params.refiner.num_devices
+        self.DEVICE_ID = COMM.rank % self.params.refiner.num_devices
 
         self._mem_usage()
 
         LOGGER.info("EVENT: launch refiner")
-        self._launch(total_local_param_on_rank, n_global_params,
-                     local_idx_start=local_param_offset_per_rank,
-                     global_idx_start=total_local_unknowns_all_ranks)
+        self._launch()
 
         return self.RUC
 
@@ -334,79 +323,6 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         import socket
         host = socket.gethostname()
         print("Rank 0 reporting memory usage: %f GB on Rank 0 node %s" % (memMB / 1e3, host))
-
-    def _initialize_some_refinement_parameters(self):
-        # TODO provide interface for taking inital conditions from all shots (in the event of restarting a simulation)
-        # MOSAICBLOCK
-        m_init = self.params.simulator.crystal.ncells_abc
-        if self.n_ncells_param == 2:
-            INVERTED_NCELLS_MASK = [int(not mask_val) for mask_val in self.NCELLS_MASK]
-            self.RUC.ncells_mask = INVERTED_NCELLS_MASK
-            m_init = [m_init[i_ncell] for i_ncell in sorted(set(INVERTED_NCELLS_MASK))]
-
-        # UNITCELL
-        ucell_maxs, ucell_mins = [], []
-        if self.params.refiner.ranges.ucell_edge_percentage is not None:
-            names = self.shot_ucell_managers[0].variable_names
-            for i_n, n in enumerate(names):
-                val = self.shot_ucell_managers[0].variables[i_n]
-                if "Ang" in n:
-                    perc = self.params.refiner.ranges.ucell_edge_percentage * 0.01
-                    valmin = val - val * perc
-                    valmax = val + val * perc
-                else:
-                    deviation = self.params.refiner.ranges.ucell_angle_deviation
-                    valmin = val - deviation / 2.
-                    valmax = val + deviation / 2.
-                ucell_mins.append(valmin)
-                ucell_maxs.append(valmax)
-            self.RUC.use_ucell_ranges = True
-
-        self.sausages_init = {}
-        self.RUC.eta_init = {}
-        self.RUC.ucell_mins = {}
-        self.RUC.ucell_maxs = {}
-
-        ncells_def_init = self.params.simulator.crystal.ncells_def
-        self.RUC.ncells_def_init = {}
-        for i_shot in range(self.num_shots_on_rank):
-            self.RUC.ncells_def_init[i_shot] = ncells_def_init # TODO fix
-            #TODO sausages from stage 1 ?
-            self.sausages_init[i_shot] = [0, 0, 0, 1]*self.params.simulator.crystal.num_sausages
-            for i_saus in range(self.params.simulator.crystal.num_sausages):
-                self.sausages_init[i_shot][4*i_saus-1] = i_saus + 0.1
-            #TODO generalize and allow loading of mosaicity crystal model for anisotropic mosaicity
-            if self.params.simulator.crystal.anisotropic_mosaicity is not None:
-                raise NotImplemented("Stage 2 doesnt support aniso mosaicity")
-            self.RUC.eta_init[i_shot] = [self.params.simulator.crystal.mosaicity, 0, 0]
-
-            if ucell_maxs and ucell_mins:
-                self.RUC.ucell_mins[i_shot] = ucell_mins
-                self.RUC.ucell_maxs[i_shot] = ucell_maxs
-
-        self.RUC.m_init = self.NCELLS_INIT_PER_SHOT  # enfore these are not None?
-        self.RUC.spot_scale_init = self.SCALE_INIT_PER_SHOT
-        # TODO per shot ncells def and per shot eta
-        #TODO sausages
-        #self.sausages_init = {}
-        #for i_shot in self.SCALE_INIT_PER_SHOT:
-        #    scale_fac = self.SCALE_INIT_PER_SHOT[i_shot]
-        #    nsaus = self.params.simulator.crystal.num_sausages
-        #    self.sausages_init[i_shot] = []
-        #    for i_saus in range(nsaus):
-        #        self.sausages_init[i_shot] += [0,0,0,scale_fac / nsaus]
-
-    def _prep_blue_sausages(self):
-        if self.params.refiner.refine_blueSausages:
-            from scitbx.array_family import flex
-            # TODO params.refiner.init.sausages is not supported for ensemble refinement
-            init = [0, 0, 0, 1]*self.params.simulator.crystal.num_sausages
-            self.SIM.D.update_number_of_sausages(self.params.simulator.crystal.num_sausages)
-            x = flex.double(init[0::4])
-            y = flex.double(init[1::4])
-            z = flex.double(init[2::4])
-            scale = flex.double(init[3::4])
-            self.SIM.D.set_sausages(x, y, z, scale)
 
     def determine_refined_panel_groups(self, pids):
         refined_groups = []
@@ -506,30 +422,159 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         marr_unique_h = COMM.bcast(marr_unique_h)
         return marr_unique_h
 
-    def _set_initial_model_for_shot(self, shot_idx, dataframe):
-        if shot_idx in self.SCALE_INIT_PER_SHOT or shot_idx in self.NCELLS_INIT_PER_SHOT:
-            raise KeyError("Already set initial model for shot %d on rank %d" % (shot_idx, COMM.rank))
+    def _launch(self):
+        """
+        Usually this method should be modified when new features are added to refinement
+        """
+        # TODO return None or refiner instance
+        LOGGER.info("begin _launch")
+        x_init = None
+        nmacro = self.params.refiner.num_macro_cycles
+        n_trials = len(self.params.refiner.max_calls)
+        for i_trial in range(n_trials*nmacro):
 
-        self.SCALE_INIT_PER_SHOT[shot_idx] = np.sqrt(dataframe.spot_scales.values[0])
-        # TODO should this be sqrt?
+            self.RUC = LocalRefiner(self.Modelers, self.symbol, self.params)
 
-        ncells_init = dataframe.ncells.values[0]  # either a 1-tuple or a 3-tuple
-        if len(ncells_init) == 1:
-            ncells_init += (ncells_init[0], ncells_init[0])
-        self.NCELLS_INIT_PER_SHOT[shot_idx] = ncells_init
+            #if self.will_refine(self.params.refiner.refine_Bmatrix):
+            #    self.RUC.refine_Bmatrix = (self.params.refiner.refine_Bmatrix*nmacro)[i_trial]
 
-    def get_parameter_hdf5_path(self):
-        hdf5_path = None
-        if self.params.refiner.dump_params:
-            if self.params.refiner.parameter_hdf5_path is not None:
-                param_folder = self.params.refiner.parameter_hdf5_path
-                if not os.path.exists(param_folder):
-                    os.makedirs(param_folder)
-                hdf5_path = os.path.join(param_folder, "params_rank%d.h5" % COMM.rank)
-            elif self.params.refiner.io.output_dir is not None:
-                param_dir = os.path.join(self.params.refiner.io.output_dir, "params")
-                if COMM.rank == 0:
-                    if not os.path.exists(param_dir):
-                        os.makedirs(param_dir)
-                hdf5_path = os.path.join(param_dir, "params_rank%d.h5" %COMM.rank)
-        return hdf5_path
+            #if self.will_refine(self.params.refiner.refine_Umatrix):
+            #    self.RUC.refine_Umatrix = (self.params.refiner.refine_Umatrix*nmacro)[i_trial]
+
+            #if self.will_refine(self.params.refiner.refine_ncells):
+            #    self.RUC.refine_ncells = (self.params.refiner.refine_ncells*nmacro)[i_trial]
+
+            #if self.will_refine(self.params.refiner.refine_ncells_def):
+            #    self.RUC.refine_ncells_def = (self.params.refiner.refine_ncells_def*nmacro)[i_trial]
+
+            #if self.will_refine(self.params.refiner.refine_bg):
+            #    self.RUC.refine_background_planes = (self.params.refiner.refine_bg*nmacro)[i_trial]
+
+            if self.will_refine(self.params.refiner.refine_spot_scale):
+                self.RUC.refine_crystal_scale = (self.params.refiner.refine_spot_scale*nmacro)[i_trial]
+
+            #if self.will_refine(self.params.refiner.refine_spectra):
+            #    self.RUC.refine_spectra = (self.params.refiner.refine_spectra*nmacro)[i_trial]
+
+            #if self.will_refine(self.params.refiner.refine_detdist):
+            #    self.RUC.refine_detdist = (self.params.refiner.refine_detdist*nmacro)[i_trial]
+
+            #if self.will_refine(self.params.refiner.refine_panelZ):
+            #    self.RUC.refine_panelZ = (self.params.refiner.refine_panelZ*nmacro)[i_trial]
+
+            #if self.will_refine(self.params.refiner.refine_panelRotO):
+            #    self.RUC.refine_panelRotO = (self.params.refiner.refine_panelRotO*nmacro)[i_trial]
+            #if self.will_refine(self.params.refiner.refine_panelRotF):
+            #    self.RUC.refine_panelRotF = (self.params.refiner.refine_panelRotF*nmacro)[i_trial]
+
+            #if self.will_refine(self.params.refiner.refine_panelRotS):
+            #    self.RUC.refine_panelRotS = (self.params.refiner.refine_panelRotS*nmacro)[i_trial]
+
+            #if self.will_refine(self.params.refiner.refine_panelXY):
+            #    self.RUC.refine_panelXY = (self.params.refiner.refine_panelXY*nmacro)[i_trial]
+
+            #if self.will_refine(self.params.refiner.refine_per_spot_scale):
+            #    self.RUC.refine_per_spot_scale = (self.params.refiner.refine_per_spot_scale*nmacro)[i_trial]
+
+            #if self.will_refine(self.params.refiner.refine_eta):
+            #    self.RUC.refine_eta = (self.params.refiner.refine_eta*nmacro)[i_trial]
+
+            #if self.will_refine(self.params.refiner.refine_blueSausages):
+            #    self.RUC.refine_blueSausages = (self.params.refiner.refine_blueSausages*nmacro)[i_trial]
+
+            if self.will_refine(self.params.refiner.refine_Fcell):
+                self.RUC.refine_Fcell = (self.params.refiner.refine_Fcell*nmacro)[i_trial]
+
+            #if self.RUC.refine_detdist and self.RUC.refine_panelZ:
+            #    raise ValueError("Cannot refine panelZ and detdist simultaneously")
+
+            self.RUC.panel_group_from_id = self.panel_group_from_id
+            self.RUC.panel_reference_from_id = self.panel_reference_from_id
+            self.RUC.panel_groups_being_refined = self.panel_groups_refined
+
+            # TODO verify not refining Fcell in case of local refiner
+            self.RUC.max_calls = (self.params.refiner.max_calls*nmacro)[i_trial]
+            self.RUC.x_init = x_init
+            self.RUC.ignore_line_search_failed_step_at_lower_bound = True  # TODO: why was this necessary?
+
+            # plot things
+            self.RUC.trial_id = i_trial
+
+            self.RUC.log_fcells = True
+            self.RUC.request_diag_once = False
+            self.RUC.trad_conv = True
+            self.RUC.idx_from_asu = self.idx_from_asu
+            self.RUC.asu_from_idx = self.asu_from_idx
+
+            self.RUC.S = self.SIM
+            self.RUC.restart_file = self.params.refiner.io.restart_file
+            self.RUC.S.update_nanoBragg_instance('update_oversample_during_refinement',
+                                                 self.params.refiner.update_oversample_during_refinement)
+            self.RUC.S.update_nanoBragg_instance("Npix_to_allocate", self.NPIX_TO_ALLOC)
+            self.RUC.S.update_nanoBragg_instance('device_Id', self.DEVICE_ID)
+            self.RUC.use_curvatures_threshold = self.params.refiner.use_curvatures_threshold
+            if not self.params.refiner.curvatures:
+                self.RUC.S.update_nanoBragg_instance('compute_curvatures', False)
+            if COMM.rank==0:
+                self.RUC.S.update_nanoBragg_instance('verbose', self.params.refiner.verbose)
+
+            LOGGER.info("_launch run setup")
+            self.RUC.run(setup_only=True)
+            LOGGER.info("_launch done run setup")
+            # for debug purposes:
+            #if not self.params.refiner.quiet:
+            #    print("\n<><><><><><><><>TRIAL %d refinement status:" % i_trial)
+            #    self.RUC.S.D.print_if_refining()
+
+            self.RUC.num_positive_curvatures = 0
+            self.RUC.use_curvatures = self.params.refiner.start_with_curvatures
+            self.RUC.hit_break_to_use_curvatures = False
+
+            # selection flags set here:
+            #self.RUC.selection_flags = self.shot_selection_flags
+            #if self.params.refiner.res_ranges is not None:
+            #    assert self.shot_reso is not None, "cant set reso flags is rlp is not in refl tables"
+            #    nshots = len(self.shot_selection_flags)
+            #    more_sel_flags = {}
+            #    res_ranges = utils.parse_reso_string(self.params.refiner.res_ranges)
+            #    for i_shot in range(nshots):
+            #        rhigh, rlow = (res_ranges*nmacro)[i_trial]
+            #        sel_flags = self.shot_selection_flags[i_shot]
+            #        res_flags = [rhigh < r < rlow for r in self.shot_reso[i_shot]]
+            #        more_sel_flags[i_shot] = [flag1 and flag2 for flag1,flag2 in zip(sel_flags, res_flags)]
+            #    self.RUC.selection_flags = more_sel_flags
+
+            self.RUC.record_model_predictions = self.params.refiner.record_xy_calc
+
+            LOGGER.info("_launcher runno setup")
+            self.RUC.run(setup=False)
+            LOGGER.info("_launcher done runno setup")
+            if self.RUC.hit_break_to_use_curvatures:
+                self.RUC.fix_params_with_negative_curvature = False
+                self.RUC.num_positive_curvatures = 0
+                self.RUC.use_curvatures = True
+                self.RUC.run(setup=False)
+
+            if self.RUC.hit_break_signal:
+                if self.params.profile:
+                    self.RUC.S.D.show_timings(self.RUC.rank)
+                self.RUC._MPI_barrier()
+                break
+
+            if self.params.refiner.debug_pixel_panelfastslow is not None:
+                utils.show_diffBragg_state(self.RUC.S.D, self.params.refiner.debug_pixel_panelfastslow)
+                s = self.RUC._get_spot_scale(0)
+                print("refiner spot scale=%f" % (s**2))
+
+            x_init = self.RUC.x
+            if self.params.refiner.only_predict_model:
+                if self.RUC.gnorm > 0:
+                    raise ValueError("Only predciting model, but the gradient is finite! This means the model changed, somethings wrong!")
+
+            if self.params.profile:
+                self.RUC.S.D.show_timings(self.RUC.rank)
+            if self.params.refiner.use_cuda:
+                self.RUC.S.D.gpu_free()
+
+    def will_refine(self, param):
+        return param is not None and any(param)

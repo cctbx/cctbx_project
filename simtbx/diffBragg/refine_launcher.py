@@ -70,15 +70,6 @@ class LocalRefinerLauncher:
     def _alias_refiner(self):
         self._Refiner = LocalRefiner
 
-    @staticmethod
-    def check_parameter_integrity(params):
-        if params.refiner.max_calls is None or len(params.refiner.max_calls) == 0:
-            raise ValueError("Cannot refine because params.refiner.max_calls is empty")
-
-        if os.environ.get("DIFFBRAGG_CUDA") is not None:
-            params.refiner.use_cuda = True
-
-        return params
 
     @staticmethod
     def _check_experiment_integrity(expt):
@@ -419,30 +410,6 @@ class LocalRefinerLauncher:
 
             self.RUC.record_model_predictions = self.params.refiner.record_xy_calc
 
-            #if True: #self.params.refiner.tryscipy:
-            #    self.RUC.calc_curvatures = False
-            #    self.RUC._setup()
-            #    self.RUC.calc_func = True
-            #    self.RUC.compute_functional_and_gradients()
-
-            #    from scitbx.array_family import flex
-            #    def func(x, RUC):
-            #        RUC.calc_func = True
-            #        RUC.x = flex.double(x)
-            #        f, g = RUC.compute_functional_and_gradients()
-            #        return f
-
-            #    def fprime(x, RUC):
-            #        RUC.calc_func = False
-            #        RUC.x = flex.double(x)
-            #        RUC.x = flex.double(x)
-            #        f, g = RUC.compute_functional_and_gradients()
-            #        return g.as_numpy_array()
-
-            #    from scipy.optimize import fmin_l_bfgs_b
-            #    out = fmin_l_bfgs_b(func=func, x0=np.array(self.RUC.x),
-            #                        fprime=fprime, args=[self.RUC], factr=1e7)# args.scipyfactr)
-
             #else:
             LOGGER.info("_launcher runno setup")
             self.RUC.run(setup=False)
@@ -473,7 +440,6 @@ class LocalRefinerLauncher:
                 self.RUC.S.D.show_timings(self.RUC.rank)
             if self.params.refiner.use_cuda:
                 self.RUC.S.D.gpu_free()
-
 
     def will_refine(self, param):
         return param is not None and any(param)

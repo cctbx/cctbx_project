@@ -58,7 +58,7 @@ class BaseRefiner:
         self.trad_conv = False  # traditional convergenve
         self.calc_curvatures = False  # whether to calc curvatures until a region of positive curvature is reached
         self.panel_ids = None  # list of panel_ids (same length as roi images, spot_rois, tilt_abc etc)
-        self.poisson_only = True  # use strictly Poissonian statistics
+        self.poisson_only = False  # use strictly Poissonian statistics
         self._refinement_millers = None  # flex array of refinement miller indices (computed by GlobalRefiner _setup method)
 
     @property

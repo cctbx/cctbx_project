@@ -62,6 +62,15 @@ class LocalRefiner(BaseRefiner):
 
     def __init__(self, shot_modelers, sgsymbol, params):
         BaseRefiner.__init__(self)
+
+        self.params = params
+        self.min_multiplicity = self.params.refiner.stage_two.min_multiplicity
+        self.trad_conv_eps = self.params.refiner.tradeps
+        self.calc_curvatures = self.params.refiner.curvatures
+        self.poisson_only = self.params.refiner.poissononly
+        self.break_signal = self.params.refiner.break_signal
+
+
         self.save_model_freq = 10  # save pixel model values after this many iterations
         self.saveZ_freq = 5  # save Zscore data every N iterations
         self.break_signal = None  # check for this signal during refinement, and break refinement if signal is received (see python signal module)
@@ -76,7 +85,7 @@ class LocalRefiner(BaseRefiner):
         self.fcell_sigma_scale = 0.005  # sensitivity for Fcell during refinement
         self.pause_after_iteration = 0.001  # pause for this long after each iteration (not used currently)
         self.request_diag_once = False  # LBFGS refiner property
-        self.output_dir = None  # directory to dump progress files, these can be used to restart simulation later
+        self.output_dir = self.params.refiner.io.output_dir  # directory to dump progress files, these can be used to restart simulation later
         self.min_multiplicity = 1  # only refine a spots Fhkl if multiplicity greater than this number
         self.restart_file = None  # output file from previous run refinement
         self.trial_id = 0  # trial id in case multiple trials are run in sequence
@@ -106,7 +115,6 @@ class LocalRefiner(BaseRefiner):
         self._is_trusted = None  # used during refinement, 1-D array or trusted pixels corresponding to the pixels in the ROI
 
         self.rank = COMM.rank
-        self.params = params
         self.save_model_freq = self.params.refiner.stage_two.save_model_freq
         self.use_nominal_h = self.params.refiner.stage_two.use_nominal_hkl
         self.init_image_corr = None
@@ -963,34 +971,37 @@ class LocalRefiner(BaseRefiner):
         return self.curv
 
     def _MPI_sync_hkl_freq(self):
-        pass
+            if self.refine_Fcell:
+                if self.rank != 0:
+                    self.hkl_frequency = None
+                self.hkl_frequency = COMM.bcast(self.hkl_frequency)
 
     def _MPI_sync_fcell_parameters(self):
-        pass
+        if not self.I_AM_ROOT:
+            self.sigma_for_res_id = None
+            self.res_group_id_from_fcell_index = None
+            self.resolution_ids_from_i_fcell = self.fcell_sigmas_from_i_fcell = self.fcell_init_from_i_fcell = None
+
+        if self.rescale_params:
+            if self.refine_Fcell:
+                self.fcell_sigmas_from_i_fcell = COMM.bcast(self.fcell_sigmas_from_i_fcell)
+                self.fcell_init_from_i_fcell = COMM.bcast(self.fcell_init_from_i_fcell)
 
     def _MPI_sync_panel_params(self):
-        pass
-
-    def _data_for_write(self, parameter_dict):
-        return [parameter_dict]
-
-    def _MPI_aggregate_model_data_correlations(self):
-        pass
-
-    def _init_n_bad_shots(self):
-        pass
-
-    def _init_gather_ang_off(self):
-        pass
-
-    def _get_ang_off(self):
-        pass
+        if not self.I_AM_ROOT:
+            self.panelRot_params = None
+            self.panelX_params = None
+            self.panelY_params = None
+            self.panelZ_params = None
+        self.panelRot_params = COMM.bcast(self.panelRot_params)
+        self.panelX_params = COMM.bcast(self.panelX_params)
+        self.panelY_params = COMM.bcast(self.panelY_params)
+        self.panelZ_params = COMM.bcast(self.panelZ_params)
 
     def _MPI_reduce_broadcast(self, var):
+        var = COMM.reduce(var, MPI.SUM, root=0)
+        var = COMM.bcast(var, root=0)
         return var
 
     def _MPI_barrier(self):
-        pass
-
-    def _MPI_check_for_break_signal(self):
-        pass
+        COMM.barrier()

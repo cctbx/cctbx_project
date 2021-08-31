@@ -674,7 +674,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                                    bg_thresh=3.5, set_negative_bg_to_zero=False,
                                    pad_for_background_estimation=None, use_robust_estimation=True, sigma_rdout=3.,
                                    min_trusted_pix_per_roi=4, deltaQ=None, experiment=None, weighted_fit=True,
-                                   tilt_relative_to_corner=False, ret_cov=False):
+                                   tilt_relative_to_corner=False, ret_cov=False, allow_overlaps=False):
 
     # TODO handle divide by 0 warning that happens in is_outlier, when labeling background pix?
     npan, sdim, fdim = imgs.shape
@@ -797,7 +797,9 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                     num_roi_negative_bg += 1
                     is_selected = False
 
-        if not np.all(background[pid, j1_nopad:j2_nopad, i1_nopad:i2_nopad] == -1):
+        is_overlapping = not np.all(background[pid, j1_nopad:j2_nopad, i1_nopad:i2_nopad] == -1)
+        if not allow_overlaps and is_overlapping:
+            # NOTE : move away from this option, it potentially moves the pixel centroid outside of the ROI (in very rare instances)
             MAIN_LOGGER.debug("region of interest already accounted for roi size= %d %d" % (i2_nopad-i1_nopad, j2_nopad-j1_nopad))
             rois[i_roi] = i1_nopad+1,i2_nopad,j1_nopad+1,j2_nopad
             continue

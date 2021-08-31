@@ -3,9 +3,7 @@ from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME simtbx.diffBragg.stage_two
 
 from libtbx.mpi4py import MPI
-from dxtbx.model import ExperimentList
 from simtbx.command_line.hopper import hopper_phil
-import os
 import time
 import logging
 from simtbx.diffBragg import mpi_logger
@@ -19,8 +17,6 @@ if COMM.rank > 0:
 
 from simtbx.diffBragg.phil import philz
 from simtbx.diffBragg import ensemble_refine_launcher
-from dxtbx.model.experiment_list import ExperimentListFactory
-from dials.array_family import flex
 from libtbx.phil import parse
 from dials.util import show_mail_on_error
 
@@ -87,7 +83,7 @@ if __name__ == '__main__':
         lp = None
         if LineProfiler is not None and script.params.profile:
             lp = LineProfiler()
-            lp.add_function(ensemble_refine_launcher.GlobalRefinerLauncher.launch_refiner)
+            lp.add_function(ensemble_refine_launcher.RefineLauncher.launch_refiner)
             lp.add_function(local_refiner.LocalRefiner._compute_functional_and_gradients)
             lp.add_function(local_refiner.LocalRefiner._run_diffBragg_current)
             lp.add_function(local_refiner.LocalRefiner._update_Fcell)
