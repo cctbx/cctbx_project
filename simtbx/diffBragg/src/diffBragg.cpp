@@ -1819,7 +1819,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     db_beam.source_lambda = source_lambda;
     db_beam.source_I = source_I;
     db_beam.fluence = fluence;
-    db_beam.kahn_factor =  polarization;
+    db_beam.kahn_factor = polarization;
     db_beam.lambda0 = lambda_managers[0]->value;
     db_beam.lambda1 = lambda_managers[1]->value;
 
@@ -1828,6 +1828,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     db_det.detector_attnlen = detector_attnlen;
     db_det.subpixel_size = subpixel_size;
     db_det.pixel_size = pixel_size;
+    db_det.oversample = oversample;
 
     Eigen::Vector3d eig_spindle_vec(spindle_vector[1], spindle_vector[2], spindle_vector[3]);
     Eigen::Vector3d _polarization_axis(polar_vector[1], polar_vector[2], polar_vector[3]);

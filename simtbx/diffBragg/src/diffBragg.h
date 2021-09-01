@@ -375,7 +375,6 @@ class diffBragg: public nanoBragg{
 
   double source_lambda0, source_lambda1;
   bool use_lambda_coefficients;
-  std::vector<double> FhklLinear, Fhkl2Linear;
   // Eigen types
   void set_close_distances();
   int Npix_total, Npix_to_model;
