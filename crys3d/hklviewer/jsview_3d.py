@@ -78,20 +78,17 @@ class ArrayInfo:
         self.minsigmas = flex.min( data )
       self.minmaxdata = (roundoff(self.mindata), roundoff(self.maxdata))
       self.minmaxsigs = (roundoff(self.minsigmas), roundoff(self.maxsigmas))
-
     self.labels = self.desc = self.wavelength = ""
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if millarr.info():
-      #self.labels = millarr.info().label_string()
       self.labels = millarr.info().labels
       if fomlabel:
         self.labels = [ millarr.info().label_string() + " + " + fomlabel ]
         self.datatype = "iscomplex_fom"
       self.desc = get_array_description(millarr)
-      self.wavelength = millarr.info().wavelength
+      self.wavelength = "{:.6g}".format(millarr.info().wavelength) if millarr.info().wavelength is not None else None
     self.span = ("?" , "?")
     self.spginf = millarr.space_group_info().symbol_and_number()
-    self.ucellinf = str(millarr.unit_cell())
+    self.ucellinf = format(millarr.unit_cell(), "({:.6g}Å, {:.6g}Å, {:.6g}Å, {:.6g}º, {:.6g}º, {:.6g}º)")
     dmin = 0.0
     dmax = 0.0
     try:
@@ -102,10 +99,9 @@ class ArrayInfo:
       mprint(to_str(e))
     issymunique = millarr.is_unique_set_under_symmetry()
     isanomalous = millarr.anomalous_flag()
-
     self.infotpl = ( ",".join(self.labels), self.desc, self.wavelength, arrsize, self.span,
      self.minmaxdata, self.minmaxsigs, (roundoff(dmin), roundoff(dmax)), issymunique, isanomalous )
-    self.infostr = "%s (%s), λ(Å): %s, %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
+    self.infostr = "{}, ({}), λ(Å): {}, #HKLs: {} Span: {}, MinMax: {}, MinMaxSigs: {}, d_minmax(Å): {}, SymUnique: {}, Anomalous: {}".format(*self.infotpl)
 
 
 def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.stdout.write):
@@ -696,7 +692,7 @@ class hklview_3d:
     # First loop over all miller arrays to make a superset of hkls of all
     # miller arrays. Then loop over all miller arrays and extend them with NaNs
     # as to contain the same hkls as the superset
-    self.mprint("Gathering superset of miller indices...")
+    self.mprint("Gathering superset of miller indices...", verbose=1)
     superset_array = self.proc_arrays[0].deep_copy()
     #set_of_indices = set([])
     #for i,procarray in enumerate(self.proc_arrays):
@@ -724,7 +720,7 @@ class hklview_3d:
       #match_valarray.sort(by_value="packed_indices")
       match_valarray.set_info(procarray.info() )
       self.match_valarrays.append( match_valarray )
-    self.mprint("Done making superset")
+    self.mprint("Done making superset", verbose=1)
 
   """
   def SupersetMillerArrays(self):
@@ -991,7 +987,7 @@ class hklview_3d:
 
 
   def identify_suitable_fomsarrays(self):
-    self.mprint("Matching complex arrays to suitable FOM arrays")
+    self.mprint("Matching complex arrays to suitable FOM arrays", verbose=1)
     self.mapcoef_fom_dict = {}
     self.sceneid_from_arrayid = []
     for k,proc_array in enumerate(self.proc_arrays):

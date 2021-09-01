@@ -39,24 +39,24 @@ def get_model(file_name, log):
           input_string=pdb_interpretation.grand_master_phil_str, process_includes=True).extract()
   pdb_interpretation_params.pdb_interpretation.sort_atoms=False
   pdb_inp = iotbx.pdb.input(file_name=file_name)
-  return mmtbx.model.manager(
+  model = mmtbx.model.manager(
       model_input = pdb_inp,
-      process_input = True,
-      pdb_interpretation_params=pdb_interpretation_params,
       stop_for_unknowns = False,
       log=log)
+  model.process(pdb_interpretation_params=pdb_interpretation_params)
+  return model
 
 def get_model_str(strings, log):
   pdb_interpretation_params = iotbx.phil.parse(
           input_string=pdb_interpretation.grand_master_phil_str, process_includes=True).extract()
   pdb_interpretation_params.pdb_interpretation.sort_atoms=False
   pdb_inp = iotbx.pdb.input(lines=strings, source_info=None)
-  return mmtbx.model.manager(
+  model = mmtbx.model.manager(
       model_input = pdb_inp,
-      process_input = True,
-      pdb_interpretation_params=pdb_interpretation_params,
       stop_for_unknowns = False,
       log=log)
+  model.process(pdb_interpretation_params=pdb_interpretation_params)
+  return model
 
 def exercise_00(verbose):
   pdb_file = libtbx.env.find_in_repositories(

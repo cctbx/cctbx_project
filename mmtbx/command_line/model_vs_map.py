@@ -75,8 +75,8 @@ def run(args, log=sys.stdout):
   pdb_inp = iotbx.pdb.input(file_name=file_names[0])
   model = mmtbx.model.manager(
       model_input = pdb_inp,
-      crystal_symmetry=inputs.crystal_symmetry,
-      build_grm=True)
+      crystal_symmetry=inputs.crystal_symmetry)
+  model.process(make_restraints=True)
   if model.get_number_of_models() > 1:
     raise Sorry("Only one model allowed.")
   model.setup_scattering_dictionaries(scattering_table=params.scattering_table)

@@ -2,8 +2,8 @@
 #
 # Variables:
 #   CONDA: Linux, MacOSX
-#   OS: linux-64, osx-64
-#   PYTHON_VERSION: py36
+#   OS: linux, macos
+#   PYTHON_VERSION: py39
 
 steps:
 
@@ -67,9 +67,9 @@ steps:
 - script: |
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     #conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
-    conda create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/modules/dials/.conda-envs/dials_$(PYTHON_VERSION)_$(OS).txt
+    conda create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/modules/dials/.conda-envs/$(OS).txt python=$(PYTHON_FULL_VERSION)
     conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
-    conda install -y pandas -n $(PYTHON_VERSION)
+    conda install -y -c conda-forge pandas distro -n $(PYTHON_VERSION)
   displayName: Create conda environment
 
 # build
@@ -77,10 +77,11 @@ steps:
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
-    python bootstrap.py build --builder=xfel --use-conda=${CONDA_PREFIX} --nproc=4 --config-flags="--enable_openmp_if_possible=True"
-    if [ "$(OS)" = "linux-64" ]; then
+    rm -rf modules/boost
+    python bootstrap.py --builder=xfel --use-conda $CONDA_PREFIX --nproc=4 --config-flags="--enable_openmp_if_possible=True" --config-flags="--compiler=conda" --config-flags="--use_environment_flags" --config-flags="--enable_cxx11" --config-flags="--no_bin_python" --no-boost-src build
+    if [ "$(OS)" = "linux" ]; then
       cd build
-      source setpaths.sh
+      source conda_setpaths.sh
       libtbx.configure lunus
       make
     fi

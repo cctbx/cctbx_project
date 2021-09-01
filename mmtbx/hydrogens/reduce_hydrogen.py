@@ -129,14 +129,14 @@ class place_hydrogens():
     #p.pdb_interpretation.restraints_library.cdl=False # XXX this triggers a bug !=360
     ro = self.model.get_restraint_objects()
     self.model = mmtbx.model.manager(
-      model_input               = None,
-      pdb_hierarchy             = pdb_hierarchy,
-      build_grm                 = True,
-      stop_for_unknowns         = self.stop_for_unknowns,
-      crystal_symmetry          = self.model.crystal_symmetry(),
-      restraint_objects         = ro,
-      pdb_interpretation_params = p,
-      log                       = null_out())
+      model_input       = None,
+      pdb_hierarchy     = pdb_hierarchy,
+      stop_for_unknowns = self.stop_for_unknowns,
+      crystal_symmetry  = self.model.crystal_symmetry(),
+      restraint_objects = ro,
+      log               = null_out())
+    self.model.process(pdb_interpretation_params=p,
+      make_restraints=True)
     if print_time:
       print("get new model obj and grm:", round(time.time()-t0, 2))
 

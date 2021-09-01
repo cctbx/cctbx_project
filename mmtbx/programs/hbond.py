@@ -29,7 +29,7 @@ Usage example:
       file=self.logger)
     model = self.data_manager.get_model()
     model.set_log(log = null_out())
-    model.process_input_model(make_restraints=True)
+    model.process(make_restraints=True)
     self.results = mmtbx.nci.hbond.find(model = model)
     self.results.show(log = self.logger)
     print("-"*79, file=self.logger)

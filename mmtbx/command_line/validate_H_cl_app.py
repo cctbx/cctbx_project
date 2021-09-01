@@ -206,13 +206,11 @@ Usage:
 
     pi_params = self.get_pdb_interpretation_params()
     model = mmtbx.model.manager(
-        model_input               = self.pdb_inp,
-#        process_input             = True,
-        build_grm                 = True,
-        stop_for_unknowns         = False,
-        pdb_interpretation_params = pi_params,
-        restraint_objects         = self.input_objects.cif_objects)
-
+      model_input       = self.pdb_inp,
+      stop_for_unknowns = False,
+      restraint_objects = self.input_objects.cif_objects)
+    model.process(pdb_interpretation_params=pi_params,
+      make_restraints=True)
     print("Model object created from file %s:" % \
       getattr(self.work_params, self.pdbf_def), file=self.log)
 

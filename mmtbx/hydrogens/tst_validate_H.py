@@ -678,11 +678,11 @@ def get_results_from_validate_H(neutron_distances, pdb_str):
 
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
-      model_input = pdb_inp,
-      build_grm   = True,
-      stop_for_unknowns = False,
-      pdb_interpretation_params = pi_params,
-      log = null_out())
+    model_input = pdb_inp,
+    stop_for_unknowns = False,
+    log = null_out())
+  model.process(pdb_interpretation_params=pi_params,
+    make_restraints=True)
 
   c = validate_H(model = model,
                  use_neutron_distances = neutron_distances)
@@ -1123,14 +1123,9 @@ def exercise_hd_state():
   This is not a result but used internally to decide if H/D site analysis is
   necessary or not
   '''
-  pdb_interpretation_phil = iotbx.phil.parse(
-    input_string = grand_master_phil_str, process_includes = True)
-
   pdb_inp = iotbx.pdb.input(lines=pdb_str4.split("\n"), source_info=None)
   model = mmtbx.model.manager(
       model_input = pdb_inp,
-#      build_grm   = True, # to speed up test
-      pdb_interpretation_params = pdb_interpretation_phil.extract(),
       log = null_out())
   c = validate_H(model = model,
                  use_neutron_distances = True)
@@ -1138,18 +1133,14 @@ def exercise_hd_state():
 
   pdb_inp = iotbx.pdb.input(lines=pdb_str5.split("\n"), source_info=None)
   model = mmtbx.model.manager(
-      model_input = pdb_inp,
-#      build_grm   = True, # to speed up test
-      pdb_interpretation_params = pdb_interpretation_phil.extract())
+      model_input = pdb_inp)
   c = validate_H(model = model,
                  use_neutron_distances = True)
   assert (c.get_hd_state() == 'all_d')
 
   pdb_inp = iotbx.pdb.input(lines=pdb_str3.split("\n"), source_info=None)
   model = mmtbx.model.manager(
-      model_input = pdb_inp,
-#      build_grm   = True, # to speed up test
-      pdb_interpretation_params = pdb_interpretation_phil.extract())
+      model_input = pdb_inp)
   c = validate_H(model = model,
                  use_neutron_distances = True)
   assert (c.get_hd_state() == 'h_and_d')

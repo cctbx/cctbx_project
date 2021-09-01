@@ -173,8 +173,8 @@ def exercise_2():
       lines=flex.std_string(pdb_str_2.splitlines()), source_info=None)
     model = manager(
       model_input=pdb_inp,
-      log=null_out(),
-      build_grm=True)
+      log=null_out())
+    model.process(make_restraints=True)
     grm = model.get_restraints_manager().geometry
     xrs2 = model.get_xray_structure()
     awl2 = model.get_hierarchy().atoms_with_labels()
@@ -244,10 +244,8 @@ def exercise_3():
   for use_reference in ['True', 'False', 'top_out', 'None']:
     pdb_inp = iotbx.pdb.input(
         lines=flex.std_string(pdb_str_2.splitlines()), source_info=None)
-    model = manager(
-        model_input=pdb_inp,
-        log=null_out(),
-        build_grm=True)
+    model = manager(model_input=pdb_inp, log=null_out())
+    model.process(make_restraints=True)
     grm = model.get_restraints_manager().geometry
     xrs2 = model.get_xray_structure()
     awl2 = model.get_hierarchy().atoms_with_labels()

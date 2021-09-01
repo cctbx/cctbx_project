@@ -61,6 +61,7 @@ def run_uniform(eta_angle, sample_size=20000, verbose=True):
   return UMAT, d_UMAT_d_eta
 
 def check_finite(mat1, mat2, dmat1, eps):
+  # confirms d_Umat_d_eta by finite difference
   for im in range(len(mat1)):
     m1 = sqr(mat1[im])
     m2 = sqr(mat2[im])

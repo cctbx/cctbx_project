@@ -29,8 +29,8 @@ def exercise():
   for opt in [["L"], ["R"], ["B"], ["BH"], all]:
     mol = mmtbx.model.manager(
         model_input=copy.deepcopy(pdb_inp),
-        restraint_objects=cif_objects,
-        build_grm=True)
+        restraint_objects=cif_objects)
+    mol.process(make_restraints=True)
     if(opt == ["L"]):
       params.build_ias_types = opt
       mol.add_ias(fmodel = None, ias_params = params)

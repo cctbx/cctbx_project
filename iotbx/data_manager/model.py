@@ -135,7 +135,7 @@ model
     return self._has_data(ModelDataManager.datatype, expected_n=expected_n,
                           exact_count=exact_count, raise_sorry=raise_sorry)
 
-  def process_model_file(self, filename, pdb_interpretation_extract=None):
+  def process_model_file(self, filename):
     # unique because any_file does not return a model object
     if (filename not in self.get_model_names()):
       a = any_file(filename)
@@ -148,15 +148,13 @@ model
           expand_with_mtrix = False
         model = mmtbx.model.manager(
           model_input=model_in,
-          pdb_interpretation_params=pdb_interpretation_extract,
           expand_with_mtrix=expand_with_mtrix,
           log=self.logger)
         self.add_model(filename, model)
 
-  def process_model_str(self, label, model_str, pdb_interpretation_extract=None):
+  def process_model_str(self, label, model_str):
     model = mmtbx.model.manager(
       model_input=iotbx.pdb.input(source_info=None, lines=model_str),
-      pdb_interpretation_params=pdb_interpretation_extract,
       log=self.logger)
     self.add_model(label, model)
 
@@ -217,15 +215,6 @@ model
       filename += extension
     return self._write_text(ModelDataManager.datatype, model_str,
                             filename=filename, overwrite=overwrite)
-
-  def update_pdb_interpretation_for_model(
-    self, filename, pdb_interpretation_extract):
-    '''
-    Pass PHIL extract to model class
-    model class handles finding and matching of PHIL scopes
-    '''
-    self.get_model(filename=filename).set_pdb_interpretation_params(
-      pdb_interpretation_extract)
 
 # =============================================================================
 # end

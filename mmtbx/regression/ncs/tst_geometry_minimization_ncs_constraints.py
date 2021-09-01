@@ -51,10 +51,9 @@ def tst_1(prefix="gm_ncs_constr_tst1"):
   # print dir(pdb_in)
   pdb_int_params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   pdb_int_params.pdb_interpretation.ncs_search.enabled = True
-  model = mmtbx.model.manager(
-      model_input = pdb_in,
-      pdb_interpretation_params = pdb_int_params,
-      build_grm = True)
+  model = mmtbx.model.manager(model_input = pdb_in)
+  model.process(pdb_interpretation_params=pdb_int_params,
+    make_restraints=True)
   ncs_obj = iotbx.ncs.input(hierarchy=model.get_hierarchy())
   ncs_restraints_group_list = ncs_obj.get_ncs_restraints_group_list()
   ncs_obj.show(format='phil')

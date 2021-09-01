@@ -1167,8 +1167,8 @@ ATOM   1152  OE2 GLU A 157     -26.948 -24.562   1.620  1.00 89.52           O
 
 def test_1():
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
-  model = mmtbx.model.manager(model_input = pdb_inp, log = null_out(),
-    build_grm=True)
+  model = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  model.process(make_restraints=True)
   model.get_restraints_manager()
   stats = mmtbx.model.statistics.geometry(model=model)
   out = StringIO()

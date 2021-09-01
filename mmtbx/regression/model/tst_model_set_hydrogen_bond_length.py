@@ -33,23 +33,21 @@ def tst_1():
   params.pdb_interpretation.use_neutron_distances = True
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    pdb_interpretation_params = params,
-    log         = null_out(),
-    build_grm=True)
+    log         = null_out())
+  model.process(pdb_interpretation_params=params,
+    make_restraints=True)
   # request neutron bond lengths
   model.set_hydrogen_bond_length(use_neutron_distances=True,
                                  show=False,
                                  log=sys.stdout)
-  model.process_input_model(make_restraints=True)
   compare_XH_bond_length_to_ideal(model = model)
   #STOP()
   # request X-ray bond lengths
   pdb_inp = iotbx.pdb.input(lines=pdb_str1.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    pdb_interpretation_params = params,
-    log         = null_out(),
-    build_grm=False)
+    log         = null_out())
+  model.process(pdb_interpretation_params=params, make_restraints=False)
   model.set_hydrogen_bond_length(use_neutron_distances=False,
                                  show=False,
                                  log=sys.stdout)
@@ -66,8 +64,8 @@ def tst_2():
   params.pdb_interpretation.use_neutron_distances = False
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    pdb_interpretation_params = params,
     log         = null_out())
+  model.process(pdb_interpretation_params = params)
   #
   # Check if selected individual bond lengths are correct
   atoms = model.get_hierarchy().atoms()
@@ -113,9 +111,9 @@ def tst_3():
   params.pdb_interpretation.use_neutron_distances = False
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    pdb_interpretation_params = params,
     restraint_objects = cif_objects,
     log         = null_out())
+  model.process(pdb_interpretation_params = params)
   # request neutron bond lengths
   model.set_hydrogen_bond_length(use_neutron_distances=True,
                                  show=False,

@@ -20,9 +20,8 @@ def exercise_2(eps = 1.e-6):
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/phe_abc_tlsanl_out_geometry_minimized.pdb",
     test=os.path.isfile)
-  model = mmtbx.model.manager(
-      model_input=iotbx.pdb.input(file_name=pdb_file),
-      build_grm=True)
+  model = mmtbx.model.manager(model_input=iotbx.pdb.input(file_name=pdb_file))
+  model.process(make_restraints=True)
   model.setup_scattering_dictionaries(scattering_table="wk1995")
   model.get_xray_structure().convert_to_isotropic()
   u_iso_start = model.get_xray_structure().extract_u_iso_or_u_equiv()

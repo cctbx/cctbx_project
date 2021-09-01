@@ -17,9 +17,8 @@ def exercise(pdb_str):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    pdb_interpretation_params = params,
-    build_grm   = True,
     log         = null_out())
+  model.process(pdb_interpretation_params=params, make_restraints=True)
 
   pdb_hierarchy = model.get_hierarchy()
   sites_cart = model.get_sites_cart()

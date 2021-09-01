@@ -64,10 +64,9 @@ def run(args, params=None, out=sys.stdout, model=None):
 
     pdb_int_params = mmtbx.model.manager.get_default_pdb_interpretation_params()
     pdb_int_params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-    model = mmtbx.model.manager(
-        model_input = pdb_inp,
-        pdb_interpretation_params = pdb_int_params,
-        build_grm = True)
+    model = mmtbx.model.manager(model_input = pdb_inp)
+    model.process(pdb_interpretation_params=pdb_int_params,
+      make_restraints=True)
   else:
     work_params = params
     if params is None:

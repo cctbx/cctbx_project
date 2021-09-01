@@ -67,7 +67,7 @@ def exercise(file_name, out = sys.stdout):
 
   # Generate map data from this model (it has ncs)
   mmm=map_model_manager()
-  mmm.generate_map(box_cushion=0, file_name=file_name,n_residues=500)
+  mmm.generate_map(box_cushion=0, file_name=file_name,n_residues=500, d_min=3)
   ncs_mam=mmm.deep_copy()
   ncs_mam_copy=mmm.deep_copy()
 
@@ -278,7 +278,7 @@ def exercise(file_name, out = sys.stdout):
 
   # Make a new map and model, get mam and box with selection
   mmm=map_model_manager()
-  mmm.generate_map(box_cushion=0,wrapping=True)
+  mmm.generate_map(box_cushion=0,wrapping=True, d_min=3)
   mam=mmm
   mam_dc=mam.deep_copy()
 

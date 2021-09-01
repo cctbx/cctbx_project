@@ -605,12 +605,14 @@ class map_model_manager(object):
       crystal_symmetry = self.model().unit_cell_crystal_symmetry()
       if not crystal_symmetry:
         crystal_symmetry = self.model().crystal_symmetry()
+      if not crystal_symmetry:  # make it up
+        self.model().add_crystal_symmetry_if_necessary()
+        crystal_symmetry = self.model().crystal_symmetry()
       if crystal_symmetry:
         from iotbx.map_manager import dummy_map_manager
         map_manager = dummy_map_manager(crystal_symmetry)
         self._map_dict['map_manager'] = map_manager
         self.info().dummy_map_manager = True # mark it
-
     return map_manager
 
   def map_manager_1(self):
@@ -780,8 +782,10 @@ class map_model_manager(object):
       self._queue_run_command = queue_run_command
 
   def set_resolution(self, resolution):
-    ''' Set nominal resolution '''
+    ''' Set nominal resolution. Pass along to any map managers '''
     self._resolution = resolution
+    for mm in self.map_managers():
+      mm.set_resolution(resolution)
 
   def set_minimum_resolution(self, d_min):
     ''' Set minimum resolution used in calculations'''
@@ -7870,6 +7874,7 @@ class map_model_manager(object):
       wrapping = False,
       map_id = None,
       f_obs_array = None,
+      resolution_factor = None,
      ):
     '''
       Simple interface to cctbx.development.generate_map allowing only
@@ -7910,6 +7915,7 @@ class map_model_manager(object):
       origin_shift_grid_units (tuple (ix, iy, iz), None):  Move location of
           origin of resulting map to (ix, iy, iz) before writing out
       wrapping:  Defines if map is to be specified as wrapped
+      resolution_factor:  Defines ratio of resolution to gridding if gridding is not set
       scattering_table (choice, 'electron'): choice of scattering table
            All choices: wk1995 it1992 n_gaussian neutron electron
       fractional_error:  resolution-dependent fractional error, ranging from
@@ -7932,15 +7938,12 @@ class map_model_manager(object):
       scattering_table = self.scattering_table()
 
     # Set the resolution now if not already set
-    if d_min and have_map_manager and (not self.resolution()):
+    if d_min is not None and have_map_manager and not self.resolution():
       self.set_resolution(d_min)
-
-    # Get some value for resolution
-    if not have_map_manager and d_min:
+    elif d_min is None and self.resolution():
       d_min = self.resolution()
-    if not d_min:
-      d_min = 3  # default
-
+    elif d_min is None:
+      d_min = 3
 
     self._print("\nGenerating new map data\n")
     if self.model() and (not model):
@@ -7990,6 +7993,7 @@ class map_model_manager(object):
       d_min = d_min,
       gridding = gridding,
       wrapping = wrapping,
+      resolution_factor = resolution_factor,
       origin_shift_grid_units = origin_shift_grid_units,
       high_resolution_real_space_noise_fraction = fractional_error,
       log = null_out())

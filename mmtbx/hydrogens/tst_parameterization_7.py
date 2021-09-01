@@ -15,10 +15,9 @@ def prepare_inputs(pdb_str, cif_str):
 
   model = mmtbx.model.manager(
     model_input=pdb_inp,
-    build_grm   = True,
     restraint_objects = cif_objects,
     log = null_out())
-
+  model.process(make_restraints=True)
   model.setup_riding_h_manager()
   riding_h_manager = model.get_riding_h_manager()
 
