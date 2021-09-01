@@ -485,11 +485,6 @@ namespace boost_python { namespace {
                      make_setter(&simtbx::nanoBragg::diffBragg::only_save_omega_kahn,dcp()),
                     "ONLY simulate the kahn polarization correction and solid angle components")
 
-      .add_property("max_I_hkl",
-                     make_getter(&simtbx::nanoBragg::diffBragg::max_I_hkl,rbv()),
-                     make_setter(&simtbx::nanoBragg::diffBragg::max_I_hkl,dcp()),
-                    "HKL corresponding to the maximum simulated intensity in the ROI")
-
       .add_property("reference_origin",
             make_function(&get_reference_origin, rbv()),
             make_function(&set_reference_origin, dcp()),

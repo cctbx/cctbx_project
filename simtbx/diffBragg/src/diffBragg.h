@@ -131,6 +131,15 @@ class diffBragg: public nanoBragg{
   diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model::Beam& beam,
             int verbose);
 
+  ~diffBragg(){};
+
+  /// pixels
+  double* floatimage_roi;
+  af::flex_double raw_pixels_roi;
+  int Npix_total, Npix_to_model;
+  void diffBragg_list_steps(step_arrays& db_steps);
+
+  // containers
   images first_deriv_imgs, second_deriv_imgs;
   step_arrays db_steps;
   crystal db_cryst;
@@ -138,19 +147,6 @@ class diffBragg: public nanoBragg{
   flags db_flags;
   detector db_det;
 
-
-
-
-  bool track_Fhkl;
-  std::vector<int> nominal_hkl;
-  void update_xray_beams(scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > const& value);
-  void diffBragg_rot_mats();
-  void linearize_Fhkl();
-  void sanity_check_linear_Fhkl();
-  void update_linear_Fhkl();
-  void diffBragg_list_steps(step_arrays& db_steps);
-  ~diffBragg(){};
-  void diffBragg_sum_over_steps_cuda();
 
 #ifdef NANOBRAGG_HAVE_CUDA
     diffBragg_cudaPointers device_pointers;
@@ -160,15 +156,16 @@ class diffBragg: public nanoBragg{
 
 #endif
 
-  std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dF_vecs, dS_vecs;
+  // methods
+  void update_xray_beams(scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > const& value);
   void initialize_managers();
+  void diffBragg_rot_mats();
   void vectorize_umats();
   void rotate_fs_ss_vecs(double panel_rot_ang);
   void rotate_fs_ss_vecs_3D(double panel_rot_angO, double panel_rot_angF, double panel_rot_angS);
   void add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows);
   void add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows, boost::python::list per_pix_nominal_hkl);
   void add_diffBragg_spots();
-
   af::shared<double> add_diffBragg_spots_full();
   void init_raw_pixels_roi();
   void zero_raw_pixel_rois();
@@ -210,69 +207,29 @@ class diffBragg: public nanoBragg{
   af::flex_double get_raw_pixels_roi();
   boost::python::tuple get_fp_fdp_derivative_pixels();
   boost::python::tuple get_ncells_derivative_pixels();
-  //boost::python::numpy::ndarray get_Na_derivative_pixels();
   boost::python::tuple get_ncells_def_derivative_pixels();
   boost::python::tuple get_ncells_def_second_derivative_pixels();
   boost::python::tuple get_ncells_second_derivative_pixels();
   boost::python::tuple get_aniso_eta_deriv_pixels();
   boost::python::tuple get_aniso_eta_second_deriv_pixels();
-
   boost::python::tuple get_lambda_derivative_pixels();
 
-  /* override to cache some of the polarization calc variables to use in derivatives*/
-  double polarization_factor(double kahn_factor, double *incident, double *diffracted, double *axis);
-
-  double psi;  /* for polarization correction */
-  double u;
-  double kEi;
-  double kBi;
   Eigen::Vector3d O_reference;
-
-  //bool use_omega_pixel_ave;
-  double om;
-  double omega_pixel_ave;
-  double airpath_ave;
-
-  double diffracted_ave[4];
-  double pixel_pos_ave[4];
-  double Fdet_ave, Sdet_ave, Odet_ave;
-  Eigen::Vector3d k_diffracted_ave;
-  Eigen::Vector3d k_incident_ave;
 
   Eigen::Matrix3d EYE;
   mat3 Umatrix;
   mat3 Bmatrix;
   mat3 Omatrix;
-  Eigen::Matrix3d NABC;
-  Eigen::Matrix3d RXYZ;
-  std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > Fdet_vectors, Sdet_vectors, Odet_vectors;
-  std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > RotMats, dRotMats, d2RotMats, R3, R3_2,
-    UMATS, UMATS_RXYZ, UMATS_prime, UMATS_dbl_prime,UMATS_RXYZ_prime, UMATS_RXYZ_dbl_prime;
-  //std::vector<Eigen::Matrix3d> RotMats;
-  //std::vector<Eigen::Matrix3d> dRotMats, d2RotMats;
-  //std::vector<Eigen::Matrix3d> R3, R3_2;
 
   // Panel rotation
-  Eigen::Matrix3d panR;
-  Eigen::Matrix3d panR2;
   double panel_rot_ang;
 
-  //vec3 k_diffracted;
-  //vec3 o_vec;
+  //polarization
   Eigen::Vector3d Ei_vec, Bi_vec;
-  //vec3 H_vec, H0_vec;
-  //vec3 a_vec, ap_vec;
-  //vec3 b_vec, bp_vec;
-  //vec3 c_vec, cp_vec;
-  //vec3 q_vec; // scattering vector
 
-  //std::vector<Eigen::Matrix3d> UMATS;
-  //std::vector<Eigen::Matrix3d> UMATS_RXYZ;
-  //std::vector<Eigen::Matrix3d> UMATS_prime;
-  //std::vector<Eigen::Matrix3d> UMATS_RXYZ_prime;
+  // mosaic spread
   double * mosaic_umats_prime;
-  int nmats; // the number of mosaic umat derivative matrices (can be 3x the number of mosaic domains)
-
+  int nmats;
   double * mosaic_umats_dbl_prime;
   void set_mosaic_blocks_prime(af::shared<mat3> umat_in);  // set the individual mosaic block orientation derivatives from array
   void set_mosaic_blocks_dbl_prime(af::shared<mat3> umat_in);  // set the individual mosaic block orientation derivatives from array
@@ -293,68 +250,12 @@ class diffBragg: public nanoBragg{
   boost::shared_ptr<panel_manager> panel_rot_manF;
   boost::shared_ptr<panel_manager> panel_rot_manS;
 
-  double* floatimage_roi;
-  af::flex_double raw_pixels_roi;
-  //af::flex_int raw_pixels_roi;
-  //af::flex_double raw_pixels_roi;
-  //af::flex_double raw_pixels_roi;
-
   bool compute_curvatures;
   bool update_oversample_during_refinement;
   bool oversample_omega;
   bool only_save_omega_kahn;
-  double uncorrected_I;
-  Eigen::Vector3d max_I_hkl;// the hkl corresponding to the maximum intensity in the array (debug)
-  //int max_I_h, max_I_k, max_I_l;
 
-  // helpful definitions..
-  double per_k ;
-  double per_k2 ;
-  double per_k3 ;
-  double per_k4 ;
-  double per_k5;
-  double per_k6;
-  double per_k7;
-  double G ;
-
-  double du;
-  double du2;
-
-  double w ;
-  double w2;
-  double BperE2;
-  double dkE ;
-  double dkB;
-  double v ;
-  double dv;
-  double dpsi ;
-  double dpsi2;
-
-  double c2psi ;
-  double s2psi ;
-  double gam_cos2psi;
-  double gam_sin2psi;
-
-  double dpolar ;
-
-  double dpolar2;
-
-  double pp ;
-  double dOmega ;
-  double dOmega2;
-
-  double FF ;
-  double FdF ;
-  double dFdF ;
-  double FdF2;
-
-  /* om is the average solid angle in the pixel (average over sub pixels) */
-  double origin_dI;
-  double origin_dI2;
-  // different scale term here because polar and domega terms depend on originZ
-  double scale_term2;
-  double scale_term;
-
+  // miller array
   void quick_Fcell_update(boost::python::tuple const& value);
   double ***Fhkl2;  // = NULL
   af::shared<double> pythony_amplitudes2;
@@ -365,18 +266,23 @@ class diffBragg: public nanoBragg{
   std::vector<double> atom_data;
   void show_heavy_atom_data();
   void show_fp_fdp();
+  bool track_Fhkl;
+  std::vector<int> nominal_hkl;
+  void linearize_Fhkl();
+  void sanity_check_linear_Fhkl();
+  void update_linear_Fhkl();
 
+  // mosaic domain
   bool isotropic_ncells;
   bool modeling_anisotropic_mosaic_spread;
   double Nd, Ne, Nf;
   bool refine_Ncells_def;
   bool no_Nabc_scale;  // if true, then absorb the Nabc scale into an overall scale factor
+  Eigen::Matrix3d NABC;
 
-  double source_lambda0, source_lambda1;
   bool use_lambda_coefficients;
-  // Eigen types
+
   void set_close_distances();
-  int Npix_total, Npix_to_model;
 
   // cuda properties
   bool update_dB_matrices_on_device=false;

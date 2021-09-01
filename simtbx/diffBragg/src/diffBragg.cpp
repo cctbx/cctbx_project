@@ -210,16 +210,10 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     db_cryst.dRotMats.push_back(EYE);
     db_cryst.dRotMats.push_back(EYE);
     db_cryst.dRotMats.push_back(EYE);
-    db_cryst.d2RotMats.push_back(EYE);
-    db_cryst.d2RotMats.push_back(EYE);
-    db_cryst.d2RotMats.push_back(EYE);
 
-    R3.push_back(EYE);
-    R3.push_back(EYE);
-    R3.push_back(EYE);
-    R3_2.push_back(EYE);
-    R3_2.push_back(EYE);
-    R3_2.push_back(EYE);
+    db_cryst.d2RotMats.push_back(EYE);
+    db_cryst.d2RotMats.push_back(EYE);
+    db_cryst.d2RotMats.push_back(EYE);
 
 
     boost::shared_ptr<rot_manager> rotX = boost::shared_ptr<rot_manager>(new rotX_manager());
@@ -387,7 +381,6 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
                                   0,0,0;
     }
 
-    max_I_hkl << 0,0,0;
     init_raw_pixels_roi();
     initialize_managers();
 
@@ -1527,52 +1520,6 @@ void diffBragg::zero_raw_pixel_rois(){
     initialize_managers();
 }
 
-/* polarization factor */
-/* override this to store variables needed for derivatives */
-double diffBragg::polarization_factor(double kahn_factor, double *__incident, double *__diffracted, double *__axis)
-{
-    double cos2theta,cos2theta_sqr,sin2theta_sqr;
-    //double psi=0.0;
-    double E_in[4];
-    double B_in[4];
-
-    unitize(__incident,__incident);
-    unitize(__diffracted,__diffracted);
-    //unitize(__axis,__axis);
-
-    /* component of diffracted unit vector along incident beam unit vector */
-    cos2theta = dot_product(__incident,__diffracted);
-    cos2theta_sqr = cos2theta*cos2theta;
-    sin2theta_sqr = 1-cos2theta_sqr;
-    //double _u = cos2theta_sqr;
-
-    double _psi=0;
-    if(kahn_factor != 0.0){
-        //SCITBX_EXAMINE(kahn_factor);
-        /* tricky bit here is deciding which direciton the E-vector lies in for each source
-           here we assume it is closest to the "axis" defined above */
-
-        /* cross product to get "vertical" axis that is orthogonal to the cannonical "polarization" */
-        cross_product(__axis,__incident,B_in);
-        /* make it a unit vector */
-        unitize(B_in,B_in);
-
-        /* cross product with incident beam to get E-vector direction */
-        cross_product(__incident,B_in,E_in);
-        /* make it a unit vector */
-        unitize(E_in,E_in);
-
-        /* get components of diffracted ray projected onto the E-B plane */
-        double _kEi = dot_product(__diffracted,E_in);
-        double _kBi = dot_product(__diffracted,B_in);
-
-        /* compute the angle of the diffracted ray projected onto the incident E-B plane */
-        _psi = -atan2(_kBi,_kEi);
-    }
-    /* correction for polarized incident beam */
-    return 0.5*(1.0 + cos2theta_sqr - kahn_factor*cos(2*_psi)*sin2theta_sqr);
-}
-
 void diffBragg::set_mosaic_blocks_prime(af::shared<mat3> umat_in){
     /* free any previous allocations */
     if(mosaic_umats_prime != NULL) free(mosaic_umats_prime);
@@ -1723,53 +1670,47 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     int pan_rot_ids[3] = {0,4,5};
     int pan_orig_ids[3] = {1,2,3};
 
-    std::vector<bool> refine_pan_rot(3, false);
-    std::vector<bool> refine_pan_orig(3,false);
-    std::vector<bool> refine_lambda(2,false);
-    std::vector<bool> refine_Bmat(6,false);
-    std::vector<bool> refine_Umat(3,false);
-    std::vector<bool> refine_Ncells(3,false);
+    db_flags.refine_panel_rot.resize(3, false);
+    db_flags.refine_panel_origin.resize(3,false);
+    db_flags.refine_lambda.resize(2,false);
+    db_flags.refine_Bmat.resize(6,false);
+    db_flags.refine_Umat.resize(3,false);
+    db_flags.refine_Ncells.resize(3,false);
 
     for(int i_pan=0;i_pan < 3; i_pan++){
         int i_pan_rot = pan_rot_ids[i_pan];
         int i_pan_orig = pan_orig_ids[i_pan];
         if (panels[i_pan_rot]->refine_me)
-            refine_pan_rot[i_pan] = true;
+            db_flags.refine_panel_rot[i_pan] = true;
         if (panels[i_pan_orig]-> refine_me)
-            refine_pan_orig[i_pan] = true;
+            db_flags.refine_panel_origin[i_pan] = true;
     }
     for (int i_uc = 0; i_uc < 6; i_uc++){
         if (ucell_managers[i_uc]->refine_me)
-            refine_Bmat[i_uc] = true;
+            db_flags.refine_Bmat[i_uc] = true;
     }
 
     for (int i_rot =0; i_rot< 3; i_rot ++){
         if (rot_managers[i_rot]->refine_me)
-            refine_Umat[i_rot] = true;
+            db_flags.refine_Umat[i_rot] = true;
     }
 
     for (int i_lam=0; i_lam< 2; i_lam++){
         if (lambda_managers[i_lam]->refine_me)
-            refine_lambda[i_lam] = true;
+            db_flags.refine_lambda[i_lam] = true;
     }
 
     if (Ncells_managers[0]->refine_me){
-        refine_Ncells[0] = true;
+        db_flags.refine_Ncells[0] = true;
         if (! isotropic_ncells){
-            refine_Ncells[1] = true;
-            refine_Ncells[2] = true;
+            db_flags.refine_Ncells[1] = true;
+            db_flags.refine_Ncells[2] = true;
         }
     }
 
-    db_flags.refine_Ncells = refine_Ncells;
     db_flags.refine_fcell = fcell_managers[0]->refine_me;
-    db_flags.refine_Umat = refine_Umat;
-    db_flags.refine_lambda = refine_lambda;
-    db_flags.refine_panel_origin = refine_pan_orig;
-    db_flags.refine_Ncells_def =refine_Ncells_def;
-    db_flags.refine_Bmat = refine_Bmat;
-    db_flags.refine_panel_rot = refine_pan_rot;
     db_flags.refine_eta = eta_managers[0]->refine_me;
+    db_flags.refine_Ncells_def = refine_Ncells_def;
     db_flags.printout_fpixel = printout_fpixel;
     db_flags.printout_spixel = printout_spixel;
     db_flags.printout = printout;
@@ -1846,15 +1787,15 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
     gettimeofday(&t3,0 );
     image_type image(Npix_to_model,0.0);
-    if (refine_Umat[0]){
+    if (std::count(db_flags.refine_Umat.begin(), db_flags.refine_Umat.end(), true) > 0){
         first_deriv_imgs.Umat.resize(Npix_to_model*3, 0);
         second_deriv_imgs.Umat.resize(Npix_to_model*3,0);
     }
-    if (refine_Bmat[0]){
+    if (std::count(db_flags.refine_Bmat.begin(), db_flags.refine_Bmat.end(), true) > 0){
         first_deriv_imgs.Bmat.resize(Npix_to_model*6, 0);
         second_deriv_imgs.Bmat.resize(Npix_to_model*6,0);
     }
-    if(refine_Ncells[0]){
+    if (std::count(db_flags.refine_Ncells.begin(), db_flags.refine_Ncells.end(), true) > 0 || refine_Ncells_def){
         first_deriv_imgs.Ncells.resize(Npix_to_model*6,0);
         second_deriv_imgs.Ncells.resize(Npix_to_model*6,0);
     }
@@ -1870,11 +1811,11 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         first_deriv_imgs.eta.resize(Npix_to_model*3,0);
         second_deriv_imgs.eta.resize(Npix_to_model*3,0);
     }
-    if (refine_pan_rot[0]){
+    if (std::count(db_flags.refine_panel_rot.begin(), db_flags.refine_panel_rot.end(), true) > 0){
         first_deriv_imgs.panel_rot.resize(Npix_to_model*3,0);
         second_deriv_imgs.panel_rot.resize(Npix_to_model*3,0);
     }
-    if (refine_pan_orig[0]){
+    if (std::count(db_flags.refine_panel_origin.begin(), db_flags.refine_panel_origin.end(), true) > 0){
         first_deriv_imgs.panel_orig.resize(Npix_to_model*3,0);
         second_deriv_imgs.panel_orig.resize(Npix_to_model*3,0);
     }
@@ -1893,9 +1834,9 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         TIMERS.add_spots_pre += time;
 
     if (verbose){
-        printf("Pre kernel: Time to list steps: %f sec\n", time_steps);
-        printf("Pre kernel: Time to make other vecs: %f sec\n", time_other_vecs);
-        printf("Pre kernel: Time to make images: %f sec\n", time_make_images);
+        printf("Pre kernel: Time to list steps: %f msec\n", time_steps);
+        printf("Pre kernel: Time to make other vecs: %f msec\n", time_other_vecs);
+        printf("Pre kernel: Time to make images: %f msec\n", time_make_images);
     }
 
     //fudge = 1.1013986013; // from manuscript computation
@@ -1976,7 +1917,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     if (record_time) TIMERS.add_spots_kernel_wrapper += time;
 
     gettimeofday(&t1,0 );
-    // TODO behold inefficient
+
     for (int i_pix=0; i_pix< Npix_to_model; i_pix++){
         floatimage_roi[i_pix] = image[i_pix];
 
@@ -2080,8 +2021,6 @@ void diffBragg::diffBragg_rot_mats(){
             db_cryst.RotMats[i_rot] = rot_managers[i_rot]->R;
             db_cryst.dRotMats[i_rot] = rot_managers[i_rot]->dR;
             db_cryst.d2RotMats[i_rot] = rot_managers[i_rot]->dR2;
-            R3[i_rot] = db_cryst.RotMats[i_rot];
-            R3_2[i_rot] = db_cryst.RotMats[i_rot]; // TODO: is this correct ?
         //}
     }
     db_cryst.RXYZ = db_cryst.RotMats[0]*db_cryst.RotMats[1]*db_cryst.RotMats[2];
@@ -2094,7 +2033,7 @@ void diffBragg::diffBragg_rot_mats(){
                 //printf("setting umat %d in vector of length %d\n" , mos_tic, UMATS_RXYZ_prime.size());
                 int mos_tic2 = mosaic_domains*i_eta + mos_tic;
                 db_cryst.UMATS_RXYZ_prime[mos_tic2] = db_cryst.UMATS_prime[mos_tic2]*db_cryst.RXYZ;
-                if (UMATS_dbl_prime.size() > 0){
+                if (db_cryst.UMATS_dbl_prime.size() > 0){
                     if (verbose && mos_tic ==0)
                         printf("setting UMATS_RXYZ_dblprime\n");
                     db_cryst.UMATS_RXYZ_dbl_prime[mos_tic2] = db_cryst.UMATS_dbl_prime[mos_tic2]*db_cryst.RXYZ;
