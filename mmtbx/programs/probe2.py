@@ -459,7 +459,7 @@ Note:
         elif not self.params.do_het and self._inHet[b]:
           continue
 
-        # The nearby neighbor is one that we should check interaction with, see if
+        # The nearby atom is one that we should check interaction with, see if
         # we're in range.  If so, mark this dot as not okay because it is inside a
         # nearby atom.
         if ( (Helpers.rvec3(b.xyz) - exploc).length() <=
