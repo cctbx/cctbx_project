@@ -60,13 +60,13 @@ namespace boost_python { namespace {
     SCITBX_ASSERT( boost::python::len(atom_z)== natoms);
     SCITBX_ASSERT( boost::python::len(atom_B)== natoms);
     SCITBX_ASSERT( boost::python::len(atom_O)== natoms);
-    diffBragg.atom_data.clear();
+    diffBragg.db_cryst.atom_data.clear();
     for (int i=0; i < natoms; i++){
-        diffBragg.atom_data.push_back( boost::python::extract<double>(atom_x[i]));
-        diffBragg.atom_data.push_back(  boost::python::extract<double>(atom_y[i]));
-        diffBragg.atom_data.push_back(  boost::python::extract<double>(atom_z[i]));
-        diffBragg.atom_data.push_back( boost::python::extract<double>(atom_B[i]));
-        diffBragg.atom_data.push_back(  boost::python::extract<double>(atom_O[i]));
+        diffBragg.db_cryst.atom_data.push_back( boost::python::extract<double>(atom_x[i]));
+        diffBragg.db_cryst.atom_data.push_back(  boost::python::extract<double>(atom_y[i]));
+        diffBragg.db_cryst.atom_data.push_back(  boost::python::extract<double>(atom_z[i]));
+        diffBragg.db_cryst.atom_data.push_back( boost::python::extract<double>(atom_B[i]));
+        diffBragg.db_cryst.atom_data.push_back(  boost::python::extract<double>(atom_O[i]));
     }
   }
 
@@ -85,16 +85,16 @@ namespace boost_python { namespace {
     int num_fdblprime =   boost::python::len(fdblprime_derivs);
     SCITBX_ASSERT(num_fprime % diffBragg.sources==0);
     SCITBX_ASSERT(num_fdblprime % diffBragg.sources == 0 );
-    diffBragg.fpfdp_derivs.clear();
+    diffBragg.db_cryst.fpfdp_derivs.clear();
     //diffBragg.fdp_derivs.clear();
     int n_deriv = num_fprime / diffBragg.sources;
     for (int i_deriv=0; i_deriv < n_deriv; i_deriv++ ){
         for (int i=0; i<diffBragg.sources; i++){
             int idx=diffBragg.sources*i_deriv + i;
             double val = boost::python::extract<double>(fprime_derivs[idx]);
-            diffBragg.fpfdp_derivs.push_back(val);
+            diffBragg.db_cryst.fpfdp_derivs.push_back(val);
             val = boost::python::extract<double>(fdblprime_derivs[idx]);
-            diffBragg.fpfdp_derivs.push_back(val);
+            diffBragg.db_cryst.fpfdp_derivs.push_back(val);
         }
     }
   }
@@ -108,12 +108,12 @@ namespace boost_python { namespace {
     int num_fdblprime =   boost::python::len(fdblprime);
     SCITBX_ASSERT(num_fprime==diffBragg.sources);
     SCITBX_ASSERT(num_fdblprime==diffBragg.sources);
-    diffBragg.fpfdp.clear();
+    diffBragg.db_cryst.fpfdp.clear();
     for (int i=0; i<diffBragg.sources; i++){
         double val = boost::python::extract<double>(fprime[i]);
-        diffBragg.fpfdp.push_back(val);
+        diffBragg.db_cryst.fpfdp.push_back(val);
         val = boost::python::extract<double>(fdblprime[i]);
-        diffBragg.fpfdp.push_back(val);
+        diffBragg.db_cryst.fpfdp.push_back(val);
     }
   }
 
@@ -122,10 +122,10 @@ namespace boost_python { namespace {
     boost::python::list fp;
     boost::python::list fdp;
     boost::python::tuple values;
-    int n = diffBragg.fpfdp.size()/2;
+    int n = diffBragg.db_cryst.fpfdp.size()/2;
     for(int i=0; i < n; i++ ){
-        double fp_val = diffBragg.fpfdp[2*i];
-        double fdp_val = diffBragg.fpfdp[2*i+1];
+        double fp_val = diffBragg.db_cryst.fpfdp[2*i];
+        double fdp_val = diffBragg.db_cryst.fpfdp[2*i+1];
         fp.append(fp_val);
         fdp.append(fdp_val);
     }

@@ -137,15 +137,6 @@ void rotX_manager::set_R(){
               0,  -cos(value), -sin(value),
               0,   sin(value), -cos(value);
 
-    //SCITBX_EXAMINE(dR2[0]);
-    //SCITBX_EXAMINE(dR2[1]);
-    //SCITBX_EXAMINE(dR2[2]);
-    //SCITBX_EXAMINE(dR2[3]);
-    //SCITBX_EXAMINE(dR2[4]);
-    //SCITBX_EXAMINE(dR2[5]);
-    //SCITBX_EXAMINE(dR2[6]);
-    //SCITBX_EXAMINE(dR2[7]);
-    //SCITBX_EXAMINE(dR2[8]);
 
 }
 void rotY_manager::set_R(){
@@ -183,10 +174,10 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     { // diffBragg init
     int Npanels = detector.size();
     Npix_total = Npanels * detector[0].get_image_size()[0]* detector[0].get_image_size()[1];
-    fdet_vectors.clear();
-    sdet_vectors.clear();
-    odet_vectors.clear();
-    pix0_vectors.clear();
+    db_det.fdet_vectors.clear();
+    db_det.sdet_vectors.clear();
+    db_det.odet_vectors.clear();
+    db_det.pix0_vectors.clear();
 
 
     no_Nabc_scale = false;
@@ -194,10 +185,10 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     eig_objs.dF_vecs.clear();
     eig_objs.dS_vecs.clear();
     for (int ii=0; ii < Npanels*3; ii++){
-        fdet_vectors.push_back(0);
-        sdet_vectors.push_back(0);
-        odet_vectors.push_back(0);
-        pix0_vectors.push_back(0);
+        db_det.fdet_vectors.push_back(0);
+        db_det.sdet_vectors.push_back(0);
+        db_det.odet_vectors.push_back(0);
+        db_det.pix0_vectors.push_back(0);
 
         Eigen::Vector3d vec(0,0,0);
         eig_objs.dF_vecs.push_back(vec);
@@ -207,7 +198,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     EYE <<  1,0,0,
             0,1,0,
             0,0,1;
-    eig_O << 1,0,0,
+    eig_objs.eig_O << 1,0,0,
                0,1,0,
                0,0,1;
     psi = 0;
@@ -270,7 +261,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     //fcell_man = boost::shared_ptr<Fcell_manager>(new Fcell_manager());
     //fcell_man->refine_me = false;
     track_Fhkl=false;
-    nominal_hkl.clear();
+    db_cryst.nominal_hkl.clear();
 
     boost::shared_ptr<eta_manager> eta0 = boost::shared_ptr<eta_manager>(new eta_manager());
     boost::shared_ptr<eta_manager> eta1 = boost::shared_ptr<eta_manager>(new eta_manager());
@@ -338,7 +329,6 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     lambda_managers.push_back(lam1);
     lambda_managers.push_back(lam2);
 
-
     rot_managers.push_back(rotX);
     rot_managers.push_back(rotY);
     rot_managers.push_back(rotZ);
@@ -367,7 +357,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     fp_fdp_managers.push_back(fpfdp1);
     fp_fdp_managers.push_back(fpfdp2);
 
-    fpfdp.clear();
+    db_cryst.fpfdp.clear();
 
     O_reference <<0,0,0;
 
@@ -386,8 +376,6 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     lambda_managers[0]->value = 0;
     lambda_managers[1]->value = 1;
     use_lambda_coefficients = false;
-    //source_lambda0 = 0;
-    //source_lambda1 = 1;
 
     // set ucell gradients, Bmatrix is upper triangular in diffBragg?
     for (int i=0; i <6; i++){
@@ -420,19 +408,19 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
 }
 
 void diffBragg::set_close_distances(){
-    close_distances.clear();
-    int Npanels = pix0_vectors.size() / 3;
+    db_det.close_distances.clear();
+    int Npanels = db_det.pix0_vectors.size() / 3;
     for (int ii=0; ii<Npanels; ii++){
-        Eigen::Vector3d pix0(pix0_vectors[ii*3], pix0_vectors[ii*3+1], pix0_vectors[ii*3+2]) ;
-        Eigen::Vector3d OO(odet_vectors[ii*3], odet_vectors[ii*3+1], odet_vectors[ii*3+2]) ;
+        Eigen::Vector3d pix0(db_det.pix0_vectors[ii*3], db_det.pix0_vectors[ii*3+1], db_det.pix0_vectors[ii*3+2]) ;
+        Eigen::Vector3d OO(db_det.odet_vectors[ii*3], db_det.odet_vectors[ii*3+1], db_det.odet_vectors[ii*3+2]) ;
         double close_dist = pix0.dot(OO);
-        close_distances.push_back(close_dist);
+        db_det.close_distances.push_back(close_dist);
         if (verbose) printf("Panel %d: close distance %f\n", ii, close_dist);
     }
 }
 
 
-af::flex_double diffBragg::get_panel_increment( double Iincrement, double omega_pixel,
+af::flex_double get_panel_increment( double Iincrement, double omega_pixel,
     const Eigen::Ref<const Eigen::Matrix3d>& M,
     double pix2, const Eigen::Ref<const Eigen::Vector3d>& o, const Eigen::Ref<const Eigen::Vector3d>& k_diffracted,
     double per_k, double per_k3, double per_k5, const Eigen::Ref<const Eigen::Vector3d>& V,
@@ -461,13 +449,6 @@ void diffBragg::rotate_fs_ss_vecs_3D(double panel_rot_angO, double panel_rot_ang
     Eigen::Vector3d origin_diff_vec = origin_vec - O_reference; // difference between origin and a reference vector, this is the vector we will rotate
 
     Eigen::Matrix3d RO, RF, RS;
-    //R0<< 0,0,0,0,0,0,0,0,0;
-    //RO[1] = -odet_vector[3];
-    //RO[2] = odet_vector[2];
-    //RO[3] = odet_vector[3];
-    //RO[5] = -odet_vector[1];
-    //RO[6] = -odet_vector[2];
-    //RO[7] = odet_vector[1];
     double xx,yy,zz;
     xx = odet_vector[1];
     yy = odet_vector[2];
@@ -484,13 +465,6 @@ void diffBragg::rotate_fs_ss_vecs_3D(double panel_rot_angO, double panel_rot_ang
         zz,  0, -xx,
        -yy, xx,   0;
 
-    //RF << 0,0,0,0,0,0,0,0,0;
-    //RF[1] = -fdet_vector[3];
-    //RF[2] = fdet_vector[2];
-    //RF[3] = fdet_vector[3];
-    //RF[5] = -fdet_vector[1];
-    //RF[6] = -fdet_vector[2];
-    //RF[7] = fdet_vector[1];
     Eigen::Matrix3d RF2 = RF*RF;
 
     xx = sdet_vector[1];
@@ -499,13 +473,6 @@ void diffBragg::rotate_fs_ss_vecs_3D(double panel_rot_angO, double panel_rot_ang
     RS<< 0,-zz,  yy,
         zz,  0, -xx,
        -yy, xx,   0;
-    //RS << 0,0,0,0,0,0,0,0,0;
-    //RS[1] = -sdet_vector[3];
-    //RS[2] = sdet_vector[2];
-    //RS[3] = sdet_vector[3];
-    //RS[5] = -sdet_vector[1];
-    //RS[6] = -sdet_vector[2];
-    //RS[7] = sdet_vector[1];
     Eigen::Matrix3d RS2 = RS*RS;
 
     Eigen::Matrix3d rotO = EYE + RO*sin(panel_rot_angO) + RO2*(1-cos(panel_rot_angO));
@@ -543,15 +510,6 @@ void diffBragg::rotate_fs_ss_vecs_3D(double panel_rot_angO, double panel_rot_ang
         pix0_vector[i+1] = origin_vec[i];
     }
 
-    //int pan_mans[3] = {0,4,5};
-    //for (int i_rot=0; i_rot <3; i_rot++ ){
-    //    int panels_id = pan_mans[i_rot];
-    //    pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[panels_id]);
-    //    pan_rot->F_cross_dS = fs_vec.cross(pan_rot->dS);
-    //    pan_rot->dF_cross_S = (pan_rot->dF).cross(ss_vec);
-    //}
-
-
 }
 /* end panel Rot XYZ */
 
@@ -581,7 +539,7 @@ void diffBragg::update_dxtbx_geoms(
     unitize(beam_vector,beam_vector);
 
     /* central wavelength, in Angstrom */
-    lambda0 = beam.get_wavelength()*1e-10;
+    db_beam.lambda0 = beam.get_wavelength()*1e-10;
 
     /* divergence, what are the DXTBX units? */
     temp = beam.get_divergence();
@@ -728,10 +686,10 @@ void diffBragg::update_dxtbx_geoms(
     int pan_rot_ids[3] = {0,4,5};
     boost::shared_ptr<panel_manager> pan;
     for (int ii=0; ii < 3; ii++){
-        fdet_vectors[panel_id*3 + ii] = fdet_vector[ii+1];
-        sdet_vectors[panel_id*3 + ii] = sdet_vector[ii+1];
-        pix0_vectors[panel_id*3 + ii] = pix0_vector[ii+1];
-        odet_vectors[panel_id*3 + ii] = odet_vector[ii+1];
+        db_det.fdet_vectors[panel_id*3 + ii] = fdet_vector[ii+1];
+        db_det.sdet_vectors[panel_id*3 + ii] = sdet_vector[ii+1];
+        db_det.pix0_vectors[panel_id*3 + ii] = pix0_vector[ii+1];
+        db_det.odet_vectors[panel_id*3 + ii] = odet_vector[ii+1];
 
         int i_rot = pan_rot_ids[ii];
         pan = boost::dynamic_pointer_cast<panel_manager>(panels[i_rot]);
@@ -739,13 +697,6 @@ void diffBragg::update_dxtbx_geoms(
         eig_objs.dS_vecs[panel_id*3 + ii] = pan->dS;
     }
 
-    //SCITBX_EXAMINE(Yclose);
-    //SCITBX_EXAMINE(Xclose);
-    //SCITBX_EXAMINE(Ybeam);
-    //SCITBX_EXAMINE(Xbeam);
-    //SCITBX_EXAMINE(distance);
-    //SCITBX_EXAMINE(close_distance);
-    //printf("Done updating!\n");
     SCITBX_ASSERT(close_distance > 0);
     verbose = old_verbose;
     set_close_distances();
@@ -753,14 +704,11 @@ void diffBragg::update_dxtbx_geoms(
 
 void diffBragg::shift_originZ(const dxtbx::model::Detector& detector, double shiftZ){
     for (int pid=0; pid< detector.size(); pid++)
-        pix0_vectors[pid*3 + 2] = detector[pid].get_origin()[2]/1000.0 + shiftZ;
+        db_det.pix0_vectors[pid*3 + 2] = detector[pid].get_origin()[2]/1000.0 + shiftZ;
     set_close_distances();
 }
 
 void diffBragg::init_raw_pixels_roi(){
-    //int fdim = roi_xmax-roi_xmin+1;
-    //int sdim = roi_ymax-roi_ymin+1;
-    //raw_pixels_roi = af::flex_double(af::flex_grid<>(sdim,fdim));
     raw_pixels_roi = af::flex_double(Npix_total);
 }
 
@@ -1174,7 +1122,7 @@ void diffBragg::update_xray_beams(scitbx::af::versa<dxtbx::model::Beam, scitbx::
 
     }
     /* update averaged parameters */
-    if(lambda_sum>0.0) lambda0 = lambda_sum/sources;
+    if(lambda_sum>0.0) db_beam.lambda0 = lambda_sum/sources;
 
     /* take in total flux */
     if(flux_sum > 0)
@@ -1209,7 +1157,7 @@ void diffBragg::quick_Fcell_update(boost::python::tuple const& value){
         int k = k0-k_min;
         int l = l0-l_min;
         //Fhkl[h0-h_min][k0-k_min][l0-l_min]=F_cell;
-        FhklLinear[h*k_range*l_range+ k*l_range + l] = F_cell;
+        db_cryst.FhklLinear[h*k_range*l_range+ k*l_range + l] = F_cell;
         if(verbose>9) printf("F %d : %d %d %d = %g\n",i_h,h,k,l,F_cell);
     }
     //update_linear_Fhkl();
@@ -1341,19 +1289,19 @@ boost::python::tuple diffBragg::get_ncells_values(){
 void diffBragg::show_heavy_atom_data(){
   int natom = atom_data.size()/5;
   for (i=0; i<natom;i++){
-    double x =atom_data[i*5];
-    double y =atom_data[i*5+1];
-    double z =atom_data[i*5+2];
-    double B =atom_data[i*5+3];
-    double O =atom_data[i*5+4];
+    double x =db_cryst.atom_data[i*5];
+    double y =db_cryst.atom_data[i*5+1];
+    double z =db_cryst.atom_data[i*5+2];
+    double B =db_cryst.atom_data[i*5+3];
+    double O =db_cryst.atom_data[i*5+4];
     printf("Atom %d at position %5.3g,%5.3g,%5.3g, Bfactor=%5.2g Ang^2, Occupancy=%2.3g\n",i,x,y,z,B,O);
   }
 }
 
 void diffBragg::show_fp_fdp(){
   for(int i=0; i< sources; i++){
-    double fp = fpfdp[2*i];
-    double fdp=fpfdp[2*i+1];
+    double fp = db_cryst.fpfdp[2*i];
+    double fdp=db_cryst.fpfdp[2*i+1];
     printf("Source %d, fp=%8.3g, fdp=%8.3g\n", i,fp,fdp);
   }
 }
@@ -1392,21 +1340,6 @@ double diffBragg::get_value(int refine_id){
 }
 /* End parameter set/get */
 
-
-//af::flex_double diffBragg::get_Na_derivative_pixels(){
-// experimental
-//boost::python::numpy::ndarray diffBragg::get_Na_derivative_pixels(){
-//    SCITBX_ASSERT(Ncells_managers[0]->refine_me);
-//    //https://stackoverflow.com/a/10705352/2077270
-//    // note seems slow, best would be to drop in a contiguous 1-d numpy array instead of flex
-//    // but is is possible using boost ?
-//    af::flex_double v = Ncells_managers[0]->raw_pixels;
-//    Py_intptr_t shape[1] = { v.size() };
-//    boost::python::numpy::ndarray result = boost::python::numpy::zeros(
-//            1, shape, boost::python::numpy::dtype::get_builtin<double>());
-//    std::copy(v.begin(), v.end(), reinterpret_cast<double*>(result.get_data()));
-//    return result;
-//}
 
 
 af::flex_double diffBragg::get_derivative_pixels(int refine_id){
@@ -1688,7 +1621,7 @@ af::shared<double> diffBragg::add_diffBragg_spots_full(){
     struct timeval t1,t2;
     gettimeofday(&t1,0 );
 
-    int Npanels = pix0_vectors.size() / 3;
+    int Npanels = db_det.pix0_vectors.size() / 3;
     int fdim = roi_xmax-roi_xmin;
     int sdim = roi_ymax-roi_ymin;
     int npix = Npanels*spixels*fpixels;
@@ -1742,7 +1675,7 @@ void diffBragg::add_diffBragg_spots(){
 
 void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows, boost::python::list per_pix_nominal_hkl){
 
-    nominal_hkl.clear();
+    db_cryst.nominal_hkl.clear();
     Npix_to_model = panels_fasts_slows.size()/3;
     SCITBX_ASSERT(Npix_to_model==boost::python::len(per_pix_nominal_hkl));
     // NOTE each element of the list needs to be a 3-tuple
@@ -1751,9 +1684,9 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         int nom_h = boost::python::extract<int>(hkl[0]);
         int nom_k = boost::python::extract<int>(hkl[1]);
         int nom_l = boost::python::extract<int>(hkl[2]);
-        nominal_hkl.push_back(nom_h);
-        nominal_hkl.push_back(nom_k);
-        nominal_hkl.push_back(nom_l);
+        db_cryst.nominal_hkl.push_back(nom_h);
+        db_cryst.nominal_hkl.push_back(nom_k);
+        db_cryst.nominal_hkl.push_back(nom_l);
     }
     add_diffBragg_spots(panels_fasts_slows);
 }
@@ -1775,15 +1708,13 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     gettimeofday(&t3,0 );
     steps = phisteps*mosaic_domains*oversample*oversample;
     subpixel_size = pixel_size/oversample;
-    const int Nsteps = oversample*oversample*detector_thicksteps*sources*phisteps*mosaic_domains;
-
-    db_steps.subS_pos = new int[Nsteps];
-    db_steps.subF_pos = new int[Nsteps];
-    db_steps.thick_pos = new int[Nsteps];
-    db_steps.source_pos = new int[Nsteps];
-    db_steps.phi_pos = new int[Nsteps];
-    db_steps.mos_pos = new int[Nsteps];
-
+    db_steps.Nsteps = oversample*oversample*detector_thicksteps*sources*phisteps*mosaic_domains;
+    db_steps.subS_pos = new int[db_steps.Nsteps];
+    db_steps.subF_pos = new int[db_steps.Nsteps];
+    db_steps.thick_pos = new int[db_steps.Nsteps];
+    db_steps.source_pos = new int[db_steps.Nsteps];
+    db_steps.phi_pos = new int[db_steps.Nsteps];
+    db_steps.mos_pos = new int[db_steps.Nsteps];
     diffBragg_list_steps(db_steps);
     gettimeofday(&t4,0 );
     double time_steps = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
@@ -1791,11 +1722,6 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     gettimeofday(&t3,0 );
     int pan_rot_ids[3] = {0,4,5};
     int pan_orig_ids[3] = {1,2,3};
-
-    int _printout_fpixel = printout_fpixel;
-    int _printout_spixel = printout_spixel;
-    bool _printout = printout;
-    double _default_F = default_F;
 
     std::vector<bool> refine_pan_rot(3, false);
     std::vector<bool> refine_pan_orig(3,false);
@@ -1834,6 +1760,74 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             refine_Ncells[2] = true;
         }
     }
+
+    db_flags.refine_Ncells = refine_Ncells;
+    db_flags.refine_fcell = fcell_managers[0]->refine_me;
+    db_flags.refine_Umat = refine_Umat;
+    db_flags.refine_lambda = refine_lambda;
+    db_flags.refine_panel_origin = refine_pan_orig;
+    db_flags.refine_Ncells_def =refine_Ncells_def;
+    db_flags.refine_Bmat = refine_Bmat;
+    db_flags.refine_panel_rot = refine_pan_rot;
+    db_flags.refine_eta = eta_managers[0]->refine_me;
+    db_flags.printout_fpixel = printout_fpixel;
+    db_flags.printout_spixel = printout_spixel;
+    db_flags.printout = printout;
+    db_flags.track_Fhkl = track_Fhkl;
+    db_flags.printout = printout;
+    db_flags.nopolar = nopolar;
+    db_flags.point_pixel = point_pixel;
+    db_flags.only_save_omega_kahn = only_save_omega_kahn;
+    db_flags.compute_curvatures = compute_curvatures;
+    db_flags.isotropic_ncells = isotropic_ncells;
+    db_flags.complex_miller = complex_miller;
+    db_flags.no_Nabc_scale = no_Nabc_scale;
+    db_flags.refine_fp_fdp = fp_fdp_managers[0]->refine_me;
+    db_flags.use_lambda_coefficients = use_lambda_coefficients;
+    db_flags.oversample_omega = oversample_omega;
+    db_flags.printout_fpixel = printout_fpixel;
+    db_flags.printout_spixel = printout_spixel;
+    db_flags.verbose = verbose;
+
+    db_cryst.mosaic_domains = mosaic_domains;
+    db_cryst.default_F = default_F;
+    db_cryst.r_e_sqr = r_e_sqr;
+    db_cryst.h_max = h_max;
+    db_cryst.k_max = k_max;
+    db_cryst.l_max = l_max;
+    db_cryst.h_min = h_min;
+    db_cryst.k_min = k_min;
+    db_cryst.l_min = l_min;
+    db_cryst.h_range = h_range;
+    db_cryst.k_range = k_range;
+    db_cryst.l_range = l_range;
+    db_cryst.dmin = dmin;
+    db_cryst.phi0 = phi0;
+    db_cryst.phistep = phistep;
+    db_cryst.fudge = fudge;
+    db_cryst.spot_scale = spot_scale;
+    db_cryst.Na = Na;
+    db_cryst.Nb = Nb;
+    db_cryst.Nc = Nc;
+    db_cryst.Nd = Nd;
+    db_cryst.Ne = Ne;
+    db_cryst.Nf = Nf;
+
+    db_beam.source_X = source_X;
+    db_beam.source_Y = source_Y;
+    db_beam.source_Z = source_Z;
+    db_beam.source_lambda = source_lambda;
+    db_beam.source_I = source_I;
+    db_beam.fluence = fluence;
+    db_beam.kahn_factor =  polarization;
+    db_beam.lambda0 = lambda_managers[0]->value;
+    db_beam.lambda1 = lambda_managers[1]->value;
+
+    db_det.detector_thickstep = detector_thickstep;
+    db_det.detector_thick = detector_thick;
+    db_det.detector_attnlen = detector_attnlen;
+    db_det.subpixel_size = subpixel_size;
+    db_det.pixel_size = pixel_size;
 
     Eigen::Vector3d eig_spindle_vec(spindle_vector[1], spindle_vector[2], spindle_vector[3]);
     Eigen::Vector3d _polarization_axis(polar_vector[1], polar_vector[2], polar_vector[3]);
@@ -1889,21 +1883,6 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     gettimeofday(&t4,0 );
     double time_make_images = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
 
-    //eig_objs.eig_U = eig_U;,
-    //eig_objs.eig_O = eig_O;
-    //eig_objs.eig_B = eig_B;
-    //eig_objs.RXYZ = RXYZ;
-    //eig_objs.dF_vecs = dF_vecs;
-    //eig_objs.dS_vecs = dS_vecs;
-    //eig_objs.UMATS_RXYZ = UMATS_RXYZ;
-    //eig_objs.UMATS_RXYZ_prime = UMATS_RXYZ_prime;
-    //eig_objs.UMATS_RXYZ_dbl_prime = UMATS_RXYZ_dbl_prime;
-    //eig_objs.RotMats = RotMats;
-    //eig_objs.dRotMats  = dRotMats;
-    //eig_objs.d2RotMats = d2RotMats;
-    //eig_objs.UMATS = UMATS;
-    //eig_objs.dB_Mats = dB_Mats;
-    //eig_objs.dB2_Mats = dB2_Mats;
     eig_objs.spindle_vec = eig_spindle_vec;
     eig_objs._polarization_axis = _polarization_axis;
 
@@ -1921,38 +1900,17 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     //fudge = 1.1013986013; // from manuscript computation
     gettimeofday(&t1,0 );
     if (! use_cuda && getenv("DIFFBRAGG_USE_CUDA")==NULL){
-        diffBragg::diffBragg_sum_over_steps(
+        diffBragg_sum_over_steps(
             Npix_to_model, panels_fasts_slows_vec,
             image,
             first_deriv_imgs,
             second_deriv_imgs,
             db_steps,
-            Nsteps,
-
-            _printout_fpixel, _printout_spixel, _printout, _default_F,
-            oversample, oversample_omega, subpixel_size, pixel_size,
-            detector_thickstep, detector_thick, close_distances, detector_attnlen,
-            use_lambda_coefficients, lambda_managers[0]->value, lambda_managers[1]->value,
-
             eig_objs,
-
-            source_X,  source_Y,  source_Z,  source_lambda,  source_I,
-            polarization,
-            Na, Nb, Nc,
-            Nd, Ne, Nf,
-            phi0, phistep,
-            h_range, k_range, l_range,
-            h_max, h_min, k_max, k_min, l_max, l_min, dmin,
-            fudge, complex_miller, verbose, only_save_omega_kahn,
-            isotropic_ncells, compute_curvatures,
-            FhklLinear, Fhkl2Linear,
-            refine_Bmat, refine_Ncells, refine_Ncells_def, refine_pan_orig, refine_pan_rot,
-            fcell_managers[0]->refine_me, refine_lambda, eta_managers[0]->refine_me, refine_Umat,
-            fp_fdp_managers[0]->refine_me,
-            fdet_vectors, sdet_vectors,
-            odet_vectors, pix0_vectors,
-            nopolar, point_pixel, fluence, r_e_sqr, spot_scale, no_Nabc_scale,
-            fpfdp, fpfdp_derivs, atom_data, track_Fhkl, nominal_hkl);
+            db_det,
+            db_beam,
+            db_cryst,
+            db_flags);
         }
     else { // we are using cuda
 #ifdef NANOBRAGG_HAVE_CUDA
@@ -1960,9 +1918,9 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
            Npix_to_model, panels_fasts_slows_vec,
            image,
            first_deriv_imgs, second_deriv_imgs,
-           Nsteps, _printout_fpixel, _printout_spixel, _printout, _default_F,
+           db_steps.Nsteps, _printout_fpixel, _printout_spixel, _printout, _default_F,
            oversample, oversample_omega, subpixel_size, pixel_size,
-           detector_thickstep, detector_thick, close_distances, detector_attnlen,
+           detector_thickstep, detector_thick, db_det.close_distances, detector_attnlen,
            use_lambda_coefficients, lambda_managers[0]->value, lambda_managers[1]->value,
            eig_U, eig_O, eig_B, RXYZ,
            dF_vecs,
@@ -1983,7 +1941,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
            h_max, h_min, k_max, k_min, l_max, l_min, dmin,
            fudge, complex_miller, verbose, only_save_omega_kahn,
            isotropic_ncells, compute_curvatures,
-           FhklLinear, Fhkl2Linear,
+           db_cryst.FhklLinear, db_cryst.Fhkl2Linear,
            refine_Bmat, refine_Ncells,refine_Ncells_def,refine_pan_orig, refine_pan_rot,
            fcell_managers[0]->refine_me, refine_lambda, eta_managers[0]->refine_me, refine_Umat,
            fp_fdp_managers[0]->refine_me,
@@ -2005,11 +1963,11 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
     if(verbose){
-        unsigned long long long_Nsteps = Nsteps;
+        unsigned long long long_Nsteps = db_steps.Nsteps;
         unsigned long long long_Npix = Npix_to_model;
         unsigned long long n_total_iter =  long_Nsteps*long_Npix;
         printf("Nsteps=%d\noversample=%d\ndet_thick_steps=%d\nsources=%d\nphisteps=%d\nmosaic_domains=%d\n",
-                Nsteps,oversample,detector_thicksteps,sources,phisteps,mosaic_domains);
+                db_steps.Nsteps,oversample,detector_thicksteps,sources,phisteps,mosaic_domains);
         if(use_cuda || getenv("DIFFBRAGG_USE_CUDA")!= NULL)
             printf("TIME TO RUN DIFFBRAGG -GPU- (%llu iterations):  %3.10f ms \n",n_total_iter, time);
         else
@@ -2175,7 +2133,7 @@ void diffBragg::sanity_check_linear_Fhkl(){
         for (int h = 0; h < h_range; h++) {
                 for (int k = 0; k < k_range; k++) {
                         for (int l = 0; l < l_range; l++) {
-                                SCITBX_ASSERT(FhklLinear[h*k_range*l_range + k*l_range  + l] == Fhkl[h][k][l]);
+                                SCITBX_ASSERT(db_cryst.FhklLinear[h*k_range*l_range + k*l_range  + l] == Fhkl[h][k][l]);
                         }
                 }
         }
@@ -2186,21 +2144,21 @@ void diffBragg::update_linear_Fhkl(){
         for (int h = 0; h < h_range; h++) {
                 for (int k = 0; k < k_range; k++) {
                         for (int l = 0; l < l_range; l++) {
-                                FhklLinear[h*k_range*l_range + k*l_range  + l] = Fhkl[h][k][l];
+                                db_cryst.FhklLinear[h*k_range*l_range + k*l_range  + l] = Fhkl[h][k][l];
                         }
                 }
         }
 }
 
 void diffBragg::linearize_Fhkl(){
-        FhklLinear.clear();
-        Fhkl2Linear.clear();
+        db_cryst.FhklLinear.clear();
+        db_cryst.Fhkl2Linear.clear();
         for (int h = 0; h < h_range; h++) {
                 for (int k = 0; k < k_range; k++) {
                         for (int l = 0; l < l_range; l++) {
-                                FhklLinear.push_back(Fhkl[h][k][l]);
+                                db_cryst.FhklLinear.push_back(Fhkl[h][k][l]);
                                 if (complex_miller)
-                    Fhkl2Linear.push_back(Fhkl2[h][k][l]);
+                    db_cryst.Fhkl2Linear.push_back(Fhkl2[h][k][l]);
                         }
                 }
         }

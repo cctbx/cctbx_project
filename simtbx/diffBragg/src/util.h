@@ -4,6 +4,7 @@
 
 #include <Eigen/Dense>
 #include<Eigen/StdVector>
+#include<vector>
 
 
 typedef std::vector<double> image_type;
@@ -42,6 +43,7 @@ struct step_arrays{
    int* source_pos;
    int* phi_pos;
    int* mos_pos;
+   int Nsteps;
 };
 
 struct eigen_objects{
@@ -68,6 +70,66 @@ struct eigen_objects{
 
    Eigen::Vector3d spindle_vec;
    Eigen::Vector3d _polarization_axis;
+};
+
+struct flags{
+    bool track_Fhkl;
+    bool printout;
+    bool nopolar;
+    bool point_pixel;
+    bool only_save_omega_kahn;
+    bool compute_curvatures;
+    bool isotropic_ncells;
+    bool complex_miller;
+    bool no_Nabc_scale;
+    std::vector<bool> refine_Bmat;
+    std::vector<bool> refine_Ncells;
+    bool refine_Ncells_def;
+    std::vector<bool> refine_panel_origin;
+    std::vector<bool> refine_panel_rot;
+    bool refine_fcell;
+    std::vector<bool> refine_lambda;
+    bool refine_eta;
+    std::vector<bool> refine_Umat;
+    bool refine_fp_fdp;
+    bool use_lambda_coefficients;
+    bool oversample_omega;
+    int printout_fpixel, printout_spixel;
+    int verbose;
+};
+
+struct crystal{
+    int mosaic_domains;
+    double Na, Nb, Nc, Nd, Ne, Nf;
+    double phi0;
+    double phistep;
+    double fudge;
+    double spot_scale;
+    int h_range, k_range, l_range;
+    int h_max, h_min, k_max, k_min, l_max, l_min;
+    double dmin;
+    std::vector<double> FhklLinear, Fhkl2Linear;
+    std::vector<double> fpfdp;
+    std::vector<double> fpfdp_derivs;
+    std::vector<double> atom_data;
+    std::vector<int> nominal_hkl;
+    double default_F;
+    double r_e_sqr;
+};
+
+struct beam{
+    double fluence;
+    double kahn_factor;
+    double *source_X, *source_Y, *source_Z, *source_lambda, *source_I;
+    double lambda0,lambda1;
+};
+
+struct detector{
+    double detector_thickstep, detector_thick, detector_attnlen;
+    std::vector<double> close_distances;
+    int oversample;
+    double subpixel_size, pixel_size;
+    std::vector<double> fdet_vectors, sdet_vectors, odet_vectors, pix0_vectors;
 };
 
 #endif

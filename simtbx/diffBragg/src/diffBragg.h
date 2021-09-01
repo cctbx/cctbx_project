@@ -134,41 +134,12 @@ class diffBragg: public nanoBragg{
   images first_deriv_imgs, second_deriv_imgs;
   step_arrays db_steps;
   eigen_objects eig_objs;
+  crystal db_cryst;
+  beam db_beam;
+  flags db_flags;
+  detector db_det;
 
-  void diffBragg_sum_over_steps(
-        int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,
-        image_type& floatimage,
-        images& d_image,
-        images& d2_image,
-        step_arrays& db_steps,
-        const int Nsteps,
 
-        int _printout_fpixel, int _printout_spixel, bool _printout, double _default_F,
-        int oversample, bool _oversample_omega, double subpixel_size, double pixel_size,
-        double detector_thickstep, double _detector_thick, std::vector<double>& close_distances, double detector_attnlen,
-        bool use_lambda_coefficients, double lambda0, double lambda1,
-        eigen_objects& eig_objs,
-
-        double* source_X, double* source_Y, double* source_Z, double* source_lambda, double* source_I,
-        double kahn_factor,
-        double Na, double Nb, double Nc,
-        double Nd, double Ne, double Nf,
-        double phi0, double phistep,
-        int h_range, int k_range, int l_range,
-        int h_max, int h_min, int k_max, int k_min, int l_max, int l_min, double dmin,
-        double fudge, bool complex_miller, int verbose, bool only_save_omega_kahn,
-        bool isotropic_ncells, bool compute_curvatures,
-        std::vector<double>& _FhklLinear, std::vector<double>& _Fhkl2Linear,
-        std::vector<bool>& refine_Bmat, std::vector<bool>& refine_Ncells, bool refine_Ncells_def,  std::vector<bool>& refine_panel_origin, std::vector<bool>& refine_panel_rot,
-        bool refine_fcell, std::vector<bool>& refine_lambda, bool refine_eta, std::vector<bool>& refine_Umat,
-        bool refine_fp_fdp,
-        std::vector<double>& fdet_vectors, std::vector<double>& sdet_vectors,
-        std::vector<double>& odet_vectors, std::vector<double>& pix0_vectors,
-        bool _nopolar, bool _point_pixel, double _fluence, double _r_e_sqr, double _spot_scale,
-        bool no_Nabc_scale,
-        std::vector<double>& fpfdp,
-        std::vector<double>& fpfdp_derivs,
-        std::vector<double>& atom_data, bool track_Fhkl, std::vector<int>& nominal_hkl);
 
 
   bool track_Fhkl;
@@ -205,9 +176,6 @@ class diffBragg: public nanoBragg{
   void set_ucell_derivative_matrix(int refine_id, af::shared<double> const& value);
   void set_ucell_second_derivative_matrix(int refine_id, af::shared<double> const& value);
   void init_Fhkl2();
-  af::flex_double get_panel_increment(double Iincrement, double omega_pixel, const Eigen::Ref<const Eigen::Matrix3d>& M, double pix2,
-            const Eigen::Ref<const Eigen::Vector3d>& o, const Eigen::Ref<const Eigen::Vector3d>& k_diffracted,
-            double per_k, double per_k3, double per_k5, const Eigen::Ref<const Eigen::Vector3d>& V, const Eigen::Ref<const Eigen::Vector3d>& _dk);
   inline void free_Fhkl2(){
       if(Fhkl2 != NULL) {
         for (h0=0; h0<=h_range;h0++) {
@@ -409,8 +377,6 @@ class diffBragg: public nanoBragg{
   bool use_lambda_coefficients;
   std::vector<double> FhklLinear, Fhkl2Linear;
   // Eigen types
-  Eigen::Matrix3d eig_U, eig_B, eig_O;
-  std::vector<double> fdet_vectors, sdet_vectors, pix0_vectors, odet_vectors, close_distances;
   void set_close_distances();
   int Npix_total, Npix_to_model;
 
@@ -433,6 +399,22 @@ class diffBragg: public nanoBragg{
 
   void show_timing_stats(int MPI_RANK);
 }; // end of diffBragg
+
+void diffBragg_sum_over_steps(
+      int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,
+      image_type& floatimage,
+      images& d_image,
+      images& d2_image,
+      step_arrays& db_steps,
+      eigen_objects& eig_objs,
+      detector& db_det,
+      beam& db_beam,
+      crystal& db_cryst,
+      flags& db_flags);
+
+af::flex_double get_panel_increment(double Iincrement, double omega_pixel, const Eigen::Ref<const Eigen::Matrix3d>& M, double pix2,
+          const Eigen::Ref<const Eigen::Vector3d>& o, const Eigen::Ref<const Eigen::Vector3d>& k_diffracted,
+          double per_k, double per_k3, double per_k5, const Eigen::Ref<const Eigen::Vector3d>& V, const Eigen::Ref<const Eigen::Vector3d>& _dk);
 
 } // end of namespace nanoBragg
 } // end of namespace simtbx
