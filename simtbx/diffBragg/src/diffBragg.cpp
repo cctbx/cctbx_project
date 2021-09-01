@@ -1803,7 +1803,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         first_deriv_imgs.fcell.resize(Npix_to_model*3,0);
         second_deriv_imgs.fcell.resize(Npix_to_model*3,0);
     }
-    if (lambda_managers[0]->refine_me){
+    if (lambda_managers[0]->refine_me || lambda_managers[1]->refine_me){
         first_deriv_imgs.lambda.resize(Npix_to_model*2,0);
         second_deriv_imgs.lambda.resize(Npix_to_model*2,0);
     }
