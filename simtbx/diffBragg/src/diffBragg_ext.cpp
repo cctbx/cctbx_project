@@ -140,7 +140,7 @@ namespace boost_python { namespace {
 
   void set_O(simtbx::nanoBragg::diffBragg& diffBragg, nanoBragg::mat3 const& value){
     diffBragg.Omatrix = value;
-    diffBragg.eig_objs.eig_O << value[0], value[1], value[2],
+    diffBragg.db_cryst.eig_O << value[0], value[1], value[2],
             value[3], value[4], value[5],
             value[6], value[7], value[8];
     //std::cout << "eigO: " << diffBragg.eig_O << std::endl;
@@ -152,7 +152,7 @@ namespace boost_python { namespace {
 
   void set_U(simtbx::nanoBragg::diffBragg& diffBragg, nanoBragg::mat3 const& value){
     diffBragg.Umatrix = value;
-    diffBragg.eig_objs.eig_U << value[0], value[1], value[2],
+    diffBragg.db_cryst.eig_U << value[0], value[1], value[2],
             value[3], value[4], value[5],
             value[6], value[7], value[8];
   }
@@ -177,7 +177,7 @@ namespace boost_python { namespace {
       diffBragg.user_matrix = 1;
       diffBragg.init_cell();
 
-       diffBragg.eig_objs.eig_B << diffBragg.a0[1], diffBragg.b0[1], diffBragg.c0[1],
+       diffBragg.db_cryst.eig_B << diffBragg.a0[1], diffBragg.b0[1], diffBragg.c0[1],
             diffBragg.a0[2], diffBragg.b0[2], diffBragg.c0[2],
             diffBragg.a0[3], diffBragg.b0[3], diffBragg.c0[3];
   }

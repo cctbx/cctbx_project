@@ -6,8 +6,8 @@
 #include<Eigen/StdVector>
 #include<vector>
 
-
 typedef std::vector<double> image_type;
+
 struct timer_variables{
     double add_spots_pre=0; // times the initializations for add spots kernel
     double add_spots_post=0; // times the copies that occur after add spots kernel
@@ -46,31 +46,6 @@ struct step_arrays{
    int Nsteps;
 };
 
-struct eigen_objects{
-   Eigen::Matrix3d eig_U;
-   Eigen::Matrix3d eig_O;
-   Eigen::Matrix3d eig_B;
-   Eigen::Matrix3d RXYZ;
-
-   std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dF_vecs;
-   std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dS_vecs;
-
-   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_RXYZ;
-   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_RXYZ_prime;
-   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_RXYZ_dbl_prime;
-   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > RotMats;
-   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dRotMats;
-   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > d2RotMats;
-   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS;
-   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_prime;
-   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_dbl_prime;
-
-   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dB_Mats;
-   std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dB2_Mats;
-
-   Eigen::Vector3d spindle_vec;
-   Eigen::Vector3d _polarization_axis;
-};
 
 struct flags{
     bool track_Fhkl;
@@ -115,9 +90,29 @@ struct crystal{
     std::vector<int> nominal_hkl;
     double default_F;
     double r_e_sqr;
+
+    Eigen::Matrix3d eig_U;
+    Eigen::Matrix3d eig_O;
+    Eigen::Matrix3d eig_B;
+    Eigen::Matrix3d RXYZ;
+    Eigen::Vector3d spindle_vec;
+
+    std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_RXYZ;
+    std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_RXYZ_prime;
+    std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_RXYZ_dbl_prime;
+    std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > RotMats;
+    std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dRotMats;
+    std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > d2RotMats;
+    std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS;
+    std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_prime;
+    std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_dbl_prime;
+    std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dB_Mats;
+    std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dB2_Mats;
+
 };
 
 struct beam{
+    Eigen::Vector3d polarization_axis;
     double fluence;
     double kahn_factor;
     double *source_X, *source_Y, *source_Z, *source_lambda, *source_I;
@@ -125,6 +120,8 @@ struct beam{
 };
 
 struct detector{
+    std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dF_vecs;
+    std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dS_vecs;
     double detector_thickstep, detector_thick, detector_attnlen;
     std::vector<double> close_distances;
     int oversample;

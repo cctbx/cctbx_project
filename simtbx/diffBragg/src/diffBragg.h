@@ -133,7 +133,6 @@ class diffBragg: public nanoBragg{
 
   images first_deriv_imgs, second_deriv_imgs;
   step_arrays db_steps;
-  eigen_objects eig_objs;
   crystal db_cryst;
   beam db_beam;
   flags db_flags;
@@ -405,7 +404,6 @@ void diffBragg_sum_over_steps(
       images& d_image,
       images& d2_image,
       step_arrays& db_steps,
-      eigen_objects& eig_objs,
       detector& db_det,
       beam& db_beam,
       crystal& db_cryst,
