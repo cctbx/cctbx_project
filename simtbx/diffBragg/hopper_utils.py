@@ -71,8 +71,9 @@ class DataModeler:
     def clean_up(self):
         if self.SIM is not None:
             self.SIM.D.free_all()
-            self.SIM.D.gpu_free()
             self.SIM.D.free_Fhkl2()
+            if self.SIM.D.gpu_free is not None:
+                self.SIM.D.gpu_free()
 
     def set_experiment(self, exp, load_imageset=True):
         if isinstance(exp, str):
@@ -182,7 +183,6 @@ class DataModeler:
 
         if remove_duplicate_hkl:
             is_not_a_duplicate = ~self.is_duplicate_hkl(refls)
-            #from IPython import embed;embed();exit()
             self.selection_flags = np.logical_and( self.selection_flags, is_not_a_duplicate)
 
         if sum(self.selection_flags) == 0:
@@ -367,6 +367,7 @@ class DataModeler:
             downsamp_spec(self.SIM, self.params, self.E)
 
         self.SIM.D.no_Nabc_scale = self.params.no_Nabc_scale  # TODO check gradients for this setting
+        self.SIM.D.update_oversample_during_refinement = False
         self.SIM.num_xtals = self.params.number_of_xtals
         #if self.params.eta_refine:
         #    self.SIM.umat_maker = AnisoUmats(num_random_samples=self.params.num_mosaic_blocks)
@@ -618,6 +619,12 @@ def model(x, SIM, pfs, verbose=True, compute_grad=True):
         angles = tuple([x * 180 / np.pi for x in [rotX, rotY, rotZ]])
         if verbose: print("\trotXYZ= %f %f %f (degrees)" % angles)
         SIM.D.add_diffBragg_spots(pfs)
+        #SIM.D.show_params()
+        #p,f,s = pfs[:3]
+        #SIM.D.printout_pixel_fastslow = f,s
+        #SIM.D.add_diffBragg_spots((p,f,s))
+        #print(p,f,s)
+        #exit()
 
         pix = SIM.D.raw_pixels_roi[:npix]
         pix = pix.as_numpy_array()
@@ -941,6 +948,9 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
 
         gnorm = np.linalg.norm(g)
 
+    #from IPython import embed
+    #embed()
+
     if verbose:
         MAIN_LOGGER.debug("F=%10.7g sZ=%10.7g (chi: %.1f%%, rot: %.1f%% N: %.1f%%, G: %.1f%%, uc: %.1f%%, detz: %.1f%%), |g|=%10.7g" \
               % (f, zscore_sigma, chi, rot, n, gg, uc,zz,gnorm))
@@ -948,7 +958,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
     return f, g, model_bragg, Jac
 
 
-def refine(exp, ref, params, spec=None, gpu_device=None):
+def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False):
     if gpu_device is None:
         gpu_device = 0
     params.simulator.spectrum.filename = spec
@@ -1002,7 +1012,11 @@ def refine(exp, ref, params, spec=None, gpu_device=None):
 
     Modeler.clean_up()
 
-    return new_exp, new_refl
+    if return_modeler:
+        return new_exp, new_refl, Modeler, x
+
+    else:
+        return new_exp, new_refl
 
 
 def update_detector_from_x(SIM, x):
@@ -1038,9 +1052,15 @@ def update_crystal_from_x(SIM, x):
 def get_new_xycalcs(Modeler, best_model, new_exp):
     _,_,_, bragg_subimg = get_data_model_pairs(Modeler.rois, Modeler.pids, Modeler.roi_id, best_model, Modeler.all_data, background=Modeler.all_background)
     new_refls = deepcopy(Modeler.refls)
-    new_refls['dials.xyzcal.px'] = deepcopy(new_refls['xyzcal.px'])
-    new_refls['dials.xyzcal.mm'] = deepcopy(new_refls['xyzcal.mm'])
-    new_refls['dials.xyzobs.mm.value'] = deepcopy(new_refls['xyzobs.mm.value'])
+
+    reflkeys = list(new_refls.keys())
+    if "xyzcal.px" in reflkeys:
+        new_refls['dials.xyzcal.px'] = deepcopy(new_refls['xyzcal.px'])
+    if "xyzcal.mm" in reflkeys:
+        new_refls['dials.xyzcal.mm'] = deepcopy(new_refls['xyzcal.mm'])
+    if "xyzobs.mm.value" in list(new_refls.keys()):
+        new_refls['dials.xyzobs.mm.value'] = deepcopy(new_refls['xyzobs.mm.value'])
+
     new_xycalcs = flex.vec3_double(len(Modeler.refls), (np.nan, np.nan, np.nan))
     new_xycalcs_mm = flex.vec3_double(len(Modeler.refls), (np.nan, np.nan, np.nan))
     new_xyobs_mm = flex.vec3_double(len(Modeler.refls), (np.nan, np.nan, np.nan))

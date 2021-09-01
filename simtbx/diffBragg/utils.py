@@ -3,6 +3,7 @@ import re
 import os
 
 from scipy import fft
+from scipy import optimize
 from scipy.ndimage import binary_dilation
 from itertools import zip_longest
 import math
@@ -17,9 +18,6 @@ from cctbx import miller, sgtbx
 from cctbx.crystal import symmetry
 
 import numpy as np
-#np.seterr(all='warn')
-#import warnings
-#warnings.filterwarnings('error')
 from simtbx.nanoBragg.utils import ENERGY_CONV
 from dxtbx.model import Detector, Panel
 from scipy import ndimage
@@ -196,7 +194,6 @@ def tilting_plane(img, mask=None, zscore=np.inf, spline=False,
 
 def _positive_plane(x, xcoord, ycoord, data):
     return np.sum((np.exp(x[0]) + np.exp(x[1])*xcoord + np.exp(x[2])*ycoord - data)**2)
-
 
 def positive_tilting_plane(img, mask=None, zscore=2):
     """
@@ -588,25 +585,6 @@ def convolve_with_psf(image_data, fwhm=27.0, pixel_size=177.8, psf_radius=7, sz=
         convolved_image = convolved_image.as_numpy_array()
     return convolved_image
 
-
-#def get_rois_deltaQ(refls, delta_Q, experiment):
-#    """
-#
-#    :param refls: reflection table (needs rlp column)
-#    :param delta_Q:  width of the ROI in inverse Angstromg (e.g. 0.05)
-#    :param experiment:
-#    :return:
-#    """
-#    nref = len(refls)
-#    assert nref >0
-#    if "rlp" not in list(refls[0].keys()):
-#        raise KeyError("Need rlp column in refl table!")
-#
-#    beam = experiment.beam
-#    detector = experiment.detector
-#    assert beam is not None and experiment is not None
-#    for i_refl in range(len(refls)):
-#        roi = determine_shoebox_ROI(detector, delta_Q, beam.get_wavelength(), REFL[0])
 
 def get_roi_from_spot(refls, fdim, sdim, shoebox_sz=10):
     fs_spot, ss_spot, _ = zip(*refls['xyzobs.px.value'])
@@ -2235,13 +2213,16 @@ def shift_panelZ(D, shift):
         newD.add_panel(newP)
     return newD
 
+9
 def safe_makedirs(name):
     if not os.path.exists(name):
         os.makedirs(name)
 
+
 def get_rs(name):
     s = re.search("run[0-9]+_shot[0-9]+", name)
     return name[s.start():s.end()]
+
 
 def read_exp_ref_spec(fname):
     return [l.strip().split() for l in open(fname, 'r').readlines()]
@@ -2313,6 +2294,7 @@ def moving_average_fft(x, w):
 #    fftw = np.fft.fft(fw)
 #    move_ave = np.fft.ifft( fftx[:len(x)]*fftw[:len(x)] ).real
 #    return move_ave / w
+
 def smooth(x, beta=10.0, window_size=11):
     # make sure the window size is odd
     if window_size % 2 == 0:
@@ -2380,10 +2362,6 @@ def show_diffBragg_state(D, debug_pixel_panelfastslow):
     D.printout_pixel_fastslow = f, s
     D.add_diffBragg_spots((p, f, s))
     D.raw_pixels*=0
-
-
-from scipy import optimize
-import numpy as np
 
 
 def gauss(x, *p):

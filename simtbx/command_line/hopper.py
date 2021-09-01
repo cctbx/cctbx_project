@@ -127,28 +127,28 @@ best_pickle = None
   .type = str
   .help = path to a pandas pickle containing the best models for the experiments
 betas {
-  Nvol = 1e-10
+  Nvol = 1e8
     .type = float
     .help = tightness of the Nabc volume contraint
-  detz_shift = 10
+  detz_shift = 1e8
     .type = float
     .help = restraint variance for detector shift target
-  ucell = [0,0,0,0,0,0]
+  ucell = [1e8,1e8,1e8,1e8,1e8,1e8]
     .type = floats
     .help = beta values for unit cell constants
-  RotXYZ = 0
+  RotXYZ = 1e8
     .type = float
     .help = restraint factor for the rotXYZ restraint
-  Nabc = [0,0,0]
+  Nabc = [1e8,1e8,1e8]
     .type = floats(size=3)
     .help = restraint factor for the ncells abc
-  Ndef = [0,0,0]
+  Ndef = [1e8,1e8,1e8]
     .type = floats(size=3)
     .help = restraint factor for the ncells def  
-  G = 0
+  G = 1e8
     .type = float
     .help = restraint factor for the scale G
-  B = 0
+  B = 1e8
     .type = float
     .help = restraint factor for Bfactor
 }
