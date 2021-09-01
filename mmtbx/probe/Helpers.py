@@ -106,19 +106,27 @@ class getExtraAtomInfoReturn(object):
     self.extraAtomInfo = extraAtomInfo
     self.warnings = warnings
 
-def getExtraAtomInfo(model, useNeutronDistances = False):
+def getExtraAtomInfo(model, useNeutronDistances = False, useImplicitHydrogenDistances = False,
+                     useProbeTablesByDefault = False):
   """
     Helper function to provide a mapper for ExtraAtomInfo needed by Probe when scoring
     models.  It first tries to find the information in CCTBX.  If it cannot, it looks
     the information up using the original C-code Probe tables and algorithms.
     :param model: Map Model Manager's Model containing all of the atoms to be described.
     PDB interpretation must have been done on the model, perhaps by calling
-    model.process_input_model(make_restraints=True), with useNeutronDistances matching
+    model.process(make_restraints=True), with useNeutronDistances matching
     the parameter to this function.
     :param useNeutronDistances: Default is to use x-ray distances, but setting this to
     True uses neutron distances instead.  This must be set consistently with the
     PDB interpretation parameter used on the model.
-    Can be obtained by calling iotbx.map_model_manager.map_model_manager().model().
+    :param useImplicitHydrogenDistances: Default is to use distances consistent with
+    explicitly-listed Hydrgoens, but setting this to True implicit-Hydrogen distances instead.
+    This must be set consistently with the hydrogens in the model.
+    :param useProbeTablesByDefault: Do not attempt to read the data from CCTBX, use the
+    original Probe tables.  This is normally the fall-back when it cannot find the data in
+    CCTBX.  The Probe tables do not have accurate data on HET atoms, only standard residues.
+    The values in the tables may differ from the current CCTBX values, and the Probe tables
+    are not being maintained.
     :returns a ExtraAtomInfoMap with an entry for every atom in the model suitable for
     passing to the scoring functions.
   """
@@ -126,7 +134,7 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
   warnings = ""
 
   # Construct the AtomTypes object we're going to use, telling it whether to use neutron distances.
-  at = AtomTypes.AtomTypes(useNeutronDistances)
+  at = AtomTypes.AtomTypes(useNeutronDistances, useImplicitHydrogenDistances)
 
   # Traverse the hierarchy and look up the extra data to be filled in.
   extras = probeExt.ExtraAtomInfoMap([],[])
@@ -143,48 +151,49 @@ def getExtraAtomInfo(model, useNeutronDistances = False):
 
           for a in ag.atoms():
             extra = probeExt.ExtraAtomInfo()
-            # See if we can find out about its Hydrogen-bonding status from the
-            # model.  If so, we fill it and the vdwRadius information from
-            # CCTBX.
-            try:
-              hb_type = model.get_specific_h_bond_type(a.i_seq)
-              if isinstance(hb_type, str):
-                if hb_type == "A" or hb_type == "B":
-                  extra.isAcceptor = True
-                if hb_type == "D" or hb_type == "B":
-                  extra.isDonor = True
-
-                # For metallic atoms, the Richardsons determined in discussion with
-                # Michael Prisant that we want to use the ionic radius rather than the
-                # larger radius for all purposes.
-                if isMetallic(a):
-                  extra.vdwRadius = model.get_specific_ion_radius(a.i_seq)
-                else:
-                  extra.vdwRadius = model.get_specific_vdw_radius(a.i_seq)
-
-                # Mark aromatic ring N and C atoms as acceptors as a hack to enable the
-                # ring itself to behave as an acceptor.
-                # @todo Remove this once we have a better way to model the ring itself
-                # as an acceptor, perhaps making it a cylinder or a sphere in the center
-                # of the ring.
-                if a.element in ['C','N']:
-                  if AtomTypes.IsAromatic(ag.resname, a.name):
+            if not useProbeTablesByDefault:
+              # See if we can find out about its Hydrogen-bonding status from the
+              # model.  If so, we fill it and the vdwRadius information from
+              # CCTBX.
+              try:
+                hb_type = model.get_specific_h_bond_type(a.i_seq)
+                if isinstance(hb_type, str):
+                  if hb_type == "A" or hb_type == "B":
                     extra.isAcceptor = True
+                  if hb_type == "D" or hb_type == "B":
+                    extra.isDonor = True
 
-                extras.setMappingFor(a, extra)
-                continue
+                  # For metallic atoms, the Richardsons determined in discussion with
+                  # Michael Prisant that we want to use the ionic radius rather than the
+                  # larger radius for all purposes.
+                  if isMetallic(a):
+                    extra.vdwRadius = model.get_specific_ion_radius(a.i_seq)
+                  else:
+                    extra.vdwRadius = model.get_specific_vdw_radius(a.i_seq, useImplicitHydrogenDistances)
 
-              # Did not find the information from CCTBX, so look it up using
-              # the original Probe approach by dropping through to below
-              else:
-                warnings += "Could not find "+a.name+" in CCTBX, using Probe tables\n"
-            except Exception as e:
-              # Warn and drop through to below.
-              warnings += ("Could not look up "+a.name.strip()+" in CCTBX "+
-                "(perhaps interpretation was not run on the model?), using Probe tables"+
-                ": "+str(e)+"\n")
+                  # Mark aromatic ring N and C atoms as acceptors as a hack to enable the
+                  # ring itself to behave as an acceptor.
+                  # @todo Remove this once we have a better way to model the ring itself
+                  # as an acceptor, perhaps making it a cylinder or a sphere in the center
+                  # of the ring.
+                  if a.element in ['C','N']:
+                    if AtomTypes.IsAromatic(ag.resname, a.name):
+                      extra.isAcceptor = True
 
-            # Did not find what we were looking for in CCTBX, so drop through to Probe
+                  extras.setMappingFor(a, extra)
+                  continue
+
+                # Did not find the information from CCTBX, so look it up using
+                # the original Probe approach by dropping through to below
+                else:
+                  warnings += "Could not find "+a.name+" in CCTBX, using Probe tables\n"
+              except Exception as e:
+                # Warn and drop through to below.
+                warnings += ("Could not look up "+a.name.strip()+" in CCTBX "+
+                  "(perhaps interpretation was not run on the model?), using Probe tables"+
+                  ": "+str(e)+"\n")
+
+            # Did not find what we were looking for in CCTBX, so drop through to Probe.
             # Probe always returns the result we want as the VdW radius, even for ions.
             extra, warn = at.FindProbeExtraAtomInfo(a)
             if len(warn) > 0:

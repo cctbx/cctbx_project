@@ -227,20 +227,22 @@ class AtomTypes(object):
   Reduce modules.
   """
 
-  def __init__(self, useNeutronDistances = False):
+  def __init__(self, useNeutronDistances = False, useImplicitHydrogenDistances = False):
     """Constructor.
     :param useNeutronDistances: Use neutron distances and radii for scoring.
     The default is to use electron-cloud distances.  This is used both for the
     separation between a Hydgrogen and its bound partner and for the radius of the
-    Hydrogen and it must be set consistently across the entire code base.
+    Hydrogen and it must be set consistently across the entire code base.  When this is
+    True, it supercedes useImplicitHydrogenDistances.
+    :param useImplicitHydrogenDistances: Default is to use distances consistent with
+    explicitly-listed Hydrgoens, but setting this to True implicit-Hydrogen distances instead.
+    This must be set consistently with the hydrogens in the model.
     """
 
     ##################################################################################
     # Store state based on options.
-    try:
-      self._useNeutronDistances = useNeutronDistances
-    except Exception as e:
-      self._useNeutronDistances = False
+    self._useNeutronDistances = useNeutronDistances
+    self._useImplicitHydrogenDistances = useImplicitHydrogenDistances
 
     ##################################################################################
     # Table of information about each type of atom.  The elements in each list are as
@@ -825,6 +827,18 @@ class AtomTypes(object):
                  ' will be treated as '+elementName)
     return ( ai, warning )
 
+  def _FindProperRadius(self, ai):
+    """Given an AtomInfo in the atom table, find the appropriate radius.
+    :param ai: AtomInfo to look up the radius in.
+    :returns Proper radius, depending on construtor parameters.
+    """
+    if self._useNeutronDistances:
+      return ai.vdwNeutronExplicit
+    elif self._useImplicitHydrogenDistances:
+      return ai.vdwElectronCloudImplicit
+    else:
+      return ai.vdwElectronCloudExplicit
+
   def FindProbeExtraAtomInfo(self, atom):
     """Given an iotbx.pdb.atom, look up its mmtbx_probe_ext.ExtraAtomInfo in the atom table.
     Note: Makes use of the mmtbx.probe.useNeutronDistances option to determine whether to
@@ -842,24 +856,21 @@ class AtomTypes(object):
     ret.isAcceptor = bool(ai.flags & AtomFlags.ACCEPTOR_ATOM)
     ret.isDonor = bool(ai.flags & AtomFlags.DONOR_ATOM)
     ret.isDummyHydrogen = bool(ai.flags & AtomFlags.HB_ONLY_DUMMY_ATOM)
-    if self._useNeutronDistances:
-      ret.vdwRadius = ai.vdwNeutronExplicit
-    else:
-      ret.vdwRadius = ai.vdwElectronCloudExplicit
+    ret.vdwRadius = self._FindProperRadius(ai)
 
     return ( ret, warn )
 
   def MaximumVDWRadius(self):
     """Return the maximum VdW radius of any atom type in our table.
-    Cache the result after the first computation so that is faster when we called
+    Cache the result after the first computation so that is faster when called
     more than once.
     """
     try:
       return self._maxVDW
     except:
-      self._maxVDW = self._AtomTable[0][3]
+      self._maxVDW = self._FindProperRadius(AtomInfo(self._AtomTable[0]))
       for a in self._AtomTable[1:]:
-        v = a[3]
+        v = self._FindProperRadius(AtomInfo(a))
         if v > self._maxVDW:
           self._maxVDW = v
       return self._maxVDW
@@ -912,11 +923,34 @@ def Test(inFileName):
 
   print('Found info for', len(extra), 'atoms, the last with radius',extra[-1].vdwRadius)
 
+  # Find an Oxygen atom and ask for its radii with explicit Hydrogen, implicit Hydrogen,
+  # and Nuclear radii.
+  o = None
+  ph = model.get_hierarchy()
+  for a in ph.models()[0].atoms():
+    if a.element.strip() == 'O':
+      o = a
+  if o is None:
+    print("AtomTypes.Test(): Could not find Oxygen (internal test failure)")
+    return "AtomTypes.Test(): Could not find Oxygen (internal test failure)"
+  explicitH = AtomTypes(useNeutronDistances = False,
+                        useImplicitHydrogenDistances = False).FindProbeExtraAtomInfo(o)[0].vdwRadius
+  implicitH = AtomTypes(useNeutronDistances = False,
+                        useImplicitHydrogenDistances = True).FindProbeExtraAtomInfo(o)[0].vdwRadius
+  neutronH = AtomTypes(useNeutronDistances = True,
+                        useImplicitHydrogenDistances = False).FindProbeExtraAtomInfo(o)[0].vdwRadius
+  print('Oxygen radii: explicit Hydrogen =',explicitH,'implicit Hydrogen =', implicitH,
+        'neutron =',neutronH)
+  if explicitH == implicitH:
+    print("AtomTypes.Test(): Implicit and explicit Oxygen radii did not differ as expected")
+    return "AtomTypes.Test(): Implicit and explicit Oxygen radii did not differ as expected"
+
   # Check MaximumVDWRadius, calling it twice to make sure both the cached and non-cached
   # results work.
   for i in range(2):
     if at.MaximumVDWRadius() != 2.5:
-      return "AtomTypes.Test(): Unexpected MaximumVDWRadius(): got "+str(MaximumVDWRadius())+", expected "+str(2.5)
+      print("AtomTypes.Test(): Unexpected MaximumVDWRadius(): got "+str(MaximumVDWRadius())+", expected 2.5")
+      return "AtomTypes.Test(): Unexpected MaximumVDWRadius(): got "+str(MaximumVDWRadius())+", expected 2.5"
 
   return ""
 
