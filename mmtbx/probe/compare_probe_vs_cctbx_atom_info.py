@@ -68,8 +68,7 @@ def RunProbeVsCCTBXTest(inFileName, useNeutronDistances = False):
   print('Interpreting model')
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
   p.pdb_interpretation.use_neutron_distances = useNeutronDistances
-  model.set_pdb_interpretation_params(params = p)
-  model.process_input_model(make_restraints=True) # make restraints
+  model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
 
   # Construct the AtomTypes object we're going to use, telling it whether to use neutron distances
   # or not.

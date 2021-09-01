@@ -346,7 +346,7 @@ END
   dm = iotbx.data_manager.DataManager(['model'])
   dm.process_model_str("1xso_snip.pdb",pdb_1xso_his_61)
   model = dm.get_model()
-  model.process_input_model(make_restraints=True) # make restraints
+  model.process(make_restraints=True) # make restraints
 
   # Get the first model in the hierarchy.
   atoms = model.get_hierarchy().models()[0].atoms()
@@ -409,7 +409,7 @@ END
     model = mmm.model()    #   get the model
 
   # Fix up bogus unit cell when it occurs by checking crystal symmetry.
-  cs =model.crystal_symmetry()
+  cs = model.crystal_symmetry()
   if (cs is None) or (cs.unit_cell() is None):
     model = cctbx.maptbx.box.shift_and_box_model(model = model)
 
@@ -417,8 +417,7 @@ END
   print('Interpreting model')
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
   p.pdb_interpretation.use_neutron_distances = False
-  model.set_pdb_interpretation_params(params = p)
-  model.process_input_model(make_restraints=True) # make restraints
+  model.process(make_restraints=True, pdb_interpretation_params = p) # make restraints
 
   print('Getting extraAtomInfo')
   ret = getExtraAtomInfo(model)

@@ -96,8 +96,7 @@ def RunProbeTests(inFileName):
   # Get the bonding information we'll need to exclude our bonded neighbors.
   try:
     p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-    model.set_pdb_interpretation_params(params = p)
-    model.process_input_model(make_restraints=True) # make restraints
+    model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
     geometry = model.get_restraints_manager().geometry
     sites_cart = model.get_sites_cart() # cartesian coordinates
     bond_proxies_simple, asu = \

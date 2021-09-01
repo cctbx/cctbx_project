@@ -150,7 +150,7 @@ class _SingletonOptimizer(object):
     which can be added using mmtbx.hydrogens.reduce_hydrogen.place_hydrogens().get_model().
     It must have a valid unit cell, which can be helped by calling
     cctbx.maptbx.box.shift_and_box_model().  It must have had PDB interpretation run on it,
-    which can be done using model.process_input_model(make_restraints=True) with PDB
+    which can be done using model.process(make_restraints=True) with PDB
     interpretation parameters and hydrogen placement matching the value of the
     useNeutronDistances parameter described below.
     :param modelIndex: Identifies which index from the hierarchy is to be selected.
@@ -678,7 +678,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     which can be added using mmtbx.hydrogens.reduce_hydrogen.place_hydrogens().get_model().
     It must have a valid unit cell, which can be helped by calling
     cctbx.maptbx.box.shift_and_box_model().  It must have had PDB interpretation run on it,
-    which can be done using model.process_input_model(make_restraints=True) with PDB
+    which can be done using model.process(make_restraints=True) with PDB
     interpretation parameters and hydrogen placement matching the value of the
     useNeutronDistances parameter described below.
     :param modelIndex: Identifies which index from the hierarchy is to be selected.
@@ -789,7 +789,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     which can be added using mmtbx.hydrogens.reduce_hydrogen.place_hydrogens().get_model().
     It must have a valid unit cell, which can be helped by calling
     cctbx.maptbx.box.shift_and_box_model().  It must have had PDB interpretation run on it,
-    which can be done using model.process_input_model(make_restraints=True) with PDB
+    which can be done using model.process(make_restraints=True) with PDB
     interpretation parameters and hydrogen placement matching the value of the
     useNeutronDistances parameter described below.
     :param modelIndex: Identifies which index from the hierarchy is to be selected.
@@ -930,7 +930,7 @@ class FastOptimizer(_CliqueOptimizer):
     which can be added using mmtbx.hydrogens.reduce_hydrogen.place_hydrogens().get_model().
     It must have a valid unit cell, which can be helped by calling
     cctbx.maptbx.box.shift_and_box_model().  It must have had PDB interpretation run on it,
-    which can be done using model.process_input_model(make_restraints=True) with PDB
+    which can be done using model.process(make_restraints=True) with PDB
     interpretation parameters and hydrogen placement matching the value of the
     useNeutronDistances parameter described below.
     :param modelIndex: Identifies which index from the hierarchy is to be selected.
@@ -1465,8 +1465,7 @@ END
   # all of the needed fields are filled in when we use them below.
   # @todo Remove this once place_hydrogens() does all the interpretation we need.
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-  model.set_pdb_interpretation_params(params = p)
-  model.process_input_model(make_restraints=True) # make restraints
+  model.process(make_restraints=True,pdb_interpretation_params=p) # make restraints
 
   # Get the first model in the hierarchy.
   firstModel = model.get_hierarchy().models()[0]
@@ -1562,8 +1561,7 @@ END
   print('Interpreting model')
   startInt = time.clock()
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-  model.set_pdb_interpretation_params(params = p)
-  model.process_input_model(make_restraints=True) # make restraints
+  model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
   doneInt = time.clock()
 
   print('Constructing Optimizer')

@@ -718,8 +718,7 @@ Note:
     try:
       p = mmtbx.model.manager.get_default_pdb_interpretation_params()
       p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
-      self.model.set_pdb_interpretation_params(params = p)
-      self.model.process_input_model(make_restraints=True) # make restraints
+      self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
       geometry = self.model.get_restraints_manager().geometry
       sites_cart = self.model.get_sites_cart() # cartesian coordinates
       bondProxies, asu = \
@@ -732,7 +731,7 @@ Note:
     # Get the extra atom information needed to score all of the atoms in the model.
     # @todo Handle getting implicit radii here or in the _scaled_atom_radius() function
     make_sub_header('Compute extra atom information', out=self.logger)
-    ret = Helpers.getExtraAtomInfo(self.model)
+    ret = Helpers.getExtraAtomInfo(self.model, self.params.probe.implicit_hydrogens)
     self._extraAtomInfo = ret.extraAtomInfo
     if len(ret.warnings) > 0:
       print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings, file=self.logger)
