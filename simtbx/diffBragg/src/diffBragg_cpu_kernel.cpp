@@ -19,17 +19,17 @@ void diffBragg_sum_over_steps(
 
     #pragma omp parallel for
     for (int i_pix=0; i_pix < Npix_to_model; i_pix++){
-        int _pid = panels_fasts_slows[i_pix*3];
-        int _fpixel = panels_fasts_slows[i_pix*3+1];
-        int _spixel = panels_fasts_slows[i_pix*3+2];
-        double _close_distance = db_det.close_distances[_pid];
+        int pid = panels_fasts_slows[i_pix*3];
+        int fpixel = panels_fasts_slows[i_pix*3+1];
+        int spixel = panels_fasts_slows[i_pix*3+2];
+        double close_distance = db_det.close_distances[pid];
         //std::unordered_map<int, int> Fhkl_tracker;
         std::unordered_map<std::string, int> Fhkl_tracker;
         bool use_nominal_hkl = false;
         if (!db_cryst.nominal_hkl.empty())
             use_nominal_hkl = true;
         // reset photon count for this pixel
-        double _I=0;
+        double I=0;
         double II_max = -1;
         double max_stats[11] = {0,0,0,0,0,
                                0,0,0,0,0,0};
@@ -54,79 +54,79 @@ void diffBragg_sum_over_steps(
         double lambda_manager_dI2[2] = {0,0};
         double fp_fdp_manager_dI[2] = {0,0};
 
-        for (int _i_step=0; _i_step < db_steps.Nsteps; _i_step++){
+        for (int i_step=0; i_step < db_steps.Nsteps; i_step++){
 
-            int _subS = db_steps.subS_pos[_i_step];
-            int _subF = db_steps.subF_pos[_i_step];
-            int _thick_tic = db_steps.thick_pos[_i_step];
-            int _source = db_steps.source_pos[_i_step];
-            int _phi_tic = db_steps.phi_pos[_i_step];
-            int _mos_tic = db_steps.mos_pos[_i_step];
+            int subS = db_steps.subS_pos[i_step];
+            int subF = db_steps.subF_pos[i_step];
+            int thick_tic = db_steps.thick_pos[i_step];
+            int source = db_steps.source_pos[i_step];
+            int phi_tic = db_steps.phi_pos[i_step];
+            int mos_tic = db_steps.mos_pos[i_step];
 
             /* absolute mm position on detector (relative to its origin) */
-            double _Fdet = db_det.subpixel_size*(_fpixel*db_det.oversample + _subF ) + db_det.subpixel_size/2.0;
-            double _Sdet = db_det.subpixel_size*(_spixel*db_det.oversample + _subS ) + db_det.subpixel_size/2.0;
+            double Fdet = db_det.subpixel_size*(fpixel*db_det.oversample + subF ) + db_det.subpixel_size/2.0;
+            double Sdet = db_det.subpixel_size*(spixel*db_det.oversample + subS ) + db_det.subpixel_size/2.0;
 
             /* assume "distance" is to the front of the detector sensor layer */
-            double _Odet = _thick_tic*db_det.detector_thickstep;
-            int pid_x = _pid*3;
-            int pid_y = _pid*3+1;
-            int pid_z = _pid*3+2;
-            Eigen::Vector3d _o_vec(db_det.odet_vectors[pid_x], db_det.odet_vectors[pid_y], db_det.odet_vectors[pid_z]);
+            double Odet = thick_tic*db_det.detector_thickstep;
+            int pid_x = pid*3;
+            int pid_y = pid*3+1;
+            int pid_z = pid*3+2;
+            Eigen::Vector3d o_vec(db_det.odet_vectors[pid_x], db_det.odet_vectors[pid_y], db_det.odet_vectors[pid_z]);
 
-            double pixposX = _Fdet*db_det.fdet_vectors[pid_x]+_Sdet*db_det.sdet_vectors[pid_x]+_Odet*db_det.odet_vectors[pid_x]+db_det.pix0_vectors[pid_x];
-            double pixposY = _Fdet*db_det.fdet_vectors[pid_y]+_Sdet*db_det.sdet_vectors[pid_y]+_Odet*db_det.odet_vectors[pid_y]+db_det.pix0_vectors[pid_y];
-            double pixposZ = _Fdet*db_det.fdet_vectors[pid_z]+_Sdet*db_det.sdet_vectors[pid_z]+_Odet*db_det.odet_vectors[pid_z]+db_det.pix0_vectors[pid_z];
-            Eigen::Vector3d _pixel_pos(pixposX, pixposY, pixposZ);
+            double pixposX = Fdet*db_det.fdet_vectors[pid_x]+Sdet*db_det.sdet_vectors[pid_x]+Odet*db_det.odet_vectors[pid_x]+db_det.pix0_vectors[pid_x];
+            double pixposY = Fdet*db_det.fdet_vectors[pid_y]+Sdet*db_det.sdet_vectors[pid_y]+Odet*db_det.odet_vectors[pid_y]+db_det.pix0_vectors[pid_y];
+            double pixposZ = Fdet*db_det.fdet_vectors[pid_z]+Sdet*db_det.sdet_vectors[pid_z]+Odet*db_det.odet_vectors[pid_z]+db_det.pix0_vectors[pid_z];
+            Eigen::Vector3d pixel_pos(pixposX, pixposY, pixposZ);
 
-            double _airpath = _pixel_pos.norm();
-            Eigen::Vector3d _diffracted = _pixel_pos/_airpath;
+            double airpath = pixel_pos.norm();
+            Eigen::Vector3d diffracted = pixel_pos/airpath;
 
-            double _omega_pixel = db_det.pixel_size*db_det.pixel_size/_airpath/_airpath*_close_distance/_airpath;
+            double omega_pixel = db_det.pixel_size*db_det.pixel_size/airpath/airpath*close_distance/airpath;
 
-            if(db_flags.point_pixel) _omega_pixel = 1.0/_airpath/_airpath;
+            if(db_flags.point_pixel) omega_pixel = 1.0/airpath/airpath;
 
-            double _capture_fraction = 1;
+            double capture_fraction = 1;
             if(db_det.detector_thick > 0.0 && db_det.detector_attnlen > 0.0)
             {
-                double _parallax = _diffracted.dot(_o_vec) ;
-                _capture_fraction = exp(-_thick_tic*db_det.detector_thickstep/db_det.detector_attnlen/_parallax)
-                                  -exp(-(_thick_tic+1)*db_det.detector_thickstep/db_det.detector_attnlen/_parallax);
+                double parallax = diffracted.dot(o_vec) ;
+                capture_fraction = exp(-thick_tic*db_det.detector_thickstep/db_det.detector_attnlen/parallax)
+                                  -exp(-(thick_tic+1)*db_det.detector_thickstep/db_det.detector_attnlen/parallax);
             }
-            Eigen::Vector3d _incident(-db_beam.source_X[_source], -db_beam.source_Y[_source], -db_beam.source_Z[_source]);
-            double _lambda = db_beam.source_lambda[_source];
-            double lambda_ang = _lambda*1e10;
+            Eigen::Vector3d incident(-db_beam.source_X[source], -db_beam.source_Y[source], -db_beam.source_Z[source]);
+            double lambda = db_beam.source_lambda[source];
+            double lambda_ang = lambda*1e10;
             if (db_flags.use_lambda_coefficients){
                 lambda_ang = db_beam.lambda0 + db_beam.lambda1*lambda_ang;
-                _lambda = lambda_ang*1e-10;
+                lambda = lambda_ang*1e-10;
             }
 
             /* construct the incident beam unit vector while recovering source distance */
-            double _source_path = _incident.norm();
-            _incident /= _source_path;
+            double source_path = incident.norm();
+            incident /= source_path;
 
             /* construct the scattering vector for this pixel */
-            //vec3 _scattering = (_diffracted - _incident) / _lambda;
-            Eigen::Vector3d _scattering = (_diffracted - _incident) / _lambda;
+            //vec3 scattering = (diffracted - incident) / lambda;
+            Eigen::Vector3d scattering = (diffracted - incident) / lambda;
 
             /* sin(theta)/lambda is half the scattering vector length */
-            double _stol = 0.5*(_scattering.norm()); //magnitude(scattering);
+            double stol = 0.5*(scattering.norm()); //magnitude(scattering);
 
             /* rough cut to speed things up when we aren't using whole detector */
-            if(db_cryst.dmin > 0.0 && _stol > 0.0)
+            if(db_cryst.dmin > 0.0 && stol > 0.0)
             {
-                if(db_cryst.dmin > 0.5/_stol)
+                if(db_cryst.dmin > 0.5/stol)
                 {
                     continue;
                 }
             }
 
-            double _phi = db_cryst.phi0 + db_cryst.phistep*_phi_tic;
+            double phi = db_cryst.phi0 + db_cryst.phistep*phi_tic;
             Eigen::Matrix3d Bmat_realspace = db_cryst.eig_B;
-            if( _phi != 0.0 )
+            if( phi != 0.0 )
             {
-                double cosphi = cos(_phi);
-                double sinphi = sin(_phi);
+                double cosphi = cos(phi);
+                double sinphi = sin(phi);
                 Eigen::Vector3d ap_vec(db_cryst.eig_B(0,0), db_cryst.eig_B(1,0), db_cryst.eig_B(2,0));
                 Eigen::Vector3d bp_vec(db_cryst.eig_B(0,1), db_cryst.eig_B(1,1), db_cryst.eig_B(2,1));
                 Eigen::Vector3d cp_vec(db_cryst.eig_B(0,2), db_cryst.eig_B(1,2), db_cryst.eig_B(2,2));
@@ -142,95 +142,95 @@ void diffBragg_sum_over_steps(
             Bmat_realspace *= 1e10;
 
             Eigen::Matrix3d U = db_cryst.eig_U;
-            Eigen::Matrix3d UBO = (db_cryst.UMATS_RXYZ[_mos_tic] * U*Bmat_realspace*(db_cryst.eig_O.transpose())).transpose();
+            Eigen::Matrix3d UBO = (db_cryst.UMATS_RXYZ[mos_tic] * U*Bmat_realspace*(db_cryst.eig_O.transpose())).transpose();
 
-            Eigen::Vector3d q_vec(_scattering[0], _scattering[1], _scattering[2]);
+            Eigen::Vector3d q_vec(scattering[0], scattering[1], scattering[2]);
             q_vec *= 1e-10;
             Eigen::Vector3d H_vec = UBO*q_vec;
 
-            double _h = H_vec[0];
-            double _k = H_vec[1];
-            double _l = H_vec[2];
+            double h = H_vec[0];
+            double k = H_vec[1];
+            double l = H_vec[2];
 
             /* round off to nearest whole index */
-            int _h0 = static_cast<int>(ceil(_h - 0.5));
-            int _k0 = static_cast<int>(ceil(_k - 0.5));
-            int _l0 = static_cast<int>(ceil(_l - 0.5));
+            int h0 = static_cast<int>(ceil(h - 0.5));
+            int k0 = static_cast<int>(ceil(k - 0.5));
+            int l0 = static_cast<int>(ceil(l - 0.5));
 
-            Eigen::Vector3d H0(_h0, _k0, _l0);
-            Eigen::Matrix3d _NABC;
-            _NABC << db_cryst.Na, db_cryst.Nd, db_cryst.Nf,
+            Eigen::Vector3d H0(h0, k0, l0);
+            Eigen::Matrix3d NABC;
+            NABC << db_cryst.Na, db_cryst.Nd, db_cryst.Nf,
                      db_cryst.Nd, db_cryst.Nb, db_cryst.Ne,
                      db_cryst.Nf, db_cryst.Ne, db_cryst.Nc;
 
             double C = 2 / 0.63 * db_cryst.fudge;
             Eigen::Vector3d delta_H = H_vec - H0;
-            Eigen::Vector3d V = _NABC*delta_H;
-            double _hrad_sqr = V.dot(V);
-            double _F_latt;
+            Eigen::Vector3d V = NABC*delta_H;
+            double hrad_sqr = V.dot(V);
+            double F_latt;
             if (db_flags.no_Nabc_scale)
-                _F_latt = exp(-( _hrad_sqr / 0.63 * db_cryst.fudge ));
+                F_latt = exp(-( hrad_sqr / 0.63 * db_cryst.fudge ));
             else
-                _F_latt = db_cryst.Na*db_cryst.Nb*db_cryst.Nc*exp(-( _hrad_sqr / 0.63 * db_cryst.fudge ));
+                F_latt = db_cryst.Na*db_cryst.Nb*db_cryst.Nc*exp(-( hrad_sqr / 0.63 * db_cryst.fudge ));
 
             /* no need to go further if result will be zero */
-            //if(_F_latt == 0.0 && ! only_save_omega_kahn) {
+            //if(F_latt == 0.0 && ! only_save_omega_kahn) {
             //    continue;
             //}
             /* convert amplitudes into intensity (photons per steradian) */
             if (!db_flags.oversample_omega)
-                _omega_pixel = 1;
+                omega_pixel = 1;
 
             /* increment to intensity */
-            double I_noFcell = _F_latt*_F_latt*db_beam.source_I[_source]*_capture_fraction*_omega_pixel;
+            double I_noFcell = F_latt*F_latt*db_beam.source_I[source]*capture_fraction*omega_pixel;
 
             /* structure factor of the unit cell */
-            double _F_cell = db_cryst.default_F;
-            double _F_cell2 = 0;
+            double F_cell = db_cryst.default_F;
+            double F_cell2 = 0;
 
-            if ( (_h0<=db_cryst.h_max) && (_h0>=db_cryst.h_min) && (_k0<=db_cryst.k_max) && (_k0>=db_cryst.k_min) && (_l0<=db_cryst.l_max) && (_l0>=db_cryst.l_min)  ) {
+            if ( (h0<=db_cryst.h_max) && (h0>=db_cryst.h_min) && (k0<=db_cryst.k_max) && (k0>=db_cryst.k_min) && (l0<=db_cryst.l_max) && (l0>=db_cryst.l_min)  ) {
                 /* just take nearest-neighbor */
-                int Fhkl_linear_index = (_h0-db_cryst.h_min) * db_cryst.k_range * db_cryst.l_range +
-                                (_k0- db_cryst.k_min) * db_cryst.l_range +
-                                (_l0-db_cryst.l_min);
-                _F_cell = db_cryst.FhklLinear[Fhkl_linear_index];
+                int Fhkl_linear_index = (h0-db_cryst.h_min) * db_cryst.k_range * db_cryst.l_range +
+                                (k0- db_cryst.k_min) * db_cryst.l_range +
+                                (l0-db_cryst.l_min);
+                F_cell = db_cryst.FhklLinear[Fhkl_linear_index];
                 if (db_flags.track_Fhkl){
                     std::string hkl_s ;
-                    hkl_s = std::to_string(_h0) + ","+ std::to_string(_k0) + "," + std::to_string(_l0);
+                    hkl_s = std::to_string(h0) + ","+ std::to_string(k0) + "," + std::to_string(l0);
                     if (Fhkl_tracker.count(hkl_s))
                         Fhkl_tracker[hkl_s] += 1;
                     else
                         Fhkl_tracker[hkl_s] = 0;
                     continue;
                 }
-                if (db_flags.complex_miller) _F_cell2 = db_cryst.Fhkl2Linear[Fhkl_linear_index];
+                if (db_flags.complex_miller) F_cell2 = db_cryst.Fhkl2Linear[Fhkl_linear_index];
             }
             //else{
-            // _F_cell = default_F;
+            // F_cell = default_F;
             //}
             bool do_max = false;
-            if(db_flags.verbose > 3){//} && _i_step==0){
-                double F2 = sqrt(_F_cell*_F_cell + _F_cell2*_F_cell2);
+            if(db_flags.verbose > 3){//} && i_step==0){
+                double F2 = sqrt(F_cell*F_cell + F_cell2*F_cell2);
                 double II = I_noFcell*F2*F2;
                 if (I_noFcell > II_max){
                     do_max = true;
-                    max_stats[0] = _F_cell;
-                    max_stats[1] = _F_cell2;
+                    max_stats[0] = F_cell;
+                    max_stats[1] = F_cell2;
                     max_stats[2] = I_noFcell;
-                    max_stats[3] = _F_latt;
+                    max_stats[3] = F_latt;
                     max_stats[4] = II;
-                    max_stats[5] = _omega_pixel;
-                    max_stats[6] = db_beam.source_I[_source];
-                    max_stats[7]= db_beam.source_lambda[_source];
-                    max_stats[8] = _h;
-                    max_stats[9] = _k;
-                    max_stats[10] = _l;
+                    max_stats[5] = omega_pixel;
+                    max_stats[6] = db_beam.source_I[source];
+                    max_stats[7]= db_beam.source_lambda[source];
+                    max_stats[8] = h;
+                    max_stats[9] = k;
+                    max_stats[10] = l;
                     II_max = I_noFcell;
                 }
                 else{
                 do_max=false;}
-                //printf("hkl= %f %f %f  hkl1= %d %d %d  |Fcell| before=%f, Ino=%f, I=%f, Flatt=%f, cap_frac=%f, omega_pix=%f, sourceI=%f\n", _h,_k,_l,_h0,_k0,_l0, F2, I_noFcell, II, _F_latt,
-                //_capture_fraction, _omega_pixel, source_I[_source] );
+                //printf("hkl= %f %f %f  hkl1= %d %d %d  |Fcell| before=%f, Ino=%f, I=%f, Flatt=%f, cap_frac=%f, omega_pix=%f, sourceI=%f\n", h,k,l,h0,k0,l0, F2, I_noFcell, II, F_latt,
+                //capture_fraction, omega_pixel, source_I[source] );
             }
             double c_deriv_Fcell_real = 0;
             double c_deriv_Fcell_imag = 0;
@@ -241,11 +241,11 @@ void diffBragg_sum_over_steps(
             if (db_flags.complex_miller){
             // TODO shouldnt this be constant for each HKL?
               if (db_cryst.fpfdp.size() > 0){
-                   double S_2 = 1.e-20*(_scattering[0]*_scattering[0]+_scattering[1]*_scattering[1]+_scattering[2]*_scattering[2]);
+                   double S_2 = 1.e-20*(scattering[0]*scattering[0]+scattering[1]*scattering[1]+scattering[2]*scattering[2]);
 
                     // fp is always followed by the fdp value
-                   double val_fp = db_cryst.fpfdp[2*_source];
-                   double val_fdp = db_cryst.fpfdp[2*_source+1];
+                   double val_fp = db_cryst.fpfdp[2*source];
+                   double val_fdp = db_cryst.fpfdp[2*source+1];
 
                    double c_deriv_prime=0;
                    double c_deriv_dblprime=0;
@@ -254,7 +254,7 @@ void diffBragg_sum_over_steps(
                    if (db_flags.refine_fp_fdp){
                    //   currently only supports two parameter model
                        int nsources_times_two = db_cryst.fpfdp.size();
-                       int d_idx = 2*_source;
+                       int d_idx = 2*source;
                        c_deriv_prime = db_cryst.fpfdp_derivs[d_idx];
                        c_deriv_dblprime = db_cryst.fpfdp_derivs[d_idx+1];
                        d_deriv_prime = db_cryst.fpfdp_derivs[d_idx+nsources_times_two];
@@ -264,7 +264,7 @@ void diffBragg_sum_over_steps(
                    int num_atoms = db_cryst.atom_data.size()/5;
                    for (int  i_atom=0; i_atom < num_atoms; i_atom++){
                        if (db_flags.verbose>5)
-                         printf("Processing atom %d, _F_cell=%10.3f\n", i_atom, _F_cell);
+                         printf("Processing atom %d, F_cell=%10.3f\n", i_atom, F_cell);
                        // fractional atomic coordinates
                        double atom_x = db_cryst.atom_data[i_atom*5];
                        double atom_y = db_cryst.atom_data[i_atom*5+1];
@@ -272,7 +272,7 @@ void diffBragg_sum_over_steps(
                        double B = db_cryst.atom_data[i_atom*5+3]; // B factor
                        B = exp(-B*S_2/4.0); // TODO: speed me up?
                        double occ = db_cryst.atom_data[i_atom*5+4]; // occupancy
-                       double r_dot_h = _h0*atom_x + _k0*atom_y + _l0*atom_z;
+                       double r_dot_h = h0*atom_x + k0*atom_y + l0*atom_z;
                        double phase = 2*M_PI*r_dot_h;
                        double s_rdoth = sin(phase);
                        double c_rdoth = cos(phase);
@@ -281,8 +281,8 @@ void diffBragg_sum_over_steps(
                        double BS = Bocc*s_rdoth;
                        double real_part = BC*val_fp - BS*val_fdp;
                        double imag_part = BS*val_fp + BC*val_fdp;
-                       _F_cell += real_part;
-                       _F_cell2 += imag_part;
+                       F_cell += real_part;
+                       F_cell2 += imag_part;
                        if (db_flags.refine_fp_fdp){
                             c_deriv_Fcell_real += BC*c_deriv_prime - BS*c_deriv_dblprime;
                             c_deriv_Fcell_imag += BS*c_deriv_prime + BC*c_deriv_dblprime;
@@ -292,12 +292,12 @@ void diffBragg_sum_over_steps(
                        }
                    }
                }
-               double Freal = _F_cell;
-               double Fimag = _F_cell2;
-               _F_cell = sqrt(pow(Freal,2) + pow(Fimag,2));// TODO work around the sqrt ?
-               //if (verbose> 3 && _i_step==0){
-               //     double II = I_noFcell*_F_cell*_F_cell;
-               //     printf("hkl= %f %f %f  hkl1= %d %d %d  |Fcell| after=%f, Ino=%f, I=%f\n", _h,_k,_l,_h0,_k0,_l0, _F_cell, I_noFcell, II);
+               double Freal = F_cell;
+               double Fimag = F_cell2;
+               F_cell = sqrt(pow(Freal,2) + pow(Fimag,2));// TODO work around the sqrt ?
+               //if (verbose> 3 && i_step==0){
+               //     double II = I_noFcell*F_cell*F_cell;
+               //     printf("hkl= %f %f %f  hkl1= %d %d %d  |Fcell| after=%f, Ino=%f, I=%f\n", h,k,l,h0,k0,l0, F_cell, I_noFcell, II);
                // }
                if (db_flags.refine_fp_fdp){
                    c_deriv_Fcell = Freal*c_deriv_Fcell_real + Fimag*c_deriv_Fcell_imag;
@@ -306,24 +306,24 @@ void diffBragg_sum_over_steps(
             }
 
             if(db_flags.verbose > 3){
-                double F2 = sqrt(_F_cell*_F_cell + _F_cell2*_F_cell2);
+                double F2 = sqrt(F_cell*F_cell + F_cell2*F_cell2);
                 double II = I_noFcell*F2*F2;
                 if (do_max){
                     max_stats2[0] = F2 ;
-                    max_stats2[1] = 0 ; //_F_cell2;
+                    max_stats2[1] = 0 ; //F_cell2;
                     max_stats2[2] = I_noFcell;
-                    max_stats2[3] = _F_latt;
+                    max_stats2[3] = F_latt;
                     max_stats2[4] = II;
-                    max_stats2[5] = _omega_pixel;
-                    max_stats2[6] = db_beam.source_I[_source];
-                    max_stats2[7]= db_beam.source_lambda[_source];
-                    max_stats2[8] = _h;
-                    max_stats2[9] = _k;
-                    max_stats2[10] = _l;
+                    max_stats2[5] = omega_pixel;
+                    max_stats2[6] = db_beam.source_I[source];
+                    max_stats2[7]= db_beam.source_lambda[source];
+                    max_stats2[8] = h;
+                    max_stats2[9] = k;
+                    max_stats2[10] = l;
                 }
             }
-            double Iincrement = _F_cell*_F_cell*I_noFcell;
-            _I += Iincrement;
+            double Iincrement = F_cell*F_cell*I_noFcell;
+            I += Iincrement;
 
             // TODO if test?
             if (db_flags.refine_fp_fdp){
@@ -332,53 +332,53 @@ void diffBragg_sum_over_steps(
             }
 
             //if(verbose > 3)
-            //    printf("hkl= %f %f %f  hkl1= %d %d %d  Fcell=%f\n", _h,_k,_l,_h0,_k0,_l0, _F_cell);
+            //    printf("hkl= %f %f %f  hkl1= %d %d %d  Fcell=%f\n", h,k,l,h0,k0,l0, F_cell);
 
             double two_C = 2*C;
             Eigen::Matrix3d UBOt = U*Bmat_realspace*(db_cryst.eig_O.transpose());
             if (db_flags.refine_Umat[0]){
                 Eigen::Matrix3d RyRzUBOt = db_cryst.RotMats[1]*db_cryst.RotMats[2]*UBOt;
-                Eigen::Vector3d delta_H_prime = (db_cryst.UMATS[_mos_tic]*db_cryst.dRotMats[0]*RyRzUBOt).transpose()*q_vec;
-                double V_dot_dV = V.dot(_NABC*delta_H_prime);
+                Eigen::Vector3d delta_H_prime = (db_cryst.UMATS[mos_tic]*db_cryst.dRotMats[0]*RyRzUBOt).transpose()*q_vec;
+                double V_dot_dV = V.dot(NABC*delta_H_prime);
                 double value = -two_C * V_dot_dV * Iincrement;
                 double value2 =0;
                 if (db_flags.compute_curvatures) {
-                    Eigen::Vector3d delta_H_dbl_prime = (db_cryst.UMATS[_mos_tic]*db_cryst.d2RotMats[0]*RyRzUBOt).transpose()*q_vec;
-                    double dV_dot_dV = (_NABC*delta_H_prime).dot(_NABC*delta_H_prime);
-                    double dV2_dot_V = (_NABC*delta_H).dot(_NABC*delta_H_dbl_prime);
+                    Eigen::Vector3d delta_H_dbl_prime = (db_cryst.UMATS[mos_tic]*db_cryst.d2RotMats[0]*RyRzUBOt).transpose()*q_vec;
+                    double dV_dot_dV = (NABC*delta_H_prime).dot(NABC*delta_H_prime);
+                    double dV2_dot_V = (NABC*delta_H).dot(NABC*delta_H_dbl_prime);
                     value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
                 }
                 rot_manager_dI[0] += value;
                 rot_manager_dI2[0] += value2;
             }
             if (db_flags.refine_Umat[1]){
-                Eigen::Matrix3d UmosRx = db_cryst.UMATS[_mos_tic]*db_cryst.RotMats[0];
+                Eigen::Matrix3d UmosRx = db_cryst.UMATS[mos_tic]*db_cryst.RotMats[0];
                 Eigen::Matrix3d RzUBOt = db_cryst.RotMats[2]*UBOt;
                 Eigen::Vector3d delta_H_prime =(UmosRx*db_cryst.dRotMats[1]*RzUBOt).transpose()*q_vec;
-                double V_dot_dV = V.dot(_NABC*delta_H_prime);
+                double V_dot_dV = V.dot(NABC*delta_H_prime);
                 double value = -two_C * V_dot_dV * Iincrement;
 
                 double value2=0;
                 if (db_flags.compute_curvatures){
                     Eigen::Vector3d delta_H_dbl_prime = (UmosRx*db_cryst.d2RotMats[1]*RzUBOt).transpose()*q_vec;
-                    double dV_dot_dV = (_NABC*delta_H_prime).dot(_NABC*delta_H_prime);
-                    double dV2_dot_V = (_NABC*delta_H).dot(_NABC*delta_H_dbl_prime);
+                    double dV_dot_dV = (NABC*delta_H_prime).dot(NABC*delta_H_prime);
+                    double dV2_dot_V = (NABC*delta_H).dot(NABC*delta_H_dbl_prime);
                     value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
                 }
                 rot_manager_dI[1] += value;
                 rot_manager_dI2[1] += value2;
             }
             if (db_flags.refine_Umat[2]){
-                Eigen::Matrix3d UmosRxRy = db_cryst.UMATS[_mos_tic]*db_cryst.RotMats[0]*db_cryst.RotMats[1];
+                Eigen::Matrix3d UmosRxRy = db_cryst.UMATS[mos_tic]*db_cryst.RotMats[0]*db_cryst.RotMats[1];
                 Eigen::Vector3d delta_H_prime = (UmosRxRy*db_cryst.dRotMats[2]*UBOt).transpose()*q_vec;
-                double V_dot_dV = V.dot(_NABC*delta_H_prime);
+                double V_dot_dV = V.dot(NABC*delta_H_prime);
                 double value = -two_C * V_dot_dV * Iincrement;
 
                 double value2=0;
                 if (db_flags.compute_curvatures){
                     Eigen::Vector3d delta_H_dbl_prime = (UmosRxRy*db_cryst.d2RotMats[2]*UBOt).transpose()*q_vec;
-                    double dV_dot_dV = (_NABC*delta_H_prime).dot(_NABC*delta_H_prime);
-                    double dV2_dot_V = (_NABC*delta_H).dot(_NABC*delta_H_dbl_prime);
+                    double dV_dot_dV = (NABC*delta_H_prime).dot(NABC*delta_H_prime);
+                    double dV2_dot_V = (NABC*delta_H).dot(NABC*delta_H_dbl_prime);
                     value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
                 }
                 rot_manager_dI[2] += value;
@@ -390,15 +390,15 @@ void diffBragg_sum_over_steps(
             Eigen::Vector3d delta_H_prime;
             for(int i_uc=0; i_uc < 6; i_uc++ ){
                 if (db_flags.refine_Bmat[i_uc]){
-                    UmosRxRyRzU = db_cryst.UMATS_RXYZ[_mos_tic]*U;
+                    UmosRxRyRzU = db_cryst.UMATS_RXYZ[mos_tic]*U;
                     delta_H_prime = ((UmosRxRyRzU*db_cryst.dB_Mats[i_uc]*Ot).transpose()*q_vec);
-                    double V_dot_dV = V.dot(_NABC*delta_H_prime);
+                    double V_dot_dV = V.dot(NABC*delta_H_prime);
                     double value = -two_C * V_dot_dV * Iincrement;
                     double value2 =0;
                     if (db_flags.compute_curvatures){
                         Eigen::Vector3d delta_H_dbl_prime = ((UmosRxRyRzU*db_cryst.dB2_Mats[i_uc]*Ot).transpose()*q_vec);
-                        double dV_dot_dV = (_NABC*delta_H_prime).dot(_NABC*delta_H_prime);
-                        double dV2_dot_V = (_NABC*delta_H).dot(_NABC*delta_H_dbl_prime);
+                        double dV_dot_dV = (NABC*delta_H_prime).dot(NABC*delta_H_prime);
+                        double dV2_dot_V = (NABC*delta_H).dot(NABC*delta_H_dbl_prime);
                         value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
                     }
                     ucell_manager_dI[i_uc] += value;
@@ -420,18 +420,18 @@ void diffBragg_sum_over_steps(
                     else
                         dN << 1,0,0,0,1,0,0,0,1;
 
-                    double N_i = _NABC(i_nc, i_nc);
+                    double N_i = NABC(i_nc, i_nc);
                     Eigen::Vector3d dV_dN = dN*delta_H;
-                    //if (_i_step==0 && _fpixel ==0 && _spixel == 0){
+                    //if (i_step==0 && fpixel ==0 && spixel == 0){
                     //    printf("dN matrix: %f %f %f\n %f %f %f\n %f %f %f\n",
                     //        dN(0,0), dN(0,1), dN(0,2),
                     //        dN(1,0), dN(1,1), dN(1,2),
                     //        dN(2,0), dN(2,1), dN(2,2)
                     //        );
                     //    printf("NABC matrix: %f %f %f\n %f %f %f\n %f %f %f\n",
-                    //        _NABC(0,0), _NABC(0,1), _NABC(0,2),
-                    //        _NABC(1,0), _NABC(1,1), _NABC(1,2),
-                    //        _NABC(2,0), _NABC(2,1), _NABC(2,2)
+                    //        NABC(0,0), NABC(0,1), NABC(0,2),
+                    //        NABC(1,0), NABC(1,1), NABC(1,2),
+                    //        NABC(2,0), NABC(2,1), NABC(2,2)
                     //        );
                     //}
                     double deriv_coef;
@@ -477,12 +477,12 @@ void diffBragg_sum_over_steps(
             ///* Checkpoint for Origin manager */
             for (int i_pan_orig=0; i_pan_orig < 3; i_pan_orig++){
                 if (db_flags.refine_panel_origin[i_pan_orig]){
-                    double per_k = 1/_airpath;
+                    double per_k = 1/airpath;
                     double per_k3 = pow(per_k,3);
                     double per_k5 = pow(per_k,5);
-                    double lambda_ang = _lambda*1e10;
+                    double lambda_ang = lambda*1e10;
 
-                    Eigen::Matrix3d M = -two_C*(_NABC*UBO)/lambda_ang;
+                    Eigen::Matrix3d M = -two_C*(NABC*UBO)/lambda_ang;
                     Eigen::Vector3d dk;
                     if (i_pan_orig == 0)
                         dk << 0,0,1;
@@ -490,8 +490,8 @@ void diffBragg_sum_over_steps(
                         dk << 1,0,0;
                     else
                         dk << 0,1,0;
-                    af::flex_double dI_and_dI2 = get_panel_increment(Iincrement, _omega_pixel, M, db_det.subpixel_size*db_det.subpixel_size,
-                        _o_vec, _pixel_pos, per_k,  per_k3, per_k5, V, dk);
+                    af::flex_double dI_and_dI2 = get_panel_increment(Iincrement, omega_pixel, M, db_det.subpixel_size*db_det.subpixel_size,
+                        o_vec, pixel_pos, per_k,  per_k3, per_k5, V, dk);
                     pan_orig_manager_dI[i_pan_orig] += dI_and_dI2[0];
                     pan_orig_manager_dI2[i_pan_orig] += dI_and_dI2[1];
 
@@ -500,15 +500,15 @@ void diffBragg_sum_over_steps(
 
             for (int i_pan_rot=0; i_pan_rot < 3; i_pan_rot++){
                 if(db_flags.refine_panel_rot[i_pan_rot]){
-                    double per_k = 1/_airpath;
+                    double per_k = 1/airpath;
                     double per_k3 = pow(per_k,3);
                     double per_k5 = pow(per_k,5);
-                    double lambda_ang = _lambda*1e10;
-                    Eigen::Matrix3d M = -two_C*(_NABC*UBO)/lambda_ang;
+                    double lambda_ang = lambda*1e10;
+                    Eigen::Matrix3d M = -two_C*(NABC*UBO)/lambda_ang;
 
-                    Eigen::Vector3d dk = _Fdet*(db_det.dF_vecs[_pid*3 + i_pan_rot]) + _Sdet*(db_det.dS_vecs[_pid*3 + i_pan_rot]);
-                    af::flex_double dI_and_dI2 = get_panel_increment(Iincrement, _omega_pixel, M, db_det.subpixel_size*db_det.subpixel_size,
-                        _o_vec, _pixel_pos, per_k,  per_k3, per_k5, V, dk);
+                    Eigen::Vector3d dk = Fdet*(db_det.dF_vecs[pid*3 + i_pan_rot]) + Sdet*(db_det.dS_vecs[pid*3 + i_pan_rot]);
+                    af::flex_double dI_and_dI2 = get_panel_increment(Iincrement, omega_pixel, M, db_det.subpixel_size*db_det.subpixel_size,
+                        o_vec, pixel_pos, per_k,  per_k3, per_k5, V, dk);
                     pan_rot_manager_dI[i_pan_rot] += dI_and_dI2[0];
                     pan_rot_manager_dI2[i_pan_rot] += dI_and_dI2[1];
                 }
@@ -517,26 +517,26 @@ void diffBragg_sum_over_steps(
             /* checkpoint for Fcell manager */
             if (db_flags.refine_fcell){
             //    TODO rewrite so no divide by Fcell
-                int nom_h=_h0;
-                int nom_k=_k0;
-                int nom_l=_l0;
+                int nom_h=h0;
+                int nom_k=k0;
+                int nom_l=l0;
                 //int f_cell_idx = 1;
                 if (use_nominal_hkl){
                     nom_h = db_cryst.nominal_hkl[i_pix*3];
                     nom_k = db_cryst.nominal_hkl[i_pix*3+1];
                     nom_l = db_cryst.nominal_hkl[i_pix*3+2];
-                    //f_cell_idx = _l0 - nom_l + 1;
+                    //f_cell_idx = l0 - nom_l + 1;
                 }
-                double value = 2*I_noFcell*_F_cell; //2*Iincrement/_F_cell ;
+                double value = 2*I_noFcell*F_cell; //2*Iincrement/F_cell ;
                 double value2=0;
                 if (db_flags.compute_curvatures){
-                    if (_F_cell > 0)
-                        value2 = value/_F_cell;
+                    if (F_cell > 0)
+                        value2 = value/F_cell;
                 }
                 //if (f_cell_idx >= 0 && f_cell_idx <= 2){
                 // NOTE use nominal hkl to regulate when gradients are compputed, as h,k,l can drift within a shoebox
                 if (use_nominal_hkl){
-                    if (nom_h==_h0 && nom_k==_k0 && nom_l==_l0 ){
+                    if (nom_h==h0 && nom_k==k0 && nom_l==l0 ){
                         fcell_manager_dI[1] += value;
                         fcell_manager_dI2[1] += value2;
                     }
@@ -553,10 +553,10 @@ void diffBragg_sum_over_steps(
                     if (i_eta != 0 && db_cryst.UMATS_RXYZ_prime.size()==db_cryst.UMATS_RXYZ.size()){
                         continue;
                     }
-                    int mtic2 = _mos_tic  + i_eta*db_cryst.mosaic_domains;
+                    int mtic2 = mos_tic  + i_eta*db_cryst.mosaic_domains;
                     Eigen::Vector3d DeltaH_deriv = (db_cryst.UMATS_RXYZ_prime[mtic2]*UBOt).transpose()*q_vec;
-                    // vector V is _Nabc*Delta_H
-                    Eigen::Vector3d dV = _NABC*DeltaH_deriv;
+                    // vector V is Nabc*Delta_H
+                    Eigen::Vector3d dV = NABC*DeltaH_deriv;
                     double V_dot_dV = V.dot(dV);
                     double Iprime = -two_C*(V_dot_dV)*Iincrement;
                     eta_manager_dI[i_eta] += Iprime;
@@ -564,7 +564,7 @@ void diffBragg_sum_over_steps(
                     double Idbl_prime = 0;
                     if (db_flags.compute_curvatures){
                         Eigen::Vector3d DeltaH_second_deriv = (db_cryst.UMATS_RXYZ_dbl_prime[mtic2]*UBOt).transpose()*q_vec;
-                        Eigen::Vector3d dV2 = _NABC*DeltaH_second_deriv;
+                        Eigen::Vector3d dV2 = NABC*DeltaH_second_deriv;
                         Idbl_prime = -two_C*(dV.dot(dV) + V.dot(dV2))*Iincrement;
                         Idbl_prime += -two_C*(V_dot_dV)*Iprime;
                     }
@@ -575,8 +575,8 @@ void diffBragg_sum_over_steps(
             /*checkpoint for lambda manager*/
             for(int i_lam=0; i_lam < 2; i_lam++){
                 if (db_flags.refine_lambda[i_lam]){
-                    double lambda_ang = _lambda*1e10;
-                    double NH_dot_V = (_NABC*H_vec).dot(V);
+                    double lambda_ang = lambda*1e10;
+                    double NH_dot_V = (NABC*H_vec).dot(V);
                     double dg_dlambda;
                     if (i_lam==0)
                         dg_dlambda = 1;
@@ -593,18 +593,18 @@ void diffBragg_sum_over_steps(
             }
             /*end of lambda deriv*/
 
-            if( db_flags.printout && _i_step==0 ){
-                if((_fpixel==db_flags.printout_fpixel && _spixel==db_flags.printout_spixel) || db_flags.printout_fpixel < 0)
+            if( db_flags.printout && i_step==0 ){
+                if((fpixel==db_flags.printout_fpixel && spixel==db_flags.printout_spixel) || db_flags.printout_fpixel < 0)
                 {
-                    printf("%4d %4d : stol = %g, lambda = %g\n", _fpixel,_spixel,_stol, _lambda);
-                    printf("at %g %g %g\n", _pixel_pos[0],_pixel_pos[1],_pixel_pos[2]);
-                    printf("hkl= %f %f %f  hkl0= %d %d %d\n", _h,_k,_l,_h0,_k0,_l0);
-                    printf(" F_cell=%g  F_cell_2=%g F_latt=%g   I = %g\n", _F_cell,_F_cell2,_F_latt,_I);
-                    printf("I/steps %15.10g\n", _I/db_steps.Nsteps);
-                    printf("cap frac   %f\n", _capture_fraction);
-                    printf("Fdet= %g; Sdet= %g ; Odet= %g\n", _Fdet, _Sdet, _Odet);
-                    printf("omega   %15.10g\n", _omega_pixel);
-                    printf("close_distance    %15.10g\n", _close_distance);
+                    printf("%4d %4d : stol = %g, lambda = %g\n", fpixel,spixel,stol, lambda);
+                    printf("at %g %g %g\n", pixel_pos[0],pixel_pos[1],pixel_pos[2]);
+                    printf("hkl= %f %f %f  hkl0= %d %d %d\n", h,k,l,h0,k0,l0);
+                    printf(" F_cell=%g  F_cell_2=%g F_latt=%g   I = %g\n", F_cell,F_cell2,F_latt,I);
+                    printf("I/steps %15.10g\n", I/db_steps.Nsteps);
+                    printf("cap frac   %f\n", capture_fraction);
+                    printf("Fdet= %g; Sdet= %g ; Odet= %g\n", Fdet, Sdet, Odet);
+                    printf("omega   %15.10g\n", omega_pixel);
+                    printf("close_distance    %15.10g\n", close_distance);
                     printf("fluence    %15.10g\n", db_beam.fluence);
                     printf("spot scale   %15.10g\n", db_cryst.spot_scale);
                     printf("sourceI[0]:   %15.10g\n", db_beam.source_I[0]);
@@ -615,7 +615,7 @@ void diffBragg_sum_over_steps(
                     printf("O: %f %f %f\n" , db_det.odet_vectors[pid_x], db_det.odet_vectors[pid_y], db_det.odet_vectors[pid_z]);
                     printf("QVECTOR: %f %f %f\n" , q_vec[0], q_vec[1], q_vec[2]);
                     printf("MOSAIC UMAT RXYZ\n");
-                    std::cout << db_cryst.UMATS_RXYZ[_mos_tic] << std::endl;
+                    std::cout << db_cryst.UMATS_RXYZ[mos_tic] << std::endl;
                     printf("Bmat_realspace\n");
                     std::cout << Bmat_realspace << std::endl;
                     printf("UBO\n");
@@ -651,67 +651,67 @@ void diffBragg_sum_over_steps(
 
         }
 
-        double _scale_term=1;
+        double scale_term=1;
         if (!db_flags.track_Fhkl){
 
-            double _Fdet_ave = db_det.pixel_size*_fpixel + db_det.pixel_size/2.0;
-            double _Sdet_ave = db_det.pixel_size*_spixel + db_det.pixel_size/2.0;
-            double _Odet_ave = 0; //Odet; // TODO maybe make this more general for thick detectors?
+            double Fdet_ave = db_det.pixel_size*fpixel + db_det.pixel_size/2.0;
+            double Sdet_ave = db_det.pixel_size*spixel + db_det.pixel_size/2.0;
+            double Odet_ave = 0; //Odet; // TODO maybe make this more general for thick detectors?
 
-            Eigen::Vector3d _pixel_pos_ave(0,0,0);
-            int pid_x = _pid*3;
-            int pid_y = _pid*3+1;
-            int pid_z = _pid*3+2;
-            _pixel_pos_ave[0] = _Fdet_ave * db_det.fdet_vectors[pid_x]+_Sdet_ave*db_det.sdet_vectors[pid_x]+_Odet_ave*db_det.odet_vectors[pid_x]+db_det.pix0_vectors[pid_x];
-            _pixel_pos_ave[1] = _Fdet_ave * db_det.fdet_vectors[pid_y]+_Sdet_ave*db_det.sdet_vectors[pid_y]+_Odet_ave*db_det.odet_vectors[pid_y]+db_det.pix0_vectors[pid_y];
-            _pixel_pos_ave[2] = _Fdet_ave * db_det.fdet_vectors[pid_z]+_Sdet_ave*db_det.sdet_vectors[pid_z]+_Odet_ave*db_det.odet_vectors[pid_z]+db_det.pix0_vectors[pid_z];
+            Eigen::Vector3d pixel_pos_ave(0,0,0);
+            int pid_x = pid*3;
+            int pid_y = pid*3+1;
+            int pid_z = pid*3+2;
+            pixel_pos_ave[0] = Fdet_ave * db_det.fdet_vectors[pid_x]+Sdet_ave*db_det.sdet_vectors[pid_x]+Odet_ave*db_det.odet_vectors[pid_x]+db_det.pix0_vectors[pid_x];
+            pixel_pos_ave[1] = Fdet_ave * db_det.fdet_vectors[pid_y]+Sdet_ave*db_det.sdet_vectors[pid_y]+Odet_ave*db_det.odet_vectors[pid_y]+db_det.pix0_vectors[pid_y];
+            pixel_pos_ave[2] = Fdet_ave * db_det.fdet_vectors[pid_z]+Sdet_ave*db_det.sdet_vectors[pid_z]+Odet_ave*db_det.odet_vectors[pid_z]+db_det.pix0_vectors[pid_z];
 
-            double _airpath_ave = _pixel_pos_ave.norm();
-            Eigen::Vector3d _diffracted_ave = _pixel_pos_ave/_airpath_ave;
-            double _omega_pixel_ave = db_det.pixel_size*db_det.pixel_size/_airpath_ave/_airpath_ave*_close_distance/_airpath_ave;
+            double airpath_ave = pixel_pos_ave.norm();
+            Eigen::Vector3d diffracted_ave = pixel_pos_ave/airpath_ave;
+            double omega_pixel_ave = db_det.pixel_size*db_det.pixel_size/airpath_ave/airpath_ave*close_distance/airpath_ave;
 
-            double _polar = 1;
+            double polar = 1;
             if (!db_flags.nopolar){
-                Eigen::Vector3d _incident(-db_beam.source_X[0], -db_beam.source_Y[0], -db_beam.source_Z[0]);
-                _incident = _incident / _incident.norm();
+                Eigen::Vector3d incident(-db_beam.source_X[0], -db_beam.source_Y[0], -db_beam.source_Z[0]);
+                incident = incident / incident.norm();
                 // component of diffracted unit vector along incident beam unit vector
-                double cos2theta = _incident.dot(_diffracted_ave);
+                double cos2theta = incident.dot(diffracted_ave);
                 double cos2theta_sqr = cos2theta*cos2theta;
                 double sin2theta_sqr = 1-cos2theta_sqr;
 
-                double _psi=0;
+                double psi=0;
                 if(db_beam.kahn_factor != 0.0){
                     // cross product to get "vertical" axis that is orthogonal to the cannonical "polarization"
-                    Eigen::Vector3d B_in = db_beam.polarization_axis.cross(_incident);
+                    Eigen::Vector3d B_in = db_beam.polarization_axis.cross(incident);
                     // cross product with incident beam to get E-vector direction
-                    Eigen::Vector3d E_in = _incident.cross(B_in);
+                    Eigen::Vector3d E_in = incident.cross(B_in);
                     // get components of diffracted ray projected onto the E-B plane
-                    double _kEi = _diffracted_ave.dot(E_in);
-                    double _kBi = _diffracted_ave.dot(B_in);
+                    double kEi = diffracted_ave.dot(E_in);
+                    double kBi = diffracted_ave.dot(B_in);
                     // compute the angle of the diffracted ray projected onto the incident E-B plane
-                    _psi = -atan2(_kBi,_kEi);
+                    psi = -atan2(kBi,kEi);
                 }
                 // correction for polarized incident beam
-                _polar = 0.5*(1.0 + cos2theta_sqr - db_beam.kahn_factor*cos(2*_psi)*sin2theta_sqr);
+                polar = 0.5*(1.0 + cos2theta_sqr - db_beam.kahn_factor*cos(2*psi)*sin2theta_sqr);
             }
 
-            double _om = 1;
+            double om = 1;
             if (!db_flags.oversample_omega)
-                _om=_omega_pixel_ave;
+                om=omega_pixel_ave;
 
             // final scale term to being everything to photon number units
-            _scale_term = db_cryst.r_e_sqr*db_beam.fluence*db_cryst.spot_scale*_polar*_om/db_steps.Nsteps;
+            scale_term = db_cryst.r_e_sqr*db_beam.fluence*db_cryst.spot_scale*polar*om/db_steps.Nsteps;
 
             //int roi_i = i_pix; // TODO replace roi_i with i_pix
 
-            floatimage[i_pix] = _scale_term*_I;
+            floatimage[i_pix] = scale_term*I;
 
         }
         /* udpate the rotation derivative images*/
         for (int i_rot =0 ; i_rot < 3 ; i_rot++){
             if (db_flags.refine_Umat[i_rot]){
-                double value = _scale_term*rot_manager_dI[i_rot];
-                double value2 = _scale_term*rot_manager_dI2[i_rot];
+                double value = scale_term*rot_manager_dI[i_rot];
+                double value2 = scale_term*rot_manager_dI2[i_rot];
                 int idx = i_rot*Npix_to_model + i_pix;
                 d_image.Umat[idx] = value;
                 d2_image.Umat[idx] = value2;
@@ -721,8 +721,8 @@ void diffBragg_sum_over_steps(
         /*update the ucell derivative images*/
         for (int i_uc=0 ; i_uc < 6 ; i_uc++){
             if (db_flags.refine_Bmat[i_uc]){
-                double value = _scale_term*ucell_manager_dI[i_uc];
-                double value2 = _scale_term*ucell_manager_dI2[i_uc];
+                double value = scale_term*ucell_manager_dI[i_uc];
+                double value2 = scale_term*ucell_manager_dI2[i_uc];
                 int idx= i_uc*Npix_to_model + i_pix;
                 d_image.Bmat[idx] = value;
                 d2_image.Bmat[idx] = value2;
@@ -731,8 +731,8 @@ void diffBragg_sum_over_steps(
 
         /*update the Ncells derivative image*/
         if (db_flags.refine_Ncells[0]){
-            double value = _scale_term*Ncells_manager_dI[0];
-            double value2 = _scale_term*Ncells_manager_dI2[0];
+            double value = scale_term*Ncells_manager_dI[0];
+            double value2 = scale_term*Ncells_manager_dI2[0];
             double idx = i_pix;
             d_image.Ncells[idx] = value;
             d2_image.Ncells[idx] = value2;
@@ -740,16 +740,16 @@ void diffBragg_sum_over_steps(
             //d2_Ncells_images[idx] = value2;
 
             if (! db_flags.isotropic_ncells){
-                value = _scale_term*Ncells_manager_dI[1];
-                value2 = _scale_term*Ncells_manager_dI2[1];
+                value = scale_term*Ncells_manager_dI[1];
+                value2 = scale_term*Ncells_manager_dI2[1];
                 idx = Npix_to_model + i_pix;
                 d_image.Ncells[idx] = value;
                 d2_image.Ncells[idx] = value2;
                 //d_Ncells_images[idx] = value;
                 //d2_Ncells_images[idx] = value2;
 
-                value = _scale_term*Ncells_manager_dI[2];
-                value2 = _scale_term*Ncells_manager_dI2[2];
+                value = scale_term*Ncells_manager_dI[2];
+                value2 = scale_term*Ncells_manager_dI2[2];
                 idx = Npix_to_model*2 + i_pix;
                 d_image.Ncells[idx] = value;
                 d2_image.Ncells[idx] = value2;
@@ -759,8 +759,8 @@ void diffBragg_sum_over_steps(
         }/* end Ncells deriv image increment */
         if (db_flags.refine_Ncells_def){
             for (int i_nc=3; i_nc<6; i_nc++){
-                double value = _scale_term*Ncells_manager_dI[i_nc];
-                double value2 = _scale_term*Ncells_manager_dI2[i_nc];
+                double value = scale_term*Ncells_manager_dI[i_nc];
+                double value2 = scale_term*Ncells_manager_dI2[i_nc];
                 int idx = i_nc* Npix_to_model + i_pix;
                 //d_Ncells_images[idx] = value;
                 //d2_Ncells_images[idx] = value2;
@@ -771,13 +771,13 @@ void diffBragg_sum_over_steps(
 
         /* update Fcell derivative image */
         if(db_flags.refine_fcell){
-            double value = _scale_term*fcell_manager_dI[1];
-            double value2 = _scale_term*fcell_manager_dI2[1];
+            double value = scale_term*fcell_manager_dI[1];
+            double value2 = scale_term*fcell_manager_dI2[1];
             d_image.fcell[Npix_to_model+ i_pix] = value;
             d2_image.fcell[Npix_to_model + i_pix] = value2;
             //for (int i_fcell=0; i_fcell < 3; i_fcell++){
-            //    double value = _scale_term*fcell_manager_dI[i_fcell];
-            //    double value2 = _scale_term*fcell_manager_dI2[i_fcell];
+            //    double value = scale_term*fcell_manager_dI[i_fcell];
+            //    double value2 = scale_term*fcell_manager_dI2[i_fcell];
             //    d_fcell_images[i_fcell*Npix_to_model+ i_pix] = value;
             //    d2_fcell_images[i_fcell*Npix_to_model + i_pix] = value2;
             //}
@@ -785,17 +785,17 @@ void diffBragg_sum_over_steps(
 
         if (db_flags.refine_fp_fdp){
             // c derivative
-            double value = _scale_term*fp_fdp_manager_dI[0];
+            double value = scale_term*fp_fdp_manager_dI[0];
             d_image.fp_fdp[i_pix] = value;
             // d derivative
-            value = _scale_term*fp_fdp_manager_dI[1];
+            value = scale_term*fp_fdp_manager_dI[1];
             d_image.fp_fdp[Npix_to_model + i_pix] = value;
         }
 
         /* update eta derivative image */
         if(db_flags.refine_eta){
-            //double value = _scale_term*eta_manager_dI[0];
-            //double value2 = _scale_term*eta_manager_dI2[0];
+            //double value = scale_term*eta_manager_dI[0];
+            //double value2 = scale_term*eta_manager_dI2[0];
             //d_eta_images[i_pix] = value;
             //d2_eta_images[i_pix] = value2;
             //if (db_cryst.UMATS_RXYZ_prime.size() >= 3*mosaic_domains){
@@ -803,8 +803,8 @@ void diffBragg_sum_over_steps(
                 if (i_eta != 0 && db_cryst.UMATS_RXYZ.size() == db_cryst.UMATS_RXYZ_prime.size())
                     continue;
                 int idx = i_pix + Npix_to_model*i_eta;
-                double value = _scale_term*eta_manager_dI[i_eta];
-                double value2 = _scale_term*eta_manager_dI2[i_eta];
+                double value = scale_term*eta_manager_dI[i_eta];
+                double value2 = scale_term*eta_manager_dI2[i_eta];
                 d_image.fp_fdp[idx] = value;
                 d2_image.fp_fdp[idx] = value2;
             }
@@ -816,8 +816,8 @@ void diffBragg_sum_over_steps(
             if (db_flags.refine_lambda[i_lam]){
                 //double value = scale_term*lambda_managers[i_lam]->dI;
                 //double value2 = scale_term*lambda_managers[i_lam]->dI2;
-                double value = _scale_term*lambda_manager_dI[i_lam];
-                double value2 = _scale_term*lambda_manager_dI2[i_lam];
+                double value = scale_term*lambda_manager_dI[i_lam];
+                double value2 = scale_term*lambda_manager_dI2[i_lam];
                 int idx = i_lam*Npix_to_model + i_pix;
                 d_image.lambda[idx] = value;
                 d2_image.lambda[idx] = value2;
@@ -827,8 +827,8 @@ void diffBragg_sum_over_steps(
         // panel rotation
         for (int i_pan_rot=0; i_pan_rot < 3; i_pan_rot++){
             if(db_flags.refine_panel_rot[i_pan_rot]){
-                double value = _scale_term*pan_rot_manager_dI[i_pan_rot];
-                double value2 = _scale_term*pan_rot_manager_dI2[i_pan_rot];
+                double value = scale_term*pan_rot_manager_dI[i_pan_rot];
+                double value2 = scale_term*pan_rot_manager_dI2[i_pan_rot];
                 int idx = i_pan_rot*Npix_to_model + i_pix;
                 d_image.panel_rot[idx] = value;
                 d2_image.panel_rot[idx] = value2;
@@ -838,8 +838,8 @@ void diffBragg_sum_over_steps(
         // panel origin
         for (int i_pan_orig=0; i_pan_orig < 3; i_pan_orig++){
             if(db_flags.refine_panel_origin[i_pan_orig]){
-                double value = _scale_term*pan_orig_manager_dI[i_pan_orig];
-                double value2 = _scale_term*pan_orig_manager_dI2[i_pan_orig];
+                double value = scale_term*pan_orig_manager_dI[i_pan_orig];
+                double value2 = scale_term*pan_orig_manager_dI2[i_pan_orig];
                 int idx = i_pan_orig*Npix_to_model + i_pix;
                 d_image.panel_orig[idx] = value;
                 d2_image.panel_orig[idx] = value2;
