@@ -518,7 +518,7 @@ function onMessage(e)
       WebsockSendMsg('CurrentViewOrientation:\n' + msg );
     }
 
-    if (msgtype.includes("Expand") )
+    if (msgtype.includes("Expand") && shapeComp != null)
     {
       if (msgtype == "Expand" && expstate == "")
         return;
@@ -748,7 +748,7 @@ function onMessage(e)
       );
     }
 
-    if (msgtype === "RotateComponents")
+    if (msgtype === "RotateComponents" && shapeComp != null)
     {
       WebsockSendMsg('Rotating components ' + pagename);
 
@@ -777,7 +777,7 @@ function onMessage(e)
       );
     }
 
-    if (msgtype === "RotateAxisComponents") {
+    if (msgtype === "RotateAxisComponents" && shapeComp != null) {
       WebsockSendMsg('Rotating components around axis ' + pagename);
       let sm = new Float32Array(9);
       let m4 = new NGL.Matrix4();
@@ -804,7 +804,7 @@ function onMessage(e)
       );
     }
 
-    if (msgtype === "AnimateRotateAxisComponents") {
+    if (msgtype === "AnimateRotateAxisComponents" && shapeComp != null) {
       WebsockSendMsg('Animate rotating components around axis ' + pagename);
       let sm = new Float32Array(9);
       let m4 = new NGL.Matrix4();
@@ -848,7 +848,7 @@ function onMessage(e)
       );
     }
 
-    if (msgtype === "TranslateHKLpoints")
+    if (msgtype === "TranslateHKLpoints" && shapeComp != null)
     {
       WebsockSendMsg( 'Translating HKLs ' + pagename );
       let strs = datval[1].split("\n");

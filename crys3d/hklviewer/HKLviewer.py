@@ -469,12 +469,13 @@ newarray._sigmas = sigs
     #self.window.setVisible(False)
     if self.UseOSBrowser == False:
       self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
-    print("HKLviewer closing down...")
+    print("HKLviewer closing down")
     nc = 0
     sleeptime = 0.2
     maxtime = 3
     while not self.canexit and nc < maxtime: # until cctbx.python has finished or after maxtime sec
       time.sleep(sleeptime)
+      print(".", end='', flush=True)
       self.ProcessMessages()
       nc += sleeptime
     try:
@@ -482,7 +483,7 @@ newarray._sigmas = sigs
       self.out, self.err = self.cctbxproc.communicate(input="exit()", timeout=maxtime)
       print(str(self.out) + "\n" + str(self.err))
     except Exception as e:
-      print("Terminating hanging cctbx.python process...")
+      print("Terminating hanging cctbx.python process.")
       import psutil
       parent_pid = self.cctbxproc.pid   # my example
       parent = psutil.Process(parent_pid)
@@ -1884,7 +1885,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE)
     # Wait for connection from the zmq socket in CCTBX by testing if we can send an empty string
-    t=0.0; dt = 0.3; timeout = 5
+    print("Establishing ZMQ socket to CCTBX process", end='')
+    t=0.0; dt = 0.5; timeout = 20 # more than enough time for connecting
     err = zmq.EAGAIN
     while err == zmq.EAGAIN:
       try:
@@ -1894,10 +1896,11 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
         err = e.errno # if EAGAIN then message cannot be sent at the moment.
       time.sleep(dt)
       t += dt
+      print(".", end='', flush=True)
       if  t > timeout:
-        raise Exception("HKLviewer GUI failed making the ZMQ socket connection to the CCTBX.")
+        raise Exception("\nHKLviewer GUI failed making ZMQ socket connection to CCTBX process.")
         break
-
+    print("\nDone.")
 
 
   def send_message(self, cmdstr, msgtype="philstr"):
