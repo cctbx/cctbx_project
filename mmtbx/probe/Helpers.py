@@ -294,6 +294,8 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     h = pdb.hierarchy.atom()
     h.element = "H"
     h.name = "H"
+    h.occ = minOccupancy + 0.01
+    h.b = 99.99
 
     # Place the hydrogen pointing from the Oxygen towards the candidate at a distance
     # of 1 plus an offset that is clamped to the range -1..0 that is the sum of the overlap
