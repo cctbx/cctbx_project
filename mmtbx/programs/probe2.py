@@ -136,6 +136,10 @@ probe
   implicit_hydrogens = False
     .type = bool
     .help = Use implicit hydrogens, no water proxies (-implicit in probe)
+
+  use_original_probe_tables = False
+    .type = bool
+    .help = Use the original Probe tables rather than CCTBX tables by default (for regression tests)
 }
 
 output
@@ -731,7 +735,9 @@ Note:
     # Get the extra atom information needed to score all of the atoms in the model.
     # @todo Handle getting implicit radii here or in the _scaled_atom_radius() function
     make_sub_header('Compute extra atom information', out=self.logger)
-    ret = Helpers.getExtraAtomInfo(self.model, self.params.probe.implicit_hydrogens)
+    ret = Helpers.getExtraAtomInfo(self.model,useNeutronDistances=self.params.use_neutron_distances,
+      useImplicitHydrogenDistances=self.params.probe.implicit_hydrogens,
+      useProbeTablesByDefault=self.params.probe.use_original_probe_tables)
     self._extraAtomInfo = ret.extraAtomInfo
     if len(ret.warnings) > 0:
       print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings, file=self.logger)
