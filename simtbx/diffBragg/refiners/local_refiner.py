@@ -528,10 +528,11 @@ class LocalRefiner(BaseRefiner):
         pass
 
     def _extract_pixel_data(self):
-        Mod = self.Modelers[self._i_shot]
-        self.Bfactor_qterm = Mod.all_q_perpix**2 / 4.
-        self._expBq = np.exp(-self.b_fac**2 * self.Bfactor_qterm)
-        self.model_bragg_spots = self._expBq*self.scale_fac*(self._model_pix)
+        #Mod = self.Modelers[self._i_shot]
+        #self.Bfactor_qterm = Mod.all_q_perpix**2 / 4.
+        #self._expBq = np.exp(-self.b_fac**2 * self.Bfactor_qterm)
+        #self.model_bragg_spots = self._expBq*self.scale_fac*(self._model_pix)
+        self.model_bragg_spots = self.scale_fac*self._model_pix
         self._extract_Fcell_derivative_pixels()
 
     def _update_ucell(self):
@@ -658,7 +659,7 @@ class LocalRefiner(BaseRefiner):
             self._is_trusted = self.Modelers[self._i_shot].all_trusted
             self.target_functional += self._target_accumulate()
             self._spot_scale_derivatives()
-            self._Bfactor_derivatives()
+            #self._Bfactor_derivatives()
             self._Fcell_derivatives()
             self._shot_Zscores.append(self._spot_Zscores)
         tshots = time.time()-tshots
