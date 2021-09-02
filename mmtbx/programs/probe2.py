@@ -594,7 +594,7 @@ Note:
         if len(res) > 0:
           # gs stores all of the values unless reportSubScores is True
           gs = hs = hslen = bs = bslen = score = psas = 0.0
-          label = "external dots "
+          label = "external_dots "
           if not isSurface:
             label = probeExt.DotScorer.interaction_type_name(t)
           ret += "{:>3s} {} ".format(c, label)
@@ -976,7 +976,7 @@ Note:
       outString += 'atoms selected: '+str(len(source_atoms))+'\n'
 
     elif self.params.approach == 'surface':
-      make_sub_header('Making surface dots', out=self.logger)
+      make_sub_header('Make surface dots', out=self.logger)
 
       # Produce dots on the surfaces of the selected atoms.
       maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
