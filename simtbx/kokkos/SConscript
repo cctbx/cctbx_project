@@ -5,6 +5,23 @@ from shutil import copy
 import libtbx.load_env
 from libtbx.env_config import get_boost_library_with_python_version
 
+def detect_architecture(verbose=True):
+  if verbose:
+    print('Looking for GPUs ...')
+  available_gpu = subprocess.check_output(['nvidia-smi', '--query-gpu=name', '--format=csv,noheader'])
+  available_gpu = available_gpu.split(b'\n')
+  first_entry = available_gpu[0].decode('utf8')
+  if len(first_entry)>0:
+    if verbose:
+      print( ' Found ', first_entry)
+    if 'A100' in first_entry:
+      architecture = "Ampere80"
+    else:
+      architecture = "Volta70"
+  else:
+    architecture = "HSW"
+  return architecture
+
 # libkokkos.a
 # call kokkos build system directly
 # set environment variable defaults if necessary
@@ -13,7 +30,7 @@ if os.getenv('KOKKOS_DEVICES') is None:
 if os.getenv('KOKKOS_PATH') is None:
   os.environ['KOKKOS_PATH'] = libtbx.env.under_dist('simtbx', '../../kokkos')
 if os.getenv('KOKKOS_ARCH') is None:
-  os.environ['KOKKOS_ARCH'] = "Volta70"
+  os.environ['KOKKOS_ARCH'] = detect_architecture(verbose = True)
 if os.getenv('KOKKOS_CUDA_OPTIONS') is None:
   os.environ['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
 os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double'
