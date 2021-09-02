@@ -272,6 +272,7 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
         # we only point at the closest one.  To ensure this, we check all current candidates
         # and if we find one that is on the same aromatic ring then we either ignore this new
         # atom (if it is further) or replace the existing one (if it is closer).
+        skip = False
         if AtomTypes.IsAromatic(a.parent().resname.strip().upper(), a.name.strip().upper()):
           for c in candidates:
             # See if we belong to the same atom group and are both ring acceptors.  If so, we need to replace
@@ -282,12 +283,16 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
                 # Replace the further atom with this atom.
                 c._atom = a
                 c._overlap = overlap
+                skip = True
+                break
               else:
                 # This is further away, so we don't insert it.
-                continue
+                skip = True
+                break
 
         # Add the Candidate
-        candidates.append(Candidate(a, overlap))
+        if not skip:
+          candidates.append(Candidate(a, overlap))
 
   # Generate phantoms pointing toward all of the remaining candidates.
   for c in candidates:
