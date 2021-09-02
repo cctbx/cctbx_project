@@ -280,7 +280,7 @@ class DataModeler:
         self.all_fast = np.array(all_fast)
         self.all_slow = np.array(all_slow)
         self.all_pid = np.array(all_pid)
-        self.simple_weights = 1/self.all_sigmas**2
+        #self.simple_weights = 1/self.all_sigmas**2
         self.u_id = set(self.roi_id)
         self.all_refls_idx = np.array(all_refls_idx)
 

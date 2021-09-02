@@ -827,8 +827,8 @@ void diffBragg_sum_over_steps(
                 int idx = i_pix + Npix_to_model*i_eta;
                 double value = scale_term*eta_manager_dI[i_eta];
                 double value2 = scale_term*eta_manager_dI2[i_eta];
-                d_image.fp_fdp[idx] = value;
-                d2_image.fp_fdp[idx] = value2;
+                d_image.eta[idx] = value;
+                d2_image.eta[idx] = value2;
             }
             //}
         }/* end eta deriv image increment */
