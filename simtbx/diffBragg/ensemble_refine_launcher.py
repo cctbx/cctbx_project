@@ -12,7 +12,7 @@ except ImportError:
     print("Pandas is required. Install using 'libtbx.python -m pip install pandas'")
     exit()
 from xfel.merging.application.utils.memory_usage import get_memory_usage
-from simtbx.diffBragg.refiners.global_refiner import LocalRefiner
+from simtbx.diffBragg.refiners.local_refiner import LocalRefiner
 from simtbx.diffBragg import utils
 from simtbx.diffBragg import hopper_utils
 from dxtbx.model.experiment_list import ExperimentListFactory
@@ -435,58 +435,11 @@ class RefineLauncher:
 
             self.RUC = LocalRefiner(self.Modelers, self.symbol, self.params)
 
-            #if self.will_refine(self.params.refiner.refine_Bmatrix):
-            #    self.RUC.refine_Bmatrix = (self.params.refiner.refine_Bmatrix*nmacro)[i_trial]
-
-            #if self.will_refine(self.params.refiner.refine_Umatrix):
-            #    self.RUC.refine_Umatrix = (self.params.refiner.refine_Umatrix*nmacro)[i_trial]
-
-            #if self.will_refine(self.params.refiner.refine_ncells):
-            #    self.RUC.refine_ncells = (self.params.refiner.refine_ncells*nmacro)[i_trial]
-
-            #if self.will_refine(self.params.refiner.refine_ncells_def):
-            #    self.RUC.refine_ncells_def = (self.params.refiner.refine_ncells_def*nmacro)[i_trial]
-
-            #if self.will_refine(self.params.refiner.refine_bg):
-            #    self.RUC.refine_background_planes = (self.params.refiner.refine_bg*nmacro)[i_trial]
-
             if self.will_refine(self.params.refiner.refine_spot_scale):
                 self.RUC.refine_crystal_scale = (self.params.refiner.refine_spot_scale*nmacro)[i_trial]
 
-            #if self.will_refine(self.params.refiner.refine_spectra):
-            #    self.RUC.refine_spectra = (self.params.refiner.refine_spectra*nmacro)[i_trial]
-
-            #if self.will_refine(self.params.refiner.refine_detdist):
-            #    self.RUC.refine_detdist = (self.params.refiner.refine_detdist*nmacro)[i_trial]
-
-            #if self.will_refine(self.params.refiner.refine_panelZ):
-            #    self.RUC.refine_panelZ = (self.params.refiner.refine_panelZ*nmacro)[i_trial]
-
-            #if self.will_refine(self.params.refiner.refine_panelRotO):
-            #    self.RUC.refine_panelRotO = (self.params.refiner.refine_panelRotO*nmacro)[i_trial]
-            #if self.will_refine(self.params.refiner.refine_panelRotF):
-            #    self.RUC.refine_panelRotF = (self.params.refiner.refine_panelRotF*nmacro)[i_trial]
-
-            #if self.will_refine(self.params.refiner.refine_panelRotS):
-            #    self.RUC.refine_panelRotS = (self.params.refiner.refine_panelRotS*nmacro)[i_trial]
-
-            #if self.will_refine(self.params.refiner.refine_panelXY):
-            #    self.RUC.refine_panelXY = (self.params.refiner.refine_panelXY*nmacro)[i_trial]
-
-            #if self.will_refine(self.params.refiner.refine_per_spot_scale):
-            #    self.RUC.refine_per_spot_scale = (self.params.refiner.refine_per_spot_scale*nmacro)[i_trial]
-
-            #if self.will_refine(self.params.refiner.refine_eta):
-            #    self.RUC.refine_eta = (self.params.refiner.refine_eta*nmacro)[i_trial]
-
-            #if self.will_refine(self.params.refiner.refine_blueSausages):
-            #    self.RUC.refine_blueSausages = (self.params.refiner.refine_blueSausages*nmacro)[i_trial]
-
             if self.will_refine(self.params.refiner.refine_Fcell):
                 self.RUC.refine_Fcell = (self.params.refiner.refine_Fcell*nmacro)[i_trial]
-
-            #if self.RUC.refine_detdist and self.RUC.refine_panelZ:
-            #    raise ValueError("Cannot refine panelZ and detdist simultaneously")
 
             self.RUC.panel_group_from_id = self.panel_group_from_id
             self.RUC.panel_reference_from_id = self.panel_reference_from_id
@@ -543,8 +496,6 @@ class RefineLauncher:
             #        res_flags = [rhigh < r < rlow for r in self.shot_reso[i_shot]]
             #        more_sel_flags[i_shot] = [flag1 and flag2 for flag1,flag2 in zip(sel_flags, res_flags)]
             #    self.RUC.selection_flags = more_sel_flags
-
-            self.RUC.record_model_predictions = self.params.refiner.record_xy_calc
 
             LOGGER.info("_launcher runno setup")
             self.RUC.run(setup=False)

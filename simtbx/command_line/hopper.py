@@ -193,23 +193,6 @@ centers {
     .type = float
     .help = restraint target for Bfactor
 }
-levmar {
-  damper = 1e-5
-    .type = float
-    .help = damping coefficient
-  maxiter = 100
-    .type = int
-    .help = max iterations
-  up = 10
-    .type = float
-    .help = scale-up factor
-  down = 10
-    .type = float
-    .help = scale-down factor
-  eps4 = 1e-3
-    .type = float
-    .help = metric improvement threshold for accepting parameter shift
-}
 skip = None
   .type = int
   .help = skip this many exp
@@ -225,9 +208,6 @@ temp = 1
 niter = 100
   .type = int
   .help = number of basin hopping iters
-lsq = True
-  .type = bool
-  .help = minimizes least squares, if False, minimizes likelihood
 weights = True
   .type = bool
   .help = use weights in the target function
@@ -255,15 +235,6 @@ quiet = False
 max_process = -1
   .type = int
   .help = max exp to process
-atols = [0.0001, 0.0001]
-  .type = floats(size=2)
-  .help = atol and fatol to be passed to nelder mead minimizer (termination params)
-plot_at_end = False
-  .type = bool
-  .help = plot subimgs at end of minimize
-embed_at_end = False
-  .type = bool
-  .help = embed to ipython at end of minimize
 sigmas {
   detz_shift = 1
     .type = float
@@ -397,14 +368,6 @@ ucell_ang_abs = 5
 no_Nabc_scale = False
   .type = bool
   .help = toggle Nabc scaling of the intensity
-scaling_reference_mtz_name = None
-  .type = str
-  .help = path to mtz file containing amplitudes
-  .help = that will be used to restrain the mean squared structure factor
-  .help = intensity at each resolution
-scaling_reference_mtz_col = None
-  .type = str
-  .help = mtz column name
 sigma_frac = None
   .type = float
   .help = sigma for Fhkl restraints will be some fraction of the starting value
@@ -739,10 +702,6 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
         sel = [not np.isnan(x) for x,y,z in new_xycalcs]
         new_refls = new_refls.select(flex.bool(sel))
     new_refls.as_file(new_refls_file)
-
-    if Modeler.params.embed_at_end:
-        from IPython import embed
-        embed()
 
     if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
         # TODO separate diffBragg logger

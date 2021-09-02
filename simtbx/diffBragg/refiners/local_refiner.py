@@ -38,8 +38,6 @@ class Bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-import h5py
-
 try:
     import pandas
     HAS_PANDAS = True
