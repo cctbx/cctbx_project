@@ -56,8 +56,14 @@ master_phil_str = """
 
     minimum_domain_length = 10
       .type = float
-      .help = Minimum length of a domain to keep (reject at end if smaller)
+      .help = Minimum length of a domain to keep (reject at end if smaller).
       .short_caption = Minimum domain length (residues)
+
+    minimum_remainder_sequence_length = 15
+      .type = int
+      .help = used to choose whether the sequence of a removed \
+               segment is written to the remainder sequence file.
+      .short_caption = Minimum remainder sequence length
 
     b_value_field_is = *lddt rmsd b_value
       .type = choice
@@ -283,13 +289,26 @@ def process_predicted_model(
     selection_string = " (bfactor < %s)" %maximum_b_value
     asc1 = ph.atom_selection_cache()
     sel = asc1.selection(selection_string)
-    ph = ph.select(sel)
-    n_after = ph.overall_counts().n_residues
+    new_ph = ph.select(sel)
+    n_after = new_ph.overall_counts().n_residues
     print("Total of %s of %s residues kept after B-factor filtering" %(
        n_after, n_before), file = log)
     if n_after == 0:
       raise Sorry("No residues remaining after filtering...please check if "+
          "B-value field is really '%s'" %(p.b_value_field_is))
+    removed_ph = ph.select(~sel)
+    from mmtbx.secondary_structure.find_ss_from_ca import model_info, \
+       split_model
+    from iotbx.bioinformatics import get_sequence_from_hierarchy
+    remainder_sequence_str = ""
+    for m in split_model(model_info(removed_ph)):
+      seq = get_sequence_from_hierarchy(m.hierarchy)
+      if len(seq) >= p.minimum_remainder_sequence_length:
+        remainder_sequence_str += "\n> fragment sequence "
+        remainder_sequence_str += "\n%s\n" %(
+          get_sequence_from_hierarchy(m.hierarchy))
+  else:
+    remainder_sequence_str = None
 
   # Get a new model
   new_model = model.as_map_model_manager().model_from_hierarchy(
@@ -332,7 +351,8 @@ def process_predicted_model(
     group_args_type = 'processed predicted model',
     model = new_model,
     model_list = model_list,
-    chainid_list = chainid_list
+    chainid_list = chainid_list,
+    remainder_sequence_str = remainder_sequence_str,
     )
 
 
@@ -674,6 +694,8 @@ def split_model_into_compact_units(
    close_distance:  distance between two CA (or P) atoms considered close
                     NOTE: may be useful to double default for P compared to CA
    minimum_domain_length: typical size (CA or P) of the smallest segments to keep
+   minimum_remainder_sequence_length: minimum length of a removed sequence 
+      segment to write out to a new sequence file
    bfactor_min: smallest bfactor for atoms to include in calculations
    bfactor_max: largest bfactor for atoms to include in calculations
    maximum_domains:  If more than this many domains, merge closest ones until
