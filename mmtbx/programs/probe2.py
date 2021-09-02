@@ -490,8 +490,8 @@ Note:
     # No dots yet...
     ret = 0
 
-    # Generate no dots for ignored atoms
-    if self._atomClasses[src] == 'ignore':
+    # Generate no dots for ignored atoms or for phantom hydrogens
+    if self._atomClasses[src] == 'ignore' or self._extraAtomInfo.getMappingFor(src).isDummyHydrogen:
       return 0
 
     # Check all of the dots for the atom and see if they should be
@@ -801,7 +801,7 @@ Note:
     ################################################################################
     # Build a spatial-query structure that tells which atoms are nearby.
     # Include all atoms in the structure, not just the ones that have been selected.
-    make_sub_header('Make spatial-queary accelerator', out=self.logger)
+    make_sub_header('Make spatial-query accelerator', out=self.logger)
     self._spatialQuery = probeExt.SpatialQuery(atoms)
 
     ################################################################################
@@ -818,6 +818,7 @@ Note:
     # the water oxygens as not being donors in atoms that are in the source or target selection.
     # Also clear the donor status of all N, O, S atoms because we have explicit hydrogen donors.
     if not self.params.probe.implicit_hydrogens:
+      make_sub_header('Adjusting for explicit hydrogens', out=self.logger)
       if self.params.output.record_added_hydrogens:
         outString += '@vectorlist {water H?} color= gray\n'
 
