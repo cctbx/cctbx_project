@@ -237,6 +237,14 @@ namespace boost_python { namespace {
       return boost::python::make_tuple(coef0, coef1);
   }
 
+  bool get_use_diffuse(simtbx::nanoBragg::diffBragg& diffBragg){
+      return diffBragg.db_flags.use_diffuse;
+  }
+
+  void set_use_diffuse(simtbx::nanoBragg::diffBragg& diffBragg, bool val){
+      diffBragg.db_flags.use_diffuse = val ;
+  }
+
   static boost::python::tuple get_origin(simtbx::nanoBragg::diffBragg& diffBragg){
     return boost::python::make_tuple(diffBragg.pix0_vector[1]*1000,
                                     diffBragg.pix0_vector[2]*1000, diffBragg.pix0_vector[3]*1000);
@@ -565,6 +573,11 @@ namespace boost_python { namespace {
             make_getter(&simtbx::nanoBragg::diffBragg::Npix_to_allocate,rbv()),
             make_setter(&simtbx::nanoBragg::diffBragg::Npix_to_allocate,dcp()),
             "number of pixels per parameter to allocate in the GPU (default value of -1 means auto-determine)")
+
+      .add_property("use_diffuse",
+            make_function(&get_use_diffuse,rbv()),
+            make_function(&set_use_diffuse,dcp()),
+            "sim with diffuse")
 
     ; // end of diffBragg extention
 

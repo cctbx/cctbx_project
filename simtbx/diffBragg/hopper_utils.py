@@ -492,6 +492,8 @@ class DataModeler:
                     self.all_sigmas, self.all_trusted, self.all_background, not self.params.quiet, self.params, True)
             min_kwargs = {'args': args, "method": method, "jac": target.jac,
                           'hess': self.params.hess}
+            if method=="L-BFGS-B":
+                min_kwargs["options"] = {"ftol": self.params.ftol} #, "gtol": 1e-10, "maxfun":1e5, "maxiter":1e5}
         else:
             args = (self.SIM, self.pan_fast_slow, self.all_data,
                     self.all_sigmas, self.all_trusted, self.all_background, not self.params.quiet, self.params, False)
@@ -948,8 +950,6 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
 
         gnorm = np.linalg.norm(g)
 
-    #from IPython import embed
-    #embed()
 
     if verbose:
         MAIN_LOGGER.debug("F=%10.7g sZ=%10.7g (chi: %.1f%%, rot: %.1f%% N: %.1f%%, G: %.1f%%, uc: %.1f%%, detz: %.1f%%), |g|=%10.7g" \

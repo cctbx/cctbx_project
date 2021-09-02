@@ -359,7 +359,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     oversample_omega = true;
     only_save_omega_kahn = false;
     compute_curvatures = false; // why was this True by default?
-    isotropic_ncells = true;
+    isotropic_ncells = false;
     nmats=0;
     modeling_anisotropic_mosaic_spread = false;
     refine_Ncells_def = false;
@@ -1753,6 +1753,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     db_cryst.Nd = Nd;
     db_cryst.Ne = Ne;
     db_cryst.Nf = Nf;
+
 
     db_beam.source_X = source_X;
     db_beam.source_Y = source_Y;

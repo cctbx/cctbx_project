@@ -71,9 +71,14 @@ struct flags{
     bool oversample_omega;
     int printout_fpixel, printout_spixel;
     int verbose;
+    bool use_diffuse = false;
 };
 
 struct crystal{
+    double this_gamma=50;
+    double this_sigma=10;
+
+
     int mosaic_domains;
     double Na, Nb, Nc, Nd, Ne, Nf;
     double phi0;
