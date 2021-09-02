@@ -276,8 +276,8 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
           for c in candidates:
             # See if we belong to the same atom group and are both ring acceptors.  If so, we need to replace
             # or else squash this atom.
-            if (AtomTypes.IsAromatic(c.parent().resname.strip().upper(), c.name.strip().upper()) and
-                a.parent() == c.parent()):
+            if (AtomTypes.IsAromatic(c._atom.parent().resname.strip().upper(), c._atom.name.strip().upper()) and
+                a.parent() == c._atom.parent()):
               if overlap < c._overlap:
                 # Replace the further atom with this atom.
                 c._atom = a
