@@ -100,7 +100,7 @@ betas {
     .help = restraint factor for the ncells abc
   Ndef = [1e8,1e8,1e8]
     .type = floats(size=3)
-    .help = restraint factor for the ncells def  
+    .help = restraint factor for the ncells def
   G = 1e8
     .type = float
     .help = restraint factor for the scale G
@@ -292,14 +292,14 @@ fix {
     .help = fix the Bragg spot scale during refinement
   B = True
     .type = bool
-    .help = fix the Bfactor during refinement 
+    .help = fix the Bfactor during refinement
   RotXYZ = False
     .type = bool
     .help = fix the misorientation matrix during refinement
   Nabc = False
     .type = bool
     .help = fix the diagonal mosaic domain size parameters during refinement
-  Ndef = False 
+  Ndef = False
     .type = bool
     .help = fix the diagonal mosaic domain size parameters during refinement
   ucell = False
@@ -315,7 +315,7 @@ relative_tilt = True
 num_mosaic_blocks = 1
   .type = int
   .help = number of mosaic blocks making up mosaic spread dist (not implemented)
-ucell_edge_perc = 10 
+ucell_edge_perc = 10
   .type = float
   .help = precentage for allowing ucell to fluctuate during refinement
 ucell_ang_abs = 5
@@ -361,7 +361,7 @@ disp = False
 use_restraints = True
   .type = bool
   .help = disable the parameter restraints
-wilson_restraints { 
+wilson_restraints {
   use = False
     .type = bool
     .help = let the Fhkl be restrained by Wilson distribution during refinement
@@ -387,11 +387,11 @@ logging {
     .type = choice
     .help = level of the main log when writing logfiles
   logfiles = False
-    .type = bool 
-    .help = write log files in the outputdir 
-  rank0_level = low *normal high 
+    .type = bool
+    .help = write log files in the outputdir
+  rank0_level = low *normal high
     .type = choice
-    .help = console log level for rank 0, ignored if logfiles=True 
+    .help = console log level for rank 0, ignored if logfiles=True
   other_ranks_level = *low normal high
     .type = choice
     .help = console log level for all ranks > 0, ignored if logfiles=True
@@ -611,7 +611,7 @@ refiner {
       .type = bool
       .help = use the nominal hkl as a filter for Fhkl gradients
     save_model_freq = 50
-      .type = int 
+      .type = int
       .help = save the model  after this many iterations
     merge_stat_freq = 3
       .type = int

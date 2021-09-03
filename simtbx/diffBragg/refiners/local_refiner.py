@@ -630,7 +630,7 @@ class LocalRefiner(BaseRefiner):
                         sigZ = self._Zscore[slc]
                         trus = MOD.all_trusted[slc]
                         sigZ = sigZ[trus].std()
-                        #sigZ = np.abs(sigZ[trus]).mean() 
+                        #sigZ = np.abs(sigZ[trus]).mean()
                         self._spot_Zscores.append((i_fcell, sigZ))
                 self._shot_Zscores.append(self._spot_Zscores)
 
@@ -648,9 +648,9 @@ class LocalRefiner(BaseRefiner):
                 iROI = MOD.roi_id
                 trust = MOD.all_trusted
 
-                model_info = {"p": P, "f": F, "s": S, "model": M, 
+                model_info = {"p": P, "f": F, "s": S, "model": M,
                         "background": B, "data": D, "bragg": C,
-                        "Zscore": Z, "i_fcell": iF, "trust": trust, 
+                        "Zscore": Z, "i_fcell": iF, "trust": trust,
                         "i_roi": iROI}
                 self._save_model(model_info)
             self._shot_Zscores.append(self._spot_Zscores)
@@ -700,7 +700,7 @@ class LocalRefiner(BaseRefiner):
     def _save_model(self, model_info):
         LOGGER.info("SAVING MODEL FOR SHOT %d" % self._i_shot)
         df = pandas.DataFrame(model_info)
-        df["shot_id"] = self._i_shot 
+        df["shot_id"] = self._i_shot
         outdir = self._save_model_dir
         outname = os.path.join(outdir, "rank%d_shot%d_ITER%d.pkl" % (COMM.rank, self._i_shot, self.iterations))
         df.to_pickle(outname)

@@ -1,92 +1,27 @@
 from __future__ import absolute_import, division, print_function
-import re
 import os
 
 from scipy import fft
-from scipy import optimize
-from scipy.ndimage import binary_dilation
-from itertools import zip_longest
-import math
 import pickle
 from simtbx.diffBragg.refiners.crystal_systems import OrthorhombicManager, TetragonalManager, MonoclinicManager, HexagonalManager
-from scipy.spatial import cKDTree
 from scipy.optimize import minimize
-from dials.algorithms.image.filter import convolve
-from scipy.interpolate import SmoothBivariateSpline
 from cctbx.array_family import flex
 from cctbx import miller, sgtbx
 from cctbx.crystal import symmetry
-
 import numpy as np
 from simtbx.nanoBragg.utils import ENERGY_CONV
 from dxtbx.model import Detector, Panel
-from scipy import ndimage
 from simtbx.nanoBragg.sim_data import SimData
 from simtbx.nanoBragg.nanoBragg_beam import NBbeam
 from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
 from dxtbx.imageset import MemReader
 from dxtbx.imageset import ImageSet, ImageSetData
 from dxtbx.model.experiment_list import ExperimentListFactory
-from dxtbx.model import ExperimentList
+
+from dials.array_family import flex as dials_flex
 
 import logging
 MAIN_LOGGER = logging.getLogger("main")
-
-
-def get_spot_data(img, thresh=0, filter=None, **kwargs):
-    """
-    Kwargs are passed to the filter used to smear the spots
-    :param img: numpy image, assumed to be simulated
-    :param thresh: minimum value, this should be  >= the minimum intensity separating spots..
-    :param filter: a filter to apply to the data, typically one of scipy.ndimage
-        the kwargs will be passed along to this filter
-    :return: useful spot dictionary, numpy version of a reflection table..
-    """
-
-    if filter is not None:
-        labimg, nlab = ndimage.label( filter(img, **kwargs) > thresh)
-    else:
-        labimg, nlab = ndimage.label( img > thresh)
-
-    if nlab == 0:
-        return None
-
-    bboxes = ndimage.find_objects(labimg)
-
-    comIpos = ndimage.center_of_mass(img, labimg, range(1, nlab+1))
-    maxIpos = ndimage.maximum_position(img, labimg, range(1, nlab+1))
-    maxI = ndimage.maximum(img, labimg, range(1, nlab+1))
-    meanI = ndimage.mean(img, labimg, range(1,nlab+1))
-    varI = ndimage.variance(img, labimg, range(1,nlab+1))
-
-    return {'comIpos': comIpos,
-            'bboxes': bboxes,
-            'maxIpos': maxIpos,
-            'maxI': maxI,
-            'meanI': meanI,
-            'varI': varI}
-
-
-def x_y_to_q(x,y, detector, beam):
-    """
-    :param x:  fast scan coordinate of spot
-    :param y:  slow scan coordinate of spots
-    :param detector:  dxtbx detector model
-    :param beam:  dxtbx beam model
-    :return: numpy array of q-vectors corresponding to the x,y coords
-    """
-    orig = np.array(detector[0].get_origin())
-    fs = np.array(detector[0].get_fast_axis())
-    ss = np.array(detector[0].get_slow_axis())
-    fs_pixsize, ss_pixsize = detector[0].get_pixel_size()
-
-    q_vecs = []
-    for i_fs, i_ss in zip(x,y):
-        s1 = orig + i_fs*fs*fs_pixsize + i_ss*ss*ss_pixsize  # scattering vector
-        s1 = s1 / np.linalg.norm(s1) / beam.get_wavelength()
-        q_vecs.append(s1-beam.get_s0())  # momentum transfer
-
-    return np.vstack(q_vecs)
 
 
 def label_background_pixels(roi_img, thresh=3.5, iterations=1, only_high=True):
@@ -130,134 +65,6 @@ def is_outlier(points, thresh=3.5):
     modified_z_score = 0.6745 * diff / med_abs_deviation
 
     return modified_z_score > thresh
-
-
-def tilting_plane(img, mask=None, zscore=np.inf, spline=False,
-                old_style=True, return_resid=False, return_error=False,
-                integration=False, sigma_readout=0):
-    """
-    :param img:  numpy image
-    :param mask:  boolean mask, same shape as img, True is good pixels
-        mask should include strong spot pixels and bad pixels, e.g. zingers
-    :param zscore: modified z-score for outlier detection, lower increases number of outliers
-    :return: tilting plane, same shape as img
-    """
-    Y, X = np.indices(img.shape)
-    YY, XX = Y.ravel(), X.ravel()
-
-    img1d = img.ravel()
-
-    if mask is None:
-        mask = np.ones(img.shape, bool)
-    mask1d = mask.ravel()
-
-    out1d = np.zeros(mask1d.shape, bool)
-    out1d[mask1d] = is_outlier(img1d[mask1d].ravel(), zscore)
-    out2d = out1d.reshape(img.shape)
-
-    fit_sel = np.logical_and(~out2d, mask)  # fit plane to these points, no outliers, no masked
-    x, y, z = X[fit_sel], Y[fit_sel], img[fit_sel]
-    guess = np.array([np.ones_like(x), x, y]).T
-    if old_style:
-        coeff, r, rank, s = np.linalg.lstsq(guess, z, rcond=-1)
-        ev = (coeff[0] + coeff[1]*XX + coeff[2]*YY)
-        coeff_errors = None,None,None
-        if spline:
-            sp = SmoothBivariateSpline(x, y, z, kx=1, ky=1)
-            tilt = sp.ev(XX, YY).reshape(img.shape)
-        else:
-            tilt = ev.reshape(img.shape)
-    else:
-        rho = z
-        W = np.diag(1/( sigma_readout**2 + rho))
-        A = guess
-        AWA = np.dot(A.T, np.dot(W, A))
-        AWA_inv = np.linalg.inv(AWA)
-        AtW = np.dot( A.T,W)
-        a,b,c = np.dot(np.dot(AWA_inv, AtW), rho)
-        coeff = (a,b,c)
-        tilt = (XX*b + YY*c + a).reshape(img.shape)
-
-        # vector of residuals
-        r = y-np.dot(A,(a,b,c))
-        r_fact = np.dot(r.T,np.dot( W,r)) / (len(rho)-3)
-        error = AWA_inv * r_fact
-        coeff_errors = np.sqrt(error[0][0]), np.sqrt(error[1][1]), np.sqrt(error[2][2])
-
-    return_packet = [tilt, out2d, coeff, True]
-    if return_resid:
-        return_packet.append(r)
-    if return_error:
-        return_packet.append(coeff_errors)
-    return return_packet
-
-
-def _positive_plane(x, xcoord, ycoord, data):
-    return np.sum((np.exp(x[0]) + np.exp(x[1])*xcoord + np.exp(x[2])*ycoord - data)**2)
-
-def positive_tilting_plane(img, mask=None, zscore=2):
-    """
-    :param img:  numpy image
-    :param mask:  boolean mask, same shape as img, True is good pixels
-        mask should include strong spot pixels and bad pixels, e.g. zingers
-    :param zscore: modified z-score for outlier detection, lower increases number of outliers
-    :return: tilting plane, same shape as img
-    """
-    Y, X = np.indices(img.shape)
-    YY, XX = Y.ravel(), X.ravel()
-
-    img1d = img.ravel()
-
-    if mask is None:
-        mask = np.ones(img.shape, bool)
-    mask1d = mask.ravel()
-
-    out1d = np.zeros(mask1d.shape, bool)
-    out1d[mask1d] = is_outlier(img1d[mask1d].ravel(), zscore)
-    out2d = out1d.reshape(img.shape)
-
-    fit_sel = np.logical_and(~out2d, mask)  # fit plane to these points, no outliers, no masked
-    x, y, z = X[fit_sel], Y[fit_sel], img[fit_sel]
-    out = minimize(
-        fun=_positive_plane,
-        x0=np.array([1e-2, 1e-2, 1e-2]),
-        args=(x, y, z),
-        method='Nelder-Mead')
-        # bounds=((0, 1e10), (0, 1e10), (0, 1e10)),
-        # method='L-BFGS-B')
-    coeff = out.x
-    ev = (np.exp(coeff[0]) + np.exp(coeff[1])*XX + np.exp(coeff[2])*YY)
-    return ev.reshape(img.shape), out2d, coeff, out.success
-
-
-def refine_model_from_angles(dxcryst, angles=(0, 0, 0)):
-    from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
-
-    C = NBcrystal()
-
-    C.dxtbx_crystal = dxcryst
-    angles = np.array(angles) * 180 / np.pi
-    from scitbx.matrix import col
-    x = col((-1, 0, 0))
-    y = col((0, -1, 0))
-    z = col((0, 0, -1))
-
-    RX = x.axis_and_angle_as_r3_rotation_matrix(angles[0], deg=True)
-    RY = y.axis_and_angle_as_r3_rotation_matrix(angles[1], deg=True)
-    RZ = z.axis_and_angle_as_r3_rotation_matrix(angles[2], deg=True)
-    C.missetting_matrix = RX*RY*RZ
-
-    dxcryst_refined = C.dxtbx_crystal_with_missetting()
-
-    return dxcryst_refined
-
-
-def lower_triangle(matrix_sqr):
-    return [matrix_sqr[i] for i in [0, 3, 6, 4, 7, 8]]
-
-
-def upper_triangle(matrix_sqr):
-    return [matrix_sqr[i] for i in [0, 1, 2, 4, 5, 8]]
 
 
 def get_diffBragg_instance():
@@ -337,30 +144,13 @@ def get_diffBragg_instance():
     return D
 
 
-def perturb_miller_array(F, factor, perturb_log_vals=True):
-    if not F.is_xray_amplitude_array():
-        F = F.amplitudes()
-    Fdat = np.array( F.data())
-
-    if perturb_log_vals:
-        Fdat = np.log(Fdat)
-
-    try:
-        Fdat = np.random.uniform(Fdat-factor, Fdat+factor)
-    except OverflowError:
-        return None
-    if perturb_log_vals:
-        Fdat = np.exp(Fdat)
-
-    Fdat = flex.double(np.ascontiguousarray(Fdat))
-
-    mset = miller.set(F.crystal_symmetry(), indices=F.indices(), anomalous_flag=True)
-    return miller.array(miller_set=mset, data=Fdat).set_observation_type_xray_amplitude()
-
-
 def map_hkl_list(Hi_lst, anomalous_flag=True, symbol="P43212"):
-    from cctbx import sgtbx
-    from dials.array_family import flex as dials_flex
+    """
+    :param Hi_lst: list of miller indices, presumably in P1
+    :param anomalous_flag: whether to map to anomalous ASU
+    :param symbol: space group symbol
+    :return: list of miller indices, mapped to HKL
+    """
     sg_type = sgtbx.space_group_info(symbol=symbol).type()
     # necessary for py3 to type cast the ints
     type_casted_Hi_lst = tuple([(int(x), int(y), int(z)) for x, y, z in Hi_lst])
@@ -473,120 +263,15 @@ END
     return fcalc
 
 
-def nearest_non_zero(lst, idx):
-    # https: // codereview.stackexchange.com / a / 172121 / 78230
-    if lst[idx] > 0:
-        return lst[idx]
-    before, after = lst[:idx], lst[idx+1:]
-    for b_val, a_val in zip_longest(reversed(before), after, fillvalue=0):
-        # N.B. I applied `reversed` inside `zip_longest` here. This
-        # ensures that `before` and `after` are the same type, and that
-        # `before + [lst[idx]] + after == lst`.
-        if b_val > 0:
-            return b_val
-        if a_val > 0:
-            return a_val
-    else:
-        return 0  # all zeroes in this list
-
-
-def update_miller_array_at_indices(miller_array, indices, new_values):
-    if not miller_array.is_xray_amplitude_array():
-        raise ValueError("Miller array is assumed to be an amplitude array")
-
-    if len(indices) != len(new_values):
-        raise ValueError("Indices (length %d) should be the same length as new_values (length %d)"
-                         % (len(indices), len(new_values)))
-    mset = miller_array.set()
-    fdata_map = {tuple(h): val for h,val in zip(miller_array.indices(), miller_array.data())}
-    for i_h, h in enumerate(indices):
-        equivs = [idx.h() for idx in miller.sym_equiv_indices(mset.space_group(), h).indices()]
-        n_missing = 0
-        for equiv_h in equivs:
-            if equiv_h in fdata_map:
-                fdata_map[h] = new_values[i_h]
-            else:
-                n_missing += 1
-        if n_missing == len(equivs):
-            raise KeyError("Trying to update index %s which is not in the miller array" % " ".join(h))
-
-    new_data = flex.double(list(fdata_map.values()))
-    new_indices = flex.miller_index(tuple(fdata_map.keys()))
-    new_mset = miller.set(mset.crystal_symmetry(), indices=new_indices, anomalous_flag=mset.anomalous_flag())
-    new_miller_array = miller.array(miller_set=new_mset, data=new_data).set_observation_type_xray_amplitude()
-    return new_miller_array
-
-
-def fiber2D_integ(x,y,g):
-    return math.atan((x*y)/(g*math.sqrt(g*g + x*x + y*y)))/(2.0*math.pi)
-
-
-def makeMoffat_integPSF(fwhm_pixel, sizeX, sizeY):
-    ''' Integral form of contribution of moffat PSF to signal recorded in a square pixel'''
-    g = fwhm_pixel*0.65238
-    psf = np.zeros((sizeX, sizeY))
-    sx = int(sizeX/2)
-    sy = int(sizeY/2)
-    for y in range(-sy, sy+1):
-      for x in range(-sx, sx+1):
-        # Holton 2012 paper says x,y should be pixel center; this does not seem right ?
-        psf[x+sx,y+sy] = fiber2D_integ(x+1./2,y+1./2,g)-fiber2D_integ(x+1./2,y-1./2,g)-fiber2D_integ(x-1./2,y+1./2,g)+fiber2D_integ(x-1./2,y-1./2,g)
-        #psf[x+sx, -y+sy] = fiber2D_integ(x+1./2,y+1./2,g)-fiber2D_integ(x+1./2,y-1./2,g)-fiber2D_integ(x-1./2,y+1./2,g)+fiber2D_integ(x-1./2,y-1./2,g)
-        # Trying to get pixel center instead
-        #psf[x+sx, -y+sy] = fiber2D_integ(x+1,y+1,g)-fiber2D_integ(x+1,y,g)-fiber2D_integ(x,y+1,g)+fiber2D_integ(x,y,g)
-    psf = psf/psf.sum()
-    psf = psf.tolist()
-    psf = flex.double(psf)
-    return psf
-
-
-def convolve_padded_img(img, psf, sz=5):
-    img = np.array(img)
-    iY, iX = img.shape
-    pY, pX = psf.focus()
-
-    new_iY = iY
-    if pY >= iY - sz:
-        new_iY = pY + sz
-    new_iX = iX
-    if pX >= iX - sz:
-        new_iX = pX + sz
-
-    assert new_iX >= iX
-    assert new_iY >= iY
-    padX = new_iX - iX
-    padY = new_iY - iY
-
-    x = int(padX/2)
-    y = int(padY/2)
-    img = np.pad(img, ((y, y+1), (x, x+1)), mode='median')
-    assert img.shape[0] >= pY + sz
-    assert img.shape[1] >= pX + sz
-
-    conv_img = convolve(flex.double(img), psf)
-    conv_img = conv_img.as_numpy_array()[y:y+iY, x:x+iX]
-    return conv_img
-
-
-def convolve_with_psf(image_data, fwhm=27.0, pixel_size=177.8, psf_radius=7, sz=5, psf=None):
-    ''' Given a 2D numpy array of image data, convolve with a PSF. '''
-    # Currently only supporting fiber PSF i.e power law form as proposed in Holton et. al 2012, Journal of Synchotron Radiation
-    if psf is None:
-        xpsf=2*psf_radius+1
-        ypsf=2*psf_radius+1
-        fwhm_pixel=fwhm/pixel_size
-        psf = makeMoffat_integPSF(fwhm_pixel, xpsf, ypsf)
-    img_shape = image_data.shape
-    psf_shape = psf.focus()
-    if psf_shape[0] > img_shape[0] - sz or psf_shape[1] > img_shape[1] - sz:
-        convolved_image = convolve_padded_img(image_data, psf, sz)
-    else:
-        convolved_image = convolve(flex.double(image_data), psf)
-        convolved_image = convolved_image.as_numpy_array()
-    return convolved_image
-
-
 def get_roi_from_spot(refls, fdim, sdim, shoebox_sz=10):
+    """
+
+    :param refls: reflection table
+    :param fdim: fast axis dimension
+    :param sdim: slow axis dimension
+    :param shoebox_sz: size of the shoeboxes
+    :return:
+    """
     fs_spot, ss_spot, _ = zip(*refls['xyzobs.px.value'])
     rois = []
     is_on_edge = []
@@ -608,6 +293,12 @@ def get_roi_from_spot(refls, fdim, sdim, shoebox_sz=10):
 
 
 def add_rlp_column(refls, experiment):
+    """
+    add Relps to refl tabl
+    :param refls: reflection table
+    :param experiment: dxtbx experiment
+    :return:
+    """
     keys = list(refls[0].keys())
     if "s1" in keys:
         s1 = refls['s1']
@@ -653,6 +344,29 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                                    pad_for_background_estimation=None, use_robust_estimation=True, sigma_rdout=3.,
                                    min_trusted_pix_per_roi=4, deltaQ=None, experiment=None, weighted_fit=True,
                                    tilt_relative_to_corner=False, ret_cov=False, allow_overlaps=False):
+    """
+
+    :param refls: reflection table
+    :param imgs: ndimage array, same shape as detector
+    :param shoebox_sz:  size of shoeboxes, deltaQ (see below) overrides this
+    :param reject_edge_reflections: reject the refl if its centroid is close to the edge
+    :param reject_roi_with_hotpix: reject the refl if ROI contains a hot pixel
+    :param background_mask: mask specifying which pixels are most likely background (e.g. strong spot pixels should be False)
+    :param hotpix_mask: mask labeling hot pixels as True
+    :param bg_thresh: median absolute deviation threshold for background selection (e.g. ROI pixels with MAD above this value are treated as hot or strong)
+    :param set_negative_bg_to_zero: after fitting background plane, force negative background signals to be 0
+    :param pad_for_background_estimation: expand the ROI for the purposes of background fitting, once background is fit, remove expanded pixels
+    :param use_robust_estimation: let ROI median value be the background
+    :param sigma_rdout: readout noise of the pixel (in ADU)
+    :param min_trusted_pix_per_roi: require at least this many trusted pixels in the ROI, otherwise flag refl as unselected
+    :param deltaQ: specify the width of the ROI in inverse angstrom (overrides shoebox_sz), such that higher Q ROIS are larger
+    :param experiment: dxtbx experiment
+    :param weighted_fit: fit a tilt plane with basis error models as weights
+    :param tilt_relative_to_corner: fit the tilt plane relative to the actual corner pixel
+    :param ret_cov: return the tilt plane covariance
+    :param allow_overlaps: allow overlapping ROIS, otherwise shrink ROIS until the no longer overlap
+    :return:
+    """
 
     # TODO handle divide by 0 warning that happens in is_outlier, when labeling background pix?
     npan, sdim, fdim = imgs.shape
@@ -671,12 +385,6 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
             return
         rois, is_on_edge = get_roi_deltaQ(refls, deltaQ, experiment)
 
-    #for i_ref, (x1,x2,y1,y2) in enumerate(rois):
-    #    x,y,_ = refls[i_ref]["xyzobs.px.value"]
-    #    assert x1 <= x <= x2, "refl %d, %f %f %f" % (i_ref, x1, x, x2)
-    #    assert y1 <= y <= y2, "refl %d, %f %f %f" % (i_ref, y1, y, y2)
-
-
     tilt_abc = []
     kept_rois = []
     panel_ids = []
@@ -686,13 +394,9 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
     num_roi_nan_bg = 0
     background = np.ones(imgs.shape)*-1
     i_roi = 0
-    #import pylab as ply
-    #patches = []
     while i_roi < len(rois):
-    #for i_roi, roi in enumerate(rois):
         roi = rois[i_roi]
         i1, i2, j1, j2 = roi
-        #rect = plt.Rectangle(xy=(i1,j1), width=i2-i1, height=j2-j1, fc='none', ec='w')
         is_selected = True
         if is_on_edge[i_roi] and reject_edge_reflections:
             MAIN_LOGGER.debug("Reflection %d bounded by x1=%d,x2=%d,y1=%d,y2=%d is on edge" % (i_roi, i1,i1,j2,j2))
@@ -742,10 +446,6 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                     bg_signal = 0
                 else:
                     is_selected = False
-            #if i_roi==0:
-            #    bg_signal = 3.1936748
-            #if i_roi==1:
-            #    bg_signal = 5.1090536
             tilt_a, tilt_b, tilt_c = 0, 0, bg_signal
             covariance = None
 
@@ -764,9 +464,6 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                 tilt_plane = np.zeros_like(Xcoords)
             else:
                 (tilt_a, tilt_b, tilt_c), covariance = fit_results
-                #if XY is not None:
-                #    tilt_plane = tilt_a * (Xcoords+XY[0]) + tilt_b * (Ycoords+XY[1]) + tilt_c
-                #else:
                 tilt_plane = tilt_a * Xcoords + tilt_b * Ycoords + tilt_c
                 if np.any(np.isnan(tilt_plane)) and is_selected:
                     is_selected = False
@@ -788,7 +485,6 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
 
         if roi_dimY < 2 or roi_dimX < 2:
             is_selected = False
-        #assert np.all(background[pid, j1_nopad:j2_nopad, i1_nopad:i2_nopad] == -1), "region of interest already accounted for"
 
         j1 = j1_nopad-j1
         i1 = i1_nopad-i1
@@ -798,23 +494,9 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
         all_cov.append(covariance)
         kept_rois.append(roi)
         panel_ids.append(pid)
-        #patches.append(rect)
         selection_flags.append(is_selected)
-        #if pid == 141 and 150 < ii < 160 and 112 < jj < 122:
-        #    from IPython import embed
-        #    embed()
         i_roi += 1
 
-    #assert len(kept_rois) == len(refls)
-    #for i_ref, (x1,x2,y1,y2) in enumerate(kept_rois):
-    #    x,y,_ = refls[i_ref]["xyzobs.px.value"]
-    #    assert x1 <= x <= x2, "refl %d, %f %f %f" % (i_ref, x1, x, x2)
-    #    assert y1 <= y <= y2, "refl %d, %f %f %f" % (i_ref, y1, y, y2)
-
-    #plt.imshow(imgs[0], vmax=100)
-    #for p in patches:
-    #    plt.gca().add_patch(p)
-    #plt.show()
     MAIN_LOGGER.debug("Number of ROI with negative BGs: %d / %d" % (num_roi_negative_bg, len(rois)))
     MAIN_LOGGER.debug("Number of ROI with NAN in BGs: %d / %d" % (num_roi_nan_bg, len(rois)))
     if ret_cov:
@@ -855,16 +537,6 @@ def get_width_of_integration_shoebox(detector_panel, delta_Q, ave_wavelength_A, 
     rad2 = (detdist_mm / pixsize_mm) * np.tan(2 * np.arcsin((Qmag + delta_Q * .5) * ave_wavelength_A / 4 / np.pi))
     bbox_extent = (rad2 - rad1) / np.sqrt(2)  # rad2 - rad1 is the diagonal across the bbox
     return bbox_extent
-
-
-def check_if_tilt_dips_below_zero(tilt_coefs, dim_slowfast):
-    slow_dim, fast_dim = dim_slowfast
-    tX, tY, tZ = tilt_coefs
-    tilt_plane = fast_dim*tX + slow_dim*tY + tZ
-    dips_below_zero = False
-    if np.min(tilt_plane) < 0:
-        dips_below_zero = True
-    return dips_below_zero
 
 
 def fit_plane_equation_to_background_pixels(shoebox_img, fit_sel, sigma_rdout=3, weighted=True, relative_XY=None):
@@ -933,33 +605,13 @@ def strip_thickness_from_detector(detector):
     return thin_detector
 
 
-def get_14bit_from_jungfrau(expt):
-    iset = expt.imageset
-    F = iset.get_format_class()
-    if len(iset.paths()) != 1:
-        raise ValueError("imageset should have exactly 1 path")
-    fclass = F.get_instance(iset.paths()[0])
-    return fclass.get_14bit_component(iset.indices()[0])
-
-
-def get_pedestalRMS_from_jungfrau(expt, gain_modes_too=False):
-    iset = expt.imageset
-    F = iset.get_format_class()
-    if len(iset.paths()) != 1:
-        raise ValueError("imageset should have exactly 1 path")
-    fclass = F.get_instance(iset.paths()[0])
-    return fclass.get_pedestal_rms(iset.indices()[0], return_gain_modes=gain_modes_too)
-
-def gain_data_from_expt(expt):
-    gainexp_path = expt.gainmap_path
-    MAIN_LOGGER.info("Loading gainmap data from experiment %s" % gainexp_path)
-    gainexp = ExperimentListFactory.from_json_file(gainexp_path, check_format=True)[0]
-    iset = gainexp.imageset
-    gain_data = [rawdat.as_numpy_array() >> 14 for rawdat in iset.get_raw_data(0)]
-    return np.array(gain_data)
-
-
 def image_data_from_expt(expt, as_double=True):
+    """
+
+    :param expt: dxtbx experiment
+    :param as_double: return data as doubles
+    :return:
+    """
     iset = expt.imageset
     if len(iset) == 0:
         raise ValueError("imageset should have 1 shot")
@@ -982,6 +634,12 @@ def simulator_from_expt_and_params(expt, params=None, oversample=0, device_id=0,
                                    ncells_abc=(10,10,10), has_isotropic_ncells=True, mosaicity=0, num_mosaicity_samples=1, mtz_name=None,
                                    mtz_column=None, default_F=0, dmin=1.5, dmax=30, spectra_file=None, spectra_stride=1,
                                    complex_F=None):
+    """
+
+    :param expt:  dxtbx experiment
+    :param params: diffBragg/phil.py phil params
+    :return:
+    """
 
     if params is not None:
         oversample = params.simulator.oversample
@@ -1072,18 +730,14 @@ def simulator_from_expt_and_params(expt, params=None, oversample=0, device_id=0,
     return SIM
 
 
-def get_flux_and_energy(beam=None, spec_file=None, total_flux=1e12, pinkstride=None):
-    if spec_file is not None:
-        FLUX, energies = load_spectra_file(spec_file, total_flux=total_flux, pinkstride=pinkstride)
-    else:
-        assert beam is not None
-        FLUX = [total_flux]
-        energies = [ENERGY_CONV / beam.get_wavelength()]
-
-    return FLUX, energies
-
-
 def open_mtz(mtzfname, mtzlabel=None, verbose=False):
+    """
+
+    :param mtzfname: path to mtz
+    :param mtzlabel: column in mtz
+    :param verbose:
+    :return:
+    """
     if mtzlabel is None:
         mtzlabel = "fobs(+)fobs(-)"
     if verbose:
@@ -1106,6 +760,15 @@ def open_mtz(mtzfname, mtzlabel=None, verbose=False):
 
 
 def make_miller_array(symbol, unit_cell, defaultF=1000, d_min=1.5, d_max=999):
+    """
+
+    :param symbol: space group e.g. P43212
+    :param unit_cell: unit cell tuple (6-tuple, a,b,c,alpha,beta,gamma)
+    :param defaultF: structure factor amplitude (constant for all HKL)
+    :param d_min: high res
+    :param d_max: low res
+    :return:  cctbx miller array
+    """
     sgi = sgtbx.space_group_info(symbol)
     # TODO: allow override of ucell
     symm = symmetry(unit_cell=unit_cell, space_group_info=sgi)
@@ -1116,12 +779,26 @@ def make_miller_array(symbol, unit_cell, defaultF=1000, d_min=1.5, d_max=999):
     mil_ar = miller.array(miller_set=miller_set, data=Famp).set_observation_type_xray_amplitude()
     return mil_ar
 
+
 def save_spectra_file(spec_file, wavelengths, weights):
+    """
+    Create a precognition .lam file
+    :param spec_file: name
+    :param wavelengths: list of wavelen
+    :param weights: list of weights
+    """
     data = np.array([wavelengths, weights])
     np.savetxt(spec_file, data.T, delimiter=',', header="wavelengths, weights")
 
 
 def load_spectra_file(spec_file, total_flux=None, pinkstride=1, as_spectrum=False):
+    """
+    load a precognition .lam file
+    :param spec_file: path to file
+    :param total_flux: total photons per shot
+    :param pinkstride: wavelength stride (e.g. pinkstride=10 is every 10th wavelength)
+    :param as_spectrum: as a nanoBragg_beam.NBbeam.spectrum object
+    """
     wavelengths, weights = np.loadtxt(spec_file, float, delimiter=',', skiprows=1).T
     if isinstance(wavelengths, float) and isinstance(weights, float):
         # the file had one entry:
@@ -1141,6 +818,11 @@ def load_spectra_file(spec_file, total_flux=None, pinkstride=1, as_spectrum=Fals
 
 
 def load_mask(maskfile):
+    """
+
+    :param maskfile: path to a dials mask file (tuple of flex)
+    :return:
+    """
     if maskfile is None:
         return None
     with open(maskfile, 'rb') as o:
@@ -1153,6 +835,12 @@ def load_mask(maskfile):
 
 
 def unitcell_sigmas(unitcell_manager, unitcell_sigmas):
+    """
+
+    :param unitcell_manager: unit cell manager (see diffBragg/refiners/crystal_systems
+    :param unitcell_sigmas: refinement sensitivities
+    :return:
+    """
     name_mapping = {'a_Ang': 0, 'b_Ang': 1, 'c_Ang': 2, 'alpha_rad': 3, 'beta_rad': 4, 'gamma_rad': 5}
     variable_sigmas = []
     for name in unitcell_manager.variable_names:
@@ -1171,6 +859,10 @@ def manager_from_crystal(crystal):
 
 
 def manager_from_params(ucell_p):
+    """
+    :param ucell_p: unit cell 6-tuple
+    :return: unit cell manager (crystal systems)
+    """
 
     a, b, c, al, be, ga = ucell_p
     if np.isclose(a,b) and not np.isclose(a,c) and np.allclose([al, be, ga], [90]*3):
@@ -1303,35 +995,12 @@ def explist_from_numpyarrays(image, detector, beam, mask=None):
     return explist
 
 
-def parse_panel_input_string(panel_str):
-    panel_range_str = panel_str.split(",")
-    all_pids =[]
-    for s in panel_range_str:
-        if s == "":
-            continue
-        if "-" in s:
-            if s.count("-") > 1:
-                raise ValueError("panel str %s is not formatted correctly, too many '-' between commas" % panel_str )
-            pid1, pid2 = map(int, s.split("-"))
-            if not pid1 < pid2:
-                raise ValueError("panel str %s is not formatted correctly, in 'x-y' x should be less than y" % panel_str )
-            pids = [pid for pid in range(pid1, pid2+1)]
-        else:
-            pids = [int(s)]
-        all_pids += pids
-    if len(all_pids) != len(set(all_pids)):
-        MAIN_LOGGER.warning("WARNING: duplicate pids found in panel input string %s, please double check!" % panel_str)
-    return list(set(all_pids))
-
-
-def get_ncells_mask_from_string(mask_string):
-    assert mask_string in ["000", "101", "110", "011", "111"]
-    s0, s1, s2 = mask_string
-    mask = int(s0), int(s1), int(s2)
-    return mask
-
-
 def load_panel_group_file(panel_group_file):
+    """
+
+    :param panel_group_file: file specifying which group IDs for multi panel detectors
+    :return:
+    """
     lines = open(panel_group_file, 'r').readlines()
     groups = {}
     for l in lines:
@@ -1343,394 +1012,11 @@ def load_panel_group_file(panel_group_file):
     return groups
 
 
-def spots_from_pandas(pandas_frame, mtz_file=None, mtz_col=None,
-                      oversample_override=None,
-                      Ncells_abc_override=None,
-                      pink_stride_override=None,
-                      cuda=False, device_Id=0, time_panels=False,
-                      d_max=999, d_min=1.5, defaultF=1000.,
-                      njobs=1,
-                      output_img=None, omp=False, norm_by_spectrum=False,
-                      symbol_override=None, quiet=False, reset_Bmatrix=False):
-    if time_panels and quiet:
-        MAIN_LOGGER.debug("NOTE: quiet=True will suppress panel simulation timing print output")
-    from joblib import Parallel, delayed
-    from simtbx.nanoBragg.utils import flexBeam_sim_colors
-
-    df = pandas_frame
-
-    if not quiet:MAIN_LOGGER.info("Loading experiment models")
-    expt_name = df.opt_exp_name.values[0]
-    El = ExperimentListFactory.from_json_file(expt_name, check_format=False)
-    expt = El[0]
-
-    if "detz_shift_mm" in list(df):  # NOTE, this could also be inside expt_name directly
-        expt.detector = shift_panelZ(expt.detector, df.detz_shift_mm.values[0])
-
-    if reset_Bmatrix:
-        ucell_params = df[["a", "b", "c", "al", "be", "ga"]].values[0]
-        ucell_man = manager_from_params(ucell_params)
-        expt.crystal.set_B(ucell_man.B_recipspace)
-    if not quiet:MAIN_LOGGER.info("Done loading models!")
-    if not quiet:MAIN_LOGGER.info("Crystal model:")
-    if not quiet:El[0].crystal.show()
-    assert len(df) == 1
-    Ncells_abc = tuple(map(lambda x: int(round(x)), df.ncells.values[0]))
-    if Ncells_abc_override is not None:
-        Ncells_abc = Ncells_abc_override
-    spot_scale = df.spot_scales.values[0]
-    beamsize_mm = df.beamsize_mm.values[0]
-    total_flux = df.total_flux.values[0]
-    oversample = df.oversample.values[0]
-    if oversample_override is not None:
-        oversample = oversample_override
-
-    # get the optimized spectra
-    if "spectrum_filename" in list(df) and df.spectrum_filename.values[0] is not None:
-        spectrum_file = df.spectrum_filename.values[0]
-        pink_stride = df.spectrum_stride.values[0]
-        if norm_by_spectrum:
-            nspec = load_spectra_file(spectrum_file)[0].shape[0]
-            spot_scale = spot_scale / nspec
-        if pink_stride_override is not None:
-            pink_stride = pink_stride_override
-        fluxes, energies = load_spectra_file(spectrum_file, total_flux=total_flux,
-                                             pinkstride=pink_stride)
-    else:
-        assert total_flux is not None
-        fluxes = np.array([total_flux])
-        energies = np.array([ENERGY_CONV/expt.beam.get_wavelength()])
-        if not quiet: MAIN_LOGGER.info("Running MONO sim")
-        nspec = 1
-    lam0 = df.lam0.values[0]
-    lam1 = df.lam1.values[0]
-    if lam0 == -1:
-        lam0 = 0
-    if lam1 == -1:
-        lam1 = 1
-    wavelens = ENERGY_CONV / energies
-    wavelens = lam0 + lam1*wavelens
-    energies = ENERGY_CONV / wavelens
-
-    if mtz_file is not None:
-        assert mtz_col is not None
-        Famp = open_mtz(mtz_file, mtz_col)
-    else:
-        Famp = make_miller_array_from_crystal(expt.crystal, dmin=d_min, dmax=d_max, defaultF=defaultF, symbol=symbol_override)
-
-    crystal = expt.crystal
-    # TODO opt exp should already include the optimized Amatrix, so no need to set it twice
-    crystal.set_A(df.Amats.values[0])
-
-    panel_list = list(range(len(expt.detector)))
-    pids_per_job = np.array_split(panel_list, njobs)
-
-    def main(pids):
-        results = flexBeam_sim_colors(CRYSTAL=expt.crystal, DETECTOR=expt.detector, BEAM=expt.beam, Famp=Famp,
-                                      fluxes=fluxes, energies=energies, beamsize_mm=beamsize_mm,
-                                      Ncells_abc=Ncells_abc, spot_scale_override=spot_scale,
-                                      cuda=cuda, device_Id=device_Id, oversample=oversample, time_panels=time_panels and not quiet,
-                                      pids=pids, omp=omp, show_params=not quiet)
-        return results
-
-    results = Parallel(n_jobs=njobs)(delayed(main)(pids_per_job[jid]) for jid in range(njobs))
-    results = [result for job_results in results for result in job_results]
-
-    if output_img is not None:
-        save_model_to_image(expt, results, output_img, save_experiment_data=False)
-
-    pids, imgs = zip(*results)
-    order = np.argsort(pids)
-    results = np.array([imgs[i] for i in order])
-
-    return results
-
-
-def roi_spots_from_pandas(pandas_frame,  rois_per_panel, mtz_file=None, mtz_col=None,
-                      oversample_override=None,
-                      Ncells_abc_override=None,
-                      pink_stride_override=None,
-                      spectrum_override=None,
-                      cuda=False, device_Id=0, time_panels=False,
-                      d_max=999, d_min=1.5, defaultF=1e3,
-                      omp=False,
-                      norm_by_spectrum=False,
-                      symbol_override=None, quiet=False, reset_Bmatrix=False, nopolar=False,
-                      force_no_detector_thickness=False, printout_pix=None, norm_by_nsource=False):
-    if time_panels and quiet:
-        MAIN_LOGGER.info("NOTE: quiet=True will suppress panel simulation timing print output")
-    from simtbx.nanoBragg.utils import flexBeam_sim_colors
-
-    df = pandas_frame
-
-    if not quiet: MAIN_LOGGER.info("Loading experiment models")
-    expt_name = df.opt_exp_name.values[0]
-    El = ExperimentListFactory.from_json_file(expt_name, check_format=False)
-    expt = El[0]
-    if "detz_shift_mm" in list(df):  # NOTE, this could also be inside expt_name directly
-        expt.detector = shift_panelZ(expt.detector, df.detz_shift_mm.values[0])
-
-    if force_no_detector_thickness:
-        expt.detector = strip_thickness_from_detector(expt.detector)
-    if reset_Bmatrix:
-        ucell_params = df[["a", "b", "c", "al", "be", "ga"]].values[0]
-        ucell_man = manager_from_params(ucell_params)
-        expt.crystal.set_B(ucell_man.B_recipspace)
-    if not quiet:MAIN_LOGGER.info("Done loading models!")
-    if not quiet:MAIN_LOGGER.info("Crystal model:")
-    if not quiet:expt.crystal.show()
-    assert len(df) == 1
-    Ncells_abc = df.ncells.values[0]  #tuple(map(lambda x: int(round(x)), df.ncells.values[0]))
-    if Ncells_abc_override is not None:
-        Ncells_abc = Ncells_abc_override
-    spot_scale = df.spot_scales.values[0]
-    beamsize_mm = df.beamsize_mm.values[0]
-    total_flux = df.total_flux.values[0]
-    oversample = df.oversample.values[0]
-    if oversample_override is not None:
-        oversample = oversample_override
-
-    # get the optimized spectra
-    if spectrum_override is None:
-        if "spectrum_filename" in list(df) and df.spectrum_filename.values[0] is not None:
-            spectrum_file = df.spectrum_filename.values[0]
-            pink_stride = df.spectrum_stride.values[0]
-            if norm_by_spectrum:
-                nspec = load_spectra_file(spectrum_file)[0].shape[0]
-                spot_scale = spot_scale / nspec
-            if pink_stride_override is not None:
-                pink_stride = pink_stride_override
-            fluxes, energies = load_spectra_file(spectrum_file, total_flux=total_flux,
-                                                 pinkstride=pink_stride)
-        else:
-            fluxes = np.array([total_flux])
-            energies = np.array([ENERGY_CONV/expt.beam.get_wavelength()])
-            if not quiet: MAIN_LOGGER.info("Running MONO sim")
-
-    else:
-        wavelens, fluxes = map(np.array, zip(*spectrum_override))
-        energies = ENERGY_CONV / wavelens
-
-    lam0 = df.lam0.values[0]
-    lam1 = df.lam1.values[0]
-    if lam0 == -1:
-        lam0 = 0
-    if lam1 == -1:
-        lam1 = 1
-    wavelens = ENERGY_CONV / energies
-    wavelens = lam0 + lam1*wavelens
-    energies = ENERGY_CONV / wavelens
-
-    if mtz_file is not None:
-        assert mtz_col is not None
-        Famp = open_mtz(mtz_file, mtz_col)
-    else:
-        Famp = make_miller_array_from_crystal(expt.crystal, dmin=d_min, dmax=d_max, defaultF=defaultF, symbol=symbol_override)
-
-    results = flexBeam_sim_colors(CRYSTAL=expt.crystal, DETECTOR=expt.detector, BEAM=expt.beam, Famp=Famp,
-                                  fluxes=fluxes, energies=energies, beamsize_mm=beamsize_mm,
-                                  Ncells_abc=Ncells_abc, spot_scale_override=spot_scale,
-                                  cuda=cuda, device_Id=device_Id, oversample=oversample, time_panels=time_panels and not quiet,
-                                  pids=list(rois_per_panel.keys()),
-                                  rois_perpanel=rois_per_panel,
-                                  omp=omp, show_params=not quiet, nopolar=nopolar,
-                                  printout_pix=printout_pix)
-    if norm_by_nsource:
-        return {pid: image/len(energies) for pid, image in results}
-    else:
-        return {pid: image for pid, image in results}
-
-
-def spots_from_pandas_and_experiment(expt, pandas_pickle, mtz_file=None, mtz_col=None,
-                                     spectrum_file=None, total_flux=1e12, pink_stride=1,
-                                     beamsize_mm=0.001, oversample=0, d_max=999, d_min=1.5, defaultF=1e3,
-                                     cuda=False, device_Id=0, time_panels=True,
-                                     output_img=None, njobs=1, save_expt_data=False,
-                                     as_numpy_array=False, omp=False):
-    import pandas
-    from joblib import Parallel, delayed
-    from simtbx.nanoBragg.utils import flexBeam_sim_colors
-
-    MAIN_LOGGER.info("Loading experiment")
-    if isinstance(expt, str):
-        El = ExperimentListFactory.from_json_file(expt, check_format=save_expt_data)
-        expt = El[0]
-    else:
-        assert "Experiment" in str(type(expt))
-    MAIN_LOGGER.info("Done loading!")
-    df = pandas.read_pickle(pandas_pickle)
-    assert len(df) == 1
-    Ncells_abc = tuple(map(lambda x : int(round(x)), df.ncells.values[0]))
-    spot_scale = df.spot_scales.values[0]
-    if mtz_file is not None:
-        assert mtz_col is not None
-        Famp = open_mtz(mtz_file, mtz_col)
-    else:
-        Famp = make_miller_array_from_crystal(expt.crystal, dmin=d_min, dmax=d_max, defaultF=defaultF)
-
-    # get the optimized spectra
-    if spectrum_file is not None:
-        fluxes, energies = load_spectra_file(spectrum_file, total_flux=total_flux, pinkstride=pink_stride)
-    else:
-        fluxes = np.array([total_flux])
-        energies = np.array([ENERGY_CONV/expt.beam.get_wavelength()])
-    lam0 = df.lam0.values[0]
-    lam1 = df.lam1.values[0]
-    if lam0 == -1:
-        lam0 = 0
-    if lam1 == -1:
-        lam1 = 1
-    wavelens = ENERGY_CONV / energies
-    wavelens = lam0 + lam1*wavelens
-    energies = ENERGY_CONV / wavelens
-
-    panel_list = list(range(len(expt.detector)))
-    pids_per_job = np.array_split(panel_list, njobs)
-
-    def main(pids):
-        results = flexBeam_sim_colors(CRYSTAL=expt.crystal, DETECTOR=expt.detector, BEAM=expt.beam, Famp=Famp,
-                                      fluxes=fluxes, energies=energies, beamsize_mm=beamsize_mm,
-                                      Ncells_abc=Ncells_abc, spot_scale_override=spot_scale,
-                                      cuda=cuda, device_Id=device_Id, oversample=oversample, time_panels=time_panels,
-                                      pids=pids, omp=omp)
-        return results
-
-    results = Parallel(n_jobs=njobs)(delayed(main)(pids_per_job[jid]) for jid in range(njobs))
-    results = [result for job_results in results for result in job_results]
-
-    if output_img is not None:
-        save_model_to_image(expt, results, output_img, save_experiment_data=save_expt_data)
-    if as_numpy_array:
-        pids, imgs = zip(*results)
-        order = np.argsort(pids)
-        assert np.all(order == np.arange(len(pids)))
-        results = np.array([imgs[i] for i in order])
-
-    return results
-
-
-def make_miller_array_from_crystal(Crystal, dmin, dmax, defaultF=1000, symbol=None):
-    if symbol is None:
-        symbol = Crystal.get_space_group().info().type().lookup_symbol()
-    Famp = make_miller_array(
-        symbol=symbol,
-        unit_cell=Crystal.get_unit_cell(), d_min=dmin, d_max=dmax, defaultF=defaultF)
-    return Famp
-
-
-def save_model_to_image(expt, model_results, output_img_file, save_experiment_data=False):
-    ordered_img = {}
-    npanels = len(expt.detector)
-    n_img = 1
-    if save_experiment_data:
-        n_img = 2
-    for pid, img in model_results:
-        ordered_img[pid] = img
-    ordered_img = np.array([ordered_img[pid] for pid in range(npanels)])
-    panelX, panelY = expt.detector[0].get_image_size()
-    from simtbx.nanoBragg.utils import H5AttributeGeomWriter
-
-    with H5AttributeGeomWriter(filename=output_img_file, image_shape=(npanels, panelY, panelX), num_images=n_img,
-                               beam=expt.beam, detector=expt.detector) as writer:
-        writer.add_image(ordered_img)
-        if save_experiment_data:
-            exp_data = image_data_from_expt(expt)
-            writer.add_image(exp_data)
-    MAIN_LOGGER.info("Wrote model to image %s" % output_img_file)
-
-
-def index_refls(refls, exper, tolerance=0.333):
-    from dials.algorithms.indexing import assign_indices
-    refls['id'] = flex.int(len(refls), -1)
-    refls['imageset_id'] = flex.int(len(refls), 0)
-    El = ExperimentList()
-    El.append(exper)
-    refls.centroid_px_to_mm(El)
-    refls.map_centroids_to_reciprocal_space(El)
-    idx_assign = assign_indices.AssignIndicesGlobal(tolerance=tolerance)
-    idx_assign(refls, El)
-    return refls
-
-
-def indexed_from_model(strong_refls, model_images, expt, thresh=1, tolerance=0.333, Qdist_cutoff=0.003):
-    model_refls = refls_from_sims(model_images, expt.detector, expt.beam, thresh=thresh)
-    model_refls['id'] = flex.int(len(model_refls), 0)
-    model_refls['imageset_id'] = flex.int(len(model_refls), 0)
-
-    El = ExperimentList()
-    El.append(expt)
-
-    model_refls = index_refls(model_refls, expt, tolerance=tolerance)
-
-    #_=refls_to_hkl(model_refls, expt.detector, expt.beam, expt.crystal,
-    #                                update_table=True)
-    MAIN_LOGGER.info("Indexed %d / %d spots from the model using the nominal wavelength"
-          % (sum(model_refls['id'] == 0), len(model_refls)))
-    if strong_refls is None:
-        model_refls['xyzcal.mm'] = model_refls['xyzobs.mm.value']
-        model_refls['xyzcal.px'] = model_refls['xyzobs.px.value']
-        return model_refls
-
-    strong_refls.centroid_px_to_mm(El)
-    strong_refls.map_centroids_to_reciprocal_space(El)
-
-    pids = set(strong_refls['panel'])
-    Rindexed = None
-    for pid in pids:
-        Rmodel = model_refls.select(model_refls['panel'] == pid)
-        Rstrong = strong_refls.select(strong_refls['panel'] == pid)
-        if len(Rmodel) == 0:
-            continue
-        Qxyz_model = np.array(Rmodel['rlp'])
-        Qxyz_data = np.array(Rstrong['rlp'])
-        tree = cKDTree(Qxyz_model)
-        dists, nearest = tree.query(Qxyz_data, k=1)   # find the nearest model spot to each data spot
-
-        miller_index = [Rmodel['miller_index'][n] for n in nearest]
-        xyzcal_px = [Rmodel['xyzobs.px.value'][n] for n in nearest]
-        xyzcal_mm = [Rmodel['xyzobs.mm.value'][n] for n in nearest]
-
-        Rstrong['miller_index'] = flex.miller_index(miller_index)
-        Rstrong['xyzcal.px'] = flex.vec3_double(xyzcal_px)
-        Rstrong['xyzcal.mm'] = flex.vec3_double(xyzcal_mm)
-        within_cutoff = flex.bool(dists <= Qdist_cutoff)
-        Rstrong = Rstrong.select(within_cutoff)
-
-        if Rindexed is None:
-            Rindexed = Rstrong
-        else:
-            Rindexed.extend(Rstrong)
-
-    return Rindexed
-
-
-def remove_multiple_indexed(R):
-    """R: dials reflection table instance"""
-    import pandas
-    from dials.array_family import flex
-    obs = R['xyzobs.px.value']
-    cal = R['xyzcal.px']
-    dists = (obs-cal).norms()
-    h, k, l = zip(*R['miller_index'])
-    df = pandas.DataFrame({"dist": dists, "h": h, "k": k, "l": l})
-    gb = df.groupby(["h", "k", "l"])
-    hkls = set(R["miller_index"])
-    selected_rows = []
-    for hkl in hkls:
-        g = gb.get_group(hkl)
-        MAIN_LOGGER.debug( hkl, len(g))
-        if len(g) > 1:
-            row = g.iloc[g.dist.argmin()].name
-        else:
-            row = g.iloc[0].name
-        selected_rows.append(row)
-
-    sel = flex.bool([i in selected_rows for i in range(len(R))])
-    R = R.select(sel)
-    return R
-
-
 def load_spectra_from_dataframe(df):
+    """
+    :param df:pandas dataframe
+    :return:
+    """
     total_flux = df.total_flux.values[0]
     spectrum_file = df.spectrum_filename.values[0]
     pink_stride = df.spectrum_stride.values[0]
@@ -1739,23 +1025,15 @@ def load_spectra_from_dataframe(df):
     return spec
 
 
-def save_numpy_mask_as_flex(numpymask, outfile):
-    import pickle
-    from dials.array_family import flex
-    flexmask = tuple((flex.bool(m) for m in numpymask))
-    with open(outfile, "wb") as f:
-        pickle.dump(flexmask, f)
-
-
-def load_dials_flex_mask(path_to_mask, as_numpy=True):
-    import pickle
-    mask = pickle.load(open(path_to_mask, "rb"))
-    if as_numpy:
-        mask = np.array([m.as_numpy_array() for m in mask])
-    return mask
-
-
 def refls_to_q(refls, detector, beam, update_table=False):
+    """
+    gets the Q-vector at each refl
+    :param refls: reflection table
+    :param detector: detector
+    :param beam: beam
+    :param update_table: update the table with rlp col
+    :return:
+    """
 
     orig_vecs = {}
     fs_vecs = {}
@@ -1792,35 +1070,14 @@ def refls_to_q(refls, detector, beam, update_table=False):
     return np.vstack(q_vecs)
 
 
-def strong_spot_mask(refl_tbl, detector, dilate=None):
-    """
-
-    :param refl_tbl:
-    :param detector:
-    :return:  strong spot mask same shape as detector (multi panel)
-    """
-    # dxtbx detector size is (fast scan x slow scan)
-    nfast, nslow = detector[0].get_image_size()
-    n_panels = len(detector)
-    is_strong_pixel = np.zeros((n_panels, nslow, nfast), bool)
-    panel_ids = refl_tbl["panel"]
-    # mask the strong spots so they dont go into tilt plane fits
-    for i_refl in range(len(refl_tbl)): # (x1, x2, y1, y2, _, _) in enumerate(refl_tbl['bbox']):
-        i_panel = panel_ids[i_refl]
-        sb = refl_tbl[i_refl]["shoebox"]
-        x1, x2, y1, y2, _, _ = sb.bbox
-        is_strong = sb.mask.as_numpy_array()[0] == 5
-        bb_ss = slice(y1, y2, 1)
-        bb_fs = slice(x1, x2, 1)
-        is_strong_pixel[i_panel, bb_ss, bb_fs] = is_strong
-
-    if dilate is not None:
-        is_strong_pixel = np.array([binary_dilation(m, iterations=dilate) for m in is_strong_pixel])
-
-    return is_strong_pixel
-
-
 def modify_crystal(anglesXYZ, ucell_params, starting_crystal):
+    """
+    applies a rotation and unit cell adjustment to crystal
+    :param anglesXYZ: rotation angles
+    :param ucell_params: unit cell param
+    :param starting_crystal: dxtbx crystal
+    :return:
+    """
     from scitbx.matrix import col
     from copy import deepcopy
     x = col((-1, 0, 0))
@@ -1843,103 +1100,6 @@ def modify_crystal(anglesXYZ, ucell_params, starting_crystal):
     return C
 
 
-def extract_parmaeters(experiment, refls, use_back_computed_wavelen=False):
-    from xfel.mono_simulation import max_like
-    from dials.array_family import flex
-    from scitbx.matrix import sqr, col
-    from dials.algorithms.refinement.prediction.managed_predictors import ExperimentsPredictorFactory
-    from dxtbx.model import Experiment
-    from copy import deepcopy
-    from dxtbx_model_ext import SimplePxMmStrategy
-
-    crystal = experiment.crystal
-    Amat = crystal.get_A()
-    beam = experiment.beam
-    s0_nominal = col(beam.get_s0())
-    det = experiment.detector
-    det = strip_thickness_from_detector(det)
-
-    refls["local_id"] = flex.int_range(len(refls))
-
-    all_new_delpsi = []
-    d_i = []
-
-    has_wave = False
-    if "wavelength_Ang" in list(refls.keys()):
-        has_wave = True
-
-    waves2 =[]
-    for i_ref in range(len(refls)):
-        if has_wave:
-            wave = refls[i_ref]["wavelength_Ang"]
-        else:
-            wave = beam.get_wavelength()
-        pid = refls[i_ref]['panel']
-        panel = det[pid]
-        hkl = col(refls[i_ref]['miller_index'])
-
-        if set(hkl)=={0}:
-            continue
-
-        # is this necessary ?
-        panel.set_px_mm_strategy(SimplePxMmStrategy())
-        panel.set_mu(0)
-        panel.set_thickness(0)
-
-        res = 1 / np.linalg.norm(refls[i_ref]['rlp'])
-        d_i.append(res)
-        xcal, ycal, _ = refls[i_ref]['xyzcal.mm']
-
-        if use_back_computed_wavelen:
-            cent = panel.get_beam_centre_lab(beam.get_unit_s0())
-            x, y, _ = refls[i_ref]['xyzobs.mm.value']
-            xyz = panel.get_lab_coord((x, y))
-            rad_dist = np.sqrt(np.sum((np.array(xyz) - np.array(cent)) ** 2))
-            det_dist = panel.get_distance()
-            theta = 0.5 * np.arctan(rad_dist / det_dist)
-            back_computed_wavelen = 2 * res * np.sin(theta)
-            waves2.append(back_computed_wavelen)
-            wave = back_computed_wavelen
-            # re-predict the spot with new wavelength
-            El = ExperimentList()
-            E = deepcopy(experiment)
-            E.beam.set_wavelength(back_computed_wavelen)
-            E.detector = det
-            El.append(E)
-            ref_predictor = ExperimentsPredictorFactory.from_experiments(El, force_stills=True)
-            this_refl = refls.select(refls["local_id"] == i_ref)
-            assert len(this_refl) == 1
-            this_refl['id'] = flex.int(1, 0)  # reset id so ref_predictor can match to El
-            this_refl = ref_predictor(this_refl)  # this seems to modify inplace, so = statement not necessary?
-            xcal, ycal, _ = this_refl[0]['xyzcal.mm']  # this is the new position of the prediction
-
-
-        # get the s1 vector with nominal shot wavelength
-        xyzcal = col(panel.get_lab_coord((xcal, ycal)))
-        s1_spot = xyzcal.normalize() / wave
-        s0_recalc = s0_nominal.normalize() / wave
-
-        # get the rlp
-        qhkl = sqr(Amat) * hkl
-        q0 = qhkl.normalize()
-
-        # r-vector with shot wavelength
-        qcal = s1_spot - s0_recalc
-
-        # compute using q1,q0 projection
-        e1 = (q0.cross(s0_recalc)).normalize()
-        q1 = q0.cross(e1)
-        delpsi = -np.arctan2(qcal.dot(q1), qcal.dot(q0))
-        all_new_delpsi.append(delpsi)
-
-    Deff = 2000
-    eta_rad = 0.001
-    out = max_like.minimizer(flex.double(d_i), flex.double(all_new_delpsi), eta_rad, Deff)
-    D = 2 / out.x[0]
-    eta = out.x[1] * 180 / np.pi
-    return D, eta, waves2
-
-
 def parse_reso_string(s):
     """
     :param s:  a strong formated as %f-%f,%f-%f,%f-%f etc.
@@ -1955,80 +1115,6 @@ def parse_reso_string(s):
         MAIN_LOGGER.error("Failed to parse string!", error)
         raise ValueError("Wrong string format, see error above")
     return vals
-
-
-def integrate_subimg(subimg, is_bragg_peak, tilt_abc, sigma_rdout_in_photon, covar, is_hotpix=None):
-    Y,X = np.indices(subimg.shape)
-    sel = is_bragg_peak
-
-    if is_hotpix is not None:
-        sel = np.logical_and(is_bragg_peak, ~is_hotpix)
-    p = X[sel]  # fast scan coords
-    q = Y[sel]  # slow scan coords
-    rho_peak = subimg[sel]  # pixel values
-
-    t1, t2, t3 = tilt_abc
-    Isum = np.sum(rho_peak - t1*p - t2*q - t3)  # summed spot intensity
-
-    var_rho_peak = sigma_rdout_in_photon**2 + rho_peak  # include readout noise in the variance
-    Ns = len(rho_peak)  # number of integrated peak pixels
-
-    # variance propagated from tilt plane constants
-    var_a_term = covar[0, 0] * ((np.sum(p)) ** 2)
-    var_b_term = covar[1, 1] * ((np.sum(q)) ** 2)
-    var_c_term = covar[2, 2] * (Ns ** 2)
-
-    # total variance of the spot
-    var_Isum = np.sum(var_rho_peak) + var_a_term + var_b_term + var_c_term
-
-    return Isum, var_Isum
-
-
-def strong_spot_mask2(refl_tbl, detector):
-    """
-    :param refl_tbl:
-    :param detector:
-    :return:  strong spot mask same shape as detector (multi panel)
-    """
-    # dxtbx detector size is (fast scan x slow scan)
-    nfast, nslow = detector[0].get_image_size()
-    n_panels = len(detector)
-    is_strong_pixel = np.zeros((n_panels, nslow, nfast), bool)
-    panel_ids = refl_tbl["panel"]
-    # mask the strong spots so they dont go into tilt plane fits
-    for i_refl, (x1, x2, y1, y2, _, _) in enumerate(refl_tbl['bbox']):
-        i_panel = panel_ids[i_refl]
-        bb_ss = slice(y1, y2, 1)
-        bb_fs = slice(x1, x2, 1)
-        is_model = refl_tbl[i_refl]['shoebox'].mask.as_numpy_array()[0] == 5
-        is_strong_pixel[i_panel,bb_ss, bb_fs] = is_model
-    return is_strong_pixel
-
-def q_to_hkl(q_vecs, crystal):
-    from scitbx.matrix import sqr
-    Ai = sqr(crystal.get_A()).inverse()
-    Ai = Ai.as_numpy_array()
-    HKL = np.dot( Ai, q_vecs.T)
-    HKLi = map( lambda h: np.ceil(h-0.5).astype(int), HKL)
-    return np.vstack(HKL).T, np.vstack(HKLi).T
-
-
-def refls_to_pixelmm(refls, detector):
-    """
-    returns the mm position of the spot in pixels
-    referenced to the panel origin, which I think is the
-    center of the first pixel in memory for the panel
-    :param reflection table
-    :param dxtbx detecotr
-    :return: np.array Nreflsx2 for fast,slow mm coord referenced to panel origin
-        in the plane of the panel
-    """
-    ij_mm = np.zeros( (len(refls),2))
-    for i_r,r in enumerate(refls):
-        panel = detector[r['panel']]
-        i,j,_ = r['xyzobs.px.value']
-        ij_mm[i_r] = panel.pixel_to_millimeter( (i,j) )
-    return ij_mm
 
 
 def refls_to_hkl(refls, detector, beam, crystal,
@@ -2068,42 +1154,13 @@ def refls_to_hkl(refls, detector, beam, crystal,
         return np.vstack(HKL).T, np.vstack(HKLi).T
 
 
-def refls_to_q(refls, detector, beam, update_table=False):
-
-    orig_vecs = {}
-    fs_vecs = {}
-    ss_vecs = {}
-    u_pids = set(refls['panel'])
-    for pid in u_pids:
-        orig_vecs[pid] = np.array(detector[pid].get_origin())
-        fs_vecs[pid] = np.array(detector[pid].get_fast_axis())
-        ss_vecs[pid] = np.array(detector[pid].get_slow_axis())
-
-    s1_vecs = []
-    q_vecs = []
-    for i_r in range(len(refls)):
-        r = refls[i_r]
-        pid = r['panel']
-        i_fs, i_ss, _ = r['xyzobs.px.value']
-        panel = detector[pid]
-        orig = orig_vecs[pid] #panel.get_origin()
-        fs = fs_vecs[pid] #panel.get_fast_axis()
-        ss = ss_vecs[pid] #panel.get_slow_axis()
-
-        fs_pixsize, ss_pixsize = panel.get_pixel_size()
-        s1 = orig + i_fs*fs*fs_pixsize + i_ss*ss*ss_pixsize  # scattering vector
-        s1 = s1 / np.linalg.norm(s1) / beam.get_wavelength()
-        s1_vecs.append(s1)
-        q_vecs.append(s1-beam.get_s0())
-
-    if update_table:
-        refls['s1'] = flex.vec3_double(tuple(map(tuple,s1_vecs)))
-        refls['rlp'] = flex.vec3_double(tuple(map(tuple,q_vecs)))
-
-    return np.vstack(q_vecs)
-
-
 def get_panels_fasts_slows(expt, pids, rois):
+    """
+    :param expt: dxtbx experiment
+    :param pids: panel ids
+    :param rois: regions of interest
+    :return:
+    """
     npan = len(expt.detector)
     nfast, nslow = expt.detector[0].get_image_size()
     MASK = np.zeros((npan, nslow, nfast), bool)
@@ -2122,14 +1179,6 @@ def get_panels_fasts_slows(expt, pids, rois):
     pan_fast_slow = np.ascontiguousarray((np.vstack([p,f,s]).T).ravel())
     pan_fast_slow = flex.size_t(pan_fast_slow)
     return pan_fast_slow, roi_id
-
-def refls_by_panelname(refls):
-    Nrefl = len(refls)
-    panel_names = np.array([refls["panel"][i] for i in range( Nrefl)])
-    uniq_names = np.unique(panel_names)
-    refls_by_panel = {name: refls.select(flex.bool(panel_names == name))
-                      for name in uniq_names }
-    return refls_by_panel
 
 
 def f_double_prime(energies, a,b,c,d, deriv=None):
@@ -2176,25 +1225,6 @@ def f_prime(f_double_prime, S=None, padn=5000):
     return iFt[padn:-padn]
 
 
-def make_gauss(sig, mu):
-    return lambda x: 1 / (sig * (2*np.pi)**.5) * np.e ** (-(x-mu)**2/(2 * sig**2))
-
-def make_lrntz(gam, mu):
-    return lambda x: gam / (np.pi*((x-mu)**2 + gam**2))
-
-def make_voigt(sig, gam, mu, x):
-    #
-    #
-    from scipy.interpolate import interp1d
-    gauss = make_gauss(sig, mu)(x)
-    lrntz = make_lrntz(gam, mu)(x)
-    voigt = np.convolve(gauss, lrntz)
-    voigt /= abs(voigt.max())
-    r = np.linspace(x[0], x[-1], len(voigt))
-    voigt_intrp = interp1d(r, voigt, kind='linear')(x)
-    return voigt, voigt_intrp
-
-
 def shift_panelZ(D, shift):
     """
     :param D:  dxtbx detector
@@ -2213,22 +1243,21 @@ def shift_panelZ(D, shift):
         newD.add_panel(newP)
     return newD
 
-9
 def safe_makedirs(name):
+    """
+    :param name: dirname to create
+    """
     if not os.path.exists(name):
         os.makedirs(name)
 
 
-def get_rs(name):
-    s = re.search("run[0-9]+_shot[0-9]+", name)
-    return name[s.start():s.end()]
-
-
-def read_exp_ref_spec(fname):
-    return [l.strip().split() for l in open(fname, 'r').readlines()]
-
-
 def _rfactor_minimizer_target(k, F1, F2):
+    """
+    :param k: scale factor
+    :param F1: miller array
+    :param F2: miller array
+    :return:
+    """
     return F1.r1_factor(F2, scale_factor=k[0])
 
 
@@ -2261,93 +1290,6 @@ def compute_scale_to_minmize_r_factor(F1, F2, anom=True):
     return r1_scale
 
 
-def get_ave_FF(F, w=500, use_fft=True):
-    d = np.array(F.d_spacings().data())
-    order = np.argsort(d)
-    amps = np.array(F.data())**2
-    MA = moving_average
-    if use_fft:
-        MA = moving_average_fft
-    amps_ave = MA(amps[order], w)
-    d_ave = MA(d[order], w)
-    return d_ave, amps_ave
-
-
-def moving_average(x, w):  # stack overflow recipe
-    return np.convolve(x, np.ones(w), 'valid') / w
-
-
-def moving_average_fft(x, w):
-    fftx = np.fft.fft(x)
-    fftw = np.fft.fft(np.ones(w))
-    move_ave = np.fft.ifft( fftx*fftw ).real
-    return move_ave / w
-
-
-#def moving_average_fft(x, w):
-#    fftx = np.fft.fft(x)
-#
-#    nx = len(x)
-#    fw = np.zeros(nx)
-#    start = int(nx/2) - int(w/2)
-#    fw[start: start+w] = 1
-#    fftw = np.fft.fft(fw)
-#    move_ave = np.fft.ifft( fftx[:len(x)]*fftw[:len(x)] ).real
-#    return move_ave / w
-
-def smooth(x, beta=10.0, window_size=11):
-    # make sure the window size is odd
-    if window_size % 2 == 0:
-        window_size += 1
-
-    # apply the smoothing function
-    s = np.r_[x[window_size-1:0:-1], x, x[-1:-window_size:-1]]
-    w = np.kaiser(window_size, beta)
-    y = np.convolve( w/w.sum(), s, mode='valid' )
-
-    # remove the extra array length convolve adds
-    b = int((window_size-1) / 2.)
-    smoothed = y[b:len(y)-b]
-
-    return smoothed
-
-
-class WilsonUpdater:
-    def __init__(self, dspacing_at_i_fcell, nbins=100):
-        self.order = np.argsort(dspacing_at_i_fcell)
-        self.dsort = dspacing_at_i_fcell[self.order]
-        self.bins = [b[0]-1e-6 for b in np.array_split(self.dsort, nbins)] + [self.dsort[-1]+1e-6]
-        #assert min(self.bins) < min(dspacing_at_i_fcell)
-        #assert max(self.bins) > max(dspacing_at_i_fcell)
-        self.unsorted_digs = np.digitize(dspacing_at_i_fcell, self.bins)
-        self.sorted_digs = np.digitize(self.dsort, self.bins)
-        self.nbins = nbins
-        self.dspacing_at_i_fcell = dspacing_at_i_fcell
-
-    def num_in_i_fcells_res_bin(self):
-        """returns the number of Fhkl in the res bin belonging to i_fcell"""
-        mapper = {}
-        for i in range(1, self.nbins+1):
-            num_in_bin = np.sum(self.sorted_digs == i)
-            mapper[i] = num_in_bin
-        mapped_vals = np.array([mapper[i] for i in self.unsorted_digs])
-        return mapped_vals
-
-    def get_reference(self, fhkl_current_at_i_fcell):
-        datsort = fhkl_current_at_i_fcell[self.order]**2
-        #valmeans = []
-        mapper = {}
-        for i in range(1, self.nbins+1):
-            val_mean = np.mean(datsort[self.sorted_digs == i])
-            #val_mean = np.median(datsort[self.sorted_digs == i])
-            #valmeans.append(val_mean)
-            #d_mean = self.bins[i-1].mean()
-            #dmeans.append(d_mean)
-            mapper[i] = val_mean
-        mapped_vals = np.array([mapper[i] for i in self.unsorted_digs])
-        return mapped_vals
-
-
 def show_diffBragg_state(D, debug_pixel_panelfastslow):
     """
     D, diffBragg instance
@@ -2362,20 +1304,3 @@ def show_diffBragg_state(D, debug_pixel_panelfastslow):
     D.printout_pixel_fastslow = f, s
     D.add_diffBragg_spots((p, f, s))
     D.raw_pixels*=0
-
-
-def gauss(x, *p):
-    A, mu, sigma = p
-    return A*np.exp(-(x-mu)**2/(2.*sigma**2))
-
-
-def fit_gauss( peak_pro, xdata, mu=0, sig=1, amp=100):
-
-    guess = amp, mu,  sig
-
-    try:
-        fit,success = optimize.curve_fit(gauss,
-                                         xdata=xdata, ydata=peak_pro, p0 =guess )
-    except RuntimeError:
-        return None
-    return fit, success, gauss(xdata, *fit)
