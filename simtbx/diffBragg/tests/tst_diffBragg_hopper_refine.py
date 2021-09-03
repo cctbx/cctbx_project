@@ -17,7 +17,10 @@ from simtbx.nanoBragg.sim_data import SimData
 from simtbx.diffBragg import utils
 from dxtbx.model import Experiment
 from simtbx.nanoBragg import make_imageset
-from simtbx.command_line.hopper import phil_scope
+from simtbx.diffBragg.phil import hopper_phil, philz
+from libtbx.phil import parse
+
+phil_scope = parse(hopper_phil+philz)
 
 ucell = (55, 65, 75, 90, 95, 90)
 ucell2 = (55.1, 65.2, 74.9, 90, 94.9, 90)

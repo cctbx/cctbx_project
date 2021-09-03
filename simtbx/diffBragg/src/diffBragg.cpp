@@ -1868,7 +1868,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         db_cu_flags.update_rotmats = update_rotmats_on_device;
         db_cu_flags.update_Fhkl = update_Fhkl_on_device;
         db_cu_flags.update_detector = update_detector_on_device;
-        db_cu_flags.update_refine_flags = update_refine_flags_on_device
+        db_cu_flags.update_refine_flags = update_refine_flags_on_device;
         db_cu_flags.update_panel_deriv_vecs = update_panel_deriv_vecs_on_device;
         db_cu_flags.Npix_to_allocate = Npix_to_allocate;
 
@@ -1884,7 +1884,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             db_flags,
             db_cu_flags,
             device_pointers,
-            TIMERS)
+            TIMERS);
 
 #else
        // no statement
