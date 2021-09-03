@@ -455,9 +455,10 @@ void diffBragg_sum_over_steps_cuda(
         floatimage[i] = cp.cu_floatimage[i];
     }
     if (db_flags.refine_fcell){
-        for (int i=0; i<Npix_to_model; i++)
+        for (int i=0; i<Npix_to_model; i++){
             d_image.fcell[i] = cp.cu_d_fcell_images[i];
             d2_image.fcell[i] = cp.cu_d2_fcell_images[i];
+        }
     }
     if (std::count(db_flags.refine_Umat.begin(), db_flags.refine_Umat.end(), true) > 0){
         for (int i=0; i<3*Npix_to_model; i++){
