@@ -34,7 +34,7 @@ dependencies:
  - pyopengl
 
  # HDF5 (main libraries come with psana)
- - hdf5-external-filter-plugins  # [unix]
+ - hdf5plugin  # [unix]
 
  # other
  - libsvm
@@ -42,6 +42,7 @@ dependencies:
  - psutil
  - mpi4py
  - pandas
+ - pybind11
 
  # cctbx channel
  - libsvm_py

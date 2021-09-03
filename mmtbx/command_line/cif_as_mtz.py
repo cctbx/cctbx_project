@@ -222,17 +222,16 @@ def get_label(miller_array, output_r_free_label):
         label = "FWT"
         break
     elif (miller_array.is_real_array()):
-      if ("pdbx_anom_difference" in l):
+      if (l.endswith( "pdbx_anom_difference")):
         label = "DANO"
         break
       elif (l.endswith(".fom")):
         label = "FOM"
         break
     # as a last resort try find a match in cif_mtz_data_labels dictionary
-    for mtzlabl,ciflabl in cif_mtz_data_labels.ccp4_to_cif_labels_dict.items():
-      if l==ciflabl:
-        label = mtzlabl
-        break
+    label = cif_mtz_data_labels.ccp4_label_from_cif(l)
+    if label:
+      return label
   return label
 
 def extract(file_name,

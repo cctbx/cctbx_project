@@ -98,6 +98,10 @@ def find_common_water_resseq_max(pdb_hierarchy):
             break
   return result
 
+def cctbx_depreciation_warning(s):
+  print('%s\n# cctbx depreciation warning: %s\n%s' %(
+    '~'*80, s, '~'*80))
+
 class xh_connectivity_table(object):
   # XXX need angle information as well
   def __init__(self, geometry, xray_structure):
@@ -187,9 +191,6 @@ class manager(object):
       crystal_symmetry          = None,
       restraint_objects         = None,
       monomer_parameters        = None, # mmtbx.utils.cif_params scope # temporarily for phenix.refine
-      pdb_interpretation_params = None,
-      process_input             = False,
-      build_grm                 = False,
       stop_for_unknowns         = True,
       log                       = None,
       expand_with_mtrix         = True):
@@ -207,8 +208,6 @@ class manager(object):
     self._model_input = model_input
     self._restraint_objects = restraint_objects
     self._monomer_parameters = monomer_parameters
-    self._pdb_interpretation_params = None
-    self.set_pdb_interpretation_params(pdb_interpretation_params)
     self._shift_cart = None # shift of this model since original location
     self._unit_cell_crystal_symmetry = None # original crystal symmetry
     self._stop_for_unknowns = stop_for_unknowns
@@ -225,6 +224,7 @@ class manager(object):
     self.exchangable_hd_groups = []
     self.original_xh_lengths = None
     self.riding_h_manager = None
+    self._pdb_interpretation_params = None
     # Used for reprocessing (that needs to go). Only used in this file.
     # XXX REMOVE WHEN POSSIBLE! XXX
     self.scattering_dict_info = None
@@ -286,19 +286,10 @@ class manager(object):
         self.biomt_operators = self._model_input.process_BIOMT_records()
       except RuntimeError: pass
     self._biomt_expanded = False
-    # Process model_input and optionally make restraints. This will set
-    # self._pdb_hierarchy, self._xray_structure, self._crystal_symmetry and more
-    if process_input or build_grm:
-      self.process_input_model(make_restraints = build_grm)
     # If self._pdb_hierarchy is still not set by now, try to do it
     if(self._pdb_hierarchy is None):
       if self._model_input is not None:
-        self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy(
-            self._pdb_interpretation_params.pdb_interpretation.sort_atoms)
-        # Perform the flipping of symmertric amino acids - swaps the coordinates
-        if(self._pdb_interpretation_params.pdb_interpretation.flip_symmetric_amino_acids):
-          self._pdb_hierarchy.flip_symmetric_amino_acids()
-
+        self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy()
 
     # Move this away from constructor
     self._update_atom_selection_cache()
@@ -419,11 +410,16 @@ class manager(object):
     """
     return manager.get_default_pdb_interpretation_scope().extract()
 
-  def get_current_pdb_interpretation_params(self):
+  def get_header_r_free_flags_md5_hexdigest(self):
     """
-    Get the current extract object (libtbx.phil.scope_extract)
+    XXX Limited to PDB format XXX
     """
-    return self._pdb_interpretation_params
+    result = []
+    if(self.get_model_input() is None): return result
+    for line in self.get_model_input().remark_section():
+      if (line.startswith("REMARK r_free_flags.md5.hexdigest ")):
+        result.append(line.rstrip())
+    return result
 
   def get_xray_structure(self):
     if(self._xray_structure is None):
@@ -578,39 +574,11 @@ class manager(object):
   def get_stop_for_unknowns(self):
     return self._stop_for_unknowns
 
-  def set_pdb_interpretation_params(self, params):
-    #
-    # Consider invalidating self.restraints_manager here, because it could be already
-    # constructed with different params. Done.
-    #
-    # check if we got only inside of pdb_interpretation scope.
-    # For mmtbx.command_line.load_model_and_data
-    if params is None:
-      self._pdb_interpretation_params = manager.get_default_pdb_interpretation_params()
-    else:
-      # if getattr(params, "sort_atoms", None) is not None:
-      full_params = manager.get_default_pdb_interpretation_params()
-      if getattr(params, "sort_atoms", None) is not None:
-        full_params.pdb_interpretation = params
-        assert 0, "This is not supported anymore. Pass whatever you got" + \
-            " from get_default_pdb_interpretation_params()"
-      if hasattr(params, "pdb_interpretation"):
-        full_params.pdb_interpretation = params.pdb_interpretation
-      if hasattr(params, "geometry_restraints"):
-        full_params.geometry_restraints = params.geometry_restraints
-      if hasattr(params, "reference_model"):
-        full_params.reference_model = params.reference_model
-      for attr in ['amber', 'schrodinger']:
-        if hasattr(params, attr):
-          setattr(full_params, attr, getattr(params, attr))
-      self._pdb_interpretation_params = full_params
-    self.unset_restraints_manager()
-
-  def set_nonbonded_weight(self, value):
-    params = self.get_current_pdb_interpretation_params()
-    if(params.pdb_interpretation.nonbonded_weight == value): return
-    params.pdb_interpretation.nonbonded_weight = value
-    self.set_pdb_interpretation_params(params = params)
+  #def set_nonbonded_weight(self, value):
+  #  params = self.get_current_pdb_interpretation_params()
+  #  if(params.pdb_interpretation.nonbonded_weight == value): return
+  #  params.pdb_interpretation.nonbonded_weight = value
+  #  self.set_pdb_interpretation_params(params = params)
 
   def check_consistency(self):
     """
@@ -658,12 +626,14 @@ class manager(object):
   def set_ss_annotation(self, ann):
     self._ss_annotation = ann
 
-  def add_crystal_symmetry_if_necessary(self, box_cushion = 3):
+  def add_crystal_symmetry_if_necessary(self, box_cushion = 3,
+     force = False):
     '''
       If this model does not have crystal_symmetry set, create a dummy
       crystal_symmetry that goes around the model.  Do not shift position.
     '''
-    if self.crystal_symmetry() and self.crystal_symmetry().unit_cell() and \
+    if (not force) and \
+       self.crystal_symmetry() and self.crystal_symmetry().unit_cell() and \
         self.crystal_symmetry().space_group() :
       return  # nothing to do
 
@@ -972,6 +942,13 @@ class manager(object):
 
   def get_site_symmetry_table(self):
     return self._site_symmetry_table
+
+  def altlocs_present(self):
+    result = False
+    conformer_indices = self.get_hierarchy().get_conformer_indices()
+    if(len(list(set(list(conformer_indices))))>1):
+      result = True
+    return result
 
   def initialize_anomalous_scatterer_groups(
       self,
@@ -1521,15 +1498,39 @@ class manager(object):
       return self.model_as_pdb(output_cs=output_cs)
     else: raise RuntimeError("Model source is unknown.")
 
-  def process_input_model(
+  def get_current_pdb_interpretation_params(self):
+    if(self._pdb_interpretation_params is not None):
+      return self._pdb_interpretation_params
+    else:
+      return self.get_default_pdb_interpretation_params()
+
+  def process(
         self,
-        make_restraints    = False,
-        grm_normalization  = True,
-        plain_pairs_radius = 5,
-        custom_nb_excl     = None,
-        run_clash_guard    = False):
+        pdb_interpretation_params = None,
+        make_restraints           = False,
+        grm_normalization         = True,
+        plain_pairs_radius        = 5,
+        custom_nb_excl            = None,
+        run_clash_guard           = False):
     self._processed = True
-    pip = self._pdb_interpretation_params
+    if(pdb_interpretation_params is not None):
+      self.unset_restraints_manager()
+    if(pdb_interpretation_params is None):
+      pdb_interpretation_params = self.get_default_pdb_interpretation_params()
+    self._pdb_interpretation_params = pdb_interpretation_params
+    #
+    if(not self._pdb_interpretation_params.pdb_interpretation.sort_atoms and
+       self._pdb_hierarchy is not None):
+      self._xray_structure = None
+      self._pdb_hierarchy = None
+      assert not self._mtrix_expanded
+    #
+    if(self._pdb_interpretation_params.pdb_interpretation.sort_atoms and
+       self._pdb_hierarchy is not None):
+      self._xray_structure = None
+      self._pdb_hierarchy.sort_atoms_in_place()
+      self._pdb_hierarchy.atoms_reset_serial()
+    pip = pdb_interpretation_params
     processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
       crystal_symmetry          = self.crystal_symmetry(),
       pdb_interpretation_params = pip.pdb_interpretation,
@@ -1548,6 +1549,8 @@ class manager(object):
     acp = self._processed_pdb_file.all_chain_proxies
     self._atom_selection_cache = acp.pdb_hierarchy.atom_selection_cache()
     self._pdb_hierarchy        = acp.pdb_hierarchy
+    self._type_energies        = acp.type_energies
+    self._type_h_bonds         = acp.type_h_bonds
     xray_structure_all = \
           self._processed_pdb_file.xray_structure(show_summary = False)
     # XXX ad hoc manipulation
@@ -1585,14 +1588,15 @@ class manager(object):
     #
     if(make_restraints):
       self._setup_restraints_manager(
-       grm_normalization  = grm_normalization,
-       plain_pairs_radius = plain_pairs_radius,
-       custom_nb_excl     = custom_nb_excl,
-       run_clash_guard    = run_clash_guard)
+       pdb_interpretation_params = pdb_interpretation_params,
+       grm_normalization         = grm_normalization,
+       plain_pairs_radius        = plain_pairs_radius,
+       custom_nb_excl            = custom_nb_excl,
+       run_clash_guard           = run_clash_guard)
     #
     self._clash_guard_msg = self._processed_pdb_file.clash_guard(
       new_sites_cart = self.get_sites_cart())
-    # This must happen after process_input_model call.
+    # This must happen after process call.
     # Reason: contents of model and _model_input can get out of sync any time.
     self._model_input = None
     self._processed_pdb_file = None
@@ -1632,6 +1636,7 @@ class manager(object):
 
   def _setup_restraints_manager(
       self,
+      pdb_interpretation_params,
       grm_normalization = True,
       external_energy_function = None,
       plain_pairs_radius=5.0,
@@ -1643,8 +1648,8 @@ class manager(object):
     geometry = self._processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
       plain_pairs_radius = plain_pairs_radius,
-      params_edits       = self._pdb_interpretation_params.geometry_restraints.edits,
-      params_remove      = self._pdb_interpretation_params.geometry_restraints.remove,
+      params_edits       = pdb_interpretation_params.geometry_restraints.edits,
+      params_remove      = pdb_interpretation_params.geometry_restraints.remove,
       custom_nonbonded_exclusions  = custom_nb_excl,
       external_energy_function=external_energy_function,
       assume_hydrogens_all_missing = not self.has_hd())
@@ -1666,11 +1671,11 @@ class manager(object):
     #     geometry=geometry,
     #     xrs=xray_structure,
     #     prefix=None)
-    if hasattr(self._pdb_interpretation_params, "reference_model"):
+    if hasattr(pdb_interpretation_params, "reference_model"):
       add_reference_dihedral_restraints_if_requested(
           self,
           geometry=geometry,
-          params=self._pdb_interpretation_params.reference_model,
+          params=pdb_interpretation_params.reference_model,
           selection=None,
           log=self.log)
 
@@ -1679,7 +1684,7 @@ class manager(object):
     #  1. Amber force field
     #  2. Schrodinger force field
     ############################################################################
-    params = self._pdb_interpretation_params
+    params = pdb_interpretation_params
     if hasattr(params, 'amber') and params.amber.use_amber:
       from amber_adaptbx.manager import digester
       geometry = digester(geometry, params, log=self.log)
@@ -1898,6 +1903,48 @@ class manager(object):
     else:
       print("No NCS restraint groups specified.", file=self.log)
       print(file=self.log)
+
+  def get_specific_h_bond_type(self, i_seq):
+    if type(i_seq)!=type(0):
+      cctbx_depreciation_warning('get_specific_h_bond_type takes int argument')
+      i_seq = i_seq.i_seq
+    if i_seq>=len(self._type_h_bonds):
+      print('i_seq is larger than array length. Likely due to a unsupported selection.')
+    type_h_bond = self._type_h_bonds[i_seq]
+    return type_h_bond
+
+  def get_specific_vdw_radius(self, i_seq, vdw_radius_without_H=False):
+    if type(i_seq)!=type(0):
+      cctbx_depreciation_warning('get_specific_vdw_radii takes int argument')
+      i_seq = i_seq.i_seq
+    if i_seq>=len(self._type_energies):
+      print('i_seq is larger than array length. Likely due to a unsupported selection.')
+    e = self.get_ener_lib()
+    type_energy = self._type_energies[i_seq]
+    if vdw_radius_without_H:
+      vdw = e.lib_atom[type_energy].vdwh_radius
+    else:
+      vdw = e.lib_atom[type_energy].vdw_radius
+    return vdw
+
+  def get_specific_ion_radius(self, i_seq):
+    """Accesses the ionic radii stored in ener_lib.cif
+
+    Args:
+        i_seq (int): sequence number of atom
+
+    Returns:
+        float: Ionic radii of element or None
+    """
+    if type(i_seq)!=type(0):
+      cctbx_depreciation_warning('get_specific_ion_radius takes int argument')
+      i_seq = i_seq.i_seq
+    if i_seq>=len(self._type_energies):
+      print('i_seq is larger than array length. Likely due to a unsupported selection.')
+    e = self.get_ener_lib()
+    type_energy = self._type_energies[i_seq]
+    ion_radii = e.lib_atom[type_energy].ion_radius
+    return ion_radii
 
   def get_vdw_radii(self, vdw_radius_default = 1.0):
     """
@@ -2386,8 +2433,8 @@ class manager(object):
          is not use_neutron_distances):
       pi_scope.pdb_interpretation.use_neutron_distances = use_neutron_distances
       # this will take care of resetting everything (grm, processed pdb)
-      self.set_pdb_interpretation_params(params = pi_scope)
-      self.process_input_model(make_restraints=True)
+      self.process(make_restraints=True,
+        pdb_interpretation_params=pi_scope)
     geometry = self.get_restraints_manager().geometry
     hierarchy = self.get_hierarchy()
     atoms = hierarchy.atoms()
@@ -2684,12 +2731,9 @@ class manager(object):
         model_input = pdb_inp,
         crystal_symmetry = cs,
         restraint_objects = self._restraint_objects,
-        pdb_interpretation_params = pip,
-        process_input = True,
-        build_grm = False,
         log = StringIO()
         )
-    self.process_input_model(make_restraints=True)
+    self.process(pdb_interpretation_params = pip, make_restraints=True)
     self.set_refinement_flags(flags)
     if scattering_dict_info is not None:
       self.setup_scattering_dictionaries(
@@ -2973,7 +3017,6 @@ class manager(object):
       monomer_parameters         = self._monomer_parameters,
       expand_with_mtrix          = False,
       pdb_hierarchy              = new_pdb_hierarchy,
-      pdb_interpretation_params  = self._pdb_interpretation_params,
       log                        = self.log)
     new.restraints_manager = new_restraints_manager
     new._xray_structure    = xrs_new
@@ -3003,6 +3046,9 @@ class manager(object):
     new._mon_lib_srv = self._mon_lib_srv
     new._ener_lib = self._ener_lib
     new._original_model_format = self._original_model_format
+    # brain dead way to avoid issues. Needs to be a selection to retain full functionality
+    self._type_energies = []
+    self._type_h_bonds = []
     return new
 
   def number_of_ordered_solvent_molecules(self):
@@ -3012,13 +3058,18 @@ class manager(object):
                         out = None, text="Information about rigid groups"):
     global time_model_show
     timer = user_plus_sys_time()
+    # Decide automatically based on available data
+    if(rigid_body is None and self.refinement_flags is not None and
+       self.refinement_flags.rigid_body and tls is None):
+     rigid_body = True
+    #
     selections = None
     if(rigid_body is not None):
        selections = self.refinement_flags.sites_rigid_body
     if(tls is not None): selections = self.refinement_flags.adp_tls
     if(self.refinement_flags.sites_rigid_body is None and
                                  self.refinement_flags.adp_tls is None): return
-    assert selections is not None
+    if(selections is None): return
     if (out is None): out = sys.stdout
     print(file=out)
     line_len = len("| "+text+"|")
@@ -3457,10 +3508,10 @@ class manager(object):
         crystal_symmetry   = self.crystal_symmetry(),
         restraint_objects  = self._restraint_objects,
         monomer_parameters = self._monomer_parameters,
-        pdb_interpretation_params = self.get_current_pdb_interpretation_params(),
         log                = null_out())
       m.setup_scattering_dictionaries(scattering_table=scattering_table)
-      m.process_input_model(make_restraints=True)
+      m.process(make_restraints=True,
+        pdb_interpretation_params = self.get_current_pdb_interpretation_params())
     else:
       m = self.deep_copy()
     m.get_hierarchy().atoms().reset_i_seq()
@@ -3718,8 +3769,7 @@ class manager(object):
     if(not self._biomt_mtrix_container_is_good(self.mtrix_operators)):
       return
     if(self.get_hierarchy() is None and self.get_model_input() is not None):
-      self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy(
-          self._pdb_interpretation_params.pdb_interpretation.sort_atoms)
+      self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy()
     self._expand_symm_helper(self.mtrix_operators)
     self._mtrix_expanded = True
 
@@ -3801,5 +3851,6 @@ class manager(object):
       custom_residues=custom_residues,
       params=params,
       log=self.log,
-      minimum_identity=minimum_identity
+      minimum_identity=minimum_identity,
+      ignore_hetatm=True
     )

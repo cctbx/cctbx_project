@@ -24,14 +24,14 @@ map_model {
   full_map = None
     .type = path
     .help = Input full map file
-    .short_caption = Full map
+    .short_caption = Map
     .style = file_type:ccp4_map input_file
 
   half_map = None
     .type = path
     .multiple = True
     .help = Input half map files
-    .short_caption = Half maps
+    .short_caption = Half map
     .style = file_type:ccp4_map input_file
   model = None
     .type = path
@@ -195,7 +195,8 @@ class map_model_manager(object):
     if any_map_manager:
       for m in [model] + extra_model_list:
         if not m: continue
-        self.add_crystal_symmetry_if_necessary(m, map_manager = any_map_manager)
+        self.add_crystal_symmetry_to_model_if_necessary(
+            m, map_manager = any_map_manager)
         self.shift_any_model_to_match(m, map_manager = any_map_manager)
 
 
@@ -604,12 +605,14 @@ class map_model_manager(object):
       crystal_symmetry = self.model().unit_cell_crystal_symmetry()
       if not crystal_symmetry:
         crystal_symmetry = self.model().crystal_symmetry()
+      if not crystal_symmetry:  # make it up
+        self.model().add_crystal_symmetry_if_necessary()
+        crystal_symmetry = self.model().crystal_symmetry()
       if crystal_symmetry:
         from iotbx.map_manager import dummy_map_manager
         map_manager = dummy_map_manager(crystal_symmetry)
         self._map_dict['map_manager'] = map_manager
         self.info().dummy_map_manager = True # mark it
-
     return map_manager
 
   def map_manager_1(self):
@@ -748,7 +751,8 @@ class map_model_manager(object):
           print("\nCould not obtain resolution from FSC", file = self.log)
 
 
-      if (not resolution) and self.map_manager():
+      if (not resolution) and self.map_manager() and (
+           not self.map_manager().is_dummy_map_manager()):
         # get resolution from map_manager
         resolution = self.map_manager().resolution()
         print("\nResolution obtained from map_manager: %.3f A " %(
@@ -779,8 +783,10 @@ class map_model_manager(object):
       self._queue_run_command = queue_run_command
 
   def set_resolution(self, resolution):
-    ''' Set nominal resolution '''
+    ''' Set nominal resolution. Pass along to any map managers '''
     self._resolution = resolution
+    for mm in self.map_managers():
+      mm.set_resolution(resolution)
 
   def set_minimum_resolution(self, d_min):
     ''' Set minimum resolution used in calculations'''
@@ -2799,6 +2805,16 @@ class map_model_manager(object):
       minimum_match_length = 2,
       shift_without_deep_copy = False,
       quiet = True):
+
+
+    from libtbx import adopt_init_args
+    kw_obj = group_args()
+    adopt_init_args(kw_obj, locals())
+    all_kw = kw_obj() # save calling parameters in kw as dict
+    del all_kw['adopt_init_args'] # REQUIRED
+    del all_kw['kw_obj']  # REQUIRED
+
+
     '''
     Select the parts of matching_model that best match target_model
     without using matching model or target model more than once
@@ -2824,10 +2840,13 @@ class map_model_manager(object):
     If target model or matching model have different origins from self, they
       deep-copied and shifted in place to match. The deep copy can be
       skipped if shift_without_deep_copy is set.
+
+    If either model has multiple chains, run all pairwise combinations
     '''
 
     from mmtbx.secondary_structure.find_ss_from_ca import \
-       get_first_resno,get_last_resno, get_chain_id
+       get_first_resno,get_last_resno, get_chain_id, get_chain_ids
+
 
     if one_to_one:
        max_gap = 0
@@ -2835,7 +2854,7 @@ class map_model_manager(object):
     if target_model:
       if target_model.shift_cart() != self.shift_cart():
         if not shift_without_deep_copy:
-          self.add_crystal_symmetry_if_necessary(target_model,
+          self.add_crystal_symmetry_to_model_if_necessary(target_model,
             map_manager = self.map_manager())
           target_model = target_model.deep_copy()
         self.shift_any_model_to_match(target_model)
@@ -2844,7 +2863,7 @@ class map_model_manager(object):
     if matching_model:
       if matching_model.shift_cart() != self.shift_cart():
         if not shift_without_deep_copy:
-          self.add_crystal_symmetry_if_necessary(matching_model,
+          self.add_crystal_symmetry_to_model_if_necessary(matching_model,
             map_manager = self.map_manager())
           matching_model = matching_model.deep_copy()
         self.shift_any_model_to_match(matching_model)
@@ -2856,6 +2875,24 @@ class map_model_manager(object):
       if not target_model:
         print("No target model...skipping comparison", file = self.log)
       return []
+
+    target_model_chain_ids = get_chain_ids(target_model.get_hierarchy())
+    matching_model_chain_ids = get_chain_ids(matching_model.get_hierarchy())
+    if len(target_model_chain_ids) > 1 or len(matching_model_chain_ids) > 1:
+      target_and_matching_list = []
+      for target_model_chain_id in target_model_chain_ids:
+        target_model_chain = target_model.apply_selection_string(
+          "chain %s" %(target_model_chain_id))
+        for matching_model_chain_id in matching_model_chain_ids:
+          matching_model_chain = matching_model.apply_selection_string(
+            "chain %s" %(matching_model_chain_id))
+          all_kw['target_model'] = target_model_chain
+          all_kw['matching_model'] = matching_model_chain
+          local_matching_list = self.select_matching_segments(**all_kw)
+          if local_matching_list:
+            target_and_matching_list += local_matching_list
+      return target_and_matching_list
+
 
     if not quiet:
       print("\nFinding parts of %s that match %s " %(
@@ -3119,14 +3156,14 @@ class map_model_manager(object):
          matching_info = target_and_matching,
          ca_only = True,
          max_dist = max_dist)
-      rms_diffs = diffs.rms_length() if diffs.size()>0 else None
+      rms_diffs = diffs.rms_length() if diffs and diffs.size()>0 else None
       reverse_diffs = self.get_diffs_for_matching_target_and_model(
          matching_info = target_and_matching,
          ca_only = True,
          max_dist = max_dist,
          reverse = True)
       rms_reverse_diffs = \
-         reverse_diffs.rms_length() if reverse_diffs.size()>0 else None
+         reverse_diffs.rms_length() if reverse_diffs and reverse_diffs.size()>0 else None
       if rms_diffs is not None and (rms_reverse_diffs is None or
           rms_diffs <= rms_reverse_diffs):
         target_and_matching.match_direction = True
@@ -3360,7 +3397,8 @@ class map_model_manager(object):
     # And propagate these sites to rest of molecule with internal ncs
     model.set_sites_cart_from_hierarchy(multiply_ncs=True)
 
-  def add_crystal_symmetry_if_necessary(self, model, map_manager = None):
+  def add_crystal_symmetry_to_model_if_necessary(self,
+       model, map_manager = None):
     '''
     Take any model and add crystal symmetry if it is missing
     Changes model in place
@@ -3378,7 +3416,6 @@ class map_model_manager(object):
     if (not model.crystal_symmetry()) or (
         not model.crystal_symmetry().unit_cell()):
       map_manager.set_model_symmetries_and_shift_cart_to_match_map(model)
-      model.set_shift_cart((0, 0, 0))
 
   def shift_any_model_to_match(self, model, map_manager = None):
     '''
@@ -3396,7 +3433,8 @@ class map_model_manager(object):
       map_manager = self.get_any_map_manager()
     assert map_manager is not None
 
-    self.add_crystal_symmetry_if_necessary(model, map_manager = map_manager)
+    self.add_crystal_symmetry_to_model_if_necessary(
+        model, map_manager = map_manager)
 
     if not model.shift_cart():
       model.set_shift_cart((0, 0, 0))
@@ -4444,7 +4482,6 @@ class map_model_manager(object):
      resolution is nominal resolution of map
      d_min is minimum resolution to use in calculation of Fourier coefficients
     '''
-
     from libtbx import adopt_init_args
     kw_obj = group_args()
     adopt_init_args(kw_obj, locals())
@@ -5772,7 +5809,18 @@ class map_model_manager(object):
 
     average_overall_scale = None
 
+    n_used = 0
     for scaling_group_info in scaling_group_info_list:
+      # Catch case with missing values and skip it
+      ok = True
+      for si in scaling_group_info.scaling_info_list:
+        for key in ('target_scale_factors','cc_list','rms_fo_list'):
+          if getattr(si,key) is None:
+            ok = False
+      if not ok:
+        continue
+      n_used += 1 # ok here
+
       if scaling_group_info.get('overall_scale'):
         if not average_overall_scale:
           average_overall_scale = flex.double(
@@ -5821,13 +5869,13 @@ class map_model_manager(object):
     if scaling_group_info_list:
       for key in ('target_scale_factors','cc_list','rms_fo_list'):
         for si in average_scaling_group_info.scaling_info_list:
-          setattr(si,key, getattr(si,key)/len(scaling_group_info_list))
+          setattr(si,key, getattr(si,key)/max(1,n_used))
         setattr(average_scaling_group_info.overall_si,key,
            getattr(average_scaling_group_info.overall_si,key)/
            len(scaling_group_info_list))
       if average_scaling_group_info.overall_scale:
         average_scaling_group_info.overall_scale = \
-          average_overall_scale/len(scaling_group_info_list)
+          average_overall_scale/max(1, n_used)
 
 
       for key in ('aa_b_cart_as_u_cart','fo_b_cart_as_u_cart',
@@ -5836,7 +5884,7 @@ class map_model_manager(object):
         ):
         xx = average_scaling_group_info.get(key)
         if xx:
-          xx /= len(scaling_group_info_list)
+          xx /= max(1, n_used)
 
     avg = group_args(
       group_args_type = 'average scale_factor_info (averaged over xyz)',
@@ -7312,7 +7360,10 @@ class map_model_manager(object):
          map_id))
 
 
-    assert self.map_manager().is_compatible_model(model) # model must match
+    if not self.map_manager().is_compatible_model(model): # model must match
+      print("Setting model crystal symmetry to match map", file = self.log)
+      model = model.deep_copy()
+      model.set_crystal_symmetry(self.map_manager().crystal_symmetry())
 
     if not resolution:
       resolution = self.resolution()
@@ -7855,6 +7906,7 @@ class map_model_manager(object):
       wrapping = False,
       map_id = None,
       f_obs_array = None,
+      resolution_factor = None,
      ):
     '''
       Simple interface to cctbx.development.generate_map allowing only
@@ -7895,6 +7947,7 @@ class map_model_manager(object):
       origin_shift_grid_units (tuple (ix, iy, iz), None):  Move location of
           origin of resulting map to (ix, iy, iz) before writing out
       wrapping:  Defines if map is to be specified as wrapped
+      resolution_factor:  Defines ratio of resolution to gridding if gridding is not set
       scattering_table (choice, 'electron'): choice of scattering table
            All choices: wk1995 it1992 n_gaussian neutron electron
       fractional_error:  resolution-dependent fractional error, ranging from
@@ -7917,15 +7970,12 @@ class map_model_manager(object):
       scattering_table = self.scattering_table()
 
     # Set the resolution now if not already set
-    if d_min and have_map_manager and (not self.resolution()):
+    if d_min is not None and have_map_manager and not self.resolution():
       self.set_resolution(d_min)
-
-    # Get some value for resolution
-    if not have_map_manager and d_min:
+    elif d_min is None and self.resolution():
       d_min = self.resolution()
-    if not d_min:
-      d_min = 3  # default
-
+    elif d_min is None:
+      d_min = 3
 
     self._print("\nGenerating new map data\n")
     if self.model() and (not model):
@@ -7975,6 +8025,7 @@ class map_model_manager(object):
       d_min = d_min,
       gridding = gridding,
       wrapping = wrapping,
+      resolution_factor = resolution_factor,
       origin_shift_grid_units = origin_shift_grid_units,
       high_resolution_real_space_noise_fraction = fractional_error,
       log = null_out())
@@ -8072,7 +8123,7 @@ class map_model_manager(object):
       required
     '''
 
-    if self.map_manager():
+    if self.map_manager() and (not self.map_manager().is_dummy_map_manager()):
       resolution = self.resolution()
       assert resolution is not None
 

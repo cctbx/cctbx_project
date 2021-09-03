@@ -52,9 +52,9 @@ ATOM      4  O   GLY A  10      -9.704  -6.850 -28.272  1.00  0.00           O
 def run():
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   model = mmtbx.model.manager(
-    model_input   = pdb_inp,
-    build_grm     = True,
-    log           = null_out())
+    model_input = pdb_inp,
+    log         = null_out())
+  model.process(make_restraints=True)
   a = aev.AEV(model = model)
   print('forward AEVs')
   print(a.BAEVs)

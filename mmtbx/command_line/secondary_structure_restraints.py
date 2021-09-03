@@ -122,12 +122,12 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
   model = mmtbx.model.manager(
       model_input=pdb_structure,
       crystal_symmetry=cs,
-      pdb_interpretation_params=defpars,
       stop_for_unknowns=False)
+  model.process(pdb_interpretation_params=defpars)
   pdb_hierarchy = model.get_hierarchy()
   geometry = None
   if pdb_hierarchy.contains_nucleic_acid():
-    model.process_input_model(make_restraints = True)
+    model.process(make_restraints = True)
     geometry = model.get_restraints_manager().geometry
   if len(pdb_hierarchy.models()) != 1 :
     raise Sorry("Multiple models not supported.")
@@ -188,7 +188,7 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
     raise Sorry("Not yet implemented.")
   elif work_params.format in ["pymol", "refmac", "kinemage", 'csv'] :
     m.show_summary(log=out)
-    model.process_input_model(make_restraints=True)
+    model.process(make_restraints=True)
     (hb_proxies, hb_angle_proxies, planarity_proxies,
         parallelity_proxies) = m.create_all_new_restraints(
         pdb_hierarchy=pdb_hierarchy,

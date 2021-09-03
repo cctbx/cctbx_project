@@ -507,9 +507,9 @@ MEAN LENGTH is the mean length of contiguous segments in the match with target s
 
                ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %
      MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
-               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH
+               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH  FRAGMENTS BAD CONNECTIONS
 
- Unique_target 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04    6.0"""
+ Unique_target 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04    6.0          7               6"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
@@ -547,9 +547,9 @@ MEAN LENGTH is the mean length of contiguous segments in the match with target s
 
                ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %
      MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
-               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH
+               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH  FRAGMENTS BAD CONNECTIONS
 
- Unique_target 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04    6.0"""
+ Unique_target 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04    6.0          7               6"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print("\n\nExpected: \n%s \n\nFound: \n%s" %(expected_text,found_text))
@@ -599,9 +599,9 @@ MEAN LENGTH is the mean length of contiguous segments in the match with target s
 
                ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %
      MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
-               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH
+               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH  FRAGMENTS BAD CONNECTIONS
 
-     query.pdb 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04    6.0"""
+     query.pdb 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04    6.0          7               6"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
@@ -830,9 +830,9 @@ MEAN LENGTH is the mean length of contiguous segments in the match with target s
 
                ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %
      MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
-               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH
+               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH  FRAGMENTS BAD CONNECTIONS
 
- Unique_target 1.67   58     64     15      29      14   42.6   0.25     8.6        0.04    4.5"""
+ Unique_target 1.67   58     64     15      29      14   42.6   0.25     8.6        0.04    4.5         16               8"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print("\n\nExpected: \n%s \n\nFound: \n%s" %(expected_text,found_text))

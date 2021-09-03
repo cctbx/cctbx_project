@@ -104,7 +104,7 @@ class ProteinResidues(LinkedResidues):
   def are_linked(self,
                  return_value=False,
                  use_distance_always=False,
-                 bond_cut_off=3., # Same as link_distance_cutoff of pdb_interpretation
+                 bond_cut_off=2.,
                  allow_poly_ca=False,
                  poly_ca_cut_off=4.,
                  verbose=True):

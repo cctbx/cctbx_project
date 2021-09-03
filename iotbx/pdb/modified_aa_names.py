@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Fri Apr  2 15:47:26 2021
+The date of file generation: Fri Aug 20 16:36:29 2021
 """
 from __future__ import absolute_import, division, print_function
 
@@ -603,6 +603,7 @@ lookup = {
   "MSO" : "M",
   "MT2" : "M",
   "OMT" : "M",
+  "Q75" : "M",
   "SME" : "M",
   "0A9" : "F",
   "0BN" : "F",
@@ -640,6 +641,7 @@ lookup = {
   "HPE" : "F",
   "HPH" : "F",
   "HPQ" : "F",
+  "LWI" : "F",
   "MEA" : "F",
   "MHU" : "F",
   "N0A" : "F",
@@ -656,6 +658,7 @@ lookup = {
   "PM3" : "F",
   "PPN" : "F",
   "PSA" : "F",
+  "Q78" : "F",
   "QPH" : "F",
   "SMF" : "F",
   "T11" : "F",
@@ -754,6 +757,7 @@ lookup = {
   "CWR" : "S",
   "DBS" : "S",
   "DHA" : "S",
+  "EW6" : "S",
   "FGP" : "S",
   "GFT" : "S",
   "GVL" : "S",
@@ -768,6 +772,7 @@ lookup = {
   "MIS" : "S",
   "N10" : "S",
   "NC1" : "S",
+  "O2E" : "S",
   "OAS" : "S",
   "OLZ" : "S",
   "OMH" : "S",
@@ -862,6 +867,7 @@ lookup = {
   "O6H" : "W",
   "O7D" : "W",
   "PAT" : "W",
+  "Q2E" : "W",
   "R4K" : "W",
   "RE0" : "W",
   "RE3" : "W",
@@ -881,6 +887,7 @@ lookup = {
   "TRX" : "W",
   "TRY" : "W",
   "TTQ" : "W",
+  "UX8" : "W",
   "WRP" : "W",
   "ZIQ" : "W",
   "0A1" : "Y",

@@ -1,0 +1,129 @@
+import os
+import subprocess
+from shutil import copy
+
+import libtbx.load_env
+from libtbx.env_config import get_boost_library_with_python_version
+
+def detect_architecture(verbose=True):
+  if verbose:
+    print('Looking for GPUs ...')
+  available_gpu = subprocess.check_output(['nvidia-smi', '--query-gpu=name', '--format=csv,noheader'])
+  available_gpu = available_gpu.split(b'\n')
+  first_entry = available_gpu[0].decode('utf8')
+  if len(first_entry)>0:
+    if verbose:
+      print( ' Found ', first_entry)
+    if 'A100' in first_entry:
+      architecture = "Ampere80"
+    else:
+      architecture = "Volta70"
+  else:
+    architecture = "HSW"
+  return architecture
+
+# libkokkos.a
+# call kokkos build system directly
+# set environment variable defaults if necessary
+if os.getenv('KOKKOS_DEVICES') is None:
+  os.environ['KOKKOS_DEVICES'] = "Cuda"
+if os.getenv('KOKKOS_PATH') is None:
+  os.environ['KOKKOS_PATH'] = libtbx.env.under_dist('simtbx', '../../kokkos')
+if os.getenv('KOKKOS_ARCH') is None:
+  os.environ['KOKKOS_ARCH'] = detect_architecture(verbose = True)
+if os.getenv('KOKKOS_CUDA_OPTIONS') is None:
+  os.environ['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
+os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double'
+os.environ['LDFLAGS'] = '-Llib -L$(CUDA_HOME)/lib64'
+os.environ['LDLIBS'] = '-lkokkos -ldl -lcudart -lcuda'
+
+original_cxx = None
+kokkos_lib = 'libkokkos.a'
+kokkos_cxxflags = None
+
+if os.getenv('CXX') is not None:
+  original_cxx = os.environ['CXX']
+os.environ['CXX'] = os.path.join(os.environ['KOKKOS_PATH'], 'bin', 'nvcc_wrapper')
+print('='*79)
+print('Building Kokkos')
+print('-'*79)
+returncode = subprocess.call(['make', '-f', 'Makefile.kokkos', kokkos_lib],
+                              cwd=os.environ['KOKKOS_PATH'])
+print()
+
+print('Copying Kokkos library')
+print('-'*79)
+src = os.path.join(os.environ['KOKKOS_PATH'], kokkos_lib)
+dst = os.path.join(libtbx.env.under_build('lib'), kokkos_lib)
+if os.path.isfile(src):
+  copy(src, dst)
+  print('Copied')
+  print('  source:     ', src)
+  print('  destination:', dst)
+else:
+  print('Error: {src} does not exist'.format(src=src))
+print()
+
+print('Getting environment variables')
+print('-'*79)
+kokkos_cxxflags = subprocess.check_output(
+  ['make', '-f', 'Makefile.kokkos', 'print-cxx-flags'],
+  cwd=os.environ['KOKKOS_PATH'])
+kokkos_cxxflags = kokkos_cxxflags.split(b'\n')
+kokkos_cxxflags = kokkos_cxxflags[1].decode('utf8').split()
+print('KOKKOS_CXXFLAGS:', kokkos_cxxflags)
+print('='*79)
+
+# libsimtbx_kokkos.so
+Import("env", "env_etc")
+
+kokkos_env = env.Clone()
+kokkos_env.Replace(CXX=os.environ['CXX'])
+kokkos_env.Replace(SHCXX=os.environ['CXX'])
+kokkos_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
+kokkos_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
+kokkos_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
+kokkos_env.Append(LIBS=['kokkos'])
+
+simtbx_kokkos_lib = kokkos_env.SharedLibrary(
+  target="#lib/libsimtbx_kokkos.so",
+  source=[
+    'detector.cpp',
+    'kokkos_instance.cpp',
+    'kokkos_utils.cpp',
+    'simulation.cpp',
+    'structure_factors.cpp'
+  ]
+)
+
+# simtbx_kokkos_ext.so
+if not env_etc.no_boost_python:
+  Import("env_no_includes_boost_python_ext")
+  kokkos_ext_env = env_no_includes_boost_python_ext.Clone()
+
+  env_etc.include_registry.append(
+    env=kokkos_ext_env,
+    paths=env_etc.simtbx_common_includes + [env_etc.python_include])
+  kokkos_ext_env.Replace(CXX=os.environ['CXX'])
+  kokkos_ext_env.Replace(SHCXX=os.environ['CXX'])
+  kokkos_ext_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
+  kokkos_ext_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
+  kokkos_ext_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
+  kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'lib64')])
+  kokkos_ext_env.Append(LIBS=env_etc.libm +
+    ["simtbx_kokkos",
+     "scitbx_boost_python",
+     get_boost_library_with_python_version("boost_python", kokkos_ext_env['LIBPATH']),
+     "cctbx",
+     "kokkos",
+     "cudart",
+     "cuda"])
+
+  simtbx_kokkos_ext = kokkos_ext_env.SharedLibrary(
+    target="#lib/simtbx_kokkos_ext.so",
+    source=['kokkos_ext.cpp']
+  )
+
+# reset CXX
+if original_cxx is not None:
+  os.environ['CXX'] = original_cxx

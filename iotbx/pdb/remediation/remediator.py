@@ -173,9 +173,9 @@ def get_model_from_file(file_path):
   pdb_inp = iotbx.pdb.input(file_name = file_path)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    build_grm   = False,
     stop_for_unknowns = False,
     log = null_out())
+  model.process(make_restraints=False)
   return model
 
 class Remediator():

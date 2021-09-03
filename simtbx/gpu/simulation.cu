@@ -243,7 +243,7 @@ namespace af = scitbx::af;
 
 
   void
-  exascale_api::add_background_cuda(simtbx::gpu::gpu_detector & gdt){
+  exascale_api::add_background_cuda(simtbx::gpu::gpu_detector & gdt, int const& override_source){
         cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
         // transfer source_I, source_lambda
@@ -281,7 +281,7 @@ namespace af = scitbx::af;
         // the for loop around panels.  Offsets given.
         for (std::size_t idx_p = 0; idx_p < gdt.cu_n_panels; idx_p++){
           add_background_CUDAKernel<<<numBlocks, threadsPerBlock>>>(SIM.sources,
-          SIM.oversample,
+          SIM.oversample, override_source,
           SIM.pixel_size, gdt.cu_slow_pixels, gdt.cu_fast_pixels, SIM.detector_thicksteps,
           SIM.detector_thickstep, SIM.detector_attnlen,
           &(gdt.cu_sdet_vector[vec_len * idx_p]),

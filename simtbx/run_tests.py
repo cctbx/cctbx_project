@@ -8,6 +8,7 @@ tst_list = [
     "$D/nanoBragg/tst_gaussian_mosaicity.py",
     "$D/nanoBragg/tst_gaussian_mosaicity2.py",
     "$D/nanoBragg/tst_nanoBragg_cbf_write.py",
+    "$D/nanoBragg/tst_multisource_background.py",
     "$D/diffBragg/tests/tst_diffBragg_Fhkl_complex.py",
     "$D/diffBragg/tests/tst_diffBragg_change_of_basis.py",
     "$D/diffBragg/tests/tst_diffBragg_update_dxtbx_geoms.py",
@@ -49,11 +50,13 @@ if OPT.enable_cuda:
   tst_list_parallel = [
     ["$D/nanoBragg/tst_gauss_argchk.py","GPU"], # tests CPU+GPU, argchk optimization
     "$D/gpu/tst_exafel_api.py",                 # CPU / GPU, polychromatic beam, monolithic detector
+    "$D/gpu/tst_gpu_multisource_background.py", # CPU / GPU background comparison
+    "$D/kokkos/tst_kokkos_lib.py",                  # GPU in kokkos
   ]
 else:
-    tst_list.append(
-        ["$D/nanoBragg/tst_gauss_argchk.py","CPU"]
-    )
+  tst_list.append(
+    ["$D/nanoBragg/tst_gauss_argchk.py","CPU"]
+  )
 
 def run():
   build_dir = libtbx.env.under_build("simtbx")

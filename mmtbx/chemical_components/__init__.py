@@ -37,18 +37,18 @@ sugar_types = ["SACCHARIDE",
                'L-SACCHARIDE 1,4 AND 1,4 LINKING',
                ]
 terminii = [
-  '"L-PEPTIDE NH3 AMINO TERMINUS"',
-  '"L-PEPTIDE COOH CARBOXY TERMINUS"',
-  '"D-PEPTIDE NH3 AMINO TERMINUS"',
+  'L-PEPTIDE NH3 AMINO TERMINUS',
+  'L-PEPTIDE COOH CARBOXY TERMINUS',
+  'D-PEPTIDE NH3 AMINO TERMINUS',
 ]
 non_polymer = [
   "NON-POLYMER",
   ]
 non_alpha_peptide = [
-  '"L-BETA-PEPTIDE, C-GAMMA LINKING"', # IAS
-  '"D-BETA-PEPTIDE, C-GAMMA LINKING"', # ACB
-  '"D-GAMMA-PEPTIDE, C-DELTA LINKING"', # FGA
-  '"L-GAMMA-PEPTIDE, C-DELTA LINKING"', # GGL
+  'L-BETA-PEPTIDE, C-GAMMA LINKING', # IAS
+  'D-BETA-PEPTIDE, C-GAMMA LINKING', # ACB
+  'D-GAMMA-PEPTIDE, C-DELTA LINKING', # FGA
+  'L-GAMMA-PEPTIDE, C-DELTA LINKING', # GGL
   ]
 
 loaded_cifs = {}
@@ -277,6 +277,9 @@ def get_group(code, split_rna_dna=False, split_l_d=False):
   elif t in amino_types:
     assert not split_l_d
     return 'amino_acid'
+  elif t in terminii:
+    assert not split_l_d
+    return 'amino_acid_terminal'
   elif t in rna_dna_types:
     assert not split_l_d
     if split_rna_dna:

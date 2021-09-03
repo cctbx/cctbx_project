@@ -225,8 +225,7 @@ END"""
   if (verbose):
     log = sys.stdout
   model = mmtbx.model.manager(
-      model_input = iotbx.pdb.input(lines=pdb_in.splitlines(), source_info=None),
-      process_input = True)
+      model_input = iotbx.pdb.input(lines=pdb_in.splitlines(), source_info=None))
   processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     raw_records=pdb_in.splitlines())
@@ -379,8 +378,8 @@ TER
 END
 """
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
-  model = mmtbx.model.manager(model_input = pdb_inp, process_input=True,
-    build_grm=True, log=null_out())
+  model = mmtbx.model.manager(model_input = pdb_inp, log=null_out())
+  model.process(make_restraints=True)
   residue = model.get_hierarchy().only_residue()
   r = mmtbx.utils.rotatable_bonds.axes_and_atoms_aa_specific(
       residue = residue, mon_lib_srv = model.get_mon_lib_srv(), log=null_out())

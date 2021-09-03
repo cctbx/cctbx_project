@@ -9,7 +9,7 @@ from libtbx import group_args
 from cctbx.array_family import flex
 from collections import OrderedDict
 from mmtbx.ligands.ready_set_utils import add_n_terminal_hydrogens_to_residue_group
-
+from cctbx.geometry_restraints.linking_class import linking_class
 #
 from cctbx.maptbx.box import shift_and_box_model
 
@@ -129,14 +129,14 @@ class place_hydrogens():
     #p.pdb_interpretation.restraints_library.cdl=False # XXX this triggers a bug !=360
     ro = self.model.get_restraint_objects()
     self.model = mmtbx.model.manager(
-      model_input               = None,
-      pdb_hierarchy             = pdb_hierarchy,
-      build_grm                 = True,
-      stop_for_unknowns         = self.stop_for_unknowns,
-      crystal_symmetry          = self.model.crystal_symmetry(),
-      restraint_objects         = ro,
-      pdb_interpretation_params = p,
-      log                       = null_out())
+      model_input       = None,
+      pdb_hierarchy     = pdb_hierarchy,
+      stop_for_unknowns = self.stop_for_unknowns,
+      crystal_symmetry  = self.model.crystal_symmetry(),
+      restraint_objects = ro,
+      log               = null_out())
+    self.model.process(pdb_interpretation_params=p,
+      make_restraints=True)
     if print_time:
       print("get new model obj and grm:", round(time.time()-t0, 2))
 
@@ -169,11 +169,11 @@ class place_hydrogens():
       print("set up riding H manager and some cleanup:", round(time.time()-t0, 2))
 
 
-    t0 = time.time()
-    self.exclude_H_on_disulfides()
-    #self.exclude_h_on_coordinated_S()
-    if print_time:
-      print("find disulfides:", round(time.time()-t0, 2))
+#    t0 = time.time()
+#    self.exclude_H_on_disulfides()
+#    #self.exclude_h_on_coordinated_S()
+#    if print_time:
+#      print("find disulfides:", round(time.time()-t0, 2))
 
   #  f = open("intermediate4.pdb","w")
   #  f.write(model.model_as_pdb())
@@ -192,14 +192,15 @@ class place_hydrogens():
     if print_time:
       print("reset adp, occ; idealize:", round(time.time()-t0, 2))
 
+#    t0 = time.time()
+#    self.exclude_h_on_coordinated_S()
+#    if print_time:
+#      print("coordinated S:", round(time.time()-t0, 2))
+
     t0 = time.time()
-    self.exclude_h_on_coordinated_S()
+    self.exclude_H_on_links()
     if print_time:
-      print("coordinated S:", round(time.time()-t0, 2))
-
-
-
-
+      print("all links:", round(time.time()-t0, 2))
 
     self.n_H_final = self.model.get_hd_selection().count(True)
 
@@ -298,6 +299,53 @@ class place_hydrogens():
     atom_valences.validate(ignore_water=True,
                            raise_if_error=False)
     self.charged_atoms = atom_valences.get_charged_atoms()
+
+# ------------------------------------------------------------------------------
+
+  def exclude_H_on_links(self):
+    origin_ids = linking_class()
+    rm = self.model.get_restraints_manager()
+    bond_proxies_simple, asu = rm.geometry.get_all_bond_proxies(
+      sites_cart = self.model.get_sites_cart())
+    elements = self.model.get_hierarchy().atoms().extract_element()
+    exclusion_iseqs = list()
+    exclusion_dict = dict()
+    all_proxies = [p for p in bond_proxies_simple]
+    for proxy in asu:
+      all_proxies.append(proxy)
+    # Loop through bond proxies to find links (origin_id != 0)
+    for proxy in all_proxies:
+      if(  isinstance(proxy, ext.bond_simple_proxy)): i,j=proxy.i_seqs
+      elif(isinstance(proxy, ext.bond_asu_proxy)):    i,j=proxy.i_seq,proxy.j_seq
+      else: assert 0 # never goes here
+      if proxy.origin_id != 0:
+        exclusion_iseqs.extend([i,j])
+        exclusion_dict[i] = proxy.origin_id
+        exclusion_dict[j] = proxy.origin_id
+    sel_remove = flex.size_t()
+
+    # Now find H atoms bound to linked atoms
+    removed_dict = dict()
+    for proxy in all_proxies:
+      if(  isinstance(proxy, ext.bond_simple_proxy)): i,j=proxy.i_seqs
+      elif(isinstance(proxy, ext.bond_asu_proxy)):    i,j=proxy.i_seq,proxy.j_seq
+      else: assert 0 # never goes here
+      if(elements[i] in ["H","D"] and j in exclusion_iseqs):
+        sel_remove.append(i)
+        removed_dict[i] = exclusion_dict[j]
+      if(elements[j] in ["H","D"] and i in exclusion_iseqs):
+        sel_remove.append(j)
+        removed_dict[j] = exclusion_dict[i]
+    #
+    sl_removed = [(atom.id_str().replace('pdb=','').replace('"',''),
+                   origin_ids.get_origin_key(removed_dict[atom.i_seq]))
+        for atom in self.model.get_hierarchy().atoms().select(sel_remove)]
+#    self.site_labels_removed = list(OrderedDict.fromkeys(sl_removed))
+    self.sl_removed = sl_removed
+    #
+    self.model = self.model.select(~flex.bool(self.model.size(), sel_remove))
+
+
 
 # ------------------------------------------------------------------------------
 
@@ -408,6 +456,13 @@ heavy atoms or H atoms are missing.'''
         idstr = item[0].id_str().replace('pdb=','').replace('"','')
         if 'HOH' in idstr: continue
         print(idstr, item[1])
+
+    if self.sl_removed:
+      print()
+      msg = '''Atom %s was not placed because it is involved in %s'''
+      for item in self.sl_removed:
+        print(msg % (item[0], item[1]), file=log)
+
 
 # ------------------------------------------------------------------------------
 

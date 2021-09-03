@@ -1245,9 +1245,8 @@ def core(pdb_str, pair_proxies = None):
   pdb_inp = iotbx.pdb.input(source_info = None, lines = pdb_str)
   model = mmtbx.model.manager(
     model_input   = pdb_inp,
-    process_input = True,
-    build_grm     = True,
     log           = null_out())
+  model.process(make_restraints=True)
   return mmtbx.nci.hbond.find(model=model, pair_proxies=pair_proxies)
 
 def exercise_00():

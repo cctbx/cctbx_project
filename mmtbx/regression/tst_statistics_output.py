@@ -1167,8 +1167,8 @@ ATOM   1152  OE2 GLU A 157     -26.948 -24.562   1.620  1.00 89.52           O
 
 def test_1():
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
-  model = mmtbx.model.manager(model_input = pdb_inp, log = null_out(),
-    build_grm=True)
+  model = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  model.process(make_restraints=True)
   model.get_restraints_manager()
   stats = mmtbx.model.statistics.geometry(model=model)
   out = StringIO()
@@ -1177,9 +1177,9 @@ def test_1():
   # print (val)
   assert not show_diff(val, """
 GEOMETRY RESTRAINTS LIBRARY: GEOSTD + MONOMER LIBRARY + CDL V1.2
-DEVIATIONS FROM IDEAL VALUES.
-  BOND      :  0.004   0.020   1174
-  ANGLE     :  0.908   4.674   1594
+DEVIATIONS FROM IDEAL VALUES - RMSD. RMSZ FOR BONDS AND ANGLES.
+  BOND      :  0.004   0.020   1174  Z= 0.292
+  ANGLE     :  0.908   4.674   1594  Z= 0.671
   CHIRALITY :  0.038   0.125    186
   PLANARITY :  0.003   0.018    205
   DIHEDRAL  : 11.055  85.166    440

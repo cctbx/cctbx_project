@@ -99,9 +99,8 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   work_params.reference_model.fix_outliers = False
   model = mmtbx.model.manager(
       model_input = iotbx.pdb.input(lines=flex.split_lines(model_raw_records),
-                                    source_info=None),
-      process_input=True,
-      build_grm=True)
+                                    source_info=None))
+  model.process(make_restraints=True)
   pdb_h = model.get_hierarchy()
   reference_hierarchy_list = []
   tmp_hierarchy = iotbx.pdb.input(
@@ -225,9 +224,8 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     test=os.path.isfile)
   model = mmtbx.model.manager(
       model_input = iotbx.pdb.input(file_name=pdb_file,
-                                    source_info=None),
-      process_input=True,
-      build_grm=True)
+                                    source_info=None))
+  model.process(make_restraints=True)
   pdb_h = model.get_hierarchy()
   # pdb_hierarchy = iotbx.pdb.input(file_name=pdb_file).construct_hierarchy()
   reference_file_list = []
@@ -621,10 +619,8 @@ TER
 
   model = mmtbx.model.manager(
       model_input = iotbx.pdb.input(lines=flex.split_lines(pdb_str_original),
-                                    source_info=None),
-      process_input=True,
-      build_grm=True)
-
+                                    source_info=None))
+  model.process(make_restraints=True)
   pdb_h = model.get_hierarchy()
   rm = reference_model(
          model = model,
@@ -954,9 +950,8 @@ TER
   all_pars.reference_model.enabled = True
   model = mmtbx.model.manager(
       model_input = iotbx.pdb.input(lines=flex.split_lines(pdb_str_original),
-                                    source_info=None),
-      process_input=True,
-      build_grm=True)
+                                    source_info=None))
+  model.process(make_restraints=True)
   pdb_h = model.get_hierarchy()
   rm = reference_model(
          model=model,
@@ -1036,9 +1031,8 @@ ATOM     20  OG  SER G 334      -5.954  69.950  50.396  1.00170.98           O
   all_pars.reference_model.enabled = True
   model = mmtbx.model.manager(
       model_input = iotbx.pdb.input(lines=flex.split_lines(pdb_str_original),
-                                    source_info=None),
-      process_input=True,
-      build_grm=True)
+                                    source_info=None))
+  model.process(make_restraints=True)
   pdb_h = model.get_hierarchy()
 
   rm = reference_model(
@@ -1249,9 +1243,8 @@ TER     490       DG B  24
   # log = sys.stdout
   model = mmtbx.model.manager(
       model_input = iotbx.pdb.input(lines=flex.split_lines(pdb_str_original),
-                                    source_info=None),
-      process_input=True,
-      build_grm=True)
+                                    source_info=None))
+  model.process(make_restraints=True)
   pdb_h = model.get_hierarchy()
   for include_chains in [True, False]:
     def_pars = reference_model_params
@@ -1518,9 +1511,8 @@ END
   """
   model = mmtbx.model.manager(
       model_input = iotbx.pdb.input(lines=flex.split_lines(pdb_str_original),
-                                    source_info=None),
-      process_input=True,
-      build_grm=True)
+                                    source_info=None))
+  model.process(make_restraints=True)
   pdb_h = model.get_hierarchy()
   ref_h = pdb_h.deep_copy()
   # pdb_h.atoms().reset_i_seq()

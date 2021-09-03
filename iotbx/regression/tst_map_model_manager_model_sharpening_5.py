@@ -52,7 +52,6 @@ def test_01(method = 'model_sharpen',
   # sharpen by method (can be model_sharpen, half_map_sharpen or
   #     external_sharpen)
 
-  mmm = dc.deep_copy()
   sharpen_method(anisotropic_sharpen = False, n_bins=10)
   assert mmm.map_model_cc() > 0.9
   sharpen_method(anisotropic_sharpen = False, n_bins=10,

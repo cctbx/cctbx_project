@@ -113,11 +113,9 @@ ATOM    175  NZ  LYS A  39     -12.408  33.271 -25.337  1.00185.25           N
 
 def get_necessary_inputs(pdb_str):
   pdb_inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
-  return mmtbx.model.manager(
-      model_input = pdb_inp,
-      build_grm= True)
-
-
+  model = mmtbx.model.manager(model_input = pdb_inp)
+  model.process(make_restraints=True)
+  return model
 
 def exercise_1():
   """ 58 is outlier """

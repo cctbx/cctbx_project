@@ -235,10 +235,9 @@ geometry_restraints.edits {
 
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    build_grm   = True,
-    pdb_interpretation_params = params,
     log         = null_out())
-
+  model.process(pdb_interpretation_params=params,
+    make_restraints=True)
   pdb_hierarchy = model.get_hierarchy()
   sites_cart = model.get_sites_cart()
   atoms = pdb_hierarchy.atoms()
@@ -347,10 +346,9 @@ geometry_restraints.edits {
 
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    build_grm   = True,
-    pdb_interpretation_params = params,
     log         = null_out())
-
+  model.process(pdb_interpretation_params=params,
+    make_restraints=True)
   pdb_hierarchy = model.get_hierarchy()
   sites_cart = model.get_sites_cart()
   atoms = pdb_hierarchy.atoms()

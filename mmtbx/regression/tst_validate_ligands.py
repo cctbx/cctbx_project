@@ -74,7 +74,8 @@ def run_test1():
     test=os.path.isfile)
 
   pdb_inp = iotbx.pdb.input(pdb_fname)
-  model = mmtbx.model.manager(model_input = pdb_inp, build_grm=True, stop_for_unknowns=False)
+  model = mmtbx.model.manager(model_input = pdb_inp, stop_for_unknowns=False)
+  model.process(make_restraints=True)
   model.set_log(null_out())
 
   params = iotbx.phil.parse(

@@ -108,7 +108,7 @@ class _():
   @property
   def beam(self):
     # Does this handle the conventions ? Im always confused about where the beam is pointing, whats s0 and whats beam_vector
-    beam_dict = {'direction': self.beam_vector, #tuple([x for x in self.beam_vector]),  # TODO: is this correct?
+    beam_dict = {'direction': self.beam_vector,
                   'divergence': 0.0,  # TODO
                   'flux': self.flux,
                   'polarization_fraction': self.polarization,  #TODO
@@ -196,7 +196,6 @@ class _():
     writer = cbf_writer.FullCBFWriter(imageset=self.imageset)
     writer.write_cbf(cbf_filename, index=0)
 
-
 def make_imageset(data, beam, detector):
   format_class = FormatBraggInMemoryMultiPanel(data)
   reader = MemReaderNamedPath("virtual_Bragg_path", [format_class])
@@ -206,7 +205,6 @@ def make_imageset(data, beam, detector):
   imageset.set_beam(beam)
   imageset.set_detector(detector)
   return imageset
-
 
 class FormatBraggInMemoryMultiPanel:
 
@@ -234,7 +232,6 @@ class FormatBraggInMemoryMultiPanel:
   def get_mask(self, goniometer=None):
     """dummie place holder for mask, consider using internal nanoBragg mask"""
     return self.mask
-
 
 class FormatBraggInMemory:
 

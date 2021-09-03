@@ -7,8 +7,8 @@ namespace scitbx { namespace minpack { namespace raw {
   {
     SCITBX_ASSERT(1 <= i && i <= 3);
     if (i == 1) return 2.22044604926e-16;
-    if (i == 2) return 2.22507385852e-308;
-                return 1.79769313485e+308;
+    if (i == 2) {return 2.22507385852e-308;}
+    else        {return 1.79769313485e+308;}
   }
 
   /* given an n-vector x, this function calculates the

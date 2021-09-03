@@ -59,7 +59,7 @@ def run(prefix="tst_00_mmtbx_building_ligands"):
   mm = dm.get_real_map(map_file)
   model = dm.get_model("%s.pdb"%prefix)
   model.set_crystal_symmetry(mm.crystal_symmetry())
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True)
   # Create map_model_manager
   mmm = iotbx.map_model_manager.map_model_manager(map_manager=mm, model=model)
   # Build ligand

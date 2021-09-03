@@ -1093,7 +1093,7 @@ def run(args,
        original_origin = params.output_origin_grid_units,
        gridding = params.output_unit_cell_grid)
     if mam.map_manager().ncs_object():
-      mam.map_manager().ncs_object().display_all()
+      # mam.map_manager().ncs_object().display_all()
       from scitbx.array_family import flex
       mam.map_manager().ncs_object().set_shift_cart(
         mam.map_manager().shift_cart())

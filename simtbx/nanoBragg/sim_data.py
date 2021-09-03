@@ -9,9 +9,9 @@ from simtbx.nanoBragg import shapetype, nanoBragg
 from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
 from simtbx.nanoBragg.nanoBragg_beam import NBbeam
 from copy import deepcopy
-from scitbx.matrix import sqr
+from scitbx.matrix import sqr, col
 from simtbx.nanoBragg.tst_gaussian_mosaicity2 import run_uniform
-
+import math
 
 def Amatrix_dials2nanoBragg(crystal):
   """
@@ -47,7 +47,7 @@ class SimData:
   def __init__(self, use_default_crystal=False):
     self.detector = SimData.simple_detector(180, 0.1, (512, 512))  # dxtbx detector model
     self.seed = 1  # nanoBragg seed member
-    self.crystal = NBcrystal(init_defaults=use_default_crystal)
+    self.crystal = NBcrystal(use_default_crystal)
     self.add_air = False  # whether to add air in the generate_simulated_image method
     self.Umats_method = 0  # how to generate mosaic rotation umats (can be 0,1,2,3)
     self.add_water = True  # whether to add water in the generate_simulated_image method
@@ -161,7 +161,6 @@ class SimData:
     import scitbx
     from scitbx.matrix import col
     import scitbx.math
-    import math
     UMAT_nm = flex.mat3_double()
     mersenne_twister = flex.mersenne_twister(seed=seed)
     scitbx.random.set_random_seed(norm_dist_seed)
@@ -178,14 +177,83 @@ class SimData:
         UMAT_nm.append(col(scitbx.math.r3_rotation_axis_and_angle_as_matrix(site, -m)))
     return UMAT_nm
 
+  @staticmethod
+  def plot_isotropic_umats(UMAT_nm, mos_spread_deg):
+
+    # analysis of rotation angles
+    from simtbx.nanoBragg.tst_gaussian_mosaicity import check_distributions
+    angle_deg, rot_ax = check_distributions.get_angle_deg_and_axes(UMAT_nm) # in degrees
+    nm_rms_angle = math.sqrt(flex.mean(angle_deg*angle_deg))
+
+    from matplotlib import pyplot as plt
+    fig_angles,axis_angles = plt.subplots(1,1)
+    axis_angles.set_xlabel("rotation (°)")
+    axis_angles.hist(angle_deg,bins=int(math.sqrt(len(UMAT_nm))))
+    axis_angles.set_title(
+    "Histogram of rotation angles\nrms %.4f° expected %.4f°"%(nm_rms_angle, mos_spread_deg))
+
+    # analysis of rotation axes
+    fig, axes = plt.subplots(1, 3,figsize=(10,5))
+    axes[0].plot(rot_ax.parts()[0], rot_ax.parts()[1], "b,") # looking down from the pole
+    axes[0].set_aspect("equal")
+    axes[0].set_title("Rot_ax projected on z")
+    axes[0].set_xlim(-1.1,1.1)
+    axes[0].set_ylim(-1.1,1.1)
+
+    axes[1].plot(rot_ax.parts()[1], rot_ax.parts()[2], "b,") # looking at equator above prime meridian
+    axes[1].set_aspect("equal")
+    axes[1].set_title("Rot_ax projected on x")
+    axes[1].set_xlim(-1.1,1.1)
+    axes[1].set_ylim(-1.1,1.1)
+
+    axes[2].plot(rot_ax.parts()[2], rot_ax.parts()[0], "b,") # looking at equator above 90-deg meridian
+    axes[2].set_aspect("equal")
+    axes[2].set_title("Rot_ax projected on y")
+    axes[2].set_xlim(-1.1,1.1)
+    axes[2].set_ylim(-1.1,1.1)
+
+    # action on unit vectors
+    cube_diag = math.sqrt(1./3) # 0.57735
+    unit_vectors = [(1,0,0), (0,1,0), (0,0,1), (cube_diag, cube_diag, cube_diag)]
+    fig3,axes3 = plt.subplots(1,4,sharey=True,figsize=(15,7))
+    axes3[0].set_ylabel("unit projection")
+    for icol, RLP in enumerate(unit_vectors):
+          RLP = col(RLP)
+          axis = axes3[icol]
+          unit = RLP.normalize()
+          seed = col(unit_vectors[(icol+2)%(len(unit_vectors))])
+          perm2 = unit.cross(seed)
+          perm3 = unit.cross(perm2)
+          a2 = flex.double(); a3 = flex.double()
+          angles_deg = flex.double()
+          for u in UMAT_nm:
+            U = sqr(u)
+            newvec = U * unit
+            angles_deg.append((180./math.pi)*math.acos(newvec.dot(unit)))
+            a2.append(newvec.dot(perm2)); a3.append(newvec.dot(perm3))
+          rms_angle = math.sqrt(flex.mean(angles_deg*angles_deg))
+          axis.plot (a2,a3,'r,')[0]
+          axis.set_aspect("equal")
+          axis_str = "(%5.3f,%5.3f,%5.3f)"%(RLP.elems) if icol==3 else "(%.0f,%.0f,%.0f)"%(RLP.elems)
+          axis.set_title("Transformation of unit vector\n%s\nrms %.4f° expected %.4f°"%(
+            axis_str, rms_angle, math.sqrt(mos_spread_deg*mos_spread_deg*(2/3)))) # Pythagorean thm
+          axis.set_xlabel("unit projection")
+          axis.set_xlim(-0.0005,0.0005)
+          axis.set_ylim(-0.0005,0.0005)
+
+    plt.show()
+
   @property
   def Umats_method(self):
     return self._Umats_method
 
   @Umats_method.setter
   def Umats_method(self, val):
-    if val not in [0, 1, 2, 3, 4]:
-      raise ValueError("Umats method needs to be 0,1,2,3, or 4 (but 4 aint yet supported)")
+    permitted = [0, 1, 2, 3, 4, 5]
+    # 0 is double_random, used for exafel tests
+    # 5 is double_uniform, isotropic method per NKS
+    if val not in permitted:
+      raise ValueError("Umats method needs to be in %s (4 not yet supported)"%permitted)
     self._Umats_method = val
 
   @property
@@ -312,6 +380,7 @@ class SimData:
       self.update_umats(mosaicity, self.crystal.n_mos_domains, crystal)
 
     else:
+      # umat implementation for the exascale api
       self.D.xtal_shape = self.crystal.xtal_shape
       self.update_Fhkl_tuple()
       self.D.Amatrix = Amatrix_dials2nanoBragg(self.crystal.dxtbx_crystal)
@@ -320,13 +389,33 @@ class SimData:
       if len(Nabc) == 1:
         Nabc = Nabc[0], Nabc[0], Nabc[0]
       self.D.Ncells_abc = Nabc
-      # TODO fix for anisotropic
-      self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
-      self.D.mosaic_domains = self.crystal.n_mos_domains
-      mos_blocks = SimData.Umats(self.crystal.mos_spread_deg,
+      if self.umat_maker is None:
+          # initialize the parameterized distribution
+          assert self.crystal.n_mos_domains % 2 == 0
+          from simtbx.nanoBragg.tst_anisotropic_mosaicity import AnisoUmats as AnisoUmats_exa
+          self.umat_maker = AnisoUmats_exa(num_random_samples=2*self.crystal.n_mos_domains)
+      if self.crystal.anisotropic_mos_spread_deg is None:
+        # isotropic case
+        self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
+        self.D.mosaic_domains = self.crystal.n_mos_domains
+        if self.Umats_method == 0: # double_random legacy method, exafel tests
+          Umats = SimData.Umats(self.crystal.mos_spread_deg,
                                     self.crystal.n_mos_domains,
-                                    seed=self.mosaic_seeds[0], norm_dist_seed=self.mosaic_seeds[1])
-      self.D.set_mosaic_blocks(mos_blocks)
+                                    seed=self.mosaic_seeds[0],
+                                    norm_dist_seed=self.mosaic_seeds[1])
+        elif self.Umats_method == 5: # double_uniform isotropic
+          Umats, Umats_prime, Umats_dbl_prime = self.umat_maker.generate_isotropic_Umats(
+          self.crystal.mos_spread_deg, compute_derivs=False)
+        else: raise ValueError("Invalid method for nanoBragg isotropic case")
+        #SimData.plot_isotropic_umats(Umats, self.crystal.mos_spread_deg)
+      else:
+        # anisotropic case with diagonal elements
+        eta_a, eta_b, eta_c = self.crystal.anisotropic_mos_spread_deg
+        eta_tensor = [eta_a, 0, 0, 0, eta_b, 0, 0, 0, eta_c]
+        Umats, Umats_prime, Umats_dbl_prime = self.umat_maker.generate_Umats(
+          eta_tensor, compute_derivs=False, crystal=self.crystal.dxtbx_crystal, how=1)
+      self.exascale_mos_blocks = flex.mat3_double(Umats)
+      self.D.set_mosaic_blocks(self.exascale_mos_blocks)
 
   def update_umats(self, mos_spread, mos_domains, crystal=None):
 

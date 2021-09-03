@@ -150,9 +150,10 @@ def run(args, log=None, ccp4_map=None,
       params.keep_origin=False
     print("Moving origin of input map to (0,0,0)", file=out)
     print("New cell will be: (%.3f, %.3f, %.3f, %.1f, %.1f, %.1f) A " %(
-       cs.unit_cell().parameters()), file=out)
+       m.crystal_symmetry().unit_cell().parameters()), file=out)
     print("New unit cell grid will be: (%s, %s, %s) "%(
       m.map_data().all()), file=out)
+    m.unit_cell_grid = m.map_data().all()
 
   import iotbx.map_manager
   mm = iotbx.map_manager.map_manager(

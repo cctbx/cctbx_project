@@ -176,3 +176,8 @@ cif_rfree_labels.update(ccp4_to_cif_rfree.values())
 
 #   assert (phenix_to_cif_labels_dict == mtz_as_cif.phenix_to_cif_labels_dict)
 #   assert (ccp4_to_cif_labels_dict == mtz_as_cif.ccp4_to_cif_labels_dict)
+def ccp4_label_from_cif(ciflabel):
+  for mtzlabl,ciflabl in ccp4_to_cif_labels_dict.items():
+    if ciflabel==ciflabl:
+      return mtzlabl
+  return None

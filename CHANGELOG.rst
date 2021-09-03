@@ -1,3 +1,14 @@
+2021.7
+======
+
+* Fix pickling error with anomalous_probability_plot
+* Fix bug in reading data CIF file with paired data and sigma arrays of
+  different sizes
+* Added functions for retrieving H-bond types and Van der Waals radii to
+  the model manager class
+* Sequence validation will only use protein or nucleic acid residues for
+  alignment
+
 2021.6
 ======
 

@@ -525,19 +525,15 @@ def get_model_adhoc(crystal_symmetry, ph=None, pdb_inp=None):
   params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
   params.pdb_interpretation.nonbonded_weight=1000
   if(pdb_inp is not None):
-    return mmtbx.model.manager(
-      model_input               = pdb_inp,
-      crystal_symmetry          = crystal_symmetry,
-      pdb_interpretation_params = params,
-      process_input             = True,
-      build_grm                 = True,
-      log                       = null_out())
+    model = mmtbx.model.manager(
+      model_input      = pdb_inp,
+      crystal_symmetry = crystal_symmetry,
+      log              = null_out())
   else:
-    return mmtbx.model.manager(
-       model_input               = None,
-       crystal_symmetry          = crystal_symmetry,
-       pdb_interpretation_params = params,
-       process_input             = True,
-       build_grm                 = True,
-       log                       = null_out(),
-       pdb_hierarchy             = ph)
+    model = mmtbx.model.manager(
+       model_input      = None,
+       crystal_symmetry = crystal_symmetry,
+       log              = null_out(),
+       pdb_hierarchy    = ph)
+  model.process(pdb_interpretation_params=params, make_restraints=True)
+  return model

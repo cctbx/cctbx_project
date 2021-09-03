@@ -235,9 +235,8 @@ def benchmark_structure(pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0):
   params.pdb_interpretation.ramachandran_plot_restraints.inject_emsley8k_into_oldfield_favored=False
   model = mmtbx.model.manager(
       model_input=pdb_in,
-      pdb_interpretation_params=params,
-      log=null_out(),
-      build_grm=True)
+      log=null_out())
+  model.process(pdb_interpretation_params=params, make_restraints=True)
   grm = model.get_restraints_manager().geometry
   pdb_hierarchy = model.get_hierarchy()
   r0 = ramalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
@@ -599,9 +598,8 @@ def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
   pdb_inp = iotbx.pdb.input(file_name=file_name)
   model = mmtbx.model.manager(
       model_input=pdb_inp,
-      pdb_interpretation_params=params,
-      log=null_out(),
-      build_grm=True)
+      log=null_out())
+  model.process(pdb_interpretation_params=params, make_restraints=True)
   grm = model.get_restraints_manager().geometry
   n = grm.ramachandran_manager.get_n_proxies()
   assert n == 53, n
@@ -609,13 +607,12 @@ def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
   # simple selection
   model = mmtbx.model.manager(
       model_input=pdb_inp,
-      pdb_interpretation_params=params,
       log=null_out())
   params.pdb_interpretation.ramachandran_plot_restraints.enabled=True
   params.pdb_interpretation.ramachandran_plot_restraints.inject_emsley8k_into_oldfield_favored=False
   params.pdb_interpretation.ramachandran_plot_restraints.selection = "chain A and resid 1:7"
-  model.set_pdb_interpretation_params(params)
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True,
+    pdb_interpretation_params=params)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
   assert nprox == 5, ""+\
@@ -623,13 +620,12 @@ def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
   # 7 residues: there are insertion codes
   model = mmtbx.model.manager(
       model_input=pdb_inp,
-      pdb_interpretation_params=params,
       log=null_out())
   params.pdb_interpretation.ramachandran_plot_restraints.enabled=True
   params.pdb_interpretation.ramachandran_plot_restraints.inject_emsley8k_into_oldfield_favored=False
   params.pdb_interpretation.ramachandran_plot_restraints.selection ="chain A and resid 27:28"
-  model.set_pdb_interpretation_params(params)
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True,
+    pdb_interpretation_params=params)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
   assert nprox == 5, ""+\
@@ -648,9 +644,8 @@ def exercise_allowed_outliers():
   pdb_inp = iotbx.pdb.input(file_name=file_name)
   model = mmtbx.model.manager(
       model_input=pdb_inp,
-      pdb_interpretation_params=params,
-      log=null_out(),
-      build_grm=True)
+      log=null_out())
+  model.process(pdb_interpretation_params=params, make_restraints=True)
   grm = model.get_restraints_manager().geometry
   assert grm.ramachandran_manager.get_n_proxies() == 170, grm.ramachandran_manager.get_n_proxies()
   full_proxies_iseqs = list(tuple(x.get_i_seqs()) for x in grm.ramachandran_manager._oldfield_proxies)
@@ -660,10 +655,9 @@ def exercise_allowed_outliers():
 
   model = mmtbx.model.manager(
       model_input=pdb_inp,
-      pdb_interpretation_params=params,
       log=null_out())
-  model.set_pdb_interpretation_params(params)
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True,
+    pdb_interpretation_params=params)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
   # print "without outliers", nprox
@@ -683,13 +677,12 @@ def exercise_allowed_outliers():
 
   model = mmtbx.model.manager(
       model_input=pdb_inp,
-      pdb_interpretation_params=params,
       log=null_out())
   params.pdb_interpretation.ramachandran_plot_restraints.favored="oldfield"
   params.pdb_interpretation.ramachandran_plot_restraints.allowed=None
   params.pdb_interpretation.ramachandran_plot_restraints.outlier="oldfield"
-  model.set_pdb_interpretation_params(params)
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True,
+    pdb_interpretation_params=params)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
   # print "without allowed", nprox
@@ -711,10 +704,9 @@ def exercise_allowed_outliers():
 
   model = mmtbx.model.manager(
       model_input=pdb_inp,
-      pdb_interpretation_params=params,
       log=null_out())
-  model.set_pdb_interpretation_params(params)
-  model.process_input_model(make_restraints=True)
+  model.process(make_restraints=True,
+    pdb_interpretation_params=params)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
   # print "without both", nprox
@@ -750,9 +742,8 @@ def exercise_allowed_outliers_emsley_filling():
   pdb_inp = iotbx.pdb.input(file_name=file_name)
   model = mmtbx.model.manager(
       model_input=pdb_inp,
-      pdb_interpretation_params=params,
-      log=null_out(),
-      build_grm=True)
+      log=null_out())
+  model.process(pdb_interpretation_params=params, make_restraints=True)
   grm = model.get_restraints_manager().geometry
   assert grm.ramachandran_manager.get_n_proxies() == 167
   assert grm.ramachandran_manager.get_n_oldfield_proxies() == 164
@@ -761,11 +752,16 @@ def exercise_allowed_outliers_emsley_filling():
   params.pdb_interpretation.ramachandran_plot_restraints.favored="oldfield"
   params.pdb_interpretation.ramachandran_plot_restraints.allowed=None
   params.pdb_interpretation.ramachandran_plot_restraints.outlier=None
-  model.set_pdb_interpretation_params(params)
-  model.process_input_model(make_restraints=True)
+
+  pdb_inp = iotbx.pdb.input(file_name=file_name)
+  model = mmtbx.model.manager(
+      model_input=pdb_inp,
+      log=null_out())
+  model.process(make_restraints=True,
+    pdb_interpretation_params=params)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
-  assert nprox == 164
+  assert nprox == 164, nprox
   assert grm.ramachandran_manager.get_n_oldfield_proxies() == 164
   assert grm.ramachandran_manager.get_n_emsley_proxies() == 0
 
@@ -861,9 +857,8 @@ ATOM    537  CB  GLU B   3       7.115  11.041  22.731  1.00 20.00           C
     pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
     model = mmtbx.model.manager(
         model_input=pdb_inp,
-        pdb_interpretation_params=params,
-        log=null_out(),
-        build_grm=True)
+        log=null_out())
+    model.process(pdb_interpretation_params=params, make_restraints=True)
     grm = model.get_restraints_manager().geometry
     nprox = grm.ramachandran_manager.get_n_proxies()
     assert nprox == correct_nprox, ""+\

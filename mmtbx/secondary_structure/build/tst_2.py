@@ -1070,8 +1070,8 @@ HELIX    1   1 ALA A    1  ALA A   20  1                                  20
   pdb_inp = iotbx.pdb.input(source_info=None,
         lines=h.as_pdb_string())
   model = mmtbx.model.manager(
-      model_input = pdb_inp,
-      build_grm=True)
+      model_input = pdb_inp)
+  model.process(make_restraints=True)
   model.set_ss_annotation(ann)
   # test_h = pdb_inp.construct_hierarchy()
   for i in range(3):
@@ -1101,8 +1101,8 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
     lines=tst_00_start_lines)
   ann = ioss.annotation.from_records(records=h_records.split('\n'))
   model = mmtbx.model.manager(
-      model_input = pdb_inp,
-      build_grm = True)
+      model_input = pdb_inp)
+  model.process(make_restraints=True)
   model.set_ss_annotation(ann)
   d1 = get_distances(model.get_hierarchy())
   # model.get_hierarchy().write_pdb_file(file_name=prefix+'_initial.pdb')
@@ -1131,8 +1131,8 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
       lines=tst_01_start_lines)
   ann = ioss.annotation.from_records(records=h_records.split('\n'))
   model = mmtbx.model.manager(
-    model_input = pdb_inp,
-    build_grm = True)
+    model_input = pdb_inp)
+  model.process(make_restraints=True)
   model.set_ss_annotation(ann)
 
   d1 = get_distances(model.get_hierarchy(), n_neighbours=20)
@@ -1164,8 +1164,8 @@ SHEET    2  AA 2 CYS A  52  GLY A  57 -1  O  LYS A  53   N  TYR A  46
       lines=tst_02_start_lines)
   ann = ioss.annotation.from_records(records=h_records.split('\n'))
   model = mmtbx.model.manager(
-    model_input = pdb_inp,
-    build_grm = True)
+    model_input = pdb_inp)
+  model.process(make_restraints=True)
   model.set_ss_annotation(ann)
   d1 = get_distances(model.get_hierarchy(), n_neighbours=20)
   # h.write_pdb_file(file_name=prefix+'_initial.pdb')
@@ -1192,8 +1192,8 @@ HELIX   13  13 SER A  466  TYR A  472  1                                   7
   pdb_inp = iotbx.pdb.input(source_info=None, lines=tst_03_start_lines)
   ann = ioss.annotation.from_records(records=h_records.split('\n'))
   model = mmtbx.model.manager(
-    model_input = pdb_inp,
-    build_grm = True)
+    model_input = pdb_inp)
+  model.process(make_restraints=True)
   model.set_ss_annotation(ann)
   # model.get_hierarchy().write_pdb_file(file_name="start.pdb")
   rm = ssb.substitute_ss(
@@ -1222,8 +1222,8 @@ HELIX    1  21 ALA A   21  ALA A   24  1                                  5
   pdb_inp = iotbx.pdb.input(source_info=None, lines=tst_04_start_lines)
   ann = ioss.annotation.from_records(records=h_records.split('\n'))
   model = mmtbx.model.manager(
-    model_input = pdb_inp,
-    build_grm = True)
+    model_input = pdb_inp)
+  model.process(make_restraints=True)
   model.set_ss_annotation(ann)
   # h.write_pdb_file(file_name="%s_start.pdb" % prefix)
   rm = ssb.substitute_ss(

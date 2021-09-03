@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
-from six.moves import range
+from libtbx.test_utils import approx_equal
 
 pdb_str = '''
 CRYST1   35.050   40.500   42.370  90.00  90.00  90.00 P 21 21 21
@@ -23,51 +23,40 @@ HETATM  932  H1  HOH A  63      15.358  25.054  22.012  1.00 10.12           H
 HETATM  933  H2  HOH A  63      14.452  26.173  22.407  1.00 10.12           H
 '''
 
-def get_clashscore(lines):
-  for line in lines:
-    print(line)
-    if line.find('clashscore =')>-1:
-      return float(line.split()[-1])
-    if line.find('Clashscore            =')>-1:
-      return float(line.split()[-1])
+def run_and_get_clashscore(cmd, out):
+  rc = easy_run.fully_buffered(cmd)
+  with open(out, 'r') as fo:
+    for line in fo.readlines():
+      if line.find('clashscore =')>-1:
+        return float(line.split()[-1])
+      if line.find('Clashscore            =')>-1:
+        return float(line.split()[-1])
   assert 0
 
 def run():
-  print('test')
-  f=open('tst_mol_args.pdb', 'w')
-  f.write(pdb_str)
-  f.close()
-  results = {}
-  for keep_hydrogen in range(3):
-    for nuclear in range(2):
-      cmd = 'phenix.clashscore tst_mol_args.pdb'
-      if keep_hydrogen!=2: cmd += ' keep_hydrogen=%(keep_hydrogen)s' % locals()
-      cmd += ' nuclear=%(nuclear)s' % locals()
-      print('CMD',cmd)
-      rc = easy_run.go(cmd)
-      clashscore1 = get_clashscore(rc.stdout_lines)
-      print(clashscore1)
-      results[cmd]=clashscore1
-
-      cmd = 'phenix.molprobity tst_mol_args.pdb'
-      if keep_hydrogen!=2: cmd += ' keep_hydrogen=%(keep_hydrogen)s' % locals()
-      cmd += ' pdb_interpretation.use_neutron_distances=%(nuclear)s' % locals()
-      print('CMD', cmd)
-      rc = easy_run.go(cmd)
-      clashscore2 = get_clashscore(rc.stdout_lines)
-      print(clashscore2)
-      results[cmd]=clashscore2
-
-      print('-'*80)
-      for cmd, c in results.items():
-        print(cmd, c)
-
-      assert clashscore1==clashscore2, 'molprobity does not match clashscore %s %s: %.f != %.f' % (
-        keep_hydrogen,
-        nuclear,
-        clashscore1,
-        clashscore2,
-        )
+  with open('tst_mol_args.pdb', 'w') as fo:
+    fo.write(pdb_str)
+  for keep_hydrogens in [True, False]:
+    for nuclear in [True, False]:
+      cmd1 = " ".join([
+        "phenix.clashscore tst_mol_args.pdb",
+        "keep_hydrogens=%s"%str(keep_hydrogens),
+        "nuclear=%s"%str(nuclear),
+        ">& tst_molprobity_arguments.zlog1"])
+      cmd2 = " ".join([
+        "phenix.molprobity tst_mol_args.pdb",
+        "keep_hydrogens=%s"%str(keep_hydrogens),
+        "pdb_interpretation.use_neutron_distances=%s"%str(nuclear),
+        ">& tst_molprobity_arguments.zlog2"])
+      cs1=run_and_get_clashscore(cmd=cmd1, out="tst_molprobity_arguments.zlog1")
+      cs2=run_and_get_clashscore(cmd=cmd2, out="tst_molprobity_arguments.zlog2")
+      if(0):
+        print()
+        print(cmd1)
+        print(cmd2)
+        print(cs1, cs2)
+        print()
+      assert approx_equal(cs1, cs2, 1.e-3)
 
 if __name__=='__main__':
   run()

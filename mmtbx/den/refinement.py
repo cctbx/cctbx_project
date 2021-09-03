@@ -59,7 +59,7 @@ class manager(object):
     if params.den.optimize:
       grid = den_manager.get_optimization_grid()
       print("Running DEN torsion optimization on %d processors..." % \
-        params.main.nproc, file=log)
+        self.nproc, file=log)
     else:
       grid = [(params.den.gamma, params.den.weight)]
     grid_results = []

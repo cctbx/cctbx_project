@@ -274,12 +274,6 @@ END
   os.remove(pdb_filename)
   os.remove(cif_filename)
 
-  # test pdb_interpretation
-  extract = mmtbx.model.manager.get_default_pdb_interpretation_params()
-  extract.pdb_interpretation.use_neutron_distances = True
-  dm.update_pdb_interpretation_for_model(test_filename, extract)
-  assert dm.get_model(test_filename).restraints_manager is None
-
 # -----------------------------------------------------------------------------
 def test_model_and_restraint():
 
@@ -515,8 +509,8 @@ def test_miller_array_datatype():
 
   # test file server
   fs1 = dm.get_reflection_file_server()
-  fs2 = dm.get_reflection_file_server([data_mtz, data_mtz])
-  assert 2*len(fs1.miller_arrays) == len(fs2.miller_arrays)
+  fs2 = dm.get_reflection_file_server([data_mtz, 'test.mtz'])
+  assert len(fs1.miller_arrays) == len(fs2.miller_arrays)
   cs = crystal.symmetry(
     unit_cell=dm.get_miller_arrays()[0].crystal_symmetry().unit_cell(),
     space_group_symbol='P1')
@@ -524,7 +518,18 @@ def test_miller_array_datatype():
   assert fs.crystal_symmetry.is_similar_symmetry(cs)
   assert not fs.crystal_symmetry.is_similar_symmetry(
     dm.get_miller_arrays()[0].crystal_symmetry())
-  fs = dm.get_reflection_file_server(labels=['I,SIGI,merged'])
+  fs = dm.get_reflection_file_server(labels=[None, ['I,SIGI,merged']])
+  assert len(fs.get_miller_arrays(None)) == len(labels)
+  fs = dm.get_reflection_file_server(labels=[['I,SIGI,merged']])
+  assert len(fs.get_miller_arrays(None)) == 3
+  fs = dm.get_reflection_file_server(labels=[['I,SIGI,merged'], ['label1,SIGlabel1']])
+  assert len(fs.get_miller_arrays(None)) == 2
+  fs = dm.get_reflection_file_server(labels=[['I,SIGI,merged'], ['label2,SIGlabel2']])
+  assert len(fs.get_miller_arrays(None)) == 2
+  fs = dm.get_reflection_file_server(labels=[['I,SIGI,merged'],
+                                             ['label1,SIGlabel1', 'label2,SIGlabel2']])
+  assert len(fs.get_miller_arrays(None)) == 3
+  fs = dm.get_reflection_file_server(labels=[['I,SIGI,merged'], ['I,SIGI,merged']])
   assert len(fs.get_miller_arrays(None)) == 1
   miller_array = fs.get_amplitudes(None, None, True, None, None)
   assert miller_array.info().label_string() == 'I,as_amplitude_array,merged'
@@ -532,12 +537,12 @@ def test_miller_array_datatype():
   for label in dm.get_miller_array_labels():
     dm.set_miller_array_type(label=label, array_type='electron')
   fs = dm.get_reflection_file_server(array_type='x_ray')
-  assert len(fs.get_miller_arrays(None)) == 0
+  assert len(fs.get_miller_arrays(None)) == 2
   fs = dm.get_reflection_file_server(array_type='electron')
   assert len(fs.get_miller_arrays(None)) == 13
   fs = dm.get_reflection_file_server(filenames=[data_mtz],
     labels=[['I,SIGI,merged', 'IPR,SIGIPR,merged']], array_type='neutron')
-  assert len(fs.get_miller_arrays(None)) == 0
+  assert fs is None
   for label in ['I,SIGI,merged', 'IPR,SIGIPR,merged']:
     dm.set_miller_array_type(label=label, array_type='x_ray')
   fs = dm.get_reflection_file_server(filenames=[data_mtz],
@@ -579,7 +584,7 @@ def test_miller_array_datatype():
   fs = new_dm.get_reflection_file_server(array_type='x_ray')
   assert len(fs.get_miller_arrays(None)) == 13
   fs = new_dm.get_reflection_file_server(array_type='electron')
-  assert len(fs.get_miller_arrays(None)) == 0
+  assert fs is None
   os.remove('test.phil')
 
 # -----------------------------------------------------------------------------

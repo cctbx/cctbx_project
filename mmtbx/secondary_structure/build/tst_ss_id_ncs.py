@@ -252,9 +252,9 @@ def exercise():
   pdb_int_params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   pdb_int_params.pdb_interpretation.ncs_search.enabled=True
   model = mmtbx.model.manager(
-    model_input = pdb_inp,
-    pdb_interpretation_params=pdb_int_params,
-    build_grm = True)
+    model_input = pdb_inp)
+  model.process(pdb_interpretation_params=pdb_int_params,
+    make_restraints=True)
   model.setup_ncs_constraints_groups()
   log = StringIO()
   rm = ssb.substitute_ss(

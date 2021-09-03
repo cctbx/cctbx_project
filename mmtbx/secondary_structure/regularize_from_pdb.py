@@ -1016,7 +1016,7 @@ class connected_group:
       overall_start_resno=overall_start_resno-overall_delta_residues
     new_model=merge_hierarchies_from_models(models=models,renumber=True,
       first_residue_number=overall_start_resno,sequences=sequences,
-      chain_id=chain_id,trim_side_chains=True)
+      chain_id=chain_id,trim_side_chains=True,replace_hetatm=True)
     return new_model
 
   def has_insertions_deletions(self):

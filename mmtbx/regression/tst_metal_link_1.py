@@ -100,10 +100,9 @@ def run():
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.automatic_linking.link_metals=True
   m = mmtbx.model.manager(
-    model_input               = pdb_inp,
-    build_grm                 = True,
-    pdb_interpretation_params = params,
-    log                       = null_out())
+    model_input = pdb_inp,
+    log         = null_out())
+  m.process(pdb_interpretation_params=params, make_restraints=True)
   grm = m.get_restraints_manager()
   ph = m.get_hierarchy()
   atoms = list(ph.atoms())

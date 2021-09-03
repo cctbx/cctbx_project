@@ -356,7 +356,7 @@ __global__ void add_background_CUDAKernel(int sources, int nanoBragg_oversample,
     CUDAREAL r_e_sqr, CUDAREAL fluence, CUDAREAL amorphous_molecules,
     float * floatimage);
 
-__global__ void add_background_CUDAKernel(int sources, int nanoBragg_oversample,
+__global__ void add_background_CUDAKernel(int sources, int nanoBragg_oversample, int override_source,
     CUDAREAL pixel_size, int spixels, int fpixels, int detector_thicksteps,
     CUDAREAL detector_thickstep, CUDAREAL detector_attnlen,
     const CUDAREAL * __restrict__ sdet_vector, const CUDAREAL * __restrict__ fdet_vector,
@@ -370,16 +370,20 @@ __global__ void add_background_CUDAKernel(int sources, int nanoBragg_oversample,
     CUDAREAL r_e_sqr, CUDAREAL fluence, CUDAREAL amorphous_molecules,
     float * floatimage)
 {
-    int oversample=-1, override_source=-1; //override features that usually slow things down,
+    int oversample=-1;                     //override features that usually slow things down,
                                            //like oversampling pixels & multiple sources
     int source_start = 0;
+    int orig_sources = sources;
+    int end_sources = sources;
     /* allow user to override automated oversampling decision at call time with arguments */
     if(oversample<=0) oversample = nanoBragg_oversample;
     if(oversample<=0) oversample = 1;
+    bool have_single_source = false;
     if(override_source>=0) {
         /* user-specified source in the argument */
         source_start = override_source;
-        sources = source_start +1;
+        end_sources = source_start +1;
+        have_single_source = true;
     }
     /* make sure we are normalizing with the right number of sub-steps */
     int steps = oversample*oversample;
@@ -435,7 +439,8 @@ __global__ void add_background_CUDAKernel(int sources, int nanoBragg_oversample,
                         }
 
                         /* loop over sources now */
-                        for(int source=source_start;source<sources;++source){
+                        for(int source=source_start; source < end_sources; ++source){
+                            CUDAREAL n_source_scale = (have_single_source) ? orig_sources : __ldg(&source_I[source]);
 
                             /* retrieve stuff from cache */
                             CUDAREAL incident[4];
@@ -443,7 +448,6 @@ __global__ void add_background_CUDAKernel(int sources, int nanoBragg_oversample,
                             incident[2] = -__ldg(&source_Y[source]);
                             incident[3] = -__ldg(&source_Z[source]);
                             CUDAREAL lambda = __ldg(&source_lambda[source]);
-                            CUDAREAL source_fraction = __ldg(&source_I[source]);
                             /* construct the incident beam unit vector while recovering source distance */
                             unitize(incident,incident);
 
@@ -478,7 +482,7 @@ __global__ void add_background_CUDAKernel(int sources, int nanoBragg_oversample,
                             }
 
                             /* accumulate unscaled pixel intensity from this */
-                            Ibg += sign*Fbg*Fbg*polar*omega_pixel*source_fraction*capture_fraction;
+                            Ibg += sign*Fbg*Fbg*polar*omega_pixel*capture_fraction*n_source_scale;
                         } /* end of source loop */
                     } /* end of detector thickness loop */
                 } /* end of sub-pixel y loop */

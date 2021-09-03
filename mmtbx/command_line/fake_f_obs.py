@@ -385,9 +385,9 @@ def run(args, log = sys.stdout):
   if(params.f_obs.f_calc.atomic_model.use_ramachandran_plot_restraints):
     pdbi_params.pdb_interpretation.ramachandran_plot_restraints.enabled=True
   model = mmtbx.model.manager(
-    model_input               = iotbx.pdb.input(file_name = pdb_file_name),
+    model_input = iotbx.pdb.input(file_name = pdb_file_name))
+  model.process(make_restraints=True,
     pdb_interpretation_params = pdbi_params)
-  model.process_input_model(make_restraints=True)
   root = iotbx.pdb.hierarchy.root()
   loop_1(
     params             = params,

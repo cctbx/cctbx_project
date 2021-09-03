@@ -1533,8 +1533,8 @@ def exercise_02(debug=False):
 def exercise_03():
   for pdb_str in [all_aa_all_h, all_aa_all_d]:
     pdb_inp = iotbx.pdb.input(source_info=None, lines=all_aa_all_d)
-    m = mmtbx.model.manager(model_input = pdb_inp, build_grm = True,
-      log=null_out())
+    m = mmtbx.model.manager(model_input = pdb_inp, log=null_out())
+    m.process(make_restraints=True)
     r1 = mmtbx.hydrogens.rotatable(
       pdb_hierarchy      = m.get_hierarchy(),
       mon_lib_srv        = m.get_mon_lib_srv(),

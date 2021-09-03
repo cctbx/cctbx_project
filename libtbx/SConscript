@@ -1381,7 +1381,8 @@ def enable_cuda_if_possible():
                         '--generate-code=arch=compute_72,code=sm_72']
 
     elif cuda_version >= 10 and cuda_version <= 10.2:
-        arch_flags = ['--generate-code=arch=compute_50,code=sm_50',
+        arch_flags = ['--generate-code=arch=compute_35,code=sm_35',
+                        '--generate-code=arch=compute_50,code=sm_50',
                         '--generate-code=arch=compute_52,code=sm_52',
                         '--generate-code=arch=compute_53,code=sm_53',
                         '--generate-code=arch=compute_60,code=sm_60',

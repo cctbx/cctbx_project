@@ -11,15 +11,6 @@ from libtbx import cpp_function_name
 symbol_not_found_pat = re.compile(
   r"[Ss]ymbol[ ]not[ ]found: \s* (\w+) $", re.X | re.M | re.S)
 
-#python_libstdcxx_so = None
-#if (sys.platform.startswith("linux")):
-#  from libtbx import easy_run
-#  for line in easy_run.fully_buffered(
-#                command='/usr/bin/ldd "%s"' % sys.executable).stdout_lines:
-#    if (line.strip().startswith("libstdc++.so")):
-#      python_libstdcxx_so = line.split()[0]
-#      break
-
 def import_ext(name, optional=False):
   components = name.split(".")
   if (len(components) > 1):

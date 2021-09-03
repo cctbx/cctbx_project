@@ -93,10 +93,6 @@ gui
     print('Using sequence(s): {sequence_names}'.format(
       sequence_names=', '.join(self.data_manager.get_sequence_names())))
 
-    # use pdb_interpretation scope from program
-    self.data_manager.update_pdb_interpretation_for_model(
-      self.data_manager.get_default_model_name(), self.params)
-
     # get model
     model = self.data_manager.get_model()
     model.set_log(self.logger)

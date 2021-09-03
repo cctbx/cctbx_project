@@ -1,13 +1,9 @@
 from __future__ import absolute_import, division, print_function
 import pandas as pd
-import pickle
 
 def run(reference_file, test_file):
-  with open(reference_file,"rb") as F:
-    refdata = pickle.load(F)
-
-  with open(test_file,"rb") as F:
-    cosdata = pickle.load(F)
+  refdata = pd.read_pickle(reference_file)
+  cosdata = pd.read_pickle(test_file)
 
   #inner join
   merged_inner = pd.merge(left=refdata, right=cosdata, left_on='experiment', right_on='experiment')

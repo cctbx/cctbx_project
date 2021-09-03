@@ -28,7 +28,7 @@ namespace boost_python { namespace {
   testuple()
   {
     double test = NAN;
-    return boost::python::make_tuple(isnan(test),2,3,4);
+    return boost::python::make_tuple(boost::math::isnan(test),2,3,4);
   }
 
   /* getter/setter functions for convenient python-side members
@@ -1952,7 +1952,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
 
       /* actual run of the background simulation */
       .def("add_background",&nanoBragg::add_background,
-        (arg_("oversample")=-1,arg_("source")=-1),
+        (arg_("oversample")=-1,arg_("override_source")=-1),
        "run the non-Bragg simulation, adding background from speficied amorphous materials")
 
       /* retrieve radial-median filtered average background from the image */

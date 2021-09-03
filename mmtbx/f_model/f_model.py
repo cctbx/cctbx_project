@@ -330,6 +330,7 @@ class manager(manager_mixin):
 
   def __init__(self,
          f_obs                        = None,
+         i_obs                        = None,
          r_free_flags                 = None,
          f_mask                       = None,
          f_part1                      = None,
@@ -390,6 +391,7 @@ class manager(manager_mixin):
         abcd = abcd.complete_array(
           new_data_value=(0,0,0,0), d_min=f_obs.d_min()).common_set(f_obs)
     self._f_obs = f_obs
+    self._i_obs = i_obs
     self._r_free_flags = r_free_flags
     assert type(f_obs) == type(r_free_flags)
     self._hl_coeffs = abcd
@@ -1671,11 +1673,14 @@ class manager(manager_mixin):
     else:
       return self.arrays.hl_coeffs
 
-  def f_obs(self): # XXX CLEAN
+  def f_obs(self):
     if(self.arrays is not None):
       return self.arrays.f_obs
     else:
       return self._f_obs
+
+  def i_obs(self):
+    return self._i_obs
 
   def r_free_flags(self):
       return self._r_free_flags

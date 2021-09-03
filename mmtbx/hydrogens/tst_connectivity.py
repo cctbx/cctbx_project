@@ -42,9 +42,8 @@ def exercise():
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    log         = null_out(),
-    build_grm   = True)
-
+    log         = null_out())
+  model.process(make_restraints=True)
   restraints_manager = model.get_restraints_manager()
   angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
 

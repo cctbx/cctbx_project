@@ -20,7 +20,7 @@ jobs:
 
   - script: |
       cd $(Pipeline.Workspace)
-      python bootstrap.py hot update --builder=xfel --python=38
+      python bootstrap.py hot update --builder=xfel --python=39 --no-boost-src
       cd modules
       git clone https://github.com/nksauter/LS49.git
       git clone https://gitlab.com/cctbx/ls49_big_data.git

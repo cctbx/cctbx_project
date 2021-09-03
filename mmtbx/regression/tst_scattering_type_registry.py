@@ -10,9 +10,9 @@ from libtbx.utils import null_out
 def check_scattering_type_registry():
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   model = mmtbx.model.manager(
-      model_input       = pdb_inp,
-      build_grm         = True,
-      log = null_out())
+    model_input = pdb_inp,
+    log = null_out())
+  model.process(make_restraints=True)
   xrs1 = model.get_xray_structure()
   xrs2 = model.get_hierarchy().extract_xray_structure(
         crystal_symmetry=model.crystal_symmetry())

@@ -96,9 +96,8 @@ END
 
 def get_pdb_inputs(pdb_str):
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str.split('\n'))
-  model = mmtbx.model.manager(
-      model_input = pdb_inp,
-      build_grm = True)
+  model = mmtbx.model.manager(model_input = pdb_inp)
+  model.process(make_restraints=True)
   return group_args(
     ph  = model.get_hierarchy(),
     grm = model.get_restraints_manager(),

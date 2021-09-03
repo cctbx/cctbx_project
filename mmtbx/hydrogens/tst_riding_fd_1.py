@@ -23,9 +23,8 @@ def exercise(pdb_str, eps, use_ideal_bonds_angles):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
             model_input = pdb_inp,
-            build_grm   = True,
             log         = null_out())
-
+  model.process(make_restraints=True)
   geometry_restraints = model.restraints_manager.geometry
   xray_structure = model.get_xray_structure()
 

@@ -97,8 +97,8 @@ def exercise_01():
   pdb_inp = iotbx.pdb.input(source_info=None, file_name=pdb_file_name)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    build_grm = True,
-    log                     = None)
+    log = None)
+  model.process(make_restraints=True)
   ####
   model.add_hydrogens(correct_special_position_tolerance=1.0)
   result = StringIO()

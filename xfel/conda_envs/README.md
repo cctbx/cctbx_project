@@ -24,8 +24,6 @@ $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_e
 $ python bootstrap.py --builder=xfel --use-conda=psana_environment.yml --nproc=64 --python=37 --no-boost-src hot update base
 $ conda activate `pwd`/conda_base # if no conda is availble, first source mc3/etc/profile.d/conda.sh
 $ python bootstrap.py --builder=xfel --use-conda=psana_environment.yml --nproc=64 --python=37 build
-$ mkdir `pwd`/conda_base/lib/hdf5
-$ ln -s `pwd`/conda_base/lib/plugins `pwd`/conda_base/lib/hdf5/plugin # needed until dials 3.4 is released
 $ source build/conda_setpaths.sh
 $ libtbx.python -c "import psana" # Should exit with no output
 ```

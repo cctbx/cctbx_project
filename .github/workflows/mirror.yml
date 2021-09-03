@@ -95,3 +95,4 @@ jobs:
         git rev-parse HEAD
         git status
         git push mirror HEAD:master
+      continue-on-error: true

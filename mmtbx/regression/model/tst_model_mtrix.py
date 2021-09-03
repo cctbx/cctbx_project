@@ -57,9 +57,9 @@ def exercise_1():
   inp = iotbx.pdb.input(source_info=None, lines=pdb_str_1)
   model = mmtbx.model.manager(
       model_input = inp,
-      log = null_out(),
-      build_grm=True)
-  assert model.get_number_of_atoms() == 21
+      log = null_out())
+  model.process(make_restraints=True)
+  assert model.get_number_of_atoms() == 21, model.get_number_of_atoms()
   assert model.get_hierarchy().atoms_size() == 21
   assert model.get_xray_structure().scatterers().size() == 21
   ss = model.get_ss_annotation()
@@ -84,9 +84,8 @@ def exercise_1():
   pdb_int_params.pdb_interpretation.ncs_search.enabled=True
   model = mmtbx.model.manager(
       model_input = inp,
-      pdb_interpretation_params = pdb_int_params,
-      process_input=True,
       log = null_out())
+  model.process(pdb_interpretation_params = pdb_int_params)
   # model.get_xray_structure()
   assert not model.ncs_constraints_present()
   assert model.get_ncs_obj() is not None
@@ -111,9 +110,8 @@ def exercise_2():
   pdb_int_params.pdb_interpretation.ncs_search.enabled=True
   model = mmtbx.model.manager(
       model_input = inp,
-      pdb_interpretation_params = pdb_int_params,
-      process_input=True,
       log = null_out())
+  model.process(pdb_interpretation_params = pdb_int_params)
   # model.get_xray_structure()
   ss = model.get_ss_annotation()
   assert ss.get_n_helices() == 3

@@ -360,8 +360,8 @@ def run(prefix = "tst_model_get_vdw_radii"):
   model = mmtbx.model.manager(
     model_input       = pdb_inp,
     restraint_objects = i.cif_objects,
-    process_input     = True,
     log               = null_out())
+  model.process()
   derived_keys = model.get_vdw_radii()
   # compare with answer
   for atom_name in pdb_inp.atoms().extract_name():

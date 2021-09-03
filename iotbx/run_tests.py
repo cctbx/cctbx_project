@@ -15,7 +15,14 @@ tst_list_base = [
   "$D/regression/tst_map_model_manager_2.py",
   "$D/regression/tst_map_model_manager_3.py",
   "$D/regression/tst_map_model_manager_4.py",
+  "$D/regression/tst_map_model_manager_model_sharpening_5.py",
   "$D/regression/tst_map_model_manager_call_consistency.py",
+  "$D/regression/tst_map_model_manager_external_sharpening_7.py",
+  "$D/regression/tst_map_model_manager_half_map_sharpening_6.py",
+  "$D/regression/tst_map_model_manager_tls_from_map_8.py",
+  "$D/regression/tst_map_tools.py",
+  "$D/regression/tst_patterson.py",
+  "$D/regression/tst_restraints_merge.py",
   "$D/ranges.py",
   "$D/regression/tst_crystal_symmetry_from_any.py",
   "$D/regression/tst_poscar.py",
@@ -126,6 +133,7 @@ tst_list_base = [
   "$D/regression/tst_cif_as_pdb_1atom.py",
   "$D/regression/tst_split_data_cif.py",
   "$D/regression/tst_all_chain_ids.py",
+  "$D/regression/tst_extract_xtal_data.py",
   ]
 
 # failing tests on Windows, Python 2.7
