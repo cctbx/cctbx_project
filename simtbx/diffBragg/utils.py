@@ -679,6 +679,8 @@ def simulator_from_expt_and_params(expt, params=None, oversample=0, device_id=0,
 
     # create nanoBragg crystal
     crystal = NBcrystal()
+    if params is not None and params.refiner.force_symbol is not None:
+        crystal.symbol = params.refiner.force_symbol
     crystal.isotropic_ncells = has_isotropic_ncells
     if params.simulator.crystal.rotXYZ_ucell is not None:
         rotXYZ = params.simulator.crystal.rotXYZ_ucell[:3]
