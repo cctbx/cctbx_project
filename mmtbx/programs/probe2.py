@@ -242,6 +242,14 @@ output
   atoms_are_masters = False
     .type = bool
     .help = Atoms are listed as masters (-element in probe)
+
+  color_by_gap = True
+    .type = bool
+    .help = Assign a color to reported gaps (-atomcolor, -gapcolor, -basecolor in probe)
+
+  default_point_color = "gray"
+    .type = str
+    .help = Default color for output points (-outcolor in probe)
 }
 '''
 
@@ -354,6 +362,37 @@ Note:
         return 'other na'
       else:
         return "nonbase"
+
+# ------------------------------------------------------------------------------
+
+  def _color_for_gap(self, gap, interactionType):
+    '''
+      Report the color associated with a gap (and interaction type).
+      :param gap: Size of the gap in Angstroms.
+      :param interactionType: InteractionType of the dot.
+      :return: Kinemage name of the color associated with the class.
+    '''
+
+    if interactionType == probeExt.InteractionType.HydrogenBond:
+      return "greentint "
+    elif gap > 0.35:
+      return "blue "
+    elif gap > 0.25:
+      return "sky "
+    elif gap > 0.15:
+      return "sea "
+    elif gap > 0.0:
+      return "green "
+    elif gap > -0.1:
+      return "yellowtint "
+    elif gap > -0.2:
+      return "yellow "
+    elif gap > -0.3:
+      return "orange "
+    elif gap > -0.4:
+      return "red "
+    else:
+      return "hotpink "
 
 # ------------------------------------------------------------------------------
 
@@ -604,11 +643,13 @@ Note:
     extraMaster = ''
     pointid = ''
     lastpointid = ''
+    ptmast = ''
     gapNames = ['z','y','x','w','v','u','t','g','r','q','f','F','Q','R','G','T','U','V','W','X','Y','Z']
     # std gapbins scope at least -.5 to +.5, wider if probeRad > 0.25 standard
     gaplimit = int(math.ceil(((2*(max(self.params.probe.radius,0.25)+0.5)/0.05)+2)))
     gapcounts = [0] * gaplimit
-    Lgotgapbin = FalsestrcName = ''
+    maxgapcounts = 0
+    strcName = ''
 
     # Rename contacts as needed
     if self.params.output.merge_contacts:
@@ -650,9 +691,8 @@ Note:
     # Go through all atom types and contact types and report the contacts.
     for i, atomClass in enumerate(self._allAtomClasses):
       for j, interactionType in enumerate(self._interactionTypes):
-        # Write list headers for entries that exist.  Do not write one for weak Hydrogen
-        # bonds if we're not separating them out.
-        print('XXX',len(self._results[atomClass][interactionType]))
+        # Write list headers for types that have entries.  Do not write one for weak Hydrogen
+        # bonds unless we're separating them out.
         if (len(self._results[atomClass][interactionType]) > 0 and
               (self.params.probe.separate_weak_hydrogen_bonds or
                   interactionType != probeExt.InteractionType.WeakHydrogenBond
@@ -673,12 +713,13 @@ Note:
             # Nothing special
             pass
 
+          # Write the header based on the settings above and whether atoms are masters.
           if self.params.output.atoms_are_masters:
             ret += "{} {{x}} color={} master={{{} dots}} master={{{}}}{}{}\n".format(
                     listType,
                     self._color_for_atom_class(atomClass), atomClass, mast[j], extraMaster,
                     lensDots
-                    )
+                   )
           else:
             ret += "{} {{x}} color={} master={{{}}}{}{}\n".format(
                       listType,
@@ -688,8 +729,64 @@ Note:
 
         # Report all of the dots of this type.
         for node in self._results[atomClass][interactionType]:
-          # @todo
-          pass
+          a = node.src
+          t = node.target
+          if self.params.output.bin_gaps:
+            # Include trailing space for a gapbin character (second point master)
+            ptmast = " '{} ' ".format(node.ptmaster)
+          elif node.ptmaster == " ":
+            # Blank means no point master
+            ptmast = ""
+          else:
+            ptmast = " '{}' ".format(node.ptmaster)
+
+          pointid = "{}{}{}{:4d}{}{}".format(a.name, a.parent().altloc, a.parent().resname,
+            a.parent().parent().resseq_as_int(), a.parent().parent().icode,
+            a.parent().parent().parent().id)
+          if pointid != lastpointid:
+            lastpointid = pointid
+            ret += '{{{}}}'.format(pointid)
+          else:
+            ret += '{"}'
+
+          if self.params.output.color_by_gap:
+            if t is not None:
+              color = self._color_for_gap(node.gap, InteractionType)
+              ret += "{}".format(color)
+            else:
+              ret += "{} ".format(self.params.output.default_point_color)
+
+          # Handle gap binning if we're doing it
+          if self.params.output.bin_gaps:
+            Lgotgapbin = False    # until identify which gapbin
+            for k in range(gaplimit):
+              # pt master intervals of 0.05 from -0.5 to +0.5
+              if node.gap < ((k-11.0)/20.0)+0.05:
+                # Replace the fourth character of ptmast with the appropriate gap name
+                ptmast = ptmast[:3]+gapNames[k]+ptmast[4:]
+                gapcounts[k] += 1
+                maxgapcounts = max(gapcounts[k], maxgapcounts)
+                if k < len(gapNames):
+                  Lgotgapbin = True
+                  break
+            if not Lgotgapbin:
+              # assign this node, aka dot, to overflow gapbin
+              ptmast = ptmast[:3]+gapNames[-1]+ptmast[4:]
+              gapcounts[-1] += 1
+
+          if interactionType in [probeExt.InteractionType.SmallOverlap, probeExt.InteractionType.Bump,
+              probeExt.InteractionType.BadBump]:
+            ret += 'P {}{:.3f},{:.3f},{:.3f} {{"}}{} {}{:.3f},{:.3f},{:.3f}\n'.format(
+                      ptmast, node.loc[0], node.loc[1], node.loc[2],
+                      color,
+                      ptmast, node.spike[0], node.spike[1], node.spike[2]
+                    )
+          else: # Contact or H bond
+            ret += "{}{:.3f},{:.3f},{:.3f}\n".format(
+                      ptmast, node.loc[0], node.loc[1], node.loc[2]
+                   )
+
+    #@todo
 
     return ret
 
