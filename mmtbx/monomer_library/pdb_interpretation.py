@@ -140,7 +140,7 @@ restraints_library_str = """
       .help = Use Metal Coordination Library (MCL) \
         for tetrahedral Zn++ and iron-sulfur clusters SF4, FES, F3S, ...
       .style = bold
-    cis_pro_eh99 = False
+    cis_pro_eh99 = True
       .type = bool
       .style = hidden
     omega_cdl = False
