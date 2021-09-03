@@ -164,21 +164,21 @@ void diffBragg_sum_over_steps_cuda(
             gpuErr(cudaMallocManaged(&cp.cu_d_eta_images, db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
             gpuErr(cudaMallocManaged(&cp.cu_d2_eta_images, db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
         }
-        if (db_flags.refine_Umat[0]){
+        if (std::count(db_flags.refine_Umat.begin(), db_flags.refine_Umat.end(), true) > 0){
             gpuErr(cudaMallocManaged(&cp.cu_d_Umat_images, db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL) ));
             gpuErr(cudaMallocManaged(&cp.cu_d2_Umat_images, db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL) ));
         }
-        if (db_flags.refine_Ncells[0]){
+        if (std::count(db_flags.refine_Ncells.begin(), db_flags.refine_Ncells.end(), true) > 0){
             gpuErr(cudaMallocManaged(&cp.cu_d_Ncells_images, db_cu_flags.Npix_to_allocate*6*sizeof(CUDAREAL)));
             gpuErr(cudaMallocManaged(&cp.cu_d2_Ncells_images, db_cu_flags.Npix_to_allocate*6*sizeof(CUDAREAL)));
         }
-        if (db_flags.refine_panel_rot[0])
+        if (std::count(db_flags.refine_panel_rot.begin(), db_flags.refine_panel_rot.end(), true) > 0)
             gpuErr(cudaMallocManaged(&cp.cu_d_panel_rot_images, db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
-        if (db_flags.refine_panel_origin[0])
+        if (std::count(db_flags.refine_panel_origin.begin(), db_flags.refine_panel_origin.end(), true) > 0)
             gpuErr(cudaMallocManaged(&cp.cu_d_panel_orig_images, db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
-        if (db_flags.refine_lambda[0])
+        if (std::count(db_flags.refine_lambda.begin(), db_flags.refine_lambda.end(), true) > 0)
             gpuErr(cudaMallocManaged(&cp.cu_d_lambda_images, db_cu_flags.Npix_to_allocate*2*sizeof(CUDAREAL)));
-        if(db_flags.refine_Bmat[0]){
+        if (std::count(db_flags.refine_Bmat.begin(), db_flags.refine_Bmat.end(), true) > 0){
             gpuErr(cudaMallocManaged(&cp.cu_d_Bmat_images, db_cu_flags.Npix_to_allocate*6*sizeof(CUDAREAL)));
             gpuErr(cudaMallocManaged(&cp.cu_d2_Bmat_images, db_cu_flags.Npix_to_allocate*6*sizeof(CUDAREAL)));
         }

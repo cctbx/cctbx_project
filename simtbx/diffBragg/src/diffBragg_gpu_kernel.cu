@@ -820,8 +820,8 @@ void gpu_sum_over_steps(
                 CUDAREAL value = _scale_term*rot_manager_dI[i_rot];
                 CUDAREAL value2 = _scale_term*rot_manager_dI2[i_rot];
                 int idx = i_rot*Npix_to_model + i_pix;
-                //d_Umat_images[idx] = value;
-                //d2_Umat_images[idx] = value2;
+                d_Umat_images[idx] = value;
+                d2_Umat_images[idx] = value2;
             }
         } // end rot deriv image increment
 
@@ -929,7 +929,7 @@ void gpu_sum_over_steps(
                 CUDAREAL value = _scale_term*pan_orig_manager_dI[i_pan_orig];
                 CUDAREAL value2 = _scale_term*pan_orig_manager_dI2[i_pan_orig];
                 int idx = i_pan_orig*Npix_to_model + i_pix;
-        //        d_panel_orig_images[idx] = value;
+                d_panel_orig_images[idx] = value;
                 //d2_panel_orig_images[idx] = value2;
             }
         }//end panel orig deriv image increment
