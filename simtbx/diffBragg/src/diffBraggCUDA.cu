@@ -456,17 +456,17 @@ void diffBragg_sum_over_steps_cuda(
         for (int i=0; i<3*Npix_to_model; i++)
             d_image.fcell[i] = cp.cu_d_fcell_images[i];
     }
-    if (db_flags.refine_Umat[0]){
+    if (std::count(db_flags.refine_Umat.begin(), db_flags.refine_Umat.end(), true) > 0){
         for (int i=0; i<3*Npix_to_model; i++){
             d_image.Umat[i] = cp.cu_d_Umat_images[i];
             d2_image.Umat[i] = cp.cu_d2_Umat_images[i];
         }
     }
-    if (db_flags.refine_panel_rot[0]){
+    if (std::count(db_flags.refine_panel_rot.begin(), db_flags.refine_panel_rot.end(), true) > 0){
         for (int i=0; i<3*Npix_to_model; i++)
             d_image.panel_rot[i] = cp.cu_d_panel_rot_images[i];
     }
-    if (db_flags.refine_panel_origin[0]){
+    if (std::count(db_flags.refine_panel_origin.begin(), db_flags.refine_panel_origin.end(), true) > 0){
         for (int i=0; i<3*Npix_to_model; i++)
             d_image.panel_orig[i] = cp.cu_d_panel_orig_images[i];
     }
@@ -476,21 +476,19 @@ void diffBragg_sum_over_steps_cuda(
             d2_image.eta[i] = cp.cu_d2_eta_images[i];
         }
     }
-
-
-    if (db_flags.refine_Ncells[0]){
+    if (std::count(db_flags.refine_Ncells.begin(), db_flags.refine_Ncells.end(), true) > 0 || db_flags.refine_Ncells_def){
         for(int i=0; i<6*Npix_to_model; i++){
             d_image.Ncells[i] = cp.cu_d_Ncells_images[i];
             d2_image.Ncells[i] = cp.cu_d2_Ncells_images[i];
         }
     }
-    if (db_flags.refine_Bmat[0]){
+    if (std::count(db_flags.refine_Bmat.begin(), db_flags.refine_Bmat.end(), true) > 0){
         for(int i=0; i<6*Npix_to_model; i++){
             d_image.Bmat[i] = cp.cu_d_Bmat_images[i];
             d2_image.Bmat[i] = cp.cu_d2_Bmat_images[i];
         }
     }
-    if (db_flags.refine_lambda[0]){
+    if (std::count(db_flags.refine_lambda.begin(), db_flags.refine_lambda.end(), true) > 0){
         for(int i=0; i<2*Npix_to_model; i++)
             d_image.lambda[i] = cp.cu_d_lambda_images[i];
     }
