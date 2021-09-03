@@ -1,8 +1,9 @@
+from __future__ import division
 
 import numpy as np
 from simtbx.diffBragg import utils
 from scitbx.matrix import sqr
-from simtbx.diffBragg.refiners.parameters import  RangedParameter
+from simtbx.diffBragg.refiners.parameters import RangedParameter
 
 
 def PAR_from_params(params, experiment, best=None):

@@ -198,12 +198,12 @@ class RefineLauncher:
             LOGGER.info("EVENT: LOADING ROI DATA")
             shot_modeler = hopper_utils.DataModeler(self.params)
             if self.params.refiner.load_data_from_refl:
-                gathered = shot_modeler.GatherFromReflectionTable(expt, refls, sg_symbol=self.symbol) 
-            else: 
+                gathered = shot_modeler.GatherFromReflectionTable(expt, refls, sg_symbol=self.symbol)
+            else:
                 gathered = shot_modeler.GatherFromExperiment(expt, refls, sg_symbol=self.symbol)
             if not gathered:
                 raise("Failed to gather data from experiment %s", exper_name)
-            
+
             if self.params.refiner.gather_dir is not None:
                 gathered_name = os.path.splitext(os.path.basename(exper_name))[0]
                 gathered_name += "_withData.refl"
@@ -254,10 +254,10 @@ class RefineLauncher:
             if self.params.refiner.gather_dir is not None and not self.params.refiner.load_data_from_refl:
                 spec_wave, spec_weights = map(np.array, zip(*shot_spectra))
                 spec_filename = os.path.splitext(os.path.basename(exper_name))[0]
-                spec_filename = os.path.join(self.params.refiner.gather_dir, spec_filename+".lam") 
+                spec_filename = os.path.join(self.params.refiner.gather_dir, spec_filename+".lam")
                 utils.save_spectra_file(spec_filename, spec_wave, spec_weights)
                 LOGGER.info("saved spectra filename %s" % spec_filename)
-            
+
             LOGGER.info("Will simulate %d energy channels" % len(shot_spectra))
 
             if "detz_shift_mm" in list(exper_dataframe):

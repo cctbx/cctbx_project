@@ -24,7 +24,7 @@ help_message = "stage 2 (global) diffBragg refinement"
 
 script_phil = """
 pandas_table = None
-  .type = str 
+  .type = str
   .help = path to an input pandas table (usually output by simtbx.diffBragg.predictions)
 prep_time = 60
   .type = float
