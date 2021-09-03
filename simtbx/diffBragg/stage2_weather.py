@@ -146,28 +146,47 @@ def main(logfiles):
 
 #logfiles10 = glob.glob("10node_3/h37n16-main_stage2.log")
 #logfiles20 = glob.glob("20node_3/h50n01-main_stage2.log")
-#logfiles1 = glob.glob("1per/h34n16-main_stage2.log")
-#out1 = main(logfiles1)
+##logfiles1 = glob.glob("1per/h34n16-main_stage2.log")
+##out1 = main(logfiles1)
 #out10 = main(logfiles10)
 #out20 = main(logfiles20)
-#np.savez("out1", a=out1[0], b=out1[1], c=out1[2])
-#np.savez("out10", a=out10[0], b=out10[1], c=out10[2])
-#np.savez("out20", a=out20[0], b=out20[1], c=out20[2])
-
-
-O = np.load("out10.npz", allow_pickle=True)
-out10 = O['a'][()], O['b'][()], O['c'][()]
+##np.savez("out1", a=out1[0], b=out1[1], c=out1[2])
+##np.savez("out10", a=out10[0], b=out10[1], c=out10[2])
+##np.savez("out20", a=out20[0], b=out20[1], c=out20[2])
+#
+#
+#O = np.load("out10.npz", allow_pickle=True)
+#out10 = O['a'][()], O['b'][()], O['c'][()]
 #O2 = np.load("out20.npz", allow_pickle=True)
 #out20 = O2['a'][()], O2['b'][()], O2['c'][()]
 
-O1 = np.load("out1.npz", allow_pickle=True)
-out20 = O1['a'][()], O1['b'][()], O1['c'][()]
 
-BEFORE = False
+#O1 = np.load("out1.npz", allow_pickle=True)
+#out20 = O1['a'][()], O1['b'][()], O1['c'][()]
+
+#logfiles10 = glob.glob("perl_10node_1per/nid001896-main_stage2.log")
+#out10 = main(logfiles10)
+#np.savez("perl_out10", a=out10[0], b=out10[1], c=out10[2])
+O = np.load("perl_out10.npz", allow_pickle=True)
+out10 = O['a'][()], O['b'][()], O['c'][()]
+
+logfiles15 = glob.glob("perl_15node_1per/nid001245-main_stage2.log")
+out15 = main(logfiles15)
+np.savez("perl_out15", a=out15[0], b=out15[1], c=out15[2])
+O = np.load("perl_out15.npz", allow_pickle=True)
+out15 = O['a'][()], O['b'][()], O['c'][()]
+
+#logfiles20 = glob.glob("perl_20node_1per/nid001124-main_stage2.log")
+#out20 = main(logfiles20)
+#np.savez("perl_out20", a=out20[0], b=out20[1], c=out20[2])
+O = np.load("perl_out20.npz", allow_pickle=True)
+out20 = O['a'][()], O['b'][()], O['c'][()]
+
+BEFORE = True
 if BEFORE:
     major_events = {}
 
-ONE_COMP = True
+ONE_COMP = False
 
 def add_weather_to_ax(ax, main_out):
     ranks, all_delt, collections = main_out
@@ -230,8 +249,9 @@ def add_weather_to_ax(ax, main_out):
             ax.plot([-refine_start,60], [r-0.5, r-0.5], color='k', lw=0.25)
 
     ax.set_facecolor('w') #get_color(171,171,171))
-    ax.set_xlim(-0.1, 42) #-refine_start, 0)
-    #xlim(-refine_start, 0)
+    #ax.set_xlim(-0.1, 100) #-refine_start, 0)
+    print(refine_start, "STARTUPZ!")
+    xlim(-refine_start, 0)
     ax.set_ylim(min(ranks)-0.5, max(ranks)+0.5)
     nranks = len(ranks)
     ax.set_yticklabels(list(map(str, np.arange(nranks)[::3])))
@@ -245,7 +265,7 @@ def add_weather_to_ax(ax, main_out):
 
 fig, (ax1,ax2) = subplots(nrows=2, ncols=1, figsize=(6,3))
 
-add_weather_to_ax(ax1, out10)
+add_weather_to_ax(ax1, out15)
 add_weather_to_ax(ax2, out20)
 #ax2.set_xlabel("startup time (seconds before first iteration)", fontsize=12)
 ax2.set_xlabel("time after first iteration (seconds)", fontsize=12)
@@ -281,8 +301,8 @@ patches_before = [
 subplots_adjust(left=0.08, top=0.97, bottom=0.14, right=0.76, hspace=0.25)
 
 if BEFORE:
-    ax1.set_xlim(-500,0)
-    ax2.set_xlim(-500,0)
+    #ax1.set_xlim(-500,0)
+    #ax2.set_xlim(-500,0)
     ax2.set_xlabel("time before first iteration (seconds)", fontsize=12)
     leg = ax1.legend(handles=patches_before,
                      bbox_to_anchor=(1,-0.13),

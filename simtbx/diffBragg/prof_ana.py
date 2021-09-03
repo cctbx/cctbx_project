@@ -69,19 +69,37 @@ def main(input_glob):
     return ranks, rank_times, setup_times, total_times
 
 #=============================================================
-out10 = main("10node_3/*prof*.log")
-COMPARE_ONE = True
+#out10 = main("10node_3/*prof*.log")
+out10 = main("perl_10node_1per/*prof*.log")
+out15 = main("perl_15node_1per/*prof*.log")
+COMPARE_ONE = False
 if COMPARE_ONE:
     out20 = main("1per/*prof*.log")
 else:
-    out20 = main("20node_3/*prof*.log")
+    #out20 = main("20node_3/*prof*.log")
+    out20 = main("perl_20node_1per/*prof*.log")
 
 #NUM_ITER = 101
-STARTUP_TIME_10 = 493.358889
-STARTUP_TIME_20 = 309.496389
+#STARTUP_TIME_10 = 493.358889
+#STARTUP_TIME_20 = 309.496389
+STARTUP_TIME_10 = 37.28
+STARTUP_TIME_15 = 31.564
+STARTUP_TIME_20 = 28.145
+
+out10_summit = main("10node_1per/*prof*.log")
+#out15_summit = main("perl_15node_1per/*prof*.log")
+out20_summit = main("20node_1per/*prof*.log")
+
+STARTUP_TIME_10_SUMMIT = 169
+STARTUP_TIME_15_SUMMIT = None
+STARTUP_TIME_20_SUMMIT = 156.43
 
 out10 += (STARTUP_TIME_10, 10,)
+out15 += (STARTUP_TIME_15, 15,)
 out20 += (STARTUP_TIME_20, 20,)
+
+out10_summit += (STARTUP_TIME_10_SUMMIT, 10,)
+out20_summit += (STARTUP_TIME_20_SUMMIT, 20,)
 
 colors = [get_color(255,221,113),
           "tomato",
@@ -92,8 +110,6 @@ colors2 = [
     get_color(23,190,207),
     get_color(255,128,14)]
 
-
-
 from pylab import *
 
 fig, (ax1,ax2) = subplots(nrows=2, ncols=1, figsize=(6,4.1))
@@ -103,7 +119,8 @@ def wrap_t(txt, n=22):
 
 def add_bars_to_ax_startup(ax,main_out):
     ranks, rank_times, setup_times, total_times, STARTUP_TIME, NODES = main_out
-    prep_time = 90
+    #prep_time = 90
+    prep_time = 9
     ax.bar(np.array(ranks)+0.5, [prep_time]*len(ranks), color=get_color(162,200,236), width=1,
             label=wrap_t("prep_dataframe (diffBragg): %.1f$\pm$0.0 sec." % prep_time))
 
@@ -196,7 +213,8 @@ def add_bars_to_ax_iters(ax, main_out, NUM_ITER):
 
     total_t = np.mean(list(total_times.values()))/ NUM_ITER
     #ax.hlines(total_t, min(ranks),max(ranks), color='k', ls='--', lw=0.5)
-    ax.text(5, total_t+0.7, s="average iteration time: %.2f sec." % total_t, color='k', fontsize=8, ha='left')
+    #ax.text(5, total_t+0.7, s="average iteration time: %.2f sec." % total_t, color='k', fontsize=8, ha='left')
+    ax.text(5, 8, s="average iteration time: %.2f sec." % total_t, color='k', fontsize=8, ha='left')
     k = get_color(65,68,81)
     other = np.ones(len(ranks))*total_t - bottom
     #bar(r, other, bottom=bottom, width=1, color='lightgray')
@@ -210,12 +228,18 @@ def add_bars_to_ax_iters(ax, main_out, NUM_ITER):
         ax.text(i*18+9-7,total_t-0.5, s="N%02d" % (i+1), fontsize=6, color='#777777', ha='left')
     ax.tick_params(labelsize=8, pad=1)
 
-add_bars_to_ax_iters(ax1,out10, 101)
-add_bars_to_ax_iters(ax2,out20, 102 if COMPARE_ONE else 101)
+NN = 502
+#NN = 101
+add_bars_to_ax_iters(ax1,out10, 502)
+#add_bars_to_ax_iters(ax1, out15, NN)
+add_bars_to_ax_iters(ax2, out10_summit, 101)
+
+#add_bars_to_ax_iters(ax1, out10_summit, NN)
+#add_bars_to_ax_iters(ax2, out20_summit, NN)
 #ax1.set_xticklabels([])
 ax2.set_xlabel("rank", fontsize=12)
 
-ax1.text(-0.11, -0.2, 'seconds', fontsize=12, rotation=90,transform=ax1.transAxes )
+ax1.text(-0.11, -0.2, 'seconds', fontsize=12, rotation=90,transform=ax1.transAxes)
 #fig.set_size_inches((W+0.1*W, H))
 subplots_adjust(left=0.08, top=0.95, bottom=0.1, right=0.76, hspace=0.15)
 #fig.set_size_inches((5.9, 4.1))
