@@ -694,7 +694,7 @@ def split_model_into_compact_units(
    close_distance:  distance between two CA (or P) atoms considered close
                     NOTE: may be useful to double default for P compared to CA
    minimum_domain_length: typical size (CA or P) of the smallest segments to keep
-   minimum_remainder_sequence_length: minimum length of a removed sequence 
+   minimum_remainder_sequence_length: minimum length of a removed sequence
       segment to write out to a new sequence file
    bfactor_min: smallest bfactor for atoms to include in calculations
    bfactor_max: largest bfactor for atoms to include in calculations
@@ -1287,4 +1287,3 @@ if __name__ == "__main__":
       sel = asc1.selection(selection_string)
       m1 = model_info.model.select(sel)
       dm.write_model_file(m1, '%s_%s.pdb' %(output_file_name[:-4],chainid))
-

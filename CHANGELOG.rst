@@ -1,3 +1,10 @@
+2021.8
+======
+
+* Added tools for processing predicted models based on the error estimate
+* Updated list of modified amino and nucleic acids
+* Better handling of sequence files with empty sequences
+
 2021.7
 ======
 
