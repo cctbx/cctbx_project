@@ -351,8 +351,7 @@ def downsample_spectrum(energies, fluences, total_flux=1e12, nbins=100, method=0
     ydata = np.hstack((fluences[:tail], fluences[-tail:]))
     pfit = np.polyfit(xdata, ydata, deg=1)
     baseline = np.polyval(pfit, energies)
-    butter_b, butter_a = signal.butter(filt_order, filt_freq, 'low')
-    denz = signal.filtfilt(butter_b, butter_a, fluences-baseline)
+    denz = signal.filtfilt(*signal.butter(filt_order, filt_freq,'low'), fluences-baseline)
     enbin = np.arange(energies.min(), energies.max(), delta_en)
     fluences, _, _ = binned_statistic(energies, denz, bins=enbin)
     energies = (enbin[1:] + enbin[:-1])*0.5
