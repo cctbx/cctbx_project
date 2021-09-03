@@ -225,8 +225,8 @@ void gpu_sum_over_steps(
         double pan_orig_manager_dI2[3]= {0,0,0};
         double pan_rot_manager_dI[3]= {0,0,0};
         double pan_rot_manager_dI2[3]= {0,0,0};
-        double fcell_manager_dI[3]={0,0,0};
-        double fcell_manager_dI2[3]={0,0,0};
+        double fcell_manager_dI = 0;
+        double fcell_manager_dI2 = 0;
         double eta_manager_dI[3] = {0,0,0};
         double eta_manager_dI2[3] = {0,0,0};
         double lambda_manager_dI[2] = {0,0};
@@ -630,18 +630,18 @@ void gpu_sum_over_steps(
                 CUDAREAL value2=0;
                 if (s_compute_curvatures){
                 //    NOTE if _Fcell >0
-                    value2 = value/_F_cell;
+                    value2 = 2*I0 * texture_scale;
                 }
                 //if (fcell_idx >=0 && fcell_idx <=2){
                 if (s_use_nominal_hkl){
                     if (_h0==nom_h && _k0==nom_k && _l0==nom_l){
-                        fcell_manager_dI[1] += value;
-                        fcell_manager_dI2[1] += value2;
+                        fcell_manager_dI += value;
+                        fcell_manager_dI2 += value2;
                     }
                 }
                 else{
-                    fcell_manager_dI[1] += value;
-                    fcell_manager_dI2[1] += value2;
+                    fcell_manager_dI += value;
+                    fcell_manager_dI2 += value2;
 
                 }
             } // end of fcell man deriv
@@ -870,15 +870,10 @@ void gpu_sum_over_steps(
 
         // update Fcell derivative image
         if(s_refine_fcell){
-            CUDAREAL value = _scale_term*fcell_manager_dI[1];
-            CUDAREAL value2 = _scale_term*fcell_manager_dI2[1];
-            d_fcell_images[Npix_to_model+i_pix] = value;
-            //for(int fcell_idx=0; fcell_idx < 3; fcell_idx++){
-            //    CUDAREAL value = _scale_term*fcell_manager_dI[fcell_idx];
-            //    CUDAREAL value2 = _scale_term*fcell_manager_dI2[fcell_idx];
-            //    d_fcell_images[fcell_idx*Npix_to_model+i_pix] = value;
-            //}
-            //d2_fcell_images[i_pix] = value2;
+            CUDAREAL value = _scale_term*fcell_manager_dI;
+            CUDAREAL value2 = _scale_term*fcell_manager_dI2;
+            d_fcell_images[i_pix] = value;
+            d2_fcell_images[i_pix] = value2;
         }// end Fcell deriv image increment
 
         if (s_refine_fp_fdp){
