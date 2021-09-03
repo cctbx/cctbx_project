@@ -179,7 +179,7 @@ output
     .type = bool
     .help = Separately report worse clashes (-sepworse in probe)
 
-  set_group_name = dots
+  group_name = ""
     .type = str
     .help = Specify the group name (-name in probe)
 
@@ -187,13 +187,17 @@ output
     .type = bool
     .help = Add a master=name line on lists (-dotmaster in probe)
 
+  add_group_line = True
+    .type = bool
+    .help = Add a group line on kinemage output (-nogroup in probe)
+
   add_kinemage_keyword = False
     .type = bool
     .help = Add kinemage 1 to beginning of kin file (-kinemage in probe)
 
   add_lens_keyword = False
     .type = bool
-    .help = Add lens keywoard to kin file (-lens in probe)
+    .help = Add lens keywoard to kin file (-lens, -nolens in probe)
 
   add_group_statement = True
     .type = bool
@@ -210,6 +214,34 @@ output
   group_label = ""
     .type = str
     .help = Label for the surface-dots group (-name, -scsurface, -exposed, -asurface, -access in probe)
+
+  bin_gaps = False
+    .type = bool
+    .help = Bin the gaps (-gapbins in probe)
+
+  merge_contacts = True
+    .type = bool
+    .help = Combine wide and close contacts (True in probe)
+
+  report_hydrogen_bonds = True
+    .type = bool
+    .help = Report hydrogen bonds (-nohbout in probe)
+
+  report_clashes = True
+    .type = bool
+    .help = Report clashes (-noclashout in probe)
+
+  report_vdws = True
+    .type = bool
+    .help = Report van der Waals contects (-novdwout in probe)
+
+  only_report_bad_clashes = False
+    .type = bool
+    .help = Only report bad clashes (-onlybadout in probe)
+
+  atoms_are_masters = False
+    .type = bool
+    .help = Atoms are listed as masters (-element in probe)
 }
 '''
 
@@ -556,6 +588,113 @@ Note:
 
 # ------------------------------------------------------------------------------
 
+  def _writeOutput(self, groupName, masterName):
+    '''
+      Describe summary counts for data of various kinds.
+      :param groupName: Name to give to the group.
+      :param extraString: Name for the master command.
+      :return: String to be added to the output.
+    '''
+
+    ret = ''
+
+    ptm = ' '
+    color = ''
+    mast = self._interactionTypes.copy()
+    extraMaster = ''
+    pointid = ''
+    lastpointid = ''
+    gapNames = ['z','y','x','w','v','u','t','g','r','q','f','F','Q','R','G','T','U','V','W','X','Y','Z']
+    # std gapbins scope at least -.5 to +.5, wider if probeRad > 0.25 standard
+    gaplimit = int(math.ceil(((2*(max(self.params.probe.radius,0.25)+0.5)/0.05)+2)))
+    gapcounts = [0] * gaplimit
+    Lgotgapbin = FalsestrcName = ''
+
+    # Rename contacts as needed
+    if self.params.output.merge_contacts:
+      mast[0] = mast[1] = 'vdw contacts'
+    if self.params.approach == 'surface':
+      mast[1] = 'surface'
+
+    if self.params.output.add_group_name_master_line:
+      extraMaster = ' master={}'.format(masterName)
+
+    ret += "@subgroup dominant {}\n".format(groupName)
+
+    if self.params.approach == 'surface':
+      ret += "@master {}\n".format(mast[1])
+    else:
+      if self.params.output.report_vdws and not self.params.output.only_report_bad_clashes:
+        ret += "@master {}\n".format(mast[0])
+        if not self.params.output.merge_contacts:
+          ret += "@master {}\n".format(mast[1])
+      if self.params.output.report_clashes or self.params.output.only_report_bad_clashes:
+        if not self.params.output.only_report_bad_clashes:
+          ret += "@master {}\n".format(mast[3])
+        ret += "@master {}\n".format(mast[4])
+        if self.params.output.separate_worse_clashes:
+          ret += "@master {}\n".format(mast[5])
+      if self.params.output.report_hydrogen_bonds and not self.params.output.only_report_bad_clashes:
+        ret += "@master {}\n".format(mast[6])
+        if self.params.probe.separate_weak_hydrogen_bonds:
+          ret += "@master {}\n".format(mast[2])
+
+    # Report count legend if any counts are nonzero.
+    # @todo
+
+    # Report binned gap legend if we're binning gaps
+    if self.params.output.bin_gaps:
+      for i in range(len(gapNames)):
+        ret += "@pointmaster '{}' {{gap {:3.2f}}}\n".format(gapNames[i],((i-11.0)/20.0)+0.05)
+
+    # Go through all atom types and contact types and report the contacts.
+    for i, atomClass in enumerate(self._allAtomClasses):
+      for j, interactionType in enumerate(self._interactionTypes):
+        # Write list headers for entries that exist.  Do not write one for weak Hydrogen
+        # bonds if we're not separating them out.
+        print('XXX',len(self._results[atomClass][interactionType]))
+        if (len(self._results[atomClass][interactionType]) > 0 and
+              (self.params.probe.separate_weak_hydrogen_bonds or
+                  interactionType != probeExt.InteractionType.WeakHydrogenBond
+              )
+            ):
+          # The formatting of the header depends on the type
+          # of dot it is and whether atoms are masters.  There is a basic line for each, with addition of
+          # a lens string for some cases.  Some entries are dots and others are vectors.
+          lensDots = ""
+          listType = '@dotlist'
+          if interactionType in [probeExt.InteractionType.WideContact, probeExt.InteractionType.CloseContact]:
+            if self.params.output.add_lens_keyword:
+              lensDots = " lens"
+          elif interactionType in [probeExt.InteractionType.SmallOverlap, probeExt.InteractionType.Bump,
+              probeExt.InteractionType.BadBump]:
+            listType = '@vectorlist'
+          elif interactionType == probeExt.InteractionType.HydrogenBond:
+            # Nothing special
+            pass
+
+          if self.params.output.atoms_are_masters:
+            ret += "{} {{x}} color={} master={{{} dots}} master={{{}}}{}{}\n".format(
+                    listType,
+                    self._color_for_atom_class(atomClass), atomClass, mast[j], extraMaster,
+                    lensDots
+                    )
+          else:
+            ret += "{} {{x}} color={} master={{{}}}{}{}\n".format(
+                      listType,
+                      self._color_for_atom_class(atomClass), mast[j], extraMaster,
+                      lensDots
+                    )
+
+        # Report all of the dots of this type.
+        for node in self._results[atomClass][interactionType]:
+          # @todo
+          pass
+
+    return ret
+
+# ------------------------------------------------------------------------------
+
   def _enumerate(self, groupName, numberSelected, reportSubScores, isSurface, numSkinDots):
     '''
       Describe summary counts for data of various kinds.
@@ -699,11 +838,8 @@ Note:
       self.model = shift_and_box_model(model = self.model)
 
     ################################################################################
-    # Get the list of all atoms in the model
-    atoms = self.model.get_atoms()
-
-    ################################################################################
     # Get the bonding information we'll need to exclude our bonded neighbors.
+    allAtoms = self.model.get_atoms()
     make_sub_header('Compute neighbor lists', out=self.logger)
     try:
       p = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -715,7 +851,6 @@ Note:
           geometry.get_all_bond_proxies(sites_cart = sites_cart)
     except Exception as e:
       raise Sorry("Could not get bonding information for input file: " + str(e))
-    allBondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
     ################################################################################
     # Get the extra atom information needed to score all of the atoms in the model.
@@ -729,7 +864,7 @@ Note:
       print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings, file=self.logger)
 
     # Scale and offset the radius values for all atoms based on our command-line arguments.
-    for a in atoms:
+    for a in allAtoms:
       ei = self._extraAtomInfo.getMappingFor(a)
       ei.vdwRadius = self._scaled_atom_radius(a)
       self._extraAtomInfo.setMappingFor(a, ei)
@@ -742,7 +877,7 @@ Note:
     # Rather than a table indexed by type, we directly write the result.
     # Handle all atoms, not only selected atoms.
     self._atomClasses = {}
-    for a in atoms:
+    for a in allAtoms:
       if a.element != 'H':
         # All elements except hydrogen use their own names.
         self._atomClasses[a] = self._atom_class_for(a)
@@ -756,7 +891,7 @@ Note:
     # time by returning the same answer for atoms that have the same radius.
     dotCache = probeExt.DotSphereCache(self.params.probe.density)
     self._dots = {}
-    for a in atoms:
+    for a in allAtoms:
       self._dots[a] = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius).dots()
 
     ################################################################################
@@ -764,298 +899,343 @@ Note:
     self._inWater = {}
     self._inHet = {}
     hetatm_sel = self.model.selection("hetatm")
-    for a in atoms:
+    for a in allAtoms:
       self._inWater[a] = common_residue_names_get_class(name=a.parent().resname) == "common_water"
       self._inHet[a] = hetatm_sel[a.i_seq]
 
     ################################################################################
     # Get the source selection (and target selection if there is one).  These will be
     # lists of atoms that are in each selection, a subset of the atoms in the model.
+    # If there is no model_id in the selection criteria, these may include atoms from
+    # multiple models in the hierarchy.
     source_sel = self.model.selection(self.params.source_selection)
-    source_atoms = set()
-    for a in atoms:
+    allSourceAtoms = set()
+    for a in allAtoms:
       if source_sel[a.i_seq]:
-        source_atoms.add(a)
+        allSourceAtoms.add(a)
 
-    target_atoms = set()
+    allTargetAtoms = set()
     if self.params.target_selection is not None:
       # If the target selection is "=", that means that it should be the same as the source selection.
       if self.params.target_selection == "=":
-        target_atoms = source_atoms
+        allTargetAtoms = allSourceAtoms
       else:
         target_sel = self.model.selection(self.params.target_selection)
-        for a in atoms:
+        for a in allAtoms:
           if target_sel[a.i_seq]:
-            target_atoms.add(a)
+            allTargetAtoms.add(a)
 
     ################################################################################
-    # Find a list of all of the selected atoms with no duplicates
-    # Get the bonded neighbor lists for the atoms that are in this selection.
-    all_selected_atoms = set()
-    for a in source_atoms:
-      all_selected_atoms.add(a)
-    for a in target_atoms:
-      all_selected_atoms.add(a)
-    bondedNeighborLists = Helpers.getBondedNeighborLists(all_selected_atoms, bondProxies)
+    # We usually have the selection pick a model, but in the case of SELFINTERSECT with one
+    # input file and no model specified in the source and target patterns, we loop over all
+    # models in the file.
+    # We get lists of all atoms present in each hierarchy model that we're running.
+    # This is the one selected when one is selected and it is all of the available ones
+    # when no particular one is selected.
+    atomLists = [ self.model.get_atoms() ]
+    if (self.params.approach == 'self' and
+        'model_id' not in self.params.source_selection and
+        'model_id' not in self.params.target_selection):
+      # Handle the multiple-model case by looping modelID over all models.
+      numModels = self.model.get_hierarchy().models_size()
+      atomLists = []
+      for i in range(numModels):
+        atomLists.push_back( self.model.get_hierarchy().models()[i].atoms() )
 
-    ################################################################################
-    # Build a spatial-query structure that tells which atoms are nearby.
-    # Include all atoms in the structure, not just the ones that have been selected.
-    make_sub_header('Make spatial-query accelerator', out=self.logger)
-    self._spatialQuery = probeExt.SpatialQuery(atoms)
+    for modelIndex, atoms in enumerate(atomLists):
 
-    ################################################################################
-    # Construct a DotScorer object.
-    make_sub_header('Make dot scorer', out=self.logger)
-    self._dotScorer = probeExt.DotScorer(self._extraAtomInfo, self.params.probe.gap_weight,
-      self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight,
-      self.params.probe.uncharged_hydrogen_cutoff, self.params.probe.charged_hydrogen_cutoff,
-      self.params.probe.clash_cutoff, self.params.probe.worse_clash_cutoff,
-      self.params.probe.contact_cutoff)
+      ################################################################################
+      # Get the bonding information we'll need to exclude our bonded neighbors.
+      allBondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
-    ################################################################################
-    # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
-    # the water oxygens as not being donors in atoms that are in the source or target selection.
-    # Also clear the donor status of all N, O, S atoms because we have explicit hydrogen donors.
-    if not self.params.probe.implicit_hydrogens:
-      make_sub_header('Adjusting for explicit hydrogens', out=self.logger)
-      if self.params.output.record_added_hydrogens:
-        outString += '@vectorlist {water H?} color= gray\n'
+      ################################################################################
+      # Get the subset of the source selection and target selection for this hierarchy
+      # model.
+      source_atoms = set()
+      for a in allSourceAtoms:
+        if a in atoms:
+          source_atoms.add(a)
 
-      # Check all atoms
-      for a in all_selected_atoms:
+      target_atoms = set()
+      for a in allTargetAtoms:
+        if a in atoms:
+          source_atoms.add(a)
 
-        # If we are a hydrogen that is bonded to a nitrogen, oxygen, or sulfur then we're a donor.
-        if a.element == 'H':
-          # If we are in a water, make sure our occupancy and temperature (b) factor are acceptable.
-          # If they are not, set the class for the atom to 'ignore'.
-          if self._inWater[a] and (a.occ < self.params.minimum_polar_hydrogen_occupancy or
-              a.b > self.params.maximum_polar_hydrogen_b):
-            self._atomClasses[a] = 'ignore'
-          else:
-            for n in bondedNeighborLists[a]:
-              if n.element in ['N','O','S']:
-                # Copy the value, set the new values, then copy the new one back in.
-                # We are a donor and may have our radius adjusted
-                ei = self._extraAtomInfo.getMappingFor(a)
-                ei.isDonor = True
-                if self.params.use_polar_hydrogens:
-                  ei.vdwRadius = self.params.atom_radius_offset + (
-                    self.params.polar_hydrogen_radius * self.params.atom_radius_scale)
-                self._extraAtomInfo.setMappingFor(a, ei)
+      ################################################################################
+      # Find a list of all of the selected atoms with no duplicates
+      # Get the bonded neighbor lists for the atoms that are in this selection.
+      all_selected_atoms = set()
+      for a in source_atoms:
+        all_selected_atoms.add(a)
+      for a in target_atoms:
+        all_selected_atoms.add(a)
+      bondedNeighborLists = Helpers.getBondedNeighborLists(all_selected_atoms, bondProxies)
 
-                # Set our neigbor to not be a donor, since we are the donor
-                ei = self._extraAtomInfo.getMappingFor(n)
-                ei.isDonor = False
-                self._extraAtomInfo.setMappingFor(n, ei)
+      ################################################################################
+      # Build a spatial-query structure that tells which atoms are nearby.
+      # Include all atoms in the structure, not just the ones that have been selected.
+      make_sub_header('Make spatial-query accelerator', out=self.logger)
+      self._spatialQuery = probeExt.SpatialQuery(atoms)
 
-        # If we are the Oxygen in a water, then add phantom hydrogens to nearby acceptors
-        elif self._inWater[a] and a.element == 'O':
-          # We're an acceptor and not a donor.
-          ei = self._extraAtomInfo.getMappingFor(a)
-          ei.isDonor = False
-          ei.isAcceptor = True
-          self._extraAtomInfo.setMappingFor(a, ei)
+      ################################################################################
+      # Construct a DotScorer object.
+      make_sub_header('Make dot scorer', out=self.logger)
+      self._dotScorer = probeExt.DotScorer(self._extraAtomInfo, self.params.probe.gap_weight,
+        self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight,
+        self.params.probe.uncharged_hydrogen_cutoff, self.params.probe.charged_hydrogen_cutoff,
+        self.params.probe.clash_cutoff, self.params.probe.worse_clash_cutoff,
+        self.params.probe.contact_cutoff)
 
-          # If we don't yet have Hydrogens attached, add phantom hydrogen(s)
-          if len(bondedNeighborLists[a]) == 0:
-            newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, 0.0, True)
-            for p in newPhantoms:
-              # Set all of the information other than the name and element and xyz of the atom based
-              # on our parent; then overwrite the name and element and xyz.
-              newAtom = pdb.hierarchy.atom(a.parent(),a)
-              newAtom.name = " H?"
-              newAtom.element = p.element
-              newAtom.xyz = p.xyz
+      ################################################################################
+      # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
+      # the water oxygens as not being donors in atoms that are in the source or target selection.
+      # Also clear the donor status of all N, O, S atoms because we have explicit hydrogen donors.
+      if not self.params.probe.implicit_hydrogens:
+        make_sub_header('Adjusting for explicit hydrogens', out=self.logger)
+        if self.params.output.record_added_hydrogens:
+          outString += '@vectorlist {water H?} color= gray\n'
 
-              # Add the atom to the spatial-query data structure
-              self._spatialQuery.add(newAtom)
+        # Check all selected atoms
+        for a in all_selected_atoms:
 
-              # Set the extra atom information for this atom
-              rad = self.params.atom_radius_offset + (
-                    self.params.polar_hydrogen_radius * self.params.atom_radius_scale)
-              ei = probeExt.ExtraAtomInfo(rad, False, True, True)
-              self._extraAtomInfo.setMappingFor(newAtom, ei)
+          # If we are a hydrogen that is bonded to a nitrogen, oxygen, or sulfur then we're a donor.
+          if a.element == 'H':
+            # If we are in a water, make sure our occupancy and temperature (b) factor are acceptable.
+            # If they are not, set the class for the atom to 'ignore'.
+            if self._inWater[a] and (a.occ < self.params.minimum_polar_hydrogen_occupancy or
+                a.b > self.params.maximum_polar_hydrogen_b):
+              self._atomClasses[a] = 'ignore'
+            else:
+              for n in bondedNeighborLists[a]:
+                if n.element in ['N','O','S']:
+                  # Copy the value, set the new values, then copy the new one back in.
+                  # We are a donor and may have our radius adjusted
+                  ei = self._extraAtomInfo.getMappingFor(a)
+                  ei.isDonor = True
+                  if self.params.use_polar_hydrogens:
+                    ei.vdwRadius = self.params.atom_radius_offset + (
+                      self.params.polar_hydrogen_radius * self.params.atom_radius_scale)
+                  self._extraAtomInfo.setMappingFor(a, ei)
 
-              # Set the atomClass and other data based on the parent Oxygen.
-              self._atomClasses[newAtom] = self._atom_class_for(a)
-              self._inWater[newAtom] = self._inWater[a]
-              self._inHet[newAtom] = self._inHet[a]
+                  # Set our neigbor to not be a donor, since we are the donor
+                  ei = self._extraAtomInfo.getMappingFor(n)
+                  ei.isDonor = False
+                  self._extraAtomInfo.setMappingFor(n, ei)
 
-              # Mark the new atom as being bonded to the parent atom, and the
-              # parent atom as having to children.  Do this in both sets of bonded
-              # neighbor lists.
-              bondedNeighborLists[newAtom] = [a]
-              bondedNeighborLists[a] = []
-              allBondedNeighborLists[newAtom] = [a]
-              allBondedNeighborLists[a] = []
+          # If we are the Oxygen in a water, then add phantom hydrogens to nearby acceptors
+          elif self._inWater[a] and a.element == 'O':
+            # We're an acceptor and not a donor.
+            ei = self._extraAtomInfo.getMappingFor(a)
+            ei.isDonor = False
+            ei.isAcceptor = True
+            self._extraAtomInfo.setMappingFor(a, ei)
 
-              # Generate source dots for the new atom
-              self._dots[newAtom] = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(newAtom).vdwRadius).dots()
+            # If we don't yet have Hydrogens attached, add phantom hydrogen(s)
+            if len(bondedNeighborLists[a]) == 0:
+              newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, 0.0, True)
+              for p in newPhantoms:
+                # Set all of the information other than the name and element and xyz of the atom based
+                # on our parent; then overwrite the name and element and xyz.
+                newAtom = pdb.hierarchy.atom(a.parent(),a)
+                newAtom.name = " H?"
+                newAtom.element = p.element
+                newAtom.xyz = p.xyz
 
-              # Add the new atom to any selections that the old atom was in.
-              if a in source_atoms:
-                source_atoms.add(newAtom)
-              if a in target_atoms:
-                target_atoms.add(newAtom)
+                # Add the atom to the spatial-query data structure
+                self._spatialQuery.add(newAtom)
 
-              # Report on the creation if we've been asked to
-              if self.params.output.record_added_hydrogens:
+                # Set the extra atom information for this atom
+                rad = self.params.atom_radius_offset + (
+                      self.params.polar_hydrogen_radius * self.params.atom_radius_scale)
+                ei = probeExt.ExtraAtomInfo(rad, False, True, True)
+                self._extraAtomInfo.setMappingFor(newAtom, ei)
 
-                resName = a.parent().resname.strip().upper()
-                resID = str(a.parent().parent().resseq_as_int())
-                chainID = a.parent().parent().parent().id
-                iCode = a.parent().parent().icode
-                alt = a.parent().altloc
-                outString += '{{{:4s}{:1s}{:>3s}{:>2s}{:>4s}{}}}P {:8.3f}{:8.3f}{:8.3f}\n'.format(
-                  a.name, alt, resName, chainID, resID, iCode,
-                  a.xyz[0], a.xyz[1], a.xyz[2])
+                # Set the atomClass and other data based on the parent Oxygen.
+                self._atomClasses[newAtom] = self._atom_class_for(a)
+                self._inWater[newAtom] = self._inWater[a]
+                self._inHet[newAtom] = self._inHet[a]
 
-                resName = newAtom.parent().resname.strip().upper()
-                resID = str(newAtom.parent().parent().resseq_as_int())
-                chainID = newAtom.parent().parent().parent().id
-                iCode = newAtom.parent().parent().icode
-                alt = newAtom.parent().altloc
-                outString += '{{{:4s}{:1s}{:>3s}{:>2s}{:>4s}{}}}L {:8.3f}{:8.3f}{:8.3f}\n'.format(
-                  newAtom.name, alt, resName, chainID, resID, iCode,
-                  newAtom.xyz[0], newAtom.xyz[1], newAtom.xyz[2])
+                # Mark the new atom as being bonded to the parent atom, and the
+                # parent atom as having to children.  Do this in both sets of bonded
+                # neighbor lists.
+                bondedNeighborLists[newAtom] = [a]
+                bondedNeighborLists[a] = []
+                allBondedNeighborLists[newAtom] = [a]
+                allBondedNeighborLists[a] = []
 
-        # Otherwise, if we're an N, O, or S then remove our donor status because
-        # the hydrogens will be the donors
-        elif a.element in ['N','O','S']:
-          ei = self._extraAtomInfo.getMappingFor(a)
-          ei.isDonor = False
-          self._extraAtomInfo.setMappingFor(a, ei)
+                # Generate source dots for the new atom
+                self._dots[newAtom] = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(newAtom).vdwRadius).dots()
 
-    ################################################################################
-    # Re-fill all_selected_atoms
-    all_selected_atoms = source_atoms.union(target_atoms)
+                # Add the new atom to any selections that the old atom was in.
+                if a in source_atoms:
+                  source_atoms.add(newAtom)
+                if a in target_atoms:
+                  target_atoms.add(newAtom)
 
-    ################################################################################
-    # List of all of the keys for atom classes, including all elements and all
-    # nucleic acid types.  These are in the order that the original Probe reported
-    # them.  Based on atomprops.h:INIT_ATOM_TABLE from original probe.
-    self._allAtomClasses = ['ignore',
-                         'H','C','N','O','P','S','As','Se','F','Cl','Br','I',
-                         'Li','Na','Al','K','Mg','Ca','Mn','Fe','Co','Ni','Cu','Zn',
-                         'Rb','Sr','Mo','Ag','Cd','In','Cs','Ba','Au','Hg','Tl','Pb',
-                         'V','Cr','Te','Sm','Gd','Yb','W','Pt','U',
-                         'He','Be','B','Ne','Se','Ar','Sc','Ti','Ga','Ge','Kr','Y','Zr',
-                         'Sn','Sb','Xe','La','Ce','Fr','Ra','Th',
-                         'Nb','Tc','Ru','Rh','Pd','Pr','Nd','Pm','Eu','Tb','Dy','Ho','Er',
-                         'Tm','Lu','Hf','Ta','Re','Os','Ir','Bi','Po','At','Rn','Ac','Pa',
-                         'Np','Pu','Am','Cm','Bk','Cf','Es','Fm','Md','No',
-                         'a','c','t/u','g','other na','nonbase']
+                # Report on the creation if we've been asked to
+                if self.params.output.record_added_hydrogens:
 
-    ################################################################################
-    # Dictionary of dictionaries of lists structure holding lists of DotInfo class objects,
-    # indexed by atom class and then by interaction type.  Fill in empty lists for all of
-    # the possible classes and types.
-    self._interactionTypes = [
-        probeExt.InteractionType.WideContact,
-        probeExt.InteractionType.CloseContact,
-        probeExt.InteractionType.WeakHydrogenBond,
-        probeExt.InteractionType.SmallOverlap,
-        probeExt.InteractionType.Bump,
-        probeExt.InteractionType.BadBump,
-        probeExt.InteractionType.HydrogenBond
-      ]
-    self._results = {}
-    for c in self._allAtomClasses:
-      interactionTypeDicts = {}
-      for i in self._interactionTypes:
-        interactionTypeDicts[i] = []
-      self._results[c] = interactionTypeDicts
+                  resName = a.parent().resname.strip().upper()
+                  resID = str(a.parent().parent().resseq_as_int())
+                  chainID = a.parent().parent().parent().id
+                  iCode = a.parent().parent().icode
+                  alt = a.parent().altloc
+                  outString += '{{{:4s}{:1s}{:>3s}{:>2s}{:>4s}{}}}P {:8.3f}{:8.3f}{:8.3f}\n'.format(
+                    a.name, alt, resName, chainID, resID, iCode,
+                    a.xyz[0], a.xyz[1], a.xyz[2])
 
-    ################################################################################
-    # Do the calculations; which one depends on the approach and other phil parameters.
-    # Append the information to the string that will be written to file.
-    if self.params.approach == 'count_atoms':
-      make_sub_header('Counting atoms', out=self.logger)
-      # Report the number of atoms in the source selection
-      outString += 'atoms selected: '+str(len(source_atoms))+'\n'
+                  resName = newAtom.parent().resname.strip().upper()
+                  resID = str(newAtom.parent().parent().resseq_as_int())
+                  chainID = newAtom.parent().parent().parent().id
+                  iCode = newAtom.parent().parent().icode
+                  alt = newAtom.parent().altloc
+                  outString += '{{{:4s}{:1s}{:>3s}{:>2s}{:>4s}{}}}L {:8.3f}{:8.3f}{:8.3f}\n'.format(
+                    newAtom.name, alt, resName, chainID, resID, iCode,
+                    newAtom.xyz[0], newAtom.xyz[1], newAtom.xyz[2])
 
-    elif self.params.approach == 'surface':
-      make_sub_header('Make surface dots', out=self.logger)
+          # Otherwise, if we're an N, O, or S then remove our donor status because
+          # the hydrogens will be the donors
+          elif a.element in ['N','O','S']:
+            ei = self._extraAtomInfo.getMappingFor(a)
+            ei.isDonor = False
+            self._extraAtomInfo.setMappingFor(a, ei)
 
-      # Produce dots on the surfaces of the selected atoms.
-      maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
-      for src in source_atoms:
-        # Find nearby atoms that might come into contact.  This greatly speeds up the
-        # search for touching atoms.
-        maxRadius = (self._extraAtomInfo.getMappingFor(src).vdwRadius + maxVDWRadius +
-          2 * self.params.probe.radius)
-        nearby = self._spatialQuery.neighbors(src.xyz, 0.001, maxRadius)
+      ################################################################################
+      # Re-fill all_selected_atoms
+      all_selected_atoms = source_atoms.union(target_atoms)
 
-        # Select those that are actually within the contact distance based on their
-        # particular radius.
-        atomList = []
-        for n in nearby:
-          d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
-          if (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
-              self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.radius):
-            atomList.append(n)
+      ################################################################################
+      # List of all of the keys for atom classes, including all elements and all
+      # nucleic acid types.  These are in the order that the original Probe reported
+      # them.  Based on atomprops.h:INIT_ATOM_TABLE from original probe.
+      self._allAtomClasses = ['ignore',
+                           'H','C','N','O','P','S','As','Se','F','Cl','Br','I',
+                           'Li','Na','Al','K','Mg','Ca','Mn','Fe','Co','Ni','Cu','Zn',
+                           'Rb','Sr','Mo','Ag','Cd','In','Cs','Ba','Au','Hg','Tl','Pb',
+                           'V','Cr','Te','Sm','Gd','Yb','W','Pt','U',
+                           'He','Be','B','Ne','Se','Ar','Sc','Ti','Ga','Ge','Kr','Y','Zr',
+                           'Sn','Sb','Xe','La','Ce','Fr','Ra','Th',
+                           'Nb','Tc','Ru','Rh','Pd','Pr','Nd','Pm','Eu','Tb','Dy','Ho','Er',
+                           'Tm','Lu','Hf','Ta','Re','Os','Ir','Bi','Po','At','Rn','Ac','Pa',
+                           'Np','Pu','Am','Cm','Bk','Cf','Es','Fm','Md','No',
+                           'a','c','t/u','g','other na','nonbase']
 
-        # Find out what class of dot we should place for this atom.
-        atomClass = self._atomClasses[src]
+      ################################################################################
+      # Dictionary of dictionaries of lists structure holding lists of DotInfo class objects,
+      # indexed by atom class and then by interaction type.  Fill in empty lists for all of
+      # the possible classes and types.
+      self._interactionTypes = [
+          probeExt.InteractionType.WideContact,
+          probeExt.InteractionType.CloseContact,
+          probeExt.InteractionType.WeakHydrogenBond,
+          probeExt.InteractionType.SmallOverlap,
+          probeExt.InteractionType.Bump,
+          probeExt.InteractionType.BadBump,
+          probeExt.InteractionType.HydrogenBond
+        ]
+      self._results = {}
+      for c in self._allAtomClasses:
+        interactionTypeDicts = {}
+        for i in self._interactionTypes:
+          interactionTypeDicts[i] = []
+        self._results[c] = interactionTypeDicts
 
-        # Generate all of the dots for this atom.
-        self._generate_surface_dots_for(src, atomList)
+      ################################################################################
+      # Do the calculations; which one depends on the approach and other phil parameters.
+      # Append the information to the string that will be written to file.
+      if self.params.approach == 'count_atoms':
+        make_sub_header('Counting atoms', out=self.logger)
+        # Report the number of atoms in the source selection
+        outString += 'atoms selected: '+str(len(source_atoms))+'\n'
 
-      # Count the dots if we've been asked to do so.
-      if self.params.output.count_dots:
-        numSkinDots = self._count_skin_dots(source_atoms, allBondedNeighborLists)
-        name = "dots"
-        if len(self.params.output.group_label) > 0:
-          name = self.params.output.group_label
-        outString += "selection: external\nname: {}\n".format(name)
-        outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
-          self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
-          self.params.atom_radius_offset)
+      elif self.params.approach == 'surface':
+        make_sub_header('Make surface dots', out=self.logger)
 
-        nsel = len(source_atoms)
-        outString += self._enumerate("extern dots", nsel, False, True, numSkinDots)
-        # @todo
+        # Produce dots on the surfaces of the selected atoms.
+        maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
+        for src in source_atoms:
+          # Find nearby atoms that might come into contact.  This greatly speeds up the
+          # search for touching atoms.
+          maxRadius = (self._extraAtomInfo.getMappingFor(src).vdwRadius + maxVDWRadius +
+            2 * self.params.probe.radius)
+          nearby = self._spatialQuery.neighbors(src.xyz, 0.001, maxRadius)
 
-      # Otherwise, produce the dots as output
-      else:
-        # @todo
-        pass
+          # Select those that are actually within the contact distance based on their
+          # particular radius.
+          atomList = []
+          for n in nearby:
+            d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
+            if (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
+                self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.radius):
+              atomList.append(n)
 
-    # @todo
-    else:
+          # Find out what class of dot we should place for this atom.
+          atomClass = self._atomClasses[src]
 
-      # @todo Add Phantom Hydrogens to the ones we consider in cases where we should.
+          # Generate all of the dots for this atom.
+          self._generate_surface_dots_for(src, atomList)
 
-      make_sub_header('Compute Probe Score', out=self.logger)
+        # Count the dots if we've been asked to do so.
+        if self.params.output.count_dots:
+          numSkinDots = self._count_skin_dots(source_atoms, allBondedNeighborLists)
+          name = "dots"
+          if len(self.params.output.group_label) > 0:
+            name = self.params.output.group_label
+          outString += "selection: external\nname: {}\n".format(name)
+          outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
+            self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
+            self.params.atom_radius_offset)
+
+          nsel = len(source_atoms)
+          outString += self._enumerate("extern dots", nsel, False, True, numSkinDots)
+
+        # Otherwise, produce the dots as output
+        else:
+          # @todo Check output format if we allow -OFORMAT, -XVFORMAT or -oneline
+
+          masterName = "dots"
+          if len(self.params.output.group_name) > 0:
+            masterName = self.params.output.group_name
+
+          if self.params.output.add_group_line:
+            outString += "@group dominant {}\n".format(masterName)
+
+          outString += self._writeOutput("extern dots", masterName)
 
       # @todo
-      # Find the radius of each atom in the structure and construct dot spheres for
-      # them. Find the atoms that are bonded to them and add them to an excluded list.
-      # Then compute the score for each of them and report the summed score over the
-      # whole molecule the way that Reduce will.
-      total = 0
-      badBumpTotal = 0
-      for a in atoms:
-        sphere = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius)
+      else:
 
-        # Excluded atoms that are bonded to me or to one of my neightbors.
-        # It has the side effect of excluding myself if I have any neighbors.
-        # Construct as a set to avoid duplicates.
-        exclude = set()
-        for n in allBondedNeighborLists[a]:
-          exclude.add(n)
-          for n2 in allBondedNeighborLists[n]:
-            exclude.add(n2)
-        exclude = list(exclude)
+        # @todo Add Phantom Hydrogens to the ones we consider in cases where we should.
 
-        dots = sphere.dots()
-        res = self._dotScorer.score_dots(a, 1.0, self._spatialQuery, rad*3, self.params.probe.radius,
-              exclude, sphere.dots(), sphere.density(), False)
-        total += res.totalScore()
-        if res.hasBadBump:
-          badBumpTotal += 1
-      outString += 'Summed probe score for molecule = {:.2f} with {} bad bumps'.format(total, badBumpTotal)
+        make_sub_header('Compute Probe Score', out=self.logger)
+
+        # @todo
+        # Find the radius of each atom in the structure and construct dot spheres for
+        # them. Find the atoms that are bonded to them and add them to an excluded list.
+        # Then compute the score for each of them and report the summed score over the
+        # whole molecule the way that Reduce will.
+        total = 0
+        badBumpTotal = 0
+        for a in atoms:
+          sphere = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius)
+
+          # Excluded atoms that are bonded to me or to one of my neightbors.
+          # It has the side effect of excluding myself if I have any neighbors.
+          # Construct as a set to avoid duplicates.
+          exclude = set()
+          for n in allBondedNeighborLists[a]:
+            exclude.add(n)
+            for n2 in allBondedNeighborLists[n]:
+              exclude.add(n2)
+          exclude = list(exclude)
+
+          dots = sphere.dots()
+          res = self._dotScorer.score_dots(a, 1.0, self._spatialQuery, rad*3, self.params.probe.radius,
+                exclude, sphere.dots(), sphere.density(), False)
+          total += res.totalScore()
+          if res.hasBadBump:
+            badBumpTotal += 1
+        outString += 'Summed probe score for molecule = {:.2f} with {} bad bumps'.format(total, badBumpTotal)
 
     base = self.params.output.file_name_prefix
     of = open("%s.kin"%base,"w")
