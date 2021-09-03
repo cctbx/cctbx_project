@@ -47,6 +47,21 @@ struct step_arrays{
 };
 
 
+struct cuda_flags{
+    int device_Id=0;
+    bool update_step_positions;
+    bool update_panels_fasts_slows;
+    bool update_sources;
+    bool update_umats;
+    bool update_dB_mats;
+    bool update_rotmats;
+    bool update_Fhkl;
+    bool update_detector;
+    bool update_refine_flags;
+    bool update_panel_deriv_vecs;
+    int Npix_to_allocate;
+};
+
 struct flags{
     bool track_Fhkl;
     bool printout;
@@ -83,6 +98,7 @@ struct crystal{
     double Na, Nb, Nc, Nd, Ne, Nf;
     double phi0;
     double phistep;
+    double phisteps;
     double fudge;
     double spot_scale;
     int h_range, k_range, l_range;
@@ -122,12 +138,13 @@ struct beam{
     double kahn_factor;
     double *source_X, *source_Y, *source_Z, *source_lambda, *source_I;
     double lambda0,lambda1;
+    int number_of_sources;
 };
 
 struct detector{
     std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dF_vecs;
     std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dS_vecs;
-    double detector_thickstep, detector_thick, detector_attnlen;
+    double detector_thickstep, detector_thicksteps, detector_thick, detector_attnlen;
     std::vector<double> close_distances;
     int oversample;
     double subpixel_size, pixel_size;

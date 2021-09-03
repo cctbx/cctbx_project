@@ -1745,6 +1745,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     db_cryst.dmin = dmin;
     db_cryst.phi0 = phi0;
     db_cryst.phistep = phistep;
+    db_cryst.phisteps = phisteps;
     db_cryst.fudge = fudge;
     db_cryst.spot_scale = spot_scale;
     db_cryst.Na = Na;
@@ -1755,6 +1756,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     db_cryst.Nf = Nf;
 
 
+    db_beam.number_of_sources = sources;
     db_beam.source_X = source_X;
     db_beam.source_Y = source_Y;
     db_beam.source_Z = source_Z;
@@ -1766,6 +1768,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     db_beam.lambda1 = lambda_managers[1]->value;
 
     db_det.detector_thickstep = detector_thickstep;
+    db_det.detector_thicksteps = detector_thicksteps;
     db_det.detector_thick = detector_thick;
     db_det.detector_attnlen = detector_attnlen;
     db_det.subpixel_size = subpixel_size;
@@ -1856,48 +1859,33 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         }
     else { // we are using cuda
 #ifdef NANOBRAGG_HAVE_CUDA
-       diffBragg_loopy(
-           Npix_to_model, panels_fasts_slows_vec,
-           image,
-           first_deriv_imgs, second_deriv_imgs,
-           db_steps.Nsteps, _printout_fpixel, _printout_spixel, _printout, _default_F,
-           oversample, oversample_omega, subpixel_size, pixel_size,
-           detector_thickstep, detector_thick, db_det.close_distances, detector_attnlen,
-           use_lambda_coefficients, lambda_managers[0]->value, lambda_managers[1]->value,
-           eig_U, eig_O, eig_B, RXYZ,
-           dF_vecs,
-           dS_vecs,
-           UMATS_RXYZ,
-           UMATS_RXYZ_prime,
-           UMATS_RXYZ_dbl_prime,
-           RotMats, dRotMats, d2RotMats,
-           UMATS,
-           dB_Mats, dB2_Mats,
-           source_X,  source_Y,  source_Z,  source_lambda,  source_I,
-           polarization,
-           Na, Nb, Nc,
-           Nd, Ne, Nf,
-           phi0, phistep,
-           eig_spindle_vec, _polarization_axis,
-           h_range, k_range, l_range,
-           h_max, h_min, k_max, k_min, l_max, l_min, dmin,
-           fudge, complex_miller, verbose, only_save_omega_kahn,
-           isotropic_ncells, compute_curvatures,
-           db_cryst.FhklLinear, db_cryst.Fhkl2Linear,
-           refine_Bmat, refine_Ncells,refine_Ncells_def,refine_pan_orig, refine_pan_rot,
-           fcell_managers[0]->refine_me, refine_lambda, eta_managers[0]->refine_me, refine_Umat,
-           fp_fdp_managers[0]->refine_me,
-           fdet_vectors, sdet_vectors,
-           odet_vectors, pix0_vectors,
-           nopolar, point_pixel, fluence, r_e_sqr, spot_scale,
-           sources, device_Id,
-           device_pointers,
-           update_step_positions_on_device, update_panels_fasts_slows_on_device,
-           update_sources_on_device, update_umats_on_device,
-           update_dB_matrices_on_device, update_rotmats_on_device,
-           update_Fhkl_on_device, update_detector_on_device, update_refine_flags_on_device,
-           update_panel_deriv_vecs_on_device, detector_thicksteps, phisteps,
-           Npix_to_allocate, no_Nabc_scale, fpfdp, fpfdp_derivs, atom_data, nominal_hkl, TIMERS);
+        db_cu_flags.device_Id = device_Id;
+        db_cu_flags.update_step_positions = update_step_positions_on_device;
+        db_cu_flags.update_panels_fasts_slows = update_panels_fasts_slows_on_device;
+        db_cu_flags.update_sources = update_sources_on_device;
+        db_cu_flags.update_umats = update_umats_on_device;
+        db_cu_flags.update_dB_mats = update_dB_matrices_on_device;
+        db_cu_flags.update_rotmats = update_rotmats_on_device;
+        db_cu_flags.update_Fhkl = update_Fhkl_on_device;
+        db_cu_flags.update_detector = update_detector_on_device;
+        db_cu_flags.update_refine_flags = update_refine_flags_on_device
+        db_cu_flags.update_panel_deriv_vecs = update_panel_deriv_vecs_on_device;
+        db_cu_flags.Npix_to_allocate = Npix_to_allocate;
+
+        diffBragg_sum_over_steps_cuda(
+            Npix_to_model, panels_fasts_slows_vec,
+            image,
+            first_deriv_imgs,
+            second_deriv_imgs,
+            db_steps,
+            db_det,
+            db_beam,
+            db_cryst,
+            db_flags,
+            db_cu_flags,
+            device_pointers,
+            TIMERS)
+
 #else
        // no statement
 #endif

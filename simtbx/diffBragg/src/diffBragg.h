@@ -145,6 +145,7 @@ class diffBragg: public nanoBragg{
   crystal db_cryst;
   beam db_beam;
   flags db_flags;
+  cuda_flags db_cu_flags;
   detector db_det;
 
 
