@@ -46,8 +46,8 @@ void diffBragg_sum_over_steps(
         double pan_orig_manager_dI2[3]= {0,0,0};
         double pan_rot_manager_dI[3]= {0,0,0};
         double pan_rot_manager_dI2[3]= {0,0,0};
-        double fcell_manager_dI[3] = {0,0,0};
-        double fcell_manager_dI2[3] = {0,0,0};
+        double fcell_manager_dI=0;
+        double fcell_manager_dI2=0;
         double eta_manager_dI[3] = {0,0,0};
         double eta_manager_dI2[3] = {0,0,0};
         double lambda_manager_dI[2] = {0,0};
@@ -553,19 +553,19 @@ void diffBragg_sum_over_steps(
                 double value2=0;
                 if (db_flags.compute_curvatures){
                     if (F_cell > 0)
-                        value2 = value/F_cell;
+                        value2 =2*I_noFcell;
                 }
                 //if (f_cell_idx >= 0 && f_cell_idx <= 2){
                 // NOTE use nominal hkl to regulate when gradients are compputed, as h,k,l can drift within a shoebox
                 if (use_nominal_hkl){
                     if (nom_h==h0 && nom_k==k0 && nom_l==l0 ){
-                        fcell_manager_dI[1] += value;
-                        fcell_manager_dI2[1] += value2;
+                        fcell_manager_dI += value;
+                        fcell_manager_dI2 += value2;
                     }
                 }
                 else{
-                    fcell_manager_dI[1] += value;
-                    fcell_manager_dI2[1] += value2;
+                    fcell_manager_dI += value;
+                    fcell_manager_dI2 += value2;
                 }
             } /* end of fcell man deriv */
 
@@ -793,16 +793,10 @@ void diffBragg_sum_over_steps(
 
         /* update Fcell derivative image */
         if(db_flags.refine_fcell){
-            double value = scale_term*fcell_manager_dI[1];
-            double value2 = scale_term*fcell_manager_dI2[1];
-            d_image.fcell[Npix_to_model+ i_pix] = value;
-            d2_image.fcell[Npix_to_model + i_pix] = value2;
-            //for (int i_fcell=0; i_fcell < 3; i_fcell++){
-            //    double value = scale_term*fcell_manager_dI[i_fcell];
-            //    double value2 = scale_term*fcell_manager_dI2[i_fcell];
-            //    d_fcell_images[i_fcell*Npix_to_model+ i_pix] = value;
-            //    d2_fcell_images[i_fcell*Npix_to_model + i_pix] = value2;
-            //}
+            double value = scale_term*fcell_manager_dI;
+            double value2 = scale_term*fcell_manager_dI2;
+            d_image.fcell[i_pix] = value;
+            d2_image.fcell[i_pix] = value2;
         }/* end Fcell deriv image increment */
 
         if (db_flags.refine_fp_fdp){

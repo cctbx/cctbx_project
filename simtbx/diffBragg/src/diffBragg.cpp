@@ -734,8 +734,8 @@ void diffBragg::initialize_managers(){
 
     if (fcell_managers[0]->refine_me){
         fcell_managers[0]->initialize(Npix_total, compute_curvatures);
-        fcell_managers[1]->initialize(Npix_total, compute_curvatures);
-        fcell_managers[2]->initialize(Npix_total, compute_curvatures);
+        //fcell_managers[1]->initialize(Npix_total, compute_curvatures);
+        //fcell_managers[2]->initialize(Npix_total, compute_curvatures);
         update_Fhkl_on_device = true;
         }
 
@@ -899,8 +899,8 @@ void diffBragg::fix(int refine_id){
     }
     else if(refine_id==11){
         fcell_managers[0]->refine_me=false;
-        fcell_managers[1]->refine_me=false;
-        fcell_managers[2]->refine_me=false;
+        //fcell_managers[1]->refine_me=false;
+        //fcell_managers[2]->refine_me=false;
     }
 
     else if (refine_id==12 || refine_id==13){
@@ -979,11 +979,7 @@ void diffBragg::refine(int refine_id){
     }
     else if(refine_id==11){
         fcell_managers[0]->refine_me=true;
-        fcell_managers[1]->refine_me=true;
-        fcell_managers[2]->refine_me=true;
         fcell_managers[0]->initialize(Npix_total, compute_curvatures);
-        fcell_managers[1]->initialize(Npix_total, compute_curvatures);
-        fcell_managers[2]->initialize(Npix_total, compute_curvatures);
         update_Fhkl_on_device = true;
     }
 
@@ -1357,7 +1353,7 @@ af::flex_double diffBragg::get_derivative_pixels(int refine_id){
         return pan_orig->raw_pixels;
         }
     else if (refine_id==11)
-        return fcell_managers[1]->raw_pixels;
+        return fcell_managers[0]->raw_pixels;
     else if (refine_id==12)
         return lambda_managers[0]->raw_pixels;
     else if  (refine_id==13)
@@ -1413,7 +1409,7 @@ af::flex_double diffBragg::get_second_derivative_pixels(int refine_id){
     else if (refine_id==19)
         return eta_managers[0]->raw_pixels2;
     else if (refine_id==11)
-        return fcell_managers[1]->raw_pixels2;
+        return fcell_managers[0]->raw_pixels2;
     else{
        printf("Not suppotrted for refine id %d\n", refine_id);
        SCITBX_ASSERT(false);
@@ -1439,13 +1435,6 @@ boost::python::tuple diffBragg::get_ncells_derivative_pixels(){
     return derivative_pixels;
 }
 
-boost::python::tuple diffBragg::get_fcell_derivative_pixels(){
-    SCITBX_ASSERT(fcell_managers[0]->refine_me);
-    boost::python::tuple derivative_pixels;
-    derivative_pixels = boost::python::make_tuple(fcell_managers[0]->raw_pixels,
-        fcell_managers[1]->raw_pixels, fcell_managers[2]->raw_pixels);
-    return derivative_pixels;
-}
 
 boost::python::tuple diffBragg::get_ncells_def_derivative_pixels(){
     SCITBX_ASSERT(Ncells_managers[3]->refine_me);
@@ -1804,8 +1793,8 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         second_deriv_imgs.Ncells.resize(Npix_to_model*6,0);
     }
     if (fcell_managers[0]->refine_me){
-        first_deriv_imgs.fcell.resize(Npix_to_model*3,0);
-        second_deriv_imgs.fcell.resize(Npix_to_model*3,0);
+        first_deriv_imgs.fcell.resize(Npix_to_model,0);
+        second_deriv_imgs.fcell.resize(Npix_to_model,0);
     }
     if (lambda_managers[0]->refine_me || lambda_managers[1]->refine_me){
         first_deriv_imgs.lambda.resize(Npix_to_model*2,0);
@@ -1940,10 +1929,8 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         }
 
         if (fcell_managers[0]->refine_me){
-            for (int i_fcell=0; i_fcell < 3; i_fcell++){
-                int idx=i_fcell*Npix_to_model + i_pix;
-                fcell_managers[i_fcell]->increment_image(i_pix, first_deriv_imgs.fcell[idx], second_deriv_imgs.fcell[idx], compute_curvatures);
-            }
+            int idx= i_pix;
+            fcell_managers[0]->increment_image(i_pix, first_deriv_imgs.fcell[idx], second_deriv_imgs.fcell[idx], compute_curvatures);
         }
 
         if (eta_managers[0]->refine_me){

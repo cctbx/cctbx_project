@@ -201,7 +201,6 @@ class diffBragg: public nanoBragg{
   void set_ncells_def_values( boost::python::tuple const& values);
   void print_if_refining();
   boost::python::tuple get_ncells_values();
-  boost::python::tuple get_fcell_derivative_pixels();
   double get_value( int refine_id);
   af::flex_double get_derivative_pixels(int refine_id);
   af::flex_double get_second_derivative_pixels(int refine_id);
