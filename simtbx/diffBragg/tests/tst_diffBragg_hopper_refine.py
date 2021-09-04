@@ -1,11 +1,15 @@
 from __future__ import division
 from argparse import ArgumentParser
 parser = ArgumentParser()
+parser.add_argument("--cuda", action="store_true")
 parser.add_argument("--plot", action='store_true')
 parser.add_argument("--curvatures", action='store_true')
 parser.add_argument("--readout", type=float, default=0)
 parser.add_argument("--perturb", choices=["G", "Nabc", "detz_shift", "crystal"], type=str, nargs="+", default=["crystal"] )
 args = parser.parse_args()
+if args.cuda:
+    import os
+    os.environ["DIFFBRAGG_USE_CUDA"]="1"
 
 from dxtbx.model.crystal import Crystal
 from cctbx import uctbx

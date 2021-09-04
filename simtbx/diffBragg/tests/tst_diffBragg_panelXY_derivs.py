@@ -3,10 +3,14 @@ from simtbx.nanoBragg import sim_data
 
 from argparse import ArgumentParser
 parser = ArgumentParser()
+parser.add_argument("--cuda", action="store_true")
 parser.add_argument("--plotimages", action='store_true')
 parser.add_argument("--panel", choices=["x", "y", "z"], default="x", help="which origin coordinate to check")
 parser.add_argument("--plotlines", action='store_true')
 args = parser.parse_args()
+if args.cuda:
+    import os
+    os.environ["DIFFBRAGG_USE_CUDA"]="1"
 SIM = sim_data.SimData(use_default_crystal=True)
 
 det = sim_data.SimData.simple_detector(detector_distance_mm=150, pixelsize_mm=0.1, image_shape=(512, 512))

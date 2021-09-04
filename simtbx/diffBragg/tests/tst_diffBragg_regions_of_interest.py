@@ -4,6 +4,10 @@ def main():
 
     import numpy as np
     from simtbx.diffBragg.utils import get_diffBragg_instance
+    import sys
+    if "--cuda" in sys.argv:
+        import os
+        os.environ["DIFFBRAGG_USE_CUDA"]="1"
 
     D = get_diffBragg_instance()
     D.nopolar = False

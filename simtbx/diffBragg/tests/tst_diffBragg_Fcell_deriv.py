@@ -2,9 +2,13 @@ from __future__ import division
 
 from argparse import ArgumentParser
 parser = ArgumentParser()
+parser.add_argument("--cuda", action="store_true")
 parser.add_argument("--plot", action='store_true')
 parser.add_argument("--curvatures", action='store_true')
 args = parser.parse_args()
+if args.cuda:
+    import os
+    os.environ["DIFFBRAGG_USE_CUDA"]="1"
 
 if args.plot:
     import pylab as plt
