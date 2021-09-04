@@ -181,8 +181,8 @@ init_dev, init_dev_ang = ucell_diff_init[:3].sum(), ucell_diff_init[-3:].sum()
 dev, dev_ang = ucell_diff[:3].sum(), ucell_diff[-3:].sum()
 print("initial ucell dev: %f Angstrom; %f degree" % (init_dev, init_dev_ang))
 print("optimized ucell dev: %f Angstrom; %f degree" % (dev, dev_ang))
-assert dev_ang < init_dev_ang and dev_ang < 0.01
+assert dev_ang < init_dev_ang and dev_ang < 0.025
 if "detz_shift" not in args.perturb:
-    assert dev < init_dev and dev < 0.01
+    assert dev < init_dev and dev < 0.025
 
 print("OK")
