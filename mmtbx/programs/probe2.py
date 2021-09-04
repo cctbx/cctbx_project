@@ -646,7 +646,7 @@ Note:
     ptmast = ''
     gapNames = ['z','y','x','w','v','u','t','g','r','q','f','F','Q','R','G','T','U','V','W','X','Y','Z']
     # std gapbins scope at least -.5 to +.5, wider if probeRad > 0.25 standard
-    gaplimit = int(math.ceil(((2*(max(self.params.probe.radius,0.25)+0.5)/0.05)+2)))
+    gaplimit = int(math.floor(((2*(max(self.params.probe.radius,0.25))+0.5)/0.05)+2))
     gapcounts = [0] * gaplimit
     maxgapcounts = 0
     strcName = ''
@@ -685,7 +685,7 @@ Note:
 
     # Report binned gap legend if we're binning gaps
     if self.params.output.bin_gaps:
-      for i in range(len(gapNames)):
+      for i in range(gaplimit):
         ret += "@pointmaster '{}' {{gap {:3.2f}}}\n".format(gapNames[i],((i-11.0)/20.0)+0.05)
 
     # Go through all atom types and contact types and report the contacts.
@@ -766,7 +766,7 @@ Note:
                 ptmast = ptmast[:3]+gapNames[k]+ptmast[4:]
                 gapcounts[k] += 1
                 maxgapcounts = max(gapcounts[k], maxgapcounts)
-                if k < len(gapNames):
+                if k < gaplimit:
                   Lgotgapbin = True
                   break
             if not Lgotgapbin:
@@ -786,7 +786,26 @@ Note:
                       ptmast, node.loc[0], node.loc[1], node.loc[2]
                    )
 
-    #@todo
+    # Print the gap bins if we have computed them.
+    if self.params.output.bin_gaps:
+      ret += "@text\n"
+      for k in range(gaplimit):
+        ret += "{{{:5.2f}, {:8d} }}\n".format(
+                (((k-11.0)/20.0)+0.05),gapcounts[k]
+                )
+      # kinemage 2
+      ret += "@kinemage 2\n"
+      ret += "@group {gapbins} dominant\n"
+      ret += "@vectorlist {gapbins}\n"
+      for k in range(gaplimit-1):
+        ret += "{{{:5.2f}, {:8d} }} {:5.2f}, {:8f}, 0.00\n".format(
+                 (((k-11.0)/20.0)+0.05), gapcounts[k],
+                 (((k-11.0)/20.0)+0.05)*maxgapcounts, gapcounts[k]
+               )
+      ret += "@labellist {gapbins}\n"
+      ret += "{0} 0.0, -1.0, 0.0\n"
+
+      # @todo Add LXHvector output if it is implemented
 
     return ret
 
