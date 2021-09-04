@@ -2,13 +2,15 @@ from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
 import libtbx.load_env
 
-tst_list = [
+nb_tst_list = [
     "$D/nanoBragg/tst_nanoBragg_minimal.py",
     "$D/nanoBragg/tst_nanoBragg_mosaic.py",
     "$D/nanoBragg/tst_gaussian_mosaicity.py",
     "$D/nanoBragg/tst_gaussian_mosaicity2.py",
     "$D/nanoBragg/tst_nanoBragg_cbf_write.py",
-    "$D/nanoBragg/tst_multisource_background.py",
+    "$D/nanoBragg/tst_multisource_background.py"]
+
+db_tst_list = [
     "$D/diffBragg/tests/tst_diffBragg_Fhkl_complex.py",
     "$D/diffBragg/tests/tst_diffBragg_change_of_basis.py",
     "$D/diffBragg/tests/tst_diffBragg_update_dxtbx_geoms.py",
@@ -44,18 +46,25 @@ tst_list = [
     ["$D/diffBragg/tests/tst_diffBragg_eta_derivs.py", "--aniso 2"],
     ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel x"],
     ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel y"],
-    ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel z"],
+    ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel z"]
     ]
+
+tst_list = nb_tst_list + db_tst_list
 
 OPT = libtbx.env.build_options
 if OPT.enable_cuda:
-
   tst_list_parallel = [
     ["$D/nanoBragg/tst_gauss_argchk.py","GPU"], # tests CPU+GPU, argchk optimization
     "$D/gpu/tst_exafel_api.py",                 # CPU / GPU, polychromatic beam, monolithic detector
     "$D/gpu/tst_gpu_multisource_background.py", # CPU / GPU background comparison
     "$D/kokkos/tst_kokkos_lib.py",                  # GPU in kokkos
   ]
+  for tst in db_tst_list:
+      if isinstance(tst, str):
+          tst = [tst, "--cuda"]
+      else:
+          tst.append("--cuda")
+      tst_list_parallel.append(tst)
 else:
   tst_list.append(
     ["$D/nanoBragg/tst_gauss_argchk.py","CPU"]

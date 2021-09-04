@@ -7,6 +7,10 @@ from dxtbx.model import Crystal
 
 from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
 import numpy as np
+import sys
+if "--cuda" in sys.argv:
+    import os
+    os.environ["DIFFBRAGG_USE_CUDA"]="1"
 
 ucell = (70, 60, 50, 90.0, 110, 90.0)
 symbol = "C121"

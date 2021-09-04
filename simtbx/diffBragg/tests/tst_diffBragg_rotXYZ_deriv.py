@@ -9,6 +9,9 @@ parser.add_argument("--plotimages", action="store_true")
 parser.add_argument("--rotidx", type=int, choices=[0,1,2], required=True)
 parser.add_argument("--randomrotate", type=int, default=None, help="seed for random rotation of Umatrix")
 args = parser.parse_args()
+if args.cuda:
+    import os
+    os.environ["DIFFBRAGG_USE_CUDA"]="1"
 if args.plot:
     import pylab as plt
 from simtbx.nanoBragg.sim_data import SimData

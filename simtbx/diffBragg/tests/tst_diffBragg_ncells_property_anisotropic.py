@@ -5,10 +5,14 @@ from __future__ import division
 
 from argparse import ArgumentParser
 parser = ArgumentParser()
+parser.add_argument("--cuda", action="store_true")
 parser.add_argument("--plot", action='store_true')
 parser.add_argument("--curvatures", action='store_true')
 parser.add_argument("--idx", default=0, help="0=Na, 1=Nb, 2=Nc", type=int, choices=[0,1,2])
 args = parser.parse_args()
+if args.cuda:
+    import os
+    os.environ["DIFFBRAGG_USE_CUDA"]="1"
 
 import numpy as np
 import pylab as plt

@@ -6,6 +6,9 @@ parser.add_argument("--curvatures", action="store_true")
 parser.add_argument("--cuda", action="store_true")
 parser.add_argument("--aniso", type=int, choices=[0,1,2], default=None)
 args = parser.parse_args()
+if args.cuda:
+    import os
+    os.environ["DIFFBRAGG_USE_CUDA"]="1"
 
 from dxtbx.model.crystal import Crystal
 from cctbx import uctbx

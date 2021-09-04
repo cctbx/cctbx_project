@@ -1,5 +1,10 @@
 from __future__ import division
 from simtbx.diffBragg.utils import get_diffBragg_instance
+import sys
+if "--cuda" in sys.argv:
+    import os
+    os.environ["DIFFBRAGG_USE_CUDA"]="1"
+
 import numpy as np
 
 print ("Instantiating diffBragg")

@@ -4,6 +4,11 @@ from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
 from dxtbx.model import Crystal
 from simtbx.diffBragg.utils import  fcalc_from_pdb
 
+import sys
+if "--cuda" in sys.argv:
+    import os
+    os.environ["DIFFBRAGG_USE_CUDA"]="1"
+
 Fcomplex = fcalc_from_pdb(resolution=2, wavelength=1, algorithm='fft', ucell=(79,79,38.90,90,90), symbol="P43212",as_amplitudes=False)
 Famp = fcalc_from_pdb(resolution=2, wavelength=1, algorithm='fft', ucell=(79,79,38.90,90,90), symbol="P43212",as_amplitudes=True)
 
