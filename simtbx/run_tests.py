@@ -61,10 +61,10 @@ if OPT.enable_cuda:
   ]
   for tst in db_tst_list:
       if isinstance(tst, str):
-          tst = [tst, "--cuda"]
+          par_tst = [tst, "--cuda"]
       else:
-          tst.append("--cuda")
-      tst_list_parallel.append(tst)
+          par_tst = tst + ["--cuda"]
+      tst_list_parallel.append(par_tst)
 else:
   tst_list.append(
     ["$D/nanoBragg/tst_gauss_argchk.py","CPU"]
