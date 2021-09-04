@@ -170,7 +170,7 @@ void diffBragg_sum_over_steps_cuda(
             gpuErr(cudaMallocManaged(&cp.cu_d_Umat_images, db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL) ));
             gpuErr(cudaMallocManaged(&cp.cu_d2_Umat_images, db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL) ));
         }
-        if (std::count(db_flags.refine_Ncells.begin(), db_flags.refine_Ncells.end(), true) > 0){
+        if (std::count(db_flags.refine_Ncells.begin(), db_flags.refine_Ncells.end(), true) > 0 || db_flags.refine_Ncells_def){
             gpuErr(cudaMallocManaged(&cp.cu_d_Ncells_images, db_cu_flags.Npix_to_allocate*6*sizeof(CUDAREAL)));
             gpuErr(cudaMallocManaged(&cp.cu_d2_Ncells_images, db_cu_flags.Npix_to_allocate*6*sizeof(CUDAREAL)));
         }
