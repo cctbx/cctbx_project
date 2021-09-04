@@ -74,11 +74,11 @@ void gpu_sum_over_steps(
     __shared__ CUDAREAL two_C;
     __shared__ MAT3 Bmat_realspace;
     __shared__ MAT3 Amat_init;
-    __shared__ CUDAREAL s_Na;
-    __shared__ CUDAREAL s_Nb;
-    __shared__ CUDAREAL s_Nc;
+    //__shared__ CUDAREAL s_Na;
+    //__shared__ CUDAREAL s_Nb;
+    //__shared__ CUDAREAL s_Nc;
     __shared__ CUDAREAL s_NaNbNc_squared;
-    __shared__ int s_h_max, s_k_max, s_l_max, s_h_min, s_k_min, s_l_min, s_h_range, s_k_range, s_l_range;
+    __shared__ int s_h_max, s_k_max, s_l_max, s_h_min, s_k_min, s_l_min, s_k_range, s_l_range;
     __shared__ int s_oversample, s_detector_thicksteps, s_sources, s_mosaic_domains,  s_printout_fpixel,
         s_printout_spixel, s_verbose, s_Nsteps;
     __shared__ CUDAREAL s_detector_thickstep, s_detector_attnlen, s_subpixel_size, s_pixel_size, s_lambda0,
@@ -129,9 +129,9 @@ void gpu_sum_over_steps(
                 Nf,Ne,Nc;
         C = 2 / 0.63 * fudge;
         two_C = 2*C;
-        s_Na = Na;
-        s_Nb = Nb;
-        s_Nc = Nc;
+        //s_Na = Na;
+        //s_Nb = Nb;
+        //s_Nc = Nc;
         s_NaNbNc_squared = (Na*Nb*Nc);
         s_NaNbNc_squared *= s_NaNbNc_squared;
         s_h_max = h_max;
@@ -140,7 +140,7 @@ void gpu_sum_over_steps(
         s_h_min = h_min;
         s_k_min = k_min;
         s_l_min = l_min;
-        s_h_range = h_range;
+        //s_h_range = h_range;
         s_k_range = k_range;
         s_l_range = l_range;
 

@@ -17,13 +17,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
    }
 }
 
-inline cudaError_t cudaFree_NULL(void* devPtr){
-    if (! devPtr==NULL){
-        return cudaFree(devPtr);
-    }
-}
-
-void error_msg(cudaError_t err, char* msg){
+void error_msg(cudaError_t err, const char* msg){
     if (err != cudaSuccess){
         printf("%s: CUDA error message: %s\n", msg, cudaGetErrorString(err));
         exit(err);
@@ -47,7 +41,7 @@ void diffBragg_sum_over_steps_cuda(
 
 
     if (db_cryst.phi0 != 0 || db_cryst.phisteps > 1){
-        printf("PHI (goniometer position) not supported in GPU code: phi0=%f phistep=%f\n", db_cryst.phi0, db_cryst.phisteps, db_cryst.phistep);
+        printf("PHI (goniometer position) not supported in GPU code: phi0=%f phisteps=%d, phistep=%d\n", db_cryst.phi0, db_cryst.phisteps, db_cryst.phistep);
         exit(-1);
     }
 
@@ -76,7 +70,7 @@ void diffBragg_sum_over_steps_cuda(
     gpuErr(cudaSetDevice(db_cu_flags.device_Id));
 
     double time;
-    struct timeval t1, t2, t3 ,t4;
+    struct timeval t1, t2;//, t3 ,t4;
     gettimeofday(&t1, 0);
 
 //  determine if we need to allocate pixels, and how many.
@@ -210,7 +204,6 @@ void diffBragg_sum_over_steps_cuda(
     bool FORCE_COPY=true;
 
 //  END step position
-    int kaladin_stormblessed = 777;
 
 //  BEGIN sources
     if (db_cu_flags.update_sources || ALLOC || FORCE_COPY){
