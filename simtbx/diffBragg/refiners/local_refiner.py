@@ -142,15 +142,6 @@ class LocalRefiner(BaseRefiner):
         self.space_group = sgtbx.space_group(sgtbx.space_group_info(symbol=self.symbol).type().hall_symbol())
         self.I_AM_ROOT = COMM.rank==0
 
-    def print(self, s, *args, **kwargs):
-        """cheap logger"""
-        if self.verbose:
-            if isinstance(s, str):
-                for line in s.split("\n"):
-                    print(line, *args, **kwargs, end=self.print_end)
-            else:
-                print(s, *args, **kwargs, end=self.print_end)
-
     def __call__(self, *args, **kwargs):
         _, _ = self.compute_functional_and_gradients()
         return self.x, self._f, self._g, self.d
@@ -313,7 +304,7 @@ class LocalRefiner(BaseRefiner):
 
     def _MPI_setup_global_params(self):
         if self.I_AM_ROOT:
-            self.print("--2 Setting up global parameters")
+            LOGGER.info("--2 Setting up global parameters")
             if self.output_dir is not None:
                 np.save(os.path.join(self.output_dir, "f_asu_map"), self.asu_from_idx)
 
@@ -321,9 +312,9 @@ class LocalRefiner(BaseRefiner):
 
     def _setup_fcell_params(self):
         if self.refine_Fcell:
-            self.print("----loading fcell data")
+            LOGGER.info("----loading fcell data")
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index)
-            self.print("---- -- counting hkl totes")
+            LOGGER.info("---- -- counting hkl totes")
             LOGGER.info("compute HKL multiplicity")
             self.hkl_frequency = Counter(self.hkl_totals)
             LOGGER.info("save HKL multiplicity")
@@ -555,7 +546,7 @@ class LocalRefiner(BaseRefiner):
         t = time.time()
         out = self._compute_functional_and_gradients()
         t = time.time()-t
-        self.print("TOok %.4f sec to compute functional and grad" % t)
+        LOGGER.info("TOok %.4f sec to compute functional and grad" % t)
         return out
 
     def _compute_functional_and_gradients(self):
@@ -865,11 +856,11 @@ class LocalRefiner(BaseRefiner):
         border = "<><><><><><><><><><><><><><><><>"
         if self.use_curvatures:
 
-            self.print(
+            LOGGER.info(
                 "%s%s%s%s\nTrial%d (%s): Compute functional and gradients Iter %d %s(Using Curvatures)%s\n%s%s%s%s"
                 % (Bcolors.HEADER, border,border,border, self.trial_id + 1, refine_str, self.iterations + 1, Bcolors.OKGREEN, Bcolors.HEADER, border,border,border, Bcolors.ENDC))
         else:
-            self.print("%s%s%s%s\n, Trial%d (%s): Compute functional and gradients Iter %d PosCurva %d\n%s%s%s%s"
+            LOGGER.info("%s%s%s%s\n, Trial%d (%s): Compute functional and gradients Iter %d PosCurva %d\n%s%s%s%s"
                   % (Bcolors.HEADER, border, border, border, self.trial_id + 1, refine_str, self.iterations + 1, self.num_positive_curvatures, border, border,border, Bcolors.ENDC))
 
     def _MPI_save_state_of_refiner(self):
@@ -950,7 +941,7 @@ class LocalRefiner(BaseRefiner):
         if any((self.model_Lambda <= 0).ravel()):
             is_bad = self.model_Lambda <= 0
             self.log_Lambda[is_bad] = 1e-6
-            self.print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL (negative_models=%d)!!!!!!!!!\n<><><><><><><><><>\n" % self.num_negative_model)
+            LOGGER.info("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL (negative_models=%d)!!!!!!!!!\n<><><><><><><><><>\n" % self.num_negative_model)
         #    raise ValueError("model of Bragg spots cannot have negative intensities...")
         self.log_Lambda[self.model_Lambda <= 0] = 0
 
@@ -958,7 +949,7 @@ class LocalRefiner(BaseRefiner):
         v = self.model_Lambda + self.sigma_r ** 2
         v_is_neg = (v <= 0).ravel()
         if any(v_is_neg):
-            self.print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL!!!!!!!!!\n<><><><><><><><><>\n")
+            LOGGER.info("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL!!!!!!!!!\n<><><><><><><><><>\n")
         #    raise ValueError("model of Bragg spots cannot have negative intensities...")
         self.log_v = np.log(v)
         self.log_v[v <= 0] = 0  # but will I ever negative_model ?
