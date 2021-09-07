@@ -56,7 +56,7 @@ def parse_pae_file(pae_json_file):
 
 def domains_from_pae_matrix_networkx(pae_matrix, pae_power=1,
        pae_cutoff=5, graph_resolution=1, weight_by_ca_ca_distance=False,
-       distance_power=1, distance_model_file=None):
+       distance_power=1, distance_model=None):
     '''
     Takes a predicted aligned error (PAE) matrix representing the predicted error in distances between each
     pair of residues in a model, and uses a graph-based community clustering algorithm to partition the model
@@ -70,11 +70,11 @@ def domains_from_pae_matrix_networkx(pae_matrix, pae_power=1,
         * pae_cutoff (optional, default=5): graph edges will only be created for residue pairs with pae<pae_cutoff
         * graph_resolution (optional, default=1): regulates how aggressively the clustering algorithm is. Smaller values
           lead to larger clusters. Value should be larger than zero, and values larger than 5 are unlikely to be useful.
-        * weight_by_ca_ca_distance (optional, default=False): adjust the edge weighting for each residue pair according 
-          to the distance between CA residues. If this is True, then `distance_model_file` must be provided.
+        * weight_by_ca_ca_distance (optional, default=False): adjust the edge weighting for each residue pair according
+          to the distance between CA residues. If this is True, then `distance_model` must be provided.
         * distance_power (optional, default=1): If `weight_by_ca_ca_distance` is True, then edge weights will be multiplied
           by 1/distance**distance_power.
-        * distance_model_file (optional, default=None): A PDB or mmCIF file containing the model corresponding to the PAE
+        * distance_model (optional, default=None): Model corresponding to the PAE
           matrix. Only needed if `weight_by_ca_ca_distances is True.
     Returns: a series of lists, where each list contains the indices of residues belonging to one cluster.
     '''
@@ -87,9 +87,9 @@ def domains_from_pae_matrix_networkx(pae_matrix, pae_power=1,
     weights = 1/pae_matrix**pae_power
 
     if weight_by_ca_ca_distance:
-      if distance_model_file is None:
-        raise Sorry('If weight_by_ca_ca_distance is True, distance_model_file must be provided!')
-      weights *= weights_from_distance_matrix(distance_model_file, distance_power)
+      if distance_model is None:
+        raise Sorry('If weight_by_ca_ca_distance is True, distance_model must be provided!')
+      weights *= weights_from_distance_matrix(distance_model, distance_power)
 
     g = nx.Graph()
     size = weights.shape[0]
@@ -110,7 +110,7 @@ def domains_from_pae_matrix_networkx(pae_matrix, pae_power=1,
 
 def domains_from_pae_matrix_igraph(pae_matrix, pae_power=1, pae_cutoff=5,
       graph_resolution=1, weight_by_ca_ca_distance=False,
-       distance_power=1, distance_model_file=None):
+       distance_power=1, distance_model=None):
     '''
     Takes a predicted aligned error (PAE) matrix representing the predicted error in distances between each
     pair of residues in a model, and uses a graph-based community clustering algorithm to partition the model
@@ -124,11 +124,11 @@ def domains_from_pae_matrix_igraph(pae_matrix, pae_power=1, pae_cutoff=5,
         * pae_cutoff (optional, default=5): graph edges will only be created for residue pairs with pae<pae_cutoff
         * graph_resolution (optional, default=1): regulates how aggressively the clustering algorithm is. Smaller values
           lead to larger clusters. Value should be larger than zero, and values larger than 5 are unlikely to be useful.
-        * weight_by_ca_ca_distance (optional, default=False): adjust the edge weighting for each residue pair according 
-          to the distance between CA residues. If this is True, then `distance_model_file` must be provided.
+        * weight_by_ca_ca_distance (optional, default=False): adjust the edge weighting for each residue pair according
+          to the distance between CA residues. If this is True, then `distance_model` must be provided.
         * distance_power (optional, default=1): If `weight_by_ca_ca_distance` is True, then edge weights will be multiplied
           by 1/distance**distance_power.
-        * distance_model_file (optional, default=None): A PDB or mmCIF file containing the model corresponding to the PAE
+        * distance_model (optional, default=None):  Model corresponding to the PAE
           matrix. Only needed if `weight_by_ca_ca_distances is True.
 
     Returns: a series of lists, where each list contains the indices of residues belonging to one cluster.
@@ -142,9 +142,9 @@ def domains_from_pae_matrix_igraph(pae_matrix, pae_power=1, pae_cutoff=5,
     weights = 1/pae_matrix**pae_power
 
     if weight_by_ca_ca_distance:
-      if distance_model_file is None:
-        raise Sorry('If weight_by_ca_ca_distance is True, distance_model_file must be provided!')
-      weights *= weights_from_distance_matrix(distance_model_file, distance_power)
+      if distance_model is None:
+        raise Sorry('If weight_by_ca_ca_distance is True, distance_model must be provided!')
+      weights *= weights_from_distance_matrix(distance_model, distance_power)
 
     g = igraph.Graph()
     size = weights.shape[0]
@@ -188,16 +188,9 @@ def flex_matrix_as_numpy_matrix(distances):
   matrix.ravel()[:] = list(distances.as_1d())
   return matrix
 
-def weights_from_distance_matrix(filename, distance_power):
-  from iotbx.data_manager import DataManager
-  dm = DataManager()
-  dm.set_overwrite(True)
-  dm.process_model_file(filename)
-  model = dm.get_model(filename)
-  model.add_crystal_symmetry_if_necessary()
-
+def weights_from_distance_matrix(distance_model , distance_power):
   flex_matrix = distance_matrix(
-    model.apply_selection_string("name CA").get_sites_cart()
+    distance_model.apply_selection_string("name CA").get_sites_cart()
   )
   numpy_matrix = flex_matrix_as_numpy_matrix(flex_matrix)
   return 1/numpy_matrix**distance_power
@@ -224,10 +217,25 @@ def cluster_as_selection(c, first_resno = None):
         selection_string,r_start, r_end)
   return selection_string
 
+def read_model(filename):
+  from iotbx.data_manager import DataManager
+  dm = DataManager()
+  dm.set_overwrite(True)
+  dm.process_model_file(filename)
+  model = dm.get_model(filename)
+  model.add_crystal_symmetry_if_necessary()
+  return model
+
+
 def get_domain_selections_from_pae_matrix(pae_matrix = None,
-      pae_file = None, library = None,
-      pae_power = None, pae_cutoff = None, graph_resolution = None,
-      weight_by_ca_ca_distance = None, distance_power = None, distance_model_file = None,
+      pae_file = None,
+      library = None,
+      pae_power = None,
+      pae_cutoff = None,
+      graph_resolution = None,
+      weight_by_ca_ca_distance = None,
+      distance_power = None,
+      distance_model = None,
       first_resno = None):
 
     if library is None:
@@ -249,7 +257,7 @@ def get_domain_selections_from_pae_matrix(pae_matrix = None,
       "graph_resolution":         graph_resolution,
       "weight_by_ca_ca_distance": weight_by_ca_ca_distance,
       "distance_power":           distance_power,
-      "distance_model_file":      distance_model_file
+      "distance_model":           distance_model
     }
     # Use default values when argument is None
     kwargs = {key: value for key,value in kwargs.items() if value is not None}

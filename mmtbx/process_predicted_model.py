@@ -59,7 +59,7 @@ master_phil_str = """
       .help = Minimum length of a domain to keep (reject at end if smaller).
       .short_caption = Minimum domain length (residues)
 
-    minimum_sequential_residues = 5 
+    minimum_sequential_residues = 5
       .type = int
       .help = Minimum length of a short segment to keep (reject at end ).
       .short_caption = Minimum sequential_residues
@@ -137,6 +137,20 @@ master_phil_str = """
             should be larger than zero, and values larger than 5 are \
             unlikely to be useful
        .short_caption = PAE graph resolution (if PAE matrix supplied)
+
+     weight_by_ca_ca_distance = False
+       .type = bool
+       .help = Adjust the edge weighting for each residue pair according  \
+             to the distance between CA residues. If this is True, \
+             then distance_model_file must be provided. See also distance_power
+       .short_caption = Weight by CA-CA distance (if distance_model supplied)
+
+     distance_power = 1
+       .type = float
+       .help = If weight_by_ca_ca_distance is True, then edge weights will \
+          be multiplied by 1/distance**distance_power.
+       .short_caption = Distance power (for weighting by CA-CA distance)
+
     }
 
     """
@@ -395,9 +409,9 @@ def get_selection_for_short_segments(ph, minimum_sequential_residues):
           chain_id, r.start, r.end))
   selection_string = " or ".join(selections)
   return selection_string
-      
 
-  
+
+
 
 def split_model_by_chainid(m, chainid_list):
   """
@@ -596,6 +610,9 @@ def split_model_with_pae(
      pae_cutoff = 5.,
      pae_graph_resolution = 1.,
      minimum_domain_length = 10,
+     weight_by_ca_ca_distance = False,
+     distance_power = 1,
+     distance_model = None,
      log = sys.stdout):
 
   """
@@ -620,6 +637,14 @@ def split_model_with_pae(
        the clustering algorithm is. Smaller values lead to larger clusters.
        Value should be larger than zero, and values larger than 5 are
         unlikely to be useful
+   weight_by_ca_ca_distance: (optional, default=False): adjust the edge
+        weighting for each residue pair according to the distance between
+        CA residues. If this is True, then distance_model_file must be provided.
+   distance_power (optional, default=1): If weight_by_ca_ca_distance` is True,
+         then edge weights will be multiplied by 1/distance**distance_power.
+   distance_model ((optional, default=None): A PDB or mmCIF file containing
+         the model corresponding to the PAE matrix. Only needed if
+         weight_by_ca_ca_distances is True.
    minimum_domain_length:  if a region is smaller than this, skip completely
 
    Output:
@@ -655,6 +680,9 @@ def split_model_with_pae(
      pae_cutoff = pae_cutoff,
      graph_resolution = pae_graph_resolution,
      first_resno = first_resno,
+     weight_by_ca_ca_distance = weight_by_ca_ca_distance,
+     distance_power = distance_power,
+     distance_model = distance_model,
     )
 
   # And apply to full model
@@ -672,7 +700,7 @@ def split_model_with_pae(
       good_selections.append(selection_string)
     else:
       keep_list.append(False)
-      print("Skipping region '%s' with size of only %s residues" %(
+      print("Skipping region with selection '%s' that contains %s residues" %(
          selection_string,sel.count(True)),
         file = log)
 

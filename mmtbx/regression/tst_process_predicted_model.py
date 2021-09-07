@@ -27,7 +27,7 @@ params = master_phil.extract()
 
 
 model_file=os.path.join(data_dir,'fibronectin_af_ca_1358_1537.pdb')
-pae_model_file=os.path.join(data_dir,'pae.pdb')
+pae_model_file=os.path.join(data_dir,'pae_model.pdb')
 pae_file=os.path.join(pae_data_dir,'pae.json')
 
 def tst_01(log = sys.stdout):

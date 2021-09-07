@@ -14,6 +14,11 @@ from mmtbx.domains_from_pae import get_domain_selections_from_pae_matrix
 pae_file=os.path.join(data_dir,'pae.json')
 model_file=os.path.join(data_dir, 'pdbs','pae_model.pdb')
 
+from iotbx.data_manager import DataManager
+dm = DataManager()
+distance_model = dm.get_model(model_file)
+distance_model.add_crystal_symmetry_if_necessary()
+
 def tst_01(log = sys.stdout):
 
     args = group_args(
@@ -50,8 +55,10 @@ def tst_02(log = sys.stdout):
       resolution = 1.0,
       weight_by_ca_ca_distance = 1.0,
       distance_power = 1.0,
-      distance_model_file = model_file,
+      distance_model = distance_model,
       select_range = False)
+
+
 
     selections = get_domain_selections_from_pae_matrix(pae_file = args.pae_file,
         library=args.library,
@@ -59,7 +66,7 @@ def tst_02(log = sys.stdout):
          graph_resolution =  args.resolution,
          weight_by_ca_ca_distance = args.weight_by_ca_ca_distance,
          distance_power = args.distance_power,
-         distance_model_file = args.distance_model_file)
+         distance_model = args.distance_model)
     print("Selections:")
     for s in selections:
        print(s)
