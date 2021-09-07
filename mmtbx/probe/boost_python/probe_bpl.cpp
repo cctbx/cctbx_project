@@ -81,6 +81,7 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     .value("Bump", DotScorer::InteractionType::Bump)
     .value("BadBump", DotScorer::InteractionType::BadBump)
     .value("HydrogenBond", DotScorer::InteractionType::HydrogenBond)
+    .value("Invalid", DotScorer::InteractionType::Invalid)
     ;
 
   class_<DotScorer::CheckDotResult>("CheckDotResult", init<>())
