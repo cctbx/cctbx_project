@@ -23,104 +23,106 @@ struct timer_variables{
 
 // CONTAINERS
 struct images{
-    image_type Umat;
-    image_type Bmat;
-    image_type Ncells;
-    image_type fcell;
-    image_type eta;
-    image_type lambda;
-    image_type panel_rot;
-    image_type panel_orig;
-    image_type sausage;
-    image_type fp_fdp;
+    image_type Umat; // umatrix gradients
+    image_type Bmat;  // Bmatrix gradients
+    image_type Ncells; // mosaic domain size gradients
+    image_type fcell; // structure factor gradients
+    image_type eta; // mosaic spread gradients
+    image_type lambda; // spectrum affine transform gradients
+    image_type panel_rot; // panel rotation gradients
+    image_type panel_orig; // panel translation gradients
+    image_type fp_fdp;  // fprime and fdblprime gradients
 };
 
 
 struct step_arrays{
-   int* subS_pos;
-   int* subF_pos;
-   int* thick_pos;
-   int* source_pos;
-   int* phi_pos;
-   int* mos_pos;
-   int Nsteps;
+   int* subS_pos; // stepping through the slow-scan detector axis
+   int* subF_pos; // ''   fast-scan ''
+   int* thick_pos; // stepping through the detector thickness
+   int* source_pos; // stepping through the beam wavelengths
+   int* phi_pos;  // stepping through the gonio scan
+   int* mos_pos;  // stepping through mosaic blocks (for mosaic spread)
+   int Nsteps; // total number of steps
 };
 
 
 struct cuda_flags{
-    int device_Id=0;
-    bool update_step_positions;
-    bool update_panels_fasts_slows;
-    bool update_sources;
-    bool update_umats;
-    bool update_dB_mats;
-    bool update_rotmats;
-    bool update_Fhkl;
-    bool update_detector;
-    bool update_refine_flags;
-    bool update_panel_deriv_vecs;
-    int Npix_to_allocate;
+    int device_Id=0;  // gpu device id
+    int Npix_to_allocate; // how much space to allocate for simulating forward model and gradients
+    // these following flags indicate whether to update quantities on the GPU device prior to running the kernel
+    // ( of course they are all set prior to running the kernel for the first time)
+    bool update_step_positions;  // step arrays
+    bool update_panels_fasts_slows; // pixels to simulatoe (panel id, fast scan, slow scan)
+    bool update_sources;  // beam sources
+    bool update_umats; // umatrices for mosaic blocks
+    bool update_dB_mats; // derivative of the orthogonalization matrix (for unit cell derivatives)
+    bool update_rotmats; // rotation matrices (for Umat derivatives)
+    bool update_Fhkl; // structure factors
+    bool update_detector; // detector vectors (origin, slow-axis, fast-axis, orth-axis)
+    bool update_refine_flags;  // refinement flags (in case one is iteratively freezing parameters)
+    bool update_panel_deriv_vecs; // if one is refining the detector vectors)
 };
 
 struct flags{
-    bool track_Fhkl;
-    bool printout;
-    bool nopolar;
-    bool point_pixel;
-    bool only_save_omega_kahn;
-    bool compute_curvatures;
-    bool isotropic_ncells;
-    bool complex_miller;
-    bool no_Nabc_scale;
-    std::vector<bool> refine_Bmat;
-    std::vector<bool> refine_Ncells;
-    bool refine_Ncells_def;
-    std::vector<bool> refine_panel_origin;
-    std::vector<bool> refine_panel_rot;
-    bool refine_fcell;
-    std::vector<bool> refine_lambda;
-    bool refine_eta;
-    std::vector<bool> refine_Umat;
-    bool refine_fp_fdp;
-    bool use_lambda_coefficients;
-    bool oversample_omega;
-    int printout_fpixel, printout_spixel;
-    int verbose;
-    bool use_diffuse = false;
+    bool track_Fhkl; // for CPU kernel only, track the HKLS evaluated in the inner most loop
+    bool printout; // whether to printout debug info for a pixel
+    bool nopolar; // disable polarization effects
+    bool point_pixel; // approximate solid angle effects
+    bool only_save_omega_kahn; // only save the polarization and solid angle corrections (deprecated)
+    bool compute_curvatures; // whether to compute the curvatures in addition to gradients
+    bool isotropic_ncells; // one mosaic domain parameter
+    bool complex_miller;  // is the miller array complex (such thet Fhkl_linear and Fhkl2_linear are both defined)
+    bool no_Nabc_scale; // no Nabc prefactor
+    std::vector<bool> refine_Bmat;  //  Bmatrix
+    std::vector<bool> refine_Ncells; // mosaic domain size
+    bool refine_Ncells_def; // mosaic domain size off diag
+    std::vector<bool> refine_panel_origin; // panel shift
+    std::vector<bool> refine_panel_rot; // detector panel rotation
+    bool refine_fcell; // structure factor
+    std::vector<bool> refine_lambda; // spectrum affine correction
+    bool refine_eta; // mosaic spread
+    std::vector<bool> refine_Umat; // missetting angle umatrix
+    bool refine_fp_fdp; // fprime and fbl prime
+    bool use_lambda_coefficients; // affine correction lam0 , lam1
+    bool oversample_omega; // omega is computed separately for each sub-pixel
+    int printout_fpixel, printout_spixel; // debug printout pixel (fast scan, slow scan) // TODO add panel id
+    int verbose; // nanoBragg verbosity flag
+    bool use_diffuse = false; // model  diffuse scattering (experimental)
 };
 
 struct crystal{
-    double this_gamma=50;
-    double this_sigma=10;
+    double this_gamma=50; // diffuse scattering
+    double this_sigma=10; // diffuse scattering
 
 
-    int mosaic_domains;
-    double Na, Nb, Nc, Nd, Ne, Nf;
-    double phi0;
+    int mosaic_domains; // number of mosaic domains to model
+    double Na, Nb, Nc, Nd, Ne, Nf; // mosaic domain terms
+    double phi0; // gonio
     double phistep;
     double phisteps;
-    double fudge;
-    double spot_scale;
+    double fudge; // factor for Bragg peak exponential falloff adjustment
+    double spot_scale; // factor applied to intensity
     int h_range, k_range, l_range;
     int h_max, h_min, k_max, k_min, l_max, l_min;
-    double dmin;
-    std::vector<double> FhklLinear, Fhkl2Linear;
-    std::vector<double> fpfdp;
-    std::vector<double> fpfdp_derivs;
-    std::vector<double> atom_data;
-    std::vector<int> nominal_hkl;
-    double default_F;
-    double r_e_sqr;
+    double dmin; //res
+    std::vector<double> FhklLinear, Fhkl2Linear; // structure factor amps magnitude (or real, image of complex)
+    std::vector<double> fpfdp; // fprim fdblprime
+    std::vector<double> fpfdp_derivs; // fprime fdblprime deriv
+    std::vector<double> atom_data; // heavy atom data
+    std::vector<int> nominal_hkl; // h,k,l of the pixel (expected)
+    double default_F; // place holder amplitude
+    double r_e_sqr; // electron rad
 
-    Eigen::Matrix3d eig_U;
-    Eigen::Matrix3d eig_O;
-    Eigen::Matrix3d eig_B;
-    Eigen::Matrix3d RXYZ;
-    Eigen::Vector3d spindle_vec;
+    Eigen::Matrix3d eig_U; // Umatrix
+    Eigen::Matrix3d eig_O; // O-matrix
+    Eigen::Matrix3d eig_B; // B matrix
+    Eigen::Matrix3d RXYZ; // Rx*Ry*Rz misset perturtbation matrix (this is whats refined)
+    Eigen::Vector3d spindle_vec; // gonio
 
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_RXYZ;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_RXYZ_prime;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > UMATS_RXYZ_dbl_prime;
+
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > RotMats;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dRotMats;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > d2RotMats;
@@ -134,21 +136,21 @@ struct crystal{
 
 struct beam{
     Eigen::Vector3d polarization_axis;
-    double fluence;
-    double kahn_factor;
-    double *source_X, *source_Y, *source_Z, *source_lambda, *source_I;
-    double lambda0,lambda1;
-    int number_of_sources;
+    double fluence; // total fluence
+    double kahn_factor; // polarization factor
+    double *source_X, *source_Y, *source_Z, *source_lambda, *source_I;   // beam vectors, wavelenths, intensities
+    double lambda0,lambda1; // affine correction to spectra
+    int number_of_sources; // number of beams
 };
 
 struct detector{
-    std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dF_vecs;
-    std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dS_vecs;
+    std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dF_vecs; // derivative of the panel fast direction
+    std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dS_vecs; // derivative of the panel slow direction
     double detector_thickstep, detector_thicksteps, detector_thick, detector_attnlen;
-    std::vector<double> close_distances;
-    int oversample;
+    std::vector<double> close_distances; // offsets to the detector origins (Z direction)
+    int oversample; // determines the pixel subsampling rate
     double subpixel_size, pixel_size;
-    std::vector<double> fdet_vectors, sdet_vectors, odet_vectors, pix0_vectors;
+    std::vector<double> fdet_vectors, sdet_vectors, odet_vectors, pix0_vectors; // these define the detector (fast, slow, orth, origin)
 };
 
 #endif

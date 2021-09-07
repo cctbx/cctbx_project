@@ -570,9 +570,6 @@ refiner {
   start_with_curvatures = False
     .type = bool
     .help = whether to try using curvatures in the first iteration
-  poissononly = False
-    .type = bool
-    .help = whether to only use poisson statistics (if detector dark signal is negligible)
   tradeps = 1e-2
     .type = float
     .help = LBFGS termination parameter  (smaller means minimize for longer)

@@ -75,7 +75,7 @@ if __name__ == '__main__':
         from line_profiler import LineProfiler
     except ImportError:
         LineProfiler = None
-    from simtbx.diffBragg.refiners import local_refiner
+    from simtbx.diffBragg.refiners import stage_two_refiner
     from simtbx.diffBragg import hopper_utils
     with show_mail_on_error():
         script = Script()
@@ -84,13 +84,13 @@ if __name__ == '__main__':
         if LineProfiler is not None and script.params.profile:
             lp = LineProfiler()
             lp.add_function(ensemble_refine_launcher.RefineLauncher.launch_refiner)
-            lp.add_function(local_refiner.LocalRefiner._compute_functional_and_gradients)
-            lp.add_function(local_refiner.LocalRefiner._run_diffBragg_current)
-            lp.add_function(local_refiner.LocalRefiner._update_Fcell)
-            lp.add_function(local_refiner.LocalRefiner._extract_pixel_data)
-            lp.add_function(local_refiner.LocalRefiner._Fcell_derivatives)
-            lp.add_function(local_refiner.LocalRefiner._mpi_aggregation)
-            lp.add_function(local_refiner.LocalRefiner._setup)
+            lp.add_function(stage_two_refiner.StageTwoRefiner._compute_functional_and_gradients)
+            lp.add_function(stage_two_refiner.StageTwoRefiner._run_diffBragg_current)
+            lp.add_function(stage_two_refiner.StageTwoRefiner._update_Fcell)
+            lp.add_function(stage_two_refiner.StageTwoRefiner._extract_pixel_data)
+            lp.add_function(stage_two_refiner.StageTwoRefiner._Fcell_derivatives)
+            lp.add_function(stage_two_refiner.StageTwoRefiner._mpi_aggregation)
+            lp.add_function(stage_two_refiner.StageTwoRefiner._setup)
             lp.add_function(hopper_utils.DataModeler.GatherFromExperiment)
             RUN = lp(script.run)
 

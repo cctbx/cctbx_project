@@ -1,7 +1,7 @@
 
 from __future__ import division
 import scitbx
-from abc import ABCMeta, abstractproperty, abstractmethod
+from abc import ABCMeta, abstractmethod
 from scitbx.array_family import flex
 from scitbx.lbfgs import core_parameters
 
@@ -20,6 +20,7 @@ class ReachedMaxIterations(Exception):
 class BaseRefiner:
     """
     This is the base class for pixel refinement
+    It is a CCTBX L-BFGS refiner object, with abstract methods that must be defined
     """
 
     __metaclass__ = ABCMeta
@@ -58,57 +59,33 @@ class BaseRefiner:
         self.trad_conv = False  # traditional convergenve
         self.calc_curvatures = False  # whether to calc curvatures until a region of positive curvature is reached
         self.panel_ids = None  # list of panel_ids (same length as roi images, spot_rois, tilt_abc etc)
-        self.poisson_only = False  # use strictly Poissonian statistics
         self._refinement_millers = None  # flex array of refinement miller indices (computed by GlobalRefiner _setup method)
 
-    @property
-    def _grad_accumulate(self):
-        if self.poisson_only:
-            return self._poisson_d
-        else:
-            return self._gaussian_d
+    @abstractmethod
+    def _grad_accumulate(self, d):
+        """d : first derivative of target for arbitrary parameter"""
+        pass
 
-    @property
-    def _curv_accumulate(self):
-        if self.poisson_only:
-            return self._poisson_d2
-        else:
-            return self._gaussian_d2
+    @abstractmethod
+    def _curv_accumulate(self, d, d2):
+        """d, d2 : first and second derivatives of target for arbitrary parameter"""
+        pass
 
-    @property
+    @abstractmethod
     def _target_accumulate(self):
-        if self.poisson_only:
-            return self._poisson_target
-        else:
-            return self._gaussian_target
-
-    def _poisson_target(self):
-        pass
-
-    def _gaussian_target(self):
-        pass
-
-    def _poisson_d(self, d):
-        pass
-
-    def _poisson_d2(self, d, d2):
-        pass
-
-    def _gaussian_d(self, d):
-        pass
-
-    def _gaussian_d2(self, d, d2):
         pass
 
     @abstractmethod
     def compute_functional_and_gradients(self):
         pass
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def x(self):
         pass
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def n(self):
         pass
 
@@ -264,6 +241,8 @@ class BaseRefiner:
 
     def _verify_diag(self):
         sel = (self.g != 0)
+        from IPython import embed
+        embed()
         self.d.set_selected(~sel, 1000)
         assert self.d.select(sel).all_gt(0)
         self.d = 1 / self.d

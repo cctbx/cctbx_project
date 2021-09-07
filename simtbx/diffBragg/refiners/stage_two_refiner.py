@@ -56,7 +56,7 @@ from collections import Counter
 from cctbx import miller, sgtbx
 
 
-class LocalRefiner(BaseRefiner):
+class StageTwoRefiner(BaseRefiner):
 
     def __init__(self, shot_modelers, sgsymbol, params):
         BaseRefiner.__init__(self)
@@ -65,7 +65,6 @@ class LocalRefiner(BaseRefiner):
         self.min_multiplicity = self.params.refiner.stage_two.min_multiplicity
         self.trad_conv_eps = self.params.refiner.tradeps
         self.calc_curvatures = self.params.refiner.curvatures
-        self.poisson_only = self.params.refiner.poissononly
         self.break_signal = self.params.refiner.break_signal
 
 
@@ -606,10 +605,7 @@ class LocalRefiner(BaseRefiner):
             self._pre_extract_deriv_arrays()
             self._extract_pixel_data()
             self._evaluate_averageI()
-            if self.poisson_only:
-                self._evaluate_log_averageI()
-            else:
-                self._evaluate_log_averageI_plus_sigma_readout()
+            self._evaluate_log_averageI_plus_sigma_readout()
 
             self._derivative_convenience_factors()
 
@@ -737,6 +733,8 @@ class LocalRefiner(BaseRefiner):
                 g_accum = d*gterm
                 trust = MOD.all_trusted[slc]
                 self.grad[xpos] += (g_accum[trust].sum())*.5
+                if self.calc_curvatures:
+                    raise NotImplementedError("No curvature for Fcell refinement")
 
     def _spot_scale_derivatives(self, return_derivatives=False):
         if not self.refine_crystal_scale:
@@ -767,8 +765,6 @@ class LocalRefiner(BaseRefiner):
         sig = self.Modelers[self._i_shot].PAR.B.sigma
         d = dI_dtheta*sig
         d2 = d2I_dtheta2*(sig**2)
-        #from IPython import embed
-        #embed()
 
         xpos = self.Bfactor_xpos[self._i_shot]
         self.grad[xpos] += self._grad_accumulate(d)
@@ -868,44 +864,21 @@ class LocalRefiner(BaseRefiner):
             outf = os.path.join(self.output_dir, "_fcell_trial%d_iter%d" % (self.trial_id, self.iterations))
             np.savez(outf, fvals=self._fcell_at_i_fcell)
 
-    def _show_plots(self, i_spot, n_spots):
-        pass
-
-    def _poisson_target(self):
-        fterm = self.model_Lambda - self.Imeas * self.log_Lambda
-        if self._is_trusted is not None:
-            fterm = fterm[self._is_trusted]
-        fterm = fterm.sum()
-        return fterm
-
-    def _poisson_d(self, d):
-        gterm = d * self.one_minus_k_over_Lambda
-        if self._is_trusted is not None:
-            gterm = gterm[self._is_trusted]
-        gterm = gterm.sum()
-        return gterm
-
-    def _poisson_d2(self, d, d2):
-        cterm = d2 * self.one_minus_k_over_Lambda + d * d * self.k_over_squared_Lambda
-        if self._is_trusted is not None:
-            cterm = cterm[self._is_trusted]
-        return cterm.sum()
-
-    def _gaussian_target(self):
+    def _target_accumulate(self):
         fterm = self.log2pi + self.log_v + self.u*self.u*self.one_over_v
         if self._is_trusted is not None:
             fterm = fterm[self._is_trusted]
         fterm = 0.5*fterm.sum()
         return fterm
 
-    def _gaussian_d(self, d):
+    def _grad_accumulate(self, d):
         gterm = d * self.one_over_v * self.one_minus_2u_minus_u_squared_over_v
         if self._is_trusted is not None:
             gterm = gterm[self._is_trusted]
         gterm = 0.5*gterm.sum()
         return gterm
 
-    def _gaussian_d2(self, d, d2):
+    def _curv_accumulate(self, d, d2):
         cterm = self.one_over_v * (d2*self.one_minus_2u_minus_u_squared_over_v -
                                    d*d*(self.one_over_v_times_one_minus_2u_minus_u_squared_over_v -
                                         (2 + 2*self.u_times_one_over_v + self.u_u_one_over_v*self.one_over_v)))
@@ -916,22 +889,15 @@ class LocalRefiner(BaseRefiner):
 
     def _derivative_convenience_factors(self):
         self.Imeas = self.Modelers[self._i_shot].all_data
-        #one_over_Lambda = 1. / self.model_Lambda
-        #self.one_minus_k_over_Lambda = (1. - self.Imeas * one_over_Lambda)
-        #self.k_over_squared_Lambda = self.Imeas * one_over_Lambda * one_over_Lambda
-
-
         self.u = self.Imeas - self.model_Lambda
         self.one_over_v = 1. / (self.model_Lambda + self.sigma_r ** 2)
         self.one_minus_2u_minus_u_squared_over_v = 1 - 2 * self.u - self.u * self.u * self.one_over_v
-        #self.u_times_one_over_v = self.u*self.one_over_v
-        #self.u_u_one_over_v = self.u*self.u_times_one_over_v
-        #self.one_over_v_times_one_minus_2u_minus_u_squared_over_v = self.one_over_v*self.one_minus_2u_minus_u_squared_over_v
+        if self.calc_curvatures:
+            self.u_times_one_over_v = self.u*self.one_over_v
+            self.u_u_one_over_v = self.u*self.u_times_one_over_v
+            self.one_over_v_times_one_minus_2u_minus_u_squared_over_v = self.one_over_v*self.one_minus_2u_minus_u_squared_over_v
         self.common_grad_term = self.one_over_v * self.one_minus_2u_minus_u_squared_over_v
-        #if self.compute_Z:
         self._Zscore = self.u*np.sqrt(self.one_over_v)
-        #self.one_over_v_data = 1. / (self.Imeas + self.sigma_r ** 2)
-        #self._Zscore = self.u*np.sqrt(self.one_over_v_data)
 
     def _evaluate_log_averageI(self):  # for Poisson only stats
         try:
