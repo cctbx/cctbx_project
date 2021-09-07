@@ -141,6 +141,10 @@ class simple_file_loader(worker):
           new_id = len(all_experiments)-1
           eid[new_id] = experiment.identifier
           new_ids.set_selected(refls_sel, new_id)
+        indexed_sel = (new_ids >= 0)
+        reflections = reflections.select(indexed_sel)
+        new_ids = new_ids.select(indexed_sel)
+        new_identifiers = new_identifiers.select(indexed_sel)
         assert (new_ids < 0).count(True) == 0, "Not all reflections accounted for"
         reflections['id'] = new_ids
         reflections['exp_id'] = new_identifiers
