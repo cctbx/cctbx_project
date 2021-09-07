@@ -97,6 +97,14 @@ probe
     .type = float
     .help = Probe dots per square angstrom on atom surface (-density in probe)
 
+  overlap_scale_factor = 0.5
+    .type = float
+    .help = Fraction of overlap assigned to each atom (-spike in probe)
+
+  minimum_occupancy = 0.02
+    .type = float
+    .help = Minimum occupancy for a source atom (-minoccupancy in probe)
+
   worse_clash_cutoff = 0.5
     .type = float
     .help = Cutoff for worse clashes, a positive (-divworse in probe)
@@ -207,10 +215,6 @@ output
     .type = bool
     .help = Color by DNA base (-basecolor, -colorbase in probe)
 
-  spike_scale_factor = 0.5
-    .type = float
-    .help = Fraction of overlap assigned to each atom (-spike in probe)
-
   group_label = ""
     .type = str
     .help = Label for the surface-dots group (-name, -scsurface, -exposed, -asurface, -access in probe)
@@ -250,6 +254,14 @@ output
   default_point_color = "gray"
     .type = str
     .help = Default color for output points (-outcolor in probe)
+
+  draw_spikes = True
+    .type = bool
+    .help = Draw spikes (-spike, -nospike in probe)
+
+  contact_summary = False
+    .type = bool
+    .help = Report summary of contacts (-oneline, -summary in probe)
 }
 '''
 
@@ -477,6 +489,154 @@ Note:
         self.params.probe.separate_weak_hydrogen_bonds)].append(
       self.DotInfo(src, target, loc, spike, overlapType, gap, ptmaster, angle)
     )
+
+# ------------------------------------------------------------------------------
+
+  def _generate_interaction_dots(self, sourceAtoms, targetAtoms, bondedNeighborLists):
+    '''
+      Find all interaction dots for the specified atom.
+      This does not include locations where the probe is interacting with
+      a nearby atom, so it is a subset of the skin dots (for which only the
+      dots themselves are outside of the nearby atoms).
+      :param sourceAtoms: Atoms that can be the source of an interaction.
+      :param targetAtoms: Atoms that can be the target of an interaction
+      (can be the same list as sourceAtoms for some approaches).
+      :param bondedNeighborLists: List of bonded neighbors for atoms in source or target.
+      :return: Side effect: Add dots to the self._results data structure by
+      atomclass and dot type.
+    '''
+
+    maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
+    maxRadius = 2*maxVDWRadius + 2 * self.params.probe.radius
+    for src in sourceAtoms:
+      # Find atoms that are close enough that they might touch.
+      nearby = self._spatialQuery.neighbors(src.xyz, 0.001, maxRadius)
+
+      # Find our characteristics
+      srcMainChain = self._inMainChain[src]
+      srcSideChain = self._inSideChain[src]
+      srcHet = self._inHet[src]
+      srcInWater = self._inWater[src]
+
+      # Select those that are actually within the contact distance based on their
+      # particular radius and which are in the set of target atoms.
+      # Also verify that the potential target atoms meet our criteria based on parameters.
+      atomList = []
+      for n in nearby:
+        nMainChain = self._inMainChain[n]
+        nSideChain = self._inMainChain[n]
+        nHet = self._inHet[n]
+        nInWater = self._inWater[n]
+        d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
+        if ((n in targetAtoms) and
+            (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
+             self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.radius)
+           ):
+          # if both atoms are in the same non-HET residue and on the main chain, then skip
+          # if we're not allowing mainchain-mainchain interactions.
+          if not self.params.include_mainchain_mainchain and (
+                (srcMainChain and nMainChain) and not (srcHet or nHet) and
+                (src.parent() == n.parent())
+              ):
+            continue
+          # Skip atoms that shuold be ignored
+          if self._atomClasses[n] == 'ignore':
+            continue
+          # Skip atoms with too low occupancy
+          elif n.occ < self.params.probe.minimum_occupancy:
+            continue
+          # Skip water-water interactions unless they are allowed
+          elif (not self.params.do_water_water) and srcInWater and nInWater:
+            continue
+          atomList.append(n)
+
+      # Check the atoms for interactions
+      if len(atomList) > 0:
+        # Find the atoms that are bonded to the source atom within the specified hop
+        # count.  Limit the length of the chain to 3 if neither the source nor the final
+        # atom is a Hydrogen.
+        neighbors = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists,
+          self.params.excluded_bond_chain_length, 3)
+
+        # Find out what class of dot we should place for this atom.
+        atomClass = self._atomClasses[src]
+
+        # Generate no dots for ignored atoms.
+        if atomClass == 'ignore':
+          continue
+
+        # Generate no dots for atoms with too-low occupancy
+        if src.occ < self.params.probe.minimum_occupancy:
+          continue
+
+        # Check each dot to see if it interacts with non-bonded nearby target atoms.
+        srcDots = self._dots[src]
+        pr = self.params.probe.radius
+        scale = self.params.probe.overlap_scale_factor
+        for dotvect in srcDots:
+          # Find out if there is an interaction
+          res = self._dotScorer.check_dot(src, dotvect, pr, atomList, neighbors, scale)
+
+          # Classify the interaction and store appropriate results unless we should
+          # ignore the result because there was not valid overlap.
+          overlapType = res.overlapType
+          if overlapType != probeExt.OverlapType.Ignore:
+            # See whether this dot is allowed based on our parameters.
+            spo = self.params.output
+            show = False
+            interactionType = self._dotScorer.interaction_type(overlapType,res.gap,
+              self.params.probe.separate_weak_hydrogen_bonds)
+            if interactionType == probeExt.InteractionType.Invalid:
+              continue
+            # Main branch if whether we're reporting other than bad clashes
+            if (not spo.only_report_bad_clashes):
+              # We are reporting other than bad clashes, see if our type is being reported
+              if spo.report_hydrogen_bonds and overlapType > 0:
+                show = True
+              elif spo.report_clashes and overlapType < 0:
+                show = True
+              elif spo.report_vdws and overlapType == 0:
+                show = True
+            else:
+              # We are only reporting bad clashes.  See if we're reporting clashes and this is
+              # a bad one.
+              if (spo.report_clashes and interactionType in [
+                    probeExt.InteractionType.Bump, probeExt.InteractionType.BadBump]):
+                show = True
+
+            # If we're not showing this one, skip to the next
+            if not show:
+              continue
+
+            # Determine the ptmaster (main/side chain interaction type) and keep track of
+            # counts for each type.
+            ptmaster = ' '
+            if srcMainChain and nMainChain:
+              if (not srcHet) and (not nHet): # This may be a redundant check
+                ptmaster = 'M'
+                self._MCMCCount[interactionType] += 1
+            elif srcSideChain and nSideChain:
+              if (not srcHet) and (not nHet): # This may be a redundant check
+                ptmaster = 'S'
+                self._SCSCCount[interactionType] += 1
+            elif ( (srcMainChain and nSideChain) or
+                   (srcSideChain and nMainChain) ):
+              if (not srcHet) and (not nHet): # This may be a redundant check
+                ptmaster = 'P'
+                self._MCSCCount[interactionType] += 1
+            else:
+              ptmaster = 'O'
+              self._otherCount[interactionType] += 1
+
+            # Find the locations of the dot and spike by scaling the dot vector by the atom radius and
+            # the (negative because it is magnitude) overlap.
+            loc = Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect)
+            spikeloc = (Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect).normalize() *
+                        (self._extraAtomInfo.getMappingFor(src).vdwRadius - res.overlap) )
+
+            # Save the dot
+            self._save_dot(src, n, atomClass, loc, spikeloc, overlapType,
+              res.gap, ptmaster, 0)
 
 # ------------------------------------------------------------------------------
 
@@ -827,6 +987,8 @@ Note:
     # Store values that we will need often
     density = self.params.probe.density
     gap_weight = self.params.probe.gap_weight
+    bump_weight = self.params.probe.bump_weight
+    hydrogen_bond_weight = self.params.probe.hydrogen_bond_weight
 
     ret += "        \nsubgroup: {}\n".format(groupName)
     ret += "atoms selected: {}\npotential dots: {}\npotential area: {:.1f} A^2\n".format(
@@ -841,18 +1003,18 @@ Note:
       ret += "  type                 #      %\n"
 
     # Compute and report the counts
-    tgs = ths = thslen = tbs = tbslen = tsas = 0.0
-    tGscore = tHscore = tBscore = tscore = 0.0
+    tgs = ths = thslen = tbs = tbslen = tsas = 0
+    tGscore = tHscore = tBscore = tscore = 0
     for c in self._allAtomClasses:
       for t in self._interactionTypes:
         res = self._results[c][t]
         if len(res) > 0:
           # gs stores all of the values unless reportSubScores is True
-          gs = hs = hslen = bs = bslen = score = psas = 0.0
+          gs = hs = hslen = bs = bslen = score = psas = 0
           label = "external_dots "
           if not isSurface:
             label = probeExt.DotScorer.interaction_type_name(t)
-          ret += "{:>3s} {} ".format(c, label)
+          ret += "{:>3s} {:14s} ".format(c, label)
 
           for node in self._results[c][t]:
             if reportSubScores:
@@ -869,14 +1031,14 @@ Note:
                 bs += 1
                 slen = 0.5*abs(node.gap);
                 bslen += slen
-                scoreValue = - BUMPweight * slen
+                scoreValue = - bump_weight * slen
                 score   += scoreValue
                 tBscore += scoreValue
               else: # Hydrogen bond
                 hs += 1
                 slen = 0.5*abs(node.gap)
                 hslen += slen
-                scoreValue = HBweight * slen
+                scoreValue = hydrogen_bond_weight * slen
                 score   += scoreValue
                 tHscore += scoreValue
             else:
@@ -891,17 +1053,17 @@ Note:
           if reportSubScores:
             if t in [probeExt.InteractionType.WideContact, probeExt.InteractionType.CloseContact,
                 probeExt.InteractionType.WeakHydrogenBond]:
-              ret += "{:7.0f} {:5.1f}% {:9.1f} {:9.2}\n".format(gs, 100.0*gs/numSkinDots, score/density,
+              ret += "{:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(gs, 100.0*gs/numSkinDots, score/density,
                                 1000.0*score/numSkinDots)
             elif t in [probeExt.InteractionType.SmallOverlap, probeExt.InteractionType.Bump,
                 probeExt.InteractionType.BadBump]:
-              ret += "{:7.0} {:5.1f}% {:9.1f} {:9.2f}\n".format(bs, 100.0*bs/numSkinDots, score/density,
+              ret += "{:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(bs, 100.0*bs/numSkinDots, score/density,
                                 1000.0*score/numSkinDots)
             else: # Hydrogen bond
-              ret += "{:7.0f} {:5.1f}% {:9.1f} {:9.2f}\n".format(hs, 100.0*hs/numSkinDots, score/density,
+              ret += "{:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(hs, 100.0*hs/numSkinDots, score/density,
                                 1000.0*score/numSkinDots)
           else:
-            ret += "{:7.0f} {:5.1f}%\n".format(gs, 100.0*gs/numSkinDots)
+            ret += "{:7d} {:5.1f}%\n".format(gs, 100.0*gs/numSkinDots)
           tgs += gs
           ths += hs
           thslen += hslen
@@ -912,22 +1074,22 @@ Note:
             tsas += psas  # tally the solvent accessible surface
 
     if reportSubScores:
-      ret += "\n     tot contact:  {:7.0f} {:5.1f}% {:9.1f} {:9.2f}\n".format(
+      ret += "\n     tot contact:  {:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(
 		    tgs, 100.0*tgs/numSkinDots, tGscore/density, 1000.0*tGscore/numSkinDots
       )
-      ret += "     tot overlap:  {:7.0f} {:5.1f}% {:9.1f} {:9.2f}\n".format(
+      ret += "     tot overlap:  {:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(
 		    tbs,    100.0*tbs/numSkinDots, tBscore/density, 1000.0*tBscore/numSkinDots
       )
-      ret += "     tot  H-bond:  {:7.0f} {:5.1f}% {:9.1f} {:9.2f}\n".format(
+      ret += "     tot  H-bond:  {:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(
 		    ths,    100.0*ths/numSkinDots, tHscore/density, 1000.0*tHscore/numSkinDots
       )
 
-      ret += "\n       grand tot:  {:7.0f} {:5.1f}% {:9.1f} {:9.2f}\n".format(
+      ret += "\n       grand tot:  {:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(
 		    (tgs+tbs+ths), 100.0*(tgs+tbs+ths)/numSkinDots, tscore/density, 1000.0*tscore/numSkinDots
       )
       ret += "\ncontact surface area: {:.1f} A^2\n".format((tgs+tbs+ths)/density)
     else:
-      ret += "             tot:  {:7.0f} {:5.1f}%\n\n".format(tgs, 100.0*tgs/numSkinDots)
+      ret += "             tot:  {:7d} {:5.1f}%\n\n".format(tgs, 100.0*tgs/numSkinDots)
       ret += "   contact surface area: {:.1f} A^2\n".format(tgs/density)
       if self.params.approach == 'surface':
         ret += "accessible surface area: {:.1f} A^2\n\n".format(tsas/density)
@@ -970,7 +1132,6 @@ Note:
 
     ################################################################################
     # Get the extra atom information needed to score all of the atoms in the model.
-    # @todo Handle getting implicit radii here or in the _scaled_atom_radius() function
     make_sub_header('Compute extra atom information', out=self.logger)
     ret = Helpers.getExtraAtomInfo(self.model,useNeutronDistances=self.params.use_neutron_distances,
       useImplicitHydrogenDistances=self.params.probe.implicit_hydrogens,
@@ -1014,10 +1175,20 @@ Note:
     # Get the other characteristics we need to know about each atom to do our work.
     self._inWater = {}
     self._inHet = {}
+    self._inMainChain = {}
+    self._inSideChain = {}
     hetatm_sel = self.model.selection("hetatm")
+    mainchain_sel = self.model.selection("backbone")  # Will NOT include Hydrogen atoms on the main chain
+    sidechain_sel = self.model.selection("sidechain") # Will include Hydrogen atoms on the side chain
     for a in allAtoms:
       self._inWater[a] = common_residue_names_get_class(name=a.parent().resname) == "common_water"
       self._inHet[a] = hetatm_sel[a.i_seq]
+      if a.element != "H":
+        self._inMainChain[a] = mainchain_sel[a.i_seq]
+      else:
+        # Check our bonded neighbor to see if it is on the mainchain if we are a Hydrogen
+        self._inMainChain[a] = mainchain_sel[allBondedNeighborLists[a][0]]
+      self._inSideChain[a] = sidechain_sel[a.i_seq]
 
     ################################################################################
     # Get the source selection (and target selection if there is one).  These will be
@@ -1050,13 +1221,13 @@ Note:
     # when no particular one is selected.
     atomLists = [ self.model.get_atoms() ]
     if (self.params.approach == 'self' and
-        'model_id' not in self.params.source_selection and
-        'model_id' not in self.params.target_selection):
+        (self.params.source_selection is None or 'model_id' not in self.params.source_selection) and
+        (self.params.target_selection is None or 'model_id' not in self.params.target_selection)):
       # Handle the multiple-model case by looping modelID over all models.
       numModels = self.model.get_hierarchy().models_size()
       atomLists = []
       for i in range(numModels):
-        atomLists.push_back( self.model.get_hierarchy().models()[i].atoms() )
+        atomLists.append( self.model.get_hierarchy().models()[i].atoms() )
 
     for modelIndex, atoms in enumerate(atomLists):
 
@@ -1257,6 +1428,23 @@ Note:
         self._results[c] = interactionTypeDicts
 
       ################################################################################
+      # Sums of interaction types of dots based on whether their source and/or target
+      # were mainchain, sidechain, both, or neither.  There is another place to store
+      # the sum of multiple passes.
+      # Each contains an entry for each InteractionType and for total.
+      self._MCMCCount = {}
+      self._SCSCCount = {}
+      self._MCSCCount = {}
+      self._otherCount = {}
+      self._sumCount = {}
+      for t in self._interactionTypes:
+        self._MCMCCount[t] = 0
+        self._SCSCCount[t] = 0
+        self._MCSCCount[t] = 0
+        self._otherCount[t] = 0
+        self._sumCount[t] = 0
+
+      ################################################################################
       # Do the calculations; which one depends on the approach and other phil parameters.
       # Append the information to the string that will be written to file.
       if self.params.approach == 'count_atoms':
@@ -1265,10 +1453,11 @@ Note:
         outString += 'atoms selected: '+str(len(source_atoms))+'\n'
 
       elif self.params.approach == 'surface':
-        make_sub_header('Make surface dots', out=self.logger)
+        make_sub_header('Find surface dots', out=self.logger)
 
         # Produce dots on the surfaces of the selected atoms.
         maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
+        maxRadius = 2*maxVDWRadius + 2 * self.params.probe.radius
         for src in source_atoms:
           # Find nearby atoms that might come into contact.  This greatly speeds up the
           # search for touching atoms.
@@ -1317,6 +1506,49 @@ Note:
             outString += "@group dominant {}\n".format(masterName)
 
           outString += self._writeOutput("extern dots", masterName)
+
+      elif self.params.approach == 'self':
+        make_sub_header('Find self-intersection dots', out=self.logger)
+
+        # Generate dots for the source atom set against itself.
+        self._generate_interaction_dots(source_atoms, source_atoms, allBondedNeighborLists)
+
+        # Count the dots if we've been asked to do so.
+        if self.params.output.count_dots:
+          numSkinDots = self._count_skin_dots(source_atoms, allBondedNeighborLists)
+          numSkinDots = self._count_skin_dots(source_atoms, allBondedNeighborLists)
+          name = "dots"
+          if len(self.params.output.group_label) > 0:
+            name = self.params.output.group_label
+          outString += "selection: external\nname: {}\n".format(name)
+          outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
+            self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
+            self.params.atom_radius_offset)
+          outString += "score weights: gapWt={}, bumpWt={}, HBWt={}\n".format(
+            self.params.probe.gap_weight, self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight)
+
+          nsel = len(source_atoms)
+          outString += self._enumerate("self dots", nsel, self.params.output.draw_spikes, False, numSkinDots)
+
+        else: # Not counting the dots
+
+          # @todo Check for various output format types other than Kinemage
+
+          if self.params.output.contact_summary:
+            # @todo
+            pass
+
+          if self.params.output.add_group_line:
+            name = "dots"
+            if len(self.params.output.group_label) > 0:
+              name = self.params.output.group_label
+            if len(atomLists) > 0:
+              # doing jth of multiple models of an ensemble
+              outString += "@group dominant {{{} M{}}} animate\n".format(name,modelIndex)
+            else:
+              outString += "@group dominant {{{}}}\n".format(name)
+
+          outString += self._writeOutput("self dots", name)
 
       # @todo
       else:
