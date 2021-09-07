@@ -30,7 +30,7 @@ approach = *self both once surface count_atoms
   .type = choice
   .help = self (src -> src) both (src <=> targ) once (src -> targ) surface (VdW surface) count_atoms (count atoms)
 
-include_mainchain_mainchain = True
+include_mainchain_mainchain = False
   .type = bool
   .help = Include mainchain -> mainchain interactions (-mc in probe)
 
@@ -58,11 +58,11 @@ polar_hydrogen_radius = 1.05
   .type = float
   .help = Radius to set for polar hydrogens (1.05 in probe)
 
-minimum_polar_hydrogen_occupancy = 0.25
+minimum_polar_hydrogen_occupancy = 0.7
   .type = float
   .help = Minimum occupancy for polar hydrogens (0.25 in probe)
 
-maximum_polar_hydrogen_b = 80.0
+maximum_polar_hydrogen_b = 40.0
   .type = float
   .help = Minimum b-factor for polar hydrogens (80.0 in probe)
 
