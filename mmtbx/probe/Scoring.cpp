@@ -235,17 +235,17 @@ std::string DotScorer::interaction_type_name(InteractionType t)
 {
   switch (t) {
   case WideContact:
-    return "wide contact";
+    return "wide_contact";
   case CloseContact:
-    return "close contact";
+    return "close_contact";
   case WeakHydrogenBond:
-    return "weak H-bonds";
+    return "weak_H-bonds";
   case SmallOverlap:
-    return "small overlap";
+    return "small_overlap";
   case Bump:
-    return "bad overlap";
+    return "bad_overlap";
   case BadBump:
-    return "worse overlap";
+    return "worse_overlap";
   case HydrogenBond:
     return "H-bonds";
   case Invalid:
