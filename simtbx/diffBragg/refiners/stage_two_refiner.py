@@ -66,55 +66,35 @@ class StageTwoRefiner(BaseRefiner):
         self.trad_conv_eps = self.params.refiner.tradeps
         self.calc_curvatures = self.params.refiner.curvatures
         self.break_signal = self.params.refiner.break_signal
+        self.output_dir = self.params.refiner.io.output_dir  # directory to dump progress files, these can be used to restart simulation later
+        self.save_model_freq = self.params.refiner.stage_two.save_model_freq
+        self.use_nominal_h = self.params.refiner.stage_two.use_nominal_hkl
+        self.sigma_r = 3.  # readout noise mean in ADU
 
-
-        self.save_model_freq = 10  # save pixel model values after this many iterations
-        self.saveZ_freq = 5  # save Zscore data every N iterations
+        self.saveZ_freq = self.params.refiner.stage_two.save_Z_freq  # save Z-score data every N iterations
         self.break_signal = None  # check for this signal during refinement, and break refinement if signal is received (see python signal module)
-        self.print_end = "\n"  # value appended to the end of each printed string
-        self.refine_blueSausages = False  # refine multiple crystals per image (e.g. James Holtons blue sausage plot)
-        self.refine_eta = False  # refine the mosaic spread angle
-        self.refine_per_spot_scale = False  # experimental, refine a per spot scale factor for each ROI
         self.save_model = False  # whether to save the model
         self.idx_from_asu = {}  # maps global fcell index to asu hkl
         self.asu_from_idx = {}  # maps asu hkl to global fcell index
         self.rescale_params = True  # whether to rescale parameters during refinement  # TODO this will always be true, so remove the ability to disable
-        self.fcell_sigma_scale = 0.005  # sensitivity for Fcell during refinement
-        self.pause_after_iteration = 0.001  # pause for this long after each iteration (not used currently)
         self.request_diag_once = False  # LBFGS refiner property
-        self.output_dir = self.params.refiner.io.output_dir  # directory to dump progress files, these can be used to restart simulation later
         self.min_multiplicity = 1  # only refine a spots Fhkl if multiplicity greater than this number
         self.restart_file = None  # output file from previous run refinement
         self.trial_id = 0  # trial id in case multiple trials are run in sequence
         self.x_init = None  # used to restart the refiner (e.g. self.x gets updated with this)
         self.log_fcells = True  # to refine Fcell using logarithms to avoid negative Fcells
-        self.refine_background_planes = False  # whether to refine the background planes
-        self.refine_ncells = False  # whether to refine Ncells abc
-        self.refine_ncells_def = False  # whether to refine Ncells abc
-        self.refine_detdist = False  # whether to refine the detdist
-        self.refine_panelXY = False  # whether to refine panel origin X and Y components
-        self.refine_panelZ = False  # whether to refine panel origin X and Y components
-        self.refine_panelRotO = False  # whether to refine the panel rotation
-        self.refine_panelRotF = False  # whether to refine the panel rotation
-        self.refine_panelRotS = False  # whether to refine the panel rotation
-        self.refine_Umatrix = False  # whether to refine the Umatrix
-        self.refine_Bmatrix = False  # whether to refine the Bmatrx
         self.refine_crystal_scale = False  # whether to refine the crystal scale factor
         self.refine_Fcell = False  # whether to refine Fhkl for each shoebox ROI
         self.use_curvatures_threshold = 7  # how many positive curvature iterations required before breaking, after which simulation can be restart with use_curvatures=True
         self.verbose = True  # whether to print during iterations
         self.iterations = 0  # iteration counter , used internally
         self.shot_ids = None  # for global refinement ,
-        self.sigma_r = 3.  # readout noise mean in ADU
         self.log2pi = np.log(np.pi*2)
 
         self._sig_hand = None  # method for handling the break_signal, e.g. SIGHAND.handle defined above (theres an MPI version in global_refiner that overwrites this in stage 2)
         self._is_trusted = None  # used during refinement, 1-D array or trusted pixels corresponding to the pixels in the ROI
 
         self.rank = COMM.rank
-        self.save_model_freq = self.params.refiner.stage_two.save_model_freq
-        self.use_nominal_h = self.params.refiner.stage_two.use_nominal_hkl
-        self.init_image_corr = None
 
         self.Modelers = shot_modelers
         self.shot_ids = sorted(self.Modelers.keys())
@@ -134,7 +114,6 @@ class StageTwoRefiner(BaseRefiner):
         self._eta_id = 19  # diffBragg internal index for eta derivative manager
         self._lambda0_id = 12  # diffBragg interneal index for lambda derivatives
         self._lambda1_id = 13  # diffBragg interneal index for lambda derivatives
-        self._sausage_id = 20
         self._ncells_def_id = 21
 
         self.symbol = sgsymbol
@@ -675,7 +654,6 @@ class StageTwoRefiner(BaseRefiner):
 
         self.iterations += 1
         self.f_vals.append(self.target_functional)
-        #time.sleep(self.pause_after_iteration)
 
         if self.calc_curvatures and not self.use_curvatures:
             if self.num_positive_curvatures == self.use_curvatures_threshold:
@@ -716,8 +694,7 @@ class StageTwoRefiner(BaseRefiner):
 
             xpos = self.fcell_xstart + i_fcell
             Famp = self._fcell_at_i_fcell[i_fcell]
-            #resolution_id = self.res_group_id_from_fcell_index[i_fcell]
-            sig = 1  # self.sigma_for_res_id[resolution_id] * self.fcell_sigma_scale
+            sig = 1
             for slc in MOD.i_fcell_slices[i_fcell]:
                 self.fcell_dI_dtheta = self.fcell_deriv[slc]
 

@@ -518,9 +518,6 @@ class RefineLauncher:
                 print("refiner spot scale=%f" % (s**2))
 
             x_init = self.RUC.x
-            if self.params.refiner.only_predict_model:
-                if self.RUC.gnorm > 0:
-                    raise ValueError("Only predciting model, but the gradient is finite! This means the model changed, somethings wrong!")
 
             if self.params.profile:
                 self.RUC.S.D.show_timings(self.RUC.rank)
