@@ -59,6 +59,11 @@ master_phil_str = """
       .help = Minimum length of a domain to keep (reject at end if smaller).
       .short_caption = Minimum domain length (residues)
 
+    minimum_sequential_residues = 5 
+      .type = int
+      .help = Minimum length of a short segment to keep (reject at end ).
+      .short_caption = Minimum sequential_residues
+
     minimum_remainder_sequence_length = 15
       .type = int
       .help = used to choose whether the sequence of a removed \
@@ -289,6 +294,20 @@ def process_predicted_model(
     selection_string = " (bfactor < %s)" %maximum_b_value
     asc1 = ph.atom_selection_cache()
     sel = asc1.selection(selection_string)
+    working_ph = ph.select(sel)
+    if p.minimum_sequential_residues:  #
+      # Remove any very short segments
+      asc1 = working_ph.atom_selection_cache()
+      sel1 = asc1.selection('name ca')
+      ca_ph = working_ph.select(sel1)
+      selection_to_remove = get_selection_for_short_segments(ca_ph,
+         p.minimum_sequential_residues)
+      if selection_to_remove:
+        print("Removing short segments: %s" %(selection_to_remove), file = log)
+        asc1 = ph.atom_selection_cache() # original ph
+        sel2 = asc1.selection(selection_to_remove)
+        sel = ~ (~sel | sel2)
+
     new_ph = ph.select(sel)
     n_after = new_ph.overall_counts().n_residues
     print("Total of %s of %s residues kept after B-factor filtering" %(
@@ -307,6 +326,7 @@ def process_predicted_model(
         remainder_sequence_str += "\n> fragment sequence "
         remainder_sequence_str += "\n%s\n" %(
           get_sequence_from_hierarchy(m.hierarchy))
+    ph = new_ph
   else:
     remainder_sequence_str = None
 
@@ -355,6 +375,29 @@ def process_predicted_model(
     remainder_sequence_str = remainder_sequence_str,
     )
 
+
+def get_selection_for_short_segments(ph, minimum_sequential_residues):
+  chain_dict = {}
+  for model in ph.models():
+    for chain in model.chains():
+      residue_list = []
+      for rg in chain.residue_groups():
+        resseq_int = rg.resseq_as_int()
+        residue_list.append(resseq_int)
+      residue_list = sorted(residue_list)
+      chain_dict[chain.id] = residue_list
+  selections = []
+  for chain_id in chain_dict.keys():
+    residue_list = chain_dict[chain_id]
+    for r in get_indices_as_ranges(residue_list):
+      if r.end - r.start + 1 < minimum_sequential_residues:
+        selections.append("(chain %s and resseq %s:%s)" %(
+          chain_id, r.start, r.end))
+  selection_string = " or ".join(selections)
+  return selection_string
+      
+
+  
 
 def split_model_by_chainid(m, chainid_list):
   """
