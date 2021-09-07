@@ -1427,15 +1427,9 @@ def enable_cuda_if_possible():
                              ['-use_fast_math','--shared',
                              '--compiler-options',cc_flags]
 
-    warn_suppress=""
-    show_all_warnings = os.environ.get("CCTBX_SHOW_ALL_NVCC_WARNINGS") is not None
-    if not show_all_warnings:
-        # by default we mask these warnings which arise when eigen code is compiled with nvcc
-        # TODO which nvcc versions support these flags
-        warn_suppress="-Xcudafe --diag_suppress=esa_on_defaulted_function_ignored --expt-relaxed-constexpr "
     shared_object_builder =\
       Builder\
-      (action = '$NVCC %s-c -o $TARGET $_CPPINCFLAGS $NVCCFLAGS $SOURCES' % warn_suppress,
+      (action = '$NVCC -c -o $TARGET $_CPPINCFLAGS $NVCCFLAGS $SOURCES',
        suffix = '.o',
        src_suffix = ['.cu','.cpp'],
        source_scanner = SCons.Scanner.C.CScanner())
