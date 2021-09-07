@@ -69,10 +69,9 @@ class StageTwoRefiner(BaseRefiner):
         self.output_dir = self.params.refiner.io.output_dir  # directory to dump progress files, these can be used to restart simulation later
         self.save_model_freq = self.params.refiner.stage_two.save_model_freq
         self.use_nominal_h = self.params.refiner.stage_two.use_nominal_hkl
-        self.sigma_r = 3.  # readout noise mean in ADU
 
         self.saveZ_freq = self.params.refiner.stage_two.save_Z_freq  # save Z-score data every N iterations
-        self.break_signal = None  # check for this signal during refinement, and break refinement if signal is received (see python signal module)
+        self.break_signal = None  # check for this signal during refinement, and break refinement if signal is received (see python signal module) TODO: make work with MPI
         self.save_model = False  # whether to save the model
         self.idx_from_asu = {}  # maps global fcell index to asu hkl
         self.asu_from_idx = {}  # maps asu hkl to global fcell index
@@ -305,7 +304,7 @@ class StageTwoRefiner(BaseRefiner):
             ma_map = {h: d for h,d in zip(ma.indices(), ma.data())}
             LOGGER.info("make fcell_init")
             self.fcell_init_from_i_fcell = np.array([ma_map[self.asu_from_idx[i_fcell]] for i_fcell in range(self.n_global_fcell)])
-            self.fcell_sigmas_from_i_fcell = 1
+            self.fcell_sigmas_from_i_fcell = self.params.sigmas.Fhkl
             LOGGER.info("DONE make fcell_init")
 
     def _get_sausage_parameters(self, i_shot):
@@ -865,9 +864,10 @@ class StageTwoRefiner(BaseRefiner):
         return cterm
 
     def _derivative_convenience_factors(self):
-        self.Imeas = self.Modelers[self._i_shot].all_data
+        Mod = self.Modelers[self._i_shot]
+        self.Imeas = Mod.all_data
         self.u = self.Imeas - self.model_Lambda
-        self.one_over_v = 1. / (self.model_Lambda + self.sigma_r ** 2)
+        self.one_over_v = 1. / (self.model_Lambda + Mod.sigma_rdout ** 2)
         self.one_minus_2u_minus_u_squared_over_v = 1 - 2 * self.u - self.u * self.u * self.one_over_v
         if self.calc_curvatures:
             self.u_times_one_over_v = self.u*self.one_over_v
@@ -889,7 +889,8 @@ class StageTwoRefiner(BaseRefiner):
         self.log_Lambda[self.model_Lambda <= 0] = 0
 
     def _evaluate_log_averageI_plus_sigma_readout(self):
-        v = self.model_Lambda + self.sigma_r ** 2
+        Mod = self.Modelers[self._i_shot]
+        v = self.model_Lambda + Mod.sigma_rdout ** 2
         v_is_neg = (v <= 0).ravel()
         if any(v_is_neg):
             LOGGER.info("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL!!!!!!!!!\n<><><><><><><><><>\n")
