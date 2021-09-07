@@ -12,7 +12,7 @@ except ImportError:
     print("Pandas is required. Install using 'libtbx.python -m pip install pandas'")
     exit()
 from xfel.merging.application.utils.memory_usage import get_memory_usage
-from simtbx.diffBragg.refiners.local_refiner import LocalRefiner
+from simtbx.diffBragg.refiners.stage_two_refiner import StageTwoRefiner
 from simtbx.diffBragg import utils
 from simtbx.diffBragg import hopper_utils
 from dxtbx.model.experiment_list import ExperimentListFactory
@@ -433,7 +433,7 @@ class RefineLauncher:
         n_trials = len(self.params.refiner.max_calls)
         for i_trial in range(n_trials*nmacro):
 
-            self.RUC = LocalRefiner(self.Modelers, self.symbol, self.params)
+            self.RUC = StageTwoRefiner(self.Modelers, self.symbol, self.params)
 
             if self.will_refine(self.params.refiner.refine_spot_scale):
                 self.RUC.refine_crystal_scale = (self.params.refiner.refine_spot_scale*nmacro)[i_trial]

@@ -2021,7 +2021,6 @@ void diffBragg::diffBragg_rot_mats(){
 
 void diffBragg::diffBragg_list_steps( step_arrays& db_steps){
     /* TODO theres probably a clever way to do this, but oh well */
-    // TODO: time me
     int i_step = 0;
     for(subS=0;subS<oversample;++subS){
         for(subF=0;subF<oversample;++subF){
