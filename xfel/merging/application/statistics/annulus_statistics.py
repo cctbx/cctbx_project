@@ -41,6 +41,7 @@ class annulus_statistics(worker):
       for m_i in final_refl_in_annulus['miller_index']:
         count = counts.setdefault(m_i, 0)
         counts[m_i] = count + 1
+      print('total shoeboxes: {}'.format(sum(counts.values())))
       print('unique miller indices: {}'.format(len(counts.keys())))
       print('average multiplicity: {:.3f}'.format(sum(counts.values())/len(counts.values())))
 
