@@ -192,6 +192,7 @@ namespace molprobity {
       /// @param [in] contactCutoff Atoms that are nearer than this will be considered to be in near
       ///             contact, with atoms further in far contact.  This should be at least as large
       ///             as the probe radius.
+      /// @todo Consider moving the probe radius into the constructor parameters
       DotScorer(ExtraAtomInfoMap extraInfoMap
         , double gapScale = 0.25
         , double bumpWeight = 10.0
@@ -220,8 +221,8 @@ namespace molprobity {
       class CheckDotResult {
       public:
         OverlapType overlapType = DotScorer::OverlapType::Ignore; ///< What kind of overlap, if any, was found
-        iotbx::pdb::hierarchy::atom cause;  ///< Cause of the overlap, if overlapType != None
-        double  overlap = 0;                ///< Amount of overlap if there is a clash
+        iotbx::pdb::hierarchy::atom cause;  ///< Cause of the overlap, if overlapType != Ignore
+        double  overlap = 0;                ///< Amount of overlap assigned to source atom if there is a clash
         double  gap = 1e100;                ///< Gap distance (overlap may only be a fraction of this).
         bool    annular = false;            ///< Was this an annular dot?
       };
