@@ -751,7 +751,7 @@ Note:
 
           if self.params.output.color_by_gap:
             if t is not None:
-              color = self._color_for_gap(node.gap, InteractionType)
+              color = self._color_for_gap(node.gap, interactionType)
               ret += "{}".format(color)
             else:
               ret += "{} ".format(self.params.output.default_point_color)
