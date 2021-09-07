@@ -237,10 +237,13 @@ namespace molprobity {
       /// @param [in] excluded Atoms that are to be excluded from contact, for example this could be a list
       ///             of atoms bonded to sourceAtom.  If the dot is inside an excluded atom, it will not be
       ///             considered even if it is overlapping with an interacting atom.
+      /// @param [in] overlapScale: The fraction of overlap to assign to each of the two atoms, scaling the
+      ///             spike drawn for each.
       CheckDotResult check_dot(iotbx::pdb::hierarchy::atom sourceAtom,
         Point const& dotOffset, double probeRadius,
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& interacting,
-        scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude);
+        scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude,
+        double overlapScale = 0.5);
 
       /// @brief Enumeration listing the detailed class of interaction a dot can have with an atom.
       /// This is a weak enumeration rather than a class so that it can by type-cast back into integers

@@ -83,7 +83,8 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   iotbx::pdb::hierarchy::atom sourceAtom,
   Point const& dotOffset, double probeRadius,
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &interacting,
-  scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude)
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude,
+  double overlapScale)
 {
   // Defaults to "no overlap" type
   CheckDotResult ret;
@@ -174,7 +175,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
       ret.overlap = 0;
       ret.overlapType = DotScorer::OverlapType::NoOverlap;
     } else if (isHydrogenBond) {
-      ret.overlap = -0.5 * ret.gap;
+      ret.overlap = -overlapScale * ret.gap;
       if (tooCloseHydrogenBond) {
         ret.gap += hydrogenBondMinDist;
         ret.overlapType = DotScorer::OverlapType::Clash;
@@ -182,7 +183,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
         ret.overlapType = DotScorer::OverlapType::HydrogenBond;
       }
     } else {  // ret.gap < 0 and not a hydrogen bond
-      ret.overlap = -0.5 * ret.gap;
+      ret.overlap = -overlapScale * ret.gap;
       ret.overlapType = DotScorer::OverlapType::Clash;
     }
 
@@ -1120,6 +1121,8 @@ std::string Scoring_test()
       return "Scoring_test: closest_contact() returned bad distance for point";
     }
   }
+
+  /// @todo Test the overlap scale factor
 
   // All tests passed.
   return "";
