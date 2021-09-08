@@ -49,9 +49,12 @@ db_tst_list = [
     ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel z"]
     ]
 
-tst_list = nb_tst_list + db_tst_list
-
 OPT = libtbx.env.build_options
+
+tst_list = nb_tst_list
+if OPT.enable_cxx11:
+    tst_list += db_tst_list
+
 if OPT.enable_cuda:
   tst_list_parallel = [
     ["$D/nanoBragg/tst_gauss_argchk.py","GPU"], # tests CPU+GPU, argchk optimization
@@ -59,12 +62,13 @@ if OPT.enable_cuda:
     "$D/gpu/tst_gpu_multisource_background.py", # CPU / GPU background comparison
     "$D/kokkos/tst_kokkos_lib.py",                  # GPU in kokkos
   ]
-  for tst in db_tst_list:
-      if isinstance(tst, str):
-          par_tst = [tst, "--cuda"]
-      else:
-          par_tst = tst + ["--cuda"]
-      tst_list_parallel.append(par_tst)
+  if OPT.enable_cxx11:
+      for tst in db_tst_list:
+          if isinstance(tst, str):
+              par_tst = [tst, "--cuda"]
+          else:
+              par_tst = tst + ["--cuda"]
+          tst_list_parallel.append(par_tst)
 else:
   tst_list.append(
     ["$D/nanoBragg/tst_gauss_argchk.py","CPU"]
