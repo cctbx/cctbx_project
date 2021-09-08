@@ -31,7 +31,8 @@ if not env_etc.no_boost_python:
      "cctbx"])
   env_etc.enable_more_warnings(env=env_simtbx)
   env_simtbx.SConscript("nanoBragg/SConscript",exports={ 'env' : env_simtbx })
-  env_simtbx.SConscript("diffBragg/SConscript", exports="env_simtbx")
+  if libtbx.env.build_options.enable_cxx11:
+      env_simtbx.SConscript("diffBragg/SConscript", exports="env_simtbx")
   env_simtbx.SConscript("gpu/SConscript",exports={ 'env' : env_simtbx })
   env_simtbx.SConscript("pixel/SConscript",exports={ 'env' : env_simtbx })
 
