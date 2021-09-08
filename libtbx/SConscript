@@ -1197,7 +1197,7 @@ if ARGUMENTS.get('TERSE') == '1':
   env_base['ARCOMSTR']     = "Archiving $TARGET"
 
 env_base.Append(LIBPATH=["#lib"])
-env_base.Append(SHOBJSUFFIX=env_base["OBJSUFFIX"])
+env_base.Replace(SHOBJSUFFIX=env_base["OBJSUFFIX"])
 
 # XXX backward compatibility 2009-08-21
 # future: remove ccflags_base, cxxflags_base from env_etc
@@ -1392,17 +1392,7 @@ def enable_cuda_if_possible():
                         '--generate-code=arch=compute_72,code=sm_72',
                         '--generate-code=arch=compute_75,code=sm_75']
 
-    elif cuda_version >= 11.0 and cuda_version< 11.1:
-    # NOTE: lower compute compat. are being phased out
-        arch_flags = ['--generate-code=arch=compute_60,code=sm_60',
-                      '--generate-code=arch=compute_61,code=sm_61',
-                      '--generate-code=arch=compute_62,code=sm_62',
-                      '--generate-code=arch=compute_70,code=sm_70',
-                      '--generate-code=arch=compute_72,code=sm_72',
-                      '--generate-code=arch=compute_75,code=sm_75',
-                      '--generate-code=arch=compute_80,code=sm_80']
-
-    elif cuda_version >= 11:
+    elif cuda_version >= 11:  # NOTE: lower compute compat. are being phased out
         arch_flags = ['--generate-code=arch=compute_60,code=sm_60',
                       '--generate-code=arch=compute_61,code=sm_61',
                       '--generate-code=arch=compute_62,code=sm_62',
@@ -1411,6 +1401,9 @@ def enable_cuda_if_possible():
                       '--generate-code=arch=compute_75,code=sm_75',
                       '--generate-code=arch=compute_80,code=sm_80',
                       '--generate-code=arch=compute_86,code=sm_86']
+        # cuda 11.0 does not support compute_86, remove last entry
+        if cuda_version < 11.1:
+            arch_flags.pop()
     else:
         raise Sorry("cctbx only supports cuda versions 6-11")
 
