@@ -88,7 +88,7 @@ def main():
   tf = 'test_cis_127.pdb'
   with open(tf, 'w') as f:
     f.write(pdb_lines)
-  cmd = 'phenix.pdb_interpretation write_geo=True %s' % tf
+  cmd = 'phenix.pdb_interpretation write_geo=True cis_pro_eh99=False %s' % tf
   print(cmd)
   easy_run.go(cmd)
   with open('%s.geo' % tf, 'r') as f:

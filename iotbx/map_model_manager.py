@@ -751,7 +751,8 @@ class map_model_manager(object):
           print("\nCould not obtain resolution from FSC", file = self.log)
 
 
-      if (not resolution) and self.map_manager():
+      if (not resolution) and self.map_manager() and (
+           not self.map_manager().is_dummy_map_manager()):
         # get resolution from map_manager
         resolution = self.map_manager().resolution()
         print("\nResolution obtained from map_manager: %.3f A " %(
@@ -2804,6 +2805,16 @@ class map_model_manager(object):
       minimum_match_length = 2,
       shift_without_deep_copy = False,
       quiet = True):
+
+
+    from libtbx import adopt_init_args
+    kw_obj = group_args()
+    adopt_init_args(kw_obj, locals())
+    all_kw = kw_obj() # save calling parameters in kw as dict
+    del all_kw['adopt_init_args'] # REQUIRED
+    del all_kw['kw_obj']  # REQUIRED
+
+
     '''
     Select the parts of matching_model that best match target_model
     without using matching model or target model more than once
@@ -2829,10 +2840,13 @@ class map_model_manager(object):
     If target model or matching model have different origins from self, they
       deep-copied and shifted in place to match. The deep copy can be
       skipped if shift_without_deep_copy is set.
+
+    If either model has multiple chains, run all pairwise combinations
     '''
 
     from mmtbx.secondary_structure.find_ss_from_ca import \
-       get_first_resno,get_last_resno, get_chain_id
+       get_first_resno,get_last_resno, get_chain_id, get_chain_ids
+
 
     if one_to_one:
        max_gap = 0
@@ -2861,6 +2875,24 @@ class map_model_manager(object):
       if not target_model:
         print("No target model...skipping comparison", file = self.log)
       return []
+
+    target_model_chain_ids = get_chain_ids(target_model.get_hierarchy())
+    matching_model_chain_ids = get_chain_ids(matching_model.get_hierarchy())
+    if len(target_model_chain_ids) > 1 or len(matching_model_chain_ids) > 1:
+      target_and_matching_list = []
+      for target_model_chain_id in target_model_chain_ids:
+        target_model_chain = target_model.apply_selection_string(
+          "chain %s" %(target_model_chain_id))
+        for matching_model_chain_id in matching_model_chain_ids:
+          matching_model_chain = matching_model.apply_selection_string(
+            "chain %s" %(matching_model_chain_id))
+          all_kw['target_model'] = target_model_chain
+          all_kw['matching_model'] = matching_model_chain
+          local_matching_list = self.select_matching_segments(**all_kw)
+          if local_matching_list:
+            target_and_matching_list += local_matching_list
+      return target_and_matching_list
+
 
     if not quiet:
       print("\nFinding parts of %s that match %s " %(
@@ -8091,7 +8123,7 @@ class map_model_manager(object):
       required
     '''
 
-    if self.map_manager():
+    if self.map_manager() and (not self.map_manager().is_dummy_map_manager()):
       resolution = self.resolution()
       assert resolution is not None
 

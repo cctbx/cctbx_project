@@ -972,7 +972,6 @@ class iota_module(SourceModule):
 class msgpack_module(SourceModule):
   module = 'msgpack'
   anonymous = ['curl', [
-    "https://gitcdn.xyz/repo/dials/dependencies/dials-1.13/msgpack-3.1.1.tar.gz",
     "https://gitcdn.link/repo/dials/dependencies/dials-1.13/msgpack-3.1.1.tar.gz",
     "https://github.com/dials/dependencies/raw/dials-1.13/msgpack-3.1.1.tar.gz",
   ]]
@@ -1000,10 +999,6 @@ class kokkos_module(SourceModule):
 class probe_module(SourceModule):
   module = 'probe'
   anonymous = ['svn', 'https://github.com/rlabduke/probe.git/trunk']
-
-class suitename_module(SourceModule):
-  module = 'suitename'
-  anonymous = ['svn', 'https://github.com/rlabduke/suitename.git/trunk']
 
 class reduce_module(SourceModule):
   module = 'reduce'
@@ -1483,7 +1478,7 @@ class Builder(object):
 
   def _add_svn(self, module, url):
     update_list = ['update']
-    if module in ["reduce", "probe", "king", "suitename"]:
+    if module in ["reduce", "probe", "king"]:
       pass
     elif self.revert:
       update_list = ['update', '-r', self.revert]
@@ -1969,8 +1964,7 @@ class MOLPROBITYBuilder(Builder):
     'molprobity',
     #'chem_data', #chem_data removed from molprobity builder until accessible outside cci, -CJW
     'reduce',
-    'probe',
-    'suitename'
+    'probe'
   ]
   # Copy these sources from cci.lbl.gov
   HOT = [
@@ -2314,7 +2308,6 @@ class PhenixBuilder(CCIBuilder):
     'reduce',
     'probe',
     'king',
-    'suitename',
     'dials',
     'xia2',
     'phaser',
