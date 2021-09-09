@@ -1596,79 +1596,79 @@ def run(args=None,
   n=len(far_away_match_list)
   rv.add_rmsd(id=id,rmsd=rmsd,n=n)
 
-  if not quiet:
+  if verbose and not quiet:
+    print("Total CA: %d  Too far to match: %d " %(
+      chain_xyz_fract.size(),len(far_away_match_list)), file=out)
+
+  rmsd,n=rv.get_values(id='forward')
+  if n and not quiet:
+    print("\nResidues matching in forward direction:   %4d  RMSD: %6.2f" %(
+       n,rmsd), file=out)
     if verbose:
-      print("Total CA: %d  Too far to match: %d " %(
-        chain_xyz_fract.size(),len(far_away_match_list)), file=out)
+      for i,j in forward_match_list:
+        print("ID:%d:%d  RESIDUES:  \n%s\n%s" %( i,j, chain_ca_lines[i],
+         target_xyz_lines[j]), file=out)
 
-    rmsd,n=rv.get_values(id='forward')
-    if n:
-      print("\nResidues matching in forward direction:   %4d  RMSD: %6.2f" %(
-         n,rmsd), file=out)
-      if verbose:
-        for i,j in forward_match_list:
-          print("ID:%d:%d  RESIDUES:  \n%s\n%s" %( i,j, chain_ca_lines[i],
-           target_xyz_lines[j]), file=out)
+  rmsd,n=rv.get_values(id='reverse')
+  if n and not quiet:
+    print("Residues matching in reverse direction:   %4d  RMSD: %6.2f" %(
+       n,rmsd), file=out)
+    if verbose:
+      for i,j in reverse_match_list:
+        print("ID:%d:%d  RESIDUES:  \n%s\n%s" %(
+         i,j, chain_ca_lines[i],
+         target_xyz_lines[j]), file=out)
 
-    rmsd,n=rv.get_values(id='reverse')
-    if n:
-      print("Residues matching in reverse direction:   %4d  RMSD: %6.2f" %(
-         n,rmsd), file=out)
-      if verbose:
-        for i,j in reverse_match_list:
-          print("ID:%d:%d  RESIDUES:  \n%s\n%s" %(
-           i,j, chain_ca_lines[i],
-           target_xyz_lines[j]), file=out)
+  rmsd,n=rv.get_values(id='unaligned')
+  if n and not quiet:
+    print("Residues near but not matching one-to-one:%4d  RMSD: %6.2f" %(
+       n,rmsd), file=out)
+    if verbose:
+      for i,j in unaligned_match_list:
+        print("ID:%d:%d  RESIDUES:  \n%s\n%s" %(i,j, chain_ca_lines[i],
+          target_xyz_lines[j]), file=out)
 
-    rmsd,n=rv.get_values(id='unaligned')
-    if n:
-      print("Residues near but not matching one-to-one:%4d  RMSD: %6.2f" %(
-         n,rmsd), file=out)
-      if verbose:
-        for i,j in unaligned_match_list:
-          print("ID:%d:%d  RESIDUES:  \n%s\n%s" %(i,j, chain_ca_lines[i],
-            target_xyz_lines[j]), file=out)
+  rmsd,n=rv.get_values(id='close')
+  if n:
+    lines_chain_ca=[]
+    lines_target_xyz=[]
+    for i,j in close_match_list:
+      lines_chain_ca.append(chain_ca_lines[i])
+      lines_target_xyz.append(target_xyz_lines[j])
+    seq_chain_ca=get_seq_from_lines(lines_chain_ca)
+    seq_target_xyz=get_seq_from_lines(lines_target_xyz)
+    target_chain_ids=get_chains_from_lines(lines_target_xyz)
+    target_length=get_target_length(target_chain_ids=target_chain_ids,
+      hierarchy=target_ca,
+      target_length_from_matching_chains=target_length_from_matching_chains)
+    rv.add_target_length(id='close',target_length=target_length)
 
-    rmsd,n=rv.get_values(id='close')
-    if n:
-      lines_chain_ca=[]
-      lines_target_xyz=[]
-      for i,j in close_match_list:
-        lines_chain_ca.append(chain_ca_lines[i])
-        lines_target_xyz.append(target_xyz_lines[j])
-      seq_chain_ca=get_seq_from_lines(lines_chain_ca)
-      seq_target_xyz=get_seq_from_lines(lines_target_xyz)
-      target_chain_ids=get_chains_from_lines(lines_target_xyz)
-      target_length=get_target_length(target_chain_ids=target_chain_ids,
-        hierarchy=target_ca,
-        target_length_from_matching_chains=target_length_from_matching_chains)
-      rv.add_target_length(id='close',target_length=target_length)
+    if verbose and not quiet:
+       print("SEQ1:",seq_chain_ca,len(lines_chain_ca))
+       print("SEQ2:",seq_target_xyz,len(lines_target_xyz))
 
-      if verbose:
-         print("SEQ1:",seq_chain_ca,len(lines_chain_ca))
-         print("SEQ2:",seq_target_xyz,len(lines_target_xyz))
+    match_n,match_percent=get_match_percent(seq_chain_ca,seq_target_xyz,
+      params=params)
+    rv.add_match_percent(id='close',match_percent=match_percent)
 
-      match_n,match_percent=get_match_percent(seq_chain_ca,seq_target_xyz,
-        params=params)
-      rv.add_match_percent(id='close',match_percent=match_percent)
+    percent_close=rv.get_close_to_target_percent('close')
 
-      percent_close=rv.get_close_to_target_percent('close')
-
+    if not quiet:
       print("\nAll residues near target: "+\
-         "%4d  RMSD: %6.2f Seq match (%%):%5.1f  %% Found: %5.1f" %(
-         n,rmsd,match_percent,percent_close), file=out)
+       "%4d  RMSD: %6.2f Seq match (%%):%5.1f  %% Found: %5.1f" %(
+       n,rmsd,match_percent,percent_close), file=out)
       if verbose:
         for i,j in close_match_list:
           print("ID:%d:%d  RESIDUES:  \n%s\n%s" %(i,j, chain_ca_lines[i],
             target_xyz_lines[j]), file=out)
 
-    rmsd,n=rv.get_values(id='far_away')
-    if n:
-      print("Residues far from target: %4d " %(
-         n), file=out)
-      if verbose:
-        for i in far_away_match_list:
-          print("ID:%d  RESIDUES:  \n%s" %(i,chain_ca_lines[i]), file=out)
+  rmsd,n=rv.get_values(id='far_away')
+  if n and not quiet:
+    print("Residues far from target: %4d " %(
+       n), file=out)
+    if verbose:
+      for i in far_away_match_list:
+        print("ID:%d  RESIDUES:  \n%s" %(i,chain_ca_lines[i]), file=out)
 
   rv.n_forward=n_forward
   rv.n_reverse=n_reverse

@@ -63,7 +63,7 @@ ensemble_refinement {
       .type = bool
       .help = Use protein atoms thermostat
   }
-    den_restraints = False
+    den_restraints = True
       .type = bool
       .help = 'Use DEN restraints'
     den
@@ -110,14 +110,14 @@ ensemble_refinement {
     .type = int
     .help = 'Length of equilibration period, n times tx'
     .short_caption = Length of equilibration period
-  acquisition_block_n_tx = 2
+  acquisition_block_n_tx = 20
     .type = int
     .help = 'Length of acquisition block, n times tx'
     .short_caption = Length of acquisition block
-  number_of_acquisition_periods = 10
+  number_of_acquisition_periods = 1
     .type = int
     .help = 'Number of acquisition periods'
-  pdb_stored_per_block = 50
+  pdb_stored_per_block = 200
     .type = int
     .help = 'Number of model coordinates stored per acquisition block'
     .short_caption = Models stored per acquisition block

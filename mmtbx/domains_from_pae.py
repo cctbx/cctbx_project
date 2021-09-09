@@ -2,6 +2,7 @@ from __future__ import division, print_function
 import sys
 from scitbx.array_family import flex
 from libtbx import group_args
+from libtbx.utils import Sorry
 from mmtbx.process_predicted_model import get_indices_as_ranges
 
 ##############################################################################
@@ -54,7 +55,8 @@ def parse_pae_file(pae_json_file):
     return matrix
 
 def domains_from_pae_matrix_networkx(pae_matrix, pae_power=1,
-       pae_cutoff=5, graph_resolution=1):
+       pae_cutoff=5, graph_resolution=1, weight_by_ca_ca_distance=False,
+       distance_power=1, distance_model=None):
     '''
     Takes a predicted aligned error (PAE) matrix representing the predicted error in distances between each
     pair of residues in a model, and uses a graph-based community clustering algorithm to partition the model
@@ -68,18 +70,26 @@ def domains_from_pae_matrix_networkx(pae_matrix, pae_power=1,
         * pae_cutoff (optional, default=5): graph edges will only be created for residue pairs with pae<pae_cutoff
         * graph_resolution (optional, default=1): regulates how aggressively the clustering algorithm is. Smaller values
           lead to larger clusters. Value should be larger than zero, and values larger than 5 are unlikely to be useful.
-
+        * weight_by_ca_ca_distance (optional, default=False): adjust the edge weighting for each residue pair according
+          to the distance between CA residues. If this is True, then `distance_model` must be provided.
+        * distance_power (optional, default=1): If `weight_by_ca_ca_distance` is True, then edge weights will be multiplied
+          by 1/distance**distance_power.
+        * distance_model (optional, default=None): Model corresponding to the PAE
+          matrix. Only needed if `weight_by_ca_ca_distances is True.
     Returns: a series of lists, where each list contains the indices of residues belonging to one cluster.
     '''
     try:
         import networkx as nx
     except ImportError:
-        print('ERROR: This method requires NetworkX (>=2.6.2) to be installed. Please install it using "pip install networkx" '
+        raise Sorry('ERROR: This method requires NetworkX (>=2.6.2) to be installed. Please install it using "pip install networkx" '
             'in a Python >=3.7 environment and try again.')
-        import sys
-        sys.exit()
     import numpy
     weights = 1/pae_matrix**pae_power
+
+    if weight_by_ca_ca_distance:
+      if distance_model is None:
+        raise Sorry('If weight_by_ca_ca_distance is True, distance_model must be provided!')
+      weights *= weights_from_distance_matrix(distance_model, distance_power)
 
     g = nx.Graph()
     size = weights.shape[0]
@@ -99,7 +109,8 @@ def domains_from_pae_matrix_networkx(pae_matrix, pae_power=1,
     return clusters
 
 def domains_from_pae_matrix_igraph(pae_matrix, pae_power=1, pae_cutoff=5,
-      graph_resolution=1):
+      graph_resolution=1, weight_by_ca_ca_distance=False,
+       distance_power=1, distance_model=None):
     '''
     Takes a predicted aligned error (PAE) matrix representing the predicted error in distances between each
     pair of residues in a model, and uses a graph-based community clustering algorithm to partition the model
@@ -113,18 +124,27 @@ def domains_from_pae_matrix_igraph(pae_matrix, pae_power=1, pae_cutoff=5,
         * pae_cutoff (optional, default=5): graph edges will only be created for residue pairs with pae<pae_cutoff
         * graph_resolution (optional, default=1): regulates how aggressively the clustering algorithm is. Smaller values
           lead to larger clusters. Value should be larger than zero, and values larger than 5 are unlikely to be useful.
+        * weight_by_ca_ca_distance (optional, default=False): adjust the edge weighting for each residue pair according
+          to the distance between CA residues. If this is True, then `distance_model` must be provided.
+        * distance_power (optional, default=1): If `weight_by_ca_ca_distance` is True, then edge weights will be multiplied
+          by 1/distance**distance_power.
+        * distance_model (optional, default=None):  Model corresponding to the PAE
+          matrix. Only needed if `weight_by_ca_ca_distances is True.
 
     Returns: a series of lists, where each list contains the indices of residues belonging to one cluster.
     '''
     try:
         import igraph
     except ImportError:
-        print('ERROR: This method requires python-igraph to be installed. Please install it using "pip install python-igraph" '
+        raise Sorry('ERROR: This method requires python-igraph to be installed. Please install it using "pip install python-igraph" '
             'in a Python >=3.6 environment and try again.')
-        import sys
-        sys.exit()
     import numpy
     weights = 1/pae_matrix**pae_power
+
+    if weight_by_ca_ca_distance:
+      if distance_model is None:
+        raise Sorry('If weight_by_ca_ca_distance is True, distance_model must be provided!')
+      weights *= weights_from_distance_matrix(distance_model, distance_power)
 
     g = igraph.Graph()
     size = weights.shape[0]
@@ -148,6 +168,36 @@ def domains_from_pae_matrix_igraph(pae_matrix, pae_power=1, pae_cutoff=5,
 ##############################################################################
 
 
+def distance_matrix(sites_cart):
+  from scitbx.matrix import col
+  distances = flex.double()
+  n = sites_cart.size()
+  for i in range(n):
+    diffs = (sites_cart - col(sites_cart[i])).norms()
+    # Set diagonal terms to 1 to avoid divide-by-zero issues
+    diffs[i] = 1
+    distances.extend(diffs)
+  flex_grid=flex.grid((n,n))
+  distances.reshape(flex_grid)
+  return distances
+
+def flex_matrix_as_numpy_matrix(distances):
+  import numpy
+  shape = distances.all()
+  matrix = numpy.empty(shape)
+  matrix.ravel()[:] = list(distances.as_1d())
+  return matrix
+
+def weights_from_distance_matrix(distance_model , distance_power):
+  flex_matrix = distance_matrix(
+    distance_model.apply_selection_string("name CA").get_sites_cart()
+  )
+  numpy_matrix = flex_matrix_as_numpy_matrix(flex_matrix)
+  return 1/numpy_matrix**distance_power
+
+
+
+
 def cluster_as_selection(c, first_resno = None):
   # first_resno is residue number for selections corresponding to index of zero
   c = sorted(c)
@@ -167,18 +217,51 @@ def cluster_as_selection(c, first_resno = None):
         selection_string,r_start, r_end)
   return selection_string
 
+def read_model(filename):
+  from iotbx.data_manager import DataManager
+  dm = DataManager()
+  dm.set_overwrite(True)
+  dm.process_model_file(filename)
+  model = dm.get_model(filename)
+  model.add_crystal_symmetry_if_necessary()
+  return model
+
+
 def get_domain_selections_from_pae_matrix(pae_matrix = None,
       pae_file = None,
-      pae_power = None, pae_cutoff = None, graph_resolution = None,
+      library = None,
+      pae_power = None,
+      pae_cutoff = None,
+      graph_resolution = None,
+      weight_by_ca_ca_distance = None,
+      distance_power = None,
+      distance_model = None,
       first_resno = None):
+
+    if library is None:
+      library = 'networkx'
+    if library == 'networkx':
+      f = domains_from_pae_matrix_networkx
+    elif library == 'igraph':
+      f = domains_from_pae_matrix_igraph
+    else:
+      raise Sorry('Unrecognised library "%s"!', library)
 
     # first_resno is residue number of residue with index of zero
 
     if pae_matrix is None:
       pae_matrix = parse_pae_file(pae_file)
-    clusters = domains_from_pae_matrix_networkx(pae_matrix,
-      pae_power=pae_power, pae_cutoff=pae_cutoff,
-      graph_resolution=graph_resolution) # NOTE graph_resolution not used in 2.7
+    kwargs = {
+      "pae_power":                pae_power,
+      "pae_cutoff":               pae_cutoff,
+      "graph_resolution":         graph_resolution,
+      "weight_by_ca_ca_distance": weight_by_ca_ca_distance,
+      "distance_power":           distance_power,
+      "distance_model":           distance_model
+    }
+    # Use default values when argument is None
+    kwargs = {key: value for key,value in kwargs.items() if value is not None}
+    clusters = f(pae_matrix, **kwargs) # NOTE graph_resolution not used in 2.7
 
     new_clusters = []
     for c in clusters:
