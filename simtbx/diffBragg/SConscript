@@ -1,7 +1,16 @@
 import os
+import libtbx.load_env
 Import("env_etc env_simtbx nanoBragg_obj nanoBragg_env")
 
 diffBragg_env = nanoBragg_env.Clone()
+
+env_etc.eigen_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("simtbx"),"../../eigen"))
+if not os.path.isdir(env_etc.eigen_dist) and hasattr(env_etc, "conda_cpppath"):
+  for candidate in env_etc.conda_cpppath:
+    if os.path.isdir(os.path.join(candidate, "eigen3")):
+      env_etc.eigen_dist = os.path.abspath(os.path.join(os.path.join(candidate, "eigen3")))
+if os.path.isdir(env_etc.eigen_dist):
+  env_etc.eigen_include = env_etc.eigen_dist
 
 env_etc.include_registry.append(
   env=diffBragg_env,
