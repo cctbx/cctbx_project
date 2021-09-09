@@ -1478,7 +1478,7 @@ class Builder(object):
 
   def _add_svn(self, module, url):
     update_list = ['update']
-    if module in ["reduce", "probe", "king", "suitename"]:
+    if module in ["reduce", "probe", "king"]:
       pass
     elif self.revert:
       update_list = ['update', '-r', self.revert]
@@ -1921,7 +1921,6 @@ class CCIBuilder(Builder):
     'clipper',
     'eigen',
     'reduce',
-    'probe',
   ]
   CODEBASES_EXTRA = []
   # Copy these sources from cci.lbl.gov
@@ -2009,7 +2008,6 @@ class PhaserBuilder(CCIBuilder):
     'phaser_regression',
     'phaser',
     'reduce',
-    'probe',
   ]
   # Configure for these cctbx packages
   LIBTBX = [
