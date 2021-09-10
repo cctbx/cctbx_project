@@ -130,7 +130,7 @@ class small_cell_connection(object):
     self.dobs = dobs
     self.dcalc = dcalc
 
-def test_spot_connection(hklA,hklB,xyzA,xyzB,metrical_matrix,phil):
+def test_spot_connection(hklA,hklB,xyzA,xyzB,metrical_matrix,phil,epsilon):
   """ Given two hkls and two xyzs, determine if the reflections are 'connected', meaning
   the observed distance between the refelctions is similar to the calculated distance
   to the refelctions.
@@ -149,7 +149,7 @@ def test_spot_connection(hklA,hklB,xyzA,xyzB,metrical_matrix,phil):
   delta_calc = math.sqrt((column.transpose() * metrical_matrix * column)[0])
   delta_obv  = (xyzA-xyzB).length()
 
-  return approx_equal(delta_calc, delta_obv, out=None, eps=phil.small_cell.spot_connection_epsilon), delta_obv, delta_calc
+  return approx_equal(delta_calc, delta_obv, out=None, eps=epsilon), delta_obv, delta_calc
 
 def filter_indicies(ori,beam,resolution,phil):
   """ Given a unit cell, determine reflections in the diffracting condition, assuming the mosiaicity
@@ -352,6 +352,23 @@ def small_cell_index(path, horiz_phil):
   return max_clique_len
 
 def small_cell_index_detail(experiments, reflections, horiz_phil, write_output = True):
+  results = []
+  for eps in horiz_phil.small_cell.spot_connection_epsilon:
+    try:
+      max_clique_len, experiments, indexed  = small_cell_index_detail_with_eps(
+          experiments, reflections, horiz_phil, eps, write_output=write_output
+      )
+      results.append((max_clique_len, experiments, indexed))
+    except:
+      pass
+  return max(results, key=lambda x:x[2].size())
+
+def small_cell_index_detail_with_eps(
+    experiments,
+    reflections,
+    horiz_phil,
+    spot_connection_epsilon,
+    write_output = True):
   """ Index an image with a few spots and a known, small unit cell,
   with unknown basis vectors """
   import os,math
@@ -541,7 +558,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
               continue
             tested_B.append(hklB)
 
-            approx_eq, delta_obv, delta_calc = test_spot_connection(hklA,hklB,spotA.xyz,spotB.xyz,mm,horiz_phil)
+            approx_eq, delta_obv, delta_calc = test_spot_connection(hklA,hklB,spotA.xyz,spotB.xyz,mm,horiz_phil,spot_connection_epsilon)
 
             if approx_eq:
               hklA.connections.append(small_cell_connection(hklA,hklB,spotA,spotB,delta_obv,delta_calc))
@@ -637,7 +654,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
       hkl1  = spot1.hkls[e1[1]]
 
       approx_eq, delta_obv, delta_calc = test_spot_connection(hkl1,most_connected_hkl,
-                                                              spot1.xyz,most_connected_spot.xyz,mm,horiz_phil)
+                                                              spot1.xyz,most_connected_spot.xyz,mm,horiz_phil,spot_connection_epsilon)
       hkl1.connections.append(small_cell_connection(hkl1,most_connected_hkl,
                                                     spot1,most_connected_spot,delta_obv,delta_calc))
 
@@ -648,7 +665,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
         spot2 = sub_clique[e2[0]]
         hkl2  = spot2.hkls[e2[1]]
 
-        approx_eq, delta_obv, delta_calc = test_spot_connection(hkl1,hkl2,spot1.xyz,spot2.xyz,mm,horiz_phil)
+        approx_eq, delta_obv, delta_calc = test_spot_connection(hkl1,hkl2,spot1.xyz,spot2.xyz,mm,horiz_phil,spot_connection_epsilon)
         if approx_eq:
           hkl1.connections.append(small_cell_connection(hkl1,hkl2,spot1,spot2,delta_obv,delta_calc))
 

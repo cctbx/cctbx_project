@@ -43,7 +43,9 @@ class Processor(BaseProcessor):
 
     params = copy.deepcopy(self.params)
 
-    max_clique_len, experiments, indexed = small_cell_index_detail(experiments, reflections, params, write_output=False)
+    result = small_cell_index_detail(experiments, reflections, params, write_output=False)
+    print('about to unpack')
+    max_clique_len, experiments, indexed  = result
 
     logger.info('')
     logger.info('Time Taken = %f seconds' % (time() - st))

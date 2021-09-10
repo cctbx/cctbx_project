@@ -34,7 +34,9 @@ small_cell {
     .help= "Non-experimentally determined mosaicity to use for each image"
   spot_connection_epsilon = 2.e-3
     .type=float
-    .help= "Epsilon for comparing measured vs. predicted inter-spot distances when building the maximum clique"
+    .multiple=True
+    .help= "Epsilon for comparing measured vs. predicted inter-spot distances when building the maximum clique."
+           "If multiple values are supplied, they are tested sequentially until one succeeds."
   d_ring_overlap_limit = 5
     .type = int
     .help = "Number of d rings a spot can overlap before it is removed from consideration. Set to None to use all spots, but this can be time consuming"
