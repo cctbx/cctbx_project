@@ -142,7 +142,7 @@ master_phil_str = """
        .type = bool
        .help = Adjust the edge weighting for each residue pair according  \
              to the distance between CA residues. If this is True, \
-             then distance_model_file must be provided. See also distance_power
+             then distance_model must be provided. See also distance_power
        .short_caption = Weight by CA-CA distance (if distance_model supplied)
 
      distance_power = 1
@@ -160,6 +160,7 @@ def process_predicted_model(
     model,
     params,
     pae_matrix = None,
+    distance_model = None,
     log = sys.stdout):
 
 
@@ -204,6 +205,13 @@ def process_predicted_model(
            proportional to (1/pae**pae_power)
         pae_cutoff (optional, default=5): graph edges will only be created for
          residue pairs with pae<pae_cutoff
+    weight_by_ca_ca_distance: (optional, default=False): adjust the edge
+        weighting for each residue pair according to the distance between
+        CA residues. If this is True, then distance_model must be provided.
+    distance_power (optional, default=1): If weight_by_ca_ca_distance` is True,
+         then edge weights will be multiplied by 1/distance**distance_power.
+    distance_model ((optional, default=None): A model corresponding to the
+        PAE matrix. Only needed if weight_by_ca_ca_distances is True.
 
     domain_size: typical size of domains (resolution used for filtering is
        the domain size)
@@ -360,6 +368,9 @@ def process_predicted_model(
         pae_cutoff = p.pae_cutoff,
         pae_graph_resolution = p.pae_graph_resolution,
         minimum_domain_length = p.minimum_domain_length,
+        weight_by_ca_ca_distance = p.weight_by_ca_ca_distance,
+        distance_power = p.distance_power,
+        distance_model = distance_model,
         log = log)
     else: # usual
       info = split_model_into_compact_units(new_model,
@@ -639,12 +650,11 @@ def split_model_with_pae(
         unlikely to be useful
    weight_by_ca_ca_distance: (optional, default=False): adjust the edge
         weighting for each residue pair according to the distance between
-        CA residues. If this is True, then distance_model_file must be provided.
+        CA residues. If this is True, then distance_model must be provided.
    distance_power (optional, default=1): If weight_by_ca_ca_distance` is True,
          then edge weights will be multiplied by 1/distance**distance_power.
-   distance_model ((optional, default=None): A PDB or mmCIF file containing
-         the model corresponding to the PAE matrix. Only needed if
-         weight_by_ca_ca_distances is True.
+   distance_model ((optional, default=None): A model corresponding to the
+        PAE matrix. Only needed if weight_by_ca_ca_distances is True.
    minimum_domain_length:  if a region is smaller than this, skip completely
 
    Output:
