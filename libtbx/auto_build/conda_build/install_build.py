@@ -261,6 +261,23 @@ def copy_modules(env, sp_dir=None, link=False):
           # skip boost
           if module == 'boost' and src.endswith('boost'):
             continue
+          # copy subdirectories for some modules
+          elif module == 'phenix':
+            for subdir in ['phenix', 'wxGUI2']:
+              src = abs(dist_path / subdir)
+              dst = os.path.join(sp_dir, subdir)
+              if os.path.exists(dst):
+                print('  {dst} already exists'.format(dst=dst))
+                continue
+              if os.path.isdir(src):
+                print('  source:      ' + src)
+                print('  destination: ' + dst)
+                copy_cmd(src, dst, link)
+              else:
+                print('  Nothing done')
+                continue
+          elif module in ['phaser', 'phasertng', 'PyQuante']:
+            src = abs(dist_path / module)
           dst = os.path.join(sp_dir, os.path.basename(src))
           if os.path.exists(dst):
             print('  {dst} already exists'.format(dst=dst))
