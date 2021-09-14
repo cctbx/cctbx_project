@@ -276,7 +276,22 @@ def copy_modules(env, sp_dir=None, link=False):
               else:
                 print('  Nothing done')
                 continue
-          elif module in ['phaser', 'phasertng', 'PyQuante']:
+              # phenix/wxGUI2 is also an expected path (fix upstream)
+              if subdir == 'wxGUI2':
+                dst = os.path.join(sp_dir, 'phenix', subdir)
+                print('  source:      ' + src)
+                print('  destination: ' + dst)
+                copy_cmd(src, dst, link)
+            continue
+          elif module in ['elbow', 'phaser', 'phasertng', 'PyQuante']:
+            # yacc.py
+            if module == 'elbow':
+              yacc = 'yacc.py'
+              src = abs(dist_path / yacc)
+              dst = os.path.join(sp_dir, yacc)
+              print('  source:      ' + src)
+              print('  destination: ' + dst)
+              copy_cmd(src, dst, link)
             src = abs(dist_path / module)
           dst = os.path.join(sp_dir, os.path.basename(src))
           if os.path.exists(dst):
@@ -433,6 +448,14 @@ by the LIBTBX_BUILD environment variable''')
         remove_cmd(src)
       else:
         print('  {name} not found'.format(name=name))
+
+    # extra stuff
+    for module_name, extra_stuff in [('elbow', 'yacc.py'), ('phenix', 'wxGUI2')]:
+      if module == module_name:
+        src = os.path.join(sp_dir, extra_stuff)
+        if os.path.exists(src):
+          print('  ' + src)
+          remove_cmd(src)
 
     print('Done')
     print()
