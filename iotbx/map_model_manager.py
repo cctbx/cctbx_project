@@ -7940,7 +7940,8 @@ class map_model_manager(object):
                                   of default model)
       n_residues (int, 10):      Number of residues to include (from default
                                   model or file_name)
-      b_iso (float, 30):         B-value (ADP) to use for all atoms
+      b_iso (float, 30):         B-value (ADP) to use for all atoms if model
+                                 is not supplied
       box_cushion (float, 5):     Buffer (A) around model
       d_min (float, 3):      high_resolution limit (A)
       gridding (tuple (nx, ny, nz), None):  Gridding of map (optional)
