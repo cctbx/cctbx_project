@@ -1014,7 +1014,8 @@ class map_model_manager(object):
     '''
     all_map_id_list=list(self._map_dict.keys())
     # We are going to need id='map_manager'   create if if missing
-    assert self.map_manager() is not None # creates it
+    if self.map_manager() is None: # creates it usually but if it can't ...
+      return group_args(map_id=None, other_map_id_list = [])
     assert all_map_id_list
     all_map_id_list.sort()
     map_id='map_manager'
@@ -8020,7 +8021,6 @@ class map_model_manager(object):
         scattering_table = scattering_table,
         f_obs_array = f_obs_array,
         log = null_out())
-
     mm = generate_map_data(
       map_coeffs = map_coeffs,
       d_min = d_min,
@@ -8040,6 +8040,10 @@ class map_model_manager(object):
     else: # create map-model manager info
       self.set_up_map_dict(map_manager=mm)
       self.set_up_model_dict(model=model)
+      if map_id != 'map_manager':  # put it in map_id too
+        new_mm = self.get_any_map_manager().customized_copy(
+          map_data=mm.map_data())
+        self.add_map_manager_by_id(new_mm,map_id)
 
   def _empty_copy(self):
     '''
