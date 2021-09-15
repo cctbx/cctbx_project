@@ -30,8 +30,7 @@ class polarization(worker):
 ```
 # Required boilerplate for custom workers
 import sys, inspect, os
-current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.current
-frame())))
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 sys.path.insert(0, current_dir)
 # End boilerplate. You may import directly from the directory containing this
 # module. It's not necessary to reset the path.
