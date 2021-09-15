@@ -14,6 +14,10 @@ from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
 
 master_phil_str = '''
+run_tests = False
+  .type = bool
+  .help = Run unit tests before doing the requested operations
+
 source_selection = None
   .type = str
   .help = Source selection description
@@ -259,6 +263,14 @@ output
     .type = bool
     .help = Draw spikes (-spike, -nospike in probe)
 
+  condensed = False
+    .type = bool
+    .help = Condensed output format (-condense, -kinemage in probe)
+
+  raw = False
+    .type = bool
+    .help = Raw output format (-unformated in probe)
+
   contact_summary = False
     .type = bool
     .help = Report summary of contacts (-oneline, -summary in probe)
@@ -277,6 +289,8 @@ citation {
 ''')
 
 # ------------------------------------------------------------------------------
+
+# @todo check for rawOutput in probe.c and implement all cases.
 
 class Program(ProgramTemplate):
   description = '''
@@ -466,6 +480,7 @@ Note:
       self.gap = gap                  # Gap between the atoms
       self.ptmaster = ptmaster        # Main/side chain interaction type
       self.angle = angle              # Angle associated with the bump
+      self.dotCount = 1               # Used by _condense and raw output to count dots on the same source + target
 
 # ------------------------------------------------------------------------------
 
@@ -785,13 +800,122 @@ Note:
     # Return the total count
     return ret
 
+# @todo _rawEnumerate
+
+# ------------------------------------------------------------------------------
+
+  def _condense(self, dotInfoList):
+    '''
+      Condensing the list of dots for use in raw output, sorting and removing
+      duplicated.  Makes use of the self.params.output.condensed flag to control
+      whether to remove duplicates.
+      :param dotInfoList: List of DotInfo structures to condense.
+      :return: Condensed dotlist.
+    '''
+
+    ret = []
+
+    # Handle all of the dots associated with each source atom as a group.
+    # This will be from curAtomIndex to curAtomEndIndex.
+    curAtomIndex = 0
+    while curAtomIndex < len(dotInfoList):
+
+      # Find the last dot in the current atom, which may be at the end of the list.
+      curAtomEndIndex = len(dotInfoList) - 1
+      for curAtomEndIndex in range(curAtomIndex+1, len(dotInfoList)):
+        if dotInfoList[curAtomIndex].src != dotInfoList[curAtomEndIndex].src:
+          curAtomEndIndex -= 1
+          break
+
+      # Sort the dots for the same source atom based on their target atom.
+      thisAtom = sorted(
+        dotInfoList[curAtomIndex:curAtomEndIndex+1], key=lambda dot: dot.target.memory_id()
+      )
+
+      # Remove duplicates (same target atom) if we've been asked to.
+      # We do this by scanning through and accumulating counts as long as the target
+      # atom is the same and by appending a new entry when the target atom is different.
+      # The result is a single entry for each target atom with a count of the number of
+      # dots that were associated with it in the resulting entry.
+      if self.params.output.condensed and len(thisAtom) > 0:
+        thisAtom[0].dotCount = 1
+        condensed = [ thisAtom[0] ]
+        for i in range(1,len(thisAtom)):
+          if thisAtom[i-1].target == thisAtom[i].target:
+            condensed[-1].dotCount += 1
+          else:
+            thisAtom[i].dotCount = 1
+            condensed.append(thisAtom[i])
+        thisAtom = condensed
+
+      # Append the sorted and potentially condensed list to the return list
+      ret.extend(thisAtom)
+
+      # Handle the chunk of dots on the next atom
+      curAtomIndex = curAtomEndIndex + 1
+
+    return ret
+
+# ------------------------------------------------------------------------------
+
+  def _writeRawOutput(self, groupName, masterName):
+    '''
+      Describe raw summary counts for data of various kinds.
+      :param groupName: Name to give to the group.
+      :param masterName: Name for the beginning of each line.
+      :return: String to be added to the output.
+    '''
+
+    ret = ''
+
+    # Provide a short name for each interaction type
+    mast = {}
+    for t in self._interactionTypes:
+      mast[t] = probeExt.DotScorer.interaction_type_short_name(t)
+
+    # Go through all atom types and contact types and report the contacts.
+    for atomClass in self._allAtomClasses:
+      for interactionType in self._interactionTypes:
+
+        # Condensed report all of the dots of this type.
+        condensed = self._condense(self._results[atomClass][interactionType])
+        for node in condensed:
+
+          ret += "{}:{}:{}:".format(masterName, groupName, mast[interactionType])
+
+          a = node.src
+          resName = a.parent().resname.strip().upper()
+          resID = str(a.parent().parent().resseq_as_int())
+          chainID = a.parent().parent().parent().id
+          iCode = a.parent().parent().icode
+          alt = a.parent().altloc
+          ret += "{:>2s}{:>3s}{}{} {}{}:".format(chainID, resID, iCode, resName, a.name, alt)
+          # @todo
+
+          t = node.target
+          if t is None:
+            ret += ":::::::"
+          else:
+            resName = t.parent().resname.strip().upper()
+            resID = str(t.parent().parent().resseq_as_int())
+            chainID = t.parent().parent().parent().id
+            iCode = t.parent().parent().icode
+            alt = t.parent().altloc
+            ret += "{:>2s}{:>3s}{}{} {}{}:".format(chainID, resID, iCode, resName, t.name, alt)
+
+            # @todo
+          # @todo
+          pass
+
+    return ret
+
 # ------------------------------------------------------------------------------
 
   def _writeOutput(self, groupName, masterName):
     '''
       Describe summary counts for data of various kinds.
       :param groupName: Name to give to the group.
-      :param extraString: Name for the master command.
+      :param masterName: Name for the master command.
       :return: String to be added to the output.
     '''
 
@@ -818,7 +942,6 @@ Note:
       mast[probeExt.InteractionType.WideContact] = mast[probeExt.InteractionType.CloseContact] = 'vdw contacts'
     if self.params.approach == 'surface':
       mast[probeExt.InteractionType.CloseContact] = 'surface'
-    print('XXX mast[probeExt.InteractionType.CloseContact] =',mast[probeExt.InteractionType.CloseContact])
 
     if self.params.output.add_group_name_master_line:
       extraMaster = ' master={}'.format(masterName)
@@ -1102,6 +1225,11 @@ Note:
 # ------------------------------------------------------------------------------
 
   def run(self):
+    # Run unit tests if we've been asked to
+    if self.params.run_tests:
+      make_sub_header('Run unit tests', out=self.logger)
+      self.Test()
+
     # String that will be output to the specified file.
     outString = ''
 
@@ -1254,11 +1382,7 @@ Note:
       ################################################################################
       # Find a list of all of the selected atoms with no duplicates
       # Get the bonded neighbor lists for the atoms that are in this selection.
-      all_selected_atoms = set()
-      for a in source_atoms:
-        all_selected_atoms.add(a)
-      for a in target_atoms:
-        all_selected_atoms.add(a)
+      all_selected_atoms = source_atoms.union(target_atoms)
       bondedNeighborLists = Helpers.getBondedNeighborLists(all_selected_atoms, bondProxies)
 
       ################################################################################
@@ -1448,12 +1572,19 @@ Note:
         self._sumCount[t] = 0
 
       ################################################################################
+      # Generate sorted lists of the selected atoms, so that we run them in the same order
+      # they appear in the model file.
+      source_atoms_sorted = sorted(source_atoms, key=lambda atom: atom.i_seq)
+      target_atoms_sorted = sorted(target_atoms, key=lambda atom: atom.i_seq)
+
+      ################################################################################
       # Do the calculations; which one depends on the approach and other phil parameters.
       # Append the information to the string that will be written to file.
+
       if self.params.approach == 'count_atoms':
         make_sub_header('Counting atoms', out=self.logger)
         # Report the number of atoms in the source selection
-        outString += 'atoms selected: '+str(len(source_atoms))+'\n'
+        outString += 'atoms selected: '+str(len(source_atoms_sorted))+'\n'
 
       elif self.params.approach == 'surface':
         make_sub_header('Find surface dots', out=self.logger)
@@ -1461,7 +1592,7 @@ Note:
         # Produce dots on the surfaces of the selected atoms.
         maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
         maxRadius = 2*maxVDWRadius + 2 * self.params.probe.radius
-        for src in source_atoms:
+        for src in source_atoms_sorted:
           # Find nearby atoms that might come into contact.  This greatly speeds up the
           # search for touching atoms.
           maxRadius = (self._extraAtomInfo.getMappingFor(src).vdwRadius + maxVDWRadius +
@@ -1483,18 +1614,20 @@ Note:
           # Generate all of the dots for this atom.
           self._generate_surface_dots_for(src, atomList)
 
+        # Find our group label
+        groupLabel = "dots"
+        if len(self.params.output.group_label) > 0:
+          groupLabel = self.params.output.group_label
+
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
-          numSkinDots = self._count_skin_dots(source_atoms, allBondedNeighborLists)
-          name = "dots"
-          if len(self.params.output.group_label) > 0:
-            name = self.params.output.group_label
-          outString += "selection: external\nname: {}\n".format(name)
+          numSkinDots = self._count_skin_dots(source_atoms_sorted, allBondedNeighborLists)
+          outString += "selection: external\nname: {}\n".format(groupLabel)
           outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
             self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
             self.params.atom_radius_offset)
 
-          nsel = len(source_atoms)
+          nsel = len(source_atoms_sorted)
           outString += self._enumerate("extern dots", nsel, False, True, numSkinDots)
 
         # Otherwise, produce the dots as output
@@ -1514,44 +1647,51 @@ Note:
         make_sub_header('Find self-intersection dots', out=self.logger)
 
         # Generate dots for the source atom set against itself.
-        self._generate_interaction_dots(source_atoms, source_atoms, allBondedNeighborLists)
+        self._generate_interaction_dots(source_atoms_sorted, source_atoms_sorted, allBondedNeighborLists)
+
+        # Find our group label
+        groupLabel = "dots"
+        if len(self.params.output.group_label) > 0:
+          groupLabel = self.params.output.group_label
 
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
-          numSkinDots = self._count_skin_dots(source_atoms, allBondedNeighborLists)
-          numSkinDots = self._count_skin_dots(source_atoms, allBondedNeighborLists)
-          name = "dots"
-          if len(self.params.output.group_label) > 0:
-            name = self.params.output.group_label
-          outString += "selection: external\nname: {}\n".format(name)
-          outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
-            self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
-            self.params.atom_radius_offset)
-          outString += "score weights: gapWt={}, bumpWt={}, HBWt={}\n".format(
-            self.params.probe.gap_weight, self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight)
+          numSkinDots = self._count_skin_dots(source_atoms_sorted, allBondedNeighborLists)
+          if not self.params.output.raw:
+            outString += "selection: external\nname: {}\n".format(groupLabel)
+            outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
+              self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
+              self.params.atom_radius_offset)
+            outString += "score weights: gapWt={}, bumpWt={}, HBWt={}\n".format(
+              self.params.probe.gap_weight, self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight)
 
-          nsel = len(source_atoms)
-          outString += self._enumerate("self dots", nsel, self.params.output.draw_spikes, False, numSkinDots)
+          nsel = len(source_atoms_sorted)
+          if self.params.output.raw:
+            outString += self._rawEnumerate("", nsel, self.params.output.draw_spikes, False, numSkinDots, groupLabel)
+          else:
+            outString += self._enumerate("self dots", nsel, self.params.output.draw_spikes, False, numSkinDots)
 
         else: # Not counting the dots
 
-          # @todo Check for various output format types other than Kinemage
+          # Check for various output format types other than Kinemage
+          if self.params.output.raw:
+            outString += self._writeRawOutput("1->1",groupLabel)
 
-          if self.params.output.contact_summary:
-            # @todo
-            pass
+          # @todo elif
 
-          if self.params.output.add_group_line:
-            name = "dots"
-            if len(self.params.output.group_label) > 0:
-              name = self.params.output.group_label
-            if len(atomLists) > 0:
-              # doing jth of multiple models of an ensemble
-              outString += "@group dominant {{{} M{}}} animate\n".format(name,modelIndex)
-            else:
-              outString += "@group dominant {{{}}}\n".format(name)
+          else: # Kinemage
+            if self.params.output.contact_summary:
+              # @todo countsummary()
+              pass
 
-          outString += self._writeOutput("self dots", name)
+            if self.params.output.add_group_line:
+              if len(atomLists) > 0:
+                # doing jth of multiple models of an ensemble
+                outString += "@group dominant {{{} M{}}} animate\n".format(groupLabel,modelIndex)
+              else:
+                outString += "@group dominant {{{}}}\n".format(groupLabel)
+
+            outString += self._writeOutput("self dots", groupLabel)
 
       # @todo
       else:
@@ -1595,5 +1735,52 @@ Note:
 
 # ------------------------------------------------------------------------------
 
+  def Test(self):
+    '''
+      Run tests on the methods of the class.  Throw an assertion error if there is a problem with
+      one of them and return normally if there is not a problem.
+    '''
+
+    #=====================================================================================
+    # Test the _condense() method.
+
+    atoms = [
+      pdb.hierarchy.atom(), pdb.hierarchy.atom(), pdb.hierarchy.atom(), pdb.hierarchy.atom()
+    ]
+    sourceTarget = [
+      (1,1), (1,2), (1,1), (1,2),
+      (2,1),
+      (3,1), (3,1), (3,1), (3,2), (3,2), (3,2)
+    ]
+    dots = [
+      self.DotInfo(atoms[src],atoms[trg],(0,0,0), (0,0,0), probeExt.OverlapType.Ignore, 0.0, ' ', 0.0)
+        for (src,trg) in sourceTarget
+    ]
+
+    # Store state that we need to put back
+    stored = self.params.output.condensed
+
+    # Test when only sorting
+    self.params.output.condensed = False
+    inorder = self._condense(dots)
+    assert len(inorder) == len(dots), "probe2:Test(): Unexpected length from _condense when not condensing"
+    assert inorder[0].target == inorder[1].target, "probe2:Test(): Unexpected sorted value from _condense when not condensing"
+    assert inorder[1].target != inorder[2].target, "probe2:Test(): Unexpected sorted value from _condense when not condensing"
+
+    # Test when also condensing
+    self.params.output.condensed = True
+    inorder = self._condense(dots)
+    assert len(inorder) == 5, "probe2:Test(): Unexpected length from _condense when condensing"
+    assert inorder[0].target != inorder[1].target, "probe2:Test(): Unexpected sorted value from _condense when condensing"
+
+    # Restore state
+    self.params.output.condensed = stored
+
+    #=====================================================================================
+    # @todo Unit tests for other methods
+
+# ------------------------------------------------------------------------------
+
   #def get_results(self):
   #  return group_args(model = self.model)
+
