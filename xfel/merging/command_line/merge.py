@@ -110,7 +110,7 @@ class Script(object):
     # Create the workers using the factories
     self.mpi_logger.log_step_time("CREATE_WORKERS")
     from xfel.merging import application
-    import importlib
+    import importlib, sys, copy
 
     workers = []
     steps = self.params.dispatch.step_list if self.params.dispatch.step_list else default_steps
@@ -124,7 +124,23 @@ class Script(object):
         step_factory_name = step_info[0]
         step_additional_info = step_info[1:]
 
-      factory = importlib.import_module('xfel.merging.application.' + step_factory_name + '.factory')
+      try:
+        factory = importlib.import_module('xfel.merging.application.' + step_factory_name + '.factory')
+      except ModuleNotFoundError:
+        # remember the system path so the custom worker can temporarily modify it
+        sys_path = copy.deepcopy(sys.path)
+        pathstr = os.path.join(
+            '~', '.cctbx.xfel', 'merging', 'application', step_factory_name,
+            'factory.py'
+        )
+        pathstr = os.path.expanduser(pathstr)
+        modulename = 'xfel.merging.application.' + step_factory_name + '.factory'
+        spec = importlib.util.spec_from_file_location(modulename, pathstr)
+        factory = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(factory)
+        # reset the path
+        sys.path = sys_path
+
       workers.extend(factory.factory.from_parameters(self.params, step_additional_info, mpi_helper=self.mpi_helper, mpi_logger=self.mpi_logger))
 
     # Perform phil validation up front
