@@ -8040,7 +8040,7 @@ class map_model_manager(object):
     else: # create map-model manager info
       self.set_up_map_dict(map_manager=mm)
       self.set_up_model_dict(model=model)
-      if map_id != 'map_manager':  # put it in map_id too
+      if map_id is not None and map_id != 'map_manager':  # put it in map_id too
         new_mm = self.get_any_map_manager().customized_copy(
           map_data=mm.map_data())
         self.add_map_manager_by_id(new_mm,map_id)
