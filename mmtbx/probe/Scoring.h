@@ -267,6 +267,11 @@ namespace molprobity {
       /// @return String name suitable for printing.
       static std::string interaction_type_name(InteractionType t);
 
+      /// @brief Short string name for the interaction type, meaningful to the user.
+      /// @param [in] t Type to report on.
+      /// @return String name suitable for printing.
+      static std::string interaction_type_short_name(InteractionType t);
+
       /// @brief Structure to hold the results from a call to score_dots()
       class ScoreDotsResult {
       public:
