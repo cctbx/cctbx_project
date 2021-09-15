@@ -799,7 +799,9 @@ Note:
 
     ptm = ' '
     color = ''
-    mast = self._interactionTypes.copy()
+    mast = {}
+    for t in self._interactionTypes:
+      mast[t] = probeExt.DotScorer.interaction_type_name(t)
     extraMaster = ''
     pointid = ''
     lastpointid = ''
@@ -813,9 +815,10 @@ Note:
 
     # Rename contacts as needed
     if self.params.output.merge_contacts:
-      mast[0] = mast[1] = 'vdw contacts'
+      mast[probeExt.InteractionType.WideContact] = mast[probeExt.InteractionType.CloseContact] = 'vdw contacts'
     if self.params.approach == 'surface':
-      mast[1] = 'surface'
+      mast[probeExt.InteractionType.CloseContact] = 'surface'
+    print('XXX mast[probeExt.InteractionType.CloseContact] =',mast[probeExt.InteractionType.CloseContact])
 
     if self.params.output.add_group_name_master_line:
       extraMaster = ' master={}'.format(masterName)
@@ -826,19 +829,19 @@ Note:
       ret += "@master {}\n".format(mast[1])
     else:
       if self.params.output.report_vdws and not self.params.output.only_report_bad_clashes:
-        ret += "@master {}\n".format(mast[0])
+        ret += "@master {}\n".format(mast[probeExt.InteractionType.WideContact])
         if not self.params.output.merge_contacts:
-          ret += "@master {}\n".format(mast[1])
+          ret += "@master {}\n".format(mast[probeExt.InteractionType.CloseContact])
       if self.params.output.report_clashes or self.params.output.only_report_bad_clashes:
         if not self.params.output.only_report_bad_clashes:
-          ret += "@master {}\n".format(mast[3])
-        ret += "@master {}\n".format(mast[4])
+          ret += "@master {}\n".format(mast[probeExt.InteractionType.SmallOverlap])
+        ret += "@master {}\n".format(mast[probeExt.InteractionType.Bump])
         if self.params.output.separate_worse_clashes:
-          ret += "@master {}\n".format(mast[5])
+          ret += "@master {}\n".format(mast[probeExt.InteractionType.BadBump])
       if self.params.output.report_hydrogen_bonds and not self.params.output.only_report_bad_clashes:
-        ret += "@master {}\n".format(mast[6])
+        ret += "@master {}\n".format(mast[probeExt.InteractionType.HydrogenBond])
         if self.params.probe.separate_weak_hydrogen_bonds:
-          ret += "@master {}\n".format(mast[2])
+          ret += "@master {}\n".format(mast[probeExt.InteractionType.WeakHydrogenBond])
 
     # Report count legend if any counts are nonzero.
     # @todo
@@ -849,8 +852,8 @@ Note:
         ret += "@pointmaster '{}' {{gap {:3.2f}}}\n".format(gapNames[i],((i-11.0)/20.0)+0.05)
 
     # Go through all atom types and contact types and report the contacts.
-    for i, atomClass in enumerate(self._allAtomClasses):
-      for j, interactionType in enumerate(self._interactionTypes):
+    for atomClass in self._allAtomClasses:
+      for interactionType in self._interactionTypes:
         # Write list headers for types that have entries.  Do not write one for weak Hydrogen
         # bonds unless we're separating them out.
         if (len(self._results[atomClass][interactionType]) > 0 and
@@ -877,13 +880,13 @@ Note:
           if self.params.output.atoms_are_masters:
             ret += "{} {{x}} color={} master={{{} dots}} master={{{}}}{}{}\n".format(
                     listType,
-                    self._color_for_atom_class(atomClass), atomClass, mast[j], extraMaster,
+                    self._color_for_atom_class(atomClass), atomClass, mast[interactionType], extraMaster,
                     lensDots
                    )
           else:
             ret += "{} {{x}} color={} master={{{}}}{}{}\n".format(
                       listType,
-                      self._color_for_atom_class(atomClass), mast[j], extraMaster,
+                      self._color_for_atom_class(atomClass), mast[interactionType], extraMaster,
                       lensDots
                     )
 
