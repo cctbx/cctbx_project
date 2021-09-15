@@ -574,13 +574,14 @@ custom_phil_pathstr = os.path.join(
   "~", ".cctbx.xfel", "merging", "application"
 )
 custom_phil_pathstr = os.path.expanduser(custom_phil_pathstr)
-for dir in os.listdir(custom_phil_pathstr):
-  path = os.path.join(custom_phil_pathstr, dir, 'phil.py')
-  if not os.path.isfile(path): continue
-  spec = importlib.util.spec_from_file_location('_', path)
-  module = importlib.util.module_from_spec(spec)
-  spec.loader.exec_module(module)
-  master_phil += module.phil_str
+if os.path.isdir(custom_phil_pathstr):
+  for dir in os.listdir(custom_phil_pathstr):
+    path = os.path.join(custom_phil_pathstr, dir, 'phil.py')
+    if not os.path.isfile(path): continue
+    spec = importlib.util.spec_from_file_location('_', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    master_phil += module.phil_str
 
 
 phil_scope = parse(master_phil, process_includes = True)
