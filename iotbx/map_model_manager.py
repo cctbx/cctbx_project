@@ -7984,6 +7984,9 @@ class map_model_manager(object):
       self._print("NOTE: using existing model to generate map data\n")
       model = self.model()
 
+    if not map_id:
+      map_id = 'model_map'
+      self._print("Generated map will go in %s" %(map_id))
 
     if have_map_manager:
       if not gridding:
@@ -7991,8 +7994,6 @@ class map_model_manager(object):
         origin_shift_grid_units = self.map_manager().origin_shift_grid_units
         self._print(
           "Using existing map_manager as source of gridding and origin")
-      if not map_id:
-        map_id = 'model_map'
       self._print("Model map in map_model_manager "+
          "'%s' will be placed in map_manager '%s'" %(self.name,map_id))
 
@@ -8032,8 +8033,6 @@ class map_model_manager(object):
       log = null_out())
 
     if have_map_manager and self.get_any_map_manager():
-      if not map_id:
-        map_id = 'model_map'
       new_mm = self.get_any_map_manager().customized_copy(
         map_data=mm.map_data())
       self.add_map_manager_by_id(new_mm,map_id)
