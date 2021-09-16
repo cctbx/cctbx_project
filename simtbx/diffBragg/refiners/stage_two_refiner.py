@@ -595,7 +595,6 @@ class StageTwoRefiner(BaseRefiner):
                         sigZ = self._Zscore[slc]
                         trus = MOD.all_trusted[slc]
                         sigZ = sigZ[trus].std()
-                        #sigZ = np.abs(sigZ[trus]).mean()
                         self._spot_Zscores.append((i_fcell, sigZ))
                 self._shot_Zscores.append(self._spot_Zscores)
 
@@ -618,13 +617,11 @@ class StageTwoRefiner(BaseRefiner):
                         "Zscore": Z, "i_fcell": iF, "trust": trust,
                         "i_roi": iROI}
                 self._save_model(model_info)
-            self._shot_Zscores.append(self._spot_Zscores)
             self._is_trusted = self.Modelers[self._i_shot].all_trusted
             self.target_functional += self._target_accumulate()
             self._spot_scale_derivatives()
             #self._Bfactor_derivatives()
             self._Fcell_derivatives()
-            self._shot_Zscores.append(self._spot_Zscores)
         tshots = time.time()-tshots
         LOGGER.info("Time rank worked on shots=%.4f" % tshots)
         tmpi = time.time()
