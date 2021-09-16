@@ -259,9 +259,9 @@ output
     .type = str
     .help = Default color for output points (-outcolor in probe)
 
-  draw_spikes = True
+  compute_scores = True
     .type = bool
-    .help = Draw spikes (-spike, -nospike in probe)
+    .help = Compute scores rather than just counting dots (-spike, -nospike in probe)
 
   condensed = False
     .type = bool
@@ -800,8 +800,6 @@ Note:
     # Return the total count
     return ret
 
-# @todo _rawEnumerate
-
 # ------------------------------------------------------------------------------
 
   def _condense(self, dotInfoList):
@@ -1136,18 +1134,17 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def _enumerate(self, groupName, numberSelected, reportSubScores, isSurface, numSkinDots):
+  def _doEnumeration(self, reportSubScores, isSurface, numSkinDots):
     '''
-      Describe summary counts for data of various kinds.
-      :param groupName: Name to give to the group.
-      :param numberSelected: Number of atoms in the selection.
+      Compute summary counts for data of various kinds.  Called by _rawEnumerate() and
+      _enumerate() to do the shared work.
       :param reportSubScores: Provide reports on different contact subscores.
       :param isSurface: Are these all surface dots?
       :param numSkinDots: The number of dots on atom skins. This is used to normalize output scores.
-      :return: String to be added to the output.
+      :return: Tuple of values: (string_to_output, tgs, ths, thslen, tbs, tbslen, tsas,
+              tGscore, tHscore, tBscore, tscore)
     '''
-
-    ret = ''
+    retString = ''
 
     # Store values that we will need often
     density = self.params.probe.density
@@ -1155,19 +1152,7 @@ Note:
     bump_weight = self.params.probe.bump_weight
     hydrogen_bond_weight = self.params.probe.hydrogen_bond_weight
 
-    ret += "        \nsubgroup: {}\n".format(groupName)
-    ret += "atoms selected: {}\npotential dots: {}\npotential area: {:.1f} A^2\n".format(
-      numberSelected, numSkinDots, numSkinDots/self.params.probe.density)
-    if numberSelected <=0 or numSkinDots <= 0:
-      ret += "empty selection\n"
-      return
-
-    if reportSubScores:
-      ret += "  type                 #      %       score score/A^2 x 1000\n"
-    else:
-      ret += "  type                 #      %\n"
-
-    # Compute and report the counts
+    # Compute the counts
     tgs = ths = thslen = tbs = tbslen = tsas = 0
     tGscore = tHscore = tBscore = tscore = 0
     for c in self._allAtomClasses:
@@ -1176,10 +1161,12 @@ Note:
         if len(res) > 0:
           # gs stores all of the values unless reportSubScores is True
           gs = hs = hslen = bs = bslen = score = psas = 0
+
+          # Print a line describing the atom class and interaction type.
           label = "external_dots "
           if not isSurface:
             label = probeExt.DotScorer.interaction_type_name(t)
-          ret += "{:>3s} {:14s} ".format(c, label)
+          retString += "{:>3s} {:14s} ".format(c, label)
 
           for node in self._results[c][t]:
             if reportSubScores:
@@ -1214,21 +1201,23 @@ Note:
               a_radius = self._extraAtomInfo.getMappingFor(node.src).vdwRadius
               psas += (a_radius + p_radius)*(a_radius + p_radius)/(a_radius * a_radius)
 
-          # Done computing for this category, report totals
+          # Finish reporting by atom class and interaction type
           if reportSubScores:
             if t in [probeExt.InteractionType.WideContact, probeExt.InteractionType.CloseContact,
                 probeExt.InteractionType.WeakHydrogenBond]:
-              ret += "{:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(gs, 100.0*gs/numSkinDots, score/density,
+              retString += "{:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(gs, 100.0*gs/numSkinDots, score/density,
                                 1000.0*score/numSkinDots)
             elif t in [probeExt.InteractionType.SmallOverlap, probeExt.InteractionType.Bump,
                 probeExt.InteractionType.BadBump]:
-              ret += "{:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(bs, 100.0*bs/numSkinDots, score/density,
+              retString += "{:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(bs, 100.0*bs/numSkinDots, score/density,
                                 1000.0*score/numSkinDots)
             else: # Hydrogen bond
-              ret += "{:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(hs, 100.0*hs/numSkinDots, score/density,
+              retString += "{:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(hs, 100.0*hs/numSkinDots, score/density,
                                 1000.0*score/numSkinDots)
           else:
-            ret += "{:7d} {:5.1f}%\n".format(gs, 100.0*gs/numSkinDots)
+            retString += "{:7d} {:5.1f}%\n".format(gs, 100.0*gs/numSkinDots)
+
+          # Done computing for this category, calculate totals
           tgs += gs
           ths += hs
           thslen += hslen
@@ -1238,6 +1227,91 @@ Note:
           if self.params.approach == 'surface':
             tsas += psas  # tally the solvent accessible surface
 
+    return (retString, tgs, ths, thslen, tbs, tbslen, tsas, tGscore, tHscore, tBscore, tscore)
+
+# ------------------------------------------------------------------------------
+
+  def _rawEnumerate(self, groupName, numberSelected, reportSubScores, isSurface, numSkinDots, masterName):
+    '''
+      Describe summary counts for data of various kinds.
+      :param groupName: Name to give to the group.
+      :param numberSelected: Number of atoms in the selection.
+      :param reportSubScores: Provide reports on different contact subscores.
+      :param isSurface: Are these all surface dots?
+      :param numSkinDots: The number of dots on atom skins. This is used to normalize output scores.
+      :param masterName: Name for the beginning of each line.
+      :return: String to be added to the output.
+    '''
+    # The C code has a scoreBias parameter, but it was only nonzero for autobondrot/movingDoCommand
+    # The C code has a rawName parameter, but it was only nonempty for autobondrot/movingDoCommand
+
+    ret = ""
+
+    # If we have an empty selection, report zero.
+    if numberSelected <= 0 or numSkinDots <= 0:
+      ret += "{:9.3f}".format(0.0)
+
+    else:
+      # Compute and report the score.  Discard anything from the return string in the count
+      # routine -- we don't want to print it.
+      (retString, tgs, ths, thslen, tbs, tbslen, tsas, tGscore, tHscore, tBscore, tscore
+        ) = self._doEnumeration(reportSubScores, isSurface, numSkinDots)
+
+      # Output one line of information.
+      density = self.params.probe.density
+      if isSurface:
+        ret += "{:9.3f}".format( (tgs+tbs+ths)/density )
+      elif reportSubScores:
+        ret += "{:9.3f}".format( tscore/density )
+      else:
+        ret += "{:9.3f}".format( tgs )
+
+    # Report the same information at the end of the line whether or not we counted the scores.
+    if len(groupName) > 0 or len(masterName) > 0:
+      ret += "#"
+    if len(masterName) > 0:
+      ret += " {}".format(masterName)
+    if len(groupName) > 0:
+      ret += " {}".format(groupName)
+    ret += "\n"
+    return ret
+
+# ------------------------------------------------------------------------------
+
+  def _enumerate(self, groupName, numberSelected, reportSubScores, isSurface, numSkinDots):
+    '''
+      Describe summary counts for data of various kinds.
+      :param groupName: Name to give to the group.
+      :param numberSelected: Number of atoms in the selection.
+      :param reportSubScores: Provide reports on different contact subscores.
+      :param isSurface: Are these all surface dots?
+      :param numSkinDots: The number of dots on atom skins. This is used to normalize output scores.
+      :return: String to be added to the output.
+    '''
+
+    ret = ''
+
+    # Store values that we will need often
+    density = self.params.probe.density
+
+    ret += "        \nsubgroup: {}\n".format(groupName)
+    ret += "atoms selected: {}\npotential dots: {}\npotential area: {:.1f} A^2\n".format(
+      numberSelected, numSkinDots, numSkinDots/density)
+    if numberSelected <=0 or numSkinDots <= 0:
+      ret += "empty selection\n"
+      return
+
+    if reportSubScores:
+      ret += "  type                 #      %       score score/A^2 x 1000\n"
+    else:
+      ret += "  type                 #      %\n"
+
+    # Compute the counts
+    (retString, tgs, ths, thslen, tbs, tbslen, tsas, tGscore, tHscore, tBscore, tscore
+      ) = self._doEnumeration(reportSubScores, isSurface, numSkinDots)
+    ret += retString
+
+    # Report the counts
     if reportSubScores:
       ret += "\n     tot contact:  {:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(
 		    tgs, 100.0*tgs/numSkinDots, tGscore/density, 1000.0*tGscore/numSkinDots
@@ -1706,9 +1780,9 @@ Note:
 
           nsel = len(source_atoms_sorted)
           if self.params.output.raw:
-            outString += self._rawEnumerate("", nsel, self.params.output.draw_spikes, False, numSkinDots, groupLabel)
+            outString += self._rawEnumerate("", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
           else:
-            outString += self._enumerate("self dots", nsel, self.params.output.draw_spikes, False, numSkinDots)
+            outString += self._enumerate("self dots", nsel, self.params.output.compute_scores, False, numSkinDots)
 
         else: # Not counting the dots
 
