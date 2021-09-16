@@ -782,6 +782,15 @@ def make_miller_array(symbol, unit_cell, defaultF=1000, d_min=1.5, d_max=999):
     return mil_ar
 
 
+def make_miller_array_from_crystal(Crystal, dmin, dmax, defaultF=1000, symbol=None):
+    if symbol is None:
+        symbol = Crystal.get_space_group().info().type().lookup_symbol()
+    Famp = make_miller_array(
+        symbol=symbol,
+        unit_cell=Crystal.get_unit_cell(), d_min=dmin, d_max=dmax, defaultF=defaultF)
+    return Famp
+
+
 def save_spectra_file(spec_file, wavelengths, weights):
     """
     Create a precognition .lam file
@@ -818,6 +827,11 @@ def load_spectra_file(spec_file, total_flux=None, pinkstride=1, as_spectrum=Fals
     else:
         return weights, energies
 
+
+def save_numpy_mask_as_flex(numpymask, outfile):
+    flexmask = tuple((dials_flex.bool(m) for m in numpymask))
+    with open(outfile, "wb") as f:
+        pickle.dump(flexmask, f)
 
 def load_mask(maskfile):
     """
