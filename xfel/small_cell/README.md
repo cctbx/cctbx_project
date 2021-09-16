@@ -57,9 +57,9 @@ cmd = \
   output.logging_dir={log_path} input.reference_geometry={geom_path}"
 cmd_mpi = f"mpirun -n 64 {cmd} mp.method=mpi"
 print (cmd_mpi)
-os.mkdir(out_path)
-os.mkdir(log_path)
-os.system(cmd_ji)
+os.makedirs(out_path)
+os.makedirs(log_path)
+os.system(cmd_mpi)
 ```
 
 and `spotfind.phil` containing:
@@ -82,7 +82,7 @@ Spotfinding will run on the 27 selected h5 files within a few minutes. Then prep
 set of combined files:
 ```
 $ mkdir combined
-$ for d in 3*; do dials.combine_experiments $d/*imported.expt $d/*strong.refl output.experiments=combined/$d.expt output.reflections=combined/$d.refl reference_from_experiment.detector=0 & done
+$ for d in 3*; do dials.combine_experiments $d/out/*imported.expt $d/out/*strong.refl output.experiments=combined/$d.expt output.reflections=combined/$d.refl reference_from_experiment.detector=0 & done
 $ cd combined; dials.combine_experiments *.expt *.refl reference_from_experiment.detector=0
 ```
 
@@ -123,6 +123,7 @@ output {
 spotfinder {
   filter {
     min_spot_size = 3
+  }
 }
 refinement {
   parameterisation {
@@ -161,13 +162,13 @@ h5_path = os.path.join(data_path, f'78{i}-{j}', f'run78{i}-{j}.h5')
 out_path = os.path.join(phil_root, 'out')
 log_path = os.path.join(phil_root, 'log')
 cmd = \
-  f"cctbx.small_cell_process spotfind.phil {h5_path} output.output_dir={out_path} \
+  f"cctbx.small_cell_process {phil_root}.phil {h5_path} output.output_dir={out_path} \
   output.logging_dir={log_path} input.reference_geometry={geom_path}"
 cmd_mpi = f"mpirun -n 64 {cmd} mp.method=mpi"
 print (cmd_mpi)
-os.mkdir(out_path)
-os.mkdir(log_path)
-os.system(cmd_ji)
+os.makedirs(out_path)
+os.makedirs(log_path)
+os.system(cmd_mpi)
 ```
 
 do
@@ -250,13 +251,13 @@ cmd = \
   output.logging_dir={log_path} input.reference_geometry={geom_path}"
 cmd_mpi = f"mpirun -n 64 {cmd} mp.method=mpi"
 print (cmd_mpi)
-os.mkdir(out_path)
-os.mkdir(log_path)
-os.system(cmd_ji)
+os.makedirs(out_path)
+os.makedirs(log_path)
+os.system(cmd_mpi)
 ```
 Prepare a todo script and run it: [note 1]
 ```
-$ for m in {3133..3214}; do for n in {0..2}; do echo "python run.py integrate $m $n" >> todo.sh; done; done
+$ for m in {3133..3214}; do for n in {0..2}; do echo "python run_integrate.py $m $n" >> todo.sh; done; done
 $ source todo.sh
 ```
 
@@ -267,7 +268,7 @@ After integration, merging is performed in two steps:
 ```
 $ mkdir merging; cd merging
 $ cat > mark1.phil
-input.path=../3*
+input.path=../3*/out
 dispatch.step_list = input balance model_scaling modify errors_premerge scale statistics_unitcell statistics_beam model_statistics statistics_resolution group errors_merge statistics_intensity merge statistics_intensity_cxi
 scaling.algorithm=mark1
 scaling.unit_cell=5.93762 7.32461 29.202 90 95.4404 90
@@ -281,7 +282,7 @@ output.do_timing=True
 output.output_dir=.
 
 $ cat > mark0.phil
-input.path=../3*
+input.path=../3*/out
 dispatch.step_list = input balance model_scaling modify errors_premerge scale statistics_unitcell statistics_beam model_statistics statistics_resolution group errors_merge statistics_intensity merge statistics_intensity_cxi
 scaling.model=mark1_all.mtz
 merging.d_min=1.15
@@ -313,7 +314,6 @@ DISP C 0.0087 0.0039 30.8059
 DISP H -0 0 0.6385
 DISP Se -2.5865 0.5775 2790.4387
 UNIT 80 72 8 8
-
 HKLF 4
 ```
 
@@ -322,7 +322,7 @@ To perform a final round of scaling with a partially completed reference structu
 in standard cif format and do this:
 ```
 $ cat > rtr.phil
-input.path=../3*
+input.path=../3*/out
 dispatch.step_list = input balance model_scaling modify modify_reindex_to_reference errors_premerge scale statistics_unitcell statistics_beam model_statistics statistics_resolution group errors_merge statistics_intensity merge statistics_intensity_cxi
 scaling.model=full.cif
 merging.d_min=1.15
