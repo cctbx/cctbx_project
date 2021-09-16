@@ -132,7 +132,9 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     .def("score_dots", &DotScorer::score_dots)
     .def("interaction_type", &DotScorer::interaction_type)
     .def("interaction_type_name", &DotScorer::interaction_type_name)
-    .def("interaction_type_short_name", &DotScorer::interaction_type_short_name)
+    .staticmethod("interaction_type_name")
+    .def("interaction_type_short_name",&DotScorer::interaction_type_short_name)
+    .staticmethod("interaction_type_short_name")
     .def("test", &DotScorer::test)
     ;
 
