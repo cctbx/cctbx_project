@@ -178,9 +178,9 @@ void diffBragg_sum_over_steps(
                 Eigen::Vector3d bragg_q_vec = UBO.inverse()*H0;
 
                 Eigen::Matrix3d anisoU; // TODO make this matrix outside the loop
-                anisoU << db_cryst.this_sigma,0,0,
-                          0,db_cryst.this_sigma,0,
-                          0,0,db_cryst.this_sigma;
+                anisoU << pow(db_cryst.this_sigma,2),0,0,
+                          0,pow(db_cryst.this_sigma,2),0,
+                          0,0,pow(db_cryst.this_sigma,2);
                 double exparg = 4*M_PI*M_PI*bragg_q_vec.dot(anisoU*bragg_q_vec);
                 double dwf = exp(-exparg);
 
