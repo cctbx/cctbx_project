@@ -35,6 +35,8 @@ boost::python::tuple wrap_vec3_array(Point const& d) {
   return boost::python::tuple(a);
 }
 
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(check_dot_overloads, DotScorer::check_dot, 5, 6)
+
 BOOST_PYTHON_MODULE(mmtbx_probe_ext)
 {
   // Dependencies
@@ -126,7 +128,7 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
   class_<DotScorer>("DotScorer",
         init< ExtraAtomInfoMap,
         optional<double, double, double, double, double, double, double, double> >())
-    .def("check_dot", &DotScorer::check_dot)
+    .def("check_dot", &DotScorer::check_dot, check_dot_overloads())
     .def("score_dots", &DotScorer::score_dots)
     .def("interaction_type", &DotScorer::interaction_type)
     .def("interaction_type_name", &DotScorer::interaction_type_name)
