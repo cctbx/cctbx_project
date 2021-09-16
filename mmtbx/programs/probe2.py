@@ -1236,8 +1236,8 @@ Note:
       :param masterName: Name for the beginning of each line.
       :return: String to be added to the output.
     '''
-    # The C code has a scoreBias parameter, but it was only nonzero for autobondrot/movingDoCommand
     # The C code has a rawName parameter, but it was only nonempty for autobondrot/movingDoCommand
+    # The C code has a scoreBias parameter, but it was only nonzero for autobondrot/movingDoCommand
 
     ret = ""
 
@@ -1721,34 +1721,56 @@ Note:
           # Generate all of the dots for this atom.
           self._generate_surface_dots_for(src, atomList)
 
-        # Find our group label
-        groupLabel = "dots"
-        if len(self.params.output.group_label) > 0:
-          groupLabel = self.params.output.group_label
-
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
           numSkinDots = self._count_skin_dots(source_atoms_sorted, allBondedNeighborLists)
-          outString += "selection: external\nname: {}\n".format(groupLabel)
-          outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
-            self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
-            self.params.atom_radius_offset)
+          if self.params.output.format != 'raw':
+            # Find our group label
+            groupLabel = "dots"
+            if len(self.params.output.group_label) > 0:
+              groupLabel = self.params.output.group_label
+            outString += "selection: external\nname: {}\n".format(groupLabel)
+            outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
+              self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
+              self.params.atom_radius_offset)
 
           nsel = len(source_atoms_sorted)
-          outString += self._enumerate("extern dots", nsel, False, True, numSkinDots)
+          if self.params.output.format == 'raw':
+            # Find our group label
+            groupLabel = ""
+            if len(self.params.output.group_label) > 0:
+              groupLabel = self.params.output.group_label
+            outString += self._rawEnumerate("", nsel, False, True, numSkinDots, groupLabel)
+          else:
+            outString += self._enumerate("extern dots", nsel, False, True, numSkinDots)
 
         # Otherwise, produce the dots as output
         else:
-          # @todo Check output format if we allow -OFORMAT, -XVFORMAT or -oneline
+          # Check for various output format types other than Kinemage.
+          # We're not implementing O format or XV format, but we still allow raw and oneline
+          if self.params.output.format == 'raw':
+            # Find our group label
+            groupLabel = ""
+            if len(self.params.output.group_label) > 0:
+              groupLabel = self.params.output.group_label
+            outString += self._writeRawOutput("1->none",groupLabel)
 
-          masterName = "dots"
-          if len(self.params.output.group_name) > 0:
-            masterName = self.params.output.group_name
+          elif self.params.output.format == 'oneline':
+            # Do nothing for this mode when computing the surface
+            pass
 
-          if self.params.output.add_group_line:
-            outString += "@group dominant {}\n".format(masterName)
+          elif self.params.output.format == 'standard': # Standard/Kinemage format
+            masterName = "dots"
+            if len(self.params.output.group_name) > 0:
+              masterName = self.params.output.group_name
 
-          outString += self._writeOutput("extern dots", masterName)
+            if self.params.output.add_group_line:
+              outString += "@group dominant {}\n".format(masterName)
+
+            outString += self._writeOutput("extern dots", masterName)
+
+          else:
+            raise ValueError("Unrecognized output format: "+self.params.output.format+" (internal error)")
 
       elif self.params.approach == 'self':
         make_sub_header('Find self-intersection dots', out=self.logger)
@@ -1786,12 +1808,12 @@ Note:
             outString += self._writeRawOutput("1->1",groupLabel)
 
           elif self.params.output.format == 'oneline':
-            # @todo countsummary()
+            # @todo self._count_summary("SelfIntersect", 1, 1)
             pass
 
           elif self.params.output.format == 'standard': # Standard/Kinemage format
             if self.params.output.contact_summary:
-              # @todo countsummary()
+              # @todo self._count_summary("SelfIntersect", 9, 1)
               pass
 
             if self.params.output.add_group_line:
