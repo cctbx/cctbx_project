@@ -873,6 +873,12 @@ Note:
     for t in self._interactionTypes:
       mast[t] = probeExt.DotScorer.interaction_type_short_name(t)
 
+    # Store values that we will need often
+    density = self.params.probe.density
+    gap_weight = self.params.probe.gap_weight
+    bump_weight = self.params.probe.bump_weight
+    hydrogen_bond_weight = self.params.probe.hydrogen_bond_weight
+
     # Go through all atom types and contact types and report the contacts.
     for atomClass in self._allAtomClasses:
       for interactionType in self._interactionTypes:
@@ -883,15 +889,16 @@ Note:
 
           ret += "{}:{}:{}:".format(masterName, groupName, mast[interactionType])
 
+          # Describe the source atom
           a = node.src
           resName = a.parent().resname.strip().upper()
           resID = str(a.parent().parent().resseq_as_int())
           chainID = a.parent().parent().parent().id
           iCode = a.parent().parent().icode
           alt = a.parent().altloc
-          ret += "{:>2s}{:>3s}{}{} {}{}:".format(chainID, resID, iCode, resName, a.name, alt)
-          # @todo
+          ret += "{:>2s}{:>3s} {}{} {}{:1s}:".format(chainID, resID, iCode, resName, a.name, alt)
 
+          # Describe the target atom, if it exists
           t = node.target
           if t is None:
             ret += ":::::::"
@@ -901,11 +908,43 @@ Note:
             chainID = t.parent().parent().parent().id
             iCode = t.parent().parent().icode
             alt = t.parent().altloc
-            ret += "{:>2s}{:>3s}{}{} {}{}:".format(chainID, resID, iCode, resName, t.name, alt)
+            ret += "{:>2s}{:>4s}{}{} {:<3s}{:1s}:".format(chainID, resID, iCode, resName, t.name, alt)
 
-            # @todo
-          # @todo
-          pass
+            r1 = self._extraAtomInfo.getMappingFor(a).vdwRadius
+            r2 = self._extraAtomInfo.getMappingFor(t).vdwRadius
+            sl = (Helpers.rvec3(a.xyz)-Helpers.rvec3(t.xyz)).length()
+            gap = sl - (r1 + r2)
+            dtgp = node.gap
+            score = 0.0
+
+            if interactionType in [probeExt.InteractionType.WideContact, probeExt.InteractionType.WideContact]:
+              scaledGap = dtgp / gap_weight
+              score = math.exp(-scaledGap*scaledGap)
+            elif interactionType in [
+              probeExt.InteractionType.WeakHydrogenBond,  # don't know what to do here, because they can be both wc and cc, so will have to check
+              probeExt.InteractionType.SmallOverlap,      # small overlap, doing nothing, as before
+              probeExt.InteractionType.Bump,
+              probeExt.InteractionType.BadBump]:          # worse overlap, same as bad overlap
+                score = score = - bump_weight * sl
+            else: # Hydrogen bond
+              score = hydrogen_bond_weight * sl
+
+            if self.params.output.contact_summary:
+              ret += "{}:".format(node.dotCount)
+
+            ret += "{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.4f}".format(gap, dtgp,
+              node.spike[0], node.spike[1], node.spike[2], sl, score/density)
+
+          try:
+            tName = t.element
+            tBVal = "{:.2f}".format(t.b)
+          except:
+            tName = ""
+            tBVal = ""
+          ret += ":{}:{}:{:.3f}:{:.3f}:{:.3f}".format(a.element, tName,
+            node.loc[0], node.loc[1], node.loc[2])
+
+          ret += ":{:.2f}:{}\n".format(a.b, tBVal)
 
     return ret
 
@@ -1650,7 +1689,7 @@ Note:
         self._generate_interaction_dots(source_atoms_sorted, source_atoms_sorted, allBondedNeighborLists)
 
         # Find our group label
-        groupLabel = "dots"
+        groupLabel = ""
         if len(self.params.output.group_label) > 0:
           groupLabel = self.params.output.group_label
 
