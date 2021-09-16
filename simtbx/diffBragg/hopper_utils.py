@@ -41,6 +41,7 @@ class DataModeler:
 
     def __init__(self, params):
         """ params is a simtbx.diffBragg.hopper phil"""
+        self.no_rlp_info = False
         self.params = params
         self.SIM = None
         self.E = None
@@ -66,6 +67,7 @@ class DataModeler:
         self.refls_idx = None
         self.refls = None
 
+        self.Hi = None
         self.Hi_asu = None
 
     def clean_up(self):
@@ -83,6 +85,7 @@ class DataModeler:
         if self.params.opt_det is not None:
             opt_det_E = ExperimentListFactory.from_json_file(self.params.opt_det, False)[0]
             self.E.detector = opt_det_E.detector
+            MAIN_LOGGER.info("Set the optimal detector from %s" % self.params.opt_det)
 
     def load_refls(self, ref):
         if isinstance(ref, str):
@@ -151,9 +154,11 @@ class DataModeler:
             return False
 
         if "rlp" not in list(refls[0].keys()):
-            utils.add_rlp_column(refls, self.E)
-            assert "rlp" in list(refls[0].keys())
-
+            try:
+                utils.add_rlp_column(refls, self.E)
+                assert "rlp" in list(refls[0].keys())
+            except KeyError:
+                self.no_rlp_info = True
         img_data = utils.image_data_from_expt(self.E)
         img_data /= self.params.refiner.adu_per_photon
         is_trusted = np.ones(img_data.shape, bool)
@@ -181,7 +186,7 @@ class DataModeler:
 
         self.rois, self.pids, self.tilt_abc, self.selection_flags, self.background, self.tilt_cov = roi_packet
 
-        if remove_duplicate_hkl:
+        if remove_duplicate_hkl and not self.no_rlp_info:
             is_not_a_duplicate = ~self.is_duplicate_hkl(refls)
             self.selection_flags = np.logical_and( self.selection_flags, is_not_a_duplicate)
 
@@ -195,14 +200,17 @@ class DataModeler:
         self.tilt_abc = [abc for i_roi, abc in enumerate(self.tilt_abc) if self.selection_flags[i_roi]]
         self.pids = [pid for i_roi, pid in enumerate(self.pids) if self.selection_flags[i_roi]]
         self.tilt_cov = [cov for i_roi, cov in enumerate(self.tilt_cov) if self.selection_flags[i_roi]]
-        self.Q = [np.linalg.norm(refls[i_roi]["rlp"]) for i_roi in range(len(refls)) if self.selection_flags[i_roi]]
-
         refls = refls.select(flex.bool(self.selection_flags))
-        self.Hi = list(refls["miller_index"])
-        if sg_symbol is not None:
-            self.Hi_asu = utils.map_hkl_list(self.Hi, True, sg_symbol)
-        else:
-            self.Hi_asu = self.Hi
+
+        if not self.no_rlp_info:
+            self.Q = [np.linalg.norm(refls[i_roi]["rlp"]) for i_roi in range(len(refls)) if self.selection_flags[i_roi]]
+
+        if "miller_index" in list(refls.keys()):
+            self.Hi = list(refls["miller_index"])
+            if sg_symbol is not None:
+                self.Hi_asu = utils.map_hkl_list(self.Hi, True, sg_symbol)
+            else:
+                self.Hi_asu = self.Hi
 
         self.data_to_one_dim(img_data, is_trusted, self.background)
         return True
@@ -251,10 +259,12 @@ class DataModeler:
             npix = len(data)  # np.sum(trusted)
             all_pid += [pid] * npix
             roi_id += [i_roi] * npix
-            all_q_perpix += [self.Q[i_roi]]*npix
-            self.all_nominal_hkl += [tuple(self.Hi[i_roi])]*npix
             all_refls_idx += [self.refls_idx[i_roi]] * npix
-            self.hi_asu_perpix += [self.Hi_asu[i_roi]] * npix
+            if not self.no_rlp_info:
+                all_q_perpix += [self.Q[i_roi]]*npix
+            if self.Hi is not None:
+                self.all_nominal_hkl += [tuple(self.Hi[i_roi])]*npix
+                self.hi_asu_perpix += [self.Hi_asu[i_roi]] * npix
 
         all_freq = []
         for i_roi in range(len(self.rois)):
@@ -493,7 +503,7 @@ class DataModeler:
             min_kwargs = {'args': args, "method": method, "jac": target.jac,
                           'hess': self.params.hess}
             if method=="L-BFGS-B":
-                min_kwargs["options"] = {"ftol": self.params.ftol} #, "gtol": 1e-10, "maxfun":1e5, "maxiter":1e5}
+                min_kwargs["options"] = {"ftol": self.params.ftol, "gtol": 1e-10, "maxfun":1e5, "maxiter":1e5}
         else:
             args = (self.SIM, self.pan_fast_slow, self.all_data,
                     self.all_sigmas, self.all_trusted, self.all_background, not self.params.quiet, self.params, False)
@@ -891,7 +901,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
         fN = frot = fucell = fz = fG = 0
 
     fN_vol = 0
-    if params.centers.Nvol is not None:
+    if params.use_restraints and params.centers.Nvol is not None:
         Nvol = Na*Nb*Nc
         del_Nvol = params.centers.Nvol - Nvol
         fN_vol = .5*del_Nvol**2/params.betas.Nvol
@@ -942,7 +952,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
                 g[7+i_uc] += SIM.ucell_params[i_uc].get_deriv(x[7+i_uc], -del_uc / beta)
             g[7+n_uc_param] += SIM.DetZ_param.get_deriv(x[7+n_uc_param], -del_detz/params.betas.detz_shift)
 
-        if params.centers.Nvol is not None:
+        if params.use_restraints and params.centers.Nvol is not None:
             dNvol_dN = Nb*Nc, Na*Nc, Na*Nb
             for i_N in range(3):
                 gterm = -del_Nvol / params.betas.Nvol * dNvol_dN[i_N]
@@ -1103,18 +1113,18 @@ def get_new_xycalcs(Modeler, best_model, new_exp):
     return new_refls
 
 
-def get_data_model_pairs(rois, pids, roi_id, best_model, all_data, strong_flags=None, background=None):
+def get_data_model_pairs(rois, pids, roi_id, best_model, all_data, trusted_flags=None, background=None):
     all_dat_img, all_mod_img = [], []
-    all_strong = []
+    all_trusted = []
     all_bragg = []
     for i_roi in range(len(rois)):
         x1, x2, y1, y2 = rois[i_roi]
         mod = best_model[roi_id == i_roi].reshape((y2 - y1, x2 - x1))
-        if strong_flags is not None:
-            strong = strong_flags[roi_id == i_roi].reshape((y2 - y1, x2 - x1))
-            all_strong.append(strong)
+        if trusted_flags is not None:
+            trusted = trusted_flags[roi_id == i_roi].reshape((y2 - y1, x2 - x1))
+            all_trusted.append(trusted)
         else:
-            all_strong.append(None)
+            all_trusted.append(None)
 
         # dat = img_data[pid, y1:y2, x1:x2]
         dat = all_data[roi_id == i_roi].reshape((y2 - y1, x2 - x1))
@@ -1128,7 +1138,7 @@ def get_data_model_pairs(rois, pids, roi_id, best_model, all_data, strong_flags=
             all_mod_img.append(mod)
             all_bragg.append(None)
         # print("Roi %d, max in data=%f, max in model=%f" %(i_roi, dat.max(), mod.max()))
-    return all_dat_img, all_mod_img, all_strong, all_bragg
+    return all_dat_img, all_mod_img, all_trusted, all_bragg
 
 
 def downsamp_spec_from_params(params, expt):

@@ -92,6 +92,10 @@ class Script:
         best_models = None
         if COMM.rank == 0:
             input_lines = open(self.params.exp_ref_spec_file, "r").readlines()
+            if self.params.skip is not None:
+                input_lines = input_lines[self.params.skip:]
+            if self.params.first_n is not None:
+                input_lines = input_lines[:self.params.first_n]
             if self.params.sanity_test_input:
                 sanity_test_input_lines(input_lines)
 
@@ -106,7 +110,6 @@ class Script:
         input_lines = COMM.bcast(input_lines)
         best_models = COMM.bcast(best_models)
 
-        input_lines = input_lines[self.params.skip:]
         if self.params.ignore_existing:
             exp_names_already =None
             if COMM.rank==0:
@@ -177,6 +180,8 @@ class Script:
                     continue
 
             Modeler.SimulatorFromExperiment(best)
+            if self.params.refiner.verbose is not None and COMM.rank==0:
+                Modeler.SIM.D.verbose = self.params.refiner.verbose
             if self.params.profile:
                 Modeler.SIM.record_timings = True
             if self.params.use_float32:
@@ -257,21 +262,30 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
     new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d.refl" % (Modeler.params.tag, basename, i_exp))
     # save_model_Z(img_path, all_data, best_model, pan_fast_slow, sigma_rdout)
 
-    data_subimg, model_subimg, strong_subimg, bragg_subimg = get_data_model_pairs(Modeler.rois, Modeler.pids, Modeler.roi_id, best_model, Modeler.all_data, background=Modeler.all_background)
+    data_subimg, model_subimg, trusted_subimg, bragg_subimg = get_data_model_pairs(Modeler.rois, Modeler.pids, Modeler.roi_id, best_model, Modeler.all_data, trusted_flags=Modeler.all_trusted, background=Modeler.all_background)
 
     comp = {"compression": "lzf"}
     new_refls = deepcopy(Modeler.refls)
-    new_refls['dials.xyzcal.px'] = deepcopy(new_refls['xyzcal.px'])
-    new_xycalcs = flex.vec3_double(len(Modeler.refls), (0,0,0))
+    has_xyzcal = 'xycval.px' in list(new_refls.keys())
+    if has_xyzcal:
+        new_refls['dials.xyzcal.px'] = deepcopy(new_refls['xyzcal.px'])
+    new_xycalcs = flex.vec3_double(len(Modeler.refls), (np.nan,np.nan,np.nan))
     h5_roi_id = flex.int(len(Modeler.refls), -1)
     with h5py.File(img_path, "w") as h5:
+        sigmaZs = []
         for i_roi in range(len(data_subimg)):
+            dat = data_subimg[i_roi]
+            fit = model_subimg[i_roi]
+            trust = trusted_subimg[i_roi]
+            sig = np.sqrt(fit + Modeler.sigma_rdout**2)
+            Z = (dat - fit) / sig
+            sigmaZ = Z[trust].std()
+            sigmaZs.append(sigmaZ)
             h5.create_dataset("data/roi%d" % i_roi, data=data_subimg[i_roi], **comp)
             h5.create_dataset("model/roi%d" % i_roi, data=model_subimg[i_roi], **comp)
             if bragg_subimg[0] is not None:
                 h5.create_dataset("bragg/roi%d" % i_roi, data=bragg_subimg[i_roi], **comp)
-                com = np.nan, np.nan, np.nan
-                if np.any(bragg_subimg[i_roi]>0):
+                if np.any(bragg_subimg[i_roi] > 0):
                     I = bragg_subimg[i_roi]
                     Y,X = np.indices(bragg_subimg[i_roi].shape)
                     x1,_,y1,_ = Modeler.rois[i_roi]
@@ -281,15 +295,16 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
                     xcom = (X*I).sum() / Isum
                     ycom = (Y*I).sum() / Isum
                     com = xcom+.5, ycom+.5, 0
-
-                ref_idx = Modeler.refls_idx[i_roi]
-                h5_roi_id[ref_idx] = i_roi
-                new_xycalcs[ref_idx] = com
-
+                    ref_idx = Modeler.refls_idx[i_roi]
+                    h5_roi_id[ref_idx] = i_roi
+                    new_xycalcs[ref_idx] = com
 
         h5.create_dataset("rois", data=Modeler.rois)
         h5.create_dataset("pids", data=Modeler.pids)
         h5.create_dataset("sigma_rdout", data=Modeler.sigma_rdout)
+        h5.create_dataset("sigmaZ_vals", data=sigmaZs)
+        if Modeler.Hi_asu is not None:
+            h5.create_dataset("Hi_asu", data=Modeler.Hi_asu)
 
     new_refls["xyzcal.px"] = new_xycalcs
     new_refls["h5_roi_idx"] = h5_roi_id
