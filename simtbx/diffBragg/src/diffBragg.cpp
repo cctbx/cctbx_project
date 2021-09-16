@@ -1887,6 +1887,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         unsigned long long n_total_iter =  long_Nsteps*long_Npix;
         printf("Nsteps=%d\noversample=%d\ndet_thick_steps=%d\nsources=%d\nphisteps=%d\nmosaic_domains=%d\n",
                 db_steps.Nsteps,oversample,detector_thicksteps,sources,phisteps,mosaic_domains);
+        printf("DIFFBRAGG isotropic Ncells=%d\n", isotropic_ncells);
         if(use_cuda || getenv("DIFFBRAGG_USE_CUDA")!= NULL)
             printf("TIME TO RUN DIFFBRAGG -GPU- (%llu iterations):  %3.10f ms \n",n_total_iter, time);
         else

@@ -32,6 +32,8 @@ namespace boost_python { namespace {
   }
 
   static void  set_Nabc(simtbx::nanoBragg::diffBragg& diffBragg, double const& value) {
+      // NOTE this is the old way, assumming isotropic Nabc, for anisotropic use set_Nabc_aniso
+      diffBragg.isotropic_ncells=true;
       diffBragg.set_value(9, value); //  9 means Ncells parameter
   }
 

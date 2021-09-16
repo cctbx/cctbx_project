@@ -167,11 +167,13 @@ void diffBragg_sum_over_steps(
             Eigen::Vector3d delta_H = H_vec - H0;
             Eigen::Vector3d V = NABC*delta_H;
             double hrad_sqr = V.dot(V);
+            double NABC_determ = NABC.determinant();
             double F_latt;
             if (db_flags.no_Nabc_scale)
                 F_latt = exp(-( hrad_sqr / 0.63 * db_cryst.fudge ));
             else
-                F_latt = db_cryst.Na*db_cryst.Nb*db_cryst.Nc*exp(-( hrad_sqr / 0.63 * db_cryst.fudge ));
+                //F_latt = db_cryst.Na*db_cryst.Nb*db_cryst.Nc*exp(-( hrad_sqr / 0.63 * db_cryst.fudge ));
+                F_latt = NABC_determ*exp(-( hrad_sqr / 0.63 * db_cryst.fudge ));
 
             if (db_flags.use_diffuse){
                 Eigen::Vector3d delta_q_vec = UBO.inverse()*delta_H;
@@ -444,6 +446,7 @@ void diffBragg_sum_over_steps(
 
                     double N_i = NABC(i_nc, i_nc);
                     Eigen::Vector3d dV_dN = dN*delta_H;
+                    double determ_deriv = (NABC.inverse()*dN).trace(); // TODO speedops: precompute these
                     //if (i_step==0 && fpixel ==0 && spixel == 0){
                     //    printf("dN matrix: %f %f %f\n %f %f %f\n %f %f %f\n",
                     //        dN(0,0), dN(0,1), dN(0,2),
@@ -456,11 +459,11 @@ void diffBragg_sum_over_steps(
                     //        NABC(2,0), NABC(2,1), NABC(2,2)
                     //        );
                     //}
-                    double deriv_coef;
-                    if (db_flags.isotropic_ncells)
-                        deriv_coef= 3/N_i - C* ( dV_dN.dot(V));
-                    else
-                        deriv_coef= 1/N_i - C* ( dV_dN.dot(V));
+                    //double deriv_coef;
+                    //if (db_flags.isotropic_ncells)
+                    //    deriv_coef= 3/N_i - C* ( dV_dN.dot(V));
+                    //else
+                    double deriv_coef= determ_deriv - C* ( dV_dN.dot(V));
                     double value = 2*Iincrement*deriv_coef;
                     double value2=0;
                     if(db_flags.compute_curvatures){
@@ -484,8 +487,10 @@ void diffBragg_sum_over_steps(
                     else
                         dN << 0,0,1,0,0,0,1,0,0;
                     Eigen::Vector3d dV_dN = dN*delta_H;
-                    double deriv_coef = -C* (2* dV_dN.dot(V));
-                    double value = Iincrement*deriv_coef;
+                    double determ_deriv = (NABC.inverse()*dN).trace(); // TODO speedops: precompute these
+                    //double deriv_coef = -C* (2* dV_dN.dot(V));
+                    double deriv_coef = determ_deriv - C* (dV_dN.dot(V));
+                    double value = 2*Iincrement*deriv_coef;
                     Ncells_manager_dI[i_nc] += value;
                     double value2 =0;
                     if (db_flags.compute_curvatures){

@@ -36,8 +36,10 @@ C.rotate_around_origin(rot_axis, rot_ang)
 
 S = sim_data.SimData(use_default_crystal=True)
 S.crystal.dxtbx_crystal = C
+S.crystal.isotropic_ncells = True
 S.detector = sim_data.SimData.simple_detector(180, 0.1, (1024, 1024))
 S.instantiate_diffBragg(verbose=0, oversample=0)
+assert S.D.isotropic_ncells
 S.D.spot_scale = 100000
 #S.D.oversample = 5
 
@@ -61,7 +63,11 @@ S.D.refine(Ncells_id)
 S.D.initialize_managers()
 S.D.Ncells_abc = 20
 #S.D.printout_pixel_fastslow = 10, 10
+S.D.verbose = 1
+assert S.D.isotropic_ncells
+#S.D.isotropic_ncells = True
 S.D.add_diffBragg_spots()
+S.D.verbose = 0
 img = S.D.raw_pixels_roi.as_numpy_array()
 deriv = S.D.get_ncells_derivative_pixels()[0].as_numpy_array()
 if args.curvatures:

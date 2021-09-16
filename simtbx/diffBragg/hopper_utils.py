@@ -200,10 +200,9 @@ class DataModeler:
         self.tilt_abc = [abc for i_roi, abc in enumerate(self.tilt_abc) if self.selection_flags[i_roi]]
         self.pids = [pid for i_roi, pid in enumerate(self.pids) if self.selection_flags[i_roi]]
         self.tilt_cov = [cov for i_roi, cov in enumerate(self.tilt_cov) if self.selection_flags[i_roi]]
-        refls = refls.select(flex.bool(self.selection_flags))
-
         if not self.no_rlp_info:
             self.Q = [np.linalg.norm(refls[i_roi]["rlp"]) for i_roi in range(len(refls)) if self.selection_flags[i_roi]]
+        refls = refls.select(flex.bool(self.selection_flags))
 
         if "miller_index" in list(refls.keys()):
             self.Hi = list(refls["miller_index"])
