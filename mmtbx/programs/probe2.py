@@ -157,19 +157,27 @@ probe
 output
   .style = menu_item auto_align
 {
-  file_name_prefix = None
+  file_name = None
     .type = path
-    .short_caption = Prefix for file name
-    .help = Prefix for file name
+    .short_caption = Output file name
+    .help = Output file name
     .input_size = 400
+
+  format = *standard raw oneline
+    .type = choice
+    .help = Type of output to write (-oneline -unformated -kinemage in probe)
+
+  contact_summary = False
+    .type = bool
+    .help = Report summary of contacts (-oneline, -summary in probe)
+
+  condensed = False
+    .type = bool
+    .help = Condensed output format (-condense, -kinemage in probe)
 
   count_dots = False
     .type = bool
     .help = Count dots rather than listing all contacts (-countdots in probe)
-
-  one_line = False
-    .type = bool
-    .help = Output one line :contacts:by:severity:type: (-oneline in probe)
 
   hydrogen_bond_output = True
     .type = bool
@@ -262,18 +270,6 @@ output
   compute_scores = True
     .type = bool
     .help = Compute scores rather than just counting dots (-spike, -nospike in probe)
-
-  condensed = False
-    .type = bool
-    .help = Condensed output format (-condense, -kinemage in probe)
-
-  raw = False
-    .type = bool
-    .help = Raw output format (-unformated in probe)
-
-  contact_summary = False
-    .type = bool
-    .help = Report summary of contacts (-oneline, -summary in probe)
 }
 '''
 
@@ -324,8 +320,8 @@ Note:
       raise Sorry("Must specify a source parameter for approach "+self.params.approach)
     if self.params.approach in ['once','both'] and self.params.target_selection is None:
       raise Sorry("Must specify a target parameter for approach "+self.params.approach)
-    if self.params.output.file_name_prefix is None:
-      raise Sorry("Supply the prefix for an output file name using output.file_name_prefix=")
+    if self.params.output.file_name is None:
+      raise Sorry("Supply the output file name using output.file_name=")
     aScale = self.params.atom_radius_scale
     if aScale < 0.0001 or aScale > 1000:
       raise Sorry("Invalid atom_radius_scale value: {}".format(aScale))
@@ -344,8 +340,6 @@ Note:
       Find the scaled and offset radius for the specified atom.  This will be called on each
       atom after their extra information has been loaded to determine the scaled and offset
       value to use for the remainder of the program.
-      @todo How to handle asking for the implicit vs. explicit radius, which will presumably
-      be done not here but in the helper function that gets extra atom info.
       :param a: Atom whose radius is to be scaled
       :return: Scaled and offset radius of the atom.
     '''
@@ -1770,7 +1764,7 @@ Note:
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
           numSkinDots = self._count_skin_dots(source_atoms_sorted, allBondedNeighborLists)
-          if not self.params.output.raw:
+          if self.params.output.format != 'raw':
             outString += "selection: external\nname: {}\n".format(groupLabel)
             outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
               self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
@@ -1779,20 +1773,23 @@ Note:
               self.params.probe.gap_weight, self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight)
 
           nsel = len(source_atoms_sorted)
-          if self.params.output.raw:
+          if self.params.output.format == 'raw':
             outString += self._rawEnumerate("", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
           else:
             outString += self._enumerate("self dots", nsel, self.params.output.compute_scores, False, numSkinDots)
 
         else: # Not counting the dots
 
-          # Check for various output format types other than Kinemage
-          if self.params.output.raw:
+          # Check for various output format types other than Kinemage.
+          # We're not implementing O format or XV format, but we still allow raw and oneline
+          if self.params.output.format == 'raw':
             outString += self._writeRawOutput("1->1",groupLabel)
 
-          # @todo elif
+          elif self.params.output.format == 'oneline':
+            # @todo countsummary()
+            pass
 
-          else: # Kinemage
+          elif self.params.output.format == 'standard': # Standard/Kinemage format
             if self.params.output.contact_summary:
               # @todo countsummary()
               pass
@@ -1806,43 +1803,14 @@ Note:
 
             outString += self._writeOutput("self dots", groupLabel)
 
+          else:
+            raise ValueError("Unrecognized output format: "+self.params.output.format+" (internal error)")
+
       # @todo
-      else:
+      # elif:
 
-        # @todo Add Phantom Hydrogens to the ones we consider in cases where we should.
-
-        make_sub_header('Compute Probe Score', out=self.logger)
-
-        # @todo
-        # Find the radius of each atom in the structure and construct dot spheres for
-        # them. Find the atoms that are bonded to them and add them to an excluded list.
-        # Then compute the score for each of them and report the summed score over the
-        # whole molecule the way that Reduce will.
-        total = 0
-        badBumpTotal = 0
-        for a in atoms:
-          sphere = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius)
-
-          # Excluded atoms that are bonded to me or to one of my neightbors.
-          # It has the side effect of excluding myself if I have any neighbors.
-          # Construct as a set to avoid duplicates.
-          exclude = set()
-          for n in allBondedNeighborLists[a]:
-            exclude.add(n)
-            for n2 in allBondedNeighborLists[n]:
-              exclude.add(n2)
-          exclude = list(exclude)
-
-          dots = sphere.dots()
-          res = self._dotScorer.score_dots(a, 1.0, self._spatialQuery, rad*3, self.params.probe.radius,
-                exclude, sphere.dots(), sphere.density(), False)
-          total += res.totalScore()
-          if res.hasBadBump:
-            badBumpTotal += 1
-        outString += 'Summed probe score for molecule = {:.2f} with {} bad bumps'.format(total, badBumpTotal)
-
-    base = self.params.output.file_name_prefix
-    of = open("%s.kin"%base,"w")
+    # Write the output to the specified file.
+    of = open(self.params.output.file_name,"w")
     of.write(outString)
     of.close()
 
