@@ -6,10 +6,51 @@ LOGGER = logging.getLogger("main")
 import numpy as np
 import pandas
 from simtbx.nanoBragg.utils import flexBeam_sim_colors
-from simtbx.gpu import gpu_energy_channels
+
+try:
+    from simtbx.gpu import gpu_energy_channels
+except ImportError:
+    gpu_energy_channels = None
+
 from simtbx.diffBragg import utils
 from dxtbx.model.experiment_list import ExperimentListFactory
-from LS49.adse13_187.cyto_batch import multipanel_sim
+multipanel_sim = None
+try:
+    from LS49.adse13_187.cyto_batch import multipanel_sim
+except ImportError:
+    pass
+from simtbx.nanoBragg import utils as nanoBragg_utils
+from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
+from simtbx.nanoBragg.nanoBragg_beam import NBbeam
+from simtbx.nanoBragg.sim_data import SimData
+
+
+def panda_frame_from_exp(exp_name, detz_shift_mm=0, Ncells_abc=(30.,30.,30.), spot_scale=1., beamsize_mm=0.001,
+                         total_flux=1e12, oversample=1,spectrum_fname=None, spectrum_stride=1, lam0=0, lam1=1):
+    df = pandas.DataFrame({
+        "opt_exp_name": [exp_name],
+        "detz_shift_mm": [detz_shift_mm],
+        "ncells": [Ncells_abc],
+        "spot_scales": [spot_scale],
+        "beamsize_mm": [beamsize_mm],
+        "total_flux": [total_flux],
+        "oversample": [oversample],
+        "spectrum_filename": [spectrum_fname],
+        "spectrum_stride": [spectrum_stride],
+        "lam0": [lam0],
+        "lam1": [lam1]})
+
+    return df
+
+
+def model_from_expt(exp_name,  roi_spots_from_pandas_kwargs=None, panda_frame_from_exp_kwargs=None):
+    if roi_spots_from_pandas_kwargs is None:
+        roi_spots_from_pandas_kwargs = {}
+    if panda_frame_from_exp_kwargs is None:
+        panda_frame_from_exp_kwargs = {}
+    df = panda_frame_from_exp(exp_name, **panda_frame_from_exp_kwargs)
+    out = roi_spots_from_pandas(df, **roi_spots_from_pandas_kwargs)
+    return out
 
 
 def roi_spots_from_pandas(pandas_frame,  rois_per_panel=None,
@@ -25,6 +66,9 @@ def roi_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                           symbol_override=None, quiet=False, reset_Bmatrix=False, nopolar=False,
                           force_no_detector_thickness=False, printout_pix=None, norm_by_nsource=False,
                           use_exascale_api=False, use_db=False):
+    if use_exascale_api:
+        assert gpu_energy_channels is not None, "cant use exascale api if not in a GPU build"
+        assert multipanel_sim is not None, "cant use exascale api if LS49: https://github.com/nksauter/LS49.git  is not configured\n install in the modules folder"
 
     df = pandas_frame
 
@@ -107,7 +151,7 @@ def roi_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                                  energies=energies, fluxes=fluxes, Ncells_abc=Ncells_abc,
                                  beamsize_mm=beamsize_mm, oversample=oversample,
                                  spot_scale_override=spot_scale, default_F=0, interpolate=0,
-                                 include_background=False, nopolar=nopolar,
+                                 include_background=False,
                                  profile="gauss", cuda=True, show_params=False)
         return results
     elif use_db:
@@ -140,10 +184,6 @@ def roi_spots_from_pandas(pandas_frame,  rois_per_panel=None,
             return np.array([image for _,image in results])
 
 
-from simtbx.nanoBragg import utils as nanoBragg_utils
-from simtbx.nanoBragg.nanoBragg_crystal import  NBcrystal
-from simtbx.nanoBragg.nanoBragg_beam import NBbeam
-from simtbx.nanoBragg.sim_data import SimData
 
 
 def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
