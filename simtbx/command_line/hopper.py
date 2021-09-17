@@ -18,17 +18,15 @@ try:
 except ImportError:
     LineProfiler = None
 
-
 ROTX_ID = 0
 ROTY_ID = 1
 ROTZ_ID = 2
 NCELLS_ID = 9
 UCELL_ID_OFFSET = 3
 DETZ_ID = 10
-
+PARAM_PER_XTAL = 9
 
 # LIBTBX_SET_DISPATCHER_NAME simtbx.diffBragg.hopper
-
 
 import numpy as np
 np.seterr(invalid='ignore')
@@ -197,26 +195,25 @@ class Script:
 
             Modeler.SIM.D.device_Id = dev
 
-            # initial parameters (all set to 1, 7 parameters (scale, rotXYZ, Ncells_abc) per crystal (sausage) and then the unit cell parameters
-            nparam = 7 * Modeler.SIM.num_xtals + len(Modeler.SIM.ucell_man.variables) + 1
+            # initial parameters (all set to 1, PARAM_PER_XTAL parameters (scale, rotXYZ, Ncells_abc) per crystal (sausage) and then the unit cell parameters
+            nparam = PARAM_PER_XTAL * Modeler.SIM.num_xtals + len(Modeler.SIM.ucell_man.variables) + 1
             if self.params.rescale_params:
                 x0 = [1] * nparam
             else:
                 x0 = [np.nan]*nparam
                 for i_xtal in range(Modeler.SIM.num_xtals):
-                    x0[7*i_xtal] = Modeler.SIM.Scale_params[i_xtal].init
-                    x0[7*i_xtal+1] = Modeler.SIM.RotXYZ_params[3*i_xtal].init
-                    x0[7*i_xtal+2] = Modeler.SIM.RotXYZ_params[3*i_xtal+1].init
-                    x0[7*i_xtal+3] = Modeler.SIM.RotXYZ_params[3*i_xtal+2].init
-                    x0[7*i_xtal+4] = Modeler.SIM.Nabc_params[3*i_xtal].init
-                    x0[7*i_xtal+5] = Modeler.SIM.Nabc_params[3*i_xtal+1].init
-                    x0[7*i_xtal+6] = Modeler.SIM.Nabc_params[3*i_xtal+2].init
+                    x0[PARAM_PER_XTAL*i_xtal] = Modeler.SIM.Scale_params[i_xtal].init
+                    x0[PARAM_PER_XTAL*i_xtal+1] = Modeler.SIM.RotXYZ_params[3*i_xtal].init
+                    x0[PARAM_PER_XTAL*i_xtal+2] = Modeler.SIM.RotXYZ_params[3*i_xtal+1].init
+                    x0[PARAM_PER_XTAL*i_xtal+3] = Modeler.SIM.RotXYZ_params[3*i_xtal+2].init
+                    x0[PARAM_PER_XTAL*i_xtal+4] = Modeler.SIM.Nabc_params[3*i_xtal].init
+                    x0[PARAM_PER_XTAL*i_xtal+5] = Modeler.SIM.Nabc_params[3*i_xtal+1].init
+                    x0[PARAM_PER_XTAL*i_xtal+6] = Modeler.SIM.Nabc_params[3*i_xtal+2].init
 
                 nucell = len(Modeler.SIM.ucell_man.variables)
                 for i_ucell in range(nucell):
-                    x0[7*Modeler.SIM.num_xtals+i_ucell] = Modeler.SIM.ucell_params[i_ucell].init
-                    #x0[7 * Modeler.SIM.num_xtals + i_ucell] = Modeler.SIM.ucell_params[i_ucell].init
-                x0[7*Modeler.SIM.num_xtals+nucell] = Modeler.SIM.DetZ_param.init
+                    x0[PARAM_PER_XTAL*Modeler.SIM.num_xtals+i_ucell] = Modeler.SIM.ucell_params[i_ucell].init
+                x0[PARAM_PER_XTAL*Modeler.SIM.num_xtals+nucell] = Modeler.SIM.DetZ_param.init
 
             x = Modeler.Minimize(x0)
             if self.params.profile:
@@ -336,7 +333,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
 
     if SIM.num_xtals > 1:
         raise NotImplemented("cant save pandas for multiple crystals yet")
-    scale, rotX, rotY, rotZ, Na, Nb, Nc,a,b,c,al,be,ga,detz_shift = get_param_from_x(x, SIM)
+    scale, rotX, rotY, rotZ, Na, Nb, Nc,diff_ga, diff_sig, a,b,c,al,be,ga,detz_shift = get_param_from_x(x, SIM)
     shift = np.nan
     #if SIM.shift_param is not None:
     #    shift = SIM.shift_param.get_val(x[-1])

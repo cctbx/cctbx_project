@@ -101,6 +101,12 @@ betas {
   Ndef = [1e8,1e8,1e8]
     .type = floats(size=3)
     .help = restraint factor for the ncells def
+  diffuse_sigma = 1e8,1e8,1e8
+    .type = floats(size=3)
+    .help = restraint factor for diffuse sigma
+  diffuse_gamma = 1e8,1e8,1e8
+    .type = floats(size=3)
+    .help = restraint factor for diffuse gamma
   G = 1e8
     .type = float
     .help = restraint factor for the scale G
@@ -142,6 +148,12 @@ centers {
   Ndef = [0,0,0]
     .type = floats(size=3)
     .help = restraint target for Ndef
+  diffuse_sigma = [1,1,1]
+    .type = floats(size=3)
+    .help = restraint target for diffuse sigma
+  diffuse_gamma = [1,1,1]
+    .type = floats(size=3)
+    .help = restraint target for diffuse gamma
   G = 100
     .type = float
     .help = restraint target for scale G
@@ -176,6 +188,9 @@ method = None
 opt_det = None
   .type = str
   .help = path to experiment with optimized detector model
+opt_beam = None
+  .type = str
+  .help = path to experiment with optimized beam model
 number_of_xtals = 1
   .type = int
   .help = number of crystal domains to model per shot
@@ -201,6 +216,12 @@ sigmas {
   Ndef = [1,1,1]
     .type = floats(size=3)
     .help = sensitivity for Ndef
+  diffuse_sigma = [1,1,1]
+    .type = floats(size=3)
+    .help = sensitivity for diffuse sigma
+  diffuse_gamma = [1,1,1]
+    .type = floats(size=3)
+    .help = sensitivity for diffuse gamma
   RotXYZ = [1,1,1]
     .type = floats(size=3)
     .help = sensitivity for RotXYZ
@@ -227,6 +248,12 @@ init {
   Ndef = [0,0,0]
     .type = floats(size=3)
     .help = init for Ndef
+  diffuse_sigma = [3.16,3.16,3.16]
+    .type = floats(size=3)
+    .help = init diffuse sigma
+  diffuse_gamma = [50,50,50]
+    .type = floats(size=3)
+    .help = init for diffuse gamma
   RotXYZ = [0,0,0]
     .type = floats(size=3)
     .help = init for RotXYZ
@@ -247,6 +274,12 @@ mins {
   Ndef = [-200,-200,-200]
     .type = floats(size=3)
     .help = min for Ndef
+  diffuse_sigma = [0,0,0]
+    .type = floats(size=3)
+    .help = min diffuse sigma
+  diffuse_gamma = [0,0,0]
+    .type = floats(size=3)
+    .help = min for diffuse gamma
   RotXYZ = [-1,-1,-1]
     .type = floats(size=3)
     .help = min for rotXYZ in degrees
@@ -273,6 +306,12 @@ maxs {
   Ndef = [200,200,200]
     .type = floats(size=3)
     .help = max for Ndef
+  diffuse_sigma = [20,20,20]
+    .type = floats(size=3)
+    .help = max diffuse sigma
+  diffuse_gamma = [1000,1000,1000]
+    .type = floats(size=3)
+    .help = max for diffuse gamma
   RotXYZ = [1,1,1]
     .type = floats(size=3)
     .help = max for rotXYZ in degrees
@@ -302,6 +341,12 @@ fix {
   Ndef = False
     .type = bool
     .help = fix the diagonal mosaic domain size parameters during refinement
+  diffuse_sigma = True
+    .type = bool
+    .help = fix diffuse sigma
+  diffuse_gamma = True
+    .type = bool
+    .help = fix diffuse gamma
   ucell = False
     .type = bool
     .help = fix the unit cell during refinement
@@ -324,6 +369,10 @@ ucell_ang_abs = 5
 no_Nabc_scale = False
   .type = bool
   .help = toggle Nabc scaling of the intensity
+use_diffuse_models = False
+  .type = bool
+  .help = if True, let the values of init.diffuse_sigma and init.diffuse_gamma
+  .help = be used to define the diffuse scattering. Set e.g. fix.diffuse_sigma=True in order to refine them
 sigma_frac = None
   .type = float
   .help = sigma for Fhkl restraints will be some fraction of the starting value

@@ -367,6 +367,13 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     Ne = 0;
     Nf = 0;
 
+    db_cryst.anisoG << 50,0,0,
+                       0,50,0,
+                       0,0,50;
+    db_cryst.anisoU << .16,0,0,
+                       0,.16,0,
+                       0,0,.16;
+
     lambda_managers[0]->value = 0;
     lambda_managers[1]->value = 1;
     use_lambda_coefficients = false;

@@ -91,9 +91,8 @@ struct flags{
 };
 
 struct crystal{
-    double this_gamma=50; // diffuse scattering
-    double this_sigma=.4; // diffuse scattering
-
+    Eigen::Matrix3d anisoG;
+    Eigen::Matrix3d anisoU;
     int mosaic_domains; // number of mosaic domains to model
     double Na, Nb, Nc, Nd, Ne, Nf; // mosaic domain terms
     double phi0; // gonio

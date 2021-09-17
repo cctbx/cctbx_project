@@ -14,6 +14,38 @@ namespace boost_python { namespace {
   void (simtbx::nanoBragg::diffBragg::*add_diffBragg_spots_C)(const nanoBragg::af::shared<size_t>&, boost::python::list per_pix_nominal_hkl)
         = &simtbx::nanoBragg::diffBragg::add_diffBragg_spots;
 
+  static void  set_diffuse_gamma(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& values) {
+      double g0 = boost::python::extract<double>(values[0]);
+      double g1 = boost::python::extract<double>(values[1]);
+      double g2 = boost::python::extract<double>(values[2]);
+      diffBragg.db_cryst.anisoG <<  g0,0,0,
+                                    0,g1,0,
+                                    0,0,g2;
+  }
+
+  static boost::python::tuple get_diffuse_gamma(simtbx::nanoBragg::diffBragg const& diffBragg) {
+      return boost::python::make_tuple(diffBragg.db_cryst.anisoG(0,0),
+                                      diffBragg.db_cryst.anisoG(1,1),
+                                      diffBragg.db_cryst.anisoG(2,2));
+  }
+
+  static void  set_diffuse_sigma(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& values) {
+      double sig0 = boost::python::extract<double>(values[0]);
+      double sig1 = boost::python::extract<double>(values[1]);
+      double sig2 = boost::python::extract<double>(values[2]);
+      diffBragg.db_cryst.anisoU <<  sig0*sig0,0,0,
+                                    0,sig1*sig1,0,
+                                    0,0,sig2*sig2;
+  }
+
+  static boost::python::tuple get_diffuse_sigma(simtbx::nanoBragg::diffBragg const& diffBragg) {
+      double sig0 = sqrt(diffBragg.db_cryst.anisoU(0,0));
+      double sig1 = sqrt(diffBragg.db_cryst.anisoU(1,1));
+      double sig2 = sqrt(diffBragg.db_cryst.anisoU(2,2));
+      return boost::python::make_tuple(sig0, sig1, sig2);
+  }
+
+
   static void  set_Ndef(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& values) {
       diffBragg.set_ncells_def_values(values);
   }
@@ -580,6 +612,16 @@ namespace boost_python { namespace {
             make_function(&get_use_diffuse,rbv()),
             make_function(&set_use_diffuse,dcp()),
             "sim with diffuse")
+
+      .add_property("diffuse_gamma",
+            make_function(&get_diffuse_gamma,rbv()),
+            make_function(&set_diffuse_gamma,dcp()),
+            "the 3 diffuse gamma factors")
+
+      .add_property("diffuse_sigma",
+            make_function(&get_diffuse_sigma,rbv()),
+            make_function(&set_diffuse_sigma,dcp()),
+            "set the 3 diffuse sigma factors")
 
     ; // end of diffBragg extention
 

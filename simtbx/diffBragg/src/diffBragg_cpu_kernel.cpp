@@ -178,20 +178,11 @@ void diffBragg_sum_over_steps(
             if (db_flags.use_diffuse){
                 Eigen::Vector3d delta_q_vec = UBO.inverse()*delta_H;
                 Eigen::Vector3d bragg_q_vec = UBO.inverse()*H0;
-
-                Eigen::Matrix3d anisoU; // TODO make this matrix outside the loop
-                anisoU << pow(db_cryst.this_sigma,2),0,0,
-                          0,pow(db_cryst.this_sigma,2),0,
-                          0,0,pow(db_cryst.this_sigma,2);
-                double exparg = 4*M_PI*M_PI*bragg_q_vec.dot(anisoU*bragg_q_vec);
+                double exparg = 4*M_PI*M_PI*bragg_q_vec.dot(db_cryst.anisoU*bragg_q_vec);
                 double dwf = exp(-exparg);
 
-                //F_latt_diffuse = 8.*M_PI*db_cryst.this_gamma*db_cryst.this_gamma*db_cryst.this_gamma/ pow((1.+db_cryst.this_gamma*db_cryst.this_gamma*2.*M_PI*2.*M_PI* rsqr),2.);
-                Eigen::Matrix3d anisoG; anisoG << db_cryst.this_gamma,0,0, // TODO make this matrix outside loop
-                                          0,db_cryst.this_gamma,0,
-                                          0,0,db_cryst.this_gamma;
-                Eigen::Vector3d anisoG_q = anisoG*delta_q_vec;
-                double F_latt_diffuse = 4.*M_PI*anisoG.determinant() /
+                Eigen::Vector3d anisoG_q = db_cryst.anisoG*delta_q_vec;
+                double F_latt_diffuse = 4.*M_PI*db_cryst.anisoG.determinant() /
                         (1.+ anisoG_q.dot(anisoG_q)* 4*M_PI*M_PI);
                 F_latt_diffuse *= (dwf*exparg);
                 F_latt += F_latt_diffuse;
