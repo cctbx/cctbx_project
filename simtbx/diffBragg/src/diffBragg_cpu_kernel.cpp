@@ -175,17 +175,16 @@ void diffBragg_sum_over_steps(
                 //F_latt = db_cryst.Na*db_cryst.Nb*db_cryst.Nc*exp(-( hrad_sqr / 0.63 * db_cryst.fudge ));
                 F_latt = NABC_determ*exp(-( hrad_sqr / 0.63 * db_cryst.fudge ));
 
+            double I_latt_diffuse = 0;
             if (db_flags.use_diffuse){
-                Eigen::Vector3d delta_q_vec = UBO.inverse()*delta_H;
-                Eigen::Vector3d bragg_q_vec = UBO.inverse()*H0;
-                double exparg = 4*M_PI*M_PI*bragg_q_vec.dot(db_cryst.anisoU*bragg_q_vec);
-                double dwf = exp(-exparg);
+                double exparg = 4*M_PI*M_PI*H0.dot(db_cryst.anisoU*H0);
+                //double dwf = exp(-exparg);
 
-                Eigen::Vector3d anisoG_q = db_cryst.anisoG*delta_q_vec;
-                double F_latt_diffuse = 4.*M_PI*db_cryst.anisoG.determinant() /
+                Eigen::Vector3d anisoG_q = db_cryst.anisoG*delta_H;
+                I_latt_diffuse = 4.*M_PI*(db_cryst.anisoG*UBO).determinant() /
                         (1.+ anisoG_q.dot(anisoG_q)* 4*M_PI*M_PI);
-                F_latt_diffuse *= (dwf*exparg);
-                F_latt += F_latt_diffuse;
+                if (exparg  < .5) // only valid up to a point
+                    I_latt_diffuse *= (exparg);
             }
 
             /* no need to go further if result will be zero */
@@ -197,7 +196,7 @@ void diffBragg_sum_over_steps(
                 omega_pixel = 1;
 
             /* increment to intensity */
-            double I_noFcell = F_latt*F_latt*db_beam.source_I[source]*capture_fraction*omega_pixel;
+            double I_noFcell = (F_latt*F_latt + I_latt_diffuse)*db_beam.source_I[source]*capture_fraction*omega_pixel;
 
             /* structure factor of the unit cell */
             double F_cell = db_cryst.default_F;
