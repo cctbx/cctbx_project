@@ -494,6 +494,10 @@ class DataModeler:
                 vary[i_xtal * n_param_per_xtal + 4] = False
                 vary[i_xtal * n_param_per_xtal + 5] = False
                 vary[i_xtal * n_param_per_xtal + 6] = False
+            if self.params.fix.diffuse_gamma:
+                vary[i_xtal*n_param_per_xtal+7] = False
+            if self.params.fix.diffuse_sigma:
+                vary[i_xtal*n_param_per_xtal+8] = False
         n_uc_param = len(self.SIM.ucell_man.variables)
         if self.params.fix.ucell:
             for i_uc in range(n_uc_param):

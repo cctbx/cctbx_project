@@ -156,33 +156,31 @@ misset, misset_init = utils.compare_with_ground_truth(*C.get_real_space_vectors(
 print(misset_init, "init misset with ground truth")
 print(misset, "misset with ground truth")
 if "detz_shift" in args.perturb:
-    assert misset < 0.0065
+    assert misset < 0.007, misset
 else:
-    assert misset < 0.005
+    assert misset < 0.005, misset
 
 # check mosaic domain
-assert all (np.subtract(nbcryst.Ncells_abc, [Na,Nb,Nc]) < 0.2)
+assert all (np.subtract(nbcryst.Ncells_abc, [Na,Nb,Nc]) < 0.2), "%d, %d, %d" % (Na,Nb,Nb)
 
 # check spot scale
 perc_diff_G = abs(SIM.D.spot_scale - G)/ SIM.D.spot_scale * 100
 print("spot scale gt: %f; spot scale opt: %f; percent diff: %f %%" % (SIM.D.spot_scale, G, perc_diff_G))
-assert perc_diff_G < 1
+assert perc_diff_G < 1, perc_diff_G
 
 # check detz
 print("detdist shift %f (should be 0)" % detz_shift)
-assert detz_shift < 0.2
-
+assert detz_shift < 0.2, detz_shift
 
 ucell_diff_init = np.abs(np.subtract(ucell , ucell2))
 ucell_diff = np.abs(np.subtract(ucell , Copt.get_unit_cell().parameters()))
-
 
 init_dev, init_dev_ang = ucell_diff_init[:3].sum(), ucell_diff_init[-3:].sum()
 dev, dev_ang = ucell_diff[:3].sum(), ucell_diff[-3:].sum()
 print("initial ucell dev: %f Angstrom; %f degree" % (init_dev, init_dev_ang))
 print("optimized ucell dev: %f Angstrom; %f degree" % (dev, dev_ang))
-assert dev_ang < init_dev_ang and dev_ang < 0.025
+assert dev_ang < init_dev_ang and dev_ang < 0.025, "init: %f curr: %f" % (init_dev_ang, dev_ang)
 if "detz_shift" not in args.perturb:
-    assert dev < init_dev and dev < 0.025
+    assert dev < init_dev and dev < 0.025, "init: %f  curr: %f" % (init_dev, dev)
 
 print("OK")
