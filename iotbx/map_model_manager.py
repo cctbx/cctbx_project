@@ -2877,8 +2877,10 @@ class map_model_manager(object):
         print("No target model...skipping comparison", file = self.log)
       return []
 
-    target_model_chain_ids = get_chain_ids(target_model.get_hierarchy())
-    matching_model_chain_ids = get_chain_ids(matching_model.get_hierarchy())
+    target_model_chain_ids = get_chain_ids(target_model.get_hierarchy(),
+      unique_only=True)
+    matching_model_chain_ids = get_chain_ids(matching_model.get_hierarchy(),
+      unique_only=True)
     if len(target_model_chain_ids) > 1 or len(matching_model_chain_ids) > 1:
       target_and_matching_list = []
       for target_model_chain_id in target_model_chain_ids:
