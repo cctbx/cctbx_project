@@ -626,7 +626,7 @@ def reorder_residues(hierarchy, merge_chains = False, chain_id = None):
       rg = residue_dict[chain_id][resseq]
       cc.append_residue_group(rg)
   return new_hierarchy
-  
+
 def set_chain_id(hierarchy, chain_id = None):
   assert chain_id
   for model in hierarchy.models():
