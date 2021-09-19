@@ -584,6 +584,49 @@ def renumber_residues(hierarchy, first_resno = 1):
         rg.resseq = resseq_encode(current_resno)
         current_resno += 1
 
+
+def create_new_hierarchy():
+  import iotbx.pdb
+  new_hierarchy = iotbx.pdb.input(
+      source_info = "Model",
+      lines = flex.split_lines("")).construct_hierarchy()
+  return new_hierarchy
+
+def create_new_hierarchy_and_model():
+  import iotbx.pdb
+  new_hierarchy = create_new_hierarchy()
+  mm = iotbx.pdb.hierarchy.model()
+  new_hierarchy.append_model(mm)
+  return new_hierarchy, mm
+
+def reorder_residues(hierarchy, merge_chains = False, chain_id = None):
+  import iotbx.pdb
+  residue_dict = {}
+  for model in hierarchy.models():
+    for chain in model.chains():
+       if merge_chains and chain_id is None:
+         chain_id = chain.id
+       elif merge_chains:
+         pass # already have chain_id
+       else:
+         chain_id = chain.id # keep it
+       if not chain_id in residue_dict.keys():
+         residue_dict[chain_id] = {}
+       for rg in chain.residue_groups():
+          residue_dict[chain_id][rg.resseq_as_int()] = rg.detached_copy()
+  keys = list(residue_dict.keys())
+  keys = sorted(keys)
+  new_hierarchy, model = create_new_hierarchy_and_model()
+  for chain_id in keys:
+    cc = iotbx.pdb.hierarchy.chain()
+    cc.id = chain_id
+    model.append_chain(cc)
+    residue_numbers = sorted(list(residue_dict[chain_id].keys()))
+    for resseq in residue_numbers:
+      rg = residue_dict[chain_id][resseq]
+      cc.append_residue_group(rg)
+  return new_hierarchy
+  
 def set_chain_id(hierarchy, chain_id = None):
   assert chain_id
   for model in hierarchy.models():
