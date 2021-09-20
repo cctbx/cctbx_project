@@ -836,9 +836,14 @@ Note:
           break
 
       # Sort the dots for the same source atom based on their target atom.
-      thisAtom = sorted(
-        dotInfoList[curAtomIndex:curAtomEndIndex+1], key=lambda dot: dot.target.memory_id()
-      )
+      # There may be no target atoms specified (they may be None), which will
+      # cause an attribute error.  If that happens, we don't sort.
+      try:
+        thisAtom = sorted(
+          dotInfoList[curAtomIndex:curAtomEndIndex+1], key=lambda dot: dot.target.memory_id()
+        )
+      except AttributeError:
+        thisAtom = dotInfoList[curAtomIndex:curAtomEndIndex+1]
 
       # Remove duplicates (same target atom) if we've been asked to.
       # We do this by scanning through and accumulating counts as long as the target
