@@ -312,6 +312,22 @@ Note:
   and http://molprobity.biochem.duke.edu
   '''
 
+
+# ------------------------------------------------------------------------------
+
+  def _totalInteractionCount(self, chainCounts):
+    '''
+      Find the total count of interactions of any type for the specified chain-pair type.
+      :param chainCounts: One of the structures that hold the counts of interaction
+      types for a given pair of chain types: _MCMCCount, _SCSCCount, _MCSCCount, _otherCount,
+      or _sumCount.
+      :return: Sum of results across all interaction types.
+    '''
+    ret = 0
+    for v in chainCounts.values():
+      ret += v
+    return ret
+
 # ------------------------------------------------------------------------------
 
   def validate(self):
@@ -735,7 +751,9 @@ Note:
     # Check all of the dots for the atom and see if they should be
     # added to the list.
     srcDots = self._dots[src]
-    # @todo Use a C++ call to find these dots if we can
+    # @todo Use a C++ call to find these dots if we can.  This will require changing or
+    # replacing the check_dot() call so that it will make the dot even if there is not an atom
+    # within interaction distance of the dot.
     for dotvect in srcDots:
       # Dot on the surface of the atom, at its radius.
       # This is where the probe touches the surface.
@@ -996,7 +1014,14 @@ Note:
           ret += "@master {}\n".format(mast[probeExt.InteractionType.WeakHydrogenBond])
 
     # Report count legend if any counts are nonzero.
-    # @todo
+    if self._totalInteractionCount(self._MCMCCount) > 0:
+      ret += "@pointmaster 'M' {McMc contacts}\n"
+    if self._totalInteractionCount(self._SCSCCount) > 0:
+      ret += "@pointmaster 'S' {McMc contacts}\n"
+    if self._totalInteractionCount(self._MCSCCount) > 0:
+      ret += "@pointmaster 'P' {McMc contacts}\n"
+    if self._totalInteractionCount(self._otherCount) > 0:
+      ret += "@pointmaster 'O' {McMc contacts}\n"
 
     # Report binned gap legend if we're binning gaps
     if self.params.output.bin_gaps:
@@ -1663,7 +1688,9 @@ Note:
       # Sums of interaction types of dots based on whether their source and/or target
       # were mainchain, sidechain, both, or neither.  There is another place to store
       # the sum of multiple passes.
-      # Each contains an entry for each InteractionType and for total.
+      # Each contains an entry for each InteractionType and for the total.
+      # @todo Consider how to make sumcount procedural so we don't have to increment it each
+      # time we increment one of the others.
       self._MCMCCount = {}
       self._SCSCCount = {}
       self._MCSCCount = {}
@@ -1876,6 +1903,25 @@ Note:
 
     # Restore state
     self.params.output.condensed = stored
+
+    #=====================================================================================
+    # Test the _totalInteractionCount() method.  We make stand-in dictionaries using a stand-in
+    # list.  These will be overwritten when Run() is called.
+    self._interactionTypes = [0, 1, 2, 3, 4, 5, 6]
+    self._MCMCCount = {}
+    self._SCSCCount = {}
+    self._MCSCCount = {}
+    self._otherCount = {}
+    for t in self._interactionTypes:
+      self._MCMCCount[t] = 1
+      self._SCSCCount[t] = 1
+      self._MCSCCount[t] = 1
+      self._otherCount[t] = 1
+
+    assert self._totalInteractionCount(self._MCMCCount) == len(self._interactionTypes), "probe2:Test(): _totalInteractionCount(_MCMCCount) failed"
+    assert self._totalInteractionCount(self._SCSCCount) == len(self._interactionTypes), "probe2:Test(): _totalInteractionCount(_SCSCCount) failed"
+    assert self._totalInteractionCount(self._MCSCCount) == len(self._interactionTypes), "probe2:Test(): _totalInteractionCount(_MCSCCount) failed"
+    assert self._totalInteractionCount(self._otherCount) == len(self._interactionTypes), "probe2:Test(): _totalInteractionCount(_otherCount) failed"
 
     #=====================================================================================
     # @todo Unit tests for other methods
