@@ -158,10 +158,10 @@ output
   .style = menu_item auto_align
 {
   file_name = None
-    .type = path
+    .type = str
     .short_caption = Output file name
+    .optional = False
     .help = Output file name
-    .input_size = 400
 
   format = *standard raw oneline
     .type = choice
@@ -320,8 +320,6 @@ Note:
       raise Sorry("Must specify a source parameter for approach "+self.params.approach)
     if self.params.approach in ['once','both'] and self.params.target_selection is None:
       raise Sorry("Must specify a target parameter for approach "+self.params.approach)
-    if self.params.output.file_name is None:
-      raise Sorry("Supply the output file name using output.file_name=")
     aScale = self.params.atom_radius_scale
     if aScale < 0.0001 or aScale > 1000:
       raise Sorry("Invalid atom_radius_scale value: {}".format(aScale))
