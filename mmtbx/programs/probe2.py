@@ -1939,11 +1939,11 @@ Note:
         if self.params.output.count_dots:
           numSkinDots = self._count_skin_dots(source_atoms_sorted, allBondedNeighborLists)
           if self.params.output.format != 'raw':
-            outString += "selection: external\nname: {}\n".format(groupLabel)
+            outString += "selection: once\nname: {}\n".format(groupLabel)
             outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
               self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
               self.params.atom_radius_offset)
-            outString += "score weights: gapWt={}, bumpWt={}, HBWt={}\n".format(
+            outString += "score weights: gapWt={:0g}, bumpWt={:0g}, HBWt={:0g}\n".format(
               self.params.probe.gap_weight, self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight)
 
           nsel = len(source_atoms_sorted)
@@ -1954,7 +1954,7 @@ Note:
 
         else: # Not counting the dots
 
-          # Check for various output format types other than Kinemage.
+          # Check for various output format types.
           # We're not implementing O format or XV format, but we still allow raw and oneline
           if self.params.output.format == 'raw':
             outString += self._writeRawOutput("1->2",groupLabel)
