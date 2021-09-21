@@ -427,7 +427,7 @@ void diffBragg_sum_over_steps_cuda(
         cp.cu_odet_vectors, cp.cu_pix0_vectors,
         db_flags.nopolar, db_flags.point_pixel, db_beam.fluence, db_cryst.r_e_sqr, db_cryst.spot_scale, Npanels, aniso_eta, db_flags.no_Nabc_scale,
         cp.cu_fpfdp,  cp.cu_fpfdp_derivs, cp.cu_atom_data, num_atoms,
-        db_flags.refine_fp_fdp, cp.cu_nominal_hkl, use_nominal_hkl);
+        db_flags.refine_fp_fdp, cp.cu_nominal_hkl, use_nominal_hkl, db_cryst.anisoU, db_cryst.anisoG, db_flags.use_diffuse);
 
     error_msg(cudaGetLastError(), "after kernel call");
 
