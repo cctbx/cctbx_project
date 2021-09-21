@@ -1423,6 +1423,17 @@ Note:
 
 # ------------------------------------------------------------------------------
 
+  def _clear_results(self):
+    # Initialize the results to empty.
+    self._results = {}
+    for c in self._allAtomClasses:
+      interactionTypeDicts = {}
+      for i in self._interactionTypes:
+        interactionTypeDicts[i] = []
+      self._results[c] = interactionTypeDicts
+
+# ------------------------------------------------------------------------------
+
   def run(self):
     # Run unit tests if we've been asked to
     if self.params.run_tests:
@@ -1746,12 +1757,7 @@ Note:
           probeExt.InteractionType.BadBump,
           probeExt.InteractionType.HydrogenBond
         ]
-      self._results = {}
-      for c in self._allAtomClasses:
-        interactionTypeDicts = {}
-        for i in self._interactionTypes:
-          interactionTypeDicts[i] = []
-        self._results[c] = interactionTypeDicts
+      self._clear_results();
 
       ################################################################################
       # Sums of interaction types of dots based on whether their source and/or target
@@ -1924,7 +1930,7 @@ Note:
 
         # Generate dots for the source atom set against the target atom set.
         # @todo The code below here is the same as -self other than the choice of target_atoms_sorted here
-        # and the names passed to enumerate, writeRaw, countsummary and writeOutput...
+        # and the names passed to enumerate, writeRaw, countsummary and writeOutput; and the selection string...
         self._generate_interaction_dots(source_atoms_sorted, target_atoms_sorted, allBondedNeighborLists)
 
         # Find our group label
@@ -1975,8 +1981,100 @@ Note:
 
             outString += self._writeOutput("once dots", groupLabel)
 
-      # @todo
-      # elif:
+      elif self.params.approach == 'both':
+        make_sub_header('Find both directions intersection dots', out=self.logger)
+
+        # Find our group label
+        if self.params.output.format == 'raw':
+          groupLabel = ""
+        else:
+          groupLabel = "dots"
+        if len(self.params.output.group_label) > 0:
+          groupLabel = self.params.output.group_label
+
+        # @todo The code below here is similar to -once but is repeated twice and has different string values.
+        # It is also somewhat re-ordered in terms of where the selection is printed.
+
+        # Preliminary information before running both intersections.
+        if self.params.output.count_dots:
+          if self.params.output.format != 'raw':
+            outString += "selection: both\nname: {}\n".format(groupLabel)
+            outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
+              self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
+              self.params.atom_radius_offset)
+            outString += "score weights: gapWt={:0g}, bumpWt={:0g}, HBWt={:0g}\n".format(
+              self.params.probe.gap_weight, self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight)
+        else: # Not counting the dots
+          if self.params.output.format == 'raw':
+            pass
+          elif self.params.output.format in ['oneline', 'standard']:
+            if self.params.output.add_group_line:
+              outString += "@group {}\n".format(groupLabel)
+
+        # =================== First direction ========================
+
+        # Generate dots for the source atom set against the target atom set.
+        self._generate_interaction_dots(source_atoms_sorted, target_atoms_sorted, allBondedNeighborLists)
+
+        # Count the dots if we've been asked to do so.
+        if self.params.output.count_dots:
+          numSkinDots = self._count_skin_dots(source_atoms_sorted, allBondedNeighborLists)
+          nsel = len(source_atoms_sorted)
+          if self.params.output.format == 'raw':
+            outString += self._rawEnumerate("1->2", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
+          else:
+            outString += self._enumerate("1->2", nsel, self.params.output.compute_scores, False, numSkinDots)
+
+        else: # Not counting the dots
+
+          # Check for various output format types.
+          # We're not implementing O format or XV format, but we still allow raw and oneline
+          if self.params.output.format == 'raw':
+            outString += self._writeRawOutput("1->2",groupLabel)
+
+          elif self.params.output.format == 'oneline':
+            # Acculumlate but do not report results
+            outString += self._count_summary("IntersectBothWays 1->2", False)
+
+          elif self.params.output.format == 'standard': # Standard/Kinemage format
+            outString += self._writeOutput("1->2", groupLabel)
+            if self.params.output.contact_summary:
+              # Acculumlate but do not report results
+              outString += self._count_summary("IntersectBothWays 1->2", False)
+
+        # =================== Second direction ========================
+
+        # Clear the results before running interactions the other direction.
+        self._clear_results();
+
+        # Generate dots for the target atom set against the source atom set.
+        self._generate_interaction_dots(target_atoms_sorted, source_atoms_sorted, allBondedNeighborLists)
+
+        # Count the dots if we've been asked to do so.
+        if self.params.output.count_dots:
+          numSkinDots = self._count_skin_dots(target_atoms_sorted, allBondedNeighborLists)
+          nsel = len(target_atoms_sorted)
+          if self.params.output.format == 'raw':
+            outString += self._rawEnumerate("2->1", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
+          else:
+            outString += self._enumerate("2->1", nsel, self.params.output.compute_scores, False, numSkinDots)
+
+        else: # Not counting the dots
+
+          # Check for various output format types.
+          # We're not implementing O format or XV format, but we still allow raw and oneline
+          if self.params.output.format == 'raw':
+            outString += self._writeRawOutput("2->1",groupLabel)
+
+          elif self.params.output.format == 'oneline':
+            # Accumulate and report results
+            outString += self._count_summary("IntersectBothWays 2->1", True)
+
+          elif self.params.output.format == 'standard': # Standard/Kinemage format
+            outString += self._writeOutput("2->1", groupLabel)
+            if self.params.output.contact_summary:
+              # Accumulate and report results
+              outString += self._count_summary("IntersectBothWays 2->1", True)
 
     # Write the output to the specified file.
     of = open(self.params.output.file_name,"w")
