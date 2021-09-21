@@ -1758,7 +1758,6 @@ Note:
       # were mainchain, sidechain, both, or neither.  There is another place to store
       # the sum of multiple passes.
       # Each contains an entry for each InteractionType and for the total.
-      # @todo Consider how to make sumCount procedural or how to handle it in reporting.
       self._MCMCCount = {}
       self._SCSCCount = {}
       self._MCSCCount = {}
@@ -1919,6 +1918,62 @@ Note:
 
           else:
             raise ValueError("Unrecognized output format: "+self.params.output.format+" (internal error)")
+
+      elif self.params.approach == 'once':
+        make_sub_header('Find single direction intersection dots', out=self.logger)
+
+        # Generate dots for the source atom set against the target atom set.
+        # @todo The code below here is the same as -self other than the choice of target_atoms_sorted here
+        # and the names passed to enumerate, writeRaw, countsummary and writeOutput...
+        self._generate_interaction_dots(source_atoms_sorted, target_atoms_sorted, allBondedNeighborLists)
+
+        # Find our group label
+        if self.params.output.format == 'raw':
+          groupLabel = ""
+        else:
+          groupLabel = "dots"
+        if len(self.params.output.group_label) > 0:
+          groupLabel = self.params.output.group_label
+
+        # Count the dots if we've been asked to do so.
+        if self.params.output.count_dots:
+          numSkinDots = self._count_skin_dots(source_atoms_sorted, allBondedNeighborLists)
+          if self.params.output.format != 'raw':
+            outString += "selection: external\nname: {}\n".format(groupLabel)
+            outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
+              self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
+              self.params.atom_radius_offset)
+            outString += "score weights: gapWt={}, bumpWt={}, HBWt={}\n".format(
+              self.params.probe.gap_weight, self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight)
+
+          nsel = len(source_atoms_sorted)
+          if self.params.output.format == 'raw':
+            outString += self._rawEnumerate("", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
+          else:
+            outString += self._enumerate("once dots", nsel, self.params.output.compute_scores, False, numSkinDots)
+
+        else: # Not counting the dots
+
+          # Check for various output format types other than Kinemage.
+          # We're not implementing O format or XV format, but we still allow raw and oneline
+          if self.params.output.format == 'raw':
+            outString += self._writeRawOutput("1->2",groupLabel)
+
+          elif self.params.output.format == 'oneline':
+            outString += self._count_summary("IntersectOnce")
+
+          elif self.params.output.format == 'standard': # Standard/Kinemage format
+            if self.params.output.contact_summary:
+              outString += self._count_summary("IntersectOnce")
+
+            if self.params.output.add_group_line:
+              if len(atomLists) > 0:
+                # doing jth of multiple models of an ensemble
+                outString += "@group dominant {{{} M{}}} animate\n".format(groupLabel,modelIndex)
+              else:
+                outString += "@group dominant {{{}}}\n".format(groupLabel)
+
+            outString += self._writeOutput("once dots", groupLabel)
 
       # @todo
       # elif:
