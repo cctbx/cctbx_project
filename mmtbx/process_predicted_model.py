@@ -790,7 +790,7 @@ def split_model_into_compact_units(
 
    On failure:  returns None
   """
-  print("\nSelecting domains with compact domains",
+  print("\nSelecting domains as compact chains",
      file = log)
   d_min = min(50, d_min) # limitation in fmodel
 
@@ -934,7 +934,7 @@ def assign_ca_to_region(co_info,
          regions_list = new_regions_list
       else:
        break
-  # Finally merge close regions if there are too many
+  # Merge close regions if there are too many
   for k in range(len(get_unique_values(regions_list))):
     if maximum_domains and \
          len((get_unique_values(regions_list))) > maximum_domains:
@@ -942,7 +942,69 @@ def assign_ca_to_region(co_info,
         close_distance, log = log)
     else:
       break
+
+  # Finally check for any short fragments not attached to neighbors
+  regions_list = remove_short_fragments_obscured_by_gap(regions_list,
+    m, minimum_domain_length)
   return regions_list
+
+def remove_short_fragments_obscured_by_gap(regions_list,
+    m, minimum_domain_length):
+  # Find any regions that are very short (<minimum_domain_length) and merge
+  # with adjacent sequence if available
+  # This catches cases where there was a gap in sequence.
+
+  region_dict = {}
+  for at, region_number in zip(m.get_hierarchy().atoms(), regions_list):
+    resseq_int = at.parent().parent().resseq_as_int()
+    region_dict[resseq_int] = region_number
+
+  # Find all cases where regions go like:
+  #  1 1 1 2 2 (gap)   -> 1 1 1 1 1 (gap)
+  #  1 1 1 2 2 3 3 3 3  -> 1 1 1 1 1 3 3 3 3 or 1 1 1 3 3 3 3 3 3
+  #  (gap) 2 2 3 3 3 3 -> (gap) 3 3 3 3 3 3 
+  # First split up resseq_int into ranges..
+  residues_as_groups = get_indices_as_ranges(list(region_dict.keys()))
+  for r in residues_as_groups:
+    # Find all the places where region_number changes
+    working_regions = []
+    working_region = None
+    for i in range(r.start, r.end+1):
+      region_number = region_dict[i]
+      if not working_region or region_number !=working_region.region_number:
+        working_region = group_args(
+          group_args_type = 'working region',
+          region_number = region_number,
+          start = i,
+          end = i,
+          )
+        working_regions.append(working_region)
+      else:
+        working_region.end = i
+    for previous_region,working_region,next_region in zip(
+      [None]+working_regions[:-1], working_regions, working_regions[1:]+[None]):
+      if (working_region.end - working_region.start + 1) < \
+           minimum_domain_length:
+        if previous_region:
+          working_region.region_number = previous_region.region_number
+        elif next_region:
+          working_region.region_number = next_region.region_number
+        else:  # skip as nothing to do
+          pass
+    # And update dictionary
+    for working_region in working_regions:
+      for i in range(working_region.start, working_region.end+1):
+        region_dict[i] = working_region.region_number
+  # And use dictionary to update regions_list
+
+  new_regions_list = regions_list.deep_copy()
+  i = -1
+  for at in m.get_hierarchy().atoms():
+    i += 1
+    resseq_int = at.parent().parent().resseq_as_int()
+    new_regions_list[i] = region_dict[resseq_int]
+   
+  return new_regions_list
 
 def merge_closest_regions(sites_cart, regions_list, close_distance,
      log = sys.stdout):
