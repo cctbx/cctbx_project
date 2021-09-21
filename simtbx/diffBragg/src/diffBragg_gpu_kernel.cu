@@ -95,10 +95,11 @@ void gpu_sum_over_steps(
     __shared__ bool s_refine_fcell;
     __shared__ bool s_refine_Bmat[6];
     __shared__ bool s_refine_lambda[2];
+    __shared__ double s_NABC_det, s_NABC_det_sq;
     //extern __shared__ CUDAREAL det_vecs[];
     //__shared__ int det_stride;
 
-    if (threadIdx.x==0){
+    if (threadIdx.x==0){ // TODO can we get speed gains by dividing up the following definitions over more threads ?
         for (int i=0; i<3; i++){
             s_refine_Ncells[i] = refine_Ncells[i];
             s_refine_Umat[i] = refine_Umat[i];
@@ -127,6 +128,8 @@ void gpu_sum_over_steps(
         _NABC << Na,Nd,Nf,
                 Nd,Nb,Ne,
                 Nf,Ne,Nc;
+        s_NABC_det = _Nabc.determinant(); // TODO is this slow ?
+        s_NABC_det_sq = s_NABC_det*s_NABC_det;
         C = 2 / 0.63 * fudge;
         two_C = 2*C;
         //s_Na = Na;
@@ -347,13 +350,12 @@ void gpu_sum_over_steps(
                 if (s_no_Nabc_scale)
                     I0 = exp(-2*exparg);
                 else
-                    I0 = s_NaNbNc_squared*exp(-2*exparg);
+                    I0 = (s_NABC_det_sq)*exp(-2*exparg);
 
             // are we doing diffuse scattering
-            double I_latt_diffuse = 0;
+            CUDAREAL I_latt_diffuse = 0;
             if (use_diffuse){
-                double exparg = 4*M_PI*M_PI*H0.dot(anisoU*H0);
-
+                CUDAREAL exparg = 4*M_PI*M_PI*H0.dot(anisoU*H0);
                 VEC3 anisoG_q = anisoG*delta_H;
                 I_latt_diffuse = 4.*M_PI*(anisoG*UBO).determinant() /
                         (1.+ anisoG_q.dot(anisoG_q)* 4*M_PI*M_PI);
@@ -545,7 +547,8 @@ void gpu_sum_over_steps(
                     }
                     CUDAREAL N_i = _NABC(i_nc, i_nc);
                     VEC3 dV_dN = dN*delta_H;
-                    CUDAREAL deriv_coef = 1/N_i - C* ( dV_dN.dot(V));
+                    CUDAREAL determ_deriv = (_NABC.inverse()*dN).trace(); // TODO speedops: precompute these, store shared var _NABC.inverse
+                    CUDAREAL deriv_coef= determ_deriv - C* ( dV_dN.dot(V));
                     CUDAREAL value = 2*Iincrement*deriv_coef;
                     CUDAREAL value2=0;
                     if(s_compute_curvatures){
@@ -568,8 +571,9 @@ void gpu_sum_over_steps(
                     else
                         dN << 0,0,1,0,0,0,1,0,0;
                     VEC3 dV_dN = dN*delta_H;
-                    CUDAREAL deriv_coef = -C* (2* dV_dN.dot(V));
-                    CUDAREAL value = Iincrement*deriv_coef;
+                    CUDAREAL determ_deriv = (_NABC.inverse()*dN).trace(); // TODO speedops: precompute these
+                    CUDAREAL deriv_coef = determ_deriv - C* (dV_dN.dot(V));
+                    CUDAREAL value = 2*Iincrement*deriv_coef;
                     Ncells_manager_dI[i_nc] += value;
                     CUDAREAL value2 = 0;
                     if (s_compute_curvatures){
