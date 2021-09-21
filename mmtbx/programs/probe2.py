@@ -1576,7 +1576,7 @@ Note:
       target_atoms = set()
       for a in allTargetAtoms:
         if a in atoms:
-          source_atoms.add(a)
+          target_atoms.add(a)
 
       ################################################################################
       # Find a list of all of the selected atoms with no duplicates
