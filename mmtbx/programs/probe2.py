@@ -286,8 +286,6 @@ citation {
 
 # ------------------------------------------------------------------------------
 
-# @todo check for rawOutput in probe.c and implement all cases.
-
 class Program(ProgramTemplate):
   description = '''
 Compute the MolProbity Probe score for a file, or a subset of the file.
@@ -1787,6 +1785,15 @@ Note:
       target_atoms_sorted = sorted(target_atoms, key=lambda atom: atom.i_seq)
 
       ################################################################################
+      # Find our group label
+      if self.params.output.format == 'raw':
+        groupLabel = ""
+      else:
+        groupLabel = "dots"
+      if len(self.params.output.group_label) > 0:
+        groupLabel = self.params.output.group_label
+
+      ################################################################################
       # Do the calculations; which one depends on the approach and other phil parameters.
       # Append the information to the string that will be written to file.
 
@@ -1827,10 +1834,6 @@ Note:
         if self.params.output.count_dots:
           numSkinDots = self._count_skin_dots(source_atoms_sorted, allBondedNeighborLists)
           if self.params.output.format != 'raw':
-            # Find our group label
-            groupLabel = "dots"
-            if len(self.params.output.group_label) > 0:
-              groupLabel = self.params.output.group_label
             outString += "selection: external\nname: {}\n".format(groupLabel)
             outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
               self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
@@ -1838,10 +1841,6 @@ Note:
 
           nsel = len(source_atoms_sorted)
           if self.params.output.format == 'raw':
-            # Find our group label
-            groupLabel = ""
-            if len(self.params.output.group_label) > 0:
-              groupLabel = self.params.output.group_label
             outString += self._rawEnumerate("", nsel, False, True, numSkinDots, groupLabel)
           else:
             outString += self._enumerate("extern dots", nsel, False, True, numSkinDots)
@@ -1851,10 +1850,6 @@ Note:
           # Check for various output format types other than Kinemage.
           # We're not implementing O format or XV format, but we still allow raw and oneline
           if self.params.output.format == 'raw':
-            # Find our group label
-            groupLabel = ""
-            if len(self.params.output.group_label) > 0:
-              groupLabel = self.params.output.group_label
             outString += self._writeRawOutput("1->none",groupLabel)
 
           elif self.params.output.format == 'oneline':
@@ -1879,14 +1874,6 @@ Note:
 
         # Generate dots for the source atom set against itself.
         self._generate_interaction_dots(source_atoms_sorted, source_atoms_sorted, allBondedNeighborLists)
-
-        # Find our group label
-        if self.params.output.format == 'raw':
-          groupLabel = ""
-        else:
-          groupLabel = "dots"
-        if len(self.params.output.group_label) > 0:
-          groupLabel = self.params.output.group_label
 
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
@@ -1939,14 +1926,6 @@ Note:
         # and the names passed to enumerate, writeRaw, countsummary and writeOutput; and the selection string...
         self._generate_interaction_dots(source_atoms_sorted, target_atoms_sorted, allBondedNeighborLists)
 
-        # Find our group label
-        if self.params.output.format == 'raw':
-          groupLabel = ""
-        else:
-          groupLabel = "dots"
-        if len(self.params.output.group_label) > 0:
-          groupLabel = self.params.output.group_label
-
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
           numSkinDots = self._count_skin_dots(source_atoms_sorted, allBondedNeighborLists)
@@ -1989,14 +1968,6 @@ Note:
 
       elif self.params.approach == 'both':
         make_sub_header('Find both directions intersection dots', out=self.logger)
-
-        # Find our group label
-        if self.params.output.format == 'raw':
-          groupLabel = ""
-        else:
-          groupLabel = "dots"
-        if len(self.params.output.group_label) > 0:
-          groupLabel = self.params.output.group_label
 
         # @todo The code below here is similar to -once but is repeated twice and has different string values.
         # It is also somewhat re-ordered in terms of where the selection is printed.
