@@ -25,7 +25,6 @@ from .qt import QIcon
 
 # for the sake of embedding remove MainWindow.setCentralWidget(self.centralwidget) from below
 
-
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if MainWindow.objectName():
@@ -116,8 +115,8 @@ class Ui_MainWindow(object):
         self.gridLayout_5.setObjectName(u"gridLayout_5")
         self.gridLayout_5.setContentsMargins(0, 0, 0, 0)
         self.millertable = HeaderDataTableWidget(self.widget_4)
-        if (self.millertable.columnCount() < 9):
-            self.millertable.setColumnCount(9)
+        if (self.millertable.columnCount() < 2):
+            self.millertable.setColumnCount(2)
         if (self.millertable.rowCount() < 1):
             self.millertable.setRowCount(1)
         self.millertable.setObjectName(u"millertable")
@@ -129,7 +128,7 @@ class Ui_MainWindow(object):
         self.millertable.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.millertable.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.millertable.setRowCount(1)
-        self.millertable.setColumnCount(9)
+        self.millertable.setColumnCount(2)
         self.millertable.horizontalHeader().setMinimumSectionSize(5)
         self.millertable.horizontalHeader().setStretchLastSection(False)
         self.millertable.verticalHeader().setDefaultSectionSize(24)
@@ -1048,4 +1047,3 @@ class Ui_MainWindow(object):
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"Close to radius of sphere of reflections", None))
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_5), QCoreApplication.translate("MainWindow", u"Vectors", None))
     # retranslateUi
-
