@@ -18,7 +18,7 @@ run_tests = False
   .type = bool
   .help = Run unit tests before doing the requested operations
 
-source_selection = None
+source_selection = "(altid a or altid '' or altid ' ') and occupancy > 0.33"
   .type = str
   .help = Source selection description
 
@@ -303,6 +303,9 @@ Note:
   target_selection to "=" will re-use the source for the target.  In all
   other cases, the string passed in will be used as a CCTBX selection on
   the model to select a subset of its atoms.
+
+  The most simple dotkin:
+    mmtbx.probe2 approach=self source_selection="all" output.file_name=out.kin input.pdb
 '''
   datatypes = ['model', 'restraint', 'phil']
   master_phil_str = master_phil_str
