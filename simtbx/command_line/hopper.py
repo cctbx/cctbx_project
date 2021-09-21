@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import socket
 import glob
 from copy import deepcopy
-from simtbx.diffBragg.hopper_utils import look_at_x, model, get_param_from_x, DataModeler, get_data_model_pairs, sanity_test_input_lines
+from simtbx.diffBragg.hopper_utils import look_at_x, model, get_param_from_x, DataModeler, get_data_model_pairs, sanity_test_input_lines, PARAM_PER_XTAL
 from simtbx.diffBragg import hopper_utils
 import h5py
 from dxtbx.model.experiment_list import ExperimentList
@@ -24,7 +24,6 @@ ROTZ_ID = 2
 NCELLS_ID = 9
 UCELL_ID_OFFSET = 3
 DETZ_ID = 10
-PARAM_PER_XTAL = 9
 
 # LIBTBX_SET_DISPATCHER_NAME simtbx.diffBragg.hopper
 
@@ -47,7 +46,6 @@ from simtbx.diffBragg.phil import philz
 import logging
 from simtbx.diffBragg import mpi_logger
 from simtbx.diffBragg.phil import hopper_phil
-
 
 
 philz = hopper_phil + philz
@@ -98,7 +96,7 @@ class Script:
                 sanity_test_input_lines(input_lines)
 
             if self.params.best_pickle is not None:
-                if not self.params.quiet: logging.info("reading pickle %s" % self.params.best_pickle)
+                logging.info("reading pickle %s" % self.params.best_pickle)
                 best_models = pandas.read_pickle(self.params.best_pickle)
 
             if self.params.dump_gathers:
@@ -209,6 +207,7 @@ class Script:
                     x0[PARAM_PER_XTAL*i_xtal+4] = Modeler.SIM.Nabc_params[3*i_xtal].init
                     x0[PARAM_PER_XTAL*i_xtal+5] = Modeler.SIM.Nabc_params[3*i_xtal+1].init
                     x0[PARAM_PER_XTAL*i_xtal+6] = Modeler.SIM.Nabc_params[3*i_xtal+2].init
+                    # TODO: diffuse params go here (also maybe just drop rescale=False support)
 
                 nucell = len(Modeler.SIM.ucell_man.variables)
                 for i_ucell in range(nucell):
@@ -333,7 +332,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
 
     if SIM.num_xtals > 1:
         raise NotImplemented("cant save pandas for multiple crystals yet")
-    scale, rotX, rotY, rotZ, Na, Nb, Nc,diff_ga, diff_sig, a,b,c,al,be,ga,detz_shift = get_param_from_x(x, SIM)
+    scale, rotX, rotY, rotZ, Na, Nb, Nc,diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c, a,b,c,al,be,ga,detz_shift = get_param_from_x(x, SIM)
     shift = np.nan
     #if SIM.shift_param is not None:
     #    shift = SIM.shift_param.get_val(x[-1])
@@ -369,6 +368,8 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
         "eta_abc": [(eta_a, eta_b, eta_c)],
         "detz_shift_mm": [detz_shift * 1e3],
         "ncells_def": ncells_def_vals,
+        "diffuse_gamma": [(diff_gam_a, diff_gam_b, diff_gam_c)],
+        "diffuse_sigma": [(diff_sig_a, diff_sig_b, diff_sig_c)],
         "fp_fdp_shift": [shift],
         # "bgplanes": bgplanes, "image_corr": image_corr,
         # "init_image_corr": init_img_corr,
