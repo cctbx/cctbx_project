@@ -1446,7 +1446,8 @@ Note:
     # String that will be output to the specified file.
     outString = ''
 
-    if self.params.output.add_kinemage_keyword and not self.params.output.count_dots:
+    if (self.params.output.add_kinemage_keyword and not self.params.output.count_dots
+        and self.params.output.format == 'standard'):
       outString += '@kinemage 1\n'
 
     make_sub_header('Interpret Model', out=self.logger)
