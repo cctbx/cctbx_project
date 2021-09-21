@@ -1677,6 +1677,8 @@ Note:
                 # Set the atomClass and other data based on the parent Oxygen.
                 self._atomClasses[newAtom] = self._atom_class_for(a)
                 self._inWater[newAtom] = self._inWater[a]
+                self._inMainChain[newAtom] = self._inMainChain[a]
+                self._inSideChain[newAtom] = self._inSideChain[a]
                 self._inHet[newAtom] = self._inHet[a]
 
                 # Mark the new atom as being bonded to the parent atom, and the
