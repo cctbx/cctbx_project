@@ -1137,6 +1137,7 @@ Note:
         ret += "{{{:5.2f}, {:8d} }}\n".format(
                 (((k-11.0)/20.0)+0.05),gapcounts[k]
                 )
+
       # kinemage 2
       ret += "@kinemage 2\n"
       ret += "@group {gapbins} dominant\n"
@@ -1149,7 +1150,7 @@ Note:
       ret += "@labellist {gapbins}\n"
       ret += "{0} 0.0, -1.0, 0.0\n"
 
-      # @todo Add LXHvector output if it is implemented
+      # LXHvector output in probe had to do with -oneDotEach, so we don't include it here.
 
     return ret
 
@@ -1295,6 +1296,70 @@ Note:
     if len(groupName) > 0:
       ret += " {}".format(groupName)
     ret += "\n"
+    return ret
+
+# ------------------------------------------------------------------------------
+
+  def _count_summary(self, modeName, completed = True):
+    '''
+      Describe summary counts for chain-vs.-chain counts.
+      :param modeName: Description of the mode of operation to report.
+      :param completed: This is the last iteration, so print the accumulated values.
+      :return: String to be added to the output.
+    '''
+
+    ret = ''
+
+    # Keep a running total of values for each chain-vs.-chain list.
+    # The first time we're run, fill the values with 0.
+    # Clear the global counts once they have been added to the running total so we can run a new count.
+    if not hasattr(self,'_MCMCTotal'):
+      self._MCMCTotal = {}
+      self._SCSCTotal = {}
+      self._MCSCTotal = {}
+      self._otherTotal = {}
+      for t in self._interactionTypes:
+        self._MCMCTotal[t] = 0
+        self._SCSCTotal[t] = 0
+        self._MCSCTotal[t] = 0
+        self._otherTotal[t] = 0
+    for t in self._interactionTypes:
+      self._MCMCTotal[t] += self._MCMCCount[t]
+      self._MCMCCount[t] = 0
+      self._SCSCTotal[t] += self._SCSCCount[t]
+      self._SCSCCount[t] = 0
+      self._MCSCTotal[t] += self._MCSCCount[t]
+      self._MCSCCount[t] = 0
+      self._otherTotal[t] += self._otherCount[t]
+      self._otherCount[t] = 0
+
+    # Compute the sum of all subtypes per interaction type.
+    sumTotal = {}
+    for t in self._interactionTypes:
+      sumTotal[t] = self._MCMCTotal[t] + self._SCSCTotal[t] + self._MCSCTotal[t] + self._otherTotal[t]
+
+    # If we're at the last pass, fill in our return string.
+    if completed:
+      if self.params.output.format == 'oneline':
+        # Report the file name that was read along with its summary data on one line
+        ret += ": {} ".format(self.data_manager.get_model_names()[0])
+        for c in [self._MCMCTotal, self._SCSCTotal, self._MCSCTotal, self._otherTotal]:
+          for t in self._interactionTypes:
+            ret += ":{:9d} ".format(c[t])
+        ret += ":\n"
+      else:
+        ret += "@text\n"
+        ret += "probe: {}\n".format(modeName)
+        ret += "{}\n".format(self.data_manager.get_model_names()[0])
+        ret += ":CONTACT:   WIDE   :  CLOSE   :  weak H-bonds  : SMALL   :   BAD    :  WORSE  :  H-BOND  :\n"
+        for (c,name) in [(self._MCMCTotal, "MCMC"), (self._SCSCTotal, "SCSC"),
+                         (self._MCSCTotal, "MCSC"), (self._otherTotal, "OTHER"),
+                         (sumTotal, "SUM")]:
+          ret += ":{:7s}".format(name)
+          for t in self._interactionTypes:
+            ret += ":{:9d} ".format(c[t])
+          ret += ":\n"
+
     return ret
 
 # ------------------------------------------------------------------------------
@@ -1693,19 +1758,16 @@ Note:
       # were mainchain, sidechain, both, or neither.  There is another place to store
       # the sum of multiple passes.
       # Each contains an entry for each InteractionType and for the total.
-      # @todo Consider how to make sumcount procedural so we don't have to increment it each
-      # time we increment one of the others.
+      # @todo Consider how to make sumCount procedural or how to handle it in reporting.
       self._MCMCCount = {}
       self._SCSCCount = {}
       self._MCSCCount = {}
       self._otherCount = {}
-      self._sumCount = {}
       for t in self._interactionTypes:
         self._MCMCCount[t] = 0
         self._SCSCCount[t] = 0
         self._MCSCCount[t] = 0
         self._otherCount[t] = 0
-        self._sumCount[t] = 0
 
       ################################################################################
       # Generate sorted lists of the selected atoms, so that we run them in the same order
@@ -1837,13 +1899,11 @@ Note:
             outString += self._writeRawOutput("1->1",groupLabel)
 
           elif self.params.output.format == 'oneline':
-            # @todo self._count_summary("SelfIntersect", 1, 1)
-            pass
+            outString += self._count_summary("SelfIntersect")
 
           elif self.params.output.format == 'standard': # Standard/Kinemage format
             if self.params.output.contact_summary:
-              # @todo self._count_summary("SelfIntersect", 9, 1)
-              pass
+              outString += self._count_summary("SelfIntersect")
 
             if self.params.output.add_group_line:
               if len(atomLists) > 0:
@@ -1910,22 +1970,13 @@ Note:
 
     #=====================================================================================
     # Test the _totalInteractionCount() method.  We make stand-in dictionaries using a stand-in
-    # list.  These will be overwritten when Run() is called.
-    self._interactionTypes = [0, 1, 2, 3, 4, 5, 6]
-    self._MCMCCount = {}
-    self._SCSCCount = {}
-    self._MCSCCount = {}
-    self._otherCount = {}
-    for t in self._interactionTypes:
-      self._MCMCCount[t] = 1
-      self._SCSCCount[t] = 1
-      self._MCSCCount[t] = 1
-      self._otherCount[t] = 1
+    # list.
+    interactionTypes = [0, 1, 2, 3, 4, 5, 6]
+    MCMCCount = {}
+    for t in interactionTypes:
+      MCMCCount[t] = 1
 
-    assert self._totalInteractionCount(self._MCMCCount) == len(self._interactionTypes), "probe2:Test(): _totalInteractionCount(_MCMCCount) failed"
-    assert self._totalInteractionCount(self._SCSCCount) == len(self._interactionTypes), "probe2:Test(): _totalInteractionCount(_SCSCCount) failed"
-    assert self._totalInteractionCount(self._MCSCCount) == len(self._interactionTypes), "probe2:Test(): _totalInteractionCount(_MCSCCount) failed"
-    assert self._totalInteractionCount(self._otherCount) == len(self._interactionTypes), "probe2:Test(): _totalInteractionCount(_otherCount) failed"
+    assert self._totalInteractionCount(MCMCCount) == len(interactionTypes), "probe2:Test(): _totalInteractionCount(MCMCCount) failed"
 
     #=====================================================================================
     # @todo Unit tests for other methods
