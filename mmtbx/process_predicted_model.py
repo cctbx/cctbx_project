@@ -962,7 +962,7 @@ def remove_short_fragments_obscured_by_gap(regions_list,
   # Find all cases where regions go like:
   #  1 1 1 2 2 (gap)   -> 1 1 1 1 1 (gap)
   #  1 1 1 2 2 3 3 3 3  -> 1 1 1 1 1 3 3 3 3 or 1 1 1 3 3 3 3 3 3
-  #  (gap) 2 2 3 3 3 3 -> (gap) 3 3 3 3 3 3 
+  #  (gap) 2 2 3 3 3 3 -> (gap) 3 3 3 3 3 3
   # First split up resseq_int into ranges..
   residues_as_groups = get_indices_as_ranges(list(region_dict.keys()))
   for r in residues_as_groups:
@@ -1003,7 +1003,7 @@ def remove_short_fragments_obscured_by_gap(regions_list,
     i += 1
     resseq_int = at.parent().parent().resseq_as_int()
     new_regions_list[i] = region_dict[resseq_int]
-   
+
   return new_regions_list
 
 def merge_closest_regions(sites_cart, regions_list, close_distance,
