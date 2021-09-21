@@ -1870,7 +1870,10 @@ Note:
         self._generate_interaction_dots(source_atoms_sorted, source_atoms_sorted, allBondedNeighborLists)
 
         # Find our group label
-        groupLabel = ""
+        if self.params.output.format == 'raw':
+          groupLabel = ""
+        else:
+          groupLabel = "dots"
         if len(self.params.output.group_label) > 0:
           groupLabel = self.params.output.group_label
 
