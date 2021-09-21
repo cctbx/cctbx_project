@@ -55,7 +55,7 @@ void gpu_sum_over_steps(
         const CUDAREAL* __restrict__ fpfdp,
         const CUDAREAL* __restrict__ fpfdp_derivs,
         const CUDAREAL* __restrict__ atom_data, int num_atoms, bool refine_fp_fdp,
-        const int* __restrict__ nominal_hkl, bool use_nominal_hkl)
+        const int* __restrict__ nominal_hkl, bool use_nominal_hkl, MAT3 anisoU, MAT3 anisoG, bool use_diffuse)
 { // BEGIN GPU kernel
 
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -348,6 +348,19 @@ void gpu_sum_over_steps(
                     I0 = exp(-2*exparg);
                 else
                     I0 = s_NaNbNc_squared*exp(-2*exparg);
+
+            // are we doing diffuse scattering
+            double I_latt_diffuse = 0;
+            if (use_diffuse){
+                double exparg = 4*M_PI*M_PI*H0.dot(anisoU*H0);
+
+                VEC3 anisoG_q = anisoG*delta_H;
+                I_latt_diffuse = 4.*M_PI*(anisoG*UBO).determinant() /
+                        (1.+ anisoG_q.dot(anisoG_q)* 4*M_PI*M_PI);
+                if (exparg  < .5) // only valid up to a point
+                    I_latt_diffuse *= (exparg);
+                I0 += I_latt_diffuse;
+            }
 
             CUDAREAL _F_cell = s_default_F;
             CUDAREAL _F_cell2 = 0;
