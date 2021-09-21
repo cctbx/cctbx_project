@@ -1458,14 +1458,13 @@ Note:
     '''
 
     ret = ''
-
     # Count the dots if we've been asked to do so.
     if self.params.output.count_dots:
-      numSkinDots = self._count_skin_dots(source_atoms_sorted, allBondedNeighborLists)
+      numSkinDots = self._count_skin_dots(self.source_atoms_sorted, self.allBondedNeighborLists)
       if self.params.output.format != 'raw':
         ret += source._describe_selection_and_parameters(groupLabel, selectionName)
 
-      nsel = len(source_atoms_sorted)
+      nsel = len(self.source_atoms_sorted)
       if self.params.output.format == 'raw':
         ret += self._rawEnumerate("", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
       else:
@@ -1487,7 +1486,7 @@ Note:
 
         if self.params.output.add_group_line:
           if numModels > 1:
-            # doing jth of multiple models of an ensemble
+            # doing one of multiple models of an ensemble
             ret += "@group dominant {{{} M{}}} animate\n".format(groupLabel,modelIndex)
           else:
             ret += "@group dominant {{{}}}\n".format(groupLabel)
@@ -1580,7 +1579,7 @@ Note:
         self._atomClasses[a] = self._atom_class_for(a)
       else:
         # For hydrogen, assign based on what it is bonded to.
-        self._atomClasses[a] = self._atom_class_for(allBondedNeighborLists[a][0])
+        self._atomClasses[a] = self._atom_class_for(self.allBondedNeighborLists[a][0])
 
     ################################################################################
     # Get the dot sets we will need for each atom.  This is the set of offsets from the
@@ -1607,7 +1606,7 @@ Note:
         self._inMainChain[a] = mainchain_sel[a.i_seq]
       else:
         # Check our bonded neighbor to see if it is on the mainchain if we are a Hydrogen
-        self._inMainChain[a] = mainchain_sel[allBondedNeighborLists[a][0]]
+        self._inMainChain[a] = mainchain_sel[self.allBondedNeighborLists[a][0]]
       self._inSideChain[a] = sidechain_sel[a.i_seq]
 
     ################################################################################
@@ -1653,7 +1652,7 @@ Note:
 
       ################################################################################
       # Get the bonding information we'll need to exclude our bonded neighbors.
-      allBondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+      self.allBondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
       ################################################################################
       # Get the subset of the source selection and target selection for this hierarchy
@@ -1765,8 +1764,8 @@ Note:
                 # neighbor lists.
                 bondedNeighborLists[newAtom] = [a]
                 bondedNeighborLists[a] = []
-                allBondedNeighborLists[newAtom] = [a]
-                allBondedNeighborLists[a] = []
+                self.allBondedNeighborLists[newAtom] = [a]
+                self.allBondedNeighborLists[a] = []
 
                 # Generate source dots for the new atom
                 self._dots[newAtom] = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(newAtom).vdwRadius).dots()
@@ -1858,8 +1857,8 @@ Note:
       ################################################################################
       # Generate sorted lists of the selected atoms, so that we run them in the same order
       # they appear in the model file.
-      source_atoms_sorted = sorted(source_atoms, key=lambda atom: atom.i_seq)
-      target_atoms_sorted = sorted(target_atoms, key=lambda atom: atom.i_seq)
+      self.source_atoms_sorted = sorted(source_atoms, key=lambda atom: atom.i_seq)
+      self.target_atoms_sorted = sorted(target_atoms, key=lambda atom: atom.i_seq)
 
       ################################################################################
       # Find our group label
@@ -1877,7 +1876,7 @@ Note:
       if self.params.approach == 'count_atoms':
         make_sub_header('Counting atoms', out=self.logger)
         # Report the number of atoms in the source selection
-        outString += 'atoms selected: '+str(len(source_atoms_sorted))+'\n'
+        outString += 'atoms selected: '+str(len(self.source_atoms_sorted))+'\n'
 
       elif self.params.approach == 'surface':
         make_sub_header('Find surface dots', out=self.logger)
@@ -1885,7 +1884,7 @@ Note:
         # Produce dots on the surfaces of the selected atoms.
         maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
         maxRadius = 2*maxVDWRadius + 2 * self.params.probe.radius
-        for src in source_atoms_sorted:
+        for src in self.source_atoms_sorted:
           # Find nearby atoms that might come into contact.  This greatly speeds up the
           # search for touching atoms.
           maxRadius = (self._extraAtomInfo.getMappingFor(src).vdwRadius + maxVDWRadius +
@@ -1909,11 +1908,11 @@ Note:
 
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
-          numSkinDots = self._count_skin_dots(source_atoms_sorted, allBondedNeighborLists)
+          numSkinDots = self._count_skin_dots(self.source_atoms_sorted, self.allBondedNeighborLists)
           if self.params.output.format != 'raw':
             outString += source._describe_selection_and_parameters(groupLabel, "external")
 
-          nsel = len(source_atoms_sorted)
+          nsel = len(self.source_atoms_sorted)
           if self.params.output.format == 'raw':
             outString += self._rawEnumerate("", nsel, False, True, numSkinDots, groupLabel)
           else:
@@ -1947,7 +1946,7 @@ Note:
         make_sub_header('Find self-intersection dots', out=self.logger)
 
         # Generate dots for the source atom set against itself.
-        self._generate_interaction_dots(source_atoms_sorted, source_atoms_sorted, allBondedNeighborLists)
+        self._generate_interaction_dots(self.source_atoms_sorted, self.source_atoms_sorted, self.allBondedNeighborLists)
 
         # Generate our report
         outString += self._report_single_interaction(groupLabel, "self", "1->1", "SelfIntersect",
@@ -1957,7 +1956,7 @@ Note:
         make_sub_header('Find single-direction intersection dots', out=self.logger)
 
         # Generate dots for the source atom set against the target atom set.
-        self._generate_interaction_dots(source_atoms_sorted, target_atoms_sorted, allBondedNeighborLists)
+        self._generate_interaction_dots(self.source_atoms_sorted, self.target_atoms_sorted, self.allBondedNeighborLists)
 
         # Generate our report
         outString += self._report_single_interaction(groupLabel, "once", "1->2", "IntersectOnce",
@@ -1983,12 +1982,12 @@ Note:
         # =================== First direction ========================
 
         # Generate dots for the source atom set against the target atom set.
-        self._generate_interaction_dots(source_atoms_sorted, target_atoms_sorted, allBondedNeighborLists)
+        self._generate_interaction_dots(self.source_atoms_sorted, self.target_atoms_sorted, self.allBondedNeighborLists)
 
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
-          numSkinDots = self._count_skin_dots(source_atoms_sorted, allBondedNeighborLists)
-          nsel = len(source_atoms_sorted)
+          numSkinDots = self._count_skin_dots(self.source_atoms_sorted, self.allBondedNeighborLists)
+          nsel = len(self.source_atoms_sorted)
           if self.params.output.format == 'raw':
             outString += self._rawEnumerate("1->2", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
           else:
@@ -2017,12 +2016,12 @@ Note:
         self._clear_results();
 
         # Generate dots for the target atom set against the source atom set.
-        self._generate_interaction_dots(target_atoms_sorted, source_atoms_sorted, allBondedNeighborLists)
+        self._generate_interaction_dots(self.target_atoms_sorted, self.source_atoms_sorted, self.allBondedNeighborLists)
 
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
-          numSkinDots = self._count_skin_dots(target_atoms_sorted, allBondedNeighborLists)
-          nsel = len(target_atoms_sorted)
+          numSkinDots = self._count_skin_dots(self.target_atoms_sorted, self.allBondedNeighborLists)
+          nsel = len(self.target_atoms_sorted)
           if self.params.output.format == 'raw':
             outString += self._rawEnumerate("2->1", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
           else:
