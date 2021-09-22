@@ -907,7 +907,7 @@ class map_model_manager(object):
      Add a new model
      Must be similar to existing map_managers
      Overwrites any existing with the same id unless overwrite = False
-     If model is None, removes model unless overwrite is False 
+     If model is None, removes model unless overwrite is False
     '''
     if (not model) and (not overwrite):
       print("No model supplied for '%s' ... skipping addition" %(
