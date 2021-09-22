@@ -1914,7 +1914,7 @@ Note:
         if self.params.output.count_dots:
           numSkinDots = self._count_skin_dots(self._source_atoms_sorted, self._allBondedNeighborLists)
           if self.params.output.format != 'raw':
-            outString += source._describe_selection_and_parameters(groupLabel, "external")
+            outString += self._describe_selection_and_parameters(groupLabel, "external")
 
           nsel = len(self._source_atoms_sorted)
           if self.params.output.format == 'raw':
@@ -1975,7 +1975,7 @@ Note:
         # Preliminary information before running both intersections.
         if self.params.output.count_dots:
           if self.params.output.format != 'raw':
-            outString += source._describe_selection_and_parameters(groupLabel, "once")
+            outString += self._describe_selection_and_parameters(groupLabel, "once")
         else: # Not counting the dots
           if self.params.output.format == 'raw':
             pass
