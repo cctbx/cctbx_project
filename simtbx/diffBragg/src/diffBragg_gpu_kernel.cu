@@ -128,7 +128,7 @@ void gpu_sum_over_steps(
         _NABC << Na,Nd,Nf,
                 Nd,Nb,Ne,
                 Nf,Ne,Nc;
-        s_NABC_det = _Nabc.determinant(); // TODO is this slow ?
+        s_NABC_det = _NABC.determinant(); // TODO is this slow ?
         s_NABC_det_sq = s_NABC_det*s_NABC_det;
         C = 2 / 0.63 * fudge;
         two_C = 2*C;
