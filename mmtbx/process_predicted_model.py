@@ -794,8 +794,12 @@ def split_model_into_compact_units(
      file = log)
   d_min = min(50, d_min) # limitation in fmodel
 
-  # Make sure the model has crystal_symmetry.  Just put a box around it if nec
+  # Make sure the model has crystal_symmetry.  Just put a box around it that is
+  #  big (do not use original crystal symmetry because it might  be too big
+  #  or too small)
+
   box_cushion = 0.5 * d_min  # big box
+  original_crystal_symmetry = m.crystal_symmetry()
   m.add_crystal_symmetry_if_necessary(box_cushion = box_cushion, force = True)
 
   # Select CA and P atoms with B-values in range
@@ -833,7 +837,10 @@ def split_model_into_compact_units(
      close_distance,  maximum_domains = maximum_domains,
      log = log)
 
-  return set_chain_id_by_region(m, m_ca, regions_list, log = log)
+  info = set_chain_id_by_region(m, m_ca, regions_list, log = log)
+  if original_crystal_symmetry and info and info.model:
+    info.model.set_crystal_symmetry(original_crystal_symmetry)
+  return info
 
 def get_region_name_dict(m, unique_regions, keep_list = None):
   region_name_dict = {}

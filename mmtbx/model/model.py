@@ -631,6 +631,7 @@ class manager(object):
     '''
       If this model does not have crystal_symmetry set, create a dummy
       crystal_symmetry that goes around the model.  Do not shift position.
+      If force is True, make new crystal symmetry even if already present.
     '''
     if (not force) and \
        self.crystal_symmetry() and self.crystal_symmetry().unit_cell() and \
