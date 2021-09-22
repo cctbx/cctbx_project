@@ -907,17 +907,20 @@ class map_model_manager(object):
      Add a new model
      Must be similar to existing map_managers
      Overwrites any existing with the same id unless overwrite = False
+     If model is None, removes model unless overwrite is False 
     '''
-    if not model:
+    if (not model) and (not overwrite):
       print("No model supplied for '%s' ... skipping addition" %(
         model_id), file = self.log)
       return
 
-    assert isinstance(model, mmtbx.model.manager)
+    assert (model is None) or isinstance(model, mmtbx.model.manager)
     if not overwrite:
       assert not model_id in self.model_id_list() # must not duplicate
 
-    if self.map_manager() and not self.map_manager().is_compatible_model(model):
+    if model and \
+      self.map_manager() and (
+         not self.map_manager().is_compatible_model(model)):
       # needs shifting
       self.shift_any_model_to_match(model)
     self._model_dict[model_id] = model
@@ -1485,7 +1488,7 @@ class map_model_manager(object):
      mask_expand_ratio = 1):
 
     '''
-      Runs box_all_maps_around_mask_and_shift_origin with extract_box=True
+      Runs box_all_maps_around_unique_and_shift_origin with extract_box=True
     '''
     return self.box_all_maps_around_unique_and_shift_origin(
       resolution = resolution,
