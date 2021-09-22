@@ -1726,7 +1726,7 @@ Note:
                   ei.isDonor = False
                   self._extraAtomInfo.setMappingFor(n, ei)
 
-          # If we are the Oxygen in a water, then add phantom hydrogens to nearby acceptors
+          # If we are the Oxygen in a water, then add phantom hydrogens pointing towards nearby acceptors
           elif self._inWater[a] and a.element == 'O':
             # We're an acceptor and not a donor.
             ei = self._extraAtomInfo.getMappingFor(a)
@@ -1740,6 +1740,9 @@ Note:
               for p in newPhantoms:
                 # Set all of the information other than the name and element and xyz of the atom based
                 # on our parent; then overwrite the name and element and xyz.
+                # NOTE: This will require us to redo the i_seq numbers on the hierarchy and then recompute
+                # everything (unfortunately including the selection).  Otherwise, we'll have duplicated
+                # i_seq numbers between the parents and the phantom hydrogens, which will cause mayhem.
                 newAtom = pdb.hierarchy.atom(a.parent(),a)
                 newAtom.name = " H?"
                 newAtom.element = p.element
@@ -1800,7 +1803,7 @@ Note:
                     newAtom.xyz[0], newAtom.xyz[1], newAtom.xyz[2])
 
           # Otherwise, if we're an N, O, or S then remove our donor status because
-          # the hydrogens will be the donors
+          # the hydrogens will be the donors.
           elif a.element in ['N','O','S']:
             ei = self._extraAtomInfo.getMappingFor(a)
             ei.isDonor = False
