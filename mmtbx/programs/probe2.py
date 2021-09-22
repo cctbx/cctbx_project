@@ -817,7 +817,7 @@ Note:
   def _condense(self, dotInfoList):
     '''
       Condensing the list of dots for use in raw output, sorting and removing
-      duplicated.  Makes use of the self.params.output.condensed flag to control
+      duplicates.  Makes use of the self.params.output.condensed flag to control
       whether to remove duplicates.
       :param dotInfoList: List of DotInfo structures to condense.
       :return: Condensed dotlist.
@@ -856,7 +856,7 @@ Note:
         thisAtom[0].dotCount = 1
         condensed = [ thisAtom[0] ]
         for i in range(1,len(thisAtom)):
-          if thisAtom[i-1].target == thisAtom[i].target:
+          if thisAtom[i-1].target.memory_id() == thisAtom[i].target.memory_id():
             condensed[-1].dotCount += 1
           else:
             thisAtom[i].dotCount = 1
@@ -1464,7 +1464,7 @@ Note:
     if self.params.output.count_dots:
       numSkinDots = self._count_skin_dots(self._source_atoms_sorted, self._allBondedNeighborLists)
       if self.params.output.format != 'raw':
-        ret += source._describe_selection_and_parameters(groupLabel, selectionName)
+        ret += self._describe_selection_and_parameters(groupLabel, selectionName)
 
       nsel = len(self._source_atoms_sorted)
       if self.params.output.format == 'raw':
@@ -1764,13 +1764,11 @@ Note:
                 self._inSideChain[newAtom] = self._inSideChain[a]
                 self._inHet[newAtom] = self._inHet[a]
 
-                # Mark the new atom as being bonded to the parent atom, and the
-                # parent atom as having to children.  Do this in both sets of bonded
+                # Mark the new atom as being bonded to the parent atom, but do not add the
+                # phantom as bonded to the Oxygen.  Do this in both sets of bonded
                 # neighbor lists.
                 bondedNeighborLists[newAtom] = [a]
-                bondedNeighborLists[a] = []
                 self._allBondedNeighborLists[newAtom] = [a]
-                self._allBondedNeighborLists[a] = []
 
                 # Generate source dots for the new atom
                 self._dots[newAtom] = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(newAtom).vdwRadius).dots()
@@ -1861,7 +1859,8 @@ Note:
 
       ################################################################################
       # Generate sorted lists of the selected atoms, so that we run them in the same order
-      # they appear in the model file.
+      # they appear in the model file.  This will group phantom hydrogens with the oxygens
+      # they are associated with because they share the same sequence ID.
       self._source_atoms_sorted = sorted(source_atoms, key=lambda atom: atom.i_seq)
       self._target_atoms_sorted = sorted(target_atoms, key=lambda atom: atom.i_seq)
 
@@ -2068,15 +2067,15 @@ Note:
     #=====================================================================================
     # Test the _condense() method.
 
-    atoms = [
+    atoms = [ # Different atoms for different indices
       pdb.hierarchy.atom(), pdb.hierarchy.atom(), pdb.hierarchy.atom(), pdb.hierarchy.atom()
     ]
-    sourceTarget = [
+    sourceTarget = [  # Index of source atom, target atom pairs to add into the dots list
       (1,1), (1,2), (1,1), (1,2),
       (2,1),
       (3,1), (3,1), (3,1), (3,2), (3,2), (3,2)
     ]
-    dots = [
+    dots = [  # Construct a test dots list based on the sourceTarget tuples.
       self.DotInfo(atoms[src],atoms[trg],(0,0,0), (0,0,0), probeExt.OverlapType.Ignore, 0.0, ' ', 0.0)
         for (src,trg) in sourceTarget
     ]
@@ -2096,6 +2095,7 @@ Note:
     inorder = self._condense(dots)
     assert len(inorder) == 5, "probe2:Test(): Unexpected length from _condense when condensing"
     assert inorder[0].target != inorder[1].target, "probe2:Test(): Unexpected sorted value from _condense when condensing"
+    assert inorder[-1].dotCount == 3, "probe2:Test(): Unexpected dot count value from _condense when condensing"
 
     # Restore state
     self.params.output.condensed = stored
