@@ -615,11 +615,11 @@ Note:
             # Main branch if whether we're reporting other than bad clashes
             if (not spo.only_report_bad_clashes):
               # We are reporting other than bad clashes, see if our type is being reported
-              if spo.report_hydrogen_bonds and overlapType > 0:
+              if spo.report_hydrogen_bonds and overlapType == probeExt.OverlapType.HydrogenBond:
                 show = True
-              elif spo.report_clashes and overlapType < 0:
+              elif spo.report_clashes and overlapType == probeExt.OverlapType.Clash:
                 show = True
-              elif spo.report_vdws and overlapType == 0:
+              elif spo.report_vdws and overlapType == probeExt.OverlapType.NoOverlap:
                 show = True
             else:
               # We are only reporting bad clashes.  See if we're reporting clashes and this is
@@ -657,12 +657,11 @@ Note:
             # Find the locations of the dot and spike by scaling the dot vector by the atom radius and
             # the (negative because it is magnitude) overlap.
             loc = Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect)
-            spikeloc = (Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect).normalize() *
-                        (self._extraAtomInfo.getMappingFor(src).vdwRadius - res.overlap) )
+            spikeloc = ( Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect).normalize() *
+                         (self._extraAtomInfo.getMappingFor(src).vdwRadius - res.overlap) )
 
             # Save the dot
-            self._save_dot(src, res.cause, atomClass, loc, spikeloc, overlapType,
-              res.gap, ptmaster, 0)
+            self._save_dot(src, res.cause, atomClass, loc, spikeloc, overlapType, res.gap, ptmaster, 0)
 
 # ------------------------------------------------------------------------------
 
