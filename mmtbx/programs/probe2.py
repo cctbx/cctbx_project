@@ -612,6 +612,7 @@ Note:
               self.params.probe.separate_weak_hydrogen_bonds)
             if interactionType == probeExt.InteractionType.Invalid:
               continue
+
             # Main branch if whether we're reporting other than bad clashes
             if (not spo.only_report_bad_clashes):
               # We are reporting other than bad clashes, see if our type is being reported
@@ -634,17 +635,20 @@ Note:
 
             # Determine the ptmaster (main/side chain interaction type) and keep track of
             # counts for each type.
+            causeMainChain = self._inMainChain[res.cause]
+            causeSideChain = self._inSideChain[res.cause]
+            causeHet = self._inHet[res.cause]
             ptmaster = ' '
-            if srcMainChain and nMainChain:
-              if (not srcHet) and (not nHet): # This may be a redundant check
+            if srcMainChain and causeMainChain:
+              if (not srcHet) and (not causeHet): # This may be a redundant check
                 ptmaster = 'M'
                 self._MCMCCount[interactionType] += 1
-            elif srcSideChain and nSideChain:
+            elif srcSideChain and causeSideChain:
               if (not srcHet) and (not nHet): # This may be a redundant check
                 ptmaster = 'S'
                 self._SCSCCount[interactionType] += 1
-            elif ( (srcMainChain and nSideChain) or (srcSideChain and nMainChain) ):
-              if (not srcHet) and (not nHet): # This may be a redundant check
+            elif ( (srcMainChain and causeSideChain) or (srcSideChain and causeMainChain) ):
+              if (not srcHet) and (not causeHet): # This may be a redundant check
                 ptmaster = 'P'
                 self._MCSCCount[interactionType] += 1
             else:
@@ -658,7 +662,7 @@ Note:
                         (self._extraAtomInfo.getMappingFor(src).vdwRadius - res.overlap) )
 
             # Save the dot
-            self._save_dot(src, n, atomClass, loc, spikeloc, overlapType,
+            self._save_dot(src, res.cause, atomClass, loc, spikeloc, overlapType,
               res.gap, ptmaster, 0)
 
 # ------------------------------------------------------------------------------
