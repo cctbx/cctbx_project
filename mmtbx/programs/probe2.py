@@ -548,7 +548,6 @@ Note:
       atomList = []
       for n in nearby:
         nMainChain = self._inMainChain[n]
-        nSideChain = self._inSideChain[n]
         nHet = self._inHet[n]
         nInWater = self._inWater[n]
         d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
@@ -644,7 +643,7 @@ Note:
                 ptmaster = 'M'
                 self._MCMCCount[interactionType] += 1
             elif srcSideChain and causeSideChain:
-              if (not srcHet) and (not nHet): # This may be a redundant check
+              if (not srcHet) and (not causeHet): # This may be a redundant check
                 ptmaster = 'S'
                 self._SCSCCount[interactionType] += 1
             elif ( (srcMainChain and causeSideChain) or (srcSideChain and causeMainChain) ):
