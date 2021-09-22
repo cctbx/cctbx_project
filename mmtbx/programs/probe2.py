@@ -615,11 +615,11 @@ Note:
             # Main branch if whether we're reporting other than bad clashes
             if (not spo.only_report_bad_clashes):
               # We are reporting other than bad clashes, see if our type is being reported
-              if spo.report_hydrogen_bonds and overlapType > 0:
+              if spo.report_hydrogen_bonds and overlapType == probeExt.OverlapType.HydrogenBond:
                 show = True
-              elif spo.report_clashes and overlapType < 0:
+              elif spo.report_clashes and overlapType == probeExt.OverlapType.Clash:
                 show = True
-              elif spo.report_vdws and overlapType == 0:
+              elif spo.report_vdws and overlapType == probeExt.OverlapType.NoOverlap:
                 show = True
             else:
               # We are only reporting bad clashes.  See if we're reporting clashes and this is
@@ -657,12 +657,11 @@ Note:
             # Find the locations of the dot and spike by scaling the dot vector by the atom radius and
             # the (negative because it is magnitude) overlap.
             loc = Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect)
-            spikeloc = (Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect).normalize() *
-                        (self._extraAtomInfo.getMappingFor(src).vdwRadius - res.overlap) )
+            spikeloc = ( Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect).normalize() *
+                         (self._extraAtomInfo.getMappingFor(src).vdwRadius - res.overlap) )
 
             # Save the dot
-            self._save_dot(src, res.cause, atomClass, loc, spikeloc, overlapType,
-              res.gap, ptmaster, 0)
+            self._save_dot(src, res.cause, atomClass, loc, spikeloc, overlapType, res.gap, ptmaster, 0)
 
 # ------------------------------------------------------------------------------
 
@@ -1425,6 +1424,82 @@ Note:
 
     return ret
 
+
+# ------------------------------------------------------------------------------
+
+  def _describe_selection_and_parameters(self, groupLabel, selectionName):
+    '''
+      Describe the selection type and other parameters for a run.  Called by various run types.
+      :param groupLabel: Name to give to the group.
+      :param selectionName: Name of the selection mode: 'self', 'once'.
+      :return: String to be added to the output.
+    '''
+
+    ret = ''
+    ret += "selection: {}\nname: {}\n".format(selectionName, groupLabel)
+    ret += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
+      self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
+      self.params.atom_radius_offset)
+    ret += "score weights: gapWt={:0g}, bumpWt={:0g}, HBWt={:0g}\n".format(
+      self.params.probe.gap_weight, self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight)
+    return ret
+
+# ------------------------------------------------------------------------------
+
+  def _report_single_interaction(self, groupLabel, selectionName, comparisonString, intersectionName,
+      numModels, modelIndex):
+    '''
+      Print information about a single interaction, either self interaction or once interaction.
+      :param groupLabel: Name to give to the group.
+      :param selectionName: Name of the selection mode: 'self', 'once'.
+      :param comparisonString: String decribing the comparison: '1->1', '1->2'.
+      :param intersectionName: Name of the intersection being done: 'SelfIntersect', 'IntersectOnce'.
+      :param numModels: Number of models we are running over.
+      :param modelIndex: Current model we are running.
+      :return: String to be added to the output.
+    '''
+
+    ret = ''
+    # Count the dots if we've been asked to do so.
+    if self.params.output.count_dots:
+      numSkinDots = self._count_skin_dots(self._source_atoms_sorted, self._allBondedNeighborLists)
+      if self.params.output.format != 'raw':
+        ret += source._describe_selection_and_parameters(groupLabel, selectionName)
+
+      nsel = len(self._source_atoms_sorted)
+      if self.params.output.format == 'raw':
+        ret += self._rawEnumerate("", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
+      else:
+        ret += self._enumerate("{} dots".format(selectionName), nsel, self.params.output.compute_scores, False, numSkinDots)
+
+    else: # Not counting the dots
+
+      # Check for various output format types.
+      # We're not implementing O format or XV format, but we still allow raw and oneline
+      if self.params.output.format == 'raw':
+        ret += self._writeRawOutput(comparisonString,groupLabel)
+
+      elif self.params.output.format == 'oneline':
+        ret += self._count_summary(intersectionName)
+
+      elif self.params.output.format == 'standard': # Standard/Kinemage format
+        if self.params.output.contact_summary:
+          ret += self._count_summary(intersectionName)
+
+        if self.params.output.add_group_line:
+          if numModels > 1:
+            # doing one of multiple models of an ensemble
+            ret += "@group dominant {{{} M{}}} animate\n".format(groupLabel,modelIndex)
+          else:
+            ret += "@group dominant {{{}}}\n".format(groupLabel)
+
+        ret += self._writeOutput("{} dots".format(selectionName), groupLabel)
+
+      else:
+        raise ValueError("Unrecognized output format: "+self.params.output.format+" (internal error)")
+
+    return ret
+
 # ------------------------------------------------------------------------------
 
   def _clear_results(self):
@@ -1506,7 +1581,7 @@ Note:
         self._atomClasses[a] = self._atom_class_for(a)
       else:
         # For hydrogen, assign based on what it is bonded to.
-        self._atomClasses[a] = self._atom_class_for(allBondedNeighborLists[a][0])
+        self._atomClasses[a] = self._atom_class_for(self._allBondedNeighborLists[a][0])
 
     ################################################################################
     # Get the dot sets we will need for each atom.  This is the set of offsets from the
@@ -1533,7 +1608,7 @@ Note:
         self._inMainChain[a] = mainchain_sel[a.i_seq]
       else:
         # Check our bonded neighbor to see if it is on the mainchain if we are a Hydrogen
-        self._inMainChain[a] = mainchain_sel[allBondedNeighborLists[a][0]]
+        self._inMainChain[a] = mainchain_sel[self._allBondedNeighborLists[a][0]]
       self._inSideChain[a] = sidechain_sel[a.i_seq]
 
     ################################################################################
@@ -1579,7 +1654,7 @@ Note:
 
       ################################################################################
       # Get the bonding information we'll need to exclude our bonded neighbors.
-      allBondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+      self._allBondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
       ################################################################################
       # Get the subset of the source selection and target selection for this hierarchy
@@ -1691,8 +1766,8 @@ Note:
                 # neighbor lists.
                 bondedNeighborLists[newAtom] = [a]
                 bondedNeighborLists[a] = []
-                allBondedNeighborLists[newAtom] = [a]
-                allBondedNeighborLists[a] = []
+                self._allBondedNeighborLists[newAtom] = [a]
+                self._allBondedNeighborLists[a] = []
 
                 # Generate source dots for the new atom
                 self._dots[newAtom] = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(newAtom).vdwRadius).dots()
@@ -1784,8 +1859,8 @@ Note:
       ################################################################################
       # Generate sorted lists of the selected atoms, so that we run them in the same order
       # they appear in the model file.
-      source_atoms_sorted = sorted(source_atoms, key=lambda atom: atom.i_seq)
-      target_atoms_sorted = sorted(target_atoms, key=lambda atom: atom.i_seq)
+      self._source_atoms_sorted = sorted(source_atoms, key=lambda atom: atom.i_seq)
+      self._target_atoms_sorted = sorted(target_atoms, key=lambda atom: atom.i_seq)
 
       ################################################################################
       # Find our group label
@@ -1803,7 +1878,7 @@ Note:
       if self.params.approach == 'count_atoms':
         make_sub_header('Counting atoms', out=self.logger)
         # Report the number of atoms in the source selection
-        outString += 'atoms selected: '+str(len(source_atoms_sorted))+'\n'
+        outString += 'atoms selected: '+str(len(self._source_atoms_sorted))+'\n'
 
       elif self.params.approach == 'surface':
         make_sub_header('Find surface dots', out=self.logger)
@@ -1811,7 +1886,7 @@ Note:
         # Produce dots on the surfaces of the selected atoms.
         maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
         maxRadius = 2*maxVDWRadius + 2 * self.params.probe.radius
-        for src in source_atoms_sorted:
+        for src in self._source_atoms_sorted:
           # Find nearby atoms that might come into contact.  This greatly speeds up the
           # search for touching atoms.
           maxRadius = (self._extraAtomInfo.getMappingFor(src).vdwRadius + maxVDWRadius +
@@ -1835,14 +1910,11 @@ Note:
 
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
-          numSkinDots = self._count_skin_dots(source_atoms_sorted, allBondedNeighborLists)
+          numSkinDots = self._count_skin_dots(self._source_atoms_sorted, self._allBondedNeighborLists)
           if self.params.output.format != 'raw':
-            outString += "selection: external\nname: {}\n".format(groupLabel)
-            outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
-              self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
-              self.params.atom_radius_offset)
+            outString += source._describe_selection_and_parameters(groupLabel, "external")
 
-          nsel = len(source_atoms_sorted)
+          nsel = len(self._source_atoms_sorted)
           if self.params.output.format == 'raw':
             outString += self._rawEnumerate("", nsel, False, True, numSkinDots, groupLabel)
           else:
@@ -1876,101 +1948,24 @@ Note:
         make_sub_header('Find self-intersection dots', out=self.logger)
 
         # Generate dots for the source atom set against itself.
-        self._generate_interaction_dots(source_atoms_sorted, source_atoms_sorted, allBondedNeighborLists)
+        self._generate_interaction_dots(self._source_atoms_sorted, self._source_atoms_sorted, self._allBondedNeighborLists)
 
-        # Count the dots if we've been asked to do so.
-        if self.params.output.count_dots:
-          numSkinDots = self._count_skin_dots(source_atoms_sorted, allBondedNeighborLists)
-          if self.params.output.format != 'raw':
-            outString += "selection: external\nname: {}\n".format(groupLabel)
-            outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
-              self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
-              self.params.atom_radius_offset)
-            outString += "score weights: gapWt={}, bumpWt={}, HBWt={}\n".format(
-              self.params.probe.gap_weight, self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight)
-
-          nsel = len(source_atoms_sorted)
-          if self.params.output.format == 'raw':
-            outString += self._rawEnumerate("", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
-          else:
-            outString += self._enumerate("self dots", nsel, self.params.output.compute_scores, False, numSkinDots)
-
-        else: # Not counting the dots
-
-          # Check for various output format types other than Kinemage.
-          # We're not implementing O format or XV format, but we still allow raw and oneline
-          if self.params.output.format == 'raw':
-            outString += self._writeRawOutput("1->1",groupLabel)
-
-          elif self.params.output.format == 'oneline':
-            outString += self._count_summary("SelfIntersect")
-
-          elif self.params.output.format == 'standard': # Standard/Kinemage format
-            if self.params.output.contact_summary:
-              outString += self._count_summary("SelfIntersect")
-
-            if self.params.output.add_group_line:
-              if len(atomLists) > 0:
-                # doing jth of multiple models of an ensemble
-                outString += "@group dominant {{{} M{}}} animate\n".format(groupLabel,modelIndex)
-              else:
-                outString += "@group dominant {{{}}}\n".format(groupLabel)
-
-            outString += self._writeOutput("self dots", groupLabel)
-
-          else:
-            raise ValueError("Unrecognized output format: "+self.params.output.format+" (internal error)")
+        # Generate our report
+        outString += self._report_single_interaction(groupLabel, "self", "1->1", "SelfIntersect",
+            len(atomLists), modelIndex)
 
       elif self.params.approach == 'once':
-        make_sub_header('Find single direction intersection dots', out=self.logger)
+        make_sub_header('Find single-direction intersection dots', out=self.logger)
 
         # Generate dots for the source atom set against the target atom set.
-        # @todo The code below here is the same as -self other than the choice of target_atoms_sorted here
-        # and the names passed to enumerate, writeRaw, countsummary and writeOutput; and the selection string...
-        self._generate_interaction_dots(source_atoms_sorted, target_atoms_sorted, allBondedNeighborLists)
+        self._generate_interaction_dots(self._source_atoms_sorted, self._target_atoms_sorted, self._allBondedNeighborLists)
 
-        # Count the dots if we've been asked to do so.
-        if self.params.output.count_dots:
-          numSkinDots = self._count_skin_dots(source_atoms_sorted, allBondedNeighborLists)
-          if self.params.output.format != 'raw':
-            outString += "selection: once\nname: {}\n".format(groupLabel)
-            outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
-              self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
-              self.params.atom_radius_offset)
-            outString += "score weights: gapWt={:0g}, bumpWt={:0g}, HBWt={:0g}\n".format(
-              self.params.probe.gap_weight, self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight)
-
-          nsel = len(source_atoms_sorted)
-          if self.params.output.format == 'raw':
-            outString += self._rawEnumerate("", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
-          else:
-            outString += self._enumerate("once dots", nsel, self.params.output.compute_scores, False, numSkinDots)
-
-        else: # Not counting the dots
-
-          # Check for various output format types.
-          # We're not implementing O format or XV format, but we still allow raw and oneline
-          if self.params.output.format == 'raw':
-            outString += self._writeRawOutput("1->2",groupLabel)
-
-          elif self.params.output.format == 'oneline':
-            outString += self._count_summary("IntersectOnce")
-
-          elif self.params.output.format == 'standard': # Standard/Kinemage format
-            if self.params.output.contact_summary:
-              outString += self._count_summary("IntersectOnce")
-
-            if self.params.output.add_group_line:
-              if len(atomLists) > 0:
-                # doing jth of multiple models of an ensemble
-                outString += "@group dominant {{{} M{}}} animate\n".format(groupLabel,modelIndex)
-              else:
-                outString += "@group dominant {{{}}}\n".format(groupLabel)
-
-            outString += self._writeOutput("once dots", groupLabel)
+        # Generate our report
+        outString += self._report_single_interaction(groupLabel, "once", "1->2", "IntersectOnce",
+            len(atomLists), modelIndex)
 
       elif self.params.approach == 'both':
-        make_sub_header('Find both directions intersection dots', out=self.logger)
+        make_sub_header('Find both-directions intersection dots', out=self.logger)
 
         # @todo The code below here is similar to -once but is repeated twice and has different string values.
         # It is also somewhat re-ordered in terms of where the selection is printed.
@@ -1978,12 +1973,7 @@ Note:
         # Preliminary information before running both intersections.
         if self.params.output.count_dots:
           if self.params.output.format != 'raw':
-            outString += "selection: both\nname: {}\n".format(groupLabel)
-            outString += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
-              self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
-              self.params.atom_radius_offset)
-            outString += "score weights: gapWt={:0g}, bumpWt={:0g}, HBWt={:0g}\n".format(
-              self.params.probe.gap_weight, self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight)
+            outString += source._describe_selection_and_parameters(groupLabel, "once")
         else: # Not counting the dots
           if self.params.output.format == 'raw':
             pass
@@ -1994,12 +1984,12 @@ Note:
         # =================== First direction ========================
 
         # Generate dots for the source atom set against the target atom set.
-        self._generate_interaction_dots(source_atoms_sorted, target_atoms_sorted, allBondedNeighborLists)
+        self._generate_interaction_dots(self._source_atoms_sorted, self._target_atoms_sorted, self._allBondedNeighborLists)
 
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
-          numSkinDots = self._count_skin_dots(source_atoms_sorted, allBondedNeighborLists)
-          nsel = len(source_atoms_sorted)
+          numSkinDots = self._count_skin_dots(self._source_atoms_sorted, self._allBondedNeighborLists)
+          nsel = len(self._source_atoms_sorted)
           if self.params.output.format == 'raw':
             outString += self._rawEnumerate("1->2", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
           else:
@@ -2028,12 +2018,12 @@ Note:
         self._clear_results();
 
         # Generate dots for the target atom set against the source atom set.
-        self._generate_interaction_dots(target_atoms_sorted, source_atoms_sorted, allBondedNeighborLists)
+        self._generate_interaction_dots(self._target_atoms_sorted, self._source_atoms_sorted, self._allBondedNeighborLists)
 
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
-          numSkinDots = self._count_skin_dots(target_atoms_sorted, allBondedNeighborLists)
-          nsel = len(target_atoms_sorted)
+          numSkinDots = self._count_skin_dots(self._target_atoms_sorted, self._allBondedNeighborLists)
+          nsel = len(self._target_atoms_sorted)
           if self.params.output.format == 'raw':
             outString += self._rawEnumerate("2->1", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
           else:
@@ -2055,6 +2045,9 @@ Note:
             if self.params.output.contact_summary:
               # Accumulate and report results
               outString += self._count_summary("IntersectBothWays 2->1", True)
+
+          else:
+            raise ValueError("Unrecognized output format: "+self.params.output.format+" (internal error)")
 
     # Write the output to the specified file.
     of = open(self.params.output.file_name,"w")
