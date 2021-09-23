@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 import os
+import sys
 import math
+from datetime import datetime
 from libtbx.program_template import ProgramTemplate
 #from libtbx.utils import null_out
 from libtbx import group_args, phil
@@ -12,6 +14,8 @@ from mmtbx.probe import Helpers, AtomTypes
 from scitbx.array_family import flex
 from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
+
+version = "0.5.0"
 
 master_phil_str = '''
 run_tests = False
@@ -1464,6 +1468,7 @@ Note:
     if self.params.output.count_dots:
       numSkinDots = self._count_skin_dots(self._source_atoms_sorted, self._allBondedNeighborLists)
       if self.params.output.format != 'raw':
+        ret += self._describe_run("program:","command:")
         ret += self._describe_selection_and_parameters(groupLabel, selectionName)
 
       nsel = len(self._source_atoms_sorted)
@@ -1483,6 +1488,7 @@ Note:
         ret += self._count_summary(intersectionName)
 
       elif self.params.output.format == 'standard': # Standard/Kinemage format
+        ret += self._describe_run("@caption","command:")
         if self.params.output.contact_summary:
           ret += self._count_summary(intersectionName)
 
@@ -1510,6 +1516,26 @@ Note:
       for i in self._interactionTypes:
         interactionTypeDicts[i] = []
       self._results[c] = interactionTypeDicts
+
+# ------------------------------------------------------------------------------
+
+  def _describe_run(self, header1, header2):
+    '''
+      Describe the command-line and other Phil options used for this run so that
+      it could be reproduced.
+      :param header1: Header for the first output line (the version/time line).
+      :param header2: Header for the second output line (the command and its arguments).
+      :return: String to be added to the output.
+    '''
+
+    global version
+    ret = '{} probe2 v.{}, run {}\n'.format(header1, version, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    ret += header2
+    for a in sys.argv:
+      ret += ' {}'.format(a)
+    ret += '\n'
+
+    return ret
 
 # ------------------------------------------------------------------------------
 
@@ -1975,11 +2001,13 @@ Note:
         # Preliminary information before running both intersections.
         if self.params.output.count_dots:
           if self.params.output.format != 'raw':
+            outString += self._describe_run("program:","command:")
             outString += self._describe_selection_and_parameters(groupLabel, "once")
         else: # Not counting the dots
           if self.params.output.format == 'raw':
             pass
-          elif self.params.output.format in ['oneline', 'standard']:
+          elif self.params.output.format == 'standard':
+            outString += self._describe_run("@caption","command:")
             if self.params.output.add_group_line:
               outString += "@group {}\n".format(groupLabel)
 
