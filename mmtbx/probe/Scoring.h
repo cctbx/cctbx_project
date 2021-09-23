@@ -233,7 +233,9 @@ namespace molprobity {
       /// @param [in] probeRadius Radius of the probe rolled between the two potentially-contacting atoms
       ///             If this is < 0, an invalid result will be returned.
       /// @param [in] interacting The atoms that are to be checked because they are close enough to sourceAtom
-      ///             to interact with it.
+      ///             to interact with it.  This list should not include any excluded atoms because spurious
+      ///             interactions may occur along the edge of the excluded atom when a dot is close to it but
+      ///             not inside.
       /// @param [in] excluded Atoms that are to be excluded from contact, for example this could be a list
       ///             of atoms bonded to sourceAtom.  If the dot is inside an excluded atom, it will not be
       ///             considered even if it is overlapping with an interacting atom.

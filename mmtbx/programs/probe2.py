@@ -547,7 +547,7 @@ Note:
       # Select those that are actually within the contact distance based on their
       # particular radius and which are in the set of target atoms.
       # Also verify that the potential target atoms meet our criteria based on parameters.
-      atomList = []
+      atomSet = set()
       for n in nearby:
         nMainChain = self._inMainChain[n]
         nHet = self._inHet[n]
@@ -576,15 +576,20 @@ Note:
           # Skip atoms that are in non-compatible alternate conformations
           if not _compatible_conformations(src, n):
             continue
-          atomList.append(n)
+          atomSet.add(n)
 
       # Check the atoms for interactions
-      if len(atomList) > 0:
+      if len(atomSet) > 0:
         # Find the atoms that are bonded to the source atom within the specified hop
         # count.  Limit the length of the chain to 3 if neither the source nor the final
         # atom is a Hydrogen.
-        neighbors = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists,
+        bonded = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists,
           self.params.excluded_bond_chain_length, 3)
+
+        # Remove all of the bonded atoms from the interaction set so we don't
+        # put spurious dots on them.
+        for b in bonded:
+          atomSet.discard(b)
 
         # Find out what class of dot we should place for this atom.
         atomClass = self._atomClasses[src]
@@ -603,7 +608,7 @@ Note:
         scale = self.params.probe.overlap_scale_factor
         for dotvect in srcDots:
           # Find out if there is an interaction
-          res = self._dotScorer.check_dot(src, dotvect, pr, atomList, neighbors, scale)
+          res = self._dotScorer.check_dot(src, dotvect, pr, list(atomSet), bonded, scale)
 
           # Classify the interaction and store appropriate results unless we should
           # ignore the result because there was not valid overlap.
