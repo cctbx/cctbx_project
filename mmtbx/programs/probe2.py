@@ -353,25 +353,6 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def validate(self):
-    self.data_manager.has_models(raise_sorry=True)
-    if self.params.source_selection is None:
-      raise Sorry("Must specify a source parameter for approach "+self.params.approach)
-    if self.params.approach in ['once','both'] and self.params.target_selection is None:
-      raise Sorry("Must specify a target parameter for approach "+self.params.approach)
-    aScale = self.params.atom_radius_scale
-    if aScale < 0.0001 or aScale > 1000:
-      raise Sorry("Invalid atom_radius_scale value: {:0g}".format(aScale))
-    ao = self.params.atom_radius_offset
-    if ao < -10 or ao > 1000:
-      raise Sorry("Invalid atom_radius_offset value: {:0g}".format(ao))
-
-    # Ensure consistency among parameters
-    if self.params.probe.contact_cutoff < self.params.probe.radius:
-      self.params.probe.contact_cutoff = self.params.probe.radius
-
-# ------------------------------------------------------------------------------
-
   def _scaled_atom_radius(self, a):
     '''
       Find the scaled and offset radius for the specified atom.  This will be called on each
@@ -1557,6 +1538,27 @@ Note:
     ret += '\n'
 
     return ret
+
+# ------------------------------------------------------------------------------
+
+  def validate(self):
+    print('XXX selection =',self.params.source_selection)
+    raise Exception('XXX')
+    self.data_manager.has_models(raise_sorry=True)
+    if self.params.source_selection is None:
+      raise Sorry("Must specify a source parameter for approach "+self.params.approach)
+    if self.params.approach in ['once','both'] and self.params.target_selection is None:
+      raise Sorry("Must specify a target parameter for approach "+self.params.approach)
+    aScale = self.params.atom_radius_scale
+    if aScale < 0.0001 or aScale > 1000:
+      raise Sorry("Invalid atom_radius_scale value: {:0g}".format(aScale))
+    ao = self.params.atom_radius_offset
+    if ao < -10 or ao > 1000:
+      raise Sorry("Invalid atom_radius_offset value: {:0g}".format(ao))
+
+    # Ensure consistency among parameters
+    if self.params.probe.contact_cutoff < self.params.probe.radius:
+      self.params.probe.contact_cutoff = self.params.probe.radius
 
 # ------------------------------------------------------------------------------
 
