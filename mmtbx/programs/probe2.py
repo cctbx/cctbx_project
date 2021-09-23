@@ -614,6 +614,10 @@ Note:
           # Classify the interaction and store appropriate results unless we should
           # ignore the result because there was not valid overlap.
           overlapType = res.overlapType
+          # Check non-overlapping dots to make sure they are not annular (outside the other atom
+          # but the result of an atom-atom contact).
+          if overlapType == probeExt.OverlapType.NoOverlap and res.annular:
+            continue
           if overlapType != probeExt.OverlapType.Ignore:
             # See whether this dot is allowed based on our parameters.
             spo = self.params.output
