@@ -69,6 +69,15 @@ integrate_phil_str = '''
       .expert_level = 4
       .help = Unused
   }
+  profile {
+    gaussian_rs {
+      parameters {
+        sigma_b_cutoff = 0.1
+          .type = float
+          .help = Maximum sigma_b before the image is rejected
+      }
+    }
+  }
 '''
 
 program_defaults_phil_str = """
