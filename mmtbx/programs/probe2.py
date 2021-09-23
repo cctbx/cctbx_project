@@ -164,7 +164,6 @@ output
   file_name = None
     .type = str
     .short_caption = Output file name
-    .optional = False
     .help = Output file name
 
   format = *standard raw oneline
@@ -1542,9 +1541,9 @@ Note:
 # ------------------------------------------------------------------------------
 
   def validate(self):
-    print('XXX selection =',self.params.source_selection)
-    raise Exception('XXX')
     self.data_manager.has_models(raise_sorry=True)
+    if self.params.output.file_name is None:
+      raise Sorry("Must specify output.file_name")
     if self.params.source_selection is None:
       raise Sorry("Must specify a source parameter for approach "+self.params.approach)
     if self.params.approach in ['once','both'] and self.params.target_selection is None:
