@@ -290,6 +290,25 @@ citation {
 
 # ------------------------------------------------------------------------------
 
+def _compatible_conformations(a1, a2):
+  '''
+    Returns True if the two atoms are in compatble conformations, False if not.
+    :param a1: First atom.
+    :param a2: Second atom.
+    :return: True if either atom is in the empty conformation or if both are in the
+    same conformation.
+  '''
+  alt1 = a1.parent().altloc
+  alt2 = a2.parent().altloc
+  if alt1 in ['', ' ']:
+    return True
+  if alt2 in ['', ' ']:
+    return True
+  return alt1 == alt2
+
+
+# ------------------------------------------------------------------------------
+
 class Program(ProgramTemplate):
   description = '''
 Compute the MolProbity Probe score for a file, or a subset of the file.
@@ -316,7 +335,6 @@ Note:
   For additional information and help, see http://kinemage.biochem.duke.edu/software/probe
   and http://molprobity.biochem.duke.edu
   '''
-
 
 # ------------------------------------------------------------------------------
 
@@ -574,6 +592,9 @@ Note:
             continue
           # Skip water-water interactions unless they are allowed
           elif (not self.params.do_water_water) and srcInWater and nInWater:
+            continue
+          # Skip atoms that are in non-compatible alternate conformations
+          if not _compatible_conformations(src, n):
             continue
           atomList.append(n)
 
@@ -2091,6 +2112,30 @@ Note:
       Run tests on the methods of the class.  Throw an assertion error if there is a problem with
       one of them and return normally if there is not a problem.
     '''
+
+    #=====================================================================================
+    # Test the _compatible_conformations() function.
+    a1 = pdb.hierarchy.atom()
+    ag1 = pdb.hierarchy.atom_group()
+    ag1.append_atom(a1)
+    a2 = pdb.hierarchy.atom()
+    ag2 = pdb.hierarchy.atom_group()
+    ag2.append_atom(a2)
+    ag1.altloc = ""
+    ag2.altloc = "A"
+    assert _compatible_conformations(a1,a2) == True, "probe2:Test(): altloc expected True for empty first"
+    ag1.altloc = "A"
+    ag2.altloc = "A"
+    assert _compatible_conformations(a1,a2) == True, "probe2:Test(): altloc expected True for compatible"
+    ag1.altloc = "A"
+    ag2.altloc = "B"
+    assert _compatible_conformations(a1,a2) == False, "probe2:Test(): altloc expected False for incompatible"
+    ag1.altloc = "A"
+    ag2.altloc = " "
+    assert _compatible_conformations(a1,a2) == True, "probe2:Test(): altloc expected True for blank second"
+    ag1.altloc = ""
+    ag2.altloc = " "
+    assert _compatible_conformations(a1,a2) == True, "probe2:Test(): altloc expected True for empty first and blank second"
 
     #=====================================================================================
     # Test the _condense() method.
