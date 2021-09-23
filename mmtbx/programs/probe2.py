@@ -535,6 +535,17 @@ Note:
     maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
     maxRadius = 2*maxVDWRadius + 2 * self.params.probe.radius
     for src in sourceAtoms:
+      # Find out what class of dot we should place for this atom.
+      atomClass = self._atomClasses[src]
+
+      # Generate no dots for ignored atoms.
+      if atomClass == 'ignore':
+        continue
+
+      # Generate no dots for atoms with too-low occupancy
+      if src.occ < self.params.probe.minimum_occupancy:
+        continue
+
       # Find atoms that are close enough that they might touch.
       nearby = self._spatialQuery.neighbors(src.xyz, 0.001, maxRadius)
 
@@ -575,7 +586,7 @@ Note:
           elif (not self.params.do_water_water) and srcInWater and nInWater:
             continue
           # Skip atoms that are in non-compatible alternate conformations
-          if not _compatible_conformations(src, n):
+          elif not _compatible_conformations(src, n):
             continue
           atomSet.add(n)
 
@@ -591,17 +602,6 @@ Note:
         # put spurious dots on them.
         for b in bonded:
           atomSet.discard(b)
-
-        # Find out what class of dot we should place for this atom.
-        atomClass = self._atomClasses[src]
-
-        # Generate no dots for ignored atoms.
-        if atomClass == 'ignore':
-          continue
-
-        # Generate no dots for atoms with too-low occupancy
-        if src.occ < self.params.probe.minimum_occupancy:
-          continue
 
         # Check each dot to see if it interacts with non-bonded nearby target atoms.
         srcDots = self._dots[src]
