@@ -559,9 +559,10 @@ Note:
            ):
           # if both atoms are in the same non-HET residue and on the main chain, then skip
           # if we're not allowing mainchain-mainchain interactions.
+          # The atoms must be on the same chain to be skipped.
           if not self.params.include_mainchain_mainchain and (
                 (srcMainChain and nMainChain) and not (srcHet or nHet) and
-                (src.parent() == n.parent())
+                (src.parent().parent().parent().id == n.parent().parent().parent().id) # Same chain
               ):
             continue
           # Skip atoms that shuold be ignored
