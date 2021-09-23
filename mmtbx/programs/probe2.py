@@ -1488,7 +1488,7 @@ Note:
         ret += self._count_summary(intersectionName)
 
       elif self.params.output.format == 'standard': # Standard/Kinemage format
-        ret += self._describe_run("@caption","command:")
+        ret += self._describe_run("@caption"," command:")
         if self.params.output.contact_summary:
           ret += self._count_summary(intersectionName)
 
@@ -2007,7 +2007,7 @@ Note:
           if self.params.output.format == 'raw':
             pass
           elif self.params.output.format == 'standard':
-            outString += self._describe_run("@caption","command:")
+            outString += self._describe_run("@caption"," command:")
             if self.params.output.add_group_line:
               outString += "@group {}\n".format(groupLabel)
 
