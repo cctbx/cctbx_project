@@ -23,11 +23,11 @@ run_tests = False
   .help = Run unit tests before doing the requested operations
 
 source_selection = "(altid a or altid '' or altid ' ') and occupancy > 0.33"
-  .type = str
+  .type = atom_selection
   .help = Source selection description
 
 target_selection = None
-  .type = str
+  .type = atom_selection
   .help = Target selection description ('=' means same as source)
 
 use_neutron_distances = False
