@@ -808,6 +808,61 @@ roi {
     .type = bool
     .help = if True, then model overlapping spots
 }
+
+geometry {
+  optimize_method = lbfgsb* nelder
+    .type = choice
+    .help = lmfit optimization method (lbfgsb uses gradients, nelder is graientless)
+  input_pkl = None
+    .type = str
+    .help = path to the input pickle containing models and experiment lists
+  optimize = False
+    .type = bool
+    .help = flag to specify whether to optimize the geometry
+  optimized_detector_name = "diffBragg_detector.expt"
+    .type = str 
+    .help = name of the experiment which will be written, and will contain the optimized detector
+  min {
+    panel_rotations = -1,-1,-1
+      .type = floats(size=3)
+      .help = minimum value in degrees for a detector panel rotation
+    panel_translations = -1,-1,-1
+      .type = floats(size=3)
+      .help = minimum value in mm for detector panel translations in X,Y,Z
+  }
+  max {
+    panel_rotations = 1,1,1
+      .type = floats(size=3)
+      .help = maximum value in degrees for a detector panel rotation
+    panel_translations = 1,1,1
+      .type = floats(size=3)
+      .help = maximum value in mm for detector panel translations in X,Y,Z
+  }
+  center {
+    panel_rotations = 0,0,0
+      .type = floats(size=3)
+      .help = restraint target in degrees for panel rotations 
+    panel_translations = 0,0,0 
+      .type = floats(size=3)
+      .help = restraint target in mm for detector panel translations in X,Y,Z
+  }
+  betas {
+    panel_rotations = 1e6,1e6,1e6 
+      .type = floats(size=3)
+      .help = restraint factor for panel rotations (higher values lead to unrestrained parameters)
+    panel_translations = 1e6,1e6,1e6 
+      .type = floats(size=3)
+      .help = restraint target in mm for detector panel translations in X,Y,Z
+  }
+  fix {
+    panel_rotations = 0,0,0
+      .type = ints(size=3)
+      .help = refinement flags, 1 means to fix the parameter
+    panel_translations = 0,0,0
+      .type = ints(size=3)
+      .help = refinement flags, 1 means to fix the parameter
+  }
+}
 """
 
 preditions_phil = """

@@ -58,10 +58,10 @@ def PAR_from_params(params, experiment, best=None):
     for i_rot in range(3):
         p = ParameterType()
         p.sigma = params.sigmas.RotXYZ[i_rot]
-        if best is not None:
-            p.init = best.values[0][i_rot]
-        else:
-            p.init = 0
+        #if best is not None:
+        #    p.init = best.values[0][i_rot]
+        #else:
+        p.init = 0
         p.minval =params.mins.RotXYZ[i_rot]
         p.maxval = params.maxs.RotXYZ[i_rot]
         p.fix = params.fix.RotXYZ
