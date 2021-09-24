@@ -86,6 +86,10 @@ do_het = True
   .type = bool
   .help = Include het-atom interactions (-hets, -nohets in probe)
 
+keep_unselected_atoms = True
+  .type = bool
+  .help = Include atoms that are not selected in the collision neighbor lists (-keep, -drop, -scsurface, -exposed, -asurface, -access in probe)
+
 atom_radius_scale = 1.0
   .type = float
   .help = Atom radius = (r*atom_radius_scale)+atom_radius_offset (-scalevds, -vswscale in probe)
@@ -1735,9 +1739,13 @@ Note:
 
       ################################################################################
       # Build a spatial-query structure that tells which atoms are nearby.
-      # Include all atoms in the structure, not just the ones that have been selected.
+      # Include all atoms in the structure, not just the ones that have been selected,
+      # unless we've been asked not to keep them.
       make_sub_header('Make spatial-query accelerator', out=self.logger)
-      self._spatialQuery = probeExt.SpatialQuery(atoms)
+      if self.params.keep_unselected_atoms:
+        self._spatialQuery = probeExt.SpatialQuery(atoms)
+      else:
+        self._spatialQuery = probeExt.SpatialQuery(list(all_selected_atoms))
 
       ################################################################################
       # Construct a DotScorer object.
