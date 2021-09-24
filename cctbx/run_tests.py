@@ -3,6 +3,7 @@ from libtbx import test_utils
 import libtbx.load_env
 
 tst_list = [
+  "$D/regression/tst_sf_low_res_accuracy.py",
   "$D/regression/tst_miller_double_step_filtration.py",
   "$D/regression/tst_map_is_periodic.py",
   "$D/miller/tst_reindexing.py",
