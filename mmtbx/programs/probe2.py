@@ -1017,37 +1017,37 @@ Note:
       mast[probeExt.InteractionType.CloseContact] = 'surface'
 
     if self.params.output.add_group_name_master_line:
-      extraMaster = ' master={}'.format(masterName)
+      extraMaster = ' master={{{}}}'.format(masterName)
 
-    ret += "@subgroup dominant {}\n".format(groupName)
+    ret += "@subgroup dominant {{{}}}\n".format(groupName)
 
     if self.params.approach == 'surface':
-      ret += "@master {}\n".format(mast[1])
+      ret += "@master {{{}}}\n".format(mast[1])
     else:
       if self.params.output.report_vdws and not self.params.output.only_report_bad_clashes:
-        ret += "@master {}\n".format(mast[probeExt.InteractionType.WideContact])
+        ret += "@master {{{}}}\n".format(mast[probeExt.InteractionType.WideContact])
         if not self.params.output.merge_contacts:
-          ret += "@master {}\n".format(mast[probeExt.InteractionType.CloseContact])
+          ret += "@master {{{}}}\n".format(mast[probeExt.InteractionType.CloseContact])
       if self.params.output.report_clashes or self.params.output.only_report_bad_clashes:
         if not self.params.output.only_report_bad_clashes:
-          ret += "@master {}\n".format(mast[probeExt.InteractionType.SmallOverlap])
-        ret += "@master {}\n".format(mast[probeExt.InteractionType.Bump])
+          ret += "@master {{{}}}\n".format(mast[probeExt.InteractionType.SmallOverlap])
+        ret += "@master {{{}}}\n".format(mast[probeExt.InteractionType.Bump])
         if self.params.output.separate_worse_clashes:
-          ret += "@master {}\n".format(mast[probeExt.InteractionType.BadBump])
+          ret += "@master {{{}}}\n".format(mast[probeExt.InteractionType.BadBump])
       if self.params.output.report_hydrogen_bonds and not self.params.output.only_report_bad_clashes:
-        ret += "@master {}\n".format(mast[probeExt.InteractionType.HydrogenBond])
+        ret += "@master {{{}}}\n".format(mast[probeExt.InteractionType.HydrogenBond])
         if self.params.probe.separate_weak_hydrogen_bonds:
-          ret += "@master {}\n".format(mast[probeExt.InteractionType.WeakHydrogenBond])
+          ret += "@master {{{}}}\n".format(mast[probeExt.InteractionType.WeakHydrogenBond])
 
     # Report count legend if any counts are nonzero.
     if self._totalInteractionCount(self._MCMCCount) > 0:
-      ret += "@pointmaster 'M' {McMc contacts}\n"
+      ret += "@pointmaster 'M' {{McMc contacts}}\n"
     if self._totalInteractionCount(self._SCSCCount) > 0:
-      ret += "@pointmaster 'S' {McMc contacts}\n"
+      ret += "@pointmaster 'S' {{ScSc contacts}}\n"
     if self._totalInteractionCount(self._MCSCCount) > 0:
-      ret += "@pointmaster 'P' {McMc contacts}\n"
+      ret += "@pointmaster 'P' {{McSc contacts}}\n"
     if self._totalInteractionCount(self._otherCount) > 0:
-      ret += "@pointmaster 'O' {McMc contacts}\n"
+      ret += "@pointmaster 'O' {{Hets contacts}}\n"
 
     # Report binned gap legend if we're binning gaps
     if self.params.output.bin_gaps:
@@ -1162,7 +1162,7 @@ Note:
 
       # kinemage 2
       ret += "@kinemage 2\n"
-      ret += "@group {gapbins} dominant\n"
+      ret += "@group {{gapbins}} dominant\n"
       ret += "@vectorlist {gapbins}\n"
       for k in range(gaplimit-1):
         ret += "{{{:5.2f}, {:8d} }} {:5.2f}, {:8f}, 0.00\n".format(
@@ -2005,7 +2005,7 @@ Note:
               masterName = self.params.output.group_name
 
             if self.params.output.add_group_line:
-              outString += "@group dominant {}\n".format(masterName)
+              outString += "@group dominant {{{}}}\n".format(masterName)
 
             outString += self._writeOutput("extern dots", masterName)
 
@@ -2049,7 +2049,7 @@ Note:
           elif self.params.output.format == 'standard':
             outString += self._describe_run("@caption"," command:")
             if self.params.output.add_group_line:
-              outString += "@group {}\n".format(groupLabel)
+              outString += "@group {{{}}}\n".format(groupLabel)
 
         # =================== First direction ========================
 
