@@ -314,7 +314,10 @@ def _compatible_conformations(a1, a2):
 
 class Program(ProgramTemplate):
   description = '''
+Probe2 version {}
 Compute the MolProbity Probe score for a file, or a subset of the file.
+Produce summaries or lists of all contacts, in Kinemage or raw format, depending
+on PHIL parameters.
 
 Inputs:
   PDB or mmCIF file containing atomic model
@@ -322,15 +325,52 @@ Inputs:
 Output:
   Kinemage file describing the score and other information, depending on the parameters.
 Note:
-  The source_selection phil parameter must always be filled in, and some
-  approaches require the target_selection parameter as well.  Setting the
+  Some approaches require the target_selection parameter.  Setting the
   target_selection to "=" will re-use the source for the target.  In all
   other cases, the string passed in will be used as a CCTBX selection on
   the model to select a subset of its atoms.
 
   The most simple dotkin:
     mmtbx.probe2 approach=self source_selection="all" output.file_name=out.kin input.pdb
-'''
+
+  Equivalent PHIL arguments for original Probe command-line options:
+    -defaults: (note that the actual default for include_mainchain_mainchain is False)
+      source_selection="(altid a or altid '' or altid ' ') and occupancy > 0.33"
+      approach=self
+      excluded_bond_chain_length=4
+      include_mainchain_mainchain=True
+      include_het=True
+    -kinemage:
+      output.add_kinemage_keyword=True
+      output.count_dots=False
+      output.format=standard
+      output.condensed=False
+    -scsurface:
+      approach=surface
+      source_selection="not water"
+      keep_unselected_atoms=False
+      probe.radius=1.4
+      group_name="SCS"
+    -exposed:
+      approach=surface
+      source_selection="(altid a or altid '' or altid ' ') and occupancy > 0.33"
+      keep_unselected_atoms=False
+      probe.radius=1.4
+      group_name="SCS"
+    -asurface:
+      approach=surface
+      source_selection="not water"
+      keep_unselected_atoms=False
+      probe.radius=0.0
+      group_name="AS"
+    -access:
+      approach=surface
+      source_selection="not water"
+      keep_unselected_atoms=False
+      atom_radius_offset=1.4
+      probe.radius=0.0
+      group_name="AS"
+'''.format(version)
   datatypes = ['model', 'restraint', 'phil']
   master_phil_str = master_phil_str
   citations = program_citations
