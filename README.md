@@ -237,3 +237,8 @@ A subset of tests is run on the current `cctbx-base` packages every night (10 pm
     </tr>
   </tbody>
 </table>
+
+
+## Contributing to the cctbx
+
+For a more detailed description on how to contribute to the cctbx please visit our [contribution guide](https://github.com/cctbx/cctbx_project/blob/master/CONTRIBUTING.md).
