@@ -38,7 +38,7 @@ approach = *self both once surface count_atoms
   .type = choice
   .help = self (src -> src) both (src <=> targ) once (src -> targ) surface (VdW surface) count_atoms (count atoms)
 
-include_mainchain_mainchain = False
+include_mainchain_mainchain = True
   .type = bool
   .help = Include mainchain -> mainchain interactions (-mc in probe)
 
@@ -334,7 +334,7 @@ Note:
     mmtbx.probe2 approach=self source_selection="all" output.file_name=out.kin input.pdb
 
   Equivalent PHIL arguments for original Probe command-line options:
-    -defaults: (note that the actual default for include_mainchain_mainchain is False)
+    -defaults:
       source_selection="(altid a or altid '' or altid ' ') and occupancy > 0.33"
       approach=self
       excluded_bond_chain_length=4
@@ -1052,7 +1052,7 @@ Note:
 
     # Rename contacts as needed
     if self.params.output.merge_contacts:
-      mast[probeExt.InteractionType.WideContact] = mast[probeExt.InteractionType.CloseContact] = 'vdw contacts'
+      mast[probeExt.InteractionType.WideContact] = mast[probeExt.InteractionType.CloseContact] = 'vdw contact'
     if self.params.approach == 'surface':
       mast[probeExt.InteractionType.CloseContact] = 'surface'
 
@@ -2026,6 +2026,7 @@ Note:
           if self.params.output.format == 'raw':
             outString += self._rawEnumerate("", nsel, False, True, numSkinDots, groupLabel)
           else:
+            outString += self._describe_run("program:","command:")
             outString += self._enumerate("extern dots", nsel, False, True, numSkinDots)
 
         # Otherwise, produce the dots as output
@@ -2040,6 +2041,7 @@ Note:
             pass
 
           elif self.params.output.format == 'standard': # Standard/Kinemage format
+            outString += self._describe_run("@caption"," command:")
             masterName = "dots"
             if len(self.params.output.group_name) > 0:
               masterName = self.params.output.group_name
