@@ -34,12 +34,11 @@ class Hopper_Processor(Processor):
 
     def __init__(self, *args, **kwargs):
         super(Hopper_Processor, self).__init__(*args, **kwargs)
-        if self.params.hopper.quiet:
-            logging.getLogger("dials.algorithms.indexing.nave_parameters").setLevel(logging.ERROR)
-            logging.getLogger("dials.algorithms.indexing.stills_indexer").setLevel(logging.ERROR)
-            logging.getLogger("dials.algorithms.refinement.refiner").setLevel(logging.ERROR)
-            logging.getLogger("dials.algorithms.refinement.reflection_manager").setLevel(logging.ERROR)
-            logging.getLogger("dials.algorithms.refinement.reflection_manager").setLevel(logging.ERROR)
+        logging.getLogger("dials.algorithms.indexing.nave_parameters").setLevel(logging.ERROR)
+        logging.getLogger("dials.algorithms.indexing.stills_indexer").setLevel(logging.ERROR)
+        logging.getLogger("dials.algorithms.refinement.refiner").setLevel(logging.ERROR)
+        logging.getLogger("dials.algorithms.refinement.reflection_manager").setLevel(logging.ERROR)
+        logging.getLogger("dials.algorithms.refinement.reflection_manager").setLevel(logging.ERROR)
 
     def refine(self, exps, ref):
         exps_out = exps

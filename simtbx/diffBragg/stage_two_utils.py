@@ -85,8 +85,6 @@ def PAR_from_params(params, experiment, best=None):
         p.minval = minval
         p.maxval = maxval
         p.fix = params.fix.ucell
-        if not params.quiet: print(
-            "Unit cell variable %s (currently=%f) is bounded by %f and %f" % (name, val, minval, maxval))
         PAR.ucell.append(p)
     PAR.ucell_man = ucell_man
 
