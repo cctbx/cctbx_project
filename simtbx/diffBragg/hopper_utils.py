@@ -806,8 +806,6 @@ def get_param_from_x(x, SIM):
     #TODO generalize for n xtals
     i_xtal = 0
 
-    #scale_reparam, rotX_reparam, rotY_reparam, rotZ_reparam, \
-    #    Na_reparam, Nb_reparam, Nc_reparam, diffuse_gamma_reparam, diffuse_sigma_reparam = params_per_xtal[i_xtal]
     scale_reparam, rotX_reparam, rotY_reparam, rotZ_reparam, \
     Na_reparam, Nb_reparam, Nc_reparam, diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c = params_per_xtal[i_xtal]
 
@@ -822,10 +820,10 @@ def get_param_from_x(x, SIM):
     Nc = SIM.Nabc_params[i_xtal * 3 + 2].get_val(Nc_reparam)
 
     diff_gam_reparam = diff_gam_a, diff_gam_b, diff_gam_c
-    diff_gam_a, diff_gam_b, diff_gam_b = [SIM.diffuse_gamma_params[i_xtal*3+i_gam].get_val(diff_gam_reparam[i_gam]) for i_gam in range(3)]
+    diff_gam_a, diff_gam_b, diff_gam_c = [SIM.diffuse_gamma_params[i_xtal*3+i_gam].get_val(diff_gam_reparam[i_gam]) for i_gam in range(3)]
 
     diff_sig_reparam = diff_sig_a, diff_sig_b, diff_sig_c
-    diff_sig_a, diff_sig_b, diff_sig_b = [SIM.diffuse_sigma_params[i_xtal*3+i_sig].get_val(diff_sig_reparam[i_sig]) for i_sig in range(3)]
+    diff_sig_a, diff_sig_b, diff_sig_c = [SIM.diffuse_sigma_params[i_xtal*3+i_sig].get_val(diff_sig_reparam[i_sig]) for i_sig in range(3)]
 
     return scale, rotX, rotY, rotZ, Na, Nb, Nc,diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c, a,b,c,al,be,ga, detz
 
