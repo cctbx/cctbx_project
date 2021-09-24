@@ -820,7 +820,7 @@ geometry {
     .type = bool
     .help = flag to specify whether to optimize the geometry
   optimized_detector_name = "diffBragg_detector.expt"
-    .type = str 
+    .type = str
     .help = name of the experiment which will be written, and will contain the optimized detector
   min {
     panel_rotations = -1,-1,-1
@@ -841,16 +841,16 @@ geometry {
   center {
     panel_rotations = 0,0,0
       .type = floats(size=3)
-      .help = restraint target in degrees for panel rotations 
-    panel_translations = 0,0,0 
+      .help = restraint target in degrees for panel rotations
+    panel_translations = 0,0,0
       .type = floats(size=3)
       .help = restraint target in mm for detector panel translations in X,Y,Z
   }
   betas {
-    panel_rotations = 1e6,1e6,1e6 
+    panel_rotations = 1e6,1e6,1e6
       .type = floats(size=3)
       .help = restraint factor for panel rotations (higher values lead to unrestrained parameters)
-    panel_translations = 1e6,1e6,1e6 
+    panel_translations = 1e6,1e6,1e6
       .type = floats(size=3)
       .help = restraint target in mm for detector panel translations in X,Y,Z
   }
