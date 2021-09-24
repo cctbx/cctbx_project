@@ -99,6 +99,8 @@ class Target:
         if COMM.rank==0:
             print("Iteration %d:\n\tResid=%f, sigmaZ %f" % (iter, resid, self.sigmaZ))
             print("\tAverage det shift=%f, average det rot=%f" % (-1,-1)) # TODO
+            if iter % 100 == 0:
+                print_parmams(lmfit_params)
 
     def __call__(self, lmfit_params, *fcn_args, **fcn_kws):
         f, self.g, self.sigmaZ = target_and_grad(lmfit_params, *fcn_args, **fcn_kws)
@@ -236,7 +238,7 @@ def update_detector(x, SIM):
     det = SIM.detector
     for pid in range(len(det)):
         group_id = SIM.panel_group_from_id[pid]
-        if not group_id in SIM.panel_groups_refined:
+        if group_id not in SIM.panel_groups_refined:
             continue
         Oang = x["group%d_RotOrth" % group_id].value
         Fang = x["group%d_RotFast" % group_id].value
