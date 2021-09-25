@@ -99,7 +99,7 @@ class Target:
         if COMM.rank==0:
             print("Iteration %d:\n\tResid=%f, sigmaZ %f" % (iter, resid, self.sigmaZ))
             print("\tAverage det shift=%f, average det rot=%f" % (-1,-1)) # TODO
-            if iter % 100 == 0:
+            if iter % 20 == 0:
                 print_parmams(lmfit_params)
 
     def __call__(self, lmfit_params, *fcn_args, **fcn_kws):
@@ -132,25 +132,25 @@ def model(x, i_shot, Modeler, SIM, compute_grad=True):
                 i_ucell + hopper_utils.UCELL_ID_OFFSET,
                 Modeler.ucell_man.derivative_matrices[i_ucell])
 
-    # update the Umat rotation matrix
+    # update the Umat rotation matrix and the RotXYZ perturbation
+    SIM.D.Umatrix = Modeler.PAR.Umatrix
     SIM.D.set_value(hopper_utils.ROTX_ID, rotX.value)
     SIM.D.set_value(hopper_utils.ROTY_ID, rotY.value)
     SIM.D.set_value(hopper_utils.ROTZ_ID, rotZ.value)
 
     # update the mosaic block size
-    SIM.D.set_ncells_values(tuple([Na.value, Nb.value, Nc.value]))
+    SIM.D.set_ncells_values((Na.value, Nb.value, Nc.value))
+
     npix = int(len(Modeler.pan_fast_slow)/3.)
 
     # get the forward Bragg scatterint
     SIM.D.add_diffBragg_spots(Modeler.pan_fast_slow)
-    bragg_no_scale = SIM.D.raw_pixels_roi[:npix]
-    bragg_no_scale = bragg_no_scale.as_numpy_array()
+    bragg_no_scale = (SIM.D.raw_pixels_roi[:npix]).as_numpy_array()
 
     # apply the per-shot scale factor
     scale = G.value
     bragg = scale*bragg_no_scale
 
-    # add the background
     model_pix = bragg + Modeler.all_background
 
     # compute the negative log Likelihood
@@ -403,7 +403,7 @@ def get_optimized_detector(x, SIM):
 
 def print_parmams(params):
     for name in params:
-        print("%s: %f" % (name, params[name].value))
+        print("%s: %1.3e" % (name, params[name].value))
 
 
 if __name__ == "__main__":

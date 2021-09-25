@@ -810,7 +810,7 @@ roi {
 }
 
 geometry {
-  optimize_method = lbfgsb* nelder
+  optimize_method = *lbfgsb nelder
     .type = choice
     .help = lmfit optimization method (lbfgsb uses gradients, nelder is graientless)
   input_pkl = None
