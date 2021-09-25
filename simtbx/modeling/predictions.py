@@ -1,3 +1,4 @@
+from __future__ import division
 
 from simtbx.modeling.forward_models import roi_spots_from_pandas
 from simtbx.diffBragg.utils import refls_to_hkl, refls_from_sims
