@@ -807,5 +807,46 @@ roi {
 }
 """
 
-philz = simulator_phil + refiner_phil + roi_phil
+preditions_phil = """
+predictions {
+  weak_fraction = 0.5
+    .type = float
+    .help = fraction of weak predictions to integrate
+  threshold = 1e-3
+    .type = float
+    .help = value determining the cutoff for the forward model intensity. Bragg peaks will then be determined
+    .help = as regions of connected values greater than the threshold
+  oversample_override = None
+    .type = int
+    .help = force the pixel oversample rate to this value during the forward model simulation
+    .help = for maximum speed gains, set this to 1, but inspect the output!
+    .expert_level=10
+  Nabc_override = None
+    .type = ints(size=3)
+    .help = use this value of mosaic block size for every shot, useful to get more predicted spots
+    .expert_level=10
+  pink_stride_override = None
+    .type = int
+    .help = if specified, stride through the spectrum according to this interval
+  default_Famplitude = 1e3
+    .type = float
+    .help = default structure factor amplitude for every miller index
+    .help = this creates a flat prediction model, where the magnitude is dependent on the distance to the Ewald sphere
+  resolution_range = [1,999]
+    .type = floats(size=2)
+    .help = high-res to low-res limit for prediction model
+  symbol_override = None
+    .type = str
+    .help = specify the space group symbol to use in diffBragg (e,g, P43212), 
+    .help = if None, then it will be pulled from the crystal model
+  method = *diffbragg exascale
+    .type = choice
+    .help = engine used for computing the forward model
+    .help = diffbragg offers CUDA support via the DIFFBRAGG_USE_CUDA=1 environment variable specification
+    .help = or openmp support using the OMP_NUM_THREADS flag
+    .help = The exascale only uses CUDA (will raise error if CUDA is not confugured)
+}
+"""
+
+philz = simulator_phil + refiner_phil + roi_phil + preditions_phil
 phil_scope = parse(philz)

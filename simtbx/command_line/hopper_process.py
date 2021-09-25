@@ -1,18 +1,21 @@
 from __future__ import absolute_import, division, print_function
+import time
 
 # LIBTBX_SET_DISPATCHER_NAME simtbx.diffBragg.hopper_process
 
 from dials.command_line.stills_process import Processor
 from simtbx.diffBragg.hopper_utils import refine
+from dials.array_family import flex
 from simtbx.command_line.hopper import save_to_pandas
 from dxtbx.model import ExperimentList
 import numpy as np
 import socket
 from libtbx.mpi4py import MPI
-from libtbx.utils import Abort, Sorry
 COMM = MPI.COMM_WORLD
 
 import logging
+from libtbx.utils import Sorry
+from simtbx.modeling import predictions
 
 logger = logging.getLogger("dials.command_line.stills_process")
 
@@ -45,6 +48,9 @@ class Hopper_Processor(Processor):
 
     def __init__(self, *args, **kwargs):
         super(Hopper_Processor, self).__init__(*args, **kwargs)
+
+        self.stage1_df = None  # the pandas dataframe containing model parameters after running stage 1 (see method refine)
+
         if self.params.silence_dials_loggers:
             logging.getLogger("dials.algorithms.indexing.nave_parameters").setLevel(logging.ERROR)
             logging.getLogger("dials.algorithms.indexing.stills_indexer").setLevel(logging.ERROR)
@@ -52,6 +58,56 @@ class Hopper_Processor(Processor):
             logging.getLogger("dials.algorithms.refinement.reflection_manager").setLevel(logging.ERROR)
             logging.getLogger("dials.algorithms.refinement.reflection_manager").setLevel(logging.ERROR)
         logging.basicConfig(level=logging.DEBUG)
+
+    @property
+    def device_id(self):
+        if self.params.hopper.refiner.randomize_devices:
+            dev = np.random.choice(self.params.hopper.refiner.num_devices)
+            print("Rank %d will use random device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
+        else:
+            dev = COMM.rank % self.params.hopper.refiner.num_devices
+            print("Rank %d will use fixed device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
+        return dev
+
+    def find_spots(self, experiments):
+        st = time.time()
+
+        logger.info("*" * 80)
+        logger.info("Finding Strong Spots")
+        logger.info("*" * 80)
+
+        # Find the strong spots
+        observed = flex.reflection_table.from_observations(
+            experiments, self.params, is_stills=True
+        )
+
+        # Reset z coordinates for dials.image_viewer; see Issues #226 for details
+        xyzobs = observed["xyzobs.px.value"]
+        for i in range(len(xyzobs)):
+            xyzobs[i] = (xyzobs[i][0], xyzobs[i][1], 0)
+        bbox = observed["bbox"]
+        for i in range(len(bbox)):
+            bbox[i] = (bbox[i][0], bbox[i][1], bbox[i][2], bbox[i][3], 0, 1)
+
+        if self.params.output.composite_output:
+            n = len(self.all_strong_reflections.experiment_identifiers())
+            for i, experiment in enumerate(experiments):
+                refls = observed.select(observed["id"] == i)
+                refls["id"] = flex.int(len(refls), n)
+                del refls.experiment_identifiers()[i]
+                refls.experiment_identifiers()[n] = experiment.identifier
+                self.all_strong_reflections.extend(refls)
+                n += 1
+        else:
+            # Save the reflections to file
+            logger.info("\n" + "-" * 80)
+            if self.params.output.strong_filename:
+                self.save_reflections(observed, self.params.output.strong_filename)
+
+        logger.info("")
+        logger.info("Time Taken = %f seconds", time.time() - st)
+        self.observed = observed  # note this is the only change needed to dials.stills_process.find_spots
+        return observed
 
     def refine(self, exps, ref):
         exps_out = exps
@@ -62,28 +118,17 @@ class Hopper_Processor(Processor):
             assert len(exps)==1
             # TODO MPI select GPU device
 
-            if self.params.hopper.refiner.randomize_devices:
-                dev = np.random.choice(self.params.hopper.refiner.num_devices)
-                print("Rank %d will use random device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
-            else:
-                dev = COMM.rank % self.params.hopper.refiner.num_devices
-                print("Rank %d will use fixed device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
-
-            exp, ref, data_modeler, x = refine(exps[0], ref, self.params.hopper, gpu_device=dev, return_modeler=True)
-            if self.params.output.output_dir is not None:
-                orig_exp_name = os.path.abspath(self.params.output.refined_experiments_filename)
-                refls_name = os.path.abspath(self.params.output.indexed_filename)
-                self.params.hopper.outdir = self.params.output.output_dir
-                # TODO: what about composite mode ?
-                save_to_pandas(x, data_modeler.SIM, orig_exp_name, self.params.hopper, data_modeler.E, 0, refls_name, None)
-
+            exp, ref, data_modeler, x = refine(exps[0], ref, self.params.hopper, gpu_device=self.device_id, return_modeler=True)
+            orig_exp_name = os.path.abspath(self.params.output.refined_experiments_filename)
+            refls_name = os.path.abspath(self.params.output.indexed_filename)
+            self.params.hopper.outdir = self.params.output.output_dir
+            # TODO: what about composite mode ?
+            self.stage1_df = save_to_pandas(x, data_modeler.SIM, orig_exp_name, self.params.hopper, data_modeler.E, 0, refls_name, None)
             exps_out = ExperimentList()
             exps_out.append(exp)
         return super(Hopper_Processor, self).refine(exps_out, ref)
 
     def integrate(self, experiments, indexed):
-        import time
-        from dials.array_family import flex
         st = time.time()
 
         logger.info("*" * 80)
@@ -143,15 +188,11 @@ class Hopper_Processor(Processor):
         logger.info("")
         logger.info("Predicting reflections")
         logger.info("")
-        predicted = flex.reflection_table.from_predictions_multi(
-            experiments,
-            dmin=self.params.prediction.d_min,
-            dmax=self.params.prediction.d_max,
-            margin=self.params.prediction.margin,
-            force_static=self.params.prediction.force_static,
-        )
+        # NOTE: this is the only changed needed to dials.stills_process
+        # TODO: multi xtal
+        predicted = predictions.get_predicted_from_pandas(self.stage1_df, self.params.hopper, self.observed,
+                                                          experiments[0].identifier, self.device_id)
         predicted.match_with_reference(indexed)
-        logger.info("")
         integrator = create_integrator(self.params, experiments, predicted)
 
         # Integrate the reflections
