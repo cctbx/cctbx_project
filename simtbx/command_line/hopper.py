@@ -417,6 +417,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     df["stage1_output_img"] = stg1_img_path
 
     df.to_pickle(pandas_path)
+    return df
 
 
 if __name__ == '__main__':
