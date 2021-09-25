@@ -837,7 +837,7 @@ predictions {
     .help = high-res to low-res limit for prediction model
   symbol_override = None
     .type = str
-    .help = specify the space group symbol to use in diffBragg (e,g, P43212), 
+    .help = specify the space group symbol to use in diffBragg (e,g, P43212),
     .help = if None, then it will be pulled from the crystal model
   method = *diffbragg exascale
     .type = choice
