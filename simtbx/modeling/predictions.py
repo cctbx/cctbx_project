@@ -1,6 +1,6 @@
 from __future__ import division
 
-from simtbx.modeling.forward_models import roi_spots_from_pandas
+from simtbx.modeling.forward_models import model_spots_from_pandas
 from simtbx.diffBragg.utils import refls_to_hkl, refls_from_sims
 from dials.array_family import flex
 from dxtbx.model import ExperimentList
@@ -24,7 +24,7 @@ def get_predicted_from_pandas(df, params, strong, eid, device_Id=0):
     """
 
     # returns the images and the experiment including any pre-modeling modifications (e.g. thinning out the detector)
-    panel_images, expt = roi_spots_from_pandas(
+    panel_images, expt = model_spots_from_pandas(
         df,
         oversample_override=params.predictions.oversample_override,
         Ncells_abc_override=params.predictions.Nabc_override,
@@ -137,9 +137,14 @@ def label_weak_spots_for_integration(fraction, predictions, num_res_bins=10):
 
 
 def normalize_by_partiality(refls, model, default_F=1):
+    """
+    :param refls: integrated refls output by the integrator.integrate() method in hopper_process / stills_process
+    :param model: prediction intensities, output by the model_spots_from_pandas method
+    :param default_F: value of the default structure factor used in the predictive model
+    :return: updated reflection table
+    """
     nref = len(refls)
     F2 = default_F**2
-    integ_code = MaskCode.Valid + MaskCode.Foreground
     partials = flex.double()
     new_Isum = flex.double()
     new_Ivar = flex.double()
@@ -150,7 +155,7 @@ def normalize_by_partiality(refls, model, default_F=1):
         mask = sb.mask.as_numpy_array()[0]
         data = sb.data.as_numpy_array()[0]
         x1,x2,y1,y2,_,_ = sb.bbox
-        was_integrated = mask==integ_code
+        was_integrated = mask==SIGNAL_MASK
         Y, X = np.where(was_integrated)
         Y += y1
         X += x1
