@@ -6,7 +6,6 @@ env = env_base.Clone(
   LIBS=env_etc.libm)
 if (env_etc.compiler != "win32_cl"):
   env.Replace(LINK=env_base["CC"])
-  env.Append(CXXFLAGS=["-std=c++03"]
   )
 #env.StaticLibrary(
 #  target=["#probe/lib/probelib"],
@@ -18,10 +17,6 @@ if (env_etc.compiler != "win32_cl"):
 if (not env_etc.no_boost_python):
   Import("env_cctbx_boost_python_ext")
   env_bpl = env_cctbx_boost_python_ext.Clone()
-  if (env_etc.compiler != "win32_cl"):
-    env_bpl.Append(CXXFLAGS=["-std=c++03"])
-    env_bpl.Append(SHCXXFLAGS=["-std=c++03"]
-    )
 
   # We need Boost Python to compile this C++ library because Scoring.cpp uses it.
   env_bpl.StaticLibrary(
