@@ -6,7 +6,6 @@ env = env_base.Clone(
   LIBS=env_etc.libm)
 if (env_etc.compiler != "win32_cl"):
   env.Replace(LINK=env_base["CC"])
-  )
 #env.StaticLibrary(
 #  target=["#probe/lib/probelib"],
 #  source=[
