@@ -215,12 +215,12 @@ namespace molprobity {
       /// The values mean: NoOverlap => dot outside atom, Clash => dot inside atom and not hydrogen bonding
       /// (including too-close hydrogen), HydrogenBond => Hydrogen bond, Ignore = this dot was inside
       /// an excluded atom or had no neighboring atoms so should be ignored.
-      enum class OverlapType { Ignore = -2, Clash = -1, NoOverlap = 0, HydrogenBond = 1 };
+      enum OverlapType { Ignore = -2, Clash = -1, NoOverlap = 0, HydrogenBond = 1 };
 
       /// @brief Structure to hold the results from a call to check_dot()
       class CheckDotResult {
       public:
-        OverlapType overlapType = DotScorer::OverlapType::Ignore; ///< What kind of overlap, if any, was found
+        OverlapType overlapType = DotScorer::Ignore; ///< What kind of overlap, if any, was found
         iotbx::pdb::hierarchy::atom cause;  ///< Cause of the overlap, if overlapType != Ignore
         double  overlap = 0;                ///< Amount of overlap assigned to source atom if there is a clash
         double  gap = 1e100;                ///< Gap distance (overlap may only be a fraction of this).
@@ -252,7 +252,7 @@ namespace molprobity {
       /// and used as an index.  These index values are chosen to match those used by the orignal Probe.
       enum InteractionType {
         WideContact = 0, CloseContact = 1, WeakHydrogenBond = 2, SmallOverlap = 3,
-        Bump = 4, BadBump = 5, HydrogenBond = 6, Invalid = -1
+        Bump = 4, BadBump = 5, StandardHydrogenBond = 6, Invalid = -1
       };
 
       /// @brief Determine the type of interaction that is represented by a CheckDotResult.

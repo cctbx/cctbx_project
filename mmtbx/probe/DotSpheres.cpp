@@ -14,6 +14,7 @@
 #include <cmath>
 #include <scitbx/constants.h>
 #include <algorithm>
+#include <boost/lexical_cast.hpp>
 #include "DotSpheres.h"
 
 namespace molprobity {
@@ -104,8 +105,9 @@ std::string DotSphere::test()
       double diff = abs(found - expected);
       if (diff > std::max(3.0, expected*0.2)) {
         return std::string("molprobity::probe::DotSphere::test(): Construction with density ")
-          +std::to_string(den) + " failed: "
-          + "found " + std::to_string(found) + " dots but expected " + std::to_string(expected);
+          +boost::lexical_cast<std::string>(den) + " failed: "
+          + "found " + boost::lexical_cast<std::string>(found) + " dots but expected "
+          + boost::lexical_cast<std::string>(expected);
       }
     }
   }
@@ -140,7 +142,7 @@ const DotSphere& DotSphereCache::get_sphere(double radius)
   if (ret == m_spheres.end()) {
     // We don't have a sphere with this radius -- create one and insert it
     std::pair<std::map<double, DotSphere>::iterator, bool> iRet = 
-      m_spheres.emplace(radius, DotSphere(radius, m_dens));
+      m_spheres.insert(std::pair<double, DotSphere>(radius, DotSphere(radius, m_dens)));
     ret = iRet.first;
   }
   return ret->second;

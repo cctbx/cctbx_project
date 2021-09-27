@@ -68,7 +68,7 @@ int atom_charge(iotbx::pdb::hierarchy::atom const& atom)
   // with the first indicating the magnitude and the second indicating the sign.
   int ret = 0;
   std::string chStr;
-  auto opt = atom.charge_tidy(true);
+  boost::optional<std::string> opt = atom.charge_tidy(true);
   if (opt) { chStr = opt.get(); }
 
   if (chStr.size() > 0) {
@@ -104,9 +104,10 @@ DotScorer::CheckDotResult DotScorer::check_dot(
 
   // Look through each atom to find the one with the smallest gap, which is the one that
   // the dot would interact with.
-  for (iotbx::pdb::hierarchy::atom const& b : interacting) {
-    ExtraAtomInfo const& bExtra = m_extraInfoMap.getMappingFor(b);
-    Point locb = b.data->xyz;
+  for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator b = interacting.begin();
+       b != interacting.end(); b++) {
+    ExtraAtomInfo const& bExtra = m_extraInfoMap.getMappingFor(*b);
+    Point locb = b->data->xyz;
     double vdwb = bExtra.getVdwRadius();
 
     // See if we are too far away to interact, bail if so.
@@ -128,7 +129,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
       // Figure out what kind of interaction this is based on the atom types and
       // charge status of the two atoms.
       int chargeSource = atom_charge(sourceAtom);
-      int chargeB = atom_charge(b);
+      int chargeB = atom_charge(*b);
 
       bool bothCharged = (chargeSource != 0) && (chargeB != 0);
       bool chargeComplement = bothCharged && (chargeSource * chargeB < 0);
@@ -150,7 +151,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
 
       // Record which atom is the closest and mark the dot to be kept because we found an
       // atom that is close enough.
-      ret.cause = b;
+      ret.cause = *b;
       keepDot = true;
       ret.gap = gap;
     }
@@ -159,9 +160,10 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   // If the dot was close enough to some non-bonded atom, check to see if it should be removed
   // from consideration because it is also inside an excluded atom.
   if (keepDot) {
-    for (iotbx::pdb::hierarchy::atom const& e : exclude) {
-      double vdwe = m_extraInfoMap.getMappingFor(e).getVdwRadius();
-      if ((absoluteDotLocation - e.data->xyz).length_sq() < vdwe * vdwe) {
+    for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator e = exclude.begin();
+         e != exclude.end(); e++) {
+      double vdwe = m_extraInfoMap.getMappingFor(*e).getVdwRadius();
+      if ((absoluteDotLocation - e->data->xyz).length_sq() < vdwe * vdwe) {
         keepDot = false;
         break;
       }
@@ -173,18 +175,18 @@ DotScorer::CheckDotResult DotScorer::check_dot(
     // Determine the overlap type and amount of overlap.
     if (ret.gap >= 0) {
       ret.overlap = 0;
-      ret.overlapType = DotScorer::OverlapType::NoOverlap;
+      ret.overlapType = DotScorer::NoOverlap;
     } else if (isHydrogenBond) {
       ret.overlap = -overlapScale * ret.gap;
       if (tooCloseHydrogenBond) {
         ret.gap += hydrogenBondMinDist;
-        ret.overlapType = DotScorer::OverlapType::Clash;
+        ret.overlapType = DotScorer::Clash;
       } else {
-        ret.overlapType = DotScorer::OverlapType::HydrogenBond;
+        ret.overlapType = DotScorer::HydrogenBond;
       }
     } else {  // ret.gap < 0 and not a hydrogen bond
       ret.overlap = -overlapScale * ret.gap;
-      ret.overlapType = DotScorer::OverlapType::Clash;
+      ret.overlapType = DotScorer::Clash;
     }
 
     /// @todo We may be able to speed things up by only computing this for contact dots
@@ -199,14 +201,14 @@ DotScorer::InteractionType DotScorer::interaction_type(
   OverlapType overlapType, double gap, bool separateWeakHydrogenBonds) const
 {
   switch (overlapType) {
-    case DotScorer::OverlapType::NoOverlap:
+    case DotScorer::NoOverlap:
       if (gap > m_contactCutoff) {
         return WideContact;
       } else {
         return CloseContact;
       }
       break;
-    case DotScorer::OverlapType::Clash:
+    case DotScorer::Clash:
       if (gap > -m_bumpOverlap) {
         return SmallOverlap;
       } else if (gap > -m_badBumpOverlap) {
@@ -215,18 +217,18 @@ DotScorer::InteractionType DotScorer::interaction_type(
         return BadBump;
       }
       break;
-    case DotScorer::OverlapType::HydrogenBond:
+    case DotScorer::HydrogenBond:
       if (separateWeakHydrogenBonds) {
         if (gap > 0) {
           return WeakHydrogenBond;
         } else {
-          return HydrogenBond;
+          return StandardHydrogenBond;
         }
       } else {
-        return HydrogenBond;
+        return StandardHydrogenBond;
       }
       break;
-    case DotScorer::OverlapType::Ignore:
+    case DotScorer::Ignore:
     default:
       return Invalid;
   }
@@ -247,7 +249,7 @@ std::string DotScorer::interaction_type_name(InteractionType t)
     return "bad_overlap";
   case BadBump:
     return "worse_overlap";
-  case HydrogenBond:
+  case StandardHydrogenBond:
     return "H-bonds";
   case Invalid:
     return "invalid (internal error)";
@@ -271,7 +273,7 @@ std::string DotScorer::interaction_type_short_name(InteractionType t)
     return "bo";
   case BadBump:
     return "wo";
-  case HydrogenBond:
+  case StandardHydrogenBond:
     return "hb";
   case Invalid:
     return "invalid (internal error)";
@@ -324,57 +326,59 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   // are not in the excluded list.
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> interacting;
   ExtraAtomInfo const& sourceExtra = m_extraInfoMap.getMappingFor(sourceAtom);
-  for (iotbx::pdb::hierarchy::atom const &a : neighbors) {
-    ExtraAtomInfo const& aExtra = m_extraInfoMap.getMappingFor(a);
+  for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator a = neighbors.begin();
+       a != neighbors.end(); a++) {
+    ExtraAtomInfo const& aExtra = m_extraInfoMap.getMappingFor(*a);
     double nonBondedDistance = sourceExtra.getVdwRadius() + aExtra.getVdwRadius();
     bool excluded = false;
-    for (iotbx::pdb::hierarchy::atom const& e : exclude) {
-      if (e.data.get() == a.data.get()) {
+    for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator e = exclude.begin();
+         e != exclude.end(); e++) {
+      if (e->data.get() == a->data.get()) {
         excluded = true;
         break;
       }
     }
-    if ((std::abs(a.data->occ) >= minOccupancy)
-          && ((a.data->xyz - sourceAtom.data->xyz).length() <= nonBondedDistance + probeRadius)
+    if ((std::abs(a->data->occ) >= minOccupancy)
+          && ((a->data->xyz - sourceAtom.data->xyz).length() <= nonBondedDistance + probeRadius)
           && (!excluded)
         ) {
-      interacting.push_back(a);
+      interacting.push_back(*a);
     }
   }
 
   // Run through all of the dots and determine whether and how to score each.
-  for (Point const& d : dots) {
+  for (scitbx::af::shared<Point>::const_iterator d = dots.begin(); d != dots.end(); d++) {
 
     // Find out which atom (if any) had the closest interaction, and the type of interaction.
-    CheckDotResult score = check_dot(sourceAtom, d, probeRadius, interacting, exclude);
+    CheckDotResult score = check_dot(sourceAtom, *d, probeRadius, interacting, exclude);
 
     // Compute the score for the dot based on the overlap type and amount of overlap.
     // Assign it to the appropriate subscore.
     double dotScore = 0;
     switch (score.overlapType) {
 
-    case DotScorer::OverlapType::Ignore: // The dot should be ignored, so is not scored.
+    case DotScorer::Ignore: // The dot should be ignored, so is not scored.
       break;
 
-    case DotScorer::OverlapType::NoOverlap: // No overlap, contact dot
+    case DotScorer::NoOverlap: // No overlap, contact dot
       if ((!onlyBumps) && !score.annular) {
         double scaledGap = score.gap / m_gapScale;
         ret.attractSubScore += exp(-scaledGap * scaledGap);
       }
       break;
 
-    case DotScorer::OverlapType::Clash:
+    case DotScorer::Clash:
       {
         ret.bumpSubScore += -m_bumpWeight * score.overlap;
         // See if we should flag this atom as having a bad bump
         DotScorer::InteractionType type = interaction_type(score.overlapType, score.gap, false);
-        if (type == DotScorer::InteractionType::BadBump) {
+        if (type == DotScorer::BadBump) {
           ret.hasBadBump = true;
         }
       }
       break;
 
-    case DotScorer::OverlapType::HydrogenBond:   // Hydrogen bond
+    case DotScorer::HydrogenBond:   // Hydrogen bond
       if (!onlyBumps) {
         ret.hBondSubScore += m_hBondWeight * score.overlap;
       } else {  // In this case, we treat it as a bump
@@ -449,59 +453,59 @@ std::string DotScorer::test()
     CheckDotResult res;
     source.set_xyz({ sourceRad + targetRad - 0.6,0,0 });
     res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
-    if (res.overlapType != DotScorer::OverlapType::Clash) {
+    if (res.overlapType != DotScorer::Clash) {
       return "DotScorer::test(): Did not find clash when expected for dot_score()";
     }
     if (res.cause.data != a.data) {
       return "DotScorer::test(): Did not find expected cause for dot_score()";
     }
-    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::InteractionType::BadBump) {
+    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::BadBump) {
       return "DotScorer::test(): Did not find WorseOverlap when expected for dot_score()";
     }
 
     source.set_xyz({ sourceRad + targetRad - 0.45,0,0 });
     res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
-    if (res.overlapType != DotScorer::OverlapType::Clash) {
+    if (res.overlapType != DotScorer::Clash) {
       return "DotScorer::test(): Did not find clash when expected for dot_score()";
     }
-    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::InteractionType::Bump) {
+    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::Bump) {
       return "DotScorer::test(): Did not find BadOverlap when expected for dot_score()";
     }
 
     source.set_xyz({ sourceRad + targetRad - 0.01,0,0 });
     res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
-    if (res.overlapType != DotScorer::OverlapType::Clash) {
+    if (res.overlapType != DotScorer::Clash) {
       return "DotScorer::test(): Did not find small clash when expected for dot_score()";
     }
-    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::InteractionType::SmallOverlap) {
+    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::SmallOverlap) {
       return "DotScorer::test(): Did not find SmallOverlap when expected for dot_score()";
     }
 
     source.set_xyz({ sourceRad + targetRad + 0.01,0,0 });
     res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
-    if (res.overlapType != DotScorer::OverlapType::NoOverlap) {
+    if (res.overlapType != DotScorer::NoOverlap) {
       return "DotScorer::test(): Did not find no overlap when expected for dot_score()";
     }
-    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::InteractionType::CloseContact) {
+    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::CloseContact) {
       return "DotScorer::test(): Did not find CloseContact when expected for dot_score()";
     }
 
     source.set_xyz({ sourceRad + targetRad + 0.26,0,0 });
     res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
-    if (res.overlapType != DotScorer::OverlapType::NoOverlap) {
+    if (res.overlapType != DotScorer::NoOverlap) {
       return "DotScorer::test(): Did not find no overlap when expected for dot_score()";
     }
-    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::InteractionType::WideContact) {
+    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::WideContact) {
       return "DotScorer::test(): Did not find WideContact when expected for dot_score()";
     }
 
     // Check so far away that there won't be any nearby atoms.
     source.set_xyz({ sourceRad + targetRad + 10.0,0,0 });
     res = as.check_dot(source, Point(-sourceRad, 0, 0), probeRad, interacting, exclude);
-    if (res.overlapType != DotScorer::OverlapType::Ignore) {
+    if (res.overlapType != DotScorer::Ignore) {
       return "DotScorer::test(): Did not find ignore when expected for dot_score()";
     }
-    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::InteractionType::Invalid) {
+    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::Invalid) {
       return "DotScorer::test(): Did not find Invalid when expected for dot_score()";
     }
   }
@@ -517,15 +521,30 @@ std::string DotScorer::test()
   // Construct the dot sphere to be used.
   DotSphere ds(sourceRad, 200);
 
-  for (std::string targetCharge : {"--", "-", "", "+", "++"}) {
-  for (std::string sourceCharge : {"--", "-", "", "+", "++"}) {
-   for (bool targetAccept : { false, true}) {
-    for (bool sourceAccept : { false, true}) {
-     for (bool targetDonor : { false, true}) {
-      for (bool sourceDonor : { false, true}) {
-       for (bool targetDummy : { false, true}) {
-         for (bool onlyBumps : { false, true}) {
-           for (bool excludeAtom : { false, true}) {
+  static const char* chargesArray[] = {"--", "-", "", "+", "++"};
+  std::vector<std::string> charges;
+  for (size_t i = 0; i < sizeof(chargesArray)/sizeof(chargesArray[0]); i++) {
+    charges.push_back(chargesArray[i]);
+  }
+  std::vector<bool> bools; bools.push_back(false); bools.push_back(true);
+  for (std::vector<std::string>::const_iterator targetCharge = charges.begin();
+       targetCharge != charges.end(); targetCharge++) {
+  for (std::vector<std::string>::const_iterator sourceCharge = charges.begin();
+       sourceCharge != charges.end(); sourceCharge++) {
+   for (std::vector<bool>::const_iterator targetAccept = bools.begin();
+        targetAccept != bools.end(); targetAccept++) {
+    for (std::vector<bool>::const_iterator sourceAccept = bools.begin();
+        sourceAccept != bools.end(); sourceAccept++) {
+     for (std::vector<bool>::const_iterator targetDonor = bools.begin();
+          targetDonor != bools.end(); targetDonor++) {
+      for (std::vector<bool>::const_iterator sourceDonor = bools.begin();
+           sourceDonor != bools.end(); sourceDonor++) {
+       for (std::vector<bool>::const_iterator targetDummy = bools.begin();
+            targetDummy != bools.end(); targetDummy++) {
+         for (std::vector<bool>::const_iterator onlyBumps = bools.begin();
+              onlyBumps != bools.end(); onlyBumps++) {
+           for (std::vector<bool>::const_iterator excludeAtom = bools.begin();
+                excludeAtom != bools.end(); excludeAtom++) {
 
              //================================================================
              // Test the scoring for various cases to ensure that they all behave as expected
@@ -535,23 +554,23 @@ std::string DotScorer::test()
              // with a vector of a single target atom, including its extra info looked up by
              // its i_seq value.
              iotbx::pdb::hierarchy::atom a;
-             a.set_charge(targetCharge.c_str());
+             a.set_charge(targetCharge->c_str());
              a.set_xyz({ 0,0,0 });
              a.set_occ(1);
              a.data->i_seq = atomSeq++;
              scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
              atoms.push_back(a);
              SpatialQuery sq(atoms);
-             ExtraAtomInfo e(targetRad, targetAccept, targetDonor, targetDummy);
+             ExtraAtomInfo e(targetRad, *targetAccept, *targetDonor, *targetDummy);
              scitbx::af::shared<ExtraAtomInfo> infos;
              infos.push_back(e);
 
              // Construct the source atom, including its extra info.
              iotbx::pdb::hierarchy::atom source;
-             source.set_charge(sourceCharge.c_str());
+             source.set_charge(sourceCharge->c_str());
              source.set_occ(1);
              source.data->i_seq = atomSeq++;
-             ExtraAtomInfo se(sourceRad, sourceAccept, sourceDonor, false);
+             ExtraAtomInfo se(sourceRad, *sourceAccept, *sourceDonor, false);
              atoms.push_back(source);
              infos.push_back(se);
 
@@ -560,19 +579,19 @@ std::string DotScorer::test()
 
              // Determine our hydrogen-bond state
              bool compatibleCharge = atom_charge(source) * atom_charge(a) <= 0;
-             bool compatible = (sourceDonor && targetAccept) || (sourceAccept && targetDonor);
+             bool compatible = (*sourceDonor && *targetAccept) || (*sourceAccept && *targetDonor);
              bool hBond = compatibleCharge && compatible;
 
              // If we have an excluded atom, we should always get no values or bumping.
              // Skip the remainder of the tests in this case
              scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
-             if (excludeAtom) {
+             if (*excludeAtom) {
                 // Describe the extra atom to the system, including its extra info.
                 iotbx::pdb::hierarchy::atom ea;
                 ea.set_xyz({ 0,0,0 });
                 ea.set_occ(1);
                 ea.data->i_seq = atomSeq++;
-                ExtraAtomInfo ex(targetRad + 0.2, targetAccept, targetDonor, targetDummy);
+                ExtraAtomInfo ex(targetRad + 0.2, *targetAccept, *targetDonor, *targetDummy);
                 atoms.push_back(ea);
                 infos.push_back(ex);
                 exclude.push_back(ea);
@@ -583,7 +602,7 @@ std::string DotScorer::test()
                 // Even when we have a close clash, we should get no response.
                 source.set_xyz({ sourceRad,0,0 });
                 ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
-                  probeRad, exclude, ds.dots(), ds.density(), onlyBumps);
+                  probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
                 if (!res.valid) {
                   return "DotScorer::test(): Could not score dots for excluded-atom case";
                 }
@@ -597,12 +616,12 @@ std::string DotScorer::test()
 
              // If we have a dummy hydrogen and we cannot be a hydrogen-bond pair,
              // we should always get no bumping.
-             if (targetDummy) {
+             if (*targetDummy) {
                if (!hBond) {
                  // Even when we have a close clash, we should get no response.
                  source.set_xyz({ sourceRad,0,0 });
                  ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
-                   probeRad, exclude, ds.dots(), ds.density(), onlyBumps);
+                   probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
                  if (!res.valid) {
                    return "DotScorer::test(): Could not score dots for dummy hydrogen case";
                  }
@@ -619,7 +638,7 @@ std::string DotScorer::test()
              {
                source.set_xyz({ sourceRad,0,0 });
                ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
-                 probeRad, exclude, ds.dots(), ds.density(), onlyBumps);
+                 probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
                if (!res.valid) {
                  return "DotScorer::test(): Could not score dots for bad-bump case";
                }
@@ -633,11 +652,11 @@ std::string DotScorer::test()
              {
                source.set_xyz({ sourceRad + targetRad + 0.001,0,0 });
                ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
-                 probeRad, exclude, ds.dots(), ds.density(), onlyBumps);
+                 probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
                if (!res.valid) {
                  return "DotScorer::test(): Could not score dots for bump-only test case";
                }
-               if (onlyBumps) {
+               if (*onlyBumps) {
                  if (res.totalScore() != 0) {
                    return "DotScorer::test(): Got value when not expected for bump-only test case";
                  }
@@ -649,10 +668,10 @@ std::string DotScorer::test()
              }
 
              // When we are only checking for bumps, even hydrogen bonds should be counted as bumps.
-             if (onlyBumps) {
+             if (*onlyBumps) {
                source.set_xyz({ sourceRad + targetRad - 0.1,0,0 });
                ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
-                 probeRad, exclude, ds.dots(), ds.density(), onlyBumps);
+                 probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
                if (!res.valid) {
                  return "DotScorer::test(): Could not score dots for bump-only hydrogen-bond test case";
                }
@@ -799,7 +818,12 @@ std::string DotScorer::test()
           if (!res.valid) {
             return "DotScorer::test(): Could not score dots for weight scaling cases";
           }
-          std::vector<double> row = { wGap, wBump, wBond, res.attractSubScore, res.bumpSubScore, res.hBondSubScore };
+          const static double rowValueArray[] = { wGap, wBump, wBond, res.attractSubScore,
+            res.bumpSubScore, res.hBondSubScore };
+          std::vector<double> row;
+          for (size_t i = 0; i < sizeof(rowValueArray)/sizeof(rowValueArray[0]); i++) {
+            row.push_back(rowValueArray[i]);
+          }
           results.push_back(row);
         }
       }
@@ -1016,8 +1040,14 @@ std::string DotScorer::test()
     source.set_xyz({ targetRad + sourceRad - 0.1, 0, 0 });
 
     // Occupancy values to check and whether the result should be zero:
-    std::vector<double> occupancies = { 1.0, 0.75, 0.5, 0.25, 0.1 };
-    std::vector<bool> expectZero = { true, true, true, false, false };
+    static const double occupancyArray[] = { 1.0, 0.75, 0.5, 0.25, 0.1 };
+    static const double expectZeroArray[] = { true, true, true, false, false };
+    std::vector<double> occupancies;
+    std::vector<bool> expectZero;
+    for (size_t i = 0; i < sizeof(occupancyArray)/sizeof(occupancyArray[0]); i++) {
+      occupancies.push_back(occupancyArray[i]);
+      expectZero.push_back(expectZeroArray[i]);
+    }
     for (size_t i = 0; i < occupancies.size(); i++) {
       res = as.score_dots(source, occupancies[i], sq, sourceRad + targetRad,
         probeRad, exclude, ds.dots(), ds.density(), false);
@@ -1090,8 +1120,15 @@ std::string Scoring_test()
   ContactResult res;
 
   // Test the atom-charge code.
-  std::vector<std::string> charges = { "--", "-", "", "+", "++", "+2", "-1", "0" };
-  std::vector<int> expectedCharge = { -2, -1, 0, 1, 2, 2, -1, 0 };
+  static const char* chargesArray[] = { "--", "-", "", "+", "++", "+2", "-1", "0" };
+  static const int expectedChargeArray[] = { -2, -1, 0, 1, 2, 2, -1, 0 };
+  std::vector<std::string> charges;
+  std::vector<int> expectedCharge;
+  for (size_t i = 0; i < sizeof(chargesArray)/sizeof(chargesArray[0]); i++) {
+    charges.push_back(chargesArray[i]);
+    expectedCharge.push_back(expectedChargeArray[i]);
+  }
+
   for (size_t i = 0; i < charges.size(); i++) {
     iotbx::pdb::hierarchy::atom a;
     a.set_charge(charges[i].c_str());

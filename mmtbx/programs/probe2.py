@@ -454,7 +454,7 @@ Note:
       :return: Kinemage name of the color associated with the class.
     '''
 
-    if interactionType == probeExt.InteractionType.HydrogenBond:
+    if interactionType == probeExt.InteractionType.StandardHydrogenBond:
       return "greentint "
     elif gap > 0.35:
       return "blue "
@@ -1075,7 +1075,7 @@ Note:
         if self.params.output.separate_worse_clashes:
           ret += "@master {{{}}}\n".format(mast[probeExt.InteractionType.BadBump])
       if self.params.output.report_hydrogen_bonds and not self.params.output.only_report_bad_clashes:
-        ret += "@master {{{}}}\n".format(mast[probeExt.InteractionType.HydrogenBond])
+        ret += "@master {{{}}}\n".format(mast[probeExt.InteractionType.StandardHydrogenBond])
         if self.params.probe.separate_weak_hydrogen_bonds:
           ret += "@master {{{}}}\n".format(mast[probeExt.InteractionType.WeakHydrogenBond])
 
@@ -1115,7 +1115,7 @@ Note:
           elif interactionType in [probeExt.InteractionType.SmallOverlap, probeExt.InteractionType.Bump,
               probeExt.InteractionType.BadBump]:
             listType = '@vectorlist'
-          elif interactionType == probeExt.InteractionType.HydrogenBond:
+          elif interactionType == probeExt.InteractionType.StandardHydrogenBond:
             # Nothing special
             pass
 
@@ -1944,7 +1944,7 @@ Note:
           probeExt.InteractionType.SmallOverlap,
           probeExt.InteractionType.Bump,
           probeExt.InteractionType.BadBump,
-          probeExt.InteractionType.HydrogenBond
+          probeExt.InteractionType.StandardHydrogenBond
         ]
       self._clear_results();
 

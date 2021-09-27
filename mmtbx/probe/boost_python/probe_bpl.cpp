@@ -69,21 +69,21 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     ;
 
   enum_<DotScorer::OverlapType>("OverlapType")
-    .value("Ignore", DotScorer::OverlapType::Ignore)
-    .value("NoOverlap", DotScorer::OverlapType::NoOverlap)
-    .value("Clash", DotScorer::OverlapType::Clash)
-    .value("HydrogenBond", DotScorer::OverlapType::HydrogenBond)
+    .value("Ignore", DotScorer::Ignore)
+    .value("NoOverlap", DotScorer::NoOverlap)
+    .value("Clash", DotScorer::Clash)
+    .value("HydrogenBond", DotScorer::HydrogenBond)
     ;
 
   enum_<DotScorer::InteractionType>("InteractionType")
-    .value("WideContact", DotScorer::InteractionType::WideContact)
-    .value("CloseContact", DotScorer::InteractionType::CloseContact)
-    .value("WeakHydrogenBond", DotScorer::InteractionType::WeakHydrogenBond)
-    .value("SmallOverlap", DotScorer::InteractionType::SmallOverlap)
-    .value("Bump", DotScorer::InteractionType::Bump)
-    .value("BadBump", DotScorer::InteractionType::BadBump)
-    .value("HydrogenBond", DotScorer::InteractionType::HydrogenBond)
-    .value("Invalid", DotScorer::InteractionType::Invalid)
+    .value("WideContact", DotScorer::WideContact)
+    .value("CloseContact", DotScorer::CloseContact)
+    .value("WeakHydrogenBond", DotScorer::WeakHydrogenBond)
+    .value("SmallOverlap", DotScorer::SmallOverlap)
+    .value("Bump", DotScorer::Bump)
+    .value("BadBump", DotScorer::BadBump)
+    .value("StandardHydrogenBond", DotScorer::StandardHydrogenBond)
+    .value("Invalid", DotScorer::Invalid)
     ;
 
   class_<DotScorer::CheckDotResult>("CheckDotResult", init<>())

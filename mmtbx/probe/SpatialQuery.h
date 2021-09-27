@@ -14,7 +14,7 @@
 #pragma once
 
 #include <vector>
-#include <array>
+#include <boost/array.hpp>
 #include <set>
 #include <algorithm>
 #include "Common.h"
@@ -92,7 +92,7 @@ namespace molprobity {
       static const Coord DEFAULT_BIN_SIZE;  ///< Default size of a grid bin in X, Y, and Z.
 
       Point   m_lowerBounds;            ///< Location of the lower corner of the grid in all dimensions
-      std::array<size_t, 3> m_gridSize; ///< Number of grid points in each axis
+      boost::array<size_t, 3> m_gridSize; ///< Number of grid points in each axis
       Point   m_binSize;                ///< Width of a bin in each of the 3 directions
 
       /// We need the less-than operator to be defined on our atom type so that we can
@@ -116,7 +116,7 @@ namespace molprobity {
       ///         the grid, the edge element closest to the point is returned.
       /// @return Index of the grid element containing or closest to p.
       size_t  grid_index(Point const& p) const {
-        std::array<size_t, 3> xyz;
+        boost::array<size_t, 3> xyz;
         for (size_t i = 0; i < 3; i++) {
           if (p[i] < m_lowerBounds[i]) { xyz[i] = 0; }
           else { xyz[i] = static_cast<size_t>(floor((p[i] - m_lowerBounds[i]) / m_binSize[i])); }

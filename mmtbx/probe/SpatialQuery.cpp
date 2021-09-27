@@ -14,6 +14,7 @@
 #include <cmath>
 #include <scitbx/constants.h>
 #include <algorithm>
+#include <boost/lexical_cast.hpp>
 #include "SpatialQuery.h"
 
 namespace molprobity {
@@ -58,8 +59,9 @@ SpatialQuery::SpatialQuery(scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms
   // Compute the parameters needed and initialize the grid
   Point lowerBounds(1e10, 1e10, 1e10);
   Point upperBounds(-1e10, -1e10, -1e10);
-  for (iotbx::pdb::hierarchy::atom const& a : atoms) {
-    Point loc = a.data->xyz;
+  for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator a = atoms.begin();
+       a != atoms.end(); a++) {
+    Point loc = a->data->xyz;
     for (size_t i = 0; i < 3; i++) {
       if (loc[i] < lowerBounds[i]) { lowerBounds[i] = loc[i]; }
       if (loc[i] > upperBounds[i]) { upperBounds[i] = loc[i]; }
@@ -75,8 +77,9 @@ SpatialQuery::SpatialQuery(scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms
   initialize(lowerBounds, upperBounds, binSize);
 
   // Add all of the atoms in the model
-  for (iotbx::pdb::hierarchy::atom const& a : atoms) {
-    add(a);
+  for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator a = atoms.begin();
+       a != atoms.end(); a++) {
+    add(*a);
   }
 }
 
@@ -103,7 +106,7 @@ scitbx::af::shared<iotbx::pdb::hierarchy::atom> SpatialQuery::neighbors(
   // Handle cases where the point is at any location relative to the grid: inside,
   // outside to left or right on one or more axes.
   // We overestimate here, counting all bins within range in X, Y, or Z.
-  std::array<size_t, 3> lowerIndex, upperIndex;
+  boost::array<size_t, 3> lowerIndex, upperIndex;
   for (size_t i = 0; i < 3; i++) {
     Coord lower = p[i] - max_distance;
     if (lower < m_lowerBounds[i]) { lowerIndex[i] = 0; }
@@ -126,10 +129,11 @@ scitbx::af::shared<iotbx::pdb::hierarchy::atom> SpatialQuery::neighbors(
     for (size_t y = lowerIndex[1]; y <= upperIndex[1]; y++) {
       for (size_t z = lowerIndex[2]; z <= upperIndex[2]; z++) {
         size_t index = x + m_gridSize[0] * (y + m_gridSize[1] * (z));
-        for (iotbx::pdb::hierarchy::atom const &a : m_grid[index]) {
-          double dist2 = (a.data->xyz - p).length_sq();
+        for (std::set<iotbx::pdb::hierarchy::atom, atom_less>::const_iterator a = m_grid[index].begin();
+             a != m_grid[index].end(); a++) {
+          double dist2 = (a->data->xyz - p).length_sq();
           if ((dist2 >= min2) && (dist2 <= max2)) {
-            ret.push_back(a);
+            ret.push_back(*a);
           }
         }
       }
@@ -174,7 +178,7 @@ std::string SpatialQuery::test()
     if (q.m_lowerBounds != lower) {
       return "molprobity::probe::SpatialQuery::test(): Unexpected lower bound on standard construction";
     }
-    if (q.m_gridSize != std::array<size_t, 3>({ 5, 5, 5 })) {
+    if (q.m_gridSize != boost::array<size_t, 3>({ 5, 5, 5 })) {
       return "molprobity::probe::SpatialQuery::test(): Unexpected grid size on standard construction";
     }
   }
@@ -188,7 +192,7 @@ std::string SpatialQuery::test()
     if (q.m_lowerBounds != lower) {
       return "molprobity::probe::SpatialQuery::test(): Unexpected lower bound on inverted construction";
     }
-    if (q.m_gridSize != std::array<size_t, 3>({ 1, 1, 1 })) {
+    if (q.m_gridSize != boost::array<size_t, 3>({ 1, 1, 1 })) {
       return "molprobity::probe::SpatialQuery::test(): Unexpected grid size on inverted construction";
     }
   }
@@ -254,7 +258,7 @@ std::string SpatialQuery::test()
       return "molprobity::probe::SpatialQuery::test(): Unexpected lower bound on model-based construction";
     }
     size_t expectedSize = static_cast<size_t>((numAtoms - 1) * spacing / DEFAULT_BIN_SIZE);
-    if (q.m_gridSize != std::array<size_t, 3>({ expectedSize, expectedSize, expectedSize })) {
+    if (q.m_gridSize != boost::array<size_t, 3>({ expectedSize, expectedSize, expectedSize })) {
       return "molprobity::probe::SpatialQuery::test(): Unexpected grid size on model-based construction";
     }
 
@@ -268,8 +272,10 @@ std::string SpatialQuery::test()
           scitbx::af::shared<iotbx::pdb::hierarchy::atom> n = q.neighbors(p, 0, 2000);
           if (n.size() != numAtoms * numAtoms * numAtoms) {
             return std::string("molprobity::probe::SpatialQuery::test(): Wrong number of neighbors in full-grid test at ")
-              + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z)
-              + " (found " + std::to_string(n.size()) + ", expected " + std::to_string(numAtoms * numAtoms * numAtoms) + ")";
+              + boost::lexical_cast<std::string>(x) + ", " + boost::lexical_cast<std::string>(y) + ", "
+              + boost::lexical_cast<std::string>(z)
+              + " (found " + boost::lexical_cast<std::string>(n.size()) + ", expected "
+              + boost::lexical_cast<std::string>(numAtoms * numAtoms * numAtoms) + ")";
           }
         }
       }
