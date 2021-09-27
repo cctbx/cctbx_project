@@ -179,6 +179,20 @@ def getExtraAtomInfo(model, useNeutronDistances = False, useImplicitHydrogenDist
                   if a.element in ['C','N']:
                     if AtomTypes.IsAromatic(ag.resname, a.name):
                       extra.isAcceptor = True
+                      warnings += "Marking "+a.name.strip()+" as an aromatic-ring acceptor\n"
+
+                  # Mark all Carbonyl's with the Probe radius while the Richarsons and
+                  # the CCTBX decide how to handle this.
+                  # @todo After 2021, see if the CCTBX has the same values (1.65 and 1.80)
+                  # for Carbonyls and remove this if so.  It needs to stay with these values
+                  # to avoid spurious collisions per experiments run by the Richardsons in
+                  # September 2021.
+                  if a.name.strip().upper() == 'C':
+                    if useImplicitHydrogenDistances:
+                      extra.vdwRadius = 1.80
+                    else:
+                      extra.vdwRadius = 1.65
+                    warnings += "Overriding radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
 
                   extras.setMappingFor(a, extra)
                   continue
@@ -186,7 +200,7 @@ def getExtraAtomInfo(model, useNeutronDistances = False, useImplicitHydrogenDist
                 # Did not find the information from CCTBX, so look it up using
                 # the original Probe approach by dropping through to below
                 else:
-                  warnings += "Could not find "+a.name+" in CCTBX, using Probe tables\n"
+                  warnings += "Could not find "+a.name.strip()+" in CCTBX, using Probe tables\n"
               except Exception as e:
                 # Warn and drop through to below.
                 warnings += ("Could not look up "+a.name.strip()+" in CCTBX "+
