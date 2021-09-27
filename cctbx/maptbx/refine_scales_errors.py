@@ -1268,8 +1268,8 @@ def run():
                     help = 'Set output as verbose', action = 'store_true')
   parser.add_argument('--testing', dest = 'testing',
                     help='Set output as testing', action='store_true')
-  parser.epilog('''Optionally define map target region by model or lower/upper
-    xyz bounds but not both.''')
+  # parser.epilog('''Optionally define map target region by model or lower/upper
+  #   xyz bounds but not both.''')
   args = parser.parse_args()
   d_min = args.d_min
   verbosity = 1
