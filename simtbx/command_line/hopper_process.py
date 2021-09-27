@@ -296,7 +296,7 @@ class Hopper_Processor(Processor):
         )
 
         rmsd_indexed, _ = calc_2D_rmsd_and_displacements(indexed)
-        log_str = f"RMSD indexed (px): {rmsd_indexed:f}\n"
+        log_str = "RMSD indexed (px): %f\n" % rmsd_indexed
         for i in range(6):
             bright_integrated = integrated.select(
                 (
