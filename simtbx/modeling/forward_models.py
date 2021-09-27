@@ -43,18 +43,18 @@ def panda_frame_from_exp(exp_name, detz_shift_mm=0, Ncells_abc=(30.,30.,30.), sp
     return df
 
 
-def model_from_expt(exp_name,  roi_spots_from_pandas_kwargs=None, panda_frame_from_exp_kwargs=None):
-    if roi_spots_from_pandas_kwargs is None:
-        roi_spots_from_pandas_kwargs = {}
+def model_from_expt(exp_name,  model_spots_from_pandas_kwargs=None, panda_frame_from_exp_kwargs=None):
+    if model_spots_from_pandas_kwargs is None:
+        model_spots_from_pandas_kwargs = {}
     if panda_frame_from_exp_kwargs is None:
         panda_frame_from_exp_kwargs = {}
     df = panda_frame_from_exp(exp_name, **panda_frame_from_exp_kwargs)
-    out = roi_spots_from_pandas(df, **roi_spots_from_pandas_kwargs)
+    out = model_spots_from_pandas(df, **model_spots_from_pandas_kwargs)
     return out
 
 
 # TODO name change
-def roi_spots_from_pandas(pandas_frame,  rois_per_panel=None,
+def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                           mtz_file=None, mtz_col=None,
                           oversample_override=None,
                           Ncells_abc_override=None,
@@ -270,13 +270,13 @@ if __name__ == "__main__":
         spectrum = hopper_utils.spectrum_from_expt(E, 1e12)
 
         t = time.time()
-        imgs,_ = roi_spots_from_pandas(df_exp, force_no_detector_thickness=True, use_db=True, quiet=True,
+        imgs,_ = model_spots_from_pandas(df_exp, force_no_detector_thickness=True, use_db=True, quiet=True,
                                      oversample_override=oo, nopolar=True, spectrum_override=spectrum)
         t = time.time() - t
         print("----------------------")
 
         t2 = time.time()
-        imgs2,_ = roi_spots_from_pandas(df_exp, force_no_detector_thickness=True, cuda=CUDA, quiet=True,
+        imgs2,_ = model_spots_from_pandas(df_exp, force_no_detector_thickness=True, cuda=CUDA, quiet=True,
                                       oversample_override=oo, nopolar=True, spectrum_override=spectrum)#, oversample_override=1, nopolar=True, printout_pix=PFS)
         t2 = time.time()-t2
         print("----------------------")
@@ -287,9 +287,8 @@ if __name__ == "__main__":
         if not CUDA:
             exit()
         t3 = time.time()
-        imgs3,_ = roi_spots_from_pandas(df_exp, use_exascale_api=True, force_no_detector_thickness=True, quiet=True,
+        imgs3,_ = model_spots_from_pandas(df_exp, use_exascale_api=True, force_no_detector_thickness=True, quiet=True,
                                           oversample_override=oo, nopolar=True, spectrum_override=spectrum)
-        #imgs2 = roi_spots_from_pandas(df_exp, use_db=True, force_no_detector_thickness=True, cuda=True, quiet=True)
         t3 = time.time()-t3
         if np.allclose(imgs, imgs3):
             print("OK2")
