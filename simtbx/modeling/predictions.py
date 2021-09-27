@@ -77,7 +77,7 @@ def get_predicted_from_pandas(df, params, strong, eid, device_Id=0):
     print("Will use %d spots for integration" % sum(predictions["is_for_integration"]))
     predictions = predictions.select(predictions["is_for_integration"])
 
-    return predictions
+    return predictions, panel_images
 
 
 def label_weak_predictions(predictions, strong, q_cutoff=0.005):
@@ -128,9 +128,45 @@ def label_weak_spots_for_integration(fraction, predictions, num_res_bins=10):
         refls_in_bin = predictions.select(flex.bool(is_weak_and_in_bin))
 
         # determine which weak spots are closer to the Ewald sphere, based on the scatter value
-        signal_cutoff_in_bin = np.percentile(refls_in_bin['scatter'], fraction*100)
+        signal_cutoff_in_bin = np.percentile(refls_in_bin['scatter'], (1.-fraction)*100)
         is_above_cutoff = predictions["scatter"] > signal_cutoff_in_bin
 
         is_integratable = logi_and(is_weak_and_in_bin, is_above_cutoff)
         is_weak_but_integratable[is_integratable] = True
     predictions['is_for_integration'] = flex.bool(logi_or(logi_not(predictions["is_weak"]), is_weak_but_integratable))
+
+
+def normalize_by_partiality(refls, model, default_F=1):
+    nref = len(refls)
+    F2 = default_F**2
+    integ_code = MaskCode.Valid + MaskCode.Foreground
+    partials = flex.double()
+    new_Isum = flex.double()
+    new_Ivar = flex.double()
+    for i_ref in range(nref):
+        refl = refls[i_ref]
+        sb = refl['shoebox']
+        pid = refl['panel']
+        mask = sb.mask.as_numpy_array()[0]
+        data = sb.data.as_numpy_array()[0]
+        x1,x2,y1,y2,_,_ = sb.bbox
+        was_integrated = mask==integ_code
+        Y, X = np.where(was_integrated)
+        Y += y1
+        X += x1
+        par = model[pid, Y, X] / F2
+        good = par > 0
+        corrected = (data[was_integrated] / par)[good]
+
+        par_sum = par.sum()
+        data_sum = corrected.sum()
+        data_var = corrected.std()**2
+        partials.append(par_sum)
+        new_Isum.append(data_sum)
+        new_Ivar.append(data_var)
+    refls['dials.intensity.sum.value'] = refls['intensity.sum.value']
+    refls['dials.intensity.sum.variance'] = refls['intensity.sum.variance']
+    refls['diffBragg_partials'] = partials
+    refls['intensity.sum.value'] = new_Isum
+    refls['intensity.sum.variance'] = new_Ivar
+    return refls

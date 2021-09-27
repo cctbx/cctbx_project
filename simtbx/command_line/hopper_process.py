@@ -22,7 +22,7 @@ logger = logging.getLogger("dials.command_line.stills_process")
 
 phil_str = """
 include scope dials.command_line.stills_process.phil_scope
-hopper {
+diffBragg {
   include scope simtbx.command_line.hopper.phil_scope
 }
 skip_hopper=False
@@ -38,6 +38,9 @@ save_pandas = True
 combine_pandas = True
   .type = bool
   .help = if True, combine all pandas frames after hopper_process completes
+partial_correct = False
+  .type = bool
+  .help = if True, compute partialities from the prediction models  and use them to normalize measurements
 """
 import os
 from libtbx.phil import parse
@@ -61,11 +64,11 @@ class Hopper_Processor(Processor):
 
     @property
     def device_id(self):
-        if self.params.hopper.refiner.randomize_devices:
-            dev = np.random.choice(self.params.hopper.refiner.num_devices)
+        if self.params.diffBragg.refiner.randomize_devices:
+            dev = np.random.choice(self.params.diffBragg.refiner.num_devices)
             print("Rank %d will use random device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
         else:
-            dev = COMM.rank % self.params.hopper.refiner.num_devices
+            dev = COMM.rank % self.params.diffBragg.refiner.num_devices
             print("Rank %d will use fixed device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
         return dev
 
@@ -118,12 +121,12 @@ class Hopper_Processor(Processor):
             assert len(exps)==1
             # TODO MPI select GPU device
 
-            exp, ref, data_modeler, x = refine(exps[0], ref, self.params.hopper, gpu_device=self.device_id, return_modeler=True)
+            exp, ref, data_modeler, x = refine(exps[0], ref, self.params.diffBragg, gpu_device=self.device_id, return_modeler=True)
             orig_exp_name = os.path.abspath(self.params.output.refined_experiments_filename)
             refls_name = os.path.abspath(self.params.output.indexed_filename)
-            self.params.hopper.outdir = self.params.output.output_dir
+            self.params.diffBragg.outdir = self.params.output.output_dir
             # TODO: what about composite mode ?
-            self.stage1_df = save_to_pandas(x, data_modeler.SIM, orig_exp_name, self.params.hopper, data_modeler.E, 0, refls_name, None)
+            self.stage1_df = save_to_pandas(x, data_modeler.SIM, orig_exp_name, self.params.diffBragg, data_modeler.E, 0, refls_name, None)
             exps_out = ExperimentList()
             exps_out.append(exp)
         return super(Hopper_Processor, self).refine(exps_out, ref)
@@ -190,13 +193,20 @@ class Hopper_Processor(Processor):
         logger.info("")
         # NOTE: this is the only changed needed to dials.stills_process
         # TODO: multi xtal
-        predicted = predictions.get_predicted_from_pandas(self.stage1_df, self.params.hopper, self.observed,
-                                                          experiments[0].identifier, self.device_id)
+        # TODO: add in normal dials predictions as an option
+        predicted, model = predictions.get_predicted_from_pandas(
+            self.stage1_df, self.params.diffBragg, self.observed,
+            experiments[0].identifier, self.device_id)
+
         predicted.match_with_reference(indexed)
         integrator = create_integrator(self.params, experiments, predicted)
 
         # Integrate the reflections
         integrated = integrator.integrate()
+
+        if self.params.partial_correct:
+            integrated = predictions.normalize_by_partiality(
+                integrated, model, default_F=self.params.diffBragg.predictions.default_Famplitude)
 
         # correct integrated intensities for absorption correction, if necessary
         for abs_params in self.params.integration.absorption_correction:
