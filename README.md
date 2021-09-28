@@ -49,6 +49,11 @@ The `python` package with a specific version can be added to change the version 
 
 The installation will take a long while but the script will verbosely describe what it does.
 
+
+## Contributing to the cctbx
+
+For a more detailed description on how to contribute to the cctbx please visit our [contribution guide](https://github.com/cctbx/cctbx_project/blob/master/CONTRIBUTING.md).
+
 ## Nightly builds
  [![Build Status](https://dev.azure.com/cctbx-release/feedstock-builds/_apis/build/status/nightly-feedstock?branchName=master)](https://dev.azure.com/cctbx-release/feedstock-builds/_build/latest?definitionId=5&branchName=master) [![Conda Version](https://img.shields.io/conda/vn/cctbx-nightly/cctbx-base.svg)](https://anaconda.org/cctbx-nightly/cctbx-base) [![Conda Platforms](https://anaconda.org/cctbx-nightly/cctbx-base/badges/platforms.svg)](https://anaconda.org/cctbx-nightly/cctbx-base)
 
@@ -238,7 +243,3 @@ A subset of tests is run on the current `cctbx-base` packages every night (10 pm
   </tbody>
 </table>
 
-
-## Contributing to the cctbx
-
-For a more detailed description on how to contribute to the cctbx please visit our [contribution guide](https://github.com/cctbx/cctbx_project/blob/master/CONTRIBUTING.md).
