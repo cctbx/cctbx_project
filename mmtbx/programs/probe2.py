@@ -1855,11 +1855,13 @@ Note:
                 self._inSideChain[newAtom] = self._inSideChain[a]
                 self._inHet[newAtom] = self._inHet[a]
 
-                # Mark the new atom as being bonded to the parent atom, but do not add the
+                # Mark the new atom as being bonded to the parent atom and add the
                 # phantom as bonded to the Oxygen.  Do this in both sets of bonded
                 # neighbor lists.
                 bondedNeighborLists[newAtom] = [a]
+                bondedNeighborLists[a].append(newAtom)
                 self._allBondedNeighborLists[newAtom] = [a]
+                self._allBondedNeighborLists[a].append(newAtom)
 
                 # Generate source dots for the new atom
                 self._dots[newAtom] = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(newAtom).vdwRadius).dots()
