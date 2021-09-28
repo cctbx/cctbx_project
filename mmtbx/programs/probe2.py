@@ -1030,7 +1030,9 @@ Note:
     color = ''
     mast = {}
     for t in self._interactionTypes:
-      mast[t] = probeExt.DotScorer.interaction_type_name(t)
+      # Probe uses spaces in these names for this function but underscores for others, so we replace
+      # underscores with spaces here.
+      mast[t] = probeExt.DotScorer.interaction_type_name(t).replace("_"," ")
     extraMaster = ''
     pointid = ''
     lastpointid = ''
