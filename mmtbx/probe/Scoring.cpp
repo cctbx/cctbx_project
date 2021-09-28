@@ -142,15 +142,13 @@ DotScorer::CheckDotResult DotScorer::check_dot(
         hydrogenBondMinDist = bothCharged ? m_maxChargedHydrogenOverlap : m_maxRegularHydrogenOverlap;
         tooCloseHydrogenBond = (gap < -hydrogenBondMinDist);
       } else {
+        // If the target is a dummy hydrogen, then we ignore the potential contact and skip;
+        // they can only be a hydrogen-bond partner and cannot cause other types of contact.
+        // For the other types, the dummy hydrogen acts as if it does not exist.
+        if (bExtra.getIsDummyHydrogen()) { continue; }
+
         // This is not a hydrogen bond.
         isHydrogenBond = tooCloseHydrogenBond = false;
-      }
-
-      // If either is a dummy hydrogen, then we skip things that are not hydrogen bonds or that
-      // are too-close hydrogen bonds, they can only be a hydrogen-bond partner.
-      if ( (sourceExtra.getIsDummyHydrogen() || bExtra.getIsDummyHydrogen())
-          && (!isHydrogenBond || tooCloseHydrogenBond) ) {
-        continue;
       }
 
       // Record which atom is the closest and mark the dot to be kept because we found an
@@ -159,6 +157,14 @@ DotScorer::CheckDotResult DotScorer::check_dot(
       keepDot = true;
       ret.gap = gap;
     }
+  }
+
+  // If the source is a dummy hydrogen, then we skip things that are not hydrogen bonds or that
+  // are too-close hydrogen bonds, they can only be a hydrogen-bond partner.  We throw out the
+  // potential dot because it would have been the wrong contact.
+  if (sourceExtra.getIsDummyHydrogen() && (!isHydrogenBond || tooCloseHydrogenBond)) {
+    ret = CheckDotResult();
+    keepDot = false;
   }
 
   // If the dot was close enough to some non-bonded atom, check to see if it should be removed
@@ -193,7 +199,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
       ret.overlapType = DotScorer::Clash;
     }
 
-    /// @todo We may be able to speed things up by only computing this for contact dots
+    /// @todo We may be able to speed things up by only computing this for NoOverlap dots
     ret.annular = annularDots(absoluteDotLocation, sourceAtom.data->xyz, sourceExtra.getVdwRadius(),
       ret.cause.data->xyz, m_extraInfoMap.getMappingFor(ret.cause).getVdwRadius(), probeRadius);
   }
