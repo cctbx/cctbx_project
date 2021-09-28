@@ -515,7 +515,8 @@ class around_unique(with_bounds):
     if keep_this_region_only is not None:
       regions_to_keep = -1 * keep_this_region_only
 
-    if solvent_content is None:
+
+    if solvent_content is None and sequence is None and molecular_mass is None:
       from cctbx.maptbx.segment_and_split_map \
           import get_iterated_solvent_fraction
       solvent_content = get_iterated_solvent_fraction(
