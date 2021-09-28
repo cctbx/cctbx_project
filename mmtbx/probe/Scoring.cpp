@@ -142,10 +142,15 @@ DotScorer::CheckDotResult DotScorer::check_dot(
         hydrogenBondMinDist = bothCharged ? m_maxChargedHydrogenOverlap : m_maxRegularHydrogenOverlap;
         tooCloseHydrogenBond = (gap < -hydrogenBondMinDist);
       } else {
-        // If either is a dummy hydrogen, then we skip, it can only be a hydrogen-bond partner
-        if (sourceExtra.getIsDummyHydrogen() || bExtra.getIsDummyHydrogen()) { continue; }
         // This is not a hydrogen bond.
         isHydrogenBond = tooCloseHydrogenBond = false;
+      }
+
+      // If either is a dummy hydrogen, then we skip things that are not hydrogen bonds or that
+      // are too-close hydrogen bonds, they can only be a hydrogen-bond partner.
+      if ( (sourceExtra.getIsDummyHydrogen() || bExtra.getIsDummyHydrogen())
+          && (!isHydrogenBond || tooCloseHydrogenBond) ) {
+        continue;
       }
 
       // Record which atom is the closest and mark the dot to be kept because we found an
@@ -629,9 +634,9 @@ std::string DotScorer::test()
                     if ((res.bumpSubScore != 0) || res.hasBadBump) {
                       return "DotScorer::test(): Got unexpected result for dummy hydrogen case";
                     }
-                    // Skip the rest of the tests for this case.
-                    continue;
                   }
+                  // Skip the rest of the tests for this case.
+                  continue;
                 }
 
                 // When we get so close that the source atom radius touches the center of the target,
