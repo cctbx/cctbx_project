@@ -38,18 +38,6 @@ approach = *self both once surface count_atoms
   .type = choice
   .help = self (src -> src) both (src <=> targ) once (src -> targ) surface (VdW surface) count_atoms (count atoms)
 
-include_mainchain_mainchain = True
-  .type = bool
-  .help = Include mainchain -> mainchain interactions (-mc in probe)
-
-include_het = True
-  .type = bool
-  .help = Include non-water HET group interactions (-het in probe)
-
-include_water = True
-  .type = bool
-  .help = Include water interactions (-waters/-nowaters in probe)
-
 excluded_bond_chain_length = 4
   .type = int
   .help = Exclude chain of atoms bonded to source for this many hops (-4H, -3, -2 , -1 in probe)
@@ -74,17 +62,21 @@ maximum_polar_hydrogen_b = 40.0
   .type = float
   .help = Minimum b-factor for polar hydrogens (80.0 in probe)
 
-do_water_water = False
+include_mainchain_mainchain = True
+  .type = bool
+  .help = Include mainchain -> mainchain interactions (-mc in probe)
+
+include_het = True
+  .type = bool
+  .help = Include het-atom interactions (-hets, -nohets in probe)
+
+include_water_water = False
   .type = bool
   .help = Include water-to-water interactions (-wat2wat in probe)
 
-do_water = True
+include_water = True
   .type = bool
   .help = Include water-to-non-water interactions (-wat2wat, -waters, -nowaters in probe)
-
-do_het = True
-  .type = bool
-  .help = Include het-atom interactions (-hets, -nohets in probe)
 
 keep_unselected_atoms = True
   .type = bool
@@ -627,7 +619,7 @@ Note:
           elif n.occ < self.params.probe.minimum_occupancy:
             continue
           # Skip water-water interactions unless they are allowed
-          elif (not self.params.do_water_water) and srcInWater and nInWater:
+          elif (not self.params.include_water_water) and srcInWater and nInWater:
             continue
           # Skip atoms that are in non-compatible alternate conformations
           elif not _compatible_conformations(src, n):
@@ -766,16 +758,16 @@ Note:
         # nearby are in a water, we should ignore this as well (unless
         # both are hydrogens from the same water, in which case we
         # continue on to check.)
-        elif ((not self.params.do_water_water) and srcInWater and bInWater
+        elif ((not self.params.include_water_water) and srcInWater and bInWater
               and src.parent() != b.parent() ):
           continue
         # If we're ignoring non-water to water interactions, skip check
         # if b is a water.
-        elif not self.params.do_water and bInWater:
+        elif not self.params.include_water and bInWater:
           continue
         # If we're ignoring hetatom interactions, skip check
         # if b is in a non-standard residue.
-        elif not self.params.do_het and self._inHet[b]:
+        elif not self.params.include_het and self._inHet[b]:
           continue
 
         # The nearby atom is one that we should check interaction with, see if
