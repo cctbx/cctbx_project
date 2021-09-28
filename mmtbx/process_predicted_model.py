@@ -161,6 +161,7 @@ def process_predicted_model(
     params,
     pae_matrix = None,
     distance_model = None,
+    mark_atoms_to_keep_with_occ_one = False,
     log = sys.stdout):
 
 
@@ -197,6 +198,7 @@ def process_predicted_model(
     default_maximum_rmsd:  used as default if nothing specified for
          maximum_rmsd or minimum_lddt .Default is 1.5 A,
     split_model_by_compact_regions: split resulting model into compact regions
+      and return a list of models in the group_arg return object
     pae_matrix:  matrix of predicted aligned errors (e.g., from AlphaFold2), NxN
       matrix of RMSD values, N = number of residues in model.
       Alternative to splitting by compact regions. Split to minimize predicted
@@ -223,9 +225,13 @@ def process_predicted_model(
     if subtract_minimum_b is set, subtract minimum(B values) from all B values
        after applying any B value cutoffs
 
+    If mark_atoms_to_keep_with_occ_one is set, return list of models, each
+      of which is complete, but in which occupancy = 1 marks atoms to include
+      and occupancy=0 marks those to exclude
   Output:
     processed_model_info: group_args object containing:
       processed_model:  single model with regions identified in chainid field
+      model_list:  list of models representing domains
 
   How to get the parameters object set up:
 
@@ -387,7 +393,8 @@ def process_predicted_model(
       chainid_list = info.chainid_list
       print("Total of %s regions identified" %(
         len(chainid_list)), file = log)
-      model_list = split_model_by_chainid(new_model, chainid_list)
+      model_list = split_model_by_chainid(new_model, chainid_list,
+        mark_atoms_to_keep_with_occ_one = mark_atoms_to_keep_with_occ_one)
   else:
     model_list = []
     chainid_list = []
@@ -424,9 +431,12 @@ def get_selection_for_short_segments(ph, minimum_sequential_residues):
 
 
 
-def split_model_by_chainid(m, chainid_list):
+def split_model_by_chainid(m, chainid_list,
+    mark_atoms_to_keep_with_occ_one = False):
   """
    Split a model into pieces based on chainid
+   Optionally write out everything for each model, using
+      occupancy=0 to mark everything that is not select3ed
   """
   split_model_list = []
   for chainid in chainid_list:
@@ -434,7 +444,16 @@ def split_model_by_chainid(m, chainid_list):
     ph = m.get_hierarchy()
     asc1 = ph.atom_selection_cache()
     sel = asc1.selection(selection_string)
-    m1 = m.select(sel)
+    if (not mark_atoms_to_keep_with_occ_one): # usual
+      m1 = m.select(sel)
+    else:  # for Voyager, mark unused with zero occupancies
+      m1 = m.deep_copy()
+      ph1 = m1.get_hierarchy()
+      atoms = ph1.atoms()
+      occupancies = atoms.extract_occ()
+      occupancies.set_selected(sel, 1)
+      occupancies.set_selected(~sel, 0)
+      atoms.set_occ(occupancies)
     split_model_list.append(m1)
   return split_model_list
 

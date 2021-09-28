@@ -79,6 +79,25 @@ def tst_01(log = sys.stdout):
   print("RMSD mean:",rmsd_values.min_max_mean().mean)
   assert approx_equal(rmsd_values.min_max_mean().mean, 0.93559254135)
 
+  # use process_predicted_model to convert lddt or rmsd to B return with
+  #  mark_atoms_to_ignore_with_occ_zero
+
+  print("\nConverting lddt to B values and using mark_atoms_to_ignore_with_occ_zero", file = log)
+  params.process_predicted_model.b_value_field_is = 'lddt'
+  params.process_predicted_model.remove_low_confidence_residues = True
+  params.process_predicted_model.maximum_rmsd = 1.5
+  params.process_predicted_model.split_model_by_compact_regions = True
+  params.process_predicted_model.maximum_domains = 3
+
+  model_info = process_predicted_model(m, params, mark_atoms_to_keep_with_occ_one= True)
+  models = model_info.model_list
+  for mm,n1,n2 in zip(models,[84,88],[88,84]):
+    model_occ_values = mm.get_hierarchy().atoms().extract_occ()
+    assert model_occ_values.count(1) == n1
+    assert model_occ_values.count(0) == n2
+
+
+
   # use process_predicted_model to convert lddt or rmsd to B
 
   print("\nConverting lddt to B values", file = log)
@@ -91,6 +110,7 @@ def tst_01(log = sys.stdout):
   model = model_info.model
   model_b_values = model.get_hierarchy().atoms().extract_b()
   assert approx_equal(b_values, model_b_values, eps = 0.02) # come back rounded
+
 
   print("\nConverting fractional lddt to B values", file = log)
   ph = model.get_hierarchy().deep_copy()
