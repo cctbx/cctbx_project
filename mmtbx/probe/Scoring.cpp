@@ -141,10 +141,9 @@ DotScorer::CheckDotResult DotScorer::check_dot(
         isHydrogenBond = true;
         hydrogenBondMinDist = bothCharged ? m_maxChargedHydrogenOverlap : m_maxRegularHydrogenOverlap;
         tooCloseHydrogenBond = (gap < -hydrogenBondMinDist);
-      }
-      else {
-        // If this is a dummy hydrogen, then we skip it, it can only be a hydrogen-bond partner
-        if (bExtra.getIsDummyHydrogen()) { continue; }
+      } else {
+        // If either is a dummy hydrogen, then we skip, it can only be a hydrogen-bond partner
+        if (sourceExtra.getIsDummyHydrogen() || bExtra.getIsDummyHydrogen()) { continue; }
         // This is not a hydrogen bond.
         isHydrogenBond = tooCloseHydrogenBond = false;
       }
@@ -539,151 +538,155 @@ std::string DotScorer::test()
           targetDonor != bools.end(); targetDonor++) {
       for (std::vector<bool>::const_iterator sourceDonor = bools.begin();
            sourceDonor != bools.end(); sourceDonor++) {
-       for (std::vector<bool>::const_iterator targetDummy = bools.begin();
+        for (std::vector<bool>::const_iterator sourceDummy = bools.begin();
+          sourceDummy != bools.end(); sourceDummy++) {
+          for (std::vector<bool>::const_iterator targetDummy = bools.begin();
             targetDummy != bools.end(); targetDummy++) {
-         for (std::vector<bool>::const_iterator onlyBumps = bools.begin();
+            for (std::vector<bool>::const_iterator onlyBumps = bools.begin();
               onlyBumps != bools.end(); onlyBumps++) {
-           for (std::vector<bool>::const_iterator excludeAtom = bools.begin();
+              for (std::vector<bool>::const_iterator excludeAtom = bools.begin();
                 excludeAtom != bools.end(); excludeAtom++) {
 
-             //================================================================
-             // Test the scoring for various cases to ensure that they all behave as expected
-             unsigned int atomSeq = 0;
+                //================================================================
+                // Test the scoring for various cases to ensure that they all behave as expected
+                unsigned int atomSeq = 0;
 
-             // Construct and fill the SpatialQuery information
-             // with a vector of a single target atom, including its extra info looked up by
-             // its i_seq value.
-             iotbx::pdb::hierarchy::atom a;
-             a.set_charge(targetCharge->c_str());
-             a.set_xyz({ 0,0,0 });
-             a.set_occ(1);
-             a.data->i_seq = atomSeq++;
-             scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
-             atoms.push_back(a);
-             SpatialQuery sq(atoms);
-             ExtraAtomInfo e(targetRad, *targetAccept, *targetDonor, *targetDummy);
-             scitbx::af::shared<ExtraAtomInfo> infos;
-             infos.push_back(e);
+                // Construct and fill the SpatialQuery information
+                // with a vector of a single target atom, including its extra info looked up by
+                // its i_seq value.
+                iotbx::pdb::hierarchy::atom a;
+                a.set_charge(targetCharge->c_str());
+                a.set_xyz({ 0,0,0 });
+                a.set_occ(1);
+                a.data->i_seq = atomSeq++;
+                scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
+                atoms.push_back(a);
+                SpatialQuery sq(atoms);
+                ExtraAtomInfo e(targetRad, *targetAccept, *targetDonor, *targetDummy);
+                scitbx::af::shared<ExtraAtomInfo> infos;
+                infos.push_back(e);
 
-             // Construct the source atom, including its extra info.
-             iotbx::pdb::hierarchy::atom source;
-             source.set_charge(sourceCharge->c_str());
-             source.set_occ(1);
-             source.data->i_seq = atomSeq++;
-             ExtraAtomInfo se(sourceRad, *sourceAccept, *sourceDonor, false);
-             atoms.push_back(source);
-             infos.push_back(se);
+                // Construct the source atom, including its extra info.
+                iotbx::pdb::hierarchy::atom source;
+                source.set_charge(sourceCharge->c_str());
+                source.set_occ(1);
+                source.data->i_seq = atomSeq++;
+                ExtraAtomInfo se(sourceRad, *sourceAccept, *sourceDonor, *sourceDummy);
+                atoms.push_back(source);
+                infos.push_back(se);
 
-             // Construct the scorer to be used.
-             DotScorer as(ExtraAtomInfoMap(atoms, infos));
-
-             // Determine our hydrogen-bond state
-             bool compatibleCharge = atom_charge(source) * atom_charge(a) <= 0;
-             bool compatible = (*sourceDonor && *targetAccept) || (*sourceAccept && *targetDonor);
-             bool hBond = compatibleCharge && compatible;
-
-             // If we have an excluded atom, we should always get no values or bumping.
-             // Skip the remainder of the tests in this case
-             scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
-             if (*excludeAtom) {
-                // Describe the extra atom to the system, including its extra info.
-                iotbx::pdb::hierarchy::atom ea;
-                ea.set_xyz({ 0,0,0 });
-                ea.set_occ(1);
-                ea.data->i_seq = atomSeq++;
-                ExtraAtomInfo ex(targetRad + 0.2, *targetAccept, *targetDonor, *targetDummy);
-                atoms.push_back(ea);
-                infos.push_back(ex);
-                exclude.push_back(ea);
-
-                // We added an atom, so we need a new DotScorer
+                // Construct the scorer to be used.
                 DotScorer as(ExtraAtomInfoMap(atoms, infos));
 
-                // Even when we have a close clash, we should get no response.
-                source.set_xyz({ sourceRad,0,0 });
-                ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
-                  probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
-                if (!res.valid) {
-                  return "DotScorer::test(): Could not score dots for excluded-atom case";
+                // Determine our hydrogen-bond state
+                bool compatibleCharge = atom_charge(source) * atom_charge(a) <= 0;
+                bool compatible = (*sourceDonor && *targetAccept) || (*sourceAccept && *targetDonor);
+                bool hBond = compatibleCharge && compatible;
+
+                // If we have an excluded atom, we should always get no values or bumping.
+                // Skip the remainder of the tests in this case
+                scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
+                if (*excludeAtom) {
+                  // Describe the extra atom to the system, including its extra info.
+                  iotbx::pdb::hierarchy::atom ea;
+                  ea.set_xyz({ 0,0,0 });
+                  ea.set_occ(1);
+                  ea.data->i_seq = atomSeq++;
+                  ExtraAtomInfo ex(targetRad + 0.2, *targetAccept, *targetDonor, *targetDummy);
+                  atoms.push_back(ea);
+                  infos.push_back(ex);
+                  exclude.push_back(ea);
+
+                  // We added an atom, so we need a new DotScorer
+                  DotScorer as(ExtraAtomInfoMap(atoms, infos));
+
+                  // Even when we have a close clash, we should get no response.
+                  source.set_xyz({ sourceRad,0,0 });
+                  ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
+                    probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
+                  if (!res.valid) {
+                    return "DotScorer::test(): Could not score dots for excluded-atom case";
+                  }
+                  if ((res.totalScore() != 0) || res.hasBadBump) {
+                    return "DotScorer::test(): Got unexpected result for excluded-atom case";
+                  }
+
+                  // Skip the rest of the tests for this case.
+                  continue;
                 }
-                if ((res.totalScore() != 0) || res.hasBadBump) {
-                  return "DotScorer::test(): Got unexpected result for excluded-atom case";
+
+                // If we have a dummy hydrogen and we cannot be a hydrogen-bond pair,
+                // we should always get no bumping.
+                if (*sourceDummy || *targetDummy) {
+                  if (!hBond) {
+                    // Even when we have a close clash, we should get no response.
+                    source.set_xyz({ sourceRad,0,0 });
+                    ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
+                      probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
+                    if (!res.valid) {
+                      return "DotScorer::test(): Could not score dots for dummy hydrogen case";
+                    }
+                    if ((res.bumpSubScore != 0) || res.hasBadBump) {
+                      return "DotScorer::test(): Got unexpected result for dummy hydrogen case";
+                    }
+                    // Skip the rest of the tests for this case.
+                    continue;
+                  }
                 }
 
-                // Skip the rest of the tests for this case.
-                continue;
-             }
+                // When we get so close that the source atom radius touches the center of the target,
+                // we should get bad bumps in all cases.
+                {
+                  source.set_xyz({ sourceRad,0,0 });
+                  ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
+                    probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
+                  if (!res.valid) {
+                    return "DotScorer::test(): Could not score dots for bad-bump case";
+                  }
+                  if (!res.hasBadBump) {
+                    return "DotScorer::test(): Got no bad bump for bad-bump case";
+                  }
+                }
 
-             // If we have a dummy hydrogen and we cannot be a hydrogen-bond pair,
-             // we should always get no bumping.
-             if (*targetDummy) {
-               if (!hBond) {
-                 // Even when we have a close clash, we should get no response.
-                 source.set_xyz({ sourceRad,0,0 });
-                 ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
-                   probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
-                 if (!res.valid) {
-                   return "DotScorer::test(): Could not score dots for dummy hydrogen case";
-                 }
-                 if ((res.bumpSubScore != 0) || res.hasBadBump) {
-                   return "DotScorer::test(): Got unexpected result for dummy hydrogen case";
-                 }
-                 // Skip the rest of the tests for this case.
-                 continue;
-               }
-             }
+                // When we are only checking for bumps, we should get no interaction when the
+                // atoms are not touching.  Otherwise, slight interaction.
+                {
+                  source.set_xyz({ sourceRad + targetRad + 0.001,0,0 });
+                  ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
+                    probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
+                  if (!res.valid) {
+                    return "DotScorer::test(): Could not score dots for bump-only test case";
+                  }
+                  if (*onlyBumps) {
+                    if (res.totalScore() != 0) {
+                      return "DotScorer::test(): Got value when not expected for bump-only test case";
+                    }
+                  }
+                  else {
+                    if (res.totalScore() == 0) {
+                      return "DotScorer::test(): Got no value when one expected for non-bump-only test case";
+                    }
+                  }
+                }
 
-             // When we get so close that the source atom radius touches the center of the target,
-             // we should get bad bumps in all cases.
-             {
-               source.set_xyz({ sourceRad,0,0 });
-               ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
-                 probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
-               if (!res.valid) {
-                 return "DotScorer::test(): Could not score dots for bad-bump case";
-               }
-               if (!res.hasBadBump) {
-                 return "DotScorer::test(): Got no bad bump for bad-bump case case";
-               }
-             }
+                // When we are only checking for bumps, even hydrogen bonds should be counted as bumps.
+                if (*onlyBumps) {
+                  source.set_xyz({ sourceRad + targetRad - 0.1,0,0 });
+                  ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
+                    probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
+                  if (!res.valid) {
+                    return "DotScorer::test(): Could not score dots for bump-only hydrogen-bond test case";
+                  }
+                  if (res.hBondSubScore != 0) {
+                    return "DotScorer::test(): Got unexpected hydrogen bond score for bump-only test case";
+                  }
+                  if (res.bumpSubScore >= 0) {
+                    return "DotScorer::test(): Got unexpected bump score for bump-only test case";
+                  }
+                }
 
-             // When we are only checking for bumps, we should get no interaction when the
-             // atoms are not touching.  Otherwise, slight interaction.
-             {
-               source.set_xyz({ sourceRad + targetRad + 0.001,0,0 });
-               ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
-                 probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
-               if (!res.valid) {
-                 return "DotScorer::test(): Could not score dots for bump-only test case";
-               }
-               if (*onlyBumps) {
-                 if (res.totalScore() != 0) {
-                   return "DotScorer::test(): Got value when not expected for bump-only test case";
-                 }
-               } else {
-                 if (res.totalScore() == 0) {
-                   return "DotScorer::test(): Got no value when one expected for non-bump-only test case";
-                 }
-               }
-             }
-
-             // When we are only checking for bumps, even hydrogen bonds should be counted as bumps.
-             if (*onlyBumps) {
-               source.set_xyz({ sourceRad + targetRad - 0.1,0,0 });
-               ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
-                 probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
-               if (!res.valid) {
-                 return "DotScorer::test(): Could not score dots for bump-only hydrogen-bond test case";
-               }
-               if (res.hBondSubScore != 0) {
-                 return "DotScorer::test(): Got unexpected hydrogen bond score for bump-only test case";
-               }
-               if (res.bumpSubScore >= 0) {
-                 return "DotScorer::test(): Got unexpected bump score for bump-only test case";
-               }
-             }
-
-           }
+              }
+            }
          }
        }
       }
