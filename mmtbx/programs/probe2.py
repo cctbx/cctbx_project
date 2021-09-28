@@ -1782,15 +1782,6 @@ Note:
         self._spatialQuery = probeExt.SpatialQuery(list(all_selected_atoms))
 
       ################################################################################
-      # Construct a DotScorer object.
-      make_sub_header('Make dot scorer', out=self.logger)
-      self._dotScorer = probeExt.DotScorer(self._extraAtomInfo, self.params.probe.gap_weight,
-        self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight,
-        self.params.probe.uncharged_hydrogen_cutoff, self.params.probe.charged_hydrogen_cutoff,
-        self.params.probe.clash_cutoff, self.params.probe.worse_clash_cutoff,
-        self.params.probe.contact_cutoff)
-
-      ################################################################################
       # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
       # the water oxygens as not being donors in atoms that are in the source or target selection.
       # Also clear the donor status of all N, O, S atoms because we have explicit hydrogen donors.
@@ -1910,6 +1901,16 @@ Note:
       ################################################################################
       # Re-fill all_selected_atoms
       all_selected_atoms = source_atoms.union(target_atoms)
+
+      ################################################################################
+      # Construct a DotScorer object.  This must be done after we've added all Phantom
+      # Hydrogens and adjusted all of the ExtraAtomInfo.
+      make_sub_header('Make dot scorer', out=self.logger)
+      self._dotScorer = probeExt.DotScorer(self._extraAtomInfo, self.params.probe.gap_weight,
+        self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight,
+        self.params.probe.uncharged_hydrogen_cutoff, self.params.probe.charged_hydrogen_cutoff,
+        self.params.probe.clash_cutoff, self.params.probe.worse_clash_cutoff,
+        self.params.probe.contact_cutoff)
 
       ################################################################################
       # List of all of the keys for atom classes, including all elements and all
