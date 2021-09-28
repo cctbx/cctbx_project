@@ -2590,6 +2590,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     chain_residue_id=[group,residue_range_list]
     return new
 
+
   def display_summary(self,verbose=None):
     text=""
     text+="\nSummary of NCS group with "+str(self.n_ncs_oper())+" operators:"
@@ -4123,6 +4124,8 @@ class ncs:
      self._ncs_groups.append(ncs_group_object)
      self.init_ncs_group()
 
+  def show_summary(self, verbose=True, log = None):
+    return self.display_all(verbose=verbose, log = log)
 
   def display_all(self,verbose=True,log=None):
     if log==None:

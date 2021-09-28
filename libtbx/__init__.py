@@ -286,6 +286,10 @@ class group_args(dda):
   def add(self,key=None,value=None):
     self.__dict__[key]=value
 
+  def copy(self):
+    """ produce shallow copy of self by converting to dict and back"""
+    return group_args(**self().copy())
+
 if os.environ.get("LIBTBX_PRINT_TRACE"):
   import libtbx.start_print_trace
 

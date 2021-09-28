@@ -1485,7 +1485,8 @@ class map_model_manager(object):
      keep_this_region_only = None,
      residues_per_region = None,
      soft_mask_radius = None,
-     mask_expand_ratio = 1):
+     mask_expand_ratio = 1,
+     use_symmetry = True):
 
     '''
       Runs box_all_maps_around_unique_and_shift_origin with extract_box=True
@@ -1508,6 +1509,7 @@ class map_model_manager(object):
       soft_mask_radius = soft_mask_radius,
       soft_mask_around_edges = soft_mask_around_edges,
       boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
+      use_symmetry = use_symmetry,
       extract_box = True)
 
   def box_all_maps_around_unique_and_shift_origin(self,
@@ -1528,6 +1530,7 @@ class map_model_manager(object):
      boundary_to_smoothing_ratio = 2.,
      keep_this_region_only = None,
      residues_per_region = None,
+     use_symmetry = True,
      extract_box = False):
     '''
        Box all maps using bounds obtained with around_unique,
@@ -1550,6 +1553,9 @@ class map_model_manager(object):
        Symmetry is optional symmetry (i.e., D7 or C1). Used as alternative to
        ncs_object supplied in map_manager
 
+       Use_symmetry can be set to False to ignore symmetry found in ncs_object.
+         NCS object is still kept and shifted however.
+
       if soft_mask_around_edges, makes a bigger box and makes a soft mask around
        the edges.  Use this option if you are going to calculate a FT of
        the map or otherwise manipulate it in reciprocal space.
@@ -1557,7 +1563,8 @@ class map_model_manager(object):
        Additional parameters:
          mask_expand_ratio:   allows increasing masking radius beyond default at
                               final stage of masking
-         solvent_content:  fraction of cell not occupied by macromolecule
+         solvent_content:  fraction of cell not occupied by macromolecule. Can
+                            be None in which case it is estimated from map
          sequence:        one-letter code of sequence of unique part of molecule
          chain_type:       PROTEIN or RNA or DNA. Used with sequence to estimate
                             molecular_mass
@@ -1582,7 +1589,6 @@ class map_model_manager(object):
     if not resolution:
       resolution = self.resolution()
     assert resolution is not None
-    assert (sequence, solvent_content, molecular_mass).count(None) == 2
 
     model_info=self._get_model_info()
     model = self._model_dict[model_info.model_id]
@@ -1606,6 +1612,7 @@ class map_model_manager(object):
       sequence = sequence,
       molecular_mass = molecular_mass,
       symmetry = symmetry,
+      use_ncs_object = use_symmetry,
       chain_type = chain_type,
       box_cushion = box_cushion,
       soft_mask = soft_mask,
