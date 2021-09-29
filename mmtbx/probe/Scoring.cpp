@@ -100,7 +100,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   bool isHydrogenBond = false;          ///< Are we looking at a hydrogen bond to our neighbor?
   bool tooCloseHydrogenBond = false;    ///< Are we too close to be a hydrogen bond?
   double hydrogenBondMinDist = 0;       ///< Hydrogen bond minimum distance based on the atom types (will be set below).
-  bool keepDot = false;                 ///< Did we find a neighbor and we're not in a bonded atom?
+  bool keepDot = false;                 ///< Did we find a neighbor and we're not in an excluded atom?
 
   // Look through each atom to find the one with the smallest gap, which is the one that
   // the dot would interact with.
@@ -163,12 +163,10 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   // are too-close hydrogen bonds, they can only be a hydrogen-bond partner.  We throw out the
   // potential dot because it would have been the wrong contact.
   if (sourceExtra.getIsDummyHydrogen() && (!isHydrogenBond || tooCloseHydrogenBond)) {
-    ret = CheckDotResult();
     keepDot = false;
   }
 
-  // If the dot was close enough to some non-bonded atom, check to see if it should be removed
-  // from consideration because it is also inside an excluded atom.
+  // Check to see if the dot should be removed from consideration because it is also inside an excluded atom.
   if (keepDot) {
     for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator e = exclude.begin();
          e != exclude.end(); e++) {
