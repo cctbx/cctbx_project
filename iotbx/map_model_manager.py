@@ -1486,7 +1486,7 @@ class map_model_manager(object):
      residues_per_region = None,
      soft_mask_radius = None,
      mask_expand_ratio = 1,
-     use_symmetry = True):
+     use_symmetry_in_extract_unique = True):
 
     '''
       Runs box_all_maps_around_unique_and_shift_origin with extract_box=True
@@ -1509,7 +1509,7 @@ class map_model_manager(object):
       soft_mask_radius = soft_mask_radius,
       soft_mask_around_edges = soft_mask_around_edges,
       boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
-      use_symmetry = use_symmetry,
+      use_symmetry_in_extract_unique = use_symmetry_in_extract_unique,
       extract_box = True)
 
   def box_all_maps_around_unique_and_shift_origin(self,
@@ -1530,7 +1530,7 @@ class map_model_manager(object):
      boundary_to_smoothing_ratio = 2.,
      keep_this_region_only = None,
      residues_per_region = None,
-     use_symmetry = True,
+     use_symmetry_in_extract_unique = True,
      extract_box = False):
     '''
        Box all maps using bounds obtained with around_unique,
@@ -1612,7 +1612,7 @@ class map_model_manager(object):
       sequence = sequence,
       molecular_mass = molecular_mass,
       symmetry = symmetry,
-      use_ncs_object = use_symmetry,
+      use_symmetry_in_extract_unique = use_symmetry_in_extract_unique,
       chain_type = chain_type,
       box_cushion = box_cushion,
       soft_mask = soft_mask,

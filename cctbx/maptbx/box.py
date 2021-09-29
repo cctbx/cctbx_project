@@ -442,7 +442,8 @@ class around_unique(with_bounds):
                             estimate solvent_content
          symmetry:         Alternative way to specify symmetry (as a character
                             string like D2, T, C3)
-         use_ncs_object:   Use symmetry in identification of unique part of map
+         use_symmetry_in_extract_unique:   Use symmetry in identification
+                            of unique part of map
          target_ncs_au_model: model marking center of location to choose as
                               unique
          box_cushion:        buffer around unique region to be boxed
@@ -467,7 +468,7 @@ class around_unique(with_bounds):
     sequence = None,
     molecular_mass = None,
     symmetry = None,
-    use_ncs_object = True,
+    use_symmetry_in_extract_unique = True,
     chain_type = 'PROTEIN',
     keep_low_density = True,  # default from map_box
     box_cushion= 5,
@@ -530,7 +531,8 @@ class around_unique(with_bounds):
       segment_and_split_map(args,
         map_data = self._map_manager.map_data(),
         crystal_symmetry = crystal_symmetry,
-        ncs_obj = self._map_manager.ncs_object() if use_ncs_object else None,
+        ncs_obj = self._map_manager.ncs_object() if \
+          use_symmetry_in_extract_unique else None,
         target_model = target_ncs_au_model,
         write_files = False,
         auto_sharpen = False,
@@ -542,7 +544,7 @@ class around_unique(with_bounds):
         chain_type = chain_type,
         sequence = sequence,
         molecular_mass = molecular_mass,
-        symmetry = symmetry if use_ncs_object else None,
+        symmetry = symmetry if use_symmetry_in_extract_unique else None,
         keep_low_density = keep_low_density,
         regions_to_keep = regions_to_keep,
         box_buffer = box_cushion,
