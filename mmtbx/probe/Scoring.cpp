@@ -101,6 +101,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   bool tooCloseHydrogenBond = false;    ///< Are we too close to be a hydrogen bond?
   double hydrogenBondMinDist = 0;       ///< Hydrogen bond minimum distance based on the atom types (will be set below).
   bool keepDot = false;                 ///< Did we find a neighbor and we're not in an excluded atom?
+  bool causeIsDummy = false;            ///< Is the cause a dummy Hydrogen?
 
   // Look through each atom to find the one with the smallest gap, which is the one that
   // the dot would interact with.
@@ -142,11 +143,6 @@ DotScorer::CheckDotResult DotScorer::check_dot(
         hydrogenBondMinDist = bothCharged ? m_maxChargedHydrogenOverlap : m_maxRegularHydrogenOverlap;
         tooCloseHydrogenBond = (gap < -hydrogenBondMinDist);
       } else {
-        // If the target is a dummy hydrogen, then we ignore the potential contact and skip;
-        // they can only be a hydrogen-bond partner and cannot cause other types of contact.
-        // For the other types, the dummy hydrogen acts as if it does not exist.
-        if (bExtra.getIsDummyHydrogen()) { continue; }
-
         // This is not a hydrogen bond.
         isHydrogenBond = tooCloseHydrogenBond = false;
       }
@@ -154,15 +150,16 @@ DotScorer::CheckDotResult DotScorer::check_dot(
       // Record which atom is the closest and mark the dot to be kept because we found an
       // atom that is close enough.
       ret.cause = *b;
+      causeIsDummy = bExtra.getIsDummyHydrogen();
       keepDot = true;
       ret.gap = gap;
     }
   }
 
-  // If the source is a dummy hydrogen, then we skip things that are not hydrogen bonds or that
+  // If the source or target is a dummy hydrogen, then we skip things that are not hydrogen bonds or that
   // are too-close hydrogen bonds, they can only be a hydrogen-bond partner.  We throw out the
   // potential dot because it would have been the wrong contact.
-  if (sourceExtra.getIsDummyHydrogen() && (!isHydrogenBond || tooCloseHydrogenBond)) {
+  if ( (sourceExtra.getIsDummyHydrogen() || causeIsDummy) && (!isHydrogenBond || tooCloseHydrogenBond)) {
     keepDot = false;
   }
 
