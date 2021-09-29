@@ -590,21 +590,29 @@ Note:
       srcSideChain = self._inSideChain[src]
       srcHet = self._inHet[src]
       srcInWater = self._inWater[src]
+      srcExtra = self._extraAtomInfo.getMappingFor(src)
 
       # Select those that are actually within the contact distance based on their
       # particular radius and which are in the set of target atoms.
       # Also verify that the potential target atoms meet our criteria based on parameters.
       atomSet = set()
+      nearbyPhantomHydrogens = set()
       for n in nearby:
         nMainChain = self._inMainChain[n]
         nHet = self._inHet[n]
         nInWater = self._inWater[n]
+        nExtra = self._extraAtomInfo.getMappingFor(n)
+
+        # Keep a list of nearby Phantom Hydrogens in case we need to exclude them.
+        if nExtra.isDummyHydrogen:
+          nearbyPhantomHydrogens.add(n)
+
         d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
         if ((n in targetAtoms) and
-            (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
-             self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.radius)
+            (d <= nExtra.vdwRadius + srcExtra.vdwRadius + 2*self.params.probe.radius)
            ):
-          # if both atoms are in the same non-HET residue and on the main chain, then skip
+
+          # if both atoms are in the same non-HET chain and on the main chain, then skip
           # if we're not allowing mainchain-mainchain interactions.
           # The atoms must be on the same chain to be skipped.
           if not self.params.include_mainchain_mainchain and (
@@ -612,7 +620,7 @@ Note:
                 (src.parent().parent().parent().id == n.parent().parent().parent().id) # Same chain
               ):
             continue
-          # Skip atoms that shuold be ignored
+          # Skip atoms that are marked to be ignored
           if self._atomClasses[n] == 'ignore':
             continue
           # Skip atoms with too low occupancy
@@ -631,13 +639,28 @@ Note:
         # Find the atoms that are bonded to the source atom within the specified hop
         # count.  Limit the length of the chain to 3 if neither the source nor the final
         # atom is a Hydrogen.
-        bonded = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists,
+        excluded = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists,
           self.params.excluded_bond_chain_length, 3)
 
-        # Remove all of the bonded atoms from the interaction set so we don't
+        # For Phantom Hydrogens, move any non-Acceptor atom in the atom list into the
+        # excluded list and also add nearby Phantom Hydrogens into the excluded list.
+        # @todo Consider whether we'd rather handle this by making bonds between the
+        # Phantoms and their water Oxygens (both directions), which will shield their
+        # contacts from one another and (1) avoid removing sections of hydrogen bond patterns
+        # that fall inside atoms that are covalently bonded to acceptors, and (2) remove
+        # the inner collision of the water Oxygen with atoms in the acceptor that also makes
+        # a Hydrogen bond with the acceptor.
+        if srcExtra.isDummyHydrogen:
+          newExclusions = set()
+          for a in atomSet:
+            if not self._extraAtomInfo.getMappingFor(a).isAcceptor:
+              newExclusions.add(a)
+          excluded = list(set(excluded).union(newExclusions).union(nearbyPhantomHydrogens))
+
+        # Remove all of the excluded atoms from the interaction set so we don't
         # put spurious dots on them.
-        for b in bonded:
-          atomSet.discard(b)
+        for e in excluded:
+          atomSet.discard(e)
 
         # Check each dot to see if it interacts with non-bonded nearby target atoms.
         srcDots = self._dots[src]
@@ -645,7 +668,7 @@ Note:
         scale = self.params.probe.overlap_scale_factor
         for dotvect in srcDots:
           # Find out if there is an interaction
-          res = self._dotScorer.check_dot(src, dotvect, pr, list(atomSet), bonded, scale)
+          res = self._dotScorer.check_dot(src, dotvect, pr, list(atomSet), excluded, scale)
 
           # Classify the interaction and store appropriate results unless we should
           # ignore the result because there was not valid overlap.
@@ -1831,9 +1854,11 @@ Note:
               for p in newPhantoms:
                 # Set all of the information other than the name and element and xyz of the atom based
                 # on our parent; then overwrite the name and element and xyz.
-                # NOTE: This will require us to redo the i_seq numbers on the hierarchy and then recompute
-                # everything (unfortunately including the selection).  Otherwise, we'll have duplicated
-                # i_seq numbers between the parents and the phantom hydrogens, which will cause mayhem.
+                # NOTE: The Phantoms have the same i_seq number as their parents.  Although this does not
+                # impact our Probe data structures and algorithms, we'd like to avoid this in case it leaks
+                # through to some CCTBX-called code.
+                # This would require us to redo the i_seq numbers on the hierarchy and then recompute
+                # everything (unfortunately including the selection).
                 newAtom = pdb.hierarchy.atom(a.parent(),a)
                 newAtom.name = " H?"
                 newAtom.element = p.element
@@ -1855,13 +1880,18 @@ Note:
                 self._inSideChain[newAtom] = self._inSideChain[a]
                 self._inHet[newAtom] = self._inHet[a]
 
-                # Mark the new atom as being bonded to the parent atom and add the
+                # Mark the new atom as being bonded to the parent atom but do not add the
                 # phantom as bonded to the Oxygen.  Do this in both sets of bonded
                 # neighbor lists.
                 bondedNeighborLists[newAtom] = [a]
-                bondedNeighborLists[a].append(newAtom)
                 self._allBondedNeighborLists[newAtom] = [a]
-                self._allBondedNeighborLists[a].append(newAtom)
+                # @todo In the future, we may add these bonds, but that will cause the
+                # Phantom Hydrogens to mask their water Oxygens from close contacts or
+                # clashes with the acceptors, which is a change in behavior from the
+                # original Probe.  For now, we separately handle Phantom Hydrogen
+                # interactions as special cases in the code.
+                #bondedNeighborLists[a].append(newAtom)
+                #self._allBondedNeighborLists[a].append(newAtom)
 
                 # Generate source dots for the new atom
                 self._dots[newAtom] = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(newAtom).vdwRadius).dots()
