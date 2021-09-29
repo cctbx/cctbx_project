@@ -921,6 +921,7 @@ def set_chain_id_by_region(m, m_ca, regions_list, log = sys.stdout):
       full_new_model = add_model(full_new_model, new_m)
     else:
       full_new_model = new_m
+  full_new_model.reset_after_changing_hierarchy()
   m = full_new_model
 
   # All done
