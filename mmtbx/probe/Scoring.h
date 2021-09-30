@@ -224,7 +224,13 @@ namespace molprobity {
         iotbx::pdb::hierarchy::atom cause;  ///< Cause of the overlap, if overlapType != Ignore
         double  overlap = 0;                ///< Amount of overlap assigned to source atom if there is a clash
         double  gap = 1e100;                ///< Gap distance (overlap may only be a fraction of this).
-        bool    annular = false;            ///< Was this an annular dot?
+        /// Was this an annular dot, which is further from the point on the source atom that is closest
+        /// to the target atom than a point on the tangent edge of the target atom where the ray just
+        /// grazes the surface of the atom.  @todo The math being done here is a bit opaque, so the
+        /// origin of the second measurement is not clear.  The intent is to prevent over-spreading of
+        /// dots beyond what would have been present when the atoms just touched, which prevents
+        /// additional good contact outside the clash; see page 1717 of J. Mol. Biol. 285 (1999).
+        bool    annular = false;
       };
 
       /// @brief Score an individual dot against a specific set of interacting atoms unless within an excluded atom
