@@ -53,6 +53,7 @@ class Hopper_Processor(Processor):
         super(Hopper_Processor, self).__init__(*args, **kwargs)
 
         self.stage1_df = None  # the pandas dataframe containing model parameters after running stage 1 (see method refine)
+        self.stage1_modeler = None  # the data modeler used during stage 1 refinement
 
         if self.params.silence_dials_loggers:
             logging.getLogger("dials.algorithms.indexing.nave_parameters").setLevel(logging.ERROR)
@@ -127,8 +128,10 @@ class Hopper_Processor(Processor):
             self.params.diffBragg.outdir = self.params.output.output_dir
             # TODO: what about composite mode ?
             self.stage1_df = save_to_pandas(x, data_modeler.SIM, orig_exp_name, self.params.diffBragg, data_modeler.E, 0, refls_name, None)
+            self.stage1_modeler = data_modeler
             exps_out = ExperimentList()
             exps_out.append(exp)
+
         return super(Hopper_Processor, self).refine(exps_out, ref)
 
     def integrate(self, experiments, indexed):
@@ -196,7 +199,8 @@ class Hopper_Processor(Processor):
         # TODO: add in normal dials predictions as an option
         predicted, model = predictions.get_predicted_from_pandas(
             self.stage1_df, self.params.diffBragg, self.observed,
-            experiments[0].identifier, self.device_id)
+            experiments[0].identifier, self.device_id,
+            spectrum_override=self.stage1_modeler.SIM.beam.spectrum)
 
         predicted.match_with_reference(indexed)
         integrator = create_integrator(self.params, experiments, predicted)
@@ -348,7 +352,7 @@ if __name__ == "__main__":
             import pandas
             import glob
             fnames = glob.glob("%s/pandas/rank*/*pkl" % params.output.output_dir)
-            logging.info("There are %d pandas output files to combine")
+            logging.info("There are %d pandas output files to combine" % len(fnames))
             df = pandas.concat([pandas.read_pickle(f) for f in fnames])
             combined_table = os.path.join(params.output.output_dir, "hopper_process_summary.pkl")
             df.to_pickle(combined_table)

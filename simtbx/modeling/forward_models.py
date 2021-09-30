@@ -77,7 +77,8 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
     expt_name = df.opt_exp_name.values[0]
     El = ExperimentListFactory.from_json_file(expt_name, check_format=False)
     expt = El[0]
-    if "detz_shift_mm" in list(df):  # NOTE, this could also be inside expt_name directly
+    columns = list(df)
+    if "detz_shift_mm" in columns:  # NOTE, this could also be inside expt_name directly
         expt.detector = utils.shift_panelZ(expt.detector, df.detz_shift_mm.values[0])
 
     if force_no_detector_thickness:
@@ -134,6 +135,13 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
     else:
         Famp = utils.make_miller_array_from_crystal(expt.crystal, dmin=d_min, dmax=d_max, defaultF=defaultF, symbol=symbol_override)
 
+    diffuse_params = None
+    if "use_diffuse_models" in columns and df.use_diffuse_models.values[0]:
+        if not use_db:
+            raise RuntimeError("Cant simulate diffuse models unless use_db=True (diffBragg modeler)")
+        diffuse_params = {"gamma": tuple(df.diffuse_gamma.values[0]),
+                          "sigma": tuple(df.diffuse_sigma.values[0])}
+
     if use_exascale_api:
         #===================
         gpu_channels_singleton = gpu_energy_channels(deviceId=0)
@@ -162,7 +170,8 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                                     device_Id=device_Id, oversample=oversample,
                                     show_params=not quiet,
                                     nopolar=nopolar,
-                                    printout_pix=printout_pix)
+                                    printout_pix=printout_pix,
+                                    diffuse_params=diffuse_params)
         return results, expt
 
     else:
@@ -192,7 +201,7 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                       verbose=0, default_F=0, interpolate=0, profile="gauss",
                       spot_scale_override=None,
                       mosaicity_random_seeds=None,
-                      nopolar=False):
+                      nopolar=False, diffuse_params=None):
 
     CRYSTAL, Famp = nanoBragg_utils.ensure_p1(CRYSTAL, Famp)
 
@@ -235,6 +244,10 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
 
     S.D.verbose = 2
     S.D.record_time = True
+    if diffuse_params is not None:
+        S.D.use_diffuse = True
+        S.D.diffuse_gamma = diffuse_params["gamma"]
+        S.D.diffuse_sigma = diffuse_params["sigma"]
     S.D.add_diffBragg_spots_full()
     S.D.show_timings()
     t = time.time()

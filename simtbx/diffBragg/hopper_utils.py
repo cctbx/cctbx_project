@@ -550,7 +550,9 @@ class DataModeler:
         else:
             args = (self.SIM, self.pan_fast_slow, self.all_data,
                     self.all_sigmas, self.all_trusted, self.all_background, True, self.params, False)
-            min_kwargs = {'args': args, "method": method, 'options':{'maxfev': maxfev}}
+            min_kwargs = {'args': args, "method": method,
+                          'options': {'maxfev': maxfev,
+                                      'fatol': self.params.nelder_mead_fatol}}
 
         if self.params.global_method=="basinhopping":
             HOPPER = basinhopping

@@ -99,6 +99,9 @@ nelder_mead_maxfev = 60
   .type = int
   .help = multiplied by total number of modeled pixels to get max number of iterations
   .expert_level=10
+nelder_mead_fatol = 0.0001
+  .type = float
+  .help = nelder mead functional error tolerance
 niter_per_J = 1
   .type = int
   .help = if using gradient descent, compute gradients
@@ -301,10 +304,10 @@ init
   Ndef = [0,0,0]
     .type = floats(size=3)
     .help = init for Ndef
-  diffuse_sigma = [3.16,3.16,3.16]
+  diffuse_sigma = [.01,.01,.01]
     .type = floats(size=3)
     .help = init diffuse sigma
-  diffuse_gamma = [50,50,50]
+  diffuse_gamma = [1,1,1]
     .type = floats(size=3)
     .help = init for diffuse gamma
   RotXYZ = [0,0,0]
@@ -821,6 +824,9 @@ predictions {
     .help = force the pixel oversample rate to this value during the forward model simulation
     .help = for maximum speed gains, set this to 1, but inspect the output!
     .expert_level=10
+  use_diffBragg_mtz = False
+    .type = bool
+    .help = whether to use the mtz supplied to diffBragg for prediction
   Nabc_override = None
     .type = ints(size=3)
     .help = use this value of mosaic block size for every shot, useful to get more predicted spots

@@ -3,34 +3,42 @@ from __future__ import division
 from simtbx.modeling.forward_models import model_spots_from_pandas
 from simtbx.diffBragg.utils import refls_to_hkl, refls_from_sims
 from dials.array_family import flex
-from dxtbx.model import ExperimentList
 from scipy.spatial import cKDTree, distance
 from dials.algorithms.shoebox import MaskCode
 SIGNAL_MASK = MaskCode.Valid + MaskCode.Foreground
 import numpy as np
 from numpy import logical_or as logi_or
 from numpy import logical_and as logi_and
+from dxtbx.model import ExperimentList
 from numpy import logical_not as logi_not
 
 
-def get_predicted_from_pandas(df, params, strong, eid, device_Id=0):
+def get_predicted_from_pandas(df, params, strong, eid, device_Id=0, spectrum_override=None):
     """
     :param df: pandas dataframe, stage1_df attribute of simtbx.command_line.hopper_process.HopperProcess
     :param params: instance of diffBragg/phil.py phil params
     :param strong: strong (observed) reflections
     :param eid: experiment identifier
-    :param device_Id: GPU device Id for simuting forward model
+    :param device_Id: GPU device Id for simulating forward model
+    :param spectrum_override: the X-ray spectra to use during prediction
     :return: predicted reflections table , to be passed along to dials.integrate functions
     """
-
+    mtz_file = mtz_col = None
+    defaultF = params.predictions.default_Famplitude
+    if params.predictions.use_diffBragg_mtz:
+        mtz_file = params.simulator.structure_factors.mtz_name
+        mtz_col = params.simulator.structure_factors.mtz_column
+        defaultF = 0
     # returns the images and the experiment including any pre-modeling modifications (e.g. thinning out the detector)
     panel_images, expt = model_spots_from_pandas(
         df,
         oversample_override=params.predictions.oversample_override,
         Ncells_abc_override=params.predictions.Nabc_override,
         pink_stride_override=params.predictions.pink_stride_override,
-        defaultF=params.predictions.default_Famplitude,
+        spectrum_override=spectrum_override,
+        defaultF=defaultF,
         device_Id=device_Id,
+        mtz_file=mtz_file, mtz_col=mtz_col,
         d_max=params.predictions.resolution_range[1],
         d_min=params.predictions.resolution_range[0],
         symbol_override=params.predictions.symbol_override,
@@ -40,8 +48,7 @@ def get_predicted_from_pandas(df, params, strong, eid, device_Id=0):
 
     predictions = refls_from_sims(panel_images, expt.detector, expt.beam, thresh=params.predictions.threshold,
                                   max_spot_size=1000)
-
-    print("Found %d Bragg peak predictions above the threshold")
+    print("Found %d Bragg peak predictions above the threshold" %len(predictions))
 
     # TODO: pulled these from comparing to a normal stills_process prediction table, not sure what they imply
     # TODO: multiple experiments per shot
