@@ -1880,17 +1880,16 @@ Note:
                 self._inSideChain[newAtom] = self._inSideChain[a]
                 self._inHet[newAtom] = self._inHet[a]
 
-                # Mark the new atom as being bonded to the parent atom but do not add the
-                # phantom as bonded to the Oxygen.  Do this in both sets of bonded
-                # neighbor lists.
-                bondedNeighborLists[newAtom] = [a]
-                self._allBondedNeighborLists[newAtom] = [a]
                 # @todo In the future, we may add these bonds, but that will cause the
                 # Phantom Hydrogens to mask their water Oxygens from close contacts or
                 # clashes with the acceptors, which is a change in behavior from the
                 # original Probe.  For now, we separately handle Phantom Hydrogen
                 # interactions as special cases in the code.
+                bondedNeighborLists[newAtom] = []
+                self._allBondedNeighborLists[newAtom] = []
+                #bondedNeighborLists[newAtom] = [a]
                 #bondedNeighborLists[a].append(newAtom)
+                #self._allBondedNeighborLists[newAtom] = [a]
                 #self._allBondedNeighborLists[a].append(newAtom)
 
                 # Generate source dots for the new atom
