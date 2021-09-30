@@ -177,14 +177,28 @@ void diffBragg_sum_over_steps(
 
             double I_latt_diffuse = 0;
             if (db_flags.use_diffuse){
-                double exparg = 4*M_PI*M_PI*H0.dot(db_cryst.anisoU*H0);
-                //double dwf = exp(-exparg);
+                Eigen::Matrix3d Ainv = UBO.inverse();
+                double anisoG_determ = db_cryst.anisoG.determinant();
+                for (int hh=0; hh <1; hh++){
+                    for (int kk=0; kk <1; kk++){
+                        for (int ll=0; ll <1; ll++){
+                            Eigen::Vector3d H0_offset(h0+hh, k0+kk, l0+ll);
+                            Eigen::Vector3d Q0 = Ainv*H0_offset;
+                            double exparg = 4*M_PI*M_PI*Q0.dot(db_cryst.anisoU*Q0);
+                            //double dwf = exp(-exparg);
+                            Eigen::Vector3d delta_H_offset = H_vec - H0_offset;
+                            Eigen::Vector3d delta_Q = Ainv*delta_H_offset;
+                            Eigen::Vector3d anisoG_q = db_cryst.anisoG*delta_Q;
 
-                Eigen::Vector3d anisoG_q = db_cryst.anisoG*delta_H;
-                I_latt_diffuse = 4.*M_PI*(db_cryst.anisoG*UBO).determinant() /
-                        (1.+ anisoG_q.dot(anisoG_q)* 4*M_PI*M_PI);
-                if (exparg  < .5) // only valid up to a point
-                    I_latt_diffuse *= (exparg);
+                            double this_I_latt_diffuse = 8.*M_PI*anisoG_determ /
+                                    pow( (1.+ anisoG_q.dot(anisoG_q)* 4*M_PI*M_PI),2);
+                            if (exparg  < .5) // only valid up to a point
+                                this_I_latt_diffuse *= (exparg);
+
+                            I_latt_diffuse += this_I_latt_diffuse;
+                        }
+                    }
+                }
             }
 
             /* no need to go further if result will be zero */
@@ -196,7 +210,10 @@ void diffBragg_sum_over_steps(
                 omega_pixel = 1;
 
             /* increment to intensity */
-            double I_noFcell = (F_latt*F_latt + I_latt_diffuse)*db_beam.source_I[source]*capture_fraction*omega_pixel;
+            double latt_scale = 1;
+            if (db_flags.only_diffuse)
+                latt_scale = 0;
+            double I_noFcell = (F_latt*F_latt*latt_scale + I_latt_diffuse)*db_beam.source_I[source]*capture_fraction*omega_pixel;
 
             /* structure factor of the unit cell */
             double F_cell = db_cryst.default_F;
