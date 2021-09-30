@@ -127,7 +127,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
     // See if we replace the currently-closest atom.
     if (gap < ret.gap) {
 
-      // Figure out what kind of interaction this is based on the atom types and
+      // Figure out what kind of overlap this is based on the atom types and
       // charge status of the two atoms.
       int chargeSource = atom_charge(sourceAtom);
       int chargeB = atom_charge(*b);
@@ -136,6 +136,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
       bool chargeComplement = bothCharged && (chargeSource * chargeB < 0);
 
       // See if one of the atoms is a hydrogen donor and the other can accept hydrogen bonds.
+      // Then check to see whether this is a hydrogen bond and behave accordingly.
       bool couldHBond = (sourceExtra.getIsDonor() && bExtra.getIsAcceptor())
         || (sourceExtra.getIsAcceptor() && bExtra.getIsDonor());
       if (couldHBond && ((!bothCharged) || chargeComplement)) {
@@ -143,34 +144,36 @@ DotScorer::CheckDotResult DotScorer::check_dot(
         hydrogenBondMinDist = bothCharged ? m_maxChargedHydrogenOverlap : m_maxRegularHydrogenOverlap;
         tooCloseHydrogenBond = (gap < -hydrogenBondMinDist);
       } else {
+        // If one of the atoms is a dummy Hydrogen, then we pretend that it does not exist
+        // for non-Hydrogen-bond interactions.
+        /// @todo Test this
+        if (sourceExtra.getIsDummyHydrogen() || bExtra.getIsDummyHydrogen()) { continue; }
+
         // This is not a hydrogen bond.
         isHydrogenBond = tooCloseHydrogenBond = false;
       }
 
       // Record which atom is the closest and mark the dot to be kept because we found an
-      // atom that is close enough.
-      ret.cause = *b;
-      causeIsDummy = bExtra.getIsDummyHydrogen();
+      // atom that is close enough.  Keep track of the characteristics of the collision.
       keepDot = true;
+      causeIsDummy = bExtra.getIsDummyHydrogen();
       ret.gap = gap;
+      ret.cause = *b;
     }
-  }
-
-  // If the source or target is a dummy hydrogen, then we skip things that are not hydrogen bonds or that
-  // are too-close hydrogen bonds, they can only be a hydrogen-bond partner.  We throw out the
-  // potential dot because it would have been the wrong contact.
-  if ( (sourceExtra.getIsDummyHydrogen() || causeIsDummy) && (!isHydrogenBond || tooCloseHydrogenBond)) {
-    keepDot = false;
   }
 
   // Check to see if the dot should be removed from consideration because it is also inside an excluded atom.
   if (keepDot) {
     for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator e = exclude.begin();
          e != exclude.end(); e++) {
-      double vdwe = m_extraInfoMap.getMappingFor(*e).getVdwRadius();
-      if ((absoluteDotLocation - e->data->xyz).length_sq() < vdwe * vdwe) {
-        keepDot = false;
-        break;
+      // Dots on dummy Hydrogens cannot be blocked by excluded atoms that are acceptors.
+      // We skip the check in that case.
+      if (!sourceExtra.getIsDummyHydrogen() || !m_extraInfoMap.getMappingFor(*e).getIsAcceptor()) {
+        double vdwe = m_extraInfoMap.getMappingFor(*e).getVdwRadius();
+        if ((absoluteDotLocation - e->data->xyz).length_sq() < vdwe * vdwe) {
+          keepDot = false;
+          break;
+        }
       }
     }
   }
@@ -180,10 +183,16 @@ DotScorer::CheckDotResult DotScorer::check_dot(
     // Determine the overlap type and amount of overlap.
     if (ret.gap >= 0) {
       ret.overlap = 0;
-      ret.overlapType = DotScorer::NoOverlap;
+      if (m_weakHBonds && isHydrogenBond) {
+        ret.overlapType = DotScorer::HydrogenBond;
+      } else {
+        ret.overlapType = DotScorer::NoOverlap;
+      }
     } else if (isHydrogenBond) {
       ret.overlap = -overlapScale * ret.gap;
       if (tooCloseHydrogenBond) {
+        // Reduce the gap magnitude by the expected hydrogen bond distance (the gap is negative)
+        // and report it as a clash.
         ret.gap += hydrogenBondMinDist;
         ret.overlapType = DotScorer::Clash;
       } else {
@@ -194,16 +203,24 @@ DotScorer::CheckDotResult DotScorer::check_dot(
       ret.overlapType = DotScorer::Clash;
     }
 
-    /// @todo We may be able to speed things up by only computing this for NoOverlap dots
+    /// @todo We may be able to speed things up by only computing this for NoOverlap dots because
+    /// the client code only seems to check it in this case.
     ret.annular = annularDots(absoluteDotLocation, sourceAtom.data->xyz, sourceExtra.getVdwRadius(),
       ret.cause.data->xyz, m_extraInfoMap.getMappingFor(ret.cause).getVdwRadius(), probeRadius);
   }
  
+  // If the source or target is a dummy hydrogen, then we ignore dots that are too-close hydrogen bonds
+  // and ones that turned out in the end not to be hydrogen bonds.
+  if ((sourceExtra.getIsDummyHydrogen() || causeIsDummy)
+      && (tooCloseHydrogenBond || (ret.overlapType != DotScorer::HydrogenBond))) {
+    ret.overlapType = DotScorer::Ignore;
+  }
+
   return ret;
 }
 
 DotScorer::InteractionType DotScorer::interaction_type(
-  OverlapType overlapType, double gap, bool separateWeakHydrogenBonds) const
+  OverlapType overlapType, double gap) const
 {
   switch (overlapType) {
     case DotScorer::NoOverlap:
@@ -223,7 +240,7 @@ DotScorer::InteractionType DotScorer::interaction_type(
       }
       break;
     case DotScorer::HydrogenBond:
-      if (separateWeakHydrogenBonds) {
+      if (m_weakHBonds) {
         if (gap > 0) {
           return WeakHydrogenBond;
         } else {
@@ -359,31 +376,34 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
 
     // Compute the score for the dot based on the overlap type and amount of overlap.
     // Assign it to the appropriate subscore.
-    double dotScore = 0;
-    switch (score.overlapType) {
+    InteractionType it = interaction_type(score.overlapType, score.gap);
+    switch (it) {
 
-    case DotScorer::Ignore: // The dot should be ignored, so is not scored.
+    case DotScorer::Invalid: // The dot should be ignored, so is not scored.
       break;
 
-    case DotScorer::NoOverlap: // No overlap, contact dot
+    case DotScorer::WideContact:  // Types where the dot is outside the target
+    case DotScorer::CloseContact:
+    case DotScorer::WeakHydrogenBond:
       if ((!onlyBumps) && !score.annular) {
         double scaledGap = score.gap / m_gapScale;
         ret.attractSubScore += exp(-scaledGap * scaledGap);
       }
       break;
 
-    case DotScorer::Clash:
+    case DotScorer::SmallOverlap: // Types where the dots overlap and are considered clashes
+    case DotScorer::Bump:
+    case DotScorer::BadBump:
       {
         ret.bumpSubScore += -m_bumpWeight * score.overlap;
         // See if we should flag this atom as having a bad bump
-        DotScorer::InteractionType type = interaction_type(score.overlapType, score.gap, false);
-        if (type == DotScorer::BadBump) {
+        if (it == DotScorer::BadBump) {
           ret.hasBadBump = true;
         }
       }
       break;
 
-    case DotScorer::HydrogenBond:   // Hydrogen bond
+    case DotScorer::StandardHydrogenBond: // Weak Hydrogen bonds are counted above
       if (!onlyBumps) {
         ret.hBondSubScore += m_hBondWeight * score.overlap;
       } else {  // In this case, we treat it as a bump
@@ -464,7 +484,7 @@ std::string DotScorer::test()
     if (res.cause.data != a.data) {
       return "DotScorer::test(): Did not find expected cause for dot_score()";
     }
-    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::BadBump) {
+    if (as.interaction_type(res.overlapType, res.gap) != DotScorer::BadBump) {
       return "DotScorer::test(): Did not find WorseOverlap when expected for dot_score()";
     }
 
@@ -473,7 +493,7 @@ std::string DotScorer::test()
     if (res.overlapType != DotScorer::Clash) {
       return "DotScorer::test(): Did not find clash when expected for dot_score()";
     }
-    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::Bump) {
+    if (as.interaction_type(res.overlapType, res.gap) != DotScorer::Bump) {
       return "DotScorer::test(): Did not find BadOverlap when expected for dot_score()";
     }
 
@@ -482,7 +502,7 @@ std::string DotScorer::test()
     if (res.overlapType != DotScorer::Clash) {
       return "DotScorer::test(): Did not find small clash when expected for dot_score()";
     }
-    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::SmallOverlap) {
+    if (as.interaction_type(res.overlapType, res.gap) != DotScorer::SmallOverlap) {
       return "DotScorer::test(): Did not find SmallOverlap when expected for dot_score()";
     }
 
@@ -491,7 +511,7 @@ std::string DotScorer::test()
     if (res.overlapType != DotScorer::NoOverlap) {
       return "DotScorer::test(): Did not find no overlap when expected for dot_score()";
     }
-    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::CloseContact) {
+    if (as.interaction_type(res.overlapType, res.gap) != DotScorer::CloseContact) {
       return "DotScorer::test(): Did not find CloseContact when expected for dot_score()";
     }
 
@@ -500,7 +520,7 @@ std::string DotScorer::test()
     if (res.overlapType != DotScorer::NoOverlap) {
       return "DotScorer::test(): Did not find no overlap when expected for dot_score()";
     }
-    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::WideContact) {
+    if (as.interaction_type(res.overlapType, res.gap) != DotScorer::WideContact) {
       return "DotScorer::test(): Did not find WideContact when expected for dot_score()";
     }
 
@@ -510,7 +530,7 @@ std::string DotScorer::test()
     if (res.overlapType != DotScorer::Ignore) {
       return "DotScorer::test(): Did not find ignore when expected for dot_score()";
     }
-    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::Invalid) {
+    if (as.interaction_type(res.overlapType, res.gap) != DotScorer::Invalid) {
       return "DotScorer::test(): Did not find Invalid when expected for dot_score()";
     }
   }
@@ -614,7 +634,11 @@ std::string DotScorer::test()
                     return "DotScorer::test(): Could not score dots for excluded-atom case";
                   }
                   if ((res.totalScore() != 0) || res.hasBadBump) {
-                    return "DotScorer::test(): Got unexpected result for excluded-atom case";
+                    // Acceptor target atoms are excluded from calculations when the source atom
+                    // is a dummy Hydrogen.
+                    if (!(*sourceDummy && *targetAccept)) {
+                      return "DotScorer::test(): Got unexpected result for excluded-atom case";
+                    }
                   }
 
                   // Skip the rest of the tests for this case.
@@ -681,7 +705,7 @@ std::string DotScorer::test()
                   ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
                     probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
                   if (!res.valid) {
-                    return "DotScorer::test(): Could not score dots for bump-only hydrogen-bond test case";
+                    return "DotScorer::test(): Could not score dots for bump-only test case";
                   }
                   if (res.hBondSubScore != 0) {
                     return "DotScorer::test(): Got unexpected hydrogen bond score for bump-only test case";
@@ -700,6 +724,69 @@ std::string DotScorer::test()
     }
    }
   }
+  }
+
+  // Test behavior of weak hydrogen bonds and its interaction with dummy Hydrogens.
+  for (std::vector<bool>::const_iterator weakHBonds = bools.begin();
+       weakHBonds != bools.end(); weakHBonds++) {
+    for (std::vector<bool>::const_iterator sourceDummy = bools.begin();
+         sourceDummy != bools.end(); sourceDummy++) {
+      for (std::vector<bool>::const_iterator targetDummy = bools.begin();
+           targetDummy != bools.end(); targetDummy++) {
+        // Test the scoring for various cases to ensure that they all behave as expected
+        unsigned int atomSeq = 0;
+
+        // Construct and fill the SpatialQuery information
+        // with a vector of a single target atom, including its extra info looked up by
+        // its i_seq value.
+        // Make the charges always compatible (one + one -) and specify the acceptor and
+        // donor states based on whether the atoms are dummy hydrogens -- if so they are
+        // donors and if not they are acceptors.
+        iotbx::pdb::hierarchy::atom a;
+        a.set_charge("-");
+        a.set_xyz({ 0,0,0 });
+        a.set_occ(1);
+        a.data->i_seq = atomSeq++;
+        scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
+        atoms.push_back(a);
+        SpatialQuery sq(atoms);
+        ExtraAtomInfo e(targetRad, !*targetDummy, *targetDummy, *targetDummy);
+        scitbx::af::shared<ExtraAtomInfo> infos;
+        infos.push_back(e);
+
+        // Construct the source atom, including its extra info.
+        iotbx::pdb::hierarchy::atom source;
+        source.set_charge("+");
+        source.set_occ(1);
+        source.data->i_seq = atomSeq++;
+        ExtraAtomInfo se(sourceRad, !*sourceDummy, *sourceDummy, *sourceDummy);
+        atoms.push_back(source);
+        infos.push_back(se);
+
+        // Empty excluded-atom list.
+        scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
+
+        // Construct the scorer to be used.
+        DotScorer as(ExtraAtomInfoMap(atoms, infos), 0.25, 10.0, 4.0, 0.6, 0.8, 0.4, 0.5, 0.25, *weakHBonds);
+
+        // Set the atoms to be slightly separated and then score the dots.
+        source.set_xyz({ sourceRad + targetRad + 0.1,0,0 });
+        ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
+          probeRad, exclude, ds.dots(), ds.density(), false);
+        if (!res.valid) {
+          return "DotScorer::test(): Could not score dots for weak hydrogen-bond test case";
+        }
+
+        // We should get nonzero scores when we're using weak hydrogen bonds and we
+        // have exactly one of the two atoms being dummies.  We should also get them
+        // when we're not using any dummies.
+        bool expectNonzero = *weakHBonds && (*sourceDummy != *targetDummy);
+        expectNonzero |= (!*sourceDummy && !*targetDummy);
+        if (expectNonzero != (res.totalScore() != 0)) {
+          return "DotScorer::test(): Got unexpected score for weak hydrogen-bond test case";
+        }
+      }
+    }
   }
 
   // Sweep an atom from just touching to far away and make sure the attract

@@ -192,6 +192,9 @@ namespace molprobity {
       /// @param [in] contactCutoff Atoms that are nearer than this will be considered to be in near
       ///             contact, with atoms further in far contact.  This should be at least as large
       ///             as the probe radius.
+      /// @param [in] weakHBonds Include weak hydrogen bonds (dots that are in hydrogen bonds but which
+      ///             are outside contact).  These are categorized as a different InteractionType but
+      ///             are counted as hydrogen bonds when scoring.
       /// @todo Consider moving the probe radius into the constructor parameters
       DotScorer(ExtraAtomInfoMap extraInfoMap
         , double gapScale = 0.25
@@ -202,6 +205,7 @@ namespace molprobity {
         , double bumpOverlap = 0.4
         , double badBumpOverlap = 0.5
         , double contactCutoff = 0.25
+        , bool weakHBonds = false
       ) : m_extraInfoMap(extraInfoMap)
         , m_gapScale(gapScale), m_bumpWeight(bumpWeight), m_hBondWeight(hBondWeight)
         , m_maxRegularHydrogenOverlap(maxRegularHydrogenOverlap)
@@ -209,6 +213,7 @@ namespace molprobity {
         , m_bumpOverlap(bumpOverlap)
         , m_badBumpOverlap(badBumpOverlap)
         , m_contactCutoff(contactCutoff)
+        , m_weakHBonds(weakHBonds)
       {}
 
       /// @brief Enumeration listing the basic types of overlap a dot can have with an atom.
@@ -263,12 +268,10 @@ namespace molprobity {
 
       /// @brief Determine the type of interaction that is represented by a CheckDotResult.
       /// @param [in] checkDotResult Value returned from the check_dot() method.
-      /// @param [in] separateWeakHydrogenBonds Include a category for weak Hydrogen bonds.
       /// @return InteractionType of the contact, Invalid if the OverlapType was Ignore or
       ///         a non-negative number indicating the index of the interaction type in the
       ///         original Probe code.
-      InteractionType interaction_type(OverlapType overlapType, double gap,
-         bool separateWeakHydrogenBonds) const;
+      InteractionType interaction_type(OverlapType overlapType, double gap) const;
 
       /// @brief String name for the interaction type, meaningful to the user.
       /// @param [in] t Type to report on.
@@ -337,7 +340,7 @@ namespace molprobity {
       double m_bumpOverlap;
       double m_badBumpOverlap;
       double m_contactCutoff;
-      bool m_reportWeakHydrogenBonds;
+      bool m_weakHBonds;
     };
 
     /// @todo Figure out what all of the things needed by Probe (as opposed to Reduce) are.

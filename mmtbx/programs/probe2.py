@@ -141,7 +141,7 @@ probe
     .type = float
     .help = Weight applied to gap score (-gapweight in probe)
 
-  separate_weak_hydrogen_bonds = False
+  allow_weak_hydrogen_bonds = False
     .type = bool
     .help = Separately account for weak hydrogen bonds (-LweakHbonds in probe)
 
@@ -547,8 +547,7 @@ Note:
       :return: As a side effect, this will add a new entry into one of the lists in the
       self._results data structure.
     '''
-    self._results[atomClass][self._dotScorer.interaction_type(overlapType,gap,
-        self.params.probe.separate_weak_hydrogen_bonds)].append(
+    self._results[atomClass][self._dotScorer.interaction_type(overlapType,gap)].append(
       self.DotInfo(src, target, loc, spike, overlapType, gap, ptmaster, angle)
     )
 
@@ -673,17 +672,21 @@ Note:
           # Classify the interaction and store appropriate results unless we should
           # ignore the result because there was not valid overlap.
           overlapType = res.overlapType
-          # Check non-overlapping dots to make sure they are not annular (outside the other atom
-          # but the result of an atom-atom contact).
+
+          # If the overlap type is NoOverlap, check dot to make sure it is not annular.
+          # This excludes dots that are further from the contact than dots could be at
+          # the ideal just-touched contact.
           if overlapType == probeExt.OverlapType.NoOverlap and res.annular:
             continue
+
+          # Handle any dots that should not be ignored.
           if overlapType != probeExt.OverlapType.Ignore:
             # See whether this dot is allowed based on our parameters.
             spo = self.params.output
             show = False
-            interactionType = self._dotScorer.interaction_type(overlapType,res.gap,
-              self.params.probe.separate_weak_hydrogen_bonds)
+            interactionType = self._dotScorer.interaction_type(overlapType,res.gap)
             if interactionType == probeExt.InteractionType.Invalid:
+              print('Warning: Invalid interaction type encountered (internal error)', file=self.logger)
               continue
 
             # Main branch if whether we're reporting other than bad clashes
@@ -1093,7 +1096,7 @@ Note:
           ret += "@master {{{}}}\n".format(mast[probeExt.InteractionType.BadBump])
       if self.params.output.report_hydrogen_bonds and not self.params.output.only_report_bad_clashes:
         ret += "@master {{{}}}\n".format(mast[probeExt.InteractionType.StandardHydrogenBond])
-        if self.params.probe.separate_weak_hydrogen_bonds:
+        if self.params.probe.allow_weak_hydrogen_bonds:
           ret += "@master {{{}}}\n".format(mast[probeExt.InteractionType.WeakHydrogenBond])
 
     # Report count legend if any counts are nonzero.
@@ -1117,7 +1120,7 @@ Note:
         # Write list headers for types that have entries.  Do not write one for weak Hydrogen
         # bonds unless we're separating them out.
         if (len(self._results[atomClass][interactionType]) > 0 and
-              (self.params.probe.separate_weak_hydrogen_bonds or
+              (self.params.probe.allow_weak_hydrogen_bonds or
                   interactionType != probeExt.InteractionType.WeakHydrogenBond
               )
             ):
@@ -1941,7 +1944,7 @@ Note:
         self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight,
         self.params.probe.uncharged_hydrogen_cutoff, self.params.probe.charged_hydrogen_cutoff,
         self.params.probe.clash_cutoff, self.params.probe.worse_clash_cutoff,
-        self.params.probe.contact_cutoff)
+        self.params.probe.contact_cutoff, self.params.probe.allow_weak_hydrogen_bonds)
 
       ################################################################################
       # List of all of the keys for atom classes, including all elements and all
