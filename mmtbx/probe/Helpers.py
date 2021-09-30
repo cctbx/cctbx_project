@@ -60,13 +60,32 @@ def getBondedNeighborLists(atoms, bondProxies):
       pass
   return bondedNeighbors
 
+def compatibleConformations(a1, a2):
+  '''
+    Returns True if the two atoms are in compatble conformations, False if not.
+    :param a1: First atom.
+    :param a2: Second atom.
+    :return: True if either atom is in the empty conformation or if both are in the
+    same conformation.
+  '''
+  alt1 = a1.parent().altloc
+  alt2 = a2.parent().altloc
+  if alt1 in ['', ' ']:
+    return True
+  if alt2 in ['', ' ']:
+    return True
+  return alt1 == alt2
+
 def getAtomsWithinNBonds(atom, bondedNeighborLists, N, nonHydrogenN = 1e10):
   """
     Helper function to produce a list of all of the atoms that are bonded to the
     specified atoms, or to one of the atoms bonded to the specified atom, recursively
     to a depth of N.  The atom itself will not be included in the list, so an atom that
     has no bonded neighbors will always have an empty result.  This can be used to
-    produce a list of excluded atoms for dot scoring.
+    produce a list of excluded atoms for dot scoring.  It checks to ensure that all of
+    the bonded atoms are from compatible conformations; note that if the original atom
+    is in the empty configuration then this will return atoms from all conformations that
+    are in the bonded set.
     :param atom: The atom to be tested.
     :param bondedNeighborLists: Dictionary of lists that contain all bonded neighbors for
     each atom in a set of atoms.  Should be obtained using
@@ -85,10 +104,13 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, N, nonHydrogenN = 1e10):
     current = list(atoms)   # Make a copy so we're not modifying the list we are traversing
     for a in current:       # Add all neighbors of all atoms in the current level
       for n in bondedNeighborLists[a]:
+        # If we find a hydrogen, we no longer use the non-Hydrogen N limit.
         if n.element == "H":
           hFound = True
         if i < nonHydrogenN or hFound:
-          atoms.add(n)
+          # Ensure that the new atom is in a compatible conformation with the original atom.
+          if compatibleConformations(atom, n):
+            atoms.add(n)
 
   # Remove the original atom from the result and turn the result into a list.
   atoms.discard(atom)
@@ -404,6 +426,35 @@ END
     if len(bondedNeighborLists[a]) != neighborCounts[a.name.strip()]:
       return ("Helpers.Test(): Neighbor count for "+a.name.strip()+" was "+
         str(len(bondedNeighborLists[a]))+", expected "+str(neighborCounts[a.name.strip()]))
+
+  #=====================================================================================
+  # Run unit test on compatibleConformations().
+  a1 = pdb.hierarchy.atom()
+  ag1 = pdb.hierarchy.atom_group()
+  ag1.append_atom(a1)
+  a2 = pdb.hierarchy.atom()
+  ag2 = pdb.hierarchy.atom_group()
+  ag2.append_atom(a2)
+  ag1.altloc = ""
+  ag2.altloc = "A"
+  if compatibleConformations(a1,a2) != True:
+    return "Helpers:Test(): altloc expected True for empty first"
+  ag1.altloc = "A"
+  ag2.altloc = "A"
+  if compatibleConformations(a1,a2) != True:
+    return "Helpers:Test(): altloc expected True for compatible"
+  ag1.altloc = "A"
+  ag2.altloc = "B"
+  if compatibleConformations(a1,a2) != False:
+    return "Helpers:Test(): altloc expected False for incompatible"
+  ag1.altloc = "A"
+  ag2.altloc = " "
+  if compatibleConformations(a1,a2) != True:
+    return "Helpers:Test(): altloc expected True for blank second"
+  ag1.altloc = ""
+  ag2.altloc = " "
+  if compatibleConformations(a1,a2) != True:
+    return "Helpers:Test(): altloc expected True for empty first and blank second"
 
   #========================================================================
   # Run unit test on getAtomsWithinNBonds().
