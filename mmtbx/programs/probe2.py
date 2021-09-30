@@ -15,7 +15,7 @@ from scitbx.array_family import flex
 from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
 
-version = "0.5.0"
+version = "0.7.0"
 
 master_phil_str = '''
 run_tests = False
@@ -343,6 +343,16 @@ Note:
       atom_radius_offset=1.4
       probe.radius=0.0
       group_name="AS"
+    -scan 0:
+      source_selection="(altid a or altid '' or altid ' ') and bfactor < 40 occupancy > 0.33"
+      approach=self
+      excluded_bond_chain_length=4
+      include_mainchain_mainchain=True
+    -scan 1:
+      approach=once
+      excluded_bond_chain_length=4
+      source_selection="(altid a or altid '' or altid ' ') and bfactor < 40 and occupancy > 0.33" blt40 ogt65
+      target_selection="((altid a or altid '' or altid ' ') and bfactor < 40 and occupancy > 0.65) or (not water and occupancy > 0.33)"
 '''.format(version)
   datatypes = ['model', 'restraint', 'phil']
   master_phil_str = master_phil_str
