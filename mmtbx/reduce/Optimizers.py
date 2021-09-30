@@ -358,7 +358,13 @@ class _SingletonOptimizer(object):
             resID = str(a.parent().parent().resseq_as_int())
             chainID = a.parent().parent().parent().id
             resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
-            newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, self._minOccupancy)
+            # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
+            # a single water in it and asking about the hydrogen radius.
+            phantomHydrogenRadius = 1.05
+            if useNeutronDistances:
+              phantomHydrogenRadius = 1.0
+            newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, self._minOccupancy,
+                            False, phantomHydrogenRadius)
             if len(newPhantoms) > 0:
               self._infoString += _VerboseCheck(3,"Added {} phantom Hydrogens on {}\n".format(len(newPhantoms), resNameAndID))
               for p in newPhantoms:

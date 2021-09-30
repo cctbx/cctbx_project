@@ -241,7 +241,8 @@ def isMetallic(atom):
         isMetallic.metallics.add(e[1].upper())
     return element in isMetallic.metallics
 
-def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acceptorOnly = False):
+def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acceptorOnly = False,
+      placedHydrogenRadius = 1.05):
   """
     Get a list of phantom Hydrogens for the atom specified, which is asserted to be an Oxygen
     atom for a water.
@@ -257,6 +258,7 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     an acceptor or a possible flipped position of an acceptor, and that is not something that
     can be determined at the time we're placing phantom hydrogens.  In that case, we want to
     include all possible interactions and weed them out during optimization.
+    :param placedHydrogenRadius: Radius to use for placed Phantom Hydrogen atoms.
     :return: List of new atoms that make up the phantom Hydrogens, with only their name and
     element type and xyz positions filled in.  They will have i_seq 0 and they should not be
     inserted into a structure.
@@ -281,9 +283,8 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     # Check to ensure the occupancy of the neighbor is above threshold and that it is
     # close enough to potentially bond to the atom.
     OH_BOND_LENGTH = 1.0
-    WATER_EXPLICIT_RADIUS = 1.05
     overlap = ( (rvec3(atom.xyz) - rvec3(a.xyz)).length()  -
-                (WATER_EXPLICIT_RADIUS + extraAtomInfo.getMappingFor(a).vdwRadius + OH_BOND_LENGTH) )
+                (placedHydrogenRadius + extraAtomInfo.getMappingFor(a).vdwRadius + OH_BOND_LENGTH) )
     if overlap < -0.01 and a.occ > minOccupancy and a.element != "H":
       if not acceptorOnly or extraAtomInfo.getMappingFor(a).isAcceptor:
         # If we have multiple atoms in the same Aromatic ring (part of the same residue)
