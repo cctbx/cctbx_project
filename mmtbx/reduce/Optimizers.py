@@ -50,7 +50,7 @@ from mmtbx.hydrogens import reduce_hydrogen
 # Value of 2 reports timing information.
 # Setting it to 0 removes all inforamtional messages.
 # Setting it above 1 provides additional debugging information.
-verbosity = 2
+verbosity = 3
 
 ##################################################################################
 # Helper functions
@@ -356,10 +356,10 @@ class _SingletonOptimizer(object):
         if useNeutronDistances:
           phantomHydrogenRadius = 1.0
 
-        # Find every Oxygen that is part of a water
+        # Find every Oxygen that is part of a water and get the Phantom Hydrogens for it
         phantoms = []
         for a in self._atoms:
-          if common_residue_names_get_class(name=a.parent().resname) == "common_water":
+          if a.element == 'O' and common_residue_names_get_class(name=a.parent().resname) == "common_water":
             resName = a.parent().resname.strip().upper()
             resID = str(a.parent().parent().resseq_as_int())
             chainID = a.parent().parent().parent().id
