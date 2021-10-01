@@ -336,12 +336,12 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
           candidates.append(Candidate(a, overlap))
 
   # Generate phantoms pointing toward all of the remaining candidates.
+  # Make most of their characteristics (including i_seq) copied from the source Oxygen.
+  # The element, name, and location are modified.
   for c in candidates:
-    h = pdb.hierarchy.atom()
+    h = pdb.hierarchy.atom(atom.parent(), atom)
     h.element = "H"
-    h.name = "H"
-    h.occ = minOccupancy + 0.01
-    h.b = 99.99
+    h.name = " H?"
 
     # Place the hydrogen pointing from the Oxygen towards the candidate at a distance
     # of 1 plus an offset that is clamped to the range -1..0 that is the sum of the overlap

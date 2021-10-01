@@ -1808,11 +1808,13 @@ Note:
 
           # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
           # a single water in it and asking about the hydrogen radius.
-          phantomHydrogenRadius = 1.05
+          phantomHydrogenRadius = 1.0   # @Remove after regression tests are complete.
+          #phantomHydrogenRadius = 1.05
           if self.params.use_neutron_distances:
             phantomHydrogenRadius = 1.0
 
-          # If we are a hydrogen that is bonded to a nitrogen, oxygen, or sulfur then we're a donor.
+          # If we are a hydrogen that is bonded to a nitrogen, oxygen, or sulfur then we're a donor
+          # and our bonded neighbor is not.
           if a.element == 'H':
             # If we are in a water, make sure our occupancy and temperature (b) factor are acceptable.
             # If they are not, set the class for the atom to 'ignore'.
@@ -1847,54 +1849,49 @@ Note:
             if len(bondedNeighborLists[a]) == 0:
               newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, 0.0, True,
                               phantomHydrogenRadius)
+              phantomHydrogenRadius = 1.05  # @todo Remove after regression testing is complete.
               for p in newPhantoms:
-                # Set all of the information other than the name and element and xyz of the atom based
-                # on our parent; then overwrite the name and element and xyz.
                 # NOTE: The Phantoms have the same i_seq number as their parents.  Although this does not
                 # impact our Probe data structures and algorithms, we'd like to avoid this in case it leaks
                 # through to some CCTBX-called code.
                 # This would require us to redo the i_seq numbers on the hierarchy and then recompute
                 # everything (unfortunately including the selection).
-                newAtom = pdb.hierarchy.atom(a.parent(),a)
-                newAtom.name = " H?"
-                newAtom.element = p.element
-                newAtom.xyz = p.xyz
 
                 # Add the atom to the spatial-query data structure
-                self._spatialQuery.add(newAtom)
+                self._spatialQuery.add(p)
 
                 # Set the extra atom information for this atom
                 rad = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
                 ei = probeExt.ExtraAtomInfo(rad, False, True, True)
-                self._extraAtomInfo.setMappingFor(newAtom, ei)
+                self._extraAtomInfo.setMappingFor(p, ei)
 
                 # Set the atomClass and other data based on the parent Oxygen.
-                self._atomClasses[newAtom] = self._atom_class_for(a)
-                self._inWater[newAtom] = self._inWater[a]
-                self._inMainChain[newAtom] = self._inMainChain[a]
-                self._inSideChain[newAtom] = self._inSideChain[a]
-                self._inHet[newAtom] = self._inHet[a]
+                self._atomClasses[p] = self._atom_class_for(a)
+                self._inWater[p] = self._inWater[a]
+                self._inMainChain[p] = self._inMainChain[a]
+                self._inSideChain[p] = self._inSideChain[a]
+                self._inHet[p] = self._inHet[a]
 
                 # @todo In the future, we may add these bonds, but that will cause the
                 # Phantom Hydrogens to mask their water Oxygens from close contacts or
                 # clashes with the acceptors, which is a change in behavior from the
                 # original Probe.  For now, we separately handle Phantom Hydrogen
                 # interactions as special cases in the code.
-                bondedNeighborLists[newAtom] = []
-                self._allBondedNeighborLists[newAtom] = []
-                #bondedNeighborLists[newAtom] = [a]
-                #bondedNeighborLists[a].append(newAtom)
-                #self._allBondedNeighborLists[newAtom] = [a]
-                #self._allBondedNeighborLists[a].append(newAtom)
+                bondedNeighborLists[p] = []
+                self._allBondedNeighborLists[p] = []
+                #bondedNeighborLists[p] = [a]
+                #bondedNeighborLists[a].append(p)
+                #self._allBondedNeighborLists[p] = [a]
+                #self._allBondedNeighborLists[a].append(p)
 
                 # Generate source dots for the new atom
-                self._dots[newAtom] = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(newAtom).vdwRadius).dots()
+                self._dots[p] = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(p).vdwRadius).dots()
 
                 # Add the new atom to any selections that the old atom was in.
                 if a in source_atoms:
-                  source_atoms.add(newAtom)
+                  source_atoms.add(p)
                 if a in target_atoms:
-                  target_atoms.add(newAtom)
+                  target_atoms.add(p)
 
                 # Report on the creation if we've been asked to
                 if self.params.output.record_added_hydrogens:
@@ -1908,14 +1905,14 @@ Note:
                     a.name, alt, resName, chainID, resID, iCode,
                     a.xyz[0], a.xyz[1], a.xyz[2])
 
-                  resName = newAtom.parent().resname.strip().upper()
-                  resID = str(newAtom.parent().parent().resseq_as_int())
-                  chainID = newAtom.parent().parent().parent().id
-                  iCode = newAtom.parent().parent().icode
-                  alt = newAtom.parent().altloc
+                  resName = p.parent().resname.strip().upper()
+                  resID = str(p.parent().parent().resseq_as_int())
+                  chainID = p.parent().parent().parent().id
+                  iCode = p.parent().parent().icode
+                  alt = p.parent().altloc
                   outString += '{{{:4s}{:1s}{:>3s}{:>2s}{:>4s}{}}}L {:8.3f}{:8.3f}{:8.3f}\n'.format(
-                    newAtom.name, alt, resName, chainID, resID, iCode,
-                    newAtom.xyz[0], newAtom.xyz[1], newAtom.xyz[2])
+                    p.name, alt, resName, chainID, resID, iCode,
+                    p.xyz[0], p.xyz[1], p.xyz[2])
 
           # Otherwise, if we're an N, O, or S then remove our donor status because
           # the hydrogens will be the donors.
