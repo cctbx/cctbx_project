@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 import socket
 import glob
 from copy import deepcopy
-from simtbx.diffBragg.hopper_utils import look_at_x, model, get_param_from_x, DataModeler, get_data_model_pairs, sanity_test_input_lines, PARAM_PER_XTAL
 from simtbx.diffBragg import hopper_utils
+PARAM_PER_XTAL = hopper_utils.PARAM_PER_XTAL
 import h5py
 from dxtbx.model.experiment_list import ExperimentList
 try:
@@ -93,7 +93,7 @@ class Script:
             if self.params.first_n is not None:
                 input_lines = input_lines[:self.params.first_n]
             if self.params.sanity_test_input:
-                sanity_test_input_lines(input_lines)
+                hopper_utils.sanity_test_input_lines(input_lines)
 
             if self.params.best_pickle is not None:
                 logging.info("reading pickle %s" % self.params.best_pickle)
@@ -142,7 +142,7 @@ class Script:
                 if len(best) != 1:
                     raise ValueError("Should be 1 entry for exp %s in best pickle %s" % (exp, self.params.best_pickle))
             self.params.simulator.spectrum.filename = spec
-            Modeler = DataModeler(self.params)
+            Modeler = hopper_utils.DataModeler(self.params)
             if self.params.load_data_from_refls:
                 gathered = Modeler.GatherFromReflectionTable(exp, ref)
             else:
@@ -162,7 +162,7 @@ class Script:
                     all_trusted = Modeler.all_trusted.copy()
                     all_pids = np.array(Modeler.pids)
                     all_rois = np.array(Modeler.rois)
-                    new_Modeler = DataModeler(self.params)
+                    new_Modeler = hopper_utils.DataModeler(self.params)
                     assert new_Modeler.GatherFromReflectionTable(exp, output_name)
                     assert np.allclose(new_Modeler.all_data, all_data)
                     assert np.allclose(new_Modeler.all_background, all_bg)
@@ -236,9 +236,9 @@ class Script:
 
 def save_up(Modeler, x, exp, i_exp, input_refls):
     LOGGER = logging.getLogger("refine")
-    best_model,_ = model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
+    Modeler.best_model, _ = hopper_utils.model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
     LOGGER.info("Optimized values for i_exp %d:" % i_exp)
-    look_at_x(x,Modeler.SIM)
+    hopper_utils.look_at_x(x,Modeler.SIM)
 
     rank_imgs_outdir = os.path.join(Modeler.params.outdir, "imgs", "rank%d" % COMM.rank)
     if not os.path.exists(rank_imgs_outdir):
@@ -256,9 +256,8 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
         save_to_pandas(x, Modeler.SIM, exp, Modeler.params, Modeler.E, i_exp, input_refls, img_path)
 
     new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d.refl" % (Modeler.params.tag, basename, i_exp))
-    # save_model_Z(img_path, all_data, best_model, pan_fast_slow, sigma_rdout)
 
-    data_subimg, model_subimg, trusted_subimg, bragg_subimg = get_data_model_pairs(Modeler.rois, Modeler.pids, Modeler.roi_id, best_model, Modeler.all_data, trusted_flags=Modeler.all_trusted, background=Modeler.all_background)
+    data_subimg, model_subimg, trusted_subimg, bragg_subimg = Modeler.get_data_model_pairs()
 
     comp = {"compression": "lzf"}
     new_refls = deepcopy(Modeler.refls)
@@ -332,7 +331,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
 
     if SIM.num_xtals > 1:
         raise NotImplemented("cant save pandas for multiple crystals yet")
-    scale, rotX, rotY, rotZ, Na, Nb, Nc,diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c, a,b,c,al,be,ga,detz_shift = get_param_from_x(x, SIM)
+    scale, rotX, rotY, rotZ, Na, Nb, Nc,diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c, a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, SIM)
     if params.isotropic.diffuse_gamma:
         diff_gam_b = diff_gam_c = diff_gam_a
     if params.isotropic.diffuse_sigma:

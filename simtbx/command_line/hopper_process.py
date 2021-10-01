@@ -41,6 +41,10 @@ combine_pandas = True
 partial_correct = False
   .type = bool
   .help = if True, compute partialities from the prediction models  and use them to normalize measurements
+save_modelers = False
+  .type = bool
+  .help = if True, save the data modelers after running refinement. The file includes model values, errors, and useful information
+  .help = for examining the modeling results, can be loaded using modeler = np.load(fname, allow_pickle=True)[()]
 """
 import os
 from libtbx.phil import parse
@@ -54,6 +58,7 @@ class Hopper_Processor(Processor):
 
         self.stage1_df = None  # the pandas dataframe containing model parameters after running stage 1 (see method refine)
         self.stage1_modeler = None  # the data modeler used during stage 1 refinement
+        self.modeler_dir = None  # path for writing the data modelers
 
         if self.params.silence_dials_loggers:
             logging.getLogger("dials.algorithms.indexing.nave_parameters").setLevel(logging.ERROR)
@@ -62,6 +67,12 @@ class Hopper_Processor(Processor):
             logging.getLogger("dials.algorithms.refinement.reflection_manager").setLevel(logging.ERROR)
             logging.getLogger("dials.algorithms.refinement.reflection_manager").setLevel(logging.ERROR)
         logging.basicConfig(level=logging.DEBUG)
+
+        if self.params.save_modelers:
+            if COMM.rank == 0:
+                self.modeler_dir = os.path.join(self.params.output.output_dir, "modelers")
+                if not os.path.exists(self.modeler_dir):
+                    os.makedirs(self.modeler_dir)
 
     @property
     def device_id(self):
@@ -131,6 +142,10 @@ class Hopper_Processor(Processor):
             self.stage1_modeler = data_modeler
             exps_out = ExperimentList()
             exps_out.append(exp)
+            if self.params.save_modelers:
+                modeler_filename = os.path.basename(refls_name).replace(".refl", "_modeler.npy")
+                modeler_filepath = os.path.abspath(os.path.join(self.modeler_dir, modeler_filename))
+                np.save(modeler_filepath, data_modeler)
 
         return super(Hopper_Processor, self).refine(exps_out, ref)
 
@@ -210,7 +225,8 @@ class Hopper_Processor(Processor):
 
         if self.params.partial_correct:
             integrated = predictions.normalize_by_partiality(
-                integrated, model, default_F=self.params.diffBragg.predictions.default_Famplitude)
+                integrated, model, default_F=self.params.diffBragg.predictions.default_Famplitude,
+                gain=self.params.diffBragg.refiner.adu_per_photon)
 
         # correct integrated intensities for absorption correction, if necessary
         for abs_params in self.params.integration.absorption_correction:

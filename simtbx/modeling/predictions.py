@@ -143,11 +143,12 @@ def label_weak_spots_for_integration(fraction, predictions, num_res_bins=10):
     predictions['is_for_integration'] = flex.bool(logi_or(logi_not(predictions["is_weak"]), is_weak_but_integratable))
 
 
-def normalize_by_partiality(refls, model, default_F=1):
+def normalize_by_partiality(refls, model, default_F=1, gain=1):
     """
     :param refls: integrated refls output by the integrator.integrate() method in hopper_process / stills_process
     :param model: prediction intensities, output by the model_spots_from_pandas method
     :param default_F: value of the default structure factor used in the predictive model
+    :param gain: detector ADU to photon factor
     :return: updated reflection table
     """
     nref = len(refls)
@@ -160,9 +161,9 @@ def normalize_by_partiality(refls, model, default_F=1):
         sb = refl['shoebox']
         pid = refl['panel']
         mask = sb.mask.as_numpy_array()[0]
-        data = sb.data.as_numpy_array()[0]
+        data = sb.data.as_numpy_array()[0] / gain
         x1,x2,y1,y2,_,_ = sb.bbox
-        was_integrated = mask==SIGNAL_MASK
+        was_integrated = mask == SIGNAL_MASK
         Y, X = np.where(was_integrated)
         Y += y1
         X += x1

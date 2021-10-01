@@ -4,7 +4,6 @@ from dials.algorithms.shoebox import MaskCode
 from copy import deepcopy
 from dials.model.data import Shoebox
 import numpy as np
-
 from scipy.optimize import dual_annealing, basinhopping
 from collections import Counter
 from scitbx.matrix import sqr, col
@@ -40,36 +39,58 @@ DEG = 180 / np.pi
 
 class DataModeler:
 
+    """
+    The data modeler stores information in two ways:
+    1- lists whose length is the number of pixels being modeled
+    2- lists whose length is the number of shoeboxes being modeled
+
+    for example if one is modeling 3 shoeboxes whose dimensions are 10x10, then
+    the objects below like self.all_data will have length 300, and other objects like self.selection_flags will have length 2
+    """
+
     def __init__(self, params):
         """ params is a simtbx.diffBragg.hopper phil"""
-        self.no_rlp_info = False
-        self.params = params
-        self.SIM = None
-        self.E = None
-        self.pan_fast_slow =None
-        self.all_background =None
-        self.roi_id =None
-        self.u_id = None
-        self.all_freq = None
-        self.all_data =None
-        self.all_sigmas =None
-        self.all_trusted =None
-        self.npix_total =None
-        self.all_fast =None
-        self.all_slow =None
-        self.all_pid = None
-        self.rois=None
-        self.pids=None
-        self.tilt_abc=None
-        self.selection_flags=None
-        self.background=None
-        self.tilt_cov = None
-        self.simple_weights = None
-        self.refls_idx = None
-        self.refls = None
+        self.no_rlp_info = False  # whether rlps are stored in the refls table
+        self.params = params  # phil params (see diffBragg/phil.py)
+        self.SIM = None  # simulator object (instance of nanoBragg.sim_data.SimData
+        self.E = None  # placeholder for the experiment
+        self.pan_fast_slow =None  # (pid, fast, slow) per pixel
+        self.all_background =None  # background model per pixel (photon units)
+        self.roi_id =None  # region of interest ID per pixel
+        self.u_id = None  # set of unique region of interest ids
+        self.all_freq = None  # flag for the h,k,l frequency of the observed pixel
+        self.best_model = None  # best model value at each pixel
+        self.all_data =None  # data at each pixel (photon units)
+        self.all_sigmas =None  # error model for each pixel (photon units)
+        self.all_trusted =None  # trusted pixel flags (True is trusted and therefore used during refinement)
+        self.npix_total =None  # total number of pixels
+        self.all_fast =None  # fast-scan coordinate per pixel
+        self.all_slow =None  # slow-scan coordinate per pixel
+        self.all_pid = None  # panel id per pixel
+        self.rois=None  # region of interest (per spot)
+        self.pids=None  # panel id (per spot)
+        self.tilt_abc=None  # background plane constants (per spot), a,b are fast,slow scan components, c is offset
+        self.selection_flags=None  # whether the spot was selected for refinement (sometimes poorly conditioned spots are rejected)
+        self.background=None  # background for entire image (same shape as the detector)
+        self.tilt_cov = None  # covariance estimates from background fitting (not used)
+        self.simple_weights = None  # not used
+        self.refls_idx = None  # position of modeled spot in original refl array
+        self.refls = None  # reflection table
 
-        self.Hi = None
-        self.Hi_asu = None
+        self.Hi = None  # miller index (P1)
+        self.Hi_asu = None  # miller index (high symmetry)
+
+        # which attributes to save when pickling a data modeler
+        self.saves = ["all_data", "all_background", "all_trusted", "best_model", "all_sigmas",
+                      "rois", "pids", "tilt_abc", "selection_flags", "refls_idx", "pan_fast_slow",
+                        "Hi", "Hi_asu", "roi_id", "params", "all_pid", "all_fast", "all_slow"]
+
+    def __getstate__(self):
+        return {name: getattr(self, name) for name in self.saves}
+
+    def __setstate__(self, state):
+        for name in state:
+            setattr(self, name, state[name])
 
     def clean_up(self):
         if self.SIM is not None:
@@ -476,6 +497,34 @@ class DataModeler:
         # P.add("eta_a", value=0, min=0, max=eta_max * rad, vary=self.params.eta_refine)
         # P.add("eta_b", value=0, min=0, max=eta_max * rad, vary=self.params.eta_refine)
         # P.add("eta_c", value=0, min=0, max=eta_max * rad, vary=self.params.eta_refine)
+
+    def get_data_model_pairs(self):
+        if self.best_model is None:
+            raise ValueError("cannot get the best model with setting best_model attribute")
+        all_dat_img, all_mod_img = [], []
+        all_trusted = []
+        all_bragg = []
+        for i_roi in range(len(self.rois)):
+            x1, x2, y1, y2 = self.rois[i_roi]
+            mod = self.best_model[self.roi_id == i_roi].reshape((y2 - y1, x2 - x1))
+            if self.all_trusted is not None:
+                trusted = self.all_trusted[self.roi_id == i_roi].reshape((y2 - y1, x2 - x1))
+                all_trusted.append(trusted)
+            else:
+                all_trusted.append(None)
+
+            # dat = img_data[pid, y1:y2, x1:x2]
+            dat = self.all_data[self.roi_id == i_roi].reshape((y2 - y1, x2 - x1))
+            all_dat_img.append(dat)
+            if self.all_background is not None:
+                bg = self.all_background[self.roi_id==i_roi].reshape((y2-y1, x2-x1))
+                # assume mod does not contain background
+                all_bragg.append(mod)
+                all_mod_img.append(mod+bg)
+            else:  # assume mod contains background
+                all_mod_img.append(mod)
+                all_bragg.append(None)
+        return all_dat_img, all_mod_img, all_trusted, all_bragg
 
     def Minimize(self, x0):
         target = TargetFunc(SIM=self.SIM, niter_per_J=self.params.niter_per_J, profile=self.params.profile)
@@ -1088,7 +1137,7 @@ def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False):
         x0[PARAM_PER_XTAL * Modeler.SIM.num_xtals + nucell] = Modeler.SIM.DetZ_param.init
 
     x = Modeler.Minimize(x0)
-    best_model, _ = model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
+    Modeler.best_model, _ = model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
 
     new_crystal = update_crystal_from_x(Modeler.SIM, x)
     new_exp = deepcopy(Modeler.E)
@@ -1102,7 +1151,7 @@ def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False):
     new_det = update_detector_from_x(Modeler.SIM, x)
     new_exp.detector = new_det
 
-    new_refl = get_new_xycalcs(Modeler, best_model, new_exp)
+    new_refl = get_new_xycalcs(Modeler, new_exp)
 
     Modeler.clean_up()
 
@@ -1143,8 +1192,8 @@ def update_crystal_from_x(SIM, x):
     return new_C
 
 
-def get_new_xycalcs(Modeler, best_model, new_exp):
-    _,_,_, bragg_subimg = get_data_model_pairs(Modeler.rois, Modeler.pids, Modeler.roi_id, best_model, Modeler.all_data, background=Modeler.all_background)
+def get_new_xycalcs(Modeler, new_exp):
+    _,_,_, bragg_subimg = Modeler.get_data_model_pairs()
     new_refls = deepcopy(Modeler.refls)
 
     reflkeys = list(new_refls.keys())
@@ -1197,32 +1246,7 @@ def get_new_xycalcs(Modeler, best_model, new_exp):
     return new_refls
 
 
-def get_data_model_pairs(rois, pids, roi_id, best_model, all_data, trusted_flags=None, background=None):
-    all_dat_img, all_mod_img = [], []
-    all_trusted = []
-    all_bragg = []
-    for i_roi in range(len(rois)):
-        x1, x2, y1, y2 = rois[i_roi]
-        mod = best_model[roi_id == i_roi].reshape((y2 - y1, x2 - x1))
-        if trusted_flags is not None:
-            trusted = trusted_flags[roi_id == i_roi].reshape((y2 - y1, x2 - x1))
-            all_trusted.append(trusted)
-        else:
-            all_trusted.append(None)
 
-        # dat = img_data[pid, y1:y2, x1:x2]
-        dat = all_data[roi_id == i_roi].reshape((y2 - y1, x2 - x1))
-        all_dat_img.append(dat)
-        if background is not None:
-            bg = background[roi_id==i_roi].reshape((y2-y1, x2-x1))
-            # assume mod does not contain background
-            all_bragg.append(mod)
-            all_mod_img.append(mod+bg)
-        else:  # assume mod contains background
-            all_mod_img.append(mod)
-            all_bragg.append(None)
-        # print("Roi %d, max in data=%f, max in model=%f" %(i_roi, dat.max(), mod.max()))
-    return all_dat_img, all_mod_img, all_trusted, all_bragg
 
 
 def downsamp_spec_from_params(params, expt):
