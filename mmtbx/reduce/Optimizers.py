@@ -350,6 +350,12 @@ class _SingletonOptimizer(object):
         # These atoms will not be part of any atom group, and we'll fill in their extra atom
         # info directly.
 
+        # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
+        # a single water in it and asking about the hydrogen radius.
+        phantomHydrogenRadius = 1.05
+        if useNeutronDistances:
+          phantomHydrogenRadius = 1.0
+
         # Find every Oxygen that is part of a water
         phantoms = []
         for a in self._atoms:
@@ -358,11 +364,6 @@ class _SingletonOptimizer(object):
             resID = str(a.parent().parent().resseq_as_int())
             chainID = a.parent().parent().parent().id
             resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
-            # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
-            # a single water in it and asking about the hydrogen radius.
-            phantomHydrogenRadius = 1.05
-            if useNeutronDistances:
-              phantomHydrogenRadius = 1.0
             newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, self._minOccupancy,
                             False, phantomHydrogenRadius)
             if len(newPhantoms) > 0:
@@ -376,12 +377,11 @@ class _SingletonOptimizer(object):
           # Add these atoms to the list of atoms we deal with.
           # Add these atoms to the spatial-query structure.
           # Insert ExtraAtomInfo for each of these atoms, marking each as a dummy.
-          PHANTOM_HYDROGEN_RADIUS = 1.05
           origCount = len(self._atoms)
           for a in phantoms:
             self._atoms.append(a)
             self._spatialQuery.add(a)
-            eai = probeExt.ExtraAtomInfo(PHANTOM_HYDROGEN_RADIUS, False, True, True)
+            eai = probeExt.ExtraAtomInfo(phantomHydrogenRadius, False, True, True)
             self._extraAtomInfo.setMappingFor(a, eai)
 
           self._infoString += _VerboseCheck(1,"Added "+str(len(phantoms))+" phantom Hydrogens on waters")

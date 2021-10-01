@@ -50,10 +50,6 @@ use_polar_hydrogens = True
   .type = bool
   .help = Use polar hydrogens (-usepolarh in probe)
 
-polar_hydrogen_radius = 1.05
-  .type = float
-  .help = Radius to set for polar hydrogens (1.05 in probe)
-
 minimum_polar_hydrogen_occupancy = 0.7
   .type = float
   .help = Minimum occupancy for polar hydrogens (0.25 in probe)
@@ -1810,6 +1806,12 @@ Note:
         # Check all selected atoms
         for a in all_selected_atoms:
 
+          # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
+          # a single water in it and asking about the hydrogen radius.
+          phantomHydrogenRadius = 1.05
+          if self.params.use_neutron_distances:
+            phantomHydrogenRadius = 1.0
+
           # If we are a hydrogen that is bonded to a nitrogen, oxygen, or sulfur then we're a donor.
           if a.element == 'H':
             # If we are in a water, make sure our occupancy and temperature (b) factor are acceptable.
@@ -1825,8 +1827,7 @@ Note:
                   ei = self._extraAtomInfo.getMappingFor(a)
                   ei.isDonor = True
                   if self.params.use_polar_hydrogens:
-                    ei.vdwRadius = self.params.atom_radius_offset + (
-                      self.params.polar_hydrogen_radius * self.params.atom_radius_scale)
+                    ei.vdwRadius = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
                   self._extraAtomInfo.setMappingFor(a, ei)
 
                   # Set our neigbor to not be a donor, since we are the donor
@@ -1844,7 +1845,8 @@ Note:
 
             # If we don't yet have Hydrogens attached, add phantom hydrogen(s)
             if len(bondedNeighborLists[a]) == 0:
-              newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, 0.0, True)
+              newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, 0.0, True,
+                              phantomHydrogenRadius)
               for p in newPhantoms:
                 # Set all of the information other than the name and element and xyz of the atom based
                 # on our parent; then overwrite the name and element and xyz.
@@ -1862,8 +1864,7 @@ Note:
                 self._spatialQuery.add(newAtom)
 
                 # Set the extra atom information for this atom
-                rad = self.params.atom_radius_offset + (
-                      self.params.polar_hydrogen_radius * self.params.atom_radius_scale)
+                rad = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
                 ei = probeExt.ExtraAtomInfo(rad, False, True, True)
                 self._extraAtomInfo.setMappingFor(newAtom, ei)
 
@@ -1918,6 +1919,7 @@ Note:
 
           # Otherwise, if we're an N, O, or S then remove our donor status because
           # the hydrogens will be the donors.
+          # @todo This will have already been done in the Hydrogen processing above...
           elif a.element in ['N','O','S']:
             ei = self._extraAtomInfo.getMappingFor(a)
             ei.isDonor = False
