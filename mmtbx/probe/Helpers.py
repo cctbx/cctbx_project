@@ -358,6 +358,51 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
 
   return ret
 
+def fixupExplicitDonors(atoms, bondedNeighborLists, extraAtomInfo):
+  """
+    Fix up the donor status for models that have explicit hydrogens.  All Nitrogens, Oxygens
+    and Sulphur atoms are stripped of their donor status because they will have explicit Hydrogens
+    added or else had some other form of covalent bond added.  All hydrogens that are bonded to
+    Nitrogens, Oxygens, or Sulphur atoms are marked as donors.  This does not handle any Phantom
+    Hydrogens unless those Hydrogens are marked as bonded to their Water Oxygen.
+    :param atoms: The list of atoms to adjust.
+    :param bondedNeighborLists: Dictionary of lists that contain all bonded neighbors for
+    each atom in a set of atoms.  Should be obtained using
+    mmtbx.probe.Helpers.getBondedNeighborLists().
+    :param extraAtomInfo: mmtbx_probe_ext.ExtraAtomInfo mapper that provides radius and other
+    information about atoms beyond what is in the pdb.hierarchy.  Used here to determine
+    which atoms may be acceptors.  This information is modified in place to adjust the donor
+    status of atoms.
+    :return: None.  As a side effect, the extraAtomInfo is adjusted.
+  """
+
+  for a in atoms:
+    # If we are a hydrogen that is bonded to a nitrogen, oxygen, or sulfur then we're a donor
+    # and our bonded neighbor is not.
+    if a.element == 'H':
+      for n in bondedNeighborLists[a]:
+        if n.element in ['N','O','S']:
+          # Copy the value, set the new values, then copy the new one back in.
+          # We are a donor and may have our radius adjusted
+          ei = extraAtomInfo.getMappingFor(a)
+          ei.isDonor = True
+          extraAtomInfo.setMappingFor(a, ei)
+
+          # Set our neigbor to not be a donor, since we are the donor
+          ei = extraAtomInfo.getMappingFor(n)
+          ei.isDonor = False
+          extraAtomInfo.setMappingFor(n, ei)
+
+    # Otherwise, if we're an N, O, or S then remove our donor status because
+    # the hydrogens will be the donors.  Because we're not doing implicit
+    # hydrogens (and thus are doing explicit hydrogens), if we have a leftover
+    # atom that did not have a hydrogen attached we assume that this is because
+    # there is some other bonding and we still need to remove the donor status.
+    elif a.element in ['N','O','S']:
+      ei = extraAtomInfo.getMappingFor(a)
+      ei.isDonor = False
+      extraAtomInfo.setMappingFor(a, ei)
+
 ##################################################################################
 # Helper functions to make things that are compatible with vec3_double so
 # that we can do math on them.  We need a left-hand and right-hand one so that

@@ -1813,8 +1813,9 @@ Note:
           if self.params.use_neutron_distances:
             phantomHydrogenRadius = 1.0
 
-          # If we are a hydrogen that is bonded to a nitrogen, oxygen, or sulfur then we're a donor
-          # and our bonded neighbor is not.
+          adjustedHydrogenRadius = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
+
+          # Adjust hydrogen atom class and radius as needed.
           if a.element == 'H':
             # If we are in a water, make sure our occupancy and temperature (b) factor are acceptable.
             # If they are not, set the class for the atom to 'ignore'.
@@ -1824,18 +1825,11 @@ Note:
             else:
               for n in bondedNeighborLists[a]:
                 if n.element in ['N','O','S']:
-                  # Copy the value, set the new values, then copy the new one back in.
-                  # We are a donor and may have our radius adjusted
+                  # We may have our radius adjusted
                   ei = self._extraAtomInfo.getMappingFor(a)
-                  ei.isDonor = True
                   if self.params.use_polar_hydrogens:
-                    ei.vdwRadius = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
+                    ei.vdwRadius = adjustedHydrogenRadius
                   self._extraAtomInfo.setMappingFor(a, ei)
-
-                  # Set our neigbor to not be a donor, since we are the donor
-                  ei = self._extraAtomInfo.getMappingFor(n)
-                  ei.isDonor = False
-                  self._extraAtomInfo.setMappingFor(n, ei)
 
           # If we are the Oxygen in a water, then add phantom hydrogens pointing towards nearby acceptors
           elif self._inWater[a] and a.element == 'O':
@@ -1848,8 +1842,9 @@ Note:
             # If we don't yet have Hydrogens attached, add phantom hydrogen(s)
             if len(bondedNeighborLists[a]) == 0:
               newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, 0.0, True,
-                              phantomHydrogenRadius)
-              phantomHydrogenRadius = 1.05  # @todo Remove after regression testing is complete.
+                              adjustedHydrogenRadius)
+              phantomHydrogenRadius = 1.05  # @todo Remove these two lines after regression testing is complete.
+              adjustedHydrogenRadius = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
               for p in newPhantoms:
                 # NOTE: The Phantoms have the same i_seq number as their parents.  Although this does not
                 # impact our Probe data structures and algorithms, we'd like to avoid this in case it leaks
@@ -1861,8 +1856,7 @@ Note:
                 self._spatialQuery.add(p)
 
                 # Set the extra atom information for this atom
-                rad = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
-                ei = probeExt.ExtraAtomInfo(rad, False, True, True)
+                ei = probeExt.ExtraAtomInfo(adjustedHydrogenRadius, False, True, True)
                 self._extraAtomInfo.setMappingFor(p, ei)
 
                 # Set the atomClass and other data based on the parent Oxygen.
@@ -1914,13 +1908,9 @@ Note:
                     p.name, alt, resName, chainID, resID, iCode,
                     p.xyz[0], p.xyz[1], p.xyz[2])
 
-          # Otherwise, if we're an N, O, or S then remove our donor status because
-          # the hydrogens will be the donors.
-          # @todo This will have already been done in the Hydrogen processing above...
-          elif a.element in ['N','O','S']:
-            ei = self._extraAtomInfo.getMappingFor(a)
-            ei.isDonor = False
-            self._extraAtomInfo.setMappingFor(a, ei)
+        # Fix up the donor status for all of the atoms now that we've added the final explicit
+        # Phantom Hydrogens.
+        Helpers.fixupExplicitDonors(all_selected_atoms, bondedNeighborLists, self._extraAtomInfo)
 
       ################################################################################
       # Re-fill all_selected_atoms

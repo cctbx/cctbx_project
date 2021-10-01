@@ -360,13 +360,19 @@ class _SingletonOptimizer(object):
         phantoms = []
         for a in self._atoms:
           if a.element == 'O' and common_residue_names_get_class(name=a.parent().resname) == "common_water":
-            resName = a.parent().resname.strip().upper()
-            resID = str(a.parent().parent().resseq_as_int())
-            chainID = a.parent().parent().parent().id
-            resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
+            # We're an acceptor and not a donor.
+            ei = self._extraAtomInfo.getMappingFor(a)
+            ei.isDonor = False
+            ei.isAcceptor = True
+            self._extraAtomInfo.setMappingFor(a, ei)
+
             newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, self._minOccupancy,
                             False, phantomHydrogenRadius)
             if len(newPhantoms) > 0:
+              resName = a.parent().resname.strip().upper()
+              resID = str(a.parent().parent().resseq_as_int())
+              chainID = a.parent().parent().parent().id
+              resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
               self._infoString += _VerboseCheck(3,"Added {} phantom Hydrogens on {}\n".format(len(newPhantoms), resNameAndID))
               for p in newPhantoms:
                 self._infoString += _VerboseCheck(5,"Added phantom Hydrogen at "+str(p.xyz)+"\n")
@@ -376,17 +382,26 @@ class _SingletonOptimizer(object):
 
           # Add these atoms to the list of atoms we deal with.
           # Add these atoms to the spatial-query structure.
-          # Insert ExtraAtomInfo for each of these atoms, marking each as a dummy.
+          # Insert ExtraAtomInfo for each of these atoms, marking each as a dummy and as a donor.
+          # Add to the bondedNeighborList with an empty list.  This prevents them from masking Oxygens.
+          # @todo Consider doing the correct bond structure between them and their Oxygens, in both directions,
+          # so that they will properly mask each other.
           origCount = len(self._atoms)
           for a in phantoms:
             self._atoms.append(a)
             self._spatialQuery.add(a)
             eai = probeExt.ExtraAtomInfo(phantomHydrogenRadius, False, True, True)
             self._extraAtomInfo.setMappingFor(a, eai)
+            bondedNeighborLists[a] = []
 
           self._infoString += _VerboseCheck(1,"Added "+str(len(phantoms))+" phantom Hydrogens on waters")
           self._infoString += _VerboseCheck(1," (Old total "+str(origCount)+", new total "+str(len(self._atoms))+")\n")
         self._infoString += _ReportTiming("place water phantom Hydrogens")
+
+        ################################################################################
+        # Fix up the donor status for all of the atoms now that we've added the final explicit
+        # Phantom Hydrogens.
+        Helpers.fixupExplicitDonors(self._atoms, bondedNeighborLists, self._extraAtomInfo)
 
         ################################################################################
         # Construct dot-spheres for each atom that we may need to find interactions for.
