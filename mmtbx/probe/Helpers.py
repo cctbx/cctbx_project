@@ -302,12 +302,16 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
   candidates = []
 
   for a in nearby:
+    # Only check atoms in compatible conformations.
+    if not compatibleConformations(atom, a):
+      continue
+
     # Check to ensure the occupancy of the neighbor is above threshold and that it is
     # close enough to potentially bond to the atom.
     OH_BOND_LENGTH = 1.0
     overlap = ( (rvec3(atom.xyz) - rvec3(a.xyz)).length()  -
                 (placedHydrogenRadius + extraAtomInfo.getMappingFor(a).vdwRadius + OH_BOND_LENGTH) )
-    if overlap < -0.01 and a.occ > minOccupancy and a.element != "H":
+    if overlap < -0.1 and a.occ > minOccupancy and a.element != "H":
       if not acceptorOnly or extraAtomInfo.getMappingFor(a).isAcceptor:
         # If we have multiple atoms in the same Aromatic ring (part of the same residue)
         # we only point at the closest one.  To ensure this, we check all current candidates
