@@ -1,5 +1,14 @@
 # Contributing to the Computational Crystallography Toolbox (cctbx)
 
+## cctbx Developer Guidance
+
+##### Table of Contents  
+- [Short version](#shortversion) 
+- [Long version](#longversion) 
+- [Guidance for Developing Tests](#guidancetests) 
+
+<a name="shortversion"/>
+
 ## Short version
 
 As discussed at the Gordon Research Conference for Diffraction Methods in Structural Biology, 07/30/18, the following guidelines are agreed upon for developers wishing to contribute code to cctbx:
@@ -21,9 +30,11 @@ As discussed at the Gordon Research Conference for Diffraction Methods in Struct
 * We can deny pull requests, but if we do so, we should do so with constructive feedback, following consistent rules.
 * The build meeting team will review tickets and pull requests to ensure regular feedback.
 
+<a name="longversion"/>
+
 ## Long version
 
-## cctbx Developer Guidance
+
 The Computational Crystallography Toolbox (cctbx) is a large code base under active development by several groups worldwide. There are more than 1 million lines of code, 500 commits per month, and 20 active developers. It is therefore very important that all contributors follow some basic guidelines. Keep in mind that the intention is for the cctbx to provide a fully featured code base for crystallographic calculations while also remaining lightweight and straightforward to compile and install.
 
 ### 1. No new dependencies unless absolutely necessary
@@ -143,6 +154,8 @@ Note however that where cctbx deviates from PEP8, follow cctbx (for example usin
 ### 10. Miscellaneous:
   
   * Some IDEs have Code inspection tools and Style formatting tools, that can help maintain the style and avoid other code pitfalls (for example: pycharm)
+
+<a name="guidancetests"/>
 
 ## Guidance for Developing Tests
 
