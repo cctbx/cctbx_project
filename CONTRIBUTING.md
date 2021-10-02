@@ -10,13 +10,13 @@ As discussed at the Gordon Research Conference for Diffraction Methods in Struct
 * Contributors should be encouraged to review their plans for contributions before doing a large amount of work and submitting a pull request, but that shouldn't preclude users from submitting requests.
 * Interface changes and other breaking changes should be communicated to the bulletin boards (cctbxbb@phenix-online.org for example).
 
-Expectations for contributions
+**Expectations for contributions**
 * Include documentation: docstrings for functions, in-line comments, and help strings for command line programs.
 * Include tests.  Testing includes unit tests (individual functions) and integration tests (full program), and possibly multiple of each with different inputs.
 * Run the cctbx tests.  If appropriate, run tests from other projects affected by the new code.
 * Do not add external dependencies without discussion.
 
-Expectations for developers
+**Expectations for developers**
 * We will respond to contributions, at least with "I don't have time to review this right now".
 * We can deny pull requests, but if we do so, we should do so with constructive feedback, following consistent rules.
 * The build meeting team will review tickets and pull requests to ensure regular feedback.
@@ -26,26 +26,32 @@ Expectations for developers
 ## cctbx Developer Guidance
 The Computational Crystallography Toolbox (cctbx) is a large code base under active development by several groups worldwide. There are more than 1 million lines of code, 500 commits per month, and 20 active developers. It is therefore very important that all contributors follow some basic guidelines. Keep in mind that the intention is for the cctbx to provide a fully featured code base for crystallographic calculations while also remaining lightweight and straightforward to compile and install.
 
-### 1. No new dependencies without discussion with the other developers.
+### 1. No new dependencies unless absolutely necessary
 
-  * This is important to keep the cctbx easy to compile and install. The inclusion of third-party packages that have their own dependencies is therefore strongly discouraged. This applies especially if a dependency on a new compiler language is introduced.
+  * It is important to keep the cctbx easy to compile and install. The inclusion of third-party packages that have their own dependencies is therefore strongly discouraged. This applies especially if a dependency on a new compiler language is introduced.
 
-### 2. Don’t introduce new dependencies if there is code in cctbx to provide the needed functionality
+  * Check if the desired functionality already exists in the cctbx.
 
-  * It is often the case that the required functionality already exists in the cctbx.
-Developers are encouraged to check first with other cctbx developers and review the code base prior to implementing new functionality.
+  * Ask other developers if the functionality exists already in the code base.
 
-### 3. Avoid code duplication
+  * If a new dependency is needed, **discuss with the other developers** before adding it.
 
-  * Add new context independent functions into appropriate modules, not into
-specialized code. Example: a place for the function that calculates distance between two points is scitbx; however, it may be very tempting to inline this function into a specialized code as needed thus creating code duplication.
+### 2. Avoid code duplication
+
+  * It is often the case that the desired functionality already exists somewhere in the cctbx. Therefore:
+    
+    * Review the code base prior to implementing new functionality.
+    
+    * Ask other cctbx developers if they know that this functionality exists already
+    
+  * Add new context independent functions into appropriate modules, not into specialized code. Example: a place for the function that calculates distance between two points is scitbx; however, it may be very tempting to inline this function into a specialized code as needed thus creating code duplication.
 
   * Use constants from a central place. Example: use `math.pi` instead of defining
 `pi = 3.14` every time it is needed. Note: there are plenty of other constants available, such as `scitbx::constants::two_pi_sq`; add more as needed. (Make sure not to use an OS-dependent constant)
 
-### 4. Use an appropriate coding style for cctbx
+### 3. Use the cctbx coding style
 
-  * There is a Python Style guide that is generally useful
+  * The Python Style guide is generally useful
 Note however that where cctbx deviates from PEP8, follow cctbx (for example using 2 spaces to indent instead of 4).
 
   * Constructs should be used to make subsequent use and testing as easy to debug as possible (i.e. standard out and standard error output)
@@ -82,7 +88,7 @@ Note however that where cctbx deviates from PEP8, follow cctbx (for example usin
 
   * Developers are encouraged to modify code comments when unclear, outdated or in a format that does not render well in the SPHINX automated documentation.
 
-### 5. Run find clutter before commits
+### 4. Run find clutter before commits
 
   * `libtbx.find_clutter` primarily checks for a few common errors:
 
@@ -96,27 +102,27 @@ Note however that where cctbx deviates from PEP8, follow cctbx (for example usin
 
   * Before submitting your code, be sure to test it again after fixing problems by running `libtbx.find_clutter`.
 
-### 6. Note that some IDEs have Code inspection tools and Style formatting tools, that can help maintain the style and avoid other code pitfalls (for example: pycharm)
+### 5. Help and guidance
 
-### 7. Use the cctbx mailing list to ask for guidance from other developers, and locate specific features in the current code base.
+  * Use the cctbx mailing list to ask for guidance from other developers, and locate specific features in the current code base.
 
   * The other cctbx developers are an invaluable resource that can be used to help with getting started in cctbx development.
 
   * Link to the mailing list: http://www.phenix-online.org/mailman/listinfo/cctbxbb
 
-### 8. Send email to the mailing list stating the intent to submit a new code tree within the cctbx.
+### 6. Send an email to the mailing list stating the intent to submit a new code tree within the cctbx.
 
   * There are several sub projects within the cctbx, often embodied in the form of code trees within the main cctbx project. New code trees should not be introduced without good reason, and if abandoned the code tree should be removed. This reduces the accumulation of distracting code in the cctbx over time.
 
   * Periodically, unused code trees may be removed from the cctbx to minimize clutter.
 
-### 9. Developers are encouraged to subscribe to git check-in alerts sent via email (code changes alerts) and review the diffs.
+### 7. Subscribe to git check-in alerts sent via email (code changes alerts) and review the diffs.
 
   * This will minimize surprises later when someone changes someone’s code.
 
   * Any inefficiencies or bugs spotted in diffs should be pointed out to a respective contributor or fixed by anyone who found them first.
 
-### 10. Python do’s and don’ts:
+### 8. Python do’s and don’ts:
 
   * Use inheritance to specialize classes whenever possible to avoid the duplication of code.
 
@@ -126,13 +132,17 @@ Note however that where cctbx deviates from PEP8, follow cctbx (for example usin
 
   * Never use `isinstance()`: a method should not be forced to inquire what type an argument is in order to know how to perform. Instead, the method is entitled to expect arguments to conform to an interface specification; for example if the method prints an object, it should be expected (or documented) that the object should have a `__str__()` method. More details of this discussion may be found at http://www.canonical.org/~kragen/isinstance
 
-### 11. Tests (see more below)
+### 9. Tests (see more below)
 
   * Any newly added functionality requires a unit test.
 
   * Developers are encouraged to add unit tests to any existing functionality found to have no unit test.
 
   * Any bug fix requires a regression test.
+
+### 10. Miscellaneous:
+  
+  * Some IDEs have Code inspection tools and Style formatting tools, that can help maintain the style and avoid other code pitfalls (for example: pycharm)
 
 ## Guidance for Developing Tests
 
