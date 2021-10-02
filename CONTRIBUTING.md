@@ -137,38 +137,57 @@ Note however that where cctbx deviates from PEP8, follow cctbx (for example usin
 
 ## Guidance for Developing Tests
 
-The cctbx tests are to ensure the code base is always functional. Tests preserve designed functionality ensuring it always performs as expected. Also, tests are a great learning resource as they exemplify most of the available functionality. For many developers they substitute for documentation. Note: not all tests available in the code base are good examples to follow. When adding a new test please follow the guidelines below. Ask questions on the cctbx mailing list.
 
-1. Place:
-  * Each module has a directory called regression. This is the place for all tests.
+There are several reasons for writing good tests:
+- **Tests ensure that the code does what it was intended to do:** During development, tests give us confidence that the code still works whenever new functionality is added. For established library code, tests can show us if code modifications -  in lower-level libraries or during refactoring -  yield errors. It may also happen that code intended to fix a bug actually produces conflicts.
+- **Tests exemplify how to use your code:** Given the limited number of developers, we don’t have time to write extensive documentation. Therefore, unit tests can be considered as minimal examples that illustrate how to use the code. 
 
-  * Each module has a file called `run_tests.py` that runs all tests listed in it (that includes all tests in that module).
+*Note*: not all tests available in the code base are good examples to follow. When adding a new test please follow the guidelines below. Ask questions on the cctbx mailing list.
 
-  * Historically, many test files were added next to the actual implementation (in the same directory). Those should eventually be moved to the regression directory.
+### 1. Location:
+  * Each module has a directory called regression. This is where tests should be placed. For example: `mmtbx/regression/`
 
-2. Name:
+  * Each module has a file called `run_tests.py`, for example `mmtbx/run_tests.py`. This file runs all tests listed in it. If you forget to add your test in that file, it won't be executed.
+
+  * *Note*: Historically, many test files were added next to the actual implementation (in the same directory). Those should eventually be moved to the regression directory.
+
+### 2. Name:
 
   * The general name template for a test file is `tst_xxx.py`, where "xxx" may be the name of functionality or file being tested. Example: `tst_miller.py`.
 
-3. Run time (per each `tst_xxx.py`):
+### 3. Run time (per test file `tst_xxx.py`):
 
   * The faster, the better. Generally execution time should be well under 30 seconds, in exceptional cases 60 seconds should be the absolute max.
 
-4. Adding a test involves three steps:
+### 4. Adding a test involves three steps:
 
   * Create a file `tst_xxx.py`
 
   * Place it into the `module/regression` directory
 
-  * Edit `module/run_tests.py` file (otherwise the test will not be run).
+  * Edit `module/run_tests.py` file (otherwise the test will not be executed).
 
-5. Miscellaneous:
+### 5. Guidelines for writing tests:
 
   * Tests should be focused, clear and exercise one functionality at a time. A general template is shown in the inset below.
 
-  * Ideally, a test code ("exercise" in the example on the right) should not exceed a page in length so it can be quickly read through and understood (and, if it fails, be fixed by anyone). One file may contain several tests. A brief doc string should state the test objective, means and expected result. If a test fails the failure should be clear by showing the full traceback (no swallowing tracebacks with printing "TEST FAILED").
+  * One file may contain several tests.
 
-  * Use tools from `libtbx.test_utils` as much as possible. Add more as needed. Example: use `approx_equal` to assert the expected result.
+  * Ideally, the test code - "exercise" in the example below - should not exceed a page in length, so it can be quickly read and understood. This makes it also easier to fix.
+
+  * A docstring should state the test objective, means and expected result. Docstrings should be put in triple quotes.
+
+  * If a test fails, the failure should be obvious by showing the full traceback (no swallowing tracebacks with printing "TEST FAILED").
+
+### 6. Some useful cctbx tools for tests:
+
+  * `libtbx.test_utils` has many useful tools for tests. Use them as much as possible and add more as needed. Example: use `approx_equal` to assert that a number computed in the test is close to the expected result.
+
+  * Auxiliary functionalities are available in specialized locations such as `cctbx/development`. An example is `cctbx/development/random_structure.py`, which generates a random atomic model. Don't hesitate to add more abstracted functionalities if they are used repeatedly across multiple tests and deemed useful for future tests.
+
+  * Use `libtbx.easy_run.call`. Print the command that is about to run to standard output. Avoid  `libtbx.easy_run.fully_buffered` because it hides the output and the traceback. 
+
+### 6. Miscellaneous:
 
   * Inputs that can be generated at run time should be used as much as possible (as opposed to storing input files with models and data). Examples:
 
@@ -176,15 +195,11 @@ The cctbx tests are to ensure the code base is always functional. Tests preserve
 
     * Diffraction data can be calculated from an atomic model.
 
-  * If an auxiliary functionality is identified that is repeatedly used across multiple tests and is deemed to be useful for future tests, it may be abstracted and placed in specialized locations such as `cctbx/development`. An example of such functionality is `cctbx/development/random_structure.py` that generates a random atomic model.
-
   * It is best to keep the structure and style of tests as similar as possible, so that anyone (and not only the test author) can fix a broken test if necessary. Remember, fixing broken tests is not a pleasant exercise and often is time consuming. Therefore, any test design that can make this task easier is greatly appreciated; one is keeping tests similar in structure and style.
 
   * Tests should be robust w.r.t. platform, compiler and rounding errors.
 
   * Broken tests stop others from committing their code. Therefore fixing a failed test is the highest priority.
-
-  * Avoid using `libtbx.easy_run.fully_buffered` because it hides the output and the traceback. Use `libtbx.easy_run.call` instead. Print the command that is about to run to standard output.
 
 ```
 from __future__ import absolute_import, division, print_function
