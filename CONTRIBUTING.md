@@ -159,6 +159,8 @@ There are several reasons for writing good tests:
 
   * The faster, the better. Generally execution time should be well under 30 seconds, in exceptional cases 60 seconds should be the absolute max.
 
+  * Slow tests may be marked as such by adding them to a list named `tst_list_slow` in the `run_tests.py` file.  These tests will not be executed by default, but can be run by adding the flag slow_tests=True to libtbx.run_tests_parallel. Slow tests should only be added with good reason, such as if 1) they are designed to test large problems that will always run slowly, such as constructing and inverting large matrices or 2) they are designed to reproduce results from a publication.
+
 ### 4. Adding a test involves three steps:
 
   * Create a file `tst_xxx.py`
@@ -178,6 +180,10 @@ There are several reasons for writing good tests:
   * A docstring should state the test objective, means and expected result. Docstrings should be put in triple quotes.
 
   * If a test fails, the failure should be obvious by showing the full traceback (no swallowing tracebacks with printing "TEST FAILED").
+ 
+   * Output actual values in a failed assert statement:
+
+```assert a>b, "%f > %f assertion failed" % (a,b)```
 
 ### 6. Some useful cctbx tools for tests:
 
@@ -187,19 +193,27 @@ There are several reasons for writing good tests:
 
   * Use `libtbx.easy_run.call`. Print the command that is about to run to standard output. Avoid  `libtbx.easy_run.fully_buffered` because it hides the output and the traceback. 
 
-### 6. Miscellaneous:
+### 7. How to use models and data
 
-  * Inputs that can be generated at run time should be used as much as possible (as opposed to storing input files with models and data). Examples:
+  * Avoid storing input files with models and data as much as possible as they take up too much space. Instead, use inputs that can be generated at run time.
+  
+  * Re-use models and data that are already available: XXX location here
+  
+  * Many tests don't require a full length protein. Consider using fragments of a model that exemplify the property being tested. Save these fragment(s) as PDB records or mmCIF string in the body of the test file `tst_xxx.py`. The strings can be read as pdb_input object like this: `pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)`
+  
+  * You can use `random_structure` to generate a random model.
+  
+  * Diffraction data can be calculated from an atomic model.
 
-    * If an atomic model is needed use random_structure or make the PDB records as short as possible and inline them into the body of the test file.
-
-    * Diffraction data can be calculated from an atomic model.
+### 8. Miscellaneous:
 
   * It is best to keep the structure and style of tests as similar as possible, so that anyone (and not only the test author) can fix a broken test if necessary. Remember, fixing broken tests is not a pleasant exercise and often is time consuming. Therefore, any test design that can make this task easier is greatly appreciated; one is keeping tests similar in structure and style.
 
   * Tests should be robust w.r.t. platform, compiler and rounding errors.
 
-  * Broken tests stop others from committing their code. Therefore fixing a failed test is the highest priority.
+  * Broken tests stop others from committing their code. **Fixing a failed test is the highest priority.**
+
+### 9. Example for a test:
 
 ```
 from __future__ import absolute_import, division, print_function
@@ -218,8 +232,6 @@ if(__name__ == "__main__"):
   print("OK")
 ```
 
-  * Output actual values in a failed assert statement:
 
-```assert a>b, "%f > %f assertion failed" % (a,b)```
 
-  * Slow tests.  Slow tests may be marked as such by adding them to a list named tst_list_slow in the run_tests.py file.  These tests will not be ran by default, but can be run by adding the flag slow_tests=True to libtbx.run_tests_parallel.  Slow tests should only be added with good reason, such as if 1) they are designed to test large problems that will always run slowly, such as constructing and inverting large matrices or 2) they are designed to reproduce results from a publication.
+
