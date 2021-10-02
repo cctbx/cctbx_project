@@ -6,6 +6,17 @@
 - [Short version](#shortversion) 
 - [Long version](#longversion) 
 - [Guidance for Developing Tests](#guidancetests) 
+  - [Location](#testlocation)
+  - [Name](#testname)
+  - [Run Time](#testruntime)
+  - [3 steps for adding steps](#teststeps)
+  - [Guidelines for writing tests](#testguide)
+  - [Some useful cctbx tools for tests](#testtools)
+  - [How to use models and data](#testmodelsdata)
+  - [How to handle errors](#testerrors)
+  - [Miscellaneous](#testmixed)
+  - [Example for a test](#testexample)
+  - [Good etiquette](#testetiquette)
 
 <a name="shortversion"/>
 
@@ -166,6 +177,8 @@ There are several reasons for writing good tests:
 
 *Note*: not all tests available in the code base are good examples to follow. When adding a new test please follow the guidelines below. Ask questions on the cctbx mailing list.
 
+<a name="testlocation"/>
+
 ### 1. Location:
   * Each module has a directory called regression. This is where tests should be placed. For example: `mmtbx/regression/`
 
@@ -173,15 +186,21 @@ There are several reasons for writing good tests:
 
   * *Note*: Historically, many test files were added next to the actual implementation (in the same directory). Those should eventually be moved to the regression directory.
 
+<a name="testname"/>
+
 ### 2. Name:
 
   * The general name template for a test file is `tst_xxx.py`, where "xxx" may be the name of functionality or file being tested. Example: `tst_miller.py`.
+
+<a name="testruntime"/>
 
 ### 3. Run time (per test file `tst_xxx.py`):
 
   * The faster, the better. Generally execution time should be well under 30 seconds, in exceptional cases 60 seconds should be the absolute max.
 
   * Slow tests may be marked as such by adding them to a list named `tst_list_slow` in the `run_tests.py` file.  These tests will not be executed by default, but can be run by adding the flag slow_tests=True to libtbx.run_tests_parallel. Slow tests should only be added with good reason, such as if 1) they are designed to test large problems that will always run slowly, such as constructing and inverting large matrices or 2) they are designed to reproduce results from a publication.
+
+<a name="teststeps"/>
 
 ### 4. Adding a test involves three steps:
 
@@ -190,6 +209,8 @@ There are several reasons for writing good tests:
   * Place it into the `module/regression` directory
 
   * Edit `module/run_tests.py` file (otherwise the test will not be executed).
+
+<a name="testguide"/>
 
 ### 5. Guidelines for writing tests:
 
@@ -209,6 +230,8 @@ There are several reasons for writing good tests:
 
 ```assert a>b, "%f > %f assertion failed" % (a,b)```
 
+<a name="testtools"/>
+
 ### 6. Some useful cctbx tools for tests:
 
   * `libtbx.test_utils` has many useful tools for tests. Use them as much as possible and add more as needed. Example: use `approx_equal` to assert that a number computed in the test is close to the expected result.
@@ -216,6 +239,8 @@ There are several reasons for writing good tests:
   * Auxiliary functionalities are available in specialized locations such as `cctbx/development`. An example is `cctbx/development/random_structure.py`, which generates a random atomic model. Don't hesitate to add more abstracted functionalities if they are used repeatedly across multiple tests and deemed useful for future tests.
 
   * Use `libtbx.easy_run.call`. Print the command that is about to run to standard output. Avoid  `libtbx.easy_run.fully_buffered` because it hides the output and the traceback. 
+
+<a name="testmodelsdata"/>
 
 ### 7. How to use models and data
 
@@ -231,6 +256,8 @@ There are several reasons for writing good tests:
   
   * Diffraction data can be calculated from an atomic model, for example with phenix.fmodel()
 
+<a name="testerrors"/>
+
 ### 8. How to handle errors
 
   * Don't use standard error, as it won't be shown
@@ -239,6 +266,8 @@ There are several reasons for writing good tests:
   
   * Don't rely too much on parsing output files. Access results programatically.
 
+<a name="testmixed"/>
+
 ### 9. Miscellaneous:
 
   * It is best to keep the structure and style of tests as similar as possible, so that anyone (and not only the test author) can fix a broken test if necessary. Remember, fixing broken tests is not a pleasant exercise and often is time consuming. Therefore, any test design that can make this task easier is greatly appreciated; one is keeping tests similar in structure and style.
@@ -246,6 +275,8 @@ There are several reasons for writing good tests:
   * Tests should be robust w.r.t. platform, compiler and rounding errors.
 
   * Broken tests stop others from committing their code. **Fixing a failed test is the highest priority.**
+
+<a name="testexample"/>
 
 ### 10. Example for a test:
 
@@ -265,6 +296,8 @@ if(__name__ == "__main__"):
   print(format_cpu_times())
   print("OK")
 ```
+
+<a name="testetiquette"/>
 
 ### 11. Good etiquette:
 
