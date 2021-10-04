@@ -365,8 +365,10 @@ class around_model(with_bounds):
     assert isinstance(model, mmtbx.model.manager)
     assert self._map_manager.map_data().accessor().origin()  ==  (0, 0, 0)
 
-    # Make sure working model and map_manager crystal_symmetry match
+    # Do not work with dummy map_manager
+    assert not map_manager.is_dummy_map_manager()
 
+    # Make sure working model and map_manager crystal_symmetry match
     assert map_manager.is_compatible_model(model)
 
     assert box_cushion >=  0

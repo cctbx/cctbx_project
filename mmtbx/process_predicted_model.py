@@ -59,6 +59,12 @@ master_phil_str = """
       .help = Minimum length of a domain to keep (reject at end if smaller).
       .short_caption = Minimum domain length (residues)
 
+    maximum_fraction_close = 0.3
+      .type = float
+      .help = Maximum fraction of CA in one domain close to one in another \
+              before merging them
+      .short_caption = Maximum fraction close
+
     minimum_sequential_residues = 5
       .type = int
       .help = Minimum length of a short segment to keep (reject at end ).
@@ -218,6 +224,8 @@ def process_predicted_model(
     domain_size: typical size of domains (resolution used for filtering is
        the domain size)
     minimum_domain_length: minimum length (residues) of a domain to keep
+    maximum_fraction_close: Merge domains with more than this fraction of close
+                           CA atoms
     maximum_domains: if more than this many domains, merge close ones to reduce
        number
     chain_id: if model contains more than one chain, split this chain only.
@@ -383,6 +391,7 @@ def process_predicted_model(
         d_min = p.domain_size,
         maximum_domains = p.maximum_domains,
         minimum_domain_length = p.minimum_domain_length,
+        maximum_fraction_close = p.maximum_fraction_close,
         log = log)
     if info is None:
       print("No compact regions identified", file = log)
@@ -773,6 +782,7 @@ def split_model_into_compact_units(
      grid_resolution = 6,
      close_distance = 15,
      minimum_domain_length = 10,
+     maximum_fraction_close = 0.3,
      maximum_domains = None,
      log = sys.stdout):
 
@@ -853,7 +863,9 @@ def split_model_into_compact_units(
 
   #  Assign all CA in model to a region
   regions_list = assign_ca_to_region(co_info, m_ca, minimum_domain_length,
-     close_distance,  maximum_domains = maximum_domains,
+     close_distance,  
+     maximum_domains = maximum_domains,
+     maximum_fraction_close = maximum_fraction_close,
      log = log)
 
   info = set_chain_id_by_region(m, m_ca, regions_list, log = log)
@@ -942,6 +954,7 @@ def assign_ca_to_region(co_info,
     minimum_domain_length,
     close_distance,
     maximum_domains = None,
+    maximum_fraction_close = None,
     n_cycles = 10,
     log = sys.stdout):
   region_id_map = co_info.region_id_map
@@ -955,7 +968,7 @@ def assign_ca_to_region(co_info,
     regions_list = replace_lone_sites(regions_list)
     regions_list = replace_short_segments(regions_list, minimum_domain_length)
     for i in range(len(get_unique_values(regions_list))):
-      new_regions_list = merge_close_regions(
+      new_regions_list = swap_close_regions(
         m.get_sites_cart(), regions_list, minimum_domain_length, close_distance)
       if new_regions_list:
          regions_list = new_regions_list
@@ -969,6 +982,14 @@ def assign_ca_to_region(co_info,
         close_distance, log = log)
     else:
       break
+
+  # Merge close regions if they are really close
+  for k in range(len(get_unique_values(regions_list))):
+    regions_list = merge_very_close_regions(m.get_sites_cart(), regions_list,
+        close_distance,
+        minimum_domain_length =  minimum_domain_length,
+        maximum_fraction_close = maximum_fraction_close,
+        log = log)
 
   # Finally check for any short fragments not attached to neighbors
   regions_list = remove_short_fragments_obscured_by_gap(regions_list,
@@ -1033,6 +1054,34 @@ def remove_short_fragments_obscured_by_gap(regions_list,
 
   return new_regions_list
 
+def merge_very_close_regions(sites_cart, regions_list, close_distance,
+     minimum_domain_length= None,
+     maximum_fraction_close = None,
+     log = sys.stdout):
+  unique_values = get_unique_values(regions_list)
+  n = len(unique_values)
+  close_to_other_info  = get_close_to_other_list(sites_cart, regions_list,
+     close_distance)
+  if close_to_other_info.n_close_list:  # there are close pairs
+    # Get best pair
+    n_close_list = sorted(close_to_other_info.n_close_list,
+      key = lambda c: c.n_close, reverse = True)
+    best_pair = n_close_list[0]
+    n_close = best_pair.n_close
+    n_possible = best_pair.n_possible
+    if n_possible >=  minimum_domain_length and \
+        n_close >= n_possible * maximum_fraction_close and \
+        best_pair.i is not None:
+      best_i = best_pair.i
+      best_j = best_pair.j
+      print("Merging groups with %s sets of close residues" %(
+        best_pair.n_close), file = log)
+
+      sel = (regions_list == best_j)
+      regions_list.set_selected(sel, best_i)
+      update_regions_list(regions_list)
+
+  return regions_list
 def merge_closest_regions(sites_cart, regions_list, close_distance,
      log = sys.stdout):
   unique_values = get_unique_values(regions_list)
@@ -1081,7 +1130,7 @@ def get_unique_values(regions_list):
       unique_values.append(x)
   return unique_values
 
-def merge_close_regions(sites_cart, regions_list, minimum_domain_length,
+def swap_close_regions(sites_cart, regions_list, minimum_domain_length,
     close_distance = None):
 
   # Count number of residues in each pair that are close to the other
@@ -1125,6 +1174,7 @@ def get_close_to_other_list(sites_cart, regions_list, close_distance):
     for j in id_list:
       if i==j: continue
       n_close = 0 # number in i close to j
+      n_possible = 0
 
       for k in range(sites_dict[i].size()):
          index = index_dict[i][k]
@@ -1132,6 +1182,7 @@ def get_close_to_other_list(sites_cart, regions_list, close_distance):
          local_n_close = (distances < close_distance).count(True)
          if local_n_close > 0:
            n_close += 1
+         n_possible += 1
          distances_self = (sites_dict[i] - col(sites_dict[i][k])).norms()
          self_local_n_close = (distances_self < close_distance).count(True) - 1
          if local_n_close > self_local_n_close:
@@ -1147,6 +1198,7 @@ def get_close_to_other_list(sites_cart, regions_list, close_distance):
       n_close_list.append(group_args(  # how many in i close to j
         group_args_type = 'n close',
         n_close = n_close,
+        n_possible = n_possible,
         i = i,
         j = j,))
   return group_args(
@@ -1327,13 +1379,14 @@ def assign_all_points(co_info, map_data, log = sys.stdout):
 
 def get_best_co(map_data, min_cutoff = 0.5):
   max_value = map_data.as_1d().min_max_mean().max
+  avg_value = map_data.as_1d().min_max_mean().mean
 
   # Find max number of clusters in range of 0.5 to 1.0 * max
   n = 100
   max_clusters = None
   cutoff= None
   for t in range(int(min_cutoff*n),n+1):
-    threshold = t * max_value/n
+    threshold = avg_value + t * (max_value-avg_value)/n
     co, sorted_by_volume, min_b, max_b  = get_co(
       map_data, threshold = threshold, wrapping = False)
     if ((not max_clusters) or (len(sorted_by_volume) > max_clusters)) and (
