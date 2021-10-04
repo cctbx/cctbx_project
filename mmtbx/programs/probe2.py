@@ -2192,6 +2192,18 @@ Note:
     atoms = [ # Different atoms for different indices
       pdb.hierarchy.atom(), pdb.hierarchy.atom(), pdb.hierarchy.atom(), pdb.hierarchy.atom()
     ]
+    # Name the atoms distinctly so that they will sort in order.
+    for i,a in enumerate(atoms):
+      a.name = str(i)
+    ag1 = pdb.hierarchy.atom_group()
+    for a in atoms:
+      ag1.append_atom(a)
+    rg1 = pdb.hierarchy.residue_group()
+    rg1.append_atom_group(ag1)
+    rg1.resseq = 1
+    c1 = pdb.hierarchy.chain()
+    c1.append_residue_group(rg1)
+
     sourceTarget = [  # Index of source atom, target atom pairs to add into the dots list
       (1,1), (1,2), (1,1), (1,2),
       (2,1),
