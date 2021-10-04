@@ -28,11 +28,10 @@ def has_phil_path(philobj, *paths): # variable number of arguments
       return True
   return False
 
+"""
 
 class ArrayInfo:
-  """
-  Extract information from miller array and format it for humans
-  """
+  #Extract information from miller array and format it for humans
   def __init__(self, millarr, mprint=sys.stdout.write, fomlabel=None):
     from iotbx.gui_tools.reflections import get_array_description
     if (millarr.unit_cell() is None) or (millarr.space_group() is None) :
@@ -103,6 +102,7 @@ class ArrayInfo:
      self.minmaxdata, self.minmaxsigs, (roundoff(dmin), roundoff(dmax)), issymunique, isanomalous )
     self.infostr = "{}, ({}), λ(Å): {}, #HKLs: {} Span: {}, MinMax: {}, MinMaxSigs: {}, d_minmax(Å): {}, SymUnique: {}, Anomalous: {}".format(*self.infotpl)
 
+"""
 
 def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.stdout.write):
   """
@@ -110,6 +110,7 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
   among the list of miller arrays then also compute an hklscene with colours of each hkl attenuated by the
   corresponding FOM value.
   """
+  from iotbx.gui_tools.reflections import ArrayInfo
   scenemaxdata =[]
   scenemindata =[]
   scenemaxsigmas = []
@@ -135,7 +136,6 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
       settings=settings, foms_array=fomsarray, fullprocessarray=True, mprint=mprint)
     if not hklscene.SceneCreated:
       mprint("The " + proc_array.info().label_string() + " array was not processed")
-      #return False
       break
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     # cast any NAN values to 1 of the colours and radii to 0.2 before writing javascript
@@ -146,12 +146,16 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
       fomslabel = None
       if fomsarray:
         fomslabel = fomsarray.info().label_string()
-      ainf = ArrayInfo(hklscene.work_array, fomlabel=fomslabel)
-      scenemaxdata.append( ainf.maxdata )
-      scenemindata.append( ainf.mindata )
-      scenemaxsigmas.append(ainf.maxsigmas)
-      sceneminsigmas.append(ainf.minsigmas)
-      scenearrayinfos.append([ainf.infostr, pidx, fidx, ainf.labels, ainf.datatype])
+      arrayinfo = ArrayInfo(hklscene.work_array)
+      scenemindata.append(arrayinfo.minmaxdata[0]) 
+      scenemaxdata.append(arrayinfo.minmaxdata[1])
+      sceneminsigmas.append(arrayinfo.minmaxsigs[0])
+      scenemaxsigmas.append(arrayinfo.minmaxsigs[1])
+      lbl = arrayinfo.labelstr
+      if fomslabel:
+        lbl = arrayinfo.labelstr + " + " + fomslabel
+      headerlst, infolst, dummy, fmtlst = arrayinfo.get_selected_info_columns(None)
+      scenearrayinfos.append([infolst, pidx, fidx, lbl, infolst[1]])
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
 
 
@@ -236,8 +240,7 @@ class hklview_3d:
     self.hkl_scenes_info = []
     self.hkl_scenes_infos = []
     self.match_valarrays = []
-    self.array_infostrs = []
-    self.array_infotpls = []
+    self.array_info_format_tpl = []
     self.binstrs = []
     self.rotation_operators = []
     self.all_vectors = []
@@ -277,6 +280,8 @@ class hklview_3d:
     if 'send_info_to_gui' in kwds:
       self.send_info_to_gui = kwds['send_info_to_gui']
       self.isHKLviewer= "true"
+    if 'fileinfo' in kwds:
+      return
     self.mprint('Rendering done via websocket in \"%s\"'  %self.hklfname)
     self.hklhtml = r"""
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
@@ -857,7 +862,8 @@ class hklview_3d:
       self.bin_labels_type_idxs.append(("Resolution",  "", -1 ))
       self.bin_labels_type_idxs.append(("Singletons", "", -1 ))
       for labels,labeltype,idx,sceneid in scenearraylabeltypes:
-        label = ",".join(labels)
+        #label = ",".join(labels)
+        label = labels
         if labeltype not in  ["iscomplex", "iscomplex_fom", "ishendricksonlattman"]:
           self.bin_labels_type_idxs.append((label, labeltype, sceneid))
         if labeltype == "hassigmas":
@@ -2451,7 +2457,7 @@ in the space group %s\nwith unit cell %s\n""" \
     # Amplitudes, Map coeffs, weights, floating points, etc
     if self.viewerparams.scene_id is None:
       return None
-    return self.array_infotpls[ self.scene_id_to_array_id(self.viewerparams.scene_id )][1]
+    return self.array_info_format_tpl[ self.scene_id_to_array_id(self.viewerparams.scene_id )][1][1]
 
 
   def onClickColourChart(self):
