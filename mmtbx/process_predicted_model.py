@@ -31,12 +31,14 @@ master_phil_str = """
       .help = Remove low-confidence residues (based on minimum lddt or \
              maximum_rmsd, whichever is specified)
       .short_caption = Remove low-confidence residues
+      .expert_level = 3
 
     split_model_by_compact_regions = True
       .type = bool
       .help = Split model into compact regions after removing \
            low-confidence residues.
       .short_caption = Split model into compact regions
+      .expert_level = 3
 
     maximum_domains = 3
       .type = int
@@ -44,7 +46,7 @@ master_phil_str = """
                 the closest domains at the end of splitting the model. Make\
                 it bigger (and optionally make domain_size smaller) to \
                 get more domains.
-      .short_caption = Maximum domains (optional)
+      .short_caption = Maximum domains
 
     domain_size = 15
       .type = float
@@ -81,13 +83,14 @@ master_phil_str = """
       .help = The B-factor field in predicted models can be LDDT \
              (confidence, 0-1 or 0-100) or rmsd (A) or a B-factor
       .short_caption = Contents of B-value field (required)
+      .expert_level = 3
 
     input_lddt_is_fractional = None
       .type = bool
       .help = You can specify if the input lddt values (in B-factor field) \
                 are fractional (0-1) or not (0-100). By default if all  \
                values are between 0 and 1 it is fractional.
-      .short_caption = Input lddt is fractional (optional)
+      .short_caption = Input lddt is fractional
 
     minimum_lddt = None
       .type = float
@@ -96,7 +99,7 @@ master_phil_str = """
           define both).  A minimum lddt of 0.70 corresponds to a maximum rmsd \
           of 1.5.  Minimum lddt values are fractional or not depending on \
           the value of input_lddt_is_fractional.
-      .short_caption = Minimum lddt (optional)
+      .short_caption = Minimum lddt
 
 
     maximum_rmsd = 1.5
@@ -106,7 +109,7 @@ master_phil_str = """
           define both).  A minimum lddt of 0.70 corresponds to a maximum rmsd \
           of 1.5.  Minimum lddt values are fractional or not depending on \
           the value of input_lddt_is_fractional.
-      .short_caption = Maximum rmsd (optional)
+      .short_caption = Maximum rmsd
 
     default_maximum_rmsd = 1.5
       .type = float
@@ -863,7 +866,7 @@ def split_model_into_compact_units(
 
   #  Assign all CA in model to a region
   regions_list = assign_ca_to_region(co_info, m_ca, minimum_domain_length,
-     close_distance,  
+     close_distance,
      maximum_domains = maximum_domains,
      maximum_fraction_close = maximum_fraction_close,
      log = log)
