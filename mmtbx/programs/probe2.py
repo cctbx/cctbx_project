@@ -62,17 +62,9 @@ include_mainchain_mainchain = True
   .type = bool
   .help = Include mainchain -> mainchain interactions (-mc in probe)
 
-include_het = True
-  .type = bool
-  .help = Include het-atom interactions (-hets, -nohets in probe)
-
 include_water_water = False
   .type = bool
   .help = Include water-to-water interactions (-wat2wat in probe)
-
-include_water = True
-  .type = bool
-  .help = Include water-to-non-water interactions (-wat2wat, -waters, -nowaters in probe)
 
 keep_unselected_atoms = True
   .type = bool
@@ -299,6 +291,11 @@ Note:
   other cases, the string passed in will be used as a CCTBX selection on
   the model to select a subset of its atoms.
 
+  The original Probe program had two ways to specify whether HET atoms were included
+  and whether water atoms were include, in the selection description and as separate
+  command-line arguments.  The command-line arguments are not present in Probe2, they
+  must be specified as part of the selection criteria.
+
   The most simple dotkin:
     mmtbx.probe2 approach=self source_selection="all" output.file_name=out.kin input.pdb
 
@@ -308,7 +305,6 @@ Note:
       approach=self
       excluded_bond_chain_length=4
       include_mainchain_mainchain=True
-      include_het=True
     -kinemage:
       output.add_kinemage_keyword=True
       output.count_dots=False
@@ -773,14 +769,6 @@ Note:
         # continue on to check.)
         elif ((not self.params.include_water_water) and srcInWater and bInWater
               and src.parent() != b.parent() ):
-          continue
-        # If we're ignoring non-water to water interactions, skip check
-        # if b is a water.
-        elif not self.params.include_water and bInWater:
-          continue
-        # If we're ignoring hetatom interactions, skip check
-        # if b is in a non-standard residue.
-        elif not self.params.include_het and self._inHet[b]:
           continue
 
         # The nearby atom is one that we should check interaction with, see if
