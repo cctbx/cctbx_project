@@ -563,11 +563,14 @@ def get_array_description(miller_array):
     return "R-free flag"
   methods_and_meanings = [ ("is_complex_array", "Map coeffs"),
                            ("is_xray_amplitude_array", "Amplitude"),
+                           ("is_xray_reconstructed_amplitude_array", "Amplitude"),
                            ("is_xray_intensity_array", "Intensity"),
                            ("is_hendrickson_lattman_array", "HL coeffs"),
                            ("is_bool_array", "Boolean"),
                            ("is_integer_array", "Integer"),
-                           ("is_real_array", "Floating-point"), ]
+                           ("is_real_array", "Floating-point"), 
+                           ("is_string_array", "String")
+                           ]
   for method, desc in methods_and_meanings :
     test = getattr(miller_array, method)
     if test():
@@ -740,3 +743,150 @@ def decode_resolve_map_coeffs(labels):
     elif resolve_label == "FOM" :
       fom_label = array_label
   return (f_label, phi_label, fom_label)
+
+
+
+class ArrayInfo:
+  """
+  Extract information from miller array and format it for printing as a table
+  To be called in a loop
+  """
+  def __init__(self, millarr):
+    from cctbx.miller import display2
+    from cctbx.array_family import flex
+    from scitbx import graphics_utils
+    from libtbx.math_utils import roundoff
+    import textwrap, math
+    #textwrap._whitespace += "," # try to wrap labels at commas and underscores 
+    #textwrap._whitespace = '\t\n\x0b\x0c\r ,'
+    if (millarr.unit_cell() is None) or (millarr.space_group() is None) :
+      raise Sorry("No space group info is present in data")
+    data = millarr.deep_copy().data()
+    self.maxdata = self.mindata = self.maxsigmas = self.minsigmas = float("nan")
+    self.minmaxdata = (float("nan"), float("nan"))
+    self.minmaxsigs = (float("nan"), float("nan"))
+    self.desc = ""
+    self.arrsize = data.size()
+    if not isinstance(data, flex.std_string):
+      if (isinstance(data, flex.hendrickson_lattman)):
+        data = graphics_utils.NoNansHL( data )
+        # for now display HL coefficients as a simple sum
+        if self.arrsize:
+          self.maxdata = max([e[0]+e[1]+e[2]+e[3] for e in data ])
+          self.mindata = min([e[0]+e[1]+e[2]+e[3] for e in data ])
+          self.arrsize = len([42 for e in millarr.data() if not math.isnan(e[0]+e[1]+e[2]+e[3])])
+      else:
+        self.arrsize = len([42 for e in millarr.data() if not math.isnan(abs(e))])
+        if (isinstance(data, flex.int)):
+          data = flex.double([e for e in data if e!= display2.inanval])
+        if millarr.is_complex_array():
+          data = flex.abs(data)
+        i=0
+        while math.isnan(data[i]):
+          i += 1 # go on until we find a data[i] that isn't NaN
+        data = graphics_utils.NoNansArray( data, data[i] ) # assuming data[0] isn't NaN
+        self.maxdata = flex.max( data )
+        self.mindata = flex.min( data )
+      if millarr.sigmas() is not None:
+        data = millarr.sigmas().deep_copy()
+        i=0
+        while math.isnan(data[i]):
+          i += 1 # go on until we find a data[i] that isn't NaN
+        data = graphics_utils.NoNansArray( data, data[i] )
+        self.maxsigmas = flex.max( data )
+        self.minsigmas = flex.min( data )
+      self.minmaxdata = (self.mindata, self.maxdata)
+      self.minmaxsigs = (self.minsigmas, self.maxsigmas)
+    self.labels = self.desc = self.wavelength = ""
+    if millarr.info():
+      self.labels = millarr.info().labels
+      self.desc = get_array_description(millarr)
+      self.wavelength = "{:.6g}".format(millarr.info().wavelength) if millarr.info().wavelength is not None else float("nan")
+    self.span = ("?" , "?")
+    self.spginf = millarr.space_group_info().symbol_and_number()
+    self.ucell = millarr.unit_cell().parameters()
+    self.ucellinf = format(millarr.unit_cell(), "({:.6g}Å, {:.6g}Å, {:.6g}Å, {:.6g}º, {:.6g}º, {:.6g}º)")
+    self.dmin = 0.0
+    self.dmax = 0.0
+    self.n_centric = millarr.centric_flags().data().count(True)
+    try:
+      self.span = str(millarr.index_span().min()) + ", "+ str(millarr.index_span().max())
+      self.dmin = millarr.d_max_min()[1]
+      self.dmax = millarr.d_max_min()[0]
+    except Exception as e:
+      raise Sorry(to_str(e))
+    self.dminmax = roundoff((self.dmin,self.dmax))
+    self.issymunique = millarr.is_unique_set_under_symmetry()
+    self.isanomalous = millarr.anomalous_flag()
+    # break long label into list of shorter strings separated at whitespace and commas if present 
+    self.labelstr = ",".join(self.labels)
+    tlabels = textwrap.wrap(self.labelstr, width=15)
+    nlabl = len(tlabels)
+    self.labelsformat = "{0[0]:>16} |"
+    if len(tlabels)>1:
+      for i in range((len(tlabels)-1)):
+        self.labelsformat += "\n{0[%d]:>16} |"%(i+1)
+
+    self.info_format_dict = {
+      "labels":             ("       label     |",                                ",".join(self.labels), "{}",                                                                             self.labelsformat), 
+      "description":        ("       type      |",                                self.desc,             "{}",                                                                             "{:>16} |"), 
+      "wavelength":         ("   λ/Å  |",                                         self.wavelength,       "{}",                                                                             "{:>7} |"), 
+      "n_reflections":      ("  #HKLs  |",                                        self.arrsize,          "{}",                                                                             "{:>8} |"), 
+      "span":               ("               Span              |",                self.span,             "{}",                                                                             "{:>32} |"), 
+      "minmax_data":        ("   min,max data      |",                            self.minmaxdata,       "{0[0]:.6}, {0[1]:.6}",                                                           "{0[0]:>10.5},{0[1]:>10.5}|"), 
+      "minmax_sigmas":      ("   min,max sigmas    |",                            self.minmaxsigs,       "{0[0]:.6}, {0[1]:.6}",                                                           "{0[0]:>10.5},{0[1]:>10.5}|"), 
+      "d_minmax":           ("   d_min,d_max/Å     |",                            self.dminmax,          "{0[0]:.6}, {0[1]:.6}",                                                           "{0[0]:>10.5},{0[1]:>10.5}|"), 
+      "unit_cell":          ("     unit cell (a/Å, b/Å, c/Å, αº, βº, γº)      |", self.ucell,            "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g}",  "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g} |"),
+      "n_centrics":         (" #centrics|",                                       self.n_centric,        "{}",                                                                             " {:>8} |"), 
+      "is_anomalous":       ("anomalous|",                                        str(self.isanomalous), "{}",                                                                             "{:>8} |"),
+      "is_symmetry_unique": (" symmetry unique",                                  str(self.issymunique), "{}",                                                                             "{:>8} |"), 
+    }
+
+  # gover whether or not a property of the ArrayInfo should be returned by get_selected_info_columns()
+  arrayinfo_phil_str = """
+  selected_info {
+    labels = True
+      .type = bool
+    description = True
+      .type = bool
+    wavelength = True
+      .type = bool
+    n_reflections = True
+      .type = bool
+    span = True
+      .type = bool
+    minmax_data = True
+      .type = bool  
+    minmax_sigmas = True
+      .type = bool
+    d_minmax = True
+      .type = bool   
+    unit_cell = False
+      .type = bool   
+    n_centrics = False
+      .type = bool   
+    is_anomalous = True
+      .type = bool
+    is_symmetry_unique = True
+      .type = bool
+  }
+
+  """
+
+  def get_selected_info_columns(self,column_names_selection):
+    from libtbx.phil import parse
+    if not column_names_selection: # then use the default values in the arrayinfo_phil_str
+      column_names_selection = []
+      mphil = parse(self.arrayinfo_phil_str)
+      for phildef in mphil.fetch().all_definitions():
+        column_names_selection.append( (phildef.object.name, phildef.object.extract()) )
+
+    info_format_tpl = []
+    for colnames,selected in column_names_selection:
+      if selected:
+        info_format_tpl.append( self.info_format_dict[colnames] )
+    # transpose info_format_tpl to return a list of headers, a list of values, and two lists of format strings
+    return list(zip(*info_format_tpl)) 
+
+
+

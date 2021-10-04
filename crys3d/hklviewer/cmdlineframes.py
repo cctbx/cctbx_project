@@ -4,7 +4,7 @@ from __future__ import absolute_import, division, print_function
 from iotbx.reflection_file_reader import any_reflection_file
 from cctbx.miller import display2 as display
 from crys3d.hklviewer import jsview_3d as view_3d
-from crys3d.hklviewer.jsview_3d import ArrayInfo
+#from crys3d.hklviewer.jsview_3d import ArrayInfo
 from cctbx import miller
 from libtbx.math_utils import roundoff
 from libtbx.str_utils import format_value
@@ -95,10 +95,13 @@ class HKLViewFrame() :
     self.idx_data = None
     self.NewFileLoaded = False
     self.loaded_file_name = ""
+    self.fileinfo = None
+    if 'fileinfo' in kwds:
+      self.fileinfo = kwds.get('fileinfo', 1 )
     self.hklin = None
     if 'hklin' in kwds or 'HKLIN' in kwds:
       self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
-      self.LoadReflectionsFile(self.hklin)
+    self.LoadReflectionsFile(self.hklin)
     if 'useGuiSocket' in kwds:
       self.msgqueuethrd.start()
 
@@ -508,8 +511,7 @@ class HKLViewFrame() :
       self.procarrays.append(procarray)
       self.viewer.proc_arrays = self.procarrays
       self.viewer.has_new_miller_array = True
-      self.viewer.array_infostrs.append( ArrayInfo(procarray, self.mprint).infostr )
-      self.viewer.array_infotpls.append( ArrayInfo(procarray, self.mprint).infotpl )
+      self.viewer.array_info_format_tpl.append( ArrayInfo(procarray, self.mprint).infotpl )
       #self.viewer.SupersetMillerArrays()
 
       hkls = self.origarrays["HKLs"]
@@ -519,7 +521,7 @@ class HKLViewFrame() :
       for i,e in enumerate(indices_of_matched_hkls):
         nanarr[e] = procarray.data()[i]
       self.origarrays[label] = list(nanarr)
-      mydict = { "array_infotpls": self.viewer.array_infotpls,
+      mydict = { "array_infotpls": self.viewer.array_info_format_tpl,
                 "NewHKLscenes" : True,
                 "NewMillerArray" : True
                 }
@@ -548,10 +550,11 @@ class HKLViewFrame() :
 
   def finish_dataloading(self, arrays):
     valid_arrays = []
-    self.viewer.array_infostrs = []
-    self.viewer.array_infotpls = []
+    self.viewer.array_info_format_tpl = []
+    infoformats = []
     spg = arrays[0].space_group()
     uc = arrays[0].unit_cell()
+    infotblheader = []
     for i,array in enumerate(arrays):
       if type(array.data()) == flex.std_string: # in case of status array from a cif file
         uniquestrings = list(set(array.data()))
@@ -563,18 +566,36 @@ class HKLViewFrame() :
         array._space_group_info = spg.info()
         self.mprint("""No unit cell or space group info present in the %d. miller array.
 Borrowing them from the first miller array""" %i)
-      arrayinfo = ArrayInfo(array, self.mprint)
-      self.viewer.array_infostrs.append( arrayinfo.infostr )
-      self.viewer.array_infotpls.append( arrayinfo.infotpl )
+      from iotbx.gui_tools.reflections import ArrayInfo
+      arrayinfo = ArrayInfo(array)
+      info_fmt = arrayinfo.get_selected_info_columns(None)
+      self.viewer.array_info_format_tpl.append( info_fmt )
       if i==0:
         mydict = { "spacegroup_info": arrayinfo.spginf, "unitcell_info": arrayinfo.ucellinf }
         self.SendInfoToGUI(mydict)
       valid_arrays.append(array)
     self.valid_arrays = valid_arrays
     self.mprint("%d Miller arrays in this dataset:" %len(arrays))
-    for e in self.viewer.array_infostrs:
-      self.mprint("%s" %e)
-    self.mprint("\n")
+
+    import textwrap
+    mstr = ""
+    for i,info_fmt in enumerate(self.viewer.array_info_format_tpl):
+      headerlst, infolst, dummy, fmtlst =info_fmt
+      if i==0:
+        for h in headerlst:
+          mstr += h
+        mstr += "\n" # print that line break
+      #info, dummy, fmtlst = info_fmt
+      for i,info in enumerate(infolst):
+        inf = info
+        if i==0:
+          inf = textwrap.wrap(info, width=15)
+        mstr += fmtlst[i].format(inf)
+      mstr += "\n" # print that line break
+
+    self.mprint(mstr + "\n")
+    if self.fileinfo:
+      return
     self.NewFileLoaded = True
     if (len(valid_arrays) == 0):
       msg = "No arrays of the supported types present."
@@ -584,7 +605,7 @@ Borrowing them from the first miller array""" %i)
       self.set_miller_array()
       self.update_space_group_choices(0) # get the default spacegroup choice
       mydict = { "info": self.infostr,
-                  "array_infotpls": self.viewer.array_infotpls,
+                  "array_infotpls": self.viewer.array_info_format_tpl,
                   "bin_infotpls": self.viewer.bin_infotpls,
                   "html_url": self.viewer.url,
                   "tncsvec": self.tncsvec,
@@ -803,7 +824,7 @@ Borrowing them from the first miller array""" %i)
           self.origarrays[sigmalabel] = list(arr.sigmas())
         elif arr.is_integer_array():
           list_with_nans = [ e if not e==display.inanval else display.nanval for e in arr.data() ]
-          if self.viewer.array_infotpls[id][0] == 'FreeR_flag': # want True or False back
+          if self.viewer.array_info_format_tpl[id][0] == 'FreeR_flag': # want True or False back
             list_with_nans = [ 1==e if not cmath.isnan(e) else display.nanval for e in list_with_nans ]
           self.origarrays[arr.info().label_string()] = list_with_nans
         else:
@@ -1212,7 +1233,7 @@ Borrowing them from the first miller array""" %i)
     """
     return array of tuples with information on each miller array
     """
-    return self.viewer.array_infotpls
+    return self.viewer.array_info_format_tpl
 
 
   def GetSceneDataLabels(self):
@@ -1339,7 +1360,7 @@ def run():
   """
   utility function for passing keyword arguments more directly to HKLViewFrame()
   """
-  #time.sleep(15)
+  #time.sleep(10)
   # dirty hack for parsing a file path with spaces of a browser if not using default
   args = sys.argv[1:]
   sargs = " ".join(args)
