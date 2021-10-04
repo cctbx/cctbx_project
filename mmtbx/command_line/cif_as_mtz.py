@@ -304,8 +304,10 @@ def extract(file_name,
     miller_array_list=[]
   for i, (data_name, miller_arrays) in enumerate(six.iteritems(all_miller_arrays)):
     for ma in miller_arrays.values():
-      ma = ma.customized_copy(
-        crystal_symmetry=crystal_symmetry).set_info(ma.info())
+      #ma = ma.customized_copy(
+      #  crystal_symmetry=crystal_symmetry).set_info(ma.info())
+      if ma._space_group_info is None:
+        ma._space_group_info = crystal_symmetry.space_group_info()
       labels = ma.info().labels
       label = get_label(miller_array=ma, output_r_free_label=output_r_free_label)
       if label is None:
@@ -678,4 +680,6 @@ def finish_job(results):
   return ([], [])
 
 if(__name__ == "__main__"):
+  import time
+  #time.sleep(10)
   run(sys.argv[1:])

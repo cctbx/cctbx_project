@@ -644,8 +644,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
           if self.infodict.get("array_infotpls"):
             self.array_infotpls = self.infodict.get("array_infotpls",[])
-            #self.millerarraylabels = [ ",".join(e[0]) for e in self.array_infotpls ]
-            self.millerarraylabels = [ e[0] for e in self.array_infotpls ]
+            self.millerarraylabels =  [e[1][0] for e in self.array_infotpls]
 
           if self.infodict.get("bin_data_label"):
             self.BinDataComboBox.setCurrentText(self.infodict["bin_data_label"])
@@ -873,7 +872,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             #self.MillerComboBox.addItems( [""] + self.millerarraylabels )
             self.MillerComboBox.addItem("", userData=-1)
             for k,lbl in enumerate(self.millerarraylabels):
-              self.MillerComboBox.addItem(lbl, userData=k)
+              self.MillerComboBox.addItem(",".join(lbl), userData=k)
 
             self.MillerComboBox.setCurrentIndex(0) # select the first item which is no miller array
             self.comboviewwidth = 0
@@ -883,10 +882,15 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
             self.millertable.clearContents()
             self.millertable.setRowCount(len(self.array_infotpls))
-            for row,millarr in enumerate(self.array_infotpls):
-              for col,elm in enumerate(millarr):
-                self.millertable.setItem(row, col, QTableWidgetItem(str(elm)))
-            #self.functionTabWidget.setDisabled(True)
+
+            labels = [ e.strip("|").strip() for e in self.array_infotpls[0][0] ]
+            self.millertable.setColumnCount(len(labels))
+            self.millertable.setHorizontalHeaderLabels(labels)
+            self.millertable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
+
+            for row,(headerlst,infotpls,fmtstrtpls,fmtstr2tpls) in enumerate(self.array_infotpls):
+              for col,elm in enumerate(infotpls):
+                self.millertable.setItem(row, col, QTableWidgetItem(fmtstrtpls[col].format(elm)))
             self.NewFileLoaded = False
 
           if self.NewHKLscenes:
@@ -1629,9 +1633,11 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     # These are being checked for in onMillerTableMenuAction() and appropriate
     # action taken
     for i,(scenelabel,labeltype,arrayid,sceneid) in enumerate(self.scenearraylabeltypes): # loop over scenes
-      scenelabelstr = ",".join(scenelabel)
+      #scenelabelstr = ",".join(scenelabel)
+      scenelabelstr = scenelabel
       if self.millerarraylabels[row] == scenelabelstr or self.millerarraylabels[row] + " + " in scenelabelstr:
-        if labeltype == "hassigmas":
+        #if labeltype in ["Amplitude","Intensity"]:
+        if "nan" not in self.millertable.item(row,6).text().lower(): # then sigmas are present for this array
           myqa = QAction("Display data of %s" %scenelabelstr, self.window, triggered=self.testaction)
           myqa.setData((sceneid, row))
           self.millertablemenu.addAction(myqa)
@@ -1740,7 +1746,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
   def createFileInfoBox(self):
     labels = ["Column label", "Type", "λ(Å)", "# HKLs", "Span of HKLs",
-       "Min Max data", "Min Max sigmas", "d_min, d_max (Å)", "Symmetry unique", "Anomalous"]
+       "Min Max data", "Min Max sigmas", "d_min, d_max (Å)", "Anomalous", "Symmetry unique"]
     self.millertable.setColumnCount(len(labels))
     self.millertable.setHorizontalHeaderLabels(labels)
     self.millertable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
