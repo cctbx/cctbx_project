@@ -260,6 +260,12 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
         S.D.printout_pixel_fastslow = f,s
         S.D.show_params()
         S.D.add_diffBragg_spots(printout_pix)
+
+    # free up memory
+    S.D.free_all()
+    S.D.free_Fhkl2()
+    if S.D.gpu_free is not None:
+        S.D.gpu_free()
     return data
 
 

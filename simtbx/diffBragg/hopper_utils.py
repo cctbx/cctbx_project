@@ -45,7 +45,8 @@ class DataModeler:
     2- lists whose length is the number of shoeboxes being modeled
 
     for example if one is modeling 3 shoeboxes whose dimensions are 10x10, then
-    the objects below like self.all_data will have length 300, and other objects like self.selection_flags will have length 2
+    the objects below like self.all_data will have length 300, and other objects like self.selection_flags
+    will have length 3
     """
 
     def __init__(self, params):
@@ -76,12 +77,13 @@ class DataModeler:
         self.simple_weights = None  # not used
         self.refls_idx = None  # position of modeled spot in original refl array
         self.refls = None  # reflection table
+        self.sigma_rdout = None   # the value of the readout noise in photon units
 
         self.Hi = None  # miller index (P1)
         self.Hi_asu = None  # miller index (high symmetry)
 
         # which attributes to save when pickling a data modeler
-        self.saves = ["all_data", "all_background", "all_trusted", "best_model", "all_sigmas",
+        self.saves = ["all_data", "all_background", "all_trusted", "best_model", "sigma_rdout",
                       "rois", "pids", "tilt_abc", "selection_flags", "refls_idx", "pan_fast_slow",
                         "Hi", "Hi_asu", "roi_id", "params", "all_pid", "all_fast", "all_slow"]
 

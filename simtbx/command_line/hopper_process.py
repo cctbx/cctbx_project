@@ -45,6 +45,9 @@ save_modelers = False
   .type = bool
   .help = if True, save the data modelers after running refinement. The file includes model values, errors, and useful information
   .help = for examining the modeling results, can be loaded using modeler = np.load(fname, allow_pickle=True)[()]
+refspec = None
+  .type = str
+  .help = path to a reference .lam file to use as the spectra for each shot
 """
 import os
 from libtbx.phil import parse
@@ -69,10 +72,11 @@ class Hopper_Processor(Processor):
         logging.basicConfig(level=logging.DEBUG)
 
         if self.params.save_modelers:
+            self.modeler_dir = os.path.join(self.params.output.output_dir, "modelers")
             if COMM.rank == 0:
-                self.modeler_dir = os.path.join(self.params.output.output_dir, "modelers")
                 if not os.path.exists(self.modeler_dir):
                     os.makedirs(self.modeler_dir)
+            COMM.barrier()
 
     @property
     def device_id(self):
@@ -133,7 +137,10 @@ class Hopper_Processor(Processor):
             assert len(exps)==1
             # TODO MPI select GPU device
 
-            exp, ref, data_modeler, x = refine(exps[0], ref, self.params.diffBragg, gpu_device=self.device_id, return_modeler=True)
+            exp, ref, data_modeler, x = refine(exps[0], ref,
+                                               self.params.diffBragg,
+                                               spec=self.params.refspec,
+                                               gpu_device=self.device_id, return_modeler=True)
             orig_exp_name = os.path.abspath(self.params.output.refined_experiments_filename)
             refls_name = os.path.abspath(self.params.output.indexed_filename)
             self.params.diffBragg.outdir = self.params.output.output_dir
