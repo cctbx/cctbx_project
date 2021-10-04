@@ -307,6 +307,6 @@ if(__name__ == "__main__"):
 
   * Fix tests in a timely manner.
 
-  * Don't cheat: For example don't raise the esd without understanding why the values differ more than before.
+  * Don't cheat: For example don't raise the standard deviation without understanding why the values differ more than before.
 
   * Don't comment out tests to prevent them from being run
