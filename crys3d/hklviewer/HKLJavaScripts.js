@@ -1523,7 +1523,7 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
     // print the 1 number
     addDiv2Container(colourchart, 1, fomtop2, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fontsize);
     // print the 0.5 number
-    leftp = fomlp + 0.48 * gl * colourgradvalarrays.length;
+    let leftp = fomlp + 0.48 * gl * colourgradvalarrays.length;
     addDiv2Container(colourchart, 0.5, fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fontsize);
     // print the FOM label
     addDiv2Container(colourchart, fomlabel, fomtop, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fontsize);
