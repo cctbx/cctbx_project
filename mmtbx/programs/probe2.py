@@ -901,12 +901,23 @@ Note:
           curAtomEndIndex -= 1
           break
 
-      # Sort the dots for the same source atom based on their target atom.
+      # Sort the dots for the same source atom based on characteristics of their target atom.
+      # We include the XYZ position in the sort so that we get the same order and grouping each
+      # time even though the phantom H? atoms are otherwise identical.
       # There may be no target atoms specified (they may be None), which will
       # cause an attribute error.  If that happens, we don't sort.
       try:
         thisAtom = sorted(
-          dotInfoList[curAtomIndex:curAtomEndIndex+1], key=lambda dot: dot.target.memory_id()
+          dotInfoList[curAtomIndex:curAtomEndIndex+1],
+          key=lambda dot: "{}{:4.4s}{}{} {}{} {:.3f} {:.3f} {:.3f}".format(
+            dot.target.parent().parent().parent().id, # chain
+            str(dot.target.parent().parent().resseq_as_int()), # residue number
+            dot.target.parent().parent().icode, # insertion code
+            dot.target.parent().resname, # residue name
+            dot.target.name, # atom name
+            dot.target.parent().altloc, # alternate location
+            dot.target.xyz[0], dot.target.xyz[1], dot.target.xyz[2]
+          )
         )
       except AttributeError:
         thisAtom = dotInfoList[curAtomIndex:curAtomEndIndex+1]
@@ -1976,8 +1987,12 @@ Note:
       # Generate sorted lists of the selected atoms, so that we run them in the same order
       # they appear in the model file.  This will group phantom hydrogens with the oxygens
       # they are associated with because they share the same sequence ID.
-      self._source_atoms_sorted = sorted(source_atoms, key=lambda atom: atom.i_seq)
-      self._target_atoms_sorted = sorted(target_atoms, key=lambda atom: atom.i_seq)
+      # We add the location to the sorting criteria because the phantom hydrogens have the
+      # same sequence ID as their parent O and as each other.
+      self._source_atoms_sorted = sorted(source_atoms, key=lambda atom: "{} {:.3f} {:.3f} {:.3f}".format(
+        atom.i_seq, atom.xyz[0], atom.xyz[1], atom.xyz[2]))
+      self._target_atoms_sorted = sorted(target_atoms, key=lambda atom:  "{} {:.3f} {:.3f} {:.3f}".format(
+        atom.i_seq, atom.xyz[0], atom.xyz[1], atom.xyz[2]))
 
       ################################################################################
       # Find our group label
