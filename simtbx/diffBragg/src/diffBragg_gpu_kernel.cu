@@ -55,11 +55,12 @@ void gpu_sum_over_steps(
         const CUDAREAL* __restrict__ fpfdp,
         const CUDAREAL* __restrict__ fpfdp_derivs,
         const CUDAREAL* __restrict__ atom_data, int num_atoms, bool refine_fp_fdp,
-        const int* __restrict__ nominal_hkl, bool use_nominal_hkl)
+        const int* __restrict__ nominal_hkl, bool use_nominal_hkl, MAT3 anisoU, MAT3 anisoG, bool use_diffuse)
 { // BEGIN GPU kernel
 
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     int thread_stride = blockDim.x * gridDim.x;
+    __shared__ bool s_use_diffuse;
     __shared__ bool s_use_nominal_hkl;
     __shared__ bool s_refine_fp_fdp;
     __shared__ bool s_complex_miller;
@@ -95,10 +96,11 @@ void gpu_sum_over_steps(
     __shared__ bool s_refine_fcell;
     __shared__ bool s_refine_Bmat[6];
     __shared__ bool s_refine_lambda[2];
+    __shared__ double s_NABC_det, s_NABC_det_sq;
     //extern __shared__ CUDAREAL det_vecs[];
     //__shared__ int det_stride;
 
-    if (threadIdx.x==0){
+    if (threadIdx.x==0){ // TODO can we get speed gains by dividing up the following definitions over more threads ?
         for (int i=0; i<3; i++){
             s_refine_Ncells[i] = refine_Ncells[i];
             s_refine_Umat[i] = refine_Umat[i];
@@ -114,6 +116,7 @@ void gpu_sum_over_steps(
         for(int i=0; i<6; i++){
             s_refine_Bmat[i] = refine_Bmat[i];
         }
+        s_use_diffuse = use_diffuse;
         s_num_atoms = num_atoms;
         s_refine_fcell = refine_fcell;
         s_refine_eta = refine_eta;
@@ -127,6 +130,8 @@ void gpu_sum_over_steps(
         _NABC << Na,Nd,Nf,
                 Nd,Nb,Ne,
                 Nf,Ne,Nc;
+        s_NABC_det = _NABC.determinant(); // TODO is this slow ?
+        s_NABC_det_sq = s_NABC_det*s_NABC_det;
         C = 2 / 0.63 * fudge;
         two_C = 2*C;
         //s_Na = Na;
@@ -347,7 +352,49 @@ void gpu_sum_over_steps(
                 if (s_no_Nabc_scale)
                     I0 = exp(-2*exparg);
                 else
-                    I0 = s_NaNbNc_squared*exp(-2*exparg);
+                    I0 = (s_NABC_det_sq)*exp(-2*exparg);
+
+            // are we doing diffuse scattering
+            //CUDAREAL I_latt_diffuse = 0;
+            if (s_use_diffuse){
+                MAT3 Ainv = UBO.inverse();
+                CUDAREAL anisoG_determ = anisoG.determinant();
+                for (int hh=0; hh <1; hh++){
+                    for (int kk=0; kk <1; kk++){
+                        for (int ll=0; ll <1; ll++){
+                            VEC3 H0_offset(_h0+hh, _k0+kk, _l0+ll);
+                            VEC3 Q0 = Ainv*H0_offset;
+                            CUDAREAL exparg = 4*M_PI*M_PI*Q0.dot(anisoU*Q0);
+                            //double dwf = exp(-exparg);
+                            VEC3 delta_H_offset = H_vec - H0_offset;
+                            VEC3 delta_Q = Ainv*delta_H_offset;
+                            VEC3 anisoG_q = anisoG*delta_Q;
+
+                            CUDAREAL this_I_latt_diffuse = 8.*M_PI*anisoG_determ /
+                                    pow( (1.+ anisoG_q.dot(anisoG_q)* 4*M_PI*M_PI),2);
+                            if (exparg  < .5) // only valid up to a point
+                                this_I_latt_diffuse *= (exparg);
+
+                            I0 += this_I_latt_diffuse;
+                        }
+                    }
+                }
+            }
+            //CUDAREAL I_latt_diffuse = 0;
+            //if (use_diffuse){
+            //    MAT3 Ainv = UBO.inverse();
+            //    VEC3 Q0 = Ainv*H0;
+            //    CUDAREAL exparg_diffuse = 4*M_PI*M_PI*Q0.dot(anisoU*Q0);
+            //    //CUDAREAL dwf = exp(-exparg_diffuse);
+
+            //    VEC3 delta_Q = Ainv*delta_H;
+            //    VEC3 anisoG_q = anisoG*delta_Q;
+            //    I_latt_diffuse = 4.*M_PI*anisoG.determinant() /
+            //            (1.+ anisoG_q.dot(anisoG_q)* 4*M_PI*M_PI);
+            //    if (exparg_diffuse  < .5) // only valid up to a point
+            //        I_latt_diffuse *= (exparg_diffuse);
+            //    I0 += I_latt_diffuse;
+            //}
 
             CUDAREAL _F_cell = s_default_F;
             CUDAREAL _F_cell2 = 0;
@@ -532,7 +579,8 @@ void gpu_sum_over_steps(
                     }
                     CUDAREAL N_i = _NABC(i_nc, i_nc);
                     VEC3 dV_dN = dN*delta_H;
-                    CUDAREAL deriv_coef = 1/N_i - C* ( dV_dN.dot(V));
+                    CUDAREAL determ_deriv = (_NABC.inverse()*dN).trace(); // TODO speedops: precompute these, store shared var _NABC.inverse
+                    CUDAREAL deriv_coef= determ_deriv - C* ( dV_dN.dot(V));
                     CUDAREAL value = 2*Iincrement*deriv_coef;
                     CUDAREAL value2=0;
                     if(s_compute_curvatures){
@@ -555,8 +603,9 @@ void gpu_sum_over_steps(
                     else
                         dN << 0,0,1,0,0,0,1,0,0;
                     VEC3 dV_dN = dN*delta_H;
-                    CUDAREAL deriv_coef = -C* (2* dV_dN.dot(V));
-                    CUDAREAL value = Iincrement*deriv_coef;
+                    CUDAREAL determ_deriv = (_NABC.inverse()*dN).trace(); // TODO speedops: precompute these
+                    CUDAREAL deriv_coef = determ_deriv - C* (dV_dN.dot(V));
+                    CUDAREAL value = 2*Iincrement*deriv_coef;
                     Ncells_manager_dI[i_nc] += value;
                     CUDAREAL value2 = 0;
                     if (s_compute_curvatures){
@@ -734,6 +783,7 @@ void gpu_sum_over_steps(
                    printf("hkl= %f %f %f  hkl0= %d %d %d\n", _h,_k,_l,_h0,_k0,_l0);
                    printf(" F_cell=%g  F_cell2=%g I_latt=%g   I = %g\n", _F_cell,_F_cell2,I0,_I);
                    printf("I/steps %15.10g\n", _I/s_Nsteps);
+                   //printf("Ilatt diffuse %15.10g\n", I_latt_diffuse);
                    printf("omega   %15.10g\n", _omega_pixel);
                    printf("default_F= %f\n", s_default_F);
                    printf("Incident[0]=%g, Incident[1]=%g, Incident[2]=%g\n", _incident[0], _incident[1], _incident[2]);

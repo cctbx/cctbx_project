@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 import socket
 import glob
 from copy import deepcopy
-from simtbx.diffBragg.hopper_utils import look_at_x, model, get_param_from_x, DataModeler, get_data_model_pairs, sanity_test_input_lines
 from simtbx.diffBragg import hopper_utils
+PARAM_PER_XTAL = hopper_utils.PARAM_PER_XTAL
 import h5py
 from dxtbx.model.experiment_list import ExperimentList
 try:
@@ -18,7 +18,6 @@ try:
 except ImportError:
     LineProfiler = None
 
-
 ROTX_ID = 0
 ROTY_ID = 1
 ROTZ_ID = 2
@@ -26,9 +25,7 @@ NCELLS_ID = 9
 UCELL_ID_OFFSET = 3
 DETZ_ID = 10
 
-
 # LIBTBX_SET_DISPATCHER_NAME simtbx.diffBragg.hopper
-
 
 import numpy as np
 np.seterr(invalid='ignore')
@@ -49,7 +46,6 @@ from simtbx.diffBragg.phil import philz
 import logging
 from simtbx.diffBragg import mpi_logger
 from simtbx.diffBragg.phil import hopper_phil
-
 
 
 philz = hopper_phil + philz
@@ -92,11 +88,15 @@ class Script:
         best_models = None
         if COMM.rank == 0:
             input_lines = open(self.params.exp_ref_spec_file, "r").readlines()
+            if self.params.skip is not None:
+                input_lines = input_lines[self.params.skip:]
+            if self.params.first_n is not None:
+                input_lines = input_lines[:self.params.first_n]
             if self.params.sanity_test_input:
-                sanity_test_input_lines(input_lines)
+                hopper_utils.sanity_test_input_lines(input_lines)
 
             if self.params.best_pickle is not None:
-                if not self.params.quiet: logging.info("reading pickle %s" % self.params.best_pickle)
+                logging.info("reading pickle %s" % self.params.best_pickle)
                 best_models = pandas.read_pickle(self.params.best_pickle)
 
             if self.params.dump_gathers:
@@ -106,7 +106,6 @@ class Script:
         input_lines = COMM.bcast(input_lines)
         best_models = COMM.bcast(best_models)
 
-        input_lines = input_lines[self.params.skip:]
         if self.params.ignore_existing:
             exp_names_already =None
             if COMM.rank==0:
@@ -143,7 +142,7 @@ class Script:
                 if len(best) != 1:
                     raise ValueError("Should be 1 entry for exp %s in best pickle %s" % (exp, self.params.best_pickle))
             self.params.simulator.spectrum.filename = spec
-            Modeler = DataModeler(self.params)
+            Modeler = hopper_utils.DataModeler(self.params)
             if self.params.load_data_from_refls:
                 gathered = Modeler.GatherFromReflectionTable(exp, ref)
             else:
@@ -163,7 +162,7 @@ class Script:
                     all_trusted = Modeler.all_trusted.copy()
                     all_pids = np.array(Modeler.pids)
                     all_rois = np.array(Modeler.rois)
-                    new_Modeler = DataModeler(self.params)
+                    new_Modeler = hopper_utils.DataModeler(self.params)
                     assert new_Modeler.GatherFromReflectionTable(exp, output_name)
                     assert np.allclose(new_Modeler.all_data, all_data)
                     assert np.allclose(new_Modeler.all_background, all_bg)
@@ -177,6 +176,8 @@ class Script:
                     continue
 
             Modeler.SimulatorFromExperiment(best)
+            if self.params.refiner.verbose is not None and COMM.rank==0:
+                Modeler.SIM.D.verbose = self.params.refiner.verbose
             if self.params.profile:
                 Modeler.SIM.record_timings = True
             if self.params.use_float32:
@@ -192,26 +193,26 @@ class Script:
 
             Modeler.SIM.D.device_Id = dev
 
-            # initial parameters (all set to 1, 7 parameters (scale, rotXYZ, Ncells_abc) per crystal (sausage) and then the unit cell parameters
-            nparam = 7 * Modeler.SIM.num_xtals + len(Modeler.SIM.ucell_man.variables) + 1
+            # initial parameters (all set to 1, PARAM_PER_XTAL parameters (scale, rotXYZ, Ncells_abc) per crystal (sausage) and then the unit cell parameters
+            nparam = PARAM_PER_XTAL * Modeler.SIM.num_xtals + len(Modeler.SIM.ucell_man.variables) + 1
             if self.params.rescale_params:
                 x0 = [1] * nparam
             else:
                 x0 = [np.nan]*nparam
                 for i_xtal in range(Modeler.SIM.num_xtals):
-                    x0[7*i_xtal] = Modeler.SIM.Scale_params[i_xtal].init
-                    x0[7*i_xtal+1] = Modeler.SIM.RotXYZ_params[3*i_xtal].init
-                    x0[7*i_xtal+2] = Modeler.SIM.RotXYZ_params[3*i_xtal+1].init
-                    x0[7*i_xtal+3] = Modeler.SIM.RotXYZ_params[3*i_xtal+2].init
-                    x0[7*i_xtal+4] = Modeler.SIM.Nabc_params[3*i_xtal].init
-                    x0[7*i_xtal+5] = Modeler.SIM.Nabc_params[3*i_xtal+1].init
-                    x0[7*i_xtal+6] = Modeler.SIM.Nabc_params[3*i_xtal+2].init
+                    x0[PARAM_PER_XTAL*i_xtal] = Modeler.SIM.Scale_params[i_xtal].init
+                    x0[PARAM_PER_XTAL*i_xtal+1] = Modeler.SIM.RotXYZ_params[3*i_xtal].init
+                    x0[PARAM_PER_XTAL*i_xtal+2] = Modeler.SIM.RotXYZ_params[3*i_xtal+1].init
+                    x0[PARAM_PER_XTAL*i_xtal+3] = Modeler.SIM.RotXYZ_params[3*i_xtal+2].init
+                    x0[PARAM_PER_XTAL*i_xtal+4] = Modeler.SIM.Nabc_params[3*i_xtal].init
+                    x0[PARAM_PER_XTAL*i_xtal+5] = Modeler.SIM.Nabc_params[3*i_xtal+1].init
+                    x0[PARAM_PER_XTAL*i_xtal+6] = Modeler.SIM.Nabc_params[3*i_xtal+2].init
+                    # TODO: diffuse params go here (also maybe just drop rescale=False support)
 
                 nucell = len(Modeler.SIM.ucell_man.variables)
                 for i_ucell in range(nucell):
-                    x0[7*Modeler.SIM.num_xtals+i_ucell] = Modeler.SIM.ucell_params[i_ucell].init
-                    #x0[7 * Modeler.SIM.num_xtals + i_ucell] = Modeler.SIM.ucell_params[i_ucell].init
-                x0[7*Modeler.SIM.num_xtals+nucell] = Modeler.SIM.DetZ_param.init
+                    x0[PARAM_PER_XTAL*Modeler.SIM.num_xtals+i_ucell] = Modeler.SIM.ucell_params[i_ucell].init
+                x0[PARAM_PER_XTAL*Modeler.SIM.num_xtals+nucell] = Modeler.SIM.DetZ_param.init
 
             x = Modeler.Minimize(x0)
             if self.params.profile:
@@ -235,9 +236,9 @@ class Script:
 
 def save_up(Modeler, x, exp, i_exp, input_refls):
     LOGGER = logging.getLogger("refine")
-    best_model,_ = model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
+    Modeler.best_model, _ = hopper_utils.model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
     LOGGER.info("Optimized values for i_exp %d:" % i_exp)
-    look_at_x(x,Modeler.SIM)
+    hopper_utils.look_at_x(x,Modeler.SIM)
 
     rank_imgs_outdir = os.path.join(Modeler.params.outdir, "imgs", "rank%d" % COMM.rank)
     if not os.path.exists(rank_imgs_outdir):
@@ -255,23 +256,31 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
         save_to_pandas(x, Modeler.SIM, exp, Modeler.params, Modeler.E, i_exp, input_refls, img_path)
 
     new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d.refl" % (Modeler.params.tag, basename, i_exp))
-    # save_model_Z(img_path, all_data, best_model, pan_fast_slow, sigma_rdout)
 
-    data_subimg, model_subimg, strong_subimg, bragg_subimg = get_data_model_pairs(Modeler.rois, Modeler.pids, Modeler.roi_id, best_model, Modeler.all_data, background=Modeler.all_background)
+    data_subimg, model_subimg, trusted_subimg, bragg_subimg = Modeler.get_data_model_pairs()
 
     comp = {"compression": "lzf"}
     new_refls = deepcopy(Modeler.refls)
-    new_refls['dials.xyzcal.px'] = deepcopy(new_refls['xyzcal.px'])
-    new_xycalcs = flex.vec3_double(len(Modeler.refls), (0,0,0))
+    has_xyzcal = 'xycval.px' in list(new_refls.keys())
+    if has_xyzcal:
+        new_refls['dials.xyzcal.px'] = deepcopy(new_refls['xyzcal.px'])
+    new_xycalcs = flex.vec3_double(len(Modeler.refls), (np.nan,np.nan,np.nan))
     h5_roi_id = flex.int(len(Modeler.refls), -1)
     with h5py.File(img_path, "w") as h5:
+        sigmaZs = []
         for i_roi in range(len(data_subimg)):
+            dat = data_subimg[i_roi]
+            fit = model_subimg[i_roi]
+            trust = trusted_subimg[i_roi]
+            sig = np.sqrt(fit + Modeler.sigma_rdout**2)
+            Z = (dat - fit) / sig
+            sigmaZ = Z[trust].std()
+            sigmaZs.append(sigmaZ)
             h5.create_dataset("data/roi%d" % i_roi, data=data_subimg[i_roi], **comp)
             h5.create_dataset("model/roi%d" % i_roi, data=model_subimg[i_roi], **comp)
             if bragg_subimg[0] is not None:
                 h5.create_dataset("bragg/roi%d" % i_roi, data=bragg_subimg[i_roi], **comp)
-                com = np.nan, np.nan, np.nan
-                if np.any(bragg_subimg[i_roi]>0):
+                if np.any(bragg_subimg[i_roi] > 0):
                     I = bragg_subimg[i_roi]
                     Y,X = np.indices(bragg_subimg[i_roi].shape)
                     x1,_,y1,_ = Modeler.rois[i_roi]
@@ -281,15 +290,16 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
                     xcom = (X*I).sum() / Isum
                     ycom = (Y*I).sum() / Isum
                     com = xcom+.5, ycom+.5, 0
-
-                ref_idx = Modeler.refls_idx[i_roi]
-                h5_roi_id[ref_idx] = i_roi
-                new_xycalcs[ref_idx] = com
-
+                    ref_idx = Modeler.refls_idx[i_roi]
+                    h5_roi_id[ref_idx] = i_roi
+                    new_xycalcs[ref_idx] = com
 
         h5.create_dataset("rois", data=Modeler.rois)
         h5.create_dataset("pids", data=Modeler.pids)
         h5.create_dataset("sigma_rdout", data=Modeler.sigma_rdout)
+        h5.create_dataset("sigmaZ_vals", data=sigmaZs)
+        if Modeler.Hi_asu is not None:
+            h5.create_dataset("Hi_asu", data=Modeler.Hi_asu)
 
     new_refls["xyzcal.px"] = new_xycalcs
     new_refls["h5_roi_idx"] = h5_roi_id
@@ -321,7 +331,11 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
 
     if SIM.num_xtals > 1:
         raise NotImplemented("cant save pandas for multiple crystals yet")
-    scale, rotX, rotY, rotZ, Na, Nb, Nc,a,b,c,al,be,ga,detz_shift = get_param_from_x(x, SIM)
+    scale, rotX, rotY, rotZ, Na, Nb, Nc,diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c, a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, SIM)
+    if params.isotropic.diffuse_gamma:
+        diff_gam_b = diff_gam_c = diff_gam_a
+    if params.isotropic.diffuse_sigma:
+        diff_sig_b = diff_sig_c = diff_sig_a
     shift = np.nan
     #if SIM.shift_param is not None:
     #    shift = SIM.shift_param.get_val(x[-1])
@@ -357,7 +371,10 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
         "eta_abc": [(eta_a, eta_b, eta_c)],
         "detz_shift_mm": [detz_shift * 1e3],
         "ncells_def": ncells_def_vals,
+        "diffuse_gamma": [(diff_gam_a, diff_gam_b, diff_gam_c)],
+        "diffuse_sigma": [(diff_sig_a, diff_sig_b, diff_sig_c)],
         "fp_fdp_shift": [shift],
+        "use_diffuse_models": [params.use_diffuse_models],
         # "bgplanes": bgplanes, "image_corr": image_corr,
         # "init_image_corr": init_img_corr,
         # "fcell_xstart": fcell_xstart,
@@ -404,6 +421,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     df["stage1_output_img"] = stg1_img_path
 
     df.to_pickle(pandas_path)
+    return df
 
 
 if __name__ == '__main__':

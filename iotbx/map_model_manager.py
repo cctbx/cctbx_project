@@ -907,17 +907,20 @@ class map_model_manager(object):
      Add a new model
      Must be similar to existing map_managers
      Overwrites any existing with the same id unless overwrite = False
+     If model is None, removes model unless overwrite is False
     '''
-    if not model:
+    if (not model) and (not overwrite):
       print("No model supplied for '%s' ... skipping addition" %(
         model_id), file = self.log)
       return
 
-    assert isinstance(model, mmtbx.model.manager)
+    assert (model is None) or isinstance(model, mmtbx.model.manager)
     if not overwrite:
       assert not model_id in self.model_id_list() # must not duplicate
 
-    if self.map_manager() and not self.map_manager().is_compatible_model(model):
+    if model and \
+      self.map_manager() and (
+         not self.map_manager().is_compatible_model(model)):
       # needs shifting
       self.shift_any_model_to_match(model)
     self._model_dict[model_id] = model
@@ -1014,7 +1017,8 @@ class map_model_manager(object):
     '''
     all_map_id_list=list(self._map_dict.keys())
     # We are going to need id='map_manager'   create if if missing
-    assert self.map_manager() is not None # creates it
+    if self.map_manager() is None: # creates it usually but if it can't ...
+      return group_args(map_id=None, other_map_id_list = [])
     assert all_map_id_list
     all_map_id_list.sort()
     map_id='map_manager'
@@ -1481,10 +1485,11 @@ class map_model_manager(object):
      keep_this_region_only = None,
      residues_per_region = None,
      soft_mask_radius = None,
-     mask_expand_ratio = 1):
+     mask_expand_ratio = 1,
+     use_symmetry_in_extract_unique = True):
 
     '''
-      Runs box_all_maps_around_mask_and_shift_origin with extract_box=True
+      Runs box_all_maps_around_unique_and_shift_origin with extract_box=True
     '''
     return self.box_all_maps_around_unique_and_shift_origin(
       resolution = resolution,
@@ -1504,6 +1509,7 @@ class map_model_manager(object):
       soft_mask_radius = soft_mask_radius,
       soft_mask_around_edges = soft_mask_around_edges,
       boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
+      use_symmetry_in_extract_unique = use_symmetry_in_extract_unique,
       extract_box = True)
 
   def box_all_maps_around_unique_and_shift_origin(self,
@@ -1524,6 +1530,7 @@ class map_model_manager(object):
      boundary_to_smoothing_ratio = 2.,
      keep_this_region_only = None,
      residues_per_region = None,
+     use_symmetry_in_extract_unique = True,
      extract_box = False):
     '''
        Box all maps using bounds obtained with around_unique,
@@ -1546,6 +1553,9 @@ class map_model_manager(object):
        Symmetry is optional symmetry (i.e., D7 or C1). Used as alternative to
        ncs_object supplied in map_manager
 
+       Use_symmetry can be set to False to ignore symmetry found in ncs_object.
+         NCS object is still kept and shifted however.
+
       if soft_mask_around_edges, makes a bigger box and makes a soft mask around
        the edges.  Use this option if you are going to calculate a FT of
        the map or otherwise manipulate it in reciprocal space.
@@ -1553,7 +1563,8 @@ class map_model_manager(object):
        Additional parameters:
          mask_expand_ratio:   allows increasing masking radius beyond default at
                               final stage of masking
-         solvent_content:  fraction of cell not occupied by macromolecule
+         solvent_content:  fraction of cell not occupied by macromolecule. Can
+                            be None in which case it is estimated from map
          sequence:        one-letter code of sequence of unique part of molecule
          chain_type:       PROTEIN or RNA or DNA. Used with sequence to estimate
                             molecular_mass
@@ -1578,11 +1589,10 @@ class map_model_manager(object):
     if not resolution:
       resolution = self.resolution()
     assert resolution is not None
-    assert (sequence, solvent_content, molecular_mass).count(None) == 2
 
     model_info=self._get_model_info()
     model = self._model_dict[model_info.model_id]
-    if extract_box: # make sure everything is deep_copy
+    if extract_box and model: # make sure everything is deep_copy
       model = model.deep_copy()
 
     if soft_mask_around_edges: # make the cushion bigger
@@ -1602,6 +1612,7 @@ class map_model_manager(object):
       sequence = sequence,
       molecular_mass = molecular_mass,
       symmetry = symmetry,
+      use_symmetry_in_extract_unique = use_symmetry_in_extract_unique,
       chain_type = chain_type,
       box_cushion = box_cushion,
       soft_mask = soft_mask,
@@ -2876,8 +2887,10 @@ class map_model_manager(object):
         print("No target model...skipping comparison", file = self.log)
       return []
 
-    target_model_chain_ids = get_chain_ids(target_model.get_hierarchy())
-    matching_model_chain_ids = get_chain_ids(matching_model.get_hierarchy())
+    target_model_chain_ids = get_chain_ids(target_model.get_hierarchy(),
+      unique_only=True)
+    matching_model_chain_ids = get_chain_ids(matching_model.get_hierarchy(),
+      unique_only=True)
     if len(target_model_chain_ids) > 1 or len(matching_model_chain_ids) > 1:
       target_and_matching_list = []
       for target_model_chain_id in target_model_chain_ids:
@@ -7940,7 +7953,8 @@ class map_model_manager(object):
                                   of default model)
       n_residues (int, 10):      Number of residues to include (from default
                                   model or file_name)
-      b_iso (float, 30):         B-value (ADP) to use for all atoms
+      b_iso (float, 30):         B-value (ADP) to use for all atoms if model
+                                 is not supplied
       box_cushion (float, 5):     Buffer (A) around model
       d_min (float, 3):      high_resolution limit (A)
       gridding (tuple (nx, ny, nz), None):  Gridding of map (optional)
@@ -7970,7 +7984,7 @@ class map_model_manager(object):
       scattering_table = self.scattering_table()
 
     # Set the resolution now if not already set
-    if d_min is not None and have_map_manager and not self.resolution():
+    if d_min is not None and have_map_manager:
       self.set_resolution(d_min)
     elif d_min is None and self.resolution():
       d_min = self.resolution()
@@ -7982,6 +7996,9 @@ class map_model_manager(object):
       self._print("NOTE: using existing model to generate map data\n")
       model = self.model()
 
+    if not map_id:
+      map_id = 'model_map'
+      self._print("Generated map will go in %s" %(map_id))
 
     if have_map_manager:
       if not gridding:
@@ -7989,8 +8006,6 @@ class map_model_manager(object):
         origin_shift_grid_units = self.map_manager().origin_shift_grid_units
         self._print(
           "Using existing map_manager as source of gridding and origin")
-      if not map_id:
-        map_id = 'model_map'
       self._print("Model map in map_model_manager "+
          "'%s' will be placed in map_manager '%s'" %(self.name,map_id))
 
@@ -8019,7 +8034,6 @@ class map_model_manager(object):
         scattering_table = scattering_table,
         f_obs_array = f_obs_array,
         log = null_out())
-
     mm = generate_map_data(
       map_coeffs = map_coeffs,
       d_min = d_min,
@@ -8031,14 +8045,16 @@ class map_model_manager(object):
       log = null_out())
 
     if have_map_manager and self.get_any_map_manager():
-      if not map_id:
-        map_id = 'model_map'
       new_mm = self.get_any_map_manager().customized_copy(
         map_data=mm.map_data())
       self.add_map_manager_by_id(new_mm,map_id)
     else: # create map-model manager info
       self.set_up_map_dict(map_manager=mm)
       self.set_up_model_dict(model=model)
+      if map_id is not None and map_id != 'map_manager':  # put it in map_id too
+        new_mm = self.get_any_map_manager().customized_copy(
+          map_data=mm.map_data())
+        self.add_map_manager_by_id(new_mm,map_id)
 
   def _empty_copy(self):
     '''

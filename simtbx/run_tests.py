@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+import sys
 from libtbx import test_utils
 import libtbx.load_env
 
@@ -52,7 +53,7 @@ db_tst_list = [
 OPT = libtbx.env.build_options
 
 tst_list = nb_tst_list
-if OPT.enable_cxx11:
+if OPT.enable_cxx11 and sys.platform != 'win32':
     tst_list += db_tst_list
 
 if OPT.enable_cuda:
@@ -62,7 +63,7 @@ if OPT.enable_cuda:
     "$D/gpu/tst_gpu_multisource_background.py", # CPU / GPU background comparison
     "$D/kokkos/tst_kokkos_lib.py",                  # GPU in kokkos
   ]
-  if OPT.enable_cxx11:
+  if OPT.enable_cxx11 and sys.platform != 'win32':
       for tst in db_tst_list:
           if isinstance(tst, str):
               par_tst = [tst, "--cuda"]

@@ -79,9 +79,28 @@ def tst_01(log = sys.stdout):
   print("RMSD mean:",rmsd_values.min_max_mean().mean)
   assert approx_equal(rmsd_values.min_max_mean().mean, 0.93559254135)
 
+  # use process_predicted_model to convert lddt or rmsd to B return with
+  #  mark_atoms_to_ignore_with_occ_zero
+
+  print("\nConverting lddt to B values and using mark_atoms_to_ignore_with_occ_zero", file = log)
+  params.process_predicted_model.maximum_fraction_close = 0.5
+  params.process_predicted_model.b_value_field_is = 'lddt'
+  params.process_predicted_model.remove_low_confidence_residues = True
+  params.process_predicted_model.maximum_rmsd = 1.5
+  params.process_predicted_model.split_model_by_compact_regions = True
+  params.process_predicted_model.maximum_domains = 3
+
+  model_info = process_predicted_model(m, params, mark_atoms_to_keep_with_occ_one= True)
+  models = model_info.model_list
+  for mm,n1,n2 in zip(models,[84,88],[88,84]):
+    model_occ_values = mm.get_hierarchy().atoms().extract_occ()
+    assert model_occ_values.count(1) == n1
+    assert model_occ_values.count(0) == n2
+
   # use process_predicted_model to convert lddt or rmsd to B
 
   print("\nConverting lddt to B values", file = log)
+  params.process_predicted_model.maximum_fraction_close = 0.5
   params.process_predicted_model.b_value_field_is = 'lddt'
   params.process_predicted_model.remove_low_confidence_residues = False
   params.process_predicted_model.split_model_by_compact_regions = False
@@ -92,11 +111,13 @@ def tst_01(log = sys.stdout):
   model_b_values = model.get_hierarchy().atoms().extract_b()
   assert approx_equal(b_values, model_b_values, eps = 0.02) # come back rounded
 
+
   print("\nConverting fractional lddt to B values", file = log)
   ph = model.get_hierarchy().deep_copy()
   ph.atoms().set_b(fractional_lddt)
   test_model = model.as_map_model_manager().model_from_hierarchy(ph,
      return_as_model = True)
+  params.process_predicted_model.maximum_fraction_close = 0.5
   params.process_predicted_model.b_value_field_is = 'lddt'
   params.process_predicted_model.remove_low_confidence_residues = False
   params.process_predicted_model.split_model_by_compact_regions = False
@@ -112,6 +133,7 @@ def tst_01(log = sys.stdout):
      return_as_model = True)
 
   print("\nConverting rmsd to B values", file = log)
+  params.process_predicted_model.maximum_fraction_close = 0.5
   params.process_predicted_model.b_value_field_is = 'rmsd'
   params.process_predicted_model.remove_low_confidence_residues = False
   params.process_predicted_model.split_model_by_compact_regions = False
@@ -125,11 +147,13 @@ def tst_01(log = sys.stdout):
      (model_b_values > 59).count(True), model_b_values.size()), file = log)
 
   print("\nConverting rmsd to B values and selecting rmsd < 1.5", file = log)
+  params.process_predicted_model.maximum_fraction_close = 0.5
   params.process_predicted_model.b_value_field_is = 'rmsd'
   params.process_predicted_model.remove_low_confidence_residues = True
   params.process_predicted_model.maximum_rmsd = 1.5
   params.process_predicted_model.split_model_by_compact_regions = False
   params.process_predicted_model.input_lddt_is_fractional = None
+
   model_info = process_predicted_model(test_model, params)
   model = model_info.model
   print("Residues before: %s   After: %s " %(
@@ -138,7 +162,8 @@ def tst_01(log = sys.stdout):
 
   # Check splitting model into domains
   print("\nSplitting model into domains", file = log)
-  model_info = split_model_into_compact_units(model, log = log)
+  model_info = split_model_into_compact_units(model, 
+      maximum_fraction_close = 0.5, log = log)
 
   chainid_list = model_info.chainid_list
   print("Segments found: %s" %(" ".join(chainid_list)), file = log)
@@ -147,7 +172,7 @@ def tst_01(log = sys.stdout):
   # Check processing and splitting model into domains
   print("\nProcessing and splitting model into domains", file = log)
 
-
+  params.process_predicted_model.maximum_fraction_close = 0.5
   params.process_predicted_model.b_value_field_is = 'lddt'
   params.process_predicted_model.remove_low_confidence_residues = True
   params.process_predicted_model.maximum_rmsd = 1.5
@@ -181,6 +206,7 @@ def tst_01(log = sys.stdout):
   print("\nProcessing and splitting model into domains with pae", file = log)
 
 
+  params.process_predicted_model.maximum_fraction_close = 0.5
   params.process_predicted_model.b_value_field_is = 'lddt'
   params.process_predicted_model.remove_low_confidence_residues = True
   params.process_predicted_model.maximum_rmsd = 0.7

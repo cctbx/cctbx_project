@@ -410,6 +410,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                 MAIN_LOGGER.debug("reflection %d has hot pixel" % i_roi)
                 is_selected = False
             if num_hotpix > min_trusted_pix_per_roi:
+                MAIN_LOGGER.debug("reflection %d has too many (%d) hot pixels (%d allowed)!" % (i_roi, num_hotpix, min_trusted_pix_per_roi))
                 is_selected = False
 
         dimY, dimX = imgs[pid].shape
@@ -445,6 +446,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                 if set_negative_bg_to_zero:
                     bg_signal = 0
                 else:
+                    MAIN_LOGGER.debug("reflection %d has negative background" % i_roi)
                     is_selected = False
             tilt_a, tilt_b, tilt_c = 0, 0, bg_signal
             covariance = None
@@ -459,6 +461,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                 weighted=weighted_fit)
             if fit_results is None:
                 tilt_a = tilt_b = tilt_c = covariance = 0
+                MAIN_LOGGER.debug("Reflection %d has no fit!" % i_roi)
                 is_selected = False
                 MAIN_LOGGER.debug("tilt fit failed for reflection %d, probably too few pixels" % i_roi)
                 tilt_plane = np.zeros_like(Xcoords)
@@ -466,10 +469,12 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                 (tilt_a, tilt_b, tilt_c), covariance = fit_results
                 tilt_plane = tilt_a * Xcoords + tilt_b * Ycoords + tilt_c
                 if np.any(np.isnan(tilt_plane)) and is_selected:
+                    MAIN_LOGGER.debug("reflection %d has nan in plane" % i_roi)
                     is_selected = False
                     num_roi_nan_bg += 1
                 if np.min(tilt_plane) < 0:  # dips below
                     num_roi_negative_bg += 1
+                    MAIN_LOGGER.debug("reflection %d has tilt plane that dips below 0" % i_roi)
                     is_selected = False
 
         is_overlapping = not np.all(background[pid, j1_nopad:j2_nopad, i1_nopad:i2_nopad] == -1)
@@ -484,6 +489,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
         roi_dimX = i2_nopad-i1_nopad
 
         if roi_dimY < 2 or roi_dimX < 2:
+            MAIN_LOGGER.debug("reflection %d is too small" % (i_roi))
             is_selected = False
 
         j1 = j1_nopad-j1
@@ -782,6 +788,15 @@ def make_miller_array(symbol, unit_cell, defaultF=1000, d_min=1.5, d_max=999):
     return mil_ar
 
 
+def make_miller_array_from_crystal(Crystal, dmin, dmax, defaultF=1000, symbol=None):
+    if symbol is None:
+        symbol = Crystal.get_space_group().info().type().lookup_symbol()
+    Famp = make_miller_array(
+        symbol=symbol,
+        unit_cell=Crystal.get_unit_cell(), d_min=dmin, d_max=dmax, defaultF=defaultF)
+    return Famp
+
+
 def save_spectra_file(spec_file, wavelengths, weights):
     """
     Create a precognition .lam file
@@ -818,6 +833,11 @@ def load_spectra_file(spec_file, total_flux=None, pinkstride=1, as_spectrum=Fals
     else:
         return weights, energies
 
+
+def save_numpy_mask_as_flex(numpymask, outfile):
+    flexmask = tuple((dials_flex.bool(m) for m in numpymask))
+    with open(outfile, "wb") as f:
+        pickle.dump(flexmask, f)
 
 def load_mask(maskfile):
     """
