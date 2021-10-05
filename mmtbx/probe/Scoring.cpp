@@ -428,6 +428,42 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   return ret;
 }
 
+unsigned DotScorer::count_surface_dots(iotbx::pdb::hierarchy::atom sourceAtom, scitbx::af::shared<Point> const& dots,
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude)
+{
+  unsigned ret = 0;
+
+  // Make an interacting list that includes the atom itself.
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> interacting;
+  interacting.push_back(sourceAtom);
+
+  // Run through all of the dots and determine whether each is valid.
+  for (scitbx::af::shared<Point>::const_iterator d = dots.begin(); d != dots.end(); d++) {
+
+    // Find the world-space location of the dot by adding it to the location of the source atom.
+    // The probe location is in the same direction as d from the source but is further away by the
+    // probe radius.
+    Point absoluteDotLocation = sourceAtom.data->xyz + (*d);
+
+    // Check to see if the dot should be removed from consideration because it is also inside an excluded atom.
+    bool keepDot = true;
+    for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator e = exclude.begin();
+      e != exclude.end(); e++) {
+      double vdwe = m_extraInfoMap.getMappingFor(*e).getVdwRadius();
+      if ((absoluteDotLocation - e->data->xyz).length_sq() < vdwe * vdwe) {
+        keepDot = false;
+        break;
+      }
+    }
+    // Increment if the dot was not excluded.
+    if (keepDot) {
+      ret++;
+    }
+  }
+
+  return ret;
+}
+
 //===========================================================================================================
 // Testing code below here
 
@@ -1204,6 +1240,63 @@ std::string DotScorer::test()
       probeRad, exclude, ds.dots(), 0, false);
     if (res.valid) {
       return "DotScorer::test(): Unexpected valid result for density <= 0 case";
+    }
+  }
+
+  // Check surface-dot counting.
+  {
+    double targetRad = 1.5, sourceRad = 1.0;
+    DotSphere ds(sourceRad, 200);
+    unsigned int atomSeq = 0;
+    unsigned count;
+
+    // Construct a single target atom, including its extra info
+    iotbx::pdb::hierarchy::atom a;
+    a.set_xyz({ 0,0,0 });
+    a.set_occ(1);
+    a.data->i_seq = atomSeq++;
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
+    atoms.push_back(a);
+    SpatialQuery sq(atoms);
+    ExtraAtomInfo e(targetRad, true);
+    scitbx::af::shared<ExtraAtomInfo> infos;
+    infos.push_back(e);
+
+    // Construct a source atom, including its extra info.
+    // This will be a hydrogen but not a donor.
+    iotbx::pdb::hierarchy::atom source;
+    source.set_occ(1);
+    source.data->i_seq = atomSeq++;
+    ExtraAtomInfo se(sourceRad);
+    atoms.push_back(source);
+    infos.push_back(se);
+
+    // Construct the scorer to be used with the specified bond gaps.
+    DotScorer as(ExtraAtomInfoMap(atoms, infos));
+
+    // Construct an exclusion list and add the target atom.
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
+    exclude.push_back(a);
+
+    // Check the source atom not overlapping with the target.
+    source.set_xyz({ targetRad + sourceRad + 0.1, 0, 0 });
+    count = as.count_surface_dots(source, ds.dots(), exclude);
+    if (count != ds.dots().size()) {
+      return "DotScorer::test(): Unexpected surface dot count for non-overlapping case";
+    }
+
+    // Check the source atom completely overlapping with the target.
+    source.set_xyz({ 0, 0, 0 });
+    count = as.count_surface_dots(source, ds.dots(), exclude);
+    if (count != 0) {
+      return "DotScorer::test(): Unexpected nonzero surface dot count for fully-overlapping case";
+    }
+
+    // Check the source atom partially overlapping with the target.
+    source.set_xyz({ targetRad, 0, 0 });
+    count = as.count_surface_dots(source, ds.dots(), exclude);
+    if ((count == 0) || (count >= ds.dots().size())) {
+      return "DotScorer::test(): Unexpected surface dot count for partially-overlapping case";
     }
   }
 

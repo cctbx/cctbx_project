@@ -129,6 +129,7 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
         init< ExtraAtomInfoMap,
         optional<double, double, double, double, double, double, double, double,bool> >())
     .def("check_dot", &DotScorer::check_dot, check_dot_overloads())
+    .def("count_surface_dots", &DotScorer::count_surface_dots)
     .def("score_dots", &DotScorer::score_dots)
     .def("interaction_type", &DotScorer::interaction_type)
     .def("interaction_type_name", &DotScorer::interaction_type_name)

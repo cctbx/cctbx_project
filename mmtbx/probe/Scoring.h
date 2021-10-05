@@ -322,6 +322,16 @@ namespace molprobity {
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &exclude,
         scitbx::af::shared<Point> const &dots, double density, bool onlyBumps);
 
+      /// @brief Count how many surface dots on an atom are not within an excluded atom.
+      /// @param [in] sourceAtom Atom that the dot is offset with respect to.
+      /// @param [in] dots Vector of dots to compare.  Each is added to the sourceAtom origin.
+      /// @param [in] excluded Atoms that are to be excluded from contact, for example this could be a list
+      ///             of atoms bonded to sourceAtom.  If the dot is inside an excluded atom, it will not be
+      ///             counted.
+      /// @return Number of surface dots that are not inside an excluded atom.
+      unsigned count_surface_dots(iotbx::pdb::hierarchy::atom sourceAtom, scitbx::af::shared<Point> const& dots,
+        scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude);
+
       //===========================================================================
       // Seldom-used methods below here.
 
