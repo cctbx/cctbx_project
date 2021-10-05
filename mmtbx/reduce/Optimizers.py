@@ -996,7 +996,7 @@ class FastOptimizer(_CliqueOptimizer):
       state = tuple([self._coarseLocations[m] for m in self._atomMoverSets[atom]])
       try:
         return self._scoreCache[atom][state]
-      except:
+      except Exception:
         self._scoreCache[atom][state] = super(FastOptimizer, self)._scoreAtom(atom)
         return self._scoreCache[atom][state]
     else:

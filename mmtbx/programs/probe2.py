@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-import os
 import sys
 import math
 from datetime import datetime
@@ -11,7 +10,6 @@ from libtbx.utils import Sorry
 import mmtbx
 import mmtbx_probe_ext as probeExt
 from mmtbx.probe import Helpers, AtomTypes
-from scitbx.array_family import flex
 from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
 
@@ -998,7 +996,7 @@ Note:
           try:
             tName = t.element
             tBVal = "{:.2f}".format(t.b)
-          except:
+          except Exception:
             tName = ""
             tBVal = ""
           ret += ":{}:{}:{:.3f}:{:.3f}:{:.3f}".format(a.element, tName,
@@ -1451,17 +1449,17 @@ Note:
     # Report the counts
     if reportSubScores:
       ret += "\n     tot contact:  {:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(
-		    tgs, 100.0*tgs/numSkinDots, tGscore/density, 1000.0*tGscore/numSkinDots
+        tgs, 100.0*tgs/numSkinDots, tGscore/density, 1000.0*tGscore/numSkinDots
       )
       ret += "     tot overlap:  {:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(
-		    tbs,    100.0*tbs/numSkinDots, tBscore/density, 1000.0*tBscore/numSkinDots
+        tbs, 100.0*tbs/numSkinDots, tBscore/density, 1000.0*tBscore/numSkinDots
       )
       ret += "     tot  H-bond:  {:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(
-		    ths,    100.0*ths/numSkinDots, tHscore/density, 1000.0*tHscore/numSkinDots
+        ths, 100.0*ths/numSkinDots, tHscore/density, 1000.0*tHscore/numSkinDots
       )
 
       ret += "\n       grand tot:  {:7d} {:5.1f}% {:9.1f} {:9.2f}\n".format(
-		    (tgs+tbs+ths), 100.0*(tgs+tbs+ths)/numSkinDots, tscore/density, 1000.0*tscore/numSkinDots
+        (tgs+tbs+ths), 100.0*(tgs+tbs+ths)/numSkinDots, tscore/density, 1000.0*tscore/numSkinDots
       )
       ret += "\ncontact surface area: {:.1f} A^2\n".format((tgs+tbs+ths)/density)
     else:

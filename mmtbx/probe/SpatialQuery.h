@@ -2,9 +2,9 @@
 // Licensed under the Apache 2 license
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -36,7 +36,7 @@ namespace molprobity {
       SpatialQuery(Point lowerBounds, Point upperBounds, Point binSize);
 
       /// @brief Construct with a hierarchy, filling in all atoms.
-      /// 
+      ///
       /// This is a helper constructor that generates a filled-in structure
       /// whose extent matches that of the atom vector passed in, and that is
       /// pre-filled with all of its atoms.  The bin sizes are such that there
@@ -58,7 +58,7 @@ namespace molprobity {
       bool add(iotbx::pdb::hierarchy::atom a);
 
       /// @brief Remove an atom from the query object
-      /// 
+      ///
       /// This routine will normally be used when an atom has moved from one location to another;
       /// the old atom location will be removed and then the new atom will be added.
       /// @param [in] a Atom to be added to the query object.

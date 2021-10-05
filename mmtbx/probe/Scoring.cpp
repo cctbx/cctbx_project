@@ -2,9 +2,9 @@
 // Licensed under the Apache 2 license
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -208,7 +208,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
     ret.annular = annularDots(absoluteDotLocation, sourceAtom.data->xyz, sourceExtra.getVdwRadius(),
       ret.cause.data->xyz, m_extraInfoMap.getMappingFor(ret.cause).getVdwRadius(), probeRadius);
   }
- 
+
   // If the source or target is a dummy hydrogen, then we ignore dots that are too-close hydrogen bonds
   // and ones that turned out in the end not to be hydrogen bonds.
   if ((sourceExtra.getIsDummyHydrogen() || causeIsDummy)
@@ -340,7 +340,7 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   // The nonzero minimum distance prevents us from selecting the source atom.
   /// @todo The nonzero distance will also prevent noticing co-located atoms,
   // which should probably be recorded as bad clashes.
-  scitbx::af::shared<iotbx::pdb::hierarchy::atom> neighbors = 
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> neighbors =
     spatialQuery.neighbors(sourceAtom.data->xyz, 1e-5, nearbyRadius);
 
   // Select only those atoms actually interacting: that have sufficient occupancy, for whom the
@@ -410,10 +410,10 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
         ret.bumpSubScore += -m_bumpWeight * score.overlap;
       }
       break;
-      
+
     default:
       // This should never happen.  Returns with ret invalid to indicate an error.
-      std::cerr << "DotScorer::score_dots(): Internal error: Unrecognized overlap type: " << 
+      std::cerr << "DotScorer::score_dots(): Internal error: Unrecognized overlap type: " <<
         static_cast<int>(score.overlapType) << std::endl;
       return ret;
     }
@@ -917,7 +917,7 @@ std::string DotScorer::test()
     }
     SpatialQuery sq(atoms);
 
-    // Construct the source atom, including its extra info. 
+    // Construct the source atom, including its extra info.
     // It is a hydrogen donor and is located halfway
     // between the two atoms.
     iotbx::pdb::hierarchy::atom source;
@@ -1380,4 +1380,4 @@ std::string Scoring_test()
 
 
 } // end namespace probe
-} // end namespace molprobity 
+} // end namespace molprobity

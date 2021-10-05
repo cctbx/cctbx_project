@@ -2,9 +2,9 @@
 // Licensed under the Apache 2 license
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -64,7 +64,7 @@ namespace molprobity {
 
     /// @brief A dot is annular if it is further from the center of contact than edge of the overlap
     /// region is at optimum contact.
-    /// 
+    ///
     /// This checks to make sure that dots that would not have contributed to a good score at optimium
     /// contact are not considered to contribute to a good score when the atoms are overlapping or far from
     /// each other?

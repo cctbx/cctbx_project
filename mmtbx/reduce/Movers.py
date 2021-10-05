@@ -1048,7 +1048,7 @@ def _rotateAroundAxis(atom, axis, degrees):
   # in.
   try:
     pos = atom.xyz
-  except:
+  except Exception:
     pos = rvec3(atom)
 
   # Project the atom position onto the axis, finding its closest point on the axis.

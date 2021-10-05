@@ -61,7 +61,7 @@ set(probe_HEADERS
 )
 
 add_library(probeLib ${probe_SOURCES} ${probe_HEADERS})
-target_include_directories(probeLib PUBLIC SYSTEM 
+target_include_directories(probeLib PUBLIC SYSTEM
   ${CCTBX_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIR})
 target_link_libraries(probeLib

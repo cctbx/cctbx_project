@@ -5,8 +5,8 @@
 data_energy
 #
 # ---------------------------------------------------
-#      _dictionary_name		ciflibdic
-#      _dictionary_version	2.0
+#      _dictionary_name   ciflibdic
+#      _dictionary_version  2.0
 # ---------------------------------------------------
 #   -----------   Description of atom's type --------
 #HEADER        C Carbon PI

@@ -1,12 +1,12 @@
 ##################################################################################
 #                Copyright 2021  Richardson Lab at Duke University
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License"],
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -34,7 +34,6 @@ from iotbx.data_manager import DataManager
 import mmtbx
 
 import mmtbx_probe_ext as probe
-from enum import Enum
 
 ##################################################################################
 # Helper functions.
@@ -133,7 +132,7 @@ def IsAromatic(resName, atomName):
     if resName.strip() in e[0] and atomName.strip() in e[1]:
       return True
   return False
-  
+
 
 ##################################################################################
 
@@ -157,39 +156,39 @@ class AtomInfo(object):
   def __init__(self, myValList = None):
     try:
       self._atomicNumber = myValList[0]
-    except:
+    except Exception:
       self._atomicNumber = 0
     try:
       self._name = myValList[1]
-    except:
+    except Exception:
       self._name = "?"
     try:
       self._fullName = myValList[2]
-    except:
+    except Exception:
       self._fullName = "unknown"
     try:
       self._vdwElectronCloudExplicit = myValList[3]
-    except:
+    except Exception:
       self._vdwElectronCloudExplicit = 0
     try:
       self._vdwNeutronExplicit = myValList[4]
-    except:
+    except Exception:
       self._vdwNeutronExplicit = 0
     try:
       self._vdwElectronCloudImplicit = myValList[5]
-    except:
+    except Exception:
       self._vdwElectronCloudImplicit = 0
     try:
       self._covalent = myValList[6]
-    except:
+    except Exception:
       self._covalent = 0
     try:
       self._kinemageColor = myValList[7]
-    except:
+    except Exception:
       self._kinemageColor = "grey"
     try:
       self._flags = myValList[8]
-    except:
+    except Exception:
       self._flags = AtomFlags.EMPTY_FLAGS
 
   # Getter and setter methods

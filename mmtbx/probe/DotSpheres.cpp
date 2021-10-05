@@ -2,9 +2,9 @@
 // Licensed under the Apache 2 license
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -141,7 +141,7 @@ const DotSphere& DotSphereCache::get_sphere(double radius)
   std::map<double, DotSphere>::const_iterator ret = m_spheres.find(radius);
   if (ret == m_spheres.end()) {
     // We don't have a sphere with this radius -- create one and insert it
-    std::pair<std::map<double, DotSphere>::iterator, bool> iRet = 
+    std::pair<std::map<double, DotSphere>::iterator, bool> iRet =
       m_spheres.insert(std::pair<double, DotSphere>(radius, DotSphere(radius, m_dens)));
     ret = iRet.first;
   }
@@ -197,4 +197,4 @@ std::string DotSpheres_test()
 
 
 } // end namespace probe
-} // end namespace molprobity 
+} // end namespace molprobity
