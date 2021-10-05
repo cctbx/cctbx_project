@@ -156,7 +156,7 @@ def RunProbeTests(inFileName):
   print ('Check dot overlap type:',check.overlapType)
 
   # Test calling the interaction_type method to be sure Python linkage is working
-  print('  dot interaction type: ', ds.interaction_type(check.overlapType, check.gap, False))
+  print('  dot interaction type: ', ds.interaction_type(check.overlapType, check.gap))
 
   #========================================================================
   # Call the test functions for all of our files.
