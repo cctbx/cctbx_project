@@ -51,6 +51,7 @@ class HKLViewFrame() :
     self.spacegroup_choices = []
     self.procarrays = []
     self.origarrays = {}
+    self.ano_spg_tpls =[]
     self.merge_answer = [None]
     self.dmin = -1
     self.settings = display.settings()
@@ -513,6 +514,10 @@ class HKLViewFrame() :
       self.viewer.has_new_miller_array = True
       self.viewer.array_info_format_tpl.append( ArrayInfo(procarray, self.mprint).infotpl )
       #self.viewer.SupersetMillerArrays()
+      wrap_labels = 25
+      arrayinfo = ArrayInfo(procarray,wrap_labels)
+      self.viewer.array_info_format_tpl.append( arrayinfo.get_selected_info_columns(None) )
+      self.ano_spg_tpls.append((arrayinfo.isanomalous, arrayinfo.spginf) )
 
       hkls = self.origarrays["HKLs"]
       nanarr = flex.double(len(hkls), float("nan"))
@@ -522,6 +527,7 @@ class HKLViewFrame() :
         nanarr[e] = procarray.data()[i]
       self.origarrays[label] = list(nanarr)
       mydict = { "array_infotpls": self.viewer.array_info_format_tpl,
+                "ano_spg_tpls": self.ano_spg_lst,
                 "NewHKLscenes" : True,
                 "NewMillerArray" : True
                 }
@@ -551,10 +557,9 @@ class HKLViewFrame() :
   def finish_dataloading(self, arrays):
     valid_arrays = []
     self.viewer.array_info_format_tpl = []
-    infoformats = []
     spg = arrays[0].space_group()
     uc = arrays[0].unit_cell()
-    infotblheader = []
+    self.ano_spg_tpls =[]
     for i,array in enumerate(arrays):
       if type(array.data()) == flex.std_string: # in case of status array from a cif file
         uniquestrings = list(set(array.data()))
@@ -567,9 +572,12 @@ class HKLViewFrame() :
         self.mprint("""No unit cell or space group info present in the %d. miller array.
 Borrowing them from the first miller array""" %i)
       from iotbx.gui_tools.reflections import ArrayInfo
-      arrayinfo = ArrayInfo(array)
+      wrap_labels = 25
+      arrayinfo = ArrayInfo(array,wrap_labels)
       info_fmt = arrayinfo.get_selected_info_columns(None)
       self.viewer.array_info_format_tpl.append( info_fmt )
+      # isanomalous and spacegroup might not have been selected for displaying so send them separatately to GUI
+      self.ano_spg_tpls.append((arrayinfo.isanomalous, arrayinfo.spginf) )
       if i==0:
         mydict = { "spacegroup_info": arrayinfo.spginf, "unitcell_info": arrayinfo.ucellinf }
         self.SendInfoToGUI(mydict)
@@ -585,12 +593,11 @@ Borrowing them from the first miller array""" %i)
         for h in headerlst:
           mstr += h
         mstr += "\n" # print that line break
-      #info, dummy, fmtlst = info_fmt
       for i,info in enumerate(infolst):
         inf = info
-        if i==0:
-          inf = textwrap.wrap(info, width=15)
-        mstr += fmtlst[i].format(inf)
+        if i==0 and wrap_labels>0:
+          inf = textwrap.wrap(info, width=wrap_labels)
+        mstr += fmtlst[i].format(inf) # no line break
       mstr += "\n" # print that line break
 
     self.mprint(mstr + "\n")
@@ -607,6 +614,7 @@ Borrowing them from the first miller array""" %i)
       mydict = { "info": self.infostr,
                   "array_infotpls": self.viewer.array_info_format_tpl,
                   "bin_infotpls": self.viewer.bin_infotpls,
+                  "ano_spg_tpls": self.ano_spg_tpls,
                   "html_url": self.viewer.url,
                   "tncsvec": self.tncsvec,
                   "merge_data": self.params.merge_data,

@@ -396,6 +396,7 @@ newarray._sigmas = sigs
     self.millerarraylabels = []
     self.scenearraylabeltypes = []
     self.array_infotpls = []
+    self.ano_spg_tpls = []
     self.currentmillarray_idx = None
     self.matching_arrays = []
     self.bin_infotpls = None
@@ -646,6 +647,9 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.array_infotpls = self.infodict.get("array_infotpls",[])
             self.millerarraylabels =  [e[1][0] for e in self.array_infotpls]
 
+          if self.infodict.get("ano_spg_tpls"):
+            self.ano_spg_tpls = self.infodict.get("ano_spg_tpls",[])
+
           if self.infodict.get("bin_data_label"):
             self.BinDataComboBox.setCurrentText(self.infodict["bin_data_label"])
 
@@ -820,8 +824,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.ColourMapSelectDlg.selcolmap = self.infodict.get("ColourChart", "brg")
             self.ColourMapSelectDlg.setPowerScaleSliderVal( self.infodict.get("ColourPowerScale", 1.0))
             if self.infodict.get("ShowColourMapDialog"):
-              arrayinfo = self.array_infotpls[self.currentmillarray_idx]
-              self.ColourMapSelectDlg.setDataType(arrayinfo[1])
+              arraytype = self.array_infotpls[self.currentmillarray_idx][1][1]
+              self.ColourMapSelectDlg.setDataType(arraytype)
               self.ColourMapSelectDlg.show()
 
           if self.infodict.get("bin_labels_type_idxs"):
@@ -919,8 +923,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
     self.ColourMapSelectDlg.selcolmap = self.currentphilstringdict["viewer.color_scheme"]
     if self.currentmillarray_idx is not None:
-      arrayinfo = self.array_infotpls[self.currentmillarray_idx]
-      self.ColourMapSelectDlg.setDataType(arrayinfo[1])
+      arraytype = self.array_infotpls[self.currentmillarray_idx][1][1]
+      self.ColourMapSelectDlg.setDataType(arraytype)
     self.ColourMapSelectDlg.setPowerScaleSliderVal( self.currentphilstringdict["viewer.color_powscale"] )
 
     self.sliceindexspinBox.setValue( self.currentphilstringdict['viewer.slice_index'])
@@ -1697,7 +1701,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     # want to show the sigmas rather than the data if idx we add 1000
     self.currentmillarray_idx = row
     arrayinfo = self.array_infotpls[self.currentmillarray_idx]
-    datatype = arrayinfo[1]
     if (idx - 1000) >= 0:
       idx = idx - 1000
       philstr = """
@@ -1715,9 +1718,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.expandAnomalouscheckbox.setEnabled(True)
       self.expandP1checkbox.setEnabled(True)
       # don't allow anomalous expansion for data that's already anomalous
-      isanomalous = arrayinfo[-1]
-      spacegroup = arrayinfo[2]
-      label = arrayinfo[0]
+      isanomalous, spacegroup = self.ano_spg_tpls[self.currentmillarray_idx]
+      label = arrayinfo[0][0]
       if isanomalous:
         self.expandAnomalouscheckbox.setDisabled(True)
       if spacegroup=='P 1 (No. 1)':

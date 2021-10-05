@@ -21,7 +21,10 @@ data_file_name = None
   .short_caption = Reflection file
   .multiple = False
   .help = Reflection file name
-
+wrap_labels = 15
+  .type = int
+  .short_caption = Wrap width for labels
+  .help = Number of letters for wrapping long miller array labels. If less than 1 no wrapping is done
 """
 
 
@@ -35,7 +38,7 @@ class Program(ProgramTemplate):
   def run(self):
     data_file = self.data_manager.get_miller_array_names()[0]
     arrays = self.data_manager.get_miller_arrays(filename = data_file)
-    hklinfo.run(arrays, self.params.selected_info)
+    hklinfo.run(arrays, self.params)
 
 
 from iotbx.cli_parser import CCTBXParser

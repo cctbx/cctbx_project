@@ -7,18 +7,20 @@ from iotbx.gui_tools.reflections import ArrayInfo
 import textwrap
 
 
-def run(arrays, selected_inf_cols=None, log = sys.stdout):
+def run(arrays, philparams=None, log = sys.stdout):
   column_names_selection = []
-  if selected_inf_cols:
-    for att,val in list(selected_inf_cols.__dict__.items()):
+  if philparams:
+    wrap_labels = philparams.wrap_labels
+    for att,val in list(philparams.selected_info.__dict__.items()):
       if not att.startswith("__"):
         column_names_selection.append( (att, val) )
   else:
     column_names_selection = None
+    wrap_labels = 0
 
   array_info_format_tpl=[]
   for i,array in enumerate(arrays):
-    arrayinfo = ArrayInfo(array)
+    arrayinfo = ArrayInfo(array, wrap_labels)
     array_info_format_tpl.append( arrayinfo.get_selected_info_columns(column_names_selection))
 
   print("%d Miller arrays in this dataset:" %len(arrays))
@@ -30,8 +32,8 @@ def run(arrays, selected_inf_cols=None, log = sys.stdout):
       print("") # print that line break
     for i,info in enumerate(infolst):
       inf = info
-      if i==0:
-        inf = textwrap.wrap(info, width=15)
+      if i==0 and wrap_labels>0:
+        inf = textwrap.wrap(info, width=wrap_labels)
       print(fmtlst[i].format(inf), end="") # no line break
     print("") # print that line break
 

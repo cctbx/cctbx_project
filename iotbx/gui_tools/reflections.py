@@ -751,7 +751,7 @@ class ArrayInfo:
   Extract information from miller array and format it for printing as a table
   To be called in a loop
   """
-  def __init__(self, millarr):
+  def __init__(self, millarr, wrap_labels=0):
     from cctbx.miller import display2
     from cctbx.array_family import flex
     from scitbx import graphics_utils
@@ -820,15 +820,22 @@ class ArrayInfo:
     self.isanomalous = millarr.anomalous_flag()
     # break long label into list of shorter strings separated at whitespace and commas if present 
     self.labelstr = ",".join(self.labels)
-    tlabels = textwrap.wrap(self.labelstr, width=15)
-    nlabl = len(tlabels)
-    self.labelsformat = "{0[0]:>16} |"
-    if len(tlabels)>1:
-      for i in range((len(tlabels)-1)):
-        self.labelsformat += "\n{0[%d]:>16} |"%(i+1)
+    if wrap_labels > 0:
+      tlabels = textwrap.wrap(self.labelstr, width= wrap_labels)
+      nlabl = len(tlabels)
+      self.labelsformat = "{0[0]:>%d} |" %(1+wrap_labels)
+      if len(tlabels)>1:
+        for i in range((len(tlabels)-1)):
+          self.labelsformat += "\n{0[%d]:>%d} |"%(i+1, wrap_labels+1)
+      added_spaces = wrap_labels-4
+    else:
+      self.labelsformat = "{:>16} |"
+      if len(self.labelstr)>15:
+        self.labelsformat = "{}\n                 |"
+      added_spaces= 11
 
     self.info_format_dict = {
-      "labels":             ("       label     |",                                ",".join(self.labels), "{}",                                                                             self.labelsformat), 
+      "labels":             (" label" + " "*added_spaces + "|",                   self.labelstr,         "{}",                                                                             self.labelsformat), 
       "description":        ("       type      |",                                self.desc,             "{}",                                                                             "{:>16} |"), 
       "wavelength":         ("   λ/Å  |",                                         self.wavelength,       "{}",                                                                             "{:>7} |"), 
       "n_reflections":      ("  #HKLs  |",                                        self.arrsize,          "{}",                                                                             "{:>8} |"), 
@@ -842,7 +849,7 @@ class ArrayInfo:
       "is_symmetry_unique": (" symmetry unique",                                  str(self.issymunique), "{}",                                                                             "{:>8} |"), 
     }
 
-  # gover whether or not a property of the ArrayInfo should be returned by get_selected_info_columns()
+  # govern whether or not a property of the ArrayInfo should be returned by get_selected_info_columns()
   arrayinfo_phil_str = """
   selected_info {
     labels = True
