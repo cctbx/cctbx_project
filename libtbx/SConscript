@@ -1196,7 +1196,7 @@ if ARGUMENTS.get('TERSE') == '1':
   env_base['SHLINKCOMSTR'] = linking_message
   env_base['ARCOMSTR']     = "Archiving $TARGET"
 
-env_base.Replace(LIBPATH=["#lib"])
+env_base.Append(LIBPATH=["#lib"])
 env_base.Replace(SHOBJSUFFIX=env_base["OBJSUFFIX"])
 
 # XXX backward compatibility 2009-08-21
@@ -1401,6 +1401,7 @@ def enable_cuda_if_possible():
                       '--generate-code=arch=compute_75,code=sm_75',
                       '--generate-code=arch=compute_80,code=sm_80',
                       '--generate-code=arch=compute_86,code=sm_86']
+        # cuda 11.0 does not support compute_86, remove last entry
         if cuda_version < 11.1:
             arch_flags.pop()
     else:

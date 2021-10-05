@@ -34,6 +34,22 @@ class manager(crystal.symmetry):
         d_min = miller_set.d_min()
       else:
         assert d_min < miller_set.d_min() * (1+1e-6)
+    #
+    # Defaults above don't work for ultra-low resolutions (~10-50A and lower).
+    # Customization below makes it work for d_min>10.
+    # For details, see cctbx/regression/tst_sf_low_res_accuracy.py
+    #
+    sc=None
+    if(d_min>=5 and d_min<10): sc=2
+    elif(d_min>=10):           sc=3
+    if(sc is not None and
+       abs(grid_resolution_factor-1/3.)<1.e-3 and
+       wing_cutoff is None and
+       quality_factor is None):
+     quality_factor = 1000
+     wing_cutoff = 1.e-4
+     grid_resolution_factor = sc/d_min
+    #
     crystal.symmetry._copy_constructor(self, crystal_symmetry)
     quality_factor = quality_factor_from_any(
       d_min, grid_resolution_factor, quality_factor, u_base, b_base)

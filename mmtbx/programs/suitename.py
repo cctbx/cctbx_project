@@ -47,7 +47,7 @@ def run(args):
   if options.version:
       print(version, file=logger2)
       return
-  if options.infile == "" or options.residuein or options.suitein:
+  if options.infile == "" or options.infile =="-" or options.residuein or options.suitein:
       # let the core figure out the input
       main(optionsIn=options, outFile=logger2, errorFile=logger)
   else:

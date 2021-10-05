@@ -88,13 +88,12 @@ struct flags{
     int printout_fpixel, printout_spixel; // debug printout pixel (fast scan, slow scan) // TODO add panel id
     int verbose; // nanoBragg verbosity flag
     bool use_diffuse = false; // model  diffuse scattering (experimental)
+    bool only_diffuse = false; // model  diffuse scattering (experimental)
 };
 
 struct crystal{
-    double this_gamma=50; // diffuse scattering
-    double this_sigma=10; // diffuse scattering
-
-
+    Eigen::Matrix3d anisoG;
+    Eigen::Matrix3d anisoU;
     int mosaic_domains; // number of mosaic domains to model
     double Na, Nb, Nc, Nd, Ne, Nf; // mosaic domain terms
     double phi0; // gonio

@@ -13,6 +13,7 @@ from scitbx.matrix import sqr, col
 from simtbx.nanoBragg.tst_gaussian_mosaicity2 import run_uniform
 import math
 
+
 def Amatrix_dials2nanoBragg(crystal):
   """
   returns the A matrix from a cctbx crystal object
@@ -352,6 +353,12 @@ class SimData:
   def _crystal_properties(self):
     if self.crystal is None:
       return
+
+    model_mosaic_spread = self.crystal.n_mos_domains > 1
+    if not model_mosaic_spread:
+      self.D.mosaic_spread_deg = 0
+      self.D.mosaic_domains = 1
+
     self.D.xtal_shape = self.crystal.xtal_shape
 
     self.update_Fhkl_tuple()
@@ -389,7 +396,7 @@ class SimData:
       if len(Nabc) == 1:
         Nabc = Nabc[0], Nabc[0], Nabc[0]
       self.D.Ncells_abc = Nabc
-      if self.umat_maker is None:
+      if model_mosaic_spread and self.umat_maker is None:
           # initialize the parameterized distribution
           assert self.crystal.n_mos_domains % 2 == 0
           from simtbx.nanoBragg.tst_anisotropic_mosaicity import AnisoUmats as AnisoUmats_exa
@@ -398,6 +405,7 @@ class SimData:
         # isotropic case
         self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
         self.D.mosaic_domains = self.crystal.n_mos_domains
+
         if self.Umats_method == 0: # double_random legacy method, exafel tests
           Umats = SimData.Umats(self.crystal.mos_spread_deg,
                                     self.crystal.n_mos_domains,

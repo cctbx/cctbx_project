@@ -118,7 +118,7 @@ def main(inStream=None, outFile=None, errorFile=None, optionsIn=None):
   # 1. read the input
   if inStream:
     inFile = inStream
-  elif options.infile != "":
+  elif options.infile != "" and options.infile != "-":
     inFile = open(options.infile)
   else:
     inFile = sys.stdin

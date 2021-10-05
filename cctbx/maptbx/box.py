@@ -365,8 +365,10 @@ class around_model(with_bounds):
     assert isinstance(model, mmtbx.model.manager)
     assert self._map_manager.map_data().accessor().origin()  ==  (0, 0, 0)
 
-    # Make sure working model and map_manager crystal_symmetry match
+    # Do not work with dummy map_manager
+    assert not map_manager.is_dummy_map_manager()
 
+    # Make sure working model and map_manager crystal_symmetry match
     assert map_manager.is_compatible_model(model)
 
     assert box_cushion >=  0
@@ -433,12 +435,17 @@ class around_unique(with_bounds):
       Additional parameters:
          mask_expand_ratio:   allows increasing masking radius beyond default at
                               final stage of masking
-         solvent_content:  fraction of cell not occupied by macromolecule
+         solvent_content:  fraction of cell not occupied by macromolecule. May
+                           be None in which case it is estimated from the map
          sequence:        one-letter code of sequence of unique part of molecule
          chain_type:       PROTEIN or RNA or DNA. Used with sequence to estimate
                             molecular_mass
          molecular_mass:    Molecular mass (Da) of entire molecule used to
                             estimate solvent_content
+         symmetry:         Alternative way to specify symmetry (as a character
+                            string like D2, T, C3)
+         use_symmetry_in_extract_unique:   Use symmetry in identification
+                            of unique part of map
          target_ncs_au_model: model marking center of location to choose as
                               unique
          box_cushion:        buffer around unique region to be boxed
@@ -463,6 +470,7 @@ class around_unique(with_bounds):
     sequence = None,
     molecular_mass = None,
     symmetry = None,
+    use_symmetry_in_extract_unique = True,
     chain_type = 'PROTEIN',
     keep_low_density = True,  # default from map_box
     box_cushion= 5,
@@ -510,11 +518,23 @@ class around_unique(with_bounds):
     if keep_this_region_only is not None:
       regions_to_keep = -1 * keep_this_region_only
 
+
+    if solvent_content is None and sequence is None and molecular_mass is None:
+      from cctbx.maptbx.segment_and_split_map \
+          import get_iterated_solvent_fraction
+      solvent_content = get_iterated_solvent_fraction(
+          crystal_symmetry = crystal_symmetry,
+          mask_resolution = resolution,
+          map = self._map_manager.map_data(),
+          out = log)
+
+
     ncs_group_obj, remainder_ncs_group_obj, tracking_data  = \
       segment_and_split_map(args,
         map_data = self._map_manager.map_data(),
         crystal_symmetry = crystal_symmetry,
-        ncs_obj = self._map_manager.ncs_object(),
+        ncs_obj = self._map_manager.ncs_object() if \
+          use_symmetry_in_extract_unique else None,
         target_model = target_ncs_au_model,
         write_files = False,
         auto_sharpen = False,
@@ -526,7 +546,7 @@ class around_unique(with_bounds):
         chain_type = chain_type,
         sequence = sequence,
         molecular_mass = molecular_mass,
-        symmetry = symmetry,
+        symmetry = symmetry if use_symmetry_in_extract_unique else None,
         keep_low_density = keep_low_density,
         regions_to_keep = regions_to_keep,
         box_buffer = box_cushion,

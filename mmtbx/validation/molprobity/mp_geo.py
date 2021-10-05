@@ -107,6 +107,7 @@ def run(args):
   params.restraints_library.cdl = use_cdl
   params.clash_guard.nonbonded_distance_threshold = None
   params.allow_polymer_cross_special_position=True
+  params.flip_symmetric_amino_acids=False
   processed_pdb_file = pdb_interpretation.process(
     params                   = params,
     mon_lib_srv              = server.server(),

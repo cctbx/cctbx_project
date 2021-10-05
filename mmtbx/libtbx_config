@@ -1,4 +1,4 @@
 {
   "modules_required_for_use": ["iotbx", "ccp4io"],
-  "optional_modules": ["reduce", "probe", "king", "suitename"],
+  "optional_modules": ["reduce", "probe", "king"],
 }

@@ -161,14 +161,10 @@ def pickle_unpickle(result):
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
-  if (not libtbx.env.has_module(name="suitename")):
-    print("Skipping exercise_rna_validate():" \
-      " phenix not available")
-  else:
-    exercise_1()
-    exercise_2()
-    exercise_3()
-    print("OK")
+  exercise_1()
+  exercise_2()
+  exercise_3()
+  print("OK")
 
 if (__name__ == "__main__"):
   run()
