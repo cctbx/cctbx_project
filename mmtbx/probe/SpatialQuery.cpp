@@ -178,7 +178,8 @@ std::string SpatialQuery::test()
     if (q.m_lowerBounds != lower) {
       return "molprobity::probe::SpatialQuery::test(): Unexpected lower bound on standard construction";
     }
-    if (q.m_gridSize != boost::array<size_t, 3>({ 5, 5, 5 })) {
+    boost::array<size_t, 3> expected = { { 5, 5, 5 } };
+    if (q.m_gridSize != expected) {
       return "molprobity::probe::SpatialQuery::test(): Unexpected grid size on standard construction";
     }
   }
@@ -192,7 +193,8 @@ std::string SpatialQuery::test()
     if (q.m_lowerBounds != lower) {
       return "molprobity::probe::SpatialQuery::test(): Unexpected lower bound on inverted construction";
     }
-    if (q.m_gridSize != boost::array<size_t, 3>({ 1, 1, 1 })) {
+    boost::array<size_t, 3> expected = { { 1, 1, 1 } };
+    if (q.m_gridSize != expected) {
       return "molprobity::probe::SpatialQuery::test(): Unexpected grid size on inverted construction";
     }
   }
@@ -258,7 +260,8 @@ std::string SpatialQuery::test()
       return "molprobity::probe::SpatialQuery::test(): Unexpected lower bound on model-based construction";
     }
     size_t expectedSize = static_cast<size_t>((numAtoms - 1) * spacing / DEFAULT_BIN_SIZE);
-    if (q.m_gridSize != boost::array<size_t, 3>({ expectedSize, expectedSize, expectedSize })) {
+    boost::array<size_t, 3> expected = { { expectedSize, expectedSize, expectedSize } };
+    if (q.m_gridSize != expected) {
       return "molprobity::probe::SpatialQuery::test(): Unexpected grid size on model-based construction";
     }
 
