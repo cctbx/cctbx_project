@@ -1299,12 +1299,12 @@ def get_new_xycalcs(Modeler, new_exp):
 
     if Modeler.params.filter_unpredicted_refls_in_output:
         sel = [not np.isnan(x) for x,_,_ in new_refls['xyzcal.px']]
+        nbefore = len(new_refls)
         new_refls = new_refls.select(flex.bool(sel))
+        nafter = len(new_refls)
+        MAIN_LOGGER.info("Filtered %d / %d reflections which did not show peaks in model" % (nbefore-nafter, nbefore))
 
     return new_refls
-
-
-
 
 
 def downsamp_spec_from_params(params, expt):

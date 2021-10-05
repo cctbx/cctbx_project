@@ -48,6 +48,9 @@ save_modelers = False
 refspec = None
   .type = str
   .help = path to a reference .lam file to use as the spectra for each shot
+reidx_obs = False
+  .type = bool
+  .help = optionally reindex the strong spot observations after running sills indexer refinement
 """
 import os
 from libtbx.phil import parse
@@ -62,8 +65,10 @@ class Hopper_Processor(Processor):
         self.stage1_df = None  # the pandas dataframe containing model parameters after running stage 1 (see method refine)
         self.stage1_modeler = None  # the data modeler used during stage 1 refinement
         self.modeler_dir = None  # path for writing the data modelers
+        self.known_crystal_models = None  # default flag, should be defined in stills_process init
 
         if self.params.silence_dials_loggers:
+            #dials.algorithms.indexing.indexer: model
             logging.getLogger("dials.algorithms.indexing.nave_parameters").setLevel(logging.ERROR)
             logging.getLogger("dials.algorithms.indexing.stills_indexer").setLevel(logging.ERROR)
             logging.getLogger("dials.algorithms.refinement.refiner").setLevel(logging.ERROR)
@@ -137,8 +142,9 @@ class Hopper_Processor(Processor):
             if self.params.dispatch.refine:
                 print("WARNING: hopper_process will always run its own refinement, ignoring dials.refine phil scope")
             self.params.dispatch.refine = False
-            assert len(exps)==1
-            # TODO MPI select GPU device
+            assert len(exps) == 1
+            if self.params.reidx_obs:
+                exps, ref = self._reindex_obs(exps, self.observed)
 
             exp, ref, self.stage1_modeler, x = hopper_utils.refine(exps[0], ref,
                                                self.params.diffBragg,
@@ -157,6 +163,27 @@ class Hopper_Processor(Processor):
             self._save_modeler_info(basename)
 
         return super(Hopper_Processor, self).refine(exps_out, ref)
+
+    def _reindex_obs(self, exps, ref):
+        """use known_crystal_models indexing method to add more indexed spots which can
+        then be refined using diffBragg
+        This is useful when dials.stills_indexer happens to prefer a lower resolution cutoff
+        to obtain a descent xtal model (controlled by refinement_protocol.d_min_start)
+        but one still wants to try refining the higher resolution spots obtained with spot finder
+        """
+        # NOTE: this method assumes known_crystal_models is not being used in any other way ...
+        self.known_crystal_models = exps.crystals()
+        # cache these parameters in case they are set for stills_indexer
+        tmp_tol = self.params.indexing.index_assignment.simple.hkl_tolerance
+        tmp_prot = self.params.indexing.refinement_protocol.mode
+        self.params.indexing.index_assignment.simple.hkl_tolerance = 0.5  # go for broke!
+        self.params.indexing.refinement_protocol.mode = "repredict_only"  # no more refinement from dials
+        exps, ref = self.index(exps, ref)
+
+        self.params.indexing.index_assignment.simple.hkl_tolerance = tmp_tol
+        self.params.indexing.refinement_protocol.mode = tmp_prot
+        self.known_crystal_models = None
+        return exps, ref
 
     def _save_modeler_info(self, basename):
         APATH = lambda x: os.path.abspath(os.path.join(self.modeler_dir, x))
