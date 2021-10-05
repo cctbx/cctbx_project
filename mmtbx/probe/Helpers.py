@@ -62,7 +62,7 @@ def getBondedNeighborLists(atoms, bondProxies):
 
 def compatibleConformations(a1, a2):
   '''
-    Returns True if the two atoms are in compatble conformations, False if not.
+    Returns True if the two atoms are in compatible conformations, False if not.
     :param a1: First atom.
     :param a2: Second atom.
     :return: True if either atom is in the empty conformation or if both are in the
