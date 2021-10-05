@@ -802,39 +802,18 @@ Note:
     if self._atomClasses[src] == 'ignore' or self._extraAtomInfo.getMappingFor(src).isDummyHydrogen:
       return 0
 
+    # If we should ignore the bonded element, we don't check it.
+    # Remove any ignored atoms from the list of bonded atoms to pull this check out of
+    # the inner loop.
+    srcDots = self._dots[src]
+    realBonded = []
+    for b in bonded:
+      if self._atomClasses[b] != 'ignore' and not self._extraAtomInfo.getMappingFor(b).isDummyHydrogen:
+        realBonded.append(b)
+
     # Check all of the dots for the atom and see if they should be
     # added to the list.
-    srcDots = self._dots[src]
-    # @todo Use a C++ call to find these dots if we can.  This will require changing or
-    # replacing the check_dot() call so that it will make the dot even if there is not an atom
-    # within interaction distance of the dot.
-    for dotvect in srcDots:
-      # Dot on the surface of the atom, at its radius.
-      # This is where the probe touches the surface.
-      dotloc = Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect)
-
-      # If the exploring dot is within a probe radius + vdW radius of a bonded atom,
-      # we don't add a dot.
-      okay = True
-      for b in bonded:
-        # If we should ignore the bonded element, we don't check it.
-        if self._atomClasses[b] == 'ignore' or self._extraAtomInfo.getMappingFor(b).isDummyHydrogen:
-          continue
-
-        # The bonded neighbor is one that we should check interaction with, see if
-        # we're in range.  If so, mark this dot as not okay because it is inside a
-        # bonded atom.
-        if ( (Helpers.rvec3(b.xyz) - dotloc).length() <=
-             self._extraAtomInfo.getMappingFor(b).vdwRadius ):
-          okay = False
-
-      # If this dot is okay, add it to the internal data structure based on its
-      # atom class and overlap type.
-      if okay:
-        ret += 1
-
-    # Return the number of dots not inside a bonded atom.
-    return ret
+    return self._dotScorer.count_surface_dots(src, srcDots, realBonded)
 
 # ------------------------------------------------------------------------------
 
@@ -849,6 +828,9 @@ Note:
 
     ret = 0
 
+    # Store parameters that are used in the inner loop
+    excluded_bond_chain_length = self.params.excluded_bond_chain_length
+
     maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
     for src in atoms:
 
@@ -856,7 +838,7 @@ Note:
       # count.  Limit the length of the chain to 3 if neither the source nor the final
       # atom is a Hydrogen.
       neighbors = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists,
-        self.params.excluded_bond_chain_length, 3)
+        excluded_bond_chain_length, 3)
 
       # Count the skin dots for this atom.
       ret += self._count_skin_dots_for(src, neighbors)
@@ -1237,6 +1219,7 @@ Note:
     retString = ''
 
     # Store values that we will need often
+    approach = self.params.approach
     density = self.params.probe.density
     gap_weight = self.params.probe.gap_weight
     bump_weight = self.params.probe.bump_weight
@@ -1249,6 +1232,7 @@ Note:
       for t in self._interactionTypes:
         res = self._results[c][t]
         if len(res) > 0:
+
           # gs stores all of the values unless reportSubScores is True
           gs = hs = hslen = bs = bslen = score = psas = 0
 
@@ -1286,7 +1270,7 @@ Note:
             else:
               gs += 1
 
-            if self.params.approach == 'surface':
+            if approach == 'surface':
               p_radius = self.params.probe.radius
               a_radius = self._extraAtomInfo.getMappingFor(node.src).vdwRadius
               psas += (a_radius + p_radius)*(a_radius + p_radius)/(a_radius * a_radius)
@@ -1314,7 +1298,7 @@ Note:
           tbs += bs
           tbslen += bslen
           tscore += score
-          if self.params.approach == 'surface':
+          if approach == 'surface':
             tsas += psas  # tally the solvent accessible surface
 
     return (retString, tgs, ths, thslen, tbs, tbslen, tsas, tGscore, tHscore, tBscore, tscore)
@@ -1348,11 +1332,10 @@ Note:
         ) = self._doEnumeration(reportSubScores, isSurface, numSkinDots)
 
       # Output one line of information.
-      density = self.params.probe.density
       if isSurface:
-        ret += "{:9.3f}".format( (tgs+tbs+ths)/density )
+        ret += "{:9.3f}".format( (tgs+tbs+ths)/self.params.probe.density )
       elif reportSubScores:
-        ret += "{:9.3f}".format( tscore/density )
+        ret += "{:9.3f}".format( tscore/self.params.probe.density )
       else:
         ret += "{:9.3f}".format( tgs )
 
@@ -2090,7 +2073,8 @@ Note:
         make_sub_header('Find both-directions intersection dots', out=self.logger)
 
         # @todo The code below here is similar to -once but is repeated twice and has different string values.
-        # It is also somewhat re-ordered in terms of where the selection is printed.
+        # It is also somewhat re-ordered in terms of where the selection is printed.  This keeps us from
+        # re-using _report_single_interaction() directly without generalizing it.
 
         # Preliminary information before running both intersections.
         if self.params.output.count_dots:
