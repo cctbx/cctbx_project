@@ -65,3 +65,7 @@ the chem_data/mon_lib directory under modules in a CCTBX build.  It has atomic r
 the original Probe code to enable regression tests between Probe2 and Probe.  It should not be used in
 production once the CCTBX radii are adjusted (this is ongoing as of 10/5/2021).  Note that replacing this
 file will impact other CCTBX programs that use atom radii.
+
+Regression tests were performed between Probe2 and the original Probe code in October 2021 before the release
+of Probe2:
+
