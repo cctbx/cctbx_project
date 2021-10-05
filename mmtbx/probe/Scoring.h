@@ -113,12 +113,12 @@ namespace molprobity {
       }
 
     protected:
-      double m_vdwRadius = 0;          ///< van Der Waals radius of the atom
-      bool m_isAcceptor = false;       ///< Does this accept hydrogen bonds (aromatic carbon, nitrogen acceptor,
-                                       ///  oxygen, sulfur, fluorine, chlorine, bromine, or iodine?
-      bool m_isDonor = false;          ///< Is this a donor hydrogen (from polar, aromatic polar, or water)?
-      bool m_isDummyHydrogen = false;  ///< These are inserted on Oxygens that are waters to provide
-                                       ///  bonds that can go in any direction.
+      double m_vdwRadius;      ///< van Der Waals radius of the atom
+      bool m_isAcceptor;       ///< Does this accept hydrogen bonds (aromatic carbon, nitrogen acceptor,
+                               ///  oxygen, sulfur, fluorine, chlorine, bromine, or iodine?
+      bool m_isDonor;          ///< Is this a donor hydrogen (from polar, aromatic polar, or water)?
+      bool m_isDummyHydrogen;  ///< These are inserted on Oxygens that are waters to provide
+                               ///  bonds that can go in any direction.
     };
 
     //=====================================================================================================
@@ -225,17 +225,18 @@ namespace molprobity {
       /// @brief Structure to hold the results from a call to check_dot()
       class CheckDotResult {
       public:
-        OverlapType overlapType = DotScorer::Ignore; ///< What kind of overlap, if any, was found
+        CheckDotResult() : overlapType(DotScorer::Ignore), overlap(0), gap(1e100), annular(false) {};
+        OverlapType overlapType;            ///< What kind of overlap, if any, was found
         iotbx::pdb::hierarchy::atom cause;  ///< Cause of the overlap, if overlapType != Ignore
-        double  overlap = 0;                ///< Amount of overlap assigned to source atom if there is a clash
-        double  gap = 1e100;                ///< Gap distance (overlap may only be a fraction of this).
+        double  overlap;                    ///< Amount of overlap assigned to source atom if there is a clash
+        double  gap;                        ///< Gap distance (overlap may only be a fraction of this).
         /// Was this an annular dot, which is further from the point on the source atom that is closest
         /// to the target atom than a point on the tangent edge of the target atom where the ray just
         /// grazes the surface of the atom.  @todo The math being done here is a bit opaque, so the
         /// origin of the second measurement is not clear.  The intent is to prevent over-spreading of
         /// dots beyond what would have been present when the atoms just touched, which prevents
         /// additional good contact outside the clash; see page 1717 of J. Mol. Biol. 285 (1999).
-        bool    annular = false;
+        bool    annular;
       };
 
       /// @brief Score an individual dot against a specific set of interacting atoms unless within an excluded atom
@@ -286,11 +287,12 @@ namespace molprobity {
       /// @brief Structure to hold the results from a call to score_dots()
       class ScoreDotsResult {
       public:
-        bool    valid = false;          ///< False if this information has not yet been computed.
-        double  bumpSubScore = 0;       ///< Portion of the score due to bumps
-        double  hBondSubScore = 0;      ///< Portion of the score due to hydrogen bonds
-        double  attractSubScore = 0;    ///< Portion of the score due to non-bumping attraction
-        bool    hasBadBump = false;     ///< Did this atom have a bad bump for any of its dots?
+        ScoreDotsResult() : valid(false), bumpSubScore(0), hBondSubScore(0), attractSubScore(0), hasBadBump(false) {};
+        bool    valid;              ///< False if this information has not yet been computed.
+        double  bumpSubScore;       ///< Portion of the score due to bumps
+        double  hBondSubScore;      ///< Portion of the score due to hydrogen bonds
+        double  attractSubScore;    ///< Portion of the score due to non-bumping attraction
+        bool    hasBadBump;         ///< Did this atom have a bad bump for any of its dots?
         /// @brief Sum of all of the sub-scores, the total score
         double  totalScore() const { return bumpSubScore + hBondSubScore + attractSubScore; }
       };
