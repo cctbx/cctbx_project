@@ -57,3 +57,11 @@ towards nearby acceptors (or all nearby atoms).  **fixupExplicitDonors()** adjus
 a set of atoms once hydrogens have been explicitly added to the model, adjusting the donor status.  **rvec3()**
 and **lvec3()** return **scitbx.matrix.rec** elements for left-side and right-side multiplication, enabling the use
 of these built-in C++ types' methods from within Python.
+
+## Testing
+
+The file **ener_lib_molprobity.cif** is a drop-in replacement for the ener_lib.cif file that is found in
+the chem_data/mon_lib directory under modules in a CCTBX build.  It has atomic radii consistent with
+the original Probe code to enable regression tests between Probe2 and Probe.  It should not be used in
+production once the CCTBX radii are adjusted (this is ongoing as of 10/5/2021).  Note that replacing this
+file will impact other CCTBX programs that use atom radii.
