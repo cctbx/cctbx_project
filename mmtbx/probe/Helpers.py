@@ -56,7 +56,7 @@ def getBondedNeighborLists(atoms, bondProxies):
       second = atomDict[bp.i_seqs[1]]
       bondedNeighbors[first].append(second)
       bondedNeighbors[second].append(first)
-    except:
+    except Exception:
       # When an atom is bonded to an atom in a different conformer (not in our atom list)
       # we just ignore it.
       pass
@@ -256,7 +256,7 @@ def isMetallic(atom):
   element = atom.element.upper()
   try:
     return element in isMettalic.metallics
-  except:
+  except Exception:
     # Build the set by filling in all of the entries in the atom table.
     at = AtomTypes.AtomTypes()
     isMetallic.metallics = set()
@@ -358,7 +358,7 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
       normOffset = (rvec3(c._atom.xyz) - rvec3(atom.xyz)).normalize()
       h.xyz = rvec3(atom.xyz) + distance * normOffset
       ret.append(h)
-    except:
+    except Exception:
       # If we have overlapping atoms, don't add.
       pass
 

@@ -162,7 +162,7 @@ def tst_01(log = sys.stdout):
 
   # Check splitting model into domains
   print("\nSplitting model into domains", file = log)
-  model_info = split_model_into_compact_units(model, 
+  model_info = split_model_into_compact_units(model,
       maximum_fraction_close = 0.5, log = log)
 
   chainid_list = model_info.chainid_list

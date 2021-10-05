@@ -1,12 +1,12 @@
 ##################################################################################
 #                Copyright 2021  Richardson Lab at Duke University
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -387,7 +387,7 @@ class MoverSingleHydrogenRotator(_MoverRotator):
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
     _MoverRotator.__init__(self, atoms, axis, 180, coarseStepDegrees = coarseStepDegrees,
-      fineStepDegrees = fineStepDegrees, preferenceFunction = preferenceFunction, 
+      fineStepDegrees = fineStepDegrees, preferenceFunction = preferenceFunction,
       preferredOrientationScale = preferredOrientationScale)
 
     # Now add orientations that point in the direction of the potential acceptors.
@@ -751,7 +751,7 @@ class MoverNH2Flip(object):
 
     # No fix-up for coarse position 0, do the above adjustment for position 1
     self._fixUpPositions = [ [], movable ]
-    
+
   def CoarsePositions(self):
     # returns: The two possible coarse positions with 0 energy offset for either.
     return PositionReturn(self._atoms, self._coarsePositions, [ [], [] ], [ [], [] ], [0.0, 0.0])
@@ -1074,7 +1074,7 @@ def _rotateAroundAxis(atom, axis, degrees):
   return nearPoint + newOffset
 
 def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, alphaCarbon):
-  '''Perform the three-step rotate-hinge-dock calculation described in 
+  '''Perform the three-step rotate-hinge-dock calculation described in
      Protein Science Vol 27:293-315 and implemented in
      FlipMemo::RotHingeDock_Flip() in the original Reduce C++ code.
      :param movableAtoms: flex array of iotbx.pdb.hierarchy.atom objects that
@@ -1563,7 +1563,7 @@ def Test():
 
   except Exception as e:
     return "Movers.Test() MoverNH3Rotator basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
-    
+
   # Test the MoverAromaticMethylRotator class.
   try:
     # Construct a MoverAromaticMethylRotator that has one hydrogen start out at 45 degrees around Z and the
@@ -1643,7 +1643,7 @@ def Test():
 
   except Exception as e:
     return "Movers.Test() MoverAromaticMethylRotator basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
-    
+
   # Test the MoverTetrahedralMethylRotator class.
   try:
     # Construct a MoverTetrahedralMethylRotator that has one hydrogen start out at 45 degrees around Z and the

@@ -1,12 +1,12 @@
 ##################################################################################
 #                Copyright 2021  Richardson Lab at Duke University
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -74,7 +74,7 @@ def _ReportTiming(message):
   diff = curTime - _lastTime
   _lastTime = curTime
   return _VerboseCheck(2,"Time to {}: {:0.3f}".format(message,diff)+"\n")
-  
+
 def AlternatesInModel(model):
   """Returns a set of altloc names of all conformers in all chains.
   :return: Set of strings.  The set is will include only the empty string if no
@@ -343,7 +343,7 @@ class _SingletonOptimizer(object):
         self._infoString += _ReportTiming("determine excluded atoms")
 
         ################################################################################
-        # Placement of water phantom Hydrogens, including adding them to our 'atoms' list 
+        # Placement of water phantom Hydrogens, including adding them to our 'atoms' list
         # and the spatial query but not adding them to the hierarchy.  This must be done after
         # the bond proxies are constructed and the Movers have been placed so that these
         # fake atoms do not confuse placement.
@@ -1442,18 +1442,18 @@ def Test(inFileName = None):
   #   (Running 1sxo produces this as well).
   pdb_1xso_his_61_and_ions = (
 """
-ATOM    442  N   HIS A  61      26.965  32.911   7.593  1.00  7.19           N  
-ATOM    443  CA  HIS A  61      27.557  32.385   6.403  1.00  7.24           C  
-ATOM    444  C   HIS A  61      28.929  31.763   6.641  1.00  7.38           C  
-ATOM    445  O   HIS A  61      29.744  32.217   7.397  1.00  9.97           O  
-ATOM    446  CB  HIS A  61      27.707  33.547   5.385  1.00  9.38           C  
-ATOM    447  CG  HIS A  61      26.382  33.956   4.808  1.00  8.78           C  
-ATOM    448  ND1 HIS A  61      26.168  34.981   3.980  1.00  9.06           N  
-ATOM    449  CD2 HIS A  61      25.174  33.397   5.004  1.00 11.08           C  
-ATOM    450  CE1 HIS A  61      24.867  35.060   3.688  1.00 12.84           C  
-ATOM    451  NE2 HIS A  61      24.251  34.003   4.297  1.00 11.66           N  
-HETATM 2190 CU    CU A   1      22.291  33.388   3.996  1.00 13.22          CU  
-HETATM 2191 ZN    ZN A 152      27.539  36.010   2.881  1.00  9.34          ZN  
+ATOM    442  N   HIS A  61      26.965  32.911   7.593  1.00  7.19           N
+ATOM    443  CA  HIS A  61      27.557  32.385   6.403  1.00  7.24           C
+ATOM    444  C   HIS A  61      28.929  31.763   6.641  1.00  7.38           C
+ATOM    445  O   HIS A  61      29.744  32.217   7.397  1.00  9.97           O
+ATOM    446  CB  HIS A  61      27.707  33.547   5.385  1.00  9.38           C
+ATOM    447  CG  HIS A  61      26.382  33.956   4.808  1.00  8.78           C
+ATOM    448  ND1 HIS A  61      26.168  34.981   3.980  1.00  9.06           N
+ATOM    449  CD2 HIS A  61      25.174  33.397   5.004  1.00 11.08           C
+ATOM    450  CE1 HIS A  61      24.867  35.060   3.688  1.00 12.84           C
+ATOM    451  NE2 HIS A  61      24.251  34.003   4.297  1.00 11.66           N
+HETATM 2190 CU    CU A   1      22.291  33.388   3.996  1.00 13.22          CU
+HETATM 2191 ZN    ZN A 152      27.539  36.010   2.881  1.00  9.34          ZN
 END
 """
     )

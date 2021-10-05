@@ -49,7 +49,7 @@ endif()
 
 set(probe_SOURCES
   Scoring.cpp
-	DotSpheres.cpp
+  DotSpheres.cpp
   SpatialQuery.cpp
 )
 

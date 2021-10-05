@@ -816,7 +816,7 @@ class AtomTypes(object):
     # Look up the element name, which fails if it is not in the table.
     try:
       ai = AtomInfo(self._Index[elementName])
-    except:
+    except Exception:
       return (None, "WARNING: atom "+atom.name+" from "+atom.parent().resname+
                  ' not recognized or unknown')
 
@@ -867,7 +867,7 @@ class AtomTypes(object):
     """
     try:
       return self._maxVDW
-    except:
+    except Exception:
       self._maxVDW = self._FindProperRadius(AtomInfo(self._AtomTable[0]))
       for a in self._AtomTable[1:]:
         v = self._FindProperRadius(AtomInfo(a))
