@@ -12,6 +12,7 @@ from simtbx.nanoBragg.utils import downsample_spectrum
 from dials.array_family import flex
 from simtbx.diffBragg import utils
 from simtbx.diffBragg.refiners.parameters import NormalParameter, RangedParameter
+from simtbx.diffBragg.attr_list import NB_BEAM_ATTRS, NB_CRYST_ATTRS, DIFFBRAGG_ATTRS
 
 
 try:
@@ -35,6 +36,64 @@ FHKL_ID = 11
 PARAM_PER_XTAL = 13
 
 DEG = 180 / np.pi
+
+
+def write_SIM_logs(SIM, log=None, lam=None):
+    """
+    Logs properties of SIM.D (diffBragg instance), and SIM.crystal, SIM.beam (nanoBragg beam and crystal)
+    These are important for reproducing results
+    :param SIM: sim_data instance used during hopper refinement, member of the data modeler
+    :param log: optional log file to dump attributes of SIM
+    :param lam: optional lambda file to dump the spectra to disk, can be read usint diffBragg.utils.load_spectra_file
+    """
+    if log is not None:
+        with open(log, "w") as o:
+            print("<><><><><>", file=o)
+            print("DIFFBRAGG", file=o)
+            print("<><><><><>", file=o)
+            for attr in DIFFBRAGG_ATTRS:
+                val = getattr(SIM.D, attr)
+                print(attr+": ", val, file=o)
+            print("\n<><><>", file=o)
+            print("BEAM", file=o)
+            print("<><><>", file=o)
+            for attr in NB_BEAM_ATTRS:
+                val = getattr(SIM.beam, attr)
+                print(attr+": ", val, file=o)
+            print("\n<><><><>", file=o)
+            print("CRYSTAL", file=o)
+            print("<><><><>", file=o)
+            for attr in NB_CRYST_ATTRS:
+                val = getattr(SIM.crystal, attr)
+                print(attr+": ", val, file=o)
+    if lam is not None:
+        wavelen, wt = zip(*SIM.beam.spectrum)
+        utils.save_spectra_file(lam, wavelen, wt)
+
+
+def free_SIM_mem(SIM):
+    """
+    Frees memory allocated to host CPU (and GPU device, if applicable).
+    Using this method is critical for serial applications!
+    :param SIM: sim_data instance used during hopper refinement, member of the data modeler
+    """
+    SIM.D.free_all()
+    SIM.D.free_Fhkl2()
+    try:
+        SIM.D.gpu_free()
+    except TypeError:
+        pass  # occurs on CPU-only builds
+
+
+def finalize_SIM(SIM, log=None, lam=None):
+    """
+    thin wrapper to free_SIM_mem and write_SIM_logs
+    :param SIM: sim_data instance used during hopper refinement, member of the data modeler
+    :param log: optional log file to dump attributes of SIM
+    :param lam: optional lambda file to dump the spectra to disk, can be read usint diffBragg.utils.load_spectra_file
+    """
+    write_SIM_logs(SIM, log, lam)
+    free_SIM_mem(SIM)
 
 
 class DataModeler:
@@ -88,6 +147,7 @@ class DataModeler:
                         "Hi", "Hi_asu", "roi_id", "params", "all_pid", "all_fast", "all_slow"]
 
     def __getstate__(self):
+        # TODO cleanup/compress
         return {name: getattr(self, name) for name in self.saves}
 
     def __setstate__(self, state):
@@ -95,11 +155,7 @@ class DataModeler:
             setattr(self, name, state[name])
 
     def clean_up(self):
-        if self.SIM is not None:
-            self.SIM.D.free_all()
-            self.SIM.D.free_Fhkl2()
-            if self.SIM.D.gpu_free is not None:
-                self.SIM.D.gpu_free()
+        free_SIM_mem(self.SIM)
 
     def set_experiment(self, exp, load_imageset=True):
         if isinstance(exp, str):

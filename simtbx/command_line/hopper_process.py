@@ -4,7 +4,7 @@ import time
 # LIBTBX_SET_DISPATCHER_NAME simtbx.diffBragg.hopper_process
 
 from dials.command_line.stills_process import Processor
-from simtbx.diffBragg.hopper_utils import refine
+from simtbx.diffBragg import hopper_utils
 from dials.array_family import flex
 from simtbx.command_line.hopper import save_to_pandas
 from dxtbx.model import ExperimentList
@@ -71,12 +71,15 @@ class Hopper_Processor(Processor):
             logging.getLogger("dials.algorithms.refinement.reflection_manager").setLevel(logging.ERROR)
         logging.basicConfig(level=logging.DEBUG)
 
-        if self.params.save_modelers:
-            self.modeler_dir = os.path.join(self.params.output.output_dir, "modelers")
-            if COMM.rank == 0:
-                if not os.path.exists(self.modeler_dir):
-                    os.makedirs(self.modeler_dir)
-            COMM.barrier()
+        self._create_modeler_dir()
+
+    def _create_modeler_dir(self):
+        """makes the directory where data modelers, logs, and spectra files will be written"""
+        self.modeler_dir = os.path.join(self.params.output.output_dir, "modelers")
+        if COMM.rank == 0:
+            if not os.path.exists(self.modeler_dir):
+                os.makedirs(self.modeler_dir)
+        COMM.barrier()
 
     @property
     def device_id(self):
@@ -137,7 +140,7 @@ class Hopper_Processor(Processor):
             assert len(exps)==1
             # TODO MPI select GPU device
 
-            exp, ref, data_modeler, x = refine(exps[0], ref,
+            exp, ref, self.stage1_modeler, x = hopper_utils.refine(exps[0], ref,
                                                self.params.diffBragg,
                                                spec=self.params.refspec,
                                                gpu_device=self.device_id, return_modeler=True)
@@ -145,16 +148,25 @@ class Hopper_Processor(Processor):
             refls_name = os.path.abspath(self.params.output.indexed_filename)
             self.params.diffBragg.outdir = self.params.output.output_dir
             # TODO: what about composite mode ?
-            self.stage1_df = save_to_pandas(x, data_modeler.SIM, orig_exp_name, self.params.diffBragg, data_modeler.E, 0, refls_name, None)
-            self.stage1_modeler = data_modeler
+            self.stage1_df = save_to_pandas(x, self.stage1_modeler.SIM, orig_exp_name, self.params.diffBragg,
+                                            self.stage1_modeler.E, 0, refls_name, None)
             exps_out = ExperimentList()
             exps_out.append(exp)
-            if self.params.save_modelers:
-                modeler_filename = os.path.basename(refls_name).replace(".refl", "_modeler.npy")
-                modeler_filepath = os.path.abspath(os.path.join(self.modeler_dir, modeler_filename))
-                np.save(modeler_filepath, data_modeler)
+
+            basename = os.path.splitext(os.path.basename(refls_name))[0]
+            self._save_modeler_info(basename)
 
         return super(Hopper_Processor, self).refine(exps_out, ref)
+
+    def _save_modeler_info(self, basename):
+        APATH = lambda x: os.path.abspath(os.path.join(self.modeler_dir, x))
+        if self.params.save_modelers:
+            modeler_fname = APATH("%s_%s" % (basename, "modeler.npy"))
+            np.save(modeler_fname, self.stage1_modeler)  # pickle the modeler, set __setstate__
+
+        spectra_fname = APATH("%s_%s" % (basename, "spectrum.lam"))
+        SIM_state_fname = APATH("%s_%s" % (basename, "SimState.txt"))
+        hopper_utils.write_SIM_logs(self.stage1_modeler.SIM, log=SIM_state_fname, lam=spectra_fname)
 
     def integrate(self, experiments, indexed):
         st = time.time()

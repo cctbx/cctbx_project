@@ -52,6 +52,13 @@ philz = hopper_phil + philz
 phil_scope = parse(philz)
 
 
+def make_rank_outdir(root, subfolder):
+    rank_imgs_outdir = os.path.join(root, subfolder, "rank%d" % COMM.rank)
+    if not os.path.exists(rank_imgs_outdir):
+        os.makedirs(rank_imgs_outdir)
+    return rank_imgs_outdir
+
+
 class Script:
     def __init__(self):
         from dials.util.options import OptionParser
@@ -195,30 +202,9 @@ class Script:
 
             # initial parameters (all set to 1, PARAM_PER_XTAL parameters (scale, rotXYZ, Ncells_abc) per crystal (sausage) and then the unit cell parameters
             nparam = PARAM_PER_XTAL * Modeler.SIM.num_xtals + len(Modeler.SIM.ucell_man.variables) + 1
-            if self.params.rescale_params:
-                x0 = [1] * nparam
-            else:
-                x0 = [np.nan]*nparam
-                for i_xtal in range(Modeler.SIM.num_xtals):
-                    x0[PARAM_PER_XTAL*i_xtal] = Modeler.SIM.Scale_params[i_xtal].init
-                    x0[PARAM_PER_XTAL*i_xtal+1] = Modeler.SIM.RotXYZ_params[3*i_xtal].init
-                    x0[PARAM_PER_XTAL*i_xtal+2] = Modeler.SIM.RotXYZ_params[3*i_xtal+1].init
-                    x0[PARAM_PER_XTAL*i_xtal+3] = Modeler.SIM.RotXYZ_params[3*i_xtal+2].init
-                    x0[PARAM_PER_XTAL*i_xtal+4] = Modeler.SIM.Nabc_params[3*i_xtal].init
-                    x0[PARAM_PER_XTAL*i_xtal+5] = Modeler.SIM.Nabc_params[3*i_xtal+1].init
-                    x0[PARAM_PER_XTAL*i_xtal+6] = Modeler.SIM.Nabc_params[3*i_xtal+2].init
-                    # TODO: diffuse params go here (also maybe just drop rescale=False support)
-
-                nucell = len(Modeler.SIM.ucell_man.variables)
-                for i_ucell in range(nucell):
-                    x0[PARAM_PER_XTAL*Modeler.SIM.num_xtals+i_ucell] = Modeler.SIM.ucell_params[i_ucell].init
-                x0[PARAM_PER_XTAL*Modeler.SIM.num_xtals+nucell] = Modeler.SIM.DetZ_param.init
-
+            x0 = [1] * nparam
             x = Modeler.Minimize(x0)
             if self.params.profile:
-                #from six.moves import StringIO
-                #from boost_adaptbx.boost.python import streambuf
-                #out = streambuf(StringIO())
                 Modeler.SIM.D.show_timings(COMM.rank) #, out)
             save_up(Modeler, x, exp, i_exp, ref)
 
@@ -240,28 +226,25 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
     LOGGER.info("Optimized values for i_exp %d:" % i_exp)
     hopper_utils.look_at_x(x,Modeler.SIM)
 
-    rank_imgs_outdir = os.path.join(Modeler.params.outdir, "imgs", "rank%d" % COMM.rank)
-    if not os.path.exists(rank_imgs_outdir):
-        os.makedirs(rank_imgs_outdir)
-
-    rank_refls_outdir = os.path.join(Modeler.params.outdir, "refls", "rank%d" % COMM.rank)
-    if not os.path.exists(rank_refls_outdir):
-        os.makedirs(rank_refls_outdir)
+    rank_imgs_outdir = make_rank_outdir(Modeler.params.outdir, "imgs")
+    rank_SIMlog_outdir = make_rank_outdir(Modeler.params.outdir, "simulator_state")
+    rank_refls_outdir = make_rank_outdir(Modeler.params.outdir, "refls")
+    rank_spectra_outdir = make_rank_outdir(Modeler.params.outdir, "spectra")
 
     basename = os.path.splitext(os.path.basename(exp))[0]
-
     img_path = os.path.join(rank_imgs_outdir, "%s_%s_%d.h5" % (Modeler.params.tag, basename, i_exp))
+    SIMlog_path = os.path.join(rank_SIMlog_outdir, "%s_%s_%d.txt" % (Modeler.params.tag, basename, i_exp))
+    new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d.refl" % (Modeler.params.tag, basename, i_exp))
+    spectra_path = os.path.join(rank_spectra_outdir, "%s_%s_%d.lam" % (Modeler.params.tag, basename, i_exp))
 
     if Modeler.SIM.num_xtals == 1:
         save_to_pandas(x, Modeler.SIM, exp, Modeler.params, Modeler.E, i_exp, input_refls, img_path)
-
-    new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d.refl" % (Modeler.params.tag, basename, i_exp))
 
     data_subimg, model_subimg, trusted_subimg, bragg_subimg = Modeler.get_data_model_pairs()
 
     comp = {"compression": "lzf"}
     new_refls = deepcopy(Modeler.refls)
-    has_xyzcal = 'xycval.px' in list(new_refls.keys())
+    has_xyzcal = 'xyzcal.px' in list(new_refls.keys())
     if has_xyzcal:
         new_refls['dials.xyzcal.px'] = deepcopy(new_refls['xyzcal.px'])
     new_xycalcs = flex.vec3_double(len(Modeler.refls), (np.nan,np.nan,np.nan))
@@ -313,21 +296,13 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
         utils.show_diffBragg_state(Modeler.SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
         print("Refiner scale=%f" % Modeler.SIM.Scale_params[0].get_val(x[0]))
 
-    Modeler.SIM.D.free_all()
-    Modeler.SIM.D.free_Fhkl2()
-    try:
-        Modeler.SIM.D.gpu_free()
-    except TypeError:
-        pass  # occurs on CPU-only builds
+    hopper_utils.finalize_SIM(Modeler.SIM, log=SIMlog_path, lam=spectra_path)
 
 
 def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls, stg1_img_path):
     LOGGER = logging.getLogger("refine")
-    rank_exper_outdir = os.path.join(params.outdir, "expers", "rank%d" % COMM.rank)
-    rank_pandas_outdir = os.path.join(params.outdir, "pandas", "rank%d" % COMM.rank)
-    for d in [rank_exper_outdir, rank_pandas_outdir]:
-        if not os.path.exists(d):
-            os.makedirs(d)
+    rank_exper_outdir = make_rank_outdir(params.outdir, "expers")
+    rank_pandas_outdir =make_rank_outdir(params.outdir, "pandas")
 
     if SIM.num_xtals > 1:
         raise NotImplemented("cant save pandas for multiple crystals yet")
