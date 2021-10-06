@@ -485,6 +485,9 @@ ftol = 1e-10
   .type = float
   .help = ftol convergence threshold for scipys L-BFGS-B
   .expert_level = 10
+lbfgs_maxiter = 1e5
+  .type = int
+  .help = maximum number of L-BFGS-B iterations
 disp = False
   .type = bool
   .help = scipy minimize convergence printouts
@@ -810,6 +813,9 @@ roi {
 }
 
 geometry {
+  refls_key = stage1_refls
+    .type = str
+    .help = column name for the input pickle which contains the reflection tables to be modeled
   optimize_method = *lbfgsb nelder
     .type = choice
     .help = lmfit optimization method (lbfgsb uses gradients, nelder is graientless)

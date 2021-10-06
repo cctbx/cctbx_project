@@ -653,7 +653,7 @@ class DataModeler:
             min_kwargs = {'args': args, "method": method, "jac": target.jac,
                           'hess': self.params.hess}
             if method=="L-BFGS-B":
-                min_kwargs["options"] = {"ftol": self.params.ftol, "gtol": 1e-10, "maxfun":1e5, "maxiter":1e5}
+                min_kwargs["options"] = {"ftol": self.params.ftol, "gtol": 1e-10, "maxfun":1e5, "maxiter":self.params.lbfgs_maxiter}
         else:
             args = (self.SIM, self.pan_fast_slow, self.all_data,
                     self.all_sigmas, self.all_trusted, self.all_background, True, self.params, False)

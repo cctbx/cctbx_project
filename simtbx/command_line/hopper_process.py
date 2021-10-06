@@ -415,7 +415,8 @@ if __name__ == "__main__":
             import glob
             fnames = glob.glob("%s/pandas/rank*/*pkl" % params.output.output_dir)
             logging.info("There are %d pandas output files to combine" % len(fnames))
-            df = pandas.concat([pandas.read_pickle(f) for f in fnames])
-            combined_table = os.path.join(params.output.output_dir, "hopper_process_summary.pkl")
-            df.to_pickle(combined_table)
-            logging.info("Saved summary pandas table: %s" % combined_table)
+            if fnames:
+                df = pandas.concat([pandas.read_pickle(f) for f in fnames])
+                combined_table = os.path.join(params.output.output_dir, "hopper_process_summary.pkl")
+                df.to_pickle(combined_table)
+                logging.info("Saved summary pandas table: %s" % combined_table)

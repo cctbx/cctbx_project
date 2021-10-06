@@ -35,6 +35,7 @@ class DetectorParameters:
             if not group_has_data:
                 continue
             vary_rots = [not fixed_flag and group_has_data for fixed_flag in GEO.fix.panel_rotations]
+            vary_rots = [True]*3
             o = lmfit.Parameter(name="group%d_RotOrth" % i_group, value=0, #GEO.init.panel_rotations[2],
                                 min=GEO.min.panel_rotations[0]*DEG_TO_PI, max=GEO.max.panel_rotations[0]*DEG_TO_PI,
                                 vary=vary_rots[0])
@@ -46,6 +47,7 @@ class DetectorParameters:
                                 vary=vary_rots[2])
 
             vary_shifts = [not fixed_flag and group_has_data for fixed_flag in GEO.fix.panel_translations]
+            vary_shifts = [True]*3
             x = lmfit.Parameter(name="group%d_ShiftX" % i_group, value=0, #GEO.init.panel_translations[0],
                                 min=GEO.min.panel_translations[0]*1e-3, max=GEO.max.panel_translations[0]*1e-3,
                                 vary=vary_shifts[0])
@@ -70,24 +72,24 @@ class CrystalParameters:
             for i_N in range(3):
                 p = Mod.PAR.Nabc[i_N]
                 lmfit_p = lmfit.Parameter("rank%d_shot%d_Nabc%d" % (COMM.rank, i_shot, i_N),
-                                          min=p.minval, max=p.maxval, vary=not p.fix, value=p.init)
+                                          min=p.minval, max=p.maxval, vary=True, value=p.init)
                 self.parameters.append(lmfit_p)
 
             for i_rot in range(3):
                 p = Mod.PAR.RotXYZ_params[i_rot]
                 lmfit_p = lmfit.Parameter("rank%d_shot%d_RotXYZ%d" % (COMM.rank, i_shot, i_rot),
-                                          min=p.minval, max=p.maxval, vary=not p.fix, value=p.init)
+                                          min=p.minval, max=p.maxval, vary=True, value=p.init)
                 self.parameters.append(lmfit_p)
 
             p = Mod.PAR.Scale
             lmfit_p = lmfit.Parameter("rank%d_shot%d_Scale" % (COMM.rank, i_shot),
-                                      min=p.minval, max=p.maxval, vary=not p.fix, value=p.init)
+                                      min=p.minval, max=p.maxval, vary=True, value=p.init)
             self.parameters.append(lmfit_p)
 
             for i_uc in range(len(Mod.PAR.ucell)):
                 p = Mod.PAR.ucell[i_uc]
                 lmfit_p = lmfit.Parameter("rank%d_shot%d_Ucell%d" % (COMM.rank, i_shot, i_uc),
-                                          min=p.minval, max=p.maxval, vary=not p.fix, value=p.init)
+                                          min=p.minval, max=p.maxval, vary=True, value=p.init)
                 self.parameters.append(lmfit_p)
 
 
@@ -294,7 +296,7 @@ def geom_min(params):
     import pandas
     launcher = ensemble_refine_launcher.RefineLauncher(params)
     df = pandas.read_pickle(params.geometry.input_pkl)
-    launcher.load_inputs(df, refls_key="stage1_refls")
+    launcher.load_inputs(df, refls_key=params.geometry.refls_key)
 
     # same on every rank:
     det_params = DetectorParameters(params, launcher.panel_groups_refined, launcher.n_panel_groups)
@@ -325,21 +327,21 @@ def geom_min(params):
     # TODO: fix flags currently unsupported in lmfit with gradients? One can always "fix" a parameter by
     #       setting the range in DetectorParameters/CrystalParameters to be infinitesimal, e.g. +-1e-10
     if do_grads:
-        if not params.fix.RotXYZ:
-            for i_rot in range(3):
-                launcher.SIM.D.refine(ROTXYZ_ID[i_rot])
-        if not params.fix.Nabc:
-            launcher.SIM.D.refine(hopper_utils.NCELLS_ID)
-        if not params.fix.ucell:
-            for i_ucell in range(launcher.SIM.num_ucell_param):
-                launcher.SIM.D.refine(hopper_utils.UCELL_ID_OFFSET + i_ucell)
+        #if not params.fix.RotXYZ:
+        for i_rot in range(3):
+            launcher.SIM.D.refine(ROTXYZ_ID[i_rot])
+        #if not params.fix.Nabc:
+        launcher.SIM.D.refine(hopper_utils.NCELLS_ID)
+        #if not params.fix.ucell:
+        for i_ucell in range(launcher.SIM.num_ucell_param):
+            launcher.SIM.D.refine(hopper_utils.UCELL_ID_OFFSET + i_ucell)
         for i, diffbragg_id in enumerate(PAN_OFS_IDS):
-            if not params.geometry.fix.panel_rotations[i]:
-                launcher.SIM.D.refine(diffbragg_id)
+            #if not params.geometry.fix.panel_rotations[i]:
+            launcher.SIM.D.refine(diffbragg_id)
 
         for i, diffbragg_id in enumerate(PAN_XYZ_IDS):
-            if not params.geometry.fix.panel_translations[i]:
-                launcher.SIM.D.refine(diffbragg_id)
+            #if not params.geometry.fix.panel_translations[i]:
+            launcher.SIM.D.refine(diffbragg_id)
 
     # do a barrel roll!
     target = Target()
@@ -348,7 +350,7 @@ def geom_min(params):
     lbfgs_kws = {}
     if do_grads:
         lbfgs_kws = {"jac": target.jac,
-                    "options":  {"ftol": params.ftol, "gtol": 1e-10, "maxfun":1e5, "maxiter":1e5}}
+                    "options":  {"ftol": params.ftol, "gtol": 1e-10, "maxfun":1e5, "maxiter":params.lbfgs_maxiter}}
 
     minzer = lmfit.Minimizer(userfcn=target, params=LMP, fcn_args=fcn_args, fcn_kws=fcn_kws, iter_cb=target.callbk,
                              scale_covar=False, calc_covar=False)
