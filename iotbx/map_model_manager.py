@@ -4782,6 +4782,8 @@ class map_model_manager(object):
     aniso_b_cart and b_iso
    '''
    assert map_coeffs or d_min or map_id
+   from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
+   from cctbx.maptbx.refine_sharpening import analyze_aniso_object
 
    if not model_map_ids_to_leave_as_is:
      model_map_ids_to_leave_as_is = []
@@ -4790,11 +4792,11 @@ class map_model_manager(object):
       assert self.get_map_manager_by_id(map_id)
       map_coeffs = self.get_map_manager_by_id(map_id
         ).map_as_fourier_coefficients(d_min = d_min)
+      f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
    if not d_min:
      d_min = map_coeffs.d_min()
 
 
-   from cctbx.maptbx.refine_sharpening import analyze_aniso_object
    if (not aniso_b_cart):
      aniso_b_cart = self._get_aniso_of_map(d_min = d_min, map_id = map_id)
 
@@ -4813,7 +4815,6 @@ class map_model_manager(object):
        elif map_id in model_map_ids_to_leave_as_is:
          continue # skip model maps
        map_coeffs = mm.map_as_fourier_coefficients(d_min = d_min)
-       from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
        f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
        analyze_aniso = analyze_aniso_object()
        analyze_aniso.set_up_aniso_correction(f_array=f_array,
@@ -8237,6 +8238,7 @@ class match_map_model_ncs(object):
   # prevent pickling error in Python 3 with self.log = sys.stdout
   # unpickling is limited to restoring sys.stdout
   def __getstate__(self):
+    import io
     pickle_dict = self.__dict__.copy()
     if isinstance(self.log, io.TextIOWrapper):
       pickle_dict['log'] = None
@@ -8389,7 +8391,7 @@ class match_map_model_ncs(object):
 
   def read_map(self, file_name):
     # Read in a map and make sure its symmetry is similar to others
-    mm = map_manager(file_name)
+    mm = MapManager(file_name)
     self.add_map_manager(mm)
 
   def read_model(self, file_name):
