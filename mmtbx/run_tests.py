@@ -253,6 +253,7 @@ general_tests = [
   "$D/ringer/tst_em_rscc.py",
   # validation/molprobity
   "$D/regression/tst_probe.py",
+  "$D/regression/tst_reduce.py",
   "$D/validation/regression/tst_molprobity_arguments.py",
   "$D/validation/regression/tst_waters.py",
   "$D/validation/regression/tst_keep_hydrogens.py",
@@ -307,7 +308,6 @@ general_tests = [
   "$D/regression/model_idealization/tst_withmap_06.py",
   "$D/regression/model_idealization/tst_ligands.py",
   "$D/regression/model_idealization/tst_with_mtz.py",
-  # "$D/regression/model_idealization/tst_ext_map_01.py",
   "$D/utils/tst_switch_rotamers.py",
   "$D/refinement/tst_occupancy_selections.py",
   "$D/regression/ncs/tst_minimization_ncs_constraints.py",
@@ -387,6 +387,20 @@ general_tests = [
   "$D/atomic_environment_vectors/tst.py",
   #
   "$D/building/ligands/tst_00.py",
+  # Tests that were not in the list and caused us to fail as of 10/6/2021
+  "$D/regression/tst_ligand_ncs.py",
+  "$D/regression/tst_origin_ids.py",
+  "$D/regression/model/tst_model_ramachandran.py",
+  "$D/regression/model_idealization/tst_ext_map_01.py",
+  "$D/regression/ncs/tst_symmetrize_solvent.py",
+  "$D/validation/regression/tst_mp_geo_endtoend.py",
+  "$D/validation/regression/tst_mp_geo_chiral_volume_cases.py",
+  "$D/conformation_dependent_library/tst_multi_residue_rna.py",
+  "$D/conformation_dependent_library/tst_cdl_nucleotides.py",
+  "$D/conformation_dependent_library/tst_rna_dna_fragments.py",
+  "$D/conformation_dependent_library/testing_utils.py",
+  "$D/conformation_dependent_library/tst_poly_ca_multi_residue.py",
+  "$D/conformation_dependent_library/tst_mutli_residue.py",
   ]
 
 molprobity_tests = [
