@@ -252,7 +252,7 @@ general_tests = [
   "$D/ringer/tst_emringer.py",
   "$D/ringer/tst_em_rscc.py",
   # validation/molprobity
-  "$D/probe/tst_probe.py",
+  "$D/regression/tst_probe.py",
   "$D/validation/regression/tst_molprobity_arguments.py",
   "$D/validation/regression/tst_waters.py",
   "$D/validation/regression/tst_keep_hydrogens.py",
@@ -389,7 +389,7 @@ general_tests = [
   "$D/building/ligands/tst_00.py",
   ]
 
-probe_tests = [
+molprobity_tests = [
   "$D/regression/tst_rama_z_01.py",
   "$D/regression/pdb_interpretation/tst_edits.py",
   "$D/regression/pdb_interpretation/tst_edits_actions.py",
@@ -450,9 +450,9 @@ probe_tests = [
 ]
 
 if libtbx.env.has_module(name="probe"):
-  tst_list = tuple(general_tests + probe_tests)
+  tst_list = tuple(general_tests + molprobity_tests)
 else:
-  print("Skipping %d probe tests: probe not configured"%len(probe_tests))
+  print("Skipping %d MolProbity tests: probe not configured"%len(molprobity_tests))
   tst_list = tuple(general_tests)
 
 def run():

@@ -287,6 +287,7 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     element type and xyz positions filled in.  They will have i_seq 0 and they should not be
     inserted into a structure.
   """
+  
   ret = []
 
   # Get the list of nearby atoms.  The center of the search is the water atom
@@ -419,6 +420,11 @@ def lvec3 (xyz) :
   return scitbx.matrix.rec(xyz, (1,3))
 
 def Test(inFileName = None):
+  """
+  Run tests on all of our functions.  Throw an assertion failure if one fails.
+  """
+
+  from libtbx.test_utils import approx_equal
 
   #========================================================================
   # Run unit test on getExtraAtomInfo().
@@ -426,9 +432,6 @@ def Test(inFileName = None):
 
   #========================================================================
   # Run unit test on getPhantomHydrogensFor().
-  # @todo
-
-  # Spot check that we're getting ionic radii for metals.
   # @todo
 
   #========================================================================
@@ -474,8 +477,8 @@ END
   neighborCounts = {"N": 1, "CA": 3, "C": 2, "O": 1, "CB": 2,
                     "CG": 3, "ND1": 2, "CD2": 2, "CE1":2, "NE2": 2}
   for a in atoms:
-    if len(bondedNeighborLists[a]) != neighborCounts[a.name.strip()]:
-      return ("Helpers.Test(): Neighbor count for "+a.name.strip()+" was "+
+    assert len(bondedNeighborLists[a]) == neighborCounts[a.name.strip()], (
+        "Helpers.Test(): Neighbor count for "+a.name.strip()+" was "+
         str(len(bondedNeighborLists[a]))+", expected "+str(neighborCounts[a.name.strip()]))
 
   #=====================================================================================
@@ -488,24 +491,19 @@ END
   ag2.append_atom(a2)
   ag1.altloc = ""
   ag2.altloc = "A"
-  if compatibleConformations(a1,a2) != True:
-    return "Helpers:Test(): altloc expected True for empty first"
+  assert compatibleConformations(a1,a2), "Helpers:Test(): altloc expected True for empty first"
   ag1.altloc = "A"
   ag2.altloc = "A"
-  if compatibleConformations(a1,a2) != True:
-    return "Helpers:Test(): altloc expected True for compatible"
+  assert compatibleConformations(a1,a2), "Helpers:Test(): altloc expected True for compatible"
   ag1.altloc = "A"
   ag2.altloc = "B"
-  if compatibleConformations(a1,a2) != False:
-    return "Helpers:Test(): altloc expected False for incompatible"
+  assert not compatibleConformations(a1,a2), "Helpers:Test(): altloc expected False for incompatible"
   ag1.altloc = "A"
   ag2.altloc = " "
-  if compatibleConformations(a1,a2) != True:
-    return "Helpers:Test(): altloc expected True for blank second"
+  assert compatibleConformations(a1,a2), "Helpers:Test(): altloc expected True for blank second"
   ag1.altloc = ""
   ag2.altloc = " "
-  if compatibleConformations(a1,a2) != True:
-    return "Helpers:Test(): altloc expected True for empty first and blank second"
+  assert compatibleConformations(a1,a2),  "Helpers:Test(): altloc expected True for empty first and blank second"
 
   #========================================================================
   # Run unit test on getAtomsWithinNBonds().
@@ -517,14 +515,12 @@ END
   nestedNeighborsForN = [ None, 1, 3, 5, 5, 5, 5]
   for N in range(1,7):
     count = len(getAtomsWithinNBonds(atoms[0], bondedNeighborLists, N, 3))
-    if count != nestedNeighborsForN[N]:
-      return ("Helpers.Test(): Nested clamped count for "+atoms[0].name.strip()+
+    assert count == nestedNeighborsForN[N], ("Helpers.Test(): Nested clamped count for "+atoms[0].name.strip()+
         " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN[N]))
   nestedNeighborsForN = [ None, 1, 3, 5, 7, 9, 9]
   for N in range(1,7):
     count = len(getAtomsWithinNBonds(atoms[0], bondedNeighborLists, N))
-    if count != nestedNeighborsForN[N]:
-      return ("Helpers.Test(): Nested unclamped count for "+atoms[0].name.strip()+
+    assert count == nestedNeighborsForN[N], ("Helpers.Test(): Nested unclamped count for "+atoms[0].name.strip()+
         " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN[N]))
   # @todo Test the hydrogen cutoff parameter for getAtomsWithinNBonds
 
@@ -533,13 +529,11 @@ END
   # from the specified file.
   if inFileName is not None and len(inFileName) > 0:
     # Read a model from a file using the DataManager
-    print('Reading model from',inFileName)
     dm = iotbx.data_manager.DataManager()
     dm.process_model_file(inFileName)
     model = dm.get_model(inFileName)
   else:
     # Generate a small-molecule model using the map model manager
-    print('Generating model')
     # get an initialized instance of the map_model_manager
     mmm=iotbx.map_model_manager.map_model_manager()
     mmm.generate_map()     #   get a model from a generated small library model and calculate a map for it
@@ -551,26 +545,32 @@ END
     model = cctbx.maptbx.box.shift_and_box_model(model = model)
 
   # Run PDB interpretation on the model to fill in the required CCTBX information.
-  print('Interpreting model')
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
   p.pdb_interpretation.use_neutron_distances = False
   model.process(make_restraints=True, pdb_interpretation_params = p) # make restraints
 
-  print('Getting extraAtomInfo')
   ret = getExtraAtomInfo(model)
-  if len(ret.warnings) > 0:
-    print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings)
+  # User code should check for and print any warnings.
+  #if len(ret.warnings) > 0:
+  #  print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings)
 
+  #========================================================================
   # Run spot checks on isMetallic()
   a = iotbx.pdb.hierarchy.atom()
   a.element = "Li"
-  if not isMetallic(a):
-    return "Helpers.Test(): Lithium not listed as metallic"
+  assert isMetallic(a), "Helpers.Test(): Lithium not listed as metallic"
   a.element = "He"
-  if isMetallic(a):
-    return "Helpers.Test(): Helium listed as metallic"
+  assert not isMetallic(a), "Helpers.Test(): Helium listed as metallic"
 
-  return ""
+  #========================================================================
+  # Run unit tests on rvec3 and lvec3.
+  v1 = rvec3([0, 0, 0])
+  v2 = rvec3([1, 0, 0])
+  assert approx_equal((v2-v1).length(), 1), "Helpers.Test(): rvec3 test failed"
+
+  v1 = lvec3([0, 0, 0])
+  v2 = lvec3([1, 0, 0])
+  assert approx_equal((v2-v1).length(), 1), "Helpers.Test(): lvec3 test failed"
 
 if __name__ == '__main__':
 
@@ -582,10 +582,6 @@ if __name__ == '__main__':
   for i in range(1,len(sys.argv)):
     fileName = sys.argv[i]
 
-  ret = Test(fileName)
-  if len(ret) == 0:
-    print('Success!')
-  else:
-    print(ret)
-
-  assert (len(ret) == 0)
+  # This will raise an assertion failure if there is a problem
+  Test(fileName)
+  print('OK')

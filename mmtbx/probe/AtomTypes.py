@@ -689,7 +689,6 @@ class AtomTypes(object):
     atomPadded = Pad(atom.name.upper())
     atomName = atomPadded # name that will be adjusted as we go
     resName = atom.parent().resname.upper()
-    #print('XXX Finding info for', resName,atomName)
 
     # Special-case check for a mis-placed Selenium atom
     if atomName[0:2] == ' SE':
@@ -875,7 +874,7 @@ class AtomTypes(object):
           self._maxVDW = v
       return self._maxVDW
 
-def Test(inFileName):
+def Test(inFileName = None):
 
   #========================================================================
   # Make sure we can fill in mmtbx.probe.ExtraAtomInfoList info.
@@ -883,13 +882,11 @@ def Test(inFileName):
   # were given a file name on the command line.
   if inFileName is not None and len(inFileName) > 0:
     # Read a model from a file using the DataManager
-    print('Reading model from', inFileName)
     dm = DataManager()
     dm.process_model_file(inFileName)
     model = dm.get_model(inFileName)
   else:
     # Generate a small-molecule model using the map model manager
-    print('Generating model')
     mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
     mmm.generate_map()              #   get a model from a generated small library model and calculate a map for it
     model = mmm.model()             #   get the model
@@ -897,7 +894,6 @@ def Test(inFileName):
   # Fill in an ExtraAtomInfoList with an entry for each atom in the hierarchy.
   # We first find the largest i_seq sequence number in the model and reserve that
   # many entries so we will always be able to fill in the entry for an atom.
-  print('Filling in extra atom information')
   atoms = model.get_atoms()
   maxI = atoms[0].i_seq
   for a in atoms:
@@ -918,11 +914,11 @@ def Test(inFileName):
           for a in ag.atoms():
             ei, warn = at.FindProbeExtraAtomInfo(a)
             extra[a.i_seq] = ei
-            if len(warn) > 0:
-              print(warn)
+            # User code should test for and print warnings
+            #if len(warn) > 0:
+            #  print(warn)
 
-  print('Found info for', len(extra), 'atoms, the last with radius',extra[-1].vdwRadius)
-
+  #========================================================================
   # Find an Oxygen atom and ask for its radii with explicit Hydrogen, implicit Hydrogen,
   # and Nuclear radii.
   o = None
@@ -930,28 +926,22 @@ def Test(inFileName):
   for a in ph.models()[0].atoms():
     if a.element.strip() == 'O':
       o = a
-  if o is None:
-    print("AtomTypes.Test(): Could not find Oxygen (internal test failure)")
-    return "AtomTypes.Test(): Could not find Oxygen (internal test failure)"
+  assert o is not None, "AtomTypes.Test(): Could not find Oxygen (internal test failure)"
   explicitH = AtomTypes(useNeutronDistances = False,
                         useImplicitHydrogenDistances = False).FindProbeExtraAtomInfo(o)[0].vdwRadius
   implicitH = AtomTypes(useNeutronDistances = False,
                         useImplicitHydrogenDistances = True).FindProbeExtraAtomInfo(o)[0].vdwRadius
   neutronH = AtomTypes(useNeutronDistances = True,
                         useImplicitHydrogenDistances = False).FindProbeExtraAtomInfo(o)[0].vdwRadius
-  print('Oxygen radii: explicit Hydrogen =',explicitH,'implicit Hydrogen =', implicitH,
-        'neutron =',neutronH)
-  if explicitH == implicitH:
-    print("AtomTypes.Test(): Implicit and explicit Oxygen radii did not differ as expected")
-    return "AtomTypes.Test(): Implicit and explicit Oxygen radii did not differ as expected"
+  assert explicitH != implicitH, "AtomTypes.Test(): Implicit and explicit Oxygen radii did not differ as expected"
 
+  #========================================================================
   # Check MaximumVDWRadius, calling it twice to make sure both the cached and non-cached
   # results work.
   for i in range(2):
-    if at.MaximumVDWRadius() != 2.5:
-      print("AtomTypes.Test(): Unexpected MaximumVDWRadius(): got "+str(MaximumVDWRadius())+", expected 2.5")
-      return "AtomTypes.Test(): Unexpected MaximumVDWRadius(): got "+str(MaximumVDWRadius())+", expected 2.5"
+    assert at.MaximumVDWRadius() == 2.5, "AtomTypes.Test(): Unexpected MaximumVDWRadius(): got "+str(MaximumVDWRadius())+", expected 2.5"
 
+  #========================================================================
   # Check IsAromatic() to ensure it gives results when expected and not when not.
   aromaticChecks = [
       ['PHE', 'CE2', True],
@@ -959,11 +949,7 @@ def Test(inFileName):
       ['ASN', 'O', False]
     ]
   for a in aromaticChecks:
-    if IsAromatic(a[0],a[1]) != a[2]:
-      print("AtomTypes.Test(): {} {} not marked as aromatic {}".format(a[0],a[1],a[2]))
-      return "AtomTypes.Test(): {} {} not marked as aromatic {}".format(a[0],a[1],a[2])
-
-  return ""
+    assert IsAromatic(a[0],a[1]) == a[2], "AtomTypes.Test(): {} {} not marked as aromatic {}".format(a[0],a[1],a[2])
 
 if __name__ == '__main__':
 
@@ -975,8 +961,6 @@ if __name__ == '__main__':
   for i in range(1,len(sys.argv)):
     fileName = sys.argv[i]
 
-  ret = Test(fileName)
-  if len(ret) == 0:
-    print('Success!')
-
-  assert (len(ret) == 0)
+  # This will throw an assertion failure if there is a problem.
+  Test(fileName)
+  print('OK')

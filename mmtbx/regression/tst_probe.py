@@ -16,64 +16,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, nested_scopes, generators, division
-from __future__ import absolute_import, unicode_literals
+from __future__ import absolute_import, division, print_function
+from libtbx.utils import format_cpu_times
 import sys
-import mmtbx_probe_ext as probe
+import mmtbx_probe_ext as probeext
 from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
 from cctbx.maptbx.box import shift_and_box_model
 import mmtbx
 
-import Helpers
-
-def BestMatch(name, d):
-  '''Find the best match for the name in the dictionary keys.  It must match the
-  first character of the name and then pick the one with the maximum number of
-  matched characters.
-  :param name: Name of the atom to match.
-  :param d: atom_dict dictionary mapping atom names to type and energy.
-  :returns Best match on success, raises KeyError on no match.
-  '''
-
-  # Get a list of names from the dictionary that match the first character.
-  keys = d.keys()
-  matches = []
-  for k in keys:
-    if k[0] == name[0]:
-      matches.append(k)
-  if len(matches) == 0:
-    raise KeyError('Could not find atom name with matching first character from '+name)
-
-  # Keep track of the match that has a maximum number of matching characters.
-  maxCount = 0
-  bestMatch = ""
-  for m in matches:
-    count = 0
-    for c in name:
-      if c in m:
-        count += 1
-    if count > maxCount:
-      maxCount = count
-      bestMatch = m
-
-  return bestMatch
+from mmtbx.probe import Helpers, AtomTypes
 
 def RunProbeTests(inFileName):
 
   #========================================================================
+  # Call the test functions for the libraries we test.
+
+  ret = probeext.DotSpheres_test()
+  assert len(ret) == 0, "DotSpheres_test() failed: " + ret
+
+  ret = probeext.SpatialQuery_test()
+  assert len(ret) == 0, "SpatialQuery_test() failed: " + ret
+
+  ret = probeext.Scoring_test()
+  assert len(ret) == 0, "Scoring_test() failed: " + ret
+
+  AtomTypes.Test()
+  Helpers.Test()
+
+  #========================================================================
+  # Now ensure that we can use the C++-wrapped classes as intended to make sure
+  # that the wrapping code or parameters have not changed.
+
+  #========================================================================
   # Make sure we can get at the DotSphere objects and their methods
-  print('Making DotSphere from cache and getting its dots')
-  cache = probe.DotSphereCache(10)
+  cache = probeext.DotSphereCache(10)
   sphere1 = cache.get_sphere(1)
   dots = sphere1.dots()
-  print(' Found',len(dots),'dots')
-  print('First dot is at',dots[0][0],dots[0][1],dots[0][2])
 
   #========================================================================
   # Make sure we can fill in an ExtraAtomInfoList and pass it to scoring
   # Generate an example data model with a small molecule in it
-  print('Generating model')
   if inFileName is not None and len(inFileName) > 0:
     # Read a model from a file using the DataManager
     dm = DataManager()
@@ -102,34 +85,29 @@ def RunProbeTests(inFileName):
     bond_proxies_simple, asu = \
         geometry.get_all_bond_proxies(sites_cart = sites_cart)
   except Exception as e:
-    return "Could not get bonding information for input file: " + str(e)
+    raise Exception("Could not get bonding information for input file: " + str(e))
   bondedNeighbors = Helpers.getBondedNeighborLists(atoms, bond_proxies_simple)
 
   # Traverse the hierarchy and look up the extra data to be filled in.
-  print('Filling in extra atom information needed for probe score')
   ret = Helpers.getExtraAtomInfo(model)
   extra = ret.extraAtomInfo
-  if len(ret.warnings) > 0:
-    print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings)
 
   # Construct a SpatialQuery and fill in the atoms.  Ensure that we can make a
   # query within 1000 Angstroms of the origin.
-  sq = probe.SpatialQuery(atoms)
+  sq = probeext.SpatialQuery(atoms)
   nb = sq.neighbors((0,0,0), 0, 1000)
-  print('Found this many atoms within 1000A of the origin:', len(nb))
 
   # Construct a DotScorer object.
   # Find the radius of each atom in the structure and construct dot spheres for
   # them. Find the atoms that are bonded to them and add them to an excluded list.
   # Then compute the score for each of them and report the summed score over the
   # whole molecule the way that Reduce will.
-  ds = probe.DotScorer(extra)
+  ds = probeext.DotScorer(extra)
   total = 0
   badBumpTotal = 0
   for a in atoms:
     rad = extra.getMappingFor(a).vdwRadius
-    if rad <= 0:
-      return "Invalid radius for atom look-up: "+a.name+" rad = "+str(rad)
+    assert rad > 0, "Invalid radius for atom look-up: "+a.name+" rad = "+str(rad)
     sphere = cache.get_sphere(rad)
 
     # Excluded atoms that are bonded to me or to one of my neightbors.
@@ -147,36 +125,15 @@ def RunProbeTests(inFileName):
     total += res.totalScore()
     if res.hasBadBump:
       badBumpTotal += 1
-  print('Summed probe score for molecule = {:.2f} with {} bad bumps'.format(total,badBumpTotal))
 
   # Test calling the single-dot checking code as will be used by Probe to make sure
   # all of the Python linkage is working
   dotOffset = [1, 0, 0]
   check = ds.check_dot(atoms[0], dotOffset, 1, atoms, [atoms[0]])
-  print ('Check dot overlap type:',check.overlapType)
+  overlapType = check.overlapType
 
   # Test calling the interaction_type method to be sure Python linkage is working
-  print('  dot interaction type: ', ds.interaction_type(check.overlapType, check.gap))
-
-  #========================================================================
-  # Call the test functions for all of our files.
-
-  print('Testing DotSphere objects')
-  ret = probe.DotSpheres_test()
-  if len(ret) > 0:
-    return "DotSpheres_test() failed: " + ret
-
-  print('Testing SpatialQuery objects')
-  ret = probe.SpatialQuery_test()
-  if len(ret) > 0:
-    return "SpatialQuery_test() failed: " + ret
-
-  print('Testing Scoring objects')
-  ret = probe.Scoring_test()
-  if len(ret) > 0:
-    return "Scoring_test() failed: " + ret
-
-  return ret
+  interactionType = ds.interaction_type(check.overlapType, check.gap)
 
 if __name__ == '__main__':
 
@@ -188,9 +145,6 @@ if __name__ == '__main__':
   for i in range(1,len(sys.argv)):
     fileName = sys.argv[i]
 
-  # Do not print anything on success because it may be counted as a warning.
-  ret = RunProbeTests(fileName)
-  if len(ret) == 0:
-    print('OK')
-
-  assert (len(ret) == 0), "Failure: " + ret
+  RunProbeTests(fileName)
+  print(format_cpu_times())
+  print('OK')
