@@ -97,10 +97,10 @@ def RunProbeVsCCTBXTest(inFileName, useNeutronDistances = False):
             # Look up in CCTBX
             ccei = probe.ExtraAtomInfo()
             if mmtbx.probe.Helpers.isMetallic(a):
-              ccei.vdwRadius = model.get_specific_ion_radius(a)
+              ccei.vdwRadius = model.get_specific_ion_radius(a.i_seq)
             else:
-              ccei.vdwRadius = model.get_specific_vdw_radii(a)
-            hb_type = model.get_specific_h_bond_type(a)
+              ccei.vdwRadius = model.get_specific_vdw_radius(a.i_seq)
+            hb_type = model.get_specific_h_bond_type(a.i_seq)
             if hb_type == "A" or hb_type == "B":  # B is for Both
               ccei.isAcceptor = True
             if hb_type == "D" or hb_type == "B":  # B is for Both
