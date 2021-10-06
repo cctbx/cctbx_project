@@ -2298,14 +2298,9 @@ class array(set):
       result = result.select(~sel)
     sigmas = result.sigmas()
     if(sigmas is not None):
-      selection  = sigmas > 0
-      selection &= result.data()>=0
-      n_both_zero = selection.count(False)
-      if(n_both_zero>0):
-        result = result.select(selection)
-    if(result.is_xray_intensity_array() or result.is_xray_amplitude_array()):
-      selection_zero = result.data() == 0
-      result = result.select(~selection_zero)
+      selection  = result.sigmas() != 0
+      selection &= result.data() != 0
+      result = result.select(selection)
     if(result.is_xray_amplitude_array()):
       selection_positive = result.data() >= 0
       result = result.select(selection_positive)
