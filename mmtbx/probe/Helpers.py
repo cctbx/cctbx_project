@@ -287,7 +287,7 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     element type and xyz positions filled in.  They will have i_seq 0 and they should not be
     inserted into a structure.
   """
-  
+
   ret = []
 
   # Get the list of nearby atoms.  The center of the search is the water atom
