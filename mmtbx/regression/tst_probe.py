@@ -19,11 +19,14 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import format_cpu_times
 import sys
-import mmtbx_probe_ext as probeext
 from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
 from cctbx.maptbx.box import shift_and_box_model
 import mmtbx
+
+import boost_adaptbx.boost.python as bp
+bp.import_ext("mmtbx_probe_ext")
+import mmtbx_probe_ext as probeext
 
 from mmtbx.probe import Helpers, AtomTypes
 

@@ -24,11 +24,14 @@ import iotbx.map_model_manager
 import iotbx.data_manager
 import cctbx.maptbx.box
 import mmtbx
-import mmtbx_probe_ext as probeExt
 import scitbx.matrix
 from scitbx.array_family import flex
 from mmtbx.probe import AtomTypes
 from iotbx import pdb
+
+import boost_adaptbx.boost.python as bp
+bp.import_ext("mmtbx_probe_ext")
+import mmtbx_probe_ext as probeExt
 
 def getBondedNeighborLists(atoms, bondProxies):
   """

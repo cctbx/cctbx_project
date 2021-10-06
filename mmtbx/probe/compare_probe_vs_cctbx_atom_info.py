@@ -20,8 +20,12 @@ from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import
 import argparse
 
+import boost_adaptbx.boost.python as bp
+bp.import_ext("mmtbx_probe_ext")
+import mmtbx_probe_ext as probeext
 import mmtbx_probe_ext as probe
-import AtomTypes
+
+from mmtbx.probe import AtomTypes
 
 from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager

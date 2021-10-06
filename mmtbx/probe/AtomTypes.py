@@ -33,6 +33,8 @@ from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
 import mmtbx
 
+import boost_adaptbx.boost.python as bp
+bp.import_ext("mmtbx_probe_ext")
 import mmtbx_probe_ext as probe
 
 ##################################################################################
