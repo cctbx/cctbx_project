@@ -303,7 +303,7 @@ if(__name__ == "__main__"):
 
   * Everyone should run t96 after changing code and before committing.
 
-  * If your changes result in failed tests: Review your code and fix the tests. Even if they have been written orginally by other developers. If you break code, it is your responsibility to fix it.
+  * If your changes result in failed tests: Review your code and fix the tests. Even if they have been written originally by other developers. If you break code, it is your responsibility to fix it.
 
   * Fix tests in a timely manner.
 
