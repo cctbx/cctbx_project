@@ -126,10 +126,10 @@ general_tests = [
   "$D/monomer_library/tst_geo_reduce_for_tardy.py",
   "$D/monomer_library/tst_chg.py",
   "$D/monomer_library/tst_neutron_distance.py",
-  '$D/monomer_library/tst_carbo_linking.py',
-  '$D/monomer_library/tst_glyco_hand.py',
-  '$D/monomer_library/tst_glyco_coordination.py',
-  '$D/monomer_library/tst_paral_geo.py',
+  "$D/monomer_library/tst_carbo_linking.py",
+  "$D/monomer_library/tst_glyco_hand.py",
+  "$D/monomer_library/tst_glyco_coordination.py",
+  "$D/monomer_library/tst_paral_geo.py",
   #
   "$D/regression/tst_altloc_remediate.py",
   "$D/hydrogens/build_hydrogens.py",
@@ -188,9 +188,9 @@ general_tests = [
   "$D/conformation_dependent_library/tst_cis_c_n_ca.py",
   "$D/conformation_dependent_library/cdl_svl_database.py",
   "$D/conformation_dependent_library/tst_pH_mechanism.py",
-  '$D/conformation_dependent_library/tst_mcl_01.py',
-  '$D/conformation_dependent_library/tst_mcl_02.py',
-  '$D/conformation_dependent_library/tst_mcl_03.py',
+  "$D/conformation_dependent_library/tst_mcl_01.py",
+  "$D/conformation_dependent_library/tst_mcl_02.py",
+  "$D/conformation_dependent_library/tst_mcl_03.py",
   "$D/regression/tst_find_ss_structure.py",
   "$D/regression/tst_fix_rotamer_outliers.py",
   "$D/regression/tst_chain_comparison.py",
@@ -317,7 +317,7 @@ general_tests = [
   "$D/monomer_library/tst_correct_hydrogens.py",
   # automatic linking
   "$D/monomer_library/tst_superpose_ideal.py",
-  '$D/monomer_library/tst_iron_sulfur_clusters.py',
+  "$D/monomer_library/tst_iron_sulfur_clusters.py",
   #
   "$D/scaling/tst_plan_sad_experiment.py",
   #
