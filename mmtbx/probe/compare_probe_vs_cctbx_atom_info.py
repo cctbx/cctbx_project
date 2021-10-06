@@ -23,7 +23,6 @@ import argparse
 import boost_adaptbx.boost.python as bp
 bp.import_ext("mmtbx_probe_ext")
 import mmtbx_probe_ext as probeext
-import mmtbx_probe_ext as probe
 
 from mmtbx.probe import AtomTypes
 
@@ -95,7 +94,7 @@ def RunProbeVsCCTBXTest(inFileName, useNeutronDistances = False):
             count += 1
 
             # Look up in CCTBX
-            ccei = probe.ExtraAtomInfo()
+            ccei = probeext.ExtraAtomInfo()
             if mmtbx.probe.Helpers.isMetallic(a):
               ccei.vdwRadius = model.get_specific_ion_radius(a.i_seq)
             else:
