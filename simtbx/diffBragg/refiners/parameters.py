@@ -6,12 +6,15 @@ from numpy import sin, cos, arcsin
 class RangedParameter:
     # TODO, make setting attributes named 'max' and 'min' attributes illegal
 
-  def __init__(self):
-    self.minval = 0
-    self.maxval = 1
-    self.sigma = None
-    self.init = None
-    self.fix = False
+  def __init__(self, init=0, minval=-1, maxval=1, sigma=1, fix=False):
+    self.minval = minval
+    self.maxval = maxval
+    self.sigma = sigma
+    self.init = init
+    self.fix = fix
+    if fix:
+      self.minval = init - 1e-10
+      self.maxval = init + 1e-10
     self._arcsin_term = None
 
   #@property

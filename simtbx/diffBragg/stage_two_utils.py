@@ -7,6 +7,14 @@ from simtbx.diffBragg.refiners.parameters import RangedParameter
 
 
 def PAR_from_params(params, experiment, best=None):
+    """
+
+    :param params:  diffBragg params phil
+    :param experiment: dxtbx Experiment list
+    :param best: optional row of the stage 1 pandas dataframe corresponding to the experiment list
+                This would contain all of the model parameters from stage 1
+    :return: PAR object for storing refinement parameters
+    """
     ParameterType = RangedParameter
     PAR = StageTwoParams()
 
@@ -17,56 +25,21 @@ def PAR_from_params(params, experiment, best=None):
     PAR.Bmatrix = sqr(experiment.crystal.get_B())
 
     # per shot Scale factor
-    p = ParameterType()
-    p.sigma = params.sigmas.G
-    if best is not None:
-        p.init = best.spot_scales.values[0]
-    else:
-        p.init = params.init.G
-    p.init = np.sqrt(p.init)
-    p.minval = params.mins.G
-    p.maxval = params.maxs.G
-    p.fix = params.fix.G
-    PAR.Scale = p
+    initG = params.init.G if best is None else best.spot_scales.values[0]
+    #TODO reconcile the need to sqrt the gain for stage_two_refiner
+    PAR.Scale = ParameterType(init=initG, minval=params.mins.G, maxval=params.maxs.G, fix=params.fix.G, sigma=params.sigmas.G)
 
-    PAR.Nabc = []
-    PAR.Ndef = []
-    for i_N in range(3):
-        p = ParameterType()
-        p.sigma = params.sigmas.Nabc[i_N]
-        if best is not None:
-            p.init = best.ncells.values[0][i_N]
-        else:
-            p.init = params.init.Nabc[i_N]
-        p.minval = params.mins.Nabc[i_N]
-        p.maxval = params.maxs.Nabc[i_N]
-        p.fix = params.fix.Nabc
-        PAR.Nabc.append(p)
+    PAR.Nabc = [None]*3
+    PAR.Ndef = [None]*3
+    PAR.RotXYZ_params = [None]*3
+    for i in range(3):
+        initN = params.init.Nabc[i] if best is None else best.ncells.values[0][i]
+        PAR.Nabc[i] = ParameterType(init=initN, minval=params.mins.Nabc[i],
+                                  maxval=params.maxs.Nabc[i], fix=params.fix.Nabc, sigma=params.sigmas.Nabc[i])
 
-        p = ParameterType()
-        p.sigma = params.sigmas.Ndef[i_N]
-        if best is not None:
-            p.init = best.ncells_def.values[0][i_N]
-        else:
-            p.init = params.init.Ndef[i_N]
-        p.minval = params.mins.Ndef[i_N]
-        p.maxval = params.maxs.Ndef[i_N]
-        p.fix = params.fix.Ndef
-        PAR.Ndef.append(p)
-
-    PAR.RotXYZ_params = []
-    for i_rot in range(3):
-        p = ParameterType()
-        p.sigma = params.sigmas.RotXYZ[i_rot]
-        #if best is not None:
-        #    p.init = best.values[0][i_rot]
-        #else:
-        p.init = 0
-        p.minval =params.mins.RotXYZ[i_rot]
-        p.maxval = params.maxs.RotXYZ[i_rot]
-        p.fix = params.fix.RotXYZ
-        PAR.RotXYZ_params.append(p)
-
+        PAR.RotXYZ_params[i] = ParameterType(init=0, minval=params.mins.RotXYZ[i],
+                                      maxval=params.maxs.RotXYZ[i], fix=params.fix.RotXYZ,
+                                      sigma=params.sigmas.RotXYZ[i])
     # unit cell parameters
     ucell_man = utils.manager_from_crystal(experiment.crystal)  # Note ucell man contains the best parameters (if best is not None)
     ucell_vary_perc = params.ucell_edge_perc / 100.
@@ -79,34 +52,16 @@ def PAR_from_params(params, experiment, best=None):
             val_in_deg = val * 180 / np.pi
             minval = (val_in_deg - params.ucell_ang_abs) * np.pi / 180.
             maxval = (val_in_deg + params.ucell_ang_abs) * np.pi / 180.
-        p = ParameterType()
-        p.sigma = params.sigmas.ucell[i_uc]
-        p.init = val
-        p.minval = minval
-        p.maxval = maxval
-        p.fix = params.fix.ucell
+        p = ParameterType(init=val, minval=minval, maxval=maxval, fix=params.fix.ucell, sigma=params.sigmas.ucell[i_uc])
         PAR.ucell.append(p)
     PAR.ucell_man = ucell_man
 
     # detector distance param:
-    p = ParameterType()
-    if best is not None:
-        p.init = best.detz_shift_mm.values[0]*1e-3
-    else:
-        p.init = params.init.detz_shift *1e-3
-    p.sigma = params.sigmas.detz_shift
-    p.minval = params.mins.detz_shift * 1e-3
-    p.maxval = params.maxs.detz_shift * 1e-3
-    p.fix = params.fix.detz_shift
-    PAR.detz_shift = p
+    init_shiftZ = params.init.detz_shift *1e-3  if best is None else best.detz_shift_mm.values[0]*1e-3
+    PAR.detz_shift = ParameterType(init=init_shiftZ, sigma=params.sigmas.detz_shift, minval=params.mins.detz_shift*1e-3,
+                      maxval=params.maxs.detz_shift*1e-3, fix=params.fix.detz_shift)
 
-    p = ParameterType()
-    p.init = params.init.B
-    p.sigma = params.sigmas.B
-    p.minval = params.mins.B
-    p.maxval = params.maxs.B
-    p.fix = params.fix.B
-    PAR.B = p
+    PAR.B = ParameterType(init=params.init.B, sigma=params.sigmas.B, minval=params.mins.B, maxval=params.maxs.B, fix=True)
 
     return PAR
 
