@@ -762,9 +762,10 @@ class ArrayInfo:
     if (millarr.unit_cell() is None) or (millarr.space_group() is None) :
       raise Sorry("No space group info is present in data")
     data = millarr.deep_copy().data()
-    self.maxdata = self.mindata = self.maxsigmas = self.minsigmas = float("nan")
-    self.minmaxdata = (float("nan"), float("nan"))
-    self.minmaxsigs = (float("nan"), float("nan"))
+    nan = float("nan")
+    self.maxdata = self.mindata = self.maxsigmas = self.minsigmas = nan
+    self.minmaxdata = (nan, nan)
+    self.minmaxsigs = (nan, nan)
     self.desc = ""
     self.arrsize = data.size()
     if not isinstance(data, flex.std_string):
@@ -808,7 +809,7 @@ class ArrayInfo:
     self.ucellinf = format(millarr.unit_cell(), "({:.6g}Å, {:.6g}Å, {:.6g}Å, {:.6g}º, {:.6g}º, {:.6g}º)")
     self.dmin = 0.0
     self.dmax = 0.0
-    self.n_centric = millarr.centric_flags().data().count(True)
+    #self.n_centric = millarr.centric_flags().data().count(True)
     try:
       self.span = str(millarr.index_span().min()) + ", "+ str(millarr.index_span().max())
       self.dmin = millarr.d_max_min()[1]
@@ -818,6 +819,45 @@ class ArrayInfo:
     self.dminmax = roundoff((self.dmin,self.dmax))
     self.issymunique = millarr.is_unique_set_under_symmetry()
     self.isanomalous = millarr.anomalous_flag()
+    self.n_sys_abs = 0
+    self.n_bijvoet = self.n_singletons = 0
+    self.anomalous_mean_diff = nan
+    self.anomalous_completeness_resolution_range = nan
+    self.completeness_to_infty = nan
+    self.completeness_resolution_range = nan
+    self.n_centric = nan
+    if (self.spginf is not None):
+      sys_absent_flags = millarr.sys_absent_flags().data()
+      self.n_sys_abs = sys_absent_flags.count(True)
+      if (self.n_sys_abs != 0):
+        millarr = self.select(selection=~sys_absent_flags)
+      self.n_centric = millarr.centric_flags().data().count(True)
+    if (self.ucell is not None):
+      if (self.spginf is not None
+          and millarr.indices().size() > 0
+          and self.issymunique):
+        millarr.setup_binner(n_bins=1)
+        completeness_d_max_d_min = millarr.completeness(use_binning=True)
+        binner = completeness_d_max_d_min.binner
+        assert binner.counts_given()[0] == 0
+        assert binner.counts_given()[2] == 0
+        n_obs = binner.counts_given()[1]
+        n_complete = binner.counts_complete()[1]
+        if (n_complete != 0 and self.dmax != self.dmin):
+            self.completeness_resolution_range = n_obs/n_complete
+        n_complete += binner.counts_complete()[0]
+        if (n_complete != 0):
+            self.completeness_to_infty = n_obs/n_complete
+        if (self.isanomalous) and (millarr.is_xray_intensity_array() or
+          millarr.is_xray_amplitude_array()):
+            self.anomalous_completeness_resolution_range = millarr.anomalous_completeness()
+    if (self.spginf is not None and self.isanomalous and self.issymunique):
+      asu, matches = millarr.match_bijvoet_mates()
+      self.n_bijvoet = matches.pairs().size()
+      self.n_singletons = matches.n_singles() - self.n_centric
+      if millarr.is_real_array():
+        self.anomalous_mean_diff = millarr.anomalous_signal()
+
     # break long label into list of shorter strings separated at whitespace and commas if present 
     self.labelstr = ",".join(self.labels)
     if wrap_labels > 0:
@@ -833,8 +873,8 @@ class ArrayInfo:
       if len(self.labelstr)>15:
         self.labelsformat = "{}\n                 |"
       added_spaces= 11
-
-    self.info_format_dict = {
+    
+    self.info_format_dict = { # the keys here must be verbatim copies of attributes in arrayinfo_phil_str below for get_selected_info_columns() to work
       "labels":             (" label" + " "*added_spaces + "|",                   self.labelstr,         "{}",                                                                             self.labelsformat), 
       "description":        ("       type      |",                                self.desc,             "{}",                                                                             "{:>16} |"), 
       "wavelength":         ("   λ/Å  |",                                         self.wavelength,       "{}",                                                                             "{:>7} |"), 
@@ -845,8 +885,15 @@ class ArrayInfo:
       "d_minmax":           ("   d_min,d_max/Å     |",                            self.dminmax,          "{0[0]:.6}, {0[1]:.6}",                                                           "{0[0]:>10.5},{0[1]:>10.5}|"), 
       "unit_cell":          ("     unit cell (a/Å, b/Å, c/Å, αº, βº, γº)      |", self.ucell,            "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g}",  "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g} |"),
       "n_centrics":         (" #centrics|",                                       self.n_centric,        "{}",                                                                             " {:>8} |"), 
+      "n_sys_abs":          (" #systematic absences|",                            self.n_sys_abs,        "{}",                                                                             " {:>8} |"), 
+      "completeness_resolution_range": (" completeness in resolution range|",     self.completeness_resolution_range, "{}",                                                                " {:>8} |"), 
+      "completeness_to_infty":   (" completeness to infinity|",                      self.completeness_to_infty,        "{}",                                                                 " {:>8} |"), 
       "is_anomalous":       ("anomalous|",                                        str(self.isanomalous), "{}",                                                                             "{:>8} |"),
-      "is_symmetry_unique": (" symmetry unique",                                  str(self.issymunique), "{}",                                                                             "{:>8} |"), 
+      "is_symmetry_unique": (" symmetry unique|",                                 str(self.issymunique), "{}",                                                                             "{:>8} |"), 
+      "anomalous_completeness_resolution_range":  (" anomalous completeness in resolution range |",   self.anomalous_completeness_resolution_range, "{}",                                 " {:>8} |"), 
+      "anomalous_mean_diff": (" mean anomalous difference|",                      self.anomalous_mean_diff,  "{}",                                                                        " {:>8} |"), 
+      "n_bijvoet":         (" #bijvoet|",                                         self.n_bijvoet,        "{}",                                                                             " {:>8} |"), 
+      "n_singletons":       (" #singletons|",                                     self.n_singletons,        "{}",                                                                             " {:>8} |"), 
     }
 
   # govern whether or not a property of the ArrayInfo should be returned by get_selected_info_columns()
@@ -876,6 +923,20 @@ class ArrayInfo:
       .type = bool
     is_symmetry_unique = True
       .type = bool
+    n_sys_abs = False
+      .type = bool   
+    completeness_resolution_range = True
+      .type = bool   
+    completeness_to_infty = False
+      .type = bool   
+    anomalous_completeness_resolution_range = False
+      .type = bool   
+    anomalous_mean_diff = False
+      .type = bool   
+    n_bijvoet = False
+      .type = bool   
+    n_singletons = False
+      .type = bool   
   }
 
   """

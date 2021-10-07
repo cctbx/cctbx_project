@@ -43,19 +43,23 @@ class Program(ProgramTemplate):
 
 from iotbx.cli_parser import CCTBXParser
 from libtbx.utils import multi_out, show_total_time
-
+from io import StringIO
 #from iotbx.cli_parser import run_program
 
 if __name__ == '__main__':
   #time.sleep(10) # enough time to attach debugger
   #run_program(program_class=Program)
-
+  #dmp = StringIO()
+  dmp = sys.stdout
   # create parser
+  #plogger = multi_out()
+  #plogger.register('console_output', dmp)
   logger = multi_out()
   logger.register('console_output', sys.stdout)
-  
+
   parser = CCTBXParser(program_class = Program, logger=logger)
   namespace = parser.parse_args(sys.argv[1:])
+  #dmp.close()
 
   # start program
   print('Starting job', file=logger)
