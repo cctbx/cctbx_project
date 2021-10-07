@@ -1248,7 +1248,7 @@ class map_model_manager(object):
       model = model.select(sel)
     elif selection:
       model = model.select(selection)
-    elif extract_box: # make sure everything is deep_copy
+    elif extract_box and model: # make sure everything is deep_copy
       model = model.deep_copy()
 
 
@@ -1350,7 +1350,7 @@ class map_model_manager(object):
     assert map_info.map_id is not None
     model_info=self._get_model_info()
     model = self._model_dict[model_info.model_id]
-    if extract_box: # make sure everything is deep_copy
+    if extract_box and model: # make sure everything is deep_copy
       model = model.deep_copy()
 
     if soft_mask_around_edges: # make the cushion bigger
@@ -1441,7 +1441,7 @@ class map_model_manager(object):
 
     model_info=self._get_model_info()
     model = self._model_dict[model_info.model_id]
-    if extract_box: # make sure everything is deep_copy
+    if extract_box and model: # make sure everything is deep_copy
       model = model.deep_copy()
 
     if soft_mask_around_edges: # make the cushion bigger
