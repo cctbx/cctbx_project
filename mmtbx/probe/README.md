@@ -51,8 +51,8 @@ list of functions and parameters.  **getBondedNeighborLists()** converts bond pr
 lists, providing a list of bonded atoms looked up by atom.  **compatibleConformations()** tells whether two atoms
 are in compatible conformations.  **getAtomsWithinNBonds()** returns the list of atoms from compatible conformations
 that are bonded within N hops from a specified atom.  **getExtraAtomInfo()** looks up extra information needed to
-determine interactions and returns it encapsulated in a C++ structure reference.  **isMetallic()** tells whether an
-atom is metallic.  **getPhantomHydrogensFor()** produces a list of potential hydrogens for a water oxygen that point
+determine interactions and returns it encapsulated in a C++ structure reference.
+**getPhantomHydrogensFor()** produces a list of potential hydrogens for a water oxygen that point
 towards nearby acceptors (or all nearby atoms).  **fixupExplicitDonors()** adjusts the extra atom information for
 a set of atoms once hydrogens have been explicitly added to the model, adjusting the donor status.  **rvec3()**
 and **lvec3()** return **scitbx.matrix.rec** elements for left-side and right-side multiplication, enabling the use

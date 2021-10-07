@@ -95,7 +95,7 @@ def RunProbeVsCCTBXTest(inFileName, useNeutronDistances = False):
 
             # Look up in CCTBX
             ccei = probeext.ExtraAtomInfo()
-            if mmtbx.probe.Helpers.isMetallic(a):
+            if a.element_is_metallic():
               ccei.vdwRadius = model.get_specific_ion_radius(a.i_seq)
             else:
               ccei.vdwRadius = model.get_specific_vdw_radius(a.i_seq)

@@ -5,6 +5,8 @@
 #include <cctbx/eltbx/chemical_elements.h>
 #include <boost/format.hpp>
 #include <boost/scoped_array.hpp>
+#include <set>
+#include <string>
 
 namespace iotbx { namespace pdb { namespace hierarchy {
 
@@ -1014,6 +1016,21 @@ namespace {
     return (
          (e[0] == ' ' && (e[1] == 'H' || e[1] == 'D'))
       || ((e[0] == 'H' || e[0] == 'D') && (e[1] == ' ' || e[1] == '\0')));
+  }
+
+  bool
+  atom::element_is_metallic() const
+  {
+    std::string e = data->element.elems;
+    static char* mets[] = { "Li", "Na", "Al", "K", "Mg", "Ca", "Mn", "Fe", "Co", "Ni",
+      "Cu", "Zn", "Rb", "Sr", "Mo", "Ag", "Cd", "In", "Cs", "Ba", "Au", "Hg", "Tl",
+      "Pb", "V", "Cr", "Te", "Sm", "Gd", "Yb", "W", "Pt", "U",
+      "Be", "Si", "Sc", "Ti", "Fa", "Ge", "Y", "Zr", "Sn", "Sb", "La", "Ce", "Fr", "Ra", "Th",
+      "Nb", "Tc", "Ru", "Rh", "Pd", "Pr", "Nd", "Pm", "Eu", "Tb", "Dy", "Ho", "Er",
+      "Tm", "Lu", "Hf", "Ta", "Re", "Os", "Ir", "Bi", "Po", "At",
+      "Ac", "Pa", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No" };
+    static std::set<std::string> metallics(std::begin(mets), std::end(mets));
+    return metallics.find(data->element.elems) != metallics.end();
   }
 
   boost::optional<std::string>

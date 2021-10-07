@@ -518,7 +518,7 @@ class _SingletonOptimizer(object):
           " {:5.2f}".format(self._extraAtomInfo.getMappingFor(a).vdwRadius)+
           " "+acceptorChoices[self._extraAtomInfo.getMappingFor(a).isAcceptor]+
           " "+donorChoices[self._extraAtomInfo.getMappingFor(a).isDonor]+
-          " "+metallicChoices[Helpers.isMetallic(a)]+
+          " "+metallicChoices[a.element_is_metallic()]+
           "\n"
         )
 
@@ -1235,7 +1235,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         for i,pos in enumerate([ne2Orig, nd1Orig, ne2Flip, nd1Flip]):
           neighbors = spatialQuery.neighbors(pos, minDist, maxDist)
           for n in neighbors:
-            if Helpers.isMetallic(n):
+            if n.element_is_metallic():
               dist = (Helpers.rvec3(pos) - Helpers.rvec3(n.xyz)).length()
               expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
               infoString += _VerboseCheck(5,'Checking '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
@@ -1277,7 +1277,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
             maxDist = 0.25 + myRad + maxVDWRadius
             neighbors = spatialQuery.neighbors(coarseNitroPos, minDist, maxDist)
             for n in neighbors:
-              if Helpers.isMetallic(n):
+              if n.element_is_metallic():
                 dist = (Helpers.rvec3(coarseNitroPos) - Helpers.rvec3(n.xyz)).length()
                 expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
                 if dist >= (expected - 0.55) and dist <= (expected + 0.25):
