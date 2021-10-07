@@ -1,0 +1,2797 @@
+# ---------------------------------------------------
+#             ener_lib.cif              4-APR-95/31-MAY-00
+# ---------------------------------------------------
+#
+data_energy
+#
+# ---------------------------------------------------
+#      _dictionary_name   ciflibdic
+#      _dictionary_version  2.0
+# ---------------------------------------------------
+#   -----------   Description of atom's type --------
+#HEADER        C Carbon PI
+#ATOMTYPE CSP  = with triple bond
+#ATOMTYPE CSP1 = with triple bond and 1 hydrogen
+#HEADER        C Carbon SP2
+#ATOMTYPE C    = without hydrogen ( carbonyl C )
+#ATOMTYPE C1   = connected to 1 hydrogen
+#ATOMTYPE C2   = connected to 2 hydrogens
+#ATOMTYPE CR1  = between two pyrrole units
+#ATOMTYPE CR1H = CR1 connected to 1 hydrogen ( CHA of HEME )
+#ATOMTYPE CR15 = connected to 1 hydrogen in 5 atoms ring ( CE1 of HIS)
+#ATOMTYPE CR16 = connected to 1 hydrogen in 6 atoms ring ( CE1 of PHE)
+#ATOMTYPE CR6  = without hydrogen in 6 atoms ring
+#ATOMTYPE CR5  = without hydrogen in 5 atoms ring
+#ATOMTYPE CR56 = between two atoms in 5-6 rings ( CD2 CE2 of TRP )
+#ATOMTYPE CR55 = between two atoms in 5-5 rings
+#ATOMTYPE CR66 = between two atoms in 6-6 rings
+#HEADER        C Carbon SP3
+#ATOMTYPE CH1  = connected to 1 hydrogen  ( CA of most amono acids )
+#ATOMTYPE CH2  = connected to 2 hydrogens ( CB of most amono acids)
+#ATOMTYPE CH3  = connected to 3 hydrogens ( CD1 CD2 of LEUCINE)
+#ATOMTYPE CT   = without hydrogen
+#ATOMTYPE SI   = tetragonal silicon
+#ATOMTYPE SI1  = other silicons
+#HEADER        H Hydrogen
+#ATOMTYPE HCH  = hydrogen of aliphatic group
+#ATOMTYPE HCR  = hydrogen of aromatic group
+#ATOMTYPE HNC1 = hydrogen connected to NC1
+#ATOMTYPE HNC2 = hydrogen connected to NC2
+#ATOMTYPE HNC3 = hydrogen connected to NC3
+#ATOMTYPE HNH1 = hydrogen connected to NH1
+#ATOMTYPE HNH2 = hydrogen connected to NH2
+#ATOMTYPE HNR5 = hydrogen connected to NR15
+#ATOMTYPE HNR6 = hydrogen connected to NR16
+#ATOMTYPE HOH1 = hydrogen connected to OH1
+#ATOMTYPE HOH2 = hydrogen of water
+#ATOMTYPE HSH1 = hydrogen of sulphur
+#HEADER        N Nitrogen PI
+#ATOMTYPE NS   = without hydrogen ( triple bond )
+#ATOMTYPE NS1  = connected to 1 hydrogen
+#HEADER        N Nitrogen SP2
+#ATOMTYPE N    = without hydrogen ( N  of PRO )
+#ATOMTYPE NC1  = connected to 1 hyd. in a charged group ( NE of ARG )
+#ATOMTYPE NC2  = connected to 2 hyd. in a charged group ( NH2 of ARG )
+#ATOMTYPE NH1  = connected to 1 hydrogen ( N of main chain )
+#ATOMTYPE NH2  = connected to 2 hydrogen ( NE2 of GLU )
+#ATOMTYPE NPA  = without hydrogen ( NA and NC of HEME )
+#ATOMTYPE NPB  = without hydrogen ( NB and ND of HEME )
+#ATOMTYPE NRD5 = without hydrogen but with electronic doublet in 5 atoms ring
+#ATOMTYPE NRD6 = without hydrogen but with electronic doublet in 6 atoms ring
+#ATOMTYPE NR15 = connected to 1 hyd. in 5 atoms ring ( ND1 of HIS )
+#ATOMTYPE NR16 = connected to 1 hyd. in 6  atoms ring
+#ATOMTYPE NR5  = connected to 3 atoms in 5 atoms ring ( N9 of ADE )
+#ATOMTYPE NR6  = connected to 3 atoms in 6 atoms ring ( N1 of CYT )
+#HEADER        N Nitrogen SP3
+#ATOMTYPE NT   = without hydrogen
+#ATOMTYPE NT1  = connected to 1 hydrogen
+#ATOMTYPE NT2  = connected to 2 hydrogens
+#ATOMTYPE NT3  = connected to 3 hydrogens
+#ATOMTYPE P    = tetragonal P with four bonds
+#ATOMTYPE P1   = with three bonds. Planar?
+#HEADER        O Oxygen SP2
+#ATOMTYPE O    = without  NET charge ( O of main chain )
+#ATOMTYPE OC   = with a NET charge   ( OE1 OE2 of GLU )
+#ATOMTYPE OP   = with a NET charge connected to P (O1P of phosphate group )
+#ATOMTYPE OS   = with a NET charge connected to S ( O1 of sulphate group )
+#ATOMTYPE OB   = with a NET charge connected to B
+#HEADER        O Oxygen SP3
+#ATOMTYPE O2   = connected to 2 atoms ( O4' of ribose )
+#ATOMTYPE OC2  = with a NET charge connected to 2 ATOMS ( O3' of ribose )
+#ATOMTYPE OH1  = oxygen of alcohol groups ( OG1 of THR )
+#ATOMTYPE OH2  = oxygen of water
+#ATOMTYPE OHA  = oxygen of water in MO6
+#ATOMTYPE OHB  = oxygen of water in MO6
+#ATOMTYPE OHC  = oxygen of water in MO6
+#HEADER        S Sulphur
+#ATOMTYPE S    = sulphur without hydrogen
+#ATOMTYPE SH1  = sulphur with a hydrogen ( SG of CYS )
+#ATOMTYPE S3   = sulphur with 3 bonds (sulphoxide)
+#ATOMTYPE S2   = sulphur with 2 bonds (methionine)
+#ATOMTYPE S1   = sulphur with 1 double bond
+#HEADER        Fe
+#ATOMTYPE FE   = iron
+#HEADER        P
+#ATOMTYPE P    = phosphorus
+#HEADER        Zn
+#ATOMTYPE ZN   = zinc
+#END
+# ---------------------------------------------------
+#
+# --- ATOM ---
+#
+loop_
+_lib_atom.type
+_lib_atom.weight
+_lib_atom.hb_type
+_lib_atom.vdw_radius
+_lib_atom.vdwh_radius
+_lib_atom.ion_radius
+_lib_atom.element
+_lib_atom.valency
+_lib_atom.sp
+_lib_atom.vdw_radius_neutron
+#
+#  _type         atomic chemical type
+#  _weight       atomic weight
+#  _hb_type      donnor/acceptor's type:
+#                     N=neither
+#                     D=donnor
+#                     A=acceptor
+#                     B=both
+#                     H=hydrogen candidate to hydrogen bonding
+#   _vdw_radius  Van-Der-Waals radius
+#   _vdwh_radius  Van-Der-Waals radius for atom+H
+#  Ionic radii for most of the atoms without hydrogens are
+#  http://www.webelements.com/webelements/elements/text/radii/N.html
+#
+#  or
+#  Chemstry of the elements by Greenwood and Earnshaw
+#  VDW radii of carbon atoms with hydrogen have been taken from paper
+#   Li and Nussinov, Proteins, 32 111-127 (1998)
+#
+ CSP     12.01150  N     1.700     1.900    0.77   C   4  1  .
+ CSP1    12.01150  N     1.700     1.900    0.77   C   4  1  .
+ C       12.01150  N     1.650     1.800    0.77   C   4  2  .
+ C1      12.01150  N     1.700     1.900    0.77   C   4  2  .
+ C2      12.01150  N     1.700     1.900    0.77   C   4  2  .
+ CR1     12.01150  N     1.700     1.900    0.77   C   4  2  .
+ CR2     12.01150  N     1.700     1.900    0.77   C   4  2  .
+ CR1H    12.01150  N     1.700     1.900    0.77   C   4  2  .
+ CR15    12.01150  N     1.750     1.900    0.77   C   4  2  .
+ CR5     12.01150  N     1.750     1.900    0.77   C   4  2  .
+ CR56    12.01150  N     1.750     1.900    0.77   C   4  2  .
+ CR55    12.01150  N     1.750     1.900    0.77   C   4  2  .
+ CR16    12.01150  N     1.750     1.900    0.77   C   4  2  .
+ CR6     12.01150  N     1.750     1.900    0.77   C   4  2  .
+ CR66    12.01150  N     1.750     1.900    0.77   C   4  2  .
+ CH1     12.01150  N     1.700     1.900    0.77   C   4  3  .
+ CH2     12.01150  N     1.700     1.900    0.77   C   4  3  .
+ CH3     12.01150  N     1.700     1.900    0.77   C   4  3  .
+ CT      12.01150  N     1.700     1.900    0.77   C   4  3  .
+#
+ NS      14.00670  N     1.550     1.700    0.70   N   3  1  .
+ N       14.00670  N     1.550     1.700    0.70   N   3  2  .
+ NC1     14.00670  D     1.550     1.700    0.70   N   3  2  .
+ NH1     14.00670  D     1.550     1.700    0.70   N   3  2  .
+ NC2     14.00670  D     1.550     1.700    0.70   N   3  2  .
+ NH2     14.00670  D     1.550     1.700    0.70   N   3  2  .
+ NC3     14.00670  D     1.550     1.700    0.70   N   3  2  .
+ NT      14.00670  D     1.550     1.700    0.70   N   3  3  .
+ NT1     14.00670  D     1.550     1.700    0.70   N   3  3  .
+ NT2     14.00670  D     1.550     1.700    0.70   N   3  3  .
+ NT3     14.00670  D     1.550     1.700    0.70   N   3  3  .
+ NPA     14.00670  A     1.550     1.700    0.70   N   3  2  .
+ NPB     14.00670  A     1.550     1.700    0.70   N   3  2  .
+ NR5     14.00670  N     1.550     1.700    0.70   N   3  2  .
+ NR15    14.00670  D     1.550     1.700    0.70   N   3  2  .
+ NRD5    14.00670  A     1.550     1.700    0.70   N   3  2  .
+ NR56    14.00670  A     1.550     1.700    0.70   N   3  2  .
+ NR55    14.00670  A     1.550     1.700    0.70   N   3  2  .
+ NR6     14.00670  N     1.550     1.700    0.70   N   3  2  .
+ NR66    14.00670  N     1.550     1.700    0.70   N   3  2  .
+ NR16    14.00670  D     1.550     1.700    0.70   N   3  2  .
+ NRD6    14.00670  A     1.550     1.700    0.70   N   3  2  .
+#
+ OS      15.99940  A     1.400     1.500    0.66   O   2  2  .
+ O       15.99940  A     1.400     1.500    0.66   O   2  2  .
+ O2      15.99940  A     1.400     1.500    0.66   O   2  3  .
+ OH1     15.99940  B     1.400     1.500    0.66   O   2  3  .
+ OH2     15.99940  B     1.400     1.500    0.66   O   2  3  .
+ OHA     15.99940  B     1.400     1.500    0.66   O   2  3  .
+ OHB     15.99940  B     1.400     1.500    0.66   O   2  3  .
+ OHC     15.99940  B     1.400     1.500    0.66   O   2  3  .
+ OC2     15.99940  A     1.400     1.500    0.66   O   2  2  .
+ OC      15.99940  A     1.400     1.500    0.66   O   2  2  .
+ OP      15.99940  A     1.400     1.500    0.66   O   2  2  .
+ OB      15.99940  A     1.400     1.500    0.66   O   2  2  .
+#
+ P       30.97380  N     1.800     1.800    1.10   P   5  .  .
+ P1      30.97380  N     1.800     1.800    1.10   P   5  .  .
+ PS      30.97380  N     1.800     1.800    1.10   P   5  .  .
+ S       32.06400  A     1.800     1.900    1.04   S   2  .  .
+ S3      32.06400  A     1.800     1.900    1.04   S   4  .  .
+ S2      32.06400  A     1.800     1.900    1.04   S   2  .  .
+ S1      32.06400  A     1.800     1.900    1.04   S   2  .  .
+ ST      32.06400  A     1.800     1.900    1.04   S   6  .  .
+ SH1     32.06400  B     1.800     1.900    1.04   S   2  .  .
+#
+ H        1.00800  N     1.220      .     .     H   1  .  1.17
+ HCH      1.00800  N     1.220      .     .     H   1  .  1.17
+ HCH1     1.00800  N     1.220      .     .     H   1  .  1.17
+ HCH2     1.00800  N     1.220      .     .     H   1  .  1.17
+ HCH3     1.00800  N     1.220      .     .     H   1  .  1.17
+ HCR1     1.00800  N     1.050      .     .     H   1  .  1.0
+ HC2      1.00800  N     1.220      .     .     H   1  .  1.17
+ HC1      1.00800  N     1.220      .     .     H   1  .  1.17
+ HC2      1.00800  N     1.220      .     .     H   1  .  1.17
+ HCR5     1.00800  N     1.050      .     .     H   1  .  1.0
+ HCR6     1.00800  N     1.050      .     .     H   1  .  1.0
+ HNC1     1.00800  H     1.050      .     .     H   1  .  1.0
+ HNC2     1.00800  H     1.050      .     .     H   1  .  1.0
+ HNH1     1.00800  H     1.050      .     .     H   1  .  1.0
+ HNH2     1.00800  H     1.050      .     .     H   1  .  1.0
+ HNR5     1.00800  H     1.050      .     .     H   1  .  1.0
+ HNR6     1.00800  H     1.050      .     .     H   1  .  1.0
+ HNT1     1.00800  H     1.050      .     .     H   1  .  1.0
+ HNT2     1.00800  H     1.050      .     .     H   1  .  1.0
+ HNT3     1.00800  H     1.050      .     .     H   1  .  1.0
+ HOH1     1.00800  H     1.050      .     .     H   1  .  1.0
+ HOH2     1.00800  H     1.050      .     .     H   1  .  1.0
+ HOHA     1.00800  H     1.050      .     .     H   1  .  1.0
+ HOHB     1.00800  H     1.050      .     .     H   1  .  1.0
+ HOHC     1.00800  H     1.050      .     .     H   1  .  1.0
+ HSH1     1.00800  H     1.050      .     .     H   1  .  1.0
+#
+ SI      28.0855   N     2.10       .   2.10    SI   4  3  .
+ SI1     28.0855   N     2.10       .   2.10    SI   4  .  .
+ GE      72.59     N     0.60       .   0.60    GE   1  .  .
+ GE1     72.59     N     0.60       .   0.60    GE   1  .  .
+ SN     118.69     N     0.71       .   0.71    SN   1  .  .
+ PB     207.2      N     0.84       .   0.84    PB   1  .  .
+#
+ LI       6.941    N     0.60       .   0.60    LI   1  .  .
+ NA      22.990    N     0.95       .   0.95    NA   1  .  .
+ K       30.0983   N     1.33       .   1.33    K    1  .  .
+ RB      85.468    N     1.48       .   1.48    RB   1  .  .
+ CS     132.905    N     1.69       .   1.69    CS   1  .  .
+ FR     223.0      N     1.94       .   1.94    FR   1  .  .
+#
+ BE       9.0123   N     0.31       .   0.31    BE   1  .  .
+ MG      24.30500  N     0.65       .   0.65    MG   1  .  .
+ CA      40.08000  N     0.99       .   0.99    CA   1  .  .
+ SR      87.62     N     1.10       .   1.10    SR   1  .  .
+ BA     137.33     N     1.29       .   1.29    BA   1  .  .
+ RA     226.025    N     1.62       .   1.62    RA   1  .  .
+#
+ SC      44.9559   N     0.68       .   0.68    SC   1  .  .
+ Y       88.9059   N     0.90       .   0.90    Y    1  .  .
+ LA     138.9055   N     1.03       .   1.03    LA   1  .  .
+ CE     140.12     N     0.87       .   0.87    CE   1  .  .
+ PR     140.9077   N     1.11       .   1.11    PR   1  .  .
+ ND     144.24     N     1.10       .   1.10    ND   1  .  .
+ PM        .       N     1.15       .   1.15    PM   1  .  .
+ SM     150.36     N     1.08       .   1.08    SM   1  .  .
+ EU     151.96     N     1.31       .   1.31    EU   1  .  .
+ GD     157.25     N     1.05       .   1.05    GD   1  .  .
+ TB     158.9254   N     1.05       .   1.05    TB   1  .  .
+ DY     162.50     N     1.05       .   1.05    DY   1  .  .
+ HO     164.9304   N     1.04       .   1.04    HO   1  .  .
+ ER     167.26     N     1.03       .   1.03    ER   1  .  .
+ TM     168.9342   N     1.02       .   1.02    TM   1  .  .
+ YB     173.04     N     1.14       .   1.14    YB   1  .  .
+ LU     174.967    N     1.02       .   1.02    LU   1  .  .
+#
+ AC     227.028    N     1.30       .   1.30    AC   1  .  .
+ TH     232.0      N     1.08       .   1.08    TH   1  .  .
+ PA     231.0      N     1.10       .   1.10    PA   1  .  .
+ U      238.0      N     1.03       .   1.03    U    1  .  .
+ NP     237.0      N     1.00       .   1.00    NP   1  .  .
+ PU     239.0      N     1.00       .   1.00    PU   1  .  .
+ AM     241.0      N     1.00       .   1.00    AM   1  .  .
+ CM     244.0      N     1.00       .   1.00    CM   1  .  .
+ BK     249.0      N     1.00       .   1.00    BK   1  .  .
+ CF     252.0      N     1.00       .   1.00    CF   1  .  .
+ ES     253.0      N     1.00       .   1.00    ES   1  .  .
+ FM     257.0      N     1.00       .   1.00    FM   1  .  .
+ MD     256.0      N     1.00       .   1.00    MD   1  .  .
+ NO     255.0      N     1.00       .   1.00    NO   1  .  .
+ LR     256.0      N      .         .     .     LR   1  .  .
+#
+ TI     47.88      N     0.75       .   0.75    TI   1  .  .
+ ZR     91.22      N     0.77       .   0.77    ZR   1  .  .
+ HF    178.49      N     0.85       .   0.85    HF   1  .  .
+ RF      .         N      .         .     .     RF   1  .  .
+#
+ V      50.9415    N     0.79       .   0.79    V    1  .  .
+ NB     92.9064    N     0.86       .   0.86    NB   1  .  .
+ TA    180.9479    N     0.86       .   0.86    TA   1  .  .
+ DB       .        N      .         .     .     DB   1  .  .
+#
+ CR     51.996     N     0.73       .   0.73    CR   1  .  .
+ MO     95.94      N     0.93       .   0.93    MO   1  .  .
+ W     183.85      N     0.66       .   0.66    W    1  .  .
+ SG       .        N      .         .     .     SG   1  .  .
+#
+ MN     54.938     N     0.80       .   0.80    MN   1  .  .
+ TC     98.906     N     0.71       .   0.71    TC   1  .  .
+ RE    186.207     N     0.77       .   0.77    RE   1  .  .
+ BH      .         N      .         .    .      BH   1  .  .
+#
+ FE     55.847     N     0.74       .   0.74    FE   1  .  .
+ RU    101.07      N     0.82       .   0.82    RU   1  .  .
+ OSE   190.2       N     0.78       .   0.78    OS   1  .  .
+ HS       .        N      .         .    .      HS   1  .  .
+#
+ CO     58.9332    N     0.70       .   0.70    CO   1  .  .
+ RH    102.9055    N     0.76       .   0.76    RH   1  .  .
+ IR    192.22      N     0.80       .   0.80    IR   1  .  .
+ MT       .        N      .         .    .      MT   1  .  .
+#
+ NI    58.69       N     0.66       .   0.66    NI   1  .  .
+ PD   106.42       N     1.05       .   1.05    PD   1  .  .
+ PT   195.08       N     0.63       .   0.63    PT   1  .  .
+#
+ CU    63.546      N     0.72       .   0.72    CU   1  .  .
+ AG   107.868      N     1.26       .   1.26    AG   1  .  .
+ AU   196.9665     N     1.10       .   1.10    AU   1  .  .
+#
+ ZN    65.38       N     0.71       .   0.71    ZN   1  .  .
+ CD   112.41       N     0.91       .   0.91    CD   1  .  .
+ HG   200.59       N     1.00       .   1.00    HG   1  .  .
+#
+ B       10.81     N     0.86       .   0.20    B    1  .  .
+ AL      26.98154  N     0.50       .   0.50    AL   1  .  .
+ GA      69.72     N     0.53       .   0.53    GA   1  .  .
+ IN     114.82     N     0.81       .   0.81    IN   1  .  .
+ TL     204.383    N     1.44       .   1.44    TL   1  .  .
+#
+ AS     74.9216    N     1.21       .   2.00    AS   1  .  .
+ AS1    74.9216    N     1.21       .   2.00    AS   1  .  .
+ SB    121.75      N     2.20       .   2.20    SB   1  .  .
+ BI    208.9804    N     1.17       .   1.17    BI   1  .  .
+#
+ SE     78.96      N     1.17       .   1.90    SE   1  .  .
+ TE    127.60      N     0.97       .   0.97    TE   1  .  .
+ PO    210.0       N     0.99       .   0.99    PO   1  .  .
+#
+ F      18.998     B     0.58       .   1.30    F    1  .  .
+ CL     35.453     A     0.99       .   1.77    CL   1  .  .
+ BR     79.904     N     1.14       .   1.95    BR   1  .  .
+ I     126.9045    N     1.33       .   2.10    I    1  .  .
+ AT    210.0       N     0.91       .   0.91    AT   1  .  .
+#
+ HE      4.0026    N     0.00       .   1.60    HE   1  .  .
+ NE     20.179     N     0.00       .   1.60    NE   1  .  .
+ AR     39.948     N     0.00       .   1.89    AR   1  .  .
+ KR     83.80      N     1.15       .   2.01    KR   1  .  .
+ XE    131.29      N     1.28       .   2.18    XE   1  .  .
+ RN    222.0       N     1.25       .   2.50    RN   1  .  .
+ DUM    16.0       N     0.66      0.6  1.40    O    .  .  .
+ .        .        .      .         .    .      .    .  .  .
+#
+# ---   LIST OF SYNONYMS ---
+#
+
+loop_
+_lib_synonym.atom_type
+_lib_synonym.atom_alternative_type
+#
+  NT3      NH3
+#
+# ---  BONDS ---
+#
+loop_
+_lib_bond.atom_type_1
+_lib_bond.atom_type_2
+_lib_bond.type
+_lib_bond.const
+_lib_bond.length
+_lib_bond.value_esd
+#
+#  _atom_type  atomic chemical type
+#  _const      constant KBOND
+#  _value     equilibrium length of this bond BOND0
+#              BOND - actual bond length
+#
+#              ENERGY = KBOND * ( BOND - BOND0 )**2
+#
+#    Values for bond distances and sigmas are from (where it is possible):
+#   International tables for crystallography
+#    Volume C, 1992,
+#    Edited by AJC Wilson
+#    Published for IUCr by Kluwer Academic Publishers, Dordrecht/Boston/London
+#    For carbon-carbon etc
+#    Section: Typical Interatomic distances: Organic compounds
+#    Authors: FH Allen, O. Kennard, DG Watson, L Brammer, AG Orpen and R Taylor
+#    pages:   685-706
+#
+#    For metal radii and distances.
+#    Section: Typical interatomic distances: Organometallic Compounds and
+#             Coordination complexes of the d- and f-block metals
+#    Authors: AG Orpen, L. Brammer, FH Allen, O Kennard, DG Watson and R Taylor
+#    pages:   707-791
+#
+ C    C    single    420.0      1.460  0.025
+ C    C    double    420.0      1.330  0.020
+ C1   C    single    420.000    1.475  0.020
+ C1   C    double    420.000    1.340  0.020
+ C1   C1   single    420.000    1.460  0.015
+ C1   C1   double    420.000    1.330  0.014
+ C2   C    double    420.000    1.320  0.030
+ C2   C1   double    420.000    1.320  0.030
+ C2   C2   double    420.000    1.320  0.030
+ C    CR1  single    450.000    1.480  0.020
+ C1   CR1  single    450.000    1.480  0.020
+ C2   CR1  single    450.000    1.480  0.020
+ CR15 CR15 aromatic  450.000    1.380  0.020
+ CR5  C    single    405.000    1.490  0.016
+ CR5  C1   single    405.000    1.483  0.015
+ CR5  C2   single    405.000    1.483  0.020
+ CR5  CR1  aromatic  450.000    1.455  0.020
+ CR5  CR1H aromatic  450.000    1.455  0.020
+ CR5  CR15 aromatic  450.000    1.387  0.020
+ CR55 CR15 aromatic  450.000    1.390  0.020
+ CR5  CR5  aromatic  450.000    1.390  0.020
+ CR5  CR5  single    450.000    1.490  0.015
+ CR55 CR5  aromatic  450.000    1.390  0.020
+ CR55 CR5  single      .        1.490  0.020
+ CR56 CR5  aromatic  450.000    1.390  0.020
+ CR56 CR5  single    450.000    1.490  0.020
+ CR56 CR56 aromatic  450.000    1.390  0.020
+ CR56 CR56 single    450.000    1.490  0.020
+ CR16 CR56 aromatic  450.000    1.390  0.020
+ CR16 CR16 aromatic  450.000    1.390  0.020
+ CR6  C    single    405.000    1.500  0.020
+ CR6  C1   single    405.000    1.480  0.020
+ CR6  C2   single    405.000    1.480  0.020
+ CR6  CR5  single    450.000    1.490  0.015
+ CR6  CR5  aromatic  450.000    1.390  0.015
+ CR6  CR56 aromatic  450.000    1.390  0.020
+ CR6  CR56 single    450.000    1.490  0.020
+ CR6  CR16 aromatic  450.000    1.390  0.020
+ CR6  CR6  aromatic  450.000    1.384  0.013
+ CR6  CR6  single    450.000    1.487  0.015
+ CR66 CR16 aromatic  450.000    1.390  0.015
+ CR66 CR6  aromatic  450.000    1.390  0.015
+ CR66 CR6  single    450.000    1.490  0.015
+ CR66 CR66 aromatic  450.000    1.390  0.015
+ CR66 CR66 single    450.000    1.490  0.015
+ CR15  .   aromatic     .       1.390  0.020
+ CR15  .   single       .       1.490  0.020
+ CR5   .   aromatic     .       1.390  0.020
+ CR5   .   single       .       1.490  0.020
+ CR55  .   single       .       1.490  0.020
+ CR55  .   aromatic     .       1.390  0.020
+ CR56  .   single       .       1.490  0.020
+ CR56  .   aromatic     .       1.390  0.020
+ CR16  .   single       .       1.490  0.020
+ CR16  .   aromatic     .       1.390  0.020
+ CR6   .   single       .       1.490   .
+ CR6   .   aromatic     .       1.390   .
+ CR66  .   single       .       1.490   .
+ CR66  .   aromatic     .       1.390   .
+ CR1   .   single       .       1.500   .
+ CR1H  .   single       .       1.500   .
+ C     .   single       .       1.460   .
+ C     .   double       .       1.330   .
+ C1    .   single       .       1.480   .
+ C1    .   double       .       1.330   .
+ C2    .   single       .       1.480   .
+ C2    .   double       .       1.330   .
+ CH1   .   single       .       1.530   .
+ CH1  C    single    405.000    1.500   0.020
+ CH1  C1   single    405.000    1.510   0.020
+ CH1  C2   single    405.000    1.510   0.020
+ CH1  CR1  single    405.000    1.500   .
+ CH1  CR5  single    405.000    1.480   0.020
+ CH1  CR6  single    405.000    1.480   0.020
+ CH1  CH1  single    200.000    1.524   0.020
+ CH1  CSP  single    200.000    1.470   0.020
+ CH2   .   single      .        1.524   0.020
+ CH2  C    single    405.000    1.510   0.020
+ CH2  C1   single    405.000    1.510   0.020
+ CH2  C2   single    405.000    1.510   0.020
+ CH2  CR1  single    405.000    1.500   0.020
+ CH2  CR5  single    405.000    1.510   0.020
+ CH2  CR6  single    405.000    1.511   0.020
+ CH2  CH1  single    200.000    1.524   0.020
+ CH2  CH2  single    200.000    1.524   0.020
+ CH2  CSP  single    200.00     1.470   0.020
+ CH3   .   single      .        1.524   0.020
+ CH3  CSP  single    405.000    1.470   0.020
+ CH3  C    single    405.000    1.500   0.020
+ CH3  C1   single    405.000    1.510   0.020
+ CH3  CR1  single    405.000    1.500   0.020
+ CH3  CR5  single    405.000    1.506   0.020
+ CH3  CR6  single    405.000    1.506   0.020
+ CH3  CH1  single    200.000    1.524   0.020
+ CH3  CH2  single    200.000    1.513   0.014
+ CH3  CH3  single    200.000    1.530   0.014
+ CSP  .    single      .        1.377   0.020
+ CSP  CSP  single    200.000    1.377   0.012
+ CSP  .    triple      .        1.180   0.020
+ CSP1 .    triple      .        1.180   0.020
+ CSP1 .    single      .        1.377   0.020
+ CSP  CSP  triple    200.000    1.180   0.015
+ CT   .    single      .        1.524   0.020
+ CT   C    single    200.000    1.507   0.020
+ CT   C1   single    200.000    1.510   0.020
+ CT   C2   single    200.000    1.520   0.020
+ CT   CR5  single    200.000    1.500   0.020
+ CT   CR56 single    200.000    1.500   0.020
+ CT   CR6  single    405.000    1.500   0.020
+ CT   CH1  single    200.000    1.524   0.020
+ CT   CH2  single    200.000    1.524   0.020
+ CT   CH3  single    200.000    1.524   0.020
+ CT   CT   single    200.000    1.524   0.020
+ CT   CSP  single    200.000    1.470   0.020
+ NS1  .    triple       .       1.170    .
+ NS1  .    single       .       1.350    .      # ?
+ NS   .    triple       .       1.170    .
+ NS   .    single       .       1.350    .      # ?
+ NS   CSP  triple       .       1.158    .
+ NS   CSP1 triple       .       1.158    .
+ NS   NS   triple       .       1.158    .      # ?
+ N    .    single       .       1.410    .      # ?
+ N    N    single       .       1.410    .      # ?
+ N    .    deloc        .       1.30    0.020
+ N    N    deloc        .       1.30    0.020
+ N    .    double       .       1.24    0.020
+ N    N    double       .       1.24    0.020
+ N    C    double    471.000    1.260    .
+ N    C    aromat    471.000    1.330    .
+ N    C1   double    471.000    1.260    .
+ N    C2   double    471.000    1.260    .
+ N    CR6  single    422.000    1.400    .
+ N    CR6  aromatic  422.000    1.355    .
+ N    CR16 single    422.000    1.400    .
+ N    CR16 aromatic  422.000    1.355    .
+ N    CH1  single    422.000    1.455    .
+ N    CH2  single    422.000    1.455    .
+ N    CH3  single    422.000    1.455    .
+ N    CT   single    422.000    1.455    .
+ NC1  .    single    422.000    1.400    .
+ NC1  C    deloc     471.000    1.339    .
+ NC1  C1   deloc     471.000    1.327    .
+ NC1  C2   deloc     471.000    1.327    .
+ NC1  CH2  single    422.000    1.457    .
+ NH1  .    single    422.000    1.400    .
+ NH1  C    deloc     471.000    1.330    .
+ NH1  C1   deloc     471.000    1.330    .
+ NH1  C2   deloc     471.000    1.330    .
+ NH1  CR6  deloc     471.000    1.350    .
+ NH1  CR5  deloc     422.000    1.350    .
+ NH1  CH1  single    422.000    1.450    .
+ NH1  CH2  single    422.000    1.450    .
+ NH1  CH3  single    422.000    1.450    .
+ NH1  CT   single    422.000    1.450    .
+ NC2  .    single      .        1.400    .
+ NC2  C    deloc     400.000    1.336    0.017
+ NC2  C1   deloc     400.000    1.336    0.017
+ NC2  C2   deloc     400.000    1.336    0.017
+ NC2  CR6  deloc     422.000    1.355    0.020
+ NC2  CH1  single    422.000    1.457    .
+ NC2  CH2  single    422.000    1.457    .
+ NC3   .   single       .       1.410    .
+ NC3  CH1  single    422.000    1.470    .    # ?
+ NC3  CH2  single    422.000    1.470    .    # ?
+ NH2  .    single       .       1.400    .
+ NH2  C    deloc     471.000    1.332    0.020
+ NH2  C1   deloc     471.000    1.332    0.020
+ NH2  C2   deloc     471.000    1.332    0.020
+ NH2  CR5  deloc     422.000    1.355    0.020
+ NH2  CR6  deloc     471.000    1.355    0.020
+ NH2  CH1  single    422.000    1.450    0.020
+ NH2  CH2  single    422.000    1.450    0.020
+ NT3   .   single      .        1.420     .
+ NT3  CR6  single    422.000    1.488     .
+ NT3  CH1  single    422.000    1.488    0.020
+ NT3  CH2  single    422.000    1.488    0.020
+ NT3  CH3  single    422.000    1.488    0.020
+ NT3  CT   single    422.000    1.488    0.020
+ NT3  C    single    422.000    1.420    0.020
+ NT3  C1   single    422.000    1.420    0.020
+ NT3  C2   single    422.000    1.420    0.020
+ NT1  .    single      .        1.420    0.020
+ NT2  .    single      .        1.420    0.020
+ NT   .    single      .        1.420     .
+ NT   C    single    422.000    1.416    0.020
+ NT   C1   single    422.000    1.416    0.020
+ NT   C2   single    422.000    1.416    0.020
+ NT   CH1  single    422.000    1.469    0.020
+ NT   CH2  single    422.000    1.469    0.020
+ NT   CH3  single    422.000    1.469    0.020
+ NPA   .   aromatic    .        1.31      .
+ NPA   .   single      .        1.40      .
+ NPA  CR5  aromatic  471.000    1.336    0.014
+ NPA  CH1  single    422.000    1.450     .    # ?
+ NPA  CT   single    422.000    1.450     .    # ?
+ NPB   .   aromatic    .        1.310     .
+ NPB   .   single      .        1.400     .
+ NPB  CR5  aromatic  471.000    1.336     0.014
+ NR5  .    aromatic    .        1.304     .
+ NR5  .    single      .        1.400     .     # ?
+ NR5  CR15 aromatic  440.000    1.337    0.020
+ NR5  CR5  aromatic  471.000    1.337    0.020
+ NR5  CR56 aromatic  436.000    1.337    0.020
+ NR5  CR16 aromatic  471.000    1.337    0.020
+ NR5  CR6  aromatic  471.000    1.337    0.020
+ NR5  CH1  single    337.000    1.485    0.020
+ NR5  CH3  single    337.000    1.485    0.020
+ NR5  CT   single    337.000    1.485    0.020
+ NR15  .   aromatic    .        1.304     .
+ NR15  .   single      .        1.400     .
+ NR15 NR15 aromatic  422.000    1.304     .
+ NR15 CR15 aromatic  471.000    1.350     .
+ NR15 CR5  aromatic  471.000    1.340     .
+ NR15 CR56 aromatic  471.000    1.340     .
+ NRD5  .   aromatic    .        1.304     .
+ NRD5  .   single      .        1.404     .
+ NRD5 CR15 aromatic  471.000    1.350     . #?
+ NRD5 CR5  aromatic  471.000    1.350     .  #?
+ NRD5 CR56 aromatic  471.000    1.350     .  #?
+ NRD5 CR56 aromatic  414.000    1.390     .  #?
+ NRD5 CR56 aromatic  471.000    1.350     .  #?
+ NR56  .   aromatic    .        1.304     .
+ NR56  .   single      .        1.400     .  # ?
+ NR55 CR15 aromatic  450.000    1.390  0.020
+ NR55 CR5  aromatic  450.000    1.390  0.020
+ NR55 CR5  single      .        1.490  0.020
+ NR55  .   single      .        1.400     .  # ?
+ NR55  .   aromatic     .       1.390  0.020
+ NR56 CR5  aromatic  448.000    1.337     .
+ NR56 CR6  aromatic  448.000    1.337     .
+ NR56 CR56 aromatic  448.000    1.337     .
+ NR56 CR15 aromatic  448.000    1.337     .
+ NR56 CR16 aromatic  448.000    1.337     .
+ NR6   .   aromatic    .        1.304     .
+ NR6   .   single      .        1.400     .
+ NR6  CR16 aromatic  448.000    1.337     .
+ NR6  CR6  single    424.000    1.410     .
+ NR6  CR6  aromatic  424.000    1.337     .
+ NR6  CR66 single    424.000    1.410     .
+ NR6  CR66 aromatic  424.000    1.337     .
+ NR6  CH1  single    337.000    1.465     .
+ NR6  CH2  single    337.000    1.465     .
+ NR6  CH3  single    337.000    1.465     .
+ NR6  CT   single    337.000    1.465     .
+ NR16 CR6  aromatic  422.000    1.337     .
+ NR16  .   aromatic    .        1.304     .
+ NR16  .   single      .        1.400     .
+ NR16 CR16 aromatic  422.000    1.337     .
+ NR16 CR66 aromatic  422.000    1.337     .
+ NR16 CR56 aromatic  461.000    1.337     .
+ NRD6  .   aromatic    .        1.330     .
+ NRD6  .   single      .        1.400     .
+ NRD6 CR56 aromatic  461.000    1.355     .  #?
+ NR6  CR56 aromatic  461.000    1.337     .
+ NRD6 CR16 aromatic  471.000    1.337     .  #?
+ NRD6 CR6  aromatic  470.000    1.350     .  #?
+ NRD6 CR66 aromatic  470.000    1.350     .  #?
+ O    H    single      .        1.040     .
+ O    .    single      .        1.469     .
+ O    .    double      .        1.080     .
+ O    C    single    580.000    1.330     .
+ O    C    double    580.000    1.220     .
+ O    C1   single    580.000    1.330     .
+ O    C1   double    580.000    1.220     .
+ O    C2   double    580.000    1.220     .
+ O    CR15 single    580.000    1.370     .
+ O    CR15 aromatic  580.000    1.250     .
+ O    CR6  single    580.000    1.330     .
+ O    CR6  aromatic  580.000    1.250     .
+ O    CH1  single    400.000    1.420     .
+ O    CH2  single    400.000    1.420     .
+ O    CH3  single    400.000    1.413    0.018
+ O    CT   single    400.000    1.430    0.015
+ O    N    single    580.000    1.400     .
+ O    N    double      .        1.220    0.020
+ O2   .    single     .         1.469     .
+ O2   C    single    580.000    1.454    0.016
+ O2   C2   single    580.000    1.454    0.016
+ O2   C1   single    580.000    1.454    0.016
+ O2   CR5  aromatic  580.000    1.250     .
+ O2   CR5  single      .        1.370     .
+ O2   CR6  aromatic  580.000    1.250     .
+ O2   CR6  single    580.000    1.370     .
+ O2   CR66 aromatic  580.000    1.250     .
+ O2   CR66 single      .        1.370     0.020
+ O2   CH1  single    320.000    1.426     0.020
+ O2   CH2  single    320.000    1.426     0.020
+ O2   CH3  single    320.000    1.426     0.020
+ O2   CT   single    320.000    1.426     0.020
+ O2   NR15 aromatic  580.000    1.400     0.020
+ OH1  .    single      .        1.469      .
+ OH1  C    single    450.000    1.330     0.015
+ OH1  C1   single    450.000    1.330     0.015
+ OH1  C2   single    450.000    1.330     0.015
+ OH1  CR15 single    450.000    1.362     0.015  # ? impossible
+ OH1  CR6  single    450.000    1.362     0.015
+ OH1  CH1  single    320.000    1.432     0.020
+ OH1  CH2  single    320.000    1.432     0.020
+ OH1  CH3  single    320.000    1.413     0.020
+ OH1  CT   single    320.000    1.432     0.020
+ OH1  N    single    450.000    1.392     0.015
+ OH1  NH1  single    450.000    1.392     0.020
+ OH1  NT   single    450.000    1.460     0.020
+ OH1  NT3  single    450.000    1.460     0.020
+ OC2   .   single      .        1.469     0.020
+ OC2  CR15 single    580.000    1.354      .  #?
+ OC2  CR15 aromatic  580.000    1.254      .  #?
+ OC2  CH1  single    320.000    1.410      .
+ OC2  CH2  single    320.000    1.410      .
+ OC2  CT   single    320.000    1.410      .
+ OC   .    single      .        1.150      .   #? for OC single and double
+ OC   .    double      .        1.150      .   #? are equavalent
+ OC   C    deloc     580.000    1.250      .   # bond should be delocalised
+ OC   C1   deloc     580.000    1.250      .
+ OC   C2   deloc     580.000    1.250      .
+ OC   CH1  deloc     580.000    1.420      .  #impossible ?
+ OP    .   single     .         1.150      .  # ?
+ OP    .   double     .         1.150      .  # single and double are equavalent
+ H     .   single     .         0.667     0.020
+ HCH1  .   single     .         0.667      .
+ HCH1 CH1  single    300.000    1.099     0.010
+ HCH2  .   single     .         0.667      .
+ HCH2 CH2  single    300.000    1.092     0.013
+ HCH3  .   single     .         0.667      .
+ HCH3 CH3  single    300.000    1.059     0.030
+ HCR1  .   single     .         0.667      .
+ HCR1 CR1  single    350.000    1.077     0.012 # impossible
+ HCR1 CR1H single    350.000    1.077     0.012
+ HC2   .   single     .         0.667      .
+ HC2  C2   single    350.000    1.077     0.012
+ HC1   .   single     .         0.667      .
+ HC1  C1   single    350.000    1.077     0.012
+ HCR5  .   single     .         0.667      .
+ HCR5 CR15 single    350.000    1.083     0.011
+ HCR6  .   single     .         0.667      .
+ HCR6 CR16 single    350.000    1.083     0.011
+ HNC1  .   single     .         0.667      .
+ HNC1 NC1  single    405.000    1.009     0.020  #?
+ HNC2  .   single     .         0.667      .
+ HNC2 NC2  single    405.000    1.009     0.020   #?
+ HNT1  .   single     .         0.667      .
+ HNT1 NT1  single    405.000    1.033     0.022
+ HNT2  .   single     .         0.667      .
+ HNT2 NT2  single    405.000    1.033     0.022
+ HNT3  .   single     .         0.667      .
+ HNT3 NT3  single    405.000    1.033     0.022
+ HNH1  .   single     .         0.667      .
+ HNH1 NH1  single    405.000    1.010     0.020   #?
+ HNH2  .   single     .         0.667      .
+ HNH2 NH2  single    405.000    1.010     0.020
+ HNR5  .   single     .         0.667      .
+ HNR5 NR15 single    405.000    1.040     0.020  #?
+ HNR6  .   single     .         0.667      .
+ HNR6 NR16 single    405.000    1.040     0.020  #?
+ HOH1  .   single     .         0.667      .
+ HOH1 OH1  single    450.000    0.967     0.010
+ HOH2  .   single     .         0.667      .
+ HOH2 OH2  single    450.000    0.960     0.020 #?
+ HOHA  .   single     .         0.667      .
+ HOHA OHA  single    450.000    0.960     0.020 #?
+ HOHB  .   single     .         0.667      .
+ HOHB OHB  single    450.000    0.960     0.020 #?
+ HOHC  .   single     .         0.667      .
+ HOHC OHC  single    450.000    0.960     0.020 #?
+ P    .    single     .         2.256      .
+ P    .    double     .         2.050      .
+ P    .    deloc      .         2.100     0.020
+ P1   .    single     .         2.200     0.020
+ P    O2   single    230.000    1.610      .
+ P    OC2  single    230.000    1.610      .
+ P    OP   deloc        .       1.510      .
+ P    P    single       .       2.214   0.022
+ P    P    double       .       2.030   0.030
+ PS   PS   single       .       2.214   0.022
+ PS   PS   double       .       2.030   0.030
+ PS   .    single       .       2.114   0.040
+ PS   .    double       .       1.930   0.040
+#
+ S    .    single      .        2.050      .
+ S    .    double      .        1.890      .  # ?
+ S    CH1  single    450.000    1.810      .
+ S    CH2  single    450.000    1.810      .
+ S    CH3  single    450.000    1.810      .
+ S    OS   single    525.000    1.577      .
+ S    OS   double    525.000    1.436      .
+ S    OS   deloc        .       1.470      .
+ S    O    single    525.000    1.577      .  # impossible
+ S    O    double    525.000    1.436      .
+ ST   .    single      .        2.050      .
+ ST   .    double      .        1.80      0.020
+ ST   .    deloc       .        1.80      0.020
+ S2   .    single      .        2.00      0.020
+ S1   .    double      .        1.80      0.020
+ ST   OS   single    525.000    1.577      .
+ ST   OS   double    525.000    1.436      .
+ ST   OS   delocal   525.000    1.480      .
+ ST   O    single    525.000    1.575      .
+ ST   O    double    525.000    1.436      .
+ S    S    single    500.000    2.036      .
+ SH1  .    single     .         2.050      .
+ SH1  CSP  single    450.000    1.680      .
+ SH1  CH2  single    450.000    1.810      .
+ SH1  HSH1 single    300.000    1.330      .    # ?
+ FE   .    metal       .        2.470     0.040 # ?
+ FE   NPA  metal     500.000    2.090     0.040 # ?
+ FE   NPB  metal     500.000    2.090     0.040 # ?
+ FE   NR5  metal     500.000    2.090     0.040 # ?
+ FE   NRD5 metal     500.000    1.980     0.040 # ?
+ FE   O    metal     500.000    2.040     0.040 # ?
+ FE   S    metal     500.000    2.300     0.040
+ MG   .    metal       .        2.670     0.040
+ MG   NPA  metal     500.000    2.090      .
+ MG   NPB  metal     500.000    2.090      .
+ MG   OHA  metal     500.000    2.150      .  # ?
+ MG   OHB  metal     500.000    2.150      .  # ?
+ MG   OHC  metal     500.000    2.150      .  # ?
+ MG   O    metal     500.000    2.180      .  # ?
+ F    .    single       .       1.300      .  # ?
+ F    CH1  single       .       1.370      .
+ F    CH2  single       .       1.370      .
+ F    CH3  single       .       1.370      .
+ F    CT   single       .       1.320      .
+ B    .    single       .       1.600      .  # ?
+ B    CH1  single       .       1.600      .
+ B    CH2  single       .       1.600      .
+ B    CH3  single       .       1.600      .
+ B    CT   single       .       1.600      .
+ B    OB   single       .       1.37       .
+ CA   .    metal        .       3.25      0.050
+ CA   OS   metal        .       2.32      0.050
+ CA   O    metal        .       2.32      0.050
+ CA   O2   metal        .       2.32      0.050
+ CA   OH1  metal        .       2.32      0.050
+ CA   OH2  metal        .       2.32      0.050
+ CA   OHA  metal        .       2.32      0.050
+ CA   OHB  metal        .       2.32      0.050
+ CA   OHC  metal        .       2.32      0.050
+ CA   OC2  metal        .       2.32      0.050
+ CA   OC   metal        .       2.32      0.050
+ CA   OP   metal        .       2.32      0.050
+ CL   .    single       .       2.20      0.040
+ CL   CH1  single       .       1.790     0.020
+ CL   CH2  single       .       1.790     0.020
+ CL   CH3  single       .       1.790     0.020
+ CL   CT   single       .       1.790     0.020
+ CO   .    metal        .       2.380     0.050
+ CO   C    metal      65.000    1.980      .
+ CO   C1   metal      65.000    1.980      .
+ CO   C2   metal      65.000    1.980      .
+ CO   CT   metal      65.000    1.980      .
+ CO   CH1  metal      65.000    1.980      .
+ CO   CH2  metal      65.000    1.980      .
+ CO   CH3  metal      65.000    1.980      .
+ CO   NPA  metal     500.000    1.980      .
+ CO   NPB  metal     500.000    1.980      .
+ CO   NT3  metal     500.000    1.980      .
+ CO   NRD5 metal      65.000    1.980      .
+ ZN    .   metal       .        2.900      .
+ ZN   NRD5 metal      65.000    2.150      .
+ I     .   single      .        2.80       .
+ I    CR6  single     65.000    2.090      .
+ BR    .   metal       .        2.500      .
+ BR   CR6  metal      65.000    1.890      .
+#
+ NA        .       metal  .     3.400      .
+ V         .       metal  .     2.740      .
+ MN        .       metal  .     2.700      .
+ CU        .       metal  .     2.750      .
+ CD        .       metal  .     3.250      .
+ PB        .       metal  .     3.530      .
+ HG        .       metal  .     3.200    0.070
+ U         .       metal  .     3.400    0.070  # ?
+ W         .       metal  .     3.000    0.070
+ Y         .       metal  .     3.550    0.070
+ K         .       metal  .     4.130    0.070
+ SI        .       single .     2.10     0.020
+ SI        SI      single .     2.35     0.020
+ SI1       .       single .     2.10     0.030
+ AL        .       metal  .     3.80     0.070
+ AL        O       double .     1.850    0.030
+ GD        .       metal  .     3.570    0.070
+ NI        .       metal  .     2.800    0.070
+ SM        .       metal  .     2.450    0.070
+ SR        .       metal  .     3.800    0.070
+ IN        .       metal  .     3.400    0.070
+ HO        .       metal  .     3.250    0.070
+ YB        .       metal  .     3.350    0.070
+ TE        .       metal  .     2.600    0.070
+ LI        .       metal  .     2.400    0.070
+ RB        .       metal  .     3.800    0.070
+ BA        .       metal  .     4.350    0.070  # ?
+ CS        .       metal  .     4.500    0.070
+ TL        .       metal  .     3.400    0.070
+ PT        .       metal  .     2.650    0.040
+ BE        .       metal  .     2.230    0.040
+ SC        .       metal  .      .       0.04
+ TI        .       metal  .      .       0.04
+ CR        .       metal  .      .       0.04
+ GA        .       metal  .      .       0.04
+ GE        .       single .    2.35      0.02
+ GE        .       metal  .    2.40      0.04
+ GE1       .       metal  .    2.40      0.04
+ GE1       .       single  .   2.35      0.02
+ SN        .       single  .   2.75      0.03
+ SN        .       metal   .   2.75      0.03
+ PB        .       metal   .   2.90      0.04
+# AS        .       metal  .    2.46      0.04
+ AS        .       single .    2.40      0.03
+ AS1       .       single .    2.46      0.03
+ SB        .       metal  .      .       0.04
+ BI        .       metal  .    2.80      0.04
+#
+ ZR        .       metal  .      .       0.04
+ NB        .       metal  .      .       0.04
+ TC        .       metal  .      .       0.04
+ RU        .       metal  .      .       0.04
+ RH        .       metal  .      .       0.04
+ PD        .       metal  .      .       0.04
+ AG        .       metal  .      .       0.04
+
+
+ SE       CH1      single .     1.970    0.020
+ SE       CH2      single .     1.970    0.020
+ SE       CH3      single .     1.970    0.020
+ SE       CT       single .     1.970    0.020
+ SE        .       single .     2.340    0.040
+ SE        .       double .     1.750    0.040
+ SE        O      single  .     1.974    0.020
+ SE        O      double  .     1.597    0.020
+ MO        .       metal  .     2.650    0.040
+ OSE       .       metal  .     2.650    0.040
+ IR        .       metal  .     2.650    0.040
+#
+ DUM        .       .      .     0.01    1.000
+  .         .       .      .     2.4     0.100
+#
+# ---  ANGLES ---
+#
+loop_
+_lib_angle.atom_type_1
+_lib_angle.atom_type_2
+_lib_angle.atom_type_3
+_lib_angle.const
+_lib_angle.value
+#
+# _atom_type atomic chemical type
+# _const     constant KTHETA
+# _value     equilibrium value for the angle THETA0
+#           THETA - actual angle
+#
+#           ENERGY = KTHETA * ( THETA - THETA0 )**2
+#
+ NS   CSP  CH3      .     180.000
+ NS   CSP  SH1      .     180.000
+
+ C    C    C      45.000  120.000
+ CH1  C    C      45.000  120.000
+ CH2  C    C      45.000  120.000
+ CH3  C    C      45.000  120.000
+ CT   C    C      45.000  120.000
+ C1   C    C      45.000  120.000
+ C2   C    C      45.000  120.000
+ C1   C    C1     45.000  120.000
+ C2   C    C1     45.000  120.000
+ CH1  C    C1     45.000  120.000
+ CH2  C    C1     45.000  120.000
+ CH3  C    C1     45.000  120.000
+ CT   C    C1     45.000  120.000
+ C2   C    C2     45.000  120.000
+ CH1  C    C2     45.000  120.000
+ CH2  C    C2     45.000  120.000
+ CH3  C    C2     45.000  120.000
+ CT   C    C2     45.000  120.000
+ CH2  C    CR5    45.000  116.500
+ CH3  C    CR5    45.000  116.500
+ CH1  C    CH3    45.000  120.000
+ CH1  C    CH2    45.000  120.000
+ CH2  C    CH3    45.000  120.000
+ CH3  C    CH3    45.000  120.000
+ CT   C    CH1    45.000  120.000
+ CT   C    CH2    45.000  120.000
+ CT   C    CH3    45.000  120.000
+ N    C    C      20.000  116.500
+ N    C    C1     20.000  116.500
+ N    C    C2     20.000  116.500
+ N    C    CH1    20.000  116.500
+ N    C    CH2    20.000  116.500
+ N    C    CH3    20.000  116.500
+ N    C    CT     20.000  116.500
+ N    C    CO     20.     126.000
+ N    C    N      70.000  120.000
+ N    C    CR6    20.000  120.000
+ NH1  C    CR5    20.000  120.000
+ NH1  C    CR6    20.000  120.000
+ NH1  C    CH1    20.000  116.500
+ NH1  C    CH2    20.000  116.500
+ NH1  C    CH3    20.000  116.500
+ NH1  C    CT     20.000  116.500
+ NC2  C    CR6    20.000  116.500
+ NC2  C    NC1    70.000  120.000
+ NC2  C    NC2    70.000  120.000
+ NH2  C    CR6    20.000  120.000
+ NH2  C    CH3    20.000  120.000
+ NH2  C    CH2    20.000  116.500
+ NH2  C    NH1    20.000  120.000
+ NH2  C    NH2    20.000  120.000
+ NT3  C    C      20.000  120.000
+ O    C    C      85.000  120.500
+ O    C    C1     85.000  120.500
+ O    C    C2     85.000  120.500
+ O    C    CH1    85.000  120.500
+ O    C    CH2    85.000  120.500
+ O    C    CH3    85.000  123.000
+ O    C    CT     85.000  120.500
+ O    C    CR5    85.000  120.500
+ O    C    CR6    85.000  120.500
+ O    C    N      85.000  123.000
+ O    C    NH1    65.000  123.000
+ O    C    NH2    65.000  123.000
+ O    C    NH3    65.000  123.000
+ O    C    NC1    65.000  123.000
+ O    C    NC2    65.000  123.000
+ O    C    NT3    65.000  122.000
+ O    C    O      60.000  120.000
+ O    C    OH1    85.000  119.000
+ O    C    O2     60.000  119.000
+ O    C    OC     60.000  119.000
+
+ O2   C    CR6    60.000  120.000
+ O2   C    CH3    60.000  120.000
+ O2   C    CH2    60.000  120.000
+ O2   C    CH1    60.000  120.000
+ O2   C    CT     60.000  120.000
+ O2   C    C1     60.000  120.000
+ O2   C    C      60.000  120.000
+ O2   C    N      70.000  120.000
+ O2   C    NH1    70.000  118.000
+
+ OH1  C    CH1    85.000  120.000
+ OH1  C    CH2    85.000  120.500
+ OH1  C    CR6    85.000  120.000
+ OH1  C    C      85.000  120.000
+ OH1  C    NH1    85.000  120.000
+ OH1  C    OH1    85.000  120.000
+ OH1  C    O2     85.000  120.000
+ OC   C    C      85.000  120.000
+ OC   C    CH1    85.000  118.500
+ OC   C    CH2    85.000  118.500
+ OC   C    CT     85.000  118.500
+ OC   C    OC     85.000  123.000
+
+ O    C1   CH1     85.000  120.500
+ O    C1   CH2     85.000  120.500
+ O    C1   CH3     85.000  120.500
+ O    C1   CT      85.000  120.500
+ O    C1   N       70.000  120.000
+ C    C1   CH1     85.000  120.500
+ CT   C1   CH1     85.000  120.500
+ C    C1   CH2     85.000  120.500
+ C    C1   CH3     85.000  120.500
+ C    C1   CT      85.000  120.500
+ C1   C1   C       70.000  120.000
+ C1   C1   C1      70.000  120.000
+ C2   C1   C1      70.000  120.000
+ CR6  C1   C1      70.000  120.000
+ CR5  C1   C2      70.000  120.000
+
+ HC1  C1   O       40.000  123.000
+ HC1  C1   N       40.000  120.000
+ HC1  C1   C       40.000  120.000
+ HC1  C1   C1      40.000  120.000
+ HC1  C1   C2      40.000  120.000
+ HC1  C1   CR6     40.000  120.000
+ HC1  C1   CR5     40.000  120.000
+ HC1  C1   CH1     40.000  120.000
+ HC1  C1   CH2     40.000  120.000
+ HC1  C1   CH3     40.000  120.000
+ HC1  C1   CT      40.000  120.000
+
+ O    C2   CH1     85.000  120.500
+ O    C2   CH2     85.000  120.500
+ O    C2   CH3     85.000  120.500
+ O    C2   CT      85.000  120.500
+ O    C2   C       85.000  120.500
+ O    C2   C1      85.000  120.500
+ C1   C2   C       70.000  120.000
+ HC2  C2   C       40.000  120.000
+ HC2  C2   C1      40.000  120.000
+ HCH  C2   CR1     40.000  120.000
+ HC2  C2   CR5     40.000  120.000
+ HC2  C2   HC2     40.000  120.000
+ HC2  C2   CH1     40.000  120.000
+ HC2  C2   CH2     40.000  120.000
+ HC2  C2   CH3     40.000  120.000
+ HC2  C2   CT      40.000  120.000
+ HC2  C2   O       40.000  120.000
+
+ CR5  CR1  C2     70.000  122.000
+ CR5  CR1  CR5    70.000  126.000
+ CH1  CR1  CR5    40.000  117.000
+ CH3  CR1  CR5    40.000  117.000
+ HCR1 CR1  C2     40.000  121.000
+ HCR1 CR1  CR5    40.000  117.000
+
+ CR5  CR1H CR5    70.000  126.000
+ CH1  CR1H CR5    40.000  117.000
+ CH3  CR1H CR5    40.000  117.000
+ HCR1 CR1H CR5    40.000  117.000
+
+ CR15 CR15 CR15   70.000  108.000
+ CR5  CR15 CR5    70.000  108.000
+ CR15 CR15 CR5    70.000  108.000
+ CH2  CR15 CR15   70.000  126.000
+ NR5  CR15 CR15   65.000  108.000
+ NR5  CR15 CR5    65.000  108.000
+ NR15 CR15 CR5    65.000  108.000
+ NR56 CR15 CR15   65.000  108.000
+ NR56 CR15 CR5    65.000  108.000
+
+ CR56 NR56 FE     65.000  126.000
+ NR56 NR56 FE     65.000  126.000
+ CR56 NR56 MG     65.000  126.000
+ NR56 NR56 MG     65.000  126.000
+ CR56 NR56 CO     65.000  126.000
+ NR56 NR56 CO     65.000  126.000
+ CR5  NR5  FE     65.000  126.000
+ NR5  NR5  FE     65.000  126.000
+ CR5  NR5  MG     65.000  126.000
+ NR5  NR5  MG     65.000  126.000
+ CR5  NR5  CO     65.000  126.000
+ NR5  NR5  CO     65.000  126.000
+ CR15 NR5  FE     65.000  126.000
+ NR15 NR5  FE     65.000  126.000
+ CR15 NR5  MG     65.000  126.000
+ NR15 NR5  MG     65.000  126.000
+ CR15 NR5  CO     65.000  126.000
+ NR15 NR5  CO     65.000  126.000
+
+ NR5  CR5  S1     65.000  126.000
+ NR15 CR5  S1     65.000  126.000
+ NR5  NR5  S1     65.000  126.000
+ NR15 NR5  S1     65.000  126.000
+ CR5  CR5  S1     65.000  126.000
+ CR15 CR5  S1     65.000  126.000
+ CR5  NR5  S1     65.000  126.000
+ CR15 NR5  S1     65.000  126.000
+
+ NR56 CR56 CR5    70.000  108.000
+ NR56 CR56 CR15   70.000  108.000
+ CR56 NR56 CR56   70.000  108.000
+ CR5  NR5  CR5    70.000  108.000
+ CR56 CR5  CR5    70.000  108.000
+
+ NR56 CR56 CR6    70.000  120.000
+ NR56 CR56 CR16   70.000  120.000
+ CR56 CR16 CR56   70.000  120.000
+ CR56 CR6  CR56   70.000  120.000
+
+ CT   CR56 CR6    70.000  132.000
+ CR6  CR56 NR56   70.000  132.000
+ CR5  CR56 CR6    70.000  132.000
+ CR15 CR56 CR6    70.000  132.000
+
+# CR5  CR56 CR16   70.000  132.000
+# CR15 CR56 CR16   70.000  132.000
+
+ CR16 CR56 NR56   70.000  126.000
+ CR15 CR56 CR16   70.000  126.000
+
+ CT   CR56 CR16   70.000  126.000
+ CR16 CR56 CR5    70.000  126.000
+ CR5  CR1  CR5    70.000  126.000
+
+ CT   CR56 NR56   70.000  108.000
+ CT   CR5  NR5    70.000  108.000
+ CT   CR5  CR56   70.000  108.000
+ CT   CR15 CR56   70.000  108.000
+ CT   CR5  NR56   70.000  108.000
+ CT   CR15 NR56   70.000  108.000
+ CR5  CT   CR56   70.000  108.000
+
+ CR66 NR66 FE     65.000  120.000
+ NR66 NR66 FE     65.000  120.000
+ CR66 NR66 MG     65.000  120.000
+ NR66 NR66 MG     65.000  120.000
+ CR66 NR66 CO     65.000  120.000
+ NR66 NR66 CO     65.000  120.000
+
+ CR66 NR66 S1     65.000  120.000
+ NR66 NR66 S1     65.000  120.000
+ CR66 CR66 S1     65.000  120.000
+
+ NRD5 CR15 CR5    65.000  108.000
+ NR5  CR15 NR5    70.000  108.000
+ NR15 CR15 NR5    70.000  108.000
+ NR15 CR15 NR15   70.000  108.000
+ NRD5 CR15 NR5    70.000  108.000
+ NRD5 CR15 NR15   70.000  108.000
+ NRD5 CR15 NRD5   70.000  108.000
+ O    CR15 CR15   60.000  126.000
+ O    CR15 CH2    60.000  126.000
+ O    CR15 NR5    60.000  126.000
+ OH1  CR15 CR15   60.000  126.000
+ OC2  CR15 CR15   60.000  126.000
+ OC2  CR15 CR15   60.000  108.000
+ HCR5 CR15 CR15   60.000  126.000
+ HCR5 CR15 CR5    40.000  126.000
+ HCR5 CR15 CH2    40.000  126.000
+ HCR5 CR15 NR5    40.000  126.000
+ HCR5 CR15 NR15   40.000  126.000
+ HCR5 CR15 NRD5   40.000  126.000
+ HCR5 CR15 O      40.000  126.000
+ HCR5 CR15 O2     40.000  126.000
+ HCR5 CR15 OH1    40.000  108.000
+ HCR5 CR15 OC2    40.000  126.000
+
+ CR56 CR5  CR6    70.000  126.000
+ CR15 CR5  CR6    70.000  126.000
+ CR5  CR5  CR16   70.000  126.000
+ CR15 CR5  CR16   70.000  126.000
+ CR5  CR5  CR6    70.000  126.000
+ CR15 CR5  C      70.000  126.000
+ CR15 CR5  CR15   70.000  108.000
+ CR5  CR5  C      70.000  117.000
+ CR5  CR5  C1     70.000  117.000
+ CR5  CR5  C2     70.000  117.000
+ CR5  CR5  CR1    70.000  126.000
+ CR5  CR5  CR1H   70.000  126.000
+ CR5  CR5  CR5    70.000  108.000
+ CR56 CR5  CR15   70.000  108.000
+ CH1  CR5  CR1    70.000  126.000
+ CH1  CR5  CR1H   70.000  126.000
+ CH1  CR5  CR5    70.000  126.000
+ CH2  CR5  CR15   70.000  126.000
+ CH2  CR5  CR5    70.000  126.000
+ CH2  CR5  CR56   70.000  126.000
+ CH3  CR5  CR15   70.000  108.000
+ CH3  CR5  CR15   70.000  126.000
+ CH3  CR5  CR5    70.000  126.000
+ CT   CR5  CR1    70.000  126.000
+ CT   CR5  CR1H   70.000  126.000
+ CT   CR5  CR5    70.000  126.000
+ CT   CR5  CH3    70.000  126.000
+ CH2  CR5  CH3    70.000  126.000
+ NH1  CR5  CR15   65.000  126.000
+ NPA  CR5  CR1    65.000  126.000
+ NPA  CR5  CR1H   65.000  126.000
+ NPA  CR5  CR5    65.000  108.000
+ NPA  CR5  CH1    65.000  108.000
+ NPA  CR5  CH3    65.000  126.000
+ NPA  CR5  CT     65.000  126.000
+ NPB  CR5  CR1    65.000  126.000
+ NPB  CR5  CR1H   65.000  126.000
+ NPB  CR5  CR5    65.000  108.000
+ NPB  CR5  CH1    65.000  108.000
+ NPB  CR5  CH3    65.000  126.000
+ NPB  CR5  CT     65.000  126.000
+
+ NR5  CR5  C      70.000  126.000
+ NR5  CR5  CH1    70.000  126.000
+ NR5  CR5  CH2    70.000  126.000
+ NR5  CR5  CH3    70.000  126.000
+ NR5  CR5  CR5    70.000  108.000
+ NR5  CR5  CR15   70.000  108.000
+ NR5  CR5  CR6    70.000  126.000
+ NR5  CR5  CR16   70.000  126.000
+ NR5  CR5  NR5    70.000  108.000
+ NR5  CR5  NR15   70.000  108.000
+ NR5  CR5  NR56   70.000  108.000
+ NR5  CR5  NRD5   70.000  108.000
+
+ NR15 CR5  C      70.000  126.000
+ NR15 CR5  CH1    70.000  126.000
+ NR15 CR5  CH2    70.000  126.000
+ NR15 CR5  CH3    70.000  126.000
+ NR15 CR5  CR5    70.000  108.000
+ NR15 CR5  CR15   65.000  108.000
+ NR15 CR5  NR15   70.000  108.000
+ NR15 CR5  NR56   70.000  108.000
+ NR15 CR5  NRD5   70.000  108.000
+
+ NR56 CR5  C      70.000  126.000
+ NR56 CR5  CH1    70.000  126.000
+ NR56 CR5  CH2    70.000  126.000
+ NR56 CR5  CH3    70.000  126.000
+ NR56 CR5  CR5    70.000  108.000
+ NR56 CR5  CR15   70.000  108.000
+ NR56 CR5  NR56   70.000  108.000
+ NR56 CR5  NRD5   70.000  108.000
+
+ NRD5 CR5  C      70.000  126.000
+ NRD5 CR5  CH1    70.000  126.000
+ NRD5 CR5  CH2    70.000  126.000
+ NRD5 CR5  CH3    70.000  126.000
+ NRD5 CR5  CR5    65.000  108.000
+ NRD5 CR5  CR15   65.000  108.000
+ NRD5 CR5  CR6    70.000  126.000
+ NRD5 CR5  CR16   70.000  126.000
+ NRD5 CR5  NRD5   70.000  108.000
+
+ O2   CR15 CR5    60.000  108.000
+ O2   CR15 CR15   60.000  108.000
+ O2   CR5  CR15   60.000  108.000
+ O2   CR5  CR6    60.000  126.000
+ O2   CR5  CH2    60.000  126.000
+ O2   CR5  NR15   60.000  108.000
+
+ CR56 CR56 CR5    70.000  108.000
+ CR16 CR56 CR56   70.000  120.000
+ CR6  CR56 CR56   70.000  120.000
+ CR66 CR56 CR56   70.000  120.000
+ NR5  CR56 CR56   65.000  108.000
+ NR5  CR56 CR16   65.000  132.000
+ NR15 CR56 CR6    65.000  132.000
+ NR15 CR56 CR56   65.000  108.000
+ NR15 CR56 CR16   65.000  132.000
+ NRD5 CR56 CR56   65.000  108.000
+ CR5  CR56 NR56   65.000  108.000
+ CR15 CR56 NR56   65.000  108.000
+ NR5  CR56 NR56   65.000  108.000
+ NR15 CR56 NR56   65.000  108.000
+ NRD5 CR56 NR56   65.000  108.000
+ NRD5 CR56 CR16   65.000  132.000
+ NC3  CR56 CR6    65.000  132.000
+ NRD5 CR56 CR6    65.000  132.000
+ NRD6 CR56 CR56   70.000  120.000
+ NR16 CR56 CR56   70.000  120.000
+ NR16 CR56 NR56   70.000  120.000
+ NR6  CR56 NR56   70.000  120.000
+ NR6  CR56 CR56   70.000  120.000
+ NR6  CR56 NR5    65.000  132.000
+ NRD6 CR56 NR5    65.000  132.000
+ NR16 CR56 NR5    65.000  132.000
+ NR6  CR56 NR15   65.000  132.000
+ NRD6 CR56 NR15   65.000  132.000
+ NR16 CR56 NR15   65.000  132.000
+
+ CH1  CR16 CR6    70.000  120.000
+ CH1  CR16 CR16   70.000  120.000
+ CH1  CR16 NR6    70.000  120.000
+ CH1  CR16 NR16   70.000  120.000
+ CH1  CR16 NRD6   70.000  120.000
+ CH2  CR16 CR6    70.000  120.000
+ CH2  CR16 CR16   70.000  120.000
+ CH2  CR16 NR6    70.000  120.000
+ CH2  CR16 NR16   70.000  120.000
+ CH2  CR16 NRD6   70.000  120.000
+ CH3  CR16 CR6    70.000  120.000
+ CH3  CR16 CR16   70.000  120.000
+ CH3  CR16 NR6    70.000  120.000
+ CH3  CR16 NR16   70.000  120.000
+ CH3  CR16 NRD6   70.000  120.000
+ CR16 CR16 CR56   70.000  120.000
+ CR16 CR16 CR16   70.000  120.000
+ CR6  CR16 CR56   70.000  120.000
+ CR6  CR16 CR16   70.000  120.000
+ CR6  CR16 CR6    70.000  120.000
+ CR66 CR16 CR16   70.000  120.000
+ CR66 CR16 CR66   70.000  120.000
+ CR66 CR16 CR6    70.000  120.000
+ CT   CR16 CR16   70.000  120.000
+ CT   CR16 CR6    70.000  120.000
+ CT   CR16 NR6    70.000  120.000
+ CT   CR16 NR16   70.000  120.000
+ CT   CR16 NRD6   70.000  120.000
+
+ N    CR16 CR16   70.000  120.000
+ N    CR16 CR6    70.000  120.000
+ N    CR16 NR6    70.000  120.000
+ N    CR16 NRD6   70.000  120.000
+ N    CR16 CR56   70.000  120.000
+ N    CR16 CR66   70.000  120.000
+
+ NC2  CR16 CR16   70.000  120.000
+ NC2  CR16 CR6    70.000  120.000
+ NC2  CR16 NR6    70.000  120.000
+ NC2  CR16 NR16   70.000  120.000
+ NC2  CR16 NRD6   70.000  120.000
+ NC2  CR16 CR56   70.000  120.000
+ NC2  CR16 CR66   70.000  120.000
+
+ NH2  CR16 CR16   70.000  120.000
+ NH2  CR16 CR6    70.000  120.000
+ NH2  CR16 NR6    70.000  120.000
+ NH2  CR16 NR16   70.000  120.000
+ NH2  CR16 NRD6   70.000  120.000
+ NH2  CR16 CR56   70.000  120.000
+
+ NT3  CR16 CR16   70.000  120.000
+ NT3  CR16 CR6    70.000  120.000
+ NT3  CR16 NR6    70.000  120.000
+ NT3  CR16 NR16   70.000  120.000
+ NT3  CR16 NRD6   70.000  120.000
+ NT3  CR16 CR56   70.000  120.000
+ NT3  CR16 CR66   70.000  120.000
+
+ NR56 CR16 O      70.000  120.000
+ NR56 CR16 CR56   70.000  120.000
+
+ NR6  CR16 CR16   70.000  120.000
+ NR6  CR16 CR6    70.000  120.000
+ NR6  CR16 NR6    70.000  120.000
+ NR6  CR16 NR16   70.000  120.000
+ NR6  CR16 NRD6   70.000  120.000
+ NR6  CR16 CR56   70.000  120.000
+ NR6  CR16 CR66   70.000  120.000
+
+ NR16 CR16 CR16   70.000  120.000
+ NR16 CR16 CR6    70.000  120.000
+ NR16 CR16 NR6    70.000  120.000
+ NR16 CR16 NR16   70.000  120.000
+ NR16 CR16 NRD6   70.000  120.000
+ NR16 CR16 CR56   70.000  120.000
+ NR16 CR16 CR66   70.000  120.000
+
+ NRD6 CR16 CR16   70.000  120.000
+ NRD6 CR16 CR6    70.000  120.000
+ NRD6 CR16 NR6    70.000  120.000
+ NRD6 CR16 NR16   70.000  120.000
+ NRD6 CR16 NRD6   70.000  120.000
+ NRD6 CR16 CR56   70.000  120.000
+ NRD6 CR16 CR66   70.000  120.000
+
+ HCR6 CR16 CR56   40.000  120.000
+ HCR6 CR16 CR16   40.000  120.000
+ HCR6 CR16 CR6    40.000  120.000
+ HCR6 CR16 CR66   40.000  120.000
+ HCR6 CR16 CH1    40.000  120.000
+ HCR6 CR16 CH2    40.000  120.000
+ HCR6 CR16 CH3    40.000  120.000
+ HCR6 CR16 NR6    40.000  120.000
+ HCR6 CR16 NR16   40.000  120.000
+ HCR6 CR16 NRD6   40.000  120.000
+ HCR6 CR16 O2     40.000  120.000
+ HCR6 CR16 OH1    40.000  120.000
+
+
+ OH1  CR16 CR16   65.000  120.000
+ OH1  CR16 CR6    65.000  120.000
+ OH1  CR16 NR6    65.000  120.000
+ OH1  CR16 NR16   65.000  120.000
+ OH1  CR16 NRD6   65.000  120.000
+ OH1  CR16 NR56   65.000  120.000
+
+ CR16 CR6  C      70.000  120.000
+ CR16 CR6  C1     70.000  120.000
+ CR16 CR6  CR16   70.000  120.000
+ CR16 CR6  CR5    70.000  120.000
+ CR6  CR6  CR5    70.000  120.000
+ CR16 CR6  NR5    70.000  132.000
+ CR6  CR6  NR5    70.000  132.000
+ CR16 CR6  NR15   70.000  132.000
+ CR6  CR6  NR15   70.000  132.000
+ CR16 CR6  NRD5   70.000  132.000
+ CR6  CR6  NRD5   70.000  132.000
+ CR16 CR6  CR15   70.000  120.000
+ CR6  CR6  CR15   70.000  120.000
+ CR6  CR6  C      65.000  120.000
+ CR6  CR6  C1     70.000  120.000
+ CR6  CR6  CR16   70.000  120.000
+ CR6  CR6  CR6    70.000  120.000
+ CR66 CR6  CR6    70.000  120.000
+ CR66 CR6  CR16   70.000  120.000
+ CR66 CR6  CR66   70.000  120.000
+ CH1  CR6  CR16   70.000  120.000
+ CH1  CR6  CR6    70.000  120.000
+ CH1  CR6  CR66   70.000  120.000
+ CH1  CR6  NR6    70.000  120.000
+ CH1  CR6  NR16   70.000  120.000
+ CH1  CR6  NRD6   70.000  120.000
+ CH2  CR6  CR16   70.000  120.000
+ CH2  CR6  CR6    70.000  120.000
+ CH2  CR6  CR66   70.000  120.000
+ CH2  CR6  NR6    70.000  120.000
+ CH2  CR6  NR16   70.000  120.000
+ CH2  CR6  NRD6   70.000  120.000
+ CH3  CR6  CR16   70.000  120.000
+ CH3  CR6  CR6    70.000  120.000
+ CH3  CR6  CR66   70.000  120.000
+ CH3  CR6  NR6    70.000  120.000
+ CH3  CR6  NR16   70.000  120.000
+ CH3  CR6  NRD6   70.000  120.000
+ CT   CR6  CR16   70.000  120.000
+ CT   CR6  CR6    70.000  120.000
+ CT   CR6  NR6    70.000  120.000
+ CT   CR6  NR16   70.000  120.000
+ CT   CR6  NRD6   70.000  120.000
+
+ N    CR6  CR16   70.000  120.000
+ N    CR6  CR6    70.000  120.000
+ N    CR6  NR6    70.000  120.000
+ N    CR6  NR16   70.000  120.000
+ N    CR6  NRD6   70.000  120.000
+ N    CR6  CR56   70.000  120.000
+ N    CR6  CR66   70.000  120.000
+
+ NC2  CR6  CR16   70.000  120.000
+ NC2  CR6  CR6    70.000  120.000
+ NC2  CR6  NR6    70.000  120.000
+ NC2  CR6  NR16   70.000  120.000
+ NC2  CR6  NRD6   70.000  120.000
+ NC2  CR6  CR56   70.000  120.000
+ NC2  CR6  CR66   70.000  120.000
+
+ NH2  CR6  CR16   70.000  120.000
+ NH2  CR6  CR6    70.000  120.000
+ NH2  CR6  NR6    70.000  120.000
+ NH2  CR6  NR16   70.000  120.000
+ NH2  CR6  NRD6   70.000  120.000
+ NH2  CR6  CR56   70.000  120.000
+
+ NT3  CR6  CR16   70.000  120.000
+ NT3  CR6  CR6    70.000  120.000
+ NT3  CR6  NR6    70.000  120.000
+ NT3  CR6  NR16   70.000  120.000
+ NT3  CR6  NRD6   70.000  120.000
+ NT3  CR6  CR56   70.000  120.000
+ NT3  CR6  CR66   70.000  120.000
+
+ NR56 CR6  O      70.000  120.000
+ NR56 CR6  CR56   70.000  120.000
+
+ NR6  CR6  CR16   70.000  120.000
+ NR6  CR6  CR6    70.000  120.000
+ NR6  CR6  NR6    70.000  120.000
+ NR6  CR6  NR16   70.000  120.000
+ NR6  CR6  NRD6   70.000  120.000
+ NR6  CR6  CR56   70.000  120.000
+ NR6  CR6  CR66   70.000  120.000
+
+ NR16 CR6  CR16   70.000  120.000
+ NR16 CR6  CR6    70.000  120.000
+ NR16 CR6  NR6    70.000  120.000
+ NR16 CR6  NR16   70.000  120.000
+ NR16 CR6  NRD6   70.000  120.000
+ NR16 CR6  CR56   70.000  120.000
+ NR16 CR6  CR66   70.000  120.000
+
+ NRD6 CR6  CR16   70.000  120.000
+ NRD6 CR6  CR6    70.000  120.000
+ NRD6 CR6  NR6    70.000  120.000
+ NRD6 CR6  NR16   70.000  120.000
+ NRD6 CR6  NRD6   70.000  120.000
+ NRD6 CR6  CR56   70.000  120.000
+ NRD6 CR6  CR66   70.000  120.000
+
+
+ O    CR6  CR56   65.000  120.000
+ O    CR6  CR16   65.000  120.000
+ O    CR6  CR6    65.000  120.000
+ O    CR6  CR66   65.000  120.000
+ O    CR6  NR6    65.000  120.000
+ O    CR6  NR16   65.000  120.000
+ O    CR6  NRD6   65.000  120.000
+ O2   CR6  CR16   65.000  120.000
+ O2   CR66 CR16   65.000  120.000
+ O2   CR16 CR16   65.000  120.000
+ O2   CR16 CR6    65.000  120.000
+ O2   CR16 CR66   65.000  120.000
+ O2   CR6  CR6    65.000  120.000
+ O2   CR6  CR66   65.000  120.000
+ O2   CR66 CR6    65.000  120.000
+ O2   CR66 CR66   65.000  120.000
+ O2   CR6  CR56   65.000  120.000
+ O2   CR6  NR6    65.000  120.000
+ O2   CR6  NR16   65.000  120.000
+ O2   CR6  NRD6   65.000  120.000
+ O2   CR6  NR56   65.000  120.000
+ OH1  CR6  NR6    65.000  120.000
+ OH1  CR6  NR16   65.000  120.000
+ OH1  CR6  NRD6   65.000  120.000
+ OH1  CR6  CR16   65.000  120.000
+ OH1  CR6  CR66   65.000  120.000
+ OH1  CR6  CR56   65.000  120.000
+ OH1  CR6  CR6    65.000  120.000
+
+ S1   CR6  CR16   50.000  120.000
+ S1   CR6  CR6    50.000  120.000
+ S1   NR6  CR16   50.000  120.000
+ S1   NR6  CR6    50.000  120.000
+ S1   NR6  NR16   50.000  120.000
+ S1   NR6  NR6    50.000  120.000
+ S1   CR6  NR16   50.000  120.000
+ S1   CR6  NR6    50.000  120.000
+
+ S    CR6  CR16   50.000  120.000
+ S    CR6  CR6    50.000  120.000
+ I    CR6  CR16   50.000  120.000
+ I    CR6  CR6    50.000  120.000
+ BR   CR6  CR16   50.000  120.000
+ BR   CR6  CR6    50.000  120.000
+
+ CR16 CR66 CR16   70.000  120.000
+ CR6  CR66 CR16   70.000  120.000
+ CH2  CR66 CR16   70.000  120.000
+ NH2  CR66 CR16   70.000  120.000
+
+ CR16 CR66 CR6    70.000  120.000
+ CR6  CR66 CR6    70.000  120.000
+ CH2  CR66 CR6    70.000  120.000
+ NH2  CR66 CR6    70.000  120.000
+
+ CR66 CR66 CR66   65.000  120.000
+ C    CR66 CR66   65.000  120.000
+ CR16 CR66 CR66   70.000  120.000
+ CR6  CR66 CR66   70.000  120.000
+ NR5  CR66 CR66   70.000  132.000
+ NRD5 CR66 CR66   70.000  132.000
+ NR6  CR66 CR66   70.000  120.000
+ NR16 CR66 CR66   70.000  120.000
+ NRD6 CR66 CR66   70.000  120.000
+
+ NR6  CR66 CR16   70.000  120.000
+ NR6  CR66 CR6    70.000  120.000
+ NR6  CR66 NR6    70.000  120.000
+ NR6  CR66 NRD6   70.000  120.000
+ NR6  CR66 NR16   70.000  120.000
+
+ NRD6 CR66 CR16   70.000  120.000
+ NRD6 CR66 CR6    70.000  120.000
+ NRD6 CR66 NR6    70.000  120.000
+ NRD6 CR66 NRD6   70.000  120.000
+ NRD6 CR66 NR16   70.000  120.000
+
+ NR16 CR66 CR16   70.000  120.000
+ NR16 CR66 CR6    70.000  120.000
+ NR16 CR66 NR6    70.000  120.000
+ NR16 CR66 NRD6   70.000  120.000
+ NR16 CR66 NR16   70.000  120.000
+
+ O    CR66 CR16   65.000  120.000
+ O    CR66 CR66   65.000  120.000
+ OH1  CR66 CR16   65.000  120.000
+
+ CL   CH1  CL     70.000  112.000
+ CL   CH1  C      70.000  109.470
+ C    CH1  C      70.000  111.000
+ CH1  CH1  C      70.000  109.470
+ CH1  CH1  C1     70.000  109.470
+ CH1  CH1  C2     70.000  109.470
+ CH1  CH1  CR5    70.000  109.470
+ CH1  CH1  CR6    70.000  109.470
+ CH1  CH1  CH1    45.000  111.000
+ CH2  CH1  C      70.000  109.470
+ CH2  CH1  C1     70.000  109.470
+ CH2  CH1  C2     70.000  109.470
+ CH2  CH1  CR5    70.000  109.470
+ CH2  CH1  CR6    70.000  109.470
+ CH2  CH1  CH1    45.000  111.000
+ CH2  CH1  CH2    45.000  109.470
+ CH3  CH1  C      70.000  109.470
+ CH3  CH1  C1     70.000  109.470
+ CH3  CH1  C2     70.000  109.470
+ CH3  CH1  CR5    70.000  109.470
+ CH3  CH1  CR6    70.000  109.470
+ CH3  CH1  CH1    45.000  111.000
+ CH3  CH1  CH2    45.000  111.000
+ CH3  CH1  CH3    45.000  111.000
+ CT   CH1  C      70.000  109.470
+ C1   CH1  C      70.000  109.470
+ CT   CH1  C1     70.000  109.470
+ CT   CH1  C2     70.000  109.470
+ CT   CH1  CR5    70.000  109.470
+ CT   CH1  CR6    70.000  109.470
+ CT   CH1  CH1    45.000  111.000
+ CT   CH1  CH2    45.000  111.000
+ CT   CH1  CH3    45.000  111.000
+ N    CH1  C      70.000  111.600
+ N    CH1  C1     70.000  111.600
+ N    CH1  C2     70.000  111.600
+ N    CH1  CH1    65.000  105.000
+ N    CH1  CH2    65.000  105.000
+ NH1  CH1  C      70.000  111.600
+ NC3  CH1  C      70.000  111.600
+ NH1  CH1  C1     70.000  111.600
+ NH1  CH1  C2     70.000  111.600
+ NH1  CH1  CR6    65.000  109.470
+ NH1  CH1  CR5    65.000  109.470
+ NH1  CH1  CH1    65.000  110.000
+ NH1  CH1  CH2    65.000  110.000
+ NH1  CH1  CH3    65.000  110.000
+ NC3  CH1  CH1    65.000  110.000
+ NC3  CH1  CH2    65.000  110.000
+ NC3  CH1  CH3    65.000  110.000
+ NH1  CH1  CT     65.000  110.000
+ NH1  CH1  NH1    65.000  109.470
+ NH2  CH1  CR6    65.000  109.470
+ NH2  CH1  CR5    65.000  109.470
+ NH2  CH1  C      65.000  109.470
+ NH2  CH1  C1     65.000  109.470
+ NH2  CH1  C2     65.000  109.470
+ NH2  CH1  CH1    65.000  109.470
+ NH2  CH1  CH2    65.000  109.470
+ NH2  CH1  CH3    65.000  109.470
+ NH2  CH1  NH2    65.000  109.470
+ NT3  CH1  C      70.000  111.600
+ NT3  CH1  C1     70.000  111.600
+ NT3  CH1  C2     70.000  111.600
+ NT3  CH1  CH1    65.000  110.000
+ NT3  CH1  CH2    65.000  110.000
+ NT3  CH1  CH3    65.000  110.000
+ NT3  CH1  CT     65.000  110.000
+ NPA  CH1  CH1    65.000  108.000
+ NPA  CH1  CH3    65.000  108.000
+ NPA  CH1  CT     65.000  108.000
+ NPB  CH1  CH1    65.000  108.000
+ NPB  CH1  CH3    65.000  108.000
+ NPB  CH1  CT     65.000  108.000
+ NR5  CH1  CH1    65.000  109.470
+ NR5  CH1  CH2    65.000  109.470
+ NR6  CH1  CH1    65.000  109.470
+ NR6  CH1  CH2    65.000  109.470
+ O    CH1  CH1    65.000  109.470
+ O    CH1  CH2    65.000  109.470
+ O    CH1  CH3    50.000  109.470
+ O2   CH1  CH1    50.000  109.470
+ O2   CH1  CH2    50.000  109.470
+ O2   CH1  CH3    65.000  109.470
+ O2   CH1  CT     65.000  109.470
+ O2   CH1  CR6    65.000  109.470
+ O2   CH1  NR5    65.000  109.470
+ O2   CH1  NR6    65.000  109.470
+ O    CH1  NR5    65.000  109.470
+ O    CH1  NR6    65.000  109.470
+ OH1  CH1  C      50.000  109.470
+ OH1  CH1  C1     50.000  109.470
+ OH1  CH1  C2     50.000  109.470
+ OH1  CH1  CR6    50.000  109.470
+ OH1  CH1  CH1    50.000  109.470
+ OH1  CH1  CH2    50.000  109.470
+ OH1  CH1  CH3    50.000  109.470
+ OH1  CH1  CT     50.000  109.470
+ OH1  CH1  NH1    50.000  109.470
+ OH1  CH1  NT3    50.000  109.470
+ OH1  CH1  O      50.000  109.470
+ OH1  CH1  O2     50.000  109.470
+ OC2  CH1  CH1    50.000  109.470
+ OC2  CH1  CH2    50.000  109.470
+ OC2  CH1  CH3    50.000  109.470
+ OC2  CH1  O2     50.000  109.470
+ O2   CH1  O2     50.000  109.470
+ O2   CH1  C      50.000  109.470
+ OC   CH1  CH1    50.000  109.470
+ OC   CH1  OC     50.000  109.470
+ OP   CH1  CH2    50.000  109.470
+ OP   CH1  CH3    50.000  109.470
+ HCH1 CH1  C      70.000  108.810
+ HCH1 CH1  C1     70.000  108.810
+ HCH1 CH1  C2     70.000  108.810
+ HCH1 CH1  CL     70.000  109.470
+ HCH1 CH1  CR5    70.000  109.470
+ HCH1 CH1  CH1    40.000  108.340
+ HCH1 CH1  CH2    40.000  108.340
+ HCH1 CH1  CH3    40.000  108.340
+ HCH1 CH1  CT     40.000  108.340
+ HCH1 CH1  N      50.000  109.470
+ HCH1 CH1  NH1    50.000  108.550
+ HCH1 CH1  NH2    50.000  109.470
+ HCH1 CH1  NT3    50.000  108.550
+ HCH1 CH1  NPA    65.000  108.000
+ HCH1 CH1  NPB    65.000  108.000
+ HCH1 CH1  NR5    50.000  109.470
+ HCH1 CH1  NR6    50.000  109.470
+ HCH1 CH1  CR6    50.000  109.470
+ HCH1 CH1  O      50.000  109.470
+ HCH1 CH1  O2     50.000  109.470
+ HCH1 CH1  OH1    50.000  109.470
+ HCH1 CH1  OC2    50.000  109.470
+ HCH1 CH1  OC     50.000  109.470
+ B    CH1  CH2    50.000  109.470
+ B    CH1  HCH1   50.000  109.470
+
+ CH1  CH2  C      70.000  109.470
+ CH1  CH2  C1     70.000  109.470
+ CH1  CH2  C2     70.000  109.470
+ CH1  CH2  CR5    70.000  109.470
+ CH1  CH2  CR16   70.000  109.470
+ CH1  CH2  CR6    70.000  109.470
+ CH1  CH2  CR66   70.000  109.470
+ CH1  CH2  CH1    45.000  111.000
+ CH2  CH2  C      70.000  109.470
+ CH2  CH2  C1     70.000  109.470
+ CH2  CH2  C2     70.000  109.470
+ CH2  CH2  CR5    70.000  109.470
+ CH2  CH2  CR6    70.000  109.470
+ CR6  CH2  CR6    70.000  109.470
+ CH2  CH2  CH1    45.000  111.000
+ CH2  CH2  CH2    45.000  111.000
+ CH3  CH2  CR5    70.000  109.470
+ CH3  CH2  CH1    45.000  111.000
+ CH3  CH2  CH2    45.000  111.000
+ C1   CH2  CR6    70.000  109.470
+ C2   CH2  CR6    70.000  109.470
+ C    CH2  CR6    70.000  109.470
+ C    CH2  C      70.000  109.470
+ C1   CH2  C      70.000  109.470
+ C1   CH2  C1     70.000  109.470
+ C2   CH2  C      70.000  109.470
+ C2   CH2  C1     70.000  109.470
+ C2   CH2  C2     70.000  109.470
+ CT   CH2  C      70.000  109.470
+ CT   CH2  C1     70.000  109.470
+ CT   CH2  C2     70.000  109.470
+ CT   CH2  CR5    70.000  109.470
+ CT   CH2  CR5    70.000  109.470
+ CT   CH2  CR6    70.000  109.470
+ CT   CH2  CH1    45.000  111.000
+ CT   CH2  CH1    45.000  111.000
+ CT   CH2  CH2    45.000  111.000
+ CT   CH2  CH3    45.000  111.000
+ N    CH2  CH2    65.000  105.000
+ N    CH2  CH1    65.000  105.000
+ NC1  CH2  CH2    65.000  110.000
+ NH1  CH2  C      70.000  111.600
+ NC3  CH2  C      70.000  111.600
+ NH1  CH2  C1     70.000  111.600
+ NH1  CH2  C2     70.000  111.600
+ NH1  CH2  CH1    65.000  110.000
+ NH1  CH2  CH2    65.000  112.000
+ NH1  CH2  CH3    65.000  112.000
+ NC3  CH2  CH1    65.000  110.000
+ NC3  CH2  CH2    65.000  112.000
+ NC3  CH2  CH3    65.000  112.000
+ NH1  CH2  NH1    65.000  109.470
+ NC2  CH2  CH2    65.000  109.470
+ NH2  CH2  C      70.000  111.600
+ NH2  CH2  C1     70.000  111.600
+ NH2  CH2  C2     70.000  111.600
+ NH2  CH2  CH2    65.000  109.470
+ NH2  CH2  CH1    65.000  109.470
+ NH2  CH2  NH1    65.000  109.470
+ NT3  CH2  C      70.000  111.600
+ NT3  CH2  C1     70.000  111.600
+ NT3  CH2  C2     70.000  111.600
+ NT3  CH2  CH1    65.000  109.470
+ NT3  CH2  CH2    65.000  110.000
+ NT   CH2  CH2    65.000  109.470
+ N    CH2  CR6    65.000  109.470
+ NR6  CH2  CH1    65.000  109.470
+ NR6  CH2  CH2    65.000  109.470
+ NR6  CH2  CH3    65.000  109.470
+ O    CH2  CH1    50.000  109.470
+ O    CH2  CH2    50.000  109.470
+ O    CH2  CH3    50.000  109.470
+ O2   CH2  CR6    50.000  109.470
+ OC2  CH2  CR6    50.000  109.470
+ O2   CH2  CH1    50.000  109.470
+ O2   CH2  C      50.000  109.470
+ O2   CH2  CH2    50.000  109.470
+ O2   CH2  CH3    50.000  109.470
+ OH1  CH2  CH1    50.000  109.470
+ OH1  CH2  CH2    50.000  109.470
+ OH1  CH2  CH3    50.000  109.470
+ OH1  CH2  CT     50.000  109.470
+ OH1  CH2  O      50.000  109.470
+ OC2  CH2  CR15   50.000  109.470
+ OC2  CH2  CH1    50.000  109.470
+ OC2  CH2  CT     50.000  109.470
+ OC2  CH2  CH2    50.000  109.470
+ SH1  CH2  CH2    50.000  109.470
+ S    CH2  CR6    50.000  109.470
+ HCH2 CH2  C      40.000  109.470
+ HCH2 CH2  C1     40.000  109.470
+ HCH2 CH2  C2     40.000  109.470
+ HCH2 CH2  CR15   40.000  109.470
+ HCH2 CH2  CR5    40.000  109.470
+ HCH2 CH2  CR16   40.000  109.470
+ HCH2 CH2  CR6    40.000  109.470
+ HCH2 CH2  CR66   40.000  109.470
+ HCH2 CH2  CH1    40.000  109.470
+ HCH2 CH2  CH1    40.000  109.470
+ HCH2 CH2  CH2    40.000  109.470
+ HCH2 CH2  CH3    40.000  109.470
+ HCH2 CH2  CT     40.000  109.470
+ HCH2 CH2  N      50.000  109.470
+ HCH2 CH2  NC1    50.000  109.470
+ HCH2 CH2  NH1    50.000  109.470
+ HCH2 CH2  NC2    40.000  109.470
+ HCH2 CH2  NH2    40.000  109.470
+ HCH2 CH2  NT3    50.000  109.470
+ HCH2 CH2  NT     40.000  109.470
+ HCH2 CH2  NR6    40.000  109.470
+ HCH2 CH2  O      40.000  109.470
+ HCH2 CH2  O2     40.000  109.470
+ HCH2 CH2  OH1    50.000  109.470
+ HCH2 CH2  OC2    50.000  109.470
+ HCH2 CH2  HCH2   40.000  107.900
+ S    CH2  CH1    50.000  112.500
+ S    CH2  CH2    50.000  112.500
+ S    CH2  CT     50.000  112.500
+ S    CH2  HCH2   40.000  109.470
+ SH1  CH2  CH1    50.000  112.500
+ SH1  CH2  CT     50.000  112.500
+ SH1  CH2  HCH2   40.000  109.470
+
+ HCH3 CH3  CSP    70.000  109.470
+ HCH3 CH3  C      70.000  109.470
+ HCH3 CH3  C1     70.000  109.470
+ HCH3 CH3  C2     70.000  109.470
+ HCH3 CH3  CR1    70.000  109.470
+ HCH3 CH3  CR5    70.000  109.470
+ HCH3 CH3  CR6    70.000  109.470
+ HCH3 CH3  CR16   70.000  109.470
+ HCH3 CH3  CH1    40.000  109.470
+ HCH3 CH3  CH2    40.000  109.470
+ HCH3 CH3  CT     40.000  109.470
+ HCH3 CH3  N      50.000  109.470
+ HCH3 CH3  NH1    50.000  109.470
+ HCH3 CH3  NT3    50.000  109.470
+ HCH3 CH3  NT     50.000  109.470
+ HCH3 CH3  NR5    50.000  109.470
+ HCH3 CH3  NR6    50.000  109.470
+ HCH3 CH3  O      65.000  109.470
+ HCH3 CH3  O2     65.000  109.470
+ HCH3 CH3  OH1    65.000  109.470
+ CH3  CH3  CH3    40.000  109.470
+ CH3  CH3  NH1    40.000  109.470
+ HCH3 CH3  HCH3   40.000  109.470
+ HCH3 CH3  CH3    40.000  109.470
+ S    CH3  HCH3   40.000  109.470
+ CO   CH3  HCH3   70.000  109.470
+ CH1  CT   C      70.000  109.470
+ CH1  CT   C1     70.000  109.470
+ CH1  CT   C2     70.000  109.470
+ CH1  CT   CR5    70.000  109.470
+ CH1  CT   CH1    45.000  111.000
+ CH2  CT   C      70.000  109.470
+ CH2  CT   C1     70.000  109.470
+ CH2  CT   C2     70.000  109.470
+ CH2  CT   CR5    70.000  109.470
+ CH2  CT   CH1    45.000  111.000
+ CH2  CT   CH2    45.000  111.000
+ CH3  CT   C      70.000  109.470
+ CH3  CT   C1     70.000  109.470
+ CH3  CT   C2     70.000  109.470
+ CH3  CT   CR5    70.000  109.470
+ CH3  CT   CH1    45.000  111.000
+ CH3  CT   CH2    45.000  111.000
+ CH3  CT   CH3    45.000  111.000
+ CT   CT   CR5    70.000  109.470
+ CT   CT   C      45.000  111.000
+ CT   CT   C1     45.000  111.000
+ CT   CT   C2     45.000  111.000
+ CT   CT   CH1    45.000  111.000
+ CT   CT   CH2    45.000  111.000
+ CT   CT   CH3    45.000  111.000
+ CT   CT   CT     45.000  111.000
+ N    CT   C      70.000  111.600
+ N    CT   C1     70.000  111.600
+ N    CT   C2     70.000  111.600
+ N    CT   CH1    70.000  111.600
+ N    CT   CH2    70.000  111.600
+ N    CT   CH3    70.000  111.600
+ N    CT   CT     70.000  111.600
+ NH1  CT   C      70.000  111.600
+ NH1  CT   C1     70.000  111.600
+ NH1  CT   C2     70.000  111.600
+ NH1  CT   CH1    65.000  110.000
+ NH1  CT   CH2    65.000  110.000
+ NH1  CT   CH3    65.000  110.000
+ NH1  CT   CT     65.000  110.000
+ NT3  CT   C      70.000  111.600
+ NT3  CT   C1     70.000  111.600
+ NT3  CT   C2     70.000  111.600
+ NT3  CT   CH1    65.000  110.000
+ NT3  CT   CH2    65.000  110.000
+ NT3  CT   CH3    65.000  110.000
+ NT3  CT   CT     65.000  110.000
+ NPA  CT   CH1    65.000  108.000
+ NPA  CT   CH1    65.000  108.000
+ NPA  CT   CH2    65.000  108.000
+ NPA  CT   CH3    65.000  108.000
+ NPA  CT   CT     65.000  108.000
+ NPB  CT   CH1    65.000  108.000
+ NPB  CT   CH2    65.000  108.000
+ NPB  CT   CH3    65.000  108.000
+ NPB  CT   CT     65.000  108.000
+ O2   CT   C      65.000  109.470
+ O2   CT   C1     65.000  109.470
+ O2   CT   C2     65.000  109.470
+ O2   CT   CH1    65.000  109.470
+ O2   CT   CH2    65.000  109.470
+ O2   CT   CH3    65.000  109.470
+ O2   CT   CT     65.000  109.470
+ O2   CT   NR5    65.000  109.470
+ O2   CT   NR6    65.000  109.470
+ OH1  CT   C      65.000  109.470
+ OH1  CT   C1     65.000  109.470
+ OH1  CT   C2     65.000  109.470
+ OH1  CT   CT     65.000  109.470
+ OH1  CT   CH1    50.000  109.470
+ OH1  CT   CH2    65.000  109.470
+ OH1  CT   CH3    65.000  109.470
+ OH1  CT   OH1    50.000  109.470
+ OH1  CT   O2     50.000  109.470
+ F    CT   CT     50.000  109.470
+ F    CT   C      50.000  109.470
+ F    CT   C1     50.000  109.470
+ F    CT   C2     50.000  109.470
+ F    CT   CH1    50.000  109.470
+ F    CT   CH2    50.000  109.470
+ F    CT   CH3    50.000  109.470
+ F    CT   CR6    50.000  109.470
+ F    CT   F      50.000  109.470
+ F    CT   F      50.000  109.470
+ NS   NS   NS     60.     180.000
+ CH1  N    C      80.000  121.000
+ CH2  N    C      80.000  127.000
+ CH3  N    C      80.000  127.000
+ CH1  N    C1     80.000  120.000
+ CH2  N    C1     80.000  120.000
+ CH3  N    C1     80.000  120.000
+ CH1  N    C2     80.000  120.000
+ CH2  N    C2     80.000  120.000
+ CH3  N    C2     80.000  120.000
+ CH1  N    CT     80.000  120.000
+ CH2  N    CT     80.000  120.000
+ CH3  N    CT     80.000  120.000
+ CH1  N    CR6    80.000  120.000
+ CH2  N    CR6    80.000  120.000
+ CH3  N    CR6    80.000  120.000
+ CH2  N    CH1    60.000  112.000
+ CH2  N    CH2    60.000  120.000
+ CH3  N    CH2    60.000  120.000
+ CH3  N    CH3    60.000  120.000
+ CT   N    C      80.000  121.000
+ CT   N    C1     80.000  121.000
+ CT   N    C2     80.000  121.000
+ OC   N    CR6    60.000  118.500
+ OC   N    OC     60.000  123.000
+ O    N    CR6    60.000  120.000
+ O    N    O      60.000  120.000
+ OH1  N    CH3    60.000  120.000
+ CH2  NC1  C      80.000  120.000
+ HNC1 NC1  C      30.000  120.000
+ HNC1 NC1  CH2    35.000  120.000
+ CR5  NH1  C      80.000  120.000
+ CH1  NH1  C      80.000  121.500
+ CH1  NH1  CH1    80.000  120.000
+ CH2  NH1  C      80.000  121.500
+ CH2  NH1  CH1    80.000  120.000
+ CH2  NH1  CH2    80.000  120.000
+ CH3  NH1  C      80.000  121.500
+ CT   NH1  C      80.000  121.500
+ OH1  NH1  C      60.000  120.000
+ HNH1 NH1  C      30.000  120.000
+ HNH1 NH1  CR5    30.000  120.000
+ HNH1 NH1  CH1    35.000  118.500
+ HNH1 NH1  CH2    35.000  118.500
+ HNH1 NH1  CH3    35.000  118.500
+ HNH1 NH1  CT     35.000  118.500
+ HNH1 NH1  OH1    30.000  120.200
+ CH2  NC2  CR6    60.000  120.000
+ CH2  NC2  CH2    60.000  112.000
+ HNC1 NC2  CH2    35.000  120.000
+ HNC2 NC2  C      35.000  120.000
+ HNC2 NC2  CR6    40.000  120.000
+ HNC2 NC2  CH2    40.000  120.000
+ HNC2 NC2  HNC2   40.000  120.000
+ CH2  NH2  CH1    80.000  120.000
+ CR6  NH2  C      80.000  126.000
+ HNH2 NH2  C      30.000  120.000
+ HNH2 NH2  CR6    30.000  120.000
+ HNH2 NH2  CR66   30.000  120.000
+ HNH2 NH2  CH1    30.000  120.000
+ HNH2 NH2  CH2    30.000  120.000
+ HNH2 NH2  HNH2   40.000  120.000
+ HNH3 NH3  HNH3   40.000  109.470
+ CH2  NT3  CR6    40.000  109.470
+ CH3  NT3  CH2    40.000  109.470
+ CH3  NT3  CH3    40.000  109.470
+ OH1  NT3  CH3    40.000  109.470
+ HNT3 NT3  CH1    35.000  109.470
+ HNT3 NT3  CH2    35.000  109.470
+ HNT3 NT3  CT     35.000  109.470
+ HNT3 NT3  C      35.000  109.470
+ HNT3 NT3  HNT3   40.000  109.470
+ CH2  NT   CH1    40.000  109.470
+ CH2  NT   CH2    40.000  109.470
+ CH3  NT   CH1    70.000  109.470
+ CH3  NT   CH2    40.000  109.470
+ CH3  NT   CH3    70.000  109.470
+ C    NT   C      70.000  109.470
+ C    NT   C1     70.000  109.470
+ C    NT   CH1    70.000  109.470
+ C    NT   CH2    40.000  109.470
+ C    NT   CH3    70.000  109.470
+ C1   NT   C      70.000  109.470
+ C1   NT   C1     70.000  109.470
+ C1   NT   CH1    70.000  109.470
+ C1   NT   CH2    40.000  109.470
+ C1   NT   CH3    70.000  109.470
+ OH1  NT   CH3    70.000  109.470
+ CR5  NPA  CR5    70.000  108.000
+ CH1  NPA  CR5    70.000  108.000
+ CT   NPA  CR5    70.000  108.000
+ FE   NPA  CR5    50.000  126.000
+ MG   NPA  CR5    50.000  126.000
+ CO   NPA  CR5    50.000  126.000
+ CO   NPA  CH1    50.000  126.000
+ CO   NPA  CT     50.000  126.000
+ CR5  NPB  CR5    70.000  108.000
+ CH1  NPB  CR5    70.000  108.000
+ CT   NPB  CR5    70.000  108.000
+ FE   NPB  CR5    50.000  126.000
+ MG   NPB  CR5    50.000  126.000
+ CO   NPB  CR5    50.000  126.000
+ CO   NPB  CH1    50.000  126.000
+ CO   NPB  CT     50.000  126.000
+
+ CR15 NR5  CR15   70.000  108.000
+ CR5  NR5  CR15   70.000  108.000
+ CR56 NR5  CR15   70.000  108.000
+ CR56 NR5  CR5    70.000  108.000
+ CR6  NR5  CR15   70.000  108.000
+ CR6  NR5  CR6    70.000  120.000
+
+ CH1  NR5  CR5    70.000  126.000
+ CH1  NR5  CR15   70.000  126.000
+ CH1  NR5  CRD5   70.000  126.000
+ CH1  NR5  CR56   70.000  126.000
+ CH2  NR5  CR5    70.000  126.000
+ CH2  NR5  CR15   70.000  126.000
+ CH2  NR5  CRD5   70.000  126.000
+ CH2  NR5  CR56   70.000  126.000
+ CH3  NR5  CR5    70.000  126.000
+ CH3  NR5  CR15   70.000  126.000
+ CH3  NR5  CRD5   70.000  126.000
+ CH3  NR5  CR56   70.000  126.000
+
+ CR15 NR15 CR15   60.000  108.000
+ CR5  NR15 CR15   60.000  108.000
+ CR5  NR15 CR5    60.000  108.000
+ CR56 NR15 CR15   60.000  108.000
+ CR56 NR15 CR5    60.000  108.000
+ O2   NR15 CR5    60.000  108.000
+ HNR5 NR15 CR15   30.000  126.000
+ HNR5 NR15 CR5    30.000  126.000
+ HNR5 NR15 CR56   30.000  126.000
+
+ CR15 NRD5 CR15   70.000  108.000
+ CR5  NRD5 CR15   70.000  108.000
+ HNR5 NRD5 CR15   30.000  126.000
+ CR56 NRD5 CR15   70.000  108.000
+ CR56 NRD5 CR5    70.000  108.000
+ CR16 NRD5 CR56   70.000  108.000
+ FE   NRD5 CR15   30.000  126.000
+ ZN   NRD5 CR15   65.000  126.000
+ CO   NRD5 CR15   30.000  126.000
+ CO   NRD5 CR56   30.000  126.000
+
+ CR56 NR56  CR6   70.000  120.000
+ CR56 NR56  CR16  70.000  120.000
+ CR56 NR56  CR5   70.000  108.000
+ CR56 NR56  CR15  70.000  108.000
+ CR6  NR56  CR5   70.000  132.000
+ CR16 NR56  CR5   70.000  132.000
+ CR6  NR56  CR15  70.000  132.000
+ CR16 NR56  CR15  70.000  132.000
+
+ CR6  NR6  CR6    70.000  120.000
+ CR6  NR6  CR16   70.000  120.000
+ CR6  NR6  CR66   70.000  120.000
+ CR6  NR6  CR56   70.000  120.000
+ CR16 NR6  CR16   70.000  120.000
+ CR16 NR6  CR66   70.000  120.000
+ CR16 NR6  CR56   70.000  120.000
+ CR66 NR6  CR66   70.000  120.000
+ CR66 NR6  CR56   70.000  120.000
+ CR56 NR6  CR56   70.000  120.000
+
+ CH1  NR6  CR6    70.000  120.000
+ CH1  NR6  CR16   70.000  120.000
+ CH1  NR6  CR56   70.000  120.000
+ CH1  NR6  CR66   70.000  120.000
+
+ CH2  NR6  CR6    70.000  120.000
+ CH2  NR6  CR16   70.000  120.000
+ CH2  NR6  CR66   70.000  120.000
+ CH2  NR6  CR56   70.000  120.000
+
+ CH3  NR6  CR6    70.000  120.000
+ CH3  NR6  CR16   70.000  120.000
+ CH3  NR6  CR66   70.000  120.000
+ CH3  NR6  CR56   70.000  120.000
+
+ CR6  NR16 CR6    70.000  120.000
+ CR16 NR16 CR6    70.000  120.000
+ CR66 NR16 CR6    70.000  120.000
+ CR56 NR16 CR6    70.000  120.000
+ CR16 NR16 CR16   70.000  120.000
+ CR66 NR16 CR16   70.000  120.000
+ CR56 NR16 CR16   70.000  120.000
+ HNR6 NR16 CR56   30.000  120.000
+ HNR6 NR16 CR16   30.000  120.000
+ HNR6 NR16 CR6    30.000  120.000
+ HNR6 NR16 CR66   30.000  120.000
+
+ CR16 NRD6 CR56   70.000  120.000
+ CR6  NRD6 CR56   70.000  120.000
+ CR6  NRD6 CR16   70.000  120.000
+ CR6  NRD6 CR6    70.000  120.000
+ CR16 NRD6 CR16   70.000  120.000
+ CR66 NRD6 CR6    70.000  120.000
+ CR66 NRD6 CR16   70.000  120.000
+ CR66 NRD6 CR66   70.000  120.000
+
+ CR15 O    CR15  100.000  108.000
+ CH1  O    CH1   100.000  120.000
+ CH2  O    C     100.000  111.800
+ CH2  O    CH1   100.000  120.000
+ CH3  O    C     100.000  111.800
+ FE   O    FE    100.000  120.000
+
+ CR5  O2   CR15  100.000  108.000
+ CR15 O2   CR15  100.000  108.000
+ CR5  O2   CR55  100.000  108.000
+ CR55 O2   CR15  100.000  108.000
+ CR5  O2   CR5   100.000  108.000
+ CH1  O2   CH1   100.000  111.800
+ CH2  O2   CH2   100.000  111.800
+ CH1  O2   CH2   100.000  111.800
+ CH3  O2   CH2   100.000  111.800
+ CH3  O2   CH1   100.000  111.800
+ CT   O2   CH2   100.000  111.800
+ CT   O2   CH1   100.000  111.800
+ C    O2   C     100.000  111.800
+ C1   O2   C     100.000  111.800
+ CH1  O2   C     100.000  111.800
+ CH3  O2   C     100.000  120.000
+ CH2  O2   CR6   100.000  120.000
+ CH3  O2   CR6   100.000  120.000
+ CR6  O2   CR6   100.000  120.000
+ CR6  O2   CR16  100.000  120.000
+ CR16 O2   CR16  100.000  120.000
+ CR66 O2   CR66  100.000  120.000
+ CR6  O2   CR66  100.000  120.000
+ CR16 O2   CR66  100.000  120.000
+ NR15 O2   CR5   100.000  108.000
+ NR15 O2   CR15  100.000  108.000
+ OH1  O2   CH1   100.000  111.800
+
+ HOH1 OH1  C      50.000  109.470
+ HOH1 OH1  CR15   50.000  120.000
+ HOH1 OH1  CR6    50.000  109.470
+ HOH1 OH1  CR66   50.000  109.470
+ HOH1 OH1  CH1    35.000  109.470
+ HOH1 OH1  CH2    35.000  109.470
+ HOH1 OH1  CH3    35.000  109.470
+ HOH1 OH1  CT     35.000  109.470
+ HOH1 OH1  NH1    35.000  120.000
+ HOH1 OH1  NT3    35.000  109.470
+ HOH1 OH1  NT     35.000  109.470
+ HOH1 OH1  N      35.000  109.470
+ HOH2 OH2  HOH2   55.000  104.500
+ HOHA OHA  HOHA   55.000  104.500
+ HOHB OHB  HOHB   55.000  104.500
+ HOHC OHC  HOHC   55.000  104.500
+ P    OC2  CR15  100.000  120.500
+ P    OC2  CH1   100.000  120.500
+ P    OC2  CH2   100.000  120.500
+ P    OC2  P     100.000  120.500
+ P    O2   CR15  100.000  120.500
+ P    O2   CH1   100.000  120.500
+ P    O2   CH2   100.000  120.500
+ P    O2   P     100.000  120.500
+ P    OP   CH1   100.000  120.500
+ O2   P    O2     45.000  102.600
+ OP   P    O2    100.000  108.200
+ OC2  P    OC2    45.000  102.600
+ OP   P    OC2   100.000  108.200
+ OP   P    OP    140.000  119.900
+ CR6  S    CR6    50.000  120.000
+ CH3  S    CH2    50.000   99.500
+ CH3  S    CH3    50.000  120.000
+ OS   S    CR6   100.000  120.000
+ OS   S    OS    140.000  109.470
+ OS   S    CH2   140.000  109.470
+ O    S    CH3   100.000  120.000
+ S    S    CH2    50.000  104.200
+ HSH1 SH1  CH2    35.000   96.000
+ HSH1 SH1  CSP    35.000   96.000
+ NPA  FE   NPA    50.000  180.000
+ NPB  FE   NPA    50.000   90.000
+ NPB  FE   NPB    50.000  180.000
+ NRD5 FE   NPA    50.000  115.000
+ NRD5 FE   NPB    50.000  115.000
+ NPA  MG   NPA    50.000  180.000
+ NPB  MG   NPA    50.000   90.000
+ NPB  MG   NPB    50.000  180.000
+ OB   B    CH1    50.     120.000
+ OB   B    OB     50.     120.000
+ NPA  CO   C      50.000   90.000
+ NPB  CO   C      50.000   90.000
+ NPA  CO   CH3    50.000   90.000
+ NPA  CO   NPA    50.000  180.000
+ NPB  CO   CH3    50.000   90.000
+ NPB  CO   NPA    50.000   90.000
+ NPB  CO   NPB    50.000  180.000
+ NRD5 CO   NPA    50.000   90.000
+ NRD5 CO   NPB    50.000   90.000
+ NRD5 ZN   NRD5   50.000  109.470
+ OHA  MG   OHA    50.     180.000
+ OHB  MG   OHB    50.     180.000
+ OHC  MG   OHC    50.     180.000
+ OHA  MG   OHB    50.      90.000
+ OHA  MG   OHC    50.      90.000
+ OHB  MG   OHA    50.      90.000
+ OHB  MG   OHC    50.      90.000
+ OHC  MG   OHA    50.      90.000
+ OHC  MG   OHB    50.      90.000
+ MG   OHA  HOHA   50.     109.470
+ MG   OHB  HOHB   50.     109.470
+ MG   OHC  HOHC   50.     109.470
+#
+ .     B          .       .   120.0
+ .     F          .       .      .
+ .     NA         .       .    90.0
+ .     MG         .       .    90.0
+ .     CL         .       .   120.0
+ .     CA         .       .    90.0
+ .     V          .       .      .
+ .     MN         .       .    90.0
+ .     FE         .       .    90.0
+ .     CO         .       .    90.0
+ .     CU         .       .    90.0
+ .     ZN         .       .   109.5
+ .     BR         .       .      .
+ .     CD         .       .      .
+ .     I          .       .      .
+ .     PB         .       .      .
+ .     HG         .       .      .
+ .     U          .       .      .
+ .     W          .       .      .
+ .     Y          .       .      .
+ .     K          .       .    90.0
+ .     SI         .       .   109.5
+ .     SI1        .       .   109.5
+ .     GE         .       .   109.5
+ .     GE1        .       .   109.5
+ .     AL         .       .      .
+ .     GD         .       .      .
+ .     NI         .       .    90.0
+ .     SR         .       .      .
+ .     IN         .       .      .
+ .     HO         .       .      .
+ .     YB         .       .    90.0
+ .     TE         .       .    90.0
+ .     LI         .       .    90.0
+ .     RB         .       .    90.0
+ .     BA         .       .      .
+ .     CS         .       .      .
+ .     SM         .       .      .
+ .     TL         .       .      .
+ .     PT         .       .    90.0
+ .     BE         .       .   120.0
+ .     SE         .       .    98.0
+#
+ .     CSP      .       .    180.0
+ .     C        .       .    120.0
+ .     C1       .       .    120.0
+ .     C2       .       .    120.0
+ .     CR1      .       .    120.0
+ .     CR2      .       .    120.0
+ .     CR1H     .       .    120.0
+ .     CR15     .       .    108.0
+ .     CR5      .       .    108.0
+ .     CR56     .       .    120.0
+ .     CR55     .       .    108.0
+ .     CR16     .       .    120.0
+ .     CR6      .       .    120.0
+ .     CR66     .       .    120.0
+ .     CH1      .       .    109.5
+ .     CH2      .       .    109.5
+ .     CH3      .       .    109.5
+ .     CT       .       .    109.5
+#
+ .     NS        .       .    180.0
+ .     N         .       .    120.0
+ .     NC1       .       .    120.0
+ .     NH1       .       .    120.0
+ .     NC2       .       .    120.0
+ .     NH2       .       .    120.0
+ .     NC3       .       .    120.0
+ .     NT        .       .    109.5
+ .     NT1       .       .    109.5
+ .     NT2       .       .    109.5
+ .     NT3       .       .    109.5
+ .     NPA       .       .    120.0
+ .     NPB       .       .    120.0
+ .     NR5       .       .    108.0
+ .     NR15      .       .    108.0
+ .     NRD5      .       .    108.0
+ .     NR56      .       .    120.0
+ .     NR55      .       .    108.0
+ .     NR6       .       .    120.0
+ .     NR66      .       .    120.0
+ .     NR16      .       .    120.0
+ .     NRD6      .       .    120.0
+#
+ .     OS        .       .    120.0
+ .     O         .       .    120.0
+ .     O2        .       .    120.0
+ .     OH1       .       .    120.0
+ .     OH2       .       .    120.0
+ .     OHA       .       .    120.0
+ .     OHB       .       .    120.0
+ .     OHC       .       .    120.0
+ .     OC2       .       .    120.0
+ .     OC        .       .    120.0
+ .     OP        .       .    120.0
+ .     OB        .       .    120.0
+#
+ .     P         .       .    109.5
+ .     PS        .       .    109.5
+ .     P1        .       .    120.0 # or what
+ .     AS        .       .    109.47
+ .     AS1       .       .    120.0 # or what?
+ .     S         .       .     90.0
+ .     SH1       .       .    109.5
+ .     ST        .       .    109.5
+ .     MO        .       .     90.0
+#
+ .     H         .       .    109.5
+#
+# ---  TORSIONS ---
+#
+loop_
+_lib_tors.atom_type_1
+_lib_tors.atom_type_2
+_lib_tors.atom_type_3
+_lib_tors.atom_type_4
+_lib_tors.label
+_lib_tors.const
+_lib_tors.angle
+_lib_tors.period
+#
+# _atom_type atomic chemical type
+# _const     Constant KPHI
+# _period    NPH number of minima in the function
+# _angle     angle DELTA
+#            PHI - actual angle
+#
+#          ENERGY = KPHI * ( 1 + COS( NPH * PHI -   DELTA) )
+#
+ .    CH1  NH1  .    .           0.000    0.000     3       # AMBER
+ .    C    CH1  .    .           0.000  180.000     3       # AMBER
+ .    CH2  NH1  .    .           0.000    0.000     3       # AMBER
+ .    C    CH2  .    .           0.000  180.000     3       # AMBER
+ .    CH1  N    .    .           0.000    0.000     3       # AMBER
+ .    C    NH1  .    .          10.000  180.000     2       # AMBER
+ .    C    N    .    .          10.000  180.000     2       # AMBER
+
+ .    CH1  CH1  .    .           2.000  180.000     3       # AMBER
+ .    CH1  CH2  .    .           2.000  180.000     3       # AMBER
+ .    CH1  CH3  .    .           2.0    180.000     3
+ .    CH2  CH1  .    .           2.000  180.000     3       # AMBER
+ .    CH2  CH2  .    .           2.000  180.000     3       # AMBER
+ .    CH2  CH3  .    .           2.0    180.000     3
+ .    CH3  CH1  .    .           2.0    180.000     3
+ .    CH3  CH2  .    .           2.0    180.000     3
+ .    CH3  CH3  .    .           2.0    180.000     3
+ .    CH2  NC1  .    .           0.000    0.000     4       # AMBER
+ .    C    NC1  .    .           6.800  180.000     2       # AMBER
+
+ .    C    NH2  .    .          10.000  180.000     2       # AMBER
+
+ .    CH2  CR5  .    .           0.000    0.000     2       # AMBER
+ .    CH2  CR6  .    .           0.000    0.000     2       # AMBER
+
+ .    CR16 CR6  .    .           5.300    0.000     2       # AMBER
+ .    CR16 CR16 .    .           5.300    0.000     2       # AMBER
+ .    CR5  CR15 .    .          17.900    0.000     2       # AMBER (ave.)
+ .    CR5  CR56 .    .           2.400  180.000     2       # AMBER
+ .    CR56 CR56 .    .           4.400  180.000     2       # AMBER
+ .    CR56 CR16 .    .           5.300  180.000     2       # AMBER
+
+ .    CR15 NR15 .    .           7.700    0.000     2       # AMBER (ave.)
+ .    CR15 NRD5 .    .           7.400    0.000     2       # AMBER (ave.)
+ .    CR5  NRD5 .    .           4.800    0.000     2       # AMBER
+ .    CR5  NR15 .    .           5.600    0.000     2       # AMBER
+ .    CR56 NR15 .    .           6.100  180.000     2       # AMBER
+
+
+ .    CR5  NPA  .    .           8.200    0.000     2
+ .    CR5  NPB  .    .           8.200    0.000     2
+ .    CR5  CR5  .    .          12.500    0.000     2
+
+ .    CR15 NR5  .    .          12.500  180.000     2
+
+ .    CR56 CR6  .    .          12.500  180.000     2
+ .    CR56 NRD5 .    .          12.500  180.000     2
+ .    CR56 NR5  .    .          12.500  180.000     2
+ .    CR56 NRD6 .    .          12.500  180.000     2
+ .    CR56 NR16 .    .          12.500  180.000     2
+ .    CR56 NR6  .    .          12.500  180.000     2
+
+ .    CR16 NR6  .    .          12.500    0.000     2
+ .    CR16 NR16 .    .          12.500    0.000     2
+ .    CR16 NRD6 .    .          12.500    0.000     2
+ .    CR16 CR66 .    .          12.500  180.000     2
+
+ .    CR6  CR6  .    .          12.500    0.000     2
+ .    CR6  NR6  .    .          12.500    0.000     2
+ .    CR6  NR16 .    .          12.500    0.000     2
+ .    CR6  NRD6 .    .          12.500    0.000     2
+ .    CR6  CR66 .    .          12.500  180.000     2
+
+ .    CR66 NRD6 .    .          12.500  180.000     2
+ .    CR66 NR16 .    .          12.500  180.000     2
+ .    CR66 NR6  .    .          12.500  180.000     2
+
+ .    S    S    .    .           3.500    0.000     2  # AMBER (CHARMM is 4.0)
+ .    S    CH2  .    .           1.000    0.000     3  # AMBER (CHARMM is 1.2/2)
+#
+# ---  VDW contacts ---
+#
+loop_
+_lib_vdw.atom_type_1
+_lib_vdw.atom_type_2
+_lib_vdw.energy_min
+_lib_vdw.radius_min
+_lib_vdw.H_flag
+#
+#  _atom_type      atomic chemical type
+#  _energy_min     EPSij  minimum of energy parameter
+#  _radius_min     Rmin radius of the minimum of energy parameter
+#                  Rij - actual distance
+#  _H_flag         "h" - the parameters for atoms with hydrogens
+#
+#                      Lennard-Jones potential
+#
+#             ENERGY =  EPSij * ( (Rmin/Rij)**12 - 2 * (Rmin/Rij)**6 )
+#
+ C    C       -0.19686     3.600   .
+ C    C       -0.19686     3.600   h
+ CR16 C       -0.20720     3.700   h
+ CR16 CR16    -0.21907     3.800   h
+ CH1  C       -0.13206     3.600   .
+ CH1  C       -0.16242     3.650   h
+ CH1  CR16    -0.17116     3.750   h
+ CH1  CH1     -0.09011     3.600   .
+ CH1  CH1     -0.13540     3.700   h
+ CH2  C       -0.19107     3.700   h
+ CH2  CR16    -0.20184     3.800   h
+ CH2  CH1     -0.15901     3.750   h
+ CH2  CH2     -0.18709     3.800   h
+ CH3  C       -0.21258     3.750   h
+ CH3  CR16    -0.22508     3.850   h
+ CH3  CH1     -0.17680     3.800   h
+ CH3  CH2     -0.20835     3.850   h
+ CH3  CH3     -0.23233     3.900   h
+ N    C       -0.21191     3.400   h
+ N    CR16    -0.22057     3.500   h
+ N    CH1     -0.17646     3.450   h
+ N    CH2     -0.20572     3.500   h
+ N    CH3     -0.22725     3.550   h
+ N    N       -0.23797     3.200   h
+ NH1  C       -0.21191     3.400   .
+ NH1  C       -0.24248     3.450   h
+ NH1  CR16    -0.25307     3.550   h
+ NH1  CH1     -0.14490     3.400   .
+ NH1  CH1     -0.20175     3.500   h
+ NH1  CH2     -0.23565     3.550   h
+ NH1  CH3     -0.26072     3.600   h
+ NH1  N       -0.26996     3.250   h
+ NH1  NH1     -0.23797     3.200   .
+ NH1  NH1     -0.30684     3.300   h
+ NH2  C       -0.26649     3.500   h
+ NH2  CR16    -0.27886     3.600   h
+ NH2  CH1     -0.22168     3.550   h
+ NH2  CH2     -0.25935     3.600   h
+ NH2  CH3     -0.28735     3.650   h
+ NH2  N       -0.29449     3.300   h
+ NH2  NH1     -0.33528     3.350   h
+ NH2  NH2     -0.36694     3.400   h
+ NT3  C       -0.29928     3.550   h
+ NT3  CR16    -0.31400     3.650   h
+ NT3  CH1     -0.24862     3.600   h
+ NT3  CH2     -0.29143     3.650   h
+ NT3  CH3     -0.32341     3.700   h
+ NT3  N       -0.32774     3.350   h
+ NT3  NH1     -0.37386     3.400   h
+ NT3  NH2     -0.40986     3.450   h
+ NT3  NT3     -0.45871     3.500   h
+ O    C       -0.17103     3.400   .
+ O    C       -0.17103     3.400   h
+ O    CR16    -0.17789     3.500   h
+ O    CH1     -0.11796     3.400   .
+ O    CH1     -0.14333     3.450   h
+ O    CH2     -0.16677     3.500   h
+ O    CH3     -0.18401     3.550   h
+ O    N       -0.19395     3.200   h
+ O    NH1     -0.19395     3.200   .
+ O    NH1     -0.21971     3.250   h
+ O    NH2     -0.23942     3.300   h
+ O    NT3     -0.26598     3.350   h
+ O    O       -0.15880     3.200   .
+ O    O       -0.15880     3.200   h
+ OH1  C       -0.21481     3.450   h
+ OH1  CR16    -0.22411     3.550   h
+ OH1  CH1     -0.17939     3.500   h
+ OH1  CH2     -0.20929     3.550   h
+ OH1  CH3     -0.23140     3.600   h
+ OH1  N       -0.24051     3.250   h
+ OH1  NH1     -0.27314     3.300   h
+ OH1  NH2     -0.29828     3.350   h
+ OH1  NT3     -0.33226     3.400   h
+ OH1  O       -0.19625     3.250   h
+ OH1  OH1     -0.24350     3.300   h
+ OH2  C       -0.19704     3.500   h
+ OH2  CR16    -0.20607     3.600   h
+ OH2  CH1     -0.16475     3.550   h
+ OH2  CH2     -0.19244     3.600   h
+ OH2  CH3     -0.21302     3.650   h
+ OH2  N       -0.21946     3.300   h
+ OH2  NH1     -0.24957     3.350   h
+ OH2  NH2     -0.27291     3.400   h
+ OH2  NT3     -0.30439     3.450   h
+ OH2  O       -0.17907     3.300   h
+ OH2  OH1     -0.22249     3.350   h
+ OH2  OH2     -0.20356     3.400   h
+ OC   C       -0.35278     3.400   .
+ OC   C       -0.35278     3.400   h
+ OC   CR16    -0.36787     3.500   h
+ OC   CH1     -0.23607     3.400   .
+ OC   CH1     -0.28913     3.450   h
+ OC   CH2     -0.33872     3.500   h
+ OC   CH3     -0.37526     3.550   h
+ OC   N       -0.38663     3.200   h
+ OC   NH1     -0.38663     3.200   .
+ OC   NH1     -0.44019     3.250   h
+ OC   NH2     -0.48139     3.300   h
+ OC   NT3     -0.53814     3.350   h
+ OC   O       -0.31166     3.200   .
+ OC   O       -0.31166     3.200   h
+ OC   OH1     -0.38969     3.250   h
+ OC   OH2     -0.35558     3.300   h
+ OC   OC      -0.64573     3.200   .
+ OC   OC      -0.64573     3.200   h
+ HCH  C       -0.02750     3.268   .
+ HCH  CH1     -0.01917     3.268   .
+ HCH  NH1     -0.03204     3.068   .
+ HCH  O       -0.02638     3.068   .
+ HCH  OC      -0.05080     3.068   .
+ HCH  HCH     -0.00446     2.936   .
+ HNH1 C       -0.05419     2.600   .
+ HNH1 CH1     -0.03869     2.600   .
+ HNH1 NH1     -0.07179     2.400   .
+ HNH1 O       -0.05989     2.400   .
+ HNH1 OC      -0.11041     2.400   .
+ HNH1 HCH     -0.01111     2.268   .
+ HNH1 HNH1    -0.04974     1.600   .
+ P    C       -0.19058     3.900   .
+ P    C       -0.19058     3.900   h
+ P    CR16    -0.20265     4.000   h
+ P    CH1     -0.13137     3.900   .
+ P    CH1     -0.16143     3.950   h
+ P    CH2     -0.18991     4.000   h
+ P    CH3     -0.21178     4.050   h
+ P    N       -0.20588     3.700   h
+ P    NH1     -0.20588     3.700   .
+ P    NH1     -0.23617     3.750   h
+ P    NH2     -0.26052     3.800   h
+ P    NT3     -0.29289     3.850   h
+ P    O       -0.16851     3.700   .
+ P    O       -0.16851     3.700   h
+ P    OH1     -0.21091     3.750   h
+ P    OH2     -0.19480     3.800   h
+ P    OC      -0.33107     3.700   .
+ P    OC      -0.33107     3.700   h
+ P    HCH     -0.02703     3.568   .
+ P    HNH1    -0.04873     2.900   .
+ P    P       -0.19972     4.200   .
+ P    P       -0.19972     4.200   h
+ S    C       -0.34629     3.700   .
+ S    C       -0.34629     3.700   h
+ S    CR16    -0.36552     3.800   h
+ S    CH1     -0.23662     3.700   .
+ S    CH1     -0.29025     3.750   h
+ S    CH2     -0.34077     3.800   h
+ S    CH3     -0.37899     3.850   h
+ S    N       -0.37696     3.500   h
+ S    NH1     -0.37696     3.500   .
+ S    NH1     -0.43109     3.550   h
+ S    NH2     -0.47392     3.600   h
+ S    NT3     -0.53147     3.650   h
+ S    O       -0.30712     3.500   .
+ S    O       -0.30712     3.500   h
+ S    OH1     -0.38398     3.550   h
+ S    OH2     -0.35307     3.600   h
+ S    OC      -0.61302     3.500   .
+ S    OC      -0.61302     3.500   h
+ S    HCH     -0.04961     3.368   .
+ S    HNH1    -0.09586     2.700   .
+ S    P       -0.34961     4.000   .
+ S    P       -0.34961     4.000   h
+ S    S       -0.62416     3.800   .
+ S    S       -0.62416     3.800   h
+ SH1  C       -0.31950     3.750   h
+ SH1  CR16    -0.33795     3.850   h
+ SH1  CH1     -0.26808     3.800   h
+ SH1  CH2     -0.31507     3.850   h
+ SH1  CH3     -0.35076     3.900   h
+ SH1  N       -0.34620     3.550   h
+ SH1  NH1     -0.39639     3.600   h
+ SH1  NH2     -0.43628     3.650   h
+ SH1  NT3     -0.48980     3.700   h
+ SH1  O       -0.28206     3.550   h
+ SH1  OH1     -0.35307     3.600   h
+ SH1  OH2     -0.32503     3.650   h
+ SH1  OC      -0.56301     3.550   h
+ SH1  P       -0.32450     4.050   h
+ SH1  S       -0.57707     3.850   h
+ SH1  SH1     -0.53408     3.900   h
+ FE   C       -0.00130     2.450   .
+ FE   C       -0.00130     2.450   h
+ FE   CR16    -0.00129     2.550   h
+ FE   CH1     -0.00078     2.450   .
+ FE   CH1     -0.00095     2.500   h
+ FE   CH2     -0.00111     2.550   h
+ FE   CH3     -0.00121     2.600   h
+ FE   N       -0.00147     2.250   h
+ FE   NH1     -0.00147     2.250   .
+ FE   NH1     -0.00164     2.300   h
+ FE   NH2     -0.00174     2.350   h
+ FE   NT3     -0.00192     2.400   h
+ FE   O       -0.00113     2.250   .
+ FE   O       -0.00113     2.250   h
+ FE   OH1     -0.00141     2.300   h
+ FE   OH2     -0.00124     2.350   h
+ FE   OC      -0.00281     2.250   .
+ FE   OC      -0.00281     2.250   h
+ FE   HCH     -0.00019     2.118   .
+ FE   HNH1    -0.00084     1.450   .
+ FE   P       -0.00086     2.750   .
+ FE   P       -0.00086     2.750   h
+ FE   S       -0.00189     2.550   .
+ FE   S       -0.00189     2.550   h
+ FE   SH1     -0.00168     2.600   h
+ FE   FE      -0.00019     1.300   .
+ FE   FE      -0.00019     1.300   h
+#
+# ---  H-BONDS ---
+#
+loop_
+_lib_hbond.atom_type_1
+_lib_hbond.atom_type_2
+_lib_hbond.min
+_lib_hbond.dist
+#
+#  _atom_type     atomic chemical type
+#  _hbond_min     EPSHij  energy at minimum
+#  _hbond_dist    RHmin distance at minimum of energy
+#                 RHij - actual distance
+#
+#             ENERGY =  EPSHij * ( (RHmin/RHij)**12 - 2 * (RHmin/RHij)**10 )
+#
+ NRD5 NH1    -1.500    2.850
+ NRD5 NT3    -1.500    2.850
+ O    NH1    -1.500    2.850
+ O    NT3    -1.500    2.850
+ OH1  NH1    -1.500    2.850
+ OH1  NT3    -1.500    2.850
+ OH1  NRD5   -1.500    2.850
+ OH1  O      -1.500    2.850
+ OH1  OH1    -1.500    2.850
+ OH2  NH1    -1.500    2.850
+ OH2  NT3    -1.500    2.850
+ OH2  NRD5   -2.000    2.750
+ OH2  O      -2.000    2.750
+ OH2  OH1    -2.000    2.750
+ OH2  OH2    -2.500    2.800
+ OC   NH1    -1.500    2.850
+ OC   NT3   -10.000    2.500
+ OC   OH1    -1.500    2.850
+ OC   OH2    -2.000    2.750
+ HNT3 NRD5   -1.500    1.850
+ HNT3 O      -1.500    1.850
+ HNT3 OH1    -1.500    1.850
+ HNT3 OH2    -1.500    1.850
+ HNT3 OC    -10.000    1.500
+ HNH1 NRD5   -1.500    1.850
+ HNH1 O      -1.500    1.850
+ HNH1 OH1    -1.500    1.850
+ HNH1 OH2    -1.500    1.850
+ HNH1 OC     -1.500    1.850
+ HNH1 HNH1    0.000    0.000
+ HOH1 NRD5   -1.500    1.850
+ HOH1 O      -1.500    1.850
+ HOH1 OH1    -1.500    1.850
+ HOH1 OH2    -1.500    1.850
+ HOH1 OC     -1.500    1.850
+ HOH1 HNH1    0.000    0.000
+ HOH1 HOH1    0.000    0.000
+ HOH2 NRD5   -2.000    1.750
+ HOH2 O      -2.000    1.750
+ HOH2 OH1    -2.000    1.750
+ HOH2 OH2    -2.500    1.800
+ HOH2 OC     -2.000    1.750
+ HOH2 HNH1    0.000    0.000
+ HOH2 HOH1    0.000    0.000
+# -----------------------------------------------------------------------
