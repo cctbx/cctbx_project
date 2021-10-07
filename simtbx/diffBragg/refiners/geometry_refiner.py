@@ -24,6 +24,16 @@ PAN_XYZ_IDS = PAN_X_ID, PAN_Y_ID, PAN_Z_ID
 DEG_TO_PI = np.pi/180.
 
 
+def rest_targ(p):
+    """
+    restraint target for an lmfit param
+    :return: value of the restraint, float
+    """
+    center, beta = p.user_data
+    dist = center - p.value
+    return .5*(np.log(2*np.pi*beta) + dist**2/beta)
+
+
 class DetectorParameters:
 
     def __init__(self, phil_params, panel_groups_refined, num_panel_groups ):
@@ -38,27 +48,27 @@ class DetectorParameters:
             vary_rots = [True]*3
             o = lmfit.Parameter(name="group%d_RotOrth" % i_group, value=0, #GEO.init.panel_rotations[2],
                                 min=GEO.min.panel_rotations[0]*DEG_TO_PI, max=GEO.max.panel_rotations[0]*DEG_TO_PI,
-                                vary=vary_rots[0])
+                                vary=vary_rots[0], user_data=[0, GEO.betas.panel_rot[0]])
             f = lmfit.Parameter(name="group%d_RotFast" % i_group, value=0, #GEO.init.panel_rotations[0],
                                 min=GEO.min.panel_rotations[1]*DEG_TO_PI, max=GEO.max.panel_rotations[1]*DEG_TO_PI,
-                                vary=vary_rots[1])
+                                vary=vary_rots[1], user_data=[0, GEO.betas.panel_rot[1]])
             s = lmfit.Parameter(name="group%d_RotSlow" % i_group, value=0, #GEO.init.panel_rotations[1],
                                 min=GEO.min.panel_rotations[2]*DEG_TO_PI, max=GEO.max.panel_rotations[2]*DEG_TO_PI,
-                                vary=vary_rots[2])
+                                vary=vary_rots[2], user_data=[0, GEO.betas.panel_rot[2]])
 
             vary_shifts = [not fixed_flag and group_has_data for fixed_flag in GEO.fix.panel_translations]
             vary_shifts = [True]*3
             x = lmfit.Parameter(name="group%d_ShiftX" % i_group, value=0, #GEO.init.panel_translations[0],
                                 min=GEO.min.panel_translations[0]*1e-3, max=GEO.max.panel_translations[0]*1e-3,
-                                vary=vary_shifts[0])
+                                vary=vary_shifts[0], user_data=[0, GEO.betas.panel_xyz[0]])
             y = lmfit.Parameter(name="group%d_ShiftY" % i_group, value=0, #GEO.init.panel_translations[1],
                                 min=GEO.min.panel_translations[1]*1e-3, max=GEO.max.panel_translations[1]*1e-3,
-                                vary=vary_shifts[1])
+                                vary=vary_shifts[1], user_data=[0, GEO.betas.panel_xyz[1]])
             z = lmfit.Parameter(name="group%d_ShiftZ" % i_group, value=0, #GEO.init.panel_translations[2],
                                 min=GEO.min.panel_translations[2]*1e-3, max=GEO.max.panel_translations[2]*1e-3,
-                                vary=vary_shifts[2])
+                                vary=vary_shifts[2], user_data=[0, GEO.betas.panel_xyz[2]])
 
-            self.parameters += [f, s, o, x, y, z]
+            self.parameters += [o, f, s, x, y, z]
 
 
 class CrystalParameters:
@@ -72,24 +82,28 @@ class CrystalParameters:
             for i_N in range(3):
                 p = Mod.PAR.Nabc[i_N]
                 lmfit_p = lmfit.Parameter("rank%d_shot%d_Nabc%d" % (COMM.rank, i_shot, i_N),
-                                          min=p.minval, max=p.maxval, vary=True, value=p.init)
+                                          min=p.minval, max=p.maxval, vary=True, value=p.init,
+                                          user_data=[p.center, p.beta])
                 self.parameters.append(lmfit_p)
 
             for i_rot in range(3):
                 p = Mod.PAR.RotXYZ_params[i_rot]
                 lmfit_p = lmfit.Parameter("rank%d_shot%d_RotXYZ%d" % (COMM.rank, i_shot, i_rot),
-                                          min=p.minval, max=p.maxval, vary=True, value=p.init)
+                                          min=p.minval, max=p.maxval, vary=True, value=p.init,
+                                          user_data=[p.center, p.beta])
                 self.parameters.append(lmfit_p)
 
             p = Mod.PAR.Scale
             lmfit_p = lmfit.Parameter("rank%d_shot%d_Scale" % (COMM.rank, i_shot),
-                                      min=p.minval, max=p.maxval, vary=True, value=p.init)
+                                      min=p.minval, max=p.maxval, vary=True, value=p.init,
+                                      user_data=[p.center, p.beta])
             self.parameters.append(lmfit_p)
 
             for i_uc in range(len(Mod.PAR.ucell)):
                 p = Mod.PAR.ucell[i_uc]
                 lmfit_p = lmfit.Parameter("rank%d_shot%d_Ucell%d" % (COMM.rank, i_shot, i_uc),
-                                          min=p.minval, max=p.maxval, vary=True, value=p.init)
+                                          min=p.minval, max=p.maxval, vary=True, value=p.init,
+                                          user_data=[p.center, p.beta])
                 self.parameters.append(lmfit_p)
 
 
@@ -256,7 +270,7 @@ def update_detector(x, SIM):
                                   force=False)
 
 
-def target_and_grad(x, x_mapping, data_modelers, SIM, compute_grad=True):
+def target_and_grad(x, x_mapping, data_modelers, SIM, params, compute_grad=True):
     target_functional = 0
     grad = np.zeros(len(x)) if compute_grad else None
 
@@ -272,18 +286,30 @@ def target_and_grad(x, x_mapping, data_modelers, SIM, compute_grad=True):
         # accumulate the target functional for this rank/shot
         target_functional += neg_LL
 
+        # restrain the orientation
+        if params.use_restraints:
+            for i_rot in range(3):
+                rot_p = x["rank%d_shot%d_RotXYZ%d" % (COMM.rank, i_shot, i_rot)]
+                target_functional += rest_targ(rot_p)
+
         # accumulate the gradients for this rank/shot
         if compute_grad:
             for par_name in neg_LL_grad:
                 grad_idx = x_mapping[par_name]
                 grad[grad_idx] += neg_LL_grad[par_name]
 
-        # TODO add in the restraints
-
     # sum the target functional and the gradients across all ranks
     target_functional = COMM.bcast(COMM.reduce(target_functional))
     if compute_grad:
         grad = COMM.bcast(COMM.reduce(grad))
+
+    # add in the detector parameter restraints
+    if params.use_restraints:
+        names = "RotOrth", "RotFast", "RotSlow", "ShiftX", "ShiftY", "ShiftZ"
+        for group_id in SIM.panel_groups_refined:
+            for name in names:
+                p = x["group%d_%s" % (group_id, name)]
+                target_functional += rest_targ(p)
 
     all_shot_sigZ = COMM.reduce(all_shot_sigZ)
     if COMM.rank==0:
@@ -345,7 +371,7 @@ def geom_min(params):
 
     # do a barrel roll!
     target = Target()
-    fcn_args = [LMP_index_mapping, launcher.Modelers, launcher.SIM, do_grads]
+    fcn_args = [LMP_index_mapping, launcher.Modelers, launcher.SIM, params, do_grads]
     fcn_kws = {}
     lbfgs_kws = {}
     if do_grads:

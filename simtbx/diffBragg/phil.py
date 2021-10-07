@@ -853,10 +853,10 @@ geometry {
       .help = restraint target in mm for detector panel translations in X,Y,Z
   }
   betas {
-    panel_rotations = 1e6,1e6,1e6
+    panel_rot = 1e6,1e6,1e6
       .type = floats(size=3)
       .help = restraint factor for panel rotations (higher values lead to unrestrained parameters)
-    panel_translations = 1e6,1e6,1e6
+    panel_xyz = 1e6,1e6,1e6
       .type = floats(size=3)
       .help = restraint target in mm for detector panel translations in X,Y,Z
   }
