@@ -475,7 +475,7 @@ class Toolbox(object):
     destpath, destdir = os.path.split(destination)
 
     # default to using ssh for private phenix repositories
-    if module in ['phenix', 'solve_resolve', 'phenix_pathwalker']:
+    if module in ['phenix', 'solve_resolve', 'phenix_pathwalker', 'labelit']:
       use_ssh = True
 
     if os.path.exists(destination):
@@ -937,11 +937,13 @@ class voyager_regression_module(SourceModule):
 # DIALS repositories
 class labelit_module(SourceModule):
   module = 'labelit'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/labelit/trunk']
+  anonymous = ['git', 'git@github.com:phenix-project/labelit.git']
 
 class labelit_regression_module(SourceModule):
   module = 'labelit_regression'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/labelit_regression/trunk']
+  anonymous = ['git',
+               'git@gitlab.com:phenix_project/labelit_regression.git',
+               'https://gitlab.com/phenix_project/labelit_regression.git']
 
 class dials_module(SourceModule):
   module = 'dials'
