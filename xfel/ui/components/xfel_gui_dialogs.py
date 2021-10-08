@@ -1861,7 +1861,7 @@ class RunBlockDialog(BaseDialog):
           elif item in ["extra_phil_str", "calib_dir", "dark_avg_path", "dark_stddev_path",
             "gain_map_path", "beamx", "beamy", "gain_mask_level", "untrusted_pixel_mask_path",
             "binning", "energy", "wavelength_offset", "spectrum_eV_per_pixel", "spectrum_eV_offset",
-            "comment", "config_str"]:
+            "comment", "config_str", "extra_format_str"]:
             return None
           else:
             raise AttributeError(item)
@@ -1903,6 +1903,12 @@ class RunBlockDialog(BaseDialog):
     self.phil_sizer = wx.StaticBoxSizer(phil_box)
     self.phil_panel.SetSizer(self.phil_sizer)
 
+    if self.is_lcls:
+      self.format_panel = wx.Panel(self)
+      format_box = wx.StaticBox(self.format_panel, label='Extra XTC format parameters')
+      self.format_sizer = wx.StaticBoxSizer(format_box)
+      self.format_panel.SetSizer(self.format_sizer)
+
     runblock_box = wx.StaticBox(self, label='Options')
     self.runblock_box_sizer = wx.StaticBoxSizer(runblock_box, wx.VERTICAL)
     self.runblock_panel = ScrolledPanel(self, size=(550, 225))
@@ -1931,6 +1937,17 @@ class RunBlockDialog(BaseDialog):
                              ctr_size=(-1, 100),
                              ctr_value=str(block.extra_phil_str))
     self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
+
+    if self.is_lcls:
+      # Extra format options text ctrl (user can put in anything they want)
+      self.format = gctr.PHILBox(self.format_panel,
+                                 btn_import=True,
+                                 btn_import_label='Import PHIL',
+                                 btn_export=False,
+                                 btn_default=False,
+                                 ctr_size=(-1, 100),
+                                 ctr_value=str(block.extra_format_str))
+      self.format_sizer.Add(self.format, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Image format choice
     if self.is_lcls and self.parent.trial.app.params.dispatcher in \
@@ -2110,6 +2127,7 @@ class RunBlockDialog(BaseDialog):
     self.main_sizer.Add(self.phil_panel, flag=wx.EXPAND | wx.ALL, border=10)
     if self.is_lcls:
       self.main_sizer.Add(self.config_panel, flag=wx.EXPAND | wx.ALL, border=10)
+      self.main_sizer.Add(self.format_panel, flag=wx.EXPAND | wx.ALL, border=10)
     self.runblock_box_sizer.Add(self.runblock_panel)
     self.main_sizer.Add(self.runblock_box_sizer, flag=wx.EXPAND | wx.ALL,
                         border=10)
@@ -2123,6 +2141,7 @@ class RunBlockDialog(BaseDialog):
     self.Bind(wx.EVT_RADIOBUTTON, self.onAutoEnd, self.end_type.auto)
     self.Bind(wx.EVT_RADIOBUTTON, self.onSpecifyEnd, self.end_type.specify)
     self.Bind(wx.EVT_BUTTON, self.onImportPhil, self.phil.btn_import)
+    self.Bind(wx.EVT_BUTTON, self.onImportFormat, self.format.btn_import)
     self.Bind(wx.EVT_BUTTON, self.onUntrustedBrowse,
               id=self.untrusted_path.btn_big.GetId())
     if self.is_lcls and self.parent.trial.app.params.dispatcher in \
@@ -2183,6 +2202,21 @@ class RunBlockDialog(BaseDialog):
       self.phil.ctr.SetValue(phil_contents)
     phil_dlg.Destroy()
 
+  def onImportFormat(self, e):
+    phil_dlg = wx.FileDialog(self,
+                             message="Load phil file",
+                             defaultDir=os.curdir,
+                             defaultFile="*",
+                             wildcard="*.phil",
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+                             )
+    if phil_dlg.ShowModal() == wx.ID_OK:
+      phil_file = phil_dlg.GetPaths()[0]
+      with open(phil_file, 'r') as phil:
+        phil_contents = phil.read()
+      self.format.ctr.SetValue(phil_contents)
+    phil_dlg.Destroy()
+
   def onDefaultConfig(self, e):
     # TODO: Generate default config parameters (re-do based on pickle / CBF)
     pass
@@ -2234,6 +2268,7 @@ class RunBlockDialog(BaseDialog):
       rg_dict['binning']=self.bin_nrg_gain.binning.GetValue()
       rg_dict['detector_address']=self.address.ctr.GetValue()
       rg_dict['config_str']=self.config.ctr.GetValue()
+      rg_dict['extra_format_str']=self.format.ctr.GetValue()
       rg_dict['spectrum_eV_per_pixel']=self.spectrum_calibration.spectrum_eV_per_pixel.GetValue()
       rg_dict['spectrum_eV_offset']=self.spectrum_calibration.spectrum_eV_offset.GetValue()
     else:
@@ -2288,6 +2323,7 @@ class RunBlockDialog(BaseDialog):
       if self.is_lcls:
         self.address.ctr.SetValue(str(last.detector_address))
         self.config.ctr.SetValue(str(last.config_str))
+        self.format.ctr.SetValue(str(last.extra_format_str))
         self.beam_xyz.DetZ.SetValue(str(last.detz_parameter))
         self.beam_xyz.X.SetValue(str(last.beamx))
         self.beam_xyz.Y.SetValue(str(last.beamy))

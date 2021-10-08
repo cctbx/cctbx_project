@@ -279,6 +279,10 @@ class IndexingJob(Job):
             locator.write("rayonix.bin_size=%s\n"%self.rungroup.binning)
           elif mode == 'cspad':
             locator.write("cspad.detz_offset=%s\n"%self.rungroup.detz_parameter)
+
+          if self.rungroup.extra_format_str:
+            locator.write(self.rungroup.extra_format_str)
+
           locator.close()
           d['locator'] = locator_path
         else:
