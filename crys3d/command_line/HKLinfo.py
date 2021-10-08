@@ -25,6 +25,10 @@ wrap_labels = 15
   .type = int
   .short_caption = Wrap width for labels
   .help = Number of letters for wrapping long miller array labels. If less than 1 no wrapping is done
+delimiter = "|"
+  .type = str
+  .short_caption = column delimiter when printing table to standard output
+  .help = column delimiter
 """
 
 
@@ -47,7 +51,7 @@ from io import StringIO
 #from iotbx.cli_parser import run_program
 
 if __name__ == '__main__':
-  #time.sleep(10) # enough time to attach debugger
+  time.sleep(10) # enough time to attach debugger
   #run_program(program_class=Program)
   #dmp = StringIO()
   dmp = sys.stdout

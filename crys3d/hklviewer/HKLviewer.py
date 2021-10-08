@@ -28,11 +28,12 @@ from .qt import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
 from . import HKLviewerGui
 try: # if invoked by cctbx.python or some such
   from crys3d.hklview import HKLviewerGui
-  from crys3d.hklview.helpers import ( MillerArrayTableView, MillerArrayTableForm,
-                                     MillerArrayTableModel, MPLColourSchemes )
+  from crys3d.hklview.helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader,
+                                     MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog )
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
   from . import HKLviewerGui
-  from .helpers import MillerArrayTableView, MillerArrayTableForm, MillerArrayTableModel, MPLColourSchemes
+  from .helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader, 
+     MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog )
 
 class MakeNewDataForm(QDialog):
   def __init__(self, parent=None):
@@ -325,6 +326,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     # colourmap=brg, colourpower=1, powerscale=1, radiiscale=1
     self.settingsform = SettingsForm(self)
     self.aboutform = AboutForm(self)
+    self.select_millertable_column_dlg = MillerTableColumnHeaderDialog(self)
     self.webpagedebugform = None
 
     self.MillerComboBox = QComboBox()
@@ -584,6 +586,10 @@ newarray._sigmas = sigs
       self.send_message("""viewer.color_scheme = %s
 viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
+
+  def onSelect_millertable_column_dlg(self):
+    print("in select_millertable_column_dlg")
+    self.select_millertable_column_dlg.show()
 
   def ProcessMessages(self):
     """
@@ -1750,6 +1756,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     labels = ["Column label", "Type", "λ(Å)", "# HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max (Å)", "Anomalous", "Symmetry unique"]
     self.millertable.setColumnCount(len(labels))
+    self.millertable.setHorizontalHeader( MyhorizontalHeader(self.window) )
     self.millertable.setHorizontalHeaderLabels(labels)
     self.millertable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     # don't allow editing this table

@@ -822,9 +822,9 @@ class ArrayInfo:
     self.n_sys_abs = 0
     self.n_bijvoet = self.n_singletons = 0
     self.anomalous_mean_diff = nan
-    self.anomalous_completeness_resolution_range = nan
-    self.completeness_to_infty = nan
-    self.completeness_resolution_range = nan
+    self.anomalous_completeness = nan
+    self.data_completeness_infty = nan
+    self.data_completeness = nan
     self.n_centric = nan
     if (self.spginf is not None):
       sys_absent_flags = millarr.sys_absent_flags().data()
@@ -844,13 +844,13 @@ class ArrayInfo:
         n_obs = binner.counts_given()[1]
         n_complete = binner.counts_complete()[1]
         if (n_complete != 0 and self.dmax != self.dmin):
-            self.completeness_resolution_range = n_obs/n_complete
+            self.data_completeness = n_obs/n_complete
         n_complete += binner.counts_complete()[0]
         if (n_complete != 0):
-            self.completeness_to_infty = n_obs/n_complete
+            self.data_completeness_infty = n_obs/n_complete
         if (self.isanomalous) and (millarr.is_xray_intensity_array() or
           millarr.is_xray_amplitude_array()):
-            self.anomalous_completeness_resolution_range = millarr.anomalous_completeness()
+            self.anomalous_completeness = millarr.anomalous_completeness()
     if (self.spginf is not None and self.isanomalous and self.issymunique):
       asu, matches = millarr.match_bijvoet_mates()
       self.n_bijvoet = matches.pairs().size()
@@ -863,37 +863,39 @@ class ArrayInfo:
     if wrap_labels > 0:
       tlabels = textwrap.wrap(self.labelstr, width= wrap_labels)
       nlabl = len(tlabels)
-      self.labelsformat = "{0[0]:>%d} |" %(1+wrap_labels)
+      self.labelsformat = "{0[0]:>%d} " %(1+wrap_labels)
       if len(tlabels)>1:
         for i in range((len(tlabels)-1)):
-          self.labelsformat += "\n{0[%d]:>%d} |"%(i+1, wrap_labels+1)
+          self.labelsformat += "\n{0[%d]:>%d} "%(i+1, wrap_labels+1)
       added_spaces = wrap_labels-4
     else:
-      self.labelsformat = "{:>16} |"
+      self.labelsformat = "{:>16} "
       if len(self.labelstr)>15:
-        self.labelsformat = "{}\n                 |"
+        self.labelsformat = "{}\n                 "
       added_spaces= 11
     
-    self.info_format_dict = { # the keys here must be verbatim copies of attributes in arrayinfo_phil_str below for get_selected_info_columns() to work
-      "labels":             (" label" + " "*added_spaces + "|",                   self.labelstr,         "{}",                                                                             self.labelsformat), 
-      "description":        ("       type      |",                                self.desc,             "{}",                                                                             "{:>16} |"), 
-      "wavelength":         ("   λ/Å  |",                                         self.wavelength,       "{}",                                                                             "{:>7} |"), 
-      "n_reflections":      ("  #HKLs  |",                                        self.arrsize,          "{}",                                                                             "{:>8} |"), 
-      "span":               ("               Span              |",                self.span,             "{}",                                                                             "{:>32} |"), 
-      "minmax_data":        ("   min,max data      |",                            self.minmaxdata,       "{0[0]:.6}, {0[1]:.6}",                                                           "{0[0]:>10.5},{0[1]:>10.5}|"), 
-      "minmax_sigmas":      ("   min,max sigmas    |",                            self.minmaxsigs,       "{0[0]:.6}, {0[1]:.6}",                                                           "{0[0]:>10.5},{0[1]:>10.5}|"), 
-      "d_minmax":           ("   d_min,d_max/Å     |",                            self.dminmax,          "{0[0]:.6}, {0[1]:.6}",                                                           "{0[0]:>10.5},{0[1]:>10.5}|"), 
-      "unit_cell":          ("     unit cell (a/Å, b/Å, c/Å, αº, βº, γº)      |", self.ucell,            "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g}",  "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g} |"),
-      "n_centrics":         (" #centrics|",                                       self.n_centric,        "{}",                                                                             " {:>8} |"), 
-      "n_sys_abs":          (" #systematic absences|",                            self.n_sys_abs,        "{}",                                                                             " {:>8} |"), 
-      "completeness_resolution_range": (" completeness in resolution range|",     self.completeness_resolution_range, "{}",                                                                " {:>8} |"), 
-      "completeness_to_infty":   (" completeness to infinity|",                      self.completeness_to_infty,        "{}",                                                                 " {:>8} |"), 
-      "is_anomalous":       ("anomalous|",                                        str(self.isanomalous), "{}",                                                                             "{:>8} |"),
-      "is_symmetry_unique": (" symmetry unique|",                                 str(self.issymunique), "{}",                                                                             "{:>8} |"), 
-      "anomalous_completeness_resolution_range":  (" anomalous completeness in resolution range |",   self.anomalous_completeness_resolution_range, "{}",                                 " {:>8} |"), 
-      "anomalous_mean_diff": (" mean anomalous difference|",                      self.anomalous_mean_diff,  "{}",                                                                        " {:>8} |"), 
-      "n_bijvoet":         (" #bijvoet|",                                         self.n_bijvoet,        "{}",                                                                             " {:>8} |"), 
-      "n_singletons":       (" #singletons|",                                     self.n_singletons,        "{}",                                                                             " {:>8} |"), 
+    self.info_format_dict = { 
+      # the keys here must be verbatim copies of names of attributes in arrayinfo_phil_str below for get_selected_info_columns() to work
+      "labels":             (" label" + " "*added_spaces + "",                   self.labelstr,         "{}",                                                                             self.labelsformat), 
+      "description":        ("       type      ",                                self.desc,             "{}",                                                                             "{:>16} "), 
+      "wavelength":         ("   λ/Å  ",                                         self.wavelength,       "{}",                                                                             "{:>7} "), 
+      "n_reflections":      ("  #HKLs  ",                                        self.arrsize,          "{}",                                                                             "{:>8} "), 
+      "span":               ("               Span              ",                self.span,             "{}",                                                                             "{:>32} "), 
+      "minmax_data":        ("   min,max data       ",                            self.minmaxdata,       "{0[0]:.6}, {0[1]:.6}",                                                           "{0[0]:>10.5}, {0[1]:>10.5}"), 
+      "minmax_sigmas":      ("   min,max sigmas     ",                            self.minmaxsigs,       "{0[0]:.6}, {0[1]:.6}",                                                           "{0[0]:>10.5}, {0[1]:>10.5}"), 
+      "d_minmax":           ("   d_min,d_max/Å      ",                            self.dminmax,          "{0[0]:.6}, {0[1]:.6}",                                                           "{0[0]:>10.5}, {0[1]:>10.5}"), 
+      "unit_cell":          ("     unit cell (a/Å, b/Å, c/Å, αº, βº, γº)      ", self.ucell,            "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g}",  "{0[0]:>7.5g}, {0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g} "),
+      "space_group":        ("    space group    ",                             self.spginf,           "{}",                                                                             "{} "),
+      "n_centrics":         (" #centrics",                                       self.n_centric,        "{}",                                                                             "{:>8} "), 
+      "n_sys_abs":          ("#syst. abs.",                             self.n_sys_abs,        "{}",                                                                             "{:>10} "), 
+      "data_completeness": ("data compl.",                                 self.data_completeness, "{:.5g}",                                                                            "{:>10.5g} "), 
+      "data_completeness_infty": ("compl. infty",                   self.data_completeness_infty,  "{}",                                                                     "{:>11.5g} "), 
+      "is_anomalous":       ("anomalous",                                        str(self.isanomalous), "{}",                                                                             "{:>8} "),
+      "is_symmetry_unique": ("sym. uniq.",                                  str(self.issymunique), "{}",                                                                             "{:>9} "), 
+      "anomalous_completeness": ("ano. complete",                     self.anomalous_completeness, "{}",                                                                       "{:>12.5g} "), 
+      "anomalous_mean_diff": ("ano. dif.",                      self.anomalous_mean_diff,    "{}",                                                                       "{:>8.5g} "), 
+      "n_bijvoet":         ("#bijvoet",                                         self.n_bijvoet,              "{}",                                                                       "{:>7} "), 
+      "n_singletons":       ("#singletons",                                     self.n_singletons,           "{}",                                                                       "{:>10} "), 
     }
 
   # govern whether or not a property of the ArrayInfo should be returned by get_selected_info_columns()
@@ -917,6 +919,8 @@ class ArrayInfo:
       .type = bool   
     unit_cell = False
       .type = bool   
+    space_group = False
+      .type = bool
     n_centrics = False
       .type = bool   
     is_anomalous = True
@@ -925,11 +929,11 @@ class ArrayInfo:
       .type = bool
     n_sys_abs = False
       .type = bool   
-    completeness_resolution_range = True
+    data_completeness = True
       .type = bool   
-    completeness_to_infty = False
+    data_completeness_infty = False
       .type = bool   
-    anomalous_completeness_resolution_range = False
+    anomalous_completeness = False
       .type = bool   
     anomalous_mean_diff = False
       .type = bool   
@@ -953,6 +957,20 @@ class ArrayInfo:
     for colnames,selected in column_names_selection:
       if selected:
         info_format_tpl.append( self.info_format_dict[colnames] )
+    # transpose info_format_tpl to return a list of headers, a list of values, and two lists of format strings
+    return list(zip(*info_format_tpl)) 
+
+
+  def get_selected_info_columns_from_phil(self,philobj=None):
+    from libtbx.phil import parse
+    info_format_tpl = []
+    if not philobj: # then use the default values in the arrayinfo_phil_str
+      philobj = parse(self.arrayinfo_phil_str).extract()
+
+    for colname,selected in list(philobj.selected_info.__dict__.items()):
+      if not colname.startswith("__"):
+        if selected:
+          info_format_tpl.append( self.info_format_dict[colname] )
     # transpose info_format_tpl to return a list of headers, a list of values, and two lists of format strings
     return list(zip(*info_format_tpl)) 
 

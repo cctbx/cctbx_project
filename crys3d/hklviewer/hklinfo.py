@@ -17,24 +17,24 @@ def run(arrays, philparams=None, log = sys.stdout):
   else:
     column_names_selection = None
     wrap_labels = 0
-
+  delimiter = philparams.delimiter
   array_info_format_tpl=[]
   for i,array in enumerate(arrays):
     arrayinfo = ArrayInfo(array, wrap_labels)
-    array_info_format_tpl.append( arrayinfo.get_selected_info_columns(column_names_selection))
+    array_info_format_tpl.append( arrayinfo.get_selected_info_columns_from_phil(philparams))
 
   print("%d Miller arrays in this dataset:" %len(arrays))
   for i,info_fmt in enumerate(array_info_format_tpl):
     headerlst, infolst, dummy, fmtlst = info_fmt
     if i==0:
       for h in headerlst:
-        print(h, end="")
+        print(h, end=delimiter)
       print("") # print that line break
     for i,info in enumerate(infolst):
       inf = info
       if i==0 and wrap_labels>0:
         inf = textwrap.wrap(info, width=wrap_labels)
-      print(fmtlst[i].format(inf), end="") # no line break
+      print(fmtlst[i].format(inf), end=delimiter) # no line break
     print("") # print that line break
 
 

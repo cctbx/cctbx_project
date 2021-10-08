@@ -574,7 +574,11 @@ Borrowing them from the first miller array""" %i)
       from iotbx.gui_tools.reflections import ArrayInfo
       wrap_labels = 25
       arrayinfo = ArrayInfo(array,wrap_labels)
-      info_fmt = arrayinfo.get_selected_info_columns(None)
+      #obj = parse(arrayinfo.arrayinfo_phil_str).extract()
+      #obj.selected_info.labels
+
+
+      info_fmt = arrayinfo.get_selected_info_columns_from_phil(None)
       self.viewer.array_info_format_tpl.append( info_fmt )
       # isanomalous and spacegroup might not have been selected for displaying so send them separatately to GUI
       self.ano_spg_tpls.append((arrayinfo.isanomalous, arrayinfo.spginf) )

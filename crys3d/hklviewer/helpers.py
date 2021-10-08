@@ -11,10 +11,25 @@ from .qt import Qt, QEvent, QAbstractTableModel, QModelIndex
 from .qt import QCursor, QKeySequence
 from .qt import ( QAbstractItemView, QCheckBox, QTableWidget, QAction,
       QMenu, QTableView, QDialog, QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
-      QScrollArea, QVBoxLayout
+      QScrollArea, QVBoxLayout, QHeaderView
      )
 import math, csv
 from io import StringIO
+
+class MyhorizontalHeader(QHeaderView): 
+# assigned to HeaderDataTableWidget (NGL_HKLViewer.millertable) but in NGL_HKLViewer.createFileInfoBox()
+# as to avoid a very long chain of parents when accessing select_millertable_column_dlg()
+  def __init__(self, parent=None):
+    super(MyhorizontalHeader,self).__init__(Qt.Horizontal, parent)
+    self.mousebutton = None
+    self.parent = parent
+  def mousePressEvent(self, event):
+    if event.type() == QEvent.MouseButtonPress:
+      self.mousebutton = None
+      if event.button() == Qt.RightButton:
+        self.mousebutton = Qt.RightButton
+        self.parent.parent.onSelect_millertable_column_dlg()
+    QHeaderView.mousePressEvent(self, event)
 
 
 class HeaderDataTableWidget(QTableWidget):
@@ -33,6 +48,22 @@ class HeaderDataTableWidget(QTableWidget):
       if event.button() == Qt.LeftButton:
         self.mousebutton = QEvent.MouseButtonDblClick
     QTableWidget.mouseDoubleClickEvent(self, event)
+
+
+class MillerTableColumnHeaderDialog(QDialog):
+  def __init__(self, parent=None):
+    super(MillerTableColumnHeaderDialog, self).__init__(parent.window)
+    self.setWindowFlags(Qt.Tool)
+    self.setWindowTitle("Columns to display")
+    self.myGroupBox = QGroupBox()
+    self.layout = QGridLayout()
+    self.layout.addWidget(QTableWidget(),  0, 0)
+    self.layout.setColumnStretch (0 ,0)
+    self.setLayout(self.layout)
+    #self.myGroupBox.setLayout(self.layout)
+    #self.mainLayout = QGridLayout()
+    #self.mainLayout.addWidget(self.myGroupBox,     0, 0)
+    #self.setLayout(self.mainLayout)
 
 
 class MillerArrayTableForm(QDialog):
