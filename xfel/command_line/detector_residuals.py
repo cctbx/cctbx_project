@@ -92,6 +92,10 @@ residuals {
       .type = choice
       .help = this should be obvious.  Either keep the good ones or the bad ones.
   }
+  print_correlations = True
+    .type = bool
+    .help = For each panel group, print the correlation between radial offset\
+            and delta_psi, and transverse offset and delta_psi.
 }
 
 repredict
@@ -317,8 +321,8 @@ def get_unweighted_rmsd(reflections, verbose=True):
   w_rmsd = math.sqrt( flex.sum( weights*(reflections['difference_vector_norms']**2) )/flex.sum(weights))
 
   if verbose:
-    print("Uweighted RMSD (mm)", un_rmsd)
-    print("Weighted RMSD (mm)", w_rmsd)
+    print("%20s%7.3f"%("Unweighted RMSD (μm)", un_rmsd*1000))
+    print("%20s%7.3f"%("Weighted RMSD (μm)", w_rmsd*1000))
 
   return un_rmsd
 
@@ -848,7 +852,7 @@ class ResidualsPlotter(object):
 
     n = len(reflections)
     rmsd = get_unweighted_rmsd(reflections, params.verbose)
-    print("Dataset RMSD (microns)", rmsd * 1000)
+    print("%20s%7.3f"%("Dataset RMSD (μm)", rmsd * 1000))
 
     if params.tag is None:
       tag = ''
@@ -888,8 +892,11 @@ class ResidualsPlotter(object):
     pg_t_rmsds = flex.double()
     pg_refls_count = flex.int()
     pg_refls_count_d = {}
-    table_header = ["PG id", "RMSD","Radial", "Transverse", "N refls"]
-    table_header2 = ["","(um)","RMSD (um)","RMSD (um)",""]
+    table_header = ["PG id", "RMSD","Radial", "Transverse", "N_refls"]
+    table_header2 = ["","(μm)","RMSD(μm)","RMSD(μm)",""]
+    if params.residuals.print_correlations:
+      table_header += ["Correl", "Correl"]
+      table_header2 += ["ΔR,ΔΨ","ΔT,ΔΨ"]
     table_data = []
     table_data.append(table_header)
     table_data.append(table_header2)
@@ -910,6 +917,10 @@ class ResidualsPlotter(object):
     else:
       iterable = enumerate(detector)
 
+    if params.residuals.print_correlations:
+      from xfel.metrology.panel_fitting import three_feature_fit
+      pg_r_all = flex.double(); pg_t_all = flex.double(); pg_delpsi_all = flex.double()
+
     s0 = experiments[0].beam.get_s0()
 
     for pg_id, pg in iterable:
@@ -917,6 +928,8 @@ class ResidualsPlotter(object):
       pg_r_msd_sum = 0
       pg_t_msd_sum = 0
       pg_refls = 0
+      if params.residuals.print_correlations:
+        pg_r = flex.double(); pg_t = flex.double()
       pg_delpsi = flex.double()
       pg_deltwotheta = flex.double()
       for p in iterate_panels(pg):
@@ -933,6 +946,8 @@ class ResidualsPlotter(object):
 
         r = panel_refls['radial_displacements']
         t = panel_refls['transverse_displacements']
+        if params.residuals.print_correlations:
+          pg_r.extend(r); pg_t.extend(t)
         pg_r_msd_sum += flex.sum_sq(r)
         pg_t_msd_sum += flex.sum_sq(t)
 
@@ -959,6 +974,15 @@ class ResidualsPlotter(object):
       pg_refls_count.append(pg_refls)
       pg_refls_count_d[pg.get_name()] = pg_refls
       table_data.append(["%d"%pg_id, "%.1f"%pg_rmsd, "%.1f"%pg_r_rmsd, "%.1f"%pg_t_rmsd, "%6d"%pg_refls])
+      if params.residuals.print_correlations:
+        pg_r_all.extend(pg_r); pg_t_all.extend(pg_t); pg_delpsi_all.extend(pg_delpsi)
+        if len(pg_r)>2:
+          TF = three_feature_fit(delta_radial = pg_r, delta_transverse = pg_t, delta_psi = pg_delpsi, i_panel=pg_id, verbose=False)
+          pg_cc_Rpsi = 100.*TF.cross_correl[2]
+          pg_cc_Tpsi = 100.*TF.cross_correl[1]
+        else:
+          pg_cc_Rpsi = 0.; pg_cc_Tpsi = 0.
+        table_data[-1].extend(["%3.0f%%"%pg_cc_Rpsi, "%3.0f%%"%pg_cc_Tpsi])
 
       refl_counts[pg.get_name()] = pg_refls
       if pg_refls == 0:
@@ -975,8 +999,8 @@ class ResidualsPlotter(object):
         ttdpcorr[pg.get_name()] = lc.coefficient()
 
 
-    r1 = ["Weighted mean"]
-    r2 = ["Weighted stddev"]
+    r1 = ["Weighted PG mean"]
+    r2 = ["Weighted PG stddev"]
     if len(pg_rmsds) > 1:
       stats = flex.mean_and_variance(pg_rmsds, pg_refls_count.as_double())
       r1.append("%.1f"%stats.mean())
@@ -994,10 +1018,16 @@ class ResidualsPlotter(object):
     r2.append("")
     table_data.append(r1)
     table_data.append(r2)
-    table_data.append(["Mean", "", "", "", "%8.1f"%flex.mean(pg_refls_count.as_double())])
+    table_data.append(["PG Mean", "", "", "", "%8.1f"%flex.mean(pg_refls_count.as_double())])
+
+    if params.residuals.print_correlations:
+      TFA = three_feature_fit(delta_radial = pg_r_all, delta_transverse = pg_t_all, delta_psi = pg_delpsi_all,
+         i_panel=pg_id, verbose=False)
+      table_data.append(["Refls Mean", "", "", "", "",
+                       "%3.0f%%"%(100.*TFA.cross_correl[2]), "%3.0f%%"%(100.*TFA.cross_correl[1]) ])
 
     from libtbx import table_utils
-    if params.verbose: print("Detector statistics.  Angles in degrees, RMSDs in microns")
+    if params.verbose: print("Detector statistics by panel group (PG)")
     if params.verbose: print(table_utils.format(table_data,has_header=2,justify='center',delim=" "))
 
     self.histogram(reflections, r"%s$\Delta$XY histogram (mm)"%tag, plots = params.show_plots and params.plots.deltaXY_histogram, verbose = params.verbose)
