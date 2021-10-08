@@ -25,6 +25,7 @@ class CosymAnalysis(BaseClass):
   def run(self):
     super(CosymAnalysis, self).run()
     if self.do_plot: self.plot_after_cluster_analysis()
+    # we have the xy embedded coords at this point.
 
   def plot_after_optimize(self):
           print ("optimized coordinates", self.coords.shape)
@@ -52,6 +53,9 @@ class CosymAnalysis(BaseClass):
             yy.append(self.coords[(item,1)])
           from matplotlib import pyplot as plt
           plt.plot(xx, yy, 'r.')
+          plt.plot(xx[0:1], yy[0:1], 'k.')
+          plt.plot([0,0],[-0.01,0.01],"k-")
+          plt.plot([-0.01,0.01],[0,0],"k-")
           ax = plt.gca()
           ax.set_aspect("equal")
           circle = plt.Circle((0,0),1,fill=False,edgecolor="b")
