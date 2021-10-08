@@ -438,9 +438,7 @@ class nanoBragg {
     /* misseting angles, applied after any provided A and U matrices */
     double misset[4];
 
-#ifdef NANOBRAGG_HAVE_CUDA
     int device_Id;
-#endif
     /* special options */
 //    bool calculate_noise; // = 1;
 //    bool write_pgm; // = 1;
