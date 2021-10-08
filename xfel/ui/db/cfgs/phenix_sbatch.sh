@@ -1,14 +1,12 @@
-from __future__ import division
-sbatch_template = \
-"""#!/bin/bash -l
+#!/bin/bash -l
 #SBATCH --qos=<queue>
 #SBATCH --job-name=<jobname>
 #SBATCH --reservation=<reservation>
 #SBATCH --time=<walltime>
-#SBATCH --nodes=<nnodes>
-#SBATCH --tasks-per-node=<nproc_per_node>
+#SBATCH --nodes=1
+#SBATCH --tasks-per-node=1
+#SBATCH --cpus-per-task=1
 #SBATCH --constraint=<constraint>
-#SBATCH --image=<shifter_image>
 #SBATCH --mail-type=NONE
 #SBATCH -A <project>
 #SBATCH -o <out_log>
@@ -19,27 +17,9 @@ sbatch_template = \
 
 # submit jobs
 mkdir ${DW_JOB_STRIPED}/stdout    #DW <-Tagged so we can delete this line if not using DW
+cd <output_dir>
 
 echo -n "Starting job @ t="; date +%s
-srun shifter <srun_script>
+srun -n 1 <srun_script>
 echo -n "Finished job @ t="; date +%s
-"""
 
-srun_template = \
-"""#!/bin/bash
-
-#cctbx
-source /img/activate.sh
-
-#for experiment database
-export SIT_DATA=/global/common/software/lcls/psdm/data
-
-#for psana
-export SIT_PSDM_DATA=/global/cscratch1/sd/psdatmgr/data/psdm
-
-#needed to open h5 files from compute nodes
-export HDF5_USE_FILE_LOCKING=FALSE
-
-# run
-<command>
-"""

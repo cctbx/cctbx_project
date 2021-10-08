@@ -36,7 +36,9 @@ from prime.postrefine.mod_input import master_phil
 from iota.components import iota_utils as util
 
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
-user = os.getlogin()
+
+import getpass
+user = getpass.getuser()
 
 import libtbx.load_env
 license = os.path.join(libtbx.env.find_in_repositories('cctbx_project'), 'LICENSE.txt')
@@ -785,7 +787,10 @@ class UnitCellSentinel(Thread):
           print("Warning, only first tag set will be plotted")
 
         params = phil_scope.extract()
-        sg = self.parent.run_window.unitcell_tab.trial.cell.lookup_symbol
+        try:
+          sg = self.parent.run_window.unitcell_tab.trial.cell.lookup_symbol
+        except AttributeError:
+          sg = "P1"
         sg = "".join(sg.split()) # remove spaces
         params.input.space_group = sg
 
@@ -1660,10 +1665,11 @@ class JobsTab(BaseTab):
     self.job_list.InsertColumn(3, "Trial")
     self.job_list.InsertColumn(4, "Run")
     self.job_list.InsertColumn(5, "Block")
-    self.job_list.InsertColumn(6, "Subm ID")
-    self.job_list.InsertColumn(7, "Status")
+    self.job_list.InsertColumn(6, "Task")
+    self.job_list.InsertColumn(7, "Subm ID")
+    self.job_list.InsertColumn(8, "Status")
 
-    self.job_list_sort_flag = [0, 0, 0, 0, 0, 0, 0, 0]
+    self.job_list_sort_flag = [0, 0, 0, 0, 0, 0, 0, 0, 0]
     self.job_list_col = 0
 
     self.trial_choice = gctr.ChoiceCtrl(self,
@@ -1820,6 +1826,7 @@ class JobsTab(BaseTab):
         except ValueError:
           r = "r%s" % job.run.run
         rg = "rg%03d" % job.rungroup.id if job.rungroup is not None else "-"
+        tsk = "%d" % job.task.id if job.task is not None else "-"
         sid = str(job.submission_id)
 
         short_status = str(job.status).strip("'")
@@ -1829,7 +1836,7 @@ class JobsTab(BaseTab):
           short_status = "SUBMIT"
         s = short_status
 
-        self.data[job.id] = [j, jt, ds, t, r, rg, sid, s]
+        self.data[job.id] = [j, jt, ds, t, r, rg, tsk, sid, s]
         found_it = False
         # Look to see if item already in list
         for i in range(self.job_list.GetItemCount()):

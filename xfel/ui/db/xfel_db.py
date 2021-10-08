@@ -263,6 +263,13 @@ class initialize(initialize_base):
         query = "ALTER TABLE `%s_rungroup` ADD COLUMN spectrum_eV_offset DOUBLE NULL"%self.params.experiment_tag
         cursor.execute(query)
 
+      # Maintain backwards compatibility with SQL tables v5.3: 07/23/21
+      if 'extra_format_str' not in column_names:
+        print("Upgrading to version 5.3 of mysql database schema")
+        query = "ALTER TABLE `%s_rungroup` ADD COLUMN extra_format_str TEXT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_job` MODIFY COLUMN submission_id TEXT NULL"%self.params.experiment_tag
+        cursor.execute(query)
     return tables_ok
 
   def set_up_columns_dict(self, app):
@@ -836,6 +843,9 @@ class xfel_db_application(db_application):
   def get_dataset(self, dataset_version_id):
     return Dataset(self, dataset_version_id)
 
+  def get_dataset_version(self, dataset_version_id):
+    return DatasetVersion(self, dataset_version_id)
+
   def get_dataset_versions(self, dataset_id, latest = False):
     tag = self.params.experiment_tag
     if latest:
@@ -852,6 +862,17 @@ class xfel_db_application(db_application):
     else:
       where = "WHERE dataset_version.dataset_id = %d"%dataset_id
     return self.get_all_x_with_subitems(DatasetVersion, "dataset_version", where = where, sub_items=[(Dataset, "dataset", True)])
+
+  def get_job_dataset_version(self, job_id):
+    tag = self.params.experiment_tag
+    query = """SELECT dvj.dataset_version_id FROM `%s_dataset_version_job` dvj
+               WHERE dvj.job_id = %d""" % (tag, job_id)
+    cursor = self.execute_query(query)
+    dataset_version_ids = [i[0] for i in cursor.fetchall()]
+    if not dataset_version_ids:
+      return None
+    assert len(dataset_version_ids) == 1
+    return self.get_dataset_version(dataset_version_ids[0])
 
   def get_dataset_version_jobs(self, dataset_version_id):
     tag = self.params.experiment_tag
