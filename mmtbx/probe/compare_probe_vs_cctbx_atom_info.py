@@ -30,8 +30,6 @@ from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
 from cctbx.maptbx.box import shift_and_box_model
 import mmtbx
-import mmtbx.probe
-import mmtbx.probe.Helpers
 
 # To enable addition of Hydrogens
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
