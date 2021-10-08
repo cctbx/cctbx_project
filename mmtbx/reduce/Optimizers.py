@@ -30,7 +30,6 @@ from iotbx.pdb import common_residue_names_get_class
 import mmtbx
 from scitbx.array_family import flex
 
-from mmtbx.probe import AtomTypes
 from mmtbx.probe import Helpers
 import mmtbx_probe_ext as probeExt
 
@@ -189,10 +188,6 @@ class _SingletonOptimizer(object):
     self._atomDump = ""
 
     ################################################################################
-    # Gather data we need for our calculations.
-    self._maximumVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
-
-    ################################################################################
     # Run optimization for every desired conformer and every desired model, calling
     # placement and then a derived-class single optimization routine for each.  When
     # the modelIndex or altID is None, that means to run over all available cases.
@@ -274,10 +269,17 @@ class _SingletonOptimizer(object):
         self._infoString += _ReportTiming("get extra atom info")
 
         ################################################################################
+        # Find the radius of the largest atom we'll have to deal with.
+        maxVDWRad = 1
+        for a in self._atoms:
+          maxVDWRad = max(maxVDWRad, self._extraAtomInfo.getMappingFor(a).vdwRadius)
+        self._maximumVDWRadius = maxVDWRad
+
+        ################################################################################
         # Get the list of Movers using the _PlaceMovers private function.
         ret = _PlaceMovers(self._atoms, model.rotatable_hd_selection(iselection=True),
                            bondedNeighborLists, self._spatialQuery, self._extraAtomInfo,
-                           AtomTypes.AtomTypes().MaximumVDWRadius())
+                           self._maximumVDWRadius)
         self._infoString += ret.infoString
         self._movers = ret.moverList
         self._infoString += _VerboseCheck(1,"Inserted "+str(len(self._movers))+" Movers\n")
@@ -1065,8 +1067,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
   :param extraAtomInfo: Probe.ExtraAtomInfo mapper that provides radius and other
   information about atoms beyond what is in the pdb.hierarchy.  Used here to determine
   which atoms may be acceptors.
-  :param maxVDWRadius: Maximum VdW radius of an atom.  Can be obtained from
-  mmtbx.probe.AtomTypes.AtomTypes().MaximumVDWRadius()
+  :param maxVDWRadius: Maximum VdW radius of the atoms.
   :return: _PlaceMoversReturn giving the list of Movers found in the conformation and
   an error string that is empty if no errors are found during the process and which
   has a printable message in case one or more errors are found.
@@ -1499,11 +1500,17 @@ END
   # pick the first available conformation for each atom group.
   atoms = GetAtomsForConformer(firstModel, "")
 
+  # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
+  ret = Helpers.getExtraAtomInfo(model)
+  extra = ret.extraAtomInfo
+
   # Get the Cartesian positions of all of the atoms we're considering for this alternate
-  # conformation.
+  # conformation.  Also compute the maximum VDW radius among them.
   carts = flex.vec3_double()
+  maxVDWRad = 1
   for a in atoms:
     carts.append(a.xyz)
+    maxVDWRad = max(maxVDWRad, extra.getMappingFor(a).vdwRadius)
 
   # Get the bond proxies for the atoms in the model and conformation we're using and
   # use them to determine the bonded neighbor lists.
@@ -1523,14 +1530,10 @@ END
   # Get the spatial-query information needed to quickly determine which atoms are nearby
   sq = probeExt.SpatialQuery(atoms)
 
-  # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  ret = Helpers.getExtraAtomInfo(model)
-  extra = ret.extraAtomInfo
-
   # Place the movers, which should include only an NH3 rotator because the Histidine flip
   # will be constrained by the ionic bonds.
   ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True),
-                     bondedNeighborLists, sq, extra, AtomTypes.AtomTypes().MaximumVDWRadius())
+                     bondedNeighborLists, sq, extra, maxVDWRad)
   movers = ret.moverList
   if len(movers) != 1:
     return "Optimizers.Test(): Incorrect number of Movers for 1xso Histidine test"
