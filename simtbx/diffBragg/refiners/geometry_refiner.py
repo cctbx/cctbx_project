@@ -1,7 +1,10 @@
 from __future__ import division
 
 import numpy as np
-import lmfit
+try:
+    import lmfit
+except ImportError:
+    raise ImportError("Install lmfit 'libtbx.python -m pip install lmfit' before using geometry_refiner.py!")
 from libtbx.mpi4py import  MPI
 COMM = MPI.COMM_WORLD
 
@@ -31,7 +34,8 @@ def rest_targ(p):
     """
     center, beta = p.user_data
     dist = center - p.value
-    return .5*(np.log(2*np.pi*beta) + dist**2/beta)
+    return .5*dist**2/beta
+    #return .5*(np.log(2*np.pi*beta) + dist**2/beta)
 
 
 class DetectorParameters:
@@ -114,9 +118,15 @@ class Target:
     def callbk(self, lmfit_params, iter, resid, *fcn_args, **fcn_kws):
         if COMM.rank==0:
             print("Iteration %d:\n\tResid=%f, sigmaZ %f" % (iter, resid, self.sigmaZ))
-            print("\tAverage det shift=%f, average det rot=%f" % (-1,-1)) # TODO
-            if iter % 20 == 0:
-                print_parmams(lmfit_params)
+            vals = []
+            for k in lmfit_params:
+                if "ShiftZ" in k:
+                    vals.append( lmfit_params[k].value *1000)
+            Z = np.mean(vals)
+            lmfit_params["group0_ShiftZ"]
+            print("\tAverage det shiftZ=%.5f mm, average det rot=%f" % (Z,-1)) # TODO
+            #if iter % 20 == 0:
+            #    print_parmams(lmfit_params)
 
     def __call__(self, lmfit_params, *fcn_args, **fcn_kws):
         f, self.g, self.sigmaZ = target_and_grad(lmfit_params, *fcn_args, **fcn_kws)
@@ -137,6 +147,10 @@ def model(x, i_shot, Modeler, SIM, compute_grad=True):
     G = x["rank%d_shot%d_Scale" % (COMM.rank, i_shot)]
     num_uc_p = len(Modeler.ucell_man.variables)
     ucell_pars = [x["rank%d_shot%d_Ucell%d" % (COMM.rank, i_shot, i_uc)] for i_uc in range(num_uc_p)]
+
+    # update the photon energy spectrum for this shot
+    SIM.beam.spectrum = Modeler.spectra
+    SIM.D.xray_beams = SIM.beam.xray_beams
 
     # update the Bmatrix
     Modeler.ucell_man.variables = [p.value for p in ucell_pars]
@@ -303,6 +317,9 @@ def target_and_grad(x, x_mapping, data_modelers, SIM, params, compute_grad=True)
     if compute_grad:
         grad = COMM.bcast(COMM.reduce(grad))
 
+    if params.use_restraints and params.geometry.betas.close_distances is not None:
+        target_functional += np.std(SIM.D.close_distances) / params.geometry.betas.close_distances
+
     # add in the detector parameter restraints
     if params.use_restraints:
         names = "RotOrth", "RotFast", "RotSlow", "ShiftX", "ShiftY", "ShiftZ"
@@ -322,6 +339,10 @@ def geom_min(params):
     import pandas
     launcher = ensemble_refine_launcher.RefineLauncher(params)
     df = pandas.read_pickle(params.geometry.input_pkl)
+    if params.geometry.first_n is not None:
+        df = df.iloc[:params.geometry.first_n]
+    if COMM.rank==0:
+        print("Will optimize using %d experiments" %len(df))
     launcher.load_inputs(df, refls_key=params.geometry.refls_key)
 
     # same on every rank:
@@ -348,6 +369,17 @@ def geom_min(params):
     do_grads = params.geometry.optimize_method == "lbfgsb"
     if not do_grads:
         assert params.geometry.optimize_method == "nelder"
+
+    # set the GPU device
+    launcher.SIM.D.device_Id = COMM.rank % params.refiner.num_devices
+    if COMM.rank==0:
+        print("Allocating %d pixels on rank %d")
+    npx_str = "(rnk%d, dev%d): %d pix" %(COMM.rank, launcher.SIM.D.device_Id, launcher.NPIX_TO_ALLOC)
+    npx_str = COMM.gather(npx_str)
+    if COMM.rank==0:
+        print("How many pixels each rank will allocate for on its device:")
+        print("; ".join(npx_str))
+    launcher.SIM.D.Npix_to_allocate =  launcher.NPIX_TO_ALLOC
 
     # configure diffBragg instance for gradient computation
     # TODO: fix flags currently unsupported in lmfit with gradients? One can always "fix" a parameter by
@@ -382,15 +414,15 @@ def geom_min(params):
                              scale_covar=False, calc_covar=False)
     result = minzer.minimize(method=params.geometry.optimize_method, params=LMP, **lbfgs_kws)
 
-    opt_det = get_optimized_detector(result.params, launcher.SIM)
-    from dxtbx.model import Experiment, ExperimentList
-    El = ExperimentList()
-    E = Experiment()
-    E.detector = opt_det
-    El.append(E)
-    El.as_file(params.geometry.optimized_detector_name)
-
-    print_parmams(result.params)
+    if COMM.rank == 0:
+        opt_det = get_optimized_detector(result.params, launcher.SIM)
+        from dxtbx.model import Experiment, ExperimentList
+        El = ExperimentList()
+        E = Experiment()
+        E.detector = opt_det
+        El.append(E)
+        El.as_file(params.geometry.optimized_detector_name)
+        print_parmams(result.params)
 
 
 def get_optimized_detector(x, SIM):

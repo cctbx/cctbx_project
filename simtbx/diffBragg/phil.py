@@ -813,6 +813,9 @@ roi {
 }
 
 geometry {
+  first_n = None
+    .type = int
+    .help = only load the first_n experiments from the input pickle
   refls_key = stage1_refls
     .type = str
     .help = column name for the input pickle which contains the reflection tables to be modeled
@@ -858,7 +861,10 @@ geometry {
       .help = restraint factor for panel rotations (higher values lead to unrestrained parameters)
     panel_xyz = 1e6,1e6,1e6
       .type = floats(size=3)
-      .help = restraint target in mm for detector panel translations in X,Y,Z
+      .help = restraint factor in mm for detector panel translations in X,Y,Z
+    close_distances = None
+      .type = float
+      .help = restraint factor for the spread of detector panel Z-distances (#TODO think about this in context of tilt)
   }
   fix {
     panel_rotations = 0,0,0
