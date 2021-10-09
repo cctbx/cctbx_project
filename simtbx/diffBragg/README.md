@@ -329,14 +329,6 @@ libtbx.python quick_detresid.py poly_images/procPoly
 The numbers that print to the screen now are slightly more optimized, owing to the fact that we used a polychromatic model which is more in-line with the data. In fact these numbers represent the best we can do when we know our detector geometry perfectly. This time, the data took 200 seconds to process.
 
 
-
-This particular dataset has rather fat spots that are dominated by the mosaic domain size as opposed to the spot spectra, but nonetheless we get better results using poly models. This is perhaps better seen by plotting the average prediction offset as a function of resolution:
-
-```
-```
-
-
-
 ### Fixing a faulty geometry
 
 Geometry refinement is currently using the `lmfit` module. Install it using pip:
@@ -347,7 +339,7 @@ libtbx.python -m pip install lmfit
 
 We have prepared a faulty experimental geometry with which to process the data, taken directly from real expeirmental errors associated with the CSPAD geometry. This is to simulate the scenario where the geometry is not well known, and one wishes to optimize it using pixel refinement. One must extract it from its raw form and write it to disk, using the following simple script
 
-```
+```python
 from cxid9114.geom.multi_panel import CSPAD2
 from dxtbx.model import Experiment, ExperimentList
 El = ExperimentList()
@@ -574,6 +566,173 @@ libtbx.python quick_detresid.py poly_images/procOpt
 </p>
 
 The result shows significant improvement with the optimized geometry, more so than even the monochromatic models that were subjected to zero detector inaccuracy!
+
+This particular dataset has rather fat spots that are dominated by the mosaic domain size as opposed to the spot spectra, but nonetheless we get better results using polychromatic models. Plotting the average prediction offset as a function of resolution shows this readily. The script
+
+<details>
+  <summary>pred_offsets.py</summary>
+
+```python
+"""pred_offsets.py"""
+import glob
+import os
+from pylab import *
+from dials.array_family import flex
+from joblib import Parallel, delayed
+
+from argparse import ArgumentParser
+
+parser = ArgumentParser()
+parser.add_argument("dirnames", type=str, nargs="+", help="hopper_process output folders")
+parser.add_argument("-j", type=int, default=1, help="number of procs")
+parser.add_argument("-nbins", type=int, default=10, help="number of resolution bins")
+args = parser.parse_args()
+
+
+NJ=args.j
+
+
+def xy_to_polar(refl,DET, dials=False):
+    x, y, _ = refl["xyzobs.px.value"]
+    if dials:
+        xcal, ycal, _ = refl["dials.xyzcal.px"]
+    else:
+        xcal, ycal, _ = refl["xyzcal.px"]
+
+    pid = refl['panel']
+    panel = DET[pid]
+    x,y = panel.pixel_to_millimeter((x,y))
+    xcal,ycal = panel.pixel_to_millimeter((xcal,ycal))
+
+    xyz_lab = panel.get_lab_coord((x,y))
+    xyz_cal_lab = panel.get_lab_coord((xcal, ycal))
+
+    diff = np.array(xyz_lab) - np.array(xyz_cal_lab)
+
+    xy_lab = np.array((xyz_lab[0], xyz_lab[1]))
+    rad = xy_lab / np.linalg.norm(xy_lab)
+    tang = np.array([-rad[1], rad[0]])
+
+    rad_component = abs(np.dot(diff[:2], rad))
+    tang_component = abs(np.dot(diff[:2], tang))
+    pxsize = panel.get_pixel_size()[0]
+    return rad_component/pxsize, tang_component/pxsize
+
+
+def main(jid, njobs, dirname):
+
+    from dxtbx.model import ExperimentList
+
+    fnames = glob.glob("%s/*indexed.refl" % dirname)
+    print("%d fnames" % len(fnames)) 
+    assert fnames
+    detpath = fnames[0].replace("indexed.refl", "refined.expt")
+    assert os.path.exists(detpath)
+    DET = ExperimentList.from_file(detpath, False)[0].detector
+
+    all_d = []
+    all_r = []
+    all_t = []
+    reso = []
+    for i_f, f in enumerate(fnames):
+        if i_f % njobs != jid:
+            continue
+        R = flex.reflection_table.from_file(f)
+        if len(R)==0:
+            continue
+        xyobs = R['xyzobs.px.value'].as_numpy_array()[:,:2]
+        xycal = R['xyzcal.px'].as_numpy_array()[:,:2]
+        reso += list( 1./np.linalg.norm(R['rlp'], axis=1))
+        d = np.sqrt(np.sum( (xyobs -xycal)**2, 1))
+        all_d += list(d)
+        rad,theta = zip(*[xy_to_polar(R[i_r],DET,dials=False) for i_r in range(len(R))])
+        all_r += list(rad)
+        all_t += list(theta)
+        print(i_f)
+    return all_d, all_r, all_t, reso
+
+
+def results_from_folder(dirname, nbins):
+    results = Parallel(n_jobs=NJ)(delayed(main)(j,NJ,dirname) for j in range(NJ))
+
+    all_d, all_r, all_t,  reso = [],[],[],[]
+    for d,r,t, dspacing in results:
+        all_d += d
+        all_r += r
+        all_t += t
+        reso += dspacing
+
+    bins = [ b[0]-1e-6 for b in np.array_split(np.sort(reso), nbins)] + [max(reso)+1e-6]
+    digs = np.digitize(reso, bins)
+
+    all_d = np.array(all_d)
+    all_r = np.array(all_r)
+    all_t = np.array(all_t)
+    reso = np.array(reso)
+    ave_d, ave_r,  ave_t,  ave_res =[],[],[],[]
+    for i_bin in range(1, nbins+1):
+        sel = digs==i_bin
+        ave_d.append( np.median(all_d[sel]))
+        ave_r.append( np.median(all_r[sel]))
+        ave_t.append( np.median(all_t[sel]))
+
+        ave_res.append( np.median(reso[sel]))
+    return ave_d, ave_r, ave_t, ave_res
+
+all_d = []
+all_r = []
+all_t= []
+for dirname in args.dirnames:
+    d,r,t, ave_res = results_from_folder(dirname, args.nbins)
+    all_d.append(d)
+    all_r.append(r)
+    all_t.append(t)
+
+for vals_series, title in [(all_d, "overall"), (all_r, "radial component"), (all_t, "tangential component")]:
+
+    figure()
+    gca().set_title(title)
+    from itertools import cycle
+    colors = cycle(["tomato", "chartreuse", "plum"])
+    markers = cycle(["o", "s", "*", ">"])
+    for i_d, dirname in enumerate(args.dirnames):
+        vals = vals_series[i_d]
+        plot(vals[::-1], color=next(colors), marker=next(markers), mec='k', label=dirname)
+    xticks = range(args.nbins)
+    xlabels = ["%.2f" % r for r in ave_res]
+    gca().set_xticks(xticks)
+    gca().set_xticklabels(xlabels[::-1], rotation=90)
+    gcf().set_size_inches((5,4))
+    subplots_adjust(bottom=0.2, left=0.15, right=0.98, top=0.9)
+    gca().tick_params(labelsize=10, length=0) # direction='in')
+    grid(1, color="#777777", ls="--", lw=0.5)
+    xlabel("resolution ($\AA$)", fontsize=11, labelpad=5)
+    ylabel("prediction offset (pixels)", fontsize=11)
+    leg = legend(prop={"size":10})
+    fr = leg.get_frame()
+    fr.set_facecolor("bisque")
+    fr.set_alpha(.5)
+    gca().set_facecolor("gainsboro")
+
+show()
+```
+</details>
+
+```
+libtbx.python pred_offsets.py  poly_images/procMono/ poly_images/procPoly/ poly_images/procBad/ poly_images/procOpt/
+```
+
+<p align="center">
+<img src="https://user-images.githubusercontent.com/2335439/136645704-d5958f38-71e2-4cb7-b5ff-4b3085baa896.png" />
+</p>
+
+<p align="center">
+<img src="https://user-images.githubusercontent.com/2335439/136645710-2a594c09-b790-4c3a-a225-561446387a7e.png" />
+</p>
+
+<p align="center">
+<img src="https://user-images.githubusercontent.com/2335439/136645711-7ecd1ace-b153-44af-8967-5fbfcfe5a7bf.png" />
+</p>
 
 
 
