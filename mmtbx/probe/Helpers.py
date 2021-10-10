@@ -196,7 +196,7 @@ def getExtraAtomInfo(model, useNeutronDistances = False, useImplicitHydrogenDist
                   # @todo Once the CCTBX radius determination discussion and upgrade is
                   # complete (ongoing as of September 2021), this check might be removed
                   # and we'll just use the CCTBX radius.
-                  if isMetallic(a):
+                  if a.element_is_metallic():
                     warnings += "Using ionic radius for "+a.name.strip()+"\n"
                     extra.vdwRadius = model.get_specific_ion_radius(a.i_seq)
                   else:
@@ -247,26 +247,6 @@ def getExtraAtomInfo(model, useNeutronDistances = False, useImplicitHydrogenDist
             extras.setMappingFor(a, extra)
 
   return getExtraAtomInfoReturn(extras, warnings)
-
-def isMetallic(atom):
-  """
-    Helper function to report whether a given atom is metallic.
-    :param atom: iotbx.pdb.hierarchy.atom to check.
-    :returns True if the atoms is metallic, False if it is not.  Bases this on
-    the mmtbx.probe.AtomTypes _AtomTable.
-  """
-  # See if we've already made the set to look these up in to save time.
-  element = atom.element.upper()
-  try:
-    return element in isMettalic.metallics
-  except Exception:
-    # Build the set by filling in all of the entries in the atom table.
-    at = AtomTypes.AtomTypes()
-    isMetallic.metallics = set()
-    for e in at._AtomTable:
-      if e[8] & AtomTypes.AtomFlags.METALLIC_ATOM:
-        isMetallic.metallics.add(e[1].upper())
-    return element in isMetallic.metallics
 
 def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acceptorOnly = False,
       placedHydrogenRadius = 1.05):
@@ -556,14 +536,6 @@ END
   # User code should check for and print any warnings.
   #if len(ret.warnings) > 0:
   #  print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings)
-
-  #========================================================================
-  # Run spot checks on isMetallic()
-  a = iotbx.pdb.hierarchy.atom()
-  a.element = "Li"
-  assert isMetallic(a), "Helpers.Test(): Lithium not listed as metallic"
-  a.element = "He"
-  assert not isMetallic(a), "Helpers.Test(): Helium listed as metallic"
 
   #========================================================================
   # Run unit tests on rvec3 and lvec3.

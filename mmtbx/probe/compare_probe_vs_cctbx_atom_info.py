@@ -30,8 +30,6 @@ from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
 from cctbx.maptbx.box import shift_and_box_model
 import mmtbx
-import mmtbx.probe
-import mmtbx.probe.Helpers
 
 # To enable addition of Hydrogens
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
@@ -95,7 +93,7 @@ def RunProbeVsCCTBXTest(inFileName, useNeutronDistances = False):
 
             # Look up in CCTBX
             ccei = probeext.ExtraAtomInfo()
-            if mmtbx.probe.Helpers.isMetallic(a):
+            if a.element_is_metallic():
               ccei.vdwRadius = model.get_specific_ion_radius(a.i_seq)
             else:
               ccei.vdwRadius = model.get_specific_vdw_radius(a.i_seq)

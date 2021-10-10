@@ -161,6 +161,13 @@ def exercise_atom():
   for e in ["", "h", "h ", " h", "d", "d ", " d"]:
     a.element = e
     assert not a.element_is_hydrogen()
+  # Spot-check some elements to see if they are metallic
+  for e in ["Li", "Rh", "Si", "Sn", "V", "Ge"]:
+    a.element = e
+    assert a.element_is_metallic()
+  for e in ["He", "C", "Xe", "Rn", "Kr", "B"]:
+    a.element = e
+    assert not a.element_is_metallic()
   #
   a.name = "1234"
   a.element = "El"

@@ -397,6 +397,7 @@ namespace {
         .def("quote", &w_t::quote, (arg("full")=false))
         .def("fetch_labels", &w_t::fetch_labels)
         .def("element_is_hydrogen", &w_t::element_is_hydrogen)
+        .def("element_is_metallic", &w_t::element_is_metallic)
         .def("determine_chemical_element_simple",
           &w_t::determine_chemical_element_simple)
         .def("set_chemical_element_simple_if_necessary",
