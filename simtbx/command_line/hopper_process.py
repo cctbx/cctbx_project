@@ -61,6 +61,9 @@ class Hopper_Processor(Processor):
 
     def __init__(self, *args, **kwargs):
         super(Hopper_Processor, self).__init__(*args, **kwargs)
+        if self.params.output.composite_output:
+            print("WARNING!! COMPOSITE OUTPUT NOT YET SUPPORTED, disabling for now")
+        self.params.output.composite_output = False
 
         self.stage1_df = None  # the pandas dataframe containing model parameters after running stage 1 (see method refine)
         self.stage1_modeler = None  # the data modeler used during stage 1 refinement
