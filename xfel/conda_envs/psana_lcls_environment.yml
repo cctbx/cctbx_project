@@ -61,6 +61,7 @@ dependencies:
  - tqdm
  - eigen
  - dials-data
+ - pint
 
  # xia2
  - tabulate
