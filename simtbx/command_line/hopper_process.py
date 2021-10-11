@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import time
 
-# LIBTBX_SET_DISPATCHER_NAME simtbx.diffBragg.hopper_process
+# LIBTBX_SET_DISPATCHER_NAME diffBragg.hopper_process
 
 from dials.command_line.stills_process import Processor
 from simtbx.diffBragg import hopper_utils

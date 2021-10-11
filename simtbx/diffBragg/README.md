@@ -1,11 +1,19 @@
-# DiffBragg Examples
+# diffBragg examples
 
-# Setup
+* [Acquiring test data](#testdata)
+  * [Simulating test data](#simulating)
+* [Per-image refinement of crystal models with `diffBragg.hopper_process`](#hopper_process)
+  * [X-ray energy spectra](#spectra)
+  * [Monochromatic model refinement](#mono)
+  * [Polychromatic model refinement](#poly)
+* [Multi-image refinement of detector models with `diffBragg.geometry_refine`](#geometry)
 
+<a name="testdata"></a>
+# setup test data
 
 These instructions assume you have a working CCTBX environment, and that the command `libtbx.python` is in your path. Also, this tutorial will assume you are using NERSC (instructions for private linux clusters will be provided in due time).
 
-The easiest way to to learn diffBragg is by using simulated data. You could use the tools provided in CCTBX to simulate data readily, however for this tutorial, there is another github repository you can download and easily get some images. Start by navigating to your CCTBX buidld's modules folder on your computer. If you are unsure where this is, try issuing the following command
+Start by navigating to your CCTBX buidld's modules folder on your computer. If you are unsure where this is, try issuing the following command
 
 ```
 $ libtbx.python -c 'import cctbx;print(cctbx.__file__.split("/cctbx_project")[0])'
@@ -13,7 +21,7 @@ $ libtbx.python -c 'import cctbx;print(cctbx.__file__.split("/cctbx_project")[0]
 $ export MOD=/Users/dermen/CrystalNew/modules
 ```
 
-Now, in the modules folder, download the cxid9114 repository and use `git-lfs` to bring in some data files
+Now, in the modules folder, download the `cxid9114` repository and use `git-lfs` to bring in some data files
 
 ```
 cd $MOD 
@@ -29,7 +37,8 @@ git lfs pull
 
 Also, install `mpi4py`.
 
-# Simulating images
+<a name="simulating"></a>
+## Simulating images
 
 The first step in simulating data using `cxid9114` is to create a background image:
 
@@ -63,12 +72,13 @@ dials.image_viewer  poly_images/job0/test_rank0_data0_fluence0.h5
 
 Now that we have patterns, we can process them using the diffBragg wrapper script `diffBragg.hopper_process`.
 
+<a name="hopper_process"></a>
 # Using `diffBragg.hopper_process`
 
 We have simulated 104 images, and now we shall process them using the command line tool `diffBragg.hopper_process`, a child program of `dials.stills_process`. Crucially, we will be disabling outlier rejection and all forms of refinement that are usually done during `dials.stills_process` analysis, in favor of the pixel refinement tools in diffBragg, which are wrapped in `diffBragg.hopper_process`. 
 
-## Monochromatic `hopper_process`
-
+<a name="spectra"></a>
+## X-ray spectra
 If X-ray spectra are available for your data, then they should be encoded in the image format. In the `cxid9114` image files, spectra are stored in the hdf5 datasets `"wavelengths"` and `"spectrum"`:
 
 ```python
@@ -96,6 +106,9 @@ plt.show()
 </p>
 
 The spectra are encoded in the format class `FormatD9114.py` which was installed above using `dxtbx`.
+
+<a name="mono"></a>
+## Monochromatic `hopper_process`
 
 Lets assume that we do not have spectra - we can still run `hopper_process` using the wavelength associated with each image (e.g. a weighted mean). To do that, execute the following command
 
@@ -131,6 +144,8 @@ indexing {
 }
 
 integration.summation.detector_gain=28
+input.sync_reference_geom = False
+output.composite_output = False
 
 # hopper process config:
 save_modelers=True
@@ -313,6 +328,7 @@ Overall transverse RMSD (microns) 68.05633104237863
 
 The image is referred to as the detector residuals, where each point represents an observed reflection, and the color represents the distance to its corresponding predicted reflection according to the optimized model. Not bad for a CSPAD with 110 micron pixels.
 
+<a name="poly"></a>
 ## Polychromatic `hopper_process`
 Can a polychromatic model predict spots more accurately? To use the spectra associated with each image, drop the flag ```spectrum_from_imageset=False``` from the command line (it's set to `True` in ```process.phil```):
 
@@ -413,7 +429,8 @@ For every shot, up to 3 files are written to the modelers folder. These are
 * if the flag `save_modelers=True` was passed, then a data modeler file will be written containing the pixel data that was used during refinement (final model values, data, mask, background, etc). These files can be loaded using `mod=np.load("modeler.npy", allow_pickle=True)[()]`. The phil parameters are also stored in this pickle as well, for reference. See the class `DataModeler` defined in `diffBragg/hopper_utils.py` for more details.
 
 
-## Correcting a faulty geometry with diffBragg.geometry_refiner
+<a name="geometry"></a>
+# Correcting a faulty geometry with diffBragg.geometry_refiner
 
 
 >:warning: Geometry refinement is currently using the `lmfit` module. <br>Install it using pip:
@@ -421,7 +438,7 @@ For every shot, up to 3 files are written to the modelers folder. These are
 libtbx.python -m pip install lmfit
 ```
 
-### Getting the faulty geometry
+## Getting the faulty geometry
 We have prepared a faulty experimental geometry with which to process the data, derived from real expeirmental errors associated with the CSPAD geometry. We can use diffBragg to optimize the geometry using polychromatic pixel refinement, therefore extending geometry refinement to more complex scenarios (e.g. Laue or two-color diffraction). One must extract the faulty geometry from a raw form and write it to disk, using the following simple script:
 
 ```python
@@ -439,7 +456,7 @@ El.as_json("badGeo.expt")
 Now, we can process the simulated images using the faulty geometry and observe the effect it has on the prediction offsets (they should get worse!). Issue the command
 
 ```
-DIFFBRAGG_USE_CUDA=1 srun -n 8 -c2  simtbx.diffBragg.hopper_process process2.phil "poly_images/job*/*.h5"  mp.method=mpi mp.nproc=8 num_devices=8  dispatch.integrate=True  output.output_dir=poly_images/procBad reference_geometry=badGeo.expt 
+DIFFBRAGG_USE_CUDA=1 srun -n 8 -c2  simtbx.diffBragg.hopper_process process.phil "poly_images/job*/*.h5"  mp.method=mpi mp.nproc=8 num_devices=8  dispatch.integrate=True  output.output_dir=poly_images/procBad reference_geometry=badGeo.expt 
 ```
 
 The flag `reference_geometry=badGeo.expt` forces the geometry file stored in `badGeo.expt` to override the geometry defined by the image format. In this way, all models we optimize are subject to the errors in the geometry. Indeed we find that the predicton errors are much worse when using a faulty geometry
@@ -456,11 +473,11 @@ libtbx.python quick_detresid.py poly_images/procBad
 <img src="https://user-images.githubusercontent.com/2335439/136641295-b2f4f727-0faa-4da2-b3be-df9693f713a6.png" />
 </p>
 
-### Optimizing the faulty geometry with `geometry_refiner.py`
+## Optimizing the faulty geometry with `geometry_refiner.py`
 
 Whereas `hopper_process` operates on single images, `geometry_refiner` operates on multiple images together that all share the same detector model. 
 
-#### panel groups
+### panel groups
 `diffBragg` does not currently understand the `dxtbx` detector hierarchy models, so it is up to the user to provide a panel group mapping in the form of a 2-column text file (the first column specifies the panel number, and the second column specifies its group number). In order to create a panel group file, one needs to know the panel numbering visually. The detector residuals plots shown above display this information, and there is also the program `dxtbx.plot_detector_models` which takes experiment list files as arguments and plots the detector with its panel numbers displayed. Also, the image viewer displays the panel numbers as you hover over pixels (look for the value readout in the pixel info underbar). The following shows how to create three different panel grouping files for the CSPAD which are understood by `geometry_refiner`:
 
 ```python
@@ -481,7 +498,7 @@ with open("cspad_quads.txt", "w") as o:
 
 Here, we will use the 32 panel model. 
 
-#### Running geometry refiner
+### Running geometry refiner
 To run geometry refinement, we must provide a hopper process summary file (see above), as it poitns to all of te experiments and their optimized models. Issue the command
 
 ```
@@ -564,11 +581,11 @@ geometry {
 ```
 </details>
 
-#### Reprocess data with refined geometry
+### Reprocess data with refined geometry
 Now, we can re-run `hopper_process` using this optimized geometry by adding the flag `reference_geometry=optGeo.expt`:
 
 ```
-DIFFBRAGG_USE_CUDA=1 srun -n 8 -c2  simtbx.diffBragg.hopper_process process2.phil "poly_images/job*/*.h5"  mp.method=mpi mp.nproc=8 num_devices=8  dispatch.integrate=True  output.output_dir=poly_images/procOpt reference_geometry=optGeo.expt
+DIFFBRAGG_USE_CUDA=1 srun -n 8 -c2  simtbx.diffBragg.hopper_process process.phil "poly_images/job*/*.h5"  mp.method=mpi mp.nproc=8 num_devices=8  dispatch.integrate=True  output.output_dir=poly_images/procOpt reference_geometry=optGeo.expt
 libtbx.python quick_detresid.py poly_images/procOpt
 
 #RMSD (microns) 66.94415897822252
@@ -751,7 +768,7 @@ libtbx.python pred_offsets.py  poly_images/procMono/ poly_images/procPoly/ poly_
 
 
 
-##  more on hopper_process
+# more on `hopper_process`
 
 The script runs dials.stills_process with a few alterations
 

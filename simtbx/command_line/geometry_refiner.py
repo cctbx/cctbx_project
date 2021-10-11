@@ -1,5 +1,7 @@
 from __future__ import division
 
+# LIBTBX_SET_DISPATCHER_NAME diffBragg.geometry_refiner
+
 import numpy as np
 try:
     import lmfit
