@@ -9,7 +9,7 @@ from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry
 import mmtbx
 import mmtbx_probe_ext as probeExt
-from mmtbx.probe import Helpers, AtomTypes
+from mmtbx.probe import Helpers
 from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
 
@@ -538,19 +538,16 @@ Note:
   def _generate_interaction_dots(self, sourceAtoms, targetAtoms, bondedNeighborLists):
     '''
       Find all interaction dots for the specified atom.
-      This does not include locations where the probe is interacting with
-      a nearby atom, so it is a subset of the skin dots (for which only the
-      dots themselves are outside of the nearby atoms).
+      This does not include locations where the probe is inside a bonded neighbor.
       :param sourceAtoms: Atoms that can be the source of an interaction.
       :param targetAtoms: Atoms that can be the target of an interaction
       (can be the same list as sourceAtoms for some approaches).
-      :param bondedNeighborLists: List of bonded neighbors for atoms in source or target.
+      :param bondedNeighborLists: List of bonded neighbors for atoms in sourceAtoms.
       :return: Side effect: Add dots to the self._results data structure by
       atomclass and dot type.
     '''
 
-    maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
-    maxRadius = 2*maxVDWRadius + 2 * self.params.probe.radius
+    maxRadius = 2*self._maximumVDWRadius + 2 * self.params.probe.radius
     for src in sourceAtoms:
       # Find out what class of dot we should place for this atom.
       atomClass = self._atomClasses[src]
@@ -830,9 +827,7 @@ Note:
     # Store parameters that are used in the inner loop
     excluded_bond_chain_length = self.params.excluded_bond_chain_length
 
-    maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
     for src in atoms:
-
       # Find the atoms that are bonded to the source atom within the specified hop
       # count.  Limit the length of the chain to 3 if neither the source nor the final
       # atom is a Hydrogen.
@@ -1658,6 +1653,13 @@ Note:
       self._extraAtomInfo.setMappingFor(a, ei)
 
     ################################################################################
+    # Find the maximum VDW radius of any of our atoms, used to limit searches for nearby
+    # atoms.
+    self._maximumVDWRadius = 1
+    for a in allAtoms:
+      self._maximumVDWRadius = max(self._maximumVDWRadius, self._extraAtomInfo.getMappingFor(a).vdwRadius)
+
+    ################################################################################
     # Get the extra atom information needed to sort all of the atoms in the model
     # into proper classes for reporting.  These classes may be atom names, when we're
     # sorting by atoms and it can be nucleic acid base names when we're sorting by that.
@@ -1986,12 +1988,11 @@ Note:
         make_sub_header('Find surface dots', out=self.logger)
 
         # Produce dots on the surfaces of the selected atoms.
-        maxVDWRadius = AtomTypes.AtomTypes().MaximumVDWRadius()
-        maxRadius = 2*maxVDWRadius + 2 * self.params.probe.radius
+        maxRadius = 2*self._maximumVDWRadius + 2 * self.params.probe.radius
         for src in self._source_atoms_sorted:
           # Find nearby atoms that might come into contact.  This greatly speeds up the
           # search for touching atoms.
-          maxRadius = (self._extraAtomInfo.getMappingFor(src).vdwRadius + maxVDWRadius +
+          maxRadius = (self._extraAtomInfo.getMappingFor(src).vdwRadius + self._maximumVDWRadius +
             2 * self.params.probe.radius)
           nearby = self._spatialQuery.neighbors(src.xyz, 0.001, maxRadius)
 
