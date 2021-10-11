@@ -1637,6 +1637,10 @@ Note:
       raise Sorry("Could not get bonding information for input file: " + str(e))
 
     ################################################################################
+    # Get the bonding information we'll need to exclude our bonded neighbors.
+    self._allBondedNeighborLists = Helpers.getBondedNeighborLists(allAtoms, bondProxies)
+
+    ################################################################################
     # Get the extra atom information needed to score all of the atoms in the model.
     make_sub_header('Compute extra atom information', out=self.logger)
     ret = Helpers.getExtraAtomInfo(self.model,useNeutronDistances=self.params.use_neutron_distances,
@@ -1700,7 +1704,7 @@ Note:
         self._inMainChain[a] = mainchain_sel[a.i_seq]
       else:
         # Check our bonded neighbor to see if it is on the mainchain if we are a Hydrogen
-        self._inMainChain[a] = mainchain_sel[self._allBondedNeighborLists[a][0]]
+        self._inMainChain[a] = mainchain_sel[self._allBondedNeighborLists[a][0].i_seq]
       self._inSideChain[a] = sidechain_sel[a.i_seq]
 
     ################################################################################
@@ -1766,10 +1770,6 @@ Note:
     for modelIndex, atoms in enumerate(atomLists):
 
       ################################################################################
-      # Get the bonding information we'll need to exclude our bonded neighbors.
-      self._allBondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
-
-      ################################################################################
       # Get the subset of the source selection and target selection for this hierarchy
       # model.
       source_atoms = set()
@@ -1832,7 +1832,7 @@ Note:
                   # We may have our radius adjusted
                   ei = self._extraAtomInfo.getMappingFor(a)
                   if self.params.use_polar_hydrogens:
-                    ei.vdwRadius = adjustedHydrogenRadiusF
+                    ei.vdwRadius = adjustedHydrogenRadius
                   self._extraAtomInfo.setMappingFor(a, ei)
 
           # If we are the Oxygen in a water, then add phantom hydrogens pointing towards nearby acceptors
@@ -2034,7 +2034,7 @@ Note:
 
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
-          numSkinDots = self._count_skin_dots(self._source_atoms_sorted, self._allBondedNeighborLists)
+          numSkinDots = self._count_skin_dots(self._source_atoms_sorted, bondedNeighborLists)
           if self.params.output.format != 'raw':
             outString += self._describe_selection_and_parameters(groupLabel, "external")
 
@@ -2074,7 +2074,7 @@ Note:
         make_sub_header('Find self-intersection dots', out=self.logger)
 
         # Generate dots for the source atom set against itself.
-        self._generate_interaction_dots(self._source_atoms_sorted, self._source_atoms_sorted, self._allBondedNeighborLists)
+        self._generate_interaction_dots(self._source_atoms_sorted, self._source_atoms_sorted, bondedNeighborLists)
 
         # Generate our report
         outString += self._report_single_interaction(groupLabel, "self", "1->1", "SelfIntersect",
@@ -2084,7 +2084,7 @@ Note:
         make_sub_header('Find single-direction intersection dots', out=self.logger)
 
         # Generate dots for the source atom set against the target atom set.
-        self._generate_interaction_dots(self._source_atoms_sorted, self._target_atoms_sorted, self._allBondedNeighborLists)
+        self._generate_interaction_dots(self._source_atoms_sorted, self._target_atoms_sorted, bondedNeighborLists)
 
         # Generate our report
         outString += self._report_single_interaction(groupLabel, "once", "1->2", "IntersectOnce",
@@ -2113,11 +2113,11 @@ Note:
         # =================== First direction ========================
 
         # Generate dots for the source atom set against the target atom set.
-        self._generate_interaction_dots(self._source_atoms_sorted, self._target_atoms_sorted, self._allBondedNeighborLists)
+        self._generate_interaction_dots(self._source_atoms_sorted, self._target_atoms_sorted, bondedNeighborLists)
 
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
-          numSkinDots = self._count_skin_dots(self._source_atoms_sorted, self._allBondedNeighborLists)
+          numSkinDots = self._count_skin_dots(self._source_atoms_sorted, bondedNeighborLists)
           nsel = len(self._source_atoms_sorted)
           if self.params.output.format == 'raw':
             outString += self._rawEnumerate("1->2", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
@@ -2147,11 +2147,11 @@ Note:
         self._clear_results();
 
         # Generate dots for the target atom set against the source atom set.
-        self._generate_interaction_dots(self._target_atoms_sorted, self._source_atoms_sorted, self._allBondedNeighborLists)
+        self._generate_interaction_dots(self._target_atoms_sorted, self._source_atoms_sorted, bondedNeighborLists)
 
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
-          numSkinDots = self._count_skin_dots(self._target_atoms_sorted, self._allBondedNeighborLists)
+          numSkinDots = self._count_skin_dots(self._target_atoms_sorted, bondedNeighborLists)
           nsel = len(self._target_atoms_sorted)
           if self.params.output.format == 'raw':
             outString += self._rawEnumerate("2->1", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
