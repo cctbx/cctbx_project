@@ -102,7 +102,7 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, N, nonHydrogenN = 1e10):
     :returns a list of all atoms that are bonded to atom within a depth of N.  The original
     atom is never on the list.
   """
-  hFound = atom.element == "H"
+  hFound = atom.element_is_hydrogen()
   # Find all atoms to the specified depth
   atoms = {atom}            # Initialize the set with the atom itself
   for i in range(N):        # Repeat the recursion this many times
@@ -110,7 +110,7 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, N, nonHydrogenN = 1e10):
     for a in current:       # Add all neighbors of all atoms in the current level
       for n in bondedNeighborLists[a]:
         # If we find a hydrogen, we no longer use the non-Hydrogen N limit.
-        if n.element == "H":
+        if n.element_is_hydrogen():
           hFound = True
         if i < nonHydrogenN or hFound:
           # Ensure that the new atom is in a compatible conformation with the original atom.
@@ -369,7 +369,7 @@ def fixupExplicitDonors(atoms, bondedNeighborLists, extraAtomInfo):
   for a in atoms:
     # If we are a hydrogen that is bonded to a nitrogen, oxygen, or sulfur then we're a donor
     # and our bonded neighbor is not.
-    if a.element == 'H':
+    if a.element_is_hydrogen():
       for n in bondedNeighborLists[a]:
         if n.element in ['N','O','S']:
           # Copy the value, set the new values, then copy the new one back in.

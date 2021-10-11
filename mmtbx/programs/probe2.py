@@ -13,7 +13,7 @@ from mmtbx.probe import Helpers
 from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
 
-version = "0.7.0"
+version = "0.8.0"
 
 master_phil_str = '''
 run_tests = False
@@ -1668,7 +1668,7 @@ Note:
     # Handle all atoms, not only selected atoms.
     self._atomClasses = {}
     for a in allAtoms:
-      if a.element != 'H':
+      if not a.element_is_hydrogen():
         # All elements except hydrogen use their own names.
         self._atomClasses[a] = self._atom_class_for(a)
       else:
@@ -1696,12 +1696,33 @@ Note:
     for a in allAtoms:
       self._inWater[a] = common_residue_names_get_class(name=a.parent().resname) == "common_water"
       self._inHet[a] = hetatm_sel[a.i_seq]
-      if a.element != "H":
+      if not a.element_is_hydrogen():
         self._inMainChain[a] = mainchain_sel[a.i_seq]
       else:
         # Check our bonded neighbor to see if it is on the mainchain if we are a Hydrogen
         self._inMainChain[a] = mainchain_sel[self._allBondedNeighborLists[a][0]]
       self._inSideChain[a] = sidechain_sel[a.i_seq]
+
+    ################################################################################
+    # Ensure that the model we've been passed has at least one Hydrogen bonded to a Carbon
+    # and at least one polar Hydrogen (bonded to N, O, or S).  Otherwise, raise a Sorry.
+    if not self.params.probe.implicit_hydrogens:
+      foundCBonded = False
+      foundPolar = False
+      for a in allAtoms:
+        if a.element_is_hydrogen():
+          try:
+            neighbor = self._allBondedNeighborLists[a][0]
+            if neighbor.element in ['N', 'O', 'S']:
+              foundPolar = True
+            elif neighbor.element == 'C':
+              foundCBonded = True
+          except Exception:
+            pass
+      if not (foundCBonded and foundPolar):
+        raise Sorry("Did not find both polar and non-polar Hydrogens in model.  For proper operation, "+
+                    "Probe requires explicit Hydrogens.  Run Reduce2 or another placement "+
+                    "program on the model before running Probe.")
 
     ################################################################################
     # Get the source selection (and target selection if there is one).  These will be
@@ -1799,7 +1820,7 @@ Note:
           adjustedHydrogenRadius = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
 
           # Adjust hydrogen atom class and radius as needed.
-          if a.element == 'H':
+          if a.element_is_hydrogen():
             # If we are in a water, make sure our occupancy and temperature (b) factor are acceptable.
             # If they are not, set the class for the atom to 'ignore'.
             if self._inWater[a] and (a.occ < self.params.minimum_polar_hydrogen_occupancy or
@@ -1811,7 +1832,7 @@ Note:
                   # We may have our radius adjusted
                   ei = self._extraAtomInfo.getMappingFor(a)
                   if self.params.use_polar_hydrogens:
-                    ei.vdwRadius = adjustedHydrogenRadius
+                    ei.vdwRadius = adjustedHydrogenRadiusF
                   self._extraAtomInfo.setMappingFor(a, ei)
 
           # If we are the Oxygen in a water, then add phantom hydrogens pointing towards nearby acceptors
