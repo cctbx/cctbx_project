@@ -2,6 +2,7 @@
 
 * [Acquiring test data](#testdata)
   * [Simulating test data](#simulating)
+  * [Creating structure factor input](#sf)
 * [Per-image refinement of crystal models with `diffBragg.hopper_process`](#hopper_process)
   * [X-ray energy spectra](#spectra)
   * [Monochromatic model refinement](#mono)
@@ -13,7 +14,7 @@
 
 These instructions assume you have a working CCTBX environment, and that the command `libtbx.python` is in your path. Also, this tutorial will assume you are using NERSC (instructions for private linux clusters will be provided in due time).
 
-Start by navigating to your CCTBX buidld's modules folder on your computer. If you are unsure where this is, try issuing the following command
+Start by navigating to your CCTBX build's modules folder on your computer. If you are unsure where this is, try issuing the following command
 
 ```
 $ libtbx.python -c 'import cctbx;print(cctbx.__file__.split("/cctbx_project")[0])'
@@ -35,7 +36,7 @@ git lfs fetch
 git lfs pull
 ```
 
-Also, install `mpi4py`.
+Optionally, though highly recommended, install [`mpi4py`](https://mpi4py.readthedocs.io/en/stable/install.html).
 
 <a name="simulating"></a>
 ## Simulating images
@@ -50,12 +51,14 @@ To view the background image, install the proper image format provided in the re
 
 ```
 dxtbx.install_format  -u $MOD/cxid9114/format/FormatD9114.py
-dials.image_viewer mybackground.h5 color_scheme=heatmap brightness=150
+dials.image_viewer mybackground.h5
 ```
 
 should produce the image:
 
-[INSERT]
+<p align="center">
+<img src="https://user-images.githubusercontent.com/2335439/136804798-3a655cca-12ff-4245-abdd-ce5cd6138a49.png" />
+</p>
 
 Now, we can simulate the diffraction using this image as background. The command is
 
@@ -64,13 +67,33 @@ Now, we can simulate the diffraction using this image as background. The command
 srun -n8 -c2 libtbx.python $MOD/cxid9114/sim/d9114_mpi_sims.py  -o test -odir poly_images --add-bg --add-noise --profile gauss --bg-name mybackground.h5 -trials 13  --oversample 0 --Ncells 10 --xtal_size_mm 0.00015 --mos_doms 1 --mos_spread_deg 0.01  --saveh5 --readout  --masterscale 1150 --sad --bs7real --masterscalejitter 115 --overwrite --gpu -g 8
 ```
 
-the above command will simulate 13 diffraction patterns per rank from randomly oriented crystals. If you are not on NERSC, then drop the `srun -n8 -c2` prefix , and if you do not have GPU support, drop the `--gpu -g8` flags at the end of the command, and instead add the flag `--force-mono` in order to only simuilate a single wavelength per pattern. The images can also be opened with the image viewer:
+the above command will simulate 13 diffraction patterns per rank from randomly oriented crystals. If you are not on NERSC, then drop the `srun -n8 -c2` prefix , and if you do not have GPU support, drop the `--gpu -g8` flags at the end of the command, and instead add the flag `--force-mono` in order to only simulate a single wavelength per pattern. The images can also be opened with the image viewer:
 
 ```
 dials.image_viewer  poly_images/job0/test_rank0_data0_fluence0.h5
 ```
 
+<p align="center">
+<img src="https://user-images.githubusercontent.com/2335439/136804803-f2532939-87d1-4558-ae36-3600177433a4.png" />
+</p>
+
+
 Now that we have patterns, we can process them using the diffBragg wrapper script `diffBragg.hopper_process`.
+
+<a name="sf"></a>
+## Structure factors
+Ultimately, diffBragg was designed to optimize structure factors. Before ever running diffBragg, one needs an initial guess of the structure factor amplitudes.
+
+If you have access to many images, consider [processing](https://github.com/dermen/cxid9114#process-the-images-with-dials) and [merging](https://github.com/dermen/cxid9114#merge-the-data) them following the standard `cctbx.xfel.merge` protocol. Also, one can create a structure factor list from PDB coordinates rather easily using CCTBX, see [here](https://gitlab.com/cctbx/diffbragg_benchmarks/-/blob/main/README.md#making-100shuffhkl), for example.
+
+For this test data, a merge is included in the `cxid9114` repo, brought in with `git lfs`. Convert it to [`mtz` format](https://www.ccp4.ac.uk/html/mtzformat.html) following the simple command
+
+```
+cd $MOD/cxid9114
+iotbx.reflection_file_converter  --unit_cell="79.09619904, 79.09619904, 38.41749954, 90, 90, 90" --space_group=P43212 --mtz=iobs_all.mtz --mtz_root_label=I iobs_all.hkl=intensities
+```
+
+and then note the location so it can be included in your processing configuration files below, described below. 
 
 <a name="hopper_process"></a>
 # Using `diffBragg.hopper_process`
@@ -110,7 +133,7 @@ The spectra are encoded in the format class `FormatD9114.py` which was installed
 <a name="mono"></a>
 ## Monochromatic `hopper_process`
 
-Lets assume that we do not have spectra - we can still run `hopper_process` using the wavelength associated with each image (e.g. a weighted mean). To do that, execute the following command
+Let's assume that we do not have spectra - we can still run `hopper_process` using the wavelength associated with each image (e.g. a weighted mean). To do that, execute the following command
 
 ```
 DIFFBRAGG_USE_CUDA=1 srun -n 8 -c2  diffBragg.hopper_process process.phil "poly_images/job*/*.h5"  mp.method=mpi mp.nproc=8 num_devices=8  dispatch.integrate=True spectrum_from_imageset=False  output.output_dir=poly_images/procMono
@@ -208,7 +231,7 @@ diffBragg {
 ```
 </details>
 
-however command line parameters supercede whats in the PHIL file. Notice the command line argument `spectrum_from_imageset=False`. This tells `diffBrag.hopper_process` to use a single nominal wavelength, and ignore any X-ray spectra that might be present in the data. By setting this flag, a monochromatic diffraction model is refined for each shot. The command takes 71 seconds to run on a single NERSC compute node utilizing 8 GPUs and 8 processors (1 GPU per process), and optimizing models for 104 shots. We have prepared a simple script called `quick_detresid.py` for analyzing the results
+however command line parameters supersede whats in the PHIL file. Notice the command line argument `spectrum_from_imageset=False`. This tells `diffBrag.hopper_process` to use a single nominal wavelength, and ignore any X-ray spectra that might be present in the data. By setting this flag, a monochromatic diffraction model is refined for each shot. The command takes 71 seconds to run on a single NERSC compute node utilizing 8 GPUs and 8 processors (1 GPU per process), and optimizing models for 104 shots. We have prepared a simple script called `quick_detresid.py` for analyzing the results
 
 
 <details>
@@ -345,12 +368,13 @@ libtbx.python quick_detresid.py poly_images/procPoly
 <img src="https://user-images.githubusercontent.com/2335439/136640765-d2d0b274-cd0c-4613-9ea8-42e2f497a418.png" />
 </p>
 
-These new numbers indicate a more accurate model, owing to the fact that we used a polychromatic spectra. In fact these numbers represent the best we can do when we know our detector geometry perfectly. This time, the command took 200 seconds to process, as more photon energies were simulated per shot.
+These new numbers indicate a more accurate model, owing to the fact that we used a polychromatic energy spread. In fact these numbers represent the best we can do when we know our detector geometry perfectly. This time, the command took 200 seconds to process, as more photon energies were simulated per shot.
 
 ## Output files
 
 In addition to the files provided by `stills_process`, `hopper_process` creates some output data. 
 
+<a name="pandas"></a>
 ### pandas dataframes
 For every refined shot, a single-row pandas frame is written containing the model information for that shot. A combined multi-row pandas frame is written for the entire processing run, provided it terminates successfully. This is written directly to the stills process output folder. If the processing terminates prematurely, then you will need to create this file yourself, however it's simply done:
 
@@ -439,7 +463,7 @@ libtbx.python -m pip install lmfit
 ```
 
 ## Getting the faulty geometry
-We have prepared a faulty experimental geometry with which to process the data, derived from real expeirmental errors associated with the CSPAD geometry. We can use diffBragg to optimize the geometry using polychromatic pixel refinement, therefore extending geometry refinement to more complex scenarios (e.g. Laue or two-color diffraction). One must extract the faulty geometry from a raw form and write it to disk, using the following simple script:
+We have prepared a faulty experimental geometry with which to process the data, derived from real experimental errors associated with the CSPAD geometry. We can use diffBragg to optimize the geometry using polychromatic pixel refinement, therefore extending geometry refinement to more complex scenarios (e.g. Laue or two-color diffraction). One must extract the faulty geometry from a raw form and write it to disk, using the following simple script:
 
 ```python
 from cxid9114.geom.multi_panel import CSPAD2
@@ -460,7 +484,7 @@ DIFFBRAGG_USE_CUDA=1 srun -n 8 -c2
 diffBragg.hopper_process process.phil "poly_images/job*/*.h5"  mp.method=mpi mp.nproc=8 num_devices=8  dispatch.integrate=True  output.output_dir=poly_images/procBad reference_geometry=badGeo.expt 
 ```
 
-The flag `reference_geometry=badGeo.expt` forces the geometry file stored in `badGeo.expt` to override the geometry defined by the image format. In this way, all models we optimize are subject to the errors in the geometry. Indeed we find that the predicton errors are much worse when using a faulty geometry
+The flag `reference_geometry=badGeo.expt` forces the geometry file stored in `badGeo.expt` to override the geometry defined by the image format. In this way, all models we optimize are subject to the errors in the geometry. Indeed we find that the prediction errors are much worse when using a faulty geometry
 
 ```
 libtbx.python quick_detresid.py poly_images/procBad
@@ -500,7 +524,7 @@ with open("cspad_quads.txt", "w") as o:
 Here, we will use the 32 panel model. 
 
 ### Running geometry refiner
-To run geometry refinement, we must provide a hopper process summary file (see above), as it poitns to all of te experiments and their optimized models. Issue the command
+To run geometry refinement, we must provide a hopper process summary file (see above), as it points to all of the experiments and their optimized models. Issue the command
 
 ```
 DIFFBRAGG_USE_CUDA=1 srun -n8 -c2 diffBragg.geometry_refiner --phil geom.phil --cmdlinePhil  optimized_detector_name=optGeo.expt input_pkl=poly_images/procBad/hopper_process_summary.pkl lbfgs_maxiter=2000 num_devices=8 geometry.first_n=80
@@ -581,6 +605,10 @@ geometry {
 
 ```
 </details>
+
+
+### optional restraints
+Geometry refinement supports restraints on the misorientation matrices, as well as the panel geometries. Panel geometry corrections come in the form of (x,y,z) perturbations (about the panel group's 3 lab-frame coordinates) and rotational perturbations (about the panel group's orthogonal axis, fast-scan axis, and slow-scan axis). By default, all of these perturbations are initialized to 0, and the restraint target for each perturbation is also set to 0. The configuration parameter beta specifies the variance of the parameter that's expected during refinement. In practice you will need to experiment with these values in order to achieve optimal results. Looking at distriubtions of unrestrained parameters (as shown [here](#pandas)) can help you estimate beta.
 
 ### Reprocess data with refined geometry
 Now, we can re-run `hopper_process` using this optimized geometry by adding the flag `reference_geometry=optGeo.expt`:
