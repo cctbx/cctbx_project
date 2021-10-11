@@ -116,9 +116,13 @@ class RefineLauncher:
             if not hasattr(expt, model):
                 raise ValueError("No %s in experiment, exiting. " % model)
 
-
     def launch_refiner(self, pandas_table, miller_data=None):
+        self.load_inputs(pandas_table, miller_data=miller_data)
+        LOGGER.info("EVENT: launch refiner")
+        self._launch()
+        return self.RUC
 
+    def load_inputs(self, pandas_table, miller_data=None, refls_key='predictions'):
         COMM.Barrier()
         num_exp = len(pandas_table)
         first_exper_file = pandas_table.exp_name.values[0]
@@ -144,7 +148,6 @@ class RefineLauncher:
         COMM.barrier()
         shot_idx = 0  # each rank keeps index of the shots local to it
         rank_panel_groups_refined = set()
-        rank_local_parameters = []
         exper_names = pandas_table.exp_name
         assert len(exper_names) == len(set(exper_names))
         # TODO assert all exper are single-file, probably way before this point
@@ -163,7 +166,7 @@ class RefineLauncher:
 
             exper_dataframe = pandas_table.query("exp_name=='%s'" % exper_name)
 
-            refl_name = exper_dataframe.predictions.values[0]
+            refl_name = exper_dataframe[refls_key].values[0]
             refls = flex.reflection_table.from_file(refl_name)
             # FIXME need to remove (0,0,0) bboxes
             good_sel = flex.bool([h != (0, 0, 0) for h in list(refls["miller_index"])])
@@ -233,10 +236,7 @@ class RefineLauncher:
 
             LOGGER.info("EVENT: DONE LOADING ROI")
             shot_modeler.ucell_man = UcellMan
-            #if shot_data.roi_darkRMS is not None:
-            #    self.shot_roi_darkRMS[shot_idx] = shot_data.roi_darkRMS
-            #if "rlp" in refls:
-            #    self.shot_reso[shot_idx] = 1/np.linalg.norm(refls["rlp"], axis=1)
+            self.SIM.num_ucell_param = len(shot_modeler.ucell_man.variables)  # for convenience
 
             if not self.params.refiner.load_data_from_refl and self.params.spectrum_from_imageset:
                 shot_spectra = hopper_utils.downsamp_spec(self.SIM, self.params, expt, return_and_dont_set=True)
@@ -280,7 +280,6 @@ class RefineLauncher:
         LOGGER.info("DONE LOADING DATA; ENTER BARRIER")
         COMM.Barrier()
         LOGGER.info("DONE LOADING DATA; EXIT BARRIER")
-        #if not self.shot_roi_darkRMS:
         self.shot_roi_darkRMS = None
 
         # TODO warn that per_spot_scale refinement not intended for ensemble mode
@@ -310,13 +309,7 @@ class RefineLauncher:
         LOGGER.info("DONE DETERMINE MAX PIX")
 
         self.DEVICE_ID = COMM.rank % self.params.refiner.num_devices
-
         self._mem_usage()
-
-        LOGGER.info("EVENT: launch refiner")
-        self._launch()
-
-        return self.RUC
 
     def _mem_usage(self):
         memMB = get_memory_usage()

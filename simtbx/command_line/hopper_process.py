@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import time
 
-# LIBTBX_SET_DISPATCHER_NAME simtbx.diffBragg.hopper_process
+# LIBTBX_SET_DISPATCHER_NAME diffBragg.hopper_process
 
 from dials.command_line.stills_process import Processor
 from simtbx.diffBragg import hopper_utils
@@ -61,6 +61,9 @@ class Hopper_Processor(Processor):
 
     def __init__(self, *args, **kwargs):
         super(Hopper_Processor, self).__init__(*args, **kwargs)
+        if self.params.output.composite_output:
+            print("WARNING!! COMPOSITE OUTPUT NOT YET SUPPORTED, disabling for now")
+        self.params.output.composite_output = False
 
         self.stage1_df = None  # the pandas dataframe containing model parameters after running stage 1 (see method refine)
         self.stage1_modeler = None  # the data modeler used during stage 1 refinement
@@ -415,7 +418,8 @@ if __name__ == "__main__":
             import glob
             fnames = glob.glob("%s/pandas/rank*/*pkl" % params.output.output_dir)
             logging.info("There are %d pandas output files to combine" % len(fnames))
-            df = pandas.concat([pandas.read_pickle(f) for f in fnames])
-            combined_table = os.path.join(params.output.output_dir, "hopper_process_summary.pkl")
-            df.to_pickle(combined_table)
-            logging.info("Saved summary pandas table: %s" % combined_table)
+            if fnames:
+                df = pandas.concat([pandas.read_pickle(f) for f in fnames])
+                combined_table = os.path.join(params.output.output_dir, "hopper_process_summary.pkl")
+                df.to_pickle(combined_table)
+                logging.info("Saved summary pandas table: %s" % combined_table)
