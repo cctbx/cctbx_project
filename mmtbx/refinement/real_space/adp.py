@@ -170,8 +170,7 @@ class ncs_aware_refinement(object):
     else:
       argss = []
       selections = []
-      for c in model.get_hierarchy().chains():
-        sel = c.atoms().extract_i_seq()
+      for sel in model.macromolecule_plus_hetatms_by_chain_selections():
         argss.append([model.select(sel),])
         selections.append(sel) # XXX CAN BE BIG
       stdout_and_results = easy_mp.pool_map(

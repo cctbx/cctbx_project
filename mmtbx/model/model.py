@@ -951,6 +951,67 @@ class manager(object):
       result = True
     return result
 
+  def macromolecule_plus_hetatms_by_chain_selections(self, radius=3):
+    """
+    Split model into a list of selections where each selection is a
+    macromolecule chain plus nearest small molecules (water, ligands, etc).
+    ********
+    WARNING: This implementation is potentially runtime and memory inefficient.
+    ********
+    """
+    sps = self.get_xray_structure().special_position_settings()
+    h = self.get_hierarchy()
+    asc = h.atom_selection_cache()
+    het_sel = asc.selection("not (protein or nucleotide)")
+    pro_sel = ~het_sel
+    size = h.atoms_size()
+    get_class = iotbx.pdb.common_residue_names_get_class
+    atoms = h.atoms()
+    sites_cart = atoms.extract_xyz()
+    # list protein chain selections
+    psels = []
+    for c in h.chains():
+      sel = flex.bool(size, c.atoms().extract_i_seq())
+      sel = sel.set_selected(het_sel, False)
+      if(sel.count(True)==0): continue
+      psels.append(sel)
+    #
+    for rg in h.residue_groups():
+      tmp = []
+      for resname in rg.unique_resnames():
+        e1 = get_class(resname) == "common_amino_acid"
+        e2 = get_class(resname) == "common_rna_dna"
+        tmp.extend([e1,e2])
+      if(True in tmp): continue
+      residue_b_selection = flex.bool(size, rg.atoms().extract_i_seq())
+      around = 0
+      radius_ = radius
+      while around<1:
+        selection_around_residue = sps.pair_generator(
+          sites_cart      = sites_cart,
+          distance_cutoff = radius_
+            ).neighbors_of(primary_selection = residue_b_selection).iselection()
+        selection_around_residue = flex.bool(size, selection_around_residue)
+        selection_around_residue = selection_around_residue.set_selected(
+          het_sel, False)
+        selection_around_residue_i = selection_around_residue.iselection()
+        around = selection_around_residue_i.size()
+        radius_ += 0.5
+      # find which protein chain this hetatm belongs to and add it
+      for psel in psels:
+        if(psel[selection_around_residue_i[0]]):
+          psel = psel.set_selected(residue_b_selection, True)
+          break
+    # checksum
+    overlap_sel = psels[0].as_int()
+    cntr = 0
+    for i, psel in enumerate(psels):
+      cntr += psel.count(True)
+      if(i!=0): overlap_sel = overlap_sel + psel.as_int()
+    assert cntr == size, [cntr, size]
+    assert overlap_sel.all_eq(1) # selections are non-overlapping!
+    return psels
+
   def initialize_anomalous_scatterer_groups(
       self,
       find_automatically=True,

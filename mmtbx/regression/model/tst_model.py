@@ -1374,6 +1374,90 @@ END
   sel = model.rotamer_outlier_selection().iselection()
   assert list(sel) == [9, 10, 11, 12, 13, 14, 15, 16, 17]
 
+def exercise_10():
+  """
+  Exercise macromolecule_plus_hetatms_by_chain_selections() method.
+  """
+  psb_str1 = """
+CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
+ATOM      0  CG  ASN A   2      -7.584   1.342   0.692  1.00 14.08           C
+ATOM      1  OD1 ASN A   2      -8.025   0.227   1.016  1.00 17.46           O
+ATOM      2  ND2 ASN A   2      -8.204   2.155  -0.169  1.00 11.72           N
+TER
+ATOM      3  C   TYR B   7      10.603   2.331   6.885  1.00 15.91           C
+ATOM      4  O   TYR B   7      11.041   1.811   5.855  1.00 15.76           O
+ATOM      5  OXT TYR B   7      11.358   2.999   7.612  1.00 17.49           O
+TER
+HETATM    6  O   HOH C   9      10.431   1.858   3.216  1.00 19.71           O
+HETATM    7  O   HOH C  10     -11.286   1.756  -1.468  1.00 17.08           O
+HETATM    8  O   HOH C  11      11.808   4.179   9.970  1.00 23.99           O
+HETATM    9  O   HOH C  12      13.605   1.327   9.198  1.00 26.17           O
+END
+  """
+  psb_str2 = """
+CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
+ATOM      0  CG  ASN A   2      -7.584   1.342   0.692  1.00 14.08           C
+ATOM      1  OD1 ASN A   2      -8.025   0.227   1.016  1.00 17.46           O
+ATOM      2  ND2 ASN A   2      -8.204   2.155  -0.169  1.00 11.72           N
+ATOM      3  C   TYR B   7      10.603   2.331   6.885  1.00 15.91           C
+ATOM      4  O   TYR B   7      11.041   1.811   5.855  1.00 15.76           O
+ATOM      5  OXT TYR B   7      11.358   2.999   7.612  1.00 17.49           O
+HETATM    6  O   HOH C   9      10.431   1.858   3.216  1.00 19.71           O
+HETATM    7  O   HOH C  10     -11.286   1.756  -1.468  1.00 17.08           O
+HETATM    8  O   HOH C  11      11.808   4.179   9.970  1.00 23.99           O
+HETATM    9  O   HOH C  12      13.605   1.327   9.198  1.00 26.17           O
+END
+  """
+  psb_str3 = """
+CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
+ATOM      0  CG  ASN A   2      -7.584   1.342   0.692  1.00 14.08           C
+ATOM      1  OD1 ASN A   2      -8.025   0.227   1.016  1.00 17.46           O
+ATOM      2  ND2 ASN A   2      -8.204   2.155  -0.169  1.00 11.72           N
+ATOM      3  C   TYR B   7      10.603   2.331   6.885  1.00 15.91           C
+ATOM      4  O   TYR B   7      11.041   1.811   5.855  1.00 15.76           O
+ATOM      5  OXT TYR B   7      11.358   2.999   7.612  1.00 17.49           O
+HETATM    6  O   HOH A   9      10.431   1.858   3.216  1.00 19.71           O
+HETATM    7  O   HOH A  10     -11.286   1.756  -1.468  1.00 17.08           O
+HETATM    8  O   HOH A  11      11.808   4.179   9.970  1.00 23.99           O
+HETATM    9  O   HOH A  12      13.605   1.327   9.198  1.00 26.17           O
+END
+  """
+  psb_str4 = """
+CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
+ATOM      0  CG  ASN A   2      -7.584   1.342   0.692  1.00 14.08           C
+ATOM      1  OD1 ASN A   2      -8.025   0.227   1.016  1.00 17.46           O
+ATOM      2  ND2 ASN A   2      -8.204   2.155  -0.169  1.00 11.72           N
+ATOM      3  C   TYR B   7      10.603   2.331   6.885  1.00 15.91           C
+ATOM      4  O   TYR B   7      11.041   1.811   5.855  1.00 15.76           O
+ATOM      5  OXT TYR B   7      11.358   2.999   7.612  1.00 17.49           O
+HETATM    6  O   HOH B   9      10.431   1.858   3.216  1.00 19.71           O
+HETATM    7  O   HOH B  10     -11.286   1.756  -1.468  1.00 17.08           O
+HETATM    8  O   HOH B  11      11.808   4.179   9.970  1.00 23.99           O
+HETATM    9  O   HOH B  12      13.605   1.327   9.198  1.00 26.17           O
+END
+  """
+  psb_str5 = """
+CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
+ATOM      0  CG  ASN A   2      -7.584   1.342   0.692  1.00 14.08           C
+ATOM      1  OD1 ASN A   2      -8.025   0.227   1.016  1.00 17.46           O
+ATOM      2  ND2 ASN A   2      -8.204   2.155  -0.169  1.00 11.72           N
+TER
+ATOM      3  C   TYR A   7      10.603   2.331   6.885  1.00 15.91           C
+ATOM      4  O   TYR A   7      11.041   1.811   5.855  1.00 15.76           O
+ATOM      5  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
+HETATM    6  O   HOH A   9      10.431   1.858   3.216  1.00 19.71           O
+HETATM    7  O   HOH A  10     -11.286   1.756  -1.468  1.00 17.08           O
+HETATM    8  O   HOH A  11      11.808   4.179   9.970  1.00 23.99           O
+HETATM    9  O   HOH A  12      13.605   1.327   9.198  1.00 26.17           O
+END
+  """
+  for pdb_str in [psb_str1, psb_str2, psb_str3, psb_str4, psb_str5]:
+    pi = iotbx.pdb.input(source_info=None, lines=pdb_str)
+    m = mmtbx.model.manager(model_input = pi)
+    sels = m.macromolecule_plus_hetatms_by_chain_selections()
+    sels = [list(s.iselection()) for s in sels]
+    assert sels == [[0, 1, 2, 7], [3, 4, 5, 6, 8, 9]]
+
 def run():
   exercise_00()
   exercise()
@@ -1388,6 +1472,7 @@ def run():
   exercise_8()
   exercise_from_hierarchy()
   exercise_9()
+  exercise_10()
   print(format_cpu_times())
 
 if (__name__ == "__main__"):
