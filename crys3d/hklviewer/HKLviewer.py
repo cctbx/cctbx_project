@@ -652,6 +652,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
           if self.infodict.get("array_infotpls"):
             self.array_infotpls = self.infodict.get("array_infotpls",[])
             self.millerarraylabels =  [e[1][0] for e in self.array_infotpls]
+            self.make_new_millertable()
 
           if self.infodict.get("ano_spg_tpls"):
             self.ano_spg_tpls = self.infodict.get("ano_spg_tpls",[])
@@ -893,17 +894,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
               self.comboviewwidth = max(self.comboviewwidth, self.MillerComboBox.fontMetrics().width( e) )
             self.MillerComboBox.view().setMinimumWidth(self.comboviewwidth)
 
-            self.millertable.clearContents()
-            self.millertable.setRowCount(len(self.array_infotpls))
-
-            labels = [ e.strip("|").strip() for e in self.array_infotpls[0][0] ]
-            self.millertable.setColumnCount(len(labels))
-            self.millertable.setHorizontalHeaderLabels(labels)
-            self.millertable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
-
-            for row,(headerlst,infotpls,fmtstrtpls,fmtstr2tpls) in enumerate(self.array_infotpls):
-              for col,elm in enumerate(infotpls):
-                self.millertable.setItem(row, col, QTableWidgetItem(fmtstrtpls[col].format(elm)))
+            self.make_new_millertable()
             self.NewFileLoaded = False
 
           if self.NewHKLscenes:
@@ -913,6 +904,20 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
         errmsg = str(e)
         if "Resource temporarily unavailable" not in errmsg: # ignore errors from no connection to ZMQ socket
           print( errmsg  +  traceback.format_exc(limit=10) )
+
+
+
+  def make_new_millertable(self):
+    self.millertable.clearContents()
+    self.millertable.setRowCount(len(self.array_infotpls))
+    labels = [ e.strip("|").strip() for e in self.array_infotpls[0][0] ]
+    self.millertable.setColumnCount(len(labels))
+    self.millertable.setHorizontalHeaderLabels(labels)
+    self.millertable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
+    for row,(headerlst,infotpls,fmtstrtpls,fmtstr2tpls) in enumerate(self.array_infotpls):
+      for col,elm in enumerate(infotpls):
+        self.millertable.setItem(row, col, QTableWidgetItem(fmtstrtpls[col].format(elm)))
+
 
 
   def UpdateGUI(self):

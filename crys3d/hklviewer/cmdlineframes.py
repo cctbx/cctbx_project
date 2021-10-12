@@ -239,11 +239,7 @@ class HKLViewFrame() :
         self.mprint( "Nothing's changed", verbose=1)
         return False
 
-      #diff = diff_phil.extract()
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
-
-      #self.params = self.currentphil.extract()
-      #phl = self.params
 
       if view_3d.has_phil_path(diff_phil, "use_provided_miller_arrays"):
         phl = self.ResetPhilandViewer(self.currentphil)
@@ -289,6 +285,31 @@ class HKLViewFrame() :
                                          "add_user_vector_abc",
                                          "add_user_vector_hkl"):
         self.add_user_vector()
+
+      if view_3d.has_phil_path(diff_phil, "selected_info"):
+        self.viewer.array_info_format_tpl = []
+        for i,array in enumerate(self.procarrays):
+          if type(array.data()) == flex.std_string: # in case of status array from a cif file
+            uniquestrings = list(set(array.data()))
+            info = array.info()
+            array = array.customized_copy(data=flex.int([uniquestrings.index(d) for d in array.data()]))
+            array.set_info(info)
+          if array.space_group() is None:
+            array._unit_cell = uc
+            array._space_group_info = spg.info()
+            self.mprint("""No unit cell or space group info present in the %d. miller array.
+    Borrowing them from the first miller array""" %i)
+          wrap_labels = 25
+          arrayinfo = ArrayInfo(array,wrap_labels)
+          info_fmt = arrayinfo.get_selected_info_columns_from_phil(self.params )
+          self.viewer.array_info_format_tpl.append( info_fmt )
+          self.SendInfoToGUI({"array_infotpls": self.viewer.array_info_format_tpl})
+
+        colnames_select_lst = [] 
+        for colname,selected in list(self.params.selected_info.__dict__.items()):
+          if not colname.startswith("__"):
+            colnames_select_lst.append((colname,selected))
+        self.SendInfoToGUI({ "colnames_select_lst": colnames_select_lst })
 
       if view_3d.has_phil_path(diff_phil, "save_image_name"):
         self.SaveImageName(phl.save_image_name)
@@ -574,10 +595,6 @@ class HKLViewFrame() :
 Borrowing them from the first miller array""" %i)
       wrap_labels = 25
       arrayinfo = ArrayInfo(array,wrap_labels)
-      #obj = parse(arrayinfo.arrayinfo_phil_str).extract()
-      #obj.selected_info.labels
-
-
       info_fmt = arrayinfo.get_selected_info_columns_from_phil(self.params )
       self.viewer.array_info_format_tpl.append( info_fmt )
       # isanomalous and spacegroup might not have been selected for displaying so send them separatately to GUI

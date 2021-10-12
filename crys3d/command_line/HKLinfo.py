@@ -51,7 +51,7 @@ from io import StringIO
 #from iotbx.cli_parser import run_program
 
 if __name__ == '__main__':
-  time.sleep(10) # enough time to attach debugger
+  #time.sleep(10) # enough time to attach debugger
   #run_program(program_class=Program)
   #dmp = StringIO()
   dmp = sys.stdout

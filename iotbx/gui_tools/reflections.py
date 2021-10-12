@@ -806,7 +806,7 @@ class ArrayInfo:
     self.span = ("?" , "?")
     self.spginf = millarr.space_group_info().symbol_and_number()
     self.ucell = millarr.unit_cell().parameters()
-    self.ucellinf = format(millarr.unit_cell(), "({:.6g}Å, {:.6g}Å, {:.6g}Å, {:.6g}º, {:.6g}º, {:.6g}º)")
+    self.ucellinf = format(millarr.unit_cell(), "({:.6g}Å, {:.6g}Å, {:.6g}Å, {:.6g}°, {:.6g}°, {:.6g}°)")
     self.dmin = 0.0
     self.dmax = 0.0
     #self.n_centric = millarr.centric_flags().data().count(True)

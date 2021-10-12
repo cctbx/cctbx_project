@@ -67,11 +67,13 @@ class MillerTableColumnHeaderDialog(QDialog):
     self.layout.addWidget(self.selectcolumnstable,  0, 0)
     self.layout.setColumnStretch (0 ,0)
     self.setLayout(self.layout)
-
-    nrows = len(parent.colnames_select_lst)
+    self.selectcolumnstable.itemChanged.connect(self.onSelectColumnsTableItemChanged  )
+    self.selectcolumnstable.itemPressed.connect(self.onSelectColumnsTableItemChanged  )
+    nrows = len(self.parent.colnames_select_lst)
+    self.selectcolumnstable.clearContents()
     self.selectcolumnstable.setColumnCount(1)
     self.selectcolumnstable.setRowCount(nrows)
-    for row,(colnames, is_selected) in enumerate(parent.colnames_select_lst):
+    for row,(colnames, is_selected) in enumerate(self.parent.colnames_select_lst):
       item = QTableWidgetItem(colnames)
       item.setFlags((Qt.ItemIsUserCheckable | Qt.ItemIsEnabled) )
       if is_selected:
@@ -79,10 +81,6 @@ class MillerTableColumnHeaderDialog(QDialog):
       else:
         item.setCheckState(Qt.Unchecked)
       self.selectcolumnstable.setItem(row, 0, item)
-    self.selectcolumnstable.itemChanged.connect(self.onSelectColumnsTableItemChanged  )
-    self.selectcolumnstable.itemPressed.connect(self.onSelectColumnsTableItemChanged  )
-
-
 
   def onSelectColumnsTableItemChanged(self, item):
     colname = item.text()
@@ -90,12 +88,12 @@ class MillerTableColumnHeaderDialog(QDialog):
       is_selected = False
     else:
       is_selected = True
-
     current_philstr = "selected_info.%s = %s" %(colname, is_selected)
     self.parent.send_message(current_philstr)
 
 
 class MillerArrayTableForm(QDialog):
+  # dialog for showing miller array data, sigmas and hkl values
   def __init__(self, parent=None):
     super(MillerArrayTableForm, self).__init__(parent.window)
     self.setWindowFlag(Qt.WindowContextHelpButtonHint,False);
