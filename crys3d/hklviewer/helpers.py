@@ -11,7 +11,7 @@ from .qt import Qt, QEvent, QAbstractTableModel, QModelIndex
 from .qt import QCursor, QKeySequence
 from .qt import ( QAbstractItemView, QCheckBox, QTableWidget, QAction,
       QMenu, QTableView, QDialog, QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
-      QScrollArea, QVBoxLayout, QHeaderView
+      QScrollArea, QVBoxLayout, QHeaderView, QTableWidgetItem
      )
 import math, csv
 from io import StringIO
@@ -23,6 +23,7 @@ class MyhorizontalHeader(QHeaderView):
     super(MyhorizontalHeader,self).__init__(Qt.Horizontal, parent)
     self.mousebutton = None
     self.parent = parent
+    self.setMouseTracking(True)
   def mousePressEvent(self, event):
     if event.type() == QEvent.MouseButtonPress:
       self.mousebutton = None
@@ -30,6 +31,10 @@ class MyhorizontalHeader(QHeaderView):
         self.mousebutton = Qt.RightButton
         self.parent.parent.onSelect_millertable_column_dlg()
     QHeaderView.mousePressEvent(self, event)
+  def mouseMoveEvent(self, event):
+    if event.type() == QEvent.MouseMove:
+      pass
+    QHeaderView.mouseMoveEvent(self, event)
 
 
 class HeaderDataTableWidget(QTableWidget):
@@ -53,17 +58,41 @@ class HeaderDataTableWidget(QTableWidget):
 class MillerTableColumnHeaderDialog(QDialog):
   def __init__(self, parent=None):
     super(MillerTableColumnHeaderDialog, self).__init__(parent.window)
+    self.parent = parent
+    self.selectcolumnstable = QTableWidget()
     self.setWindowFlags(Qt.Tool)
     self.setWindowTitle("Columns to display")
     self.myGroupBox = QGroupBox()
     self.layout = QGridLayout()
-    self.layout.addWidget(QTableWidget(),  0, 0)
+    self.layout.addWidget(self.selectcolumnstable,  0, 0)
     self.layout.setColumnStretch (0 ,0)
     self.setLayout(self.layout)
-    #self.myGroupBox.setLayout(self.layout)
-    #self.mainLayout = QGridLayout()
-    #self.mainLayout.addWidget(self.myGroupBox,     0, 0)
-    #self.setLayout(self.mainLayout)
+
+    nrows = len(parent.colnames_select_lst)
+    self.selectcolumnstable.setColumnCount(1)
+    self.selectcolumnstable.setRowCount(nrows)
+    for row,(colnames, is_selected) in enumerate(parent.colnames_select_lst):
+      item = QTableWidgetItem(colnames)
+      item.setFlags((Qt.ItemIsUserCheckable | Qt.ItemIsEnabled) )
+      if is_selected:
+        item.setCheckState(Qt.Checked)
+      else:
+        item.setCheckState(Qt.Unchecked)
+      self.selectcolumnstable.setItem(row, 0, item)
+    self.selectcolumnstable.itemChanged.connect(self.onSelectColumnsTableItemChanged  )
+    self.selectcolumnstable.itemPressed.connect(self.onSelectColumnsTableItemChanged  )
+
+
+
+  def onSelectColumnsTableItemChanged(self, item):
+    colname = item.text()
+    if item.checkState()==Qt.Unchecked:
+      is_selected = False
+    else:
+      is_selected = True
+
+    current_philstr = "selected_info.%s = %s" %(colname, is_selected)
+    self.parent.send_message(current_philstr)
 
 
 class MillerArrayTableForm(QDialog):

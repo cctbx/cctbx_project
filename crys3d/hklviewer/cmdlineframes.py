@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function
 
 from iotbx.reflection_file_reader import any_reflection_file
+from iotbx.gui_tools.reflections import ArrayInfo
 from cctbx.miller import display2 as display
 from crys3d.hklviewer import jsview_3d as view_3d
 #from crys3d.hklviewer.jsview_3d import ArrayInfo
@@ -571,19 +572,28 @@ class HKLViewFrame() :
         array._space_group_info = spg.info()
         self.mprint("""No unit cell or space group info present in the %d. miller array.
 Borrowing them from the first miller array""" %i)
-      from iotbx.gui_tools.reflections import ArrayInfo
       wrap_labels = 25
       arrayinfo = ArrayInfo(array,wrap_labels)
       #obj = parse(arrayinfo.arrayinfo_phil_str).extract()
       #obj.selected_info.labels
 
 
-      info_fmt = arrayinfo.get_selected_info_columns_from_phil(None)
+      info_fmt = arrayinfo.get_selected_info_columns_from_phil(self.params )
       self.viewer.array_info_format_tpl.append( info_fmt )
       # isanomalous and spacegroup might not have been selected for displaying so send them separatately to GUI
       self.ano_spg_tpls.append((arrayinfo.isanomalous, arrayinfo.spginf) )
       if i==0:
-        mydict = { "spacegroup_info": arrayinfo.spginf, "unitcell_info": arrayinfo.ucellinf }
+        # convert philstring of selected_info into a list so GUI can make a selection settings dialog 
+        # for what columns to show in the millertable
+        colnames_select_lst = [] 
+        for colname,selected in list(self.params.selected_info.__dict__.items()):
+          if not colname.startswith("__"):
+            colnames_select_lst.append((colname,selected))
+
+        mydict = { "spacegroup_info": arrayinfo.spginf, 
+                  "unitcell_info": arrayinfo.ucellinf,
+                  "colnames_select_lst": colnames_select_lst
+                 }
         self.SendInfoToGUI(mydict)
       valid_arrays.append(array)
     self.valid_arrays = valid_arrays
@@ -1318,6 +1328,7 @@ masterphilstr = """
     bequiet = False
       .type = bool
   }
+  %s
   scene_bin_thresholds = ''
     .type = str
   binner_idx = 0
@@ -1365,7 +1376,7 @@ masterphilstr = """
   tabulate_miller_array_ids = "[]"
     .type = str
 
-""" %(display.philstr, view_3d.ngl_philstr)
+""" %(ArrayInfo.arrayinfo_phil_str, display.philstr, view_3d.ngl_philstr)
 
 
 def run():

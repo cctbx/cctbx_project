@@ -326,7 +326,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     # colourmap=brg, colourpower=1, powerscale=1, radiiscale=1
     self.settingsform = SettingsForm(self)
     self.aboutform = AboutForm(self)
-    self.select_millertable_column_dlg = MillerTableColumnHeaderDialog(self)
     self.webpagedebugform = None
 
     self.MillerComboBox = QComboBox()
@@ -399,6 +398,7 @@ newarray._sigmas = sigs
     self.scenearraylabeltypes = []
     self.array_infotpls = []
     self.ano_spg_tpls = []
+    self.colnames_select_lst = []
     self.currentmillarray_idx = None
     self.matching_arrays = []
     self.bin_infotpls = None
@@ -656,6 +656,10 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
           if self.infodict.get("ano_spg_tpls"):
             self.ano_spg_tpls = self.infodict.get("ano_spg_tpls",[])
 
+          if self.infodict.get("colnames_select_lst"):
+            self.colnames_select_lst = self.infodict.get("colnames_select_lst",[])
+            self.select_millertable_column_dlg = MillerTableColumnHeaderDialog(self)
+
           if self.infodict.get("bin_data_label"):
             self.BinDataComboBox.setCurrentText(self.infodict["bin_data_label"])
 
@@ -846,7 +850,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.unfeedback = True
             self.power_scale_spinBox.setValue( self.infodict.get("used_nth_power_scale_radii", 0.0))
             self.unfeedback = False
-
 
           if self.infodict.get("datatype_dict"):
             self.datatypedict = self.infodict.get("datatype_dict", {} )
