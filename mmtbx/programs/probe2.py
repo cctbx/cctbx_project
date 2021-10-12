@@ -547,7 +547,14 @@ Note:
       atomclass and dot type.
     '''
 
+    # Store constants used frequently
+    probeRadius = self.params.probe.radius
+    include_mainchain_mainchain = self.params.include_mainchain_mainchain
+    minimum_occupancy = self.params.probe.minimum_occupancy
+    include_water_water = self.params.include_water_water
+    excluded_bond_chain_length = self.params.excluded_bond_chain_length
     maxRadius = 2*self._maximumVDWRadius + 2 * self.params.probe.radius
+
     for src in sourceAtoms:
       # Find out what class of dot we should place for this atom.
       atomClass = self._atomClasses[src]
@@ -593,7 +600,7 @@ Note:
           # if both atoms are in the same non-HET chain and on the main chain, then skip
           # if we're not allowing mainchain-mainchain interactions.
           # The atoms must be on the same chain to be skipped.
-          if not self.params.include_mainchain_mainchain and (
+          if not include_mainchain_mainchain and (
                 (srcMainChain and nMainChain) and not (srcHet or nHet) and
                 (src.parent().parent().parent().id == n.parent().parent().parent().id) # Same chain
               ):
@@ -602,10 +609,10 @@ Note:
           if self._atomClasses[n] == 'ignore':
             continue
           # Skip atoms with too low occupancy
-          elif n.occ < self.params.probe.minimum_occupancy:
+          elif n.occ < minimum_occupancy:
             continue
           # Skip water-water interactions unless they are allowed
-          elif (not self.params.include_water_water) and srcInWater and nInWater:
+          elif (not include_water_water) and srcInWater and nInWater:
             continue
           # Skip atoms that are in non-compatible alternate conformations
           elif not Helpers.compatibleConformations(src, n):
@@ -618,7 +625,7 @@ Note:
         # count.  Limit the length of the chain to 3 if neither the source nor the final
         # atom is a Hydrogen.
         excluded = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists,
-          self.params.excluded_bond_chain_length, 3)
+          excluded_bond_chain_length, 3)
 
         # For Phantom Hydrogens, move any non-Acceptor atom in the atom list into the
         # excluded list and also add nearby Phantom Hydrogens into the excluded list.
@@ -642,11 +649,11 @@ Note:
 
         # Check each dot to see if it interacts with non-bonded nearby target atoms.
         srcDots = self._dots[src]
-        pr = self.params.probe.radius
         scale = self.params.probe.overlap_scale_factor
         for dotvect in srcDots:
+
           # Find out if there is an interaction
-          res = self._dotScorer.check_dot(src, dotvect, pr, list(atomSet), excluded, scale)
+          res = self._dotScorer.check_dot(src, dotvect, probeRadius, list(atomSet), excluded, scale)
 
           # Classify the interaction and store appropriate results unless we should
           # ignore the result because there was not valid overlap.
