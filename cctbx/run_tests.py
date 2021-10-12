@@ -150,6 +150,7 @@ tst_list = [
    "$D/regression/tst_connectivity_allsym.py",
    "$D/regression/tst_diffuse.py",
    "$D/regression/tst_grm_modifications.py",
+   "$D/regression/tst_prepare_map_for_docking.py",
   ]
 
 tst_list_expected_unstable = [
