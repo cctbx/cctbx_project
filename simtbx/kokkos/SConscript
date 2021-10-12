@@ -38,106 +38,38 @@ class system_config(object):
 cfg_default = system_config(host_variable = 'NO_WHERE', host_name='N/A')
 cfg_default.env['KOKKOS_DEVICES'] = "OpenMP"
 cfg_default.env['KOKKOS_ARCH'] = "HSW"
-cfg_default.env['KOKKOS_CUDA_OPTIONS'] = ""
 cfg_default.env['LDFLAGS'] = "-Llib"
-cfg_default.env['LDLIBS'] = "-lkokkoscontainers -lkokkoscore -ldl"
-cfg_default.env['CXX'] = os.environ.get('CXX', 'g++')
-cfg_default.env['Kokkos_ARCH_VOLTA70'] = "OFF"
-cfg_default.env['Kokkos_ARCH_AMPERE80'] = "OFF"
-cfg_default.env['Kokkos_ARCH_VEGA908'] = "OFF"
-cfg_default.env['Kokkos_ARCH_VEGA90A'] = "OFF"
-cfg_default.env['Kokkos_ENABLE_CUDA'] = "OFF"
-cfg_default.env['Kokkos_ENABLE_CUDA_UVM'] = "OFF"
-cfg_default.env['Kokkos_ENABLE_HIP'] = "OFF"
-cfg_default.env['KokkosKernels_ADD_DEFAULT_ETI'] = "OFF"
-cfg_default.env['KokkosKernels_INST_LAYOUTLEFT:BOOL'] = "OFF"
-cfg_default.env['KokkosKernels_INST_LAYOUTRIGHT:BOOL'] = "OFF"
-cfg_default.env['KokkosKernels_ENABLE_TPL_CUBLAS'] = "OFF"
-cfg_default.env['KokkosKernels_ENABLE_TPL_CUSPARSE'] = "OFF"
-list_cfg = []
+cfg_default.env['LDLIBS'] = "-lkokkos -ldl"
+cfg_default.env['CXX'] = 'g++'
 
 cfg_corigpu = cfg_default.get_copy()
 cfg_corigpu.host_variable = 'NERSC_HOST'
-cfg_corigpu.host_name = 'cori'
+cfg_corigpu.host_name = 'cori' 
 cfg_corigpu.env['KOKKOS_DEVICES'] = "Cuda"
 cfg_corigpu.env['KOKKOS_ARCH'] = "Volta70"
 cfg_corigpu.env['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
-cfg_corigpu.env['Kokkos_ARCH_VOLTA70'] = "ON"
-cfg_corigpu.env['Kokkos_ENABLE_CUDA'] = "ON"
-cfg_corigpu.env['Kokkos_ENABLE_CUDA_UVM'] = "ON"
 cfg_corigpu.env['LDFLAGS'] += " -L$(CUDA_HOME)/lib64"
 cfg_corigpu.env['LDLIBS'] += " -lcudart -lcuda"
 cfg_corigpu.env['CXX'] = ''
-list_cfg.append(cfg_corigpu)
 
 cfg_perlmutter = cfg_corigpu.get_copy()
 cfg_perlmutter.host_name = 'perlmutter'
 cfg_perlmutter.env['KOKKOS_ARCH'] = 'Ampere80'
-cfg_perlmutter.env['Kokkos_ARCH_VOLTA70'] = "OFF"
-cfg_perlmutter.env['Kokkos_ARCH_AMPERE80'] = "ON"
-list_cfg.append(cfg_perlmutter)
-
-# Generic Linux machine with NVIDIA A100 HW
-cfg_linux_a100 = cfg_corigpu.get_copy()
-cfg_linux_a100.host_variable = 'KOKKOS_HOST'
-cfg_linux_a100.host_name = 'linux_a100'
-cfg_linux_a100.env['KOKKOS_ARCH'] = 'Ampere80'
-cfg_linux_a100.env['Kokkos_ARCH_VOLTA70'] = "OFF"
-cfg_linux_a100.env['Kokkos_ARCH_AMPERE80'] = "ON"
-list_cfg.append(cfg_linux_a100)
 
 cfg_spock = cfg_default.get_copy()
 cfg_spock.host_variable = 'LMOD_SYSTEM_NAME'
 cfg_spock.host_name = 'spock'
 cfg_spock.env['KOKKOS_DEVICES'] = "HIP"
 cfg_spock.env['KOKKOS_ARCH'] = "Vega908"
-cfg_spock.env['Kokkos_ARCH_VEGA908'] = "ON"
-cfg_spock.env['Kokkos_ENABLE_HIP'] = "ON"
+cfg_spock.env['LDFLAGS'] = "" #"-Llib -L$(CUDA_HOME)/lib64"
 cfg_spock.env['CXX'] = 'hipcc'
-list_cfg.append(cfg_spock)
 
-cfg_crusher = cfg_spock.get_copy()
-cfg_crusher.host_name = 'crusher'
-cfg_crusher.env['KOKKOS_ARCH'] = "Vega90A"
-cfg_crusher.env['Kokkos_ARCH_VEGA908'] = "OFF"
-cfg_crusher.env['Kokkos_ARCH_VEGA90A'] = "ON"
-list_cfg.append(cfg_crusher)
-
-cfg_darwin_volta = cfg_default.get_copy()
-cfg_darwin_volta.host_variable = 'SLURM_JOB_PARTITION'
-cfg_darwin_volta.host_name = 'volta-x86'
-cfg_darwin_volta.env['KOKKOS_DEVICES'] = "Cuda"
-cfg_darwin_volta.env['KOKKOS_ARCH'] = "Volta70"
-cfg_darwin_volta.env['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
-cfg_darwin_volta.env['Kokkos_ARCH_VOLTA70'] = "ON"
-cfg_darwin_volta.env['Kokkos_ENABLE_CUDA'] = "ON"
-cfg_darwin_volta.env['Kokkos_ENABLE_CUDA_UVM'] = "ON"
-cfg_darwin_volta.env['LDFLAGS'] += "-L$(CUDA_HOME)/lib64 -L$(CUDA_HOME)/compat"
-cfg_darwin_volta.env['LDLIBS'] += " -lcudart -lcuda"
-cfg_darwin_volta.env['CXX'] = ''
-list_cfg.append(cfg_darwin_volta)
-
-cfg_darwin_ampere = cfg_darwin_volta.get_copy()
-cfg_darwin_ampere.host_name = 'shared-gpu-ampere'
-cfg_darwin_ampere.env['KOKKOS_ARCH'] = 'Ampere80'
-cfg_darwin_ampere.env['Kokkos_ARCH_VOLTA70'] = "OFF"
-cfg_darwin_ampere.env['Kokkos_ARCH_AMPERE80'] = "ON"
-list_cfg.append(cfg_darwin_ampere)
-
-host_message = "not found, using default settings"
+configs = [cfg_corigpu, cfg_perlmutter, cfg_spock]
 system_settings = cfg_default.env
-for cfg in list_cfg:
+for cfg in configs:
   if cfg.is_host():
     system_settings = cfg.env
-    host_message = "%s (from %s)"%(cfg.host_name, cfg.host_variable)
     break
-
-print("-"*40)
-print("         Kokkos configuration\n")
-print("     Host: " + host_message)
-print("  Devices: " + system_settings['KOKKOS_DEVICES'])
-print("     Arch: " + system_settings['KOKKOS_ARCH'])
-print("-"*40)
 
 # libkokkos.a
 # call kokkos build system directly
