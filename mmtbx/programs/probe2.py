@@ -580,6 +580,7 @@ Note:
       # Select those that are actually within the contact distance based on their
       # particular radius and which are in the set of target atoms.
       # Also verify that the potential target atoms meet our criteria based on parameters.
+      # Keep a list of nearby Phantom Hydrogens in case we need to exclude them.
       atomSet = set()
       nearbyPhantomHydrogens = set()
       for n in nearby:
@@ -588,13 +589,12 @@ Note:
         nInWater = self._inWater[n]
         nExtra = self._extraAtomInfo.getMappingFor(n)
 
-        # Keep a list of nearby Phantom Hydrogens in case we need to exclude them.
         if nExtra.isDummyHydrogen:
           nearbyPhantomHydrogens.add(n)
 
         d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
-        if ((n in targetAtoms) and
-            (d <= nExtra.vdwRadius + srcExtra.vdwRadius + 2*self.params.probe.radius)
+        if ((d <= nExtra.vdwRadius + srcExtra.vdwRadius + 2*probeRadius) and
+            (n in targetAtoms)
            ):
 
           # if both atoms are in the same non-HET chain and on the main chain, then skip
