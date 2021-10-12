@@ -14,11 +14,47 @@ Nature (in press).
 
 ### Installation of software
 
-DIALS/CCTBX and dependencies were installed as described in the "general build" section here:
+<details> 
+  <summary>Developer installation</summary>
+  
+For the work described in Schriber et al., DIALS/CCTBX and dependencies were installed as 
+described in the "general build" section here:
 https://github.com/cctbx/cctbx_project/tree/master/xfel/conda_envs
 
 GSASII must also be installed in the conda environment. Instructions will be printed when
 calling `cctbx.xfel.candidate_cells` for the first time.
+
+</details>
+  
+<details> 
+  <summary> Docker installation </summary>
+To promote future-safety, a working Docker image will be available from Dockerhub as 
+`dwpaley/cctbx:20211012`. Installation instructions are given for a Macbook running MacOS
+10.15.7, although processing this full dataset is a space- and compute-intensive task for a
+personal laptop.
+
+<a href="https://cntnr.io/running-guis-with-docker-on-mac-os-x-a14df6a76efc">Nils De Moor</a> is
+acknowledged for a helpful post on configuring GUI applications via XQuartz.
+
+* Install Docker Desktop as described here: https://docs.docker.com/desktop/mac/install/
+* Install XQuartz from here: https://www.xquartz.org. A restart might be needed.
+* Start XQuartz, visit Preferences and enable "Security->Allow connections from network clients".
+* Install and start `socat` to expose a port for the X server:
+```$ conda install socat -c conda-forge -y
+$ socat TCP-LISTEN:6000,reuseaddr,fork UNIX-CLIENT:\"$DISPLAY\" &
+$ ifconfig en0 |grep '\<inet\>' | awk '{print $2}'
+192.168.1.222
+$ docker run -e DISPLAY=192.168.1.222:0 gns3/xeyes
+```
+A pair of eyeballs should be displayed. This confirms Docker can contact the X server. When
+Docker applications will need to access the display, follow the example of the last two steps
+above to set the `DISPLAY` environment variable.
+* Clone the image (approx. 7 GB):
+```$ docker clone dwpaley/cctbx:20211012```
+* Make sure enough resources are available for the Docker machine. I provided 3/4 of my system
+  or 12 cores and 24GB memory.
+
+</details>
 
 ### Availability of data
 
@@ -40,12 +76,14 @@ $ export SACLA_DATA=$PWD/data
 We will use the DIALS spotfinder on 9 selected runs with a lot of hits; this is enough spots to
 synthesize a high-quality powder pattern for indexing.
 
-With `run_spotfind.py` containing:
+With `run.py` containing:
 
 ```
 import sys, os
 i = int(sys.argv[1])
 j = int(sys.argv[2])
+phil = sys.argv[3]
+cores = sys.argv[4]
 root_path = os.getenv('SACLA_DATA')
 data_path = os.path.join(root_path, 'data')
 geom_path = os.path.join(root_path, 'geom', 'step2_refined2.expt')
@@ -53,9 +91,9 @@ h5_path = os.path.join(data_path, f'78{i}-{j}', f'run78{i}-{j}.h5')
 out_path = os.path.join(f'{i}-{j}', 'out')
 log_path = os.path.join(f'{i}-{j}', 'log')
 cmd = \
-  f"cctbx.small_cell_process spotfind.phil {h5_path} output.output_dir={out_path} \
+  f"cctbx.small_cell_process {phil} {h5_path} output.output_dir={out_path} \
   output.logging_dir={log_path} input.reference_geometry={geom_path}"
-cmd_mpi = f"mpirun -n 64 {cmd} mp.method=mpi"
+cmd_mpi = f"mpirun -n {cores} {cmd} mp.method=mpi"
 print (cmd_mpi)
 os.makedirs(out_path)
 os.makedirs(log_path)
@@ -75,8 +113,32 @@ spotfinder.filter.min_spot_size=3
 
 do:
 ```
-$ for i in {3192..3200}; do for j in {0..2}; do python run_spotfind.py $i $j; done; done
+$ for i in {3192..3200}; do for j in {0..2}; do python run.py $i $j spotfind.phil 64; done; done
 ```
+(but adapt for the number of cores available).
+  
+<details> <summary> Docker instructions </summary>
+Prepare `run.py` and `spotfind.phil` as above, plus a file `run.sh`:
+
+```
+#!/bin/sh
+
+cd /cwd
+source /img/build/conda_setpaths.sh
+export SACLA_DATA=/data
+python run_integrate.py $1 $2 integrate.phil 12
+```
+
+We run the jobs in containers that have the data and output folders (on the local drive) exposed
+via bind mounts:
+```
+$ for i in {3192..3200}; do for j in {0..2}; do
+>   docker run -v $PWD:/cwd -v $SACLA_DATA:/data dwpaley/cctbx:20211012 /cwd/run.sh $i $j
+> done; done
+```
+  
+</details>
+  
 
 Spotfinding will run on the 27 selected h5 files within a few minutes. Then prepare a single
 set of combined files:
