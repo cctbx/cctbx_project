@@ -132,3 +132,4 @@ https://conda.anaconda.org/cctbx202008/win-64/pytest-4.6.4-py27_0.tar.bz2#0db616
 https://conda.anaconda.org/cctbx202008/win-64/sphinx-1.8.5-py27_0.tar.bz2#19b13982794e4d41187a1a4d4d2d5956
 https://conda.anaconda.org/cctbx202008/noarch/dials-data-2.0.99-pyh9f0ad1d_0.tar.bz2#8fd2e332409e216d25a549af8ca9abd8
 https://conda.anaconda.org/cctbx202008/noarch/numpydoc-1.1.0-pyh9f0ad1d_0.tar.bz2#96c9d4d0fe254de4b0961d3f8dbe2a2e
+https://repo.anaconda.com/pkgs/main/win-64/scipy-1.2.1-py27h4c3ab11_0.tar.bz2#641ce2f41fb0235ce043d3b548a7a9fa
