@@ -1471,7 +1471,7 @@ class manager(object):
     """
     result = StringIO()
     if force:
-      self.get_restraints_manager()
+      self.process(make_restraints=True)
     self.restraints_manager.write_geo_file(
         hierarchy = self.get_hierarchy(),
         sites_cart=self.get_sites_cart(),
