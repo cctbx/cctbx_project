@@ -18,8 +18,8 @@ from __future__ import absolute_import
 
 import argparse, time, itertools
 
-import Movers
-import InteractionGraph
+from mmtbx.reduce import Movers
+from mmtbx.reduce import InteractionGraph
 from boost_adaptbx import graph
 from boost_adaptbx.graph import connected_component_algorithm as cca
 

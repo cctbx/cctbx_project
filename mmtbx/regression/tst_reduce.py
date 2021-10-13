@@ -18,9 +18,9 @@
 
 from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import
-import mmtbx.reduce.Movers
-import mmtbx.reduce.InteractionGraph
-import mmtbx.reduce.Optimizers
+from mmtbx.reduce import Movers
+from mmtbx.reduce import InteractionGraph
+from mmtbx.reduce import Optimizers
 
 def RunReduceTests():
 
