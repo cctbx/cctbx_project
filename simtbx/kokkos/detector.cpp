@@ -170,12 +170,12 @@ namespace simtbx { namespace Kokkos {
   kokkos_detector::get_raw_pixels_cuda(){
     //return the data array for the multipanel detector case
     af::flex_double output_array(af::flex_grid<>(m_panel_count,m_slow_dim_size,m_fast_dim_size), af::init_functor_null<double>());
-    double* output_array_ptr = output_array.begin();
 
     transfer_kokkos2flex(output_array, m_accumulate_floatimage);
     // vector_double_t::HostMirror host_floatimage = create_mirror_view(m_accumulate_floatimage);
     // deep_copy(host_floatimage, m_accumulate_floatimage);
 
+    // double* output_array_ptr = output_array.begin();
     // for (int i=0; i<m_total_pixel_count; ++i) {
     //   output_array_ptr[ i ] = host_floatimage( i );
     // }
@@ -211,11 +211,13 @@ namespace simtbx { namespace Kokkos {
     //              selection.begin(), sizeof(*cu_active_pixel_selection) * selection.size(),
     //              cudaMemcpyHostToDevice));
 
+    auto temp = m_accumulate_floatimage;
+
     parallel_for("get_active_pixel_selection",
                   range_policy(0, m_active_pixel_size),
                   KOKKOS_LAMBDA (const int i) {
       size_t index = active_pixel_selection( i );
-      active_pixel_results( i ) = m_accumulate_floatimage( index );
+      active_pixel_results( i ) = temp( index );
     });
     // int smCount = 84; //deviceProps.multiProcessorCount;
     // dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
