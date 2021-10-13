@@ -321,6 +321,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     #self.ttip_click_invoke = "hover"
 
     self.ColourMapSelectDlg = MPLColourSchemes(self)
+    self.select_millertable_column_dlg = MillerTableColumnHeaderDialog(self)
     self.ColourMapSelectDlg.setWindowTitle("HKLviewer Colour Gradient Maps")
     # colour schemes and radii mapping for types of datasets stored in jsview_3d.py but persisted here:
     # colourmap=brg, colourpower=1, powerscale=1, radiiscale=1
@@ -588,8 +589,11 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def onSelect_millertable_column_dlg(self):
-    print("in select_millertable_column_dlg")
+    """
+    Dialog for choosing what columns of the miller table should be displayed
+    """
     self.select_millertable_column_dlg.show()
+
 
   def ProcessMessages(self):
     """
@@ -659,7 +663,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
           if self.infodict.get("colnames_select_lst"):
             self.colnames_select_lst = self.infodict.get("colnames_select_lst",[])
-            self.select_millertable_column_dlg = MillerTableColumnHeaderDialog(self)
+            self.select_millertable_column_dlg.make_new_selection_table()
+            #self.select_millertable_column_dlg = MillerTableColumnHeaderDialog(self)
 
           if self.infodict.get("bin_data_label"):
             self.BinDataComboBox.setCurrentText(self.infodict["bin_data_label"])
@@ -750,8 +755,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.millerarraytableform.layout.setRowStretch (0, 0)
             self.millerarraytableform.mainLayout.setRowStretch (0, 0)
             tablewidth = 0
-            #for e in range(self.millerarraytablemodel.columnCount()):
-            #  tablewidth +=  self.millerarraytable.columnWidth(e)
+            for e in range(self.millerarraytablemodel.columnCount()):
+              tablewidth +=  self.millerarraytable.columnWidth(e)
             self.millerarraytable.resizeColumnsToContents()
 
             self.millerarraytableform.SortComboBox.clear()
@@ -1040,6 +1045,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
     self.aboutform.setFixedSize( self.aboutform.sizeHint() )
     self.ColourMapSelectDlg.setFixedSize( self.ColourMapSelectDlg.sizeHint() )
+    self.select_millertable_column_dlg.setFixedSize(self.select_millertable_column_dlg.sizeHint() )
+    self.select_millertable_column_dlg.selectcolumnstable.resizeColumnsToContents()
 
 
   def onBrowserFontsizeChanged(self, val):
@@ -1910,7 +1917,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
                                       stderr=subprocess.PIPE)
     # Wait for connection from the zmq socket in CCTBX by testing if we can send an empty string
     print("Establishing ZMQ socket to CCTBX process", end='')
-    t=0.0; dt = 0.5; timeout = 20 # more than enough time for connecting
+    t=0.0; dt = 0.5; timeout = 60 # more than enough time for connecting
     err = zmq.EAGAIN
     while err == zmq.EAGAIN:
       try:
@@ -2105,8 +2112,10 @@ def run(isembedded=False, chimeraxsession=None):
           HKLguiobj.ProcessMessages()
 
       HKLguiobj.chimeraxprocmsghandler = chimeraxsession.triggers.add_handler('new frame', ChXTimer)
-
-    HKLguiobj.UsePersistedQsettings()
+    # Call HKLguiobj.UsePersistedQsettings() but through QTimer so it happens after 
+    # the QApplication eventloop has started as to ensure resizing according to persisted 
+    # font size is done properly
+    QTimer.singleShot(200, HKLguiobj.UsePersistedQsettings)
 
     if isembedded:
       return HKLguiobj

@@ -61,7 +61,7 @@ class MillerTableColumnHeaderDialog(QDialog):
     self.parent = parent
     self.selectcolumnstable = QTableWidget()
     self.setWindowFlags(Qt.Tool)
-    self.setWindowTitle("Columns to display")
+    self.setWindowTitle("Dataset properties to display")
     self.myGroupBox = QGroupBox()
     self.layout = QGridLayout()
     self.layout.addWidget(self.selectcolumnstable,  0, 0)
@@ -69,6 +69,9 @@ class MillerTableColumnHeaderDialog(QDialog):
     self.setLayout(self.layout)
     self.selectcolumnstable.itemChanged.connect(self.onSelectColumnsTableItemChanged  )
     self.selectcolumnstable.itemPressed.connect(self.onSelectColumnsTableItemChanged  )
+    self.unfeedback = False
+  def make_new_selection_table(self):
+    self.unfeedback = True
     nrows = len(self.parent.colnames_select_lst)
     self.selectcolumnstable.clearContents()
     self.selectcolumnstable.setColumnCount(1)
@@ -81,8 +84,10 @@ class MillerTableColumnHeaderDialog(QDialog):
       else:
         item.setCheckState(Qt.Unchecked)
       self.selectcolumnstable.setItem(row, 0, item)
-
+    self.unfeedback = False
   def onSelectColumnsTableItemChanged(self, item):
+    if self.unfeedback:
+      return
     colname = item.text()
     if item.checkState()==Qt.Unchecked:
       is_selected = False
