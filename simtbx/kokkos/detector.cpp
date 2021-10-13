@@ -174,11 +174,13 @@ namespace simtbx { namespace Kokkos {
   kokkos_detector::get_raw_pixels(){
     //return the data array for the multipanel detector case
     af::flex_double output_array(af::flex_grid<>(m_panel_count,m_slow_dim_size,m_fast_dim_size), af::init_functor_null<double>());
+
     transfer_kokkos2flex(output_array, m_accumulate_floatimage);
 
     // vector_double_t::HostMirror host_floatimage = create_mirror_view(m_accumulate_floatimage);
     // deep_copy(host_floatimage, m_accumulate_floatimage);
 
+    // double* output_array_ptr = output_array.begin();
     // for (int i=0; i<m_total_pixel_count; ++i) {
     //   output_array_ptr[ i ] = host_floatimage( i );
     // }
