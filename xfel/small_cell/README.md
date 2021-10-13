@@ -71,7 +71,7 @@ $ export SACLA_DATA=$PWD/data
 ```
 
 
-### Compute powder pattern from spotfinding results
+### Run spotfinding
 
 We will use the DIALS spotfinder on 9 selected runs with a lot of hits; this is enough spots to
 synthesize a high-quality powder pattern for indexing.
@@ -138,6 +138,7 @@ python run_integrate.py $1 $2 spotfind.phil 12
 We run the jobs in containers that have the data and output folders (on the local drive) exposed
 via bind mounts:
 ```
+$ chmod +x run.sh
 $ for i in {3192..3200}; do for j in {0..2}; do
 >   docker run -v $PWD:/cwd -v $SACLA_DATA:/data dwpaley/cctbx:20211012 /cwd/run.sh $i $j
 > done; done
@@ -146,6 +147,8 @@ $ for i in {3192..3200}; do for j in {0..2}; do
 
 ---
 
+### Compute powder pattern from spots
+  
 Spotfinding will run on the 27 selected h5 files within a few minutes. Then prepare a single
 set of combined files:
 ```
@@ -246,6 +249,7 @@ With `run_index.py` containing:
 import sys, os
 i, j = 3192, 0
 phil_root = sys.argv[1]
+cores = sys.argv[2]
 root_path = os.getenv('SACLA_DATA')
 data_path = os.path.join(root_path, 'data')
 geom_path = os.path.join(root_path, 'geom', 'step2_refined2.expt')
@@ -255,7 +259,7 @@ log_path = os.path.join(phil_root, 'log')
 cmd = \
   f"cctbx.small_cell_process {phil_root}.phil {h5_path} output.output_dir={out_path} \
   output.logging_dir={log_path} input.reference_geometry={geom_path}"
-cmd_mpi = f"mpirun -n 64 {cmd} mp.method=mpi"
+cmd_mpi = f"mpirun -n {cores} {cmd} mp.method=mpi"
 print (cmd_mpi)
 os.makedirs(out_path)
 os.makedirs(log_path)
@@ -265,7 +269,7 @@ os.system(cmd_mpi)
 do
 
 ```
-$ for n in 1 2 3 4 5; do python run_index.py $n; done
+$ for n in 1 2 3 4 5; do python run_index.py $n 64; done
 ```
 
 then count the resulting indexing hits:
@@ -279,9 +283,42 @@ $ for n in {1..5}; do
   done
 ```
 
+---
+
+<details> <summary> Docker instructions </summary>
+
+Set up the phil files as above. Make a script `run.sh` containing the following:
+  
+```
+#!/bin/sh
+
+cd /cwd
+source /img/build/conda_setpaths.sh
+export SACLA_DATA=/data
+python run_index.py $1 $2
+```
+  
+And run the jobs in containers with the appropriate bind mounts:
+  
+```
+$ chmod +x run.sh
+$ for n in 1 2 3 4 5; do 
+>   docker run -v $PWD:/cwd -v $SACLA_DATA:/data dwpaley/cctbx:20211012 /cwd/run.sh $n 12
+> done
+```
+  
+Then count the indexing hits as described above.
+  
+</details>
+
+---
+  
+  
+  
 ### Integration
 
-After choosing the correct cell, prepare this file integrate.phil:
+After choosing the correct cell, make a new directory for integration scripts and results.
+Prepare this file `integrate.phil`:
 ```
 dispatch {
   hit_finder {
@@ -326,11 +363,13 @@ small_cell {
 }
 ```
 
-And this script run_integrate.py:
+And this script `run.py`:
 ```
 import sys, os
 i = int(sys.argv[1])
 j = int(sys.argv[2])
+phil = sys.argv[3]
+cores = sys.argv[4]
 root_path = os.getenv('SACLA_DATA')
 data_path = os.path.join(root_path, 'data')
 geom_path = os.path.join(root_path, 'geom', 'step2_refined2.expt')
@@ -348,9 +387,41 @@ os.system(cmd_mpi)
 ```
 Prepare a todo script and run it: [note 1]
 ```
-$ for m in {3133..3214}; do for n in {0..2}; do echo "python run_integrate.py $m $n" >> todo.sh; done; done
+$ for m in {3133..3214}; do for n in {0..2}; do 
+>   echo "python run.py $m $n integrate.phil 64" >> todo.sh
+> done; done
 $ source todo.sh
 ```
+
+  
+---
+<details> <summary> Docker instructions </summary>
+
+Prepare `run.py` and `integrate.phil` as above, plus a file `run.sh`:
+
+```
+#!/bin/sh
+
+cd /cwd
+source /img/build/conda_setpaths.sh
+export SACLA_DATA=/data
+python run.py $1 $2 integrate.phil 12
+```
+
+Run the jobs as described above for spotfinding:
+```
+$ chmod +x run.sh
+$ for i in {3133..3214}; do for j in {0..2}; do
+>   docker run -v $PWD:/cwd -v $SACLA_DATA:/data dwpaley/cctbx:20211012 /cwd/run.sh $i $j
+> done; done
+```
+Optionally, you can instead echo the `docker` commands to a `todo.sh` script as above, e.g. for
+running multiple jobs under control of `parallel` or similar.
+</details>
+
+---
+
+
 
 ### Merging
 
@@ -430,6 +501,26 @@ $ iotbx.reflection_file_converter rtr_all.mtz --label="Iobs,SIGIobs" --shelx=rtr
 ```
 
 The resulting file `rtr.hkl` contains the final intensities for structure refinement.
+  
+
+---
+<details> <summary> Docker instructions </summary>
+
+Merging is most convenient in an interactive container:
+  
+```
+$ docker run -it -v $PWD:/cwd dwpaley/cctbx:20211012
+# source /img/build/conda_setpaths.sh
+# cd /cwd
+```
+Then proceed with the steps above (but be sure to adjust the # of cores
+for mpirun jobs).
+
+</details>
+
+---
+
+
 
 ### Notes
 
