@@ -102,6 +102,10 @@ os.system(cmd_mpi)
 
 and `spotfind.phil` containing:
 ```
+output {
+  experiments_filename = %s_imported.expt
+  strong_filename = %s_strong.refl
+}
 dispatch.hit_finder {
   minimum_number_of_reflections = 3
   maximum_number_of_reflections = 40
@@ -117,7 +121,9 @@ $ for i in {3192..3200}; do for j in {0..2}; do python run.py $i $j spotfind.phi
 ```
 (but adapt for the number of cores available).
   
+---
 <details> <summary> Docker instructions </summary>
+
 Prepare `run.py` and `spotfind.phil` as above, plus a file `run.sh`:
 
 ```
@@ -126,7 +132,7 @@ Prepare `run.py` and `spotfind.phil` as above, plus a file `run.sh`:
 cd /cwd
 source /img/build/conda_setpaths.sh
 export SACLA_DATA=/data
-python run_integrate.py $1 $2 integrate.phil 12
+python run_integrate.py $1 $2 spotfind.phil 12
 ```
 
 We run the jobs in containers that have the data and output folders (on the local drive) exposed
@@ -136,9 +142,9 @@ $ for i in {3192..3200}; do for j in {0..2}; do
 >   docker run -v $PWD:/cwd -v $SACLA_DATA:/data dwpaley/cctbx:20211012 /cwd/run.sh $i $j
 > done; done
 ```
-  
 </details>
-  
+
+---
 
 Spotfinding will run on the 27 selected h5 files within a few minutes. Then prepare a single
 set of combined files:
@@ -160,7 +166,30 @@ indexing through the `candidate_cells` wrapper:
 $ cctbx.xfel.candidate_cells nproc=64 input.peak_list=peaks.txt input.powder_pattern=powder.xy search.timeout=300
 ```
 
-The correct cell should be in the top 5 candidates. We will index a single run with the candidate unit cells and crystal systems.
+  
+
+---
+
+<details> <summary> Docker instructions </summary>
+
+Start an interactive container with the display configured and the working directory bind-mounted:
+```
+$ ifconfig en0 |grep '\<inet\>' | awk '{print $2}'
+192.168.1.225
+$ docker run -it -e DISPLAY=192.168.1.225:0 -v $PWD:/cwd dwpaley/cctbx:20211012
+# source /img/build/conda_setpaths.sh
+# cd /cwd
+```
+
+Then proceed with combining the spotfinding results, plotting the powder pattern, and searching for the
+unit cell as described above.
+
+</details>
+
+---
+  
+The correct cell should be in the top 5 candidates. We will index a single run with the candidate unit 
+cells and crystal systems.
 
 ### Trial indexing jobs
 
