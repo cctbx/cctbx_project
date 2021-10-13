@@ -39,6 +39,7 @@ class system_config(object):
 cfg_default = system_config(host_variable = 'NO_WHERE', host_name='N/A')
 cfg_default.env['KOKKOS_DEVICES'] = "OpenMP"
 cfg_default.env['KOKKOS_ARCH'] = "HSW"
+cfg_corigpu.env['KOKKOS_CUDA_OPTIONS'] = ""
 cfg_default.env['LDFLAGS'] = "-Llib"
 cfg_default.env['LDLIBS'] = "-lkokkos -ldl"
 cfg_default.env['CXX'] = 'g++'
@@ -66,7 +67,6 @@ cfg_spock.host_variable = 'LMOD_SYSTEM_NAME'
 cfg_spock.host_name = 'spock'
 cfg_spock.env['KOKKOS_DEVICES'] = "HIP"
 cfg_spock.env['KOKKOS_ARCH'] = "Vega908"
-cfg_spock.env['LDFLAGS'] = "" #"-Llib -L$(CUDA_HOME)/lib64"
 cfg_spock.env['CXX'] = 'hipcc'
 configs.append(cfg_spock)
 
