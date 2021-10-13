@@ -39,7 +39,7 @@ class system_config(object):
 cfg_default = system_config(host_variable = 'NO_WHERE', host_name='N/A')
 cfg_default.env['KOKKOS_DEVICES'] = "OpenMP"
 cfg_default.env['KOKKOS_ARCH'] = "HSW"
-cfg_corigpu.env['KOKKOS_CUDA_OPTIONS'] = ""
+cfg_default.env['KOKKOS_CUDA_OPTIONS'] = ""
 cfg_default.env['LDFLAGS'] = "-Llib"
 cfg_default.env['LDLIBS'] = "-lkokkos -ldl"
 cfg_default.env['CXX'] = 'g++'
