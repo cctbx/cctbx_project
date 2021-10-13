@@ -757,12 +757,17 @@ class ArrayInfo:
     from scitbx import graphics_utils
     from libtbx.math_utils import roundoff
     import textwrap, math
+    nan = float("nan")
     #textwrap._whitespace += "," # try to wrap labels at commas and underscores 
     #textwrap._whitespace = '\t\n\x0b\x0c\r ,'
     if (millarr.unit_cell() is None) or (millarr.space_group() is None) :
-      raise Sorry("No space group info is present in data")
+      self.spginf = "?"
+      self.ucell = (nan, nan, nan, nan, nan, nan)
+    else:
+      self.spginf = millarr.space_group_info().symbol_and_number()
+      self.ucell = millarr.unit_cell().parameters()
+    self.ucellinf = "({:.6g}Å, {:.6g}Å, {:.6g}Å, {:.6g}°, {:.6g}°, {:.6g}°)".format(*self.ucell)
     data = millarr.deep_copy().data()
-    nan = float("nan")
     self.maxdata = self.mindata = self.maxsigmas = self.minsigmas = nan
     self.minmaxdata = (nan, nan)
     self.minmaxsigs = (nan, nan)
@@ -804,9 +809,7 @@ class ArrayInfo:
       self.desc = get_array_description(millarr)
       self.wavelength = "{:.6g}".format(millarr.info().wavelength) if millarr.info().wavelength is not None else float("nan")
     self.span = ("?" , "?")
-    self.spginf = millarr.space_group_info().symbol_and_number()
-    self.ucell = millarr.unit_cell().parameters()
-    self.ucellinf = format(millarr.unit_cell(), "({:.6g}Å, {:.6g}Å, {:.6g}Å, {:.6g}°, {:.6g}°, {:.6g}°)")
+    
     self.dmin = 0.0
     self.dmax = 0.0
     #self.n_centric = millarr.centric_flags().data().count(True)
@@ -817,8 +820,8 @@ class ArrayInfo:
     except Exception as e:
       raise Sorry(to_str(e))
     self.dminmax = roundoff((self.dmin,self.dmax))
-    self.issymunique = millarr.is_unique_set_under_symmetry()
-    self.isanomalous = millarr.anomalous_flag()
+    self.issymunique = "?"
+    self.isanomalous = "?"
     self.n_sys_abs = 0
     self.n_bijvoet = self.n_singletons = 0
     self.anomalous_mean_diff = nan
@@ -826,14 +829,16 @@ class ArrayInfo:
     self.data_completeness_infty = nan
     self.data_completeness = nan
     self.n_centric = nan
-    if (self.spginf is not None):
+    if self.spginf != "?":
+      self.issymunique = millarr.is_unique_set_under_symmetry()
+      self.isanomalous = millarr.anomalous_flag()
       sys_absent_flags = millarr.sys_absent_flags().data()
       self.n_sys_abs = sys_absent_flags.count(True)
       if (self.n_sys_abs != 0):
-        millarr = self.select(selection=~sys_absent_flags)
+        millarr = millarr.select(selection=~sys_absent_flags)
       self.n_centric = millarr.centric_flags().data().count(True)
-    if (self.ucell is not None):
-      if (self.spginf is not None
+    if not math.isnan(self.ucell[0]):
+      if (self.spginf != ""
           and millarr.indices().size() > 0
           and self.issymunique):
         millarr.setup_binner(n_bins=1)
@@ -851,7 +856,7 @@ class ArrayInfo:
         if (self.isanomalous) and (millarr.is_xray_intensity_array() or
           millarr.is_xray_amplitude_array()):
             self.anomalous_completeness = millarr.anomalous_completeness()
-    if (self.spginf is not None and self.isanomalous and self.issymunique):
+    if (self.spginf != "?" and self.isanomalous and self.issymunique):
       asu, matches = millarr.match_bijvoet_mates()
       self.n_bijvoet = matches.pairs().size()
       self.n_singletons = matches.n_singles() - self.n_centric
@@ -884,8 +889,8 @@ class ArrayInfo:
       "minmax_data":        ("   min,max data       ",                            self.minmaxdata,       "{0[0]:.6}, {0[1]:.6}",                                                           "{0[0]:>10.5}, {0[1]:>10.5}"), 
       "minmax_sigmas":      ("   min,max sigmas     ",                            self.minmaxsigs,       "{0[0]:.6}, {0[1]:.6}",                                                           "{0[0]:>10.5}, {0[1]:>10.5}"), 
       "d_minmax":           ("   d_min,d_max/Å      ",                            self.dminmax,          "{0[0]:.6}, {0[1]:.6}",                                                           "{0[0]:>10.5}, {0[1]:>10.5}"), 
-      "unit_cell":          ("     unit cell (a/Å, b/Å, c/Å, αº, βº, γº)      ", self.ucell,            "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g}",  "{0[0]:>7.5g}, {0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g} "),
-      "space_group":        ("    space group    ",                             self.spginf,           "{}",                                                                             "{} "),
+      "unit_cell":          ("     unit cell (a/Å, b/Å, c/Å, α°, β°, γ°)      ", self.ucell,            "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g}",  "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g} "),
+      "space_group":        ("  space group   ",                             self.spginf,           "{}",                                                                             "{:>15} "),
       "n_centrics":         (" #centrics",                                       self.n_centric,        "{}",                                                                             "{:>8} "), 
       "n_sys_abs":          ("#syst. abs.",                             self.n_sys_abs,        "{}",                                                                             "{:>10} "), 
       "data_completeness": ("data compl.",                                 self.data_completeness, "{:.5g}",                                                                            "{:>10.5g} "), 
