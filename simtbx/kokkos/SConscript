@@ -43,6 +43,8 @@ cfg_default.env['LDFLAGS'] = "-Llib"
 cfg_default.env['LDLIBS'] = "-lkokkos -ldl"
 cfg_default.env['CXX'] = 'g++'
 
+configs = []
+
 cfg_corigpu = cfg_default.get_copy()
 cfg_corigpu.host_variable = 'NERSC_HOST'
 cfg_corigpu.host_name = 'cori' 
@@ -52,10 +54,12 @@ cfg_corigpu.env['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
 cfg_corigpu.env['LDFLAGS'] += " -L$(CUDA_HOME)/lib64"
 cfg_corigpu.env['LDLIBS'] += " -lcudart -lcuda"
 cfg_corigpu.env['CXX'] = ''
+configs.append(cfg_corigpu)
 
 cfg_perlmutter = cfg_corigpu.get_copy()
 cfg_perlmutter.host_name = 'perlmutter'
 cfg_perlmutter.env['KOKKOS_ARCH'] = 'Ampere80'
+configs.append(cfg_perlmutter)
 
 cfg_spock = cfg_default.get_copy()
 cfg_spock.host_variable = 'LMOD_SYSTEM_NAME'
@@ -64,8 +68,8 @@ cfg_spock.env['KOKKOS_DEVICES'] = "HIP"
 cfg_spock.env['KOKKOS_ARCH'] = "Vega908"
 cfg_spock.env['LDFLAGS'] = "" #"-Llib -L$(CUDA_HOME)/lib64"
 cfg_spock.env['CXX'] = 'hipcc'
+configs.append(cfg_spock)
 
-configs = [cfg_corigpu, cfg_perlmutter, cfg_spock]
 system_settings = cfg_default.env
 for cfg in configs:
   if cfg.is_host():
@@ -162,15 +166,23 @@ if not env_etc.no_boost_python:
   kokkos_ext_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
   kokkos_ext_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
   kokkos_ext_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
-  kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'lib64')])
-  kokkos_ext_env.Append(LIBS=env_etc.libm +
-    ["simtbx_kokkos",
-     "scitbx_boost_python",
-     get_boost_library_with_python_version("boost_python", kokkos_ext_env['LIBPATH']),
-     "cctbx",
-     "kokkos",
-     "cudart",
-     "cuda"])
+  if env_etc.enable_cuda:
+    kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'lib64')])
+    kokkos_ext_env.Append(LIBS=env_etc.libm +
+      ["simtbx_kokkos",
+      "scitbx_boost_python",
+      get_boost_library_with_python_version("boost_python", kokkos_ext_env['LIBPATH']),
+      "cctbx",
+      "kokkos",
+      "cudart",
+      "cuda"])
+  else:
+    kokkos_ext_env.Append(LIBS=env_etc.libm +
+      ["simtbx_kokkos",
+      "scitbx_boost_python",
+      get_boost_library_with_python_version("boost_python", kokkos_ext_env['LIBPATH']),
+      "cctbx",
+      "kokkos"])
 
   simtbx_kokkos_ext = kokkos_ext_env.SharedLibrary(
     target="#lib/simtbx_kokkos_ext.so",
