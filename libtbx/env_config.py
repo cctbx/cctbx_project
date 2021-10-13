@@ -2872,7 +2872,7 @@ class pre_process_args:
     parser.option(None, "--enable_kokkos",
       action="store_true",
       default=default_enable_kokkos,
-      help="Use optimized KOKKOS routines for certain calculations. Which backend (CUDA/HIP/OpenMP) is used, depends on the system (default: %s)"
+      help="Use optimized KOKKOS routines for certain calculations. If CUDA/HIP/OpenMP is used depends on the system (default: %s)"
         % default_enable_kokkos)
     parser.option(None, "--use_conda",
       action="store_true",

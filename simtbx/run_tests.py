@@ -86,13 +86,11 @@ if OPT.enable_cuda:
           else:
               par_tst = tst + ["--cuda"]
           tst_list_parallel.append(par_tst)
-
-      tst_list_parallel += db_tst_list_onlyCuda
-elif OPT.enable_kokkos and sys.platform.startswith('linux'):
-   tst_list_parallel = [
-     ["$D/nanoBragg/tst_gauss_argchk.py","CPU"], # tests CPU argchk optimization
-     "$D/kokkos/tst_kokkos_lib.py",              # GPU in kokkos
-   ]
+elif OPT.enable_kokkos:
+  tst_list_parallel = [
+    ["$D/nanoBragg/tst_gauss_argchk.py","CPU"],
+    "$D/kokkos/tst_kokkos_lib.py",                  # GPU in kokkos
+  ]  
 else:
   tst_list.append(
     ["$D/nanoBragg/tst_gauss_argchk.py","CPU"]
