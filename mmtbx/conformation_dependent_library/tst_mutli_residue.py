@@ -5,6 +5,9 @@ from mmtbx.conformation_dependent_library.testing_utils import get_geometry_rest
 from mmtbx.regression import model_1yjp
 from six.moves import range
 
+from libtbx.test_utils import approx_equal
+
+
 answers = {'omegas' : [ 171.5156431406436,
                        -176.23617714135813,
                         166.21212041473837,
@@ -48,10 +51,10 @@ def main():
       if i>0: assert rc==None
       else:
         print('  omega   %5.1f' % rc)
-        assert rc == answers['omegas'][j]
+        assert approx_equal(rc, answers['omegas'][j], 0.1), '%f != %f' % (rc, answers['omegas'][j])
       rc = threes.get_omega_values()
       print('  omegas  %s' % rc)
-      assert rc == answers['omegas'][j:j+i+1], '%s != %s' % (rc,
+      assert approx_equal(rc, answers['omegas'][j:j+i+1]), '%s != %s' % (rc,
                                                              answers['omegas'][j:j+i+1]
                                                              )
       rc = None
@@ -74,7 +77,8 @@ def main():
       if i<1: assert rc==None
       else:
         test = answers['phi_psi'][j*2:(j+i)*2]
-        assert rc == test, '%s!=%s' % (rc, test)
+        assert approx_equal(rc[0], test[0]), '%s!=%s' % (rc, test)
+        assert approx_equal(rc[1], test[1]), '%s!=%s' % (rc, test)
       rc = None
       try: rc = threes.get_ca_dihedrals()
       except: print('  CA dihedrals not specified') # intentional
@@ -82,7 +86,7 @@ def main():
       if i<=1: assert rc == None
       else:
         test = answers['calphas'][j:j+i+1-2]
-        assert rc==test
+        assert approx_equal(rc[0], test[0]), '%s != %s' % (rc, test)
 
     print("OK",i+2)
 
