@@ -1121,7 +1121,9 @@ class manager(object):
     result = group_args(occ = True, adp = True, xyz = True, size = True)
     result.stop_dynamic_attributes()
     ncs_groups = self.get_ncs_groups()
-    if(ncs_groups is None or len(ncs_groups)==0): return None
+    if(ncs_groups is None or len(ncs_groups)==0):
+      self.search_for_ncs()
+      ncs_groups = self.get_ncs_groups()
     for i, g in enumerate(ncs_groups):
       m_master          = self.select(g.master_iselection)
       occ_master        = m_master.get_occ()
