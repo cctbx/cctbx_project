@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
+import os
 
-pdb_lines = '''
+pdb_lines = ['''
 CRYST1   45.938   57.554   63.431  90.00  90.00  90.00 P 21 21 21    4
 ATOM    865  N   THR A  72       9.071 -34.112 -15.835  1.00 14.66           N
 ANISOU  865  N   THR A  72     2090   1604   1878   -469   -585    286       N
@@ -80,14 +81,32 @@ ATOM    907  O   GLY A  76      10.542 -27.013  -5.659  1.00  6.39           O
 ANISOU  907  O   GLY A  76      758    892    780   -237   -106   -122       O
 ATOM    908  H   GLY A  76      11.791 -26.629  -8.538  1.00 10.05           H
 ATOM    909  HA3 GLY A  76      13.113 -25.903  -6.960  1.00  6.44           H
+''',
 '''
+ATOM    729  N   PHE A 150     241.493 239.740 110.966  1.00  0.73           N
+ATOM    730  CA  PHE A 150     241.495 240.006 112.396  1.00  0.73           C
+ATOM    731  C   PHE A 150     241.654 238.693 113.139  1.00  0.73           C
+ATOM    732  O   PHE A 150     241.102 237.680 112.690  1.00  0.73           O
+ATOM    733  CB  PHE A 150     240.203 240.701 112.838  1.00  0.73           C
+ATOM    734  N   PRO A 151     242.398 238.656 114.253  1.00  0.76           N
+ATOM    735  CA  PRO A 151     243.254 239.710 114.805  1.00  0.76           C
+ATOM    736  C   PRO A 151     244.678 239.604 114.277  1.00  0.76           C
+ATOM    737  O   PRO A 151     245.073 238.585 113.720  1.00  0.76           O
+ATOM    738  CB  PRO A 151     243.170 239.452 116.311  1.00  0.76           C
+ATOM    739  N   GLU A 152     245.470 240.656 114.436  1.00  0.77           N
+ATOM    740  CA  GLU A 152     246.888 240.568 114.161  1.00  0.77           C
+ATOM    741  C   GLU A 152     247.540 239.683 115.222  1.00  0.77           C
+ATOM    742  O   GLU A 152     246.934 239.400 116.257  1.00  0.77           O
+ATOM    743  CB  GLU A 152     247.496 241.970 114.140  1.00  0.77           C
+''',
+]
 
 from libtbx import easy_run
 
 def main():
   tf = 'test_cis_127.pdb'
   with open(tf, 'w') as f:
-    f.write(pdb_lines)
+    f.write(pdb_lines[0])
   cmd = 'phenix.pdb_interpretation write_geo=True cis_pro_eh99=False %s' % tf
   print(cmd)
   easy_run.go(cmd)
@@ -110,6 +129,15 @@ def main():
     ideal   model   delta    sigma   weight residual
    127.00  124.91    2.09 2.40e+00 1.74e-01 7.57e-01'''
   assert lines.find(find)>-1
+
+  tf = 'test_cis_127_1.pdb'
+  with open(tf, 'w') as f:
+    f.write(pdb_lines[1])
+  cmd = 'phenix.pdb_interpretation write_geo=True cis_pro_eh99=True %s' % tf
+  print(cmd)
+  easy_run.go(cmd)
+  assert os.path.exists('%s.geo' % tf), 'command failed due to missing CD'
+
 
 if __name__ == '__main__':
   main()
