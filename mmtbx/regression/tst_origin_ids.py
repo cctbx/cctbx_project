@@ -11,7 +11,7 @@ count_1yjp = {
               'Planarity restraints': 13,
               'Chirality restraints': 6,
               'C-Beta improper torsion angle restraints': 12,
-              'Parallelity restraints': 0,
+              # 'Parallelity restraints': 0,
               #'User supplied restraints': 0,
               #'User supplied torsion angle restraints': 0,
               #'User supplied angle restraints': 0,
