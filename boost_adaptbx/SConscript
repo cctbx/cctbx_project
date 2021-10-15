@@ -15,6 +15,7 @@ Import("env_base", "env_etc")
 env_etc.boost_dist = libtbx.env.dist_path("boost")
 env_etc.boost_include = env_etc.boost_dist
 build_boost_libs = True
+boost_python_lib = 'boost_python'
 # Boost source does not exist, headers and libraries exist
 # boost directory in cctbx_project is picked up by find_in_repositories
 if not os.path.isdir(env_etc.boost_dist) or 'cctbx_project' in env_etc.boost_dist \
@@ -37,6 +38,7 @@ if not os.path.isdir(env_etc.boost_dist) or 'cctbx_project' in env_etc.boost_dis
     env_base.Prepend(LIBPATH=[os.path.join(sys.prefix, 'lib'),
                               os.path.join(sys.prefix, 'lib64')])
   build_boost_libs = False
+  boost_python_lib = get_boost_library_with_python_version("boost_python", env_base['LIBPATH'])
 env_etc.boost_adaptbx_dist = libtbx.env.dist_path("boost_adaptbx")
 env_etc.boost_adaptbx_include = os.path.dirname(env_etc.boost_adaptbx_dist)
 
@@ -89,8 +91,7 @@ if (not env_etc.no_boost_python):
     SHLIBPREFIX="")
   # Do not override the libraries linked by env_base
   env_no_includes_boost_python_ext.Append(
-    LIBS=[get_boost_library_with_python_version(
-      "boost_python", env_base['LIBPATH'])] + env_etc.libs_python + env_etc.libm)
+    LIBS=[boost_python_lib] + env_etc.libs_python + env_etc.libm)
   env_no_includes_boost_python_ext.Append(
     LIBPATH=env_etc.libpath_python)
   env_no_includes_boost_python_ext.Append(
