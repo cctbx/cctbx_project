@@ -590,6 +590,8 @@ class HKLViewFrame() :
         array.set_info(info)
       if array.space_group() is None:
         array._unit_cell = uc
+        if spg is None:
+          raise Sorry("No space group definition found in this file which is required for rendering in reciprocal space.")
         array._space_group_info = spg.info()
         self.mprint("""No unit cell or space group info present in the %d. miller array.
 Borrowing them from the first miller array""" %i)

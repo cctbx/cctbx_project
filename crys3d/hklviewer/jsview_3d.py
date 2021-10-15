@@ -154,7 +154,7 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
       lbl = arrayinfo.labelstr
       if fomslabel:
         lbl = arrayinfo.labelstr + " + " + fomslabel
-      headerlst, infolst, dummy, fmtlst = arrayinfo.get_selected_info_columns(None)
+      headerlst, infolst, dummy, fmtlst = arrayinfo.get_selected_info_columns_from_phil()
       scenearrayinfos.append([infolst, pidx, fidx, lbl, infolst[1]])
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
 

@@ -611,7 +611,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
         if "cctbx.python.version:" in msgstr:
           self.cctbxpythonversion = msgstr
           self.send_message("""NGL {
-  fontsize = %d
+  fontsize = %s
   show_tooltips = %s
 }
 """ %(self.browserfontsize, self.ttip_click_invoke) )
@@ -900,6 +900,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.MillerComboBox.view().setMinimumWidth(self.comboviewwidth)
 
             self.make_new_millertable()
+            self.UsePersistedQsettings
             self.NewFileLoaded = False
 
           if self.NewHKLscenes:
@@ -2115,7 +2116,7 @@ def run(isembedded=False, chimeraxsession=None):
     # Call HKLguiobj.UsePersistedQsettings() but through QTimer so it happens after 
     # the QApplication eventloop has started as to ensure resizing according to persisted 
     # font size is done properly
-    QTimer.singleShot(200, HKLguiobj.UsePersistedQsettings)
+    QTimer.singleShot(500, HKLguiobj.UsePersistedQsettings)
 
     if isembedded:
       return HKLguiobj
