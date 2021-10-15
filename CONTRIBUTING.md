@@ -246,8 +246,27 @@ There are several reasons for writing good tests:
 
   * Avoid storing input files with models and data as much as possible as they take up too much space. Instead, use inputs that can be generated at run time.
   
-  * Re-use models and data that are already available: XXX location here
-  
+  * Re-use models and data that are already available. For example, to use the model 1jyp, you can do it in two ways:
+      * code example from `modules/phenix_regression/validation/tst_phi_psi_2.py`:
+        ```
+        from mmtbx.regression import model_1yjp
+        ...
+        def main():
+          dm = DataManager()
+          dm.process_model_str('testing', model_1yjp)
+          model = dm.get_model()
+        ```
+      * code example from `modules/phenix_regression/command_line/test_rosetta_refine.py`:
+        ```
+        def exercise() :
+          pdb_file = libtbx.env.find_in_repositories(
+            relative_path="phenix_regression/pdb/1yjp_h.pdb",
+            test=os.path.isfile)
+          mtz_file = libtbx.env.find_in_repositories(
+            relative_path="phenix_regression/reflection_files/1yjp.mtz",
+            test=os.path.isfile)
+          assert (not None in [pdb_file, mtz_file])
+        ```
   * Many tests don't require a full length protein. Consider using fragments of a model that exemplify the property being tested. Save these fragment(s) as PDB records or mmCIF string in the body of the test file `tst_xxx.py`. The strings can be read as pdb_input object like this: `pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)`
 
   * If you put a short description of the property being tested in the REMARK section of a PDB record, then it immediatly clear what the fragment is used for.
@@ -301,7 +320,9 @@ if(__name__ == "__main__"):
 
 ### 11. Good etiquette:
 
-  * Everyone should run t96 after changing code and before committing.
+  * Everyone should run `t96` after changing code and before committing.
+  
+  * Run only one instance of `t96` on anaconda at once 
 
   * If your changes result in failed tests: Review your code and fix the tests. Even if they have been written originally by other developers. If you break code, it is your responsibility to fix it.
 
