@@ -11434,7 +11434,7 @@ def effective_b_iso(map_data = None, tracking_data = None,
        out = out)
 
     f_array, phases = map_coeffs_as_fp_phi(map_coeffs)
-    if map_coeffs_ra: 
+    if map_coeffs_ra:
       b_iso = map_coeffs_ra.b_iso
     else:
       b_iso = None
