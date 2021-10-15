@@ -5947,10 +5947,10 @@ class map_model_manager(object):
          file = self.log, end = "")
       for k in range(n):
         if decimal_places == 1:
-          print (" %5.1f " %(si_list[k].get(key)[i]),
+          print (" %5.1f " %(si_list[k].get(key)[i] if si_list[k] else 0),
             file = self.log, end= "")
         else:
-          print (" %5.2f " %(si_list[k].get(key)[i]),
+          print (" %5.2f " %(si_list[k].get(key)[i] if si_list[k] else 0),
             file = self.log, end= "")
       print("", file = self.log)
 
