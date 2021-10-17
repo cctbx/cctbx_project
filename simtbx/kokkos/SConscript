@@ -69,7 +69,7 @@ kokkos_cxxflags = subprocess.check_output(
   ['make', '-f', 'Makefile.kokkos', 'print-cxx-flags'],
   cwd=os.environ['KOKKOS_PATH'])
 kokkos_cxxflags = kokkos_cxxflags.split(b'\n')
-kokkos_cxxflags = kokkos_cxxflags[1].decode('utf8').split()
+kokkos_cxxflags = kokkos_cxxflags[-1].decode('utf8').split()
 print('KOKKOS_CXXFLAGS:', kokkos_cxxflags)
 print('='*79)
 
