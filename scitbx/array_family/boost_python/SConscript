@@ -1,7 +1,5 @@
 import sys
 
-from libtbx.env_config import get_boost_library_with_python_version
-
 Import("env_scitbx_boost_python_ext", "env_etc")
 
 env = env_scitbx_boost_python_ext.Clone()
@@ -24,8 +22,7 @@ try:
 
   if env_etc.boost_version >= 106300:
     # Link the boost_numpy library into the extension
-    env.Append(LIBS=
-      get_boost_library_with_python_version("boost_numpy", env['LIBPATH']))
+    env.Append(LIBS=env_etc.boost_numpy_lib)
 except ImportError:
   # We don't have numpy
   env_npy = env
