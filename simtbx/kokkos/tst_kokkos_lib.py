@@ -225,16 +225,24 @@ if __name__=="__main__":
   SIM.to_cbf("test_full_e_002.cbf")
 
   print("\n# Use case: modularized api argchk=False, cuda_background=False")
-  SIM3 = SWC.modularized_exafel_api_for_GPU(argchk=False, cuda_background=False)
-  SIM3.to_smv_format(fileout="test_full_e_003.img")
-  SIM3.to_cbf("test_full_e_003.cbf")
-  diffs("CPU",SIM.raw_pixels, "GPU",SIM3.raw_pixels)
+  try:
+    SIM3 = SWC.modularized_exafel_api_for_GPU(argchk=False, cuda_background=False)
+  except ImportError:
+    print(" - No cuda module simtbx_gpu_ext found.")
+  else:
+    SIM3.to_smv_format(fileout="test_full_e_003.img")
+    SIM3.to_cbf("test_full_e_003.cbf")
+    diffs("CPU",SIM.raw_pixels, "GPU",SIM3.raw_pixels)
 
   print("\n# Use case: modularized api argchk=False, cuda_background=True")
-  SIM4 = SWC.modularized_exafel_api_for_GPU(argchk=False, cuda_background=True)
-  SIM4.to_smv_format(fileout="test_full_e_004.img")
-  SIM4.to_cbf("test_full_e_004.cbf")
-  diffs("CPU",SIM.raw_pixels, "GPU",SIM4.raw_pixels)
+  try:
+    SIM4 = SWC.modularized_exafel_api_for_GPU(argchk=False, cuda_background=True)
+  except ImportError:
+    print(" - No cuda module simtbx_gpu_ext found.")
+  else:
+    SIM4.to_smv_format(fileout="test_full_e_004.img")
+    SIM4.to_cbf("test_full_e_004.cbf")
+    diffs("CPU",SIM.raw_pixels, "GPU",SIM4.raw_pixels)
 
   from simtbx.kokkos import kokkos_instance
   kokkos_run = kokkos_instance(deviceId = 0)
