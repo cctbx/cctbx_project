@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import print_function, division
 
 # LIBTBX_SET_DISPATCHER_NAME diffBragg.geometry_refiner
 
@@ -120,7 +120,7 @@ class Target:
 
     def callbk(self, lmfit_params, iter, resid, *fcn_args, **fcn_kws):
         if COMM.rank==0:
-            print("Iteration %d:\n\tResid=%f, sigmaZ %f" % (iter, resid, self.sigmaZ), flush=True)
+            print("Iteration %d:\n\tResid=%f, sigmaZ %f" % (iter, resid, self.sigmaZ))
             if iter % 50==0:
                 SIM, params = fcn_args[2:4]
                 save_opt_det(params, lmfit_params, SIM)
