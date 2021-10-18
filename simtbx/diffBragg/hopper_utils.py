@@ -112,6 +112,7 @@ class DataModeler:
         """ params is a simtbx.diffBragg.hopper phil"""
         self.no_rlp_info = False  # whether rlps are stored in the refls table
         self.params = params  # phil params (see diffBragg/phil.py)
+        self._abs_path_params()
         self.SIM = None  # simulator object (instance of nanoBragg.sim_data.SimData
         self.E = None  # placeholder for the experiment
         self.pan_fast_slow =None  # (pid, fast, slow) per pixel
@@ -145,6 +146,10 @@ class DataModeler:
         self.saves = ["all_data", "all_background", "all_trusted", "best_model", "sigma_rdout",
                       "rois", "pids", "tilt_abc", "selection_flags", "refls_idx", "pan_fast_slow",
                         "Hi", "Hi_asu", "roi_id", "params", "all_pid", "all_fast", "all_slow"]
+
+    def _abs_path_params(self):
+        """adds absolute path to certain params"""
+        self.params.simulator.structure_factors.mtz_name = os.path.abspath(self.params.simulator.structure_factors.mtz_name)
 
     def __getstate__(self):
         # TODO cleanup/compress
