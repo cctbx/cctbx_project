@@ -11,8 +11,9 @@ from libtbx.mpi4py import  MPI
 COMM = MPI.COMM_WORLD
 
 import logging
-MAIN_LOGGER = logging.getLogger("main")
+MAIN_LOGGER = logging.getLogger("diffBragg.main")
 
+from dxtbx.model import Experiment, ExperimentList
 from simtbx.diffBragg import hopper_utils, ensemble_refine_launcher
 
 # diffBragg internal indices for derivative manager
@@ -119,16 +120,10 @@ class Target:
 
     def callbk(self, lmfit_params, iter, resid, *fcn_args, **fcn_kws):
         if COMM.rank==0:
-            print("Iteration %d:\n\tResid=%f, sigmaZ %f" % (iter, resid, self.sigmaZ))
-            vals = []
-            for k in lmfit_params:
-                if "ShiftZ" in k:
-                    vals.append( lmfit_params[k].value *1000)
-            Z = np.mean(vals)
-            lmfit_params["group0_ShiftZ"]
-            print("\tAverage det shiftZ=%.5f mm, average det rot=%f" % (Z,-1)) # TODO
-            #if iter % 20 == 0:
-            #    print_parmams(lmfit_params)
+            print("Iteration %d:\n\tResid=%f, sigmaZ %f" % (iter, resid, self.sigmaZ), flush=True)
+            if iter % 50==0:
+                SIM, params = fcn_args[2:4]
+                save_opt_det(params, lmfit_params, SIM)
 
     def __call__(self, lmfit_params, *fcn_args, **fcn_kws):
         f, self.g, self.sigmaZ = target_and_grad(lmfit_params, *fcn_args, **fcn_kws)
@@ -192,7 +187,7 @@ def model(x, i_shot, Modeler, SIM, compute_grad=True):
     neg_LL = (.5*(np.log(2*np.pi*V) + resid_square / V))[Modeler.all_trusted].sum()
 
     # compute the z-score sigma as a diagnostic
-    zscore_sigma = np.std(resid / np.sqrt(V))
+    zscore_sigma = np.std((resid / np.sqrt(V))[Modeler.all_trusted])
 
     # store the gradients
     J = {}
@@ -417,14 +412,17 @@ def geom_min(params):
     result = minzer.minimize(method=params.geometry.optimize_method, params=LMP, **lbfgs_kws)
 
     if COMM.rank == 0:
-        opt_det = get_optimized_detector(result.params, launcher.SIM)
-        from dxtbx.model import Experiment, ExperimentList
-        El = ExperimentList()
-        E = Experiment()
-        E.detector = opt_det
-        El.append(E)
-        El.as_file(params.geometry.optimized_detector_name)
-        print_parmams(result.params)
+        save_opt_det(params, result.params, launcher.SIM)
+
+def save_opt_det(phil_params, lmfit_params, SIM):
+    opt_det = get_optimized_detector(lmfit_params, SIM)
+    El = ExperimentList()
+    E = Experiment()
+    E.detector = opt_det
+    El.append(E)
+    El.as_file(phil_params.geometry.optimized_detector_name)
+    print_parmams(lmfit_params)
+    print("Saved detector model to %s" % phil_params.geometry.optimized_detector_name )
 
 
 def get_optimized_detector(x, SIM):
