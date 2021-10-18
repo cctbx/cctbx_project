@@ -226,7 +226,7 @@ if __name__=="__main__":
   try:
     SIM3 = SWC.modularized_exafel_api_for_GPU(argchk=False, cuda_background=False)
   except ImportError:
-    print(" - Skipped, no cuda module simtbx_gpu_ext found.")
+    print(" - No cuda module simtbx_gpu_ext found.")
   else:
     SIM3.to_smv_format(fileout="test_full_e_003.img")
     SIM3.to_cbf("test_full_e_003.cbf")
@@ -236,7 +236,7 @@ if __name__=="__main__":
   try:
     SIM4 = SWC.modularized_exafel_api_for_GPU(argchk=False, cuda_background=True)
   except ImportError:
-    print(" - Skipped, no cuda module simtbx_gpu_ext found.")
+    print(" - No cuda module simtbx_gpu_ext found.")
   else:
     SIM4.to_smv_format(fileout="test_full_e_004.img")
     SIM4.to_cbf("test_full_e_004.cbf")
