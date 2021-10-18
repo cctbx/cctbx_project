@@ -68,7 +68,8 @@ def nth_power_scale(dataarray, nth_power):
   maxdat = flex.max(absdat2)
   mindat = max(1e-10*maxdat, flex.min(absdat2) )
   # only autoscale for sensible values of maxdat and mindat
-  if nth_power < 0.0 and maxdat > mindat : # amounts to automatic scale
+  #if nth_power < 0.0 and maxdat > mindat : # amounts to automatic scale
+  if math.isnan(nth_power) and maxdat > mindat : # amounts to automatic scale
     nth_power = math.log(0.2)/(math.log(mindat) - math.log(maxdat))
   datascaled = flex.pow(absdat, nth_power)
   return datascaled, nth_power

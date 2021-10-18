@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'HKLviewer3.ui'
 ##
-## Created by: Qt User Interface Compiler version 5.14.1
+## Created by: Qt User Interface Compiler version 5.15.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -12,22 +12,21 @@ from __future__ import absolute_import, division, print_function
 
 from .qt import QWebEngineView
 try: # if invoked by cctbx.python or some such
-  from crys3d.hklview.helpers import HeaderDataTableWidget
+  from crys3d.hklviewer.helpers import HeaderDataTableWidget
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
   from .helpers import HeaderDataTableWidget
 
-from .qt import QCoreApplication, QMetaObject, QRect, QSize, Qt
-from .qt import QAbstractItemView, QAction, QCheckBox, QComboBox, \
+from .qt import QCoreApplication, QMetaObject, QRect, QSize, Qt, \
+ QFont, QAbstractItemView, QAction, QCheckBox, QComboBox, \
  QDoubleSpinBox, QFrame, QGridLayout, QGroupBox, QLabel, QPlainTextEdit, \
  QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox, \
- QTableWidget, QTabWidget, QTextEdit, QWidget
-from .qt import QIcon
+ QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon
 
-# for the sake of embedding remove MainWindow.setCentralWidget(self.centralwidget) from below
+
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
-        if MainWindow.objectName():
+        if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
         MainWindow.resize(844, 862)
         sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
@@ -173,8 +172,8 @@ class Ui_MainWindow(object):
         self.gridLayout_4.setContentsMargins(0, 0, 0, 0)
         self.functionTabWidget = QTabWidget(self.scrollAreaWidgetContents)
         self.functionTabWidget.setObjectName(u"functionTabWidget")
-        sizePolicy2.setHeightForWidth(self.functionTabWidget.sizePolicy().hasHeightForWidth())
-        self.functionTabWidget.setSizePolicy(sizePolicy2)
+        sizePolicy4.setHeightForWidth(self.functionTabWidget.sizePolicy().hasHeightForWidth())
+        self.functionTabWidget.setSizePolicy(sizePolicy4)
         self.tab = QWidget()
         self.tab.setObjectName(u"tab")
         self.gridLayout_28 = QGridLayout(self.tab)
@@ -206,25 +205,27 @@ class Ui_MainWindow(object):
         self.gridLayout_3.addWidget(self.expandAnomalouscheckbox, 0, 1, 1, 1)
 
 
-        self.gridLayout_28.addWidget(self.ExpandReflsGroupBox, 0, 0, 1, 3)
+        self.gridLayout_28.addWidget(self.ExpandReflsGroupBox, 0, 0, 1, 3, Qt.AlignTop)
 
         self.SpacegroupLabel = QLabel(self.tab)
         self.SpacegroupLabel.setObjectName(u"SpacegroupLabel")
-        sizePolicy8 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        sizePolicy8 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         sizePolicy8.setHorizontalStretch(0)
         sizePolicy8.setVerticalStretch(2)
         sizePolicy8.setHeightForWidth(self.SpacegroupLabel.sizePolicy().hasHeightForWidth())
         self.SpacegroupLabel.setSizePolicy(sizePolicy8)
 
-        self.gridLayout_28.addWidget(self.SpacegroupLabel, 2, 0, 1, 1)
+        self.gridLayout_28.addWidget(self.SpacegroupLabel, 2, 0, 1, 1, Qt.AlignTop)
 
         self.sysabsentcheckbox = QCheckBox(self.tab)
         self.sysabsentcheckbox.setObjectName(u"sysabsentcheckbox")
 
-        self.gridLayout_28.addWidget(self.sysabsentcheckbox, 1, 0, 1, 1)
+        self.gridLayout_28.addWidget(self.sysabsentcheckbox, 1, 0, 1, 1, Qt.AlignTop)
 
         self.widget_3 = QWidget(self.tab)
         self.widget_3.setObjectName(u"widget_3")
+        sizePolicy7.setHeightForWidth(self.widget_3.sizePolicy().hasHeightForWidth())
+        self.widget_3.setSizePolicy(sizePolicy7)
         self.gridLayout_20 = QGridLayout(self.widget_3)
         self.gridLayout_20.setSpacing(4)
         self.gridLayout_20.setContentsMargins(3, 3, 3, 3)
@@ -241,17 +242,14 @@ class Ui_MainWindow(object):
         self.gridLayout_20.addWidget(self.onlymissingcheckbox, 2, 0, 1, 1)
 
 
-        self.gridLayout_28.addWidget(self.widget_3, 1, 1, 1, 2)
+        self.gridLayout_28.addWidget(self.widget_3, 1, 1, 1, 2, Qt.AlignTop)
 
         self.SpaceGroupComboBox = QComboBox(self.tab)
         self.SpaceGroupComboBox.setObjectName(u"SpaceGroupComboBox")
-        sizePolicy9 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        sizePolicy9.setHorizontalStretch(0)
-        sizePolicy9.setVerticalStretch(2)
-        sizePolicy9.setHeightForWidth(self.SpaceGroupComboBox.sizePolicy().hasHeightForWidth())
-        self.SpaceGroupComboBox.setSizePolicy(sizePolicy9)
+        sizePolicy8.setHeightForWidth(self.SpaceGroupComboBox.sizePolicy().hasHeightForWidth())
+        self.SpaceGroupComboBox.setSizePolicy(sizePolicy8)
 
-        self.gridLayout_28.addWidget(self.SpaceGroupComboBox, 2, 1, 1, 2)
+        self.gridLayout_28.addWidget(self.SpaceGroupComboBox, 2, 1, 1, 2, Qt.AlignTop)
 
         self.functionTabWidget.addTab(self.tab, "")
         self.tab_2 = QWidget()
@@ -262,11 +260,11 @@ class Ui_MainWindow(object):
         self.gridLayout_9.setObjectName(u"gridLayout_9")
         self.ClipPlaneChkGroupBox = QGroupBox(self.tab_2)
         self.ClipPlaneChkGroupBox.setObjectName(u"ClipPlaneChkGroupBox")
-        sizePolicy10 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        sizePolicy10.setHorizontalStretch(0)
-        sizePolicy10.setVerticalStretch(1)
-        sizePolicy10.setHeightForWidth(self.ClipPlaneChkGroupBox.sizePolicy().hasHeightForWidth())
-        self.ClipPlaneChkGroupBox.setSizePolicy(sizePolicy10)
+        sizePolicy9 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        sizePolicy9.setHorizontalStretch(0)
+        sizePolicy9.setVerticalStretch(1)
+        sizePolicy9.setHeightForWidth(self.ClipPlaneChkGroupBox.sizePolicy().hasHeightForWidth())
+        self.ClipPlaneChkGroupBox.setSizePolicy(sizePolicy9)
         self.ClipPlaneChkGroupBox.setCheckable(True)
         self.ClipPlaneChkGroupBox.setChecked(False)
         self.gridLayout_7 = QGridLayout(self.ClipPlaneChkGroupBox)
@@ -276,6 +274,9 @@ class Ui_MainWindow(object):
         self.gridLayout_7.setContentsMargins(3, 3, 3, 3)
         self.frame_2 = QFrame(self.ClipPlaneChkGroupBox)
         self.frame_2.setObjectName(u"frame_2")
+        sizePolicy10 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        sizePolicy10.setHorizontalStretch(0)
+        sizePolicy10.setVerticalStretch(1)
         sizePolicy10.setHeightForWidth(self.frame_2.sizePolicy().hasHeightForWidth())
         self.frame_2.setSizePolicy(sizePolicy10)
         self.frame_2.setFrameShape(QFrame.StyledPanel)
@@ -327,12 +328,12 @@ class Ui_MainWindow(object):
         self.gridLayout_7.addWidget(self.frame_2, 0, 0, 1, 1)
 
 
-        self.gridLayout_9.addWidget(self.ClipPlaneChkGroupBox, 0, 0, 1, 1)
+        self.gridLayout_9.addWidget(self.ClipPlaneChkGroupBox, 0, 0, 1, 1, Qt.AlignTop)
 
         self.showsliceGroupCheckbox = QGroupBox(self.tab_2)
         self.showsliceGroupCheckbox.setObjectName(u"showsliceGroupCheckbox")
-        sizePolicy10.setHeightForWidth(self.showsliceGroupCheckbox.sizePolicy().hasHeightForWidth())
-        self.showsliceGroupCheckbox.setSizePolicy(sizePolicy10)
+        sizePolicy9.setHeightForWidth(self.showsliceGroupCheckbox.sizePolicy().hasHeightForWidth())
+        self.showsliceGroupCheckbox.setSizePolicy(sizePolicy9)
         self.showsliceGroupCheckbox.setCheckable(True)
         self.showsliceGroupCheckbox.setChecked(False)
         self.gridLayout_6 = QGridLayout(self.showsliceGroupCheckbox)
@@ -371,12 +372,12 @@ class Ui_MainWindow(object):
         self.gridLayout_6.addWidget(self.SliceLabelComboBox, 0, 0, 1, 1)
 
 
-        self.gridLayout_9.addWidget(self.showsliceGroupCheckbox, 2, 0, 1, 1)
+        self.gridLayout_9.addWidget(self.showsliceGroupCheckbox, 2, 0, 1, 1, Qt.AlignTop)
 
         self.groupBox = QGroupBox(self.tab_2)
         self.groupBox.setObjectName(u"groupBox")
-        sizePolicy10.setHeightForWidth(self.groupBox.sizePolicy().hasHeightForWidth())
-        self.groupBox.setSizePolicy(sizePolicy10)
+        sizePolicy9.setHeightForWidth(self.groupBox.sizePolicy().hasHeightForWidth())
+        self.groupBox.setSizePolicy(sizePolicy9)
         self.gridLayout_22 = QGridLayout(self.groupBox)
         self.gridLayout_22.setSpacing(4)
         self.gridLayout_22.setContentsMargins(3, 3, 3, 3)
@@ -495,7 +496,7 @@ class Ui_MainWindow(object):
         self.gridLayout_22.addWidget(self.groupBox_6, 1, 2, 1, 1)
 
 
-        self.gridLayout_9.addWidget(self.groupBox, 1, 0, 1, 1)
+        self.gridLayout_9.addWidget(self.groupBox, 1, 0, 1, 1, Qt.AlignTop)
 
         self.functionTabWidget.addTab(self.tab_2, "")
         self.tab_3 = QWidget()
@@ -520,12 +521,14 @@ class Ui_MainWindow(object):
         self.radii_scale_spinBox.setObjectName(u"radii_scale_spinBox")
         sizePolicy17 = QSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         sizePolicy17.setHorizontalStretch(0)
-        sizePolicy17.setVerticalStretch(1)
+        sizePolicy17.setVerticalStretch(0)
         sizePolicy17.setHeightForWidth(self.radii_scale_spinBox.sizePolicy().hasHeightForWidth())
         self.radii_scale_spinBox.setSizePolicy(sizePolicy17)
         self.radii_scale_spinBox.setDecimals(2)
+        self.radii_scale_spinBox.setMinimum(0.000000000000000)
         self.radii_scale_spinBox.setMaximum(1000.000000000000000)
         self.radii_scale_spinBox.setSingleStep(0.200000000000000)
+        self.radii_scale_spinBox.setValue(1.000000000000000)
 
         self.gridLayout_10.addWidget(self.radii_scale_spinBox, 2, 1, 1, 1)
 
@@ -533,7 +536,7 @@ class Ui_MainWindow(object):
         self.ManualPowerScalecheckbox.setObjectName(u"ManualPowerScalecheckbox")
         sizePolicy18 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Maximum)
         sizePolicy18.setHorizontalStretch(0)
-        sizePolicy18.setVerticalStretch(1)
+        sizePolicy18.setVerticalStretch(0)
         sizePolicy18.setHeightForWidth(self.ManualPowerScalecheckbox.sizePolicy().hasHeightForWidth())
         self.ManualPowerScalecheckbox.setSizePolicy(sizePolicy18)
 
@@ -552,16 +555,17 @@ class Ui_MainWindow(object):
         self.power_scale_spinBox.setObjectName(u"power_scale_spinBox")
         sizePolicy17.setHeightForWidth(self.power_scale_spinBox.sizePolicy().hasHeightForWidth())
         self.power_scale_spinBox.setSizePolicy(sizePolicy17)
+        self.power_scale_spinBox.setMinimum(-10.000000000000000)
         self.power_scale_spinBox.setMaximum(10.000000000000000)
         self.power_scale_spinBox.setSingleStep(0.050000000000000)
-        self.power_scale_spinBox.setValue(0.350000000000000)
+        self.power_scale_spinBox.setValue(0.500000000000000)
 
         self.gridLayout_10.addWidget(self.power_scale_spinBox, 1, 3, 1, 1)
 
         self.label_7 = QLabel(self.groupBox_3)
         self.label_7.setObjectName(u"label_7")
-        sizePolicy1.setHeightForWidth(self.label_7.sizePolicy().hasHeightForWidth())
-        self.label_7.setSizePolicy(sizePolicy1)
+        sizePolicy7.setHeightForWidth(self.label_7.sizePolicy().hasHeightForWidth())
+        self.label_7.setSizePolicy(sizePolicy7)
         self.label_7.setTextFormat(Qt.RichText)
         self.label_7.setScaledContents(False)
         self.label_7.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignVCenter)
@@ -577,7 +581,7 @@ class Ui_MainWindow(object):
         self.gridLayout_10.addWidget(self.label_11, 2, 0, 1, 1)
 
 
-        self.gridLayout_27.addWidget(self.groupBox_3, 0, 0, 1, 1)
+        self.gridLayout_27.addWidget(self.groupBox_3, 0, 0, 1, 1, Qt.AlignTop)
 
         self.functionTabWidget.addTab(self.tab_3, "")
         self.tab_4 = QWidget()
@@ -887,6 +891,10 @@ class Ui_MainWindow(object):
         sizePolicy27.setVerticalStretch(2)
         sizePolicy27.setHeightForWidth(self.textInfo.sizePolicy().hasHeightForWidth())
         self.textInfo.setSizePolicy(sizePolicy27)
+        font = QFont()
+        font.setFamily(u"Courier New")
+        font.setPointSize(9)
+        self.textInfo.setFont(font)
         self.textInfo.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.textInfo.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.textInfo.setLineWrapMode(QPlainTextEdit.NoWrap)
@@ -906,6 +914,8 @@ class Ui_MainWindow(object):
 
 
         self.gridLayout_2.addWidget(self.widget, 0, 0, 1, 1)
+
+        #MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
 
@@ -1047,3 +1057,4 @@ class Ui_MainWindow(object):
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"Close to radius of sphere of reflections", None))
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_5), QCoreApplication.translate("MainWindow", u"Vectors", None))
     # retranslateUi
+

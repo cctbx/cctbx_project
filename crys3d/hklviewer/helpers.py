@@ -76,8 +76,9 @@ class MillerTableColumnHeaderDialog(QDialog):
     self.selectcolumnstable.clearContents()
     self.selectcolumnstable.setColumnCount(1)
     self.selectcolumnstable.setRowCount(nrows)
-    for row,(colnames, is_selected) in enumerate(self.parent.colnames_select_lst):
+    for row,(philname, colnames, is_selected) in enumerate(self.parent.colnames_select_lst):
       item = QTableWidgetItem(colnames)
+      item.setData(Qt.UserRole, philname)
       item.setFlags((Qt.ItemIsUserCheckable | Qt.ItemIsEnabled) )
       if is_selected:
         item.setCheckState(Qt.Checked)
@@ -88,12 +89,13 @@ class MillerTableColumnHeaderDialog(QDialog):
   def onSelectColumnsTableItemChanged(self, item):
     if self.unfeedback:
       return
-    colname = item.text()
+    #colname = item.text()
+    philname = item.data(Qt.UserRole)
     if item.checkState()==Qt.Unchecked:
       is_selected = False
     else:
       is_selected = True
-    current_philstr = "selected_info.%s = %s" %(colname, is_selected)
+    current_philstr = "selected_info.%s = %s" %(philname, is_selected)
     self.parent.send_message(current_philstr)
 
 

@@ -224,7 +224,7 @@ p, li { white-space: pre-wrap; }
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                     <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
+                    <verstretch>1</verstretch>
                    </sizepolicy>
                   </property>
                   <property name="currentIndex">
@@ -235,7 +235,7 @@ p, li { white-space: pre-wrap; }
                     <string>Expansion</string>
                    </attribute>
                    <layout class="QGridLayout" name="gridLayout_28">
-                    <item row="0" column="0" colspan="3">
+                    <item row="0" column="0" colspan="3" alignment="Qt::AlignTop">
                      <widget class="QGroupBox" name="ExpandReflsGroupBox">
                       <property name="sizePolicy">
                        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -288,10 +288,10 @@ p, li { white-space: pre-wrap; }
                       </layout>
                      </widget>
                     </item>
-                    <item row="2" column="0">
+                    <item row="2" column="0" alignment="Qt::AlignTop">
                      <widget class="QLabel" name="SpacegroupLabel">
                       <property name="sizePolicy">
-                       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                         <horstretch>0</horstretch>
                         <verstretch>2</verstretch>
                        </sizepolicy>
@@ -301,15 +301,21 @@ p, li { white-space: pre-wrap; }
                       </property>
                      </widget>
                     </item>
-                    <item row="1" column="0">
+                    <item row="1" column="0" alignment="Qt::AlignTop">
                      <widget class="QCheckBox" name="sysabsentcheckbox">
                       <property name="text">
                        <string>Show Systematic Absences</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="1" column="1" colspan="2">
+                    <item row="1" column="1" colspan="2" alignment="Qt::AlignTop">
                      <widget class="QWidget" name="widget_3" native="true">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
                       <layout class="QGridLayout" name="gridLayout_20">
                        <property name="leftMargin">
                         <number>0</number>
@@ -343,7 +349,7 @@ p, li { white-space: pre-wrap; }
                       </layout>
                      </widget>
                     </item>
-                    <item row="2" column="1" colspan="2">
+                    <item row="2" column="1" colspan="2" alignment="Qt::AlignTop">
                      <widget class="QComboBox" name="SpaceGroupComboBox">
                       <property name="sizePolicy">
                        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -363,10 +369,10 @@ p, li { white-space: pre-wrap; }
                     <string>Slicing</string>
                    </attribute>
                    <layout class="QGridLayout" name="gridLayout_9">
-                    <item row="0" column="0">
+                    <item row="0" column="0" alignment="Qt::AlignTop">
                      <widget class="QGroupBox" name="ClipPlaneChkGroupBox">
                       <property name="sizePolicy">
-                       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                         <horstretch>0</horstretch>
                         <verstretch>1</verstretch>
                        </sizepolicy>
@@ -478,10 +484,10 @@ p, li { white-space: pre-wrap; }
                       </layout>
                      </widget>
                     </item>
-                    <item row="2" column="0">
+                    <item row="2" column="0" alignment="Qt::AlignTop">
                      <widget class="QGroupBox" name="showsliceGroupCheckbox">
                       <property name="sizePolicy">
-                       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                         <horstretch>0</horstretch>
                         <verstretch>1</verstretch>
                        </sizepolicy>
@@ -566,10 +572,10 @@ p, li { white-space: pre-wrap; }
                       </layout>
                      </widget>
                     </item>
-                    <item row="1" column="0">
+                    <item row="1" column="0" alignment="Qt::AlignTop">
                      <widget class="QGroupBox" name="groupBox">
                       <property name="sizePolicy">
-                       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                         <horstretch>0</horstretch>
                         <verstretch>1</verstretch>
                        </sizepolicy>
@@ -827,7 +833,7 @@ p, li { white-space: pre-wrap; }
                     <string>Sizing</string>
                    </attribute>
                    <layout class="QGridLayout" name="gridLayout_27">
-                    <item row="0" column="0">
+                    <item row="0" column="0" alignment="Qt::AlignTop">
                      <widget class="QGroupBox" name="groupBox_3">
                       <property name="sizePolicy">
                        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -847,7 +853,7 @@ p, li { white-space: pre-wrap; }
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
                            <horstretch>0</horstretch>
-                           <verstretch>1</verstretch>
+                           <verstretch>0</verstretch>
                           </sizepolicy>
                          </property>
                          <property name="toolTip">
@@ -856,11 +862,17 @@ p, li { white-space: pre-wrap; }
                          <property name="decimals">
                           <number>2</number>
                          </property>
+                         <property name="minimum">
+                          <double>0.000000000000000</double>
+                         </property>
                          <property name="maximum">
                           <double>1000.000000000000000</double>
                          </property>
                          <property name="singleStep">
                           <double>0.200000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>1.000000000000000</double>
                          </property>
                         </widget>
                        </item>
@@ -869,7 +881,7 @@ p, li { white-space: pre-wrap; }
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Minimum" vsizetype="Maximum">
                            <horstretch>0</horstretch>
-                           <verstretch>1</verstretch>
+                           <verstretch>0</verstretch>
                           </sizepolicy>
                          </property>
                          <property name="toolTip">
@@ -885,7 +897,7 @@ p, li { white-space: pre-wrap; }
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Minimum" vsizetype="Maximum">
                            <horstretch>0</horstretch>
-                           <verstretch>1</verstretch>
+                           <verstretch>0</verstretch>
                           </sizepolicy>
                          </property>
                          <property name="text">
@@ -904,11 +916,14 @@ p, li { white-space: pre-wrap; }
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
                            <horstretch>0</horstretch>
-                           <verstretch>1</verstretch>
+                           <verstretch>0</verstretch>
                           </sizepolicy>
                          </property>
                          <property name="toolTip">
                           <string extracomment="Exponent of 1 means the size of a sphere for each reflection is proportional to its data value. Exponent of 0 means all spheres will have the same size irrespective of their data values."/>
+                         </property>
+                         <property name="minimum">
+                          <double>-10.000000000000000</double>
                          </property>
                          <property name="maximum">
                           <double>10.000000000000000</double>
@@ -917,14 +932,14 @@ p, li { white-space: pre-wrap; }
                           <double>0.050000000000000</double>
                          </property>
                          <property name="value">
-                          <double>0.350000000000000</double>
+                          <double>0.500000000000000</double>
                          </property>
                         </widget>
                        </item>
                        <item row="0" column="0" colspan="4">
                         <widget class="QLabel" name="label_7">
                          <property name="sizePolicy">
-                          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                            <horstretch>0</horstretch>
                            <verstretch>0</verstretch>
                           </sizepolicy>
@@ -951,7 +966,7 @@ p, li { white-space: pre-wrap; }
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Minimum" vsizetype="Maximum">
                            <horstretch>0</horstretch>
-                           <verstretch>1</verstretch>
+                           <verstretch>0</verstretch>
                           </sizepolicy>
                          </property>
                          <property name="toolTip">
@@ -1509,6 +1524,12 @@ p, li { white-space: pre-wrap; }
                 <horstretch>0</horstretch>
                 <verstretch>2</verstretch>
                </sizepolicy>
+              </property>
+              <property name="font">
+               <font>
+                <family>Courier New</family>
+                <pointsize>9</pointsize>
+               </font>
               </property>
               <property name="verticalScrollBarPolicy">
                <enum>Qt::ScrollBarAlwaysOn</enum>

@@ -308,7 +308,7 @@ class HKLViewFrame() :
         colnames_select_lst = [] 
         for colname,selected in list(self.params.selected_info.__dict__.items()):
           if not colname.startswith("__"):
-            colnames_select_lst.append((colname,selected))
+            colnames_select_lst.append((colname, arrayinfo.caption_dict[colname], selected))
         self.SendInfoToGUI({ "colnames_select_lst": colnames_select_lst })
 
       if view_3d.has_phil_path(diff_phil, "save_image_name"):
@@ -591,7 +591,7 @@ class HKLViewFrame() :
       if array.space_group() is None:
         array._unit_cell = uc
         if spg is None:
-          raise Sorry("No space group definition found in this file which is required for rendering in reciprocal space.")
+          raise Sorry("No space group definition found in this file. Rendering in reciprocal space is not possible.")
         array._space_group_info = spg.info()
         self.mprint("""No unit cell or space group info present in the %d. miller array.
 Borrowing them from the first miller array""" %i)
@@ -607,7 +607,8 @@ Borrowing them from the first miller array""" %i)
         colnames_select_lst = [] 
         for colname,selected in list(self.params.selected_info.__dict__.items()):
           if not colname.startswith("__"):
-            colnames_select_lst.append((colname,selected))
+            #colnames_select_lst.append((colname,selected))
+            colnames_select_lst.append((colname, arrayinfo.caption_dict[colname], selected))
 
         mydict = { "spacegroup_info": arrayinfo.spginf, 
                   "unitcell_info": arrayinfo.ucellinf,
@@ -1030,11 +1031,11 @@ Borrowing them from the first miller array""" %i)
     self.update_settings()
 
 
-  def SetRadiiScale(self, scale=1.0, nth_power_scale = -1.0):
+  def SetRadiiScale(self, scale=1.0, nth_power_scale = float("nan")):
     """
     Scale radii. Decrease the contrast between large and small radii with nth_root_scale < 1.0
-    If nth_power_scale=0.0 then all radii will have the same size regardless of data values.
-    If nth_power_scale < 0.0 an automatic power will be computed ensuring the smallest radius
+    If nth_power_scale=0 then all radii will have the same size regardless of data values.
+    If nth_power_scale=NaN an automatic power will be computed ensuring the smallest radius
     is 0.1 times the maximum radius
     """
     self.params.viewer.scale = scale
