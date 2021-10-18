@@ -66,6 +66,7 @@ if __name__=="__main__":
                         help="number of processes to use for background extraction, only relevant if --compareData flag is present")
     parser.add_argument("--filtsz", type=int, default=10,
                         help="the median filter used to extract backgroun will have this dimension, pixel units, higher values are slower")
+
     args = parser.parse_args()
 
     # the spectrum file
@@ -102,6 +103,9 @@ if __name__=="__main__":
     if args.cudaDevice is not None:
         cuda = True
         dev = args.cudaDevice
+        print("Will use cuda GPU device %d" % dev)
+    else:
+        print("Will not use cuda, but will use openmp, control with env var OMP_NUM_THREADS")
     imgs, expt = forward_models.model_spots_from_pandas(
             df, mtz_file=Fname, mtz_col=Fcol,
             spectrum_override=spec, cuda=cuda, device_Id=dev,
@@ -109,6 +113,7 @@ if __name__=="__main__":
             use_db=True)
 
     if args.compareData:
+        print("Extracting data from experiment list %s..." % df.exp_name.values[0])
         El = ExperimentList.from_file(df.exp_name.values[0])
         iset = El[0].imageset
         # NOTE : assumes a multi-panel detector model, otherwise get_raw_data should have no arg, e.g. iset.get_raw_data()
@@ -116,6 +121,7 @@ if __name__=="__main__":
         # divide the data by the adu factor
         data /= M.params.refiner.adu_per_photon
         # extract the background:
+        print("Extracting background from data ...")
         bg = extract_background_from_data(data, args.j, (args.filtsz, args.filtsz))
         imgs_w_bg  = imgs + bg  # this image is the extracted background and the optimized forward Bragg model
 
@@ -126,14 +132,18 @@ if __name__=="__main__":
         S = M.all_slow
         imgs2[P,S,F] = M.best_model + M.all_background
 
+    comp_args = {"compression": "gzip", "compression_opts": 9}
     kwargs ={
         "filename": args.out,
         "image_shape": imgs.shape,
         "num_images": 5 if args.compareData else 1,
         "detector": expt.detector,
-        "beam": expt.beam
+        "beam": expt.beam,
+        "dtype": np.float32,
+        "compression_args": comp_args,
     }
 
+    print("Saving compressed output...")
     with H5AttributeGeomWriter(**kwargs) as writer:
         writer.add_image(imgs)
         if args.compareData:
