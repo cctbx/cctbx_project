@@ -1122,7 +1122,10 @@ class manager(object):
     result.stop_dynamic_attributes()
     ncs_groups = self.get_ncs_groups()
     if(ncs_groups is None or len(ncs_groups)==0):
-      self.search_for_ncs()
+      import iotbx.ncs
+      params = iotbx.ncs.input.get_default_params()
+      params.ncs_search.exclude_selection = None
+      self.search_for_ncs(params = params.ncs_search)
       ncs_groups = self.get_ncs_groups()
     for i, g in enumerate(ncs_groups):
       m_master          = self.select(g.master_iselection)
@@ -1140,6 +1143,49 @@ class manager(object):
         d = flex.sqrt((master_on_copy_sites_cart-m_copy.get_sites_cart()).dot())
         if(flex.max(d)>eps_xyz): result.xyz = False
     return result
+
+  def idealize_ncs_inplace(self):
+    """
+    Make NCS copies strictly obey the symmetry
+    """
+    from iotbx.pdb import hierarchy
+    r = hierarchy.root()
+    m = hierarchy.model()
+    ncs_groups = self.get_ncs_groups()
+    if(ncs_groups is None or len(ncs_groups)==0):
+      import iotbx.ncs
+      params = iotbx.ncs.input.get_default_params()
+      params.ncs_search.exclude_selection = None
+      self.search_for_ncs(params = params.ncs_search)
+      ncs_groups = self.get_ncs_groups()
+    working_hierarchy = self.get_hierarchy()
+    all_ncs_selection = flex.size_t()
+    for g in ncs_groups:
+      all_ncs_selection.extend(g.master_iselection)
+      for copy in g.copies:
+        all_ncs_selection.extend(copy.iselection)
+    assert all_ncs_selection.size() == self.size()
+    for g in ncs_groups:
+      master_hierarchy = working_hierarchy.select(g.master_iselection)
+      master_sites_cart = master_hierarchy.atoms().extract_xyz()
+      for model in master_hierarchy.models():
+        r.append_model(model.detached_copy())
+      for copy in g.copies:
+        master_on_copy_sites_cart = copy.r.elems * master_sites_cart + copy.t
+        master_hierarchy_dc = master_hierarchy.deep_copy()
+        master_hierarchy_dc.atoms().set_xyz(master_on_copy_sites_cart)
+        copy_hierarchy = working_hierarchy.select(copy.iselection)
+        for mc, cc in zip(master_hierarchy_dc.chains(), copy_hierarchy.chains()):
+          mc.id = cc.id
+        for model in master_hierarchy_dc.models():
+          r.append_model(model.detached_copy())
+    m = hierarchy.model()
+    for chain in r.chains():
+      m.append_chain(chain.detached_copy())
+    r = hierarchy.root()
+    r.append_model(m)
+    r.atoms().reset_i_seq()
+    self.replace_model_hierarchy_with_other(other_hierarchy = r)
 
   def get_hd_selection(self):
     xrs = self.get_xray_structure()
@@ -1188,10 +1234,15 @@ class manager(object):
   def sel_sidechain(self):
     return self._get_selection_manager().sel_backbone_or_sidechain(False, True)
 
-  def replace_model_hierarchy_with_other(self, other_model):
+  def replace_model_hierarchy_with_other(self, other_model=None,
+      other_hierarchy=None):
     ''' Replace hierarchy with one from another model '''
+    assert [other_model, other_hierarchy].count(None) == 1
     model_ph = self.get_hierarchy() # working hierarchy
-    other_model_ph = other_model.get_hierarchy()
+    if(other_model is not None):
+      other_model_ph = other_model.get_hierarchy()
+    else:
+      other_model_ph = other_hierarchy
     for m in model_ph.models():
       model_ph.remove_model(m)
     for m in other_model_ph.models():
@@ -1206,6 +1257,7 @@ class manager(object):
     self.get_hierarchy().atoms().reset_serial() # redo the numbering
     self.get_hierarchy().atoms().reset_i_seq() # redo the numbering
     self.unset_restraints_manager() # no longer applies
+    self.unset_ncs_constraints_groups()
 
   def set_xray_structure(self, xray_structure):
     # XXX Delete as a method or make sure all TLS, NCS, refinement flags etc
