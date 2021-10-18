@@ -11,7 +11,7 @@ import warnings
 import signal
 import logging
 
-LOGGER = logging.getLogger("main")
+LOGGER = logging.getLogger("diffBragg.main")
 warnings.filterwarnings("ignore")
 
 

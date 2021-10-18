@@ -22,8 +22,8 @@ except ImportError:
 
 
 import logging
-MAIN_LOGGER = logging.getLogger("main")
-PROFILE_LOGGER = logging.getLogger("profile")
+MAIN_LOGGER = logging.getLogger("diffBragg.main")
+PROFILE_LOGGER = logging.getLogger("diffBragg.profile")
 
 ROTX_ID = 0
 ROTY_ID = 1
@@ -631,7 +631,9 @@ class DataModeler:
         else:
             method = self.params.method
 
-        maxfev = self.params.nelder_mead_maxfev * self.npix_total
+        maxfev = None
+        if self.params.nelder_mead_maxfev is not None:
+            maxfev = self.params.nelder_mead_maxfev * self.npix_total
 
         at_min = target.at_minimum
 

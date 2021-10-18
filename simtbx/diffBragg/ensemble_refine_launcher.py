@@ -19,7 +19,7 @@ from dxtbx.model.experiment_list import ExperimentListFactory
 from simtbx.diffBragg.prep_stage2_input import prep_dataframe
 import logging
 
-LOGGER = logging.getLogger("main")
+LOGGER = logging.getLogger("diffBragg.main")
 
 
 def global_refiner_from_parameters(params):

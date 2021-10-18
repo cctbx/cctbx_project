@@ -2,7 +2,7 @@ from __future__ import division
 import os
 import time
 import logging
-LOGGER = logging.getLogger("main")
+LOGGER = logging.getLogger("diffBragg.main")
 import numpy as np
 import pandas
 from simtbx.nanoBragg.utils import flexBeam_sim_colors
@@ -171,7 +171,7 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                                     show_params=not quiet,
                                     nopolar=nopolar,
                                     printout_pix=printout_pix,
-                                    diffuse_params=diffuse_params)
+                                    diffuse_params=diffuse_params, cuda=cuda)
         return results, expt
 
     else:
@@ -201,8 +201,10 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                       verbose=0, default_F=0, interpolate=0, profile="gauss",
                       spot_scale_override=None,
                       mosaicity_random_seeds=None,
-                      nopolar=False, diffuse_params=None):
+                      nopolar=False, diffuse_params=None, cuda=False):
 
+    if cuda:
+        os.environ["DIFFBRAGG_USE_CUDA"] = "1"
     CRYSTAL, Famp = nanoBragg_utils.ensure_p1(CRYSTAL, Famp)
 
     nbBeam = NBbeam()

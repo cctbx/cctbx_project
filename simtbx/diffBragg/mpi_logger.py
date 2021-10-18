@@ -61,13 +61,13 @@ def setup_logging_from_params(params):
             utils.safe_makedirs(params.outdir)
         COMM.barrier()
         main_level = LEVELS[params.logging.logfiles_level]
-        main_logger = _make_logger("main",
+        main_logger = _make_logger("diffBragg.main",
                                   os.path.join(params.outdir, HOST+"-"+params.logging.logname),
                                   level=main_level,
                                   overwrite=params.logging.overwrite,
                                   formatter=logging.Formatter(DETAILED_FORMAT))
 
-        _make_logger("profile",
+        _make_logger("diffBragg.profile",
                     os.path.join(params.outdir, HOST+"-"+params.profile_name),
                     level=logging.INFO,
                     overwrite=params.logging.overwrite,
@@ -86,8 +86,8 @@ def setup_logging_from_params(params):
             level = LEVELS[params.logging.rank0_level]
         else:
             level = LEVELS[params.logging.other_ranks_level]
-        _make_logger("main", level=level, formatter=logging.Formatter(SIMPLE_FORMAT))
-        _make_logger("profile", level=level, formatter=logging.Formatter(SIMPLE_FORMAT))
+        _make_logger("diffBragg.main", level=level, formatter=logging.Formatter(SIMPLE_FORMAT))
+        _make_logger("diffBragg.profile", level=level, formatter=logging.Formatter(SIMPLE_FORMAT))
 
 
 class MPIIOStream(object):

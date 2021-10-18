@@ -51,6 +51,10 @@ refspec = None
 reidx_obs = False
   .type = bool
   .help = optionally reindex the strong spot observations after running sills indexer refinement
+db_loglevel = 0 1 *2
+  .type = choice
+  .help = Log level for diffBragg main logger
+  .help = 0=critical (less verbose), 1=info (verbose), 2=debug (most verbose)
 """
 import os
 from libtbx.phil import parse
@@ -77,7 +81,19 @@ class Hopper_Processor(Processor):
             logging.getLogger("dials.algorithms.refinement.refiner").setLevel(logging.ERROR)
             logging.getLogger("dials.algorithms.refinement.reflection_manager").setLevel(logging.ERROR)
             logging.getLogger("dials.algorithms.refinement.reflection_manager").setLevel(logging.ERROR)
-        logging.basicConfig(level=logging.DEBUG)
+        # configure the diffBragg logger
+        dblog = logging.getLogger("diffBragg.main")
+        H = logging.StreamHandler()
+        if self.params.db_loglevel=='2':
+            dblog.setLevel(logging.DEBUG)
+            H.setLevel(logging.DEBUG)
+        elif self.params.db_loglevel=='1':
+            dblog.setLevel(logging.INFO)
+            H.setLevel(logging.INFO)
+        else:
+            dblog.setLevel(logging.CRITICAL)
+            H.setLevel(logging.CRITICAL)
+        dblog.addHandler(H)
 
         self._create_modeler_dir()
 
