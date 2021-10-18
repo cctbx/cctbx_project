@@ -2758,6 +2758,13 @@ class PhenixTNGBuilder(PhenixBuilder):
     configlst.append('--enable_cxx11')
     return configlst
 
+  # select Boost 1.74
+  def _add_git(self, module, parameters, destination=None):
+    super(PhenixTNGBuilder, self)._add_git(module, parameters, destination)
+    if module == 'boost':
+      workdir = ['modules', module]
+      self.add_step(self.shell(command=['git', 'checkout', '1.74'], workdir=workdir))
+
 def set_builder_defaults(options):
   '''
   Updates defaults for specific builders
