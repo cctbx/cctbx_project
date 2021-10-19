@@ -1182,7 +1182,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
     return f, g, model_bragg, Jac
 
 
-def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False):
+def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, best=None):
     if gpu_device is None:
         gpu_device = 0
     params.simulator.spectrum.filename = spec
@@ -1192,7 +1192,7 @@ def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False):
     else:
         assert Modeler.GatherFromExperiment(exp, ref)
 
-    Modeler.SimulatorFromExperiment()
+    Modeler.SimulatorFromExperiment(best)
 
     Modeler.SIM.D.device_Id = gpu_device
 

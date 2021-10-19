@@ -55,6 +55,9 @@ db_loglevel = 0 1 *2
   .type = choice
   .help = Log level for diffBragg main logger
   .help = 0=critical (less verbose), 1=info (verbose), 2=debug (most verbose)
+refine_predictions = False
+  .type = bool
+  .help = optionally refine the list of predicted reflections before integrating
 """
 import os
 from libtbx.phil import parse
@@ -155,7 +158,7 @@ class Hopper_Processor(Processor):
         self.observed = observed  # note this is the only change needed to dials.stills_process.find_spots
         return observed
 
-    def refine(self, exps, ref):
+    def refine(self, exps, ref, refining_predictions=False, best=None):
         exps_out = exps
         if not self.params.skip_hopper:
             if self.params.dispatch.refine:
@@ -168,7 +171,7 @@ class Hopper_Processor(Processor):
             exp, ref, self.stage1_modeler, x = hopper_utils.refine(exps[0], ref,
                                                self.params.diffBragg,
                                                spec=self.params.refspec,
-                                               gpu_device=self.device_id, return_modeler=True)
+                                               gpu_device=self.device_id, return_modeler=True, best=best)
             orig_exp_name = os.path.abspath(self.params.output.refined_experiments_filename)
             refls_name = os.path.abspath(self.params.output.indexed_filename)
             self.params.diffBragg.outdir = self.params.output.output_dir
@@ -281,6 +284,13 @@ class Hopper_Processor(Processor):
             self.stage1_df, self.params.diffBragg, self.observed,
             experiments[0].identifier, self.device_id,
             spectrum_override=self.stage1_modeler.SIM.beam.spectrum)
+        if self.params.refine_predictions:
+            experiments, rnd2_refls = self.refine(experiments, predicted, refining_predictions=True, best=self.stage1_df)
+            # TODO: match rnd2_refls with indexed.refl and re-save indexed.refl
+            predicted, model = predictions.get_predicted_from_pandas(
+                self.stage1_df, self.params.diffBragg, self.observed,
+                experiments[0].identifier, self.device_id,
+                spectrum_override=self.stage1_modeler.SIM.beam.spectrum)
 
         predicted.match_with_reference(indexed)
         integrator = create_integrator(self.params, experiments, predicted)
