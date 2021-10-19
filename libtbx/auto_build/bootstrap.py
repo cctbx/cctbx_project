@@ -13,6 +13,7 @@ from __future__ import absolute_import, division, print_function
 import ntpath
 import os
 import os.path
+import platform
 import posixpath
 import re
 import shutil
@@ -475,7 +476,7 @@ class Toolbox(object):
     destpath, destdir = os.path.split(destination)
 
     # default to using ssh for private phenix repositories
-    if module in ['phenix', 'solve_resolve', 'phenix_pathwalker']:
+    if module in ['phenix', 'solve_resolve', 'phenix_pathwalker', 'labelit']:
       use_ssh = True
 
     if os.path.exists(destination):
@@ -937,11 +938,13 @@ class voyager_regression_module(SourceModule):
 # DIALS repositories
 class labelit_module(SourceModule):
   module = 'labelit'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/labelit/trunk']
+  anonymous = ['git', 'git@github.com:phenix-project/labelit.git']
 
 class labelit_regression_module(SourceModule):
   module = 'labelit_regression'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/labelit_regression/trunk']
+  anonymous = ['git',
+               'git@gitlab.com:phenix_project/labelit_regression.git',
+               'https://gitlab.com/phenix_project/labelit_regression.git']
 
 class dials_module(SourceModule):
   module = 'dials'
@@ -2340,18 +2343,6 @@ class PhenixBuilder(CCIBuilder):
     'prime',
   ]
 
-  def get_codebases(self):
-    """
-    Phenix uses Boost in the conda environment for Python 3
-    """
-    codebases = super(PhenixBuilder, self).get_codebases()
-    if self.python3 and self.use_conda is not None:
-      try:
-        codebases.remove('boost')
-      except ValueError:
-        pass
-    return codebases
-
   # select dials-3.2 branch
   def _add_git(self, module, parameters, destination=None):
     super(PhenixBuilder, self)._add_git(module, parameters, destination)
@@ -2767,13 +2758,23 @@ class PhenixTNGBuilder(PhenixBuilder):
     configlst.append('--enable_cxx11')
     return configlst
 
+  # select Boost 1.74
+  def _add_git(self, module, parameters, destination=None):
+    super(PhenixTNGBuilder, self)._add_git(module, parameters, destination)
+    if module == 'boost':
+      workdir = ['modules', module]
+      self.add_step(self.shell(command=['git', 'checkout', '1.74'], workdir=workdir))
+
 def set_builder_defaults(options):
   '''
   Updates defaults for specific builders
   '''
   if options.builder == 'phenix_voyager':
-    if options.no_boost_src is False:
+    if not options.no_boost_src:
       options.no_boost_src = True
+      # restore default for CentOS 7
+      if sys.platform.startswith('linux') and '.el7.' in platform.platform():
+        options.no_boost_src = False
     if options.python == '27':
       options.python = '37'
     if options.use_conda is None:

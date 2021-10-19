@@ -60,6 +60,13 @@ class cumulative:
     print("tag",self.tag,"total",self.total)
 
 class singleton_data(dict):
+  def __str__(self):
+    message = []
+    for key in self:
+      message.append("time for %30s: CPU, %7.3fs; elapsed, %7.3fs, averaging %7.3fms #calls:%4d"%(key,
+        self[key][0],self[key][1],1000.*self[key][1]/self[key][2],self[key][2]))
+    return "\n".join(message)
+
   def __del__(self):
     Nkeys = len(self)
     if Nkeys > 0: print("Exiting profiler")

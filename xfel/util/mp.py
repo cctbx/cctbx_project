@@ -525,13 +525,15 @@ class get_shifter_submit_command(get_submit_command):
     # template for sbatch.sh
     self.sbatch_template = self.params.shifter.sbatch_script_template
     self.destination = os.path.dirname(self.submit_path)
+    self.prefix = os.path.splitext(os.path.basename(self.submit_path))[0]
+    if self.prefix: self.prefix += "_"
     if not self.sbatch_template:
       from xfel.ui.db.cfgs import shifter_templates
       self.sbatch_contents = shifter_templates.sbatch_template
     else:
       with open(self.sbatch_template, "r") as sb:
         self.sbatch_contents = sb.read()
-    self.sbatch_path = os.path.join(self.destination, "sbatch.sh")
+    self.sbatch_path = os.path.join(self.destination, self.prefix + "sbatch.sh")
 
     # template for srun.sh
     self.srun_template = self.params.shifter.srun_script_template
@@ -543,7 +545,7 @@ class get_shifter_submit_command(get_submit_command):
         self.srun_contents = sr.read()
     if self.params.use_mpi:
       self.command = "%s mp.method=mpi" % (self.command)
-    self.srun_path = os.path.join(self.destination, "srun.sh")
+    self.srun_path = os.path.join(self.destination, self.prefix + "srun.sh")
 
 
   def eval_params(self):
@@ -611,10 +613,10 @@ class get_shifter_submit_command(get_submit_command):
       self.params.shifter.constraint)
 
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<out_log>",
-      os.path.join(self.destination , "out.log"))
+      os.path.join(self.destination , self.prefix + "out.log"))
 
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<err_log>",
-      os.path.join(self.destination , "err.log"))
+      os.path.join(self.destination , self.prefix + "err.log"))
 
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<output_dir>",
       self.destination)
@@ -636,7 +638,7 @@ class get_shifter_submit_command(get_submit_command):
 
 
   def generate_submit_command(self):
-    return self.params.shifter.submit_command + self.sbatch_path
+    return self.params.shifter.submit_command + " " + self.sbatch_path
 
   def encapsulate_submit(self):
     pass

@@ -88,6 +88,7 @@ struct flags{
     int printout_fpixel, printout_spixel; // debug printout pixel (fast scan, slow scan) // TODO add panel id
     int verbose; // nanoBragg verbosity flag
     bool use_diffuse = false; // model  diffuse scattering (experimental)
+    bool only_diffuse = false; // model  diffuse scattering (experimental)
 };
 
 struct crystal{

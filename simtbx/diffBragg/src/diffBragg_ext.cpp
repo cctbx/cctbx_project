@@ -279,9 +279,24 @@ namespace boost_python { namespace {
       diffBragg.db_flags.use_diffuse = val ;
   }
 
+  bool get_only_diffuse(simtbx::nanoBragg::diffBragg& diffBragg){
+      return diffBragg.db_flags.only_diffuse;
+  }
+
+  void set_only_diffuse(simtbx::nanoBragg::diffBragg& diffBragg, bool val){
+      diffBragg.db_flags.only_diffuse = val ;
+  }
+
   static boost::python::tuple get_origin(simtbx::nanoBragg::diffBragg& diffBragg){
     return boost::python::make_tuple(diffBragg.pix0_vector[1]*1000,
                                     diffBragg.pix0_vector[2]*1000, diffBragg.pix0_vector[3]*1000);
+  }
+
+  static boost::python::list get_close_distances(simtbx::nanoBragg::diffBragg& diffBragg){
+      boost::python::list detList;
+      for (int pid=0; pid < diffBragg.db_det.close_distances.size(); pid++)
+          detList.append( diffBragg.db_det.close_distances[pid]);
+      return detList;
   }
 
   static void  set_Fhkl_tuple(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& value) {
@@ -386,6 +401,7 @@ namespace boost_python { namespace {
 
       .def("get_ncells_values", &simtbx::nanoBragg::diffBragg::get_ncells_values, "get Ncells values as a 3-tuple (Na, Nb, Nc)")
 
+
       .def("add_diffBragg_spots_full", &simtbx::nanoBragg::diffBragg::add_diffBragg_spots_full, "forward model and gradients at every pixel")
 
       .def("get_ncells_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_ncells_derivative_pixels, "get derivatives of intensity w.r.t (Na, Nb, Nc)")
@@ -476,6 +492,10 @@ namespace boost_python { namespace {
       //       make_function(&get_roi,rbv()),
       //       make_function(&set_roi,dcp()),
       //       "region of interest on detector: fast_min fast_max slow_min slow_max")
+
+      .add_property("close_distances",
+             make_function(&get_close_distances,rbv()))
+             //"get the effective detector distance for each panel")
 
       .add_property("raw_pixels_roi",
                      make_getter(&simtbx::nanoBragg::diffBragg::raw_pixels_roi,rbv()),
@@ -612,6 +632,11 @@ namespace boost_python { namespace {
             make_function(&get_use_diffuse,rbv()),
             make_function(&set_use_diffuse,dcp()),
             "sim with diffuse")
+
+      .add_property("only_diffuse",
+            make_function(&get_only_diffuse,rbv()),
+            make_function(&set_only_diffuse,dcp()),
+            "sim with ONLY diffuse")
 
       .add_property("diffuse_gamma",
             make_function(&get_diffuse_gamma,rbv()),

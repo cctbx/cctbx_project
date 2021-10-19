@@ -168,7 +168,7 @@ def detector_plot_dict(params, detector, data, title, units_str, show=True, reve
   @param units_str string with a formatting statment for units on each panel
   """
   # initialize the color map
-  values = flex.double(data.values())
+  values = flex.double(list(data.values()))
   norm = Normalize(vmin=flex.min(values), vmax=flex.max(values))
   if reverse_colormap:
     cmap = plt.cm.get_cmap(params.colormap + "_r")

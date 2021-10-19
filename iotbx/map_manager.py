@@ -1661,6 +1661,9 @@ class map_manager(map_reader, write_ccp4_map):
          model.shift_model_and_set_crystal_symmetry(shift_cart=shift_cart)
     '''
     # Check if we really need to do anything
+    if not model:
+      return # nothing to do
+
     if self.is_compatible_model(model,
        require_match_unit_cell_crystal_symmetry = True):
       return # already fine

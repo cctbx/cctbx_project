@@ -8,7 +8,7 @@ COMM = MPI.COMM_WORLD
 import time
 import logging
 
-LOGGER = logging.getLogger("main")
+LOGGER = logging.getLogger("diffBragg.main")
 
 
 def prep_dataframe(df, time_to_try=60., print_time_interval=2):

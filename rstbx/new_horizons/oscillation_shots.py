@@ -55,8 +55,7 @@ class IntegrateCharacters:
 
     print("Cell in setting",setting["counter"],local["cell"])
 
-    frames = self.spotfinder_results.pd['osc_start'].keys()
-    frames.sort()
+    frames = list(sorted(self.spotfinder_results.pd['osc_start'].keys()))
 
     local['maxcel']='0'
     local['xbeam']="%f"%setting['minimizer'].new['xbeam']

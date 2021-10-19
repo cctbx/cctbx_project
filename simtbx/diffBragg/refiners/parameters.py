@@ -1,31 +1,46 @@
 
 from __future__ import absolute_import, division, print_function
+import numpy as np
 from numpy import sin, cos, arcsin
 
 
 class RangedParameter:
-    # TODO, make setting attributes named 'max' and 'min' attributes illegal
+  # TODO, make setting attributes named 'max' and 'min' attributes illegal
+  """
+  simple tool for managing parameters during refinement
 
-  def __init__(self):
-    self.minval = 0
-    self.maxval = 1
-    self.sigma = None
-    self.init = None
-    self.fix = False
+  We re-parameterize to create a psuedo-free parameter
+  See https://lmfit.github.io/lmfit-py/bounds.html
+  """
+
+  def __init__(self, init=0, minval=-1, maxval=1, sigma=1, fix=False, center=None, beta=None):
+    """
+
+    :param init: initial value for parameter
+    :param minval: min value
+    :param maxval: max value
+    :param sigma: refinement sensitivity factor
+    :param fix: whether to fix the parameter
+    :param center: restraint center
+    :param beta: restraint variance (smaller values give rise to tighter restraints)
+    """
+    self.minval = minval
+    self.maxval = maxval
+    self.sigma = sigma
+    self.init = init
+    self.fix = fix
+    self.center = center
+    self.beta = beta
+    if fix:
+      self.minval = init - 1e-10
+      self.maxval = init + 1e-10
     self._arcsin_term = None
 
-  #@property
-  #def init(self):
-  #  return self.__init
+  def restraint_term(self, reparam_val):
+    val = self.get_val(reparam_val)
+    dist = self.center - val
+    fG = .5*(np.log(2*np.pi*self.betas.G) + dist**2/self.betas)
 
-  #@init.setter
-  #def init(self, val):
-  #  if val is not None:
-  #    if val < self.minval:
-  #      raise ValueError("Parameter cannot be initialized to less than the minimum")
-  #    if val >self.maxval:
-  #      raise ValueError("Parameter cannot be initialized to more than the maximum")
-  #  self._init = val
   @property
   def refine(self):
     return not self.fix
@@ -59,11 +74,6 @@ class RangedParameter:
     return self._arcsin_term
 
   def get_val(self, x_current):
-    #if self.fix:
-    #  return self.init
-    #else:
-
-    #sin_arg = self.sigma * (x_current - 1) + arcsin(2 * (self.init - self.minval) / self.rng - 1)
     sin_arg = self.sigma * (x_current - 1) + self.arcsin_term
     val = (sin(sin_arg) + 1) * self.rng / 2 + self.minval
     return val
@@ -83,8 +93,8 @@ class RangedParameter:
 
 class NormalParameter(RangedParameter):
 
-  def __init__(self):
-    super().__init__()
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
 
   def get_val(self, x):
     return x

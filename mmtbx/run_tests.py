@@ -126,10 +126,10 @@ general_tests = [
   "$D/monomer_library/tst_geo_reduce_for_tardy.py",
   "$D/monomer_library/tst_chg.py",
   "$D/monomer_library/tst_neutron_distance.py",
-  '$D/monomer_library/tst_carbo_linking.py',
-  '$D/monomer_library/tst_glyco_hand.py',
-  '$D/monomer_library/tst_glyco_coordination.py',
-  '$D/monomer_library/tst_paral_geo.py',
+  "$D/monomer_library/tst_carbo_linking.py",
+  "$D/monomer_library/tst_glyco_hand.py",
+  "$D/monomer_library/tst_glyco_coordination.py",
+  "$D/monomer_library/tst_paral_geo.py",
   #
   "$D/regression/tst_altloc_remediate.py",
   "$D/hydrogens/build_hydrogens.py",
@@ -188,9 +188,9 @@ general_tests = [
   "$D/conformation_dependent_library/tst_cis_c_n_ca.py",
   "$D/conformation_dependent_library/cdl_svl_database.py",
   "$D/conformation_dependent_library/tst_pH_mechanism.py",
-  '$D/conformation_dependent_library/tst_mcl_01.py',
-  '$D/conformation_dependent_library/tst_mcl_02.py',
-  '$D/conformation_dependent_library/tst_mcl_03.py',
+  "$D/conformation_dependent_library/tst_mcl_01.py",
+  "$D/conformation_dependent_library/tst_mcl_02.py",
+  "$D/conformation_dependent_library/tst_mcl_03.py",
   "$D/regression/tst_find_ss_structure.py",
   "$D/regression/tst_fix_rotamer_outliers.py",
   "$D/regression/tst_chain_comparison.py",
@@ -252,6 +252,8 @@ general_tests = [
   "$D/ringer/tst_emringer.py",
   "$D/ringer/tst_em_rscc.py",
   # validation/molprobity
+  "$D/regression/tst_probe.py",
+  "$D/regression/tst_reduce.py",
   "$D/validation/regression/tst_molprobity_arguments.py",
   "$D/validation/regression/tst_waters.py",
   "$D/validation/regression/tst_keep_hydrogens.py",
@@ -306,7 +308,6 @@ general_tests = [
   "$D/regression/model_idealization/tst_withmap_06.py",
   "$D/regression/model_idealization/tst_ligands.py",
   "$D/regression/model_idealization/tst_with_mtz.py",
-  # "$D/regression/model_idealization/tst_ext_map_01.py",
   "$D/utils/tst_switch_rotamers.py",
   "$D/refinement/tst_occupancy_selections.py",
   "$D/regression/ncs/tst_minimization_ncs_constraints.py",
@@ -316,7 +317,7 @@ general_tests = [
   "$D/monomer_library/tst_correct_hydrogens.py",
   # automatic linking
   "$D/monomer_library/tst_superpose_ideal.py",
-  '$D/monomer_library/tst_iron_sulfur_clusters.py',
+  "$D/monomer_library/tst_iron_sulfur_clusters.py",
   #
   "$D/scaling/tst_plan_sad_experiment.py",
   #
@@ -386,9 +387,23 @@ general_tests = [
   "$D/atomic_environment_vectors/tst.py",
   #
   "$D/building/ligands/tst_00.py",
+  # Tests that were not in the list and caused us to fail as of 10/6/2021
+  "$D/regression/tst_ligand_ncs.py",
+  "$D/regression/tst_origin_ids.py",
+  "$D/regression/model/tst_model_ramachandran.py",
+  "$D/regression/model_idealization/tst_ext_map_01.py",
+  "$D/regression/ncs/tst_symmetrize_solvent.py",
+  "$D/validation/regression/tst_mp_geo_endtoend.py",
+  "$D/validation/regression/tst_mp_geo_chiral_volume_cases.py",
+  "$D/conformation_dependent_library/tst_multi_residue_rna.py",
+  "$D/conformation_dependent_library/tst_cdl_nucleotides.py",
+  "$D/conformation_dependent_library/tst_rna_dna_fragments.py",
+  "$D/conformation_dependent_library/testing_utils.py",
+  "$D/conformation_dependent_library/tst_poly_ca_multi_residue.py",
+  "$D/conformation_dependent_library/tst_mutli_residue.py",
   ]
 
-probe_tests = [
+molprobity_tests = [
   "$D/regression/tst_rama_z_01.py",
   "$D/regression/pdb_interpretation/tst_edits.py",
   "$D/regression/pdb_interpretation/tst_edits_actions.py",
@@ -449,9 +464,9 @@ probe_tests = [
 ]
 
 if libtbx.env.has_module(name="probe"):
-  tst_list = tuple(general_tests + probe_tests)
+  tst_list = tuple(general_tests + molprobity_tests)
 else:
-  print("Skipping %d probe tests: probe not configured"%len(probe_tests))
+  print("Skipping %d MolProbity tests: probe not configured"%len(molprobity_tests))
   tst_list = tuple(general_tests)
 
 def run():

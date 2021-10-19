@@ -47,7 +47,7 @@ class Job(db_proxy):
       if getattr(self, _name) is None:
         if name == "dataset_version":
           if self.dataset_id is not None:
-            self._dataset_version = self.dataset.latest_version # todo bug fix: add this to get_all_jobs
+            self._dataset_version = self.app.get_job_dataset_version(self.id)
         elif getattr(self, name_id) is not None:
           setattr(self, _name, getattr(self.app, "get_" + name)(**{name_id:self.trial_id}))
       return getattr(self, _name)
@@ -279,6 +279,10 @@ class IndexingJob(Job):
             locator.write("rayonix.bin_size=%s\n"%self.rungroup.binning)
           elif mode == 'cspad':
             locator.write("cspad.detz_offset=%s\n"%self.rungroup.detz_parameter)
+
+          if self.rungroup.extra_format_str:
+            locator.write(self.rungroup.extra_format_str)
+
           locator.close()
           d['locator'] = locator_path
         else:
@@ -561,15 +565,26 @@ class EnsembleRefinementJob(Job):
     mp.method={}
     {}
     {}
+    mp.wall_time={}
     mp.use_mpi=False
     mp.mpi_command={}
     {}
+    mp.shifter.submit_command={}
+    mp.shifter.shifter_image={}
+    mp.shifter.sbatch_script_template={}
+    mp.shifter.srun_script_template={}
+    mp.shifter.partition={}
+    mp.shifter.jobname={}
+    mp.shifter.project={}
+    mp.shifter.reservation={}
+    mp.shifter.constraint={}
+    mp.shifter.staging={}
     striping.results_dir={}
     striping.trial={}
     striping.rungroup={}
     striping.run={}
     {}
-    striping.chunk_size=200
+    striping.chunk_size=256
     striping.stripe=False
     striping.dry_run=True
     striping.output_folder={}
@@ -581,8 +596,19 @@ class EnsembleRefinementJob(Job):
                self.app.params.mp.method,
                '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script if p]),
                '\n'.join(['mp.phenix_script={}'.format(p) for p in self.app.params.mp.phenix_script if p]),
+               self.app.params.mp.wall_time,
                self.app.params.mp.mpi_command,
                "\n".join(["extra_options={}".format(opt) for opt in self.app.params.mp.extra_options]),
+               self.app.params.mp.shifter.submit_command,
+               self.app.params.mp.shifter.shifter_image,
+               self.app.params.mp.shifter.sbatch_script_template,
+               self.app.params.mp.shifter.srun_script_template,
+               self.app.params.mp.shifter.partition,
+               self.app.params.mp.shifter.jobname,
+               self.app.params.mp.shifter.project,
+               self.app.params.mp.shifter.reservation,
+               self.app.params.mp.shifter.constraint,
+               self.app.params.mp.shifter.staging,
                self.app.params.output_folder,
                self.trial.trial,
                self.rungroup.id,
@@ -701,6 +727,8 @@ class ScalingJob(Job):
 
 class MergingJob(Job):
   def get_global_path(self):
+    if self.dataset_version is None:
+      return None
     return self.dataset_version.output_path()
 
   def get_log_path(self):
@@ -711,7 +739,7 @@ class MergingJob(Job):
 
   def delete(self, output_only=False):
     job_folder = self.get_global_path()
-    if os.path.exists(job_folder):
+    if job_folder and os.path.exists(job_folder):
       print("Deleting job folder for job", self.id)
       shutil.rmtree(job_folder)
     else:
@@ -807,8 +835,20 @@ class PhenixJob(Job):
     if params.nnodes_merge:
       params.nnodes = params.nnodes_merge
     params.use_mpi = False
-    if 'upload' not in command:
+    params.shifter.staging = None
+    if 'upload' in command:
+      params.nnodes = 1
+      params.nproc_per_node = 1
+      #params.queue = 'shared'
+    else:
       params.env_script = params.phenix_script
+
+    if params.method == 'shifter' and 'upload' not in command:
+       import libtbx.load_env
+       params.shifter.sbatch_script_template = os.path.join( \
+         libtbx.env.find_in_repositories("xfel/ui/db/cfgs"), "phenix_sbatch.sh")
+       params.shifter.srun_script_template = os.path.join( \
+         libtbx.env.find_in_repositories("xfel/ui/db/cfgs"), "phenix_srun.sh")
 
     return do_submit(command, submit_path, output_path, params, identifier_string)
 

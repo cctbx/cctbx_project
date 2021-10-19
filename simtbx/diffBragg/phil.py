@@ -9,80 +9,116 @@ hopper_phil = """
 use_float32 = False
   .type = bool
   .help = store pixel data and background models in 32bit arrays
+  .expert_level=10
 test_gathered_file = False
   .type = bool
   .help = run a quick test to ensure the gathered data file preserves information
+  .expert_level=10
 load_data_from_refls = False
   .type = bool
   .help = load image data, background etc from reflection tables
+  .expert_level=10
 gathered_output_file = None
   .type = str
   .help = optional file for storing a new hopper input file which points to the gathered data dumps
+  .expert_level=10
 only_dump_gathers = False
   .type = bool
   .help = only reads in image data, fits background planes, and dumps
   .help = results to disk, writes a new exper refl file at the end
+  .expert_level=10
 gathers_dir = None
   .type = str
   .help = folder where gathered data reflection tables
   .help = will be writen (if dump_gathers=True)
+  .expert_level=10
 dump_gathers = False
   .type = bool
   .help = optionally dump the loaded experimental data to reflection tables
   .help = for portability
+  .expert_level=10
 spectrum_from_imageset = False
   .type = bool
   .help = if True, load the spectrum from the imageset in the experiment, then probably downsample it
+  .expert_level=0
+isotropic {
+  diffuse_gamma = False
+    .type = bool
+    .help = refine a single diffuse gamma parameter as opposed to 3
+  diffuse_sigma = False
+    .type = bool
+    .help = refine a single diffuse gamma parameter as opposed to 3
+}
 downsamp_spec {
   skip = False
     .type = bool
     .help = if reading spectra from imageset, optionally skip the downsample portion
     .help = Note, if skip=True, then total flux will be determined by whats in the imageset spectrum (sum of the weights)
+    .expert_level=10
   filt_freq = 0.07
     .type = float
     .help = low pass filter frequency in units of inverse spectrometer pixels (??)
+    .expert_level=10
   filt_order = 3
     .type = int
     .help = order for bandpass butter filter
+    .expert_level=10
   tail = 50
     .type = int
     .help = endpoints of the spectrum that are used in background estimation
+    .expert_level=10
   delta_en = 0.5
     .type = float
     .help = final resolution of downsampled spectrum in eV
+    .expert_level=0
 }
 apply_best_crystal_model = False
   .type = bool
   .help = depending on what experiments in the exper refl file, one may want
   .help = to apply the optimal crystal transformations (this parameter only matters
   .help = if params.best_pickle is not None)
+  .expert_level=10
 filter_unpredicted_refls_in_output = True
   .type = bool
   .help = filter reflections in the output refl table for which there was no model bragg peak
   .help = after stage 1 termination
-tag = simplex
+  .expert_level=10
+tag = stage1
   .type = str
   .help = output name tag
+  .expert_level=0
 ignore_existing = False
   .type = bool
   .help = experimental, ignore expts that already have optimized models in the output dir
+  .expert_level=0
 global_method = *basinhopping annealing
   .type = choice
   .help = the method of global optimization to use
+  .expert_level=10
 nelder_mead_maxfev = 60
   .type = int
   .help = multiplied by total number of modeled pixels to get max number of iterations
-niter_per_J = 3
+  .expert_level=10
+nelder_mead_fatol = 0.0001
+  .type = float
+  .help = nelder mead functional error tolerance
+niter_per_J = 1
   .type = int
   .help = if using gradient descent, compute gradients
   .help = every niter_per_J iterations .
+  .expert_level=10
 rescale_params = True
   .type = bool
   .help = use rescaled range parameters
+  .expert_level=10
 best_pickle = None
   .type = str
   .help = path to a pandas pickle containing the best models for the experiments
-betas {
+  .expert_level=0
+betas
+  .help = variances for the restraint targets
+  .expert_level=0
+{
   Nvol = 1e8
     .type = float
     .help = tightness of the Nabc volume contraint
@@ -114,7 +150,10 @@ betas {
     .type = float
     .help = restraint factor for Bfactor
 }
-dual {
+dual
+  .help = configuration parameters for dual annealing
+  .expert_level=10
+{
   initial_temp = 5230
     .type = float
     .help = init temp for dual annealing
@@ -129,7 +168,10 @@ dual {
     .type = float
     .help = dual_annealing accept param, see scipy optimize docs
 }
-centers {
+centers
+  .help = restraint targets
+  .expert_level=0
+{
   Nvol = None
     .type = float
     .help = if provided, constrain the product Na*Nb*Nc to this value
@@ -164,49 +206,60 @@ centers {
 skip = None
   .type = int
   .help = skip this many exp
+  .expert_level=0
 hess = None
   .type = str
   .help = scipy minimize hessian argument, 2-point, 3-point, cs, or None
+  .expert_level=10
 stepsize = 0.5
   .type = float
   .help = basinhopping stepsize
+  .expert_level=10
 temp = 1
   .type = float
   .help = temperature for basin hopping algo
-niter = 100
+  .expert_level=10
+niter = 0
   .type = int
-  .help = number of basin hopping iters
-weights = True
-  .type = bool
-  .help = use weights in the target function
+  .help = number of basin hopping iterations (0 just does a gradient descent and stops at the first minima encountered)
+  .expert_level=0
 exp_ref_spec_file = None
   .type = str
   .help = path to 3 col txt file containing file names for exper, refl, spectrum (.lam)
+  .expert_level=0
 method = None
   .type = str
-  .help = minimizer method
+  .help = minimizer method, usually this is L-BFGS-B (gradients) or Nelder-Mead (simplex)
+  .help = other methods are experimental (see details in hopper_utils.py)
+  .expert_level=0
 opt_det = None
   .type = str
   .help = path to experiment with optimized detector model
+  .expert_level=0
 opt_beam = None
   .type = str
   .help = path to experiment with optimized beam model
+  .expert_level=0
 number_of_xtals = 1
   .type = int
   .help = number of crystal domains to model per shot
+  .expert_level=10
 sanity_test_input = True
   .type = bool
   .help = sanity test input
+  .expert_level=10
 outdir = None
   .type = str
   .help = output folder
-quiet = False
-  .type = bool
-  .help = silence most output
+  .expert_level=0
 max_process = -1
   .type = int
   .help = max exp to process
-sigmas {
+  .expert_level=0
+sigmas
+  .help = sensitivity of target to parameter (experimental)
+  .expert_level=10
+{
   detz_shift = 1
     .type = float
     .help = sensitivity shift for the overall detector shift along z-direction
@@ -238,7 +291,10 @@ sigmas {
     .type = float
     .help = sensitivity for structure factors
 }
-init {
+init
+  .help = initial value of model parameter (will be overrided if best pickle is provided)
+  .expert_level=0
+{
   detz_shift = 0
     .type = float
     .help = initial value for the detector position overall shift along z-direction in millimeters
@@ -248,10 +304,10 @@ init {
   Ndef = [0,0,0]
     .type = floats(size=3)
     .help = init for Ndef
-  diffuse_sigma = [3.16,3.16,3.16]
+  diffuse_sigma = [.01,.01,.01]
     .type = floats(size=3)
     .help = init diffuse sigma
-  diffuse_gamma = [50,50,50]
+  diffuse_gamma = [1,1,1]
     .type = floats(size=3)
     .help = init for diffuse gamma
   RotXYZ = [0,0,0]
@@ -264,7 +320,10 @@ init {
     .type = float
     .help = init for B factor
 }
-mins {
+mins
+  .help = min value allowed for parameter
+  .expert_level = 0
+{
   detz_shift = -10
     .type = float
     .help = min value for detector z-shift in millimeters
@@ -293,7 +352,10 @@ mins {
     .type = float
     .help = min for structure factors
 }
-maxs {
+maxs
+  .help = max value allowed for parameter
+  .expert_level = 0
+{
   detz_shift = 10
     .type = float
     .help = max value for detector z-shift in millimeters
@@ -325,7 +387,10 @@ maxs {
     .type = float
     .help = max for structure factors
 }
-fix {
+fix
+  .help = flags for fixing parameters during refinement
+  .expert_level = 0
+{
   G = False
     .type = bool
     .help = fix the Bragg spot scale during refinement
@@ -354,81 +419,96 @@ fix {
     .type = bool
     .help = fix the detector distance shift during refinement
 }
-relative_tilt = True
+relative_tilt = False
   .type = bool
   .help = fit tilt coef relative to roi corner
+  .expert_level = 10
 num_mosaic_blocks = 1
   .type = int
   .help = number of mosaic blocks making up mosaic spread dist (not implemented)
+  .expert_level = 10
 ucell_edge_perc = 10
   .type = float
   .help = precentage for allowing ucell to fluctuate during refinement
+  .expert_level = 10
 ucell_ang_abs = 5
   .type = float
   .help = absolute angle deviation in degrees for unit cell angles to vary during refinement
+  .expert_level = 10
 no_Nabc_scale = False
   .type = bool
   .help = toggle Nabc scaling of the intensity
+  .expert_level = 10
 use_diffuse_models = False
   .type = bool
   .help = if True, let the values of init.diffuse_sigma and init.diffuse_gamma
   .help = be used to define the diffuse scattering. Set e.g. fix.diffuse_sigma=True in order to refine them
+  .expert_level = 10
 sigma_frac = None
   .type = float
   .help = sigma for Fhkl restraints will be some fraction of the starting value
+  .expert_level = 10
 sanity_test_hkl_variation = False
   .type = bool
   .help = measure the variation of each HKL within the shoebox
+  .expert_level = 10
 sanity_test_models = False
   .type = bool
   .help = make sure best models from stage 1 are reproduced at the start
+  .expert_level = 10
 sanity_test_amplitudes = False
   .type = bool
   .help = if True, then quickly run a sanity check ensuring that all h,k,l are predicted
   .help = and/or in the starting miller array
+  .expert_level = 10
 x_write_freq = 25
   .type = int
   .help = save x arrays every x_write_freq iterations
+  .expert_level = 10
 percentile_cut = None
   .type = float
   .help = percentile below which pixels are masked
-space_group = P6522
+  .expert_level = 10
+space_group = None
   .type = str
   .help = space group to refine structure factors in
+  .expert_level = 0
 first_n = None
   .type = int
   .help = refine the first n shots only
+  .expert_level = 0
 maxiter = 15000
   .type = int
   .help = stop refiner after this many iters
+  .expert_level = 10
 ftol = 1e-10
   .type = float
   .help = ftol convergence threshold for scipys L-BFGS-B
+  .expert_level = 10
+lbfgs_maxiter = 1e5
+  .type = int
+  .help = maximum number of L-BFGS-B iterations
 disp = False
   .type = bool
   .help = scipy minimize convergence printouts
+  .expert_level = 10
 use_restraints = True
   .type = bool
   .help = disable the parameter restraints
-wilson_restraints {
-  use = False
-    .type = bool
-    .help = let the Fhkl be restrained by Wilson distribution during refinement
-  moving_with_refinement = False
-    .type = bool
-    .help = allow the wilson restraint distribution to optimize during refinement of Fhkl
-  num_res_bins = 100
-    .type = int
-    .help = number of resolution bins for computing the average Fhkl^2
-}
+  .expert_level = 0
 min_multi = 2
   .type = int
   .help = minimum ASU multiplicity, obs that fall below this threshold
   .help = are removed from analysis
+  .expert_level = 10
 min_spot = 5
   .type = int
   .help = minimum spots on a shot in order to optimize that shot
-logging {
+  .expert_level = 10
+logging
+  .help = controls the logging module for hopper and stage_two
+  .expert_level = 10
+{
   disable = False
     .type = bool
     .help = turn off logging
@@ -455,10 +535,12 @@ logging {
 profile = False
   .type = bool
   .help = profile the workhorse functions
+  .expert_level = 0
 profile_name = None
   .type = str
   .help = name of the output file that stores the line-by-line profile (written to folder specified by outdir)
   .help = if None, defaults to prof_stage1.log, prof_pred.log, prof_stage2.log for hopper, prediction, stage_two respectively
+  .expert_level = 10
 """
 
 simulator_phil = """
@@ -729,7 +811,115 @@ roi {
     .type = bool
     .help = if True, then model overlapping spots
 }
+
+geometry {
+  first_n = None
+    .type = int
+    .help = only load the first_n experiments from the input pickle
+  refls_key = stage1_refls
+    .type = str
+    .help = column name for the input pickle which contains the reflection tables to be modeled
+  optimize_method = *lbfgsb nelder
+    .type = choice
+    .help = lmfit optimization method (lbfgsb uses gradients, nelder is graientless)
+  input_pkl = None
+    .type = str
+    .help = path to the input pickle containing models and experiment lists
+  optimize = False
+    .type = bool
+    .help = flag to specify whether to optimize the geometry
+  optimized_detector_name = "diffBragg_detector.expt"
+    .type = str
+    .help = name of the experiment which will be written, and will contain the optimized detector
+  min {
+    panel_rotations = -1,-1,-1
+      .type = floats(size=3)
+      .help = minimum value in degrees for a detector panel rotation
+    panel_translations = -1,-1,-1
+      .type = floats(size=3)
+      .help = minimum value in mm for detector panel translations in X,Y,Z
+  }
+  max {
+    panel_rotations = 1,1,1
+      .type = floats(size=3)
+      .help = maximum value in degrees for a detector panel rotation
+    panel_translations = 1,1,1
+      .type = floats(size=3)
+      .help = maximum value in mm for detector panel translations in X,Y,Z
+  }
+  center {
+    panel_rotations = 0,0,0
+      .type = floats(size=3)
+      .help = restraint target in degrees for panel rotations
+    panel_translations = 0,0,0
+      .type = floats(size=3)
+      .help = restraint target in mm for detector panel translations in X,Y,Z
+  }
+  betas {
+    panel_rot = 1e6,1e6,1e6
+      .type = floats(size=3)
+      .help = restraint factor for panel rotations (higher values lead to unrestrained parameters)
+    panel_xyz = 1e6,1e6,1e6
+      .type = floats(size=3)
+      .help = restraint factor in mm for detector panel translations in X,Y,Z
+    close_distances = None
+      .type = float
+      .help = restraint factor for the spread of detector panel Z-distances (#TODO think about this in context of tilt)
+  }
+  fix {
+    panel_rotations = 0,0,0
+      .type = ints(size=3)
+      .help = refinement flags, 1 means to fix the parameter
+    panel_translations = 0,0,0
+      .type = ints(size=3)
+      .help = refinement flags, 1 means to fix the parameter
+  }
+}
 """
 
-philz = simulator_phil + refiner_phil + roi_phil
+preditions_phil = """
+predictions {
+  weak_fraction = 0.5
+    .type = float
+    .help = fraction of weak predictions to integrate
+  threshold = 1e-3
+    .type = float
+    .help = value determining the cutoff for the forward model intensity. Bragg peaks will then be determined
+    .help = as regions of connected values greater than the threshold
+  oversample_override = None
+    .type = int
+    .help = force the pixel oversample rate to this value during the forward model simulation
+    .help = for maximum speed gains, set this to 1, but inspect the output!
+    .expert_level=10
+  use_diffBragg_mtz = False
+    .type = bool
+    .help = whether to use the mtz supplied to diffBragg for prediction
+  Nabc_override = None
+    .type = ints(size=3)
+    .help = use this value of mosaic block size for every shot, useful to get more predicted spots
+    .expert_level=10
+  pink_stride_override = None
+    .type = int
+    .help = if specified, stride through the spectrum according to this interval
+  default_Famplitude = 1e3
+    .type = float
+    .help = default structure factor amplitude for every miller index
+    .help = this creates a flat prediction model, where the magnitude is dependent on the distance to the Ewald sphere
+  resolution_range = [1,999]
+    .type = floats(size=2)
+    .help = high-res to low-res limit for prediction model
+  symbol_override = None
+    .type = str
+    .help = specify the space group symbol to use in diffBragg (e,g, P43212),
+    .help = if None, then it will be pulled from the crystal model
+  method = *diffbragg exascale
+    .type = choice
+    .help = engine used for computing the forward model
+    .help = diffbragg offers CUDA support via the DIFFBRAGG_USE_CUDA=1 environment variable specification
+    .help = or openmp support using the OMP_NUM_THREADS flag
+    .help = The exascale only uses CUDA (will raise error if CUDA is not confugured)
+}
+"""
+
+philz = simulator_phil + refiner_phil + roi_phil + preditions_phil
 phil_scope = parse(philz)

@@ -1,0 +1,34 @@
+import libtbx.load_env
+
+Import("env_base", "env_etc")
+
+env = env_base.Clone(
+  LIBS=env_etc.libm)
+if (env_etc.compiler != "win32_cl"):
+  env.Replace(LINK=env_base["CC"])
+#env.StaticLibrary(
+#  target=["#probe/lib/probelib"],
+#  source=[
+#    "Scoring.cpp",
+#    "DotSpheres.cpp",
+#    "SpatialQuery.cpp"])
+
+if (not env_etc.no_boost_python):
+  Import("env_cctbx_boost_python_ext")
+  env_bpl = env_cctbx_boost_python_ext.Clone()
+
+  # We need Boost Python to compile this C++ library because Scoring.cpp uses it.
+  env_bpl.StaticLibrary(
+    target=["#probe/lib/probelib"],
+    source=[
+      "Scoring.cpp",
+      "DotSpheres.cpp",
+      "SpatialQuery.cpp"])
+
+  env_bpl.Append(LIBPATH=["#probe/lib"])
+  env_bpl.Prepend(LIBS=["probelib", "iotbx_pdb", "cctbx", "scitbx_boost_python"])
+
+  env_bpl.SharedLibrary(
+    target="#lib/mmtbx_probe_ext",
+    source=["boost_python/probe_bpl.cpp"
+            ])

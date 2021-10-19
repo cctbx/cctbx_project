@@ -2,7 +2,7 @@ from __future__ import division
 import os
 import time
 import logging
-LOGGER = logging.getLogger("main")
+LOGGER = logging.getLogger("diffBragg.main")
 import numpy as np
 import pandas
 from simtbx.nanoBragg.utils import flexBeam_sim_colors
@@ -43,17 +43,18 @@ def panda_frame_from_exp(exp_name, detz_shift_mm=0, Ncells_abc=(30.,30.,30.), sp
     return df
 
 
-def model_from_expt(exp_name,  roi_spots_from_pandas_kwargs=None, panda_frame_from_exp_kwargs=None):
-    if roi_spots_from_pandas_kwargs is None:
-        roi_spots_from_pandas_kwargs = {}
+def model_from_expt(exp_name,  model_spots_from_pandas_kwargs=None, panda_frame_from_exp_kwargs=None):
+    if model_spots_from_pandas_kwargs is None:
+        model_spots_from_pandas_kwargs = {}
     if panda_frame_from_exp_kwargs is None:
         panda_frame_from_exp_kwargs = {}
     df = panda_frame_from_exp(exp_name, **panda_frame_from_exp_kwargs)
-    out = roi_spots_from_pandas(df, **roi_spots_from_pandas_kwargs)
+    out = model_spots_from_pandas(df, **model_spots_from_pandas_kwargs)
     return out
 
 
-def roi_spots_from_pandas(pandas_frame,  rois_per_panel=None,
+# TODO name change
+def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                           mtz_file=None, mtz_col=None,
                           oversample_override=None,
                           Ncells_abc_override=None,
@@ -76,7 +77,8 @@ def roi_spots_from_pandas(pandas_frame,  rois_per_panel=None,
     expt_name = df.opt_exp_name.values[0]
     El = ExperimentListFactory.from_json_file(expt_name, check_format=False)
     expt = El[0]
-    if "detz_shift_mm" in list(df):  # NOTE, this could also be inside expt_name directly
+    columns = list(df)
+    if "detz_shift_mm" in columns:  # NOTE, this could also be inside expt_name directly
         expt.detector = utils.shift_panelZ(expt.detector, df.detz_shift_mm.values[0])
 
     if force_no_detector_thickness:
@@ -133,6 +135,13 @@ def roi_spots_from_pandas(pandas_frame,  rois_per_panel=None,
     else:
         Famp = utils.make_miller_array_from_crystal(expt.crystal, dmin=d_min, dmax=d_max, defaultF=defaultF, symbol=symbol_override)
 
+    diffuse_params = None
+    if "use_diffuse_models" in columns and df.use_diffuse_models.values[0]:
+        if not use_db:
+            raise RuntimeError("Cant simulate diffuse models unless use_db=True (diffBragg modeler)")
+        diffuse_params = {"gamma": tuple(df.diffuse_gamma.values[0]),
+                          "sigma": tuple(df.diffuse_sigma.values[0])}
+
     if use_exascale_api:
         #===================
         gpu_channels_singleton = gpu_energy_channels(deviceId=0)
@@ -145,7 +154,7 @@ def roi_spots_from_pandas(pandas_frame,  rois_per_panel=None,
         gpu_channels_singleton.structure_factors_to_GPU_direct_cuda(0, F_P1.indices(), F_P1.data())
         Famp = gpu_channels_singleton
         #===========
-        results = multipanel_sim(CRYSTAL=expt.crystal,
+        results,_,_ = multipanel_sim(CRYSTAL=expt.crystal,
                                  DETECTOR=expt.detector,
                                  BEAM=expt.beam, Famp=Famp,
                                  energies=energies, fluxes=fluxes, Ncells_abc=Ncells_abc,
@@ -153,7 +162,7 @@ def roi_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                                  spot_scale_override=spot_scale, default_F=0, interpolate=0,
                                  include_background=False,
                                  profile="gauss", cuda=True, show_params=False)
-        return results
+        return results, expt
     elif use_db:
         results = diffBragg_forward(CRYSTAL=expt.crystal, DETECTOR=expt.detector, BEAM=expt.beam, Famp=Famp,
                                     fluxes=fluxes, energies=energies, beamsize_mm=beamsize_mm,
@@ -161,8 +170,9 @@ def roi_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                                     device_Id=device_Id, oversample=oversample,
                                     show_params=not quiet,
                                     nopolar=nopolar,
-                                    printout_pix=printout_pix)
-        return results
+                                    printout_pix=printout_pix,
+                                    diffuse_params=diffuse_params, cuda=cuda)
+        return results, expt
 
     else:
         pids = None
@@ -179,11 +189,9 @@ def roi_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                                       nopolar=nopolar,
                                       printout_pix=printout_pix)
         if norm_by_nsource:
-            return np.array([image/len(energies) for _,image in results])
+            return np.array([image/len(energies) for _,image in results]), expt
         else:
-            return np.array([image for _,image in results])
-
-
+            return np.array([image for _,image in results]), expt
 
 
 def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
@@ -193,8 +201,10 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                       verbose=0, default_F=0, interpolate=0, profile="gauss",
                       spot_scale_override=None,
                       mosaicity_random_seeds=None,
-                      nopolar=False):
+                      nopolar=False, diffuse_params=None, cuda=False):
 
+    if cuda:
+        os.environ["DIFFBRAGG_USE_CUDA"] = "1"
     CRYSTAL, Famp = nanoBragg_utils.ensure_p1(CRYSTAL, Famp)
 
     nbBeam = NBbeam()
@@ -236,6 +246,10 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
 
     S.D.verbose = 2
     S.D.record_time = True
+    if diffuse_params is not None:
+        S.D.use_diffuse = True
+        S.D.diffuse_gamma = diffuse_params["gamma"]
+        S.D.diffuse_sigma = diffuse_params["sigma"]
     S.D.add_diffBragg_spots_full()
     S.D.show_timings()
     t = time.time()
@@ -248,6 +262,12 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
         S.D.printout_pixel_fastslow = f,s
         S.D.show_params()
         S.D.add_diffBragg_spots(printout_pix)
+
+    # free up memory
+    S.D.free_all()
+    S.D.free_Fhkl2()
+    if S.D.gpu_free is not None:
+        S.D.gpu_free()
     return data
 
 
@@ -271,13 +291,13 @@ if __name__ == "__main__":
         spectrum = hopper_utils.spectrum_from_expt(E, 1e12)
 
         t = time.time()
-        imgs = roi_spots_from_pandas(df_exp, force_no_detector_thickness=True, use_db=True, quiet=True,
+        imgs,_ = model_spots_from_pandas(df_exp, force_no_detector_thickness=True, use_db=True, quiet=True,
                                      oversample_override=oo, nopolar=True, spectrum_override=spectrum)
         t = time.time() - t
         print("----------------------")
 
         t2 = time.time()
-        imgs2 = roi_spots_from_pandas(df_exp, force_no_detector_thickness=True, cuda=CUDA, quiet=True,
+        imgs2,_ = model_spots_from_pandas(df_exp, force_no_detector_thickness=True, cuda=CUDA, quiet=True,
                                       oversample_override=oo, nopolar=True, spectrum_override=spectrum)#, oversample_override=1, nopolar=True, printout_pix=PFS)
         t2 = time.time()-t2
         print("----------------------")
@@ -288,9 +308,8 @@ if __name__ == "__main__":
         if not CUDA:
             exit()
         t3 = time.time()
-        imgs3,_,_ = roi_spots_from_pandas(df_exp, use_exascale_api=True, force_no_detector_thickness=True, quiet=True,
+        imgs3,_ = model_spots_from_pandas(df_exp, use_exascale_api=True, force_no_detector_thickness=True, quiet=True,
                                           oversample_override=oo, nopolar=True, spectrum_override=spectrum)
-        #imgs2 = roi_spots_from_pandas(df_exp, use_db=True, force_no_detector_thickness=True, cuda=True, quiet=True)
         t3 = time.time()-t3
         if np.allclose(imgs, imgs3):
             print("OK2")

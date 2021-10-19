@@ -26,6 +26,7 @@ dependencies:
   - psutil
   - reportlab
   - requests
+  - scipy
   - six
 
   # cctbx

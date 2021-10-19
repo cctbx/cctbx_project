@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 import socket
 import glob
 from copy import deepcopy
-from simtbx.diffBragg.hopper_utils import look_at_x, model, get_param_from_x, DataModeler, get_data_model_pairs, sanity_test_input_lines
 from simtbx.diffBragg import hopper_utils
+PARAM_PER_XTAL = hopper_utils.PARAM_PER_XTAL
 import h5py
 from dxtbx.model.experiment_list import ExperimentList
 try:
@@ -24,7 +24,6 @@ ROTZ_ID = 2
 NCELLS_ID = 9
 UCELL_ID_OFFSET = 3
 DETZ_ID = 10
-PARAM_PER_XTAL = 9
 
 # LIBTBX_SET_DISPATCHER_NAME simtbx.diffBragg.hopper
 
@@ -49,9 +48,15 @@ from simtbx.diffBragg import mpi_logger
 from simtbx.diffBragg.phil import hopper_phil
 
 
-
 philz = hopper_phil + philz
 phil_scope = parse(philz)
+
+
+def make_rank_outdir(root, subfolder):
+    rank_imgs_outdir = os.path.join(root, subfolder, "rank%d" % COMM.rank)
+    if not os.path.exists(rank_imgs_outdir):
+        os.makedirs(rank_imgs_outdir)
+    return rank_imgs_outdir
 
 
 class Script:
@@ -95,10 +100,10 @@ class Script:
             if self.params.first_n is not None:
                 input_lines = input_lines[:self.params.first_n]
             if self.params.sanity_test_input:
-                sanity_test_input_lines(input_lines)
+                hopper_utils.sanity_test_input_lines(input_lines)
 
             if self.params.best_pickle is not None:
-                if not self.params.quiet: logging.info("reading pickle %s" % self.params.best_pickle)
+                logging.info("reading pickle %s" % self.params.best_pickle)
                 best_models = pandas.read_pickle(self.params.best_pickle)
 
             if self.params.dump_gathers:
@@ -144,7 +149,7 @@ class Script:
                 if len(best) != 1:
                     raise ValueError("Should be 1 entry for exp %s in best pickle %s" % (exp, self.params.best_pickle))
             self.params.simulator.spectrum.filename = spec
-            Modeler = DataModeler(self.params)
+            Modeler = hopper_utils.DataModeler(self.params)
             if self.params.load_data_from_refls:
                 gathered = Modeler.GatherFromReflectionTable(exp, ref)
             else:
@@ -164,7 +169,7 @@ class Script:
                     all_trusted = Modeler.all_trusted.copy()
                     all_pids = np.array(Modeler.pids)
                     all_rois = np.array(Modeler.rois)
-                    new_Modeler = DataModeler(self.params)
+                    new_Modeler = hopper_utils.DataModeler(self.params)
                     assert new_Modeler.GatherFromReflectionTable(exp, output_name)
                     assert np.allclose(new_Modeler.all_data, all_data)
                     assert np.allclose(new_Modeler.all_background, all_bg)
@@ -197,29 +202,9 @@ class Script:
 
             # initial parameters (all set to 1, PARAM_PER_XTAL parameters (scale, rotXYZ, Ncells_abc) per crystal (sausage) and then the unit cell parameters
             nparam = PARAM_PER_XTAL * Modeler.SIM.num_xtals + len(Modeler.SIM.ucell_man.variables) + 1
-            if self.params.rescale_params:
-                x0 = [1] * nparam
-            else:
-                x0 = [np.nan]*nparam
-                for i_xtal in range(Modeler.SIM.num_xtals):
-                    x0[PARAM_PER_XTAL*i_xtal] = Modeler.SIM.Scale_params[i_xtal].init
-                    x0[PARAM_PER_XTAL*i_xtal+1] = Modeler.SIM.RotXYZ_params[3*i_xtal].init
-                    x0[PARAM_PER_XTAL*i_xtal+2] = Modeler.SIM.RotXYZ_params[3*i_xtal+1].init
-                    x0[PARAM_PER_XTAL*i_xtal+3] = Modeler.SIM.RotXYZ_params[3*i_xtal+2].init
-                    x0[PARAM_PER_XTAL*i_xtal+4] = Modeler.SIM.Nabc_params[3*i_xtal].init
-                    x0[PARAM_PER_XTAL*i_xtal+5] = Modeler.SIM.Nabc_params[3*i_xtal+1].init
-                    x0[PARAM_PER_XTAL*i_xtal+6] = Modeler.SIM.Nabc_params[3*i_xtal+2].init
-
-                nucell = len(Modeler.SIM.ucell_man.variables)
-                for i_ucell in range(nucell):
-                    x0[PARAM_PER_XTAL*Modeler.SIM.num_xtals+i_ucell] = Modeler.SIM.ucell_params[i_ucell].init
-                x0[PARAM_PER_XTAL*Modeler.SIM.num_xtals+nucell] = Modeler.SIM.DetZ_param.init
-
+            x0 = [1] * nparam
             x = Modeler.Minimize(x0)
             if self.params.profile:
-                #from six.moves import StringIO
-                #from boost_adaptbx.boost.python import streambuf
-                #out = streambuf(StringIO())
                 Modeler.SIM.D.show_timings(COMM.rank) #, out)
             save_up(Modeler, x, exp, i_exp, ref)
 
@@ -237,33 +222,29 @@ class Script:
 
 def save_up(Modeler, x, exp, i_exp, input_refls):
     LOGGER = logging.getLogger("refine")
-    best_model,_ = model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
+    Modeler.best_model, _ = hopper_utils.model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
     LOGGER.info("Optimized values for i_exp %d:" % i_exp)
-    look_at_x(x,Modeler.SIM)
+    hopper_utils.look_at_x(x,Modeler.SIM)
 
-    rank_imgs_outdir = os.path.join(Modeler.params.outdir, "imgs", "rank%d" % COMM.rank)
-    if not os.path.exists(rank_imgs_outdir):
-        os.makedirs(rank_imgs_outdir)
-
-    rank_refls_outdir = os.path.join(Modeler.params.outdir, "refls", "rank%d" % COMM.rank)
-    if not os.path.exists(rank_refls_outdir):
-        os.makedirs(rank_refls_outdir)
+    rank_imgs_outdir = make_rank_outdir(Modeler.params.outdir, "imgs")
+    rank_SIMlog_outdir = make_rank_outdir(Modeler.params.outdir, "simulator_state")
+    rank_refls_outdir = make_rank_outdir(Modeler.params.outdir, "refls")
+    rank_spectra_outdir = make_rank_outdir(Modeler.params.outdir, "spectra")
 
     basename = os.path.splitext(os.path.basename(exp))[0]
-
     img_path = os.path.join(rank_imgs_outdir, "%s_%s_%d.h5" % (Modeler.params.tag, basename, i_exp))
+    SIMlog_path = os.path.join(rank_SIMlog_outdir, "%s_%s_%d.txt" % (Modeler.params.tag, basename, i_exp))
+    new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d.refl" % (Modeler.params.tag, basename, i_exp))
+    spectra_path = os.path.join(rank_spectra_outdir, "%s_%s_%d.lam" % (Modeler.params.tag, basename, i_exp))
 
     if Modeler.SIM.num_xtals == 1:
         save_to_pandas(x, Modeler.SIM, exp, Modeler.params, Modeler.E, i_exp, input_refls, img_path)
 
-    new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d.refl" % (Modeler.params.tag, basename, i_exp))
-    # save_model_Z(img_path, all_data, best_model, pan_fast_slow, sigma_rdout)
-
-    data_subimg, model_subimg, trusted_subimg, bragg_subimg = get_data_model_pairs(Modeler.rois, Modeler.pids, Modeler.roi_id, best_model, Modeler.all_data, trusted_flags=Modeler.all_trusted, background=Modeler.all_background)
+    data_subimg, model_subimg, trusted_subimg, bragg_subimg = Modeler.get_data_model_pairs()
 
     comp = {"compression": "lzf"}
     new_refls = deepcopy(Modeler.refls)
-    has_xyzcal = 'xycval.px' in list(new_refls.keys())
+    has_xyzcal = 'xyzcal.px' in list(new_refls.keys())
     if has_xyzcal:
         new_refls['dials.xyzcal.px'] = deepcopy(new_refls['xyzcal.px'])
     new_xycalcs = flex.vec3_double(len(Modeler.refls), (np.nan,np.nan,np.nan))
@@ -315,25 +296,21 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
         utils.show_diffBragg_state(Modeler.SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
         print("Refiner scale=%f" % Modeler.SIM.Scale_params[0].get_val(x[0]))
 
-    Modeler.SIM.D.free_all()
-    Modeler.SIM.D.free_Fhkl2()
-    try:
-        Modeler.SIM.D.gpu_free()
-    except TypeError:
-        pass  # occurs on CPU-only builds
+    hopper_utils.finalize_SIM(Modeler.SIM, log=SIMlog_path, lam=spectra_path)
 
 
 def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls, stg1_img_path):
     LOGGER = logging.getLogger("refine")
-    rank_exper_outdir = os.path.join(params.outdir, "expers", "rank%d" % COMM.rank)
-    rank_pandas_outdir = os.path.join(params.outdir, "pandas", "rank%d" % COMM.rank)
-    for d in [rank_exper_outdir, rank_pandas_outdir]:
-        if not os.path.exists(d):
-            os.makedirs(d)
+    rank_exper_outdir = make_rank_outdir(params.outdir, "expers")
+    rank_pandas_outdir =make_rank_outdir(params.outdir, "pandas")
 
     if SIM.num_xtals > 1:
         raise NotImplemented("cant save pandas for multiple crystals yet")
-    scale, rotX, rotY, rotZ, Na, Nb, Nc,diff_ga, diff_sig, a,b,c,al,be,ga,detz_shift = get_param_from_x(x, SIM)
+    scale, rotX, rotY, rotZ, Na, Nb, Nc,diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c, a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, SIM)
+    if params.isotropic.diffuse_gamma:
+        diff_gam_b = diff_gam_c = diff_gam_a
+    if params.isotropic.diffuse_sigma:
+        diff_sig_b = diff_sig_c = diff_sig_a
     shift = np.nan
     #if SIM.shift_param is not None:
     #    shift = SIM.shift_param.get_val(x[-1])
@@ -369,7 +346,10 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
         "eta_abc": [(eta_a, eta_b, eta_c)],
         "detz_shift_mm": [detz_shift * 1e3],
         "ncells_def": ncells_def_vals,
+        "diffuse_gamma": [(diff_gam_a, diff_gam_b, diff_gam_c)],
+        "diffuse_sigma": [(diff_sig_a, diff_sig_b, diff_sig_c)],
         "fp_fdp_shift": [shift],
+        "use_diffuse_models": [params.use_diffuse_models],
         # "bgplanes": bgplanes, "image_corr": image_corr,
         # "init_image_corr": init_img_corr,
         # "fcell_xstart": fcell_xstart,
@@ -416,6 +396,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     df["stage1_output_img"] = stg1_img_path
 
     df.to_pickle(pandas_path)
+    return df
 
 
 if __name__ == '__main__':

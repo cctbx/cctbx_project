@@ -193,7 +193,11 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
         angle_proxy = cdl_proxies.get(tuple(rnames), None)
       return angle_proxy
     def _get_i_seqs(names):
-      for j in range(len(names)): names[j] = atoms[names[j]].i_seq
+      for j in range(len(names)):
+        if names[j] not in atoms:
+          # print('names not found',names)
+          return None
+        names[j] = atoms[names[j]].i_seq
       return names
     ####################
     if not average:
@@ -234,6 +238,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
       # sometimes the O is not in the model
       if "O_i" in names and not "O_i" in atoms: continue
       names = _get_i_seqs(names)
+      if names is None: continue
       if len(names)==3:
         angle_proxy = _get_angle_proxy(names)
         if angle_proxy is None: continue

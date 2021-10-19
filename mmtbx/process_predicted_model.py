@@ -31,12 +31,14 @@ master_phil_str = """
       .help = Remove low-confidence residues (based on minimum lddt or \
              maximum_rmsd, whichever is specified)
       .short_caption = Remove low-confidence residues
+      .expert_level = 3
 
     split_model_by_compact_regions = True
       .type = bool
       .help = Split model into compact regions after removing \
            low-confidence residues.
       .short_caption = Split model into compact regions
+      .expert_level = 3
 
     maximum_domains = 3
       .type = int
@@ -44,7 +46,7 @@ master_phil_str = """
                 the closest domains at the end of splitting the model. Make\
                 it bigger (and optionally make domain_size smaller) to \
                 get more domains.
-      .short_caption = Maximum domains (optional)
+      .short_caption = Maximum domains
 
     domain_size = 15
       .type = float
@@ -58,6 +60,12 @@ master_phil_str = """
       .type = float
       .help = Minimum length of a domain to keep (reject at end if smaller).
       .short_caption = Minimum domain length (residues)
+
+    maximum_fraction_close = 0.3
+      .type = float
+      .help = Maximum fraction of CA in one domain close to one in another \
+              before merging them
+      .short_caption = Maximum fraction close
 
     minimum_sequential_residues = 5
       .type = int
@@ -75,13 +83,14 @@ master_phil_str = """
       .help = The B-factor field in predicted models can be LDDT \
              (confidence, 0-1 or 0-100) or rmsd (A) or a B-factor
       .short_caption = Contents of B-value field (required)
+      .expert_level = 3
 
     input_lddt_is_fractional = None
       .type = bool
       .help = You can specify if the input lddt values (in B-factor field) \
                 are fractional (0-1) or not (0-100). By default if all  \
                values are between 0 and 1 it is fractional.
-      .short_caption = Input lddt is fractional (optional)
+      .short_caption = Input lddt is fractional
 
     minimum_lddt = None
       .type = float
@@ -90,7 +99,7 @@ master_phil_str = """
           define both).  A minimum lddt of 0.70 corresponds to a maximum rmsd \
           of 1.5.  Minimum lddt values are fractional or not depending on \
           the value of input_lddt_is_fractional.
-      .short_caption = Minimum lddt (optional)
+      .short_caption = Minimum lddt
 
 
     maximum_rmsd = 1.5
@@ -100,7 +109,7 @@ master_phil_str = """
           define both).  A minimum lddt of 0.70 corresponds to a maximum rmsd \
           of 1.5.  Minimum lddt values are fractional or not depending on \
           the value of input_lddt_is_fractional.
-      .short_caption = Maximum rmsd (optional)
+      .short_caption = Maximum rmsd
 
     default_maximum_rmsd = 1.5
       .type = float
@@ -161,6 +170,7 @@ def process_predicted_model(
     params,
     pae_matrix = None,
     distance_model = None,
+    mark_atoms_to_keep_with_occ_one = False,
     log = sys.stdout):
 
 
@@ -197,6 +207,7 @@ def process_predicted_model(
     default_maximum_rmsd:  used as default if nothing specified for
          maximum_rmsd or minimum_lddt .Default is 1.5 A,
     split_model_by_compact_regions: split resulting model into compact regions
+      and return a list of models in the group_arg return object
     pae_matrix:  matrix of predicted aligned errors (e.g., from AlphaFold2), NxN
       matrix of RMSD values, N = number of residues in model.
       Alternative to splitting by compact regions. Split to minimize predicted
@@ -216,6 +227,8 @@ def process_predicted_model(
     domain_size: typical size of domains (resolution used for filtering is
        the domain size)
     minimum_domain_length: minimum length (residues) of a domain to keep
+    maximum_fraction_close: Merge domains with more than this fraction of close
+                           CA atoms
     maximum_domains: if more than this many domains, merge close ones to reduce
        number
     chain_id: if model contains more than one chain, split this chain only.
@@ -223,9 +236,13 @@ def process_predicted_model(
     if subtract_minimum_b is set, subtract minimum(B values) from all B values
        after applying any B value cutoffs
 
+    If mark_atoms_to_keep_with_occ_one is set, return list of models, each
+      of which is complete, but in which occupancy = 1 marks atoms to include
+      and occupancy=0 marks those to exclude
   Output:
     processed_model_info: group_args object containing:
       processed_model:  single model with regions identified in chainid field
+      model_list:  list of models representing domains
 
   How to get the parameters object set up:
 
@@ -377,6 +394,7 @@ def process_predicted_model(
         d_min = p.domain_size,
         maximum_domains = p.maximum_domains,
         minimum_domain_length = p.minimum_domain_length,
+        maximum_fraction_close = p.maximum_fraction_close,
         log = log)
     if info is None:
       print("No compact regions identified", file = log)
@@ -387,7 +405,8 @@ def process_predicted_model(
       chainid_list = info.chainid_list
       print("Total of %s regions identified" %(
         len(chainid_list)), file = log)
-      model_list = split_model_by_chainid(new_model, chainid_list)
+      model_list = split_model_by_chainid(new_model, chainid_list,
+        mark_atoms_to_keep_with_occ_one = mark_atoms_to_keep_with_occ_one)
   else:
     model_list = []
     chainid_list = []
@@ -424,9 +443,12 @@ def get_selection_for_short_segments(ph, minimum_sequential_residues):
 
 
 
-def split_model_by_chainid(m, chainid_list):
+def split_model_by_chainid(m, chainid_list,
+    mark_atoms_to_keep_with_occ_one = False):
   """
    Split a model into pieces based on chainid
+   Optionally write out everything for each model, using
+      occupancy=0 to mark everything that is not select3ed
   """
   split_model_list = []
   for chainid in chainid_list:
@@ -434,7 +456,16 @@ def split_model_by_chainid(m, chainid_list):
     ph = m.get_hierarchy()
     asc1 = ph.atom_selection_cache()
     sel = asc1.selection(selection_string)
-    m1 = m.select(sel)
+    if (not mark_atoms_to_keep_with_occ_one): # usual
+      m1 = m.select(sel)
+    else:  # for Voyager, mark unused with zero occupancies
+      m1 = m.deep_copy()
+      ph1 = m1.get_hierarchy()
+      atoms = ph1.atoms()
+      occupancies = atoms.extract_occ()
+      occupancies.set_selected(sel, 1)
+      occupancies.set_selected(~sel, 0)
+      atoms.set_occ(occupancies)
     split_model_list.append(m1)
   return split_model_list
 
@@ -754,6 +785,7 @@ def split_model_into_compact_units(
      grid_resolution = 6,
      close_distance = 15,
      minimum_domain_length = 10,
+     maximum_fraction_close = 0.3,
      maximum_domains = None,
      log = sys.stdout):
 
@@ -790,12 +822,16 @@ def split_model_into_compact_units(
 
    On failure:  returns None
   """
-  print("\nSelecting domains with compact domains",
+  print("\nSelecting domains as compact chains",
      file = log)
   d_min = min(50, d_min) # limitation in fmodel
 
-  # Make sure the model has crystal_symmetry.  Just put a box around it if nec
+  # Make sure the model has crystal_symmetry.  Just put a box around it that is
+  #  big (do not use original crystal symmetry because it might  be too big
+  #  or too small)
+
   box_cushion = 0.5 * d_min  # big box
+  original_crystal_symmetry = m.crystal_symmetry()
   m.add_crystal_symmetry_if_necessary(box_cushion = box_cushion, force = True)
 
   # Select CA and P atoms with B-values in range
@@ -830,10 +866,15 @@ def split_model_into_compact_units(
 
   #  Assign all CA in model to a region
   regions_list = assign_ca_to_region(co_info, m_ca, minimum_domain_length,
-     close_distance,  maximum_domains = maximum_domains,
+     close_distance,
+     maximum_domains = maximum_domains,
+     maximum_fraction_close = maximum_fraction_close,
      log = log)
 
-  return set_chain_id_by_region(m, m_ca, regions_list, log = log)
+  info = set_chain_id_by_region(m, m_ca, regions_list, log = log)
+  if original_crystal_symmetry and info and info.model:
+    info.model.set_crystal_symmetry(original_crystal_symmetry)
+  return info
 
 def get_region_name_dict(m, unique_regions, keep_list = None):
   region_name_dict = {}
@@ -895,6 +936,7 @@ def set_chain_id_by_region(m, m_ca, regions_list, log = sys.stdout):
       full_new_model = add_model(full_new_model, new_m)
     else:
       full_new_model = new_m
+  full_new_model.reset_after_changing_hierarchy()
   m = full_new_model
 
   # All done
@@ -915,6 +957,7 @@ def assign_ca_to_region(co_info,
     minimum_domain_length,
     close_distance,
     maximum_domains = None,
+    maximum_fraction_close = None,
     n_cycles = 10,
     log = sys.stdout):
   region_id_map = co_info.region_id_map
@@ -928,13 +971,13 @@ def assign_ca_to_region(co_info,
     regions_list = replace_lone_sites(regions_list)
     regions_list = replace_short_segments(regions_list, minimum_domain_length)
     for i in range(len(get_unique_values(regions_list))):
-      new_regions_list = merge_close_regions(
+      new_regions_list = swap_close_regions(
         m.get_sites_cart(), regions_list, minimum_domain_length, close_distance)
       if new_regions_list:
          regions_list = new_regions_list
       else:
        break
-  # Finally merge close regions if there are too many
+  # Merge close regions if there are too many
   for k in range(len(get_unique_values(regions_list))):
     if maximum_domains and \
          len((get_unique_values(regions_list))) > maximum_domains:
@@ -942,8 +985,106 @@ def assign_ca_to_region(co_info,
         close_distance, log = log)
     else:
       break
+
+  # Merge close regions if they are really close
+  for k in range(len(get_unique_values(regions_list))):
+    regions_list = merge_very_close_regions(m.get_sites_cart(), regions_list,
+        close_distance,
+        minimum_domain_length =  minimum_domain_length,
+        maximum_fraction_close = maximum_fraction_close,
+        log = log)
+
+  # Finally check for any short fragments not attached to neighbors
+  regions_list = remove_short_fragments_obscured_by_gap(regions_list,
+    m, minimum_domain_length)
   return regions_list
 
+def remove_short_fragments_obscured_by_gap(regions_list,
+    m, minimum_domain_length):
+  # Find any regions that are very short (<minimum_domain_length) and merge
+  # with adjacent sequence if available
+  # This catches cases where there was a gap in sequence.
+
+  region_dict = {}
+  for at, region_number in zip(m.get_hierarchy().atoms(), regions_list):
+    resseq_int = at.parent().parent().resseq_as_int()
+    region_dict[resseq_int] = region_number
+
+  # Find all cases where regions go like:
+  #  1 1 1 2 2 (gap)   -> 1 1 1 1 1 (gap)
+  #  1 1 1 2 2 3 3 3 3  -> 1 1 1 1 1 3 3 3 3 or 1 1 1 3 3 3 3 3 3
+  #  (gap) 2 2 3 3 3 3 -> (gap) 3 3 3 3 3 3
+  # First split up resseq_int into ranges..
+  residues_as_groups = get_indices_as_ranges(list(region_dict.keys()))
+  for r in residues_as_groups:
+    # Find all the places where region_number changes
+    working_regions = []
+    working_region = None
+    for i in range(r.start, r.end+1):
+      region_number = region_dict[i]
+      if not working_region or region_number !=working_region.region_number:
+        working_region = group_args(
+          group_args_type = 'working region',
+          region_number = region_number,
+          start = i,
+          end = i,
+          )
+        working_regions.append(working_region)
+      else:
+        working_region.end = i
+    for previous_region,working_region,next_region in zip(
+      [None]+working_regions[:-1], working_regions, working_regions[1:]+[None]):
+      if (working_region.end - working_region.start + 1) < \
+           minimum_domain_length:
+        if previous_region:
+          working_region.region_number = previous_region.region_number
+        elif next_region:
+          working_region.region_number = next_region.region_number
+        else:  # skip as nothing to do
+          pass
+    # And update dictionary
+    for working_region in working_regions:
+      for i in range(working_region.start, working_region.end+1):
+        region_dict[i] = working_region.region_number
+  # And use dictionary to update regions_list
+
+  new_regions_list = regions_list.deep_copy()
+  i = -1
+  for at in m.get_hierarchy().atoms():
+    i += 1
+    resseq_int = at.parent().parent().resseq_as_int()
+    new_regions_list[i] = region_dict[resseq_int]
+
+  return new_regions_list
+
+def merge_very_close_regions(sites_cart, regions_list, close_distance,
+     minimum_domain_length= None,
+     maximum_fraction_close = None,
+     log = sys.stdout):
+  unique_values = get_unique_values(regions_list)
+  n = len(unique_values)
+  close_to_other_info  = get_close_to_other_list(sites_cart, regions_list,
+     close_distance)
+  if close_to_other_info.n_close_list:  # there are close pairs
+    # Get best pair
+    n_close_list = sorted(close_to_other_info.n_close_list,
+      key = lambda c: c.n_close, reverse = True)
+    best_pair = n_close_list[0]
+    n_close = best_pair.n_close
+    n_possible = best_pair.n_possible
+    if n_possible >=  minimum_domain_length and \
+        n_close >= n_possible * maximum_fraction_close and \
+        best_pair.i is not None:
+      best_i = best_pair.i
+      best_j = best_pair.j
+      print("Merging groups with %s sets of close residues" %(
+        best_pair.n_close), file = log)
+
+      sel = (regions_list == best_j)
+      regions_list.set_selected(sel, best_i)
+      update_regions_list(regions_list)
+
+  return regions_list
 def merge_closest_regions(sites_cart, regions_list, close_distance,
      log = sys.stdout):
   unique_values = get_unique_values(regions_list)
@@ -992,7 +1133,7 @@ def get_unique_values(regions_list):
       unique_values.append(x)
   return unique_values
 
-def merge_close_regions(sites_cart, regions_list, minimum_domain_length,
+def swap_close_regions(sites_cart, regions_list, minimum_domain_length,
     close_distance = None):
 
   # Count number of residues in each pair that are close to the other
@@ -1036,6 +1177,7 @@ def get_close_to_other_list(sites_cart, regions_list, close_distance):
     for j in id_list:
       if i==j: continue
       n_close = 0 # number in i close to j
+      n_possible = 0
 
       for k in range(sites_dict[i].size()):
          index = index_dict[i][k]
@@ -1043,6 +1185,7 @@ def get_close_to_other_list(sites_cart, regions_list, close_distance):
          local_n_close = (distances < close_distance).count(True)
          if local_n_close > 0:
            n_close += 1
+         n_possible += 1
          distances_self = (sites_dict[i] - col(sites_dict[i][k])).norms()
          self_local_n_close = (distances_self < close_distance).count(True) - 1
          if local_n_close > self_local_n_close:
@@ -1058,6 +1201,7 @@ def get_close_to_other_list(sites_cart, regions_list, close_distance):
       n_close_list.append(group_args(  # how many in i close to j
         group_args_type = 'n close',
         n_close = n_close,
+        n_possible = n_possible,
         i = i,
         j = j,))
   return group_args(
@@ -1238,13 +1382,14 @@ def assign_all_points(co_info, map_data, log = sys.stdout):
 
 def get_best_co(map_data, min_cutoff = 0.5):
   max_value = map_data.as_1d().min_max_mean().max
+  avg_value = map_data.as_1d().min_max_mean().mean
 
   # Find max number of clusters in range of 0.5 to 1.0 * max
   n = 100
   max_clusters = None
   cutoff= None
   for t in range(int(min_cutoff*n),n+1):
-    threshold = t * max_value/n
+    threshold = avg_value + t * (max_value-avg_value)/n
     co, sorted_by_volume, min_b, max_b  = get_co(
       map_data, threshold = threshold, wrapping = False)
     if ((not max_clusters) or (len(sorted_by_volume) > max_clusters)) and (

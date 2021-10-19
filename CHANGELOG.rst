@@ -1,3 +1,11 @@
+2021.9
+======
+
+* Improved structure factor calculation at ultra-low resolution
+* Improved processing of prediced models
+* Added diffBragg to simtbx for modeling pixels in stills to improve structure factors
+* Added suitename to mmtbx for classifying RNA
+
 2021.8
 ======
 

@@ -32,7 +32,7 @@ srun_template = \
 source /img/activate.sh
 
 #for experiment database
-export SIT_DATA=/global/cscratch1/sd/blaschke/lv95/psdm/data
+export SIT_DATA=/global/common/software/lcls/psdm/data
 
 #for psana
 export SIT_PSDM_DATA=/global/cscratch1/sd/psdatmgr/data/psdm

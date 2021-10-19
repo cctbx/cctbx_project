@@ -80,3 +80,7 @@ class NBbeam(object):
     beam = BeamFactory.from_dict(self.xray_beams[0].to_dict())
     beam.set_wavelength(beam.get_wavelength() * 1e10)
     return beam
+
+  @property
+  def number_of_sources(self):
+    return len(self.spectrum)

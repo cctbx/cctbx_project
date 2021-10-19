@@ -7,6 +7,7 @@ Last Changed: 07/17/2019
 Description : PRIME GUI dialogs module
 '''
 
+import getpass
 import os
 import wx
 from wx.lib.scrolledpanel import ScrolledPanel
@@ -39,7 +40,7 @@ elif (wx.Platform == '__WXMSW__'):
   CAPTION_SIZE = 9
 
 f = WxFlags()
-user = os.getlogin()
+user = getpass.getuser()
 
 
 class PRIMEBaseBackendDialog(BaseBackendDialog):

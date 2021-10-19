@@ -175,17 +175,30 @@ void diffBragg_sum_over_steps(
                 //F_latt = db_cryst.Na*db_cryst.Nb*db_cryst.Nc*exp(-( hrad_sqr / 0.63 * db_cryst.fudge ));
                 F_latt = NABC_determ*exp(-( hrad_sqr / 0.63 * db_cryst.fudge ));
 
+            double I_latt_diffuse = 0;
             if (db_flags.use_diffuse){
-                Eigen::Vector3d delta_q_vec = UBO.inverse()*delta_H;
-                Eigen::Vector3d bragg_q_vec = UBO.inverse()*H0;
-                double exparg = 4*M_PI*M_PI*bragg_q_vec.dot(db_cryst.anisoU*bragg_q_vec);
-                double dwf = exp(-exparg);
+                Eigen::Matrix3d Ainv = UBO.inverse();
+                double anisoG_determ = db_cryst.anisoG.determinant();
+                for (int hh=0; hh <1; hh++){
+                    for (int kk=0; kk <1; kk++){
+                        for (int ll=0; ll <1; ll++){
+                            Eigen::Vector3d H0_offset(h0+hh, k0+kk, l0+ll);
+                            Eigen::Vector3d Q0 = Ainv*H0_offset;
+                            double exparg = 4*M_PI*M_PI*Q0.dot(db_cryst.anisoU*Q0);
+                            //double dwf = exp(-exparg);
+                            Eigen::Vector3d delta_H_offset = H_vec - H0_offset;
+                            Eigen::Vector3d delta_Q = Ainv*delta_H_offset;
+                            Eigen::Vector3d anisoG_q = db_cryst.anisoG*delta_Q;
 
-                Eigen::Vector3d anisoG_q = db_cryst.anisoG*delta_q_vec;
-                double F_latt_diffuse = 4.*M_PI*db_cryst.anisoG.determinant() /
-                        (1.+ anisoG_q.dot(anisoG_q)* 4*M_PI*M_PI);
-                F_latt_diffuse *= (dwf*exparg);
-                F_latt += F_latt_diffuse;
+                            double this_I_latt_diffuse = 8.*M_PI*anisoG_determ /
+                                    pow( (1.+ anisoG_q.dot(anisoG_q)* 4*M_PI*M_PI),2);
+                            if (exparg  < .5) // only valid up to a point
+                                this_I_latt_diffuse *= (exparg);
+
+                            I_latt_diffuse += this_I_latt_diffuse;
+                        }
+                    }
+                }
             }
 
             /* no need to go further if result will be zero */
@@ -197,7 +210,10 @@ void diffBragg_sum_over_steps(
                 omega_pixel = 1;
 
             /* increment to intensity */
-            double I_noFcell = F_latt*F_latt*db_beam.source_I[source]*capture_fraction*omega_pixel;
+            double latt_scale = 1;
+            if (db_flags.only_diffuse)
+                latt_scale = 0;
+            double I_noFcell = (F_latt*F_latt*latt_scale + I_latt_diffuse)*db_beam.source_I[source]*capture_fraction*omega_pixel;
 
             /* structure factor of the unit cell */
             double F_cell = db_cryst.default_F;
@@ -438,23 +454,7 @@ void diffBragg_sum_over_steps(
                     double N_i = NABC(i_nc, i_nc);
                     Eigen::Vector3d dV_dN = dN*delta_H;
                     double determ_deriv = (NABC.inverse()*dN).trace(); // TODO speedops: precompute these
-                    //if (i_step==0 && fpixel ==0 && spixel == 0){
-                    //    printf("dN matrix: %f %f %f\n %f %f %f\n %f %f %f\n",
-                    //        dN(0,0), dN(0,1), dN(0,2),
-                    //        dN(1,0), dN(1,1), dN(1,2),
-                    //        dN(2,0), dN(2,1), dN(2,2)
-                    //        );
-                    //    printf("NABC matrix: %f %f %f\n %f %f %f\n %f %f %f\n",
-                    //        NABC(0,0), NABC(0,1), NABC(0,2),
-                    //        NABC(1,0), NABC(1,1), NABC(1,2),
-                    //        NABC(2,0), NABC(2,1), NABC(2,2)
-                    //        );
-                    //}
-                    //double deriv_coef;
-                    //if (db_flags.isotropic_ncells)
-                    //    deriv_coef= 3/N_i - C* ( dV_dN.dot(V));
-                    //else
-                    double deriv_coef= determ_deriv - C* ( dV_dN.dot(V));
+                    double deriv_coef = determ_deriv - C* ( dV_dN.dot(V));
                     double value = 2*Iincrement*deriv_coef;
                     double value2=0;
                     if(db_flags.compute_curvatures){

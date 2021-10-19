@@ -14,25 +14,40 @@ class ncs_aware_refinement(object):
     self.d_min       = d_min
     self.atom_radius = atom_radius
     self.log         = log
-    #
-    if(self.nproc>1): self.log = None
-    #
-    ncs_groups = self.mmm.model().get_ncs_groups()
-    if(ncs_groups is None or len(ncs_groups)==0):
-      values = self.run_one()
-      self.mmm.model().set_occupancies(values = values)
-    else:
-      values = self.mmm.model().get_occ()
-      for i, g in enumerate(ncs_groups):
-        values_g = self.run_one(selection = g.master_iselection)
-        values = values.set_selected(g.master_iselection, values_g)
-        for j, c in enumerate(g.copies):
-          values = values.set_selected(c.iselection, values_g)
-      self.mmm.model().set_occupancies(values = values)
+    # Determine if need to do occ refinement
+    selections = mmtbx.refinement.occupancies.occupancy_selections(
+      model                              = self.mmm.model(),
+      add_water                          = False,
+      other_constrained_groups           = None,
+      other_individual_selection_strings = None,
+      remove_selection                   = None,
+      as_flex_arrays                     = True,
+      constrain_correlated_3d_groups     = False,
+      log                                = self.log)
+    proceed = True
+    if(selections is None or len(selections)==0):
+      proceed = False
+    if(proceed):
+      #
+      if(self.nproc>1): self.log = None
+      #
+      ncs_groups = self.mmm.model().get_ncs_groups()
+      if(ncs_groups is None or len(ncs_groups)==0):
+        values = self.run_one()
+        self.mmm.model().set_occupancies(values = values)
+      else:
+        values = self.mmm.model().get_occ()
+        for i, g in enumerate(ncs_groups):
+          values_g = self.run_one(selection = g.master_iselection)
+          values = values.set_selected(g.master_iselection, values_g)
+          for j, c in enumerate(g.copies):
+            values = values.set_selected(c.iselection, values_g)
+        self.mmm.model().set_occupancies(values = values)
 
   def run_one(self, selection=None):
     model = self.mmm.model()
     if(selection is not None): model = model.select(selection)
+    values = model.get_occ()
     if(self.nproc==1):
       args = [model,]
       return self.run_one_one(args = args)
@@ -48,10 +63,9 @@ class ncs_aware_refinement(object):
         fixed_func   = self.run_one_one,
         args         = argss,
         func_wrapper = "buffer_stdout_stderr")
-      values = model.get_b_iso()
       for i, result in enumerate(stdout_and_results):
         values = values.set_selected(selections[i], result[1])
-      model.set_b_iso(values = values)
+      model.set_occupancies(values = values)
       return values
 
   def run_one_one(self, args):

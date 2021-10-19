@@ -565,8 +565,7 @@ class SimData:
     if oversample > 0:
       self.D.oversample = int(oversample)
 
-    if self.using_cuda:
-      self.D.device_Id = device_Id
+    self.D.device_Id = device_Id
     if not self.using_diffBragg_spots:
       self._full_roi = self.D.region_of_interest
     else:

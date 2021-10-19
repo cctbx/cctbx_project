@@ -23,6 +23,7 @@ class JobStopper(object):
       % self.queueing_system)
 
   def stop_job(self, submission_id):
+    if not submission_id: return
     for sid in submission_id.split(','):
       if self.queueing_system == 'local':
         import psutil

@@ -147,7 +147,7 @@ logging.basicConfig(level=logging.DEBUG, handlers=[h])
 from simtbx.diffBragg import hopper_utils
 Eopt,_, Mod, x = hopper_utils.refine(E, refls, P, return_modeler=True)
 
-G, rotX,rotY, rotZ, Na,Nb,Nc,_,_,a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, Mod.SIM)
+G, rotX,rotY, rotZ, Na,Nb,Nc,_,_,_,_,_,_,a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, Mod.SIM)
 print("Na, Nb, Nc= %f %f %f" % (Na, Nb, Nc))
 
 # check crystal

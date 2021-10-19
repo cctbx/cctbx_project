@@ -1,5 +1,3 @@
-from libtbx.env_config import get_boost_library_with_python_version
-
 Import("env_base", "env_etc")
 Import("env_scitbx_boost_python_ext")
 
@@ -9,8 +7,7 @@ env_etc.enable_more_warnings(env=env)
 env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
 env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
 env.Append(LIBPATH=env_etc.libpath_python)
-env.Append(LIBS=[get_boost_library_with_python_version("boost_python", env_base['LIBPATH'])] +
-                env_etc.libs_python)
+env.Append(LIBS=[env_etc.boost_python_lib] + env_etc.libs_python)
 env_etc.include_registry.append(
   env=env,
   paths=env_etc.scitbx_common_includes + [env_etc.python_include])

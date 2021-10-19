@@ -515,8 +515,11 @@ class Script(object):
 
         # reintegration
         if self.params.reintegration.enable:
-          self.set_up_section("reintegration", "%s cctbx.xfel.mpi_integrate"%self.params.mp.mpi_command,
-            clustering=self.clustering)
+          if self.params.mp.method == 'shifter':
+            self.set_up_section("reintegration", "cctbx.xfel.mpi_integrate", clustering=self.clustering)
+          else:
+            self.set_up_section("reintegration", "%s cctbx.xfel.mpi_integrate"%self.params.mp.mpi_command,
+                clustering=self.clustering)
 
         # extract results to integration pickles for merging
         if self.params.postprocessing.enable:

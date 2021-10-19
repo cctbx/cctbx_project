@@ -7,6 +7,7 @@ Last Changed: 12/02/2019
 Description : PRIME GUI frames module
 '''
 
+import getpass
 import os
 import numpy as np
 import multiprocessing
@@ -37,7 +38,7 @@ import prime.postrefine.mod_threads as thr
 from prime.postrefine.mod_input import master_phil
 from prime.postrefine.mod_plotter import Plotter
 
-user = os.getlogin()
+user = getpass.getuser()
 ginp = util.InputFinder()
 f = util.WxFlags()
 

@@ -11,7 +11,7 @@ import warnings
 import signal
 import logging
 
-LOGGER = logging.getLogger("main")
+LOGGER = logging.getLogger("diffBragg.main")
 warnings.filterwarnings("ignore")
 
 
@@ -97,6 +97,9 @@ class StageTwoRefiner(BaseRefiner):
 
         self.Modelers = shot_modelers
         self.shot_ids = sorted(self.Modelers.keys())
+        # part of the re-parameterization for the per-spot scale factors requires us to take the sqrt here
+        for i_shot in self.shot_ids:
+            self.Modelers[i_shot].PAR.Scale.init = np.sqrt(self.Modelers[i_shot].PAR.Scale.init)
         self.n_shots = len(shot_modelers)
         self.n_shots_total = COMM.bcast(COMM.reduce(self.n_shots))
         LOGGER.debug("Loaded %d shots across all ranks" % self.n_shots_total)

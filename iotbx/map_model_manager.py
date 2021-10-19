@@ -907,17 +907,20 @@ class map_model_manager(object):
      Add a new model
      Must be similar to existing map_managers
      Overwrites any existing with the same id unless overwrite = False
+     If model is None, removes model unless overwrite is False
     '''
-    if not model:
+    if (not model) and (not overwrite):
       print("No model supplied for '%s' ... skipping addition" %(
         model_id), file = self.log)
       return
 
-    assert isinstance(model, mmtbx.model.manager)
+    assert (model is None) or isinstance(model, mmtbx.model.manager)
     if not overwrite:
       assert not model_id in self.model_id_list() # must not duplicate
 
-    if self.map_manager() and not self.map_manager().is_compatible_model(model):
+    if model and \
+      self.map_manager() and (
+         not self.map_manager().is_compatible_model(model)):
       # needs shifting
       self.shift_any_model_to_match(model)
     self._model_dict[model_id] = model
@@ -1245,7 +1248,7 @@ class map_model_manager(object):
       model = model.select(sel)
     elif selection:
       model = model.select(selection)
-    elif extract_box: # make sure everything is deep_copy
+    elif extract_box and model: # make sure everything is deep_copy
       model = model.deep_copy()
 
 
@@ -1347,7 +1350,7 @@ class map_model_manager(object):
     assert map_info.map_id is not None
     model_info=self._get_model_info()
     model = self._model_dict[model_info.model_id]
-    if extract_box: # make sure everything is deep_copy
+    if extract_box and model: # make sure everything is deep_copy
       model = model.deep_copy()
 
     if soft_mask_around_edges: # make the cushion bigger
@@ -1438,7 +1441,7 @@ class map_model_manager(object):
 
     model_info=self._get_model_info()
     model = self._model_dict[model_info.model_id]
-    if extract_box: # make sure everything is deep_copy
+    if extract_box and model: # make sure everything is deep_copy
       model = model.deep_copy()
 
     if soft_mask_around_edges: # make the cushion bigger
@@ -1482,10 +1485,11 @@ class map_model_manager(object):
      keep_this_region_only = None,
      residues_per_region = None,
      soft_mask_radius = None,
-     mask_expand_ratio = 1):
+     mask_expand_ratio = 1,
+     use_symmetry_in_extract_unique = True):
 
     '''
-      Runs box_all_maps_around_mask_and_shift_origin with extract_box=True
+      Runs box_all_maps_around_unique_and_shift_origin with extract_box=True
     '''
     return self.box_all_maps_around_unique_and_shift_origin(
       resolution = resolution,
@@ -1505,6 +1509,7 @@ class map_model_manager(object):
       soft_mask_radius = soft_mask_radius,
       soft_mask_around_edges = soft_mask_around_edges,
       boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
+      use_symmetry_in_extract_unique = use_symmetry_in_extract_unique,
       extract_box = True)
 
   def box_all_maps_around_unique_and_shift_origin(self,
@@ -1525,6 +1530,7 @@ class map_model_manager(object):
      boundary_to_smoothing_ratio = 2.,
      keep_this_region_only = None,
      residues_per_region = None,
+     use_symmetry_in_extract_unique = True,
      extract_box = False):
     '''
        Box all maps using bounds obtained with around_unique,
@@ -1547,6 +1553,9 @@ class map_model_manager(object):
        Symmetry is optional symmetry (i.e., D7 or C1). Used as alternative to
        ncs_object supplied in map_manager
 
+       Use_symmetry can be set to False to ignore symmetry found in ncs_object.
+         NCS object is still kept and shifted however.
+
       if soft_mask_around_edges, makes a bigger box and makes a soft mask around
        the edges.  Use this option if you are going to calculate a FT of
        the map or otherwise manipulate it in reciprocal space.
@@ -1554,7 +1563,8 @@ class map_model_manager(object):
        Additional parameters:
          mask_expand_ratio:   allows increasing masking radius beyond default at
                               final stage of masking
-         solvent_content:  fraction of cell not occupied by macromolecule
+         solvent_content:  fraction of cell not occupied by macromolecule. Can
+                            be None in which case it is estimated from map
          sequence:        one-letter code of sequence of unique part of molecule
          chain_type:       PROTEIN or RNA or DNA. Used with sequence to estimate
                             molecular_mass
@@ -1579,11 +1589,10 @@ class map_model_manager(object):
     if not resolution:
       resolution = self.resolution()
     assert resolution is not None
-    assert (sequence, solvent_content, molecular_mass).count(None) == 2
 
     model_info=self._get_model_info()
     model = self._model_dict[model_info.model_id]
-    if extract_box: # make sure everything is deep_copy
+    if extract_box and model: # make sure everything is deep_copy
       model = model.deep_copy()
 
     if soft_mask_around_edges: # make the cushion bigger
@@ -1603,6 +1612,7 @@ class map_model_manager(object):
       sequence = sequence,
       molecular_mass = molecular_mass,
       symmetry = symmetry,
+      use_symmetry_in_extract_unique = use_symmetry_in_extract_unique,
       chain_type = chain_type,
       box_cushion = box_cushion,
       soft_mask = soft_mask,
@@ -4772,6 +4782,8 @@ class map_model_manager(object):
     aniso_b_cart and b_iso
    '''
    assert map_coeffs or d_min or map_id
+   from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
+   from cctbx.maptbx.refine_sharpening import analyze_aniso_object
 
    if not model_map_ids_to_leave_as_is:
      model_map_ids_to_leave_as_is = []
@@ -4780,11 +4792,11 @@ class map_model_manager(object):
       assert self.get_map_manager_by_id(map_id)
       map_coeffs = self.get_map_manager_by_id(map_id
         ).map_as_fourier_coefficients(d_min = d_min)
+      f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
    if not d_min:
      d_min = map_coeffs.d_min()
 
 
-   from cctbx.maptbx.refine_sharpening import analyze_aniso_object
    if (not aniso_b_cart):
      aniso_b_cart = self._get_aniso_of_map(d_min = d_min, map_id = map_id)
 
@@ -4803,7 +4815,6 @@ class map_model_manager(object):
        elif map_id in model_map_ids_to_leave_as_is:
          continue # skip model maps
        map_coeffs = mm.map_as_fourier_coefficients(d_min = d_min)
-       from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
        f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
        analyze_aniso = analyze_aniso_object()
        analyze_aniso.set_up_aniso_correction(f_array=f_array,
@@ -5936,10 +5947,10 @@ class map_model_manager(object):
          file = self.log, end = "")
       for k in range(n):
         if decimal_places == 1:
-          print (" %5.1f " %(si_list[k].get(key)[i]),
+          print (" %5.1f " %(si_list[k].get(key)[i] if si_list[k] else 0),
             file = self.log, end= "")
         else:
-          print (" %5.2f " %(si_list[k].get(key)[i]),
+          print (" %5.2f " %(si_list[k].get(key)[i] if si_list[k] else 0),
             file = self.log, end= "")
       print("", file = self.log)
 
@@ -8227,6 +8238,7 @@ class match_map_model_ncs(object):
   # prevent pickling error in Python 3 with self.log = sys.stdout
   # unpickling is limited to restoring sys.stdout
   def __getstate__(self):
+    import io
     pickle_dict = self.__dict__.copy()
     if isinstance(self.log, io.TextIOWrapper):
       pickle_dict['log'] = None
@@ -8379,7 +8391,7 @@ class match_map_model_ncs(object):
 
   def read_map(self, file_name):
     # Read in a map and make sure its symmetry is similar to others
-    mm = map_manager(file_name)
+    mm = MapManager(file_name)
     self.add_map_manager(mm)
 
   def read_model(self, file_name):

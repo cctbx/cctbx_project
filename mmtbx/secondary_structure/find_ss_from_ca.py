@@ -574,6 +574,13 @@ def get_chain_ids(hierarchy,unique_only=None):
         chain_ids.append(chain.id)
   return chain_ids
 
+def offset_residue_numbers(hierarchy, offset = 0):
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        current_resno = rg.resseq_as_int()
+        rg.resseq = resseq_encode(current_resno + offset)
+
 def renumber_residues(hierarchy, first_resno = 1):
   for model in hierarchy.models():
     for chain in model.chains():

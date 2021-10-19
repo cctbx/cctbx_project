@@ -250,7 +250,7 @@ class Auxiliary:
     assert(abs(fmin-hessLogLike) < 0.1)
     fmin = gradLogLike # Use function value from gradient for consistency below
 
-    outstream = open("studyWhatAmI", "wb")
+    outstream = open("studyWhatAmI", "w")
     for i in range(self.nmp):
       outstream.write(" \"" + parameter_names[i] + " \"\n")
     outstream.close()
@@ -260,9 +260,9 @@ class Auxiliary:
     dxgh = [0.] * self.nmp # Finite diff shift for grad & hess
     for i in range(self.nmp):
       if i+1 < 10:
-        outstream = open(filename + ".0" + str(i+1), "wb")
+        outstream = open(filename + ".0" + str(i+1), "w")
       else:
-        outstream = open(filename + "."  + str(i+1), "wb")
+        outstream = open(filename + "."  + str(i+1), "w")
       print("\nRefined Parameter #:" + str(i+1) + " " + self.macrocycle_parameter_names()[i])
       print("Centered on " + self.to_sci_format(old_x[i]))
       xmin = old_x[i] - 2.*ls[i]
