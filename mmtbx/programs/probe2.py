@@ -535,13 +535,15 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def _generate_interaction_dots(self, sourceAtoms, targetAtoms, bondedNeighborLists):
+  def _generate_interaction_dots(self, sourceAtoms, targetQuery, phantomsQuery, bondedNeighborLists):
     '''
       Find all interaction dots for the specified atom.
       This does not include locations where the probe is inside a bonded neighbor.
       :param sourceAtoms: Atoms that can be the source of an interaction.
-      :param targetAtoms: Atoms that can be the target of an interaction
+      :param targetQuery: Spatial-query structure that can be used to look up nearby target atoms.
       (can be the same list as sourceAtoms for some approaches).
+      :param phantomsQuery: Spatial-query structure that can be used to look up nearby Phantom
+      Hydrogens (whether or not they are in the source or target atoms).
       :param bondedNeighborLists: List of bonded neighbors for atoms in sourceAtoms.
       :return: Side effect: Add dots to the self._results data structure by
       atomclass and dot type.
@@ -564,11 +566,11 @@ Note:
         continue
 
       # Generate no dots for atoms with too-low occupancy
-      if src.occ < self.params.probe.minimum_occupancy:
+      if src.occ < minimum_occupancy:
         continue
 
       # Find atoms that are close enough that they might touch.
-      nearby = self._spatialQuery.neighbors(src.xyz, 0.001, maxRadius)
+      nearby = targetQuery.neighbors(src.xyz, 0.001, maxRadius)
 
       # Find our characteristics
       srcMainChain = self._inMainChain[src]
@@ -578,24 +580,18 @@ Note:
       srcExtra = self._extraAtomInfo.getMappingFor(src)
 
       # Select those that are actually within the contact distance based on their
-      # particular radius and which are in the set of target atoms.
+      # particular radius (this query includes only target atoms, so we don't need to check separately for that).
       # Also verify that the potential target atoms meet our criteria based on parameters.
       # Keep a list of nearby Phantom Hydrogens in case we need to exclude them.
       atomSet = set()
-      nearbyPhantomHydrogens = set()
       for n in nearby:
         nMainChain = self._inMainChain[n]
         nHet = self._inHet[n]
         nInWater = self._inWater[n]
         nExtra = self._extraAtomInfo.getMappingFor(n)
 
-        if nExtra.isDummyHydrogen:
-          nearbyPhantomHydrogens.add(n)
-
         d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
-        if ((d <= nExtra.vdwRadius + srcExtra.vdwRadius + 2*probeRadius) and
-            (n in targetAtoms)
-           ):
+        if (d <= nExtra.vdwRadius + srcExtra.vdwRadius + 2*probeRadius):
 
           # if both atoms are in the same non-HET chain and on the main chain, then skip
           # if we're not allowing mainchain-mainchain interactions.
@@ -636,6 +632,7 @@ Note:
         # the inner collision of the water Oxygen with atoms in the acceptor that also makes
         # a Hydrogen bond with the acceptor.
         if srcExtra.isDummyHydrogen:
+          nearbyPhantomHydrogens = set(phantomsQuery.neighbors(src.xyz, 0.001, maxRadius))
           newExclusions = set()
           for a in atomSet:
             if not self._extraAtomInfo.getMappingFor(a).isAcceptor:
@@ -1809,6 +1806,7 @@ Note:
       # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
       # the water oxygens as not being donors in atoms that are in the source or target selection.
       # Also clear the donor status of all N, O, S atoms because we have explicit hydrogen donors.
+      phantomHydrogens = []
       if not self.params.probe.implicit_hydrogens:
         make_sub_header('Adjusting for explicit hydrogens', out=self.logger)
         if self.params.output.record_added_hydrogens:
@@ -1863,7 +1861,10 @@ Note:
                 # This would require us to redo the i_seq numbers on the hierarchy and then recompute
                 # everything (unfortunately including the selection).
 
-                # Add the atom to the spatial-query data structure
+                # Put in our list of Phantom Hydrogens
+                phantomHydrogens.append(p)
+
+                # Add the atom to the general spatial-query data structure
                 self._spatialQuery.add(p)
 
                 # Set the extra atom information for this atom
@@ -1922,6 +1923,9 @@ Note:
         # Fix up the donor status for all of the atoms now that we've added the final explicit
         # Phantom Hydrogens.
         Helpers.fixupExplicitDonors(all_selected_atoms, bondedNeighborLists, self._extraAtomInfo)
+
+      # Make a query structure to return the Phantom Hydrogens (if there are any)
+      self._phantomHydrogensSpatialQuery = probeExt.SpatialQuery(phantomHydrogens)
 
       ################################################################################
       # Re-fill all_selected_atoms
@@ -2081,7 +2085,8 @@ Note:
         make_sub_header('Find self-intersection dots', out=self.logger)
 
         # Generate dots for the source atom set against itself.
-        self._generate_interaction_dots(self._source_atoms_sorted, self._source_atoms_sorted, bondedNeighborLists)
+        self._generate_interaction_dots(self._source_atoms_sorted,  probeExt.SpatialQuery(self._source_atoms_sorted),
+          self._phantomHydrogensSpatialQuery, bondedNeighborLists)
 
         # Generate our report
         outString += self._report_single_interaction(groupLabel, "self", "1->1", "SelfIntersect",
@@ -2091,7 +2096,8 @@ Note:
         make_sub_header('Find single-direction intersection dots', out=self.logger)
 
         # Generate dots for the source atom set against the target atom set.
-        self._generate_interaction_dots(self._source_atoms_sorted, self._target_atoms_sorted, bondedNeighborLists)
+        self._generate_interaction_dots(self._source_atoms_sorted,  probeExt.SpatialQuery(self._target_atoms_sorted),
+          self._phantomHydrogensSpatialQuery, bondedNeighborLists)
 
         # Generate our report
         outString += self._report_single_interaction(groupLabel, "once", "1->2", "IntersectOnce",
@@ -2120,7 +2126,8 @@ Note:
         # =================== First direction ========================
 
         # Generate dots for the source atom set against the target atom set.
-        self._generate_interaction_dots(self._source_atoms_sorted, self._target_atoms_sorted, bondedNeighborLists)
+        self._generate_interaction_dots(self._source_atoms_sorted,  probeExt.SpatialQuery(self._target_atoms_sorted),
+          self._phantomHydrogensSpatialQuery, bondedNeighborLists)
 
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
@@ -2154,7 +2161,8 @@ Note:
         self._clear_results();
 
         # Generate dots for the target atom set against the source atom set.
-        self._generate_interaction_dots(self._target_atoms_sorted, self._source_atoms_sorted, bondedNeighborLists)
+        self._generate_interaction_dots(self._target_atoms_sorted,  probeExt.SpatialQuery(self._source_atoms_sorted),
+          self._phantomHydrogensSpatialQuery, bondedNeighborLists)
 
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
