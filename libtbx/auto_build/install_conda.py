@@ -160,7 +160,6 @@ class conda_manager(object):
       default_format.format(builder='phenix', version=version,
                             platform=conda_platform[platform.system()])),
     'xfellegacy': default_file,
-    'labelit': default_file,
     'dials-old': os.path.join('dials', '.conda-envs',
       default_format.format(builder='dials', version=version,
                             platform=conda_platform[platform.system()])),
@@ -178,10 +177,10 @@ class conda_manager(object):
       default_format.format(builder='phasertng', version=version,
                             platform=conda_platform[platform.system()]))
   }
-  env_locations['xfel'] = env_locations['dials']
+  env_locations['xfel'] = env_locations['labelit'] = env_locations['dials']
   # A set of builders where the environment files do not specify the python
   # version
-  env_without_python = [ "dials" ]
+  env_without_python = [ "dials","xfel","labelit"]
 
   # ---------------------------------------------------------------------------
   def __init__(self, root_dir=root_dir, conda_base=None, conda_env=None,
@@ -716,7 +715,7 @@ builder.""".format(filename=filename, builder=builder))
       command_list.append('--copy')
     if offline and not yaml_format:
       command_list.append('--offline')
-    if builder in ("dials", "dials-old", "xfel") and not yaml_format:
+    if builder in ("dials", "dials-old", "xfel", "labelit") and not yaml_format:
       command_list.append("-y")
     if builder in self.env_without_python:
       python_version = tuple(int(i) for i in (python or "36"))
