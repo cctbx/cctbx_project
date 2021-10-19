@@ -280,6 +280,20 @@ class DataModeler:
             is_not_a_duplicate = ~self.is_duplicate_hkl(refls)
             self.selection_flags = np.logical_and( self.selection_flags, is_not_a_duplicate)
 
+        if self.params.refiner.res_ranges is not None:
+            if self.no_rlp_info:
+                raise NotImplementedError("Cannot set resolution limits when processing refls that are missing the RLP column")
+            res_flags = np.zeros(len(refls)).astype(bool)
+            res = 1. / np.linalg.norm(refls["rlp"], axis=1)
+            for dmin,dmax in utils.parse_reso_string(self.params.refiner.res_ranges):
+                MAIN_LOGGER.debug("Parsing res range %.3f - %.3f Angstrom" % (dmin, dmax))
+                in_resShell = np.logical_and(res >= dmin, res <= dmax)
+                res_flags[in_resShell] = True
+
+            MAIN_LOGGER.info("Resolution filter removed %d/%d refls outside of all resolution ranges " \
+                              % (sum(~res_flags), len(refls)))
+            self.selection_flags[~res_flags] = False
+
         if sum(self.selection_flags) == 0:
             MAIN_LOGGER.info("No pixels slected, continuing")
             return False

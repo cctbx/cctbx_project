@@ -103,7 +103,6 @@ def label_weak_predictions(predictions, strong, q_cutoff=0.005):
     xyz_obs = [(-1,-1,-1)]*len(predictions)
     for i_idx, cands in enumerate(pred_idx_candidates):
         if not cands:
-            print("WARNING: no predicted refl candidates for strong refl %d - consider reducing changing threshold arg or increasing default_Famplitude" % i_idx)
             continue
         if len(cands) == 1:
             # if 1 spot is within q_cutoff , then its the closest
