@@ -947,7 +947,31 @@ def get_d_star_sq_step(f_array, num_per_bin = 1000, max_bins = 50, min_bins = 6)
 def run_refine_cryoem_errors(
     mmm, d_min,
     map_1_id="map_manager_1", map_2_id="map_manager_2",
-    sphere_cent=None, radius=None, verbosity=1, prior_params=None):
+    sphere_cent=None, radius=None, verbosity=1, prior_params=None,
+    shift_map_origin=True):
+  """
+  Refine error parameters from half-maps, make weighted map coeffs for region.
+
+  Compulsory arguments:
+  mmm: map_model_manager object containing two half-maps from reconstruction
+  d_min: target resolution, either best resolution for map or resolution for
+    target region
+
+  Optional arguments:
+  map_1_id: identifier of first half-map, if different from default of
+    map_manager_1
+  map_2_id: same for second half-map
+  sphere_cent: center of sphere defining target region for analysis
+    default is center of map
+  radius: radius of sphere
+    default (when sphere center not defined either) is 1/4 narrowest map width
+  prior_params: refined parameters from previous call, usually from the
+    whole reconstruction before focusing on a target region
+  shift_map_origin: should map coefficients be shifted to correspond to
+    original origin, rather than the origin being the corner of the box,
+    default True
+  verbosity: 0/1/2/3/4 for mute/log/verbose/debug/testing
+  """
 
   from scipy import interpolate
   from libtbx import group_args
@@ -1200,6 +1224,15 @@ def run_refine_cryoem_errors(
     i_bin_used += 1
 
   shift_cart = working_mmm.shift_cart()
+  if shift_map_origin:
+    ucwork = expectE.crystal_symmetry().unit_cell()
+    # shift_cart is position of original origin in boxed-map coordinate system
+    # shift_frac should correspond to what has to be done to a model to put it
+    # into the map, i.e. move it in the opposite direction
+    shift_frac = ucwork.fractionalize(shift_cart)
+    shift_frac = tuple(-flex.double(shift_frac))
+    expectE = expectE.translational_shift(shift_frac)
+
   resultsdict = dict(
     n_bins = n_bins,
     ssqr_bins = ssqr_bins,
@@ -1220,6 +1253,31 @@ def run_refine_cryoem_errors(
 
 # Command-line interface using argparse
 def run():
+  """
+  Prepare cryo-EM map for docking by preparing weighted MTZ file.
+
+  Obligatory command-line arguments (no keywords):
+  half_map_1: name of file containing the first half-map from a reconstruction
+  half_map_2: name of file containing the second half-map
+  d_min: desired resolution, either best for whole map or for local region
+
+  Optional command-line arguments (keyworded):
+  --file_root: root name for output files
+  --mask: optional mask to define map region (not yet implemented)
+  --sphere_cent: Centre of sphere defining target map region
+          defaults to centre of map, unless mask is specified
+  --radius: radius of sphere
+          defaults to narrowest extent of input map divided by 4,
+          unless mask is specified
+  --shift_map_origin: shift output mtz file to match input map on its origin:
+          default
+  --no_shift_map_origin: leave origin of map at lowest corner of the box
+  --write_params: write out refined parameters as a pickle file
+  --read_params: start with refined parameters from earlier run
+  --mute (or -m): mute output
+  --verbose (or -v): verbose output
+  --testing: extra verbose output for debugging
+  """
   import argparse
   import pickle
   from iotbx.map_model_manager import map_model_manager
@@ -1237,6 +1295,9 @@ def run():
   parser.add_argument('--read_params', help='Filename for prior parameters')
   parser.add_argument('--write_params', help='Write out refined parameters',
                       action='store_true')
+  parser.add_argument('--shift_map_origin', dest='shift_map_origin', action='store_true')
+  parser.add_argument('--no_shift_map_origin', dest='shift_map_origin', action='store_false')
+  parser.set_defaults(shift_map_origin=True)
   parser.add_argument('--mask',
                       help='Optional mask to define map region (not implemented)')
   parser.add_argument('--sphere_cent',help='Centre of sphere for docking', nargs=3, type=float)
@@ -1253,6 +1314,7 @@ def run():
   if args.mute: verbosity = 0
   if args.verbose: verbosity = 2
   if args.testing: verbosity = 4
+  shift_map_origin = args.shift_map_origin
 
   mask_specified = True
   mask = None
@@ -1285,7 +1347,8 @@ def run():
 
   if (prior_params is None):
     # Initial refinement to get overall error parameters
-    results = run_refine_cryoem_errors(mmm, d_min, verbosity=verbosity)
+    results = run_refine_cryoem_errors(mmm, d_min, verbosity=verbosity,
+      shift_map_origin=shift_map_origin)
     prior_params = results.resultsdict
     if args.write_params:
       if (args.file_root is not None):
@@ -1300,7 +1363,8 @@ def run():
   if mask_specified:
     # Refine to get scale and error parameters for docking region
     results = run_refine_cryoem_errors(mmm, d_min, sphere_cent=sphere_cent,
-      radius=radius, prior_params=prior_params)
+      radius=radius, prior_params=prior_params,
+      shift_map_origin=shift_map_origin)
 
   expectE = results.expectE
   mtz_dataset = expectE.as_mtz_dataset(column_root_label='Emean')
@@ -1313,9 +1377,10 @@ def run():
     mtzout_file_name = args.file_root + ".mtz"
   else:
     mtzout_file_name = "weighted_map_data.mtz"
-  print ("Writing mtz for docking as ",mtzout_file_name)
-  shift_cart = results.shift_cart
-  print ("Origin of full map relative to mtz: ", shift_cart)
+  print ("Writing mtz for docking as",mtzout_file_name)
+  if not shift_map_origin:
+    shift_cart = results.shift_cart
+    print ("Origin of full map relative to mtz:", shift_cart)
   dm.write_miller_array_file(mtz_object, filename=mtzout_file_name)
 
 if (__name__ == "__main__"):

@@ -951,6 +951,67 @@ class manager(object):
       result = True
     return result
 
+  def macromolecule_plus_hetatms_by_chain_selections(self, radius=3):
+    """
+    Split model into a list of selections where each selection is a
+    macromolecule chain plus nearest small molecules (water, ligands, etc).
+    ********
+    WARNING: This implementation is potentially runtime and memory inefficient.
+    ********
+    """
+    sps = self.get_xray_structure().special_position_settings()
+    h = self.get_hierarchy()
+    asc = h.atom_selection_cache()
+    het_sel = asc.selection("not (protein or nucleotide)")
+    pro_sel = ~het_sel
+    size = h.atoms_size()
+    get_class = iotbx.pdb.common_residue_names_get_class
+    atoms = h.atoms()
+    sites_cart = atoms.extract_xyz()
+    # list protein chain selections
+    psels = []
+    for c in h.chains():
+      sel = flex.bool(size, c.atoms().extract_i_seq())
+      sel = sel.set_selected(het_sel, False)
+      if(sel.count(True)==0): continue
+      psels.append(sel)
+    #
+    for rg in h.residue_groups():
+      tmp = []
+      for resname in rg.unique_resnames():
+        e1 = get_class(resname) == "common_amino_acid"
+        e2 = get_class(resname) == "common_rna_dna"
+        tmp.extend([e1,e2])
+      if(True in tmp): continue
+      residue_b_selection = flex.bool(size, rg.atoms().extract_i_seq())
+      around = 0
+      radius_ = radius
+      while around<1:
+        selection_around_residue = sps.pair_generator(
+          sites_cart      = sites_cart,
+          distance_cutoff = radius_
+            ).neighbors_of(primary_selection = residue_b_selection).iselection()
+        selection_around_residue = flex.bool(size, selection_around_residue)
+        selection_around_residue = selection_around_residue.set_selected(
+          het_sel, False)
+        selection_around_residue_i = selection_around_residue.iselection()
+        around = selection_around_residue_i.size()
+        radius_ += 0.5
+      # find which protein chain this hetatm belongs to and add it
+      for psel in psels:
+        if(psel[selection_around_residue_i[0]]):
+          psel = psel.set_selected(residue_b_selection, True)
+          break
+    # checksum
+    overlap_sel = psels[0].as_int()
+    cntr = 0
+    for i, psel in enumerate(psels):
+      cntr += psel.count(True)
+      if(i!=0): overlap_sel = overlap_sel + psel.as_int()
+    assert cntr == size, [cntr, size]
+    assert overlap_sel.all_eq(1) # selections are non-overlapping!
+    return psels
+
   def initialize_anomalous_scatterer_groups(
       self,
       find_automatically=True,
@@ -1060,7 +1121,12 @@ class manager(object):
     result = group_args(occ = True, adp = True, xyz = True, size = True)
     result.stop_dynamic_attributes()
     ncs_groups = self.get_ncs_groups()
-    if(ncs_groups is None or len(ncs_groups)==0): return None
+    if(ncs_groups is None or len(ncs_groups)==0):
+      import iotbx.ncs
+      params = iotbx.ncs.input.get_default_params()
+      params.ncs_search.exclude_selection = None
+      self.search_for_ncs(params = params.ncs_search)
+      ncs_groups = self.get_ncs_groups()
     for i, g in enumerate(ncs_groups):
       m_master          = self.select(g.master_iselection)
       occ_master        = m_master.get_occ()
@@ -1077,6 +1143,49 @@ class manager(object):
         d = flex.sqrt((master_on_copy_sites_cart-m_copy.get_sites_cart()).dot())
         if(flex.max(d)>eps_xyz): result.xyz = False
     return result
+
+  def idealize_ncs_inplace(self):
+    """
+    Make NCS copies strictly obey the symmetry
+    """
+    from iotbx.pdb import hierarchy
+    r = hierarchy.root()
+    m = hierarchy.model()
+    ncs_groups = self.get_ncs_groups()
+    if(ncs_groups is None or len(ncs_groups)==0):
+      import iotbx.ncs
+      params = iotbx.ncs.input.get_default_params()
+      params.ncs_search.exclude_selection = None
+      self.search_for_ncs(params = params.ncs_search)
+      ncs_groups = self.get_ncs_groups()
+    working_hierarchy = self.get_hierarchy()
+    all_ncs_selection = flex.size_t()
+    for g in ncs_groups:
+      all_ncs_selection.extend(g.master_iselection)
+      for copy in g.copies:
+        all_ncs_selection.extend(copy.iselection)
+    assert all_ncs_selection.size() == self.size()
+    for g in ncs_groups:
+      master_hierarchy = working_hierarchy.select(g.master_iselection)
+      master_sites_cart = master_hierarchy.atoms().extract_xyz()
+      for model in master_hierarchy.models():
+        r.append_model(model.detached_copy())
+      for copy in g.copies:
+        master_on_copy_sites_cart = copy.r.elems * master_sites_cart + copy.t
+        master_hierarchy_dc = master_hierarchy.deep_copy()
+        master_hierarchy_dc.atoms().set_xyz(master_on_copy_sites_cart)
+        copy_hierarchy = working_hierarchy.select(copy.iselection)
+        for mc, cc in zip(master_hierarchy_dc.chains(), copy_hierarchy.chains()):
+          mc.id = cc.id
+        for model in master_hierarchy_dc.models():
+          r.append_model(model.detached_copy())
+    m = hierarchy.model()
+    for chain in r.chains():
+      m.append_chain(chain.detached_copy())
+    r = hierarchy.root()
+    r.append_model(m)
+    r.atoms().reset_i_seq()
+    self.replace_model_hierarchy_with_other(other_hierarchy = r)
 
   def get_hd_selection(self):
     xrs = self.get_xray_structure()
@@ -1125,10 +1234,15 @@ class manager(object):
   def sel_sidechain(self):
     return self._get_selection_manager().sel_backbone_or_sidechain(False, True)
 
-  def replace_model_hierarchy_with_other(self, other_model):
+  def replace_model_hierarchy_with_other(self, other_model=None,
+      other_hierarchy=None):
     ''' Replace hierarchy with one from another model '''
+    assert [other_model, other_hierarchy].count(None) == 1
     model_ph = self.get_hierarchy() # working hierarchy
-    other_model_ph = other_model.get_hierarchy()
+    if(other_model is not None):
+      other_model_ph = other_model.get_hierarchy()
+    else:
+      other_model_ph = other_hierarchy
     for m in model_ph.models():
       model_ph.remove_model(m)
     for m in other_model_ph.models():
@@ -1143,6 +1257,7 @@ class manager(object):
     self.get_hierarchy().atoms().reset_serial() # redo the numbering
     self.get_hierarchy().atoms().reset_i_seq() # redo the numbering
     self.unset_restraints_manager() # no longer applies
+    self.unset_ncs_constraints_groups()
 
   def set_xray_structure(self, xray_structure):
     # XXX Delete as a method or make sure all TLS, NCS, refinement flags etc
@@ -1471,7 +1586,7 @@ class manager(object):
     """
     result = StringIO()
     if force:
-      self.get_restraints_manager()
+      self.process(make_restraints=True)
     self.restraints_manager.write_geo_file(
         hierarchy = self.get_hierarchy(),
         sites_cart=self.get_sites_cart(),

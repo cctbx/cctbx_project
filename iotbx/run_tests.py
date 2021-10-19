@@ -49,7 +49,7 @@ tst_list_base = [
   "$D/pdb/tst_hierarchy.py",
   "$D/pdb/tst_hierarchy_atom_sort.py",
   "$D/pdb/tst_hierarchy_flip_symmetric.py",
-  '$D/regression/tst_selected_hierarchy_flip.py',
+  "$D/regression/tst_selected_hierarchy_flip.py",
   "$D/pdb/tst_ext.py",
   "$D/pdb/tst_atom_selection.py",
   "$D/pdb/tst_rna_dna_atom_names.py",

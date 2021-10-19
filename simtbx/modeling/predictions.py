@@ -100,9 +100,9 @@ def label_weak_predictions(predictions, strong, q_cutoff=0.005):
     pred_idx_candidates = strong_tree.query_ball_tree(predicted_tree, q_cutoff)
 
     is_weak = flex.bool(len(predictions), True)
+    xyz_obs = [(-1,-1,-1)]*len(predictions)
     for i_idx, cands in enumerate(pred_idx_candidates):
         if not cands:
-            print("WARNING: no predicted refl candidates for strong refl %d - consider reducing changing threshold arg or increasing default_Famplitude" % i_idx)
             continue
         if len(cands) == 1:
             # if 1 spot is within q_cutoff , then its the closest
@@ -115,7 +115,9 @@ def label_weak_predictions(predictions, strong, q_cutoff=0.005):
                 dists.append(d)
             pred_idx = cands[np.argmin(dists)]
         is_weak[pred_idx] = False
+        xyz_obs[pred_idx] = strong["xyzobs.px.value"][i_idx]
     predictions["is_weak"] = is_weak
+    predictions["orig.xyzobs.px"] = flex.vec3_double(xyz_obs)
 
 
 def label_weak_spots_for_integration(fraction, predictions, num_res_bins=10):

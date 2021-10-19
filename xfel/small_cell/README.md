@@ -14,11 +14,47 @@ Nature (in press).
 
 ### Installation of software
 
-DIALS/CCTBX and dependencies were installed as described in the "general build" section here:
+<details> 
+  <summary>Developer installation</summary>
+  
+For the work described in Schriber et al., DIALS/CCTBX and dependencies were installed as 
+described in the "general build" section here:
 https://github.com/cctbx/cctbx_project/tree/master/xfel/conda_envs
 
 GSASII must also be installed in the conda environment. Instructions will be printed when
 calling `cctbx.xfel.candidate_cells` for the first time.
+
+</details>
+  
+<details> 
+  <summary> Docker installation </summary>
+To promote future-safety, a working Docker image will be available from Dockerhub as 
+`dwpaley/cctbx:20211012`. Installation instructions are given for a Macbook running MacOS
+10.15.7, although processing this full dataset is a space- and compute-intensive task for a
+personal laptop.
+
+<a href="https://cntnr.io/running-guis-with-docker-on-mac-os-x-a14df6a76efc">Nils De Moor</a> is
+acknowledged for a helpful post on configuring GUI applications via XQuartz.
+
+* Install Docker Desktop as described here: https://docs.docker.com/desktop/mac/install/
+* Install XQuartz from here: https://www.xquartz.org. A restart might be needed.
+* Start XQuartz, visit Preferences and enable "Security->Allow connections from network clients".
+* Install and start `socat` to expose a port for the X server:
+```$ conda install socat -c conda-forge -y
+$ socat TCP-LISTEN:6000,reuseaddr,fork UNIX-CLIENT:\"$DISPLAY\" &
+$ ifconfig en0 |grep '\<inet\>' | awk '{print $2}'
+192.168.1.222
+$ docker run -e DISPLAY=192.168.1.222:0 gns3/xeyes
+```
+A pair of eyeballs should be displayed. This confirms Docker can contact the X server. When
+Docker applications will need to access the display, follow the example of the last two steps
+above to set the `DISPLAY` environment variable.
+* Clone the image (approx. 7 GB):
+```$ docker clone dwpaley/cctbx:20211012```
+* Make sure enough resources are available for the Docker machine. I provided 3/4 of my system
+  or 12 cores and 24GB memory.
+
+</details>
 
 ### Availability of data
 
@@ -35,17 +71,19 @@ $ export SACLA_DATA=$PWD/data
 ```
 
 
-### Compute powder pattern from spotfinding results
+### Run spotfinding
 
 We will use the DIALS spotfinder on 9 selected runs with a lot of hits; this is enough spots to
 synthesize a high-quality powder pattern for indexing.
 
-With `run_spotfind.py` containing:
+With `run.py` containing:
 
 ```
 import sys, os
 i = int(sys.argv[1])
 j = int(sys.argv[2])
+phil = sys.argv[3]
+cores = sys.argv[4]
 root_path = os.getenv('SACLA_DATA')
 data_path = os.path.join(root_path, 'data')
 geom_path = os.path.join(root_path, 'geom', 'step2_refined2.expt')
@@ -53,9 +91,9 @@ h5_path = os.path.join(data_path, f'78{i}-{j}', f'run78{i}-{j}.h5')
 out_path = os.path.join(f'{i}-{j}', 'out')
 log_path = os.path.join(f'{i}-{j}', 'log')
 cmd = \
-  f"cctbx.small_cell_process spotfind.phil {h5_path} output.output_dir={out_path} \
+  f"cctbx.small_cell_process {phil} {h5_path} output.output_dir={out_path} \
   output.logging_dir={log_path} input.reference_geometry={geom_path}"
-cmd_mpi = f"mpirun -n 64 {cmd} mp.method=mpi"
+cmd_mpi = f"mpirun -n {cores} {cmd} mp.method=mpi"
 print (cmd_mpi)
 os.makedirs(out_path)
 os.makedirs(log_path)
@@ -64,6 +102,10 @@ os.system(cmd_mpi)
 
 and `spotfind.phil` containing:
 ```
+output {
+  experiments_filename = %s_imported.expt
+  strong_filename = %s_strong.refl
+}
 dispatch.hit_finder {
   minimum_number_of_reflections = 3
   maximum_number_of_reflections = 40
@@ -75,9 +117,38 @@ spotfinder.filter.min_spot_size=3
 
 do:
 ```
-$ for i in {3192..3200}; do for j in {0..2}; do python run_spotfind.py $i $j; done; done
+$ for i in {3192..3200}; do for j in {0..2}; do python run.py $i $j spotfind.phil 64; done; done
+```
+(but adapt for the number of cores available).
+  
+---
+<details> <summary> Docker instructions </summary>
+
+Prepare `run.py` and `spotfind.phil` as above, plus a file `run.sh`:
+
+```
+#!/bin/sh
+
+cd /cwd
+source /img/build/conda_setpaths.sh
+export SACLA_DATA=/data
+python run_integrate.py $1 $2 spotfind.phil 12
 ```
 
+We run the jobs in containers that have the data and output folders (on the local drive) exposed
+via bind mounts:
+```
+$ chmod +x run.sh
+$ for i in {3192..3200}; do for j in {0..2}; do
+>   docker run -v $PWD:/cwd -v $SACLA_DATA:/data dwpaley/cctbx:20211012 /cwd/run.sh $i $j
+> done; done
+```
+</details>
+
+---
+
+### Compute powder pattern from spots
+  
 Spotfinding will run on the 27 selected h5 files within a few minutes. Then prepare a single
 set of combined files:
 ```
@@ -98,7 +169,30 @@ indexing through the `candidate_cells` wrapper:
 $ cctbx.xfel.candidate_cells nproc=64 input.peak_list=peaks.txt input.powder_pattern=powder.xy search.timeout=300
 ```
 
-The correct cell should be in the top 5 candidates. We will index a single run with the candidate unit cells and crystal systems.
+  
+
+---
+
+<details> <summary> Docker instructions </summary>
+
+Start an interactive container with the display configured and the working directory bind-mounted:
+```
+$ ifconfig en0 |grep '\<inet\>' | awk '{print $2}'
+192.168.1.225
+$ docker run -it -e DISPLAY=192.168.1.225:0 -v $PWD:/cwd dwpaley/cctbx:20211012
+# source /img/build/conda_setpaths.sh
+# cd /cwd
+```
+
+Then proceed with combining the spotfinding results, plotting the powder pattern, and searching for the
+unit cell as described above.
+
+</details>
+
+---
+  
+The correct cell should be in the top 5 candidates. We will index a single run with the candidate unit 
+cells and crystal systems.
 
 ### Trial indexing jobs
 
@@ -155,6 +249,7 @@ With `run_index.py` containing:
 import sys, os
 i, j = 3192, 0
 phil_root = sys.argv[1]
+cores = sys.argv[2]
 root_path = os.getenv('SACLA_DATA')
 data_path = os.path.join(root_path, 'data')
 geom_path = os.path.join(root_path, 'geom', 'step2_refined2.expt')
@@ -164,7 +259,7 @@ log_path = os.path.join(phil_root, 'log')
 cmd = \
   f"cctbx.small_cell_process {phil_root}.phil {h5_path} output.output_dir={out_path} \
   output.logging_dir={log_path} input.reference_geometry={geom_path}"
-cmd_mpi = f"mpirun -n 64 {cmd} mp.method=mpi"
+cmd_mpi = f"mpirun -n {cores} {cmd} mp.method=mpi"
 print (cmd_mpi)
 os.makedirs(out_path)
 os.makedirs(log_path)
@@ -174,7 +269,7 @@ os.system(cmd_mpi)
 do
 
 ```
-$ for n in 1 2 3 4 5; do python run_index.py $n; done
+$ for n in 1 2 3 4 5; do python run_index.py $n 64; done
 ```
 
 then count the resulting indexing hits:
@@ -188,9 +283,42 @@ $ for n in {1..5}; do
   done
 ```
 
+---
+
+<details> <summary> Docker instructions </summary>
+
+Set up the phil files as above. Make a script `run.sh` containing the following:
+  
+```
+#!/bin/sh
+
+cd /cwd
+source /img/build/conda_setpaths.sh
+export SACLA_DATA=/data
+python run_index.py $1 $2
+```
+  
+And run the jobs in containers with the appropriate bind mounts:
+  
+```
+$ chmod +x run.sh
+$ for n in 1 2 3 4 5; do 
+>   docker run -v $PWD:/cwd -v $SACLA_DATA:/data dwpaley/cctbx:20211012 /cwd/run.sh $n 12
+> done
+```
+  
+Then count the indexing hits as described above.
+  
+</details>
+
+---
+  
+  
+  
 ### Integration
 
-After choosing the correct cell, prepare this file integrate.phil:
+After choosing the correct cell, make a new directory for integration scripts and results.
+Prepare this file `integrate.phil`:
 ```
 dispatch {
   hit_finder {
@@ -235,11 +363,13 @@ small_cell {
 }
 ```
 
-And this script run_integrate.py:
+And this script `run.py`:
 ```
 import sys, os
 i = int(sys.argv[1])
 j = int(sys.argv[2])
+phil = sys.argv[3]
+cores = sys.argv[4]
 root_path = os.getenv('SACLA_DATA')
 data_path = os.path.join(root_path, 'data')
 geom_path = os.path.join(root_path, 'geom', 'step2_refined2.expt')
@@ -257,9 +387,41 @@ os.system(cmd_mpi)
 ```
 Prepare a todo script and run it: [note 1]
 ```
-$ for m in {3133..3214}; do for n in {0..2}; do echo "python run_integrate.py $m $n" >> todo.sh; done; done
+$ for m in {3133..3214}; do for n in {0..2}; do 
+>   echo "python run.py $m $n integrate.phil 64" >> todo.sh
+> done; done
 $ source todo.sh
 ```
+
+  
+---
+<details> <summary> Docker instructions </summary>
+
+Prepare `run.py` and `integrate.phil` as above, plus a file `run.sh`:
+
+```
+#!/bin/sh
+
+cd /cwd
+source /img/build/conda_setpaths.sh
+export SACLA_DATA=/data
+python run.py $1 $2 integrate.phil 12
+```
+
+Run the jobs as described above for spotfinding:
+```
+$ chmod +x run.sh
+$ for i in {3133..3214}; do for j in {0..2}; do
+>   docker run -v $PWD:/cwd -v $SACLA_DATA:/data dwpaley/cctbx:20211012 /cwd/run.sh $i $j
+> done; done
+```
+Optionally, you can instead echo the `docker` commands to a `todo.sh` script as above, e.g. for
+running multiple jobs under control of `parallel` or similar.
+</details>
+
+---
+
+
 
 ### Merging
 
@@ -339,6 +501,26 @@ $ iotbx.reflection_file_converter rtr_all.mtz --label="Iobs,SIGIobs" --shelx=rtr
 ```
 
 The resulting file `rtr.hkl` contains the final intensities for structure refinement.
+  
+
+---
+<details> <summary> Docker instructions </summary>
+
+Merging is most convenient in an interactive container:
+  
+```
+$ docker run -it -v $PWD:/cwd dwpaley/cctbx:20211012
+# source /img/build/conda_setpaths.sh
+# cd /cwd
+```
+Then proceed with the steps above (but be sure to adjust the # of cores
+for mpirun jobs).
+
+</details>
+
+---
+
+
 
 ### Notes
 

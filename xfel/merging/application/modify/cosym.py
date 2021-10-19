@@ -8,9 +8,6 @@ from dxtbx.model.crystal import MosaicCrystalSauter2014
 from dxtbx.model.experiment_list import ExperimentList
 #from libtbx.development.timers import Profiler, Timer
 
-import dials.algorithms.symmetry.cosym.target
-from xfel.merging.application.modify.aux_cosym import TargetWithFastRij
-dials.algorithms.symmetry.cosym.target.Target = TargetWithFastRij
 
 class cosym(worker):
   """

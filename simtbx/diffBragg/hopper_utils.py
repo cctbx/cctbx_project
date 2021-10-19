@@ -22,8 +22,8 @@ except ImportError:
 
 
 import logging
-MAIN_LOGGER = logging.getLogger("main")
-PROFILE_LOGGER = logging.getLogger("profile")
+MAIN_LOGGER = logging.getLogger("diffBragg.main")
+PROFILE_LOGGER = logging.getLogger("diffBragg.profile")
 
 ROTX_ID = 0
 ROTY_ID = 1
@@ -112,6 +112,7 @@ class DataModeler:
         """ params is a simtbx.diffBragg.hopper phil"""
         self.no_rlp_info = False  # whether rlps are stored in the refls table
         self.params = params  # phil params (see diffBragg/phil.py)
+        self._abs_path_params()
         self.SIM = None  # simulator object (instance of nanoBragg.sim_data.SimData
         self.E = None  # placeholder for the experiment
         self.pan_fast_slow =None  # (pid, fast, slow) per pixel
@@ -145,6 +146,10 @@ class DataModeler:
         self.saves = ["all_data", "all_background", "all_trusted", "best_model", "sigma_rdout",
                       "rois", "pids", "tilt_abc", "selection_flags", "refls_idx", "pan_fast_slow",
                         "Hi", "Hi_asu", "roi_id", "params", "all_pid", "all_fast", "all_slow"]
+
+    def _abs_path_params(self):
+        """adds absolute path to certain params"""
+        self.params.simulator.structure_factors.mtz_name = os.path.abspath(self.params.simulator.structure_factors.mtz_name)
 
     def __getstate__(self):
         # TODO cleanup/compress
@@ -274,6 +279,20 @@ class DataModeler:
         if remove_duplicate_hkl and not self.no_rlp_info:
             is_not_a_duplicate = ~self.is_duplicate_hkl(refls)
             self.selection_flags = np.logical_and( self.selection_flags, is_not_a_duplicate)
+
+        if self.params.refiner.res_ranges is not None:
+            if self.no_rlp_info:
+                raise NotImplementedError("Cannot set resolution limits when processing refls that are missing the RLP column")
+            res_flags = np.zeros(len(refls)).astype(bool)
+            res = 1. / np.linalg.norm(refls["rlp"], axis=1)
+            for dmin,dmax in utils.parse_reso_string(self.params.refiner.res_ranges):
+                MAIN_LOGGER.debug("Parsing res range %.3f - %.3f Angstrom" % (dmin, dmax))
+                in_resShell = np.logical_and(res >= dmin, res <= dmax)
+                res_flags[in_resShell] = True
+
+            MAIN_LOGGER.info("Resolution filter removed %d/%d refls outside of all resolution ranges " \
+                              % (sum(~res_flags), len(refls)))
+            self.selection_flags[~res_flags] = False
 
         if sum(self.selection_flags) == 0:
             MAIN_LOGGER.info("No pixels slected, continuing")
@@ -631,7 +650,9 @@ class DataModeler:
         else:
             method = self.params.method
 
-        maxfev = self.params.nelder_mead_maxfev * self.npix_total
+        maxfev = None
+        if self.params.nelder_mead_maxfev is not None:
+            maxfev = self.params.nelder_mead_maxfev * self.npix_total
 
         at_min = target.at_minimum
 

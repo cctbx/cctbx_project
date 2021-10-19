@@ -3,7 +3,6 @@ import subprocess
 from shutil import copy
 
 import libtbx.load_env
-from libtbx.env_config import get_boost_library_with_python_version
 
 def detect_architecture(verbose=True):
   if verbose:
@@ -113,7 +112,7 @@ if not env_etc.no_boost_python:
   kokkos_ext_env.Append(LIBS=env_etc.libm +
     ["simtbx_kokkos",
      "scitbx_boost_python",
-     get_boost_library_with_python_version("boost_python", kokkos_ext_env['LIBPATH']),
+     env_etc.boost_python_lib,
      "cctbx",
      "kokkos",
      "cudart",

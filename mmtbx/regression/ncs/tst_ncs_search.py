@@ -307,13 +307,13 @@ class TestSimpleAlignment(unittest.TestCase):
     ncs_obj = ncs.input(
         hierarchy=h,
         params=self.p.ncs_search)
-    # x = ncs_obj.get_ncs_info_as_spec(write=True,show_ncs_phil=True)
+    # x = ncs_obj.get_ncs_info_as_spec(write=True,write_ncs_phil=True)
     # x = ncs_obj.show(format='spec')
     # check another pdb string
     h = iotbx.pdb.input(source_info=None, lines=test_pdb_6).construct_hierarchy()
     ncs_obj = ncs.input(hierarchy=h)
     ncs_obj.get_ncs_restraints_group_list()
-    # x = ncs_obj.get_ncs_info_as_spec(write=True,show_ncs_phil=True)
+    # x = ncs_obj.get_ncs_info_as_spec(write=True,write_ncs_phil=True)
 
   def test_overlapping_chains(self):
     '''  Test processing of overlapping identical chains  '''

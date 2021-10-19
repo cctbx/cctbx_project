@@ -21,7 +21,7 @@ from dxtbx.model.experiment_list import ExperimentListFactory
 from dials.array_family import flex as dials_flex
 
 import logging
-MAIN_LOGGER = logging.getLogger("main")
+MAIN_LOGGER = logging.getLogger("diffBragg.main")
 
 
 def label_background_pixels(roi_img, thresh=3.5, iterations=1, only_high=True):

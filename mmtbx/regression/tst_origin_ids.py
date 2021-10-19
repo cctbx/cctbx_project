@@ -11,7 +11,7 @@ count_1yjp = {
               'Planarity restraints': 13,
               'Chirality restraints': 6,
               'C-Beta improper torsion angle restraints': 12,
-              'Parallelity restraints': 0,
+              # 'Parallelity restraints': 0,
               #'User supplied restraints': 0,
               #'User supplied torsion angle restraints': 0,
               #'User supplied angle restraints': 0,
@@ -81,7 +81,8 @@ def main():
   edits_1yjp.bond[0].atom_selection_2='resname ASN and resid 2 and name ND2'
   edits_1yjp.bond[0].distance_ideal=2.1
   edits_1yjp.bond[0].sigma=0.1
-  model.set_pdb_interpretation_params(params)
+  model.process(pdb_interpretation_params=params,
+                make_restraints=True)
   rc = model.restraints_as_geo(force=True)
   rc = check_geo(rc)
   current = count_1yjp_with_waters.copy()
@@ -95,7 +96,8 @@ def main():
   edits_1yjp.angle[0].atom_selection_3='resname ASN and resid 2 and name CG'
   edits_1yjp.angle[0].angle_ideal=21.9
   edits_1yjp.angle[0].sigma=1.1
-  model.set_pdb_interpretation_params(params)
+  model.process(pdb_interpretation_params=params,
+                make_restraints=True)
   rc = model.restraints_as_geo(force=True)
   rc = check_geo(rc)
   current = count_1yjp_with_waters.copy()
@@ -112,7 +114,8 @@ def main():
   edits_1yjp.dihedral[0].angle_ideal=121.9
   edits_1yjp.dihedral[0].sigma=1.12
   edits_1yjp.dihedral[0].periodicity=10
-  model.set_pdb_interpretation_params(params)
+  model.process(pdb_interpretation_params=params,
+                make_restraints=True)
   rc = model.restraints_as_geo(force=True)
   rc = check_geo(rc)
   current = count_1yjp_with_waters.copy()

@@ -148,3 +148,4 @@ https://conda.anaconda.org/cctbx202105/noarch/pytest-xdist-2.2.1-pyhd8ed1ab_0.ta
 https://conda.anaconda.org/cctbx202105/noarch/sphinx-3.5.3-pyhd8ed1ab_0.tar.bz2#015af130f899365b78116b8238c99cd8
 https://conda.anaconda.org/cctbx202105/win-64/wxpython-4.0.7.post2-py37h5fe3f0a_3.tar.bz2#465f521124af9655416a37749342d767
 https://conda.anaconda.org/cctbx202105/noarch/numpydoc-1.1.0-py_1.tar.bz2#ea475ac40a3b85e2976bf900199057b4
+https://conda.anaconda.org/cctbx202105/win-64/scipy-1.6.3-py37h924764e_0.tar.bz2#105382fbce25e8c8c6ba3f0a2b717627

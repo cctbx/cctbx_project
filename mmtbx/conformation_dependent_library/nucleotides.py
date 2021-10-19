@@ -25,7 +25,8 @@ def update_restraints(hierarchy,
   rc = analyze_pdb_hierarhy(hierarchy, restraint_groups, restraint_groups, printer)
   bond_restraints = []
   angle_restraints = {}
-  atoms = hierarchy.atoms()
+  if verbose:
+    atoms = hierarchy.atoms()
   for i_seqs, ideal, esd in rc:
     if verbose:
       if len(i_seqs)==2:
@@ -52,9 +53,20 @@ def update_restraints(hierarchy,
   remove=[]
   n_bonds=0
   c_bonds=0
+  non_standard_issues=False
   for i, (i_seqs, ideal, esd) in enumerate(bond_restraints):
+    if verbose:
+      print(i, i_seqs, atoms[i_seqs[0]].quote(), atoms[i_seqs[1]].quote(), ideal, esd)
     bond=geometry.bond_params_table.lookup(*list(i_seqs))
     remove.append(i)
+    if bond is None:
+      atoms = hierarchy.atoms()
+      print('bond between %s and %s not found in restraints' % (
+        atoms[i_seqs[0]].quote(),
+        atoms[i_seqs[1]].quote()
+        ))
+      non_standard_issues=True
+      continue
     if bond.distance_ideal!=ideal:
       c_bonds+=1
     bond.distance_ideal=ideal
@@ -109,10 +121,12 @@ def update_restraints(hierarchy,
           ideal,
           esd,
           )
-  assert not angle_restraints, 'not finished angle_restraints: %s' % angle_restraints
+  if not non_standard_issues:
+    assert not angle_restraints, 'not finished angle_restraints: %s' % angle_restraints
   if n_bonds or n_angles:
     print('''  CDL for nucleotides adjusted restraints counts
+    coord. : total (unchanged)
     bonds  : %5d (%5d)
     angles : %5d (%5d)''' % (n_bonds, c_bonds, n_angles, c_angles),
       file=log)
-  return True
+  return (n_bonds, c_bonds, n_angles, c_angles)

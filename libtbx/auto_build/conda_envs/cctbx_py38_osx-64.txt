@@ -155,3 +155,4 @@ https://conda.anaconda.org/cctbx202105/osx-64/ipython-7.23.0-py38h6c79ece_0.tar.
 https://conda.anaconda.org/cctbx202105/noarch/sphinx-3.5.3-pyhd8ed1ab_0.tar.bz2#015af130f899365b78116b8238c99cd8
 https://conda.anaconda.org/cctbx202105/osx-64/wxpython-4.0.7.post2-py38h10bb4de_3.tar.bz2#6c0d3d3fad20346dca70b2f71f2cad1a
 https://conda.anaconda.org/cctbx202105/noarch/numpydoc-1.1.0-py_1.tar.bz2#ea475ac40a3b85e2976bf900199057b4
+https://conda.anaconda.org/cctbx202105/osx-64/scipy-1.6.3-py38h431c0a8_0.tar.bz2#0272365e147372236c1dd72d73e43d95
