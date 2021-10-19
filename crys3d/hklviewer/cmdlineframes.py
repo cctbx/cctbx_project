@@ -135,6 +135,7 @@ class HKLViewFrame() :
 
   def zmq_listen(self):
     #time.sleep(5)
+    nan = float("nan") # workaround for "evaluating" any NaN values in the messages received
     while not self.STOP:
       try:
         msgstr = self.guisocket.recv().decode("utf-8")
@@ -301,11 +302,11 @@ class HKLViewFrame() :
     Borrowing them from the first miller array""" %i)
           wrap_labels = 25
           arrayinfo = ArrayInfo(array,wrap_labels)
-          info_fmt = arrayinfo.get_selected_info_columns_from_phil(self.params )
+          info_fmt, dummy, dummy2 = arrayinfo.get_selected_info_columns_from_phil(self.params )
           self.viewer.array_info_format_tpl.append( info_fmt )
           self.SendInfoToGUI({"array_infotpls": self.viewer.array_info_format_tpl})
 
-        colnames_select_lst = [] 
+        colnames_select_lst = []
         for colname,selected in list(self.params.selected_info.__dict__.items()):
           if not colname.startswith("__"):
             colnames_select_lst.append((colname, arrayinfo.caption_dict[colname], selected))
@@ -539,6 +540,7 @@ class HKLViewFrame() :
       wrap_labels = 25
       arrayinfo = ArrayInfo(procarray,wrap_labels)
       self.viewer.array_info_format_tpl.append( arrayinfo.get_selected_info_columns(None) )
+      # needed for determining if expansion checkbox for P1 and friedel are enabled or disabled
       self.ano_spg_tpls.append((arrayinfo.isanomalous, arrayinfo.spginf) )
 
       hkls = self.origarrays["HKLs"]
@@ -582,6 +584,7 @@ class HKLViewFrame() :
     spg = arrays[0].space_group()
     uc = arrays[0].unit_cell()
     self.ano_spg_tpls =[]
+    self.mprint("%d Miller arrays in this dataset:" %len(arrays))
     for i,array in enumerate(arrays):
       if type(array.data()) == flex.std_string: # in case of status array from a cif file
         uniquestrings = list(set(array.data()))
@@ -597,44 +600,28 @@ class HKLViewFrame() :
 Borrowing them from the first miller array""" %i)
       wrap_labels = 25
       arrayinfo = ArrayInfo(array,wrap_labels)
-      info_fmt = arrayinfo.get_selected_info_columns_from_phil(self.params )
+      info_fmt, headerstr, infostr = arrayinfo.get_selected_info_columns_from_phil(self.params )
+      if i==0: # print formatted table of array info here
+        self.mprint(headerstr)
+      self.mprint(infostr)
       self.viewer.array_info_format_tpl.append( info_fmt )
       # isanomalous and spacegroup might not have been selected for displaying so send them separatately to GUI
       self.ano_spg_tpls.append((arrayinfo.isanomalous, arrayinfo.spginf) )
       if i==0:
-        # convert philstring of selected_info into a list so GUI can make a selection settings dialog 
+        # convert philstring of selected_info into a list so GUI can make a selection settings dialog
         # for what columns to show in the millertable
-        colnames_select_lst = [] 
+        colnames_select_lst = []
         for colname,selected in list(self.params.selected_info.__dict__.items()):
           if not colname.startswith("__"):
-            #colnames_select_lst.append((colname,selected))
             colnames_select_lst.append((colname, arrayinfo.caption_dict[colname], selected))
-
-        mydict = { "spacegroup_info": arrayinfo.spginf, 
+        mydict = { "spacegroup_info": arrayinfo.spginf,
                   "unitcell_info": arrayinfo.ucellinf,
                   "colnames_select_lst": colnames_select_lst
                  }
         self.SendInfoToGUI(mydict)
       valid_arrays.append(array)
     self.valid_arrays = valid_arrays
-    self.mprint("%d Miller arrays in this dataset:" %len(arrays))
 
-    import textwrap
-    mstr = ""
-    for i,info_fmt in enumerate(self.viewer.array_info_format_tpl):
-      headerlst, infolst, dummy, fmtlst =info_fmt
-      if i==0:
-        for h in headerlst:
-          mstr += h
-        mstr += "\n" # print that line break
-      for i,info in enumerate(infolst):
-        inf = info
-        if i==0 and wrap_labels>0:
-          inf = textwrap.wrap(info, width=wrap_labels)
-        mstr += fmtlst[i].format(inf) # no line break
-      mstr += "\n" # print that line break
-
-    self.mprint(mstr + "\n")
     if self.fileinfo:
       return
     self.NewFileLoaded = True

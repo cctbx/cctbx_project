@@ -32,7 +32,7 @@ try: # if invoked by cctbx.python or some such
                                      MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog )
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
   from . import HKLviewerGui
-  from .helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader, 
+  from .helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader,
      MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog )
 
 class MakeNewDataForm(QDialog):
@@ -197,21 +197,22 @@ from __future__ import absolute_import, division, print_function
 
 from .qt import QWebEngineView
 try: # if invoked by cctbx.python or some such
-  from crys3d.hklviewer.helpers import HeaderDataTableWidget
+  from crys3d.hklviewer.helpers import HeaderDataTableWidget # implicit import
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
-  from .helpers import HeaderDataTableWidget
+  from .helpers import HeaderDataTableWidget # implicit import
 
-from .qt import QCoreApplication, QMetaObject, QRect, QSize, Qt, \
- QFont, QAbstractItemView, QAction, QCheckBox, QComboBox, \
- QDoubleSpinBox, QFrame, QGridLayout, QGroupBox, QLabel, QPlainTextEdit, \
- QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox, \
- QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon
+from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit import
+ QFont, QAbstractItemView, QAction, QCheckBox, QComboBox,
+ QDoubleSpinBox, QFrame, QGridLayout, QGroupBox, QLabel, QPlainTextEdit,
+ QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox,
+ QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon )
+
 
 
 
 # For allowing embedding in ChimeraX comment out the line:
 
-MainWindow.setCentralWidget(self.centralwidget) 
+MainWindow.setCentralWidget(self.centralwidget)
 
 # from  the function HKLviewerGui.Ui_MainWindow.setupUi()
 
@@ -689,6 +690,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.make_new_millertable()
 
           if self.infodict.get("ano_spg_tpls"):
+            # needed for determining if expansion checkbox for P1 and friedel are enabled or disabled
             self.ano_spg_tpls = self.infodict.get("ano_spg_tpls",[])
 
           if self.infodict.get("colnames_select_lst"):
@@ -864,7 +866,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
               self.millerarraytable.setFocus()
               for ids in orig_hkl_ids:
                 self.millerarraytable.selectRow(ids)
-                #self.millerarraytable.selectionModel().select(ids, mode)
 
           if self.infodict.get("ColourChart") and self.infodict.get("ColourPowerScale"):
             self.ColourMapSelectDlg.selcolmap = self.infodict.get("ColourChart", "brg")
@@ -897,7 +898,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             </span>%s<span style=" font-weight:600;"><br/>Unit cell: \t</span>%s</p></body></html> '''
             self.SpaceGrpUCellText.setText(htmlstr %(spacegroup_info, unitcell_info) )
           self.fileisvalid = True
-          #print("ngl_hkl_infodict: " + str(ngl_hkl_infodict))
 
           if currentinfostr:
             if self.isembedded:
@@ -911,14 +911,12 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             currentinfostr = ""
 
           if (self.NewFileLoaded or self.NewMillerArray) and self.NewHKLscenes:
-            #print("got hklscenes: " + str(self.hklscenes_arrays))
             self.NewMillerArray = False
             if self.millerarraytablemodel:
               self.millerarraytablemodel.clear()
               self.millerarraytablemodel = MillerArrayTableModel([[]], [], self)
 
             self.MillerComboBox.clear()
-            #self.MillerComboBox.addItems( [""] + self.millerarraylabels )
             self.MillerComboBox.addItem("", userData=-1)
             for k,lbl in enumerate(self.millerarraylabels):
               self.MillerComboBox.addItem(",".join(lbl), userData=k)
@@ -1677,7 +1675,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.MillerTableContextMenuHandler(QCursor.pos(), row)
     if self.millertable.mousebutton == QEvent.MouseButtonDblClick:
       # quickly display data with a double click
-      for scenelabel,labeltype,arrayid,sceneid in self.scenearraylabeltypes:
+      for scenelabel,labeltype,arrayid,hassigmas,sceneid in self.scenearraylabeltypes:
         if row == arrayid:
           self.DisplayData(sceneid, row)
           break
@@ -1692,12 +1690,10 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     # Tag menu items with data being int or a (string, int) tuple.
     # These are being checked for in onMillerTableMenuAction() and appropriate
     # action taken
-    for i,(scenelabel,labeltype,arrayid,sceneid) in enumerate(self.scenearraylabeltypes): # loop over scenes
-      #scenelabelstr = ",".join(scenelabel)
+    for i,(scenelabel,labeltype,arrayid,hassigmas,sceneid) in enumerate(self.scenearraylabeltypes): # loop over scenes
       scenelabelstr = scenelabel
       if self.millerarraylabels[row] == scenelabelstr or self.millerarraylabels[row] + " + " in scenelabelstr:
-        #if labeltype in ["Amplitude","Intensity"]:
-        if "nan" not in self.millertable.item(row,6).text().lower(): # then sigmas are present for this array
+        if hassigmas: # then sigmas are present for this array
           myqa = QAction("Display data of %s" %scenelabelstr, self.window, triggered=self.testaction)
           myqa.setData((sceneid, row))
           self.millertablemenu.addAction(myqa)
@@ -2147,8 +2143,8 @@ def run(isembedded=False, chimeraxsession=None):
           HKLguiobj.ProcessMessages()
 
       HKLguiobj.chimeraxprocmsghandler = chimeraxsession.triggers.add_handler('new frame', ChXTimer)
-    # Call HKLguiobj.UsePersistedQsettings() but through QTimer so it happens after 
-    # the QApplication eventloop has started as to ensure resizing according to persisted 
+    # Call HKLguiobj.UsePersistedQsettings() but through QTimer so it happens after
+    # the QApplication eventloop has started as to ensure resizing according to persisted
     # font size is done properly
     QTimer.singleShot(500, HKLguiobj.UsePersistedQsettings)
 

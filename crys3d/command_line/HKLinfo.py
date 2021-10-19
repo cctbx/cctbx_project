@@ -2,12 +2,9 @@
 # LIBTBX_SET_DISPATCHER_NAME cctbx.HKLinfo
 from __future__ import absolute_import, division, print_function
 
-import sys, time
-from iotbx.data_manager import DataManager
-from iotbx.gui_tools.reflections import ArrayInfo
-import textwrap
-
-from crys3d.hklviewer import hklinfo
+import sys
+from iotbx.cli_parser import CCTBXParser
+from libtbx.utils import multi_out, show_total_time
 
 try:
   from phenix.program_template import ProgramTemplate
@@ -15,26 +12,30 @@ except ImportError:
   from libtbx.program_template import ProgramTemplate
 import os
 
-master_phil_str = """
-data_file_name = None
-  .type = path
-  .short_caption = Reflection file
-  .multiple = False
-  .help = Reflection file name
-wrap_labels = 15
-  .type = int
-  .short_caption = Wrap width for labels
-  .help = Number of letters for wrapping long miller array labels. If less than 1 no wrapping is done
-delimiter = "|"
-  .type = str
-  .short_caption = column delimiter when printing table to standard output
-  .help = column delimiter
-"""
+from iotbx.gui_tools.reflections import ArrayInfo
+from crys3d.hklviewer import hklinfo
 
 
 class Program(ProgramTemplate):
+  prog = os.getenv('LIBTBX_DISPATCHER_NAME')
+  description="""
+  %(prog)s reflectionfile
+or
+  %(prog)s reflectionfile philinput.txt
+
+where reflectionfile can be any of the conventional reflection file formats
+such as .mtz, .cif, .sca or .hkl file. This will print a table to the screen
+listing properties of the reflection data arrays present in the file. The
+name of the properties to be listed can be shown by typing:
+%(prog)s --show-defaults
+and noting which PHIL parameters in the scope \"selected_info\" are set to True.
+These can be changed either by specifying these on the command line or by
+entering the assignments into a text file, say \"philinput.txt\" that is
+submitted on the command line together with the name of the reflection file.
+""" % locals()
+
   datatypes = ['miller_array', 'phil' ]
-  master_phil_str = master_phil_str + ArrayInfo.arrayinfo_phil_str
+  master_phil_str = ArrayInfo.arrayinfo_phil_str
 
   def validate(self):
     pass
@@ -45,40 +46,25 @@ class Program(ProgramTemplate):
     hklinfo.run(arrays, self.params)
 
 
-from iotbx.cli_parser import CCTBXParser
-from libtbx.utils import multi_out, show_total_time
-from io import StringIO
-#from iotbx.cli_parser import run_program
-
 if __name__ == '__main__':
   #time.sleep(10) # enough time to attach debugger
-  #run_program(program_class=Program)
-  #dmp = StringIO()
-  dmp = sys.stdout
   # create parser
-  #plogger = multi_out()
-  #plogger.register('console_output', dmp)
   logger = multi_out()
   logger.register('console_output', sys.stdout)
 
   parser = CCTBXParser(program_class = Program, logger=logger)
   namespace = parser.parse_args(sys.argv[1:])
-  #dmp.close()
 
   # start program
   print('Starting job', file=logger)
   print('='*79, file=logger)
   task = Program(parser.data_manager, parser.working_phil.extract(), logger=logger)
-
   # validate inputs
   task.validate()
-
   # run program
   fnames = task.run()
-
   # stop timer
   print('', file=logger)
   print('='*79, file=logger)
   print('Job complete', file=logger)
   show_total_time(out=logger)
-

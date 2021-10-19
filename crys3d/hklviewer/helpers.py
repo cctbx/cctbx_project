@@ -16,25 +16,20 @@ from .qt import ( QAbstractItemView, QCheckBox, QTableWidget, QAction,
 import math, csv
 from io import StringIO
 
-class MyhorizontalHeader(QHeaderView): 
+class MyhorizontalHeader(QHeaderView):
 # assigned to HeaderDataTableWidget (NGL_HKLViewer.millertable) but in NGL_HKLViewer.createFileInfoBox()
 # as to avoid a very long chain of parents when accessing select_millertable_column_dlg()
   def __init__(self, parent=None):
     super(MyhorizontalHeader,self).__init__(Qt.Horizontal, parent)
     self.mousebutton = None
     self.parent = parent
-    self.setMouseTracking(True)
+    self.setSectionsClickable(True)
+    self.setSectionsMovable(True)
   def mousePressEvent(self, event):
     if event.type() == QEvent.MouseButtonPress:
-      self.mousebutton = None
       if event.button() == Qt.RightButton:
-        self.mousebutton = Qt.RightButton
         self.parent.parent.onSelect_millertable_column_dlg()
     QHeaderView.mousePressEvent(self, event)
-  def mouseMoveEvent(self, event):
-    if event.type() == QEvent.MouseMove:
-      pass
-    QHeaderView.mouseMoveEvent(self, event)
 
 
 class HeaderDataTableWidget(QTableWidget):
@@ -77,8 +72,8 @@ class MillerTableColumnHeaderDialog(QDialog):
     self.selectcolumnstable.setColumnCount(1)
     self.selectcolumnstable.setRowCount(nrows)
     for row,(philname, colnames, is_selected) in enumerate(self.parent.colnames_select_lst):
-      item = QTableWidgetItem(colnames)
-      item.setData(Qt.UserRole, philname)
+      item = QTableWidgetItem(colnames) # colnames is the short_caption text to display in the table cell
+      item.setData(Qt.UserRole, philname) # associated phil parameter name is stored with the setData function
       item.setFlags((Qt.ItemIsUserCheckable | Qt.ItemIsEnabled) )
       if is_selected:
         item.setCheckState(Qt.Checked)
@@ -89,8 +84,7 @@ class MillerTableColumnHeaderDialog(QDialog):
   def onSelectColumnsTableItemChanged(self, item):
     if self.unfeedback:
       return
-    #colname = item.text()
-    philname = item.data(Qt.UserRole)
+    philname = item.data(Qt.UserRole) # get the phil parameter name stored as data
     if item.checkState()==Qt.Unchecked:
       is_selected = False
     else:

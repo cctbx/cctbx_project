@@ -12,15 +12,15 @@ from __future__ import absolute_import, division, print_function
 
 from .qt import QWebEngineView
 try: # if invoked by cctbx.python or some such
-  from crys3d.hklviewer.helpers import HeaderDataTableWidget
+  from crys3d.hklviewer.helpers import HeaderDataTableWidget # implicit import
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
-  from .helpers import HeaderDataTableWidget
+  from .helpers import HeaderDataTableWidget # implicit import
 
-from .qt import QCoreApplication, QMetaObject, QRect, QSize, Qt, \
- QFont, QAbstractItemView, QAction, QCheckBox, QComboBox, \
- QDoubleSpinBox, QFrame, QGridLayout, QGroupBox, QLabel, QPlainTextEdit, \
- QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox, \
- QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon
+from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit import
+ QFont, QAbstractItemView, QAction, QCheckBox, QComboBox,
+ QDoubleSpinBox, QFrame, QGridLayout, QGroupBox, QLabel, QPlainTextEdit,
+ QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox,
+ QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon )
 
 
 
@@ -1057,4 +1057,3 @@ class Ui_MainWindow(object):
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"Close to radius of sphere of reflections", None))
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_5), QCoreApplication.translate("MainWindow", u"Vectors", None))
     # retranslateUi
-

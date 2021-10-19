@@ -7,6 +7,7 @@ import os
 import six
 from six.moves import range
 from libtbx.phil import parse
+import textwrap
 
 
 def space_group_as_str(space_group):
@@ -570,7 +571,7 @@ def get_array_description(miller_array):
                            ("is_hendrickson_lattman_array", "HL coeffs"),
                            ("is_bool_array", "Boolean"),
                            ("is_integer_array", "Integer"),
-                           ("is_real_array", "Floating-point"), 
+                           ("is_real_array", "Floating-point"),
                            ("is_string_array", "String")
                            ]
   for method, desc in methods_and_meanings :
@@ -758,10 +759,9 @@ class ArrayInfo:
     from cctbx.array_family import flex
     from scitbx import graphics_utils
     from libtbx.math_utils import roundoff
-    import textwrap, math
+    import math
     nan = float("nan")
-    #textwrap._whitespace += "," # try to wrap labels at commas and underscores 
-    #textwrap._whitespace = '\t\n\x0b\x0c\r ,'
+    self.wrap_labels = wrap_labels
     if (millarr.unit_cell() is None) or (millarr.space_group() is None) :
       self.spginf = "?"
       self.ucell = (nan, nan, nan, nan, nan, nan)
@@ -811,10 +811,8 @@ class ArrayInfo:
       self.desc = get_array_description(millarr)
       self.wavelength = "{:.6g}".format(millarr.info().wavelength) if millarr.info().wavelength is not None else float("nan")
     self.span = "(?,?,?), (?,?,?)"
-    
     self.dmin = nan
     self.dmax = nan
-    #self.n_centric = millarr.centric_flags().data().count(True)
     if millarr.unit_cell() is not None:
       self.span = str(millarr.index_span().min()) + ", "+ str(millarr.index_span().max())
       self.dmin = millarr.d_max_min()[1]
@@ -824,9 +822,9 @@ class ArrayInfo:
     self.isanomalous = "?"
     self.n_sys_abs = 0
     self.n_bijvoet = self.n_singletons = 0
-    self.anomalous_mean_diff = nan
-    self.anomalous_completeness = nan
-    self.data_completeness_infty = nan
+    self.ano_mean_diff = nan
+    self.ano_completeness = nan
+    self.data_compl_infty = nan
     self.data_completeness = nan
     self.n_centric = nan
     # computations below done as in cctbx.miller.set.show_comprehensive_summary()
@@ -853,61 +851,68 @@ class ArrayInfo:
             self.data_completeness = n_obs/n_complete
         n_complete += binner.counts_complete()[0]
         if (n_complete != 0):
-            self.data_completeness_infty = n_obs/n_complete
+            self.data_compl_infty = n_obs/n_complete
         if (self.isanomalous) and (millarr.is_xray_intensity_array() or
           millarr.is_xray_amplitude_array()):
-            self.anomalous_completeness = millarr.anomalous_completeness()
+            self.ano_completeness = millarr.anomalous_completeness()
     if (self.spginf != "?" and self.isanomalous and self.issymunique):
       asu, matches = millarr.match_bijvoet_mates()
       self.n_bijvoet = matches.pairs().size()
       self.n_singletons = matches.n_singles() - self.n_centric
       if millarr.is_real_array():
-        self.anomalous_mean_diff = millarr.anomalous_signal()
-
-    # break long label into list of shorter strings separated at whitespace and commas if present 
+        self.ano_mean_diff = millarr.anomalous_signal()
+    # break long label into list of shorter strings
     self.labelstr = ",".join(self.labels)
-    if wrap_labels > 0:
-      tlabels = textwrap.wrap(self.labelstr, width= wrap_labels)
+    if self.wrap_labels > 0:
+      tlabels = textwrap.wrap(self.labelstr, width= self.wrap_labels)
       nlabl = len(tlabels)
-      self.labelsformat = "{0[0]:>%d} " %(1+wrap_labels)
+      self.labelsformat = "{0[0]:>%d} " %(1+self.wrap_labels)
       if len(tlabels)>1:
         for i in range((len(tlabels)-1)):
-          self.labelsformat += "\n{0[%d]:>%d} "%(i+1, wrap_labels+1)
-      added_spaces = wrap_labels-5
+          self.labelsformat += "\n{0[%d]:>%d} "%(i+1, self.wrap_labels+1)
+      blanks = self.wrap_labels-5
     else:
       self.labelsformat = "{:>16} "
       if len(self.labelstr)>15:
         self.labelsformat = "{}\n                 "
-      added_spaces= 10
+      blanks= 10
 
-    
-    self.info_format_dict = { 
-      # the keys here must be verbatim copies of names of attributes in arrayinfo_phil_str below for get_selected_info_columns() to work
-      "labels":             (" %s" %self.caption_dict["labels"] + " "*added_spaces + "",                   self.labelstr,         "{}",                                                                             self.labelsformat), 
-      "description":        ("       %s      "%self.caption_dict["description"],                                self.desc,             "{}",                                                                             "{:>16} "), 
-      "wavelength":         ("   %s  "%self.caption_dict["wavelength"],                                         self.wavelength,       "{}",                                                                             "{:>7} "), 
-      "n_reflections":      ("  %s " %self.caption_dict["n_reflections"],                                        self.arrsize,          "{}",                                                                             "{:>8} "), 
-      "span":               ("               %s              " %self.caption_dict["span"],                self.span,             "{}",                                                                             "{:>32} "), 
-      "minmax_data":        ("     %s       " %self.caption_dict["minmax_data"],                            self.minmaxdata,       "{0[0]:.6}, {0[1]:.6}",                                                           "{0[0]:>11.5}, {0[1]:>11.5}"), 
-      "minmax_sigmas":      ("     %s     " %self.caption_dict["minmax_sigmas"],                            self.minmaxsigs,       "{0[0]:.6}, {0[1]:.6}",                                                           "{0[0]:>11.5}, {0[1]:>11.5}"), 
-      "d_minmax":           ("   %s      " %self.caption_dict["d_minmax"],                            self.dminmax,          "{0[0]:.6}, {0[1]:.6}",                                                           "{0[0]:>10.5}, {0[1]:>10.5}"), 
-      "unit_cell":          ("     %s      " %self.caption_dict["unit_cell"], self.ucell,            "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g}",  "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g} "),
-      "space_group":        ("   %s      " %self.caption_dict["space_group"],                             self.spginf,           "{}",                                                                             "{:>19} "),
-      "n_centrics":         ("%s"%self.caption_dict["n_centrics"],                                       self.n_centric,        "{}",                                                                             "{:>8} "), 
-      "n_sys_abs":          ("%s"%self.caption_dict["n_sys_abs"],                             self.n_sys_abs,        "{}",                                                                             "{:>9} "), 
-      "data_completeness": ("%s"%self.caption_dict["data_completeness"],                                 self.data_completeness, "{:.5g}",                                                                            "{:>10.5g} "), 
-      "data_completeness_infty": ("%s"%self.caption_dict["data_completeness_infty"],                   self.data_completeness_infty,  "{:.5g}",                                                                     "{:>9.5g} "), 
-      "is_anomalous":       ("%s"%self.caption_dict["is_anomalous"],                                        str(self.isanomalous), "{}",                                                                             "{:>8} "),
-      "is_symmetry_unique": ("%s"%self.caption_dict["is_symmetry_unique"],                                  str(self.issymunique), "{}",                                                                             "{:>8} "), 
-      "anomalous_completeness": ("%s"%self.caption_dict["anomalous_completeness"],                     self.anomalous_completeness, "{:.5g}",                                                                       "{:>11.5g} "), 
-      "anomalous_mean_diff": ("%s"%self.caption_dict["anomalous_mean_diff"],                      self.anomalous_mean_diff,    "{:.5g}",                                                                       "{:>8.5g} "), 
-      "n_bijvoet":         ("%s"%self.caption_dict["n_bijvoet"],                                         self.n_bijvoet,              "{}",                                                                       "{:>8} "), 
-      "n_singletons":       ("%s"%self.caption_dict["n_singletons"],                                     self.n_singletons,           "{}",                                                                       "{:>10} "), 
+    self.info_format_dict = {
+      # the keys here must be verbatim copies of names of phil attributes in arrayinfo_phil_str below
+      "labels":            (" %s" %self.caption_dict["labels"] + " "*blanks,   self.labelstr,         "{}",                   self.labelsformat),
+      "description":       ("       %s      "%self.caption_dict["description"],self.desc,             "{}",                   "{:>16} "),
+      "wavelength":        ("   %s  "%self.caption_dict["wavelength"],         self.wavelength,       "{}",                   "{:>7} "),
+      "n_reflections":     ("  %s  " %self.caption_dict["n_reflections"],      self.arrsize,          "{}",                   "{:>8} "),
+      "span":              (" "*15 + self.caption_dict["span"] + " "*14,       self.span,             "{}",                   "{:>32} "),
+      "minmax_data":       ("     %s       " %self.caption_dict["minmax_data"],self.minmaxdata,       "{0[0]:.6}, {0[1]:.6}", "{0[0]:>11.5}, {0[1]:>11.5}"),
+      "minmax_sigmas":     ("     %s     " %self.caption_dict["minmax_sigmas"],self.minmaxsigs,       "{0[0]:.6}, {0[1]:.6}", "{0[0]:>11.5}, {0[1]:>11.5}"),
+      "d_minmax":          ("   %s      " %self.caption_dict["d_minmax"],      self.dminmax,          "{0[0]:.6}, {0[1]:.6}", "{0[0]:>10.5}, {0[1]:>10.5}"),
+      "unit_cell":         ("     %s      " %self.caption_dict["unit_cell"],   self.ucell,            "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g}",
+                                                                                              "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g} "),
+      "space_group":       ("   %s      " %self.caption_dict["space_group"],   self.spginf,           "{}",                   "{:>19} "),
+      "n_centrics":        ("%s"%self.caption_dict["n_centrics"],              self.n_centric,        "{}",                   "{:>8} "),
+      "n_sys_abs":         ("%s"%self.caption_dict["n_sys_abs"],               self.n_sys_abs,        "{}",                   "{:>9} "),
+      "data_completeness": ("%s"%self.caption_dict["data_completeness"],       self.data_completeness,"{:.5g}",               "{:>10.5g} "),
+      "data_compl_infty":  ("%s"%self.caption_dict["data_compl_infty"],        self.data_compl_infty, "{:.5g}",               "{:>9.5g} "),
+      "is_anomalous":      ("%s"%self.caption_dict["is_anomalous"],            str(self.isanomalous), "{}",                   "{:>8} "),
+      "is_symmetry_unique":("%s"%self.caption_dict["is_symmetry_unique"],      str(self.issymunique), "{}",                   "{:>8} "),
+      "ano_completeness":  ("%s"%self.caption_dict["ano_completeness"],        self.ano_completeness, "{:.5g}",               "{:>11.5g} "),
+      "ano_mean_diff":     ("%s"%self.caption_dict["ano_mean_diff"],           self.ano_mean_diff,    "{:.5g}",               "{:>8.5g} "),
+      "n_bijvoet":         ("%s"%self.caption_dict["n_bijvoet"],               self.n_bijvoet,        "{}",                   "{:>8} "),
+      "n_singletons":      ("%s"%self.caption_dict["n_singletons"],            self.n_singletons,     "{}",                   "{:>10} "),
     }
 
   # govern whether or not a property of the ArrayInfo should be returned by get_selected_info_columns()
   arrayinfo_phil_str = """
-  selected_info {
+wrap_labels = 15
+  .type = int
+  .short_caption = Wrap width for labels
+  .help = Number of letters for wrapping long miller array labels. If less than 1 no wrapping is done
+delimiter = "|"
+  .type = str
+  .short_caption = "column delimiter when printing table to standard output"
+  .help = "column delimiter"
+selected_info {
     labels = True
       .type = bool
       .caption = "Labels"
@@ -923,13 +928,13 @@ class ArrayInfo:
     n_reflections = True
       .type = bool
       .caption = "Number of reflections"
-      .short_caption = "# HKLs"
+      .short_caption = "#HKLs"
     span = True
       .type = bool
       .caption = "Span"
       .short_caption = "Span"
     minmax_data = True
-      .type = bool  
+      .type = bool
       .caption = "min,max data"
       .short_caption = "min,max data"
     minmax_sigmas = True
@@ -937,11 +942,11 @@ class ArrayInfo:
       .caption = "min,max sigmas"
       .short_caption = "min,max sigmas"
     d_minmax = True
-      .type = bool   
+      .type = bool
       .caption = "d_min,d_max/Å"
       .short_caption = "d_min,d_max/Å"
     unit_cell = False
-      .type = bool   
+      .type = bool
       .caption = "Unit cell parameters (a/Å, b/Å, c/Å, α°, β°, γ°)"
       .short_caption = "unit cell (a/Å, b/Å, c/Å, α°, β°, γ°)"
     space_group = False
@@ -949,7 +954,7 @@ class ArrayInfo:
       .caption = "Space group"
       .short_caption = "space group"
     n_centrics = False
-      .type = bool   
+      .type = bool
       .caption = "Centric reflections"
       .short_caption = "#centrics"
     is_anomalous = True
@@ -961,23 +966,23 @@ class ArrayInfo:
       .caption = "Is symmetry unique"
       .short_caption = "Sym.uniq."
     n_sys_abs = False
-      .type = bool   
+      .type = bool
       .caption = "Systematic absences"
       .short_caption = "#Syst.abs."
     data_completeness = True
-      .type = bool   
+      .type = bool
       .caption = "Completeness in resolution range"
       .short_caption = "Data compl."
-    data_completeness_infty = False
-      .type = bool   
+    data_compl_infty = False
+      .type = bool
       .caption = "Completeness with d_max=infinity"
       .short_caption = "Compl.inf."
-    anomalous_completeness = False
-      .type = bool   
+    ano_completeness = False
+      .type = bool
       .caption = "Anomalous completeness in resolution range"
       .short_caption = "Ano.complete"
-    anomalous_mean_diff = False
-      .type = bool   
+    ano_mean_diff = False
+      .type = bool
       .caption = "Mean anomalous difference."
       .short_caption = "Ano.dif. "
     n_bijvoet = False
@@ -985,30 +990,41 @@ class ArrayInfo:
       .caption = "# Bijvoet pairs"
       .short_caption = "#Bijvoets"
     n_singletons = False
-      .type = bool   
+      .type = bool
       .caption = "# Lone anomalous reflections"
       .short_caption = "#Singletons"
   }
 
   """
   philobj = parse(arrayinfo_phil_str)
+  # make a dictionary of user friendly captions for HKLviewer GUI displaying list of table headers
   caption_dict = {}
-  for obj in philobj.objects[0].objects:
-    caption_dict[obj.name] = obj.short_caption
-  
+  for objs in philobj.objects:
+    if objs.name == "selected_info":
+      for obj in objs.objects:
+        caption_dict[obj.name] = obj.short_caption
 
 
   def get_selected_info_columns_from_phil(self,philxtr=None):
     info_format_tpl = []
     if not philxtr: # then use the default values in the arrayinfo_phil_str
       philxtr = parse(self.arrayinfo_phil_str).extract()
-
+    delim = philxtr.delimiter
     for colname,selected in list(philxtr.selected_info.__dict__.items()):
       if not colname.startswith("__"):
         if selected:
           info_format_tpl.append( self.info_format_dict[colname] )
     # transpose info_format_tpl to return a list of headers, a list of values, and two lists of format strings
-    return list(zip(*info_format_tpl)) 
-
-
-
+    info_fmt = list(zip(*info_format_tpl))
+    # make a line of array info formatted for a table as well as a table header
+    headerlst, infolst, dummy, fmtlst = info_fmt
+    headerstr = ""
+    for h in headerlst:
+      headerstr += h + delim
+    infostr = ""
+    for i,info in enumerate(infolst):
+      inf = info
+      if i==0 and self.wrap_labels>0:
+        inf = textwrap.wrap(info, width=self.wrap_labels)
+      infostr += fmtlst[i].format(inf)  + delim
+    return info_fmt, headerstr, infostr

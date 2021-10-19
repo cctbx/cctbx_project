@@ -72,15 +72,18 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
       if fomsarray:
         fomslabel = fomsarray.info().label_string()
       arrayinfo = ArrayInfo(hklscene.work_array)
-      scenemindata.append(arrayinfo.minmaxdata[0]) 
+      scenemindata.append(arrayinfo.minmaxdata[0])
       scenemaxdata.append(arrayinfo.minmaxdata[1])
       sceneminsigmas.append(arrayinfo.minmaxsigs[0])
       scenemaxsigmas.append(arrayinfo.minmaxsigs[1])
       lbl = arrayinfo.labelstr
+      hassigmas=True
+      if math.isnan(arrayinfo.maxsigmas):
+        hassigmas=False
       if fomslabel:
         lbl = arrayinfo.labelstr + " + " + fomslabel
-      headerlst, infolst, dummy, fmtlst = arrayinfo.get_selected_info_columns_from_phil()
-      scenearrayinfos.append([infolst, pidx, fidx, lbl, infolst[1]])
+      (dummy1, infolst, dummy2, dummy3), dummy4, dummy5 = arrayinfo.get_selected_info_columns_from_phil()
+      scenearrayinfos.append([infolst, pidx, fidx, lbl, infolst[1], hassigmas])
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
 
 
@@ -780,22 +783,21 @@ class hklview_3d:
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
                               )
-      scenearraylabeltypes = [ (e[3], e[4], e[1], e[5]) for sceneid,e in enumerate(hkl_scenes_infos) ]
+      scenearraylabeltypes = [ (e[3], e[4], e[1], e[5], e[6]) for e in hkl_scenes_infos ]
       self.SendInfoToGUI({ "scene_array_label_types": scenearraylabeltypes, "NewHKLscenes" : True })
 
       self.bin_labels_type_idxs = []
       self.bin_labels_type_idxs.append(("Resolution",  "", -1 ))
       self.bin_labels_type_idxs.append(("Singletons", "", -1 ))
-      for labels,labeltype,idx,sceneid in scenearraylabeltypes:
-        #label = ",".join(labels)
-        label = labels
-        if labeltype not in  ["iscomplex", "iscomplex_fom", "ishendricksonlattman"]:
+      for label,labeltype,idx,hassigmas,sceneid in scenearraylabeltypes:
+        if labeltype not in  ["Map coeffs", "Map coeffs_fom", "HL coeffs"]:
           self.bin_labels_type_idxs.append((label, labeltype, sceneid))
-        if labeltype == "hassigmas":
-          self.bin_labels_type_idxs.append(("Sigmas of " + label, labeltype, sceneid))
-        if labeltype == "iscomplex":
+        if hassigmas:
+          self.bin_labels_type_idxs.append(("Sigmas of " + label, "hassigmas", sceneid))
+        if labeltype == "Map coeffs":
           self.bin_labels_type_idxs.append(("Phases of " + label, labeltype, sceneid))
           self.bin_labels_type_idxs.append(("Amplitudes of " + label, labeltype, sceneid))
+
       self.SendInfoToGUI({ "bin_labels_type_idxs": self.bin_labels_type_idxs})
       self.get_labels_of_data_for_binning()
     else:
@@ -1005,11 +1007,11 @@ class hklview_3d:
     if datatype == "hassigmas" and binscenelabel == "Sigmas of " + label:
       bindata = self.HKLscene_from_dict(sceneid).sigmas.deep_copy()
       binvalsboundaries = [ self.HKLMinSigmas_from_dict(sceneid) - 0.1 , self.HKLMaxSigmas_from_dict(sceneid) + 0.1 ]
-    elif datatype == "iscomplex" and "Phases of " + label in binscenelabel:
+    elif datatype in "Map coeffs" and "Phases of " + label in binscenelabel:
       bindata = self.HKLscene_from_dict(sceneid).phases.deep_copy()
       # preselect centric reflections, i.e. those with phi = 0 or 180
       binvalsboundaries = [-0.01, 0.01, 179.99, 180.01, 359.99, 360]
-    elif datatype == "iscomplex" and "Amplitudes of " + label in binscenelabel:
+    elif datatype in "Map coeffs" and "Amplitudes of " + label in binscenelabel:
       bindata = self.HKLscene_from_dict(sceneid).ampl.deep_copy()
       binvalsboundaries = [ self.HKLMinData_from_dict(sceneid) - 0.1 , self.HKLMaxData_from_dict(sceneid) + 0.1 ]
     else:
@@ -1353,7 +1355,7 @@ class hklview_3d:
         mstr += binformatstr %(bin1, bin2)
       self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 ), precision) )
       self.binstrs.append(mstr)
-      self.mprint(mstr, verbose=0)
+      self.mprint(mstr, verbose=1)
       cntbin += 1
 
     if self.ngl_settings.bin_opacities == "":
