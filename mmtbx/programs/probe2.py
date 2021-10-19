@@ -1632,6 +1632,9 @@ Note:
     try:
       p = mmtbx.model.manager.get_default_pdb_interpretation_params()
       p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
+      p.pdb_interpretation.allow_polymer_cross_special_position=True
+      p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+      p.pdb_interpretation.proceed_with_excessive_length_bonds=True
       self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
       geometry = self.model.get_restraints_manager().geometry
       sites_cart = self.model.get_sites_cart() # cartesian coordinates
