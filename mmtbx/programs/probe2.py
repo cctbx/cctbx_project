@@ -292,7 +292,9 @@ Note:
   The original Probe program had two ways to specify whether HET atoms were included
   and whether water atoms were include, in the selection description and as separate
   command-line arguments.  The command-line arguments are not present in Probe2, they
-  must be specified as part of the selection criteria.
+  must be specified as part of the selection criteria.  Also Probe2 does not break out
+  aromatic Carbons as Car in a separate category when counting dots, they are treated
+  as C for reporting purposes.
 
   The most simple dotkin:
     mmtbx.probe2 approach=self source_selection="all" output.file_name=out.kin input.pdb
@@ -1677,7 +1679,11 @@ Note:
         self._atomClasses[a] = self._atom_class_for(a)
       else:
         # For hydrogen, assign based on what it is bonded to.
-        self._atomClasses[a] = self._atom_class_for(self._allBondedNeighborLists[a][0])
+        if len(self._allBondedNeighborLists[a]) != 1:
+          raise Sorry("Found Hydrogen with number of neigbors other than 1: "+
+                      str(len(self._allBondedNeighborLists[a])))
+        else:
+          self._atomClasses[a] = self._atom_class_for(self._allBondedNeighborLists[a][0])
 
     ################################################################################
     # Get the dot sets we will need for each atom.  This is the set of offsets from the
@@ -1704,7 +1710,11 @@ Note:
         self._inMainChain[a] = mainchain_sel[a.i_seq]
       else:
         # Check our bonded neighbor to see if it is on the mainchain if we are a Hydrogen
-        self._inMainChain[a] = mainchain_sel[self._allBondedNeighborLists[a][0].i_seq]
+        if len(self._allBondedNeighborLists[a]) != 1:
+          raise Sorry("Found Hydrogen with number of neigbors other than 1: "+
+                      str(len(self._allBondedNeighborLists[a])))
+        else:
+          self._inMainChain[a] = mainchain_sel[self._allBondedNeighborLists[a][0].i_seq]
       self._inSideChain[a] = sidechain_sel[a.i_seq]
 
     ################################################################################
@@ -1715,14 +1725,15 @@ Note:
       foundPolar = False
       for a in allAtoms:
         if a.element_is_hydrogen():
-          try:
+          if len(self._allBondedNeighborLists[a]) != 1:
+            raise Sorry("Found Hydrogen with number of neigbors other than 1: "+
+                        str(len(self._allBondedNeighborLists[a])))
+          else:
             neighbor = self._allBondedNeighborLists[a][0]
             if neighbor.element in ['N', 'O', 'S']:
               foundPolar = True
             elif neighbor.element == 'C':
               foundCBonded = True
-          except Exception:
-            pass
       if not (foundCBonded and foundPolar):
         raise Sorry("Did not find both polar and non-polar Hydrogens in model.  For proper operation, "+
                     "Probe requires explicit Hydrogens.  Run Reduce2 or another placement "+
