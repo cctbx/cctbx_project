@@ -16,6 +16,22 @@ dispatch {
 
 input_phil = """
 input {
+  alist {
+    file = None
+      .type = str
+      .multiple = True
+      .help = Path to a txt file containing experiment tags or experiment filenames to merge (1 per line, all of same type)
+      .help = If contents are files: then only experiments whose filename is in the alist will be merged
+      .help = If contents are tags: then only experiments whose filename contains one of the alist tags will be merged
+    type = *tags files
+      .type = choice
+      .help = the contents of the input.alist_file, either dials.stills_process image_tags, or absolute expt file paths
+      .help = actually the tag can be any unique substring of the expt filenames found under input.path
+      .help = Note, for very large datasets, using type=files should perform better
+    op = *keep reject
+      .type = choice
+      .help = whether we keep or reject experiments according to the alist(s)
+  }
   keep_imagesets = False
     .type = bool
     .help = If True, keep imagesets attached to experiments
@@ -101,26 +117,13 @@ filter
   .help = or to modify the entire experiment by a reindexing operator
   .help = refer to the select section for filtering of individual reflections
   {
-  algorithm = n_obs a_list reindex resolution unit_cell report
+  algorithm = n_obs reindex resolution unit_cell report
     .type = choice
     .multiple = True
   n_obs {
     min = 15
       .type = int
       .help = Minimum number of observations for subsequent processing
-  }
-  a_list
-    .help = a_list is a text file containing a list of acceptable experiments
-    .help = for example, those not misindexed, wrong type, or otherwise rejected as determined separately
-    .help = suggested use, string matching, can include timestamp matching, directory name, etc
-    {
-    file = None
-      .type = path
-      .multiple = True
-    operation = *select deselect
-      .type = choice
-      .multiple = True
-      .help = supposedly have same number of files and operations. Different lists can be provided for select and deselect
   }
   reindex {
     data_reindex_op = h,k,l
