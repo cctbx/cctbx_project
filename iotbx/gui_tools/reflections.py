@@ -762,11 +762,13 @@ class ArrayInfo:
     import math
     nan = float("nan")
     self.wrap_labels = wrap_labels
-    if (millarr.unit_cell() is None) or (millarr.space_group() is None) :
+    if millarr.space_group() is None :
       self.spginf = "?"
-      self.ucell = (nan, nan, nan, nan, nan, nan)
     else:
       self.spginf = millarr.space_group_info().symbol_and_number()
+    if millarr.unit_cell() is None:
+      self.ucell = (nan, nan, nan, nan, nan, nan)
+    else:
       self.ucell = millarr.unit_cell().parameters()
     self.ucellinf = "({:.6g}Å, {:.6g}Å, {:.6g}Å, {:.6g}°, {:.6g}°, {:.6g}°)".format(*self.ucell)
     data = millarr.deep_copy().data()
@@ -837,7 +839,7 @@ class ArrayInfo:
         millarr = millarr.select(selection=~sys_absent_flags)
       self.n_centric = millarr.centric_flags().data().count(True)
     if not math.isnan(self.ucell[0]):
-      if (self.spginf != ""
+      if (self.spginf != "?"
           and millarr.indices().size() > 0
           and self.issymunique):
         millarr.setup_binner(n_bins=1)
