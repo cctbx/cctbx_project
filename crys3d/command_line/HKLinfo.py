@@ -47,6 +47,7 @@ submitted on the command line together with the name of the reflection file.
 
 
 if __name__ == '__main__':
+  #import time
   #time.sleep(10) # enough time to attach debugger
   # create parser
   logger = multi_out()

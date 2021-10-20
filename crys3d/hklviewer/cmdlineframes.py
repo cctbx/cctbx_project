@@ -7,6 +7,7 @@ from cctbx.miller import display2 as display
 from crys3d.hklviewer import jsview_3d as view_3d
 #from crys3d.hklviewer.jsview_3d import ArrayInfo
 from cctbx import miller
+from cctbx import crystal
 from libtbx.math_utils import roundoff
 from libtbx.str_utils import format_value
 from cctbx.array_family import flex
@@ -591,13 +592,25 @@ class HKLViewFrame() :
         info = array.info()
         array = array.customized_copy(data=flex.int([uniquestrings.index(d) for d in array.data()]))
         array.set_info(info)
+      if i>0:
+        if arrays[i-1].unit_cell() is not None:
+          previous_ucell = arrays[i-1].unit_cell()
+        if arrays[i-1].space_group() is not None:
+          previous_spg = arrays[i-1].space_group()
+      if array.unit_cell() is None:
+        array._unit_cell = previous_ucell
+        self.mprint("""No unit cell present in the %d. miller array. Borrowing from previous miller array""" %i)
       if array.space_group() is None:
-        array._unit_cell = uc
-        if spg is None:
-          raise Sorry("No space group definition found in this file. Rendering in reciprocal space is not possible.")
-        array._space_group_info = spg.info()
-        self.mprint("""No unit cell or space group info present in the %d. miller array.
-Borrowing them from the first miller array""" %i)
+        symm_new = crystal.symmetry( unit_cell = previous_ucell,
+                                    space_group_info = previous_spg.info()
+                                    )
+        info = array.info()
+        array = array.customized_copy(crystal_symmetry = symm_new)
+        array.set_info(info)
+        self.mprint("""No space group present in the %d. miller array. Borrowing from previous miller array""" %i)
+      if array.space_group() is None:
+        raise Sorry("No space group definition found in the first miller array. Rendering in reciprocal space is not possible.")
+
       wrap_labels = 25
       arrayinfo = ArrayInfo(array,wrap_labels)
       info_fmt, headerstr, infostr = arrayinfo.get_selected_info_columns_from_phil(self.params )

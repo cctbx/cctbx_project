@@ -883,7 +883,7 @@ class ArrayInfo:
       # the keys here must be verbatim copies of names of phil attributes in arrayinfo_phil_str below
       "labels":            (" %s" %self.caption_dict["labels"] + " "*blanks,   self.labelstr,         "{}",                   self.labelsformat),
       "description":       ("       %s      "%self.caption_dict["description"],self.desc,             "{}",                   "{:>16} "),
-      "wavelength":        ("   %s  "%self.caption_dict["wavelength"],         self.wavelength,       "{}",                   "{:>7} "),
+      "wavelength":        ("   %s   "%self.caption_dict["wavelength"],        self.wavelength,       "{}",                   "{:>8} "),
       "n_reflections":     ("  %s  " %self.caption_dict["n_reflections"],      self.arrsize,          "{}",                   "{:>8} "),
       "span":              (" "*15 + self.caption_dict["span"] + " "*14,       self.span,             "{}",                   "{:>32} "),
       "minmax_data":       ("     %s       " %self.caption_dict["minmax_data"],self.minmaxdata,       "{0[0]:.6}, {0[1]:.6}", "{0[0]:>11.5}, {0[1]:>11.5}"),
