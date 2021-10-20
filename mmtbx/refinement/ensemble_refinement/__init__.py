@@ -1862,15 +1862,6 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   if er_params.remove_alt_conf_from_input_pdb:
     n_removed_atoms = model.remove_alternative_conformations(
         always_keep_one_conformer=True)
-  model.process(pdb_interpretation_params = params.ensemble_refinement,
-    make_restraints=True)
-  if model.get_number_of_models() > 1:
-    raise Sorry("Multiple models not supported.")
-  # Remove alternative conformations if present
-  n_removed_atoms = 0
-
-  if n_removed_atoms>0 and is_amber_refinement(params):
-    raise Sorry('Amber does not support alt. locs. in Ensemble Refinement')
 
   if n_removed_atoms > 0:
     pdb_file_removed_alt_confs = pdb_file[0:-4]+'_removed_alt_confs.pdb'
@@ -1887,6 +1878,18 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
       restraint_objects = cif_objects,
       #pdb_interpretation_params = params.ensemble_refinement,
       log = log)
+
+  model.process(pdb_interpretation_params = params.ensemble_refinement,
+    make_restraints=True)
+
+  if model.get_number_of_models() > 1:
+    raise Sorry("Multiple models not supported.")
+  # Remove alternative conformations if present
+  n_removed_atoms = 0
+
+  if n_removed_atoms>0 and is_amber_refinement(params):
+    raise Sorry('Amber does not support alt. locs. in Ensemble Refinement')
+
 
   # Refinement flags
   # Worst hack I've ever seen! No wonder ensemble refinement is semi-broken!
