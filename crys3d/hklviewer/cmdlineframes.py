@@ -597,6 +597,8 @@ class HKLViewFrame() :
           previous_ucell = arrays[i-1].unit_cell()
         if arrays[i-1].space_group() is not None:
           previous_spg = arrays[i-1].space_group()
+
+      # A cif file might lack unit cell or space group for all the crystals in the file
       if array.unit_cell() is None:
         array._unit_cell = previous_ucell
         self.mprint("""No unit cell present in the %d. miller array. Borrowing from previous miller array""" %i)

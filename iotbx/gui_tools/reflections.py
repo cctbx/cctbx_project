@@ -998,6 +998,7 @@ selected_info {
   }
 
   """
+
   philobj = parse(arrayinfo_phil_str)
   # make a dictionary of user friendly captions for HKLviewer GUI displaying list of table headers
   caption_dict = {}
