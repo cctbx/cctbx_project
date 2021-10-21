@@ -220,18 +220,17 @@ Full parameters:
       scattering_table="n_gaussian")
     fmodel.show(log=out)
     f_model = fmodel.f_model()
-    r_free_flags = f_model.customized_copy(data=fmodel.arrays.free_sel)
   else :
     if (f_model.anomalous_flag()):
       f_model = f_model.average_bijvoet_mates()
-    f_model, r_free_flags = f_model.common_sets(other=r_free_flags)
+
   stats = mmtbx.validation.experimental.merging_and_model_statistics(
-    f_model=f_model,
-    f_obs=f_obs,
-    r_free_flags=r_free_flags,
-    unmerged_i_obs=unmerged_i_obs,
-    n_bins=params.n_bins,
-    sigma_filtering=params.sigma_filtering)
+    f_model         = f_model,
+    f_obs           = fmodel.f_obs(),
+    r_free_flags    = fmodel.r_free_flags(),
+    unmerged_i_obs  = unmerged_i_obs,
+    n_bins          = params.n_bins,
+    sigma_filtering = params.sigma_filtering)
   stats.show_cc_star(out=out)
   if (params.loggraph):
     stats.show_loggraph(out=out)

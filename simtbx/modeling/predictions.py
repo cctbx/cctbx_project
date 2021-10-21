@@ -13,12 +13,12 @@ from dxtbx.model import ExperimentList
 from numpy import logical_not as logi_not
 
 
-def get_predicted_from_pandas(df, params, strong, eid, device_Id=0, spectrum_override=None):
+def get_predicted_from_pandas(df, params, strong, eid='', device_Id=0, spectrum_override=None):
     """
     :param df: pandas dataframe, stage1_df attribute of simtbx.command_line.hopper_process.HopperProcess
     :param params: instance of diffBragg/phil.py phil params
     :param strong: strong (observed) reflections
-    :param eid: experiment identifier
+    :param eid: experiment identifier, TODO: verify that the default is an empty string ''
     :param device_Id: GPU device Id for simulating forward model
     :param spectrum_override: the X-ray spectra to use during prediction
     :return: predicted reflections table , to be passed along to dials.integrate functions
@@ -76,8 +76,9 @@ def get_predicted_from_pandas(df, params, strong, eid, device_Id=0, spectrum_ove
     # separate out the weak from the strong
     label_weak_predictions(predictions, strong)
     n_weak = sum(predictions["is_weak"])
+    predictions["is_strong"] = flex.bool(np.logical_not(predictions["is_weak"]))
     n_pred = len(predictions)
-    n_strong = n_pred - n_weak
+    n_strong = np.sum(predictions["is_strong"])
     print("%d / %d predicted refls are near strongs" % (n_strong, n_pred))
 
     label_weak_spots_for_integration(params.predictions.weak_fraction, predictions)

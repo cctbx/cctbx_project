@@ -601,8 +601,9 @@ class manager(object):
     grm.set_ramachandran_restraints(manager = ramachandran_restraints_manager)
 
   def unset_ramachandran_plot_restraints(self):
-    grm = self.get_restraints_manager().geometry
-    grm.remove_ramachandran_in_place()
+    if self.get_restraints_manager() is not None:
+      grm = self.get_restraints_manager().geometry
+      grm.remove_ramachandran_in_place()
 
   def crystal_symmetry(self):
     cs = self._crystal_symmetry

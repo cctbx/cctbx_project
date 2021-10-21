@@ -180,7 +180,8 @@ def initialize_rho_mn(ncs_pairs, d_spacings_data, binner, rms=0.5):
   for p in ncs_pairs:
     p.set_rhoMN(rho_mn_initial)
 
-def lbfgs_run(target_evaluator, use_bounds, lower_bound, upper_bound):
+def lbfgs_run(target_evaluator, use_bounds, lower_bound, upper_bound,
+       max_iterations=None):
   minimizer = lbfgsb.minimizer(
     n   = target_evaluator.n,
     #factr=1.e+1, XXX Affects speed significantly
@@ -200,6 +201,7 @@ def lbfgs_run(target_evaluator, use_bounds, lower_bound, upper_bound):
         continue
       assert not minimizer.requests_f_and_g()
       if(minimizer.is_terminated()): break
+      if(icall>max_iterations): break
   except RuntimeError as e:
     minimizer.error = str(e)
   minimizer.n_calls = icall

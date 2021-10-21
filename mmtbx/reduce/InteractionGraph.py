@@ -22,7 +22,7 @@ from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import
 
 from boost_adaptbx import graph
-import Movers
+import mmtbx.reduce.Movers as Movers
 import mmtbx_probe_ext as probeExt
 
 def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
