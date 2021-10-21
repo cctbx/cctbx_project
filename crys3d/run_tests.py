@@ -3,7 +3,7 @@ from libtbx import test_utils
 import libtbx.load_env
 
 tst_list = [
-"$D/tst_hklinfo.py",
+"$D/regression/tst_hklinfo.py",
 ]
 
 def run():
