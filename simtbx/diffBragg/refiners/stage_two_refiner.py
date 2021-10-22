@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from libtbx.mpi4py import MPI
+from simtbx.diffBragg import stage_two_utils
 
 COMM = MPI.COMM_WORLD
 if not hasattr(COMM, "rank"):
@@ -54,6 +55,10 @@ from dials.array_family import flex
 from simtbx.diffBragg.refiners import BaseRefiner
 from collections import Counter
 from cctbx import miller, sgtbx
+from simtbx.diffBragg.refiners.parameters import RangedParameter
+
+# how many parameters per shot, currently just scale and B-factor
+N_PARAM_PER_SHOT = 2
 
 
 class StageTwoRefiner(BaseRefiner):
@@ -120,7 +125,21 @@ class StageTwoRefiner(BaseRefiner):
 
         self.symbol = sgsymbol
         self.space_group = sgtbx.space_group(sgtbx.space_group_info(symbol=self.symbol).type().hall_symbol())
+
+        self.REGIONS = None  # detector regions for gain refinement (this is a labeled array, same shape as self.S.detector
+        self.num_regions = None  # the number of unique regions
+        self.unique_regions = None  # the unique regions as a 1-d np.array
+        self.region_params = {}  # dictionary for storuing diffBragg/refiners/parameters.RangerParameter for gain correction params
+
         self.I_AM_ROOT = COMM.rank==0
+
+    def _load_gain_regions(self):
+        npan = len(self.S.detector)
+        nfast, nslow = self.S.detector[0].get_image_size()
+        det_shape = npan, nslow, nfast
+        self.REGIONS = stage_two_utils.regionize_detector(det_shape, self.params.refiner.region_size)
+        self.unique_regions = np.unique(self.REGIONS)
+        self.num_regions = len(self.unique_regions)
 
     def __call__(self, *args, **kwargs):
         _, _ = self.compute_functional_and_gradients()
@@ -156,9 +175,16 @@ class StageTwoRefiner(BaseRefiner):
             raise KeyError("input data funky, check GlobalRefiner inputs")
         return shot_dict
 
+    def _set_current_gain_per_pixel(self):
+        M = self.Modelers[self._i_shot]
+        M._gain_region_per_pixel = self.REGIONS[M.all_pid, M.all_slow, M.all_fast]
+        M.all_gain = self._gain_per_region[M._gain_region_per_pixel]
+
     def _evaluate_averageI(self):
         """model_Lambda means expected intensity in the pixel"""
-        self.model_Lambda = self.Modelers[self._i_shot].all_background + self.model_bragg_spots
+        # NOTE: gain correction is applied to te background fit, as the background was fit to the data
+        G = self.Modelers[self._i_shot].all_gain
+        self.model_Lambda = G*self.Modelers[self._i_shot].all_background + self.model_bragg_spots
 
     def make_output_dir(self):
         if self.I_AM_ROOT and not os.path.exists(self.output_dir):
@@ -179,14 +205,14 @@ class StageTwoRefiner(BaseRefiner):
             raise ValueError("Need to supply a non empty idx from asu map")
 
         self.make_output_dir()
+        self._load_gain_regions()
 
         self.shot_mapping = self._get_shot_mapping()
         self.n_total_shots = len(self.shot_mapping)
 
         test_shot = self.shot_ids[0]
-        N_PARAM_PER_SHOT = 2
-        self.n_ucell_param = len(self.Modelers[test_shot].PAR.ucell_man.variables)
-        self.n_total_params = self.n_total_shots*N_PARAM_PER_SHOT + self.n_global_fcell
+        self.n_ucell_param = len(self.Modelers[test_shot].PAR.ucell_man.variables)  # not used
+        self.n_total_params = self.n_total_shots*N_PARAM_PER_SHOT + self.n_global_fcell + self.num_regions
 
         self.spot_scale_xpos = {}
         self.Bfactor_xpos = {}
@@ -209,6 +235,9 @@ class StageTwoRefiner(BaseRefiner):
         LOGGER.info("--Setting up per shot parameters")
 
         self.fcell_xstart = self.n_total_shots*N_PARAM_PER_SHOT
+        self.regions_xstart = self.fcell_xstart + self.n_global_fcell
+
+        self._setup_region_refinement_parameters()
 
         self.hkl_totals = []
         if self.refine_Fcell:
@@ -245,6 +274,12 @@ class StageTwoRefiner(BaseRefiner):
 
         self._MPI_barrier()
         LOGGER.info("Setup ends!")
+
+    def _setup_region_refinement_parameters(self):
+        self.region_params = {}
+        for i_reg in range(self.num_regions):
+            p = RangedParameter(init=1, minval=0.5, maxval=1.5, sigma=1, center=1, beta=0.04)
+            self.region_params["region%d" % i_reg] = p
 
     def _get_i_fcell_slices(self, Modeler):
         """finds the boundaries for each fcell in the 1-D array of per-shot data"""
@@ -518,6 +553,13 @@ class StageTwoRefiner(BaseRefiner):
     def _get_panels_fasts_slows(self):
         pass
 
+    def _set_current_gain_correction_map(self):
+        self._gain_per_region = np.zeros(self.num_regions)
+        for i_reg in range(self.num_regions):
+            gain_x = self.x[self.regions_xstart+i_reg]
+            gain = self.region_params["region%d" % i_reg].get_val(gain_x)
+            self._gain_per_region[i_reg] = gain
+
     def compute_functional_gradients_diag(self):
         self.compute_functional_and_gradients()
         return self._f, self._g, self.d
@@ -530,7 +572,7 @@ class StageTwoRefiner(BaseRefiner):
         return out
 
     def _compute_functional_and_gradients(self):
-        LOGGER.info("BEGIN FUNC GRAD ; iteration %d" % self.iterations)
+        LOGGER.info(Bcolors.OKBLUE+"BEGIN FUNC GRAD ; iteration %d" % self.iterations+Bcolors.ENDC)
         #if self.verbose:
         #    self._print_iteration_header()
 
@@ -547,6 +589,9 @@ class StageTwoRefiner(BaseRefiner):
         self._MPI_save_state_of_refiner()
         self._update_spectra_coefficients()  # updates the diffBragg lambda coefficients if refinining spectra
 
+        # get the gain correction image?
+        self._set_current_gain_correction_map()
+
         tshots = time.time()
 
         LOGGER.info("Iterate over %d shots" % len(self.shot_ids))
@@ -558,6 +603,9 @@ class StageTwoRefiner(BaseRefiner):
             if COMM.rank == 0 and not os.path.exists(self._save_model_dir):
                 os.makedirs(self._save_model_dir)
             COMM.barrier()
+
+        if self.iterations % self.params.refiner.save_gain_freq == 0:
+            self._save_optimized_gain_map()
 
         for self._i_shot in self.shot_ids:
             self.scale_fac = self._get_spot_scale(self._i_shot)**2
@@ -585,6 +633,7 @@ class StageTwoRefiner(BaseRefiner):
             # TODO pre-extractions for all parameters
             self._pre_extract_deriv_arrays()
             self._extract_pixel_data()
+            self._set_current_gain_per_pixel()
             self._evaluate_averageI()
             self._evaluate_log_averageI_plus_sigma_readout()
 
@@ -606,6 +655,7 @@ class StageTwoRefiner(BaseRefiner):
                 P = MOD.all_pid
                 F = MOD.all_fast
                 S = MOD.all_slow
+                #G = MOD.all_gain
                 M = self.model_Lambda
                 B = MOD.all_background
                 D = MOD.all_data
@@ -625,6 +675,7 @@ class StageTwoRefiner(BaseRefiner):
             self._spot_scale_derivatives()
             #self._Bfactor_derivatives()
             self._Fcell_derivatives()
+            self._gain_region_derivatives()
         tshots = time.time()-tshots
         LOGGER.info("Time rank worked on shots=%.4f" % tshots)
         tmpi = time.time()
@@ -680,6 +731,25 @@ class StageTwoRefiner(BaseRefiner):
 
     def _sanity_check_grad(self):
         pass
+
+    def _gain_region_derivatives(self):
+        if not self.params.refiner.refine_gain_map:
+            return
+        MOD = self.Modelers[self._i_shot]
+
+        dL_dG = 0.5*self.one_over_v* (MOD.all_background + 2*self.u*(MOD.all_data-MOD.all_background) - \
+            self.u*self.u*MOD.all_background*self.one_over_v)
+
+        reg_grad = np.zeros(self.num_regions)
+        np.add.at(reg_grad, MOD._gain_region_per_pixel[MOD.all_trusted], dL_dG[MOD.all_trusted])
+
+        u_reg = set(MOD._gain_region_per_pixel)
+        for i_reg in u_reg:
+            xpos = self.regions_xstart+i_reg
+            gain_x = self.x[xpos]
+            d = self.region_params["region%d"%i_reg].get_deriv(gain_x, reg_grad[i_reg])
+            self.grad[xpos] += d
+        #self.grad[self.regions_xstart:self.regions_xstart+self.num_regions] += reg_grad
 
     def _Fcell_derivatives(self):
         if not self.refine_Fcell:
@@ -835,6 +905,14 @@ class StageTwoRefiner(BaseRefiner):
             LOGGER.info("%s%s%s%s\n, Trial%d (%s): Compute functional and gradients Iter %d PosCurva %d\n%s%s%s%s"
                   % (Bcolors.HEADER, border, border, border, self.trial_id + 1, refine_str, self.iterations + 1, self.num_positive_curvatures, border, border,border, Bcolors.ENDC))
 
+    def _save_optimized_gain_map(self):
+        if self.I_AM_ROOT and self.output_dir is not None:
+            outf = os.path.join(self.output_dir, "gain_map" )
+            LOGGER.info(Bcolors.WARNING+"Saving detector gain map!"+Bcolors.ENDC)
+            np.savez(outf, gain_per_region=self._gain_per_region, region_shape=self.params.refiner.region_size,
+                     det_shape=self.REGIONS.shape, adu_per_photon=self.params.refiner.adu_per_photon)
+            LOGGER.info("Done Saving detector gain map!")
+
     def _MPI_save_state_of_refiner(self):
         if self.I_AM_ROOT and self.output_dir is not None and self.refine_Fcell:
             outf = os.path.join(self.output_dir, "_fcell_trial%d_iter%d" % (self.trial_id, self.iterations))
@@ -865,8 +943,7 @@ class StageTwoRefiner(BaseRefiner):
 
     def _derivative_convenience_factors(self):
         Mod = self.Modelers[self._i_shot]
-        self.Imeas = Mod.all_data
-        self.u = self.Imeas - self.model_Lambda
+        self.u = Mod.all_data*Mod.all_gain - self.model_Lambda
         self.one_over_v = 1. / (self.model_Lambda + Mod.sigma_rdout ** 2)
         self.one_minus_2u_minus_u_squared_over_v = 1 - 2 * self.u - self.u * self.u * self.one_over_v
         if self.calc_curvatures:

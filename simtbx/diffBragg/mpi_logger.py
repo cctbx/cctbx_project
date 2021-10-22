@@ -20,7 +20,7 @@ HOST_COMM = COMM.Split(color=HOST_MAP[HOST])
 
 LEVELS = {"low": logging.WARNING, "normal": logging.INFO, "high": logging.DEBUG}
 DETAILED_FORMAT = 'RANK%d:%s | ' % (COMM.rank, HOST) + '%(asctime)s | %(filename)s:%(funcName)s >>  %(message)s'
-SIMPLE_FORMAT = "RANK%d" % COMM.rank + " | %(message)s"
+SIMPLE_FORMAT = "%(message)s"
 
 from simtbx.diffBragg import utils
 
