@@ -66,9 +66,14 @@ namespace molprobity {
     /// region is at optimum contact.
     ///
     /// This checks to make sure that dots that would not have contributed to a good score at optimium
-    /// contact are not considered to contribute to a good score when the atoms are overlapping or far from
-    /// each other?
-    /// @todo Figure out for sure what this is computing.
+    /// contact are not considered to contribute to a good score when the atoms are overlapping.
+    /// This should be run on a dot that is not in contact to see if it is within the acceptable region
+    /// or not (if not, it is annular).  When the source and target atom just touch ("kiss") at their
+    /// edges, the probe radius will describe a circle on the source atom.  A dot is annular if it is
+    /// further from the kiss location than this ring.  This can only happen for the condition where
+    /// the atoms are overlapping because no dot will be constructed beyond this boundary for atoms
+    /// that are just touching or not touching.
+    /// @return true is returned to indicate that this dot is annular and should not be counted.
     bool annularDots(const Point& dot, const Point& srcLoc, double srcVDWRad,
       const Point& targLoc, double targVDWRad, double probeRadius);
 
