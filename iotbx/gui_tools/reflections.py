@@ -889,27 +889,27 @@ class ArrayInfo:
 
     self.info_format_dict = {
       # the keys here must be verbatim copies of names of phil attributes in arrayinfo_phil_str below
-      "labels":            (" %s" %self.caption_dict["labels"] + " "*blanks,   self.labelstr,         "{}",                   self.labelsformat),
-      "description":       ("       %s      "%self.caption_dict["description"],self.desc,             "{}",                   "{:>16} "),
-      "wavelength":        ("   %s   "%self.caption_dict["wavelength"],        self.wavelength,       "{}",                   "{:>8} "),
-      "n_reflections":     ("  %s  " %self.caption_dict["n_reflections"],      self.arrsize,          "{}",                   "{:>8} "),
-      "span":              (" "*15 + self.caption_dict["span"] + " "*14,       self.span,             "{}",                   "{:>32} "),
-      "minmax_data":       ("     %s       " %self.caption_dict["minmax_data"],self.minmaxdata,       "{0[0]:.6}, {0[1]:.6}", "{0[0]:>11.5}, {0[1]:>11.5}"),
-      "minmax_sigmas":     ("     %s     " %self.caption_dict["minmax_sigmas"],self.minmaxsigs,       "{0[0]:.6}, {0[1]:.6}", "{0[0]:>11.5}, {0[1]:>11.5}"),
-      "d_minmax":          ("   %s      " %self.caption_dict["d_minmax"],      self.dminmax,          "{0[0]:.6}, {0[1]:.6}", "{0[0]:>10.5}, {0[1]:>10.5}"),
-      "unit_cell":         ("     %s      " %self.caption_dict["unit_cell"],   self.ucell,            "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g}",
+      "labels":            (" %s" %self.caption_dict["labels"][0] + " "*blanks,   self.labelstr,         "{}",                   self.labelsformat),
+      "description":       ("       %s      "%self.caption_dict["description"][0],self.desc,             "{}",                   "{:>16} "),
+      "wavelength":        ("   %s   "%self.caption_dict["wavelength"][0],        self.wavelength,       "{}",                   "{:>8} "),
+      "n_reflections":     ("  %s  " %self.caption_dict["n_reflections"][0],      self.arrsize,          "{}",                   "{:>8} "),
+      "span":              (" "*15 + self.caption_dict["span"][0] + " "*14,       self.span,             "{}",                   "{:>32} "),
+      "minmax_data":       ("     %s       " %self.caption_dict["minmax_data"][0],self.minmaxdata,       "{0[0]:.6}, {0[1]:.6}", "{0[0]:>11.5}, {0[1]:>11.5}"),
+      "minmax_sigmas":     ("     %s     " %self.caption_dict["minmax_sigmas"][0],self.minmaxsigs,       "{0[0]:.6}, {0[1]:.6}", "{0[0]:>11.5}, {0[1]:>11.5}"),
+      "d_minmax":          ("   %s      " %self.caption_dict["d_minmax"][0],      self.dminmax,          "{0[0]:.6}, {0[1]:.6}", "{0[0]:>10.5}, {0[1]:>10.5}"),
+      "unit_cell":         ("     %s      " %self.caption_dict["unit_cell"][0],   self.ucell,            "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g}",
                                                                                               "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g} "),
-      "space_group":       ("   %s      " %self.caption_dict["space_group"],   self.spginf,           "{}",                   "{:>19} "),
-      "n_centrics":        ("%s"%self.caption_dict["n_centrics"],              self.n_centric,        "{}",                   "{:>8} "),
-      "n_sys_abs":         ("%s"%self.caption_dict["n_sys_abs"],               self.n_sys_abs,        "{}",                   "{:>9} "),
-      "data_completeness": ("%s"%self.caption_dict["data_completeness"],       self.data_completeness,"{:.5g}",               "{:>10.5g} "),
-      "data_compl_infty":  ("%s"%self.caption_dict["data_compl_infty"],        self.data_compl_infty, "{:.5g}",               "{:>9.5g} "),
-      "is_anomalous":      ("%s"%self.caption_dict["is_anomalous"],            str(self.isanomalous), "{}",                   "{:>8} "),
-      "is_symmetry_unique":("%s"%self.caption_dict["is_symmetry_unique"],      str(self.issymunique), "{}",                   "{:>8} "),
-      "ano_completeness":  ("%s"%self.caption_dict["ano_completeness"],        self.ano_completeness, "{:.5g}",               "{:>11.5g} "),
-      "ano_mean_diff":     ("%s"%self.caption_dict["ano_mean_diff"],           self.ano_mean_diff,    "{:.5g}",               "{:>8.5g} "),
-      "n_bijvoet":         ("%s"%self.caption_dict["n_bijvoet"],               self.n_bijvoet,        "{}",                   "{:>8} "),
-      "n_singletons":      ("%s"%self.caption_dict["n_singletons"],            self.n_singletons,     "{}",                   "{:>10} "),
+      "space_group":       ("   %s      " %self.caption_dict["space_group"][0],   self.spginf,           "{}",                   "{:>19} "),
+      "n_centrics":        ("%s"%self.caption_dict["n_centrics"][0],              self.n_centric,        "{}",                   "{:>8} "),
+      "n_sys_abs":         ("%s"%self.caption_dict["n_sys_abs"][0],               self.n_sys_abs,        "{}",                   "{:>9} "),
+      "data_completeness": ("%s"%self.caption_dict["data_completeness"][0],       self.data_completeness,"{:.5g}",               "{:>10.5g} "),
+      "data_compl_infty":  ("%s"%self.caption_dict["data_compl_infty"][0],        self.data_compl_infty, "{:.5g}",               "{:>9.5g} "),
+      "is_anomalous":      ("%s"%self.caption_dict["is_anomalous"][0],            str(self.isanomalous), "{}",                   "{:>8} "),
+      "is_symmetry_unique":("%s"%self.caption_dict["is_symmetry_unique"][0],      str(self.issymunique), "{}",                   "{:>8} "),
+      "ano_completeness":  ("%s"%self.caption_dict["ano_completeness"][0],        self.ano_completeness, "{:.5g}",               "{:>11.5g} "),
+      "ano_mean_diff":     ("%s"%self.caption_dict["ano_mean_diff"][0],           self.ano_mean_diff,    "{:.5g}",               "{:>8.5g} "),
+      "n_bijvoet":         ("%s"%self.caption_dict["n_bijvoet"][0],               self.n_bijvoet,        "{}",                   "{:>8} "),
+      "n_singletons":      ("%s"%self.caption_dict["n_singletons"][0],            self.n_singletons,     "{}",                   "{:>10} "),
     }
 
   # govern whether or not a property of the ArrayInfo should be returned by get_selected_info_columns_from_phil()
@@ -925,7 +925,7 @@ delimiter = "|"
 selected_info {
     labels = True
       .type = bool
-      .caption = "Labels"
+      .caption = "Name of data array"
       .short_caption = "Labels"
     description = True
       .type = bool
@@ -933,7 +933,7 @@ selected_info {
       .short_caption = "Type"
     wavelength = True
       .type = bool
-      .caption = "Wavelength/Å"
+      .caption = "Recorded wavelength/Å"
       .short_caption = "λ/Å"
     n_reflections = True
       .type = bool
@@ -941,15 +941,15 @@ selected_info {
       .short_caption = "#HKLs"
     span = True
       .type = bool
-      .caption = "Span"
+      .caption = "Crude range of hkl indices"
       .short_caption = "Span"
     minmax_data = True
       .type = bool
-      .caption = "min,max data"
+      .caption = "minimum, maximum values of data"
       .short_caption = "min,max data"
     minmax_sigmas = True
       .type = bool
-      .caption = "min,max sigmas"
+      .caption = "minimum, maximum values of sigmas"
       .short_caption = "min,max sigmas"
     d_minmax = True
       .type = bool
@@ -965,15 +965,15 @@ selected_info {
       .short_caption = "space group"
     n_centrics = False
       .type = bool
-      .caption = "Centric reflections"
+      .caption = "Number of centric reflections"
       .short_caption = "#centrics"
     is_anomalous = True
       .type = bool
-      .caption = "Is anomalous"
+      .caption = "Is data anomalous"
       .short_caption = "Anomalous"
     is_symmetry_unique = True
       .type = bool
-      .caption = "Is symmetry unique"
+      .caption = "Is data symmetry unique"
       .short_caption = "Sym.uniq."
     n_sys_abs = False
       .type = bool
@@ -997,11 +997,11 @@ selected_info {
       .short_caption = "Ano.dif. "
     n_bijvoet = False
       .type = bool
-      .caption = "# Bijvoet pairs"
+      .caption = "Number of Bijvoet pairs"
       .short_caption = "#Bijvoets"
     n_singletons = False
       .type = bool
-      .caption = "# Lone anomalous reflections"
+      .caption = "Number of lone anomalous reflections"
       .short_caption = "#Singletons"
   }
 
@@ -1013,7 +1013,7 @@ selected_info {
   for objs in philobj.objects:
     if objs.name == "selected_info":
       for obj in objs.objects:
-        caption_dict[obj.name] = obj.short_caption
+        caption_dict[obj.name] = (obj.short_caption, obj.caption)
 
 
   def get_selected_info_columns_from_phil(self,philxtr=None):

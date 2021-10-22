@@ -308,9 +308,9 @@ class HKLViewFrame() :
           self.SendInfoToGUI({"array_infotpls": self.viewer.array_info_format_tpl})
 
         colnames_select_lst = []
-        for colname,selected in list(self.params.selected_info.__dict__.items()):
-          if not colname.startswith("__"):
-            colnames_select_lst.append((colname, arrayinfo.caption_dict[colname], selected))
+        for philname,selected in list(self.params.selected_info.__dict__.items()):
+          if not philname.startswith("__"):
+            colnames_select_lst.append((philname, arrayinfo.caption_dict[philname], selected))
         self.SendInfoToGUI({ "colnames_select_lst": colnames_select_lst })
 
       if view_3d.has_phil_path(diff_phil, "save_image_name"):
@@ -626,9 +626,9 @@ class HKLViewFrame() :
         # convert philstring of selected_info into a list so GUI can make a selection settings dialog
         # for what columns to show in the millertable
         colnames_select_lst = []
-        for colname,selected in list(self.params.selected_info.__dict__.items()):
-          if not colname.startswith("__"):
-            colnames_select_lst.append((colname, arrayinfo.caption_dict[colname], selected))
+        for philname,selected in list(self.params.selected_info.__dict__.items()):
+          if not philname.startswith("__"):
+            colnames_select_lst.append((philname, arrayinfo.caption_dict[philname], selected))
         mydict = { "spacegroup_info": arrayinfo.spginf,
                   "unitcell_info": arrayinfo.ucellinf,
                   "colnames_select_lst": colnames_select_lst

@@ -17,14 +17,17 @@ import math, csv
 from io import StringIO
 
 class MyhorizontalHeader(QHeaderView):
-# assigned to HeaderDataTableWidget (NGL_HKLViewer.millertable) but in NGL_HKLViewer.createFileInfoBox()
+# Assigned to HeaderDataTableWidget (NGL_HKLViewer.millertable) but in NGL_HKLViewer.createFileInfoBox()
 # as to avoid a very long chain of parents when accessing select_millertable_column_dlg()
+# Display the labels of the columns in the millertable
+# Right-clicking will invoke NGL_HKLViewer.select_millertable_column_dlg
   def __init__(self, parent=None):
     super(MyhorizontalHeader,self).__init__(Qt.Horizontal, parent)
     self.mousebutton = None
     self.parent = parent
     self.setSectionsClickable(True)
     self.setSectionsMovable(True)
+    self.setToolTip("Right-click to specify which columns to show")
   def mousePressEvent(self, event):
     if event.type() == QEvent.MouseButtonPress:
       if event.button() == Qt.RightButton:
@@ -51,6 +54,8 @@ class HeaderDataTableWidget(QTableWidget):
 
 
 class MillerTableColumnHeaderDialog(QDialog):
+  # Assigned to NGL_HKLViewer.select_millertable_column_dlg allowing the user to
+  # specify with checkboxes which column of the millertable should be visible.
   def __init__(self, parent=None):
     super(MillerTableColumnHeaderDialog, self).__init__(parent.window)
     self.parent = parent
@@ -71,10 +76,11 @@ class MillerTableColumnHeaderDialog(QDialog):
     self.selectcolumnstable.clearContents()
     self.selectcolumnstable.setColumnCount(1)
     self.selectcolumnstable.setRowCount(nrows)
-    for row,(philname, colnames, is_selected) in enumerate(self.parent.colnames_select_lst):
-      item = QTableWidgetItem(colnames) # colnames is the short_caption text to display in the table cell
+    for row,(philname, (short_caption, caption), is_selected) in enumerate(self.parent.colnames_select_lst):
+      item = QTableWidgetItem(short_caption)
       item.setData(Qt.UserRole, philname) # associated phil parameter name is stored with the setData function
       item.setFlags((Qt.ItemIsUserCheckable | Qt.ItemIsEnabled) )
+      item.setToolTip(caption)
       if is_selected:
         item.setCheckState(Qt.Checked)
       else:
