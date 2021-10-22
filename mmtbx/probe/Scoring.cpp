@@ -54,7 +54,7 @@ double dot2srcCenter(const Point& dot, const Point& srcLoc, double srcVDWRad, co
 }
 
 double kissEdge2bullsEye(double ra, double rb, double rp) {
-  /// @todo Describe what this is computing
+  /// @todo Describe what this is computing and how
   return 2 * ra * sqrt(rb * rp / ((ra + rb) * (ra + rp)));
 }
 bool annularDots(const Point& dot, const Point& srcLoc, double srcVDWRad,
