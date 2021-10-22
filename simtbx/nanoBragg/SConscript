@@ -36,6 +36,7 @@ if (env_etc.enable_cuda):
   # Guard against possibility that *.cu code is not there
   if "nanoBraggCUDA.cu" in os.listdir(os.path.join(env_etc.simtbx_dist,"nanoBragg")):
     env_bpl.Prepend(NVCCFLAGS=["-DHAVE_NANOBRAGG_SPOTS_CUDA"])
+    env_bpl.Prepend(NVCCFLAGS=["--expt-relaxed-constexpr"])
     cuda_src = ["nanoBraggCUDA.cu"]
   else:  cuda_src = []
 

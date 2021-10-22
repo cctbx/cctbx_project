@@ -21,12 +21,21 @@ if (env_etc.enable_cuda):
 import os
 import libtbx.load_env
 
+#Borrowed from diffBragg SConscript
+env_etc.eigen_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("simtbx"),"../../eigen"))
+if not os.path.isdir(env_etc.eigen_dist) and hasattr(env_etc, "conda_cpppath"):
+  for candidate in env_etc.conda_cpppath:
+    if os.path.isdir(os.path.join(candidate, "eigen3")):
+      env_etc.eigen_dist = os.path.abspath(os.path.join(os.path.join(candidate, "eigen3")))
+if os.path.isdir(env_etc.eigen_dist):
+  env_etc.eigen_include = env_etc.eigen_dist
+
 Import("env_boost_python_ext")
 env_bpl = env_boost_python_ext.Clone()
 
 env_etc.include_registry.append(
     env=env_bpl,
-    paths=env_etc.simtbx_common_includes + [env_etc.python_include])
+    paths=env_etc.simtbx_common_includes + [env_etc.python_include] + [env_etc.eigen_include])
 
 if (env_etc.enable_cuda):
   # For now do all calculations in double precision to agree with CPU tests
@@ -34,6 +43,7 @@ if (env_etc.enable_cuda):
   # Flag header to declare the cuda wrapper
   env_bpl.Prepend(NVCCFLAGS=["-DNANOBRAGG_HAVE_CUDA"])
   env_bpl.Prepend(NVCCFLAGS=["-DHAVE_NANOBRAGG_SPOTS_CUDA"])
+  env_bpl.Prepend(NVCCFLAGS=["--expt-relaxed-constexpr"])
   cuda_src = []
   cuda_src.append("structure_factors.cu")
   cuda_src.append("detector.cu")
