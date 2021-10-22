@@ -11,6 +11,8 @@ nb_tst_list = [
     "$D/nanoBragg/tst_nanoBragg_cbf_write.py",
     "$D/nanoBragg/tst_multisource_background.py"]
 
+db_tst_list_nonCuda = ["$D/diffBragg/tests/tst_diffBragg_utils.py"]
+
 db_tst_list = [
     "$D/diffBragg/tests/tst_diffBragg_Fhkl_complex.py",
     "$D/diffBragg/tests/tst_diffBragg_change_of_basis.py",
@@ -54,7 +56,7 @@ OPT = libtbx.env.build_options
 
 tst_list = nb_tst_list
 if OPT.enable_cxx11 and sys.platform != 'win32':
-    tst_list += db_tst_list
+    tst_list += db_tst_list+db_tst_list_nonCuda
 
 if OPT.enable_cuda:
   tst_list_parallel = [
