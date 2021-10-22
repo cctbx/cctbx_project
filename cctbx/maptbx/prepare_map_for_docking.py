@@ -1019,6 +1019,14 @@ def run_refine_cryoem_errors(
   # Keep track of volume of map (in voxels) for determining relative
   # scale of sigmaE in different subvolumes
   weighted_points = mask_info.size*mask_info.mean # Weighted volume
+  # Mean mask value measures the weighted fraction of the volume of the whole
+  # map occupied by the density used. This can be converted into the radius of
+  # a sphere (on a relative scale) that would occupy this volume, and then
+  # the oversampling of the Fourier transform is the ratio of the volume of the
+  # total map box divided by the volume of a cube just enclosing that sphere.
+  relative_radius = (3*mask_info.mean/(4*math.pi))**(1./3.)
+  relative_volume = (2*relative_radius)**3
+  over_sampling_factor = 1./relative_volume
 
   d_max = 2*(radius+padding) + d_min # Size of sphere plus a bit
   mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min, d_max=d_max, map_id=map_1_id)
@@ -1249,6 +1257,7 @@ def run_refine_cryoem_errors(
   return group_args(
     shift_cart = shift_cart,
     expectE = expectE, dobs = dobs,
+    over_sampling_factor = over_sampling_factor,
     resultsdict = resultsdict)
 
 # Command-line interface using argparse
@@ -1382,6 +1391,8 @@ def run():
     shift_cart = results.shift_cart
     print ("Origin of full map relative to mtz:", shift_cart)
   dm.write_miller_array_file(mtz_object, filename=mtzout_file_name)
+  over_sampling_factor = results.over_sampling_factor
+  print ("Over-sampling factor for Fourier terms:",over_sampling_factor)
 
 if (__name__ == "__main__"):
   run()
