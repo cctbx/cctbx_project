@@ -210,7 +210,7 @@ output
 
   color_by_na_base = False
     .type = bool
-    .help = Color by NA base (-basecolor, -colorbase in probe)
+    .help = Color by nucleic acid base (-basecolor, -colorbase in probe)
 
   group_label = ""
     .type = str
