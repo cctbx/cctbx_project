@@ -208,9 +208,9 @@ output
     .type = bool
     .help = Add lens keywoard to kin file (-nogroup in probe)
 
-  color_by_dna_base = False
+  color_by_na_base = False
     .type = bool
-    .help = Color by DNA base (-basecolor, -colorbase in probe)
+    .help = Color by NA base (-basecolor, -colorbase in probe)
 
   group_label = ""
     .type = str
@@ -398,7 +398,7 @@ Note:
       then it returns the appropriate base name.  Otherwise, it returns the
       element of the atom.
     '''
-    if not self.params.output.color_by_dna_base:
+    if not self.params.output.color_by_na_base:
       return a.element
     else:
       resName = a.parent().resname
