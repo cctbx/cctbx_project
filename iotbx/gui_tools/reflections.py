@@ -751,8 +751,16 @@ def decode_resolve_map_coeffs(labels):
 
 class ArrayInfo:
   """
-  Extract information from miller array and format it for printing as a table
-  To be called in a loop
+  Extract information from a list of miller_array objects and format it for printing as a table
+  To be called in a loop like:
+
+  for i,array in enumerate(arrays):
+    arrayinfo = ArrayInfo(array)
+    info_fmt, headerstr, infostr = arrayinfo.get_selected_info_columns_from_phil()
+    if i==0:
+      print(headerstr)
+    print(infostr)
+
   """
   def __init__(self, millarr, wrap_labels=0):
     from cctbx.miller import display2
@@ -904,7 +912,7 @@ class ArrayInfo:
       "n_singletons":      ("%s"%self.caption_dict["n_singletons"],            self.n_singletons,     "{}",                   "{:>10} "),
     }
 
-  # govern whether or not a property of the ArrayInfo should be returned by get_selected_info_columns()
+  # govern whether or not a property of the ArrayInfo should be returned by get_selected_info_columns_from_phil()
   arrayinfo_phil_str = """
 wrap_labels = 15
   .type = int
@@ -1009,6 +1017,24 @@ selected_info {
 
 
   def get_selected_info_columns_from_phil(self,philxtr=None):
+    """
+    Returns
+    info_fmt: A list of selected property values from the miller_array object, together with their
+      respective format strings for presenting in a users table such as in HKLviewer.
+    headerstr: A formatted string of column names for printing a table to stdout.
+    infostr: A formatted string of selected property values from the miller_array object for printing
+      a table to stdout.
+
+    If printing a table to stdout this can be done like:
+
+    for i,array in enumerate(arrays):
+      arrayinfo = ArrayInfo(array)
+      info_fmt, headerstr, infostr = arrayinfo.get_selected_info_columns_from_phil()
+      if i==0:
+        print(headerstr)
+      print(infostr)
+
+    """
     info_format_tpl = []
     if not philxtr: # then use the default values in the arrayinfo_phil_str
       philxtr = parse(self.arrayinfo_phil_str).extract()

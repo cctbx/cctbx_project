@@ -6,6 +6,22 @@ from iotbx.gui_tools.reflections import ArrayInfo
 
 
 def run(arrays, philparams=None, log = sys.stdout):
+  """
+  Print a table of properties of miller_array objects from a reflection file to stdout formatted like
+
+7 Miller arrays in this dataset:
+ Labels        |       Type      |  #HKLs  |     min,max data       |Anomalous|Sym.uniq.|Data compl.|
+  R-free-flags |     R-free flag |   30451 |        0.0,         1.0|   False |    True |    0.9999 |
+  FOBS,SIGFOBS |       Amplitude |   30443 |     3.9975,      1557.4|   False |    True |   0.99964 |
+  IOBS,SIGIOBS |       Intensity |   30451 |    -484.25,  2.1485e+05|   False |    True |    0.9999 |
+ I(+),SIGI(+),
+  I(-),SIGI(-) |       Intensity |   57347 |    -727.01,  2.1485e+05|    True |    True |    0.9984 |
+ F(+),SIGF(+),
+  F(-),SIGF(-) |       Amplitude |   57338 |     3.9975,      1557.4|    True |    True |   0.99824 |
+          DANO |  Floating-point |   30451 |    -102.58,      194.38|   False |    True |    0.9999 |
+         SIGDP |       Amplitude |   30450 |        0.0,      85.081|   False |    True |   0.99987 |
+
+  """
   if philparams:
     wrap_labels = philparams.wrap_labels
   else:
