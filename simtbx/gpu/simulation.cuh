@@ -3,6 +3,8 @@
 
 #include <simtbx/nanoBragg/nanotypes.h>
 #include <simtbx/nanoBragg/nanoBraggCUDA.cuh>
+#include <Eigen/Dense>
+#include <Eigen/StdVector>
 using simtbx::nanoBragg::shapetype;
 using simtbx::nanoBragg::hklParams;
 
@@ -268,6 +270,7 @@ __global__ void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixel
 								CUDAREAL k = dot_product(b, scattering);
 								CUDAREAL l = dot_product(c, scattering);
 
+								// h,k,l is H_vec in Derek notation
 								/* round off to nearest whole index */
 								int h0 = ceil(h - 0.5);
 								int k0 = ceil(k - 0.5);
@@ -283,6 +286,43 @@ __global__ void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixel
                                                                 /* fudge the radius so that volume and FWHM are similar to square_xtal spots */
                                                                 double my_arg = hrad_sqr / 0.63 * fudge;
                                                                 F_latt = s_Na * s_Nb * s_Nc * exp(-(my_arg));
+// are we doing diffuse scattering
+CUDAREAL I_latt_diffuse = 0;
+typedef Eigen::Matrix3d MAT3;
+typedef Eigen::Vector3d VEC3;
+MAT3 UBO; // The A matrix in real space
+UBO<<a[1],a[2],a[3],b[1],b[2],b[3],c[1],c[2],c[3];
+UBO *= 1.e10;
+VEC3 H_vec(h,k,l);
+MAT3 Ainv = UBO.inverse();
+VEC3 diffuse_gamma(238.873078,168.346065,73.587935);
+VEC3 diffuse_sigma(0.583037,0.458631,0.704636);
+MAT3 anisoG;
+anisoG<<diffuse_gamma[0],0,0,0,diffuse_gamma[1],0,0,0,diffuse_gamma[2];
+CUDAREAL anisoG_determ = anisoG.determinant();
+MAT3 anisoU;
+anisoU<<diffuse_sigma[0]*diffuse_sigma[0],0,0,0,diffuse_sigma[1]*diffuse_sigma[1],0,0,0,diffuse_sigma[2]*diffuse_sigma[2];
+
+for (int hh=0; hh <1; hh++){
+  for (int kk=0; kk <1; kk++){
+    for (int ll=0; ll <1; ll++){
+      VEC3 H0_offset(h0+hh, k0+kk, l0+ll);
+      VEC3 Q0 = Ainv*H0_offset;
+      CUDAREAL exparg = 4*M_PI*M_PI*Q0.dot(anisoU*Q0);//aniso U is squared diagonal of diffuse sigma
+        //double dwf = exp(-exparg);
+      VEC3 delta_H_offset = H_vec - H0_offset;//Hvec is vec3(h,k,l)
+      VEC3 delta_Q = Ainv*delta_H_offset;
+      VEC3 anisoG_q = anisoG*delta_Q;
+
+      CUDAREAL this_I_latt_diffuse = 8.*M_PI*anisoG_determ /
+                                     pow( (1.+ anisoG_q.dot(anisoG_q)* 4*M_PI*M_PI),2);
+      if (exparg  < .5){ // only valid up to a point
+        this_I_latt_diffuse *= (exparg);
+      }
+      I_latt_diffuse += this_I_latt_diffuse;
+    }
+  }
+}
 
 								/* structure factor of the unit cell */
 								CUDAREAL F_cell = default_F;
@@ -302,7 +342,7 @@ __global__ void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixel
 								/* now we have the structure factor for this pixel */
 
 								/* convert amplitudes into intensity (photons per steradian) */
-								I += F_cell * F_cell * F_latt * F_latt * source_fraction * capture_fraction * omega_pixel;
+								I += F_cell * F_cell * (F_latt * F_latt + I_latt_diffuse) * source_fraction * capture_fraction * omega_pixel;
 								omega_sub_reduction += omega_pixel;
 							}
 							/* end of mosaic loop */
