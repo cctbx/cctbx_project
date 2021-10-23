@@ -143,7 +143,7 @@ class _SingletonOptimizer(object):
     This class optimizes all Movers independently,
     ignoring their impact on one another.  This means that it will not find the global
     minimum for any multi-Mover Cliques.  Derived classes should override the
-    _optimizeCliqueCoarse() and other methods as needed to improve speed.
+    _optimizeCliqueCoarse() and other methods as needed to improve correctness and speed.
     :param model: iotbx model (a group of hierarchy models).  Can be obtained using
     iotbx.map_model_manager.map_model_manager.model().  The model must have Hydrogens,
     which can be added using mmtbx.hydrogens.reduce_hydrogen.place_hydrogens().get_model().
@@ -1487,6 +1487,9 @@ END
   # all of the needed fields are filled in when we use them below.
   # @todo Remove this once place_hydrogens() does all the interpretation we need.
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.allow_polymer_cross_special_position=True
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  p.pdb_interpretation.proceed_with_excessive_length_bonds=True
   model.process(make_restraints=True,pdb_interpretation_params=p) # make restraints
 
   # Get the first model in the hierarchy.
@@ -1585,6 +1588,9 @@ END
   print('Interpreting model')
   startInt = time.clock()
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.allow_polymer_cross_special_position=True
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  p.pdb_interpretation.proceed_with_excessive_length_bonds=True
   model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
   doneInt = time.clock()
 

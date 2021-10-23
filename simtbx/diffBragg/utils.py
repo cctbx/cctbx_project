@@ -808,15 +808,16 @@ def save_spectra_file(spec_file, wavelengths, weights):
     np.savetxt(spec_file, data.T, delimiter=',', header="wavelengths, weights")
 
 
-def load_spectra_file(spec_file, total_flux=None, pinkstride=1, as_spectrum=False):
+def load_spectra_file(spec_file, total_flux=None, pinkstride=1, as_spectrum=False, delim=","):
     """
     load a precognition .lam file
     :param spec_file: path to file
     :param total_flux: total photons per shot
     :param pinkstride: wavelength stride (e.g. pinkstride=10 is every 10th wavelength)
     :param as_spectrum: as a nanoBragg_beam.NBbeam.spectrum object
+    :param delim: column delimiter
     """
-    wavelengths, weights = np.loadtxt(spec_file, float, delimiter=',', skiprows=1).T
+    wavelengths, weights = np.loadtxt(spec_file, float, delimiter=delim, skiprows=1).T
     if isinstance(wavelengths, float) and isinstance(weights, float):
         # the file had one entry:
         wavelengths = np.array([wavelengths])

@@ -122,6 +122,7 @@ class DataModeler:
         self.all_freq = None  # flag for the h,k,l frequency of the observed pixel
         self.best_model = None  # best model value at each pixel
         self.all_data =None  # data at each pixel (photon units)
+        self.all_gain = None  # gain value per pixel (used during diffBragg/refiners/stage_two_refiner)
         self.all_sigmas =None  # error model for each pixel (photon units)
         self.all_trusted =None  # trusted pixel flags (True is trusted and therefore used during refinement)
         self.npix_total =None  # total number of pixels

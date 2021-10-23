@@ -649,6 +649,18 @@ refiner {
     .type = ints(size=3)
     .help = 3-tuple of panel ID, fast coord, slow coord. If set, show the state of diffBragg
     .help = for this pixel once refinement has finished
+  refine_gain_map = False
+    .type = bool
+    .help = flag for refining a detector gain map, defined by the parameter region_size
+  save_gain_freq=10
+    .type = int
+    .help = after how many iterations should we save the optimized gain map
+  region_size = [50,50]
+    .type = ints(size=2)
+    .help = Used for gain correction. size of subregions in each detector module in pixels.
+    .help = Each panel region will be divided into blocks of shape region_size
+    .help = and a unique gain correction will be applied to each subregion.
+    .help = Note, this will usually be square shaped, but its (slowDim,fastDim).
   res_ranges = None
     .type = str
     .help = resolution-defining strings, where each string is
@@ -877,7 +889,7 @@ geometry {
 }
 """
 
-preditions_phil = """
+predictions_phil = """
 predictions {
   weak_fraction = 0.5
     .type = float
@@ -921,5 +933,5 @@ predictions {
 }
 """
 
-philz = simulator_phil + refiner_phil + roi_phil + preditions_phil
+philz = simulator_phil + refiner_phil + roi_phil + predictions_phil
 phil_scope = parse(philz)
