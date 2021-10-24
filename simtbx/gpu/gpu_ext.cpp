@@ -75,6 +75,8 @@ namespace simtbx { namespace gpu {
       class_<simtbx::gpu::exascale_api>("exascale_api",no_init )
         .def(init<const simtbx::nanoBragg::nanoBragg&>(
             ( arg("nanoBragg"))))
+        .def("use_diffuse",&simtbx::gpu::exascale_api::use_diffuse,
+             "argument is a flex double containing the a,b,c components of diffuse_gamma and diffuse_sigma")
         .def("allocate_cuda",&simtbx::gpu::exascale_api::allocate_cuda,
              "Allocate and transfer input data on the GPU")
         .def("add_energy_channel_from_gpu_amplitudes_cuda",

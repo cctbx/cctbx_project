@@ -14,7 +14,13 @@ namespace af = scitbx::af;
 struct exascale_api {
   inline
   exascale_api(const simtbx::nanoBragg::nanoBragg& nB):
-    SIM(nB){
+    SIM(nB),
+    sim_use_diffuse(false),diff_gam_a(100), diff_gam_b(100), diff_gam_c(100), diff_sig_a(1), diff_sig_b(1), diff_sig_c(1)
+        {
+  }
+  inline void use_diffuse(af::shared<double>diffuse){
+    sim_use_diffuse=true;
+    diff_gam_a=diffuse[0]; diff_gam_b=diffuse[1]; diff_gam_c=diffuse[2]; diff_sig_a=diffuse[3]; diff_sig_b=diffuse[4]; diff_sig_c=diffuse[5];
   }
 
   void show();
@@ -37,6 +43,8 @@ struct exascale_api {
   ~exascale_api();
 
   const simtbx::nanoBragg::nanoBragg& SIM;
+  bool sim_use_diffuse;
+  double diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c;
   CUDAREAL * cu_current_channel_Fhkl;
 
   CUDAREAL cu_subpixel_size;

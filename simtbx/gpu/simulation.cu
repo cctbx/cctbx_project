@@ -219,6 +219,7 @@ namespace af = scitbx::af;
           cu_source_I, cu_source_lambda, cu_a0, cu_b0,
           cu_c0, SIM.xtal_shape, SIM.mosaic_domains, cu_mosaic_umats,
           SIM.Na, SIM.Nb, SIM.Nc, SIM.V_cell,
+	  sim_use_diffuse,diff_gam_a,diff_gam_b,diff_gam_c,diff_sig_a,diff_sig_b,diff_sig_c,
           cu_water_size, cu_water_F, cu_water_MW, simtbx::nanoBragg::r_e_sqr, SIM.fluence,
           simtbx::nanoBragg::Avogadro, SIM.spot_scale, SIM.integral_form, SIM.default_F,
           cu_current_channel_Fhkl, gec.cu_FhklParams, SIM.nopolar,
