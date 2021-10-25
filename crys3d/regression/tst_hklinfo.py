@@ -724,14 +724,13 @@ def test_hklinfo_run(cifstr, filename, philstr, expectedstr):
   with open("philinput.txt", "w") as fh:
     fh.write(philstr)
 
-  obj = subprocess.Popen("cctbx.hklinfo %s philinput.txt" %filename,
+  obj = subprocess.Popen("cctbx.HKLinfo %s philinput.txt" %filename,
                          shell=True,
                          stdin = subprocess.PIPE,
                          stdout = subprocess.PIPE,
                          stderr = subprocess.STDOUT)
   out,err = obj.communicate()
-  fullstdout = out.decode().replace("\r\n", "\n")
-
+  fullstdout = out.decode().replace("\r\n", "\n") # omit \r\n line endings on Windows
   #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
   assert (contains_substring( fullstdout, expectedstr ) )
 
