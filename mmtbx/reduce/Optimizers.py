@@ -1547,10 +1547,10 @@ END
     name = a.name.strip()
     if name in ["ND1", "NE2"]:
       if not extra.getMappingFor(a).isAcceptor:
-        return "Optimizers.Test(): '+a+' in 1xso Histidine test was not an acceptor"
+        return 'Optimizers.Test(): '+name+' in 1xso Histidine test was not an acceptor'
     if name in ["HD1", "HE2"]:
       if not a in ret.deleteAtoms:
-        return "Optimizers.Test(): '+a+' in 1xso Histidine test was not set for deletion"
+        return 'Optimizers.Test(): '+name+' in 1xso Histidine test was not set for deletion'
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
