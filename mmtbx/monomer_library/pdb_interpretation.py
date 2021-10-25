@@ -5742,17 +5742,24 @@ class process(object):
           self.all_chain_proxies.pdb_hierarchy.atoms(),
           return_iseqs=True,
         )
-      rc = pH_dependent_restraints.adjust_geometry_proxies_registeries(
-        self.all_chain_proxies.pdb_hierarchy,
-        self.all_chain_proxies.geometry_proxy_registries,
-        unknown_atoms,
-        )
-      # update the nonbonded energy of "new" atoms - should do all
-      # needed for book keeping of successful restraints matching
-      for atom_i_seq, item in rc.items():
-        if atom_i_seq in unknown_atoms:
-          self.all_chain_proxies.nonbonded_energy_type_registry.symbols[atom_i_seq] = \
-              item.type_energy
+      missing_h_atoms=False
+      atoms=self.all_chain_proxies.pdb_hierarchy.atoms()
+      for i in unknown_atoms:
+        if atoms[i].element in ['H', 'D']:
+          missing_h_atoms=True
+          break
+      if missing_h_atoms:
+        rc = pH_dependent_restraints.adjust_geometry_proxies_registeries(
+          self.all_chain_proxies.pdb_hierarchy,
+          self.all_chain_proxies.geometry_proxy_registries,
+          unknown_atoms,
+          )
+        # update the nonbonded energy of "new" atoms - should do all
+        # needed for book keeping of successful restraints matching
+        for atom_i_seq, item in rc.items():
+          if atom_i_seq in unknown_atoms:
+            self.all_chain_proxies.nonbonded_energy_type_registry.symbols[atom_i_seq] = \
+                item.type_energy
 
   def geometry_restraints_manager(self,
         plain_pairs_radius=None,
