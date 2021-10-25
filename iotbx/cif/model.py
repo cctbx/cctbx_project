@@ -133,11 +133,9 @@ class block_base(MutableMapping):
   def __setitem__(self, key, value):
     if not re.match(tag_re, key):
       raise Sorry("%s is not a valid data name" %key)
-      
     # Raise an error if the key has already been added to the cif object
     if key.lower() in self.keys_lower.keys():
       raise Sorry("%s received multiple values" %key)
-      
     if isinstance(value, loop):
       self.loops[key] = value
       self.keys_lower[key.lower()] = key
