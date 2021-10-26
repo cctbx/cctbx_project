@@ -3,7 +3,6 @@ import sys
 import math
 from datetime import datetime
 from libtbx.program_template import ProgramTemplate
-#from libtbx.utils import null_out
 from libtbx import group_args, phil
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry
