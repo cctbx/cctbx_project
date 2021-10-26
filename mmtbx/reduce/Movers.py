@@ -1826,6 +1826,8 @@ def Test():
     # 2) H remain at the same distance from the new N.
 
     coarse = mover.CoarsePositions()
+    if coarse.preferenceEnergies[0] <= coarse.preferenceEnergies[1]:
+      return "Movers.Test() MoverNH2Flip: Original orientation not preferred"
     if len(coarse.positions) != 2:
       return "Movers.Test() MoverNH2Flip basic: Did not find two locations: "+str(len(coarse.positions))
     newPos = coarse.positions[1]
@@ -2042,7 +2044,6 @@ def Test():
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverNH2Flip linked: Bad nitrogen-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
-
   except Exception as e:
     return "Movers.Test() MoverNH2Flip linked: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
@@ -2162,6 +2163,10 @@ def Test():
     coarse = mover.CoarsePositions()
     if len(coarse.positions) != 6:
       return "Movers.Test() MoverHistidineFlip: Did not find six locations: "+str(len(coarse.positions))
+    if coarse.preferenceEnergies[0] <= coarse.preferenceEnergies[3]:
+      return "Movers.Test() MoverHistidineFlip: Original orientation not preferred"
+    if coarse.preferenceEnergies[0] >= coarse.preferenceEnergies[1]:
+      return "Movers.Test() MoverHistidineFlip: Hydrogen removal not preferred"
     newPos = coarse.positions[3]
     dist = (lvec3(newPos[0]) - lvec3(ce1.xyz)).length()
     if dist > 0.01:
