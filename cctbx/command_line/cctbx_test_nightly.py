@@ -12,6 +12,7 @@ if (__name__ == "__main__"):
     "module=scitbx",
     "module=cctbx",
     "module=iotbx",
+    "module=crys3d",
     "module=smtbx",
     "nproc=Auto",
   ]
