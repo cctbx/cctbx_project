@@ -764,10 +764,10 @@ class mon_lib_module(SourceModule):
 
 class geostd_module(SourceModule):
   module = 'geostd'
-  anonymous = ['svn',
-               'svn://svn.code.sf.net/p/geostd/code/trunk'
+  anonymous = ['git',
+               'git@github.com:phenix-project/geostd.git',
+               'https://github.com/phenix-project/geostd.git'
                ]
-  authenticated = anonymous
 
 class boost_module(SourceModule):
   module = 'boost'
@@ -1490,6 +1490,8 @@ class Builder(object):
     # avoid stalling bootstrap with prompts
     # or when encountering unknown server certificates
     svnflags = ['--non-interactive', '--trust-server-cert']
+    if module == 'chem_data':  # stop pulling geostd from SourceForge
+      svnflags.append('--ignore-externals')
     if os.path.exists(self.opjoin(*[thisworkdir, module, '.svn'])):
       self.add_step(self.shell(
           command=['svn'] + update_list +[module] + svnflags,
@@ -1508,6 +1510,14 @@ class Builder(object):
           command=['svn', 'co', url, module] + svnflags,
           workdir=[thisworkdir]
       ))
+    # replace geostd (replace this once chem_data is moved)
+    if module == 'chem_data':
+      if not os.path.exists(self.opjoin(thisworkdir, module)) \
+        or os.path.exists(self.opjoin(thisworkdir, module, 'geostd', '.svn')):
+          self.add_step(cleanup_dirs(['geostd'], self.opjoin(thisworkdir, module)))
+      action = MODULES.get_module('geostd')().get_url(auth=self.get_auth())
+      method, parameters = action[0], action[1:]
+      self._add_git('geostd', parameters, destination=self.opjoin(thisworkdir, 'chem_data', 'geostd'))
 
   def _add_git(self, module, parameters, destination=None):
     use_git_ssh = self.auth.get('git_ssh', False)
