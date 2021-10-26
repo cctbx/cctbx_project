@@ -263,7 +263,7 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-        ret = Helpers.getExtraAtomInfo(model)
+        ret = Helpers.getExtraAtomInfo(model) # @todo Pass probePhil here
         self._extraAtomInfo = ret.extraAtomInfo
         self._infoString += ret.warnings
         self._infoString += _ReportTiming("get extra atom info")
@@ -1504,7 +1504,7 @@ END
   atoms = GetAtomsForConformer(firstModel, "")
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  ret = Helpers.getExtraAtomInfo(model)
+  ret = Helpers.getExtraAtomInfo(model) # @todo Pass probePhil here
   extra = ret.extraAtomInfo
 
   # Get the Cartesian positions of all of the atoms we're considering for this alternate

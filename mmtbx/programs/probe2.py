@@ -76,69 +76,13 @@ atom_radius_offset = 0.0
   .type = float
   .help = Atom radius = (r*atom_radius_scale)+atom_radius_offset (-addvdw in probe)
 
-probe
-  .style = menu_item auto_align
-{
-  radius = 0.25
-    .type = float
-    .help = Probe radius (half distance between touched atoms) (-radius in probe)
+minimum_occupancy = 0.02
+  .type = float
+  .help = Minimum occupancy for a source atom (-minoccupancy in probe)
 
-  density = 16.0
-    .type = float
-    .help = Probe dots per square angstrom on atom surface (-density in probe)
-
-  overlap_scale_factor = 0.5
-    .type = float
-    .help = Fraction of overlap assigned to each atom (-spike in probe)
-
-  minimum_occupancy = 0.02
-    .type = float
-    .help = Minimum occupancy for a source atom (-minoccupancy in probe)
-
-  worse_clash_cutoff = 0.5
-    .type = float
-    .help = Cutoff for worse clashes, a positive (-divworse in probe)
-
-  clash_cutoff = 0.4
-    .type = float
-    .help = Cutoff for the clashes, a positive number (-divlow in probe)
-
-  contact_cutoff = 0.25
-    .type = float
-    .help = Cutoff for the contact (-divhigh in probe)
-
-  uncharged_hydrogen_cutoff = 0.6
-    .type = float
-    .help = Cutoff for uncharged hydrogen overlap (-hbregular in probe)
-
-  charged_hydrogen_cutoff = 0.8
-    .type = float
-    .help = Cutoff for charged hydrogen overlap (-hbcharged in probe)
-
-  bump_weight = 10.0
-    .type = float
-    .help = Weight applied to bump score (-bumpweight in probe)
-
-  hydrogen_bond_weight = 4.0
-    .type = float
-    .help = Weight applied to hydrogen bond score (-hbweight in probe)
-
-  gap_weight = 0.25
-    .type = float
-    .help = Weight applied to gap score (-gapweight in probe)
-
-  allow_weak_hydrogen_bonds = False
-    .type = bool
-    .help = Separately account for weak hydrogen bonds (-LweakHbonds in probe)
-
-  implicit_hydrogens = False
-    .type = bool
-    .help = Use implicit hydrogens, no water proxies (-implicit in probe)
-
-  use_original_probe_tables = False
-    .type = bool
-    .help = Use the original Probe tables rather than CCTBX tables by default (for regression tests)
-}
+overlap_scale_factor = 0.5
+  .type = float
+  .help = Fraction of overlap assigned to each atom (-spike in probe)
 
 output
   .style = menu_item auto_align
@@ -256,7 +200,7 @@ output
     .type = bool
     .help = Compute scores rather than just counting dots (-spike, -nospike in probe)
 }
-'''
+''' + Helpers.probe_phil_parameters
 
 program_citations = phil.parse('''
 citation {
@@ -554,7 +498,7 @@ Note:
     # Store constants used frequently
     probeRadius = self.params.probe.radius
     include_mainchain_mainchain = self.params.include_mainchain_mainchain
-    minimum_occupancy = self.params.probe.minimum_occupancy
+    minimum_occupancy = self.params.minimum_occupancy
     include_water_water = self.params.include_water_water
     excluded_bond_chain_length = self.params.excluded_bond_chain_length
     maxRadius = 2*self._maximumVDWRadius + 2 * self.params.probe.radius
@@ -648,7 +592,7 @@ Note:
 
         # Check each dot to see if it interacts with non-bonded nearby target atoms.
         srcDots = self._dots[src]
-        scale = self.params.probe.overlap_scale_factor
+        scale = self.params.overlap_scale_factor
         for dotvect in srcDots:
 
           # Find out if there is an interaction
@@ -1652,9 +1596,8 @@ Note:
     ################################################################################
     # Get the extra atom information needed to score all of the atoms in the model.
     make_sub_header('Compute extra atom information', out=self.logger)
-    ret = Helpers.getExtraAtomInfo(self.model,useNeutronDistances=self.params.use_neutron_distances,
-      useImplicitHydrogenDistances=self.params.probe.implicit_hydrogens,
-      useProbeTablesByDefault=self.params.probe.use_original_probe_tables)
+    ret = Helpers.getExtraAtomInfo(self.model, self.params.use_neutron_distances,
+      self.params.probe)
     self._extraAtomInfo = ret.extraAtomInfo
     if len(ret.warnings) > 0:
       print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings, file=self.logger)
@@ -1696,7 +1639,7 @@ Note:
     # Get the dot sets we will need for each atom.  This is the set of offsets from the
     # atom center where dots should be placed.  We use a cache to reduce the calculation
     # time by returning the same answer for atoms that have the same radius.
-    dotCache = probeExt.DotSphereCache(self.params.probe.density)
+    dotCache = Helpers.createDotSphereCache(self.params.probe)
     self._dots = {}
     for a in allAtoms:
       self._dots[a] = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius).dots()
@@ -1812,9 +1755,9 @@ Note:
       # unless we've been asked not to keep them.
       make_sub_header('Make spatial-query accelerator', out=self.logger)
       if self.params.keep_unselected_atoms:
-        self._spatialQuery = probeExt.SpatialQuery(atoms)
+        self._spatialQuery = Helpers.createSpatialQuery(atoms, self.params.probe)
       else:
-        self._spatialQuery = probeExt.SpatialQuery(list(all_selected_atoms))
+        self._spatialQuery = Helpers.createSpatialQuery(list(all_selected_atoms, self.params.probe))
 
       ################################################################################
       # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
@@ -1939,7 +1882,7 @@ Note:
         Helpers.fixupExplicitDonors(all_selected_atoms, bondedNeighborLists, self._extraAtomInfo)
 
       # Make a query structure to return the Phantom Hydrogens (if there are any)
-      self._phantomHydrogensSpatialQuery = probeExt.SpatialQuery(phantomHydrogens)
+      self._phantomHydrogensSpatialQuery = Helpers.createSpatialQuery(phantomHydrogens, self.params.probe)
 
       ################################################################################
       # Re-fill all_selected_atoms
@@ -1949,11 +1892,7 @@ Note:
       # Construct a DotScorer object.  This must be done after we've added all Phantom
       # Hydrogens and adjusted all of the ExtraAtomInfo.
       make_sub_header('Make dot scorer', out=self.logger)
-      self._dotScorer = probeExt.DotScorer(self._extraAtomInfo, self.params.probe.gap_weight,
-        self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight,
-        self.params.probe.uncharged_hydrogen_cutoff, self.params.probe.charged_hydrogen_cutoff,
-        self.params.probe.clash_cutoff, self.params.probe.worse_clash_cutoff,
-        self.params.probe.contact_cutoff, self.params.probe.allow_weak_hydrogen_bonds)
+      self._dotScorer = Helpers.createDotScorer(self._extraAtomInfo, self.params.probe)
 
       ################################################################################
       # List of all of the keys for atom classes, including all elements and all
@@ -2099,7 +2038,8 @@ Note:
         make_sub_header('Find self-intersection dots', out=self.logger)
 
         # Generate dots for the source atom set against itself.
-        self._generate_interaction_dots(self._source_atoms_sorted,  probeExt.SpatialQuery(self._source_atoms_sorted),
+        self._generate_interaction_dots(self._source_atoms_sorted,
+          Helpers.createSpatialQuery(self._source_atoms_sorted, self.params.probe),
           self._phantomHydrogensSpatialQuery, bondedNeighborLists)
 
         # Generate our report
@@ -2110,7 +2050,8 @@ Note:
         make_sub_header('Find single-direction intersection dots', out=self.logger)
 
         # Generate dots for the source atom set against the target atom set.
-        self._generate_interaction_dots(self._source_atoms_sorted,  probeExt.SpatialQuery(self._target_atoms_sorted),
+        self._generate_interaction_dots(self._source_atoms_sorted,
+          Helpers.createSpatialQuery(self._target_atoms_sorted, self.params.probe),
           self._phantomHydrogensSpatialQuery, bondedNeighborLists)
 
         # Generate our report
@@ -2140,7 +2081,8 @@ Note:
         # =================== First direction ========================
 
         # Generate dots for the source atom set against the target atom set.
-        self._generate_interaction_dots(self._source_atoms_sorted,  probeExt.SpatialQuery(self._target_atoms_sorted),
+        self._generate_interaction_dots(self._source_atoms_sorted,
+          Helpers.createSpatialQuery(self._target_atoms_sorted, self.params.probe),
           self._phantomHydrogensSpatialQuery, bondedNeighborLists)
 
         # Count the dots if we've been asked to do so.
@@ -2175,7 +2117,8 @@ Note:
         self._clear_results();
 
         # Generate dots for the target atom set against the source atom set.
-        self._generate_interaction_dots(self._target_atoms_sorted,  probeExt.SpatialQuery(self._source_atoms_sorted),
+        self._generate_interaction_dots(self._target_atoms_sorted,
+          Helpers.createSpatialQuery(self._source_atoms_sorted, self.params.probe),
           self._phantomHydrogensSpatialQuery, bondedNeighborLists)
 
         # Count the dots if we've been asked to do so.
