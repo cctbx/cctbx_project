@@ -3,7 +3,6 @@ import socket
 import glob
 from copy import deepcopy
 from simtbx.diffBragg import hopper_utils
-PARAM_PER_XTAL = hopper_utils.PARAM_PER_XTAL
 import h5py
 from dxtbx.model.experiment_list import ExperimentList
 try:
@@ -200,8 +199,7 @@ class Script:
 
             Modeler.SIM.D.device_Id = dev
 
-            # initial parameters (all set to 1, PARAM_PER_XTAL parameters (scale, rotXYZ, Ncells_abc) per crystal (sausage) and then the unit cell parameters
-            nparam = PARAM_PER_XTAL * Modeler.SIM.num_xtals + len(Modeler.SIM.ucell_man.variables) + 1
+            nparam = len(Modeler.SIM.P)
             x0 = [1] * nparam
             x = Modeler.Minimize(x0)
             if self.params.profile:
@@ -315,7 +313,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     #if SIM.shift_param is not None:
     #    shift = SIM.shift_param.get_val(x[-1])
     xtal_scales = [scale]
-    eta_a = eta_b = eta_c = 0
+    eta_a, eta_b, eta_c = hopper_utils.get_mosaicity_from_x(x, SIM)
     a_init, b_init, c_init, al_init, be_init, ga_init = SIM.crystal.dxtbx_crystal.get_unit_cell().parameters()
 
     xax = col((-1, 0, 0))

@@ -9,9 +9,11 @@ nb_tst_list = [
     "$D/nanoBragg/tst_gaussian_mosaicity.py",
     "$D/nanoBragg/tst_gaussian_mosaicity2.py",
     "$D/nanoBragg/tst_nanoBragg_cbf_write.py",
-    "$D/nanoBragg/tst_multisource_background.py"]
+    "$D/nanoBragg/tst_multisource_background.py",
+    "$D/nanoBragg/tst_anisotropic_mosaicity.py"]
 
 db_tst_list_nonCuda = ["$D/diffBragg/tests/tst_diffBragg_utils.py"]
+db_tst_list_onlyCuda =[["$D/diffBragg/tests/tst_diffBragg_hopper_refine.py", "--perturb eta --cuda"]]
 
 db_tst_list = [
     "$D/diffBragg/tests/tst_diffBragg_Fhkl_complex.py",
@@ -72,6 +74,8 @@ if OPT.enable_cuda:
           else:
               par_tst = tst + ["--cuda"]
           tst_list_parallel.append(par_tst)
+
+      tst_list_parallel += db_tst_list_onlyCuda
 else:
   tst_list.append(
     ["$D/nanoBragg/tst_gauss_argchk.py","CPU"]

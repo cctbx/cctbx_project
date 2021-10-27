@@ -109,7 +109,7 @@ niter_per_J = 1
   .expert_level=10
 rescale_params = True
   .type = bool
-  .help = use rescaled range parameters
+  .help = DEPRECATED, this parameter no longer has meaning.
   .expert_level=10
 best_pickle = None
   .type = str
@@ -149,6 +149,9 @@ betas
   B = 1e8
     .type = float
     .help = restraint factor for Bfactor
+  eta_abc = [1e8,1e8,1e8]
+    .type = floats(size=3)
+    .help = restrain factor for mosaic spread angles
 }
 dual
   .help = configuration parameters for dual annealing
@@ -202,6 +205,9 @@ centers
   B = 0
     .type = float
     .help = restraint target for Bfactor
+  eta_abc = [0,0,0]
+    .type = floats(size=3)
+    .help = restraint target for mosaic spread angles in degrees
 }
 skip = None
   .type = int
@@ -284,6 +290,9 @@ sigmas
   B = 1
     .type = float
     .help = sensitivity for Bfactor
+  eta_abc = [1,1,1]
+    .type = floats(size=3)
+    .help = sensitivity of mosaic spread parameters
   ucell = [1,1,1,1,1,1]
     .type = floats
     .help = sensitivity for unit cell params
@@ -319,6 +328,10 @@ init
   B = 0
     .type = float
     .help = init for B factor
+  eta_abc = [1e-6,1e-6,1e-6]
+    .type = floats(size=3)
+    .help = initial values (in degrees) for anisotropic mosaic spread about the 3 crystal axes a,b,c
+    .help = Note, these can never be exactly 0 (TODO address this)
 }
 mins
   .help = min value allowed for parameter
@@ -351,6 +364,9 @@ mins
   Fhkl = 0
     .type = float
     .help = min for structure factors
+  eta_abc = [1e-10,1e-10,1e-10]
+    .type = floats(size=3)
+    .help = min value (in degrees) for mosaic spread angles
 }
 maxs
   .help = max value allowed for parameter
@@ -383,6 +399,9 @@ maxs
   B = 1e3
     .type = float
     .help = max for Bfactor
+  eta_abc = [10,10,10]
+    .type = floats(size=3)
+    .help = maximum value (in degrees) for mosaic spread angles
   Fhkl = 1e6
     .type = float
     .help = max for structure factors
@@ -397,6 +416,9 @@ fix
   B = True
     .type = bool
     .help = fix the Bfactor during refinement
+  eta_abc = True
+    .type = bool
+    .help = fix the mosaic spread parameters during refinement
   RotXYZ = False
     .type = bool
     .help = fix the misorientation matrix during refinement
@@ -422,10 +444,6 @@ fix
 relative_tilt = False
   .type = bool
   .help = fit tilt coef relative to roi corner
-  .expert_level = 10
-num_mosaic_blocks = 1
-  .type = int
-  .help = number of mosaic blocks making up mosaic spread dist (not implemented)
   .expert_level = 10
 ucell_edge_perc = 10
   .type = float
@@ -567,6 +585,9 @@ simulator {
     has_isotropic_ncells = False
       .type = bool
       .help = if True, ncells_abc are constrained to be the same values during refinement
+    has_isotropic_mosaicity = False
+      .type = bool
+      .help = if True, eta_abc are constrained to be the same values during refinement
     mosaicity = 0
       .type = float
       .help = mosaic spread in degrees

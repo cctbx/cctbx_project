@@ -134,7 +134,7 @@ for finite_diff_step in [1, 2, 4, 8, 16]:
     eta_update = MOS_SPREAD + delta_eta
     crystal = None
 
-  SIM.update_umats(eta_update, N_MOS_DOMAINS, crystal=crystal)
+  SIM.update_umats_for_refinement(eta_update)
   SIM.D.add_diffBragg_spots()
 
   img_forward = SIM.D.raw_pixels_roi.as_numpy_array()
@@ -155,7 +155,7 @@ for finite_diff_step in [1, 2, 4, 8, 16]:
       eta_update = MOS_SPREAD - delta_eta
       crystal= None
 
-    SIM.update_umats(eta_update, N_MOS_DOMAINS, crystal=crystal)
+    SIM.update_umats_for_refinement(eta_update)
 
     all_shifts2.append(delta_eta ** 2)
 
