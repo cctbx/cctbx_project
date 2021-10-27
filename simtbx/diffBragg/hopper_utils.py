@@ -217,10 +217,53 @@ class DataModeler:
             ref = self.refls[i_ref]
             pid = ref['panel']
             x1, x2, y1, y2 = self.rois[i_ref]
+
+            # these are the in-bounds limits (on the panel)
+            x1_onPanel = max(x1,0)
+            x2_onPanel = min(x2,nfast)
+            y1_onPanel = max(y1,0)
+            y2_onPanel = min(y2,nslow)
+
+            xdim = x2_onPanel-x1_onPanel
+            ydim = y2_onPanel-y1_onPanel
+
             sb = ref['shoebox']
-            img_data[pid,   y1:y2, x1:x2] = sb.data.as_numpy_array()[0]
-            background[pid, y1:y2, x1:x2] = sb.background.as_numpy_array()[0]
-            is_trusted[pid, y1:y2, x1:x2] = sb.mask.as_numpy_array()[0] == MaskCode.Valid  # I believe this is 1
+            sb_ystart = y1_onPanel - y1
+            sb_xstart = x1_onPanel - x1
+            sb_sliceY = slice(sb_ystart, sb_ystart+ydim,1)
+            sb_sliceX = slice(sb_xstart, sb_xstart+xdim,1)
+
+            dat_sliceY = slice(y1_onPanel, y1_onPanel+ydim,1)
+            dat_sliceX = slice(x1_onPanel, x1_onPanel+xdim,1)
+            img_data[pid,   dat_sliceY, dat_sliceX] = sb.data.as_numpy_array()[0,sb_sliceY,sb_sliceX]
+            sb_bkgrnd = sb.background.as_numpy_array()[0,sb_sliceY,sb_sliceX]
+            background[pid, dat_sliceY, dat_sliceX] = sb_bkgrnd
+            fg_code = MaskCode.Valid + MaskCode.Foreground  # 5
+            bg_code = MaskCode.Valid + MaskCode.Background + MaskCode.BackgroundUsed  # 19
+            mask = sb.mask.as_numpy_array()[0,sb_sliceY,sb_sliceX]
+            if self.params.refiner.refldata_trusted=="allValid":
+                sb_trust = mask > 0
+            elif self.params.refiner.refldata_trusted=="fg":
+                sb_trust = mask==fg_code
+            else:
+                sb_trust = np.logical_or(mask==fg_code, mask==bg_code)
+
+            below_zero = sb_bkgrnd <= 0
+            if np.any(below_zero):
+                nbelow = np.sum(below_zero)
+                ntot = sb_bkgrnd.size
+                MAIN_LOGGER.debug("background <= zero in %d/%d pixels from shoebox %d! Marking those pixels as untrusted!" %  ( nbelow, ntot, i_ref ))
+                sb_trust[below_zero] = False
+
+            is_trusted[pid, dat_sliceY,dat_sliceX] = sb_trust
+
+            self.rois[i_ref] = x1_onPanel, x2_onPanel, y1_onPanel, y2_onPanel
+
+
+        if self.params.refiner.refldata_to_photons:
+            MAIN_LOGGER.debug("Re-scaling reflection data to photon units: conversion factor=%f" % self.params.refiner.adu_per_photon)
+            img_data /= self.params.refiner.adu_per_photon
+            background /= self.params.refiner.adu_per_photon
 
         # can be used for Bfactor modeling
         self.Q = np.linalg.norm(self.refls["rlp"], axis=1)
@@ -282,6 +325,7 @@ class DataModeler:
             self.selection_flags = np.logical_and( self.selection_flags, is_not_a_duplicate)
 
         if self.params.refiner.res_ranges is not None:
+            # TODO add res ranges support for GatherFromReflectionTable
             if self.no_rlp_info:
                 raise NotImplementedError("Cannot set resolution limits when processing refls that are missing the RLP column")
             res_flags = np.zeros(len(refls)).astype(bool)
@@ -379,6 +423,7 @@ class DataModeler:
         self.all_freq = np.array(all_freq)  # if no overlapping pixels, this should be an array of 1's
         if not self.params.roi.allow_overlapping_spots:
             if not np.all(self.all_freq==1):
+                print(set(self.all_freq))
                 raise ValueError("There are overlapping regions of interest, despite the command to not allow overlaps")
 
         self.all_q_perpix = np.array(all_q_perpix)
@@ -397,6 +442,8 @@ class DataModeler:
         #self.simple_weights = 1/self.all_sigmas**2
         self.u_id = set(self.roi_id)
         self.all_refls_idx = np.array(all_refls_idx)
+
+        MAIN_LOGGER.debug("Modeler has %d/ %d trusted pixels" % (self.all_trusted.sum() , self.npix_total))
 
     def dump_gathered_to_refl(self, output_name, do_xyobs_sanity_check=False):
         """after running GatherFromExperiment, dump the gathered results

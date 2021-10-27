@@ -156,7 +156,8 @@ class RefineLauncher:
             if i_exp % COMM.size != COMM.rank:
                 continue
             LOGGER.info("EVENT: BEGIN loading experiment list")
-            expt_list = ExperimentListFactory.from_json_file(exper_name, check_format=not self.params.refiner.load_data_from_refl)
+            # TODO handle all three options
+            expt_list = ExperimentListFactory.from_json_file(exper_name, check_format=self.params.refiner.check_expt_format)
             LOGGER.info("EVENT: DONE loading experiment list")
             if len(expt_list) != 1:
                 print("Input experiments need to have length 1, %s does not" % exper_name)
@@ -238,17 +239,23 @@ class RefineLauncher:
             shot_modeler.ucell_man = UcellMan
             self.SIM.num_ucell_param = len(shot_modeler.ucell_man.variables)  # for convenience
 
-            if not self.params.refiner.load_data_from_refl and self.params.spectrum_from_imageset:
-                shot_spectra = hopper_utils.downsamp_spec(self.SIM, self.params, expt, return_and_dont_set=True)
+            if self.params.spectrum_from_imageset:
+                try:
+                    shot_spectra = hopper_utils.downsamp_spec(self.SIM, self.params, expt, return_and_dont_set=True)
+                    loaded_spectra = True
+                except Exception as err:
+                    LOGGER.warning("spectrum_from_imageset is set to True, however failed to load spectra: %s" % err)
+                    loaded_spectra = False
 
-            elif "spectrum_filename" in list(exper_dataframe) and exper_dataframe.spectrum_filename.values[0] is not None:
-                shot_spectra = utils.load_spectra_from_dataframe(exper_dataframe)
+            if not loaded_spectra:
+                if "spectrum_filename" in list(exper_dataframe) and exper_dataframe.spectrum_filename.values[0] is not None:
+                    shot_spectra = utils.load_spectra_from_dataframe(exper_dataframe)
 
-            else:
-                total_flux = exper_dataframe.total_flux.values[0]
-                if total_flux is None:
-                    total_flux = self.params.simulator.total_flux
-                shot_spectra = [(expt.beam.get_wavelength(), total_flux)]
+                else:
+                    total_flux = exper_dataframe.total_flux.values[0]
+                    if total_flux is None:
+                        total_flux = self.params.simulator.total_flux
+                    shot_spectra = [(expt.beam.get_wavelength(), total_flux)]
 
             shot_modeler.spectra = shot_spectra
             if self.params.refiner.gather_dir is not None and not self.params.refiner.load_data_from_refl:
@@ -349,7 +356,7 @@ class RefineLauncher:
         # aggregate all miller indices
         self.Hi_all_ranks, self.Hi_asu_all_ranks = [], []
         # TODO assert list types are stored in Hi and Hi_asu
-        for i_shot in range(nshots_on_this_rank):
+        for i_shot in self.Hi: #range(nshots_on_this_rank):
             self.Hi_all_ranks += self.Hi[i_shot]
             self.Hi_asu_all_ranks += self.Hi_asu[i_shot]
         self.Hi_all_ranks = COMM.reduce(self.Hi_all_ranks)
