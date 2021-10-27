@@ -193,7 +193,7 @@ jobs:
       call .\build\setpaths.bat
       mkdir tests
       cd tests
-      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cctbx_website module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx nproc=4
+      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cctbx_website module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx module=crys3d nproc=4
     failOnStderr: false
     condition: eq('${{ parameters.vs }}', 'vs2017')
     displayName: Test (Python 3, vs2017)
@@ -205,7 +205,7 @@ jobs:
       call .\build\setpaths.bat
       mkdir tests
       cd tests
-      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cctbx_website module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx nproc=4
+      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cctbx_website module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx module=crys3d nproc=4
     failOnStderr: false
     condition: eq('${{ parameters.vs }}', 'vs2019')
     displayName: Test (Python 3, vs2019)

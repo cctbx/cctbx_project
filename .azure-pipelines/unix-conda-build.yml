@@ -147,6 +147,7 @@ steps:
       module=libtbx \
       module=rstbx \
       module=scitbx \
+      module=crys3d \
       module=smtbx \
       module=spotfinder \
       nproc=4
