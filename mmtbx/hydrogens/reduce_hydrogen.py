@@ -71,6 +71,7 @@ class place_hydrogens():
     self.site_labels_disulfides = list()
     self.site_labels_no_para    = list()
     self.charged_atoms          = list()
+    self.sl_removed             = list()
     self.n_H_initial = 0
     self.n_H_final   = 0
 
@@ -100,6 +101,7 @@ class place_hydrogens():
     if print_time:
       print("add_missing_H_atoms_at_bogus_position:", round(time.time()-t0, 2))
 
+    #print(pdb_hierarchy.composition().n_hd)
 
 #    f = open("intermediate1.pdb","w")
 #    f.write(self.model.model_as_pdb())
@@ -158,8 +160,11 @@ class place_hydrogens():
     # get riding H manager --> parameterize all H atoms
     sel_h = self.model.get_hd_selection()
     self.model.setup_riding_h_manager(use_ideal_dihedral = True)
+    riding_h_manager = self.model.riding_h_manager
+    if riding_h_manager is None:
+      return
     sel_h_in_para = flex.bool(
-      [bool(x) for x in self.model.riding_h_manager.h_parameterization])
+      [bool(x) for x in riding_h_manager.h_parameterization])
     sel_h_not_in_para = sel_h_in_para.exclusive_or(sel_h)
     self.site_labels_no_para = [atom.id_str().replace('pdb=','').replace('"','')
       for atom in self.model.get_hierarchy().atoms().select(sel_h_not_in_para)]
@@ -167,7 +172,6 @@ class place_hydrogens():
     self.model = self.model.select(~sel_h_not_in_para)
     if print_time:
       print("set up riding H manager and some cleanup:", round(time.time()-t0, 2))
-
 
 #    t0 = time.time()
 #    self.exclude_H_on_disulfides()

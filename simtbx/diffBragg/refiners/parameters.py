@@ -2,6 +2,13 @@
 from __future__ import absolute_import, division, print_function
 import numpy as np
 from numpy import sin, cos, arcsin
+from collections import OrderedDict
+
+
+class Parameters(OrderedDict):
+  def add(self, p):
+    p.xpos = len(self)
+    self[p.name] = p
 
 
 class RangedParameter:
@@ -13,7 +20,8 @@ class RangedParameter:
   See https://lmfit.github.io/lmfit-py/bounds.html
   """
 
-  def __init__(self, init=0, minval=-1, maxval=1, sigma=1, fix=False, center=None, beta=None):
+  def __init__(self, init=0, minval=-1, maxval=1, sigma=1, fix=False, center=None, beta=None,
+               name="param"):
     """
 
     :param init: initial value for parameter
@@ -23,6 +31,7 @@ class RangedParameter:
     :param fix: whether to fix the parameter
     :param center: restraint center
     :param beta: restraint variance (smaller values give rise to tighter restraints)
+    :param name: str, an optional name for this parameter, for bookkeeping
     """
     self.minval = minval
     self.maxval = maxval
@@ -31,15 +40,28 @@ class RangedParameter:
     self.fix = fix
     self.center = center
     self.beta = beta
+    self.name = name
+    self._current_val = None  # place holder for the last value (output of get_val)
+    # TODO use _rescaled_val in get_restraint_term and get_deriv in order to limit the valls to get_val
+    self.xpos = 0  # position of parameter in list of params
     if fix:
       self.minval = init - 1e-10
       self.maxval = init + 1e-10
     self._arcsin_term = None
 
-  def restraint_term(self, reparam_val):
+  def get_restraint_deriv(self, reparam_val):
+    val = self.get_val(reparam_val)
+    delta = self.center - val
+    deriv = self.get_deriv(reparam_val, -delta/self.beta)
+    return deriv
+
+  def get_restraint_val(self, reparam_val):
+    if not self.refine:
+      return 0
     val = self.get_val(reparam_val)
     dist = self.center - val
-    fG = .5*(np.log(2*np.pi*self.betas.G) + dist**2/self.betas)
+    restraint_term = .5*(np.log(2*np.pi*self.beta) + dist**2/self.beta)
+    return restraint_term
 
   @property
   def refine(self):
@@ -101,81 +123,3 @@ class NormalParameter(RangedParameter):
 
   def get_deriv(self, x, deriv):
     return deriv
-
-
-class Parameters:
-
-  def __init__(self):
-    self.Ncells_abc ={}
-    self.Ncells_def ={}
-    self.rotXYZ ={}
-    self.Bmatrix ={}
-    self.spot_scale ={}
-    self.eta ={}
-    self.wavelen_offset ={}
-    self.wavelen_scale ={}
-    self.panelX = []
-    self.panelY = []
-    self.panelZ = []
-    self.panelO = []
-    self.panelF = []
-    self.panelS = []
-    self.panelOrig = []
-    self.panelFast =[]
-    self.panelSlow = []
-    self.keys = []
-
-  def safe_append(self, some_dict,name,val):
-    if name not in some_dict:
-      some_dict[name] = [val]
-    else:
-      some_dict[name].append(val)
-    if name not in self.keys:
-      self.keys.append(name)
-
-  def add_panelOrig(self, vals):
-    self.panelOrig.append(vals)
-  def add_panelFast(self, vals):
-    self.panelFast.append(vals)
-  def add_panelSlow(self, vals):
-    self.panelSlow.append(vals)
-
-  def add_panelX(self, vals):
-    self.panelX.append(vals)
-  def add_panelY(self, vals):
-    self.panelY.append(vals)
-  def add_panelZ(self, vals):
-    self.panelZ.append(vals)
-
-  def add_panelO(self, vals):
-    self.panelO.append(vals)
-  def add_panelF(self, vals):
-    self.panelF.append(vals)
-  def add_panelS(self, vals):
-    self.panelS.append(vals)
-
-  def add_Ncells_abc(self,name, val):
-    #if len(val) != 3:
-    #  raise ValueError("Ncells abc must be a 3-tuple")
-    self.safe_append(self.Ncells_abc, name, val)
-
-  def add_Ncells_def(self,name, val):
-    self.safe_append(self.Ncells_def, name, val)
-
-  def add_spot_scale(self,name, val):
-    self.safe_append(self.spot_scale,name,val)
-
-  def add_rotXYZ(self,name, val):
-    self.safe_append(self.rotXYZ, name, val)
-
-  def add_Bmatrix(self,name, val):
-    self.safe_append(self.Bmatrix,name, val.elems)
-
-  def add_eta(self,name,val):
-    self.safe_append(self.eta, name, val)
-
-  def add_wavelen_offset(self,name, val):
-    self.safe_append(self.wavelen_offset, name, val)
-
-  def add_wavelen_scale(self,name, val):
-    self.safe_append(self.wavelen_scale, name, val)

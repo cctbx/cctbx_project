@@ -10,7 +10,6 @@ from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
 from simtbx.nanoBragg.nanoBragg_beam import NBbeam
 from copy import deepcopy
 from scitbx.matrix import sqr, col
-from simtbx.nanoBragg.tst_gaussian_mosaicity2 import run_uniform
 import math
 
 
@@ -54,6 +53,7 @@ class SimData:
     self.add_water = True  # whether to add water in the generate_simulated_image method
     self.water_path_mm = 0.005  # path length through water
     self.air_path_mm = 0  # path length through air
+    self._mosaicity_crystal = None  # a dxtbx crystal used for anisotropic mosaic spread model
     self.using_diffBragg_spots = False  # whether to use diffBragg
     nbBeam = NBbeam()
     nbBeam.unit_s0 = (0, 0, -1)
@@ -250,11 +250,16 @@ class SimData:
 
   @Umats_method.setter
   def Umats_method(self, val):
-    permitted = [0, 1, 2, 3, 4, 5]
+    permitted = [0, 2, 3, 5]
     # 0 is double_random, used for exafel tests
-    # 5 is double_uniform, isotropic method per NKS
+    # 2 is double_uniform, isotropic method
+    # 3 is double_uniform, anisotropic method
+    # 5 is the same as 2 and 5 is deprecated
     if val not in permitted:
       raise ValueError("Umats method needs to be in %s (4 not yet supported)"%permitted)
+    if val == 5:
+      print("WARNING: method 5 is really method 2, method 5 is deprecated!")
+      val = 2
     self._Umats_method = val
 
   @property
@@ -369,6 +374,8 @@ class SimData:
       self.D.Omatrix = self.crystal.Omatrix
       self.D.Bmatrix = self.crystal.dxtbx_crystal.get_B() #
       self.D.Umatrix = self.crystal.dxtbx_crystal.get_U()
+
+      # init mosaic domain size:
       if self.crystal.isotropic_ncells:
         self.D.Ncells_abc = self.crystal.Ncells_abc[0]
       else:
@@ -376,123 +383,109 @@ class SimData:
       if self.crystal.Ncells_def is not None:
         self.D.Ncells_def = self.crystal.Ncells_def
 
-      if self.crystal.anisotropic_mos_spread_deg is not None:
-        mosaicity = self.crystal.anisotropic_mos_spread_deg
-        self.Umats_method = 3 if 3 == len(mosaicity) else 4
-        crystal=self.crystal.dxtbx_crystal
-      else:
-        mosaicity = self.crystal.mos_spread_deg
-        self.Umats_method = 2
-        crystal=None
-      self.update_umats(mosaicity, self.crystal.n_mos_domains, crystal)
+      # init mosaicity
+      self._init_diffBragg_umats()
 
     else:
-      # umat implementation for the exascale api
       self.D.xtal_shape = self.crystal.xtal_shape
       self.update_Fhkl_tuple()
       self.D.Amatrix = Amatrix_dials2nanoBragg(self.crystal.dxtbx_crystal)
-      #Nabc = tuple([int(round(x)) for x in self.crystal.Ncells_abc])
       Nabc = self.crystal.Ncells_abc
       if len(Nabc) == 1:
         Nabc = Nabc[0], Nabc[0], Nabc[0]
       self.D.Ncells_abc = Nabc
-      if model_mosaic_spread and self.umat_maker is None:
-          # initialize the parameterized distribution
-          assert self.crystal.n_mos_domains % 2 == 0
-          from simtbx.nanoBragg.tst_anisotropic_mosaicity import AnisoUmats as AnisoUmats_exa
-          self.umat_maker = AnisoUmats_exa(num_random_samples=2*self.crystal.n_mos_domains)
-      if self.crystal.anisotropic_mos_spread_deg is None:
-        # isotropic case
-        self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
-        self.D.mosaic_domains = self.crystal.n_mos_domains
+      self._init_nanoBragg_umats(model_mosaic_spread)
 
-        if self.Umats_method == 0: # double_random legacy method, exafel tests
-          Umats = SimData.Umats(self.crystal.mos_spread_deg,
-                                    self.crystal.n_mos_domains,
-                                    seed=self.mosaic_seeds[0],
-                                    norm_dist_seed=self.mosaic_seeds[1])
-        elif self.Umats_method == 5: # double_uniform isotropic
-          Umats, Umats_prime, Umats_dbl_prime = self.umat_maker.generate_isotropic_Umats(
-          self.crystal.mos_spread_deg, compute_derivs=False)
-        else: raise ValueError("Invalid method for nanoBragg isotropic case")
-        #SimData.plot_isotropic_umats(Umats, self.crystal.mos_spread_deg)
-      else:
-        # anisotropic case with diagonal elements
-        eta_a, eta_b, eta_c = self.crystal.anisotropic_mos_spread_deg
-        eta_tensor = [eta_a, 0, 0, 0, eta_b, 0, 0, 0, eta_c]
-        Umats, Umats_prime, Umats_dbl_prime = self.umat_maker.generate_Umats(
-          eta_tensor, compute_derivs=False, crystal=self.crystal.dxtbx_crystal, how=1)
-      self.exascale_mos_blocks = flex.mat3_double(Umats)
-      self.D.set_mosaic_blocks(self.exascale_mos_blocks)
+  def _init_nanoBragg_umats(self, model_mosaic_spread):
 
-  def update_umats(self, mos_spread, mos_domains, crystal=None):
+    # umat implementation for the exascale api
+    if model_mosaic_spread and self.umat_maker is None:
+      # initialize the parameterized distribution
+      assert self.crystal.n_mos_domains % 2 == 0
+      self.umat_maker = AnisoUmats(num_random_samples=2*self.crystal.n_mos_domains)
 
-    if mos_spread == 0 or mos_domains == 1:
+    if self.crystal.anisotropic_mos_spread_deg is None:
+      # isotropic case
+      self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
+      self.D.mosaic_domains = self.crystal.n_mos_domains
+
+      if self.Umats_method == 0: # double_random legacy method, exafel tests
+        Umats = SimData.Umats(self.crystal.mos_spread_deg,
+                              self.crystal.n_mos_domains,
+                              seed=self.mosaic_seeds[0],
+                              norm_dist_seed=self.mosaic_seeds[1])
+      elif self.Umats_method == 2: # double_uniform isotropic, NOTE: if Umats_method was set as 5, it was modified to be 2
+        Umats, _,_ = self.umat_maker.generate_Umats(
+          self.crystal.mos_spread_deg, compute_derivs=False, crystal=None, how=2)
+      else: raise ValueError("Invalid method for nanoBragg isotropic case")
+      #SimData.plot_isotropic_umats(Umats, self.crystal.mos_spread_deg)
+
+    else:
+      # anisotropic case with diagonal elements
+      Umats, _,_ = self.umat_maker.generate_Umats(
+        self.crystal.anisotropic_mos_spread_deg, compute_derivs=False, crystal=self.crystal.dxtbx_crystal, how=1)
+
+    self.exascale_mos_blocks = flex.mat3_double(Umats)
+    self.D.set_mosaic_blocks(self.exascale_mos_blocks)
+
+  def _init_diffBragg_umats(self):
+    """
+    Initializes the mosaic spread framework.
+    If the self.crystal.n_mos_domains >1 then a umat_maker is created
+    otherwise, no mosaic spread will be modeled
+    """
+    if self.crystal.anisotropic_mos_spread_deg is not None:
+      self.D.has_anisotropic_mosaic_spread = True
+      mosaicity = self.crystal.anisotropic_mos_spread_deg
+    else:
+      self.D.has_anisotropic_mosaic_spread = False
+      mosaicity = self.crystal.mos_spread_deg
+
+    if self.crystal.n_mos_domains==1:
+      # we wont set/compute gradients in this case!
+      self.D.mosaic_domains = 1
       Umats = [(1, 0, 0, 0, 1, 0, 0, 0, 1)]
       Umats_prime = [(0, 0, 0, 0, 0, 0, 0, 0, 0)]
       self.D.set_mosaic_blocks(Umats)
       self.D.set_mosaic_blocks_prime(Umats_prime)
-      return
-
-    #TODO remove arguments from this function as they are already in crystal attribute
-    if not hasattr(self, "D"):
-      print("Cannot set umats if diffBragg/nanoBragg is not yet instantiated")
-      return
-    if isinstance(mos_spread, Iterable):
-      # TODO does this matter to set the ave spread under the hood ?
-      ave_spread =  sum(mos_spread) / len(list(mos_spread))
-      assert ave_spread > 0
-      self.D.mosaic_spread_deg = ave_spread
-      self.crystal.mos_spread_deg = ave_spread
-      self.crystal.anisotropic_mosaic_spread_deg = mos_spread
-      assert self.Umats_method in [3, 4]
-      assert crystal is not None
-      self.D.has_anisotropic_mosaic_spread = True
+      self.D.vectorize_umats()
     else:
-      self.D.mosaic_spread_deg = mos_spread
-      self.crystal.mos_spread_deg = mos_spread
-      self.crystal.anisotropic_mosaic_spread_deg = None
-      assert self.Umats_method in [0, 1, 2]
-      self.D.has_anisotropic_mosaic_spread = False
+      assert self.crystal.n_mos_domains % 2 == 0, "Need an even number of mosaic domains!"
+      self.D.mosaic_domains = self.crystal.n_mos_domains
+      if isinstance(mosaicity, Iterable):
+        self.Umats_method=3
+        self.D.mosaic_spread_deg = np.mean(mosaicity)
+        self._mosaicity_crystal = deepcopy(self.crystal.dxtbx_crystal)
+        assert self._mosaicity_crystal is not None
 
-    self.D.mosaic_domains = mos_domains
-    self.crystal.n_mos_domains = mos_domains
+      else:
+        self.Umats_method=2
+        self.D.mosaic_spread_deg = mosaicity
 
-    Umats_prime = Umats_dbl_prime = None
+      self.umat_maker = AnisoUmats(num_random_samples=self.crystal.n_mos_domains)
+      self.update_umats_for_refinement(mosaicity)
 
-    if self.umat_maker is None and self.Umats_method in [2,3,4]:
-      assert mos_domains % 2 ==0
-      self.umat_maker = AnisoUmats(num_random_samples=mos_domains)
+  def update_umats_for_refinement(self, mos_spread):
+    """
+    Given the value of mosaic spread, update the umatrices and their derivatives
+    :param mos_spread: float (isotropic spread) or 3-tuple (anisotropic spread)
+    """
+    assert self.Umats_method in [2,3]
+    if not hasattr(self, "D"):
+      raise AttributeError("Cannot set umats if diffBragg is not yet instantiated")
 
-    # legacy
-    if self.Umats_method == 0:
-      Umats = SimData.Umats(mos_spread, mos_domains)
-
-    elif self.Umats_method == 1:
-      Umats, Umats_prime = run_uniform(mos_spread, mos_domains)
-
-    elif self.Umats_method == 2:
-      eta = mos_spread
-      eta_tensor = eta, 0, 0, 0, eta, 0, 0, 0, eta
-      Umats, Umats_prime, Umats_dbl_prime = self.umat_maker.generate_Umats(eta_tensor, crystal,how=2, compute_derivs=True)
-
-    elif self.Umats_method == 3:
-      eta_a, eta_b, eta_c = mos_spread
-      eta_tensor = eta_a, 0, 0, 0, eta_b, 0, 0, 0, eta_c
-      Umats, Umats_prime, Umats_dbl_prime = self.umat_maker.generate_Umats(eta_tensor, crystal,how=1, compute_derivs=True)
+    if self.Umats_method == 2:
+      # isotropic case, mos_spread shuld be a float!
+      Umats, Umats_prime, Umats_dbl_prime = self.umat_maker.generate_Umats(mos_spread, self._mosaicity_crystal, how=2, compute_derivs=True)
+    else:
+      # anisotropic case, mos spread should be a 3-tuple of floats!
+      Umats, Umats_prime, Umats_dbl_prime = self.umat_maker.generate_Umats(mos_spread, self._mosaicity_crystal,how=1, transform_eta=True, compute_derivs=True)
       Umats_prime = Umats_prime[0::3] + Umats_prime[1::3] + Umats_prime[2::3]
       Umats_dbl_prime = Umats_dbl_prime[0::3] + Umats_dbl_prime[1::3] + Umats_dbl_prime[2::3]
 
-    else: # self.Umats_method == 4:
-      raise NotImplementedError("full 6 parameter mosaic model still not refine-able")
-
     self.D.set_mosaic_blocks(Umats)
-    if Umats_prime is not None:
-      self.D.set_mosaic_blocks_prime(Umats_prime)
-    if Umats_dbl_prime is not None:
-      print("Setting second derivatives")
-      self.D.set_mosaic_blocks_dbl_prime(Umats_dbl_prime)
-
+    self.D.set_mosaic_blocks_prime(Umats_prime)
+    self.D.set_mosaic_blocks_dbl_prime(Umats_dbl_prime)
     # here we move the umats from the flex mat3 into vectors of Eigen:
     self.D.vectorize_umats()
 

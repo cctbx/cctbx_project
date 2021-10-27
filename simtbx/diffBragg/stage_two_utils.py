@@ -4,6 +4,70 @@ import numpy as np
 from simtbx.diffBragg import utils
 from scitbx.matrix import sqr
 from simtbx.diffBragg.refiners.parameters import RangedParameter
+from simtbx.nanoBragg.utils import H5AttributeGeomWriter
+
+
+def create_gain_map(gain_map_file, expt=None, outname=None, convert_to_photons=True):
+    """
+    :param gain_map_file: output from stage_two_refiner, contains info for constructing the optimized gain map
+    :param expt: optional, apply the gain correction to an image in the experiment imageset, and writes an
+    image file to disk containint before/after images, as well as the correction itself
+    :param outname: the output file name, if expt is provided
+    :param convert_to_photons: bool, usually expt's contain data that are in ADU units,
+    however the optimized gain map was determined against data in photon units. Only set this to False if the expt points to
+    data that are in photon units
+    :return: gain map as a numpy array, same shape as tye detector
+    """
+    gain_data = np.load(gain_map_file)
+    region_shape = tuple(gain_data["region_shape"])
+    det_shape = tuple(gain_data["det_shape"])
+    gain_per_region = gain_data["gain_per_region"]
+    adu_per_photon = gain_data["adu_per_photon"]
+    gain_map = regionize_detector(det_shape, region_shape, gain_per_region)
+    if expt is not None:
+        assert outname is not None
+        iset = expt.imageset
+        data = np.array([a.as_numpy_array() for a in iset.get_raw_data(0)])
+        if convert_to_photons:
+            data /= adu_per_photon
+        with H5AttributeGeomWriter(outname, det_shape, 3, detector=expt.detector, beam=expt.beam) as writer:
+            writer.add_image(data)
+            writer.add_image(data*gain_map)
+            writer.add_image(gain_map)
+
+    return gain_map
+
+
+def regionize_detector(det_shape, region_shape, gain_map_values=None):
+    """
+    Create a 3-d numpy array (shaped after a multi panel detector)
+    where each pixel corresponds to a unique region of shape `region_shape`
+    :param det_shape: 3 tuple, shape of the detecor (num_panels, slow_dim, fast_dim)
+    :param region_shape: 2 tuple, the desired shape of each region in pixels (nslow, nfast)
+    :param gain_map_values: array of gains for each region (advanced usage, one would never use this directly)
+    :return: 3-d numpy array of regions
+    """
+    Y,X = region_shape
+    regions = np.zeros(det_shape)
+    if gain_map_values is None:
+        regions = regions.astype(int)
+    numPan, slowDim, fastDim = det_shape
+    nx = np.array_split(np.arange(fastDim),int(fastDim/X)+1)
+    ny = np.array_split(np.arange(slowDim),int(slowDim/Y)+1)
+    i_region = 0
+    for pid in range(numPan):
+        for j in range(len(ny)):
+            for i in range(len(nx)):
+                istart = nx[i][0]
+                istop = nx[i][-1]+1
+                jstart = ny[j][0]
+                jstop = ny[j][-1]+1
+                if gain_map_values is not None:
+                    regions[pid,jstart:jstop, istart:istop] = gain_map_values[i_region]
+                else:
+                    regions[pid, jstart:jstop, istart:istop] = i_region
+                i_region += 1
+    return regions
 
 
 def PAR_from_params(params, experiment, best=None):

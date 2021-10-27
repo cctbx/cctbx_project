@@ -1405,10 +1405,12 @@ class monomer_mapping(slots_getstate_setstate):
     self.incomplete_info = self._get_incomplete_info()
 
   def resolve_unexpected(self):
+    get_class = iotbx.pdb.common_residue_names_get_class
     mod_dict = self.mon_lib_srv.mod_mod_id_dict
     mod_mod_ids = []
     ani = self.atom_name_interpretation
     u = self.unexpected_atoms
+    caa = get_class(name=self.monomer.chem_comp.id[:3])=='common_amino_acid'
     if (self.monomer.classification == "peptide"):
       if (ani is not None):
         u_mon_lib = {}
@@ -1417,7 +1419,7 @@ class monomer_mapping(slots_getstate_setstate):
           i_seq = u.get(given_name)
           if (i_seq is None): continue
           # special case for terminating breaks with HC hydrogen
-          if given_name in ["HC"] and "OC" not in ani.atom_names:
+          if caa and given_name in ["HC"] and "OC" not in ani.atom_names:
             u_mon_lib[given_name]=i_seq
           elif (mon_lib_name is None):
             u_mon_lib[given_name] = i_seq
@@ -1428,7 +1430,7 @@ class monomer_mapping(slots_getstate_setstate):
         mod_mod_ids.append(mod_dict["COOH"])
       elif ("OXT" in u):
         mod_mod_ids.append(mod_dict["COO"])
-      elif ("HC" in u):
+      elif ("HC" in u) and caa:
         mod_mod_ids.append(mod_dict["CF-COH"])
       if (self.monomer.chem_comp.id == "GLU"):
         if ("HE2" in u):
@@ -5742,17 +5744,24 @@ class process(object):
           self.all_chain_proxies.pdb_hierarchy.atoms(),
           return_iseqs=True,
         )
-      rc = pH_dependent_restraints.adjust_geometry_proxies_registeries(
-        self.all_chain_proxies.pdb_hierarchy,
-        self.all_chain_proxies.geometry_proxy_registries,
-        unknown_atoms,
-        )
-      # update the nonbonded energy of "new" atoms - should do all
-      # needed for book keeping of successful restraints matching
-      for atom_i_seq, item in rc.items():
-        if atom_i_seq in unknown_atoms:
-          self.all_chain_proxies.nonbonded_energy_type_registry.symbols[atom_i_seq] = \
-              item.type_energy
+      missing_h_atoms=False
+      atoms=self.all_chain_proxies.pdb_hierarchy.atoms()
+      for i in unknown_atoms:
+        if atoms[i].element in ['H', 'D']:
+          missing_h_atoms=True
+          break
+      if missing_h_atoms:
+        rc = pH_dependent_restraints.adjust_geometry_proxies_registeries(
+          self.all_chain_proxies.pdb_hierarchy,
+          self.all_chain_proxies.geometry_proxy_registries,
+          unknown_atoms,
+          )
+        # update the nonbonded energy of "new" atoms - should do all
+        # needed for book keeping of successful restraints matching
+        for atom_i_seq, item in rc.items():
+          if atom_i_seq in unknown_atoms:
+            self.all_chain_proxies.nonbonded_energy_type_registry.symbols[atom_i_seq] = \
+                item.type_energy
 
   def geometry_restraints_manager(self,
         plain_pairs_radius=None,

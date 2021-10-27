@@ -2,10 +2,11 @@ from __future__ import division
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--cuda", action="store_true")
-parser.add_argument("--plot", action='store_true')
 parser.add_argument("--curvatures", action='store_true')
 parser.add_argument("--readout", type=float, default=0)
-parser.add_argument("--perturb", choices=["G", "Nabc", "detz_shift", "crystal"], type=str, nargs="+", default=["crystal"] )
+parser.add_argument("--perturb", choices=["G", "Nabc", "detz_shift", "crystal", "eta"], type=str, nargs="+", default=["crystal"] )
+parser.add_argument("--eta", type=float, nargs=3, default=[.2, .1, .4])
+parser.add_argument("--plot", action="store_true", help="shows the ground truth image")
 args = parser.parse_args()
 if args.cuda:
     import os
@@ -58,15 +59,27 @@ C2.rotate_around_origin(col(perturb_rot_axis), perturb_rot_ang)
 nbcryst = NBcrystal()
 nbcryst.dxtbx_crystal = C   # simulate ground truth
 nbcryst.thick_mm = 0.1
-nbcryst.Ncells_abc = 12, 12, 11
 nbcryst.isotropic_ncells = False
+if "eta" in args.perturb:
+    nbcryst.n_mos_domains = 1000
+    ETA_ABC_GT = args.eta
+    nbcryst.anisotropic_mos_spread_deg = ETA_ABC_GT
+    NCELLS_GT = 12,12,11
+else:
+    NCELLS_GT = 12,12,11
+nbcryst.Ncells_abc = NCELLS_GT
 
 SIM = SimData(use_default_crystal=True)
 #SIM.detector = SimData.simple_detector(150, 0.1, (513, 512))
-SIM.detector = SimData.simple_detector(150, 0.1, (513, 512))
+if "eta" in args.perturb:
+    shape = 513*3, 512*3
+    #detdist = 70
+else:
+    shape = 513, 512
+detdist = 150
+SIM.detector = SimData.simple_detector(detdist, 0.1, shape)
 SIM.crystal = nbcryst
 SIM.instantiate_diffBragg(oversample=0, auto_set_spotscale=True)
-
 SIM.D.default_F = 0
 SIM.D.F000 = 0
 SIM.D.progress_meter = False
@@ -75,13 +88,21 @@ SIM.air_path_mm = 0.1
 SIM.add_air = True
 SIM.add_Water = True
 SIM.include_noise = True
+SIM.D.verbose = 2
 SIM.D.add_diffBragg_spots()
+SIM.D.verbose = 0
 spots = SIM.D.raw_pixels.as_numpy_array()
 SIM._add_background()
 SIM.D.readout_noise_adu=args.readout
 SIM._add_noise()
+
 # This is the ground truth image:
 img = SIM.D.raw_pixels.as_numpy_array()
+if args.plot:
+    import pylab as plt
+    plt.imshow(img, vmax=100)
+    plt.title("Ground truth image")
+    plt.show()
 SIM.D.raw_pixels *= 0
 
 P = phil_scope.extract()
@@ -107,10 +128,17 @@ if "detz_shift" in args.perturb:
 else:
     P.init.detz_shift = 0
 
+if "eta" in args.perturb:
+    P.init.eta_abc = [0.12, 0.13, 0.14]
+    P.simulator.crystal.num_mosaicity_samples = 250  # in practive, the number of mosaic domains we model should be smaller than whats in the crystal .. .
+    P.simulator.crystal.has_isotropic_mosaicity = False
+    P.fix.eta_abc = False
+
 E.detector = SIM.detector
 E.beam = SIM.D.beam
 E.imageset = make_imageset([img], E.beam, E.detector)
-refls = utils.refls_from_sims([img], E.detector, E.beam, thresh=18)
+#refls = utils.refls_from_sims([img], E.detector, E.beam, thresh=18)
+refls = utils.refls_from_sims([spots], E.detector, E.beam, thresh=18)
 print("%d REFLS" % len(refls))
 utils.refls_to_q(refls, E.detector, E.beam, update_table=True)
 utils.refls_to_hkl(refls, E.detector, E.beam, E.crystal, update_table=True)
@@ -134,6 +162,8 @@ P.niter = 0
 P.niter_per_J = 1
 P.method="L-BFGS-B"
 P.ftol = 1e-10
+if "eta" in args.perturb:
+    P.ftol=1e-8
 #P.method="Nelder-Mead"
 #P.fix.G = True
 #P.fix.Nabc =True
@@ -148,11 +178,14 @@ from simtbx.diffBragg import hopper_utils
 Eopt,_, Mod, x = hopper_utils.refine(E, refls, P, return_modeler=True)
 
 G, rotX,rotY, rotZ, Na,Nb,Nc,_,_,_,_,_,_,a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, Mod.SIM)
+eta_abc_opt = hopper_utils.get_mosaicity_from_x(x, Mod.SIM)
+
 print("Na, Nb, Nc= %f %f %f" % (Na, Nb, Nc))
+print("eta_abc optimized:", eta_abc_opt)
 
 # check crystal
 Copt = Eopt.crystal
-misset, misset_init = utils.compare_with_ground_truth(*C.get_real_space_vectors(), dxcryst_models=[Copt, C2], symbol=symbol)
+misset, misset_init = utils.compare_with_ground_truth(*C.get_real_space_vectors(), dxcryst_models=[Copt, E.crystal], symbol=symbol)
 print(misset_init, "init misset with ground truth")
 print(misset, "misset with ground truth")
 if "detz_shift" in args.perturb:
@@ -161,12 +194,15 @@ else:
     assert misset < 0.005, misset
 
 # check mosaic domain
-assert all (np.subtract(nbcryst.Ncells_abc, [Na,Nb,Nc]) < 0.2), "%d, %d, %d" % (Na,Nb,Nb)
+assert all (np.subtract(NCELLS_GT, [Na,Nb,Nc]) < 0.2), "%d, %d, %d" % (Na,Nb,Nb)
 
 # check spot scale
 perc_diff_G = abs(SIM.D.spot_scale - G)/ SIM.D.spot_scale * 100
 print("spot scale gt: %f; spot scale opt: %f; percent diff: %f %%" % (SIM.D.spot_scale, G, perc_diff_G))
-assert perc_diff_G < 1, perc_diff_G
+max_Gperc = 1
+if "eta" in args.perturb:
+    max_Gperc = 2
+assert perc_diff_G < max_Gperc, perc_diff_G
 
 # check detz
 print("detdist shift %f (should be 0)" % detz_shift)
@@ -183,4 +219,10 @@ assert dev_ang < init_dev_ang and dev_ang < 0.025, "init: %f curr: %f" % (init_d
 if "detz_shift" not in args.perturb:
     assert dev < init_dev and dev < 0.025, "init: %f  curr: %f" % (init_dev, dev)
 
+if "eta" in args.perturb:
+    print("eta_abc GT:", ETA_ABC_GT)
+    u = np.array(eta_abc_opt)
+    v = np.array(ETA_ABC_GT)
+    perc_diff = np.abs(u-v) / v * 100.
+    assert np.all(perc_diff < 22)  # this is acceptable for now, as we simulated with 5000 blocks, yet modeled with 600
 print("OK")

@@ -134,15 +134,16 @@ class determine_connectivity(object):
         if (self.h_connectivity[ih] is None): continue
         #assert(self.h_connectivity[ih].a0['iseq'] == i_parent)
         if (self.h_connectivity[ih].a0['iseq'] != i_parent):
-          if self.double_H[ih]:
+          if ih in self.double_H:
+          #if self.double_H[ih]:
             continue
-#          raise Sorry  (
-#            "It looks like angle and bond restraints are conflicting.\n\
-#             Bond proxies:  H atom %s is bound to %s. \n\
-#             Angle proxies: H atom %s is bound to %s" % \
-#    (self.atoms[ih].id_str(),
-#     self.atoms[self.h_connectivity[ih].a0['iseq']].id_str(),
-#     self.atoms[ih].id_str(), self.atoms[i_parent].id_str()  )   )
+          raise Sorry  (
+            "It looks like angle and bond restraints are conflicting.\n\
+             Bond proxies:  H atom %s is bound to %s. \n\
+             Angle proxies: H atom %s is bound to %s" % \
+    (self.atoms[ih].id_str(),
+     self.atoms[self.h_connectivity[ih].a0['iseq']].id_str(),
+     self.atoms[ih].id_str(), self.atoms[i_parent].id_str()  )   )
         self.second_neighbors_raw[ih].append(i_second)
         self.angle_dict[(ih, i_parent, i_second)] = ap.angle_ideal
 

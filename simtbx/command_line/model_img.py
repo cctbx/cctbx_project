@@ -66,14 +66,20 @@ if __name__=="__main__":
                         help="number of processes to use for background extraction, only relevant if --compareData flag is present")
     parser.add_argument("--filtsz", type=int, default=10,
                         help="the median filter used to extract backgroun will have this dimension, pixel units, higher values are slower")
+    parser.add_argument("--specFile", type=str, default=None, help="Path to the spectrum .lam file. If None, then assume hopper_process output tree and try to autolocate ")
+    parser.add_argument("--pandaFile", type=str, default=None, help="Path to the pandas model file. If None, then assume hopper_process output tree and try to autolocate ")
 
     args = parser.parse_args()
 
     # the spectrum file
-    spec_file = args.mod.replace("_modeler.npy", "_spectrum.lam")
+    spec_file = args.specFile
+    if spec_file is None:
+        spec_file = args.mod.replace("_modeler.npy", "_spectrum.lam")
 
     M = np.load(args.mod, allow_pickle=True)[()]
-    pd_name = get_pandas_name_from_mod_name(args.mod)
+    pd_name = args.pandaFile
+    if pd_name is None:
+        pd_name = get_pandas_name_from_mod_name(args.mod)
     spec = utils.load_spectra_file(spec_file, as_spectrum=True)
     if args.plotSpec:
         import pylab as plt
