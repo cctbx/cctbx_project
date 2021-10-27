@@ -35,15 +35,19 @@ submitted on the command line together with the name of the reflection file.
 """ % locals()
 
   datatypes = ['miller_array', 'phil' ]
-  master_phil_str = ArrayInfo.arrayinfo_phil_str
+  master_phil_str ="""
+merge_equivalents = False
+  .type = bool
+  .caption = "merging symmetry equivalent reflections into unique wedge in reciprocal space"
+  .short_caption = "merging reflections into a symmetry unique wedge"
+""" + ArrayInfo.arrayinfo_phil_str
 
   def validate(self):
     pass
 
   def run(self):
     data_file = self.data_manager.get_miller_array_names()[0]
-    arrays = self.data_manager.get_miller_arrays(filename = data_file)
-    hklinfo.run(arrays, self.params)
+    hklinfo.run(data_file, self.params)
 
 
 if __name__ == '__main__':

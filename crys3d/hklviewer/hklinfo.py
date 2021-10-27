@@ -3,9 +3,9 @@ from __future__ import absolute_import, division, print_function
 
 import sys
 from iotbx.gui_tools.reflections import ArrayInfo
+from iotbx.reflection_file_reader import any_reflection_file
 
-
-def run(arrays, philparams=None, log = sys.stdout):
+def run(data_file, philparams, log = sys.stdout):
   """
   Print a table of properties of miller_array objects from a reflection file to stdout formatted like
 
@@ -22,15 +22,15 @@ def run(arrays, philparams=None, log = sys.stdout):
          SIGDP |       Amplitude |   30450 |        0.0,      85.081|   False |    True |   0.99987 |
 
   """
-  if philparams:
-    wrap_labels = philparams.wrap_labels
-  else:
-    wrap_labels = 0
+
+  hkl_file = any_reflection_file(data_file)
+  arrays = hkl_file.as_miller_arrays(merge_equivalents=philparams.merge_equivalents)
+
   print("%d Miller arrays in this dataset:" %len(arrays))
   delimiter = philparams.delimiter
   array_info_format_tpl=[]
   for i,array in enumerate(arrays):
-    arrayinfo = ArrayInfo(array, wrap_labels)
+    arrayinfo = ArrayInfo(array,philparams.wrap_labels)
     info_fmt, headerstr, infostr = arrayinfo.get_selected_info_columns_from_phil(philparams)
     if i==0:
       print(headerstr)

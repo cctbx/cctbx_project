@@ -626,6 +626,7 @@ selected_info {
   n_bijvoet = True
   n_singletons = True
 }
+merge_equivalents = True
 wrap_labels = -20
 """
 
