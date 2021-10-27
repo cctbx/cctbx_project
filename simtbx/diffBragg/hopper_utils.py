@@ -980,13 +980,14 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
 #   accumulate target function
     f_restraints = 0
     if restraint_terms:
-        f_restraints = np.sum(restraint_terms.values())
+        f_restraints = np.sum(list(restraint_terms.values()))
     f = f_restraints + fLogLike
 
     restraint_debug_s = "LogLike: %.1f%%; " % (fLogLike / f *100.)
     for name, val in restraint_terms.items():
-        frac_total = f / val *100.
-        restraint_debug_s += "%s: %.1f%%; " % (name, frac_total)
+        if val > 0:
+            frac_total = val / f *100.
+            restraint_debug_s += "%s: %.1f%%; " % (name, frac_total)
 
     # fractions of the target function
     g = None  # gradient vector
