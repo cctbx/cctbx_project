@@ -954,6 +954,9 @@ class structure(crystal.special_position_settings):
     return self._scatterers.extract_u_iso_or_u_equiv(
       unit_cell=self.unit_cell())
 
+  def b_iso_or_b_equiv(self):
+    return self.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+
   def scale_adps(self, scale_factor):
     return self._scatterers.scale_adps(scale_factor)
 
