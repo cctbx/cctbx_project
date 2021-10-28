@@ -53,6 +53,7 @@ void diffBragg_sum_over_steps(
         double lambda_manager_dI[2] = {0,0};
         double lambda_manager_dI2[2] = {0,0};
         double fp_fdp_manager_dI[2] = {0,0};
+        double dI_latt_diffuse[3] = {0,0,0};
 
         for (int i_step=0; i_step < db_steps.Nsteps; i_step++){
 
@@ -175,9 +176,16 @@ void diffBragg_sum_over_steps(
                 //F_latt = db_cryst.Na*db_cryst.Nb*db_cryst.Nc*exp(-( hrad_sqr / 0.63 * db_cryst.fudge ));
                 F_latt = NABC_determ*exp(-( hrad_sqr / 0.63 * db_cryst.fudge ));
 
+            /* convert amplitudes into intensity (photons per steradian) */
+            if (!db_flags.oversample_omega)
+                omega_pixel = 1;
+            double count_scale = db_beam.source_I[source]*capture_fraction*omega_pixel;
+
             double I_latt_diffuse = 0;
+            double step_dI_latt_diffuse[3] = {0,0,0};
             if (db_flags.use_diffuse){
                 Eigen::Matrix3d Ainv = UBO.inverse();
+                Eigen::Matrix3d Ginv = db_cryst.anisoG.inverse();
                 double anisoG_determ = db_cryst.anisoG.determinant();
                 for (int hh=0; hh <1; hh++){
                     for (int kk=0; kk <1; kk++){
@@ -189,31 +197,42 @@ void diffBragg_sum_over_steps(
                             Eigen::Vector3d delta_H_offset = H_vec - H0_offset;
                             Eigen::Vector3d delta_Q = Ainv*delta_H_offset;
                             Eigen::Vector3d anisoG_q = db_cryst.anisoG*delta_Q;
+                            double V_dot_V = anisoG_q.dot(anisoG_q);
+                            double gamma_portion = 8.*M_PI*anisoG_determ /
+                                    pow( (1.+ V_dot_V* 4*M_PI*M_PI),2);
 
-                            double this_I_latt_diffuse = 8.*M_PI*anisoG_determ /
-                                    pow( (1.+ anisoG_q.dot(anisoG_q)* 4*M_PI*M_PI),2);
-                            if (exparg  < .5) // only valid up to a point
-                                this_I_latt_diffuse *= (exparg);
+                            double this_I_latt_diffuse = gamma_portion;
+
+                            if (exparg  >= .5) // only valid up to a point
+                                exparg = 1;
+
+                            this_I_latt_diffuse *= (exparg);
 
                             I_latt_diffuse += this_I_latt_diffuse;
+
+                            if (db_flags.refine_diffuse){
+                                 for (int i_gam=0; i_gam<3; i_gam++){
+                                    //dG_dgam  --> db_cryst.dG_dgamma[i_gam];
+                                    Eigen::Matrix3d dG_dgam;
+                                    dG_dgam << 0,0,0,0,0,0,0,0,0;
+                                    dG_dgam(i_gam, i_gam) = 1;
+
+                                    Eigen::Vector3d dV = dG_dgam*delta_Q;
+                                    double V_dot_dV = anisoG_q.dot(dV);
+                                    double deriv = (Ginv*dG_dgam).trace() - 16*M_PI*M_PI*V_dot_dV/(1+4*M_PI*M_PI*V_dot_V);
+                                    step_dI_latt_diffuse[i_gam] += gamma_portion*deriv*exparg;
+                                 }
+                            }
                         }
                     }
                 }
             }
 
-            /* no need to go further if result will be zero */
-            //if(F_latt == 0.0 && ! only_save_omega_kahn) {
-            //    continue;
-            //}
-            /* convert amplitudes into intensity (photons per steradian) */
-            if (!db_flags.oversample_omega)
-                omega_pixel = 1;
-
             /* increment to intensity */
             double latt_scale = 1;
             if (db_flags.only_diffuse)
                 latt_scale = 0;
-            double I_noFcell = (F_latt*F_latt*latt_scale + I_latt_diffuse)*db_beam.source_I[source]*capture_fraction*omega_pixel;
+            double I_noFcell = (F_latt*F_latt*latt_scale + I_latt_diffuse) * count_scale;
 
             /* structure factor of the unit cell */
             double F_cell = db_cryst.default_F;
@@ -356,7 +375,13 @@ void diffBragg_sum_over_steps(
             double Iincrement = F_cell*F_cell*I_noFcell;
             I += Iincrement;
 
-            // TODO if test?
+            if (db_flags.refine_diffuse){
+                double step_scale = count_scale*F_cell*F_cell;
+                for (int i_gam=0; i_gam <3; i_gam++){
+                    dI_latt_diffuse[i_gam] += step_scale*step_dI_latt_diffuse[i_gam];
+                }
+            }
+
             if (db_flags.refine_fp_fdp){
                 fp_fdp_manager_dI[0] += 2*I_noFcell * (c_deriv_Fcell);
                 fp_fdp_manager_dI[1] += 2*I_noFcell * (d_deriv_Fcell);
@@ -720,10 +745,15 @@ void diffBragg_sum_over_steps(
             // final scale term to being everything to photon number units
             scale_term = db_cryst.r_e_sqr*db_beam.fluence*db_cryst.spot_scale*polar*om/db_steps.Nsteps;
 
-            //int roi_i = i_pix; // TODO replace roi_i with i_pix
-
             floatimage[i_pix] = scale_term*I;
 
+        }
+        if (db_flags.refine_diffuse){
+            for (int i_gam=0; i_gam < 3; i_gam++){
+                double val = dI_latt_diffuse[i_gam]*scale_term;
+                int img_idx = Npix_to_model*i_gam + i_pix;
+                d_image.diffuse_gamma[img_idx] = val;
+            }
         }
         /* udpate the rotation derivative images*/
         for (int i_rot =0 ; i_rot < 3 ; i_rot++){
@@ -763,16 +793,12 @@ void diffBragg_sum_over_steps(
                 idx = Npix_to_model + i_pix;
                 d_image.Ncells[idx] = value;
                 d2_image.Ncells[idx] = value2;
-                //d_Ncells_images[idx] = value;
-                //d2_Ncells_images[idx] = value2;
 
                 value = scale_term*Ncells_manager_dI[2];
                 value2 = scale_term*Ncells_manager_dI2[2];
                 idx = Npix_to_model*2 + i_pix;
                 d_image.Ncells[idx] = value;
                 d2_image.Ncells[idx] = value2;
-                //d_Ncells_images[idx] = value;
-                //d2_Ncells_images[idx] = value2;
             }
         }/* end Ncells deriv image increment */
         if (db_flags.refine_Ncells_def){

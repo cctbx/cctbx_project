@@ -32,6 +32,8 @@ struct images{
     image_type panel_rot; // panel rotation gradients
     image_type panel_orig; // panel translation gradients
     image_type fp_fdp;  // fprime and fdblprime gradients
+    image_type diffuse_gamma; // diffuse gamma gradients
+    image_type diffuse_sigma; // diffuse sigma gradients
 };
 
 
@@ -73,6 +75,7 @@ struct flags{
     bool isotropic_ncells; // one mosaic domain parameter
     bool complex_miller;  // is the miller array complex (such thet Fhkl_linear and Fhkl2_linear are both defined)
     bool no_Nabc_scale; // no Nabc prefactor
+    bool refine_diffuse; // flag for computing diffuse gradients
     std::vector<bool> refine_Bmat;  //  Bmatrix
     std::vector<bool> refine_Ncells; // mosaic domain size
     bool refine_Ncells_def; // mosaic domain size off diag
@@ -93,6 +96,7 @@ struct flags{
 
 struct crystal{
     Eigen::Matrix3d anisoG;
+    std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dG_dgamma;
     Eigen::Matrix3d anisoU;
     int mosaic_domains; // number of mosaic domains to model
     double Na, Nb, Nc, Nd, Ne, Nf; // mosaic domain terms

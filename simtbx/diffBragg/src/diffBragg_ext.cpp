@@ -406,6 +406,8 @@ namespace boost_python { namespace {
 
       .def("get_ncells_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_ncells_derivative_pixels, "get derivatives of intensity w.r.t (Na, Nb, Nc)")
 
+      .def("get_diffuse_gamma_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_diffuse_gamma_derivative_pixels, "get derivatives of intensity w.r.t. diffuse (gamma_a, gamma_b, gamma_c)")
+
       .def("get_fp_fdp_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_fp_fdp_derivative_pixels, "get derivatives of intensity w.r.t c,d that describe fprime and fdblprime (see diffBragg.utils)")
 
       .def("get_ncells_def_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_ncells_def_derivative_pixels, "get derivatives of intensity w.r.t (Nd, Ne, Nf)")

@@ -879,6 +879,8 @@ void diffBragg::let_loose(int refine_id){
         boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[1]);
         pan_orig->refine_me=true;
     }
+    if (refine_id==23)
+        db_flags.refine_diffuse = true;
 }
 
 void diffBragg::fix(int refine_id){
@@ -949,6 +951,8 @@ void diffBragg::fix(int refine_id){
         fp_fdp_managers[0]->refine_me = false;
         fp_fdp_managers[1]->refine_me = false;
     }
+    if (refine_id==23)
+        db_flags.refine_diffuse = false;
 }
 
 
@@ -1056,6 +1060,8 @@ void diffBragg::refine(int refine_id){
         fp_fdp_managers[0]->initialize(Npix_total, compute_curvatures);
         fp_fdp_managers[1]->initialize(Npix_total, compute_curvatures);
     }
+    if (refine_id==23)
+        db_flags.refine_diffuse = true;
 }
 
 void diffBragg::print_if_refining(){
@@ -1442,6 +1448,26 @@ boost::python::tuple diffBragg::get_ncells_derivative_pixels(){
     return derivative_pixels;
 }
 
+boost::python::tuple diffBragg::get_diffuse_gamma_derivative_pixels(){
+    SCITBX_ASSERT(db_flags.refine_diffuse);
+    int Npix_total = first_deriv_imgs.diffuse_gamma.size() / 3;
+    af::flex_double raw_pixels_a = af::flex_double(Npix_total);
+    af::flex_double raw_pixels_b = af::flex_double(Npix_total);
+    af::flex_double raw_pixels_c = af::flex_double(Npix_total);
+
+    double* floatimage_a = raw_pixels_a.begin();
+    double* floatimage_b = raw_pixels_b.begin();
+    double* floatimage_c = raw_pixels_c.begin();
+    for (int ii=0; ii< Npix_to_model; ii++){
+        floatimage_a[ii] = first_deriv_imgs.diffuse_gamma[ii];
+        floatimage_b[ii] = first_deriv_imgs.diffuse_gamma[Npix_to_model + ii];
+        floatimage_c[ii] = first_deriv_imgs.diffuse_gamma[2*Npix_to_model + ii];
+    }
+    boost::python::tuple derivative_pixels;
+    derivative_pixels = boost::python::make_tuple(raw_pixels_a, raw_pixels_b, raw_pixels_c);
+    return derivative_pixels;
+}
+
 
 boost::python::tuple diffBragg::get_ncells_def_derivative_pixels(){
     SCITBX_ASSERT(Ncells_managers[3]->refine_me);
@@ -1821,6 +1847,10 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     }
     if(fp_fdp_managers[0]->refine_me){
         first_deriv_imgs.fp_fdp.resize(Npix_to_model*2,0);
+    }
+    if (db_flags.refine_diffuse){
+        first_deriv_imgs.diffuse_gamma.resize(Npix_to_model*3,0);
+        first_deriv_imgs.diffuse_sigma.resize(Npix_to_model*3,0);
     }
     gettimeofday(&t4,0 );
     double time_make_images = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
