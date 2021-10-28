@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 
 import iotbx.gui_tools
@@ -578,7 +579,9 @@ def get_array_description(miller_array):
     test = getattr(miller_array, method)
     if test():
       return desc
-  return "Unknown"
+  # resort to the name of the python data type if not matching any of the above
+  return type(miller_array.data()).__name__
+
 
 def get_mtz_label_prefix(input_file=None, file_name=None):
   if input_file is None :
@@ -786,13 +789,18 @@ class ArrayInfo:
     self.desc = ""
     self.arrsize = data.size()
     if not isinstance(data, flex.std_string):
-      if (isinstance(data, flex.hendrickson_lattman)):
+      if isinstance(data, flex.hendrickson_lattman):
         data = graphics_utils.NoNansHL( data )
-        # for now display HL coefficients as a simple sum
+        # estimate minmax values of HL coefficients as a simple sum
         if self.arrsize:
           self.maxdata = max([e[0]+e[1]+e[2]+e[3] for e in data ])
           self.mindata = min([e[0]+e[1]+e[2]+e[3] for e in data ])
           self.arrsize = len([42 for e in millarr.data() if not math.isnan(e[0]+e[1]+e[2]+e[3])])
+      elif isinstance(data, flex.vec3_double) or isinstance(data, flex.vec2_double):
+        # XDS produces 2D or 3D arrays in some of its files
+        if self.arrsize:
+          self.maxdata = max([max(e) for e in data ])
+          self.mindata = min([min(e) for e in data ])
       else:
         self.arrsize = len([42 for e in millarr.data() if not math.isnan(abs(e))])
         if (isinstance(data, flex.int)):

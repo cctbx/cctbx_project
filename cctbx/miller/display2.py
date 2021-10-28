@@ -145,6 +145,10 @@ class scene(object):
     self.mprint = mprint
     #if isinstance(miller_array.data(), flex.std_string):
     #  return
+    if type(miller_array.data()) not in [flex.double, flex.int,
+                                  flex.hendrickson_lattman, flex.float,
+                                  flex.complex_double]:
+      return
     self.settings = settings
     self.merge_equivalents = False
     if not self.miller_array.is_unique_set_under_symmetry():

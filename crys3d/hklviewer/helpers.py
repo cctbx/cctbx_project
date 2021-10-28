@@ -199,7 +199,7 @@ class MillerArrayTableModel(QAbstractTableModel):
     # values strictly smaller than minima in case of any NaN present in the columns
     # used for lambda function when sorting table and encountering NaN values in sorting column
     if len(data[0]):
-      self.minvals = [ (min(col)-0.1) if type(col[0]) is not str else 1 for col in data ]
+      self.minvals = [ (min(col)-0.1) if type(col[0]).__name__ not in ["str","tuple"] else 1 for col in data ]
     self.columnheaderdata = headerdata
     self.precision = 4
   def rowCount(self, parent=None):
@@ -214,7 +214,7 @@ class MillerArrayTableModel(QAbstractTableModel):
         if 0 <= column < self.columnCount():
           val = self._data[row][column]
           if not (type(val) is float or type(val) is int):
-            return val
+            return str(val)
           if math.isnan(val):
             return None
           if abs(val) < float("1e-%d" %self.precision):
