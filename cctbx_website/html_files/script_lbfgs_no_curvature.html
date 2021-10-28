@@ -35,6 +35,10 @@ x_{k+1} = x_k - f^\prime(x_k) \frac{x_k-x_{k-1}}{f^\prime(x_k) - f^\prime(x_k-1)
 <p>The L-BFGS algorithm is an approximation of the BFGS procedure. It uses a limited amount of computer memory.<br>
 L-BFGS does not use boundaries as it was developed to solve unconstrained optimization problems. However, there is an extension of L-BFGS, called L-BFGS-B (<a href="https://dl.acm.org/doi/10.1145/279232.279236">Zhu et al., 1997</a>), that can handle simple bounds. Both options are available in the cctbx.</p>
 
+<p>Generally, the gradient based optimizers have a larger convergence radius but have a harder time to approach the minimum.<br>
+Second derivative based minimizers have much smaller convergence radius, but if you are close enough to the minimum, they can get there much more efficiently.<br>
+Therefore it is best to use both: when you are far from minimum, use gradient based minimizers, and once you are close enough switch to use 2nd derivatives. However, this option is not available in the cctbx.</p>
+
 <p>Further reading:</p>
   <ul>
     <li>
@@ -363,11 +367,11 @@ Run L-BFGS-B with boundaries
 
 <p>The values are very close to the analytical value. Both algorithms converged to the minimum.</p>
 
-<p>We can also quickly check how the minimization progresses. By adding a print statement in the <code>compute_functional_and_gradients()</code> (example: <code>print(t)</code> ) or the <code>__call__()</code> method, we get the current values of f(x,y), i.e. the current value of the function. We can then plot the target value as a function of iterations for each method:</p>
+<p>We can also quickly check how the minimization progresses. For example for the L-BFGS-B method, by adding a print statement at the end of the while loop in the <code>lbfgs_run()</code> function, we get the current values of f(x,y), i.e. the current value of the Rosenbrock function during the minimization. We can then plot the target value as a function of iterations for each method:</p>
 
 <img style="max-width: 70%;" src="{% static 'cctbx/img/scripts/script_lbfgs_no_curvature.svg' %}" alt="fig" >
 
-<p>In our example, the L-BFGS minimizer without bounds converged after 77 iterations, while the L-BFGS-B minimizer finished after 149 iterations. For better visibility, the y-axis has a limit of 1000. We see that the L-BFGS minimizer spiked once in the beginning. The L-BFGS-B minimizer had additional spikes outside the y-axis range around iteration 40.</p>
+<p>In our example, the L-BFGS minimizer without bounds converged after 59 iterations, while the L-BFGS-B minimizer finished after 64 iterations. For both methods, the minimization progresses in a similar fashion.</p>
 
 
 <!----------------------- EDIT END ---------------------------->
@@ -385,3 +389,7 @@ Run L-BFGS-B with boundaries
 
     <!-- block.super will get the content of the block from the parent template -->
     <!-- {{ block.super }} -->
+
+
+
+
