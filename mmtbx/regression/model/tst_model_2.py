@@ -318,6 +318,108 @@ END
   model.process(make_restraints=True,
     pdb_interpretation_params=params)
 
+def exercise_flip_nqh():
+  """
+  Expected flips:
+     C 190  ASN
+     D 212  ASN
+     A 190  ASN
+     B 212  ASN
+  """
+  pdb_str = """
+CRYST1   19.391   14.196   16.627  90.00  90.00  90.00 P 1
+SCALE1      0.051570  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.070442  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.060143        0.00000
+ATOM      1  N   ASN A 190      14.391   7.875  10.959  1.00 25.08           N
+ATOM      2  CA  ASN A 190      12.965   7.729  10.710  1.00 25.31           C
+ATOM      3  C   ASN A 190      12.031   8.507  11.627  1.00 25.45           C
+ATOM      4  O   ASN A 190      11.129   9.196  11.149  1.00 24.83           O
+ATOM      5  CB  ASN A 190      12.578   6.250  10.760  1.00 29.15           C
+ATOM      6  CG  ASN A 190      11.141   6.007  10.323  1.00 31.49           C
+ATOM      7  OD1 ASN A 190      10.458   5.135  10.858  1.00 30.98           O
+ATOM      8  ND2 ASN A 190      10.682   6.773   9.339  1.00 34.25           N
+TER
+ATOM      9  N   ASN B 212       7.583   7.891   7.004  1.00 63.62           N
+ATOM     10  CA  ASN B 212       6.962   6.727   6.387  1.00 70.84           C
+ATOM     11  C   ASN B 212       5.525   7.117   6.075  1.00 76.13           C
+ATOM     12  O   ASN B 212       5.000   6.819   5.000  1.00 78.13           O
+ATOM     13  CB  ASN B 212       6.978   5.532   7.341  1.00 71.04           C
+ATOM     14  CG  ASN B 212       8.376   5.163   7.790  1.00 72.56           C
+ATOM     15  OD1 ASN B 212       9.289   5.017   6.974  1.00 70.76           O
+ATOM     16  ND2 ASN B 212       8.551   5.000   9.096  1.00 73.07           N
+TER
+ATOM      1  N   ASN C 190      24.391  17.875  20.959  1.00 25.08           N
+ATOM      2  CA  ASN C 190      22.965  17.729  20.710  1.00 25.31           C
+ATOM      3  C   ASN C 190      22.031  18.507  21.627  1.00 25.45           C
+ATOM      4  O   ASN C 190      21.129  19.196  21.149  1.00 24.83           O
+ATOM      5  CB  ASN C 190      22.578  16.250  20.760  1.00 29.15           C
+ATOM      6  CG  ASN C 190      21.141  16.007  20.323  1.00 31.49           C
+ATOM      7  OD1 ASN C 190      20.458  15.135  20.858  1.00 30.98           O
+ATOM      8  ND2 ASN C 190      20.682  16.773  19.339  1.00 34.25           N
+TER
+ATOM      9  N   ASN D 212      17.583  17.891  17.004  1.00 63.62           N
+ATOM     10  CA  ASN D 212      16.962  16.727  16.387  1.00 70.84           C
+ATOM     11  C   ASN D 212      15.525  17.117  16.075  1.00 76.13           C
+ATOM     12  O   ASN D 212      15.000  16.819  15.000  1.00 78.13           O
+ATOM     13  CB  ASN D 212      16.978  15.532  17.341  1.00 71.04           C
+ATOM     14  CG  ASN D 212      18.376  15.163  17.790  1.00 72.56           C
+ATOM     15  OD1 ASN D 212      19.289  15.017  16.974  1.00 70.76           O
+ATOM     16  ND2 ASN D 212      18.551  15.000  19.096  1.00 73.07           N
+END
+"""
+  pdb_str_answer = """
+CRYST1   19.391   14.196   16.627  90.00  90.00  90.00 P 1
+SCALE1      0.051570  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.070442  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.060143        0.00000
+ATOM      1  N   ASN A 190      14.391   7.875  10.959  1.00 25.08           N
+ATOM      2  CA  ASN A 190      12.965   7.729  10.710  1.00 25.31           C
+ATOM      3  C   ASN A 190      12.031   8.507  11.627  1.00 25.45           C
+ATOM      4  O   ASN A 190      11.129   9.196  11.149  1.00 24.83           O
+ATOM      5  CB  ASN A 190      12.578   6.250  10.760  1.00 29.15           C
+ATOM      6  CG  ASN A 190      11.141   6.007  10.323  1.00 31.49           C
+ATOM      7  OD1 ASN A 190      10.633   6.678   9.426  1.00 30.98           O
+ATOM      8  ND2 ASN A 190      10.478   5.051  10.966  1.00 34.25           N
+TER
+ATOM      9  N   ASN B 212       7.583   7.891   7.004  1.00 63.62           N
+ATOM     10  CA  ASN B 212       6.962   6.727   6.387  1.00 70.84           C
+ATOM     11  C   ASN B 212       5.525   7.117   6.075  1.00 76.13           C
+ATOM     12  O   ASN B 212       5.000   6.819   5.000  1.00 78.13           O
+ATOM     13  CB  ASN B 212       6.978   5.532   7.341  1.00 71.04           C
+ATOM     14  CG  ASN B 212       8.376   5.163   7.790  1.00 72.56           C
+ATOM     15  OD1 ASN B 212       8.639   4.999   8.984  1.00 70.76           O
+ATOM     16  ND2 ASN B 212       9.288   5.039   6.833  1.00 73.07           N
+TER
+ATOM     17  N   ASN C 190      24.391  17.875  20.959  1.00 25.08           N
+ATOM     18  CA  ASN C 190      22.965  17.729  20.710  1.00 25.31           C
+ATOM     19  C   ASN C 190      22.031  18.507  21.627  1.00 25.45           C
+ATOM     20  O   ASN C 190      21.129  19.196  21.149  1.00 24.83           O
+ATOM     21  CB  ASN C 190      22.578  16.250  20.760  1.00 29.15           C
+ATOM     22  CG  ASN C 190      21.141  16.007  20.323  1.00 31.49           C
+ATOM     23  OD1 ASN C 190      20.633  16.678  19.426  1.00 30.98           O
+ATOM     24  ND2 ASN C 190      20.478  15.051  20.966  1.00 34.25           N
+TER
+ATOM     25  N   ASN D 212      17.583  17.891  17.004  1.00 63.62           N
+ATOM     26  CA  ASN D 212      16.962  16.727  16.387  1.00 70.84           C
+ATOM     27  C   ASN D 212      15.525  17.117  16.075  1.00 76.13           C
+ATOM     28  O   ASN D 212      15.000  16.819  15.000  1.00 78.13           O
+ATOM     29  CB  ASN D 212      16.978  15.532  17.341  1.00 71.04           C
+ATOM     30  CG  ASN D 212      18.376  15.163  17.790  1.00 72.56           C
+ATOM     31  OD1 ASN D 212      18.639  14.999  18.984  1.00 70.76           O
+ATOM     32  ND2 ASN D 212      19.288  15.039  16.833  1.00 73.07           N
+TER
+END
+"""
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  m = mmtbx.model.manager(model_input = pdb_inp)
+  m.flip_nqh()
+  sc_flipped = m.get_sites_cart()
+  sc_orig    = iotbx.pdb.input(source_info=None, lines=pdb_str).atoms().extract_xyz()
+  sc_answer  = iotbx.pdb.input(source_info=None, lines=pdb_str_answer).atoms().extract_xyz()
+  assert flex.max(flex.sqrt((sc_flipped - sc_answer).dot())) < 0.001
+  assert flex.max(flex.sqrt((sc_flipped - sc_orig).dot())) > 2.3
+
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_ss_creation_crash()
@@ -328,4 +430,5 @@ if (__name__ == "__main__"):
   exercise_3()
   exercise_from_sites_cart()
   exercise_has_hd()
+  exercise_flip_nqh()
   print("Time: %6.3f"%(time.time()-t0))
