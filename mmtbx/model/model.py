@@ -601,10 +601,6 @@ class manager(object):
       self.set_sites_cart(
         sites_cart = self.get_hierarchy().atoms().extract_xyz())
     else:
-      if(isinstance(selection, flex.int) or isinstance(selection, flex.size_t)):
-        assert flex.max(selection) == self.size()
-      else:
-        assert selection.size() == self.size()
       ph_tmp = self.get_hierarchy().select(selection)
       nqh.flip(
         pdb_hierarchy = ph_tmp, # changed in-place
