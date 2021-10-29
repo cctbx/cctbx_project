@@ -536,12 +536,13 @@ class HKLViewFrame() :
       self.procarrays.append(procarray)
       self.viewer.proc_arrays = self.procarrays
       self.viewer.has_new_miller_array = True
-      self.viewer.array_info_format_tpl.append( ArrayInfo(procarray, self.mprint).infotpl )
-      #self.viewer.SupersetMillerArrays()
+
       wrap_labels = 25
+      #self.viewer.SupersetMillerArrays()
       arrayinfo = ArrayInfo(procarray,wrap_labels)
-      self.viewer.array_info_format_tpl.append( arrayinfo.get_selected_info_columns(None) )
-      # needed for determining if expansion checkbox for P1 and friedel are enabled or disabled
+      info_fmt, headerstr, infostr = arrayinfo.get_selected_info_columns_from_phil(self.params )
+      self.viewer.array_info_format_tpl.append( info_fmt )
+      # isanomalous and spacegroup might not have been selected for displaying so send them separatately to GUI
       self.ano_spg_tpls.append((arrayinfo.isanomalous, arrayinfo.spginf) )
 
       hkls = self.origarrays["HKLs"]
@@ -552,7 +553,7 @@ class HKLViewFrame() :
         nanarr[e] = procarray.data()[i]
       self.origarrays[label] = list(nanarr)
       mydict = { "array_infotpls": self.viewer.array_info_format_tpl,
-                "ano_spg_tpls": self.ano_spg_lst,
+                "ano_spg_tpls": self.ano_spg_tpls,
                 "NewHKLscenes" : True,
                 "NewMillerArray" : True
                 }
