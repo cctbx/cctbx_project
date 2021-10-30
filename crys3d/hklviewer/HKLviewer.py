@@ -634,7 +634,9 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       try:
         binmsg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
         msg = zlib.decompress(binmsg)
-        nan = float("nan") # workaround for "evaluating" any NaN values in the messages received
+        nan = float("nan") # workaround for "evaluating" any NaN or inf values in the messages received
+        inf = math.inf
+
         msgstr = msg.decode()
 
         if "cctbx.python.version:" in msgstr:
