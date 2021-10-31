@@ -787,6 +787,7 @@ class ArrayInfo:
     self.minmaxdata = (nan, nan)
     self.minmaxsigs = (nan, nan)
     self.data_sigdata_max = nan
+    self.data_sigdata = nan
     self.desc = ""
     self.arrsize = data.size()
     if not isinstance(data, flex.std_string):
@@ -823,7 +824,9 @@ class ArrayInfo:
         self.maxsigmas = flex.max( data )
         self.minsigmas = flex.min( data )
         # Inspired by Diederichs doi:10.1107/S0907444910014836 I/SigI_asymptotic
-        self.data_sigdata_max = flex.max( millarr.data()/millarr.sigmas())
+        data_over_sigdata = millarr.data()/millarr.sigmas()
+        self.data_sigdata = flex.sum(data_over_sigdata)/len(data_over_sigdata)
+        self.data_sigdata_max = flex.max( data_over_sigdata)
       self.minmaxdata = (self.mindata, self.maxdata)
       self.minmaxsigs = (self.minsigmas, self.maxsigmas)
     self.labels = self.desc = self.wavelength = ""
@@ -907,7 +910,8 @@ class ArrayInfo:
       "span":              (" "*15 + self.caption_dict["span"][0] + " "*14,       self.span,             "{}",                   "{:>32} "),
       "minmax_data":       ("     %s       " %self.caption_dict["minmax_data"][0],self.minmaxdata,       "{0[0]:.6}, {0[1]:.6}", "{0[0]:>11.5}, {0[1]:>11.5}"),
       "minmax_sigmas":     ("     %s     " %self.caption_dict["minmax_sigmas"][0],self.minmaxsigs,       "{0[0]:.6}, {0[1]:.6}", "{0[0]:>11.5}, {0[1]:>11.5}"),
-      "data_sigdata_max":  ("%s" %self.caption_dict["data_sigdata_max"][0],  self.data_sigdata_max, "{:.4g}",               "{:>11.4g} "),
+      "data_sigdata":      (" %s" %self.caption_dict["data_sigdata"][0],          self.data_sigdata,     "{:.4g}",               "{:>9.4g} "),
+      "data_sigdata_max":  ("%s" %self.caption_dict["data_sigdata_max"][0],       self.data_sigdata_max, "{:.4g}",               "{:>11.4g} "),
       "d_minmax":          ("   %s      " %self.caption_dict["d_minmax"][0],      self.dminmax,          "{0[0]:.6}, {0[1]:.6}", "{0[0]:>10.5}, {0[1]:>10.5}"),
       "unit_cell":         ("     %s      " %self.caption_dict["unit_cell"][0],   self.ucell,            "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g}",
                                                                                               "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g} "),
@@ -963,7 +967,11 @@ selected_info {
       .type = bool
       .caption = "minimum, maximum values of sigmas"
       .short_caption = "min,max sigmas"
-    data_sigdata_max = True
+    data_sigdata = False
+      .type = bool
+      .caption = "Average value of data/sigma"
+      .short_caption = "DatSigDat"
+    data_sigdata_max = False
       .type = bool
       .caption = "maximum value of data/sigma"
       .short_caption = "MaxDatSigDat"
