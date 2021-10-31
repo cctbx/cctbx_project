@@ -67,7 +67,6 @@ class StageTwoRefiner(BaseRefiner):
         BaseRefiner.__init__(self)
 
         self.params = params
-        self.min_multiplicity = self.params.refiner.stage_two.min_multiplicity
         self.trad_conv_eps = self.params.refiner.tradeps
         self.calc_curvatures = self.params.refiner.curvatures
         self.break_signal = self.params.refiner.break_signal
@@ -82,7 +81,7 @@ class StageTwoRefiner(BaseRefiner):
         self.asu_from_idx = {}  # maps asu hkl to global fcell index
         self.rescale_params = True  # whether to rescale parameters during refinement  # TODO this will always be true, so remove the ability to disable
         self.request_diag_once = False  # LBFGS refiner property
-        self.min_multiplicity = 1  # only refine a spots Fhkl if multiplicity greater than this number
+        self.min_multiplicity = self.params.refiner.stage_two.min_multiplicity
         self.restart_file = None  # output file from previous run refinement
         self.trial_id = 0  # trial id in case multiple trials are run in sequence
         self.x_init = None  # used to restart the refiner (e.g. self.x gets updated with this)
@@ -278,7 +277,8 @@ class StageTwoRefiner(BaseRefiner):
     def _setup_region_refinement_parameters(self):
         self.region_params = {}
         for i_reg in range(self.num_regions):
-            p = RangedParameter(init=1, minval=0.5, maxval=1.5, sigma=1, center=1, beta=0.04)
+            minGain, maxGain = self.params.refiner.gain_map_min_max
+            p = RangedParameter(init=1, minval=minGain, maxval=maxGain, sigma=1, center=1, beta=0.04)
             self.region_params["region%d" % i_reg] = p
 
     def _get_i_fcell_slices(self, Modeler):
@@ -607,6 +607,8 @@ class StageTwoRefiner(BaseRefiner):
         if self.iterations % self.params.refiner.save_gain_freq == 0:
             self._save_optimized_gain_map()
 
+        self.all_sigZ = []
+
         for self._i_shot in self.shot_ids:
             self.scale_fac = self._get_spot_scale(self._i_shot)**2
             self.b_fac = self._get_bfactor(self._i_shot)
@@ -676,6 +678,9 @@ class StageTwoRefiner(BaseRefiner):
             #self._Bfactor_derivatives()
             self._Fcell_derivatives()
             self._gain_region_derivatives()
+
+            trusted = self.Modelers[self._i_shot].all_trusted
+            self.all_sigZ.append(np.std(self._Zscore[trusted]))
         tshots = time.time()-tshots
         LOGGER.info("Time rank worked on shots=%.4f" % tshots)
         tmpi = time.time()
@@ -739,6 +744,7 @@ class StageTwoRefiner(BaseRefiner):
 
         dL_dG = 0.5*self.one_over_v* (MOD.all_background + 2*self.u*(MOD.all_data-MOD.all_background) - \
             self.u*self.u*MOD.all_background*self.one_over_v)
+        dL_dG /= MOD.all_freq
 
         reg_grad = np.zeros(self.num_regions)
         np.add.at(reg_grad, MOD._gain_region_per_pixel[MOD.all_trusted], dL_dG[MOD.all_trusted])
@@ -778,6 +784,8 @@ class StageTwoRefiner(BaseRefiner):
                 gterm = self.common_grad_term[slc]
                 g_accum = d*gterm
                 trust = MOD.all_trusted[slc]
+                # NOTE : no need to normalize Fhkl gradients by the overlap rate - they should arise from different HKLs
+                #freq = MOD.all_freq[slc]  # pixel frequency (1 is no overlaps)
                 self.grad[xpos] += (g_accum[trust].sum())*.5
                 if self.calc_curvatures:
                     raise NotImplementedError("No curvature for Fcell refinement")
@@ -827,6 +835,9 @@ class StageTwoRefiner(BaseRefiner):
         self.grad = self._MPI_reduce_broadcast(self.grad)
         if self.calc_curvatures:
             self.curv = self._MPI_reduce_broadcast(self.curv)
+        all_sigZ = COMM.reduce(self.all_sigZ)
+        if COMM.rank==0:
+            LOGGER.info("F=%10.7e, sigmaZ: mean=%f, median=%f" % (self.target_functional, np.mean(all_sigZ), np.median(all_sigZ) ))
 
     def _curvature_analysis(self):
         self.tot_neg_curv = 0
@@ -920,13 +931,17 @@ class StageTwoRefiner(BaseRefiner):
 
     def _target_accumulate(self):
         fterm = self.log2pi + self.log_v + self.u*self.u*self.one_over_v
+        M = self.Modelers[self._i_shot]
+        fterm /= M.all_freq
         if self._is_trusted is not None:
             fterm = fterm[self._is_trusted]
-        fterm = 0.5*fterm.sum()
+        fterm = 0.5*(fterm.sum())
         return fterm
 
     def _grad_accumulate(self, d):
         gterm = d * self.one_over_v * self.one_minus_2u_minus_u_squared_over_v
+        M = self.Modelers[self._i_shot]
+        gterm /= M.all_freq
         if self._is_trusted is not None:
             gterm = gterm[self._is_trusted]
         gterm = 0.5*gterm.sum()
@@ -958,19 +973,20 @@ class StageTwoRefiner(BaseRefiner):
             self.log_Lambda = np.log(self.model_Lambda)
         except FloatingPointError:
             pass
-        if any((self.model_Lambda <= 0).ravel()):
-            is_bad = self.model_Lambda <= 0
-            self.log_Lambda[is_bad] = 1e-6
-            LOGGER.info("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL (negative_models=%d)!!!!!!!!!\n<><><><><><><><><>\n" % self.num_negative_model)
+        neg_lam = self.model_Lambda <=0
+        M = self.Modelers[self._i_shot]
+        if any(neg_lam[M.all_trusted].ravel()):
+            self.log_Lambda[neg_lam] = 1e-6
+            LOGGER.warning(Bcolors.WARNING+("NEGATIVE INTENSITY IN MODEL (negative_models=%d)!" % self.num_negative_model) + Bcolors.ENDC)
         #    raise ValueError("model of Bragg spots cannot have negative intensities...")
-        self.log_Lambda[self.model_Lambda <= 0] = 0
+        self.log_Lambda[neg_lam] = 0
 
     def _evaluate_log_averageI_plus_sigma_readout(self):
         Mod = self.Modelers[self._i_shot]
         v = self.model_Lambda + Mod.sigma_rdout ** 2
         v_is_neg = (v <= 0).ravel()
-        if any(v_is_neg):
-            LOGGER.info("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL!!!!!!!!!\n<><><><><><><><><>\n")
+        if any(v_is_neg[Mod.all_trusted]):
+            LOGGER.warning(Bcolors.WARNING+"NEGATIVE INTENSITY IN MODEL!"+Bcolors.ENDC)
         #    raise ValueError("model of Bragg spots cannot have negative intensities...")
         self.log_v = np.log(v)
         self.log_v[v <= 0] = 0  # but will I ever negative_model ?

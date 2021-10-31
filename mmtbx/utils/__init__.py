@@ -1755,7 +1755,7 @@ class extract_box_around_model_and_map(object):
     radii = flex.double(self.xray_structure_box.scatterers().size(),atom_radius)
     mask = cctbx_maptbx_ext.mask(
       sites_frac                  = self.xray_structure_box.sites_frac(),
-      unit_cell                   = self.crystal_symmetry.unit_cell(),
+      unit_cell                   = self.box_crystal_symmetry.unit_cell(),
       n_real                      = self.map_box.all(),
       mask_value_inside_molecule  = 1,
       mask_value_outside_molecule = 0,

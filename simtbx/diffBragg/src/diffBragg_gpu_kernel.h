@@ -65,4 +65,5 @@ __global__ void gpu_sum_over_steps(
         const CUDAREAL* __restrict__ fpfdp_derivs,
         const CUDAREAL*__restrict__ atom_data, int num_atoms,
         bool doing_fp_fdp_derivs,
-        const int* __restrict__ nominal_hkl, bool use_nominal_hkl, MAT3 anisoU, MAT3 anisoG, bool use_diffuse);
+        const int* __restrict__ nominal_hkl, bool use_nominal_hkl, MAT3 anisoU, MAT3 anisoG, bool use_diffuse,
+        CUDAREAL* d_diffuse_gamma_images, CUDAREAL* d_diffuse_sigma_images, bool refine_diffuse);

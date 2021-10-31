@@ -655,8 +655,29 @@ simulator {
 
 refiner_phil = """
 refiner {
+  check_expt_format = True
+    .type = bool
+    .help = In some cases the expt is only used for the crystal model, in which case set check_expt_format=False.
+    .help = If, however, the experimental data and/or spectra are to be extracted from the expt, then this
+    .help = should  remain True.
+  refldata_trusted = *allValid fg bg
+    .type = choice
+    .help = If loading data from reflection table, choose which pixels are flagged as trusted/
+    .help = The default is allValid, meaning any shoebox mask value > 1.
+    .help = fg is any foreground (integrated), valid pixel (mask==5).
+    .help = bg is any valid pixel used for background fitting or foreground (integration).
+    .help = Note, in this context, Foreground is usually the central shoebox pixels marked for integration.
+  refldata_to_photons = False
+    .type = bool
+    .help = If loading data from reflection table, then optionally normalize by the refiner.adu_to_photon factor.
+    .help = If the reflection tables were created using dials.integrate or dials.stils_process,
+    .help = then you will need to set this flag to True.
   load_data_from_refl = False
     .type = bool
+    .help = Rather than load data from the experiment, load data from the reflection table shoeboxes.
+    .help = The data in shoeboxes is stored in float32. The shoebox bound boxes will determing the regions of
+    .help = pixels used for refinement. It is assumed that shoebox background, data, and the mask are properly set.
+    .help = See the method GatherFromReflectionTable in hopper_utils.
   test_gathered_file = False
     .type = bool
   gather_dir = None
@@ -670,6 +691,10 @@ refiner {
     .type = ints(size=3)
     .help = 3-tuple of panel ID, fast coord, slow coord. If set, show the state of diffBragg
     .help = for this pixel once refinement has finished
+  gain_map_min_max = [.5,2]
+    .type = floats(size=2)
+    .help = the min, max allowed values for the gain correction terms
+    .help = that are applied to each region (defined by region_size)
   refine_gain_map = False
     .type = bool
     .help = flag for refining a detector gain map, defined by the parameter region_size

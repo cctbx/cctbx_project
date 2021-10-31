@@ -152,6 +152,10 @@ void diffBragg_sum_over_steps_cuda(
 
         //gettimeofday(&t3, 0));
         gpuErr(cudaMallocManaged(&cp.cu_floatimage, db_cu_flags.Npix_to_allocate*sizeof(CUDAREAL) ));
+        if (db_flags.refine_diffuse){
+            gpuErr(cudaMallocManaged(&cp.cu_d_diffuse_gamma_images, db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
+            //gpuErr(cudaMallocManaged(&cp.cu_d_diffuse_sigma_images, db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
+        }
         if (db_flags.refine_fcell){
             gpuErr(cudaMallocManaged(&cp.cu_d_fcell_images, db_cu_flags.Npix_to_allocate*1*sizeof(CUDAREAL)));
             gpuErr(cudaMallocManaged(&cp.cu_d2_fcell_images, db_cu_flags.Npix_to_allocate*1*sizeof(CUDAREAL)));
@@ -427,7 +431,8 @@ void diffBragg_sum_over_steps_cuda(
         cp.cu_odet_vectors, cp.cu_pix0_vectors,
         db_flags.nopolar, db_flags.point_pixel, db_beam.fluence, db_cryst.r_e_sqr, db_cryst.spot_scale, Npanels, aniso_eta, db_flags.no_Nabc_scale,
         cp.cu_fpfdp,  cp.cu_fpfdp_derivs, cp.cu_atom_data, num_atoms,
-        db_flags.refine_fp_fdp, cp.cu_nominal_hkl, use_nominal_hkl, db_cryst.anisoU, db_cryst.anisoG, db_flags.use_diffuse);
+        db_flags.refine_fp_fdp, cp.cu_nominal_hkl, use_nominal_hkl, db_cryst.anisoU, db_cryst.anisoG, db_flags.use_diffuse,
+        cp.cu_d_diffuse_gamma_images, cp.cu_d_diffuse_sigma_images, db_flags.refine_diffuse);
 
     error_msg(cudaGetLastError(), "after kernel call");
 
@@ -479,6 +484,12 @@ void diffBragg_sum_over_steps_cuda(
             d2_image.Ncells[i] = cp.cu_d2_Ncells_images[i];
         }
     }
+    if (db_flags.refine_diffuse){
+        for(int i=0; i<3*Npix_to_model; i++){
+            d_image.diffuse_gamma[i] = cp.cu_d_diffuse_gamma_images[i];
+            //d_image.diffuse_sigma[i] = cp.cu_d_diffuse_sigma_images[i];
+        }
+    }
     if (std::count(db_flags.refine_Bmat.begin(), db_flags.refine_Bmat.end(), true) > 0){
         for(int i=0; i<6*Npix_to_model; i++){
             d_image.Bmat[i] = cp.cu_d_Bmat_images[i];
@@ -511,6 +522,8 @@ void freedom(diffBragg_cudaPointers& cp){
         gpuErr(cudaFree( cp.cu_d_Umat_images));
         gpuErr(cudaFree( cp.cu_d_Bmat_images));
         gpuErr(cudaFree( cp.cu_d_Ncells_images));
+        gpuErr(cudaFree( cp.cu_d_diffuse_gamma_images));
+        //gpuErr(cudaFree( cp.cu_d_diffuse_sigma_images));
         gpuErr(cudaFree( cp.cu_d2_Umat_images));
         gpuErr(cudaFree( cp.cu_d2_Bmat_images));
         gpuErr(cudaFree( cp.cu_d2_Ncells_images));

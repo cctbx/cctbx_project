@@ -51,7 +51,10 @@ db_tst_list = [
     ["$D/diffBragg/tests/tst_diffBragg_eta_derivs.py", "--aniso 2"],
     ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel x"],
     ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel y"],
-    ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel z"]
+    ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel z"],
+    ["$D/diffBragg/tests/tst_diffBragg_diffuse_properties.py", "--idx 0 --gamma 100 125 150"],
+    ["$D/diffBragg/tests/tst_diffBragg_diffuse_properties.py", "--idx 1 --gamma 100 125 150"],
+    ["$D/diffBragg/tests/tst_diffBragg_diffuse_properties.py", "--idx 2 --gamma 100 125 150"]
     ]
 
 OPT = libtbx.env.build_options

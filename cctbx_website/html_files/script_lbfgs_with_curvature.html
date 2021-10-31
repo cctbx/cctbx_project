@@ -1,0 +1,314 @@
+{% extends "cctbx/header.html" %}
+
+{% load static %}
+
+{% block extra_js %}
+    <script>window.MathJax = { tex: { tags: 'ams' } };</script>
+{% endblock extra_js %}
+
+{% block content %}
+
+<div class="col-sm-9 main">
+<!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
+<!----------------------- EDIT START ---------------------------->
+
+<h2><center>LBFGS minimzer with curvatures</center></h2>
+
+<p class="lead mt-4">This script shows how to use the LBFGS minimizer with curvatures.<br>
+Authors: Pavel V. Afonine, Dorothee Liebschner</p>
+
+<p>See the <a href="{% url 'script_lbfgs_with_curvature' %}">LBFGS script</a> without curvature for some information about the LBFGS algorightm.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">The Rosenbrock function</h3>
+
+<p>To illustrate the use of the minimizer, we will use the <a href="https://en.wikipedia.org/wiki/Rosenbrock_function">Rosenbrock function</a> (see also <a href="{% url 'script_lbfgs_with_curvature' %}">LBFGS script without curvature</a>).<br>
+It is defined by:</p>
+
+\begin{equation}
+f(x,y) = (a-x)^2 +b(y-x^2)^2
+\end{equation}
+
+<p>We will use the coefficients a=1 and b=100:</p>
+
+\begin{equation}
+f(x,y) = (1-x)^2 +100(y-x^2)^2
+\end{equation}
+
+<p>The partial first derivatives are:</p>
+
+\begin{equation}
+\frac{\partial f(x,y)}{\partial x} =  -2 (1-x) + 400 (-xy + x^3)
+\end{equation}
+
+\begin{equation}
+\frac{\partial f(x,y)}{\partial y} =  200(y - x^2)
+\end{equation}
+
+<p>The partial second derivatives are (the diagonal elements of the Hessian matrix):</p>
+
+\begin{equation}
+\frac{\partial^2 f(x,y)}{\partial x ^2} =  2 + 400(-y+3x^2)
+\end{equation}
+
+\begin{equation}
+\frac{\partial^2 f(x,y)}{\partial y ^2} =  200
+\end{equation}
+
+<p>The global minimum is where the partial derivatives are equal to zero. For the Rosenbrock function with coefficients a=1 and b=100, this is at the coordinates: \( x = 1 \), \( y = 1 \). So the LBFGS minimizer should find coordinates equal (or very close) to this point. The function value of the Rosenbrock function at (1,1) is equal to 0.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">Code</h3>
+
+<pre class="codeDL"><code>from __future__ import division, print_function
+from scitbx import lbfgs as scitbx_lbfgs
+from scitbx.array_family import flex
+from libtbx import adopt_init_args
+
+# Rosenbrock's function, gradients and curvatures
+
+def target(x,y):
+  return (1-x)**2+100*(y-x**2)**2
+
+def grad_x(x,y):
+  return -2*(1-x) + 400*(-x*y+x**3)
+
+def grad_y(x,y):
+  return 2*100*(y-x**2)
+
+def curv_xx(x,y):
+  return 2 + 400*(-y+3*x**2)
+
+def curv_yy(x,y):
+  return 200
+
+def lbfgs_run(target_evaluator,
+              min_iterations=0,
+              max_iterations=None,
+              traditional_convergence_test=True,
+              use_curvatures=False):
+  ext = scitbx_lbfgs.ext
+  minimizer = ext.minimizer(target_evaluator.n)
+  minimizer.error = None
+  is_converged = ext.traditional_convergence_test(target_evaluator.n)
+  try:
+    icall = 0
+    requests_f_and_g = True
+    requests_diag = use_curvatures
+    while 1:
+      if (requests_f_and_g):
+        icall += 1
+      x, f, g, d = target_evaluator(
+        requests_f_and_g=requests_f_and_g,
+        requests_diag=requests_diag)
+      if (use_curvatures):
+        if (d is None): d = flex.double(x.size())
+        have_request = minimizer.run(x, f, g, d)
+      else:
+        have_request = minimizer.run(x, f, g)
+      if (have_request):
+        requests_f_and_g = minimizer.requests_f_and_g()
+        requests_diag = minimizer.requests_diag()
+        continue
+      assert not minimizer.requests_f_and_g()
+      assert not minimizer.requests_diag()
+      if (minimizer.iter() >= min_iterations and is_converged(x, g)): break
+      if (max_iterations is not None and minimizer.iter() >= max_iterations):
+        break
+      if (use_curvatures):
+        have_request = minimizer.run(x, f, g, d)
+      else:
+        have_request = minimizer.run(x, f, g)
+      if (not have_request): break
+      requests_f_and_g = minimizer.requests_f_and_g()
+      requests_diag = minimizer.requests_diag()
+  except RuntimeError as e:
+    minimizer.error = str(e)
+  minimizer.n_calls = icall
+  return minimizer
+
+class minimizer:
+
+  def __init__(self, xx=-3, yy=-4, min_iterations=0, max_iterations=10000):
+    adopt_init_args(self, locals())
+    self.x = flex.double([xx, yy])
+    self.n = self.x.size()
+
+  def run(self, use_curvatures=False):
+    self.minimizer = lbfgs_run(
+      target_evaluator=self,
+      min_iterations=self.min_iterations,
+      max_iterations=self.max_iterations,
+      use_curvatures=use_curvatures)
+    self(requests_f_and_g=True, requests_diag=False)
+    return self
+
+  def __call__(self, requests_f_and_g, requests_diag):
+    self.xx, self.yy = self.x
+    if (not requests_f_and_g and not requests_diag):
+      requests_f_and_g = True
+      requests_diag = True
+    if (requests_f_and_g):
+      self.f = target(self.xx,self.yy)
+      self.g = flex.double(
+        (grad_x(self.xx, self.yy),
+         grad_y(self.xx, self.yy)))
+      self.d = None
+    if (requests_diag):
+      self.d = flex.double(
+        (curv_xx(self.xx, self.yy),
+         curv_yy(self.xx, self.yy)))
+      assert self.d.all_ne(0)
+      self.d = 1 / self.d
+    return self.x, self.f, self.g, self.d
+
+def run():
+  for use_curvatures in (False, True):
+    print("use_curvatures:", use_curvatures)
+    m = minimizer().run(use_curvatures=use_curvatures)
+    print(tuple(m.x), "final")
+    if (abs(m.x[0]-1) > 1.e-4 or abs(m.x[1]-1) > 1.e-4):
+      print(tuple(m.x), "failure, use_curvatures="+str(use_curvatures))
+    print("iter,exception:", m.minimizer.iter(), m.minimizer.error)
+    print("n_calls:", m.minimizer.n_calls)
+    print()
+    assert m.minimizer.n_calls == m.minimizer.nfun()
+
+if (__name__ == "__main__"):
+  run()
+</code></pre>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Overview</h3>
+
+<p>The script consists of several parts:</p>
+
+
+<p><b>Imports</b>: At the beginning of the script are import statements. They are used to import the modules needed for our task.</p>
+
+<p><b>Rosenbrock function</b>: <code>target</code> returns the value of the Rosenbrock function, <code>grad_x</code> and <code>grad_y</code> return the partial derivatives, <code>curve_xx</code> and <code>curve_yy</code> return the diagonal elements of the Hessian matrix (matrix of partial second derivatives).</p>
+
+<p><b>Main function:</b> The <code>run()</code> function is used to call the minimizer and to print the result to standard output.</p>
+
+<p><b>Class minimizer:</b> Class to perform minimization of the Rosenbrock function.</p>
+
+<p><b>Function lbfgs_run:</b> Helper function to run the scitbx minimizer.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">The run() function</h3>
+
+<p>The <code>run()</code> function exectues the <code>run()</code> method of the <code>minimizer()</code> class, once with curvatures and once without curvatures:</p>
+<pre class="bg-code-DL"><code>m = minimizer().run(use_curvatures=use_curvatures)
+</code></pre>
+
+<p>This will launch the minimization. For both computations, we print some results to standard output.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">The minimizer class</h3>
+
+<p>The <code>minimizer</code> class has three methods: <code>__init__()</code>, <code>run()</code> and <code>__call__()</code>.</p>
+
+<p>The <code>__init__()</code> method initializes our class with the starting point (-3, -4) (<code>xx</code> and <code>yy</code>), and sets the number of minimum and maximum iterations to 0 and 10,000, respectively.<br>
+<code>x</code> is a two-dimensional array that represents the x and y coordinates, so x[0] = -3 and x[1] = -4 are the (arbitrarily chosen) starting points of the minimization task.<br>
+<code>self.n</code> represents the length of the array <code>x</code>.</p>
+<p></p>
+
+<p>The <code>run()</code> method starts the L-BFGS minimizer:</p>
+<pre class="bg-code-DL"><code>self.minimizer = lbfgs_run(
+  target_evaluator=self,
+  min_iterations=self.min_iterations,
+  max_iterations=self.max_iterations,
+  use_curvatures=use_curvatures)
+</code></pre>
+
+<p>Then it executes the <code>__call__()</code> method:</p>
+<pre class="bg-code-DL"><code>self(requests_f_and_g=True, requests_diag=False)
+</code></pre>
+
+<p>The <code>__call__()</code> method allows an instance of the minimzer class to behave like a function, i.e. it can be called like a function; <code>minimizer(requests_f_and_g=True, requests_diag=False)</code> is then a shorthand for <code>minimizer.__call__(requests_f_and_g=True, requests_diag=False)</code>.<br>
+Depending on the values of the boolean parameters <code>requests_f_and_g</code> and <code>requests_diag</code>, the <code>__call__()</code> method will update the target and the gradients or the diagonal elements of the Hessian matrix (second derivatives). Note that it will actually calculate the inverse of the diagonal elements (the Newton method uses the inverse of the Hessian matrix and the LBFGS algorithm approximates the Hessian matrix):</p>
+
+<pre class="bg-code-DL"><code>assert self.d.all_ne(0)
+self.d = 1 / self.d
+</code></pre>
+(As we are calculating the inverse, we first assert that the diagonal elements are different from zero.)
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">The lbgfs_run function</h3>
+
+<p>Here, we import the lbfgs module from scitbx:</p>
+
+<pre class="bg-code-DL"><code>ext = scitbx_lbfgs.ext
+</code></pre>
+
+<p>Then we instantiate the minimizer from lbfgs with the dimension of our function (in our case: n=2).</p>
+<pre class="bg-code-DL"><code>minimizer = ext.minimizer(target_evaluator.n)
+</code></pre>
+
+<p>Then we get a function to check if the minimization converged. Its arguments are the function value and the gradients.</p>
+<pre class="bg-code-DL"><code>is_converged = ext.traditional_convergence_test(target_evaluator.n)
+</code></pre>
+
+<p>Now we can start our minimization loop. We get the values of the booleans <code>requests_f_and_g</code> and <code>requests_diag</code> from the scitbx minimizer, but the starting values are True and the value of use_curvatures.</p>
+
+<p>We get the coordinates, the function value, the gradients and the curvatures from our minimizer class.</p>
+<pre class="bg-code-DL"><code>x, f, g, d = target_evaluator(
+  requests_f_and_g=requests_f_and_g,
+  requests_diag=requests_diag)
+</code></pre>
+
+<p>Then we run the scitbx minimizer with the coordinates, the function value and the gradients as input parameters. If we are using curvatures, we also supply the second derivatives. The minimizer will return requests for function values and the gradients and/or for the curvatures:</p>
+<pre class="bg-code-DL"><code>requests_f_and_g = minimizer.requests_f_and_g()
+requests_diag = minimizer.requests_diag()
+</code></pre>
+If the minimizer requests values, we continue in the loop. Otherwise, we check if we meet the convergence criteria. Finally, the function returns the scitbx minimizer object.
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Output</h3>
+
+<p>The <code>run()</code> function has some output. It will print the final coordinates, the number of iterations in the scitbx minimizer and an exception message, if present. </p>
+
+<pre class="CodeGreen"><code>use_curvatures: False
+(0.9999998308201578, 0.9999996829964546) final
+iter,exception: 27 None
+n_calls: 34
+
+use_curvatures: True
+(1.0000002135019253, 1.000000406037093) final
+iter,exception: 43 None
+n_calls: 60
+</code></pre>
+
+<p>Both methods converged to the minimum at (1,1).</p>
+
+<!----------------------------------------------------------------------------->
+<!--
+
+<p>We can also quickly check how the minimization progresses. For example for the L-BFGS-B method, by adding a print statement at the end of the while loop in the <code>lbfgs_run()</code> function, we get the current values of f(x,y), i.e. the current value of the Rosenbrock function during the minimization. We can then plot the target value as a function of iterations for each method:</p>
+
+<img style="max-width: 70%;" src="{% static 'cctbx/img/scripts/script_lbfgs_no_curvature.svg' %}" alt="fig" >
+
+-->
+
+<!----------------------- EDIT END ---------------------------->
+<!-- DO NOT EDIT ANYTHING BELOW!!!! -->
+</div> <!-- end col-sm-9 -->
+
+<!-- automatic table of contents
+     located in the sidebar; will move to the top on a small screen -->
+<div class="col-sm-3 mt-5">
+  <nav id="toc" data-toggle="toc"></nav>
+</div> <!-- end col-sm-3 -->
+
+{% endblock %}
+
+
+    <!-- block.super will get the content of the block from the parent template -->
+    <!-- {{ block.super }} -->

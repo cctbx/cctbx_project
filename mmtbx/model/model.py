@@ -48,6 +48,8 @@ from mmtbx.refinement import anomalous_scatterer_groups
 from mmtbx.refinement import geometry_minimization
 import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 
+from mmtbx.rotamer import nqh
+
 from scitbx import matrix
 from iotbx.bioinformatics import sequence
 from mmtbx.validation.sequence import master_phil as sequence_master_phil
@@ -588,6 +590,25 @@ class manager(object):
     s2 = self.get_xray_structure().sites_cart()
     d = flex.sqrt((s1 - s2).dot())
     assert d<1.e-4
+
+  def flip_nqh(self, selection = None):
+    "Flip N/Q/H residue side-chains if needed"
+    if(selection is None):
+      nqh.flip(
+        pdb_hierarchy = self.get_hierarchy(), # changed in-place
+        log           = self.log,
+        mon_lib_srv   = self.get_mon_lib_srv())
+      self.set_sites_cart(
+        sites_cart = self.get_hierarchy().atoms().extract_xyz())
+    else:
+      ph_tmp = self.get_hierarchy().select(selection)
+      nqh.flip(
+        pdb_hierarchy = ph_tmp, # changed in-place
+        log           = self.log,
+        mon_lib_srv   = self.get_mon_lib_srv())
+      self.set_sites_cart(
+        sites_cart = ph_tmp.atoms().extract_xyz(),
+        selection  = selection)
 
   def set_ramachandran_plot_restraints(self, rama_params):
     """ rama_params - mmtbx.geometry_restraints.ramachandran.master_phil->
@@ -1142,7 +1163,8 @@ class manager(object):
         if(flex.max(flex.abs(b_master-b_copy))>eps_adp): result.adp = False
         master_on_copy_sites_cart = c.r.elems * master_sites_cart + c.t
         d = flex.sqrt((master_on_copy_sites_cart-m_copy.get_sites_cart()).dot())
-        if(flex.max(d)>eps_xyz): result.xyz = False
+        if(flex.max(d)>eps_xyz):
+          result.xyz = False
     return result
 
   def idealize_ncs_inplace(self):
@@ -1936,15 +1958,20 @@ class manager(object):
     g = self.get_ncs_groups()
     return g is not None and len(g)>0
 
-  def search_for_ncs(self, params=None, log=null_out()):
+  def search_for_ncs(self, params=None, show_groups=False):
     self._ncs_obj = iotbx.ncs.input(
-        hierarchy=self.get_hierarchy(),
-        params=params,
-        log=log)
-    if self._ncs_obj is not None:
+      hierarchy = self.get_hierarchy(),
+      params    = params,
+      log       = self.log)
+    if(self._ncs_obj is not None):
       self._ncs_groups = self.get_ncs_obj().get_ncs_restraints_group_list()
     self._update_master_sel()
-
+    if(self.log is not None and show_groups):
+      print("Found NCS groups:", file=self.log)
+      if(len(self._ncs_obj.get_ncs_restraints_group_list())>0):
+        print(self._ncs_obj.print_ncs_phil_param(), file=self.log)
+      else:
+        print("  found none.", file=self.log)
 
   def setup_ncs_constraints_groups(self, filter_groups=False):
     """
@@ -2827,6 +2854,21 @@ class manager(object):
     self.reprocess_pdb_hierarchy_inefficient()
     self.idealize_h_minimization()
 
+  def pairs_within(self, radius):
+    cs = self.crystal_symmetry()
+    asu_mappings = crystal.symmetry.asu_mappings(cs, buffer_thickness = radius)
+    special_position_settings = crystal.special_position_settings(
+      crystal_symmetry = cs)
+    site_symmetry_table = special_position_settings.site_symmetry_table(
+      sites_cart = self.get_sites_cart())
+    asu_mappings.process_sites_frac(
+      original_sites      = self.get_sites_frac(),
+      site_symmetry_table = site_symmetry_table)
+    pair_asu_table = crystal.pair_asu_table(asu_mappings = asu_mappings)
+    pair_asu_table.add_all_pairs(distance_cutoff = radius)
+    pst = pair_asu_table.extract_pair_sym_table()
+    return [i.i_seqs() for i in pst.iterator()]
+
   def reprocess_pdb_hierarchy_inefficient(self):
     # XXX very inefficient
     """
@@ -2890,6 +2932,19 @@ class manager(object):
           b_iso[i_seq_min_q] = b_iso[i_seq_max_q]
     self.set_b_iso(values = b_iso)
 
+  def rms_b_iso_or_b_equiv(self, exclude_hd=True):
+    pairs = self.pairs_within(radius=1.6)
+    atoms = self.get_hierarchy().atoms()
+    values = flex.double()
+    for pair in pairs:
+      a1, a2 = atoms[pair[0]], atoms[pair[1]]
+      if(exclude_hd and (a1.element_is_hydrogen() or a2.element_is_hydrogen())):
+        continue
+      values.append(abs(a1.b - a2.b)**2)
+    if(values.size() > 0):
+      result = math.sqrt(flex.sum(values) / values.size())
+    return result
+
   def rms_b_iso_or_b_equiv_bonded(self):
     if(self.ias_manager is not None): return 0
     rm = self.restraints_manager
@@ -2901,8 +2956,7 @@ class manager(object):
       b_isos                      = bs)
 
   def deep_copy(self):
-    return self.select(selection = flex.bool(
-      self.get_xray_structure().scatterers().size(), True))
+    return self.select(selection = flex.bool(self.size(), True))
 
   def add_ias(self, fmodel=None, ias_params=None, file_name=None,
                                                              build_only=False):
@@ -3100,7 +3154,7 @@ class manager(object):
   def select(self, selection):
     # what about 3 types of NCS and self._master_sel?
     # XXX ignores IAS
-    if isinstance(selection, flex.size_t):
+    if isinstance(selection, flex.size_t) or isinstance(selection, flex.int):
       selection = flex.bool(self.get_number_of_atoms(), selection)
     new_pdb_hierarchy = self._pdb_hierarchy.select(selection, copy_atoms=True)
     sdi = self.scattering_dict_info
