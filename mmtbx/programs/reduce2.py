@@ -30,6 +30,10 @@ use_neutron_distances = False
 preference_magnitude = 1.0
   .type = float
   .help = Multiplier on the rotational-preference energy for rotatable Movers (-penalty in reduce)
+alt_id = None
+  .type = str
+  .short_caption = Alternate to optimize
+  .help = Alternate to optimize.  The default is to optimize all of them.
 
 output
   .style = menu_item auto_align
@@ -86,6 +90,7 @@ NOTES:
     -penalty200: preference_magnitude=200
     -nobuild9999: approach=add preference_magnitude=9999
     -noflip: approach=add preference_magnitude=9999
+    -onlya: alt_id=A
      @todo
 '''.format(version)
   datatypes = ['model', 'restraint', 'phil']
@@ -109,9 +114,6 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def run(self):
-
-    # @todo How to let it know to produce a PDB or CIF file as normal?  Is that by putting back in
-    # get_results() below?
 
     # String describing the run that will be output to the specified file.
     outString = 'reduce2 v.{}, run {}\n'.format(version, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -151,9 +153,9 @@ NOTES:
       doneInt = time.clock()
 
       make_sub_header('Optimizing', out=self.logger)
-      # @todo Let the caller specify the model index and altID rather than doing only the default (first).
       startOpt = time.clock()
-      opt = Optimizers.FastOptimizer(model, probeRadius=0.25, altID="", preferenceMagnitude=self.params.preference_magnitude)
+      opt = Optimizers.FastOptimizer(model, probeRadius=0.25,
+        altID=self.params.alt_id, preferenceMagnitude=self.params.preference_magnitude)
       doneOpt = time.clock()
       outString += opt.getInfo()
       outString += 'Time to Add Hydrogen = '+str(doneAdd-startAdd)+'\n'
