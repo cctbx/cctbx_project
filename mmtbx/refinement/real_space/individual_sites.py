@@ -38,32 +38,34 @@ class easy(object):
     self.rmsd_angles_start = es.angle_deviations()[2]
     self.rmsd_bonds_start  = es.bond_deviations()[2]
     self.w = w
-    if(self.w is None):
-      import mmtbx.refinement.real_space.weight
-      self.weight = mmtbx.refinement.real_space.weight.run(
-        map_data                    = map_data,
-        xray_structure              = self.xray_structure,
-        pdb_hierarchy               = self.pdb_hierarchy,
-        geometry_restraints_manager = geometry_restraints_manager,
-        rms_bonds_limit             = rms_bonds_limit,
-        rms_angles_limit            = rms_angles_limit,
+    if(self.max_iterations > 0):
+      if(self.w is None):
+        import mmtbx.refinement.real_space.weight
+        self.weight = mmtbx.refinement.real_space.weight.run(
+          map_data                    = map_data,
+          xray_structure              = self.xray_structure,
+          pdb_hierarchy               = self.pdb_hierarchy,
+          geometry_restraints_manager = geometry_restraints_manager,
+          rms_bonds_limit             = rms_bonds_limit,
+          rms_angles_limit            = rms_angles_limit,
+          gradients_method            = gradients_method)
+        self.w = self.weight.weight
+      if(selection is None):
+        selection = flex.bool(self.xray_structure.scatterers().size(), True)
+      refine_object = simple(
+        target_map                  = map_data,
+        selection                   = selection,
+        selection_real_space        = selection_real_space,
+        max_iterations              = max_iterations,
+        geometry_restraints_manager = geometry_restraints_manager.geometry,
+        states_accumulator          = states_accumulator,
         gradients_method            = gradients_method)
-      self.w = self.weight.weight
-    if(selection is None):
-      selection = flex.bool(self.xray_structure.scatterers().size(), True)
-    refine_object = simple(
-      target_map                  = map_data,
-      selection                   = selection,
-      selection_real_space        = selection_real_space,
-      max_iterations              = max_iterations,
-      geometry_restraints_manager = geometry_restraints_manager.geometry,
-      states_accumulator          = states_accumulator,
-      gradients_method            = gradients_method)
-    refine_object.refine(weight = self.w, xray_structure = self.xray_structure)
-    self.rmsd_bonds_final, self.rmsd_angles_final = refine_object.rmsds()
-    self.xray_structure=self.xray_structure.replace_sites_cart(
-      new_sites=refine_object.sites_cart(), selection=None)
-    self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+      refine_object.refine(
+        weight = self.w, xray_structure = self.xray_structure)
+      self.rmsd_bonds_final, self.rmsd_angles_final = refine_object.rmsds()
+      self.xray_structure=self.xray_structure.replace_sites_cart(
+        new_sites=refine_object.sites_cart(), selection=None)
+      self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
 
 class simple(object):
   def __init__(

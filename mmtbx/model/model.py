@@ -973,7 +973,8 @@ class manager(object):
       result = True
     return result
 
-  def macromolecule_plus_hetatms_by_chain_selections(self, radius=3):
+  def macromolecule_plus_hetatms_by_chain_selections(self, radius=3,
+       max_radius=5):
     """
     Split model into a list of selections where each selection is a
     macromolecule chain plus nearest small molecules (water, ligands, etc).
@@ -985,9 +986,9 @@ class manager(object):
     h = self.get_hierarchy()
     asc = h.atom_selection_cache()
     het_sel = asc.selection("not (protein or nucleotide)")
-    pro_sel = ~het_sel
     size = h.atoms_size()
     get_class = iotbx.pdb.common_residue_names_get_class
+    pro_sel = ~het_sel
     atoms = h.atoms()
     sites_cart = atoms.extract_xyz()
     # list protein chain selections
@@ -998,32 +999,32 @@ class manager(object):
       if(sel.count(True)==0): continue
       psels.append(sel)
     #
-    for rg in h.residue_groups():
-      tmp = []
-      for resname in rg.unique_resnames():
-        e1 = get_class(resname) == "common_amino_acid"
-        e2 = get_class(resname) == "common_rna_dna"
-        tmp.extend([e1,e2])
-      if(True in tmp): continue
-      residue_b_selection = flex.bool(size, rg.atoms().extract_i_seq())
-      around = 0
-      radius_ = radius
-      while around<1:
-        selection_around_residue = sps.pair_generator(
-          sites_cart      = sites_cart,
-          distance_cutoff = radius_
-            ).neighbors_of(primary_selection = residue_b_selection).iselection()
-        selection_around_residue = flex.bool(size, selection_around_residue)
-        selection_around_residue = selection_around_residue.set_selected(
-          het_sel, False)
-        selection_around_residue_i = selection_around_residue.iselection()
-        around = selection_around_residue_i.size()
-        radius_ += 0.5
-      # find which protein chain this hetatm belongs to and add it
-      for psel in psels:
-        if(psel[selection_around_residue_i[0]]):
-          psel = psel.set_selected(residue_b_selection, True)
-          break
+    for c in h.chains():
+      if(c.is_na() or c.is_protein()): continue
+      for rg in c.residue_groups():
+        residue_b_selection = flex.bool(size, rg.atoms().extract_i_seq())
+        around = 0
+        radius_ = radius
+        while around<1:
+          selection_around_residue = sps.pair_generator(
+            sites_cart      = sites_cart,
+            distance_cutoff = radius_
+              ).neighbors_of(primary_selection = residue_b_selection).iselection()
+          selection_around_residue = flex.bool(size, selection_around_residue)
+          selection_around_residue = selection_around_residue.set_selected(
+            het_sel, False)
+          selection_around_residue_i = selection_around_residue.iselection()
+          around = selection_around_residue_i.size()
+          radius_ += 0.5
+          if(radius_>=max_radius): break
+        # find which protein chain this hetatm belongs to and add it
+        if(around > 0):
+          for psel in psels:
+            if(psel[selection_around_residue_i[0]]):
+              psel = psel.set_selected(residue_b_selection, True)
+              break
+        else: # sigle atom in space
+          psels.append(residue_b_selection) # just add it as is (alone)
     # checksum
     overlap_sel = psels[0].as_int()
     cntr = 0

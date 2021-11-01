@@ -420,8 +420,65 @@ END
   assert flex.max(flex.sqrt((sc_flipped - sc_answer).dot())) < 0.001
   assert flex.max(flex.sqrt((sc_flipped - sc_orig).dot())) > 2.3
 
+def exercise_macromolecule_plus_hetatms_by_chain_selections():
+  pdb_str = """
+CRYST1   29.071   35.014   35.025  90.00  90.00  90.00 P 1
+ATOM      0  N   GLN A 595      15.775   6.909   5.000  1.00 77.72           N
+ATOM      1  CA  GLN A 595      15.250   6.223   6.187  1.00 77.72           C
+ATOM      2  C   GLN A 595      14.070   5.304   5.864  1.00 77.72           C
+ATOM      3  O   GLN A 595      13.250   5.000   6.737  1.00 77.72           O
+ATOM      4  CB  GLN A 595      14.885   7.217   7.303  1.00 77.72           C
+ATOM      5  CG  GLN A 595      13.621   8.046   7.104  1.00 77.72           C
+ATOM      6  CD  GLN A 595      13.921   9.467   6.669  1.00 77.72           C
+ATOM      7  OE1 GLN A 595      15.074   9.827   6.433  1.00 77.72           O
+ATOM      8  NE2 GLN A 595      12.881  10.285   6.561  1.00 77.72           N
+TER
+HETATM    9 MG    MG A4002     136.594 129.025 155.295  1.00 76.36          Mg
+TER
+HETATM   10  P   64T T  21       9.610  14.398   8.714  1.00 78.87           P
+HETATM   11  OP1 64T T  21      10.939  13.757   9.035  1.00 78.87           O
+HETATM   12  OP2 64T T  21       9.433  15.199   7.448  1.00 78.87           O
+HETATM   13  O5' 64T T  21       8.476  13.255   8.731  1.00 78.87           O
+HETATM   14  C5' 64T T  21       8.535  12.150   7.834  1.00 78.87           C
+HETATM   15  C4' 64T T  21       9.475  11.087   8.384  1.00 78.87           C
+HETATM   16  O4' 64T T  21       9.311  10.945   9.798  1.00 78.87           O
+HETATM   17  C3' 64T T  21       9.192   9.737   7.756  1.00 78.87           C
+HETATM   18  O3' 64T T  21      10.364   9.248   7.103  1.00 78.87           O
+HETATM   19  C2' 64T T  21       8.794   8.819   8.892  1.00 78.87           C
+HETATM   20  C1' 64T T  21       9.189   9.565  10.156  1.00 78.87           C
+HETATM   21  N1  64T T  21       8.104   9.357  11.105  1.00 78.87           N
+HETATM   22  C2  64T T  21       8.020   8.233  11.809  1.00 78.87           C
+HETATM   23  O2  64T T  21       8.605   7.219  11.466  1.00 78.87           O
+HETATM   24  N3  64T T  21       7.275   8.245  12.907  1.00 78.87           N
+HETATM   25  C4  64T T  21       6.769   9.387  13.359  1.00 78.87           C
+HETATM   26  O4  64T T  21       6.720   9.660  14.546  1.00 78.87           O
+HETATM   27  C5  64T T  21       6.246  10.366  12.344  1.00 78.87           C
+HETATM   28  C6  64T T  21       7.210  10.501  11.171  1.00 78.87           C
+HETATM   29  C5M 64T T  21       6.024  11.715  13.011  1.00 78.87           C
+HETATM   30  O5  64T T  21       5.000   9.880  11.839  1.00 78.87           O
+TER
+END
+"""
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  m = mmtbx.model.manager(model_input = pdb_inp)
+  sels = m.macromolecule_plus_hetatms_by_chain_selections()
+  sels = [list(s.iselection()) for s in sels]
+  assert len(sels)==3
+  assert sels[0] == [0, 1, 2, 3, 4, 5, 6, 7, 8]
+  assert sels[1] == [10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,
+                     29, 30]
+  assert sels[2] == [9]
+  #
+  sels = m.macromolecule_plus_hetatms_by_chain_selections(max_radius=20)
+  sels = [list(s.iselection()) for s in sels]
+  assert len(sels)==2
+  assert sels[0] == [0, 1, 2, 3, 4, 5, 6, 7, 8]
+  assert sels[1] == [9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,
+                     29, 30]
+
 if (__name__ == "__main__"):
   t0 = time.time()
+  exercise_macromolecule_plus_hetatms_by_chain_selections()
   exercise_ss_creation_crash()
   exercise_set_b_iso()
   exercise_convert_to_isotropic()
