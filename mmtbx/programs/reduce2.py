@@ -24,10 +24,12 @@ master_phil_str = '''
 approach = *add remove
   .type = choice
   .help = Determines whether Reduce will add (and optimize) or remove Hydrogens from the model
-
 use_neutron_distances = False
   .type = bool
-  .help = Use neutron distances (-nuclear in probe)
+  .help = Use neutron distances (-nuclear in reduce)
+preference_magnitude = 1.0
+  .type = float
+  .help = Multiplier on the rotational-preference energy for rotatable Movers (-penalty in reduce)
 
 output
   .style = menu_item auto_align
@@ -78,6 +80,12 @@ NOTES:
             written to the description file, and progress information is always written
             to standard output.
     -trim: approach=remove
+    -build: approach=add (default)
+    -flip: approach=add (default)
+    -allalt: This is the default.
+    -penalty200: preference_magnitude=200
+    -nobuild9999: approach=add preference_magnitude=9999
+    -noflip: approach=add preference_magnitude=9999
      @todo
 '''.format(version)
   datatypes = ['model', 'restraint', 'phil']
@@ -145,7 +153,7 @@ NOTES:
       make_sub_header('Optimizing', out=self.logger)
       # @todo Let the caller specify the model index and altID rather than doing only the default (first).
       startOpt = time.clock()
-      opt = Optimizers.FastOptimizer(model, probeRadius=0.25, altID="")
+      opt = Optimizers.FastOptimizer(model, probeRadius=0.25, altID="", preferenceMagnitude=self.params.preference_magnitude)
       doneOpt = time.clock()
       outString += opt.getInfo()
       outString += 'Time to Add Hydrogen = '+str(doneAdd-startAdd)+'\n'
