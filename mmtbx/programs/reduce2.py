@@ -168,6 +168,7 @@ NOTES:
       for a in self.model.get_atoms():
         if sel[a.i_seq]:
           a.parent().remove_atom(a)
+      model = self.model
 
     make_sub_header('Writing output', out=self.logger)
 
@@ -179,10 +180,10 @@ NOTES:
     # Determine whether to write a PDB or CIF file and write the appropriate text output.
     # Then determine the output file name and write it there.
     if str(self.params.output.suffix).lower() == "pdb":
-      txt = self.model.model_as_pdb()
+      txt = model.model_as_pdb()
       suffix = ".pdb"
     else:
-      txt = self.model.model_as_mmcif()
+      txt = model.model_as_mmcif()
       suffix = ".cif"
     if self.params.output.model_file_base_name is not None:
       base = self.params.output.model_file_base_name
