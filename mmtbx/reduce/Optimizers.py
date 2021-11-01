@@ -218,7 +218,7 @@ class _SingletonOptimizer(object):
 
       # Get the list of alternate conformation names present in all chains for this model.
       # If there is more than one result, remove the empty results and then sort them
-      # in reverse order.
+      # in reverse order so we finalize all non-alternate ones to match the first.
       alts = AlternatesInModel(myModel)
       if len(alts) > 1:
         alts.discard("")
@@ -231,7 +231,6 @@ class _SingletonOptimizer(object):
         alts = [altID]
 
       for ai in alts:
-
         # Tell about the run we are currently doing.
         self._infoString += _VerboseCheck(1,"Running Reduce optimization on model index "+str(mi)+
           ", alternate '"+ai+"'\n")
@@ -267,6 +266,11 @@ class _SingletonOptimizer(object):
         self._extraAtomInfo = ret.extraAtomInfo
         self._infoString += ret.warnings
         self._infoString += _ReportTiming("get extra atom info")
+
+        ################################################################################
+        # Initialize any per-alternate data structures now that we have the atoms and
+        # other data structures initialized.
+        self._initializeAlternate()
 
         ################################################################################
         # Find the radius of the largest atom we'll have to deal with.
@@ -546,9 +550,19 @@ class _SingletonOptimizer(object):
     self._atomDump = ""
     return ret
 
+  def _initializeAlternate(self):
+    """
+    Override this method in derived classes.
+    This is a place for derived classes to perform any operations that should be done at
+    the start of every alternate.  For example, initializing per-atom caches.
+    """
+    return
+
   def _setMoverState(self, positionReturn, index):
-    # Move the atoms to their new positions, updating the spatial query structure
-    # by removing the old and adding the new location.
+    """
+      Move the atoms to their new positions, updating the spatial query structure
+      by removing the old and adding the new location.
+    """
     for i, a in enumerate(positionReturn.atoms):
       self._spatialQuery.remove(a)
       a.xyz = positionReturn.positions[index][i]
@@ -988,6 +1002,19 @@ class FastOptimizer(_CliqueOptimizer):
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude)
 
+  def _initializeAlternate(self):
+    # Ensure that we have a per-atom _scoreCache dictionary that will store already-computed
+    # results for a given atom based on the configurations of the Movers that can affect its
+    # results.  The entries will be empty to start with and will be filled in as they are computed.
+    # We build entries for all atoms, even those not in the Movers to avoid having to traverse
+    # the Movers.
+    # This structure is a dictionary (looked up by atom) of dictionaries (looked up by tuple)
+    # of values (scores).
+    self._scoreCache = {}
+    for a in self._atoms:
+      self._scoreCache[a] = {}
+    return
+
   def _scoreAtom(self, atom):
 
     if self._doScoreCaching:
@@ -1007,7 +1034,7 @@ class FastOptimizer(_CliqueOptimizer):
   def _optimizeCliqueCoarse(self, clique):
     """
     The FastOptimizer class generates a per-atom score cache object and uses it along
-    with an overridden _doScoreCaching() method to avoid recomputing scores for atoms where
+    with an overridden _scoreAtom() method to avoid recomputing scores for atoms where
     there has been no change in any of the Movers they depend on.
     It wraps the parent-class method after setting things up to use the cache, and
     then turns off the cache before returning.
@@ -1019,18 +1046,6 @@ class FastOptimizer(_CliqueOptimizer):
     :side_effect: self._highScores is set to the individual score for each of the Movers.
     """
     self._infoString += _VerboseCheck(3,"Optimizing clique of size {} using atom-score cache\n".format(len(list(clique.vertices()))))
-
-    # Ensure that we have a per-atom _scoreCache dictionary that will store already-computed
-    # results for a given atom based on the configurations of the Movers that can affect its
-    # results.  The entries will be empty to start with and will be filled in as they are computed.
-    # We build entries for all atoms, even those not in the Movers to avoid having to traverse
-    # the Movers.
-    # This structure is a dictionary (looked up by atom) of dictionaries (looked up by tuple)
-    # of values (scores).
-    if not hasattr(self, "_scoreCache"):
-      self._scoreCache = {}
-      for a in self._atoms:
-        self._scoreCache[a] = {}
 
     # Call the parent-class optimizer, turning on and off the cache behavior before
     # and after.
