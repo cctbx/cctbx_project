@@ -23,6 +23,24 @@ def create_experiment_identifier(experiment, experiment_file_path, experiment_id
   hash_obj = hashlib.md5(exp_identifier_str.encode('utf-8'))
   return hash_obj.hexdigest()
 
+
+def generate_experiment_identifiers(experiments):
+  """
+  Label experiments according to image filename, image number (for multi-image files), lattice number
+  This information will be preserved in the reflection files that are optionally output
+  if output.save_experiments_and_reflections=True.
+  """
+  done_expts = {}
+  for expt in experiments:
+    iset = expt.imageset
+    path = iset.paths()[0]
+    single_file_index = iset.indices()[0]
+    key = "%s_%s" % (path, single_file_index)
+    n_hits = done_expts.setdefault(key, 0)
+    done_expts[key] = n_hits + 1
+    ident = "%s_%s_%s" % (path, single_file_index, n_hits)
+    expt.identifier = ident
+
 #for integration pickles:
 allowable_basename_endings = ["_00000.pickle",
                               ".pickle",
@@ -122,6 +140,9 @@ class simple_file_loader(worker):
         eid = reflections.experiment_identifiers()
         for k in eid.keys():
           del eid[k]
+
+        if self.params.input.use_iset_for_expid:
+          generate_experiment_identifiers(experiments)
         for experiment_id, experiment in enumerate(experiments):
           # select reflections of the current experiment
           refls_sel = reflections['id'] == experiment_id

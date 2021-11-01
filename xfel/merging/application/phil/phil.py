@@ -32,6 +32,10 @@ input {
       .type = choice
       .help = whether we keep or reject experiments according to the alist(s)
   }
+  use_iset_for_expid = False
+    .type = bool
+    .help = Option to tag reflections with their filename, file index, and lattice number.
+    .help = This is useful for post-merge analysis and bookkeeping.
   keep_imagesets = False
     .type = bool
     .help = If True, keep imagesets attached to experiments
