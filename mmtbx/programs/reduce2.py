@@ -21,6 +21,10 @@ from mmtbx.reduce import Optimizers
 version = "0.1.0"
 
 master_phil_str = '''
+approach = *add remove
+  .type = choice
+  .help = Determines whether Reduce will add (and optimize) or remove Hydrogens from the model
+
 use_neutron_distances = False
   .type = bool
   .help = Use neutron distances (-nuclear in probe)
@@ -70,6 +74,10 @@ Output:
 
 NOTES:
   Equivalent PHIL arguments for original Reduce command-line options:
+    -quiet: No equivalent; metadata is never written to the model file, it is always
+            written to the description file, and progress information is always written
+            to standard output.
+    -trim: approach=remove
      @todo
 '''.format(version)
   datatypes = ['model', 'restraint', 'phil']
@@ -103,7 +111,7 @@ NOTES:
       outString += ' {}'.format(a)
     outString += '\n'
 
-    make_sub_header('Interpret Model', out=self.logger)
+    make_sub_header('Interpreting Model', out=self.logger)
 
     # Get our model.
     self.model = self.data_manager.get_model()
@@ -113,35 +121,43 @@ NOTES:
     if (cs is None) or (cs.unit_cell() is None):
       self.model = shift_and_box_model(model = self.model)
 
-    # Add Hydrogens to the model
-    make_sub_header('Adding Hydrogens', out=self.logger)
-    startAdd = time.clock()
-    reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = self.model)
-    reduce_add_h_obj.run()
-    model = reduce_add_h_obj.get_model()
-    doneAdd = time.clock()
+    if self.params.approach == 'add':
+      # Add Hydrogens to the model
+      make_sub_header('Adding Hydrogens', out=self.logger)
+      startAdd = time.clock()
+      reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = self.model)
+      reduce_add_h_obj.run()
+      model = reduce_add_h_obj.get_model()
+      doneAdd = time.clock()
 
-    # Interpret the model after shifting and adding Hydrogens to it so that
-    # all of the needed fields are filled in when we use them below.
-    # @todo Remove this once place_hydrogens() does all the interpretation we need.
-    make_sub_header('Interpret Model', out=self.logger)
-    startInt = time.clock()
-    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-    p.pdb_interpretation.allow_polymer_cross_special_position=True
-    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-    p.pdb_interpretation.proceed_with_excessive_length_bonds=True
-    model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
-    doneInt = time.clock()
+      # Interpret the model after shifting and adding Hydrogens to it so that
+      # all of the needed fields are filled in when we use them below.
+      # @todo Remove this once place_hydrogens() does all the interpretation we need.
+      make_sub_header('Interpreting Hydrogenated Model', out=self.logger)
+      startInt = time.clock()
+      p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+      p.pdb_interpretation.allow_polymer_cross_special_position=True
+      p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+      p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+      model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
+      doneInt = time.clock()
 
-    make_sub_header('Optimizing', out=self.logger)
-    # @todo Let the caller specify the model index and altID rather than doing only the default (first).
-    startOpt = time.clock()
-    opt = Optimizers.FastOptimizer(model, probeRadius=0.25, altID="")
-    doneOpt = time.clock()
-    outString += opt.getInfo()
-    outString += 'Time to Add Hydrogen = '+str(doneAdd-startAdd)+'\n'
-    outString += 'Time to Interpret = '+str(doneInt-startInt)+'\n'
-    outString += 'Time to Optimize = '+str(doneOpt-startOpt)+'\n'
+      make_sub_header('Optimizing', out=self.logger)
+      # @todo Let the caller specify the model index and altID rather than doing only the default (first).
+      startOpt = time.clock()
+      opt = Optimizers.FastOptimizer(model, probeRadius=0.25, altID="")
+      doneOpt = time.clock()
+      outString += opt.getInfo()
+      outString += 'Time to Add Hydrogen = '+str(doneAdd-startAdd)+'\n'
+      outString += 'Time to Interpret = '+str(doneInt-startInt)+'\n'
+      outString += 'Time to Optimize = '+str(doneOpt-startOpt)+'\n'
+
+    else: # Removing Hydrogens from the model rather than adding them.
+      make_sub_header('Removing Hydrogens', out=self.logger)
+      sel = self.model.selection("element H")
+      for a in self.model.get_atoms():
+        if sel[a.i_seq]:
+          a.parent().remove_atom(a)
 
     make_sub_header('Writing output', out=self.logger)
 
