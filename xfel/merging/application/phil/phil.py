@@ -32,6 +32,11 @@ input {
       .type = choice
       .help = whether we keep or reject experiments according to the alist(s)
   }
+  persistent_refl_cols = None
+    .type = str
+    .multiple = True
+    .help = Names of reflection table columns that will remain after all prune steps
+    .help = If output.save_experiments_and_reflections=True, then these columns will be in the saved tables.
   use_iset_for_expid = False
     .type = bool
     .help = Option to tag reflections with their filename, file index, and lattice number.

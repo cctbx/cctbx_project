@@ -27,7 +27,8 @@ class hkl_group(worker):
 
     reflections = reflection_table_utils.prune_reflection_table_keys(reflections=reflections,
                         keys_to_keep=['intensity.sum.value', 'intensity.sum.variance', 'miller_index_asymmetric', \
-                                      'exp_id', 'intensity.sum.value.unmodified', 'intensity.sum.variance.unmodified'])
+                                      'exp_id', 'intensity.sum.value.unmodified', 'intensity.sum.variance.unmodified'],
+                        keys_to_ignore=self.params.input.persistent_refl_cols)
 
     # set up hkl chunks to be used for all-to-all; every avialable rank participates in all-to-all, even a rank that doesn't load any data
     self.logger.log_step_time("SETUP_CHUNKS")
