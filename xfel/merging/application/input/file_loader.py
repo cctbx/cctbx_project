@@ -128,6 +128,7 @@ class simple_file_loader(worker):
         self.logger.log("Reading %s %s"%(experiments_filename, reflections_filename))
         experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = False)
         reflections = flex.reflection_table.from_file(reflections_filename)
+        reflections["xfel.merge.input_refl_index"] = flex.int(list(range(len(reflections))))
         self.logger.log("Data read, prepping")
 
         if 'intensity.sum.value' in reflections:
@@ -185,7 +186,8 @@ class simple_file_loader(worker):
     reflections = reflection_table_utils.prune_reflection_table_keys(reflections=reflections,
                     keys_to_keep=['intensity.sum.value', 'intensity.sum.variance', 'miller_index', 'miller_index_asymmetric', \
                                   'exp_id', 's1', 'intensity.sum.value.unmodified', 'intensity.sum.variance.unmodified',
-                                  'kapton_absorption_correction', 'flags'])
+                                  'kapton_absorption_correction', 'flags'],
+                    keys_to_ignore=self.params.input.persistent_refl_cols)
     self.logger.log("Pruned reflection table")
     self.logger.log("Memory usage: %d MB"%get_memory_usage())
     return reflections
