@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import sys
 import os
-import math
 import time
 from datetime import datetime
 from libtbx.program_template import ProgramTemplate
@@ -9,10 +8,8 @@ from libtbx import group_args, phil
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry
 import mmtbx
-import mmtbx_probe_ext as probeExt
 from mmtbx.probe import Helpers
 from iotbx import pdb
-from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
