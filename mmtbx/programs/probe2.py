@@ -37,7 +37,7 @@ approach = *self both once surface count_atoms
 
 excluded_bond_chain_length = 4
   .type = int
-  .help = Exclude chain of atoms bonded to source for this many hops (-4H, -3, -2 , -1 in probe)
+  .help = Exclude chain of atoms bonded to source for this many hops (-4H, -3, -2 , -1 in probe).  When set to 4, an atom chain longer than 3 is only excluded when either the first or the last atom in the chain is a Hydrogen.
 
 drop_non_selected_atoms = False
   .type = bool
