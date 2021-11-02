@@ -942,6 +942,7 @@ def get_d_star_sq_step(f_array, num_per_bin = 1000, max_bins = 50, min_bins = 6)
   d_min = flex.min(d_spacings)
   d_max = flex.max(d_spacings)
   d_star_sq_step = (1 / d_min ** 2 - 1 / d_max ** 2) / n_bins
+  d_star_sq_step *= 1.0001 # Avoid losing reflections at high-res limit from rounding errors
   return d_star_sq_step
 
 def run_refine_cryoem_errors(
@@ -1038,6 +1039,7 @@ def run_refine_cryoem_errors(
   mc2.use_binner_of(mc1)
   ssqmin = flex.min(mc1.d_star_sq().data())
   ssqmax = flex.max(mc1.d_star_sq().data())
+  nref = mc1.size()
 
   # Initialise parameters.  This requires slope and intercept of Wilson plot,
   # plus mapCC per bin.
@@ -1045,7 +1047,11 @@ def run_refine_cryoem_errors(
   target_spectrum = flex.double()
   meanfsq_bins = flex.double()
   mapCC_bins = flex.double()
-  sumw = sumwx = sumwy = sumwx2 = sumwxy = 0.
+  sumw = 0
+  sumwx = 0.
+  sumwy = 0.
+  sumwx2 = 0.
+  sumwxy = 0.
   for i_bin in mc1.binner().range_used():
     sel = mc1.binner().selection(i_bin)
     mc1sel = mc1.select(sel)
@@ -1070,6 +1076,7 @@ def run_refine_cryoem_errors(
     target_power = default_target_spectrum(x) # Could have a different target
     target_spectrum.append(target_power)
 
+  assert (nref == sumw) # Check no Fourier terms lost outside bins
   slope = (sumw * sumwxy - (sumwx * sumwy)) / (sumw * sumwx2 - sumwx**2)
   intercept = (sumwy - slope * sumwx) / sumw
   wilson_scale_intensity = math.exp(intercept)
