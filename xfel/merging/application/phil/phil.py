@@ -37,10 +37,6 @@ input {
     .multiple = True
     .help = Names of reflection table columns that will remain after all prune steps
     .help = If output.save_experiments_and_reflections=True, then these columns will be in the saved tables.
-  use_iset_for_expid = False
-    .type = bool
-    .help = Option to tag reflections with their filename, file index, and lattice number.
-    .help = This is useful for post-merge analysis and bookkeeping.
   keep_imagesets = False
     .type = bool
     .help = If True, keep imagesets attached to experiments
@@ -502,6 +498,14 @@ merging {
 
 output_phil = """
 output {
+  expanded_bookkeeping = False
+    .type = bool
+    .help = if True, and if save_experiments_and_reflections=True, then include in the saved refl tabls:
+    .help = 1- modified exp_id column that contains the image number and lattice number
+    .help = 2- index corresponding to the particular reflection in the input file (usually something_integrated.refl)
+    .help = 3- the is_odd flag
+    .help = 4- the original exp id for the reflection
+    .help = 5- a unique number mapping the reflection to its input expFile, refFile pair (see output_dir/file_list_mapping.json)
   prefix = iobs
     .type = str
     .help = Prefix for all output file names
