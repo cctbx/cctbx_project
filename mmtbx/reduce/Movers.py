@@ -753,8 +753,8 @@ class MoverNH2Flip(object):
     self._fixUpPositions = [ [], movable ]
 
   def CoarsePositions(self):
-    # returns: The two possible coarse positions with 0 energy offset for either.
-    return PositionReturn(self._atoms, self._coarsePositions, [ [], [] ], [ [], [] ], [0.0, 0.0])
+    # returns: The two possible coarse positions with an energy penalty of -0.5 for the flipped.
+    return PositionReturn(self._atoms, self._coarsePositions, [ [], [] ], [ [], [] ], [0.0, -0.5])
 
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
@@ -925,6 +925,11 @@ class MoverHistidineFlip(object):
     # placement; both (as found), first N Hydrogen removed, and second N Hydrogen
     # removed.  When the Hydrogen is removed, the associated N is turned into
     # an Acceptor; when it is present, the N is not an acceptor.
+    # NOTE: It is possible for a Histidine to have both of its Hydrogens removed,
+    # when it is ionically bonded on both of its Nitrogens,
+    # but in that case it is not a Mover -- it will be unable to flip and it will
+    # also be unable to change its Hydrogen configuration.  This case is checked in
+    # Optimizers.py._PlaceMovers() and no Mover is placed.
 
     #########################
     # Compute the list of positions for all of the atoms. This consists of the original
@@ -986,9 +991,12 @@ class MoverHistidineFlip(object):
       self._deleteMes.append(deleteMes)
 
   def CoarsePositions(self):
-    # returns: The two possible coarse positions with 0 energy offset for either.
+    # returns: The two possible coarse positions with an energy penalty of -0.5
+    # for the flipped orientations, and a penalty of -0.05 for keeping both Hydrogens.
     return PositionReturn(self._atoms, self._coarsePositions,
-      self._extras, self._deleteMes, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+      self._extras, self._deleteMes,
+      [-0.05, 0.0, 0.0,
+      -0.5 - 0.05, -0.5, -0.5])
 
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
@@ -1818,6 +1826,8 @@ def Test():
     # 2) H remain at the same distance from the new N.
 
     coarse = mover.CoarsePositions()
+    if coarse.preferenceEnergies[0] <= coarse.preferenceEnergies[1]:
+      return "Movers.Test() MoverNH2Flip: Original orientation not preferred"
     if len(coarse.positions) != 2:
       return "Movers.Test() MoverNH2Flip basic: Did not find two locations: "+str(len(coarse.positions))
     newPos = coarse.positions[1]
@@ -2034,7 +2044,6 @@ def Test():
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverNH2Flip linked: Bad nitrogen-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
-
   except Exception as e:
     return "Movers.Test() MoverNH2Flip linked: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
@@ -2154,6 +2163,10 @@ def Test():
     coarse = mover.CoarsePositions()
     if len(coarse.positions) != 6:
       return "Movers.Test() MoverHistidineFlip: Did not find six locations: "+str(len(coarse.positions))
+    if coarse.preferenceEnergies[0] <= coarse.preferenceEnergies[3]:
+      return "Movers.Test() MoverHistidineFlip: Original orientation not preferred"
+    if coarse.preferenceEnergies[0] >= coarse.preferenceEnergies[1]:
+      return "Movers.Test() MoverHistidineFlip: Hydrogen removal not preferred"
     newPos = coarse.positions[3]
     dist = (lvec3(newPos[0]) - lvec3(ce1.xyz)).length()
     if dist > 0.01:
