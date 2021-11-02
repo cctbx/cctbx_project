@@ -168,6 +168,26 @@ def exercise_atom():
   for e in ["He", "C", "Xe", "Rn", "Kr", "B"]:
     a.element = e
     assert not a.element_is_metallic()
+  # Spot-check some elements to see if they are positive ions and ions
+  for e in ["Li", "Rh", "Si", "Sn", "V", "Ge"]:
+    a.element = e
+    assert a.element_is_positive_ion()
+    assert a.element_is_ion()
+  for e in ["He", "C", "Xe", "Rn", "Kr", "B", "F", "Cl", "Br", "I"]:
+    a.element = e
+    assert not a.element_is_positive_ion()
+  # Spot-check some elements to see if they are negative ions and ions
+  for e in ["F", "Cl", "Br", "I"]:
+    a.element = e
+    assert a.element_is_negative_ion()
+    assert a.element_is_ion()
+  for e in ["He", "C", "Xe", "Rn", "Kr", "B", "Li", "Rh", "Si", "Sn", "V", "Ge"]:
+    a.element = e
+    assert not a.element_is_negative_ion()
+  # Spot-check some elements to ensure they are not ions of either polarity
+  for e in ["He", "C", "Xe", "Rn", "Kr", "B"]:
+    a.element = e
+    assert not a.element_is_ion()
   #
   a.name = "1234"
   a.element = "El"

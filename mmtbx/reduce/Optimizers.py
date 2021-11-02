@@ -524,7 +524,7 @@ class _SingletonOptimizer(object):
           " {:5.2f}".format(self._extraAtomInfo.getMappingFor(a).vdwRadius)+
           " "+acceptorChoices[self._extraAtomInfo.getMappingFor(a).isAcceptor]+
           " "+donorChoices[self._extraAtomInfo.getMappingFor(a).isDonor]+
-          " "+metallicChoices[a.element_is_metallic()]+
+          " "+metallicChoices[a.element_is_positive_ion()]+
           "\n"
         )
 
@@ -1240,7 +1240,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         ne2Flip = cp.positions[3][0]
         nd1Flip = cp.positions[3][4]
 
-        # See if any are close enough to an ion to be ionically bonded.
+        # See if any are close enough to a positive ion to be ionically bonded.
         # If any are, record whether it is the original or
         # the flipped configuration.  Check the original configuration first.
         # Check out to the furthest distance of any atom's VdW radius.
@@ -1251,7 +1251,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         for i,pos in enumerate([ne2Orig, nd1Orig, ne2Flip, nd1Flip]):
           neighbors = spatialQuery.neighbors(pos, minDist, maxDist)
           for n in neighbors:
-            if n.element_is_metallic():
+            if n.element_is_positive_ion():
               dist = (Helpers.rvec3(pos) - Helpers.rvec3(n.xyz)).length()
               expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
               infoString += _VerboseCheck(5,'Checking '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
@@ -1293,7 +1293,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
             maxDist = 0.25 + myRad + maxVDWRadius
             neighbors = spatialQuery.neighbors(coarseNitroPos, minDist, maxDist)
             for n in neighbors:
-              if n.element_is_metallic():
+              if n.element_is_positive_ion():
                 dist = (Helpers.rvec3(coarseNitroPos) - Helpers.rvec3(n.xyz)).length()
                 expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
                 if dist >= (expected - 0.55) and dist <= (expected + 0.25):
