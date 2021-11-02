@@ -912,7 +912,7 @@ class ArrayInfo:
       "minmax_sigmas":     ("     %s     " %self.caption_dict["minmax_sigmas"][0],self.minmaxsigs,       "{0[0]:.6}, {0[1]:.6}", "{0[0]:>11.5}, {0[1]:>11.5}"),
       "data_sigdata":      (" %s" %self.caption_dict["data_sigdata"][0],          self.data_sigdata,     "{:.4g}",               "{:>9.4g} "),
       "data_sigdata_max":  ("%s" %self.caption_dict["data_sigdata_max"][0],       self.data_sigdata_max, "{:.4g}",               "{:>11.4g} "),
-      "d_minmax":          ("   %s      " %self.caption_dict["d_minmax"][0],      self.dminmax,          "{0[0]:.6}, {0[1]:.6}", "{0[0]:>10.5}, {0[1]:>10.5}"),
+      "d_minmax":          ("  %s   " %self.caption_dict["d_minmax"][0],          self.dminmax,          "{0[0]:.6}, {0[1]:.6}", "{0[0]:>8.5}, {0[1]:>8.5}"),
       "unit_cell":         ("     %s      " %self.caption_dict["unit_cell"][0],   self.ucell,            "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g}",
                                                                                               "{0[0]:>7.5g},{0[1]:>7.5g},{0[2]:>7.5g},{0[3]:>7.5g},{0[4]:>7.5g},{0[5]:>7.5g} "),
       "space_group":       ("   %s      " %self.caption_dict["space_group"][0],   self.spginf,           "{}",                   "{:>19} "),
