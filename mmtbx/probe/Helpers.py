@@ -309,13 +309,13 @@ def getExtraAtomInfo(model, useNeutronDistances = False, probePhil = None):
                   if hb_type == "D" or hb_type == "B":
                     extra.isDonor = True
 
-                  # For metallic atoms, the Richardsons determined in discussion with
+                  # For ions, the Richardsons determined in discussion with
                   # Michael Prisant that we want to use the ionic radius rather than the
                   # larger radius for all purposes.
                   # @todo Once the CCTBX radius determination discussion and upgrade is
                   # complete (ongoing as of September 2021), this check might be removed
                   # and we'll just use the CCTBX radius.
-                  if a.element_is_metallic():
+                  if a.element_is_ion():
                     warnings += "Using ionic radius for "+a.name.strip()+"\n"
                     extra.vdwRadius = model.get_specific_ion_radius(a.i_seq)
                   else:

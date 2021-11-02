@@ -1040,6 +1040,33 @@ namespace {
     return metallics.find(data->element.elems) != metallics.end();
   }
 
+  bool
+  atom::element_is_positive_ion() const
+  {
+    return element_is_metallic();
+  }
+
+  bool
+  atom::element_is_negative_ion() const
+  {
+    // The standard bracket-initialization was not available in the compiler version
+    // being used on the mac at the time this code was written.
+    // The std::begin() function was not available on some of the Linux compiler
+    // versions being used at the time this code was written, preventing direct
+    // initialization from the const char * array.
+    // Thus, we have a twisty maze to get the set initialized.
+    static const char* posi[] = { "F", "Cl", "Br", "I" };
+    static std::set<std::string> positiveIons(&posi[0], &posi[sizeof(posi) / sizeof(posi[0])]);
+
+    return positiveIons.find(data->element.elems) != positiveIons.end();
+  }
+
+  bool
+  atom::element_is_ion() const
+  {
+    return element_is_positive_ion() || element_is_negative_ion();
+  }
+
   boost::optional<std::string>
   atom::determine_chemical_element_simple() const
   {
