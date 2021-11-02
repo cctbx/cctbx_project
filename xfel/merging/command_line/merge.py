@@ -112,6 +112,8 @@ class Script(object):
     from xfel.merging import application
     import importlib, sys, copy
 
+    self._resolve_persistent_columns()
+
     workers = []
     steps = self.params.dispatch.step_list if self.params.dispatch.step_list else default_steps
     for step in steps:
@@ -203,6 +205,16 @@ class Script(object):
     if self.params.mp.debug.cProfile:
       pr.disable()
       pr.dump_stats(os.path.join(self.params.output.output_dir, "cpu_%s_%d.prof"%(self.params.output.prefix, self.mpi_helper.rank)))
+
+  def _resolve_persistent_columns(self):
+    if self.params.output.expanded_bookkeeping:
+      if self.params.input.persistent_refl_cols is None:
+        self.params.input.persistent_refl_cols = []
+      keysCreatedByMerge = ["input_refl_index", "orig_exp_id", "file_list_mapping", "is_odd_experiment"]
+      for key in keysCreatedByMerge:
+        if key not in self.params.input.persistent_refl_cols:
+          self.params.input.persistent_refl_cols.append(key)
+
 
 if __name__ == '__main__':
   script = Script()
