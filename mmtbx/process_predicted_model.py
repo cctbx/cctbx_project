@@ -151,8 +151,9 @@ master_phil_str = """
        .type = bool
        .help = Adjust the edge weighting for each residue pair according  \
              to the distance between CA residues. If this is True, \
-             then distance_model must be provided. See also distance_power
-       .short_caption = Weight by CA-CA distance (if distance_model supplied)
+             then distance_model can be provided, otherwise supplied model \
+             will be used. See also distance_power
+       .short_caption = Weight by CA-CA distance
 
      distance_power = 1
        .type = float
