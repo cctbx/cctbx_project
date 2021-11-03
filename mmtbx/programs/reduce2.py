@@ -45,6 +45,9 @@ alt_id = None
   .type = str
   .short_caption = Alternate to optimize
   .help = Alternate to optimize.  The default is to optimize all of them.
+add_flip_movers = False
+  .type = bool
+  .help = Insert flip movers (-flip, -build, -noflip, -demandflipallnhqs in reduce)
 
 output
   .style = menu_item auto_align
@@ -95,12 +98,12 @@ NOTES:
             written to the description file, and progress information is always written
             to standard output.
     -trim: approach=remove
-    -build: approach=add (default)
-    -flip: approach=add (default)
+    -build: approach=add add_flip_movers=True
+    -flip: approach=add add_flip_movers=True
     -allalt: This is the default.
     -penalty200: preference_magnitude=200
     -nobuild9999: approach=add preference_magnitude=9999
-    -noflip: approach=add preference_magnitude=9999
+    -noflip: approach=add add_flip_movers=True preference_magnitude=9999
     -onlya: alt_id=A
      @todo
 '''.format(version)
@@ -165,7 +168,7 @@ NOTES:
 
       make_sub_header('Optimizing', out=self.logger)
       startOpt = time.clock()
-      opt = Optimizers.FastOptimizer(model, probeRadius=0.25,
+      opt = Optimizers.FastOptimizer(self.params.add_flip_movers, model, probeRadius=0.25,
         altID=self.params.alt_id, preferenceMagnitude=self.params.preference_magnitude)
       doneOpt = time.clock()
       outString += opt.getInfo()
