@@ -397,7 +397,6 @@ namespace {
         .def("quote", &w_t::quote, (arg("full")=false))
         .def("fetch_labels", &w_t::fetch_labels)
         .def("element_is_hydrogen", &w_t::element_is_hydrogen)
-        .def("element_is_metallic", &w_t::element_is_metallic)
         .def("element_is_positive_ion", &w_t::element_is_positive_ion)
         .def("element_is_negative_ion", &w_t::element_is_negative_ion)
         .def("element_is_ion", &w_t::element_is_ion)

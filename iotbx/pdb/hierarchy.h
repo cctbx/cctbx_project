@@ -779,9 +779,6 @@ namespace hierarchy {
       element_is_hydrogen() const;
 
       bool
-      element_is_metallic() const;
-
-      bool
       element_is_positive_ion() const;
 
       bool
