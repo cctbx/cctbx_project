@@ -917,19 +917,14 @@ class MoverHistidineFlip(object):
     ne2HNew = lvec3(ce1Atom.xyz) + ne2HVec.length() * ce1HVec.normalize()
 
     #########################
-    # There are six possible states for the flipped Histidine.  The first three
-    # use the original orientation and the second three use the swapped or fixed
+    # There are eight possible states for the flipped Histidine.  The first four
+    # use the original orientation and the second four use the swapped or fixed
     # orientation.  The swapped orientation is used for the coarse tests and if
     # one is accepted, then the fixed orienations are used in place of the swapped.
-    #   For each set of three for a given location, we have three cases of Hydrogen
-    # placement; both (as found), first N Hydrogen removed, and second N Hydrogen
-    # removed.  When the Hydrogen is removed, the associated N is turned into
-    # an Acceptor; when it is present, the N is not an acceptor.
-    # NOTE: It is possible for a Histidine to have both of its Hydrogens removed,
-    # when it is ionically bonded on both of its Nitrogens,
-    # but in that case it is not a Mover -- it will be unable to flip and it will
-    # also be unable to change its Hydrogen configuration.  This case is checked in
-    # Optimizers.py._PlaceMovers() and no Mover is placed.
+    #   For each location, we have four cases of Hydrogen
+    # placement; both (as found), first N Hydrogen removed, second N Hydrogen
+    # removed, and both Hydrogens removed.  When a Hydrogen is removed, the associated
+    # N is turned into an Acceptor; when it is present, the N is not an acceptor.
 
     #########################
     # Compute the list of positions for all of the atoms. This consists of the original
@@ -950,7 +945,7 @@ class MoverHistidineFlip(object):
     newPos[6] = nd1Atom.xyz   # cd2 moved to this location
     newPos[7] = cd2HNew
 
-    self._coarsePositions = [ startPos, startPos, startPos, newPos, newPos, newPos ]
+    self._coarsePositions = [ startPos, startPos, startPos, startPos, newPos, newPos, newPos, newPos ]
 
     #########################
     # Compute the list of Fixup returns.
@@ -959,17 +954,17 @@ class MoverHistidineFlip(object):
     secondDockIndex = 2
     fixedUp = _rotateHingeDock(self._atoms, hingeIndex, firstDockIndex, secondDockIndex, caAtom)
 
-    # No fix-up for coarse positions 0-2, do the above adjustment for position3 3-5
-    self._fixUpPositions = [ [], [], [], fixedUp, fixedUp, fixedUp ]
+    # No fix-up for coarse positions 0-3, do the above adjustment for position3 4-7
+    self._fixUpPositions = [ [], [], [], [], fixedUp, fixedUp, fixedUp, fixedUp ]
 
     #########################
     # Compute the ExtraAtomInfo and deleteMe values.  They are all as provided and False
-    # for the initial configuration (0th and 3rd).  The first Hydrogen and
-    # Nitrogen are removed and adjusted for the 1st and 4th, the second for the 2nd and 5th.
+    # for the initial configuration (0th and 4th).  The first Hydrogen and
+    # Nitrogen are removed and adjusted for cases 1&3, 5&7, the second for 2&3 and 6&7.
     # We make copies of each by constructing new ones so we can independently change them.
     self._extras = []
     self._deleteMes = []
-    for i in range(6):
+    for i in range(8):
       # Copy the initial values
       extras = []
       deleteMes = []
@@ -978,11 +973,11 @@ class MoverHistidineFlip(object):
         deleteMes.append(False)
 
       # Replace any that need it for this configuration.
-      if i % 3 == 1: # Remove the Hydrogen from NE2
+      if i % 4 == 1 or i % 4 == 3: # Remove the Hydrogen from NE2
         extras[0].isAcceptor = True
         deleteMes[1] = True
 
-      if i % 3 == 2: # Remove the Hydrogen from ND1
+      if i % 4 == 2 or i % 4 == 3: # Remove the Hydrogen from ND1
         extras[4].isAcceptor = True
         deleteMes[5] = True
 
@@ -992,11 +987,12 @@ class MoverHistidineFlip(object):
 
   def CoarsePositions(self):
     # returns: The two possible coarse positions with an energy penalty of -0.5
-    # for the flipped orientations, and a penalty of -0.05 for keeping both Hydrogens.
+    # for the flipped orientations, and a penalty of -0.05 for keeping both Hydrogens;
+    # The doubly-deprotenated case (both Hydrogens removed) has a penalty of -1.0.
     return PositionReturn(self._atoms, self._coarsePositions,
       self._extras, self._deleteMes,
-      [-0.05, 0.0, 0.0,
-      -0.5 - 0.05, -0.5, -0.5])
+      [ 0.0 - 0.05,  0.0,  0.0,  0.0 - 1.0,
+       -0.5 - 0.05, -0.5, -0.5, -0.5 - 1.0])
 
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
@@ -2156,18 +2152,20 @@ def Test():
 
     mover = MoverHistidineFlip(ne2, bondedNeighborLists, extrasMap)
 
-    # Ensure that the coarse-flip results meet the expections (spot check 3rd position):
+    # Ensure that the coarse-flip results meet the expections (spot check 4th position):
     # 1) N and C atoms are flipped in pairs
     # 2) H remain at the same distance from the new locations.
 
     coarse = mover.CoarsePositions()
-    if len(coarse.positions) != 6:
-      return "Movers.Test() MoverHistidineFlip: Did not find six locations: "+str(len(coarse.positions))
-    if coarse.preferenceEnergies[0] <= coarse.preferenceEnergies[3]:
+    if len(coarse.positions) != 8:
+      return "Movers.Test() MoverHistidineFlip: Did not find 8 locations: found "+str(len(coarse.positions))
+    if coarse.preferenceEnergies[0] <= coarse.preferenceEnergies[4]:
       return "Movers.Test() MoverHistidineFlip: Original orientation not preferred"
     if coarse.preferenceEnergies[0] >= coarse.preferenceEnergies[1]:
       return "Movers.Test() MoverHistidineFlip: Hydrogen removal not preferred"
-    newPos = coarse.positions[3]
+    if coarse.preferenceEnergies[3] >= coarse.preferenceEnergies[0]:
+      return "Movers.Test() MoverHistidineFlip: Both Hydrogen removal preferred"
+    newPos = coarse.positions[4]
     dist = (lvec3(newPos[0]) - lvec3(ce1.xyz)).length()
     if dist > 0.01:
       return "Movers.Test() MoverHistidineFlip: NE2 moved incorrectly: "+str(dist)
@@ -2201,12 +2199,12 @@ def Test():
     if abs(dHydrogen - oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverHistidineFlip: Bad coarse ND1 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
-    # Ensure that the FixUp results meet the specifications (spot check 3rd position):
+    # Ensure that the FixUp results meet the specifications (spot check 4th position):
     # 1) New CE1 on the line from the alpha carbon to the old NE2
     # 2) New plane of CE1, NE2, Alpha Carbon matches old plane, but flipped
     # 3) Carbons and pivot Hydrogens move slightly due to rigid-body motion
 
-    fixed = mover.FixUp(3).positions
+    fixed = mover.FixUp(4).positions
     newCE1Dir = (fixed[2] - lvec3(ca.xyz)).normalize()
     oldNE2Dir = (rvec3(ne2.xyz) - rvec3(ca.xyz)).normalize()
     if (newCE1Dir * oldNE2Dir)[0] < 0.9999:
@@ -2269,7 +2267,7 @@ def Test():
       coarseND1HDelete = coarse.deleteMes[i][5]
       fixedND1Accept = mover.FixUp(i).extraInfos[4].isAcceptor
       fixedND1HDelete = mover.FixUp(i).deleteMes[5]
-      if i % 3 == 1:
+      if i % 4 == 1 or i % 4 == 3:
         if not coarseNE2Accept:
           return "Movers.Test() MoverHistidineFlip: No NE2 acceptor, pos "+str(i)
         if not coarseNE2HDelete:
@@ -2279,7 +2277,7 @@ def Test():
           return "Movers.Test() MoverHistidineFlip: Unexpected NE2 acceptor, pos "+str(i)
         if coarseNE2HDelete:
           return "Movers.Test() MoverHistidineFlip: Unexpected NE2 hydrygen deletion, pos "+str(i)
-      if i % 3 == 2:
+      if i % 4 == 2 or i % 4 == 3:
         if not coarseND1Accept:
           return "Movers.Test() MoverHistidineFlip: No ND1 acceptor, pos "+str(i)
         if not coarseND1HDelete:
