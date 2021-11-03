@@ -133,9 +133,6 @@ class block_base(MutableMapping):
   def __setitem__(self, key, value):
     if not re.match(tag_re, key):
       raise Sorry("%s is not a valid data name" %key)
-    # Raise an error if the key has already been added to the cif object
-    if key.lower() in self.keys_lower.keys():
-      raise Sorry("%s received multiple values" %key)
     if isinstance(value, loop):
       self.loops[key] = value
       self.keys_lower[key.lower()] = key
@@ -279,7 +276,11 @@ class block_base(MutableMapping):
       self.keys_lower.update(other.keys_lower)
 
   def add_data_item(self, tag, value):
-    self[tag] = value
+    # Raise an error if the key has already been added to the cif object
+    if tag.lower() in self.keys_lower.keys():
+      raise Sorry("%s received multiple values" %tag)
+    else:
+      self[tag] = value
 
   def add_loop(self, loop):
     hashed_name = '_loop_'+str(hash(tuple(loop.keys())))
