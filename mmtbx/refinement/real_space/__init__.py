@@ -198,7 +198,14 @@ def get_radius(atom, vdw_radii):
     residue_name = atom.parent().resname, atom_names = atom_names)
   if(converter.atom_name_interpretation is not None):
     atom_names = converter.atom_name_interpretation.mon_lib_names()
-  n = atom_names[0].strip()
+  if(atom_names[0] is not None):
+    n = atom_names[0].strip()
+  else:
+    converter = iotbx.pdb.residue_name_plus_atom_names_interpreter(
+      residue_name = atom.parent().resname,
+      atom_names   = [atom.element])
+    n = converter.atom_name_interpretation.mon_lib_names()[0].strip()
+    if(n is None): return 1.5
   try:             return vdw_radii[n.strip()]-0.25
   except KeyError: return 1.5 # XXX U, Uranium, OXT are problems!
 
