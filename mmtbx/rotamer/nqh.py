@@ -199,6 +199,7 @@ def flip(pdb_hierarchy, log=None, mon_lib_srv=None):
   if mon_lib_srv is None:
     mon_lib_srv = mmtbx.monomer_library.server.server()
   if(log is None): log = sys.stdout
+  pdb_hierarchy.atoms().reset_i_seq()
   print("Analyzing N/Q/H residues for possible flip corrections...", file=log)
   tmp_pdb_hierarchy = pdb_hierarchy.deep_copy()
   tmp_pdb_hierarchy.atoms().reset_i_seq()

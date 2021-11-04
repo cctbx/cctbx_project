@@ -33,6 +33,115 @@ import boost_adaptbx.boost.python as bp
 bp.import_ext("mmtbx_probe_ext")
 import mmtbx_probe_ext as probeExt
 
+##################################################################################
+# Helper string and functions for using Probe PHIL parameters.  This lets Python
+# code that want to use Probe PHIL parameters pass these to the various object
+# constructors in the C++ ext library.
+
+# PHIL parameters to be added to the master PHIL string.  They make a subobject
+# 'probe' and put all the parameters inside it.
+probe_phil_parameters = """
+probe
+  .style = menu_item auto_align
+{
+  radius = 0.25
+    .type = float
+    .help = Probe radius (half distance between touched atoms) (-radius in probe)
+
+  density = 16.0
+    .type = float
+    .help = Probe dots per square angstrom on atom surface (-density in probe)
+
+  worse_clash_cutoff = 0.5
+    .type = float
+    .help = Cutoff for worse clashes, a positive (-divworse in probe)
+
+  clash_cutoff = 0.4
+    .type = float
+    .help = Cutoff for the clashes, a positive number (-divlow in probe)
+
+  contact_cutoff = 0.25
+    .type = float
+    .help = Cutoff for the contact (-divhigh in probe)
+
+  uncharged_hydrogen_cutoff = 0.6
+    .type = float
+    .help = Cutoff for uncharged hydrogen overlap (-hbregular in probe)
+
+  charged_hydrogen_cutoff = 0.8
+    .type = float
+    .help = Cutoff for charged hydrogen overlap (-hbcharged in probe)
+
+  bump_weight = 10.0
+    .type = float
+    .help = Weight applied to bump score (-bumpweight in probe)
+
+  hydrogen_bond_weight = 4.0
+    .type = float
+    .help = Weight applied to hydrogen bond score (-hbweight in probe)
+
+  gap_weight = 0.25
+    .type = float
+    .help = Weight applied to gap score (-gapweight in probe)
+
+  allow_weak_hydrogen_bonds = False
+    .type = bool
+    .help = Separately account for weak hydrogen bonds (-LweakHbonds in probe)
+
+  implicit_hydrogens = False
+    .type = bool
+    .help = Use implicit hydrogens, no water proxies (-implicit in probe)
+
+  use_original_probe_tables = False
+    .type = bool
+    .help = Use the original Probe tables rather than CCTBX tables by default (for regression tests)
+}
+"""
+
+def createSpatialQuery(atoms, probePhil):
+  """
+    Helper function to create a SpatialQuery object, passing it all required Phil parameters
+    in addition to the other constructor parameters.
+    :param atoms: Flex array of atoms to insert in the structure.  This will determine the
+    bounds of the structure.
+    :param probePhi: Subobject of PHIL parameters for probe.  Can be obtained using
+    self.params.probe from a Program Template program that includes the probe_phil_parameters
+    from above in its master PHIL parameters string.
+    :returns A mmtbx_probe_ext.SpatialQuery object.
+  """
+  return probeExt.SpatialQuery(atoms)
+
+def createDotSphereCache(probePhil):
+  """
+    Helper function to create a DotSphereCache object, passing it all required Phil parameters
+    in addition to the other constructor parameters.
+    :param probePhi: Subobject of PHIL parameters for probe.  Can be obtained using
+    self.params.probe from a Program Template program that includes the probe_phil_parameters
+    from above in its master PHIL parameters string.
+    :returns A mmtbx_probe_ext.DotSphereCache object.
+  """
+  return probeExt.DotSphereCache(probePhil.density)
+
+def createDotScorer(extraAtomInfo, probePhil):
+  """
+    Helper function to create a DotScorer object, passing it all required Phil parameters
+    in addition to the other constructor parameters.
+    :param extraAtomInfo: Can be obtained from getExtraAtomInfo().  Holds extra atom information
+    needed for scoring atoms.
+    :param probePhi: Subobject of PHIL parameters for probe.  Can be obtained using
+    self.params.probe from a Program Template program that includes the probe_phil_parameters
+    from above in its master PHIL parameters string.
+    :returns A mmtbx_probe_ext.DotScorer object.
+  """
+  return probeExt.DotScorer(extraAtomInfo, probePhil.gap_weight,
+        probePhil.bump_weight, probePhil.hydrogen_bond_weight,
+        probePhil.uncharged_hydrogen_cutoff, probePhil.charged_hydrogen_cutoff,
+        probePhil.clash_cutoff, probePhil.worse_clash_cutoff,
+        probePhil.contact_cutoff, probePhil.allow_weak_hydrogen_bonds)
+
+##################################################################################
+# Other helper functions.
+
 def getBondedNeighborLists(atoms, bondProxies):
   """
     Helper function to produce a dictionary of lists that contain all bonded
@@ -133,8 +242,7 @@ class getExtraAtomInfoReturn(object):
     self.extraAtomInfo = extraAtomInfo
     self.warnings = warnings
 
-def getExtraAtomInfo(model, useNeutronDistances = False, useImplicitHydrogenDistances = False,
-                     useProbeTablesByDefault = False):
+def getExtraAtomInfo(model, useNeutronDistances = False, probePhil = None):
   """
     Helper function to provide a mapper for ExtraAtomInfo needed by Probe when scoring
     models.  It first tries to find the information in CCTBX.  If it cannot, it looks
@@ -146,6 +254,9 @@ def getExtraAtomInfo(model, useNeutronDistances = False, useImplicitHydrogenDist
     :param useNeutronDistances: Default is to use x-ray distances, but setting this to
     True uses neutron distances instead.  This must be set consistently with the
     PDB interpretation parameter used on the model.
+    :param probePhi: None or subobject of PHIL parameters for probe.  Can be obtained using
+    self.params.probe from a Program Template program that includes the probe_phil_parameters
+    from above in its master PHIL parameters string.  If None, local defaults will be used.
     :param useImplicitHydrogenDistances: Default is to use distances consistent with
     explicitly-listed Hydrgoens, but setting this to True implicit-Hydrogen distances instead.
     This must be set consistently with the hydrogens in the model.
@@ -159,6 +270,14 @@ def getExtraAtomInfo(model, useNeutronDistances = False, useImplicitHydrogenDist
   """
 
   warnings = ""
+
+  # Pull parameters from PHIL parameters, if they are present.  Otherwise, set to
+  # defaults
+  useImplicitHydrogenDistances = False
+  useProbeTablesByDefault = False
+  if probePhil is not None:
+    useImplicitHydrogenDistances = probePhil.implicit_hydrogens
+    useProbeTablesByDefault = probePhil.use_original_probe_tables
 
   # Construct the AtomTypes object we're going to use, telling it whether to use neutron distances.
   at = AtomTypes.AtomTypes(useNeutronDistances, useImplicitHydrogenDistances)

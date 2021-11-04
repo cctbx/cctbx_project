@@ -935,15 +935,6 @@ def default_target_spectrum(ssqr):
     best_val = (1.-ds)*best_data[is1][1] + ds*best_data[is2][1]
     return best_val
 
-def get_d_star_sq_step(f_array, num_per_bin = 1000, max_bins = 50, min_bins = 6):
-  d_spacings = f_array.d_spacings().data()
-  num_tot = d_spacings.size()
-  n_bins = round(max(min(num_tot / num_per_bin, max_bins),min_bins))
-  d_min = flex.min(d_spacings)
-  d_max = flex.max(d_spacings)
-  d_star_sq_step = (1 / d_min ** 2 - 1 / d_max ** 2) / n_bins
-  return d_star_sq_step
-
 def run_refine_cryoem_errors(
     mmm, d_min,
     map_1_id="map_manager_1", map_2_id="map_manager_2",
@@ -1033,11 +1024,11 @@ def run_refine_cryoem_errors(
   mc2 = working_mmm.map_as_fourier_coefficients(d_min=d_min, d_max=d_max, map_id=map_2_id)
 
   # Use bins of equal width in d_star_sq, which works well with cubic cell
-  d_star_sq_step = get_d_star_sq_step(mc1)
-  mc1.setup_binner_d_star_sq_step(d_star_sq_step=d_star_sq_step)
+  mc1.setup_binner_d_star_sq_bin_size()
   mc2.use_binner_of(mc1)
   ssqmin = flex.min(mc1.d_star_sq().data())
   ssqmax = flex.max(mc1.d_star_sq().data())
+  nref = mc1.size()
 
   # Initialise parameters.  This requires slope and intercept of Wilson plot,
   # plus mapCC per bin.
@@ -1045,7 +1036,11 @@ def run_refine_cryoem_errors(
   target_spectrum = flex.double()
   meanfsq_bins = flex.double()
   mapCC_bins = flex.double()
-  sumw = sumwx = sumwy = sumwx2 = sumwxy = 0.
+  sumw = 0
+  sumwx = 0.
+  sumwy = 0.
+  sumwx2 = 0.
+  sumwxy = 0.
   for i_bin in mc1.binner().range_used():
     sel = mc1.binner().selection(i_bin)
     mc1sel = mc1.select(sel)
@@ -1070,6 +1065,7 @@ def run_refine_cryoem_errors(
     target_power = default_target_spectrum(x) # Could have a different target
     target_spectrum.append(target_power)
 
+  assert (nref == sumw) # Check no Fourier terms lost outside bins
   slope = (sumw * sumwxy - (sumwx * sumwy)) / (sumw * sumwx2 - sumwx**2)
   intercept = (sumwy - slope * sumwx) / sumw
   wilson_scale_intensity = math.exp(intercept)

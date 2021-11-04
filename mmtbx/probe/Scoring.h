@@ -77,7 +77,6 @@ namespace molprobity {
     bool annularDots(const Point& dot, const Point& srcLoc, double srcVDWRad,
       const Point& targLoc, double targVDWRad, double probeRadius);
 
-
     //=====================================================================================================
     /// @brief Class to hold data values for an atom beyond those present in the hierarchy::atom class itself
     // that are needed by the Probe calculations.  These must be filled in by the client, perhaps using data

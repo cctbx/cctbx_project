@@ -3,6 +3,7 @@ import os
 from dxtbx.model.experiment_list import ExperimentListFactory
 from dials.array_family import flex
 from six.moves import range
+import json
 from xfel.merging.application.input.file_lister import file_lister
 from xfel.merging.application.input.file_load_calculator import file_load_calculator
 from xfel.merging.application.utils.memory_usage import get_memory_usage
@@ -22,6 +23,26 @@ def create_experiment_identifier(experiment, experiment_file_path, experiment_id
                        ''.join(experiment.imageset.paths())
   hash_obj = hashlib.md5(exp_identifier_str.encode('utf-8'))
   return hash_obj.hexdigest()
+
+
+def preGen_experiment_identifiers(experiments, exp_filename):
+  """
+  Label experiments according to image number (for multi-image files), lattice number, H
+  where H is a unique per-experiment hash
+  This information will be preserved in the reflection files that are optionally output
+  if output.save_experiments_and_reflections=True.
+  """
+  done_expts = {}
+  for i_exp, expt in enumerate(experiments):
+    exp_hash = create_experiment_identifier(expt, exp_filename, i_exp)
+    iset = expt.imageset
+    path = iset.paths()[0]
+    single_file_index = iset.indices()[0]
+    key = "%s_%s" % (path, single_file_index)
+    n_hits = done_expts.setdefault(key, 0)
+    done_expts[key] = n_hits + 1
+    ident = "I%s_L%s_%s" % (single_file_index, n_hits, exp_hash)
+    expt.identifier = ident
 
 #for integration pickles:
 allowable_basename_endings = ["_00000.pickle",
@@ -90,16 +111,26 @@ class simple_file_loader(worker):
       file_list = self.get_list()
       self.logger.log("Built an input list of %d json/pickle file pairs"%(len(file_list)))
       self.params.input.path = None # Rank 0 has already parsed the input parameters
+
+      # optionally write a file list mapping to disk, useful in post processing if save_experiments_and_reflections=True
+      file_id_from_names = None
+      if self.params.output.expanded_bookkeeping:
+        apath = lambda x: os.path.abspath(x)
+        file_names_from_id = {i_f: tuple(map(apath, exp_ref_pair)) for i_f, exp_ref_pair in enumerate(file_list)}
+        with open(os.path.join(self.params.output.output_dir, "file_list_map.json"), "w") as o:
+          json.dump(file_names_from_id, o)
+        file_id_from_names = {tuple(map(apath, exp_ref_pair)): i_f for i_f, exp_ref_pair in enumerate(file_list)}
+
       per_rank_file_list = file_load_calculator(self.params, file_list, self.logger).\
                               calculate_file_load(available_rank_count = self.mpi_helper.size)
       self.logger.log('Transmitting a list of %d lists of json/pickle file pairs'%(len(per_rank_file_list)))
-      transmitted = per_rank_file_list
+      transmitted = per_rank_file_list, file_id_from_names
     else:
       transmitted = None
 
     self.logger.log_step_time("BROADCAST_FILE_LIST")
-    transmitted = self.mpi_helper.comm.bcast(transmitted, root = 0)
-    new_file_list = transmitted[self.mpi_helper.rank] if self.mpi_helper.rank < len(transmitted) else None
+    new_file_list, file_names_mapping = self.mpi_helper.comm.bcast(transmitted, root = 0)
+    new_file_list = new_file_list[self.mpi_helper.rank] if self.mpi_helper.rank < len(new_file_list) else None
     self.logger.log_step_time("BROADCAST_FILE_LIST", True)
 
     # Load the data
@@ -110,6 +141,15 @@ class simple_file_loader(worker):
         self.logger.log("Reading %s %s"%(experiments_filename, reflections_filename))
         experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = False)
         reflections = flex.reflection_table.from_file(reflections_filename)
+        if self.params.output.expanded_bookkeeping:
+          # NOTE: these are un-prunable
+          reflections["input_refl_index"] = flex.int(
+            list(range(len(reflections))))
+          reflections["orig_exp_id"] = reflections['id']
+          assert file_names_mapping is not None
+          exp_ref_pair = os.path.abspath(experiments_filename), os.path.abspath(reflections_filename)
+          this_refl_fileMappings = [file_names_mapping[exp_ref_pair]]*len(reflections)
+          reflections["file_list_mapping"] = flex.int(this_refl_fileMappings)
         self.logger.log("Data read, prepping")
 
         if 'intensity.sum.value' in reflections:
@@ -122,6 +162,9 @@ class simple_file_loader(worker):
         eid = reflections.experiment_identifiers()
         for k in eid.keys():
           del eid[k]
+
+        if self.params.output.expanded_bookkeeping:
+          preGen_experiment_identifiers(experiments, experiments_filename)
         for experiment_id, experiment in enumerate(experiments):
           # select reflections of the current experiment
           refls_sel = reflections['id'] == experiment_id
@@ -164,7 +207,8 @@ class simple_file_loader(worker):
     reflections = reflection_table_utils.prune_reflection_table_keys(reflections=reflections,
                     keys_to_keep=['intensity.sum.value', 'intensity.sum.variance', 'miller_index', 'miller_index_asymmetric', \
                                   'exp_id', 's1', 'intensity.sum.value.unmodified', 'intensity.sum.variance.unmodified',
-                                  'kapton_absorption_correction', 'flags'])
+                                  'kapton_absorption_correction', 'flags'],
+                    keys_to_ignore=self.params.input.persistent_refl_cols)
     self.logger.log("Pruned reflection table")
     self.logger.log("Memory usage: %d MB"%get_memory_usage())
     return reflections

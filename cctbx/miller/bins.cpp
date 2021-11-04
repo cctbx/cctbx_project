@@ -87,21 +87,21 @@ namespace cctbx { namespace miller {
   // Binning in steps of d_star_sq rather on
   // number of reflections per ASU
   void
-  binning::init_limits_d_star_sq_step(double d_min,
-                                      double d_max,
+  binning::init_limits_d_star_sq_step(double d_max,
+                                      double d_min,
                                       double d_star_sq_step)
   {
     CCTBX_ASSERT(d_min>0.0);
     CCTBX_ASSERT(d_max>0.0);
     CCTBX_ASSERT(d_star_sq_step>0.0);
-    std::size_t n_bins=0;
-    double start_value=1.0/(d_min*d_min);
-    double end_value=1.0/(d_max*d_max);
+    std::size_t n_bins = 0;
+    double d_star_sq_min = 1.0/(d_max*d_max);
+    double d_star_sq_max = 1.0/(d_min*d_min);
     while (true){
-      double current_value = start_value + n_bins * d_star_sq_step;
+      double current_value = d_star_sq_min + n_bins * d_star_sq_step;
       limits_.push_back(current_value);
       n_bins++;
-      if (current_value>=end_value){
+      if (current_value>=d_star_sq_max){
         break;
       }
     }

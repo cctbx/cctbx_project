@@ -27,25 +27,18 @@ class reflection_table_utils(object):
   @staticmethod
   def select_odd_experiment_reflections(reflections):
     'Select reflections from experiments with odd ids. An experiment id must be a string representing a hexadecimal number'
-    # NOTE: exp_id is no longer guaranteed to be what it once was...
     exp_index_map = {exp_uid: i for i, exp_uid in enumerate(set(reflections["exp_id"]))}
     sel = [exp_index_map[exp_id] % 2 == 1 for exp_id in reflections["exp_id"]]
     sel = flex.bool(sel)
-    #sel = flex.bool()
-    #for refl in reflections.rows():
-    #  sel.append(int(refl['exp_id'], 16)%2 != 0)
+    reflections["is_odd_experiment"] = sel  # store this for later use, NOTE this is un-prunable if expanded_bookkeeping=True
     return reflections.select(sel)
 
   @staticmethod
   def select_even_experiment_reflections(reflections):
     'Select reflections from experiments with even ids. An experiment id must be a string representing a hexadecimal number'
-    # NOTE: exp_id is no longer guaranteed to be what it once was...
     exp_index_map = {exp_uid: i for i, exp_uid in enumerate(set(reflections["exp_id"]))}
     sel = [exp_index_map[exp_id] % 2 == 0 for exp_id in reflections["exp_id"]]
     sel = flex.bool(sel)
-    #sel = flex.bool()
-    #for refl in reflections.rows():
-    #  sel.append(int(refl['exp_id'], 16)%2 == 0)
     return reflections.select(sel)
 
   @staticmethod
@@ -87,8 +80,15 @@ class reflection_table_utils(object):
     return merged_reflections
 
   @staticmethod
-  def prune_reflection_table_keys(reflections, keys_to_delete=None, keys_to_keep=None):
-    '''Remove reflection table keys: either inclusive or exclusive'''
+  def prune_reflection_table_keys(reflections, keys_to_delete=None, keys_to_keep=None,
+                                  keys_to_ignore=None):
+    '''Remove reflection table keys: either inclusive or exclusive, columns in keys_to_ignore will always remain'''
+    # These columns were created by the merging application, and we want to retain them
+    if keys_to_delete is not None:
+      keys_to_delete = [k for k in keys_to_delete if k not in keys_to_ignore]
+    if keys_to_keep is not None:
+      keys_to_keep += [k for k in keys_to_ignore if k not in keys_to_keep]
+
     if len(reflections) != 0:
       all_keys = list()
       for key in reflections.keys():

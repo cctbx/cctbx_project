@@ -204,6 +204,14 @@ class ncs_aware_refinement(object):
     for rg in ph_box.residue_groups():
       group_adp_sel.append(rg.atoms().extract_i_seq())
     #
+    b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+    if(flex.max(b_isos)<1.e-2):
+      b_isos = flex.random_double(model.size())*10
+      model.set_b_iso(values = b_isos)
+      fmodel.xray_structure.set_b_iso(values = b_isos)
+      fmodel.update_xray_structure(xray_structure = fmodel.xray_structure,
+        update_f_calc = True)
+    #
     number_of_macro_cycles = 3
     if(self.individual): number_of_macro_cycles = 1
     group_b_manager = mmtbx.refinement.group.manager(

@@ -1747,6 +1747,47 @@ class set(crystal.symmetry):
       d_min,
       d_star_sq_step))
 
+  def setup_binner_d_star_sq_bin_size(self,
+        reflections_per_bin=1000,
+        min_bins=6,
+        max_bins=50,
+        d_max=None,
+        d_min=None,
+        d_tolerance=1.e-5):
+    """
+    Set up bins of equal width in d_star_sq by target for mean number per bin.
+    """
+    (d_max_data, d_min_data) = self.d_max_min(
+        d_max_is_highest_defined_if_infinite=True)
+    if d_max is not None:
+      d_max_work = min(d_max,d_max_data)
+    else:
+      d_max_work = d_max_data
+    if d_min is not None:
+      d_min_work = max(d_min,d_min_data)
+    else:
+      d_min_work = d_min_data
+    if (d_max_work < d_max_data or d_min_work > d_min_data):
+      working_data = self.d_spacings().resolution_filter(
+          d_max=d_max_work,d_min=d_min_work)
+      n_ref_work = working_data.size()
+      this_d_tol = 0. # No boundary tolerance if explicit resolution limits
+    else:
+      n_ref_work = self.size()
+      this_d_tol = d_tolerance # Avoid losing reflections with rounding errors
+    n_bins = round(max(min(n_ref_work/reflections_per_bin, max_bins), min_bins))
+    limits = flex.double()
+    d_star_sq_min = 1. / (d_max_work*d_max_work)
+    d_star_sq_max = 1. / (d_min_work*d_min_work)
+    d_star_sq_step = (d_star_sq_max - d_star_sq_min) / n_bins
+    # Avoid losing reflections to rounding error on bin boundaries
+    limits.append(d_star_sq_min - this_d_tol*d_star_sq_step)
+    for i_bin in range(1,n_bins):
+      this_limit = d_star_sq_min + i_bin*d_star_sq_step
+      limits.append(this_limit)
+    limits.append(d_star_sq_max + this_d_tol*d_star_sq_step)
+    return self.use_binning(binning=binning(self.unit_cell(), limits))
+
   def setup_binner_counting_sorted(self,
         d_max=0,
         d_min=0,

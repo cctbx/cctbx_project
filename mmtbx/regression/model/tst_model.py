@@ -1451,7 +1451,7 @@ HETATM    8  O   HOH A  11      11.808   4.179   9.970  1.00 23.99           O
 HETATM    9  O   HOH A  12      13.605   1.327   9.198  1.00 26.17           O
 END
   """
-  for pdb_str in [psb_str1, psb_str2, psb_str3, psb_str4, psb_str5]:
+  for i, pdb_str in enumerate([psb_str1, psb_str2, psb_str3, psb_str4, psb_str5]):
     pi = iotbx.pdb.input(source_info=None, lines=pdb_str)
     m = mmtbx.model.manager(model_input = pi)
     sels = m.macromolecule_plus_hetatms_by_chain_selections()

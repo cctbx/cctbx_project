@@ -1,3 +1,10 @@
+2021.10
+=======
+
+* Initial migration of MolProbity functionality (probe and reduce) to mmtbx
+* Initial tool for likelihood-based map preparation for docking
+* Improvements to ADP refinement for real-space
+
 2021.9
 ======
 
