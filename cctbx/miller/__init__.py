@@ -1775,7 +1775,7 @@ class set(crystal.symmetry):
     else:
       n_ref_work = self.size()
       this_d_tol = d_tolerance # Avoid losing reflections with rounding errors
-    n_bins = round(max(min(n_ref_work/reflections_per_bin, max_bins), min_bins))
+    n_bins = iround(max(min(n_ref_work/reflections_per_bin, max_bins), min_bins))
     limits = flex.double()
     d_star_sq_min = 1. / (d_max_work*d_max_work)
     d_star_sq_max = 1. / (d_min_work*d_min_work)
