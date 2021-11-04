@@ -1,3 +1,17 @@
+##################################################################################
+# Copyright(c) 2021, Richardson Lab at Duke
+# Licensed under the Apache 2 license
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissionsand
+# limitations under the License.
+
 from __future__ import absolute_import, division, print_function
 import sys
 import math
@@ -37,7 +51,7 @@ approach = *self both once surface count_atoms
 
 excluded_bond_chain_length = 4
   .type = int
-  .help = Exclude chain of atoms bonded to source for this many hops (-4H, -3, -2 , -1 in probe)
+  .help = Exclude chain of atoms bonded to source for this many hops (-4H, -3, -2 , -1 in probe).  When set to 4, an atom chain longer than 3 is only excluded when either the first or the last atom in the chain is a Hydrogen.
 
 drop_non_selected_atoms = False
   .type = bool

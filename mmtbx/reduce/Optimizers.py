@@ -130,7 +130,7 @@ def GetAtomsForConformer(model, conf):
 
 class _SingletonOptimizer(object):
 
-  def __init__(self, model, modelIndex = 0, altID = None,
+  def __init__(self, addFlipMovers, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 3,
                 probeRadius = 0.25,
                 useNeutronDistances = False,
@@ -144,6 +144,7 @@ class _SingletonOptimizer(object):
     ignoring their impact on one another.  This means that it will not find the global
     minimum for any multi-Mover Cliques.  Derived classes should override the
     _optimizeCliqueCoarse() and other methods as needed to improve correctness and speed.
+    :param addFlipMovers: Do we add flip Movers along with other types?
     :param model: iotbx model (a group of hierarchy models).  Can be obtained using
     iotbx.map_model_manager.map_model_manager.model().  The model must have Hydrogens,
     which can be added using mmtbx.hydrogens.reduce_hydrogen.place_hydrogens().get_model().
@@ -283,7 +284,7 @@ class _SingletonOptimizer(object):
         # Get the list of Movers using the _PlaceMovers private function.
         ret = _PlaceMovers(self._atoms, model.rotatable_hd_selection(iselection=True),
                            bondedNeighborLists, self._spatialQuery, self._extraAtomInfo,
-                           self._maximumVDWRadius)
+                           self._maximumVDWRadius, addFlipMovers)
         self._infoString += ret.infoString
         self._movers = ret.moverList
         self._infoString += _VerboseCheck(1,"Inserted "+str(len(self._movers))+" Movers\n")
@@ -699,7 +700,7 @@ class _SingletonOptimizer(object):
     return maxScore
 
 class _BruteForceOptimizer(_SingletonOptimizer):
-  def __init__(self, model, modelIndex = 0, altID = None,
+  def __init__(self, addFlipMovers, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 3,
                 probeRadius = 0.25,
                 useNeutronDistances = False,
@@ -710,6 +711,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     """Constructor for _BruteForceOptimizer.  This tries all combinations of Mover positions
     within a Clique.  It will be too slow for many files, but it provides a baseline against
     which to compare the results from faster optimizers.
+    :param addFlipMovers: Do we add flip Movers along with other types?
     :param model: iotbx model (a group of hierarchy models).  Can be obtained using
     iotbx.map_model_manager.map_model_manager.model().  The model must have Hydrogens,
     which can be added using mmtbx.hydrogens.reduce_hydrogen.place_hydrogens().get_model().
@@ -738,7 +740,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     :param preferenceMagnitude: Multiplier for the preference energies expressed
     by some Movers for particular orientations.
     """
-    super(_BruteForceOptimizer, self).__init__(model, modelIndex = modelIndex, altID = altID,
+    super(_BruteForceOptimizer, self).__init__(addFlipMovers, model, modelIndex = modelIndex, altID = altID,
                 bondedNeighborDepth = bondedNeighborDepth,
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude)
@@ -805,7 +807,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     return ret
 
 class _CliqueOptimizer(_BruteForceOptimizer):
-  def __init__(self, model, modelIndex = 0, altID = None,
+  def __init__(self, addFlipMovers, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 3,
                 probeRadius = 0.25,
                 useNeutronDistances = False,
@@ -821,6 +823,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     and then (with each of the subcomponents in its optimal state) computes the score for the Movers in
     the vertex cut.  Recursion terminates when there are two or fewer Movers in the Clique or when no
     vertex cut can be found; the parent-class Clique solver is used in these cases.
+    :param addFlipMovers: Do we add flip Movers along with other types?
     :param model: iotbx model (a group of hierarchy models).  Can be obtained using
     iotbx.map_model_manager.map_model_manager.model().  The model must have Hydrogens,
     which can be added using mmtbx.hydrogens.reduce_hydrogen.place_hydrogens().get_model().
@@ -849,7 +852,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     :param preferenceMagnitude: Multiplier for the preference energies expressed
     by some Movers for particular orientations.
     """
-    super(_CliqueOptimizer, self).__init__(model, modelIndex = modelIndex, altID = altID,
+    super(_CliqueOptimizer, self).__init__(addFlipMovers, model, modelIndex = modelIndex, altID = altID,
                 bondedNeighborDepth = bondedNeighborDepth,
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude)
@@ -948,7 +951,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     return ret
 
 class FastOptimizer(_CliqueOptimizer):
-  def __init__(self, model, modelIndex = 0, altID = None,
+  def __init__(self, addFlipMovers, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 3,
                 probeRadius = 0.25,
                 useNeutronDistances = False,
@@ -962,6 +965,7 @@ class FastOptimizer(_CliqueOptimizer):
     is overridden to use this cached value in clique optimization (but not in singleton
     or fine optimization) when it has already been computed for a given configuration
     of Movers.
+    :param addFlipMovers: Do we add flip Movers along with other types?
     :param model: iotbx model (a group of hierarchy models).  Can be obtained using
     iotbx.map_model_manager.map_model_manager.model().  The model must have Hydrogens,
     which can be added using mmtbx.hydrogens.reduce_hydrogen.place_hydrogens().get_model().
@@ -997,7 +1001,7 @@ class FastOptimizer(_CliqueOptimizer):
     # it calls.
     self._doScoreCaching = False
 
-    super(FastOptimizer, self).__init__(model, modelIndex = modelIndex, altID = altID,
+    super(FastOptimizer, self).__init__(addFlipMovers, model, modelIndex = modelIndex, altID = altID,
                 bondedNeighborDepth = bondedNeighborDepth,
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude)
@@ -1069,7 +1073,7 @@ class _PlaceMoversReturn(object):
     self.deleteAtoms = deleteAtoms
 
 def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, extraAtomInfo,
-                  maxVDWRadius):
+                  maxVDWRadius, addFlipMovers):
   """Produce a list of Movers for atoms in a pdb.hierarchy.conformer that has added Hydrogens.
   :param atoms: flex array of atoms to search.  This must have all Hydrogens needed by the
   Movers present in the structure already.
@@ -1083,6 +1087,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
   information about atoms beyond what is in the pdb.hierarchy.  Used here to determine
   which atoms may be acceptors.
   :param maxVDWRadius: Maximum VdW radius of the atoms.
+  :param addFlipMovers: Do we add flip Movers along with other types?
   :return: _PlaceMoversReturn giving the list of Movers found in the conformation and
   an error string that is empty if no errors are found during the process and which
   has a printable message in case one or more errors are found.
@@ -1214,7 +1219,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
 
     # See if we should insert a MoverNH2Flip here.
     # @todo Is there a more general way than looking for specific names?
-    if (aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN'):
+    if addFlipMovers and ((aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN')):
       try:
         movers.append(Movers.MoverNH2Flip(a, "CA", bondedNeighborLists))
         infoString += _VerboseCheck(1,"Added MoverNH2Flip "+str(len(movers))+" to "+resNameAndID+"\n")
@@ -1309,7 +1314,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           _modifyIfNeeded(fixUp.atoms[4], coarsePositions[4], fixUp.atoms[5], infoString)
 
           infoString += _VerboseCheck(1,"Set MoverHistidineFlip on "+resNameAndID+" to state "+str(bondedConfig)+"\n")
-        else:
+        elif addFlipMovers: # Add a Histidine flip Mover if we're adding flip Movers
           movers.append(hist)
           infoString += _VerboseCheck(1,"Added MoverHistidineFlip "+str(len(movers))+" to "+resNameAndID+"\n")
       except Exception as e:
@@ -1551,7 +1556,7 @@ END
   # Place the movers, which should include only an NH3 rotator because the Histidine flip
   # will be constrained by the ionic bonds.
   ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True),
-                     bondedNeighborLists, sq, extra, maxVDWRad)
+                     bondedNeighborLists, sq, extra, maxVDWRad, True)
   movers = ret.moverList
   if len(movers) != 1:
     return "Optimizers.Test(): Incorrect number of Movers for 1xso Histidine test"
@@ -1610,15 +1615,10 @@ END
   doneInt = time.clock()
 
   print('Constructing Optimizer')
-  # @todo Let the caller specify the model index and altID rather than doing only the default (first).
   startOpt = time.clock()
-  opt = FastOptimizer(model,probeRadius=0.25, altID="")
+  opt = FastOptimizer(True, model,probeRadius=0.25)
   doneOpt = time.clock()
   info = opt.getInfo()
-  print('XXX info:\n'+info)
-  print('XXX Time to Add Hydrogen =',doneAdd-startAdd)
-  print('XXX Time to Interpret =',doneInt-startInt)
-  print('XXX Time to Optimize =',doneOpt-startOpt)
 
   f = open("deleteme.pdb","w")
   f.write(model.model_as_pdb())
