@@ -576,7 +576,7 @@ END
     line = line.strip()
     if (not line.startswith(looking_for)): continue
     counts = eval(line[len(looking_for):])
-    assert counts == {"CH4": 3, "NH3": 3, "U  ": 1}
+    assert counts == {"U  ": 1}
     break
   else:
     raise RuntimeError('Expected string not found in output: "%s"'
