@@ -30,12 +30,15 @@ def find_mon_lib_file(env_vars=mon_lib_env_vars,
     mon_lib_path=os.environ.get(env_vars[0], None),
     relative_path_components=relative_path_components)
   if (result is not None): return result
-  for relative_path in [
-        "chem_data/geostd",
-        "chem_data/mon_lib",
-        "mon_lib",
-        'geostd',
-        "ext_ref_files/mon_lib"]:
+  relative_paths = [
+    "chem_data/geostd",
+    "chem_data/mon_lib",
+    "mon_lib",
+    'geostd',
+    "ext_ref_files/mon_lib"]
+  if 'mon_lib_list.cif' in relative_path_components:
+    relative_paths.reverse()
+  for relative_path in relative_paths:
     result = load_mon_lib_file(
       mon_lib_path=libtbx.env.find_in_repositories(
         relative_path=relative_path),
