@@ -1083,7 +1083,7 @@ def exercise_convert_atom():
   # not push the
   for atom in mol.get_hierarchy().atoms():
     xyz_max = max([ abs(n) for n in atom.xyz])
-    assert (xyz_max < 2.5)
+    assert (xyz_max < 2.6), 'max %s is larger than 2.6' % xyz_max
   mol = mol.select(flex.size_t([1,2,3,4,5,6]))
   assert mol.have_anomalous_scatterer_groups()
   # assert mol.update_anomalous_groups(out=null_out()) # not needed because select() processed groups correctly
