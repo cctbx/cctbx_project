@@ -36,7 +36,9 @@ def find_mon_lib_file(env_vars=mon_lib_env_vars,
     "mon_lib",
     'geostd',
     "ext_ref_files/mon_lib"]
-  if 'mon_lib_list.cif' in relative_path_components:
+  if ('mon_lib_list.cif' in relative_path_components
+      # or 'ener_lib.cif' in relative_path_components
+      ):
     relative_paths.reverse()
   for relative_path in relative_paths:
     result = load_mon_lib_file(
