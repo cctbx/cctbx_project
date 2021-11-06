@@ -157,7 +157,7 @@ class several_wavelength_case:
 
   from simtbx.kokkos import gpu_detector as kokkosd
   kokkos_detector = kokkosd(detector=self.DETECTOR, beam=self.BEAM)
-  kokkos_detector.each_image_allocate()
+  kokkos_detector.each_image_allocate_cuda()
 
   # loop over energies
   for x in range(len(self.flux)):
@@ -165,7 +165,7 @@ class several_wavelength_case:
       SIM.wavelength_A = self.wavlen[x]
       print("USE_EXASCALE_API+++++++++++++ Wavelength %d=%.6f, Flux %.6e, Fluence %.6e"%(
             x, SIM.wavelength_A, SIM.flux, SIM.fluence))
-      kokkos_simulation.add_energy_channel_from_gpu_amplitudes(
+      kokkos_simulation.add_energy_channel_from_kokkos_amplitudes_cuda(
         x, kokkos_channels_singleton, kokkos_detector)
   per_image_scale_factor = 1.0
   kokkos_detector.scale_in_place(per_image_scale_factor) # apply scale directly in KOKKOS
