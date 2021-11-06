@@ -98,7 +98,7 @@ namespace Kokkos {
     int const& ichannel,
     simtbx::Kokkos::kokkos_energy_channels & kec,
     simtbx::Kokkos::kokkos_detector & kdt
-  ){/*
+  ){
     // cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
     // transfer source_I, source_lambda
@@ -112,26 +112,26 @@ namespace Kokkos {
     // magic happens here(?): take pointer from singleton, temporarily use it for add Bragg iteration:
     vector_cudareal_t current_channel_Fhkl = kec.d_channel_Fhkl[ichannel];
 
-    cudaDeviceProp deviceProps = { 0 };
-    cudaSafeCall(cudaGetDeviceProperties(&deviceProps, SIM.device_Id));
-    int smCount = deviceProps.multiProcessorCount;
-    dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
-    dim3 numBlocks(smCount * 8, 1);
+    // cudaDeviceProp deviceProps = { 0 };
+    // cudaSafeCall(cudaGetDeviceProperties(&deviceProps, SIM.device_Id));
+    // int smCount = deviceProps.multiProcessorCount;
+    // dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+    // dim3 numBlocks(smCount * 8, 1);
 
     std::size_t panel_size = kdt.m_slow_dim_size * kdt.m_fast_dim_size;
 
     // the for loop around panels.  Offsets given.
     for (std::size_t panel_id = 0; panel_id < kdt.m_panel_count; panel_id++){
       // loop thru panels and increment the array ptrs
-      nanoBraggSpotsCUDAKernel<<<numBlocks, threadsPerBlock>>>(
+      kokkosSpotsKernel(
       kdt.m_slow_dim_size, kdt.m_fast_dim_size, SIM.roi_xmin,
       SIM.roi_xmax, SIM.roi_ymin, SIM.roi_ymax, SIM.oversample, SIM.point_pixel,
       SIM.pixel_size, m_subpixel_size, m_steps, SIM.detector_thickstep, SIM.detector_thicksteps,
       SIM.detector_thick, SIM.detector_attnlen,
-      &(kdt.m_sdet_vector[m_vector_length * panel_id]),
-      &(kdt.m_fdet_vector[m_vector_length * panel_id]),
-      &(kdt.m_odet_vector[m_vector_length * panel_id]),
-      &(kdt.m_pix0_vector[m_vector_length * panel_id]),
+      extract_subview(kdt.m_sdet_vector, panel_id, m_vector_length),
+      extract_subview(kdt.m_fdet_vector, panel_id, m_vector_length),
+      extract_subview(kdt.m_odet_vector, panel_id, m_vector_length),
+      extract_subview(kdt.m_pix0_vector, panel_id, m_vector_length),
       SIM.curved_detector, kdt.metrology.dists[panel_id], kdt.metrology.dists[panel_id], m_beam_vector,
       kdt.metrology.Xbeam[panel_id], kdt.metrology.Ybeam[panel_id],
       SIM.dmin, SIM.phi0, SIM.phistep, SIM.phisteps, m_spindle_vector,
@@ -144,22 +144,22 @@ namespace Kokkos {
       SIM.interpolate, current_channel_Fhkl, kec.m_FhklParams, SIM.nopolar,
       m_polar_vector, SIM.polarization, SIM.fudge,
       // &(kdt.m_maskimage[panel_size * panel_id]),
-      NULL,
+      nullptr,
       // return arrays:
-      &(kdt.m_floatimage[panel_size * panel_id]),
-      &(kdt.m_omega_reduction[panel_size * panel_id]),
-      &(kdt.m_max_I_x_reduction[panel_size * panel_id]),
-      &(kdt.m_max_I_y_reduction[panel_size * panel_id]),
-      &(kdt.m_rangemap[panel_size * panel_id]);
-
-      cudaSafeCall(cudaPeekAtLastError());
+      extract_subview(kdt.m_floatimage, panel_id, panel_size),
+      extract_subview(kdt.m_omega_reduction, panel_id, panel_size),
+      extract_subview(kdt.m_max_I_x_reduction, panel_id, panel_size),
+      extract_subview(kdt.m_max_I_y_reduction, panel_id, panel_size),
+      extract_subview(kdt.m_rangemap, panel_id, panel_size));
+      //cudaSafeCall(cudaPeekAtLastError());
+      ::Kokkos::fence();
     }
-    cudaSafeCall(cudaDeviceSynchronize());
+    //cudaSafeCall(cudaDeviceSynchronize());
 
     //don't want to free the kec data when the nanoBragg goes out of scope, so switch the pointer
     // cu_current_channel_Fhkl = NULL;
 
-    add_array(kdt.m_accumulate_floatimage, kdt.m_floatimage);*/
+    add_array(kdt.m_accumulate_floatimage, kdt.m_floatimage);
   }
 
   void
