@@ -159,16 +159,14 @@ class several_wavelength_case:
   kokkos_detector = kokkosd(detector=self.DETECTOR, beam=self.BEAM)
   kokkos_detector.each_image_allocate_cuda()
 
-  mask = flex.bool(1536*1536, True)
-
   # loop over energies
   for x in range(len(self.flux)):
       SIM.flux = self.flux[x]
       SIM.wavelength_A = self.wavlen[x]
       print("USE_EXASCALE_API+++++++++++++ Wavelength %d=%.6f, Flux %.6e, Fluence %.6e"%(
             x, SIM.wavelength_A, SIM.flux, SIM.fluence))
-      kokkos_simulation.add_energy_channel_mask_allpanel_cuda(
-        x, kokkos_channels_singleton, kokkos_detector, mask)
+      kokkos_simulation.add_energy_channel_from_kokkos_amplitudes_cuda(
+        x, kokkos_channels_singleton, kokkos_detector)
   per_image_scale_factor = 1.0
   kokkos_detector.scale_in_place_cuda(per_image_scale_factor) # apply scale directly in KOKKOS
   SIM.wavelength_A = self.BEAM.get_wavelength() # return to canonical energy for subsequent background
@@ -242,12 +240,12 @@ if __name__=="__main__":
   SIM5 = SWC.modularized_exafel_api_for_KOKKOS(argchk=False, cuda_background=True)
   SIM5.to_smv_format(fileout="test_full_e_005.img")
   SIM5.to_cbf("test_full_e_005.cbf")
-  diffs("GPU",SIM4.raw_pixels, "KOKKOS",SIM5.raw_pixels)
+  diffs("CPU",SIM.raw_pixels, "KOKKOS",SIM5.raw_pixels)
 
   print("\n# Use case: modularized api argchk=True, cuda_background=True")
   SIM6 = SWC.modularized_exafel_api_for_KOKKOS(argchk=True, cuda_background=True)
   SIM6.to_smv_format(fileout="test_full_e_006.img")
   SIM6.to_cbf("test_full_e_006.cbf")
-  diffs("GPU",SIM4.raw_pixels, "KOKKOS",SIM6.raw_pixels)
+  diffs("CPU",SIM.raw_pixels, "KOKKOS",SIM6.raw_pixels)
 
 print("OK")

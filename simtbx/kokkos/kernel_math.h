@@ -172,4 +172,40 @@ KOKKOS_FUNCTION void magnitude(CUDAREAL *vector) {
 #endif
 }
 
+// scale magnitude of provided vector
+KOKKOS_FUNCTION CUDAREAL vector_scale(CUDAREAL *vector, CUDAREAL *new_vector, CUDAREAL scale) {
+
+        new_vector[1] = scale * vector[1];
+        new_vector[2] = scale * vector[2];
+        new_vector[3] = scale * vector[3];
+        magnitude(new_vector);
+
+        return new_vector[0];
+}
+
+// Fourier transform of a grating
+KOKKOS_FUNCTION CUDAREAL sincg(CUDAREAL x, CUDAREAL N) {
+        if (x != 0.0) {
+                return sin(x * N) / sin(x);
+        }
+        return N;
+
+}
+
+KOKKOS_FUNCTION CUDAREAL sincgrad(CUDAREAL x, CUDAREAL N) {
+        if (x != 0.0) {
+                return sinpi(x * N) / sinpi(x);
+        }
+        return N;
+}
+
+// Fourier transform of a sphere
+KOKKOS_FUNCTION CUDAREAL sinc3(CUDAREAL x) {
+        if (x != 0.0) {
+                return 3.0 * (sin(x) / x - cos(x)) / (x * x);
+        }
+        return 1.0;
+
+}
+
 #endif // SIMTBX_KOKKOS_KERNEL_MATH_H
