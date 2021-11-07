@@ -58,7 +58,7 @@ from cctbx import miller, sgtbx
 from simtbx.diffBragg.refiners.parameters import RangedParameter
 
 # how many parameters per shot, currently just scale and B-factor
-N_PARAM_PER_SHOT = 2
+N_PARAM_PER_SHOT = 5
 
 
 class StageTwoRefiner(BaseRefiner):
@@ -176,14 +176,13 @@ class StageTwoRefiner(BaseRefiner):
 
     def _set_current_gain_per_pixel(self):
         M = self.Modelers[self._i_shot]
-        M._gain_region_per_pixel = self.REGIONS[M.all_pid, M.all_slow, M.all_fast]
+        #M._gain_region_per_pixel = self.REGIONS[M.all_pid, M.all_slow, M.all_fast]
         M.all_gain = self._gain_per_region[M._gain_region_per_pixel]
 
     def _evaluate_averageI(self):
         """model_Lambda means expected intensity in the pixel"""
         # NOTE: gain correction is applied to te background fit, as the background was fit to the data
-        G = self.Modelers[self._i_shot].all_gain
-        self.model_Lambda = G*self.Modelers[self._i_shot].all_background + self.model_bragg_spots
+        self.model_Lambda = self.Modelers[self._i_shot].all_background + self.model_bragg_spots
 
     def make_output_dir(self):
         if self.I_AM_ROOT and not os.path.exists(self.output_dir):
@@ -215,10 +214,11 @@ class StageTwoRefiner(BaseRefiner):
 
         self.spot_scale_xpos = {}
         self.Bfactor_xpos = {}
+        self.Ncells_xstart = {}
         for shot_id in self.shot_ids:
             self.spot_scale_xpos[shot_id] = self.shot_mapping[shot_id]*N_PARAM_PER_SHOT
             self.Bfactor_xpos[shot_id] = self.shot_mapping[shot_id]*N_PARAM_PER_SHOT + 1
-
+            self.Ncells_xstart[shot_id] = self.shot_mapping[shot_id]*N_PARAM_PER_SHOT + 2
         LOGGER.info("--0 create an Fcell mapping")
         if self.refine_Fcell:
             #idx, data = self.S.D.Fhkl_tuple
@@ -237,6 +237,8 @@ class StageTwoRefiner(BaseRefiner):
         self.regions_xstart = self.fcell_xstart + self.n_global_fcell
 
         self._setup_region_refinement_parameters()
+        self._setup_ncells_refinement_parameters()
+        self._track_num_times_pixel_was_modeled()
 
         self.hkl_totals = []
         if self.refine_Fcell:
@@ -262,6 +264,8 @@ class StageTwoRefiner(BaseRefiner):
         self.D = self.S.D
 
         self.D.refine(self._fcell_id)
+        if self.params.refiner.refine_Nabc:
+            self.D.refine(self._ncells_id)
         self.D.initialize_managers()
 
         for sid in self.shot_ids:
@@ -274,12 +278,47 @@ class StageTwoRefiner(BaseRefiner):
         self._MPI_barrier()
         LOGGER.info("Setup ends!")
 
+    def _track_num_times_pixel_was_modeled(self):
+        self.pixel_was_modeled = np.zeros(self.REGIONS.shape)
+        self.region_was_modeled = np.zeros(self.num_regions)
+        for i_shot in self.shot_ids:
+            M = self.Modelers[i_shot]
+            self.pixel_was_modeled[M.all_pid, M.all_slow, M.all_fast] += 1
+            M._gain_region_per_pixel = self.REGIONS[M.all_pid, M.all_slow, M.all_fast]
+            M._unique_gain_regions = set(M._gain_region_per_pixel)
+            for i_reg in M._unique_gain_regions:
+                self.region_was_modeled[i_reg] += 1
+
+        self.pixel_was_modeled = self._MPI_reduce_broadcast(self.pixel_was_modeled)
+        self.region_was_modeled = self._MPI_reduce_broadcast(self.region_was_modeled)
+
     def _setup_region_refinement_parameters(self):
         self.region_params = {}
         for i_reg in range(self.num_regions):
             minGain, maxGain = self.params.refiner.gain_map_min_max
-            p = RangedParameter(init=1, minval=minGain, maxval=maxGain, sigma=1, center=1, beta=0.04)
-            self.region_params["region%d" % i_reg] = p
+            if self.params.refiner.gain_restraint is not None:
+                center,beta = self.params.refiner.gain_restraint
+            else:
+                center = 1
+                beta = 1e10
+            p = RangedParameter(init=1, minval=minGain, maxval=maxGain, sigma=1, center=center, beta=beta)
+            p.xpos = self.regions_xstart + i_reg
+            p.name = "region%d" % i_reg
+            self.region_params[p.name] = p
+
+    def _setup_ncells_refinement_parameters(self):
+        names = "Na", "Nb", "Nc"
+        for i_shot in self.shot_ids:
+            Ncells_params = self.Modelers[i_shot].PAR.Nabc
+            for i_n, p in enumerate(Ncells_params):
+                p.xpos = self.Ncells_xstart[i_shot] + i_n
+                p.name = "%s_shot%d_rank%d" % ( names[i_n], i_shot, COMM.rank)
+
+    def _gain_restraints(self):
+        if self.params.refiner.gain_restraint:
+            for p in self.region_params.values():
+                self.target_functional += p.get_restraint_val(self.x[p.xpos])
+                self.grad[p.xpos] += p.get_restraint_deriv(self.x[p.xpos])
 
     def _get_i_fcell_slices(self, Modeler):
         """finds the boundaries for each fcell in the 1-D array of per-shot data"""
@@ -383,8 +422,17 @@ class StageTwoRefiner(BaseRefiner):
     def _get_ncells_def_vals(self, i_shot):
         pass
 
-    def _get_m_val(self, i_shot):
-        vals = [self.Modelers[i_shot].PAR.Nabc[i_N].init for i_N in range(3)]
+    def _get_ncells_abc(self, i_shot):
+        if self.params.refiner.refine_Nabc:
+            vals = []
+            Nabc_p = self.Modelers[i_shot].PAR.Nabc
+            for p in Nabc_p:
+                xval = self.x[p.xpos]
+                val = p.get_val(xval)
+                vals.append(val)
+        else:
+            vals = [self.Modelers[i_shot].PAR.Nabc[i_N].init for i_N in range(3)]
+
         return vals
 
     def _get_eta(self, i_shot):
@@ -470,7 +518,7 @@ class StageTwoRefiner(BaseRefiner):
         pass
 
     def _update_ncells(self):
-        vals = self._get_m_val(self._i_shot)
+        vals = self._get_ncells_abc(self._i_shot)
         self.D.set_ncells_values(tuple(vals))
 
     def _update_ncells_def(self):
@@ -493,6 +541,11 @@ class StageTwoRefiner(BaseRefiner):
             if self.calc_curvatures:
                 d2F = self.D.get_second_derivative_pixels(self._fcell_id)
                 self._extracted_fcell_second_deriv = d2F[:npix].as_numpy_array()
+
+        if self.params.refiner.refine_Nabc:
+            self.dNabc = [d[:npix].as_numpy_array() for d in self.D.get_ncells_derivative_pixels()]
+            if self.calc_curvatures:
+                raise NotImplementedError("update the code")
 
     def _extract_sausage_derivs(self):
         pass
@@ -518,8 +571,7 @@ class StageTwoRefiner(BaseRefiner):
     def _extract_panelXYZ_derivative_pixels(self):
         pass
 
-    def _extract_Fcell_derivative_pixels(self):
-        # TODO pre-extract
+    def _scale_Fcell_derivative_pixels(self):
         self.fcell_deriv = self.fcell_second_deriv = 0
         if self.refine_Fcell:
             SG = self.scale_fac
@@ -528,16 +580,22 @@ class StageTwoRefiner(BaseRefiner):
             if self.calc_curvatures:
                 self.fcell_second_deriv = SG*self._extracted_fcell_second_deriv
 
+    def _scale_Nabc_derivative_pixels(self):
+        if self.params.refiner.refine_Nabc:
+            self.dNabc = [self.scale_fac*d for d in self.dNabc]
+
     def _get_per_spot_scale(self, i_shot, i_spot):
         pass
 
-    def _extract_pixel_data(self):
+    def _scale_pixel_data(self):
         #Mod = self.Modelers[self._i_shot]
         #self.Bfactor_qterm = Mod.all_q_perpix**2 / 4.
         #self._expBq = np.exp(-self.b_fac**2 * self.Bfactor_qterm)
         #self.model_bragg_spots = self._expBq*self.scale_fac*(self._model_pix)
+        self.model_bragg_spots_no_gains = self.scale_fac_no_gains*self._model_pix
         self.model_bragg_spots = self.scale_fac*self._model_pix
-        self._extract_Fcell_derivative_pixels()
+        self._scale_Fcell_derivative_pixels()
+        self._scale_Nabc_derivative_pixels()
 
     def _update_ucell(self):
         self.D.Bmatrix = self.Modelers[self._i_shot].PAR.Bmatrix
@@ -610,7 +668,11 @@ class StageTwoRefiner(BaseRefiner):
         self.all_sigZ = []
 
         for self._i_shot in self.shot_ids:
-            self.scale_fac = self._get_spot_scale(self._i_shot)**2
+            self._set_current_gain_per_pixel()
+            gains = self.Modelers[self._i_shot].all_gain
+            self.scale_fac_no_gains = self._get_spot_scale(self._i_shot)**2
+            self.scale_fac = gains*self._get_spot_scale(self._i_shot)**2
+
             self.b_fac = self._get_bfactor(self._i_shot)
 
             # TODO: Omatrix update? All crystal models here should have the same to_primitive operation, ideally
@@ -634,8 +696,7 @@ class StageTwoRefiner(BaseRefiner):
 
             # TODO pre-extractions for all parameters
             self._pre_extract_deriv_arrays()
-            self._extract_pixel_data()
-            self._set_current_gain_per_pixel()
+            self._scale_pixel_data()
             self._evaluate_averageI()
             self._evaluate_log_averageI_plus_sigma_readout()
 
@@ -676,6 +737,7 @@ class StageTwoRefiner(BaseRefiner):
             self.target_functional += self._target_accumulate()
             self._spot_scale_derivatives()
             #self._Bfactor_derivatives()
+            self._accumulate_Nabc_derivatives()
             self._Fcell_derivatives()
             self._gain_region_derivatives()
 
@@ -688,6 +750,8 @@ class StageTwoRefiner(BaseRefiner):
         self._mpi_aggregation()
         tmpi = time.time() - tmpi
         LOGGER.info("Time for MPIaggregation=%.4f" % tmpi)
+
+        self._gain_restraints()
 
         LOGGER.info("Aliases")
         self._f = self.target_functional
@@ -742,15 +806,16 @@ class StageTwoRefiner(BaseRefiner):
             return
         MOD = self.Modelers[self._i_shot]
 
-        dL_dG = 0.5*self.one_over_v* (MOD.all_background + 2*self.u*(MOD.all_data-MOD.all_background) - \
-            self.u*self.u*MOD.all_background*self.one_over_v)
+        #dL_dG = 0.5*self.one_over_v* (MOD.all_background + 2*self.u*(MOD.all_data-MOD.all_background) - \
+        #    self.u*self.u*MOD.all_background*self.one_over_v)
+        dL_dG = 0.5*self.model_bragg_spots_no_gains*self.common_grad_term
         dL_dG /= MOD.all_freq
 
         reg_grad = np.zeros(self.num_regions)
         np.add.at(reg_grad, MOD._gain_region_per_pixel[MOD.all_trusted], dL_dG[MOD.all_trusted])
 
-        u_reg = set(MOD._gain_region_per_pixel)
-        for i_reg in u_reg:
+        #u_reg = set(MOD._gain_region_per_pixel)
+        for i_reg in MOD._unique_gain_regions:
             xpos = self.regions_xstart+i_reg
             gain_x = self.x[xpos]
             d = self.region_params["region%d"%i_reg].get_deriv(gain_x, reg_grad[i_reg])
@@ -790,10 +855,19 @@ class StageTwoRefiner(BaseRefiner):
                 if self.calc_curvatures:
                     raise NotImplementedError("No curvature for Fcell refinement")
 
+    def _accumulate_Nabc_derivatives(self):
+        if not self.params.refiner.refine_Nabc:
+            return
+        Mod = self.Modelers[self._i_shot]
+        for i_n in range(3):
+            p = Mod.PAR.Nabc[i_n]
+            d = p.get_deriv(self.x[p.xpos],  self.dNabc[i_n])
+            self.grad[p.xpos] += self._grad_accumulate(d)
+
     def _spot_scale_derivatives(self, return_derivatives=False):
         if not self.refine_crystal_scale:
             return
-        S = np.sqrt(self.scale_fac)
+        S = np.sqrt(self.scale_fac_no_gains)
         dI_dtheta = (2./S)*self.model_bragg_spots
         d2I_dtheta2 = (2./S/S)*self.model_bragg_spots
         # second derivative is 0 with respect to scale factor
@@ -917,11 +991,16 @@ class StageTwoRefiner(BaseRefiner):
                   % (Bcolors.HEADER, border, border, border, self.trial_id + 1, refine_str, self.iterations + 1, self.num_positive_curvatures, border, border,border, Bcolors.ENDC))
 
     def _save_optimized_gain_map(self):
+        if not self.params.refiner.refine_gain_map:
+            return
         if self.I_AM_ROOT and self.output_dir is not None:
             outf = os.path.join(self.output_dir, "gain_map" )
             LOGGER.info(Bcolors.WARNING+"Saving detector gain map!"+Bcolors.ENDC)
             np.savez(outf, gain_per_region=self._gain_per_region, region_shape=self.params.refiner.region_size,
-                     det_shape=self.REGIONS.shape, adu_per_photon=self.params.refiner.adu_per_photon)
+                     det_shape=self.REGIONS.shape, adu_per_photon=self.params.refiner.adu_per_photon,
+                     regions=self.REGIONS,
+                     num_times_pixel_was_modeled=self.pixel_was_modeled,
+                     num_times_region_was_modeled=self.region_was_modeled)
             LOGGER.info("Done Saving detector gain map!")
 
     def _MPI_save_state_of_refiner(self):
@@ -958,7 +1037,7 @@ class StageTwoRefiner(BaseRefiner):
 
     def _derivative_convenience_factors(self):
         Mod = self.Modelers[self._i_shot]
-        self.u = Mod.all_data*Mod.all_gain - self.model_Lambda
+        self.u = Mod.all_data - self.model_Lambda
         self.one_over_v = 1. / (self.model_Lambda + Mod.sigma_rdout ** 2)
         self.one_minus_2u_minus_u_squared_over_v = 1 - 2 * self.u - self.u * self.u * self.one_over_v
         if self.calc_curvatures:

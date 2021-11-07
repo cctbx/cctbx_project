@@ -74,7 +74,7 @@ def get_predicted_from_pandas(df, params, strong, eid='', device_Id=0, spectrum_
     predictions['scatter'] = predictions["intensity.sum.value"] / flex.double(np.array(numpix, np.float64))
 
     # separate out the weak from the strong
-    label_weak_predictions(predictions, strong)
+    label_weak_predictions(predictions, strong,params.predictions.qcut)
     n_weak = sum(predictions["is_weak"])
     predictions["is_strong"] = flex.bool(np.logical_not(predictions["is_weak"]))
     n_pred = len(predictions)

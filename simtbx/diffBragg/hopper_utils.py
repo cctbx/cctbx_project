@@ -314,6 +314,7 @@ class DataModeler:
             pad_for_background_estimation=self.params.roi.pad_shoebox_for_background_estimation,
             sigma_rdout=self.sigma_rdout, deltaQ=self.params.roi.deltaQ, experiment=self.E,
             weighted_fit=self.params.roi.fit_tilt_using_weights,
+            allow_overlaps=self.params.roi.allow_overlapping_spots,
             tilt_relative_to_corner=self.params.relative_tilt, ret_cov=True)
 
         if roi_packet is None:
