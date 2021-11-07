@@ -38,18 +38,18 @@ namespace simtbx { namespace Kokkos {
             ( arg("detector"),arg("beam"))))
 //             "Multipanel constructor with data taken from dxtbx objects")
         .def("show_summary",&simtbx::Kokkos::kokkos_detector::show_summary)
-        .def("each_image_allocate_cuda",
-              &simtbx::Kokkos::kokkos_detector::each_image_allocate_cuda,
+        .def("each_image_allocate_kokkos",
+              &simtbx::Kokkos::kokkos_detector::each_image_allocate_kokkos,
              "Allocate large pixel arrays")
-        .def("scale_in_place_cuda", &simtbx::Kokkos::kokkos_detector::scale_in_place_cuda,
+        .def("scale_in_place_kokkos", &simtbx::Kokkos::kokkos_detector::scale_in_place_kokkos,
              "Multiply by a scale factor on the GPU")
-        .def("write_raw_pixels_cuda",&simtbx::Kokkos::kokkos_detector::write_raw_pixels_cuda,
+        .def("write_raw_pixels_kokkos",&simtbx::Kokkos::kokkos_detector::write_raw_pixels_kokkos,
              "Update raw_pixels on host with array from GPU")
-        .def("get_raw_pixels_cuda",&simtbx::Kokkos::kokkos_detector::get_raw_pixels_cuda,
+        .def("get_raw_pixels_kokkos",&simtbx::Kokkos::kokkos_detector::get_raw_pixels_kokkos,
              "return multipanel detector raw pixels as a flex array")
-       .def("get_whitelist_raw_pixels_cuda",
+       .def("get_whitelist_raw_pixels_kokkos",
              (af::shared<double> (simtbx::Kokkos::kokkos_detector::*)(af::shared<std::size_t>))
-             &simtbx::Kokkos::kokkos_detector::get_whitelist_raw_pixels_cuda,
+             &simtbx::Kokkos::kokkos_detector::get_whitelist_raw_pixels_kokkos,
             "return only those raw pixels requested by the whitelist selection, as a 1D flex array")
         ;
     }
@@ -61,8 +61,8 @@ namespace simtbx { namespace Kokkos {
       using namespace boost::python;
       class_<simtbx::Kokkos::kokkos_energy_channels>("kokkos_energy_channels",init<>() )
         .def("get_nchannels", &simtbx::Kokkos::kokkos_energy_channels::get_nchannels)
-        .def("structure_factors_to_KOKKOS_direct_cuda",
-             &simtbx::Kokkos::kokkos_energy_channels::structure_factors_to_KOKKOS_direct_cuda,
+        .def("structure_factors_to_KOKKOS_direct",
+             &simtbx::Kokkos::kokkos_energy_channels::structure_factors_to_KOKKOS_direct,
              (arg_("dummy_int"), arg_("indices"), arg_("amplitudes"))
             )
         .def("print_Fhkl", &simtbx::Kokkos::kokkos_energy_channels::print_Fhkl,
@@ -81,15 +81,15 @@ namespace simtbx { namespace Kokkos {
       class_<simtbx::Kokkos::exascale_api>("exascale_api",no_init )
         .def(init<const simtbx::nanoBragg::nanoBragg&>(
             ( arg("nanoBragg"))))
-        .def("allocate_cuda",&simtbx::Kokkos::exascale_api::allocate_cuda,
+        .def("allocate_kokkos",&simtbx::Kokkos::exascale_api::allocate_kokkos,
              "Allocate and transfer input data on the GPU")
-        .def("add_energy_channel_from_kokkos_amplitudes_cuda",
-             &simtbx::Kokkos::exascale_api::add_energy_channel_from_kokkos_amplitudes_cuda,
+        .def("add_energy_channel_from_kokkos_amplitudes",
+             &simtbx::Kokkos::exascale_api::add_energy_channel_from_kokkos_amplitudes,
              "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spot contributions to the detector's accumulator array")
-        .def("add_energy_channel_mask_allpanel_cuda",
-             &simtbx::Kokkos::exascale_api::add_energy_channel_mask_allpanel_cuda,
+        .def("add_energy_channel_mask_allpanel_kokkos",
+             &simtbx::Kokkos::exascale_api::add_energy_channel_mask_allpanel_kokkos,
              "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spots on mask==True pixels")
-        .def("add_background_cuda", &simtbx::Kokkos::exascale_api::add_background_cuda,
+        .def("add_background_kokkos", &simtbx::Kokkos::exascale_api::add_background_kokkos,
              "Add a background field directly on the GPU")
         .def("show",&simtbx::Kokkos::exascale_api::show)
         ;
