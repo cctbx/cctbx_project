@@ -24,17 +24,31 @@ def create_gain_map(gain_map_file, expt=None, outname=None, convert_to_photons=T
     gain_per_region = gain_data["gain_per_region"]
     adu_per_photon = gain_data["adu_per_photon"]
     gain_map = regionize_detector(det_shape, region_shape, gain_per_region)
+    region_marker = gain_data["num_times_region_was_modeled"][()]
+    ntimes = gain_data["num_times_pixel_was_modeled"][()]
+    mask = ntimes > 0
+    region_marker = regionize_detector(det_shape, region_shape, region_marker) #.astype(np.int))
+    region_marker = region_marker > 0
     if expt is not None:
         assert outname is not None
         iset = expt.imageset
         data = np.array([a.as_numpy_array() for a in iset.get_raw_data(0)])
         if convert_to_photons:
             data /= adu_per_photon
-        with H5AttributeGeomWriter(outname, det_shape, 3, detector=expt.detector, beam=expt.beam) as writer:
+        with H5AttributeGeomWriter(outname, det_shape, 5, detector=expt.detector, beam=expt.beam) as writer:
             writer.add_image(data)
             writer.add_image(data*gain_map)
             writer.add_image(gain_map)
+            writer.add_image(gain_data["regions"])
+            writer.add_image(ntimes)
+        maskname = outname+".mask"
+        utils.save_numpy_mask_as_flex(region_marker, maskname)
+        maskname2 = outname+".mask2"
+        utils.save_numpy_mask_as_flex(mask, maskname2)
+        print("Wrote %s and %s and %s, open with dials.image_viewer" %(outname, maskname, maskname2))
 
+    vals = gain_map[region_marker]
+    print(np.mean(vals), np.std(vals), np.min(vals), np.max(vals))
     return gain_map
 
 
@@ -100,13 +114,16 @@ def PAR_from_params(params, experiment, best=None):
     for i in range(3):
         initN = params.init.Nabc[i] if best is None else best.ncells.values[0][i]
         PAR.Nabc[i] = ParameterType(init=initN, minval=params.mins.Nabc[i],
-                                    maxval=params.maxs.Nabc[i], fix=params.fix.Nabc, sigma=params.sigmas.Nabc[i],
+                                    maxval=params.maxs.Nabc[i], fix=not params.refiner.refine_Nabc, sigma=params.sigmas.Nabc[i],
                                     center=params.centers.Nabc[i], beta=params.betas.Nabc[i])
 
         PAR.RotXYZ_params[i] = ParameterType(init=0, minval=params.mins.RotXYZ[i],
                                             maxval=params.maxs.RotXYZ[i], fix=params.fix.RotXYZ,
                                             sigma=params.sigmas.RotXYZ[i],
                                             center=0, beta=params.betas.RotXYZ)
+
+        # TODO: diffuse scattering terms, eta terms
+
     # unit cell parameters
     ucell_man = utils.manager_from_crystal(experiment.crystal)  # Note ucell man contains the best parameters (if best is not None)
     ucell_vary_perc = params.ucell_edge_perc / 100.

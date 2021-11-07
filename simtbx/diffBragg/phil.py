@@ -738,6 +738,13 @@ refiner {
   refine_spot_scale = None
     .type = ints(size_min=1)
     .help = whether to refine the crystal scale factor
+  refine_Nabc = False
+    .type = bool
+    .help = whether to refine the mosaic domain size tensor 
+  gain_restraint=None
+    .type = floats(size=2)
+    .help = if not None, apply a gain restraint to the data
+    .help = This is two parameters, a center and a variance
   max_calls = [100]
     .type = ints(size_min=1)
     .help = maximum number of calls for the refinement trial
@@ -941,6 +948,10 @@ geometry {
 
 predictions_phil = """
 predictions {
+  qcut = 0.1
+    .type = float
+    .help = Label predicted reflection as a strong reflection if its within this
+    .help = many inverse Angstromg (q=2/Lambda sin(theta)) of an observed strong spot
   weak_fraction = 0.5
     .type = float
     .help = fraction of weak predictions to integrate

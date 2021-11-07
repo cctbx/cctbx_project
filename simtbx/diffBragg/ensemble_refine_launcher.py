@@ -156,7 +156,6 @@ class RefineLauncher:
             if i_exp % COMM.size != COMM.rank:
                 continue
             LOGGER.info("EVENT: BEGIN loading experiment list")
-            # TODO handle all three options
             expt_list = ExperimentListFactory.from_json_file(exper_name, check_format=self.params.refiner.check_expt_format)
             LOGGER.info("EVENT: DONE loading experiment list")
             if len(expt_list) != 1:
@@ -206,7 +205,7 @@ class RefineLauncher:
             else:
                 gathered = shot_modeler.GatherFromExperiment(expt, refls, sg_symbol=self.symbol)
             if not gathered:
-                raise("Failed to gather data from experiment %s", exper_name)
+                raise IOError("Failed to gather data from experiment %s", exper_name)
 
             if self.params.refiner.gather_dir is not None:
                 gathered_name = os.path.splitext(os.path.basename(exper_name))[0]
