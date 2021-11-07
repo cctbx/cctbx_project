@@ -142,7 +142,7 @@ namespace simtbx { namespace Kokkos {
     m_accumulate_floatimage( vector_double_t( "m_accumulate_floatimage", m_total_pixel_count) ) { }
 
   void
-  kokkos_detector::scale_in_place(const double& factor){
+  kokkos_detector::scale_in_place_kokkos(const double& factor){
     auto local_accumulate_floatimage = m_accumulate_floatimage;
     parallel_for("scale_in_place", range_policy(0,m_total_pixel_count), KOKKOS_LAMBDA (const int i) {
       local_accumulate_floatimage( i ) = local_accumulate_floatimage( i ) * factor;
@@ -150,7 +150,7 @@ namespace simtbx { namespace Kokkos {
   }
 
   void
-  kokkos_detector::write_raw_pixels(simtbx::nanoBragg::nanoBragg& nB) {
+  kokkos_detector::write_raw_pixels_kokkos(simtbx::nanoBragg::nanoBragg& nB) {
     //only implement the monolithic detector case, one panel
     SCITBX_ASSERT(nB.spixels == m_slow_dim_size);
     SCITBX_ASSERT(nB.fpixels == m_fast_dim_size);
@@ -171,7 +171,7 @@ namespace simtbx { namespace Kokkos {
   }
 
   af::flex_double
-  kokkos_detector::get_raw_pixels(){
+  kokkos_detector::get_raw_pixels_kokkos(){
     //return the data array for the multipanel detector case
     af::flex_double output_array(af::flex_grid<>(m_panel_count,m_slow_dim_size,m_fast_dim_size), af::init_functor_null<double>());
 
@@ -195,7 +195,7 @@ namespace simtbx { namespace Kokkos {
   }
 
   af::shared<double>
-  kokkos_detector::get_whitelist_raw_pixels(af::shared<std::size_t> selection) {
+  kokkos_detector::get_whitelist_raw_pixels_kokkos(af::shared<std::size_t> selection) {
     //return the data array for the multipanel detector case, but only for whitelist pixels
     //ToDo check if this function works as intended. It seems like active_pixel is unnecessary or wrong
     vector_size_t active_pixel_selection = vector_size_t("active_pixel_selection", selection.size());
@@ -253,7 +253,7 @@ namespace simtbx { namespace Kokkos {
   }
 
   void
-  kokkos_detector::each_image_allocate() {
+  kokkos_detector::each_image_allocate_kokkos() {
     resize(m_rangemap, m_total_pixel_count);
     resize(m_omega_reduction, m_total_pixel_count);
     resize(m_max_I_x_reduction, m_total_pixel_count);

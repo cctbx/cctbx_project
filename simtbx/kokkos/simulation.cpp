@@ -94,7 +94,7 @@ namespace Kokkos {
   }
 
   void
-  exascale_api::add_energy_channel_from_gpu_amplitudes(
+  exascale_api::add_energy_channel_from_kokkos_amplitudes(
     int const& ichannel,
     simtbx::Kokkos::kokkos_energy_channels & kec,
     simtbx::Kokkos::kokkos_detector & kdt
@@ -163,7 +163,7 @@ namespace Kokkos {
   }
 
   void
-  exascale_api::add_energy_channel_mask_allpanel(
+  exascale_api::add_energy_channel_mask_allpanel_kokkos(
     int const& ichannel,
     simtbx::Kokkos::kokkos_energy_channels & kec,
     simtbx::Kokkos::kokkos_detector & kdt,
@@ -250,7 +250,7 @@ namespace Kokkos {
 
 
   void
-  exascale_api::add_background(simtbx::Kokkos::kokkos_detector & kdt) {
+  exascale_api::add_background_kokkos(simtbx::Kokkos::kokkos_detector & kdt) {
         // cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
         // transfer source_I, source_lambda
@@ -328,7 +328,7 @@ namespace Kokkos {
   }
 
   void
-  exascale_api::allocate() {
+  exascale_api::allocate_kokkos() {
     //cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
     // water_size not defined in class, CLI argument, defaults to 0

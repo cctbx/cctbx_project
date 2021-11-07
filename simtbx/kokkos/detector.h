@@ -46,14 +46,12 @@ struct kokkos_detector{
     std::cout << "Detector size: " << m_panel_count << " panel" << ( (m_panel_count>1)? "s" : "" ) << std::endl;
     metrology.show();
   }
-  void each_image_allocate();
-  void scale_in_place(const double&);
-  void write_raw_pixels(simtbx::nanoBragg::nanoBragg&);
-  af::flex_double get_raw_pixels();
-  void set_active_pixels_on_GPU(af::shared<int>);
-  af::shared<double> get_whitelist_raw_pixels(af::shared<std::size_t>);
-  inline void each_image_free(){} //no op in Kokkos
-  int h_deviceID;
+  void each_image_allocate_kokkos();
+  void scale_in_place_kokkos(const double&);
+  void write_raw_pixels_kokkos(simtbx::nanoBragg::nanoBragg&);
+  af::flex_double get_raw_pixels_kokkos();
+  void set_active_pixels_on_KOKKOS(af::shared<int>);
+  af::shared<double> get_whitelist_raw_pixels_kokkos(af::shared<std::size_t>);
 
   //const dxtbx::model::Detector detector;
   packed_metrology const metrology;

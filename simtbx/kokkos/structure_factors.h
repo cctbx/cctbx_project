@@ -23,7 +23,7 @@ struct kokkos_energy_channels {
   }
 
   inline
-  void structure_factors_to_GPU_direct(
+  void structure_factors_to_KOKKOS_direct(
     int, indices pythony_indices, af::shared<double> pythony_amplitudes){
     double F_cell;
 
