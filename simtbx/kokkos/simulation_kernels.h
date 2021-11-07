@@ -123,18 +123,14 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
 
                                         if (curved_detector) {
                                                 // construct detector pixel that is always "distance" from the sample
-                                                vector_cudareal_t dbvector = vector_cudareal_t("dbvector", 4);
-                                                dbvector(1) = distance * beam_vector(1);
-                                                dbvector(2) = distance * beam_vector(2);
-                                                dbvector(3) = distance * beam_vector(3);
+                                                CUDAREAL dbvector[] = { 0.0, 0.0, 0.0, 0.0 };
+                                                dbvector[1] = distance * beam_vector(1);
+                                                dbvector[2] = distance * beam_vector(2);
+                                                dbvector[3] = distance * beam_vector(3);
                                                 // treat detector pixel coordinates as radians
                                                 CUDAREAL newvector[] = { 0.0, 0.0, 0.0, 0.0 };
                                                 rotate_axis(dbvector, newvector, sdet_vector, pixel_pos[2] / distance);
-                                                vector_cudareal_t newview = vector_cudareal_t("newvector", 4);
-                                                newview(1) = newvector[1];
-                                                newview(2) = newvector[2];
-                                                newview(3) = newvector[3];
-                                                rotate_axis(newview, pixel_pos, fdet_vector, pixel_pos[3] / distance);
+                                                rotate_axis(newvector, pixel_pos, fdet_vector, pixel_pos[3] / distance);
                                                 // rotate(vector,pixel_pos,0,pixel_pos[3]/distance,pixel_pos[2]/distance);
                                         }
 
@@ -354,7 +350,7 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
         });
     }
 
-void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixels, int total_pixels,
+void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pixels,
     int oversample, int point_pixel,
     CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps,
     CUDAREAL detector_thickstep, int detector_thicksteps, CUDAREAL detector_thick, CUDAREAL detector_mu,

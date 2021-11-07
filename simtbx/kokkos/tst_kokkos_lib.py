@@ -137,7 +137,7 @@ class several_wavelength_case:
 
   assert kokkos_channels_singleton.get_nchannels() == 0 # uninitialized
   for x in range(len(self.flux)):
-          kokkos_channels_singleton.structure_factors_to_KOKKOS_direct_cuda(
+          kokkos_channels_singleton.structure_factors_to_KOKKOS_direct(
           x, self.sfall_channels[x].indices(), self.sfall_channels[x].data())
   assert kokkos_channels_singleton.get_nchannels() == len(self.flux)
   SIM.Ncells_abc = (20,20,20)
@@ -153,11 +153,11 @@ class several_wavelength_case:
   # allocate GPU arrays
   from simtbx.kokkos import exascale_api
   kokkos_simulation = exascale_api(nanoBragg = SIM)
-  kokkos_simulation.allocate_cuda()
+  kokkos_simulation.allocate_kokkos()
 
   from simtbx.kokkos import kokkos_detector as kokkosd
   kokkos_detector = kokkosd(detector=self.DETECTOR, beam=self.BEAM)
-  kokkos_detector.each_image_allocate_cuda()
+  kokkos_detector.each_image_allocate_kokkos()
 
   # loop over energies
   for x in range(len(self.flux)):
@@ -165,10 +165,10 @@ class several_wavelength_case:
       SIM.wavelength_A = self.wavlen[x]
       print("USE_EXASCALE_API+++++++++++++ Wavelength %d=%.6f, Flux %.6e, Fluence %.6e"%(
             x, SIM.wavelength_A, SIM.flux, SIM.fluence))
-      kokkos_simulation.add_energy_channel_from_kokkos_amplitudes_cuda(
+      kokkos_simulation.add_energy_channel_from_kokkos_amplitudes(
         x, kokkos_channels_singleton, kokkos_detector)
   per_image_scale_factor = 1.0
-  kokkos_detector.scale_in_place_cuda(per_image_scale_factor) # apply scale directly in KOKKOS
+  kokkos_detector.scale_in_place_kokkos(per_image_scale_factor) # apply scale directly in KOKKOS
   SIM.wavelength_A = self.BEAM.get_wavelength() # return to canonical energy for subsequent background
 
   if cuda_background:
@@ -179,13 +179,13 @@ class several_wavelength_case:
       SIM.flux=1e12
       SIM.beamsize_mm=0.003 # square (not user specified)
       SIM.exposure_s=1.0 # multiplies flux x exposure
-      kokkos_simulation.add_background_cuda(kokkos_detector)
+      kokkos_simulation.add_background_kokkos(kokkos_detector)
 
       # updates SIM.raw_pixels from GPU
-      kokkos_detector.write_raw_pixels_cuda(SIM)
+      kokkos_detector.write_raw_pixels_kokkos(SIM)
   else:
       # updates SIM.raw_pixels from GPU
-      kokkos_detector.write_raw_pixels_cuda(SIM)
+      kokkos_detector.write_raw_pixels_kokkos(SIM)
 
       SIM.Fbg_vs_stol = water
       SIM.amorphous_sample_thick_mm = 0.02

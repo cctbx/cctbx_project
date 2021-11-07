@@ -94,7 +94,7 @@ namespace Kokkos {
   }
 
   void
-  exascale_api::add_energy_channel_from_kokkos_amplitudes_cuda(
+  exascale_api::add_energy_channel_from_kokkos_amplitudes(
     int const& ichannel,
     simtbx::Kokkos::kokkos_energy_channels & kec,
     simtbx::Kokkos::kokkos_detector & kdt
@@ -163,7 +163,7 @@ namespace Kokkos {
   }
 
   void
-  exascale_api::add_energy_channel_mask_allpanel_cuda(
+  exascale_api::add_energy_channel_mask_allpanel_kokkos(
     int const& ichannel,
     simtbx::Kokkos::kokkos_energy_channels & kec,
     simtbx::Kokkos::kokkos_detector & kdt,
@@ -201,7 +201,7 @@ namespace Kokkos {
 
     // for call for all panels at the same time
 
-      debranch_maskall_CUDAKernel(
+      debranch_maskall_Kernel(
       kdt.m_panel_count, kdt.m_slow_dim_size, kdt.m_fast_dim_size, active_pixel_list.size(),
       SIM.oversample, SIM.point_pixel,
       SIM.pixel_size, m_subpixel_size, m_steps,
@@ -242,7 +242,7 @@ namespace Kokkos {
 
 
   void
-  exascale_api::add_background_cuda(simtbx::Kokkos::kokkos_detector & kdt) {
+  exascale_api::add_background_kokkos(simtbx::Kokkos::kokkos_detector & kdt) {
         // cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
         // transfer source_I, source_lambda
@@ -273,7 +273,7 @@ namespace Kokkos {
 
         //  initialize the device memory within a kernel.
         //  modify the arguments to initialize multipanel detector.
-        ::Kokkos::parallel_for("nanoBraggSpotsInit", kdt.m_panel_count * kdt.m_slow_dim_size * kdt.m_fast_dim_size, KOKKOS_LAMBDA (const int& j) {
+        ::Kokkos::parallel_for("kokkosSpotsInit", kdt.m_panel_count * kdt.m_slow_dim_size * kdt.m_fast_dim_size, KOKKOS_LAMBDA (const int& j) {
           kdt.m_floatimage(j) = 0;
           kdt.m_omega_reduction(j) = 0;
           kdt.m_max_I_x_reduction(j) = 0;
@@ -320,7 +320,7 @@ namespace Kokkos {
   }
 
   void
-  exascale_api::allocate_cuda() {
+  exascale_api::allocate_kokkos() {
     //cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
     // water_size not defined in class, CLI argument, defaults to 0
