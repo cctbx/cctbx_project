@@ -20,7 +20,7 @@ struct kokkos_energy_channels {
   //kokkos_energy_channels(int const&);
 
   inline
-  void structure_factors_to_KOKKOS_direct_cuda(
+  void structure_factors_to_KOKKOS_direct(
     int, indices pythony_indices, af::shared<double> pythony_amplitudes){
     double F_cell;
 
