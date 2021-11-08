@@ -92,6 +92,7 @@ struct flags{
     int verbose; // nanoBragg verbosity flag
     bool use_diffuse = false; // model  diffuse
     bool only_diffuse = false; // model  diffuse scattering (experimental)
+    bool refine_Icell = false; // option to refine the structure factor intensity directly (F_cell^2)
     bool gamma_miller_units = false; // use Miller index units for diffuse gamma matrix
 };
 

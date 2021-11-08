@@ -56,11 +56,13 @@ void gpu_sum_over_steps(
         const CUDAREAL* __restrict__ fpfdp_derivs,
         const CUDAREAL* __restrict__ atom_data, int num_atoms, bool refine_fp_fdp,
         const int* __restrict__ nominal_hkl, bool use_nominal_hkl, MAT3 anisoU, MAT3 anisoG, bool use_diffuse,
-        CUDAREAL* d_diffuse_gamma_images, CUDAREAL* d_diffuse_sigma_images, bool refine_diffuse, bool gamma_miller_units)
+        CUDAREAL* d_diffuse_gamma_images, CUDAREAL* d_diffuse_sigma_images, bool refine_diffuse, bool gamma_miller_units,
+        bool refine_Icell)
 { // BEGIN GPU kernel
 
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     int thread_stride = blockDim.x * gridDim.x;
+    __shared__ bool s_refine_Icell;
     __shared__ bool s_use_diffuse;
     __shared__ bool s_use_nominal_hkl;
     __shared__ bool s_refine_fp_fdp;
@@ -110,6 +112,7 @@ void gpu_sum_over_steps(
             s_refine_panel_origin[i] = refine_panel_origin[i];
             s_refine_panel_rot[i] = refine_panel_rot[i];
         }
+        s_refine_Icell = refine_Icell;
         s_use_nominal_hkl = use_nominal_hkl;
         s_aniso_eta = aniso_eta;
         s_no_Nabc_scale = no_Nabc_scale;
@@ -394,28 +397,28 @@ void gpu_sum_over_steps(
                             I0 += this_I_latt_diffuse;
                             if (s_refine_diffuse){
                                 for (int i_gam=0; i_gam<3; i_gam++){
-				  MAT3 dG_dgam;
-				  dG_dgam << 0,0,0,0,0,0,0,0,0;
-				  dG_dgam(i_gam, i_gam) = 1;
-				  if (s_gamma_miller_units){
-				    dG_dgam = dG_dgam * Amat;
-				  }
-                                   VEC3 dV = dG_dgam*delta_Q;
-                                   CUDAREAL V_dot_dV = anisoG_q.dot(dV);
-                                   CUDAREAL deriv = (Ginv*dG_dgam).trace() - 16*M_PI*M_PI*V_dot_dV/(1+4*M_PI*M_PI*V_dot_V);
-                                   step_diffuse_param[i_gam] += gamma_portion*deriv*exparg;
+                                    MAT3 dG_dgam;
+                                    dG_dgam << 0,0,0,0,0,0,0,0,0;
+                                    dG_dgam(i_gam, i_gam) = 1;
+                                    if (s_gamma_miller_units){
+                                       dG_dgam = dG_dgam * Amat;
+                                    }
+                                    VEC3 dV = dG_dgam*delta_Q;
+                                    CUDAREAL V_dot_dV = anisoG_q.dot(dV);
+                                    CUDAREAL deriv = (Ginv*dG_dgam).trace() - 16*M_PI*M_PI*V_dot_dV/(1+4*M_PI*M_PI*V_dot_V);
+                                    step_diffuse_param[i_gam] += gamma_portion*deriv*exparg;
                                 }
-				MAT3 dU_dsigma;
-				dU_dsigma << 0,0,0,0,0,0,0,0,0;
-				for (int i_sig = 0;i_sig<3; i_sig++){
-				   dU_dsigma(i_sig, i_sig) = 2.*sqrt(anisoU(i_sig,i_sig));
-				   CUDAREAL dexparg = 4*M_PI*M_PI*Q0.dot(dU_dsigma*Q0);
-				   dU_dsigma(i_sig, i_sig) = 0.;
-				   /*				   if (exparg  >= .5) // only valid up to a point
-				     dexparg = 0;
-				   */
-				   step_diffuse_param[i_sig+3] += gamma_portion*dexparg;
-				}
+                                MAT3 dU_dsigma;
+                                dU_dsigma << 0,0,0,0,0,0,0,0,0;
+                                for (int i_sig = 0;i_sig<3; i_sig++){
+                                   dU_dsigma(i_sig, i_sig) = 2.*sqrt(anisoU(i_sig,i_sig));
+                                   CUDAREAL dexparg = 4*M_PI*M_PI*Q0.dot(dU_dsigma*Q0);
+                                   dU_dsigma(i_sig, i_sig) = 0.;
+                                   /*				   if (exparg  >= .5) // only valid up to a point
+                                     dexparg = 0;
+                                   */
+                                   step_diffuse_param[i_sig+3] += gamma_portion*dexparg;
+                                }
 
                             }
                         }
@@ -517,7 +520,9 @@ void gpu_sum_over_steps(
             if (!s_oversample_omega)
                 _omega_pixel = 1;
 
-            CUDAREAL _I_cell = _F_cell*_F_cell;
+            CUDAREAL _I_cell = _F_cell;
+            if (! s_refine_Icell)
+                _I_cell *= _F_cell;
             CUDAREAL _I_total = _I_cell *I0;
             CUDAREAL Iincrement = _I_total*texture_scale;
             _I += Iincrement;
@@ -720,12 +725,11 @@ void gpu_sum_over_steps(
 
             // checkpoint for Fcell manager
             if (s_refine_fcell){
-                //if (s_use_nominal_hkl)
-                //    fcell_idx = _l0 - nom_l + 1;
-
-                //if (_F_cell > 0)
-                //CUDAREAL value = 2*Iincrement/_F_cell ;
-                CUDAREAL value = 2*I0*_F_cell * texture_scale; //Iincrement/_F_cell ;
+                CUDAREAL value;
+                if (s_refine_Icell)
+                    value = I0* texture_scale;
+                else
+                    value = 2*I0*_F_cell * texture_scale; //Iincrement/_F_cell ;
                 CUDAREAL value2=0;
                 if (s_compute_curvatures){
                 //    NOTE if _Fcell >0
