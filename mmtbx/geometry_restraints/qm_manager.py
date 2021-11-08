@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import os
-from StringIO import StringIO
+from io import StringIO
 import time
 import tempfile
 
@@ -42,6 +42,9 @@ class orca_manager:
     self.energies = {}
     if self.preamble is None:
       self.preamble = os.path.basename(tempfile.NamedTemporaryFile().name)
+    # validate
+    if self.basis_set is None: self.basis_set=''
+    if self.solvent_model is None: self.solvent_model=''
 
   def __repr__(self):
     outl = 'QI Manager\n'
@@ -96,7 +99,7 @@ class orca_manager:
    8    58.8800869   71.4618835   28.1663680
    8    62.2022254   74.3474953   29.5553167
   16    59.4829095   73.6048329   29.8973572'''
-    f=file('orca_%s.engrad' % self.preamble, 'rb')
+    f=open('orca_%s.engrad' % self.preamble, 'r')
     lines = f.read()
     del f
     lines = lines.split('#')
@@ -120,7 +123,7 @@ class orca_manager:
     return self.energy, self.gradients
 
   def read_xyz_output(self):
-    f=file('orca_%s.xyz' % self.preamble, 'rb')
+    f=open('orca_%s.xyz' % self.preamble, 'r')
     lines = f.read()
     del f
     rc = flex.vec3_double()
@@ -131,7 +134,7 @@ class orca_manager:
     return rc
 
   def write_input(self, outl):
-    f=file('orca_%s.in' % self.preamble, 'wb')
+    f=open('orca_%s.in' % self.preamble, 'w')
     f.write(outl)
     del f
 
@@ -198,18 +201,13 @@ class orca_manager:
 
 class manager(standard_manager):
   def __init__(self,
-               # pdb_hierarchy,
                params,
-               energy_components=None,
-               # gradients=None,
-               # gradients_factory=None, #flex.vec3_double,
                log=StringIO()):
     # self.gradients_factory = gradients_factory
     adopt_init_args(self, locals(), exclude=["log"])
     self.validate()
 
   def validate(self):
-    print(dir(self.params.qi))
     qi = self.params.qi
     assert qi.use_quantum_interface
     assert qi.selection
@@ -311,42 +309,6 @@ def digester(model,
   qi_grm = manager(params, log=log)
   for attr, value in vars(sgrm).items(): setattr(qi_grm, attr, value)
   qi_grm.standard_geometry_restraints_manager = sgrm
-  #
-  # Create selection lists
-  #
-  qm_atoms = []
-  ligand_selection = model.selection(params.qi.selection)
-  i_buffer_selection = []
-  if params.qi.buffer>0.:
-    buffer_selection_string = 'within(%s, %s)' % (params.qi.buffer,
-                                                  params.qi.selection)
-    buffer_selection = model.selection(buffer_selection_string)
-    i_buffer_selection = buffer_selection.iselection()
-  pdb_hierarchy = model.get_hierarchy()
-  atoms = pdb_hierarchy.atoms()
-  done = []
-  for i, b in enumerate(ligand_selection.iselection()):
-    qm_atoms.append(atoms[b])
-    done.append(b)
-  for i, b in enumerate(i_buffer_selection):
-    if b in done: continue
-    qm_atoms.append(atoms[b])
-    done.append(b)
-    ag = qm_atoms[-1].parent()
-    assert len(ag.parent().atom_groups())==1
-    for atom in ag.atoms():
-      qm_atoms.append(atom)
-      done.append(atom.i_seq)
-  #
-  # Add to QI GRM
-  #
-  qi_grm.set_qm_atoms(qm_atoms)
-  qi_grm.set_qm_info(params.qi.orca.method,
-                     params.qi.orca.basis_set,
-                     params.qi.orca.solvent_model,
-                     params.qi.charge,
-                     params.qi.multiplicity,
-                     )
   return qi_grm
 
 def main():
