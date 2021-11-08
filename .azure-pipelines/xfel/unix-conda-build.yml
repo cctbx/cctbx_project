@@ -78,7 +78,7 @@ steps:
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
     rm -rf modules/boost
-    python bootstrap.py --builder=xfel --use-conda $CONDA_PREFIX --nproc=4 --config-flags="--enable_openmp_if_possible=True" --config-flags="--compiler=conda" --config-flags="--use_environment_flags" --config-flags="--enable_cxx11" --config-flags="--no_bin_python" --no-boost-src build
+    python bootstrap.py --builder=xfel --use-conda $CONDA_PREFIX --nproc=4 build
     if [ "$(OS)" = "linux" ]; then
       cd build
       source conda_setpaths.sh

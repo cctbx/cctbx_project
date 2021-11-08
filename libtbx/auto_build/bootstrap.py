@@ -2211,6 +2211,12 @@ class DIALSBuilder(CCIBuilder):
     if self.python != "27":
       # Do not enable C++11 for Python 2.7 builds, cf. https://github.com/cctbx/cctbx_project/pull/497
       configlst.append('--enable_cxx11')
+    configlst.append('--enable_openmp_if_possible=True')
+    if self.use_conda:
+      configlst.append('--no_bin_python')
+      configlst.append('--compiler=conda')
+      configlst.append('--use_environment_flags')
+
     return configlst
 
 class LABELITBuilder(CCIBuilder):
@@ -2284,6 +2290,11 @@ class XFELBuilder(CCIBuilder):
   def get_libtbx_configure(self):
     configlst = super(XFELBuilder, self).get_libtbx_configure()
     configlst.append('--enable_cxx11')
+    configlst.append('--enable_openmp_if_possible=True')
+    if self.use_conda:
+      configlst.append('--no_bin_python')
+      configlst.append('--compiler=conda')
+      configlst.append('--use_environment_flags')
     return configlst
 
   def add_tests(self):
@@ -2789,6 +2800,8 @@ def set_builder_defaults(options):
       options.python = '37'
     if options.use_conda is None:
       options.use_conda = ''
+  if options.builder in ['xfel', 'dials'] and options.use_conda:
+    options.no_boost_src = True
 
   return options
 

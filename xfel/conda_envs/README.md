@@ -21,7 +21,7 @@ bootstrap.py step you should adjust nproc to suit your environment.
 $ mkdir cctbx; cd cctbx
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_environment.yml
-$ python bootstrap.py --builder=xfel --use-conda=psana_environment.yml --nproc=64 --python=37 --no-boost-src hot update base
+$ python bootstrap.py --builder=xfel --use-conda=psana_environment.yml --nproc=64 --python=37 hot update base
 $ conda activate `pwd`/conda_base # if no conda is availble, first source mc3/etc/profile.d/conda.sh
 $ python bootstrap.py --builder=xfel --use-conda=psana_environment.yml --nproc=64 --python=37 build
 $ source build/conda_setpaths.sh
@@ -41,7 +41,7 @@ $ cd $INSTALL; mkdir cctbx; cd cctbx
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_lcls_environment.yml
 $ python bootstrap.py --builder=xfel --use-conda=psana_lcls_environment.yml \
-  --no-boost-src --python=37 hot update base
+  --python=37 hot update base
 $ mkdir `pwd`/conda_base/lib/hdf5
 $ ln -s `pwd`/conda_base/lib/plugins `pwd`/conda_base/lib/hdf5/plugin # needed until dials 3.4 is released
 $ exit  # logout of psexport
@@ -52,9 +52,7 @@ $ source mc3/etc/profile.d/conda.sh # Activate conda. It could also be found at
                                     # ~/miniconda3/etc/profile.d/conda.sh
 $ conda activate `pwd`/conda_base
 $ python bootstrap.py --builder=xfel --use-conda=psana_lcls_environment.yml \
-  --config-flags="--compiler=conda" --config-flags="--use_environment_flags" \
-  --config-flags="enable_cxx11" --config-flags="--no_bin_python"             \
-  --no-boost-src --python=37 --nproc=10 build
+  --python=37 --nproc=10 build
 $ source build/conda_setpaths.sh
 $ source modules/cctbx_project/xfel/conda_envs/test_psana_lcls.sh
 ```
@@ -69,7 +67,7 @@ $ cd $INSTALL; mkdir cctbx; cd cctbx
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_lcls_environment.yml
 $ python bootstrap.py --builder=xfel --use-conda=psana_lcls_environment.yml \
-  --no-boost-src --python=37 hot update
+  --python=37 hot update
 $ source ~/miniconda3/etc/profile.d/conda.sh # modify as needed
 $ conda activate base
 $ mamba env create -f psana_lcls_environment.yml -p `pwd`/conda_base
@@ -81,9 +79,7 @@ $ source mc3/etc/profile.d/conda.sh # Activate conda. It could also be found at
                                     # ~/miniconda3/etc/profile.d/conda.sh
 $ conda activate `pwd`/conda_base
 $ python bootstrap.py --builder=xfel --use-conda=psana_lcls_environment.yml \
-  --config-flags="--compiler=conda" --config-flags="--use_environment_flags" \
-  --config-flags="enable_cxx11" --config-flags="--no_bin_python"             \
-  --no-boost-src --python=37 --nproc=10 build
+  --python=37 --nproc=10 build
 $ source build/conda_setpaths.sh
 $ source modules/cctbx_project/xfel/conda_envs/test_psana_lcls.sh
 ```
