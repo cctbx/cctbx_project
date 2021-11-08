@@ -6,6 +6,9 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
+mask_highest_values = None
+  .type = int
+  .help = mask out the N highest-valued pixels in a shoebox when performing diffBragg refinement
 use_float32 = False
   .type = bool
   .help = store pixel data and background models in 32bit arrays

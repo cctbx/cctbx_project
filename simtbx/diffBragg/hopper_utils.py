@@ -392,6 +392,9 @@ class DataModeler:
             all_background += list(background[pid, y1:y2, x1:x2].ravel())
             trusted = is_trusted[pid, y1:y2, x1:x2].ravel()
 
+            if self.params.mask_highest_values is not None:
+                trusted[np.argsort(data)[-self.params.mask_highest_values:]] = False
+
             # TODO implement per-shot masking here
             #lower_cut = np.percentile(data, 20)
             #trusted[data < lower_cut] = False
@@ -491,6 +494,8 @@ class DataModeler:
         ParameterType = RangedParameter
 
         if best is not None:
+            if self.params.number_of_xtals > 1:
+                raise NotImplementedError("Not configured to load multiple crystals from pandas file")
             # set the crystal Umat (rotational displacement) and Bmat (unit cell)
             # Umatrix
             # NOTE: just set the best Amatrix here
@@ -563,44 +568,50 @@ class DataModeler:
         P = Parameters()
         for i_xtal in range(self.SIM.num_xtals):
             for ii in range(3):
-                p = ParameterType(init=init.diffuse_gamma[ii], sigma=sigma.diffuse_gamma[ii],
-                                  minval=mins.diffuse_gamma[ii], maxval=maxs.diffuse_gamma[ii],
-                                  fix=fix.diffuse_gamma, name="diffuse_gamma%d" % ii,
-                                  center=centers.diffuse_gamma[ii], beta=betas.diffuse_gamma[ii])
-                P.add(p)
 
-                p = ParameterType(init=init.diffuse_sigma[ii], sigma=sigma.diffuse_sigma[ii],
-                                  minval=mins.diffuse_sigma[ii], maxval=maxs.diffuse_sigma[ii],
-                                  fix=fix.diffuse_sigma, name="diffuse_sigma%d" % ii,
-                                  center=centers.diffuse_sigma[ii], beta=betas.diffuse_sigma[ii])
-                P.add(p)
 
-                p = ParameterType(init=init.Nabc[ii], sigma=sigma.Nabc[ii],
-                                  minval=mins.Nabc[ii], maxval=maxs.Nabc[ii],
-                                  fix=fix.Nabc,name="Nabc%d" % ii,
-                                  center=centers.Nabc[ii], beta=betas.Nabc[ii])
-                P.add(p)
 
                 p = ParameterType(init=0, sigma=sigma.RotXYZ[ii],
                                   minval=mins.RotXYZ[ii], maxval=maxs.RotXYZ[ii],
-                                  fix=fix.RotXYZ, name="RotXYZ%d" %ii,
+                                  fix=fix.RotXYZ, name="RotXYZ%d_xtal%d" % (ii,i_xtal),
                                   center=centers.RotXYZ[ii], beta=betas.RotXYZ)
                 P.add(p)
 
-                # only refine eta_abc0 for isotropic spread model
-                fix_eta = fix.eta_abc
-                if not fix_eta and not self.SIM.D.has_anisotropic_mosaic_spread and ii >0:
-                    fix_eta = False
-                p = ParameterType(init=init.eta_abc[ii], sigma=sigma.eta_abc[ii],
-                                  minval=mins.eta_abc[ii], maxval=maxs.eta_abc[ii],
-                                  fix=fix_eta, name="eta_abc%d" % ii,
-                                  center=centers.eta_abc[ii], beta=betas.eta_abc[ii])
-                P.add(p)
-
-            p = ParameterType(init=init.G, sigma=sigma.G,
+            p = ParameterType(init=init.G + init.G*0.01*i_xtal, sigma=sigma.G,
                               minval=mins.G, maxval=maxs.G,
-                              fix=fix.G, name="G",
+                              fix=fix.G, name="G_xtal%d" %i_xtal,
                               center=centers.G, beta=betas.G)
+            P.add(p)
+
+        # these parameters are equal for all texture-domains within a crystal
+        for ii in range(3):
+            # Mosaic domain tensor
+            p = ParameterType(init=init.Nabc[ii], sigma=sigma.Nabc[ii],
+                              minval=mins.Nabc[ii], maxval=maxs.Nabc[ii],
+                              fix=fix.Nabc, name="Nabc%d" % (ii,),
+                              center=centers.Nabc[ii], beta=betas.Nabc[ii])
+            P.add(p)
+
+            # diffuse gamma and sigma
+            p = ParameterType(init=init.diffuse_gamma[ii], sigma=sigma.diffuse_gamma[ii],
+                              minval=mins.diffuse_gamma[ii], maxval=maxs.diffuse_gamma[ii],
+                              fix=fix.diffuse_gamma, name="diffuse_gamma%d" % (ii,),
+                              center=centers.diffuse_gamma[ii], beta=betas.diffuse_gamma[ii])
+            P.add(p)
+
+            p = ParameterType(init=init.diffuse_sigma[ii], sigma=sigma.diffuse_sigma[ii],
+                              minval=mins.diffuse_sigma[ii], maxval=maxs.diffuse_sigma[ii],
+                              fix=fix.diffuse_sigma, name="diffuse_sigma%d" % (ii,),
+                              center=centers.diffuse_sigma[ii], beta=betas.diffuse_sigma[ii])
+            P.add(p)
+            # only refine eta_abc0 for isotropic spread model
+            fix_eta = fix.eta_abc
+            if not fix_eta and not self.SIM.D.has_anisotropic_mosaic_spread and ii > 0:
+                fix_eta = False
+            p = ParameterType(init=init.eta_abc[ii], sigma=sigma.eta_abc[ii],
+                              minval=mins.eta_abc[ii], maxval=maxs.eta_abc[ii],
+                              fix=fix_eta, name="eta_abc%d" % (ii,),
+                              center=centers.eta_abc[ii], beta=betas.eta_abc[ii])
             P.add(p)
 
         ucell_man = utils.manager_from_crystal(self.E.crystal)
@@ -615,7 +626,8 @@ class DataModeler:
                 maxval = (val_in_deg + self.params.ucell_ang_abs) * np.pi / 180.
             p = ParameterType(init=val, sigma=sigma.ucell[i_uc],
                               minval=minval, maxval=maxval, fix=fix.ucell,
-                              name="ucell%d" % i_uc, center=centers.ucell[i_uc],
+                              name="ucell%d" % (i_uc,),
+                              center=centers.ucell[i_uc],
                               beta=betas.ucell[i_uc])
             MAIN_LOGGER.info(
                 "Unit cell variable %s (currently=%f) is bounded by %f and %f" % (name, val, minval, maxval))
@@ -685,7 +697,7 @@ class DataModeler:
         at_min = target.at_minimum
 
         if method in ["L-BFGS-B", "BFGS", "CG", "dogleg", "SLSQP", "Newton-CG", "trust-ncg", "trust-krylov", "trust-exact", "trust-ncg"]:
-            if self.SIM.P["RotXYZ0"].refine:
+            if self.SIM.P["RotXYZ0_xtal0"].refine:
                 self.SIM.D.refine(ROTX_ID)
                 self.SIM.D.refine(ROTY_ID)
                 self.SIM.D.refine(ROTZ_ID)
@@ -782,14 +794,39 @@ def model(x, SIM, pfs,  compute_grad=True):
     shiftZ = DetZ.get_val(x_shiftZ)
     SIM.D.shift_origin_z(SIM.detector, shiftZ)
 
+    # Mosaic block
+    Nabc_params = [SIM.P["Nabc%d" % (i_n,)] for i_n in range(3)]
+    Na, Nb, Nc = [n_param.get_val(x[n_param.xpos]) for n_param in Nabc_params]
+    SIM.D.set_ncells_values(tuple([Na, Nb, Nc]))
+
+    # diffuse signals
+    if SIM.D.use_diffuse:
+        diffuse_params_lookup = {}
+        iso_flags = {'gamma':SIM.isotropic_diffuse_gamma, 'sigma':SIM.isotropic_diffuse_sigma}
+        for diff_type in ['gamma', 'sigma']:
+            diff_params = [SIM.P["diffuse_%s%d" % (diff_type,i_gam)] for i_gam in range(3)]
+            diffuse_params_lookup[diff_type] = diff_params
+            diff_vals = []
+            for i_diff, param in enumerate(diff_params):
+                val = param.get_val(x[param.xpos])
+                if iso_flags[diff_type]:
+                    diff_vals = [val]*3
+                    break
+                else:
+                    diff_vals.append(val)
+            if diff_type == "gamma":
+                SIM.D.diffuse_gamma = tuple(diff_vals)
+            else:
+                SIM.D.diffuse_sigma = tuple(diff_vals)
+
     npix = int(len(pfs) / 3)
     nparam = len(x)
-    J = np.zeros((nparam, npix))  # note: order is: scale, rotX, rotY, rotZ, Na, Nb, Nc, ... (for each xtal), then ucell0, ucell1 , ucell2, .. detshift,
+    J = np.zeros((nparam, npix))  # gradients
     model_pix = None
     for i_xtal in range(SIM.num_xtals):
-        #SIM.D.raw_pixels_roi *= 0 #todo do i matter?
+        SIM.D.raw_pixels_roi *= 0
 
-        RotXYZ_params = [SIM.P["RotXYZ%d" %i_rot] for i_rot in range(3)]
+        RotXYZ_params = [SIM.P["RotXYZ%d_xtal%d" % (i_rot, i_xtal)] for i_rot in range(3)]
         rotX,rotY,rotZ = [rot_param.get_val(x[rot_param.xpos]) for rot_param in RotXYZ_params]
 
         ## update parameters:
@@ -798,32 +835,8 @@ def model(x, SIM, pfs,  compute_grad=True):
         SIM.D.set_value(ROTY_ID, rotY)
         SIM.D.set_value(ROTZ_ID, rotZ)
 
-        G = SIM.P["G"]
+        G = SIM.P["G_xtal%d" % i_xtal]
         scale = G.get_val(x[G.xpos])
-
-        Nabc_params = [SIM.P["Nabc%d" % i_n] for i_n in range(3)]
-        Na,Nb,Nc = [n_param.get_val(x[n_param.xpos]) for n_param in Nabc_params]
-        SIM.D.set_ncells_values(tuple([Na, Nb, Nc]))
-
-        # diffuse signals
-        if SIM.D.use_diffuse:
-            diffuse_params_lookup = {}
-            iso_flags = {'gamma':SIM.isotropic_diffuse_gamma, 'sigma':SIM.isotropic_diffuse_sigma}
-            for diff_type in ['gamma', 'sigma']:
-                diff_params = [SIM.P["diffuse_%s%d" % (diff_type,i_gam)] for i_gam in range(3)]
-                diffuse_params_lookup[diff_type] = diff_params
-                diff_vals = []
-                for i_diff, param in enumerate(diff_params):
-                    val = param.get_val(x[param.xpos])
-                    if iso_flags[diff_type]:
-                        diff_vals = [val]*3
-                        break
-                    else:
-                        diff_vals.append(val)
-                if diff_type == "gamma":
-                    SIM.D.diffuse_gamma = tuple(diff_vals)
-                else:
-                    SIM.D.diffuse_sigma = tuple(diff_vals)
 
         SIM.D.add_diffBragg_spots(pfs)
 
@@ -866,7 +879,6 @@ def model(x, SIM, pfs,  compute_grad=True):
                             diff_grad = p.get_deriv(x[p.xpos], diff_grad)
                             J[p.xpos] += diff_grad
 
-
             if eta_params[0].refine:
                 if SIM.D.has_anisotropic_mosaic_spread:
                     eta_derivs = SIM.D.get_aniso_eta_deriv_pixels()
@@ -900,14 +912,14 @@ def look_at_x(x, SIM):
         print("%s: %f" % (name, val))
 
 
-def get_param_from_x(x, SIM):
-    G = SIM.P['G']
+def get_param_from_x(x, SIM, i_xtal=0):
+    G = SIM.P['G_xtal%d' %i_xtal]
     scale = G.get_val(x[G.xpos])
 
-    RotXYZ = [SIM.P["RotXYZ%d" % i] for i in range(3)]
+    RotXYZ = [SIM.P["RotXYZ%d_xtal%d" % (i, i_xtal)] for i in range(3)]
     rotX, rotY, rotZ = [r.get_val(x[r.xpos]) for r in RotXYZ]
 
-    Nabc = [SIM.P["Nabc%d" % i] for i in range(3)]
+    Nabc = [SIM.P["Nabc%d" % (i, )] for i in range(3)]
     Na, Nb, Nc = [p.get_val(x[p.xpos]) for p in Nabc]
 
     diff_gam_abc = [SIM.P["diffuse_gamma%d" % i] for i in range(3)]
@@ -989,7 +1001,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
         _compute_grad = True
         if SIM.P["Nabc0"].refine:
             SIM.D.let_loose(NCELLS_ID)
-        if SIM.P["RotXYZ0"].refine:
+        if SIM.P["RotXYZ0_xtal0"].refine:
             SIM.D.let_loose(ROTX_ID)
             SIM.D.let_loose(ROTY_ID)
             SIM.D.let_loose(ROTZ_ID)
@@ -1023,6 +1035,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
     # data contributions to target function
     sigma_rdout = params.refiner.sigma_r / params.refiner.adu_per_photon
     V = model_pix + sigma_rdout**2
+    # TODO:what if V is allowed to be negative? The logarithm/sqrt will explore below
     resid_square = resid**2
     fLogLike = (.5*(np.log(2*np.pi*V) + resid_square / V))[trusted].sum()   # negative log Likelihood target
 
@@ -1038,7 +1051,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
             restraint_terms[name] = val
 
         if params.centers.Nvol is not None:
-            Nvol = np.product(SIM.D.Nabc_aniso)
+            Nvol = np.product(SIM.D.Ncells_abc_aniso)
             del_Nvol = params.centers.Nvol - Nvol
             fN_vol = .5*del_Nvol**2/params.betas.Nvol
             restraint_terms["Nvol"] = fN_vol
@@ -1073,7 +1086,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
                 g[p.xpos] += p.get_restraint_deriv(x[p.xpos])
 
             if params.centers.Nvol is not None:
-                Na,Nb,Nc = SIM.D.Ncells_aniso
+                Na,Nb,Nc = SIM.D.Ncells_abc_aniso
                 dNvol_dN = Nb*Nc, Na*Nc, Na*Nb
                 for i_N in range(3):
                     p = SIM.P["Nabc%d" % i_N]
@@ -1270,6 +1283,7 @@ def downsamp_spec_from_params(params, expt):
     MAIN_LOGGER.debug("Shifting wavelength from %f to %f" % (starting_wave, ave_wave))
     MAIN_LOGGER.debug("USING %d ENERGY CHANNELS" % len(spectrum))
     return spectrum
+
 
 # set the X-ray spectra for this shot
 def downsamp_spec(SIM, params, expt, return_and_dont_set=False):
