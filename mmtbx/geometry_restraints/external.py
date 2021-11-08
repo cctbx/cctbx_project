@@ -81,56 +81,7 @@ if schrodinger_installed:
   except ImportError:
     schrodinger_installed = False
 
-def is_orca_installed(env):
-  return (env.get('PHENIX_ORCA', False) and os.path.exists(env['PHENIX_ORCA']))
-
-def orca_action():
-  outl = '''
-    orca
-      .help = Orca
-    {
-      include scope mmtbx.geometry_restraints.qm_manager.orca_master_phil_str
-    }
-  '''
-  return outl
-
-def is_any_quantum_package_installed(env):
-  installed = []
-  actions = []
-  for key, (question, action) in {'orca' : (is_orca_installed, orca_action),
-                                  }.items():
-    if question(os.environ):
-      rc = action()
-      actions.append(rc)
-      installed.append(key)
-  if installed:
-    outl = '''
-  qi
-    .help = QM
-    .expert_level = 3
-  {
-    use_quantum_interface = False
-      .type = bool
-    selection = None
-      .type = atom_selection
-    charge = 0
-      .type = int
-    multiplicity = 1
-      .type = int
-    buffer = 0.
-      .type = float
-      .style = hidden
-    update_metal_coordination = False
-      .type = bool
-      .style = hidden
-    refine_buffer_hydrogen_atoms = False
-      .type = bool
-      .style = hidden
-'''
-    for action in actions:
-      outl += action
-    outl += '}'
-    return outl
+from mmtbx.geometry_restraints.quantum_interface import is_any_quantum_package_installed
 
 any_quantum_package_installed = is_any_quantum_package_installed(os.environ)
 if any_quantum_package_installed:

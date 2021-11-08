@@ -1829,19 +1829,21 @@ class manager(object):
     #  2. Schrodinger force field
     ############################################################################
     params = pdb_interpretation_params
+    from  mmtbx.geometry_restraints import quantum_interface
     if hasattr(params, 'amber') and params.amber.use_amber:
       from amber_adaptbx.manager import digester
       geometry = digester(geometry, params, log=self.log)
-    elif hasattr(params, 'qi') and params.qi.use_quantum_interface:
-      from mmtbx.geometry_restraints.qm_manager import digester
-      geometry = digester(geometry, params, log=self.log)
+    elif quantum_interface.is_quantum_interface_active(params):
+      geometry = quantum_interface.digester(self,
+                                            geometry,
+                                            params,
+                                            log=self.log)
     elif hasattr(params, "schrodinger") and params.schrodinger.use_schrodinger:
       from phenix_schrodinger import schrodinger_manager
       geometry = schrodinger_manager(self._pdb_hierarchy,
                                      params,
                                      cleanup=True,
                                      grm=geometry)
-
     restraints_manager = mmtbx.restraints.manager(
       geometry      = geometry,
       normalization = grm_normalization)
