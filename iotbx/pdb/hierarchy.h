@@ -779,7 +779,13 @@ namespace hierarchy {
       element_is_hydrogen() const;
 
       bool
-      element_is_metallic() const;
+      element_is_positive_ion() const;
+
+      bool
+      element_is_negative_ion() const;
+
+      bool
+      element_is_ion() const;
 
       boost::optional<std::string>
       determine_chemical_element_simple() const;

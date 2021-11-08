@@ -1019,7 +1019,7 @@ namespace {
   }
 
   bool
-  atom::element_is_metallic() const
+  atom::element_is_positive_ion() const
   {
     // The standard bracket-initialization was not available in the compiler version
     // being used on the mac at the time this code was written.
@@ -1027,17 +1027,44 @@ namespace {
     // versions being used at the time this code was written, preventing direct
     // initialization from the const char * array.
     // Thus, we have a twisty maze to get the set initialized.
-    static const char* mets[] = {
-      "Li", "Na", "Al", "K",  "Mg", "Ca", "Mn", "Fe", "Co", "Ni",
-      "Cu", "Zn", "Rb", "Sr", "Mo", "Ag", "Cd", "In", "Cs", "Ba", "Au", "Hg", "Tl",
-      "Pb", "V",  "Cr", "Te", "Sm", "Gd", "Yb", "W",  "Pt", "U",
-      "Be", "Si", "Sc", "Ti", "Fa", "Ge", "Y",  "Zr", "Sn", "Sb", "La", "Ce", "Fr", "Ra", "Th",
-      "Nb", "Tc", "Ru", "Rh", "Pd", "Pr", "Nd", "Pm", "Eu", "Tb", "Dy", "Ho", "Er",
-      "Tm", "Lu", "Hf", "Ta", "Re", "Os", "Ir", "Bi", "Po", "At",
-      "Ac", "Pa", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No" };
-    static std::set<std::string> metallics(&mets[0], &mets[sizeof(mets) / sizeof(mets[0])]);
+    //! @todo Not yet the complete list as of 11/3/2021
+    static const char* posi[] = {
+      // Metallic atoms
+      "Li", "Na", "Al", "K",  "Mg", "Ca", "Mn", "Fe", "Co", "Ni"
+     ,"Cu", "Zn", "Rb", "Sr", "Mo", "Ag", "Cd", "In", "Cs", "Ba", "Au", "Hg", "Tl"
+     ,"Pb", "V",  "Cr", "Te", "Sm", "Gd", "Yb", "W",  "Pt", "U"
+     ,"Be", "Si", "Sc", "Ti", "Fa", "Ge", "Y",  "Zr", "Sn", "Sb", "La", "Ce", "Fr", "Ra", "Th"
+     ,"Nb", "Tc", "Ru", "Rh", "Pd", "Pr", "Nd", "Pm", "Eu", "Tb", "Dy", "Ho", "Er"
+     ,"Tm", "Lu", "Hf", "Ta", "Re", "Os", "Ir", "Bi", "Po", "At"
+     ,"Ac", "Pa", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No"
+      // Other positive ions
+     ,"B"
+    };
+    static std::set<std::string> positiveIons(&posi[0], &posi[sizeof(posi) / sizeof(posi[0])]);
 
-    return metallics.find(data->element.elems) != metallics.end();
+    return positiveIons.find(data->element.elems) != positiveIons.end();
+  }
+
+  bool
+  atom::element_is_negative_ion() const
+  {
+    // The standard bracket-initialization was not available in the compiler version
+    // being used on the mac at the time this code was written.
+    // The std::begin() function was not available on some of the Linux compiler
+    // versions being used at the time this code was written, preventing direct
+    // initialization from the const char * array.
+    // Thus, we have a twisty maze to get the set initialized.
+    //! @todo Not yet the complete list as of 11/3/2021
+    static const char* negi[] = { "F", "Cl", "Br", "I" };
+    static std::set<std::string> negativeIons(&negi[0], &negi[sizeof(negi) / sizeof(negi[0])]);
+
+    return negativeIons.find(data->element.elems) != negativeIons.end();
+  }
+
+  bool
+  atom::element_is_ion() const
+  {
+    return element_is_positive_ion() || element_is_negative_ion();
   }
 
   boost::optional<std::string>
