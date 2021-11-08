@@ -387,11 +387,15 @@ void diffBragg_sum_over_steps(
                     max_stats2[10] = l;
                 }
             }
-            double Iincrement = F_cell*F_cell*I_noFcell;
+
+            double I_cell = F_cell;
+            if (! db_flags.refine_Icell)
+                I_cell *= F_cell;
+            double Iincrement = I_cell*I_noFcell;
             I += Iincrement;
 
             if (db_flags.refine_diffuse){
-                double step_scale = count_scale*F_cell*F_cell;
+                double step_scale = count_scale*I_cell;
                 for (int i_gam=0; i_gam <3; i_gam++){
                     int i_sig = i_gam + 3;
                     dI_latt_diffuse[i_gam] += step_scale*step_dI_latt_diffuse[i_gam];
@@ -587,7 +591,11 @@ void diffBragg_sum_over_steps(
                     nom_l = db_cryst.nominal_hkl[i_pix*3+2];
                     //f_cell_idx = l0 - nom_l + 1;
                 }
-                double value = 2*I_noFcell*F_cell; //2*Iincrement/F_cell ;
+                double value;
+                if (db_flags.refine_Icell)
+                    value = I_noFcell;
+                else
+                    value = 2*I_noFcell*F_cell; //2*Iincrement/F_cell ;
                 double value2=0;
                 if (db_flags.compute_curvatures){
                     if (F_cell > 0)

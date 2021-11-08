@@ -306,6 +306,14 @@ namespace boost_python { namespace {
       diffBragg.db_flags.only_diffuse = val ;
   }
 
+  bool get_refine_Icell(simtbx::nanoBragg::diffBragg& diffBragg){
+      return diffBragg.db_flags.refine_Icell;
+  }
+
+  void set_refine_Icell(simtbx::nanoBragg::diffBragg& diffBragg, bool val){
+      diffBragg.db_flags.refine_Icell = val ;
+  }
+
   static boost::python::tuple get_origin(simtbx::nanoBragg::diffBragg& diffBragg){
     return boost::python::make_tuple(diffBragg.pix0_vector[1]*1000,
                                     diffBragg.pix0_vector[2]*1000, diffBragg.pix0_vector[3]*1000);
@@ -665,6 +673,11 @@ namespace boost_python { namespace {
             make_function(&get_only_diffuse,rbv()),
             make_function(&set_only_diffuse,dcp()),
             "sim with ONLY diffuse")
+
+      .add_property("refine_Icell",
+            make_function(&get_refine_Icell,rbv()),
+            make_function(&set_refine_Icell,dcp()),
+            "Assume whatever is stored in the structure factor array is an intensity (allowed to be negative)")
 
       .add_property("diffuse_gamma",
             make_function(&get_diffuse_gamma,rbv()),
