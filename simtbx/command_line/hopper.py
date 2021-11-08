@@ -222,7 +222,7 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
     LOGGER = logging.getLogger("refine")
     Modeler.best_model, _ = hopper_utils.model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
     LOGGER.info("Optimized values for i_exp %d:" % i_exp)
-    hopper_utils.look_at_x(x,Modeler.SIM)
+    hopper_utils.look_at_x(x, Modeler.SIM)
 
     rank_imgs_outdir = make_rank_outdir(Modeler.params.outdir, "imgs")
     rank_SIMlog_outdir = make_rank_outdir(Modeler.params.outdir, "simulator_state")
@@ -302,8 +302,8 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     rank_exper_outdir = make_rank_outdir(params.outdir, "expers")
     rank_pandas_outdir =make_rank_outdir(params.outdir, "pandas")
 
-    if SIM.num_xtals > 1:
-        raise NotImplemented("cant save pandas for multiple crystals yet")
+    #if SIM.num_xtals > 1:
+    #    raise NotImplemented("cant save pandas for multiple crystals yet")
     scale, rotX, rotY, rotZ, Na, Nb, Nc,diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c, a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, SIM)
     if params.isotropic.diffuse_gamma:
         diff_gam_b = diff_gam_c = diff_gam_a
