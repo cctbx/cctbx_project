@@ -29,6 +29,7 @@ from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
 import mmtbx
 from scitbx.array_family import flex
+from libtbx.utils import Sorry
 
 from mmtbx.probe import Helpers
 import mmtbx_probe_ext as probeExt
@@ -1263,11 +1264,46 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
     # See if we should insert a MoverNH2Flip here.
     # @todo Is there a more general way than looking for specific names?
     if addFlipMovers and ((aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN')):
-      try:
-        movers.append(Movers.MoverNH2Flip(a, "CA", bondedNeighborLists))
-        infoString += _VerboseCheck(1,"Added MoverNH2Flip "+str(len(movers))+" to "+resNameAndID+"\n")
-      except Exception as e:
-        infoString += _VerboseCheck(0,"Could not add MoverNH2Flip to "+resNameAndID+": "+str(e)+"\n")
+      # See if the Nitrogen is within a range of ideal bonding distances to a positive ion.
+      # If so, we mark the attached Hydrogen for deletion and skip adding a Mover.
+      myRad = extraAtomInfo.getMappingFor(a).vdwRadius
+      minDist = myRad
+      maxDist = 0.25 + myRad + maxVDWRadius
+      neighbors = spatialQuery.neighbors(a.xyz, minDist, maxDist)
+      foundIon = False
+      for n in neighbors:
+        if n.element_is_positive_ion():
+          dist = (Helpers.rvec3(a.xyz) - Helpers.rvec3(n.xyz)).length()
+          expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
+          infoString += _VerboseCheck(5,'Checking NH2Flip '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
+            ' dist = '+str(dist)+', expected = '+str(expected)+'; N rad = '+str(myRad)+
+            ', '+n.name.strip()+' rad = '+str(extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
+          # @todo Why are we using -0.65 here and -0.55 for Histidine?
+          if dist >= (expected - 0.65) and dist <= (expected + 0.25):
+            foundIon = True
+            infoString += _VerboseCheck(1,'Removing Hydrogen from '+resNameAndID+a.name+' and marking as an acceptor '+
+              '(ionic bond to '+n.name.strip()+')\n')
+            # Find the bonded Hydrogen and mark it for removal.  Mark the Nitrogen as an acceptor.
+            hydro = None
+            for b in bondedNeighborLists[a]:
+              if b.element_is_hydrogen():
+                hydro = b
+                break
+            if hydro is None:
+              raise Sorry("No bonded Hydrogen found for Nitrogen in HN2Flip test")
+            else:
+              extra = extraAtomInfo.getMappingFor(a)
+              extra.isAcceptor = True
+              extraAtomInfo.setMappingFor(a, extra)
+              deleteAtoms.append(hydro)
+            break
+
+      if not foundIon:
+        try:
+          movers.append(Movers.MoverNH2Flip(a, "CA", bondedNeighborLists))
+          infoString += _VerboseCheck(1,"Added MoverNH2Flip "+str(len(movers))+" to "+resNameAndID+"\n")
+        except Exception as e:
+          infoString += _VerboseCheck(0,"Could not add MoverNH2Flip to "+resNameAndID+": "+str(e)+"\n")
 
     # See if we should insert a MoverHistidineFlip here.
     # @todo Is there a more general way than looking for specific names?
@@ -1302,7 +1338,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
             if n.element_is_positive_ion():
               dist = (Helpers.rvec3(pos) - Helpers.rvec3(n.xyz)).length()
               expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
-              infoString += _VerboseCheck(5,'Checking '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
+              infoString += _VerboseCheck(5,'Checking Histidine '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
                 ' dist = '+str(dist)+', expected = '+str(expected)+'; N rad = '+str(myRad)+
                 ', '+n.name.strip()+' rad = '+str(extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
               if dist >= (expected - 0.55) and dist <= (expected + 0.25):
@@ -1678,6 +1714,11 @@ END
   # @todo
 
   # @todo Unit test a multi-model case, a multi-alternate case, and singles of each.
+
+  # @todo Unit test the non-ionic and ionic radius for polar hydrogen distance parameters.
+  # along with the deletion of polar hydrogens that bump both ions and non ions
+
+  # @todo Check a case where an NH2Flip would be locked down and have its Hydrogen removed.
 
   return ""
 
