@@ -184,6 +184,12 @@ NOTES:
           a.parent().remove_atom(a)
       model = self.model
 
+    # Re-process the model because we have removed some atoms that were previously
+    # bonded.  Don't make restraints during the reprocessing.
+    # We had to do this to keep from carshing on a call to pair_proxies when generating
+    # mmCIF files, so we always do it for safety.
+    model.process(make_restraints=False, pdb_interpretation_params=p)
+
     make_sub_header('Writing output', out=self.logger)
 
     # Write the description output to the specified file.
