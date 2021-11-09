@@ -109,12 +109,13 @@ def PreciseData(kpres,epsc,peak,dstep,nfmes):
     cmin  = ceps*(bmin**1.5)/64.
     rmin  = 0.0
 
-    print ('',file=nfmes)
-    print ('estimated accuracy parameters :',file=nfmes)
-    print ('   absolute max allowed error',ceps,file=nfmes)
-    print ('   bmin, cmin :              ',bmin,cmin,file=nfmes)
-    print ('---------------------------',file=nfmes)
-    print ('',file=nfmes)
+    if(nfmes is not None):
+      print ('',file=nfmes)
+      print ('estimated accuracy parameters :',file=nfmes)
+      print ('   absolute max allowed error',ceps,file=nfmes)
+      print ('   bmin, cmin :              ',bmin,cmin,file=nfmes)
+      print ('---------------------------',file=nfmes)
+      print ('',file=nfmes)
 
     return ceps,bmin,cmin,rmin,epsp
 
@@ -162,7 +163,8 @@ def GaussBC(dist,ndist,epsp,bmin,cmin,curres,nfmes):
     kpeak = 0
     minf = NumInflRight(curres,ndist,kpeak,epsp,nfmes)
     if minf == 0:
-       print(' too sharp peak in the origin',curres[0],curres[1],file=nfmes)
+       if(nfmes is not None):
+         print(' too sharp peak in the origin',curres[0],curres[1],file=nfmes)
        exit()
 
     ug,vg = uvFitGauss(dist,curres,minf)
@@ -189,7 +191,9 @@ def RippleBCR(dist,ndist,kpeak,epsp,bmin,cmin,rmin,curres,nfmes):
       kref = minfl
 
     if kref == kpeak:
-      print(' too sharp peak ',kpeak,curres[kpeak-1],curres[kpeak],curres[kpeak+1],file=nfmes)
+      if(nfmes is not None):
+        print(' too sharp peak ',kpeak,curres[kpeak-1],curres[kpeak],
+          curres[kpeak+1],file=nfmes)
       exit()
 
     b0,c0,r0 = FitBCR(dist,ndist,kpeak,kref,bmin,cmin,rmin,curres,nfmes)
@@ -204,7 +208,8 @@ def TailBCR(dist,ndist,epsp,bmin,cmin,rmin,curres,nfmes):
     kref = NumInflLeft(curres,ndist,ndist,epsp,nfmes)
 
     if kref == 0:
-      print(' no inflection point found for the tail peak',file=nfmes)
+      if(nfmes is not None):
+        print(' no inflection point found for the tail peak',file=nfmes)
       exit()
 
 #   parameters for this peak
@@ -351,9 +356,10 @@ def CurveDiff(dens,dist,ndist,nfmes,bpeak,cpeak,rpeak,npeak):
       if curabs > epsres:
          epsres = curabs
 
-    print('',file=nfmes)
-    print('with {npeak+1:4} peaks modeled max residual peak is {epsres:12.7f}',
-          file=nfmes)
+    if(nfmes is not None):
+      print('',file=nfmes)
+      print('with {npeak+1:4} peaks modeled max residual peak is {epsres:12.7f}',
+            file=nfmes)
 
     return curres,curve,epsres
 
@@ -422,23 +428,17 @@ def OutCurves(dens,dist,curres,curve,ndist,filres):
 
     nfcurv = open(filres, 'w')
 
-#    print(f'   dist   curve   modeled   resid    cmp=  0',
-#          ''.join(f'{ip:9}' for ip in range(1,npeak+1)),file=nfcurv)
-#    for i in range(ndist):
-#        densum = dens[i]-curres[i]
-#        print(f'{dist[i]:7.3f}{dens[i]:9.5f}{densum:9.5f}{curres[i]:9.5f}',
-#              ''.join(f'{curve[i][ip]:9.5f}' for ip in range(npeak+1)),file=nfcurv)
-
     print('   dist   curve   modeled   resid',file=nfcurv)
     for i in range(ndist):
         densum = dens[i]-curres[i]
-        print('{dist[i]:7.3f}{dens[i]:9.5f}{densum:9.5f}{curres[i]:9.5f}',file=nfcurv)
+        print('{dist[i]:7.3f}{dens[i]:9.5f}{densum:9.5f}{curres[i]:9.5f}',
+            file=nfcurv)
 
     return
 
 #============================
 def OutCoefficients(bpeak,cpeak,rpeak,npeak,nfmes):
-
+    if(nfmes is None): return
     space=' '
 
     print(' final parameter values:',file=nfmes)
@@ -611,17 +611,18 @@ def RefineBCR(dens,dist,ndist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes):
                  method='L-BFGS-B',jac=GradFit, bounds = bcrbounds)
 
 #   recover refined values
-
-    print(' parameters before and after their refinement:',file=nfmes)
-    print(' Npeak   Bpeak',sp*9,'Cpeak',sp*9,'Rpeak',sp*6,
-                   'Bpeak',sp*9,'Cpeak',sp*9,'Rpeak',file=nfmes)
+    if(nfmes is not None):
+      print(' parameters before and after their refinement:',file=nfmes)
+      print(' Npeak   Bpeak',sp*9,'Cpeak',sp*9,'Rpeak',sp*6,
+                     'Bpeak',sp*9,'Cpeak',sp*9,'Rpeak',file=nfmes)
 
     for i in range(npeak+1):
         i3 = i*3
         b0 , c0, r0 = res.x[i3] , res.x[i3+1] , res.x[i3+2]
 
-        print('{i:6}{bpeak[i]:16.10f}{cpeak[i]:16.10f}{rpeak[i]:10.5f}   ',
-              '{b0:16.10f}{c0:16.10f}{r0:10.5f}',file=nfmes)
+        if(nfmes is not None):
+          print('{i:6}{bpeak[i]:16.10f}{cpeak[i]:16.10f}{rpeak[i]:10.5f}   ',
+                '{b0:16.10f}{c0:16.10f}{r0:10.5f}',file=nfmes)
 
         bpeak[i] , cpeak[i] , rpeak[i] = b0 , c0 , r0
 
@@ -785,7 +786,9 @@ def GradGauss(yc,gy,dist,ndist,b0,c0):
     return gb,gc
 
 #============================
-def get_BCR(dens,dist,ndist,mxp,epsc,kpres,nfmes):
+def get_BCR(dens,dist,mxp,epsc,kpres,nfmes=None):
+
+    ndist = dens.size()-1
 
     bpeak  = [ 0 for i in range(mxp+1) ]
     cpeak  = [ 0 for i in range(mxp+1) ]
@@ -818,14 +821,16 @@ def get_BCR(dens,dist,ndist,mxp,epsc,kpres,nfmes):
 #       find next group of peaks
 
         bpeak,cpeak,rpeak,npeak = MorePeaks(curres,dist,ndist,nfmes,ceps,
-                                            bpeak,cpeak,rpeak,npeak,epsp,bmin,cmin,rmin,mxp)
+          bpeak,cpeak,rpeak,npeak,epsp,bmin,cmin,rmin,mxp)
 
 #       refine estimated parameters
 
-        bpeak,cpeak,rpeak = RefineBCR(dens,dist,ndist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes)
+        bpeak,cpeak,rpeak = RefineBCR(dens,dist,ndist,bpeak,cpeak,rpeak,npeak,
+          bmin,cmin,rmin,nfmes)
 
 #       remove the contribution of the modeled peaks
 
-        curres,curve,epsres = CurveDiff(dens,dist,ndist,nfmes,bpeak,cpeak,rpeak,npeak)
+        curres,curve,epsres = CurveDiff(dens,dist,ndist,nfmes,bpeak,cpeak,rpeak,
+          npeak)
 
     return bpeak,cpeak,rpeak,npeak,curve,curres

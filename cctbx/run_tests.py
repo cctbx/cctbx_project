@@ -45,6 +45,7 @@ tst_list = [
   "$D/eltbx/tests/tst_formula.py",
   "$D/eltbx/tests/tst_attenuation_coefficient.py",
   "$D/maptbx/boost_python/tst_maptbx.py",
+  "$D/maptbx/tst_bcr.py",
   "$D/dmtbx/boost_python/tst_dmtbx.py",
   "$D/translation_search/boost_python/tst_translation_search.py",
   "$D/geometry_restraints/tst_ext.py",
