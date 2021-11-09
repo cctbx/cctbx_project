@@ -34,18 +34,18 @@ namespace boost_python { namespace {
       double sig1 = boost::python::extract<double>(values[1]);
       double sig2 = boost::python::extract<double>(values[2]);
       double sig_array[3] = {sig0,sig1,sig2};
-      
+
       diffBragg.db_cryst.anisoU <<  sig0*sig0,0,0,
                                     0,sig1*sig1,0,
                                     0,0,sig2*sig2;
       diffBragg.db_cryst.dU_dsigma.clear();
       diffBragg.db_cryst.dU_dsigma.resize(3);
-	
+
       for (int i=0; i<3; i++){
-	diffBragg.db_cryst.dU_dsigma[i] <<  0,0,0,
+        diffBragg.db_cryst.dU_dsigma[i] <<  0,0,0,
                                     0,0,0,
                                     0,0,0;
-	diffBragg.db_cryst.dU_dsigma[i](i,i) = 2.*sig_array[i];
+        diffBragg.db_cryst.dU_dsigma[i](i,i) = 2.*sig_array[i];
       }
   }
 
