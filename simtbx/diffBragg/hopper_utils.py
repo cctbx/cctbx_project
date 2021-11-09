@@ -802,13 +802,15 @@ def model(x, SIM, pfs,  compute_grad=True):
 
         # diffuse signals
         if SIM.D.use_diffuse:
+            diffuse_params_lookup = {}
+            iso_flags = {'gamma':SIM.isotropic_diffuse_gamma, 'sigma':SIM.isotropic_diffuse_sigma}
             for diff_type in ['gamma', 'sigma']:
                 diff_params = [SIM.P["diffuse_%s%d" % (diff_type,i_gam)] for i_gam in range(3)]
+                diffuse_params_lookup[diff_type] = diff_params
                 diff_vals = []
-                iso_flags = [SIM.isotropic_diffuse_gamma, SIM.isotropic_diffuse_sigma]
                 for i_diff, param in enumerate(diff_params):
                     val = param.get_val(x[param.xpos])
-                    if iso_flags[i_diff]:
+                    if iso_flags[diff_type]:
                         diff_vals = [val]*3
                         break
                     else:
@@ -848,6 +850,17 @@ def model(x, SIM, pfs,  compute_grad=True):
                     p = Nabc_params[i_n]
                     N_grad = p.get_deriv(x[p.xpos], N_grad)
                     J[p.xpos] += N_grad
+
+            if SIM.D.use_diffuse:
+                for t in ['gamma','sigma']:
+                    if diffuse_params_lookup[t][0].refine:
+                        diffuse_grads = getattr(SIM.D,"get_diffuse_%s_derivative_pixels"%t)()
+                        for i_diff in range(3):
+                            diff_grad = scale*(diffuse_grads[i_diff][:npix].as_numpy_array())
+                            p = diffuse_params_lookup[t][i_diff]
+                            diff_grad = p.get_deriv(x[p.xpos], diff_grad)
+                            J[p.xpos] += diff_grad
+
 
             if eta_params[0].refine:
                 if SIM.D.has_anisotropic_mosaic_spread:
