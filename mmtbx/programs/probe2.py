@@ -1687,15 +1687,15 @@ Note:
       foundCBonded = False
       foundPolar = False
       for a in allAtoms:
-        if a.element_is_hydrogen():
+        if Helpers.isPolarHydrogen(a, self._allBondedNeighborLists):
+          foundPolar = True
+        elif a.element_is_hydrogen():
           if len(self._allBondedNeighborLists[a]) != 1:
-            raise Sorry("Found Hydrogen with number of neigbors other than 1: "+
+            raise Sorry("Found Hydrogen with number of neighbors other than 1: "+
                         str(len(self._allBondedNeighborLists[a])))
           else:
             neighbor = self._allBondedNeighborLists[a][0]
-            if neighbor.element in ['N', 'O', 'S']:
-              foundPolar = True
-            elif neighbor.element == 'C':
+            if neighbor.element == 'C':
               foundCBonded = True
       if not (foundCBonded and foundPolar):
         raise Sorry("Did not find both polar and non-polar Hydrogens in model.  For proper operation, "+
