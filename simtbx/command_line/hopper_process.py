@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import time
+import sys
 
 # LIBTBX_SET_DISPATCHER_NAME diffBragg.hopper_process
 
@@ -435,7 +436,12 @@ def run(args=None):
 if __name__ == "__main__":
     script_that_was_run = run()
     if COMM.rank==0:
-        params = script_that_was_run.params
+        try:
+            params = script_that_was_run.params
+        except AttributeError as err:
+            print(err)
+            print("Looks like the program never launched, check input paths, image files, phil files, current working dir etc.. ")
+            sys.exit()
         if params.combine_pandas:
             if not params.save_pandas:
                 print("No pandas tables saved, so will not combine")

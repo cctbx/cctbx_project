@@ -161,6 +161,41 @@ class DataModeler:
         for name in state:
             setattr(self, name, state[name])
 
+    def set_slices(self, attr_name):
+        """finds the boundaries for each attr in the 1-D array of per-shot data
+        :params: attr_name, str
+
+        For example, in a DataModeler, roi_id is set for every pixel,
+        >> Modeler.roi_id returns
+        0 0 0 0 1 1 2 2 2 2 3 3 3 3 4 4 4 4 4 ...
+
+        A call Modeler.set_slices("roi_id") adds attributes
+            roi_id_slices
+            roi_id_unique
+        where roi_id_slices is a dictionary whose keys are the unique roi ids and whose values
+        are a list of slices corresponding to each connected regeion of the same roi ids.
+
+        In the example,
+        >> Modeler.roi_id_slices[0][0]
+        slice(0,4,1)
+        """
+        vals = self.__getattribute__(attr_name)
+        # find where the vals change
+        splitter = np.where(np.diff(vals) != 0)[0] + 1
+        npix = len(self.all_data)
+        slices = [slice(V[0], V[-1] + 1, 1) for V in np.split(np.arange(npix), splitter)]
+        vals_ids = [V[0] for V in np.split(np.array(vals), splitter)]
+        vals_id_slices = {}
+        for i_vals, slc in zip(vals_ids, slices):
+            if i_vals not in vals_id_slices:
+                vals_id_slices[i_vals] = [slc]
+            else:
+                vals_id_slices[i_vals].append(slc)
+        unique_vals = set(vals)
+        self.__setattr__("%s_unique" % attr_name, unique_vals)
+        logging.debug("Modeler has data on %d unique vals from attribute %s" % (len(unique_vals) , attr_name))
+        self.__setattr__("%s_slices" % attr_name, vals_id_slices)
+
     def clean_up(self):
         free_SIM_mem(self.SIM)
 
@@ -569,8 +604,6 @@ class DataModeler:
         for i_xtal in range(self.SIM.num_xtals):
             for ii in range(3):
 
-
-
                 p = ParameterType(init=0, sigma=sigma.RotXYZ[ii],
                                   minval=mins.RotXYZ[ii], maxval=maxs.RotXYZ[ii],
                                   fix=fix.RotXYZ, name="RotXYZ%d_xtal%d" % (ii,i_xtal),
@@ -641,7 +674,19 @@ class DataModeler:
                           center=centers.detz_shift,
                           beta=betas.detz_shift)
         P.add(p)
+
+        self.set_slices("roi_id")  # this creates roi_id_unique
+        for roi_id in self.roi_id_unique:
+            p = ParameterType(init=1, sigma=self.params.sigmas.roiPerScale,
+                              minval=0, maxval=1e12,
+                              fix=fix.perRoiScale, name="scale_roi%d" % roi_id,
+                              center=1,
+                              beta=1e12)
+            P.add(p)
         self.SIM.P = P
+        # TODO , fix this attribute hacking
+        self.SIM.roi_id_unique = self.roi_id_unique
+        self.SIM.roi_id_slices = self.roi_id_slices
 
     def get_data_model_pairs(self):
         if self.best_model is None:
@@ -823,6 +868,18 @@ def model(x, SIM, pfs,  compute_grad=True):
     nparam = len(x)
     J = np.zeros((nparam, npix))  # gradients
     model_pix = None
+    model_pix_noRoi = None
+
+    # extract the scale factors per ROI, these might correspond to structure factor intensity scale factors, and quite possibly might result in overfits!
+    roiScalesPerPix = 1
+    if SIM.P["scale_roi0"].refine:
+        perRoiParams = [SIM.P["scale_roi%d" % roi_id] for roi_id in SIM.roi_id_unique]
+        perRoiScaleFactors = [p.get_val(x[p.xpos]) for p in perRoiParams]
+        roiScalesPerPix = np.zeros(npix)
+        for i_roi, roi_id in enumerate(SIM.roi_id_unique):
+            slc = SIM.roi_id_slices[roi_id][0]
+            roiScalesPerPix[slc] = perRoiScaleFactors[i_roi]
+
     for i_xtal in range(SIM.num_xtals):
         SIM.D.raw_pixels_roi *= 0
 
@@ -840,13 +897,17 @@ def model(x, SIM, pfs,  compute_grad=True):
 
         SIM.D.add_diffBragg_spots(pfs)
 
-        pix = SIM.D.raw_pixels_roi[:npix]
-        pix = pix.as_numpy_array()
+        pix_noRoiScale = SIM.D.raw_pixels_roi[:npix]
+        pix_noRoiScale = pix_noRoiScale.as_numpy_array()
+
+        pix = pix_noRoiScale * roiScalesPerPix
 
         if model_pix is None:
             model_pix = scale*pix
+            model_pix_noRoi = scale*pix_noRoiScale
         else:
             model_pix += scale*pix
+            model_pix_noRoi += scale*pix_noRoiScale
 
         if compute_grad:
             if G.refine:
@@ -903,11 +964,21 @@ def model(x, SIM, pfs,  compute_grad=True):
                 d = DetZ.get_deriv(x[DetZ.xpos], d)
                 J[DetZ.xpos] += d
 
+    if SIM.P["scale_roi0"].refine and compute_grad:
+        if compute_grad:
+            for p in perRoiParams:
+                roi_id = int(p.name.split("scale_roi")[1])
+                slc = SIM.roi_id_slices[roi_id][0]
+                d = p.get_deriv(x[p.xpos], model_pix_noRoi[slc])
+                J[p.xpos, slc] += d
+
     return model_pix, J
 
 
 def look_at_x(x, SIM):
     for name, p in SIM.P.items():
+        if name.startswith("scale_roi") and not p.refine:
+            continue
         val = p.get_val(x[p.xpos])
         print("%s: %f" % (name, val))
 
@@ -1046,6 +1117,8 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
     if params.use_restraints:
         # scale factor restraint
         for name in SIM.P:
+            if name.startswith("roi_scale"):
+                continue  # No restraints for the per-spot roi scale factors
             p = SIM.P[name]
             val = p.get_restraint_val(x[p.xpos])
             restraint_terms[name] = val

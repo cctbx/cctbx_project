@@ -269,6 +269,8 @@ sigmas
   .help = sensitivity of target to parameter (experimental)
   .expert_level=10
 {
+  roiPerScale = 1
+    .type = float
   detz_shift = 1
     .type = float
     .help = sensitivity shift for the overall detector shift along z-direction
@@ -413,6 +415,9 @@ fix
   .help = flags for fixing parameters during refinement
   .expert_level = 0
 {
+  perRoiScale = True
+    .type = bool
+    .help = a per-roi scale factor
   G = False
     .type = bool
     .help = fix the Bragg spot scale during refinement
@@ -743,7 +748,7 @@ refiner {
     .help = whether to refine the crystal scale factor
   refine_Nabc = False
     .type = bool
-    .help = whether to refine the mosaic domain size tensor 
+    .help = whether to refine the mosaic domain size tensor
   gain_restraint=None
     .type = floats(size=2)
     .help = if not None, apply a gain restraint to the data
