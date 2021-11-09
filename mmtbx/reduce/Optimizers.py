@@ -1242,8 +1242,8 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         cp = hist.CoarsePositions()
         ne2Orig = cp.positions[0][0]
         nd1Orig = cp.positions[0][4]
-        ne2Flip = cp.positions[3][0]
-        nd1Flip = cp.positions[3][4]
+        ne2Flip = cp.positions[4][0]
+        nd1Flip = cp.positions[4][4]
 
         # See if any are close enough to a positive ion to be ionically bonded.
         # If any are, record whether it is the original or
