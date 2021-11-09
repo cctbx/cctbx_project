@@ -136,7 +136,9 @@ class _SingletonOptimizer(object):
                 useNeutronDistances = False,
                 probeDensity = 16.0,
                 minOccupancy = 0.01,
-                preferenceMagnitude = 1.0
+                preferenceMagnitude = 1.0,
+                polarHydrogenBumpBiasNonIonic = 0.125,
+                polarHydrogenBumpBiasIonic = 0.865
               ):
     """Constructor for _SingletonOptimizer.  This is the base class for all optimizers and
     it implements the machinery that finds and optimized Movers.
@@ -172,6 +174,12 @@ class _SingletonOptimizer(object):
     :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
     :param preferenceMagnitude: Multiplier for the preference energies expressed
     by some Movers for particular orientations.
+    :param polarHydrogenBumpBiasNonIonic: A polar hydrogen is not placed due to bumping against
+    a non-bonded non-ionic neighbor atom if it is closer than the atomic radius plus this offset
+    (Angstroms). @todo Ignored as of 11/9/2021.
+    :param polarHydrogenBumpBiasIonic: A polar hydrogen is not placed due to bumping against
+    a non-bonded ionic neighbor atom if it is closer than the atomic radius plus this offset
+    (Angstroms). @todo Ignored as of 11/9/2021.
     """
 
     ################################################################################
@@ -182,6 +190,8 @@ class _SingletonOptimizer(object):
     self._probeDensity = probeDensity
     self._minOccupancy = minOccupancy
     self._preferenceMagnitude = preferenceMagnitude
+    self._polarHydrogenBumpBiasNonIonic = polarHydrogenBumpBiasNonIonic
+    self._polarHydrogenBumpBiasIonic = polarHydrogenBumpBiasIonic
 
     ################################################################################
     # Initialize internal variables.
@@ -241,6 +251,8 @@ class _SingletonOptimizer(object):
         self._infoString += _VerboseCheck(1,"  probeDensity = "+str(self._probeDensity)+"\n")
         self._infoString += _VerboseCheck(1,"  minOccupancy = "+str(self._minOccupancy)+"\n")
         self._infoString += _VerboseCheck(1,"  preferenceMagnitude = "+str(self._preferenceMagnitude)+"\n")
+        self._infoString += _VerboseCheck(1,"  polarHydrogenBumpBiasNonIonic = "+str(self._polarHydrogenBumpBiasNonIonic)+"\n")
+        self._infoString += _VerboseCheck(1,"  polarHydrogenBumpBiasIonic = "+str(self._polarHydrogenBumpBiasIonic)+"\n")
 
         # Get the atoms from the specified conformer in the model (the empty string is the name
         # of the first conformation in the model; if there is no empty conformation, then it will
@@ -325,11 +337,9 @@ class _SingletonOptimizer(object):
         self._infoString += _ReportTiming("place movers")
 
         ################################################################################
-        # Construct a set of atoms that are marked for deletion in the current set of
-        # orientations for all Movers.  This is initialized with the atoms that were
-        # unconditionally marked for deletion during placement and then we add
-        # those for all Movers in their initial orientation by moving each to that state.
-        self._deleteMes = set(ret.deleteAtoms)
+        # Add the atoms that were unconditionally marked for deletion during placement
+        # to the set of atoms to delete.
+        self._deleteMes = self._deleteMes.union(set(ret.deleteAtoms))
         for m in self._movers:
           pr = m.CoarsePositions()
           self._setMoverState(pr, 0)
