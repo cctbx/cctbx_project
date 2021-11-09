@@ -281,6 +281,39 @@ class _SingletonOptimizer(object):
         self._maximumVDWRadius = maxVDWRad
 
         ################################################################################
+        # Make a set of atoms that are to be deleted based on analysis.  It is initially
+        # empty, keeping all of the added Hydrogens in the model.
+        self._deleteMes = set()
+
+        ''' As of 11/9/2021, Jane thinks we probably don't want do to this check.
+            If we do decide to add it later, the remaining checks need to be done and
+            add the Hydrogen to the list of those to be deleted.  See reduce.cpp:1523+
+        ################################################################################
+        # Check all polar hydrogens to make sure they have not been placed where they
+        # will collide with a non-bonded neighbor.  The neighbor must not be a hydrogen
+        # or part of a water and not part of the same amino acid; also, we must be
+        # checking an atom that is part of an amino acid.  The bonded heavy atom of the
+        # Hydrogen must be at a distnce where it could be bonded to the neighbor, so that
+        # what is probably happening is that the heavy atom is bonded to the neighbor.
+        # If a Hydrogen does so collide, then add it to a list of atoms that will be deleted.
+        maxDist = self._maximumVDWRadius + max(self._polarHydrogenBumpBiasNonIonic,self._polarHydrogenBumpBiasIonic)
+        for a in self._atoms and pdb.common_residue_names_get_class(a.parent().resname) == "common_amino_acid":
+          if Helpers.isPolarHydrogen(a, bondedNeighborLists):
+            nearby = self._spatialQuery(a, 0.001, maxDist)
+            for n in nearby:
+              # Make sure we're from a different residue
+              if a.parent().parent() != n.parent().parent():
+                # Make sure the neighbor is not part of a water.
+                if not pdb.common_residue_names_get_class(n.parent().resname) == "common_water":
+                  # Make sure that our bonded heavy element is within reasonable range to bond with the neighbor
+                  # so that what we're probably seeing is a covalent bond with our parent with no need
+                  # for a Hydrogen.
+                  # @todo
+                    # See if we collide.  If so, warn and remove.
+                    # @todo
+        '''
+
+        ################################################################################
         # Get the list of Movers using the _PlaceMovers private function.
         ret = _PlaceMovers(self._atoms, model.rotatable_hd_selection(iselection=True),
                            bondedNeighborLists, self._spatialQuery, self._extraAtomInfo,
