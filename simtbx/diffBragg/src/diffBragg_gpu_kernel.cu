@@ -240,8 +240,7 @@ void gpu_sum_over_steps(
         double lambda_manager_dI[2] = {0,0};
         double lambda_manager_dI2[2] = {0,0};
         double fp_fdp_manager_dI[2] = {0,0};
-        double dI_diffuse_gamma[3] = {0,0,0};
-        double dI_diffuse_sigma[3] = {0,0,0};
+        double dI_diffuse[6] = {0,0,0,0,0,0};
 
         for(int _subS=0;_subS<s_oversample;++_subS){
         for(int _subF=0;_subF<s_oversample;++_subF){
@@ -361,7 +360,7 @@ void gpu_sum_over_steps(
 
             // are we doing diffuse scattering
             //CUDAREAL I_latt_diffuse = 0;
-            double step_diffuse_gamma[3]  = {0,0,0};
+            double step_diffuse_param[6]  = {0,0,0,0,0,0};
             if (s_use_diffuse){
                 MAT3 Ainv = UBO.inverse();
                 MAT3 Ginv = anisoG.inverse();
@@ -381,8 +380,9 @@ void gpu_sum_over_steps(
                             CUDAREAL gamma_portion = 8.*M_PI*anisoG_determ /
                                     pow( (1.+ V_dot_V* 4*M_PI*M_PI),2);
 
-                            if (exparg >= 0.5)
+			    /*                            if (exparg >= 0.5)
                                 exparg = 1;
+			    */
                             CUDAREAL this_I_latt_diffuse = exparg*gamma_portion;
 
                             I0 += this_I_latt_diffuse;
@@ -395,8 +395,20 @@ void gpu_sum_over_steps(
                                    VEC3 dV = dG_dgam*delta_Q;
                                    CUDAREAL V_dot_dV = anisoG_q.dot(dV);
                                    CUDAREAL deriv = (Ginv*dG_dgam).trace() - 16*M_PI*M_PI*V_dot_dV/(1+4*M_PI*M_PI*V_dot_V);
-                                   step_diffuse_gamma[i_gam] += gamma_portion*deriv*exparg;
+                                   step_diffuse_param[i_gam] += gamma_portion*deriv*exparg;
                                 }
+				MAT3 dU_dsigma;
+				dU_dsigma << 0,0,0,0,0,0,0,0,0;
+				for (int i_sig = 0;i_sig<3; i_sig++){
+				   dU_dsigma(i_sig, i_sig) = 2.*sqrt(anisoU(i_sig,i_sig));
+				   CUDAREAL dexparg = 4*M_PI*M_PI*Q0.dot(dU_dsigma*Q0);
+				   dU_dsigma(i_sig, i_sig) = 0.;
+				   /*				   if (exparg  >= .5) // only valid up to a point
+				     dexparg = 0;
+				   */
+				   step_diffuse_param[i_sig+3] += gamma_portion*dexparg;
+				}
+
                             }
                         }
                     }
@@ -504,8 +516,8 @@ void gpu_sum_over_steps(
 
             if (s_refine_diffuse){
                 CUDAREAL step_scale = texture_scale*_F_cell*_F_cell;
-                for (int i_gam=0; i_gam <3; i_gam++){
-                    dI_diffuse_gamma[i_gam] += step_scale*step_diffuse_gamma[i_gam];
+                for (int i_diff=0; i_diff <6; i_diff++){
+                    dI_diffuse[i_diff] += step_scale*step_diffuse_param[i_diff];
                 }
             }
 
@@ -966,9 +978,14 @@ void gpu_sum_over_steps(
         }
         if (s_refine_diffuse){
             for (int i_gam=0; i_gam < 3; i_gam++){
-                CUDAREAL val = dI_diffuse_gamma[i_gam]*_scale_term;
+                CUDAREAL val = dI_diffuse[i_gam]*_scale_term;
                 int img_idx = Npix_to_model*i_gam + i_pix;
                 d_diffuse_gamma_images[img_idx] = val;
+            }
+            for (int i_sig=0; i_sig < 3; i_sig++){
+                CUDAREAL val = dI_diffuse[i_sig+3]*_scale_term;
+                int img_idx = Npix_to_model*i_sig + i_pix;
+                d_diffuse_sigma_images[img_idx] = val;
             }
         }
 

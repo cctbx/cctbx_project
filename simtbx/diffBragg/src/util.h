@@ -90,13 +90,14 @@ struct flags{
     bool oversample_omega; // omega is computed separately for each sub-pixel
     int printout_fpixel, printout_spixel; // debug printout pixel (fast scan, slow scan) // TODO add panel id
     int verbose; // nanoBragg verbosity flag
-    bool use_diffuse = false; // model  diffuse scattering (experimental)
+    bool use_diffuse = false; // model  diffuse
     bool only_diffuse = false; // model  diffuse scattering (experimental)
 };
 
 struct crystal{
     Eigen::Matrix3d anisoG;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dG_dgamma;
+    std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dU_dsigma;
     Eigen::Matrix3d anisoU;
     int mosaic_domains; // number of mosaic domains to model
     double Na, Nb, Nc, Nd, Ne, Nf; // mosaic domain terms

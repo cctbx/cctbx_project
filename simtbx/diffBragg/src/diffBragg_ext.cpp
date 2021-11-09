@@ -33,9 +33,20 @@ namespace boost_python { namespace {
       double sig0 = boost::python::extract<double>(values[0]);
       double sig1 = boost::python::extract<double>(values[1]);
       double sig2 = boost::python::extract<double>(values[2]);
+      double sig_array[3] = {sig0,sig1,sig2};
+      
       diffBragg.db_cryst.anisoU <<  sig0*sig0,0,0,
                                     0,sig1*sig1,0,
                                     0,0,sig2*sig2;
+      diffBragg.db_cryst.dU_dsigma.clear();
+      diffBragg.db_cryst.dU_dsigma.resize(3);
+	
+      for (int i=0; i<3; i++){
+	diffBragg.db_cryst.dU_dsigma[i] <<  0,0,0,
+                                    0,0,0,
+                                    0,0,0;
+	diffBragg.db_cryst.dU_dsigma[i](i,i) = 2.*sig_array[i];
+      }
   }
 
   static boost::python::tuple get_diffuse_sigma(simtbx::nanoBragg::diffBragg const& diffBragg) {
@@ -407,6 +418,8 @@ namespace boost_python { namespace {
       .def("get_ncells_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_ncells_derivative_pixels, "get derivatives of intensity w.r.t (Na, Nb, Nc)")
 
       .def("get_diffuse_gamma_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_diffuse_gamma_derivative_pixels, "get derivatives of intensity w.r.t. diffuse (gamma_a, gamma_b, gamma_c)")
+
+      .def("get_diffuse_sigma_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_diffuse_sigma_derivative_pixels, "get derivatives of intensity w.r.t. diffuse (sigma_a, sigma_b, sigma_c)")
 
       .def("get_fp_fdp_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_fp_fdp_derivative_pixels, "get derivatives of intensity w.r.t c,d that describe fprime and fdblprime (see diffBragg.utils)")
 

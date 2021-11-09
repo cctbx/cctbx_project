@@ -1468,6 +1468,28 @@ boost::python::tuple diffBragg::get_diffuse_gamma_derivative_pixels(){
     return derivative_pixels;
 }
 
+// TODO: Merge the gamma and sigma getters
+
+  boost::python::tuple diffBragg::get_diffuse_sigma_derivative_pixels(){
+    SCITBX_ASSERT(db_flags.refine_diffuse);
+    int Npix_total = first_deriv_imgs.diffuse_sigma.size() / 3;
+    af::flex_double raw_pixels_a = af::flex_double(Npix_total);
+    af::flex_double raw_pixels_b = af::flex_double(Npix_total);
+    af::flex_double raw_pixels_c = af::flex_double(Npix_total);
+
+    double* floatimage_a = raw_pixels_a.begin();
+    double* floatimage_b = raw_pixels_b.begin();
+    double* floatimage_c = raw_pixels_c.begin();
+    for (int ii=0; ii< Npix_to_model; ii++){
+        floatimage_a[ii] = first_deriv_imgs.diffuse_sigma[ii];
+        floatimage_b[ii] = first_deriv_imgs.diffuse_sigma[Npix_to_model + ii];
+        floatimage_c[ii] = first_deriv_imgs.diffuse_sigma[2*Npix_to_model + ii];
+    }
+    boost::python::tuple derivative_pixels;
+    derivative_pixels = boost::python::make_tuple(raw_pixels_a, raw_pixels_b, raw_pixels_c);
+    return derivative_pixels;
+}
+
 
 boost::python::tuple diffBragg::get_ncells_def_derivative_pixels(){
     SCITBX_ASSERT(Ncells_managers[3]->refine_me);

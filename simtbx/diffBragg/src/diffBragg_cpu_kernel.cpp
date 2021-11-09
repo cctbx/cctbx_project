@@ -53,7 +53,7 @@ void diffBragg_sum_over_steps(
         double lambda_manager_dI[2] = {0,0};
         double lambda_manager_dI2[2] = {0,0};
         double fp_fdp_manager_dI[2] = {0,0};
-        double dI_latt_diffuse[3] = {0,0,0};
+        double dI_latt_diffuse[6] = {0,0,0,0,0,0};
 
         for (int i_step=0; i_step < db_steps.Nsteps; i_step++){
 
@@ -182,7 +182,7 @@ void diffBragg_sum_over_steps(
             double count_scale = db_beam.source_I[source]*capture_fraction*omega_pixel;
 
             double I_latt_diffuse = 0;
-            double step_dI_latt_diffuse[3] = {0,0,0};
+            double step_dI_latt_diffuse[6] = {0,0,0,0,0,0};
             if (db_flags.use_diffuse){
                 Eigen::Matrix3d Ainv = UBO.inverse();
                 Eigen::Matrix3d Ginv = db_cryst.anisoG.inverse();
@@ -203,9 +203,9 @@ void diffBragg_sum_over_steps(
 
                             double this_I_latt_diffuse = gamma_portion;
 
-                            if (exparg  >= .5) // only valid up to a point
+			    /*                            if (exparg  >= .5) // only valid up to a point
                                 exparg = 1;
-
+			    */
                             this_I_latt_diffuse *= (exparg);
 
                             I_latt_diffuse += this_I_latt_diffuse;
@@ -222,6 +222,13 @@ void diffBragg_sum_over_steps(
                                     double deriv = (Ginv*dG_dgam).trace() - 16*M_PI*M_PI*V_dot_dV/(1+4*M_PI*M_PI*V_dot_V);
                                     step_dI_latt_diffuse[i_gam] += gamma_portion*deriv*exparg;
                                  }
+				 for (int i_sig = 0;i_sig<3; i_sig++){
+				   double dexparg = 4*M_PI*M_PI*Q0.dot(db_cryst.dU_dsigma[i_sig]*Q0);
+				   /*				   if (exparg  >= .5) // only valid up to a point
+				     dexparg = 0;
+				   */
+				   step_dI_latt_diffuse[i_sig+3] += gamma_portion*dexparg;
+				 }
                             }
                         }
                     }
@@ -378,7 +385,9 @@ void diffBragg_sum_over_steps(
             if (db_flags.refine_diffuse){
                 double step_scale = count_scale*F_cell*F_cell;
                 for (int i_gam=0; i_gam <3; i_gam++){
+		    int i_sig = i_gam + 3;
                     dI_latt_diffuse[i_gam] += step_scale*step_dI_latt_diffuse[i_gam];
+                    dI_latt_diffuse[i_sig] += step_scale*step_dI_latt_diffuse[i_sig];
                 }
             }
 
@@ -749,10 +758,15 @@ void diffBragg_sum_over_steps(
 
         }
         if (db_flags.refine_diffuse){
-            for (int i_gam=0; i_gam < 3; i_gam++){
-                double val = dI_latt_diffuse[i_gam]*scale_term;
-                int img_idx = Npix_to_model*i_gam + i_pix;
-                d_image.diffuse_gamma[img_idx] = val;
+            for (int i_diff=0; i_diff < 6; i_diff++){
+                double val = dI_latt_diffuse[i_diff]*scale_term;
+		if (i_diff<3) {
+		  int img_idx = Npix_to_model*i_diff + i_pix;
+		  d_image.diffuse_gamma[img_idx] = val;
+		} else {
+		  int img_idx = Npix_to_model*(i_diff-3) + i_pix;
+		  d_image.diffuse_sigma[img_idx] = val;
+		}
             }
         }
         /* udpate the rotation derivative images*/

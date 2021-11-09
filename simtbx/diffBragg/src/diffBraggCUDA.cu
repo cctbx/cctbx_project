@@ -154,7 +154,7 @@ void diffBragg_sum_over_steps_cuda(
         gpuErr(cudaMallocManaged(&cp.cu_floatimage, db_cu_flags.Npix_to_allocate*sizeof(CUDAREAL) ));
         if (db_flags.refine_diffuse){
             gpuErr(cudaMallocManaged(&cp.cu_d_diffuse_gamma_images, db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
-            //gpuErr(cudaMallocManaged(&cp.cu_d_diffuse_sigma_images, db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
+            gpuErr(cudaMallocManaged(&cp.cu_d_diffuse_sigma_images, db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
         }
         if (db_flags.refine_fcell){
             gpuErr(cudaMallocManaged(&cp.cu_d_fcell_images, db_cu_flags.Npix_to_allocate*1*sizeof(CUDAREAL)));
@@ -487,7 +487,7 @@ void diffBragg_sum_over_steps_cuda(
     if (db_flags.refine_diffuse){
         for(int i=0; i<3*Npix_to_model; i++){
             d_image.diffuse_gamma[i] = cp.cu_d_diffuse_gamma_images[i];
-            //d_image.diffuse_sigma[i] = cp.cu_d_diffuse_sigma_images[i];
+            d_image.diffuse_sigma[i] = cp.cu_d_diffuse_sigma_images[i];
         }
     }
     if (std::count(db_flags.refine_Bmat.begin(), db_flags.refine_Bmat.end(), true) > 0){
@@ -523,7 +523,7 @@ void freedom(diffBragg_cudaPointers& cp){
         gpuErr(cudaFree( cp.cu_d_Bmat_images));
         gpuErr(cudaFree( cp.cu_d_Ncells_images));
         gpuErr(cudaFree( cp.cu_d_diffuse_gamma_images));
-        //gpuErr(cudaFree( cp.cu_d_diffuse_sigma_images));
+        gpuErr(cudaFree( cp.cu_d_diffuse_sigma_images));
         gpuErr(cudaFree( cp.cu_d2_Umat_images));
         gpuErr(cudaFree( cp.cu_d2_Bmat_images));
         gpuErr(cudaFree( cp.cu_d2_Ncells_images));
