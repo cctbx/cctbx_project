@@ -44,6 +44,16 @@ from mmtbx.ncs import tncs
 #
 ######################################################
 
+def chi(B, R, r, small=1.e-6):
+  assert B>0
+  assert abs(B)>small
+  assert abs(R)>small
+  assert abs(r)>small
+  mfpsob = (-4*math.pi**2)/B
+  e1 = math.exp(mfpsob*(r-R)**2)
+  e2 = math.exp(mfpsob*(r+R)**2)
+  return (4*math.pi*B)**(-0.5) * (1/(r*R)) * (e1-e2)
+
 class calculator(object):
 
   def __init__(self, npeak,dens,yc,dist,ndist,nfmes, x):
