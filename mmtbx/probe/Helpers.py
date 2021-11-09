@@ -230,6 +230,21 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, N, nonHydrogenN = 1e10):
   atoms.discard(atom)
   return list(atoms)
 
+def isPolarHydrogen(atom, bondedNeighborLists):
+  '''
+    Returns True if the atom is a polar hydrogen, False if not.
+    :param atom: The atom to be tested.
+    :param bondedNeighborLists: Dictionary of lists that contain all bonded neighbors for
+    each atom in a set of atoms.  Should be obtained using
+    mmtbx.probe.Helpers.getBondedNeighborLists().
+    :return: True if the atom is a polar hydrogen.
+  '''
+  if a.element_is_hydrogen():
+    neighbors = bondedNeighborLists[a]
+    if len(neighbors) == 1 and neighbors[0].element in ['N', 'O', 'S']:
+      return True
+  return False
+
 class getExtraAtomInfoReturn(object):
   """
     Return type from getExtraAtomInfo() call.
@@ -534,6 +549,10 @@ def Test(inFileName = None):
 
   #========================================================================
   # Run unit test on getPhantomHydrogensFor().
+  # @todo
+
+  #========================================================================
+  # Run unit test on isPolarHydrogen().
   # @todo
 
   #========================================================================
