@@ -1266,6 +1266,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
     if addFlipMovers and ((aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN')):
       # See if the Nitrogen is within a range of ideal bonding distances to a positive ion.
       # If so, we mark the attached Hydrogen for deletion and skip adding a Mover.
+      # @todo Why are we checking both flips for Histidine but only one here?
       myRad = extraAtomInfo.getMappingFor(a).vdwRadius
       minDist = myRad
       maxDist = 0.25 + myRad + maxVDWRadius
