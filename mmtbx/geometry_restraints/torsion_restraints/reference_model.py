@@ -67,18 +67,27 @@ reference_model
     .type = float
   hydrogens = False
     .type = bool
+    .help = Include dihedrals with hydrogen atoms
   main_chain = True
     .type = bool
+    .help = Include dihedrals formed by main chain atoms
   side_chain = True
     .type = bool
+    .help = Include dihedrals formed by side chain atoms
   fix_outliers = True
     .type = bool
+    .help = Try to fix rotamer outliers in refined model
   strict_rotamer_matching = False
     .type = bool
+    .help = Make sure that rotamers in refinement model matches those in \
+      reference model even when they are not outliers
   auto_shutoff_for_ncs = False
     .type = bool
+    .help = Do not apply to parts of structure covered by NCS restraints
   secondary_structure_only = False
     .type = bool
+    .help = Only apply reference model restraints to secondary structure \
+      elements (helices and sheets)
   reference_group
     .multiple=True
     .optional=True
