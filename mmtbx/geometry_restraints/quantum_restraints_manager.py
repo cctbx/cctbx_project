@@ -86,38 +86,45 @@ def digester(model,
 
 def get_ligand_buffer_models(model, qmr):
   ligand_selection = model.selection(qmr.selection)
-  print(list(ligand_selection))
   ligand_model = model.select(ligand_selection)
-  assert 0
+  buffer_selection_string = 'residues_within(%s, %s)' % (qmr.buffer,
+                                                         qmr.selection)
+  buffer_selection = model.selection(buffer_selection_string)
+  buffer_model = model.select(buffer_selection)
+  return ligand_model, buffer_model
 
-def get_qm_manager(qmr):
+def get_qm_manager(ligand_model, buffer_model, qmr):
+  from mmtbx.geometry_restraints import qm_manager
   print(dir(qmr))
-  assert 0
+  program = qmr.package.program
+  print(program)
+  if program=='test':
+    qmm = qm_manager.base_manager
+  elif program=='orca':
+    qmm = qm_manager.base_manager
+  else:
+    assert 0
+  qmm = qmm(ligand_model.get_atoms(),
+            qmr.package.method,
+            qmr.package.basis_set,
+            '', #qmr.package.solvent_model,
+            qmr.package.charge,
+            qmr.package.multiplicity,
+            # preamble='%02d' % (i+1),
+            )
+  return qmm
 
 def update_restraints(model,
                       params,
                       log=StringIO(),
                       ):
-  print(model)
   atoms = model.get_atoms()
-  print(dir(params))
   for i, qmr in enumerate(params.qm_restraints):
-    print(i,qmr.selection)
-    print(qmr)
-    print('-'*80)
-    print(ligand_model)
-    for sel in ['within', 'residues_within']:
-      buffer_selection_string = '%s(%s, %s)' % (sel, qmr.buffer,
-                                                    qmr.selection)
-      buffer_selection = model.selection(buffer_selection_string)
-      print(list(buffer_selection))
-      buffer_model = model.select(buffer_selection)
-      print(buffer_model)
-      for i_seq, i_bool in enumerate(buffer_selection):
-        if i_bool:
-          print(i_seq, atoms[i_seq].quote())
-      for atom in buffer_model.get_atoms():
-        print(atom.quote())
+    ligand_model, buffer_model = get_ligand_buffer_models(model, qmr)
+    qmm = get_qm_manager(ligand_model, buffer_model, qmr)
+    print(qmm)
+    xyz = qmm.get_opt()
+    print(list(xyz))
 
 if __name__ == '__main__':
   print(quantum_chemistry_scope)
