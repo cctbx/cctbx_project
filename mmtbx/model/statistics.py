@@ -265,6 +265,11 @@ class geometry(object):
       delattr(self.cached_result.dihedral,     "outliers")
     return self.cached_result
 
+  def show_bond_and_angle(self):
+    r = self.result()
+    f="bond: %6.3f angle: %6.2f"
+    return f%(r.bond.mean, r.angle.mean)
+
   def show_short(self):
     r = self.result()
     f="bond: %6.3f angle: %6.2f clash: %5.1f rota: %5.2f rama: f: %6.2f o: %6.2f Z: %6.2f cb: %6.2f"

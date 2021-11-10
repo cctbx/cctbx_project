@@ -51,7 +51,13 @@ class base_manager():
     return outl
 
   def get_opt(self):
-    assert 0
+    import random
+    rc = []
+    for atom in self.atoms:
+      rc.append([])
+      for i in range(3):
+        rc[-1].append(atom.xyz[i]+(random.random()-0.5)/10)
+    return flex.vec3_double(rc)
 
 class orca_manager:
   def set_sites_cart(self, sites_cart):
