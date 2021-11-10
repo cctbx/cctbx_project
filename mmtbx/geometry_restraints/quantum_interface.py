@@ -1,9 +1,25 @@
 import os
 
-def is_orca_installed(env):
-  return (env.get('PHENIX_ORCA', False) and os.path.exists(env['PHENIX_ORCA']))
+def env_exists_exists(env, var, check=True):
+  if check:
+    return (env.get(var, False) and os.path.exists(env[var]))
+  else:
+    return env.get(var, False)
 
-programs = ' *orca'
+def is_orca_installed(env, var):
+  return env_exists_exists(env, var)
+
+def is_qm_test_installed(env, var):
+  return env_exists_exists(env, var, check=False)
+
+program_options = {
+  'orca' : (is_orca_installed, 'PHENIX_ORCA'),
+  'test' : (is_qm_test_installed, 'PHENIX_QM_TEST'),
+  }
+programs = ''
+for package, (func, var) in program_options.items():
+  if func(os.environ, var):
+    programs += ' %s' % package
 
 qm_package_scope = '''
   package
@@ -46,39 +62,14 @@ def orca_action():
 def is_any_quantum_package_installed(env):
   installed = []
   actions = []
-  for key, (question, action) in {'orca' : (is_orca_installed, orca_action),
-                                  }.items():
-    if question(os.environ):
-      rc = action()
-      actions.append(rc)
+  outl = ''
+  for key, (question, var) in program_options.items():
+    if question(os.environ, var):
       installed.append(key)
   if installed:
-    outl = '''
-  qi
-    .help = QM
-    .expert_level = 3
-  {
-    use_quantum_interface = *None qm_restraints qm_gradients
-      .type = bool
-    selection = None
-      .type = atom_selection
-    charge = 0
-      .type = int
-    multiplicity = 1
-      .type = int
-    buffer = 0.
-      .type = float
-      .style = hidden
-    update_metal_coordination = False
-      .type = bool
-      .style = hidden
-    refine_buffer_hydrogen_atoms = False
-      .type = bool
-      .style = hidden
-'''
-    for action in actions:
-      outl += action
-    outl += '}'
+    # refine_buffer_hydrogen_atoms = False
+    #   .type = bool
+    #   .style = hidden
     outl = '''
   qi
     .help = QM
@@ -115,7 +106,10 @@ def digester(model, geometry, params, log=None):
   return geometry
 
 def main():
-  pass
+  print('testing QI')
+  assert 'PHENIX_ORCA' not in os.environ
+  rc = is_any_quantum_package_installed(os.environ)
+  assert not rc
 
 if __name__ == '__main__':
   main()
