@@ -24,7 +24,6 @@ from scitbx import fftpack
 from libtbx.test_utils import approx_equal
 from cctbx import uctbx
 import scitbx.math
-from cctbx.maptbx import bcr
 
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
@@ -1461,6 +1460,7 @@ Fourier image of specified resolution, etc.
                  radius_step,
                  mxp=5, epsc=0.001, kpres=0 # BCR params
                  ):
+    from cctbx.maptbx import bcr
     im = self.image(
       d_min=d_min, b_iso=b_iso, radius_max=radius_max, radius_step=radius_step)
     bpeak, cpeak, rpeak, _,_,_ = bcr.get_BCR(
