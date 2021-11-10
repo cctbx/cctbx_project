@@ -97,7 +97,6 @@ def get_qm_manager(ligand_model, buffer_model, qmr):
   from mmtbx.geometry_restraints import qm_manager
   print(dir(qmr))
   program = qmr.package.program
-  print(program)
   if program=='test':
     qmm = qm_manager.base_manager
   elif program=='orca':
@@ -112,19 +111,36 @@ def get_qm_manager(ligand_model, buffer_model, qmr):
             qmr.package.multiplicity,
             # preamble='%02d' % (i+1),
             )
+  qmm.program=program
   return qmm
 
 def update_restraints(model,
                       params,
                       log=StringIO(),
                       ):
-  atoms = model.get_atoms()
+  # atoms = model.get_atoms()
   for i, qmr in enumerate(params.qm_restraints):
+    print('  Updating QM restraints: %s' % qmr.selection, file=log)
+    #
+    # get ligand and buffer region models
+    #
     ligand_model, buffer_model = get_ligand_buffer_models(model, qmr)
+    gs = ligand_model.geometry_statistics()
+    print('  Starting stats: %s' % gs.show_bond_and_angle(), file=log)
+    #
+    # get appropriate QM manager
+    #
     qmm = get_qm_manager(ligand_model, buffer_model, qmr)
-    print(qmm)
+    print(qmm, file=log)
+    #
+    # optimise
+    #
     xyz = qmm.get_opt()
     print(list(xyz))
+    #
+    # update coordinates of ligand
+    #
+
 
 if __name__ == '__main__':
   print(quantum_chemistry_scope)
