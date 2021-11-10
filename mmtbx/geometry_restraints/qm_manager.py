@@ -50,6 +50,9 @@ class base_manager():
       outl += '  %s\n' % atom.quote()
     return outl
 
+  def get_opt(self):
+    assert 0
+
 class orca_manager:
   def set_sites_cart(self, sites_cart):
     assert len(self.atoms)==len(sites_cart)
