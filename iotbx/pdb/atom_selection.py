@@ -530,14 +530,15 @@ class cache(slots_getstate_setstate):
     sel_within = self.sel_within(radius, primary_selection)
     atoms = self.root.atoms()
     residue_groups = []
-    for atom, sel in zip(atoms, sel_within):
-      if sel:
-        res_id = atom.parent().parent().id_str()
-        if res_id not in residue_groups:
-          residue_groups.append(res_id)
-          residue_group = atom.parent().parent()
-          for at in residue_group.atoms():
-            sel_within[at.i_seq] = True
+    isel = sel_within.iselection()
+    for sel in isel:
+      atom = atoms[sel]
+      res_id = atom.parent().parent().id_str()
+      if res_id not in residue_groups:
+        residue_groups.append(res_id)
+        residue_group = atom.parent().parent()
+        for at in residue_group.atoms():
+          sel_within[at.i_seq] = True
     return sel_within
 
   def selection_tokenizer(self, string, contiguous_word_characters=None):

@@ -3132,6 +3132,22 @@ class selection_manager(object):
       distance_cutoff=radius).neighbors_of(
         primary_selection=primary_selection)
 
+  def sel_residues_within(self, radius, primary_selection):
+    sel_within = self.sel_within(radius, primary_selection)
+    print(dir(self))
+    atoms = self.root.atoms()
+    residue_groups = []
+    isel = sel_within.iselection()
+    for sel in isel:
+      atom = atoms[sel]
+      res_id = atom.parent().parent().id_str()
+      if res_id not in residue_groups:
+        residue_groups.append(res_id)
+        residue_group = atom.parent().parent()
+        for at in residue_group.atoms():
+          sel_within[at.i_seq] = True
+    return sel_within
+
   def _selection_callback(self, word, word_iterator, result_stack):
     lword = word.value.lower()
     if (lword in ["peptide", "protein"]):
@@ -3154,7 +3170,7 @@ class selection_manager(object):
       result_stack.append(self.sel_phosphate())
     elif (lword == "ribose"):
       result_stack.append(self.sel_ribose())
-    elif (lword == "within"):
+    elif (lword in ["within", 'residues_within']):
       assert word_iterator.pop().value == "("
       radius = float(word_iterator.pop().value)
       assert word_iterator.pop().value == ","

@@ -12,17 +12,6 @@ from libtbx import easy_run
 
 from cctbx.geometry_restraints.manager import manager as standard_manager
 
-orca_master_phil_str = '''
-  use_orca = True
-    .type = bool
-  method = PM3
-    .type = str
-  basis_set = None
-    .type = str
-  solvent_model = None
-    .type = str
-'''
-
 harkcal = 627.50946900
 bohrang = 0.52918
 
@@ -49,7 +38,7 @@ class base_manager():
   def __repr__(self):
     program = getattr(self, 'program', '')
     if program: program = ' - %s' % program
-    outl = 'QI Manager%s\n' program
+    outl = 'QI Manager%s\n' % program
     outl += ' charge: %s multiplicity: %s\n method: %s basis: "%s" solvent: "%s"\n' % (
       self.charge,
       self.multiplicity,
@@ -287,32 +276,6 @@ class manager(standard_manager):
       for i_seq, gradient in zip(self.qm_iseqs, gradients):
         result.gradients[i_seq]=gradient
     return result
-
-def digester(model,
-             standard_geometry_restraints_manager,
-             params,
-             log=StringIO(),
-             ):
-  """Digest a standard GRM and create a QI GRM
-
-  Args:
-      model (TYPE): Model class
-      standard_geometry_restraints_manager (TYPE): Standard GRM?
-      params (TYPE): User parameteres
-      log (TYPE, optional): Output log
-
-  Returns:
-      TYPE: Quantum Interface Restraints Manager
-
-  """
-  #
-  # Digest
-  #
-  sgrm = standard_geometry_restraints_manager
-  qi_grm = manager(params, log=log)
-  for attr, value in vars(sgrm).items(): setattr(qi_grm, attr, value)
-  qi_grm.standard_geometry_restraints_manager = sgrm
-  return qi_grm
 
 def main():
   from iotbx import pdb
