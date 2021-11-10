@@ -26,7 +26,7 @@ orca_master_phil_str = '''
 harkcal = 627.50946900
 bohrang = 0.52918
 
-class orca_manager:
+class base_manager():
   def __init__(self,
                atoms,
                method,
@@ -47,7 +47,9 @@ class orca_manager:
     if self.solvent_model is None: self.solvent_model=''
 
   def __repr__(self):
-    outl = 'QI Manager\n'
+    program = getattr(self, 'program', '')
+    if program: program = ' - %s' % program
+    outl = 'QI Manager%s\n' program
     outl += ' charge: %s multiplicity: %s\n method: %s basis: "%s" solvent: "%s"\n' % (
       self.charge,
       self.multiplicity,
@@ -59,6 +61,7 @@ class orca_manager:
       outl += '  %s\n' % atom.quote()
     return outl
 
+class orca_manager:
   def set_sites_cart(self, sites_cart):
     assert len(self.atoms)==len(sites_cart)
     for atom, site_cart in zip(self.atoms, sites_cart):
