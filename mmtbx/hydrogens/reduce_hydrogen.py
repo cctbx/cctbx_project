@@ -14,7 +14,7 @@ from cctbx.geometry_restraints.linking_class import linking_class
 from cctbx.maptbx.box import shift_and_box_model
 
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
-
+get_class = iotbx.pdb.common_residue_names_get_class
 # For development
 print_time = False
 
@@ -110,11 +110,16 @@ class place_hydrogens():
     for m in pdb_hierarchy.models():
       for chain in m.chains():
         rgs = chain.residue_groups()[0]
-        for ag in rgs.atom_groups():
-          if ag.get_atom("H"):
-            ag.remove_atom(ag.get_atom('H'))
-        rc = add_n_terminal_hydrogens_to_residue_group(rgs)
-        # rc is always empty list?
+        # by default, place NH3 only at residue with resseq 1
+        if (rgs.resseq_as_int() == 1):
+          for ag in rgs.atom_groups():
+            # what about d-amino acids
+            if (get_class(name=ag.resname) in
+                ['common_amino_acid', 'modified_amino_acid']):
+              if ag.get_atom("H"):
+                ag.remove_atom(ag.get_atom('H'))
+            rc = add_n_terminal_hydrogens_to_residue_group(rgs)
+            # rc is always empty list?
 
     pdb_hierarchy.sort_atoms_in_place()
     pdb_hierarchy.atoms().reset_serial()
@@ -234,7 +239,7 @@ class place_hydrogens():
     pdb_hierarchy = self.model.get_hierarchy()
     mon_lib_srv = self.model.get_mon_lib_srv()
     #XXX This breaks for 1jxt, residue 2, TYR
-    get_class = iotbx.pdb.common_residue_names_get_class
+    #get_class = iotbx.pdb.common_residue_names_get_class
     #no_H_placed_resnames = list()
     for m in pdb_hierarchy.models():
       for chain in m.chains():
