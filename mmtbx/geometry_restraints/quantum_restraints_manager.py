@@ -68,24 +68,35 @@ def digester(model,
     ligand_selection = model.selection(qmr.selection)
     ligand_model = model.select(ligand_selection)
 
-    qmm = qm_manager.orca_manager(
-      ligand_model.get_atoms(),
-      qmr.package.method,
-      qmr.package.basis_set,
-      '', #qmr.package.solvent_model,
-      qmr.package.charge,
-      qmr.package.multiplicity,
-      preamble='%02d' % (i+1),
-      )
-    qm_managers.append(qmm)
+    # qmm = qm_manager.orca_manager(
+    #   ligand_model.get_atoms(),
+    #   qmr.package.method,
+    #   qmr.package.basis_set,
+    #   '', #qmr.package.solvent_model,
+    #   qmr.package.charge,
+    #   qmr.package.multiplicity,
+    #   preamble='%02d' % (i+1),
+    #   )
+    # qm_managers.append(qmm)
   #
   # Add to QI GRM
   #
-  qm_grm.qm_managers = qm_managers
+  # qm_grm.qm_managers = qm_managers
   return qm_grm
+
+def get_ligand_buffer_models(model, qmr):
+  ligand_selection = model.selection(qmr.selection)
+  print(list(ligand_selection))
+  ligand_model = model.select(ligand_selection)
+  assert 0
+
+def get_qm_manager(qmr):
+  print(dir(qmr))
+  assert 0
 
 def update_restraints(model,
                       params,
+                      log=StringIO(),
                       ):
   print(model)
   atoms = model.get_atoms()
@@ -93,9 +104,6 @@ def update_restraints(model,
   for i, qmr in enumerate(params.qm_restraints):
     print(i,qmr.selection)
     print(qmr)
-    ligand_selection = model.selection(qmr.selection)
-    print(list(ligand_selection))
-    ligand_model = model.select(ligand_selection)
     print('-'*80)
     print(ligand_model)
     for sel in ['within', 'residues_within']:
