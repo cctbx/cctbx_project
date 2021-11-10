@@ -1,39 +1,6 @@
 import os
 from io import StringIO
 
-def is_orca_installed(env):
-  print()
-  return (env.get('ORCA_EXE', False)
-          and os.path.exists(env['ORCA_EXE'])
-          )
-
-programs = None
-if is_orca_installed(os.environ):
-  if programs is None: programs=''
-  programs += ' *orca'
-
-quantum_chemistry_scope = '''
-quantum_chemistry_restraints
-  .multiple = True
-{
-  atom_selection = None
-    .type = atom_selection
-  environment_radius = 5.
-    .type = float
-  qm_package
-  {
-    program = %(programs)s
-      .type = choice
-    method = Auto
-      .type = str
-    basis_set = Auto
-      .type = str
-  }
-}
-''' % locals()
-
-master_phil_str = quantum_chemistry_scope
-
 from cctbx.geometry_restraints.manager import manager as standard_manager
 
 class manager(standard_manager):
@@ -73,19 +40,6 @@ class manager(standard_manager):
       site_labels=site_labels,
       )
     assert 0
-
-  def select1(self, selection=None, iselection=None):
-    if selection is not None: self.n_sites_cart = len(selection)
-    if iselection is not None: assert self.n_sites_cart
-    return_standard_grm = False
-    if selection and False in selection: return_standard_grm = True
-    if iselection and self.n_sites_cart!=len(iselection):
-      return_standard_grm = True
-    if return_standard_grm:
-      result = self.standard_geometry_restraints_manager.select(selection=selection,
-                                                                iselection=iselection)
-      return result
-    return self
 
   def cleanup(self):
     make_header('Cleaning up - QM restraints')
