@@ -2,6 +2,7 @@ from __future__ import print_function
 from __future__ import division
 
 import math
+from cctbx.maptbx import mask
 
 from scitbx.array_family import flex
 from scitbx.dtmin.minimizer import Minimizer
@@ -1018,6 +1019,9 @@ def run_refine_cryoem_errors(
   relative_radius = (3*mask_info.mean/(4*math.pi))**(1./3.)
   relative_volume = (2*relative_radius)**3
   over_sampling_factor = 1./relative_volume
+  box_volume = uc.volume() * (
+      working_mmm.map_data().size()/mmm.map_data().size())
+  masked_volume = box_volume * relative_volume
 
   d_max = 2*(radius+padding) + d_min # Size of sphere plus a bit
   mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min, d_max=d_max, map_id=map_1_id)
@@ -1254,6 +1258,7 @@ def run_refine_cryoem_errors(
     shift_cart = shift_cart,
     expectE = expectE, dobs = dobs,
     over_sampling_factor = over_sampling_factor,
+    masked_volume = masked_volume,
     resultsdict = resultsdict)
 
 # Command-line interface using argparse
@@ -1389,6 +1394,7 @@ def run():
   dm.write_miller_array_file(mtz_object, filename=mtzout_file_name)
   over_sampling_factor = results.over_sampling_factor
   print ("Over-sampling factor for Fourier terms:",over_sampling_factor)
+  print ("Weighted volume of density:",results.masked_volume)
 
 if (__name__ == "__main__"):
   run()
