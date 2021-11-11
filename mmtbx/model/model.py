@@ -195,7 +195,8 @@ class manager(object):
       monomer_parameters        = None, # mmtbx.utils.cif_params scope # temporarily for phenix.refine
       stop_for_unknowns         = True,
       log                       = None,
-      expand_with_mtrix         = True):
+      expand_with_mtrix         = True,
+      skip_ss_annotations       = False):
     # Assert basic assumptions
     if(model_input is not None): assert pdb_hierarchy is None
     if(pdb_hierarchy is not None):
@@ -232,7 +233,7 @@ class manager(object):
     self.scattering_dict_info = None
     # Extract SS info
     self._ss_annotation = None
-    if(self._model_input is not None):
+    if self._model_input is not None and not skip_ss_annotations:
       self._ss_annotation = self._model_input.extract_secondary_structure()
 
 
