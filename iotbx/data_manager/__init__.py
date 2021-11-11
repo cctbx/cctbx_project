@@ -53,6 +53,7 @@ default_datatypes = ['map_coefficients', 'miller_array', 'model', 'ncs_spec',
 # generally the format is <datatype>_<custom option>
 data_manager_options = [
   'model_skip_expand_with_mtrix',  # does not expand a model using MTRIX
+  'model_skip_ss_annotations',     # ignore secondary structure annotations
   ]
 
 # =============================================================================

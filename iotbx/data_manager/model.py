@@ -144,11 +144,15 @@ model
       else:
         model_in = iotbx.pdb.input(a.file_name)
         expand_with_mtrix = True  # default
+        skip_ss_annotations = False
         if 'model_skip_expand_with_mtrix' in self.custom_options:
           expand_with_mtrix = False
+        if 'model_skip_ss_annotations' in self.custom_options:
+          skip_ss_annotations = True
         model = mmtbx.model.manager(
           model_input=model_in,
           expand_with_mtrix=expand_with_mtrix,
+          skip_ss_annotations=skip_ss_annotations,
           log=self.logger)
         self.add_model(filename, model)
 

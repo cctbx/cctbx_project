@@ -731,6 +731,51 @@ output {
   assert dm.get_default_output_filename() == 'ghi'
 
 # -----------------------------------------------------------------------------
+def test_model_skip_ss_annotations():
+  good_h_str = 'HELIX    1   1 THR A   18  ILE A   20  5                                   3'
+  bad_h_str = 'HELIX    1   1 THR A   18  ILE A   20 11                                   3'
+  pdb_str = """
+CRYST1   32.501   39.502   44.640  90.00  90.00  90.00 P 21 21 21    4
+ATOM    265  N   THR A  18      13.114   7.968   6.956  1.00  4.57           N
+ATOM    266  CA  THR A  18      13.581   6.907   6.105  1.00  4.76           C
+ATOM    267  C   THR A  18      14.273   5.867   7.003  1.00  4.60           C
+ATOM    268  O   THR A  18      14.631   6.110   8.149  1.00  4.40           O
+ATOM    269  CB  THR A  18      14.556   7.447   5.032  1.00  5.62           C
+ATOM    270  OG1 THR A  18      15.710   7.880   5.759  1.00  6.08           O
+ATOM    271  CG2 THR A  18      13.937   8.551   4.219  1.00  7.48           C
+ATOM    279  N   LEU A  19      14.528   4.681   6.410  1.00  5.15           N
+ATOM    280  CA  LEU A  19      15.074   3.599   7.202  1.00  4.83           C
+ATOM    281  C   LEU A  19      16.437   3.919   7.781  1.00  4.82           C
+ATOM    282  O   LEU A  19      16.736   3.482   8.909  1.00  5.18           O
+ATOM    283  CB  LEU A  19      15.111   2.303   6.373  1.00  5.60           C
+ATOM    284  CG  LEU A  19      13.748   1.663   6.109  1.00  6.04           C
+ATOM    285  CD1 LEU A  19      13.891   0.508   5.116  1.00  7.36           C
+ATOM    286  CD2 LEU A  19      13.107   1.170   7.418  1.00  7.22           C
+ATOM    298  N   ILE A  20      17.306   4.658   7.066  1.00  5.11           N
+ATOM    299  CA  ILE A  20      18.645   4.933   7.588  1.00  5.24           C
+ATOM    300  C   ILE A  20      18.601   5.767   8.844  1.00  4.94           C
+ATOM    301  O   ILE A  20      19.565   5.822   9.609  1.00  5.92           O
+ATOM    302  CB  ILE A  20      19.529   5.617   6.519  1.00  6.40           C
+ATOM    303  CG1 ILE A  20      21.031   5.545   6.877  1.00  9.33           C
+ATOM    304  CG2 ILE A  20      19.057   7.034   6.234  1.00  7.06           C
+ATOM    305  CD1 ILE A  20      21.947   6.045   5.765  1.00 12.70           C
+"""
+  dm = DataManager(['model'])
+  dm.write_model_file(good_h_str + pdb_str, filename='good', extension='.pdb', overwrite=True)
+  dm.write_model_file(bad_h_str + pdb_str, filename='bad', extension='.pdb', overwrite=True)
+  dm.process_model_file('good.pdb')
+  try:
+    dm.process_model_file('bad.pdb')
+  except IndexError as e:
+    assert str(e) == 'list index out of range'
+  dm = DataManager(['model'], custom_options=['model_skip_ss_annotations'])
+  dm.process_model_file('good.pdb')
+  dm.process_model_file('bad.pdb')
+
+  os.remove('good.pdb')
+  os.remove('bad.pdb')
+
+# -----------------------------------------------------------------------------
 if __name__ == '__main__':
 
   test_data_manager()
@@ -740,6 +785,7 @@ if __name__ == '__main__':
   test_real_map_datatype()
   test_map_mixins()
   test_default_filenames()
+  test_model_skip_ss_annotations()
 
   if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
     test_model_and_restraint()
