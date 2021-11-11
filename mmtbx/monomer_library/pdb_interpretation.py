@@ -3134,8 +3134,7 @@ class selection_manager(object):
 
   def sel_residues_within(self, radius, primary_selection):
     sel_within = self.sel_within(radius, primary_selection)
-    print(dir(self))
-    atoms = self.root.atoms()
+    atoms = self.pdb_hierarchy.atoms()
     residue_groups = []
     isel = sel_within.iselection()
     for sel in isel:
@@ -3178,7 +3177,10 @@ class selection_manager(object):
         word_iterator=word_iterator,
         callback=self._selection_callback,
         expect_nonmatching_closing_parenthesis=True)
-      result_stack.append(self.sel_within(radius=radius,primary_selection=sel))
+      if lword=='within':
+        result_stack.append(self.sel_within(radius=radius,primary_selection=sel))
+      else:
+        result_stack.append(self.sel_residues_within(radius=radius,primary_selection=sel))
     else:
       return False
     return True
