@@ -43,8 +43,17 @@ qm_restraints
 {
   selection = None
     .type = atom_selection
+    .help = selection for core of atoms to calculate new restraints via a QM \
+            geometry minimisation
   buffer = 5.
     .type = float
+    .help = distance to include entire residues into the enviroment of the core
+  write_pdb_core = False
+    .type = bool
+  write_pdb_buffer = False
+    .type = bool
+  cleanup = True
+    .type = bool
   %(qm_package_scope)s
 }
 ''' % locals()
@@ -58,6 +67,19 @@ def orca_action():
     }
   '''
   return outl
+
+def get_safe_filename(s):
+  s=s.replace(' ','_')
+  s=s.replace("'",'_prime_')
+  s=s.replace('*','_star_')
+  return s
+
+def get_preamble(macro_cycle, i, selection):
+  s=''
+  if macro_cycle is not None:
+    s+='%02d_' % macro_cycle
+  s+='%02d_%s' % (i+1, get_safe_filename(selection))
+  return s
 
 def is_any_quantum_package_installed(env):
   installed = []
@@ -87,6 +109,7 @@ def validate_qm_restraints(qm_restraints):
       print(attr,item)
 
 def is_quantum_interface_active(params):
+  if not hasattr(params, 'qi'): return False
   if len(params.qi.qm_restraints):
     # validate_qm_restraints(params.qi.qm_restraints)
     return True, 'qm_restraints'

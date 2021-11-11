@@ -8,7 +8,6 @@ import tempfile
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
 from libtbx import easy_run
-# from libtbx.str_utils import make_header
 
 from cctbx.geometry_restraints.manager import manager as standard_manager
 
@@ -58,8 +57,24 @@ class base_manager():
       for i in range(3):
         rc[-1].append(atom.xyz[i]+(random.random()-0.5)/10)
     return flex.vec3_double(rc)
+#
+# ORCA
+#
+def run_orca_cmd(cmd, verbose=False):
+  if verbose: print('run_orca_cmd',cmd)
+  rc = easy_run.go(cmd)
+  if rc.stderr_lines:
+    print('stderr')
+    for line in rc.stderr_lines:
+      print(line)
+    print('stdout')
+    for line in rc.stdout_lines:
+      print(line)
+    assert 0
+  return rc
 
-class orca_manager:
+class orca_manager(base_manager):
+
   def set_sites_cart(self, sites_cart):
     assert len(self.atoms)==len(sites_cart)
     for atom, site_cart in zip(self.atoms, sites_cart):
@@ -139,22 +154,17 @@ class orca_manager:
     f.write(outl)
     del f
 
-  def run_cmd(self):
-    t0=time.time()
+  def get_cmd(self):
     cmd = '%s orca_%s.in' % (
       os.environ['PHENIX_ORCA'],
       self.preamble,
       )
-    # print(cmd)
-    rc = easy_run.go(cmd)
-    if rc.stderr_lines:
-      print('stderr')
-      for line in rc.stderr_lines:
-        print(line)
-      print('stdout')
-      for line in rc.stdout_lines:
-        print(line)
-      assert 0
+    return cmd
+
+  def run_cmd(self):
+    t0=time.time()
+    cmd = self.get_cmd()
+    run_orca_cmd(cmd)
     self.times.append(time.time()-t0)
 
   def get_coordinate_lines(self):
@@ -169,11 +179,13 @@ class orca_manager:
     outl += '*\n'
     return outl
 
-  def print_timings(self, energy=None):
-    print('  Timings : %0.2fs (%ss) Energy : %0.6f' % (
+  def print_timings(self, energy=None, log=StringIO()):
+    f='  Timings : %0.2fs (%ss)' % (
       self.times[-1],
-      self.times.format_mean(format='%.2f'),
-      energy))
+      self.times.format_mean(format='%.2f'))
+    if energy:
+      f+=' Energy : %0.6f' % energy
+    print(f, file=log)
 
   def get_engrad(self):
     outl = '! %s %s %s EnGrad\n\n' % (self.method,
@@ -190,15 +202,26 @@ class orca_manager:
     self.energies[outl] = (energy, gradients)
     return energy, gradients
 
-  def get_opt(self):
+  def opt_setup(self):
     outl = '! %s %s %s Opt\n\n' % (self.method,
                                    self.basis_set,
                                    self.solvent_model)
     outl += self.get_coordinate_lines()
     self.write_input(outl)
+
+  def get_opt(self, cleanup=False):
+    self.opt_setup()
     self.run_cmd()
     coordinates = self.read_xyz_output()
+    if cleanup: self.cleanup()
     return coordinates
+
+  def cleanup(self, verbose=False):
+    if not self.preamble: return
+    for filename in os.listdir('.'):
+      if filename.startswith('orca_%s' % self.preamble):
+        if verbose: print('  removing',filename)
+        os.remove(filename)
 
 class manager(standard_manager):
   def __init__(self,
