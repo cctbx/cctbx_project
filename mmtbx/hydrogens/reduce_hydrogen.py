@@ -53,6 +53,7 @@ class place_hydrogens():
   def __init__(self,
                model,
                use_neutron_distances = False,
+               n_terminal_charge     = 'residue_one',
                adp_scale             = 1,
                exclude_water         = True,
                stop_for_unknowns     = False,
@@ -61,6 +62,7 @@ class place_hydrogens():
 
     self.model                 = model
     self.use_neutron_distances = use_neutron_distances
+    self.n_terminal_charge     = n_terminal_charge
     self.adp_scale             = adp_scale
     self.exclude_water         = exclude_water
     self.stop_for_unknowns     = stop_for_unknowns
@@ -111,15 +113,17 @@ class place_hydrogens():
       for chain in m.chains():
         rgs = chain.residue_groups()[0]
         # by default, place NH3 only at residue with resseq 1
-        if (rgs.resseq_as_int() == 1):
-          for ag in rgs.atom_groups():
-            # what about d-amino acids
-            if (get_class(name=ag.resname) in
-                ['common_amino_acid', 'modified_amino_acid']):
-              if ag.get_atom("H"):
-                ag.remove_atom(ag.get_atom('H'))
-            rc = add_n_terminal_hydrogens_to_residue_group(rgs)
-            # rc is always empty list?
+        if (self.n_terminal_charge == 'residue_one' and rgs.resseq_as_int() != 1):
+          continue
+        elif (self.n_terminal_charge == 'first_in_chain'):
+          pass
+        for ag in rgs.atom_groups():
+          if (get_class(name=ag.resname) in
+              ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
+            if ag.get_atom("H"):
+              ag.remove_atom(ag.get_atom('H'))
+          rc = add_n_terminal_hydrogens_to_residue_group(rgs)
+          # rc is always empty list?
 
     pdb_hierarchy.sort_atoms_in_place()
     pdb_hierarchy.atoms().reset_serial()

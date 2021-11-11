@@ -12,6 +12,12 @@ use_neutron_distances = False
   .help = Use neutron distances
 
 keep_existing_H = False
+  .type = bool
+  .help = Keep existing H atoms in the model
+
+n_terminal_charge = *residue_one first_in_chain
+  .type = choice(multi=False)
+  .help = Mode for placing H3 at terminal nitrogen.
 
 output
   .style = menu_item auto_align
@@ -51,7 +57,8 @@ Inputs:
     make_sub_header('Add H atoms', out=self.logger)
     reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
       model = self.model,
-      use_neutron_distances = self.params.use_neutron_distances)
+      use_neutron_distances = self.params.use_neutron_distances,
+      n_terminal_charge = self.params.n_terminal_charge)
     reduce_add_h_obj.run()
     self.model = reduce_add_h_obj.get_model()
     reduce_add_h_obj.show(log = self.logger)
