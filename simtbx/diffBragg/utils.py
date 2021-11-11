@@ -343,7 +343,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                                    bg_thresh=3.5, set_negative_bg_to_zero=False,
                                    pad_for_background_estimation=None, use_robust_estimation=True, sigma_rdout=3.,
                                    min_trusted_pix_per_roi=4, deltaQ=None, experiment=None, weighted_fit=True,
-                                   tilt_relative_to_corner=False, ret_cov=False, allow_overlaps=False):
+                                   ret_cov=False, allow_overlaps=False, skip_roi_with_negative_bg=True):
     """
 
     :param refls: reflection table
@@ -362,9 +362,9 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
     :param deltaQ: specify the width of the ROI in inverse angstrom (overrides shoebox_sz), such that higher Q ROIS are larger
     :param experiment: dxtbx experiment
     :param weighted_fit: fit a tilt plane with basis error models as weights
-    :param tilt_relative_to_corner: fit the tilt plane relative to the actual corner pixel
     :param ret_cov: return the tilt plane covariance
     :param allow_overlaps: allow overlapping ROIS, otherwise shrink ROIS until the no longer overlap
+    :param skip_roi_with_negative_bg: if an ROI has negative signal, dont include it in refinement
     :return:
     """
 
@@ -445,7 +445,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                 num_roi_negative_bg += 1
                 if set_negative_bg_to_zero:
                     bg_signal = 0
-                else:
+                elif skip_roi_with_negative_bg:
                     MAIN_LOGGER.debug("reflection %d has negative background" % i_roi)
                     is_selected = False
             tilt_a, tilt_b, tilt_c = 0, 0, bg_signal
@@ -453,9 +453,6 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
 
             tilt_plane = tilt_a * Xcoords + tilt_b * Ycoords + tilt_c
         else:
-            if tilt_relative_to_corner:
-                Xcoords += i1
-                Ycoords += j1
             fit_results = fit_plane_equation_to_background_pixels(
                 shoebox_img=shoebox, fit_sel=is_background, sigma_rdout=shoebox_sigma_readout,
                 weighted=weighted_fit)
@@ -472,7 +469,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                     MAIN_LOGGER.debug("reflection %d has nan in plane" % i_roi)
                     is_selected = False
                     num_roi_nan_bg += 1
-                if np.min(tilt_plane) < 0:  # dips below
+                if skip_roi_with_negative_bg and np.min(tilt_plane) < 0:  # dips below
                     num_roi_negative_bg += 1
                     MAIN_LOGGER.debug("reflection %d has tilt plane that dips below 0" % i_roi)
                     is_selected = False
@@ -503,8 +500,8 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
         selection_flags.append(is_selected)
         i_roi += 1
 
-    MAIN_LOGGER.debug("Number of ROI with negative BGs: %d / %d" % (num_roi_negative_bg, len(rois)))
-    MAIN_LOGGER.debug("Number of ROI with NAN in BGs: %d / %d" % (num_roi_nan_bg, len(rois)))
+    MAIN_LOGGER.debug("Number of skipped ROI with negative BGs: %d / %d" % (num_roi_negative_bg, len(rois)))
+    MAIN_LOGGER.debug("Number of skipped ROI with NAN in BGs: %d / %d" % (num_roi_nan_bg, len(rois)))
     if ret_cov:
         return kept_rois, panel_ids, tilt_abc, selection_flags, background, all_cov
     else:
@@ -684,7 +681,7 @@ def simulator_from_expt_and_params(expt, params=None, oversample=0, device_id=0,
         SIM.detector = expt.detector
 
     # create nanoBragg crystal
-    crystal = NBcrystal()
+    crystal = NBcrystal(init_defaults=False)
     if params is not None and params.refiner.force_symbol is not None:
         crystal.symbol = params.refiner.force_symbol
     crystal.isotropic_ncells = has_isotropic_ncells
