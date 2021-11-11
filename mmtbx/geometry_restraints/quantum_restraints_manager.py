@@ -13,7 +13,7 @@ class manager(standard_manager):
   def __repr__(self):
     return 'QM restraints manager'
 
-  def energies_sites(self,
+  def energies_sites1(self,
                      sites_cart,
                      flags=None,
                      custom_nonbonded_function=None,
@@ -85,17 +85,39 @@ def digester(model,
   return qm_grm
 
 def get_ligand_buffer_models(model, qmr):
+  from cctbx.array_family import flex
+  from scitbx_array_family_flex_ext import reindexing_array
+  def _reindexing(mod, sel, verbose=False):
+    isel = sel.iselection()
+    ra = reindexing_array(len(sel),
+                          flex.size_t(isel).as_int())
+    atoms = mod.get_atoms()
+    for i_seq in isel:
+      atoms[ra[i_seq]].tmp=i_seq
+    if verbose:
+      for atom in mod.get_atoms():
+        print(atom.quote(), atom.tmp)
+    return mod
+
   ligand_selection = model.selection(qmr.selection)
   ligand_model = model.select(ligand_selection)
+  rc = _reindexing(ligand_model, ligand_selection)
+
   buffer_selection_string = 'residues_within(%s, %s)' % (qmr.buffer,
                                                          qmr.selection)
   buffer_selection = model.selection(buffer_selection_string)
   buffer_model = model.select(buffer_selection)
+  rc = _reindexing(buffer_model, buffer_selection)
   return ligand_model, buffer_model
+
+def show_ligand_buffer_models(ligand_model, buffer_model):
+  outl = '    Core atoms\n'
+  for atom in ligand_model.get_atoms():
+    outl += '      %s\n' % (atom.quote().replace('"', ''))
+  return outl
 
 def get_qm_manager(ligand_model, buffer_model, qmr):
   from mmtbx.geometry_restraints import qm_manager
-  print(dir(qmr))
   program = qmr.package.program
   if program=='test':
     qmm = qm_manager.base_manager
@@ -125,22 +147,61 @@ def update_restraints(model,
     # get ligand and buffer region models
     #
     ligand_model, buffer_model = get_ligand_buffer_models(model, qmr)
+    print(show_ligand_buffer_models(ligand_model, buffer_model))
     gs = ligand_model.geometry_statistics()
     print('  Starting stats: %s' % gs.show_bond_and_angle(), file=log)
     #
     # get appropriate QM manager
     #
     qmm = get_qm_manager(ligand_model, buffer_model, qmr)
-    print(qmm, file=log)
     #
     # optimise
     #
     xyz = qmm.get_opt()
-    print(list(xyz))
     #
     # update coordinates of ligand
     #
-
+    ligand_model.get_hierarchy().atoms().set_xyz(xyz)
+    gs = ligand_model.geometry_statistics()
+    print('  Interim stats : %s' % gs.show_bond_and_angle(), file=log)
+    #
+    # transfer geometry to proxies
+    #
+    for atom in ligand_model.get_atoms():
+      print(atom.quote(),atom.tmp)
+    model_grm = model.get_restraints_manager()
+    ligand_grm = ligand_model.get_restraints_manager()
+    print(dir(ligand_grm))
+    print(dir(ligand_grm.geometry))
+    bond_proxies_simple, asu = ligand_grm.geometry.get_all_bond_proxies(
+      sites_cart=ligand_model.get_sites_cart())
+    sorted_table, n_not_shown = bond_proxies_simple.get_sorted(
+      'delta',
+      ligand_model.get_sites_cart())
+    for info in sorted_table:
+      print(info)
+      (i_seq, j_seq, i_seqs, distance_ideal, distance_model, slack, delta, sigma, weight, residual, sym_op_j, rt_mx) = info
+      print(i_seq, j_seq, delta)
+      atoms = ligand_model.get_atoms()
+      i_atom=atoms[i_seq]
+      j_atom=atoms[j_seq]
+      i_seqs=[i_seq, j_seq]
+      print(i_atom.quote(), j_atom.quote())
+      bond=ligand_grm.geometry.bond_params_table.lookup(*list(i_seqs))
+      bond.distance_ideal=distance_model
+      i_seqs=[i_atom.tmp, j_atom.tmp]
+      if 0 :
+        print(i_seqs)
+        atoms=model.get_atoms()
+        print(atoms[i_seqs[0]].quote())
+        print(atoms[i_seqs[1]].quote())
+      bond=model_grm.geometry.bond_params_table.lookup(*list(i_seqs))
+      bond.distance_ideal=distance_model
+    #
+    # final stats
+    #
+    gs = ligand_model.geometry_statistics()
+    print('  Finished stats : %s' % gs.show_bond_and_angle(), file=log)
 
 if __name__ == '__main__':
   print(quantum_chemistry_scope)
