@@ -109,7 +109,8 @@ NOTES:
 '''.format(version)
   datatypes = ['model', 'restraint', 'phil']
   master_phil_str = master_phil_str
-  data_manager_options = ['model_skip_expand_with_mtrix']
+  data_manager_options = ['model_skip_expand_with_mtrix',
+                          'model_skip_ss_annotations']
   citations = program_citations
   epilog = '''
   For additional information and help, see http://kinemage.biochem.duke.edu/software/probe
