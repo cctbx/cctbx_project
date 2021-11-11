@@ -1263,6 +1263,8 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
 
     # See if we should insert a MoverNH2Flip here.
     # @todo Is there a more general way than looking for specific names?
+    if addFlipMovers and ((aName == 'XD2' and resName == 'ASX') or (aName == 'XE2' and resName == 'GLX')):
+      infoString += _VerboseCheck(1,"Not attempting to adjust "+resNameAndID+" "+aName+"\n")
     if addFlipMovers and ((aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN')):
       # See if the Nitrogen is within a range of ideal bonding distances to a positive ion.
       # If so, we mark the attached Hydrogen for deletion and skip adding a Mover.
