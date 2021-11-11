@@ -8,6 +8,7 @@ from scipy.optimize import dual_annealing, basinhopping
 from collections import Counter
 from scitbx.matrix import sqr, col
 from dxtbx.model.experiment_list import ExperimentListFactory
+from dxtbx.model import Spectrum
 from simtbx.nanoBragg.utils import downsample_spectrum
 from dials.array_family import flex
 from simtbx.diffBragg import utils
@@ -151,7 +152,8 @@ class DataModeler:
 
     def _abs_path_params(self):
         """adds absolute path to certain params"""
-        self.params.simulator.structure_factors.mtz_name = os.path.abspath(self.params.simulator.structure_factors.mtz_name)
+        if self.params.simulator.structure_factors.mtz_name is not None:
+            self.params.simulator.structure_factors.mtz_name = os.path.abspath(self.params.simulator.structure_factors.mtz_name)
 
     def __getstate__(self):
         # TODO cleanup/compress
@@ -350,7 +352,7 @@ class DataModeler:
             sigma_rdout=self.sigma_rdout, deltaQ=self.params.roi.deltaQ, experiment=self.E,
             weighted_fit=self.params.roi.fit_tilt_using_weights,
             allow_overlaps=self.params.roi.allow_overlapping_spots,
-            tilt_relative_to_corner=self.params.relative_tilt, ret_cov=True)
+            ret_cov=True, skip_roi_with_negative_bg=self.params.roi.skip_roi_with_negative_bg)
 
         if roi_packet is None:
             return False
@@ -475,6 +477,8 @@ class DataModeler:
         self.all_sigmas = np.array(all_sigmas)
         # note rare chance for sigmas to be nan if the args of sqrt is below 0
         self.all_trusted = np.logical_and(np.array(all_trusted), ~np.isnan(all_sigmas))
+        # Dont include pixels whose background model is below 0
+        self.all_trusted[self.all_background < 0] = False
         self.npix_total = len(all_data)
         self.all_fast = np.array(all_fast)
         self.all_slow = np.array(all_slow)
@@ -523,8 +527,13 @@ class DataModeler:
         R.as_file(output_name)
 
     def SimulatorFromExperiment(self, best=None):
-        """optional best parameter is a single row of a pandas datafame containing the starting
-        models, presumably optimized from a previous minimzation using this program"""
+        """
+        This instantiates the simulator class and sets the model parameter objects, and attaches them to the
+        simulator as an attribute called P.
+
+        Optional best parameter is a single row of a pandas datafame containing the starting
+        models, presumably optimized from a previous minimzation using this program
+        """
 
         ParameterType = RangedParameter
 
@@ -588,6 +597,8 @@ class DataModeler:
 
         if self.params.spectrum_from_imageset:
             downsamp_spec(self.SIM, self.params, self.E)
+        elif self.params.gen_gauss_spec:
+            set_gauss_spec(self.SIM, self.params, self.E)
 
         self.SIM.D.no_Nabc_scale = self.params.no_Nabc_scale  # TODO check gradients for this setting
         self.SIM.D.update_oversample_during_refinement = False
@@ -599,6 +610,10 @@ class DataModeler:
         maxs = self.params.maxs
         centers = self.params.centers
         betas = self.params.betas
+        if not self.params.use_restraints or self.params.fix.ucell:
+            # TODO make centers and betas always len 6
+            centers.ucell = [1,1,1,1,1,1]
+            betas.ucell = [1,1,1,1,1,1]
         fix = self.params.fix
         P = Parameters()
         for i_xtal in range(self.SIM.num_xtals):
@@ -1187,6 +1202,11 @@ def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, b
 
     Modeler.SimulatorFromExperiment(best)
 
+    Modeler.SIM.rois = Modeler.rois
+    Modeler.SIM.pids = Modeler.pids
+    Modeler.SIM.all_data = Modeler.all_data
+    Modeler.SIM.E = Modeler.E
+
     Modeler.SIM.D.device_Id = gpu_device
 
     nparam = len(Modeler.SIM.P)
@@ -1318,6 +1338,34 @@ def get_mosaicity_from_x(x, SIM):
     return eta_abc
 
 
+def generate_gauss_spec(central_en=9500, fwhm=10, res=1, nchan=20, total_flux=1e12, as_spectrum=True):
+    """
+    In cases where raw experimental data do not contain X-ray spectra, one can generate a gaussian spectra
+    and use that as part of the diffBragg model.
+
+    :param central_en: nominal beam energy in eV
+    :param fwhm: fwhm of desired Gaussian spectrum in eV
+    :param res: energy resolution of spectrum in eV
+    :param nchan: number of energy channels in spectrum
+    :param total_flux: total number of photons across whole spectrum
+    :param as_spectrum: return as a spectrum object, a suitable attribute of nanoBragg_beam
+    :return: either a nanoBragg_beam.NBbeam spectrum, or a tuple of numpy arrays spec_energies, spec_weights
+    """
+    sig = fwhm / 2.35482
+    min_en = central_en - nchan / 2 * res
+    max_en = central_en + nchan / 2 * res
+    ens = np.linspace(min_en, max_en, nchan)
+    wt = np.exp(-(ens - central_en) ** 2 / 2 / sig ** 2)
+    wt /= wt.sum()
+    wt *= total_flux
+    if as_spectrum:
+        wvs = utils.ENERGY_CONV / ens  # wavelengths
+        spec = list(zip(list(wvs), list(wt)))
+        return spec
+    else:
+        return ens, wt
+
+
 def downsamp_spec_from_params(params, expt):
     dxtbx_spec = expt.imageset.get_spectrum(0)
     spec_en = dxtbx_spec.get_energies_eV()
@@ -1399,6 +1447,33 @@ def downsamp_spec(SIM, params, expt, return_and_dont_set=False):
         return SIM.beam.spectrum
     else:
         SIM.D.xray_beams = SIM.beam.xray_beams
+
+
+def set_gauss_spec(SIM, params, E):
+    """
+    Generates a gaussian spectrum for the experiment E and attach it to SIM
+    in a way that diffBragg understands
+
+    This updates the xray_beams property of SIM.D and the spectrum property
+    of SIM.beam
+
+    :param SIM: simulator object, instance of nanoBragg/sim_data
+    :param params: phil params , expected scope is defined in diffBragg/phil.py
+    :param E: dxtbx Experiment
+    :return: None
+    """
+    if not hasattr(SIM, "D"):
+        raise AttributeError("Cannot set the spectrum until diffBragg has been instantiated!")
+    spec_mu = utils.ENERGY_CONV / E.beam.get_wavelength()
+    spec_res = params.simulator.spectrum.gauss_spec.res
+    spec_nchan = params.simulator.spectrum.gauss_spec.nchannels
+    spec_fwhm = params.simulator.spectrum.gauss_spec.fwhm
+    spec_ens, spec_wts = generate_gauss_spec(central_en=spec_mu, fwhm=spec_fwhm, res=spec_res,
+                                             nchan=spec_nchan, as_spectrum=False)
+    SIM.dxtbx_spec = Spectrum(spec_ens, spec_wts)
+    spec_wvs = utils.ENERGY_CONV / spec_ens
+    SIM.beam.spectrum = list(zip(spec_wvs, spec_wts))
+    SIM.D.xray_beams = SIM.beam.xray_beams
 
 
 def sanity_test_input_lines(input_lines):

@@ -5,6 +5,7 @@ import sys
 # LIBTBX_SET_DISPATCHER_NAME diffBragg.hopper_process
 
 from dials.command_line.stills_process import Processor
+from xfel.small_cell.small_cell import small_cell_index_detail
 from simtbx.diffBragg import hopper_utils
 from dials.array_family import flex
 from simtbx.command_line.hopper import save_to_pandas
@@ -21,8 +22,9 @@ from simtbx.modeling import predictions
 logger = logging.getLogger("dials.command_line.stills_process")
 
 
+#include scope dials.command_line.stills_process.phil_scope
 phil_str = """
-include scope dials.command_line.stills_process.phil_scope
+include scope xfel.small_cell.command_line.small_cell_process.phil_scope
 diffBragg {
   include scope simtbx.command_line.hopper.phil_scope
 }
@@ -59,6 +61,9 @@ db_loglevel = 0 1 *2
 refine_predictions = False
   .type = bool
   .help = optionally refine the list of predicted reflections before integrating
+use_small_cell_indexing = False
+  .type = bool
+  .help = use this to index sparse patterns from small unit cell xtals with at least 3 reflections
 """
 import os
 from libtbx.phil import parse
@@ -100,6 +105,15 @@ class Hopper_Processor(Processor):
         dblog.addHandler(H)
 
         self._create_modeler_dir()
+
+    def index(self, experiments, reflections):
+        """optionally do small cell indexing , else default to stills process"""
+        if self.params.use_small_cell_indexing:
+            max_clique_len, experiments, indexed = small_cell_index_detail(experiments, reflections, self.params, write_output=False)
+        else:
+            experiments, indexed = super(Hopper_Processor, self).index(experiments, reflections)
+
+        return experiments, indexed
 
     def _create_modeler_dir(self):
         """makes the directory where data modelers, logs, and spectra files will be written"""

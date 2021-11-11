@@ -44,6 +44,10 @@ spectrum_from_imageset = False
   .type = bool
   .help = if True, load the spectrum from the imageset in the experiment, then probably downsample it
   .expert_level=0
+gen_gauss_spec = False
+  .type = bool
+  .help = If the experimental data dont include spectra, one can try generating gaussian spectra.
+  .help = See the diffBragg/phil.py under simulator.spectrum.gauss_spec.
 isotropic {
   diffuse_gamma = False
     .type = bool
@@ -651,6 +655,17 @@ simulator {
     filename_list = None
       .type = str
       .help = path to a file containing 1 .lam filename per line
+  gauss_spec {
+    fwhm = 10
+      .type = float
+      .help = width of the gaussian in electron volts
+    nchannels = 20
+      .type = int
+      .help = total number of spectrum energies, centered on the shots nominal energy as determined from format class
+    res = 1
+      .type = float
+      .help = energy resolution of the spectrum
+    }
   }
   beam {
     size_mm = 1
@@ -887,6 +902,10 @@ roi {
   allow_overlapping_spots = False
     .type = bool
     .help = if True, then model overlapping spots
+  skip_roi_with_negative_bg = True
+    .type = bool
+    .help = If a region of interest contains negative background model, then skip entire region,else
+    .help = mask the pixels with negative background model.
 }
 
 geometry {

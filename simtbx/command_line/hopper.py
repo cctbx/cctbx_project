@@ -43,7 +43,6 @@ from simtbx.diffBragg import utils
 from simtbx.diffBragg.phil import philz
 
 import logging
-from simtbx.diffBragg import mpi_logger
 from simtbx.diffBragg.phil import hopper_phil
 
 
@@ -86,6 +85,7 @@ class Script:
             self.params.logging.logname = "main_stage1.log"
         if self.params.profile_name is None:
             self.params.profile_name = "prof_stage1.log"
+        from simtbx.diffBragg import mpi_logger
         mpi_logger.setup_logging_from_params(self.params)
 
     def run(self):
