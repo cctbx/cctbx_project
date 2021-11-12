@@ -8,7 +8,7 @@ from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 import os
 
-VERBOSE=1
+VERBOSE=False
 
 external_energy_params_str = ""
 
