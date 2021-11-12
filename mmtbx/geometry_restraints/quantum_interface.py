@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 
 def env_exists_exists(env, var, check=True):

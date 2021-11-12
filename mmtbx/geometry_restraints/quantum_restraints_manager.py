@@ -1,4 +1,4 @@
-import os
+from __future__ import division
 from io import StringIO
 
 from libtbx import Auto
@@ -269,5 +269,3 @@ def update_restraints(model,
 
 if __name__ == '__main__':
   print(quantum_chemistry_scope)
-
-
