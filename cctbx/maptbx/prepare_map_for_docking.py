@@ -10,6 +10,7 @@ from scitbx.dtmin.refinebase import RefineBase
 from scitbx.dtmin.reparams import Reparams
 from scitbx.dtmin.bounds import Bounds
 from cctbx import adptbx
+import sys
 
 class RefineCryoemErrors(RefineBase):
   # Set up refinement class for dtmin minimiser (based on Phaser minimiser)
@@ -382,6 +383,7 @@ class RefineCryoemErrors(RefineBase):
 
     else:
       print("Macrocycle protocol", macrocycle_protocol, " not recognised")
+      sys.stdout.flush()
       exit
 
     # Now accumulate mask
@@ -1079,6 +1081,7 @@ def run_refine_cryoem_errors(
   if (prior_params is not None):
     if d_min < 0.99*math.sqrt(1./prior_params['ssqmax']):
       print("Requested resolution is higher than prior parameters support")
+      sys.stdout.flush()
       exit
     ssqr_prior = tuple(prior_params['ssqr_bins'])
     sigmaT_prior = tuple(prior_params['sigmaT_bins'])
@@ -1184,6 +1187,7 @@ def run_refine_cryoem_errors(
     print("  Eigenvalues and eigenvectors:")
     for iv in range(3):
       print("  ",es.values()[iv],es.vectors(iv))
+    sys.stdout.flush()
 
   # Loop over bins to compute expectedE and Dobs for each Fourier term
   # Start with mean of half-map Fourier terms and make Miller array for Dobs
@@ -1228,6 +1232,7 @@ def run_refine_cryoem_errors(
     mapCC = mc1sel.map_correlation(other=mc2sel)
     if (verbosity > 0):
       print(i_bin_used+1, ssqr_bins[i_bin_used], mapCC_bins[i_bin_used], mapCC)
+      sys.stdout.flush()
     mapCC_bins[i_bin_used] = mapCC # Update for returned output
     i_bin_used += 1
 
@@ -1332,6 +1337,7 @@ def run():
   radius = None
   if args.mask is not None:
     print("Mask file is not yet implemented")
+    sys.stdout.flush()
     exit
   elif args.sphere_cent is not None:
     assert args.radius is not None
@@ -1372,8 +1378,8 @@ def run():
   # The following could loop over different regions
   if mask_specified:
     # Refine to get scale and error parameters for docking region
-    results = run_refine_cryoem_errors(mmm, d_min, sphere_cent=sphere_cent,
-      radius=radius, prior_params=prior_params,
+    results = run_refine_cryoem_errors(mmm, d_min, verbosity=verbosity,
+      sphere_cent=sphere_cent, radius=radius, prior_params=prior_params,
       shift_map_origin=shift_map_origin)
 
   expectE = results.expectE
@@ -1395,6 +1401,7 @@ def run():
   over_sampling_factor = results.over_sampling_factor
   print ("Over-sampling factor for Fourier terms:",over_sampling_factor)
   print ("Weighted volume of density:",results.masked_volume)
+  sys.stdout.flush()
 
 if (__name__ == "__main__"):
   run()
