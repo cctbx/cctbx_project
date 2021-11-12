@@ -8,7 +8,31 @@ from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 import os
 
+VERBOSE=1
+
 external_energy_params_str = ""
+
+amber_installed = False
+if libtbx.env.has_module("amber_adaptbx"):
+  build_dir = libtbx.env.under_build("amber_adaptbx")
+  try: import sander
+  except ImportError as e: sander = False
+  if sander:
+  #if (build_dir is not None) and (os.path.isdir(build_dir)):
+    amber_installed = True
+
+if VERBOSE:
+  print(libtbx.env.has_module("amber_adaptbx"))
+
+if (amber_installed):
+  external_energy_params_str += """
+    amber
+      .help = Parameters for using Amber in refinement.
+      .expert_level = 3
+    {
+      include scope amber_adaptbx.master_phil_str
+    }
+"""
 
 qb_installed = os.environ.get("QBHOME", False)
 if qb_installed: qb_installed = os.path.isdir(qb_installed)
@@ -86,3 +110,7 @@ from mmtbx.geometry_restraints.quantum_interface import is_any_quantum_package_i
 any_quantum_package_installed = is_any_quantum_package_installed(os.environ)
 if any_quantum_package_installed:
   external_energy_params_str += any_quantum_package_installed
+
+if __name__=='__main__':
+  print('external_energy_params_str',external_energy_params_str)
+  assert external_energy_params_str.find('amber')>-1
