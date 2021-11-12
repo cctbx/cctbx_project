@@ -42,7 +42,7 @@ def digester(model,
   # qm_managers = []
   make_header('QM Restraints Initialisation', out=log)
   for i, qmr in enumerate(params.qi.qm_restraints):
-    print('  Selection %2d: %s' % (i+1, qmr.selection))
+    print('  Selection %2d: %s' % (i+1, qmr.selection), file=log)
     ligand_model, buffer_model = get_ligand_buffer_models(model, qmr)
     qmm = get_qm_manager(ligand_model, buffer_model, qmr)
     # print(qmm)
@@ -186,7 +186,7 @@ def update_restraints(model,
   for i, ((ligand_model, buffer_model, qmm), xyz) in enumerate(zip(objects, xyzs)):
     if i: print(' ',file=log)
     print('  Updating QM restraints: %s' % qmr.selection, file=log)
-    print(show_ligand_buffer_models(ligand_model, buffer_model))
+    print(show_ligand_buffer_models(ligand_model, buffer_model), file=log)
     gs = ligand_model.geometry_statistics()
     print('  Starting stats: %s' % gs.show_bond_and_angle(), file=log)
     #
