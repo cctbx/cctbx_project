@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import,division, print_function
 import os
 
 def env_exists_exists(env, var, check=True):
@@ -17,15 +17,13 @@ program_options = {
   'orca' : (is_orca_installed, 'PHENIX_ORCA'),
   'test' : (is_qm_test_installed, 'PHENIX_QM_TEST'),
   }
-programs = ''
-for package, (func, var) in program_options.items():
-  if func(os.environ, var):
-    programs += ' %s' % package
 
-qm_package_scope = '''
+
+def get_qm_restraints_scope(verbose=False):
+  qm_package_scope = '''
   package
   {
-    program = %(programs)s
+    program = %s
       .type = choice
     charge = Auto
       .type = int
@@ -36,9 +34,9 @@ qm_package_scope = '''
     basis_set = Auto
       .type = str
   }
-''' % locals()
+'''
 
-qm_restraints_scope = '''
+  qm_restraints_scope = '''
 qm_restraints
   .multiple = True
 {
@@ -55,9 +53,20 @@ qm_restraints
     .type = bool
   cleanup = True
     .type = bool
-  %(qm_package_scope)s
+  %s
 }
-''' % locals()
+'''
+  programs = ''
+  for package, (func, var) in program_options.items():
+    if func(os.environ, var):
+      if package=='orca':
+        programs += ' *%s' % package
+      else:
+        programs += '   %s' % package
+  if verbose: print(programs)
+  qm_package_scope = qm_package_scope % programs
+  qm_restraints_scope = qm_restraints_scope % qm_package_scope
+  return qm_restraints_scope
 
 def orca_action():
   outl = '''
@@ -100,7 +109,7 @@ def is_any_quantum_package_installed(env):
   {
     %s
   }
-''' % qm_restraints_scope
+''' % get_qm_restraints_scope()
   return outl
 
 def validate_qm_restraints(qm_restraints):
@@ -131,9 +140,20 @@ def digester(model, geometry, params, log=None):
 
 def main():
   print('testing QI')
+  for var, item in program_options.items():
+    if item[1] in os.environ: os.environ.pop(item[1])
   assert 'PHENIX_ORCA' not in os.environ
   rc = is_any_quantum_package_installed(os.environ)
   assert not rc
+  for var1, item1 in program_options.items():
+    os.environ[item1[1]]=os.getcwd()
+    for var2, item2 in program_options.items():
+      os.environ[item2[1]]=os.getcwd()
+      rc = is_any_quantum_package_installed(os.environ)
+      rc = get_qm_restraints_scope(verbose=True)
+      # print(rc)
+      os.environ.pop(item2[1])
+    if item1[1] in os.environ: os.environ.pop(item1[1])
 
 if __name__ == '__main__':
   main()
