@@ -1909,7 +1909,7 @@ def get_chain_type(model=None, hierarchy=None,
   if count_protein and count_rna_dna:
     if return_protein_if_present:
       return "PROTEIN"
-    else: 
+    else:
       raise Sorry(
         "Model contains both protein "+
        "(%s atoms) and rna/dna (%s atoms)...only one chain type allowed" %(
