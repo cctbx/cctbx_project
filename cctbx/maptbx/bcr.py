@@ -44,15 +44,22 @@ from mmtbx.ncs import tncs
 #
 ######################################################
 
-def chi(B, R, r, small=1.e-6):
+def gauss(B, C, r):
   assert B>0
-  assert abs(B)>small
-  assert abs(R)>small
-  assert abs(r)>small
+  fpob = 4 * math.pi / B
+  return C * fpob**1.5 * math.exp(-fpob*math.pi*r**2)
+
+def chi(B, R, r):
+  assert B>0
+  assert R>0
+  assert r>=0
   mfpsob = (-4*math.pi**2)/B
-  e1 = math.exp(mfpsob*(r-R)**2)
-  e2 = math.exp(mfpsob*(r+R)**2)
-  return (4*math.pi*B)**(-0.5) * (1/(r*R)) * (e1-e2)
+  if(r==0):
+    return ((4*math.pi/B)**1.5) * math.exp(mfpsob*R**2)
+  else:
+    e1 = math.exp(mfpsob*(r-R)**2)
+    e2 = math.exp(mfpsob*(r+R)**2)
+    return (4*math.pi*B)**(-0.5) * (1/(r*R)) * (e1-e2)
 
 class calculator(object):
 

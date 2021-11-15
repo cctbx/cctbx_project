@@ -1469,7 +1469,16 @@ Fourier image of specified resolution, etc.
     for r in im.radii:
       first = 0
       second = 0
-      #for B, C, R in zip(bpeak, cpeak, rpeak):
+      for B, C, R in zip(bpeak, cpeak, rpeak):
+        if(abs(R)<1.e-6):
+          first += bcr.gauss(B=B, C=C, r=r)
+        else:
+          second += C*bcr.chi(B=B, R=R, r=r)
+      bcr_approx_values.append(first + second)
+    return group_args(
+      radii             = im.radii,
+      image_values      = im.image_values,
+      bcr_approx_values = bcr_approx_values)
 
   def image(self,
             d_min,
