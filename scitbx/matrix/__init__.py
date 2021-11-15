@@ -1693,7 +1693,7 @@ def exercise_1():
   assert approx_equal(x.angle(y, deg=True), 25.6685689758)
   assert approx_equal(y, (0.2739222799, -0.5364841936, -0.6868857244))
 
-  # Check that a rotation of 0° around a dummy axis of (0, 0, 0) is tolerated.
+  # Check that a rotation of 0 degrees around a dummy axis of (0, 0, 0) is tolerated.
   zero_rotation = col((0, 0, 0)).axis_and_angle_as_unit_quaternion(angle=0)
   assert approx_equal(zero_rotation, (1, 0, 0, 0))
   # Check that we can therefore do a round trip from R3 identity matrix to axis and
