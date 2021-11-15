@@ -452,6 +452,10 @@ class rec(object):
   def axis_and_angle_as_unit_quaternion(self, angle, deg=False):
     assert self.n in ((3,1), (1,3))
     if (deg): angle *= math.pi/180
+
+    if not angle % (2 * math.pi):
+      return col((1, 0, 0, 0))
+
     h = angle * 0.5
     c, s = math.cos(h), math.sin(h)
     u,v,w = self.normalize().elems
@@ -1688,6 +1692,17 @@ def exercise_1():
   assert approx_equal(abs(y), 0.913597670681)
   assert approx_equal(x.angle(y, deg=True), 25.6685689758)
   assert approx_equal(y, (0.2739222799, -0.5364841936, -0.6868857244))
+
+  # Check that a rotation of 0 degrees around a dummy axis of (0, 0, 0) is tolerated.
+  zero_rotation = col((0, 0, 0)).axis_and_angle_as_unit_quaternion(angle=0)
+  assert approx_equal(zero_rotation, (1, 0, 0, 0))
+  # Check that we can therefore do a round trip from R3 identity matrix to axis and
+  # angle and back again.
+  id = identity(3)
+  q = id.r3_rotation_matrix_as_unit_quaternion()
+  angle, axis = q.unit_quaternion_as_axis_and_angle()
+  assert approx_equal(axis.axis_and_angle_as_r3_rotation_matrix(angle), id)
+
   uq = a.axis_and_angle_as_unit_quaternion(angle=37, deg=True)
   assert approx_equal(uq, (0.94832366, 0.15312122, 0.04372175, -0.27445317))
   r = uq.unit_quaternion_as_r3_rotation_matrix()
