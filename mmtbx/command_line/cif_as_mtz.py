@@ -302,6 +302,8 @@ def extract(file_name,
   complete_set = make_joined_set(all_arrays)
   if return_as_miller_arrays:
     miller_array_list=[]
+  current_i = -1
+  uc = None
   for i, (data_name, miller_arrays) in enumerate(six.iteritems(all_miller_arrays)):
     for ma in miller_arrays.values():
       #ma = ma.customized_copy(
@@ -333,12 +335,21 @@ def extract(file_name,
         label += "%i" %crys_id
       if crystal_id is not None and crys_id > 0 and crys_id != crystal_id:
         continue
-      if crys_id not in mtz_crystals:
+
+      if ma.unit_cell() is not None: # use symmetry file on the command line if it's None
+        unit_cell = ma.unit_cell()
+
+      if crys_id not in mtz_crystals or \
+        (i > current_i and unit_cell is not None and unit_cell.parameters() != uc.parameters()):
+        # Ensure new mtz crystals are created if miller_array objects have different unit cells
+        # Can happen if there are more datasets in the same cif file, like MAD datasets
+        uc = unit_cell
+        i = current_i
         mtz_crystals[crys_id] = (
           mtz_object.add_crystal(
             name="crystal_%i" %crys_id,
             project_name="project",
-            unit_cell=unit_cell), {})
+            unit_cell =uc), {})
       crystal, datasets = mtz_crystals[crys_id]
       w_id = 0
       for l in labels:
@@ -680,6 +691,4 @@ def finish_job(results):
   return ([], [])
 
 if(__name__ == "__main__"):
-  import time
-  #time.sleep(10)
   run(sys.argv[1:])
