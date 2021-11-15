@@ -109,21 +109,22 @@ class place_hydrogens():
 #    f.write(self.model.model_as_pdb())
 
     # place N-terminal propeller hydrogens
-    for m in pdb_hierarchy.models():
-      for chain in m.chains():
-        rgs = chain.residue_groups()[0]
-        # by default, place NH3 only at residue with resseq 1
-        if (self.n_terminal_charge == 'residue_one' and rgs.resseq_as_int() != 1):
-          continue
-        elif (self.n_terminal_charge == 'first_in_chain'):
-          pass
-        for ag in rgs.atom_groups():
-          if (get_class(name=ag.resname) in
-              ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
-            if ag.get_atom("H"):
-              ag.remove_atom(ag.get_atom('H'))
-          rc = add_n_terminal_hydrogens_to_residue_group(rgs)
-          # rc is always empty list?
+    if self.n_terminal_charge != 'no_charge':
+      for m in pdb_hierarchy.models():
+        for chain in m.chains():
+          rgs = chain.residue_groups()[0]
+          # by default, place NH3 only at residue with resseq 1
+          if (self.n_terminal_charge == 'residue_one' and rgs.resseq_as_int() != 1):
+            continue
+          elif (self.n_terminal_charge == 'first_in_chain'):
+            pass
+          for ag in rgs.atom_groups():
+            if (get_class(name=ag.resname) in
+                ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
+              if ag.get_atom("H"):
+                ag.remove_atom(ag.get_atom('H'))
+            rc = add_n_terminal_hydrogens_to_residue_group(rgs)
+            # rc is always empty list?
 
     pdb_hierarchy.sort_atoms_in_place()
     pdb_hierarchy.atoms().reset_serial()

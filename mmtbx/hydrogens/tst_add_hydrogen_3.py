@@ -36,12 +36,13 @@ def test_000(pdb_str):
 
 def test_001(pdb_str):
   '''
-    Check keyword n_terminal_charge: NH3 on resseq 1 or first residue in chain
+    Check keyword n_terminal_charge:
+    NH3 on resseq 1, first residue in chain, or no NH3 at all
   '''
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   # initial model
   model_initial = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
-
+  #
   # place H atoms: NH3 at resseq 1 only
   reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model_initial)
   reduce_add_h_obj.run()
@@ -69,6 +70,21 @@ def test_001(pdb_str):
   assert(h_names_added.count(' H1 ')==3)
   assert(h_names_added.count(' H2 ')==3)
   assert(h_names_added.count(' H3 ')==3)
+  #
+  # place H atoms: no NH3
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+    model = model_initial,
+    n_terminal_charge = 'no_charge')
+  reduce_add_h_obj.run()
+  model_h_added = reduce_add_h_obj.get_model()
+  #
+  hd_sel_h_added = model_h_added.get_hd_selection()
+  ph_h_added     = model_h_added.get_hierarchy()
+  h_atoms_added = ph_h_added.select(hd_sel_h_added).atoms()
+  h_names_added = list(h_atoms_added.extract_name())
+  assert(h_names_added.count(' H1 ')==0)
+  assert(h_names_added.count(' H2 ')==0)
+  assert(h_names_added.count(' H3 ')==0)
 
 # ------------------------------------------------------------------------------
 

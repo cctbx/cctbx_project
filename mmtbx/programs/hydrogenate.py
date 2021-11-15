@@ -15,7 +15,7 @@ keep_existing_H = False
   .type = bool
   .help = Keep existing H atoms in the model
 
-n_terminal_charge = *residue_one first_in_chain
+n_terminal_charge = *residue_one first_in_chain no_charge
   .type = choice(multi=False)
   .help = Mode for placing H3 at terminal nitrogen.
 
