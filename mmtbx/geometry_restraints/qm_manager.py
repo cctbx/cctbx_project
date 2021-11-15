@@ -49,7 +49,7 @@ class base_manager():
       outl += '  %s\n' % atom.quote()
     return outl
 
-  def get_opt(self):
+  def get_opt(self, cleanup=False):
     import random
     rc = []
     for atom in self.atoms:
@@ -57,11 +57,15 @@ class base_manager():
       for i in range(3):
         rc[-1].append(atom.xyz[i]+(random.random()-0.5)/10)
     return flex.vec3_double(rc)
+
+  def get_timings(self, energy=False):
+    return '-'
 #
 # ORCA
 #
 def run_orca_cmd(cmd, verbose=False):
   if verbose: print('run_orca_cmd',cmd)
+  return 1
   rc = easy_run.go(cmd)
   if rc.stderr_lines:
     print('stderr')
@@ -155,8 +159,9 @@ class orca_manager(base_manager):
     del f
 
   def get_cmd(self):
-    cmd = '%s orca_%s.in' % (
+    cmd = '%s orca_%s.in >& orca_%s.log' % (
       os.environ['PHENIX_ORCA'],
+      self.preamble,
       self.preamble,
       )
     return cmd
@@ -179,13 +184,13 @@ class orca_manager(base_manager):
     outl += '*\n'
     return outl
 
-  def print_timings(self, energy=None, log=StringIO()):
+  def get_timings(self, energy=None):
     f='  Timings : %0.2fs (%ss)' % (
       self.times[-1],
       self.times.format_mean(format='%.2f'))
     if energy:
       f+=' Energy : %0.6f' % energy
-    print(f, file=log)
+    return f
 
   def get_engrad(self):
     outl = '! %s %s %s EnGrad\n\n' % (self.method,

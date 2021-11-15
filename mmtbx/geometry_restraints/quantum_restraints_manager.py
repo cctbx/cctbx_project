@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import,division, print_function
 from io import StringIO
 
 from libtbx import Auto
@@ -42,7 +42,7 @@ def digester(model,
   # qm_managers = []
   make_header('QM Restraints Initialisation', out=log)
   for i, qmr in enumerate(params.qi.qm_restraints):
-    print('  Selection %2d: %s' % (i+1, qmr.selection))
+    print('  Selection %2d: %s' % (i+1, qmr.selection), file=log)
     ligand_model, buffer_model = get_ligand_buffer_models(model, qmr)
     qmm = get_qm_manager(ligand_model, buffer_model, qmr)
     # print(qmm)
@@ -54,7 +54,11 @@ def digester(model,
   # qm_grm.qm_managers = qm_managers
   return qm_grm
 
-def select_and_reindex(model, selection_str=None, selection_array=None):
+def select_and_reindex(model,
+                       selection_str=None,
+                       selection_array=None,
+                       reindex=True,
+                       verbose=False):
   from cctbx.array_family import flex
   from scitbx_array_family_flex_ext import reindexing_array
   def _reindexing(mod, sel, verbose=False):
@@ -66,13 +70,14 @@ def select_and_reindex(model, selection_str=None, selection_array=None):
       atoms[ra[i_seq]].tmp=i_seq
     if verbose:
       for atom in mod.get_atoms():
-        print(atom.quote(), atom.tmp)
+        print(atom.quote(), atom.i_seq, atom.tmp)
     return mod
   assert (selection_array, selection_str).count(None)==1
   if selection_str:
     selection_array = model.selection(selection_str)
   selected_model = model.select(selection_array)
-  rc = _reindexing(selected_model, selection_array)
+  if reindex:
+    rc = _reindexing(selected_model, selection_array, verbose=verbose)
   return selected_model
 
 def get_ligand_buffer_models(model, qmr, verbose=False):
@@ -86,7 +91,7 @@ def show_ligand_buffer_models(ligand_model, buffer_model):
   outl = '    Core atoms\n'
   ags = []
   for atom in ligand_model.get_atoms():
-    outl += '      %s\n' % (atom.id_str().replace('pdb=',''))
+    outl += '      %s (%5d)\n' % (atom.id_str().replace('pdb=',''), atom.tmp)
   for atom in buffer_model.get_atoms():
     agi = atom.parent().id_str()
     if agi not in ags: ags.append(agi)
@@ -150,6 +155,7 @@ def update_restraints(model,
                       ):
   objects = []
   for i, qmr in enumerate(params.qm_restraints):
+    if not i: print('  QM restraints calculations')
     preamble = quantum_interface.get_preamble(macro_cycle, i, qmr.selection)
     #
     # get ligand and buffer region models
@@ -157,12 +163,16 @@ def update_restraints(model,
     ligand_model, buffer_model = get_ligand_buffer_models(model, qmr)
     if qmr.write_pdb_core:
       outl = ligand_model.model_as_pdb()
-      f=open('ligand_%s.pdb' % preamble, 'w')
+      lf = 'ligand_%s.pdb' % preamble
+      print('    Writing ligand : %s' % lf)
+      f=open(lf, 'w')
       f.write(outl)
       del f
     if qmr.write_pdb_buffer:
       outl = buffer_model.model_as_pdb()
-      f=open('cluster_%s.pdb' % preamble, 'w')
+      lf = 'cluster_%s.pdb' % preamble
+      print('    Writing cluster: %s' % lf)
+      f=open(lf, 'w')
       f.write(outl)
       del f
     #
@@ -171,6 +181,7 @@ def update_restraints(model,
     qmm = get_qm_manager(ligand_model, buffer_model, qmr)
     qmm.preamble=preamble
     objects.append([ligand_model, buffer_model, qmm])
+  print('',file=log)
   #
   # optimise
   #
@@ -178,15 +189,21 @@ def update_restraints(model,
   xyzs = []
   for i, (ligand_model, buffer_model, qmm) in enumerate(objects):
     xyz = qmm.get_opt(cleanup=qmr.cleanup)
-    # qmm.print_timings(log=log)
+    print('  Time for calculation of "%s" using %s %s: %s' % (
+      qmr.selection,
+      qmr.package.method,
+      qmr.package.basis_set,
+      qmm.get_timings().split(':')[-1],
+      ))
     xyzs.append(xyz)
+  print('',file=log)
   #
   # update model restraints
   #
   for i, ((ligand_model, buffer_model, qmm), xyz) in enumerate(zip(objects, xyzs)):
     if i: print(' ',file=log)
-    print('  Updating QM restraints: %s' % qmr.selection, file=log)
-    print(show_ligand_buffer_models(ligand_model, buffer_model))
+    print('  Updating QM restraints: "%s"' % qmr.selection, file=log)
+    print(show_ligand_buffer_models(ligand_model, buffer_model), file=log)
     gs = ligand_model.geometry_statistics()
     print('  Starting stats: %s' % gs.show_bond_and_angle(), file=log)
     #
@@ -198,10 +215,11 @@ def update_restraints(model,
     #
     # remove H/D before transfer
     #
-    if ligand_model.has_hd():
+    if ligand_model.has_hd() and 0:
       hd_selection = ligand_model.get_hd_selection()
       ligand_model = select_and_reindex(ligand_model,
-                                        selection_array=~hd_selection)
+                                        selection_array=~hd_selection,
+                                        reindex=False)
     #
     # transfer geometry to proxies
     #  - bonds
@@ -221,6 +239,8 @@ def update_restraints(model,
       i_atom=atoms[i_seq]
       j_atom=atoms[j_seq]
       i_seqs=[i_seq, j_seq]
+      if i_atom.element_is_hydrogen(): continue
+      if j_atom.element_is_hydrogen(): continue
       bond=ligand_grm.geometry.bond_params_table.lookup(*list(i_seqs))
       print('    %s - %s %5.2f ~> %5.2f' % (i_atom.id_str().replace('pdb=',''),
                                             j_atom.id_str().replace('pdb=',''),
@@ -240,6 +260,12 @@ def update_restraints(model,
     model_lookup = {}
     for info in sorted_table:
       (i_seqs, angle_ideal, angle_model, delta, sigma, weight, residual) = info
+      i_atom=atoms[int(i_seqs[0])]
+      j_atom=atoms[int(i_seqs[1])]
+      k_atom=atoms[int(i_seqs[2])]
+      if i_atom.element_is_hydrogen(): continue
+      if j_atom.element_is_hydrogen(): continue
+      if k_atom.element_is_hydrogen(): continue
       key = (int(i_seqs[0]), int(i_seqs[1]), int(i_seqs[2]))
       ligand_lookup[key]=angle_model
       print('    %s - %s - %s %5.2f ~> %5.2f' % (atoms[key[0]].id_str().replace('pdb=',''),
@@ -254,10 +280,11 @@ def update_restraints(model,
       key = (atoms[key[2]].tmp, atoms[key[1]].tmp, atoms[key[0]].tmp)
       model_lookup[key]=angle_model
     for angle_proxy in ligand_grm.geometry.angle_proxies:
-      angle = ligand_lookup.get(angle_proxy.i_seqs)
+      angle = ligand_lookup.get(angle_proxy.i_seqs, None)
+      if angle is None: continue
       angle_proxy.angle_ideal=angle
     for angle_proxy in model_grm.geometry.angle_proxies:
-      angle = model_lookup.get(angle_proxy.i_seqs)
+      angle = model_lookup.get(angle_proxy.i_seqs, None)
       if angle is None: continue
       angle_proxy.angle_ideal=angle
     print('', file=log)

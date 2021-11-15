@@ -1886,9 +1886,11 @@ def get_chain_type_of_chain(chain):
   mm.append_chain(cc)
   return get_chain_type(hierarchy = new_hierarchy)
 
-def get_chain_type(model=None, hierarchy=None):
+def get_chain_type(model=None, hierarchy=None,
+     return_protein_if_present = False):
   '''
-   Identify chain type in a hierarchy or model and require only one chain type
+   Identify chain type in a hierarchy or model and require only one chain type.
+   if return_protein_if_present and protein is present, return PROTEIN
   '''
 
   if not hierarchy:
@@ -1905,7 +1907,10 @@ def get_chain_type(model=None, hierarchy=None):
   count_rna_dna= hierarchy_rna_dna.atoms().extract_xyz().size()
 
   if count_protein and count_rna_dna:
-    raise Sorry(
+    if return_protein_if_present:
+      return "PROTEIN"
+    else:
+      raise Sorry(
         "Model contains both protein "+
        "(%s atoms) and rna/dna (%s atoms)...only one chain type allowed" %(
        count_protein,count_rna_dna))
