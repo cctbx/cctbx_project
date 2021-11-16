@@ -41,6 +41,13 @@ def run_program(program_class=None, custom_process_arguments=None,
   if args is None:
     args = sys.argv[1:]
 
+  # start profiling
+  pr = None
+  if '--profile' in args:
+    import cProfile
+    pr = cProfile.Profile()
+    pr.enable()
+
   # create logger
   if logger is None:
     logger = multi_out()
@@ -71,6 +78,11 @@ def run_program(program_class=None, custom_process_arguments=None,
 
   # clean up (optional)
   task.clean_up()
+
+  # dump profiling stats
+  if pr is not None:
+    pr.disable()
+    pr.dump_stats('profile.out')
 
   # stop timer
   print('', file=logger)
@@ -297,6 +309,16 @@ class CCTBXParser(ParserBase):
     self.add_argument(
       '--overwrite', action='store_true', default=False,
       help='overwrite files, this overrides the output.overwrite PHIL parameter'
+    )
+
+    # --profile
+    # enable profiling output
+    # the output file is hardcoded to "profile.out" to avoid parsing confusion
+    # e.g. --profile model.pdb should pass model.pdb to the program, not dump
+    # the profiling stats to model.pdb.
+    self.add_argument(
+      '--profile', action='store_true', default=False,
+      help='enable profiling and outputs statistics to a file (profile.out).'
     )
 
     # --citations will use the default format
