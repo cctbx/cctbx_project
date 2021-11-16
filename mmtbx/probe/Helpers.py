@@ -239,8 +239,8 @@ def isPolarHydrogen(atom, bondedNeighborLists):
     mmtbx.probe.Helpers.getBondedNeighborLists().
     :return: True if the atom is a polar hydrogen.
   '''
-  if a.element_is_hydrogen():
-    neighbors = bondedNeighborLists[a]
+  if atom.element_is_hydrogen():
+    neighbors = bondedNeighborLists[atom]
     if len(neighbors) == 1 and neighbors[0].element in ['N', 'O', 'S']:
       return True
   return False
