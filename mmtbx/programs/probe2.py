@@ -33,6 +33,10 @@ run_tests = False
   .type = bool
   .help = Run unit tests before doing the requested operations
 
+profile = False
+  .type = bool
+  .help = Profile the performance of the entire run
+
 source_selection = "(altid a or altid '' or altid ' ') and occupancy > 0.33"
   .type = atom_selection
   .help = Source selection description
@@ -1560,6 +1564,12 @@ Note:
     if self.params.probe.contact_cutoff < self.params.probe.radius:
       self.params.probe.contact_cutoff = self.params.probe.radius
 
+    # Turn on profiling if we've been asked to in the Phil parameters
+    if self.params.profile:
+      import cProfile
+      self._pr = cProfile.Profile()
+      self._pr.enable()
+
 # ------------------------------------------------------------------------------
 
   def run(self):
@@ -2168,6 +2178,15 @@ Note:
     of = open(self.params.output.file_name,"w")
     of.write(outString)
     of.close()
+
+    # Report profiling info if we've been asked to in the Phil parameters
+    if self.params.profile:
+      print('Profile results:')
+      import pstats
+      profile_params = {'sort_by': 'time', 'num_entries': 20}
+      self._pr.disable()
+      ps = pstats.Stats(self._pr).sort_stats(profile_params['sort_by'])
+      ps.print_stats(profile_params['num_entries'])
 
 # ------------------------------------------------------------------------------
 

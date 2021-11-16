@@ -48,6 +48,9 @@ alt_id = None
 add_flip_movers = False
   .type = bool
   .help = Insert flip movers (-flip, -build, -noflip, -demandflipallnhqs in reduce)
+profile = False
+  .type = bool
+  .help = Profile the performance of the entire run
 
 output
   .style = menu_item auto_align
@@ -125,6 +128,12 @@ NOTES:
     #  raise Sorry("Must specify output.model_file_name")
     if self.params.output.description_file_name is None:
       raise Sorry("Must specify output.description_file_name")
+
+    # Turn on profiling if we've been asked to in the Phil parameters
+    if self.params.profile:
+      import cProfile
+      self._pr = cProfile.Profile()
+      self._pr.enable()
 
 # ------------------------------------------------------------------------------
 
@@ -216,6 +225,15 @@ NOTES:
       f.write(txt)
 
     print('Wrote',fullname,'and',self.params.output.description_file_name, file = self.logger)
+
+    # Report profiling info if we've been asked to in the Phil parameters
+    if self.params.profile:
+      print('Profile results:')
+      import pstats
+      profile_params = {'sort_by': 'time', 'num_entries': 20}
+      self._pr.disable()
+      ps = pstats.Stats(self._pr).sort_stats(profile_params['sort_by'])
+      ps.print_stats(profile_params['num_entries'])
 
 # ------------------------------------------------------------------------------
 
