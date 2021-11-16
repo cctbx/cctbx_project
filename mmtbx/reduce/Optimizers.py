@@ -1267,7 +1267,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
       infoString += _VerboseCheck(1,"Not attempting to adjust "+resNameAndID+" "+aName+"\n")
     if addFlipMovers and ((aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN')):
       # See if the Nitrogen is within a range of ideal bonding distances to a positive ion.
-      # If so, we mark the attached Hydrogen for deletion and skip adding a Mover.
+      # If so, we skip adding a Mover.
       # @todo Why are we checking both flips for Histidine but only one here?
       myRad = extraAtomInfo.getMappingFor(a).vdwRadius
       minDist = myRad
@@ -1284,22 +1284,6 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           # @todo Why are we using -0.65 here and -0.55 for Histidine?
           if dist >= (expected - 0.65) and dist <= (expected + 0.25):
             foundIon = True
-            infoString += _VerboseCheck(1,'Removing Hydrogen from '+resNameAndID+a.name+' and marking as an acceptor '+
-              '(ionic bond to '+n.name.strip()+')\n')
-            # Find the bonded Hydrogen and mark it for removal.  Mark the Nitrogen as an acceptor.
-            hydro = None
-            for b in bondedNeighborLists[a]:
-              if b.element_is_hydrogen():
-                hydro = b
-                break
-            if hydro is None:
-              raise Sorry("No bonded Hydrogen found for Nitrogen in HN2Flip test")
-            else:
-              extra = extraAtomInfo.getMappingFor(a)
-              extra.isAcceptor = True
-              extraAtomInfo.setMappingFor(a, extra)
-              deleteAtoms.append(hydro)
-            break
 
       if not foundIon:
         try:
