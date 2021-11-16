@@ -19,7 +19,7 @@ from iotbx.data_manager import DataManager
 from mmtbx.process_predicted_model import split_model_into_compact_units, \
    get_cutoff_b_value, \
    get_b_values_from_lddt, get_rmsd_from_lddt, \
-   process_predicted_model, master_phil_str
+   process_predicted_model, master_phil_str, get_lddt_from_b
 
 from mmtbx.domains_from_pae import parse_pae_file
 master_phil = iotbx.phil.parse(master_phil_str)
@@ -73,6 +73,12 @@ def tst_01(log = sys.stdout):
   b_values = get_b_values_from_lddt(lddt_values)
   print("B-value mean:",b_values.min_max_mean().mean)
   assert approx_equal(b_values.min_max_mean().mean, 24.7254093338)
+
+  # Convert b to lddt
+  lddt = get_lddt_from_b(b_values)
+  assert approx_equal(lddt,fractional_lddt)
+  lddt = get_lddt_from_b(b_values, input_lddt_is_fractional=False)
+  assert approx_equal(lddt,lddt_values)
 
   # Convert  lddt to rmsd
   rmsd_values = get_rmsd_from_lddt(lddt_values)

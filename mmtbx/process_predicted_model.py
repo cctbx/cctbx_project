@@ -569,6 +569,32 @@ def get_b_values_from_lddt(lddt_values,
   return b_values
 
 ################################################################################
+####################   get_lddt_from_b          ################################
+################################################################################
+
+def get_lddt_from_b(b_values, input_lddt_is_fractional = True):
+  """  Inverse of get_b_values_from_lddt
+  Inputs:
+    flex array of B-values
+    input_lddt_is_fractional: if False, convert by multiplying * 100 at end
+  Outputs:
+    lddt_values: flex array of lddt values
+  """
+
+  # b_values = flex.pow2(rmsd) * ((8 * (3.14159 ** 2)) / 3.0)
+  rmsd = flex.sqrt( b_values/ ((8 * (3.14159 ** 2)) / 3.0))
+
+  # rmsd  = 1.5 * flex.exp(4*(0.7-lddt))
+  lddt = 0.7 - 0.25 * flex.log(rmsd/1.5)
+
+
+  if not input_lddt_is_fractional:
+    lddt = lddt * 100
+
+  return lddt
+
+
+################################################################################
 ####################   get_rmsd_from_lddt  ################################
 ################################################################################
 
