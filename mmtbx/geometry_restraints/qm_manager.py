@@ -49,6 +49,29 @@ class base_manager():
       outl += '  %s\n' % atom.quote()
     return outl
 
+  def get_charge(self): return self.charge
+
+  def set_charge(self, charge): self.charge = charge
+
+  def add_atoms(self, atoms, replace=False):
+    if replace:
+      self.atoms=atoms
+    else:
+      quotes = []
+      for atom in self.atoms:
+        quotes.append(atom.quote())
+      for atom in atoms:
+        assert atom.quote() not in quotes, 'found duplicate %s' % atom.quote()
+      self.atoms.append(atoms)
+
+  def set_interest_atoms(self, selection_array):
+    assert len(selection_array)==len(self.atoms)
+    self.interest_array = selection_array
+
+  def set_frozen_atoms(self, selection_array):
+    assert len(selection_array)==len(self.atoms)
+    self.freeze_a_ray = selection_array
+
   def get_opt(self, cleanup=False):
     import random
     rc = []
@@ -56,6 +79,12 @@ class base_manager():
       rc.append([])
       for i in range(3):
         rc[-1].append(atom.xyz[i]+(random.random()-0.5)/10)
+    tmp = []
+    if hasattr(self, 'interest_array'):
+      for sel, atom in zip(self.interest_array, rc):
+        if sel:
+          tmp.append(atom)
+      rc=tmp
     return flex.vec3_double(rc)
 
   def get_timings(self, energy=False):
@@ -65,8 +94,11 @@ class base_manager():
 #
 def run_orca_cmd(cmd, verbose=False):
   if verbose: print('run_orca_cmd',cmd)
-  return 1
+  # return 1
   rc = easy_run.go(cmd)
+  for line in rc.stdout_lines:
+    if line.find('Error')>-1:
+      print(line)
   if rc.stderr_lines:
     print('stderr')
     for line in rc.stderr_lines:
@@ -159,10 +191,11 @@ class orca_manager(base_manager):
     del f
 
   def get_cmd(self):
-    cmd = '%s orca_%s.in >& orca_%s.log' % (
+    # cmd = '%s orca_%s.in >& orca_%s.log' % (
+    cmd = '%s orca_%s.in' % (
       os.environ['PHENIX_ORCA'],
       self.preamble,
-      self.preamble,
+      # self.preamble,
       )
     return cmd
 
@@ -212,13 +245,18 @@ class orca_manager(base_manager):
                                    self.basis_set,
                                    self.solvent_model)
     outl += self.get_coordinate_lines()
+    if hasattr(self, 'freeze_a_ray'):
+      assert 0
     self.write_input(outl)
+    print(outl)
 
   def get_opt(self, cleanup=False):
     self.opt_setup()
     self.run_cmd()
     coordinates = self.read_xyz_output()
     if cleanup: self.cleanup()
+    if hasattr(self, 'interest_array'):
+      assert 0
     return coordinates
 
   def cleanup(self, verbose=False):

@@ -1,5 +1,6 @@
 from __future__ import absolute_import,division, print_function
 from io import StringIO
+import copy
 
 from libtbx import Auto
 from libtbx.str_utils import make_header
@@ -36,23 +37,27 @@ def digester(model,
     setattr(qm_grm, attr, value)
   qm_grm.standard_geometry_restraints_manager = sgrm
   #
-  # Create selection lists
+  # Run first optimisation
   #
-  from mmtbx.geometry_restraints import qm_manager
-  # qm_managers = []
   make_header('QM Restraints Initialisation', out=log)
-  for i, qmr in enumerate(params.qi.qm_restraints):
-    print('  Selection %2d: %s' % (i+1, qmr.selection), file=log)
-    ligand_model, buffer_model = get_ligand_buffer_models(model, qmr)
-    qmm = get_qm_manager(ligand_model, buffer_model, qmr)
-    # print(qmm)
-    print(show_ligand_buffer_models(ligand_model, buffer_model), file=log)
-    # qm_managers.append(qmm)
-  #
-  # Add to QI GRM
-  #
-  # qm_grm.qm_managers = qm_managers
+  rc = update_restraints(model,
+                         getattr(params, 'qi', None),
+                         log=log,
+                         )
   return qm_grm
+
+def add_hydrogen_atoms_to_model(model,
+                                use_capping_hydrogens=False,
+                               # use_neutron_distances=True,
+                               # n_terminal_charge=True,
+                               ):
+  # import iotbx
+  from mmtbx.ligands.ready_set_utils import add_terminal_hydrogens
+  rc = add_terminal_hydrogens( model.get_hierarchy(),
+                               model.get_restraints_manager().geometry,
+                               use_capping_hydrogens=use_capping_hydrogens,
+                               )
+  assert not rc
 
 def select_and_reindex(model,
                        selection_str=None,
@@ -100,7 +105,7 @@ def show_ligand_buffer_models(ligand_model, buffer_model):
     outl += '      %s\n' % agi
   return outl
 
-def get_qm_manager(ligand_model, buffer_model, qmr):
+def get_qm_manager(ligand_model, buffer_model, qmr, log=StringIO()):
   from mmtbx.geometry_restraints import qm_manager
   program = qmr.package.program
   if program=='test':
@@ -114,10 +119,16 @@ def get_qm_manager(ligand_model, buffer_model, qmr):
     if qmr.package.multiplicity is Auto:
       qmr.package.multiplicity=1
     if qmr.package.charge is Auto:
-      qmr.package.charge=-2
+      qmr.package.charge=0
   else:
     assert 0
-  qmm = qmm(ligand_model.get_atoms(),
+
+  total_charge = quantum_interface.electrons(buffer_model)
+  if total_charge!=qmr.package.charge:
+    print('update charge %s ~> %s' % (qmr.package.charge, total_charge),
+          file=log)
+    qmr.package.charge=total_charge
+  qmm = qmm(buffer_model.get_atoms(),
             qmr.package.method,
             qmr.package.basis_set,
             '', #qmr.package.solvent_model,
@@ -126,6 +137,21 @@ def get_qm_manager(ligand_model, buffer_model, qmr):
             # preamble='%02d' % (i+1),
             )
   qmm.program=program
+  ligand_i_seqs = []
+  for atom in ligand_model.get_atoms():
+    ligand_i_seqs.append(atom.tmp)
+  # for atom in buffer_model.get_atoms():
+    # print(atom.quote(),atom.i_seq,atom.tmp)
+  hd_selection = buffer_model.get_hd_selection()
+  ligand_selection = []
+  for i, (sel, atom) in enumerate(zip(hd_selection, buffer_model.get_atoms())):
+    if atom.tmp in ligand_i_seqs:
+      hd_selection[i]=True
+      ligand_selection.append(True)
+    else:
+      ligand_selection.append(False)
+  qmm.set_frozen_atoms(~hd_selection)
+  qmm.set_interest_atoms(ligand_selection)
   return qmm
 
 def get_all_xyz(inputs, nproc):
@@ -153,6 +179,8 @@ def update_restraints(model,
                       nproc=1, # not used
                       log=StringIO(),
                       ):
+  if not model.restraints_manager_available():
+    model.process(make_restraints=True)
   objects = []
   for i, qmr in enumerate(params.qm_restraints):
     if not i: print('  QM restraints calculations')
@@ -161,6 +189,21 @@ def update_restraints(model,
     # get ligand and buffer region models
     #
     ligand_model, buffer_model = get_ligand_buffer_models(model, qmr)
+    #
+    # need to add H atoms including on water
+    #
+    # master_buffer_model = copy.deepcopy(buffer_model)
+    # if not master_buffer_model.restraints_manager_available():
+    #   master_buffer_model.process(make_restraints=True)
+    total_charge = quantum_interface.electrons(buffer_model)
+    print('total_charge',total_charge)
+    rc = add_hydrogen_atoms_to_model(buffer_model)
+    if not buffer_model.restraints_manager_available():
+      buffer_model.unset_restraints_manager()
+      buffer_model.process(make_restraints=True)
+      assert buffer_model.restraints_manager_available()
+    total_charge = quantum_interface.electrons(buffer_model)
+    print('total_charge',total_charge)
     if qmr.write_pdb_core:
       outl = ligand_model.model_as_pdb()
       lf = 'ligand_%s.pdb' % preamble
@@ -210,22 +253,31 @@ def update_restraints(model,
     # update coordinates of ligand
     #
     ligand_model.get_hierarchy().atoms().set_xyz(xyz)
+    #need to update buffer_model also
     gs = ligand_model.geometry_statistics()
     print('  Interim stats : %s' % gs.show_bond_and_angle(), file=log)
-    #
-    # remove H/D before transfer
-    #
-    if ligand_model.has_hd() and 0:
-      hd_selection = ligand_model.get_hd_selection()
-      ligand_model = select_and_reindex(ligand_model,
-                                        selection_array=~hd_selection,
-                                        reindex=False)
+    if qmr.write_final_pdb_core:
+      outl = ligand_model.model_as_pdb()
+      lf = 'ligand_%s.pdb' % preamble
+      print('    Writing ligand : %s' % lf)
+      f=open(lf, 'w')
+      f.write(outl)
+      del f
+    if qmr.write_final_pdb_buffer:
+      assert 0
+      outl = buffer_model.model_as_pdb()
+      lf = 'cluster_%s.pdb' % preamble
+      print('    Writing cluster: %s' % lf)
+      f=open(lf, 'w')
+      f.write(outl)
+      del f
     #
     # transfer geometry to proxies
     #  - bonds
     #
     model_grm = model.get_restraints_manager()
     ligand_grm = ligand_model.get_restraints_manager()
+    buffer_grm = buffer_model.get_restraints_manager()
     atoms = ligand_model.get_atoms()
     #
     bond_proxies_simple, asu = ligand_grm.geometry.get_all_bond_proxies(

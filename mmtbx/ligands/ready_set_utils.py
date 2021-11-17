@@ -128,11 +128,13 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
     atom.occ = n.occ
     atom.b = n.b
     atom.segid = ' '*4
+    print('adding',atom.quote())
     if append_to_end_of_model and i+1==number_of_hydrogens:
       rg = _add_atom_to_chain(atom, ag)
       rc.append(rg)
     else:
       ag.append_atom(atom)
+  for atom in ag.atoms(): print(atom.quote())
   return rc
 
 def add_n_terminal_hydrogens_to_residue_group(residue_group,
@@ -146,9 +148,6 @@ def add_n_terminal_hydrogens_to_residue_group(residue_group,
                                                        verbose=False
                                                        ):
     if None not in [atom_group, atoms]:
-#  for ag, (n, ca, c) in generate_atom_group_atom_names(residue_group,
-#                                                       ['N', 'CA', 'C'],
-#                                                       ):
       tmp = add_n_terminal_hydrogens_to_atom_group(
         atom_group,
         bonds=bonds,
@@ -382,21 +381,43 @@ def add_main_chain_atoms_to_protein_three(three):
 #   yield threes
 
 def _hierarchy_into_slots(hierarchy,
-                          verbose=False,
+                          geometry_restraints_manager,
+                          verbose=1,
                           ):
+  def _is_linked(residue_group1, residue_group2, bpt):
+    atom_group1 = residue_group1.only_atom_group()
+    atom_group2 = residue_group2.only_atom_group()
+    c_atom = atom_group1.get_atom('N') # order important
+    n_atom = atom_group2.get_atom('C')
+    if c_atom and n_atom:
+      key = [c_atom.i_seq, n_atom.i_seq]
+      bond = bpt.lookup(*tuple(key))
+      if bond: return bond
+    for i, atom1 in enumerate(atom_group1.atoms()):
+      for j, atom2 in enumerate(atom_group2.atoms()):
+        key = [atom2.i_seq, atom1.i_seq]
+        bond = bpt.lookup(*tuple(key))
+        if bond: return bond
+    return False
+
   if verbose: print('_hierarchy_into_slots')
+  terminal_entities = ['ACE']
   slots=[]
   #start=18
   assert len(hierarchy.models())==1
   for chain in hierarchy.chains():
     for residue_group in chain.residue_groups():
+      if verbose: print(residue_group.id_str())
       protein = True
       for atom_group in residue_group.atom_groups():
-        if(get_class(atom_group.resname) not in ["common_amino_acid",
-                                                 "modified_amino_acid",
-                                                ] and
-            atom_group.resname not in aac.three_letter_l_given_three_letter_d):
-                                      # not completely sure about this
+        gc_aa = get_class(atom_group.resname) in ["common_amino_acid",
+                                                  "modified_amino_acid",
+                                                 ]
+        # not completely sure about this
+        d_aa = atom_group.resname in aac.three_letter_l_given_three_letter_d
+        t_aa = atom_group.resname in terminal_entities
+        if verbose: print('get_class', gc_aa, 'd-amino', d_aa, 'term. ent', t_aa)
+        if(not gc_aa and not d_aa and not t_aa):
           protein=False
           break
       if not protein:
@@ -405,6 +426,14 @@ def _hierarchy_into_slots(hierarchy,
       #residue_group_atom1_quote = residue_group.atoms()[0].quote()[start:]
       #for residue_group in hierarchy.residue_groups():
       #  if residue_group.atoms()[0].quote()[start:]==oresidue_group_atom1_quote:
+      # print(dir(residue_group))
+      if slots:
+        if _is_linked(residue_group,
+                      slots[-1],
+                      geometry_restraints_manager.bond_params_table):
+          pass
+        else:
+          slots.append(None)
       slots.append(residue_group)
       #    break
       #else:
@@ -414,11 +443,12 @@ def _hierarchy_into_slots(hierarchy,
 
 def generate_residue_group_with_start_and_end(hierarchy,
                                               geometry_restraints_manager,
-                                              ideal_hierarchy=None,
+                                              # ideal_hierarchy=None,
                                               verbose=False,
                                               ):
-  assert not ideal_hierarchy
-  slots = _hierarchy_into_slots(hierarchy)
+  # assert not ideal_hierarchy
+  slots = _hierarchy_into_slots(hierarchy, geometry_restraints_manager)
+  print(slots)
   for i in range(len(slots)):
     start=False
     end=False
@@ -430,6 +460,7 @@ def generate_residue_group_with_start_and_end(hierarchy,
       # does not work for chain ends
     else: continue
     residue_group = slots[i]
+    print(residue_group.id_str(),start,end)
     yield residue_group, start, end
 
 def add_terminal_hydrogens_old(hierarchy,
@@ -440,6 +471,7 @@ def add_terminal_hydrogens_old(hierarchy,
                            append_to_end_of_model=False,
                            verbose=False,
                            ):
+  assert 0
   ptr=0 # belt and braces
   additional_hydrogens = []
   for residue_group, start, end in generate_residue_group_with_start_and_end(
@@ -485,14 +517,15 @@ def add_terminal_hydrogens_threes(hierarchy,
                                   ):
   from mmtbx.conformation_dependent_library import generate_protein_threes
   additional_hydrogens= [] #hierarchy_utils.smart_add_atoms()
+  hierarchy.show()
   for three in generate_protein_threes(hierarchy,
                                        geometry_restraints_manager,
-                                       #include_non_linked=False,
+                                       include_non_linked=True,
                                        backbone_only=False,
                                        include_linked_via_restraints_manager=True,
                                        verbose=verbose,
                                        ):
-    # print three
+    # if verbose: print(three)
     #print dir(three)
     # print geometry_restraints_manager
     #print dir(geometry_restraints_manager)
@@ -510,6 +543,7 @@ def add_terminal_hydrogens_threes(hierarchy,
           if bond:
             bonds[(a1.i_seq, a2.i_seq)] = True
             bonds[(a2.i_seq, a1.i_seq)] = True
+      print(bonds)
       return bonds
 
     if use_capping_hydrogens:
@@ -519,6 +553,7 @@ def add_terminal_hydrogens_threes(hierarchy,
                                                   residue_group)
       #assert not rc, '%s' % rc
     if three.start:
+      print('start')
       residue_group=three.get_residue_group_from_hierarchy(hierarchy, 0)
       rc = add_n_terminal_hydrogens_to_residue_group(
         residue_group,
@@ -526,8 +561,10 @@ def add_terminal_hydrogens_threes(hierarchy,
         use_capping_hydrogens=use_capping_hydrogens,
         append_to_end_of_model=append_to_end_of_model,
       )
+      print(rc)
       if rc: additional_hydrogens.append(rc)
     if three.end:
+      print('end')
       residue_group=three.get_residue_group_from_hierarchy(hierarchy, 2)
       rc = add_c_terminal_oxygens_to_residue_group(
         residue_group,
@@ -535,7 +572,50 @@ def add_terminal_hydrogens_threes(hierarchy,
         use_capping_hydrogens=use_capping_hydrogens,
         append_to_end_of_model=append_to_end_of_model,
       )
+      print(rc)
       if rc: additional_hydrogens.append(rc)
+  return additional_hydrogens
+
+def add_terminal_hydrogens_via_residue_groups(hierarchy,
+                                              geometry_restraints_manager,
+                                              terminate_all_N_terminals=False,
+                                              terminate_all_C_terminals=False,
+                                              use_capping_hydrogens=False,
+                                              append_to_end_of_model=False,
+                                              verbose=False,
+                                              ):
+  additional_hydrogens = []
+  for residue_group, start, end in generate_residue_group_with_start_and_end(
+    hierarchy,
+    geometry_restraints_manager,
+    verbose=verbose,
+    ):
+    if use_capping_hydrogens:
+      conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
+                                           residue_group)
+    if start:
+      # ptr+=1
+      # assert ptr==1
+      if is_n_terminal_residue(residue_group):
+        rc = None
+      else:
+        rc = add_n_terminal_hydrogens_to_residue_group(
+          residue_group,
+          use_capping_hydrogens=use_capping_hydrogens,
+          append_to_end_of_model=append_to_end_of_model,
+        )
+      if rc: additional_hydrogens.append(rc)
+    if end:
+      # ptr-=1
+      # assert ptr==0
+      rc = add_c_terminal_oxygens_to_residue_group(
+        residue_group,
+        use_capping_hydrogens=use_capping_hydrogens,
+        append_to_end_of_model=append_to_end_of_model,
+      )
+      if rc: additional_hydrogens.append(rc)
+    else:
+      pass
   return additional_hydrogens
 
 def add_terminal_hydrogens(hierarchy,
@@ -546,7 +626,19 @@ def add_terminal_hydrogens(hierarchy,
                            append_to_end_of_model=False,
                            verbose=False,
                            ):
-  additional_hydrogens = add_terminal_hydrogens_threes(
+  """Adds hydrogen atoms to a macromolecular model
+
+  Args:
+      hierarchy (pdb_hierarch): The model hierarchy
+      geometry_restraints_manager (geometry restraints manager): Matching
+        geometry restaints manager for hierarch
+      terminate_all_N_terminals (bool, optional): Description
+      terminate_all_C_terminals (bool, optional): Description
+      use_capping_hydrogens (bool, optional): Description
+      append_to_end_of_model (bool, optional): Description
+      verbose (bool, optional): Description
+  """
+  additional_hydrogens = add_terminal_hydrogens_via_residue_groups(
     hierarchy,
     geometry_restraints_manager,
     terminate_all_N_terminals=terminate_all_N_terminals,

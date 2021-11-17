@@ -51,6 +51,10 @@ qm_restraints
     .type = bool
   write_pdb_buffer = False
     .type = bool
+  write_final_pdb_core = False
+    .type = bool
+  write_final_pdb_buffer = False
+    .type = bool
   cleanup = True
     .type = bool
   %s
@@ -77,6 +81,18 @@ def orca_action():
     }
   '''
   return outl
+
+def electrons(model):
+  from elbow.quantum import electrons
+  atom_valences = electrons.electron_distribution(
+    model.get_hierarchy(), # needs to be altloc free
+    model.get_restraints_manager().geometry,
+    verbose=False,
+  )
+  atom_valences.validate(ignore_water=True,
+                         raise_if_error=False)
+  charged_atoms = atom_valences.get_charged_atoms()
+  return atom_valences.get_total_charge()
 
 def get_safe_filename(s):
   s=s.replace(' ','_')
@@ -112,17 +128,21 @@ def is_any_quantum_package_installed(env):
 ''' % get_qm_restraints_scope()
   return outl
 
-def validate_qm_restraints(qm_restraints):
-  for qmr in qm_restraints:
-    print ('...',qmr)
-    for attr, item in qmr.__dict__.items():
-      print(attr,item)
+def validate_qm_restraints(qm_restraints, verbose=False):
+  for i, qmr in enumerate(qm_restraints):
+    if verbose: print(i, qmr.selection)
+    if i==0 and qmr.selection is None:
+      return False
+  return True
 
-def is_quantum_interface_active(params):
-  if not hasattr(params, 'qi'): return False
+def is_quantum_interface_active(params, verbose=False):
+  if not hasattr(params, 'qi'):
+    if verbose: assert 0
+    return False
+  if verbose: print('  len(qm_restraints)=%d' % len(params.qi.qm_restraints))
   if len(params.qi.qm_restraints):
-    # validate_qm_restraints(params.qi.qm_restraints)
-    return True, 'qm_restraints'
+    if validate_qm_restraints(params.qi.qm_restraints, verbose=verbose):
+      return True, 'qm_restraints'
   return False
 
 def digester(model, geometry, params, log=None):
