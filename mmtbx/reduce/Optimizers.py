@@ -29,7 +29,6 @@ from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
 import mmtbx
 from scitbx.array_family import flex
-from libtbx.utils import Sorry
 
 from mmtbx.probe import Helpers
 import mmtbx_probe_ext as probeExt
@@ -1266,24 +1265,33 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
     if addFlipMovers and ((aName == 'XD2' and resName == 'ASX') or (aName == 'XE2' and resName == 'GLX')):
       infoString += _VerboseCheck(1,"Not attempting to adjust "+resNameAndID+" "+aName+"\n")
     if addFlipMovers and ((aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN')):
-      # See if the Nitrogen is within a range of ideal bonding distances to a positive ion.
-      # If so, we skip adding a Mover.
-      # @todo Why are we checking both flips for Histidine but only one here?
-      myRad = extraAtomInfo.getMappingFor(a).vdwRadius
-      minDist = myRad
-      maxDist = 0.25 + myRad + maxVDWRadius
-      neighbors = spatialQuery.neighbors(a.xyz, minDist, maxDist)
+      # Find the Oxygen and see if it is within a range of ideal bonding distances to a positive ion.
+      # Do this in two steps; find the Carbon bonded to the Nitrogen and then the Oxygen bonded to the
+      # Carbon.
       foundIon = False
-      for n in neighbors:
-        if n.element_is_positive_ion():
-          dist = (Helpers.rvec3(a.xyz) - Helpers.rvec3(n.xyz)).length()
-          expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
-          infoString += _VerboseCheck(5,'Checking NH2Flip '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
-            ' dist = '+str(dist)+', expected = '+str(expected)+'; N rad = '+str(myRad)+
-            ', '+n.name.strip()+' rad = '+str(extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
-          # @todo Why are we using -0.65 here and -0.55 for Histidine?
-          if dist >= (expected - 0.65) and dist <= (expected + 0.25):
-            foundIon = True
+      oxygen = None
+      for b in bondedNeighborLists[a]:
+        if b.element.upper() == 'C':
+          for b2 in bondedNeighborLists[b]:
+            if b2.element.upper() == 'O':
+              oxygen = b2
+      # If we have a close-enough ion, we skip adding a Mover.
+      if oxygen is not None:
+        # @todo Check both flips and lock down the appropriate one rather than only checking the first.
+        myRad = extraAtomInfo.getMappingFor(a).vdwRadius
+        minDist = myRad
+        maxDist = 0.25 + myRad + maxVDWRadius
+        neighbors = spatialQuery.neighbors(oxygen.xyz, minDist, maxDist)
+        for n in neighbors:
+          if n.element_is_positive_ion():
+            dist = (Helpers.rvec3(oxygen.xyz) - Helpers.rvec3(n.xyz)).length()
+            expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
+            infoString += _VerboseCheck(5,'Checking NH2Flip '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
+              ' dist = '+str(dist)+', expected = '+str(expected)+'; N rad = '+str(myRad)+
+              ', '+n.name.strip()+' rad = '+str(extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
+            # @todo Why are we using -0.65 here and -0.55 for Histidine?
+            if dist >= (expected - 0.65) and dist <= (expected + 0.25):
+              foundIon = True
 
       if not foundIon:
         try:
