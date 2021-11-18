@@ -17,8 +17,9 @@ import math, csv
 from io import StringIO
 
 class MyhorizontalHeader(QHeaderView):
-# Assigned to HeaderDataTableWidget (NGL_HKLViewer.millertable) but in NGL_HKLViewer.createFileInfoBox()
-# as to avoid a very long chain of parents when accessing select_millertable_column_dlg()
+# Assigned to HeaderDataTableWidget (HKLViewer.NGL_HKLViewer.millertable) but in
+# NGL_HKLViewer.createFileInfoBox() as to avoid a very long chain of parents when
+# accessing select_millertable_column_dlg()
 # Display the labels of the columns in the millertable
 # Right-clicking will invoke NGL_HKLViewer.select_millertable_column_dlg
   def __init__(self, parent=None):

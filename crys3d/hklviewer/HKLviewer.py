@@ -620,8 +620,10 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
   def onSelect_millertable_column_dlg(self):
     """
     Dialog for choosing what columns of the miller table should be displayed
+    Invoked by helper.MyhorizontalHeader()
     """
     self.select_millertable_column_dlg.show()
+    self.select_millertable_column_dlg.activateWindow()
 
 
   def ProcessMessages(self):
@@ -895,8 +897,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             spacegroup_info = self.infodict.get("spacegroup_info",False)
             unitcell_info = self.infodict.get("unitcell_info",False)
             htmlstr = '''<html><head/><body><p><span style=" font-weight:600;">Space group: \t
-            </span>%s<span style=" font-weight:600;"><br/>Unit cell: \t</span>%s</p></body></html> '''
-            self.SpaceGrpUCellText.setText(htmlstr %(spacegroup_info, unitcell_info) )
+            </span>%s<span style=" font-weight:600;"><br/>Unit cell(s): \t</span>%s</p></body></html> '''
+            self.SpaceGrpUCellText.setText(htmlstr %(spacegroup_info, "<br/>".join(unitcell_info)) )
           self.fileisvalid = True
 
           if currentinfostr:

@@ -587,6 +587,7 @@ class HKLViewFrame() :
     uc = arrays[0].unit_cell()
     self.ano_spg_tpls =[]
     self.mprint("%d Miller arrays in this dataset:" %len(arrays))
+    spgset = set([])
     for i,array in enumerate(arrays):
       if type(array.data()) == flex.std_string: # in case of status array from a cif file
         uniquestrings = list(set(array.data()))
@@ -623,6 +624,7 @@ class HKLViewFrame() :
       self.viewer.array_info_format_tpl.append( info_fmt )
       # isanomalous and spacegroup might not have been selected for displaying so send them separatately to GUI
       self.ano_spg_tpls.append((arrayinfo.isanomalous, arrayinfo.spginf) )
+      spgset.add(arrayinfo.ucellinf)
       if i==0:
         # convert philstring of selected_info into a list so GUI can make a selection settings dialog
         # for what columns to show in the millertable
@@ -630,13 +632,10 @@ class HKLViewFrame() :
         for philname,selected in list(self.params.selected_info.__dict__.items()):
           if not philname.startswith("__"):
             colnames_select_lst.append((philname, arrayinfo.caption_dict[philname], selected))
-        mydict = { "spacegroup_info": arrayinfo.spginf,
-                  "unitcell_info": arrayinfo.ucellinf,
-                  "colnames_select_lst": colnames_select_lst
-                 }
-        self.SendInfoToGUI(mydict)
+        self.SendInfoToGUI({ "colnames_select_lst": colnames_select_lst })
       valid_arrays.append(array)
     self.valid_arrays = valid_arrays
+    self.SendInfoToGUI({"spacegroup_info": arrayinfo.spginf, "unitcell_info": list(spgset) })
 
     if self.fileinfo:
       return
@@ -1406,7 +1405,7 @@ def run():
   """
   utility function for passing keyword arguments more directly to HKLViewFrame()
   """
-  #time.sleep(10)
+  #time.sleep(10) # enough for attaching debugger
   # dirty hack for parsing a file path with spaces of a browser if not using default
   args = sys.argv[1:]
   sargs = " ".join(args)

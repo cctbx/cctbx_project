@@ -239,11 +239,11 @@ class hklview_3d:
     self.UseOSBrowser = ""
     if 'useGuiSocket' not in kwds:
       self.UseOSBrowser = "default"
-      ldic=locals()
-      if 'UseOSBrowser' in kwds:
-        exec("UseOSBrowser = kwds['UseOSBrowser']", globals(), ldic)
-        self.UseOSBrowser = ldic["UseOSBrowser"]
-        self.UseOSBrowser = self.UseOSBrowser.replace("\\","/")
+    ldic=locals()
+    if 'UseOSBrowser' in kwds:
+      exec("UseOSBrowser = kwds['UseOSBrowser']", globals(), ldic)
+      self.UseOSBrowser = ldic["UseOSBrowser"]
+      self.UseOSBrowser = self.UseOSBrowser.replace("\\","/")
     self.viewmtrx = None
     self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
@@ -737,7 +737,7 @@ class hklview_3d:
         if len(scenearrayinfos) == 0: # arr does not have valid data
           sceneid += 1  # arr does not have valid data still raise the count
         for i,inf in enumerate(scenearrayinfos):
-          self.mprint("%d, %s" %(idx+i+1, inf[0]), verbose=0)
+          self.mprint("%d, %s" %(idx+i+1, inf[0]), verbose=1)
           self.HKLsceneKey = (curphilparam.spacegroup_choice,
                                 curphilparam.using_space_subgroup,
                                 curphilparam.merge_data,
@@ -807,7 +807,7 @@ class hklview_3d:
           sceneminsigmas, scenearrayinfos
       ) = MakeHKLscene( self.proc_arrays[idx].deep_copy(), idx, copy.deepcopy(self.viewerparams), self.mapcoef_fom_dict, None, self.mprint )
       for i,inf in enumerate(scenearrayinfos):
-        self.mprint("%d, %s" %(idx+i+1, inf[0]), verbose=0)
+        self.mprint("%d, %s" %(idx+i+1, inf[0]), verbose=1)
         self.HKLsceneKey = (curphilparam.spacegroup_choice,
                               curphilparam.using_space_subgroup,
                               curphilparam.merge_data,
@@ -1933,7 +1933,7 @@ in the space group %s\nwith unit cell %s\n""" \
     for i,op in enumerate(unique_rot_ops): # skip the last op for javascript drawing purposes
       (cartvec, a, label, order) = self.GetVectorAndAngleFromRotationMx( op.r() )
       if label != "":
-        self.mprint( str(i) + ": " + str(roundoff(cartvec)) + ", " + label)
+        self.mprint( str(i) + ": " + str(roundoff(cartvec)) + ", " + label, verbose=1)
         self.rotation_operators.append( (i, label + "#%d"%i, order , cartvec, op.r().as_hkl(), "", "") )
 
 
