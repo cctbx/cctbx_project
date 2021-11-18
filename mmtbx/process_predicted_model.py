@@ -244,6 +244,7 @@ def process_predicted_model(
     processed_model_info: group_args object containing:
       processed_model:  single model with regions identified in chainid field
       model_list:  list of models representing domains
+      lddt_list: one lddt on scale of 0 to 1 for each residue in input model.
 
   How to get the parameters object set up:
 
@@ -418,6 +419,7 @@ def process_predicted_model(
     model_list = model_list,
     chainid_list = chainid_list,
     remainder_sequence_str = remainder_sequence_str,
+    b_values = b_values,
     )
 
 
