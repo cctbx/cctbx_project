@@ -51,7 +51,6 @@ def add_hydrogen_atoms_to_model(model,
                                # use_neutron_distances=True,
                                # n_terminal_charge=True,
                                ):
-  # import iotbx
   from mmtbx.ligands.ready_set_utils import add_terminal_hydrogens
   rc = add_terminal_hydrogens( model.get_hierarchy(),
                                model.get_restraints_manager().geometry,
@@ -195,15 +194,14 @@ def update_restraints(model,
     # master_buffer_model = copy.deepcopy(buffer_model)
     # if not master_buffer_model.restraints_manager_available():
     #   master_buffer_model.process(make_restraints=True)
-    total_charge = quantum_interface.electrons(buffer_model)
-    print('total_charge',total_charge)
+    # total_charge = quantum_interface.electrons(buffer_model)
+    # print('total_charge',total_charge)
     rc = add_hydrogen_atoms_to_model(buffer_model)
-    if not buffer_model.restraints_manager_available():
-      buffer_model.unset_restraints_manager()
-      buffer_model.process(make_restraints=True)
-      assert buffer_model.restraints_manager_available()
-    total_charge = quantum_interface.electrons(buffer_model)
-    print('total_charge',total_charge)
+    buffer_model.unset_restraints_manager()
+    buffer_model.process(make_restraints=True)
+    assert buffer_model.restraints_manager_available()
+    # total_charge = quantum_interface.electrons(buffer_model)
+    # print('total_charge',total_charge)
     if qmr.write_pdb_core:
       outl = ligand_model.model_as_pdb()
       lf = 'ligand_%s.pdb' % preamble
@@ -345,6 +343,7 @@ def update_restraints(model,
     #
     gs = ligand_model.geometry_statistics()
     print('  Finished stats : %s' % gs.show_bond_and_angle(), file=log)
+  print('='*80)
 
 if __name__ == '__main__':
   print(quantum_chemistry_scope)
