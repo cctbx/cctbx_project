@@ -1,6 +1,9 @@
 from __future__ import absolute_import, division, print_function
 import scitbx.math
 from scitbx.array_family import flex
+from scitbx import lbfgsb as lbfgsb_core
+import scitbx.lbfgs as lbfgs_core
+import sys
 
 floating_point_epsilon_double = scitbx.math.floating_point_epsilon_double_get()
 
@@ -237,3 +240,72 @@ class newton_more_thuente_1994(object):
         self.number_of_cholesky_decompositions)
     print("  line_search_info:", \
         self.line_search_info)
+
+class lbfgsb(object):
+  """
+  Wrapper for LBGFGS-B minimizer with simplified interface. See lbfgsb_core for
+  more settings.
+  Vector of varibales calculator.x is changed in-place.
+  """
+
+  def __init__(self, calculator, max_iterations=None):
+    M = lbfgsb_core.minimizer(
+      n   = calculator.n,
+      l   = calculator.lower_bound,
+      u   = calculator.upper_bound,
+      nbd = calculator.bound_flags)
+    M.error = None
+    try:
+      icall = 0
+      while 1:
+        icall += 1
+        x, f, g = calculator() # x will be changed in place
+        if(icall==1): f_start = f
+        have_request = M.process(x, f, g)
+        if(have_request):
+          requests_f_and_g = M.requests_f_and_g()
+          continue
+        assert not M.requests_f_and_g()
+        if(M.is_terminated()): break
+        if(max_iterations is not None and icall>max_iterations): break
+    except RuntimeError as e:
+      M.error = str(e)
+    M.n_calls = icall
+    # items to store
+    self.M = M
+    self.f_start = f_start
+    self.f = f
+
+  def show(self, log=None, prefix=""):
+    if(log is None): log = sys.stdout
+    m="%sLBFGS-B: function start/end, n_calls:"%prefix
+    print(m, self.f_start, self.f, self.M.n_calls, file=log)
+
+class lbfgs(object):
+  """
+  Wrapper for LBGFGS minimizer with simplified interface. See lbfgs_core for
+  more settings.
+  Vector of varibales calculator.x is changed in-place.
+  """
+
+  def __init__(self, calculator, stpmax, max_iterations, gradient_only):
+    core_params = lbfgs_core.core_parameters(stpmax = stpmax)
+    termination_params = lbfgs_core.termination_parameters(
+      max_iterations = max_iterations,
+      min_iterations = None)
+    M = lbfgs_core.run(
+      core_params               = core_params,
+      termination_params        = termination_params,
+      exception_handling_params = None,
+      target_evaluator          = calculator,
+      gradient_only             = gradient_only,
+      line_search               = True,
+      log                       = None)
+    # items to store
+    self.M = M
+    self.calculator = calculator
+
+  def show(self, log=None, prefix=""):
+    if(log is None): log = sys.stdout
+    m="%sLBFGS: function start/end, n_calls:"%prefix
+    print(m, self.calculator.f_start, self.calculator.f, self.M.nfun(), file=log)
