@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from cctbx.crystal import super_cell
 import mmtbx.model
+import libtbx.load_env
 from libtbx.utils import null_out
 
 pdb_str = """
@@ -79,6 +80,9 @@ def run(nonbonded_distance_cutoff=4.5, write_files=False):
   """
   Exercise supercell.
   """
+  if (libtbx.env.find_in_repositories(relative_path="chem_data") is None):
+    print("Skipping exercise(): chem_data directory not available")
+    return
   if(write_files):
     with open("input.pdb","w") as fo:
       fo.write(pdb_str)
