@@ -59,7 +59,7 @@ a problem with excessive memory usage in the `dxtbx::ImageSet` class.
 ### Configuration
 
 The configuration is a bit of an ordeal; running in a Docker container seems to work well. A prebuilt image on Fedora 30 
-with a CCTBX build and the necessary debug symbols for Python, glibc, etc. is available from Dockerhub. The corresponding
+with a CCTBX build and the necessary debug symbols for Python, glibc, etc. is available from Dockerhub as `dwpaley/cctbx-gdbheap`. The corresponding
 Dockerfile is also provided in this directory. A few modifications were needed to make gdb-heap compatible with Python3 and
 are available from https://github.com/dwpaley/gdb-heap. Also note that a python3.7 with debug symbols provided by Fedora
 was symlinked in the cctbx installation at `/img/conda_base/bin/python3.7`.
@@ -217,6 +217,45 @@ Finally we look at the `ImageSetData` constructor to see why the arrays are so b
     175         scans_(boost::python::len(reader)),
     176         reject_(boost::python::len(reader)) {}
 ```
-where the `reader` argument is a Python class implementing this `__len__` method:
+where the `reader` argument is the Python class `FormatMultiImage.Reader` with these methods `__len__` and `__init__`:
+```
+     26     def __init__(self, format_class, filenames, num_images=None, **kwargs):
+     27         self.kwargs = kwargs
+     28         self.format_class = format_class
+     29         assert len(filenames) == 1
+     30         self._filename = filenames[0]
+     31         if num_images is None:
+     32             format_instance = self.format_class.get_instance(
+     33                 self._filename, **self.kwargs
+     34             )
+     35             self._num_images = format_instance.get_num_images()
+     36         else:
+     37             self._num_images = num_images
+     [...]
+     50     def __len__(self):
+     51         return self._num_images
+```
+By separately setting a trace in the `Reader` constructor, we find the argument `num_images` was
+set as follows in `FormatMultiImage.get_imageset`:
+```
+    148         if cls.get_num_images == FormatMultiImage.get_num_images:
+    149             assert single_file_indices is not None
+    150             assert min(single_file_indices) >= 0
+    151             num_images = max(single_file_indices) + 1
+```
+and confirm that `single_file_indices` is a large number for this experiment file:
+```
+# grep -A2 single_file_indices /data/split_00.expt
+      "single_file_indices": [
+        22244
+      ],
+```
+We note that 22,244 is not an unusual number of images in a single container file; for example it corresponds to
+3 minutes of data at 120 Hz.
 
+The arrays `beams_`, `detectors_`, etc. each contain 22,245 `shared_ptr`s, which are each 16 B (i.e. two 64-bit
+addresses). Therefore the memory footprint of 4x356 kB is fully explained by this problem.
+
+[DXTBX PR 438](https://github.com/cctbx/dxtbx/pull/438) reduces this memory usage by making the `ImageSetData` arrays
+len(indices) instead of len(max(indices)).
 
