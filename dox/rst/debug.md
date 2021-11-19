@@ -272,4 +272,4 @@ The arrays `beams_`, `detectors_`, etc. each contain 22,245 `shared_ptr`s, which
 problem.
 
 [DXTBX PR 438](https://github.com/cctbx/dxtbx/pull/438) reduces this memory usage by making the
-`ImageSetData` arrays len(indices) instead of len(max(indices)).
+`ImageSetData` member arrays len(indices) instead of len(max(indices)).
