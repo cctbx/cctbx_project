@@ -8,7 +8,7 @@ def rfactor(a,b):
   return n/d*100*2
 
 def run():
-  for i, mxp in enumerate([0,5]):
+  for i, mxp in enumerate([0,6]):
     o = maptbx.atom_curves(scattering_type="C", scattering_table="wk1995")
     b = o.bcr_approx(
       d_min       = 2.0,
@@ -18,8 +18,8 @@ def run():
       mxp=mxp, epsc=0.001, kpres=0 # BCR params
       )
     r = rfactor(b.image_values,b.bcr_approx_values)
-    if(i == 0): assert r>15
-    else:       assert r<0.2
+    if(i == 0): assert r>10, r
+    else:       assert r<0.3, r
 
 if (__name__ == "__main__"):
   run()
