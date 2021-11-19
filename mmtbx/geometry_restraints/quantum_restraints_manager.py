@@ -7,6 +7,7 @@ from libtbx.str_utils import make_header
 
 from cctbx.geometry_restraints.manager import manager as standard_manager
 from mmtbx.geometry_restraints import quantum_interface
+from mmtbx.geometry_restraints import qm_manager
 
 class manager(standard_manager):
   def __init__(self,
@@ -37,13 +38,8 @@ def digester(model,
     setattr(qm_grm, attr, value)
   qm_grm.standard_geometry_restraints_manager = sgrm
   #
-  # Run first optimisation
-  #
   make_header('QM Restraints Initialisation', out=log)
-  rc = update_restraints(model,
-                         getattr(params, 'qi', None),
-                         log=log,
-                         )
+  qm_restraints_initialisation(params.qi, log=log)
   return qm_grm
 
 def add_hydrogen_atoms_to_model(model,
@@ -52,11 +48,14 @@ def add_hydrogen_atoms_to_model(model,
                                # n_terminal_charge=True,
                                ):
   from mmtbx.ligands.ready_set_utils import add_terminal_hydrogens
+  from mmtbx.ligands.ready_set_utils import add_water_hydrogen_atoms_simple
+  model.log=StringIO()
   rc = add_terminal_hydrogens( model.get_hierarchy(),
                                model.get_restraints_manager().geometry,
                                use_capping_hydrogens=use_capping_hydrogens,
                                )
   assert not rc
+  rc = add_water_hydrogen_atoms_simple(model.get_hierarchy())
 
 def select_and_reindex(model,
                        selection_str=None,
@@ -105,7 +104,6 @@ def show_ligand_buffer_models(ligand_model, buffer_model):
   return outl
 
 def get_qm_manager(ligand_model, buffer_model, qmr, log=StringIO()):
-  from mmtbx.geometry_restraints import qm_manager
   program = qmr.package.program
   if program=='test':
     qmm = qm_manager.base_manager
@@ -124,7 +122,7 @@ def get_qm_manager(ligand_model, buffer_model, qmr, log=StringIO()):
 
   total_charge = quantum_interface.electrons(buffer_model)
   if total_charge!=qmr.package.charge:
-    print('update charge %s ~> %s' % (qmr.package.charge, total_charge),
+    print(u'update charge %s ~> %s' % (qmr.package.charge, total_charge),
           file=log)
     qmr.package.charge=total_charge
   qmm = qmm(buffer_model.get_atoms(),
@@ -154,35 +152,40 @@ def get_qm_manager(ligand_model, buffer_model, qmr, log=StringIO()):
   return qmm
 
 def get_all_xyz(inputs, nproc):
-  assert 0
   from libtbx import easy_mp
-  from mmtbx.geometry_restraints import qm_manager
-  cmds = []
+  argss = []
   for i, (ligand_model, buffer_model, qmm) in enumerate(inputs):
-    cmd = qmm.get_cmd()
-    cmds.append([cmd])
-  for args, res, err_str in easy_mp.multi_core_run(qm_manager.run_orca_cmd,
-                                                   tuple(cmds),
+    argss.append([qmm])
+  print(argss)
+  for args, res, err_str in easy_mp.multi_core_run(qm_manager.qm_runner,
+                                                   tuple(argss),
                                                    nproc,
                                                    ):
     if res:
       print (args, res)
       # results.update(res)
       # results[args[0]]=res
+    assert not err_str, 'Error %s' % err_str
   xyzs = []
   return xyzs
+
+def qm_restraints_initialisation(params, log=StringIO()):
+  for i, qmr in enumerate(params.qm_restraints):
+    if not i: print('  QM restraints calculations', file=log)
+    print('    %s' % qmr.selection, file=log)
+
 
 def update_restraints(model,
                       params, # just the qi scope
                       macro_cycle=None,
-                      nproc=1, # not used
+                      nproc=1,
                       log=StringIO(),
                       ):
   if not model.restraints_manager_available():
     model.process(make_restraints=True)
   objects = []
   for i, qmr in enumerate(params.qm_restraints):
-    if not i: print('  QM restraints calculations')
+    if not i: print('  QM restraints calculations', file=log)
     preamble = quantum_interface.get_preamble(macro_cycle, i, qmr.selection)
     #
     # get ligand and buffer region models
@@ -196,23 +199,26 @@ def update_restraints(model,
     #   master_buffer_model.process(make_restraints=True)
     # total_charge = quantum_interface.electrons(buffer_model)
     # print('total_charge',total_charge)
-    rc = add_hydrogen_atoms_to_model(buffer_model)
+    add_hydrogen_atoms_to_model(buffer_model)
     buffer_model.unset_restraints_manager()
     buffer_model.process(make_restraints=True)
+    # buffer_model.add_hydrogens(1., occupancy=1.)
+    # buffer_model.unset_restraints_manager()
+    # buffer_model.process(make_restraints=True)
     assert buffer_model.restraints_manager_available()
     # total_charge = quantum_interface.electrons(buffer_model)
     # print('total_charge',total_charge)
     if qmr.write_pdb_core:
       outl = ligand_model.model_as_pdb()
       lf = 'ligand_%s.pdb' % preamble
-      print('    Writing ligand : %s' % lf)
+      print('    Writing ligand : %s' % lf, file=log)
       f=open(lf, 'w')
       f.write(outl)
       del f
     if qmr.write_pdb_buffer:
       outl = buffer_model.model_as_pdb()
       lf = 'cluster_%s.pdb' % preamble
-      print('    Writing cluster: %s' % lf)
+      print('    Writing cluster: %s' % lf, file=log)
       f=open(lf, 'w')
       f.write(outl)
       del f
@@ -226,17 +232,24 @@ def update_restraints(model,
   #
   # optimise
   #
-  # xyzs = get_all_xyz(objects, nproc)
-  xyzs = []
-  for i, (ligand_model, buffer_model, qmm) in enumerate(objects):
-    xyz = qmm.get_opt(cleanup=qmr.cleanup)
-    print('  Time for calculation of "%s" using %s %s: %s' % (
-      qmr.selection,
-      qmr.package.method,
-      qmr.package.basis_set,
-      qmm.get_timings().split(':')[-1],
-      ))
-    xyzs.append(xyz)
+  if nproc==1:
+    xyzs = []
+    for i, (ligand_model, buffer_model, qmm) in enumerate(objects):
+      xyz = qm_manager.qm_runner(
+        qmm,
+        cleanup=qmr.cleanup,
+        file_read=qmr.package.read_output_to_skip_opt_if_available,
+        )
+      print('  Time for calculation of "%s" using %s %s: %s' % (
+        qmr.selection,
+        qmr.package.method,
+        qmr.package.basis_set,
+        qmm.get_timings().split(':')[-1],
+        ))
+      xyzs.append(xyz)
+  else:
+    print('nproc',nproc)
+    xyzs = get_all_xyz(objects, nproc)
   print('',file=log)
   #
   # update model restraints

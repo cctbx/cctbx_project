@@ -10,6 +10,24 @@ from six.moves import range
 
 get_class = iotbx.pdb.common_residue_names_get_class
 
+def get_hierarchy_atom(name, element, xyz, occ, b):
+  atom = iotbx.pdb.hierarchy.atom()
+  atom.name = name
+  atom.element = element #"H"
+  atom.xyz = xyz # rh3[i]
+  atom.occ = occ # n.occ
+  atom.b = b #n.b
+  atom.segid = ' '*4
+  return atom
+
+def get_hierarchy_h_atom(name, xyz, heavy_atom):
+  return get_hierarchy_atom(name,
+                            'H',
+                            xyz,
+                            heavy_atom.occ,
+                            heavy_atom.b,
+                            )
+
 def is_n_terminal_residue(residue_group):
   residues = []
   for atom_group in residue_group.atom_groups():
@@ -654,6 +672,22 @@ def add_terminal_hydrogens(hierarchy,
       for chain in group:
         tmp.append(chain)
     _add_atoms_from_chains_to_end_of_hierarchy(hierarchy, tmp)
+
+def add_water_hydrogen_atoms_simple(hierarchy):
+  for atom_group in hierarchy.atom_groups():
+    if atom_group.resname=='HOH':
+      print(atom_group.id_str())
+      if len(atom_group.atoms())==3: continue
+      o_atom = atom_group.atoms()[0]
+      print(o_atom.quote(), o_atom.xyz)
+      xyz = (o_atom.xyz[0]+1, o_atom.xyz[1], o_atom.xyz[2])
+      h1 = get_hierarchy_h_atom(' H1 ', xyz, o_atom)
+      atom_group.append_atom(h1)
+      xyz = (o_atom.xyz[0]-0.7, o_atom.xyz[1]-0.7, o_atom.xyz[2])
+      h2 = get_hierarchy_h_atom(' H2 ', xyz, o_atom)
+      atom_group.append_atom(h2)
+      for atom in atom_group.atoms():
+        print(atom.quote(), atom.xyz)
 
 def add_main_chain_atoms(hierarchy,
                          geometry_restraints_manager,

@@ -18,7 +18,6 @@ program_options = {
   'test' : (is_qm_test_installed, 'PHENIX_QM_TEST'),
   }
 
-
 def get_qm_restraints_scope(verbose=False):
   qm_package_scope = '''
   package
@@ -33,6 +32,8 @@ def get_qm_restraints_scope(verbose=False):
       .type = str
     basis_set = Auto
       .type = str
+    read_output_to_skip_opt_if_available = True
+      .type = bool
   }
 '''
 
@@ -57,6 +58,8 @@ qm_restraints
     .type = bool
   cleanup = True
     .type = bool
+  run_in_macrocycles = *first_only all
+    .type = choice
   %s
 }
 '''

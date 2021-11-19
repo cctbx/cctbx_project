@@ -4,7 +4,7 @@ from io import StringIO
 import time
 import tempfile
 
-# from libtbx.utils import Sorry
+from libtbx.utils import Sorry
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
 from libtbx import easy_run
@@ -89,16 +89,42 @@ class base_manager():
 
   def get_timings(self, energy=False):
     return '-'
+
+#
+# QM runner
+#
+def qm_runner(qmm,
+              cleanup=True,
+              file_read=False,
+              verbose=False):
+  if verbose: print(qmm)
+  if qmm.program=='test':
+    func = base_manager.get_opt
+  elif qmm.program=='orca':
+    func = orca_manager.get_opt
+  else:
+    raise Sorry('QM program not found or set "%s"' % qmm.program)
+  xyz = func(qmm, cleanup=cleanup, file_read=file_read)
+  return xyz
 #
 # ORCA
 #
-def run_orca_cmd(cmd, verbose=False):
-  if verbose: print('run_orca_cmd',cmd)
-  # return 1
+def run_qm_cmd(cmd,
+               log_filename,
+               error_lines=None,
+               verbose=False):
+  if verbose: print('run_qm_cmd',cmd,log_filename)
+  local_logger = ''
   rc = easy_run.go(cmd)
+  error_line=None
   for line in rc.stdout_lines:
-    if line.find('Error')>-1:
-      print(line)
+    local_logger += '%s\n' % line
+    if error_lines:
+      for el in error_lines:
+        if local_logger.find(el)>-1:
+          error_line = el
+          break
+    if error_line: break
   if rc.stderr_lines:
     print('stderr')
     for line in rc.stderr_lines:
@@ -107,6 +133,11 @@ def run_orca_cmd(cmd, verbose=False):
     for line in rc.stdout_lines:
       print(line)
     assert 0
+  f=open(log_filename, 'w')
+  f.write(local_logger)
+  del f
+  if error_line:
+    raise Sorry(error_line)
   return rc
 
 class orca_manager(base_manager):
@@ -174,8 +205,15 @@ class orca_manager(base_manager):
     self.gradients = gradients
     return self.energy, self.gradients
 
+  def get_coordinate_filename(self):
+    filename = 'orca_%s.xyz' % self.preamble
+    return filename
+
   def read_xyz_output(self):
-    f=open('orca_%s.xyz' % self.preamble, 'r')
+    filename = self.get_coordinate_filename()
+    if not os.path.exists(filename):
+      raise Sorry('QM output filename not found: %s' % filename)
+    f=open(filename, 'r')
     lines = f.read()
     del f
     rc = flex.vec3_double()
@@ -202,7 +240,10 @@ class orca_manager(base_manager):
   def run_cmd(self):
     t0=time.time()
     cmd = self.get_cmd()
-    run_orca_cmd(cmd)
+    run_qm_cmd(cmd,
+               'orca_%s.log' % self.preamble,
+               # error_lines=['ORCA finished by error termination in GSTEP'],
+               )
     self.times.append(time.time()-t0)
 
   def get_coordinate_lines(self):
@@ -218,6 +259,7 @@ class orca_manager(base_manager):
     return outl
 
   def get_timings(self, energy=None):
+    if not self.times: return '-'
     f='  Timings : %0.2fs (%ss)' % (
       self.times[-1],
       self.times.format_mean(format='%.2f'))
@@ -246,18 +288,36 @@ class orca_manager(base_manager):
                                    self.solvent_model)
     outl += self.get_coordinate_lines()
     if hasattr(self, 'freeze_a_ray'):
-      assert 0
+      freeze_outl = '''%geom
+      Constraints
+'''
+      if hasattr(self, 'freeze_a_ray'):
+        for i, (sel, atom) in enumerate(zip(self.freeze_a_ray, self.atoms)):
+          if sel:
+            freeze_outl += '{C %d C} # Restraining %s\n' % (i+1, atom.id_str())
+      freeze_outl += 'end\nend\n'
+      outl += freeze_outl
     self.write_input(outl)
-    print(outl)
 
-  def get_opt(self, cleanup=False):
-    self.opt_setup()
-    self.run_cmd()
-    coordinates = self.read_xyz_output()
+  def get_opt(self, cleanup=False, file_read=True):
+    coordinates = None
+    if file_read:
+      filename = self.get_coordinate_filename()
+      if os.path.exists(filename):
+        coordinates = self.read_xyz_output()
+    if coordinates is None:
+      self.opt_setup()
+      self.run_cmd()
+      coordinates = self.read_xyz_output()
     if cleanup: self.cleanup()
     if hasattr(self, 'interest_array'):
-      assert 0
-    return coordinates
+      tmp = []
+      if hasattr(self, 'interest_array'):
+        for sel, atom in zip(self.interest_array, coordinates):
+          if sel:
+            tmp.append(atom)
+        coordinates=tmp
+    return flex.vec3_double(coordinates)
 
   def cleanup(self, verbose=False):
     if not self.preamble: return
