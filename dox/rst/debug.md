@@ -193,7 +193,7 @@ we look at the bottom of the class definition in `dxtbx/src/dxtbx/imageset.h`:
     501   scitbx::af::shared<goniometer_ptr> goniometers_;
     502   scitbx::af::shared<scan_ptr> scans_;
 ```
-where `beam_ptr` et al. has been typedef'd to the boost shared pointers we saw in the stack trace:
+where `beam_ptr` et al. have been typedef'd to the boost shared pointers we saw in the stack trace:
 ```
     156   typedef boost::shared_ptr<BeamBase> beam_ptr;
 [etc.]   
@@ -206,7 +206,7 @@ We move up the stack to the ImageSetData class and confirm that the arrays `beam
 (gdb) p beams_.size()
 $1 = 22245
 ```
-Finally we look at the `ImageSetData` constructor to see why the arrays are so big:
+We look at the `ImageSetData` constructor to see why the arrays are so big:
 ```
     169   ImageSetData(boost::python::object reader, masker_ptr masker)
     170       : reader_(reader),
@@ -220,10 +220,7 @@ Finally we look at the `ImageSetData` constructor to see why the arrays are so b
 where the `reader` argument is the Python class `FormatMultiImage.Reader` with these methods `__len__` and `__init__`:
 ```
      26     def __init__(self, format_class, filenames, num_images=None, **kwargs):
-     27         self.kwargs = kwargs
-     28         self.format_class = format_class
-     29         assert len(filenames) == 1
-     30         self._filename = filenames[0]
+     [...]
      31         if num_images is None:
      32             format_instance = self.format_class.get_instance(
      33                 self._filename, **self.kwargs
@@ -242,8 +239,10 @@ set as follows in `FormatMultiImage.get_imageset`:
     149             assert single_file_indices is not None
     150             assert min(single_file_indices) >= 0
     151             num_images = max(single_file_indices) + 1
+    [...]
+    175    	    reader = cls.get_reader()(filenames, num_images=num_images, **format_kwargs)
 ```
-and confirm that `single_file_indices` is a large number for this experiment file:
+Finally we confirm that `single_file_indices` is a large number for this experiment file:
 ```
 # grep -A2 single_file_indices /data/split_00.expt
       "single_file_indices": [
