@@ -1226,6 +1226,21 @@ class manager(object):
     else:
       return self.ias_manager.get_ias_selection()
 
+  def get_bonds_rmsd(self, use_hydrogens=False):
+    assert self.restraints_manager is not None
+    if(use_hydrogens):
+      rm = self.restraints_manager
+      sc = self.get_sites_cart()
+    else:
+      hd_sel = self.get_xray_structure().hd_selection()
+      rm = self.restraints_manager.select(~hd_sel)
+      sc = self.get_sites_cart().select(~hd_sel)
+    energies_sites = \
+      rm.geometry.energies_sites(
+        sites_cart        = sc,
+        compute_gradients = False)
+    return energies_sites.bond_deviations()[2]
+
   def apply_selection_string(self, selection_string):
     if not selection_string:
       return
