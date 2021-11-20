@@ -87,7 +87,10 @@ def run(args, out=sys.stdout):
                     options.company, options.website, options.sourcedir,
                     options.tmpdir, options.mainNSISscript)
 
-  cmd = ["makensis", "/OMakeWindowsInstaller.log", "/NOCD", "/V4", scriptname]
+  cmd = ["makensis", "/OMakeWindowsInstaller.log", "/NOCD", "/V4",
+         '/X"SetCompressor /FINAL /SOLID lzma"',
+         '/X"SetCompressorDictSize 64"',
+         scriptname]
   print("args= ", str(cmd))
   try:
     p = subprocess.Popen(
