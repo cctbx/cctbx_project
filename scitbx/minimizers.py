@@ -272,14 +272,16 @@ class lbfgsb(object):
       M.error = str(e)
     M.n_calls = icall
     # items to store
-    self.M = M
-    self.f_start = f_start
-    self.f = f
+    self.M          = M
+    self.f_start    = f_start
+    self.f          = f
+    self.nfev       = self.M.n_calls
+    self.calculator = calculator
 
   def show(self, log=None, prefix=""):
     if(log is None): log = sys.stdout
     m="%sLBFGS-B: function start/end, n_calls:"%prefix
-    print(m, self.f_start, self.f, self.M.n_calls, file=log)
+    print(m, self.f_start, self.f, self.nfev, file=log)
 
 class lbfgs(object):
   """
@@ -302,10 +304,12 @@ class lbfgs(object):
       line_search               = True,
       log                       = None)
     # items to store
-    self.M = M
+    self.M          = M
     self.calculator = calculator
+    self.nfev       = self.M.nfun()
 
   def show(self, log=None, prefix=""):
     if(log is None): log = sys.stdout
-    m="%sLBFGS: function start/end, n_calls:"%prefix
-    print(m, self.calculator.f_start, self.calculator.f, self.M.nfun(), file=log)
+    m="%sLBFGS: function start/end, n_calls: %.6f %.6f %d"
+    print(m%(prefix, self.calculator.f_start, self.calculator.f, self.M.nfun()),
+      file=log)
