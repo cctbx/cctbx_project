@@ -1689,15 +1689,9 @@ END
     model = dm.get_model(inFileName)
   else:
     # Generate a small-molecule model using the map model manager
-    print('Generating model')
     mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
     mmm.generate_map()              #   get a model from a generated small library model and calculate a map for it
     model = mmm.model()             #   get the model
-
-  # Make sure we have a valid unit cell.  Do this before we add hydrogens to the model
-  # to make sure we have a valid unit cell.
-  # @todo Only do this when we have a problem with the unit cell.
-  #model = shift_and_box_model(model = model)
 
   # Add Hydrogens to the model
   reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
@@ -1715,10 +1709,6 @@ END
 
   opt = FastOptimizer(True, model,probeRadius=0.25)
 
-  f = open("deleteme.pdb","w")
-  f.write(model.model_as_pdb())
-  f = open("atomDump.pdb","w")
-  f.write(opt.getAtomDump())
   # @todo
 
   #========================================================================
