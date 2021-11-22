@@ -35,6 +35,9 @@ master_phil_str = '''
 approach = *add remove
   .type = choice
   .help = Determines whether Reduce will add (and optimize) or remove Hydrogens from the model
+n_terminal_charge = *residue_one first_in_chain no_charge
+  .type = choice(multi=False)
+  .help = Mode for placing H3 at terminal nitrogen.
 use_neutron_distances = False
   .type = bool
   .help = Use neutron distances (-nuclear in reduce)
@@ -159,7 +162,10 @@ NOTES:
       # Add Hydrogens to the model
       make_sub_header('Adding Hydrogens', out=self.logger)
       startAdd = time.clock()
-      reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = self.model)
+      reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+        model = self.model,
+        n_terminal_charge=self.params.n_terminal_charge
+      )
       reduce_add_h_obj.run()
       model = reduce_add_h_obj.get_model()
       doneAdd = time.clock()
