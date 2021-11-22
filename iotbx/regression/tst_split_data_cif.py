@@ -255,7 +255,7 @@ Crystal 1:
     Number of columns: 0
 Crystal 2:
   Name: crystal_0
-  Project: project
+  Project: project_0
   Id: 2
   Unit cell: (112.665, 52.848, 44.468, 90, 102.966, 90)
   Number of datasets: 1
@@ -302,7 +302,7 @@ Crystal 1:
     Number of columns: 0
 Crystal 2:
   Name: crystal_0
-  Project: project
+  Project: project_0
   Id: 2
   Unit cell: (112.665, 52.848, 44.468, 90, 102.966, 90)
   Number of datasets: 1
@@ -341,7 +341,7 @@ Crystal 1:
     Number of columns: 0
 Crystal 2:
   Name: crystal_0
-  Project: project
+  Project: project_0
   Id: 2
   Unit cell: (112.665, 52.848, 44.468, 90, 102.97, 90)
   Number of datasets: 1
