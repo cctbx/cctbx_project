@@ -340,15 +340,16 @@ def extract(file_name,
         unit_cell = ma.unit_cell()
 
       if crys_id not in mtz_crystals or \
-        (i > current_i and unit_cell is not None and unit_cell.parameters() != uc.parameters()):
+        (i > current_i and unit_cell is not None and uc is not None and unit_cell.parameters() != uc.parameters()):
         # Ensure new mtz crystals are created if miller_array objects have different unit cells
         # Can happen if there are more datasets in the same cif file, like MAD datasets
         uc = unit_cell
-        i = current_i
+        current_i = i
+        # Use unique project and crystal names so that MtzGet() in cmtzlib.c picks up individual unit cells
         mtz_crystals[crys_id] = (
           mtz_object.add_crystal(
-            name="crystal_%i" %crys_id,
-            project_name="project",
+            name="crystal_%i" %i,
+            project_name="project_%i" %i,
             unit_cell =uc), {})
       crystal, datasets = mtz_crystals[crys_id]
       w_id = 0
