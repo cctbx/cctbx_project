@@ -184,6 +184,7 @@ NOTES:
 
       make_sub_header('Optimizing', out=self.logger)
       startOpt = time.clock()
+      Optimizers.probePhil = self.params.probe
       opt = Optimizers.FastOptimizer(self.params.add_flip_movers, model, probeRadius=0.25,
         altID=self.params.alt_id, preferenceMagnitude=self.params.preference_magnitude)
       doneOpt = time.clock()

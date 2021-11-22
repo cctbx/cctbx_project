@@ -51,6 +51,11 @@ from mmtbx.hydrogens import reduce_hydrogen
 # Setting it above 1 provides additional debugging information.
 verbosity = 3
 
+# Probe PHIL parameters that are passed to Probe methods.  These enable modification of
+# Probe behavior without having to pass individual parameters through the various Optimizer
+# classes.
+probePhil = None
+
 ##################################################################################
 # Helper functions
 
@@ -275,7 +280,9 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-        ret = Helpers.getExtraAtomInfo(model) # @todo Pass probePhil here
+        global probePhil
+        ret = Helpers.getExtraAtomInfo(
+          model= model, useNeutronDistances=self._useNeutronDistances, probePhil=probePhil)
         self._extraAtomInfo = ret.extraAtomInfo
         self._infoString += ret.warnings
         self._infoString += _ReportTiming("get extra atom info")
