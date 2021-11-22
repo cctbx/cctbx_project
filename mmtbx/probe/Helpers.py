@@ -20,6 +20,8 @@
 from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import
 import sys
+import math
+import traceback
 import iotbx.map_model_manager
 import iotbx.data_manager
 import cctbx.maptbx.box
@@ -399,7 +401,8 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     an acceptor or a possible flipped position of an acceptor, and that is not something that
     can be determined at the time we're placing phantom hydrogens.  In that case, we want to
     include all possible interactions and weed them out during optimization.
-    :param placedHydrogenRadius: Radius to use for placed Phantom Hydrogen atoms.
+    :param placedHydrogenRadius: Maximum radius to use for placed Phantom Hydrogen atoms.
+    The Hydrogens are placed at the optimal overlap distance so may be closer than this.
     :return: List of new atoms that make up the phantom Hydrogens, with only their name and
     element type and xyz positions filled in.  They will have i_seq 0 and they should not be
     inserted into a structure.
@@ -477,7 +480,7 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
       h.xyz = rvec3(atom.xyz) + distance * normOffset
       ret.append(h)
     except Exception:
-      # If we have overlapping atoms, don't add.
+      # If we have overlapping atoms (normalize() fails), don't add.
       pass
 
   return ret
@@ -549,7 +552,98 @@ def Test(inFileName = None):
 
   #========================================================================
   # Run unit test on getPhantomHydrogensFor().
-  # @todo
+
+  # Generate a Water Oxygen atom at the origin with a set of atoms around it.
+  # The surrounding ones will include atoms that are acceptors, atoms that are not
+  # and atoms that are on an aromatic ring (all on the same ring).  The distance to
+  # each atom will be such that it is within range for a Phantom Hydrogen.  The
+  # directions will be towards integer lattice points and we'll round-robin the type.
+  # NOTE: The atom names and types and radii and such are not correct, just made up
+  # to test our functions.
+  try:
+    # Prepare our extraAtomInfoMap
+    atoms = []
+    extras = []
+
+    radius = 1.1  # All atoms have the same radius
+    rg = pdb.hierarchy.residue_group()
+    water = pdb.hierarchy.atom_group()
+    water.resname = 'HOH'
+    rg.append_atom_group(water)
+    o = pdb.hierarchy.atom()
+    o.element = "O"
+    o.xyz = [ 0.0, 0.0, 0.0 ]
+    atoms.append(o)
+    extras.append(probeExt.ExtraAtomInfo(radius, False))
+    water.append_atom(o)
+    type = 0
+    # They are all in a residue that has the specified atom name listed as Aromatic.
+    # We change the names and types below to make some not match.
+    ag = pdb.hierarchy.atom_group()
+    ag.resname = 'HIS'
+    for x in range(-1,2,2):
+      for y in range(-1,2,2):
+        for z in range(-1,2,2):
+          dist = math.sqrt(x*x+y*y+z*z)
+          d = (radius + 1.0) / dist  # @todo Add back in radius
+          a = pdb.hierarchy.atom()
+          a.xyz = [ x*d,y*d,z*d ]
+          a.occ = 0.5
+          if type % 3 == 0: # Acceptor
+            a.element = 'C'
+            a.name = 'CA'
+            extras.append(probeExt.ExtraAtomInfo(radius, True))
+          elif type % 3 == 1: # Not Acceptor
+            a.element = 'C'
+            a.name = 'CB'
+            extras.append(probeExt.ExtraAtomInfo(radius, False))
+          else: # Aromatic ring atom, also an acceptor
+            a.name = 'ND1'
+            a.element = 'N'
+            extras.append(probeExt.ExtraAtomInfo(radius, True))
+          type += 1
+
+          atoms.append(a)
+          ag.append_atom(a)
+
+    rg.append_atom_group(ag)
+    c = pdb.hierarchy.chain()
+    c.append_residue_group(rg)
+    m = pdb.hierarchy.model()
+    m.append_chain(c)
+    m.atoms().reset_i_seq()
+
+    # Prepare our extra-atom information mapper.
+    extrasMap = probeExt.ExtraAtomInfoMap(atoms, extras)
+
+    # Prepare our spatial-query structure.
+    sq = probeExt.SpatialQuery(atoms)
+
+    # Run Phantom placement with different settings for occupancy and acceptorOnly
+    # and make sure the atom counts match what is expected.
+    for occThresh in [0.4,1.0]:
+      for acceptorOnly in [False, True]:
+        # Check that we get the expected number of contacts
+        if acceptorOnly:
+          expected = 1 + 3 # One for the aromatics, three others
+        else:
+          expected = 7 # Only one of the acceptor Aromatics but all of the other atoms
+        if occThresh > 0.5:
+          expected = 0
+        ret = getPhantomHydrogensFor(o, sq, extrasMap, occThresh, acceptorOnly)
+        assert len(ret) == expected, "Helpers.Test() Unexpected count during Phantom Hydrogen placement: "+str(len(ret))
+
+        # The location of the first Hydrogen should always point towards the first atom after the Oxygen.
+        if len(ret) > 0:
+          hLen = rvec3(ret[0].xyz).length()
+          aLen = rvec3(atoms[1].xyz).length()
+          dot = ( ret[0].xyz[0] * atoms[1].xyz[0] +
+                  ret[0].xyz[1] * atoms[1].xyz[1] +
+                  ret[0].xyz[2] * atoms[1].xyz[2] )
+          assert approx_equal(hLen*aLen, dot), "Helpers.Test(): Direction of Phantom Hydrogen placement incorrect"
+
+  except Exception as e:
+    assert len(str(e)) == 0, "Helpers.Test() Exception during test of Phantom Hydrogen placement: "+str(e)+"\n"+traceback.format_exc()
 
   #========================================================================
   # Run unit test on isPolarHydrogen().
@@ -643,7 +737,7 @@ END
     count = len(getAtomsWithinNBonds(atoms[0], bondedNeighborLists, N))
     assert count == nestedNeighborsForN[N], ("Helpers.Test(): Nested unclamped count for "+atoms[0].name.strip()+
         " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN[N]))
-  # @todo Test the hydrogen cutoff parameter for getAtomsWithinNBonds
+  # @todo Test the hydrogen cutoff parameter for getAtomsWithinNBonds()
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
