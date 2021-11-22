@@ -120,7 +120,7 @@ def run(pdb_hierarchy,
     ci = get_atom(atoms=rgi.atoms(), name="C")
     ni = get_atom(atoms=rgi.atoms(), name="N")
     if(ci is None or ni is None): # collect non-proteins
-      c = iotbx.pdb.hierarchy.chain(id = all_chains.next())
+      c = iotbx.pdb.hierarchy.chain(id = next(all_chains))
       c.append_residue_group(rgi)
       super_sphere_hierarchy.models()[0].append_chain(c)
       continue
@@ -140,7 +140,7 @@ def run(pdb_hierarchy,
     assert c_linked in [1, 0], c_linked # Either linked or not!
     assert n_linked in [1, 0], n_linked # Either linked or not!
     if(c_linked==0 and n_linked==0): # isolated single residue
-      c = iotbx.pdb.hierarchy.chain(id = all_chains.next())
+      c = iotbx.pdb.hierarchy.chain(id = next(all_chains))
       rgi.link_to_previous=True
       c.append_residue_group(rgi)
       super_sphere_hierarchy.models()[0].append_chain(c)
@@ -155,7 +155,7 @@ def run(pdb_hierarchy,
       n_linked, rgj = grow_chain(residue_groups_k, chunk, ci)
       if(n_linked==1):
         ci = get_atom(atoms=rgj.atoms(), name="C")
-    c = iotbx.pdb.hierarchy.chain(id = all_chains.next())
+    c = iotbx.pdb.hierarchy.chain(id = next(all_chains))
     for i, rg in enumerate(chunk):
       rg.resseq = "%4d" % i
       c.append_residue_group(rg)
