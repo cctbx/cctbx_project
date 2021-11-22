@@ -54,6 +54,7 @@ verbosity = 3
 # Probe PHIL parameters that are passed to Probe methods.  These enable modification of
 # Probe behavior without having to pass individual parameters through the various Optimizer
 # classes.
+# @todo Consider making this a constructor parameter rather than a global.
 probePhil = None
 
 ##################################################################################
@@ -81,11 +82,12 @@ def _ReportTiming(message):
 
 def AlternatesInModel(model):
   """Returns a set of altloc names of all conformers in all chains.
+  :param model: pdb.hierarchy.model to search for alternates.
   :return: Set of strings.  The set is will include only the empty string if no
   chains in the model have alternates.  It has an additional entry for every altloc
   found in every chain.
   """
-  ret = set()
+  ret = set(['']) # We always add this so that it will be present even when there are alternates
   for c in model.chains():
     for alt in c.conformers():
       ret.add(alt.altloc)
@@ -94,10 +96,12 @@ def AlternatesInModel(model):
 def GetAtomsForConformer(model, conf):
   """Returns a list of atoms in the named conformer.  It also includes atoms from
   the first conformation in chains that do not have this conformation, to provide a
-  complete model.  For a model whose chains only have one conformer, it will return
+  complete model.  For a model whose chains have only one conformer, it will return
   all of the atoms.
   :param model: pdb.hierarchy.model to search for atoms.
-  :param conf: String name of the conformation to find.  Can be "".
+  :param conf: String name of the conformation to find.  Can be "", which finds the
+  default conformer; if there is no empty conformation, then it will
+  pick the first available conformation for each atom group.
   :return: List of atoms consistent with the specified conformer.
   """
   ret = []
@@ -1527,12 +1531,34 @@ def Test(inFileName = None):
   """
 
   #========================================================================
-  # Test the AlternatesInModel() function.
-  # @todo
+  # Test model to use for validating the alternate/conformer-selection functions.
+
+  alternates_test = (
+"""
+ATOM      1  N   HIS A  1       26.965  32.911   7.593  1.00  7.19           N
+ATOM      2  N  AHIS A  2       26.965  32.911   7.593  1.00  7.19           N
+ATOM      3  N  BHIS A  2       26.965  32.911   7.593  1.00  7.19           N
+ATOM      4  N  CHIS A  2       26.965  32.911   7.593  1.00  7.19           N
+END
+"""
+    )
 
   #========================================================================
+  # Test the AlternatesInModel() function.
   # Test the GetAtomsForConformer() function.
-  # @todo
+  dm = DataManager(['model'])
+  dm.process_model_str("alternates_test.pdb",alternates_test)
+  model = dm.get_model()
+  model.process(make_restraints=False)
+  model = dm.get_model().get_hierarchy().models()[0]
+  alts = AlternatesInModel(model)
+  if alts != set(['','A','B','C']):
+    return "Optimizers.Test(): Incorrect set of alternates for AlternatesInModel() test: " + str(alts)
+
+  for a in alts:
+    count = len(GetAtomsForConformer(model, a))
+    if count != 2:
+      return "Optimizers.Test(): Incorrect atom count for GetAtomsForConformer() test: " + str(count)
 
   ################################################################################
   # Test using snippet from 1xso to ensure that the Histidine placement code will lock down the
