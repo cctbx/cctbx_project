@@ -211,7 +211,7 @@ class _SingletonOptimizer(object):
     # Run optimization for every desired conformer and every desired model, calling
     # placement and then a derived-class single optimization routine for each.  When
     # the modelIndex or altID is None, that means to run over all available cases.
-    # For alternates, if there is a non-empty ("" or " ") case, then we run backwards
+    # For alternates, if there is a non-empty (not "" or " ") case, then we run backwards
     # from the last to the first but do not run for the empty case; if there are only
     # empty cases, then we run just once.  We run the models in order, all of them when
     # None is specified and the specified one if it is specified.
@@ -1560,6 +1560,10 @@ END
     if count != 2:
       return "Optimizers.Test(): Incorrect atom count for GetAtomsForConformer() test: " + str(count)
 
+  #========================================================================
+  # Unit tests for each type of Optimizer.
+  # @todo
+
   ################################################################################
   # Test using snippet from 1xso to ensure that the Histidine placement code will lock down the
   # Histidine, set its Nitrogen states, and mark its Hydrogens for deletion.  To
@@ -1678,6 +1682,10 @@ END
         return 'Optimizers.Test(): '+name+' in 1xso Histidine test was not set for deletion'
 
   #========================================================================
+  # Check a case where an NH2Flip would be locked down and have its Hydrogen removed.
+  # @todo
+
+  #========================================================================
   # Generate an example data model with a small molecule in it or else read
   # from the specified file.
   infoString = ""
@@ -1689,6 +1697,7 @@ END
     model = dm.get_model(inFileName)
   else:
     # Generate a small-molecule model using the map model manager
+    print('Generating model')
     mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
     mmm.generate_map()              #   get a model from a generated small library model and calculate a map for it
     model = mmm.model()             #   get the model
@@ -1707,24 +1716,12 @@ END
   p.pdb_interpretation.proceed_with_excessive_length_bonds=True
   model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
 
+  # Run a fast optimizer on the model.
+  print('Testing FastOptimizer')
   opt = FastOptimizer(True, model,probeRadius=0.25)
 
-  # @todo
-
   #========================================================================
-  # Unit test for phantom Hydrogen placement.
-  # @todo
-
-  #========================================================================
-  # Unit tests for each type of Optimizer.
-  # @todo
-
   # @todo Unit test a multi-model case, a multi-alternate case, and singles of each.
-
-  # @todo Unit test the non-ionic and ionic radius for polar hydrogen distance parameters.
-  # along with the deletion of polar hydrogens that bump both ions and non ions
-
-  # @todo Check a case where an NH2Flip would be locked down and have its Hydrogen removed.
 
   return ""
 
