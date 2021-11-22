@@ -109,22 +109,22 @@ class place_hydrogens():
 #    f.write(self.model.model_as_pdb())
 
     # place N-terminal propeller hydrogens
-    if self.n_terminal_charge != 'no_charge':
-      for m in pdb_hierarchy.models():
-        for chain in m.chains():
-          rgs = chain.residue_groups()[0]
-          # by default, place NH3 only at residue with resseq 1
-          if (self.n_terminal_charge == 'residue_one' and rgs.resseq_as_int() != 1):
-            continue
-          elif (self.n_terminal_charge == 'first_in_chain'):
-            pass
-          for ag in rgs.atom_groups():
-            if (get_class(name=ag.resname) in
-                ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
-              if ag.get_atom("H"):
-                ag.remove_atom(ag.get_atom('H'))
-            rc = add_n_terminal_hydrogens_to_residue_group(rgs)
-            # rc is always empty list?
+#    if self.n_terminal_charge != 'no_charge':
+#      for m in pdb_hierarchy.models():
+#        for chain in m.chains():
+#          rgs = chain.residue_groups()[0]
+#          # by default, place NH3 only at residue with resseq 1
+#          if (self.n_terminal_charge == 'residue_one' and rgs.resseq_as_int() != 1):
+#            continue
+#          elif (self.n_terminal_charge == 'first_in_chain'):
+#            pass
+#          for ag in rgs.atom_groups():
+#            if (get_class(name=ag.resname) in
+#                ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
+#              if ag.get_atom('H'):
+#                ag.remove_atom(ag.get_atom('H'))
+#            rc = add_n_terminal_hydrogens_to_residue_group(rgs)
+#            # rc is always empty list?
 
     pdb_hierarchy.sort_atoms_in_place()
     pdb_hierarchy.atoms().reset_serial()
@@ -215,6 +215,43 @@ class place_hydrogens():
     self.exclude_H_on_links()
     if print_time:
       print("all links:", round(time.time()-t0, 2))
+
+    # place N-terminal propeller hydrogens
+    if self.n_terminal_charge != 'no_charge':
+      hierarchy = self.model.get_hierarchy()
+      for m in hierarchy.models():
+        for chain in m.chains():
+          rgs = chain.residue_groups()[0]
+          # by default, place NH3 only at residue with resseq 1
+          if (self.n_terminal_charge == 'residue_one' and rgs.resseq_as_int() != 1):
+            continue
+          elif (self.n_terminal_charge == 'first_in_chain'):
+            pass
+          add_charge = True
+          for ag in rgs.atom_groups():
+            if (get_class(name=ag.resname) in
+                ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
+              if ag.get_atom('N'):
+                N = ag.get_atom('N')
+                if N.i_seq in self.exclusion_iseqs:
+                  add_charge = False
+              if ag.get_atom('H'):
+                H = ag.get_atom('H')
+                ag.remove_atom(H)
+                H_label = H.id_str().replace('pdb=','').replace('"','')
+                if H_label in self.site_labels_no_para:
+                  self.site_labels_no_para.remove(H_label)
+            if add_charge:
+              rc = add_n_terminal_hydrogens_to_residue_group(rgs)
+      hierarchy.sort_atoms_in_place()
+      hierarchy.atoms().reset_serial()
+      self.model = mmtbx.model.manager(
+        model_input       = None,
+        pdb_hierarchy     = hierarchy,
+        stop_for_unknowns = self.stop_for_unknowns,
+        crystal_symmetry  = self.model.crystal_symmetry(),
+        restraint_objects = ro,
+        log               = null_out())
 
     self.n_H_final = self.model.get_hd_selection().count(True)
 
@@ -351,11 +388,13 @@ class place_hydrogens():
         sel_remove.append(j)
         removed_dict[j] = exclusion_dict[i]
     #
+
     sl_removed = [(atom.id_str().replace('pdb=','').replace('"',''),
                    origin_ids.get_origin_key(removed_dict[atom.i_seq]))
         for atom in self.model.get_hierarchy().atoms().select(sel_remove)]
 #    self.site_labels_removed = list(OrderedDict.fromkeys(sl_removed))
     self.sl_removed = sl_removed
+    self.exclusion_iseqs = exclusion_iseqs
     #
     self.model = self.model.select(~flex.bool(self.model.size(), sel_remove))
 
