@@ -1533,8 +1533,6 @@ def Test(inFileName = None):
   # ensure that hydrogen placement puts them there in the first place, we first
   # move the CU and ZN far from the Histidine before adding Hydrogens, then move
   # them back before building the spatial hierarchy and testing.
-  # @todo Why are CU and ZN not being found in CCTBX for this snippet?  Missing ligands?  Print info to see.
-  #   (Running 1sxo produces this as well).
   pdb_1xso_his_61_and_ions = (
 """
 ATOM    442  N   HIS A  61      26.965  32.911   7.593  1.00  7.19           N
@@ -1598,7 +1596,7 @@ END
   atoms = GetAtomsForConformer(firstModel, "")
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  ret = Helpers.getExtraAtomInfo(model) # @todo Pass probePhil here
+  ret = Helpers.getExtraAtomInfo(model)
   extra = ret.extraAtomInfo
 
   # Get the Cartesian positions of all of the atoms we're considering for this alternate
@@ -1627,13 +1625,13 @@ END
   # Get the spatial-query information needed to quickly determine which atoms are nearby
   sq = probeExt.SpatialQuery(atoms)
 
-  # Place the movers, which should include only an NH3 rotator because the Histidine flip
+  # Place the movers, which should be none because the Histidine flip
   # will be constrained by the ionic bonds.
   ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True),
                      bondedNeighborLists, sq, extra, maxVDWRad, True)
   movers = ret.moverList
-  if len(movers) != 1:
-    return "Optimizers.Test(): Incorrect number of Movers for 1xso Histidine test"
+  if len(movers) != 0:
+    return "Optimizers.Test(): Incorrect number of Movers for 1xso Histidine test: " + str(len(movers))
 
   # Make sure that the two ring Nitrogens have been marked as acceptors.
   # Make sure that the two hydrogens have been marked for deletion.
