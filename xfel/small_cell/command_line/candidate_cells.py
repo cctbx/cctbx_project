@@ -201,10 +201,13 @@ def call_gsas(args):
         }
 
 
+  # These are the full lists of lattice types that GSASII knows about, and some
+  # corresponding symmorphic space groups. We don't search for all of these,
+  # instead only the subset given as Script.lattice_symbols.
   symmorphic_sgs = ['F23', 'I23', 'P23', 'R3', 'P3', 'I4', 'P4', 'F222', 'I222',
-      'A222', 'B222', 'C222', 'P222', 'I2', 'C2', 'P2', 'P1']
+      'A222', 'B222', 'C222', 'P222', 'I2', 'A2', 'C2', 'P2', 'P1']
   lattices = ['cF', 'cI', 'cP', 'hR', 'hP', 'tI', 'tP', 'oF', 'oI', 'oA', 'oB',
-      'oC', 'oP', 'mI', 'mC', 'mP', 'aP']
+      'oC', 'oP', 'mI', 'mA', 'mC', 'mP', 'aP']
 
   #d_spacings, bravais, powder_pattern, d_min, wavl, timeout = args
   params, bravais, d_spacings, powder_pattern = args
@@ -217,7 +220,7 @@ def call_gsas(args):
 
   i_bravais = lattices.index(bravais)
   sg_string = symmorphic_sgs[i_bravais]
-  bravais_list = [i==i_bravais for i in range(17)]
+  bravais_list = [i==i_bravais for i in range(18)]
 
   cctbx_args = _make_cctbx_args(sg_string)
 
