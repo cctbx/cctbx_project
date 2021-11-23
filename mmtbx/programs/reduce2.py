@@ -35,6 +35,9 @@ master_phil_str = '''
 approach = *add remove
   .type = choice
   .help = Determines whether Reduce will add (and optimize) or remove Hydrogens from the model
+n_terminal_charge = *residue_one first_in_chain no_charge
+  .type = choice(multi=False)
+  .help = Mode for placing H3 at terminal nitrogen.
 use_neutron_distances = False
   .type = bool
   .help = Use neutron distances (-nuclear in reduce)
@@ -48,6 +51,9 @@ alt_id = None
 add_flip_movers = False
   .type = bool
   .help = Insert flip movers (-flip, -build, -noflip, -demandflipallnhqs in reduce)
+profile = False
+  .type = bool
+  .help = Profile the performance of the entire run
 
 output
   .style = menu_item auto_align
@@ -109,7 +115,8 @@ NOTES:
 '''.format(version)
   datatypes = ['model', 'restraint', 'phil']
   master_phil_str = master_phil_str
-  data_manager_options = ['model_skip_expand_with_mtrix']
+  data_manager_options = ['model_skip_expand_with_mtrix',
+                          'model_skip_ss_annotations']
   citations = program_citations
   epilog = '''
   For additional information and help, see http://kinemage.biochem.duke.edu/software/probe
@@ -124,6 +131,12 @@ NOTES:
     #  raise Sorry("Must specify output.model_file_name")
     if self.params.output.description_file_name is None:
       raise Sorry("Must specify output.description_file_name")
+
+    # Turn on profiling if we've been asked to in the Phil parameters
+    if self.params.profile:
+      import cProfile
+      self._pr = cProfile.Profile()
+      self._pr.enable()
 
 # ------------------------------------------------------------------------------
 
@@ -149,7 +162,10 @@ NOTES:
       # Add Hydrogens to the model
       make_sub_header('Adding Hydrogens', out=self.logger)
       startAdd = time.clock()
-      reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = self.model)
+      reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+        model = self.model,
+        n_terminal_charge=self.params.n_terminal_charge
+      )
       reduce_add_h_obj.run()
       model = reduce_add_h_obj.get_model()
       doneAdd = time.clock()
@@ -168,6 +184,7 @@ NOTES:
 
       make_sub_header('Optimizing', out=self.logger)
       startOpt = time.clock()
+      Optimizers.probePhil = self.params.probe
       opt = Optimizers.FastOptimizer(self.params.add_flip_movers, model, probeRadius=0.25,
         altID=self.params.alt_id, preferenceMagnitude=self.params.preference_magnitude)
       doneOpt = time.clock()
@@ -183,6 +200,12 @@ NOTES:
         if sel[a.i_seq]:
           a.parent().remove_atom(a)
       model = self.model
+
+    # Re-process the model because we have removed some atoms that were previously
+    # bonded.  Don't make restraints during the reprocessing.
+    # We had to do this to keep from carshing on a call to pair_proxies when generating
+    # mmCIF files, so we always do it for safety.
+    model.process(make_restraints=False, pdb_interpretation_params=p)
 
     make_sub_header('Writing output', out=self.logger)
 
@@ -209,6 +232,15 @@ NOTES:
       f.write(txt)
 
     print('Wrote',fullname,'and',self.params.output.description_file_name, file = self.logger)
+
+    # Report profiling info if we've been asked to in the Phil parameters
+    if self.params.profile:
+      print('Profile results:')
+      import pstats
+      profile_params = {'sort_by': 'time', 'num_entries': 20}
+      self._pr.disable()
+      ps = pstats.Stats(self._pr).sort_stats(profile_params['sort_by'])
+      ps.print_stats(profile_params['num_entries'])
 
 # ------------------------------------------------------------------------------
 

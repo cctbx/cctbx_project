@@ -1027,7 +1027,6 @@ namespace {
     // versions being used at the time this code was written, preventing direct
     // initialization from the const char * array.
     // Thus, we have a twisty maze to get the set initialized.
-    //! @todo Not yet the complete list as of 11/3/2021
     static const char* posi[] = {
       // Metallic atoms
       "Li", "Na", "Al", "K",  "Mg", "Ca", "Mn", "Fe", "Co", "Ni"
@@ -1054,7 +1053,6 @@ namespace {
     // versions being used at the time this code was written, preventing direct
     // initialization from the const char * array.
     // Thus, we have a twisty maze to get the set initialized.
-    //! @todo Not yet the complete list as of 11/3/2021
     static const char* negi[] = { "F", "Cl", "Br", "I" };
     static std::set<std::string> negativeIons(&negi[0], &negi[sizeof(negi) / sizeof(negi[0])]);
 

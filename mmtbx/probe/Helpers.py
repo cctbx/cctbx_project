@@ -20,6 +20,8 @@
 from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import
 import sys
+import math
+import traceback
 import iotbx.map_model_manager
 import iotbx.data_manager
 import cctbx.maptbx.box
@@ -230,6 +232,21 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, N, nonHydrogenN = 1e10):
   atoms.discard(atom)
   return list(atoms)
 
+def isPolarHydrogen(atom, bondedNeighborLists):
+  '''
+    Returns True if the atom is a polar hydrogen, False if not.
+    :param atom: The atom to be tested.
+    :param bondedNeighborLists: Dictionary of lists that contain all bonded neighbors for
+    each atom in a set of atoms.  Should be obtained using
+    mmtbx.probe.Helpers.getBondedNeighborLists().
+    :return: True if the atom is a polar hydrogen.
+  '''
+  if atom.element_is_hydrogen():
+    neighbors = bondedNeighborLists[atom]
+    if len(neighbors) == 1 and neighbors[0].element in ['N', 'O', 'S']:
+      return True
+  return False
+
 class getExtraAtomInfoReturn(object):
   """
     Return type from getExtraAtomInfo() call.
@@ -254,17 +271,18 @@ def getExtraAtomInfo(model, useNeutronDistances = False, probePhil = None):
     :param useNeutronDistances: Default is to use x-ray distances, but setting this to
     True uses neutron distances instead.  This must be set consistently with the
     PDB interpretation parameter used on the model.
-    :param probePhi: None or subobject of PHIL parameters for probe.  Can be obtained using
+    :param probePhil: None or subobject of PHIL parameters for probe.  Can be obtained using
     self.params.probe from a Program Template program that includes the probe_phil_parameters
     from above in its master PHIL parameters string.  If None, local defaults will be used.
-    :param useImplicitHydrogenDistances: Default is to use distances consistent with
-    explicitly-listed Hydrgoens, but setting this to True implicit-Hydrogen distances instead.
-    This must be set consistently with the hydrogens in the model.
-    :param useProbeTablesByDefault: Do not attempt to read the data from CCTBX, use the
-    original Probe tables.  This is normally the fall-back when it cannot find the data in
-    CCTBX.  The Probe tables do not have accurate data on HET atoms, only standard residues.
-    The values in the tables may differ from the current CCTBX values, and the Probe tables
-    are not being maintained.
+    The following are used:
+      implicit_hydrogens (bool): Default is to use distances consistent with
+      explicitly-listed Hydrgoens, but setting this to True implicit-Hydrogen distances instead.
+      This must be set consistently with the hydrogens in the model.
+      use_original_probe_tables (bool): Do not attempt to read the data from CCTBX, use the
+      original Probe tables.  This is normally the fall-back when it cannot find the data in
+      CCTBX.  The Probe tables do not have accurate data on HET atoms, only standard residues.
+      The values in the tables may differ from the current CCTBX values, and the Probe tables
+      are not being maintained.
     :returns a ExtraAtomInfoMap with an entry for every atom in the model suitable for
     passing to the scoring functions.
   """
@@ -384,7 +402,8 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     an acceptor or a possible flipped position of an acceptor, and that is not something that
     can be determined at the time we're placing phantom hydrogens.  In that case, we want to
     include all possible interactions and weed them out during optimization.
-    :param placedHydrogenRadius: Radius to use for placed Phantom Hydrogen atoms.
+    :param placedHydrogenRadius: Maximum radius to use for placed Phantom Hydrogen atoms.
+    The Hydrogens are placed at the optimal overlap distance so may be closer than this.
     :return: List of new atoms that make up the phantom Hydrogens, with only their name and
     element type and xyz positions filled in.  They will have i_seq 0 and they should not be
     inserted into a structure.
@@ -462,7 +481,7 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
       h.xyz = rvec3(atom.xyz) + distance * normOffset
       ret.append(h)
     except Exception:
-      # If we have overlapping atoms, don't add.
+      # If we have overlapping atoms (normalize() fails), don't add.
       pass
 
   return ret
@@ -526,20 +545,8 @@ def Test(inFileName = None):
   Run tests on all of our functions.  Throw an assertion failure if one fails.
   """
 
-  from libtbx.test_utils import approx_equal
-
   #========================================================================
-  # Run unit test on getExtraAtomInfo().
-  # @todo
-
-  #========================================================================
-  # Run unit test on getPhantomHydrogensFor().
-  # @todo
-
-  #========================================================================
-  # Run unit test on getBondedNeighborLists().  We use a specific PDB snippet
-  # for which we know the answer and then we verify that the results are what
-  # we expect.
+  # Model file snippets used in the tests.
   pdb_1xso_his_61 = (
 """
 ATOM    442  N   HIS A  61      26.965  32.911   7.593  1.00  7.19           N
@@ -556,12 +563,276 @@ END
 """
     )
 
+  pdb_4fenH_C_26 = (
+"""
+ATOM    234  P     C B  26      25.712  13.817   1.373  1.00 10.97           P
+ATOM    235  OP1   C B  26      26.979  13.127   1.023  1.00 12.57           O
+ATOM    236  OP2   C B  26      25.641  14.651   2.599  1.00 12.59           O
+ATOM    237  O5'   C B  26      25.264  14.720   0.142  1.00 10.58           O
+ATOM    238  C5'   C B  26      25.128  14.166  -1.162  1.00  9.37           C
+ATOM    239  C4'   C B  26      24.514  15.183  -2.092  1.00  9.05           C
+ATOM    240  O4'   C B  26      23.142  15.447  -1.681  1.00 10.46           O
+ATOM    241  C3'   C B  26      25.159  16.555  -2.048  1.00  8.49           C
+ATOM    242  O3'   C B  26      26.338  16.599  -2.839  1.00  7.94           O
+ATOM    243  C2'   C B  26      24.043  17.427  -2.601  1.00  8.44           C
+ATOM    244  O2'   C B  26      23.885  17.287  -3.999  1.00  9.33           O
+ATOM    245  C1'   C B  26      22.835  16.819  -1.888  1.00 10.06           C
+ATOM    246  N1    C B  26      22.577  17.448  -0.580  1.00  9.44           N
+ATOM    247  C2    C B  26      21.940  18.695  -0.552  1.00  9.61           C
+ATOM    248  O2    C B  26      21.613  19.223  -1.623  1.00 10.13           O
+ATOM    249  N3    C B  26      21.704  19.292   0.638  1.00  9.82           N
+ATOM    250  C4    C B  26      22.082  18.695   1.771  1.00 10.10           C
+ATOM    251  N4    C B  26      21.841  19.328   2.923  1.00 10.94           N
+ATOM    252  C5    C B  26      22.728  17.423   1.773  1.00  9.51           C
+ATOM    253  C6    C B  26      22.952  16.840   0.586  1.00 10.02           C
+ATOM      0  H5'   C B  26      24.573  13.371  -1.128  1.00  9.37           H   new
+ATOM      0 H5''   C B  26      25.996  13.892  -1.498  1.00  9.37           H   new
+ATOM      0  H4'   C B  26      24.618  14.792  -2.973  1.00  9.05           H   new
+ATOM      0  H3'   C B  26      25.463  16.833  -1.170  1.00  8.49           H   new
+ATOM      0  H2'   C B  26      24.192  18.375  -2.460  1.00  8.44           H   new
+ATOM      0 HO2'   C B  26      23.422  16.605  -4.162  1.00  9.33           H   new
+ATOM      0  H1'   C B  26      22.041  16.954  -2.429  1.00 10.06           H   new
+ATOM      0  H41   C B  26      22.073  18.968   3.668  1.00 10.94           H   new
+ATOM      0  H42   C B  26      21.454  20.096   2.919  1.00 10.94           H   new
+ATOM      0  H5    C B  26      22.984  17.013   2.568  1.00  9.51           H   new
+ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H   new
+"""
+    )
+
+  #========================================================================
+  # Run unit test on getExtraAtomInfo().  We use a specific PDB snippet
+  # for which we know the answer and then we verify that the results are what
+  # we expect.
+
+  # Spot check the values on the atoms for standard, neutron distances, implicit hydrogen distances,
+  # and original Probe results.
+  standardChecks = [
+    # Name, vdwRadius, isAcceptor, isDonor
+    ["N",   1.55, False, True ],
+    ["ND1", 1.55, True,  True ],
+    ["C",   1.65, False, False],
+    ["CB",  1.7,  False, False],
+    ["O",   1.4,  True,  False],
+    ["CD2", 1.75, False, False]
+  ]
+  neutronChecks = [
+    # Name, vdwRadius, isAcceptor, isDonor
+    ["N",   1.55, False, True ],
+    ["ND1", 1.55, True,  True ],
+    ["C",   1.65, False, False],
+    ["CB",  1.7,  False, False],
+    ["O",   1.4,  True,  False],
+    ["CD2", 1.75, False, False]
+  ]
+  implicitChecks = [
+    # Name, vdwRadius, isAcceptor, isDonor
+    ["N",   1.7,  False, True ],
+    ["ND1", 1.7,  True,  True ],
+    ["C",   1.8,  False, False],
+    ["CB",  1.9,  False, False],
+    ["O",   1.5,  True,  False],
+    ["CD2", 1.9,  False, False]
+  ]
+  probeChecks = [
+    # Name, vdwRadius, isAcceptor, isDonor
+    ["N",   1.55, False, False],
+    ["ND1", 1.55, True,  False],
+    ["C",   1.65, False, False],
+    ["CB",  1.7,  False, False],
+    ["O",   1.4,  True,  False],
+    ["CD2", 1.7,  False, False]
+  ]
+
+  # Situations to run the test in and expected results:
+  cases = [
+    # Use neutron distances, use implicit distances, use probe values, expected results
+    [False, False, False, standardChecks],
+    [True,  False, False, neutronChecks],
+    [False, True,  False, implicitChecks],
+    [False, False, True,  probeChecks]
+  ]
+
+  for cs in cases:
+    useNeutronDistances = cs[0]
+    useImplicitHydrogenDistances = cs[1]
+    useProbe = cs[2]
+    checks = cs[3]
+    runType = "; neutron,implicit,probe = "+str(useNeutronDistances)+","+str(useImplicitHydrogenDistances)+","+str(useProbe)
+
+    dm = iotbx.data_manager.DataManager(['model'])
+    dm.process_model_str("1xso_snip.pdb",pdb_1xso_his_61)
+    model = dm.get_model()
+    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    p.pdb_interpretation.use_neutron_distances = useNeutronDistances
+    model.process(make_restraints=True, pdb_interpretation_params = p)
+
+    # Get the extra atom information for the model using default parameters.
+    # Make a PHIL-like structure to hold the parameters.
+    class philLike:
+      def __init__(self, useImplicitHydrogenDistances = False, useProbe = False):
+        self.implicit_hydrogens = useImplicitHydrogenDistances
+        self.use_original_probe_tables = useProbe
+    philArgs = philLike(useImplicitHydrogenDistances, useProbe)
+    extras = getExtraAtomInfo(model,useNeutronDistances=useNeutronDistances,probePhil=philArgs).extraAtomInfo
+
+    # Get the atoms for the first model in the hierarchy.
+    atoms = model.get_hierarchy().models()[0].atoms()
+
+    for a in atoms:
+      e = extras.getMappingFor(a)
+      for c in checks:
+        if a.name.strip() == c[0]:
+          assert math.isclose(e.vdwRadius, c[1]), "Helpers.Test(): Bad radius for "+a.name+": "+str(e.vdwRadius)+runType
+          assert e.isAcceptor == c[2], "Helpers.Test(): Bad Acceptor status for "+a.name+": "+str(e.isAcceptor)+runType
+          assert e.isDonor == c[3], "Helpers.Test(): Bad Donor status for "+a.name+": "+str(e.isDonor)+runType
+          # Check the ability to set and check Dummy/Phantom Hydrogen status
+          assert e.isDummyHydrogen == False, "Helpers.Test(): Bad Dummy Hydrogen status for "+a.name+runType
+          e.isDummyHydrogen = True
+          assert e.isDummyHydrogen == True, "Helpers.Test(): Can't set DummyHydrogen status for "+a.name+runType
+
+  #========================================================================
+  # Run unit test on getPhantomHydrogensFor().
+
+  # Generate a Water Oxygen atom at the origin with a set of atoms around it.
+  # The surrounding ones will include atoms that are acceptors, atoms that are not
+  # and atoms that are on an aromatic ring (all on the same ring).  The distance to
+  # each atom will be such that it is within range for a Phantom Hydrogen.  The
+  # directions will be towards integer lattice points and we'll round-robin the type.
+  # NOTE: The atom names and types and radii and such are not correct, just made up
+  # to test our functions.
+  try:
+    # Prepare our extraAtomInfoMap
+    atoms = []
+    extras = []
+
+    radius = 1.1  # All atoms have the same radius
+    rg = pdb.hierarchy.residue_group()
+    water = pdb.hierarchy.atom_group()
+    water.resname = 'HOH'
+    rg.append_atom_group(water)
+    o = pdb.hierarchy.atom()
+    o.element = "O"
+    o.xyz = [ 0.0, 0.0, 0.0 ]
+    atoms.append(o)
+    extras.append(probeExt.ExtraAtomInfo(radius, False))
+    water.append_atom(o)
+    type = 0
+    # They are all in a residue that has the specified atom name listed as Aromatic.
+    # We change the names and types below to make some not match.
+    ag = pdb.hierarchy.atom_group()
+    ag.resname = 'HIS'
+    for x in range(-1,2,2):
+      for y in range(-1,2,2):
+        for z in range(-1,2,2):
+          dist = math.sqrt(x*x+y*y+z*z)
+          d = (radius + 1.0) / dist
+          a = pdb.hierarchy.atom()
+          a.xyz = [ x*d,y*d,z*d ]
+          a.occ = 0.5
+          if type % 3 == 0: # Acceptor
+            a.element = 'C'
+            a.name = 'CA'
+            extras.append(probeExt.ExtraAtomInfo(radius, True))
+          elif type % 3 == 1: # Not Acceptor
+            a.element = 'C'
+            a.name = 'CB'
+            extras.append(probeExt.ExtraAtomInfo(radius, False))
+          else: # Aromatic ring atom, also an acceptor
+            a.name = 'ND1'
+            a.element = 'N'
+            extras.append(probeExt.ExtraAtomInfo(radius, True))
+          type += 1
+
+          atoms.append(a)
+          ag.append_atom(a)
+
+    rg.append_atom_group(ag)
+    c = pdb.hierarchy.chain()
+    c.append_residue_group(rg)
+    m = pdb.hierarchy.model()
+    m.append_chain(c)
+    m.atoms().reset_i_seq()
+
+    # Prepare our extra-atom information mapper.
+    extrasMap = probeExt.ExtraAtomInfoMap(atoms, extras)
+
+    # Prepare our spatial-query structure.
+    sq = probeExt.SpatialQuery(atoms)
+
+    # Run Phantom placement with different settings for occupancy and acceptorOnly
+    # and make sure the atom counts match what is expected.
+    for occThresh in [0.4,1.0]:
+      for acceptorOnly in [False, True]:
+        # Check that we get the expected number of contacts
+        if acceptorOnly:
+          expected = 1 + 3 # One for the aromatics, three others
+        else:
+          expected = 7 # Only one of the acceptor Aromatics but all other atoms
+        if occThresh > 0.5:
+          expected = 0
+        ret = getPhantomHydrogensFor(o, sq, extrasMap, occThresh, acceptorOnly)
+        assert len(ret) == expected, "Helpers.Test() Unexpected count during Phantom Hydrogen placement: "+str(len(ret))
+
+        # The location of the each Hydrogen should point towards one of the non-Oxygen atoms.
+        # Here we check that we get as many matching directions as we have atoms.
+        if len(ret) > 0:
+          numMatch = 0
+          for h in ret:
+            for a in atoms[1:]:
+              hLen = rvec3(h.xyz).length()
+              aLen = rvec3(a.xyz).length()
+              dot = ( h.xyz[0] * a.xyz[0] +
+                      h.xyz[1] * a.xyz[1] +
+                      h.xyz[2] * a.xyz[2] )
+              if math.isclose(hLen*aLen, dot):
+                numMatch += 1
+          assert numMatch == len(ret), "Helpers.Test(): Direction of Phantom Hydrogen placement incorrect: "+str(numMatch)
+
+  except Exception as e:
+    assert len(str(e)) == 0, "Helpers.Test() Exception during test of Phantom Hydrogen placement: "+str(e)+"\n"+traceback.format_exc()
+
+  #========================================================================
+  # Run unit test on isPolarHydrogen().  We use a specific PDB snippet
+  # for which we know the answer and then we verify that the results are what
+  # we expect.
+
+  dm = iotbx.data_manager.DataManager(['model'])
+  dm.process_model_str("pdb_4fenH_C_26.pdb",pdb_4fenH_C_26)
+  model = dm.get_model()
+  model.process(make_restraints=True)
+
+  # Get the Cartesian positions of all of the atoms.
+  carts = flex.vec3_double()
+  atoms = model.get_hierarchy().models()[0].atoms()
+  for a in atoms:
+    carts.append(a.xyz)
+
+  # Get the bond proxies for the atoms in the model and conformation we're using and
+  # use them to determine the bonded neighbor lists.
+  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+  bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies)
+
+  model = dm.get_model().get_hierarchy().models()[0]
+
+  for a in model.atoms():
+    if a.name.strip() in ["H41","H42","HO2'"]:
+      if not isPolarHydrogen(a, bondedNeighborLists):
+        return "Optimizers.Test(): Polar Hydrogen not identified: " + a.name
+    if a.name.strip() in ["H5","H6"]:
+      if isPolarHydrogen(a, bondedNeighborLists):
+        return "Optimizers.Test(): Polar Hydrogen improperly identified: " + a.name
+
+  #========================================================================
+  # Run unit test on getBondedNeighborLists().  We use a specific PDB snippet
+  # for which we know the answer and then we verify that the results are what
+  # we expect.
+
   dm = iotbx.data_manager.DataManager(['model'])
   dm.process_model_str("1xso_snip.pdb",pdb_1xso_his_61)
   model = dm.get_model()
   model.process(make_restraints=True) # make restraints
 
-  # Get the first model in the hierarchy.
+  # Get the atoms for the first model in the hierarchy.
   atoms = model.get_hierarchy().models()[0].atoms()
 
   # Get the Cartesian positions of all of the atoms we're considering for this alternate
@@ -624,7 +895,7 @@ END
     count = len(getAtomsWithinNBonds(atoms[0], bondedNeighborLists, N))
     assert count == nestedNeighborsForN[N], ("Helpers.Test(): Nested unclamped count for "+atoms[0].name.strip()+
         " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN[N]))
-  # @todo Test the hydrogen cutoff parameter for getAtomsWithinNBonds
+  # @todo Test the hydrogen cutoff parameter for getAtomsWithinNBonds()
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
@@ -660,11 +931,11 @@ END
   # Run unit tests on rvec3 and lvec3.
   v1 = rvec3([0, 0, 0])
   v2 = rvec3([1, 0, 0])
-  assert approx_equal((v2-v1).length(), 1), "Helpers.Test(): rvec3 test failed"
+  assert math.isclose((v2-v1).length(), 1), "Helpers.Test(): rvec3 test failed"
 
   v1 = lvec3([0, 0, 0])
   v2 = lvec3([1, 0, 0])
-  assert approx_equal((v2-v1).length(), 1), "Helpers.Test(): lvec3 test failed"
+  assert math.isclose((v2-v1).length(), 1), "Helpers.Test(): lvec3 test failed"
 
 if __name__ == '__main__':
 

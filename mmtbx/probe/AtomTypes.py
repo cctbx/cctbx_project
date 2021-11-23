@@ -948,7 +948,7 @@ def Test(inFileName = None):
   aromaticChecks = [
       ['PHE', 'CE2', True],
       ['  U', 'HN3', True],
-      ['ASN', 'O', False]
+      ['ASN',   'O', False]
     ]
   for a in aromaticChecks:
     assert IsAromatic(a[0],a[1]) == a[2], "AtomTypes.Test(): {} {} not marked as aromatic {}".format(a[0],a[1],a[2])

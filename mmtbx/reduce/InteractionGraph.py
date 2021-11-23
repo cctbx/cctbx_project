@@ -211,7 +211,6 @@ def _PairsOverlap(mover1, atoms1, positions1,
   :returns True if a pair of atoms with one from each overlap, False if not.
   """
 
-  ret = False
   for i1, p1 in enumerate(positions1):
     for ai1 in range(len(p1)):
       r1 = extraAtomInfoMap.getMappingFor(atoms1[ai1]).vdwRadius
@@ -228,8 +227,8 @@ def _PairsOverlap(mover1, atoms1, positions1,
             # Add the opposite Mover to each atom; they interact
             atomMoverSets[atoms1[ai1]].add(mover2)
             atomMoverSets[atoms2[ai2]].add(mover1)
-            ret = True
-  return ret
+            return True
+  return False
 
 #######################################################################################################
 # Test code and objects below here

@@ -51,6 +51,12 @@ from mmtbx.hydrogens import reduce_hydrogen
 # Setting it above 1 provides additional debugging information.
 verbosity = 3
 
+# Probe PHIL parameters that are passed to Probe methods.  These enable modification of
+# Probe behavior without having to pass individual parameters through the various Optimizer
+# classes.
+# @todo Consider making this a constructor parameter rather than a global.
+probePhil = None
+
 ##################################################################################
 # Helper functions
 
@@ -76,11 +82,12 @@ def _ReportTiming(message):
 
 def AlternatesInModel(model):
   """Returns a set of altloc names of all conformers in all chains.
+  :param model: pdb.hierarchy.model to search for alternates.
   :return: Set of strings.  The set is will include only the empty string if no
   chains in the model have alternates.  It has an additional entry for every altloc
   found in every chain.
   """
-  ret = set()
+  ret = set(['']) # We always add this so that it will be present even when there are alternates
   for c in model.chains():
     for alt in c.conformers():
       ret.add(alt.altloc)
@@ -89,10 +96,12 @@ def AlternatesInModel(model):
 def GetAtomsForConformer(model, conf):
   """Returns a list of atoms in the named conformer.  It also includes atoms from
   the first conformation in chains that do not have this conformation, to provide a
-  complete model.  For a model whose chains only have one conformer, it will return
+  complete model.  For a model whose chains have only one conformer, it will return
   all of the atoms.
   :param model: pdb.hierarchy.model to search for atoms.
-  :param conf: String name of the conformation to find.  Can be "".
+  :param conf: String name of the conformation to find.  Can be "", which finds the
+  default conformer; if there is no empty conformation, then it will
+  pick the first available conformation for each atom group.
   :return: List of atoms consistent with the specified conformer.
   """
   ret = []
@@ -136,7 +145,9 @@ class _SingletonOptimizer(object):
                 useNeutronDistances = False,
                 probeDensity = 16.0,
                 minOccupancy = 0.01,
-                preferenceMagnitude = 1.0
+                preferenceMagnitude = 1.0,
+                polarHydrogenBumpBiasNonIonic = 0.125,
+                polarHydrogenBumpBiasIonic = 0.865
               ):
     """Constructor for _SingletonOptimizer.  This is the base class for all optimizers and
     it implements the machinery that finds and optimized Movers.
@@ -172,6 +183,12 @@ class _SingletonOptimizer(object):
     :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
     :param preferenceMagnitude: Multiplier for the preference energies expressed
     by some Movers for particular orientations.
+    :param polarHydrogenBumpBiasNonIonic: A polar hydrogen is not placed due to bumping against
+    a non-bonded non-ionic neighbor atom if it is closer than the atomic radius plus this offset
+    (Angstroms). @todo Ignored as of 11/9/2021.
+    :param polarHydrogenBumpBiasIonic: A polar hydrogen is not placed due to bumping against
+    a non-bonded ionic neighbor atom if it is closer than the atomic radius plus this offset
+    (Angstroms). @todo Ignored as of 11/9/2021.
     """
 
     ################################################################################
@@ -182,6 +199,8 @@ class _SingletonOptimizer(object):
     self._probeDensity = probeDensity
     self._minOccupancy = minOccupancy
     self._preferenceMagnitude = preferenceMagnitude
+    self._polarHydrogenBumpBiasNonIonic = polarHydrogenBumpBiasNonIonic
+    self._polarHydrogenBumpBiasIonic = polarHydrogenBumpBiasIonic
 
     ################################################################################
     # Initialize internal variables.
@@ -192,7 +211,7 @@ class _SingletonOptimizer(object):
     # Run optimization for every desired conformer and every desired model, calling
     # placement and then a derived-class single optimization routine for each.  When
     # the modelIndex or altID is None, that means to run over all available cases.
-    # For alternates, if there is a non-empty ("" or " ") case, then we run backwards
+    # For alternates, if there is a non-empty (not "" or " ") case, then we run backwards
     # from the last to the first but do not run for the empty case; if there are only
     # empty cases, then we run just once.  We run the models in order, all of them when
     # None is specified and the specified one if it is specified.
@@ -241,6 +260,8 @@ class _SingletonOptimizer(object):
         self._infoString += _VerboseCheck(1,"  probeDensity = "+str(self._probeDensity)+"\n")
         self._infoString += _VerboseCheck(1,"  minOccupancy = "+str(self._minOccupancy)+"\n")
         self._infoString += _VerboseCheck(1,"  preferenceMagnitude = "+str(self._preferenceMagnitude)+"\n")
+        self._infoString += _VerboseCheck(1,"  polarHydrogenBumpBiasNonIonic = "+str(self._polarHydrogenBumpBiasNonIonic)+"\n")
+        self._infoString += _VerboseCheck(1,"  polarHydrogenBumpBiasIonic = "+str(self._polarHydrogenBumpBiasIonic)+"\n")
 
         # Get the atoms from the specified conformer in the model (the empty string is the name
         # of the first conformation in the model; if there is no empty conformation, then it will
@@ -263,7 +284,9 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-        ret = Helpers.getExtraAtomInfo(model) # @todo Pass probePhil here
+        global probePhil
+        ret = Helpers.getExtraAtomInfo(
+          model= model, useNeutronDistances=self._useNeutronDistances, probePhil=probePhil)
         self._extraAtomInfo = ret.extraAtomInfo
         self._infoString += ret.warnings
         self._infoString += _ReportTiming("get extra atom info")
@@ -281,6 +304,39 @@ class _SingletonOptimizer(object):
         self._maximumVDWRadius = maxVDWRad
 
         ################################################################################
+        # Make a set of atoms that are to be deleted based on analysis.  It is initially
+        # empty, keeping all of the added Hydrogens in the model.
+        self._deleteMes = set()
+
+        ''' As of 11/9/2021, Jane thinks we probably don't want do to this check.
+            If we do decide to add it later, the remaining checks need to be done and
+            add the Hydrogen to the list of those to be deleted.  See reduce.cpp:1523+
+        ################################################################################
+        # Check all polar hydrogens to make sure they have not been placed where they
+        # will collide with a non-bonded neighbor.  The neighbor must not be a hydrogen
+        # or part of a water and not part of the same amino acid; also, we must be
+        # checking an atom that is part of an amino acid.  The bonded heavy atom of the
+        # Hydrogen must be at a distnce where it could be bonded to the neighbor, so that
+        # what is probably happening is that the heavy atom is bonded to the neighbor.
+        # If a Hydrogen does so collide, then add it to a list of atoms that will be deleted.
+        maxDist = self._maximumVDWRadius + max(self._polarHydrogenBumpBiasNonIonic,self._polarHydrogenBumpBiasIonic)
+        for a in self._atoms and pdb.common_residue_names_get_class(a.parent().resname) == "common_amino_acid":
+          if Helpers.isPolarHydrogen(a, bondedNeighborLists):
+            nearby = self._spatialQuery(a, 0.001, maxDist)
+            for n in nearby:
+              # Make sure we're from a different residue
+              if a.parent().parent() != n.parent().parent():
+                # Make sure the neighbor is not part of a water.
+                if not pdb.common_residue_names_get_class(n.parent().resname) == "common_water":
+                  # Make sure that our bonded heavy element is within reasonable range to bond with the neighbor
+                  # so that what we're probably seeing is a covalent bond with our parent with no need
+                  # for a Hydrogen.
+                  # @todo
+                    # See if we collide.  If so, warn and remove.
+                    # @todo
+        '''
+
+        ################################################################################
         # Get the list of Movers using the _PlaceMovers private function.
         ret = _PlaceMovers(self._atoms, model.rotatable_hd_selection(iselection=True),
                            bondedNeighborLists, self._spatialQuery, self._extraAtomInfo,
@@ -292,11 +348,9 @@ class _SingletonOptimizer(object):
         self._infoString += _ReportTiming("place movers")
 
         ################################################################################
-        # Construct a set of atoms that are marked for deletion in the current set of
-        # orientations for all Movers.  This is initialized with the atoms that were
-        # unconditionally marked for deletion during placement and then we add
-        # those for all Movers in their initial orientation by moving each to that state.
-        self._deleteMes = set(ret.deleteAtoms)
+        # Add the atoms that were unconditionally marked for deletion during placement
+        # to the set of atoms to delete.
+        self._deleteMes = self._deleteMes.union(set(ret.deleteAtoms))
         for m in self._movers:
           pr = m.CoarsePositions()
           self._setMoverState(pr, 0)
@@ -1219,12 +1273,43 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
 
     # See if we should insert a MoverNH2Flip here.
     # @todo Is there a more general way than looking for specific names?
+    if addFlipMovers and ((aName == 'XD2' and resName == 'ASX') or (aName == 'XE2' and resName == 'GLX')):
+      infoString += _VerboseCheck(1,"Not attempting to adjust "+resNameAndID+" "+aName+"\n")
     if addFlipMovers and ((aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN')):
-      try:
-        movers.append(Movers.MoverNH2Flip(a, "CA", bondedNeighborLists))
-        infoString += _VerboseCheck(1,"Added MoverNH2Flip "+str(len(movers))+" to "+resNameAndID+"\n")
-      except Exception as e:
-        infoString += _VerboseCheck(0,"Could not add MoverNH2Flip to "+resNameAndID+": "+str(e)+"\n")
+      # Find the Oxygen and see if it is within a range of ideal bonding distances to a positive ion.
+      # Do this in two steps; find the Carbon bonded to the Nitrogen and then the Oxygen bonded to the
+      # Carbon.
+      foundIon = False
+      oxygen = None
+      for b in bondedNeighborLists[a]:
+        if b.element.upper() == 'C':
+          for b2 in bondedNeighborLists[b]:
+            if b2.element.upper() == 'O':
+              oxygen = b2
+      # If we have a close-enough ion, we skip adding a Mover.
+      if oxygen is not None:
+        # @todo Check both flips and lock down the appropriate one rather than only checking the first.
+        myRad = extraAtomInfo.getMappingFor(a).vdwRadius
+        minDist = myRad
+        maxDist = 0.25 + myRad + maxVDWRadius
+        neighbors = spatialQuery.neighbors(oxygen.xyz, minDist, maxDist)
+        for n in neighbors:
+          if n.element_is_positive_ion():
+            dist = (Helpers.rvec3(oxygen.xyz) - Helpers.rvec3(n.xyz)).length()
+            expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
+            infoString += _VerboseCheck(5,'Checking NH2Flip '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
+              ' dist = '+str(dist)+', expected = '+str(expected)+'; N rad = '+str(myRad)+
+              ', '+n.name.strip()+' rad = '+str(extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
+            # @todo Why are we using -0.65 here and -0.55 for Histidine?
+            if dist >= (expected - 0.65) and dist <= (expected + 0.25):
+              foundIon = True
+
+      if not foundIon:
+        try:
+          movers.append(Movers.MoverNH2Flip(a, "CA", bondedNeighborLists))
+          infoString += _VerboseCheck(1,"Added MoverNH2Flip "+str(len(movers))+" to "+resNameAndID+"\n")
+        except Exception as e:
+          infoString += _VerboseCheck(0,"Could not add MoverNH2Flip to "+resNameAndID+": "+str(e)+"\n")
 
     # See if we should insert a MoverHistidineFlip here.
     # @todo Is there a more general way than looking for specific names?
@@ -1242,8 +1327,8 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         cp = hist.CoarsePositions()
         ne2Orig = cp.positions[0][0]
         nd1Orig = cp.positions[0][4]
-        ne2Flip = cp.positions[3][0]
-        nd1Flip = cp.positions[3][4]
+        ne2Flip = cp.positions[4][0]
+        nd1Flip = cp.positions[4][4]
 
         # See if any are close enough to a positive ion to be ionically bonded.
         # If any are, record whether it is the original or
@@ -1259,7 +1344,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
             if n.element_is_positive_ion():
               dist = (Helpers.rvec3(pos) - Helpers.rvec3(n.xyz)).length()
               expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
-              infoString += _VerboseCheck(5,'Checking '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
+              infoString += _VerboseCheck(5,'Checking Histidine '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
                 ' dist = '+str(dist)+', expected = '+str(expected)+'; N rad = '+str(myRad)+
                 ', '+n.name.strip()+' rad = '+str(extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
               if dist >= (expected - 0.55) and dist <= (expected + 0.25):
@@ -1446,11 +1531,37 @@ def Test(inFileName = None):
   """
 
   #========================================================================
-  # Test the AlternatesInModel() function.
-  # @todo
+  # Test model to use for validating the alternate/conformer-selection functions.
+
+  alternates_test = (
+"""
+ATOM      1  N   HIS A  1       26.965  32.911   7.593  1.00  7.19           N
+ATOM      2  N  AHIS A  2       26.965  32.911   7.593  1.00  7.19           N
+ATOM      3  N  BHIS A  2       26.965  32.911   7.593  1.00  7.19           N
+ATOM      4  N  CHIS A  2       26.965  32.911   7.593  1.00  7.19           N
+END
+"""
+    )
 
   #========================================================================
+  # Test the AlternatesInModel() function.
   # Test the GetAtomsForConformer() function.
+  dm = DataManager(['model'])
+  dm.process_model_str("alternates_test.pdb",alternates_test)
+  model = dm.get_model()
+  model.process(make_restraints=False)
+  model = dm.get_model().get_hierarchy().models()[0]
+  alts = AlternatesInModel(model)
+  if alts != set(['','A','B','C']):
+    return "Optimizers.Test(): Incorrect set of alternates for AlternatesInModel() test: " + str(alts)
+
+  for a in alts:
+    count = len(GetAtomsForConformer(model, a))
+    if count != 2:
+      return "Optimizers.Test(): Incorrect atom count for GetAtomsForConformer() test: " + str(count)
+
+  #========================================================================
+  # Unit tests for each type of Optimizer.
   # @todo
 
   ################################################################################
@@ -1459,8 +1570,6 @@ def Test(inFileName = None):
   # ensure that hydrogen placement puts them there in the first place, we first
   # move the CU and ZN far from the Histidine before adding Hydrogens, then move
   # them back before building the spatial hierarchy and testing.
-  # @todo Why are CU and ZN not being found in CCTBX for this snippet?  Missing ligands?  Print info to see.
-  #   (Running 1sxo produces this as well).
   pdb_1xso_his_61_and_ions = (
 """
 ATOM    442  N   HIS A  61      26.965  32.911   7.593  1.00  7.19           N
@@ -1524,7 +1633,7 @@ END
   atoms = GetAtomsForConformer(firstModel, "")
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  ret = Helpers.getExtraAtomInfo(model) # @todo Pass probePhil here
+  ret = Helpers.getExtraAtomInfo(model)
   extra = ret.extraAtomInfo
 
   # Get the Cartesian positions of all of the atoms we're considering for this alternate
@@ -1553,13 +1662,13 @@ END
   # Get the spatial-query information needed to quickly determine which atoms are nearby
   sq = probeExt.SpatialQuery(atoms)
 
-  # Place the movers, which should include only an NH3 rotator because the Histidine flip
+  # Place the movers, which should be none because the Histidine flip
   # will be constrained by the ionic bonds.
   ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True),
                      bondedNeighborLists, sq, extra, maxVDWRad, True)
   movers = ret.moverList
-  if len(movers) != 1:
-    return "Optimizers.Test(): Incorrect number of Movers for 1xso Histidine test"
+  if len(movers) != 0:
+    return "Optimizers.Test(): Incorrect number of Movers for 1xso Histidine test: " + str(len(movers))
 
   # Make sure that the two ring Nitrogens have been marked as acceptors.
   # Make sure that the two hydrogens have been marked for deletion.
@@ -1571,6 +1680,10 @@ END
     if name in ["HD1", "HE2"]:
       if not a in ret.deleteAtoms:
         return 'Optimizers.Test(): '+name+' in 1xso Histidine test was not set for deletion'
+
+  #========================================================================
+  # Check a case where an NH2Flip would be locked down and have its Hydrogen removed.
+  # @todo
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
@@ -1589,51 +1702,25 @@ END
     mmm.generate_map()              #   get a model from a generated small library model and calculate a map for it
     model = mmm.model()             #   get the model
 
-  # Make sure we have a valid unit cell.  Do this before we add hydrogens to the model
-  # to make sure we have a valid unit cell.
-  # @todo Only do this when we have a problem with the unit cell.
-  #model = shift_and_box_model(model = model)
-
   # Add Hydrogens to the model
-  print('Adding Hydrogens')
-  startAdd = time.clock()
   reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
   reduce_add_h_obj.run()
   model = reduce_add_h_obj.get_model()
-  doneAdd = time.clock()
 
   # Interpret the model after shifting and adding Hydrogens to it so that
   # all of the needed fields are filled in when we use them below.
   # @todo Remove this once place_hydrogens() does all the interpretation we need.
-  print('Interpreting model')
-  startInt = time.clock()
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
   p.pdb_interpretation.allow_polymer_cross_special_position=True
   p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
   p.pdb_interpretation.proceed_with_excessive_length_bonds=True
   model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
-  doneInt = time.clock()
 
-  print('Constructing Optimizer')
-  startOpt = time.clock()
+  # Run a fast optimizer on the model.
+  print('Testing FastOptimizer')
   opt = FastOptimizer(True, model,probeRadius=0.25)
-  doneOpt = time.clock()
-  info = opt.getInfo()
-
-  f = open("deleteme.pdb","w")
-  f.write(model.model_as_pdb())
-  f = open("atomDump.pdb","w")
-  f.write(opt.getAtomDump())
-  # @todo
 
   #========================================================================
-  # Unit test for phantom Hydrogen placement.
-  # @todo
-
-  #========================================================================
-  # Unit tests for each type of Optimizer.
-  # @todo
-
   # @todo Unit test a multi-model case, a multi-alternate case, and singles of each.
 
   return ""

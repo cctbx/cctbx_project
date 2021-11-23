@@ -33,6 +33,10 @@ run_tests = False
   .type = bool
   .help = Run unit tests before doing the requested operations
 
+profile = False
+  .type = bool
+  .help = Profile the performance of the entire run
+
 source_selection = "(altid a or altid '' or altid ' ') and occupancy > 0.33"
   .type = atom_selection
   .help = Source selection description
@@ -305,7 +309,8 @@ Note:
 '''.format(version)
   datatypes = ['model', 'restraint', 'phil']
   master_phil_str = master_phil_str
-  data_manager_options = ['model_skip_expand_with_mtrix']
+  data_manager_options = ['model_skip_expand_with_mtrix',
+                          'model_skip_ss_annotations']
   citations = program_citations
   epilog = '''
   For additional information and help, see http://kinemage.biochem.duke.edu/software/probe
@@ -1559,6 +1564,12 @@ Note:
     if self.params.probe.contact_cutoff < self.params.probe.radius:
       self.params.probe.contact_cutoff = self.params.probe.radius
 
+    # Turn on profiling if we've been asked to in the Phil parameters
+    if self.params.profile:
+      import cProfile
+      self._pr = cProfile.Profile()
+      self._pr.enable()
+
 # ------------------------------------------------------------------------------
 
   def run(self):
@@ -1687,15 +1698,15 @@ Note:
       foundCBonded = False
       foundPolar = False
       for a in allAtoms:
-        if a.element_is_hydrogen():
+        if Helpers.isPolarHydrogen(a, self._allBondedNeighborLists):
+          foundPolar = True
+        elif a.element_is_hydrogen():
           if len(self._allBondedNeighborLists[a]) != 1:
-            raise Sorry("Found Hydrogen with number of neigbors other than 1: "+
+            raise Sorry("Found Hydrogen with number of neighbors other than 1: "+
                         str(len(self._allBondedNeighborLists[a])))
           else:
             neighbor = self._allBondedNeighborLists[a][0]
-            if neighbor.element in ['N', 'O', 'S']:
-              foundPolar = True
-            elif neighbor.element == 'C':
+            if neighbor.element == 'C':
               foundCBonded = True
       if not (foundCBonded and foundPolar):
         raise Sorry("Did not find both polar and non-polar Hydrogens in model.  For proper operation, "+
@@ -2167,6 +2178,15 @@ Note:
     of = open(self.params.output.file_name,"w")
     of.write(outString)
     of.close()
+
+    # Report profiling info if we've been asked to in the Phil parameters
+    if self.params.profile:
+      print('Profile results:')
+      import pstats
+      profile_params = {'sort_by': 'time', 'num_entries': 20}
+      self._pr.disable()
+      ps = pstats.Stats(self._pr).sort_stats(profile_params['sort_by'])
+      ps.print_stats(profile_params['num_entries'])
 
 # ------------------------------------------------------------------------------
 
