@@ -34,6 +34,7 @@ UCELL_ID_OFFSET = 3
 DETZ_ID = 10
 FHKL_ID = 11
 ETA_ID = 19
+DIFFUSE_ID = 23
 
 DEG = 180 / np.pi
 
@@ -695,6 +696,8 @@ class DataModeler:
                 self.SIM.D.refine(ETA_ID)
             if self.SIM.P["detz_shift"].refine:
                 self.SIM.D.refine(DETZ_ID)
+            if self.SIM.D.use_diffuse:
+                self.SIM.D.refine(DIFFUSE_ID)
 
             args = (self.SIM, self.pan_fast_slow, self.all_data,
                     self.all_sigmas, self.all_trusted, self.all_background, True, self.params, True)
@@ -978,6 +981,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
             SIM.D.fix(UCELL_ID_OFFSET + i_ucell)
         SIM.D.fix(DETZ_ID)
         SIM.D.fix(ETA_ID)
+        SIM.D.fix(DIFFUSE_ID)
     elif compute_grad:
         # actually compute the gradients
         _compute_grad = True
