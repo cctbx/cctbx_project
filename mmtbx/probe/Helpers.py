@@ -544,8 +544,6 @@ def Test(inFileName = None):
   Run tests on all of our functions.  Throw an assertion failure if one fails.
   """
 
-  from libtbx.test_utils import approx_equal
-
   #========================================================================
   # Run unit test on getExtraAtomInfo().
   # @todo
@@ -585,7 +583,7 @@ def Test(inFileName = None):
       for y in range(-1,2,2):
         for z in range(-1,2,2):
           dist = math.sqrt(x*x+y*y+z*z)
-          d = (radius + 1.0) / dist  # @todo Add back in radius
+          d = (radius + 1.0) / dist
           a = pdb.hierarchy.atom()
           a.xyz = [ x*d,y*d,z*d ]
           a.occ = 0.5
@@ -627,27 +625,93 @@ def Test(inFileName = None):
         if acceptorOnly:
           expected = 1 + 3 # One for the aromatics, three others
         else:
-          expected = 7 # Only one of the acceptor Aromatics but all of the other atoms
+          expected = 7 # Only one of the acceptor Aromatics but all other atoms
         if occThresh > 0.5:
           expected = 0
         ret = getPhantomHydrogensFor(o, sq, extrasMap, occThresh, acceptorOnly)
         assert len(ret) == expected, "Helpers.Test() Unexpected count during Phantom Hydrogen placement: "+str(len(ret))
 
-        # The location of the first Hydrogen should always point towards the first atom after the Oxygen.
+        # The location of the each Hydrogen should point towards one of the non-Oxygen atoms.
+        # Here we check that we get as many matching directions as we have atoms.
         if len(ret) > 0:
-          hLen = rvec3(ret[0].xyz).length()
-          aLen = rvec3(atoms[1].xyz).length()
-          dot = ( ret[0].xyz[0] * atoms[1].xyz[0] +
-                  ret[0].xyz[1] * atoms[1].xyz[1] +
-                  ret[0].xyz[2] * atoms[1].xyz[2] )
-          assert approx_equal(hLen*aLen, dot), "Helpers.Test(): Direction of Phantom Hydrogen placement incorrect"
+          numMatch = 0
+          for h in ret:
+            for a in atoms[1:]:
+              hLen = rvec3(h.xyz).length()
+              aLen = rvec3(a.xyz).length()
+              dot = ( h.xyz[0] * a.xyz[0] +
+                      h.xyz[1] * a.xyz[1] +
+                      h.xyz[2] * a.xyz[2] )
+              if math.isclose(hLen*aLen, dot):
+                numMatch += 1
+          assert numMatch == len(ret), "Helpers.Test(): Direction of Phantom Hydrogen placement incorrect: "+str(numMatch)
 
   except Exception as e:
     assert len(str(e)) == 0, "Helpers.Test() Exception during test of Phantom Hydrogen placement: "+str(e)+"\n"+traceback.format_exc()
 
   #========================================================================
   # Run unit test on isPolarHydrogen().
-  # @todo
+  pdb_4fenH_C_26 = (
+"""
+ATOM    234  P     C B  26      25.712  13.817   1.373  1.00 10.97           P
+ATOM    235  OP1   C B  26      26.979  13.127   1.023  1.00 12.57           O
+ATOM    236  OP2   C B  26      25.641  14.651   2.599  1.00 12.59           O
+ATOM    237  O5'   C B  26      25.264  14.720   0.142  1.00 10.58           O
+ATOM    238  C5'   C B  26      25.128  14.166  -1.162  1.00  9.37           C
+ATOM    239  C4'   C B  26      24.514  15.183  -2.092  1.00  9.05           C
+ATOM    240  O4'   C B  26      23.142  15.447  -1.681  1.00 10.46           O
+ATOM    241  C3'   C B  26      25.159  16.555  -2.048  1.00  8.49           C
+ATOM    242  O3'   C B  26      26.338  16.599  -2.839  1.00  7.94           O
+ATOM    243  C2'   C B  26      24.043  17.427  -2.601  1.00  8.44           C
+ATOM    244  O2'   C B  26      23.885  17.287  -3.999  1.00  9.33           O
+ATOM    245  C1'   C B  26      22.835  16.819  -1.888  1.00 10.06           C
+ATOM    246  N1    C B  26      22.577  17.448  -0.580  1.00  9.44           N
+ATOM    247  C2    C B  26      21.940  18.695  -0.552  1.00  9.61           C
+ATOM    248  O2    C B  26      21.613  19.223  -1.623  1.00 10.13           O
+ATOM    249  N3    C B  26      21.704  19.292   0.638  1.00  9.82           N
+ATOM    250  C4    C B  26      22.082  18.695   1.771  1.00 10.10           C
+ATOM    251  N4    C B  26      21.841  19.328   2.923  1.00 10.94           N
+ATOM    252  C5    C B  26      22.728  17.423   1.773  1.00  9.51           C
+ATOM    253  C6    C B  26      22.952  16.840   0.586  1.00 10.02           C
+ATOM      0  H5'   C B  26      24.573  13.371  -1.128  1.00  9.37           H   new
+ATOM      0 H5''   C B  26      25.996  13.892  -1.498  1.00  9.37           H   new
+ATOM      0  H4'   C B  26      24.618  14.792  -2.973  1.00  9.05           H   new
+ATOM      0  H3'   C B  26      25.463  16.833  -1.170  1.00  8.49           H   new
+ATOM      0  H2'   C B  26      24.192  18.375  -2.460  1.00  8.44           H   new
+ATOM      0 HO2'   C B  26      23.422  16.605  -4.162  1.00  9.33           H   new
+ATOM      0  H1'   C B  26      22.041  16.954  -2.429  1.00 10.06           H   new
+ATOM      0  H41   C B  26      22.073  18.968   3.668  1.00 10.94           H   new
+ATOM      0  H42   C B  26      21.454  20.096   2.919  1.00 10.94           H   new
+ATOM      0  H5    C B  26      22.984  17.013   2.568  1.00  9.51           H   new
+ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H   new
+"""
+    )
+
+  dm = iotbx.data_manager.DataManager(['model'])
+  dm.process_model_str("pdb_4fenH_C_26.pdb",pdb_4fenH_C_26)
+  model = dm.get_model()
+  model.process(make_restraints=True)
+
+  # Get the Cartesian positions of all of the atoms.
+  carts = flex.vec3_double()
+  atoms = model.get_hierarchy().models()[0].atoms()
+  for a in atoms:
+    carts.append(a.xyz)
+
+  # Get the bond proxies for the atoms in the model and conformation we're using and
+  # use them to determine the bonded neighbor lists.
+  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+  bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies)
+
+  model = dm.get_model().get_hierarchy().models()[0]
+
+  for a in model.atoms():
+    if a.name.strip() in ["H41","H42","HO2'"]:
+      if not isPolarHydrogen(a, bondedNeighborLists):
+        return "Optimizers.Test(): Polar Hydrogen not identified: " + a.name
+    if a.name.strip() in ["H5","H6"]:
+      if isPolarHydrogen(a, bondedNeighborLists):
+        return "Optimizers.Test(): Polar Hydrogen improperly identified: " + a.name
 
   #========================================================================
   # Run unit test on getBondedNeighborLists().  We use a specific PDB snippet
@@ -773,11 +837,11 @@ END
   # Run unit tests on rvec3 and lvec3.
   v1 = rvec3([0, 0, 0])
   v2 = rvec3([1, 0, 0])
-  assert approx_equal((v2-v1).length(), 1), "Helpers.Test(): rvec3 test failed"
+  assert math.isclose((v2-v1).length(), 1), "Helpers.Test(): rvec3 test failed"
 
   v1 = lvec3([0, 0, 0])
   v2 = lvec3([1, 0, 0])
-  assert approx_equal((v2-v1).length(), 1), "Helpers.Test(): lvec3 test failed"
+  assert math.isclose((v2-v1).length(), 1), "Helpers.Test(): lvec3 test failed"
 
 if __name__ == '__main__':
 
