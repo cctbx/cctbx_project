@@ -2627,6 +2627,7 @@ class map_model_manager(object):
       chain_type = None,
       atom_name = None,
       element = None,
+      ignore_element = None,
       ca_only = True,
       matching_info_list = None,
       allow_reverse = None,
@@ -2710,8 +2711,9 @@ class map_model_manager(object):
     chain_type = matching_info.chain_type
     atom_name = matching_info.atom_name
     element = matching_info.element
+    ignore_element = matching_info.ignore_element
 
-    if (not atom_name) or (not element):
+    if not atom_name or ((not ignore_element) and (not element)):
       if chain_type.upper() == "PROTEIN":
         atom_name = 'CA'
         element = 'C'
@@ -2721,13 +2723,22 @@ class map_model_manager(object):
         atom_name = 'P'
         element = 'P'
     if ca_only:
-      target_model = target_model.apply_selection_string(
-        "(not hetero) and  (altloc ' ' or altloc A) and name %s and element %s" %(
-      atom_name, element))
-      matching_model = matching_model.apply_selection_string(
-        "(not hetero) and (altloc ' ' or altloc A) and name %s and element %s" %(
-       atom_name, element))
-      # use CA
+      if ignore_element:
+        target_model_ca = target_model.apply_selection_string(
+        "(not hetero) and (altloc ' ' or altloc A) and name %s" %(
+           atom_name))
+        matching_model_ca = matching_model.apply_selection_string(
+        "(not hetero) and  (altloc ' ' or altloc A) and name %s" %(
+          atom_name))
+      else:  # usual
+        target_model_ca = target_model.apply_selection_string(
+        "(not hetero) " +\
+          "and (altloc ' ' or altloc A) and name %s and element %s" %(
+           atom_name, element))
+        matching_model_ca = matching_model.apply_selection_string(
+        "(not hetero) "+\
+           "and  (altloc ' ' or altloc A) and name %s and element %s" %(
+           atom_name, element))
     elif (target_model.get_sites_cart().size() != \
          matching_model.get_sites_cart().size() )  or ( not
        target_model.get_hierarchy().atoms().extract_name().all_eq(
@@ -2803,6 +2814,7 @@ class map_model_manager(object):
       chain_type = None,
       atom_name = None,
       element = None,
+      ignore_element = False,
       max_dist = None,
       max_dist_extra = None,
       minimum_length = None,
@@ -2923,7 +2935,7 @@ class map_model_manager(object):
         target_model_id), file = self.log)
       assert chain_type # need to set chain type
 
-    if not atom_name or not element:
+    if not atom_name or ((not ignore_element) and (not element)):
       if chain_type.upper() == "PROTEIN":
         atom_name = 'CA'
         element = 'C'
@@ -2939,12 +2951,21 @@ class map_model_manager(object):
         max_dist = max(self.resolution(), 3.)
       else:
         max_dist = max(self.resolution(), 7.)
+    
 
     # Select the atoms to try and match
-    target_model_ca = target_model.apply_selection_string(
+    if ignore_element:
+      target_model_ca = target_model.apply_selection_string(
+      "(not hetero) and (altloc ' ' or altloc A) and name %s" %(
+         atom_name))
+      matching_model_ca = matching_model.apply_selection_string(
+      "(not hetero) and  (altloc ' ' or altloc A) and name %s" %(
+        atom_name))
+    else:  # usual
+      target_model_ca = target_model.apply_selection_string(
       "(not hetero) and (altloc ' ' or altloc A) and name %s and element %s" %(
          atom_name, element))
-    matching_model_ca = matching_model.apply_selection_string(
+      matching_model_ca = matching_model.apply_selection_string(
       "(not hetero) and  (altloc ' ' or altloc A) and name %s and element %s" %(
         atom_name, element))
 
@@ -3163,7 +3184,9 @@ class map_model_manager(object):
             local_matching_model.get_hierarchy()),
           chain_type = chain_type,
           atom_name = atom_name,
-          element = element)
+          element = element,
+          ignore_element = ignore_element,
+          )
 
       diffs = self.get_diffs_for_matching_target_and_model(
          matching_info = target_and_matching,
