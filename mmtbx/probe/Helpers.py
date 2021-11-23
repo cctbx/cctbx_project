@@ -271,17 +271,18 @@ def getExtraAtomInfo(model, useNeutronDistances = False, probePhil = None):
     :param useNeutronDistances: Default is to use x-ray distances, but setting this to
     True uses neutron distances instead.  This must be set consistently with the
     PDB interpretation parameter used on the model.
-    :param probePhi: None or subobject of PHIL parameters for probe.  Can be obtained using
+    :param probePhil: None or subobject of PHIL parameters for probe.  Can be obtained using
     self.params.probe from a Program Template program that includes the probe_phil_parameters
     from above in its master PHIL parameters string.  If None, local defaults will be used.
-    :param useImplicitHydrogenDistances: Default is to use distances consistent with
-    explicitly-listed Hydrgoens, but setting this to True implicit-Hydrogen distances instead.
-    This must be set consistently with the hydrogens in the model.
-    :param useProbeTablesByDefault: Do not attempt to read the data from CCTBX, use the
-    original Probe tables.  This is normally the fall-back when it cannot find the data in
-    CCTBX.  The Probe tables do not have accurate data on HET atoms, only standard residues.
-    The values in the tables may differ from the current CCTBX values, and the Probe tables
-    are not being maintained.
+    The following are used:
+      implicit_hydrogens (bool): Default is to use distances consistent with
+      explicitly-listed Hydrgoens, but setting this to True implicit-Hydrogen distances instead.
+      This must be set consistently with the hydrogens in the model.
+      use_original_probe_tables (bool): Do not attempt to read the data from CCTBX, use the
+      original Probe tables.  This is normally the fall-back when it cannot find the data in
+      CCTBX.  The Probe tables do not have accurate data on HET atoms, only standard residues.
+      The values in the tables may differ from the current CCTBX values, and the Probe tables
+      are not being maintained.
     :returns a ExtraAtomInfoMap with an entry for every atom in the model suitable for
     passing to the scoring functions.
   """
@@ -545,8 +546,149 @@ def Test(inFileName = None):
   """
 
   #========================================================================
-  # Run unit test on getExtraAtomInfo().
-  # @todo
+  # Model file snippets used in the tests.
+  pdb_1xso_his_61 = (
+"""
+ATOM    442  N   HIS A  61      26.965  32.911   7.593  1.00  7.19           N
+ATOM    443  CA  HIS A  61      27.557  32.385   6.403  1.00  7.24           C
+ATOM    444  C   HIS A  61      28.929  31.763   6.641  1.00  7.38           C
+ATOM    445  O   HIS A  61      29.744  32.217   7.397  1.00  9.97           O
+ATOM    446  CB  HIS A  61      27.707  33.547   5.385  1.00  9.38           C
+ATOM    447  CG  HIS A  61      26.382  33.956   4.808  1.00  8.78           C
+ATOM    448  ND1 HIS A  61      26.168  34.981   3.980  1.00  9.06           N
+ATOM    449  CD2 HIS A  61      25.174  33.397   5.004  1.00 11.08           C
+ATOM    450  CE1 HIS A  61      24.867  35.060   3.688  1.00 12.84           C
+ATOM    451  NE2 HIS A  61      24.251  34.003   4.297  1.00 11.66           N
+END
+"""
+    )
+
+  pdb_4fenH_C_26 = (
+"""
+ATOM    234  P     C B  26      25.712  13.817   1.373  1.00 10.97           P
+ATOM    235  OP1   C B  26      26.979  13.127   1.023  1.00 12.57           O
+ATOM    236  OP2   C B  26      25.641  14.651   2.599  1.00 12.59           O
+ATOM    237  O5'   C B  26      25.264  14.720   0.142  1.00 10.58           O
+ATOM    238  C5'   C B  26      25.128  14.166  -1.162  1.00  9.37           C
+ATOM    239  C4'   C B  26      24.514  15.183  -2.092  1.00  9.05           C
+ATOM    240  O4'   C B  26      23.142  15.447  -1.681  1.00 10.46           O
+ATOM    241  C3'   C B  26      25.159  16.555  -2.048  1.00  8.49           C
+ATOM    242  O3'   C B  26      26.338  16.599  -2.839  1.00  7.94           O
+ATOM    243  C2'   C B  26      24.043  17.427  -2.601  1.00  8.44           C
+ATOM    244  O2'   C B  26      23.885  17.287  -3.999  1.00  9.33           O
+ATOM    245  C1'   C B  26      22.835  16.819  -1.888  1.00 10.06           C
+ATOM    246  N1    C B  26      22.577  17.448  -0.580  1.00  9.44           N
+ATOM    247  C2    C B  26      21.940  18.695  -0.552  1.00  9.61           C
+ATOM    248  O2    C B  26      21.613  19.223  -1.623  1.00 10.13           O
+ATOM    249  N3    C B  26      21.704  19.292   0.638  1.00  9.82           N
+ATOM    250  C4    C B  26      22.082  18.695   1.771  1.00 10.10           C
+ATOM    251  N4    C B  26      21.841  19.328   2.923  1.00 10.94           N
+ATOM    252  C5    C B  26      22.728  17.423   1.773  1.00  9.51           C
+ATOM    253  C6    C B  26      22.952  16.840   0.586  1.00 10.02           C
+ATOM      0  H5'   C B  26      24.573  13.371  -1.128  1.00  9.37           H   new
+ATOM      0 H5''   C B  26      25.996  13.892  -1.498  1.00  9.37           H   new
+ATOM      0  H4'   C B  26      24.618  14.792  -2.973  1.00  9.05           H   new
+ATOM      0  H3'   C B  26      25.463  16.833  -1.170  1.00  8.49           H   new
+ATOM      0  H2'   C B  26      24.192  18.375  -2.460  1.00  8.44           H   new
+ATOM      0 HO2'   C B  26      23.422  16.605  -4.162  1.00  9.33           H   new
+ATOM      0  H1'   C B  26      22.041  16.954  -2.429  1.00 10.06           H   new
+ATOM      0  H41   C B  26      22.073  18.968   3.668  1.00 10.94           H   new
+ATOM      0  H42   C B  26      21.454  20.096   2.919  1.00 10.94           H   new
+ATOM      0  H5    C B  26      22.984  17.013   2.568  1.00  9.51           H   new
+ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H   new
+"""
+    )
+
+  #========================================================================
+  # Run unit test on getExtraAtomInfo().  We use a specific PDB snippet
+  # for which we know the answer and then we verify that the results are what
+  # we expect.
+
+  # Spot check the values on the atoms for standard, neutron distances, implicit hydrogen distances,
+  # and original Probe results.
+  standardChecks = [
+    # Name, vdwRadius, isAcceptor, isDonor
+    ["N",   1.55, False, True ],
+    ["ND1", 1.55, True,  True ],
+    ["C",   1.65, False, False],
+    ["CB",  1.7,  False, False],
+    ["O",   1.4,  True,  False],
+    ["CD2", 1.75, False, False]
+  ]
+  neutronChecks = [
+    # Name, vdwRadius, isAcceptor, isDonor
+    ["N",   1.55, False, True ],
+    ["ND1", 1.55, True,  True ],
+    ["C",   1.65, False, False],
+    ["CB",  1.7,  False, False],
+    ["O",   1.4,  True,  False],
+    ["CD2", 1.75, False, False]
+  ]
+  implicitChecks = [
+    # Name, vdwRadius, isAcceptor, isDonor
+    ["N",   1.7,  False, True ],
+    ["ND1", 1.7,  True,  True ],
+    ["C",   1.8,  False, False],
+    ["CB",  1.9,  False, False],
+    ["O",   1.5,  True,  False],
+    ["CD2", 1.9,  False, False]
+  ]
+  probeChecks = [
+    # Name, vdwRadius, isAcceptor, isDonor
+    ["N",   1.55, False, False],
+    ["ND1", 1.55, True,  False],
+    ["C",   1.65, False, False],
+    ["CB",  1.7,  False, False],
+    ["O",   1.4,  True,  False],
+    ["CD2", 1.7,  False, False]
+  ]
+
+  # Situations to run the test in and expected results:
+  cases = [
+    # Use neutron distances, use implicit distances, use probe values, expected results
+    [False, False, False, standardChecks],
+    [True,  False, False, neutronChecks],
+    [False, True,  False, implicitChecks],
+    [False, False, True,  probeChecks]
+  ]
+
+  for cs in cases:
+    useNeutronDistances = cs[0]
+    useImplicitHydrogenDistances = cs[1]
+    useProbe = cs[2]
+    checks = cs[3]
+    runType = "; neutron,implicit,probe = "+str(useNeutronDistances)+","+str(useImplicitHydrogenDistances)+","+str(useProbe)
+
+    dm = iotbx.data_manager.DataManager(['model'])
+    dm.process_model_str("1xso_snip.pdb",pdb_1xso_his_61)
+    model = dm.get_model()
+    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    p.pdb_interpretation.use_neutron_distances = useNeutronDistances
+    model.process(make_restraints=True, pdb_interpretation_params = p)
+
+    # Get the extra atom information for the model using default parameters.
+    # Make a PHIL-like structure to hold the parameters.
+    class philLike:
+      def __init__(self, useImplicitHydrogenDistances = False, useProbe = False):
+        self.implicit_hydrogens = useImplicitHydrogenDistances
+        self.use_original_probe_tables = useProbe
+    philArgs = philLike(useImplicitHydrogenDistances, useProbe)
+    extras = getExtraAtomInfo(model,useNeutronDistances=useNeutronDistances,probePhil=philArgs).extraAtomInfo
+
+    # Get the atoms for the first model in the hierarchy.
+    atoms = model.get_hierarchy().models()[0].atoms()
+
+    for a in atoms:
+      e = extras.getMappingFor(a)
+      for c in checks:
+        if a.name.strip() == c[0]:
+          assert math.isclose(e.vdwRadius, c[1]), "Helpers.Test(): Bad radius for "+a.name+": "+str(e.vdwRadius)+runType
+          assert e.isAcceptor == c[2], "Helpers.Test(): Bad Acceptor status for "+a.name+": "+str(e.isAcceptor)+runType
+          assert e.isDonor == c[3], "Helpers.Test(): Bad Donor status for "+a.name+": "+str(e.isDonor)+runType
+          # Check the ability to set and check Dummy/Phantom Hydrogen status
+          assert e.isDummyHydrogen == False, "Helpers.Test(): Bad Dummy Hydrogen status for "+a.name+runType
+          e.isDummyHydrogen = True
+          assert e.isDummyHydrogen == True, "Helpers.Test(): Can't set DummyHydrogen status for "+a.name+runType
 
   #========================================================================
   # Run unit test on getPhantomHydrogensFor().
@@ -650,42 +792,9 @@ def Test(inFileName = None):
     assert len(str(e)) == 0, "Helpers.Test() Exception during test of Phantom Hydrogen placement: "+str(e)+"\n"+traceback.format_exc()
 
   #========================================================================
-  # Run unit test on isPolarHydrogen().
-  pdb_4fenH_C_26 = (
-"""
-ATOM    234  P     C B  26      25.712  13.817   1.373  1.00 10.97           P
-ATOM    235  OP1   C B  26      26.979  13.127   1.023  1.00 12.57           O
-ATOM    236  OP2   C B  26      25.641  14.651   2.599  1.00 12.59           O
-ATOM    237  O5'   C B  26      25.264  14.720   0.142  1.00 10.58           O
-ATOM    238  C5'   C B  26      25.128  14.166  -1.162  1.00  9.37           C
-ATOM    239  C4'   C B  26      24.514  15.183  -2.092  1.00  9.05           C
-ATOM    240  O4'   C B  26      23.142  15.447  -1.681  1.00 10.46           O
-ATOM    241  C3'   C B  26      25.159  16.555  -2.048  1.00  8.49           C
-ATOM    242  O3'   C B  26      26.338  16.599  -2.839  1.00  7.94           O
-ATOM    243  C2'   C B  26      24.043  17.427  -2.601  1.00  8.44           C
-ATOM    244  O2'   C B  26      23.885  17.287  -3.999  1.00  9.33           O
-ATOM    245  C1'   C B  26      22.835  16.819  -1.888  1.00 10.06           C
-ATOM    246  N1    C B  26      22.577  17.448  -0.580  1.00  9.44           N
-ATOM    247  C2    C B  26      21.940  18.695  -0.552  1.00  9.61           C
-ATOM    248  O2    C B  26      21.613  19.223  -1.623  1.00 10.13           O
-ATOM    249  N3    C B  26      21.704  19.292   0.638  1.00  9.82           N
-ATOM    250  C4    C B  26      22.082  18.695   1.771  1.00 10.10           C
-ATOM    251  N4    C B  26      21.841  19.328   2.923  1.00 10.94           N
-ATOM    252  C5    C B  26      22.728  17.423   1.773  1.00  9.51           C
-ATOM    253  C6    C B  26      22.952  16.840   0.586  1.00 10.02           C
-ATOM      0  H5'   C B  26      24.573  13.371  -1.128  1.00  9.37           H   new
-ATOM      0 H5''   C B  26      25.996  13.892  -1.498  1.00  9.37           H   new
-ATOM      0  H4'   C B  26      24.618  14.792  -2.973  1.00  9.05           H   new
-ATOM      0  H3'   C B  26      25.463  16.833  -1.170  1.00  8.49           H   new
-ATOM      0  H2'   C B  26      24.192  18.375  -2.460  1.00  8.44           H   new
-ATOM      0 HO2'   C B  26      23.422  16.605  -4.162  1.00  9.33           H   new
-ATOM      0  H1'   C B  26      22.041  16.954  -2.429  1.00 10.06           H   new
-ATOM      0  H41   C B  26      22.073  18.968   3.668  1.00 10.94           H   new
-ATOM      0  H42   C B  26      21.454  20.096   2.919  1.00 10.94           H   new
-ATOM      0  H5    C B  26      22.984  17.013   2.568  1.00  9.51           H   new
-ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H   new
-"""
-    )
+  # Run unit test on isPolarHydrogen().  We use a specific PDB snippet
+  # for which we know the answer and then we verify that the results are what
+  # we expect.
 
   dm = iotbx.data_manager.DataManager(['model'])
   dm.process_model_str("pdb_4fenH_C_26.pdb",pdb_4fenH_C_26)
@@ -717,28 +826,13 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   # Run unit test on getBondedNeighborLists().  We use a specific PDB snippet
   # for which we know the answer and then we verify that the results are what
   # we expect.
-  pdb_1xso_his_61 = (
-"""
-ATOM    442  N   HIS A  61      26.965  32.911   7.593  1.00  7.19           N
-ATOM    443  CA  HIS A  61      27.557  32.385   6.403  1.00  7.24           C
-ATOM    444  C   HIS A  61      28.929  31.763   6.641  1.00  7.38           C
-ATOM    445  O   HIS A  61      29.744  32.217   7.397  1.00  9.97           O
-ATOM    446  CB  HIS A  61      27.707  33.547   5.385  1.00  9.38           C
-ATOM    447  CG  HIS A  61      26.382  33.956   4.808  1.00  8.78           C
-ATOM    448  ND1 HIS A  61      26.168  34.981   3.980  1.00  9.06           N
-ATOM    449  CD2 HIS A  61      25.174  33.397   5.004  1.00 11.08           C
-ATOM    450  CE1 HIS A  61      24.867  35.060   3.688  1.00 12.84           C
-ATOM    451  NE2 HIS A  61      24.251  34.003   4.297  1.00 11.66           N
-END
-"""
-    )
 
   dm = iotbx.data_manager.DataManager(['model'])
   dm.process_model_str("1xso_snip.pdb",pdb_1xso_his_61)
   model = dm.get_model()
   model.process(make_restraints=True) # make restraints
 
-  # Get the first model in the hierarchy.
+  # Get the atoms for the first model in the hierarchy.
   atoms = model.get_hierarchy().models()[0].atoms()
 
   # Get the Cartesian positions of all of the atoms we're considering for this alternate
