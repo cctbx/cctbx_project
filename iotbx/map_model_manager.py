@@ -2951,7 +2951,7 @@ class map_model_manager(object):
         max_dist = max(self.resolution(), 3.)
       else:
         max_dist = max(self.resolution(), 7.)
-    
+
 
     # Select the atoms to try and match
     if ignore_element:
