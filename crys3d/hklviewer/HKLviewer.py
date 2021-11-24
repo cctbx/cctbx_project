@@ -2011,17 +2011,22 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
   def ReadPersistedQsettings(self):
     # read the users persisted settings from disc
     # Locate cctbx.python. If not in the Qsettings then try if in the executable path environment
-    self.cctbxpython = self.settings.value("PythonPath", "")
+    cctbxpython_from_settings = self.settings.value("PythonPath", "")
+    cctbxpython_from_env = ""
+
+    wherecmd = "which"
+    if sys.platform == 'win32':
+      wherecmd = "where"
+    proc = subprocess.Popen([wherecmd, "cctbx.python"],
+                            universal_newlines=True, # avoid them annoying byte strings
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE).communicate()
+    if proc[0] != "":
+      cctbxpython_from_env = proc[0].strip()
+
+    self.cctbxpython = cctbxpython_from_env
     if not os.path.isfile(self.cctbxpython):
-      wherecmd = "which"
-      if sys.platform == 'win32':
-        wherecmd = "where"
-      proc = subprocess.Popen([wherecmd, "cctbx.python"],
-                              universal_newlines=True, # avoid them annoying byte strings
-                              stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE).communicate()
-      if proc[0] != "":
-        self.cctbxpython = proc[0].strip()
+      self.cctbxpython = cctbxpython_from_settings
     if not os.path.isfile(self.cctbxpython):
       from .qt import QInputDialog
       self.cctbxpython, ok = QInputDialog.getText(None, "cctbx.python needs specifying",
