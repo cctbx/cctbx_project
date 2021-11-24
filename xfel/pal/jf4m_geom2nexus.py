@@ -169,7 +169,7 @@ class jf4m_geom2nexus(object):
       # on it and we can't do that on an ExternalLink
       wavelengths_path = '%s/scan_dat/photon_wavelength'%run
       wavelengths_shape = uf[wavelengths_path].shape
-      layout = h5py.VirtualLayout(shape = wavelengths_shape)
+      layout = h5py.VirtualLayout(shape = wavelengths_shape, dtype='f')
       vsource = h5py.VirtualSource(self.params.unassembled_file, wavelengths_path, wavelengths_shape)
       layout[:] = vsource
       beam.create_virtual_dataset('incident_wavelength', layout)
