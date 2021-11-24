@@ -60,7 +60,12 @@ Inputs:
       model = self.model,
       use_neutron_distances = self.params.use_neutron_distances,
       n_terminal_charge = self.params.n_terminal_charge)
+    #import line_profiler
+    #lp = line_profiler.LineProfiler(reduce_add_h_obj.run)
+    #lp.enable()
     reduce_add_h_obj.run()
+    #lp.disable()
+    #lp.print_stats()
     self.model = reduce_add_h_obj.get_model()
     reduce_add_h_obj.show(log = self.logger)
     #
