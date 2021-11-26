@@ -1923,6 +1923,15 @@ def get_chain_type(model=None, hierarchy=None,
        hierarchy=hierarchy,chain_type="RNA")
     if sequence_as_rna.upper().count("U") > 0:
       return 'RNA'  # for sure RNA
+    sequence_as_dna = get_sequence_from_hierarchy(
+       hierarchy=hierarchy,chain_type="DNA")
+    if (not sequence_as_rna) and sequence_as_dna:
+      return 'DNA'  # for sure DNA
+    if len(sequence_as_rna) > len(sequence_as_dna):
+      return 'RNA'
+    if len(sequence_as_rna) < len(sequence_as_dna):
+      return 'DNA'
+
     # Otherwise, look for O2'
 
     asc1 = hierarchy_rna_dna.atom_selection_cache()
@@ -1934,7 +1943,10 @@ def get_chain_type(model=None, hierarchy=None,
     sel1 = asc1.selection(string = "name p")
     hierarchy_rna_dna_p = hierarchy_rna_dna.select(sel1)
     count_rna_dna_p  = hierarchy_rna_dna_p.atoms().extract_xyz().size()
-    if count_rna_dna_p and not count_rna:
+    count_rna_dna_all = hierarchy_rna_dna.atoms().extract_xyz().size()
+    if count_rna_dna_p == count_rna_dna_all:
+      return None # cannot tell
+    elif count_rna_dna_p and not count_rna:
       return "DNA"
     elif count_rna_dna_p and count_rna:
       return "RNA"

@@ -2986,9 +2986,11 @@ class map_model_manager(object):
 
     if residue_names_must_match:
       ca_residue_names = get_sequence_from_hierarchy(
-        target_model_ca.get_hierarchy(), remove_white_space=True)
+        target_model_ca.get_hierarchy(), remove_white_space=True,
+        chain_type = chain_type)
       cb_residue_names = get_sequence_from_hierarchy(
-        matching_model_ca.get_hierarchy(), remove_white_space=True)
+        matching_model_ca.get_hierarchy(), remove_white_space=True,
+        chain_type = chain_type)
       assert len(ca_residue_names) == target_model_ca.get_sites_cart().size()
       assert len(cb_residue_names) == matching_model_ca.get_sites_cart().size()
     else:

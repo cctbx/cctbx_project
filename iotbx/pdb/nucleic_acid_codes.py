@@ -18,4 +18,9 @@ dna_one_letter_code_dict = {
  'A':'A',
  'C':'C',
  'T':'T',
- 'G':'G',}
+ 'G':'G',
+ 'DA':'A',
+ 'DC':'C',
+ 'DT':'T',
+ 'DG':'G',
+  }
