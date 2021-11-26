@@ -17,6 +17,7 @@ from scitbx.matrix import col
 from libtbx import group_args
 from cctbx.maptbx.segment_and_split_map import get_co
 import iotbx.phil
+from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
 
 ################################################################################
 ####################   process_predicted_model  ################################
@@ -266,6 +267,13 @@ def process_predicted_model(
   import mmtbx.model
   assert isinstance(model, mmtbx.model.manager)
 
+  # Make sure we have just 1 chain or a chain ID supplied
+  chain_ids = get_chain_ids(model.get_hierarchy())
+  if len(chain_ids) != 1:
+    chain_id = get_chain_id(model, None, log = log)
+    model.add_crystal_symmetry_if_necessary()
+    model = model.apply_selection_string('chain %s' %(chain_id))
+
   # Decide what to do
   p = params.process_predicted_model
 
@@ -377,8 +385,6 @@ def process_predicted_model(
 
   # Get high-confidence regions as domains if desired:
   if p.split_model_by_compact_regions:
-    # Make sure we have just 1 chain or a chain ID supplied
-    chain_id = get_chain_id(model, None, log = log)
 
     if pae_matrix is not None: # use pae matrix method
       info = split_model_with_pae(model, new_model, pae_matrix,
@@ -474,7 +480,6 @@ def split_model_by_chainid(m, chainid_list,
 
 
 def get_chain_id(model, chain_id, log = sys.stdout):
-  from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
   chain_ids = get_chain_ids(model.get_hierarchy())
   if len(chain_ids) == 1:
     chain_id = chain_ids[0]
@@ -488,6 +493,7 @@ def get_chain_id(model, chain_id, log = sys.stdout):
     chain_id = chain_ids[0]
     print("Working on chain '%s' only (skipping other chains: %s)" %(
       chain_id, " ".join(chain_ids[1:])), file = log)
+  return chain_id
 
 def get_cutoff_b_value(
     maximum_rmsd,
@@ -801,8 +807,6 @@ def split_model_with_pae(
     group_args_type = 'model_info',
     model = m,
     chainid_list = chainid_list)
-
-  return set_chain_id_by_region(m, m_ca, regions_list, log = log)
 
 ################################################################################
 ####################   split_model_into_compact_units   ########################
