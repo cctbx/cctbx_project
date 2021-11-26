@@ -70,7 +70,7 @@ int main() {
   std::cout << "Rectangular Full Data # "
             << "[" << N << "x" << K << "]" << "[" << N << "x" << K << "]^T : ";
   double c[N*N];
-  fast_linalg::dsyrk(
+  fast_linalg::syrk(
     CblasRowMajor, CblasUpper, CblasNoTrans, N, K,
               1.0, a, K, 0.0, c, N);
   double c_ref[N*N] = { 30,  70, 110, 150,  190,  230,
