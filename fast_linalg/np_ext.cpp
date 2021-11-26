@@ -27,6 +27,12 @@ namespace fast_linalg {
     lapack_int, double *);
   typedef lapack_int(LAPACKE_spftri_t)(int, char, char,
     lapack_int, float *);
+  typedef void (cblas_ssyr_t)(int, int, int, float, const float *,
+    int, float *, int);
+  typedef void (cblas_dsyr_t)(int, int, int, double, const double *,
+    int, double *, int);
+  typedef void (cblas_ssyrk_t)(int, int, int,
+    int, int, float, float *, int, float, float *, int);
   typedef void (cblas_dsyrk_t)(int, int, int,
     int, int, double, double *, int, double, double *, int);
 
@@ -64,6 +70,9 @@ namespace fast_linalg {
       openblas_get_config = &lib.get<openblas_get_config_t>(
         "openblas_get_config");
 
+      cblas_ssyr = &lib.get<cblas_ssyr_t>("cblas_ssyr");
+      cblas_dsyr = &lib.get<cblas_dsyr_t>("cblas_dsyr");
+      cblas_ssyrk = &lib.get<cblas_ssyrk_t>("cblas_ssyrk");
       cblas_dsyrk = &lib.get<cblas_dsyrk_t>("cblas_dsyrk");
     }
     void init_() {
@@ -84,6 +93,9 @@ namespace fast_linalg {
       openblas_get_corename = 0;
       openblas_get_config = 0;
 
+      cblas_ssyr = 0;
+      cblas_dsyr = 0;
+      cblas_ssyrk = 0;
       cblas_dsyrk = 0;
     }
   public:
@@ -103,6 +115,9 @@ namespace fast_linalg {
     openblas_get_corename_t *openblas_get_corename;
     openblas_get_config_t *openblas_get_config;
 
+    cblas_ssyr_t *cblas_ssyr;
+    cblas_dsyr_t *cblas_dsyr;
+    cblas_ssyrk_t *cblas_ssyrk;
     cblas_dsyrk_t *cblas_dsyrk;
 
     static Wrapper &instance() {
@@ -238,6 +253,27 @@ lapack_int lapack_spftri(int matrix_order, char transr, char uplo,
     matrix_order, transr, uplo, n, a);
 }
 //............................................................................
+//............................................................................
+void cblas_ssyr(int Order, int Uplo, int N, float alpha,
+  const float *X, int incX, float *A, int lda)
+{
+  return (*Wrapper::instance().cblas_ssyr)(Order, Uplo, N, alpha,
+    X, incX, A, lda);
+}
+//............................................................................
+void cblas_dsyr(int Order, int Uplo, int N, double alpha,
+  const double *X, int incX, double *A, int lda)
+{
+  return (*Wrapper::instance().cblas_dsyr)(Order, Uplo, N, alpha,
+    X, incX, A, lda);
+}
+//............................................................................
+void cblas_ssyrk(int Order, int Uplo, int Trans, int N, int K,
+  float alpha, float *A, int lda, float beta, float *C, int ldc)
+{
+  return (*Wrapper::instance().cblas_ssyrk)(Order, Uplo, Trans, N, K, alpha,
+    A, lda, beta, C, ldc);
+}
 //............................................................................
 void cblas_dsyrk(int Order, int Uplo, int Trans, int N, int K,
   double alpha, double *A, int lda, double beta, double *C, int ldc)
