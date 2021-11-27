@@ -101,7 +101,9 @@ class manager(Base_geometry):
     self.site_symmetry_table = new_site_symmetry_table
     # Recompute shell_sym_tables
     asu_mappings = special_position_settings.asu_mappings(
-      buffer_thickness = self.max_reasonable_bond_distance*3)
+      buffer_thickness = self.max_reasonable_bond_distance*3 if \
+      self.max_reasonable_bond_distance is not None \
+      else 150) # arbitrary big number if not defined
     asu_mappings.process_sites_cart(
       original_sites      = sites_cart,
       site_symmetry_table = self.site_symmetry_table)
