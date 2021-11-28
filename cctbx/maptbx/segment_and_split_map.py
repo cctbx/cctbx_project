@@ -7941,17 +7941,15 @@ def write_output_files(params,
        box_map_ncs_au_half_map_data_list = half_map_data_list_au_box,
        )
 
-  write_ccp4_map(tracking_data.crystal_symmetry, 'map_data_ncs_au.ccp4', map_data_ncs_au)
-  write_ccp4_map(box_crystal_symmetry, 'box_map_ncs_au.ccp4', box_map_ncs_au)
-
   if params.output_files.box_map_file:
     # write out NCS map as box_map (cut out region of map enclosed in box_mask)
     if params.output_files.write_output_maps:
       write_ccp4_map(box_crystal_symmetry,
-        os.path.join(tracking_data.params.output_files.output_directory, params.output_files.box_map_file),
-        box_map_ncs_au)
+        os.path.join(tracking_data.params.output_files.output_directory,
+          params.output_files.box_map_file), box_map_ncs_au)
       print("Output NCS au as box (cut out) map:  %s " %(
-      os.path.join(tracking_data.params.output_files.output_directory, params.output_files.box_map_file)), file = out)
+      os.path.join(tracking_data.params.output_files.output_directory,
+          params.output_files.box_map_file)), file = out)
       tracking_data.set_output_box_map_info(
         file_name = os.path.join(tracking_data.params.output_files.output_directory, params.output_files.box_map_file),
         crystal_symmetry = box_crystal_symmetry,
