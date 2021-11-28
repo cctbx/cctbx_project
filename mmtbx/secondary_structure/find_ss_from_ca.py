@@ -581,6 +581,22 @@ def offset_residue_numbers(hierarchy, offset = 0):
         current_resno = rg.resseq_as_int()
         rg.resseq = resseq_encode(current_resno + offset)
 
+def merge_and_renumber_everything(hierarchy, current_resno = 1):
+  new_hierarchy, mm = create_new_hierarchy_and_model()
+  cc = iotbx.pdb.hierarchy.chain()
+  cc.id = 'A'
+  mm.append_chain(cc)
+
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        new_rg = rg.detached_copy()
+        new_rg.resseq = resseq_encode(current_resno)
+        cc.append_residue_group(new_rg)
+        current_resno += 1
+  return new_hierarchy
+  
+
 def renumber_residues(hierarchy, first_resno = 1):
   for model in hierarchy.models():
     for chain in model.chains():
