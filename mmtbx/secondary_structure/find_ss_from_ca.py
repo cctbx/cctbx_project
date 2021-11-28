@@ -595,7 +595,7 @@ def merge_and_renumber_everything(hierarchy, current_resno = 1):
         cc.append_residue_group(new_rg)
         current_resno += 1
   return new_hierarchy
-  
+
 
 def renumber_residues(hierarchy, first_resno = 1):
   for model in hierarchy.models():
