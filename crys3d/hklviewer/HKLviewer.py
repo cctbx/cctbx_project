@@ -226,7 +226,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.browserfontsize = None
     self.isembedded = isembedded
     print("version " + self.Qtversion)
-
+    self.colnames_select_dict = {}
     self.ReadPersistedQsettings()
 
     if isembedded:
@@ -479,7 +479,6 @@ newarray._sigmas = sigs
       self.actionColour_Gradient.triggered.connect(self.ColourMapSelectDlg.show)
     else:
       self.textInfo.setVisible(False) # stdout sent to chimeraX's console instead
-
     self.functionTabWidget.setCurrentIndex(0) # if accidentally set to a different tab in the Qtdesigner
     self.window.show()
 
@@ -620,7 +619,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
   def onSelect_millertable_column_dlg(self):
     """
     Dialog for choosing what columns of the miller table should be displayed
-    Invoked by helper.MyhorizontalHeader()
+    Invoked by helpers.MyhorizontalHeader()
     """
     self.select_millertable_column_dlg.show()
     self.select_millertable_column_dlg.activateWindow()
@@ -846,6 +845,17 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.ShowAllVectorsBtn.setCheckState(Qt.Unchecked)
             self.functionTabWidget.setDisabled(True)
             self.AlignVectorGroupBox.setChecked( False)
+
+            stored_colnames_select_lst = []
+            current_philstr = "selected_info {\n"
+            for philname, caption, value in self.colnames_select_lst:
+              is_selected = bool(self.colnames_select_dict[philname])
+              stored_colnames_select_lst.append( (philname, caption, is_selected) )
+              current_philstr += "  %s = %s\n" %(philname, is_selected)
+            current_philstr += "}\n"
+            self.send_message(current_philstr)
+            self.colnames_select_lst = stored_colnames_select_lst
+            self.select_millertable_column_dlg.make_new_selection_table()
 
           if self.infodict.get("NewHKLscenes"):
             self.NewHKLscenes = self.infodict.get("NewHKLscenes",False)
@@ -1988,6 +1998,11 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
   def PersistQsettings(self):
     self.settings.setValue("PythonPath", self.cctbxpython )
+    self.settings.beginGroup("MillerTableColumnHeader")
+    for philname, dummy, value in self.colnames_select_lst:
+      self.settings.setValue(philname, int(value) )
+    self.settings.endGroup() # MillerTableColumnHeader
+
     self.settings.beginGroup(self.Qtversion )
     self.settings.setValue("QWebEngineViewFlags", self.QWebEngineViewFlags)
     self.settings.setValue("FontSize", self.fontsize )
@@ -2036,9 +2051,17 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if not os.path.isfile(self.cctbxpython):
       raise Exception("The file, %s, does not exists!\n" %self.cctbxpython)
     print("HKLviewer using cctbx.python from: %s" %self.cctbxpython)
+
+    self.settings.beginGroup("MillerTableColumnHeader")
+    keys = self.settings.childKeys()
+    for philname in keys:
+     self.colnames_select_dict[philname] = self.settings.value(philname, 1)
+    self.settings.endGroup() # MillerTableColumnHeader
+
     # In case of more than one PySide2 installation tag the settings by version number of PySide2
     # as different versions may use different metrics for font and window sizes
     self.settings.beginGroup(self.Qtversion)
+
     self.settings.beginGroup("DataTypesGroups")
     datatypes = self.settings.childGroups()
     #datatypedict = { }
@@ -2094,6 +2117,18 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.splitter.restoreState(self.splitter1sizes)
       self.splitter_2.restoreState(self.splitter2sizes)
     self.setDatatypedict(self.datatypedict)
+    """
+    stored_colnames_select_lst = []
+    current_philstr = "selected_info {\n"
+    for philname, caption, value in self.colnames_select_lst:
+      is_selected = bool(self.colnames_select_dict[philname])
+      stored_colnames_select_lst.append( (philname, caption, is_selected) )
+      current_philstr += "  %s = %s\n" %(philname, is_selected)
+    current_philstr += "}\n"
+    self.send_message(current_philstr)
+    self.colnames_select_lst = stored_colnames_select_lst
+    self.select_millertable_column_dlg.make_new_selection_table()
+    """
 
 
   @staticmethod
