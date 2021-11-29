@@ -34,6 +34,8 @@ def get_qm_restraints_scope(verbose=False):
       .type = str
     read_output_to_skip_opt_if_available = True
       .type = bool
+    view_output = None
+      .type = str
   }
 '''
 
@@ -56,8 +58,8 @@ qm_restraints
     .type = bool
   write_final_pdb_buffer = False
     .type = bool
-  cleanup = True
-    .type = bool
+  cleanup = *all most None
+    .type = choice
   run_in_macrocycles = *first_only all
     .type = choice
   %s

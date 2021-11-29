@@ -42,6 +42,13 @@ def digester(model,
   qm_restraints_initialisation(params.qi, log=log)
   return qm_grm
 
+def write_pdb_file(model, filename, log):
+  outl = model.model_as_pdb()
+  print('    Writing ligand : %s' % filename, file=log)
+  f=open(filename, 'w')
+  f.write(outl)
+  del f
+
 def add_hydrogen_atoms_to_model(model,
                                 use_capping_hydrogens=False,
                                # use_neutron_distances=True,
@@ -49,7 +56,7 @@ def add_hydrogen_atoms_to_model(model,
                                ):
   from mmtbx.ligands.ready_set_utils import add_terminal_hydrogens
   from mmtbx.ligands.ready_set_utils import add_water_hydrogen_atoms_simple
-  model.log=StringIO()
+  # model.log=StringIO()
   rc = add_terminal_hydrogens( model.get_hierarchy(),
                                model.get_restraints_manager().geometry,
                                use_capping_hydrogens=use_capping_hydrogens,
@@ -83,11 +90,127 @@ def select_and_reindex(model,
     rc = _reindexing(selected_model, selection_array, verbose=verbose)
   return selected_model
 
+def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5.):
+  from cctbx.crystal import super_cell
+  def dist2(r1,r2):
+    return (r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2
+  def min_dist2(residue_group1, residue_group2, limit=1e-2):
+    min_d2=1e9
+    min_ca_d2=1e9
+    for atom1 in residue_group1.atoms():
+      for atom2 in residue_group2.atoms(): # ligand but could be more than one rg!!!
+        d2 = dist2(atom1.xyz, atom2.xyz)
+        if d2<limit and min_ca_d2<1e9: return d2, min_ca_d2
+        min_d2 = min(min_d2, d2)
+        if atom1.name.strip()=='CA':
+          min_ca_d2 = min(min_ca_d2, d2)
+          # print('CA', atom1.id_str(),atom2.id_str(),d2,buffer,min_d2,min_ca_d2)
+    return min_d2, min_ca_d2
+  def find_movers(buffer_model, ligand_model, buffer, prune_limit=5.):
+    buffer*=buffer
+    prune_limit*=prune_limit
+    movers = []
+    close = []
+    removers = []
+    same = []
+    prune_main = []
+    for residue_group1 in buffer_model.get_hierarchy().residue_groups():
+      for residue_group2 in ligand_model.get_hierarchy().residue_groups():
+        if residue_group1.id_str()==residue_group2.id_str():
+          same.append(residue_group1)
+          continue
+        if list(residue_group1.unique_resnames())==list(residue_group2.unique_resnames()):
+          min_d2, min_ca_d2 = min_dist2(residue_group1, residue_group2, limit=.1)
+          if min_d2<=.1:
+            removers.append(residue_group1)
+        else:
+          min_d2, min_ca_d2 = min_dist2(residue_group1, residue_group2, limit=buffer)
+        if min_d2<=buffer:
+          close.append(residue_group1)
+        else:
+          movers.append(residue_group1)
+        if min_ca_d2 is not None and min_ca_d2>prune_limit:
+          prune_main.append(residue_group1)
+      assert residue_group1 in movers or residue_group1 in close or residue_group1 in same
+    for rg in movers:
+      for atom in rg.atoms(): print(atom.id_str())
+    for chain in buffer_model.get_hierarchy().chains():
+      for rg in movers+removers:
+        if rg in chain.residue_groups():
+          chain.remove_residue_group(rg)
+    if prune_main: prune_main_chain(residue_group1, prune_main)
+    return movers, removers
+  def prune_main_chain(residue_group1, prune_main):
+    mainchain = ['N', 'CA', 'C', 'O', 'OXT', 'H', 'HA', 'H1', 'H2', 'H3']
+    for residue_group1 in prune_main:
+      # print('prune_main',residue_group1.id_str())
+      if 'PRO' in residue_group1.unique_resnames():
+        continue
+      cb_atom = None
+      for atom in residue_group1.atoms():
+        if atom.name.strip()=='CB':
+          cb_atom=atom
+          break
+      if cb_atom is None: continue
+      pruning=False
+      for atom in residue_group1.atoms():
+        if atom.name.strip()=='CA':
+          atom.name=' HBC'
+          atom.element='H'
+          print(atom.quote(),cb_atom.quote(),atom.xyz, cb_atom.xyz)
+          atom.xyz = ((atom.xyz[0]+cb_atom.xyz[0])/2,
+                      (atom.xyz[1]+cb_atom.xyz[1])/2,
+                      (atom.xyz[2]+cb_atom.xyz[2])/2,
+                      )
+          print(atom.quote(),atom.xyz)
+          pruning=True
+          break
+      if pruning:
+        for atom in residue_group1.atoms():
+          if atom.name.strip() in mainchain:
+              ag = atom.parent()
+              ag.remove_atom(atom)
+  def move_movers(buffer_model, complete_p1_hierarchy, movers):
+    assert 0
+    def _get_resname_from_residue_group(residue_group): pass
+    for residue_group1 in movers:
+      for residue_group2 in complete_p1_hierarchy.residue_groups():
+        # print(dir(residue_group1))
+        # print(list(residue_group1.unique_resnames()),residue_group1.resseq,residue_group1.parent().id)
+        # print(list(residue_group2.unique_resnames()),residue_group2.resseq,residue_group2.parent().id)
+        if residue_group1.parent().id==residue_group2.parent().id: continue
+        if residue_group1.resseq==residue_group2.resseq:
+          if list(residue_group1.unique_resnames())==list(residue_group2.unique_resnames()):
+            xyzs = residue_group2.atoms().extract_xyz()
+            residue_group1.atoms().set_xyz(xyzs)
+    return movers
+
+  complete_p1 = super_cell.run(
+    pdb_hierarchy        = buffer_model.get_hierarchy(),
+    crystal_symmetry     = buffer_model.crystal_symmetry(),
+    select_within_radius = buffer,
+    )
+  if(1):
+    complete_p1.hierarchy.write_pdb_file(file_name="complete_p1.pdb",
+      crystal_symmetry = complete_p1.crystal_symmetry)
+
+  for atom1, atom2 in zip(buffer_model.get_atoms(), complete_p1.hierarchy.atoms()):
+    atom2.tmp = atom1.tmp
+  buffer_model._pdb_hierarchy = complete_p1.hierarchy
+  movers, removers = find_movers(buffer_model, ligand_model, buffer)
+  write_pdb_file(buffer_model, 'test.pdb', None)
+
 def get_ligand_buffer_models(model, qmr, verbose=False):
   ligand_model = select_and_reindex(model, qmr.selection)
   buffer_selection_string = 'residues_within(%s, %s)' % (qmr.buffer,
                                                          qmr.selection)
   buffer_model = select_and_reindex(model, buffer_selection_string)
+  add_hydrogen_atoms_to_model(buffer_model)
+  buffer_model.unset_restraints_manager()
+  buffer_model.process(make_restraints=True)
+  super_cell_and_prune(buffer_model, ligand_model, qmr.buffer)
+  buffer_model.unset_restraints_manager()
+  buffer_model.process(make_restraints=True)
   return ligand_model, buffer_model
 
 def show_ligand_buffer_models(ligand_model, buffer_model):
@@ -137,8 +260,7 @@ def get_qm_manager(ligand_model, buffer_model, qmr, log=StringIO()):
   ligand_i_seqs = []
   for atom in ligand_model.get_atoms():
     ligand_i_seqs.append(atom.tmp)
-  # for atom in buffer_model.get_atoms():
-    # print(atom.quote(),atom.i_seq,atom.tmp)
+
   hd_selection = buffer_model.get_hd_selection()
   ligand_selection = []
   for i, (sel, atom) in enumerate(zip(hd_selection, buffer_model.get_atoms())):
@@ -191,50 +313,24 @@ def update_restraints(model,
     # get ligand and buffer region models
     #
     ligand_model, buffer_model = get_ligand_buffer_models(model, qmr)
-    #
-    # need to add H atoms including on water
-    #
-    # master_buffer_model = copy.deepcopy(buffer_model)
-    # if not master_buffer_model.restraints_manager_available():
-    #   master_buffer_model.process(make_restraints=True)
-    # total_charge = quantum_interface.electrons(buffer_model)
-    # print('total_charge',total_charge)
-    add_hydrogen_atoms_to_model(buffer_model)
-    buffer_model.unset_restraints_manager()
-    buffer_model.process(make_restraints=True)
-    # buffer_model.add_hydrogens(1., occupancy=1.)
-    # buffer_model.unset_restraints_manager()
-    # buffer_model.process(make_restraints=True)
     assert buffer_model.restraints_manager_available()
-    # total_charge = quantum_interface.electrons(buffer_model)
-    # print('total_charge',total_charge)
     if qmr.write_pdb_core:
-      outl = ligand_model.model_as_pdb()
-      lf = 'ligand_%s.pdb' % preamble
-      print('    Writing ligand : %s' % lf, file=log)
-      f=open(lf, 'w')
-      f.write(outl)
-      del f
+      write_pdb_file(ligand_model, 'ligand_%s.pdb' % preamble, log)
     if qmr.write_pdb_buffer:
-      outl = buffer_model.model_as_pdb()
-      lf = 'cluster_%s.pdb' % preamble
-      print('    Writing cluster: %s' % lf, file=log)
-      f=open(lf, 'w')
-      f.write(outl)
-      del f
+      write_pdb_file(buffer_model, 'cluster_%s.pdb' % preamble, log)
     #
     # get appropriate QM manager
     #
     qmm = get_qm_manager(ligand_model, buffer_model, qmr)
     qmm.preamble=preamble
-    objects.append([ligand_model, buffer_model, qmm])
+    objects.append([ligand_model, buffer_model, qmm, qmr])
   print('',file=log)
   #
   # optimise
   #
   if nproc==1:
     xyzs = []
-    for i, (ligand_model, buffer_model, qmm) in enumerate(objects):
+    for i, (ligand_model, buffer_model, qmm, qmr) in enumerate(objects):
       xyz = qm_manager.qm_runner(
         qmm,
         cleanup=qmr.cleanup,
@@ -254,7 +350,9 @@ def update_restraints(model,
   #
   # update model restraints
   #
-  for i, ((ligand_model, buffer_model, qmm), xyz) in enumerate(zip(objects, xyzs)):
+  for i, ((ligand_model, buffer_model, qmm, qmr), xyz) in enumerate(zip(objects, xyzs)):
+    if qmr.package.view_output:
+      qmm.view(qmr.package.view_output)
     if i: print(' ',file=log)
     print('  Updating QM restraints: "%s"' % qmr.selection, file=log)
     print(show_ligand_buffer_models(ligand_model, buffer_model), file=log)
@@ -264,24 +362,13 @@ def update_restraints(model,
     # update coordinates of ligand
     #
     ligand_model.get_hierarchy().atoms().set_xyz(xyz)
-    #need to update buffer_model also
+    #need to update buffer_model also ???
     gs = ligand_model.geometry_statistics()
     print('  Interim stats : %s' % gs.show_bond_and_angle(), file=log)
     if qmr.write_final_pdb_core:
-      outl = ligand_model.model_as_pdb()
-      lf = 'ligand_%s.pdb' % preamble
-      print('    Writing ligand : %s' % lf)
-      f=open(lf, 'w')
-      f.write(outl)
-      del f
+      write_pdb_file(ligand_model, 'ligand_final_%s.pdb' % preamble, log)
     if qmr.write_final_pdb_buffer:
-      assert 0
-      outl = buffer_model.model_as_pdb()
-      lf = 'cluster_%s.pdb' % preamble
-      print('    Writing cluster: %s' % lf)
-      f=open(lf, 'w')
-      f.write(outl)
-      del f
+      write_pdb_file(buffer_model, 'cluster_final_%s.pdb' % preamble, log)
     #
     # transfer geometry to proxies
     #  - bonds

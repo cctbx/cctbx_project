@@ -72,7 +72,7 @@ class base_manager():
     assert len(selection_array)==len(self.atoms)
     self.freeze_a_ray = selection_array
 
-  def get_opt(self, cleanup=False):
+  def get_opt(self, cleanup=False, file_read=False):
     import random
     rc = []
     for atom in self.atoms:
@@ -109,6 +109,28 @@ def qm_runner(qmm,
 #
 # ORCA
 #
+'''
+                                .--------------------.
+          ----------------------|Geometry convergence|-------------------------
+          Item                value                   Tolerance       Converged
+          ---------------------------------------------------------------------
+          Energy change      -0.2772205978            0.0000050000      NO
+          RMS gradient        0.0273786248            0.0001000000      NO
+          MAX gradient        0.1448471259            0.0003000000      NO
+          RMS step            0.0097797205            0.0020000000      NO
+          MAX step            0.0482825340            0.0040000000      NO
+          ........................................................
+          Max(Bonds)      0.0256      Max(Angles)    0.97
+          Max(Dihed)        0.59      Max(Improp)    0.00
+          ---------------------------------------------------------------------
+
+          ----------------------------------------------------------------------------
+                                  WARNING !!!
+       The optimization did not converge but reached the maximum number of
+       optimization cycles.
+       Please check your results very carefully.
+    ----------------------------------------------------------------------------
+          '''
 def run_qm_cmd(cmd,
                log_filename,
                error_lines=None,
@@ -119,10 +141,12 @@ def run_qm_cmd(cmd,
   error_line=None
   for line in rc.stdout_lines:
     local_logger += '%s\n' % line
+    if line.find('GEOMETRY OPTIMIZATION CYCLE')>-1:
+      print(line)
     if error_lines:
       for el in error_lines:
         if local_logger.find(el)>-1:
-          error_line = el
+          error_line = line
           break
     if error_line: break
   if rc.stderr_lines:
@@ -242,18 +266,24 @@ class orca_manager(base_manager):
     cmd = self.get_cmd()
     run_qm_cmd(cmd,
                'orca_%s.log' % self.preamble,
-               # error_lines=['ORCA finished by error termination in GSTEP'],
+               error_lines=[
+                  'ORCA finished by error termination in GSTEP',
+                  '-> impossible',
+                  'SCF NOT CONVERGED AFTER',
+               ],
                )
     self.times.append(time.time()-t0)
 
   def get_coordinate_lines(self):
     outl = '* xyz %s %s\n' % (self.charge, self.multiplicity)
-    for atom in self.atoms:
-      outl += ' %s %0.5f %0.5f %0.5f\n' % (
+    for i, atom in enumerate(self.atoms):
+      outl += ' %s %0.5f %0.5f %0.5f # %s %s\n' % (
         atom.element,
         atom.xyz[0],
         atom.xyz[1],
         atom.xyz[2],
+        atom.id_str(),
+        i,
         )
     outl += '*\n'
     return outl
@@ -294,7 +324,7 @@ class orca_manager(base_manager):
       if hasattr(self, 'freeze_a_ray'):
         for i, (sel, atom) in enumerate(zip(self.freeze_a_ray, self.atoms)):
           if sel:
-            freeze_outl += '{C %d C} # Restraining %s\n' % (i+1, atom.id_str())
+            freeze_outl += '{C %d C} # Restraining %s\n' % (i, atom.id_str())
       freeze_outl += 'end\nend\n'
       outl += freeze_outl
     self.write_input(outl)
@@ -304,12 +334,13 @@ class orca_manager(base_manager):
     if file_read:
       filename = self.get_coordinate_filename()
       if os.path.exists(filename):
+        print('  Reading coordinates from %s\n' % filename)
         coordinates = self.read_xyz_output()
     if coordinates is None:
       self.opt_setup()
       self.run_cmd()
       coordinates = self.read_xyz_output()
-    if cleanup: self.cleanup()
+    if cleanup: self.cleanup(level=cleanup)
     if hasattr(self, 'interest_array'):
       tmp = []
       if hasattr(self, 'interest_array'):
@@ -319,12 +350,37 @@ class orca_manager(base_manager):
         coordinates=tmp
     return flex.vec3_double(coordinates)
 
-  def cleanup(self, verbose=False):
+  def cleanup(self, level=None, verbose=False):
     if not self.preamble: return
+    if level is None: return
+    #
+    tf = 'orca_%s.trj' % self.preamble
+    if os.path.exists(tf):
+      uf = 'orca_%s_trj.xyz' % self.preamble
+      print('rename',tf,uf)
+      os.rename(tf, uf)
+    most_keepers = ['.xyz', '.log', '.in', '.engrad', '.trj']
     for filename in os.listdir('.'):
       if filename.startswith('orca_%s' % self.preamble):
+        if level=='most':
+          name, ext = os.path.splitext(filename)
+          if ext in most_keepers: continue
         if verbose: print('  removing',filename)
         os.remove(filename)
+
+  def view(self, cmd, ext='.xyz'):
+    # /Applications/Avogadro.app/Contents/MacOS/Avogadro
+    print(cmd)
+    tf = 'orca_%s' % self.preamble
+    print(tf)
+    filenames =[]
+    for filename in os.listdir('.'):
+      if filename.startswith(tf) and filename.endswith(ext):
+        filenames.append(filename)
+    filenames.sort()
+    print(filenames)
+    cmd += ' %s' % filenames[-1]
+    easy_run.go(cmd)
 
 class manager(standard_manager):
   def __init__(self,
