@@ -1871,8 +1871,10 @@ def get_sequences(file_name=None,text=None,remove_duplicates=None):
       simple_sequence_list.append(sequence.sequence)
   return simple_sequence_list
 
-def get_chain_type_of_chain(chain):
-  ''' Get chain type of a single chain in a hierarchy'''
+def get_chain_type_of_chain(chain, return_rna_if_rna_or_dna = False):
+  ''' Get chain type of a single chain in a hierarchy
+      If ambiguous and can be rna or dna, return rna. this allows
+      getting a 1-letter sequence in cases where it is ambiguous'''
 
   from iotbx.pdb import pdb_input, hierarchy
   from scitbx.array_family import flex
@@ -1884,10 +1886,12 @@ def get_chain_type_of_chain(chain):
   mm = hierarchy.model()
   new_hierarchy.append_model(mm)
   mm.append_chain(cc)
-  return get_chain_type(hierarchy = new_hierarchy)
+  return get_chain_type(hierarchy = new_hierarchy,
+     return_rna_if_rna_or_dna = return_rna_if_rna_or_dna)
 
 def get_chain_type(model=None, hierarchy=None,
-     return_protein_if_present = False):
+     return_protein_if_present = False,
+     return_rna_if_rna_or_dna = False):
   '''
    Identify chain type in a hierarchy or model and require only one chain type.
    if return_protein_if_present and protein is present, return PROTEIN
@@ -1945,7 +1949,10 @@ def get_chain_type(model=None, hierarchy=None,
     count_rna_dna_p  = hierarchy_rna_dna_p.atoms().extract_xyz().size()
     count_rna_dna_all = hierarchy_rna_dna.atoms().extract_xyz().size()
     if count_rna_dna_p == count_rna_dna_all:
-      return None # cannot tell
+      if return_rna_if_rna_or_dna:
+        return "RNA"
+      else:
+        return None # cannot tell
     elif count_rna_dna_p and not count_rna:
       return "DNA"
     elif count_rna_dna_p and count_rna:
@@ -1995,11 +2002,13 @@ def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None,
       # Get chain-type of this chain if not specified
       chain_type_use = chain_type
       if not chain_type_use:
-        chain_type_use = get_chain_type_of_chain(chain)
+        chain_type_use = get_chain_type_of_chain(chain,
+          return_rna_if_rna_or_dna = True) # Allows sequence of e.g. ACAGAAG
         if not chain_type_use:
           if require_chain_type:
             from libtbx.utils import Sorry
-            raise Sorry("Chain type could not be identified for chain %s" %(chain.id))
+            raise Sorry(
+            "Chain type could not be identified for chain %s" %(chain.id))
           else:
             continue
       one_letter_code = one_letter_code_dicts[chain_type_use]
