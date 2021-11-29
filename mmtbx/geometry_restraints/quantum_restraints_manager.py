@@ -1,9 +1,9 @@
 from __future__ import absolute_import,division, print_function
 from io import StringIO
-import copy
 
 from libtbx import Auto
 from libtbx.str_utils import make_header
+from libtbx.utils import Sorry
 
 from cctbx.geometry_restraints.manager import manager as standard_manager
 from mmtbx.geometry_restraints import quantum_interface
@@ -202,6 +202,8 @@ def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5.):
 
 def get_ligand_buffer_models(model, qmr, verbose=False):
   ligand_model = select_and_reindex(model, qmr.selection)
+  if len(ligand_model.get_atoms())==0:
+    raise Sorry('selection "%s" results in empty model' % qmr.selection)
   buffer_selection_string = 'residues_within(%s, %s)' % (qmr.buffer,
                                                          qmr.selection)
   buffer_model = select_and_reindex(model, buffer_selection_string)
