@@ -845,11 +845,13 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.ShowAllVectorsBtn.setCheckState(Qt.Unchecked)
             self.functionTabWidget.setDisabled(True)
             self.AlignVectorGroupBox.setChecked( False)
-
+            # display only those miller table columns that have been persisted if any
             stored_colnames_select_lst = []
             current_philstr = "selected_info {\n"
             for philname, caption, value in self.colnames_select_lst:
-              is_selected = bool(self.colnames_select_dict[philname])
+              is_selected = value
+              if self.colnames_select_dict.get(philname, -42) != -42:
+                is_selected = bool(self.colnames_select_dict[philname])
               stored_colnames_select_lst.append( (philname, caption, is_selected) )
               current_philstr += "  %s = %s\n" %(philname, is_selected)
             current_philstr += "}\n"
