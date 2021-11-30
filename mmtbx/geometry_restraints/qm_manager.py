@@ -306,7 +306,7 @@ class orca_manager(base_manager):
       )
     return cmd
 
-  def run_cmd(self, log=None):
+  def run_cmd(self, redirect_output=True, log=None):
     t0=time.time()
     cmd = self.get_cmd()
     run_qm_cmd(cmd,
@@ -316,6 +316,7 @@ class orca_manager(base_manager):
                   '-> impossible',
                   'SCF NOT CONVERGED AFTER',
                ],
+               redirect_output=redirect_output,
                log=log,
                )
     self.times.append(time.time()-t0)
@@ -379,8 +380,8 @@ class orca_manager(base_manager):
     coordinates = None
     if file_read:
       filename = self.get_coordinate_filename()
-      process_qm_log_file(filename.replace('.xyz', '.log'), log=log)
       if os.path.exists(filename):
+        process_qm_log_file(filename.replace('.xyz', '.log'), log=log)
         print('  Reading coordinates from %s\n' % filename)
         coordinates = self.read_xyz_output()
     if coordinates is None:
