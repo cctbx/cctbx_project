@@ -17,9 +17,7 @@
 
 namespace fast_linalg {
   const int LAPACK_ROW_MAJOR = 101,
-    LAPACK_COL_MAJOR = 102,
-    CBLAS_UPPER = 121,
-    CBLAS_LOWER = 122;
+    LAPACK_COL_MAJOR = 102;
 }
 
 #if defined(USE_FAST_LINALG)
@@ -69,14 +67,21 @@ extern "C" {
     const float *X, int incX, float* A, int lda);
   fast_linalg_api void cblas_dsyr(int Order, int Uplo, int N, double Alpha,
     const double *X, int incX, double* A, int lda);
+
   fast_linalg_api void cblas_ssyr(int Order, int Uplo, int N, float alpha,
     const float *X, int incX, float *A, int lda);
   fast_linalg_api void cblas_dsyr(int Order, int Uplo, int N, double alpha,
     const double *X, int incX, double *A, int lda);
+
+  fast_linalg_api void cblas_sspr(int Order, int Uplo, int N, float alpha,
+    const float* X, int incX, float* A);
+  fast_linalg_api void cblas_dspr(int Order, int Uplo, int N, double alpha,
+    const double* X, int incX, double* A);
+
   fast_linalg_api void cblas_ssyrk(int Order, int Uplo, int Trans, int N, int K,
-    float alpha, float *A, int lda, float beta, float *C, int ldc);
+    float alpha, const float *A, int lda, float beta, float *C, int ldc);
   fast_linalg_api void cblas_dsyrk(int Order, int Uplo, int Trans, int N, int K,
-    double alpha, double* A, int lda, double beta, double* C, int ldc);
+    double alpha, const double* A, int lda, double beta, double* C, int ldc);
 };
 
 namespace fast_linalg {
@@ -175,21 +180,33 @@ namespace fast_linalg {
   }
   //@}
 
-  /// @name Performs a symmetric rank-1 update
+  /// @name Performs a symmetric rank-1 update (upacked matrix!)
   //@{
   inline void syr(int Order, int Uplo, int N, float Alpha,
     const float *X, int incX, float* A, int lda)
   {
     cblas_ssyr(Order, Uplo, N, Alpha, X, incX, A, lda);
   }
-  //@}
 
-  /// @name Performs a symmetric rank-1 update
-  //@{
   inline void syr(int Order, int Uplo, int N, double Alpha,
     const double *X, int incX, double* A, int lda)
   {
     cblas_dsyr(Order, Uplo, N, Alpha, X, incX, A, lda);
+  }
+  //@}
+
+  /// @name Performs a symmetric rank-1 update (packed matrix)
+  //@{
+  inline void spr(int Order, int Uplo, int N, float Alpha,
+    const float* X, int incX, float* A)
+  {
+    cblas_sspr(Order, Uplo, N, Alpha, X, incX, A);
+  }
+
+  inline void spr(int Order, int Uplo, int N, double Alpha,
+    const double* X, int incX, double* A)
+  {
+    cblas_dspr(Order, Uplo, N, Alpha, X, incX, A);
   }
   //@}
 
@@ -201,9 +218,6 @@ namespace fast_linalg {
     cblas_ssyrk(Order, Uplo, Trans, N, K, alpha, A, lda, beta, C, ldc);
   }
 
-  //@}
-  /// @name Performs a symmetric rank-k update
-  //@{
   inline void syrk(int Order, int Uplo, int Trans, int N, int K,
     double alpha, double* A, int lda, double beta, double* C, int ldc)
   {
@@ -269,12 +283,18 @@ namespace fast_linalg {
   }
 
   template <typename FloatType>
-  void syr(int, int, int, FloatType, const FloatType *, int,
-    FloatType *, int)
+  void spr(int, int, int, FloatType, const FloatType *, int,
+    FloatType *)
   {
     SCITBX_NOT_IMPLEMENTED();
   }
 
+  template <typename FloatType>
+  void syr(int, int, int, FloatType, const FloatType*, int,
+    FloatType*, int)
+  {
+    SCITBX_NOT_IMPLEMENTED();
+  }
 
   template <typename FloatType>
   void syrk(int, int, int, int, int, FloatType, FloatType *, int,

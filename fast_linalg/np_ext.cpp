@@ -27,14 +27,21 @@ namespace fast_linalg {
     lapack_int, double *);
   typedef lapack_int(LAPACKE_spftri_t)(int, char, char,
     lapack_int, float *);
+
   typedef void (cblas_ssyr_t)(int, int, int, float, const float *,
     int, float *, int);
   typedef void (cblas_dsyr_t)(int, int, int, double, const double *,
     int, double *, int);
+
+  typedef void (cblas_sspr_t)(int, int, int, float, const float*,
+    int, float*);
+  typedef void (cblas_dspr_t)(int, int, int, double, const double*,
+    int, double*);
+
   typedef void (cblas_ssyrk_t)(int, int, int,
-    int, int, float, float *, int, float, float *, int);
+    int, int, float, const float *, int, float, float *, int);
   typedef void (cblas_dsyrk_t)(int, int, int,
-    int, int, double, double *, int, double, double *, int);
+    int, int, double, const double *, int, double, double *, int);
 
   typedef int (openblas_get_num_threads_t)();
   typedef int (openblas_get_num_procs_t)();
@@ -72,6 +79,10 @@ namespace fast_linalg {
 
       cblas_ssyr = &lib.get<cblas_ssyr_t>("cblas_ssyr");
       cblas_dsyr = &lib.get<cblas_dsyr_t>("cblas_dsyr");
+
+      cblas_sspr = &lib.get<cblas_sspr_t>("cblas_sspr");
+      cblas_dspr = &lib.get<cblas_dspr_t>("cblas_dspr");
+
       cblas_ssyrk = &lib.get<cblas_ssyrk_t>("cblas_ssyrk");
       cblas_dsyrk = &lib.get<cblas_dsyrk_t>("cblas_dsyrk");
     }
@@ -95,6 +106,10 @@ namespace fast_linalg {
 
       cblas_ssyr = 0;
       cblas_dsyr = 0;
+
+      cblas_sspr = 0;
+      cblas_dspr = 0;
+
       cblas_ssyrk = 0;
       cblas_dsyrk = 0;
     }
@@ -117,6 +132,10 @@ namespace fast_linalg {
 
     cblas_ssyr_t *cblas_ssyr;
     cblas_dsyr_t *cblas_dsyr;
+
+    cblas_sspr_t* cblas_sspr;
+    cblas_dspr_t* cblas_dspr;
+
     cblas_ssyrk_t *cblas_ssyrk;
     cblas_dsyrk_t *cblas_dsyrk;
 
@@ -254,29 +273,45 @@ lapack_int lapack_spftri(int matrix_order, char transr, char uplo,
 }
 //............................................................................
 //............................................................................
+void cblas_sspr(int Order, int Uplo, int N, float alpha,
+  const float *X, int incX, float *A)
+{
+  return (*Wrapper::instance().cblas_sspr)(Order, Uplo, N, alpha,
+    X, incX, A);
+}
+//............................................................................
+void cblas_dspr(int Order, int Uplo, int N, double alpha,
+  const double *X, int incX, double *A)
+{
+  return (*Wrapper::instance().cblas_dspr)(Order, Uplo, N, alpha,
+    X, incX, A);
+}
+//............................................................................
+//............................................................................
 void cblas_ssyr(int Order, int Uplo, int N, float alpha,
-  const float *X, int incX, float *A, int lda)
+  const float* X, int incX, float* A, int lda)
 {
   return (*Wrapper::instance().cblas_ssyr)(Order, Uplo, N, alpha,
     X, incX, A, lda);
 }
 //............................................................................
 void cblas_dsyr(int Order, int Uplo, int N, double alpha,
-  const double *X, int incX, double *A, int lda)
+  const double* X, int incX, double* A, int lda)
 {
   return (*Wrapper::instance().cblas_dsyr)(Order, Uplo, N, alpha,
     X, incX, A, lda);
 }
 //............................................................................
+//............................................................................
 void cblas_ssyrk(int Order, int Uplo, int Trans, int N, int K,
-  float alpha, float *A, int lda, float beta, float *C, int ldc)
+  float alpha, const float *A, int lda, float beta, float *C, int ldc)
 {
   return (*Wrapper::instance().cblas_ssyrk)(Order, Uplo, Trans, N, K, alpha,
     A, lda, beta, C, ldc);
 }
 //............................................................................
 void cblas_dsyrk(int Order, int Uplo, int Trans, int N, int K,
-  double alpha, double *A, int lda, double beta, double *C, int ldc)
+  double alpha, const double *A, int lda, double beta, double *C, int ldc)
 {
   return (*Wrapper::instance().cblas_dsyrk)(Order, Uplo, Trans, N, K, alpha,
     A, lda, beta, C, ldc);
