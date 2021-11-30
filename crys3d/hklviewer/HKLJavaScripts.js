@@ -359,6 +359,41 @@ function ReturnClipPlaneDistances()
 }
 
 
+function DeletePrimitives(reprname)
+{
+  let thisrepr = stage.getRepresentationsByName(reprname);
+  let wasremoved = false;
+  for (let i = 0; i < stage.compList.length; i++)
+    if (stage.compList[i].reprList[0].name == reprname) {
+      let thiscomp = stage.compList[i];
+      thiscomp.removeRepresentation(thisrepr);
+      stage.removeComponent(thiscomp);
+      wasremoved = true;
+    }
+  return wasremoved;
+};
+
+function RemovePrimitives(reprname)
+{
+  // if reprname is supplied only remove vectors with that name
+  let reprnamegone = false;
+  let clipvecgone = false;
+  let unitcellgone = false;
+  let reciprocunitcellgone = false;
+  if (reprname != "")
+    reprnamegone = DeletePrimitives(reprname);
+  else // otherwise remove all vectors
+  {
+    clipvecgone = DeletePrimitives("clip_vector");
+    unitcellgone = DeletePrimitives("unitcell");
+    reciprocunitcellgone = DeletePrimitives("reciprocal_unitcell");
+  }
+  if (reprnamegone || clipvecgone || unitcellgone || reciprocunitcellgone)
+    RenderRequest();
+}
+
+
+
 async function RenderRequest()
 {
   await sleep(100);
@@ -907,21 +942,6 @@ function onMessage(e)
       }
     }
 
-    function DeletePrimitives(reprname)
-    {
-      let thisrepr = stage.getRepresentationsByName(reprname);
-      let wasremoved = false;
-      for (let i=0; i<stage.compList.length; i++)
-        if (stage.compList[i].reprList[0].name == reprname)
-        {
-          let thiscomp = stage.compList[i];
-          thiscomp.removeRepresentation(thisrepr);
-          stage.removeComponent(thiscomp);
-          wasremoved = true;
-        }
-      return wasremoved;
-    };
-
     if (msgtype === "DrawVector")
     {
       let r1 = new Float32Array(3);
@@ -983,6 +1003,8 @@ function onMessage(e)
 
     if (msgtype === "RemovePrimitives")
     {
+      RemovePrimitives(val[0].trim());
+      /*
       let reprname = val[0].trim(); // elmstrs[0].trim();
       // if reprname is supplied only remove vectors with that name
       let reprnamegone = false;
@@ -999,6 +1021,7 @@ function onMessage(e)
       }
       if (reprnamegone || clipvecgone || unitcellgone || reciprocunitcellgone)
         RenderRequest();
+      */
     }
 
     if (msgtype === "DefineHKL_Axes")

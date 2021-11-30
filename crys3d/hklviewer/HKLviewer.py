@@ -697,7 +697,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
           if self.infodict.get("colnames_select_lst"):
             self.colnames_select_lst = self.infodict.get("colnames_select_lst",[])
             self.select_millertable_column_dlg.make_new_selection_table()
-            #self.select_millertable_column_dlg = MillerTableColumnHeaderDialog(self)
 
           if self.infodict.get("bin_data_label"):
             self.BinDataComboBox.setCurrentText(self.infodict["bin_data_label"])
@@ -876,7 +875,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
                # can only match hkls in the unsorted table
               orig_hkl_ids = self.infodict.get("orig_hkl_ids", [])
               mode = QItemSelectionModel.Select | QItemSelectionModel.Rows
-              self.millerarraytableform.setFocus()
+              self.millerarraytable.activateWindow()
               self.millerarraytable.setFocus()
               for ids in orig_hkl_ids:
                 self.millerarraytable.selectRow(ids)
@@ -888,6 +887,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
               arraytype = self.array_infotpls[self.currentmillarray_idx][1][1]
               self.ColourMapSelectDlg.setDataType(arraytype)
               self.ColourMapSelectDlg.show()
+              self.ColourMapSelectDlg.activateWindow()
 
           if self.infodict.get("bin_labels_type_idxs"):
             bin_labels_type_idxs = self.infodict.get("bin_labels_type_idxs",False)
@@ -970,9 +970,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
   def UpdateGUI(self):
     self.unfeedback = True
-    #if not self.isfirsttime:
-    #self.ManualPowerScalecheckbox.setChecked( self.currentphilstringdict['viewer.nth_power_scale_radii'] >= 0.0 )
-    #self.power_scale_spinBox.setEnabled( self.currentphilstringdict['viewer.nth_power_scale_radii'] >= 0.0 )
     self.ManualPowerScalecheckbox.setChecked( math.isnan( self.currentphilstringdict['viewer.nth_power_scale_radii'] )==False )
     self.power_scale_spinBox.setEnabled( self.ManualPowerScalecheckbox.isChecked() )
     self.radii_scale_spinBox.setValue( self.currentphilstringdict['viewer.scale'])
@@ -1090,8 +1087,13 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
     self.aboutform.setFixedSize( self.aboutform.sizeHint() )
     self.ColourMapSelectDlg.setFixedSize( self.ColourMapSelectDlg.sizeHint() )
-    self.select_millertable_column_dlg.setFixedSize(self.select_millertable_column_dlg.sizeHint() )
     self.select_millertable_column_dlg.selectcolumnstable.resizeColumnsToContents()
+    self.select_millertable_column_dlg.setFixedWidth(
+      self.select_millertable_column_dlg.selectcolumnstable.verticalHeader().width() +
+      self.select_millertable_column_dlg.selectcolumnstable.horizontalHeader().length() +
+      self.select_millertable_column_dlg.selectcolumnstable.frameWidth()*2 +
+      self.select_millertable_column_dlg.selectcolumnstable.verticalScrollBar().width()*2
+      )
     self.textInfo.setFont(font)
 
 

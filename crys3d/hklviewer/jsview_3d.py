@@ -1989,14 +1989,13 @@ in the space group %s\nwith unit cell %s\n""" \
     """
     maxrad = self.HKLscene_from_dict(self.radii_scene_id).max_radius
     self.RemovePrimitives("highlight_HKL")
-    hkl = eval(self.viewerparams.show_hkl)
-    if self.sg.info().symbol_and_number() == self.miller_array.space_group().info().symbol_and_number():
-      #self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, name="highlight_HKL",
-      #                  r=1, g=0.0, b=0.0, radius= maxrad*0.2)
-      self.draw_sphere(hkl[0],hkl[1],hkl[2], isreciprocal=True, name="highlight_HKL",
-                        r=1, g=0.0, b=0.0, radius= maxrad*1.5, mesh=True)
-    else:
-      self.mprint("Cannot currently associate reflection in original space group with reflection in different space group.")
+    if self.viewerparams.show_hkl != "deselect":
+      hkl = eval(self.viewerparams.show_hkl)
+      if self.sg.info().symbol_and_number() == self.miller_array.space_group().info().symbol_and_number():
+        self.draw_sphere(hkl[0],hkl[1],hkl[2], isreciprocal=True, name="highlight_HKL",
+                          r=1, g=0.0, b=0.0, radius= maxrad*1.5, mesh=True)
+      else:
+        self.mprint("Cannot currently associate reflection in original space group with reflection in different space group.")
     self.viewerparams.show_hkl = "" # to allow clicking on the same entry in the millerarraytable
 
 

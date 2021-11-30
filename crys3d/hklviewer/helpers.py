@@ -59,14 +59,13 @@ class MillerTableColumnHeaderDialog(QDialog):
   # specify with checkboxes which column of the millertable should be visible.
   def __init__(self, parent=None):
     super(MillerTableColumnHeaderDialog, self).__init__(parent.window)
+    self.setWindowFlags(Qt.Tool)
+    self.setSizeGripEnabled(True)
+    self.setWindowTitle("Dataset properties to display")
     self.parent = parent
     self.selectcolumnstable = QTableWidget()
-    self.setWindowFlags(Qt.Tool)
-    self.setWindowTitle("Dataset properties to display")
-    self.myGroupBox = QGroupBox()
     self.layout = QGridLayout()
     self.layout.addWidget(self.selectcolumnstable,  0, 0)
-    self.layout.setColumnStretch (0 ,0)
     self.setLayout(self.layout)
     self.selectcolumnstable.itemChanged.connect(self.onSelectColumnsTableItemChanged  )
     self.selectcolumnstable.itemPressed.connect(self.onSelectColumnsTableItemChanged  )
@@ -157,14 +156,13 @@ class MillerArrayTableView(QTableView):
     self.setContextMenuPolicy(Qt.CustomContextMenu)
     self.customContextMenuRequested.connect(self.onRightClick)
     self.doubleClicked.connect(self.onDoubleClick)
-    self.setSelectionMode(QAbstractItemView.MultiSelection)
-    #self.setSelectionMode(QAbstractItemView.ExtendedSelection)
   def onDoubleClick(self, index):
     hkl = (int(index.siblingAtColumn(0).data()),
            int(index.siblingAtColumn(1).data()),
            int(index.siblingAtColumn(2).data()))
     self.parent().parent().parent().parent.HighlightReflection(hkl)
   def onRightClick(self, QPos=None):
+    self.parent().parent().parent().parent.HighlightReflection("deselect") # deselects any highlighted hkl
     parent=self.sender()
     self.tablemenu.move(QCursor.pos())
     self.tablemenu.show()
@@ -292,7 +290,6 @@ class MPLColourSchemes(QtWidgets.QDialog):
     super(MPLColourSchemes, self).__init__(parent.window)
     self.setWindowFlags(Qt.Tool)
     self.parent = parent
-    self.isOK = False
     self.selcolmap = ""
     self.datatype = ""
     self.powscale = 1
@@ -323,8 +320,6 @@ class MPLColourSchemes(QtWidgets.QDialog):
     self.powscaletxtbox.setReadOnly(True)
     self.OKbtn = QtWidgets.QPushButton("OK")
     self.OKbtn.clicked.connect(self.onOK)
-    self.Cancelbtn =  QtWidgets.QPushButton("Cancel")
-    self.Cancelbtn.clicked.connect(self.onCancel)
     gridlayout = QtWidgets.QGridLayout()
     gridlayout.addWidget(self.labeltxt,          0, 0, 1, 2)
     gridlayout.addWidget(self.reversecheckbox,   1, 0, 1, 1)
@@ -332,10 +327,8 @@ class MPLColourSchemes(QtWidgets.QDialog):
     gridlayout.addWidget(self.powscaleslider,    2, 1, 1, 1)
     gridlayout.addWidget(self.powscaletxtbox,    2, 2, 1, 1)
     gridlayout.addWidget(scroll,                 3, 0, 1, 3)
-    gridlayout.addWidget(self.OKbtn,             4, 0, 1, 1)
-    gridlayout.addWidget(self.Cancelbtn,         4, 2, 1, 2)
+    gridlayout.addWidget(self.OKbtn,             4, 1, 1, 1)
     self.setLayout(gridlayout)
-    #scw = self.parent.app.style().pixelMetric(QtWidgets.QStyle.PM_ScrollBarExtent)
 
   def draw_axes_and_text(self):
     for ax, name in zip(self.mycanvas.axes, cmaps):
@@ -368,12 +361,6 @@ class MPLColourSchemes(QtWidgets.QDialog):
     self.powscaletxtbox.setText("%2.2f" %self.powscale )
 
   def onOK(self):
-    self.isOK = True
-    self.EnactColourMapSelection()
-    self.hide()
-
-  def onCancel(self):
-    self.isOK = False
     self.hide()
 
   def updatelabel(self):
