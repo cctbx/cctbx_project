@@ -2,6 +2,8 @@
 #define SCITBX_MATRIX_MATRIX_VECTOR_OPERATIONS_H
 
 #include <scitbx/matrix/vector_operations.h>
+#include <fast_linalg/cblas.h>
+#include <fast_linalg/lapacke.h>
 
 namespace scitbx { namespace matrix {
 
@@ -77,10 +79,16 @@ namespace scitbx { namespace matrix {
                                         T *a, T const *x,
                                         T alpha=1)
   {
-    for (int i=0; i<n; ++i) {
-      T alpha_x_i = alpha * x[i];
-      for (int j=i; j<n; ++j) {
-        *a++ += alpha_x_i * x[j];
+    if (fast_linalg::is_initialised()) {
+      using namespace fast_linalg;
+      fast_linalg::spr(CblasRowMajor, CblasUpper, n, alpha, x, 1, a);
+    }
+    else {
+      for (int i = 0; i < n; ++i) {
+        T alpha_x_i = alpha * x[i];
+        for (int j = i; j < n; ++j) {
+          *a++ += alpha_x_i * x[j];
+        }
       }
     }
   }
