@@ -87,11 +87,12 @@ def orca_action():
   '''
   return outl
 
-def electrons(model):
+def electrons(model, log=None):
   from elbow.quantum import electrons
   atom_valences = electrons.electron_distribution(
     model.get_hierarchy(), # needs to be altloc free
     model.get_restraints_manager().geometry,
+    log=log,
     verbose=False,
   )
   atom_valences.validate(ignore_water=True,

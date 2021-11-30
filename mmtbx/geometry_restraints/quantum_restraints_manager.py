@@ -4,6 +4,7 @@ from io import StringIO
 from libtbx import Auto
 from libtbx.str_utils import make_header
 from libtbx.utils import Sorry
+from libtbx.utils import null_out
 
 from cctbx.geometry_restraints.manager import manager as standard_manager
 from mmtbx.geometry_restraints import quantum_interface
@@ -104,7 +105,6 @@ def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5.):
         min_d2 = min(min_d2, d2)
         if atom1.name.strip()=='CA':
           min_ca_d2 = min(min_ca_d2, d2)
-          # print('CA', atom1.id_str(),atom2.id_str(),d2,buffer,min_d2,min_ca_d2)
     return min_d2, min_ca_d2
   def find_movers(buffer_model, ligand_model, buffer, prune_limit=5.):
     buffer*=buffer
@@ -132,8 +132,6 @@ def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5.):
         if min_ca_d2 is not None and min_ca_d2>prune_limit:
           prune_main.append(residue_group1)
       assert residue_group1 in movers or residue_group1 in close or residue_group1 in same
-    for rg in movers:
-      for atom in rg.atoms(): print(atom.id_str())
     for chain in buffer_model.get_hierarchy().chains():
       for rg in movers+removers:
         if rg in chain.residue_groups():
@@ -143,8 +141,8 @@ def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5.):
   def prune_main_chain(residue_group1, prune_main):
     mainchain = ['N', 'CA', 'C', 'O', 'OXT', 'H', 'HA', 'H1', 'H2', 'H3']
     for residue_group1 in prune_main:
-      # print('prune_main',residue_group1.id_str())
-      if 'PRO' in residue_group1.unique_resnames():
+      ur = residue_group1.unique_resnames()
+      if 'PRO' in ur or 'GLY' in ur:
         continue
       cb_atom = None
       for atom in residue_group1.atoms():
@@ -157,12 +155,10 @@ def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5.):
         if atom.name.strip()=='CA':
           atom.name=' HBC'
           atom.element='H'
-          print(atom.quote(),cb_atom.quote(),atom.xyz, cb_atom.xyz)
           atom.xyz = ((atom.xyz[0]+cb_atom.xyz[0])/2,
                       (atom.xyz[1]+cb_atom.xyz[1])/2,
                       (atom.xyz[2]+cb_atom.xyz[2])/2,
                       )
-          print(atom.quote(),atom.xyz)
           pruning=True
           break
       if pruning:
@@ -190,15 +186,15 @@ def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5.):
     crystal_symmetry     = buffer_model.crystal_symmetry(),
     select_within_radius = buffer,
     )
-  if(1):
-    complete_p1.hierarchy.write_pdb_file(file_name="complete_p1.pdb",
-      crystal_symmetry = complete_p1.crystal_symmetry)
+  # if(0):
+  #   complete_p1.hierarchy.write_pdb_file(file_name="complete_p1.pdb",
+  #     crystal_symmetry = complete_p1.crystal_symmetry)
 
   for atom1, atom2 in zip(buffer_model.get_atoms(), complete_p1.hierarchy.atoms()):
     atom2.tmp = atom1.tmp
   buffer_model._pdb_hierarchy = complete_p1.hierarchy
   movers, removers = find_movers(buffer_model, ligand_model, buffer)
-  write_pdb_file(buffer_model, 'test.pdb', None)
+  # write_pdb_file(buffer_model, 'test.pdb', None)
 
 def get_ligand_buffer_models(model, qmr, verbose=False):
   ligand_model = select_and_reindex(model, qmr.selection)
@@ -209,6 +205,7 @@ def get_ligand_buffer_models(model, qmr, verbose=False):
   buffer_model = select_and_reindex(model, buffer_selection_string)
   add_hydrogen_atoms_to_model(buffer_model)
   buffer_model.unset_restraints_manager()
+  buffer_model.log=null_out()
   buffer_model.process(make_restraints=True)
   super_cell_and_prune(buffer_model, ligand_model, qmr.buffer)
   buffer_model.unset_restraints_manager()
@@ -245,7 +242,7 @@ def get_qm_manager(ligand_model, buffer_model, qmr, log=StringIO()):
   else:
     assert 0
 
-  total_charge = quantum_interface.electrons(buffer_model)
+  total_charge = quantum_interface.electrons(buffer_model, log=log)
   if total_charge!=qmr.package.charge:
     print(u'update charge %s ~> %s' % (qmr.package.charge, total_charge),
           file=log)
@@ -278,7 +275,7 @@ def get_qm_manager(ligand_model, buffer_model, qmr, log=StringIO()):
 def get_all_xyz(inputs, nproc):
   from libtbx import easy_mp
   argss = []
-  for i, (ligand_model, buffer_model, qmm) in enumerate(inputs):
+  for i, (ligand_model, buffer_model, qmm, qmr) in enumerate(inputs):
     argss.append([qmm])
   print(argss)
   for args, res, err_str in easy_mp.multi_core_run(qm_manager.qm_runner,
@@ -337,6 +334,7 @@ def update_restraints(model,
         qmm,
         cleanup=qmr.cleanup,
         file_read=qmr.package.read_output_to_skip_opt_if_available,
+        log=log,
         )
       print('  Time for calculation of "%s" using %s %s: %s' % (
         qmr.selection,

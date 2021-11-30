@@ -72,7 +72,7 @@ class base_manager():
     assert len(selection_array)==len(self.atoms)
     self.freeze_a_ray = selection_array
 
-  def get_opt(self, cleanup=False, file_read=False):
+  def get_opt(self, cleanup=False, file_read=False, log=None):
     import random
     rc = []
     for atom in self.atoms:
@@ -96,7 +96,9 @@ class base_manager():
 def qm_runner(qmm,
               cleanup=True,
               file_read=False,
-              verbose=False):
+              log=None,
+              verbose=False
+              ):
   if verbose: print(qmm)
   if qmm.program=='test':
     func = base_manager.get_opt
@@ -104,7 +106,7 @@ def qm_runner(qmm,
     func = orca_manager.get_opt
   else:
     raise Sorry('QM program not found or set "%s"' % qmm.program)
-  xyz = func(qmm, cleanup=cleanup, file_read=file_read)
+  xyz = func(qmm, cleanup=cleanup, file_read=file_read, log=log)
   return xyz
 #
 # ORCA
@@ -131,24 +133,72 @@ def qm_runner(qmm,
        Please check your results very carefully.
     ----------------------------------------------------------------------------
           '''
-def run_qm_cmd(cmd,
-               log_filename,
-               error_lines=None,
-               verbose=False):
-  if verbose: print('run_qm_cmd',cmd,log_filename)
-  local_logger = ''
-  rc = easy_run.go(cmd)
+def process_orca_convergence(lines):
+  s = ''
+  for line in lines:
+    tmp = line.split()
+    if tmp[-1] in ['YES', 'NO']:
+      # rc[tmp[0]]=tmp[-1]
+      s+= '%s ' % tmp[-1]
+  return s
+
+def loop_over_file(filename):
+  f=open(filename, 'r')
+  lines = f.read()
+  del f
+  for line in lines.splitlines():
+    yield line
+
+def process_qm_log_file(log_filename=None,
+                        generator=None,
+                        error_lines=None,
+                        log=None,
+                        ):
+  if log_filename is not None: generator=loop_over_file(log_filename)
   error_line=None
-  for line in rc.stdout_lines:
-    local_logger += '%s\n' % line
+  for i, line in enumerate(generator):
+    # print(i,line)
     if line.find('GEOMETRY OPTIMIZATION CYCLE')>-1:
-      print(line)
+      cycle = int(line.split()[4])
+      if cycle==1: print('  QM minimisation started', file=log)
+    # if line.find('Max(Improp)')>-1:
+    #   conv = process_orca_convergence(last_ten)
+      # if cycle%10==0:
+        # print('  Opt. cycle %s %s %s %0.1fmin' % (cycle, conv, i, (time.time()-t0)/60))
     if error_lines:
       for el in error_lines:
-        if local_logger.find(el)>-1:
+        if line.find(el)>-1:
           error_line = line
           break
     if error_line: break
+  if error_line:
+    raise Sorry(error_line)
+
+def run_qm_cmd(cmd,
+               log_filename,
+               error_lines=None,
+               redirect_output=True,
+               log=None,
+               verbose=False,
+               ):
+  def loop_over_list(l):
+    for line in l:
+      yield l
+  import time
+  t0=time.time()
+  if verbose: print('run_qm_cmd',cmd,log_filename)
+  if redirect_output:
+    cmd += ' >& %s' % log_filename
+
+  print('  Starting : %s' % cmd, file=log)
+  rc = easy_run.go(cmd)
+
+  if redirect_output:
+    generator = loop_over_file(log_filename)
+  else:
+    generator = loop_over_list(rc.stdout_lines)
+
+  process_qm_log_file(generator=generator, log=log)
   if rc.stderr_lines:
     print('stderr')
     for line in rc.stderr_lines:
@@ -157,11 +207,6 @@ def run_qm_cmd(cmd,
     for line in rc.stdout_lines:
       print(line)
     assert 0
-  f=open(log_filename, 'w')
-  f.write(local_logger)
-  del f
-  if error_line:
-    raise Sorry(error_line)
   return rc
 
 class orca_manager(base_manager):
@@ -261,7 +306,7 @@ class orca_manager(base_manager):
       )
     return cmd
 
-  def run_cmd(self):
+  def run_cmd(self, log=None):
     t0=time.time()
     cmd = self.get_cmd()
     run_qm_cmd(cmd,
@@ -271,6 +316,7 @@ class orca_manager(base_manager):
                   '-> impossible',
                   'SCF NOT CONVERGED AFTER',
                ],
+               log=log,
                )
     self.times.append(time.time()-t0)
 
@@ -329,16 +375,17 @@ class orca_manager(base_manager):
       outl += freeze_outl
     self.write_input(outl)
 
-  def get_opt(self, cleanup=False, file_read=True):
+  def get_opt(self, cleanup=False, file_read=True, log=None):
     coordinates = None
     if file_read:
       filename = self.get_coordinate_filename()
+      process_qm_log_file(filename.replace('.xyz', '.log'), log=log)
       if os.path.exists(filename):
         print('  Reading coordinates from %s\n' % filename)
         coordinates = self.read_xyz_output()
     if coordinates is None:
       self.opt_setup()
-      self.run_cmd()
+      self.run_cmd(log=log)
       coordinates = self.read_xyz_output()
     if cleanup: self.cleanup(level=cleanup)
     if hasattr(self, 'interest_array'):
