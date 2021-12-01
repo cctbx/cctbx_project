@@ -1,3 +1,14 @@
+2021.11
+=======
+
+* Added right-handed nucleic acids for DNA
+* Improved handling of different unit cells in MTZ file
+* Avoid division by zero when rotating 0 degrees
+* Added option to ignore secondary strucure annotations when reading
+  models through the DataManager
+* Initial support for restraints based on quantum mechanics
+* Improved consistency of binning by d_star_sq
+
 2021.10
 =======
 
