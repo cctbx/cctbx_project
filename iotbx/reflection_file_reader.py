@@ -126,6 +126,10 @@ def try_all_readers(file_name):
   except Exception: pass
   else: return ("shelx_hklf", content)
   try:
+    # The cif parser uses a lot of memory when reading a file with millions
+    # of words (like an xds_ascii file). Thus we only try the cif reader if
+    # the filename looks like a cif.
+    assert os.path.splitext(file_name)[1].lower() == '.cif'
     content = cif_reader(file_path=file_name)
     looks_like_a_reflection_file = False
     for block in content.model().values():
