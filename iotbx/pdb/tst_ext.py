@@ -699,10 +699,11 @@ ATOM      2  CA  LEU     2       1.118  -9.777   0.735  1.00  0.00
   assert get_class(name="TRQ") == "modified_amino_acid"
   assert get_class(name="  U") == "common_rna_dna"
   assert get_class(name="2MA") == "modified_rna_dna"
+  assert get_class(name="B8N") == "modified_rna_dna"
   assert get_class(name="HOH") == "common_water"
   assert get_class(name="SO4") == "common_small_molecule"
   assert get_class(name="CL ") == "common_element"
-  assert get_class(name="ABC") == "other"
+  assert get_class(name="ABC") == "other", '%s != %s' % (get_class(name="ABC"), 'other')
   assert get_class(name="CD ") == "common_element"
   assert get_class(name="CD ", consider_ccp4_mon_lib_rna_dna=True) \
     == "ccp4_mon_lib_rna_dna"

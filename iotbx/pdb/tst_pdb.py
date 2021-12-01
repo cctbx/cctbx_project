@@ -482,7 +482,7 @@ def exercise_format_fasta(regression_pdb, coverage=0.1):
          'FSDIISELDMFGIVKIRIINRGRAGGVKKYALVEDKEKVLRALNET'],
         ['> chain " C" conformer ""',
          'TGTAAATTTCCTACGTTTCATCTGAAAATCTAGAGATTTTCAGATGAAACGTAGGAAATTTACATC'],
-         None]
+         None], '%s' % fasta
       assert is_protein == [True, True, False, False]
       assert is_na == [False, False, True, False]
       looking_for.remove(node)
