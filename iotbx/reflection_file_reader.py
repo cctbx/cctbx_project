@@ -138,8 +138,8 @@ def try_all_readers(file_name):
   else: return ("shelx_hklf", content)
   try:
     # The cif parser uses a lot of memory when reading a file with millions
-    # of words (like an xds_ascii file). Thus we only try the cif reader if
-    # the filename looks like a cif.
+    # of words (like an xds_ascii file). Thus we filter out obvious non-cif
+    # files.
     assert _cif_prefilter(file_name)
     content = cif_reader(file_path=file_name)
     looks_like_a_reflection_file = False
