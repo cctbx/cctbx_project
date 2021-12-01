@@ -1906,6 +1906,15 @@ class _():
     """
     assert ((isinstance(substitute_unknown, str)) and
             (len(substitute_unknown) == 1))
+    common_rna_dna_codes = {
+      "A": "A",
+      "C": "C",
+      "G": "G",
+      "U": "U",
+      "DA": "A",
+      "DC": "C",
+      "DG": "G",
+      "DT": "T"}
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"] + residue_classes["modified_amino_acid"]
     n_na = residue_classes["common_rna_dna"] + residue_classes["modified_rna_dna"]
@@ -1919,17 +1928,9 @@ class _():
           seq.append(aa_3_as_1.get(rn, substitute_unknown))
     elif (n_na != 0):
       for rn in rn_seq:
-        if rn in na_3_as_1_mod:
+        if rn not in common_rna_dna_codes and rn in na_3_as_1_mod:
           rn = na_3_as_1_mod.get(rn, "N")
-        seq.append({
-          "A": "A",
-          "C": "C",
-          "G": "G",
-          "U": "U",
-          "DA": "A",
-          "DC": "C",
-          "DG": "G",
-          "DT": "T"}.get(rn, "N"))
+        seq.append(common_rna_dna_codes.get(rn, "N"))
     return seq
 
   def _residue_is_aa_or_na(self, residue_name, include_modified=True):
