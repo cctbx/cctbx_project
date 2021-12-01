@@ -122,14 +122,14 @@ master_phil = iotbx.phil.parse("""
                 define full target length (as opposed to all unique \
                 chains in target).
 
-    minimum_percent_match_to_select = None
+    minimum_percent_match_to_select = 1
       .type = float
       .help = You can specify minimum_percent_match_to_select and \
               maximum_percent_match_to_select and match_pdb_file \
               in which case all segments in the query model that have \
               a percentage match (within max_dist of atom in target) \
               in this range will be written out to match_pdb_file.
-    maximum_percent_match_to_select = None
+    maximum_percent_match_to_select = 100
       .type = float
       .help = You can specify minimum_percent_match_to_select and \
               maximum_percent_match_to_select and match_pdb_file \
@@ -152,6 +152,11 @@ master_phil = iotbx.phil.parse("""
       .help = Use residue groups in sequence alignment
       .short_caption = Score by residue groups
       .expert_level = 3
+
+    only_keep_best_chain = False
+      .type = bool
+      .help = Use keep the best-matching chain in match_pdb
+      .short_caption = Best chain only in match_pdb
 
   }
   control {
@@ -1083,9 +1088,25 @@ def select_segments_that_match(params=None,
     write_summary(params=params,file_list=file_list,rv_list=rv_list,
       write_header=write_header,out=out)
     write_header=False
-    models_to_keep.append(cm)
+    models_to_keep.append(group_args(
+      group_args_type = 'model to keep',
+      model = cm,
+      percent_matched = percent_matched,
+      close_n = close_n))
 
-  new_model=merge_hierarchies_from_models(models=models_to_keep,resid_offset=5)
+  if not models_to_keep:
+    print("No matching chains...", file = out)
+    return None
+
+  if params.comparison.only_keep_best_chain:
+    print("Keeping only best chain", file = out)
+    models_to_keep = sorted(models_to_keep, key = lambda m: m.close_n,
+      reverse=True)
+    models_to_keep = models_to_keep[:1]
+  model_list = []
+  for ga in models_to_keep:
+    model_list.append(ga.model)
+  new_model=merge_hierarchies_from_models(models=model_list,resid_offset=5)
   ff=open(params.output_files.match_pdb_file,'w')
   print(new_model.hierarchy.as_pdb_string(), file=ff)
   ff.close()
