@@ -56,7 +56,7 @@ void gpu_sum_over_steps(
         const CUDAREAL* __restrict__ fpfdp_derivs,
         const CUDAREAL* __restrict__ atom_data, int num_atoms, bool refine_fp_fdp,
         const int* __restrict__ nominal_hkl, bool use_nominal_hkl, MAT3 anisoU, MAT3 anisoG, bool use_diffuse,
-        CUDAREAL* d_diffuse_gamma_images, CUDAREAL* d_diffuse_sigma_images, bool refine_diffuse)
+        CUDAREAL* d_diffuse_gamma_images, CUDAREAL* d_diffuse_sigma_images, bool refine_diffuse, bool gamma_miller_units)
 { // BEGIN GPU kernel
 
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -71,6 +71,7 @@ void gpu_sum_over_steps(
     __shared__ bool s_compute_curvatures;
     __shared__ MAT3 s_Ot;
     __shared__ bool s_refine_diffuse;
+    __shared__ bool s_gamma_miller_units;
     __shared__ MAT3 _NABC;
     __shared__ MAT3 s_dN;
     __shared__ CUDAREAL C;
@@ -126,6 +127,7 @@ void gpu_sum_over_steps(
         s_compute_curvatures = compute_curvatures;
         s_refine_fp_fdp = refine_fp_fdp;
         s_refine_diffuse = refine_diffuse;
+	s_gamma_miller_units = gamma_miller_units;
 
         Bmat_realspace = eig_B*1e10;
         s_Ot = eig_O.transpose();
@@ -362,9 +364,13 @@ void gpu_sum_over_steps(
             //CUDAREAL I_latt_diffuse = 0;
             double step_diffuse_param[6]  = {0,0,0,0,0,0};
             if (s_use_diffuse){
+	        MAT3 Amat = UBO;
                 MAT3 Ainv = UBO.inverse();
-                MAT3 Ginv = anisoG.inverse();
-                CUDAREAL anisoG_determ = anisoG.determinant();
+		if (s_gamma_miller_units){
+		  anisoG = anisoG * Amat;
+		}
+		MAT3 Ginv = anisoG.inverse();
+		CUDAREAL anisoG_determ = anisoG.determinant();
                 for (int hh=0; hh <1; hh++){
                     for (int kk=0; kk <1; kk++){
                         for (int ll=0; ll <1; ll++){
@@ -388,10 +394,12 @@ void gpu_sum_over_steps(
                             I0 += this_I_latt_diffuse;
                             if (s_refine_diffuse){
                                 for (int i_gam=0; i_gam<3; i_gam++){
-                                   MAT3 dG_dgam;
-                                   dG_dgam << 0,0,0,0,0,0,0,0,0;
-                                   dG_dgam(i_gam, i_gam) = 1;
-
+				  MAT3 dG_dgam;
+				  dG_dgam << 0,0,0,0,0,0,0,0,0;
+				  dG_dgam(i_gam, i_gam) = 1;
+				  if (s_gamma_miller_units){
+				    dG_dgam = dG_dgam * Amat;
+				  }
                                    VEC3 dV = dG_dgam*delta_Q;
                                    CUDAREAL V_dot_dV = anisoG_q.dot(dV);
                                    CUDAREAL deriv = (Ginv*dG_dgam).trace() - 16*M_PI*M_PI*V_dot_dV/(1+4*M_PI*M_PI*V_dot_V);
