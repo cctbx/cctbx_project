@@ -155,7 +155,8 @@ def process_qm_log_file(log_filename=None,
                         log=None,
                         ):
   if log_filename is not None: generator=loop_over_file(log_filename)
-  error_line=None
+  error_line = None
+  status = None
   for i, line in enumerate(generator):
     # print(i,line)
     if line.find('GEOMETRY OPTIMIZATION CYCLE')>-1:
@@ -165,6 +166,10 @@ def process_qm_log_file(log_filename=None,
     #   conv = process_orca_convergence(last_ten)
       # if cycle%10==0:
         # print('  Opt. cycle %s %s %s %0.1fmin' % (cycle, conv, i, (time.time()-t0)/60))
+    # if line.find('OPTIMIZATION RUN DONE')>-1:
+    #   status = True
+    if line.find('ORCA TERMINATED NORMALLY')>-1:
+      status = True
     if error_lines:
       for el in error_lines:
         if line.find(el)>-1:
@@ -173,6 +178,9 @@ def process_qm_log_file(log_filename=None,
     if error_line: break
   if error_line:
     raise Sorry(error_line)
+  if not status:
+    raise Sorry('QM does not seem to have converged')
+  return status
 
 def run_qm_cmd(cmd,
                log_filename,
@@ -198,7 +206,7 @@ def run_qm_cmd(cmd,
   else:
     generator = loop_over_list(rc.stdout_lines)
 
-  process_qm_log_file(generator=generator, log=log)
+  status = process_qm_log_file(generator=generator, log=log)
   if rc.stderr_lines:
     print('stderr')
     for line in rc.stderr_lines:
@@ -315,6 +323,7 @@ class orca_manager(base_manager):
                   'ORCA finished by error termination in GSTEP',
                   '-> impossible',
                   'SCF NOT CONVERGED AFTER',
+                  'SERIOUS PROBLEM IN SOSCF',
                ],
                redirect_output=redirect_output,
                log=log,
@@ -360,9 +369,16 @@ class orca_manager(base_manager):
     return energy, gradients
 
   def opt_setup(self):
-    outl = '! %s %s %s Opt\n\n' % (self.method,
-                                   self.basis_set,
-                                   self.solvent_model)
+    standard_options = '''%%scf
+
+SOSCFStart 0.00033 # Default value of orbital gradient is 0.0033. Here reduced by a factor of 10.
+
+end
+'''
+    outl = '%s\n! %s %s %s Opt\n\n' % (standard_options,
+                                       self.method,
+                                       self.basis_set,
+                                       self.solvent_model)
     outl += self.get_coordinate_lines()
     if hasattr(self, 'freeze_a_ray'):
       freeze_outl = '''%geom

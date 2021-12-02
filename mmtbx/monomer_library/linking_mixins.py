@@ -404,7 +404,7 @@ class linking_mixins(object):
     Parameters for automatic linking
       Linking & cutoffs
         Metal                : %-5s - %0.2f
-        Amimo acid           : %-5s - %0.2f
+        Amino acid           : %-5s - %0.2f
         Carbohydrate         : %-5s - %0.2f
         Ligands              : %-5s - %0.2f
         Small molecules      : %-5s - %0.2f

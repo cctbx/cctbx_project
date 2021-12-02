@@ -41,6 +41,10 @@ def digester(model,
   #
   make_header('QM Restraints Initialisation', out=log)
   qm_restraints_initialisation(params.qi, log=log)
+  update_restraints(model,
+                    params.qi,
+                    run_program=False,
+                    )
   return qm_grm
 
 def write_pdb_file(model, filename, log):
@@ -203,6 +207,11 @@ def get_ligand_buffer_models(model, qmr, verbose=False):
   buffer_selection_string = 'residues_within(%s, %s)' % (qmr.buffer,
                                                          qmr.selection)
   buffer_model = select_and_reindex(model, buffer_selection_string)
+  buffer_model.remove_alternative_conformations(always_keep_one_conformer=True)
+  for residue_group in buffer_model.get_hierarchy().residue_groups():
+    if (residue_group.atom_groups_size() != 1):
+      raise Sorry("Not implemented: cannot run QI on buffer "+
+                  "molecules with alternate conformations")
   add_hydrogen_atoms_to_model(buffer_model)
   buffer_model.unset_restraints_manager()
   buffer_model.log=null_out()
@@ -295,10 +304,10 @@ def qm_restraints_initialisation(params, log=StringIO()):
     if not i: print('  QM restraints calculations', file=log)
     print('    %s' % qmr.selection, file=log)
 
-
 def update_restraints(model,
                       params, # just the qi scope
                       macro_cycle=None,
+                      run_program=True,
                       nproc=1,
                       log=StringIO(),
                       ):
@@ -324,6 +333,7 @@ def update_restraints(model,
     qmm.preamble=preamble
     objects.append([ligand_model, buffer_model, qmm, qmr])
   print('',file=log)
+  if not run_program: return
   #
   # optimise
   #

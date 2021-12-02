@@ -1754,8 +1754,9 @@ class manager(object):
        custom_nb_excl            = custom_nb_excl,
        run_clash_guard           = run_clash_guard)
     #
-    self._clash_guard_msg = self._processed_pdb_file.clash_guard(
-      new_sites_cart = self.get_sites_cart())
+    if self._processed_pdb_file:
+      self._clash_guard_msg = self._processed_pdb_file.clash_guard(
+        new_sites_cart = self.get_sites_cart())
     # This must happen after process call.
     # Reason: contents of model and _model_input can get out of sync any time.
     self._model_input = None
