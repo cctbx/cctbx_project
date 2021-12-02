@@ -12,9 +12,11 @@ dependencies:
   # dxtbx
   - h5py
   - hdf5
-  - hdf5-external-filter-plugins
+  - hdf5plugin
   - libtiff
+  - pint
   - procrunner
+  - pybind11
 
   # dxtbx testing
   - dials-data
