@@ -348,6 +348,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
         "diffuse_sigma": [(diff_sig_a, diff_sig_b, diff_sig_c)],
         "fp_fdp_shift": [shift],
         "use_diffuse_models": [params.use_diffuse_models],
+        "gamma_miller_units": [params.gamma_miller_units],
         # "bgplanes": bgplanes, "image_corr": image_corr,
         # "init_image_corr": init_img_corr,
         # "fcell_xstart": fcell_xstart,

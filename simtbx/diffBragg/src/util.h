@@ -92,6 +92,7 @@ struct flags{
     int verbose; // nanoBragg verbosity flag
     bool use_diffuse = false; // model  diffuse
     bool only_diffuse = false; // model  diffuse scattering (experimental)
+    bool gamma_miller_units = false; // use Miller index units for diffuse gamma matrix
 };
 
 struct crystal{

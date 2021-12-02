@@ -462,6 +462,10 @@ use_diffuse_models = False
   .help = if True, let the values of init.diffuse_sigma and init.diffuse_gamma
   .help = be used to define the diffuse scattering. Set e.g. fix.diffuse_sigma=True in order to refine them
   .expert_level = 10
+gamma_miller_units = False
+  .type = bool
+  .help = if True, let the values of init.diffuse_gamma be expressed in Miller index units
+  .expert_level = 10
 sigma_frac = None
   .type = float
   .help = sigma for Fhkl restraints will be some fraction of the starting value

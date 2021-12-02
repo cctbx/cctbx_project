@@ -541,6 +541,7 @@ class DataModeler:
         if not self.params.fix.diffuse_gamma or not self.params.fix.diffuse_sigma:
             assert self.params.use_diffuse_models
         self.SIM.D.use_diffuse = self.params.use_diffuse_models
+        self.SIM.D.gamma_miller_units = self.params.gamma_miller_units
         self.SIM.isotropic_diffuse_gamma = self.params.isotropic.diffuse_gamma
         self.SIM.isotropic_diffuse_sigma = self.params.isotropic.diffuse_sigma
 
