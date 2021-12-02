@@ -186,10 +186,10 @@ void diffBragg_sum_over_steps(
             if (db_flags.use_diffuse){
                 Eigen::Matrix3d Amat = UBO;
                 Eigen::Matrix3d Ainv = UBO.inverse();
-		Eigen::Matrix3d anisoG = db_cryst.anisoG;
-		if (db_flags.gamma_miller_units){
-		  anisoG = anisoG * Amat;
-		}
+                Eigen::Matrix3d anisoG = db_cryst.anisoG;
+                if (db_flags.gamma_miller_units){
+                  anisoG = anisoG * Amat;
+                }
                 Eigen::Matrix3d Ginv = anisoG.inverse();
                 double anisoG_determ = anisoG.determinant();
                 for (int hh=0; hh <1; hh++){
@@ -219,22 +219,11 @@ void diffBragg_sum_over_steps(
                                  for (int i_gam=0; i_gam<3; i_gam++){
                                     //dG_dgam  --> db_cryst.dG_dgamma[i_gam];
                                     Eigen::Matrix3d dG_dgam;
-				    dG_dgam << 0,0,0,0,0,0,0,0,0;
-				    dG_dgam(i_gam, i_gam) = 1;
-				    if (db_flags.gamma_miller_units){
-				      /*				      dG_dgam <<
-					Ainv(0,i_gam)*Amat(i_gam,0),
-					Ainv(0,i_gam)*Amat(i_gam,1),
-					Ainv(0,i_gam)*Amat(i_gam,2),
-					Ainv(1,i_gam)*Amat(i_gam,0),
-					Ainv(1,i_gam)*Amat(i_gam,1),
-					Ainv(1,i_gam)*Amat(i_gam,2),
-					Ainv(2,i_gam)*Amat(i_gam,0),
-					Ainv(2,i_gam)*Amat(i_gam,1),
-					Ainv(2,i_gam)*Amat(i_gam,2);
-				      */
-				      dG_dgam = dG_dgam * Amat;
-				    }
+                                    dG_dgam << 0,0,0,0,0,0,0,0,0;
+                                    dG_dgam(i_gam, i_gam) = 1;
+                                    if (db_flags.gamma_miller_units){
+                                      dG_dgam = dG_dgam * Amat;
+                                    }
 
                                     Eigen::Vector3d dV = dG_dgam*delta_Q;
                                     double V_dot_dV = anisoG_q.dot(dV);
