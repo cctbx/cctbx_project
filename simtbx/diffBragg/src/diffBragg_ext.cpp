@@ -290,6 +290,14 @@ namespace boost_python { namespace {
       diffBragg.db_flags.use_diffuse = val ;
   }
 
+  bool get_gamma_miller_units(simtbx::nanoBragg::diffBragg& diffBragg){
+      return diffBragg.db_flags.gamma_miller_units;
+  }
+
+  void set_gamma_miller_units(simtbx::nanoBragg::diffBragg& diffBragg, bool val){
+      diffBragg.db_flags.gamma_miller_units = val ;
+  }
+
   bool get_only_diffuse(simtbx::nanoBragg::diffBragg& diffBragg){
       return diffBragg.db_flags.only_diffuse;
   }
@@ -647,6 +655,11 @@ namespace boost_python { namespace {
             make_function(&get_use_diffuse,rbv()),
             make_function(&set_use_diffuse,dcp()),
             "sim with diffuse")
+
+      .add_property("gamma_miller_units",
+            make_function(&get_gamma_miller_units,rbv()),
+            make_function(&set_gamma_miller_units,dcp()),
+            "use Miller index units for gamma parameters")
 
       .add_property("only_diffuse",
             make_function(&get_only_diffuse,rbv()),

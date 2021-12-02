@@ -140,7 +140,11 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
         if not use_db:
             raise RuntimeError("Cant simulate diffuse models unless use_db=True (diffBragg modeler)")
         diffuse_params = {"gamma": tuple(df.diffuse_gamma.values[0]),
-                          "sigma": tuple(df.diffuse_sigma.values[0])}
+                          "sigma": tuple(df.diffuse_sigma.values[0]),
+                          "gamma_miller_units": False}
+        if "gamma_miller_units" in list(df):
+            diffuse_params["gamma_miller_units"] = df.gamma_miller_units.values[0]
+
 
     if use_exascale_api:
         #===================
@@ -248,6 +252,7 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
     S.D.record_time = True
     if diffuse_params is not None:
         S.D.use_diffuse = True
+        S.D.gamma_miller_units = diffuse_params["gamma_miller_units"]
         S.D.diffuse_gamma = diffuse_params["gamma"]
         S.D.diffuse_sigma = diffuse_params["sigma"]
     S.D.add_diffBragg_spots_full()
