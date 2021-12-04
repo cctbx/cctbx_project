@@ -38,6 +38,15 @@ class mpi_logger(object):
     else:
       self.timing_file_path = None
 
+    if params.output.log_level==0: # level 0 is most verbose, so for debug, catch err and out
+      import sys, io
+      expand_dir = os.path.expandvars(params.output.output_dir)
+      os.makedirs(expand_dir, exist_ok=True)
+      out_path = os.path.join(expand_dir,"rank_%d.out"%self.mpi_helper.rank)
+      err_path = os.path.join(expand_dir,"rank_%d.err"%self.mpi_helper.rank)
+      sys.stdout = io.TextIOWrapper(open(out_path,'ab', 0), write_through=True)
+      sys.stderr = io.TextIOWrapper(open(err_path,'ab', 0), write_through=True)
+
   def log(self, message, rank_prepend=True):
     '''Log a rank message'''
     message = time.ctime(self.mpi_helper.time()) + " " + message
