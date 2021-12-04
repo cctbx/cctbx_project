@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function
 
 from iotbx.reflection_file_reader import any_reflection_file
+from cctbx.xray import observation_types
 from iotbx.gui_tools.reflections import ArrayInfo
 from cctbx.miller import display2 as display
 from crys3d.hklviewer import jsview_3d as view_3d
@@ -95,7 +96,9 @@ class HKLViewFrame() :
     kwds['parent'] = self
     self.viewer = view_3d.hklview_3d( **kwds )
     self.ResetPhilandViewer()
+    self.firsttime = True
     self.idx_data = None
+    self.clipper_crystdict = None
     self.NewFileLoaded = False
     self.loaded_file_name = ""
     self.fileinfo = None
@@ -144,15 +147,19 @@ class HKLViewFrame() :
           continue
         self.mprint("Received string:\n" + msgstr, verbose=1)
         msgtype, mstr = eval(msgstr)
-        if msgtype=="dict":
+        if msgtype=="datatypedict":
           self.viewer.datatypedict = eval(mstr)
+        if msgtype=="clipper_crystdict":
+          self.clipper_crystdict = eval(mstr)
+          self.convert_clipperdict_to_millerarrays(self.clipper_crystdict)
+          #self.mprint("got clipper dict")
         if msgtype=="philstr":
           new_phil = libtbx.phil.parse(mstr)
           self.update_settings(new_phil)
         time.sleep(self.zmqsleeptime)
       except Exception as e:
         self.mprint( str(e) + traceback.format_exc(limit=10), verbose=1)
-    self.mprint( "Shutting down zmq_listen() thread", 1)
+    self.mprint("Shutting down zmq_listen() thread", 1)
     self.guiSocketPort=None
 
 
@@ -244,10 +251,11 @@ class HKLViewFrame() :
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
       if view_3d.has_phil_path(diff_phil, "use_provided_miller_arrays"):
-        phl = self.ResetPhilandViewer(self.currentphil)
+        #phl = self.ResetPhilandViewer(self.currentphil)
         if not self.load_miller_arrays():
           return False
         self.viewer.lastscene_id = phl.viewer.scene_id
+        phl.use_provided_miller_arrays = False # ensure we can do this again
 
       if view_3d.has_phil_path(diff_phil, "openfilename"):
         phl = self.ResetPhilandViewer(self.currentphil)
@@ -639,7 +647,6 @@ class HKLViewFrame() :
 
     if self.fileinfo:
       return
-    self.NewFileLoaded = True
     if (len(valid_arrays) == 0):
       msg = "No arrays of the supported types present."
       self.mprint(msg)
@@ -753,15 +760,19 @@ class HKLViewFrame() :
 
   def LoadReflectionsFile(self, openfilename):
     self.params.openfilename = openfilename
+    self.NewFileLoaded=True
     self.update_settings()
 
 
   def load_miller_arrays(self):
     ret = False
     try:
-      self.ResetPhilandViewer(self.currentphil)
-      self.prepare_dataloading()
+      if self.firsttime:
+        self.ResetPhilandViewer(self.currentphil)
+        self.prepare_dataloading()
+        self.firsttime = False
       self.finish_dataloading(self.provided_miller_arrays)
+      self.viewer.sceneisdirty = True
       ret = True
     except Exception as e :
       self.NewFileLoaded=False
@@ -772,8 +783,8 @@ class HKLViewFrame() :
 
   def LoadMillerArrays(self, marrays):
     self.provided_miller_arrays = marrays
-    self.params.use_provided_miller_arrays = True
     self.update_settings()
+    self.params.use_provided_miller_arrays = True
 
 
   def SaveReflectionsFile(self, savefilename):
@@ -831,6 +842,27 @@ class HKLViewFrame() :
         self.mprint("Unmerged data put into separate files")
     else:
       self.mprint("Can only save file in MTZ or CIF format. Sorry!")
+
+
+  def convert_clipperdict_to_millerarrays(self, crystdict):
+    """
+    Called in zmq_listen() when Chimerax with Isolde sends clipper arrays to 
+    our zmqsocket from HKLviewer.ProcessMessages()
+    """
+    xs = crystal.symmetry(unit_cell=crystdict["unit_cell"], space_group_symbol= crystdict["spg_number"] )
+    mi = flex.miller_index(crystdict["HKL"])
+    lst = list(crystdict.keys())
+    lst.remove('HKL')
+    lst.remove('unit_cell')
+    lst.remove('spg_number')
+    clipperlabel = lst[0]
+    Flabl, Siglabl = clipperlabel.split(", ")
+    data = flex.double(crystdict[clipperlabel][0])
+    sigmas = flex.double(crystdict[clipperlabel][1])
+    marray = miller.array( miller.set(xs, mi, anomalous_flag=False),
+                         data, sigmas).set_observation_type( observation_types.amplitude())
+    marray.set_info(miller.array_info(source="Isolde", labels=[Flabl, Siglabl]))
+    self.LoadMillerArrays([marray])
 
 
   def has_indices_with_multiple_data(self, arr):

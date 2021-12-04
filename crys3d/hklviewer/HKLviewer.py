@@ -228,6 +228,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     print("version " + self.Qtversion)
     self.colnames_select_dict = {}
     self.ReadPersistedQsettings()
+    self.lasttime = time.monotonic()
 
     if isembedded:
       self.window = MyQMainDialog(self)
@@ -457,6 +458,7 @@ newarray._sigmas = sigs
     self.functionTabWidget.setDisabled(True)
     self.Statusbartxtbox = None
     self.chimeraxprocmsghandler = None
+    self.chimeraxsession = None
     if not isembedded:
       self.window.statusBar().showMessage("")
       self.hklLabel = QLabel()
@@ -575,9 +577,7 @@ newarray._sigmas = sigs
             "Open a reflection file", "",
             "MTZ Files (*.mtz);;CIF Files (*.cif);;HKL Files (*.hkl);;SCA Files (*.sca);;All Files (*)", "", options)
     if fileName:
-      #self.HKLnameedit.setText(fileName)
       self.window.setWindowTitle("HKLviewer: " + fileName)
-      #self.infostr = ""
       self.textInfo.setPlainText("")
       self.fileisvalid = False
       self.send_message('openfilename = "%s"' %fileName )
@@ -585,7 +585,6 @@ newarray._sigmas = sigs
       self.BinDataComboBox.clear()
       self.millertable.clearContents()
       self.tncsvec = []
-      #self.ClipPlaneChkGroupBox.setChecked(False)
       self.expandP1checkbox.setChecked(False)
       self.expandAnomalouscheckbox.setChecked(False)
       self.sysabsentcheckbox.setChecked(False)
@@ -632,6 +631,14 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.webpagedebugform is not None:
       self.webpagedebugform.update()
     if self.zmq_context:
+      if (time.monotonic() - 2) > self.lasttime: # send Isoldes clipper data every 2 sec
+        self.lasttime = time.monotonic()
+        if self.chimeraxsession is not None and self.chimeraxsession.HKLviewer is not None \
+         and hasattr(self.chimeraxsession, "isolde"):
+          self.chimeraxsession.HKLviewer.convert_clipper_data_to__dict()
+          self.send_message(str(self.chimeraxsession.HKLviewer.clipper_crystdict), 
+                            msgtype="clipper_crystdict")
+
       try:
         binmsg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
         msg = zlib.decompress(binmsg)
@@ -947,7 +954,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
           if self.NewHKLscenes:
             self.NewHKLscenes = False
-
       except Exception as e:
         errmsg = str(e)
         if "Resource temporarily unavailable" not in errmsg: # ignore errors from no connection to ZMQ socket
@@ -1997,7 +2003,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
   def setDatatypedict(self, datatypedict):
     self.datatypedict = datatypedict
     # send persisted colour schemes and raddi mappings to jsview_3d.py
-    return self.send_message(str(self.datatypedict), msgtype="dict")
+    return self.send_message(str(self.datatypedict), msgtype="datatypedict")
 
 
   def PersistQsettings(self):
@@ -2189,6 +2195,7 @@ def run(isembedded=False, chimeraxsession=None):
           HKLguiobj.ProcessMessages()
 
       HKLguiobj.chimeraxprocmsghandler = chimeraxsession.triggers.add_handler('new frame', ChXTimer)
+      HKLguiobj.chimeraxsession = chimeraxsession
     # Call HKLguiobj.UsePersistedQsettings() but through QTimer so it happens after
     # the QApplication eventloop has started as to ensure resizing according to persisted
     # font size is done properly

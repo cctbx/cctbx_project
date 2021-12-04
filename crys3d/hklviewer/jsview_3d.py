@@ -417,6 +417,7 @@ class hklview_3d:
 
     if has_phil_path(diff_phil,
                       "spacegroup_choice",
+                      "use_provided_miller_arrays",
                       "scene_bin_thresholds", # TODO: group bin phil parameters together in subscope
                       "bin_opacities",
                       "binner_idx",
