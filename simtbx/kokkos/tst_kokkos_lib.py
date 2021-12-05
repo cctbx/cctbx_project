@@ -129,8 +129,8 @@ class several_wavelength_case:
   return SIM
 
  def modularized_exafel_api_for_KOKKOS(self, argchk=False, cuda_background=True):
-  from simtbx.kokkos import kokkos_energy_channels
-  kokkos_channels_singleton = kokkos_energy_channels()
+  from simtbx.kokkos import gpu_energy_channels
+  kokkos_channels_singleton = gpu_energy_channels()
 
   SIM = nanoBragg(self.DETECTOR, self.BEAM, panel_id=0)
   SIM.device_Id = 0
@@ -155,7 +155,7 @@ class several_wavelength_case:
   kokkos_simulation = exascale_api(nanoBragg = SIM)
   kokkos_simulation.allocate()
 
-  from simtbx.kokkos import kokkos_detector as kokkosd
+  from simtbx.kokkos import gpu_detector as kokkosd
   kokkos_detector = kokkosd(detector=self.DETECTOR, beam=self.BEAM)
   kokkos_detector.each_image_allocate()
 
@@ -234,8 +234,8 @@ if __name__=="__main__":
   SIM4.to_cbf("test_full_e_004.cbf")
   diffs("CPU",SIM.raw_pixels, "GPU",SIM4.raw_pixels)
 
-  from simtbx.kokkos import kokkos_instance
-  kokkos_run = kokkos_instance(deviceId = 0)
+  from simtbx.kokkos import gpu_instance
+  kokkos_run = gpu_instance(deviceId = 0)
   print("\n# Use case: modularized api argchk=False, cuda_background=True")
   SIM5 = SWC.modularized_exafel_api_for_KOKKOS(argchk=False, cuda_background=True)
   SIM5.to_smv_format(fileout="test_full_e_005.img")

@@ -9,6 +9,19 @@
 
 namespace simtbx { namespace gpu {
 
+  struct gpu_instance_wrapper
+  {
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<simtbx::gpu::gpu_instance>("gpu_instance",init<>() )
+        .def(init< const int& >(( arg("deviceId"))))
+        .def("get_deviceID", &simtbx::gpu::gpu_instance::get_deviceID)
+        ;
+    }
+  };
+
   struct structure_factor_wrapper
   {
     static void
@@ -102,6 +115,7 @@ namespace simtbx { namespace gpu {
 
   BOOST_PYTHON_MODULE(simtbx_gpu_ext)
   {
+    simtbx::gpu::gpu_instance_wrapper::wrap();
     simtbx::gpu::structure_factor_wrapper::wrap();
     simtbx::gpu::detector_wrapper::wrap();
     simtbx::gpu::simulation_wrapper::wrap();

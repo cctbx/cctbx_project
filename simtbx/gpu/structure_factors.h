@@ -14,6 +14,26 @@ namespace af = scitbx::af;
 typedef cctbx::miller::index<int> miller_t;
 typedef af::shared<miller_t > indices;
 
+class gpu_instance {
+  public:
+    inline
+    gpu_instance(){
+      printf("NO OPERATION, NO DEVICE NUMBER, gpu_instance");
+    }
+
+    inline
+    gpu_instance(int const& t_deviceID) {
+      deviceID = t_deviceID;
+    }
+
+    inline int get_deviceID() const {
+      return deviceID;
+    }
+
+  private:
+    int deviceID = -1;
+};
+
 struct gpu_energy_channels {
   gpu_energy_channels(){printf("NO OPERATION, NO DEVICE NUMBER");};
   gpu_energy_channels(int const&);

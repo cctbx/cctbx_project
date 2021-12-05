@@ -52,6 +52,7 @@ struct kokkos_detector{
   af::flex_double get_raw_pixels();
   void set_active_pixels_on_GPU(af::shared<int>);
   af::shared<double> get_whitelist_raw_pixels(af::shared<std::size_t>);
+  inline void each_image_free(){} //no op in Kokkos
 
   //const dxtbx::model::Detector detector;
   packed_metrology const metrology;

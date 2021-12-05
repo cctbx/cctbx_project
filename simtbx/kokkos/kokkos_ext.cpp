@@ -16,7 +16,7 @@ namespace simtbx { namespace Kokkos {
     wrap()
     {
       using namespace boost::python;
-      class_<simtbx::Kokkos::kokkos_instance>("kokkos_instance",init<>() )
+      class_<simtbx::Kokkos::kokkos_instance>("gpu_instance",init<>() )
         .def(init< const int& >(( arg("deviceId"))))
         .def("get_deviceID", &simtbx::Kokkos::kokkos_instance::get_deviceID)
         .def("finalize_kokkos", &simtbx::Kokkos::kokkos_instance::finalize_kokkos)
@@ -30,7 +30,7 @@ namespace simtbx { namespace Kokkos {
     wrap()
     {
       using namespace boost::python;
-      class_<simtbx::Kokkos::kokkos_detector>("kokkos_detector",init<>() )
+      class_<simtbx::Kokkos::kokkos_detector>("gpu_detector",init<>() )
         .def(init<const simtbx::nanoBragg::nanoBragg&>(
             ( arg("nanoBragg"))))
 //             "Single panel constructor with data taken from nanoBragg instance")
@@ -47,10 +47,11 @@ namespace simtbx { namespace Kokkos {
              "Update raw_pixels on host with array from GPU")
         .def("get_raw_pixels",&simtbx::Kokkos::kokkos_detector::get_raw_pixels,
              "return multipanel detector raw pixels as a flex array")
-       .def("get_whitelist_raw_pixels",
+        .def("get_whitelist_raw_pixels",
              (af::shared<double> (simtbx::Kokkos::kokkos_detector::*)(af::shared<std::size_t>))
              &simtbx::Kokkos::kokkos_detector::get_whitelist_raw_pixels,
             "return only those raw pixels requested by the whitelist selection, as a 1D flex array")
+        .def("each_image_free", &simtbx::Kokkos::kokkos_detector::each_image_free)
         ;
     }
   };
@@ -59,7 +60,7 @@ namespace simtbx { namespace Kokkos {
     static void
     wrap() {
       using namespace boost::python;
-      class_<simtbx::Kokkos::kokkos_energy_channels>("kokkos_energy_channels",init<>() )
+      class_<simtbx::Kokkos::kokkos_energy_channels>("gpu_energy_channels",init<>() )
         .def("get_nchannels", &simtbx::Kokkos::kokkos_energy_channels::get_nchannels)
         .def("structure_factors_to_GPU_direct",
              &simtbx::Kokkos::kokkos_energy_channels::structure_factors_to_GPU_direct,
