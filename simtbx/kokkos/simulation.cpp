@@ -94,7 +94,7 @@ namespace Kokkos {
   }
 
   void
-  exascale_api::add_energy_channel_from_kokkos_amplitudes(
+  exascale_api::add_energy_channel_from_gpu_amplitudes(
     int const& ichannel,
     simtbx::Kokkos::kokkos_energy_channels & kec,
     simtbx::Kokkos::kokkos_detector & kdt
@@ -163,7 +163,7 @@ namespace Kokkos {
   }
 
   void
-  exascale_api::add_energy_channel_mask_allpanel_kokkos(
+  exascale_api::add_energy_channel_mask_allpanel(
     int const& ichannel,
     simtbx::Kokkos::kokkos_energy_channels & kec,
     simtbx::Kokkos::kokkos_detector & kdt,
@@ -242,7 +242,7 @@ namespace Kokkos {
 
 
   void
-  exascale_api::add_background_kokkos(simtbx::Kokkos::kokkos_detector & kdt) {
+  exascale_api::add_background(simtbx::Kokkos::kokkos_detector & kdt) {
         // cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
         // transfer source_I, source_lambda
@@ -292,7 +292,7 @@ namespace Kokkos {
 
         // the for loop around panels.  Offsets given.
         for (std::size_t panel_id = 0; panel_id < kdt.m_panel_count; panel_id++) {
-          add_background(SIM.sources,
+          add_background_kokkos_kernel(SIM.sources,
           SIM.oversample,
           SIM.pixel_size, kdt.m_slow_dim_size, kdt.m_fast_dim_size, SIM.detector_thicksteps,
           SIM.detector_thickstep, SIM.detector_attnlen,
@@ -320,7 +320,7 @@ namespace Kokkos {
   }
 
   void
-  exascale_api::allocate_kokkos() {
+  exascale_api::allocate() {
     //cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
     // water_size not defined in class, CLI argument, defaults to 0

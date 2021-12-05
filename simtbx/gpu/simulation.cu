@@ -86,7 +86,7 @@ namespace af = scitbx::af;
   }
 
   void
-  exascale_api::add_energy_channel_from_gpu_amplitudes_cuda(
+  exascale_api::add_energy_channel_from_gpu_amplitudes(
     int const& ichannel,
     simtbx::gpu::gpu_energy_channels & gec,
     simtbx::gpu::gpu_detector & gdt
@@ -154,7 +154,7 @@ namespace af = scitbx::af;
   }
 
   void
-  exascale_api::add_energy_channel_mask_allpanel_cuda(
+  exascale_api::add_energy_channel_mask_allpanel(
     int const& ichannel,
     simtbx::gpu::gpu_energy_channels & gec,
     simtbx::gpu::gpu_detector & gdt,
@@ -169,12 +169,12 @@ namespace af = scitbx::af;
             active_pixel_list.push_back(j);
           }
         }
-        add_energy_channel_mask_allpanel_cuda(
+        add_energy_channel_mask_allpanel(
           ichannel, gec, gdt, active_pixel_list);
   }
 
   void
-  exascale_api::add_energy_channel_mask_allpanel_cuda(
+  exascale_api::add_energy_channel_mask_allpanel(
     int const& ichannel,
     simtbx::gpu::gpu_energy_channels & gec,
     simtbx::gpu::gpu_detector & gdt,
@@ -243,7 +243,7 @@ namespace af = scitbx::af;
 
 
   void
-  exascale_api::add_background_cuda(simtbx::gpu::gpu_detector & gdt, int const& override_source){
+  exascale_api::add_background(simtbx::gpu::gpu_detector & gdt, int const& override_source){
         cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
         // transfer source_I, source_lambda
@@ -308,7 +308,7 @@ namespace af = scitbx::af;
 }
 
   void
-  exascale_api::allocate_cuda(){
+  exascale_api::allocate(){
     cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
     /* water_size not defined in class, CLI argument, defaults to 0 */

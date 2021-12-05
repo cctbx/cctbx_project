@@ -16,17 +16,17 @@ struct exascale_api {
   exascale_api(const simtbx::nanoBragg::nanoBragg& nB) : SIM(nB) { }
 
   void show();
-  void add_energy_channel_from_kokkos_amplitudes(int const&,
+  void add_energy_channel_from_gpu_amplitudes(int const&,
     simtbx::Kokkos::kokkos_energy_channels &,
     simtbx::Kokkos::kokkos_detector &
   );
-  void add_energy_channel_mask_allpanel_kokkos(int const&,
+  void add_energy_channel_mask_allpanel(int const&,
     simtbx::Kokkos::kokkos_energy_channels &,
     simtbx::Kokkos::kokkos_detector &,
     af::shared<bool>
   );
-  void add_background_kokkos(simtbx::Kokkos::kokkos_detector &);
-  void allocate_kokkos();
+  void add_background(simtbx::Kokkos::kokkos_detector &);
+  void allocate();
   //~exascale_api();
 
   const simtbx::nanoBragg::nanoBragg& SIM;
