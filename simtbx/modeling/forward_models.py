@@ -155,7 +155,7 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
         C.miller_array = Famp
         F_P1 = C.miller_array
         F_P1 = Famp.expand_to_p1()
-        gpu_channels_singleton.structure_factors_to_GPU_direct_cuda(0, F_P1.indices(), F_P1.data())
+        gpu_channels_singleton.structure_factors_to_GPU_direct(0, F_P1.indices(), F_P1.data())
         Famp = gpu_channels_singleton
         #===========
         results,_,_ = multipanel_sim(CRYSTAL=expt.crystal,
