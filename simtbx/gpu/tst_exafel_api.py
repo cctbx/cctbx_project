@@ -81,7 +81,7 @@ class several_wavelength_case:
   # allocate GPU arrays
   from simtbx.gpu import exascale_api
   gpu_simulation = exascale_api(nanoBragg = SIM)
-  gpu_simulation.allocate_cuda()
+  gpu_simulation.allocate()
 
   from simtbx.gpu import gpu_detector as gpud
   gpu_detector = gpud(deviceId=SIM.device_Id, detector=self.DETECTOR, beam=self.BEAM)
@@ -93,7 +93,7 @@ class several_wavelength_case:
       SIM.wavelength_A = self.wavlen[x]
       print("USE_EXASCALE_API+++++++++++++ Wavelength %d=%.6f, Flux %.6e, Fluence %.6e"%(
             x, SIM.wavelength_A, SIM.flux, SIM.fluence))
-      gpu_simulation.add_energy_channel_from_gpu_amplitudes_cuda(
+      gpu_simulation.add_energy_channel_from_gpu_amplitudes(
         x, gpu_channels_singleton, gpu_detector)
   per_image_scale_factor = 1.0
   gpu_detector.scale_in_place(per_image_scale_factor) # apply scale directly on GPU
@@ -107,7 +107,7 @@ class several_wavelength_case:
       SIM.flux=1e12
       SIM.beamsize_mm=0.003 # square (not user specified)
       SIM.exposure_s=1.0 # multiplies flux x exposure
-      gpu_simulation.add_background_cuda(gpu_detector)
+      gpu_simulation.add_background(gpu_detector)
 
       # deallocate GPU arrays afterward
       gpu_detector.write_raw_pixels(SIM)  # updates SIM.raw_pixels from GPU

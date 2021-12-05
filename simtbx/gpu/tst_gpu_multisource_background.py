@@ -13,7 +13,7 @@ class gpu_run_background_simulation(run_background_simulation):
     # allocate GPU arrays
     from simtbx.gpu import exascale_api
     gpu_simulation = exascale_api(nanoBragg = self.SIM)
-    gpu_simulation.allocate_cuda()
+    gpu_simulation.allocate()
 
     from simtbx.gpu import gpu_detector as gpud
     gpu_detector = gpud(deviceId=self.SIM.device_Id, nanoBragg=self.SIM)
@@ -21,12 +21,12 @@ class gpu_run_background_simulation(run_background_simulation):
 
     per_image_scale_factor = 0.0
     gpu_detector.scale_in_place(per_image_scale_factor) # apply scale directly on GPU
-    gpu_simulation.add_background_cuda(gpu_detector)
+    gpu_simulation.add_background(gpu_detector)
     gpu_detector.write_raw_pixels(self.SIM)  # updates SIM.raw_pixels from GPU
     self.bg_multi = self.SIM.raw_pixels.as_numpy_array()
 
     gpu_detector.scale_in_place(per_image_scale_factor)
-    gpu_simulation.add_background_cuda(detector = gpu_detector, override_source=override_source)
+    gpu_simulation.add_background(detector = gpu_detector, override_source=override_source)
     gpu_detector.write_raw_pixels(self.SIM)
     self.bg_single = self.SIM.raw_pixels.as_numpy_array()
 

@@ -81,15 +81,15 @@ namespace simtbx { namespace Kokkos {
       class_<simtbx::Kokkos::exascale_api>("exascale_api",no_init )
         .def(init<const simtbx::nanoBragg::nanoBragg&>(
             ( arg("nanoBragg"))))
-        .def("allocate_kokkos",&simtbx::Kokkos::exascale_api::allocate_kokkos,
+        .def("allocate",&simtbx::Kokkos::exascale_api::allocate,
              "Allocate and transfer input data on the GPU")
-        .def("add_energy_channel_from_kokkos_amplitudes",
-             &simtbx::Kokkos::exascale_api::add_energy_channel_from_kokkos_amplitudes,
+        .def("add_energy_channel_from_gpu_amplitudes",
+             &simtbx::Kokkos::exascale_api::add_energy_channel_from_gpu_amplitudes,
              "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spot contributions to the detector's accumulator array")
-        .def("add_energy_channel_mask_allpanel_kokkos",
-             &simtbx::Kokkos::exascale_api::add_energy_channel_mask_allpanel_kokkos,
+        .def("add_energy_channel_mask_allpanel",
+             &simtbx::Kokkos::exascale_api::add_energy_channel_mask_allpanel,
              "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spots on mask==True pixels")
-        .def("add_background_kokkos", &simtbx::Kokkos::exascale_api::add_background_kokkos,
+        .def("add_background", &simtbx::Kokkos::exascale_api::add_background,
              "Add a background field directly on the GPU")
         .def("show",&simtbx::Kokkos::exascale_api::show)
         ;
