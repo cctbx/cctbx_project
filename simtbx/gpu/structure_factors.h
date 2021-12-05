@@ -19,7 +19,7 @@ struct gpu_energy_channels {
   gpu_energy_channels(int const&);
 
   inline
-  void structure_factors_to_GPU_direct_cuda(
+  void structure_factors_to_GPU_direct(
     int, indices pythony_indices, af::shared<double> pythony_amplitudes){
     double F_cell;
 

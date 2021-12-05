@@ -23,8 +23,8 @@ namespace simtbx { namespace gpu {
         .def("get_nchannels",
              &simtbx::gpu::gpu_energy_channels::get_nchannels
             )
-        .def("structure_factors_to_GPU_direct_cuda",
-             &simtbx::gpu::gpu_energy_channels::structure_factors_to_GPU_direct_cuda,
+        .def("structure_factors_to_GPU_direct",
+             &simtbx::gpu::gpu_energy_channels::structure_factors_to_GPU_direct,
              (arg_("dummy_int"), arg_("indices"), arg_("amplitudes"))
             )
         ;

@@ -65,7 +65,7 @@ class several_wavelength_case:
   assert gpu_channels_singleton.get_deviceID()==SIM.device_Id
   assert gpu_channels_singleton.get_nchannels() == 0 # uninitialized
   for x in range(len(self.flux)):
-          gpu_channels_singleton.structure_factors_to_GPU_direct_cuda(
+          gpu_channels_singleton.structure_factors_to_GPU_direct(
            x, self.sfall_channels[x].indices(), self.sfall_channels[x].data())
   assert gpu_channels_singleton.get_nchannels() == len(self.flux)
   SIM.Ncells_abc = (20,20,20)
