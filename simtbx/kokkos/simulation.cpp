@@ -180,7 +180,7 @@ namespace Kokkos {
         active_pixel_list.push_back(j);
       }
     }
-    kdt.set_active_pixels_on_KOKKOS(active_pixel_list);
+    kdt.set_active_pixels_on_GPU(active_pixel_list);
 
     // transfer source_I, source_lambda
     // the int arguments are for sizes of the arrays

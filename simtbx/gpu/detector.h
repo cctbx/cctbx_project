@@ -47,13 +47,13 @@ struct gpu_detector{
     std::cout << "Detector size" << cu_n_panels <<std::endl;
     metrology.show();
   }
-  void each_image_allocate_cuda();
-  void scale_in_place_cuda(const double&);
-  void write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg&);
-  af::flex_double get_raw_pixels_cuda();
+  void each_image_allocate();
+  void scale_in_place(const double&);
+  void write_raw_pixels(simtbx::nanoBragg::nanoBragg&);
+  af::flex_double get_raw_pixels();
   void set_active_pixels_on_GPU(af::shared<int>);
-  af::shared<double> get_whitelist_raw_pixels_cuda(af::shared<std::size_t>);
-  void each_image_free_cuda();
+  af::shared<double> get_whitelist_raw_pixels(af::shared<std::size_t>);
+  void each_image_free();
 
   void free_detail();
   inline ~gpu_detector(){ {free_detail();} }

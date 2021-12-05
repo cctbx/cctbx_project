@@ -38,18 +38,18 @@ namespace simtbx { namespace Kokkos {
             ( arg("detector"),arg("beam"))))
 //             "Multipanel constructor with data taken from dxtbx objects")
         .def("show_summary",&simtbx::Kokkos::kokkos_detector::show_summary)
-        .def("each_image_allocate_kokkos",
-              &simtbx::Kokkos::kokkos_detector::each_image_allocate_kokkos,
+        .def("each_image_allocate",
+              &simtbx::Kokkos::kokkos_detector::each_image_allocate,
              "Allocate large pixel arrays")
-        .def("scale_in_place_kokkos", &simtbx::Kokkos::kokkos_detector::scale_in_place_kokkos,
+        .def("scale_in_place", &simtbx::Kokkos::kokkos_detector::scale_in_place,
              "Multiply by a scale factor on the GPU")
-        .def("write_raw_pixels_kokkos",&simtbx::Kokkos::kokkos_detector::write_raw_pixels_kokkos,
+        .def("write_raw_pixels",&simtbx::Kokkos::kokkos_detector::write_raw_pixels,
              "Update raw_pixels on host with array from GPU")
-        .def("get_raw_pixels_kokkos",&simtbx::Kokkos::kokkos_detector::get_raw_pixels_kokkos,
+        .def("get_raw_pixels",&simtbx::Kokkos::kokkos_detector::get_raw_pixels,
              "return multipanel detector raw pixels as a flex array")
-       .def("get_whitelist_raw_pixels_kokkos",
+       .def("get_whitelist_raw_pixels",
              (af::shared<double> (simtbx::Kokkos::kokkos_detector::*)(af::shared<std::size_t>))
-             &simtbx::Kokkos::kokkos_detector::get_whitelist_raw_pixels_kokkos,
+             &simtbx::Kokkos::kokkos_detector::get_whitelist_raw_pixels,
             "return only those raw pixels requested by the whitelist selection, as a 1D flex array")
         ;
     }

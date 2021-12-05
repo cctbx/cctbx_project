@@ -85,7 +85,7 @@ class several_wavelength_case:
 
   from simtbx.gpu import gpu_detector as gpud
   gpu_detector = gpud(deviceId=SIM.device_Id, detector=self.DETECTOR, beam=self.BEAM)
-  gpu_detector.each_image_allocate_cuda()
+  gpu_detector.each_image_allocate()
 
   # loop over energies
   for x in range(len(self.flux)):
@@ -96,7 +96,7 @@ class several_wavelength_case:
       gpu_simulation.add_energy_channel_from_gpu_amplitudes_cuda(
         x, gpu_channels_singleton, gpu_detector)
   per_image_scale_factor = 1.0
-  gpu_detector.scale_in_place_cuda(per_image_scale_factor) # apply scale directly on GPU
+  gpu_detector.scale_in_place(per_image_scale_factor) # apply scale directly on GPU
   SIM.wavelength_A = self.BEAM.get_wavelength() # return to canonical energy for subsequent background
 
   if cuda_background:
@@ -110,12 +110,12 @@ class several_wavelength_case:
       gpu_simulation.add_background_cuda(gpu_detector)
 
       # deallocate GPU arrays afterward
-      gpu_detector.write_raw_pixels_cuda(SIM)  # updates SIM.raw_pixels from GPU
-      gpu_detector.each_image_free_cuda()
+      gpu_detector.write_raw_pixels(SIM)  # updates SIM.raw_pixels from GPU
+      gpu_detector.each_image_free()
   else:
       # deallocate GPU arrays up front
-      gpu_detector.write_raw_pixels_cuda(SIM)  # updates SIM.raw_pixels from GPU
-      gpu_detector.each_image_free_cuda()
+      gpu_detector.write_raw_pixels(SIM)  # updates SIM.raw_pixels from GPU
+      gpu_detector.each_image_free()
 
       SIM.Fbg_vs_stol = water
       SIM.amorphous_sample_thick_mm = 0.02
