@@ -174,7 +174,7 @@ namespace gpu {
   };
 
   void
-  gpu_detector::scale_in_place_cuda(const double& factor){
+  gpu_detector::scale_in_place(const double& factor){
     cudaSafeCall(cudaSetDevice(h_deviceID));
     cudaDeviceProp deviceProps = { 0 };
     cudaSafeCall(cudaGetDeviceProperties(&deviceProps, h_deviceID));
@@ -187,7 +187,7 @@ namespace gpu {
   }
 
   void
-  gpu_detector::write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg& nB){
+  gpu_detector::write_raw_pixels(simtbx::nanoBragg::nanoBragg& nB){
     //only implement the monolithic detector case, one panel
     SCITBX_ASSERT(nB.spixels == cu_slow_pixels);
     SCITBX_ASSERT(nB.fpixels == cu_fast_pixels);
@@ -205,7 +205,7 @@ namespace gpu {
   }
 
   af::flex_double
-  gpu_detector::get_raw_pixels_cuda(){
+  gpu_detector::get_raw_pixels(){
     //return the data array for the multipanel detector case
     af::flex_double z(af::flex_grid<>(cu_n_panels,cu_slow_pixels,cu_fast_pixels), af::init_functor_null<double>());
     double* begin = z.begin();
@@ -231,7 +231,7 @@ namespace gpu {
   }
 
   af::shared<double>
-  gpu_detector::get_whitelist_raw_pixels_cuda(af::shared<std::size_t> selection
+  gpu_detector::get_whitelist_raw_pixels(af::shared<std::size_t> selection
   ){
     //return the data array for the multipanel detector case, but only for whitelist pixels
     af::shared<double> z(active_pixel_list.size(), af::init_functor_null<double>());
@@ -266,7 +266,7 @@ namespace gpu {
   }
 
   void
-  gpu_detector::each_image_allocate_cuda(){
+  gpu_detector::each_image_allocate(){
     cudaSetDevice(h_deviceID);
     /*allocate but do not initialize (set to 0) the reductions (the code was too inefficient and was removed as the reductions
       are not utilized in practice.  Should they be needed in the future a faster zeroing API must be found*/
@@ -318,7 +318,7 @@ namespace gpu {
   }
 
   void
-  gpu_detector::each_image_free_cuda(){
+  gpu_detector::each_image_free(){
     cudaSetDevice(h_deviceID);
     cudaSafeCall(cudaDeviceSynchronize());
     cudaSafeCall(cudaFree(cu_omega_reduction));

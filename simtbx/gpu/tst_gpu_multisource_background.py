@@ -17,20 +17,20 @@ class gpu_run_background_simulation(run_background_simulation):
 
     from simtbx.gpu import gpu_detector as gpud
     gpu_detector = gpud(deviceId=self.SIM.device_Id, nanoBragg=self.SIM)
-    gpu_detector.each_image_allocate_cuda()
+    gpu_detector.each_image_allocate()
 
     per_image_scale_factor = 0.0
-    gpu_detector.scale_in_place_cuda(per_image_scale_factor) # apply scale directly on GPU
+    gpu_detector.scale_in_place(per_image_scale_factor) # apply scale directly on GPU
     gpu_simulation.add_background_cuda(gpu_detector)
-    gpu_detector.write_raw_pixels_cuda(self.SIM)  # updates SIM.raw_pixels from GPU
+    gpu_detector.write_raw_pixels(self.SIM)  # updates SIM.raw_pixels from GPU
     self.bg_multi = self.SIM.raw_pixels.as_numpy_array()
 
-    gpu_detector.scale_in_place_cuda(per_image_scale_factor)
+    gpu_detector.scale_in_place(per_image_scale_factor)
     gpu_simulation.add_background_cuda(detector = gpu_detector, override_source=override_source)
-    gpu_detector.write_raw_pixels_cuda(self.SIM)
+    gpu_detector.write_raw_pixels(self.SIM)
     self.bg_single = self.SIM.raw_pixels.as_numpy_array()
 
-    gpu_detector.each_image_free_cuda()
+    gpu_detector.each_image_free()
 
 def c_g_validate(cpu,gpu):
   mean_c = cpu.mean()

@@ -47,20 +47,20 @@ namespace simtbx { namespace gpu {
         .def("get_deviceID", &simtbx::gpu::gpu_detector::get_deviceID
             )
         .def("show_summary",&simtbx::gpu::gpu_detector::show_summary)
-        .def("each_image_allocate_cuda",
-              &simtbx::gpu::gpu_detector::each_image_allocate_cuda,
+        .def("each_image_allocate",
+              &simtbx::gpu::gpu_detector::each_image_allocate,
              "Allocate large pixel arrays")
-        .def("scale_in_place_cuda", &simtbx::gpu::gpu_detector::scale_in_place_cuda,
+        .def("scale_in_place", &simtbx::gpu::gpu_detector::scale_in_place,
              "Apply a scale factor directly on the GPU")
-        .def("write_raw_pixels_cuda",&simtbx::gpu::gpu_detector::write_raw_pixels_cuda,
+        .def("write_raw_pixels",&simtbx::gpu::gpu_detector::write_raw_pixels,
              "Update raw_pixels on host with array from GPU")
-        .def("get_raw_pixels_cuda",&simtbx::gpu::gpu_detector::get_raw_pixels_cuda,
+        .def("get_raw_pixels",&simtbx::gpu::gpu_detector::get_raw_pixels,
              "return multipanel detector raw pixels as a flex array")
-        .def("get_whitelist_raw_pixels_cuda",
+        .def("get_whitelist_raw_pixels",
               (af::shared<double> (simtbx::gpu::gpu_detector::*)(af::shared<std::size_t>))
-              &simtbx::gpu::gpu_detector::get_whitelist_raw_pixels_cuda,
+              &simtbx::gpu::gpu_detector::get_whitelist_raw_pixels,
              "return only those raw pixels requested by the whitelist selection, as a 1D flex array")
-        .def("each_image_free_cuda", &simtbx::gpu::gpu_detector::each_image_free_cuda)
+        .def("each_image_free", &simtbx::gpu::gpu_detector::each_image_free)
         ;
     }
   };
