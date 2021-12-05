@@ -14,7 +14,7 @@ from __future__ import division
 from chimerax.core.tools import ToolInstance
 import math
 
-class TutorialTool(ToolInstance):
+class HKLviewerTool(ToolInstance):
 
     # Inheriting from ToolInstance makes us known to the ChimeraX tool mangager,
     # so we can be notified and take appropriate action when sessions are closed,
@@ -78,9 +78,7 @@ class TutorialTool(ToolInstance):
         # main window
         self.tool_window.manage('side')
 
-    def convert_clipper_data_to__dict(self):
-        #if not hasattr(self.session, "isolde"):
-        #    return
+    def isolde_clipper_data_to_dict(self):
         try:
             sh = self.session.isolde.selected_model.parent
             xmapset = sh.map_mgr.xmapsets[0]
@@ -92,8 +90,10 @@ class TutorialTool(ToolInstance):
                xmapset.unit_cell.cell.alpha*180/math.pi, xmapset.unit_cell.cell.beta*180/math.pi, xmapset.unit_cell.cell.gamma*180/math.pi)
             self.clipper_crystdict["HKL"] = xmapset.experimental_data[clipperlabel].data.data[0].tolist()
             self.clipper_crystdict[clipperlabel] = xmapset.experimental_data[clipperlabel].data.data[1].transpose().tolist()
+            self.clipper_crystdict["FCALC,PHFCALC"] = xmapset.live_xmap_mgr.f_calc.data[1].transpose().tolist()
+            self.clipper_crystdict["2FOFC,PH2FOFC"] = xmapset.live_xmap_mgr.base_2fofc.data[1].transpose().tolist()
         except Exception as e:
-            return
+            pass
 
 
     def return_pressed(self):
@@ -119,7 +119,7 @@ class TutorialTool(ToolInstance):
       from Qt.QtCore import QEvent
       self.session.triggers.remove_handler(self.Guiobj.chimeraxprocmsghandler)
       self.Guiobj.closeEvent(QEvent.Close)
-      super(TutorialTool, self).delete()
+      super(HKLviewerTool, self).delete()
 
     def take_snapshot(self, session, flags):
         return {

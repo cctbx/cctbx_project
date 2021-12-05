@@ -631,11 +631,11 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.webpagedebugform is not None:
       self.webpagedebugform.update()
     if self.zmq_context:
-      if (time.monotonic() - 2) > self.lasttime: # send Isoldes clipper data every 2 sec
+      if (time.monotonic() - 5) > self.lasttime: # send Isoldes clipper data every 5 sec
         self.lasttime = time.monotonic()
         if self.chimeraxsession is not None and self.chimeraxsession.HKLviewer is not None \
          and hasattr(self.chimeraxsession, "isolde"):
-          self.chimeraxsession.HKLviewer.convert_clipper_data_to__dict()
+          self.chimeraxsession.HKLviewer.isolde_clipper_data_to_dict()
           self.send_message(str(self.chimeraxsession.HKLviewer.clipper_crystdict), 
                             msgtype="clipper_crystdict")
 

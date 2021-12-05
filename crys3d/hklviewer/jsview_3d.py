@@ -332,6 +332,7 @@ class hklview_3d:
                        "slice_index",
                        "sigma_color_radius",
                        "scene_id",
+                       "use_provided_miller_arrays",
                        "color_scheme",
                        "color_powscale",
                        "scale",

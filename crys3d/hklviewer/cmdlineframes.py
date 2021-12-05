@@ -773,6 +773,7 @@ class HKLViewFrame() :
         self.firsttime = False
       self.finish_dataloading(self.provided_miller_arrays)
       self.viewer.sceneisdirty = True
+      self.viewer.has_new_miller_array = True
       ret = True
     except Exception as e :
       self.NewFileLoaded=False
@@ -862,7 +863,20 @@ class HKLViewFrame() :
     marray = miller.array( miller.set(xs, mi, anomalous_flag=False),
                          data, sigmas).set_observation_type( observation_types.amplitude())
     marray.set_info(miller.array_info(source="Isolde", labels=[Flabl, Siglabl]))
-    self.LoadMillerArrays([marray])
+
+    amplitudes = flex.double(crystdict["FCALC,PHFCALC"][0])
+    phases = flex.double(crystdict["FCALC,PHFCALC"][1])
+    mapcoeffarray = miller.array( miller.set(xs, mi, anomalous_flag=False), amplitudes)
+    mapcoeffarray = mapcoeffarray.phase_transfer(phases, deg=False)
+    mapcoeffarray.set_info(miller.array_info(source="Isolde", labels=["FCALC", "PHFCALC"]))
+
+    amplitudes = flex.double(crystdict["2FOFC,PH2FOFC"][0])
+    phases = flex.double(crystdict["2FOFC,PH2FOFC"][1])
+    wmapcoeffarray = miller.array( miller.set(xs, mi, anomalous_flag=False), amplitudes)
+    wmapcoeffarray = mapcoeffarray.phase_transfer(phases, deg=False)
+    wmapcoeffarray.set_info(miller.array_info(source="Isolde", labels=["2FOFC", "PH2FOFC"]))
+
+    self.LoadMillerArrays([marray, mapcoeffarray, wmapcoeffarray])
 
 
   def has_indices_with_multiple_data(self, arr):
