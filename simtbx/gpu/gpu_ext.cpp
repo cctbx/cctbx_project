@@ -52,11 +52,13 @@ namespace simtbx { namespace gpu {
       using namespace boost::python;
       class_<simtbx::gpu::gpu_detector>("gpu_detector",init<>() )
         .def(init<int const&, const simtbx::nanoBragg::nanoBragg&>(
-            ( arg("deviceId"),arg("nanoBragg"))))
-//             "Single panel constructor with data taken from nanoBragg instance")
+            ( arg("deviceId"),arg("nanoBragg")),
+             "Single panel constructor with data taken from nanoBragg instance\n"
+             "The deviceId is mandatory for CUDA."))
         .def(init<int const&, dxtbx::model::Detector const &, dxtbx::model::Beam const &>(
-            ( arg("deviceId"),arg("detector"),arg("beam"))))
-//             "Multipanel constructor with data taken from dxtbx objects")
+            ( arg("deviceId"),arg("detector"),arg("beam")),
+             "Multipanel constructor with data taken from dxtbx objects\n"
+             "The deviceId is mandatory for CUDA."))
         .def("get_deviceID", &simtbx::gpu::gpu_detector::get_deviceID
             )
         .def("show_summary",&simtbx::gpu::gpu_detector::show_summary)

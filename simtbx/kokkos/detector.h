@@ -38,8 +38,8 @@ struct packed_metrology{
 
 struct kokkos_detector{
   inline kokkos_detector(){printf("NO OPERATION, DEVICE NUMBER IS NEEDED");};
-  kokkos_detector(const simtbx::nanoBragg::nanoBragg& nB);
-  kokkos_detector(dxtbx::model::Detector const &, dxtbx::model::Beam const &);
+  kokkos_detector(int const&, const simtbx::nanoBragg::nanoBragg& nB);
+  kokkos_detector(int const&, dxtbx::model::Detector const &, dxtbx::model::Beam const &);
   vector_double_t construct_detail(dxtbx::model::Detector const &);
 
   inline void show_summary(){
@@ -53,6 +53,7 @@ struct kokkos_detector{
   void set_active_pixels_on_GPU(af::shared<int>);
   af::shared<double> get_whitelist_raw_pixels(af::shared<std::size_t>);
   inline void each_image_free(){} //no op in Kokkos
+  int h_deviceID;
 
   //const dxtbx::model::Detector detector;
   packed_metrology const metrology;

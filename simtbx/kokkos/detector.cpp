@@ -120,8 +120,10 @@ namespace simtbx { namespace Kokkos {
     return view_floatimage;
   };
 
-  kokkos_detector::kokkos_detector(dxtbx::model::Detector const & arg_detector,
+  kokkos_detector::kokkos_detector(int const& arg_device,
+                             dxtbx::model::Detector const & arg_detector,
                              dxtbx::model::Beam const& arg_beam):
+    h_deviceID(arg_device),
     metrology(arg_detector, arg_beam),
     m_panel_count( arg_detector.size() ),
     m_slow_dim_size( arg_detector[0].get_image_size()[0] ),
@@ -129,7 +131,9 @@ namespace simtbx { namespace Kokkos {
     m_total_pixel_count( m_panel_count * m_slow_dim_size * m_fast_dim_size ),
     m_accumulate_floatimage( construct_detail(arg_detector) ) { }
 
-  kokkos_detector::kokkos_detector(const simtbx::nanoBragg::nanoBragg& nB):
+  kokkos_detector::kokkos_detector(int const& arg_device,
+                             const simtbx::nanoBragg::nanoBragg& nB):
+    h_deviceID(arg_device),
     metrology(nB),
     m_panel_count(1),
     m_slow_dim_size(nB.spixels),
