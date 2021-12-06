@@ -111,9 +111,9 @@ class HKLviewerTool(ToolInstance):
         # where the items put in the menu depends on where in the tool interface the menu
         # was raised.
         from PyQt5.QtWidgets import QAction
-        clear_action = QAction("Clear", menu)
-        clear_action.triggered.connect(lambda *args: self.line_edit.clear())
-        menu.addAction(clear_action)
+        settings_action = QAction("HKLviewer settings", menu)
+        settings_action.triggered.connect(lambda *args: self.Guiobj.SettingsDialog() )
+        menu.addAction(settings_action)
 
     def delete(self):
       from Qt.QtCore import QEvent

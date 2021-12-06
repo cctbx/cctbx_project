@@ -575,6 +575,7 @@ class hklview_3d:
     # resolution and Angstrom character for javascript
     spbufttip += '\\ndres: %s \'+ String.fromCharCode(197) +\'' \
       %str(roundoff(self.miller_array.unit_cell().d(hkl), 2) )
+    #for dummykey, (hklscene, maxdat,mindat,maxsig,minsig,info) in self.HKLscenedict.items():
     for hklscene in self.HKLscenes:
       sigvals = []
       datvals = []
@@ -717,7 +718,7 @@ class hklview_3d:
                          self.viewerparams.color_powscale,
                          sceneid,
                          self.viewerparams.scale,
-                         self.viewerparams.nth_power_scale_radii
+                         str(self.viewerparams.nth_power_scale_radii)
                          )
     if self.HKLsceneKey in self.HKLscenedict and not self.has_new_miller_array:
       self.HKLscene = self.HKLscenedict.get(self.HKLsceneKey, False)
@@ -757,7 +758,7 @@ class hklview_3d:
                                 self.viewerparams.color_powscale,
                                 sceneid,
                                 self.viewerparams.scale,
-                                self.viewerparams.nth_power_scale_radii
+                                str(self.viewerparams.nth_power_scale_radii)
                                 )
           self.HKLscenedict[self.HKLsceneKey] = ( hklscenes[i], scenemaxdata[i],
           scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
@@ -783,7 +784,7 @@ class hklview_3d:
                               self.viewerparams.color_powscale,
                               self.viewerparams.scene_id,
                               self.viewerparams.scale,
-                              self.viewerparams.nth_power_scale_radii
+                              str(self.viewerparams.nth_power_scale_radii)
                               )
       scenearraylabeltypes = [ (e[3], e[4], e[1], e[5], e[6]) for e in hkl_scenes_infos ]
       self.SendInfoToGUI({ "scene_array_label_types": scenearraylabeltypes, "NewHKLscenes" : True })
@@ -827,7 +828,7 @@ class hklview_3d:
                               self.viewerparams.color_powscale,
                               sceneid,
                               self.viewerparams.scale,
-                              self.viewerparams.nth_power_scale_radii
+                              str(self.viewerparams.nth_power_scale_radii)
                               )
         self.HKLscenedict[self.HKLsceneKey] =  ( hklscenes[i], scenemaxdata[i],
           scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
@@ -863,7 +864,7 @@ class hklview_3d:
                       self.viewerparams.color_powscale,
                       sceneid,
                       self.viewerparams.scale,
-                      self.viewerparams.nth_power_scale_radii
+                      str(self.viewerparams.nth_power_scale_radii)
                       )
 
 
@@ -1329,7 +1330,6 @@ class hklview_3d:
       if nreflsinbin == 0:
         continue
       bin2 = float("nan"); bin1= float("nan") # indicates un-binned data
-      #bin2 = self.binvalsboundaries[0]; bin1= self.binvalsboundaries[-1] # indicates un-binned data
       if ibin == self.nbinvalsboundaries:
         mstr= "bin[%d] has %d reflections with no %s values (assigned to %2.3f)" %(cntbin, nreflsinbin, \
                 colstr, bin1)
