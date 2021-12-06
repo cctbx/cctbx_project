@@ -31,12 +31,16 @@ namespace simtbx { namespace Kokkos {
     {
       using namespace boost::python;
       class_<simtbx::Kokkos::kokkos_detector>("gpu_detector",init<>() )
-        .def(init<const simtbx::nanoBragg::nanoBragg&>(
-            ( arg("nanoBragg"))))
-//             "Single panel constructor with data taken from nanoBragg instance")
-        .def(init<dxtbx::model::Detector const &, dxtbx::model::Beam const &>(
-            ( arg("detector"),arg("beam"))))
-//             "Multipanel constructor with data taken from dxtbx objects")
+        .def(init<int const&, const simtbx::nanoBragg::nanoBragg&>(
+            ( arg("deviceId")=-1,arg("nanoBragg")),
+             "Single panel constructor with data taken from nanoBragg instance\n"
+             "deviceId is completely optional and ignored for Kokkos, rather\n"
+             "the device is set by the gpu_instance class."))
+        .def(init<int const&, dxtbx::model::Detector const &, dxtbx::model::Beam const &>(
+            ( arg("deviceId")=-1,arg("detector"),arg("beam")),
+             "Multipanel constructor with data taken from dxtbx objects\n"
+             "deviceId is completely optional and ignored for Kokkos, rather\n"
+             "the device is set by the gpu_instance class."))
         .def("show_summary",&simtbx::Kokkos::kokkos_detector::show_summary)
         .def("each_image_allocate",
               &simtbx::Kokkos::kokkos_detector::each_image_allocate,
@@ -61,6 +65,10 @@ namespace simtbx { namespace Kokkos {
     wrap() {
       using namespace boost::python;
       class_<simtbx::Kokkos::kokkos_energy_channels>("gpu_energy_channels",init<>() )
+        .def(init< const int& >(( arg("deviceId")=-1),
+             "deviceId is optional and ignored for Kokkos, rather\n"
+             "the device is set by the gpu_instance class."))
+        .def("get_deviceID", &simtbx::Kokkos::kokkos_energy_channels::get_deviceID)
         .def("get_nchannels", &simtbx::Kokkos::kokkos_energy_channels::get_nchannels)
         .def("structure_factors_to_GPU_direct",
              &simtbx::Kokkos::kokkos_energy_channels::structure_factors_to_GPU_direct,
