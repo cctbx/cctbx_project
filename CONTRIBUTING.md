@@ -13,6 +13,7 @@
   - [Guidelines for writing tests](#testguide)
   - [Some useful cctbx tools for tests](#testtools)
   - [How to use models and data](#testmodelsdata)
+  - [Using non-cctbx modules](#testnoncctbxmodules)
   - [How to handle errors](#testerrors)
   - [Miscellaneous](#testmixed)
   - [Example for a test](#testexample)
@@ -275,9 +276,26 @@ There are several reasons for writing good tests:
   
   * Diffraction data can be calculated from an atomic model, for example with phenix.fmodel()
 
+<a name="testnoncctbxmodules"/>
+
+### 8. Using non-cctbx modules
+
+We test the cctbx independently of the other trees to make sure that it will function properly for non-Phenix developers. In practice, we may use imports of proprietary modules (such as phenix, elbow, phaser, solve_resolve) but these are always made "inline", i.e. imported as needed rather than at the top of the file, and they're usually optional extensions to modules that have independent functionality.
+
+How to check if a module is available:
+
+```
+import libtbx.load_env
+# Run test only if phenix module is available
+if (not libtbx.env.has_module("phenix")) :
+  print("phenix tree missing, skipping test")
+else :
+  # run test
+  tst_000()
+```
 <a name="testerrors"/>
 
-### 8. How to handle errors
+### 9. How to handle errors
 
   * Don't use standard error, as it won't be shown
   
@@ -287,7 +305,7 @@ There are several reasons for writing good tests:
 
 <a name="testmixed"/>
 
-### 9. Miscellaneous:
+### 10. Miscellaneous:
 
   * It is best to keep the structure and style of tests as similar as possible, so that anyone (and not only the test author) can fix a broken test if necessary. Remember, fixing broken tests is not a pleasant exercise and often is time consuming. Therefore, any test design that can make this task easier is greatly appreciated; one is keeping tests similar in structure and style.
 
@@ -297,7 +315,7 @@ There are several reasons for writing good tests:
 
 <a name="testexample"/>
 
-### 10. Example for a test:
+### 11. Example for a test:
 
 ```
 from __future__ import absolute_import, division, print_function
@@ -318,7 +336,7 @@ if(__name__ == "__main__"):
 
 <a name="testetiquette"/>
 
-### 11. Good etiquette:
+### 12. Good etiquette:
 
   * Everyone should run `t96` after changing code and before committing.
   
