@@ -32,7 +32,7 @@ def get_qm_restraints_scope(verbose=False):
       .type = str
     basis_set = Auto
       .type = str
-    read_output_to_skip_opt_if_available = True
+    read_output_to_skip_opt_if_available = False
       .type = bool
     view_output = None
       .type = str
@@ -60,7 +60,7 @@ qm_restraints
     .type = bool
   cleanup = *all most None
     .type = choice
-  run_in_macrocycles = *first_only all
+  run_in_macro_cycles = *first_only all test
     .type = choice
   %s
 }
@@ -135,6 +135,15 @@ def is_any_quantum_package_installed(env):
   return outl
 
 def validate_qm_restraints(qm_restraints, verbose=False):
+  """Simple check for active QM restraints
+
+  Args:
+      qm_restraints (PHIL list): List of QM restraints PHIL scopes
+      verbose (bool, optional): D'oh
+
+  Returns:
+      TYPE: Description
+  """
   for i, qmr in enumerate(qm_restraints):
     if verbose: print(i, qmr.selection)
     if i==0 and qmr.selection is None:
@@ -142,6 +151,15 @@ def validate_qm_restraints(qm_restraints, verbose=False):
   return True
 
 def is_quantum_interface_active(params, verbose=False):
+  """Checks whether the QI is active
+
+  Args:
+      params (PHIL): PHIL scope with a possible 'qi' scope
+      verbose (bool, optional): D'oh
+
+  Returns:
+      TYPE: False or True and the type of QI active
+  """
   if not hasattr(params, 'qi'):
     if verbose: assert 0
     return False
@@ -150,6 +168,20 @@ def is_quantum_interface_active(params, verbose=False):
     if validate_qm_restraints(params.qi.qm_restraints, verbose=verbose):
       return True, 'qm_restraints'
   return False
+
+def is_quantum_interface_active_this_macro_cycle(params, macro_cycle, verbose=False):
+  from mmtbx.geometry_restraints.quantum_restraints_manager import running_this_macro_cycle
+  qi = is_quantum_interface_active(params)
+  if qi:
+    rc = []
+    if qi[1]=='qm_restraints':
+      for i, qmr in enumerate(params.qi.qm_restraints):
+        rc.append(running_this_macro_cycle(qmr, macro_cycle))
+    else:
+      assert 0
+    return rc
+  else:
+    return False
 
 def digester(model, geometry, params, log=None):
   active, choice = is_quantum_interface_active(params)

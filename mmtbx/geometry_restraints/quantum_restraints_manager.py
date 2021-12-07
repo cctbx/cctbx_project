@@ -41,9 +41,14 @@ def digester(model,
   #
   make_header('QM Restraints Initialisation', out=log)
   qm_restraints_initialisation(params.qi, log=log)
+  run_program=True
+  for i, qmr in enumerate(params.qi.qm_restraints):
+    if qmr.run_in_macro_cycles=='test': break
+  else: run_program=False
   update_restraints(model,
                     params.qi,
-                    run_program=False,
+                    run_program=run_program,
+                    log=log,
                     )
   return qm_grm
 
@@ -61,7 +66,6 @@ def add_hydrogen_atoms_to_model(model,
                                ):
   from mmtbx.ligands.ready_set_utils import add_terminal_hydrogens
   from mmtbx.ligands.ready_set_utils import add_water_hydrogen_atoms_simple
-  # model.log=StringIO()
   rc = add_terminal_hydrogens( model.get_hierarchy(),
                                model.get_restraints_manager().geometry,
                                use_capping_hydrogens=use_capping_hydrogens,
@@ -97,8 +101,7 @@ def select_and_reindex(model,
 
 def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5.):
   from cctbx.crystal import super_cell
-  def dist2(r1,r2):
-    return (r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2
+  def dist2(r1,r2): return (r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2
   def min_dist2(residue_group1, residue_group2, limit=1e-2):
     min_d2=1e9
     min_ca_d2=1e9
@@ -140,13 +143,16 @@ def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5.):
       for rg in movers+removers:
         if rg in chain.residue_groups():
           chain.remove_residue_group(rg)
-    if prune_main: prune_main_chain(residue_group1, prune_main)
+    # if prune_main: prune_main_chain(residue_group1, prune_main)
     return movers, removers
   def prune_main_chain(residue_group1, prune_main):
     mainchain = ['N', 'CA', 'C', 'O', 'OXT', 'H', 'HA', 'H1', 'H2', 'H3']
     for residue_group1 in prune_main:
       ur = residue_group1.unique_resnames()
+      print(list(ur))
       if 'PRO' in ur or 'GLY' in ur:
+        if list(ur)==['PRO']:
+          assert 0
         continue
       cb_atom = None
       for atom in residue_group1.atoms():
@@ -301,8 +307,19 @@ def get_all_xyz(inputs, nproc):
 
 def qm_restraints_initialisation(params, log=StringIO()):
   for i, qmr in enumerate(params.qm_restraints):
-    if not i: print('  QM restraints calculations', file=log)
+    if not i: print('  QM restraints selections', file=log)
     print('    %s' % qmr.selection, file=log)
+  print('',file=log)
+
+def running_this_macro_cycle(qmr, macro_cycle):
+  if qmr.run_in_macro_cycles=='all':
+    return True
+  elif qmr.run_in_macro_cycles=='first_only' and macro_cycle==1:
+    return True
+  elif qmr.run_in_macro_cycles=='test' and macro_cycle in [0, None]:
+    return True
+  else:
+    return False
 
 def update_restraints(model,
                       params, # just the qi scope
@@ -314,8 +331,14 @@ def update_restraints(model,
   if not model.restraints_manager_available():
     model.process(make_restraints=True)
   objects = []
+  if quantum_interface.is_quantum_interface_active_this_macro_cycle(params,
+                                                                    macro_cycle):
+    print('  QM restraints calculations for macro cycle %s' % macro_cycle,
+      file=log)
   for i, qmr in enumerate(params.qm_restraints):
-    if not i: print('  QM restraints calculations', file=log)
+    if macro_cycle is not None and not running_this_macro_cycle(qmr, macro_cycle):
+      print('    Skipping this selection in this macro_cycle : %s' % qmr.selection)
+      continue
     preamble = quantum_interface.get_preamble(macro_cycle, i, qmr.selection)
     #
     # get ligand and buffer region models
@@ -332,8 +355,8 @@ def update_restraints(model,
     qmm = get_qm_manager(ligand_model, buffer_model, qmr)
     qmm.preamble=preamble
     objects.append([ligand_model, buffer_model, qmm, qmr])
-  print('',file=log)
   if not run_program: return
+  print('',file=log)
   #
   # optimise
   #

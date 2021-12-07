@@ -369,9 +369,14 @@ class orca_manager(base_manager):
     return energy, gradients
 
   def opt_setup(self):
-    standard_options = '''%%scf
+    standard_options = '''%scf
 
 SOSCFStart 0.00033 # Default value of orbital gradient is 0.0033. Here reduced by a factor of 10.
+
+end
+%geom
+
+LOOSEOPT
 
 end
 '''
@@ -397,7 +402,9 @@ end
     if file_read:
       filename = self.get_coordinate_filename()
       if os.path.exists(filename):
-        process_qm_log_file(filename.replace('.xyz', '.log'), log=log)
+        lf = filename.replace('.xyz', '.log')
+        if os.path.exists(lf):
+          process_qm_log_file(lf, log=log)
         print('  Reading coordinates from %s\n' % filename)
         coordinates = self.read_xyz_output()
     if coordinates is None:

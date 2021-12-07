@@ -508,7 +508,6 @@ def add_terminal_hydrogens_old(hierarchy,
       if rc: additional_hydrogens.append(rc)
     else:
       pass
-  print(additional_hydrogens)
 
 def add_terminal_hydrogens_threes(hierarchy,
                                   geometry_restraints_manager,
@@ -518,6 +517,7 @@ def add_terminal_hydrogens_threes(hierarchy,
                                   append_to_end_of_model=False,
                                   verbose=False,
                                   ):
+  assert 0
   from mmtbx.conformation_dependent_library import generate_protein_threes
   additional_hydrogens= [] #hierarchy_utils.smart_add_atoms()
   hierarchy.show()
@@ -528,14 +528,7 @@ def add_terminal_hydrogens_threes(hierarchy,
                                        include_linked_via_restraints_manager=True,
                                        verbose=verbose,
                                        ):
-    # if verbose: print(three)
-    #print dir(three)
-    # print geometry_restraints_manager
-    #print dir(geometry_restraints_manager)
     bond_params_table = geometry_restraints_manager.bond_params_table
-    # print bond_params_table
-    #print dir(bond_params_table)
-    # print 'use_capping_hydrogens',use_capping_hydrogens
 
     def get_bonds():
       bonds = {}
@@ -546,7 +539,6 @@ def add_terminal_hydrogens_threes(hierarchy,
           if bond:
             bonds[(a1.i_seq, a2.i_seq)] = True
             bonds[(a2.i_seq, a1.i_seq)] = True
-      print(bonds)
       return bonds
 
     if use_capping_hydrogens:
@@ -556,7 +548,6 @@ def add_terminal_hydrogens_threes(hierarchy,
                                                   residue_group)
       #assert not rc, '%s' % rc
     if three.start:
-      print('start')
       residue_group=three.get_residue_group_from_hierarchy(hierarchy, 0)
       rc = add_n_terminal_hydrogens_to_residue_group(
         residue_group,
@@ -564,10 +555,8 @@ def add_terminal_hydrogens_threes(hierarchy,
         use_capping_hydrogens=use_capping_hydrogens,
         append_to_end_of_model=append_to_end_of_model,
       )
-      print(rc)
       if rc: additional_hydrogens.append(rc)
     if three.end:
-      print('end')
       residue_group=three.get_residue_group_from_hierarchy(hierarchy, 2)
       rc = add_c_terminal_oxygens_to_residue_group(
         residue_group,
@@ -575,7 +564,6 @@ def add_terminal_hydrogens_threes(hierarchy,
         use_capping_hydrogens=use_capping_hydrogens,
         append_to_end_of_model=append_to_end_of_model,
       )
-      print(rc)
       if rc: additional_hydrogens.append(rc)
   return additional_hydrogens
 
@@ -658,21 +646,17 @@ def add_terminal_hydrogens(hierarchy,
         tmp.append(chain)
     _add_atoms_from_chains_to_end_of_hierarchy(hierarchy, tmp)
 
-def add_water_hydrogen_atoms_simple(hierarchy):
+def add_water_hydrogen_atoms_simple(hierarchy, log=None):
   for atom_group in hierarchy.atom_groups():
     if atom_group.resname=='HOH':
-      print(atom_group.id_str())
       if len(atom_group.atoms())==3: continue
       o_atom = atom_group.atoms()[0]
-      print(o_atom.quote(), o_atom.xyz)
       xyz = (o_atom.xyz[0]+1, o_atom.xyz[1], o_atom.xyz[2])
       h1 = get_hierarchy_h_atom(' H1 ', xyz, o_atom)
       atom_group.append_atom(h1)
       xyz = (o_atom.xyz[0]-0.7, o_atom.xyz[1]-0.7, o_atom.xyz[2])
       h2 = get_hierarchy_h_atom(' H2 ', xyz, o_atom)
       atom_group.append_atom(h2)
-      for atom in atom_group.atoms():
-        print(atom.quote(), atom.xyz)
 
 def add_main_chain_atoms(hierarchy,
                          geometry_restraints_manager,
@@ -687,21 +671,6 @@ def add_main_chain_atoms(hierarchy,
     add_main_chain_atoms_to_protein_three(three)
   assert 0
 
-# def junk():
-#   from mmtbx.conformation_dependent_library import generate_protein_threes
-#   threes = []
-#   for three in generate_protein_threes(hierarchy,
-#                                        geometry_restraints_manager,
-#                                        backbone_only=False,
-#                                        #use_capping_hydrogens=use_capping_hydrogens,
-#                                        ):
-#     if verbose: print '...',three
-#     if not len(three): continue
-#     assert three.are_linked()
-#     print '---',three
-#     if three.start: yield three[0], three.start, False
-#     yield three[1], False, False
-#     if three.end: yield three[2], False, three.end
 def main_hydrogen(model,
                   terminate_all_N_terminals=False,
                   terminate_all_C_terminals=False,
