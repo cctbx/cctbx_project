@@ -848,7 +848,7 @@ class HKLViewFrame() :
 
   def convert_clipperdict_to_millerarrays(self, crystdict):
     """
-    Called in zmq_listen() when Chimerax with Isolde sends clipper arrays to 
+    Called in zmq_listen() when Chimerax with Isolde sends clipper arrays to
     our zmqsocket from HKLviewer.ProcessMessages()
     """
     xs = crystal.symmetry(unit_cell=crystdict["unit_cell"], space_group_symbol= crystdict["spg_number"] )

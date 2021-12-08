@@ -86,7 +86,7 @@ class HKLviewerTool(ToolInstance):
             labels = [lbl.strip() for lbl in clipperlabel.split(",")]
             self.clipper_crystdict = {}
             self.clipper_crystdict["spg_number"] = xmapset.spacegroup.spacegroup_number
-            self.clipper_crystdict["unit_cell"] =  (xmapset.unit_cell.cell.a, xmapset.unit_cell.cell.b, xmapset.unit_cell.cell.c, 
+            self.clipper_crystdict["unit_cell"] =  (xmapset.unit_cell.cell.a, xmapset.unit_cell.cell.b, xmapset.unit_cell.cell.c,
                xmapset.unit_cell.cell.alpha*180/math.pi, xmapset.unit_cell.cell.beta*180/math.pi, xmapset.unit_cell.cell.gamma*180/math.pi)
             self.clipper_crystdict["HKL"] = xmapset.experimental_data[clipperlabel].data.data[0].tolist()
             self.clipper_crystdict[clipperlabel] = xmapset.experimental_data[clipperlabel].data.data[1].transpose().tolist()
