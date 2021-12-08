@@ -223,7 +223,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
 }
 
 DotScorer::InteractionType DotScorer::interaction_type(
-  OverlapType overlapType, double gap) const
+  OverlapType overlapType, double gap, bool separateBadBumps) const
 {
   switch (overlapType) {
     case DotScorer::NoOverlap:
@@ -236,10 +236,16 @@ DotScorer::InteractionType DotScorer::interaction_type(
     case DotScorer::Clash:
       if (gap > -m_bumpOverlap) {
         return SmallOverlap;
-      } else if (gap > -m_badBumpOverlap) {
-        return Bump;
+      } else if (separateBadBumps) {
+        // We're checking separately for bad bump overlaps
+        if (gap > -m_badBumpOverlap) {
+          return Bump;
+        } else {
+          return BadBump;
+        }
       } else {
-        return BadBump;
+        // We're not separately checking for bad bump overlaps
+        return Bump;
       }
       break;
     case DotScorer::HydrogenBond:

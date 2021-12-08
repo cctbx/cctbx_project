@@ -36,6 +36,7 @@ boost::python::tuple wrap_vec3_array(Point const& d) {
 }
 
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(check_dot_overloads, DotScorer::check_dot, 5, 6)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(interaction_type_overloads, DotScorer::interaction_type, 2, 3)
 
 BOOST_PYTHON_MODULE(mmtbx_probe_ext)
 {
@@ -131,7 +132,7 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     .def("check_dot", &DotScorer::check_dot, check_dot_overloads())
     .def("count_surface_dots", &DotScorer::count_surface_dots)
     .def("score_dots", &DotScorer::score_dots)
-    .def("interaction_type", &DotScorer::interaction_type)
+    .def("interaction_type", &DotScorer::interaction_type, interaction_type_overloads())
     .def("interaction_type_name", &DotScorer::interaction_type_name)
     .staticmethod("interaction_type_name")
     .def("interaction_type_short_name",&DotScorer::interaction_type_short_name)

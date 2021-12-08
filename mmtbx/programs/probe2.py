@@ -495,7 +495,8 @@ Note:
       :return: As a side effect, this will add a new entry into one of the lists in the
       self._results data structure.
     '''
-    self._results[atomClass][self._dotScorer.interaction_type(overlapType,gap)].append(
+    self._results[atomClass][self._dotScorer.interaction_type(
+        overlapType,gap, self.params.output.separate_worse_clashes)].append(
       self.DotInfo(src, target, loc, spike, overlapType, gap, ptmaster, angle)
     )
 
@@ -633,7 +634,7 @@ Note:
             # See whether this dot is allowed based on our parameters.
             spo = self.params.output
             show = False
-            interactionType = self._dotScorer.interaction_type(overlapType,res.gap)
+            interactionType = self._dotScorer.interaction_type(overlapType,res.gap, self.params.output.separate_worse_clashes)
             if interactionType == probeExt.InteractionType.Invalid:
               print('Warning: Invalid interaction type encountered (internal error)', file=self.logger)
               continue
