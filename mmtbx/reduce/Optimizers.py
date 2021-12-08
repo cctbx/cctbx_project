@@ -1524,7 +1524,7 @@ def _generateAllStates(numStates):
 ##################################################################################
 # Test function and associated data and helpers to verify that all functions behave properly.
 
-def Test(inFileName = None):
+def Test(inFileName = None, dumpAtoms = False):
   """Test function for all functions provided above.
   :param inFileName: Name of a PDB or CIF file to load (default makes a small molecule)
   :return: Empty string on success, string describing the problem on failure.
@@ -1720,6 +1720,13 @@ END
   print('Testing FastOptimizer')
   opt = FastOptimizer(True, model,probeRadius=0.25)
 
+  # Write debugging output if we've been asked to
+  if dumpAtoms:
+    f = open("deleteme.pdb","w")
+    f.write(model.model_as_pdb())
+    f = open("atomDump.pdb","w")
+    f.write(opt.getAtomDump())
+
   #========================================================================
   # @todo Unit test a multi-model case, a multi-alternate case, and singles of each.
 
@@ -1733,10 +1740,11 @@ if __name__ == '__main__':
   # Parse command-line arguments.  The 0th argument is the name
   # of the script. There can be the name of a PDB file to read.
   parser = argparse.ArgumentParser(description='Test mmtbx.reduce.Optimizers.')
+  parser.add_argument("--dumpAtoms", help="dump the atoms into PDB files to help debug", action="store_true")
   parser.add_argument('inputFile', nargs='?', default="")
   args = parser.parse_args()
 
-  ret = Test(args.inputFile)
+  ret = Test(args.inputFile, args.dumpAtoms)
   if len(ret) == 0:
     print('Success!')
   else:
