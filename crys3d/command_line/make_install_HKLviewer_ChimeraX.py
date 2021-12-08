@@ -13,9 +13,8 @@ import libtbx.load_env
 
 if (__name__ == "__main__"):
   print("Bundling up and installing a ChimeraX wheel of cctbx.HKLviewer")
-  chimeraXpath = sys.argv[1] # supply the chimeraX commandline compiler as argument
-  if not chimeraXpath:
-    print("Supply path to the chimeraX commandline compiler as argument")
+  if len(sys.argv) < 2:
+    print("Specify the full path to the chimeraX commandline compiler as argument")
     exit()
 
   builddir = libtbx.env.under_root(os.path.join("build","ChimeraX_tools","HKLviewer","src"))
@@ -32,7 +31,7 @@ if (__name__ == "__main__"):
   shutil.copy(opj(distdir,"qt.py"), builddir)
   shutil.copy(opj(distdir,"QtChromiumCheck.py"), builddir)
 
-  cmdargs =  r'"%s" --nogui --cmd "devel install . ; exit"' %chimeraXpath
+  cmdargs =  r'"%s" --nogui --cmd "devel install . ; exit"' %sys.argv[1]
   curdir = os.getcwd()
   os.chdir(wheeldir)
   buildproc = subprocess.Popen( cmdargs, shell=True, cwd=wheeldir,

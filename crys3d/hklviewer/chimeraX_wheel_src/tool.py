@@ -12,8 +12,9 @@ from __future__ import division
 # === UCSF ChimeraX Copyright ===
 
 from chimerax.core.tools import ToolInstance
+import math
 
-class TutorialTool(ToolInstance):
+class HKLviewerTool(ToolInstance):
 
     # Inheriting from ToolInstance makes us known to the ChimeraX tool mangager,
     # so we can be notified and take appropriate action when sessions are closed,
@@ -57,6 +58,7 @@ class TutorialTool(ToolInstance):
         # interface, it is probably better to put the code in a method so
         # that this __init__ method remains readable.
         self._build_ui()
+        self.clipper_crystdict = None
         session.HKLviewer = self
 
     def _build_ui(self):
@@ -76,6 +78,24 @@ class TutorialTool(ToolInstance):
         # main window
         self.tool_window.manage('side')
 
+    def isolde_clipper_data_to_dict(self):
+        try:
+            sh = self.session.isolde.selected_model.parent
+            xmapset = sh.map_mgr.xmapsets[0]
+            clipperlabel= list(xmapset.experimental_data.items())[0][0]
+            labels = [lbl.strip() for lbl in clipperlabel.split(",")]
+            self.clipper_crystdict = {}
+            self.clipper_crystdict["spg_number"] = xmapset.spacegroup.spacegroup_number
+            self.clipper_crystdict["unit_cell"] =  (xmapset.unit_cell.cell.a, xmapset.unit_cell.cell.b, xmapset.unit_cell.cell.c,
+               xmapset.unit_cell.cell.alpha*180/math.pi, xmapset.unit_cell.cell.beta*180/math.pi, xmapset.unit_cell.cell.gamma*180/math.pi)
+            self.clipper_crystdict["HKL"] = xmapset.experimental_data[clipperlabel].data.data[0].tolist()
+            self.clipper_crystdict[clipperlabel] = xmapset.experimental_data[clipperlabel].data.data[1].transpose().tolist()
+            self.clipper_crystdict["FCALC,PHFCALC"] = xmapset.live_xmap_mgr.f_calc.data[1].transpose().tolist()
+            self.clipper_crystdict["2FOFC,PH2FOFC"] = xmapset.live_xmap_mgr.base_2fofc.data[1].transpose().tolist()
+        except Exception as e:
+            pass
+
+
     def return_pressed(self):
         # The use has pressed the Return key; log the current text as HTML
         from chimerax.core.commands import run
@@ -91,14 +111,15 @@ class TutorialTool(ToolInstance):
         # where the items put in the menu depends on where in the tool interface the menu
         # was raised.
         from PyQt5.QtWidgets import QAction
-        clear_action = QAction("Clear", menu)
-        clear_action.triggered.connect(lambda *args: self.line_edit.clear())
-        menu.addAction(clear_action)
+        settings_action = QAction("HKLviewer settings", menu)
+        settings_action.triggered.connect(lambda *args: self.Guiobj.SettingsDialog() )
+        menu.addAction(settings_action)
 
     def delete(self):
       from Qt.QtCore import QEvent
+      self.session.triggers.remove_handler(self.Guiobj.chimeraxprocmsghandler)
       self.Guiobj.closeEvent(QEvent.Close)
-      super(TutorialTool, self).delete()
+      super(HKLviewerTool, self).delete()
 
     def take_snapshot(self, session, flags):
         return {

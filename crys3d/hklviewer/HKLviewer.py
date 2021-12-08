@@ -117,7 +117,7 @@ class SettingsForm(QDialog):
     super(SettingsForm, self).__init__(parent.window)
     self.setWindowTitle("HKLviewer Settings")
     self.setWindowFlags(Qt.Tool)
-    myGroupBox = QGroupBox("Stuff")
+    myGroupBox = QGroupBox()
     layout = QGridLayout()
     layout.addWidget(parent.mousespeed_labeltxt,     0, 0, 1, 1)
     layout.addWidget(parent.mousemoveslider,         0, 1, 1, 3)
@@ -228,6 +228,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     print("version " + self.Qtversion)
     self.colnames_select_dict = {}
     self.ReadPersistedQsettings()
+    self.lasttime = time.monotonic()
 
     if isembedded:
       self.window = MyQMainDialog(self)
@@ -352,6 +353,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.ColourMapSelectDlg = MPLColourSchemes(self)
     self.select_millertable_column_dlg = MillerTableColumnHeaderDialog(self)
     self.ColourMapSelectDlg.setWindowTitle("HKLviewer Colour Gradient Maps")
+    self.ColourMapSelectDlg.hide()
     # colour schemes and radii mapping for types of datasets stored in jsview_3d.py but persisted here:
     # colourmap=brg, colourpower=1, powerscale=1, radiiscale=1
     self.settingsform = SettingsForm(self)
@@ -457,6 +459,7 @@ newarray._sigmas = sigs
     self.functionTabWidget.setDisabled(True)
     self.Statusbartxtbox = None
     self.chimeraxprocmsghandler = None
+    self.chimeraxsession = None
     if not isembedded:
       self.window.statusBar().showMessage("")
       self.hklLabel = QLabel()
@@ -575,9 +578,7 @@ newarray._sigmas = sigs
             "Open a reflection file", "",
             "MTZ Files (*.mtz);;CIF Files (*.cif);;HKL Files (*.hkl);;SCA Files (*.sca);;All Files (*)", "", options)
     if fileName:
-      #self.HKLnameedit.setText(fileName)
       self.window.setWindowTitle("HKLviewer: " + fileName)
-      #self.infostr = ""
       self.textInfo.setPlainText("")
       self.fileisvalid = False
       self.send_message('openfilename = "%s"' %fileName )
@@ -585,7 +586,6 @@ newarray._sigmas = sigs
       self.BinDataComboBox.clear()
       self.millertable.clearContents()
       self.tncsvec = []
-      #self.ClipPlaneChkGroupBox.setChecked(False)
       self.expandP1checkbox.setChecked(False)
       self.expandAnomalouscheckbox.setChecked(False)
       self.sysabsentcheckbox.setChecked(False)
@@ -632,6 +632,14 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.webpagedebugform is not None:
       self.webpagedebugform.update()
     if self.zmq_context:
+      if (time.monotonic() - 5) > self.lasttime: # send Isoldes clipper data every 5 sec
+        self.lasttime = time.monotonic()
+        if self.chimeraxsession is not None and self.chimeraxsession.HKLviewer is not None \
+         and hasattr(self.chimeraxsession, "isolde"):
+          self.chimeraxsession.HKLviewer.isolde_clipper_data_to_dict()
+          self.send_message(str(self.chimeraxsession.HKLviewer.clipper_crystdict),
+                            msgtype="clipper_crystdict")
+
       try:
         binmsg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
         msg = zlib.decompress(binmsg)
@@ -924,7 +932,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
               self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
             currentinfostr = ""
 
-          if (self.NewFileLoaded or self.NewMillerArray) and self.NewHKLscenes:
+          if (self.NewFileLoaded or self.NewMillerArray) or self.NewHKLscenes:
             self.NewMillerArray = False
             if self.millerarraytablemodel:
               self.millerarraytablemodel.clear()
@@ -933,7 +941,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.MillerComboBox.clear()
             self.MillerComboBox.addItem("", userData=-1)
             for k,lbl in enumerate(self.millerarraylabels):
-              self.MillerComboBox.addItem(",".join(lbl), userData=k)
+              self.MillerComboBox.addItem(lbl, userData=k)
 
             self.MillerComboBox.setCurrentIndex(0) # select the first item which is no miller array
             self.comboviewwidth = 0
@@ -947,7 +955,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
           if self.NewHKLscenes:
             self.NewHKLscenes = False
-
       except Exception as e:
         errmsg = str(e)
         if "Resource temporarily unavailable" not in errmsg: # ignore errors from no connection to ZMQ socket
@@ -1087,13 +1094,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
     self.aboutform.setFixedSize( self.aboutform.sizeHint() )
     self.ColourMapSelectDlg.setFixedSize( self.ColourMapSelectDlg.sizeHint() )
-    self.select_millertable_column_dlg.selectcolumnstable.resizeColumnsToContents()
-    self.select_millertable_column_dlg.setFixedWidth(
-      self.select_millertable_column_dlg.selectcolumnstable.verticalHeader().width() +
-      self.select_millertable_column_dlg.selectcolumnstable.horizontalHeader().length() +
-      self.select_millertable_column_dlg.selectcolumnstable.frameWidth()*2 +
-      self.select_millertable_column_dlg.selectcolumnstable.verticalScrollBar().width()*2
-      )
+    self.select_millertable_column_dlg.resize()
     self.textInfo.setFont(font)
 
 
@@ -1997,7 +1998,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
   def setDatatypedict(self, datatypedict):
     self.datatypedict = datatypedict
     # send persisted colour schemes and raddi mappings to jsview_3d.py
-    return self.send_message(str(self.datatypedict), msgtype="dict")
+    return self.send_message(str(self.datatypedict), msgtype="datatypedict")
 
 
   def PersistQsettings(self):
@@ -2189,6 +2190,7 @@ def run(isembedded=False, chimeraxsession=None):
           HKLguiobj.ProcessMessages()
 
       HKLguiobj.chimeraxprocmsghandler = chimeraxsession.triggers.add_handler('new frame', ChXTimer)
+      HKLguiobj.chimeraxsession = chimeraxsession
     # Call HKLguiobj.UsePersistedQsettings() but through QTimer so it happens after
     # the QApplication eventloop has started as to ensure resizing according to persisted
     # font size is done properly

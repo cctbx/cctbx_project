@@ -87,6 +87,7 @@ class MillerTableColumnHeaderDialog(QDialog):
         item.setCheckState(Qt.Unchecked)
       self.selectcolumnstable.setItem(row, 0, item)
     self.unfeedback = False
+    self.resize()
   def onSelectColumnsTableItemChanged(self, item):
     if self.unfeedback:
       return
@@ -97,6 +98,15 @@ class MillerTableColumnHeaderDialog(QDialog):
       is_selected = True
     current_philstr = "selected_info.%s = %s" %(philname, is_selected)
     self.parent.send_message(current_philstr)
+  def resize(self):
+    self.selectcolumnstable.resizeColumnsToContents()
+    self.setFixedWidth(
+      self.selectcolumnstable.verticalHeader().width() +
+      self.selectcolumnstable.horizontalHeader().length() +
+      self.selectcolumnstable.frameWidth()*2 +
+      self.selectcolumnstable.verticalScrollBar().width()*2
+      )
+
 
 
 class MillerArrayTableForm(QDialog):
