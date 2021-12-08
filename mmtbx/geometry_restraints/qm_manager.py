@@ -374,16 +374,13 @@ class orca_manager(base_manager):
 SOSCFStart 0.00033 # Default value of orbital gradient is 0.0033. Here reduced by a factor of 10.
 
 end
-%geom
-
-LOOSEOPT
-
-end
 '''
-    outl = '%s\n! %s %s %s Opt\n\n' % (standard_options,
+    outl = '%s\n! %s %s %s %s\n\n' % (standard_options,
                                        self.method,
                                        self.basis_set,
-                                       self.solvent_model)
+                                       self.solvent_model,
+                                       ['Opt', 'LooseOpt'][1],
+                                       )
     outl += self.get_coordinate_lines()
     if hasattr(self, 'freeze_a_ray'):
       freeze_outl = '''%geom
