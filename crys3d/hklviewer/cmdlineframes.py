@@ -1231,8 +1231,8 @@ class HKLViewFrame() :
     if use:
       self.params.clip_plane.hkldist = hkldist
       self.params.clip_plane.clipwidth = clipwidth
-      self.params.slice_mode = False
-      self.params.inbrowser = True
+      self.params.viewer.slice_mode = False
+      self.params.viewer.inbrowser = True
     else:
       self.params.clip_plane.clipwidth = None
     self.update_settings()
