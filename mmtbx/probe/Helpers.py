@@ -790,37 +790,6 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     assert len(str(e)) == 0, "Helpers.Test() Exception during test of Phantom Hydrogen placement: "+str(e)+"\n"+traceback.format_exc()
 
   #========================================================================
-  # Run unit test on isPolarHydrogen().  We use a specific PDB snippet
-  # for which we know the answer and then we verify that the results are what
-  # we expect.
-
-  dm = iotbx.data_manager.DataManager(['model'])
-  dm.process_model_str("pdb_4fenH_C_26.pdb",pdb_4fenH_C_26)
-  model = dm.get_model()
-  model.process(make_restraints=True)
-
-  # Get the Cartesian positions of all of the atoms.
-  carts = flex.vec3_double()
-  atoms = model.get_hierarchy().models()[0].atoms()
-  for a in atoms:
-    carts.append(a.xyz)
-
-  # Get the bond proxies for the atoms in the model and conformation we're using and
-  # use them to determine the bonded neighbor lists.
-  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-  bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies)
-
-  model = dm.get_model().get_hierarchy().models()[0]
-
-  for a in model.atoms():
-    if a.name.strip() in ["H41","H42","HO2'"]:
-      if not isPolarHydrogen(a, bondedNeighborLists):
-        return "Optimizers.Test(): Polar Hydrogen not identified: " + a.name
-    if a.name.strip() in ["H5","H6"]:
-      if isPolarHydrogen(a, bondedNeighborLists):
-        return "Optimizers.Test(): Polar Hydrogen improperly identified: " + a.name
-
-  #========================================================================
   # Run unit test on getBondedNeighborLists().  We use a specific PDB snippet
   # for which we know the answer and then we verify that the results are what
   # we expect.
@@ -877,23 +846,71 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   assert compatibleConformations(a1,a2),  "Helpers:Test(): altloc expected True for empty first and blank second"
 
   #========================================================================
+  # Run unit test on isPolarHydrogen().  We use a specific PDB snippet
+  # for which we know the answer and then we verify that the results are what
+  # we expect.
+
+  dm = iotbx.data_manager.DataManager(['model'])
+  dm.process_model_str("pdb_4fenH_C_26.pdb",pdb_4fenH_C_26)
+  model = dm.get_model()
+  model.process(make_restraints=True)
+
+  # Get the Cartesian positions of all of the atoms.
+  carts = flex.vec3_double()
+  atoms = model.get_hierarchy().models()[0].atoms()
+  for a in atoms:
+    carts.append(a.xyz)
+
+  # Get the bond proxies for the atoms in the model and conformation we're using and
+  # use them to determine the bonded neighbor lists.
+  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+  bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies)
+
+  model = dm.get_model().get_hierarchy().models()[0]
+
+  for a in model.atoms():
+    if a.name.strip() in ["H41","H42","HO2'"]:
+      if not isPolarHydrogen(a, bondedNeighborLists):
+        return "Optimizers.Test(): Polar Hydrogen not identified: " + a.name
+    if a.name.strip() in ["H5","H6"]:
+      if isPolarHydrogen(a, bondedNeighborLists):
+        return "Optimizers.Test(): Polar Hydrogen improperly identified: " + a.name
+
+  #========================================================================
   # Run unit test on getAtomsWithinNBonds().
   # Get the atoms within N bounds for a range for the "N" atom and verify that the
   # counts match what is expected.  Do this for the case where we clamp the non-
   # hydrogen ones to the 3 and when we use the default of very large to count
   # them all.
   # NOTE: This re-uses the bondedNeighborLists test results from above
-  nestedNeighborsForN = [ None, 1, 3, 5, 5, 5, 5]
+  N4 = None
+  for a in atoms:
+    if a.name.strip().upper() == 'N4':
+      N4 = a
+  assert N4 is not None, ("Helpers.Test(): Could not find N4 (internal failure)")
+  # When clamped, we can't go further than the non-Hydrogen bound except for Hydrogens
+  nestedNeighborsForN4 = [ None, 3, 5, 8, 9, 9, 9]
   for N in range(1,7):
-    count = len(getAtomsWithinNBonds(atoms[0], bondedNeighborLists, N, 3))
-    assert count == nestedNeighborsForN[N], ("Helpers.Test(): Nested clamped count for "+atoms[0].name.strip()+
-        " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN[N]))
-  nestedNeighborsForN = [ None, 1, 3, 5, 7, 9, 9]
+    count = len(getAtomsWithinNBonds(N4, bondedNeighborLists, N, 3))
+    assert count == nestedNeighborsForN4[N], ("Helpers.Test(): Nested clamped count for "+N4.name.strip()+
+        " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN4[N]))
+  # When unclamped, we can traverse all the way to the end in all cases
+  nestedNeighborsForN4 = [ None, 3, 5, 8, 11, 12, 15]
   for N in range(1,7):
-    count = len(getAtomsWithinNBonds(atoms[0], bondedNeighborLists, N))
-    assert count == nestedNeighborsForN[N], ("Helpers.Test(): Nested unclamped count for "+atoms[0].name.strip()+
-        " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN[N]))
-  # @todo Test the hydrogen cutoff parameter for getAtomsWithinNBonds()
+    count = len(getAtomsWithinNBonds(N4, bondedNeighborLists, N))
+    assert count == nestedNeighborsForN4[N], ("Helpers.Test(): Nested unclamped count for "+N4.name.strip()+
+        " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN4[N]))
+  # When we start with a Hydrogen, we should never get clamped off.
+  H41 = None
+  for a in atoms:
+    if a.name.strip().upper() == 'H41':
+      H41 = a
+  assert H41 is not None, ("Helpers.Test(): Could not find H41 (internal failure)")
+  nestedNeighborsForH41 = [ None, 1, 3, 5, 8, 11, 12]
+  for N in range(1,7):
+    count = len(getAtomsWithinNBonds(H41, bondedNeighborLists, N, 3))
+    assert count == nestedNeighborsForH41[N], ("Helpers.Test(): Nested clamped count for "+H41.name.strip()+
+        " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForH41[N]))
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
