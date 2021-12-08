@@ -199,9 +199,9 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, N, nonHydrogenN = 1e10):
     to a depth of N.  The atom itself will not be included in the list, so an atom that
     has no bonded neighbors will always have an empty result.  This can be used to
     produce a list of excluded atoms for dot scoring.  It checks to ensure that all of
-    the bonded atoms are from compatible conformations; note that if the original atom
+    the bonded atoms are from compatible conformations (if the original atom
     is in the empty configuration then this will return atoms from all conformations that
-    are in the bonded set.
+    are in the bonded set).
     :param atom: The atom to be tested.
     :param bondedNeighborLists: Dictionary of lists that contain all bonded neighbors for
     each atom in a set of atoms.  Should be obtained using
@@ -213,7 +213,7 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, N, nonHydrogenN = 1e10):
     :returns a list of all atoms that are bonded to atom within a depth of N.  The original
     atom is never on the list.
   """
-  hFound = atom.element_is_hydrogen()
+  atomIsHydrogen = atom.element_is_hydrogen()
   # Find all atoms to the specified depth
   atoms = {atom}            # Initialize the set with the atom itself
   for i in range(N):        # Repeat the recursion this many times
@@ -221,9 +221,7 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, N, nonHydrogenN = 1e10):
     for a in current:       # Add all neighbors of all atoms in the current level
       for n in bondedNeighborLists[a]:
         # If we find a hydrogen, we no longer use the non-Hydrogen N limit.
-        if n.element_is_hydrogen():
-          hFound = True
-        if i < nonHydrogenN or hFound:
+        if i < nonHydrogenN or atomIsHydrogen or n.element_is_hydrogen():
           # Ensure that the new atom is in a compatible conformation with the original atom.
           if compatibleConformations(atom, n):
             atoms.add(n)
