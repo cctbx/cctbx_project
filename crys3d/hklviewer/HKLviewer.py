@@ -117,7 +117,7 @@ class SettingsForm(QDialog):
     super(SettingsForm, self).__init__(parent.window)
     self.setWindowTitle("HKLviewer Settings")
     self.setWindowFlags(Qt.Tool)
-    myGroupBox = QGroupBox("Stuff")
+    myGroupBox = QGroupBox()
     layout = QGridLayout()
     layout.addWidget(parent.mousespeed_labeltxt,     0, 0, 1, 1)
     layout.addWidget(parent.mousemoveslider,         0, 1, 1, 3)
@@ -353,6 +353,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.ColourMapSelectDlg = MPLColourSchemes(self)
     self.select_millertable_column_dlg = MillerTableColumnHeaderDialog(self)
     self.ColourMapSelectDlg.setWindowTitle("HKLviewer Colour Gradient Maps")
+    self.ColourMapSelectDlg.hide()
     # colour schemes and radii mapping for types of datasets stored in jsview_3d.py but persisted here:
     # colourmap=brg, colourpower=1, powerscale=1, radiiscale=1
     self.settingsform = SettingsForm(self)
@@ -931,7 +932,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
               self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
             currentinfostr = ""
 
-          if (self.NewFileLoaded or self.NewMillerArray) and self.NewHKLscenes:
+          if (self.NewFileLoaded or self.NewMillerArray) or self.NewHKLscenes:
             self.NewMillerArray = False
             if self.millerarraytablemodel:
               self.millerarraytablemodel.clear()
@@ -940,7 +941,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.MillerComboBox.clear()
             self.MillerComboBox.addItem("", userData=-1)
             for k,lbl in enumerate(self.millerarraylabels):
-              self.MillerComboBox.addItem(",".join(lbl), userData=k)
+              self.MillerComboBox.addItem(lbl, userData=k)
 
             self.MillerComboBox.setCurrentIndex(0) # select the first item which is no miller array
             self.comboviewwidth = 0
@@ -1093,13 +1094,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
     self.aboutform.setFixedSize( self.aboutform.sizeHint() )
     self.ColourMapSelectDlg.setFixedSize( self.ColourMapSelectDlg.sizeHint() )
-    self.select_millertable_column_dlg.selectcolumnstable.resizeColumnsToContents()
-    self.select_millertable_column_dlg.setFixedWidth(
-      self.select_millertable_column_dlg.selectcolumnstable.verticalHeader().width() +
-      self.select_millertable_column_dlg.selectcolumnstable.horizontalHeader().length() +
-      self.select_millertable_column_dlg.selectcolumnstable.frameWidth()*2 +
-      self.select_millertable_column_dlg.selectcolumnstable.verticalScrollBar().width()*2
-      )
+    self.select_millertable_column_dlg.resize()
     self.textInfo.setFont(font)
 
 

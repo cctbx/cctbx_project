@@ -672,6 +672,7 @@ class HKLViewFrame() :
   def load_reflections_file(self, file_name):
     file_name = to_str(file_name)
     ret = False
+    self.NewFileLoaded=True
     if (file_name != ""):
       try :
         self.mprint("Reading file...")
@@ -750,6 +751,7 @@ class HKLViewFrame() :
                 newarr[i] = nanval
             self.origarrays[mtzlbl] = list(newarr)
         self.finish_dataloading(arrays)
+        self.SendInfoToGUI({"NewFileLoaded": self.NewFileLoaded})
       except Exception as e :
         self.NewFileLoaded=False
         self.mprint("".join(traceback.format_tb(e.__traceback__ )) + e.__repr__())
@@ -760,7 +762,6 @@ class HKLViewFrame() :
 
   def LoadReflectionsFile(self, openfilename):
     self.params.openfilename = openfilename
-    self.NewFileLoaded=True
     self.update_settings()
 
 
