@@ -185,6 +185,7 @@ supported_compilers = (
   "unix_clang",
   "unix_icc",
   "unix_icpc",
+  "unix_icpx",
   "darwin_c++",
   "darwin_gcc",
   "darwin_gcc-4.2", # tested with the "GCC 4.2 Developer Preview 1"
