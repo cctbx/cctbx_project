@@ -215,7 +215,8 @@ KOKKOS_FUNCTION CUDAREAL sincg(CUDAREAL x, CUDAREAL N) {
 
 KOKKOS_INLINE_FUNCTION CUDAREAL sincgrad(CUDAREAL x, CUDAREAL N) {
         if (x != 0.0) {
-                return sinpi(x * N) / sinpi(x);
+                /*return sinpi(x * N) / sinpi(x);*/
+                return sin(M_PI*x * N) / sin(M_PI*x);
         }
         return N;
 }
