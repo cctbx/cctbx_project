@@ -34,7 +34,7 @@ dependencies:
   - pyside2  # [x86_64]
   - pyzmq
   - websockets
-  - wxpython  # [x86_64]
+  - wxpython
 
   # extra
   - libsvm_py
