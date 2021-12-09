@@ -554,7 +554,7 @@ libtbx.scons: Warning: compiling with /MDd:
 
   else:
     sys.tracebacklimit = 0
-    raise RuntimeError("Unknown compiler choice: %s" % env_etc.compiler)
+    raise RuntimeError("Unknown compiler choice (2): %s" % env_etc.compiler)
 else:
   env_etc.mac_cpu = None
   env_etc.mac_cpu_is_g4 = None
@@ -1027,7 +1027,7 @@ int main() {
       static_exe = None
   else:
     sys.tracebacklimit = 0
-    raise RuntimeError("Unknown compiler choice: %s" % env_etc.compiler)
+    raise RuntimeError("Unknown compiler choice (1): %s" % env_etc.compiler)
 
 # user options for any compiler from the environment variables
 # at the time of configure
