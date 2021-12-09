@@ -441,6 +441,7 @@ libtbx.scons: Warning: compiling with /MDd:
       env_etc.shlinkflags.append("/DEBUG")
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
     env_etc.libm = []
+
   elif (env_etc.compiler == "win32_icc"):
     cl_exe = full_command_path("icl.exe")
     if (cl_exe is None):
@@ -672,6 +673,7 @@ else:
     env_base.Append(LINKFLAGS=lkfl)
     env_etc.shlinkflags.extend(lkfl)
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
+
   elif (env_etc.compiler == "unix_clang"):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
@@ -736,6 +738,7 @@ int main() {
       static_exe = None
     env_etc.shlinkflags = ["-shared"]
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
+
   elif (env_etc.compiler == "unix_icc"):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
@@ -773,6 +776,7 @@ int main() {
     if (static_exe):
       env_base.Prepend(LINKFLAGS=["-Bstatic"])
       static_exe = None
+
   elif (env_etc.compiler == 'unix_conda' or env_etc.compiler == 'darwin_conda'):
     # get conda compilers from environment
     # based on recommendation from conda-forge admins, just use CC and
@@ -1033,6 +1037,7 @@ int main() {
     if (static_exe):
       # no action required
       static_exe = None
+
   else:
     sys.tracebacklimit = 0
     raise RuntimeError("Unknown compiler choice (1): %s" % env_etc.compiler)
