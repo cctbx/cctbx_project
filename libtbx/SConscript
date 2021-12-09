@@ -185,6 +185,7 @@ supported_compilers = (
   "unix_clang",
   "unix_icc",
   "unix_icpc",
+  "unix_icpx",
   "darwin_c++",
   "darwin_gcc",
   "darwin_gcc-4.2", # tested with the "GCC 4.2 Developer Preview 1"
@@ -440,6 +441,7 @@ libtbx.scons: Warning: compiling with /MDd:
       env_etc.shlinkflags.append("/DEBUG")
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
     env_etc.libm = []
+
   elif (env_etc.compiler == "win32_icc"):
     cl_exe = full_command_path("icl.exe")
     if (cl_exe is None):
@@ -558,7 +560,7 @@ libtbx.scons: Warning: compiling with /MDd:
 
   else:
     sys.tracebacklimit = 0
-    raise RuntimeError("Unknown compiler choice: %s" % env_etc.compiler)
+    raise RuntimeError("Unknown compiler choice (2): %s" % env_etc.compiler)
 else:
   env_etc.mac_cpu = None
   env_etc.mac_cpu_is_g4 = None
@@ -671,6 +673,7 @@ else:
     env_base.Append(LINKFLAGS=lkfl)
     env_etc.shlinkflags.extend(lkfl)
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
+
   elif (env_etc.compiler == "unix_clang"):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
@@ -735,6 +738,7 @@ int main() {
       static_exe = None
     env_etc.shlinkflags = ["-shared"]
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
+
   elif (env_etc.compiler == "unix_icc"):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
@@ -772,6 +776,7 @@ int main() {
     if (static_exe):
       env_base.Prepend(LINKFLAGS=["-Bstatic"])
       static_exe = None
+
   elif (env_etc.compiler == 'unix_conda' or env_etc.compiler == 'darwin_conda'):
     # get conda compilers from environment
     # based on recommendation from conda-forge admins, just use CC and
@@ -828,6 +833,62 @@ int main() {
     env_etc.static_bpl = 0
     env_etc.c_link = cc
     env_etc.gcc_version = libtbx.env_config.get_gcc_version(command_name=cc)
+    env_etc.cxx11_is_available = True
+
+    if cc is not None:
+      env_base.Replace(
+        CC=cc,
+        SHCC=cc,
+      )
+    if cxx is not None:
+      env_base.Replace(
+        CXX=cxx,
+        LINK=cxx,
+        SHCXX=cxx,
+        SHLINK=cxx,
+      )
+    env_base.Replace(SHLIBSUFFIX=env_etc.shlibsuffix)
+
+  elif (env_etc.compiler == 'unix_icpx'):
+    # get icpx compilers from environment
+    # just use CC and
+    # CXX from environment for linux and macOS. No checks are done since
+    # it is currently a full path on linux, but just a name on macOS
+    cc = os.environ.get('CC', None)
+    cxx = os.environ.get('CXX', None)
+
+    if cc is not None or cxx is not None:
+      print("Compiler settings:")
+      if cc is not None:
+        print("  CC: ", cc)
+      if cxx is not None:
+        print("  CXX:", cxx)
+    if cc is None or cxx is None:
+      print("Warning: CC and/or CXX has not been set in the environment.")
+
+    # use environment flags if available
+    if libtbx.env.build_options.use_environment_flags:
+      env_etc.ccflags_base = []
+      env_etc.cxxflags_base = []
+      env_etc.shlinkflags = ['-shared']
+      env_etc.shlinkflags_bpl = env_etc.shlinkflags
+      libtbx.env.build_options.env_cxxflags = \
+        libtbx.env.build_options.env_cxxflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
+      libtbx.env.build_options.env_cppflags = \
+        libtbx.env.build_options.env_cppflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
+      env_etc.static_libraries = 0
+    else:
+      env_etc.ccflags_base = ["-fPIC", "-fno-strict-aliasing"] + \
+        ["-DNDEBUG", "-O3", "-funroll-loops"] + \
+        ["-DBOOST_ALL_NO_LIB"]
+      env_etc.ccflags_base.append("-ffast-math")
+      env_etc.cxxflags_base = []
+      env_etc.shlinkflags = ['-shared']
+      env_etc.shlinkflags_bpl = env_etc.shlinkflags
+      env_etc.static_libraries = 0
+    env_etc.static_bpl = 0
+    env_etc.c_link = cc
+    #env_etc.gcc_version = libtbx.env_config.get_gcc_version(command_name=cc)
     env_etc.cxx11_is_available = True
 
     if cc is not None:
@@ -1032,9 +1093,10 @@ int main() {
     if (static_exe):
       # no action required
       static_exe = None
+
   else:
     sys.tracebacklimit = 0
-    raise RuntimeError("Unknown compiler choice: %s" % env_etc.compiler)
+    raise RuntimeError("Unknown compiler choice (1): %s" % env_etc.compiler)
 
 # user options for any compiler from the environment variables
 # at the time of configure
@@ -1111,7 +1173,9 @@ if libtbx.env.build_options.enable_cxx11:
     if( len(tuple3)>2 ):
       t = t + tuple3[2]
     return t
-  if env_etc.compiler=='darwin_c++' and ver(env_etc.clang_version)>=ver((4,1)):
+  if env_etc.compiler=='unix_icpx':
+    cxx11_flags = ["-std=c++11"]
+  elif env_etc.compiler=='darwin_c++' and ver(env_etc.clang_version)>=ver((4,1)):
     # version numbers are inconsisternt between Apple clang and original clang
     cxx11_flags = ["-std=c++11", "-stdlib=libc++",
                    "-mmacosx-version-min=%s" % min_macos]
@@ -1290,6 +1354,7 @@ int main() {
       ('^win32_cl$',  [['/openmp'], []]),
       ('^win32_icc$', [['/Qopenmp']]*2),
       ('^unix_icc$',  [['-openmp']]*2),
+      ('^unix_icpx$', [['-fiopenmp -fopenmp-targets=spir64']]*2),
       ('^unix_conda$',[['-fopenmp']]*2),
       ('darwin',      [['-fopenmp']]*2),
       ('gcc',         [['-fopenmp']]*2),
@@ -1457,7 +1522,29 @@ def enable_kokkos_if_possible():
   if (libtbx.env.build_options.enable_kokkos):
     env_etc.enable_kokkos = True
 
+def enable_sycl_if_possible():
+  #
+  # Hard-code the use of SYCL for ALCF compiler
+  #
+  env_etc.have_openmp = False
+  if (env_etc.compiler == "unix_icpx"):
+    print("libtbx.scons: SYCL is available.")
+    env_etc.have_sycl = True
+    #cflags = env_base['CFLAGS']
+    #cflags.append('-fsycl')
+    #cflags.append('-fno-sycl-id-queries-fit-in-int')
+    #cflags.append('-fsycl-dead-args-optimization')
+    #env_base['CFLAGS'] = cflags
+    cxxflags = env_base['CXXFLAGS']
+    cxxflags.append('-fsycl')
+    cxxflags.append('-fno-sycl-id-queries-fit-in-int')
+    cxxflags.append('-fsycl-dead-args-optimization')
+    env_base['CXXFLAGS'] = cxxflags
+  else:
+    print("libtbx.scons: SYCL is not available.")
+
 enable_openmp_if_possible()
+enable_sycl_if_possible()
 enable_cuda_if_possible()
 enable_kokkos_if_possible()
 

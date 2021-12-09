@@ -11,6 +11,9 @@
 #ifdef KOKKOS_ENABLE_OPENMPTARGET
 #define MemSpace Kokkos::OpenMPTargetSpace
 #endif
+#ifdef KOKKOS_ENABLE_SYCL
+#define MemSpace Kokkos::Experimental::SYCL
+#endif
 
 #ifndef MemSpace
 #define MemSpace Kokkos::HostSpace
