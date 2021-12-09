@@ -36,7 +36,7 @@ class system_config(object):
     # WEH - the jlse login nodes all start with the same prefix.  Maybe use a regular expression here?
     #return (self.host_name==os.getenv(self.host_variable))
     #
-    return (os.getenv(self.host_variable).startswith(self.host_name))
+    return (os.getenv(self.host_variable) is not None and os.getenv(self.host_variable).startswith(self.host_name))
 
   def get_copy(self):
     clone = system_config(self.host_variable, self.host_name)
@@ -83,16 +83,16 @@ cfg_arcticus.host_name = 'jlselogin'
 cfg_arcticus.env['KOKKOS_DEVICES'] = "SYCL"
 cfg_arcticus.env['KOKKOS_ARCH'] = ""
 cfg_arcticus.env['LDFLAGS'] += " -L$(KOKKOS_HOME)/lib64"
-cfg_arcticux.env['LDLIBS'] += " -lkokkos -ldl"
+cfg_arcticus.env['LDLIBS'] += " -lkokkos -ldl"
 cfg_arcticus.env['CXX'] = 'icpx'
 configs.append(cfg_arcticus)
 
 system_settings = cfg_default.env
 for cfg in configs:
   if cfg.is_host():
+    print("System Hostname: {}".format(cfg.host_name))
     system_settings = cfg.env
     break
-print("System Hostname: {}".format(system_settings.host_name))
 
 # libkokkos.a
 # call kokkos build system directly
@@ -161,6 +161,8 @@ if False:
     kokkos_cxxflags = kokkos_cxxflags[1].decode('utf8').split()
     print('KOKKOS_CXXFLAGS:', kokkos_cxxflags)
     print('='*79)
+else:
+    kokkos_cxxflags = []
 
 #
 # Build libsimtbx_kokkos.so
