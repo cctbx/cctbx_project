@@ -849,6 +849,62 @@ int main() {
       )
     env_base.Replace(SHLIBSUFFIX=env_etc.shlibsuffix)
 
+  elif (env_etc.compiler == 'unix_icpx'):
+    # get icpx compilers from environment
+    # just use CC and
+    # CXX from environment for linux and macOS. No checks are done since
+    # it is currently a full path on linux, but just a name on macOS
+    cc = os.environ.get('CC', None)
+    cxx = os.environ.get('CXX', None)
+
+    if cc is not None or cxx is not None:
+      print("Compiler settings:")
+      if cc is not None:
+        print("  CC: ", cc)
+      if cxx is not None:
+        print("  CXX:", cxx)
+    if cc is None or cxx is None:
+      print("Warning: CC and/or CXX has not been set in the environment.")
+
+    # use environment flags if available
+    if libtbx.env.build_options.use_environment_flags:
+      env_etc.ccflags_base = []
+      env_etc.cxxflags_base = []
+      env_etc.shlinkflags = ['-shared']
+      env_etc.shlinkflags_bpl = env_etc.shlinkflags
+      libtbx.env.build_options.env_cxxflags = \
+        libtbx.env.build_options.env_cxxflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
+      libtbx.env.build_options.env_cppflags = \
+        libtbx.env.build_options.env_cppflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
+      env_etc.static_libraries = 0
+    else:
+      env_etc.ccflags_base = ["-fPIC", "-fno-strict-aliasing"] + \
+        ["-DNDEBUG", "-O3", "-funroll-loops"] + \
+        ["-DBOOST_ALL_NO_LIB"]
+      env_etc.ccflags_base.append("-ffast-math")
+      env_etc.cxxflags_base = []
+      env_etc.shlinkflags = ['-shared']
+      env_etc.shlinkflags_bpl = env_etc.shlinkflags
+      env_etc.static_libraries = 0
+    env_etc.static_bpl = 0
+    env_etc.c_link = cc
+    #env_etc.gcc_version = libtbx.env_config.get_gcc_version(command_name=cc)
+    env_etc.cxx11_is_available = True
+
+    if cc is not None:
+      env_base.Replace(
+        CC=cc,
+        SHCC=cc,
+      )
+    if cxx is not None:
+      env_base.Replace(
+        CXX=cxx,
+        LINK=cxx,
+        SHCXX=cxx,
+        SHLINK=cxx,
+      )
+    env_base.Replace(SHLIBSUFFIX=env_etc.shlibsuffix)
+
   elif env_etc.compiler.startswith("darwin"):
     cc  = env_etc.compiler.replace('darwin_','')
     if cc == "c++": cc = "cc"
@@ -1117,7 +1173,9 @@ if libtbx.env.build_options.enable_cxx11:
     if( len(tuple3)>2 ):
       t = t + tuple3[2]
     return t
-  if env_etc.compiler=='darwin_c++' and ver(env_etc.clang_version)>=ver((4,1)):
+  if env_etc.compiler=='unix_icpx':
+    cxx11_flags = ["-std=c++11"]
+  elif env_etc.compiler=='darwin_c++' and ver(env_etc.clang_version)>=ver((4,1)):
     # version numbers are inconsisternt between Apple clang and original clang
     cxx11_flags = ["-std=c++11", "-stdlib=libc++",
                    "-mmacosx-version-min=%s" % min_macos]
@@ -1296,6 +1354,7 @@ int main() {
       ('^win32_cl$',  [['/openmp'], []]),
       ('^win32_icc$', [['/Qopenmp']]*2),
       ('^unix_icc$',  [['-openmp']]*2),
+      ('^unix_icpx$', [['-qopenmp']]*2),
       ('^unix_conda$',[['-fopenmp']]*2),
       ('darwin',      [['-fopenmp']]*2),
       ('gcc',         [['-fopenmp']]*2),
@@ -1463,7 +1522,29 @@ def enable_kokkos_if_possible():
   if (libtbx.env.build_options.enable_kokkos):
     env_etc.enable_kokkos = True
 
+def enable_sycl_if_possible():
+  #
+  # Hard-code the use of SYCL for ALCF compiler
+  #
+  env_etc.have_openmp = False
+  if (env_etc.compiler == "unix_icpx"):
+    print("libtbx.scons: SYCL is available.")
+    env_etc.have_sycl = True
+    #cflags = env_base['CFLAGS']
+    #cflags.append('-fsycl')
+    #cflags.append('-fno-sycl-id-queries-fit-in-int')
+    #cflags.append('-fsycl-dead-args-optimization')
+    #env_base['CFLAGS'] = cflags
+    cxxflags = env_base['CXXFLAGS']
+    cxxflags.append('-fsycl')
+    cxxflags.append('-fno-sycl-id-queries-fit-in-int')
+    cxxflags.append('-fsycl-dead-args-optimization')
+    env_base['CXXFLAGS'] = cxxflags
+  else:
+    print("libtbx.scons: SYCL is not available.")
+
 enable_openmp_if_possible()
+enable_sycl_if_possible()
 enable_cuda_if_possible()
 enable_kokkos_if_possible()
 

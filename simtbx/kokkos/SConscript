@@ -81,8 +81,8 @@ cfg_arcticus.host_variable = 'HOSTNAME'
 cfg_arcticus.host_name = 'jlselogin'
 cfg_arcticus.env['KOKKOS_DEVICES'] = "SYCL"
 cfg_arcticus.env['KOKKOS_ARCH'] = ""
-cfg_arcticus.env['LDFLAGS'] += " -L$(KOKKOS_HOME)/lib64"
-cfg_arcticus.env['LDLIBS'] += " -lkokkos -ldl"
+cfg_arcticus.env['LDFLAGS'] = " -fsycl -DKOKKOS_DEPENDENCE"
+cfg_arcticus.env['LDLIBS'] = " -ldl"
 cfg_arcticus.env['CXX'] = 'icpx'
 configs.append(cfg_arcticus)
 
@@ -130,6 +130,7 @@ else:
 # WEH - TODO
 #       What configuration option should we used to disable local kokkos builds?
 #
+Import("env", "env_etc")
 if False:
     print('='*79)
     print('Building Kokkos')
@@ -161,12 +162,12 @@ if False:
     print('KOKKOS_CXXFLAGS:', kokkos_cxxflags)
     print('='*79)
 else:
-    kokkos_cxxflags = []
+    kokkos_cxxflags = [val.replace('c++11', 'c++17') for val in env['CXXFLAGS']]
+    print("HERE",kokkos_cxxflags)
 
 #
 # Build libsimtbx_kokkos.so
 #
-Import("env", "env_etc")
 
 kokkos_env = env.Clone()
 kokkos_env.Replace(CXX=os.environ['CXX'])
@@ -174,7 +175,7 @@ kokkos_env.Replace(SHCXX=os.environ['CXX'])
 kokkos_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
-kokkos_env.Append(LIBS=['kokkoscontainers','kokkoscore'])
+#kokkos_env.Append(LIBS=['kokkos'])
 
 simtbx_kokkos_lib = kokkos_env.SharedLibrary(
   target="#lib/libsimtbx_kokkos.so",
@@ -187,6 +188,7 @@ simtbx_kokkos_lib = kokkos_env.SharedLibrary(
   ]
 )
 
+print("HERE - y", os.getenv('KOKKOS_DEVICES'))
 #
 # Build simtbx_kokkos_ext.so
 #
@@ -222,6 +224,14 @@ if not env_etc.no_boost_python:
       "kokkos",
       "amdhip64",
       "hsa-runtime64"])
+  elif 'SYCL' in os.getenv('KOKKOS_DEVICES'):
+    print("HERE - x")
+    #kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['ROCM_PATH'], 'lib')])
+    kokkos_ext_env.Append(LIBS=env_etc.libm +
+      ["simtbx_kokkos",
+      "scitbx_boost_python",
+      get_boost_library_with_python_version("boost_python", kokkos_ext_env['LIBPATH']),
+      "cctbx"])
   else:
     kokkos_ext_env.Append(LIBS=env_etc.libm +
       ["simtbx_kokkos",
