@@ -20,7 +20,8 @@
 #include <boost/math/special_functions/erf.hpp>
 #include <boost/math/special_functions/fpclassify.hpp>
 #include <boost_adaptbx/python_streambuf.h>
-#include <omptbx/omp_or_stubs.h>
+// WEH - Is this needed here???
+//#include <omptbx/omp_or_stubs.h>
 #include <simtbx/nanoBragg/nanotypes.h>
 
 using boost::math::erf;
