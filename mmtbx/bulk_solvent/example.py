@@ -146,7 +146,7 @@ class compute(object):
     # Compute masks and F_masks (Mosaic)
     print("-"*79, file=log)
     print("Mosaic", file=log)
-    self.mm = mosaic.mosaic_f_mask(
+    self.mm = mosaic.f_masks(
       xray_structure          = D.xray_structure,
       step                    = 0.6,
       volume_cutoff           = 50,
@@ -223,7 +223,7 @@ def run_one(args):
   pdb_inp = iotbx.pdb.input(file_name=pdbf)
   cs = pdb_inp.crystal_symmetry()
   #
-  if(cs.space_group_number() != 1): return
+  #if(cs.space_group_number() != 1): return
   if(not pdb_inp.get_experiment_type() in
      ["X-RAY DIFFRACTION", "NEUTRON DIFFRACTION"]): return
   #
@@ -242,7 +242,7 @@ def run_one(args):
     ###
     mbs = o.do_mosaic(alg=alg)
     # write maps
-    if(o.mm.mc is not None):
+    if(o.mm.mFoDFc_0 is not None):
       mtz_dataset = o.mc_0.as_mtz_dataset(column_root_label='FistMask')
       mtz_dataset.add_miller_array(
         miller_array=o.mc_whole_mask, column_root_label="WholeMask")
@@ -251,7 +251,7 @@ def run_one(args):
       mtz_object = mtz_dataset.mtz_object()
       mtz_object.write(file_name = "%s_mc.mtz"%code)
       # map stats
-      map_0        , sd_map_0         = get_map(mc=o.mm.mc,         cg=o.mm.crystal_gridding)
+      map_0        , sd_map_0         = get_map(mc=o.mm.mFoDFc_0,   cg=o.mm.crystal_gridding)
       map_WholeMask, sd_map_WholeMask = get_map(mc=o.mc_whole_mask, cg=o.mm.crystal_gridding)
       map_Mosaic   , sd_map_Mosaic    = get_map(mc=mbs.mc,          cg=o.mm.crystal_gridding)
       ###

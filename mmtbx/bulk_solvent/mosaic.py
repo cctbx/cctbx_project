@@ -546,7 +546,7 @@ def filter_mask(mask_p1, volume_cutoff, crystal_symmetry,
     conn = conn / crystal_symmetry.space_group().order_z()
   return conn
 
-class mosaic_f_mask(object):
+class f_masks(object):
   def __init__(self,
                xray_structure,
                step,
@@ -554,7 +554,7 @@ class mosaic_f_mask(object):
                mean_diff_map_threshold=None,
                compute_whole=False,
                largest_only=False,
-               wrapping=True,
+               wrapping=True, # should be False if working with ASU
                f_obs=None,
                r_sol=1.1,
                r_shrink=0.9,
@@ -564,11 +564,11 @@ class mosaic_f_mask(object):
     adopt_init_args(self, locals())
     #
     self.d_spacings   = f_obs.d_spacings().data()
-    self.sel_3inf     = self.d_spacings >= 3
-    self.miller_array = f_obs.select(self.sel_3inf)
+    self.sel_gte3     = self.d_spacings >= 3
+    self.miller_array = f_obs.select(self.sel_gte3)
     #
     self.crystal_symmetry = self.xray_structure.crystal_symmetry()
-    # compute mask in p1 (via ASU)
+    # Compute mask in p1 (via ASU)
     self.crystal_gridding = maptbx.crystal_gridding(
       unit_cell        = xray_structure.unit_cell(),
       space_group_info = xray_structure.space_group_info(),
@@ -576,47 +576,33 @@ class mosaic_f_mask(object):
       step             = step)
     self.n_real = self.crystal_gridding.n_real()
     # XXX Where do we want to deal with H and occ==0?
-    mask_p1 = mmtbx.masks.mask_from_xray_structure(
-      xray_structure           = xray_structure,
-      p1                       = True,
-      for_structure_factors    = True,
-      solvent_radius           = r_sol,
-      shrink_truncation_radius = r_shrink,
-      n_real                   = self.n_real,
-      in_asu                   = False).mask_data
-    maptbx.unpad_in_place(map=mask_p1)
-    self.f_mask_whole = None
-    if(compute_whole):
-      mask = asu_map_ext.asymmetric_map(
-        xray_structure.crystal_symmetry().space_group().type(), mask_p1).data()
-      self.f_mask_whole = self._inflate(
-        self.miller_array.structure_factors_from_asu_map(
-          asu_map_data = mask, n_real = self.n_real))
-    self.solvent_content = 100.*mask_p1.count(1)/mask_p1.size()
-    if(write_masks):
-      write_map_file(crystal_symmetry=xray_structure.crystal_symmetry(),
-        map_data=mask_p1, file_name="mask_whole.mrc")
-    # conn analysis
+    self._mask_p1 = self._compute_mask_in_p1()
+    self.solvent_content = 100.*(self._mask_p1 != 0).count(True)/\
+      self._mask_p1.size()
+    # Optionally compute Fmask from original whole mask, zero-ed at dmin<3A.
+    self.f_mask_whole = self._compute_f_mask_whole()
+    # Connectivity analysis
     co = maptbx.connectivity(
-      map_data                   = mask_p1,
+      map_data                   = self._mask_p1,
       threshold                  = 0.01,
       preprocess_against_shallow = False,
       wrapping                   = wrapping)
-    co.merge_symmetry_related_regions(space_group=xray_structure.space_group())
-    del mask_p1
+    if(xray_structure.space_group().type().number() != 1): # not P1
+      co.merge_symmetry_related_regions(
+        space_group = xray_structure.space_group())
+    # Delete bulk whole mask from memory
+    del self._mask_p1
+    #
     self.conn = co.result().as_double()
     z = zip(co.regions(),range(0,co.regions().size()))
     sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
     #
-    f_mask_data_0 = flex.complex_double(f_obs.data().size(), 0)
-    f_mask_data   = flex.complex_double(f_obs.data().size(), 0)
-    self.FV = OrderedDict()
-    self.mc = None
-    diff_map = None
-    mean_diff_map = None
-    self.regions = OrderedDict()
-    self.f_mask_0 = None
-    self.f_mask = None
+    f_mask_data_0   = flex.complex_double(f_obs.data().size(), 0)
+    self.f_mask_0   = None
+    self.FV         = OrderedDict()
+    self.mFoDFc_0   = None
+    diff_map        = None # mFo-DFc map computed using F_mask_0 (main mask)
+    self.regions    = OrderedDict()
     small_selection = None
     weak_selection  = None
     #
@@ -625,135 +611,154 @@ class mosaic_f_mask(object):
     #
     for i_seq, p in enumerate(sorted_by_volume):
       v, i = p
+      self._region_i_selection = None # must be here inside the loop!
+      f_mask_i = None # must be here inside the loop!
       # skip macromolecule
       if(i==0): continue
-      # skip small volume
+      # skip small volume and accumulate small volumes
       volume = v*step**3
       uc_fraction = v*100./self.conn.size()
-      if(volume_cutoff is not None):
-        if(volume < volume_cutoff and volume >= 10):
-          if(small_selection is None): small_selection = self.conn==i
+      if(volume_cutoff is not None and volume < volume_cutoff):
+        if(volume >= 10):
+          if(small_selection is None):
+            small_selection  = self._get_region_i_selection(i)
           else:
-            small_selection = small_selection | (self.conn==i)
-          continue
-        if volume < volume_cutoff: continue
-
+            small_selection |= self._get_region_i_selection(i)
+        continue
+      # Accumulate regions with volume greater than volume_cutoff (if
+      # volume_cutoff is defined). Weak density regions are included.
       self.regions[i_seq] = group_args(
         id          = i,
         i_seq       = i_seq,
         volume      = volume,
         uc_fraction = uc_fraction)
-
-      selection = self.conn==i
-      mask_i_asu = self.compute_i_mask_asu(selection = selection, volume = volume)
-
+      # Compute i-th region mask
+      mask_i_asu = self.compute_i_mask_asu(
+        selection = self._get_region_i_selection(i), volume = volume)
+      # Compute F_mask_0 (F_mask for main mask)
       if(uc_fraction >= 1):
         f_mask_i = self.compute_f_mask_i(mask_i_asu)
         f_mask_data_0 += f_mask_i.data()
       elif(largest_only): break
-
+      # Compute mFo-DFc map using main mask (once done computing main mask!)
       if(uc_fraction < 1 and diff_map is None):
-        diff_map = self.compute_diff_map(f_mask_data = f_mask_data_0)
-
+        diff_map = self.compute_diff_map(f_mask_data_0 = f_mask_data_0)
+      # Analyze mFo-DFc map in the i-th region
       mi,ma,me,sd = None,None,None,None
       if(diff_map is not None):
-        blob = diff_map.select(selection.iselection())
-        mean_diff_map = flex.mean(diff_map.select(selection.iselection()))
+        iselection = self._get_region_i_selection(i).iselection()
+        blob = diff_map.select(iselection)
+        mean_diff_map = flex.mean(diff_map.select(iselection))
         mi,ma,me = flex.min(blob), flex.max(blob), flex.mean(blob)
         sd = blob.sample_standard_deviation()
-
-      if(log is not None):
-        print("%3d"%i_seq,"%12.3f"%volume, "%8.4f"%round(uc_fraction,4),
-            "%7s"%str(None) if diff_map is None else "%7.3f %7.3f %7.3f %7.3f"%(
-              mi,ma,me,sd), file=log)
-
-
-      if(mean_diff_map_threshold is not None and
-         mean_diff_map is not None and mean_diff_map<=mean_diff_map_threshold and mean_diff_map>0.1):
-        if(weak_selection is None): weak_selection = self.conn==i
-        else:
-          weak_selection = weak_selection | (self.conn==i)
-
-
-      if(mean_diff_map_threshold is not None and
-         mean_diff_map is not None and mean_diff_map<=mean_diff_map_threshold):
-        continue
-
-      f_mask_i = self.compute_f_mask_i(mask_i_asu)
-      f_mask_data += f_mask_i.data()
-
+        if(log is not None):
+          print("%3d"%i_seq,"%12.3f"%volume, "%8.4f"%round(uc_fraction,4),
+              "%7.3f %7.3f %7.3f %7.3f"%(mi,ma,me,sd), file=log)
+        # Accumulate regions with weak density into one region, then skip
+        if(mean_diff_map_threshold is not None):
+          if(mean_diff_map <= mean_diff_map_threshold):
+            if(mean_diff_map > 0.1):
+              if(weak_selection is None):
+                weak_selection  = self._get_region_i_selection(i)
+              else:
+                weak_selection |= self._get_region_i_selection(i)
+            continue
+      else:
+        if(log is not None):
+          print("%3d"%i_seq,"%12.3f"%volume, "%8.4f"%round(uc_fraction,4),
+              "%7s"%str(None), file=log)
+      # Compute F_maks for i-th region
+      if(f_mask_i is None):
+        f_mask_i = self.compute_f_mask_i(mask_i_asu)
+      # Compose result object
       self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
-    #####
+    #
     # Determine number of secondary regions. Must happen here!
+    # Preliminarily if need to do mosaic.
     self.n_regions = len(self.FV.values())
     self.do_mosaic = False
     if(self.n_regions>1):
       self.do_mosaic = True
+    # Add aggregated small regions (if present)
+    self._add_from_aggregated(selection=small_selection, diff_map=diff_map)
+    # Add aggregated weak map regions (if present)
+    self._add_from_aggregated(selection=weak_selection, diff_map=diff_map)
+    # Finalize main Fmask
+    self.f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
 
-    # Handle accumulation of small
-    if(small_selection is not None and self.do_mosaic):
-      v = small_selection.count(True)
-      volume = v*step**3
-      uc_fraction = v*100./self.conn.size()
-      mask_i = flex.double(flex.grid(self.n_real), 0)
-      mask_i = mask_i.set_selected(small_selection, 1)
-      diff_map = diff_map.set_selected(diff_map<0,0)
-      #diff_map = diff_map.set_selected(diff_map>0,1)
-      mx = flex.mean(diff_map.select((diff_map>0).iselection()))
-      diff_map = diff_map/mx
+  def _add_from_aggregated(self, selection, diff_map):
+    if(selection is None): return
+    self.do_mosaic = True
+    v = selection.count(True)
+    volume = v*self.step**3
+    uc_fraction = v*100./self.conn.size()
+    mask_i = flex.double(flex.grid(self.n_real), 0)
+    mask_i = mask_i.set_selected(selection, 1)
+    diff_map = diff_map.set_selected(diff_map<0,0)
+    mx = flex.mean(diff_map.select((diff_map>0).iselection()))
+    diff_map = diff_map/mx
+    mask_i = mask_i * diff_map
+    mask_i_asu = asu_map_ext.asymmetric_map(
+      self.crystal_symmetry.space_group().type(), mask_i).data()
+    f_mask_i = self.compute_f_mask_i(mask_i_asu)
+    self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
 
-      mask_i = mask_i * diff_map
-      mask_i_asu = asu_map_ext.asymmetric_map(
-        self.crystal_symmetry.space_group().type(), mask_i).data()
-      f_mask_i = self.compute_f_mask_i(mask_i_asu)
-      self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
-
-
-    if(weak_selection is not None and self.do_mosaic):
-      v = weak_selection.count(True)
-      volume = v*step**3
-      uc_fraction = v*100./self.conn.size()
-      mask_i = flex.double(flex.grid(self.n_real), 0)
-      mask_i = mask_i.set_selected(weak_selection, 1)
-      diff_map = diff_map.set_selected(diff_map<0,0)
-      #diff_map = diff_map.set_selected(diff_map>0,1)
-      mx = flex.mean(diff_map.select((diff_map>0).iselection()))
-      diff_map = diff_map/mx
-
-      mask_i = mask_i * diff_map
-      mask_i_asu = asu_map_ext.asymmetric_map(
-        self.crystal_symmetry.space_group().type(), mask_i).data()
-      f_mask_i = self.compute_f_mask_i(mask_i_asu)
-      self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
-
-    #####
-    if(self.do_mosaic):
-      self.f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
-      self.f_mask   = f_obs.customized_copy(data = f_mask_data)
+  def _get_region_i_selection(self, i):
+    if(self._region_i_selection is not None):
+      return self._region_i_selection
+    else:
+      return self.conn==i
 
   def _inflate(self, f):
     data = flex.complex_double(self.d_spacings.size(), 0)
-    data = data.set_selected(self.sel_3inf, f.data())
+    data = data.set_selected(self.sel_gte3, f.data())
     return self.f_obs.set().array(data = data)
+
+  def _compute_f_mask_whole(self):
+    if(self.compute_whole):
+      mask = asu_map_ext.asymmetric_map(
+        xray_structure.crystal_symmetry().space_group().type(),
+        self._mask_p1).data()
+      return self._inflate(
+        self.miller_array.structure_factors_from_asu_map(
+          asu_map_data = mask, n_real = self.n_real))
+    else: return None
+
+  def _compute_mask_in_p1(self):
+    mask = mmtbx.masks.mask_from_xray_structure(
+      xray_structure           = self.xray_structure,
+      p1                       = True,
+      for_structure_factors    = True,
+      solvent_radius           = self.r_sol,
+      shrink_truncation_radius = self.r_shrink,
+      n_real                   = self.n_real,
+      in_asu                   = False).mask_data
+    maptbx.unpad_in_place(map=mask)
+    if(self.write_masks):
+      write_map_file(
+        crystal_symmetry = self.crystal_symmetry, # Is this correct symmetry?
+        map_data         = self._mask_p1,
+        file_name        = "mask_whole.mrc")
+    return mask
 
   def compute_f_mask_i(self, mask_i_asu):
     return self._inflate(self.miller_array.structure_factors_from_asu_map(
       asu_map_data = mask_i_asu, n_real = self.n_real))
 
-  def compute_diff_map(self, f_mask_data):
+  def compute_diff_map(self, f_mask_data_0):
     if(self.f_calc is None): return None
-    f_mask = self.f_obs.customized_copy(data = f_mask_data)
+    f_mask = self.f_obs.customized_copy(data = f_mask_data_0)
     fmodel = mmtbx.f_model.manager(
       f_obs  = self.f_obs,
       f_calc = self.f_calc,
       f_mask = f_mask)
     fmodel.update_all_scales(remove_outliers=True,
       apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
-    self.mc = fmodel.electron_density_map().map_coefficients(
+    self.mFoDFc_0 = fmodel.electron_density_map().map_coefficients(
       map_type   = "mFobs-DFmodel",
       isotropize = True,
       exclude_free_r_reflections = False)
-    fft_map = self.mc.fft_map(crystal_gridding = self.crystal_gridding)
+    fft_map = self.mFoDFc_0.fft_map(crystal_gridding = self.crystal_gridding)
     fft_map.apply_sigma_scaling()
     return fft_map.real_map_unpadded()
 
@@ -765,9 +770,8 @@ class mosaic_f_mask(object):
         crystal_symmetry = self.crystal_symmetry,
         map_data         = mask_i,
         file_name        = "mask_%s.mrc"%str(round(volume,3)))
-    tmp = asu_map_ext.asymmetric_map(
+    return asu_map_ext.asymmetric_map(
       self.crystal_symmetry.space_group().type(), mask_i).data()
-    return tmp
 
 def algorithm_0(f_obs, F, kt):
   """
