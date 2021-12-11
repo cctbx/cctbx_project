@@ -88,6 +88,7 @@ def run(pdb_hierarchy,
   all_chains = iotbx.pdb.utils.all_chain_ids()
   all_chains = [chid.strip() for chid in all_chains]
   for cid in list(set([i.id for i in pdb_hierarchy.chains()])):
+    assert len(cid.strip())>0, "Chain ID cannot be blank."
     all_chains.remove(cid)
   all_chains = iter(all_chains)
   #
