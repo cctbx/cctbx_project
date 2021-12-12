@@ -2935,22 +2935,23 @@ class map_model_manager(object):
         target_model_id), file = self.log)
       assert chain_type # need to set chain type
 
+    res = self.resolution() if self.resolution() else 0
     if not atom_name or ((not ignore_element) and (not element)):
       if chain_type.upper() == "PROTEIN":
         atom_name = 'CA'
         element = 'C'
         if max_dist is None:
-          max_dist = max(self.resolution(), 3.)
+          max_dist = max(res, 3.)
       else:
         atom_name = 'P'
         element = 'P'
       if max_dist is None:
-        max_dist = max(self.resolution(), 7.)
+        max_dist = max(res, 7.)
     elif max_dist is None:
       if atom_name == 'CA':
-        max_dist = max(self.resolution(), 3.)
+        max_dist = max(res, 3.)
       else:
-        max_dist = max(self.resolution(), 7.)
+        max_dist = max(res, 7.)
 
 
     # Select the atoms to try and match
