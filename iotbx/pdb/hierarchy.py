@@ -990,20 +990,21 @@ class _():
       # make it
       prev_ac_key = ''
       self._label_seq_id_dict = {}
-      for chain in self.models()[0].chains():
-        label_seq_id = 0
-        for rg in chain.residue_groups():
-          for ag in rg.atom_groups():
-            cur_ac_key = chain.id + rg.resseq + rg.icode
-            if cur_ac_key != prev_ac_key:
-              label_seq_id += 1
-              prev_ac_key = cur_ac_key
-            label_seq_id_str='.'
-            comp_id = ag.resname.strip()
-            residue_class = common_residue_names_get_class(comp_id)
-            if residue_class in ['common_amino_acid', 'modified_amino_acid']:
-              label_seq_id_str = str(label_seq_id)
-            self._label_seq_id_dict[ag.memory_id()] = label_seq_id_str
+      for model in self.models():
+        for chain in model.chains():
+          label_seq_id = 0
+          for rg in chain.residue_groups():
+            for ag in rg.atom_groups():
+              cur_ac_key = chain.id + rg.resseq + rg.icode
+              if cur_ac_key != prev_ac_key:
+                label_seq_id += 1
+                prev_ac_key = cur_ac_key
+              label_seq_id_str='.'
+              comp_id = ag.resname.strip()
+              residue_class = common_residue_names_get_class(comp_id)
+              if residue_class in ['common_amino_acid', 'modified_amino_acid']:
+                label_seq_id_str = str(label_seq_id)
+              self._label_seq_id_dict[ag.memory_id()] = label_seq_id_str
     return self._label_seq_id_dict[atom_group.memory_id()]
 
   def as_cif_block(self,
@@ -1110,7 +1111,6 @@ class _():
     atom_site_anisotrop_U13 = aniso_loop['_atom_site_anisotrop.U[1][3]']
     atom_site_anisotrop_U23 = aniso_loop['_atom_site_anisotrop.U[2][3]']
 
-    model_ids = flex.std_string()
     unique_chain_ids = set()
     auth_asym_ids = flex.std_string()
     label_asym_ids = flex.std_string()

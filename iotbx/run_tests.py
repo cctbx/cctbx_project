@@ -95,6 +95,7 @@ tst_list_base = [
   "$D/regression/tst_bioinformatics.py",
   "$D/regression/tst_box_around_molecule.py",
   "$D/regression/tst_mmcif_segids.py",
+  "$D/regression/tst_mmcif_multimodel.py",
   "$D/regression/tst_add_conformations.py",
   "$D/regression/tst_symmetry.py",
   "$D/regression/tst_reindex.py",
