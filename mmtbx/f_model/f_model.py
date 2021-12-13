@@ -2205,6 +2205,13 @@ class manager(manager_mixin):
     return mmtbx.bulk_solvent.r_factor(
       f.f_obs_work().data(), f.f_model_work().data())
 
+  def completeness_high(self):
+    return self.f_obs().select(
+      self.bin_selections[len(self.bin_selections)-1]).completeness()
+
+  def completeness_low(self):
+    return self.f_obs().select(self.bin_selections[0]).completeness()
+
   def r_factors(self, prefix="", as_string=True):
     rw,rf,rh,rl,r4=self.r_work(),self.r_free(),self.r_work_high(),\
       self.r_work_low(), self.r_work4()
