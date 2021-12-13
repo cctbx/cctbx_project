@@ -35,7 +35,7 @@ def exercise():
   boundary_to_smoothing_ratio = 2
   soft_mask_radius = d_min
   padding = soft_mask_radius * boundary_to_smoothing_ratio
-  box_cushion = padding + pad_to_allow_cube
+  box_cushion = padding + pad_to_allow_cube + d_min # A bit extra
 
   # Make map in box big enough to cut out cube containing sphere
   mmm = map_model_manager()
@@ -66,7 +66,7 @@ def exercise():
   b_target_e = (0.,0.,0.,-50.,-50.,100.) # Anisotropy for error terms
   u_star_e = adptbx.u_cart_as_u_star(
       start_map_coeffs.unit_cell(), adptbx.b_as_u(b_target_e))
-  se_target = 1. # Target for SigmaE variance term
+  se_target = 10. # Target for SigmaE variance term
   rsigma = math.sqrt(se_target / 2.)
   jj = 0.+1.j  # Define I for generating complex numbers
   random_complexes1 = flex.complex_double()
@@ -92,18 +92,17 @@ def exercise():
       map1_coeffs, map_id = 'map_manager_1')
   mmm.add_map_from_fourier_coefficients(
       map2_coeffs, map_id = 'map_manager_2')
-
-  radius = model_radius + 5. # Sphere as large as possible to allow masking
+  box_centre = tuple(flex.double((ucpars[0],ucpars[1],ucpars[2]))/2)
   results = run_refine_cryoem_errors(
       mmm, d_min,
-      sphere_cent=tuple(box_centre), radius=radius, verbosity=0)
+      sphere_cent=tuple(box_centre), radius=model_radius, verbosity=0)
 
   resultsdict = results.resultsdict
   b_refined_a = resultsdict["a_baniso"]
   # print("\nIdeal A tensor as Baniso: ", b_expected)
   # print("Refined A tensor as Baniso", b_refined_a)
   b_refined_e = resultsdict["sigmaE_baniso"] # Note: refers to intensity scale
-  # print("\nIdeal SigmaE tensor as Baniso: ",list(flex.double(b_target_e*2)))
+  # print("\nIdeal SigmaE tensor as Baniso: ",list(flex.double(b_target_e)*2))
   # print("Refined SigmaE tensor as Baniso", b_refined_e)
   for i in range(6):
     assert(approx_equal(b_refined_a[i],b_expected[i], eps=25))
