@@ -1039,7 +1039,7 @@ def common_inputs(k_sols, for_test):
   sgt = xrs.space_group().type()
   fc  = xrs.structure_factors(d_min=4).f_calc()
   #
-  mm = mosaic.mosaic_f_mask(
+  mm = mosaic.f_masks(
     f_obs          = abs(fc),
     #f_calc         = fc,
     xray_structure = xrs,
