@@ -47,13 +47,22 @@ class cif_model_builder(object):
     n_columns = len(columns)
     for i in range(n_columns):
       loop[header[i]] = columns[i]
-    block.add_loop(loop)
+    if loop.name() not in block.loops.keys():
+      block.add_loop(loop)
+    else:
+      raise Sorry("Loop containing tags %s appears repeated" %', '.join(loop.keys()))
 
   def add_data_item(self, key, value):
     if self._current_save is not None:
-      self._current_save[key] = value
+      if key not in self._current_save:
+        self._current_save[key] = value
+      else:
+        raise Sorry("Data item %s received multiple values" % key)
     elif self._current_block is not None:
-      self._current_block[key] = value
+      if key not in self._current_block:
+        self._current_block[key] = value
+      else:
+        raise Sorry("Data item %s received multiple values" % key)
     else: # support for global_ blocks in non-strict mode
       pass
 
