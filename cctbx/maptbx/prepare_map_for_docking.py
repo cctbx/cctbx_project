@@ -969,7 +969,6 @@ def run_refine_cryoem_errors(
 
   from scipy import interpolate
   from libtbx import group_args
-  from iotbx.map_model_manager import map_model_manager
 
   # Start from two maps in map_model_manager plus optional mask specification
   # First get map coefficients for maps after spherical masking
@@ -1195,6 +1194,7 @@ def run_refine_cryoem_errors(
   expectE.use_binner_of(mc1)
   dobs = expectE.customized_copy(data=flex.double(expectE.size(),0))
   i_bin_used = 0 # Keep track in case full range of bins not used
+  weighted_map_noise = 0.
   if verbosity > 0:
     print("MapCC before and after rescaling as a function of resolution")
     print("Bin   <ssqr>   mapCC_before   mapCC_after")
@@ -1221,6 +1221,7 @@ def run_refine_cryoem_errors(
     dobs_terms = 1./flex.sqrt(1. + sigmaE_terms/(2*asqrSigmaT))
     expectE.data().set_selected(sel, expectE.data().select(sel) * scale_terms)
     dobs.data().set_selected(sel, dobs_terms)
+    weighted_map_noise += flex.sum(sigmaE_terms/(sigmaE_terms + 2*asqrSigmaT))
 
     # Apply corrections to mc1 and mc2 to compute mapCC after rescaling
     # SigmaE variance is twice as large for half-maps before averaging
@@ -1236,6 +1237,10 @@ def run_refine_cryoem_errors(
     mapCC_bins[i_bin_used] = mapCC # Update for returned output
     i_bin_used += 1
 
+  # At this point, weighted_map_noise is the sum of the noise variance for a
+  # weighted half-map. In the following, this sum should be multiplied by two
+  # for Friedel symmetry, but then divided by two for effects of averaging.
+  weighted_map_noise = math.sqrt(weighted_map_noise) / box_volume
   shift_cart = working_mmm.shift_cart()
   if shift_map_origin:
     ucwork = expectE.crystal_symmetry().unit_cell()
@@ -1264,6 +1269,7 @@ def run_refine_cryoem_errors(
     expectE = expectE, dobs = dobs,
     over_sampling_factor = over_sampling_factor,
     masked_volume = masked_volume,
+    weighted_map_noise = weighted_map_noise,
     resultsdict = resultsdict)
 
 # Command-line interface using argparse
