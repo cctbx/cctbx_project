@@ -325,9 +325,7 @@ def update_restraints(model,
                       log=StringIO(),
                       ):
   t0 = time.time()
-  # if hasattr(params, 'qi') and hasattr(params, 'output'): # from phenix.refine
-  #   prefix = params.output.prefix
-  #   params = params.qi
+  prefix = params.output.prefix
   if not model.restraints_manager_available():
     model.process(make_restraints=True)
   objects = []
