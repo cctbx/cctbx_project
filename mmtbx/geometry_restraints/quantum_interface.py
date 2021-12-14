@@ -1,5 +1,6 @@
 from __future__ import absolute_import,division, print_function
 import os
+from libtbx import Auto
 
 def env_exists_exists(env, var, check=True):
   if check:
@@ -47,9 +48,11 @@ qm_restraints
     .type = atom_selection
     .help = selection for core of atoms to calculate new restraints via a QM \
             geometry minimisation
-  buffer = 5.
+  buffer = 3.5
     .type = float
     .help = distance to include entire residues into the enviroment of the core
+  capping_groups = False
+    .type = bool
   write_pdb_core = False
     .type = bool
   write_pdb_buffer = False
@@ -106,11 +109,17 @@ def get_safe_filename(s):
   s=s.replace('*','_star_')
   return s
 
-def get_preamble(macro_cycle, i, selection):
+def get_preamble(macro_cycle, i, qmr):
   s=''
   if macro_cycle is not None:
     s+='%02d_' % macro_cycle
-  s+='%02d_%s' % (i+1, get_safe_filename(selection))
+  s+='%02d_%s_%s' % (i+1, get_safe_filename(qmr.selection), qmr.buffer)
+  if qmr.capping_groups:
+    s+='_0'
+  if qmr.package.method is not Auto:
+    s+='_%s' % get_safe_filename(qmr.package.method)
+  if qmr.package.basis_set is not Auto and qmr.package.basis_set:
+    s+='_%s' % get_safe_filename(qmr.package.basis_set)
   return s
 
 def is_any_quantum_package_installed(env):

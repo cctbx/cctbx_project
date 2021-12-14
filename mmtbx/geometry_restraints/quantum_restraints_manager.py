@@ -1,5 +1,6 @@
 from __future__ import absolute_import,division, print_function
 from io import StringIO
+import time
 
 from libtbx import Auto
 from libtbx.str_utils import make_header
@@ -40,13 +41,13 @@ def digester(model,
   qm_grm.standard_geometry_restraints_manager = sgrm
   #
   make_header('QM Restraints Initialisation', out=log)
-  qm_restraints_initialisation(params.qi, log=log)
+  qm_restraints_initialisation(params, log=log)
   run_program=True
   for i, qmr in enumerate(params.qi.qm_restraints):
     if qmr.run_in_macro_cycles=='test': break
   else: run_program=False
   update_restraints(model,
-                    params.qi,
+                    params,
                     run_program=run_program,
                     log=log,
                     )
@@ -99,7 +100,7 @@ def select_and_reindex(model,
     rc = _reindexing(selected_model, selection_array, verbose=verbose)
   return selected_model
 
-def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5.):
+def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5., write_steps=False):
   from cctbx.crystal import super_cell
   def dist2(r1,r2): return (r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2
   def min_dist2(residue_group1, residue_group2, limit=1e-2):
@@ -176,29 +177,15 @@ def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5.):
           if atom.name.strip() in mainchain:
               ag = atom.parent()
               ag.remove_atom(atom)
-  def move_movers(buffer_model, complete_p1_hierarchy, movers):
-    assert 0
-    def _get_resname_from_residue_group(residue_group): pass
-    for residue_group1 in movers:
-      for residue_group2 in complete_p1_hierarchy.residue_groups():
-        # print(dir(residue_group1))
-        # print(list(residue_group1.unique_resnames()),residue_group1.resseq,residue_group1.parent().id)
-        # print(list(residue_group2.unique_resnames()),residue_group2.resseq,residue_group2.parent().id)
-        if residue_group1.parent().id==residue_group2.parent().id: continue
-        if residue_group1.resseq==residue_group2.resseq:
-          if list(residue_group1.unique_resnames())==list(residue_group2.unique_resnames()):
-            xyzs = residue_group2.atoms().extract_xyz()
-            residue_group1.atoms().set_xyz(xyzs)
-    return movers
 
   complete_p1 = super_cell.run(
     pdb_hierarchy        = buffer_model.get_hierarchy(),
     crystal_symmetry     = buffer_model.crystal_symmetry(),
     select_within_radius = buffer,
     )
-  # if(0):
-  #   complete_p1.hierarchy.write_pdb_file(file_name="complete_p1.pdb",
-  #     crystal_symmetry = complete_p1.crystal_symmetry)
+  if(write_steps):
+    complete_p1.hierarchy.write_pdb_file(file_name="complete_p1.pdb",
+      crystal_symmetry = complete_p1.crystal_symmetry)
 
   for atom1, atom2 in zip(buffer_model.get_atoms(), complete_p1.hierarchy.atoms()):
     atom2.tmp = atom1.tmp
@@ -206,7 +193,8 @@ def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5.):
   movers, removers = find_movers(buffer_model, ligand_model, buffer)
   # write_pdb_file(buffer_model, 'test.pdb', None)
 
-def get_ligand_buffer_models(model, qmr, verbose=False):
+def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
+  from cctbx.maptbx.box import shift_and_box_model
   ligand_model = select_and_reindex(model, qmr.selection)
   if len(ligand_model.get_atoms())==0:
     raise Sorry('selection "%s" results in empty model' % qmr.selection)
@@ -218,11 +206,17 @@ def get_ligand_buffer_models(model, qmr, verbose=False):
     if (residue_group.atom_groups_size() != 1):
       raise Sorry("Not implemented: cannot run QI on buffer "+
                   "molecules with alternate conformations")
-  add_hydrogen_atoms_to_model(buffer_model)
+  if write_steps: write_pdb_file(buffer_model, 'pre_super_cell.pdb', None)
+  super_cell_and_prune(buffer_model, ligand_model, qmr.buffer, write_steps=write_steps)
+  buffer_model_p1 = shift_and_box_model(model=buffer_model)
+  for atom1, atom2 in zip(buffer_model_p1.get_atoms(), buffer_model.get_atoms()):
+    atom1.tmp=atom2.tmp
+  buffer_model = buffer_model_p1
   buffer_model.unset_restraints_manager()
   buffer_model.log=null_out()
   buffer_model.process(make_restraints=True)
-  super_cell_and_prune(buffer_model, ligand_model, qmr.buffer)
+  if write_steps: write_pdb_file(buffer_model, 'pre_add_terminii.pdb', None)
+  add_hydrogen_atoms_to_model(buffer_model, use_capping_hydrogens=qmr.capping_groups)
   buffer_model.unset_restraints_manager()
   buffer_model.process(make_restraints=True)
   return ligand_model, buffer_model
@@ -306,9 +300,11 @@ def get_all_xyz(inputs, nproc):
   return xyzs
 
 def qm_restraints_initialisation(params, log=StringIO()):
-  for i, qmr in enumerate(params.qm_restraints):
+  for i, qmr in enumerate(params.qi.qm_restraints):
     if not i: print('  QM restraints selections', file=log)
-    print('    %s' % qmr.selection, file=log)
+    print('    %s - buffer %s (%s)' % (qmr.selection,
+                                       qmr.buffer,
+                                       qmr.capping_groups), file=log)
   print('',file=log)
 
 def running_this_macro_cycle(qmr, macro_cycle):
@@ -322,12 +318,16 @@ def running_this_macro_cycle(qmr, macro_cycle):
     return False
 
 def update_restraints(model,
-                      params, # just the qi scope
+                      params,
                       macro_cycle=None,
                       run_program=True,
                       nproc=1,
                       log=StringIO(),
                       ):
+  t0 = time.time()
+  # if hasattr(params, 'qi') and hasattr(params, 'output'): # from phenix.refine
+  #   prefix = params.output.prefix
+  #   params = params.qi
   if not model.restraints_manager_available():
     model.process(make_restraints=True)
   objects = []
@@ -335,25 +335,25 @@ def update_restraints(model,
                                                                     macro_cycle):
     print('  QM restraints calculations for macro cycle %s' % macro_cycle,
       file=log)
-  for i, qmr in enumerate(params.qm_restraints):
+  for i, qmr in enumerate(params.qi.qm_restraints):
     if macro_cycle is not None and not running_this_macro_cycle(qmr, macro_cycle):
       print('    Skipping this selection in this macro_cycle : %s' % qmr.selection)
       continue
-    preamble = quantum_interface.get_preamble(macro_cycle, i, qmr.selection)
+    preamble = quantum_interface.get_preamble(macro_cycle, i, qmr)
     #
     # get ligand and buffer region models
     #
     ligand_model, buffer_model = get_ligand_buffer_models(model, qmr)
     assert buffer_model.restraints_manager_available()
     if qmr.write_pdb_core:
-      write_pdb_file(ligand_model, 'ligand_%s.pdb' % preamble, log)
+      write_pdb_file(ligand_model, '%s_ligand_%s.pdb' % (prefix, preamble), log)
     if qmr.write_pdb_buffer:
-      write_pdb_file(buffer_model, 'cluster_%s.pdb' % preamble, log)
+      write_pdb_file(buffer_model, '%s_cluster_%s.pdb' % (prefix, preamble), log)
     #
     # get appropriate QM manager
     #
     qmm = get_qm_manager(ligand_model, buffer_model, qmr)
-    qmm.preamble=preamble
+    qmm.preamble='%s_%s' % (prefix, preamble)
     objects.append([ligand_model, buffer_model, qmm, qmr])
   if not run_program: return
   print('',file=log)
@@ -394,14 +394,21 @@ def update_restraints(model,
     #
     # update coordinates of ligand
     #
+    old = ligand_model.get_hierarchy().atoms().extract_xyz()
+    rmsd = old.rms_difference(xyz)
+    if rmsd>5:
+      print('  QM minimisation has large rms difference in cartesian coordinates: %0.1f' % (rmsd),
+            file=log)
+      print('  Check the QM minimisation for errors or incorrect protonation.',
+            file=log)
     ligand_model.get_hierarchy().atoms().set_xyz(xyz)
     #need to update buffer_model also ???
     gs = ligand_model.geometry_statistics()
     print('  Interim stats : %s' % gs.show_bond_and_angle(), file=log)
     if qmr.write_final_pdb_core:
-      write_pdb_file(ligand_model, 'ligand_final_%s.pdb' % preamble, log)
+      write_pdb_file(ligand_model, '%s_ligand_final_%s.pdb' % (prefix, preamble), log)
     if qmr.write_final_pdb_buffer:
-      write_pdb_file(buffer_model, 'cluster_final_%s.pdb' % preamble, log)
+      write_pdb_file(buffer_model, '%s_cluster_final_%s.pdb' % (prefix, preamble), log)
     #
     # transfer geometry to proxies
     #  - bonds
@@ -476,6 +483,7 @@ def update_restraints(model,
     #
     gs = ligand_model.geometry_statistics()
     print('  Finished stats : %s' % gs.show_bond_and_angle(), file=log)
+  print('  Total time for QM restaints: %0.1fs' % (time.time()-t0))
   print('='*80)
 
 if __name__ == '__main__':

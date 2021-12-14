@@ -397,6 +397,7 @@ def _hierarchy_into_slots(hierarchy,
                           verbose=False,
                           ):
   def _is_linked(residue_group1, residue_group2, bpt):
+    if residue_group2 is None: return False
     atom_group1 = residue_group1.only_atom_group()
     atom_group2 = residue_group2.only_atom_group()
     c_atom = atom_group1.get_atom('N') # order important
@@ -418,8 +419,8 @@ def _hierarchy_into_slots(hierarchy,
   #start=18
   assert len(hierarchy.models())==1
   for chain in hierarchy.chains():
-    for residue_group in chain.residue_groups():
-      if verbose: print(residue_group.id_str())
+    for j, residue_group in enumerate(chain.residue_groups()):
+      if verbose: print(j, chain.id, residue_group.id_str())
       protein = True
       for atom_group in residue_group.atom_groups():
         gc_aa = get_class(atom_group.resname) in ["common_amino_acid",
