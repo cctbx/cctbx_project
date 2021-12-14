@@ -65,8 +65,11 @@ steps:
 #  displayName: Build local channel
 
 - script: |
+    set -x -e
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     #conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
+    cat $(Pipeline.Workspace)/modules/dials/.conda-envs/$(OS).txt
+    echo $(PYTHON_FULL_VERSION)
     conda create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/modules/dials/.conda-envs/$(OS).txt python=$(PYTHON_FULL_VERSION)
     conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
     conda install -y -c conda-forge pandas distro -n $(PYTHON_VERSION)
