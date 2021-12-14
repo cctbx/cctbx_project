@@ -928,7 +928,10 @@ int main() {
       print(xcode_version)
       # store just the version of Xcode (e.g. 11.4 becomes [11, 4])
       try:
-        xcode_version = [int(i) for i in xcode_version.split()[1].split('.')]
+        for line in xcode_version.split('\n'):
+          if line.startswith('Xcode'):
+            xcode_version = [int(i) for i in line.split()[1].split('.')]
+            break
       except Exception:
         pass
     except subprocess.CalledProcessError:
