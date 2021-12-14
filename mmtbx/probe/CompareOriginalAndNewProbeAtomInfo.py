@@ -17,7 +17,7 @@ from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import
 
 import subprocess
-import os
+import os,sys
 import argparse
 from mmtbx.probe import Helpers
 
@@ -47,6 +47,9 @@ if __name__ == '__main__':
     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   stdout, stderr = process.communicate()
   os.chdir(cwd)
+  if len(stderr) != 0:
+    print('Error running make (note; this will not work on Windows):',stderr)
+    sys.exit(1)
 
   #==============================================================
   # Run the original Probe on the input file.
