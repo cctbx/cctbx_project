@@ -36,20 +36,29 @@ if __name__ == '__main__':
   #==============================================================
   # Check out and build the original probe program in a subdirectory.
   print('Cloning original Probe repository')
-  process = subprocess.Popen(["git","clone","https://github.com/rlabduke/probe"],
-   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  stdout, stderr = process.communicate()
+  try:
+    process = subprocess.Popen(["git","clone","https://github.com/rlabduke/probe"],
+     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+  except Exception as e:
+    print('Error during clone; git must be installed:',str(e))
+    sys.exit(1)
 
   print('Building original Probe')
   cwd = os.getcwd();
   os.chdir("./probe")
-  process = subprocess.Popen(["make"],
-    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  stdout, stderr = process.communicate()
+  try:
+    process = subprocess.Popen(["make"],
+      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+  except Exception as e:
+    print("Exception running make (note; this will not work on Windows):",str(e))
+    os.chdir(cwd)
+    sys.exit(2)
   os.chdir(cwd)
   if len(stderr) != 0:
     print('Error running make (note; this will not work on Windows):',stderr)
-    sys.exit(1)
+    sys.exit(3)
 
   #==============================================================
   # Run the original Probe on the input file.
