@@ -81,9 +81,10 @@ cfg_arcticus.host_variable = 'HOSTNAME'
 cfg_arcticus.host_name = 'jlselogin'
 cfg_arcticus.env['KOKKOS_DEVICES'] = "SYCL"
 cfg_arcticus.env['KOKKOS_ARCH'] = ""
-cfg_arcticus.env['LDFLAGS'] = " -fsycl -DKOKKOS_DEPENDENCE"
+cfg_arcticus.env['LDFLAGS'] = ""
+#cfg_arcticus.env['LDFLAGS'] = " -fsycl -DKOKKOS_DEPENDENCE"
 cfg_arcticus.env['LDLIBS'] = " -ldl"
-cfg_arcticus.env['CXX'] = 'icpx'
+cfg_arcticus.env['CXX'] = 'dpcpp'
 configs.append(cfg_arcticus)
 
 system_settings = cfg_default.env
@@ -111,9 +112,15 @@ if os.getenv('KOKKOS_CUDA_OPTIONS') is None:
 # WEH - TODO
 #       Double check that it makes sense to define CUDAREAL at ALCF
 #
-os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double'
+os.environ['CXX'] = system_settings['CXX']
+os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double -DKokkos_ENABLE_DEPRECATED_CODE_3=ON'
 os.environ['LDFLAGS'] = system_settings['LDFLAGS']
 os.environ['LDLIBS'] = system_settings['LDLIBS']
+#
+# WEH - TODO
+#       How should we set this value?  SYCL requires c++17
+#
+os.environ['KOKKOS_CXX_STANDARD'] = "c++17"
 
 original_cxx = None
 kokkos_lib = 'libkokkos.a'
@@ -125,13 +132,14 @@ if 'Cuda' in os.getenv('KOKKOS_DEVICES'):
   os.environ['CXX'] = os.path.join(os.environ['KOKKOS_PATH'], 'bin', 'nvcc_wrapper')
 else:
   os.environ['CXX'] = system_settings['CXX']
+  os.environ['SHCXX'] = system_settings['CXX']
 
 #
 # WEH - TODO
 #       What configuration option should we used to disable local kokkos builds?
 #
 Import("env", "env_etc")
-if False:
+if os.getenv('KOKKOS_HOME') is None:
     print('='*79)
     print('Building Kokkos')
     print('-'*79)
@@ -169,14 +177,18 @@ else:
 # Build libsimtbx_kokkos.so
 #
 
+print("HERE?", os.environ['CXX'])
 kokkos_env = env.Clone()
 kokkos_env.Replace(CXX=os.environ['CXX'])
 kokkos_env.Replace(SHCXX=os.environ['CXX'])
+kokkos_env.Replace(SHLINK=os.environ['CXX'])
 kokkos_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
-#kokkos_env.Append(LIBS=['kokkos'])
+kokkos_env.Append(LIBS=['sycl'])
+#kokkos_env.Append(LIBS=['kokkoscore'])
 
+print("HERE!", kokkos_env['SHCXXCOM'])
 simtbx_kokkos_lib = kokkos_env.SharedLibrary(
   target="#lib/libsimtbx_kokkos.so",
   source=[
@@ -201,6 +213,7 @@ if not env_etc.no_boost_python:
     paths=env_etc.simtbx_common_includes + [env_etc.python_include])
   kokkos_ext_env.Replace(CXX=os.environ['CXX'])
   kokkos_ext_env.Replace(SHCXX=os.environ['CXX'])
+  kokkos_ext_env.Replace(SHLINK=os.environ['CXX'])
   kokkos_ext_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
   kokkos_ext_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
   kokkos_ext_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
@@ -225,13 +238,17 @@ if not env_etc.no_boost_python:
       "amdhip64",
       "hsa-runtime64"])
   elif 'SYCL' in os.getenv('KOKKOS_DEVICES'):
-    print("HERE - x")
-    #kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['ROCM_PATH'], 'lib')])
+    print("HERE - Building with SYCL")
+    # WEH - Is this even used?  I think CXXFLAGS is ignored here
+    #kokkos_ext_env.Prepend(CXXFLAGS=['-DCUDAREAL=double', '-fsycl', '-fsycl-unnamed-lambda'] + [val.replace('c++11','c++17') for val in kokkos_cxxflags])
+    #
+    #kokkos_ext_env.Prepend(CPPFLAGS=['-DCUDAREAL=double', '-fsycl', '-fsycl-unnamed-lambda'] + [val.replace('c++11','c++17') for val in kokkos_cxxflags])
     kokkos_ext_env.Append(LIBS=env_etc.libm +
       ["simtbx_kokkos",
       "scitbx_boost_python",
       get_boost_library_with_python_version("boost_python", kokkos_ext_env['LIBPATH']),
-      "cctbx"])
+      "cctbx",
+      "kokkos"])
   else:
     kokkos_ext_env.Append(LIBS=env_etc.libm +
       ["simtbx_kokkos",
@@ -240,6 +257,8 @@ if not env_etc.no_boost_python:
       "cctbx",
       "kokkos"])
 
+  print("HERE!!", kokkos_ext_env['SHCXX'])
+  print("HERE!!", kokkos_ext_env['SHLINK'])
   simtbx_kokkos_ext = kokkos_ext_env.SharedLibrary(
     target="#lib/simtbx_kokkos_ext.so",
     source=['kokkos_ext.cpp']
@@ -248,3 +267,4 @@ if not env_etc.no_boost_python:
 # reset CXX
 if original_cxx is not None:
   os.environ['CXX'] = original_cxx
+  os.environ['SHCXX'] = original_cxx
