@@ -1915,29 +1915,9 @@ Note:
 
       # If we have a dump file specified, write the atom information into it.
       if self.params.output.dump_file_name is not None:
-        atomDump = ""
-        for a in allAtoms:
-          chainID = a.parent().parent().parent().id
-          resName = a.parent().resname.upper()
-          resID = str(a.parent().parent().resseq_as_int())
-          acceptorChoices = ["noAcceptor","isAcceptor"]
-          donorChoices = ["noDonor","isDonor"]
-          metallicChoices = ["noMetallic","isMetallic"]
-          alt = a.parent().altloc
-          if alt == " " or alt == "":
-            alt = "-"
-          atomDump += (
-            " "+str(chainID)+" "+resName+" {:3d} ".format(int(resID))+a.name+" "+alt+
-            " {:7.3f}".format(a.xyz[0])+" {:7.3f}".format(a.xyz[1])+" {:7.3f}".format(a.xyz[2])+
-            " {:5.2f}".format(self._extraAtomInfo.getMappingFor(a).vdwRadius)+
-            " "+acceptorChoices[self._extraAtomInfo.getMappingFor(a).isAcceptor]+
-            " "+donorChoices[self._extraAtomInfo.getMappingFor(a).isDonor]+
-            " "+metallicChoices[a.element_is_positive_ion()]+
-            "\n"
-          )
-        df = open(self.params.output.dump_file_name,"w")
-        df.write(atomDump)
-        df.close()
+        atomDump = Helpers.writeAtomInfoToString(allAtoms, self._extraAtomInfo)
+        with open(self.params.output.dump_file_name,"w") as df:
+          df.write(atomDump)
 
       # Make a query structure to return the Phantom Hydrogens (if there are any)
       self._phantomHydrogensSpatialQuery = Helpers.createSpatialQuery(phantomHydrogens, self.params.probe)

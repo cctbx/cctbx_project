@@ -563,25 +563,7 @@ class _SingletonOptimizer(object):
 
       #################################################################################
       # Dump information about all of the atoms in the model into a string.
-      for a in myModel.atoms():
-        chainID = a.parent().parent().parent().id
-        resName = a.parent().resname.upper()
-        resID = str(a.parent().parent().resseq_as_int())
-        acceptorChoices = ["noAcceptor","isAcceptor"]
-        donorChoices = ["noDonor","isDonor"]
-        metallicChoices = ["noMetallic","isMetallic"]
-        alt = a.parent().altloc
-        if alt == " " or alt == "":
-          alt = "-"
-        self._atomDump += (
-          " "+str(chainID)+" "+resName+" {:3d} ".format(int(resID))+a.name+" "+alt+
-          " {:7.3f}".format(a.xyz[0])+" {:7.3f}".format(a.xyz[1])+" {:7.3f}".format(a.xyz[2])+
-          " {:5.2f}".format(self._extraAtomInfo.getMappingFor(a).vdwRadius)+
-          " "+acceptorChoices[self._extraAtomInfo.getMappingFor(a).isAcceptor]+
-          " "+donorChoices[self._extraAtomInfo.getMappingFor(a).isDonor]+
-          " "+metallicChoices[a.element_is_positive_ion()]+
-          "\n"
-        )
+      self._atomDump = Helpers.writeAtomInfoToString(myModel.atoms(), self._extraAtomInfo)
 
   def getInfo(self):
     """

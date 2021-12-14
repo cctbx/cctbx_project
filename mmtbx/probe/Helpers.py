@@ -383,6 +383,43 @@ def getExtraAtomInfo(model, useNeutronDistances = False, probePhil = None):
 
   return getExtraAtomInfoReturn(extras, warnings)
 
+def writeAtomInfoToString(atoms, extraAtomInfo):
+  """
+    Write information about atoms, including their radius and donor/acceptor status,
+    into a string that matches the form used by the new options added to the original
+    Probe and Reduce code to enable comparisons between versions.
+    :param atoms: The atoms to be described.
+    :param extraAtomInfo: mmtbx_probe_ext.ExtraAtomInfo mapper that provides radius and other
+    information about atoms beyond what is in the pdb.hierarchy.  Used here to determine
+    which atoms may be acceptors.
+    :return: String suitable for writing to a file to enable comparison with the dump
+    files from the original Probe or Reduce programs.
+  """
+
+  #################################################################################
+  # Dump information about all of the atoms in the model into a string.
+  ret = ""
+  for a in atoms:
+    chainID = a.parent().parent().parent().id
+    resName = a.parent().resname.upper()
+    resID = str(a.parent().parent().resseq_as_int())
+    acceptorChoices = ["noAcceptor","isAcceptor"]
+    donorChoices = ["noDonor","isDonor"]
+    metallicChoices = ["noMetallic","isMetallic"]
+    alt = a.parent().altloc
+    if alt == " " or alt == "":
+      alt = "-"
+    ret += (
+      " "+str(chainID)+" "+resName+" {:3d} ".format(int(resID))+a.name+" "+alt+
+      " {:7.3f}".format(a.xyz[0])+" {:7.3f}".format(a.xyz[1])+" {:7.3f}".format(a.xyz[2])+
+      " {:5.2f}".format(extraAtomInfo.getMappingFor(a).vdwRadius)+
+      " "+acceptorChoices[extraAtomInfo.getMappingFor(a).isAcceptor]+
+      " "+donorChoices[extraAtomInfo.getMappingFor(a).isDonor]+
+      " "+metallicChoices[a.element_is_positive_ion()]+
+      "\n"
+    )
+  return ret
+
 def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acceptorOnly = False,
       placedHydrogenRadius = 1.05):
   """
