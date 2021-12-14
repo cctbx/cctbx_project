@@ -510,7 +510,7 @@ def compareAtomInfoFiles(fileName1, fileName2, distanceThreshold):
 
     # Check the distance between the atoms.
     dist = distance(position(m1[m1ID]),position(m2[m2ID]))
-    if dist > thresh:
+    if dist > distanceThreshold:
       ret += atomID(m1[m1ID])+' Distance between runs: {:.2f}'.format(dist)+'\n'
 
     # Go on to next line

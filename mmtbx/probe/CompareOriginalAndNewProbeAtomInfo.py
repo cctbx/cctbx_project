@@ -30,29 +30,54 @@ if __name__ == '__main__':
   # of the script. There can be the name of a PDB file to read.
   parser = argparse.ArgumentParser(description='Test mmtbx.reduce.Optimizers.')
   parser.add_argument("--distanceThreshold", type=float, help="Same atom must be >= this distance between files to report", default=0.02)
-  parser.add_argument('inputFile', type=str)
+  parser.add_argument('inputFile', type=str, help="PDB formatted model file to compare")
   args = parser.parse_args()
 
   #==============================================================
   # Check out and build the original probe program in a subdirectory.
   print('Cloning original Probe repository')
-  subprocess.run(["git","clone","https://github.com/rlabduke/probe"])
+  process = subprocess.Popen(["git","clone","https://github.com/rlabduke/probe"],
+   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  stdout, stderr = process.communicate()
 
   print('Building original Probe')
   cwd = os.getcwd();
   os.chdir("./probe")
-  subprocess.run(["make"])
+  process = subprocess.Popen(["make"],
+    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  stdout, stderr = process.communicate()
   os.chdir(cwd)
 
-  # @todo
-
   #==============================================================
-  # @todo
+  # Run the original Probe on the input file.
+  print('Running old and new Probe on',args.inputFile)
+  process = subprocess.Popen(["./probe/probe","-quiet","-kin","-mc","-self","all",
+    "-count","-sepworse","-dumpatoms",os.path.basename(args.inputFile)+".orig.dump",args.inputFile],
+   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  stdout, stderr = process.communicate()
+  with open(os.path.basename(args.inputFile)+".orig.out","w") as f:
+    f.write(stdout)
+  with open(os.path.basename(args.inputFile)+".orig.err","w") as f:
+    f.write(stderr)
+
+  process = subprocess.Popen(["mmtbx.probe2",'source_selection="all"','record_added_hydrogens=False',
+    'approach=self','count_dots=True','output.separate_worse_clashes=True',
+    'output.file_name='+os.path.basename(args.inputFile)+".new.out",
+    'output.dump_file_name='+os.path.basename(args.inputFile)+".new.dump",
+    args.inputFile],
+   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  stdout, stderr = process.communicate()
+  with open(os.path.basename(args.inputFile)+".new.err","w") as f:
+    f.write(stderr)
 
   #==============================================================
   # Compare the two dump files.  Store the results in a comparison file and say
   # to look there.
-  # @todo
-  compareFileName = "./"+args.inputFile+".compare"
+  compare = Helpers.compareAtomInfoFiles(os.path.basename(args.inputFile)+".orig.dump",
+    os.path.basename(args.inputFile)+".new.dump",
+    distanceThreshold=args.distanceThreshold)
+  compareFileName = "./"+os.path.basename(args.inputFile)+".compare"
+  with open(compareFileName, "w") as f:
+    f.write(compare)
 
-  print('Look in',compareFileName,'for comparisons')
+  print('Look in',compareFileName,'for differences')
