@@ -1055,6 +1055,8 @@ def shift_and_box_model(model = None,
   return model_manager(
      ph.as_pdb_input(),
      crystal_symmetry = crystal_symmetry,
+     restraint_objects = model.get_restraint_objects(),
+     monomer_parameters = model.get_monomer_parameters(),
      log = null_out())
 
 def get_boxes_to_tile_map(target_for_boxes = 24,
