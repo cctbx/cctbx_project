@@ -352,7 +352,8 @@ class DataModeler:
             sigma_rdout=self.sigma_rdout, deltaQ=self.params.roi.deltaQ, experiment=self.E,
             weighted_fit=self.params.roi.fit_tilt_using_weights,
             allow_overlaps=self.params.roi.allow_overlapping_spots,
-            ret_cov=True, skip_roi_with_negative_bg=self.params.roi.skip_roi_with_negative_bg)
+            ret_cov=True, skip_roi_with_negative_bg=self.params.roi.skip_roi_with_negative_bg,
+            only_high=self.params.roi.only_filter_zingers_above_mean)
 
         if roi_packet is None:
             return False
@@ -477,8 +478,11 @@ class DataModeler:
         self.all_sigmas = np.array(all_sigmas)
         # note rare chance for sigmas to be nan if the args of sqrt is below 0
         self.all_trusted = np.logical_and(np.array(all_trusted), ~np.isnan(all_sigmas))
-        # Dont include pixels whose background model is below 0
-        self.all_trusted[self.all_background < 0] = False
+
+        if self.params.roi.skip_roi_with_negative_bg:
+            # Dont include pixels whose background model is below 0
+            self.all_trusted[self.all_background < 0] = False
+
         self.npix_total = len(all_data)
         self.all_fast = np.array(all_fast)
         self.all_slow = np.array(all_slow)
@@ -611,7 +615,6 @@ class DataModeler:
         centers = self.params.centers
         betas = self.params.betas
         if not self.params.use_restraints or self.params.fix.ucell:
-            # TODO make centers and betas always len 6
             centers.ucell = [1,1,1,1,1,1]
             betas.ucell = [1,1,1,1,1,1]
         fix = self.params.fix
@@ -668,15 +671,47 @@ class DataModeler:
             if "Ang" in name:
                 minval = val - ucell_vary_perc * val
                 maxval = val + ucell_vary_perc * val
+                if centers.ucell is not None:
+                    cent = centers.ucell[i_uc]
+                    beta = betas.ucell[i_uc]
+                else:
+                    if name == 'a_Ang':
+                        cent = centers.ucell_a
+                        beta = betas.ucell_a
+                    elif name== 'b_Ang':
+                        cent = centers.ucell_b
+                        beta = betas.ucell_b
+                    else:
+                        cent = centers.ucell_c
+                        beta = centers.ucell_c
+                    assert cent is not None, "Set the center restraints properly!"
+                    assert beta is not None
             else:
                 val_in_deg = val * 180 / np.pi
                 minval = (val_in_deg - self.params.ucell_ang_abs) * np.pi / 180.
                 maxval = (val_in_deg + self.params.ucell_ang_abs) * np.pi / 180.
+                if centers.ucell is not None:
+                    cent = centers.ucell[i_uc]*np.pi / 180.
+                    beta = betas.ucell[i_uc]
+                else:
+                    if name=='alpha_rad':
+                        cent = centers.ucell_alpha
+                        beta = betas.ucell_alpha
+                    elif name=='beta_rad':
+                        cent = centers.ucell_beta
+                        beta = centers.ucell_beta
+                    else:
+                        cent = centers.ucell_gamma
+                        beta = centers.ucell_beta
+                    assert cent is not None
+                    assert beta is not None
+                    cent = cent*np.pi / 180.
+
             p = ParameterType(init=val, sigma=sigma.ucell[i_uc],
                               minval=minval, maxval=maxval, fix=fix.ucell,
                               name="ucell%d" % (i_uc,),
-                              center=centers.ucell[i_uc],
-                              beta=betas.ucell[i_uc])
+                              center=cent,
+                              beta=beta)
             MAIN_LOGGER.info(
                 "Unit cell variable %s (currently=%f) is bounded by %f and %f" % (name, val, minval, maxval))
             P.add(p)
