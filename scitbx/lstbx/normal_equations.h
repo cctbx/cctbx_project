@@ -410,6 +410,45 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       yc_sq += w * yc * yc;
     }
 
+    void add_residuals_omp(const int n,
+      af::const_ref<scalar_t>& yc,
+      af::const_ref<scalar_t>& yo,
+      af::const_ref<scalar_t>& w)
+    {
+      n_data += n;
+      FloatType yo2 = 0;
+      FloatType yodyc = 0;
+      FloatType yc2 = 0;
+#pragma omp parallel for reduction(+:yo2,yodyc,yc2)
+      for (int i = 0; i < n; i++) {
+        yo2 += w[i] * yo[i] * yo[i];
+        yodyc += w[i] * yo[i] * yc[i];
+        yc2 += w[i] * yc[i] * yc[i];
+      }
+      yo_sq += yo2;
+      yo_dot_yc += yodyc;
+      yc_sq += yc2;
+    }
+
+    void add_residuals_omp(scalar_t n,
+      af::const_ref<scalar_t>& yc,
+      af::const_ref<scalar_t>& yo)
+    {
+      n_data += n;
+      FloatType yo2 = 0;
+      FloatType yodyc = 0;
+      FloatType yc2 = 0;
+#pragma omp parallel for reduction(+:yo2,yodyc,yc2)
+      for (int i = 0; i < int(n); i++) {
+        yo2 += yo[i] * yo[i];
+        yodyc += yo[i] * yc[i];
+        yc2 += yc[i] * yc[i];
+      }
+      yo_sq += yo2;
+      yo_dot_yc += yodyc;
+      yc_sq += yc2;
+    }
+
     /** \brief Add the linearisation of the equation
          \f$y_{c,i} \propto y_{o,i}\f$ with weight w.
      */
@@ -449,6 +488,80 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
                    (jacobian_yc.n_columns())(n_parameters());
       for (int i=0; i<yc.size(); ++i) {
         add_equation(yc[i], &jacobian_yc(i, 0), yo[i], w.size() ? w[i] : 1);
+      }
+    }
+
+    /// Add many equations in one go using OpenMP
+    void add_equations_omp(const int n_ref, const int n_par, const int n_threads,
+      af::const_ref<scalar_t>& yc,
+      std::vector<std::vector<FloatType>>& jacobian_yc,
+      af::const_ref<scalar_t>& yo,
+      af::const_ref<scalar_t>& w)
+    {
+      SCITBX_ASSERT(yc.size() == jacobian_yc.size()
+        && (!w.size() || yc.size() == w.size()))
+        (yc.size())(jacobian_yc.size())(w.size());
+      SCITBX_ASSERT(jacobian_yc[0].size() == n_parameters())
+        (jacobian_yc[0].size())(n_parameters());
+      SCITBX_ASSERT(!finalised());
+      FloatType* m = symmetric_matrix_owning_ref_t(grad_yc_dot_grad_yc).array().begin();
+      const int limit = n_par * (n_par + 1) / 2;
+      if (w.size()) {
+        add_residuals_omp(n_ref, yc, yo, w);
+#pragma omp parallel num_threads(n_threads)
+        {
+          std::vector<FloatType> matrix;
+          matrix.resize(limit, 0.0);
+          for (int i = 0; i < n_ref; ++i) {
+            const double* g_yc_loc = &(jacobian_yc[i][0]);
+#pragma omp for nowait schedule(static,1)
+            for (int x = 0; x < n_par; ++x) {
+              if (g_yc_loc[x] != 0.0) {
+                FloatType alpha_x = w[i] * g_yc_loc[x];
+                yo_dot_grad_yc[x] += alpha_x * yo[i];
+                yc_dot_grad_yc[x] += alpha_x * yc[i];
+                int run = x * (n_par - 1) - x * (x - 1) / 2;
+                for (int y = x; y < n_par; y++) {
+                  matrix[run + y] += alpha_x * g_yc_loc[y];
+                }
+              }
+            }
+          }
+#pragma omp critical
+          {
+            for (int i = 0; i < limit; i++) {
+              m[i] += matrix[i];
+            }
+          }
+        }
+      }
+      else {
+        add_residuals_omp(n_ref, yc, yo);
+#pragma omp parallel num_threads(n_threads)
+        {
+          std::vector<FloatType> matrix;
+          matrix.resize(limit, 0.0);
+          for (int i = 0; i < n_ref; ++i) {
+            const double* g_yc_loc = &(jacobian_yc[i][0]);
+#pragma omp for nowait schedule(static,1)
+            for (int x = 0; x < n_par; ++x) {
+              if (g_yc_loc[x] != 0.0) {
+                yo_dot_grad_yc[x] += g_yc_loc[x] * yo[i];
+                yc_dot_grad_yc[x] += g_yc_loc[x] * yc[i];
+                int run = x * (n_par - 1) - x * (x - 1) / 2;
+                for (int y = x; y < n_par; y++) {
+                  matrix[run + y] += g_yc_loc[x] * g_yc_loc[y];
+                }
+              }
+            }
+          }
+#pragma omp critical
+          {
+            for (int i = 0; i < limit; i++) {
+              m[i] += matrix[i];
+            }
+          }
+        }
       }
     }
 
