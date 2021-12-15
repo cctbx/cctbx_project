@@ -81,13 +81,29 @@ namespace scitbx { namespace matrix {
   {
     if (fast_linalg::is_initialised()) {
       using namespace fast_linalg;
-      fast_linalg::spr(CblasRowMajor, CblasUpper, n, alpha, x, 1, a);
+      spr(CblasRowMajor, CblasUpper, n, alpha, x, 1, a);
     }
     else {
+      if (alpha == 0.0) return;
       for (int i = 0; i < n; ++i) {
+        int len = (n - i);
+        if (x[i] == 0) {
+          a += len;
+          continue;
+        }
         T alpha_x_i = alpha * x[i];
-        for (int j = i; j < n; ++j) {
-          *a++ += alpha_x_i * x[j];
+        int full = len / 4, part = len % 4;
+        for (int j = 0; j < full; j++) {
+          int off = i + j * 4;
+          a[0] += alpha_x_i * x[off + 0];
+          a[1] += alpha_x_i * x[off + 1];
+          a[2] += alpha_x_i * x[off + 2];
+          a[3] += alpha_x_i * x[off + 3];
+          a += 4;
+        }
+        int off = i + full * 4;
+        for (int j = 0; j < part; ++j) {
+          *a++ += alpha_x_i * x[off + j];
         }
       }
     }
