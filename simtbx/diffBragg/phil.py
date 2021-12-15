@@ -898,7 +898,7 @@ roi {
     .type = bool
     .help = if fitting background, theres a zinger filter step (background_threshold)
     .help = and typically it only applies to pixels above the mean
-    .help = Set this to False to filter zingers below the mean, which is useful for 
+    .help = Set this to False to filter zingers below the mean, which is useful for
     .help = data with low background signal.
   cache_dir_only = False
     .type = bool
