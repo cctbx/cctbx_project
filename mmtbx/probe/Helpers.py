@@ -199,9 +199,9 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, N, nonHydrogenN = 1e10):
     to a depth of N.  The atom itself will not be included in the list, so an atom that
     has no bonded neighbors will always have an empty result.  This can be used to
     produce a list of excluded atoms for dot scoring.  It checks to ensure that all of
-    the bonded atoms are from compatible conformations; note that if the original atom
+    the bonded atoms are from compatible conformations (if the original atom
     is in the empty configuration then this will return atoms from all conformations that
-    are in the bonded set.
+    are in the bonded set).
     :param atom: The atom to be tested.
     :param bondedNeighborLists: Dictionary of lists that contain all bonded neighbors for
     each atom in a set of atoms.  Should be obtained using
@@ -213,7 +213,7 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, N, nonHydrogenN = 1e10):
     :returns a list of all atoms that are bonded to atom within a depth of N.  The original
     atom is never on the list.
   """
-  hFound = atom.element_is_hydrogen()
+  atomIsHydrogen = atom.element_is_hydrogen()
   # Find all atoms to the specified depth
   atoms = {atom}            # Initialize the set with the atom itself
   for i in range(N):        # Repeat the recursion this many times
@@ -221,9 +221,7 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, N, nonHydrogenN = 1e10):
     for a in current:       # Add all neighbors of all atoms in the current level
       for n in bondedNeighborLists[a]:
         # If we find a hydrogen, we no longer use the non-Hydrogen N limit.
-        if n.element_is_hydrogen():
-          hFound = True
-        if i < nonHydrogenN or hFound:
+        if i < nonHydrogenN or atomIsHydrogen or n.element_is_hydrogen():
           # Ensure that the new atom is in a compatible conformation with the original atom.
           if compatibleConformations(atom, n):
             atoms.add(n)
@@ -259,7 +257,7 @@ class getExtraAtomInfoReturn(object):
     self.extraAtomInfo = extraAtomInfo
     self.warnings = warnings
 
-def getExtraAtomInfo(model, useNeutronDistances = False, probePhil = None):
+def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, probePhil = None):
   """
     Helper function to provide a mapper for ExtraAtomInfo needed by Probe when scoring
     models.  It first tries to find the information in CCTBX.  If it cannot, it looks
@@ -268,6 +266,8 @@ def getExtraAtomInfo(model, useNeutronDistances = False, probePhil = None):
     PDB interpretation must have been done on the model, perhaps by calling
     model.process(make_restraints=True), with useNeutronDistances matching
     the parameter to this function.
+    :param bondedNeighborLists: Lists of atoms that are bonded to each other.
+    Can be obtained by calling getBondedNeighborLists().
     :param useNeutronDistances: Default is to use x-ray distances, but setting this to
     True uses neutron distances instead.  This must be set consistently with the
     PDB interpretation parameter used on the model.
@@ -349,6 +349,23 @@ def getExtraAtomInfo(model, useNeutronDistances = False, probePhil = None):
                       extra.isAcceptor = True
                       warnings += "Marking "+a.name.strip()+" as an aromatic-ring acceptor\n"
 
+                  # Mark Nitrogens that do not have an attached Hydrogen as acceptors.
+                  # We only do this in HET atoms because CCTBX routines seem to be working
+                  # properly in standard residues.
+                  # We determine whether it is in a het atom by seeing if the residue name
+                  # is in the amino-acid mapping structure.
+                  if not a.parent().resname in iotbx.pdb.amino_acid_codes.one_letter_given_three_letter:
+                    if a.element == 'N':
+                      # See if the atom has no Hydrogens covalently bonded to it.
+                      found = False
+                      for n in bondedNeighborLists[a]:
+                        if n.element_is_hydrogen():
+                          found = True
+                          break
+                      if not found and not extra.isAcceptor:
+                        extra.isAcceptor = True
+                        warnings += "Marking "+a.parent().resname.strip()+" "+a.name.strip()+" as a non-Hydrogen HET acceptor\n"
+
                   # Mark all Carbonyl's with the Probe radius while the Richarsons and
                   # the CCTBX decide how to handle this.
                   # @todo After 2021, see if the CCTBX has the same values (1.65 and 1.80)
@@ -384,6 +401,150 @@ def getExtraAtomInfo(model, useNeutronDistances = False, probePhil = None):
             extras.setMappingFor(a, extra)
 
   return getExtraAtomInfoReturn(extras, warnings)
+
+def writeAtomInfoToString(atoms, extraAtomInfo):
+  """
+    Write information about atoms, including their radius and donor/acceptor status,
+    into a string that matches the form used by the new options added to the original
+    Probe and Reduce code to enable comparisons between versions.
+    :param atoms: The atoms to be described.
+    :param extraAtomInfo: mmtbx_probe_ext.ExtraAtomInfo mapper that provides radius and other
+    information about atoms beyond what is in the pdb.hierarchy.  Used here to determine
+    which atoms may be acceptors.
+    :return: String suitable for writing to a file to enable comparison with the dump
+    files from the original Probe or Reduce programs.
+  """
+
+  #################################################################################
+  # Dump information about all of the atoms in the model into a string.
+  ret = ""
+  for a in atoms:
+    chainID = a.parent().parent().parent().id
+    resName = a.parent().resname.upper()
+    resID = str(a.parent().parent().resseq_as_int())
+    acceptorChoices = ["noAcceptor","isAcceptor"]
+    donorChoices = ["noDonor","isDonor"]
+    metallicChoices = ["noMetallic","isMetallic"]
+    alt = a.parent().altloc
+    if alt == " " or alt == "":
+      alt = "-"
+    ret += (
+      " "+str(chainID)+" "+resName+" {:3d} ".format(int(resID))+a.name+" "+alt+
+      " {:7.3f}".format(a.xyz[0])+" {:7.3f}".format(a.xyz[1])+" {:7.3f}".format(a.xyz[2])+
+      " {:5.2f}".format(extraAtomInfo.getMappingFor(a).vdwRadius)+
+      " "+acceptorChoices[extraAtomInfo.getMappingFor(a).isAcceptor]+
+      " "+donorChoices[extraAtomInfo.getMappingFor(a).isDonor]+
+      " "+metallicChoices[a.element_is_positive_ion()]+
+      "\n"
+    )
+  return ret
+
+def compareAtomInfoFiles(fileName1, fileName2, distanceThreshold):
+  """
+    Write information about atom differences in two files into a string that describes
+    their differences.  This is used to perform a difference on files that contain the
+    output of writeAtomInfoToString() run on different versions of Probe or Reduce.
+    The lines in the files are sorted so that reordering of the atoms between files will
+    not cause this function to report differences.
+    :param fileName1: The first file.
+    :param fileName2: The second file.
+    :param distanceThreshold: If the same atom in each file is further apart than this
+    between files, report it as a difference; otherwise, not.
+    :return: String suitable for writing to a file to describe the differences.
+  """
+
+  ###########################
+  # Helper utility functions usable only inside this function
+  def atomID(s):
+    # Return the ID of the atom, which includes its chain, residue name,
+    # residue number, atom name, and alternate separated by spaces
+    w = s.split()
+    return w[0]+" "+w[1]+" "+w[2]+" "+w[3]+" "+w[4]
+
+  def position(s):
+    # Return a tuple that has the location of the atom.
+    w = s.split()
+    return ( float(w[5]), float(w[6]), float(w[7]) )
+
+  def radius(s):
+    # Return the radius for the atom.
+    w = s.split()
+    return ( w[8] )
+
+  def flag(s,f):
+    # Return a flag for the atom, indexed by 0-2.
+    w = s.split()
+    return ( w[9+f] )
+
+  def distance(a, b):
+    # Return the distance between 3-space tuples a and b
+    return math.sqrt( (a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2 )
+
+  ###########################
+  # Initialize our return value to empty.
+  ret = ""
+
+  # Read the the data from each file.
+  # Sort the lines from the file so that we'll get chain, residue, atom name sorting.
+  with open(fileName1) as f:
+    m1 = f.readlines()
+  m1.sort(key=lambda x:atomID(x))
+
+  with open(fileName2) as f:
+    m2 = f.readlines()
+  m2.sort(key=lambda x:atomID(x))
+
+  # Compare the two and report on any differences.
+  # Both lists are sorted, so we'll know which has a missing element compared
+  # to the other.  We walk from the beginning to the end of each list.
+  m1ID = 0
+  m2ID = 0
+  while m1ID < len(m1) and m2ID < len(m2):
+
+    # Atom names are unique within residues, so we can use that to
+    # match atoms in one file from those in the other and print out
+    # missing atoms and differences in positions.
+    if atomID(m1[m1ID]) < atomID(m2[m2ID]):
+      ret += 'Only in first: '+atomID(m1[m1ID])+'\n'
+      m1ID += 1
+      continue
+
+    if atomID(m1[m1ID]) > atomID(m2[m2ID]):
+      ret += 'Only in second: '+atomID(m2[m2ID])+'\n'
+      m2ID += 1
+      continue
+
+    # Check the radius to see if they differ
+    oldRadius = radius(m1[m1ID])
+    newRadius = radius(m2[m2ID])
+    if oldRadius != newRadius:
+      ret += atomID(m1[m1ID])+' radii differ: old is {}, new is {}'.format(oldRadius,newRadius)+'\n'
+
+    # Check the flag fields to see if any of them differ
+    for f in range(3):
+      oldFlag = flag(m1[m1ID], f)
+      newFlag = flag(m2[m2ID], f)
+      if oldFlag != newFlag:
+        ret += atomID(m1[m1ID])+' flags differ: old is {}, new is {}'.format(oldFlag,newFlag)+'\n'
+
+    # Check the distance between the atoms.
+    dist = distance(position(m1[m1ID]),position(m2[m2ID]))
+    if dist > distanceThreshold:
+      ret += atomID(m1[m1ID])+' Distance between runs: {:.2f}'.format(dist)+'\n'
+
+    # Go on to next line
+    m1ID += 1
+    m2ID += 1
+
+  # Finish up either list that is not done
+  while m1ID < len(m1):
+    ret += 'Only in first: '+atomID(m1[m1ID])+'\n'
+    m1ID += 1
+  while m2ID < len(m2):
+    ret += 'Only in second: '+atomID(m2[m2ID])+'\n'
+    m2ID += 1
+
+  return ret
 
 def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acceptorOnly = False,
       placedHydrogenRadius = 1.05):
@@ -792,37 +953,6 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     assert len(str(e)) == 0, "Helpers.Test() Exception during test of Phantom Hydrogen placement: "+str(e)+"\n"+traceback.format_exc()
 
   #========================================================================
-  # Run unit test on isPolarHydrogen().  We use a specific PDB snippet
-  # for which we know the answer and then we verify that the results are what
-  # we expect.
-
-  dm = iotbx.data_manager.DataManager(['model'])
-  dm.process_model_str("pdb_4fenH_C_26.pdb",pdb_4fenH_C_26)
-  model = dm.get_model()
-  model.process(make_restraints=True)
-
-  # Get the Cartesian positions of all of the atoms.
-  carts = flex.vec3_double()
-  atoms = model.get_hierarchy().models()[0].atoms()
-  for a in atoms:
-    carts.append(a.xyz)
-
-  # Get the bond proxies for the atoms in the model and conformation we're using and
-  # use them to determine the bonded neighbor lists.
-  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-  bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies)
-
-  model = dm.get_model().get_hierarchy().models()[0]
-
-  for a in model.atoms():
-    if a.name.strip() in ["H41","H42","HO2'"]:
-      if not isPolarHydrogen(a, bondedNeighborLists):
-        return "Optimizers.Test(): Polar Hydrogen not identified: " + a.name
-    if a.name.strip() in ["H5","H6"]:
-      if isPolarHydrogen(a, bondedNeighborLists):
-        return "Optimizers.Test(): Polar Hydrogen improperly identified: " + a.name
-
-  #========================================================================
   # Run unit test on getBondedNeighborLists().  We use a specific PDB snippet
   # for which we know the answer and then we verify that the results are what
   # we expect.
@@ -879,23 +1009,71 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   assert compatibleConformations(a1,a2),  "Helpers:Test(): altloc expected True for empty first and blank second"
 
   #========================================================================
+  # Run unit test on isPolarHydrogen().  We use a specific PDB snippet
+  # for which we know the answer and then we verify that the results are what
+  # we expect.
+
+  dm = iotbx.data_manager.DataManager(['model'])
+  dm.process_model_str("pdb_4fenH_C_26.pdb",pdb_4fenH_C_26)
+  model = dm.get_model()
+  model.process(make_restraints=True)
+
+  # Get the Cartesian positions of all of the atoms.
+  carts = flex.vec3_double()
+  atoms = model.get_hierarchy().models()[0].atoms()
+  for a in atoms:
+    carts.append(a.xyz)
+
+  # Get the bond proxies for the atoms in the model and conformation we're using and
+  # use them to determine the bonded neighbor lists.
+  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+  bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies)
+
+  model = dm.get_model().get_hierarchy().models()[0]
+
+  for a in model.atoms():
+    if a.name.strip() in ["H41","H42","HO2'"]:
+      if not isPolarHydrogen(a, bondedNeighborLists):
+        return "Optimizers.Test(): Polar Hydrogen not identified: " + a.name
+    if a.name.strip() in ["H5","H6"]:
+      if isPolarHydrogen(a, bondedNeighborLists):
+        return "Optimizers.Test(): Polar Hydrogen improperly identified: " + a.name
+
+  #========================================================================
   # Run unit test on getAtomsWithinNBonds().
   # Get the atoms within N bounds for a range for the "N" atom and verify that the
   # counts match what is expected.  Do this for the case where we clamp the non-
   # hydrogen ones to the 3 and when we use the default of very large to count
   # them all.
   # NOTE: This re-uses the bondedNeighborLists test results from above
-  nestedNeighborsForN = [ None, 1, 3, 5, 5, 5, 5]
+  N4 = None
+  for a in atoms:
+    if a.name.strip().upper() == 'N4':
+      N4 = a
+  assert N4 is not None, ("Helpers.Test(): Could not find N4 (internal failure)")
+  # When clamped, we can't go further than the non-Hydrogen bound except for Hydrogens
+  nestedNeighborsForN4 = [ None, 3, 5, 8, 9, 9, 9]
   for N in range(1,7):
-    count = len(getAtomsWithinNBonds(atoms[0], bondedNeighborLists, N, 3))
-    assert count == nestedNeighborsForN[N], ("Helpers.Test(): Nested clamped count for "+atoms[0].name.strip()+
-        " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN[N]))
-  nestedNeighborsForN = [ None, 1, 3, 5, 7, 9, 9]
+    count = len(getAtomsWithinNBonds(N4, bondedNeighborLists, N, 3))
+    assert count == nestedNeighborsForN4[N], ("Helpers.Test(): Nested clamped count for "+N4.name.strip()+
+        " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN4[N]))
+  # When unclamped, we can traverse all the way to the end in all cases
+  nestedNeighborsForN4 = [ None, 3, 5, 8, 11, 12, 15]
   for N in range(1,7):
-    count = len(getAtomsWithinNBonds(atoms[0], bondedNeighborLists, N))
-    assert count == nestedNeighborsForN[N], ("Helpers.Test(): Nested unclamped count for "+atoms[0].name.strip()+
-        " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN[N]))
-  # @todo Test the hydrogen cutoff parameter for getAtomsWithinNBonds()
+    count = len(getAtomsWithinNBonds(N4, bondedNeighborLists, N))
+    assert count == nestedNeighborsForN4[N], ("Helpers.Test(): Nested unclamped count for "+N4.name.strip()+
+        " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN4[N]))
+  # When we start with a Hydrogen, we should never get clamped off.
+  H41 = None
+  for a in atoms:
+    if a.name.strip().upper() == 'H41':
+      H41 = a
+  assert H41 is not None, ("Helpers.Test(): Could not find H41 (internal failure)")
+  nestedNeighborsForH41 = [ None, 1, 3, 5, 8, 11, 12]
+  for N in range(1,7):
+    count = len(getAtomsWithinNBonds(H41, bondedNeighborLists, N, 3))
+    assert count == nestedNeighborsForH41[N], ("Helpers.Test(): Nested clamped count for "+H41.name.strip()+
+        " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForH41[N]))
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read

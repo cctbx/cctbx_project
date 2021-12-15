@@ -286,7 +286,8 @@ class _SingletonOptimizer(object):
         # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
         global probePhil
         ret = Helpers.getExtraAtomInfo(
-          model= model, useNeutronDistances=self._useNeutronDistances, probePhil=probePhil)
+          model = model, bondedNeighborLists = bondedNeighborLists,
+          useNeutronDistances=self._useNeutronDistances, probePhil=probePhil)
         self._extraAtomInfo = ret.extraAtomInfo
         self._infoString += ret.warnings
         self._infoString += _ReportTiming("get extra atom info")
@@ -563,25 +564,7 @@ class _SingletonOptimizer(object):
 
       #################################################################################
       # Dump information about all of the atoms in the model into a string.
-      for a in myModel.atoms():
-        chainID = a.parent().parent().parent().id
-        resName = a.parent().resname.upper()
-        resID = str(a.parent().parent().resseq_as_int())
-        acceptorChoices = ["noAcceptor","isAcceptor"]
-        donorChoices = ["noDonor","isDonor"]
-        metallicChoices = ["noMetallic","isMetallic"]
-        alt = a.parent().altloc
-        if alt == " " or alt == "":
-          alt = "-"
-        self._atomDump += (
-          " "+str(chainID)+" "+resName+" {:3d} ".format(int(resID))+a.name+" "+alt+
-          " {:7.3f}".format(a.xyz[0])+" {:7.3f}".format(a.xyz[1])+" {:7.3f}".format(a.xyz[2])+
-          " {:5.2f}".format(self._extraAtomInfo.getMappingFor(a).vdwRadius)+
-          " "+acceptorChoices[self._extraAtomInfo.getMappingFor(a).isAcceptor]+
-          " "+donorChoices[self._extraAtomInfo.getMappingFor(a).isDonor]+
-          " "+metallicChoices[a.element_is_positive_ion()]+
-          "\n"
-        )
+      self._atomDump = Helpers.writeAtomInfoToString(myModel.atoms(), self._extraAtomInfo)
 
   def getInfo(self):
     """
@@ -1524,7 +1507,7 @@ def _generateAllStates(numStates):
 ##################################################################################
 # Test function and associated data and helpers to verify that all functions behave properly.
 
-def Test(inFileName = None):
+def Test(inFileName = None, dumpAtoms = False):
   """Test function for all functions provided above.
   :param inFileName: Name of a PDB or CIF file to load (default makes a small molecule)
   :return: Empty string on success, string describing the problem on failure.
@@ -1632,22 +1615,25 @@ END
   # pick the first available conformation for each atom group.
   atoms = GetAtomsForConformer(firstModel, "")
 
-  # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  ret = Helpers.getExtraAtomInfo(model)
-  extra = ret.extraAtomInfo
-
   # Get the Cartesian positions of all of the atoms we're considering for this alternate
-  # conformation.  Also compute the maximum VDW radius among them.
+  # conformation.
   carts = flex.vec3_double()
   maxVDWRad = 1
   for a in atoms:
     carts.append(a.xyz)
-    maxVDWRad = max(maxVDWRad, extra.getMappingFor(a).vdwRadius)
 
   # Get the bond proxies for the atoms in the model and conformation we're using and
   # use them to determine the bonded neighbor lists.
   bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+
+  # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
+  ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists)
+  extra = ret.extraAtomInfo
+
+  # Also compute the maximum VDW radius among all atoms.
+  for a in atoms:
+    maxVDWRad = max(maxVDWRad, extra.getMappingFor(a).vdwRadius)
 
   # Put the Copper and Zinc back in their original positions before we build the
   # spatial-query structure.  This will make them close enough to be bonded to
@@ -1720,6 +1706,13 @@ END
   print('Testing FastOptimizer')
   opt = FastOptimizer(True, model,probeRadius=0.25)
 
+  # Write debugging output if we've been asked to
+  if dumpAtoms:
+    f = open("deleteme.pdb","w")
+    f.write(model.model_as_pdb())
+    f = open("atomDump.pdb","w")
+    f.write(opt.getAtomDump())
+
   #========================================================================
   # @todo Unit test a multi-model case, a multi-alternate case, and singles of each.
 
@@ -1733,10 +1726,11 @@ if __name__ == '__main__':
   # Parse command-line arguments.  The 0th argument is the name
   # of the script. There can be the name of a PDB file to read.
   parser = argparse.ArgumentParser(description='Test mmtbx.reduce.Optimizers.')
+  parser.add_argument("--dumpAtoms", help="dump the atoms into PDB files to help debug", action="store_true")
   parser.add_argument('inputFile', nargs='?', default="")
   args = parser.parse_args()
 
-  ret = Test(args.inputFile)
+  ret = Test(args.inputFile, args.dumpAtoms)
   if len(ret) == 0:
     print('Success!')
   else:

@@ -272,11 +272,14 @@ namespace molprobity {
       };
 
       /// @brief Determine the type of interaction that is represented by a CheckDotResult.
-      /// @param [in] checkDotResult Value returned from the check_dot() method.
+      /// @param [in] overlapType Value returned in the CheckDotResult.
+      /// @param [in] gap Value returned in the CheckDotResult.
+      /// @param [in] separateBadBumps Whether we should return bad bumps (true) or group
+      ///             them in with bumps (false).
       /// @return InteractionType of the contact, Invalid if the OverlapType was Ignore or
       ///         a non-negative number indicating the index of the interaction type in the
       ///         original Probe code.
-      InteractionType interaction_type(OverlapType overlapType, double gap) const;
+      InteractionType interaction_type(OverlapType overlapType, double gap, bool separateBadBumps = false) const;
 
       /// @brief String name for the interaction type, meaningful to the user.
       /// @param [in] t Type to report on.

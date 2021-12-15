@@ -25,8 +25,10 @@ import mmtbx_probe_ext as probeExt
 from mmtbx.probe import Helpers
 from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
+# @todo See if we can remove the shift and box once reduce_hydrogen is complete
+from cctbx.maptbx.box import shift_and_box_model
 
-version = "0.8.0"
+version = "0.9.1"
 
 master_phil_str = '''
 run_tests = False
@@ -108,6 +110,11 @@ output
     .type = str
     .short_caption = Output file name
     .help = Output file name
+
+  dump_file_name = None
+    .type = str
+    .short_caption = Dump file name
+    .help = Dump file name for regression testing atom characteristics (-DUMPATOMS in probe)
 
   format = *standard raw oneline
     .type = choice
@@ -493,7 +500,8 @@ Note:
       :return: As a side effect, this will add a new entry into one of the lists in the
       self._results data structure.
     '''
-    self._results[atomClass][self._dotScorer.interaction_type(overlapType,gap)].append(
+    self._results[atomClass][self._dotScorer.interaction_type(
+        overlapType,gap, self.params.output.separate_worse_clashes)].append(
       self.DotInfo(src, target, loc, spike, overlapType, gap, ptmaster, angle)
     )
 
@@ -631,7 +639,7 @@ Note:
             # See whether this dot is allowed based on our parameters.
             spo = self.params.output
             show = False
-            interactionType = self._dotScorer.interaction_type(overlapType,res.gap)
+            interactionType = self._dotScorer.interaction_type(overlapType,res.gap, self.params.output.separate_worse_clashes)
             if interactionType == probeExt.InteractionType.Invalid:
               print('Warning: Invalid interaction type encountered (internal error)', file=self.logger)
               continue
@@ -1620,8 +1628,10 @@ Note:
     ################################################################################
     # Get the extra atom information needed to score all of the atoms in the model.
     make_sub_header('Compute extra atom information', out=self.logger)
-    ret = Helpers.getExtraAtomInfo(self.model, self.params.use_neutron_distances,
-      self.params.probe)
+    ret = Helpers.getExtraAtomInfo(model = self.model,
+      bondedNeighborLists = self._allBondedNeighborLists,
+      useNeutronDistances = self.params.use_neutron_distances,
+      probePhil = self.params.probe)
     self._extraAtomInfo = ret.extraAtomInfo
     if len(ret.warnings) > 0:
       print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings, file=self.logger)
@@ -1904,6 +1914,12 @@ Note:
         # Fix up the donor status for all of the atoms now that we've added the final explicit
         # Phantom Hydrogens.
         Helpers.fixupExplicitDonors(all_selected_atoms, bondedNeighborLists, self._extraAtomInfo)
+
+      # If we have a dump file specified, write the atom information into it.
+      if self.params.output.dump_file_name is not None:
+        atomDump = Helpers.writeAtomInfoToString(allAtoms, self._extraAtomInfo)
+        with open(self.params.output.dump_file_name,"w") as df:
+          df.write(atomDump)
 
       # Make a query structure to return the Phantom Hydrogens (if there are any)
       self._phantomHydrogensSpatialQuery = Helpers.createSpatialQuery(phantomHydrogens, self.params.probe)
