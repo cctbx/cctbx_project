@@ -649,7 +649,8 @@ class manager(object):
   def set_ss_annotation(self, ann):
     self._ss_annotation = ann
 
-  def add_crystal_symmetry_if_necessary(self, box_cushion = 3,
+  def add_crystal_symmetry_if_necessary(self, crystal_symmetry = None,
+     box_cushion = 3,
      force = False):
     '''
       If this model does not have crystal_symmetry set, create a dummy
@@ -662,10 +663,10 @@ class manager(object):
       return  # nothing to do
 
     sites_cart=self.get_sites_cart()
-
-    a,b,c = matrix.col(sites_cart.max()) - matrix.col(sites_cart.min()) + \
-      2 * matrix.col((box_cushion,box_cushion,box_cushion))
-    crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
+    if not crystal_symmetry:
+      a,b,c = matrix.col(sites_cart.max()) - matrix.col(sites_cart.min()) + \
+        2 * matrix.col((box_cushion,box_cushion,box_cushion))
+      crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
     self.set_crystal_symmetry(crystal_symmetry)
 
   def set_unit_cell_crystal_symmetry_and_shift_cart(self,
