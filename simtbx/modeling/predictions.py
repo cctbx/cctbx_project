@@ -136,10 +136,12 @@ def label_weak_spots_for_integration(fraction, predictions, num_res_bins=10):
         # grab weak spots in this res bin
         is_weak_and_in_bin = logi_and(res_bin_assigments == i_res, predictions["is_weak"])
         refls_in_bin = predictions.select(flex.bool(is_weak_and_in_bin))
+        if len(refls_in_bin)==0:
+            continue
 
         # determine which weak spots are closer to the Ewald sphere, based on the scatter value
         signal_cutoff_in_bin = np.percentile(refls_in_bin['scatter'], (1.-fraction)*100)
-        is_above_cutoff = predictions["scatter"] > signal_cutoff_in_bin
+        is_above_cutoff = predictions["scatter"] >= signal_cutoff_in_bin
 
         is_integratable = logi_and(is_weak_and_in_bin, is_above_cutoff)
         is_weak_but_integratable[is_integratable] = True

@@ -17,7 +17,7 @@ from dxtbx.model.experiment_list import ExperimentListFactory
 multipanel_sim = None
 try:
     from LS49.adse13_187.cyto_batch import multipanel_sim
-except ImportError:
+except (ImportError, TypeError):
     pass
 from simtbx.nanoBragg import utils as nanoBragg_utils
 from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
