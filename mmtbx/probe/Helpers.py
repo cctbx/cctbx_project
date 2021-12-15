@@ -257,7 +257,7 @@ class getExtraAtomInfoReturn(object):
     self.extraAtomInfo = extraAtomInfo
     self.warnings = warnings
 
-def getExtraAtomInfo(model, useNeutronDistances = False, probePhil = None):
+def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, probePhil = None):
   """
     Helper function to provide a mapper for ExtraAtomInfo needed by Probe when scoring
     models.  It first tries to find the information in CCTBX.  If it cannot, it looks
@@ -266,6 +266,8 @@ def getExtraAtomInfo(model, useNeutronDistances = False, probePhil = None):
     PDB interpretation must have been done on the model, perhaps by calling
     model.process(make_restraints=True), with useNeutronDistances matching
     the parameter to this function.
+    :param bondedNeighborLists: Lists of atoms that are bonded to each other.
+    Can be obtained by calling getBondedNeighborLists().
     :param useNeutronDistances: Default is to use x-ray distances, but setting this to
     True uses neutron distances instead.  This must be set consistently with the
     PDB interpretation parameter used on the model.
@@ -346,6 +348,23 @@ def getExtraAtomInfo(model, useNeutronDistances = False, probePhil = None):
                     if AtomTypes.IsAromatic(ag.resname, a.name):
                       extra.isAcceptor = True
                       warnings += "Marking "+a.name.strip()+" as an aromatic-ring acceptor\n"
+
+                  # Mark Nitrogens that do not have an attached Hydrogen as acceptors.
+                  # We only do this in HET atoms because CCTBX routines seem to be working
+                  # properly in standard residues.
+                  # We determine whether it is in a het atom by seeing if the residue name
+                  # is in the amino-acid mapping structure.
+                  if not a.parent().resname in iotbx.pdb.amino_acid_codes.one_letter_given_three_letter:
+                    if a.element == 'N':
+                      # See if the atom has no Hydrogens covalently bonded to it.
+                      found = False
+                      for n in bondedNeighborLists[a]:
+                        if n.element_is_hydrogen():
+                          found = True
+                          break
+                      if not found and not extra.isAcceptor:
+                        extra.isAcceptor = True
+                        warnings += "Marking "+a.parent().resname.strip()+" "+a.name.strip()+" as a non-Hydrogen HET acceptor\n"
 
                   # Mark all Carbonyl's with the Probe radius while the Richarsons and
                   # the CCTBX decide how to handle this.

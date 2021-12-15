@@ -1628,8 +1628,10 @@ Note:
     ################################################################################
     # Get the extra atom information needed to score all of the atoms in the model.
     make_sub_header('Compute extra atom information', out=self.logger)
-    ret = Helpers.getExtraAtomInfo(self.model, self.params.use_neutron_distances,
-      self.params.probe)
+    ret = Helpers.getExtraAtomInfo(model = self.model,
+      bondedNeighborLists = self._allBondedNeighborLists,
+      useNeutronDistances = self.params.use_neutron_distances,
+      probePhil = self.params.probe)
     self._extraAtomInfo = ret.extraAtomInfo
     if len(ret.warnings) > 0:
       print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings, file=self.logger)

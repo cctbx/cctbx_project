@@ -286,7 +286,8 @@ class _SingletonOptimizer(object):
         # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
         global probePhil
         ret = Helpers.getExtraAtomInfo(
-          model= model, useNeutronDistances=self._useNeutronDistances, probePhil=probePhil)
+          model = model, bondedNeighborLists = bondedNeighborLists,
+          useNeutronDistances=self._useNeutronDistances, probePhil=probePhil)
         self._extraAtomInfo = ret.extraAtomInfo
         self._infoString += ret.warnings
         self._infoString += _ReportTiming("get extra atom info")
@@ -1614,22 +1615,25 @@ END
   # pick the first available conformation for each atom group.
   atoms = GetAtomsForConformer(firstModel, "")
 
-  # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  ret = Helpers.getExtraAtomInfo(model)
-  extra = ret.extraAtomInfo
-
   # Get the Cartesian positions of all of the atoms we're considering for this alternate
-  # conformation.  Also compute the maximum VDW radius among them.
+  # conformation.
   carts = flex.vec3_double()
   maxVDWRad = 1
   for a in atoms:
     carts.append(a.xyz)
-    maxVDWRad = max(maxVDWRad, extra.getMappingFor(a).vdwRadius)
 
   # Get the bond proxies for the atoms in the model and conformation we're using and
   # use them to determine the bonded neighbor lists.
   bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+
+  # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
+  ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists)
+  extra = ret.extraAtomInfo
+
+  # Also compute the maximum VDW radius among all atoms.
+  for a in atoms:
+    maxVDWRad = max(maxVDWRad, extra.getMappingFor(a).vdwRadius)
 
   # Put the Copper and Zinc back in their original positions before we build the
   # spatial-query structure.  This will make them close enough to be bonded to
