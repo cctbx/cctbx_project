@@ -29,7 +29,7 @@ from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
 
-version = "0.1.0"
+version = "0.2.0"
 
 master_phil_str = '''
 approach = *add remove

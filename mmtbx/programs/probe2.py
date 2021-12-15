@@ -28,7 +28,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "0.9.0"
+version = "0.9.1"
 
 master_phil_str = '''
 run_tests = False
