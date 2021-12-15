@@ -130,7 +130,7 @@ void gpu_sum_over_steps(
         s_compute_curvatures = compute_curvatures;
         s_refine_fp_fdp = refine_fp_fdp;
         s_refine_diffuse = refine_diffuse;
-	s_gamma_miller_units = gamma_miller_units;
+        s_gamma_miller_units = gamma_miller_units;
 
         Bmat_realspace = eig_B*1e10;
         s_Ot = eig_O.transpose();
@@ -367,13 +367,13 @@ void gpu_sum_over_steps(
             //CUDAREAL I_latt_diffuse = 0;
             double step_diffuse_param[6]  = {0,0,0,0,0,0};
             if (s_use_diffuse){
-	        MAT3 Amat = UBO;
+                MAT3 Amat = UBO;
                 MAT3 Ainv = UBO.inverse();
-		if (s_gamma_miller_units){
-		  anisoG = anisoG * Amat;
-		}
-		MAT3 Ginv = anisoG.inverse();
-		CUDAREAL anisoG_determ = anisoG.determinant();
+                if (s_gamma_miller_units){
+                  anisoG = anisoG * Amat;
+                }
+                MAT3 Ginv = anisoG.inverse();
+                CUDAREAL anisoG_determ = anisoG.determinant();
                 for (int hh=0; hh <1; hh++){
                     for (int kk=0; kk <1; kk++){
                         for (int ll=0; ll <1; ll++){
@@ -389,9 +389,9 @@ void gpu_sum_over_steps(
                             CUDAREAL gamma_portion = 8.*M_PI*anisoG_determ /
                                     pow( (1.+ V_dot_V* 4*M_PI*M_PI),2);
 
-			    /*                            if (exparg >= 0.5)
+                            /*                            if (exparg >= 0.5)
                                 exparg = 1;
-			    */
+                            */
                             CUDAREAL this_I_latt_diffuse = exparg*gamma_portion;
 
                             I0 += this_I_latt_diffuse;
@@ -414,7 +414,7 @@ void gpu_sum_over_steps(
                                    dU_dsigma(i_sig, i_sig) = 2.*sqrt(anisoU(i_sig,i_sig));
                                    CUDAREAL dexparg = 4*M_PI*M_PI*Q0.dot(dU_dsigma*Q0);
                                    dU_dsigma(i_sig, i_sig) = 0.;
-                                   /*				   if (exparg  >= .5) // only valid up to a point
+                                   /*                              if (exparg  >= .5) // only valid up to a point
                                      dexparg = 0;
                                    */
                                    step_diffuse_param[i_sig+3] += gamma_portion*dexparg;
@@ -1048,4 +1048,3 @@ void gpu_sum_over_steps(
     } // end i_pix loop
 
 }  // END of GPU kernel
-
