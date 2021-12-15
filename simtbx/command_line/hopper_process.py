@@ -74,6 +74,13 @@ class Hopper_Processor(Processor):
 
     def __init__(self, *args, **kwargs):
         super(Hopper_Processor, self).__init__(*args, **kwargs)
+        command_file = os.path.join(self.params.output.output_dir, "hopper_process_cmdline.txt")
+        if COMM.rank==0:
+            with open(command_file, "w") as o:
+                o.write(" ".join(sys.argv))
+                o.close()
+            hop_proc_params_file = os.path.join(self.params.output.output_dir, "hopperProcessParams.npy")
+            np.save(hop_proc_params_file, self.params)
         if self.params.output.composite_output:
             print("WARNING!! COMPOSITE OUTPUT NOT YET SUPPORTED, disabling for now")
         self.params.output.composite_output = False
@@ -177,6 +184,7 @@ class Hopper_Processor(Processor):
         exps_out = exps
         if not self.params.skip_hopper:
             if self.params.dispatch.refine:
+                exps, ref = super(Hopper_Processor, self).refine(exps, ref)
                 print("WARNING: hopper_process will always run its own refinement, ignoring dials.refine phil scope")
             self.params.dispatch.refine = False
             assert len(exps) == 1
@@ -199,7 +207,8 @@ class Hopper_Processor(Processor):
             basename = os.path.splitext(os.path.basename(refls_name))[0]
             self._save_modeler_info(basename)
 
-        return super(Hopper_Processor, self).refine(exps_out, ref)
+        out = super(Hopper_Processor, self).refine(exps_out, ref)
+        return out
 
     def _reindex_obs(self, exps, ref):
         """use known_crystal_models indexing method to add more indexed spots which can
@@ -233,6 +242,8 @@ class Hopper_Processor(Processor):
         hopper_utils.write_SIM_logs(self.stage1_modeler.SIM, log=SIM_state_fname, lam=spectra_fname)
 
     def integrate(self, experiments, indexed):
+        if self.params.skip_hopper:
+            return super(Hopper_Processor, self).integrate(experiments, indexed)
         st = time.time()
 
         logger.info("*" * 80)
