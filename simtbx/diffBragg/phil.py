@@ -126,6 +126,24 @@ betas
   .help = variances for the restraint targets
   .expert_level=0
 {
+  ucell_a = None
+    .type = float
+    .help = restraint variance for unit cell a
+  ucell_b = None
+    .type = float
+    .help = restraint variance for unit cell b
+  ucell_c = None
+    .type = float
+    .help = restraint variance for unit cell c
+  ucell_alpha = None
+    .type = float
+    .help = restraint variance for unit cell alpha angle
+  ucell_beta = None
+    .type = float
+    .help = restraint variance for unit cell beta angle
+  ucell_gamma = None
+    .type = float
+    .help = restraint variance for unit cell gamma angle
   Nvol = 1e8
     .type = float
     .help = tightness of the Nabc volume contraint
@@ -134,7 +152,8 @@ betas
     .help = restraint variance for detector shift target
   ucell = [1e8,1e8,1e8,1e8,1e8,1e8]
     .type = floats
-    .help = beta values for unit cell constants
+    .help = DEPRECATED: use e.g. betas.ucell_a instead
+    .help = variances for unit cell constants in order determined by unit cell manager class (see diffBragg/refiners/crystal_systems)
   RotXYZ = 1e8
     .type = float
     .help = restraint factor for the rotXYZ restraint
@@ -182,6 +201,24 @@ centers
   .help = restraint targets
   .expert_level=0
 {
+  ucell_a = None
+    .type = float
+    .help = restraint target for unit cell a (Angstrom)
+  ucell_b = None
+    .type = float
+    .help = restraint target for unit cell b (Angstrom)
+  ucell_c = None
+    .type = float
+    .help = restraint target for unit cell c (Angstrom)
+  ucell_alpha = None
+    .type = float
+    .help = restraint target for unit cell alpha angle (deg.)
+  ucell_beta = None
+    .type = float
+    .help = restraint target for unit cell beta angle (deg.)
+  ucell_gamma = None
+    .type = float
+    .help = restraint target for unit cell gamma angle (deg.)
   Nvol = None
     .type = float
     .help = if provided, constrain the product Na*Nb*Nc to this value
@@ -190,7 +227,8 @@ centers
     .help = restraint target for detector shift along z-direction
   ucell = [63.66, 28.87, 35.86, 1.8425]
     .type = floats
-    .help = centers for unit cell constants
+    .help = DEPRECATED: use e.g. betas.ucell_a instead
+    .help = centers for unit cell constants in order determined by unit cell manager class (see diffBragg/refiners/crystal_systems)
   RotXYZ = [0,0,0]
     .type = floats(size=3)
     .help = restraint target for Umat rotations
@@ -655,16 +693,16 @@ simulator {
     filename_list = None
       .type = str
       .help = path to a file containing 1 .lam filename per line
-  gauss_spec {
-    fwhm = 10
-      .type = float
-      .help = width of the gaussian in electron volts
-    nchannels = 20
-      .type = int
-      .help = total number of spectrum energies, centered on the shots nominal energy as determined from format class
-    res = 1
-      .type = float
-      .help = energy resolution of the spectrum
+    gauss_spec {
+      fwhm = 10
+        .type = float
+        .help = width of the gaussian in electron volts
+      nchannels = 20
+        .type = int
+        .help = total number of spectrum energies, centered on the shots nominal energy as determined from format class
+      res = 1
+        .type = float
+        .help = energy resolution of the spectrum
     }
   }
   beam {
@@ -856,6 +894,12 @@ refiner {
 
 roi_phil = """
 roi {
+  only_filter_zingers_above_mean = True
+    .type = bool
+    .help = if fitting background, theres a zinger filter step (background_threshold)
+    .help = and typically it only applies to pixels above the mean
+    .help = Set this to False to filter zingers below the mean, which is useful for 
+    .help = data with low background signal.
   cache_dir_only = False
     .type = bool
     .help = if True, create the cache folder , populate it with the roi data, then exit

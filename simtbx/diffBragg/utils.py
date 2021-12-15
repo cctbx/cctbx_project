@@ -1,23 +1,27 @@
 from __future__ import absolute_import, division, print_function
 import os
-
+import sys
+from io import StringIO
+import numpy as np
 from scipy import fft
 import pickle
-from simtbx.diffBragg.refiners.crystal_systems import OrthorhombicManager, TetragonalManager, MonoclinicManager, HexagonalManager
 from scipy.optimize import minimize
+
 from cctbx.array_family import flex
 from cctbx import miller, sgtbx
 from cctbx.crystal import symmetry
-import numpy as np
-from simtbx.nanoBragg.utils import ENERGY_CONV
 from dxtbx.model import Detector, Panel
 from simtbx.nanoBragg.sim_data import SimData
 from simtbx.nanoBragg.nanoBragg_beam import NBbeam
 from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
+from simtbx.diffBragg import phil
+from simtbx.nanoBragg.utils import ENERGY_CONV
+from simtbx.diffBragg.refiners.crystal_systems import OrthorhombicManager, TetragonalManager, MonoclinicManager, HexagonalManager
 from dxtbx.imageset import MemReader
 from dxtbx.imageset import ImageSet, ImageSetData
 from dxtbx.model.experiment_list import ExperimentListFactory
-
+import libtbx
+from libtbx.phil import parse
 from dials.array_family import flex as dials_flex
 
 import logging
@@ -343,7 +347,8 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                                    bg_thresh=3.5, set_negative_bg_to_zero=False,
                                    pad_for_background_estimation=None, use_robust_estimation=True, sigma_rdout=3.,
                                    min_trusted_pix_per_roi=4, deltaQ=None, experiment=None, weighted_fit=True,
-                                   ret_cov=False, allow_overlaps=False, skip_roi_with_negative_bg=True):
+                                   ret_cov=False, allow_overlaps=False, skip_roi_with_negative_bg=True,
+                                   only_high=True):
     """
 
     :param refls: reflection table
@@ -365,6 +370,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
     :param ret_cov: return the tilt plane covariance
     :param allow_overlaps: allow overlapping ROIS, otherwise shrink ROIS until the no longer overlap
     :param skip_roi_with_negative_bg: if an ROI has negative signal, dont include it in refinement
+    :param only_high: only filter zingers that are above the mean (default is True)
     :return:
     """
 
@@ -434,7 +440,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
         if background_mask is not None:
             is_background = background_mask[pid, j1:j2, i1:i2]
         else:
-            is_background = label_background_pixels(shoebox,thresh=bg_thresh, iterations=2)
+            is_background = label_background_pixels(shoebox,thresh=bg_thresh, iterations=2, only_high=only_high)
 
         Ycoords, Xcoords = np.indices((j2-j1, i2-i1))
 
@@ -1324,3 +1330,47 @@ def show_diffBragg_state(D, debug_pixel_panelfastslow):
     D.printout_pixel_fastslow = f, s
     D.add_diffBragg_spots((p, f, s))
     D.raw_pixels*=0
+
+
+def get_phil(params):
+    """
+    recursively print the phil param string, given a phil scope extract obj
+    :param params: libtbx.phil.scope_extract object
+    """
+    for p in dir(params):
+        if p.startswith("_"):
+            continue
+        name, val = params.__phil_path_and_value__(p)
+        if not isinstance(val, libtbx.phil.scope_extract):
+            print("%s =" % name, val)
+        else:
+            get_phil(val)
+
+
+class Capturing(list):
+    # class for capturing function output in a list:
+    # https://stackoverflow.com/a/16571630/2077270
+    def __enter__(self):
+        self._stdout = sys.stdout
+        sys.stdout = self._stringio = StringIO()
+        return self
+
+    def __exit__(self, *args):
+        self.extend(self._stringio.getvalue().splitlines())
+        del self._stringio  # free up some memory
+        sys.stdout = self._stdout
+
+
+def recover_diff_phil_from_scope_extract(modeler_file):
+    """
+    Prints the diff phil used to run stage 1 (diffBragg portion only)
+    :param modeler_file: npy file written by hopper_process during stage 1, stored in the
+    output.output_dir/modelers folder
+    """
+    # get the phil scope extract
+    params = np.load(modeler_file, allow_pickle=True)[()].params
+    with Capturing() as output:
+        get_phil(params)
+    user_phil = parse("\n".join(output))
+    master = parse("diffBragg {\n%s\n}" %  (phil.philz + phil.hopper_phil))
+    master.fetch_diff(source=user_phil).show()
