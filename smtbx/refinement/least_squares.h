@@ -22,10 +22,6 @@
 #include <boost/smart_ptr/scoped_ptr.hpp>
 #include <boost/thread.hpp>
 
-#include <fast_linalg/cblas.h>
-#include <fast_linalg/lapacke.h>
-
-
 namespace smtbx { namespace refinement { namespace least_squares {
 
   namespace lstbx = scitbx::lstbx;
