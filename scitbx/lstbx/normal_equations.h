@@ -410,7 +410,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       yc_sq += w * yc * yc;
     }
 
-#ifdef(_OPENMP)
+#if defined(_OPENMP)
     void add_residuals_omp(const int n,
       af::const_ref<scalar_t>& yc,
       af::const_ref<scalar_t>& yo,
@@ -493,7 +493,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       }
     }
 
-#ifdef(_OPENMP)
+#if defined(_OPENMP)
     /// Add many equations in one go using OpenMP
     void add_equations_omp(const int n_ref, const int n_par, const int n_threads,
       af::const_ref<scalar_t>& yc,
