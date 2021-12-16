@@ -1186,6 +1186,8 @@ Wait for the command to finish, then try again.""" % vars())
       p = op.join(sys.prefix, d)
       if (op.isdir(p)):
         result.append(self.as_relocatable_path(p))
+    if (sys.platform.startswith("darwin")):
+      result.append(absolute_path("/usr/lib"))
     return result
 
   def write_conda_dispatcher(self, source_file, target_file,
