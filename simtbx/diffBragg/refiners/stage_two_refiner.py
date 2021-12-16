@@ -57,7 +57,7 @@ from collections import Counter
 from cctbx import miller, sgtbx
 from simtbx.diffBragg.refiners.parameters import RangedParameter
 
-# how many parameters per shot, currently just scale and B-factor
+# how many parameters per shot, currently just scale, B-factor (currently ignored), and Ncells abc
 N_PARAM_PER_SHOT = 5
 
 
