@@ -93,6 +93,12 @@ struct flags{
     bool use_diffuse = false; // model  diffuse
     bool only_diffuse = false; // model  diffuse scattering (experimental)
     bool refine_Icell = false; // option to refine the structure factor intensity directly (F_cell^2)
+                                // The miller array used by nanoBragg/diffBragg is double precision, and hence
+                                // allows for negative values. If refine_Icell=True, then the value stored in the data
+                                // component of the miller array is assumed to be an intensity, as opposed to an amplitude.
+                                // In such cases, the gradient of the scattering w.r.t. this parameter is modified accordingly
+                                // such that one could use those gradients as part of a refinement protocol to optimize I_cell
+
     bool gamma_miller_units = false; // use Miller index units for diffuse gamma matrix
 };
 
