@@ -410,6 +410,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       yc_sq += w * yc * yc;
     }
 
+#ifdef(_OPENMP)
     void add_residuals_omp(const int n,
       af::const_ref<scalar_t>& yc,
       af::const_ref<scalar_t>& yo,
@@ -448,6 +449,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       yo_dot_yc += yodyc;
       yc_sq += yc2;
     }
+#endif
 
     /** \brief Add the linearisation of the equation
          \f$y_{c,i} \propto y_{o,i}\f$ with weight w.
@@ -491,6 +493,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       }
     }
 
+#ifdef(_OPENMP)
     /// Add many equations in one go using OpenMP
     void add_equations_omp(const int n_ref, const int n_par, const int n_threads,
       af::const_ref<scalar_t>& yc,
@@ -564,6 +567,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
         }
       }
     }
+#endif
 
     /// Addition in the sense of the L.S. objective functions
     /**
