@@ -84,6 +84,18 @@ def run_program(program_class=None, custom_process_arguments=None,
     pr.disable()
     pr.dump_stats('profile.out')
 
+  # output JSON
+  if namespace.json:
+    result = task.get_results_as_JSON()
+    if result is not None:
+      with open(parser.json_filename, 'w') as f:
+        f.write(result)
+    else:
+      print('', file=logger)
+      print('!'*79, file=logger)
+      print('WARNING: The get_results_as_JSON function has not been defined for this program')
+      print('!'*79, file=logger)
+
   # stop timer
   print('', file=logger)
   print('='*79, file=logger)
@@ -205,6 +217,9 @@ class CCTBXParser(ParserBase):
     self.modified_filename = self.prefix + '_modified.eff'
     self.all_filename = self.prefix + '_all.eff'
 
+    # JSON filename
+    self.json_filename = self.prefix + '_result.json'
+
     # terminal width
     self.text_width = 79
 
@@ -302,6 +317,14 @@ class CCTBXParser(ParserBase):
     self.add_argument(
       '--diff-params', '--diff_params', action='store_true',
       help='similar to --write-modified, but stops program execution after writing and always overwrites'
+    )
+
+    # --json
+    # return JSON output from program
+    self.add_argument(
+      '--json', action='store_true',
+      help='writes or overwrites the JSON output for the program to file (%s)' %
+      self.json_filename
     )
 
     # --overwrite
