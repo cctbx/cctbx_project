@@ -24,7 +24,7 @@ from libtbx.utils import multi_out, show_times, Sorry
 
 # =============================================================================
 def run_program(program_class=None, custom_process_arguments=None,
-                args=None, logger=None):
+                args=None, json=False, logger=None):
   '''
   Function for running programs using CCTBXParser and the program template
 
@@ -32,6 +32,8 @@ def run_program(program_class=None, custom_process_arguments=None,
   :param custom_process_arguments:
                          Custom function to parse unknown arguments (optional)
   :param args:           list of command-line arguments (optional)
+  :param json:           if True, get_results_as_JSON is called for the return
+                         value instead of get_results
   :param logger:         logger (e.g. multi_out) for output (optional)
   :rtype:                whatever is returned from program_class.get_results()
   '''
@@ -102,7 +104,12 @@ def run_program(program_class=None, custom_process_arguments=None,
   print('Job complete', file=logger)
   t()
 
-  return task.get_results()
+  if json:
+    result = task.get_results_as_JSON()
+  else:
+    result = task.get_results()
+
+  return result
 
 # =============================================================================
 class ParserBase(argparse.ArgumentParser):
