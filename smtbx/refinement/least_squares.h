@@ -363,6 +363,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       }
     };
 
+#ifdef(_OPENMP)
     //The following struct is optimized for cache efficient parallel 
     //calculations using OpenMP making sure there is no strides
     //in adressing memory by scheduling with chunksize 1
@@ -589,6 +590,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         return obs;
       }
     };
+#endif
 
   private:
     struct null_deleter {
