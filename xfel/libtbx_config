@@ -1,5 +1,5 @@
 {
-  "modules_required_for_use": ["cma_es", "dxtbx", "dials"],
+  "modules_required_for_use": ["dxtbx", "dials"],
   "optional_modules": ["labelit","simtbx","prime"],
   "extra_command_line_locations": ["ui","cxi","clustering", "merging", "small_cell"],
 }
