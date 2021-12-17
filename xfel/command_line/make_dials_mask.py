@@ -86,18 +86,30 @@ def run(argv=None):
 
   mask = [flex.bool(flex.grid(p.focus()), True) for p in avg_d]
 
+  count_a = count_s = count_m = 0
+
   for mask_p, avg_p, stddev_p, max_p in zip(mask, avg_d, stddev_d, max_d):
     # first find all the pixels in the average that are less than zero or greater
     # than a cutoff and set them to the masking value
-    mask_p &= avg_p > 0
-    mask_p &= avg_p <= command_line.options.avg_max
+    sel = avg_p > 0
+    count_a += sel.count(False)
+    mask_p &= sel
+    sel = avg_p <= command_line.options.avg_max
+    count_a += sel.count(False)
+    mask_p &= sel
 
     # mask out the overly noisy or flat pixels
-    mask_p &= stddev_p > 0
-    mask_p &= stddev_p <= command_line.options.stddev_max # cxi.make_mask uses <
+    sel = stddev_p > 0
+    count_s += sel.count(False)
+    mask_p &= sel
+    sel = stddev_p <= command_line.options.stddev_max # cxi.make_mask uses <
+    count_s += sel.count(False)
+    mask_p &= sel
 
     # these are the non-bonded pixels
-    mask_p &= max_p >= command_line.options.maxproj_min
+    sel = max_p >= command_line.options.maxproj_min
+    count_m += sel.count(False)
+    mask_p &= sel
 
     # Add a border around the image
     if command_line.options.border > 0:
@@ -114,6 +126,10 @@ def run(argv=None):
 
   masked_out = sum([len(mask_p.as_1d().select((~mask_p).as_1d())) for mask_p in mask])
   total = sum([len(mask_p) for mask_p in mask])
+
+  print("From average, masked out %d pixels"%count_a)
+  print("From stddev, masked out %d pixels"%count_s)
+  print("From max, masked out %d pixels"%count_m)
 
   print("Masked out %d pixels out of %d (%.2f%%)"% \
     (masked_out,total,masked_out*100/total))
