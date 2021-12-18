@@ -79,13 +79,14 @@ class base_manager():
       rc.append([])
       for i in range(3):
         rc[-1].append(atom.xyz[i]+(random.random()-0.5)/10)
+    rc_buffer = rc
     tmp = []
     if hasattr(self, 'interest_array'):
       for sel, atom in zip(self.interest_array, rc):
         if sel:
           tmp.append(atom)
       rc=tmp
-    return flex.vec3_double(rc)
+    return flex.vec3_double(rc), flex.vec3_double(rc_buffer)
 
   def get_timings(self, energy=False):
     return '-'
@@ -106,8 +107,8 @@ def qm_runner(qmm,
     func = orca_manager.get_opt
   else:
     raise Sorry('QM program not found or set "%s"' % qmm.program)
-  xyz = func(qmm, cleanup=cleanup, file_read=file_read, log=log)
-  return xyz
+  ligand_xyz, buffer_xyz = func(qmm, cleanup=cleanup, file_read=file_read, log=log)
+  return ligand_xyz, buffer_xyz
 #
 # ORCA
 #
@@ -179,7 +180,7 @@ def process_qm_log_file(log_filename=None,
   if error_line:
     raise Sorry(error_line)
   if not status:
-    raise Sorry('QM does not seem to have converged')
+    raise Sorry('QM does not seem to have converged. Check %s' % log_filename)
   return status
 
 def run_qm_cmd(cmd,
@@ -206,7 +207,9 @@ def run_qm_cmd(cmd,
   else:
     generator = loop_over_list(rc.stdout_lines)
 
-  status = process_qm_log_file(generator=generator, log=log)
+  status = process_qm_log_file(generator=generator,
+                               error_lines=error_lines,
+                               log=log)
   if rc.stderr_lines:
     print('stderr')
     for line in rc.stderr_lines:
@@ -218,6 +221,13 @@ def run_qm_cmd(cmd,
   return rc
 
 class orca_manager(base_manager):
+
+  error_lines = [
+                  'ORCA finished by error termination in GSTEP',
+                  '-> impossible',
+                  'SCF NOT CONVERGED AFTER',
+                  'SERIOUS PROBLEM IN SOSCF',
+                ]
 
   def set_sites_cart(self, sites_cart):
     assert len(self.atoms)==len(sites_cart)
@@ -284,6 +294,16 @@ class orca_manager(base_manager):
 
   def get_coordinate_filename(self):
     filename = 'orca_%s.xyz' % self.preamble
+    # if not os.path.exists(filename):
+    #   print('looking for %s' % filename)
+    #   for i in range(10):
+    #     if filename.find('_%02d' % i)==1: continue
+    #     for j in range(10):
+    #       s = '_%02d_%02d' % (i, j)
+    #       for f in os.listdir('.'):
+    #         if f.find(s)>-1:
+    #           print('??? ',f)
+    #   assert 0
     return filename
 
   def read_xyz_output(self):
@@ -310,7 +330,6 @@ class orca_manager(base_manager):
     cmd = '%s orca_%s.in' % (
       os.environ['PHENIX_ORCA'],
       self.preamble,
-      # self.preamble,
       )
     return cmd
 
@@ -319,12 +338,7 @@ class orca_manager(base_manager):
     cmd = self.get_cmd()
     run_qm_cmd(cmd,
                'orca_%s.log' % self.preamble,
-               error_lines=[
-                  'ORCA finished by error termination in GSTEP',
-                  '-> impossible',
-                  'SCF NOT CONVERGED AFTER',
-                  'SERIOUS PROBLEM IN SOSCF',
-               ],
+               error_lines=self.error_lines,
                redirect_output=redirect_output,
                log=log,
                )
@@ -408,6 +422,7 @@ end
       self.opt_setup()
       self.run_cmd(log=log)
       coordinates = self.read_xyz_output()
+    coordinates_buffer = coordinates
     if cleanup: self.cleanup(level=cleanup)
     if hasattr(self, 'interest_array'):
       tmp = []
@@ -416,7 +431,7 @@ end
           if sel:
             tmp.append(atom)
         coordinates=tmp
-    return flex.vec3_double(coordinates)
+    return flex.vec3_double(coordinates), flex.vec3_double(coordinates_buffer)
 
   def cleanup(self, level=None, verbose=False):
     if not self.preamble: return

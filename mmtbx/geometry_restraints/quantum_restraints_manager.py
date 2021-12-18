@@ -1,6 +1,7 @@
 from __future__ import absolute_import,division, print_function
 from io import StringIO
 import time
+from math import sqrt
 
 from libtbx import Auto
 from libtbx.str_utils import make_header
@@ -317,6 +318,62 @@ def running_this_macro_cycle(qmr, macro_cycle):
   else:
     return False
 
+def write_restraints_from_model_via_grm(ligand_model, verbose=True):
+  def atom_as_restraint(atom):
+    resname = atom.parent().resname
+    name = atom.name
+    element = atom.element
+    atom_type = element
+    charge = atom.charge
+    # outl = ' %(resname)s %(name)s %(element)s %(atom_type)s %(charge)s ' % locals()
+    outl = ' %(resname)s %(name)s %(element)s' % locals()
+    return outl
+  def bond_as_restraint(bond, atom1, atom2):
+    resname = atom.parent().resname
+    name1 = atom1.name
+    name2 = atom2.name
+    ideal = bond.distance_ideal
+    esd = 1/sqrt(bond.weight)
+    outl = ' %(resname)s %(name1)s %(name2)s coval %(ideal).3f %(esd)s ' % locals()
+    return outl
+  ligand_grm = ligand_model.get_restraints_manager()
+  atoms = ligand_model.get_atoms()
+  outl = ''
+  outl += '''
+#
+data_comp_%s
+#''' % atoms[0].parent().resname
+  outl += '''
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+'''
+  for atom in atoms:
+    outl += '%s\n' % atom_as_restraint(atom)
+  bond_proxies_simple, asu = ligand_grm.geometry.get_all_bond_proxies(
+    sites_cart=ligand_model.get_sites_cart())
+  sorted_table, n_not_shown = bond_proxies_simple.get_sorted(
+    'delta',
+    ligand_model.get_sites_cart())
+  outl += '''
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+'''
+  for info in sorted_table:
+    (i_seq, j_seq, i_seqs, distance_ideal, distance_model, slack, delta, sigma, weight, residual, sym_op_j, rt_mx) = info
+    i_atom=atoms[i_seq]
+    j_atom=atoms[j_seq]
+    i_seqs=[i_seq, j_seq]
+    bond=ligand_grm.geometry.bond_params_table.lookup(*list(i_seqs))
+    outl += '%s\n' % bond_as_restraint(bond, i_atom, j_atom)
+  # print(outl)
+
 def update_restraints(model,
                       params,
                       macro_cycle=None,
@@ -360,8 +417,9 @@ def update_restraints(model,
   #
   if nproc==1:
     xyzs = []
+    xyzs_buffer = []
     for i, (ligand_model, buffer_model, qmm, qmr) in enumerate(objects):
-      xyz = qm_manager.qm_runner(
+      xyz, xyz_buffer = qm_manager.qm_runner(
         qmm,
         cleanup=qmr.cleanup,
         file_read=qmr.package.read_output_to_skip_opt_if_available,
@@ -374,14 +432,20 @@ def update_restraints(model,
         qmm.get_timings().split(':')[-1],
         ))
       xyzs.append(xyz)
+      xyzs_buffer.append(xyz_buffer)
   else:
     print('nproc',nproc)
-    xyzs = get_all_xyz(objects, nproc)
+    assert 0
+    xyzs, junk = get_all_xyz(objects, nproc)
   print('',file=log)
   #
   # update model restraints
   #
-  for i, ((ligand_model, buffer_model, qmm, qmr), xyz) in enumerate(zip(objects, xyzs)):
+  for i, ((ligand_model, buffer_model, qmm, qmr), xyz, xyz_buffer) in enumerate(
+                                                                    zip(objects,
+                                                                        xyzs,
+                                                                        xyzs_buffer,
+                                                                        )):
     if qmr.package.view_output:
       qmm.view(qmr.package.view_output)
     if i: print(' ',file=log)
@@ -400,13 +464,16 @@ def update_restraints(model,
       print('  Check the QM minimisation for errors or incorrect protonation.',
             file=log)
     ligand_model.get_hierarchy().atoms().set_xyz(xyz)
-    #need to update buffer_model also ???
+    old = buffer_model.get_hierarchy().atoms().extract_xyz()
+    # rmsd = old.rms_difference(xyz_buffer)
+    buffer_model.get_hierarchy().atoms().set_xyz(xyz_buffer)
     gs = ligand_model.geometry_statistics()
     print('  Interim stats : %s' % gs.show_bond_and_angle(), file=log)
     if qmr.write_final_pdb_core:
       write_pdb_file(ligand_model, '%s_ligand_final_%s.pdb' % (prefix, preamble), log)
     if qmr.write_final_pdb_buffer:
       write_pdb_file(buffer_model, '%s_cluster_final_%s.pdb' % (prefix, preamble), log)
+    assert 0
     #
     # transfer geometry to proxies
     #  - bonds
@@ -476,6 +543,8 @@ def update_restraints(model,
       if angle is None: continue
       angle_proxy.angle_ideal=angle
     print('', file=log)
+    # if qmr.write_restraints or 1:
+    #   write_restraints_from_model_via_grm(ligand_model)
     #
     # final stats
     #
