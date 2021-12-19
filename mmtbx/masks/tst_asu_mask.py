@@ -202,6 +202,7 @@ def compare_masks(struc, opts):
   #check_group(group)
 
   tb = time.time()
+  params.grid_step_factor=4
   asu_mask = masks.atom_mask(
       unit_cell = struc.unit_cell(),
       group = struc.space_group(),
@@ -278,7 +279,7 @@ def compare_masks(struc, opts):
   time_p1_msk = (te-tb)
   time_p1 += (te-tb)
   tb = time.time()
-  fm_p1 = blk_p1.structure_factors( miller_set = fc_p1 )
+  fm_p1 = blk_p1.structure_factors( miller_set = fc_p1 , zero_high=False)
   te = time.time()
   time_p1_sf = (te-tb)
   time_p1 += (te-tb)

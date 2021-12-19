@@ -23,20 +23,23 @@ number_of_mask_calculations = 0
 mask_master_params = iotbx.phil.parse("""\
   use_asu_masks = True
     .type = bool
-  solvent_radius = 1.11
+  solvent_radius = 1.1
     .type = float
   shrink_truncation_radius = 0.9
     .type = float
-  grid_step_factor = 4.0
+  step = 0.6
     .type = float
-    .help = The grid step for the mask calculation is determined as \
-            highest_resolution divided by grid_step_factor. This is considered \
-            as suggested value and may be adjusted internally based on the \
-            resolution.
+    .help = Grid step (in A) for solvent mask calculation
+  n_real = None
+    .type = ints
+    .help = Gridding for mask calculation
+  grid_step_factor = None
+    .type = float
+    .help = Grid step is resolution divided by grid_step_factor
   verbose = 1
     .type = int
     .expert_level=3
-  mean_shift_for_mask_update = 0.001
+  mean_shift_for_mask_update = 0.1
     .type = float
     .help = Value of overall model shift in refinement to updates the mask.
     .expert_level=2
@@ -137,28 +140,53 @@ class bulk_solvent(around_atoms):
                           average            = -1,
                           standard_deviation = -1)
 
-  def structure_factors(self, miller_set):
-    result = miller_set.structure_factors_from_map(
-      map = self.data, use_scale = True, anomalous_flag = False, use_sg = True)
-    return miller_set.array(data=result.data())
+  def structure_factors(self, miller_set, zero_high=True):
+    if(zero_high):
+      sel = miller_set.d_spacings().data()>=3
+      miller_set_sel = miller_set.select(sel)
+      result = miller_set_sel.structure_factors_from_map(
+        map = self.data, use_scale = True, anomalous_flag = False, use_sg = True)
+      data = flex.complex_double(miller_set.indices().size(), 0)
+      data = data.set_selected(sel, result.data())
+      return miller_set.array(data=data)
+    else:
+      result = miller_set.structure_factors_from_map(
+        map = self.data, use_scale = True, anomalous_flag = False, use_sg = True)
+      return miller_set.array(data=result.data())
 
   def subtract_non_uniform_solvent_region_in_place(self, non_uniform_mask):
     assert non_uniform_mask.accessor() == self.data.accessor()
     self.data.set_selected(non_uniform_mask > 0, 0)
 
 class asu_mask(object):
-  def __init__(self, xray_structure, d_min=None, n_real=None, mask_params = None,
+  def __init__(self,
+               xray_structure,
+               mask_params=None,
+               d_min = None,
                atom_radius = None):
     adopt_init_args(self, locals())
-    assert [d_min, n_real].count(None) == 1
-    if(self.mask_params is None):
-      self.mask_params = mask_master_params.extract()
+    if(mask_params is None):
+      mask_params = mmtbx.masks.mask_master_params.extract()
+      self.mask_params = mask_params
+    assert [d_min, mask_params.grid_step_factor].count(None) in [0,2]
+    assert [mask_params.step, mask_params.n_real].count(None) in [1,2]
+    assert mask_params.step is not None or mask_params.n_real is not None or \
+           [d_min, mask_params.grid_step_factor].count(None)==0
     if(atom_radius is None):
       self.atom_radii = vdw_radii_from_xray_structure(xray_structure =
         self.xray_structure)
     else:
       self.atom_radii = flex.double(self.xray_structure.scatterers().size(),
         atom_radius)
+    if(mask_params.step is not None):
+      crystal_gridding = maptbx.crystal_gridding(
+        unit_cell        = self.xray_structure.unit_cell(),
+        space_group_info = self.xray_structure.space_group_info(),
+        symmetry_flags   = maptbx.use_space_group_symmetry,
+        step             = mask_params.step)
+      self.n_real = crystal_gridding.n_real()
+    else:
+      self.n_real = mask_params.n_real
     if(d_min is not None):
       self.asu_mask = atom_mask(
         unit_cell                = self.xray_structure.unit_cell(),
@@ -174,14 +202,7 @@ class asu_mask(object):
         gridding_n_real          = self.n_real,
         solvent_radius           = self.mask_params.solvent_radius,
         shrink_truncation_radius = self.mask_params.shrink_truncation_radius)
-    selection = flex.bool(self.xray_structure.scatterers().size(), True)
-    if(self.mask_params.ignore_zero_occupancy_atoms):
-      selection &= self.xray_structure.scatterers().extract_occupancies() > 0
-    if(self.mask_params.ignore_hydrogens):
-      selection &= (~self.xray_structure.hd_selection())
     sites_frac = self.xray_structure.sites_frac()
-    sites_frac = sites_frac.select(selection)
-    atom_radii = self.atom_radii.select(selection)
     if(self.mask_params.n_radial_shells > 1):
       # number of shell radii is one less than number of shells
       # last shell is of unknown radius
@@ -191,9 +212,9 @@ class asu_mask(object):
       shell_rads[0] -= self.mask_params.solvent_radius
       if( shell_rads[0]<0. ):
         shell_rads[0] = 0.
-      self.asu_mask.compute(sites_frac, atom_radii, shell_rads)
+      self.asu_mask.compute(sites_frac, self.atom_radii, shell_rads)
     else:
-      self.asu_mask.compute(sites_frac, atom_radii)
+      self.asu_mask.compute(sites_frac, self.atom_radii)
 
   def mask_data_whole_uc(self):
     mask_data = self.asu_mask.mask_data_whole_uc() / \
@@ -209,23 +230,35 @@ class manager(object):
     adopt_init_args(self, locals())
     if(self.mask_params is not None): self.mask_params = mask_params
     else: self.mask_params = mask_master_params.extract()
-    self.grid_step = self._get_grid_step()
+    self.sel_3inf = miller_array.d_spacings().data()>=3
+    self.sel_3inf_twin = None
+    if(miller_array_twin is not None):
+       self.sel_3inf_twin = miller_array_twin.d_spacings().data()>=3
+    self.xray_structure = self._load_xrs(xray_structure)
     self.atom_radii = None
     self._f_mask = None
     self._f_mask_twin = None
     self.solvent_content_via_mask = None
     self.layer_volume_fractions = None
     self.sites_cart = None
-    if(xray_structure is not None):
+    if(self.xray_structure is not None):
       self.atom_radii = vdw_radii_from_xray_structure(xray_structure =
        self.xray_structure)
-      self.xray_structure = self.xray_structure.deep_copy_scatterers()
       self.sites_cart = self.xray_structure.sites_cart()
       twin=False
       if(self.miller_array_twin is not None): twin=True
       if(compute_mask): self.compute_f_mask()
     if( not (self._f_mask is None) ):
       assert self._f_mask[0].data().size() == self.miller_array.indices().size()
+
+  def _load_xrs(self, xray_structure):
+    if(xray_structure is None): return None
+    selection = flex.bool(xray_structure.scatterers().size(), True)
+    if(self.mask_params.ignore_zero_occupancy_atoms):
+      selection &= xray_structure.scatterers().extract_occupancies() > 0
+    if(self.mask_params.ignore_hydrogens):
+      selection &= (~xray_structure.hd_selection())
+    return xray_structure.select(selection)
 
   def deep_copy(self):
     return self.select(flex.bool(self.miller_array.indices().size(),True))
@@ -253,28 +286,19 @@ class manager(object):
     new_manager.solvent_content_via_mask = self.solvent_content_via_mask
     return new_manager
 
-  def _get_grid_step(self):
-    if not (self.mask_params.grid_step_factor > 0):
-      raise Sorry("Inappropriate value for grid_step_factor: must be "+
-        "positive and non-zero.")
-    assert self.mask_params.grid_step_factor > 0
-    step = self.miller_array.d_min()/self.mask_params.grid_step_factor
-    if(step < 0.15): step = 0.15 # XXX arbitrary, see also masks/atom_mask.cpp
-    step = min(0.8, step) # XXX arbitrary, can lead to very large maps
-    return step
-
   def shell_f_masks(self, xray_structure = None, force_update=False):
     if(xray_structure is not None):
       if(force_update or self._f_mask is None):
-        self.xray_structure = xray_structure.deep_copy_scatterers()
-        self.sites_cart = xray_structure.sites_cart()
+        self.xray_structure = self._load_xrs(xray_structure)
+        self.sites_cart = self.xray_structure.sites_cart()
         self.compute_f_mask()
       else:
+        xray_structure = self._load_xrs(xray_structure)
         flag = self._need_update_mask(sites_cart_new =
           xray_structure.sites_cart())
         if(flag):
-          self.xray_structure = xray_structure.deep_copy_scatterers()
-          self.sites_cart = xray_structure.sites_cart()
+          self.xray_structure = xray_structure
+          self.sites_cart = self.xray_structure.sites_cart()
           self.compute_f_mask()
     elif(self._f_mask is None and self.xray_structure is not None):
       self.compute_f_mask()
@@ -299,39 +323,48 @@ class manager(object):
   def compute_f_mask(self):
     if(not self.mask_params.use_asu_masks):
       assert self.mask_params.n_radial_shells <= 1
-      bulk_solvent_mask_obj = self.bulk_solvent_mask()
-      self._f_mask = [bulk_solvent_mask_obj.structure_factors(
-        miller_set = self.miller_array)]
+      mask_obj = self.bulk_solvent_mask()
+      self._f_mask = self._compute_f(
+        mask_obj=mask_obj, ma=self.miller_array, sel=self.sel_3inf)
       if(self.miller_array_twin is not None):
-        self._f_mask_twin = [bulk_solvent_mask_obj.structure_factors(
-          miller_set = self.miller_array_twin)]
-      self.solvent_content_via_mask = bulk_solvent_mask_obj \
+        self._f_mask_twin = self._compute_f(
+          mask_obj=mask_obj, ma=self.miller_array_twin, sel=self.sel_3inf_twin)
+      self.solvent_content_via_mask = mask_obj \
         .contact_surface_fraction
     else:
       asu_mask_obj = asu_mask(
         xray_structure = self.xray_structure,
-        d_min          = self.miller_array.d_min(),
         mask_params    = self.mask_params).asu_mask
-      self._f_mask = []
-      for i in range(0, self.mask_params.n_radial_shells):
-        fm_asu = asu_mask_obj.structure_factors(self.miller_array.indices(),i+1)
-        self._f_mask.append( self.miller_array.set().array(data = fm_asu) )
+      self._f_mask = self._compute_f(mask_obj=asu_mask_obj,
+        ma=self.miller_array, sel=self.sel_3inf)
       if(self.miller_array_twin is not None):
         assert self.miller_array.indices().size() == \
                self.miller_array_twin.indices().size()
-        self._f_mask_twin = []
-        for i in range(0,self.mask_params.n_radial_shells):
-          fm_asu = asu_mask_obj.structure_factors(self.miller_array_twin.indices())
-          self._f_mask_twin.append( self.miller_array_twin.set().array(data = fm_asu) )
+        self._f_mask_twin = self._compute_f(mask_obj=asu_mask_obj,
+          ma=self.miller_array_twin, sel=self.sel_3inf_twin)
       self.solvent_content_via_mask = asu_mask_obj.contact_surface_fraction
       self.layer_volume_fractions = asu_mask_obj.layer_volume_fractions()
     assert self._f_mask[0].data().size() == self.miller_array.data().size()
+
+  def _compute_f(self, mask_obj, ma, sel):
+    result = []
+    ma_sel = ma.select(sel)
+    for i in range(0, self.mask_params.n_radial_shells):
+      if(self.mask_params.use_asu_masks):
+        fm_asu = mask_obj.structure_factors(ma_sel.indices(),i+1)
+      else:
+        assert self.mask_params.n_radial_shells==1
+        fm_asu = mask_obj.structure_factors(ma_sel).data()
+      data = flex.complex_double(ma.indices().size(), 0)
+      data = data.set_selected(sel, fm_asu)
+      result.append( ma.set().array(data = data) )
+    return result
 
   def bulk_solvent_mask(self):
     mp = self.mask_params
     return bulk_solvent(
       xray_structure              = self.xray_structure,
-      grid_step                   = self.grid_step,
+      grid_step                   = mp.step,
       ignore_zero_occupancy_atoms = mp.ignore_zero_occupancy_atoms,
       ignore_hydrogen_atoms       = mp.ignore_hydrogens,
       solvent_radius              = mp.solvent_radius,

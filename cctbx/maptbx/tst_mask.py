@@ -275,6 +275,7 @@ def exercise():
       mp = mmtbx.masks.mask_master_params.extract()
       mp.solvent_radius=solvent_radius
       mp.shrink_truncation_radius=0.0
+      mp.grid_step_factor=4
       mmtbx_masks_asu_mask_obj = mmtbx.masks.asu_mask(
         xray_structure = xrs.expand_to_p1(sites_mod_positive=True), # Must be P1
         d_min          = 1,

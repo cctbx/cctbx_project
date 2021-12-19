@@ -2008,8 +2008,10 @@ class f_000(object):
       f_000 += xray_structure.f_000()
       if(solvent_fraction is None):
         import mmtbx.masks
+        mp = mmtbx.masks.mask_master_params.extract()
+        mp.step=0.25
         solvent_fraction = mmtbx.masks.asu_mask(xray_structure=xray_structure,
-          d_min=1).asu_mask.contact_surface_fraction
+          mask_params = mp).asu_mask.contact_surface_fraction
     if(solvent_fraction is not None):
       f_000 += solvent_fraction*unit_cell_volume*mean_solvent_density
     if(f_000 == 0):

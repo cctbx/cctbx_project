@@ -56,9 +56,12 @@ class run(object):
     self.r = flex.double() # for tests only
     self.acc_asu = None
     # bulk-solvent
+    mp = mmtbx.masks.mask_master_params.extract()
+    mp.n_real = crystal_gridding.n_real()
+    mp.step=None
     mmtbx_masks_asu_mask_obj = mmtbx.masks.asu_mask(
       xray_structure = xrs_p1,
-      n_real         = crystal_gridding.n_real())
+      mask_params = mp)
     self.bulk_solvent_mask = mmtbx_masks_asu_mask_obj.mask_data_whole_uc()
     self.bulk_solvent_mask_asu=self.to_asu_map(map_data=self.bulk_solvent_mask)
     # atom map

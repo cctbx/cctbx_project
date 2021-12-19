@@ -185,7 +185,7 @@ def exercise_2():
   f_mask2 = m2.structure_factors(miller_set=miller_set)
   f_mask3 = m3.structure_factors(miller_set=miller_set)
   assert approx_equal(f_mask2.data(), f_mask3.data())
-  assert approx_equal(flex.sum(flex.abs(f_mask3.data())), 1095.17999134)
+  assert approx_equal(flex.sum(flex.abs(f_mask3.data())), 404.940784913)
 
 def exercise_3():
   from mmtbx import masks
