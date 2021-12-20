@@ -174,14 +174,18 @@ class ncs_aware_refinement(object):
       argss = []
       selections = []
       for sel in model.macromolecule_plus_hetatms_by_chain_selections():
-        argss.append([model.select(sel),])
+        model_i = model.select(sel)
+        if(model_i.size()==1):
+          chain_ids = " ".join([c.id for c in model_i.get_hierarchy().chains()])
+          print("Skip one atom model, chains: (%s)"%chain_ids, file=self.log)
+          continue
+        argss.append([model_i,])
         selections.append(sel) # XXX CAN BE BIG
       stdout_and_results = easy_mp.pool_map(
         processes    = self.nproc,
         fixed_func   = self.run_one_one,
         args         = argss,
         func_wrapper = "buffer_stdout_stderr")
-      #values = model.get_b_iso()
       for i, result in enumerate(stdout_and_results):
         values = values.set_selected(selections[i], result[1])
       model.set_b_iso(values = values)
@@ -252,23 +256,25 @@ class ncs_aware_refinement(object):
           initial_values = x).run()
         b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
         model.set_b_iso(values = b_isos)
-        rms_b = model.rms_b_iso_or_b_equiv()
-        if(rms_b<5):
-          rw = rw/2
-          if(flipped):
-            b_isos = b_isos_prev
-            model.set_b_iso(values = b_isos)
-            break
-        else:
-          if(rms_b > rms_b_prev):
-            b_isos = b_isos_prev
-            model.set_b_iso(values = b_isos)
-            break
-          rw = rw*2
-          flipped = True
+        if(rms_b_prev is not None):
+          rms_b = model.rms_b_iso_or_b_equiv()
+          if(rms_b<5):
+            rw = rw/2
+            if(flipped):
+              b_isos = b_isos_prev
+              model.set_b_iso(values = b_isos)
+              break
+          else:
+            if(rms_b > rms_b_prev):
+              b_isos = b_isos_prev
+              model.set_b_iso(values = b_isos)
+              break
+            rw = rw*2
+            flipped = True
         if(self.log is not None):
           print("r_work: %6.4f rms_B_bonded: %4.2f restraints_weight: %6.4f"%(
             fmodel.r_work(), rms_b, rw), file=self.log)
+        if(rms_b_prev is None): break
     #
     fmodel.xray_structure.set_b_iso(values = b_isos)
     fmodel.update_xray_structure(xray_structure = fmodel.xray_structure,

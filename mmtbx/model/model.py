@@ -2962,6 +2962,7 @@ class manager(object):
     self.set_b_iso(values = b_iso)
 
   def rms_b_iso_or_b_equiv(self, exclude_hd=True):
+    result = None
     pairs = self.pairs_within(radius=1.6)
     atoms = self.get_hierarchy().atoms()
     values = flex.double()
