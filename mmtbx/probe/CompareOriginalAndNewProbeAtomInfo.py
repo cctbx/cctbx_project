@@ -63,24 +63,22 @@ if __name__ == '__main__':
   #==============================================================
   # Run the original Probe on the input file.
   print('Running old and new Probe on',args.inputFile)
-  process = subprocess.Popen(["./probe/probe","-quiet","-kin","-mc","-self","all",
-    "-count","-sepworse","-dumpatoms",os.path.basename(args.inputFile)+".orig.dump",args.inputFile],
-   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  stdout, stderr = process.communicate()
-  with open(os.path.basename(args.inputFile)+".orig.out","w") as f:
-    f.write(stdout)
-  with open(os.path.basename(args.inputFile)+".orig.err","w") as f:
-    f.write(stderr)
+  with open(os.path.basename(args.inputFile)+".orig.out","w") as fo:
+    with open(os.path.basename(args.inputFile)+".orig.err","w") as fe:
+      process = subprocess.Popen(["./probe/probe","-quiet","-kin","-mc","-self","all",
+        "-count","-sepworse","-dumpatoms",os.path.basename(args.inputFile)+".orig.dump",args.inputFile],
+        stdout=fo, stderr=fe)
+      process.wait()
 
-  process = subprocess.Popen(["mmtbx.probe2",'source_selection="all"','record_added_hydrogens=False',
-    'approach=self','count_dots=True','output.separate_worse_clashes=True',
-    'output.file_name='+os.path.basename(args.inputFile)+".new.out",
-    'output.dump_file_name='+os.path.basename(args.inputFile)+".new.dump",
-    args.inputFile],
-   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  stdout, stderr = process.communicate()
-  with open(os.path.basename(args.inputFile)+".new.err","w") as f:
-    f.write(stderr)
+  with open(os.path.basename(args.inputFile)+".new.out","w") as fo:
+    with open(os.path.basename(args.inputFile)+".new.err","w") as fe:
+      process = subprocess.Popen(["mmtbx.probe2",'source_selection="all"','record_added_hydrogens=False',
+        'approach=self','count_dots=True','output.separate_worse_clashes=True',
+        'output.file_name='+os.path.basename(args.inputFile)+".new.out",
+        'output.dump_file_name='+os.path.basename(args.inputFile)+".new.dump",
+        args.inputFile],
+        stdout=fo, stderr=fe)
+      process.wait()
 
   #==============================================================
   # Compare the two dump files.  Store the results in a comparison file and say
