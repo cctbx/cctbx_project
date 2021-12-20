@@ -11,7 +11,6 @@ from cctbx import maptbx
 import sys
 import iotbx.xplor.map
 import iotbx.phil
-from libtbx.utils import Sorry
 from libtbx import introspection
 from libtbx import adopt_init_args
 from copy import deepcopy
