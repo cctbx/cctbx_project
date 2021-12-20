@@ -90,23 +90,27 @@ class base_manager():
 
   def get_timings(self, energy=False):
     return '-'
-
 #
 # QM runner
 #
 def qm_runner(qmm,
+              program_goal='opt',
               cleanup=True,
               file_read=False,
               log=None,
               verbose=False
               ):
+  def get_func(manager, attr):
+    return getattr(manager, 'get_%s' % attr, None)
   if verbose: print(qmm)
   if qmm.program=='test':
-    func = base_manager.get_opt
+    func = get_func(base_manager, program_goal)
   elif qmm.program=='orca':
-    func = orca_manager.get_opt
+    func = get_func(orca_manager, program_goal)
   else:
     raise Sorry('QM program not found or set "%s"' % qmm.program)
+  if func is None:
+    raise Sorry('QM manager does not have get_%s' % program_goal)
   ligand_xyz, buffer_xyz = func(qmm, cleanup=cleanup, file_read=file_read, log=log)
   return ligand_xyz, buffer_xyz
 #
@@ -228,6 +232,11 @@ class orca_manager(base_manager):
                   'SCF NOT CONVERGED AFTER',
                   'SERIOUS PROBLEM IN SOSCF',
                 ]
+  interest_array = None
+
+  def get_coordinate_filename(self): return 'orca_%s.xyz' % self.preamble
+
+  def get_log_filename(self): return 'orca_%s.log' % self.preamble
 
   def set_sites_cart(self, sites_cart):
     assert len(self.atoms)==len(sites_cart)
@@ -292,19 +301,15 @@ class orca_manager(base_manager):
     self.gradients = gradients
     return self.energy, self.gradients
 
-  def get_coordinate_filename(self):
-    filename = 'orca_%s.xyz' % self.preamble
-    # if not os.path.exists(filename):
-    #   print('looking for %s' % filename)
-    #   for i in range(10):
-    #     if filename.find('_%02d' % i)==1: continue
-    #     for j in range(10):
-    #       s = '_%02d_%02d' % (i, j)
-    #       for f in os.listdir('.'):
-    #         if f.find(s)>-1:
-    #           print('??? ',f)
-    #   assert 0
-    return filename
+  def read_energy(self):
+    filename = self.get_log_filename()
+    f=open(filename, 'r')
+    lines=f.readlines()
+    del f
+    for line in lines:
+      if line.find('FINAL SINGLE POINT ENERGY')>-1:
+        self.energy = float(line.split()[-1])
+    return self.energy, None
 
   def read_xyz_output(self):
     filename = self.get_coordinate_filename()
@@ -344,9 +349,11 @@ class orca_manager(base_manager):
                )
     self.times.append(time.time()-t0)
 
-  def get_coordinate_lines(self):
+  def get_coordinate_lines(self, interest_only=False):
     outl = '* xyz %s %s\n' % (self.charge, self.multiplicity)
     for i, atom in enumerate(self.atoms):
+      if interest_only and self.interest_array and not self.interest_array[i]:
+        continue
       outl += ' %s %0.5f %0.5f %0.5f # %s %s\n' % (
         atom.element,
         atom.xyz[0],
@@ -366,6 +373,36 @@ class orca_manager(base_manager):
     if energy:
       f+=' Energy : %0.6f' % energy
     return f
+
+  def get_energy(self,
+                 interest_only=False,
+                 optimise_h=True,
+                 cleanup=False,
+                 file_read=True,
+                 log=None):
+    energy=None
+    if file_read:
+      filename = self.get_log_filename()
+      if os.path.exists(filename):
+        if os.path.exists(filename):
+          process_qm_log_file(filename, log=log)
+        print('  Reading energy from %s\n' % filename, file=log)
+        energy = self.read_energy()
+    if energy is None:
+      outl = ''
+      if optimise_h:
+        outl += '''%geom optimizehydrogens true\nend'''
+
+      outl += '\n! %s %s %s Energy\n\n' % (self.method,
+                                           self.basis_set,
+                                           self.solvent_model)
+      outl += self.get_coordinate_lines()
+      self.write_input(outl)
+      self.run_cmd()
+      energy = self.read_energy()
+    if cleanup: self.cleanup(level=cleanup)
+    assert 0
+    return energy
 
   def get_engrad(self):
     outl = '! %s %s %s EnGrad\n\n' % (self.method,
@@ -416,7 +453,7 @@ end
         lf = filename.replace('.xyz', '.log')
         if os.path.exists(lf):
           process_qm_log_file(lf, log=log)
-        print('  Reading coordinates from %s\n' % filename)
+        print('  Reading coordinates from %s\n' % filename, file=log)
         coordinates = self.read_xyz_output()
     if coordinates is None:
       self.opt_setup()

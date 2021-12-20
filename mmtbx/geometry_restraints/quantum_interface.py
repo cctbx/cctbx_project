@@ -4,7 +4,12 @@ from libtbx import Auto
 
 def env_exists_exists(env, var, check=True):
   if check:
-    return (env.get(var, False) and os.path.exists(env[var]))
+    orca_env = env.get(var, False)
+    if not orca_env: return orca_env
+    if orca_env.find('LD_LIBRARY_PATH')>-1:
+      lib, orca_env = orca_env.split()
+    if os.path.exists(orca_env): return True
+    # return (env.get(var, False) and os.path.exists(env[var]))
   else:
     return env.get(var, False)
 
@@ -33,6 +38,8 @@ def get_qm_restraints_scope(verbose=False):
       .type = str
     basis_set = Auto
       .type = str
+    solvent_model = Auto
+      .type = str
     read_output_to_skip_opt_if_available = False
       .type = bool
     view_output = None
@@ -53,6 +60,10 @@ qm_restraints
     .help = distance to include entire residues into the enviroment of the core
   capping_groups = False
     .type = bool
+  calculate_starting_energy = False
+    .type = bool
+  calculate_final_energy = False
+    .type = bool
   write_pdb_core = False
     .type = bool
   write_pdb_buffer = False
@@ -61,7 +72,10 @@ qm_restraints
     .type = bool
   write_final_pdb_buffer = False
     .type = bool
-  cleanup = *all most None
+  write_restraints = False
+    .type = bool
+    .style = hidden
+  cleanup = all *most None
     .type = choice
   run_in_macro_cycles = *first_only all test
     .type = choice
@@ -109,17 +123,22 @@ def get_safe_filename(s):
   s=s.replace('*','_star_')
   return s
 
-def get_preamble(macro_cycle, i, qmr):
+def get_preamble(macro_cycle, i, qmr, old_style=False):
   s=''
   if macro_cycle is not None:
     s+='%02d_' % macro_cycle
-  s+='%02d_%s_%s' % (i+1, get_safe_filename(qmr.selection), qmr.buffer)
+  if old_style:
+    s+='%02d_%s_%s' % (i+1, get_safe_filename(qmr.selection), qmr.buffer)
+  else:
+    s+='%s_%s' % (get_safe_filename(qmr.selection), qmr.buffer)
   if qmr.capping_groups:
     s+='_0'
   if qmr.package.method is not Auto:
     s+='_%s' % get_safe_filename(qmr.package.method)
   if qmr.package.basis_set is not Auto and qmr.package.basis_set:
     s+='_%s' % get_safe_filename(qmr.package.basis_set)
+  if qmr.package.solvent_model is not Auto and qmr.package.solvent_model:
+    s+='_%s' % get_safe_filename(qmr.package.solvent_model)
   return s
 
 def is_any_quantum_package_installed(env):

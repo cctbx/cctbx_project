@@ -44,12 +44,19 @@ def digester(model,
   make_header('QM Restraints Initialisation', out=log)
   qm_restraints_initialisation(params, log=log)
   run_program=True
+  transfer_internal_coordinates=True
   for i, qmr in enumerate(params.qi.qm_restraints):
     if qmr.run_in_macro_cycles=='test': break
   else: run_program=False
+  for i, qmr in enumerate(params.qi.qm_restraints):
+    if qmr.calculate_starting_energy:
+      run_program=True
+      transfer_internal_coordinates=False
+      break
   update_restraints(model,
                     params,
                     run_program=run_program,
+                    transfer_internal_coordinates=transfer_internal_coordinates,
                     log=log,
                     )
   return qm_grm
@@ -245,6 +252,8 @@ def get_qm_manager(ligand_model, buffer_model, qmr, log=StringIO()):
       qmr.package.method='AM1'
     if qmr.package.basis_set is Auto:
       qmr.package.basis_set=''
+    if qmr.package.solvent_model is Auto:
+      qmr.package.solvent_model=''
     if qmr.package.multiplicity is Auto:
       qmr.package.multiplicity=1
     if qmr.package.charge is Auto:
@@ -260,7 +269,7 @@ def get_qm_manager(ligand_model, buffer_model, qmr, log=StringIO()):
   qmm = qmm(buffer_model.get_atoms(),
             qmr.package.method,
             qmr.package.basis_set,
-            '', #qmr.package.solvent_model,
+            qmr.package.solvent_model,
             qmr.package.charge,
             qmr.package.multiplicity,
             # preamble='%02d' % (i+1),
@@ -378,6 +387,7 @@ def update_restraints(model,
                       params,
                       macro_cycle=None,
                       run_program=True,
+                      transfer_internal_coordinates=True,
                       nproc=1,
                       log=StringIO(),
                       ):
@@ -413,31 +423,41 @@ def update_restraints(model,
   if not run_program: return
   print('',file=log)
   #
-  # optimise
+  # optimise or energy
   #
   if nproc==1:
     xyzs = []
     xyzs_buffer = []
     for i, (ligand_model, buffer_model, qmm, qmr) in enumerate(objects):
+      program_goal='opt'
+      if macro_cycle is None:
+        if not transfer_internal_coordinates:
+          if qmr.calculate_starting_energy:
+            program_goal='energy'
       xyz, xyz_buffer = qm_manager.qm_runner(
         qmm,
+        program_goal=program_goal,
         cleanup=qmr.cleanup,
         file_read=qmr.package.read_output_to_skip_opt_if_available,
         log=log,
         )
-      print('  Time for calculation of "%s" using %s %s: %s' % (
+      print('  Time for calculation of "%s" using %s %s %s: %s' % (
         qmr.selection,
         qmr.package.method,
         qmr.package.basis_set,
+        qmr.package.solvent_model,
         qmm.get_timings().split(':')[-1],
         ))
       xyzs.append(xyz)
       xyzs_buffer.append(xyz_buffer)
+      if program_goal=='energy':
+        print('  Energy = %f' % xyz, file=log)
   else:
     print('nproc',nproc)
     assert 0
     xyzs, junk = get_all_xyz(objects, nproc)
   print('',file=log)
+  if not transfer_internal_coordinates: return
   #
   # update model restraints
   #
@@ -473,7 +493,6 @@ def update_restraints(model,
       write_pdb_file(ligand_model, '%s_ligand_final_%s.pdb' % (prefix, preamble), log)
     if qmr.write_final_pdb_buffer:
       write_pdb_file(buffer_model, '%s_cluster_final_%s.pdb' % (prefix, preamble), log)
-    assert 0
     #
     # transfer geometry to proxies
     #  - bonds
