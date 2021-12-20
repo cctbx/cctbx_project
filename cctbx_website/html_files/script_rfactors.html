@@ -1,0 +1,117 @@
+{% extends "cctbx/header.html" %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="col-sm-9 main">
+
+<h2><center>Calculate R-factors for a crystal structure</center></h2>
+
+<p class="lead mt-4">This example script shows how to calculate R-factors with a model and a mtz file.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">Required imports</h3>
+
+<p>This script requires the following imports:</p>
+
+<pre class="codeDL"><code>from __future__ import absolute_import, division, print_function
+import iotbx.pdb
+import mmtbx.model
+import mmtbx.f_model
+from iotbx import reflection_file_reader
+</code></pre>
+
+<p>To calculate R-factors we need a model (coordinates, b-factors, atom-type, occupancy, etc.) to obtain calculated structure factors and data (structure factor amplitudes or intensities, R-free-flags for Rfree). The following sections explain how to obtain the model and data objects from the input files.</p>
+
+<p>If you don't have examples files at hand, you can use files that come with the phenix installation:</p>
+
+<pre class="codeDL"><code>import os
+import libtbx.load_env
+pdb_file = libtbx.env.find_in_repositories(
+  relative_path="phenix_regression/pdb/1yjp_h.pdb",
+  test=os.path.isfile)
+mtz_file = libtbx.env.find_in_repositories(
+  relative_path="phenix_regression/reflection_files/1yjp.mtz",
+  test=os.path.isfile)
+assert (not None in [pdb_file, mtz_file])
+</code></pre>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">Get the model object</h3>
+
+<p>First, let's create a model object from the input file <code>pdb_file</code>.</p>
+
+<pre class="codeDL"><code># Read in the model file and create model object
+pdb_inp = iotbx.pdb.input(file_name = pdb_file)
+model = mmtbx.model.manager(model_input = pdb_inp)
+</code></pre>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">Read the mtz file and get the miller array</h3>
+
+<p>We need data to calculate R-factors. First we'll read the mtz file, then we get an appropriate Miller array. In this example, we know that the miller arrays have the names <code>FOBS,SIGFOBS</code> and <code>R-free-flags</code> in the mtz file.</p>
+
+<pre class="codeDL"><code># Get miller arrays for data and Rfree flags
+miller_arrays = reflection_file_reader.any_reflection_file(file_name =
+  mtz_file).as_miller_arrays()
+for ma in miller_arrays:
+  print(ma.info().label_string())
+  if(ma.info().label_string()=="FOBS_X,SIGFOBS_X"):
+    f_obs = ma
+  if(ma.info().label_string()=="R-free-flags"):
+    r_free_flags = ma
+</code></pre>
+
+<p>Now we have to remove reflections that don't have an equivalent in the other array, in other words, both arrays need to have the same number of reflections. We also bring the r_free_flags array into a boolean format suitable for further calculations.</p>
+
+<pre class="codeDL"><code># Obtain a common set of reflections
+f_obs, r_free_flags = f_obs.common_sets(r_free_flags)
+r_free_flags = r_free_flags.array(data = r_free_flags.data()==0)
+</code></pre>
+
+<p>To doublecheck, let's print the number of reflections that are "free" and "work", respectively:</p>
+
+<pre class="codeDL"><code>print(r_free_flags.data().count(True), r_free_flags.data().count(False))
+</code></pre>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">Calculate R-factors</h3>
+
+<p> The following lines of code yield the <code>f_model</code> object that combines the data and model:</p>
+
+<pre class="codeDL"><code>fmodel = mmtbx.f_model.manager(
+  f_obs          = f_obs,
+  r_free_flags   = r_free_flags,
+  xray_structure = model.get_xray_structure())
+</code></pre>
+
+<p>You can see that we did not pass the model object itself to <code>f_model</code>. The reason is that  <code>model</code> contains way more infomation than necessary to calculate structure factors, for example it may carry restraint information. To calculate R-factors, this is not needed. Instead, the minimal structural information is contained in the <code>xray_structure</code> object.</p>
+
+<p>We need one more step before calculating R-factors: The calculated and observed structure factor amplitudes are usually not on a common scale and low resolution structure factors need to be adjusted. To address this, the <code>update_all_scales()</code> method will calculate scale factors and add a bulk solvent model.</p>
+
+<pre class="codeDL"><code>fmodel.update_all_scales()
+</code></pre>
+
+<p>Finally, we print the results:</p>
+
+<pre class="codeDL"><code>print("r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free()))
+fmodel.show(show_header=False, show_approx=False)
+</code></pre>
+
+<!----------------------------------------------------------------------------->
+
+
+</div>
+
+<!-- sidebar, which will move to the top on a small screen -->
+<div class="col-sm-3 mt-5">
+  <nav id="toc" data-toggle="toc"></nav>
+</div>
+
+
+{% endblock %}
