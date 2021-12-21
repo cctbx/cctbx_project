@@ -2686,7 +2686,7 @@ class QRBuilder(PhenixBuilder):
     # XXX fast_interaction=True (=False won't work)
     #
     #pip_installs = ['ase', 'JPype1','pymongo']
-    pip_installs = ['ase==3.17.0', 'pymongo', "JPype1==0.6.3"]
+    pip_installs = ['ase==3.17.0', 'pymongo']
     instructions = []
     # versioning
     cmd = [os.path.join('..', self.python_base),
