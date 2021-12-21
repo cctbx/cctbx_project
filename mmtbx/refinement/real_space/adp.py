@@ -147,8 +147,6 @@ class ncs_aware_refinement(object):
     self.individual  = individual
     self.restraints_weight = restraints_weight
     #
-    if(self.nproc>1): self.log = None
-    #
     ncs_groups = self.mmm.model().get_ncs_groups()
     if(ncs_groups is None or len(ncs_groups)==0):
       values = self.run_one()
@@ -193,6 +191,8 @@ class ncs_aware_refinement(object):
 
   def run_one_one(self, args):
     model = args[0]
+    log = self.log
+    if(self.nproc>1): log = None
     #
     fmodel = map_and_model_to_fmodel(
       map_data       = self.mmm.map_data().deep_copy(),
@@ -227,16 +227,16 @@ class ncs_aware_refinement(object):
       run_finite_differences_test = False,
       use_restraints           = True,
       refine_adp               = True,
-      log                      = self.log)
+      log                      = log)
     fmodel.update_all_scales(update_f_part1=False, apply_back_trace=True,
       remove_outliers=False)
     b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
     model.set_b_iso(values = b_isos)
     #
     if(self.individual):
-      if(self.log is not None):
+      if(log is not None):
         print("r_work (start): %6.4f rms_B_bonded: %4.2f"%(fmodel.r_work(),
-          model.rms_b_iso_or_b_equiv()), file=self.log)
+          model.rms_b_iso_or_b_equiv()), file=log)
       rw = self.restraints_weight
       flipped = False
       for it in range(1,20):
@@ -271,15 +271,15 @@ class ncs_aware_refinement(object):
               break
             rw = rw*2
             flipped = True
-        if(self.log is not None):
+        if(log is not None):
           print("r_work: %6.4f rms_B_bonded: %4.2f restraints_weight: %6.4f"%(
-            fmodel.r_work(), rms_b, rw), file=self.log)
+            fmodel.r_work(), rms_b, rw), file=log)
         if(rms_b_prev is None): break
     #
     fmodel.xray_structure.set_b_iso(values = b_isos)
     fmodel.update_xray_structure(xray_structure = fmodel.xray_structure,
       update_f_calc = True)
-    if(self.log is not None):
-      print("r_work (final): %6.4f"%fmodel.r_work(), file=self.log)
+    if(log is not None):
+      print("r_work (final): %6.4f"%fmodel.r_work(), file=log)
     #
     return b_isos
