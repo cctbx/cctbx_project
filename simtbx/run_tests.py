@@ -71,8 +71,10 @@ if OPT.enable_cuda:
     ["$D/nanoBragg/tst_gauss_argchk.py","GPU"], # tests CPU+GPU, argchk optimization
     "$D/gpu/tst_exafel_api.py",                 # CPU / GPU, polychromatic beam, monolithic detector
     "$D/gpu/tst_gpu_multisource_background.py", # CPU / GPU background comparison
-    "$D/kokkos/tst_kokkos_lib.py",                  # GPU in kokkos
+    "$D/kokkos/tst_kokkos_lib.py",              # GPU in kokkos
   ]
+  if not OPT.enable_kokkos:
+    tst_list_parallel.pop(-1)    # remove kokkos test if kokkos is not available
   if OPT.enable_cxx11 and sys.platform != 'win32':
       for tst in db_tst_list:
           if isinstance(tst, str):
@@ -82,6 +84,11 @@ if OPT.enable_cuda:
           tst_list_parallel.append(par_tst)
 
       tst_list_parallel += db_tst_list_onlyCuda
+elif OPT.enable_kokkos:
+   tst_list_parallel = [
+     ["$D/nanoBragg/tst_gauss_argchk.py","CPU"], # tests CPU argchk optimization
+     "$D/kokkos/tst_kokkos_lib.py",              # GPU in kokkos
+   ]  
 else:
   tst_list.append(
     ["$D/nanoBragg/tst_gauss_argchk.py","CPU"]

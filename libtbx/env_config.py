@@ -35,6 +35,7 @@ default_build_boost_python_extensions = True
 default_enable_openmp_if_possible = False
 default_enable_boost_threads = True
 default_enable_cuda = False
+default_enable_kokkos = False
 default_opt_resources = False
 default_enable_cxx11 = False
 default_use_conda = False
@@ -977,6 +978,7 @@ Wait for the command to finish, then try again.""" % vars())
         enable_boost_threads
           =command_line.options.enable_boost_threads,
         enable_cuda=command_line.options.enable_cuda,
+        enable_kokkos=command_line.options.enable_kokkos,
         use_conda=command_line.options.use_conda,
         opt_resources=command_line.options.opt_resources,
         use_environment_flags=command_line.options.use_environment_flags,
@@ -2606,6 +2608,7 @@ class build_options:
         enable_openmp_if_possible=default_enable_openmp_if_possible,
         enable_boost_threads=True,
         enable_cuda=default_enable_cuda,
+        enable_kokkos=default_enable_kokkos,
         use_conda=default_use_conda,
         opt_resources=default_opt_resources,
         precompile_headers=False,
@@ -2669,6 +2672,7 @@ class build_options:
     print("Enable OpenMP if possible:", self.enable_openmp_if_possible, file=f)
     print("Boost threads enabled:", self.enable_boost_threads, file=f)
     print("Enable CUDA:", self.enable_cuda, file=f)
+    print("Enable KOKKOS:", self.enable_kokkos, file=f)
     print("Use conda:", self.use_conda, file=f)
     print("Use opt_resources if available:", self.opt_resources, file=f)
     print("Use environment flags:", self.use_environment_flags, file=f)
@@ -2853,6 +2857,11 @@ class pre_process_args:
       default=default_enable_cuda,
       help="Use optimized CUDA routines for certain calculations.  Requires at least one NVIDIA GPU with compute capability of 2.0 or higher, and CUDA Toolkit 4.0 or higher (default: %s)"
         % default_enable_cuda)
+    parser.option(None, "--enable_kokkos",
+      action="store_true",
+      default=default_enable_kokkos,
+      help="Use optimized KOKKOS routines for certain calculations. Which backend (CUDA/HIP/OpenMP) is used, depends on the system (default: %s)"
+        % default_enable_kokkos)
     parser.option(None, "--use_conda",
       action="store_true",
       default=default_use_conda,
