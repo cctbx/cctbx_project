@@ -672,7 +672,7 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
       if python is not None:
         if python not in ['27', '36', '37', '38', '39']:
           raise RuntimeError(
-            """Only Python 2.7, 3.6, 3.7, and 3.8 are currently supported.""")
+            """Only Python 2.7, 3.6, 3.7, 3.8, and 3.9 are currently supported.""")
         filename = filename.replace('PYTHON_VERSION', python)
     else:
       filename = os.path.abspath(filename)
