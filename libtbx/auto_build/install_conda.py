@@ -670,7 +670,7 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
       filename = os.path.join(
         self.root_dir, 'modules', self.env_locations[builder])
       if python is not None:
-        if python not in ['27', '36', '37', '38']:
+        if python not in ['27', '36', '37', '38', '39']:
           raise RuntimeError(
             """Only Python 2.7, 3.6, 3.7, and 3.8 are currently supported.""")
         filename = filename.replace('PYTHON_VERSION', python)
