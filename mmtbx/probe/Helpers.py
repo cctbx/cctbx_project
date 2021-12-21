@@ -787,12 +787,12 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   ]
   implicitChecks = [
     # Name, vdwRadius, isAcceptor, isDonor
-    ["N",   1.7,  False, True ],
-    ["ND1", 1.7,  True,  True ],
+    ["N",   1.6,  False, True ],
+    ["ND1", 1.6,  True,  True ],
     ["C",   1.8,  False, False],
-    ["CB",  1.9,  False, False],
-    ["O",   1.5,  True,  False],
-    ["CD2", 1.9,  False, False]
+    ["CB",  1.92,  False, False],
+    ["O",   1.52,  True,  False],
+    ["CD2", 1.74,  False, False]
   ]
   probeChecks = [
     # Name, vdwRadius, isAcceptor, isDonor
@@ -827,6 +827,20 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     p.pdb_interpretation.use_neutron_distances = useNeutronDistances
     model.process(make_restraints=True, pdb_interpretation_params = p)
 
+    # Get the atoms for the first model in the hierarchy.
+    atoms = model.get_hierarchy().models()[0].atoms()
+
+    # Get the Cartesian positions of all of the atoms we're considering for this alternate
+    # conformation.
+    carts = flex.vec3_double()
+    for a in atoms:
+      carts.append(a.xyz)
+
+    # Get the bond proxies for the atoms in the model and conformation we're using and
+    # use them to determine the bonded neighbor lists.
+    bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+    bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies)
+
     # Get the extra atom information for the model using default parameters.
     # Make a PHIL-like structure to hold the parameters.
     class philLike:
@@ -834,7 +848,8 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
         self.implicit_hydrogens = useImplicitHydrogenDistances
         self.use_original_probe_tables = useProbe
     philArgs = philLike(useImplicitHydrogenDistances, useProbe)
-    extras = getExtraAtomInfo(model,useNeutronDistances=useNeutronDistances,probePhil=philArgs).extraAtomInfo
+    extras = getExtraAtomInfo(model,bondedNeighborLists,
+      useNeutronDistances=useNeutronDistances,probePhil=philArgs).extraAtomInfo
 
     # Get the atoms for the first model in the hierarchy.
     atoms = model.get_hierarchy().models()[0].atoms()
@@ -843,7 +858,8 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
       e = extras.getMappingFor(a)
       for c in checks:
         if a.name.strip() == c[0]:
-          assert math.isclose(e.vdwRadius, c[1]), "Helpers.Test(): Bad radius for "+a.name+": "+str(e.vdwRadius)+runType
+          assert math.isclose(e.vdwRadius, c[1]), ("Helpers.Test(): Bad radius for "+a.name+": "
+            +str(e.vdwRadius)+" (expected "+str(c[1])+")"+runType)
           assert e.isAcceptor == c[2], "Helpers.Test(): Bad Acceptor status for "+a.name+": "+str(e.isAcceptor)+runType
           assert e.isDonor == c[3], "Helpers.Test(): Bad Donor status for "+a.name+": "+str(e.isDonor)+runType
           # Check the ability to set and check Dummy/Phantom Hydrogen status
@@ -1100,7 +1116,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   p.pdb_interpretation.use_neutron_distances = False
   model.process(make_restraints=True, pdb_interpretation_params = p) # make restraints
 
-  ret = getExtraAtomInfo(model)
+  ret = getExtraAtomInfo(model, bondedNeighborLists)
   # User code should check for and print any warnings.
   #if len(ret.warnings) > 0:
   #  print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings)

@@ -92,7 +92,7 @@ def RunProbeTests(inFileName):
   bondedNeighbors = Helpers.getBondedNeighborLists(atoms, bond_proxies_simple)
 
   # Traverse the hierarchy and look up the extra data to be filled in.
-  ret = Helpers.getExtraAtomInfo(model)
+  ret = Helpers.getExtraAtomInfo(model,bondedNeighbors)
   extra = ret.extraAtomInfo
 
   # Construct a SpatialQuery and fill in the atoms.  Ensure that we can make a

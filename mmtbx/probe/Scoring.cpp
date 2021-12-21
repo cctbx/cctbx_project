@@ -385,7 +385,7 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
 
     // Compute the score for the dot based on the overlap type and amount of overlap.
     // Assign it to the appropriate subscore.
-    InteractionType it = interaction_type(score.overlapType, score.gap);
+    InteractionType it = interaction_type(score.overlapType, score.gap, true);
     switch (it) {
 
     case DotScorer::Invalid: // The dot should be ignored, so is not scored.
@@ -529,8 +529,11 @@ std::string DotScorer::test()
     if (res.cause.data != a.data) {
       return "DotScorer::test(): Did not find expected cause for dot_score()";
     }
-    if (as.interaction_type(res.overlapType, res.gap) != DotScorer::BadBump) {
+    if (as.interaction_type(res.overlapType, res.gap, true) != DotScorer::BadBump) {
       return "DotScorer::test(): Did not find WorseOverlap when expected for dot_score()";
+    }
+    if (as.interaction_type(res.overlapType, res.gap, false) != DotScorer::Bump) {
+      return "DotScorer::test(): Found WorseOverlap when not expected for dot_score()";
     }
 
     source.set_xyz(vec3( sourceRad + targetRad - 0.45,0,0 ));
