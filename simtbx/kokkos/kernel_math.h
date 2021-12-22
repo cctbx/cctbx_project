@@ -213,8 +213,8 @@ KOKKOS_FUNCTION CUDAREAL sincg(CUDAREAL x, CUDAREAL N) {
 
 }
 
-#ifndef
-  sinpi(x) sin(x * M_PI)
+#ifndef sinpi
+#define  sinpi(x) sin(x * M_PI)
 #endif
 
 KOKKOS_INLINE_FUNCTION CUDAREAL sincgrad(CUDAREAL x, CUDAREAL N) {
