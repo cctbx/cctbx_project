@@ -1,7 +1,6 @@
 from __future__ import absolute_import,division, print_function
 from io import StringIO
 import time
-from math import sqrt
 
 from libtbx import Auto
 from libtbx.str_utils import make_header
@@ -11,6 +10,8 @@ from libtbx.utils import null_out
 from cctbx.geometry_restraints.manager import manager as standard_manager
 from mmtbx.geometry_restraints import quantum_interface
 from mmtbx.geometry_restraints import qm_manager
+
+from mmtbx.model.restraints import get_restraints_from_model_via_grm
 
 class manager(standard_manager):
   def __init__(self,
@@ -327,62 +328,6 @@ def running_this_macro_cycle(qmr, macro_cycle):
   else:
     return False
 
-def write_restraints_from_model_via_grm(ligand_model, verbose=True):
-  def atom_as_restraint(atom):
-    resname = atom.parent().resname
-    name = atom.name
-    element = atom.element
-    atom_type = element
-    charge = atom.charge
-    # outl = ' %(resname)s %(name)s %(element)s %(atom_type)s %(charge)s ' % locals()
-    outl = ' %(resname)s %(name)s %(element)s' % locals()
-    return outl
-  def bond_as_restraint(bond, atom1, atom2):
-    resname = atom.parent().resname
-    name1 = atom1.name
-    name2 = atom2.name
-    ideal = bond.distance_ideal
-    esd = 1/sqrt(bond.weight)
-    outl = ' %(resname)s %(name1)s %(name2)s coval %(ideal).3f %(esd)s ' % locals()
-    return outl
-  ligand_grm = ligand_model.get_restraints_manager()
-  atoms = ligand_model.get_atoms()
-  outl = ''
-  outl += '''
-#
-data_comp_%s
-#''' % atoms[0].parent().resname
-  outl += '''
-loop_
-_chem_comp_atom.comp_id
-_chem_comp_atom.atom_id
-_chem_comp_atom.type_symbol
-'''
-  for atom in atoms:
-    outl += '%s\n' % atom_as_restraint(atom)
-  bond_proxies_simple, asu = ligand_grm.geometry.get_all_bond_proxies(
-    sites_cart=ligand_model.get_sites_cart())
-  sorted_table, n_not_shown = bond_proxies_simple.get_sorted(
-    'delta',
-    ligand_model.get_sites_cart())
-  outl += '''
-loop_
-_chem_comp_bond.comp_id
-_chem_comp_bond.atom_id_1
-_chem_comp_bond.atom_id_2
-_chem_comp_bond.type
-_chem_comp_bond.value_dist
-_chem_comp_bond.value_dist_esd
-'''
-  for info in sorted_table:
-    (i_seq, j_seq, i_seqs, distance_ideal, distance_model, slack, delta, sigma, weight, residual, sym_op_j, rt_mx) = info
-    i_atom=atoms[i_seq]
-    j_atom=atoms[j_seq]
-    i_seqs=[i_seq, j_seq]
-    bond=ligand_grm.geometry.bond_params_table.lookup(*list(i_seqs))
-    outl += '%s\n' % bond_as_restraint(bond, i_atom, j_atom)
-  # print(outl)
-
 def update_restraints(model,
                       params,
                       macro_cycle=None,
@@ -434,6 +379,9 @@ def update_restraints(model,
         if not transfer_internal_coordinates:
           if qmr.calculate_starting_energy:
             program_goal='energy'
+      #
+      # run QM program
+      #
       xyz, xyz_buffer = qm_manager.qm_runner(
         qmm,
         program_goal=program_goal,
@@ -508,6 +456,7 @@ def update_restraints(model,
       'delta',
       ligand_model.get_sites_cart())
     print('\n  Transfer', file=log)
+    i=0
     for info in sorted_table:
       (i_seq, j_seq, i_seqs, distance_ideal, distance_model, slack, delta, sigma, weight, residual, sym_op_j, rt_mx) = info
       i_atom=atoms[i_seq]
@@ -516,10 +465,13 @@ def update_restraints(model,
       if i_atom.element_is_hydrogen(): continue
       if j_atom.element_is_hydrogen(): continue
       bond=ligand_grm.geometry.bond_params_table.lookup(*list(i_seqs))
-      print('    %s - %s %5.2f ~> %5.2f' % (i_atom.id_str().replace('pdb=',''),
-                                            j_atom.id_str().replace('pdb=',''),
-                                            bond.distance_ideal,
-                                            distance_model), file=log)
+      i+=1
+      print('    %-2d %s - %s %5.3f ~> %5.3f' % (
+        i,
+        i_atom.id_str().replace('pdb=',''),
+        j_atom.id_str().replace('pdb=',''),
+        bond.distance_ideal,
+        distance_model), file=log)
       bond.distance_ideal=distance_model
       i_seqs=[i_atom.tmp, j_atom.tmp]
       bond=model_grm.geometry.bond_params_table.lookup(*list(i_seqs))
@@ -532,24 +484,28 @@ def update_restraints(model,
       ligand_model.get_sites_cart())
     ligand_lookup = {}
     model_lookup = {}
+    i=0
     for info in sorted_table:
       (i_seqs, angle_ideal, angle_model, delta, sigma, weight, residual) = info
       i_atom=atoms[int(i_seqs[0])]
       j_atom=atoms[int(i_seqs[1])]
       k_atom=atoms[int(i_seqs[2])]
-      if i_atom.element_is_hydrogen(): continue
-      if j_atom.element_is_hydrogen(): continue
-      if k_atom.element_is_hydrogen(): continue
+      # if i_atom.element_is_hydrogen(): continue
+      # if j_atom.element_is_hydrogen(): continue
+      # if k_atom.element_is_hydrogen(): continue
       key = (int(i_seqs[0]), int(i_seqs[1]), int(i_seqs[2]))
       ligand_lookup[key]=angle_model
-      print('    %s - %s - %s %5.2f ~> %5.2f' % (atoms[key[0]].id_str().replace('pdb=',''),
-                                                 atoms[key[1]].id_str().replace('pdb=',''),
-                                                 atoms[key[2]].id_str().replace('pdb=',''),
-                                                 angle_ideal,
-                                                 angle_model), file=log)
+      i+=1
+      print('    %-2d %s - %s - %s %5.1f ~> %5.1f' % (
+        i,
+        atoms[key[0]].id_str().replace('pdb=',''),
+        atoms[key[1]].id_str().replace('pdb=',''),
+        atoms[key[2]].id_str().replace('pdb=',''),
+        angle_ideal,
+        angle_model), file=log)
       key = (atoms[key[0]].tmp, atoms[key[1]].tmp, atoms[key[2]].tmp)
       model_lookup[key]=angle_model
-      key = (int(i_seqs[1]), int(i_seqs[1]), int(i_seqs[0]))
+      key = (int(i_seqs[2]), int(i_seqs[1]), int(i_seqs[0]))
       ligand_lookup[key]=angle_model
       key = (atoms[key[2]].tmp, atoms[key[1]].tmp, atoms[key[0]].tmp)
       model_lookup[key]=angle_model
@@ -561,9 +517,49 @@ def update_restraints(model,
       angle = model_lookup.get(angle_proxy.i_seqs, None)
       if angle is None: continue
       angle_proxy.angle_ideal=angle
+
+    #
+    #    - torsions
+    #
+    sorted_table, n_not_shown = ligand_grm.geometry.dihedral_proxies.get_sorted(
+      'delta',
+      ligand_model.get_sites_cart())
+    ligand_lookup = {}
+    model_lookup = {}
+    if sorted_table is None: sorted_table=[]
+    i=0
+    for info in sorted_table:
+      (i_seqs, angle_ideal, angle_model, delta, period, sigma, weight, residual) = info
+      i_atom=atoms[int(i_seqs[0])]
+      j_atom=atoms[int(i_seqs[1])]
+      k_atom=atoms[int(i_seqs[2])]
+      l_atom=atoms[int(i_seqs[3])]
+      key = (int(i_seqs[0]), int(i_seqs[1]), int(i_seqs[2]), int(i_seqs[3]))
+      ligand_lookup[key]=angle_model
+      i+=1
+      print('    %-2d %s - %s - %s - %s %6.1f ~> %6.1f' % (
+        i,
+        atoms[key[0]].id_str().replace('pdb=',''),
+        atoms[key[1]].id_str().replace('pdb=',''),
+        atoms[key[2]].id_str().replace('pdb=',''),
+        atoms[key[3]].id_str().replace('pdb=',''),
+        angle_ideal,
+        angle_model), file=log)
+      key = (atoms[key[0]].tmp, atoms[key[1]].tmp, atoms[key[2]].tmp, atoms[key[3]].tmp)
+      model_lookup[key]=angle_model
+      key = (int(i_seqs[3]), int(i_seqs[2]), int(i_seqs[1]), int(i_seqs[0]))
+      ligand_lookup[key]=angle_model
+      key = (atoms[key[3]].tmp, atoms[key[2]].tmp, atoms[key[1]].tmp, atoms[key[0]].tmp)
+      model_lookup[key]=angle_model
+
     print('', file=log)
-    # if qmr.write_restraints or 1:
-    #   write_restraints_from_model_via_grm(ligand_model)
+    if qmr.write_restraints:
+      print('write_restraints parameter still in development')
+      # cif_object = get_restraints_from_model_via_grm(ligand_model, ideal=False)
+      # print('  Writing restraints to %s.cif' % qmm.preamble)
+      # f=open('%s.cif' % qmm.preamble, 'w')
+      # f.write(str(cif_object))
+      # del f
     #
     # final stats
     #
