@@ -29,12 +29,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
         scitbx::sparse::matrix<FloatType> const &,
         // jacobian_transpose_matching_grad_fc
         cctbx::xray::extinction_correction<FloatType> const &, // exti
-        optional<bool, bool> // objective_only=false, may_parallelise_=false
+        // objective_only=false, may_parallelise=false, use_openpm=false
+        optional<bool, bool, bool>
         >((arg("normal_equations"), arg("reflections"), arg("f_mask"),
           arg("weighting_scheme"), arg("scale_factor"),
           arg("f_calc_function"), arg("jacobian_transpose_matching_grad_fc"),
           arg("extinction"), arg("objective_only") = false,
-          arg("may_parallelise") = false)));
+          arg("may_parallelise") = false, arg("use_openmp") = false)));
     }
 
     template <class ObjectType>
@@ -74,6 +75,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           .add_static_property("available_threads",
             &wt::get_available_threads,
             &wt::set_available_threads)
+          .def("hasOpenMP", &wt::has_openmp)
             ;
       }
     };
@@ -92,6 +94,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           .add_static_property("available_threads",
             &wt::get_available_threads,
             &wt::set_available_threads)
+          .def("hasOpenMP", &wt::has_openmp)
           .def("design_matrix", &wt::design_matrix)
           ;
       }

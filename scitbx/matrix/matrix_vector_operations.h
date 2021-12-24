@@ -73,38 +73,40 @@ namespace scitbx { namespace matrix {
   /// A := alpha x x^T + A for symmetric matrix A
   /** The upper diagonal of A packed by rows shall be passed in the range
       [ a, a +  n*(n+1)/2 )
-   */
+    Note that using fast_linalg is slower here
+    if (fast_linalg::is_initialised()) {
+      using namespace fast_linalg;
+      spr(CblasRowMajor, CblasUpper, n, alpha, x, 1, a);
+    }
+  */
   template <typename T>
   void symmetric_packed_u_rank_1_update(int n,
                                         T *a, T const *x,
                                         T alpha=1)
   {
-    if (fast_linalg::is_initialised()) {
-      using namespace fast_linalg;
-      spr(CblasRowMajor, CblasUpper, n, alpha, x, 1, a);
+    if (alpha == 0.0) {
+      return;
     }
-    else {
-      if (alpha == 0.0) return;
-      for (int i = 0; i < n; ++i) {
-        int len = (n - i);
-        if (x[i] == 0) {
-          a += len;
-          continue;
-        }
-        T alpha_x_i = alpha * x[i];
-        int full = len / 4, part = len % 4;
-        for (int j = 0; j < full; j++) {
-          int off = i + j * 4;
-          a[0] += alpha_x_i * x[off + 0];
-          a[1] += alpha_x_i * x[off + 1];
-          a[2] += alpha_x_i * x[off + 2];
-          a[3] += alpha_x_i * x[off + 3];
-          a += 4;
-        }
-        int off = i + full * 4;
-        for (int j = 0; j < part; ++j) {
-          *a++ += alpha_x_i * x[off + j];
-        }
+    for (int i = 0; i < n; ++i) {
+      int len = (n - i);
+      if (x[i] == 0) {
+        a += len;
+        continue;
+      }
+      // profiling shows that this is 3-4% more efficient than simple loop
+      T alpha_x_i = alpha * x[i];
+      int full = len / 4, part = len % 4;
+      for (int j = 0; j < full; j++) {
+        int off = i + j * 4;
+        a[0] += alpha_x_i * x[off + 0];
+        a[1] += alpha_x_i * x[off + 1];
+        a[2] += alpha_x_i * x[off + 2];
+        a[3] += alpha_x_i * x[off + 3];
+        a += 4;
+      }
+      int off = i + full * 4;
+      for (int j = 0; j < part; ++j) {
+        *a++ += alpha_x_i * x[off + j];
       }
     }
   }

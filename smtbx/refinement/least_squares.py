@@ -45,6 +45,7 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
     n_restraints = None
     initial_scale_factor = None
     may_parallelise = False
+    use_openmp = False
 
     def __init__(self, observations, reparametrisation,
                  one_h_linearisation=None, **kwds):
@@ -94,7 +95,8 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
           self.reparametrisation.jacobian_transpose_matching_grad_fc(),
           extinction_correction,
           objective_only,
-          self.may_parallelise)
+          self.may_parallelise,
+          self.use_openmp)
 
       if not self.finalised: #i.e. never been called
         self.reparametrisation.linearise()
