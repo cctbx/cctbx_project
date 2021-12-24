@@ -93,7 +93,6 @@ namespace scitbx { namespace matrix {
         a += len;
         continue;
       }
-      // profiling shows that this is 3-4% more efficient than simple loop
       T alpha_x_i = alpha * x[i];
       for (int j = i; j < n; ++j) {
         *a++ += alpha_x_i * x[j];
