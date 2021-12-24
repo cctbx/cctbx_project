@@ -59,16 +59,15 @@ struct accumulate_reflection_chunk_omp {
       boost::ptr_vector<boost::shared_ptr<OneMillerIndexFcalc> > f_calc_threads;
       f_calc_threads.resize(threads);
       for (int i = 0; i < threads; i++) {
-          f_calc_threads[i] = f_calc_function.fork();
+        f_calc_threads[i] = f_calc_function.fork();
       }
       if (compute_grad) {
-          gradients.resize(n);
+        gradients.resize(n);
       }
 #pragma omp parallel num_threads(threads)
       {
         // Make a gradient vector for each thread
-        af::shared<FloatType> gradient;
-        gradient.resize(n_rows);
+        af::shared<FloatType> gradient(n_rows);
         const int thread = omp_get_thread_num();
 #pragma omp for schedule(static,1)
         for (int i_h = 0; i_h < n; ++i_h) {
@@ -135,10 +134,10 @@ struct accumulate_reflection_chunk_omp {
       }
     }
     catch (smtbx::error const& e) {
-        exception_.reset(new smtbx::error(e));
+      exception_.reset(new smtbx::error(e));
     }
     catch (std::exception const& e) {
-        exception_.reset(new smtbx::error(e.what()));
+      exception_.reset(new smtbx::error(e.what()));
     }
   }
 

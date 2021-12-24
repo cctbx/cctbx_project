@@ -128,9 +128,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
           normal_equations += accumulators[thread_idx]->normal_equations;
         }
         normal_equations.finalise(objective_only);
-        if (fast_linalg::is_initialised()) {
-            openblas_set_num_threads(thread_count);
-        }
       }
       else {
         Scheduler scheduler(reflections.size());
@@ -192,7 +189,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       boost::mutex mtx;
       Scheduler(int count)
         : count(count),
-        current(0)
+        current(-1)
       {}
       int* next() {
         boost::mutex::scoped_lock lock(mtx);
