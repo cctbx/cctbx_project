@@ -133,9 +133,9 @@ namespace smtbx { namespace structure_factors { namespace table_based {
           boost::split(toks, line, boost::is_any_of(" "));
           SMTBX_ASSERT(toks.size() == 3 + scatterers.size());
           cctbx::miller::index<> mi(
-            std::stoi(toks[0]),
-            std::stoi(toks[1]),
-            std::stoi(toks[2]));
+            atoi(toks[0].c_str()),
+            atoi(toks[1].c_str()),
+            atoi(toks[2].c_str()));
           parent_t::miller_indices_.push_back(mi);
           vector<complex_type> row;
           row.resize(scatterers.size());
@@ -144,8 +144,8 @@ namespace smtbx { namespace structure_factors { namespace table_based {
             size_t ci = toks[sci].find(',');
             if (ci != string::npos) {
               complex_type v(
-                  std::stod(toks[sci].substr(0, ci)),
-                  std::stod(toks[sci].substr(ci + 1)));
+                  atof(toks[sci].substr(0, ci).c_str()),
+                  atof(toks[sci].substr(ci + 1).c_str()));
               row[sc_indices[sci - 3]] = v;
             }
             else {

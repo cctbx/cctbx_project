@@ -412,9 +412,9 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
 
 #if defined(_OPENMP)
     void add_residuals_omp(const int n,
-      af::const_ref<scalar_t>& yc,
-      af::const_ref<scalar_t>& yo,
-      af::const_ref<scalar_t>& w)
+      af::const_ref<scalar_t> const &yc,
+      af::const_ref<scalar_t> const &yo,
+      af::const_ref<scalar_t> const &w)
     {
       n_data += n;
       FloatType yo2 = 0;
@@ -432,8 +432,8 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     }
 
     void add_residuals_omp(scalar_t n,
-      af::const_ref<scalar_t>& yc,
-      af::const_ref<scalar_t>& yo)
+      af::const_ref<scalar_t> const &yc,
+      af::const_ref<scalar_t> const &yo)
     {
       n_data += n;
       FloatType yo2 = 0;
@@ -496,10 +496,10 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
 #if defined(_OPENMP)
     /// Add many equations in one go using OpenMP
     void add_equations_omp(const int n_ref, const int n_par, const int n_threads,
-      af::const_ref<scalar_t>& yc,
-      std::vector<std::vector<FloatType>>& jacobian_yc,
-      af::const_ref<scalar_t>& yo,
-      af::const_ref<scalar_t>& w)
+      af::const_ref<scalar_t> const &yc,
+      std::vector<std::vector<FloatType> > const &jacobian_yc,
+      af::const_ref<scalar_t> const &yo,
+      af::const_ref<scalar_t> const &w)
     {
       SCITBX_ASSERT(yc.size() == jacobian_yc.size()
         && (!w.size() || yc.size() == w.size()))
