@@ -32,7 +32,7 @@ jobs:
     displayName: Create conda environment
 
   - script: |
-      set -x -e
+      set -xe
       cd $(Pipeline.Workspace)/modules/cctbx_project
       for f in `cat .azure-pipelines/py2_syntax_exceptions.txt`; do
         echo Removing $f

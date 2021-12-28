@@ -29,6 +29,9 @@ jobs:
       linux_py39:
         OS: linux-64
         PYTHON_VERSION: py39
+      linux_py310:
+        OS: linux-64
+        PYTHON_VERSION: py310
       macos_py27:
         OS: osx-64
         PYTHON_VERSION: py27
@@ -44,6 +47,9 @@ jobs:
       macos_py39:
         OS: osx-64
         PYTHON_VERSION: py39
+      macos_py310:
+        OS: osx-64
+        PYTHON_VERSION: py310
       win_py36:
         OS: win-64
         PYTHON_VERSION: py36
@@ -56,6 +62,9 @@ jobs:
       win_py39:
         OS: win-64
         PYTHON_VERSION: py39
+      win_py310:
+        OS: win-64
+        PYTHON_VERSION: py310
 
   steps:
 

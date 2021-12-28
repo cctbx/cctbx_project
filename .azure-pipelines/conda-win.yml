@@ -32,6 +32,10 @@ jobs:
         OS: win-64
         PYTHON_VERSION: py39
         MODULES: ${{ parameters.modules }}
+      python3.10:
+        OS: win-64
+        PYTHON_VERSION: py310
+        MODULES: ${{ parameters.modules }}
 
   variables:
   - name: artifact_name
@@ -169,8 +173,10 @@ jobs:
       cd build
       call libtbx.scons -j 4
       call libtbx.scons -j 4
-    condition: eq('${{ parameters.vs }}', 'vs2017')
     displayName: Configure and Build (Python 3, vs2017)
+    condition: >
+      and(eq('${{ parameters.vs }}', 'vs2017'),
+          ne(variables['PYTHON_VERSION'], 'py310'))
 
   - script: |
       cd $(Pipeline.Workspace)
@@ -182,8 +188,58 @@ jobs:
       cd build
       call libtbx.scons -j 4
       call libtbx.scons -j 4
-    condition: eq('${{ parameters.vs }}', 'vs2019')
     displayName: Configure and Build (Python 3, vs2019)
+    condition: >
+      and(eq('${{ parameters.vs }}', 'vs2019'),
+          ne(variables['PYTHON_VERSION'], 'py310'))
+
+  - script: |
+      cd $(Pipeline.Workspace)
+
+      cd modules
+      rmdir /S /Q cbflib
+      rmdir /S /Q dxtbx
+      cd boost
+      git checkout 1.74
+      cd ..
+      cd ..
+
+      call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
+      python bootstrap.py build --builder=cctbxlite --use-conda=%CONDA_PREFIX% --nproc=4
+      call .\build\setpaths.bat
+      call libtbx.configure cma_es fable phenix_regression phenix_examples
+      cd build
+      call libtbx.scons -j 4
+      call libtbx.scons -j 4
+    displayName: Configure and Build (Python 3, vs2017)
+    condition: >
+      and(eq('${{ parameters.vs }}', 'vs2017'),
+          eq(variables['PYTHON_VERSION'], 'py310'))
+
+  - script: |
+      cd $(Pipeline.Workspace)
+
+      cd modules
+      rmdir /S /Q cbflib
+      rmdir /S /Q dxtbx
+      cd boost
+      git checkout 1.74
+      cd ..
+      cd ..
+
+      call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
+      python bootstrap.py build --builder=cctbxlite --use-conda=%CONDA_PREFIX% --nproc=4
+      call .\build\setpaths.bat
+      call libtbx.configure cma_es fable phenix_regression phenix_examples
+      cd build
+      call libtbx.scons -j 4
+      call libtbx.scons -j 4
+    displayName: Configure and Build (Python 3, vs2019)
+    condition: >
+      and(eq('${{ parameters.vs }}', 'vs2019'),
+          eq(variables['PYTHON_VERSION'], 'py310'))
 
   # test
   - script: |

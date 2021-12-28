@@ -3,7 +3,7 @@
 # Variables:
 #   CONDA: Linux, MacOSX
 #   OS: linux-64, osx-64
-#   PYTHON_VERSION: py27, py36, py37, py38
+#   PYTHON_VERSION: py27, py36, py37, py38, py39, py310
 #   MODULES: <modules artifact name>
 #
 # Optional Parameters:
@@ -23,13 +23,13 @@ steps:
   displayName: Download modules tarball
 
 - script: |
-    set -x -e
+    set -xe
     cd $(Pipeline.Workspace)
     tar -xf modules.tar
   displayName: Extract modules tarball
 
 - script: |
-    set -x -e
+    set -xe
     cd $(Pipeline.Workspace)/modules/dxtbx
     git remote set-url origin https://github.com/dials/dxtbx.git
     git fetch origin
@@ -38,7 +38,7 @@ steps:
   condition: eq(variables['PYTHON_VERSION'], 'py27')
 
 - script: |
-    set -x -e
+    set -xe
     cd $(Pipeline.Workspace)
     ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
   displayName: Link bootstrap.py
@@ -54,7 +54,7 @@ steps:
   displayName: Download miniforge
 
 - script: |
-    set -x -e
+    set -xe
     bash $(Pipeline.Workspace)/miniforge/Miniforge3-$(CONDA)-x86_64.sh -b -u -p $(Pipeline.Workspace)/miniforge
   displayName: Install miniforge
 
@@ -84,7 +84,7 @@ steps:
         ne(variables['Build.DefinitionName'], 'Full'))
 
 - script: |
-    set -x -e
+    set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda install -y conda-build
     cd $(Pipeline.Workspace)/channel
@@ -96,7 +96,7 @@ steps:
   displayName: Build local channel
 
 - script: |
-    set -x -e
+    set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
     conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
@@ -111,7 +111,7 @@ steps:
 
 # build
 - script: |
-    set -x -e
+    set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
@@ -122,10 +122,34 @@ steps:
     libtbx.scons -j 4
     libtbx.scons -j 4
   displayName: Configure and Build
+  condition: ne(variables['PYTHON_VERSION'], 'py310')
+
+- script: |
+    set -xe
+    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
+    conda activate $(PYTHON_VERSION)
+    cd $(Pipeline.Workspace)
+
+    cd modules
+    rm -fr cbflib
+    rm -fr dxtbx
+    cd boost
+    git checkout 1.74
+    cd ..
+    cd ..
+
+    python bootstrap.py build --builder=cctbxlite --use-conda=${CONDA_PREFIX} --nproc=4
+    cd build
+    source setpaths.sh
+    libtbx.configure cma_es fable phenix_regression phenix_examples
+    libtbx.scons -j 4
+    libtbx.scons -j 4
+  displayName: Configure and Build
+  condition: eq(variables['PYTHON_VERSION'], 'py310')
 
 # test
 - script: |
-    set -x -e
+    set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
@@ -153,6 +177,35 @@ steps:
       nproc=4
   failOnStderr: false
   displayName: Test
+  condition: ne(variables['PYTHON_VERSION'], 'py310')
+
+- script: |
+    set -xe
+    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
+    conda activate $(PYTHON_VERSION)
+    cd $(Pipeline.Workspace)
+    source ./build/setpaths.sh
+    mkdir tests
+    cd tests
+    export PYTHONDEVMODE=1
+    export PYTHONTRACEMALLOC=1
+    libtbx.run_tests_parallel \
+      module=annlib_adaptbx \
+      module=boost_adaptbx \
+      module=cctbx \
+      module=cctbx_website \
+      module=cma_es \
+      module=fable \
+      module=gltbx \
+      module=iotbx \
+      module=libtbx \
+      module=scitbx \
+      module=crys3d \
+      module=smtbx \
+      nproc=4
+  failOnStderr: false
+  displayName: Test
+  condition: eq(variables['PYTHON_VERSION'], 'py310')
 
 - task: PublishTestResults@2
   condition: succeededOrFailed()

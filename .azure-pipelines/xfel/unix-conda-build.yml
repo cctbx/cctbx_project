@@ -41,7 +41,7 @@ steps:
   displayName: Download miniforge
 
 - script: |
-    set -x -e
+    set -xe
     bash $(Pipeline.Workspace)/miniforge/Miniforge3-$(CONDA)-x86_64.sh -b -u -p $(Pipeline.Workspace)/miniforge
   displayName: Install miniforge
 

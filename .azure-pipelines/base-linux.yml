@@ -23,7 +23,7 @@ jobs:
 
   # centos setup
   - script: |
-      set -x -e
+      set -xe
       /tmp/docker exec -t -u 0 ci-container \
       sh -c "sed -i 's/mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/CentOS-Base.repo"
       /tmp/docker exec -t -u 0 ci-container \

@@ -20,7 +20,7 @@ steps:
   displayName: Extract modules tarball
 
 - script: |
-    set -x -e
+    set -xe
     cd $(Pipeline.Workspace)/modules/dxtbx
     git remote set-url origin https://github.com/dials/dxtbx.git
     git fetch origin
