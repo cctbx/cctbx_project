@@ -31,7 +31,7 @@ jobs:
       template: ./unix-conda-build.yml
   - template: ./conda-linux.yml
     parameters:
-      distribution: centos
+      distribution: rockylinux
       version: [8]
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml

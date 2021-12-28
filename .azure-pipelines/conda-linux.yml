@@ -81,13 +81,15 @@ jobs:
       /tmp/docker exec -t -u 0 ci-container \
       sh -c "yum install -y sudo"
     displayName: Set up sudo for CentOS
-    condition: eq('${{ parameters.distribution }}', 'centos')
+    condition: or(eq('${{ parameters.distribution }}', 'centos'),
+                  eq('${{ parameters.distribution }}', 'rockylinux'))
 
   - script: |
       sudo yum groupinstall -y 'Development Tools'
       sudo yum install -y mesa-libGLU-devel mesa-libGL-devel tcsh
     displayName: Install dependencies for CentOS
-    condition: eq('${{ parameters.distribution }}', 'centos')
+    condition: or(eq('${{ parameters.distribution }}', 'centos'),
+                  eq('${{ parameters.distribution }}', 'rockylinux'))
 
   - script: |
       sudo yum install -y python-argparse
@@ -96,7 +98,7 @@ jobs:
 
   - bash: |
       echo "##vso[task.setvariable variable=LC_ALL]C.utf8"
-    displayName: Setup locale for CentOS 8
+    displayName: Setup locale for Rocky Linux 8
     condition: eq('${{ parameters.version[0] }}', 8)
 
   # ubuntu setup
