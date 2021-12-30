@@ -4648,9 +4648,14 @@ a=None
 """,
     converter_registry=foo_converter_registry)
   except RuntimeError as e:
-    assert str(e) == \
+    expected_message = \
       'Error constructing definition type "foo2(foo=1)": TypeError:' \
       " __init__() got an unexpected keyword argument 'foo' (input line 2)"
+    if sys.version_info.major == 3 and sys.version_info.minor >= 10:
+      expected_message = \
+        'Error constructing definition type "foo2(foo=1)": TypeError:' \
+        " foo2_converters.__init__() got an unexpected keyword argument 'foo' (input line 2)"
+    assert str(e) == expected_message
   else: raise Exception_expected
   try: phil.parse("""\
 a=None
@@ -5161,9 +5166,14 @@ Error interpreting a="x" as a numeric expression:\
   assert not show_diff(proxy.formatted.as_str(), "a = 1 2 3 4\n")
   for v,m in [(a.validate, "extracted"), (a.validate_and_format, "formatted")]:
     proxy = v(input_string="*", source_info="si")
-    assert not show_diff(proxy.error_message, """\
+    expected_message = """\
 Error interpreting a="*" as a numeric expression:\
- SyntaxError: unexpected EOF while parsing (line 1) (si, line 1)""")
+ SyntaxError: unexpected EOF while parsing (line 1) (si, line 1)"""
+    if sys.version_info.major == 3 and sys.version_info.minor >= 10:
+      expected_message = """\
+Error interpreting a="*" as a numeric expression:\
+ SyntaxError: invalid syntax (line 1) (si, line 1)"""
+    assert not show_diff(proxy.error_message, expected_message)
     assert getattr(proxy, m) is None
   proxy = a.validate(input_string="1;2,3")
   #
