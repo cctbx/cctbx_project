@@ -2973,6 +2973,8 @@ class manager(object):
       values.append(abs(a1.b - a2.b)**2)
     if(values.size() > 0):
       result = math.sqrt(flex.sum(values) / values.size())
+    else:
+      result = None  # XXX is this the right result if there are not any pairs?
     return result
 
   def rms_b_iso_or_b_equiv_bonded(self):
