@@ -199,16 +199,15 @@ jobs:
       cd modules
       rmdir /S /Q cbflib
       rmdir /S /Q dxtbx
-      cd boost
-      git checkout 1.74
-      cd ..
+      rmdir /S /Q boost
+      git clone https://github.com/cctbx/boost.git -b py310
       cd ..
 
       call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
       python bootstrap.py build --builder=cctbxlite --use-conda=%CONDA_PREFIX% --nproc=4
       call .\build\setpaths.bat
-      call libtbx.configure cma_es fable phenix_regression phenix_examples
+      call libtbx.configure annlib cma_es crys3d fable phenix_regression phenix_examples
       cd build
       call libtbx.scons -j 4
       call libtbx.scons -j 4
@@ -223,16 +222,15 @@ jobs:
       cd modules
       rmdir /S /Q cbflib
       rmdir /S /Q dxtbx
-      cd boost
-      git checkout 1.74
-      cd ..
+      rmdir /S /Q boost
+      git clone https://github.com/cctbx/boost.git -b py310
       cd ..
 
       call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
       python bootstrap.py build --builder=cctbxlite --use-conda=%CONDA_PREFIX% --nproc=4
       call .\build\setpaths.bat
-      call libtbx.configure cma_es fable phenix_regression phenix_examples
+      call libtbx.configure annlib cma_es crys3d fable phenix_regression phenix_examples
       cd build
       call libtbx.scons -j 4
       call libtbx.scons -j 4
@@ -251,8 +249,10 @@ jobs:
       cd tests
       call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cctbx_website module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx module=crys3d nproc=4
     failOnStderr: false
-    condition: eq('${{ parameters.vs }}', 'vs2017')
     displayName: Test (Python 3, vs2017)
+    condition: >
+      and(eq('${{ parameters.vs }}', 'vs2017'),
+          ne(variables['PYTHON_VERSION'], 'py310'))
 
   - script: |
       SET PYTHONLEGACYWINDOWSSTDIO=1
@@ -263,8 +263,38 @@ jobs:
       cd tests
       call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cctbx_website module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx module=crys3d nproc=4
     failOnStderr: false
-    condition: eq('${{ parameters.vs }}', 'vs2019')
     displayName: Test (Python 3, vs2019)
+    condition: >
+      and(eq('${{ parameters.vs }}', 'vs2019'),
+          ne(variables['PYTHON_VERSION'], 'py310'))
+
+  - script: |
+      SET PYTHONLEGACYWINDOWSSTDIO=1
+      cd $(Pipeline.Workspace)
+      call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      call .\build\setpaths.bat
+      mkdir tests
+      cd tests
+      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cctbx_website module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=scitbx module=smtbx module=annlib_adaptbx module=crys3d nproc=4
+    failOnStderr: false
+    displayName: Test (Python 3, vs2017)
+    condition: >
+      and(eq('${{ parameters.vs }}', 'vs2017'),
+          eq(variables['PYTHON_VERSION'], 'py310'))
+
+  - script: |
+      SET PYTHONLEGACYWINDOWSSTDIO=1
+      cd $(Pipeline.Workspace)
+      call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      call .\build\setpaths.bat
+      mkdir tests
+      cd tests
+      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cctbx_website module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=scitbx module=smtbx module=annlib_adaptbx module=crys3d nproc=4
+    failOnStderr: false
+    displayName: Test (Python 3, vs2019)
+    condition: >
+      and(eq('${{ parameters.vs }}', 'vs2019'),
+          eq(variables['PYTHON_VERSION'], 'py310'))
 
   - task: PublishTestResults@2
     condition: succeededOrFailed()

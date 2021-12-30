@@ -134,14 +134,14 @@ steps:
     rm -fr cbflib
     rm -fr dxtbx
     cd boost
-    git checkout 1.74
+    git checkout py310
     cd ..
     cd ..
 
     python bootstrap.py build --builder=cctbxlite --use-conda=${CONDA_PREFIX} --nproc=4
     cd build
     source setpaths.sh
-    libtbx.configure cma_es fable phenix_regression phenix_examples
+    libtbx.configure annlib cma_es crys3d fable phenix_regression phenix_examples
     libtbx.scons -j 4
     libtbx.scons -j 4
   displayName: Configure and Build
