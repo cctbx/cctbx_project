@@ -238,7 +238,7 @@ namespace gltbx { namespace boost_python {
           data_[i] = static_cast<T>(item_char_pointer[i]);
         }
       }
-      for(ssize_t i=item_size;i<data_size_;i++) {
+      for(py_ssize_t i=item_size;i<data_size_;i++) {
         data_[i] = static_cast<T>(0);
       }
     }
