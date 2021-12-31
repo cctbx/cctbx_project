@@ -65,7 +65,7 @@ TER""")
     assert not easy_run.call("iotbx.pdb.box_around_molecule %s.cif" % (
         prefix))
     # XXX temp fix for python3 failure
-    # XXX changes in python 3 because _cell.length_a and other order differs 
+    # XXX changes in python 3 because _cell.length_a and other order differs
 
     import sys
     if sys.version.startswith("3.8"):
