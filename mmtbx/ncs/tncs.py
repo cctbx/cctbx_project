@@ -201,7 +201,11 @@ def lbfgs_run(target_evaluator, use_bounds, lower_bound, upper_bound,
         continue
       assert not minimizer.requests_f_and_g()
       if(minimizer.is_terminated()): break
-      if(icall>max_iterations): break
+      # XXX temp fix for python3 failure (run_lbfgs in tncs)
+      # Failure is that max_iterations is None
+      # temp fix is to break if max_iterations is None or icall>max_iterations
+      #if(icall>max_iterations): break
+      if ((max_iterations is None) or (icall>max_iterations)): break
   except RuntimeError as e:
     minimizer.error = str(e)
   minimizer.n_calls = icall
