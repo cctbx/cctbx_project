@@ -50,7 +50,7 @@ class empty(object):
 def set_python_include_and_libs(env_etc):
   env_etc.python_include = libtbx.env_config.python_include_path()
   if (sys.platform == "win32"):
-    env_etc.libs_python = ["python" + sys.version[0] + sys.version[2]]
+    env_etc.libs_python = ["python" + str(sys.version_info.major) + str(sys.version_info.minor)]
     env_etc.libpath_python = [sys.prefix + r"\libs"]
   else:
     env_etc.libs_python = []
