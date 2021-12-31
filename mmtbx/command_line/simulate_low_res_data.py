@@ -519,7 +519,10 @@ class prepare_data(object):
       print("  Truncating the data elliptically...", file=out)
       target_completeness = params.truncate.ellipse_target_completeness
       completeness_start = F.completeness() * 100.0
-      if (completeness_start < target_completeness):
+      # XXX temp fix for python3 failure: comparison is undefined if
+      #   target_completeness is None.  Substituting python 2  result (False)
+      if (target_completeness is not None and
+        completeness_start < target_completeness):
         print("    completeness is already less than target value:", file=out)
         print("       %.2f versus %.2f", file=out)
         print("    elliptical truncation will be skipped.", file=out)

@@ -51,7 +51,6 @@ def run():
     if (hasattr(structure, "info")):
       print(structure.info)
     print()
-    sys.stdout.flush()
     refined_matches = emma.model_matches(
       reference_model,
       structure.as_emma_model(),
@@ -67,7 +66,6 @@ def run():
     match_list.append(match_record(m, structure.scatterers().size()))
     match_histogram[m] += 1
     print()
-    sys.stdout.flush()
   print("match_list:", match_list)
   keys = list(match_histogram.keys())
   keys.sort()
@@ -83,7 +81,6 @@ def run():
     s += v
     print("  %3d: %3d = %5.1f%%, %5.1f%%" % (key, v, 100.*v/sum, 100.*s/sum))
   print()
-  sys.stdout.flush()
 
 if (__name__ == "__main__"):
   run()

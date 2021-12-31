@@ -42,7 +42,16 @@ def run(out=None, omit_unicode_experiment=False):
     print('"hello" =', c("hello"), file=out)
     print('u"hello" =', c(u"hello"), file=out)
     e = u"\u00C5".encode("utf-8", "strict")
-    print('u"\u00C5" =', c(u"\u00C5"), 'as utf-8 =', c(e), file=out)
+    # XXX temp fix for python3 failure: unicode failure in show_platform_info.py
+    # Reason: c(u"\u00C5") fails and c(e) fails
+    try:
+      cc = c(u"\u00C5")
+      ce = c(e)
+    except Exception as ignore_exception:
+      cc = u"\u00C5"
+      ce = e
+
+    print('u"\u00C5" =', cc, 'as utf-8 =', ce, file=out)
     print("LATIN CAPITAL LETTER A WITH RING ABOVE =", e, file=out)
   from libtbx.utils import format_cpu_times
   print(format_cpu_times())
