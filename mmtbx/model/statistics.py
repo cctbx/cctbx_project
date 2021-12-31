@@ -184,15 +184,8 @@ class geometry(object):
       )
 
   def cablam(self):
-    # XXX temp fix for python3 failure  (cablam) Error is:
-    # modules/cctbx_project/mmtbx/rotamer/n_dim_table.py", line 74, in whereIs
-    #  AttributeError: 'NDimTable' object has no attribute 'nDim'
-    # temp fix is try/except
-    try:
-      result = cablam.cablamalyze(self.pdb_hierarchy, outliers_only=False,
+    result = cablam.cablamalyze(self.pdb_hierarchy, outliers_only=False,
       out=null_out(), quiet=True) # XXX Why it is different from others?
-    except Exception as e:
-      return None
     gui_table = group_args(column_labels = result.gui_list_headers,
                            column_formats = result.gui_formats,
                            data = result.as_gui_table_data(include_zoom=True),
