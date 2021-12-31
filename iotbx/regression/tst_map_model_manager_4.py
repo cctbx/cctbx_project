@@ -109,7 +109,7 @@ def exercise( out = sys.stdout):
   mmma.map_manager().randomize(random_seed=23412,d_min=3,high_resolution_fourier_noise_fraction=10,low_resolution_noise_cutoff=5)
   mmmb.map_manager().randomize(random_seed=887241,d_min=3,high_resolution_fourier_noise_fraction=10,low_resolution_noise_cutoff=5)
 
-  #  We are going to read in these maps so that we have a constant value 
+  #  We are going to read in these maps so that we have a constant value
   from iotbx.data_manager import DataManager
   dm = DataManager()
   mmma_map = dm.get_real_map(random_map_a)
