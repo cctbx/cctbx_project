@@ -65,10 +65,33 @@ TER""")
     assert not easy_run.call("iotbx.pdb.box_around_molecule %s.cif" % (
         prefix))
     # XXX temp fix for python3 failure
-    # XXX Fails in python 3 because _cell.length_a line moves up to be before
-    #  _cell.length_b
+    # XXX changes in python 3 because _cell.length_a and other order differs 
 
-    assert_lines_in_file(file_name="%s_box_000.cif" % prefix,
+    import sys
+    if sys.version.startswith("3.8"):
+      assert_lines_in_file(file_name="%s_box_000.cif" % prefix,
+      lines="""\
+data_default
+_cell.length_a                    12.397
+_cell.length_b                    11.563
+_cell.length_c                    11.512
+_cell.angle_alpha                 90.000
+_cell.angle_beta                  90.000
+_cell.angle_gamma                 90.000
+_cell.volume                      1650.205
+_space_group.crystal_system       triclinic
+_space_group.IT_number            1
+_space_group.name_H-M_alt         'P 1'
+_space_group.name_Hall            ' P 1'
+_symmetry.space_group_name_H-M    'P 1'
+_symmetry.space_group_name_Hall   ' P 1'
+_symmetry.Int_Tables_number       1
+loop_
+  _space_group_symop.id
+  _space_group_symop.operation_xyz
+   1 x,y,z""")
+    else: # version 2.7
+      assert_lines_in_file(file_name="%s_box_000.cif" % prefix,
       lines="""\
 data_default
 _cell.angle_beta                  90.000
@@ -89,6 +112,7 @@ loop_
   _space_group_symop.id
   _space_group_symop.operation_xyz
    1 x,y,z""")
+
   else:
     print('chem_data is not available, skipping')
 
