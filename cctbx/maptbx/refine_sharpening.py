@@ -1418,9 +1418,9 @@ def get_starting_sd_info(aniso_info = None):
       ss_in_bin.append(aniso_info.ss_values_by_dv[k][i])
     sd_value = ss_in_bin.sample_standard_deviation()
     # Try to catch cases where the values are stopped by bounds
-    if ss_in_bin.min_max_mean() >= 0.9* aniso_info.maximum_ratio:
+    if ss_in_bin.min_max_mean().mean >= 0.9* aniso_info.maximum_ratio:
       sd_value = aniso_info.maximum_ratio
-    elif ss_in_bin.min_max_mean() <= 1.1/aniso_info.maximum_ratio:
+    elif ss_in_bin.min_max_mean().mean <= 1.1/aniso_info.maximum_ratio:
       sd_value = 1
     sd_ss.append(sd_value)
   ss_sd_values = flex.double()

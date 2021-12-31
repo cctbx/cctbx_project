@@ -1,8 +1,12 @@
 from __future__ import absolute_import, division, print_function
-import sys
+import sys, os
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 
+
+data_dir = os.path.dirname(os.path.abspath(__file__))
+random_map_a = os.path.join(data_dir, 'data', "mmma.ccp4")
+random_map_b = os.path.join(data_dir, 'data', "mmmb.ccp4")
 
 def get_map_model_managers():
   # Set up source data
@@ -104,6 +108,17 @@ def exercise( out = sys.stdout):
 
   mmma.map_manager().randomize(random_seed=23412,d_min=3,high_resolution_fourier_noise_fraction=10,low_resolution_noise_cutoff=5)
   mmmb.map_manager().randomize(random_seed=887241,d_min=3,high_resolution_fourier_noise_fraction=10,low_resolution_noise_cutoff=5)
+
+  #  We are going to read in these maps so that we have a constant value 
+  from iotbx.data_manager import DataManager
+  dm = DataManager()
+  mmma_map = dm.get_real_map(random_map_a)
+  mmmb_map = dm.get_real_map(random_map_b)
+  mmma_map.shift_origin()
+  mmmb_map.shift_origin()
+  mmma.add_map_manager_by_id(map_id="map_manager", map_manager=mmma_map)
+  mmmb.add_map_manager_by_id(map_id="map_manager", map_manager=mmmb_map)
+
   assert approx_equal(mmma.map_manager().map_map_cc(mmmb.map_manager()),
     0.16,0.10)
   from iotbx.map_model_manager import map_model_manager
