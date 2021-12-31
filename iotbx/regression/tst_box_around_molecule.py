@@ -64,6 +64,9 @@ TER""")
       f.write(cif_str)
     assert not easy_run.call("iotbx.pdb.box_around_molecule %s.cif" % (
         prefix))
+    # XXX Fails in python 3 because _cell.length_a line moves up to be before
+    #  _cell.length_b
+
     assert_lines_in_file(file_name="%s_box_000.cif" % prefix,
       lines="""\
 data_default
