@@ -1,3 +1,10 @@
+2021.12
+=======
+
+* Initial support for Python 3.10
+* Added support for outputting multi-model mmCIF files
+* Adjusted mask gridding for bulk solvent
+
 2021.11
 =======
 
