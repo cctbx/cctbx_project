@@ -4,7 +4,7 @@
 #
 # Variables:
 #   OS: linux-64, osx-64, win-64
-#   PYTHON_VERSION: py27, py36, py37, py38
+#   PYTHON_VERSION: py27, py37, py38, py39, py310
 
 jobs:
 - job: conda_packages
@@ -17,9 +17,6 @@ jobs:
       linux_py27:
         OS: linux-64
         PYTHON_VERSION: py27
-      linux_py36:
-        OS: linux-64
-        PYTHON_VERSION: py36
       linux_py37:
         OS: linux-64
         PYTHON_VERSION: py37
@@ -35,9 +32,6 @@ jobs:
       macos_py27:
         OS: osx-64
         PYTHON_VERSION: py27
-      macos_py36:
-        OS: osx-64
-        PYTHON_VERSION: py36
       macos_py37:
         OS: osx-64
         PYTHON_VERSION: py37
@@ -50,9 +44,6 @@ jobs:
       macos_py310:
         OS: osx-64
         PYTHON_VERSION: py310
-      win_py36:
-        OS: win-64
-        PYTHON_VERSION: py36
       win_py37:
         OS: win-64
         PYTHON_VERSION: py37
