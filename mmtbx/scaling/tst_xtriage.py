@@ -105,9 +105,14 @@ END
     "output.label=F",
     "output.file_name=tst_xtriage_fmodel.mtz",
   ]
-  fmodel.run(args=fmodel_args, log=null_out())
+
+  #  read it instead so python3 will be the same
+  #  fmodel.run(args=fmodel_args, log=null_out())
+  hkl_file = libtbx.env.find_in_repositories(
+    relative_path="mmtbx/regression/mtz/tst_xtriage_fmodel.mtz",
+    test=os.path.isfile)
   mtz_in = file_reader.any_file(
-    "tst_xtriage_fmodel.mtz").assert_file_type("hkl")
+    hkl_file).assert_file_type("hkl")
   f_obs = mtz_in.file_server.miller_arrays[0].remove_cone(0.1)
   data = f_obs.data()
   # add some outliers

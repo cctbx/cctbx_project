@@ -41,12 +41,14 @@ def get_log(value_dict=None):
   return value_dict
 
 def get_closest_x(value=None,value_dict=None):
+  keys = list(value_dict.keys())
   best_dist=None
   best_x=None
-  for x in value_dict.keys():
+  for x in keys:
     dist=abs(x-value)
     if best_dist is None or dist< best_dist:
       best_x=x
+      best_dist = dist
   return best_x
 
 def get_y_calc(x=None,x1=None,y1=None,x2=None,y2=None):

@@ -618,6 +618,8 @@ def get_matching_ids(unique_seq=None,sequences=None,
 def get_sorted_matching_chains(
    chains=None,
    target_centroid_list=None):
+  if not target_centroid_list:
+    return chains, len(chains)*[0]
   sort_list=[]
   for chain in chains:
     if target_centroid_list:
@@ -717,12 +719,12 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
   #  take those closest to the target (in that order)
 
   unique_chains=[]
-
   print("Unique set of sequences. Copies of the unique set: %s" %(
       base_copies), file=out)
   print("Copies in unique set ID  sequence", file=out)
   chains_unique=[]
-  for unique_seq in copies_in_unique.keys():
+  keys = sorted(list(copies_in_unique.keys()))
+  for unique_seq in keys:
     matching_ids,matching_chains=get_matching_ids(
       unique_seq=unique_seq,sequences=sequences,chains=chains,
       unique_sequence_dict=unique_sequence_dict)
@@ -759,16 +761,6 @@ def get_chains_with_id(chains,id=None):
       new_chains.append(chain)
   return new_chains
 
-def sort_chains_on_start(chains):
-  sort_list=[]
-  for chain in chains:
-    start=get_first_resno_of_chain(chain)
-    sort_list.append([start,chain])
-  sort_list.sort(key=itemgetter(0))
-  new_chains=[]
-  for start,chain in sort_list:
-    new_chains.append(chain)
-  return new_chains
 
 def get_first_resno_of_chain(chain):
   for rg in chain.residue_groups():
@@ -786,7 +778,7 @@ def sort_chains(chains_unique):
   new_chains=[]
   for chain_id in unique_id_list:
     chains=get_chains_with_id(chains_unique,id=chain_id)
-    chains=sort_chains_on_start(chains)
+    chains = sorted(chains, key = lambda c: get_first_resno_of_chain(c))
     new_chains+=chains
   return new_chains
 

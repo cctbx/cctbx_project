@@ -75,9 +75,9 @@ def run_0(symbol = "C 2"):
   print("r_f:", aso.r_final)
   print("r_l:", aso.r_low)
   print("r_h:", aso.r_high)
-  assert aso.r_final < 0.0009, [aso.r_final,  0.0009]
-  assert aso.r_low   < 0.0017,   [aso.r_low,  0.0017]
-  assert aso.r_high  < 0.0006, [aso.r_high,   0.0006]
+  assert aso.r_final < 0.0012, [aso.r_final,  0.0012]
+  assert aso.r_low   < 0.0050,   [aso.r_low,  0.0050]
+  assert aso.r_high  < 0.0008, [aso.r_high,   0.0008]
   assert approx_equal(
     bulk_solvent.r_factor(f_obs.data(), abs(aso.core.f_model).data(), 1),
     bulk_solvent.r_factor(f_obs.data(), abs(aso.core.f_model).data()))
