@@ -327,7 +327,8 @@ class ramachandran_manager(object):
   def extract_proxies(self, hierarchy):
     def _get_motifs():
       from phenix.programs.phi_psi_2 import results_manager as pp2
-      phi_psi_2_motifs = pp2.get_overall_motif_count_and_output(
+      pp2_manager = pp2(model=None, log=self.log)
+      phi_psi_2_motifs = pp2_manager.get_overall_motif_count_and_output(
         None,
         self.hierarchy,
         return_rama_restraints=True,
