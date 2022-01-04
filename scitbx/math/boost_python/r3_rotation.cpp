@@ -42,6 +42,17 @@ namespace boost_python {
         arg("angle"),
         arg("deg")=false,
         arg("min_axis_length")=1e-15));
+    def("r3_rotation_axis_and_angle_as_matrix",
+      (af::shared<mat3<double> >(*)(
+        af::shared<vec3<double> > const&,
+        af::shared<double> const&,
+        bool,
+        double const&)
+      ) r3_rotation::axis_and_angle_as_matrix, (
+        arg("axes"),
+        arg("angle"),
+        arg("deg")=false,
+        arg("min_axis_length")=1e-15));
 
     def("r3_rotation_axis_and_angle_as_unit_quaternion",
       (af::tiny<double, 4>(*)(
