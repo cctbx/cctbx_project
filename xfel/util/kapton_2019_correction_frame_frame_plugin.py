@@ -49,7 +49,6 @@ class KaptonSettingsPanel(wx.Panel):
     self._tape_half_width_mm = 3.175/4. # LN84 kapton tape
     self._tape_angle_deg = 178.8-180.0 # LN84 shift 2 tape drive setup
     self._center = [0, 0]
-
     self.frame          = self.GetParent().GetParent()
     self.detector       = self._pyslip.tiles.raw_image.get_detector()
     self.panels         = [p for p in self.detector]
@@ -394,15 +393,14 @@ class KaptonSettingsPanel(wx.Panel):
       x2, y2 = self._pyslip.ConvertGeo2View((lon2, lat2))
       dc.DrawLine(x1, y1, x2, y2)
 
-  def UpdateAbsorptionData(self, edge_max_mode=False):
-    from scitbx.array_family import flex
-    def map_coords(x, y, p):
-      if True: #len(self._pyslip.tiles.raw_image.get_detector()) > 1:
-        y, x = self._pyslip.tiles.flex_image.tile_readout_to_picture(
+  def _map_coords(self, x, y, p):
+      y, x = self._pyslip.tiles.flex_image.tile_readout_to_picture(
           p, y - 0.5, x - 0.5)
       return self._pyslip.tiles.picture_fast_slow_to_map_relative(
         x, y)
 
+  def UpdateAbsorptionData(self, edge_max_mode=False):
+    from scitbx.array_family import flex
     #from IPython import embed; embed(); exit()
     self.update_absorption() # basically resets the self._absorption to a new KaptonTape class
     self.absorption_data = []
@@ -418,7 +416,7 @@ class KaptonSettingsPanel(wx.Panel):
           for s_dir in range(0, image_size[1], 10):
             s1=panel.get_pixel_lab_coord((f_dir, s_dir))
             #self.all_s1_flex.append(s1)
-            lon, lat = map_coords(float(f_dir), float(s_dir),panel.index())
+            lon, lat = self._map_coords(float(f_dir), float(s_dir),panel.index())
             #self.all_lon_lat.append((lon,lat))
       #self.cache_mode=True
 
@@ -610,17 +608,10 @@ class KaptonSettingsPanel(wx.Panel):
     edge_max_data_lonlat = []
     kapton_data=[]
 
-    def map_coords(x, y, p):
-      if len(self._pyslip.tiles.raw_image.get_detector()) > 1:
-        y, x = self._pyslip.tiles.flex_image.tile_readout_to_picture(
-          p, y - 0.5, x - 0.5)
-      return self._pyslip.tiles.picture_fast_slow_to_map_relative(
-        x, y)
-
     for segment in edge_max_data_slow_fast:
       slow1, fast1, p1, slow2, fast2, p2= segment
-      lon1, lat1 = map_coords(fast1,slow1,p1)#self._pyslip.tiles.picture_fast_slow_to_map_relative(fast1, slow1)
-      lon2, lat2 = map_coords(fast2, slow2, p2)#self._pyslip.tiles.picture_fast_slow_to_map_relative(fast2, slow2)
+      lon1, lat1 = self._map_coords(fast1,slow1,p1)#self._pyslip.tiles.picture_fast_slow_to_map_relative(fast1, slow1)
+      lon2, lat2 = self._map_coords(fast2, slow2, p2)#self._pyslip.tiles.picture_fast_slow_to_map_relative(fast2, slow2)
       edge_max_data_lonlat.append((lon1, lat1, lon2, lat2))
       shoebox_dict = {'width': 2, 'color': '#0000FFA0', 'closed': False}
 
@@ -655,6 +646,7 @@ class KaptonSettingsPanel(wx.Panel):
         selectable=False, #selectable
         name="<edge_max_layer>",
         type="edge_max")
+
 
 class PluginHelper(object):
   _plugin_layer = "_kapton_layer"
