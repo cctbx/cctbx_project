@@ -47,6 +47,7 @@ dependencies:
  - distro
  - pandas
  - pybind11
+ - setuptools<60 # https://github.com/cctbx/cctbx_project/issues/710
 
  # cctbx channel
  - libsvm_py
