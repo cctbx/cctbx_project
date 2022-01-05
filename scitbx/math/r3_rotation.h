@@ -4,6 +4,7 @@
 #include <scitbx/matrix/row_echelon_full_pivoting_small.h>
 #include <scitbx/mat3.h>
 #include <scitbx/constants.h>
+#include <scitbx/array_family/shared.h>
 
 namespace scitbx { namespace math {
 
@@ -67,6 +68,26 @@ namespace scitbx { namespace math {
       us + w*voc,
        c + w*woc);
   }
+
+  template <typename FloatType>
+  af::shared<mat3<FloatType> >
+  axis_and_angle_as_matrix(
+    af::shared<vec3<FloatType> > const& axes,
+    af::shared<FloatType> const& angles,
+    bool deg=false,
+    FloatType const& min_axis_length=1.e-15)
+  {
+    SCITBX_ASSERT(axes.size() == angles.size());
+    af::shared<mat3<FloatType> > result;
+    result.reserve(axes.size());
+    for (size_t i=0; i<axes.size(); ++i) {
+      result.push_back(
+        axis_and_angle_as_matrix(axes[i], angles[i], deg, min_axis_length)
+      );
+    }
+    return result;
+  }
+
 
   //! Quaternion product.
   /*  Implement this as a standalone function as there is no quaternion class

@@ -38,6 +38,9 @@ def exercise_axis_and_angle(
     8.7903631196301042, -4.3951815598150503, 0,
     0, 7.6126777700894994, 0,
     0, 0, 14.943617303371177])
+  rot_axes = []
+  rot_angles = []
+  rot_matrices = []
   for u in range(-axis_range, axis_range+1):
     for v in range(-axis_range, axis_range+1):
       for w in range(axis_range+1):
@@ -46,6 +49,9 @@ def exercise_axis_and_angle(
             try:
               r = scitbx.math.r3_rotation_axis_and_angle_as_matrix(
                 axis=axis, angle=angle, deg=True)
+              rot_axes.append(axis)
+              rot_angles.append(angle)
+              rot_matrices.append(r)
             except RuntimeError:
               assert axis == (0,0,0)
               try:
@@ -105,6 +111,10 @@ def exercise_axis_and_angle(
                       min_axis_length=1+1.e-5)
                   except RuntimeError: pass
                   else: raise Exception_expected
+  rot_matrices_vectorized = scitbx.math.r3_rotation_axis_and_angle_as_matrix(
+      rot_axes, rot_angles, deg=True)
+  for a,b in zip(rot_matrices, rot_matrices_vectorized):
+    assert a==b
   #
   for i_trial in range(100):
     r = flex.random_double_r3_rotation_matrix()
