@@ -309,9 +309,6 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
     for chain in m.chains():
       for rg in chain.residue_groups():
         for ag in rg.atom_groups():
-          md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
-                residue_name=ag.resname, atom_names=ag.atoms().extract_name())
-          atom_dict = md.atom_dict()
 
           for a in ag.atoms():
             extra = probeExt.ExtraAtomInfo()
