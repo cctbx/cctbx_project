@@ -39,6 +39,13 @@ steps:
 
 - script: |
     set -xe
+    cd $(Pipeline.Workspace)/modules/eigen
+    git checkout 3.3.9
+  displayName: Use eigen 3.3.9 for CentOS 6
+  condition: eq('${{ parameters.version[0] }}', 6)
+
+- script: |
+    set -xe
     cd $(Pipeline.Workspace)
     ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
   displayName: Link bootstrap.py
