@@ -497,15 +497,15 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     /// Add many equations in one go using OpenMP
     void add_equations_omp(const int n_ref, const int n_par, const int n_threads,
       af::const_ref<scalar_t> const &yc,
-      std::vector<std::vector<FloatType> > const &jacobian_yc,
+      std::vector<FloatType> const &jacobian_yc,
       af::const_ref<scalar_t> const &yo,
       af::const_ref<scalar_t> const &w)
     {
-      SCITBX_ASSERT(yc.size() == jacobian_yc.size()
+      SCITBX_ASSERT(yc.size() == n_ref
         && (!w.size() || yc.size() == w.size()))
-        (yc.size())(jacobian_yc.size())(w.size());
-      SCITBX_ASSERT(jacobian_yc[0].size() == n_parameters())
-        (jacobian_yc[0].size())(n_parameters());
+        (yc.size())(n_ref)(w.size());
+      SCITBX_ASSERT(jacobian_yc.size() == n_ref*n_parameters())
+        (jacobian_yc.size())(n_ref*n_parameters());
       SCITBX_ASSERT(!finalised());
       FloatType* m = symmetric_matrix_owning_ref_t(grad_yc_dot_grad_yc).array().begin();
       const int limit = n_par * (n_par + 1) / 2;
@@ -513,16 +513,16 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
         add_residuals_omp(n_ref, yc, yo, w);
 #pragma omp parallel num_threads(n_threads)
         {
-          std::vector<FloatType> matrix;
-          matrix.resize(limit, 0.0);
+          std::vector<FloatType> matrix(limit),
+            yo_dot_grad_yc_(n_par), yc_dot_grad_yc_(n_par);
           for (int i = 0; i < n_ref; ++i) {
-            const double* g_yc_loc = &(jacobian_yc[i][0]);
+            const double* g_yc_loc = &(jacobian_yc[i*n_par]);
 #pragma omp for nowait schedule(static,1)
             for (int x = 0; x < n_par; ++x) {
               if (g_yc_loc[x] != 0.0) {
                 FloatType alpha_x = w[i] * g_yc_loc[x];
-                yo_dot_grad_yc[x] += alpha_x * yo[i];
-                yc_dot_grad_yc[x] += alpha_x * yc[i];
+                yo_dot_grad_yc_[x] += alpha_x * yo[i];
+                yc_dot_grad_yc_[x] += alpha_x * yc[i];
                 int run = x * (n_par - 1) - x * (x - 1) / 2;
                 for (int y = x; y < n_par; y++) {
                   matrix[run + y] += alpha_x * g_yc_loc[y];
@@ -535,6 +535,10 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
             for (int i = 0; i < limit; i++) {
               m[i] += matrix[i];
             }
+            for (int i = 0; i < n_par; i++) {
+              yo_dot_grad_yc[i] += yo_dot_grad_yc_[i];
+              yc_dot_grad_yc[i] += yc_dot_grad_yc_[i];
+            }
           }
         }
       }
@@ -542,15 +546,15 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
         add_residuals_omp(n_ref, yc, yo);
 #pragma omp parallel num_threads(n_threads)
         {
-          std::vector<FloatType> matrix;
-          matrix.resize(limit, 0.0);
+          std::vector<FloatType> matrix(limit),
+            yo_dot_grad_yc_(n_par), yc_dot_grad_yc_(n_par);
           for (int i = 0; i < n_ref; ++i) {
-            const double* g_yc_loc = &(jacobian_yc[i][0]);
+            const double* g_yc_loc = &(jacobian_yc[i*n_par]);
 #pragma omp for nowait schedule(static,1)
             for (int x = 0; x < n_par; ++x) {
               if (g_yc_loc[x] != 0.0) {
-                yo_dot_grad_yc[x] += g_yc_loc[x] * yo[i];
-                yc_dot_grad_yc[x] += g_yc_loc[x] * yc[i];
+                yo_dot_grad_yc_[x] += g_yc_loc[x] * yo[i];
+                yc_dot_grad_yc_[x] += g_yc_loc[x] * yc[i];
                 int run = x * (n_par - 1) - x * (x - 1) / 2;
                 for (int y = x; y < n_par; y++) {
                   matrix[run + y] += g_yc_loc[x] * g_yc_loc[y];
@@ -562,6 +566,10 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
           {
             for (int i = 0; i < limit; i++) {
               m[i] += matrix[i];
+            }
+            for (int i = 0; i < n_par; i++) {
+              yo_dot_grad_yc[i] += yo_dot_grad_yc_[i];
+              yc_dot_grad_yc[i] += yc_dot_grad_yc_[i];
             }
           }
         }

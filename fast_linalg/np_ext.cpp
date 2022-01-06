@@ -43,6 +43,15 @@ namespace fast_linalg {
   typedef void (cblas_dsyrk_t)(int, int, int,
     int, int, double, const double *, int, double, double *, int);
 
+  typedef void (cblas_sgemm_t)(int, int, int,
+    int, int, int,
+    float, const float*, int,
+    const float*, int, float, float*, int);
+  typedef void (cblas_dgemm_t)(int, int, int,
+    int, int, int,
+    double, const double*, int,
+    const double*, int, double, double*, int);
+
   typedef int (openblas_get_num_threads_t)();
   typedef int (openblas_get_num_procs_t)();
   typedef void (openblas_set_num_threads_t)(int);
@@ -85,6 +94,9 @@ namespace fast_linalg {
 
       cblas_ssyrk = &lib.get<cblas_ssyrk_t>("cblas_ssyrk");
       cblas_dsyrk = &lib.get<cblas_dsyrk_t>("cblas_dsyrk");
+
+      cblas_sgemm = &lib.get<cblas_sgemm_t>("cblas_sgemm");
+      cblas_dgemm = &lib.get<cblas_dgemm_t>("cblas_dgemm");
     }
     void init_() {
       LAPACKE_dpftrf = 0;
@@ -112,6 +124,9 @@ namespace fast_linalg {
 
       cblas_ssyrk = 0;
       cblas_dsyrk = 0;
+
+      cblas_sgemm = 0;
+      cblas_dgemm = 0;
     }
   public:
     LAPACKE_dpftrf_t *LAPACKE_dpftrf;
@@ -138,6 +153,9 @@ namespace fast_linalg {
 
     cblas_ssyrk_t *cblas_ssyrk;
     cblas_dsyrk_t *cblas_dsyrk;
+
+    cblas_sgemm_t *cblas_sgemm;
+    cblas_dgemm_t* cblas_dgemm;
 
     static Wrapper &instance() {
       SCITBX_ASSERT(initialised());
@@ -276,14 +294,14 @@ lapack_int lapack_spftri(int matrix_order, char transr, char uplo,
 void cblas_sspr(int Order, int Uplo, int N, float alpha,
   const float *X, int incX, float *A)
 {
-  return (*Wrapper::instance().cblas_sspr)(Order, Uplo, N, alpha,
+  (*Wrapper::instance().cblas_sspr)(Order, Uplo, N, alpha,
     X, incX, A);
 }
 //............................................................................
 void cblas_dspr(int Order, int Uplo, int N, double alpha,
   const double *X, int incX, double *A)
 {
-  return (*Wrapper::instance().cblas_dspr)(Order, Uplo, N, alpha,
+  (*Wrapper::instance().cblas_dspr)(Order, Uplo, N, alpha,
     X, incX, A);
 }
 //............................................................................
@@ -291,14 +309,14 @@ void cblas_dspr(int Order, int Uplo, int N, double alpha,
 void cblas_ssyr(int Order, int Uplo, int N, float alpha,
   const float* X, int incX, float* A, int lda)
 {
-  return (*Wrapper::instance().cblas_ssyr)(Order, Uplo, N, alpha,
+  (*Wrapper::instance().cblas_ssyr)(Order, Uplo, N, alpha,
     X, incX, A, lda);
 }
 //............................................................................
 void cblas_dsyr(int Order, int Uplo, int N, double alpha,
   const double* X, int incX, double* A, int lda)
 {
-  return (*Wrapper::instance().cblas_dsyr)(Order, Uplo, N, alpha,
+  (*Wrapper::instance().cblas_dsyr)(Order, Uplo, N, alpha,
     X, incX, A, lda);
 }
 //............................................................................
@@ -306,15 +324,33 @@ void cblas_dsyr(int Order, int Uplo, int N, double alpha,
 void cblas_ssyrk(int Order, int Uplo, int Trans, int N, int K,
   float alpha, const float *A, int lda, float beta, float *C, int ldc)
 {
-  return (*Wrapper::instance().cblas_ssyrk)(Order, Uplo, Trans, N, K, alpha,
+  (*Wrapper::instance().cblas_ssyrk)(Order, Uplo, Trans, N, K, alpha,
     A, lda, beta, C, ldc);
 }
 //............................................................................
 void cblas_dsyrk(int Order, int Uplo, int Trans, int N, int K,
   double alpha, const double *A, int lda, double beta, double *C, int ldc)
 {
-  return (*Wrapper::instance().cblas_dsyrk)(Order, Uplo, Trans, N, K, alpha,
+  (*Wrapper::instance().cblas_dsyrk)(Order, Uplo, Trans, N, K, alpha,
     A, lda, beta, C, ldc);
+}
+//............................................................................
+//............................................................................
+void cblas_sgemm(int Order, int TransA, int TransB,
+  int M, int N, int K,
+  float alpha, const float* A, int lda,
+  const float* B, int ldb, float beta, float* C, int ldc)
+{
+  (*Wrapper::instance().cblas_sgemm)(Order, TransA, TransB, M, N, K, alpha,
+    A, lda, B, ldb, beta, C, ldc);
+}
+void cblas_dgemm(int Order, int TransA, int TransB,
+  int M, int N, int K,
+  double alpha, const double* A, int lda,
+  const double* B, int ldb, double beta, double* C, int ldc)
+{
+  (*Wrapper::instance().cblas_dgemm)(Order, TransA, TransB, M, N, K, alpha,
+    A, lda, B, ldb, beta, C, ldc);
 }
 //............................................................................
 //............................................................................
