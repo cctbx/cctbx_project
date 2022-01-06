@@ -55,14 +55,14 @@ struct accumulate_reflection_chunk_omp {
       const int n = reflections.size();
       const int n_rows = jacobian_transpose_matching_grad_fc.n_rows();
       const int threads = get_available_threads();
-      std::vector <std::vector<FloatType> > gradients;
+      std::vector<FloatType> gradients;
       boost::ptr_vector<boost::shared_ptr<OneMillerIndexFcalc> > f_calc_threads;
       f_calc_threads.resize(threads);
       for (int i = 0; i < threads; i++) {
         f_calc_threads[i] = f_calc_function.fork();
       }
       if (compute_grad) {
-        gradients.resize(n);
+        gradients.resize(n*n_rows);
       }
 #pragma omp parallel num_threads(threads)
       {
@@ -87,10 +87,7 @@ struct accumulate_reflection_chunk_omp {
             // sort out twinning
             observable = process_twinning_with_grads(i_h, 
                                           gradient, f_calc_threads[thread]);
-            gradients[i_h].resize(n_rows);
-            for (int g = 0; g < gradient.size(); g++) {
-              gradients[i_h][g] = gradient[g];
-            }
+            memcpy(&gradients[i_h*n_rows], gradient.begin(), sizeof(FloatType)*n_rows);
           }
           else {
             // sort out twinning
@@ -108,12 +105,12 @@ struct accumulate_reflection_chunk_omp {
           if (exti.grad_value()) {
             int grad_index = exti.get_grad_index();
             SMTBX_ASSERT(!(grad_index < 0 
-              || grad_index >= gradients.size()));
-            gradients[i_h][grad_index] += exti_k[1];
+              || grad_index >= n_rows));
+            gradients[i_h*n_rows + grad_index] += exti_k[1];
           }
           if (build_design_matrix) {
-            for (int i_g = 0; i_g < gradients[i_h].size(); i_g++) {
-              design_matrix(i_h, i_g) = gradients[i_h][i_g];
+            for (int i_g = 0; i_g < gradient.size(); i_g++) {
+              design_matrix(i_h, i_g) = gradient[i_g];
             }
           }
         }

@@ -82,6 +82,16 @@ extern "C" {
     float alpha, const float *A, int lda, float beta, float *C, int ldc);
   fast_linalg_api void cblas_dsyrk(int Order, int Uplo, int Trans, int N, int K,
     double alpha, const double* A, int lda, double beta, double* C, int ldc);
+
+  fast_linalg_api void cblas_sgemm(int Order, int TransA, int TransB,
+    int M, int N, int K,
+    float alpha, const float* A, int lda,
+    const float* B, int ldb, float beta, float* C, int ldc);
+  fast_linalg_api void cblas_dgemm(int Order, int TransA, int TransB,
+    int M, int N, int K,
+    double alpha, const double* A, int lda,
+    const double* B, int ldb, double beta, double* C, int ldc);
+
 };
 
 namespace fast_linalg {
@@ -213,17 +223,37 @@ namespace fast_linalg {
   /// @name Performs a symmetric rank-k update
   //@{
   inline void syrk(int Order, int Uplo, int Trans, int N, int K,
-    float alpha, float *A, int lda, float beta, float *C, int ldc)
+    float alpha, const float *A, int lda, float beta, float *C, int ldc)
   {
     cblas_ssyrk(Order, Uplo, Trans, N, K, alpha, A, lda, beta, C, ldc);
   }
 
   inline void syrk(int Order, int Uplo, int Trans, int N, int K,
-    double alpha, double* A, int lda, double beta, double* C, int ldc)
+    double alpha, const double* A, int lda, double beta, double* C, int ldc)
   {
     cblas_dsyrk(Order, Uplo, Trans, N, K, alpha, A, lda, beta, C, ldc);
   }
   //@}
+
+  /// @name Performs a generic matrix multiplication
+  //@{
+  inline void gemm(int Order, int TransA, int TransB,
+    int M, int N, int K,
+    float alpha, const float* A, int lda,
+    const float* B, int ldb, float beta, float* C, int ldc)
+  {
+    cblas_sgemm(Order, TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
+  }
+
+  inline void gemm(int Order, int TransA, int TransB,
+    int M, int N, int K,
+    double alpha, const double* A, int lda,
+    const double* B, int ldb, double beta, double* C, int ldc)
+  {
+    cblas_dgemm(Order, TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
+  }
+  //@}
+
 }
 #else
 namespace fast_linalg {
@@ -297,8 +327,15 @@ namespace fast_linalg {
   }
 
   template <typename FloatType>
-  void syrk(int, int, int, int, int, FloatType, FloatType *, int,
+  void syrk(int, int, int, int, int, FloatType, const FloatType *, int,
     FloatType, FloatType *, int)
+  {
+    SCITBX_NOT_IMPLEMENTED();
+  }
+
+  template <typename FloatType>
+  void gemm(int, int, int, int, int, int, FloatType, const FloatType*, int,
+    const FloatType*, int, FloatType, FloatType*, int)
   {
     SCITBX_NOT_IMPLEMENTED();
   }

@@ -146,7 +146,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
         }
         normal_equations.finalise(objective_only);
       }
-
     }
 
     af::shared<std::complex<FloatType> > f_calc() { return f_calc_; }
@@ -184,21 +183,38 @@ namespace smtbx { namespace refinement { namespace least_squares {
 #if defined(_OPENMP)
     #include "least_squares_omp.h"
 #endif
+    struct chunk {
+      const int idx, size;
+      chunk()
+        : idx(0), size(0)
+      {}
+      chunk(int idx, int size)
+        : idx(idx), size(size)
+      {}
+    };
     struct Scheduler {
       int count, current;
       boost::mutex mtx;
       Scheduler(int count)
         : count(count),
-        current(-1)
+        current(0)
       {}
-      int* next() {
+      chunk next() {
         boost::mutex::scoped_lock lock(mtx);
-        if (++current < count) {
-          return &current;
+        int left = count - current;
+        if (left == 0) {
+          return chunk();
         }
-        return 0;
+        int sz = std::min(left, 256);
+        chunk rv(current, sz);
+        current += sz;
+        return rv;
+      }
+      void reset() {
+        current = 0;
       }
     };
+
     /// Accumulate from reflections whose indices are
     /// returned by scheduler
     template <class NormalEquations,
@@ -225,7 +241,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       af::versa<FloatType, af::c_grid<2> > &design_matrix;
       accumulate_reflection_chunk(
         Scheduler& scheduler,
-        boost::shared_ptr<NormalEquations> const &normal_equations_ptr,
+        boost::shared_ptr<NormalEquations> const& normal_equations_ptr,
         cctbx::xray::observations<FloatType> const &reflections,
         af::const_ref<std::complex<FloatType> > const &f_mask,
         WeightingScheme<FloatType> const &weighting_scheme,
@@ -254,56 +270,62 @@ namespace smtbx { namespace refinement { namespace least_squares {
       void operator()() {
         try {
           af::shared<FloatType> gradients;
+          int n_params = jacobian_transpose_matching_grad_fc.n_rows();
           if (compute_grad) {
-            gradients.resize(jacobian_transpose_matching_grad_fc.n_rows());
+            gradients.resize(n_params);
           }
-          int* next_idx;
-          while ((next_idx=scheduler.next()) != 0) {
-            int i_h = *next_idx;
-            miller::index<> const& h = reflections.index(i_h);
-            if (f_mask.size()) {
-              f_calc_function.compute(h, f_mask[i_h], compute_grad);
+          while (true) {
+            chunk ch = scheduler.next();
+            if (ch.size == 0) {
+              break;
             }
-            else {
-              f_calc_function.compute(h, boost::none, compute_grad);
-            }
-            f_calc[i_h] = f_calc_function.f_calc;
-            if (compute_grad) {
-              gradients =
-                jacobian_transpose_matching_grad_fc * f_calc_function.grad_observable;
-            }
-            // sort out twinning
-            FloatType observable =
-              process_twinning(i_h, gradients);
-            // extinction correction
-            af::tiny<FloatType, 2> exti_k = exti.compute(h, observable, compute_grad);
-            observable *= exti_k[0];
-            f_calc[i_h] *= std::sqrt(exti_k[0]);
-            observables[i_h] = observable;
-
-            FloatType weight = weighting_scheme(reflections.fo_sq(i_h),
-              reflections.sig(i_h), observable, scale_factor);
-            weights[i_h] = weight;
-            if (objective_only) {
-              normal_equations.add_residual(observable,
-                reflections.fo_sq(i_h), weight);
-            }
-            else {
-              if (exti.grad_value()) {
-                int grad_index = exti.get_grad_index();
-                SMTBX_ASSERT(!(grad_index < 0 || grad_index >= gradients.size()));
-                gradients[grad_index] += exti_k[1];
+            for (int i = 0; i < ch.size; i++) {
+              int i_h = ch.idx + i;;
+              miller::index<> const& h = reflections.index(i_h);
+              if (f_mask.size()) {
+                f_calc_function.compute(h, f_mask[i_h], compute_grad);
               }
-              normal_equations.add_equation(observable,
-                gradients.ref(), reflections.fo_sq(i_h), weight);
-            }
-            if (build_design_matrix) {
-              FloatType exti_der = (exti_k[0] + pow(exti_k[0], 3)) / 2;
-              for (int i_g = 0; i_g < gradients.size(); i_g++) {
-                design_matrix(i_h, i_g) = gradients[i_g];
+              else {
+                f_calc_function.compute(h, boost::none, compute_grad);
+              }
+              f_calc[i_h] = f_calc_function.f_calc;
+              if (compute_grad) {
+                gradients =
+                  jacobian_transpose_matching_grad_fc * f_calc_function.grad_observable;
+              }
+              // sort out twinning
+              FloatType observable =
+                process_twinning(i_h, gradients);
+              // extinction correction
+              af::tiny<FloatType, 2> exti_k = exti.compute(h, observable, compute_grad);
+              observable *= exti_k[0];
+              f_calc[i_h] *= std::sqrt(exti_k[0]);
+              observables[i_h] = observable;
+
+              FloatType weight = weighting_scheme(reflections.fo_sq(i_h),
+                reflections.sig(i_h), observable, scale_factor);
+              weights[i_h] = weight;
+              if (objective_only) {
+                normal_equations.add_residual(observable,
+                  reflections.fo_sq(i_h), weight);
+              }
+              else {
                 if (exti.grad_value()) {
-                  if (exti.get_grad_index() == i_g) {
-                    design_matrix(i_h, i_g) *= exti_der;
+                  int grad_index = exti.get_grad_index();
+                  SMTBX_ASSERT(!(grad_index < 0 || grad_index >= gradients.size()));
+                  gradients[grad_index] += exti_k[1];
+                }
+                normal_equations.add_equation(observable,
+                  gradients.ref(), reflections.fo_sq(i_h), weight);
+              }
+              if (build_design_matrix) {
+                FloatType exti_der = (exti_k[0] + pow(exti_k[0], 3)) / 2;
+                for (int i_g = 0; i_g < gradients.size(); i_g++) {
+                  design_matrix(i_h, i_g) = gradients[i_g];
+                  if (exti.grad_value()) {
+                    if (exti.get_grad_index() == i_g) {
+                      design_matrix(i_h, i_g) *= exti_der;
+                    }
                   }
                 }
               }
