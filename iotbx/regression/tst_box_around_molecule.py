@@ -67,6 +67,20 @@ TER""")
     # XXX temp fix for python3 failure
     # XXX changes in python 3 because _cell.length_a and other order differs
 
+    # Python 3 behavior looks better.
+    # Reason for this discrepancy is that starting from Python 3.7
+    # "the insertion-order preservation nature of dict objects has been
+    # declared to be an official part of the Python language spec."
+    # https://docs.python.org/3/whatsnew/3.7.html
+    # Basically, dict.keys() in Py3 preserves the order in which keys were added
+    # to the dict.
+    #
+    # Sorting of mmCIF keys here
+    # cctbx_project/iotbx/cif/__init__.py, def category_sort_function()
+    # should be improved to address such issues universally (sorting within
+    # category), note the diference in _space_group and _symmetry categories
+    # as well.
+
     import sys
     if sys.version.startswith("3.8"):
       assert_lines_in_file(file_name="%s_box_000.cif" % prefix,
