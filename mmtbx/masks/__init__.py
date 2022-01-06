@@ -55,6 +55,9 @@ mask_master_params = iotbx.phil.parse("""\
   radial_shell_width = 1.3
     .type = float
     .help = Radial shell width
+  Fmask_res_high = 3.0
+    .type = float
+    .help = Assume Fmask=0 for reflections outside the range inf>d>=Fmask_res_high
 """)
 
 class bulk_solvent(around_atoms):
@@ -229,10 +232,11 @@ class manager(object):
     adopt_init_args(self, locals())
     if(self.mask_params is not None): self.mask_params = mask_params
     else: self.mask_params = mask_master_params.extract()
-    self.sel_3inf = miller_array.d_spacings().data()>=3
-    self.sel_3inf_twin = None
+    Fmask_res_high = self.mask_params.Fmask_res_high
+    self.sel_Fmask_res = miller_array.d_spacings().data() >= Fmask_res_high
+    self.sel_Fmask_res_twin = None
     if(miller_array_twin is not None):
-       self.sel_3inf_twin = miller_array_twin.d_spacings().data()>=3
+       self.sel_Fmask_res_twin = miller_array_twin.d_spacings().data() >= Fmask_res_high
     self.xray_structure = self._load_xrs(xray_structure)
     self.atom_radii = None
     self._f_mask = None
@@ -320,27 +324,32 @@ class manager(object):
     else: return True
 
   def compute_f_mask(self):
+    if self.mask_params.grid_step_factor is None:
+      d_min = None
+    else:
+      d_min = self.miller_array.d_min()
     if(not self.mask_params.use_asu_masks):
       assert self.mask_params.n_radial_shells <= 1
       mask_obj = self.bulk_solvent_mask()
       self._f_mask = self._compute_f(
-        mask_obj=mask_obj, ma=self.miller_array, sel=self.sel_3inf)
+        mask_obj=mask_obj, ma=self.miller_array, sel=self.sel_Fmask_res)
       if(self.miller_array_twin is not None):
         self._f_mask_twin = self._compute_f(
-          mask_obj=mask_obj, ma=self.miller_array_twin, sel=self.sel_3inf_twin)
+          mask_obj=mask_obj, ma=self.miller_array_twin, sel=self.sel_Fmask_res_twin)
       self.solvent_content_via_mask = mask_obj \
         .contact_surface_fraction
     else:
       asu_mask_obj = asu_mask(
         xray_structure = self.xray_structure,
+        d_min = d_min,
         mask_params    = self.mask_params).asu_mask
       self._f_mask = self._compute_f(mask_obj=asu_mask_obj,
-        ma=self.miller_array, sel=self.sel_3inf)
+        ma=self.miller_array, sel=self.sel_Fmask_res)
       if(self.miller_array_twin is not None):
         assert self.miller_array.indices().size() == \
                self.miller_array_twin.indices().size()
         self._f_mask_twin = self._compute_f(mask_obj=asu_mask_obj,
-          ma=self.miller_array_twin, sel=self.sel_3inf_twin)
+          ma=self.miller_array_twin, sel=self.sel_Fmask_res_twin)
       self.solvent_content_via_mask = asu_mask_obj.contact_surface_fraction
       self.layer_volume_fractions = asu_mask_obj.layer_volume_fractions()
     assert self._f_mask[0].data().size() == self.miller_array.data().size()
