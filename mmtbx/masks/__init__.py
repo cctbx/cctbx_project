@@ -341,7 +341,7 @@ class manager(object):
     else:
       asu_mask_obj = asu_mask(
         xray_structure = self.xray_structure,
-        d_min = d_min,
+        d_min          = d_min,
         mask_params    = self.mask_params).asu_mask
       self._f_mask = self._compute_f(mask_obj=asu_mask_obj,
         ma=self.miller_array, sel=self.sel_Fmask_res)
