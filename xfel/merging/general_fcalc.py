@@ -41,6 +41,14 @@ def run (params) :
   if (params.include_bulk_solvent) :
     params2.fmodel.k_sol = params.k_sol
     params2.fmodel.b_sol = params.b_sol
+
+  # vvv These params restore the "legacy" solvent mask generation before
+  # vvv cctbx commit 2243cc9a
+  params2.mask.Fmask_res_high = 0
+  params2.mask.grid_step_factor = 4
+  params2.mask.solvent_radius = 1.11
+  # ^^^
+
   f_model = mmtbx.utils.fmodel_from_xray_structure(
     xray_structure = xray_structure,
     f_obs          = None,
