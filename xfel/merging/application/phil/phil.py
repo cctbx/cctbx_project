@@ -376,6 +376,9 @@ scaling {
       .type = float
       .help = If model is taken from coordinates, use b_sol for bulk solvent B-factor
       .help = default is approximate mean value in PDB (according to Pavel)
+    solvent_algorithm = *mosaic flat
+      .type = choice
+      .help = Mosaic solvent model is as in https://doi.org/10.1101/2021.12.09.471976
   }
   algorithm = *mark0 mark1
     .type = choice
