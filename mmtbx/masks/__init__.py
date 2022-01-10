@@ -329,10 +329,6 @@ class manager(object):
     else: return True
 
   def compute_f_mask(self):
-    if self.mask_params.grid_step_factor is None:
-      d_min = None
-    else:
-      d_min = self.miller_array.d_min()
     if(not self.mask_params.use_asu_masks):
       assert self.mask_params.n_radial_shells <= 1
       mask_obj = self.bulk_solvent_mask()
@@ -346,7 +342,6 @@ class manager(object):
     else:
       asu_mask_obj = asu_mask(
         xray_structure = self.xray_structure,
-        d_min          = d_min,
         mask_params    = self.mask_params).asu_mask
       self._f_mask = self._compute_f(mask_obj=asu_mask_obj,
         ma=self.miller_array, sel=self.sel_Fmask_res)
