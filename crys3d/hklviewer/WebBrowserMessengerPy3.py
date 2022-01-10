@@ -223,7 +223,7 @@ class WBmessenger(object):
 
 
   def OnLostConnectWebsocketClient(self, client, close_code, close_reason):
-    msg =  "Browser lost connection %s, code %d, reason: %s" %(str(self.websockclient), close_code, close_reason)
+    msg =  "Browser lost connection %s, code %s, reason: %s" %(str(self.websockclient), close_code, close_reason)
     self.mprint(msg , verbose=1 )
     self.was_disconnected = close_code
     self.websockclient = None
@@ -231,7 +231,7 @@ class WBmessenger(object):
 
 
   def OnDisconnectWebsocketClient(self, client, close_code, close_reason):
-    msg =  "Browser disconnected %s, code %d, reason: %s" %(str(self.websockclient), close_code, close_reason)
+    msg =  "Browser disconnected %s, code %s, reason: %s" %(str(self.websockclient), close_code, close_reason)
     self.mprint(msg , verbose=1 )
     self.was_disconnected = close_code
     self.websockclient = None
