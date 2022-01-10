@@ -79,7 +79,7 @@ configs.append(cfg_spock)
 
 cfg_arcticus = cfg_default.get_copy()
 cfg_arcticus.host_variable = 'HOSTNAME'
-cfg_arcticus.host_name = 'jlselogin'
+cfg_arcticus.host_name = 'arcticus'
 cfg_arcticus.env['KOKKOS_DEVICES'] = "SYCL"
 cfg_arcticus.env['KOKKOS_ARCH'] = ""
 cfg_arcticus.env['LDFLAGS'] = ""
@@ -114,7 +114,7 @@ if os.getenv('KOKKOS_CUDA_OPTIONS') is None:
 #       Double check that it makes sense to define CUDAREAL at ALCF
 #
 os.environ['CXX'] = system_settings['CXX']
-os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double -DKokkos_ENABLE_DEPRECATED_CODE_3=ON'
+os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double -DKokkos_ENABLE_OPENMP=OFF -DKokkos_ENABLE_SYCL=ON -DNDEBUG -DKOKKOS_DEVICES=SYCL -Wno-deprecated-declarations'
 os.environ['LDFLAGS'] = system_settings['LDFLAGS']
 os.environ['LDLIBS'] = system_settings['LDLIBS']
 #
