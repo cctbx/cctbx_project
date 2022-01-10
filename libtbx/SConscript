@@ -1354,7 +1354,7 @@ int main() {
       ('^win32_cl$',  [['/openmp'], []]),
       ('^win32_icc$', [['/Qopenmp']]*2),
       ('^unix_icc$',  [['-openmp']]*2),
-      ('^unix_icpx$', [['-qopenmp']]*2),
+      ('^unix_icpx$', [['-fiopenmp -fopenmp-targets=spir64']]*2),
       ('^unix_conda$',[['-fopenmp']]*2),
       ('darwin',      [['-fopenmp']]*2),
       ('gcc',         [['-fopenmp']]*2),
