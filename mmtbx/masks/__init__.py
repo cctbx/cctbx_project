@@ -32,7 +32,7 @@ mask_master_params = iotbx.phil.parse("""\
   n_real = None
     .type = ints
     .help = Gridding for mask calculation
-  grid_step_factor = None
+  grid_step_factor = 4.0
     .type = float
     .help = Grid step is resolution divided by grid_step_factor
   verbose = 1
@@ -166,11 +166,16 @@ class asu_mask(object):
                mask_params=None,
                d_min = None,
                atom_radius = None):
+    """
+    If d_min is not None then it defines the gridding. Otherwise mask_params is
+    used for that.
+    """
     adopt_init_args(self, locals())
     if(mask_params is None):
       mask_params = mmtbx.masks.mask_master_params.extract()
       self.mask_params = mask_params
-    assert [d_min, mask_params.grid_step_factor].count(None) in [0,2]
+    if(d_min is not None):
+      assert mask_params.grid_step_factor is not None
     assert [mask_params.step, mask_params.n_real].count(None) in [1,2]
     assert mask_params.step is not None or mask_params.n_real is not None or \
            [d_min, mask_params.grid_step_factor].count(None)==0
