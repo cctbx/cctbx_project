@@ -529,6 +529,7 @@ class _():
         base_array_info=None,
         include_unmerged_data=False,
         anomalous=None,
+        reconstruct_amplitudes=True
         ):
     assert not include_unmerged_data, "Unmerged data not supported in MTZ"
     other_symmetry = crystal_symmetry
@@ -556,6 +557,7 @@ class _():
           base_array_info=base_dataset_info,
           dataset=dataset,
           anomalous=anomalous,
+          reconstruct_amplitudes=reconstruct_amplitudes
         )
         for column_group in column_groups:
           if (merge_equivalents
@@ -621,7 +623,8 @@ class _():
         dataset,
         strict=True,
         skip_incompatible_values=True,
-        anomalous=None):
+        anomalous=None,
+        reconstruct_amplitudes=True):
     known_mtz_column_types = "".join(column_type_legend)
     assert len(known_mtz_column_types) == 17 # safety guard
     all_columns = dataset.columns()
@@ -695,7 +698,7 @@ class _():
               for l in all_column_labels[i_column:i_column+4]])
             + ' column types: ' + ", ".join(['"%s"' % t
               for t in all_column_types[i_column:i_column+4]]))
-      elif (remaining_types[:4] == "FQDQ"):
+      elif (remaining_types[:4] == "FQDQ" and reconstruct_amplitudes):
         labels = all_column_labels[i_column:i_column+4]
         def next_isym_column_label():
           for j in range(i_column+4, len(all_column_types)):
@@ -720,6 +723,8 @@ class _():
         # "Q": "standard deviation"
         # "P": "phase angle in degrees"
         labels = [l0]
+        if (t0 == "D"and not reconstruct_amplitudes):
+          observation_type = xray.observation_types.amplitude()
         if (    i_column+1 < len(all_column_types)
             and all_column_types[i_column+1] in "QP"):
           labels = all_column_labels[i_column:i_column+2]

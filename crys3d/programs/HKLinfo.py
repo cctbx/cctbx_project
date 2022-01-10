@@ -34,6 +34,10 @@ merge_equivalents = False
   .type = bool
   .caption = "merging symmetry equivalent reflections into unique wedge in reciprocal space"
   .short_caption = "merging reflections into a symmetry unique wedge"
+reconstruct_amplitudes = False
+  .type = bool
+  .caption = "Convert mean amplitudes, F,SIGF, and anomalous differences, DANO,SIGDANO, into anomalous arrays, F(+),SIGF(+),F(-),SIGF(-)"
+  .short_caption = "Turn mean amplitudes and anomalous differences into anomalous arrays"
 """ + ArrayInfo.arrayinfo_phil_str
 
   def validate(self):
@@ -58,7 +62,8 @@ merge_equivalents = False
     """
     data_file = self.data_manager.get_miller_array_names()[0]
     hkl_file = any_reflection_file(data_file)
-    arrays = hkl_file.as_miller_arrays(merge_equivalents=self.params.merge_equivalents)
+    arrays = hkl_file.as_miller_arrays(merge_equivalents=self.params.merge_equivalents,
+                                       reconstruct_amplitudes=self.params.reconstruct_amplitudes)
 
     print("%d Miller arrays in this dataset:" %len(arrays))
     delimiter = self.params.delimiter

@@ -726,7 +726,7 @@ class HKLViewFrame() :
             except Exception as e:
               self.origarrays[labl] = origarray
         else: # some other type of reflection file than cif
-          arrays = hkl_file.as_miller_arrays(merge_equivalents=False)
+          arrays = hkl_file.as_miller_arrays(merge_equivalents=False, reconstruct_amplitudes=False)
         if hkl_file._file_type == 'ccp4_mtz':
           self.hklfile_history = list(hkl_file._file_content.history())
           self.loaded_file_name = file_name
