@@ -4,6 +4,8 @@ from xfel.merging.application.mpi_helper import mpi_helper
 from xfel.merging.application.mpi_logger import mpi_logger
 import os
 
+# Note, when modifying this list, be sure to modify the README in xfel/merging 
+
 default_steps = [
   'input',
   'balance', # balance input load
