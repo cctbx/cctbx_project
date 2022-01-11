@@ -256,7 +256,7 @@ class any_reflection_file(object):
     :param reconstruct_amplitudes: ignored by all other readers than mtz reader.
       If set to True mean amplitudes and adjacent anomalous diffference columns will be
       fused into anomalous miller_array object.
-      If False, tells the reader not to fuse mean amplitude and adjacent anomalous 
+      If False, tells the reader not to fuse mean amplitude and adjacent anomalous
       difference columns into anomalous miller_array objects.
     """
     assert (assume_shelx_observation_type_is in
