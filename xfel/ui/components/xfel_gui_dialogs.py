@@ -2141,7 +2141,8 @@ class RunBlockDialog(BaseDialog):
     self.Bind(wx.EVT_RADIOBUTTON, self.onAutoEnd, self.end_type.auto)
     self.Bind(wx.EVT_RADIOBUTTON, self.onSpecifyEnd, self.end_type.specify)
     self.Bind(wx.EVT_BUTTON, self.onImportPhil, self.phil.btn_import)
-    self.Bind(wx.EVT_BUTTON, self.onImportFormat, self.format.btn_import)
+    if self.is_lcls:
+      self.Bind(wx.EVT_BUTTON, self.onImportFormat, self.format.btn_import)
     self.Bind(wx.EVT_BUTTON, self.onUntrustedBrowse,
               id=self.untrusted_path.btn_big.GetId())
     if self.is_lcls and self.parent.trial.app.params.dispatcher in \
