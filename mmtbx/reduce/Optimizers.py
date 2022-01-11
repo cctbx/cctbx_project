@@ -495,7 +495,7 @@ class _SingletonOptimizer(object):
         for s in singletonCliques:
           mover = self._interactionGraph.vertex_label(s[0])
           ret = self._optimizeSingleMoverCoarse(mover)
-          self._infoString += _VerboseCheck(1,"Singletone optimized with score {:.2f}\n".format(ret))
+          self._infoString += _VerboseCheck(1,"Singleton optimized with score {:.2f}\n".format(ret))
         self._infoString += _ReportTiming("optimize singletons (coarse)")
 
         # Do coarse optimization on the multi-Mover Cliques.
