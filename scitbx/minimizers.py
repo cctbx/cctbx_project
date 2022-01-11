@@ -293,8 +293,7 @@ class lbfgs(object):
   def __init__(self, calculator, stpmax, max_iterations, gradient_only):
     core_params = lbfgs_core.core_parameters(stpmax = stpmax)
     termination_params = lbfgs_core.termination_parameters(
-      max_iterations = max_iterations,
-      min_iterations = None)
+      max_iterations = max_iterations)
     M = lbfgs_core.run(
       core_params               = core_params,
       termination_params        = termination_params,
