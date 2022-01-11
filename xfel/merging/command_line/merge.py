@@ -12,7 +12,6 @@ default_steps = [
   'model_scaling', # build full Miller list, model intensities, and resolution binner - for scaling and post-refinement
   'modify', # apply polarization correction, etc.
   'filter', # reject whole experiments or individual reflections
-  'errors_premerge', # correct errors using a per-experiment algorithm, e.g. ha14
   'scale',
   'postrefine',
   'statistics_unitcell', # if required, save the average unit cell to the phil parameters
