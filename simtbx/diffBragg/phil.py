@@ -778,6 +778,9 @@ refiner {
     .help = is comma-separated substrings, formatted according to "%f-%f,%f-%f" where the first float
     .help = in each substr specifies the high-resolution for the refinement trial, and the second float
     .help = specifies the low-resolution for the refinement trial. Should be same length as max_calls
+  n_highest_res_refls = None
+    .type = int
+    .help = "Use this many reflections in the refinement"
   mask = None
     .type = str
     .help = path to a dials mask flagging the trusted pixels

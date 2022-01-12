@@ -365,6 +365,7 @@ class DataModeler:
             self.selection_flags = np.logical_and( self.selection_flags, is_not_a_duplicate)
 
         if self.params.refiner.res_ranges is not None:
+            assert self.params.refiner.n_highest_res_refls is None
             # TODO add res ranges support for GatherFromReflectionTable
             if self.no_rlp_info:
                 raise NotImplementedError("Cannot set resolution limits when processing refls that are missing the RLP column")
@@ -378,6 +379,20 @@ class DataModeler:
             MAIN_LOGGER.info("Resolution filter removed %d/%d refls outside of all resolution ranges " \
                               % (sum(~res_flags), len(refls)))
             self.selection_flags[~res_flags] = False
+
+        n_refl = self.params.refiner.n_highest_res_refls
+        if n_refl is not None:
+            assert self.params.refiner.res_ranges is None
+            assert all(self.selection_flags)
+            assert n_refl <= len(self.selection_flags)
+            if self.no_rlp_info:
+                raise NotImplementedError("requested n_highest_res_refls but refls are missing the RLP column")
+            res = 1. / np.linalg.norm(refls["rlp"], axis=1)
+            res_cutoff = sorted(res)[n_refl-1]
+            res_flags = res <= res_cutoff
+            self.selection_flags[~res_flags] = False
+
+
 
         if sum(self.selection_flags) == 0:
             MAIN_LOGGER.info("No pixels slected, continuing")
