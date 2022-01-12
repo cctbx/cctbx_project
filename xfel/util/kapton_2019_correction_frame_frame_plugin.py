@@ -535,8 +535,8 @@ class KaptonSettingsPanel(wx.Panel):
       """Takes in  x1,y1,x2,y2 and returns the panel where these points lie. If outside any panel then returns None"""
       x1,y1,x2,y2=elem
       # FIXME tolerance levels, a bit hacky
-      d1=1.03
-      d2=-0.03
+      d1=3.09
+      d2=-0.09
       int_panels=[None, None]
       for panel in detector:
         # Convert x,y to f,s for that panel
