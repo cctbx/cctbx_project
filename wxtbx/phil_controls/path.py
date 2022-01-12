@@ -53,7 +53,7 @@ class PathCtrl(wx.PyPanel, phil_controls.PhilCtrl):
     szr.Add(self._path_text, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT)
     browse_btn = wx.Button(self, -1, "Browse...")
     szr2 = wx.BoxSizer(wx.HORIZONTAL)
-    szr.Add(szr2, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|szr2_pad, 5)
+    szr.Add(szr2, 0, wx.ALIGN_CENTER_VERTICAL|szr2_pad, 5)
     szr2.Add(browse_btn, 0, wx.ALIGN_CENTER_VERTICAL, 5)
     self.Bind(wx.EVT_BUTTON, self.OnBrowse, browse_btn)
     self.browse_btn = browse_btn
