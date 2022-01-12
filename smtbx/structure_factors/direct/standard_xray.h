@@ -1074,8 +1074,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
           storage for f_calc and its gradients, as well as the observable and
           its gradients.
        */
-      pointer_type fork() {
-        Heir &heir = static_cast<Heir &>(*this);
+      pointer_type fork() const {
+        const Heir &heir = static_cast<const Heir &>(*this);
         return pointer_type(heir.raw_fork());
       }
       /// Evaluate the structure factors
@@ -1231,7 +1231,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
           exp_i_2pi(exp_i_2pi)
       {}
 
-      custom_trigonometry *raw_fork() {
+      custom_trigonometry *raw_fork() const {
         return new custom_trigonometry(this->unit_cell,
                                        this->space_group,
                                        this->scatterers.array(),
@@ -1274,7 +1274,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
           own_scatterer_contribution)
       {}
 
-      std_trigonometry *raw_fork() {
+      std_trigonometry *raw_fork() const {
         return new std_trigonometry(this->unit_cell,
                                     this->space_group,
                                     this->scatterers.array(),
