@@ -13,6 +13,7 @@
 
 #include <smtbx/error.h>
 #include <smtbx/structure_factors/direct/standard_xray.h>
+#include <smtbx/refinement/least_squares_fc.h>
 
 #include <algorithm>
 #include <vector>
@@ -21,7 +22,6 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/smart_ptr/scoped_ptr.hpp>
 #include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
 
 namespace smtbx { namespace refinement { namespace least_squares {
 
@@ -35,19 +35,25 @@ namespace smtbx { namespace refinement { namespace least_squares {
   */
   template <typename FloatType, bool build_design_matrix>
   struct build_design_matrix_and_normal_equations {
+
+    typedef f_calc_function_base<FloatType>
+      f_calc_function_base_t;
+
+    typedef boost::shared_ptr<f_calc_function_base_t>
+      one_miller_index_fcalc_ptr_t;
+
     //! Default constructor. Some data members are not initialized!
     build_design_matrix_and_normal_equations() {}
 
     template <class NormalEquations,
-              template<typename> class WeightingScheme,
-              class OneMillerIndexFcalc>
+              template<typename> class WeightingScheme>
       build_design_matrix_and_normal_equations(
       NormalEquations &normal_equations,
       cctbx::xray::observations<FloatType> const &reflections,
       af::const_ref<std::complex<FloatType> > const &f_mask,
       WeightingScheme<FloatType> const &weighting_scheme,
       boost::optional<FloatType> scale_factor,
-      OneMillerIndexFcalc &f_calc_function,
+      f_calc_function_base_t &f_calc_function,
       scitbx::sparse::matrix<FloatType> const
         &jacobian_transpose_matching_grad_fc,
       cctbx::xray::extinction_correction<FloatType> const &exti,
@@ -62,14 +68,12 @@ namespace smtbx { namespace refinement { namespace least_squares {
         build_design_matrix ? jacobian_transpose_matching_grad_fc.n_rows() : 0))
     {
       typedef accumulate_reflection_chunk<
-                NormalEquations, WeightingScheme, OneMillerIndexFcalc>
+                NormalEquations, WeightingScheme>
               accumulate_reflection_chunk_t;
       typedef boost::shared_ptr<NormalEquations>
               normal_equations_ptr_t;
       typedef boost::shared_ptr<accumulate_reflection_chunk_t>
               accumulate_reflection_chunk_ptr_t;
-      typedef boost::shared_ptr<OneMillerIndexFcalc>
-              one_miller_index_fcalc_ptr_t;
 
       // Accumulate equations Fo(h) ~ Fc(h)
       SMTBX_ASSERT((!f_mask.size() || f_mask.size() == reflections.size()))
@@ -82,7 +86,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
 #if defined(_OPENMP)
         if (use_openmp) {
           typedef accumulate_reflection_chunk_omp<
-            NormalEquations, WeightingScheme, OneMillerIndexFcalc>
+            NormalEquations, WeightingScheme>
             accumulate_reflection_chunk_omp_t;
           accumulate_reflection_chunk_omp_t job(
             normal_equations_ptr_t(&normal_equations, null_deleter()),
@@ -135,7 +139,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           scheduler,
           normal_equations_ptr_t(&normal_equations, null_deleter()),
           reflections, f_mask, weighting_scheme, scale_factor,
-          one_miller_index_fcalc_ptr_t(&f_calc_function, null_deleter()),
+          one_miller_index_fcalc_ptr_t(f_calc_function.fork()),
           jacobian_transpose_matching_grad_fc,
           exti, objective_only,
           f_calc_.ref(), observables_.ref(), weights_.ref(),
@@ -218,8 +222,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     /// Accumulate from reflections whose indices are
     /// returned by scheduler
     template <class NormalEquations,
-      template<typename> class WeightingScheme,
-      class OneMillerIndexFcalc>
+      template<typename> class WeightingScheme>
     struct accumulate_reflection_chunk {
       Scheduler& scheduler;
       boost::scoped_ptr<smtbx::error> exception_;
@@ -229,8 +232,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
       af::const_ref<std::complex<FloatType> > const &f_mask;
       WeightingScheme<FloatType> const &weighting_scheme;
       boost::optional<FloatType> scale_factor;
-      boost::shared_ptr<OneMillerIndexFcalc> f_calc_function_ptr;
-      OneMillerIndexFcalc &f_calc_function;
+      boost::shared_ptr<f_calc_function_base_t> f_calc_function_ptr;
+      f_calc_function_base_t &f_calc_function;
       scitbx::sparse::matrix<FloatType> const
         &jacobian_transpose_matching_grad_fc;
       cctbx::xray::extinction_correction<FloatType> const &exti;
@@ -246,7 +249,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         af::const_ref<std::complex<FloatType> > const &f_mask,
         WeightingScheme<FloatType> const &weighting_scheme,
         boost::optional<FloatType> scale_factor,
-        boost::shared_ptr<OneMillerIndexFcalc> const &f_calc_function_ptr,
+        boost::shared_ptr<f_calc_function_base_t> const &f_calc_function_ptr,
         scitbx::sparse::matrix<FloatType> const
           &jacobian_transpose_matching_grad_fc,
         cctbx::xray::extinction_correction<FloatType> const &exti,
@@ -288,10 +291,10 @@ namespace smtbx { namespace refinement { namespace least_squares {
               else {
                 f_calc_function.compute(h, boost::none, compute_grad);
               }
-              f_calc[i_h] = f_calc_function.f_calc;
+              f_calc[i_h] = f_calc_function.get_f_calc();
               if (compute_grad) {
                 gradients =
-                  jacobian_transpose_matching_grad_fc * f_calc_function.grad_observable;
+                  jacobian_transpose_matching_grad_fc * f_calc_function.get_grad_observable();
               }
               // sort out twinning
               FloatType observable =
@@ -344,7 +347,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         typedef typename cctbx::xray::observations<FloatType>::iterator itr_t;
         typedef typename cctbx::xray::twin_fraction<FloatType> twf_t;
         typedef typename cctbx::xray::observations<FloatType>::index_twin_component twc_t;
-        FloatType obs = f_calc_function.observable;
+        FloatType obs = f_calc_function.get_observable();
         if (reflections.has_twin_components()) {
           itr_t itr = reflections.iterate(i_h);
           FloatType measured_part = obs,
@@ -362,20 +365,20 @@ namespace smtbx { namespace refinement { namespace least_squares {
           while (itr.has_next()) {
             twc_t twc = itr.next();
             f_calc_function.compute(twc.h, boost::none, compute_grad);
-            obs += twc.scale() * f_calc_function.observable;
+            obs += twc.scale() * f_calc_function.get_observable();
             if (compute_grad) {
               af::shared<FloatType> tmp_gradients =
-                jacobian_transpose_matching_grad_fc * f_calc_function.grad_observable;
+                jacobian_transpose_matching_grad_fc * f_calc_function.get_grad_observable();
               gradients += twc.scale() * tmp_gradients;
               if (twc.fraction != 0) {
                 if (twc.fraction->grad) {
                   SMTBX_ASSERT(!(twc.fraction->grad_index < 0 ||
                     twc.fraction->grad_index >= gradients.size()));
-                  gradients[twc.fraction->grad_index] += f_calc_function.observable;
+                  gradients[twc.fraction->grad_index] += f_calc_function.get_observable();
                 }
               }
               else {
-                identity_part += f_calc_function.observable;
+                identity_part += f_calc_function.get_observable();
               }
               twc_cnt++;
             }
@@ -505,153 +508,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
     }
   };
 
-  template <typename FloatType>
-  struct f_calc_function_result
-  {
-    f_calc_function_result(
-      FloatType const &observable_,
-      std::complex<FloatType> const &f_calc_,
-      af::shared<FloatType> const &grad_observable_)
-      :
-    observable(observable_),
-    f_calc(f_calc_),
-    grad_observable(grad_observable_)
-    {}
-
-    f_calc_function_result(
-      FloatType const &observable_,
-      std::complex<FloatType> const &f_calc_)
-      :
-    observable(observable_),
-    f_calc(f_calc_),
-    grad_observable()
-    {}
-
-    FloatType const observable;
-    std::complex<FloatType> const f_calc;
-    af::shared<FloatType> const grad_observable;
-  };
-
-  /*  A thin wrapper around OneMillerIndexFcalc to enable caching of the
-      results for symmetry related indices.
-   */
-  template <typename FloatType, class OneMillerIndexFcalc>
-  struct f_calc_function_with_cache
-  {
-    f_calc_function_with_cache(
-      OneMillerIndexFcalc &f_calc_function_, bool use_cache_=false)
-      :
-    f_calc_function(f_calc_function_),
-    use_cache(use_cache_),
-    observable(),
-    grad_observable(),
-    f_calc(),
-    length_sq(0),
-    cache()
-    {};
-
-    void compute(
-      miller::index<> const &h,
-      boost::optional<std::complex<FloatType> > const &f_mask=boost::none,
-      bool compute_grad=true)
-    {
-      if (!use_cache) {
-        f_calc_function.compute(h, f_mask, compute_grad);
-        observable = f_calc_function.observable;
-        grad_observable = f_calc_function.grad_observable;
-        f_calc = f_calc_function.f_calc;
-      }
-      else {
-        FloatType h_length_sq = h.length_sq();
-        if (h_length_sq != length_sq) {
-          cache.clear();
-          length_sq = h_length_sq;
-        }
-        typename cache_t::iterator iter = cache.find(h);
-        if (iter == cache.end()) {
-          f_calc_function.linearise(h, f_mask);
-          observable = f_calc_function.observable;
-          grad_observable = f_calc_function.grad_observable;
-          f_calc = f_calc_function.f_calc;
-          cache.insert(
-            std::pair<miller::index<>, f_calc_function_result<FloatType> >(
-              h, f_calc_function_result<FloatType>(
-                  observable,
-                  f_calc_function.f_calc,
-                  grad_observable.array().deep_copy())));
-        }
-        else {
-          observable = iter->second.observable;
-          f_calc = iter->second.f_calc;
-          grad_observable =
-            af::ref_owning_shared<FloatType>(iter->second.grad_observable);
-        }
-      }
-    }
-
-    void compute(miller::index<> const &h,
-                 bool compute_grad=true)
-    {
-      compute(h, /*f_mask=*/ boost::none, compute_grad);
-    }
-
-    typedef
-      std::map<miller::index<>, f_calc_function_result<FloatType> > cache_t;
-
-    OneMillerIndexFcalc &f_calc_function;
-    bool use_cache;
-    FloatType observable;
-    af::ref_owning_shared<FloatType> grad_observable;
-    std::complex<FloatType> f_calc;
-    FloatType length_sq;
-    cache_t cache;
-  };
-
-
-  /// A specialisation of build_normal_equations with caching of
-  /// the computation of Fc(h) and its derivatives
-  /** This avoids performing the same computation twice for the same h.
-      At the moment, the caching works only for (pseudo-)merohedral twins,
-      and this code is not used in production code.
-   */
-  template <typename FloatType, bool build_design_matrix>
-  struct build_normal_equations_with_caching
-  {
-    //! Default constructor. Some data members are not initialized!
-    build_normal_equations_with_caching() {}
-
-    template <class NormalEquations,
-      template<typename> class WeightingScheme,
-      class OneMillerIndexFcalc>
-      build_normal_equations_with_caching(
-        NormalEquations& normal_equations,
-        cctbx::xray::observations<FloatType> const& reflections,
-        af::const_ref<std::complex<FloatType> > const& f_mask,
-        WeightingScheme<FloatType> const& weighting_scheme,
-        boost::optional<FloatType> scale_factor,
-        OneMillerIndexFcalc& f_calc_function,
-        scitbx::sparse::matrix<FloatType> const
-        & jacobian_transpose_matching_grad_fc,
-        cctbx::xray::extinction_correction<FloatType> const& exti,
-        bool objective_only = false,
-        bool may_parallelise = false,
-        bool use_openmp = false)
-      :
-      build_design_matrix_and_normal_equations<FloatType, build_design_matrix>(
-        normal_equations,
-        reflections,
-        f_mask,
-        weighting_scheme,
-        scale_factor,
-        f_calc_function_with_cache<FloatType, OneMillerIndexFcalc>(
-          f_calc_function, reflections.has_twin_components()),
-        jacobian_transpose_matching_grad_fc,
-        exti,
-        objective_only,
-        may_parallelise,
-        use_openmp)
-    {}
-  };
 
 }}}
 

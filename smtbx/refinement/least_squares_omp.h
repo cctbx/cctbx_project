@@ -4,9 +4,11 @@ calculations using OpenMP making sure there is no strides
 in adressing memory by scheduling with chunksize 1
 */
 template < class NormalEquations,
-  template<typename> class WeightingScheme,
-  class OneMillerIndexFcalc>
+  template<typename> class WeightingScheme>
 struct accumulate_reflection_chunk_omp {
+  typedef f_calc_function_base<FloatType>
+    f_calc_function_base_t;
+
   boost::scoped_ptr<smtbx::error> exception_;
   boost::shared_ptr<NormalEquations> normal_equations_ptr;
   NormalEquations& normal_equations;
@@ -14,8 +16,8 @@ struct accumulate_reflection_chunk_omp {
   af::const_ref<std::complex<FloatType> > const& f_mask;
   WeightingScheme<FloatType> const& weighting_scheme;
   boost::optional<FloatType> scale_factor;
-  boost::shared_ptr<OneMillerIndexFcalc> f_calc_function_ptr;
-  OneMillerIndexFcalc& f_calc_function;
+  boost::shared_ptr<f_calc_function_base_t> f_calc_function_ptr;
+  f_calc_function_base_t& f_calc_function;
   scitbx::sparse::matrix<FloatType> const
       & jacobian_transpose_matching_grad_fc;
   cctbx::xray::extinction_correction<FloatType> const& exti;
@@ -24,13 +26,14 @@ struct accumulate_reflection_chunk_omp {
   af::ref<FloatType> observables;
   af::ref<FloatType> weights;
   af::versa<FloatType, af::c_grid<2> >& design_matrix;
+
   accumulate_reflection_chunk_omp(
     boost::shared_ptr<NormalEquations> const& normal_equations_ptr,
     cctbx::xray::observations<FloatType> const& reflections,
     af::const_ref<std::complex<FloatType> > const& f_mask,
     WeightingScheme<FloatType> const& weighting_scheme,
     boost::optional<FloatType> scale_factor,
-    boost::shared_ptr<OneMillerIndexFcalc> f_calc_function_ptr,
+    boost::shared_ptr<f_calc_function_base_t> f_calc_function_ptr,
     scitbx::sparse::matrix<FloatType> const
     & jacobian_transpose_matching_grad_fc,
     cctbx::xray::extinction_correction<FloatType> const& exti,
@@ -56,7 +59,7 @@ struct accumulate_reflection_chunk_omp {
       const int n_rows = jacobian_transpose_matching_grad_fc.n_rows();
       const int threads = get_available_threads();
       std::vector<FloatType> gradients;
-      boost::ptr_vector<boost::shared_ptr<OneMillerIndexFcalc> > f_calc_threads;
+      boost::ptr_vector<boost::shared_ptr<f_calc_function_base_t> > f_calc_threads;
       f_calc_threads.resize(threads);
       for (int i = 0; i < threads; i++) {
         f_calc_threads[i] = f_calc_function.fork();
@@ -78,12 +81,12 @@ struct accumulate_reflection_chunk_omp {
           else {
             f_calc_threads[thread]->compute(h, boost::none, compute_grad);
           }
-          f_calc[i_h] = f_calc_threads[thread]->f_calc;
+          f_calc[i_h] = f_calc_threads[thread]->get_f_calc();
           FloatType observable;
           //skip hoarding memory if Gradients are not needed.
           if (compute_grad) {
             gradient = jacobian_transpose_matching_grad_fc * 
-                        f_calc_threads[thread]->grad_observable;
+                        f_calc_threads[thread]->get_grad_observable();
             // sort out twinning
             observable = process_twinning_with_grads(i_h, 
                                           gradient, f_calc_threads[thread]);
@@ -140,11 +143,11 @@ struct accumulate_reflection_chunk_omp {
 
   FloatType process_twinning_with_grads(int i_h, 
     af::shared<FloatType>& gradients, 
-    boost::shared_ptr<OneMillerIndexFcalc> f_calc_thread) {
+    boost::shared_ptr<f_calc_function_base_t> f_calc_thread) {
     typedef typename cctbx::xray::observations<FloatType>::iterator itr_t;
     typedef typename cctbx::xray::twin_fraction<FloatType> twf_t;
     typedef typename cctbx::xray::observations<FloatType>::index_twin_component twc_t;
-    FloatType obs = f_calc_thread->observable;
+    FloatType obs = f_calc_thread->get_observable();
     if (reflections.has_twin_components()) {
       itr_t itr = reflections.iterate(i_h);
       FloatType measured_part = obs,
@@ -162,20 +165,20 @@ struct accumulate_reflection_chunk_omp {
       while (itr.has_next()) {
         twc_t twc = itr.next();
         f_calc_thread->compute(twc.h, boost::none, compute_grad);
-        obs += twc.scale() * f_calc_thread -> observable;
+        obs += twc.scale() * f_calc_thread ->get_observable();
         if (compute_grad) {
           af::shared<FloatType> tmp_gradients =
-              jacobian_transpose_matching_grad_fc * f_calc_thread->grad_observable;
+              jacobian_transpose_matching_grad_fc * f_calc_thread->get_grad_observable();
           gradients += twc.scale() * tmp_gradients;
           if (twc.fraction != 0) {
             if (twc.fraction->grad) {
               SMTBX_ASSERT(!(twc.fraction->grad_index < 0 ||
                   twc.fraction->grad_index >= gradients.size()));
-              gradients[twc.fraction->grad_index] += f_calc_thread->observable;
+              gradients[twc.fraction->grad_index] += f_calc_thread->get_observable();
             }
           }
           else {
-            identity_part += f_calc_thread->observable;
+            identity_part += f_calc_thread->get_observable();
           }
           twc_cnt++;
         }
@@ -202,11 +205,11 @@ struct accumulate_reflection_chunk_omp {
     return obs;
   }
   FloatType process_twinning(int i_h, 
-    boost::shared_ptr<OneMillerIndexFcalc> f_calc_thread) {
+    boost::shared_ptr<f_calc_function_base_t> f_calc_thread) {
     typedef typename cctbx::xray::observations<FloatType>::iterator itr_t;
     typedef typename cctbx::xray::twin_fraction<FloatType> twf_t;
     typedef typename cctbx::xray::observations<FloatType>::index_twin_component twc_t;
-    FloatType obs = f_calc_thread->observable;
+    FloatType obs = f_calc_thread->get_observable();
     if (reflections.has_twin_components()) {
       itr_t itr = reflections.iterate(i_h);
       FloatType measured_part = obs,
@@ -218,7 +221,7 @@ struct accumulate_reflection_chunk_omp {
       while (itr.has_next()) {
         twc_t twc = itr.next();
         f_calc_thread->compute(twc.h, boost::none, compute_grad);
-        obs += twc.scale() * f_calc_thread->observable;
+        obs += twc.scale() * f_calc_thread->get_observable();
       }
     }
     return obs;
