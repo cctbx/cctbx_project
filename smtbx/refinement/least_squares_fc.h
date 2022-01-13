@@ -19,6 +19,32 @@ namespace smtbx {
           boost::optional<std::complex<FloatType> > const& f_mask = boost::none,
           bool compute_grad = true) = 0;
 
+        /// Evaluate the structure factors
+        void evaluate(miller::index<> const& h)
+        {
+          compute(h, boost::none, false);
+        }
+
+        /// Evaluate the structure factors
+        void evaluate(miller::index<> const& h,
+          std::complex<FloatType> const& f_mask)
+        {
+          compute(h, f_mask, false);
+        }
+
+        /// Linearise the structure factors
+        void linearise(miller::index<> const& h)
+        {
+          compute(h, boost::none, true);
+        }
+
+        /// Linearise the structure factors
+        void linearise(miller::index<> const& h,
+          std::complex<FloatType> const& f_mask)
+        {
+          compute(h, f_mask, true);
+        }
+
         virtual boost::shared_ptr<f_calc_function_base> fork() const = 0;
 
         virtual FloatType get_observable() const = 0;
