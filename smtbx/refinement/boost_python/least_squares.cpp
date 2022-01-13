@@ -138,8 +138,14 @@ namespace smtbx { namespace refinement { namespace least_squares {
         typedef f_calc_function_base<FloatType> at;
         class_<wt, bases<f_calc_function_base<FloatType> >,
           std::auto_ptr<wt> >("f_calc_function_ed", no_init)
-          .def(init<boost::shared_ptr<at> >(
-            (arg("one_miller_index_fc"))))
+          .def(init<cctbx::xray::observations<FloatType> const&,
+            af::shared<std::complex<FloatType> > const&,
+            af::shared<typename wt::cart_t> const&,
+            af::versa<FloatType, af::c_grid<2> > const&>(
+            (arg("reflections"),
+              arg("Fc"),
+              arg("beams"),
+              arg("design_matrix"))))
           ;
       }
 
