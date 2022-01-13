@@ -104,9 +104,22 @@ namespace smtbx { namespace refinement { namespace least_squares {
       static void wrap_base() {
         using namespace boost::python;
         typedef f_calc_function_base<FloatType> wt;
+        typedef void (wt::* evaluate_t1) (miller::index<> const&);
+        typedef void (wt::* evaluate_t2) (miller::index<> const&, std::complex<FloatType> const&);
+        typedef void (wt::* linearise_t1) (miller::index<> const&);
+        typedef void (wt::* linearise_t2) (miller::index<> const&, std::complex<FloatType> const&);
         class_<wt, boost::noncopyable>("f_calc_function_base", no_init)
           .def("compute", &wt::compute,
             (arg("index"), arg("f_mask"), arg("cumpute_grad")=false))
+          .def("evaluate", (evaluate_t1)&wt::evaluate,
+            (arg("index")))
+          .def("evaluate", (evaluate_t2) &wt::evaluate,
+            (arg("index"), arg("f_mask")))
+          .def("linearise", (linearise_t1)&wt::linearise,
+            (arg("index")))
+          .def("linearise", (linearise_t2) &wt::linearise,
+            (arg("index"), arg("f_mask")))
+          .add_property("f_calc", &wt::get_f_calc)
           ;
       }
 
