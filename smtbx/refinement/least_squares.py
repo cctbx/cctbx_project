@@ -91,7 +91,7 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
           f_mask,
           weighting_scheme,
           scale_factor,
-          self.one_h_linearisation,
+          f_calc_function_default(self.one_h_linearisation),
           self.reparametrisation.jacobian_transpose_matching_grad_fc(),
           extinction_correction,
           objective_only,
