@@ -58,7 +58,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         &jacobian_transpose_matching_grad_fc,
       cctbx::xray::extinction_correction<FloatType> const &exti,
       bool objective_only=false,
-      bool may_parallelise_=false,
+      bool may_parallelise=false,
       bool use_openmp=false)
     :
       f_calc_(reflections.size()),
@@ -78,9 +78,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
       // Accumulate equations Fo(h) ~ Fc(h)
       SMTBX_ASSERT((!f_mask.size() || f_mask.size() == reflections.size()))
                   (f_mask.size())(reflections.size());
+
       reflections.update_prime_fraction();
-      
-      if (may_parallelise_) {
+      if (may_parallelise) {
         //!!
         scitbx::matrix::tensors::initialise<FloatType>();
 #if defined(_OPENMP)
@@ -100,7 +100,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
           if (job.exception_) {
             throw* job.exception_.get();
           }
-          normal_equations.finalise(objective_only);
+          if (!build_design_matrix) {
+            normal_equations.finalise(objective_only);
+          }
           return;
         }
 #endif 
@@ -125,13 +127,15 @@ namespace smtbx { namespace refinement { namespace least_squares {
           pool.create_thread(boost::ref(*accumulator));
         }
         pool.join_all();
-        for(int thread_idx=0; thread_idx<thread_count; thread_idx++) {
-          if (accumulators[thread_idx]->exception_) {
-            throw *accumulators[thread_idx]->exception_.get();
+        if (!build_design_matrix) {
+          for (int thread_idx = 0; thread_idx < thread_count; thread_idx++) {
+            if (accumulators[thread_idx]->exception_) {
+              throw* accumulators[thread_idx]->exception_.get();
+            }
+            normal_equations += accumulators[thread_idx]->normal_equations;
           }
-          normal_equations += accumulators[thread_idx]->normal_equations;
+          normal_equations.finalise(objective_only);
         }
-        normal_equations.finalise(objective_only);
       }
       else {
         Scheduler scheduler(reflections.size());
@@ -148,7 +152,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
         if (job.exception_) {
           throw *job.exception_.get();
         }
-        normal_equations.finalise(objective_only);
+        if (!build_design_matrix) {
+          normal_equations.finalise(objective_only);
+        }
       }
     }
 
@@ -297,8 +303,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
                   jacobian_transpose_matching_grad_fc * f_calc_function.get_grad_observable();
               }
               // sort out twinning
-              FloatType observable =
-                process_twinning(i_h, gradients);
+              FloatType observable = process_twinning(i_h, gradients);
               // extinction correction
               af::tiny<FloatType, 2> exti_k = exti.compute(h, observable, compute_grad);
               observable *= exti_k[0];
@@ -314,22 +319,19 @@ namespace smtbx { namespace refinement { namespace least_squares {
               }
               else {
                 if (exti.grad_value()) {
+                  FloatType exti_der = (exti_k[0] + pow(exti_k[0], 3)) / 2;
                   int grad_index = exti.get_grad_index();
                   SMTBX_ASSERT(!(grad_index < 0 || grad_index >= gradients.size()));
-                  gradients[grad_index] += exti_k[1];
+                  gradients[grad_index] += exti_k[1]* exti_der;
                 }
-                normal_equations.add_equation(observable,
-                  gradients.ref(), reflections.fo_sq(i_h), weight);
+                if (!build_design_matrix) {
+                  normal_equations.add_equation(observable,
+                    gradients.ref(), reflections.fo_sq(i_h), weight);
+                }
               }
               if (build_design_matrix) {
-                FloatType exti_der = (exti_k[0] + pow(exti_k[0], 3)) / 2;
                 for (int i_g = 0; i_g < gradients.size(); i_g++) {
                   design_matrix(i_h, i_g) = gradients[i_g];
-                  if (exti.grad_value()) {
-                    if (exti.get_grad_index() == i_g) {
-                      design_matrix(i_h, i_g) *= exti_der;
-                    }
-                  }
                 }
               }
             }
@@ -452,14 +454,14 @@ namespace smtbx { namespace refinement { namespace least_squares {
         &jacobian_transpose_matching_grad_fc,
         cctbx::xray::extinction_correction<FloatType> const &exti,
         bool objective_only = false,
-        bool may_parallelise_ = false,
+        bool may_parallelise = false,
         bool use_openmp = false)
       :
       build_design_matrix_and_normal_equations<FloatType, false>(
         normal_equations,
         reflections, f_mask, weighting_scheme, scale_factor, f_calc_function,
         jacobian_transpose_matching_grad_fc, exti,
-        objective_only, may_parallelise_, use_openmp)
+        objective_only, may_parallelise, use_openmp)
     {}
   };
 
@@ -493,14 +495,14 @@ namespace smtbx { namespace refinement { namespace least_squares {
         &jacobian_transpose_matching_grad_fc,
         cctbx::xray::extinction_correction<FloatType> const &exti,
         bool objective_only = false,
-        bool may_parallelise_ = false,
+        bool may_parallelise = false,
         bool use_openmp = false)
       :
       build_design_matrix_and_normal_equations<FloatType, true>(
         normal_equations,
         reflections, f_mask, weighting_scheme, scale_factor, f_calc_function,
         jacobian_transpose_matching_grad_fc, exti,
-        objective_only, may_parallelise_, use_openmp)
+        objective_only, may_parallelise, use_openmp)
     {}
 
     af::versa<FloatType, af::c_grid<2> > design_matrix() {
