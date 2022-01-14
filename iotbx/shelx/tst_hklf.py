@@ -140,7 +140,7 @@ def exercise_miller_export_as_shelx_hklf():
       else: raise Exception_expected
     else:
       try: ma2.export_as_shelx_hklf(sio)
-      except: raise Exception_not_expected
+      except RuntimeError: raise Exception_not_expected
 
   check(-12345678, 1, "-999999.    0.08")
   check(-12345678, None, "-999999.    0.00")
