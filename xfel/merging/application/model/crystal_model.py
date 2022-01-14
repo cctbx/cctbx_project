@@ -176,6 +176,7 @@ class crystal_model(worker):
       params2.mask.Fmask_res_high = 0
       params2.mask.grid_step_factor = 4
       params2.mask.solvent_radius = 1.11
+      params2.mask.use_resolution_based_gridding = True
     # ^^^
 
     # Build an array of the model intensities according to the input parameters

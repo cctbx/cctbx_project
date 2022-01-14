@@ -47,6 +47,7 @@ def run (params) :
   params2.mask.Fmask_res_high = 0
   params2.mask.grid_step_factor = 4
   params2.mask.solvent_radius = 1.11
+  params2.mask.use_resolution_based_gridding = True
   # ^^^
 
   f_model = mmtbx.utils.fmodel_from_xray_structure(
