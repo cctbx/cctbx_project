@@ -673,6 +673,9 @@ simulator {
     mtz_column = None
       .type = str
       .help = column in an MTZ file
+    pdb_name = None
+      .type = str
+      .help = path to a pdb or cif structure
     dmin = 1.5
       .type = float
       .help = minimum resolution for structure factor array

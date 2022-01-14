@@ -21,6 +21,7 @@ from dxtbx.imageset import MemReader
 from dxtbx.imageset import ImageSet, ImageSetData
 from dxtbx.model.experiment_list import ExperimentListFactory
 import libtbx
+import mmtbx.command_line.fmodel
 from libtbx.phil import parse
 from dials.array_family import flex as dials_flex
 
@@ -664,6 +665,7 @@ def simulator_from_expt_and_params(expt, params=None, oversample=0, device_id=0,
 
         mtz_name = params.simulator.structure_factors.mtz_name
         mtz_column = params.simulator.structure_factors.mtz_column
+        pdb_name = params.simulator.structure_factors.pdb_name
         default_F = params.simulator.structure_factors.default_F
         dmin = params.simulator.structure_factors.dmin
         dmax = params.simulator.structure_factors.dmax
@@ -707,12 +709,16 @@ def simulator_from_expt_and_params(expt, params=None, oversample=0, device_id=0,
     if params is not None:
         crystal.mos_angles_per_axis = params.simulator.crystal.mos_angles_per_axis
         crystal.num_mos_axes = params.simulator.crystal.num_mos_axes
-    if mtz_name is None:
+    if mtz_name is not None:
+        assert pdb_name is None
+        miller_data = open_mtz(mtz_name, mtz_column)
+    elif pdb_name is not None:
+        assert mtz_name is None
+        miller_data = open_pdb(pdb_name, d_min=dmin, d_max=dmax)
+    else:
         miller_data = make_miller_array(
             symbol=expt.crystal.get_space_group().info().type().lookup_symbol(),
             unit_cell=expt.crystal.get_unit_cell(), d_min=dmin, d_max=dmax)
-    else:
-        miller_data = open_mtz(mtz_name, mtz_column)
     if complex_F is not None:
         miller_data = complex_F
 
@@ -739,6 +745,44 @@ def simulator_from_expt_and_params(expt, params=None, oversample=0, device_id=0,
         #TODO phase this parameter out since its redundant?
         SIM.update_nanoBragg_instance("spot_scale", init_scale)
     return SIM
+
+def open_pdb(pdbfname, d_min=1.5, d_max=999):
+    model_ext = os.path.splitext(pdbfname)[-1].lower()
+    assert model_ext in [".pdb", ".cif"]
+    if model_ext == ".pdb":
+        from iotbx import file_reader
+        pdb_in = file_reader.any_file(pdbfname, force_type="pdb")
+        pdb_in.assert_file_type("pdb")
+        xray_structure = pdb_in.file_object.xray_structure_simple()
+    elif model_ext == ".cif":
+        from libtbx.utils import Sorry
+        try:
+            from cctbx.xray import structure
+            xs_dict = structure.from_cif(file_path=pdbfname)
+            assert len(xs_dict) == 1, "CIF should contain only one xray structure"
+            xray_structure = list(xs_dict.values())[0]
+        except Sorry:
+            inp = iotbx.pdb.input(pdbfname)
+            model = mmtbx.model.manager(model_input=inp)
+            xray_structure = model.get_xray_structure()
+    phil2 = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params
+    params2 = phil2.extract()
+    params2.high_resolution = d_min
+    params2.low_resolution = d_max
+    params2.output.type = "real"
+    # assume include bulk solvent, with the same defaults as xfel.merge
+    params2.fmodel.k_sol = 0.35
+    params2.fmodel.b_sol = 46
+
+    f_model = mmtbx.utils.fmodel_from_xray_structure(
+        xray_structure=xray_structure,
+        f_obs=None,
+        add_sigmas=True,
+        params=params2
+    ).f_model
+    f_model = f_model.generate_bijvoet_mates()
+    return f_model.as_amplitude_array()
+
 
 
 def open_mtz(mtzfname, mtzlabel=None, verbose=False):
