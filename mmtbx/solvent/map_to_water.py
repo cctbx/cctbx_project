@@ -110,6 +110,7 @@ def models_as_chains(model):
     model_input = None,
     pdb_hierarchy = r,
     crystal_symmetry = model.crystal_symmetry())
+  new_model.set_shift_cart(shift_cart = model.shift_cart())
   return new_model
 
 def remove_clashing(model, dist_min):
