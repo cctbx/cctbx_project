@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from iotbx.shelx import hklf
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import Exception_not_expected, approx_equal
 from libtbx.test_utils import Exception_expected, show_diff
 from six.moves import cStringIO as StringIO
 
@@ -125,7 +125,7 @@ def exercise_miller_export_as_shelx_hklf():
   assert ma2.anomalous_flag() is False
   #
   ma = ma.select(flex.size_t([0]))
-  def check(d, s, f):
+  def check(d, s, f, exception_expected=True):
     if (s is not None): s = flex.double([s])
     ma2 = ma.array(data=flex.double([d]), sigmas=s)
     sio = StringIO()
@@ -134,17 +134,25 @@ def exercise_miller_export_as_shelx_hklf():
    1   2  -1%s
    0   0   0    0.00    0.00
 """ % f)
-    try: ma2.export_as_shelx_hklf(sio)
-    except RuntimeError: pass
-    else: raise Exception_expected
+    if exception_expected:
+      try: ma2.export_as_shelx_hklf(sio)
+      except RuntimeError: pass
+      else: raise Exception_expected
+    else:
+      try: ma2.export_as_shelx_hklf(sio)
+      except: raise Exception_not_expected
+
   check(-12345678, 1, "-999999.    0.08")
   check(-12345678, None, "-999999.    0.00")
-  check(2, -12345678, "    0.16-999999.")
+  check(2, -12345678, "    0.16-999999.") # Should negative sigma be allowed?
   check(123456789, 30, "9999999.    2.43")
   check(123456789, None, "9999999.    0.00")
   check(40, 123456789, "    3.249999999.")
   check(-23456789, 123456789, "-999999.5263153.")
   check(123456789, -23456789, "5263153.-999999.")
+  # Numbers that would be formatted as integers should end with "."
+  check(-123456, 1,   "-123456.    1.00", exception_expected=False)
+  check(1234567, 10, "1234567.   10.00", exception_expected=False)
   #
   ma = hklf.reader(file_object=StringIO(s)).as_miller_arrays()[0]
   ma = ma.select(flex.size_t([0,1]))
