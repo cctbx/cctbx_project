@@ -1946,6 +1946,16 @@ def exercise_flex_vec2_double():
   assert approx_equal(tuple(a.dot(a)), (17,29,45))
   assert approx_equal(tuple(a.dot()), (17,29,45))
   b = flex.vec2_double(y,x)
+  assert approx_equal(a.each_normalize().dot(), [1]*3)
+  zoz = flex.vec2_double([(0,0),(0,1),(1,0)])
+  try:
+    zoz.each_normalize()
+  except RuntimeError as e:
+    assert str(e) == "flex.vec2_double.each_normalize():" \
+      " number of vectors with length zero: 1 of 3"
+  else: raise Exception_expected
+  assert approx_equal(
+    zoz.each_normalize(raise_if_length_zero=False).dot(), [0,1,1])
   assert approx_equal(
     a.max_distance(b)**2,
     max(flex.vec2_double(a.as_double()-b.as_double()).dot()))
@@ -1997,6 +2007,12 @@ def exercise_flex_vec2_double():
     for j in range(len(x2)):
       pydist = math.sqrt( (x[i]-x2[j])**2 + (y[i]-y2[j])**2 )
       assert approx_equal(pydist, DIST[i,j])
+
+  #
+  a = flex.vec2_double([(1,2), (-2,3), (3,4)])
+  assert approx_equal(a, a.rotate_around_origin(2*math.pi))
+  assert approx_equal(
+    a, a.rotate_around_origin(flex.double(3, 2*math.pi)))
 
 def exercise_flex_vec3_int():
   flex.exercise_triple(flex.vec3_int)
