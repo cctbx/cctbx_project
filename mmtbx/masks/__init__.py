@@ -26,6 +26,9 @@ mask_master_params = iotbx.phil.parse("""\
     .type = float
   shrink_truncation_radius = 0.9
     .type = float
+  use_resolution_based_gridding = False
+    .type = bool
+    .help = If enabled, mask grid step = d_min / grid_step_factor
   step = 0.6
     .type = float
     .help = Grid step (in A) for solvent mask calculation
@@ -329,6 +332,10 @@ class manager(object):
     else: return True
 
   def compute_f_mask(self):
+    d_min = None
+    if(self.mask_params.use_resolution_based_gridding):
+      d_min = self.miller_array.d_min()
+      assert self.mask_params.grid_step_factor is not None
     if(not self.mask_params.use_asu_masks):
       assert self.mask_params.n_radial_shells <= 1
       mask_obj = self.bulk_solvent_mask()
@@ -342,6 +349,7 @@ class manager(object):
     else:
       asu_mask_obj = asu_mask(
         xray_structure = self.xray_structure,
+        d_min          = d_min,
         mask_params    = self.mask_params).asu_mask
       self._f_mask = self._compute_f(mask_obj=asu_mask_obj,
         ma=self.miller_array, sel=self.sel_Fmask_res)
