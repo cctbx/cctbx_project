@@ -10,6 +10,7 @@
 #include <boost/python/make_constructor.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_arg.hpp>
+#include <boost/format.hpp>
 #include "flex_helpers.h"
 
 namespace scitbx { namespace serialization { namespace single_buffered {
@@ -86,6 +87,36 @@ namespace {
       d += 2;
     }
     return new flex<vec2<double> >::type(result, result.size());
+  }
+
+  af::shared<vec2<double> >
+  rotate_around_origin(
+    flex<vec2<double> >::type const& a,
+    double const& angle)
+  {
+    double c = std::cos(angle);
+    double s = std::sin(angle);
+    mat2<double> R_theta (c, -s, s, c);
+    af::shared<vec2<double> > result((af::reserve(a.size())));
+    for(std::size_t i=0;i<a.size();i++) {
+      result.push_back(R_theta * a[i]);
+    }
+    return result;
+  }
+
+  af::shared<vec2<double> >
+  rotate_around_origin(
+    flex<vec2<double> >::type const& a,
+    flex<double>::type const& angles)
+  {
+    af::shared<vec2<double> > result((af::reserve(a.size())));
+    for(std::size_t i=0;i<a.size();i++) {
+      double c = std::cos(angles[i]);
+      double s = std::sin(angles[i]);
+      mat2<double> R_theta (c, -s, s, c);
+      result.push_back(R_theta * a[i]);
+    }
+    return result;
   }
 
   flex<vec2<double> >::type*
@@ -256,6 +287,28 @@ namespace {
     return std::sqrt(sum_sq_(self));
   }
 
+  af::shared<vec2<double> >
+  each_normalize(
+    af::const_ref<vec2<double> > const& a,
+    bool raise_if_length_zero=true)
+  {
+    af::shared<vec2<double> > result(a.begin(), a.end());
+    vec2<double>* r = result.begin();
+    std::size_t n_zero = 0;
+    for(std::size_t i=0;i<a.size();i++) {
+      double length = r[i].length();
+      if (length == 0) n_zero++;
+      else r[i] *= (1 / length);
+    }
+    if (n_zero != 0 && raise_if_length_zero) {
+      throw std::runtime_error((boost::format(
+        "flex.vec2_double.each_normalize():"
+        " number of vectors with length zero: %lu of %lu")
+          % n_zero % a.size()).str());
+    }
+    return result;
+  }
+
   double
   min_distance_between_any_pair(
     af::const_ref<vec2<double> > const& lhs,
@@ -390,6 +443,16 @@ namespace boost_python {
       .def("__init__", make_constructor(join))
       .def("__init__", make_constructor(from_double))
       .def("__init__", make_constructor(array_indices_as_double_from_array_focus_dimensions))
+      .def("rotate_around_origin",
+        (af::shared<vec2<double> >(*)(
+          flex<vec2<double> >::type const&,
+          double const&)) rotate_around_origin, (arg("angle")),
+          "rotate vec2s around origin through counterclockwise angle given in radians")
+      .def("rotate_around_origin",
+        (af::shared<vec2<double> >(*)(
+          flex<vec2<double> >::type const&,
+          flex<double>::type const&)) rotate_around_origin, (arg("angles")),
+          "rotate vec2s around origin through counterclockwise angles given in radians")
       .def("as_double", as_double)
       .def("add_selected",
         (object(*)(
@@ -424,6 +487,8 @@ namespace boost_python {
           af::const_ref<vec2<double> > const&)) matrix::transpose_multiply)
       .def("sum_sq", sum_sq_)
       .def("norm", norm_)
+      .def("each_normalize", each_normalize, (
+        arg("raise_if_length_zero")=true),"return rescaled vec2s each of unit length")
       .def("min_distance_between_any_pair", min_distance_between_any_pair)
       .def("min_distance_between_any_pair_with_id",
            min_distance_between_any_pair_with_id)
