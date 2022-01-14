@@ -260,6 +260,8 @@ function RemoveStageObjects()
   shapebufs = [];
   br_shapebufs = [];
   shapeComp = null;
+  // delete shape to ensure shape.boundingbox will equal viewer.boundingbox of the currently loaded reflections
+  shape = null;
   vectorshape = null;
   repr = null;
   nbins = 0;
@@ -364,7 +366,7 @@ function DeletePrimitives(reprname)
   let thisrepr = stage.getRepresentationsByName(reprname);
   let wasremoved = false;
   for (let i = 0; i < stage.compList.length; i++)
-    if (stage.compList[i].reprList[0].name == reprname) {
+    if (stage.compList[i].reprList.length > 0 && stage.compList[i].reprList[0].name == reprname) {
       let thiscomp = stage.compList[i];
       thiscomp.removeRepresentation(thisrepr);
       stage.removeComponent(thiscomp);
@@ -656,6 +658,7 @@ function onMessage(e)
           Object.assign(br_ttips[bin][rotmxidx], ttips[bin]); // deep copy the ttips[bin] object
           br_ttips[bin][rotmxidx].ids = ttips[bin].ids.slice(0); // deep copy the ttips[bin].ids object
           br_ttips[bin][rotmxidx].ids[0] = rotmxidx; // id number of rotation. Used by PickingProxyfunc
+          br_ttips[bin][rotmxidx].cartpos = ttips[bin].cartpos.slice(0); // deep copy the ttips[bin].cartpos object
           br_positions[bin][rotmxidx] = new Float32Array( csize );
           nexpandrefls += csize;
 
@@ -672,12 +675,15 @@ function onMessage(e)
             br_positions[bin][rotmxidx][idx + 1] = r.y;
             br_positions[bin][rotmxidx][idx + 2] = r.z;
 
+            br_ttips[bin][rotmxidx].cartpos[i] = [r.x,r.y,r.z];
+
             if (anoexp)
             {
               r.negate(); // inversion for anomalous pair
               br_positions[bin][rotmxidx][nsize3 + idx] = r.x;
               br_positions[bin][rotmxidx][nsize3 + idx + 1] = r.y;
               br_positions[bin][rotmxidx][nsize3 + idx + 2] = r.z;
+              br_ttips[bin][rotmxidx].cartpos[nsize + i] = [r.x, r.y, r.z];
             }
           }
 
@@ -689,8 +695,6 @@ function onMessage(e)
               picking: br_ttips[bin][rotmxidx],
               } );
           shape.addBuffer(br_shapebufs[bin][rotmxidx]);
-          //WebsockSendMsg( 'Memory usage: ' + String(window.performance.memory.totalJSHeapSize) +
-          //        ', ' + String(window.performance.memory.totalJSHeapSize) );
         }
         if (nexpandrefls == nsize*3)
           expstate = "";
@@ -701,7 +705,9 @@ function onMessage(e)
         if (nexpandrefls == nsize*6*nrots && nrots > 1)
           expstate = "isP1FriedelExpanded";
       }
+      shapeComp = stage.addComponentFromObject(shape);
       MakeHKL_Axis();
+      repr = shapeComp.addRepresentation('buffer');
 
       for (let bin=0; bin<nbins; bin++)
       {
@@ -1153,9 +1159,10 @@ function onMessage(e)
 
     if (msgtype ==="RenderStageObjects")
     {
-      //HKLscene();
+      shapeComp = stage.addComponentFromObject(shape);
       MakeHKL_Axis();
       MakeXYZ_Axis();
+      repr = shapeComp.addRepresentation('buffer');
       RenderRequest();
       WebsockSendMsg('Drawing new reflections');
     }
@@ -1358,6 +1365,9 @@ function DefineHKL_Axes(hstart, hend, kstart, kend,
 
 function MakeHKL_Axis()
 {
+  if (Hstarstart == null || Hstarend == null || Kstarstart == null || Kstarend == null
+    || Lstarstart == null || Lstarend == null)
+    return;
   //blue-x
   shape.addArrow( Hstarstart, Hstarend , [ 0, 0, 1 ], 0.1);
   //green-y
@@ -1385,12 +1395,10 @@ function MakeHKL_Axis()
   Lelm.style.backgroundColor = "rgba(255, 0, 0, " + div_annotation_opacity + ")";
   Lelm.style.fontSize = fontsize.toString() + "pt";
   Lelm.style.padding = "4px"
-
-  shapeComp = stage.addComponentFromObject(shape);
-  shapeComp.addAnnotation(Hlabelvec, Helm);
-  shapeComp.addAnnotation(Klabelvec, Kelm);
-  shapeComp.addAnnotation(Llabelvec, Lelm);
-  repr = shapeComp.addRepresentation('buffer');
+  
+  stage.compList[0].addAnnotation(Hlabelvec, Helm);
+  stage.compList[0].addAnnotation(Klabelvec, Kelm);
+  stage.compList[0].addAnnotation(Llabelvec, Lelm);
 };
 
 
@@ -1438,11 +1446,12 @@ function PickingProxyfunc(pickingProxy, eventstr) {
     let cp = pickingProxy.canvasPosition;
     let sym_id = -1;
     let hkl_id = -1;
+    let ids = [];
     let ttipid = "";
     let is_friedel_mate = 0;
     if (pickingProxy.picker["ids"].length > 0) { // get stored id number of rotation applied to this hkl
       sym_id = pickingProxy.picker["ids"][0]; // id of rotation stored when expanding to P1
-      let ids = pickingProxy.picker["ids"].slice(1); // ids of reflection
+      ids = pickingProxy.picker["ids"].slice(1); // ids of reflection
       hkl_id = ids[pickingProxy.pid % ids.length]; // id of reflection if it's not a friedel mate
       if (pickingProxy.pid >= ids.length)
         is_friedel_mate = 1;
@@ -1466,7 +1475,13 @@ function PickingProxyfunc(pickingProxy, eventstr) {
       && current_ttip !== ""
       && current_ttip_ids == ttipid) // received in onMessage() ShowThisTooltip
     {
-      tooltip.innerText = current_ttip;
+      if (isdebug)
+        if (is_friedel_mate == 1)
+          tooltip.innerText = current_ttip + "\nx,y,z: " + String(pickingProxy.picker["cartpos"][hkl_id + ids.length]);
+        else
+          tooltip.innerText = current_ttip + "\nx,y,z: " + String(pickingProxy.picker["cartpos"][hkl_id]);
+      else
+        tooltip.innerText = current_ttip;
       tooltip.style.bottom = cp.y + 7 + "px";
       tooltip.style.left = cp.x + 8 + "px";
       tooltip.style.fontSize = fontsize.toString() + "pt";
@@ -1611,7 +1626,11 @@ function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids)
   // Prepend this list with -1. This value will be reassigned with an id nummber of 
   // a rotation operator when expanding to P1. PickingProxyfunc() will send back to cctbx.python the 
   // id number of the rotation operator and number in ttiplst matching the reflection that was clicked.
-  ttips.push( { ids: ttiplst,
+  let posarray = new Array(radiiarray.length);
+  for (let i = 0; i < posarray.length; i++)
+    posarray[i] = coordarray.slice(3 * i, 3 * i + 3);
+
+  ttips.push( { ids: ttiplst, cartpos: posarray,
        getPosition: function() { return { x:0, y:0 }; } // dummy function to avoid crash
   }  );
   positions.push( new Float32Array( coordarray ) );
@@ -1625,7 +1644,11 @@ function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids)
     picking: ttips[curridx],
     })
   );
+  if (shape == null)
+    shape = new NGL.Shape('shape');
   shape.addBuffer(shapebufs[curridx]);
+  //shapeComp = stage.addComponentFromObject(shape);
+  //shapeComp.addRepresentation('buffer');
   alphas.push(1.0);
   nbins = nbins + 1;
 }
@@ -1757,13 +1780,11 @@ function MakeXYZ_Axis() {
 
 function HKLscene()
 {
-  shape = new NGL.Shape('shape');
   stage = new NGL.Stage('viewport', {  backgroundColor: "rgb(128, 128, 128)",
                                     tooltip:false, // create our own tooltip from a div element
                                     fogNear: 100, fogFar: 100 });
 
   stage.setParameters( { cameraType: camtype } );
-
 // create tooltip element and add to the viewer canvas
   stage.viewer.container.appendChild(tooltip);
   // Always listen to click event as to display any symmetry hkls
@@ -1870,10 +1891,7 @@ function HKLscene()
     stage.viewerControls.orient(m4);
   }
 
-  shapeComp = stage.addComponentFromObject(shape);
-  repr = shapeComp.addRepresentation('buffer');
   SetDefaultOrientation();
-  repr.update();
 
   if (isdebug)
     stage.viewer.container.appendChild(debugmessage);

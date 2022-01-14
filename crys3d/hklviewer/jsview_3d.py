@@ -571,7 +571,9 @@ class hklview_3d:
 
   def GetTooltipOnTheFly(self, id, sym_id, anomalous=False):
     rothkl, hkl = self.get_rothkl_from_IDs(id, sym_id, anomalous)
-    spbufttip = '\'H,K,L: %d, %d, %d' %(rothkl[0], rothkl[1], rothkl[2])
+    spbufttip = '\'HKL: [%d, %d, %d]' %(rothkl[0], rothkl[1], rothkl[2])
+    if rothkl != hkl: # then show the original hkl before P1 or anomalous expansion
+      spbufttip += ', HKL(asu): [%d, %d, %d]' %(hkl[0], hkl[1], hkl[2])
     # resolution and Angstrom character for javascript
     spbufttip += '\\ndres: %s \'+ String.fromCharCode(197) +\'' \
       %str(roundoff(self.miller_array.unit_cell().d(hkl), 2) )
@@ -1808,7 +1810,7 @@ Distance: %s
 
 
   def draw_cartesian_vector(self, s1, s2, s3, t1, t2, t3, label="", r=0, g=0, b=0, name="", radius = 0.15, labelpos=0.8):
-    self.mprint("cartesian vector is: %s to %s" %(str(roundoff([s1, s2, s3])), str(roundoff([t1, t2, t3]))), verbose=2)
+    self.mprint("cartesian vector is: %s to %s" %(str(roundoff([s1, s2, s3])), str(roundoff([t1, t2, t3]))), verbose=1)
     self.AddToBrowserMsgQueue("DrawVector", "%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s" \
          %(s1, s2, s3, t1, t2, t3, r, g, b, label, name, radius, labelpos) )
     if name=="":
@@ -1984,18 +1986,20 @@ in the space group %s\nwith unit cell %s\n""" \
                            r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
 
 
-  def show_hkl(self):
+  def show_hkl(self, bigwireframe=True):
     """
     Draw a wireframe sphere around a reflection selected with a double click in
     the millerarraytable in the GUI
     """
-    maxrad = self.HKLscene_from_dict(self.radii_scene_id).max_radius
+    rad = self.HKLscene_from_dict(self.radii_scene_id).max_radius*1.5
+    if not bigwireframe:
+      rad = self.HKLscene_from_dict(self.radii_scene_id).min_radius*0.9
     self.RemovePrimitives("highlight_HKL")
     if self.viewerparams.show_hkl != "deselect":
       hkl = eval(self.viewerparams.show_hkl)
       if self.sg.info().symbol_and_number() == self.miller_array.space_group().info().symbol_and_number():
         self.draw_sphere(hkl[0],hkl[1],hkl[2], isreciprocal=True, name="highlight_HKL",
-                          r=1, g=0.0, b=0.0, radius= maxrad*1.5, mesh=True)
+                          r=1, g=0.0, b=0.0, radius= rad, mesh=True)
       else:
         self.mprint("Cannot currently associate reflection in original space group with reflection in different space group.")
     self.viewerparams.show_hkl = "" # to allow clicking on the same entry in the millerarraytable
