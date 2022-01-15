@@ -71,11 +71,16 @@ _lastTime = None
 def _ReportTiming(message):
   """Use None message to start the timer without printing.
   """
+  try:
+    tc = time.clock()
+  except Exception as e: # python 3.8
+    tc = time.process_time()
+
   global _lastTime
   if message is None:
-    _lastTime = time.clock()
+    _lastTime = tc
     return
-  curTime = time.clock()
+  curTime = tc
   diff = curTime - _lastTime
   _lastTime = curTime
   return _VerboseCheck(2,"Time to {}: {:0.3f}".format(message,diff)+"\n")
