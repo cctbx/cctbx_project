@@ -125,13 +125,14 @@ def molprobity_score(clashscore, rota_out, rama_fav):
     http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2877634/?tool=pubmed
     http://kinemage.biochem.duke.edu/suppinfo/CASP8/methods.html
   """
-  if (clashscore >= 0) and (rota_out >= 0) and (rama_fav >= 0):
+  if clashscore is not None and rota_out is not None and rama_fav is not None \
+       and (clashscore >= 0) and (rota_out >= 0) and (rama_fav >= 0):
     rama_iffy = 100. - rama_fav
     mpscore = (( 0.426 * math.log(1 + clashscore) ) +
              ( 0.33 * math.log(1 + max(0, rota_out - 1)) ) +
              ( 0.25 * math.log(1 + max(0, rama_iffy - 2)) )) + 0.5
   else :
-    return -1 # FIXME prevents crashing on RNA
+    return -1 # FIXME prevents crashing on RNA and None in inputs
   return mpscore
 
 def use_segids_in_place_of_chainids(hierarchy, strict=False):
