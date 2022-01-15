@@ -2109,6 +2109,9 @@ in the space group %s\nwith unit cell %s\n""" \
                                                                     cartvec[0],
                                                                     cartvec[1],
                                                                     cartvec[2])
+    cartveclength = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+    self.mprint( "cartveclength= %s" %roundoff(cartveclength), verbose=1)
+
     if self.viewerparams.is_parallel:
       self.PointVectorParallelToScreen(angle_x_xyvec, angle_z_svec)
     else:

@@ -1543,7 +1543,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     vprec = 2
     self.hkldistval = 0.0
     self.hkldist_spinBox.setValue(self.hkldistval)
-    self.hkldist_spinBox.setDecimals(vprec)
+    self.hkldist_spinBox.setDecimals(4)
     self.hkldist_spinBox.setSingleStep(0.5)
     self.hkldist_spinBox.setRange(-100.0, 100.0)
     self.hkldist_spinBox.valueChanged.connect(self.onHKLdistChanged)
