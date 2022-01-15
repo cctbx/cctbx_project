@@ -967,9 +967,9 @@ class dataset_statistics(object):
     last_bin = None
     for bin in self.bins:
       if (
-        ((min_i_over_sigma is not None) and 
+        ((min_i_over_sigma is not None) and
          (bin.i_over_sigma_mean < min_i_over_sigma)) or
-        ((min_cc_one_half is not None) and 
+        ((min_cc_one_half is not None) and
          (bin.cc_one_half < min_cc_one_half)) or
         (
           max_r_merge is not None and
@@ -977,7 +977,7 @@ class dataset_statistics(object):
           bin.r_merge > max_r_merge
         ) or
         (
-          max_r_meas is not None and 
+          max_r_meas is not None and
           bin.r_meas is not None and bin.r_meas > max_r_meas
         ) or
         (min_cc_anom is not None and bin.cc_anom < min_cc_anom) or
