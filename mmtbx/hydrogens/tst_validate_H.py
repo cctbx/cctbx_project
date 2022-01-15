@@ -910,7 +910,7 @@ def exercise4():
   for item, answer in zip(missing, missing_answer):
     assert (item[0].strip() == answer[0].strip())
     assert (item[2] is not None) # make sure xyz exist
-    for atom, aatom in zip(item[1], answer[1]):
+    for atom, aatom in zip(sorted(item[1]), sorted(answer[1])):
       assert (atom.strip() == aatom.strip())
 
   test_output(results)
@@ -931,7 +931,7 @@ def exercise5():
   for item, answer in zip(missing, missing_answer):
     assert (item[0].strip() == answer[0].strip())
     assert (item[2] is not None) # make sure xyz exist
-    for atom, aatom in zip(item[1], answer[1]):
+    for atom, aatom in zip(sorted(item[1]), sorted(answer[1])):
       assert (atom.strip() == aatom.strip())
 
   test_output(results)
@@ -951,11 +951,14 @@ def exercise6():
     pdb_str = pdb_str6)
   missing = results.missing_HD_atoms
 
-  missing_answer = [('pdbres="TYR A 139 "', ['HE1', 'H', 'HD2', 'HB3'])]
+  #missing_answer = [('pdbres="TYR A 139 "', ['HE1', 'H', 'HD2', 'HB3'])]
+  # XXX HB3 was never compared because missing only had 3 items. Removed it
+  #  for compatibility with python 3.8
+  missing_answer = [('pdbres="TYR A 139 "', ['HE1', 'H', 'HD2'])]
   for item, answer in zip(missing, missing_answer):
     assert (item[0].strip() == answer[0].strip())
     assert (item[2] is not None) # make sure xyz exist
-    for atom, aatom in zip(item[1], answer[1]):
+    for atom, aatom in zip(sorted(item[1]), sorted(answer[1])):
       assert (atom.strip() == aatom.strip())
       assert (atom.strip() != 'CG')
 
