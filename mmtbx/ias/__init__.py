@@ -583,11 +583,11 @@ class find_peak_at_bond(object):
                                           peak_sel[1], peak_sel[2], peak_sel[0]
         assert i_seq_right > max_peak_i_seq
         assert i_seq_left < max_peak_i_seq
+        if(i_seq_left < 0): i_seq_left=0
+        if(i_seq_right > len(self.data)-1): i_seq_right=len(self.data)-1
+        if(i_seq_left >= i_seq_right):
+          i_seq_left, i_seq_right, max_peak_i_seq = None, None, None
       else:
-        i_seq_left, i_seq_right, max_peak_i_seq = None, None, None
-      if(i_seq_left < 0): i_seq_left=0
-      if(i_seq_right > len(self.data)-1): i_seq_right=len(self.data)-1
-      if(i_seq_left >= i_seq_right):
         i_seq_left, i_seq_right, max_peak_i_seq = None, None, None
     return i_seq_left, i_seq_right, max_peak_i_seq
 
