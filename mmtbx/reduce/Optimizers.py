@@ -75,7 +75,7 @@ def _ReportTiming(message):
 
   global _lastTime
   if message is None:
-    _lastTime = work_clock() 
+    _lastTime = work_clock()
     return
   curTime = work_clock()
   diff = curTime - _lastTime
