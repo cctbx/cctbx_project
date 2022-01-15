@@ -28,6 +28,7 @@ from iotbx import pdb
 from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
+from libtbx.development.timers import work_clock
 
 version = "0.2.0"
 
@@ -161,33 +162,33 @@ NOTES:
     if self.params.approach == 'add':
       # Add Hydrogens to the model
       make_sub_header('Adding Hydrogens', out=self.logger)
-      startAdd = time.clock()
+      startAdd = work_clock()
       reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
         model = self.model,
         n_terminal_charge=self.params.n_terminal_charge
       )
       reduce_add_h_obj.run()
       model = reduce_add_h_obj.get_model()
-      doneAdd = time.clock()
+      doneAdd = work_clock()
 
       # Interpret the model after shifting and adding Hydrogens to it so that
       # all of the needed fields are filled in when we use them below.
       # @todo Remove this once place_hydrogens() does all the interpretation we need.
       make_sub_header('Interpreting Hydrogenated Model', out=self.logger)
-      startInt = time.clock()
+      startInt = work_clock()
       p = mmtbx.model.manager.get_default_pdb_interpretation_params()
       p.pdb_interpretation.allow_polymer_cross_special_position=True
       p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
       p.pdb_interpretation.proceed_with_excessive_length_bonds=True
       model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
-      doneInt = time.clock()
+      doneInt = work_clock()
 
       make_sub_header('Optimizing', out=self.logger)
-      startOpt = time.clock()
+      startOpt = work_clock()
       Optimizers.probePhil = self.params.probe
       opt = Optimizers.FastOptimizer(self.params.add_flip_movers, model, probeRadius=0.25,
         altID=self.params.alt_id, preferenceMagnitude=self.params.preference_magnitude)
-      doneOpt = time.clock()
+      doneOpt = work_clock()
       outString += opt.getInfo()
       outString += 'Time to Add Hydrogen = '+str(doneAdd-startAdd)+'\n'
       outString += 'Time to Interpret = '+str(doneInt-startInt)+'\n'

@@ -71,16 +71,13 @@ _lastTime = None
 def _ReportTiming(message):
   """Use None message to start the timer without printing.
   """
-  try:
-    tc = time.clock()
-  except Exception as e: # python 3.8
-    tc = time.process_time()
+  from libtbx.development.timers import work_clock
 
   global _lastTime
   if message is None:
-    _lastTime = tc
+    _lastTime = work_clock() 
     return
-  curTime = tc
+  curTime = work_clock()
   diff = curTime - _lastTime
   _lastTime = curTime
   return _VerboseCheck(2,"Time to {}: {:0.3f}".format(message,diff)+"\n")

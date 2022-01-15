@@ -1274,13 +1274,14 @@ class MaxWallClock(object):
   """
 
   def __init__(self, seconds):
-
-    self.maxtime = time.clock() + seconds
+    from libtbx.development.timers import work_clock
+    self.maxtime = work_clock() + seconds
 
 
   def is_alive(self):
 
-    return time.clock() < self.maxtime
+    from libtbx.development.timers import work_clock
+    return work_clock() < self.maxtime
 
 
   def job_start(self):

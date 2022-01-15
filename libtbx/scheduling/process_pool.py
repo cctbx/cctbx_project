@@ -228,13 +228,13 @@ class wallclock_limit(object):
   """
 
   def __init__(self, seconds):
-
-    self.maxtime = time.clock() + seconds
+    from libtbx.development.timers import work_clock
+    self.maxtime = work_clock() + seconds
 
 
   def active(self):
-
-    return time.clock() < self.maxtime
+    from libtbx.development.timers import work_clock
+    return work_clock() < self.maxtime
 
 
   def record_job_start(self):
