@@ -961,24 +961,27 @@ class dataset_statistics(object):
           min_completeness].count(None) == 6):
       return None
 
-    if (min_completeness > 1):
+    if (min_completeness is not None and min_completeness > 1):
       min_completeness /= 100.
 
     last_bin = None
     for bin in self.bins:
       if (
-        bin.i_over_sigma_mean < min_i_over_sigma or
-        bin.cc_one_half < min_cc_one_half or
+        ((min_i_over_sigma is not None) and 
+         (bin.i_over_sigma_mean < min_i_over_sigma)) or
+        ((min_cc_one_half is not None) and 
+         (bin.cc_one_half < min_cc_one_half)) or
         (
           max_r_merge is not None and
           bin.r_merge is not None and
           bin.r_merge > max_r_merge
         ) or
         (
-          max_r_meas is not None and bin.r_meas is not None and bin.r_meas > max_r_meas
+          max_r_meas is not None and 
+          bin.r_meas is not None and bin.r_meas > max_r_meas
         ) or
-        bin.cc_anom < min_cc_anom or
-        bin.completeness < min_completeness
+        (min_cc_anom is not None and bin.cc_anom < min_cc_anom) or
+        (min_completeness is not None and bin.completeness < min_completeness)
       ):
         break
       last_bin = bin
