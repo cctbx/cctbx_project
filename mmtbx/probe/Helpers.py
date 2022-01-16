@@ -855,7 +855,8 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
       e = extras.getMappingFor(a)
       for c in checks:
         if a.name.strip() == c[0]:
-          assert math.isclose(e.vdwRadius, c[1]), ("Helpers.Test(): Bad radius for "+a.name+": "
+          if hasattr(math, 'isclose'):
+            assert math.isclose(e.vdwRadius, c[1]), ("Helpers.Test(): Bad radius for "+a.name+": "
             +str(e.vdwRadius)+" (expected "+str(c[1])+")"+runType)
           assert e.isAcceptor == c[2], "Helpers.Test(): Bad Acceptor status for "+a.name+": "+str(e.isAcceptor)+runType
           assert e.isDonor == c[3], "Helpers.Test(): Bad Donor status for "+a.name+": "+str(e.isDonor)+runType
@@ -958,8 +959,9 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
               dot = ( h.xyz[0] * a.xyz[0] +
                       h.xyz[1] * a.xyz[1] +
                       h.xyz[2] * a.xyz[2] )
-              if math.isclose(hLen*aLen, dot):
-                numMatch += 1
+              if hasattr(math, 'isclose'):
+                if math.isclose(hLen*aLen, dot):
+                  numMatch += 1
           assert numMatch == len(ret), "Helpers.Test(): Direction of Phantom Hydrogen placement incorrect: "+str(numMatch)
 
   except Exception as e:
@@ -1122,11 +1124,13 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   # Run unit tests on rvec3 and lvec3.
   v1 = rvec3([0, 0, 0])
   v2 = rvec3([1, 0, 0])
-  assert math.isclose((v2-v1).length(), 1), "Helpers.Test(): rvec3 test failed"
+  if hasattr(math, 'isclose'):
+    assert math.isclose((v2-v1).length(), 1), "Helpers.Test(): rvec3 test failed"
 
   v1 = lvec3([0, 0, 0])
   v2 = lvec3([1, 0, 0])
-  assert math.isclose((v2-v1).length(), 1), "Helpers.Test(): lvec3 test failed"
+  if hasattr(math, 'isclose'):
+    assert math.isclose((v2-v1).length(), 1), "Helpers.Test(): lvec3 test failed"
 
 if __name__ == '__main__':
 

@@ -598,7 +598,7 @@ def tst_TLSAmplitudes():
     assert approx_equal(chg_a_vals[selection], new_vals, AMP_RND_TOL) # Check that values are set correctly
     a_chg = a.copy()
     assert approx_equal(a_chg.values, a_vals, AMP_RND_TOL)
-    a_chg.set(new_vals, selection)
+    a_chg.set(new_vals, list(selection.astype(numpy.uint)))
     assert approx_equal(a_chg.values, chg_a_vals, AMP_RND_TOL)
 
     # Test reset and n_params
@@ -766,16 +766,17 @@ def tst_TLSAmplitudes_fails():
   # Mismatching size
   for n in range(1,a.size()):
     with raises(Exception) as e:
-      a.set(rran(n-1), iran(a.size(), size=n, replace=False))
+      a.set(rran(n-1), iran(a.size(), size=n, replace=False).astype(numpy.uint))
     assert "Input values must be the same length as input selection" == str(e.value)
     with raises(Exception) as e:
-      a.set(rran(n+1), iran(a.size(), size=n, replace=False))
+      a.set(rran(n+1), iran(a.size(), size=n, replace=False).astype(numpy.uint))
     assert "Input values must be the same length as input selection" == str(e.value)
   # Negative indices
-  with raises(Exception) as e:
+  with raises(OverflowError) as e:
     a.set([1], [-1])
   assert ("can't convert negative value to unsigned" == str(e.value) or
-          "negative overflow" in str(e.value))
+          "negative overflow" in str(e.value) or
+          "can't convert negative value to unsigned" in str(e.value))
 
   # Negative/zero-value target values!
   msg = "target must be positive"
@@ -1072,13 +1073,13 @@ def tst_TLSMatricesAndAmplitudes_fails():
     # Selection too short
     sel = iran(n_dst, size=l, replace=False)
     with raises(Exception) as e:
-      ma.uijs(new_sites, new_origins, sel)
+      ma.uijs(new_sites, new_origins, sel.astype(numpy.uint))
     assert msg == str(e.value)
   # Invalid selection
   sel = iran(n_dst, size=t_n_dst, replace=False)
   sel[-1] = n_dst # larger than allowed
   with raises(Exception) as e:
-    ma.uijs(new_sites, new_origins, sel)
+    ma.uijs(new_sites, new_origins, sel.astype(numpy.uint))
   assert "Selection indices out of range of TLSAmplitudes" == str(e.value)
 
   print('OK')
@@ -1269,7 +1270,7 @@ def tst_TLSMatricesAndAmplitudesList():
 
       # Zero selection of amplitudes
       sel = iran(length, size=max(1,length-1), replace=False)
-      mal.zero_amplitudes(sel)
+      mal.zero_amplitudes(sel.astype(numpy.uint))
       if length == 1:
         assert mal.is_null()
       else:
@@ -1342,7 +1343,7 @@ def tst_TLSMatricesAndAmplitudesList():
       isel = iran(length)
       asel = iran(n_dst, max(1,n_dst-1), replace=False)
       ma = mal.get(isel)
-      ma.amplitudes.set(-rran(len(asel)), asel)
+      ma.amplitudes.set(-rran(len(asel)), asel.astype(numpy.uint))
       prev_v = ma.amplitudes.values
       for i, v in enumerate(prev_v):
         if i in asel:
@@ -1416,11 +1417,11 @@ def tst_TLSMatricesAndAmplitudesList():
   sites = flex.vec3_double(rran(n_tmp*n_atm*3).reshape(n_tmp*n_atm, 3).tolist())
   sites.reshape(flex.grid(n_tmp,n_atm))
   origins = rran(n_tmp*3).reshape(n_tmp,3)
-  all_uijs = mal.uijs(sites, origins, sel)
+  all_uijs = mal.uijs(sites, origins, sel.astype(numpy.uint))
   sum_uijs = flex.sym_mat3_double(flex.grid((n_tmp, n_atm)))
   assert all_uijs.all() == sum_uijs.all()
   for i, ma in enumerate(mal):
-    new_uijs = ma.uijs(sites, origins, sel)
+    new_uijs = ma.uijs(sites, origins, sel.astype(numpy.uint))
     assert new_uijs.all() == (n_tmp, n_atm)
     sum_uijs = sum_uijs + new_uijs
   assert approx_equal(numpy.array(all_uijs).flatten(), numpy.array(sum_uijs).flatten())
@@ -1532,13 +1533,13 @@ def tst_TLSMatricesAndAmplitudesList_fails():
     # Selection too short
     sel = iran(n_dst, size=l, replace=False)
     with raises(Exception) as e:
-      mal.uijs(new_sites, new_origins, sel)
+      mal.uijs(new_sites, new_origins, sel.astype(numpy.uint))
     assert msg == str(e.value)
   # Invalid selection
   sel = iran(n_dst, size=t_n_dst, replace=False)
   sel[-1] = n_dst # larger than allowed
   with raises(Exception) as e:
-    mal.uijs(new_sites, new_origins, sel)
+    mal.uijs(new_sites, new_origins, sel.astype(numpy.uint))
   assert "Selection indices out of range of TLSAmplitudes" == str(e.value)
 
   print('OK')
