@@ -328,7 +328,7 @@ class _MoverRotator(object):
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
       return "Unrecognized state"
     else:
-      return "Angle "+str(self._coarseAngles[coarseIndex] + self._fineAngles[fineIndex])
+      return "Angle {:.1f}".format(self._coarseAngles[coarseIndex] + self._fineAngles[fineIndex])
 
 ##################################################################################
 class MoverSingleHydrogenRotator(_MoverRotator):
