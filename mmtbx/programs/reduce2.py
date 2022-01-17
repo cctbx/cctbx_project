@@ -168,7 +168,7 @@ NOTES:
         n_terminal_charge=self.params.n_terminal_charge
       )
       reduce_add_h_obj.run()
-      model = reduce_add_h_obj.get_model()
+      self.model = reduce_add_h_obj.get_model()
       doneAdd = work_clock()
 
       # Interpret the model after shifting and adding Hydrogens to it so that
@@ -180,13 +180,14 @@ NOTES:
       p.pdb_interpretation.allow_polymer_cross_special_position=True
       p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
       p.pdb_interpretation.proceed_with_excessive_length_bonds=True
-      model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
+      #p.pdb_interpretation.sort_atoms=True
+      self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
       doneInt = work_clock()
 
       make_sub_header('Optimizing', out=self.logger)
       startOpt = work_clock()
       Optimizers.probePhil = self.params.probe
-      opt = Optimizers.FastOptimizer(self.params.add_flip_movers, model, probeRadius=0.25,
+      opt = Optimizers.FastOptimizer(self.params.add_flip_movers, self.model, probeRadius=0.25,
         altID=self.params.alt_id, preferenceMagnitude=self.params.preference_magnitude)
       doneOpt = work_clock()
       outString += opt.getInfo()
@@ -200,13 +201,12 @@ NOTES:
       for a in self.model.get_atoms():
         if sel[a.i_seq]:
           a.parent().remove_atom(a)
-      model = self.model
 
     # Re-process the model because we have removed some atoms that were previously
     # bonded.  Don't make restraints during the reprocessing.
-    # We had to do this to keep from carshing on a call to pair_proxies when generating
+    # We had to do this to keep from crashing on a call to pair_proxies when generating
     # mmCIF files, so we always do it for safety.
-    model.process(make_restraints=False, pdb_interpretation_params=p)
+    self.model.process(make_restraints=False, pdb_interpretation_params=p)
 
     make_sub_header('Writing output', out=self.logger)
 
@@ -218,10 +218,10 @@ NOTES:
     # Determine whether to write a PDB or CIF file and write the appropriate text output.
     # Then determine the output file name and write it there.
     if str(self.params.output.suffix).lower() == "pdb":
-      txt = model.model_as_pdb()
+      txt = self.model.model_as_pdb()
       suffix = ".pdb"
     else:
-      txt = model.model_as_mmcif()
+      txt = self.model.model_as_mmcif()
       suffix = ".cif"
     if self.params.output.model_file_base_name is not None:
       base = self.params.output.model_file_base_name
