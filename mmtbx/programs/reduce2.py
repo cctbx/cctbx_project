@@ -149,7 +149,7 @@ NOTES:
       outString += ' {}'.format(a)
     outString += '\n'
 
-    make_sub_header('Interpreting Model', out=self.logger)
+    make_sub_header('Loading Model', out=self.logger)
 
     # Get our model.
     self.model = self.data_manager.get_model()
