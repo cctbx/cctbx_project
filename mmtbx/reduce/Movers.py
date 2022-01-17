@@ -94,6 +94,12 @@ from mmtbx.probe.Helpers import rvec3, lvec3
 #     Note: Some Movers will return empty arrays.  This indicates that no fix-up is
 #       needed and the atoms are in their final positions.
 #
+#  - str PoseDescription: (
+#       int coarseIndex,   # Coarse position index
+#       int fineIndex      # Fine position index
+#    )
+#     Returns a human-readible description of the state.
+#
 # The caller is responsible for moving the specified atoms to their positions,
 # modifying the ExtraAtomInfo, and deleting/ignoring them before dong any calculations
 # with them.  After selecting the coarse or fine adjustment, they must call FixUp()
@@ -160,6 +166,12 @@ class MoverNull(object):
   def FixUp(self, coarseIndex):
     # No fixups for any coarse index.
     return FixUpReturn([], [], [], [])
+  def PoseDescription(self, coarseIndex, fineIndex):
+    if coarseIndex >= len(self.CoarsePositions().positions) or (
+        fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
+      return "Unrecognized state"
+    else:
+      return "Original location"
 
 ##################################################################################
 # @todo Consider having another constructor parameter that gives the initial rotation
@@ -310,6 +322,13 @@ class _MoverRotator(object):
   def FixUp(self, coarseIndex):
     # No fixups for any coarse index.
     return FixUpReturn([], [], [], [])
+
+  def PoseDescription(self, coarseIndex, fineIndex):
+    if coarseIndex >= len(self.CoarsePositions().positions) or (
+        fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
+      return "Unrecognized state"
+    else:
+      return "Angle "+str(self._coarseAngles[coarseIndex] + self._fineAngles[fineIndex])
 
 ##################################################################################
 class MoverSingleHydrogenRotator(_MoverRotator):
@@ -764,6 +783,15 @@ class MoverNH2Flip(object):
     # Return the appropriate fixup
     return FixUpReturn(self._atoms, self._fixUpPositions[coarseIndex], [], [])
 
+  def PoseDescription(self, coarseIndex, fineIndex):
+    if coarseIndex >= len(self.CoarsePositions().positions) or (
+        fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
+      return "Unrecognized state"
+    elif coarseIndex == 0:
+      return "Unflipped"
+    else:
+      return "Flipped"
+
 ##################################################################################
 class MoverHistidineFlip(object):
   def __init__(self, ne2Atom, bondedNeighborLists, extraAtomInfoMap):
@@ -1003,6 +1031,20 @@ class MoverHistidineFlip(object):
     return FixUpReturn(self._atoms, self._fixUpPositions[coarseIndex],
       self._extras[coarseIndex], self._deleteMes[coarseIndex])
 
+  def PoseDescription(self, coarseIndex, fineIndex):
+    if coarseIndex >= len(self.CoarsePositions().positions) or (
+        fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
+      return "Unrecognized state"
+    elif coarseIndex < 4:
+      ret = "Unflipped"
+    else:
+      ret = "Flipped"
+    if coarseIndex % 4 == 1 or coarseIndex % 4 == 3:
+      ret += " HE2 removed"
+    if coarseIndex % 4 == 2 or coarseIndex % 4 == 3:
+      ret += " HD1 removed"
+    return ret
+
 ##################################################################################
 # Internal helper functions for angle manipulation.
 def _rotateOppositeFriend(atom, axis, partner, friend):
@@ -1220,6 +1262,12 @@ def Test():
     fixUp = m.FixUp(0)
     if len(fixUp.atoms) != 0:
       return "Movers.Test() MoverNull: Expected 0 atoms for FixUp, got "+str(len(fixUp.atoms))
+    if m.PoseDescription(0,0) != "Original location":
+      return "Movers.Test() MoverNull: Unexpected results for PoseDescription, got "+m.PoseDescription(0,0)
+    if m.PoseDescription(1,0) != "Unrecognized state":
+      return "Movers.Test() MoverNull: Unexpected results for PoseDescription, got "+m.PoseDescription(1,0)
+    if m.PoseDescription(0,1) != "Unrecognized state":
+      return "Movers.Test() MoverNull: Unexpected results for PoseDescription, got "+m.PoseDescription(0,1)
 
   except Exception as e:
     return "Movers.Test() MoverNull: Exception during test of MoverNull: "+str(e)+"\n"+traceback.format_exc()
@@ -1300,14 +1348,6 @@ def Test():
     if len(coarse.positions) != 12:
       return "Movers.Test() _MoverRotator Default coarse step: Expected 12, got "+str(len(coarse.positions))
 
-    # Test fineStepDegrees setting.
-    rot = _MoverRotator(atoms,axis, 180, fineStepDegrees = 2)
-    fine = rot.FinePositions(0)
-    # +/- 15 degrees in 1-degree steps, but we don't do the +15 because it will be handled by the next
-    # rotation up.
-    if len(fine.positions) != 14:
-      return "Movers.Test() _MoverRotator setting fine step: Expected 14, got "+str(len(fine.positions))
-
     # Test doFineRotations = False and 180 degree coarseStepDegrees.
     rot = _MoverRotator(atoms,axis, 180, 180, False)
     coarse = rot.CoarsePositions()
@@ -1316,6 +1356,18 @@ def Test():
     fine = rot.FinePositions(0)
     if len(fine.positions) != 0:
       return "Movers.Test() _MoverRotator 180 coarse steps: Expected 0, got "+str(len(fine.positions))
+
+    # Test fineStepDegrees setting.
+    rot = _MoverRotator(atoms,axis, 180, fineStepDegrees = 2)
+    fine = rot.FinePositions(0)
+    # +/- 15 degrees in 1-degree steps, but we don't do the +15 because it will be handled by the next
+    # rotation up.
+    if len(fine.positions) != 14:
+      return "Movers.Test() _MoverRotator setting fine step: Expected 14, got "+str(len(fine.positions))
+
+    # Test the PoseDescription
+    if rot.PoseDescription(1,1) != "Angle -28.0":
+      return "Movers.Test() _MoverRotator: Unexpected results for PoseDescription, got "+rot.PoseDescription(1,1)
 
   except Exception as e:
     return "Movers.Test() _MoverRotator basic: Exception during test of _MoverRotator: "+str(e)+"\n"+traceback.format_exc()
@@ -1879,6 +1931,10 @@ def Test():
     if dHydrogen < 0.0005 or dHydrogen > 0.1:
       return "Movers.Test() MoverNH2Flip basic: Bad pivot hydrogen motion: "+str(dHydrogen)
 
+    # Test the PoseDescription
+    if rot.PoseDescription(1,1) != "Angle -28.0":
+      return "Movers.Test() _MoverRotator: Unexpected results for PoseDescription, got "+rot.PoseDescription(1,1)
+
   except Exception as e:
     return "Movers.Test() MoverNH2Flip basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
@@ -2039,6 +2095,10 @@ def Test():
     oldDHydrogen = (lvec3(h2.xyz)-lvec3(n.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverNH2Flip linked: Bad nitrogen-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+
+    # Test the PoseDescription
+    if mover.PoseDescription(1,0) != "Flipped":
+      return "Movers.Test() MoverNH2Flip: Unexpected results for PoseDescription, got "+mover.PoseDescription(1,0)
 
   except Exception as e:
     return "Movers.Test() MoverNH2Flip linked: Exception during test: "+str(e)+"\n"+traceback.format_exc()
@@ -2287,6 +2347,16 @@ def Test():
           return "Movers.Test() MoverHistidineFlip: Unexpected ND1 acceptor, pos "+str(i)
         if coarseND1HDelete:
           return "Movers.Test() MoverHistidineFlip: Unexpected ND1 hydrygen deletion, pos "+str(i)
+
+    # Test the PoseDescription
+    if mover.PoseDescription(1,0) != "Unflipped HE2 removed":
+      return "Movers.Test() MoverNH2Flip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(1,0)
+    if mover.PoseDescription(2,0) != "Unflipped HD1 removed":
+      return "Movers.Test() MoverNH2Flip: Unexpected results for PoseDescription 2, got "+mover.PoseDescription(2,0)
+    if mover.PoseDescription(3,0) != "Unflipped HE2 removed HD1 removed":
+      return "Movers.Test() MoverNH2Flip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(3,0)
+    if mover.PoseDescription(4,0) != "Flipped":
+      return "Movers.Test() MoverNH2Flip: Unexpected results for PoseDescription 4, got "+mover.PoseDescription(4,0)
 
   except Exception as e:
     return "Movers.Test() MoverHistidineFlip: Exception during test: "+str(e)+"\n"+traceback.format_exc()
