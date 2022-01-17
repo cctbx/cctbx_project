@@ -76,6 +76,12 @@ def run(args, left_offset=0.1, right_offset=0.1, n_bins=10):
     "chem_data/polygon_data/all_mvd.pickle",
     test=os.path.isfile)
   database_dict = easy_pickle.load(file)
+  # Python 3 pickle fix
+  # =========================================================================
+  if sys.version_info.major == 3:
+    database_dict = easy_pickle.fix_py2_pickle(database_dict)
+  # =========================================================================
+
   r_work_pdb = database_dict["pdb_header_r_work"]
   r_free_pdb = database_dict["pdb_header_r_free"]
   d_min = database_dict["high_resolution"]
