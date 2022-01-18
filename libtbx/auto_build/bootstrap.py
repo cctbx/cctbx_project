@@ -1846,11 +1846,13 @@ environment exists in or is defined by {conda_env}.
       self.python_base = self._get_conda_python()
       # conda python prefers no environment customizations
       # the get_environment function in ShellCommand updates the environment
-      env = {
-        'PYTHONPATH': None,
-        'LD_LIBRARY_PATH': None,
-        'DYLD_LIBRARY_PATH': None
-      }
+      if os.environ.get('CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES', None):
+        env = {
+          'PYTHONPATH': None,
+          'LD_LIBRARY_PATH': None,
+          'DYLD_LIBRARY_PATH': None,
+          'DYLD_FALLBACK_LIBRARY_PATH': None
+        }
 
     configcmd =[
         self.python_base, # default to using our python rather than system python
