@@ -354,11 +354,6 @@ class _SingletonOptimizer(object):
         self._moverInfo = ret.moverInfo
 
         ################################################################################
-        # Prepend the model index and altID to all of the moverInfos
-        for m in self._movers:
-          self._moverInfo[m] = "Model "+str(mi)+" Alt '"+ai+"': "+self._moverInfo[m]
-
-        ################################################################################
         # Add the atoms that were unconditionally marked for deletion during placement
         # to the set of atoms to delete.
         self._deleteMes = self._deleteMes.union(set(ret.deleteAtoms))
@@ -563,11 +558,24 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Print the final state and score for all Movers
-        for m in self._movers:
-          self._infoString += _VerboseCheck(1,"REPORT: {} in coarse state {}, fine state {} ({}) with score {:.2f}\n".format(
+        self._infoString += _VerboseCheck(1,"BEGIN REPORT: Model "+str(mi)+" Alt '"+ai+"'\n")
+        sortedGroups = sorted(groupCliques, key=len, reverse=True)
+        for g in sortedGroups:
+          self._infoString += _VerboseCheck(1," Set of "+str(len(g))+" Movers:\n")
+          movers = [self._interactionGraph.vertex_label(i) for i in g]
+          for m in movers:
+            self._infoString += _VerboseCheck(1,"  {} in coarse state {}, fine state {} ({}) with score {:.2f}\n".format(
+              self._moverInfo[m], self._coarseLocations[m], self._fineLocations[m],
+              m.PoseDescription(self._coarseLocations[m], self._fineLocations[m]),
+              self._highScores[m]))
+        self._infoString += _VerboseCheck(1," Singleton Movers:\n")
+        for s in singletonCliques:
+          m = self._interactionGraph.vertex_label(s[0])
+          self._infoString += _VerboseCheck(1,"  {} in coarse state {}, fine state {} ({}) with score {:.2f}\n".format(
             self._moverInfo[m], self._coarseLocations[m], self._fineLocations[m],
             m.PoseDescription(self._coarseLocations[m], self._fineLocations[m]),
             self._highScores[m]))
+        self._infoString += _VerboseCheck(1,"END REPORT\n")
 
         ################################################################################
         # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,
