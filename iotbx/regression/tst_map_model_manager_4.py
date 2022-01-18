@@ -13,9 +13,9 @@ def get_map_model_managers():
   from iotbx.map_model_manager import map_model_manager
   mmm = map_model_manager()
   mmm.generate_map(wrapping=True, d_min=3)
-  print("mm",mmm.resolution(),mmm.map_manager().resolution())
   second_model=mmm.model().deep_copy()
-  mmm.box_all_maps_around_model_and_shift_origin()
+  mmm.box_all_maps_with_bounds_and_shift_origin(
+    lower_bounds=[-1,-1,0], upper_bounds=[30, 40, 32])
   mmm.map_manager().set_wrapping(False)
   mmm.set_log(sys.stdout)
 
@@ -209,28 +209,36 @@ def exercise( out = sys.stdout):
   map_info_by_id = mmm1.map_info(map_id = 'map_manager')
   assert mask_info() == mask_info_by_id()
   assert map_info() == map_info_by_id()
-  assert approx_equal(mask_info.fraction_marked, 0.207070707071)
+  assert (approx_equal(mask_info.fraction_marked, 0.207070707071) or
+          approx_equal(mask_info.fraction_marked, 0.210091991342) )
+
   assert approx_equal(map_info.fraction_above_sigma_cutoff, 0.0577876984127)
 
   # create a spherical mask around a point
   print("Spherical masks", )
   dc = mmm1.deep_copy()
   dc.mask_info()
-  assert dc.mask_info().marked_points == 9184
+  print (dc.mask_info().marked_points )
+  assert dc.mask_info().marked_points in  [9184, 9318]
   dc.create_spherical_mask()
   dc.mask_info()
-  assert dc.mask_info().marked_points == 1311
+  print (dc.mask_info().marked_points)
+  assert dc.mask_info().marked_points in [1311, 1286]
   dc.create_spherical_mask(soft_mask_radius=1)
   dc.mask_info()
-  assert dc.mask_info().marked_points == 8990
+  print (dc.mask_info().marked_points)
+  assert dc.mask_info().marked_points in [8990,]
   dc.create_spherical_mask(soft_mask=False)
   dc.mask_info()
-  assert dc.mask_info().marked_points == 1566
+  print (dc.mask_info().marked_points)
+  assert dc.mask_info().marked_points in [1566, 1458]
   dc.create_spherical_mask(mask_radius = 4)
   dc.mask_info()
-  assert dc.mask_info().marked_points == 886
+  print (dc.mask_info().marked_points)
+  assert dc.mask_info().marked_points in [886, 914]
   dc.create_spherical_mask(soft_mask=False, mask_radius = 4)
   dc.mask_info()
+  print (dc.mask_info().marked_points)
   assert dc.mask_info().marked_points == 654
 
 
