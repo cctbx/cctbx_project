@@ -45,6 +45,8 @@ def RunReduceTests():
     print("Failure:",ret)
   assert (len(ret) == 0)
 
+  assert 1 == 0, "XXX Bogus failure added so that we can ensure we're getting failures."
+
   return ret
 
 if __name__ == '__main__':

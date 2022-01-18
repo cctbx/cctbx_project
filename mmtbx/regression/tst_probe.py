@@ -138,6 +138,8 @@ def RunProbeTests(inFileName):
   # Test calling the interaction_type method to be sure Python linkage is working
   interactionType = ds.interaction_type(check.overlapType, check.gap)
 
+  assert 1 == 0, "XXX Bogus failure added so that we can ensure we're getting failures."
+
 if __name__ == '__main__':
 
   #==============================================================
