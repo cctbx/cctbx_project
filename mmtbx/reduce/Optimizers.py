@@ -558,11 +558,19 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Print the final state and score for all Movers
-        self._infoString += _VerboseCheck(1,"BEGIN REPORT: Model "+str(mi)+" Alt '"+ai+"'\n")
+        self._infoString += _VerboseCheck(1,"BEGIN REPORT: Model "+str(mi)+" Alt '"+ai+"':\n")
         sortedGroups = sorted(groupCliques, key=len, reverse=True)
         for g in sortedGroups:
-          self._infoString += _VerboseCheck(1," Set of "+str(len(g))+" Movers:\n")
+          self._infoString += _VerboseCheck(1," Set of "+str(len(g))+" Movers:")
           movers = [self._interactionGraph.vertex_label(i) for i in g]
+          # Parse the record for each mover and pull out the initial score.  Sum the initial and
+          # final scores across all Movers in the group and report this.
+          initial = 0.0
+          final = 0.0
+          for m in movers:
+            initial += float(self._moverInfo[m].split()[9])
+            final += self._highScores[m]
+          self._infoString += _VerboseCheck(1," Totals: initial score {:.2f}, final score {:.2f}\n".format(initial, final))
           for m in movers:
             self._infoString += _VerboseCheck(1,"  {} in coarse state {}, fine state {} ({}) with score {:.2f}\n".format(
               self._moverInfo[m], self._coarseLocations[m], self._fineLocations[m],
