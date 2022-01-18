@@ -150,9 +150,9 @@ def test_01():
 
   # Set crystal_symmetry and unit_cell_crystal_symmetry and shift_cart
   # Box and shift the map_model_manager so we have new coordinate system
-  mmm_sites.box_all_maps_around_model_and_shift_origin()
+  mmm_sites.box_all_maps_around_model_and_shift_origin(box_cushion=4.5)
   new_model = mmm_sites.get_model_by_id('new_model')
-  assert approx_equal((3.747033333333334, 4.723075000000001, 5.0),
+  assert approx_equal((3., 4., 5.0),
      mmm_sites.get_model_by_id('new_model').get_sites_cart()[0])
 
   # arbitrarily set unit_cell crystal symmetry of model to
