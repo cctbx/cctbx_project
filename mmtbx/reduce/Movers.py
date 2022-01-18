@@ -641,7 +641,7 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
       preferredOrientationScale = preferredOrientationScale)
 
 ##################################################################################
-class MoverNH2Flip(object):
+class MoverAmideFlip(object):
   def __init__(self, nh2Atom, caAtomName, bondedNeighborLists):
     """Constructs a Mover that will handle flipping an NH2 with an O, both of which
        are attached to the same Carbon atom (and each of which has no other bonds).
@@ -663,10 +663,10 @@ class MoverNH2Flip(object):
     # Verify that we've been run on a valid structure and get a list of all of the
     # atoms up to and including the pivot atom.
     if nh2Atom.element != "N":
-      raise ValueError("MoverNH2Flip(): nh2Atom is not a Nitrogen")
+      raise ValueError("MoverAmideFlip(): nh2Atom is not a Nitrogen")
     partners = bondedNeighborLists[nh2Atom]
     if len(partners) != 3:
-      raise ValueError("MoverNH2Flip(): nh2Atom does not have three bonded neighbors")
+      raise ValueError("MoverAmideFlip(): nh2Atom does not have three bonded neighbors")
     nh2Hydrogens = []
     hinge = None
     for a in partners:
@@ -675,9 +675,9 @@ class MoverNH2Flip(object):
       else:
         hinge = a
     if len(nh2Hydrogens) != 2:
-      raise ValueError("MoverNH2Flip(): nh2Atom does not have two bonded hydrogens")
+      raise ValueError("MoverAmideFlip(): nh2Atom does not have two bonded hydrogens")
     if hinge is None:
-      raise ValueError("MoverNH2Flip(): nh2Atom does not have bonded (hinge) Carbon friend")
+      raise ValueError("MoverAmideFlip(): nh2Atom does not have bonded (hinge) Carbon friend")
 
     bonded = bondedNeighborLists[hinge]
     oyxgen = None
@@ -688,11 +688,11 @@ class MoverNH2Flip(object):
       elif b.element == "C":
         pivot = b
     if pivot is None:
-      raise ValueError("MoverNH2Flip(): Hinge does not have bonded (pivot) Carbon friend")
+      raise ValueError("MoverAmideFlip(): Hinge does not have bonded (pivot) Carbon friend")
     if oxygen is None:
-      raise ValueError("MoverNH2Flip(): Hinge does not have bonded oxygen friend")
+      raise ValueError("MoverAmideFlip(): Hinge does not have bonded oxygen friend")
     if len(bondedNeighborLists[oxygen]) != 1:
-      raise ValueError("MoverNH2Flip(): Oxygen has more than one bonded neighbor")
+      raise ValueError("MoverAmideFlip(): Oxygen has more than one bonded neighbor")
     self._atoms = [ nh2Hydrogens[0], nh2Hydrogens[1], nh2Atom, oxygen, hinge, pivot ]
 
     # Find any linking atoms between the pivot atom and the Alpha Carbon and add them to the list.
@@ -706,7 +706,7 @@ class MoverNH2Flip(object):
       bonded = bondedNeighborLists[cur]
       link = None
       if len(bonded) != 4:
-        raise ValueError("MoverNH2Flip(): Linker chain has an element with other than four bonds")
+        raise ValueError("MoverAmideFlip(): Linker chain has an element with other than four bonds")
       for b in bonded:
         if b.i_seq == prevID:
           continue
@@ -715,7 +715,7 @@ class MoverNH2Flip(object):
         elif b.element == "H":
           linkerHydrogens.append(b)
       if link is None:
-        raise ValueError("MoverNH2Flip(): Did not find Carbon in linker chain step")
+        raise ValueError("MoverAmideFlip(): Did not find Carbon in linker chain step")
       if link.name.strip().upper() == caAtomName.strip().upper():
         caAtom = link
         foundAlpha = True
@@ -724,7 +724,7 @@ class MoverNH2Flip(object):
         prevID = cur.i_seq
         cur = link
     if len(linkerHydrogens) != 2*(len(linkers)+1):
-      raise ValueError("MoverNH2Flip(): Linker carbons do not have two Hydrogens each: "+
+      raise ValueError("MoverAmideFlip(): Linker carbons do not have two Hydrogens each: "+
         str(len(linkers))+","+str(len(linkerHydrogens)))
     self._atoms.extend(linkers)
     self._atoms.extend(linkerHydrogens)
@@ -793,7 +793,7 @@ class MoverNH2Flip(object):
       return "Flipped"
 
 ##################################################################################
-class MoverHistidineFlip(object):
+class MoverHisFlip(object):
   def __init__(self, ne2Atom, bondedNeighborLists, extraAtomInfoMap):
     """Constructs a Mover that will handle flipping a Histidine ring.
        This Mover uses a simple swap of the center positions of the heavy atoms (with
@@ -812,10 +812,10 @@ class MoverHistidineFlip(object):
     # Verify that we've been run on a valid structure and get a list of all of the
     # atoms up to and including the pivot atom.
     if ne2Atom.element != "N":
-      raise ValueError("MoverHistidineFlip(): ne2Atom is not a Nitrogen")
+      raise ValueError("MoverHisFlip(): ne2Atom is not a Nitrogen")
     partners = bondedNeighborLists[ne2Atom]
     if len(partners) != 3:
-      raise ValueError("MoverHistidineFlip(): ne2Atom does not have three bonded neighbors")
+      raise ValueError("MoverHisFlip(): ne2Atom does not have three bonded neighbors")
     hydrogens = []
     carbons = []
     for a in partners:
@@ -824,9 +824,9 @@ class MoverHistidineFlip(object):
       elif a.element == "C":
         carbons.append(a)
     if len(hydrogens) != 1:
-      raise ValueError("MoverHistidineFlip(): ne2Atom does not have one bonded hydrogen")
+      raise ValueError("MoverHisFlip(): ne2Atom does not have one bonded hydrogen")
     if len(carbons) != 2:
-      raise ValueError("MoverHistidineFlip(): ne2Atom does not have two bonded carbons")
+      raise ValueError("MoverHisFlip(): ne2Atom does not have two bonded carbons")
     ne2HAtom = hydrogens[0]
 
     # Determine if the first Carbon is CE1, which is bonded to two Nitrogens (zero Carbons).  If not,
@@ -835,7 +835,7 @@ class MoverHistidineFlip(object):
     cTest = carbons[0]
     bonded = bondedNeighborLists[cTest]
     if len(bonded) != 3:
-      raise ValueError("MoverHistidineFlip(): ne2Atom neighbor does not have three bonded neighbors")
+      raise ValueError("MoverHisFlip(): ne2Atom neighbor does not have three bonded neighbors")
     cs = 0
     for b in bonded:
       if b.element == "C":
@@ -850,42 +850,42 @@ class MoverHistidineFlip(object):
     # Find the Hydrogen on CE1.
     bonded = bondedNeighborLists[ce1Atom]
     if len(bonded) != 3:
-      raise ValueError("MoverHistidineFlip(): CE1 does not have three bonded neighbors")
+      raise ValueError("MoverHisFlip(): CE1 does not have three bonded neighbors")
     ce1HAtom = None
     for b in bonded:
       if b.element == "H":
         ce1HAtom = b
     if ce1HAtom is None:
-      raise ValueError("MoverHistidineFlip(): Could not find Hydrogen attached to CE1")
+      raise ValueError("MoverHisFlip(): Could not find Hydrogen attached to CE1")
 
     # Find the Hydrogen on CD2.
     bonded = bondedNeighborLists[cd2Atom]
     if len(bonded) != 3:
-      raise ValueError("MoverHistidineFlip(): CD2 does not have three bonded neighbors")
+      raise ValueError("MoverHisFlip(): CD2 does not have three bonded neighbors")
     cd2HAtom = None
     for b in bonded:
       if b.element == "H":
         cd2HAtom = b
     if cd2HAtom is None:
-      raise ValueError("MoverHistidineFlip(): Could not find Hydrogen attached to CD2")
+      raise ValueError("MoverHisFlip(): Could not find Hydrogen attached to CD2")
 
     # Find CG on the other side of CD2.
     cgAtom = None
     bonded = bondedNeighborLists[cd2Atom]
     if len(bonded) < 2:
-      raise ValueError("MoverHistidineFlip(): CD2 does not have at least two bonded neighbors")
+      raise ValueError("MoverHisFlip(): CD2 does not have at least two bonded neighbors")
     for b in bonded:
       if b.i_seq != cd2Atom.i_seq and b.element == "C":
         cgAtom = b
     if cgAtom is None:
-      raise ValueError("MoverHistidineFlip(): Could not find CG")
+      raise ValueError("MoverHisFlip(): Could not find CG")
 
     # Find CB and ND1 on the other side of CG
     cbAtom = None
     nd1Atom = None
     bonded = bondedNeighborLists[cgAtom]
     if len(bonded) != 3:
-      raise ValueError("MoverHistidineFlip(): CG does not have three bonded neighbors")
+      raise ValueError("MoverHisFlip(): CG does not have three bonded neighbors")
     for b in bonded:
       if b.i_seq == cd2Atom.i_seq: # We already know about CD2
         continue
@@ -894,27 +894,27 @@ class MoverHistidineFlip(object):
       elif b.element == "C":
         cbAtom = b
     if nd1Atom is None:
-      raise ValueError("MoverHistidineFlip(): Could not find ND1")
+      raise ValueError("MoverHisFlip(): Could not find ND1")
     if cbAtom is None:
-      raise ValueError("MoverHistidineFlip(): Could not find CB")
+      raise ValueError("MoverHisFlip(): Could not find CB")
 
     # Find the Hydrogen attached to ND1
     bonded = bondedNeighborLists[nd1Atom]
     if len(bonded) != 3:
-      raise ValueError("MoverHistidineFlip(): ND1 does not have three bonded neighbors")
+      raise ValueError("MoverHisFlip(): ND1 does not have three bonded neighbors")
     nd1HAtom = None
     for b in bonded:
       if b.element == "H":
         nd1HAtom = b
     if nd1HAtom is None:
-      raise ValueError("MoverHistidineFlip(): ND1 does not have a bonded hydrogen")
+      raise ValueError("MoverHisFlip(): ND1 does not have a bonded hydrogen")
 
     # Find CA on the other side of CB and find CBs Hydrogens
     caAtom = None
     cbHydrogens = []
     bonded = bondedNeighborLists[cbAtom]
     if len(bonded) != 4:
-      raise ValueError("MoverHistidineFlip(): CB does not have four bonded neighbors, has "+str(len(bonded)))
+      raise ValueError("MoverHisFlip(): CB does not have four bonded neighbors, has "+str(len(bonded)))
     for b in bonded:
       if b.i_seq == cgAtom.i_seq:
         continue
@@ -923,9 +923,9 @@ class MoverHistidineFlip(object):
       elif b.element == "H":
         cbHydrogens.append(b)
     if caAtom is None:
-      raise ValueError("MoverHistidineFlip(): Could not find CA")
+      raise ValueError("MoverHisFlip(): Could not find CA")
     if len(cbHydrogens) != 2:
-      raise ValueError("MoverHistidineFlip(): Could not find Hydrogens on CB")
+      raise ValueError("MoverHisFlip(): Could not find Hydrogens on CB")
 
     self._atoms = [ ne2Atom, ne2HAtom, ce1Atom, ce1HAtom, nd1Atom, nd1HAtom, cd2Atom, cd2HAtom,
       cgAtom, cbAtom, cbHydrogens[0], cbHydrogens[1] ]
@@ -1789,10 +1789,10 @@ def Test():
   except Exception as e:
     return "Movers.Test() MoverTetrahedralMethylRotator basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
-  # Test the MoverNH2Flip class with no linker (similar to Asn).
+  # Test the MoverAmideFlip class with no linker (similar to Asn).
   try:
     # Test behavior with offsets for each atom so that we test the generic case.
-    # Construct a MoverNH2Flip that has the N, H's and Oxygen located (non-physically)
+    # Construct a MoverAmideFlip that has the N, H's and Oxygen located (non-physically)
     # slightly in the +Y direction out of the X-Z plane, with the Hydrogens 120 around the
     # same offset axis.
     # They are bonded to a Carbon and friend (pivot) and alpha carbon that are on the Z axis.
@@ -1867,7 +1867,7 @@ def Test():
     bondedNeighborLists[fh2] = [ f ]
     bondedNeighborLists[ca] = [ f ]
 
-    mover = MoverNH2Flip(n, ca.name, bondedNeighborLists)
+    mover = MoverAmideFlip(n, ca.name, bondedNeighborLists)
 
     # Ensure that the coarse-flip results meet the expections:
     # 1) N and O are flipped in position
@@ -1875,26 +1875,26 @@ def Test():
 
     coarse = mover.CoarsePositions()
     if coarse.preferenceEnergies[0] <= coarse.preferenceEnergies[1]:
-      return "Movers.Test() MoverNH2Flip: Original orientation not preferred"
+      return "Movers.Test() MoverAmideFlip: Original orientation not preferred"
     if len(coarse.positions) != 2:
-      return "Movers.Test() MoverNH2Flip basic: Did not find two locations: "+str(len(coarse.positions))
+      return "Movers.Test() MoverAmideFlip basic: Did not find two locations: "+str(len(coarse.positions))
     newPos = coarse.positions[1]
     dist = (lvec3(newPos[2]) - lvec3(o.xyz)).length()
     if dist > 0.01:
-      return "Movers.Test() MoverNH2Flip basic: Nitrogen moved incorrectly: "+str(dist)
+      return "Movers.Test() MoverAmideFlip basic: Nitrogen moved incorrectly: "+str(dist)
     dist = (lvec3(newPos[3]) - lvec3(n.xyz)).length()
     if dist > 0.01:
-      return "Movers.Test() MoverNH2Flip basic: Oxygen moved incorrectly: "+str(dist)
+      return "Movers.Test() MoverAmideFlip basic: Oxygen moved incorrectly: "+str(dist)
 
     dHydrogen = (lvec3(newPos[0]) - lvec3(newPos[2])).length()
     oldDHydrogen = (lvec3(h1.xyz)-lvec3(n.xyz)).length()
     if abs(dHydrogen - oldDHydrogen) > 0.0001:
-      return "Movers.Test() MoverNH2Flip basic: Bad coarse hydrogen1 motion: "+str(dHydrogen-oldDHydrogen)
+      return "Movers.Test() MoverAmideFlip basic: Bad coarse hydrogen1 motion: "+str(dHydrogen-oldDHydrogen)
 
     dHydrogen = (lvec3(newPos[1]) - lvec3(newPos[2])).length()
     oldDHydrogen = (lvec3(h2.xyz)-lvec3(n.xyz)).length()
     if abs(dHydrogen - oldDHydrogen) > 0.0001:
-      return "Movers.Test() MoverNH2Flip basic: Bad coarse hydrogen2 motion: "+str(dHydrogen-oldDHydrogen)
+      return "Movers.Test() MoverAmideFlip basic: Bad coarse hydrogen2 motion: "+str(dHydrogen-oldDHydrogen)
 
     # Ensure that the Fixup results meet the specifications:
     # 1) New Oxygen on the line from the alpha carbon to the old Nitrogen
@@ -1905,7 +1905,7 @@ def Test():
     newODir = (fixed[3] - lvec3(f.xyz)).normalize()
     oldNDir = (rvec3(n.xyz) - rvec3(f.xyz)).normalize()
     if (newODir * oldNDir)[0] < 0.9999:
-      return "Movers.Test() MoverNH2Flip basic: Bad oxygen alignment: "+str((newODir * oldNDir)[0])
+      return "Movers.Test() MoverAmideFlip basic: Bad oxygen alignment: "+str((newODir * oldNDir)[0])
 
     newNDir = (fixed[2] - lvec3(f.xyz)).normalize()
     oldODir = (rvec3(o.xyz) - rvec3(f.xyz)).normalize()
@@ -1913,35 +1913,35 @@ def Test():
     oldNormal = (scitbx.matrix.cross_product_matrix(lvec3(oldNDir)) * rvec3(oldODir)).normalize()
     dot = (lvec3(newNormal) * rvec3(oldNormal))[0]
     if dot > -0.99999:
-      return "Movers.Test() MoverNH2Flip basic: Bad plane alignment: "+str(dot)
+      return "Movers.Test() MoverAmideFlip basic: Bad plane alignment: "+str(dot)
 
     dCarbon = (fixed[4] - lvec3(p.xyz)).length()
     if dCarbon < 0.001 or dCarbon > 0.1:
-      return "Movers.Test() MoverNH2Flip basic: Bad hinge motion: "+str(dCarbon)
+      return "Movers.Test() MoverAmideFlip basic: Bad hinge motion: "+str(dCarbon)
 
     dCarbon = (fixed[5] - lvec3(f.xyz)).length()
     if dCarbon < 0.0005 or dCarbon > 0.1:
-      return "Movers.Test() MoverNH2Flip basic: Bad pivot motion: "+str(dCarbon)
+      return "Movers.Test() MoverAmideFlip basic: Bad pivot motion: "+str(dCarbon)
 
     dHydrogen = (fixed[6] - lvec3(fh1.xyz)).length()
     if dHydrogen < 0.0005 or dHydrogen > 0.1:
-      return "Movers.Test() MoverNH2Flip basic: Bad pivot hydrogen motion: "+str(dHydrogen)
+      return "Movers.Test() MoverAmideFlip basic: Bad pivot hydrogen motion: "+str(dHydrogen)
 
     dHydrogen = (fixed[7] - lvec3(fh2.xyz)).length()
     if dHydrogen < 0.0005 or dHydrogen > 0.1:
-      return "Movers.Test() MoverNH2Flip basic: Bad pivot hydrogen motion: "+str(dHydrogen)
+      return "Movers.Test() MoverAmideFlip basic: Bad pivot hydrogen motion: "+str(dHydrogen)
 
     # Test the PoseDescription
     if rot.PoseDescription(1,1) != "Angle -28.0":
       return "Movers.Test() _MoverRotator: Unexpected results for PoseDescription, got "+rot.PoseDescription(1,1)
 
   except Exception as e:
-    return "Movers.Test() MoverNH2Flip basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
+    return "Movers.Test() MoverAmideFlip basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
-  # Test the MoverNH2Flip class with a linker (similar to Gln).
+  # Test the MoverAmideFlip class with a linker (similar to Gln).
   try:
     # Test behavior with offsets for each atom so that we test the generic case.
-    # Construct a MoverNH2Flip that has the N, H's and Oxygen located (non-physically)
+    # Construct a MoverAmideFlip that has the N, H's and Oxygen located (non-physically)
     # slightly in the +Y direction out of the X-Z plane, with the Hydrogens 120 around the
     # same offset axis.
     # They are bonded to a Carbon and friend (pivot) and linker and alpha carbon that are
@@ -2035,7 +2035,7 @@ def Test():
     bondedNeighborLists[lnh2] = [ ln ]
     bondedNeighborLists[ca] = [ ln ]
 
-    mover = MoverNH2Flip(n, ca.name, bondedNeighborLists)
+    mover = MoverAmideFlip(n, ca.name, bondedNeighborLists)
     fixed = mover.FixUp(1).positions
 
     # Ensure that the results meet the specifications:
@@ -2046,7 +2046,7 @@ def Test():
     newODir = (fixed[3] - lvec3(ca.xyz)).normalize()
     oldNDir = (rvec3(n.xyz) - rvec3(ca.xyz)).normalize()
     if (newODir * oldNDir)[0] < 0.9999:
-      return "Movers.Test() MoverNH2Flip linked: Bad oxygen alignment: "+str((newODir * oldNDir)[0])
+      return "Movers.Test() MoverAmideFlip linked: Bad oxygen alignment: "+str((newODir * oldNDir)[0])
 
     newNDir = (fixed[2] - lvec3(ca.xyz)).normalize()
     oldODir = (rvec3(o.xyz) - rvec3(ca.xyz)).normalize()
@@ -2054,59 +2054,59 @@ def Test():
     oldNormal = (scitbx.matrix.cross_product_matrix(lvec3(oldNDir)) * rvec3(oldODir)).normalize()
     dot = (lvec3(newNormal) * rvec3(oldNormal))[0]
     if dot > -0.99999:
-      return "Movers.Test() MoverNH2Flip linked: Bad plane alignment: "+str(dot)
+      return "Movers.Test() MoverAmideFlip linked: Bad plane alignment: "+str(dot)
 
     dCarbon = (fixed[4] - lvec3(p.xyz)).length()
     if dCarbon < 0.0006 or dCarbon > 0.1:
-      return "Movers.Test() MoverNH2Flip linked: Bad hinge motion: "+str(dCarbon)
+      return "Movers.Test() MoverAmideFlip linked: Bad hinge motion: "+str(dCarbon)
 
     dCarbon = (fixed[5] - lvec3(f.xyz)).length()
     if dCarbon < 0.0004 or dCarbon > 0.1:
-      return "Movers.Test() MoverNH2Flip linked: Bad pivot motion: "+str(dCarbon)
+      return "Movers.Test() MoverAmideFlip linked: Bad pivot motion: "+str(dCarbon)
 
     dCarbon = (fixed[6] - lvec3(ln.xyz)).length()
     if dCarbon < 0.0002 or dCarbon > 0.1:
-      return "Movers.Test() MoverNH2Flip linked: Bad linker motion: "+str(dCarbon)
+      return "Movers.Test() MoverAmideFlip linked: Bad linker motion: "+str(dCarbon)
 
     # Hydrogens come after all linkers
     dHydrogen = (fixed[7] - lvec3(fh1.xyz)).length()
     if dHydrogen < 0.0004 or dHydrogen > 0.1:
-      return "Movers.Test() MoverNH2Flip linked: Bad pivot hydrogen motion: "+str(dHydrogen)
+      return "Movers.Test() MoverAmideFlip linked: Bad pivot hydrogen motion: "+str(dHydrogen)
 
     dHydrogen = (fixed[8] - lvec3(fh2.xyz)).length()
     if dHydrogen < 0.0004 or dHydrogen > 0.1:
-      return "Movers.Test() MoverNH2Flip linked: Bad pivot hydrogen motion: "+str(dHydrogen)
+      return "Movers.Test() MoverAmideFlip linked: Bad pivot hydrogen motion: "+str(dHydrogen)
 
     dHydrogen = (fixed[9] - lvec3(lnh1.xyz)).length()
     if dHydrogen < 0.0002 or dHydrogen > 0.1:
-      return "Movers.Test() MoverNH2Flip linked: Bad linker hydrogen motion: "+str(dHydrogen)
+      return "Movers.Test() MoverAmideFlip linked: Bad linker hydrogen motion: "+str(dHydrogen)
 
     dHydrogen = (fixed[10] - lvec3(lnh2.xyz)).length()
     if dHydrogen < 0.0002 or dHydrogen > 0.1:
-      return "Movers.Test() MoverNH2Flip linked: Bad linker hydrogen motion: "+str(dHydrogen)
+      return "Movers.Test() MoverAmideFlip linked: Bad linker hydrogen motion: "+str(dHydrogen)
 
     # Ensure that the Hydrogens moved along with their parent in the flip.
     dHydrogen = (fixed[0] - fixed[2]).length()
     oldDHydrogen = (lvec3(h1.xyz)-lvec3(n.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
-      return "Movers.Test() MoverNH2Flip linked: Bad nitrogen-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+      return "Movers.Test() MoverAmideFlip linked: Bad nitrogen-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     dHydrogen = (fixed[1] - fixed[2]).length()
     oldDHydrogen = (lvec3(h2.xyz)-lvec3(n.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
-      return "Movers.Test() MoverNH2Flip linked: Bad nitrogen-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+      return "Movers.Test() MoverAmideFlip linked: Bad nitrogen-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     # Test the PoseDescription
     if mover.PoseDescription(1,0) != "Flipped":
-      return "Movers.Test() MoverNH2Flip: Unexpected results for PoseDescription, got "+mover.PoseDescription(1,0)
+      return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription, got "+mover.PoseDescription(1,0)
 
   except Exception as e:
-    return "Movers.Test() MoverNH2Flip linked: Exception during test: "+str(e)+"\n"+traceback.format_exc()
+    return "Movers.Test() MoverAmideFlip linked: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
-  # Test the MoverHistidineFlip class.
+  # Test the MoverHisFlip class.
   try:
     # Test behavior with offsets for each atom so that we test the generic case.
-    # Construct a MoverHistidineFlip that has the ring atoms other than CG located (non-physically)
+    # Construct a MoverHisFlip that has the ring atoms other than CG located (non-physically)
     # slightly in the +Y direction out of the X-Z plane, with ring atoms and Hydrogens
     # not actually in a ring but with the same topology.
     # They are bonded to a partner (hinge/CG) and friend (pivot/CB) and alpha carbon that are on the Z axis.
@@ -2210,7 +2210,7 @@ def Test():
       extras.append(probe.ExtraAtomInfo())
     extrasMap = probe.ExtraAtomInfoMap(atoms, extras)
 
-    mover = MoverHistidineFlip(ne2, bondedNeighborLists, extrasMap)
+    mover = MoverHisFlip(ne2, bondedNeighborLists, extrasMap)
 
     # Ensure that the coarse-flip results meet the expections (spot check 4th position):
     # 1) N and C atoms are flipped in pairs
@@ -2218,46 +2218,46 @@ def Test():
 
     coarse = mover.CoarsePositions()
     if len(coarse.positions) != 8:
-      return "Movers.Test() MoverHistidineFlip: Did not find 8 locations: found "+str(len(coarse.positions))
+      return "Movers.Test() MoverHisFlip: Did not find 8 locations: found "+str(len(coarse.positions))
     if coarse.preferenceEnergies[0] <= coarse.preferenceEnergies[4]:
-      return "Movers.Test() MoverHistidineFlip: Original orientation not preferred"
+      return "Movers.Test() MoverHisFlip: Original orientation not preferred"
     if coarse.preferenceEnergies[0] >= coarse.preferenceEnergies[1]:
-      return "Movers.Test() MoverHistidineFlip: Hydrogen removal not preferred"
+      return "Movers.Test() MoverHisFlip: Hydrogen removal not preferred"
     if coarse.preferenceEnergies[3] >= coarse.preferenceEnergies[0]:
-      return "Movers.Test() MoverHistidineFlip: Both Hydrogen removal preferred"
+      return "Movers.Test() MoverHisFlip: Both Hydrogen removal preferred"
     newPos = coarse.positions[4]
     dist = (lvec3(newPos[0]) - lvec3(ce1.xyz)).length()
     if dist > 0.01:
-      return "Movers.Test() MoverHistidineFlip: NE2 moved incorrectly: "+str(dist)
+      return "Movers.Test() MoverHisFlip: NE2 moved incorrectly: "+str(dist)
     dist = (lvec3(newPos[2]) - lvec3(ne2.xyz)).length()
     if dist > 0.01:
-      return "Movers.Test() MoverHistidineFlip: CE1 moved incorrectly: "+str(dist)
+      return "Movers.Test() MoverHisFlip: CE1 moved incorrectly: "+str(dist)
     dist = (lvec3(newPos[4]) - lvec3(cd2.xyz)).length()
     if dist > 0.01:
-      return "Movers.Test() MoverHistidineFlip: ND1 moved incorrectly: "+str(dist)
+      return "Movers.Test() MoverHisFlip: ND1 moved incorrectly: "+str(dist)
     dist = (lvec3(newPos[6]) - lvec3(nd1.xyz)).length()
     if dist > 0.01:
-      return "Movers.Test() MoverHistidineFlip: CD2 moved incorrectly: "+str(dist)
+      return "Movers.Test() MoverHisFlip: CD2 moved incorrectly: "+str(dist)
 
     dHydrogen = (lvec3(newPos[0]) - lvec3(newPos[1])).length()
     oldDHydrogen = (lvec3(ne2h.xyz)-lvec3(ne2.xyz)).length()
     if abs(dHydrogen - oldDHydrogen) > 0.0001:
-      return "Movers.Test() MoverHistidineFlip: Bad coarse NE2 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+      return "Movers.Test() MoverHisFlip: Bad coarse NE2 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     dHydrogen = (lvec3(newPos[2]) - lvec3(newPos[3])).length()
     oldDHydrogen = (lvec3(ce1h.xyz)-lvec3(ce1.xyz)).length()
     if abs(dHydrogen - oldDHydrogen) > 0.0001:
-      return "Movers.Test() MoverHistidineFlip: Bad coarse CE1 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+      return "Movers.Test() MoverHisFlip: Bad coarse CE1 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     dHydrogen = (lvec3(newPos[4]) - lvec3(newPos[5])).length()
     oldDHydrogen = (lvec3(nd1h.xyz)-lvec3(nd1.xyz)).length()
     if abs(dHydrogen - oldDHydrogen) > 0.0001:
-      return "Movers.Test() MoverHistidineFlip: Bad coarse ND1 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+      return "Movers.Test() MoverHisFlip: Bad coarse ND1 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     dHydrogen = (lvec3(newPos[6]) - lvec3(newPos[7])).length()
     oldDHydrogen = (lvec3(cd2h.xyz)-lvec3(cd2.xyz)).length()
     if abs(dHydrogen - oldDHydrogen) > 0.0001:
-      return "Movers.Test() MoverHistidineFlip: Bad coarse ND1 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+      return "Movers.Test() MoverHisFlip: Bad coarse ND1 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     # Ensure that the FixUp results meet the specifications (spot check 4th position):
     # 1) New CE1 on the line from the alpha carbon to the old NE2
@@ -2268,7 +2268,7 @@ def Test():
     newCE1Dir = (fixed[2] - lvec3(ca.xyz)).normalize()
     oldNE2Dir = (rvec3(ne2.xyz) - rvec3(ca.xyz)).normalize()
     if (newCE1Dir * oldNE2Dir)[0] < 0.9999:
-      return "Movers.Test() MoverHistidineFlip: Bad CE1 alignment: "+str((newCE1Dir * oldNE2Dir)[0])
+      return "Movers.Test() MoverHisFlip: Bad CE1 alignment: "+str((newCE1Dir * oldNE2Dir)[0])
 
     newNE2Dir = (fixed[0] - lvec3(ca.xyz)).normalize()
     oldCE1Dir = (rvec3(ce1.xyz) - rvec3(ca.xyz)).normalize()
@@ -2276,44 +2276,44 @@ def Test():
     oldNormal = (scitbx.matrix.cross_product_matrix(lvec3(oldNE2Dir)) * rvec3(oldCE1Dir)).normalize()
     dot = (lvec3(newNormal) * rvec3(oldNormal))[0]
     if dot > -0.99999:
-      return "Movers.Test() MoverHistidineFlip: Bad plane alignment: "+str(dot)
+      return "Movers.Test() MoverHisFlip: Bad plane alignment: "+str(dot)
 
     dCarbon = (fixed[8] - lvec3(p.xyz)).length()
     if dCarbon < 0.001 or dCarbon > 0.1:
-      return "Movers.Test() MoverHistidineFlip: Bad hinge motion: "+str(dCarbon)
+      return "Movers.Test() MoverHisFlip: Bad hinge motion: "+str(dCarbon)
 
     dCarbon = (fixed[9] - lvec3(f.xyz)).length()
     if dCarbon < 0.0005 or dCarbon > 0.1:
-      return "Movers.Test() MoverHistidineFlip: Bad pivot motion: "+str(dCarbon)
+      return "Movers.Test() MoverHisFlip: Bad pivot motion: "+str(dCarbon)
 
     dHydrogen = (fixed[10] - lvec3(fh1.xyz)).length()
     if dHydrogen < 0.0005 or dHydrogen > 0.1:
-      return "Movers.Test() MoverHistidineFlip: Bad pivot hydrogen motion: "+str(dHydrogen)
+      return "Movers.Test() MoverHisFlip: Bad pivot hydrogen motion: "+str(dHydrogen)
 
     dHydrogen = (fixed[11] - lvec3(fh2.xyz)).length()
     if dHydrogen < 0.0005 or dHydrogen > 0.1:
-      return "Movers.Test() MoverHistidineFlip: Bad pivot hydrogen motion: "+str(dHydrogen)
+      return "Movers.Test() MoverHisFlip: Bad pivot hydrogen motion: "+str(dHydrogen)
 
     # Ensure that the Hydrogens moved along with their parent in the flip.
     dHydrogen = (fixed[0] - fixed[1]).length()
     oldDHydrogen = (lvec3(ne2h.xyz)-lvec3(ne2.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
-      return "Movers.Test() MoverHistidineFlip: Bad NE2-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+      return "Movers.Test() MoverHisFlip: Bad NE2-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     dHydrogen = (fixed[2] - fixed[3]).length()
     oldDHydrogen = (lvec3(ce1h.xyz)-lvec3(ce1.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
-      return "Movers.Test() MoverHistidineFlip: Bad CE1-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+      return "Movers.Test() MoverHisFlip: Bad CE1-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     dHydrogen = (fixed[4] - fixed[5]).length()
     oldDHydrogen = (lvec3(nd1h.xyz)-lvec3(nd1.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
-      return "Movers.Test() MoverHistidineFlip: Bad ND1-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+      return "Movers.Test() MoverHisFlip: Bad ND1-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     dHydrogen = (fixed[6] - fixed[7]).length()
     oldDHydrogen = (lvec3(cd2h.xyz)-lvec3(cd2.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
-      return "Movers.Test() MoverHistidineFlip: Bad CD2-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
+      return "Movers.Test() MoverHisFlip: Bad CD2-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     # Ensure that the extraInfo and deleteMe information matches expectations:
     # 1) First hydrogen removed and first N is an acceptor on % = 1
@@ -2329,37 +2329,37 @@ def Test():
       fixedND1HDelete = mover.FixUp(i).deleteMes[5]
       if i % 4 == 1 or i % 4 == 3:
         if not coarseNE2Accept:
-          return "Movers.Test() MoverHistidineFlip: No NE2 acceptor, pos "+str(i)
+          return "Movers.Test() MoverHisFlip: No NE2 acceptor, pos "+str(i)
         if not coarseNE2HDelete:
-          return "Movers.Test() MoverHistidineFlip: Missing NE2 hydrygen deletion, pos "+str(i)
+          return "Movers.Test() MoverHisFlip: Missing NE2 hydrygen deletion, pos "+str(i)
       else:
         if coarseNE2Accept:
-          return "Movers.Test() MoverHistidineFlip: Unexpected NE2 acceptor, pos "+str(i)
+          return "Movers.Test() MoverHisFlip: Unexpected NE2 acceptor, pos "+str(i)
         if coarseNE2HDelete:
-          return "Movers.Test() MoverHistidineFlip: Unexpected NE2 hydrygen deletion, pos "+str(i)
+          return "Movers.Test() MoverHisFlip: Unexpected NE2 hydrygen deletion, pos "+str(i)
       if i % 4 == 2 or i % 4 == 3:
         if not coarseND1Accept:
-          return "Movers.Test() MoverHistidineFlip: No ND1 acceptor, pos "+str(i)
+          return "Movers.Test() MoverHisFlip: No ND1 acceptor, pos "+str(i)
         if not coarseND1HDelete:
-          return "Movers.Test() MoverHistidineFlip: Missing ND1 hydrygen deletion, pos "+str(i)
+          return "Movers.Test() MoverHisFlip: Missing ND1 hydrygen deletion, pos "+str(i)
       else:
         if coarseND1Accept:
-          return "Movers.Test() MoverHistidineFlip: Unexpected ND1 acceptor, pos "+str(i)
+          return "Movers.Test() MoverHisFlip: Unexpected ND1 acceptor, pos "+str(i)
         if coarseND1HDelete:
-          return "Movers.Test() MoverHistidineFlip: Unexpected ND1 hydrygen deletion, pos "+str(i)
+          return "Movers.Test() MoverHisFlip: Unexpected ND1 hydrygen deletion, pos "+str(i)
 
     # Test the PoseDescription
     if mover.PoseDescription(1,0) != "Unflipped HE2 removed":
-      return "Movers.Test() MoverNH2Flip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(1,0)
+      return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(1,0)
     if mover.PoseDescription(2,0) != "Unflipped HD1 removed":
-      return "Movers.Test() MoverNH2Flip: Unexpected results for PoseDescription 2, got "+mover.PoseDescription(2,0)
+      return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 2, got "+mover.PoseDescription(2,0)
     if mover.PoseDescription(3,0) != "Unflipped HE2 removed HD1 removed":
-      return "Movers.Test() MoverNH2Flip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(3,0)
+      return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(3,0)
     if mover.PoseDescription(4,0) != "Flipped":
-      return "Movers.Test() MoverNH2Flip: Unexpected results for PoseDescription 4, got "+mover.PoseDescription(4,0)
+      return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 4, got "+mover.PoseDescription(4,0)
 
   except Exception as e:
-    return "Movers.Test() MoverHistidineFlip: Exception during test: "+str(e)+"\n"+traceback.format_exc()
+    return "Movers.Test() MoverHisFlip: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
   return ""
 

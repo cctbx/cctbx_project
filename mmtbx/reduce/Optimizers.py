@@ -572,7 +572,7 @@ class _SingletonOptimizer(object):
             final += self._highScores[m]
           self._infoString += _VerboseCheck(1," Totals: initial score {:.2f}, final score {:.2f}\n".format(initial, final))
           for m in movers:
-            self._infoString += _VerboseCheck(1,"  {} in coarse state {}, fine state {} ({}) with score {:.2f}\n".format(
+            self._infoString += _VerboseCheck(1,"  {} in coarse state {} fine state {} ({}) with score {:.2f}\n".format(
               self._moverInfo[m], self._coarseLocations[m], self._fineLocations[m],
               m.PoseDescription(self._coarseLocations[m], self._fineLocations[m]),
               self._highScores[m]))
@@ -1303,7 +1303,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           except Exception as e:
             infoString += _VerboseCheck(0,"Could not add MoverTetrahedralMethylRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n")
 
-    # See if we should insert a MoverNH2Flip here.
+    # See if we should insert a MoverAmideFlip here.
     # @todo Is there a more general way than looking for specific names?
     if addFlipMovers and ((aName == 'XD2' and resName == 'ASX') or (aName == 'XE2' and resName == 'GLX')):
       infoString += _VerboseCheck(1,"Not attempting to adjust "+resNameAndID+" "+aName+"\n")
@@ -1329,7 +1329,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           if n.element_is_positive_ion():
             dist = (Helpers.rvec3(oxygen.xyz) - Helpers.rvec3(n.xyz)).length()
             expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
-            infoString += _VerboseCheck(5,'Checking NH2Flip '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
+            infoString += _VerboseCheck(5,'Checking AmideFlip '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
               ' dist = '+str(dist)+', expected = '+str(expected)+'; N rad = '+str(myRad)+
               ', '+n.name.strip()+' rad = '+str(extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
             # @todo Why are we using -0.65 here and -0.55 for Histidine?
@@ -1338,13 +1338,13 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
 
       if not foundIon:
         try:
-          movers.append(Movers.MoverNH2Flip(a, "CA", bondedNeighborLists))
-          infoString += _VerboseCheck(1,"Added MoverNH2Flip "+str(len(movers))+" to "+resNameAndID+"\n")
-          moverInfo[movers[-1]] = "NH2Flip at "+resNameAndID+" "+aName;
+          movers.append(Movers.MoverAmideFlip(a, "CA", bondedNeighborLists))
+          infoString += _VerboseCheck(1,"Added MoverAmideFlip "+str(len(movers))+" to "+resNameAndID+"\n")
+          moverInfo[movers[-1]] = "AmideFlip at "+resNameAndID+" "+aName;
         except Exception as e:
-          infoString += _VerboseCheck(0,"Could not add MoverNH2Flip to "+resNameAndID+": "+str(e)+"\n")
+          infoString += _VerboseCheck(0,"Could not add MoverAmideFlip to "+resNameAndID+": "+str(e)+"\n")
 
-    # See if we should insert a MoverHistidineFlip here.
+    # See if we should insert a MoverHisFlip here.
     # @todo Is there a more general way than looking for specific names?
     if aName == 'NE2' and resName == 'HIS':
       try:
@@ -1352,7 +1352,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         # locations.  If one or both of them are near enough to be ionically bound to an
         # ion, then we remove the Hydrogen(s) and lock the Histidine at that orientation
         # rather than inserting the Mover into the list of those to be optimized.
-        hist = Movers.MoverHistidineFlip(a, bondedNeighborLists, extraAtomInfo)
+        hist = Movers.MoverHisFlip(a, bondedNeighborLists, extraAtomInfo)
 
         # Find the four positions to check for Nitrogen ionic bonds
         # The two atoms are NE2 (0th atom with its Hydrogen at atom 1) and
@@ -1431,13 +1431,13 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           _modifyIfNeeded(fixUp.atoms[0], coarsePositions[0], fixUp.atoms[1], infoString)
           _modifyIfNeeded(fixUp.atoms[4], coarsePositions[4], fixUp.atoms[5], infoString)
 
-          infoString += _VerboseCheck(1,"Set MoverHistidineFlip on "+resNameAndID+" to state "+str(bondedConfig)+"\n")
+          infoString += _VerboseCheck(1,"Set MoverHisFlip on "+resNameAndID+" to state "+str(bondedConfig)+"\n")
         elif addFlipMovers: # Add a Histidine flip Mover if we're adding flip Movers
           movers.append(hist)
-          infoString += _VerboseCheck(1,"Added MoverHistidineFlip "+str(len(movers))+" to "+resNameAndID+"\n")
-          moverInfo[movers[-1]] = "HistidineFlip at "+resNameAndID+" "+aName;
+          infoString += _VerboseCheck(1,"Added MoverHisFlip "+str(len(movers))+" to "+resNameAndID+"\n")
+          moverInfo[movers[-1]] = "HisFlip at "+resNameAndID+" "+aName;
       except Exception as e:
-        infoString += _VerboseCheck(0,"Could not add MoverHistidineFlip to "+resNameAndID+": "+str(e)+"\n")
+        infoString += _VerboseCheck(0,"Could not add MoverHisFlip to "+resNameAndID+": "+str(e)+"\n")
 
   return _PlaceMoversReturn(movers, infoString, deleteAtoms, moverInfo)
 
@@ -1719,7 +1719,7 @@ END
         return 'Optimizers.Test(): '+name+' in 1xso Histidine test was not set for deletion'
 
   #========================================================================
-  # Check a case where an NH2Flip would be locked down and have its Hydrogen removed.
+  # Check a case where an AmideFlip would be locked down and have its Hydrogen removed.
   # @todo
 
   #========================================================================
