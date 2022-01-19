@@ -590,8 +590,6 @@ class f_masks(object):
     if(xray_structure.space_group().type().number() != 1): # not P1
       co.merge_symmetry_related_regions(
         space_group = xray_structure.space_group())
-    # Delete bulk whole mask from memory
-    del self._mask_p1
     #
     self.conn = co.result().as_double()
     z = zip(co.regions(),range(0,co.regions().size()))
@@ -685,6 +683,8 @@ class f_masks(object):
     self._add_from_aggregated(selection=weak_selection, diff_map=diff_map)
     # Finalize main Fmask
     self.f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
+    # Delete bulk whole mask from memory
+    del self._mask_p1
 
   def _add_from_aggregated(self, selection, diff_map):
     if(selection is None): return
@@ -737,7 +737,7 @@ class f_masks(object):
     if(self.write_masks):
       write_map_file(
         crystal_symmetry = self.crystal_symmetry, # Is this correct symmetry?
-        map_data         = self._mask_p1,
+        map_data         = mask,
         file_name        = "mask_whole.mrc")
     return mask
 
