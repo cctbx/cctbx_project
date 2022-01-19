@@ -3065,6 +3065,9 @@ def unpickle(build_path=None, env_name="libtbx_env"):
     env.installed_modules = []
   if not hasattr(env, "installed_order"):
     env.installed_order = []
+  # XXX backward compatibility 2022-01-19
+  if not hasattr(env.build_options, "enable_kokkos"):
+    env.build_options.enable_kokkos = False
   # update installed location
   if env.installed:
     sys_prefix = get_conda_prefix()
