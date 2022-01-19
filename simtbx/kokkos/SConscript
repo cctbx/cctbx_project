@@ -165,33 +165,20 @@ if not env_etc.no_boost_python:
   kokkos_ext_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
   kokkos_ext_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
   kokkos_ext_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
+  default_libs = [
+    "simtbx_kokkos",
+    "scitbx_boost_python",
+    env_etc.boost_python_lib,
+    "cctbx",
+    "kokkos"]
   if 'Cuda' in os.getenv('KOKKOS_DEVICES'):
     kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'lib64')])
-    kokkos_ext_env.Append(LIBS=env_etc.libm +
-      ["simtbx_kokkos",
-      "scitbx_boost_python",
-      env_etc.boost_python_lib,
-      "cctbx",
-      "kokkos",
-      "cudart",
-      "cuda"])
+    kokkos_ext_env.Append(LIBS=env_etc.libm + default_libs + ["cudart", "cuda"])
   elif 'HIP' in os.getenv('KOKKOS_DEVICES'):
     kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['ROCM_PATH'], 'lib')])
-    kokkos_ext_env.Append(LIBS=env_etc.libm +
-      ["simtbx_kokkos",
-      "scitbx_boost_python",
-      env_etc.boost_python_lib,
-      "cctbx",
-      "kokkos",
-      "amdhip64",
-      "hsa-runtime64"])
+    kokkos_ext_env.Append(LIBS=env_etc.libm + default_libs + ["amdhip64", "hsa-runtime64"])
   else:
-    kokkos_ext_env.Append(LIBS=env_etc.libm +
-      ["simtbx_kokkos",
-      "scitbx_boost_python",
-      env_etc.boost_python_lib,
-      "cctbx",
-      "kokkos"])
+    kokkos_ext_env.Append(LIBS=env_etc.libm + default_libs)
 
   simtbx_kokkos_ext = kokkos_ext_env.SharedLibrary(
     target="#lib/simtbx_kokkos_ext.so",
