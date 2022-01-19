@@ -488,8 +488,7 @@ class _SingletonOptimizer(object):
         # Compute and store the initial score for each Mover in its info
         for m in self._movers:
           coarse = m.CoarsePositions()
-          score = coarse.preferenceEnergies[0]
-          score *= self._preferenceMagnitude
+          score = coarse.preferenceEnergies[0] * self._preferenceMagnitude
           self._setMoverState(coarse, 0)
           for a in coarse.atoms:
             score += self._scoreAtom(a)
@@ -572,14 +571,14 @@ class _SingletonOptimizer(object):
             final += self._highScores[m]
           self._infoString += _VerboseCheck(1," Totals: initial score {:.2f}, final score {:.2f}\n".format(initial, final))
           for m in movers:
-            self._infoString += _VerboseCheck(1,"  {} final score {:.2f} pose {}\n".format(
+            self._infoString += _VerboseCheck(1,"  {} final score: {:.2f} pose {}\n".format(
               self._moverInfo[m], self._highScores[m],
               m.PoseDescription(self._coarseLocations[m], self._fineLocations[m])
               ))
         self._infoString += _VerboseCheck(1," Singleton Movers:\n")
         for s in singletonCliques:
           m = self._interactionGraph.vertex_label(s[0])
-          self._infoString += _VerboseCheck(1,"  {} final score {:.2f} pose {}\n".format(
+          self._infoString += _VerboseCheck(1,"  {} final score: {:.2f} pose {}\n".format(
             self._moverInfo[m], self._highScores[m],
             m.PoseDescription(self._coarseLocations[m], self._fineLocations[m])
             ))
