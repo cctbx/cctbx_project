@@ -69,6 +69,11 @@ cfg_spock.env['KOKKOS_ARCH'] = "Vega908"
 cfg_spock.env['CXX'] = 'hipcc'
 list_cfg.append(cfg_spock)
 
+cfg_crusher = cfg_spock.get_copy()
+cfg_crusher.host_name = 'crusher'
+cfg_crusher.env['KOKKOS_ARCH'] = "Vega90A"
+list_cfg.append(cfg_crusher)
+
 system_settings = cfg_default.env
 for cfg in list_cfg:
   if cfg.is_host():
