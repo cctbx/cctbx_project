@@ -328,7 +328,7 @@ class _MoverRotator(object):
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
       return "Unrecognized state"
     else:
-      return "Angle {:.1f}".format(self._coarseAngles[coarseIndex] + self._fineAngles[fineIndex])
+      return "Angle {:.1f} deg".format(self._coarseAngles[coarseIndex] + self._fineAngles[fineIndex])
 
 ##################################################################################
 class MoverSingleHydrogenRotator(_MoverRotator):
@@ -1039,10 +1039,10 @@ class MoverHisFlip(object):
       ret = "Unflipped"
     else:
       ret = "Flipped"
-    if coarseIndex % 4 == 1 or coarseIndex % 4 == 3:
-      ret += " HE2 removed"
-    if coarseIndex % 4 == 2 or coarseIndex % 4 == 3:
-      ret += " HD1 removed"
+    if coarseIndex % 4 == 0 or coarseIndex % 4 == 1:
+      ret += " HD1 added"
+    if coarseIndex % 4 == 0 or coarseIndex % 4 == 2:
+      ret += " HE2 added"
     return ret
 
 ##################################################################################
@@ -1366,7 +1366,7 @@ def Test():
       return "Movers.Test() _MoverRotator setting fine step: Expected 14, got "+str(len(fine.positions))
 
     # Test the PoseDescription
-    if rot.PoseDescription(1,1) != "Angle -28.0":
+    if rot.PoseDescription(1,1) != "Angle -28.0 deg":
       return "Movers.Test() _MoverRotator: Unexpected results for PoseDescription, got "+rot.PoseDescription(1,1)
 
   except Exception as e:
@@ -1932,7 +1932,7 @@ def Test():
       return "Movers.Test() MoverAmideFlip basic: Bad pivot hydrogen motion: "+str(dHydrogen)
 
     # Test the PoseDescription
-    if rot.PoseDescription(1,1) != "Angle -28.0":
+    if rot.PoseDescription(1,1) != "Angle -28.0 deg":
       return "Movers.Test() _MoverRotator: Unexpected results for PoseDescription, got "+rot.PoseDescription(1,1)
 
   except Exception as e:
@@ -2349,13 +2349,13 @@ def Test():
           return "Movers.Test() MoverHisFlip: Unexpected ND1 hydrygen deletion, pos "+str(i)
 
     # Test the PoseDescription
-    if mover.PoseDescription(1,0) != "Unflipped HE2 removed":
+    if mover.PoseDescription(1,0) != "Unflipped HD1 added":
       return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(1,0)
-    if mover.PoseDescription(2,0) != "Unflipped HD1 removed":
+    if mover.PoseDescription(2,0) != "Unflipped HE2 added":
       return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 2, got "+mover.PoseDescription(2,0)
-    if mover.PoseDescription(3,0) != "Unflipped HE2 removed HD1 removed":
+    if mover.PoseDescription(3,0) != "Unflipped":
       return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(3,0)
-    if mover.PoseDescription(4,0) != "Flipped":
+    if mover.PoseDescription(4,0) != "Flipped HD1 added HE2 added":
       return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 4, got "+mover.PoseDescription(4,0)
 
   except Exception as e:

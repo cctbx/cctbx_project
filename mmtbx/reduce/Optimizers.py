@@ -572,17 +572,17 @@ class _SingletonOptimizer(object):
             final += self._highScores[m]
           self._infoString += _VerboseCheck(1," Totals: initial score {:.2f}, final score {:.2f}\n".format(initial, final))
           for m in movers:
-            self._infoString += _VerboseCheck(1,"  {} in coarse state {} fine state {} ({}) with score {:.2f}\n".format(
-              self._moverInfo[m], self._coarseLocations[m], self._fineLocations[m],
-              m.PoseDescription(self._coarseLocations[m], self._fineLocations[m]),
-              self._highScores[m]))
+            self._infoString += _VerboseCheck(1,"  {} final score {:.2f} pose {}\n".format(
+              self._moverInfo[m], self._highScores[m],
+              m.PoseDescription(self._coarseLocations[m], self._fineLocations[m])
+              ))
         self._infoString += _VerboseCheck(1," Singleton Movers:\n")
         for s in singletonCliques:
           m = self._interactionGraph.vertex_label(s[0])
-          self._infoString += _VerboseCheck(1,"  {} in coarse state {}, fine state {} ({}) with score {:.2f}\n".format(
-            self._moverInfo[m], self._coarseLocations[m], self._fineLocations[m],
-            m.PoseDescription(self._coarseLocations[m], self._fineLocations[m]),
-            self._highScores[m]))
+          self._infoString += _VerboseCheck(1,"  {} final score {:.2f} pose {}\n".format(
+            self._moverInfo[m], self._highScores[m],
+            m.PoseDescription(self._coarseLocations[m], self._fineLocations[m])
+            ))
         self._infoString += _VerboseCheck(1,"END REPORT\n")
 
         ################################################################################
