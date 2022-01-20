@@ -21,7 +21,7 @@ from scitbx.array_family import flex
 from iotbx import pdb
 import mmtbx_probe_ext as probe
 import traceback
-from mmtbx.probe.Helpers import rvec3, lvec3
+from mmtbx.probe.Helpers import rvec3, lvec3, conventionalSortingKey
 
 
 ##################################################################################
@@ -174,13 +174,8 @@ class MoverNull(object):
       return "Original location"
 
 ##################################################################################
-# @todo Consider having another constructor parameter that gives the initial rotation
-# offset to place the hydrogens in a good starting location, then derived classes can
-# indicate this rotation without actually having to change the positions of the Hydrogens
-# that are rotating.  This offset will be added to all resulting rotations, and subtracted
-# before applying the preference function.
 class _MoverRotator(object):
-  def __init__(self, atoms, axis, coarseRange, coarseStepDegrees = 30.0,
+  def __init__(self, atoms, axis, dihedral, offset, coarseRange, coarseStepDegrees = 30.0,
                 doFineRotations = True, fineStepDegrees = 1.0,
                 preferenceFunction = None, preferredOrientationScale = 1.0):
     """Constructs a Rotator, to be called by a derived class or test program but
@@ -197,6 +192,17 @@ class _MoverRotator(object):
        of which is the origin and the second is a vector pointing in the direction
        of the axis of rotation.  Positive rotations will be right-handed rotations
        around this axis.
+       :param dihedral: Angle of rotatation in degrees.  Specifies the clockwise
+       rotation of the conventional first hydrogen (lowest numbered) in the atoms
+       list compared to the atom in the conventional branch three neighbors away.
+       The initial rotation for the atoms rotates them back to 0.
+       :param offset: Angle of rotation in degrees.  Specifies the desired clockwise
+       rotation of the conventional first hydrogen (lowest numbered) in the atoms
+       list away from the dihedral.  This is specified separately because we need to
+       know it for reporting purposes.  It is added to the negative of the dihedral
+       to determine the initial rotation to make for all of the atoms.  It specifies
+       the starting orientation (effective 0 degrees) that the coarse and fine steps
+       are taken from.
        :param coarseRange: Range in degrees that the atoms can rotate around the axis
        from the starting position.  The range is considered closed on the negative
        end and open on the positive: [-coarseRange..coarseRange).  For example a
@@ -226,6 +232,15 @@ class _MoverRotator(object):
     self._preferenceFunction = preferenceFunction
     self._fineStepDegrees = fineStepDegrees
     self._preferredOrientationScale = preferredOrientationScale
+    self._offset = offset
+
+    # Rotate the atoms so that the conventional atom is at the expected initial
+    # orientation before other rotations are made.  This rotates them around the axis by an angle that
+    # is the sum of the offset and the dihedral, placing the conventional atom at the
+    # specified offset from a 0 dihedral angle.  The other atoms maintain their relative rotations
+    # with the conventional atom.
+    for atom in atoms:
+      atom.xyz = _rotateAroundAxis(atom, axis, offset + dihedral)
 
     # Make a list of coarse angles to try based on the coarse range (inclusive
     # for negative and exclusive for positive) and the step size.  We always
@@ -328,7 +343,7 @@ class _MoverRotator(object):
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
       return "Unrecognized state"
     else:
-      return "Angle {:.1f} deg".format(self._coarseAngles[coarseIndex] + self._fineAngles[fineIndex])
+      return "Angle {:.1f} deg".format(self._offset + self._coarseAngles[coarseIndex] + self._fineAngles[fineIndex])
 
 ##################################################################################
 class MoverSingleHydrogenRotator(_MoverRotator):
@@ -395,24 +410,28 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     normal = (rvec3(neighbor.xyz) - rvec3(partner.xyz)).normalize()
     axis = flex.vec3_double([partner.xyz, normal])
 
-    # Move the atom so that it is in one of the two preferred locations.  The preferred location depends on
-    # whether there are two or three friends, it wants to be in the plane if there are two of them and it
-    # wants to be between two edges if there are three.  It turns out that rotating it to point away from
-    # one of the friends works in both of those cases.
-    atom.xyz = _rotateOppositeFriend(atom, axis, partner, friends[0])
-
     # Make a list that contains just the single atom.
     atoms = [ atom ]
 
+    # Move the atom so that it is in one of the preferred locations.  The preferred location depends on
+    # whether there are two or three friends, it wants to be in the plane if there are two of them and it
+    # wants to be between two edges if there are three.  It turns out that rotating it to point away from
+    # the conventional-branch friend (lowest when sorted) works in both of those cases.
+    conventional = sorted(friends, key=conventionalSortingKey)[0]
+    sites = [ atom.xyz, partner.xyz, neighbor.xyz, conventional.xyz ]
+    dihedral = scitbx.math.dihedral_angle(sites=sites, deg=True)
+    offset = 180
+
     # Construct our parent class, which will do all of the actual work based on our inputs.
-    _MoverRotator.__init__(self, atoms, axis, 180, coarseStepDegrees = coarseStepDegrees,
+    _MoverRotator.__init__(self, atoms, axis, dihedral, offset, 180, coarseStepDegrees = coarseStepDegrees,
       fineStepDegrees = fineStepDegrees, preferenceFunction = preferenceFunction,
       preferredOrientationScale = preferredOrientationScale)
 
     # Now add orientations that point in the direction of the potential acceptors.
     # @todo The original C++ code aimed only at these (or near them for clashes) and in a
     # direction far from clashes.  We may need to do this for speed reasons and to reduce the
-    # number of elements in each clique, but for now we try all coarse orientations.
+    # number of elements in each clique, but for now we try all coarse orientations and all
+    # acceptor directions.
 
     # Compute the dihedral angle from the Hydrogen to the potential acceptor through
     # the partner and neighbor.  This is the amount to rotate the hydrogen by.
@@ -420,6 +439,9 @@ class MoverSingleHydrogenRotator(_MoverRotator):
       sites = [ atom.xyz, partner.xyz, neighbor.xyz, a.xyz ]
       degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
       # The degrees can be None in degenerate cases.  We avoid adding an entry in that case.
+      # The atom will have been placed in the correct initial orientation by the _MoverRotator
+      # constructor, so our dihedral measurement here is with respect to that new location.
+      # This means that we merely have to add the degrees offset to its current rotation.
       if degrees is not None:
         self._coarseAngles.append(degrees)
 
@@ -484,15 +506,17 @@ class MoverNH3Rotator(_MoverRotator):
     normal = (rvec3(neighbor.xyz) - rvec3(partner.xyz)).normalize()
     axis = flex.vec3_double([partner.xyz, normal])
 
-    # Move the Hydrogens so that they are in one of the preferred locations by rotating one of them to
-    # point away from one of the friends.  The other two are located at +120 and -120 degrees rotated
-    # around the axis from the first.
-    hydrogens[0].xyz = _rotateOppositeFriend(hydrogens[0], axis, partner, friends[0])
-    hydrogens[1].xyz = _rotateAroundAxis(hydrogens[0], axis, 120)
-    hydrogens[2].xyz = _rotateAroundAxis(hydrogens[0], axis, -120)
+    # Move the Hydrogens so that they are in one of the preferred locations by rotating the
+    # conventional (lowest in sort order) of them to point away from the conventional (lowest
+    # sort order) of the friends.
+    conventionalH = sorted(hydrogens, key=conventionalSortingKey)[0]
+    conventionalFriend = sorted(friends, key=conventionalSortingKey)[0]
+    sites = [ conventionalH.xyz, partner.xyz, neighbor.xyz, conventionalFriend.xyz ]
+    dihedral = scitbx.math.dihedral_angle(sites=sites, deg=True)
+    offset = 180
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
-    _MoverRotator.__init__(self, hydrogens, axis, 180, coarseStepDegrees,
+    _MoverRotator.__init__(self, hydrogens, axis, dihedral, offset, 180, coarseStepDegrees,
       fineStepDegrees = fineStepDegrees, preferenceFunction = preferenceFunction,
       preferredOrientationScale = preferredOrientationScale)
 
@@ -548,18 +572,19 @@ class MoverAromaticMethylRotator(_MoverRotator):
     normal = (rvec3(neighbor.xyz) - rvec3(partner.xyz)).normalize()
     axis = flex.vec3_double([partner.xyz, normal])
 
-    # Move the Hydrogens so that they are in one of the preferred locations by rotating one of them to
-    # point away from one of the friends and then rotating it 90 degrees.  The other two are located
-    # at +120 and -120 degrees rotated around the axis from the first.
-    hydrogens[0].xyz = _rotateOppositeFriend(hydrogens[0], axis, partner, friends[0])
-    hydrogens[0].xyz = _rotateAroundAxis(hydrogens[0], axis, 90)
-    hydrogens[1].xyz = _rotateAroundAxis(hydrogens[0], axis, 120)
-    hydrogens[2].xyz = _rotateAroundAxis(hydrogens[0], axis, -120)
+    # Move the Hydrogens so that they are in one of the preferred locations by rotating the
+    # conventional (lowest in sort order) of them to point away from the conventional (lowest
+    # sort order) of the friends plus 90 degrees.
+    conventionalH = sorted(hydrogens, key=conventionalSortingKey)[0]
+    conventionalFriend = sorted(friends, key=conventionalSortingKey)[0]
+    sites = [ conventionalH.xyz, partner.xyz, neighbor.xyz, conventionalFriend.xyz ]
+    dihedral = scitbx.math.dihedral_angle(sites=sites, deg=True)
+    offset = 180 + 90
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
     # We have a coarse step size of 180 degrees and a range of 180 degrees and do not
     # allow fine rotations.
-    _MoverRotator.__init__(self, hydrogens, axis, 180, 180, doFineRotations = False)
+    _MoverRotator.__init__(self, hydrogens, axis, dihedral, offset, 180, 180, doFineRotations = False)
 
 ##################################################################################
 class MoverTetrahedralMethylRotator(_MoverRotator):
@@ -622,21 +647,21 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
     normal = (rvec3(neighbor.xyz) - rvec3(partner.xyz)).normalize()
     axis = flex.vec3_double([partner.xyz, normal])
 
-    # Move the Hydrogens so that they are in one of the preferred locations by rotating one of them to
-    # point away from one of the friends.  The other two are located at +120 and -120 degrees rotated
-    # around the axis from the first.
-    hydrogens[0].xyz = _rotateOppositeFriend(hydrogens[0], axis, partner, friends[0])
-    hydrogens[1].xyz = _rotateAroundAxis(hydrogens[0], axis, 120)
-    hydrogens[2].xyz = _rotateAroundAxis(hydrogens[0], axis, -120)
-
     # Set the preference function to like 120-degree rotations away from the starting location.
     # @todo Consider parameterizing the magic constant of 0.1 for the preference magnitude
     def preferenceFunction(degrees): return 0.1 + 0.1 * math.cos(degrees * (math.pi/180) * (360/120))
 
+    # Move the Hydrogens so that they are in one of the preferred locations by rotating the
+    # conventional (lowest in sort order) of them to point away from the conventional (lowest
+    # sort order) of the friends.
+    conventionalH = sorted(hydrogens, key=conventionalSortingKey)[0]
+    conventionalFriend = sorted(friends, key=conventionalSortingKey)[0]
+    sites = [ conventionalH.xyz, partner.xyz, neighbor.xyz, conventionalFriend.xyz ]
+    dihedral = scitbx.math.dihedral_angle(sites=sites, deg=True)
+    offset = 180
+
     # Construct our parent class, which will do all of the actual work based on our inputs.
-    # We have a coarse step size of 180 degrees and a range of 180 degrees and do not
-    # allow fine rotations.
-    _MoverRotator.__init__(self, hydrogens, axis, 180, fineStepDegrees = fineStepDegrees,
+    _MoverRotator.__init__(self, hydrogens, axis, dihedral, offset, 180, fineStepDegrees = fineStepDegrees,
       preferenceFunction = preferenceFunction,
       preferredOrientationScale = preferredOrientationScale)
 
@@ -1249,6 +1274,7 @@ def Test():
   # Test the MoverNull class.
   try:
     atom = pdb.hierarchy.atom()
+    atom.name = "C"
     atoms = [atom]
     extras = [probe.ExtraAtomInfo()]
     extrasMap = probe.ExtraAtomInfoMap(atoms, extras)
@@ -1284,12 +1310,13 @@ def Test():
               [ 0.0,-1.0, 1.0]]
     for i in range(3):
       a = pdb.hierarchy.atom()
+      atom.name = "H"
       a.xyz = coords[i]
       atoms.append(a)
     axis = flex.vec3_double([ [ 0.0, 0.0,-2.0], [ 0.0, 0.0, 1.0] ])
     def prefFunc(x):
       return 1.0
-    rot = _MoverRotator(atoms,axis, 180, 90.0, True, preferenceFunction = prefFunc)
+    rot = _MoverRotator(atoms,axis, 0, 0, 180, 90.0, True, preferenceFunction = prefFunc)
 
     # See if the results of each of the functions are what we expect in terms of sizes and locations
     # of atoms and preferences.  We'll use the default fine step size.
@@ -1318,21 +1345,21 @@ def Test():
         return "Movers.Test() _MoverRotator basic: Expected preference energy = 1, got "+str(p)
 
     # Test different preference scale value.
-    rot = _MoverRotator(atoms,axis, 180, 90.0, True, preferenceFunction = prefFunc, preferredOrientationScale = 2)
+    rot = _MoverRotator(atoms,axis, 0, 0, 180, 90.0, True, preferenceFunction = prefFunc, preferredOrientationScale = 2)
     coarse = rot.CoarsePositions()
     for p in coarse.preferenceEnergies:
       if p != 2:
         return "Movers.Test() _MoverRotator Scaled preference: Expected preference energy = 2, got "+str(p)
 
     # Test None preference function and a sinusoidal one.
-    rot = _MoverRotator(atoms,axis, 180, 90.0, True, preferenceFunction = None)
+    rot = _MoverRotator(atoms,axis, 0, 0, 180, 90.0, True, preferenceFunction = None)
     coarse = rot.CoarsePositions()
     for p in coarse.preferenceEnergies:
       if p != 0:
         return "Movers.Test() _MoverRotator None preference function: Expected preference energy = 0, got "+str(p)
     def prefFunc2(x):
       return math.cos(x * math.pi / 180)
-    rot = _MoverRotator(atoms,axis, 180, 180, True, preferenceFunction = prefFunc2)
+    rot = _MoverRotator(atoms,axis, 0, 0, 180, 180, True, preferenceFunction = prefFunc2)
     coarse = rot.CoarsePositions()
     expected = [1, -1]
     if len(coarse.preferenceEnergies) != len(expected):
@@ -1343,13 +1370,13 @@ def Test():
         return "Movers.Test() _MoverRotator Sinusoidal preference function: Expected preference energy = "+str(val)+", got "+str(p)
 
     # Test coarseStepDegrees default behavior.
-    rot = _MoverRotator(atoms,axis, 180)
+    rot = _MoverRotator(atoms,axis, 0, 0, 180)
     coarse = rot.CoarsePositions()
     if len(coarse.positions) != 12:
       return "Movers.Test() _MoverRotator Default coarse step: Expected 12, got "+str(len(coarse.positions))
 
     # Test doFineRotations = False and 180 degree coarseStepDegrees.
-    rot = _MoverRotator(atoms,axis, 180, 180, False)
+    rot = _MoverRotator(atoms,axis, 0, 0, 180, 180, False)
     coarse = rot.CoarsePositions()
     if len(coarse.positions) != 2:
       return "Movers.Test() _MoverRotator 180 coarse steps: Expected 2, got "+str(len(coarse.positions))
@@ -1358,7 +1385,7 @@ def Test():
       return "Movers.Test() _MoverRotator 180 coarse steps: Expected 0, got "+str(len(fine.positions))
 
     # Test fineStepDegrees setting.
-    rot = _MoverRotator(atoms,axis, 180, fineStepDegrees = 2)
+    rot = _MoverRotator(atoms,axis, 0, 0, 180, fineStepDegrees = 2)
     fine = rot.FinePositions(0)
     # +/- 15 degrees in 1-degree steps, but we don't do the +15 because it will be handled by the next
     # rotation up.
@@ -1368,6 +1395,11 @@ def Test():
     # Test the PoseDescription
     if rot.PoseDescription(1,1) != "Angle -28.0 deg":
       return "Movers.Test() _MoverRotator: Unexpected results for PoseDescription, got "+rot.PoseDescription(1,1)
+
+    # Test setting an offset and counterbalancing dihedral.
+    rot = _MoverRotator(atoms,axis, -10, 10, 180, fineStepDegrees = 2)
+    if rot.PoseDescription(1,1) != "Angle -18.0 deg":
+      return "Movers.Test() _MoverRotator: Unexpected results for offset, got "+rot.PoseDescription(1,1)
 
   except Exception as e:
     return "Movers.Test() _MoverRotator basic: Exception during test of _MoverRotator: "+str(e)+"\n"+traceback.format_exc()
@@ -1381,18 +1413,23 @@ def Test():
     # that are in this plane.
     h = pdb.hierarchy.atom()
     h.element = "H"
+    h.name = "H"
     h.xyz = [ 1.0, 1.0, 1.0 ]
 
     n = pdb.hierarchy.atom()
+    n.name = "C"
     n.xyz = [ 0.0, 0.0, 0.0 ]
 
     p = pdb.hierarchy.atom()
+    p.name = "C"
     p.xyz = [ 0.0, 0.0,-1.0 ]
 
     f1 = pdb.hierarchy.atom()
+    f1.name = "C1"
     f1.xyz = [ 1.0, 0.0,-2.0 ]
 
     f2 = pdb.hierarchy.atom()
+    f2.name = "C2"
     f2.xyz = [-1.0, 0.0,-2.0 ]
 
     # Build the hierarchy so we can reset the i_seq values.
@@ -1420,12 +1457,14 @@ def Test():
     # Add a non-bonded potential acceptor atom at 13 degrees rotation towards the Y axis from
     # the X axis.
     acc = pdb.hierarchy.atom()
+    acc.name = "C"
     acc.xyz = [ math.cos(13*math.pi/180), math.sin(13*math.pi/180), 1.0 ]
 
     mover = MoverSingleHydrogenRotator(h, bondedNeighborLists, [acc])
 
-    # Check for hydrogen rotated into Y=0 plane at a distance of sqrt(2) from Z axis
-    if h.xyz[2] != 1 or abs(abs(h.xyz[0])-math.sqrt(2)) > 1e-5:
+    # Check for hydrogen rotated into -X plane at a distance of sqrt(2) from Z axis.
+    # It should have been rotated 180 degrees from f1 because f1 is the conventional branch based on its name.
+    if h.xyz[2] != 1 or abs(-h.xyz[0]-math.sqrt(2)) > 1e-5:
       return "Movers.Test() MoverSingleHydrogenRotator pair: bad H placement"
 
     # Check fitness function preferring 0 and 180 rotations
@@ -1460,21 +1499,27 @@ def Test():
     # function that prefers its location and +/-120 degrees from it.
     h = pdb.hierarchy.atom()
     h.element = "H"
+    h.name = "H"
     h.xyz = [ 1.0, 1.0, 1.0 ]
 
     n = pdb.hierarchy.atom()
+    n.name = "C"
     n.xyz = [ 0.0, 0.0, 0.0 ]
 
     p = pdb.hierarchy.atom()
+    p.name = "C"
     p.xyz = [ 0.0, 0.0,-1.0 ]
 
     f1 = pdb.hierarchy.atom()
+    f1.name = "C1"
     f1.xyz = [ 1.0, 0.0,-2.0 ]
 
     f2 = pdb.hierarchy.atom()
+    f2.name = "C2"
     f2.xyz = _rotateAroundAxis(f1, axis, -120)
 
     f3 = pdb.hierarchy.atom()
+    f3.name = "C3"
     f3.xyz = _rotateAroundAxis(f1, axis, 120)
 
     # Build the hierarchy so we can reset the i_seq values.
@@ -1504,14 +1549,9 @@ def Test():
     mover = MoverSingleHydrogenRotator(h, bondedNeighborLists)
 
     # Check for a hydrogen on the -X axis at a distance of sqrt(2) from Z axis,
-    # or +/-120 from there.
-    angles = [0, 120, -120]
-    angle = None
-    for a in angles:
-      rotated = _rotateAroundAxis(h, axis, a)
-      if rotated[2] == 1 and rotated[0]+math.sqrt(2) < 1e-5:
-        angle = a
-    if angle == None:
+    # it should have picked f1 as the conventional friend to be opposite to based on its name.
+    angle = 0
+    if not (h.xyz[2] == 1 and h.xyz[0]+math.sqrt(2) < 1e-5):
       return "Movers.Test() MoverSingleHydrogenRotator triple: bad H placement"
 
     # Check fitness function preferring 180 and +/- 120 from there rotations away from
@@ -1541,30 +1581,38 @@ def Test():
     axis = flex.vec3_double([ [0,0,0], [0,0,1] ])
     h1 = pdb.hierarchy.atom()
     h1.element = "H"
+    h1.name = "H1"
     h1.xyz = [ 1.0, 1.0, 1.0 ]
 
     h2 = pdb.hierarchy.atom()
     h2.element = "H"
+    h2.name = "H2"
     h2.xyz = _rotateAroundAxis(h1, axis, -120)
 
     h3 = pdb.hierarchy.atom()
     h3.element = "H"
+    h3.name = "H3"
     h3.xyz = _rotateAroundAxis(h1, axis, 120)
 
     n = pdb.hierarchy.atom()
     n.element = "N"
+    n.name = "N"
     n.xyz = [ 0.0, 0.0, 0.0 ]
 
     p = pdb.hierarchy.atom()
+    p.name = "C"
     p.xyz = [ 0.0, 0.0,-1.0 ]
 
     f1 = pdb.hierarchy.atom()
+    f1.name = "C1"
     f1.xyz = [ 1.0, 0.0,-2.0 ]
 
     f2 = pdb.hierarchy.atom()
+    f2.name = "C2"
     f2.xyz = _rotateAroundAxis(f1, axis, -120)
 
     f3 = pdb.hierarchy.atom()
+    f3.name = "C3"
     f3.xyz = _rotateAroundAxis(f1, axis, 120)
 
     # Build the hierarchy so we can reset the i_seq values.
@@ -1597,12 +1645,8 @@ def Test():
 
     mover = MoverNH3Rotator(n, bondedNeighborLists)
 
-    # Check for a hydrogen on the -X axis at a distance of sqrt(2) from Z axis
-    found = False
-    for h in [h1, h2, h3]:
-      if h.xyz[2] == 1 and h.xyz[0]+math.sqrt(2) < 1e-5:
-        found = True
-    if not found:
+    # Check for the first hydrogen on the -X axis at a distance of sqrt(2) from Z the axis.
+    if not (h1.xyz[2] == 1 and h1.xyz[0]+math.sqrt(2) < 1e-5):
       return "Movers.Test() MoverNH3Rotator basic: bad H placement"
 
     # Check fitness function preferring 180 and +/- 120 from there rotations
@@ -1630,27 +1674,34 @@ def Test():
     axis = flex.vec3_double([ [0,0,0], [0,0,1] ])
     h1 = pdb.hierarchy.atom()
     h1.element = "H"
+    h1.name = "H1"
     h1.xyz = [ 1.0, 1.0, 1.0 ]
 
     h2 = pdb.hierarchy.atom()
     h2.element = "H"
+    h2.name = "H2"
     h2.xyz = _rotateAroundAxis(h1, axis, -120)
 
     h3 = pdb.hierarchy.atom()
     h3.element = "H"
+    h3.name = "H3"
     h3.xyz = _rotateAroundAxis(h1, axis, 120)
 
     n = pdb.hierarchy.atom()
     n.element = "C"
+    n.name = "C"
     n.xyz = [ 0.0, 0.0, 0.0 ]
 
     p = pdb.hierarchy.atom()
+    p.name = "C"
     p.xyz = [ 0.0, 0.0,-1.0 ]
 
     f1 = pdb.hierarchy.atom()
+    f1.name = "C1"
     f1.xyz = [ 1.0, 0.0,-2.0 ]
 
     f2 = pdb.hierarchy.atom()
+    f2.name = "C2"
     f1.xyz = [-1.0, 0.0,-2.0 ]
 
     # Build the hierarchy so we can reset the i_seq values.
@@ -1681,12 +1732,8 @@ def Test():
 
     mover = MoverAromaticMethylRotator(n, bondedNeighborLists)
 
-    # Check for a hydrogen on the +/-Y axis at a distance of sqrt(2) from the Z axis
-    found = False
-    for h in [h1, h2, h3]:
-      if h.xyz[2] == 1 and abs(abs(h.xyz[1])-math.sqrt(2)) < 1e-5:
-        found = True
-    if not found:
+    # Check for the first hydrogen on the +Y axis at a distance of sqrt(2) from Z the axis.
+    if not (h1.xyz[2] == 1 and abs(h1.xyz[1]-math.sqrt(2)) < 1e-5):
       return "Movers.Test() MoverAromaticMethylRotator basic: bad H placement"
 
     # Check that we get two coarse and no fine orientations
@@ -1710,30 +1757,38 @@ def Test():
     axis = flex.vec3_double([ [0,0,0], [0,0,1] ])
     h1 = pdb.hierarchy.atom()
     h1.element = "H"
+    h1.name = "H1"
     h1.xyz = [ 1.0, 1.0, 1.0 ]
 
     h2 = pdb.hierarchy.atom()
     h2.element = "H"
+    h2.name = "H2"
     h2.xyz = _rotateAroundAxis(h1, axis, -120)
 
     h3 = pdb.hierarchy.atom()
     h3.element = "H"
+    h3.name = "H3"
     h3.xyz = _rotateAroundAxis(h1, axis, 120)
 
     n = pdb.hierarchy.atom()
     n.element = "C"
+    n.name = "C"
     n.xyz = [ 0.0, 0.0, 0.0 ]
 
     p = pdb.hierarchy.atom()
+    p.name = "C"
     p.xyz = [ 0.0, 0.0,-1.0 ]
 
     f1 = pdb.hierarchy.atom()
+    f1.name = "C1"
     f1.xyz = [ 1.0, 0.0,-2.0 ]
 
     f2 = pdb.hierarchy.atom()
+    f2.name = "C2"
     f2.xyz = _rotateAroundAxis(f1, axis, -120)
 
     f3 = pdb.hierarchy.atom()
+    f3.name = "C3"
     f3.xyz = _rotateAroundAxis(f1, axis,  120)
 
     # Build the hierarchy so we can reset the i_seq values.
@@ -1766,12 +1821,8 @@ def Test():
 
     mover = MoverTetrahedralMethylRotator(n, bondedNeighborLists)
 
-    # Check for a hydrogen on the +/-Y axis at a distance of sqrt(2) from the Z axis
-    found = False
-    for h in [h1, h2, h3]:
-      if h.xyz[2] == 1 and h.xyz[0]+math.sqrt(2) < 1e-5:
-        found = True
-    if not found:
+    # Check for the first hydrogen on the -X axis at a distance of sqrt(2) from Z the axis.
+    if not (h1.xyz[2] == 1 and abs(-h1.xyz[0]-math.sqrt(2)) < 1e-5):
       return "Movers.Test() MoverTetrahedralMethylRotator basic: bad H placement"
 
     # Check fitness function preferring 180 and +/- 120 from there rotations.
@@ -1798,18 +1849,22 @@ def Test():
     # They are bonded to a Carbon and friend (pivot) and alpha carbon that are on the Z axis.
     # Non-physically, atoms are 1 unit apart.
     p = pdb.hierarchy.atom()
+    p.name = "C"
     p.xyz = [ 0.0, 0.0, 0.0 ]
 
     f = pdb.hierarchy.atom()
     f.element = "C"
+    f.name = "C"
     f.xyz = [ 0.0, 0.0,-1.0 ]
 
     fh1 = pdb.hierarchy.atom()
     fh1.element = "H"
+    fh1.name = "H"
     fh1.xyz = [ 1.0, 0.0,-1.0 ]
 
     fh2 = pdb.hierarchy.atom()
     fh2.element = "H"
+    fh2.name = "H"
     fh2.xyz = [-1.0, 0.0,-1.0 ]
 
     ca = pdb.hierarchy.atom()
@@ -1821,20 +1876,24 @@ def Test():
     axis = flex.vec3_double([ [0,0,0], [0,1,0] ])
     n = pdb.hierarchy.atom()
     n.element = "N"
+    n.name = "N"
     n.xyz = _rotateAroundAxis(f, axis,-120) + lvec3([0,0.01,0]) + lvec3([ 0.002, 0.003,-0.004])
 
     o = pdb.hierarchy.atom()
     o.element = "O"
+    o.name = "O"
     o.xyz = _rotateAroundAxis(f, axis, 120) + lvec3([0,0.01,0]) + lvec3([-0.003, 0.002, 0.003])
 
     # Hydrogens are +/-120 degrees from nitrogen-carbon bond
     axis = flex.vec3_double([ n.xyz, [0,1,0] ])
     h1 = pdb.hierarchy.atom()
     h1.element = "H"
+    h1.name = "H1"
     h1.xyz = _rotateAroundAxis(p, axis,-120) + lvec3([0,0.01,0]) + lvec3([-0.008, 0.001, 0.008])
 
     h2 = pdb.hierarchy.atom()
     h2.element = "H"
+    h2.name = "H2"
     h2.xyz = _rotateAroundAxis(p, axis, 120) + lvec3([0,0.01,0]) + lvec3([ 0.007,-0.001, 0.007])
 
     # Build the hierarchy so we can reset the i_seq values.
@@ -1932,8 +1991,8 @@ def Test():
       return "Movers.Test() MoverAmideFlip basic: Bad pivot hydrogen motion: "+str(dHydrogen)
 
     # Test the PoseDescription
-    if rot.PoseDescription(1,1) != "Angle -28.0 deg":
-      return "Movers.Test() _MoverRotator: Unexpected results for PoseDescription, got "+rot.PoseDescription(1,1)
+    if mover.PoseDescription(1,0) != "Flipped":
+      return "Movers.Test() MoverAmideFlip basic: Unexpected results for PoseDescription, got "+mover.PoseDescription(1,1)
 
   except Exception as e:
     return "Movers.Test() MoverAmideFlip basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
