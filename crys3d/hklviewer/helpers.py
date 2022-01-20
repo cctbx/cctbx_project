@@ -9,12 +9,23 @@ from matplotlib.figure import Figure
 from .qt import QtWidgets
 from .qt import Qt, QEvent, QAbstractTableModel, QModelIndex
 from .qt import QCursor, QKeySequence
-from .qt import ( QAbstractItemView, QCheckBox, QTableWidget, QAction,
+from .qt import ( QAbstractItemView, QCheckBox, QTableWidget, QAction, QDoubleSpinBox,
       QMenu, QTableView, QDialog, QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
       QScrollArea, QVBoxLayout, QHeaderView, QTableWidgetItem
      )
 import math, csv
 from io import StringIO
+
+
+class MyQDoubleSpinBox(QDoubleSpinBox):
+  def __init__(self, parent=None):
+    super(MyQDoubleSpinBox,self).__init__(parent)
+  def stepBy(self, steps):
+    QDoubleSpinBox.stepBy(self, steps)
+    top_widget = self
+    while top_widget.parentWidget(): top_widget = top_widget.parentWidget()
+    top_widget.parent.onHKLdistEditFinished()
+
 
 class MyhorizontalHeader(QHeaderView):
 # Assigned to HeaderDataTableWidget (HKLViewer.NGL_HKLViewer.millertable) but in

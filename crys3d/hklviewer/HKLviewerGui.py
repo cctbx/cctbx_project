@@ -12,16 +12,15 @@ from __future__ import absolute_import, division, print_function
 
 from .qt import QWebEngineView
 try: # if invoked by cctbx.python or some such
-  from crys3d.hklviewer.helpers import HeaderDataTableWidget # implicit import
+  from crys3d.hklviewer.helpers import HeaderDataTableWidget, MyQDoubleSpinBox # implicit import
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
-  from .helpers import HeaderDataTableWidget # implicit import
+  from .helpers import HeaderDataTableWidget, MyQDoubleSpinBox # implicit import
 
 from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit import
  QFont, QAbstractItemView, QAction, QCheckBox, QComboBox, QLineEdit,
  QDoubleSpinBox, QFrame, QGridLayout, QGroupBox, QLabel, QPlainTextEdit,
  QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox,
  QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon )
-
 
 
 class Ui_MainWindow(object):
@@ -283,7 +282,7 @@ class Ui_MainWindow(object):
 
         self.gridLayout_24.addWidget(self.label_15, 1, 0, 1, 1)
 
-        self.hkldist_spinBox = QDoubleSpinBox(self.ClipPlaneChkGroupBox)
+        self.hkldist_spinBox = MyQDoubleSpinBox(self.ClipPlaneChkGroupBox)
         self.hkldist_spinBox.setObjectName(u"hkldist_spinBox")
         sizePolicy10 = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         sizePolicy10.setHorizontalStretch(0)

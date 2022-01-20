@@ -812,9 +812,10 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.rotvec = None
             self.all_vectors = self.infodict.get("all_vectors",[])
 
+            self.clipplane_normal_vector_combo.clear()
             self.vectortable2.clearContents()
             self.vectortable2.setRowCount(len(self.all_vectors)+1)
-            for row, (opnr, label, order, v, hklop, hkls, abcs) in enumerate(self.all_vectors):
+            for row, (opnr, label, order, cartvec, hklop, hkls, abcs) in enumerate(self.all_vectors):
               for col,elm in enumerate((label, hklop, hkls, abcs)):
                 item = QTableWidgetItem(str(elm))
                 if col == 0:
@@ -822,6 +823,11 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
                   item.setCheckState(Qt.Unchecked)
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 self.vectortable2.setItem(row, col, item)
+
+              cartveclength = math.sqrt(cartvec[0]*cartvec[0] +cartvec[1]*cartvec[1] +cartvec[2]*cartvec[2] )
+              self.clipplane_normal_vector_combo.addItem(label, userData=cartveclength)
+
+
 
             rc = self.vectortable2.rowCount()-1 # last row is for user defined vector
             item = QTableWidgetItem("new vector")
@@ -1243,8 +1249,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 }
     """)
       i = self.SliceLabelComboBox.currentIndex()
-      rmin = self.array_infotpls[self.currentmillarray_idx][3][0][i]
-      rmax = self.array_infotpls[self.currentmillarray_idx][3][1][i]
+      rmin = eval(self.array_infotpls[self.currentmillarray_idx][1][3])[0][i]
+      rmax = eval(self.array_infotpls[self.currentmillarray_idx][1][3])[1][i]
       self.sliceindexspinBox.setRange(rmin, rmax)
     else:
       #self.ClipPlaneChkGroupBox.setChecked(True)
@@ -1260,8 +1266,9 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.unfeedback:
       return
     # 3th element in each table row is the min-max span of hkls.
-    rmin = self.array_infotpls[self.currentmillarray_idx][3][0][i]
-    rmax = self.array_infotpls[self.currentmillarray_idx][3][1][i]
+    # TODO: fix this for when user manually deselects min-max span of hkls from table rows
+    rmin = eval(self.array_infotpls[self.currentmillarray_idx][1][3])[0][i]
+    rmax = eval(self.array_infotpls[self.currentmillarray_idx][1][3])[1][i]
     self.sliceindexspinBox.setRange(rmin, rmax)
     val = "None"
     if self.PlaneParallelCheckbox.isChecked():
@@ -1517,7 +1524,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def createExpansionBox(self):
-    self.SpaceGroupComboBox.activated.connect(self.SpacegroupSelchange)
+    self.SpaceGroupComboBox.activated.connect(self.onSpacegroupSelchange)
     self.expandP1checkbox.clicked.connect(self.ExpandToP1)
     self.expandAnomalouscheckbox.clicked.connect(self.ExpandAnomalous)
     self.ExpandReflsGroupBox.clicked.connect(self.ExpandRefls)
@@ -1544,9 +1551,10 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.hkldistval = 0.0
     self.hkldist_spinBox.setValue(self.hkldistval)
     self.hkldist_spinBox.setDecimals(4)
-    self.hkldist_spinBox.setSingleStep(0.5)
-    self.hkldist_spinBox.setRange(-100.0, 100.0)
-    self.hkldist_spinBox.valueChanged.connect(self.onHKLdistChanged)
+    self.hkldist_spinBox.setSingleStep(1)
+    self.hkldist_spinBox.setRange(-1000.0, 1000.0)
+    #self.hkldist_spinBox.valueChanged.connect(self.onHKLdistChanged)
+    self.hkldist_spinBox.editingFinished.connect(self.onHKLdistEditFinished)
     self.clipwidth_spinBox.setValue(2 )
     self.clipwidth_spinBox.setDecimals(vprec)
     self.clipwidth_spinBox.setSingleStep(0.1)
@@ -1558,6 +1566,15 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.yHKLbackrotBtn.clicked.connect(self.onYangleHKLrotateback)
     self.xHKLbackrotBtn.clicked.connect(self.onXangleHKLrotateback)
     self.zHKLbackrotBtn.clicked.connect(self.onZangleHKLrotateback)
+
+    self.clipplane_normal_vector_combo.activated.connect(self.onClipPlaneNormalVecSelchange)
+
+
+  def onClipPlaneNormalVecSelchange(self):
+    self.clipplane_normal_vector_length.setText("{:.6g}".format(self.clipplane_normal_vector_combo.currentData()))
+    philstr = """viewer.fixorientation = vector
+clip_plane.normal_vector = %d""" %self.clipplane_normal_vector_combo.currentIndex()
+    self.send_message(philstr)
 
 
   def onXangleHKLrotate(self):
@@ -1660,6 +1677,12 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
   def onHKLdistChanged(self, val):
     if not self.unfeedback:
       self.hkldistval = val
+      self.send_message("clip_plane.hkldist = %f" %self.hkldistval)
+
+
+  def onHKLdistEditFinished(self):
+    if not self.unfeedback:
+      self.hkldistval = self.hkldist_spinBox.value()
       self.send_message("clip_plane.hkldist = %f" %self.hkldistval)
 
 
@@ -1926,7 +1949,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
 
-  def SpacegroupSelchange(self,i):
+  def onSpacegroupSelchange(self,i):
     self.send_message("spacegroup_choice = %d" %i)
 
 

@@ -460,6 +460,18 @@ class hklview_3d:
       if self.params.clip_plane.clipwidth and not self.viewerparams.slice_mode:
         clipwidth = self.params.clip_plane.clipwidth
         hkldist = self.params.clip_plane.hkldist
+      if self.params.clip_plane.normal_vector != -1:
+        # cartvec is the cartesian 
+        cartvec = self.all_vectors[ self.params.clip_plane.normal_vector ][3]
+        hklvec = eval(self.all_vectors[ self.params.clip_plane.normal_vector ][5])
+        uc = self.miller_array.unit_cell()
+        # Get corrresponding real space vector to the hkl vector (as cartesian coordinates)
+        real_space_vec = hklvec * matrix.sqr(uc.orthogonalization_matrix())
+        # Orient the clip plane perpendicular to real_space_vec
+        # while at the same time slide clip plane along the cartvec (reciprocal vector) direction
+        self.orient_vector_to_screen(real_space_vec)
+        L = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+        hkldist = self.params.clip_plane.hkldist * L
       self.make_clip_plane(hkldist, clipwidth)
       if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
         self.ExpandInBrowser()
@@ -2136,7 +2148,7 @@ in the space group %s\nwith unit cell %s\n""" \
     self.RemovePrimitives("clip_vector")
     if self.cameraPosZ is None and self.viewmtrx is not None:
       self.cameraPosZ, self.currentRotmx, self.cameratranslation = self.GetCameraPosRotTrans( self.viewmtrx)
-    halfdist = self.cameraPosZ  + hkldist # self.viewer.boundingZ*0.5
+    halfdist = self.cameraPosZ + hkldist # self.viewer.boundingZ*0.5
     if clipwidth == 0.0:
       clipwidth = self.meanradius
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
