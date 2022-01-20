@@ -67,12 +67,4 @@ def rebuild_pickle_files(data_dir, file_prefix, target_db, amino_acids):
   target_db.write()
 
 if __name__ == "__main__":
-  if sys.hexversion < 0x03000000:
-    run()
-  else:
-    try:
-      run()
-    except Exception:
-      print("Rebuilding rotorama failed with an exception. This is expected on Python3.")
-      import traceback
-      traceback.print_exc()
+  run()
