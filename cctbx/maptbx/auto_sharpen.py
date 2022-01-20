@@ -754,6 +754,12 @@ def set_sharpen_params(params,out=sys.stdout):
          " b_iso are used", file=out)
      params.map_modification.iterate=False
 
+  if 'half_map_sharpening' in params.map_modification.auto_sharpen_methods and \
+   ((not params.input_files.half_map_file) or
+   (not len(params.input_files.half_map_file))==2):
+    print("Skipping half-map sharpening as there are no half-maps supplied...",
+      file = out)
+    params.map_modification.auto_sharpen_methods.remove('half_map_sharpening')
 
   return params
 
