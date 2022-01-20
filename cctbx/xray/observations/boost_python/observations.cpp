@@ -52,7 +52,7 @@ namespace {
 
     static void wrap() {
       using namespace boost::python;
-      typedef return_value_policy<return_by_value> rbv;
+      return_value_policy<return_by_value> rbv;
 
       class_<obst>("observations", no_init)
         .def(init<sgtbx::space_group const&,
@@ -88,13 +88,13 @@ namespace {
                arg("twin_fractions"),
                arg("merohedral_components"))))
         .def("scale", &obst::scale)
-        .add_property("indices", &obst::indices)
-        .add_property("data", &obst::data)
-        .add_property("sigmas", &obst::sigmas)
-        .add_property("twin_fractions", &obst::twin_fractions)
-        .add_property("merohedral_components", &obst::merohedral_components)
-        .add_property("measured_scale_indices", &obst::measured_scale_indices)
-        .def("iterator", &obst::iterate, rbv())
+        .add_property("indices", make_function(&obst::indices, rbv))
+        .add_property("data", make_function(&obst::data, rbv))
+        .add_property("sigmas", make_function(&obst::sigmas, rbv))
+        .add_property("twin_fractions", make_function(&obst::twin_fractions, rbv))
+        .add_property("merohedral_components", make_function(&obst::merohedral_components, rbv))
+        .add_property("measured_scale_indices", make_function(&obst::measured_scale_indices, rbv))
+        .def("iterator", &obst::iterate, rbv)
         .def("detwin", detwin)
         .def("customized_detwin", customized_detwin)
         .def("twin", twin)
@@ -111,7 +111,7 @@ namespace {
       class_<frt>("filter_result", no_init)
         .def_readonly("omitted_count", &frt::omitted_count)
         .def_readonly("sys_abs_count", &frt::sys_abs_count)
-        .add_property("selection", make_getter(&frt::selection, rbv()))
+        .add_property("selection", make_getter(&frt::selection, rbv))
         ;
 
       class_<itct>("index_twin_component", no_init)
@@ -121,7 +121,7 @@ namespace {
              ((arg("index"),
                arg("fraction"),
                arg("scale"))))
-        .add_property("h", make_getter(&itct::h, rbv()))
+        .add_property("h", make_getter(&itct::h, rbv))
         .add_property("fraction", &get_twin_fractions)
         .add_property("scale", &itct::scale)
         ;

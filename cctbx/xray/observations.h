@@ -410,21 +410,21 @@ namespace cctbx { namespace xray {
         scitbx::af::shared<twin_component<FloatType>*>());
     }
 
-    scitbx::af::shared<FloatType> data() const { return data_; }
+    scitbx::af::shared<FloatType> const& data() const { return data_; }
 
-    scitbx::af::shared<FloatType> sigmas() const { return sigmas_; }
+    scitbx::af::shared<FloatType> const& sigmas() const { return sigmas_; }
 
-    scitbx::af::shared<miller::index<> > indices() const { return indices_; }
+    scitbx::af::shared<miller::index<> > const& indices() const { return indices_; }
 
-    scitbx::af::shared<int> measured_scale_indices() const {
+    scitbx::af::shared<int> const& measured_scale_indices() const {
       return measured_scale_indices_;
     }
 
-    scitbx::af::shared<twin_fraction<FloatType>*> twin_fractions() const {
+    scitbx::af::shared<twin_fraction<FloatType>*> const& twin_fractions() const {
       return twin_fractions_;
     }
 
-    scitbx::af::shared<twin_component<FloatType>*> merohedral_components() const {
+    scitbx::af::shared<twin_component<FloatType>*> const& merohedral_components() const {
       return merohedral_components_;
     }
 

@@ -3,7 +3,7 @@ The following struct is optimized for cache efficient parallel
 calculations using OpenMP making sure there is no strides
 in adressing memory by scheduling with chunksize 1
 */
-template < class NormalEquations,
+template<class NormalEquations,
   template<typename> class WeightingScheme>
 struct accumulate_reflection_chunk_omp {
   typedef f_calc_function_base<FloatType>
@@ -14,6 +14,7 @@ struct accumulate_reflection_chunk_omp {
   NormalEquations& normal_equations;
   cctbx::xray::observations<FloatType> const& reflections;
   af::const_ref<std::complex<FloatType> > const& f_mask;
+  twinning_processor<FloatType> const& twp;
   WeightingScheme<FloatType> const& weighting_scheme;
   boost::optional<FloatType> scale_factor;
   boost::shared_ptr<f_calc_function_base_t> f_calc_function_ptr;
@@ -31,11 +32,12 @@ struct accumulate_reflection_chunk_omp {
     boost::shared_ptr<NormalEquations> const& normal_equations_ptr,
     cctbx::xray::observations<FloatType> const& reflections,
     af::const_ref<std::complex<FloatType> > const& f_mask,
+    twinning_processor<FloatType> const& twp,
     WeightingScheme<FloatType> const& weighting_scheme,
     boost::optional<FloatType> scale_factor,
     boost::shared_ptr<f_calc_function_base_t> f_calc_function_ptr,
-    scitbx::sparse::matrix<FloatType> const
-    & jacobian_transpose_matching_grad_fc,
+    scitbx::sparse::matrix<FloatType> const&
+      jacobian_transpose_matching_grad_fc,
     cctbx::xray::extinction_correction<FloatType> const& exti,
     bool objective_only,
     af::ref<std::complex<FloatType> > f_calc,
@@ -43,7 +45,8 @@ struct accumulate_reflection_chunk_omp {
     af::ref<FloatType> weights,
     af::versa<FloatType, af::c_grid<2> >& design_matrix)
     : normal_equations_ptr(normal_equations_ptr), normal_equations(*normal_equations_ptr),
-    reflections(reflections), f_mask(f_mask), weighting_scheme(weighting_scheme),
+    reflections(reflections), f_mask(f_mask), twp(twp),
+    weighting_scheme(weighting_scheme),
     scale_factor(scale_factor),
     f_calc_function_ptr(f_calc_function_ptr), f_calc_function(*f_calc_function_ptr),
     jacobian_transpose_matching_grad_fc(jacobian_transpose_matching_grad_fc),
@@ -57,7 +60,7 @@ struct accumulate_reflection_chunk_omp {
     try {
       const int n = reflections.size();
       const int n_rows = jacobian_transpose_matching_grad_fc.n_rows();
-      const int threads = get_available_threads();
+      const int threads = parent_t::get_available_threads();
       std::vector<FloatType> gradients;
       boost::ptr_vector<boost::shared_ptr<f_calc_function_base_t> > f_calc_threads;
       f_calc_threads.resize(threads);
@@ -67,9 +70,13 @@ struct accumulate_reflection_chunk_omp {
       if (compute_grad && !build_design_matrix) {
         gradients.resize(n*n_rows);
       }
+      twinning_processor<FloatType> twp(reflections, f_mask, compute_grad,
+        jacobian_transpose_matching_grad_fc);
 #pragma omp parallel num_threads(threads)
       {
-        // Make a gradient vector for each thread
+        /* Make a gradient vector for each thread.
+        Must pre-allocate or Jt.G causes a crash
+        */
         af::shared<FloatType> gradient(n_rows);
         const int thread = omp_get_thread_num();
 #pragma omp for schedule(static,1)
@@ -84,12 +91,19 @@ struct accumulate_reflection_chunk_omp {
           f_calc[i_h] = f_calc_threads[thread]->get_f_calc();
           //skip hoarding memory if Gradients are not needed.
           if (compute_grad) {
-            gradient = jacobian_transpose_matching_grad_fc *
-              f_calc_threads[thread]->get_grad_observable();
+            if (f_calc_threads[thread]->raw_gradients()) {
+              gradient = jacobian_transpose_matching_grad_fc *
+                f_calc_threads[thread]->get_grad_observable();
+            }
+            else {
+              gradient = af::shared<FloatType>(
+                f_calc_threads[thread]->get_grad_observable().begin(),
+                f_calc_threads[thread]->get_grad_observable().end());
+            }
           }
-
           // sort out twinning
-          FloatType observable = process_twinning(i_h, gradient, f_calc_threads[thread]);
+          FloatType observable = twp.process(
+            i_h, *f_calc_threads[thread], gradient);
           // extinction correction
           af::tiny<FloatType, 2> exti_k = exti.compute(h, observable, compute_grad);
           observable *= exti_k[0];
@@ -108,32 +122,31 @@ struct accumulate_reflection_chunk_omp {
               FloatType exti_der = (exti_k[0] + pow(exti_k[0], 3)) / 2;
               int grad_index = exti.get_grad_index();
               SMTBX_ASSERT(!(grad_index < 0 || grad_index >= gradients.size()));
-              gradients[grad_index] += exti_k[1] * exti_der;
+              gradient[grad_index] += exti_k[1] * exti_der;
             }
             if (!build_design_matrix) {
               memcpy(&gradients[i_h * n_rows], gradient.begin(), sizeof(FloatType) * n_rows);
             }
           }
           if (build_design_matrix) {
-            for (int i_g = 0; i_g < gradients.size(); i_g++) {
-              design_matrix(i_h, i_g) = gradients[i_g];
-            }
+            memcpy(&design_matrix(i_h, 0), gradient.begin(),
+              gradient.size() * sizeof(FloatType));
           }
         }
       }
       if (objective_only) {
         if (weights.size()) {
           normal_equations.add_residuals_omp(n, observables,
-              reflections.data().ref(), weights);
+              reflections.data().const_ref(), weights);
         }
         else {
           normal_equations.add_residuals_omp(n, observables,
-              reflections.data().ref());
+              reflections.data().const_ref());
         }
       }
       else if (!build_design_matrix) {
         normal_equations.add_equations_omp(n, n_rows, threads,
-            observables, gradients, reflections.data().ref(), weights);
+            observables, gradients, reflections.data().const_ref(), weights);
       }
     }
     catch (smtbx::error const& e) {
@@ -144,68 +157,4 @@ struct accumulate_reflection_chunk_omp {
     }
   }
 
-  FloatType process_twinning(int i_h, 
-    af::shared<FloatType>& gradients, 
-    boost::shared_ptr<f_calc_function_base_t> f_calc_thread)
-  {
-    typedef typename cctbx::xray::observations<FloatType>::iterator itr_t;
-    typedef typename cctbx::xray::twin_fraction<FloatType> twf_t;
-    typedef typename cctbx::xray::observations<FloatType>::index_twin_component twc_t;
-    FloatType obs = f_calc_thread->get_observable();
-    if (reflections.has_twin_components()) {
-      itr_t itr = reflections.iterate(i_h);
-      FloatType measured_part = obs,
-          identity_part = 0,
-          obs_scale = reflections.scale(i_h);
-      obs *= obs_scale;
-      const twf_t* measured_fraction = reflections.fraction(i_h);
-      if (compute_grad) {
-        gradients *= obs_scale;
-        if (measured_fraction == 0) {
-          identity_part = measured_part;
-        }
-      }
-      std::size_t twc_cnt = 0;
-      while (itr.has_next()) {
-        twc_t twc = itr.next();
-        f_calc_thread->compute(twc.h, boost::none, compute_grad);
-        obs += twc.scale() * f_calc_thread ->get_observable();
-        if (compute_grad) {
-          af::shared<FloatType> tmp_gradients =
-              jacobian_transpose_matching_grad_fc * f_calc_thread->get_grad_observable();
-          gradients += twc.scale() * tmp_gradients;
-          if (twc.fraction != 0) {
-            if (twc.fraction->grad) {
-              SMTBX_ASSERT(!(twc.fraction->grad_index < 0 ||
-                  twc.fraction->grad_index >= gradients.size()));
-              gradients[twc.fraction->grad_index] += f_calc_thread->get_observable();
-            }
-          }
-          else {
-            identity_part += f_calc_thread->get_observable();
-          }
-          twc_cnt++;
-        }
-      }
-      if (compute_grad) {
-        // consider multiple reflections with the 'prime' scale
-        itr.reset();
-        while (itr.has_next()) {
-          twc_t twc = itr.next();
-          if (twc.fraction != 0 && twc.fraction->grad) {
-            SMTBX_ASSERT(!(twc.fraction->grad_index < 0 ||
-              twc.fraction->grad_index >= gradients.size()));
-            gradients[twc.fraction->grad_index] -= identity_part;
-          }
-        }
-        if (twc_cnt != 0 && measured_fraction != 0 && measured_fraction->grad) {
-          SMTBX_ASSERT(!(measured_fraction->grad_index < 0 ||
-              measured_fraction->grad_index >= gradients.size()));
-          gradients[measured_fraction->grad_index] +=
-              measured_part - identity_part;
-        }
-      }
-    }
-    return obs;
-  }
 };
