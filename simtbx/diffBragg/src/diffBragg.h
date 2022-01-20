@@ -304,6 +304,7 @@ class diffBragg: public nanoBragg{
   bool record_time = true;
 
   void show_timing_stats(int MPI_RANK);
+  bool last_kernel_on_GPU; // reveals whether the GPU kernel was run
 }; // end of diffBragg
 
 void diffBragg_sum_over_steps(

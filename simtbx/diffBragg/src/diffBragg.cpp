@@ -284,12 +284,6 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     panel_rot_manS->F_cross_dS <<0,0,0;
     panel_rot_manS->dF_cross_S <<0,0,0;
 
-    panels.push_back(panel_rot_man);
-    panels.push_back(orig0);
-    panels.push_back(origX);
-    panels.push_back(origY);
-    panels.push_back(panel_rot_manF);
-    panels.push_back(panel_rot_manS);
 
     rotX->refine_me = false;
     rotY->refine_me = false;
@@ -343,6 +337,13 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     NABC << 1,0,0,
             0,1,0,
             0,0,1;
+
+    panels.push_back(panel_rot_man);
+    panels.push_back(orig0);
+    panels.push_back(origX);
+    panels.push_back(origY);
+    panels.push_back(panel_rot_manF);
+    panels.push_back(panel_rot_manS);
 
     boost::shared_ptr<Fcell_manager> fpfdp1 = boost::shared_ptr<Fcell_manager>(new Fcell_manager());
     boost::shared_ptr<Fcell_manager> fpfdp2 = boost::shared_ptr<Fcell_manager>(new Fcell_manager());
@@ -404,6 +405,8 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
 
     linearize_Fhkl();
     //sanity_check_linear_Fhkl();
+    //
+    last_kernel_on_GPU=boost::python::object(); // object() returns  None
 
 }
 
@@ -1089,11 +1092,11 @@ void diffBragg::print_if_refining(){
     if (panels[5]->refine_me)
         printf("Refining panel rot S\n");
     if (panels[1]->refine_me)
-        printf("Refining panel X\n");
-    if (panels[2]->refine_me)
-        printf("Refining panel Y\n");
-    if (panels[3]->refine_me)
         printf("Refining panel Z\n");
+    if (panels[2]->refine_me)
+        printf("Refining panel X\n");
+    if (panels[3]->refine_me)
+        printf("Refining panel Y\n");
     if (eta_managers[0]->refine_me)
         printf("refining eta 0\n");
     if (eta_managers[1]->refine_me)
@@ -1904,6 +1907,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             db_beam,
             db_cryst,
             db_flags);
+        last_kernel_on_GPU=false;
         }
     else { // we are using cuda
 #ifdef NANOBRAGG_HAVE_CUDA
@@ -1933,6 +1937,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             db_cu_flags,
             device_pointers,
             TIMERS);
+        last_kernel_on_GPU=true;
 
 #else
        // no statement

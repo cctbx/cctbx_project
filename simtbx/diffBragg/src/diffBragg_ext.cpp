@@ -689,6 +689,10 @@ namespace boost_python { namespace {
             make_function(&set_diffuse_sigma,dcp()),
             "set the 3 diffuse sigma factors")
 
+      .add_property("most_recent_kernel_used_GPU",
+            make_getter(&simtbx::nanoBragg::diffBragg::last_kernel_on_GPU,rbv()),
+            "if True, the most recent kernel call utilized a GPU")
+
     ; // end of diffBragg extention
 
   } // end of diffBragg_init_module
