@@ -11,92 +11,111 @@
 namespace smtbx { namespace refinement { namespace least_squares {
   namespace boost_python {
 
+    using namespace boost::python;
   template <typename FloatType>
   struct wrapper {
+
     template <class ObjectType,
       class NormalEquations,
       template<typename> class WeightingSchemeType>
-    static void def_init_(boost::python::class_<ObjectType> &klass) {
+    static void def_init_(class_<ObjectType, bases<builder_base<FloatType> > >& klass) {
       using namespace boost::python;
+      typedef void (ObjectType::* build_t)(NormalEquations&,
+        WeightingSchemeType<FloatType> const&);
+
       klass.def(
         init<
-        NormalEquations &, // normal_equations
-        cctbx::xray::observations<FloatType> const &, // reflections
-        af::const_ref<std::complex<FloatType> > const &, // f_mask
-        WeightingSchemeType<FloatType> const &, // weighting_scheme
+        NormalEquations&, // normal_equations
+        cctbx::xray::observations<FloatType> const&, // reflections
+        af::const_ref<std::complex<FloatType> > const&, // f_mask
+        WeightingSchemeType<FloatType> const&, // weighting_scheme
         boost::optional<FloatType>, // scale_factor
         f_calc_function_base<FloatType> &, // f_calc_function
-        scitbx::sparse::matrix<FloatType> const &,
+        scitbx::sparse::matrix<FloatType> const&,
         // jacobian_transpose_matching_grad_fc
-        cctbx::xray::extinction_correction<FloatType> const &, // exti
-        // objective_only=false, may_parallelise=false, use_openpm=false
+        cctbx::xray::extinction_correction<FloatType> const&, // exti
+        // objective_only=false, may_parallelise_=false, use_openmp
         optional<bool, bool, bool>
         >((arg("normal_equations"), arg("reflections"), arg("f_mask"),
           arg("weighting_scheme"), arg("scale_factor"),
           arg("f_calc_function"), arg("jacobian_transpose_matching_grad_fc"),
           arg("extinction"), arg("objective_only") = false,
-          arg("may_parallelise") = false, arg("use_openmp") = false)));
+          arg("may_parallelise") = false, arg("use_openmp") = false)))
+        .def(
+          init<
+          cctbx::xray::observations<FloatType> const&, // reflections
+          af::const_ref<std::complex<FloatType> > const&, // f_mask
+          boost::optional<FloatType>, // scale_factor
+          f_calc_function_base<FloatType>&, // f_calc_function
+          scitbx::sparse::matrix<FloatType> const&,
+          // jacobian_transpose_matching_grad_fc
+          cctbx::xray::extinction_correction<FloatType> const&, // exti
+          // objective_only=false, may_parallelise_=false, use_openmp
+          optional<bool, bool, bool>
+          >((arg("reflections"), arg("f_mask"), arg("scale_factor"),
+            arg("f_calc_function"), arg("jacobian_transpose_matching_grad_fc"),
+            arg("extinction"), arg("objective_only") = false,
+            arg("may_parallelise") = false, arg("use_openmp") = false)))
+        .def("build", (build_t)&ObjectType::build)
+        ;
     }
 
     template <class ObjectType>
-    static void wrap_init(char const *name,
-      boost::python::class_<ObjectType> &klass)
+    static void wrap_init(char const* name,
+      boost::python::class_<ObjectType, bases<builder_base<FloatType> > >& klass)
     {
       typedef
         lstbx::normal_equations::non_linear_ls_with_separable_scale_factor<
         FloatType,
         scitbx::matrix::sum_of_symmetric_rank_1_updates>
         NormalEquations_BLAS2;
-      def_init_<ObjectType, NormalEquations_BLAS2, mainstream_shelx_weighting>(klass);
-      def_init_<ObjectType, NormalEquations_BLAS2, unit_weighting>            (klass);
-      def_init_<ObjectType, NormalEquations_BLAS2, sigma_weighting>           (klass);
 
       typedef
         lstbx::normal_equations::non_linear_ls_with_separable_scale_factor<
         FloatType,
         scitbx::matrix::rank_n_update>
         NormalEquations_BLAS3;
+      def_init_<ObjectType, NormalEquations_BLAS2, mainstream_shelx_weighting>(klass);
+      def_init_<ObjectType, NormalEquations_BLAS2, unit_weighting            >(klass);
+      def_init_<ObjectType, NormalEquations_BLAS2, sigma_weighting           >(klass);
       def_init_<ObjectType, NormalEquations_BLAS3, mainstream_shelx_weighting>(klass);
-      def_init_<ObjectType, NormalEquations_BLAS3, unit_weighting>            (klass);
-      def_init_<ObjectType, NormalEquations_BLAS3, sigma_weighting>           (klass);
+      def_init_<ObjectType, NormalEquations_BLAS3, unit_weighting            >(klass);
+      def_init_<ObjectType, NormalEquations_BLAS3, sigma_weighting           >(klass);
     }
 
     struct normal_equation_building {
-      typedef build_normal_equations<FloatType> wt;
-
-      static void wrap(char const *name) {
-        using namespace boost::python;
-        class_<wt> klass(name, no_init);
-        wrap_init<wt>(name, klass);
-        klass
-          .def("observables", &wt::observables)
-          .def("f_calc", &wt::f_calc)
-          .def("weights", &wt::weights)
+      static void wrap_base() {
+        typedef builder_base<FloatType> wt;
+        return_value_policy<return_by_value> rbv;
+        class_<wt, boost::noncopyable>("builder_base", no_init)
+          .def("design_matrix", &wt::design_matrix, rbv)
+          .def("observables", &wt::observables, rbv)
+          //.def("reflections", &wt::reflections)
+          .def("f_calc", &wt::f_calc, rbv)
+          .def("weights", &wt::weights, rbv)
           .add_static_property("available_threads",
             &wt::get_available_threads,
             &wt::set_available_threads)
           .def("hasOpenMP", &wt::has_openmp)
-            ;
+          .def("has_design_matrix", &wt::has_design_matrix)
+          ;
+      }
+
+      static void wrap(char const* name) {
+        wrap_base();
+        typedef build_normal_equations<FloatType> wt;
+        class_<wt, bases<builder_base<FloatType> > > klass(name, no_init);
+        wrap_init<wt>(name, klass);
       }
     };
 
     struct design_matrix_building {
-      typedef build_design_matrix<FloatType> wt;
 
       static void wrap(char const* name) {
         using namespace boost::python;
-        class_<wt> klass(name, no_init);
+        typedef build_design_matrix<FloatType> wt;
+        class_<wt, bases<builder_base<FloatType> > > klass(name, no_init);
         wrap_init<wt>(name, klass);
-        klass
-          .def("observables", &wt::observables)
-          .def("f_calc", &wt::f_calc)
-          .def("weights", &wt::weights)
-          .add_static_property("available_threads",
-            &wt::get_available_threads,
-            &wt::set_available_threads)
-          .def("hasOpenMP", &wt::has_openmp)
-          .def("design_matrix", &wt::design_matrix)
-          ;
       }
     };
 
@@ -151,14 +170,10 @@ namespace smtbx { namespace refinement { namespace least_squares {
         typedef f_calc_function_base<FloatType> at;
         class_<wt, bases<f_calc_function_base<FloatType> >,
           std::auto_ptr<wt> >("f_calc_function_ed", no_init)
-          .def(init<cctbx::xray::observations<FloatType> const&,
-            af::shared<std::complex<FloatType> > const&,
-            af::shared<typename wt::cart_t> const&,
-            af::versa<FloatType, af::c_grid<2> > const&>(
-            (arg("reflections"),
-              arg("Fc"),
-              arg("beams"),
-              arg("design_matrix"))))
+          .def(init<builder_base<FloatType> &,
+            scitbx::mat3<FloatType> const&>(
+            (arg("data"),
+              arg("beams"))))
           ;
       }
 
