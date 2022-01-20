@@ -50,6 +50,8 @@ namespace smtbx {
         virtual FloatType get_observable() const = 0;
         virtual std::complex<FloatType> get_f_calc() const = 0;
         virtual af::const_ref<FloatType> get_grad_observable() const = 0;
+        /* returns true if grads are for all and not independent only params */
+        virtual bool raw_gradients() const { return true; }
       };
 
       /* A thin wrapper around the concrete implementation */

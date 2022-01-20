@@ -13,7 +13,7 @@
 
 #include <smtbx/error.h>
 #include <smtbx/structure_factors/direct/standard_xray.h>
-#include <smtbx/refinement/least_squares_fc.h>
+#include <smtbx/refinement/least_squares_twinning.h>
 
 #include <algorithm>
 #include <vector>
@@ -27,145 +27,19 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
   namespace lstbx = scitbx::lstbx;
 
-  /** \brief Build normal equations for the given data, model, weighting
-  and constraints. Optionally builds the design matrix.
-
-  The constraints is performed with a reparametrisation whose Jacobian
-  transpose is passed as an argument.
-  */
-  template <typename FloatType, bool build_design_matrix>
-  struct build_design_matrix_and_normal_equations {
-
-    typedef f_calc_function_base<FloatType>
-      f_calc_function_base_t;
-
-    typedef boost::shared_ptr<f_calc_function_base_t>
-      one_miller_index_fcalc_ptr_t;
-
-    //! Default constructor. Some data members are not initialized!
-    build_design_matrix_and_normal_equations() {}
-
-    template <class NormalEquations,
-              template<typename> class WeightingScheme>
-      build_design_matrix_and_normal_equations(
-      NormalEquations &normal_equations,
-      cctbx::xray::observations<FloatType> const &reflections,
-      af::const_ref<std::complex<FloatType> > const &f_mask,
-      WeightingScheme<FloatType> const &weighting_scheme,
-      boost::optional<FloatType> scale_factor,
-      f_calc_function_base_t &f_calc_function,
-      scitbx::sparse::matrix<FloatType> const
-        &jacobian_transpose_matching_grad_fc,
-      cctbx::xray::extinction_correction<FloatType> const &exti,
-      bool objective_only=false,
-      bool may_parallelise=false,
-      bool use_openmp=false)
-    :
-      f_calc_(reflections.size()),
-      observables_(reflections.size()),
-      weights_(reflections.size()),
-      design_matrix_(af::c_grid<2>(build_design_matrix ? reflections.size() : 0,
-        build_design_matrix ? jacobian_transpose_matching_grad_fc.n_rows() : 0))
-    {
-      typedef accumulate_reflection_chunk<
-                NormalEquations, WeightingScheme>
-              accumulate_reflection_chunk_t;
-      typedef boost::shared_ptr<NormalEquations>
-              normal_equations_ptr_t;
-      typedef boost::shared_ptr<accumulate_reflection_chunk_t>
-              accumulate_reflection_chunk_ptr_t;
-
-      // Accumulate equations Fo(h) ~ Fc(h)
-      SMTBX_ASSERT((!f_mask.size() || f_mask.size() == reflections.size()))
-                  (f_mask.size())(reflections.size());
-
-      reflections.update_prime_fraction();
-      if (may_parallelise) {
-        //!!
-        scitbx::matrix::tensors::initialise<FloatType>();
-#if defined(_OPENMP)
-        if (use_openmp) {
-          typedef accumulate_reflection_chunk_omp<
-            NormalEquations, WeightingScheme>
-            accumulate_reflection_chunk_omp_t;
-          accumulate_reflection_chunk_omp_t job(
-            normal_equations_ptr_t(&normal_equations, null_deleter()),
-            reflections, f_mask, weighting_scheme, scale_factor,
-            one_miller_index_fcalc_ptr_t(&f_calc_function, null_deleter()),
-            jacobian_transpose_matching_grad_fc,
-            exti, objective_only,
-            f_calc_.ref(), observables_.ref(), weights_.ref(),
-            design_matrix_);
-          job();
-          if (job.exception_) {
-            throw* job.exception_.get();
-          }
-          if (!build_design_matrix) {
-            normal_equations.finalise(objective_only);
-          }
-          return;
-        }
-#endif 
-        const int thread_count = get_available_threads();
-        boost::thread_group pool;
-        std::vector<accumulate_reflection_chunk_ptr_t> accumulators;
-        Scheduler scheduler(reflections.size());
-        for(int thread_idx=0; thread_idx<thread_count; thread_idx++) {
-          normal_equations_ptr_t chunk_normal_equations(
-            new NormalEquations(normal_equations.n_parameters()));
-          accumulate_reflection_chunk_ptr_t accumulator(
-            new accumulate_reflection_chunk_t(
-              scheduler,
-              chunk_normal_equations,
-              reflections, f_mask, weighting_scheme, scale_factor,
-              one_miller_index_fcalc_ptr_t(f_calc_function.fork()),
-              jacobian_transpose_matching_grad_fc,
-              exti, objective_only,
-              f_calc_.ref(), observables_.ref(), weights_.ref(),
-              design_matrix_));
-          accumulators.push_back(accumulator);
-          pool.create_thread(boost::ref(*accumulator));
-        }
-        pool.join_all();
-        if (!build_design_matrix) {
-          for (int thread_idx = 0; thread_idx < thread_count; thread_idx++) {
-            if (accumulators[thread_idx]->exception_) {
-              throw* accumulators[thread_idx]->exception_.get();
-            }
-            normal_equations += accumulators[thread_idx]->normal_equations;
-          }
-          normal_equations.finalise(objective_only);
-        }
-      }
-      else {
-        Scheduler scheduler(reflections.size());
-        accumulate_reflection_chunk_t job(
-          scheduler,
-          normal_equations_ptr_t(&normal_equations, null_deleter()),
-          reflections, f_mask, weighting_scheme, scale_factor,
-          one_miller_index_fcalc_ptr_t(f_calc_function.fork()),
-          jacobian_transpose_matching_grad_fc,
-          exti, objective_only,
-          f_calc_.ref(), observables_.ref(), weights_.ref(),
-          design_matrix_);
-        job();
-        if (job.exception_) {
-          throw *job.exception_.get();
-        }
-        if (!build_design_matrix) {
-          normal_equations.finalise(objective_only);
-        }
-      }
-    }
-
-    af::shared<std::complex<FloatType> > f_calc() { return f_calc_; }
-
-    af::shared<FloatType> observables() { return observables_; }
-
-    af::shared<FloatType> weights() { return weights_; }
+  template <typename FloatType>
+  class builder_base {
+  public:
+    virtual ~builder_base() {}
+    virtual af::versa<FloatType, af::c_grid<2> > const& design_matrix() const = 0;
+    virtual bool has_design_matrix() const = 0;
+    virtual cctbx::xray::observations<FloatType> const& reflections() const = 0;
+    virtual af::shared<std::complex<FloatType> > const& f_calc() const = 0;
+    virtual af::shared<FloatType> const& observables() const = 0;
+    virtual af::shared<FloatType> const& weights() const = 0;
 
     static int get_available_threads() {
-      int &available = available_threads_var();
+      int& available = available_threads_var();
       if (available == -1) {
         available = std::max(1,
           static_cast<int>(boost::thread::physical_concurrency()));
@@ -187,9 +61,213 @@ namespace smtbx { namespace refinement { namespace least_squares {
 #endif
       return false;
     }
+  private:
+    static int& available_threads_var() {
+      static int available = -1;
+      return available;
+    }
+
+  };
+
+  /** \brief Build normal equations for the given data, model, weighting
+  and constraints. Optionally builds the design matrix.
+
+  The constraints is performed with a reparametrisation whose Jacobian
+  transpose is passed as an argument.
+  */
+  template <typename FloatType,
+    bool build_design_matrix>
+    struct build_design_matrix_and_normal_equations : public builder_base<FloatType> {
+
+    typedef builder_base<FloatType> parent_t;
+
+    typedef f_calc_function_base<FloatType>
+      f_calc_function_base_t;
+
+    typedef boost::shared_ptr<f_calc_function_base_t>
+      one_miller_index_fcalc_ptr_t;
+
+    build_design_matrix_and_normal_equations(
+      cctbx::xray::observations<FloatType> const& reflections,
+      af::const_ref<std::complex<FloatType> > const& f_mask,
+      boost::optional<FloatType> scale_factor,
+      f_calc_function_base_t& f_calc_function,
+      scitbx::sparse::matrix<FloatType> const&
+      jacobian_transpose_matching_grad_fc,
+      cctbx::xray::extinction_correction<FloatType> const& exti,
+      bool objective_only = false,
+      bool may_parallelise = false,
+      bool use_openmp = false)
+      :
+      reflections_(reflections),
+      f_mask(f_mask),
+      scale_factor(scale_factor),
+      f_calc_function(f_calc_function),
+      jacobian_transpose_matching_grad_fc(jacobian_transpose_matching_grad_fc),
+      exti(exti),
+      objective_only(objective_only),
+      may_parallelise(may_parallelise),
+      use_openmp(use_openmp),
+      built(false),
+      f_calc_(reflections.size()),
+      observables_(reflections.size()),
+      weights_(reflections.size()),
+      design_matrix_(af::c_grid<2>(build_design_matrix ? reflections.size() : 0,
+        build_design_matrix ? jacobian_transpose_matching_grad_fc.n_rows() : 0))
+    {}
+
+    template<class NormalEquations,
+      template<typename> class WeightingScheme>
+    build_design_matrix_and_normal_equations(
+      NormalEquations& normal_equations,
+      cctbx::xray::observations<FloatType> const& reflections,
+      af::const_ref<std::complex<FloatType> > const& f_mask,
+      WeightingScheme<FloatType> const& weighting_scheme,
+      boost::optional<FloatType> scale_factor,
+      f_calc_function_base_t& f_calc_function,
+      scitbx::sparse::matrix<FloatType> const &
+        jacobian_transpose_matching_grad_fc,
+      cctbx::xray::extinction_correction<FloatType> const& exti,
+      bool objective_only = false,
+      bool may_parallelise = false,
+      bool use_openmp = false)
+      :
+      reflections_(reflections),
+      f_mask(f_mask),
+      scale_factor(scale_factor),
+      f_calc_function(f_calc_function),
+      jacobian_transpose_matching_grad_fc(jacobian_transpose_matching_grad_fc),
+      exti(exti),
+      objective_only(objective_only),
+      may_parallelise(may_parallelise),
+      use_openmp(use_openmp),
+      built(false),
+      f_calc_(reflections.size()),
+      observables_(reflections.size()),
+      weights_(reflections.size()),
+      design_matrix_(af::c_grid<2>(build_design_matrix ? reflections.size() : 0,
+        build_design_matrix ? jacobian_transpose_matching_grad_fc.n_rows() : 0))
+    {
+       build(normal_equations, weighting_scheme);
+    }
+
+    template<class NormalEquations,
+      template<typename> class WeightingScheme>
+    void build(NormalEquations& normal_equations,
+      WeightingScheme<FloatType> const& weighting_scheme)
+    {
+      typedef boost::shared_ptr<NormalEquations>
+              normal_equations_ptr_t;
+      typedef accumulate_reflection_chunk<
+        NormalEquations, WeightingScheme>
+        accumulate_reflection_chunk_t;
+      typedef boost::shared_ptr<accumulate_reflection_chunk_t>
+              accumulate_reflection_chunk_ptr_t;
+      if (built) {
+        return;
+      }
+      // Accumulate equations Fo(h) ~ Fc(h)
+      SMTBX_ASSERT((!f_mask.size() || f_mask.size() == reflections_.size()))
+                  (f_mask.size())(reflections_.size());
+
+      reflections_.update_prime_fraction();
+      twinning_processor<FloatType> twp(reflections_, f_mask, !objective_only,
+        jacobian_transpose_matching_grad_fc);
+      if (may_parallelise) {
+        //!!
+        scitbx::matrix::tensors::initialise<FloatType>();
+#if defined(_OPENMP)
+        if (use_openmp) {
+          typedef accumulate_reflection_chunk_omp<
+            NormalEquations, WeightingScheme>
+            accumulate_reflection_chunk_omp_t;
+          accumulate_reflection_chunk_omp_t job(
+            normal_equations_ptr_t(&normal_equations, null_deleter()),
+            reflections_, f_mask, twp, weighting_scheme, scale_factor,
+            one_miller_index_fcalc_ptr_t(&f_calc_function, null_deleter()),
+            jacobian_transpose_matching_grad_fc,
+            exti, objective_only,
+            f_calc_.ref(), observables_.ref(), weights_.ref(),
+            design_matrix_);
+          job();
+          if (job.exception_) {
+            throw* job.exception_.get();
+          }
+          if (!build_design_matrix) {
+            normal_equations.finalise(objective_only);
+          }
+          return;
+        }
+#endif 
+        const int thread_count = parent_t::get_available_threads();
+        boost::thread_group pool;
+        std::vector<accumulate_reflection_chunk_ptr_t> accumulators;
+        Scheduler scheduler(reflections_.size());
+        for(int thread_idx=0; thread_idx<thread_count; thread_idx++) {
+          normal_equations_ptr_t chunk_normal_equations(
+            new NormalEquations(normal_equations.n_parameters()));
+          accumulate_reflection_chunk_ptr_t accumulator(
+            new accumulate_reflection_chunk_t(
+              scheduler,
+              chunk_normal_equations,
+              reflections_, f_mask, twp, weighting_scheme, scale_factor,
+              one_miller_index_fcalc_ptr_t(f_calc_function.fork()),
+              jacobian_transpose_matching_grad_fc,
+              exti, objective_only,
+              f_calc_.ref(), observables_.ref(), weights_.ref(),
+              design_matrix_));
+          accumulators.push_back(accumulator);
+          pool.create_thread(boost::ref(*accumulator));
+        }
+        pool.join_all();
+        if (!build_design_matrix) {
+          for (int thread_idx = 0; thread_idx < thread_count; thread_idx++) {
+            if (accumulators[thread_idx]->exception_) {
+              throw* accumulators[thread_idx]->exception_.get();
+            }
+            normal_equations += accumulators[thread_idx]->normal_equations;
+          }
+          normal_equations.finalise(objective_only);
+        }
+      }
+      else {
+        Scheduler scheduler(reflections_.size());
+        accumulate_reflection_chunk_t job(
+          scheduler,
+          normal_equations_ptr_t(&normal_equations, null_deleter()),
+          reflections_, f_mask, twp, weighting_scheme, scale_factor,
+          one_miller_index_fcalc_ptr_t(f_calc_function.fork()),
+          jacobian_transpose_matching_grad_fc,
+          exti, objective_only,
+          f_calc_.ref(), observables_.ref(), weights_.ref(),
+          design_matrix_);
+        job();
+        if (job.exception_) {
+          throw *job.exception_.get();
+        }
+        if (!build_design_matrix) {
+          normal_equations.finalise(objective_only);
+        }
+      }
+      built = true;
+    }
+
+    virtual cctbx::xray::observations<FloatType> const& reflections() const {
+      return reflections_;
+    }
+
+    virtual af::shared<std::complex<FloatType> > const& f_calc() const { return f_calc_; }
+
+    virtual af::shared<FloatType> const& observables() const { return observables_; }
+
+    virtual af::shared<FloatType> const& weights() const { return weights_; }
+
+    virtual bool has_design_matrix() const {
+      return build_design_matrix && built;
+    }
 
   protected:
-    af::versa<FloatType, af::c_grid<2> > design_matrix() { return design_matrix_; }
+    af::versa<FloatType, af::c_grid<2> > const& design_matrix() const { return design_matrix_; }
 #if defined(_OPENMP)
     #include "least_squares_omp.h"
 #endif
@@ -227,7 +305,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
     /// Accumulate from reflections whose indices are
     /// returned by scheduler
-    template <class NormalEquations,
+    template<class NormalEquations,
       template<typename> class WeightingScheme>
     struct accumulate_reflection_chunk {
       Scheduler& scheduler;
@@ -236,6 +314,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       NormalEquations &normal_equations;
       cctbx::xray::observations<FloatType> const &reflections;
       af::const_ref<std::complex<FloatType> > const &f_mask;
+      twinning_processor<FloatType> const& twp;
       WeightingScheme<FloatType> const &weighting_scheme;
       boost::optional<FloatType> scale_factor;
       boost::shared_ptr<f_calc_function_base_t> f_calc_function_ptr;
@@ -253,6 +332,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         boost::shared_ptr<NormalEquations> const& normal_equations_ptr,
         cctbx::xray::observations<FloatType> const &reflections,
         af::const_ref<std::complex<FloatType> > const &f_mask,
+        twinning_processor<FloatType> const& twp,
         WeightingScheme<FloatType> const &weighting_scheme,
         boost::optional<FloatType> scale_factor,
         boost::shared_ptr<f_calc_function_base_t> const &f_calc_function_ptr,
@@ -266,7 +346,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
         af::versa<FloatType, af::c_grid<2> > &design_matrix)
       : scheduler(scheduler),
         normal_equations_ptr(normal_equations_ptr), normal_equations(*normal_equations_ptr),
-        reflections(reflections), f_mask(f_mask), weighting_scheme(weighting_scheme),
+        reflections(reflections), f_mask(f_mask), twp(twp),
+        weighting_scheme(weighting_scheme),
         scale_factor(scale_factor),
         f_calc_function_ptr(f_calc_function_ptr), f_calc_function(*f_calc_function_ptr),
         jacobian_transpose_matching_grad_fc(jacobian_transpose_matching_grad_fc),
@@ -299,11 +380,19 @@ namespace smtbx { namespace refinement { namespace least_squares {
               }
               f_calc[i_h] = f_calc_function.get_f_calc();
               if (compute_grad) {
-                gradients =
-                  jacobian_transpose_matching_grad_fc * f_calc_function.get_grad_observable();
+                if (f_calc_function.raw_gradients()) {
+                  gradients =
+                    jacobian_transpose_matching_grad_fc * f_calc_function.get_grad_observable();
+                }
+                else {
+                  gradients = af::shared<FloatType>(
+                    f_calc_function.get_grad_observable().begin(),
+                    f_calc_function.get_grad_observable().end());
+                }
               }
               // sort out twinning
-              FloatType observable = process_twinning(i_h, gradients);
+              FloatType observable = twp.process(
+                i_h, f_calc_function, gradients);
               // extinction correction
               af::tiny<FloatType, 2> exti_k = exti.compute(h, observable, compute_grad);
               observable *= exti_k[0];
@@ -330,9 +419,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
                 }
               }
               if (build_design_matrix) {
-                for (int i_g = 0; i_g < gradients.size(); i_g++) {
-                  design_matrix(i_h, i_g) = gradients[i_g];
-                }
+                memcpy(&design_matrix(i_h, 0), gradients.begin(),
+                  gradients.size() * sizeof(FloatType));
               }
             }
           }
@@ -344,66 +432,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
           exception_.reset(new smtbx::error(e.what()));
         }
       }
-
-      FloatType process_twinning(int i_h, af::shared<FloatType> &gradients) {
-        typedef typename cctbx::xray::observations<FloatType>::iterator itr_t;
-        typedef typename cctbx::xray::twin_fraction<FloatType> twf_t;
-        typedef typename cctbx::xray::observations<FloatType>::index_twin_component twc_t;
-        FloatType obs = f_calc_function.get_observable();
-        if (reflections.has_twin_components()) {
-          itr_t itr = reflections.iterate(i_h);
-          FloatType measured_part = obs,
-            identity_part = 0,
-            obs_scale = reflections.scale(i_h);
-          obs *= obs_scale;
-          const twf_t* measured_fraction = reflections.fraction(i_h);
-          if (compute_grad) {
-            gradients *= obs_scale;
-            if (measured_fraction == 0) {
-              identity_part = measured_part;
-            }
-          }
-          std::size_t twc_cnt = 0;
-          while (itr.has_next()) {
-            twc_t twc = itr.next();
-            f_calc_function.compute(twc.h, boost::none, compute_grad);
-            obs += twc.scale() * f_calc_function.get_observable();
-            if (compute_grad) {
-              af::shared<FloatType> tmp_gradients =
-                jacobian_transpose_matching_grad_fc * f_calc_function.get_grad_observable();
-              gradients += twc.scale() * tmp_gradients;
-              if (twc.fraction != 0) {
-                if (twc.fraction->grad) {
-                  SMTBX_ASSERT(!(twc.fraction->grad_index < 0 ||
-                    twc.fraction->grad_index >= gradients.size()));
-                  gradients[twc.fraction->grad_index] += f_calc_function.get_observable();
-                }
-              }
-              else {
-                identity_part += f_calc_function.get_observable();
-              }
-              twc_cnt++;
-            }
-          }
-          if (compute_grad) {
-            // consider multiple reflections with the 'prime' scale
-            itr.reset();
-            while (itr.has_next()) {
-              twc_t twc = itr.next();
-              if (twc.fraction != 0 && twc.fraction->grad) {
-                gradients[twc.fraction->grad_index] -= identity_part;
-              }
-            }
-            if (twc_cnt != 0 && measured_fraction != 0 && measured_fraction->grad) {
-              SMTBX_ASSERT(!(measured_fraction->grad_index < 0 ||
-                measured_fraction->grad_index >= gradients.size()));
-              gradients[measured_fraction->grad_index] +=
-                measured_part - identity_part;
-            }
-          }
-        }
-        return obs;
-      }
     };
 
 
@@ -412,15 +440,22 @@ namespace smtbx { namespace refinement { namespace least_squares {
       void operator()(void const *) const {}
     };
 
+  protected:
+    cctbx::xray::observations<FloatType> const& reflections_;
+    af::const_ref<std::complex<FloatType> > const& f_mask;
+    boost::optional<FloatType> scale_factor;
+    f_calc_function_base_t& f_calc_function;
+    scitbx::sparse::matrix<FloatType> const&
+      jacobian_transpose_matching_grad_fc;
+    cctbx::xray::extinction_correction<FloatType> const& exti;
+    bool objective_only,
+      may_parallelise,
+      use_openmp,
+      built;
+
     af::shared<std::complex<FloatType> > f_calc_;
     af::shared<FloatType> observables_;
     af::shared<FloatType> weights_;
-
-    static int& available_threads_var() {
-      static int available = -1;
-      return available;
-    }
-  protected:
     af::versa<FloatType, af::c_grid<2> > design_matrix_;
   };
 
@@ -434,80 +469,106 @@ namespace smtbx { namespace refinement { namespace least_squares {
   struct build_normal_equations
     : public build_design_matrix_and_normal_equations<FloatType, false>
   {
-    //! Default constructor. Some data members are not initialized!
-    build_normal_equations()
-      :
-      build_design_matrix_and_normal_equations<FloatType, false>()
+    typedef build_design_matrix_and_normal_equations<FloatType, false> parent_t;
+    build_normal_equations(
+      cctbx::xray::observations<FloatType> const& reflections,
+      af::const_ref<std::complex<FloatType> > const& f_mask,
+      boost::optional<FloatType> scale_factor,
+      f_calc_function_base<FloatType>& f_calc_function,
+      scitbx::sparse::matrix<FloatType> const
+      & jacobian_transpose_matching_grad_fc,
+      cctbx::xray::extinction_correction<FloatType> const& exti,
+      bool objective_only = false,
+      bool may_parallelise = false,
+      bool use_openmp = false)
+      : parent_t(
+        reflections, f_mask, scale_factor, f_calc_function,
+        jacobian_transpose_matching_grad_fc, exti,
+        objective_only, may_parallelise, use_openmp)
     {}
 
-    template <class NormalEquations,
-      template<typename> class WeightingScheme,
-      class OneMillerIndexFcalc>
-      build_normal_equations(
-        NormalEquations &normal_equations,
-        cctbx::xray::observations<FloatType> const &reflections,
-        af::const_ref<std::complex<FloatType> > const &f_mask,
-        WeightingScheme<FloatType> const &weighting_scheme,
-        boost::optional<FloatType> scale_factor,
-        OneMillerIndexFcalc &f_calc_function,
-        scitbx::sparse::matrix<FloatType> const
-        &jacobian_transpose_matching_grad_fc,
-        cctbx::xray::extinction_correction<FloatType> const &exti,
-        bool objective_only = false,
-        bool may_parallelise = false,
-        bool use_openmp = false)
-      :
-      build_design_matrix_and_normal_equations<FloatType, false>(
+    template<class NormalEquations,
+      template<typename> class WeightingScheme>
+     build_normal_equations(
+       NormalEquations &normal_equations,
+       cctbx::xray::observations<FloatType> const &reflections,
+       af::const_ref<std::complex<FloatType> > const &f_mask,
+       WeightingScheme<FloatType> const &weighting_scheme,
+       boost::optional<FloatType> scale_factor,
+       f_calc_function_base<FloatType>& f_calc_function,
+       scitbx::sparse::matrix<FloatType> const
+       &jacobian_transpose_matching_grad_fc,
+       cctbx::xray::extinction_correction<FloatType> const &exti,
+       bool objective_only = false,
+       bool may_parallelise = false,
+       bool use_openmp = false)
+       : parent_t(
         normal_equations,
         reflections, f_mask, weighting_scheme, scale_factor, f_calc_function,
         jacobian_transpose_matching_grad_fc, exti,
         objective_only, may_parallelise, use_openmp)
     {}
+     virtual af::versa<FloatType, af::c_grid<2> > const& design_matrix() const {
+       SMTBX_NOT_IMPLEMENTED();
+       return parent_t::design_matrix_;
+     }
   };
 
-  /** \brief Build normal equations for the given data, model, weighting
+  /** \brief Build only thed esign matrix for the given data, model, weighting
   and constraints and the buld the design matrix
 
   The constraints is performed with a reparametrisation whose Jacobian
   transpose is passed as an argument.
   */
+  
   template <typename FloatType>
   struct build_design_matrix
     : public build_design_matrix_and_normal_equations<FloatType, true>
   {
-    //! Default constructor. Some data members are not initialized!
-    build_design_matrix()
-      :
-      build_design_matrix_and_normal_equations<FloatType, true>()
+    typedef build_design_matrix_and_normal_equations<FloatType, true> parent_t;
+    build_design_matrix(
+      cctbx::xray::observations<FloatType> const& reflections,
+      af::const_ref<std::complex<FloatType> > const& f_mask,
+      boost::optional<FloatType> scale_factor,
+      f_calc_function_base<FloatType>& f_calc_function,
+      scitbx::sparse::matrix<FloatType> const
+      & jacobian_transpose_matching_grad_fc,
+      cctbx::xray::extinction_correction<FloatType> const& exti,
+      bool objective_only = false,
+      bool may_parallelise = false,
+      bool use_openmp = false)
+      : parent_t(
+        reflections, f_mask, scale_factor, f_calc_function,
+        jacobian_transpose_matching_grad_fc, exti,
+        objective_only, may_parallelise, use_openmp)
     {}
 
-    template <class NormalEquations,
-      template<typename> class WeightingScheme,
-      class OneMillerIndexFcalc>
-      build_design_matrix(
-        NormalEquations &normal_equations,
-        cctbx::xray::observations<FloatType> const &reflections,
-        af::const_ref<std::complex<FloatType> > const &f_mask,
-        WeightingScheme<FloatType> const &weighting_scheme,
-        boost::optional<FloatType> scale_factor,
-        OneMillerIndexFcalc &f_calc_function,
-        scitbx::sparse::matrix<FloatType> const
-        &jacobian_transpose_matching_grad_fc,
-        cctbx::xray::extinction_correction<FloatType> const &exti,
-        bool objective_only = false,
-        bool may_parallelise = false,
-        bool use_openmp = false)
-      :
-      build_design_matrix_and_normal_equations<FloatType, true>(
+    template<class NormalEquations,
+      template<typename> class WeightingScheme>
+    build_design_matrix(
+       NormalEquations &normal_equations,
+       cctbx::xray::observations<FloatType> const &reflections,
+       af::const_ref<std::complex<FloatType> > const &f_mask,
+       WeightingScheme<FloatType> const &weighting_scheme,
+       boost::optional<FloatType> scale_factor,
+       f_calc_function_base<FloatType>& f_calc_function,
+       scitbx::sparse::matrix<FloatType> const
+       &jacobian_transpose_matching_grad_fc,
+       cctbx::xray::extinction_correction<FloatType> const &exti,
+       bool objective_only = false,
+       bool may_parallelise = false,
+       bool use_openmp = false)
+       : parent_t(
         normal_equations,
         reflections, f_mask, weighting_scheme, scale_factor, f_calc_function,
         jacobian_transpose_matching_grad_fc, exti,
         objective_only, may_parallelise, use_openmp)
     {}
 
-    af::versa<FloatType, af::c_grid<2> > design_matrix() {
-      return build_design_matrix_and_normal_equations<FloatType, true>::design_matrix_;
+    virtual af::versa<FloatType, af::c_grid<2> > const& design_matrix() const {
+      return parent_t::design_matrix_;
     }
+ 
   };
 
 
