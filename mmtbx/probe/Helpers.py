@@ -689,13 +689,67 @@ def fixupExplicitDonors(atoms, bondedNeighborLists, extraAtomInfo):
       ei.isDonor = False
       extraAtomInfo.setMappingFor(a, ei)
 
+# Fill in a table to be used for atomic sorting once so we don't have to do it
+# on every sorting call.
+_sortingKeyTable = AtomTypes.AtomTypes()
+
+class conventionalSortingKey(object):
+  """
+    A key suitable for sorting a list of atoms based on the ordering that would be
+    used to determine which branch to take when computing dihedral angles.  This is useful
+    when determining which branch to take, or which hydrogen atom from a set of 2 or 3
+    attached to the same atom, to find the conventional orientation or atoms to use to
+    compute the conventional dihedral angle.
+    Defines the __lt__ (less-than) operator so that it can be used in a sort.
+  """
+
+  def __init__(self, atom):
+    """
+      Construct the key based on the information found in the atom.
+    """
+
+    # We find all of the numeric characters in the name and catenate them.
+    # We store them into a string, so that they will behave like a left-
+    # justified digits behind the decimal.
+    self._numberInName = ""
+    for c in atom.name:
+      if c.isdigit():
+        self._numberInName = self._numberInName + c
+
+    self._atomicNumber = _sortingKeyTable.FindAtomInfo(atom)[0].atomicNumber
+
+    # We trim all white space from the name.
+    self._name = atom.name.strip()
+
+  def __lt__(self, other):
+    # The primary sorting criterion is a number associated with the atom name.  For example,
+    # HB2 and HB3 will sort in that order; and H and H2 will sort in that order;
+    # HN51 HN52 and HN53 will sort in that order; CG ND1 will sort in that order.
+    # The numbers are left-adjusted, so HN33 HN6 will sort in that order.
+    if self._numberInName < other._numberInName:
+      return True
+    if self._numberInName > other._numberInName:
+      return False
+
+    # The secondary criterion is the atomic number of the atom, with heavier numbers
+    # sorting before lighter numbers.  This only applies when there is no numerical
+    # distinction.
+    if self._atomicNumber > other._atomicNumber:
+      return True
+    if self._atomicNumber < other._atomicNumber:
+      return False
+
+    # The tertiary criterion is alphabetical ordering.  This only applies when there is
+    # no distinction on the earlier criteria.
+    return self._name < other._name
+
 ##################################################################################
 # Helper functions to make things that are compatible with vec3_double so
 # that we can do math on them.  We need a left-hand and right-hand one so that
 # we can make both versions for multiplication.
-def rvec3 (xyz) :
+def rvec3(xyz) :
   return scitbx.matrix.rec(xyz, (3,1))
-def lvec3 (xyz) :
+def lvec3(xyz) :
   return scitbx.matrix.rec(xyz, (1,3))
 
 def Test(inFileName = None):
@@ -1119,6 +1173,35 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   # User code should check for and print any warnings.
   #if len(ret.warnings) > 0:
   #  print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings)
+
+  #========================================================================
+  # Run unit tests on sortingKey class.
+  # Build a table with atoms (note, some with bogus names and some in duplicate positions)
+  # to test the sorting routine.
+  pdb_sort_test = (
+"""
+ATOM    442  N   HIS A  61      26.965  32.911   7.593  1.00  7.19           N
+ATOM    443  CA  HIS A  61      27.557  32.385   6.403  1.00  7.24           C
+ATOM    444  C   HIS A  61      28.929  31.763   6.641  1.00  7.38           C
+ATOM    445  O   HIS A  61      29.744  32.217   7.397  1.00  9.97           O
+ATOM    446  CB  HIS A  61      27.707  33.547   5.385  1.00  9.38           C
+ATOM    447  CG  HIS A  61      26.382  33.956   4.808  1.00  8.78           C
+ATOM    448  ND1 HIS A  61      26.168  34.981   3.980  1.00  9.06           N
+ATOM    449  CD2 HIS A  61      25.174  33.397   5.004  1.00 11.08           C
+ATOM    450  CE1 HIS A  61      24.867  35.060   3.688  1.00 12.84           C
+ATOM    451  NE2 HIS A  61      24.251  34.003   4.297  1.00 11.66           N
+ATOM    452  N12 HIS A  61      24.251  34.003   4.297  1.00 11.66           N
+END
+"""
+    )
+  dm = iotbx.data_manager.DataManager(['model'])
+  dm.process_model_str("pdb_sort_test.pdb",pdb_sort_test)
+  model = dm.get_model()
+  atoms = model.get_hierarchy().models()[0].atoms()
+  s = sorted(atoms, key=conventionalSortingKey)
+  expectedNames = ['O','N','C','CA','CB','CG','ND1','CE1','N12','NE2','CD2']
+  for i in range(len(s)):
+    assert s[i].name.strip() == expectedNames[i], "Helpers.Test(): conventionalSortingKey test failed"
 
   #========================================================================
   # Run unit tests on rvec3 and lvec3.
