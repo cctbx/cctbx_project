@@ -700,6 +700,9 @@ class conventionalSortingKey(object):
     when determining which branch to take, or which hydrogen atom from a set of 2 or 3
     attached to the same atom, to find the conventional orientation or atoms to use to
     compute the conventional dihedral angle.
+    @todo Get the official definition; this was based on two heuristics from Jane Richardson
+    and then guessing about the alphabetical third criterion.  The numeric ordering also
+    has not yet been verified; whether it should be sorted left-justified or not.
     Defines the __lt__ (less-than) operator so that it can be used in a sort.
   """
 
@@ -733,14 +736,14 @@ class conventionalSortingKey(object):
 
     # The secondary criterion is the atomic number of the atom, with heavier numbers
     # sorting before lighter numbers.  This only applies when there is no numerical
-    # distinction.
+    # distinction.  O, N, C will sort in that order.
     if self._atomicNumber > other._atomicNumber:
       return True
     if self._atomicNumber < other._atomicNumber:
       return False
 
     # The tertiary criterion is alphabetical ordering.  This only applies when there is
-    # no distinction on the earlier criteria.
+    # no distinction on the earlier criteria.  C, CA, CB, CG will sort in that order.
     return self._name < other._name
 
 ##################################################################################
