@@ -37,7 +37,7 @@ input {
     .multiple = True
     .help = Names of reflection table columns that will remain after all prune steps
     .help = If output.save_experiments_and_reflections=True, then these columns will be in the saved tables.
-  keep_imagesets = False
+  keep_imagesets = True
     .type = bool
     .help = If True, keep imagesets attached to experiments
   path = None
@@ -390,7 +390,7 @@ scaling {
 
 postrefinement_phil = """
 postrefinement {
-  enable = False
+  enable = True
     .type = bool
     .help = enable the preliminary postrefinement algorithm (monochromatic)
     .expert_level = 3
