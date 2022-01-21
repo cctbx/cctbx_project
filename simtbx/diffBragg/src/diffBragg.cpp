@@ -1838,6 +1838,10 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
     gettimeofday(&t3,0 );
     image_type image(Npix_to_model,0.0);
+    if(db_flags.wavelength_img){
+        // TODO: `wavelength` is not a first derivative image, change membership in the future
+        first_deriv_imgs.wavelength.resize(Npix_to_model,0);
+    }
     if (std::count(db_flags.refine_Umat.begin(), db_flags.refine_Umat.end(), true) > 0){
         first_deriv_imgs.Umat.resize(Npix_to_model*3, 0);
         second_deriv_imgs.Umat.resize(Npix_to_model*3,0);
@@ -2159,6 +2163,15 @@ void diffBragg::show_timing_stats(int MPI_RANK){ //}, boost_adaptbx::python::str
 
 
 }
+
+af::flex_double diffBragg::ave_wavelength_img(){
+  int Npix = first_deriv_imgs.wavelength.size();
+  af::flex_double wavelen_pixels = af::flex_double(Npix);
+  for (int i=0; i <Npix; i++)
+    wavelen_pixels[i] = first_deriv_imgs.wavelength[i];
+  return wavelen_pixels;
+}
+
 
 } // end of namespace nanoBragg
 } // end of namespace simtbx

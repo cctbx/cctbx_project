@@ -23,6 +23,7 @@ struct timer_variables{
 
 // CONTAINERS
 struct images{
+    image_type wavelength; // image for storing mean wavelength of each pixel
     image_type Umat; // umatrix gradients
     image_type Bmat;  // Bmatrix gradients
     image_type Ncells; // mosaic domain size gradients
@@ -66,6 +67,7 @@ struct cuda_flags{
 };
 
 struct flags{
+    bool wavelength_img=false;
     bool track_Fhkl; // for CPU kernel only, track the HKLS evaluated in the inner most loop
     bool printout; // whether to printout debug info for a pixel
     bool nopolar; // disable polarization effects
