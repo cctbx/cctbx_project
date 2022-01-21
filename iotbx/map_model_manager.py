@@ -2929,11 +2929,14 @@ class map_model_manager(object):
       try:
         chain_type = get_chain_type(model = target_model)
       except Exception as e:
-       chain_type = None
+        try:
+          chain_type = get_chain_type(model = matching_model)
+        except Exception as e: 
+          chain_type = None
     if not chain_type:
       print("Unable to identify chain_type of '%s' ... please set chain_type" %(
         target_model_id), file = self.log)
-      assert chain_type # need to set chain type
+      return []
 
     res = self.resolution() if self.resolution() else 0
     if not atom_name or ((not ignore_element) and (not element)):
