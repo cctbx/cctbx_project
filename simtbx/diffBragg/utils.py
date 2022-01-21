@@ -23,6 +23,10 @@ from dxtbx.model.experiment_list import ExperimentListFactory
 import libtbx
 from libtbx.phil import parse
 from dials.array_family import flex as dials_flex
+from iotbx import file_reader
+import mmtbx.command_line.fmodel
+import mmtbx.utils
+from cctbx.eltbx import henke
 
 import logging
 MAIN_LOGGER = logging.getLogger("diffBragg.main")
@@ -639,41 +643,48 @@ def image_data_from_expt(expt, as_double=True):
     return img_data
 
 
-def simulator_from_expt_and_params(expt, params=None, oversample=0, device_id=0, init_scale=1, total_flux=1e12,
-                                   ncells_abc=(10,10,10), has_isotropic_ncells=True, mosaicity=0, num_mosaicity_samples=1, mtz_name=None,
-                                   mtz_column=None, default_F=0, dmin=1.5, dmax=30, spectra_file=None, spectra_stride=1,
-                                   complex_F=None):
-    """
+def simulator_from_expt(expt, oversample=0, device_id=0, init_scale=1, total_flux=1e12,
+                        ncells_abc=(10,10,10), has_isotropic_ncells=True, mosaicity=0,
+                        num_mosaicity_samples=1, mtz_name=None,
+                        mtz_column=None, default_F=0, dmin=1.5, dmax=30,
+                        spectra_file=None, spectra_stride=1,
+                        complex_F=None):
+    raise NotImplementedError("This will be a convenience method")
+    # params = get_params_object()
+    # params.simulator.oversample = oversample
+    # etc
+    #return simulator_from_expt_and_params(expt, params)
 
+
+def simulator_from_expt_and_params(expt, params=None):
+    """
     :param expt:  dxtbx experiment
     :param params: diffBragg/phil.py phil params
     :return:
     """
 
-    if params is not None:
-        oversample = params.simulator.oversample
-        device_id = params.simulator.device_id
-        init_scale = params.simulator.init_scale
-        total_flux = params.simulator.total_flux
+    oversample = params.simulator.oversample
+    device_id = params.simulator.device_id
+    init_scale = params.simulator.init_scale
+    total_flux = params.simulator.total_flux
 
-        ncells_abc = params.simulator.crystal.ncells_abc
-        ncells_def = params.simulator.crystal.ncells_def
-        has_isotropic_ncells = params.simulator.crystal.has_isotropic_ncells
-        mosaicity = params.simulator.crystal.mosaicity
-        num_mosaicity_samples = params.simulator.crystal.num_mosaicity_samples
+    ncells_abc = params.simulator.crystal.ncells_abc
+    ncells_def = params.simulator.crystal.ncells_def
+    has_isotropic_ncells = params.simulator.crystal.has_isotropic_ncells
+    mosaicity = params.simulator.crystal.mosaicity
+    num_mosaicity_samples = params.simulator.crystal.num_mosaicity_samples
 
-        mtz_name = params.simulator.structure_factors.mtz_name
-        mtz_column = params.simulator.structure_factors.mtz_column
-        default_F = params.simulator.structure_factors.default_F
-        dmin = params.simulator.structure_factors.dmin
-        dmax = params.simulator.structure_factors.dmax
+    mtz_name = params.simulator.structure_factors.mtz_name
+    mtz_column = params.simulator.structure_factors.mtz_column
+    default_F = params.simulator.structure_factors.default_F
+    dmin = params.simulator.structure_factors.dmin
+    dmax = params.simulator.structure_factors.dmax
 
-        spectra_file = params.simulator.spectrum.filename
-        spectra_stride = params.simulator.spectrum.stride
-        aniso_mos_spread = params.simulator.crystal.anisotropic_mosaicity
-    else:
-        ncells_def = None
-        aniso_mos_spread = None
+    spectra_file = params.simulator.spectrum.filename
+    spectra_stride = params.simulator.spectrum.stride
+    aniso_mos_spread = params.simulator.crystal.anisotropic_mosaicity
+
+    pdb_name = params.simulator.structure_factors.from_pdb.name
 
     if has_isotropic_ncells:
         if len(set(ncells_abc)) != 1 :
@@ -688,8 +699,6 @@ def simulator_from_expt_and_params(expt, params=None, oversample=0, device_id=0,
 
     # create nanoBragg crystal
     crystal = NBcrystal(init_defaults=False)
-    if params is not None and params.refiner.force_symbol is not None:
-        crystal.symbol = params.refiner.force_symbol
     crystal.isotropic_ncells = has_isotropic_ncells
     if params.simulator.crystal.rotXYZ_ucell is not None:
         rotXYZ = params.simulator.crystal.rotXYZ_ucell[:3]
@@ -698,28 +707,40 @@ def simulator_from_expt_and_params(expt, params=None, oversample=0, device_id=0,
     else:
         crystal.dxtbx_crystal = expt.crystal
     crystal.thick_mm = 0.1  # hard code a thickness, will be over-written by the scale
-    crystal.Ncells_abc = tuple(ncells_abc)  #params.simulator.init_ncells_abc
+    # mosaic block size
+    crystal.Ncells_abc = tuple(ncells_abc)
     if ncells_def is not None:
-        crystal.Ncells_def = tuple(ncells_def)  #params.simulator.init_ncells_abc
+        crystal.Ncells_def = tuple(ncells_def)
     crystal.anisotropic_mos_spread_deg = aniso_mos_spread
     crystal.n_mos_domains = num_mosaicity_samples
     crystal.mos_spread_deg = mosaicity
-    if params is not None:
-        crystal.mos_angles_per_axis = params.simulator.crystal.mos_angles_per_axis
-        crystal.num_mos_axes = params.simulator.crystal.num_mos_axes
+    #crystal.mos_angles_per_axis = params.simulator.crystal.mos_angles_per_axis
+    #crystal.num_mos_axes = params.simulator.crystal.num_mos_axes
+
+    # load the structure factors
     if mtz_name is None:
-        miller_data = make_miller_array(
-            symbol=expt.crystal.get_space_group().info().type().lookup_symbol(),
-            unit_cell=expt.crystal.get_unit_cell(), d_min=dmin, d_max=dmax)
+        if pdb_name is not None:
+            miller_data = get_complex_fcalc_from_pdb(pdb_name,
+                dmin=params.simulator.structure_factors.dmin,
+                dmax=params.simulator.structure_factors.dmax,
+                k_sol=params.simulator.structure_factors.from_pdb.k_sol,
+                b_sol=params.simulator.structure_factors.from_pdb.b_sol)
+            miller_data = miller_data.as_amplitude_array()
+
+        else:
+            miller_data = make_miller_array(
+                symbol=expt.crystal.get_space_group().info().type().lookup_symbol(),
+                unit_cell=expt.crystal.get_unit_cell(), d_min=dmin, d_max=dmax,
+                defaultF=default_F)
     else:
         miller_data = open_mtz(mtz_name, mtz_column)
-    if complex_F is not None:
-        miller_data = complex_F
 
     crystal.miller_array = miller_data
+    if params.refiner.force_symbol is not None:
+        crystal.symbol = params.refiner.force_symbol
+    else:
+        crystal.symbol = miller_data.crystal_symmetry().space_group_info().type().lookup_symbol()
     SIM.crystal = crystal
-    #if params is not None:
-    #    SIM.Umats_method = params.simulator.crystal.mosaicity_method
 
     # create a nanoBragg beam
     beam = NBbeam()
@@ -733,12 +754,50 @@ def simulator_from_expt_and_params(expt, params=None, oversample=0, device_id=0,
     beam.spectrum = init_spectrum
     SIM.beam = beam
 
+    # create the diffbragg object, which is the D attribute of SIM
     SIM.panel_id = 0
     SIM.instantiate_diffBragg(oversample=oversample, device_Id=device_id, default_F=default_F)
     if init_scale is not None:
         #TODO phase this parameter out since its redundant?
         SIM.update_nanoBragg_instance("spot_scale", init_scale)
     return SIM
+
+
+def get_complex_fcalc_from_pdb(
+        pdb_file,
+        wavelength=None,
+        dmin=1,
+        dmax=None,
+        k_sol=0.435, b_sol=46):
+    """
+    produce a structure factor from PDB coords, see mmtbx/command_line/fmodel.py for formulation
+    k_sol, b_sol form the solvent component of the Fcalc: Fprotein + k_sol*exp(-b_sol*s^2/4) (I think)
+    """
+
+    pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
+    pdb_in.assert_file_type("pdb")
+    xray_structure = pdb_in.file_object.xray_structure_simple()
+    xray_structure.show_summary()
+    for sc in xray_structure.scatterers():
+        if wavelength is not None:
+            expected_henke = henke.table(sc.element_symbol()).at_angstrom(wavelength)
+            sc.fp = expected_henke.fp()
+            sc.fdp = expected_henke.fdp()
+    phil2 = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params
+    params2 = phil2.extract()
+    params2.high_resolution = dmin
+    params2.low_resolution = dmax
+    params2.fmodel.k_sol = k_sol
+    params2.fmodel.b_sol = b_sol
+    params2.structure_factors_accuracy.algorithm = 'fft'
+    f_model = mmtbx.utils.fmodel_from_xray_structure(
+        xray_structure=xray_structure,
+        f_obs=None,
+        add_sigmas=False,
+        params=params2).f_model
+    f_model = f_model.generate_bijvoet_mates()
+
+    return f_model
 
 
 def open_mtz(mtzfname, mtzlabel=None, verbose=False):
