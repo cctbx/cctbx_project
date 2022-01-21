@@ -531,8 +531,72 @@ class _SingletonOptimizer(object):
           self._optimizeSingleMoverFine(m)
         self._infoString += _ReportTiming("optimize all Movers (fine)")
 
+        ################################################################################
+        # Print the final state and score for all Movers
+        def _scoreMoverReportClash(self, m):
+          coarse = m.CoarsePositions()
+          score = coarse.preferenceEnergies[0] * self._preferenceMagnitude
+          clash = False
+          for atom in coarse.atoms:
+            maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
+            res = self._dotScorer.score_dots(atom, self._minOccupancy, self._spatialQuery,
+              maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom], self._dotSpheres[atom].dots(),
+              self._probeDensity, False)
+            score += res.totalScore()
+            if res.hasBadBump:
+              clash = True
+          return score, clash
+
+        def _printPose(self, m):
+          description = m.PoseDescription(self._coarseLocations[m], self._fineLocations[m])
+
+          # If the Mover is a flip of some kind, then the substring "lipped" will be present
+          # in the description.  When that happes, we check the final state and the flipped
+          # state (which is half of the coarse states away) to see if both have clashes or
+          # if they are close in energy. If so, then we annotate the output.
+          if "lipped" in description:
+            coarse = m.CoarsePositions()
+            numPositions = len(coarse.positions)
+            final = self._coarseLocations[m]
+            other = (final + numPositions//2) % numPositions
+            self._setMoverState(coarse, other)
+            otherScore, otherBump = _scoreMoverReportClash(self, m)
+            self._setMoverState(coarse, final)
+            finalScore, finalBump = _scoreMoverReportClash(self, m)
+            if otherBump and finalBump:
+              description += " (both orientations clash)"
+            elif abs(finalScore - otherScore) <= 0.5:
+              description += " (uncertain)"
+
+          self._infoString += _VerboseCheck(1,"  {} final score: {:.2f} pose {}\n".format(
+            self._moverInfo[m], self._highScores[m], description ))
+
+        self._infoString += _VerboseCheck(1,"BEGIN REPORT: Model "+str(mi)+" Alt '"+ai+"':\n")
+        sortedGroups = sorted(groupCliques, key=len, reverse=True)
+        for g in sortedGroups:
+          self._infoString += _VerboseCheck(1," Set of "+str(len(g))+" Movers:")
+          movers = [self._interactionGraph.vertex_label(i) for i in g]
+          # Parse the record for each mover and pull out the initial score.  Sum the initial and
+          # final scores across all Movers in the group and report this.
+          initial = 0.0
+          final = 0.0
+          for m in movers:
+            initial += float(self._moverInfo[m].split()[9])
+            final += self._highScores[m]
+          self._infoString += _VerboseCheck(1," Totals: initial score {:.2f}, final score {:.2f}\n".format(initial, final))
+          for m in movers:
+            _printPose(self, m)
+        self._infoString += _VerboseCheck(1," Singleton Movers:\n")
+        for s in singletonCliques:
+          m = self._interactionGraph.vertex_label(s[0])
+          _printPose(self, m)
+        self._infoString += _VerboseCheck(1,"END REPORT\n")
+
+        ################################################################################
         # Do FixUp on the final coarse orientations.  Set the positions, extra atom info
         # and deletion status for all atoms that have entries for each.
+        # This must be done after we print the scores because the print methods move the
+        # coarse state to see how much it changed.
         self._infoString += _VerboseCheck(1,"FixUp on all Movers\n")
         for m in self._movers:
           loc = self._coarseLocations[m]
@@ -554,35 +618,6 @@ class _SingletonOptimizer(object):
             else:
               self._deleteMes.discard(myAtoms[i])
         self._infoString += _ReportTiming("fix up Movers")
-
-        ################################################################################
-        # Print the final state and score for all Movers
-        self._infoString += _VerboseCheck(1,"BEGIN REPORT: Model "+str(mi)+" Alt '"+ai+"':\n")
-        sortedGroups = sorted(groupCliques, key=len, reverse=True)
-        for g in sortedGroups:
-          self._infoString += _VerboseCheck(1," Set of "+str(len(g))+" Movers:")
-          movers = [self._interactionGraph.vertex_label(i) for i in g]
-          # Parse the record for each mover and pull out the initial score.  Sum the initial and
-          # final scores across all Movers in the group and report this.
-          initial = 0.0
-          final = 0.0
-          for m in movers:
-            initial += float(self._moverInfo[m].split()[9])
-            final += self._highScores[m]
-          self._infoString += _VerboseCheck(1," Totals: initial score {:.2f}, final score {:.2f}\n".format(initial, final))
-          for m in movers:
-            self._infoString += _VerboseCheck(1,"  {} final score: {:.2f} pose {}\n".format(
-              self._moverInfo[m], self._highScores[m],
-              m.PoseDescription(self._coarseLocations[m], self._fineLocations[m])
-              ))
-        self._infoString += _VerboseCheck(1," Singleton Movers:\n")
-        for s in singletonCliques:
-          m = self._interactionGraph.vertex_label(s[0])
-          self._infoString += _VerboseCheck(1,"  {} final score: {:.2f} pose {}\n".format(
-            self._moverInfo[m], self._highScores[m],
-            m.PoseDescription(self._coarseLocations[m], self._fineLocations[m])
-            ))
-        self._infoString += _VerboseCheck(1,"END REPORT\n")
 
         ################################################################################
         # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,
@@ -1263,7 +1298,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
     if a.element == 'N' and len(bondedNeighborLists[a]) == 4:
       numH = 0
       for n in bondedNeighborLists[a]:
-        if n.element == "H":
+        if n.element_is_hydrogen():
           numH += 1
       if numH == 3:
         try:
@@ -1280,7 +1315,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
       numH = 0
       neighbor = None
       for n in bondedNeighborLists[a]:
-        if n.element == "H":
+        if n.element_is_hydrogen():
           numH += 1
         else:
           neighbor = n
