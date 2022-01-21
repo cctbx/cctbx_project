@@ -306,6 +306,14 @@ namespace boost_python { namespace {
       diffBragg.db_flags.only_diffuse = val ;
   }
 
+  bool get_wavelen_img_flag(simtbx::nanoBragg::diffBragg& diffBragg){
+    return diffBragg.db_flags.wavelength_img;
+  }
+
+  void set_wavelen_img_flag(simtbx::nanoBragg::diffBragg& diffBragg, bool val){
+    diffBragg.db_flags.wavelength_img = val;
+  }
+
   bool get_refine_Icell(simtbx::nanoBragg::diffBragg& diffBragg){
       return diffBragg.db_flags.refine_Icell;
   }
@@ -692,6 +700,17 @@ namespace boost_python { namespace {
       .add_property("most_recent_kernel_used_GPU",
             make_getter(&simtbx::nanoBragg::diffBragg::last_kernel_on_GPU,rbv()),
             "if True, the most recent kernel call utilized a GPU")
+      .add_property("store_ave_wavelength_image",
+            make_function(&get_wavelen_img_flag,rbv()),
+            make_function(&set_wavelen_img_flag,dcp()),
+            "if True, then record the average wavelength per pixel, weighted by Bragg intensity")
+
+      //.add_property("ave_wavelength",
+      //      make_function(&simtbx::nanoBragg::diffBragg::ave_wavelength_img , rbv()),
+      //      "return flex array containing average wavelen per pixel")
+      .def("ave_wavelength_image",
+            &simtbx::nanoBragg::diffBragg::ave_wavelength_img,
+            "return flex array containing average wavelen per pixel")
 
     ; // end of diffBragg extention
 

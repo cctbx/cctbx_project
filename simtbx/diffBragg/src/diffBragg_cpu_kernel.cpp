@@ -30,6 +30,7 @@ void diffBragg_sum_over_steps(
             use_nominal_hkl = true;
         // reset photon count for this pixel
         double I=0;
+        double Ilambda = 0;
         double II_max = -1;
         double max_stats[11] = {0,0,0,0,0,
                                0,0,0,0,0,0};
@@ -393,6 +394,8 @@ void diffBragg_sum_over_steps(
                 I_cell *= F_cell;
             double Iincrement = I_cell*I_noFcell;
             I += Iincrement;
+            if(db_flags.wavelength_img)
+                Ilambda += Iincrement*lambda_ang;
 
             if (db_flags.refine_diffuse){
                 double step_scale = count_scale*I_cell;
@@ -771,6 +774,9 @@ void diffBragg_sum_over_steps(
             scale_term = db_cryst.r_e_sqr*db_beam.fluence*db_cryst.spot_scale*polar*om/db_steps.Nsteps;
 
             floatimage[i_pix] = scale_term*I;
+
+            if (db_flags.wavelength_img)
+                d_image.wavelength[i_pix] = Ilambda / I;
 
         }
         if (db_flags.refine_diffuse){
