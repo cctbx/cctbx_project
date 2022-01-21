@@ -56,78 +56,84 @@ beam = BeamFactory.from_dict(beam_descr)
 whole_det = DetectorFactory.from_dict(det_descr)
 cryst = CrystalFactory.from_dict(cryst_descr)
 
-# ---------
 
-SIM = simtbx.nanoBragg.nanoBragg( whole_det, beam)
-SIM.Amatrix = sqr(cryst.get_A()).transpose().elems
-SIM.default_F = 1
-SIM.F000 = 10
-SIM.oversample=2
-SIM.Ncells_abc = (5,5,5)
-SIM.show_params()
-SIM.add_nanoBragg_spots()
-SIM.raw_pixels *= 2000
-wholepix = SIM.raw_pixels.as_numpy_array()
+def main():
 
-# ---------
+  # ---------
 
-# now make 2 smaller detectors
-# that equal the whole detector above
-# then append them as a dials multi panel
-origin0 = (25.6, -12.8, -100)
-origin1 = (25.6, 0, -100)
-panel_size =(512, 128)
-
-pan0 = {'fast_axis': (-1.0, 0.0, 0.0),
-        'gain': 1.0,
-        'identifier': '',
-        'image_size': (512, 128),
-        'mask': [],
-        'material': '',
-        'mu': 0.0,
-        'name': 'panel1',
-        'origin': origin0,
-        'pedestal': 0.0,
-        'pixel_size': (0.1, 0.1),
-        'px_mm_strategy': {'type': 'SimplePxMmStrategy'},
-        'raw_image_offset': (0, 0),
-        'slow_axis': (0.0, 1.0, 0.0),
-        'thickness': 0.0,
-        'trusted_range': (0.0, 65536.0),
-        'type': ''}
-
-pan1 = copy.deepcopy(pan0)
-pan1["origin"] = origin1
-
-# combine the panels into a multi-panel detector
-parts_det = Detector()
-parts_det.add_panel( Panel.from_dict(pan0))
-parts_det.add_panel( Panel.from_dict(pan1))
-
-SIMs = {}
-for i_pan in range(2):
-  SIM = simtbx.nanoBragg.nanoBragg( parts_det, beam, panel_id=i_pan)
+  SIM = simtbx.nanoBragg.nanoBragg( whole_det, beam)
   SIM.Amatrix = sqr(cryst.get_A()).transpose().elems
   SIM.default_F = 1
   SIM.F000 = 10
   SIM.oversample=2
   SIM.Ncells_abc = (5,5,5)
+  SIM.show_params()
   SIM.add_nanoBragg_spots()
   SIM.raw_pixels *= 2000
-  SIMs[i_pan] = SIM
+  wholepix = SIM.raw_pixels.as_numpy_array()
 
-# check comparison with whole camera
-# ----------------------------------
-# combine the two panels:
-pix0 = SIMs[0].raw_pixels.as_numpy_array()
-pix1 = SIMs[1].raw_pixels.as_numpy_array()
+  # ---------
 
-# FIXME: not sure why but in this case the first pixel in memory is off by 0.05
-# but the others are all close..
-pix1[0,0] = wholepix[128,0]   # pix1[0,0] = 1.217 and pix[128,0] = 1.264
-pix01 = np.vstack((pix0,pix1))
+  # now make 2 smaller detectors
+  # that equal the whole detector above
+  # then append them as a dials multi panel
+  origin0 = (25.6, -12.8, -100)
+  origin1 = (25.6, 0, -100)
+  panel_size =(512, 128)
 
-assert( np.allclose(wholepix, pix01))
+  pan0 = {'fast_axis': (-1.0, 0.0, 0.0),
+          'gain': 1.0,
+          'identifier': '',
+          'image_size': (512, 128),
+          'mask': [],
+          'material': '',
+          'mu': 0.0,
+          'name': 'panel1',
+          'origin': origin0,
+          'pedestal': 0.0,
+          'pixel_size': (0.1, 0.1),
+          'px_mm_strategy': {'type': 'SimplePxMmStrategy'},
+          'raw_image_offset': (0, 0),
+          'slow_axis': (0.0, 1.0, 0.0),
+          'thickness': 0.0,
+          'trusted_range': (0.0, 65536.0),
+          'type': ''}
+
+  pan1 = copy.deepcopy(pan0)
+  pan1["origin"] = origin1
+
+  # combine the panels into a multi-panel detector
+  parts_det = Detector()
+  parts_det.add_panel( Panel.from_dict(pan0))
+  parts_det.add_panel( Panel.from_dict(pan1))
+
+  SIMs = {}
+  for i_pan in range(2):
+    SIM = simtbx.nanoBragg.nanoBragg( parts_det, beam, panel_id=i_pan)
+    SIM.Amatrix = sqr(cryst.get_A()).transpose().elems
+    SIM.default_F = 1
+    SIM.F000 = 10
+    SIM.oversample=2
+    SIM.Ncells_abc = (5,5,5)
+    SIM.add_nanoBragg_spots()
+    SIM.raw_pixels *= 2000
+    SIMs[i_pan] = SIM
+
+  # check comparison with whole camera
+  # ----------------------------------
+  # combine the two panels:
+  pix0 = SIMs[0].raw_pixels.as_numpy_array()
+  pix1 = SIMs[1].raw_pixels.as_numpy_array()
+
+  # FIXME: not sure why but in this case the first pixel in memory is off by 0.05
+  # but the others are all close..
+  pix1[0,0] = wholepix[128,0]   # pix1[0,0] = 1.217 and pix[128,0] = 1.264
+  pix01 = np.vstack((pix0,pix1))
+
+  assert( np.allclose(wholepix, pix01))
+
 
 if __name__=="__main__":
- print("OK")
+  main()
+  print("OK")
+

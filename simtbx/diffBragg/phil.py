@@ -667,21 +667,36 @@ simulator {
       .help = the matrix RotX*RotY*RotZ, and then the unit cell will be updated
   }
   structure_factors {
+    from_pdb {
+      name = None
+        .type = str
+        .help = path to a pdb file
+      k_sol = None
+        .type = float
+        .help = solvent component of structure factor: k_sol * exp(-b_sol*s^2/4)
+      b_sol = None
+        .type = float
+        .help = solvent component of structure factor: k_sol * exp(-b_sol*s^2/4)
+    }
     mtz_name = None
       .type = str
-      .help = path to an MTZ file
+      .help = path to an MTZ file . If an mtz_name and from_pdb.name are both provided, then
+      .help = the mtz takes precedence
     mtz_column = None
       .type = str
       .help = column in an MTZ file
-    dmin = 1.5
+    dmin = 1
       .type = float
-      .help = minimum resolution for structure factor array
-    dmax = 30
+      .help = minimum resolution for structure factor array (not applicable when F is loaded from mtz)
+    dmax = None
       .type = float
-      .help = maximum resolution for structure factor array
+      .help = maximum resolution for structure factor array (not applicable when F is loaded from mtz)
     default_F = 0
       .type = float
-      .help = default value for structure factor amps
+      .help = Default value for structure factor amps . MIssing structure factors will have this value
+      .help = during simulation, for example if the mtz is incomplete. Also, if mtz_name and
+      .help = from_pdb.name are both None, then a structure factor array will be created with this
+      .help = value as every amplitude.
   }
   spectrum {
     filename = None

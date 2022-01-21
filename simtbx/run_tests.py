@@ -12,7 +12,8 @@ nb_tst_list = [
     "$D/nanoBragg/tst_multisource_background.py",
     "$D/nanoBragg/tst_anisotropic_mosaicity.py"]
 
-db_tst_list_nonCuda = ["$D/diffBragg/tests/tst_diffBragg_utils.py"]
+db_tst_list_nonCuda = ["$D/diffBragg/tests/tst_diffBragg_utils.py",
+                       "$D/diffBragg/tests/tst_diffBragg_structure_factors.py"]
 db_tst_list_onlyCuda =[["$D/diffBragg/tests/tst_diffBragg_hopper_refine.py", "--perturb eta --cuda"]]
 
 db_tst_list = [
