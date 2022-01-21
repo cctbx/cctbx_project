@@ -29,7 +29,7 @@ import mmtbx
 import scitbx.matrix
 from scitbx.array_family import flex
 from mmtbx.probe import AtomTypes
-from cctbx.eltbx import sasaki
+from cctbx.eltbx.attenuation_coefficient import nist_elements
 from iotbx import pdb
 
 import boost_adaptbx.boost.python as bp
@@ -690,6 +690,9 @@ def fixupExplicitDonors(atoms, bondedNeighborLists, extraAtomInfo):
       ei.isDonor = False
       extraAtomInfo.setMappingFor(a, ei)
 
+# Class created once to keep from having to generate it each time we call conventionalSortingKey
+_nist_table = nist_elements()
+
 class conventionalSortingKey(object):
   """
     A key suitable for sorting a list of atoms based on the ordering that would be
@@ -716,7 +719,7 @@ class conventionalSortingKey(object):
       if c.isdigit():
         self._numberInName = self._numberInName + c
 
-    self._atomicNumber = sasaki.table(atom.element).atomic_number()
+    self._atomicNumber = _nist_table.atomic_number(atom.element)
 
     # We trim all white space from the name.
     self._name = atom.name.strip()
