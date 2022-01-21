@@ -8,6 +8,7 @@
   * [Monochromatic model refinement](#mono)
   * [Polychromatic model refinement](#poly)
 * [Multi-image refinement of detector models with `diffBragg.geometry_refine`](#geometry)
+* [API FAQ](#apifaq)
 
 <a name="testdata"></a>
 # setup test data
@@ -806,4 +807,172 @@ The script runs dials.stills_process with a few alterations
 * After refinement, the diffBragg model is used to predict integration positions on the detector, and then the dials integration program is used to compute integrated spot intensities.
 
 
+<a name="apifaq"></a>
+# diffBraggs API FAQ
+
+## How can I see the diffBragg log, and control the log level?
+
+At the minimum, exec0.ute the following in your script, prior to calling `hopper_utils.refine`
+
+```python
+import logging
+dblogger = logging.getLogger("diffBragg.main")
+dblogger.setLevel(logging.DEBUG)
+```
+
+This will will redirect all of the diffBragg logging to the stderr. To redirect the logging to stdout, one can use the following
+
+```python
+import logging
+dblogger = logging.getLogger("diffBragg.main")
+handler = logging.StreamHandler(stream=sys.stdout)
+handler.setLevel(logging.DEBUG)  
+dblogger.addHandler(handler) 
+```
+
+The log level `logging.DEBUG` results in the most output,  while `logging.INFO` is less verbose. 
+
+More flexibility is provided via the python logging modules. One can see an example of log manipulation for MPI programs in the script `simtbx/diffBragg/mpi_logger.py`  . Therein are instructions for a logging approach where each compute node writes a diffBragg log to file, with MPI ranks writing to the same files according to their respective compute nodes.  
+
+## How do I know if refinement is using the GPU?
+
+To ensure usage of the GPU, set the environment variable `DIFFBRAGG_USE_CUDA=1`. If a GPU is not available, an error will be thrown.
+
+Setting verbose>0 on the diffBragg object itself will show a printout indicating whether GPU executed the kernel, however direct calls to hopper_utils.refine() apparently dont expose this verbose flag.
+
+Calls to `hopper_utils.refine` can optionally return the data modeler object used, and from the modeler, you can inspect whether the GPU kernel was exectued:
+
+```python
+# the following line of code is taken from diffBragg/tests/tst_diffBragg_hopper_refined.py
+Eopt,_, Mod, x = hopper_utils.refine(E, refls, P, return_modeler=True)
+
+if Mod.SIM.D.most_recent_kernel_used_GPU:
+    print("Kernel ran on GPU")
+else:
+    print("Kernel ran on CPU")
+```
+
+
+
+## how do I force  refinement to take my PDB model for reference structure factors?  Specifically, using the data structure from memory, not taking an mtz  file?
+
+Note, a pending pull request will address this. With it, one can use the PHIL interface for this, see in `diffBragg/phil.py` the section `simulator.structure_factors.from_pdb`. The function `get_fcalc_from_pdb` in `simtbx/diffBragg/utils.py` is commonly used to convert coordinates
+ 
+
+## How do I restrain the unit cell to the starting model, can I use a unit cell object in the phil?
+
+Currently this is done via the restraints phil parameters. For now, if one wants to restrain the unit cell, then the proper phil parameters must be set. The `centers` and `betas` parameters control the restraints. `centers` define the restraint target, and `betas` define the expected variation about each target, hence very small `betas` will essentially fix the parameter. 
+
+```
+params.centers.ucell_a = 100  # angstrom
+params.betas.ucell_a = 0.001  # variance  (angstrom squared)
+```
+
+This requires the user to know and understand the free parameters in each crystal system (e.g. for tetragonal one would need to set `ucell_a` and `ucell_c`) , though setting non free parameters should have no effect, so one could set the target for the full unit cell. To see the lists of free parameters per crystal system, visit the classes in `diffBragg/refiners/crystal_systems`
+
+## How do I verify that the diffuse model is turned off?
+
+Check the diffBragg attribute `use_diffuse`:
+
+```python
+# the following line of code is taken from diffBragg/tests/tst_diffBragg_hopper_refined.py
+Eopt,_, Mod, x = hopper_utils.refine(E, refls, P, return_modeler=True)
+
+if Mod.SIM.D.use_diffuse:
+    print("used diffuse models")
+else:
+    print("did not use diffuse models")
+```
+
+## How do I verify that the mosaic rotation is being refined?
+
+By default mosaic rotation optimization is disabled. In order to verify mosaic rotation occured, one should first check the phil parameters and ensure the following:
+
+```
+params.fix.eta_abc = False 
+params.simulator.crystal.num_mosaicity_samples > 1
+```
+
+One can also call the diffBragg object method `print_if_refining()` to see what gradients are being computed internal to diffBragg (note, gradients for spot_scale are computed external to diffBragg)
+
+```python
+# the following line of code is taken from diffBragg/tests/tst_diffBragg_hopper_refined.py
+Eopt,_, Mod, x = hopper_utils.refine(E, refls, P, return_modeler=True)
+
+Mod.SIM.D.print_if_refining()
+#Refining rot 0
+#Refining rot 1
+#Refining rot 2
+#Refining ucell 0
+#Refining Ncells 0
+#Refining ucell 1
+#Refining Ncells 1
+#Refining ucell 2
+#Refining Ncells 2
+#Refining ucell 3
+#Refining panel Z
+
+```
+
+For mosaic rotations, look for e.g. `refining eta 0` . To verify whether these gradients were actually used for optimization, one should additionally inspect the low level parameters object, attached to the SIM object:
+
+```python
+# the following line of code is taken from diffBragg/tests/tst_diffBragg_hopper_refined.py
+Eopt,_, Mod, x = hopper_utils.refine(E, refls, P, return_modeler=True)
+
+eta_a = Mod.SIM.P["eta_abc0"]
+init = eta_a.init
+curr = eta_a.get_val( x[eta_a.xpos])
+if not eta_a.refine:
+	assert (init==curr)
+	print("Parameter %s was fixed during refinement" % eta_a.name)
+```
+
+## How to I force the refiner to use the experimental spectrum and verify it is being used?
+
+If the image format class is equipped with accessible X-ray spectra (in the `dxtbx` sense), then the PHIL parameter
+
+```
+spectrum_from_imageset=True
+```
+
+should do the trick. Additionally, one can add pre-processing to the spectra by changing the `downsamp_spec` phil parameters. WARNING: The default parameters for `downsamp_spec` are fine-tuned to the SwissFEL beamline spectra recorded in October 2020 and might not be suitable for general spectra.
+
+Alternatively, if there is an experimental spectrum stored in the precognition `.lam` file format (see `simtbx/diffBragg/utils.py` method `save_spectra_file`), then one may pass the filename as a parameter to `hopper_utils.refine(..., spec="file.lam", ...)` , just ensure the following parameter definitions: `params.gen_gauss_spec=False` and `params.spectrum_from_imageset=False`.
+
+In all cases, to verify the spectrum that was actually used during refinement, check the  `SIM.beam` method of the data modeler:
+
+```python
+# the following line of code is taken from diffBragg/tests/tst_diffBragg_hopper_refined.py
+Eopt,_, Mod, x = hopper_utils.refine(E, refls, P, return_modeler=True)
+print(Mod.SIM.beam.spectrum)
+[(1.8, 1000000000000.0)]  # list of (wavelength, fluence) 
+print("Number of energy channels: %d" % len(Mod.SIM.beam.spectrum))
+```
+
+
+
+## What if I don't have an experimental spectra, but I wish to optimize a pink-beam model
+
+One can generate a Gaussian spectrum using the phil parameter `gen_gauss_spec=True` . One can configure the spectrum using the PHIL parameters 
+
+```
+simulator.spectrum.gauss_spec.fwhm
+simulator.spectrum.gauss_spec.nchannels
+simulator.spectrum.gauss_spec.res
+```
+
+One can also store artificially generated X-ray spectra in precognition `.lam` files and pass them in as parameters to `hopper_utils.refine`.
+
+## How do I specify number of mosaic UMATS?
+
+This is done through PHIL, e.g. 
+
+```
+params.simulator.crystal.num_mosaicity_samples = 50
+```
+
+## Can I verify that the output reflection table has the diffBragg model centroid position as xyzcal?
+
+If one calls `hopper_utils.refine`, the returned reflection table will contain an `xyzcal.px` column that includes the diffBragg model dervied centroids. Look for a call to `get_new_xycalcs` in the source code of `hopper_utils.refine` for details. If the refl table passed to `hopper_utils.refine` already contained `xyzcal.px` (e.g. indexed refls), then this column will be renamed to `dials.xyzcal.px`. (same for `xyzcal.mm` and `xyzobs.mm.value`).
 
