@@ -1,3 +1,4 @@
+from __future__ import division
 
 from simtbx.diffBragg import utils
 from simtbx.nanoBragg.tst_nanoBragg_basic import pdb_lines
