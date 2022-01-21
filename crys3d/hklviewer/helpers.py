@@ -22,9 +22,8 @@ class MyQDoubleSpinBox(QDoubleSpinBox):
     super(MyQDoubleSpinBox,self).__init__(parent)
   def stepBy(self, steps):
     QDoubleSpinBox.stepBy(self, steps)
-    top_widget = self
-    while top_widget.parentWidget(): top_widget = top_widget.parentWidget()
-    top_widget.parent.onHKLdistEditFinished()
+    if hasattr(self, "onStepBy"):
+      self.onStepBy()
 
 
 class MyhorizontalHeader(QHeaderView):

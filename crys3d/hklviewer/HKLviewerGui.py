@@ -295,7 +295,7 @@ class Ui_MainWindow(object):
 
         self.gridLayout_24.addWidget(self.hkldist_spinBox, 1, 1, 1, 1)
 
-        self.clipwidth_spinBox = QDoubleSpinBox(self.ClipPlaneChkGroupBox)
+        self.clipwidth_spinBox = MyQDoubleSpinBox(self.ClipPlaneChkGroupBox)
         self.clipwidth_spinBox.setObjectName(u"clipwidth_spinBox")
         sizePolicy10.setHeightForWidth(self.clipwidth_spinBox.sizePolicy().hasHeightForWidth())
         self.clipwidth_spinBox.setSizePolicy(sizePolicy10)

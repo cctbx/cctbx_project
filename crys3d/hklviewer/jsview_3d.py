@@ -446,7 +446,7 @@ class hklview_3d:
     Change the view of the reflections according to whatever the values are of the volatile parameters.
     Volatile parameters are those that do not require heavy computing (like position of WebGL primitives)
     but can change the appearance of primitives instantly like opacity or clipplane position. Expansion
-    in browser of coordinates to P1 are also considered volatile as this operation happens to be fast.
+    in browser of coordinates to P1 are also considered volatile as this operation is very fast.
     """
     if self.viewerparams.scene_id is not None:
       if has_phil_path(self.diff_phil, "angle_around_vector"): # no need to redraw any clip plane
@@ -461,17 +461,25 @@ class hklview_3d:
         clipwidth = self.params.clip_plane.clipwidth
         hkldist = self.params.clip_plane.hkldist
       if self.params.clip_plane.normal_vector != -1:
-        # cartvec is the cartesian 
+        hkldist = -self.params.clip_plane.hkldist
+        # cartvec is reciprocal vector in cartesian coordinates
         cartvec = self.all_vectors[ self.params.clip_plane.normal_vector ][3]
-        hklvec = eval(self.all_vectors[ self.params.clip_plane.normal_vector ][5])
-        uc = self.miller_array.unit_cell()
-        # Get corrresponding real space vector to the hkl vector (as cartesian coordinates)
-        real_space_vec = hklvec * matrix.sqr(uc.orthogonalization_matrix())
-        # Orient the clip plane perpendicular to real_space_vec
-        # while at the same time slide clip plane along the cartvec (reciprocal vector) direction
-        self.orient_vector_to_screen(real_space_vec)
-        L = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-        hkldist = self.params.clip_plane.hkldist * L
+        try:
+          # hklvec is reciprocal vector in reciprocal coordinates
+          hklvec = eval(self.all_vectors[ self.params.clip_plane.normal_vector ][5])
+          uc = self.miller_array.unit_cell()
+          # Get corresponding real space vector to the hkl vector (as cartesian coordinates)
+          real_space_vec = hklvec * matrix.sqr(uc.orthogonalization_matrix())
+          # In the general case real_space_vec is not parallel to hklvec
+          # Orient the clip plane perpendicular to real_space_vec while at the 
+          # same time slide clip plane along the cartvec (reciprocal vector) direction
+          # in units of cartvec length
+          self.orient_vector_to_screen(real_space_vec)
+          L = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+          cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
+          hkldist = -self.params.clip_plane.hkldist * L *cosine
+        except Exception as e:
+          pass # hklvec couldn't be parsed
       self.make_clip_plane(hkldist, clipwidth)
       if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
         self.ExpandInBrowser()
@@ -583,9 +591,9 @@ class hklview_3d:
 
   def GetTooltipOnTheFly(self, id, sym_id, anomalous=False):
     rothkl, hkl = self.get_rothkl_from_IDs(id, sym_id, anomalous)
-    spbufttip = '\'HKL: [%d, %d, %d]' %(rothkl[0], rothkl[1], rothkl[2])
+    spbufttip = '\'HKL: [%d,%d,%d]' %(rothkl[0], rothkl[1], rothkl[2])
     if rothkl != hkl: # then show the original hkl before P1 or anomalous expansion
-      spbufttip += ', HKL(asu): [%d, %d, %d]' %(hkl[0], hkl[1], hkl[2])
+      spbufttip += ', (asu): [%d,%d,%d]' %(hkl[0], hkl[1], hkl[2])
     # resolution and Angstrom character for javascript
     spbufttip += '\\ndres: %s \'+ String.fromCharCode(197) +\'' \
       %str(roundoff(self.miller_array.unit_cell().d(hkl), 2) )
@@ -2112,6 +2120,17 @@ in the space group %s\nwith unit cell %s\n""" \
     vec2 = vec * matrix.sqr(uc.orthogonalization_matrix())
     bodydiagonal_length =  vec2.length()
     self.realspace_scale = self.scene.renderscale * reciprocspan_length / bodydiagonal_length
+
+
+  def project_vector1_vector2(self, vec1, vec2):
+    # cartesian projection of vec1 onto vec2
+    L1 = math.sqrt( vec1[0]*vec1[0] + vec1[1]*vec1[1] + vec1[2]*vec1[2] )
+    L2 = math.sqrt( vec2[0]*vec2[0] + vec2[1]*vec2[1] + vec2[2]*vec2[2] )
+    dotproduct = vec1[0]*vec2[0] + vec1[1]*vec2[1] + vec1[2]*vec2[2]
+    cosine = dotproduct/(L1*L2)
+    projvec1 = (vec1[0]*cosine, vec1[1]*cosine, vec1[2]*cosine)
+    projvec2 = (vec2[0]*cosine, vec2[1]*cosine, vec2[2]*cosine)
+    return cosine, projvec1, projvec2
 
 
   def orient_vector_to_screen(self, cartvec):

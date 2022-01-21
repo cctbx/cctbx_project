@@ -1259,6 +1259,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
   inbrowser = True
   fixorientation = "None"
 }
+clip_plane.normal_vector = -1
        """)
 
 
@@ -1550,16 +1551,19 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     vprec = 2
     self.hkldistval = 0.0
     self.hkldist_spinBox.setValue(self.hkldistval)
-    self.hkldist_spinBox.setDecimals(4)
+    self.hkldist_spinBox.setDecimals(2)
     self.hkldist_spinBox.setSingleStep(1)
     self.hkldist_spinBox.setRange(-1000.0, 1000.0)
-    #self.hkldist_spinBox.valueChanged.connect(self.onHKLdistChanged)
     self.hkldist_spinBox.editingFinished.connect(self.onHKLdistEditFinished)
+    self.hkldist_spinBox.onStepBy = self.onHKLdistEditFinished
+
     self.clipwidth_spinBox.setValue(2 )
-    self.clipwidth_spinBox.setDecimals(vprec)
-    self.clipwidth_spinBox.setSingleStep(0.1)
+    self.clipwidth_spinBox.setDecimals(3)
+    self.clipwidth_spinBox.setSingleStep(0.025)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
-    self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
+    self.clipwidth_spinBox.editingFinished.connect(self.onClipwidthEditFinished)
+    self.clipwidth_spinBox.onStepBy = self.onClipwidthEditFinished
+
     self.yHKLrotBtn.clicked.connect(self.onYangleHKLrotate)
     self.xHKLrotBtn.clicked.connect(self.onXangleHKLrotate)
     self.zHKLrotBtn.clicked.connect(self.onZangleHKLrotate)
@@ -1627,13 +1631,26 @@ clip_plane.normal_vector = %d""" %self.clipplane_normal_vector_combo.currentInde
                                                       inbrowser = True
                                                   }
                             """)
-      hkldist, clipwidth = self.hkldistval, self.clipwidth_spinBox.value()
+
+    else:
+      self.send_message("""viewer {
+  slice_mode = False
+  inbrowser = True
+  fixorientation = "None"
+}
+clip_plane {
+  normal_vector = -1
+  clipwidth = 0.0
+}
+       """)
+
+    clipwidth = self.clipwidth_spinBox.value()
     philstr = """clip_plane {
   clipwidth = %s
 }
         """ %clipwidth
 
-    self.send_message(philstr)
+    #self.send_message(philstr)
 
 
   def onRotaVecAngleChanged(self, val):
@@ -1669,15 +1686,9 @@ clip_plane.normal_vector = %d""" %self.clipplane_normal_vector_combo.currentInde
 }""" %(self.rotvec, -1.0))
 
 
-  def onClipwidthChanged(self, val):
+  def onClipwidthEditFinished(self):
     if not self.unfeedback:
       self.send_message("clip_plane.clipwidth = %f" %self.clipwidth_spinBox.value())
-
-
-  def onHKLdistChanged(self, val):
-    if not self.unfeedback:
-      self.hkldistval = val
-      self.send_message("clip_plane.hkldist = %f" %self.hkldistval)
 
 
   def onHKLdistEditFinished(self):

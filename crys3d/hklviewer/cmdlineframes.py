@@ -1136,13 +1136,23 @@ class HKLViewFrame() :
 
   def list_vectors(self):
     self.viewer.all_vectors = self.viewer.rotation_operators[:]
+    uc = self.viewer.miller_array.unit_cell()
     if self.tncsvec is not None:
-      uc = self.viewer.miller_array.unit_cell()
       # TNCS vector is specified in realspace fractional coordinates. Convert it to cartesian
       cartvec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
       ln = len(self.viewer.all_vectors)
       self.viewer.all_vectors.append( (ln, "TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)) ) )
     self.viewer.all_vectors = self.viewer.all_vectors + self.uservectors
+    
+    ln = len(self.viewer.all_vectors)
+    Hcartvec = list( self.viewer.scene.renderscale*( (1,0,0)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
+    Kcartvec = list( self.viewer.scene.renderscale*( (0,1,0)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
+    Lcartvec = list( self.viewer.scene.renderscale*( (0,0,1)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
+    hklunit_vectors = [ (ln, "H (1,0,0)", 0, Hcartvec, "", "(1,0,0)", "" ),
+                        (ln+1, "K (0,1,0)", 0, Kcartvec, "", "(0,1,0)", "" ),
+                        (ln+2, "L (0,0,1)", 0, Lcartvec, "", "(0,0,1)", "" )]
+    self.viewer.all_vectors = self.viewer.all_vectors + hklunit_vectors
+
     for (opnr, label, order, cartvec, hkl_op, hkl, abc) in self.viewer.all_vectors:
       # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
       name = label + hkl_op.replace(",", "_")

@@ -430,7 +430,7 @@ p, li { white-space: pre-wrap; }
                         </widget>
                        </item>
                        <item row="1" column="4">
-                        <widget class="QDoubleSpinBox" name="clipwidth_spinBox">
+                        <widget class="MyQDoubleSpinBox" name="clipwidth_spinBox">
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                            <horstretch>0</horstretch>
