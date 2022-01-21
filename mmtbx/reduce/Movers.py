@@ -486,7 +486,7 @@ class MoverNH3Rotator(_MoverRotator):
       raise ValueError("MoverNH3Rotator(): atom does not have four bonded neighbors")
     hydrogens = []
     for a in partners:
-      if a.element == "H":
+      if a.element_is_hydrogen():
         hydrogens.append(a)
       else:
         partner = a
@@ -557,7 +557,7 @@ class MoverAromaticMethylRotator(_MoverRotator):
       raise ValueError("MoverAromaticMethylRotator(): atom does not have four bonded neighbors")
     hydrogens = []
     for a in partners:
-      if a.element == "H":
+      if a.element_is_hydrogen():
         hydrogens.append(a)
       else:
         partner = a
@@ -632,7 +632,7 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
       raise ValueError("MoverTetrahedralMethylRotator(): atom does not have four bonded neighbors")
     hydrogens = []
     for a in partners:
-      if a.element == "H":
+      if a.element_is_hydrogen():
         hydrogens.append(a)
       else:
         partner = a
@@ -698,7 +698,7 @@ class MoverAmideFlip(object):
     nh2Hydrogens = []
     hinge = None
     for a in partners:
-      if a.element == "H":
+      if a.element_is_hydrogen():
         nh2Hydrogens.append(a)
       else:
         hinge = a
@@ -740,7 +740,7 @@ class MoverAmideFlip(object):
           continue
         elif b.element == "C":
           link = b
-        elif b.element == "H":
+        elif b.element_is_hydrogen():
           linkerHydrogens.append(b)
       if link is None:
         raise ValueError("MoverAmideFlip(): Did not find Carbon in linker chain step")
@@ -847,7 +847,7 @@ class MoverHisFlip(object):
     hydrogens = []
     carbons = []
     for a in partners:
-      if a.element == "H":
+      if a.element_is_hydrogen():
         hydrogens.append(a)
       elif a.element == "C":
         carbons.append(a)
@@ -881,7 +881,7 @@ class MoverHisFlip(object):
       raise ValueError("MoverHisFlip(): CE1 does not have three bonded neighbors")
     ce1HAtom = None
     for b in bonded:
-      if b.element == "H":
+      if b.element_is_hydrogen():
         ce1HAtom = b
     if ce1HAtom is None:
       raise ValueError("MoverHisFlip(): Could not find Hydrogen attached to CE1")
@@ -892,7 +892,7 @@ class MoverHisFlip(object):
       raise ValueError("MoverHisFlip(): CD2 does not have three bonded neighbors")
     cd2HAtom = None
     for b in bonded:
-      if b.element == "H":
+      if b.element_is_hydrogen():
         cd2HAtom = b
     if cd2HAtom is None:
       raise ValueError("MoverHisFlip(): Could not find Hydrogen attached to CD2")
@@ -932,7 +932,7 @@ class MoverHisFlip(object):
       raise ValueError("MoverHisFlip(): ND1 does not have three bonded neighbors")
     nd1HAtom = None
     for b in bonded:
-      if b.element == "H":
+      if b.element_is_hydrogen():
         nd1HAtom = b
     if nd1HAtom is None:
       raise ValueError("MoverHisFlip(): ND1 does not have a bonded hydrogen")
@@ -948,7 +948,7 @@ class MoverHisFlip(object):
         continue
       elif b.element == "C":
         caAtom = b
-      elif b.element == "H":
+      elif b.element_is_hydrogen():
         cbHydrogens.append(b)
     if caAtom is None:
       raise ValueError("MoverHisFlip(): Could not find CA")
