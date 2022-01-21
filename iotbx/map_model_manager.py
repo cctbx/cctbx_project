@@ -2931,7 +2931,7 @@ class map_model_manager(object):
       except Exception as e:
         try:
           chain_type = get_chain_type(model = matching_model)
-        except Exception as e: 
+        except Exception as e:
           chain_type = None
     if not chain_type:
       print("Unable to identify chain_type of '%s' ... please set chain_type" %(
