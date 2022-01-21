@@ -40,6 +40,10 @@ input {
   keep_imagesets = True
     .type = bool
     .help = If True, keep imagesets attached to experiments
+  read_image_headers = False
+    .type = bool
+    .help = If True, when loading data also read image headers. Not needed when merging integrated data.
+    .help = Use when needing to read original image pixel data. Equivalent to check_format in other DIALS programs.
   path = None
     .type = str
     .multiple = True

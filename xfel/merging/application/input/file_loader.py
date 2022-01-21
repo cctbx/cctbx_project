@@ -139,7 +139,7 @@ class simple_file_loader(worker):
       self.logger.log("Received a list of %d json/pickle file pairs"%len(new_file_list))
       for experiments_filename, reflections_filename in new_file_list:
         self.logger.log("Reading %s %s"%(experiments_filename, reflections_filename))
-        experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = False)
+        experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = self.params.input.read_image_headers)
         reflections = flex.reflection_table.from_file(reflections_filename)
         if self.params.output.expanded_bookkeeping:
           # NOTE: these are un-prunable
