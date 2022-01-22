@@ -99,12 +99,14 @@ namespace simtbx { namespace gpu {
              static_cast<void (exascale_api::*)(int const&, gpu_energy_channels&, gpu_detector&, af::shared<int> const) >
              (&exascale_api::add_energy_channel_mask_allpanel),
              (arg_("channel_number"), arg_("gpu_amplitudes"), arg_("gpu_detector"), arg_("pixel_active_list_ints")),
-             "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spots on mask==True pixels")
+             "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spots on mask==True pixels\n"
+             "The pixel_active_list_ints is a small array with integer-offset addresses for each pixel-of-interest")
         .def("add_energy_channel_mask_allpanel",
              static_cast<void (exascale_api::*)(int const&, gpu_energy_channels&, gpu_detector&, af::shared<bool>) >
              (&exascale_api::add_energy_channel_mask_allpanel),
              (arg_("channel_number"), arg_("gpu_amplitudes"), arg_("gpu_detector"), arg_("pixel_active_mask_bools")),
-             "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spots on mask==True pixels")
+             "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spots on mask==True pixels\n"
+             "The pixel_active_mask_bools is a large array with one bool per detector pixel")
         .def("add_background", &simtbx::gpu::exascale_api::add_background,
              (arg_("detector"), arg_("override_source")=-1),
              "Add a background field directly on the GPU")

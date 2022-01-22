@@ -169,8 +169,6 @@ namespace Kokkos {
     simtbx::Kokkos::kokkos_detector & kdt,
     af::shared<bool> all_panel_mask
   ){
-    // cudaSafeCall(cudaSetDevice(SIM.device_Id));
-
     // here or there, need to convert the all_panel_mask (3D map) into a 1D list of accepted pixels
     // coordinates for the active pixel list are absolute offsets into the detector array
     af::shared<int> active_pixel_list;
@@ -180,6 +178,16 @@ namespace Kokkos {
         active_pixel_list.push_back(j);
       }
     }
+    add_energy_channel_mask_allpanel(ichannel, kec, kdt, active_pixel_list);
+  }
+
+  void
+  exascale_api::add_energy_channel_mask_allpanel(
+    int const& ichannel,
+    simtbx::Kokkos::kokkos_energy_channels & kec,
+    simtbx::Kokkos::kokkos_detector & kdt,
+    af::shared<int> const active_pixel_list
+  ){
     kdt.set_active_pixels_on_GPU(active_pixel_list);
 
     // transfer source_I, source_lambda
