@@ -21,20 +21,79 @@ def detect_architecture(verbose=True):
     architecture = "HSW"
   return architecture
 
+class system_config(object):
+  def __init__(self, host_variable, host_name):
+    self.host_variable = host_variable
+    self.host_name = host_name
+    self.env = {}
+
+  def is_host(self):
+    return (self.host_name==os.getenv(self.host_variable))
+
+  def get_copy(self):
+    clone = system_config(self.host_variable, self.host_name)
+    clone.env = dict(self.env)
+    return clone
+
+cfg_default = system_config(host_variable = 'NO_WHERE', host_name='N/A')
+cfg_default.env['KOKKOS_DEVICES'] = "OpenMP"
+cfg_default.env['KOKKOS_ARCH'] = "HSW"
+cfg_default.env['KOKKOS_CUDA_OPTIONS'] = ""
+cfg_default.env['LDFLAGS'] = "-Llib"
+cfg_default.env['LDLIBS'] = "-lkokkos -ldl"
+cfg_default.env['CXX'] = 'g++'
+
+list_cfg = []
+
+cfg_corigpu = cfg_default.get_copy()
+cfg_corigpu.host_variable = 'NERSC_HOST'
+cfg_corigpu.host_name = 'cori' 
+cfg_corigpu.env['KOKKOS_DEVICES'] = "Cuda"
+cfg_corigpu.env['KOKKOS_ARCH'] = "Volta70"
+cfg_corigpu.env['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
+cfg_corigpu.env['LDFLAGS'] += " -L$(CUDA_HOME)/lib64"
+cfg_corigpu.env['LDLIBS'] += " -lcudart -lcuda"
+cfg_corigpu.env['CXX'] = ''
+list_cfg.append(cfg_corigpu)
+
+cfg_perlmutter = cfg_corigpu.get_copy()
+cfg_perlmutter.host_name = 'perlmutter'
+cfg_perlmutter.env['KOKKOS_ARCH'] = 'Ampere80'
+list_cfg.append(cfg_perlmutter)
+
+cfg_spock = cfg_default.get_copy()
+cfg_spock.host_variable = 'LMOD_SYSTEM_NAME'
+cfg_spock.host_name = 'spock'
+cfg_spock.env['KOKKOS_DEVICES'] = "HIP"
+cfg_spock.env['KOKKOS_ARCH'] = "Vega908"
+cfg_spock.env['CXX'] = 'hipcc'
+list_cfg.append(cfg_spock)
+
+cfg_crusher = cfg_spock.get_copy()
+cfg_crusher.host_name = 'crusher'
+cfg_crusher.env['KOKKOS_ARCH'] = "Vega90A"
+list_cfg.append(cfg_crusher)
+
+system_settings = cfg_default.env
+for cfg in list_cfg:
+  if cfg.is_host():
+    system_settings = cfg.env
+    break
+
 # libkokkos.a
 # call kokkos build system directly
 # set environment variable defaults if necessary
 if os.getenv('KOKKOS_DEVICES') is None:
-  os.environ['KOKKOS_DEVICES'] = "Cuda"
+  os.environ['KOKKOS_DEVICES'] = system_settings['KOKKOS_DEVICES']
 if os.getenv('KOKKOS_PATH') is None:
   os.environ['KOKKOS_PATH'] = libtbx.env.under_dist('simtbx', '../../kokkos')
 if os.getenv('KOKKOS_ARCH') is None:
-  os.environ['KOKKOS_ARCH'] = detect_architecture(verbose = True)
+  os.environ['KOKKOS_ARCH'] = system_settings['KOKKOS_ARCH']
 if os.getenv('KOKKOS_CUDA_OPTIONS') is None:
-  os.environ['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
+  os.environ['KOKKOS_CUDA_OPTIONS'] = system_settings['KOKKOS_CUDA_OPTIONS']
 os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double'
-os.environ['LDFLAGS'] = '-Llib -L$(CUDA_HOME)/lib64'
-os.environ['LDLIBS'] = '-lkokkos -ldl -lcudart -lcuda'
+os.environ['LDFLAGS'] = system_settings['LDFLAGS']
+os.environ['LDLIBS'] = system_settings['LDLIBS']
 
 original_cxx = None
 kokkos_lib = 'libkokkos.a'
@@ -42,7 +101,10 @@ kokkos_cxxflags = None
 
 if os.getenv('CXX') is not None:
   original_cxx = os.environ['CXX']
-os.environ['CXX'] = os.path.join(os.environ['KOKKOS_PATH'], 'bin', 'nvcc_wrapper')
+if 'Cuda' in os.getenv('KOKKOS_DEVICES'):
+  os.environ['CXX'] = os.path.join(os.environ['KOKKOS_PATH'], 'bin', 'nvcc_wrapper')
+else:
+  os.environ['CXX'] = system_settings['CXX']
 print('='*79)
 print('Building Kokkos')
 print('-'*79)
@@ -108,15 +170,20 @@ if not env_etc.no_boost_python:
   kokkos_ext_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
   kokkos_ext_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
   kokkos_ext_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
-  kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'lib64')])
-  kokkos_ext_env.Append(LIBS=env_etc.libm +
-    ["simtbx_kokkos",
-     "scitbx_boost_python",
-     env_etc.boost_python_lib,
-     "cctbx",
-     "kokkos",
-     "cudart",
-     "cuda"])
+  default_libs = [
+    "simtbx_kokkos",
+    "scitbx_boost_python",
+    env_etc.boost_python_lib,
+    "cctbx",
+    "kokkos"]
+  if 'Cuda' in os.getenv('KOKKOS_DEVICES'):
+    kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'lib64')])
+    kokkos_ext_env.Append(LIBS=env_etc.libm + default_libs + ["cudart", "cuda"])
+  elif 'HIP' in os.getenv('KOKKOS_DEVICES'):
+    kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['ROCM_PATH'], 'lib')])
+    kokkos_ext_env.Append(LIBS=env_etc.libm + default_libs + ["amdhip64", "hsa-runtime64"])
+  else:
+    kokkos_ext_env.Append(LIBS=env_etc.libm + default_libs)
 
   simtbx_kokkos_ext = kokkos_ext_env.SharedLibrary(
     target="#lib/simtbx_kokkos_ext.so",

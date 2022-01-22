@@ -1447,7 +1447,13 @@ def enable_cuda_if_possible():
     env_base['BUILDERS']['cudaSharedLibrary'] = shared_library_builder
     env_base['BUILDERS']['cudaSharedLibrary'].add_src_builder(shared_object_builder)
 
+def enable_kokkos_if_possible():
+  env_etc.enable_kokkos = False
+  if (libtbx.env.build_options.enable_kokkos):
+    env_etc.enable_kokkos = True
+
 enable_openmp_if_possible()
 enable_cuda_if_possible()
+enable_kokkos_if_possible()
 
 Export("env_base", "env_etc")
