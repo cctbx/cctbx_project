@@ -9499,6 +9499,10 @@ def get_selections_for_segments(model,
     If skip_n_residues_on_ends is set, skip residues within
       skip_n_residues_on_ends of an end
   '''
+
+  if not model:
+    return []  # nothing to do
+
   assert isinstance(model, mmtbx.model.manager)
 
   if no_water_or_het_with_and is None:
