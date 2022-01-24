@@ -1073,7 +1073,7 @@ def select_segments_that_match(params=None,
     far_away_rmsd,far_away_n=rv.get_values('far_away')
     if close_n+far_away_n<1: continue # wrong chain type or other failure
 
-    percent_matched=100.*close_n/max(1,close_n+far_away_n if 
+    percent_matched=100.*close_n/max(1,close_n+far_away_n if
         close_n is not None and far_away_n is not None else 0)
     if percent_matched < params.comparison.minimum_percent_match_to_select:
       continue
