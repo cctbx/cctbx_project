@@ -252,7 +252,7 @@ class rmsd_values:
     target_length=self.get_target_length(id=id)
     rmsd,n=self.get_values(id=id)
     if target_length is not None and n is not None:
-      value=100.*n/max(1.,target_length)
+      value=100.*n/max(1.,target_length if target_length is not None else 0)
       # ZZZ may need to scale by self.used_target/self.total_target
       return value
 
@@ -534,7 +534,8 @@ def seq_it_is_similar_to(seq=None,unique_sequences=None,min_similarity=1.0,
   for s in unique_sequences:
     sim=sequence_similarity().run(seq,s,use_fasta=True,verbose=False)
     if not allow_extensions and len(seq)!=len(s):
-      fract_same=min(len(seq),len(s))/max(len(seq),len(s))
+      fract_same=min(len(seq),len(s))/max(len(seq) if seq is not None else 1,
+        len(s) if s is not None else 1)
       sim=sim*fract_same
     if sim >= min_similarity:
       return s # return the one it is similar to
@@ -958,7 +959,8 @@ def write_summary(params=None,file_list=None,rv_list=None,
     results_dict[full_f]=rv
     (rmsd,n)=rv.get_values('close')
     target_length=rv.get_target_length('close')
-    score=n/(max(1,target_length)*max(0.1,rmsd))
+    score=n/(max(1,target_length if target_length is not None else 0)*max(0.1,rmsd
+       if rmsd is not None else 0))
     score_list.append([score,full_f])
   score_list.sort(key=itemgetter(0))
   score_list.reverse()
@@ -978,7 +980,7 @@ def write_summary(params=None,file_list=None,rv_list=None,
     fragments=rv.get_n_fragments('forward')+rv.get_n_fragments('reverse')
     incorrect_connections = rv.incorrect_connections
     input_fragments = rv.input_fragments
-    mean_length=close_n/max(1,fragments)
+    mean_length=close_n/max(1,fragments if fragments is not None else 0)
     if full_rows:
       print("%14s %4.2f %4d   %4d   %4d    %4d    %4d  %5.1f %6.2f   %5.1f      %6.2f  %5.1f %10s %15s" %(file_name,close_rmsd,close_n,far_away_n,forward_n,
          reverse_n,unaligned_n,percent_close,score,match_percent,seq_score,
@@ -1071,7 +1073,8 @@ def select_segments_that_match(params=None,
     far_away_rmsd,far_away_n=rv.get_values('far_away')
     if close_n+far_away_n<1: continue # wrong chain type or other failure
 
-    percent_matched=100.*close_n/max(1,close_n+far_away_n)
+    percent_matched=100.*close_n/max(1,close_n+far_away_n if 
+        close_n is not None and far_away_n is not None else 0)
     if percent_matched < params.comparison.minimum_percent_match_to_select:
       continue
     if percent_matched > params.comparison.maximum_percent_match_to_select:
