@@ -148,6 +148,14 @@ def attribute_water_to_chains(model):
   nonw = h.select(~wsel)
   nonwa = nonw.atoms()
   #
+  # chain ID <> max residue number mapping
+  can = {}
+  for c in nonw.chains():
+    last = list(c.residue_groups())[-1]
+    can.setdefault(c.id, []).append(last.resseq_as_int())
+  for k in can.keys():
+    can[k] = max(can[k])
+  #
   dic = {}
   for aw in wh.atoms():
     d_min    = 1.e9
@@ -169,8 +177,9 @@ def attribute_water_to_chains(model):
       new_atom_group = iotbx.pdb.hierarchy.atom_group(altloc="",
         resname="HOH")
       new_atom_group.append_atom(atom=new_atom.detached_copy())
+      i_seq_ = i_seq + 1 + can[chain_id]
       new_residue_group = iotbx.pdb.hierarchy.residue_group(
-        resseq=iotbx.pdb.resseq_encode(value=i_seq), icode=" ")
+        resseq=iotbx.pdb.resseq_encode(value=i_seq_), icode=" ")
       new_residue_group.append_atom_group(atom_group=new_atom_group)
       new_chain.append_residue_group(residue_group=new_residue_group)
     pdb_model.append_chain(chain=new_chain)
