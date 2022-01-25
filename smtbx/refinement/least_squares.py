@@ -46,6 +46,7 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
     initial_scale_factor = None
     may_parallelise = False
     use_openmp = False
+    max_memory = 300
 
     def __init__(self, observations, reparametrisation,
                  one_h_linearisation=None, **kwds):
@@ -96,7 +97,8 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
           extinction_correction,
           objective_only,
           self.may_parallelise,
-          self.use_openmp)
+          self.use_openmp,
+          self.max_memory)
 
       if not self.finalised: #i.e. never been called
         self.reparametrisation.linearise()

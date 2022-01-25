@@ -97,7 +97,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
       cctbx::xray::extinction_correction<FloatType> const& exti,
       bool objective_only = false,
       bool may_parallelise = false,
-      bool use_openmp = false)
+      bool use_openmp = false,
+      int max_memory = 300)
       :
       reflections_(reflections),
       f_mask(f_mask),
@@ -108,6 +109,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       objective_only(objective_only),
       may_parallelise(may_parallelise),
       use_openmp(use_openmp),
+      max_memory(max_memory),
       built(false),
       f_calc_(reflections.size()),
       observables_(reflections.size()),
@@ -124,13 +126,14 @@ namespace smtbx { namespace refinement { namespace least_squares {
       af::const_ref<std::complex<FloatType> > const& f_mask,
       WeightingScheme<FloatType> const& weighting_scheme,
       boost::optional<FloatType> scale_factor,
-      f_calc_function_base_t& f_calc_function,
+      f_calc_function_base_t &f_calc_function,
       scitbx::sparse::matrix<FloatType> const &
         jacobian_transpose_matching_grad_fc,
       cctbx::xray::extinction_correction<FloatType> const& exti,
       bool objective_only = false,
       bool may_parallelise = false,
-      bool use_openmp = false)
+      bool use_openmp = false,
+      int max_memory = 300)
       :
       reflections_(reflections),
       f_mask(f_mask),
@@ -141,6 +144,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       objective_only(objective_only),
       may_parallelise(may_parallelise),
       use_openmp(use_openmp),
+      max_memory(max_memory),
       built(false),
       f_calc_(reflections.size()),
       observables_(reflections.size()),
@@ -188,7 +192,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             jacobian_transpose_matching_grad_fc,
             exti, objective_only,
             f_calc_.ref(), observables_.ref(), weights_.ref(),
-            design_matrix_);
+            design_matrix_, max_memory);
           job();
           if (job.exception_) {
             throw* job.exception_.get();
@@ -452,6 +456,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       may_parallelise,
       use_openmp,
       built;
+    int max_memory;
 
     af::shared<std::complex<FloatType> > f_calc_;
     af::shared<FloatType> observables_;
@@ -489,24 +494,25 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
     template<class NormalEquations,
       template<typename> class WeightingScheme>
-     build_normal_equations(
+    build_normal_equations(
        NormalEquations &normal_equations,
        cctbx::xray::observations<FloatType> const &reflections,
        af::const_ref<std::complex<FloatType> > const &f_mask,
        WeightingScheme<FloatType> const &weighting_scheme,
        boost::optional<FloatType> scale_factor,
-       f_calc_function_base<FloatType>& f_calc_function,
+       f_calc_function_base<FloatType> &f_calc_function,
        scitbx::sparse::matrix<FloatType> const
        &jacobian_transpose_matching_grad_fc,
        cctbx::xray::extinction_correction<FloatType> const &exti,
        bool objective_only = false,
        bool may_parallelise = false,
-       bool use_openmp = false)
+       bool use_openmp = false,
+       int max_memory = 300)
        : parent_t(
         normal_equations,
         reflections, f_mask, weighting_scheme, scale_factor, f_calc_function,
         jacobian_transpose_matching_grad_fc, exti,
-        objective_only, may_parallelise, use_openmp)
+        objective_only, may_parallelise, use_openmp, max_memory)
     {}
      virtual af::versa<FloatType, af::c_grid<2> > const& design_matrix() const {
        SMTBX_NOT_IMPLEMENTED();
@@ -551,18 +557,19 @@ namespace smtbx { namespace refinement { namespace least_squares {
        af::const_ref<std::complex<FloatType> > const &f_mask,
        WeightingScheme<FloatType> const &weighting_scheme,
        boost::optional<FloatType> scale_factor,
-       f_calc_function_base<FloatType>& f_calc_function,
+       f_calc_function_base<FloatType> &f_calc_function,
        scitbx::sparse::matrix<FloatType> const
        &jacobian_transpose_matching_grad_fc,
        cctbx::xray::extinction_correction<FloatType> const &exti,
        bool objective_only = false,
        bool may_parallelise = false,
-       bool use_openmp = false)
+       bool use_openmp = false,
+       int max_memory = 300)
        : parent_t(
         normal_equations,
         reflections, f_mask, weighting_scheme, scale_factor, f_calc_function,
         jacobian_transpose_matching_grad_fc, exti,
-        objective_only, may_parallelise, use_openmp)
+        objective_only, may_parallelise, use_openmp, max_memory)
     {}
 
     virtual af::versa<FloatType, af::c_grid<2> > const& design_matrix() const {
